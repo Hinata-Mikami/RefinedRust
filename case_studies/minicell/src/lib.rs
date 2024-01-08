@@ -5,6 +5,8 @@
 use std::mem;
 use std::ptr;
 
+mod example;
+
 /* TODO:
  * 1. Add support for non-atomic invariants (na mode)
  * 2. add support for rr::inline
