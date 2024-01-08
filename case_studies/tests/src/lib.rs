@@ -7,10 +7,11 @@
 #![rr::package("tests")]
 #![rr::include("stdlib")]
 
-mod enums;
-mod structs;
 mod array;
 mod char;
+mod enums;
+mod inline;
+mod structs;
 mod traits;
 mod trait_deps;
 mod trait_derive;
