@@ -1188,16 +1188,16 @@ Section rules.
     ⊢ typed_val_expr π E L (&ref{Shr, ty_annot, κ_name} e)%E T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
-    iIntros "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL Hna HΦ".
-    wp_bind. iSpecialize ("HT" with "Hnamed"). iApply ("HT" $! _ ⊤ with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hna").
+    iIntros "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".
+    wp_bind. iSpecialize ("HT" with "Hnamed"). iApply ("HT" $! _ ⊤ with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
     iIntros (l) "HT".
     unfold Ref. wp_bind. iApply ewp_fupd.
     iApply (wp_logical_step with "TIME HT"); [solve_ndisj.. | ].
     iApply wp_skip. iNext. iIntros "Hcred HT !> !>".
     iApply (wp_logical_step with "TIME HT"); [solve_ndisj.. | ].
     iApply wp_skip. iNext. iIntros "Hcred' HT".
-    iMod ("HT" with "Hcred'") as (L' rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & Hna & HT)".
-    iModIntro. iApply ("HΦ" with "HL Hna [Hshr] HT").
+    iMod ("HT" with "Hcred'") as (L' rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & HT)".
+    iModIntro. iApply ("HΦ" with "HL [Hshr] HT").
     iExists l, ly, r'. iSplitR; first done. iFrame "Hlb Hrfn Hsc %".
     iModIntro. iModIntro. done.
   Qed.

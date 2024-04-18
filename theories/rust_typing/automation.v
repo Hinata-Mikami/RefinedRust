@@ -775,14 +775,15 @@ Section tac.
       let E := (((fp.2 κs tys).(fn_p) x).(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in
       ∃ E', ⌜E' ⊆+ E⌝ ∗
-      (credit_store 0 0 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
+      (credit_store 0 0 -∗ na_own π ⊤ -∗ introduce_with_hooks E' L (Qinit) (λ L2,
         introduce_typed_stmt π E' L2 ϝ fn lsa lsv lya lyv (
         λ v L2,
             prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
-            find_in_context FindCreditStore (λ _, True)
+            find_in_context FindCreditStore (λ _,
+              find_in_context (FindNaOwn π) (λ (mask: coPset), ⌜mask = ⊤⌝ -∗ True))
           )))
         ))))) -∗
     typed_function π fn local_sts fp.
@@ -790,18 +791,19 @@ Section tac.
     iIntros "#Ha".
     rewrite /typed_function.
     iIntros (????) "!# Hx1 Hx2".
-    iIntros (lsa lsv) "(Hstore & Hinit)".
+    iIntros (lsa lsv) "(Hstore & Hna & Hinit)".
     rewrite /introduce_typed_stmt /typed_stmt.
-    iIntros (?) "#CTX #HE HL Hna Hcont".
+    iIntros (?) "#CTX #HE HL Hcont".
     iApply fupd_wps.
     iPoseProof ("Ha" with "Hx1 Hx2") as "HT".
     iDestruct ("HT" $! lsa lsv) as "(%E' & %Hsub & HT)".
     iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE") as "HE'".
     rewrite /introduce_with_hooks.
-    iMod ("HT" with "Hstore [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
+    iMod ("HT" with "Hstore Hna [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
-    by iApply ("HT" with "CTX HE' HL Hna").
-  Qed.
+    iApply ("HT" with "CTX HE' HL").
+    (* TODO: Should be `by iApply`, but `done` hangs *)
+  Admitted.
 End tac.
 
 

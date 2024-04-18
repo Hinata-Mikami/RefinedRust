@@ -149,6 +149,8 @@ Section function.
           let Qinit :=
             (* initial credits from the beta step *)
             credit_store 0 0 ∗
+            (* initial mask *)
+            na_own π ⊤ ∗
             (* arg ownership *)
             ([∗list] l;t∈lsa;fps.(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty)) ∗
             (* local vars ownership *)
@@ -167,7 +169,8 @@ Section function.
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
-            find_in_context FindCreditStore (λ _, True)
+            find_in_context FindCreditStore (λ _,
+              find_in_context (FindNaOwn π) (λ (mask: coPset), ⌜mask = ⊤⌝ ∗ True))
           )))))
     )%I.
 
@@ -222,7 +225,9 @@ Section call.
 
   Lemma type_call_fnptr π E L (lfts : nat) (rts : list (Type)) eκs etys l v vl tys eqp (fp : prod_vec lft lfts → plist type rts → fn_spec) sta T :
     let eκs' := list_to_tup eκs in
-    (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π} r @ ty) -∗
+    find_in_context (FindNaOwn π) (λ (mask: coPset),
+      ⌜mask = ⊤⌝ ∗
+      (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π} r @ ty) -∗
       ∃ (Heq : lfts = length eκs),
       ∃ tys,
       li_tactic (ensure_evars_instantiated_goal (pzipl _ tys) etys) (λ _,
@@ -250,12 +255,13 @@ Section call.
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
-      introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π) (λ L3,
-      T L3 v (fps.(fp_fr) x').(fr_rt) (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))
-    ) ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π} l @ function_ptr sta (eqp, fp)) vl tys T.
+      introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π) (λ L3,
+      T L3 v (fps.(fp_fr) x').(fr_rt) (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
+    ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
-    simpl. iIntros "HT (%fn & %local_sts & -> & He & %Halg & %Halgl & Hfn) Htys" (Φ) "#CTX #HE HL Hna HΦ".
+    simpl. iIntros "HT (%fn & %local_sts & -> & He & %Halg & %Halgl & Hfn) Htys" (Φ) "#CTX #HE HL HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
+    iDestruct "HT" as (?) "(Hna & -> & HT) /=".
     iDestruct ("HT" with "Htys") as "(%Heq & %stys & %x & HP)". subst lfts.
     set (aκs := list_to_tup eκs).
     cbn.
@@ -293,7 +299,7 @@ Section call.
       apply map_eq_cons in Ha as (xa & ? & -> & <- & <-).
       destruct vl => //=. iDestruct "Hvl" as "[Hv Hvl]".
       destruct xa as (rt & (ty & r)).
-      iDestruct ("IH" with "[//] He Hna HΦ Hvl") as %?.
+      iDestruct ("IH" with "[//] Hna He HΦ Hvl") as %?.
       iDestruct (ty_has_layout with "Hv") as "(%ly' & % & %)".
       assert (ly = ly') as ->. { by eapply syn_type_has_layout_inj. }
       iPureIntro. constructor => //.
@@ -332,14 +338,15 @@ Section call.
 
     iDestruct ("Hfn" $! lsa' lsv') as "Hm". unfold introduce_typed_stmt.
     set (RET_PROP v := (∃ κs',
-        llctx_elt_interp (ϝ ⊑ₗ{ 0} κs') ∗ na_own π shrE ∗
+        llctx_elt_interp (ϝ ⊑ₗ{ 0} κs') ∗
         credit_store 0 0 ∗
+        na_own π ⊤ ∗
         ([∗ list] l0 ∈ (zip lsa' (f_args fn).*2 ++ zip lsv' (f_local_vars fn).*2), l0.1 ↦|l0.2|) ∗
         fn_ret_prop π (fp_fr fps) v)%I).
     iExists RET_PROP. iSplitR "Hr HR HΦ HL HL_cl HL_cl' Hkill" => /=.
     - iMod (persistent_time_receipt_0) as "#Htime".
       iApply wps_fupd.
-      iApply ("Hm" with "[-Hϝ Hna] [$LFT $TIME $LCTX] HE' [$Hϝ//] Hna []").
+      iApply ("Hm" with "[-Hϝ] [$LFT $TIME $LCTX] HE' [$Hϝ//] []").
       { iFrame.
         (* we use the certificate + other credit to initialize the new functions credit store *)
         iSplitL "Hcred Hc". { rewrite credit_store_eq /credit_store_def. iFrame. }
@@ -390,7 +397,7 @@ Section call.
           iExists _. iSplitR; first done. iNext. eauto with iFrame. }
         iApply ("IH" with "[//] [//] [//] [//] [$] [$] [$]").
       }
-      iIntros (L5 v) "HL Hna Hloc HT".
+      iIntros (L5 v) "HL Hloc HT".
       iMod ("HT" with "[] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
       { rewrite /rrust_ctx. iFrame "#". }
       iMod "Hp" as "(Hret & HR)".
@@ -400,14 +407,15 @@ Section call.
       destruct Hfind as (L9 & L10 & ? & -> & -> & Hoc).
       unfold llctx_find_lft_key_interp in Hoc. subst.
       iDestruct "HL" as "(_ & Hϝ & _)".
-      iDestruct "HT" as ([n' m']) "(Hstore & _)"; simpl.
+      iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.
+      iDestruct "HT" as (b) "(Hna & (-> & _))"; simpl.
 
       subst RET_PROP; simpl.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
     - (* handle the postcondition at return *)
       iMod (persistent_time_receipt_0) as "Hpt".
-      iIntros "!>" (v). iDestruct 1 as (κs') "(Hϝ & Hna & Hstore & Hls & HPr)".
+      iIntros "!>" (v). iDestruct 1 as (κs') "(Hϝ & Hstore & Hna & Hls & HPr)".
       iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
       iExists 1, 0. iFrame.
       simpl. rewrite !big_sepL2_alt. iDestruct (big_sepL_app with "Hls") as "[? ?]".
@@ -422,9 +430,9 @@ Section call.
       iPoseProof ("HL_cl" with "HL") as "HL".
        (*we currently don't actually kill the lifetime, as we don't conceptually need that. *)
       iDestruct ("HPr") as (?) "(Hty & HR2 & _)".
-      iMod ("Hr" with "[] HE HL [Hat Hcred HR2 HR]") as "(%L3 & HL & Hr)"; first done.
+      iMod ("Hr" with "[] HE HL [Hat Hcred Hna HR2 HR]") as "(%L3 & HL & Hr)"; first done.
       { iFrame. }
-      iApply ("HΦ" with "HL Hna Hty").
+      iApply ("HΦ" with "HL Hty").
       by iApply ("Hr").
   Qed.
   Definition type_call_fnptr_inst := [instance type_call_fnptr].
@@ -674,7 +682,7 @@ Section function_subsume.
     rewrite /typed_function.
     iIntros (κs tys b ϝ) "!>".
     iIntros (Hargly Hlocally lsa lsv).
-    iIntros "(Hcred & Hargs & Hlocals & Hsc & Hpre)".
+    iIntros "(Hcred & Hna & Hargs & Hlocals & Hsc & Hpre)".
     iSpecialize ("Ha" $! κs tys).
     iDestruct "Ha" as "(%Helctx & Ha)".
     iSpecialize ("Ha" $! b with "Hpre Hsc").
@@ -747,7 +755,7 @@ Section function_subsume.
       intros [? []] [? []] ly ->; done. }
     rewrite Hlen.
     iSpecialize ("Hf" $! lsa lsv).
-    iSpecialize ("Hf" with "[Hcred Hlocals Hargs Hsc Hpre]").
+    iSpecialize ("Hf" with "[Hcred Hna Hlocals Hargs Hsc Hpre]").
     { iFrame. iApply (big_sepL2_impl with "Hargs").
       iModIntro. iIntros (?? [? []] Hlook1 Hlook2).
       rewrite decide_True; first eauto.
@@ -757,14 +765,14 @@ Section function_subsume.
       apply lookup_lt_Some in Hlook2.
       lia. }
     rewrite /introduce_typed_stmt.
-    iIntros (?) "#CTX HE HL Hna Hrt".
+    iIntros (?) "#CTX HE HL Hrt".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
     iDestruct (Helctx with "HL") as "#HEincl".
     iPoseProof ("HLcl" with "HL") as "HL".
-    iApply ("Hf" with "CTX [HE] HL Hna").
+    iApply ("Hf" with "CTX [HE] HL").
     { by iApply "HEincl". }
-    iIntros (L' v) "HL Hna Hlocs Hpost".
-    iApply ("Hrt" with "HL Hna Hlocs").
+    iIntros (L' v) "HL Hlocs Hpost".
+    iApply ("Hrt" with "HL Hlocs").
     iIntros (???) "_ HE HL".
     iPoseProof ("HEincl" with "HE") as "HE".
     iMod ("Hpost" with "[//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
