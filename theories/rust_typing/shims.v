@@ -130,9 +130,8 @@ Lemma mem_align_of_typed `{RRGS : !refinedrustGS Σ} π T_rt T_st T_ly :
   ⊢ typed_function π (mem_align_of T_st) [] (<tag_type> type_of_mem_align_of T_rt T_st).
 Proof.
   start_function "mem_align_of" ϝ ( () ) ( [T_ty []] ) ( () ) ( ).
-  repeat liRStep; liShow.
-  Unshelve.
-  all: unshelve_sidecond.
+  repeat liRStep.
+  Unshelve. all: unshelve_sidecond.
   simplify_layout_goal.
   by apply ly_align_in_usize.
 Qed.
@@ -156,8 +155,8 @@ Lemma mem_align_of_log_typed `{RRGS : !refinedrustGS Σ} π T_rt T_st T_ly :
   ⊢ typed_function π (mem_align_log_of T_st) [] (<tag_type> type_of_mem_align_log_of T_rt T_st).
 Proof.
   start_function "mem_align_log_of" ϝ ( () ) ( [T_ty []] ) ( () ) ( ).
-  repeat liRStep. Unshelve.
-  all: unshelve_sidecond.
+  repeat liRStep.
+  Unshelve. all: unshelve_sidecond.
   by eapply ly_align_log_in_usize.
 Qed.
 
@@ -286,7 +285,7 @@ Proof.
   { unfold_code_marker_and_compute_map_lookup. }
 
   liRStep; liShow. iExists 0%nat.
-  repeat liRStep. liShow.
+  repeat liRStep; liShow.
 
   iRename select (loop_inv _ _) into "Hinv".
   iDestruct "Hinv" as "(%i & -> & -> & Hcredit & Hna & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
