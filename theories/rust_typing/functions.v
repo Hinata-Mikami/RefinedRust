@@ -170,7 +170,7 @@ Section function.
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
             find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn π) (λ (mask: coPset), ⌜mask = ⊤⌝ ∗ True))
+              find_in_context (FindNaOwn) (λ '(π', mask), ⌜π' = π⌝ ∗ ⌜mask = ⊤⌝ ∗ True))
           )))))
     )%I.
 
@@ -225,7 +225,9 @@ Section call.
 
   Lemma type_call_fnptr π E L (lfts : nat) (rts : list (Type)) eκs etys l v vl tys eqp (fp : prod_vec lft lfts → plist type rts → fn_spec) sta T :
     let eκs' := list_to_tup eκs in
-    find_in_context (FindNaOwn π) (λ (mask: coPset),
+    find_in_context (FindNaOwn) (λ '(π', mask),
+      ⌜π' = π⌝ ∗
+      (* TODO: do something to ensure invariants are closed before *)
       ⌜mask = ⊤⌝ ∗
       (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π} r @ ty) -∗
       ∃ (Heq : lfts = length eκs),
@@ -256,12 +258,12 @@ Section call.
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
       introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π) (λ L3,
-      T L3 v (fps.(fp_fr) x').(fr_rt) (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
+      T L3 π v (fps.(fp_fr) x').(fr_rt) (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
     ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
     simpl. iIntros "HT (%fn & %local_sts & -> & He & %Halg & %Halgl & Hfn) Htys" (Φ) "#CTX #HE HL HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
-    iDestruct "HT" as (?) "(Hna & -> & HT) /=".
+    iDestruct "HT" as ([π' mask]) "(Hna & -> & -> & HT) /=".
     iDestruct ("HT" with "Htys") as "(%Heq & %stys & %x & HP)". subst lfts.
     set (aκs := list_to_tup eκs).
     cbn.
@@ -411,7 +413,7 @@ Section call.
       unfold llctx_find_lft_key_interp in Hoc. subst.
       iDestruct "HL" as "(_ & Hϝ & _)".
       iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.
-      iDestruct "HT" as (b) "(Hna & (-> & _))"; simpl.
+      iDestruct "HT" as ([π' mask]) "(Hna & -> & -> & _)"; simpl.
 
       subst RET_PROP; simpl.
       iExists _. iFrame.

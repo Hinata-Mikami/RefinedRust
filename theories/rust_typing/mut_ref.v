@@ -1321,11 +1321,11 @@ Section rules.
     ProvePlaceCond E L k (MutLtype lt1 κ1) (MutLtype lt2 κ2) | 5 := λ T, i2p (prove_place_cond_mut_ltype E L lt1 lt2 κ1 κ2 k T).
 
   (** Typing rule for mutable borrows, manually applied by the tactics *)
-  Lemma type_mut_bor E L T e π κ_name (ty_annot : option rust_type) :
+  Lemma type_mut_bor E L T e κ_name (ty_annot : option rust_type) :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
-      (named_lfts M -∗ typed_borrow_mut π E L e κ ty_annot (λ L' v γ rt ty r,
-        T L' v (place_rfn rt * gname)%type (mut_ref κ ty) (#r, γ)))))
-    ⊢ typed_val_expr π E L (&ref{Mut, ty_annot, κ_name} e)%E T.
+      (named_lfts M -∗ typed_borrow_mut E L e κ ty_annot (λ L' π v γ rt ty r,
+        T L' π v (place_rfn rt * gname)%type (mut_ref κ ty) (#r, γ)))))
+    ⊢ typed_val_expr E L (&ref{Mut, ty_annot, κ_name} e)%E T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "HT".
@@ -1344,7 +1344,7 @@ Section rules.
     iMod (persistent_time_receipt_0) as "Hp".
     iApply (wp_skip_credits with "TIME Hc Hp"); first done.
     iIntros "!> Hcred1 Hc HT" => /=.
-    iMod ("HT") as "(%L' & %rt' & %ty & %r & %γ & %ly & Hobs & Hbor & %Hst & %Hly & #Hlb & #Hsc & HL & HT)".
+    iMod ("HT") as "(%L' & %π & %rt' & %ty & %r & %γ & %ly & Hobs & Hbor & %Hst & %Hly & #Hlb & #Hsc & HL & HT)".
     iModIntro.
     (* generate the credits for the new reference *)
     iMod (persistent_time_receipt_0) as "Hp".

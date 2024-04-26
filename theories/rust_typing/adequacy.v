@@ -102,9 +102,9 @@ Proof.
     iMod (na_alloc) as "(%π & Hna)".
     iDestruct ("Hfn" $! π) as (P) "[Hmain HP]".
     rewrite /initial_prog.
-    iApply (type_call_fnptr π [] [] 0 [] [] [] main main [] [] eq_refl (main_type P) [] (λ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
-    + iExists ⊤ => /=.
-      iFrame. iSplitR; [ done |].
+    iApply (type_call_fnptr π [] [] 0 [] [] [] main main [] [] eq_refl (main_type P) [] (λ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
+    + iExists (π, ⊤) => /=.
+      iFrame. do 2 iR.
       iIntros "_". iExists eq_refl, -[], tt.
       rewrite /li_tactic/ensure_evars_instantiated_goal.
       iIntros (???) "#CTX #HE HL".
@@ -127,7 +127,7 @@ Proof.
     + rewrite /rrust_ctx. iFrame "#".
     + by iApply big_sepL_nil.
     + by iApply big_sepL_nil.
-    + by iIntros (?????) "HL Hv _".
+    + by iIntros (??????) "HL Hv _".
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - iFrame.
     rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
