@@ -404,14 +404,14 @@ Section fixpoint.
         intros n [][][Heq1 Heq2].
         simpl in *. apply Heq1. }
       apply _.
-    - intros ? ? ? ? ? ? ? ? ? Hst. intros.
+    - intros ? ? ? ? ? ? ? ? Hst. intros.
       rewrite /ty_shr/ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
       eapply @limit_preserving.
       { eapply bi.limit_preserving_entails; first apply _.
         intros n [][][Heq1 Heq2].
         repeat f_equiv; simpl; [apply Heq2 | apply Heq1]. }
       intros ?.
-      eapply copy_shr_acc; [done | | done].
+      eapply copy_shr_acc; [ done |].
       move: Hst. rewrite type_fixpoint_syn_type.
       erewrite Fn_syn_type_const; done.
   Qed.
