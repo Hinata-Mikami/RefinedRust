@@ -592,8 +592,8 @@ Section generated_code.
 
       (* Nothing has changed *)
       iIntros "HT".
-      iIntros (???) "#CTX #HE HL".
-      iMod ("HT" with "[//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+      iIntros (????) "#CTX #HE HL".
+      iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
       iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
       iSplitR; last iSplitR.
       - simpl. iPureIntro.
@@ -822,7 +822,7 @@ Section generated_code.
       rewrite /prove_with_subtype.
       iApply fupd_place_to_wp.
 
-      iMod ("HT" with "[] [] [$LFT $TIME $LLCTX] HE HL")
+      iMod ("HT" with "[] [] [] [$LFT $TIME $LLCTX] HE HL")
           as "(% & % & % & >(Hcred & HR) & HL & HT)"; [ done.. |].
       iSpecialize ("HT" with "HR").
 
@@ -934,7 +934,7 @@ Section generated_code.
       unfold stratify_ltype.
 
       iIntros "HT".
-      iIntros (???) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
+      iIntros (????) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iApply logical_step_intro. by iFrame.
     Qed.
 
@@ -957,11 +957,11 @@ Section generated_code.
     Proof.
       rewrite /stratify_ltype /weak_subltype /prove_with_subtype.
 
-      iIntros "Hstrat" (F ??) "#CTX #HE HL Hl".
+      iIntros "Hstrat" (F ???) "#CTX #HE HL Hl".
       rewrite ltype_own_magic_unfold /magic_ltype_own.
 
       iDestruct "Hl" as "(%ly & %Halg & %Hly & #Hlb & %Hst & Hl & Hcl)".
-      iMod ("Hstrat" with "[//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt_cur' & %lt_cur' & %r' & HL & %Hst' & Hstep & HT)".
+      iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt_cur' & %lt_cur' & %r' & HL & %Hst' & Hstep & HT)".
 
       destruct (decide (ma = StratNoRefold)) as [-> | ].
       - (* don't fold *)
@@ -981,7 +981,7 @@ Section generated_code.
       - (* fold it again *)
         iDestruct "HT" as "(%ri & HT)".
         iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & HT)".
-        iMod ("HT" with "[//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
+        iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
 
         iPoseProof (imp_unblockable_blocked_dead lt_cur') as "(_ & #Hb)".
         set (κs' := ltype_blocked_lfts lt_cur').

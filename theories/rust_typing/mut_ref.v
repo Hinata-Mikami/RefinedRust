@@ -717,7 +717,7 @@ Section rules.
     ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (◁ (mut_ref κ ty)) (#(r, γ)) (Owned wl) T.
   Proof.
     iIntros "HT".
-    iIntros (???) "#CTX #HE HL Hl".
+    iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _, _, _, _, _. iFrame.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & Hlb & Hcreds & %r' & <- & Hb)".
@@ -1141,10 +1141,10 @@ Section rules.
       end))
     ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned wl) T.
   Proof.
-    iIntros "Hs". iIntros (?? ?) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
     iPoseProof (mut_ltype_acc_owned F with "[$LFT $TIME $LLCTX] Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
@@ -1200,7 +1200,7 @@ Section rules.
           end))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (#(r, γ)) (Uniq κ' γ') T.
   Proof.
-    iIntros "Hs". iIntros (?? ?) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "Hs" as "(%κs & %L1 & %Hal & Hs)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
@@ -1208,7 +1208,7 @@ Section rules.
     iMod "HF_cl" as "_".
     iPoseProof (mut_ltype_acc_uniq F with "[$LFT $TIME $LLCTX] Htok Hcl_tok Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & Hupd & Hs)"; first done.
     destruct upd as [ Heq | ].
@@ -1331,7 +1331,7 @@ Section rules.
     iIntros "HT".
     iDestruct "HT" as "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".
     wp_bind. iSpecialize ("HT" with "Hnamed").
-    iApply ("HT" $! _ ⊤ with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
+    iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
     iIntros (l) "Hat HT".
     unfold Ref.
     wp_bind.

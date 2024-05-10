@@ -268,9 +268,9 @@ Section call.
     set (aκs := list_to_tup eκs).
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).
-    iApply fupd_wp. iMod ("HP" with "[] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].
+    iApply fupd_wp. iMod ("HP" with "[] [] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(-> & HT)".
-    iMod ("HT" with "[] [] CTX HE HL") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | ].
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(Hsc & %Hal & %Hsat & Hr)".
     (* initialize the function's lifetime *)
     set (ϝ' := lft_intersect_list (L2.*1.*2)).
@@ -403,7 +403,7 @@ Section call.
         iApply ("IH" with "[//] [//] [//] [//] [$] [$] [$]").
       }
       iIntros (L5 v) "HL Hloc HT".
-      iMod ("HT" with "[] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
+      iMod ("HT" with "[] [] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
       { rewrite /rrust_ctx. iFrame "#". }
       iMod "Hp" as "(Hret & HR)".
       iMod ("HT" with "[] HE' HL HR") as "(%L6 & HL & HT)"; first done.
@@ -778,9 +778,9 @@ Section function_subsume.
     { by iApply "HEincl". }
     iIntros (L' v) "HL Hlocs Hpost".
     iApply ("Hrt" with "HL Hlocs").
-    iIntros (???) "_ HE HL".
+    iIntros (????) "_ HE HL".
     iPoseProof ("HEincl" with "HE") as "HE".
-    iMod ("Hpost" with "[//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
+    iMod ("Hpost" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
     iMod "Hs" as "((%x & Hrt & Hpost & _) & HR)".
     iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
     (* TODO could also allow prove_with_subtype etc here? *)

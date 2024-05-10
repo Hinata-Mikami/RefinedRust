@@ -1051,10 +1051,10 @@ Section rules.
       end))
     ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned wl) T.
   Proof.
-    iIntros "Hs". iIntros (?? ?) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $TIME $LLCTX] Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
@@ -1133,7 +1133,7 @@ Section rules.
     (cast_ltype_to_type E L (ltype_core lt) (λ ty', T L True _ (◁ ty')%I (r)))
     ⊢ stratify_ltype π E L mu mdu ma ml l lt r (Shared κ) T.
   Proof.
-    iIntros "HT". iIntros (???) "#CTX #HE HL Hl".
+    iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iDestruct "HT" as "(%ty & %Heq & HT)".
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heq.
     iPoseProof (ltype_own_shared_to_core with "Hl") as "Hl".
@@ -1194,7 +1194,7 @@ Section rules.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".
-    wp_bind. iSpecialize ("HT" with "Hnamed"). iApply ("HT" $! _ ⊤ with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
+    wp_bind. iSpecialize ("HT" with "Hnamed"). iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
     iIntros (l) "HT".
     unfold Ref. wp_bind. iApply ewp_fupd.
     iApply (wp_logical_step with "TIME HT"); [solve_ndisj.. | ].
