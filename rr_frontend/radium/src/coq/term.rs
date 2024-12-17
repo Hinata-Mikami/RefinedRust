@@ -23,95 +23,26 @@ use crate::{display_list, make_indent, BASE_INDENT};
 /// [term]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Gallina {
-    /// a literal
+    /// A literal
     Literal(String),
 
-    /// Application
+    /// An application
     App(Box<App<Gallina, Gallina>>),
 
-    /// a record body
+    /// A record constructor
     RecordBody(RecordBody),
 
-    /// Projection a.(b) from a record
+    /// A projection `a.(b)` from a record `a`
     RecordProj(Box<Gallina>, String),
 
-    /// Universal quantifiers
+    /// A universal quantifier
     All(binder::BinderList, Box<Gallina>),
 
-    /// Existential quantifiers
+    /// An existential quantifier
     Exists(binder::BinderList, Box<Gallina>),
 
-    /// Infix operators
+    /// An infix operator
     Infix(String, Vec<Gallina>),
-}
-
-/// Represents an application of a term to an rhs.
-/// (commonly used for layouts and instantiating them with generics).
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct App<T, U> {
-    pub(crate) lhs: T,
-    pub(crate) rhs: Vec<U>,
-}
-
-impl<T: Display, U: Display> Display for App<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.rhs.is_empty() {
-            return write!(f, "{}", self.lhs);
-        }
-
-        write!(f, "({} {})", self.lhs, display_list!(&self.rhs, " ", "({})"))
-    }
-}
-
-impl<T, U> App<T, U> {
-    pub fn new(lhs: T, rhs: Vec<U>) -> Self {
-        Self { lhs, rhs }
-    }
-
-    pub fn new_lhs(lhs: T) -> Self {
-        Self {
-            lhs,
-            rhs: Vec::new(),
-        }
-    }
-
-    pub(crate) const fn get_lhs(&self) -> &T {
-        &self.lhs
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RecordBodyItem {
-    pub name: String,
-    pub params: binder::BinderList,
-    pub term: Gallina,
-}
-
-impl Display for RecordBodyItem {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
-
-        let mut writer = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
-        write!(writer, "{} {} :=\n{};", self.name, self.params, self.term)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RecordBody {
-    pub items: Vec<RecordBodyItem>,
-}
-
-impl Display for RecordBody {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
-
-        write!(f, "{{|\n")?;
-        let mut f2 = IndentWriter::new(BASE_INDENT, &mut *f);
-        for it in &self.items {
-            write!(f2, "{}\n", it)?;
-        }
-        write!(f, "|}}\n")
-    }
 }
 
 impl Display for Gallina {
@@ -150,6 +81,79 @@ impl Display for Gallina {
                 }
             },
         }
+    }
+}
+
+/// An [application].
+///
+/// [application]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#function-application
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub struct App<T, U> {
+    pub(crate) lhs: T,
+    pub(crate) rhs: Vec<U>,
+}
+
+impl<T: Display, U: Display> Display for App<T, U> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.rhs.is_empty() {
+            return write!(f, "{}", self.lhs);
+        }
+
+        write!(f, "({} {})", self.lhs, display_list!(&self.rhs, " ", "({})"))
+    }
+}
+
+impl<T, U> App<T, U> {
+    pub fn new(lhs: T, rhs: Vec<U>) -> Self {
+        Self { lhs, rhs }
+    }
+
+    pub fn new_lhs(lhs: T) -> Self {
+        Self {
+            lhs,
+            rhs: Vec::new(),
+        }
+    }
+
+    pub(crate) const fn get_lhs(&self) -> &T {
+        &self.lhs
+    }
+}
+
+/// A [record].
+///
+/// [record]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#constructing-records
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordBody {
+    pub items: Vec<RecordBodyItem>,
+}
+
+impl Display for RecordBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use fmt::Write;
+
+        write!(f, "{{|\n")?;
+        let mut f2 = IndentWriter::new(BASE_INDENT, &mut *f);
+        for it in &self.items {
+            write!(f2, "{}\n", it)?;
+        }
+        write!(f, "|}}\n")
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordBodyItem {
+    pub name: String,
+    pub params: binder::BinderList,
+    pub term: Gallina,
+}
+
+impl Display for RecordBodyItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use fmt::Write;
+
+        let mut writer = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
+        write!(writer, "{} {} :=\n{};", self.name, self.params, self.term)
     }
 }
 
@@ -247,7 +251,7 @@ pub enum Type {
     Prop,
 }
 
-/* TODO */
+/* TODO: Definitions and constructors use the same grammar (`term_record`): Merge them. */
 #[derive(Clone, Debug, Display, Eq, PartialEq)]
 #[display("{} {} : {}", name, params, ty)]
 pub struct RecordDeclItem {

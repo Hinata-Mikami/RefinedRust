@@ -136,16 +136,27 @@ pub enum Command {
     #[display("Qed")]
     Qed,
 
-    /* TODO */
+    /// The [`Record`] command.
+    ///
+    /// [`Record`]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#coq:cmd.Record
     #[display("{}", _0)]
-    RecordDecl(term::Record),
+    Record(term::Record),
 
+    /// The [`Context`] command.
+    ///
+    /// [`Command`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#coq:cmd.Context
     #[display("{}", _0)]
-    ContextDecl(ContextDecl),
+    Context(Context),
 
+    /// The [`Definition`] command.
+    ///
+    /// [`Definition`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Definition
     #[display("{}", _0)]
     Definition(Definition),
 
+    /// The [`Section`] command.
+    ///
+    /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
     #[display("Section {}.\n{}End {}.", _0.0, _0.1.to_string().indented(&make_indent(1)), _0.0)]
     Section((String, Document)),
 }
@@ -172,14 +183,13 @@ impl From<QueryCommand> for Sentence {
     }
 }
 
-/* TODO */
-/// A Context declaration.
+/// A context declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ContextDecl {
+pub struct Context {
     pub items: binder::BinderList,
 }
 
-impl ContextDecl {
+impl Context {
     #[must_use]
     pub const fn new(items: binder::BinderList) -> Self {
         Self { items }
@@ -197,7 +207,7 @@ impl ContextDecl {
     }
 }
 
-impl Display for ContextDecl {
+impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.items.0.is_empty() { Ok(()) } else { write!(f, "Context {}", self.items) }
     }

@@ -182,7 +182,7 @@
 //!
 //! Writing the attribute structure can be unnecessarily verbose if no attributes are given.
 //!
-//! To avoid this, the `From<Field>` trait is derived for `Entry`, resulting in the following syntax:
+//! To avoid this, the `From<Field>` trait is implemented for `Entry`, resulting in the following syntax:
 //! ```
 //! # struct FieldAttrs { field: Field, attributes: Option<String> };
 //! # enum Field { Foo, Bar };
@@ -286,7 +286,7 @@
 //!
 //! <section class="warning">
 //!
-//! Heterogeneous datatypes do not exist in Rust, and coercions does not apply in the caller.
+//! Heterogeneous datatypes do not exist in Rust, and coercions do not apply in the caller.
 //! Therefore, the example cannot merge `Field` and `FieldAttrs`, and must use `.push()` instead.
 //!
 //! However, if there is a homogeneous list, an `impl Into` argument can be used:

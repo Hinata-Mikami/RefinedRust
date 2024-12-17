@@ -4000,9 +4000,9 @@ impl<'def> Display for TraitImplSpec<'def> {
 
         instance.insert(
             0,
-            coq::Sentence::CommandAttrs(coq::command::CommandAttrs::new(
-                coq::command::ContextDecl::refinedrust(),
-            )),
+            coq::Sentence::CommandAttrs(
+                coq::command::CommandAttrs::new(coq::command::Context::refinedrust()),
+            ),
         );
 
         write!(f, "{}\n", coq::command::Command::Section((self.names.spec_record.clone(), instance)))
