@@ -1,12 +1,21 @@
 
-pub struct Map<I, F> {
+// TODO: problematic for this specification: The trait bounds for I, F are not in scope here.
+// TODO: should we expose the closure state?
+#[rr::refined_by("history" : "_", "iter" : "{rt_of I}", "clos" : "{rt_of F}")]
+#[rr::exists("Inv" : "iter → clos → iProp Σ")]
+/// The map invariant holds.
+#[rr::invariant("Inv ({I.History} iter) clos_state")]
+/// Given the invariant, we can advance the iterator:
+/// TODO
+pub struct Map<I, F> 
+//where I: Iterator, F: FnMut(I::Item) -> B
+{
     // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
     pub(crate) iter: I,
     f: F,
 }
 
 #[rr::export_as(core::iter::adapters)]
-#[rr::refined_by()]
 impl<I, F> Map<I, F> {
     pub(crate) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
@@ -17,53 +26,30 @@ impl<I, F> Map<I, F> {
     }
 }
 
+/// Spec: history projection
+#[rr::instantiate("History" := "λ s, s.(history)")]
+/// Spec: We have the pure parts of the inner Next and the pre- and postconditions.
+#[rr::instantiate("Next" := "λ s1 e s2, 
+        ⌜{History} s2 = e :: {History} s1⌝ ∗
+        if_iNone e ({I.Next} s1.(iter) None s2.(iter)) ∗
+        if_iSome e (λ e, ∃ e_inner,
+            Boringly (
+                {I.Next} s1.(iter) e_inner s2.(iter) ∗
+                {F.Pre} s1.(f) e_inner ∗
+                {F.Post} s1.(f) e_inner s2.(f) e
+            ))")]
 impl<B, I: Iterator, F> Iterator for Map<I, F>
 where
     F: FnMut(I::Item) -> B,
 {
     type Item = B;
 
-    // Do I want to require a more specific spec for the closure here? 
-    //
-    // If I want to provide a spec in terms of the Iterator spec for this iterator, then I need to
-    // provide a functional abstraction for the closure. That's a bit of a problem.
-
     //#[inline]
     fn next(&mut self) -> Option<B> {
-        self.iter.next().map(&mut self.f)
+        self.iter
+            // Calling next is possible without preconditions.
+            .next()
+            // Calling the closure requires us to prove its precondition.
+            .map(&mut self.f)
     }
-
-    /*
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-
-    fn try_fold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
-    where
-        Self: Sized,
-        G: FnMut(Acc, Self::Item) -> R,
-        R: Try<Output = Acc>,
-    {
-        self.iter.try_fold(init, map_try_fold(&mut self.f, g))
-    }
-
-    fn fold<Acc, G>(self, init: Acc, g: G) -> Acc
-    where
-        G: FnMut(Acc, Self::Item) -> Acc,
-    {
-        self.iter.fold(init, map_fold(self.f, g))
-    }
-
-    #[inline]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
-    where
-        Self: TrustedRandomAccessNoCoerce,
-    {
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::__iterator_get_unchecked`.
-        unsafe { (self.f)(try_get_unchecked(&mut self.iter, idx)) }
-    }
-
-    */
 }
