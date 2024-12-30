@@ -8,10 +8,11 @@ mod structs;
 mod char;
 
 mod traits;
+//mod trait_deps;
 
 mod statics;
 
-mod vec_client;
+//mod vec_client;
 mod mixed;
 mod closures;
 mod references;

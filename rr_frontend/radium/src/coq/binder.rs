@@ -79,6 +79,21 @@ impl Binder {
             }),
         }
     }
+
+    pub fn make_implicit(&mut self, kind: Kind) {
+        match self {
+            Self::Default(name, ty) => {
+                *self = Self::Generalizing(Generalizing {
+                    kind,
+                    name: name.clone(),
+                    ty: ty.clone(),
+                });
+            },
+            Self::Generalizing(ref mut g) => {
+                g.kind = kind;
+            },
+        }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]

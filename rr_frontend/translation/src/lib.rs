@@ -83,7 +83,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     type_translator: &'rcx TypeTranslator<'rcx, 'tcx>,
     trait_registry: &'rcx TraitRegistry<'tcx, 'rcx>,
     functions: &'rcx [LocalDefId],
-    fn_arena: &'rcx Arena<radium::FunctionSpec<radium::InnerFunctionSpec<'rcx>>>,
+    fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
 
     /// the second component determines whether to include it in the code file as well
     extra_exports: HashSet<(coq::module::Export, bool)>,
@@ -1280,7 +1280,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
 
         let ty = ty.skip_binder();
         let scope = ParamScope::default();
-        match vcx.type_translator.translate_type_in_scope(scope, ty).map_err(|x| format!("{:?}", x)) {
+        match vcx.type_translator.translate_type_in_scope(&scope, ty).map_err(|x| format!("{:?}", x)) {
             Ok(translated_ty) => {
                 let _full_name = type_translator::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
 
@@ -1340,7 +1340,7 @@ fn register_traits(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
         }
 
         vcx.trait_registry
-            .register_trait(vcx.type_translator, t)
+            .register_trait(t)
             .map_err(|x| format!("{x:?}"))
             .map_err(|e| format!("{e:?}"))?;
     }
@@ -1556,10 +1556,17 @@ where
     let shim_arena = Arena::new();
     let trait_arena = Arena::new();
     let trait_impl_arena = Arena::new();
+    let trait_use_arena = Arena::new();
     let fn_spec_arena = Arena::new();
     let type_translator = TypeTranslator::new(env, &struct_arena, &enum_arena, &shim_arena);
-    let trait_registry =
-        TraitRegistry::new(env, &type_translator, &trait_arena, &trait_impl_arena, &fn_spec_arena);
+    let trait_registry = TraitRegistry::new(
+        env,
+        &type_translator,
+        &trait_arena,
+        &trait_impl_arena,
+        &trait_use_arena,
+        &fn_spec_arena,
+    );
     let procedure_registry = ProcedureScope::new();
     let shim_string_arena = Arena::new();
     let mut shim_registry = shim_registry::ShimRegistry::empty(&shim_string_arena);

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::string::ToString;
@@ -17,10 +18,10 @@ use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
 use crate::type_translator::{
-    generate_args_inst_key, strip_coq_ident, GenericsKey, InFunctionState, LocalTypeTranslator, ParamScope,
+    generate_args_inst_key, strip_coq_ident, GenericsKey, LocalTypeTranslator, ParamScope, TranslationState,
     TypeTranslator,
 };
-use crate::utils;
+use crate::{traits, utils};
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {
@@ -120,8 +121,10 @@ pub struct TraitRegistry<'tcx, 'def> {
     trait_arena: &'def Arena<specs::LiteralTraitSpec>,
     /// arena for allocating impl literals
     impl_arena: &'def Arena<specs::LiteralTraitImpl>,
+    /// arena for allocating trait use references
+    trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
     /// arena for function specifications
-    fn_spec_arena: &'def Arena<specs::FunctionSpec<specs::InnerFunctionSpec<'def>>>,
+    fn_spec_arena: &'def Arena<specs::FunctionSpec<'def, specs::InnerFunctionSpec<'def>>>,
 }
 
 impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
@@ -131,13 +134,15 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
         ty_translator: &'def TypeTranslator<'def, 'tcx>,
         trait_arena: &'def Arena<specs::LiteralTraitSpec>,
         impl_arena: &'def Arena<specs::LiteralTraitImpl>,
-        fn_spec_arena: &'def Arena<specs::FunctionSpec<specs::InnerFunctionSpec<'def>>>,
+        trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
+        fn_spec_arena: &'def Arena<specs::FunctionSpec<'def, specs::InnerFunctionSpec<'def>>>,
     ) -> Self {
         Self {
             env,
             type_translator: ty_translator,
             trait_arena,
             impl_arena,
+            trait_use_arena,
             fn_spec_arena,
             trait_decls: RefCell::new(HashMap::new()),
             trait_literals: RefCell::new(HashMap::new()),
@@ -238,11 +243,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     }
 
     /// Register a new annotated trait in the local crate with the registry.
-    pub fn register_trait(
-        &'def self,
-        ty_translator: &'def TypeTranslator<'def, 'tcx>,
-        did: LocalDefId,
-    ) -> Result<(), TranslationError<'tcx>> {
+    pub fn register_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
         trace!("enter TraitRegistry::register_trait for did={did:?}");
 
         {
@@ -254,13 +255,12 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
 
         // TODO: can we handle the case that this depends on a generic having the same trait?
         // In principle, yes, but currently the implementation does not allow it.
-        // We also do not generate trait dep parameters.
-        // We should depend on the assoc types of the other traits as well as the specs.
+        // => Think more about this.
 
         // get generics
         let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
-        let param_scope = ParamScope::from(trait_generics.params.as_slice());
-        // TODO: add associated types
+        let mut param_scope = ParamScope::from(trait_generics.params.as_slice());
+        param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
 
         let trait_name = strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
 
@@ -308,7 +308,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                     &name,
                     &spec_name,
                     attrs.as_slice(),
-                    ty_translator,
+                    self.type_translator,
                     self,
                 )?;
                 let spec_ref = self.fn_spec_arena.alloc(spec);
@@ -412,7 +412,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
         write!(attr_term, "{attr_record}").unwrap();
 
         // add the type parameters of the impl
-        for ty in info.generics.get_ty_params() {
+        for ty in info.generics.get_all_ty_params_with_assocs().params {
             write!(attr_term, " {}", ty.refinement_type).unwrap();
         }
 
@@ -423,11 +423,11 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     /// as well as the list of associated types.
     pub fn get_impl_spec_term(
         &self,
-        ty_translator: &LocalTypeTranslator<'def, 'tcx>,
+        state: TranslationState<'_, '_, 'def, 'tcx>,
         impl_did: DefId,
         impl_args: &[ty::GenericArg<'tcx>],
         trait_args: &[ty::GenericArg<'tcx>],
-    ) -> Result<(radium::SpecializedTraitSpec<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+    ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         trace!(
             "enter TraitRegistry::get_impl_spec_term for impl_did={impl_did:?} impl_args={impl_args:?} trait_args={trait_args:?}"
         );
@@ -456,30 +456,162 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
             let mut all_impl_args = Vec::new();
             for arg in impl_args {
                 if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                    let ty = ty_translator.translate_type(ty)?;
+                    let ty = self.type_translator.translate_type_in_state(ty, state)?;
                     all_impl_args.push(ty);
                 }
             }
 
-            // instantiate the attrs suitably
-            let mut args = Vec::new();
-            for ty in &all_impl_args {
-                args.push(format!("{}", ty.get_rfn_type()));
-            }
-            let attr_term = format!("{}", coq::term::App::new(impl_spec.spec_attrs_record.clone(), args));
-
-            radium::SpecializedTraitSpec::new_with_params(
-                impl_spec.spec_record.clone(),
-                Some(all_impl_args),
-                attr_term,
-                false,
-            )
+            radium::SpecializedTraitImpl::new(impl_spec, all_impl_args)
         } else {
             return Err(TranslationError::TraitTranslation(Error::UnregisteredImpl(impl_did)));
         };
 
         trace!("leave TraitRegistry::get_impl_spec_term");
         Ok((term, assoc_args))
+    }
+
+    /// Resolve the trait requirements of a [did] substituted with [params].
+    /// [did] should have been resolved as much as possible,
+    /// as the requirements can be different depending on which impl we consider.
+    /// The requirements are sorted stably across compilations, and consistently with the
+    /// declaration order.
+    pub fn resolve_trait_requirements_in_state(
+        &self,
+        state: TranslationState<'_, '_, 'def, 'tcx>,
+        did: DefId,
+        params: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+        trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
+
+        let current_param_env: ty::ParamEnv<'tcx> = state.get_param_env(self.env.tcx());
+
+        let callee_param_env = self.env.tcx().param_env(did);
+        trace!("callee param env {callee_param_env:?}");
+
+        // Get the trait requirements of the callee
+        let callee_requirements = ParamScope::get_trait_requirements_with_origin(self.env, did);
+        trace!("non-trivial callee requirements: {callee_requirements:?}");
+        trace!("subsituting with args {:?}", params);
+
+        // For each trait requirement, resolve to a trait spec that we can provide
+
+        // separate direct and indirect origins
+        let mut direct_trait_spec_terms = Vec::new();
+        let mut indirect_trait_spec_terms = Vec::new();
+
+        for (trait_ref, origin, _) in &callee_requirements {
+            // substitute the args with the arg instantiation of the callee at this call site
+            // in order to get the args of this trait instance
+            let args = trait_ref.args;
+            let mut subst_args = Vec::new();
+            for arg in args {
+                let bound = ty::EarlyBinder::bind(arg);
+                let bound = bound.instantiate(self.env.tcx(), params.as_slice());
+                subst_args.push(bound);
+            }
+
+            // Check if the target is a method of the same trait with the same args
+            // Since this happens in the same ParamEnv, this is the assumption of the trait method
+            // for its own trait, so we skip it.
+            if self.env.is_method_did(did) {
+                if let Some(trait_did) = self.env.tcx().trait_of_item(did) {
+                    // Get the params of the trait we're calling
+                    let calling_trait_params =
+                        LocalTypeTranslator::split_trait_method_args(self.env, trait_did, params).0;
+                    if trait_ref.def_id == trait_did && subst_args == calling_trait_params.as_slice() {
+                        // if they match, this is the Self assumption, so skip
+                        continue;
+                    }
+                } else if let Some(impl_did) = self.env.trait_impl_of_method(did) {
+                    // TODO
+                }
+            }
+
+            // try to infer an instance for this
+            let subst_args = self.env.tcx().mk_args(subst_args.as_slice());
+            trace!("Trying to resolve requirement def_id={:?} with args = {subst_args:?}", trait_ref.def_id);
+            if let Some((impl_did, impl_args, kind)) =
+                traits::resolve_trait(self.env.tcx(), current_param_env, trait_ref.def_id, subst_args)
+            {
+                info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
+
+                let req_inst = match kind {
+                    traits::TraitResolutionKind::UserDefined => {
+                        // we can resolve it to a concrete implementation of the trait that the
+                        // call links up against
+                        // therefore, we specialize it to the specification for this implementation
+                        //
+                        // This is sound, as the compiler will make the same choice when resolving
+                        // the trait reference in codegen
+
+                        let (spec_term, assoc_tys) = self.get_impl_spec_term(
+                            state,
+                            impl_did,
+                            impl_args.as_slice(),
+                            subst_args.as_slice(),
+                        )?;
+                        radium::TraitReqInst::new(
+                            radium::TraitReqInstSpec::Specialized(spec_term),
+                            *origin,
+                            assoc_tys,
+                        )
+                    },
+                    traits::TraitResolutionKind::Param => {
+                        // Lookup in our current parameter environment to satisfy this trait
+                        // assumption
+                        let trait_did = trait_ref.def_id;
+
+                        let assoc_types_did = self.env.get_trait_assoc_types(trait_did);
+                        let mut assoc_types = Vec::new();
+                        for did in assoc_types_did {
+                            let alias = self.env.tcx().mk_alias_ty(did, subst_args);
+                            let tykind = ty::TyKind::Alias(ty::AliasKind::Projection, alias);
+                            let ty = self.env.tcx().mk_ty_from_kind(tykind);
+                            assoc_types.push(ty);
+                        }
+                        info!("Param associated types: {:?}", assoc_types);
+
+                        let trait_use_ref = state
+                            .lookup_trait_use(self.env.tcx(), trait_did, subst_args.as_slice())?
+                            .trait_use;
+
+                        // TODO: do we have to requantify here?
+                        // I guess for HRTBs we might need to requantify lifetimes
+
+                        let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref);
+                        radium::TraitReqInst::new(
+                            radium::TraitReqInstSpec::Quantified(trait_impl),
+                            *origin,
+                            assoc_types,
+                        )
+                    },
+                    traits::TraitResolutionKind::Closure => {
+                        // The callee requires a closure trait bound.
+                        // This happens when we pass a closure as an argument?
+                        return Err(TranslationError::UnsupportedFeature {
+                            description: "TODO: do not support Closure parameters".to_owned(),
+                        });
+                    },
+                };
+
+                if req_inst.origin == radium::TyParamOrigin::Direct {
+                    direct_trait_spec_terms.push(req_inst);
+                } else {
+                    indirect_trait_spec_terms.push(req_inst);
+                }
+            } else {
+                return Err(TranslationError::TraitResolution(
+                    "could not resolve trait required for method call".to_owned(),
+                ));
+            }
+        }
+        indirect_trait_spec_terms.extend(direct_trait_spec_terms);
+        let trait_spec_terms = indirect_trait_spec_terms;
+
+        info!("collected spec terms: {trait_spec_terms:?}");
+
+        trace!("Leave resolve_trait_requirements_in_state with trait_spec_terms={trait_spec_terms:?}");
+        Ok(trait_spec_terms)
     }
 
     pub fn get_trait_impl_info(
@@ -503,7 +635,8 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
 
         // figure out the parameters this impl gets and make a scope
         let impl_generics: &'tcx ty::Generics = self.env.tcx().generics_of(trait_impl_did);
-        let param_scope = ParamScope::from(impl_generics.params.as_slice());
+        let mut param_scope = ParamScope::from(impl_generics.params.as_slice());
+        param_scope.add_param_env(trait_impl_did, self.env, self.type_translator, self)?;
 
         // parse specification
         let trait_impl_attrs = utils::filter_tool_attrs(self.env.get_attributes(trait_impl_did));
@@ -520,11 +653,10 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
             let mut lft_inst = Vec::new();
             for arg in trait_ref.args {
                 if let Some(ty) = arg.as_type() {
-                    let ty = self.type_translator.translate_type_in_scope(param_scope.clone(), ty)?;
+                    let ty = self.type_translator.translate_type_in_scope(&param_scope, ty)?;
                     params_inst.push(ty);
                 } else if let Some(lft) = arg.as_region() {
-                    let lft = TypeTranslator::translate_region_in_scope(param_scope.clone(), lft)
-                        .unwrap_or_else(|| "trait_placeholder_lft".to_owned());
+                    let lft = TypeTranslator::translate_region_in_scope(&param_scope, lft)?;
                     lft_inst.push(lft);
                 }
             }
@@ -546,9 +678,8 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                     if let Some(ty_item) = ty_item {
                         let ty_did = ty_item.def_id;
                         let ty = self.env.tcx().type_of(ty_did);
-                        let translated_ty = self
-                            .type_translator
-                            .translate_type_in_scope(param_scope.clone(), ty.skip_binder())?;
+                        let translated_ty =
+                            self.type_translator.translate_type_in_scope(&param_scope, ty.skip_binder())?;
                         assoc_types_inst.push(translated_ty);
                     } else {
                         unreachable!("trait impl does not have required item");
@@ -568,6 +699,122 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
             unreachable!("Expected trait impl");
         }
     }
+
+    /// Allocate an empty trait use reference.
+    pub fn make_empty_trait_use(&self, trait_ref: ty::TraitRef<'tcx>) -> GenericTraitUse<'def> {
+        let dummy_trait_use = RefCell::new(None);
+        let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
+
+        let did = trait_ref.def_id;
+
+        // the self param should be a Param that is bound in the current scope
+        let param = if let ty::TyKind::Param(param) = trait_ref.args[0].expect_ty().kind() {
+            *param
+        } else {
+            unreachable!("self should be a Param");
+        };
+
+        GenericTraitUse {
+            did,
+            self_ty: param,
+            trait_use,
+        }
+    }
+
+    /// Fills an existing trait use.
+    /// Does not compute the dependencies on other traits yet,
+    /// these, have to be filled later.
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn fill_trait_use(
+        &self,
+        trait_use: &GenericTraitUse<'def>,
+        scope: TranslationState<'_, '_, 'def, 'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+        spec_ref: radium::LiteralTraitSpecRef<'def>,
+        is_used_in_self_trait: bool,
+        assoc_ty_constraints: HashMap<String, radium::Type<'def>>,
+        origin: radium::TyParamOrigin,
+    ) -> Result<(), TranslationError<'tcx>> {
+        let did = trait_ref.def_id;
+        trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
+
+        // translate the arguments in the current scope
+        let mut translated_args = Vec::new();
+        for arg in trait_ref.args {
+            if let ty::GenericArgKind::Type(ty) = arg.unpack() {
+                let translated_ty = self.type_translator.translate_type_in_state(ty, scope).unwrap();
+                translated_args.push(translated_ty);
+            }
+        }
+
+        // Compute the instantiation of associated types of trait requirements
+        let mut assoc_dep_inst = Vec::new();
+        let trait_reqs = self.resolve_trait_requirements_in_state(scope, did, trait_ref.args)?;
+        trace!("Determined trait requirements: {trait_reqs:?}");
+
+        for req in trait_reqs {
+            let mut tys = Vec::new();
+            for ty in req.assoc_ty_inst {
+                let translated_ty = self.type_translator.translate_type_in_state(ty, scope)?;
+                tys.push(translated_ty);
+            }
+            let translated_req = radium::TraitReqInst::new(req.spec, req.origin, tys);
+            assoc_dep_inst.push(translated_req);
+        }
+
+        // TODO: allow to override the assumed specification using attributes
+        let spec_override = None;
+
+        // create a name for this instance by including the args
+        let mangled_base = mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
+        let spec_use = radium::LiteralTraitSpecUse::new(
+            spec_ref,
+            translated_args,
+            assoc_dep_inst,
+            spec_override,
+            mangled_base,
+            is_used_in_self_trait,
+            assoc_ty_constraints,
+            origin,
+        );
+
+        let mut trait_ref = trait_use.trait_use.borrow_mut();
+        trait_ref.replace(spec_use);
+
+        trace!(
+            "Leave fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?} with trait_use = {trait_use:?}"
+        );
+
+        Ok(())
+    }
+
+    /// Finalize a trait use by computing the dependencies on other traits.
+    pub fn finalize_trait_use(
+        &self,
+        trait_use: &GenericTraitUse<'def>,
+        scope: TranslationState<'_, '_, 'def, 'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+    ) -> Result<(), TranslationError<'tcx>> {
+        let trait_reqs = self.resolve_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
+        trace!("Determined trait requirements: {trait_reqs:?}");
+
+        let mut assoc_dep_inst = Vec::new();
+        for req in trait_reqs {
+            let mut tys = Vec::new();
+            for ty in req.assoc_ty_inst {
+                let translated_ty = self.type_translator.translate_type_in_state(ty, scope)?;
+                tys.push(translated_ty);
+            }
+            let translated_req = radium::TraitReqInst::new(req.spec, req.origin, tys);
+            assoc_dep_inst.push(translated_req);
+        }
+
+        let mut trait_use_ref = trait_use.trait_use.borrow_mut();
+        let trait_use = trait_use_ref.as_mut().unwrap();
+        trait_use.trait_dep_assoc_inst = assoc_dep_inst;
+
+        Ok(())
+    }
 }
 
 /// Check if this is a built-in trait
@@ -585,12 +832,91 @@ pub fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     Some(trait_did == sized_did || trait_did == copy_did)
 }
 
-/// Get non-trivial trait requirements of a function's `ParamEnv`.
+/// Compare two `GenericArg` deterministically.
+/// Should only be called on equal discriminants.
+fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
+    match (a.unpack(), b.unpack()) {
+        (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => c1.cmp(&c2),
+        (ty::GenericArgKind::Type(ty1), ty::GenericArgKind::Type(ty2)) => {
+            // we should make sure that this always orders the Self instance first.
+            match (ty1.kind(), ty2.kind()) {
+                (ty::TyKind::Param(p1), ty::TyKind::Param(p2)) => p1.cmp(p2),
+                (ty::TyKind::Param(p1), _) => Ordering::Less,
+                (_, _) => ty1.cmp(&ty2),
+            }
+        },
+        (ty::GenericArgKind::Lifetime(r1), ty::GenericArgKind::Lifetime(r2)) => r1.cmp(&r2),
+        (_, _) => {
+            unreachable!("Comparing GenericArg with different discriminant");
+        },
+    }
+}
+
+/// Compare two sequences of `GenericArg`s for the same `DefId`, where the discriminants are pairwise equal.
+fn cmp_arg_refs<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    a: &[ty::GenericArg<'tcx>],
+    b: &[ty::GenericArg<'tcx>],
+) -> Ordering {
+    match a.len().cmp(&b.len()) {
+        Ordering::Equal => {
+            // compare elements
+            for (x, y) in a.iter().zip(b.iter()) {
+                // the discriminants are the same as the DefId we are calling into is the same
+                let xy_cmp = cmp_arg_ref(tcx, *x, *y);
+                if xy_cmp != Ordering::Equal {
+                    return xy_cmp;
+                }
+            }
+            Ordering::Equal
+        },
+        o => o,
+    }
+}
+
+/// Compare two `TraitRef`s deterministically, giving a
+/// consistent order that is stable across compilations.
+fn cmp_trait_ref<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    in_trait_decl: Option<DefId>,
+    a: &ty::TraitRef<'tcx>,
+    b: &ty::TraitRef<'tcx>,
+) -> Ordering {
+    // if one of them is the self trait, that should be smaller.
+    if let Some(trait_did) = in_trait_decl {
+        if a.def_id == trait_did && a.args[0].expect_ty().is_param(0) {
+            return Ordering::Less;
+        }
+        if b.def_id == trait_did && b.args[0].expect_ty().is_param(0) {
+            return Ordering::Greater;
+        }
+    }
+
+    let path_a = utils::get_cleaned_def_path(tcx, a.def_id);
+    let path_b = utils::get_cleaned_def_path(tcx, b.def_id);
+    let path_cmp = path_a.cmp(&path_b);
+    info!("cmp_trait_ref: comparing paths {path_a:?} and {path_b:?}");
+
+    if path_cmp == Ordering::Equal {
+        let args_a = a.args.as_slice();
+        let args_b = b.args.as_slice();
+        cmp_arg_refs(tcx, args_a, args_b)
+    } else {
+        path_cmp
+    }
+}
+
+/// Get non-trivial trait requirements of a function's `ParamEnv`,
+/// ordered deterministically.
 pub fn get_nontrivial_trait_requirements<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    in_trait_decl: Option<DefId>,
 ) -> Vec<ty::TraitRef<'tcx>> {
     let mut trait_refs = Vec::new();
+    trace!(
+        "Enter get_nontrivial_trait_requirements with param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
+    );
 
     let clauses = param_env.caller_bounds();
     for cl in clauses {
@@ -613,6 +939,12 @@ pub fn get_nontrivial_trait_requirements<'tcx>(
             }
         }
     }
+
+    // Make sure the order is stable across compilations
+    trait_refs.sort_by(|a, b| cmp_trait_ref(tcx, in_trait_decl, a, b));
+
+    trace!("Leave get_nontrivial_trait_requirements with trait_refs = {trait_refs:?}");
+
     trait_refs
 }
 
@@ -651,59 +983,10 @@ pub struct GenericTraitUse<'def> {
     /// the self type this is implemented for
     pub self_ty: ty::ParamTy,
     /// the Coq-level trait use
-    pub trait_use: radium::LiteralTraitSpecUse<'def>,
+    pub trait_use: radium::LiteralTraitSpecUseRef<'def>,
 }
 
 impl<'def> GenericTraitUse<'def> {
-    /// Create a new trait use.
-    #[must_use]
-    pub fn new<'tcx>(
-        type_translator: &TypeTranslator<'def, 'tcx>,
-        scope: InFunctionState<'_, 'def, 'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-        spec_ref: radium::LiteralTraitSpecRef<'def>,
-        is_used_in_self_trait: bool,
-        assoc_ty_constraints: HashMap<String, radium::Type<'def>>,
-    ) -> Self {
-        let did = trait_ref.def_id;
-
-        // translate the arguments in the scope of the function
-        let mut translated_args = Vec::new();
-        for arg in trait_ref.args {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                let translated_ty = type_translator.translate_type(ty, scope).unwrap();
-                translated_args.push(translated_ty);
-            }
-        }
-
-        // the self param should be a Param that is bound in the function's scope
-        let param = if let ty::TyKind::Param(param) = trait_ref.args[0].expect_ty().kind() {
-            *param
-        } else {
-            unreachable!("self should be a Param");
-        };
-
-        // TODO: allow to override the assumed specification using attributes
-        let spec_override = None;
-
-        // create a name for this instance by including the args
-        let mangled_base = mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
-        let spec_use = radium::LiteralTraitSpecUse::new(
-            spec_ref,
-            translated_args,
-            mangled_base,
-            spec_override,
-            is_used_in_self_trait,
-            assoc_ty_constraints,
-        );
-
-        Self {
-            did,
-            self_ty: param,
-            trait_use: spec_use,
-        }
-    }
-
     /// Get the names of associated types of this trait.
     pub fn get_associated_type_names(&self, env: &Environment<'_>) -> Vec<String> {
         let mut assoc_tys = Vec::new();
@@ -725,7 +1008,9 @@ impl<'def> GenericTraitUse<'def> {
         let assoc_types = env.get_trait_assoc_types(self.did);
         for ty_did in &assoc_types {
             let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
-            let lit = self.trait_use.make_assoc_type_use(&strip_coq_ident(&ty_name));
+            let trait_use_ref = self.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            let lit = trait_use.make_assoc_type_use(&strip_coq_ident(&ty_name));
             assoc_tys.push(lit);
         }
         assoc_tys

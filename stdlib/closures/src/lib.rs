@@ -25,7 +25,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 */
 
 #[rr::export_as(core::ops::FnOnce)]
-pub trait FnOnce<Args: Tuple> {
+pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     type Output;
 
@@ -56,24 +56,21 @@ pub trait FnOnce<Args: Tuple> {
 }
 
 #[rr::export_as(core::ops::FnMut)]
-#[rr::exists("Pre" : "{rt_of Self} → {rt_of Args} → iProp Σ")]
 // Note: the relation gets both the current and the next state
-#[rr::exists("Post" : "{rt_of Self} → {rt_of Args} → {rt_of Self} → {rt_of Output} → iProp Σ")]
+#[rr::exists("PostMut" : "{rt_of Self} → {rt_of Args} → {rt_of Self} → {rt_of Output} → iProp Σ")]
 pub trait FnMut<Args: Tuple>: FnOnce<Args> {
     /// Performs the call operation.
     #[rr::params("m", "γ", "x")]
     #[rr::requires("Pre m x")]
     #[rr::args("(#m, γ)", "x")]
     #[rr::exists("y", "m'")]
-    #[rr::ensures("Post m x m' y")]
+    #[rr::ensures("PostMut m x m' y")]
     #[rr::observe("γ": "m'")]
     #[rr::returns("y")]
     fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[rr::export_as(core::ops::Fn)]
-#[rr::exists("Pre" : "{rt_of Self} → {rt_of Args} → iProp Σ")]
-#[rr::exists("Post" : "{rt_of Self} → {rt_of Args} → {rt_of Output} → iProp Σ")]
 pub trait Fn<Args: Tuple>: FnMut<Args> {
 
     /// Performs the call operation.

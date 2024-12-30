@@ -120,3 +120,65 @@ Lemma lft_intersect_list_elem_of_incl `{!invGS Σ} {userE : coPset} `{!lftGS Σ 
 Proof.
   rewrite lft_intersect_list_iff. apply lft_intersect_list_elem_of_incl.
 Qed.
+
+(** * Error handling *)
+Notation Ok x := (inl x) (only parsing).
+Notation Err x := (inr x) (only parsing).
+
+Notation result A B := (sum A B) (only parsing).
+
+Definition if_Ok {A B} (x : result A B) (ϕ : A → Prop) : Prop :=
+  match x with
+  | Ok x => ϕ x
+  | _ => True
+  end.
+Definition if_Err {A B} (x : result A B) (ϕ : B → Prop) : Prop :=
+  match x with
+  | Err x => ϕ x
+  | _ => True
+  end.
+
+(** The same for Iris *)
+Section iris.
+Context `{!refinedcG Σ}.
+
+Definition if_iOk {A B} (x : result A B) (ϕ : A → iProp Σ) : iProp Σ :=
+  match x with
+  | Ok x => ϕ x
+  | _ => True
+  end.
+Definition if_iErr {A B} (x : result A B) (ϕ : B → iProp Σ) : iProp Σ :=
+  match x with
+  | Err x => ϕ x
+  | _ => True
+  end.
+End iris.
+
+
+Definition if_Some {A} (x : option A) (ϕ : A → Prop) : Prop :=
+  match x with
+  | Some x => ϕ x
+  | _ => True
+  end.
+Definition if_None {A} (x : option A) (ϕ : Prop) : Prop :=
+  match x with
+  | None => ϕ
+  | _ => True
+  end.
+
+(** The same for Iris *)
+Section iris.
+Context `{!refinedcG Σ}.
+
+Definition if_iSome {A} (x : option A) (ϕ : A → iProp Σ) : iProp Σ :=
+  match x with
+  | Some x => ϕ x
+  | _ => True
+  end.
+Definition if_iNone {A} (x : option A) (ϕ : iProp Σ) : iProp Σ :=
+  match x with
+  | None => ϕ
+  | _ => True
+  end.
+End iris.
+

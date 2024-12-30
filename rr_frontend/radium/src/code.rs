@@ -651,7 +651,7 @@ pub struct FunctionCode {
     basic_blocks: BTreeMap<usize, Stmt>,
 
     /// Coq parameters that the function is parameterized over
-    required_parameters: Vec<coq::binder::Binder>,
+    required_parameters: coq::binder::BinderList,
 }
 
 fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
@@ -692,7 +692,6 @@ impl Display for FunctionCode {
             )
         }
 
-        let params = display_list!(&self.required_parameters, " ");
         let args = display_list!(&self.stack_layout.args, ";\n", fmt_variable);
         let locals = display_list!(&self.stack_layout.locals, ";\n", fmt_variable);
         let blocks = display_list!(&self.basic_blocks, "\n", fmt_blocks);
@@ -712,7 +711,7 @@ impl Display for FunctionCode {
                 f_init := "_bb0";
                |}}."#,
             self.name,
-            params,
+            self.required_parameters,
             args.indented_skip_initial(&make_indent(2)),
             locals.indented_skip_initial(&make_indent(2)),
             blocks.indented_skip_initial(&make_indent(2))
@@ -768,7 +767,7 @@ struct InvariantMap(HashMap<usize, LoopSpec>);
 #[allow(clippy::partial_pub_fields)]
 pub struct Function<'def> {
     pub code: FunctionCode,
-    pub spec: &'def FunctionSpec<InnerFunctionSpec<'def>>,
+    pub spec: &'def FunctionSpec<'def, InnerFunctionSpec<'def>>,
 
     /// Other functions that are used by this one.
     other_functions: Vec<UsedProcedure<'def>>,
@@ -874,7 +873,8 @@ impl<'def> Function<'def> {
         let mut code_params: Vec<_> =
             self.other_functions.iter().map(|proc_use| proc_use.loc_name.clone()).collect();
 
-        for names in self.spec.generics.get_coq_ty_st_params().make_using_terms() {
+        let ty_params = self.spec.generics.get_all_ty_params_with_assocs();
+        for names in ty_params.get_coq_ty_st_params().make_using_terms() {
             code_params.push(format!("{names}"));
         }
         for s in &self.used_statics {
@@ -943,13 +943,14 @@ impl<'def> Function<'def> {
 
         // generate intro pattern for typarams
         let mut typaram_pattern = String::with_capacity(100);
+        let all_ty_params = self.spec.generics.get_all_ty_params_with_assocs();
         // pattern is right-associative
-        for param in self.spec.generics.get_ty_params() {
+        for param in &all_ty_params.params {
             write!(typaram_pattern, "[{} ", param.type_term).unwrap();
             write!(f, "let {} := fresh \"{}\" in\n", param.type_term, param.type_term)?;
         }
         write!(typaram_pattern, "[]").unwrap();
-        for _ in 0..self.spec.generics.get_num_ty_params() {
+        for _ in 0..(all_ty_params.params.len()) {
             write!(typaram_pattern, " ]").unwrap();
         }
 
@@ -1037,10 +1038,8 @@ impl<'def> Function<'def> {
         // initialize tyvars
         let formatted_tyvars = make_map_string(
             " ",
-            &self
-                .spec
-                .generics
-                .get_ty_params()
+            &all_ty_params
+                .params
                 .iter()
                 .map(|names| (names.rust_name.clone(), format!("existT _ ({})", names.type_term)))
                 .collect(),
@@ -1130,7 +1129,7 @@ pub struct UsedProcedure<'def> {
     ///   function)
     /// - additional lifetimes that the generic instantiation introduces, as well as all lifetime parameters
     ///   of this function
-    pub quantified_scope: GenericScope,
+    pub quantified_scope: GenericScope<'def, LiteralTraitSpecUse<'def>>,
 
     /// specialized specs for the trait assumptions
     pub trait_specs: Vec<SpecializedTraitSpec<'def>>,
@@ -1194,15 +1193,12 @@ pub struct FunctionBuilder<'def> {
     pub code: FunctionCodeBuilder,
 
     /// optionally, a specification, if one has been created
-    pub spec: FunctionSpec<Option<InnerFunctionSpec<'def>>>,
+    pub spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
 
     /// a sequence of other functions used by this function
     /// (Note that there may be multiple assumptions here with the same spec, if they are
     /// monomorphizations of the same function!)
     other_functions: Vec<UsedProcedure<'def>>,
-
-    /// required trait assumptions
-    trait_requirements: Vec<LiteralTraitSpecUse<'def>>,
 
     /// Syntypes we assume to be layoutable in the typing proof
     layoutable_syntys: Vec<SynType>,
@@ -1232,7 +1228,6 @@ impl<'def> FunctionBuilder<'def> {
             loop_invariants: InvariantMap(HashMap::new()),
             tactics: Vec::new(),
             used_statics: Vec::new(),
-            trait_requirements: Vec::new(),
             extra_link_assum: Vec::new(),
         }
     }
@@ -1263,12 +1258,6 @@ impl<'def> FunctionBuilder<'def> {
         self.spec.generics.add_ty_param(t);
     }
 
-    /// Get the type parameters.
-    #[must_use]
-    pub fn get_ty_params(&self) -> &[LiteralTyParam] {
-        self.spec.generics.get_ty_params()
-    }
-
     /// Get the universal lifetimes.
     #[must_use]
     pub fn get_lfts(&self) -> &[Lft] {
@@ -1290,17 +1279,17 @@ impl<'def> FunctionBuilder<'def> {
 
     /// Add a Coq-level param that comes before the type parameters.
     pub fn add_early_coq_param(&mut self, param: coq::binder::Binder) {
-        self.spec.early_coq_params.0.push(param);
+        self.spec.add_early_coq_param(param);
     }
 
     /// Add a Coq-level param that comes after the type parameters.
     pub fn add_late_coq_param(&mut self, param: coq::binder::Binder) {
-        self.spec.late_coq_params.0.push(param);
+        self.spec.add_late_coq_param(param);
     }
 
     /// Require that a particular trait is in scope.
     pub fn add_trait_requirement(&mut self, req: LiteralTraitSpecUse<'def>) {
-        self.trait_requirements.push(req);
+        self.spec.generics.add_trait_requirement(req);
     }
 
     /// Add an extra link-time assumption.
@@ -1316,49 +1305,6 @@ impl<'def> FunctionBuilder<'def> {
 
     /// Add a functon specification from a specification builder.
     pub fn add_function_spec_from_builder(&mut self, mut spec_builder: LiteralFunctionSpecBuilder<'def>) {
-        // add things for traits
-        // TODO: is this the right place to do this?
-        for trait_use in &self.trait_requirements {
-            let spec_params_param_name = trait_use.make_spec_params_param_name();
-
-            let spec_params_type_name = trait_use.trait_ref.spec_params_record.clone();
-
-            let spec_param_name = trait_use.make_spec_param_name();
-            let spec_attrs_param_name = trait_use.make_spec_attrs_param_name();
-            let spec_type = format!("{} {spec_params_param_name}", trait_use.trait_ref.spec_record);
-
-            // add the spec params
-            self.spec.late_coq_params.0.push(coq::binder::Binder::new_generalized(
-                coq::binder::Kind::MaxImplicit,
-                Some(spec_params_param_name),
-                coq::term::Type::Literal(spec_params_type_name),
-            ));
-
-            // add the attr params
-            let all_args: Vec<_> = trait_use
-                .params_inst
-                .iter()
-                .map(Type::get_rfn_type)
-                .chain(trait_use.get_assoc_ty_inst().into_iter().map(|x| x.get_rfn_type()))
-                .collect();
-            let mut attr_param = format!("{} ", trait_use.trait_ref.spec_attrs_record);
-            push_str_list!(attr_param, &all_args, " ");
-            self.spec.late_coq_params.0.push(coq::binder::Binder::new(
-                Some(spec_attrs_param_name),
-                coq::term::Type::Literal(attr_param),
-            ));
-
-            // add the spec itself
-            self.spec
-                .late_coq_params
-                .0
-                .push(coq::binder::Binder::new(Some(spec_param_name), coq::term::Type::Literal(spec_type)));
-
-            let spec_precond = trait_use.make_spec_param_precond();
-            // this should be proved after typarams are instantiated
-            spec_builder.add_late_precondition(spec_precond);
-        }
-
         assert!(self.spec.spec.is_none(), "Overriding specification of FunctionBuilder");
         let lit_spec = spec_builder.into_function_spec();
         self.spec.spec = Some(InnerFunctionSpec::Lit(lit_spec));
@@ -1366,7 +1312,7 @@ impl<'def> FunctionBuilder<'def> {
 
     pub fn into_function(
         mut self,
-        arena: &'def Arena<FunctionSpec<InnerFunctionSpec<'def>>>,
+        arena: &'def Arena<FunctionSpec<'def, InnerFunctionSpec<'def>>>,
     ) -> Function<'def> {
         assert!(self.spec.spec.is_some(), "No specification provided");
 
@@ -1379,34 +1325,24 @@ impl<'def> FunctionBuilder<'def> {
         let mut parameters: Vec<coq::binder::Binder> = self
             .other_functions
             .iter()
-            .map(|f_inst| (coq::binder::Binder::new(Some(f_inst.loc_name.clone()), coq::term::Type::Loc)))
+            .map(|f_inst| coq::binder::Binder::new(Some(f_inst.loc_name.clone()), coq::term::Type::Loc))
             .collect();
 
         // generate location parameters for statics used by this function
-        let mut statics_parameters = self
-            .used_statics
-            .iter()
-            .map(|s| coq::binder::Binder::new(Some(s.loc_name.clone()), coq::term::Type::Loc))
-            .collect();
-
-        parameters.append(&mut statics_parameters);
+        self.used_statics.iter().for_each(|s| {
+            parameters.push(coq::binder::Binder::new(Some(s.loc_name.clone()), coq::term::Type::Loc));
+        });
 
         // add generic syntype parameters for generics that this function uses.
-        let mut gen_st_parameters = self
-            .spec
-            .generics
-            .get_ty_params()
-            .iter()
-            .map(|names| coq::binder::Binder::new(Some(names.syn_type.clone()), coq::term::Type::SynType))
-            .collect();
-
-        parameters.append(&mut gen_st_parameters);
+        let typarams = self.spec.generics.get_all_ty_params_with_assocs();
+        let mut gen_st_parameters = typarams.get_coq_ty_st_params();
+        parameters.append(&mut gen_st_parameters.0);
 
         let code = FunctionCode {
             stack_layout: self.code.stack_layout,
             name: self.spec.function_name.clone(),
             basic_blocks: self.code.basic_blocks,
-            required_parameters: parameters,
+            required_parameters: coq::binder::BinderList::new(parameters),
         };
 
         // assemble the spec
@@ -1427,7 +1363,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 }
 
-impl<'def> TryFrom<FunctionBuilder<'def>> for FunctionSpec<InnerFunctionSpec<'def>> {
+impl<'def> TryFrom<FunctionBuilder<'def>> for FunctionSpec<'def, InnerFunctionSpec<'def>> {
     type Error = String;
 
     fn try_from(mut builder: FunctionBuilder<'def>) -> Result<Self, String> {

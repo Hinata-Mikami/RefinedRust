@@ -321,6 +321,23 @@ impl<'tcx> Environment<'tcx> {
         assoc_tys
     }
 
+    /// Check if this is the `DefId` of a method.
+    pub fn is_method_did(&self, did: DefId) -> bool {
+        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.tcx.type_of(did);
+        let ty = ty.skip_binder();
+        matches!(ty.kind(), ty::TyKind::FnDef(_, _))
+    }
+
+    /// Get the id of a trait impl surrounding a method.
+    #[must_use]
+    pub fn trait_impl_of_method(&self, method_did: DefId) -> Option<DefId> {
+        if let Some(impl_did) = self.tcx().impl_of_method(method_did) {
+            self.tcx().trait_id_of_impl(impl_did).is_some().then_some(impl_did)
+        } else {
+            None
+        }
+    }
+
     /// Get a Procedure.
     pub fn get_procedure(&self, proc_def_id: ProcedureDefId) -> Procedure<'tcx> {
         Procedure::new(self, proc_def_id)

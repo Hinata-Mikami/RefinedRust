@@ -458,6 +458,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     rty (λ y, r%I) (λ y, Pr%I))
     : spec_with n (fmap (A := Type * syn_type) fst rts) (A → fn_params))
   (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
+(** With a late precondition Pb *)
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
   ((fun κs tys x => FP_wf
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
@@ -478,7 +479,6 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     rty (λ y, r%I) (λ y, Pr%I))
     : spec_with n (fmap (A := Type * syn_type) fst rts) (A → fn_params))
   (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
-
 
 (** Add a new type parameter *)
 Definition fn_spec_add_typaram `{!typeGS Σ} {A} {lfts : nat} (rts : list Type)
@@ -530,11 +530,16 @@ Notation "'fnspec!' κs ':' n '|' tys ':' rsts ',' S" :=
 *)
 Ltac get_params_of_fntype x :=
   lazymatch x with
-  | syn_type → ?A => get_params_of_fntype A
+  | syn_type → ?A =>
+      get_params_of_fntype constr:(A)
   | prod_vec _ _ → plist _ _ → ?A → fn_params =>
       let B := eval simpl in A in
       constr:(B)
-  | _ → ?A => get_params_of_fntype A
+  | _ → ?A =>
+      get_params_of_fntype A
+  (* To handle trait params + spec *)
+  | ∀ x : ?B, (_ x) → ?A =>
+      get_params_of_fntype constr:(A)
   end.
 Notation "<get_params_of> x" := (
   ltac:(
