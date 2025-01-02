@@ -6,8 +6,6 @@
 // The following functions have been adapted from Miri (https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48) under the MIT license;
 // - `try_resolve_did`
 
-//! Various helper functions for working with `mir::Place`.
-
 use std::mem;
 
 use log::{info, trace};
@@ -20,8 +18,16 @@ use rr_rustc_interface::{hir, middle, span};
 use serde::{Deserialize, Serialize};
 
 use crate::spec_parsers::get_export_as_attr;
-use crate::type_translator::normalize_in_function;
-use crate::{force_matches, Environment};
+use crate::{force_matches, types, Environment};
+
+/// Strip symbols from an identifier to be compatible with Coq.
+/// In particular things like ' or ::.
+pub fn strip_coq_ident(s: &str) -> String {
+    String::from(s)
+        .replace('\'', "")
+        .replace("::", "_")
+        .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "")
+}
 
 /// An item path that receives generic arguments.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -351,7 +357,7 @@ pub fn try_resolve_trait_impl_did<'tcx>(
     let mut solution = None;
     for did in defs {
         let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
-        let impl_self_ty = normalize_in_function(*did, tcx, impl_self_ty).unwrap();
+        let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
         // check if this is an implementation for the right type
         // TODO: is this the right way to compare the types?
@@ -359,7 +365,7 @@ pub fn try_resolve_trait_impl_did<'tcx>(
             let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
 
             if let Some(impl_ref) = impl_ref {
-                let impl_ref = normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
+                let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
                 let this_impl_args = impl_ref.args;
                 // filter by the generic instantiation for the trait
@@ -411,7 +417,7 @@ pub fn try_resolve_trait_method_did<'tcx>(
     let mut solution = None;
     for did in defs {
         let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
-        let impl_self_ty = normalize_in_function(*did, tcx, impl_self_ty).unwrap();
+        let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
         // check if this is an implementation for the right type
         // TODO: is this the right way to compare the types?
@@ -419,7 +425,7 @@ pub fn try_resolve_trait_method_did<'tcx>(
             let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
 
             if let Some(impl_ref) = impl_ref {
-                let impl_ref = normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
+                let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
                 let this_impl_args = impl_ref.args;
                 // filter by the generic instantiation for the trait

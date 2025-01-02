@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+//! Utility folders for handling type variables.
+
 use std::collections::{HashMap, HashSet};
 
 use rr_rustc_interface::middle::ty;
@@ -139,44 +141,5 @@ impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyRegionEraseFolder<'tcx> {
 
     fn fold_region(&mut self, _: ty::Region<'tcx>) -> ty::Region<'tcx> {
         ty::Region::new_from_kind(self.interner(), ty::RegionKind::ReErased)
-    }
-}
-
-/// A `TypeFolder` that finds all regions occurring in a type.
-pub struct TyRegionCollectFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    regions: HashSet<Region>,
-}
-impl<'tcx> TyRegionCollectFolder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        TyRegionCollectFolder {
-            tcx,
-            regions: HashSet::new(),
-        }
-    }
-
-    pub fn get_regions(self) -> HashSet<Region> {
-        self.regions
-    }
-}
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    // TODO: handle the case that we pass below binders
-    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
-    where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
-    {
-        t.super_fold_with(self)
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::RegionKind::ReVar(r) = r.kind() {
-            self.regions.insert(r);
-        }
-
-        r
     }
 }

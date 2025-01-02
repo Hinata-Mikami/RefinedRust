@@ -13,14 +13,12 @@ use typed_arena::Arena;
 
 use crate::base::TranslationError;
 use crate::environment::Environment;
-use crate::function_body::{get_arg_syntypes_for_procedure_call, mangle_name_with_args, FunctionTranslator};
+use crate::function_body::{get_arg_syntypes_for_procedure_call, FunctionTranslator};
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
-use crate::type_translator::{
-    generate_args_inst_key, strip_coq_ident, GenericsKey, LocalTypeTranslator, ParamScope, TranslationState,
-    TypeTranslator,
-};
+use crate::types::scope;
+use crate::types::{self, generate_args_inst_key, GenericsKey};
 use crate::{traits, utils};
 
 #[derive(Debug, Clone, Display)]
@@ -106,7 +104,7 @@ pub type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
 pub struct TraitRegistry<'tcx, 'def> {
     /// environment
     env: &'def Environment<'tcx>,
-    type_translator: &'def TypeTranslator<'def, 'tcx>,
+    type_translator: &'def types::TX<'def, 'tcx>,
 
     /// trait declarations
     trait_decls: RefCell<HashMap<LocalDefId, radium::TraitSpecDecl<'def>>>,
@@ -131,7 +129,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     /// Create an empty trait registry.
     pub fn new(
         env: &'def Environment<'tcx>,
-        ty_translator: &'def TypeTranslator<'def, 'tcx>,
+        ty_translator: &'def types::TX<'def, 'tcx>,
         trait_arena: &'def Arena<specs::LiteralTraitSpec>,
         impl_arena: &'def Arena<specs::LiteralTraitImpl>,
         trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
@@ -259,10 +257,10 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
 
         // get generics
         let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
-        let mut param_scope = ParamScope::from(trait_generics.params.as_slice());
+        let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
         param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
 
-        let trait_name = strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
+        let trait_name = utils::strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
 
         // parse trait spec
         let trait_attrs = utils::filter_tool_attrs(self.env.get_attributes(did.into()));
@@ -296,7 +294,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                 // get function name
                 let method_name =
                     self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let method_name = strip_coq_ident(&method_name);
+                let method_name = utils::strip_coq_ident(&method_name);
 
                 let name = format!("{trait_name}_{method_name}");
                 let spec_name = format!("{name}_base_spec");
@@ -318,7 +316,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                 // get name
                 let type_name =
                     self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let type_name = strip_coq_ident(&type_name);
+                let type_name = utils::strip_coq_ident(&type_name);
                 let lit = radium::LiteralTyParam::new(&type_name, &type_name);
                 assoc_types.push(lit);
             }
@@ -423,7 +421,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     /// as well as the list of associated types.
     pub fn get_impl_spec_term(
         &self,
-        state: TranslationState<'_, '_, 'def, 'tcx>,
+        state: types::ST<'_, '_, 'def, 'tcx>,
         impl_did: DefId,
         impl_args: &[ty::GenericArg<'tcx>],
         trait_args: &[ty::GenericArg<'tcx>],
@@ -477,7 +475,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     /// declaration order.
     pub fn resolve_trait_requirements_in_state(
         &self,
-        state: TranslationState<'_, '_, 'def, 'tcx>,
+        state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
@@ -489,7 +487,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
         trace!("callee param env {callee_param_env:?}");
 
         // Get the trait requirements of the callee
-        let callee_requirements = ParamScope::get_trait_requirements_with_origin(self.env, did);
+        let callee_requirements = scope::Params::get_trait_requirements_with_origin(self.env, did);
         trace!("non-trivial callee requirements: {callee_requirements:?}");
         trace!("subsituting with args {:?}", params);
 
@@ -517,7 +515,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                 if let Some(trait_did) = self.env.tcx().trait_of_item(did) {
                     // Get the params of the trait we're calling
                     let calling_trait_params =
-                        LocalTypeTranslator::split_trait_method_args(self.env, trait_did, params).0;
+                        types::LocalTX::split_trait_method_args(self.env, trait_did, params).0;
                     if trait_ref.def_id == trait_did && subst_args == calling_trait_params.as_slice() {
                         // if they match, this is the Self assumption, so skip
                         continue;
@@ -635,7 +633,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
 
         // figure out the parameters this impl gets and make a scope
         let impl_generics: &'tcx ty::Generics = self.env.tcx().generics_of(trait_impl_did);
-        let mut param_scope = ParamScope::from(impl_generics.params.as_slice());
+        let mut param_scope = scope::Params::from(impl_generics.params.as_slice());
         param_scope.add_param_env(trait_impl_did, self.env, self.type_translator, self)?;
 
         // parse specification
@@ -656,7 +654,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
                     let ty = self.type_translator.translate_type_in_scope(&param_scope, ty)?;
                     params_inst.push(ty);
                 } else if let Some(lft) = arg.as_region() {
-                    let lft = TypeTranslator::translate_region_in_scope(&param_scope, lft)?;
+                    let lft = types::TX::translate_region_in_scope(&param_scope, lft)?;
                     lft_inst.push(lft);
                 }
             }
@@ -728,7 +726,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     pub fn fill_trait_use(
         &self,
         trait_use: &GenericTraitUse<'def>,
-        scope: TranslationState<'_, '_, 'def, 'tcx>,
+        scope: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
         is_used_in_self_trait: bool,
@@ -766,7 +764,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
         let spec_override = None;
 
         // create a name for this instance by including the args
-        let mangled_base = mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
+        let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
         let spec_use = radium::LiteralTraitSpecUse::new(
             spec_ref,
             translated_args,
@@ -792,7 +790,7 @@ impl<'tcx, 'def> TraitRegistry<'tcx, 'def> {
     pub fn finalize_trait_use(
         &self,
         trait_use: &GenericTraitUse<'def>,
-        scope: TranslationState<'_, '_, 'def, 'tcx>,
+        scope: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
         let trait_reqs = self.resolve_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
@@ -1010,7 +1008,7 @@ impl<'def> GenericTraitUse<'def> {
             let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
-            let lit = trait_use.make_assoc_type_use(&strip_coq_ident(&ty_name));
+            let lit = trait_use.make_assoc_type_use(&utils::strip_coq_ident(&ty_name));
             assoc_tys.push(lit);
         }
         assoc_tys

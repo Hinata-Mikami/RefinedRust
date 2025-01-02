@@ -16,12 +16,12 @@ pub mod environment;
 mod force_matches_macro;
 mod function_body;
 mod inclusion_tracker;
+mod regions;
 mod shim_registry;
 mod spec_parsers;
 mod trait_registry;
 mod traits;
-mod type_translator;
-mod tyvars;
+mod types;
 mod utils;
 
 use std::collections::{HashMap, HashSet};
@@ -45,7 +45,8 @@ use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrPa
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
 use crate::spec_parsers::*;
 use crate::trait_registry::TraitRegistry;
-use crate::type_translator::{normalize_in_function, ParamScope, TypeTranslator};
+use crate::types::normalize_in_function;
+use crate::types::scope;
 
 /// Order ADT definitions topologically.
 fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
@@ -80,7 +81,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     env: &'rcx Environment<'tcx>,
     procedure_registry: ProcedureScope<'rcx>,
     const_registry: ConstScope<'rcx>,
-    type_translator: &'rcx TypeTranslator<'rcx, 'tcx>,
+    type_translator: &'rcx types::TX<'rcx, 'tcx>,
     trait_registry: &'rcx TraitRegistry<'tcx, 'rcx>,
     functions: &'rcx [LocalDefId],
     fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
@@ -124,7 +125,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let is_method = self.env.tcx().impl_of_method(did).is_some();
         let interned_path = self.get_path_for_shim(did);
 
-        let name = type_translator::strip_coq_ident(&self.env.get_item_name(did));
+        let name = utils::strip_coq_ident(&self.env.get_item_name(did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
         Some(shim_registry::FunctionShim {
@@ -193,7 +194,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 };
 
                 let method_ident = ident.as_str().to_owned();
-                let name = type_translator::strip_coq_ident(&self.env.get_item_name(did));
+                let name = utils::strip_coq_ident(&self.env.get_item_name(did));
 
                 trace!("leave make_shim_trait_method_entry (success)");
                 Some(shim_registry::TraitMethodImplShim {
@@ -296,7 +297,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
             // only export public items
             let interned_path = self.get_path_for_shim(did);
-            let name = type_translator::strip_coq_ident(&self.env.get_item_name(did));
+            let name = utils::strip_coq_ident(&self.env.get_item_name(did));
 
             info!("Found adt path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
@@ -1114,7 +1115,7 @@ fn register_functions<'tcx>(
             mode = function_body::ProcedureMode::Prove;
         }
 
-        let fname = type_translator::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
+        let fname = utils::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
         let spec_name = format!("type_of_{}", fname);
 
         let meta = function_body::ProcedureMeta::new(spec_name, fname, mode);
@@ -1279,10 +1280,10 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
         }
 
         let ty = ty.skip_binder();
-        let scope = ParamScope::default();
+        let scope = scope::Params::default();
         match vcx.type_translator.translate_type_in_scope(&scope, ty).map_err(|x| format!("{:?}", x)) {
             Ok(translated_ty) => {
-                let _full_name = type_translator::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
+                let _full_name = utils::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
 
                 let mut const_parser = VerboseConstAttrParser::new();
                 let const_spec = const_parser.parse_const_attrs(*s, &const_attrs)?;
@@ -1377,7 +1378,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             }
 
             // make names for the spec and inclusion proof
-            let base_name = type_translator::strip_coq_ident(&vcx.env.get_item_name(did));
+            let base_name = utils::strip_coq_ident(&vcx.env.get_item_name(did));
             let spec_name = format!("{base_name}_spec");
             let spec_params_name = format!("{base_name}_spec_params");
             let spec_attrs_name = format!("{base_name}_spec_attrs");
@@ -1558,7 +1559,7 @@ where
     let trait_impl_arena = Arena::new();
     let trait_use_arena = Arena::new();
     let fn_spec_arena = Arena::new();
-    let type_translator = TypeTranslator::new(env, &struct_arena, &enum_arena, &shim_arena);
+    let type_translator = types::TX::new(env, &struct_arena, &enum_arena, &shim_arena);
     let trait_registry = TraitRegistry::new(
         env,
         &type_translator,
