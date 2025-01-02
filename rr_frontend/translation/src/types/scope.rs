@@ -18,7 +18,8 @@ use rr_rustc_interface::middle::ty::TypeFoldable;
 use crate::base::*;
 use crate::environment::Environment;
 use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::trait_registry::{self, GenericTraitUse, TraitRegistry, TraitResult};
+use crate::traits::registry::GenericTraitUse;
+use crate::traits::{self, registry};
 use crate::types::translator::*;
 use crate::types::tyvars::*;
 use crate::utils::strip_coq_ident;
@@ -254,7 +255,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         did: DefId,
         env: &Environment<'tcx>,
         type_translator: &TX<'def, 'tcx>,
-        trait_registry: &TraitRegistry<'tcx, 'def>,
+        trait_registry: &registry::TR<'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("Enter add_param_env for did = {did:?}");
         let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
@@ -298,14 +299,14 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
                 self.trait_scope.ordered_assumptions.push(key);
             } else {
-                return Err(trait_registry::Error::UnregisteredTrait(trait_ref.def_id).into());
+                return Err(traits::Error::UnregisteredTrait(trait_ref.def_id).into());
             }
         }
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
         for (trait_ref, origin, _) in requirements {
-            let assoc_constraints = trait_registry::get_trait_assoc_constraints(env, param_env, trait_ref);
+            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
                 .into_iter()
@@ -428,10 +429,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // determine the origin of this requirement below
         let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
             let trait_param_env = env.tcx().param_env(trait_did);
-            Some(trait_registry::get_nontrivial_trait_requirements(env.tcx(), trait_param_env, None))
+            Some(traits::requirements::get_nontrivial(env.tcx(), trait_param_env, None))
         } else if let Some(impl_did) = in_trait_impl {
             let impl_param_env = env.tcx().param_env(impl_did);
-            Some(trait_registry::get_nontrivial_trait_requirements(env.tcx(), impl_param_env, None))
+            Some(traits::requirements::get_nontrivial(env.tcx(), impl_param_env, None))
         } else {
             None
         };
@@ -440,8 +441,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         info!("Caller bounds: {:?}", clauses);
 
         let in_trait_decl = if is_trait { Some(did) } else { in_trait_decl };
-        let requirements =
-            trait_registry::get_nontrivial_trait_requirements(env.tcx(), param_env, in_trait_decl);
+        let requirements = traits::requirements::get_nontrivial(env.tcx(), param_env, in_trait_decl);
         let mut annotated_requirements = Vec::new();
 
         for trait_ref in requirements {
@@ -535,9 +535,9 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> TraitResult<'tcx, &GenericTraitUse<'def>> {
+    ) -> Result<&GenericTraitUse<'def>, traits::Error<'tcx>> {
         if !tcx.is_trait(trait_did) {
-            return Err(trait_registry::Error::NotATrait(trait_did));
+            return Err(traits::Error::NotATrait(trait_did));
         }
 
         let key = (trait_did, generate_args_inst_key(tcx, args).unwrap());
@@ -545,7 +545,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         if let Some(trait_ref) = self.used_traits.get(&key) {
             Ok(trait_ref)
         } else {
-            Err(trait_registry::Error::UnknownLocalInstance(trait_did, tcx.mk_args(args)))
+            Err(traits::Error::UnknownLocalInstance(trait_did, tcx.mk_args(args)))
         }
     }
 

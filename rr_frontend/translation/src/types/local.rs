@@ -19,12 +19,12 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::TyRegionCollectFolder;
-use crate::trait_registry::{self, GenericTraitUse, TraitResult};
-use crate::traits::{normalize_projection_type, normalize_type};
+use crate::traits::registry::{self, GenericTraitUse};
+use crate::traits::resolution;
 use crate::types::translator::*;
 use crate::types::tyvars::*;
 use crate::types::{self, scope};
-use crate::{regions, utils};
+use crate::{regions, traits, utils};
 
 /// Information we compute when calling a function from another function.
 /// Determines how to specialize the callee's generics in our spec assumption.
@@ -215,7 +215,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         env: &Environment<'tcx>,
         trait_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> TraitResult<'tcx, GenericTraitUse<'def>> {
+    ) -> Result<GenericTraitUse<'def>, traits::Error<'tcx>> {
         let scope = self.scope.borrow();
         scope.generic_scope.trait_scope().lookup_trait_use(env.tcx(), trait_did, args).cloned()
     }
@@ -235,7 +235,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let trait_did = env
             .tcx()
             .trait_of_item(trait_method_did)
-            .ok_or(trait_registry::Error::NotATrait(trait_method_did))?;
+            .ok_or(traits::Error::NotATrait(trait_method_did))?;
 
         // split args
         let (trait_args, method_args) = Self::split_trait_method_args(env, trait_did, ty_params);
@@ -446,7 +446,7 @@ where
 {
     let param_env = tcx.param_env(function_did);
     info!("Normalizing type {ty:?} in env {param_env:?}");
-    normalize_type(tcx, param_env, ty)
+    resolution::normalize_type(tcx, param_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
 }
 
@@ -471,6 +471,6 @@ pub fn normalize_projection_in_function<'tcx>(
 ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
     let param_env = tcx.param_env(function_did);
     info!("Normalizing type {ty:?} in env {param_env:?}");
-    normalize_projection_type(tcx, param_env, ty)
+    resolution::normalize_projection_type(tcx, param_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("could not normalize projection {ty:?}")))
 }

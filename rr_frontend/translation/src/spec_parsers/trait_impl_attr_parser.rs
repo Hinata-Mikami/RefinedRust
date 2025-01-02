@@ -8,7 +8,6 @@ use std::collections::HashMap;
 
 use attribute_parse::{parse, MToken};
 use rr_rustc_interface::ast::ast::AttrItem;
-use rr_rustc_interface::hir::def_id::LocalDefId;
 
 use crate::spec_parsers::parse_utils::*;
 

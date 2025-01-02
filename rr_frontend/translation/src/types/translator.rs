@@ -26,7 +26,7 @@ use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
 use crate::spec_parsers::enum_spec_parser::{parse_enum_refine_as, EnumSpecParser, VerboseEnumSpecParser};
 use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
-use crate::trait_registry::{self, GenericTraitUse, TraitRegistry};
+use crate::traits::{self, registry};
 use crate::types::scope;
 use crate::types::tyvars::*;
 use crate::utils;
@@ -114,7 +114,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         lifetimes: EarlyLateRegionMap,
         param_env: ty::ParamEnv<'tcx>,
         type_translator: &TX<'def, 'tcx>,
-        trait_registry: &TraitRegistry<'tcx, 'def>,
+        trait_registry: &registry::TR<'tcx, 'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<Self, TranslationError<'tcx>> {
         info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
@@ -222,7 +222,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&GenericTraitUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<&registry::GenericTraitUse<'def>, TranslationError<'tcx>> {
         trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
         let res = match &self {
             Self::InFunction(state) => {
@@ -1607,7 +1607,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         let type_name = self
                             .env
                             .get_assoc_item_name(alias_ty.def_id)
-                            .ok_or(trait_registry::Error::NotAnAssocType(alias_ty.def_id))?;
+                            .ok_or(traits::Error::NotAnAssocType(alias_ty.def_id))?;
                         let assoc_type = trait_use.make_assoc_type_use(&utils::strip_coq_ident(&type_name));
 
                         info!("Resolved projection to {assoc_type:?}");

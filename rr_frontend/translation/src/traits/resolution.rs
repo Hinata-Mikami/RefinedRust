@@ -1,3 +1,4 @@
+//! Interface for resolving trait requirements using `rustc`'s trait resolution.
 /// Inspired by (in terms of rustc APIs used) by
 /// <https://github.com/xldenis/creusot/blob/9d8b1822cd0c43154a6d5d4d05460be56710399c/creusot/src/translation/traits.rs>
 use log::info;

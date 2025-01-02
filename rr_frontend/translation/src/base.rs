@@ -11,7 +11,7 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::polonius_engine::FactTypes;
 
 use crate::environment::borrowck::facts;
-use crate::trait_registry::Error;
+use crate::traits;
 
 pub type Region = <RustcFacts as FactTypes>::Origin;
 pub type Loan = <RustcFacts as FactTypes>::Loan;
@@ -62,15 +62,15 @@ pub enum TranslationError<'tcx> {
     #[display("Trait could not be resolved: {}", _0)]
     TraitResolution(String),
     #[display("Trait translation failed: {}", _0)]
-    TraitTranslation(Error<'tcx>),
+    TraitTranslation(traits::Error<'tcx>),
     #[display("Procedure could not be registered: {}", _0)]
     ProcedureRegistry(String),
     #[display("Lookup in a dummy scope: {}", _0)]
     DummyScope(String),
 }
 
-impl<'tcx> From<Error<'tcx>> for TranslationError<'tcx> {
-    fn from(x: Error<'tcx>) -> Self {
+impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {
+    fn from(x: traits::Error<'tcx>) -> Self {
         Self::TraitTranslation(x)
     }
 }

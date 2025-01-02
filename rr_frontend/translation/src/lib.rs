@@ -19,7 +19,6 @@ mod inclusion_tracker;
 mod regions;
 mod shim_registry;
 mod spec_parsers;
-mod trait_registry;
 mod traits;
 mod types;
 mod utils;
@@ -44,7 +43,7 @@ use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrPa
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
 use crate::spec_parsers::*;
-use crate::trait_registry::TraitRegistry;
+use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
@@ -81,7 +80,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     procedure_registry: ProcedureScope<'rcx>,
     const_registry: ConstScope<'rcx>,
     type_translator: &'rcx types::TX<'rcx, 'tcx>,
-    trait_registry: &'rcx TraitRegistry<'tcx, 'rcx>,
+    trait_registry: &'rcx registry::TR<'tcx, 'rcx>,
     functions: &'rcx [LocalDefId],
     fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
 
@@ -1559,7 +1558,7 @@ where
     let trait_use_arena = Arena::new();
     let fn_spec_arena = Arena::new();
     let type_translator = types::TX::new(env, &struct_arena, &enum_arena, &shim_arena);
-    let trait_registry = TraitRegistry::new(
+    let trait_registry = registry::TR::new(
         env,
         &type_translator,
         &trait_arena,

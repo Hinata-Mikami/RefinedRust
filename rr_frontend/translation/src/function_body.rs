@@ -34,7 +34,7 @@ use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
 };
-use crate::trait_registry::TraitRegistry;
+use crate::traits::{registry, resolution};
 use crate::{regions, traits, types, utils};
 
 /// Get the syntypes of function arguments for a procedure call.
@@ -368,7 +368,7 @@ pub struct FunctionTranslator<'a, 'def, 'tcx> {
     /// translator for types
     ty_translator: types::LocalTX<'def, 'tcx>,
     /// trait registry in the current scope
-    trait_registry: &'def TraitRegistry<'tcx, 'def>,
+    trait_registry: &'def registry::TR<'tcx, 'def>,
     /// argument types (from the signature, with generics substituted)
     inputs: Vec<Ty<'tcx>>,
 }
@@ -382,7 +382,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
         spec_name: &str,
         attrs: &'a [&'a ast::ast::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
-        trait_registry: &'def TraitRegistry<'tcx, 'def>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
     ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(name, spec_name);
 
@@ -441,7 +441,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
         proc: Procedure<'tcx>,
         attrs: &'a [&'a ast::ast::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
-        trait_registry: &'def TraitRegistry<'tcx, 'def>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a ProcedureScope<'def>,
         const_registry: &'a ConstScope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
@@ -676,7 +676,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
         proc: Procedure<'tcx>,
         attrs: &'a [&'a ast::ast::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
-        trait_registry: &'def TraitRegistry<'tcx, 'def>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a ProcedureScope<'def>,
         const_registry: &'a ConstScope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
@@ -1057,7 +1057,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
     fn setup_local_scope(
         env: &Environment<'tcx>,
         ty_translator: &'def types::TX<'def, 'tcx>,
-        trait_registry: &'def TraitRegistry<'tcx, 'def>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_did: DefId,
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut radium::FunctionBuilder<'def>,
@@ -1568,7 +1568,7 @@ struct BodyTranslator<'a, 'def, 'tcx> {
     /// scope of used consts
     const_registry: &'a ConstScope<'def>,
     /// trait registry
-    trait_registry: &'def TraitRegistry<'tcx, 'def>,
+    trait_registry: &'def registry::TR<'tcx, 'def>,
     /// attributes on this function
     attrs: &'a [&'a ast::ast::AttrItem],
     /// polonius info for this function
@@ -3935,7 +3935,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
         // Otherwise, we are calling a trait method
         // Resolve the trait instance using trait selection
         let Some((resolved_did, resolved_params, kind)) =
-            traits::resolve_assoc_item(self.env.tcx(), current_param_env, *defid, params)
+            resolution::resolve_assoc_item(self.env.tcx(), current_param_env, *defid, params)
         else {
             return Err(TranslationError::TraitResolution(format!("Could not resolve trait {:?}", defid)));
         };
@@ -3946,7 +3946,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
         );
 
         match kind {
-            traits::TraitResolutionKind::UserDefined => {
+            resolution::TraitResolutionKind::UserDefined => {
                 // We can statically resolve the particular trait instance,
                 // but need to apply the spec to the instance's spec attributes
 
@@ -3961,7 +3961,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
                 Ok(radium::Expr::CallTarget(param_name, ty_hint, lft_hint))
             },
 
-            traits::TraitResolutionKind::Param => {
+            resolution::TraitResolutionKind::Param => {
                 // In this case, we have already applied it to the spec attribute
 
                 // resolve the trait requirements
@@ -3974,7 +3974,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
                 Ok(radium::Expr::CallTarget(param_name, ty_hint, lft_hint))
             },
 
-            traits::TraitResolutionKind::Closure => {
+            resolution::TraitResolutionKind::Closure => {
                 // TODO: here, we should first generate an instance of the trait
                 //let body = self.env.tcx().instance_mir(middle::ty::InstanceDef::Item(resolved_did));
                 //let body = self.env.tcx().instance_mir(middle::ty::InstanceDef::FnPtrShim(*defid, ty));
