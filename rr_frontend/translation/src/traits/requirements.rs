@@ -12,7 +12,7 @@ use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
-use crate::utils;
+use crate::{shims, utils};
 
 /// Get non-trivial trait requirements of a `ParamEnv`,
 /// ordered deterministically.
@@ -137,8 +137,8 @@ fn cmp_trait_ref<'tcx>(
         }
     }
 
-    let path_a = utils::get_cleaned_def_path(tcx, a.def_id);
-    let path_b = utils::get_cleaned_def_path(tcx, b.def_id);
+    let path_a = shims::flat::get_cleaned_def_path(tcx, a.def_id);
+    let path_b = shims::flat::get_cleaned_def_path(tcx, b.def_id);
     let path_cmp = path_a.cmp(&path_b);
     info!("cmp_trait_ref: comparing paths {path_a:?} and {path_b:?}");
 

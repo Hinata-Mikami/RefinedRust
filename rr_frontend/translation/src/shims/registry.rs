@@ -4,10 +4,11 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+//! Registry of shims for Rust functions that get mapped to custom `RefinedRust`
+//! implementations.
+//! Provides deserialization from a JSON file defining this registry.
+
 use std::collections::{HashMap, HashSet};
-/// Registry of shims for Rust functions that get mapped to custom `RefinedRust`
-/// implementations.
-/// Provides deserialization from a JSON file defining this registry.
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
@@ -16,6 +17,7 @@ use radium::coq;
 use serde::{Deserialize, Serialize};
 use typed_arena::Arena;
 
+use crate::shims::flat;
 use crate::utils::*;
 
 type Path<'a> = Vec<&'a str>;
@@ -62,9 +64,9 @@ struct ShimTraitEntry {
 #[derive(Serialize, Deserialize)]
 struct ShimTraitImplEntry {
     /// The rustc path for the trait
-    trait_path: PathWithArgs,
+    trait_path: flat::PathWithArgs,
     /// for which type is this implementation?
-    for_type: FlatType,
+    for_type: flat::Type,
     // TODO: additional constraints like the required clauses for disambiguation
     /// a kind: always "trait_impl"
     kind: String,
@@ -86,9 +88,9 @@ struct ShimTraitImplEntry {
 #[derive(Serialize, Deserialize)]
 struct ShimTraitMethodImplEntry {
     /// The rustc path for the trait
-    trait_path: PathWithArgs,
+    trait_path: flat::PathWithArgs,
     /// for which type is this implementation?
-    for_type: FlatType,
+    for_type: flat::Type,
     // TODO: additional constraints like the required clauses for disambiguation
     /// The method identifier
     method_ident: String,
@@ -146,8 +148,8 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitImplShim {
-    pub trait_path: PathWithArgs,
-    pub for_type: FlatType,
+    pub trait_path: flat::PathWithArgs,
+    pub for_type: flat::Type,
 
     pub method_specs: HashMap<String, (String, String)>,
 
@@ -173,9 +175,9 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitMethodImplShim {
-    pub trait_path: PathWithArgs,
+    pub trait_path: flat::PathWithArgs,
     pub method_ident: String,
-    pub for_type: FlatType,
+    pub for_type: flat::Type,
     pub name: String,
     pub spec_name: String,
 }
@@ -243,16 +245,9 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
     }
 }
 
-pub struct ModuleSummary<'a> {
-    /// function/method shims
-    function_shims: Vec<FunctionShim<'a>>,
-    /// adt shims
-    adt_shims: Vec<AdtShim<'a>>,
-}
-
 /// Registry of function shims loaded by the user. Substitutes path to the function/method with a
 /// code definition name and a spec name.
-pub struct ShimRegistry<'a> {
+pub struct SR<'a> {
     arena: &'a Arena<String>,
 
     /// function/method shims
@@ -277,7 +272,7 @@ pub struct ShimRegistry<'a> {
     dependencies: Vec<coq::module::DirPath>,
 }
 
-impl<'a> ShimRegistry<'a> {
+impl<'a> SR<'a> {
     fn get_shim_kind(v: &serde_json::Value) -> Result<ShimKind, String> {
         let obj = v.as_object().ok_or_else(|| "element is not an object".to_owned())?;
         let vk = obj.get("kind").ok_or_else(|| "object does not have \"kind\" attribute".to_owned())?;
@@ -316,7 +311,7 @@ impl<'a> ShimRegistry<'a> {
         }
     }
 
-    pub fn new(arena: &'a Arena<String>) -> Result<ShimRegistry<'a>, String> {
+    pub fn new(arena: &'a Arena<String>) -> Result<SR<'a>, String> {
         let mut reg = Self::empty(arena);
 
         match rrconfig::shim_file() {

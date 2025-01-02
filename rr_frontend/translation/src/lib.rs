@@ -1,4 +1,4 @@
-// © 2023, The RefinedRust Developers and Contributors
+// © 2023, The RefinedRust Develcpers and Contributors
 //
 // This Source Code Form is subject to the terms of the BSD-3-clause License.
 // If a copy of the BSD-3-clause license was not distributed with this
@@ -17,7 +17,7 @@ mod force_matches_macro;
 mod function_body;
 mod inclusion_tracker;
 mod regions;
-mod shim_registry;
+mod shims;
 mod spec_parsers;
 mod traits;
 mod types;
@@ -39,6 +39,7 @@ use typed_arena::Arena;
 
 use crate::environment::Environment;
 use crate::function_body::{ConstScope, FunctionTranslator, ProcedureMode, ProcedureScope};
+use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
@@ -92,7 +93,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 
     coq_path_prefix: String,
     dune_package: Option<String>,
-    shim_registry: shim_registry::ShimRegistry<'rcx>,
+    shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
     trait_impls: HashMap<DefId, radium::TraitImplSpec<'rcx>>,
@@ -100,12 +101,12 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 
 impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     fn get_path_for_shim(&self, did: DefId) -> Vec<&str> {
-        let path = utils::get_export_path_for_did(self.env, did);
+        let path = shims::flat::get_export_path_for_did(self.env, did);
         let interned_path = self.shim_registry.intern_path(path);
         interned_path
     }
 
-    fn make_shim_function_entry(&self, did: DefId, spec_name: &str) -> Option<shim_registry::FunctionShim> {
+    fn make_shim_function_entry(&self, did: DefId, spec_name: &str) -> Option<shims::registry::FunctionShim> {
         let Some(mode) = self.procedure_registry.lookup_function_mode(did) else {
             return None;
         };
@@ -175,11 +176,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 let impl_for = args[0].expect_ty();
 
                 // flatten the trait reference
-                let trait_path = utils::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
+                let trait_path = shims::flat::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
                 trace!("got trait path: {:?}", trait_path);
 
                 // flatten the self type.
-                let Some(for_type) = utils::convert_ty_to_flat_type(self.env, impl_for) else {
+                let Some(for_type) = shims::flat::convert_ty_to_flat_type(self.env, impl_for) else {
                     return None;
                 };
 
@@ -236,11 +237,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let impl_for = args[0].expect_ty();
 
         // flatten the trait reference
-        let trait_path = utils::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
+        let trait_path = shims::flat::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
         trace!("got trait path: {:?}", trait_path);
 
         // flatten the self type.
-        let Some(for_type) = utils::convert_ty_to_flat_type(self.env, impl_for) else {
+        let Some(for_type) = shims::flat::convert_ty_to_flat_type(self.env, impl_for) else {
             trace!("leave make_impl_shim_entry (failed transating self type)");
             return None;
         };
@@ -407,7 +408,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         info!("Generated module summary functions: {:?}", function_shims);
 
         let interface_file = File::create(path).unwrap();
-        shim_registry::write_shims(
+        shims::registry::write_shims(
             interface_file,
             module_path,
             module,
@@ -1397,7 +1398,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
     Ok(())
 }
 
-/// Generate trait instances
+/// Generate trait instances.
 fn assemble_trait_impls<'tcx, 'rcx>(
     vcx: &mut VerificationCtxt<'tcx, 'rcx>,
 ) -> Result<(), base::TranslationError<'tcx>> {
@@ -1467,42 +1468,6 @@ pub fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId
     Ok(attrs)
 }
 
-/// Find `RefinedRust` modules in the given loadpath.
-fn scan_loadpath(path: &Path, storage: &mut HashMap<String, PathBuf>) -> io::Result<()> {
-    if path.is_dir() {
-        for entry in fs::read_dir(path)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                scan_loadpath(path.as_path(), storage)?;
-            } else if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    if Some("rrlib") == ext.to_str() {
-                        // try to open this rrlib file
-                        let f = File::open(path.clone())?;
-                        if let Some(name) = shim_registry::is_valid_refinedrust_module(f) {
-                            storage.insert(name, path);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Find `RefinedRust` modules in the given loadpaths.
-fn scan_loadpaths(paths: &[PathBuf]) -> io::Result<HashMap<String, PathBuf>> {
-    let mut found_lib_files: HashMap<String, PathBuf> = HashMap::new();
-
-    for path in paths {
-        scan_loadpath(path, &mut found_lib_files)?;
-    }
-
-    Ok(found_lib_files)
-}
-
 /// Translate a crate, creating a `VerificationCtxt` in the process.
 pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), String>
 where
@@ -1568,12 +1533,12 @@ where
     );
     let procedure_registry = ProcedureScope::new();
     let shim_string_arena = Arena::new();
-    let mut shim_registry = shim_registry::ShimRegistry::empty(&shim_string_arena);
+    let mut shim_registry = shim_registry::SR::empty(&shim_string_arena);
 
     // add includes to the shim registry
     let library_load_paths = rrconfig::lib_load_paths();
     info!("Loading libraries from {:?}", library_load_paths);
-    let found_libs = scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
+    let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
     for incl in &includes {
