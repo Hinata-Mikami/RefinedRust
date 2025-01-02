@@ -1,9 +1,6 @@
 use rr_rustc_interface::middle::ty::visit::*;
-use rr_rustc_interface::middle::ty::{
-    self, Binder, GenericArg, GenericArgKind, ParamConst, Ty, TyCtxt, TypeFolder,
-};
+use rr_rustc_interface::middle::ty::{self, GenericArg, GenericArgKind, ParamConst, Ty, TyCtxt, TypeFolder};
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
-use rr_rustc_interface::type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
 /// A version of the `ArgFolder` in `rr_rustc_interface::middle::src::ty::generic_args` that skips over
 /// `ReVar` (instead of triggering a bug).

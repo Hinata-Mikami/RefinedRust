@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 /// This provides some general utilities for RefinedRust-specific attribute parsing.
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;

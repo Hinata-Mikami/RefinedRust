@@ -45,8 +45,7 @@ use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrPa
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
 use crate::spec_parsers::*;
 use crate::trait_registry::TraitRegistry;
-use crate::types::normalize_in_function;
-use crate::types::scope;
+use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
 fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {

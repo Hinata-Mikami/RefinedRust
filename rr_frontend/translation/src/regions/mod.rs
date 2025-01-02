@@ -6,12 +6,9 @@
 
 //! Utilities for translating region information.
 
-use std::cell::{OnceCell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Write;
 
 use derive_more::{Constructor, Debug};
-use log::{info, trace, warn};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
 use rr_rustc_interface::middle::ty;
@@ -21,8 +18,6 @@ use ty::TypeSuperFoldable;
 use crate::base::*;
 use crate::environment::polonius_info::{self, PoloniusInfo};
 use crate::environment::Environment;
-use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::trait_registry::{self, Error, GenericTraitUse, TraitRegistry, TraitResult};
 
 /// A `TypeFolder` that finds all regions occurring in a type.
 pub struct TyRegionCollectFolder<'tcx> {

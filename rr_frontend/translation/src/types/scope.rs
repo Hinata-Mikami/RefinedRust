@@ -6,20 +6,19 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::cell::{OnceCell, RefCell};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyKind, TypeFoldable};
+use rr_rustc_interface::middle::ty::TypeFoldable;
 
 use crate::base::*;
 use crate::environment::Environment;
 use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::trait_registry::{self, Error, GenericTraitUse, TraitRegistry, TraitResult};
+use crate::trait_registry::{self, GenericTraitUse, TraitRegistry, TraitResult};
 use crate::types::translator::*;
 use crate::types::tyvars::*;
 use crate::utils::strip_coq_ident;
@@ -117,9 +116,7 @@ pub struct Params<'tcx, 'def> {
 }
 
 #[allow(clippy::fallible_impl_from)]
-impl<'tcx, 'def> From<Params<'tcx, 'def>>
-    for radium::GenericScope<'def, radium::LiteralTraitSpecUse<'def>>
-{
+impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium::LiteralTraitSpecUse<'def>> {
     fn from(mut x: Params<'tcx, 'def>) -> Self {
         let mut scope = Self::empty();
         for x in x.scope {

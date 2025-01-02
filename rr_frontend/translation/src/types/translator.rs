@@ -7,8 +7,7 @@
 //! The main translator for translating types within certain environments.
 
 use std::cell::{OnceCell, RefCell};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Write;
+use std::collections::{HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
@@ -21,15 +20,13 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::{self, PoloniusInfo};
+use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
-use crate::function_body::get_arg_syntypes_for_procedure_call;
 use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
 use crate::spec_parsers::enum_spec_parser::{parse_enum_refine_as, EnumSpecParser, VerboseEnumSpecParser};
 use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
-use crate::trait_registry::{self, Error, GenericTraitUse, TraitRegistry, TraitResult};
-use crate::traits::{normalize_projection_type, normalize_type};
+use crate::trait_registry::{self, GenericTraitUse, TraitRegistry};
 use crate::types::scope;
 use crate::types::tyvars::*;
 use crate::utils;
@@ -172,10 +169,9 @@ pub struct CalleeState<'a, 'tcx, 'def> {
 
 /// The type translator `TX` has three modes:
 /// - translation of a type within the generic scope of a function
-/// - translation of a type as part of an ADT definition, where we always translate parameters as
-///     variables, but need to track dependencies on other ADTs.
-/// - translation of a type when translating the signature of a callee.
-///     Regions are always erased.
+/// - translation of a type as part of an ADT definition, where we always translate parameters as variables,
+///   but need to track dependencies on other ADTs.
+/// - translation of a type when translating the signature of a callee. Regions are always erased.
 #[derive(Debug)]
 pub enum STInner<'b, 'def: 'b, 'tcx: 'def> {
     /// This type is used in a function

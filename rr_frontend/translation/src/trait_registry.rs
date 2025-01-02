@@ -1,25 +1,29 @@
+// © 2024, The RefinedRust Developers and Contributors
+//
+// This Source Code Form is subject to the terms of the BSD-3-clause License.
+// If a copy of the BSD-3-clause license was not distributed with this
+// file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
+
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
-use std::string::ToString;
 
-use derive_more::{Constructor, Display};
+use derive_more::Display;
 use log::{info, trace};
 use radium::{self, coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::middle::{self, ty};
+use rr_rustc_interface::middle::ty;
 use typed_arena::Arena;
 
 use crate::base::TranslationError;
 use crate::environment::Environment;
-use crate::function_body::{get_arg_syntypes_for_procedure_call, FunctionTranslator};
+use crate::function_body::FunctionTranslator;
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
 use crate::types::scope;
-use crate::types::{self, generate_args_inst_key, GenericsKey};
-use crate::{traits, utils};
+use crate::{traits, types, utils};
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {

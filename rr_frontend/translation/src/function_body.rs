@@ -5,7 +5,6 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
-use std::fmt::Write;
 
 use log::{info, trace, warn};
 use radium::coq;
@@ -18,7 +17,7 @@ use rr_rustc_interface::middle::mir::{
     TerminatorKind, UnOp, VarDebugInfoContents,
 };
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind, TypeFoldable};
+use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, middle};
 use typed_arena::Arena;
@@ -36,8 +35,7 @@ use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
 };
 use crate::trait_registry::TraitRegistry;
-use crate::types::{self, scope};
-use crate::{regions, traits, utils};
+use crate::{regions, traits, types, utils};
 
 /// Get the syntypes of function arguments for a procedure call.
 pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(

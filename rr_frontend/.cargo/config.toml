@@ -31,6 +31,7 @@ rustflags = [
     "-Aclippy::panic_in_result_fn",
     "-Aclippy::unwrap_in_result",
     "-Aclippy::separated_literal_suffix",
+    "-Aclippy::pub_use",
 
     # clippy::style
     "-Aclippy::new_without_default",

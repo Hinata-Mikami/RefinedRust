@@ -10,24 +10,20 @@ use std::cell::{OnceCell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 
-use derive_more::{Constructor, Debug};
 use log::{info, trace, warn};
-use radium::{self, coq, push_str_list};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyKind, TypeFoldable, TypeFolder};
+use rr_rustc_interface::middle::ty::{self, Ty, TypeFolder};
 use rr_rustc_interface::target;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::{self, PoloniusInfo};
-use crate::environment::Environment;
+use crate::environment::{polonius_info, Environment};
 use crate::regions::TyRegionCollectFolder;
-use crate::trait_registry::{self, Error, GenericTraitUse, TraitRegistry, TraitResult};
+use crate::trait_registry::{self, GenericTraitUse, TraitResult};
 use crate::traits::{normalize_projection_type, normalize_type};
-use crate::types::{scope, self};
 use crate::types::translator::*;
 use crate::types::tyvars::*;
+use crate::types::{self, scope};
 use crate::{regions, utils};
 
 /// Information we compute when calling a function from another function.
@@ -260,10 +256,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // get name of the method
         let method_name = env.get_assoc_item_name(trait_method_did).unwrap();
-        let mangled_method_name = types::mangle_name_with_args(
-            &utils::strip_coq_ident(&method_name),
-            method_args.as_slice(),
-        );
+        let mangled_method_name =
+            types::mangle_name_with_args(&utils::strip_coq_ident(&method_name), method_args.as_slice());
 
         let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
 
@@ -367,10 +361,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // - the ty_params are all the generics the function has.
         // - the trait_reqs are also all the associated types the function has
         // We need to distinguish these between direct and surrounding.
-        let num_surrounding_params = scope::Params::determine_number_of_surrounding_params(
-            callee_did,
-            self.translator.env().tcx(),
-        );
+        let num_surrounding_params =
+            scope::Params::determine_number_of_surrounding_params(callee_did, self.translator.env().tcx());
         info!("num_surrounding_params={num_surrounding_params:?}, ty_params={ty_params:?}");
 
         // figure out instantiation for the function's generics
