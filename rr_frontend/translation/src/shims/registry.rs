@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use typed_arena::Arena;
 
 use crate::shims::flat;
-use crate::utils::*;
 
 type Path<'a> = Vec<&'a str>;
 

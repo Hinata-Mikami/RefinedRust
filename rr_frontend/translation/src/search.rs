@@ -5,16 +5,11 @@
 use std::mem;
 
 use log::{info, trace};
-use rr_rustc_interface::ast::ast;
-use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rr_rustc_interface::middle::mir;
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::{hir, middle, span};
-use serde::{Deserialize, Serialize};
+use rr_rustc_interface::{middle, span};
 
-use crate::spec_parsers::get_export_as_attr;
-use crate::{force_matches, types, Environment};
+use crate::types;
 
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.

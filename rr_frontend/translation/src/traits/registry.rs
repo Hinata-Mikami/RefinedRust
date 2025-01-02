@@ -5,11 +5,9 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
-use derive_more::Display;
 use log::{info, trace};
 use radium::{self, coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};

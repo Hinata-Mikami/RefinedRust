@@ -7,11 +7,10 @@
 pub mod flat;
 pub mod registry;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::{fs, io, process};
+use std::{fs, io};
 
 /// Find `RefinedRust` modules in the given loadpath.
 fn scan_loadpath(path: &Path, storage: &mut HashMap<String, PathBuf>) -> io::Result<()> {

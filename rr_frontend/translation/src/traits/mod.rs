@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use derive_more::Display;
 use log::{info, trace};

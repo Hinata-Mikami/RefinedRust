@@ -6,8 +6,8 @@
 
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
-use std::cell::{OnceCell, RefCell};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::Write;
 
 use log::{info, trace, warn};
@@ -19,7 +19,7 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::TyRegionCollectFolder;
-use crate::traits::registry::{self, GenericTraitUse};
+use crate::traits::registry::GenericTraitUse;
 use crate::traits::resolution;
 use crate::types::translator::*;
 use crate::types::tyvars::*;

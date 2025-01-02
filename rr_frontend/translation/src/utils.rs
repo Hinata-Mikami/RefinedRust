@@ -5,19 +5,13 @@
 
 //! Utility functions for manipulating places.
 
-use std::mem;
-
 use log::{info, trace};
-use rr_rustc_interface::ast::ast;
 use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rr_rustc_interface::middle::mir;
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
 use rr_rustc_interface::{hir, middle, span};
-use serde::{Deserialize, Serialize};
 
-use crate::spec_parsers::get_export_as_attr;
-use crate::{force_matches, types, Environment};
+use crate::force_matches;
 
 /// Check if the place `potential_prefix` is a prefix of `place`. For example:
 ///
