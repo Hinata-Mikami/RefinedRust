@@ -16,8 +16,8 @@ use traits::{resolution, Error, TraitResult};
 use typed_arena::Arena;
 
 use crate::base::TranslationError;
+use crate::body::signature;
 use crate::environment::Environment;
-use crate::function_body::FunctionTranslator;
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
@@ -223,7 +223,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 let spec_name = format!("{name}_base_spec");
 
                 // get spec
-                let spec = FunctionTranslator::spec_for_trait_method(
+                let spec = signature::TX::spec_for_trait_method(
                     self.env,
                     c.def_id,
                     &name,

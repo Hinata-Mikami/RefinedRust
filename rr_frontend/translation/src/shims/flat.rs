@@ -7,9 +7,9 @@
 //! Provides a flat representation of types that is stable across compilations.
 
 use log::{info, trace};
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::hir;
 use serde::{Deserialize, Serialize};
 
 use crate::spec_parsers::get_export_as_attr;

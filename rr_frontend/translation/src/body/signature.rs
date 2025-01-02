@@ -1,0 +1,927 @@
+// © 2023, The RefinedRust Developers and Contributors
+//
+// This Source Code Form is subject to the terms of the BSD-3-clause License.
+// If a copy of the BSD-3-clause license was not distributed with this
+// file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
+
+//! Part of the function translation responsible for translating the signature and specification.
+
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+
+use log::{info, trace, warn};
+use radium::coq;
+use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
+use rr_rustc_interface::middle::mir::tcx::PlaceTy;
+use rr_rustc_interface::middle::mir::{
+    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
+    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
+    TerminatorKind, UnOp, VarDebugInfoContents,
+};
+use rr_rustc_interface::middle::ty::fold::TypeFolder;
+use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
+use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::{abi, ast, middle};
+use typed_arena::Arena;
+
+use crate::base::*;
+use crate::body::translator;
+use crate::checked_op_analysis::CheckedOpLocalAnalysis;
+use crate::environment::borrowck::facts;
+use crate::environment::polonius_info::PoloniusInfo;
+use crate::environment::procedure::Procedure;
+use crate::environment::{dump_borrowck_info, polonius_info, Environment};
+use crate::inclusion_tracker::*;
+use crate::spec_parsers::parse_utils::ParamLookup;
+use crate::spec_parsers::verbose_function_spec_parser::{
+    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
+};
+use crate::traits::{registry, resolution};
+use crate::{base, consts, procedures, regions, search, traits, types};
+
+/// A scope of trait attributes mapping to Coq names to be used in a function's spec
+struct TraitSpecNameScope {
+    attrs: HashMap<String, String>,
+}
+
+/// When translating a function spec where attributes of a trait are in scope,
+/// we create a wrapper to lookup references to the trait's attributes when parsing function specs.
+struct FunctionSpecScope<'a, T> {
+    generics: &'a T,
+    attrs: &'a TraitSpecNameScope,
+}
+impl<'a, T: ParamLookup> ParamLookup for FunctionSpecScope<'a, T> {
+    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
+        self.generics.lookup_ty_param(path)
+    }
+
+    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
+        self.generics.lookup_lft(lft)
+    }
+
+    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
+        if path.len() == 1 {
+            if let Some(lit) = self.attrs.attrs.get(path[0]) {
+                return Some(lit);
+            }
+        }
+        self.generics.lookup_literal(path)
+    }
+}
+
+pub struct TX<'a, 'def, 'tcx> {
+    env: &'def Environment<'tcx>,
+    /// this needs to be annotated with the right borrowck things
+    proc: &'def Procedure<'tcx>,
+    /// the Caesium function buildder
+    translated_fn: radium::FunctionBuilder<'def>,
+    /// tracking lifetime inclusions for the generation of lifetime inclusions
+    inclusion_tracker: InclusionTracker<'a, 'tcx>,
+
+    /// registry of other procedures
+    procedure_registry: &'a procedures::Scope<'def>,
+    /// registry of consts
+    const_registry: &'a consts::Scope<'def>,
+    /// attributes on this function
+    attrs: &'a [&'a ast::ast::AttrItem],
+    /// polonius info for this function
+    info: &'a PoloniusInfo<'a, 'tcx>,
+    /// translator for types
+    ty_translator: types::LocalTX<'def, 'tcx>,
+    /// trait registry in the current scope
+    trait_registry: &'def registry::TR<'tcx, 'def>,
+    /// argument types (from the signature, with generics substituted)
+    inputs: Vec<Ty<'tcx>>,
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Generate a spec for a trait method.
+    pub fn spec_for_trait_method(
+        env: &'def Environment<'tcx>,
+        proc_did: DefId,
+        name: &str,
+        spec_name: &str,
+        attrs: &'a [&'a ast::ast::AttrItem],
+        ty_translator: &'def types::TX<'def, 'tcx>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
+    ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
+        let mut translated_fn = radium::FunctionBuilder::new(name, spec_name);
+
+        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc_did);
+        let ty = ty.instantiate_identity();
+        // substs are the generic args of this function (including lifetimes)
+        // sig is the function signature
+        let sig = match ty.kind() {
+            TyKind::FnDef(_def, _args) => {
+                assert!(ty.is_fn());
+                let sig = ty.fn_sig(env.tcx());
+                sig
+            },
+            _ => panic!("can not handle non-fns"),
+        };
+        info!("Function signature: {:?}", sig);
+
+        let params = Self::get_proc_ty_params(env.tcx(), proc_did);
+        info!("Function generic args: {:?}", params);
+
+        let (inputs, output, region_substitution) =
+            regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+        info!("inputs: {:?}, output: {:?}", inputs, output);
+
+        let (type_scope, trait_attrs) = Self::setup_local_scope(
+            env,
+            ty_translator,
+            trait_registry,
+            proc_did,
+            params.as_slice(),
+            &mut translated_fn,
+            region_substitution,
+            false,
+            None,
+        )?;
+        let type_translator = types::LocalTX::new(ty_translator, type_scope);
+
+        // TODO: add universal constraints (ideally in setup_local_scope)
+
+        let spec_builder = Self::process_attrs(
+            attrs,
+            &type_translator,
+            &mut translated_fn,
+            &trait_attrs,
+            inputs.as_slice(),
+            output,
+        )?;
+        translated_fn.add_function_spec_from_builder(spec_builder);
+
+        translated_fn.try_into().map_err(TranslationError::AttributeError)
+    }
+
+    /// Create a translation instance for a closure.
+    pub fn new_closure(
+        env: &'def Environment<'tcx>,
+        meta: &procedures::Meta,
+        proc: Procedure<'tcx>,
+        attrs: &'a [&'a ast::ast::AttrItem],
+        ty_translator: &'def types::TX<'def, 'tcx>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
+        proc_registry: &'a procedures::Scope<'def>,
+        const_registry: &'a consts::Scope<'def>,
+    ) -> Result<Self, TranslationError<'tcx>> {
+        let mut translated_fn = radium::FunctionBuilder::new(meta.get_name(), meta.get_spec_name());
+
+        // TODO can we avoid the leak
+        let proc: &'def Procedure = &*Box::leak(Box::new(proc));
+        let body = proc.get_mir();
+        Self::dump_body(body);
+
+        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty = ty.instantiate_identity();
+        let closure_kind = match ty.kind() {
+            TyKind::Closure(_def, closure_args) => {
+                assert!(ty.is_closure());
+                let clos = closure_args.as_closure();
+                clos.kind()
+            },
+            _ => panic!("can not handle non-closures"),
+        };
+
+        let local_decls = &body.local_decls;
+        let closure_arg = local_decls.get(Local::from_usize(1)).unwrap();
+        let closure_ty;
+
+        match closure_kind {
+            ty::ClosureKind::Fn => {
+                if let ty::TyKind::Ref(_, ty, _) = closure_arg.ty.kind() {
+                    closure_ty = ty;
+                } else {
+                    unreachable!();
+                }
+            },
+            ty::ClosureKind::FnMut => {
+                if let ty::TyKind::Ref(_, ty, _) = closure_arg.ty.kind() {
+                    closure_ty = ty;
+                } else {
+                    unreachable!("unexpected type {:?}", closure_arg.ty);
+                }
+            },
+            ty::ClosureKind::FnOnce => {
+                closure_ty = &closure_arg.ty;
+            },
+        }
+
+        let parent_args;
+        let mut capture_regions = Vec::new();
+        let sig;
+        let captures;
+        let upvars_tys;
+        if let ty::TyKind::Closure(did, closure_args) = closure_ty.kind() {
+            let clos = closure_args.as_closure();
+
+            let tupled_upvars_tys = clos.tupled_upvars_ty();
+            upvars_tys = clos.upvar_tys();
+            parent_args = clos.parent_args();
+            let unnormalized_sig = clos.sig();
+            sig = unnormalized_sig;
+            info!("closure sig: {:?}", sig);
+
+            captures = env.tcx().closure_captures(did.as_local().unwrap());
+            info!("Closure has captures: {:?}", captures);
+
+            // find additional lifetime parameters
+            for (place, ty) in captures.iter().zip(clos.upvar_tys().iter()) {
+                if place.region.is_some() {
+                    // find region from ty
+                    if let ty::TyKind::Ref(region, _, _) = ty.kind() {
+                        capture_regions.push(*region);
+                    }
+                }
+            }
+            info!("Closure capture regions: {:?}", capture_regions);
+
+            info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
+            info!("Function signature: {:?}", sig);
+            info!("Closure generic args: {:?}", parent_args);
+        } else {
+            unreachable!();
+        }
+
+        match PoloniusInfo::new(env, proc) {
+            Ok(info) => {
+                // TODO: avoid leak
+                let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+
+                // For closures, we only handle the parent's args here!
+                // TODO: do we need to do something special for the parent's late-bound region
+                // parameters?
+                // TODO: should we always take the lifetime parameters?
+                let params = parent_args;
+                //proc.get_type_params();
+                info!("Function generic args: {:?}", params);
+
+                // dump graphviz files
+                // color code: red: dying loan, pink: becoming a zombie; green: is zombie
+                if rrconfig::dump_borrowck_info() {
+                    dump_borrowck_info(env, proc.get_id(), info);
+                }
+
+                let (tupled_inputs, output, mut region_substitution) =
+                    regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+
+                // Process the lifetime parameters that come from the captures
+                for r in capture_regions {
+                    // TODO: problem: we're introducing inconsistent names here.
+                    if let ty::RegionKind::ReVar(r) = r.kind() {
+                        let lft = info.mk_atomic_region(r);
+                        let name = regions::format_atomic_region_direct(&lft, None);
+                        region_substitution.region_names.insert(r, name);
+                        // TODO: add to region_substitution?
+                    } else {
+                        unreachable!();
+                    }
+                }
+                // also add the lifetime for the outer reference
+                let mut maybe_outer_lifetime = None;
+                if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
+                    if let ty::RegionKind::ReVar(r) = r.kind() {
+                        // We need to do some hacks here to find the right Polonius region:
+                        // `r` is the non-placeholder region that the variable gets, but we are
+                        // looking for the corresponding placeholder region
+                        let r2 = Self::find_placeholder_region_for(r, info).unwrap();
+
+                        info!("using lifetime {:?} for closure universal", r2);
+                        let lft = info.mk_atomic_region(r2);
+                        let name = regions::format_atomic_region_direct(&lft, None);
+                        region_substitution.region_names.insert(r2, name);
+
+                        maybe_outer_lifetime = Some(r2);
+                    } else {
+                        unreachable!();
+                    }
+                }
+
+                // detuple the inputs
+                assert!(tupled_inputs.len() == 1);
+                let input_tuple_ty = tupled_inputs[0];
+                let mut inputs = Vec::new();
+
+                // push the closure as the first argument
+                /*
+                if let Some(r2) = maybe_outer_lifetime {
+                    // in this case, we need to patch the region first
+                    if let ty::TyKind::Ref(_, ty, m) = closure_arg.ty.kind() {
+                        let new_region = ty::Region::new_var(env.tcx(), r2);
+                        inputs.push(env.tcx().mk_ty_from_kind(ty::TyKind::Ref(new_region, *ty, *m)));
+                    }
+                }
+                else {
+                    inputs.push(closure_arg.ty);
+                }
+                */
+
+                if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
+                    inputs.extend(args.iter());
+                }
+
+                info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
+
+                let mut inclusion_tracker = InclusionTracker::new(info);
+                // add placeholder subsets
+                let initial_point: facts::Point = facts::Point {
+                    location: BasicBlock::from_u32(0).start_location(),
+                    typ: facts::PointType::Start,
+                };
+                for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
+                    inclusion_tracker.add_static_inclusion(
+                        *r1,
+                        *r2,
+                        info.interner.get_point_index(&initial_point),
+                    );
+                }
+
+                let (type_scope, trait_attrs) = Self::setup_local_scope(
+                    env,
+                    ty_translator,
+                    trait_registry,
+                    proc.get_id(),
+                    params,
+                    &mut translated_fn,
+                    region_substitution,
+                    true,
+                    Some(info),
+                )?;
+                let type_translator = types::LocalTX::new(ty_translator, type_scope);
+
+                let mut t = Self {
+                    env,
+                    proc,
+                    info,
+                    translated_fn,
+                    inclusion_tracker,
+                    procedure_registry: proc_registry,
+                    attrs,
+                    ty_translator: type_translator,
+                    trait_registry,
+                    const_registry,
+                    inputs: inputs.clone(),
+                };
+
+                // compute meta information needed to generate the spec
+                let mut translated_upvars_types = Vec::new();
+                for ty in upvars_tys {
+                    let translated_ty = t.ty_translator.translate_type(ty)?;
+                    translated_upvars_types.push(translated_ty);
+                }
+                let meta;
+                {
+                    let scope = t.ty_translator.scope.borrow();
+                    meta = ClosureMetaInfo {
+                        kind: closure_kind,
+                        captures,
+                        capture_tys: &translated_upvars_types,
+                        closure_lifetime: maybe_outer_lifetime
+                            .map(|x| scope.lifetime_scope.lookup_region(x).unwrap().to_owned()),
+                    };
+                }
+
+                // process attributes
+                t.process_closure_attrs(&trait_attrs, &inputs, output, meta)?;
+                Ok(t)
+            },
+            Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
+        }
+    }
+
+    /// Translate the body of a function.
+    pub fn new(
+        env: &'def Environment<'tcx>,
+        meta: &procedures::Meta,
+        proc: Procedure<'tcx>,
+        attrs: &'a [&'a ast::ast::AttrItem],
+        ty_translator: &'def types::TX<'def, 'tcx>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
+        proc_registry: &'a procedures::Scope<'def>,
+        const_registry: &'a consts::Scope<'def>,
+    ) -> Result<Self, TranslationError<'tcx>> {
+        let mut translated_fn = radium::FunctionBuilder::new(meta.get_name(), meta.get_spec_name());
+
+        // TODO can we avoid the leak
+        let proc: &'def Procedure = &*Box::leak(Box::new(proc));
+
+        let body = proc.get_mir();
+        Self::dump_body(body);
+
+        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty = ty.instantiate_identity();
+        // substs are the generic args of this function (including lifetimes)
+        // sig is the function signature
+        let sig = match ty.kind() {
+            TyKind::FnDef(_def, _args) => {
+                assert!(ty.is_fn());
+                let sig = ty.fn_sig(env.tcx());
+                sig
+            },
+            _ => panic!("can not handle non-fns"),
+        };
+
+        info!("Function signature: {:?}", sig);
+
+        match PoloniusInfo::new(env, proc) {
+            Ok(info) => {
+                // TODO: avoid leak
+                let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+
+                let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
+                info!("Function generic args: {:?}", params);
+
+                // dump graphviz files
+                // color code: red: dying loan, pink: becoming a zombie; green: is zombie
+                if rrconfig::dump_borrowck_info() {
+                    dump_borrowck_info(env, proc.get_id(), info);
+                }
+
+                let (inputs, output, region_substitution) =
+                    regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+                info!("inputs: {:?}, output: {:?}", inputs, output);
+
+                let mut inclusion_tracker = InclusionTracker::new(info);
+                // add placeholder subsets
+                let initial_point: facts::Point = facts::Point {
+                    location: BasicBlock::from_u32(0).start_location(),
+                    typ: facts::PointType::Start,
+                };
+                for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
+                    inclusion_tracker.add_static_inclusion(
+                        *r1,
+                        *r2,
+                        info.interner.get_point_index(&initial_point),
+                    );
+                }
+
+                let (type_scope, trait_attrs) = Self::setup_local_scope(
+                    env,
+                    ty_translator,
+                    trait_registry,
+                    proc.get_id(),
+                    params.as_slice(),
+                    &mut translated_fn,
+                    region_substitution,
+                    true,
+                    Some(info),
+                )?;
+                let type_translator = types::LocalTX::new(ty_translator, type_scope);
+
+                // process attributes
+                let mut spec_builder = Self::process_attrs(
+                    attrs,
+                    &type_translator,
+                    &mut translated_fn,
+                    &trait_attrs,
+                    inputs.as_slice(),
+                    output,
+                )?;
+
+                let mut t = Self {
+                    env,
+                    proc,
+                    info,
+                    translated_fn,
+                    inclusion_tracker,
+                    procedure_registry: proc_registry,
+                    attrs,
+                    ty_translator: type_translator,
+                    trait_registry,
+                    const_registry,
+                    inputs: inputs.clone(),
+                };
+
+                if spec_builder.has_spec() {
+                    // add universal constraints
+                    let universal_constraints = t.get_relevant_universal_constraints();
+                    info!("univeral constraints: {:?}", universal_constraints);
+                    for (lft1, lft2) in universal_constraints {
+                        spec_builder.add_lifetime_constraint(lft1, lft2);
+                    }
+
+                    t.translated_fn.add_function_spec_from_builder(spec_builder);
+                } else {
+                    let spec = t.make_trait_instance_spec()?;
+                    if let Some(spec) = spec {
+                        t.translated_fn.add_trait_function_spec(spec);
+                    } else {
+                        return Err(TranslationError::AttributeError(
+                            "No valid specification provided".to_owned(),
+                        ));
+                    }
+                }
+
+                Ok(t)
+            },
+            Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
+        }
+    }
+
+    /// Translate the body of the function.
+    pub fn translate(
+        mut self,
+        spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
+        let translator = translator::TX::new(
+            self.env,
+            self.procedure_registry,
+            self.const_registry,
+            self.trait_registry,
+            self.ty_translator,
+            self.proc,
+            self.attrs,
+            self.info,
+            &self.inputs,
+            self.inclusion_tracker,
+            self.translated_fn,
+        )?;
+        translator.translate(spec_arena)
+    }
+
+    /// Translation that only generates a specification.
+    pub fn generate_spec(
+        self,
+    ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
+        self.translated_fn.try_into().map_err(TranslationError::AttributeError)
+    }
+}
+
+impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Get type parameters of the given procedure.
+    fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
+        let ty = tcx.type_of(did).instantiate_identity();
+        match ty.kind() {
+            ty::TyKind::FnDef(_, params) => params,
+            ty::TyKind::Closure(_, closure_args) => {
+                assert!(ty.is_closure());
+                let clos = closure_args.as_closure();
+                let parent_args = clos.parent_args();
+
+                // TODO: this doesn't include lifetime parameters specific to this closure...
+                tcx.mk_args(parent_args)
+            },
+            _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),
+        }
+    }
+
+    /// At the start of the function, there's a universal (placeholder) region for reference argument.
+    /// These get subsequently relabeled.
+    /// Given the relabeled region, find the original placeholder region.
+    fn find_placeholder_region_for(r: ty::RegionVid, info: &PoloniusInfo) -> Option<ty::RegionVid> {
+        let root_location = Location {
+            block: BasicBlock::from_u32(0),
+            statement_index: 0,
+        };
+        let root_point = info.interner.get_point_index(&facts::Point {
+            location: root_location,
+            typ: facts::PointType::Start,
+        });
+
+        for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
+            if *p == root_point && *r2 == r {
+                info!("find placeholder region for: {:?} ⊑ {:?} = r = {:?}", r1, r2, r);
+                return Some(*r1);
+            }
+        }
+        None
+    }
+
+    /// Set up the local generic scope of the function, including type parameters, lifetime
+    /// parameters, and trait constraints.
+    fn setup_local_scope(
+        env: &Environment<'tcx>,
+        ty_translator: &'def types::TX<'def, 'tcx>,
+        trait_registry: &'def registry::TR<'tcx, 'def>,
+        proc_did: DefId,
+        params: &[ty::GenericArg<'tcx>],
+        translated_fn: &mut radium::FunctionBuilder<'def>,
+        region_substitution: regions::EarlyLateRegionMap,
+        add_trait_specs: bool,
+        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    ) -> Result<(types::FunctionState<'tcx, 'def>, TraitSpecNameScope), TranslationError<'tcx>> {
+        // add universals to the function
+        // important: these need to be in the right order!
+        for (vid, name) in &region_substitution.region_names {
+            translated_fn.add_universal_lifetime(name.to_owned());
+        }
+
+        // enter the procedure
+        let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(proc_did);
+        let type_scope = types::FunctionState::new_with_traits(
+            proc_did,
+            env,
+            env.tcx().mk_args(params),
+            region_substitution,
+            param_env,
+            ty_translator,
+            trait_registry,
+            info,
+        )?;
+
+        // add generic args to the fn
+        let generics = &type_scope.generic_scope;
+        for t in generics.tyvars() {
+            translated_fn.add_ty_param(t);
+        }
+
+        // add specs for traits of generics
+        let trait_uses = type_scope.generic_scope.trait_scope().get_trait_uses();
+        for ((did, params), trait_ref) in trait_uses {
+            let trait_use_ref = trait_ref.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            translated_fn.add_trait_requirement(trait_use.clone());
+        }
+
+        // check if we are in the implementation of a trait or trait impl
+        let mut trait_attr_map = HashMap::new();
+        if let Some(trait_did) = env.tcx().trait_of_item(proc_did) {
+            // we are in a trait declaration
+            if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
+                // make the parameter for the attrs that the function is parametric over
+                if let Some(trait_use_ref) = type_scope.generic_scope.trait_scope().get_self_trait_use() {
+                    let trait_use_ref = trait_use_ref.trait_use.borrow();
+                    let trait_use = trait_use_ref.as_ref().unwrap();
+                    let param_name = trait_use.make_spec_attrs_param_name();
+                    // add the corresponding record entries to the map
+                    for attr in &trait_ref.declared_attrs {
+                        let record_item = trait_ref.make_spec_attr_name(attr);
+                        trait_attr_map.insert(attr.to_owned(), format!("{param_name}.({record_item})"));
+                    }
+                }
+            }
+        }
+        if let Some(impl_did) = env.tcx().impl_of_method(proc_did) {
+            if let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) {
+                // we are in a trait impl
+                if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
+                    let attrs = trait_registry.get_impl_attrs_term(impl_did)?;
+                    // add the corresponding record entries to the map
+                    for attr in &trait_ref.declared_attrs {
+                        let record_item = trait_ref.make_spec_attr_name(attr);
+                        trait_attr_map.insert(attr.to_owned(), format!("({attrs}).({record_item})"));
+                    }
+                }
+            }
+        }
+        let trait_scope = TraitSpecNameScope {
+            attrs: trait_attr_map,
+        };
+
+        // TODO: can we also setup the lifetime constraints here?
+        // TODO: understand better how these clauses relate to Polonius
+        // Note: these constraints do not seem to include implied bounds.
+        /*
+        let clauses = param_env.caller_bounds();
+        info!("looking for outlives clauses");
+        for cl in clauses.iter() {
+            let cl_kind = cl.kind();
+            let cl_kind = cl_kind.skip_binder();
+
+            // only look for trait predicates for now
+            if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
+                info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
+            }
+            if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
+                info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
+            }
+        }
+        */
+
+        Ok((type_scope, trait_scope))
+    }
+
+    /// Filter the "interesting" constraints between universal lifetimes that need to hold
+    /// (this does not include the constraints that need to hold for all universal lifetimes,
+    /// e.g. that they outlive the function lifetime and are outlived by 'static).
+    fn get_relevant_universal_constraints(&mut self) -> Vec<(radium::UniversalLft, radium::UniversalLft)> {
+        let info = &self.info;
+        let input_facts = &info.borrowck_in_facts;
+        let placeholder_subset = &input_facts.known_placeholder_subset;
+
+        let root_location = Location {
+            block: BasicBlock::from_u32(0),
+            statement_index: 0,
+        };
+        let root_point = self.info.interner.get_point_index(&facts::Point {
+            location: root_location,
+            typ: facts::PointType::Start,
+        });
+
+        let mut universal_constraints = Vec::new();
+
+        for (r1, r2) in placeholder_subset {
+            if let polonius_info::RegionKind::Universal(uk1) = info.get_region_kind(*r1) {
+                if let polonius_info::RegionKind::Universal(uk2) = info.get_region_kind(*r2) {
+                    // if LHS is static, ignore.
+                    if uk1 == polonius_info::UniversalRegionKind::Static {
+                        continue;
+                    }
+                    // if RHS is the function lifetime, ignore
+                    if uk2 == polonius_info::UniversalRegionKind::Function {
+                        continue;
+                    }
+
+                    let scope = self.ty_translator.scope.borrow();
+                    let to_universal = || {
+                        let x = scope.lifetime_scope.lookup_region_with_kind(uk1, *r2)?;
+                        let y = scope.lifetime_scope.lookup_region_with_kind(uk2, *r1)?;
+                        Some((x, y))
+                    };
+                    // else, add this constraint
+                    // for the purpose of this analysis, it is fine to treat it as a dynamic inclusion
+                    if let Some((x, y)) = to_universal() {
+                        self.inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
+                        universal_constraints.push((x, y));
+                    };
+                }
+            }
+        }
+        universal_constraints
+    }
+
+    /// Process extra requirements annotated on a function spec.
+    fn process_function_requirements(
+        fn_builder: &mut radium::FunctionBuilder<'def>,
+        requirements: FunctionRequirements,
+    ) {
+        for e in requirements.early_coq_params {
+            fn_builder.add_early_coq_param(e);
+        }
+        for e in requirements.late_coq_params {
+            fn_builder.add_late_coq_param(e);
+        }
+        for e in requirements.proof_info.linktime_assumptions {
+            fn_builder.add_linktime_assumption(e);
+        }
+        for e in requirements.proof_info.sidecond_tactics {
+            fn_builder.add_manual_tactic(e);
+        }
+    }
+
+    /// Parse and process attributes of this closure.
+    fn process_closure_attrs<'b>(
+        &mut self,
+        trait_attrs: &TraitSpecNameScope,
+        inputs: &[Ty<'tcx>],
+        output: Ty<'tcx>,
+        meta: ClosureMetaInfo<'b, 'tcx, 'def>,
+    ) -> Result<(), TranslationError<'tcx>> {
+        trace!("entering process_closure_attrs");
+        let v = self.attrs;
+
+        // Translate signature
+        info!("inputs: {:?}, output: {:?}", inputs, output);
+        let mut translated_arg_types: Vec<radium::Type<'def>> = Vec::new();
+        for arg in inputs {
+            let translated: radium::Type<'def> = self.ty_translator.translate_type(*arg)?;
+            translated_arg_types.push(translated);
+        }
+        let translated_ret_type: radium::Type<'def> = self.ty_translator.translate_type(output)?;
+        info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
+
+        // Determine parser
+        let parser = rrconfig::attribute_parser();
+        if parser.as_str() != "verbose" {
+            trace!("leaving process_closure_attrs");
+            return Err(TranslationError::UnknownAttributeParser(parser));
+        }
+
+        let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
+
+        // add universal constraints
+        let universal_constraints = self.get_relevant_universal_constraints();
+        info!("universal constraints: {:?}", universal_constraints);
+        for (lft1, lft2) in universal_constraints {
+            spec_builder.add_lifetime_constraint(lft1, lft2);
+        }
+
+        let ty_translator = &self.ty_translator;
+        // Hack: create indirection by tracking the tuple uses we create in here.
+        // (We need a read reference to the scope, so we can't write to it at the same time)
+        let mut tuple_uses = HashMap::new();
+        {
+            let scope = ty_translator.scope.borrow();
+            let scope = FunctionSpecScope {
+                generics: &*scope,
+                attrs: trait_attrs,
+            };
+            let mut parser =
+                VerboseFunctionSpecParser::new(&translated_arg_types, &translated_ret_type, &scope, |lit| {
+                    ty_translator.translator.intern_literal(lit)
+                });
+
+            parser
+                .parse_closure_spec(v, &mut spec_builder, meta, |x| {
+                    ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
+                })
+                .map_err(TranslationError::AttributeError)?;
+
+            Self::process_function_requirements(&mut self.translated_fn, parser.into());
+        }
+        let mut scope = ty_translator.scope.borrow_mut();
+        scope.tuple_uses.extend(tuple_uses);
+        self.translated_fn.add_function_spec_from_builder(spec_builder);
+
+        trace!("leaving process_closure_attrs");
+        Ok(())
+    }
+
+    /// Parse and process attributes of this function.
+    fn process_attrs(
+        attrs: &[&ast::ast::AttrItem],
+        ty_translator: &types::LocalTX<'def, 'tcx>,
+        translator: &mut radium::FunctionBuilder<'def>,
+        trait_attrs: &TraitSpecNameScope,
+        inputs: &[Ty<'tcx>],
+        output: Ty<'tcx>,
+    ) -> Result<radium::LiteralFunctionSpecBuilder<'def>, TranslationError<'tcx>> {
+        info!("inputs: {:?}, output: {:?}", inputs, output);
+
+        let mut translated_arg_types: Vec<radium::Type<'def>> = Vec::new();
+        for arg in inputs {
+            let translated: radium::Type<'def> = ty_translator.translate_type(*arg)?;
+            translated_arg_types.push(translated);
+        }
+        let translated_ret_type: radium::Type<'def> = ty_translator.translate_type(output)?;
+        info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
+
+        let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
+
+        let parser = rrconfig::attribute_parser();
+        match parser.as_str() {
+            "verbose" => {
+                {
+                    let scope = ty_translator.scope.borrow();
+                    let scope = FunctionSpecScope {
+                        generics: &*scope,
+                        attrs: trait_attrs,
+                    };
+                    let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
+                        VerboseFunctionSpecParser::new(
+                            &translated_arg_types,
+                            &translated_ret_type,
+                            &scope,
+                            |lit| ty_translator.translator.intern_literal(lit),
+                        );
+
+                    parser
+                        .parse_function_spec(attrs, &mut spec_builder)
+                        .map_err(TranslationError::AttributeError)?;
+                    Self::process_function_requirements(translator, parser.into());
+                }
+
+                Ok(spec_builder)
+            },
+            _ => Err(TranslationError::UnknownAttributeParser(parser)),
+        }
+    }
+
+    /// Make a specification for a method of a trait instance derived from the trait's default spec.
+    fn make_trait_instance_spec(
+        &self,
+    ) -> Result<Option<radium::InstantiatedTraitFunctionSpec<'def>>, TranslationError<'tcx>> {
+        let did = self.proc.get_id();
+        if let Some(impl_did) = self.env.tcx().impl_of_method(did) {
+            if let Some(trait_did) = self.env.tcx().trait_id_of_impl(impl_did) {
+                let trait_ref = self
+                    .trait_registry
+                    .lookup_trait(trait_did)
+                    .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
+                let fn_name = base::strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
+
+                let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
+                //self.trait_registry.lookup_impl(impl_did)?;
+                let attr_term = self.trait_registry.get_impl_attrs_term(impl_did)?;
+                return Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name, attr_term)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn dump_body(body: &Body) {
+        // TODO: print to file
+        //for dec in &body.local_decls {
+        //info!("Local decl: {:?}", dec);
+        //}
+
+        let basic_blocks = &body.basic_blocks;
+        for (bb_idx, bb) in basic_blocks.iter_enumerated() {
+            Self::dump_basic_block(bb_idx, bb);
+        }
+    }
+
+    /// Dump a basic block as info debug output.
+    fn dump_basic_block(bb_idx: BasicBlock, bb: &BasicBlockData) {
+        info!("Basic block {:?}:", bb_idx);
+        let mut i = 0;
+        for s in &bb.statements {
+            info!("{}\t{:?}", i, s);
+            i += 1;
+        }
+        info!("{}\t{:?}", i, bb.terminator());
+    }
+}

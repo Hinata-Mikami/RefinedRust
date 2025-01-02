@@ -2,9 +2,19 @@ use rr_rustc_interface::middle::ty::visit::*;
 use rr_rustc_interface::middle::ty::{self, GenericArg, GenericArgKind, ParamConst, Ty, TyCtxt, TypeFolder};
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
 
+/// Instantiate a type with arguments.
+/// The type may contain open region variables `ReVar`.
+pub fn ty_instantiate<'tcx>(x: Ty<'tcx>, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> Ty<'tcx> {
+    let mut folder = ArgFolder {
+        tcx,
+        args,
+        binders_passed: 0,
+    };
+    x.fold_with(&mut folder)
+}
+
 /// A version of the `ArgFolder` in `rr_rustc_interface::middle::src::ty::generic_args` that skips over
 /// `ReVar` (instead of triggering a bug).
-
 struct ArgFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     args: &'a [GenericArg<'tcx>],
@@ -207,13 +217,4 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         }
         ty::fold::shift_region(self.tcx, region, self.binders_passed)
     }
-}
-
-pub fn ty_instantiate<'tcx>(x: Ty<'tcx>, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> Ty<'tcx> {
-    let mut folder = ArgFolder {
-        tcx,
-        args,
-        binders_passed: 0,
-    };
-    x.fold_with(&mut folder)
 }

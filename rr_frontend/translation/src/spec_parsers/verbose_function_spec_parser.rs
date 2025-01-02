@@ -242,6 +242,7 @@ pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     got_ret: bool,
 }
 
+/// Extra requirements of a function.
 #[derive(Default)]
 pub struct FunctionRequirements {
     /// additional late coq parameters

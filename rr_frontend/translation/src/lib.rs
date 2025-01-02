@@ -11,12 +11,14 @@
 mod arg_folder;
 mod attrs;
 mod base;
+mod body;
 mod checked_op_analysis;
+mod consts;
 mod data;
 pub mod environment;
 mod force_matches_macro;
-mod function_body;
 mod inclusion_tracker;
+mod procedures;
 mod regions;
 mod search;
 mod shims;
@@ -39,8 +41,9 @@ use rr_rustc_interface::{ast, hir, span};
 use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
+use crate::body::signature;
 use crate::environment::Environment;
-use crate::function_body::{ConstScope, FunctionTranslator, ProcedureMode, ProcedureScope};
+use crate::procedures::{Mode, Scope};
 use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
@@ -80,8 +83,8 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
 
 pub struct VerificationCtxt<'tcx, 'rcx> {
     env: &'rcx Environment<'tcx>,
-    procedure_registry: ProcedureScope<'rcx>,
-    const_registry: ConstScope<'rcx>,
+    procedure_registry: procedures::Scope<'rcx>,
+    const_registry: consts::Scope<'rcx>,
     type_translator: &'rcx types::TX<'rcx, 'tcx>,
     trait_registry: &'rcx registry::TR<'tcx, 'rcx>,
     functions: &'rcx [LocalDefId],
@@ -113,7 +116,10 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             return None;
         };
 
-        if mode != ProcedureMode::Prove && mode != ProcedureMode::OnlySpec && mode != ProcedureMode::TrustMe {
+        if mode != procedures::Mode::Prove
+            && mode != procedures::Mode::OnlySpec
+            && mode != procedures::Mode::TrustMe
+        {
             return None;
         }
 
@@ -149,7 +155,10 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             return None;
         };
 
-        if mode != ProcedureMode::Prove && mode != ProcedureMode::OnlySpec && mode != ProcedureMode::TrustMe {
+        if mode != procedures::Mode::Prove
+            && mode != procedures::Mode::OnlySpec
+            && mode != procedures::Mode::TrustMe
+        {
             trace!("leave make_shim_trait_method_entry (failed)");
             return None;
         }
@@ -924,11 +933,8 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             Some(did) => {
                 // register as usual in the procedure registry
                 info!("registering shim for {:?}", shim.path);
-                let meta = function_body::ProcedureMeta::new(
-                    shim.spec_name.clone(),
-                    shim.name.clone(),
-                    function_body::ProcedureMode::Shim,
-                );
+                let meta =
+                    procedures::Meta::new(shim.spec_name.clone(), shim.name.clone(), procedures::Mode::Shim);
                 vcx.procedure_registry.register_function(did, meta)?;
             },
             _ => {
@@ -1031,11 +1037,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     shim.trait_path, method_name, for_type, method_did
                 );
 
-                let meta = function_body::ProcedureMeta::new(
-                    spec_name.clone(),
-                    name.clone(),
-                    function_body::ProcedureMode::Shim,
-                );
+                let meta = procedures::Meta::new(spec_name.clone(), name.clone(), procedures::Mode::Shim);
 
                 vcx.procedure_registry.register_function(method_did, meta)?;
             }
@@ -1051,31 +1053,28 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     Ok(())
 }
 
-fn get_most_restrictive_function_mode(
-    vcx: &VerificationCtxt<'_, '_>,
-    did: DefId,
-) -> function_body::ProcedureMode {
+fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> procedures::Mode {
     let attrs = vcx.env.get_attributes_of_function(did, &propagate_method_attr_from_impl);
 
     // check if this is a purely spec function; if so, skip.
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
-        return function_body::ProcedureMode::Shim;
+        return procedures::Mode::Shim;
     }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
-        return function_body::ProcedureMode::TrustMe;
+        return procedures::Mode::TrustMe;
     }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "only_spec") {
-        return function_body::ProcedureMode::OnlySpec;
+        return procedures::Mode::OnlySpec;
     }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "ignore") {
         info!("Function {:?} will be ignored", did);
-        return function_body::ProcedureMode::Ignore;
+        return procedures::Mode::Ignore;
     }
 
-    function_body::ProcedureMode::Prove
+    procedures::Mode::Prove
 }
 
 /// Register functions of the crate in the procedure registry.
@@ -1085,7 +1084,7 @@ fn register_functions<'tcx>(
     for &f in vcx.functions {
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
 
-        if mode == function_body::ProcedureMode::Shim {
+        if mode == procedures::Mode::Shim {
             // TODO better error message
             let attrs = vcx.env.get_attributes(f.to_def_id());
             let v = attrs::filter_for_tool(attrs);
@@ -1097,29 +1096,25 @@ fn register_functions<'tcx>(
                 annot.spec_name,
                 annot.code_name
             );
-            let meta = function_body::ProcedureMeta::new(
-                annot.spec_name,
-                annot.code_name,
-                function_body::ProcedureMode::Shim,
-            );
+            let meta = procedures::Meta::new(annot.spec_name, annot.code_name, procedures::Mode::Shim);
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
             continue;
         }
 
-        if mode == function_body::ProcedureMode::Prove && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
+        if mode == procedures::Mode::Prove && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
             mode = get_most_restrictive_function_mode(vcx, impl_did);
         }
 
-        if mode == function_body::ProcedureMode::Shim {
+        if mode == procedures::Mode::Shim {
             warn!("Nonsensical shim attribute on impl; ignoring");
-            mode = function_body::ProcedureMode::Prove;
+            mode = procedures::Mode::Prove;
         }
 
         let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
         let spec_name = format!("type_of_{}", fname);
 
-        let meta = function_body::ProcedureMeta::new(spec_name, fname, mode);
+        let meta = procedures::Meta::new(spec_name, fname, mode);
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
     }
@@ -1150,7 +1145,7 @@ fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         let ty = ty.instantiate_identity();
 
         let translator = match ty.kind() {
-            ty::TyKind::FnDef(_def, _args) => FunctionTranslator::new(
+            ty::TyKind::FnDef(_def, _args) => signature::TX::new(
                 vcx.env,
                 &meta,
                 proc,
@@ -1160,7 +1155,7 @@ fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
                 &vcx.procedure_registry,
                 &vcx.const_registry,
             ),
-            ty::TyKind::Closure(_, _) => FunctionTranslator::new_closure(
+            ty::TyKind::Closure(_, _) => signature::TX::new_closure(
                 vcx.env,
                 &meta,
                 proc,
@@ -1175,7 +1170,7 @@ fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
         if mode.is_only_spec() {
             // Only generate a spec
-            match translator.and_then(FunctionTranslator::generate_spec) {
+            match translator.and_then(signature::TX::generate_spec) {
                 Ok(spec) => {
                     println!("Successfully generated spec for {}", fname);
                     let spec_ref = vcx.fn_arena.alloc(spec);
@@ -1533,7 +1528,7 @@ where
         &trait_use_arena,
         &fn_spec_arena,
     );
-    let procedure_registry = ProcedureScope::new();
+    let procedure_registry = procedures::Scope::new();
     let shim_string_arena = Arena::new();
     let mut shim_registry = shim_registry::SR::empty(&shim_string_arena);
 
@@ -1574,7 +1569,7 @@ where
         coq_path_prefix: path_prefix,
         shim_registry,
         dune_package: package,
-        const_registry: ConstScope::empty(),
+        const_registry: consts::Scope::empty(),
         trait_impls: HashMap::new(),
         fn_arena: &fn_spec_arena,
     };
