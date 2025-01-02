@@ -29,7 +29,7 @@ use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructF
 use crate::traits::{self, registry};
 use crate::types::scope;
 use crate::types::tyvars::*;
-use crate::utils;
+use crate::{attrs, base, search};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -285,7 +285,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    return Ok(format!("ulft_{}", utils::strip_coq_ident(name)));
+                    return Ok(format!("ulft_{}", base::strip_coq_ident(name)));
                 }
                 return Err(TranslationError::UnknownEarlyRegion(*region));
             },
@@ -954,14 +954,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let struct_def_init = self.struct_arena.alloc(OnceCell::new());
 
         let tcx = self.env.tcx();
-        let struct_name = utils::strip_coq_ident(&ty.ident(tcx).to_string());
+        let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
 
         self.variant_registry
             .borrow_mut()
             .insert(ty.def_id, (struct_name, struct_def_init, ty, false, None));
 
         let translate_adt = || {
-            let struct_name = utils::strip_coq_ident(&ty.ident(tcx).to_string());
+            let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
             let (variant_def, invariant_def) =
                 self.make_adt_variant(&struct_name, ty, adt, AdtState::new(&mut deps, &scope, &param_env))?;
 
@@ -1021,10 +1021,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let expect_refinement;
         let mut invariant_spec;
-        if utils::has_tool_attr(outer_attrs, "refined_by") {
-            let outer_attrs = utils::filter_tool_attrs(outer_attrs);
+        if attrs::has_tool_attr(outer_attrs, "refined_by") {
+            let outer_attrs = attrs::filter_for_tool(outer_attrs);
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(adt_deps.scope);
-            let ty_name = utils::strip_coq_ident(format!("{}_inv_t", struct_name).as_str());
+            let ty_name = base::strip_coq_ident(format!("{}_inv_t", struct_name).as_str());
             let res = spec_parser
                 .parse_invariant_spec(&ty_name, &outer_attrs)
                 .map_err(TranslationError::FatalError)?;
@@ -1043,7 +1043,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let f_name = f.ident(tcx).to_string();
 
             let attrs = self.env.get_attributes(f.did);
-            let attrs = utils::filter_tool_attrs(attrs);
+            let attrs = attrs::filter_for_tool(attrs);
 
             let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
             let mut ty = self.translate_type_in_state(
@@ -1176,7 +1176,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
-        let lookup_did = utils::try_resolve_did(self.env.tcx(), path);
+        let lookup_did = search::try_resolve_did(self.env.tcx(), path);
         if let Some(lookup_did) = lookup_did {
             if lookup_did == did {
                 return true;
@@ -1286,7 +1286,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let enum_def_init = self.enum_arena.alloc(OnceCell::new());
 
         // TODO: currently a hack, I don't know how to query the name properly
-        let enum_name = utils::strip_coq_ident(format!("{:?}", def).as_str());
+        let enum_name = base::strip_coq_ident(format!("{:?}", def).as_str());
 
         // first thing: figure out the generics we are using here.
         // we need to search all of the variant types for that.
@@ -1315,7 +1315,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // now generate the variant
                 let struct_def_init = self.struct_arena.alloc(OnceCell::new());
 
-                let struct_name = utils::strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
+                let struct_name = base::strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
                 self.variant_registry
                     .borrow_mut()
                     .insert(v.def_id, (struct_name.clone(), &*struct_def_init, v, true, None));
@@ -1334,7 +1334,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 // also remember the attributes for additional processing
                 let outer_attrs = self.env.get_attributes(v.def_id);
-                let outer_attrs = utils::filter_tool_attrs(outer_attrs);
+                let outer_attrs = attrs::filter_for_tool(outer_attrs);
                 variant_attrs.push(outer_attrs);
 
                 // finalize the definition
@@ -1368,7 +1368,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 enum_spec = spec;
             } else if self.env.has_tool_attribute(def.did(), "refined_by") {
                 let attributes = self.env.get_attributes(def.did());
-                let attributes = utils::filter_tool_attrs(attributes);
+                let attributes = attrs::filter_for_tool(attributes);
 
                 let mut parser = VerboseEnumSpecParser::new(&scope);
 
@@ -1398,7 +1398,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             // now build the enum itself
             for v in def.variants() {
                 let (variant_ref, _) = self.lookup_adt_variant(v.def_id)?;
-                let variant_name = utils::strip_coq_ident(&v.ident(tcx).to_string());
+                let variant_name = base::strip_coq_ident(&v.ident(tcx).to_string());
                 let discriminant = discrs[&variant_name];
                 enum_builder.add_variant(&variant_name, variant_ref, discriminant);
             }
@@ -1608,7 +1608,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                             .env
                             .get_assoc_item_name(alias_ty.def_id)
                             .ok_or(traits::Error::NotAnAssocType(alias_ty.def_id))?;
-                        let assoc_type = trait_use.make_assoc_type_use(&utils::strip_coq_ident(&type_name));
+                        let assoc_type = trait_use.make_assoc_type_use(&base::strip_coq_ident(&type_name));
 
                         info!("Resolved projection to {assoc_type:?}");
 

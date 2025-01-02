@@ -9,6 +9,7 @@
 #![feature(let_chains)]
 #![feature(rustc_private)]
 mod arg_folder;
+mod attrs;
 mod base;
 mod checked_op_analysis;
 mod data;
@@ -17,6 +18,7 @@ mod force_matches_macro;
 mod function_body;
 mod inclusion_tracker;
 mod regions;
+mod search;
 mod shims;
 mod spec_parsers;
 mod traits;
@@ -124,7 +126,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let is_method = self.env.tcx().impl_of_method(did).is_some();
         let interned_path = self.get_path_for_shim(did);
 
-        let name = utils::strip_coq_ident(&self.env.get_item_name(did));
+        let name = base::strip_coq_ident(&self.env.get_item_name(did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
         Some(shim_registry::FunctionShim {
@@ -193,7 +195,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 };
 
                 let method_ident = ident.as_str().to_owned();
-                let name = utils::strip_coq_ident(&self.env.get_item_name(did));
+                let name = base::strip_coq_ident(&self.env.get_item_name(did));
 
                 trace!("leave make_shim_trait_method_entry (success)");
                 Some(shim_registry::TraitMethodImplShim {
@@ -296,7 +298,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
             // only export public items
             let interned_path = self.get_path_for_shim(did);
-            let name = utils::strip_coq_ident(&self.env.get_item_name(did));
+            let name = base::strip_coq_ident(&self.env.get_item_name(did));
 
             info!("Found adt path {:?} for did {:?} with name {:?}", interned_path, did, name);
 
@@ -913,9 +915,9 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = if shim.is_method {
-            utils::try_resolve_method_did(vcx.env.tcx(), &shim.path)
+            search::try_resolve_method_did(vcx.env.tcx(), &shim.path)
         } else {
-            utils::try_resolve_did(vcx.env.tcx(), &shim.path)
+            search::try_resolve_did(vcx.env.tcx(), &shim.path)
         };
 
         match did {
@@ -936,7 +938,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     }
 
     for shim in vcx.shim_registry.get_adt_shims() {
-        let Some(did) = utils::try_resolve_did(vcx.env.tcx(), &shim.path) else {
+        let Some(did) = search::try_resolve_did(vcx.env.tcx(), &shim.path) else {
             println!("Warning: cannot find defid for shim {:?}, skipping", shim.path);
             continue;
         };
@@ -956,7 +958,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     }
 
     for shim in vcx.shim_registry.get_trait_shims() {
-        if let Some(did) = utils::try_resolve_did(vcx.env.tcx(), &shim.path) {
+        if let Some(did) = search::try_resolve_did(vcx.env.tcx(), &shim.path) {
             let assoc_tys = vcx.trait_registry.get_associated_type_names(did);
             let spec = radium::LiteralTraitSpec {
                 assoc_tys,
@@ -994,7 +996,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             continue;
         };
 
-        let trait_impl_did = utils::try_resolve_trait_impl_did(vcx.env.tcx(), trait_did, &args, for_type);
+        let trait_impl_did = search::try_resolve_trait_impl_did(vcx.env.tcx(), trait_did, &args, for_type);
 
         let Some(did) = trait_impl_did else {
             println!(
@@ -1056,19 +1058,19 @@ fn get_most_restrictive_function_mode(
     let attrs = vcx.env.get_attributes_of_function(did, &propagate_method_attr_from_impl);
 
     // check if this is a purely spec function; if so, skip.
-    if utils::has_tool_attr_filtered(attrs.as_slice(), "shim") {
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
         return function_body::ProcedureMode::Shim;
     }
 
-    if utils::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
         return function_body::ProcedureMode::TrustMe;
     }
 
-    if utils::has_tool_attr_filtered(attrs.as_slice(), "only_spec") {
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "only_spec") {
         return function_body::ProcedureMode::OnlySpec;
     }
 
-    if utils::has_tool_attr_filtered(attrs.as_slice(), "ignore") {
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "ignore") {
         info!("Function {:?} will be ignored", did);
         return function_body::ProcedureMode::Ignore;
     }
@@ -1086,7 +1088,7 @@ fn register_functions<'tcx>(
         if mode == function_body::ProcedureMode::Shim {
             // TODO better error message
             let attrs = vcx.env.get_attributes(f.to_def_id());
-            let v = utils::filter_tool_attrs(attrs);
+            let v = attrs::filter_for_tool(attrs);
             let annot = spec_parsers::get_shim_attrs(v.as_slice()).unwrap();
 
             info!(
@@ -1114,7 +1116,7 @@ fn register_functions<'tcx>(
             mode = function_body::ProcedureMode::Prove;
         }
 
-        let fname = utils::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
+        let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
         let spec_name = format!("type_of_{}", fname);
 
         let meta = function_body::ProcedureMeta::new(spec_name, fname, mode);
@@ -1273,7 +1275,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
     for s in &statics {
         let ty: ty::EarlyBinder<ty::Ty<'tcx>> = vcx.env.tcx().type_of(s.to_def_id());
 
-        let const_attrs = utils::filter_tool_attrs(vcx.env.get_attributes(s.to_def_id()));
+        let const_attrs = attrs::filter_for_tool(vcx.env.get_attributes(s.to_def_id()));
         if const_attrs.is_empty() {
             continue;
         }
@@ -1282,7 +1284,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
         let scope = scope::Params::default();
         match vcx.type_translator.translate_type_in_scope(&scope, ty).map_err(|x| format!("{:?}", x)) {
             Ok(translated_ty) => {
-                let _full_name = utils::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
+                let _full_name = base::strip_coq_ident(&vcx.env.get_item_name(s.to_def_id()));
 
                 let mut const_parser = VerboseConstAttrParser::new();
                 let const_spec = const_parser.parse_const_attrs(*s, &const_attrs)?;
@@ -1377,7 +1379,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             }
 
             // make names for the spec and inclusion proof
-            let base_name = utils::strip_coq_ident(&vcx.env.get_item_name(did));
+            let base_name = base::strip_coq_ident(&vcx.env.get_item_name(did));
             let spec_name = format!("{base_name}_spec");
             let spec_params_name = format!("{base_name}_spec_params");
             let spec_attrs_name = format!("{base_name}_spec_attrs");
@@ -1459,7 +1461,7 @@ pub fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId
     info!("collected modules: {:?}", modules);
 
     for m in &modules {
-        let module_attrs = utils::filter_tool_attrs(env.get_attributes(m.to_def_id()));
+        let module_attrs = attrs::filter_for_tool(env.get_attributes(m.to_def_id()));
         let mut module_parser = VerboseModuleAttrParser::new();
         let module_spec = module_parser.parse_module_attrs(*m, &module_attrs)?;
         attrs.insert(*m, module_spec);
@@ -1478,7 +1480,7 @@ where
 
     // get crate attributes
     let crate_attrs = tcx.hir().krate_attrs();
-    let crate_attrs = utils::filter_tool_attrs(crate_attrs);
+    let crate_attrs = attrs::filter_for_tool(crate_attrs);
     info!("Found crate attributes: {:?}", crate_attrs);
     // parse crate attributes
     let mut crate_parser = VerboseCrateAttrParser::new();

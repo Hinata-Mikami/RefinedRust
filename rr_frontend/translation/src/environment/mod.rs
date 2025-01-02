@@ -32,13 +32,13 @@ use rr_rustc_interface::span::Span;
 use rr_rustc_interface::trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rr_rustc_interface::{ast, span};
 
+use crate::attrs;
 use crate::data::ProcedureDefId;
 use crate::environment::borrowck::facts;
 use crate::environment::collect_closure_defs_visitor::CollectClosureDefsVisitor;
 use crate::environment::collect_prusti_spec_visitor::CollectPrustiSpecVisitor;
 use crate::environment::loops::{PlaceAccess, PlaceAccessKind, ProcedureLoops};
 use crate::environment::procedure::{BasicBlockIndex, Procedure};
-use crate::utils;
 
 /// Facade to the Rust compiler.
 // #[derive(Copy, Clone)]
@@ -211,7 +211,7 @@ impl<'tcx> Environment<'tcx> {
     pub fn has_tool_attribute(&self, def_id: ProcedureDefId, name: &str) -> bool {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
-        utils::has_tool_attr(tcx.get_attrs_unchecked(def_id), name)
+        attrs::has_tool_attr(tcx.get_attrs_unchecked(def_id), name)
     }
 
     /// Find whether the procedure has a particular `[tool]::<name>` attribute; if so, return its
@@ -219,14 +219,14 @@ impl<'tcx> Environment<'tcx> {
     pub fn get_tool_attribute<'a>(&'a self, def_id: ProcedureDefId, name: &str) -> Option<&'a ast::AttrArgs> {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
-        utils::get_tool_attr(tcx.get_attrs_unchecked(def_id), name)
+        attrs::get_tool_attr(tcx.get_attrs_unchecked(def_id), name)
     }
 
     /// Check whether the procedure has any `[tool]` attribute.
     pub fn has_any_tool_attribute(&self, def_id: ProcedureDefId) -> bool {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
-        utils::has_any_tool_attr(tcx.get_attrs_unchecked(def_id))
+        attrs::has_any_tool_attr(tcx.get_attrs_unchecked(def_id))
     }
 
     /// Get the attributes of an item (e.g. procedures).
@@ -245,11 +245,11 @@ impl<'tcx> Environment<'tcx> {
         F: for<'a> Fn(&'a ast::ast::AttrItem) -> bool,
     {
         let attrs = self.get_attributes(did);
-        let mut filtered_attrs = utils::filter_tool_attrs(attrs);
+        let mut filtered_attrs = attrs::filter_for_tool(attrs);
         // also add selected attributes from the surrounding impl
         if let Some(impl_did) = self.tcx().impl_of_method(did) {
             let impl_attrs = self.get_attributes(impl_did);
-            let filtered_impl_attrs = utils::filter_tool_attrs(impl_attrs);
+            let filtered_impl_attrs = attrs::filter_for_tool(impl_attrs);
             filtered_attrs.extend(filtered_impl_attrs.into_iter().filter(|x| propagate_from_impl(x)));
         }
 

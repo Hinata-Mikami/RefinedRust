@@ -24,7 +24,7 @@ use crate::traits::resolution;
 use crate::types::translator::*;
 use crate::types::tyvars::*;
 use crate::types::{self, scope};
-use crate::{regions, traits, utils};
+use crate::{base, regions, traits};
 
 /// Information we compute when calling a function from another function.
 /// Determines how to specialize the callee's generics in our spec assumption.
@@ -257,7 +257,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // get name of the method
         let method_name = env.get_assoc_item_name(trait_method_did).unwrap();
         let mangled_method_name =
-            types::mangle_name_with_args(&utils::strip_coq_ident(&method_name), method_args.as_slice());
+            types::mangle_name_with_args(&base::strip_coq_ident(&method_name), method_args.as_slice());
 
         let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
 

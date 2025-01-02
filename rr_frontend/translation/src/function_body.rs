@@ -35,7 +35,7 @@ use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
 };
 use crate::traits::{registry, resolution};
-use crate::{regions, traits, types, utils};
+use crate::{base, regions, search, traits, types};
 
 /// Get the syntypes of function arguments for a procedure call.
 pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
@@ -950,7 +950,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
 
                 match *r {
                     ty::RegionKind::ReEarlyBound(r) => {
-                        let name = utils::strip_coq_ident(r.name.as_str());
+                        let name = base::strip_coq_ident(r.name.as_str());
                         universal_lifetimes.insert(next_id, format!("ulft_{}", name));
                         lifetime_names.insert(name, next_id);
                     },
@@ -981,7 +981,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
 
             match r {
                 ty::BoundRegionKind::BrNamed(_, sym) => {
-                    let mut region_name = utils::strip_coq_ident(sym.as_str());
+                    let mut region_name = base::strip_coq_ident(sym.as_str());
                     if region_name == "_" {
                         region_name = next_id.as_usize().to_string();
                         universal_lifetimes.insert(next_id, format!("ulft_{}", region_name));
@@ -1351,7 +1351,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
                     .trait_registry
                     .lookup_trait(trait_did)
                     .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
-                let fn_name = utils::strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
+                let fn_name = base::strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
                 let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
                 //self.trait_registry.lookup_impl(impl_did)?;
@@ -1403,7 +1403,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> FunctionTranslator<'a, 'def, 'tcx> {
     /// `used_names` keeps track of the Rust source code names that have already been used.
     fn make_local_name(mir_body: &Body<'tcx>, local: Local, used_names: &mut HashSet<String>) -> String {
         if let Some(mir_name) = Self::find_name_for_local(mir_body, local, used_names) {
-            let name = utils::strip_coq_ident(&mir_name);
+            let name = base::strip_coq_ident(&mir_name);
             used_names.insert(mir_name);
             name
         } else {
@@ -2159,7 +2159,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
         };
 
         if let Some(panic_id_std) =
-            utils::try_resolve_did(self.env.tcx(), &["std", "panicking", "begin_panic"])
+            search::try_resolve_did(self.env.tcx(), &["std", "panicking", "begin_panic"])
         {
             if panic_id_std == *did {
                 return true;
@@ -2168,7 +2168,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
             warn!("Failed to determine DefId of std::panicking::begin_panic");
         }
 
-        if let Some(panic_id_core) = utils::try_resolve_did(self.env.tcx(), &["core", "panicking", "panic"]) {
+        if let Some(panic_id_core) = search::try_resolve_did(self.env.tcx(), &["core", "panicking", "panic"])
+        {
             if panic_id_core == *did {
                 return true;
             }
@@ -2183,7 +2184,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> BodyTranslator<'a, 'def, 'tcx> {
     #[allow(clippy::unused_self)]
     const fn register_drop_shim_for(&self, _ty: Ty<'tcx>) {
         // TODO!
-        //let drop_in_place_did: DefId = utils::try_resolve_did(self.env.tcx(), &["std", "ptr",
+        //let drop_in_place_did: DefId = search::try_resolve_did(self.env.tcx(), &["std", "ptr",
         // "drop_in_place"]).unwrap();
 
         //let x: ty::InstanceDef = ty::InstanceDef::DropGlue(drop_in_place_did, Some(ty));

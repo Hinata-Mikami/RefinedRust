@@ -19,7 +19,7 @@ use rr_rustc_interface::middle::ty;
 pub use scope::{generate_args_inst_key, GenericsKey};
 pub use translator::{AdtState, CalleeState, FunctionState, STInner, ST, TX};
 
-use crate::utils;
+use crate::base;
 
 /// Mangle a name by appending type parameters to it.
 pub fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
@@ -28,7 +28,7 @@ pub fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
     for arg in args {
         mangled_name.push_str(format!("_{}", arg).as_str());
     }
-    utils::strip_coq_ident(&mangled_name)
+    base::strip_coq_ident(&mangled_name)
 }
 
 /// Mangle a name by appending generic args to it.
@@ -36,7 +36,7 @@ pub fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String 
     let mut mangled_base = name.to_owned();
     for arg in args {
         if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-            write!(mangled_base, "_{}", utils::strip_coq_ident(&format!("{ty}"))).unwrap();
+            write!(mangled_base, "_{}", base::strip_coq_ident(&format!("{ty}"))).unwrap();
         }
     }
     mangled_base

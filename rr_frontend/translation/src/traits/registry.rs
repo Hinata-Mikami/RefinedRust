@@ -24,7 +24,7 @@ use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
 use crate::types::scope;
-use crate::{traits, types, utils};
+use crate::{attrs, base, traits, types};
 
 pub struct TR<'tcx, 'def> {
     /// environment
@@ -185,10 +185,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
         param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
 
-        let trait_name = utils::strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
+        let trait_name = base::strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
 
         // parse trait spec
-        let trait_attrs = utils::filter_tool_attrs(self.env.get_attributes(did.into()));
+        let trait_attrs = attrs::filter_for_tool(self.env.get_attributes(did.into()));
         // As different attributes of the spec may depend on each other, we need to pass a closure
         // determining under which Coq name we are going to introduce them
         // Note: This needs to match up with `radium::LiteralTraitSpec.make_spec_attr_name`!
@@ -219,7 +219,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 // get function name
                 let method_name =
                     self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let method_name = utils::strip_coq_ident(&method_name);
+                let method_name = base::strip_coq_ident(&method_name);
 
                 let name = format!("{trait_name}_{method_name}");
                 let spec_name = format!("{name}_base_spec");
@@ -241,7 +241,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 // get name
                 let type_name =
                     self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let type_name = utils::strip_coq_ident(&type_name);
+                let type_name = base::strip_coq_ident(&type_name);
                 let lit = radium::LiteralTyParam::new(&type_name, &type_name);
                 assoc_types.push(lit);
             }
@@ -563,7 +563,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         param_scope.add_param_env(trait_impl_did, self.env, self.type_translator, self)?;
 
         // parse specification
-        let trait_impl_attrs = utils::filter_tool_attrs(self.env.get_attributes(trait_impl_did));
+        let trait_impl_attrs = attrs::filter_for_tool(self.env.get_attributes(trait_impl_did));
         let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
         let impl_spec = attr_parser
             .parse_trait_impl_attrs(&trait_impl_attrs)
@@ -660,7 +660,7 @@ impl<'def> GenericTraitUse<'def> {
             let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
-            let lit = trait_use.make_assoc_type_use(&utils::strip_coq_ident(&ty_name));
+            let lit = trait_use.make_assoc_type_use(&base::strip_coq_ident(&ty_name));
             assoc_tys.push(lit);
         }
         assoc_tys

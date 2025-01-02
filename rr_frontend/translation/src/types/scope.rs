@@ -15,6 +15,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable;
 
+use crate::base;
 use crate::base::*;
 use crate::environment::Environment;
 use crate::spec_parsers::parse_utils::ParamLookup;
@@ -22,7 +23,6 @@ use crate::traits::registry::GenericTraitUse;
 use crate::traits::{self, registry};
 use crate::types::translator::*;
 use crate::types::tyvars::*;
-use crate::utils::strip_coq_ident;
 
 /// Key used for resolving early-bound parameters for function calls.
 /// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
@@ -178,7 +178,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             if let Some(r) = p.as_region() {
                 if let Some(name) = r.get_name() {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(strip_coq_ident(name.as_str())));
+                    scope.push(Param::Region(base::strip_coq_ident(name.as_str())));
                 } else {
                     let name = format!("ulft_{region_count}");
                     region_count += 1;
@@ -187,7 +187,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             } else if let Some(ty) = p.as_type() {
                 if let ty::TyKind::Param(x) = ty.kind() {
                     ty_names.insert(x.name.as_str().to_owned(), scope.len());
-                    let name = strip_coq_ident(x.name.as_str());
+                    let name = base::strip_coq_ident(x.name.as_str());
 
                     let lit = if let Some((tcx, of_did)) = with_origin {
                         let origin = Self::determine_origin_of_param(of_did, tcx, *x);
@@ -494,7 +494,7 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
         let mut lft_names = HashMap::new();
 
         for p in x {
-            let name = strip_coq_ident(p.name.as_str());
+            let name = base::strip_coq_ident(p.name.as_str());
             match p.kind {
                 ty::GenericParamDefKind::Const { .. } => {
                     scope.push(Param::Const);

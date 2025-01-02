@@ -18,7 +18,7 @@ use rr_rustc_interface::{hir, middle, span};
 use serde::{Deserialize, Serialize};
 
 use crate::spec_parsers::get_export_as_attr;
-use crate::{types, utils, Environment};
+use crate::{attrs, search, types, Environment};
 
 /// An item path that receives generic arguments.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct PathWithArgs {
 
 impl PathWithArgs {
     pub fn to_item<'tcx>(&self, tcx: ty::TyCtxt<'tcx>) -> Option<(DefId, Vec<Option<ty::GenericArg<'tcx>>>)> {
-        let did = utils::try_resolve_did(tcx, self.path.as_slice())?;
+        let did = search::try_resolve_did(tcx, self.path.as_slice())?;
 
         let mut ty_args = Vec::new();
 
@@ -208,8 +208,8 @@ fn extract_def_path(path: &hir::definitions::DefPath) -> Vec<String> {
 pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
     let attrs = env.get_attributes(did);
 
-    if utils::has_tool_attr(attrs, "export_as") {
-        let filtered_attrs = utils::filter_tool_attrs(attrs);
+    if attrs::has_tool_attr(attrs, "export_as") {
+        let filtered_attrs = attrs::filter_for_tool(attrs);
 
         return get_export_as_attr(filtered_attrs.as_slice()).unwrap();
     }
@@ -218,8 +218,8 @@ pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
     if let Some(impl_did) = env.tcx().impl_of_method(did) {
         let attrs = env.get_attributes(impl_did);
 
-        if utils::has_tool_attr(attrs, "export_as") {
-            let filtered_attrs = utils::filter_tool_attrs(attrs);
+        if attrs::has_tool_attr(attrs, "export_as") {
+            let filtered_attrs = attrs::filter_for_tool(attrs);
             let mut path_prefix = get_export_as_attr(filtered_attrs.as_slice()).unwrap();
 
             // push the last component of this path
