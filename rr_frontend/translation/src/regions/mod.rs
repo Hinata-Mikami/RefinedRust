@@ -8,6 +8,8 @@
 
 mod arg_folder;
 pub mod assignment;
+pub mod calls;
+pub mod composite;
 pub mod inclusion_tracker;
 pub mod init;
 
