@@ -39,9 +39,11 @@ impl<'def> Scope<'def> {
     }
 
     pub fn get_static<'tcx>(&self, did: DefId) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {
-        self.statics.get(&did).ok_or_else(|| TranslationError::UnknownError(format!(
-            "Did not find a registered static for did {did:?}; registered: {:?}",
-            self.statics
-        )))
+        self.statics.get(&did).ok_or_else(|| {
+            TranslationError::UnknownError(format!(
+                "Did not find a registered static for did {did:?}; registered: {:?}",
+                self.statics
+            ))
+        })
     }
 }
