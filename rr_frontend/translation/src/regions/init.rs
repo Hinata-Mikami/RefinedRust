@@ -6,21 +6,18 @@
 
 //! Provides functionality for generating initial lifetime constraints.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
-use derive_more::{Constructor, Debug};
 use log::{info, warn};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
 use rr_rustc_interface::middle::mir::{BasicBlock, Location};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyCtxt, TyKind, TypeFoldable};
-use ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::Ty;
 
-use crate::base::{self, Region};
+use crate::base;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
+use crate::environment::{polonius_info, Environment};
 use crate::regions::arg_folder::ty_instantiate;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::EarlyLateRegionMap;

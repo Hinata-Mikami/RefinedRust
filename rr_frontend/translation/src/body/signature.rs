@@ -26,7 +26,7 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
-use crate::body::translator;
+use crate::body::translation;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
@@ -532,7 +532,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         mut self,
         spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
-        let translator = translator::TX::new(
+        let translator = translation::TX::new(
             self.env,
             self.procedure_registry,
             self.const_registry,

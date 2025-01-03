@@ -6,40 +6,35 @@
 
 //! Provides functionality for generating lifetime annotations for calls.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
-use derive_more::{Constructor, Debug};
+use derive_more::Debug;
 use log::{info, warn};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{BasicBlock, BorrowKind, Location, Rvalue};
+use rr_rustc_interface::middle::mir::Location;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyCtxt, TyKind, TypeFoldable, TypeFolder};
-use ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::TypeFolder;
 
-use crate::base::{self, Region};
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::regions::arg_folder::ty_instantiate;
-use crate::regions::inclusion_tracker::{self, InclusionTracker};
+use crate::environment::{polonius_info, Environment};
+use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::EarlyLateRegionMap;
-use crate::{regions, types};
+use crate::{base, regions, types};
 
 // solve the constraints for the new_regions
 // we first identify what kinds of constraints these new regions are subject to
 #[derive(Debug)]
 pub enum CallRegionKind {
     // this is just an intersection of local regions.
-    Intersection(HashSet<Region>),
+    Intersection(HashSet<base::Region>),
     // this is equal to a specific region
-    EqR(Region),
+    EqR(base::Region),
 }
 
 pub struct CallRegions {
-    pub early_regions: Vec<Region>,
-    pub late_regions: Vec<Region>,
-    pub classification: HashMap<Region, CallRegionKind>,
+    pub early_regions: Vec<base::Region>,
+    pub late_regions: Vec<base::Region>,
+    pub classification: HashMap<base::Region, CallRegionKind>,
 }
 
 // `substs` are the substitutions for the early-bound regions
@@ -108,7 +103,7 @@ pub fn compute_call_regions<'tcx>(
         }
     }
     // first sort this to enable cycle resolution
-    let mut new_regions_sorted: Vec<Region> = new_regions.iter().copied().collect();
+    let mut new_regions_sorted: Vec<base::Region> = new_regions.iter().copied().collect();
     new_regions_sorted.sort();
 
     // identify the late-bound regions

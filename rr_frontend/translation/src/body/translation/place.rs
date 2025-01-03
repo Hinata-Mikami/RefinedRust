@@ -1,0 +1,139 @@
+// © 2023, The RefinedRust Developers and Contributors
+//
+// This Source Code Form is subject to the terms of the BSD-3-clause License.
+// If a copy of the BSD-3-clause license was not distributed with this
+// file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
+
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+
+use log::{info, trace, warn};
+use radium::coq;
+use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
+use rr_rustc_interface::middle::mir::tcx::PlaceTy;
+use rr_rustc_interface::middle::mir::{
+    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
+    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
+    TerminatorKind, UnOp, VarDebugInfoContents,
+};
+use rr_rustc_interface::middle::ty::fold::TypeFolder;
+use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
+use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::{abi, ast, middle};
+use typed_arena::Arena;
+
+use super::TX;
+use crate::base::*;
+use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
+use crate::environment::borrowck::facts;
+use crate::environment::polonius_info::PoloniusInfo;
+use crate::environment::procedure::Procedure;
+use crate::environment::{dump_borrowck_info, polonius_info, Environment};
+use crate::regions::inclusion_tracker::InclusionTracker;
+use crate::spec_parsers::parse_utils::ParamLookup;
+use crate::spec_parsers::verbose_function_spec_parser::{
+    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
+};
+use crate::traits::{registry, resolution};
+use crate::{base, consts, procedures, regions, search, traits, types};
+
+impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    /// Translate a place to a Caesium lvalue.
+    pub(super) fn translate_place(
+        &mut self,
+        pl: &Place<'tcx>,
+    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+        // Get the type of the underlying local. We will use this to
+        // get the necessary layout information for dereferencing
+        let mut cur_ty = self.get_type_of_local(pl.local).map(PlaceTy::from_ty)?;
+
+        let local_name = self
+            .variable_map
+            .get(&pl.local)
+            .ok_or_else(|| TranslationError::UnknownVar(format!("{:?}", pl.local)))?;
+
+        let mut acc_expr = radium::Expr::Var(local_name.to_string());
+
+        // iterate in evaluation order
+        for it in pl.projection {
+            match &it {
+                ProjectionElem::Deref => {
+                    // use the type of the dereferencee
+                    let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
+                    acc_expr = radium::Expr::Deref {
+                        ot: st.into(),
+                        e: Box::new(acc_expr),
+                    };
+                },
+                ProjectionElem::Field(f, _) => {
+                    // `t` is the type of the field we are accessing!
+                    let lit = self.ty_translator.generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
+                    // TODO: does not do the right thing for accesses to fields of zero-sized objects.
+                    let struct_sls = lit.map_or(radium::SynType::Unit, |x| x.generate_raw_syn_type_term());
+                    let name = self.ty_translator.translator.get_field_name_of(
+                        *f,
+                        cur_ty.ty,
+                        cur_ty.variant_index.map(abi::VariantIdx::as_usize),
+                    )?;
+
+                    acc_expr = radium::Expr::FieldOf {
+                        e: Box::new(acc_expr),
+                        name,
+                        sls: struct_sls.to_string(),
+                    };
+                },
+                ProjectionElem::Index(_v) => {
+                    //TODO
+                    return Err(TranslationError::UnsupportedFeature {
+                        description: "places: implement index access".to_owned(),
+                    });
+                },
+                ProjectionElem::ConstantIndex { .. } => {
+                    //TODO
+                    return Err(TranslationError::UnsupportedFeature {
+                        description: "places: implement const index access".to_owned(),
+                    });
+                },
+                ProjectionElem::Subslice { .. } => {
+                    return Err(TranslationError::UnsupportedFeature {
+                        description: "places: implement subslicing".to_owned(),
+                    });
+                },
+                ProjectionElem::Downcast(_, variant_idx) => {
+                    info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
+                    if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind() {
+                        if def.is_enum() {
+                            let enum_use = self.ty_translator.generate_enum_use(*def, args.iter())?;
+                            let els = enum_use.generate_raw_syn_type_term();
+
+                            let variant_name = types::TX::get_variant_name_of(cur_ty.ty, *variant_idx)?;
+
+                            acc_expr = radium::Expr::EnumData {
+                                els: els.to_string(),
+                                variant: variant_name,
+                                e: Box::new(acc_expr),
+                            }
+                        } else {
+                            return Err(TranslationError::UnknownError(
+                                "places: ADT downcasting on non-enum type".to_owned(),
+                            ));
+                        }
+                    } else {
+                        return Err(TranslationError::UnknownError(
+                            "places: ADT downcasting on non-enum type".to_owned(),
+                        ));
+                    }
+                },
+                ProjectionElem::OpaqueCast(_) => {
+                    return Err(TranslationError::UnsupportedFeature {
+                        description: "places: implement opaque casts".to_owned(),
+                    });
+                },
+            };
+            // update cur_ty
+            cur_ty = cur_ty.projection_ty(self.env.tcx(), it);
+        }
+        info!("translating place {:?} to {:?}", pl, acc_expr);
+        Ok(acc_expr)
+    }
+}

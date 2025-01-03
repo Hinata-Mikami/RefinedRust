@@ -37,7 +37,7 @@ use crate::traits::{registry, resolution};
 use crate::{base, consts, procedures, regions, search, traits, types};
 
 pub mod signature;
-pub mod translator;
+mod translation;
 
 /// Get the syntypes of function arguments for a procedure call.
 pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
@@ -96,22 +96,6 @@ pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     }
 
     Ok(syntypes)
-}
-
-// solve the constraints for the new_regions
-// we first identify what kinds of constraints these new regions are subject to
-#[derive(Debug)]
-enum CallRegionKind {
-    // this is just an intersection of local regions.
-    Intersection(HashSet<Region>),
-    // this is equal to a specific region
-    EqR(Region),
-}
-
-struct CallRegions {
-    pub early_regions: Vec<Region>,
-    pub late_regions: Vec<Region>,
-    pub classification: HashMap<Region, CallRegionKind>,
 }
 
 /// A scope of trait attributes mapping to Coq names to be used in a function's spec

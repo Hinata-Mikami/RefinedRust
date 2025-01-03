@@ -15,21 +15,15 @@ pub mod init;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use arg_folder::ty_instantiate;
 use derive_more::{Constructor, Debug};
 use log::{info, warn};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{BasicBlock, Location};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyCtxt, TyKind, TypeFoldable};
+use rr_rustc_interface::middle::ty::TyCtxt;
 use ty::TypeSuperFoldable;
 
-use crate::base::{self, Region};
+use crate::base::Region;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::regions::inclusion_tracker::InclusionTracker;
+use crate::environment::polonius_info;
 
 /// Collect all the regions appearing in a type.
 /// Data structure that maps early and late region indices inside functions to Polonius regions.

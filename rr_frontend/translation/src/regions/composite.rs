@@ -6,25 +6,17 @@
 
 //! Provides functionality for generating lifetime annotations for composite expressions.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashSet;
 
-use derive_more::{Constructor, Debug};
 use log::{info, warn};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{BasicBlock, BorrowKind, Location, Rvalue};
+use rr_rustc_interface::middle::mir::Location;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyCtxt, TyKind, TypeFoldable, TypeFolder};
-use ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::{Ty, TypeFolder};
 
-use crate::base::{self, Region};
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::regions::arg_folder::ty_instantiate;
-use crate::regions::inclusion_tracker::{self, InclusionTracker};
-use crate::regions::EarlyLateRegionMap;
-use crate::{regions, types};
+use crate::environment::Environment;
+use crate::regions::inclusion_tracker::InclusionTracker;
+use crate::types;
 
 /// On creating a composite value (e.g. a struct or enum), the composite value gets its own
 /// Polonius regions We need to map these regions properly to the respective lifetimes.
