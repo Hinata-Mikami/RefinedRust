@@ -12,10 +12,9 @@ mod place;
 mod rvalue;
 mod terminator;
 
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
-use log::{info, trace, warn};
-use radium::coq;
+use log::info;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
@@ -35,14 +34,10 @@ use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
+use crate::environment::{polonius_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
-};
-use crate::traits::{registry, resolution};
-use crate::{base, consts, procedures, regions, search, traits, types};
+use crate::traits::registry;
+use crate::{base, consts, procedures, regions, types};
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `radium::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.

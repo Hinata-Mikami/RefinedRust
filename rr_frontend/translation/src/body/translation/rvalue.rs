@@ -4,9 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
-
-use log::{info, trace, warn};
+use log::{info, trace};
 use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::index::IndexVec;
@@ -21,22 +19,10 @@ use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, middle};
-use typed_arena::Arena;
 
 use super::TX;
 use crate::base::*;
-use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
-use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::procedure::Procedure;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
-};
-use crate::traits::{registry, resolution};
-use crate::{base, consts, procedures, regions, search, traits, types};
+use crate::regions;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate an aggregate expression.
