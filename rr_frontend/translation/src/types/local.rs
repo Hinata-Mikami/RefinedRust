@@ -171,7 +171,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Format the Coq representation of an atomic region.
     pub fn format_atomic_region(&self, r: &polonius_info::AtomicRegion) -> String {
         let scope = self.scope.borrow();
-        regions::format_atomic_region_direct(r, Some(&scope.lifetime_scope))
+        scope.lifetime_scope.translate_atomic_region(r)
     }
 
     /// Normalize a type in the given function environment.

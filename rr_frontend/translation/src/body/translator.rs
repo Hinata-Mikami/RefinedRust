@@ -22,14 +22,13 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, middle};
 use typed_arena::Arena;
 
-use crate::arg_folder::*;
 use crate::base::*;
-use crate::checked_op_analysis::CheckedOpLocalAnalysis;
+use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::inclusion_tracker::*;
+use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
@@ -267,7 +266,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let return_name = opt_return_name?;
 
         // add lifetime parameters to the map
-        let initial_constraints = Self::get_initial_universal_arg_constraints(
+        let initial_constraints = regions::init::get_initial_universal_arg_constraints(
             info,
             &mut inclusion_tracker,
             inputs,
@@ -299,70 +298,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             trait_registry,
             collected_statics: HashSet::new(),
         })
-    }
-
-    /// Determine initial constraints between universal regions and local place regions.
-    /// Returns an initial mapping for the name _map that initializes place regions of arguments
-    /// with universals.
-    fn get_initial_universal_arg_constraints(
-        info: &'a PoloniusInfo<'a, 'tcx>,
-        inclusion_tracker: &mut InclusionTracker<'a, 'tcx>,
-        _sig_args: &[Ty<'tcx>],
-        _local_args: &[Ty<'tcx>],
-    ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-        // Polonius generates a base subset constraint uregion ⊑ pregion.
-        // We turn that into pregion = uregion, as we do strong updates at the top-level.
-        let input_facts = &info.borrowck_in_facts;
-        let subset_base = &input_facts.subset_base;
-
-        let root_location = Location {
-            block: BasicBlock::from_u32(0),
-            statement_index: 0,
-        };
-        let root_point = info.interner.get_point_index(&facts::Point {
-            location: root_location,
-            typ: facts::PointType::Start,
-        });
-
-        // TODO: for nested references, this doesn't really seem to work.
-        // Problem is that we don't have constraints for the mapping of nested references.
-        // Potentially, we should instead just equalize the types
-
-        let mut initial_arg_mapping = Vec::new();
-        for (r1, r2, _) in subset_base {
-            let lft1 = info.mk_atomic_region(*r1);
-            let lft2 = info.mk_atomic_region(*r2);
-
-            let polonius_info::AtomicRegion::Universal(polonius_info::UniversalRegionKind::Local, _) = lft1
-            else {
-                continue;
-            };
-
-            // this is a constraint we care about here, add it
-            if inclusion_tracker.check_inclusion(*r1, *r2, root_point) {
-                continue;
-            }
-
-            inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
-            inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
-
-            assert!(matches!(lft2, polonius_info::AtomicRegion::PlaceRegion(_)));
-
-            initial_arg_mapping.push((lft1, lft2));
-        }
-        initial_arg_mapping
-    }
-
-    fn get_initial_universal_arg_constraints2(
-        sig_args: &[Ty<'tcx>],
-        local_args: &[Ty<'tcx>],
-    ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-        // Polonius generates a base subset constraint uregion ⊑ pregion.
-        // We turn that into pregion = uregion, as we do strong updates at the top-level.
-        assert!(sig_args.len() == local_args.len());
-
-        // TODO: implement a bitypefolder to solve this issue.
-        Vec::new()
     }
 
     /// Generate a string identifier for a Local.
@@ -734,72 +669,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         false
-    }
-
-    fn get_assignment_strong_update_constraints(
-        &mut self,
-        loc: Location,
-    ) -> HashSet<(Region, Region, PointIndex)> {
-        let info = &self.info;
-        let input_facts = &info.borrowck_in_facts;
-        let subset_base = &input_facts.subset_base;
-
-        let mut constraints = HashSet::new();
-        // Polonius subset constraint are spawned for the midpoint
-        let midpoint = self.info.interner.get_point_index(&facts::Point {
-            location: loc,
-            typ: facts::PointType::Mid,
-        });
-
-        // for strong update: emit mutual equalities
-        // TODO: alternative implementation: structurally compare regions in LHS type and RHS type
-        for (s1, s2, point) in subset_base {
-            if *point == midpoint {
-                let lft1 = self.info.mk_atomic_region(*s1);
-                let lft2 = self.info.mk_atomic_region(*s2);
-
-                // We only care about inclusions into a place lifetime.
-                // Moreover, we want to filter out the universal inclusions which are always
-                // replicated at every point.
-                if lft2.is_place() && !lft1.is_universal() {
-                    // take this constraint and the reverse constraint
-                    constraints.insert((*s1, *s2, *point));
-                    //constraints.insert((*s2, *s1, *point));
-                }
-            }
-        }
-        constraints
-    }
-
-    fn get_assignment_weak_update_constraints(
-        &mut self,
-        loc: Location,
-    ) -> HashSet<(Region, Region, PointIndex)> {
-        let info = &self.info;
-        let input_facts = &info.borrowck_in_facts;
-        let subset_base = &input_facts.subset_base;
-
-        let mut constraints = HashSet::new();
-        // Polonius subset constraint are spawned for the midpoint
-        let midpoint = self.info.interner.get_point_index(&facts::Point {
-            location: loc,
-            typ: facts::PointType::Mid,
-        });
-
-        // for weak updates: should mirror the constraints generated by Polonius
-        for (s1, s2, point) in subset_base {
-            if *point == midpoint {
-                // take this constraint
-                // TODO should there be exceptions to this?
-
-                if !self.inclusion_tracker.check_inclusion(*s1, *s2, *point) {
-                    // only add it if it does not hold already, since we will enforce this
-                    // constraint dynamically.
-                    constraints.insert((*s1, *s2, *point));
-                }
-            }
-        }
-        constraints
     }
 
     /// Split the type of a function operand of a call expression to a base type and an instantiation for
@@ -1188,8 +1057,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("call has instantiated type {:?}", inst_sig);
 
         // compute the resulting annotations
-        let (rhs_annots, pre_stmt_annots, post_stmt_annots) =
-            self.get_assignment_annots(loc, destination, output_ty);
+        let lhs_ty = self.get_type_of_place(destination);
+        let lhs_strongly_writeable = !self.check_place_below_reference(destination);
+        let (rhs_annots, pre_stmt_annots, post_stmt_annots) = regions::assignment::get_assignment_annots(
+            self.env,
+            &mut self.inclusion_tracker,
+            &self.ty_translator,
+            loc,
+            lhs_strongly_writeable,
+            lhs_ty,
+            output_ty,
+        );
         info!(
             "assignment annots after call: expr: {:?}, pre-stmt: {:?}, post-stmt: {:?}",
             rhs_annots, pre_stmt_annots, post_stmt_annots
@@ -1515,72 +1393,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Generate an annotation on an expression needed to update the region name map.
-    fn generate_strong_update_annot(&self, ty: PlaceTy<'tcx>) -> Option<radium::Annotation> {
-        let (interesting, tree) = self.generate_strong_update_annot_rec(ty.ty);
-        interesting.then(|| radium::Annotation::GetLftNames(tree))
-    }
-
-    /// Returns a tree for giving names to Coq lifetimes based on RR types.
-    /// The boolean indicates whether the tree is "interesting", i.e. whether it names at least one
-    /// lifetime.
-    fn generate_strong_update_annot_rec(&self, ty: Ty<'tcx>) -> (bool, radium::LftNameTree) {
-        // TODO for now this just handles nested references
-        match ty.kind() {
-            ty::TyKind::Ref(r, ty, _) => match r.kind() {
-                ty::RegionKind::ReVar(r) => {
-                    let name = self.format_region(r);
-                    let (_, ty_tree) = self.generate_strong_update_annot_rec(*ty);
-                    (true, radium::LftNameTree::Ref(name, Box::new(ty_tree)))
-                },
-                _ => {
-                    panic!("generate_strong_update_annot: expected region variable");
-                },
-            },
-            _ => (false, radium::LftNameTree::Leaf),
-        }
-    }
-
-    /// Generate an annotation to adapt the type of `expr` to `target_ty` from type `current_ty` by
-    /// means of shortening lifetimes.
-    fn generate_shortenlft_annot(
-        &self,
-        target_ty: Ty<'tcx>,
-        _current_ty: Ty<'tcx>,
-        mut expr: radium::Expr,
-    ) -> radium::Expr {
-        // this is not so different from the strong update annotation
-        let (interesting, tree) = self.generate_strong_update_annot_rec(target_ty);
-        if interesting {
-            expr = radium::Expr::Annot {
-                a: radium::Annotation::ShortenLft(tree),
-                e: Box::new(expr),
-                why: None,
-            };
-        }
-        expr
-    }
-
-    /// Find all regions that need to outlive a loan region at its point of creation, and
-    /// add the corresponding constraints to the inclusion tracker.
-    fn get_outliving_regions_on_loan(&mut self, r: Region, loan_point: PointIndex) -> Vec<Region> {
-        // get all base subset constraints r' ⊆ r
-        let info = &self.info;
-        let input_facts = &info.borrowck_in_facts;
-        let mut outliving = Vec::new();
-
-        let subset_base = &input_facts.subset_base;
-        for (r1, r2, p) in subset_base {
-            if *p == loan_point && *r2 == r {
-                self.inclusion_tracker.add_static_inclusion(*r1, *r2, *p);
-                outliving.push(*r1);
-            }
-            // other subset constraints at this point are due to (for instance) the assignment of
-            // the loan to a place and are handled there.
-        }
-        outliving
-    }
-
     /// Check if a local is used for a spec closure.
     fn is_spec_closure_local(&self, l: Local) -> Result<Option<DefId>, TranslationError<'tcx>> {
         // check if we should ignore this
@@ -1594,208 +1406,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .procedure_registry
             .lookup_function_mode(*did)
             .and_then(|m| m.is_ignore().then_some(*did)))
-    }
-
-    fn region_to_region_vid(r: ty::Region<'tcx>) -> facts::Region {
-        match r.kind() {
-            ty::RegionKind::ReVar(vid) => vid,
-            _ => panic!(),
-        }
-    }
-
-    /// Generate a dynamic inclusion of r1 in r2 at point p. Prepends annotations for doing so to `cont`.
-    fn generate_dyn_inclusion(
-        &mut self,
-        stmt_annots: &mut Vec<radium::Annotation>,
-        r1: Region,
-        r2: Region,
-        p: PointIndex,
-    ) {
-        // check if inclusion already holds
-        if !self.inclusion_tracker.check_inclusion(r1, r2, p) {
-            // check if the reverse inclusion already holds
-            if self.inclusion_tracker.check_inclusion(r2, r1, p) {
-                // our invariant is that this must be a static inclusion
-                assert!(self.inclusion_tracker.check_static_inclusion(r2, r1, p));
-                self.inclusion_tracker.add_dynamic_inclusion(r1, r2, p);
-
-                // we generate an extendlft instruction
-                // for this, we need to figure out a path to make this inclusion true, i.e. we need
-                // an explanation of why it is syntactically included.
-                // TODO: for now, we just assume that r1 ⊑ₗ [r2] (in terms of Coq lifetime inclusion)
-                stmt_annots.push(radium::Annotation::ExtendLft(self.format_region(r1)));
-            } else {
-                self.inclusion_tracker.add_dynamic_inclusion(r1, r2, p);
-                // we generate a dynamic inclusion instruction
-                // we flip this around because the annotations are talking about lifetimes, which are oriented
-                // the other way around.
-                stmt_annots
-                    .push(radium::Annotation::DynIncludeLft(self.format_region(r2), self.format_region(r1)));
-            }
-        }
-    }
-
-    /// Generates dynamic inclusions for the set of inclusions in `incls`.
-    /// These inclusions should not hold yet.
-    /// Skips mutual inclusions -- we cannot interpret these.
-    fn generate_dyn_inclusions(
-        &mut self,
-        incls: &HashSet<(Region, Region, PointIndex)>,
-    ) -> Vec<radium::Annotation> {
-        // before executing the assignment, first enforce dynamic inclusions
-        info!("Generating dynamic inclusions {:?}", incls);
-        let mut stmt_annots = Vec::new();
-
-        for (r1, r2, p) in incls {
-            if incls.contains(&(*r2, *r1, *p)) {
-                warn!("Skipping impossible dynamic inclusion {:?} ⊑ {:?} at {:?}", r1, r2, p);
-                continue;
-            }
-
-            self.generate_dyn_inclusion(&mut stmt_annots, *r1, *r2, *p);
-        }
-
-        stmt_annots
-    }
-
-    /// Get the annotations due to borrows appearing on the RHS of an assignment.
-    fn get_assignment_loan_annots(&mut self, loc: Location, rhs: &Rvalue<'tcx>) -> Vec<radium::Annotation> {
-        let mut stmt_annots = Vec::new();
-
-        // if we create a new loan here, start a new lifetime for it
-        let loan_point = self.info.get_point(loc, facts::PointType::Mid);
-        if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
-            // TODO: is this fine for aggregates? I suppose, if I create a loan for an
-            // aggregate, I want to use the same atomic region for all of its components
-            // anyways.
-
-            let lft = self.info.atomic_region_of_loan(loan);
-            let r = lft.get_region();
-
-            // get the static inclusions we need to generate here and add them to the
-            // inclusion tracker
-            let outliving = self.get_outliving_regions_on_loan(r, loan_point);
-
-            // add statement for issuing the loan
-            stmt_annots.insert(
-                0,
-                radium::Annotation::StartLft(
-                    self.ty_translator.format_atomic_region(&lft),
-                    outliving.iter().map(|r| self.format_region(*r)).collect(),
-                ),
-            );
-
-            let a = self.info.get_region_kind(r);
-            info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
-        } else if let Rvalue::Ref(region, BorrowKind::Shared, _) = rhs {
-            // for shared reborrows, Polonius does not create a new loan, and so the
-            // previous case did not match.
-            // However, we still need to track the region created for the reborrow in an
-            // annotation.
-
-            let region = TX::region_to_region_vid(*region);
-
-            // find inclusion ?r1 ⊑ region -- we will actually enforce region = r1
-            let new_constrs: Vec<(facts::Region, facts::Region)> =
-                self.info.get_new_subset_constraints_at_point(loan_point);
-            info!("Shared reborrow at {:?} with new constrs: {:?}", region, new_constrs);
-            let mut included_region = None;
-            for (r1, r2) in &new_constrs {
-                if *r2 == region {
-                    included_region = Some(r1);
-                    break;
-                }
-            }
-            if let Some(r) = included_region {
-                //info!("Found inclusion {:?}⊑  {:?}", r, region);
-                stmt_annots.push(radium::Annotation::CopyLftName(
-                    self.format_region(*r),
-                    self.format_region(region),
-                ));
-
-                // also add this to the inclusion checker
-                self.inclusion_tracker.add_static_inclusion(*r, region, loan_point);
-            } else {
-                // This happens e.g. when borrowing from a raw pointer etc.
-                info!("Found unconstrained shared borrow for {:?}", region);
-                let inferred_constrained = vec![];
-
-                // add statement for issuing the loan
-                stmt_annots
-                    .push(radium::Annotation::StartLft(self.format_region(region), inferred_constrained));
-            }
-        }
-
-        stmt_annots
-    }
-
-    /// Compute the annotations for an assignment: an annotation for the rhs value, and a list of
-    /// annotations to prepend to the statement, and a list of annotations to put after the
-    /// statement.
-    fn get_assignment_annots(
-        &mut self,
-        loc: Location,
-        lhs: &Place<'tcx>,
-        _rhs_ty: Ty<'tcx>,
-    ) -> (Option<radium::Annotation>, Vec<radium::Annotation>, Vec<radium::Annotation>) {
-        // check if the place is strongly writeable
-        let strongly_writeable = !self.check_place_below_reference(lhs);
-        let plc_ty = self.get_type_of_place(lhs);
-
-        let new_dyn_inclusions;
-        let expr_annot;
-        let stmt_annot;
-        if strongly_writeable {
-            // we are going to update the region mapping through annotations,
-            // and hence put up a barrier for propagation of region constraints
-
-            // structurally go over the type and find region variables.
-            // for each of the variables, issue a barrier.
-            // also track them together with the PlaceItems needed to reach them.
-            // from the latter, we can generate the necessary annotations
-            let regions = regions::find_region_variables_of_place_type(self.env, plc_ty);
-
-            // put up a barrier at the Mid point
-            let barrier_point_index = self.info.interner.get_point_index(&facts::Point {
-                location: loc,
-                typ: facts::PointType::Mid,
-            });
-            for r in &regions {
-                self.inclusion_tracker.add_barrier(*r, barrier_point_index);
-            }
-            // get new constraints that should be enforced
-            let new_constraints = self.get_assignment_strong_update_constraints(loc);
-            stmt_annot = Vec::new();
-            for (r1, r2, p) in &new_constraints {
-                self.inclusion_tracker.add_static_inclusion(*r1, *r2, *p);
-                self.inclusion_tracker.add_static_inclusion(*r2, *r1, *p);
-
-                // TODO: use this instead of the expr_annot below
-                //stmt_annot.push(
-                //radium::Annotation::CopyLftName(
-                //self.format_region(*r1),
-                //self.format_region(*r2),
-                //));
-            }
-
-            // TODO: get rid of this
-            // similarly generate an annotation that encodes these constraints in the RR
-            // type system
-            expr_annot = self.generate_strong_update_annot(plc_ty);
-            //expr_annot = None;
-
-            new_dyn_inclusions = HashSet::new();
-        } else {
-            // need to filter out the constraints that are relevant here.
-            // incrementally go through them.
-            new_dyn_inclusions = self.get_assignment_weak_update_constraints(loc);
-            expr_annot = None;
-            stmt_annot = Vec::new();
-        }
-
-        // First enforce the new inclusions, then do the other annotations
-        let new_dyn_inclusions = self.generate_dyn_inclusions(&new_dyn_inclusions);
-        (expr_annot, new_dyn_inclusions, stmt_annot)
     }
 
     /// Get the regions appearing in a type.
@@ -1938,9 +1548,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let plc_ty = self.get_type_of_place(plc);
                         let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.env.tcx());
 
-                        let borrow_annots = self.get_assignment_loan_annots(loc, val);
+                        let borrow_annots = regions::assignment::get_assignment_loan_annots(
+                            &mut self.inclusion_tracker, &self.ty_translator,
+                            loc, val);
+
+                        let plc_ty = self.get_type_of_place(plc);
+                        let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let (expr_annot, pre_stmt_annots, post_stmt_annots) =
-                            self.get_assignment_annots(loc, plc, rhs_ty);
+                            regions::assignment::get_assignment_annots(
+                                self.env, &mut self.inclusion_tracker, &self.ty_translator,
+                                loc, plc_strongly_writeable, plc_ty, rhs_ty);
 
                         // TODO; maybe move this to rvalue
                         let composite_annots = self.get_composite_rvalue_creation_annots(loc, rhs_ty);
@@ -2201,7 +1818,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     })
                 } else {
                     info!("Didn't find loan at {:?}: {:?}; region {:?}", loc, rval, region);
-                    let region = TX::region_to_region_vid(*region);
+                    let region = regions::region_to_region_vid(*region);
                     let lft = self.format_region(region);
 
                     Ok(radium::Expr::Borrow {

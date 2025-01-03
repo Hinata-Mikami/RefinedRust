@@ -4,8 +4,17 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::HashSet;
+
+use log::{info, warn};
+
 use crate::base::*;
-use crate::environment::polonius_info::PoloniusInfo;
+use crate::environment::polonius_info::{self, PoloniusInfo};
+
+pub enum DynamicInclusion {
+    ExtendLft(polonius_info::AtomicRegion),
+    IncludeLft(polonius_info::AtomicRegion, polonius_info::AtomicRegion),
+}
 
 /// The `InclusionTracker` maintains a set of dynamic lifetime inclusions holding in the `RefinedRust`
 /// type system at given program points.
@@ -46,6 +55,10 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             fully_invalidated: true,
             invalidated: true,
         }
+    }
+
+    pub const fn info(&self) -> &'a PoloniusInfo<'a, 'tcx> {
+        self.info
     }
 
     /// Add a basic static inclusion fact.
@@ -166,5 +179,63 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
             self.recompute_static_incl();
         }
         self.static_incl.as_ref().unwrap().contains(&(r1, r2, p)) || r1 == r2
+    }
+
+    /// Generate a dynamic inclusion of r1 in r2 at point p. Prepends annotations for doing so to
+    /// `stmt_annots`.
+    fn generate_dyn_inclusion(
+        &mut self,
+        stmt_annots: &mut Vec<DynamicInclusion>,
+        r1: Region,
+        r2: Region,
+        p: PointIndex,
+    ) {
+        // check if inclusion already holds
+        if !self.check_inclusion(r1, r2, p) {
+            // check if the reverse inclusion already holds
+            if self.check_inclusion(r2, r1, p) {
+                // our invariant is that this must be a static inclusion
+                assert!(self.check_static_inclusion(r2, r1, p));
+                self.add_dynamic_inclusion(r1, r2, p);
+
+                // we generate an extendlft instruction
+                // for this, we need to figure out a path to make this inclusion true, i.e. we need
+                // an explanation of why it is syntactically included.
+                // TODO: for now, we just assume that r1 ⊑ₗ [r2] (in terms of Coq lifetime inclusion)
+                stmt_annots.push(DynamicInclusion::ExtendLft(self.info.mk_atomic_region(r1)));
+            } else {
+                self.add_dynamic_inclusion(r1, r2, p);
+                // we generate a dynamic inclusion instruction
+                // we flip this around because the annotations are talking about lifetimes, which are oriented
+                // the other way around.
+                stmt_annots.push(DynamicInclusion::IncludeLft(
+                    self.info.mk_atomic_region(r2),
+                    self.info.mk_atomic_region(r1),
+                ));
+            }
+        }
+    }
+
+    /// Generates dynamic inclusions for the set of inclusions in `incls`.
+    /// These inclusions should not hold yet.
+    /// Skips mutual inclusions -- we cannot interpret these.
+    pub fn generate_dyn_inclusions(
+        &mut self,
+        incls: &HashSet<(Region, Region, PointIndex)>,
+    ) -> Vec<DynamicInclusion> {
+        // before executing the assignment, first enforce dynamic inclusions
+        info!("Generating dynamic inclusions {:?}", incls);
+        let mut stmt_annots = Vec::new();
+
+        for (r1, r2, p) in incls {
+            if incls.contains(&(*r2, *r1, *p)) {
+                warn!("Skipping impossible dynamic inclusion {:?} ⊑ {:?} at {:?}", r1, r2, p);
+                continue;
+            }
+
+            self.generate_dyn_inclusion(&mut stmt_annots, *r1, *r2, *p);
+        }
+
+        stmt_annots
     }
 }

@@ -25,13 +25,13 @@ use rr_rustc_interface::{abi, ast, middle};
 use typed_arena::Arena;
 
 use crate::base::*;
+use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::body::translator;
-use crate::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::inclusion_tracker::*;
+use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
@@ -125,7 +125,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("Function generic args: {:?}", params);
 
         let (inputs, output, region_substitution) =
-            regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+            regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
         let (type_scope, trait_attrs) = Self::setup_local_scope(
@@ -265,7 +265,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 let (tupled_inputs, output, mut region_substitution) =
-                    regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+                    regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
 
                 // Process the lifetime parameters that come from the captures
                 for r in capture_regions {
@@ -286,7 +286,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         // We need to do some hacks here to find the right Polonius region:
                         // `r` is the non-placeholder region that the variable gets, but we are
                         // looking for the corresponding placeholder region
-                        let r2 = Self::find_placeholder_region_for(r, info).unwrap();
+                        let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
 
                         info!("using lifetime {:?} for closure universal", r2);
                         let lft = info.mk_atomic_region(r2);
@@ -440,7 +440,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 let (inputs, output, region_substitution) =
-                    regions::replace_fnsig_args_with_polonius_vars(env, params, sig);
+                    regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
                 info!("inputs: {:?}, output: {:?}", inputs, output);
 
                 let mut inclusion_tracker = InclusionTracker::new(info);
@@ -496,10 +496,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 if spec_builder.has_spec() {
                     // add universal constraints
-                    let universal_constraints = t.get_relevant_universal_constraints();
-                    info!("univeral constraints: {:?}", universal_constraints);
-                    for (lft1, lft2) in universal_constraints {
-                        spec_builder.add_lifetime_constraint(lft1, lft2);
+                    {
+                        let scope = t.ty_translator.scope.borrow();
+                        let universal_constraints = regions::init::get_relevant_universal_constraints(
+                            &scope.lifetime_scope,
+                            &mut t.inclusion_tracker,
+                            t.info,
+                        );
+                        info!("univeral constraints: {:?}", universal_constraints);
+                        for (lft1, lft2) in universal_constraints {
+                            spec_builder.add_lifetime_constraint(lft1, lft2);
+                        }
                     }
 
                     t.translated_fn.add_function_spec_from_builder(spec_builder);
@@ -565,28 +572,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
             _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),
         }
-    }
-
-    /// At the start of the function, there's a universal (placeholder) region for reference argument.
-    /// These get subsequently relabeled.
-    /// Given the relabeled region, find the original placeholder region.
-    fn find_placeholder_region_for(r: ty::RegionVid, info: &PoloniusInfo) -> Option<ty::RegionVid> {
-        let root_location = Location {
-            block: BasicBlock::from_u32(0),
-            statement_index: 0,
-        };
-        let root_point = info.interner.get_point_index(&facts::Point {
-            location: root_location,
-            typ: facts::PointType::Start,
-        });
-
-        for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
-            if *p == root_point && *r2 == r {
-                info!("find placeholder region for: {:?} ⊑ {:?} = r = {:?}", r1, r2, r);
-                return Some(*r1);
-            }
-        }
-        None
     }
 
     /// Set up the local generic scope of the function, including type parameters, lifetime
@@ -693,55 +678,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok((type_scope, trait_scope))
     }
 
-    /// Filter the "interesting" constraints between universal lifetimes that need to hold
-    /// (this does not include the constraints that need to hold for all universal lifetimes,
-    /// e.g. that they outlive the function lifetime and are outlived by 'static).
-    fn get_relevant_universal_constraints(&mut self) -> Vec<(radium::UniversalLft, radium::UniversalLft)> {
-        let info = &self.info;
-        let input_facts = &info.borrowck_in_facts;
-        let placeholder_subset = &input_facts.known_placeholder_subset;
-
-        let root_location = Location {
-            block: BasicBlock::from_u32(0),
-            statement_index: 0,
-        };
-        let root_point = self.info.interner.get_point_index(&facts::Point {
-            location: root_location,
-            typ: facts::PointType::Start,
-        });
-
-        let mut universal_constraints = Vec::new();
-
-        for (r1, r2) in placeholder_subset {
-            if let polonius_info::RegionKind::Universal(uk1) = info.get_region_kind(*r1) {
-                if let polonius_info::RegionKind::Universal(uk2) = info.get_region_kind(*r2) {
-                    // if LHS is static, ignore.
-                    if uk1 == polonius_info::UniversalRegionKind::Static {
-                        continue;
-                    }
-                    // if RHS is the function lifetime, ignore
-                    if uk2 == polonius_info::UniversalRegionKind::Function {
-                        continue;
-                    }
-
-                    let scope = self.ty_translator.scope.borrow();
-                    let to_universal = || {
-                        let x = scope.lifetime_scope.lookup_region_with_kind(uk1, *r2)?;
-                        let y = scope.lifetime_scope.lookup_region_with_kind(uk2, *r1)?;
-                        Some((x, y))
-                    };
-                    // else, add this constraint
-                    // for the purpose of this analysis, it is fine to treat it as a dynamic inclusion
-                    if let Some((x, y)) = to_universal() {
-                        self.inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
-                        universal_constraints.push((x, y));
-                    };
-                }
-            }
-        }
-        universal_constraints
-    }
-
     /// Process extra requirements annotated on a function spec.
     fn process_function_requirements(
         fn_builder: &mut radium::FunctionBuilder<'def>,
@@ -792,10 +728,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
 
         // add universal constraints
-        let universal_constraints = self.get_relevant_universal_constraints();
-        info!("universal constraints: {:?}", universal_constraints);
-        for (lft1, lft2) in universal_constraints {
-            spec_builder.add_lifetime_constraint(lft1, lft2);
+        {
+            let scope = self.ty_translator.scope.borrow();
+            let universal_constraints = regions::init::get_relevant_universal_constraints(
+                &scope.lifetime_scope,
+                &mut self.inclusion_tracker,
+                self.info,
+            );
+            info!("universal constraints: {:?}", universal_constraints);
+            for (lft1, lft2) in universal_constraints {
+                spec_builder.add_lifetime_constraint(lft1, lft2);
+            }
         }
 
         let ty_translator = &self.ty_translator;

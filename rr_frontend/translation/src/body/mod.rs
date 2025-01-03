@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+mod checked_op_analysis;
+
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 
 use log::{info, trace, warn};
@@ -22,14 +24,11 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, middle};
 use typed_arena::Arena;
 
-use crate::arg_folder::*;
 use crate::base::*;
-use crate::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::inclusion_tracker::*;
 use crate::spec_parsers::parse_utils::ParamLookup;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
