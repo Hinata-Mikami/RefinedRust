@@ -77,7 +77,7 @@ impl<T: ParamLookup> parse::Parse<T> for LiteralTypeWithRef {
         if parse::At::peek(input) {
             input.parse::<_, MToken![@]>(meta)?;
             let ty: parse::LitStr = input.parse(meta)?;
-            let (ty, meta) = process_coq_literal(&ty.value(), meta);
+            let (ty, meta) = meta.process_coq_literal(&ty.value());
 
             Ok(Self {
                 rfn,
@@ -106,7 +106,7 @@ pub struct LiteralType {
 impl<T: ParamLookup> parse::Parse<T> for LiteralType {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = input.parse(meta)?;
-        let (ty, meta) = process_coq_literal(&ty.value(), meta);
+        let (ty, meta) = meta.process_coq_literal(&ty.value());
 
         Ok(Self { ty, meta })
     }
@@ -124,7 +124,7 @@ impl From<IProp> for specs::IProp {
 impl<T: ParamLookup> parse::Parse<T> for IProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let lit: parse::LitStr = input.parse(meta)?;
-        let (lit, _) = process_coq_literal(&lit.value(), meta);
+        let (lit, _) = meta.process_coq_literal(&lit.value());
 
         Ok(Self(specs::IProp::Atom(lit)))
     }
@@ -137,7 +137,7 @@ pub struct RRCoqType {
 impl<T: ParamLookup> parse::Parse<T> for RRCoqType {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = input.parse(meta)?;
-        let (ty, _) = process_coq_literal(&ty.value(), meta);
+        let (ty, _) = meta.process_coq_literal(&ty.value());
         let ty = coq::term::Type::Literal(ty);
         Ok(Self { ty })
     }
@@ -226,7 +226,7 @@ pub struct RRCoqContextItem {
 impl<T: ParamLookup> parse::Parse<T> for RRCoqContextItem {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let item: parse::LitStr = input.parse(meta)?;
-        let (item_str, annot_meta) = process_coq_literal(&item.value(), meta);
+        let (item_str, annot_meta) = meta.process_coq_literal(&item.value());
 
         let at_end = !annot_meta.is_empty();
 
@@ -257,174 +257,174 @@ pub fn str_err(e: parse::Error) -> String {
     format!("{:?}", e)
 }
 
+/// Handle escape sequences in the given string.
+fn handle_escapes(s: &str) -> String {
+    String::from(s).replace("\\\"", "\"")
+}
+
 /// Lookup of lifetime and type parameters given their Rust source names.
 pub trait ParamLookup {
     fn lookup_ty_param(&self, path: &[&str]) -> Option<&specs::LiteralTyParam>;
     fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
     fn lookup_literal(&self, path: &[&str]) -> Option<&str>;
-}
 
-/// Handle escape sequences in the given string.
-pub fn handle_escapes(s: &str) -> String {
-    String::from(s).replace("\\\"", "\"")
-}
+    /// Processes a literal Coq term annotated via an attribute.
+    /// In particular, processes escapes `{...}` and replaces them via their interpretation, see
+    /// below for supported escape sequences.
+    ///
+    /// Supported interpretations:
+    /// - `{{...}}` is replaced by `{...}`
+    /// - `{ty_of T}` is replaced by the type for the type parameter `T`
+    /// - `{rt_of T}` is replaced by the refinement type of the type parameter `T`
+    /// - `{st_of T}` is replaced by the syntactic type of the type parameter `T`
+    /// - `{ly_of T}` is replaced by a term giving the layout of the type parameter `T`'s syntactic type
+    /// - `{'a}` is replaced by a term corresponding to the lifetime parameter 'a
+    fn process_coq_literal(&self, s: &str) -> (String, specs::TypeAnnotMeta) {
+        let mut literal_lfts: HashSet<String> = HashSet::new();
+        let mut literal_tyvars: HashSet<specs::LiteralTyParam> = HashSet::new();
 
-/// Processes a literal Coq term annotated via an attribute.
-/// In particular, processes escapes `{...}` and replaces them via their interpretation, see
-/// below for supported escape sequences.
-///
-/// Supported interpretations:
-/// - `{{...}}` is replaced by `{...}`
-/// - `{ty_of T}` is replaced by the type for the type parameter `T`
-/// - `{rt_of T}` is replaced by the refinement type of the type parameter `T`
-/// - `{st_of T}` is replaced by the syntactic type of the type parameter `T`
-/// - `{ly_of T}` is replaced by a term giving the layout of the type parameter `T`'s syntactic type
-/// - `{'a}` is replaced by a term corresponding to the lifetime parameter 'a
-pub fn process_coq_literal<T: ParamLookup>(s: &str, meta: &T) -> (String, specs::TypeAnnotMeta) {
-    let mut literal_lfts: HashSet<String> = HashSet::new();
-    let mut literal_tyvars: HashSet<specs::LiteralTyParam> = HashSet::new();
+        // TODOs:
+        // - associated types, we should split them here already. We need to adjust the matching to accept ::
+        //   and then split
+        // - lookup other literals in ParamLookup
 
-    // TODOs:
-    // - associated types, we should split them here already. We need to adjust the matching to accept :: and
-    //   then split
-    // - lookup other literals in ParamLookup
+        let s = handle_escapes(s);
 
-    let s = handle_escapes(s);
+        /* regexes:
+         * - '{\s*rt_of\s+([[:alpha:]])\s*}' replace by lookup of the refinement type name
+         * - '{\s*st_of\s+([[:alpha:]])\s*}' replace by lookup of the syntype name
+         * - '{\s*ly_of\s+([[:alpha:]])\s*}' replace by "use_layout_alg' st"
+         * - '{\s*ty_of\s+([[:alpha:]])\s*}' replace by the type name
+         * - '{\s*'([[:alpha:]])\s*}' replace by lookup of the lifetime name
+         * - '{{(.*)}}' replace by the contents
+         *
+         * Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
+         */
+        // compile these just once, not for every invocation of the method
+        lazy_static! {
+            //(::[[:alpha:]]*)?
+            static ref RE_RT_OF: Regex = Regex::new(r"([^{]|^)\{\s*rt_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_LFT_OF: Regex = Regex::new(r"([^{]|^)\{\s*'([[:alpha:]]+)\s*\}").unwrap();
 
-    /* regexes:
-     * - '{\s*rt_of\s+([[:alpha:]])\s*}' replace by lookup of the refinement type name
-     * - '{\s*st_of\s+([[:alpha:]])\s*}' replace by lookup of the syntype name
-     * - '{\s*ly_of\s+([[:alpha:]])\s*}' replace by "use_layout_alg' st"
-     * - '{\s*ty_of\s+([[:alpha:]])\s*}' replace by the type name
-     * - '{\s*'([[:alpha:]])\s*}' replace by lookup of the lifetime name
-     * - '{{(.*)}}' replace by the contents
-     *
-     * Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
-     */
-    // compile these just once, not for every invocation of the method
-    lazy_static! {
-        //(::[[:alpha:]]*)?
-        static ref RE_RT_OF: Regex = Regex::new(r"([^{]|^)\{\s*rt_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-        static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-        static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-        static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-        static ref RE_LFT_OF: Regex = Regex::new(r"([^{]|^)\{\s*'([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
 
-        static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_DIRECT: Regex = Regex::new(r"\{(\{.*\})\}").unwrap();
+        }
 
-        static ref RE_DIRECT: Regex = Regex::new(r"\{(\{.*\})\}").unwrap();
+        let cs = &s;
+        let cs = RE_RT_OF.replace_all(cs, |c: &Captures<'_>| {
+            let mut path = Vec::new();
+            path.push(&c[2]);
+
+            if let Some(t2) = c.get(4) {
+                path.push(t2.as_str());
+            }
+
+            let param = self.lookup_ty_param(&path);
+
+            let Some(param) = param else {
+                return "ERR".to_owned();
+            };
+
+            literal_tyvars.insert(param.clone());
+            format!("{}{}", &c[1], &param.refinement_type)
+        });
+
+        let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {
+            let mut path = Vec::new();
+            path.push(&c[2]);
+
+            if let Some(t2) = c.get(4) {
+                path.push(t2.as_str());
+            }
+            let param = self.lookup_ty_param(&path);
+
+            let Some(param) = param else {
+                return "ERR".to_owned();
+            };
+
+            literal_tyvars.insert(param.clone());
+            format!("{}(ty_syn_type {})", &c[1], &param.type_term)
+        });
+
+        let cs = RE_LY_OF.replace_all(&cs, |c: &Captures<'_>| {
+            let mut path = Vec::new();
+            path.push(&c[2]);
+
+            if let Some(t2) = c.get(4) {
+                path.push(t2.as_str());
+            }
+            let param = self.lookup_ty_param(&path);
+
+            let Some(param) = param else {
+                return "ERR".to_owned();
+            };
+
+            literal_tyvars.insert(param.clone());
+            format!("{}(use_layout_alg' (ty_syn_type {}))", &c[1], &param.type_term)
+        });
+
+        let cs = RE_TY_OF.replace_all(&cs, |c: &Captures<'_>| {
+            let mut path = Vec::new();
+            path.push(&c[2]);
+
+            if let Some(t2) = c.get(4) {
+                path.push(t2.as_str());
+            }
+            let param = self.lookup_ty_param(&path);
+
+            let Some(param) = param else {
+                return "ERR".to_owned();
+            };
+
+            literal_tyvars.insert(param.clone());
+            format!("{}{}", &c[1], &param.type_term)
+        });
+
+        let cs = RE_LFT_OF.replace_all(&cs, |c: &Captures<'_>| {
+            let t = &c[2];
+            let lft = self.lookup_lft(t);
+
+            let Some(lft) = lft else {
+                return "ERR".to_owned();
+            };
+
+            literal_lfts.insert(lft.clone());
+            format!("{}{}", &c[1], lft)
+        });
+
+        let cs = RE_LIT.replace_all(&cs, |c: &Captures<'_>| {
+            let mut path = Vec::new();
+            path.push(&c[2]);
+            if let Some(t2) = c.get(4) {
+                path.push(t2.as_str());
+            }
+
+            // first lookup literals
+            let lit = self.lookup_literal(&path);
+
+            if let Some(lit) = lit {
+                return format!("{}{}", &c[1], lit);
+            }
+
+            // else interpret it as ty_of
+            let ty = self.lookup_ty_param(&path);
+
+            let Some(ty) = ty else {
+                return "ERR".to_owned();
+            };
+
+            literal_tyvars.insert(ty.clone());
+            format!("{}{}", &c[1], &ty.type_term)
+        });
+
+        let cs = RE_DIRECT.replace_all(&cs, |c: &Captures<'_>| c[1].to_string());
+
+        (cs.to_string(), specs::TypeAnnotMeta::new(literal_tyvars, literal_lfts))
     }
-
-    let cs = &s;
-    let cs = RE_RT_OF.replace_all(cs, |c: &Captures<'_>| {
-        let mut path = Vec::new();
-        path.push(&c[2]);
-
-        if let Some(t2) = c.get(4) {
-            path.push(t2.as_str());
-        }
-
-        let param = meta.lookup_ty_param(&path);
-
-        let Some(param) = param else {
-            return "ERR".to_owned();
-        };
-
-        literal_tyvars.insert(param.clone());
-        format!("{}{}", &c[1], &param.refinement_type)
-    });
-
-    let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {
-        let mut path = Vec::new();
-        path.push(&c[2]);
-
-        if let Some(t2) = c.get(4) {
-            path.push(t2.as_str());
-        }
-        let param = meta.lookup_ty_param(&path);
-
-        let Some(param) = param else {
-            return "ERR".to_owned();
-        };
-
-        literal_tyvars.insert(param.clone());
-        format!("{}(ty_syn_type {})", &c[1], &param.type_term)
-    });
-
-    let cs = RE_LY_OF.replace_all(&cs, |c: &Captures<'_>| {
-        let mut path = Vec::new();
-        path.push(&c[2]);
-
-        if let Some(t2) = c.get(4) {
-            path.push(t2.as_str());
-        }
-        let param = meta.lookup_ty_param(&path);
-
-        let Some(param) = param else {
-            return "ERR".to_owned();
-        };
-
-        literal_tyvars.insert(param.clone());
-        format!("{}(use_layout_alg' (ty_syn_type {}))", &c[1], &param.type_term)
-    });
-
-    let cs = RE_TY_OF.replace_all(&cs, |c: &Captures<'_>| {
-        let mut path = Vec::new();
-        path.push(&c[2]);
-
-        if let Some(t2) = c.get(4) {
-            path.push(t2.as_str());
-        }
-        let param = meta.lookup_ty_param(&path);
-
-        let Some(param) = param else {
-            return "ERR".to_owned();
-        };
-
-        literal_tyvars.insert(param.clone());
-        format!("{}{}", &c[1], &param.type_term)
-    });
-
-    let cs = RE_LFT_OF.replace_all(&cs, |c: &Captures<'_>| {
-        let t = &c[2];
-        let lft = meta.lookup_lft(t);
-
-        let Some(lft) = lft else {
-            return "ERR".to_owned();
-        };
-
-        literal_lfts.insert(lft.clone());
-        format!("{}{}", &c[1], lft)
-    });
-
-    let cs = RE_LIT.replace_all(&cs, |c: &Captures<'_>| {
-        let mut path = Vec::new();
-        path.push(&c[2]);
-        if let Some(t2) = c.get(4) {
-            path.push(t2.as_str());
-        }
-
-        // first lookup literals
-        let lit = meta.lookup_literal(&path);
-
-        if let Some(lit) = lit {
-            return format!("{}{}", &c[1], lit);
-        }
-
-        // else interpret it as ty_of
-        let ty = meta.lookup_ty_param(&path);
-
-        let Some(ty) = ty else {
-            return "ERR".to_owned();
-        };
-
-        literal_tyvars.insert(ty.clone());
-        format!("{}{}", &c[1], &ty.type_term)
-    });
-
-    let cs = RE_DIRECT.replace_all(&cs, |c: &Captures<'_>| c[1].to_string());
-
-    (cs.to_string(), specs::TypeAnnotMeta::new(literal_tyvars, literal_lfts))
 }
 
 #[cfg(test)]
@@ -472,7 +472,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "T_rt * T_rt");
     }
 
@@ -482,7 +482,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "T_ty * T_ty");
     }
 
@@ -492,7 +492,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "Self_rt * Self_rt");
     }
 
@@ -502,7 +502,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "{rt_of Bla}");
     }
 
@@ -516,7 +516,7 @@ mod tests {
             radium::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
         );
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "Bla_Blub_rt");
     }
 
@@ -526,7 +526,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.literals.insert(vec!["Size".to_owned()], "(trait_attrs).(size)".to_owned());
 
-        let (res, _) = super::process_coq_literal(lit, &scope);
+        let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(trait_attrs).(size) 4");
     }
 }

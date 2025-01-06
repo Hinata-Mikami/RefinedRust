@@ -141,19 +141,19 @@ impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
             match macro_cmd.value().as_str() {
                 "type" => {
                     let loc_str: parse::LitStr = input.parse(meta)?;
-                    let (loc_str, mut annot_meta) = process_coq_literal(&loc_str.value(), meta);
+                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
 
                     input.parse::<_, MToken![:]>(meta)?;
 
                     let rfn_str: parse::LitStr = input.parse(meta)?;
-                    let (rfn_str, annot_meta2) = process_coq_literal(&rfn_str.value(), meta);
+                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
 
                     annot_meta.join(&annot_meta2);
 
                     input.parse::<_, MToken![@]>(meta)?;
 
                     let type_str: parse::LitStr = input.parse(meta)?;
-                    let (type_str, annot_meta3) = process_coq_literal(&type_str.value(), meta);
+                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
                     annot_meta.join(&annot_meta3);
 
                     let spec = specs::TyOwnSpec::new(loc_str, rfn_str, type_str, false, annot_meta);
@@ -168,13 +168,13 @@ impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
                     input.parse::<_, MToken![:]>(meta)?;
 
                     let term: parse::LitStr = input.parse(meta)?;
-                    let (term, _meta) = process_coq_literal(&term.value(), meta);
+                    let (term, _meta) = meta.process_coq_literal(&term.value());
 
                     Ok(Self::Observe(gname.value(), term))
                 },
                 "linktime" => {
                     let term: parse::LitStr = input.parse(meta)?;
-                    let (term, _meta) = process_coq_literal(&term.value(), meta);
+                    let (term, _meta) = meta.process_coq_literal(&term.value());
                     Ok(Self::Linktime(term))
                 },
                 _ => Err(parse::Error::OtherErr(
@@ -191,13 +191,13 @@ impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
                 input.parse::<_, MToken![:]>(meta)?;
 
                 let pure_prop: parse::LitStr = input.parse(meta)?;
-                let (pure_str, _annot_meta) = process_coq_literal(&pure_prop.value(), meta);
+                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = process_coq_literal(&name_or_prop_str.value(), meta);
+                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -388,7 +388,7 @@ where
                     buffer.parse::<_, MToken![:]>(scope)?;
 
                     let term: parse::LitStr = buffer.parse(scope)?;
-                    let (term, _) = process_coq_literal(&term.value(), scope);
+                    let (term, _) = scope.process_coq_literal(&term.value());
                     Ok(MetaIProp::Observe(gname.value(), term))
                 };
                 let m = m().map_err(str_err)?;

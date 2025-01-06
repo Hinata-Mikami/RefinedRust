@@ -40,7 +40,7 @@ impl<T: ParamLookup> parse::Parse<T> for EnumPattern {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         // parse the pattern
         let pat: parse::LitStr = input.parse(meta)?;
-        let (pat, _) = process_coq_literal(&pat.value(), meta);
+        let (pat, _) = meta.process_coq_literal(&pat.value());
 
         let args: Vec<String> = if parse::Dollar::peek(input) {
             // optionally parse args
@@ -53,7 +53,7 @@ impl<T: ParamLookup> parse::Parse<T> for EnumPattern {
             parsed_args
                 .into_iter()
                 .map(|s| {
-                    let (arg, _) = process_coq_literal(&s.value(), meta);
+                    let (arg, _) = meta.process_coq_literal(&s.value());
                     arg
                 })
                 .collect()
@@ -98,7 +98,7 @@ impl<'b, T: ParamLookup> EnumSpecParser for VerboseEnumSpecParser<'b, T> {
             match seg.ident.name.as_str() {
                 "refined_by" => {
                     let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                    let (ty, _) = process_coq_literal(ty.value().as_str(), self.scope);
+                    let (ty, _) = self.scope.process_coq_literal(ty.value().as_str());
                     rfn_type = Some(coq::term::Type::Literal(ty));
                 },
                 "export_as" => {},
@@ -127,7 +127,7 @@ impl<'b, T: ParamLookup> EnumSpecParser for VerboseEnumSpecParser<'b, T> {
                     },
                     "refinement" => {
                         let rfn: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                        let (rfn, _) = process_coq_literal(rfn.value().as_str(), self.scope);
+                        let (rfn, _) = self.scope.process_coq_literal(rfn.value().as_str());
                         refinement = Some(rfn);
                     },
                     _ => {

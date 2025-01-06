@@ -45,13 +45,13 @@ struct RfnPattern {
 impl<T: ParamLookup> parse::Parse<T> for RfnPattern {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let pat = parse::LitStr::parse(input, meta)?;
-        let (pat, _) = process_coq_literal(pat.value().as_str(), meta);
+        let (pat, _) = meta.process_coq_literal(pat.value().as_str());
 
         // optionally, parse a type annotation (otherwise, let Coq inference do its thing)
         if parse::Colon::peek(input) {
             input.parse::<_, MToken![:]>(meta)?;
             let ty: parse::LitStr = input.parse(meta)?;
-            let (ty, _) = process_coq_literal(ty.value().as_str(), meta);
+            let (ty, _) = meta.process_coq_literal(ty.value().as_str());
             Ok(Self {
                 rfn_pat: pat,
                 rfn_type: Some(coq::term::Type::Literal(ty)),
@@ -102,19 +102,19 @@ impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
 
                 "type" => {
                     let loc_str: parse::LitStr = input.parse(meta)?;
-                    let (loc_str, mut annot_meta) = process_coq_literal(&loc_str.value(), meta);
+                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
 
                     input.parse::<_, MToken![:]>(meta)?;
 
                     let rfn_str: parse::LitStr = input.parse(meta)?;
-                    let (rfn_str, annot_meta2) = process_coq_literal(&rfn_str.value(), meta);
+                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
 
                     annot_meta.join(&annot_meta2);
 
                     input.parse::<_, MToken![@]>(meta)?;
 
                     let type_str: parse::LitStr = input.parse(meta)?;
-                    let (type_str, annot_meta3) = process_coq_literal(&type_str.value(), meta);
+                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
 
                     annot_meta.join(&annot_meta3);
 
@@ -136,13 +136,13 @@ impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
                 input.parse::<_, MToken![:]>(meta)?;
 
                 let pure_prop: parse::LitStr = input.parse(meta)?;
-                let (pure_str, _annot_meta) = process_coq_literal(&pure_prop.value(), meta);
+                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = process_coq_literal(&name_or_prop_str.value(), meta);
+                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -410,7 +410,7 @@ where
 
             if self.expect_rfn {
                 let rfn: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                let (rfn, _) = process_coq_literal(rfn.value().as_str(), self.scope);
+                let (rfn, _) = self.scope.process_coq_literal(rfn.value().as_str());
                 parsed_rfn = Some(rfn);
 
                 if parse::At::peek(&buffer) {
