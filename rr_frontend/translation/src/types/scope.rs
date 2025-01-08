@@ -18,7 +18,7 @@ use rr_rustc_interface::middle::ty::TypeFoldable;
 use crate::base;
 use crate::base::*;
 use crate::environment::Environment;
-use crate::spec_parsers::parse_utils::ParamLookup;
+use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::traits::registry::GenericTraitUse;
 use crate::traits::{self, registry};
 use crate::types::translator::*;
@@ -139,14 +139,19 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium:
         scope
     }
 }
-impl<'tcx, 'def> ParamLookup for Params<'tcx, 'def> {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
+impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+        // first lookup if this is a type parameter
         if path.len() == 1 {
-            let idx = self.ty_names.get(path[0])?;
-            self.lookup_ty_param_idx(*idx)
-        } else {
-            None
+            if let RustPathElem::AssocItem(it) = &path[0] {
+                let idx = self.ty_names.get(it)?;
+                if let Some(n) = self.lookup_ty_param_idx(*idx) {
+                    return Some(radium::Type::LiteralParam(n.to_owned()));
+                }
+            }
         }
+        // otherwise interpret this as an associated type path
+        self.trait_scope.assoc_ty_names.get(path).cloned()
     }
 
     fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
@@ -154,8 +159,8 @@ impl<'tcx, 'def> ParamLookup for Params<'tcx, 'def> {
         self.lookup_region_idx(*idx)
     }
 
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
-        None
+    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
+        self.trait_scope.attribute_names.get(path).map(String::as_str)
     }
 }
 impl<'tcx, 'def> Params<'tcx, 'def> {
@@ -265,6 +270,29 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // Is it okay to skip that?
 
         // TODO: add scope for referring to associated types in specs
+        //  - figure out a good syntax for this.
+        //  - If we are declaring a trait, we should add the attributes without a prefix.
+        //  - But otherwise, we should have some other syntax to refer to that. Use Rust-inspired syntax?
+        //
+        //  => iterate over requirements + assoc types, make_assoc_type_use
+        //  => Have a hashtable for this?
+        //
+        // TODO: we also want to refer to the trait attributes.
+        //  - Note: in general, we cannot assume that for every type there is only one
+        //  implementation of any given trait.
+        //  - Also multiple traits can have the same attributes.
+        //  - Maybe have a cute shorthand syntax that works in most cases, and then a more
+        //  complicated Rust-inspired syntax that works always?
+        //   [ latter is optional to implement ]
+        //
+        //  => iterate, lookup declared_attrs.
+        //  => have a hashtable for this?
+        //
+        //
+        // Should we use T:: or T. ?  => T::
+        //
+        //
+        // In addition, also add special cases for when we are in a trait declaration or trait impl.
 
         let requirements = Self::get_trait_requirements_with_origin(env, did);
 
@@ -305,8 +333,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
-        for (trait_ref, origin, _) in requirements {
-            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, trait_ref);
+        for (trait_ref, origin, _) in &requirements {
+            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, *trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
                 .into_iter()
@@ -332,7 +360,89 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // finalize the entry by adding dependencies on other trait parameters
             let mut deps = HashSet::new();
             let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &param_env));
-            trait_registry.finalize_trait_use(entry, &mut state, trait_ref)?;
+            trait_registry.finalize_trait_use(entry, &mut state, *trait_ref)?;
+        }
+
+        // make a final pass to precompute the paths to associated types and attributes
+        for (trait_ref, origin, _) in requirements {
+            let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
+            let entry = &self.trait_scope.used_traits[&key];
+
+            let assoc_tys = entry.get_associated_types(env);
+
+            {
+                let mut trait_use_ref = entry.trait_use.borrow();
+                let trait_use = trait_use_ref.as_ref().unwrap();
+
+                let self_ty = &trait_use.params_inst[0];
+                let radium::Type::LiteralParam(self_param) = self_ty else {
+                    // trait requirement for complex type, don't add shorthand notation
+                    continue;
+                };
+
+                // iterate over all associated types
+                for (name, ty) in assoc_tys {
+                    let path = vec![
+                        RustPathElem::AssocItem(self_param.rust_name.clone()),
+                        RustPathElem::AssocItem(name.clone()),
+                    ];
+                    if self.trait_scope.assoc_ty_names.get(&path).is_some() {
+                        warn!("Associated type path collision on did={did:?} for name={name:?}");
+                    } else {
+                        self.trait_scope.assoc_ty_names.insert(path, ty);
+                    }
+                }
+
+                // iterate over all attributes
+                for attr in &trait_use.trait_ref.declared_attrs {
+                    let term = trait_use.make_attr_item_term(attr);
+                    let path = vec![
+                        RustPathElem::AssocItem(self_param.rust_name.clone()),
+                        RustPathElem::AssocItem(attr.to_owned()),
+                    ];
+                    self.trait_scope.attribute_names.insert(path, term.to_string());
+                }
+            }
+        }
+
+        // finally, if we are in a trait declaration or impl declaration, add notation shorthands
+        // to the scope
+        if let Some(trait_did) = env.tcx().trait_of_item(did) {
+            // we are in a trait declaration
+            if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
+                // make the parameter for the attrs that the function is parametric over
+                if let Some(trait_use_ref) = self.trait_scope.get_self_trait_use().cloned() {
+                    // add the associated types
+                    for (name, ty) in trait_use_ref.get_associated_types(env) {
+                        let path = vec![RustPathElem::AssocItem(name.clone())];
+                        if self.trait_scope.assoc_ty_names.get(&path).is_some() {
+                            warn!("Associated type path collision on did={did:?} for name={name:?}");
+                        } else {
+                            self.trait_scope.assoc_ty_names.insert(path, ty);
+                        }
+                    }
+
+                    let trait_use_ref = trait_use_ref.trait_use.borrow();
+                    let trait_use = trait_use_ref.as_ref().unwrap();
+                    // add the corresponding record entries to the map
+                    for attr in &trait_ref.declared_attrs {
+                        let term = trait_use.make_attr_item_term(attr);
+                        let path = vec![RustPathElem::AssocItem(attr.to_owned())];
+                        self.trait_scope.attribute_names.insert(path, term.to_string());
+                    }
+                }
+            }
+        }
+        if let Some(impl_did) = env.tcx().impl_of_method(did) {
+            if let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) {
+                // we are in a trait impl
+                let impl_ref = trait_registry.get_trait_impl_info(impl_did)?;
+                for attr in &impl_ref.of_trait.declared_attrs {
+                    let term = impl_ref.get_attr_record_item_term(attr);
+                    let path = vec![RustPathElem::AssocItem(attr.to_owned())];
+                    self.trait_scope.attribute_names.insert(path, term.to_string());
+                }
+            }
         }
 
         trace!("Leave add_param_env for did = {did:?}");
@@ -525,6 +635,12 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
 pub struct Traits<'tcx, 'def> {
     used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'def>>,
     ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
+
+    /// mapping of associated type paths in scope
+    assoc_ty_names: HashMap<RustPath, radium::Type<'def>>,
+    /// mapping of attribute paths which are in scope.
+    /// Maps to a Coq expression describing this attribute in the current context.
+    attribute_names: HashMap<RustPath, String>,
 }
 
 impl<'tcx, 'def> Traits<'tcx, 'def> {

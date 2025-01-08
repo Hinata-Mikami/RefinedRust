@@ -19,7 +19,7 @@ use log::{info, warn};
 
 use crate::{coq, display_list, push_str_list, write_list, BASE_INDENT};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 /// Encodes a RR type with an accompanying refinement.
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
@@ -274,7 +274,7 @@ pub enum TypeIsRaw {
 }
 
 /// Meta information from parsing type annotations
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeAnnotMeta {
     /// Used lifetime variables
     escaped_lfts: HashSet<Lft>,
@@ -311,6 +311,17 @@ impl TypeAnnotMeta {
         self.escaped_lfts = lfts;
         self.escaped_tyvars = tyvars;
     }
+
+    pub fn add_lft(&mut self, lft: &Lft) {
+        self.escaped_lfts.insert(lft.to_owned());
+    }
+
+    pub fn add_type(&mut self, ty: &Type<'_>) {
+        if let Type::LiteralParam(lit) = ty {
+            self.escaped_tyvars.insert(lit.to_owned());
+        }
+        // TODO: handle the case that it is unknown
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -327,7 +338,7 @@ pub struct LiteralType {
 
 pub type LiteralTypeRef<'def> = &'def LiteralType;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LiteralTypeUse<'def> {
     /// definition
     pub def: LiteralTypeRef<'def>,
@@ -488,7 +499,7 @@ impl LiteralTyParam {
 
 /// Representation of (semantic) `RefinedRust` types.
 /// 'def is the lifetime of the frontend for referencing struct definitions.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Type<'def> {
     Int(IntType),
     Bool,
@@ -673,7 +684,7 @@ impl<'def> Type<'def> {
 }
 
 /// Specification for location ownership of a type.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TyOwnSpec {
     loc: String,
     with_later: bool,
@@ -730,7 +741,7 @@ pub enum InvariantMode {
     OnlyOwned,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InvariantSpec {
     /// the name of the type definition
     type_name: String,
@@ -1152,7 +1163,7 @@ pub fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&
 }
 
 /// Description of a variant of a struct or enum.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AbstractVariant<'def> {
     /// the fields, closed under a surrounding scope
     fields: Vec<(String, Type<'def>)>,
@@ -1385,7 +1396,7 @@ where
 
 /// Description of a struct type.
 // TODO: mechanisms for resolving mutually recursive types.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AbstractStruct<'def> {
     /// an optional invariant/ existential abstraction for this struct
     invariant: Option<InvariantSpec>,
@@ -1586,7 +1597,7 @@ pub fn make_tuple_struct_repr<'def>(num_fields: usize) -> AbstractStruct<'def> {
 }
 
 /// A usage of an `AbstractStruct` that instantiates its type parameters.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AbstractStructUse<'def> {
     /// reference to the struct's definition, or None if unit
     pub def: Option<&'def AbstractStruct<'def>>,
@@ -1778,7 +1789,7 @@ impl Add<u32> for Int128 {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AbstractEnum<'def> {
     /// variants of this enum: name, variant, a mask describing which of the type parameters it uses, and the
     /// discriminant
@@ -2250,7 +2261,7 @@ impl<'def> EnumBuilder<'def> {
 }
 
 /// A usage of an `AbstractEnum` that instantiates its type parameters.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AbstractEnumUse<'def> {
     /// reference to the enum's definition
     pub def: &'def AbstractEnum<'def>,
@@ -2427,7 +2438,7 @@ impl Layout {
 // - DeBruijn probably not worth it, I don't need subst or anything like that. just try to keep variables
 //   apart when generating them.
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum IProp {
     True,
     Atom(String),
@@ -3179,6 +3190,16 @@ impl<'def> LiteralTraitSpecUse<'def> {
     #[must_use]
     pub fn make_spec_attrs_param_name(&self) -> String {
         format!("{}_spec_attrs", self.mangled_base)
+    }
+
+    /// Get the term for accessing a particular attribute in a context where the attribute record
+    /// is quantified.
+    #[must_use]
+    pub fn make_attr_item_term(&self, attr_name: &str) -> coq::term::Gallina {
+        coq::term::Gallina::RecordProj(
+            Box::new(coq::term::Gallina::Literal(self.make_spec_attrs_param_name())),
+            self.trait_ref.make_spec_attr_name(attr_name),
+        )
     }
 
     /// Get the instantiation of associated types.
@@ -4126,10 +4147,11 @@ pub struct LiteralTraitImpl {
 }
 pub type LiteralTraitImplRef<'def> = &'def LiteralTraitImpl;
 
-/// A full instantiation of a trait spec.
+/// A full instantiation of a trait spec, e.g. for an impl of a trait.
 #[derive(Constructor, Clone, Debug)]
 pub struct TraitRefInst<'def> {
     pub of_trait: LiteralTraitSpecRef<'def>,
+    pub impl_ref: LiteralTraitImplRef<'def>,
     /// type parameters this is generic over
     pub generics: GenericScope<'def, LiteralTraitSpecUse<'def>>,
     pub lft_inst: Vec<Lft>,
@@ -4152,6 +4174,34 @@ impl<'def> TraitRefInst<'def> {
     #[must_use]
     pub fn get_trait_assoc_inst(&self) -> &[Type<'def>] {
         &self.assoc_types_inst
+    }
+
+    /// Get the term for referring to the attr record of this impl
+    /// The parameters are expected to be in scope.
+    #[must_use]
+    pub fn get_attr_record_term(&self) -> String {
+        let attr_record = &self.impl_ref.spec_attrs_record;
+
+        let mut attr_term = String::with_capacity(100);
+        write!(attr_term, "{attr_record}").unwrap();
+
+        // add the type parameters of the impl
+        for ty in self.generics.get_all_ty_params_with_assocs().params {
+            write!(attr_term, " {}", ty.refinement_type).unwrap();
+        }
+
+        attr_term
+    }
+
+    /// Get the term for referring to an item of the attr record of this impl.
+    /// The parameters are expected to be in scope.
+    #[must_use]
+    pub fn get_attr_record_item_term(&self, attr: &str) -> coq::term::Gallina {
+        let item_name = self.of_trait.make_spec_attr_name(attr);
+        coq::term::Gallina::RecordProj(
+            Box::new(coq::term::Gallina::Literal(self.get_attr_record_term())),
+            item_name,
+        )
     }
 }
 

@@ -54,7 +54,7 @@ pub struct LiteralTypeWithRef {
     pub meta: specs::TypeAnnotMeta,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for LiteralTypeWithRef {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         // check if a #raw annotation is present
         let loc = input.pos();
@@ -103,7 +103,7 @@ pub struct LiteralType {
     pub meta: specs::TypeAnnotMeta,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for LiteralType {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = input.parse(meta)?;
         let (ty, meta) = meta.process_coq_literal(&ty.value());
@@ -121,7 +121,7 @@ impl From<IProp> for specs::IProp {
 }
 
 /// Parse an iProp string, e.g. `"P ∗ Q ∨ R"`
-impl<T: ParamLookup> parse::Parse<T> for IProp {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let lit: parse::LitStr = input.parse(meta)?;
         let (lit, _) = meta.process_coq_literal(&lit.value());
@@ -134,7 +134,7 @@ impl<T: ParamLookup> parse::Parse<T> for IProp {
 pub struct RRCoqType {
     pub ty: coq::term::Type,
 }
-impl<T: ParamLookup> parse::Parse<T> for RRCoqType {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = input.parse(meta)?;
         let (ty, _) = meta.process_coq_literal(&ty.value());
@@ -157,7 +157,7 @@ impl From<RRParam> for coq::binder::Binder {
     }
 }
 
-impl<T: ParamLookup> parse::Parse<T> for RRParam {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParam {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let name: IdentOrTerm = input.parse(meta)?;
         let name = name.to_string();
@@ -178,7 +178,7 @@ pub struct RRParams {
     pub(crate) params: Vec<RRParam>,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for RRParams {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParams {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let params: parse::Punctuated<RRParam, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
@@ -223,7 +223,7 @@ pub struct RRCoqContextItem {
     /// parameters
     pub at_end: bool,
 }
-impl<T: ParamLookup> parse::Parse<T> for RRCoqContextItem {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let item: parse::LitStr = input.parse(meta)?;
         let (item_str, annot_meta) = meta.process_coq_literal(&item.value());
@@ -262,11 +262,22 @@ fn handle_escapes(s: &str) -> String {
     String::from(s).replace("\\\"", "\"")
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum RustPathElem {
+    AssocItem(String),
+    AsImpl {
+        of_trait: Vec<RustPathElem>,
+        // TODO: these might be much more general.
+        params: Vec<String>,
+    },
+}
+pub type RustPath = Vec<RustPathElem>;
+
 /// Lookup of lifetime and type parameters given their Rust source names.
-pub trait ParamLookup {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&specs::LiteralTyParam>;
+pub trait ParamLookup<'def> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>>;
     fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str>;
+    fn lookup_literal(&self, path: &RustPath) -> Option<&str>;
 
     /// Processes a literal Coq term annotated via an attribute.
     /// In particular, processes escapes `{...}` and replaces them via their interpretation, see
@@ -279,9 +290,15 @@ pub trait ParamLookup {
     /// - `{st_of T}` is replaced by the syntactic type of the type parameter `T`
     /// - `{ly_of T}` is replaced by a term giving the layout of the type parameter `T`'s syntactic type
     /// - `{'a}` is replaced by a term corresponding to the lifetime parameter 'a
+    ///
+    /// We return the list of escaped types we depend on in order to properly track dependencies on
+    /// variables.
+    /// (This is needed for computing the lifetime constraints of invariant types)
     fn process_coq_literal(&self, s: &str) -> (String, specs::TypeAnnotMeta) {
-        let mut literal_lfts: HashSet<String> = HashSet::new();
-        let mut literal_tyvars: HashSet<specs::LiteralTyParam> = HashSet::new();
+        let mut annot_meta = specs::TypeAnnotMeta::empty();
+
+        //let mut literal_lfts: HashSet<String> = HashSet::new();
+        //let mut literal_tyvars: HashSet<specs::LiteralTyParam> = HashSet::new();
 
         // TODOs:
         // - associated types, we should split them here already. We need to adjust the matching to accept ::
@@ -300,28 +317,40 @@ pub trait ParamLookup {
          *
          * Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
          */
+
         // compile these just once, not for every invocation of the method
         lazy_static! {
             //(::[[:alpha:]]*)?
-            static ref RE_RT_OF: Regex = Regex::new(r"([^{]|^)\{\s*rt_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-            static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-            static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
-            static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_RT_OF: Regex = Regex::new(r"([^{]|^)\{\s*rt_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
             static ref RE_LFT_OF: Regex = Regex::new(r"([^{]|^)\{\s*'([[:alpha:]]+)\s*\}").unwrap();
 
-            static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*([[:alpha:]]+)(::([[:alpha:]]+))?\s*\}").unwrap();
+            static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
 
             static ref RE_DIRECT: Regex = Regex::new(r"\{(\{.*\})\}").unwrap();
         }
 
+        // Parse a path to an item.
+        fn parse_path(prefix: Option<regex::Match<'_>>) -> RustPath {
+            let mut path = Vec::new();
+            if let Some(prefix) = prefix {
+                let prefix = prefix.as_str();
+                for seg in prefix.split("::") {
+                    if !seg.is_empty() {
+                        path.push(RustPathElem::AssocItem(seg.to_owned()));
+                    }
+                }
+            }
+            path
+        }
+
         let cs = &s;
         let cs = RE_RT_OF.replace_all(cs, |c: &Captures<'_>| {
-            let mut path = Vec::new();
-            path.push(&c[2]);
+            let mut path = parse_path(c.get(2));
 
-            if let Some(t2) = c.get(4) {
-                path.push(t2.as_str());
-            }
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
 
             let param = self.lookup_ty_param(&path);
 
@@ -329,59 +358,48 @@ pub trait ParamLookup {
                 return "ERR".to_owned();
             };
 
-            literal_tyvars.insert(param.clone());
-            format!("{}{}", &c[1], &param.refinement_type)
+            annot_meta.add_type(&param);
+            format!("{}{}", &c[1], &param.get_rfn_type())
         });
 
         let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {
-            let mut path = Vec::new();
-            path.push(&c[2]);
+            let mut path = parse_path(c.get(2));
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
 
-            if let Some(t2) = c.get(4) {
-                path.push(t2.as_str());
-            }
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
                 return "ERR".to_owned();
             };
 
-            literal_tyvars.insert(param.clone());
-            format!("{}(ty_syn_type {})", &c[1], &param.type_term)
+            annot_meta.add_type(&param);
+            format!("{}(ty_syn_type {})", &c[1], param)
         });
 
         let cs = RE_LY_OF.replace_all(&cs, |c: &Captures<'_>| {
-            let mut path = Vec::new();
-            path.push(&c[2]);
-
-            if let Some(t2) = c.get(4) {
-                path.push(t2.as_str());
-            }
+            let mut path = parse_path(c.get(2));
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
                 return "ERR".to_owned();
             };
 
-            literal_tyvars.insert(param.clone());
-            format!("{}(use_layout_alg' (ty_syn_type {}))", &c[1], &param.type_term)
+            annot_meta.add_type(&param);
+            format!("{}(use_layout_alg' (ty_syn_type {}))", &c[1], param)
         });
 
         let cs = RE_TY_OF.replace_all(&cs, |c: &Captures<'_>| {
-            let mut path = Vec::new();
-            path.push(&c[2]);
-
-            if let Some(t2) = c.get(4) {
-                path.push(t2.as_str());
-            }
+            let mut path = parse_path(c.get(2));
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
                 return "ERR".to_owned();
             };
 
-            literal_tyvars.insert(param.clone());
-            format!("{}{}", &c[1], &param.type_term)
+            annot_meta.add_type(&param);
+            format!("{}{}", &c[1], param)
         });
 
         let cs = RE_LFT_OF.replace_all(&cs, |c: &Captures<'_>| {
@@ -392,16 +410,13 @@ pub trait ParamLookup {
                 return "ERR".to_owned();
             };
 
-            literal_lfts.insert(lft.clone());
+            annot_meta.add_lft(lft);
             format!("{}{}", &c[1], lft)
         });
 
         let cs = RE_LIT.replace_all(&cs, |c: &Captures<'_>| {
-            let mut path = Vec::new();
-            path.push(&c[2]);
-            if let Some(t2) = c.get(4) {
-                path.push(t2.as_str());
-            }
+            let mut path = parse_path(c.get(2));
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
 
             // first lookup literals
             let lit = self.lookup_literal(&path);
@@ -417,13 +432,13 @@ pub trait ParamLookup {
                 return "ERR".to_owned();
             };
 
-            literal_tyvars.insert(ty.clone());
-            format!("{}{}", &c[1], &ty.type_term)
+            annot_meta.add_type(&ty);
+            format!("{}{}", &c[1], ty)
         });
 
         let cs = RE_DIRECT.replace_all(&cs, |c: &Captures<'_>| c[1].to_string());
 
-        (cs.to_string(), specs::TypeAnnotMeta::new(literal_tyvars, literal_lfts))
+        (cs.to_string(), annot_meta)
     }
 }
 
@@ -431,7 +446,7 @@ pub trait ParamLookup {
 mod tests {
     use std::collections::HashMap;
 
-    use super::ParamLookup;
+    use super::{ParamLookup, RustPath, RustPathElem};
 
     #[derive(Default)]
     struct TestScope {
@@ -440,29 +455,32 @@ mod tests {
         /// map types to their index
         pub ty_names: HashMap<String, radium::LiteralTyParam>,
 
-        pub assoc_names: HashMap<(String, String), radium::LiteralTyParam>,
+        pub assoc_names: HashMap<RustPath, radium::LiteralTyParam>,
 
-        pub literals: HashMap<Vec<String>, String>,
+        pub literals: HashMap<RustPath, String>,
     }
-    impl ParamLookup for TestScope {
-        fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
+    impl<'def> ParamLookup<'def> for TestScope {
+        fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
             if path.len() == 1 {
-                self.ty_names.get(path[0])
-            } else if path.len() == 2 {
-                self.assoc_names.get(&(path[0].to_owned(), path[1].to_owned()))
-            } else {
-                None
+                if let super::RustPathElem::AssocItem(it) = &path[0] {
+                    if let Some(n) = self.ty_names.get(it) {
+                        return Some(radium::Type::LiteralParam(n.to_owned()));
+                    }
+                }
             }
+
+            if let Some(n) = self.assoc_names.get(path) {
+                return Some(radium::Type::LiteralParam(n.to_owned()));
+            }
+            None
         }
 
         fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
             self.lft_names.get(lft)
         }
 
-        fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
-            use std::string::ToString;
-            let key: Vec<String> = path.iter().map(ToString::to_string).collect();
-            self.literals.get(&key).map(String::as_str)
+        fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
+            self.literals.get(path).map(String::as_str)
         }
     }
 
@@ -512,7 +530,25 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
         scope.assoc_names.insert(
-            ("Bla".to_owned(), "Blub".to_owned()),
+            vec![RustPathElem::AssocItem("Bla".to_owned()), RustPathElem::AssocItem("Blub".to_owned())],
+            radium::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
+        );
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "Bla_Blub_rt");
+    }
+
+    #[test]
+    fn test_assoc_2() {
+        let lit = "{rt_of Bla::Bla::Blub}";
+        let mut scope = TestScope::default();
+        scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
+        scope.assoc_names.insert(
+            vec![
+                RustPathElem::AssocItem("Bla".to_owned()),
+                RustPathElem::AssocItem("Bla".to_owned()),
+                RustPathElem::AssocItem("Blub".to_owned()),
+            ],
             radium::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
         );
 
@@ -524,7 +560,9 @@ mod tests {
     fn test_lit_1() {
         let lit = "{Size} 4";
         let mut scope = TestScope::default();
-        scope.literals.insert(vec!["Size".to_owned()], "(trait_attrs).(size)".to_owned());
+        scope
+            .literals
+            .insert(vec![RustPathElem::AssocItem("Size".to_owned())], "(trait_attrs).(size)".to_owned());
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(trait_attrs).(size) 4");

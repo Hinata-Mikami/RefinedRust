@@ -168,7 +168,7 @@ fn fmt_prod(v: &Vec<Type>) -> String {
 /// A [type], limited to specific cases.
 ///
 /// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum Type {
     /// Literal types that are not contained in the grammar
     #[display("{}", _0)]

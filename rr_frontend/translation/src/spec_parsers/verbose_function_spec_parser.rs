@@ -65,7 +65,7 @@ struct RRArgs {
     args: Vec<LiteralTypeWithRef>,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for RRArgs {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRArgs {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let args: parse::Punctuated<LiteralTypeWithRef, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
@@ -84,7 +84,7 @@ struct ClosureCaptureSpec {
     post: Option<LiteralTypeWithRef>,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for ClosureCaptureSpec {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for ClosureCaptureSpec {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let name_str: parse::LitStr = input.parse(meta)?;
         let name = name_str.value();
@@ -133,7 +133,7 @@ enum MetaIProp {
     Linktime(String),
 }
 
-impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(input) {
             input.parse::<_, MToken![#]>(meta)?;
@@ -268,7 +268,7 @@ impl<'a, 'def, F, T> From<VerboseFunctionSpecParser<'a, 'def, F, T>> for Functio
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -326,7 +326,7 @@ where
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -616,7 +616,7 @@ where
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {

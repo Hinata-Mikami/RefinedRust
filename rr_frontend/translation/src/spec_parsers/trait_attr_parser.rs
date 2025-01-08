@@ -20,14 +20,15 @@ pub trait TraitAttrParser {
     fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitAttrs, String>;
 }
 
+/// Extends an existing scope with additional literals of attributes parsed so far.
 #[derive(Constructor)]
 struct TraitAttrScope<'a, T> {
     inner_scope: &'a T,
     // spec attrs that were parsed so far mapped to the record item name
     literals: HashMap<String, String>,
 }
-impl<'a, T: ParamLookup> ParamLookup for TraitAttrScope<'a, T> {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
+impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         self.inner_scope.lookup_ty_param(path)
     }
 
@@ -35,10 +36,12 @@ impl<'a, T: ParamLookup> ParamLookup for TraitAttrScope<'a, T> {
         self.inner_scope.lookup_lft(lft)
     }
 
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
+    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
         if path.len() == 1 {
-            if let Some(lit) = self.literals.get(path[0]) {
-                return Some(lit);
+            if let RustPathElem::AssocItem(it) = &path[0] {
+                if let Some(lit) = self.literals.get(it) {
+                    return Some(lit);
+                }
             }
         }
         self.inner_scope.lookup_literal(path)
@@ -57,7 +60,7 @@ pub struct VerboseTraitAttrParser<'a, T, F> {
     make_record_id: F,
 }
 
-impl<'a, T: ParamLookup, F> VerboseTraitAttrParser<'a, T, F>
+impl<'a, 'def, T: ParamLookup<'def>, F> VerboseTraitAttrParser<'a, T, F>
 where
     F: Fn(&str) -> String,
 {
@@ -70,7 +73,7 @@ where
     }
 }
 
-impl<'b, T: ParamLookup, F> TraitAttrParser for VerboseTraitAttrParser<'b, T, F>
+impl<'b, 'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrParser<'b, T, F>
 where
     F: Fn(&str) -> String,
 {

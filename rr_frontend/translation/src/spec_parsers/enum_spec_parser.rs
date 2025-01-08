@@ -36,7 +36,7 @@ pub struct EnumPattern {
     pub args: Vec<String>,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for EnumPattern {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         // parse the pattern
         let pat: parse::LitStr = input.parse(meta)?;
@@ -70,13 +70,13 @@ pub struct VerboseEnumSpecParser<'a, T> {
     scope: &'a T,
 }
 
-impl<'a, T: ParamLookup> VerboseEnumSpecParser<'a, T> {
+impl<'a, 'def, T: ParamLookup<'def>> VerboseEnumSpecParser<'a, T> {
     pub const fn new(scope: &'a T) -> Self {
         Self { scope }
     }
 }
 
-impl<'b, T: ParamLookup> EnumSpecParser for VerboseEnumSpecParser<'b, T> {
+impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b, T> {
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,

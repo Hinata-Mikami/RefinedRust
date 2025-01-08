@@ -35,7 +35,7 @@ impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
     }
 }
 
-impl<'b, T: ParamLookup> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
+impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
     fn parse_trait_impl_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitImplAttrs, String> {
         let mut trait_attrs = HashMap::new();
 

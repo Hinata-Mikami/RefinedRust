@@ -32,42 +32,12 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{dump_borrowck_info, polonius_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::spec_parsers::parse_utils::ParamLookup;
+use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
 };
 use crate::traits::{registry, resolution};
 use crate::{base, consts, procedures, regions, search, traits, types};
-
-/// A scope of trait attributes mapping to Coq names to be used in a function's spec
-struct TraitSpecNameScope {
-    attrs: HashMap<String, String>,
-}
-
-/// When translating a function spec where attributes of a trait are in scope,
-/// we create a wrapper to lookup references to the trait's attributes when parsing function specs.
-struct FunctionSpecScope<'a, T> {
-    generics: &'a T,
-    attrs: &'a TraitSpecNameScope,
-}
-impl<'a, T: ParamLookup> ParamLookup for FunctionSpecScope<'a, T> {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
-        self.generics.lookup_ty_param(path)
-    }
-
-    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
-        self.generics.lookup_lft(lft)
-    }
-
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
-        if path.len() == 1 {
-            if let Some(lit) = self.attrs.attrs.get(path[0]) {
-                return Some(lit);
-            }
-        }
-        self.generics.lookup_literal(path)
-    }
-}
 
 pub struct TX<'a, 'def, 'tcx> {
     env: &'def Environment<'tcx>,
@@ -128,7 +98,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
-        let (type_scope, trait_attrs) = Self::setup_local_scope(
+        let type_scope = Self::setup_local_scope(
             env,
             ty_translator,
             trait_registry,
@@ -143,14 +113,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // TODO: add universal constraints (ideally in setup_local_scope)
 
-        let spec_builder = Self::process_attrs(
-            attrs,
-            &type_translator,
-            &mut translated_fn,
-            &trait_attrs,
-            inputs.as_slice(),
-            output,
-        )?;
+        let spec_builder =
+            Self::process_attrs(attrs, &type_translator, &mut translated_fn, inputs.as_slice(), output)?;
         translated_fn.add_function_spec_from_builder(spec_builder);
 
         translated_fn.try_into().map_err(TranslationError::AttributeError)
@@ -338,7 +302,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     );
                 }
 
-                let (type_scope, trait_attrs) = Self::setup_local_scope(
+                let type_scope = Self::setup_local_scope(
                     env,
                     ty_translator,
                     trait_registry,
@@ -384,7 +348,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 // process attributes
-                t.process_closure_attrs(&trait_attrs, &inputs, output, meta)?;
+                t.process_closure_attrs(&inputs, output, meta)?;
                 Ok(t)
             },
             Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
@@ -457,7 +421,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     );
                 }
 
-                let (type_scope, trait_attrs) = Self::setup_local_scope(
+                let type_scope = Self::setup_local_scope(
                     env,
                     ty_translator,
                     trait_registry,
@@ -475,7 +439,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     attrs,
                     &type_translator,
                     &mut translated_fn,
-                    &trait_attrs,
                     inputs.as_slice(),
                     output,
                 )?;
@@ -586,7 +549,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         region_substitution: regions::EarlyLateRegionMap,
         add_trait_specs: bool,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Result<(types::FunctionState<'tcx, 'def>, TraitSpecNameScope), TranslationError<'tcx>> {
+    ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
         // add universals to the function
         // important: these need to be in the right order!
         for (vid, name) in &region_substitution.region_names {
@@ -620,41 +583,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             translated_fn.add_trait_requirement(trait_use.clone());
         }
 
-        // check if we are in the implementation of a trait or trait impl
-        let mut trait_attr_map = HashMap::new();
-        if let Some(trait_did) = env.tcx().trait_of_item(proc_did) {
-            // we are in a trait declaration
-            if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
-                // make the parameter for the attrs that the function is parametric over
-                if let Some(trait_use_ref) = type_scope.generic_scope.trait_scope().get_self_trait_use() {
-                    let trait_use_ref = trait_use_ref.trait_use.borrow();
-                    let trait_use = trait_use_ref.as_ref().unwrap();
-                    let param_name = trait_use.make_spec_attrs_param_name();
-                    // add the corresponding record entries to the map
-                    for attr in &trait_ref.declared_attrs {
-                        let record_item = trait_ref.make_spec_attr_name(attr);
-                        trait_attr_map.insert(attr.to_owned(), format!("{param_name}.({record_item})"));
-                    }
-                }
-            }
-        }
-        if let Some(impl_did) = env.tcx().impl_of_method(proc_did) {
-            if let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) {
-                // we are in a trait impl
-                if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
-                    let attrs = trait_registry.get_impl_attrs_term(impl_did)?;
-                    // add the corresponding record entries to the map
-                    for attr in &trait_ref.declared_attrs {
-                        let record_item = trait_ref.make_spec_attr_name(attr);
-                        trait_attr_map.insert(attr.to_owned(), format!("({attrs}).({record_item})"));
-                    }
-                }
-            }
-        }
-        let trait_scope = TraitSpecNameScope {
-            attrs: trait_attr_map,
-        };
-
         // TODO: can we also setup the lifetime constraints here?
         // TODO: understand better how these clauses relate to Polonius
         // Note: these constraints do not seem to include implied bounds.
@@ -675,7 +603,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         */
 
-        Ok((type_scope, trait_scope))
+        Ok(type_scope)
     }
 
     /// Process extra requirements annotated on a function spec.
@@ -700,7 +628,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Parse and process attributes of this closure.
     fn process_closure_attrs<'b>(
         &mut self,
-        trait_attrs: &TraitSpecNameScope,
         inputs: &[Ty<'tcx>],
         output: Ty<'tcx>,
         meta: ClosureMetaInfo<'b, 'tcx, 'def>,
@@ -747,12 +674,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut tuple_uses = HashMap::new();
         {
             let scope = ty_translator.scope.borrow();
-            let scope = FunctionSpecScope {
-                generics: &*scope,
-                attrs: trait_attrs,
-            };
             let mut parser =
-                VerboseFunctionSpecParser::new(&translated_arg_types, &translated_ret_type, &scope, |lit| {
+                VerboseFunctionSpecParser::new(&translated_arg_types, &translated_ret_type, &*scope, |lit| {
                     ty_translator.translator.intern_literal(lit)
                 });
 
@@ -777,7 +700,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &[&ast::ast::AttrItem],
         ty_translator: &types::LocalTX<'def, 'tcx>,
         translator: &mut radium::FunctionBuilder<'def>,
-        trait_attrs: &TraitSpecNameScope,
         inputs: &[Ty<'tcx>],
         output: Ty<'tcx>,
     ) -> Result<radium::LiteralFunctionSpecBuilder<'def>, TranslationError<'tcx>> {
@@ -798,15 +720,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             "verbose" => {
                 {
                     let scope = ty_translator.scope.borrow();
-                    let scope = FunctionSpecScope {
-                        generics: &*scope,
-                        attrs: trait_attrs,
-                    };
                     let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
                         VerboseFunctionSpecParser::new(
                             &translated_arg_types,
                             &translated_ret_type,
-                            &scope,
+                            &*scope,
                             |lit| ty_translator.translator.intern_literal(lit),
                         );
 
@@ -836,8 +754,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let fn_name = base::strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
                 let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
-                //self.trait_registry.lookup_impl(impl_did)?;
-                let attr_term = self.trait_registry.get_impl_attrs_term(impl_did)?;
+                let attr_term = trait_info.get_attr_record_term();
                 return Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name, attr_term)));
             }
         }

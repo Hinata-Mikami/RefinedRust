@@ -42,7 +42,7 @@ struct RfnPattern {
     rfn_type: Option<coq::term::Type>,
 }
 
-impl<T: ParamLookup> parse::Parse<T> for RfnPattern {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RfnPattern {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let pat = parse::LitStr::parse(input, meta)?;
         let (pat, _) = meta.process_coq_literal(pat.value().as_str());
@@ -79,7 +79,7 @@ enum MetaIProp {
     Shared(specs::IProp),
 }
 
-impl<T: ParamLookup> parse::Parse<T> for MetaIProp {
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(input) {
             input.parse::<_, MToken![#]>(meta)?;
@@ -175,13 +175,13 @@ pub struct VerboseInvariantSpecParser<'a, T> {
     scope: &'a T,
 }
 
-impl<'a, T: ParamLookup> VerboseInvariantSpecParser<'a, T> {
+impl<'a, 'def, T: ParamLookup<'def>> VerboseInvariantSpecParser<'a, T> {
     pub const fn new(scope: &'a T) -> Self {
         Self { scope }
     }
 }
 
-impl<'b, T: ParamLookup> InvariantSpecParser for VerboseInvariantSpecParser<'b, T> {
+impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecParser<'b, T> {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
@@ -340,7 +340,7 @@ where
     //rfnty_scope: &'a [Option<coq::term::Type>],
 }
 
-impl<'a, 'def, T: ParamLookup, F> VerboseStructFieldSpecParser<'a, 'def, T, F>
+impl<'a, 'def, T: ParamLookup<'def>, F> VerboseStructFieldSpecParser<'a, 'def, T, F>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -380,7 +380,8 @@ where
     }
 }
 
-impl<'a, 'def, T: ParamLookup, F> StructFieldSpecParser<'def> for VerboseStructFieldSpecParser<'a, 'def, T, F>
+impl<'a, 'def, T: ParamLookup<'def>, F> StructFieldSpecParser<'def>
+    for VerboseStructFieldSpecParser<'a, 'def, T, F>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {

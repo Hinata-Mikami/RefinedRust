@@ -24,7 +24,7 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
 use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
 use crate::spec_parsers::enum_spec_parser::{parse_enum_refine_as, EnumSpecParser, VerboseEnumSpecParser};
-use crate::spec_parsers::parse_utils::ParamLookup;
+use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
 use crate::traits::{self, registry};
 use crate::types::scope;
@@ -55,9 +55,9 @@ pub struct FunctionState<'tcx, 'def> {
     polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
 }
 
-impl<'tcx, 'def> ParamLookup for FunctionState<'tcx, 'def> {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
-        if path.len() == 1 { self.generic_scope.lookup_ty_param(path) } else { None }
+impl<'tcx, 'def> ParamLookup<'def> for FunctionState<'tcx, 'def> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+        self.generic_scope.lookup_ty_param(path)
     }
 
     fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
@@ -65,8 +65,8 @@ impl<'tcx, 'def> ParamLookup for FunctionState<'tcx, 'def> {
         self.lifetime_scope.region_names.get(vid)
     }
 
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
-        None
+    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
+        self.generic_scope.lookup_literal(path)
     }
 }
 

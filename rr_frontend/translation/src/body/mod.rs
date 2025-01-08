@@ -97,33 +97,3 @@ pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
 
     Ok(syntypes)
 }
-
-/// A scope of trait attributes mapping to Coq names to be used in a function's spec
-struct TraitSpecNameScope {
-    attrs: HashMap<String, String>,
-}
-
-/// When translating a function spec where attributes of a trait are in scope,
-/// we create a wrapper to lookup references to the trait's attributes when parsing function specs.
-struct FunctionSpecScope<'a, T> {
-    generics: &'a T,
-    attrs: &'a TraitSpecNameScope,
-}
-impl<'a, T: ParamLookup> ParamLookup for FunctionSpecScope<'a, T> {
-    fn lookup_ty_param(&self, path: &[&str]) -> Option<&radium::LiteralTyParam> {
-        self.generics.lookup_ty_param(path)
-    }
-
-    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
-        self.generics.lookup_lft(lft)
-    }
-
-    fn lookup_literal(&self, path: &[&str]) -> Option<&str> {
-        if path.len() == 1 {
-            if let Some(lit) = self.attrs.attrs.get(path[0]) {
-                return Some(lit);
-            }
-        }
-        self.generics.lookup_literal(path)
-    }
-}

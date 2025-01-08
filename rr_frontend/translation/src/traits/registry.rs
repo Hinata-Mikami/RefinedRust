@@ -321,25 +321,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         impl_literals.get(&impl_did).copied()
     }
 
-    /// Get the term for referring to the attribute record of a particular impl within a function of
-    /// that impl.
-    pub fn get_impl_attrs_term(&self, impl_did: DefId) -> Result<String, TranslationError<'tcx>> {
-        let impl_ref = self.lookup_impl(impl_did).ok_or(Error::UnregisteredImpl(impl_did))?;
-        let attr_record = &impl_ref.spec_attrs_record;
-        let info = self.get_trait_impl_info(impl_did)?;
-        // TODO: maybe it would be better to do the formatting in radium
-
-        let mut attr_term = String::with_capacity(100);
-        write!(attr_term, "{attr_record}").unwrap();
-
-        // add the type parameters of the impl
-        for ty in info.generics.get_all_ty_params_with_assocs().params {
-            write!(attr_term, " {}", ty.refinement_type).unwrap();
-        }
-
-        Ok(attr_term)
-    }
-
     /// Get the term for the specification of a trait impl (applied to the given arguments of the trait),
     /// as well as the list of associated types.
     pub fn get_impl_spec_term(
@@ -548,6 +529,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // check if we registered this impl previously
         let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        let impl_ref = self.lookup_impl(trait_impl_did).ok_or(Error::NotATraitImpl(trait_impl_did))?;
 
         let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(trait_impl_did);
 
@@ -611,6 +593,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             Ok(radium::TraitRefInst::new(
                 trait_spec_ref,
+                impl_ref,
                 param_scope.into(),
                 lft_inst,
                 params_inst,
@@ -660,6 +643,21 @@ impl<'def> GenericTraitUse<'def> {
             let trait_use = trait_use_ref.as_ref().unwrap();
             let lit = trait_use.make_assoc_type_use(&base::strip_coq_ident(&ty_name));
             assoc_tys.push(lit);
+        }
+        assoc_tys
+    }
+
+    pub fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, radium::Type<'def>)> {
+        let mut assoc_tys = Vec::new();
+
+        // get associated types
+        let assoc_types = env.get_trait_assoc_types(self.did);
+        for ty_did in &assoc_types {
+            let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
+            let trait_use_ref = self.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            let lit = trait_use.make_assoc_type_use(&base::strip_coq_ident(&ty_name));
+            assoc_tys.push((ty_name.clone(), lit));
         }
         assoc_tys
     }
