@@ -188,105 +188,81 @@ Ltac solve_ensure_evars_instantiated ::=
   repeat solve_ensure_evars_instantiated_step.
 
 (** ** lifetime inclusion solver *)
-(* relevant lemmas : lctx_lft_incl_refl, lctx_lft_incl_preorder  *)
-(*
-  Note: we _need_ to be able to deal with the case that the the lhs and rhs are intersections.
-    (consider the case of subtyping annotations for instance)
-    (but these intersections will always be intersections of "atomic" lifetimes or external lifetimes)
-
-  strategy here: convert intersection to list of lifetimes.
-  We need to dispatch all lifetimes on the RHS by finding a matching lifetime on the LHS, essentially.
-  use the following rules in the given order:
-   - if the LHS or RHS contains static, remove it [static is implicit]
-   - if a LHS lifetime is also contained on the LHS, remove it from the LHS.
-   - if there is a LHS lifetime on the LHS of a ⊑ₗ, remove it from the LHS and put the RHS of the inclusion there. [this is terminating since there are no cycles here, see below]
-   - if there is a LHS lifetime on the LHS of a ⊑ₑ, put the RHS of the inclusion there, if it is not already there. [this ensures that we do not run into cycles]
-   - fail with an error.
-
-   [[[- if an RHS lifetime is on the RHS of a ⊑ₗ, reduce to the LHS. [problem: introduces a disjunction if there are multiple such inclusions.] ]]]
-
-  alternative formulation of this:
-    in a graph-based representation of the lifetimes, this question reduces to: is every conjunct of the RHS reachable from one conjunct of the LHS?
-    but implementing that in a certified way seems quite annoying.
-  -> can this graph have cycles?
-      -> no for the local context. the atomic lifetimes in the local context should automatically break cycles.
-      -> it can have cycles in the external context -> we must not carelessly propagate along external edges.
-
-
-  Slightly problematic point here: lifetime intersection is not idempotent.
-  this means: I cannot use the same element on the LHS twice.
-
-  Note: this solver relies on the fact that each lifetime can only be contained once on the lhs in the local lifetime context.
-*)
-
+(* Due to the structure of local inclusions (unique LHS), local inclusions are fairly easy to handle in the solver. *)
+(* External inclusions are harder, as they are less structured.
+   The goals are disjunctions in order to support backtracking on usage of external inclusions. *)
+(* TODO: the solver relies equivalences between external lifetimes having been normalized.
+  Actually implement this normalization. *)
 Section incl_tac.
   Context `{typeGS Σ}.
   Definition lctx_lft_incl_list (E : elctx) (L : llctx) (κs1 κs2 : list lft) :=
     lctx_lft_incl E L (lft_intersect_list κs1) (lft_intersect_list κs2).
 
   Lemma tac_lctx_lft_incl_init_list E L κ1 κ2 :
-    lctx_lft_incl_list E L [κ1] [κ2] → lctx_lft_incl E L κ1 κ2.
+    lctx_lft_incl_list E L [κ1] [κ2] ∨ False → lctx_lft_incl E L κ1 κ2.
   Proof.
     rewrite /lctx_lft_incl_list /=.
-    by rewrite !lft_intersect_right_id.
+    rewrite !lft_intersect_right_id.
+    intros [? | []]. done.
   Qed.
 
-  Lemma tac_lctx_lft_incl_list_nil_r E L κs1 :
-    lctx_lft_incl_list E L κs1 [].
+  Lemma tac_lctx_lft_incl_list_nil_r E L κs1 P :
+    lctx_lft_incl_list E L κs1 [] ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
+    left.
     iIntros (?) "HL !> HE".
     iApply lft_incl_static.
   Qed.
 
   (* should be applied by automation only if κ2 cannot be decomposed further *)
-  Lemma tac_lctx_lft_incl_list_intersect_l E L κ1 κ2 κs1 κs2 :
-    lctx_lft_incl_list E L (κ1 :: κ2 :: κs1) κs2 →
-    lctx_lft_incl_list E L (κ1 ⊓ κ2 :: κs1) κs2.
+  Lemma tac_lctx_lft_incl_list_intersect_l E L κ1 κ2 κs1 κs2 P :
+    lctx_lft_incl_list E L (κ1 :: κ2 :: κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L (κ1 ⊓ κ2 :: κs1) κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     by rewrite lft_intersect_assoc.
   Qed.
-  Lemma tac_lctx_lft_incl_list_intersect_r E L κ1 κ2 κs1 κs2 :
-    lctx_lft_incl_list E L κs1 (κ1 :: κ2 :: κs2) →
-    lctx_lft_incl_list E L κs1 (κ1 ⊓ κ2 :: κs2).
+  Lemma tac_lctx_lft_incl_list_intersect_r E L κ1 κ2 κs1 κs2 P :
+    lctx_lft_incl_list E L κs1 (κ1 :: κ2 :: κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 (κ1 ⊓ κ2 :: κs2) ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     by rewrite lft_intersect_assoc.
   Qed.
 
   (* used for normalizing the head *)
-  Lemma tac_lctx_lft_incl_list_head_assoc_l E L κ1 κ2 κ3 κs1 κs2 :
-    lctx_lft_incl_list E L ((κ1 ⊓ κ2) ⊓ κ3 :: κs1) κs2 →
-    lctx_lft_incl_list E L (κ1 ⊓ (κ2 ⊓ κ3) :: κs1) κs2.
+  Lemma tac_lctx_lft_incl_list_head_assoc_l E L κ1 κ2 κ3 κs1 κs2 P :
+    lctx_lft_incl_list E L ((κ1 ⊓ κ2) ⊓ κ3 :: κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L (κ1 ⊓ (κ2 ⊓ κ3) :: κs1) κs2 ∨ P.
   Proof. by rewrite lft_intersect_assoc. Qed.
-  Lemma tac_lctx_lft_incl_list_head_assoc_r E L κ1 κ2 κ3 κs1 κs2 :
-    lctx_lft_incl_list E L κs1 ((κ1 ⊓ κ2) ⊓ κ3 :: κs2) →
-    lctx_lft_incl_list E L κs1 (κ1 ⊓ (κ2 ⊓ κ3) :: κs2).
+  Lemma tac_lctx_lft_incl_list_head_assoc_r E L κ1 κ2 κ3 κs1 κs2 P :
+    lctx_lft_incl_list E L κs1 ((κ1 ⊓ κ2) ⊓ κ3 :: κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 (κ1 ⊓ (κ2 ⊓ κ3) :: κs2) ∨ P.
   Proof. by rewrite lft_intersect_assoc. Qed.
-  Lemma tac_lctx_lft_incl_list_head_static_l E L κ1 κs1 κs2 :
-    lctx_lft_incl_list E L (κ1 :: κs1) κs2 →
-    lctx_lft_incl_list E L (κ1 ⊓ static :: κs1) κs2.
+  Lemma tac_lctx_lft_incl_list_head_static_l E L κ1 κs1 κs2 P :
+    lctx_lft_incl_list E L (κ1 :: κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L (κ1 ⊓ static :: κs1) κs2 ∨ P.
   Proof. rewrite lft_intersect_right_id //. Qed.
-  Lemma tac_lctx_lft_incl_list_head_static_r E L κ1 κs1 κs2 :
-    lctx_lft_incl_list E L κs1 (κ1 :: κs2) →
-    lctx_lft_incl_list E L κs1 (κ1 ⊓ static :: κs2).
+  Lemma tac_lctx_lft_incl_list_head_static_r E L κ1 κs1 κs2 P :
+    lctx_lft_incl_list E L κs1 (κ1 :: κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 (κ1 ⊓ static :: κs2) ∨ P.
   Proof. rewrite lft_intersect_right_id //. Qed.
-  Lemma tac_lctx_lft_incl_list_static_l E L κs1 κs2 :
-    lctx_lft_incl_list E L κs1 κs2 →
-    lctx_lft_incl_list E L (static :: κs1) κs2.
+  Lemma tac_lctx_lft_incl_list_static_l E L κs1 κs2 P :
+    lctx_lft_incl_list E L κs1 κs2 ∨ P →
+    lctx_lft_incl_list E L (static :: κs1) κs2 ∨ P.
   Proof. rewrite /lctx_lft_incl_list /= lft_intersect_left_id //. Qed.
-  Lemma tac_lctx_lft_incl_list_static_r E L κs1 κs2 :
-    lctx_lft_incl_list E L κs1 κs2 →
-    lctx_lft_incl_list E L κs1 (static :: κs2).
+  Lemma tac_lctx_lft_incl_list_static_r E L κs1 κs2 P :
+    lctx_lft_incl_list E L κs1 κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 (static :: κs2) ∨ P.
   Proof. rewrite /lctx_lft_incl_list /= lft_intersect_left_id //. Qed.
 
   (* applied when a matching lifetime is found on left and right *)
-  Lemma tac_lctx_lft_incl_list_dispatch_r E L i j κ κs1 κs2 :
+  Lemma tac_lctx_lft_incl_list_dispatch_r E L i j κ κs1 κs2 P :
     κs1 !! i = Some κ →
     κs2 !! j = Some κ →
-    lctx_lft_incl_list E L (delete i κs1) (delete j κs2) →
-    lctx_lft_incl_list E L κs1 κs2.
+    lctx_lft_incl_list E L (delete i κs1) (delete j κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
@@ -297,15 +273,16 @@ Section incl_tac.
     rewrite !lft_intersect_assoc.
     rewrite ![lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -!lft_intersect_assoc.
+    destruct Ha as [ Ha | ?]; last by right. left.
     apply lctx_lft_incl_intersect; done.
   Qed.
 
   (* augment lhs with a local inclusion *)
-  Lemma tac_lctx_lft_incl_list_augment_local_owned E L κs1 κs2 κ κs i j c :
+  Lemma tac_lctx_lft_incl_list_augment_local_owned E L κs1 κs2 κ κs i j c P :
     L !! j = Some (κ ⊑ₗ{c} κs) →
     κs1 !! i = Some κ →
-    lctx_lft_incl_list E L (κs ++ delete i κs1) κs2 →
-    lctx_lft_incl_list E L κs1 κs2.
+    lctx_lft_incl_list E L (κs ++ delete i κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
@@ -313,14 +290,15 @@ Section incl_tac.
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
+    destruct Ha as [ Ha | ?]; last by right. left.
     eapply lctx_lft_incl_local_owned_full; done.
   Qed.
 
-  Lemma tac_lctx_lft_incl_list_augment_local_alias E L κs1 κs2 κ κs i j :
+  Lemma tac_lctx_lft_incl_list_augment_local_alias E L κs1 κs2 κ κs i j P :
     L !! j = Some (κ ≡ₗ κs) →
     κs1 !! i = Some κ →
-    lctx_lft_incl_list E L (κs ++ delete i κs1) κs2 →
-    lctx_lft_incl_list E L κs1 κs2.
+    lctx_lft_incl_list E L (κs ++ delete i κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
@@ -328,15 +306,16 @@ Section incl_tac.
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
+    destruct Ha as [ Ha | ?]; last by right. left.
     eapply lctx_lft_incl_local_alias_full; done.
   Qed.
 
   (* For direct equivalences in the local context, just also rewrite on the RHS. *)
-  Lemma tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' i j :
+  Lemma tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' i j P :
     L !! j = Some (κ ≡ₗ [κ']) →
     κs2 !! i = Some κ →
-    lctx_lft_incl_list E L (κs1) (κ' :: delete i κs2) →
-    lctx_lft_incl_list E L κs1 κs2.
+    lctx_lft_incl_list E L (κs1) (κ' :: delete i κs2) ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
@@ -344,18 +323,20 @@ Section incl_tac.
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
+    destruct Ha as [ Ha | ?]; last by right. left.
     etrans; first apply Ha.
     eapply lctx_lft_incl_intersect; last done.
     eapply lctx_lft_incl_local_alias_reverse; [done.. | ].
     simpl. rewrite right_id. done.
   Qed.
 
+  (*
   (* augment lhs with an external inclusion *)
-  Lemma tac_lctx_lft_incl_list_augment_external E L κ1 κ2 κs1 κs2 i :
+  Lemma tac_lctx_lft_incl_list_augment_external E L κ1 κ2 κs1 κs2 i P :
     (κ1 ⊑ₑ κ2) ∈ E →
     κs1 !! i = Some κ1 →
-    lctx_lft_incl_list E L (κ2 :: delete i κs1) κs2 →
-    lctx_lft_incl_list E L κs1 κs2.
+    lctx_lft_incl_list E L (κ2 :: delete i κs1) κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
@@ -363,28 +344,81 @@ Section incl_tac.
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ1]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
+    destruct Ha as [ Ha | ?]; last by right. left.
     eapply lctx_lft_incl_external_full; done.
   Qed.
-
-  (*Lemma tac_lctx_lft_incl_list_augment_external E L κ1 κs κs1 κs2 i j :*)
-    (*E !! j = Some (κ1 ⊑ₑ κs) →*)
-    (*κs1 !! i = Some κ1 →*)
-    (*lctx_lft_incl_list E L (κs ++ delete i κs1) κs2 →*)
-    (*lctx_lft_incl_list E L κs1 κs2.*)
-  (*Proof.*)
-    (*rewrite /lctx_lft_incl_list /=.*)
-    (*rewrite !delete_take_drop.*)
-    (*intros HE%elem_of_list_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).*)
-    (*rewrite !foldr_app. simpl. intros Ha.*)
-    (*rewrite foldr_lft_intersect_shift_eq.*)
-    (*rewrite -lft_intersect_assoc. rewrite -foldr_lft_intersect_shift_eq.*)
-    (*eapply lctx_lft_incl_external_full; first done.*)
-    (*revert Ha.*)
-    (*rewrite foldr_lft_intersect_shift_eq.*)
-    (*rewrite lft_intersect_comm. done.*)
-  (*Qed.*)
-
+   *)
 End incl_tac.
+
+Section incl_external_tac.
+  Context `{!typeGS Σ}.
+
+  Definition lctx_lft_incl_list_expand_ext
+    (candidates : list (lft * lft))
+    (E : elctx) (L : llctx) (κs1 κs2 : list lft) : Prop :=
+    lctx_lft_incl_list E L κs1 κs2.
+  Arguments lctx_lft_incl_list_expand_ext : simpl never.
+
+  (* Switch to reasoning about external inclusions *)
+  Lemma tac_lctx_lft_incl_list_expand_ext_init E L candidates κs1 κs2 P :
+    lctx_lft_incl_list_expand_ext candidates E L κs1 κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
+  Proof. done. Qed.
+
+  (* Pick an expansion *)
+  Lemma tac_lctx_lft_incl_list_expand_ext_choose E L (e1 c1 : lft) candidates κs1 κs2 i P :
+    (e1 ⊑ₑ c1) ∈ E →
+    κs1 !! i = Some e1 →
+    (lctx_lft_incl_list E L (c1 :: delete i κs1) κs2
+      ∨ (lctx_lft_incl_list_expand_ext (candidates) E L κs1 κs2 ∨ P)) →
+    lctx_lft_incl_list_expand_ext ((e1, c1) :: candidates) E L κs1 κs2 ∨ P.
+  Proof.
+    intros Hel Hlook [Ha | [Ha | Ha]]; [ | by eauto..].
+    rewrite /lctx_lft_incl_list_expand_ext. left.
+    revert Hlook Ha.
+    rewrite /lctx_lft_incl_list /=.
+    rewrite !delete_take_drop.
+    intros Hlook.
+    rewrite -{3}(take_drop_middle κs1 _ _ Hlook).
+    rewrite !lft_intersect_list_app. simpl. intros Ha.
+    rewrite lft_intersect_assoc.
+    rewrite [lft_intersect_list _ ⊓ e1]lft_intersect_comm.
+    rewrite -lft_intersect_assoc.
+    eapply lctx_lft_incl_external_full; done.
+  Qed.
+  Lemma tac_lctx_lft_incl_list_expand_ext_skip E L (e1 c1 : lft) candidates κs1 κs2 P :
+    lctx_lft_incl_list_expand_ext candidates E L κs1 κs2 ∨ P →
+    lctx_lft_incl_list_expand_ext ((e1, c1) :: candidates) E L κs1 κs2 ∨ P.
+  Proof. done. Qed.
+
+  Lemma tac_lctx_lft_incl_list_expand_ext_done E L κs1 κs2 (P : Prop) :
+    P →
+    lctx_lft_incl_list_expand_ext [] E L κs1 κs2 ∨ P.
+  Proof. by right. Qed.
+
+  (* If we can't make progress on the left goal... *)
+  Lemma tac_lctx_lft_incl_list_give_up E L κs1 κs2 (P : Prop) :
+    P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
+  Proof.
+    by right.
+  Qed.
+End incl_external_tac.
+
+(* Find inclusions to use for expanding external lifetimes *)
+Ltac elctx_find_expansions E :=
+  match constr:(E) with
+  | [] => constr:([] : list (lft * lft))
+  | (?e ⊑ₑ ?c) :: ?E =>
+      let candidates := (elctx_find_expansions E) in
+      constr:((e, c) :: candidates)
+  | ty_outlives_E _ _ ++ ?E =>
+      elctx_find_expansions E
+  | ty_wf_E _ ++ ?E =>
+      elctx_find_expansions E
+  | lfts_outlives_E _ _ ++ ?E =>
+      elctx_find_expansions E
+  end.
 
 (* Execute an ltac tactical [cont] for each element of a list [l].
   [cont] gets the elements of the list as argument.
@@ -421,40 +455,40 @@ Ltac elctx_list_elem_solver :=
 Ltac solve_lft_incl_list_step cont :=
   match goal with
   (* normalize the head if it is an intersection *)
-  | |- lctx_lft_incl_list ?E ?L ((?κ1 ⊓ (?κ2 ⊓ ?κ3)) :: ?κs1) ?κs2 =>
-      notypeclasses refine (tac_lctx_lft_incl_list_head_assoc_l E L _ _ _ κs1 κs2 _); cont
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ((?κ1 ⊓ (?κ2 ⊓ ?κ3)) :: ?κs2) =>
-      notypeclasses refine (tac_lctx_lft_incl_list_head_assoc_r E L _ _ _ κs1 κs2 _); cont
+  | |- lctx_lft_incl_list ?E ?L ((?κ1 ⊓ (?κ2 ⊓ ?κ3)) :: ?κs1) ?κs2 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_head_assoc_l E L _ _ _ κs1 κs2 _ _); cont
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ((?κ1 ⊓ (?κ2 ⊓ ?κ3)) :: ?κs2) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_head_assoc_r E L _ _ _ κs1 κs2 _ _); cont
   (* remove the atomic rhs static of an intersection *)
-  | |- lctx_lft_incl_list ?E ?L (?κ1 ⊓ static :: ?κs1) ?κs2 =>
-      notypeclasses refine (tac_lctx_lft_incl_list_head_static_l E L _ κs1 κs2 _); cont
-  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ1 ⊓ static :: ?κs2) =>
-      notypeclasses refine (tac_lctx_lft_incl_list_head_static_r E L _ κs1 κs2 _); cont
+  | |- lctx_lft_incl_list ?E ?L (?κ1 ⊓ static :: ?κs1) ?κs2 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_head_static_l E L _ κs1 κs2 _ _); cont
+  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ1 ⊓ static :: ?κs2) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_head_static_r E L _ κs1 κs2 _ _); cont
   (* shift the atomic rhs conjunct of an intersection *)
-  | |- lctx_lft_incl_list ?E ?L (?κ1 ⊓ ?κ2 :: ?κs1) ?κs2 =>
+  | |- lctx_lft_incl_list ?E ?L (?κ1 ⊓ ?κ2 :: ?κs1) ?κs2 ∨ _ =>
       is_var κ2;
-      notypeclasses refine (tac_lctx_lft_incl_list_intersect_l E L _ _ κs1 κs2 _); cont
-  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ1 ⊓ ?κ2 :: ?κs2) =>
+      notypeclasses refine (tac_lctx_lft_incl_list_intersect_l E L _ _ κs1 κs2 _ _); cont
+  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ1 ⊓ ?κ2 :: ?κs2) ∨ _ =>
       is_var κ2;
-      notypeclasses refine (tac_lctx_lft_incl_list_intersect_r E L _ _ κs1 κs2 _); cont
+      notypeclasses refine (tac_lctx_lft_incl_list_intersect_r E L _ _ κs1 κs2 _ _); cont
   (* eliminate static at the head *)
-  | |- lctx_lft_incl_list ?E ?L (static :: ?κs1) ?κs2 =>
-      notypeclasses refine (tac_lctx_lft_incl_list_static_l E L κs1 κs2 _); cont
-  | |- lctx_lft_incl_list ?E ?L ?κs1 (static :: ?κs2) =>
-      notypeclasses refine (tac_lctx_lft_incl_list_static_r E L κs1 κs2 _); cont
+  | |- lctx_lft_incl_list ?E ?L (static :: ?κs1) ?κs2 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_static_l E L κs1 κs2 _ _); cont
+  | |- lctx_lft_incl_list ?E ?L ?κs1 (static :: ?κs2) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_static_r E L κs1 κs2 _ _); cont
   (* goal is solved if RHS is empty *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 [] =>
-      notypeclasses refine (tac_lctx_lft_incl_list_nil_r E L κs1)
+  | |- lctx_lft_incl_list ?E ?L ?κs1 [] ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_nil_r E L κs1 _)
 
   (* Normalize a direct local equivalence [κ ≡ₗ [κ']] on the RHS *)
   (* TODO this is a hack and doesn't work in all cases, because we don't use any other (external) inclusions on the RHS.
       Really, the proper way to do this would be to eliminate all such equivalences before starting the solver on a normalized goal + lifetime context. *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 =>
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
       let find_in_llctx := fun j κ =>
         list_find_tac ltac:(fun i el =>
           match el with
           | κ ≡ₗ [?κ'] =>
-              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' j i _ _ _);
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias_rhs E L κs1 κs2 κ κ' j i _ _ _ _);
               [ reflexivity | reflexivity | simpl; cont ]
           | _ => fail
           end
@@ -463,10 +497,10 @@ Ltac solve_lft_incl_list_step cont :=
       list_find_tac find_in_llctx κs2
 
   (* eliminate a lifetime on the RHS that also occurs on the LHS *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 =>
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
       let check_equality := fun j κ2 => ltac:(fun i κ1 =>
         first [unify κ1 κ2;
-          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i j κ1 κs1 κs2 _ _ _);
+          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i j κ1 κs1 κs2 _ _ _ _);
             [reflexivity | reflexivity | simpl; cont ]
         | fail ]
       ) in
@@ -474,19 +508,19 @@ Ltac solve_lft_incl_list_step cont :=
       list_find_tac check_left κs2
 
   (* Expand a local lifetime on the LHS *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 =>
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
       let find_in_llctx := fun j κ =>
         list_find_tac ltac:(fun i el =>
           match el with
           | κ ⊑ₗ{_} ?κs =>
               (* only do this if the RHS is non-empty---otherwise, this cannot serve to make progress *)
               assert_fails (unify κs (@nil lft));
-              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_owned E L κs1 κs2 κ κs j i _ _ _ _);
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_owned E L κs1 κs2 κ κs j i _ _ _ _ _);
               [ reflexivity | reflexivity | simpl; cont ]
           | κ ≡ₗ ?κs =>
               (* only do this if the RHS is non-empty---otherwise, this cannot serve to make progress *)
               assert_fails (unify κs (@nil lft));
-              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias E L κs1 κs2 κ κs j i _ _ _);
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_local_alias E L κs1 κs2 κ κs j i _ _ _ _);
               [ reflexivity | reflexivity | simpl; cont ]
           | _ => fail
           end
@@ -495,25 +529,72 @@ Ltac solve_lft_incl_list_step cont :=
       list_find_tac find_in_llctx κs1
 
 
+  (* Expand an external lifetime on the LHS.
+     We first find candidate inclusions to use. *)
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
+      (* first make sure that there exists an inclusion we use, to make sure we can make progress *)
+      let find_in_elctx := fun j κ =>
+        list_find_tac_noindex ltac:(fun el =>
+          match el with
+          | κ ⊑ₑ ?κ' => idtac
+          | _ => fail
+          end
+        ) E
+      in
+      list_find_tac find_in_elctx κs1;
+
+      let expansions := elctx_find_expansions E in
+      notypeclasses refine (tac_lctx_lft_incl_list_expand_ext_init E L expansions κs1 κs2 _ _);
+      cont
+
+  (* Otherwise, give up on this branch *)
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_give_up _ _ _ _ _ _);
+      cont
+
+  (* Try a candidate for external lifetime expansion *)
+  | |- lctx_lft_incl_list_expand_ext ((?e1, ?c1) :: ?cs) ?E ?L ?κs1 ?κs2 ∨ _ =>
+       let find_e1 := fun j el =>
+         match el with
+         | e1 =>
+            notypeclasses refine (tac_lctx_lft_incl_list_expand_ext_choose E L e1 c1 cs κs1 κs2 j _ _ _ _);
+            [elctx_list_elem_solver | reflexivity | simpl; cont]
+         | _ => fail
+         end
+       in
+       first [
+        list_find_tac find_e1 κs1
+      | notypeclasses refine (tac_lctx_lft_incl_list_expand_ext_skip E L e1 c1 cs κs1 κs2 _ _); cont
+      ]
+
+  (* The expansion candidates are exhausted *)
+  | |- lctx_lft_incl_list_expand_ext [] ?E ?L ?κs1 ?κs2 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_incl_list_expand_ext_done _ _ _ _ _ _);
+      cont
+
+  (* old rule *)
   (* expand an external lifetime on the LHS *)
-  (* TODO: we cannot always make this expansion safely and may need backtracking (there might be multiple possible expansions);
+  (* we cannot always make this expansion safely and may need backtracking (there might be multiple possible expansions);
       alternatively, think about representing the elctx similar to llctx (with unique LHS).
       [works, but would cause problems in the procedure for lctx_lft_alive below...]
     also, this might loop, since there can be cycles in the elctx. we need to keep track of that.
   *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 =>
+      (*
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
       let find_in_elctx := fun j κ =>
         list_find_tac_noindex ltac:(fun el =>
           match el with
           | κ ⊑ₑ ?κ' =>
-              notypeclasses refine (tac_lctx_lft_incl_list_augment_external E L κ κ' κs1 κs2 j _ _ _);
+              notypeclasses refine (tac_lctx_lft_incl_list_augment_external E L κ κ' κs1 κs2 j _ _ _ _);
               [ elctx_list_elem_solver | reflexivity | simpl; cont ]
           | _ => fail
           end
         ) E
       in
       list_find_tac find_in_elctx κs1
+       *)
   end.
+
 Ltac solve_lft_incl_list := repeat solve_lft_incl_list_step idtac.
 Ltac solve_lft_incl :=
   match goal with
@@ -523,6 +604,7 @@ Ltac solve_lft_incl :=
             solve_lft_incl_list
             ]
   end.
+
 
 (** lifetime alive solver *)
 (*
@@ -3010,7 +3092,7 @@ Ltac prove_trait_incl_for trait_spec trait_proj appspec cont :=
   | H : trait_incl_marker (?incl trait_spec ?spec2) |- _ =>
       let H2 := fresh in
       let t1 := constr:(trait_proj _ trait_spec) in
-      let t1 := apply_term_het constr:(t1) constr:(appspec) in 
+      let t1 := apply_term_het constr:(t1) constr:(appspec) in
       let t2 := constr:(trait_proj _ spec2) in
       let t2 := apply_term_het constr:(t2) constr:(appspec) in
       assert (function_subtype t1 t2) as H2;
@@ -3028,7 +3110,7 @@ Ltac solve_trait_subtype :=
       destruct_product_hypothesis tys tys;
       simpl;
       find_trait_term ltac:(fun trait_proj trait_spec appspec => prove_trait_incl_for trait_spec trait_proj appspec
-        ltac:(fun H => 
+        ltac:(fun H =>
           eapply function_subtype_lift_generics_2 in H; simpl in H;
           eapply function_subtype_trans; [apply H | ];
           eapply function_subtype_refl

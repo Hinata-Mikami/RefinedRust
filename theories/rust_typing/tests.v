@@ -815,7 +815,7 @@ Section test.
   Abort.
 
   Lemma test5 ϝ0 ϝ ulft_a :
-    lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ulft_a].
+    lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ulft_a] ∨ False.
   Proof.
     solve_lft_incl_list; solve[fail].
   Abort.
@@ -1042,6 +1042,25 @@ Section test.
     solve_elctx_sat; solve[fail].
   Abort.
 
+  Lemma test9 ϝ0 ϝ κ ulft_1 {T_rt U_rt} (T_ty : type T_rt) (U_ty : type U_rt) :
+    elctx_sat
+    ((ϝ0 ⊑ₑ κ)
+     :: (ϝ0 ⊑ₑ ϝ)
+        :: (ϝ ⊑ₑ ulft_1)
+           :: (ϝ ⊑ₑ ulft_1)
+              :: ty_outlives_E T_ty ϝ ++
+                 ty_wf_E T_ty ++
+                 ty_outlives_E U_ty ϝ ++
+                 ty_wf_E U_ty ++
+                 ty_outlives_E T_ty ulft_1 ++
+                 ty_outlives_E T_ty ϝ ++
+                 ty_wf_E U_ty ++
+                 ty_outlives_E U_ty ϝ)
+    [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []]
+    (ty_outlives_E U_ty ϝ0).
+  Proof.
+    solve_elctx_sat; solve[fail].
+  Abort.
 End test.
 
 (** solve_bor_kind_alive *)

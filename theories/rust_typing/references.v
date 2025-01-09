@@ -1706,8 +1706,8 @@ Section shr_ref.
         place_rfn_interp_shared r ri ∗
         &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri li)%I;
     ty_ghost_drop _ _ := True%I;
-    ty_lfts := κ :: inner.(ty_lfts);
-    ty_wf_E := ty_outlives_E inner κ;
+    ty_lfts := [κ];
+    ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation. iIntros (????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
   Next Obligation.
