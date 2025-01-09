@@ -929,6 +929,9 @@ impl<'def> Function<'def> {
         write!(f, "intros;\n")?;
         write!(f, "iStartProof;\n")?;
 
+        // intro pattern for the function lifetime
+        write!(f, "let ϝ := fresh \"ϝ\" in\n")?;
+
         // generate intro pattern for lifetimes
         let mut lft_pattern = String::with_capacity(100);
         // pattern is right-associative
@@ -998,7 +1001,7 @@ impl<'def> Function<'def> {
 
         write!(
             f,
-            "start_function \"{}\" ( {} ) ( {} ) ( {} );\n",
+            "start_function \"{}\" ϝ ( {} ) ( {} ) ( {} );\n",
             self.name(),
             lft_pattern.as_str(),
             typaram_pattern.as_str(),
@@ -1030,9 +1033,10 @@ impl<'def> Function<'def> {
         }
 
         // initialize lifetimes
-        let formatted_lifetimes = make_lft_map_string(
-            &self.spec.generics.get_lfts().iter().map(|n| (n.to_string(), n.to_string())).collect(),
-        );
+        let mut lfts: Vec<_> =
+            self.spec.generics.get_lfts().iter().map(|n| (n.to_string(), n.to_string())).collect();
+        lfts.push(("_flft".to_owned(), "ϝ".to_owned()));
+        let formatted_lifetimes = make_lft_map_string(&lfts);
         write!(f, "init_lfts ({} );\n", formatted_lifetimes.as_str())?;
 
         // initialize tyvars

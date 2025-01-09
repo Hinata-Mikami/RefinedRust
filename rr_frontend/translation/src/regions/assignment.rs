@@ -300,16 +300,20 @@ pub fn get_assignment_loan_annots<'tcx>(
         // inclusion tracker
         let outliving = get_outliving_regions_on_loan(inclusion_tracker, r, loan_point);
 
+        let mut outliving_lfts: Vec<_> = outliving
+            .iter()
+            .map(|r| ty_translator.format_atomic_region(&info.mk_atomic_region(*r)))
+            .collect();
+        // If there are no constraints, at least constrain the lifetime by the lifetime of the
+        // current function
+        if outliving_lfts.is_empty() {
+            outliving_lfts.push("_flft".to_owned());
+        }
+
         // add statement for issuing the loan
         stmt_annots.insert(
             0,
-            radium::Annotation::StartLft(
-                ty_translator.format_atomic_region(&lft),
-                outliving
-                    .iter()
-                    .map(|r| ty_translator.format_atomic_region(&info.mk_atomic_region(*r)))
-                    .collect(),
-            ),
+            radium::Annotation::StartLft(ty_translator.format_atomic_region(&lft), outliving_lfts),
         );
 
         let a = info.get_region_kind(r);

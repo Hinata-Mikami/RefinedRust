@@ -786,7 +786,7 @@ End tac.
 (fn) is part of the goal, because simpl seems to take exponential time
 in the number of blocks! *)
 (* TODO: don't use i... tactics here *)
-Tactic Notation "start_function" constr(fnname) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
+Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
   intros;
   inv_layout_alg;
   iStartProof;
