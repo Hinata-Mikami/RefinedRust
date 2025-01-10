@@ -825,6 +825,24 @@ Section test.
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
+
+  Definition pair_sls (T_st : syn_type) : struct_layout_spec := mk_sls "pair" [
+    ("p1", T_st);
+    ("p2", T_st)] StructReprRust.
+  Lemma test7 E L {T_rt} (T_ty : type T_rt) :
+    lctx_lft_incl E L (lft_intersect_list (ty_lfts (struct_t (pair_sls (ty_syn_type T_ty)) +[T_ty; T_ty]))) (lft_intersect_list (ty_lfts T_ty)).
+  Proof.
+    (* TODO: we cannot handle this currently *)
+    (*solve_lft_incl.*)
+    (*refine (tac_lctx_lft_incl_init_list _ _ _ _ _).*)
+    (*simpl.*)
+  Abort.
+
+  Lemma test8 ϝ0 ϝ ulft_a :
+    lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ϝ] ∨ False.
+  Proof.
+    solve_lft_incl_list; solve[fail].
+  Abort.
 End test.
 
 (** solve_lft_alive *)
@@ -880,13 +898,13 @@ Section test.
     solve_lft_alive; solve[fail].
   Abort.
 
-  Lemma test7 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) : 
+  Lemma test7 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) :
     lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] κ.
   Proof.
     solve_lft_alive; solve[fail].
   Abort.
-  
-  Lemma test8 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) : 
+
+  Lemma test8 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) :
     lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] static.
   Proof.
     solve_lft_alive; solve[fail].

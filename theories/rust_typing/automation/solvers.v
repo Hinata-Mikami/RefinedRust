@@ -330,6 +330,47 @@ Section incl_tac.
     simpl. rewrite right_id. done.
   Qed.
 
+  (* WIP: better approach to handling symbolic lfts *)
+  Lemma lctx_lft_incl_list_intersect_r E L κs1 κs2 κs P :
+    lctx_lft_incl_list E L κs1 (κs2 ++ κs) ∨ P →
+    lctx_lft_incl_list E L κs1 (lft_intersect_list κs :: κs2) ∨ P.
+  Proof.
+    rewrite /lctx_lft_incl_list/=.
+    rewrite lft_intersect_list_app.
+    rewrite lft_intersect_comm. done.
+  Qed.
+  Lemma lctx_lft_incl_list_intersect_l E L κs1 κs2 κs i P : 
+    κs1 !! i = Some (lft_intersect_list κs) →
+    lctx_lft_incl_list E L (delete i κs1 ++ κs) κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P.
+  Proof.
+    rewrite /lctx_lft_incl_list/=.
+    rewrite !delete_take_drop.
+    intros Hlook [Ha | ?]; last by right. left.
+    rewrite -(take_drop_middle κs1 _ _ Hlook).
+    move: Ha.
+    rewrite !lft_intersect_list_app. simpl.
+    rewrite [lft_intersect_list κs ⊓ lft_intersect_list (drop _ _)]lft_intersect_comm.
+    rewrite lft_intersect_assoc. 
+    done.
+  Qed.
+
+  (* TODO this doesnt' work. we also have to remove it on the LHS. *)
+  Lemma lctx_lft_incl_list_ty_lfts_r E L κs1 κs2 {rt} (ty : type rt) P :
+    ty_lfts ty ⊆ κs1 →
+    lctx_lft_incl_list E L κs1 κs2 ∨ P →
+    lctx_lft_incl_list E L κs1 (ty_lfts ty ++ κs2) ∨ P.
+  Proof.
+    rewrite /lctx_lft_incl_list/=.
+    intros Hincl [Ha | ]; last by right. left.
+    rewrite lft_intersect_list_app.
+
+    (*Search lft_intersect.*)
+    (*Search lctx_lft_incl.*)
+    (*apply lctx_lft_incl_intersect_r.*)
+  Abort.
+
+
   (*
   (* augment lhs with an external inclusion *)
   Lemma tac_lctx_lft_incl_list_augment_external E L κ1 κ2 κs1 κs2 i P :
@@ -495,6 +536,9 @@ Ltac solve_lft_incl_list_step cont :=
   | |- lctx_lft_incl_list ?E ?L ?κs1 [] ∨ _ =>
       notypeclasses refine (tac_lctx_lft_incl_list_nil_r E L κs1 _)
 
+  (*| |- lctx_lft_incl_list ?E ?L ?κs1 (lft_intersect_list ?κs :: ?κs2) ∨ _ =>*)
+      (*notypeclasses refine *)
+
   (* Normalize a direct local equivalence [κ ≡ₗ [κ']] on the RHS *)
   (* TODO this is a hack and doesn't work in all cases, because we don't use any other (external) inclusions on the RHS.
       Really, the proper way to do this would be to eliminate all such equivalences before starting the solver on a normalized goal + lifetime context. *)
@@ -512,15 +556,15 @@ Ltac solve_lft_incl_list_step cont :=
       list_find_tac find_in_llctx κs2
 
   (* eliminate a lifetime on the RHS that also occurs on the LHS *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
-      let check_equality := fun j κ2 => ltac:(fun i κ1 =>
-        first [unify κ1 κ2;
-          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i j κ1 κs1 κs2 _ _ _ _);
+  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ :: ?κs2) ∨ _ =>
+      let check_equality := ltac:(fun i κ1 =>
+        first [unify κ1 κ;
+          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i 0 κ1 κs1 (κ :: κs2) _ _ _ _);
             [reflexivity | reflexivity | simpl; cont ]
         | fail ]
       ) in
-      let check_left := (fun j κ2 => list_find_tac ltac:(check_equality j κ2) κs1) in
-      list_find_tac check_left κs2
+      (*let check_left := (fun j κ2 => list_find_tac ltac:(check_equality j κ2) κs1) in*)
+      list_find_tac check_equality κs1
 
   (* Expand a local lifetime on the LHS *)
   | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
@@ -611,14 +655,16 @@ Ltac solve_lft_incl_list_step cont :=
   end.
 
 Ltac solve_lft_incl_list := repeat solve_lft_incl_list_step idtac.
-Ltac solve_lft_incl :=
+Ltac solve_lft_incl_init :=
   match goal with
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       first [unify κ1 κ2; refine (lctx_lft_incl_refl E L κ1) |
-            refine (tac_lctx_lft_incl_init_list E L κ1 κ2 _);
-            solve_lft_incl_list
+            refine (tac_lctx_lft_incl_init_list E L κ1 κ2 _)
             ]
   end.
+Ltac solve_lft_incl :=
+  solve_lft_incl_init;
+  solve_lft_incl_list.
 
 
 (** lifetime alive solver *)
@@ -1312,14 +1358,16 @@ Ltac solve_elctx_sat_step :=
       solve[solve_lft_incl]
   end.
 
-Ltac solve_elctx_sat :=
+Ltac solve_elctx_sat_init :=
   (* first unfold stuff is commonly included in these conditions *)
   (*let esimpl := (unfold ty_outlives_E, tyl_outlives_E; simpl; notypeclasses refine eq_refl) in*)
   lazymatch goal with
   | |- elctx_sat ?E ?L ?E' =>
       notypeclasses refine (tac_elctx_sat_simpl _ _ _ _ _ _ _ _);
       [ simplify_elctx | simplify_elctx | ]
-  end;
+  end.
+Ltac solve_elctx_sat :=
+  solve_elctx_sat_init;
   repeat solve_elctx_sat_step
   .
 
