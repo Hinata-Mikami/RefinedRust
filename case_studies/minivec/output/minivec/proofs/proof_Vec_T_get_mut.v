@@ -30,22 +30,6 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { (* TODO: currently not handled by the solver *)
-    apply Forall_forall.
-    intros κe Hlft.
-    eapply (lctx_lft_alive_incl ϝ); first sidecond_hook.
-    apply lctx_lft_incl_external.
-    apply elem_of_cons; right.
-    apply elem_of_cons; right.
-    apply elem_of_cons; right.
-    apply elem_of_app; right.
-    apply elem_of_app; right.
-    apply elem_of_app; right.
-    apply elem_of_app; left.
-    unfold_opaque @ty_outlives_E.
-    rewrite /lfts_outlives_E.
-    rewrite elem_of_list_fmap.
-    eexists. split; done. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.
