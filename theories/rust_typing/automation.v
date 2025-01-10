@@ -846,6 +846,8 @@ Ltac sidecond_hook ::=
       sidecond_hook_list
   | |- lctx_lft_alive ?E ?L ?κ =>
       solve_lft_alive
+  | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
+      solve_lft_alive
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       solve_lft_incl
   | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>

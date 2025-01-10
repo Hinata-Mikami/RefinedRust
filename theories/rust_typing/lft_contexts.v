@@ -661,6 +661,24 @@ Section lft_contexts.
     iMod ("Hcl2" with "(Hvs2 Hκ2)") as "$".
     done.
   Qed.
+
+  Lemma lctx_lft_alive_intersect_l κ1 κ2 :
+    lctx_lft_alive (κ1 ⊓ κ2) → lctx_lft_alive κ1.
+  Proof.
+    iIntros (Hal F qL ? ) "#HE HL".
+    iMod (Hal F with "HE HL") as (q1) "(Hκ & Hcl)"; [done | ].
+    rewrite -lft_tok_sep.
+    iDestruct "Hκ" as "(Hκ1 & Hκ2)".
+    iModIntro. iExists q1. iFrame.
+    iIntros "Hκ1". iApply ("Hcl" with "[$]").
+  Qed.
+  Lemma lctx_lft_alive_intersect_2 κ1 κ2 :
+    lctx_lft_alive (κ1 ⊓ κ2) → lctx_lft_alive κ1 ∧ lctx_lft_alive κ2.
+  Proof.
+    intros Ha. split.
+    - by eapply lctx_lft_alive_intersect_l.
+    - eapply lctx_lft_alive_intersect_l. rewrite comm. done.
+  Qed.
   End fix_EL.
 
   Lemma lctx_lft_alive_incl {E L} κ κ':
@@ -676,14 +694,16 @@ Section lft_contexts.
   Qed.
 
   Lemma lctx_lft_alive_intersect_list {E L} κs :
-    Forall (lctx_lft_alive E L) κs → lctx_lft_alive E L (lft_intersect_list κs).
+    Forall (lctx_lft_alive E L) κs ↔ lctx_lft_alive E L (lft_intersect_list κs).
   Proof.
-    intros Hal.
-    induction κs as [ | κ κs IH].
-    { simpl. apply lctx_lft_alive_static. }
-    inversion Hal; subst.
-    eapply lctx_lft_alive_intersect; first done.
-    by eapply IH.
+    induction κs as [ | κ κs IH]; simpl; split; intros Hal.
+    - apply lctx_lft_alive_static.
+    - by apply Forall_nil.
+    - apply Forall_cons in Hal as [].
+      apply lctx_lft_alive_intersect; last apply IH; done.
+    - apply lctx_lft_alive_intersect_2 in Hal as [].
+      apply Forall_cons. split; first done.
+      by apply IH.
   Qed.
 
   Lemma lctx_lft_alive_local_alias E L κ κs:

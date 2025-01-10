@@ -206,11 +206,9 @@ mod foo {
         x.bar(32); 
     }
 
-    #[rr::skip]
     #[rr::params("w")]
     #[rr::args("w")]
     fn foobar_ref3<'a, W>(x: W) where W: Foo<&'a mut i32, Output=i32> {
-        // TODO fails because of sidecondition solver
         x.bar(32); 
     }
 
@@ -226,11 +224,9 @@ mod foo {
     }
     */
 
-    #[rr::skip]
     #[rr::params("w", "v")]
     #[rr::args("w", "v")]
     fn foobar_ref2<W, T>(x: W, a: T) where W: Foo<T> {
-        // TODO fails because of sidecondition solver
         x.bar(32); 
     }
 
@@ -393,6 +389,14 @@ mod iter {
         #[rr::verify]
         fn next(&mut self) -> Option<i32> {
             None
+            //if self.cur < self.max {
+                //let elem = self.cur;
+                //self.cur += 1;
+                //Some(elem)
+            //}
+            //else {
+                //None
+            //}
         }
     }
 
@@ -401,6 +405,17 @@ mod iter {
         let mut c = Counter::new(0, 10); 
 
         c.next();
+    }
+
+
+    #[rr::params("x", "γ")]
+    #[rr::args("(#x, γ)")]
+    #[rr::exists("y" : "option {rt_of T::Elem}", "x'")]
+    #[rr::observe("γ" : "x'")]
+    #[rr::ensures("{T::Next} x'")]
+    #[rr::returns("<#>@{option} y")]
+    fn test_counter_2<T: Iter>(x: &mut T) -> Option<<T as Iter>::Elem> {
+        x.next()
     }
 
 }

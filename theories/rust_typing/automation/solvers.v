@@ -366,6 +366,7 @@ Section incl_external_tac.
   Proof. done. Qed.
 
   (* Pick an expansion *)
+  (* TODO: why don't I expand from the RHS, and then only expand the head lft, one by one? *)
   Lemma tac_lctx_lft_incl_list_expand_ext_choose E L (e1 c1 : lft) candidates κs1 κs2 i P :
     (e1 ⊑ₑ c1) ∈ E →
     κs1 !! i = Some e1 →
@@ -418,10 +419,12 @@ Ltac elctx_find_expansions E :=
       elctx_find_expansions E
   | lfts_outlives_E _ _ ++ ?E =>
       elctx_find_expansions E
+  | _ =>
+      constr:([] : list (lft * lft))
   end.
 
 (* Execute an ltac tactical [cont] for each element of a list [l].
-  [cont] gets the elements of the list as argument.
+  [cont] gets an element of the list as argument.
   Breaks if [cont] succeeds.
  *)
 Ltac list_find_tac' cont l i :=
@@ -431,13 +434,23 @@ Ltac list_find_tac' cont l i :=
   end.
 Ltac list_find_tac cont l := list_find_tac' cont l constr:(0).
 
-Ltac list_find_tac_noindex' cont l :=
+Ltac list_find_tac_noindex cont l :=
   match l with
   | [] => fail
-  | ?h :: ?l => first [cont h | list_find_tac_noindex' cont l]
-  | _ ++ ?l => list_find_tac_noindex' cont l
+  | ?h :: ?l => first [cont h | list_find_tac_noindex cont l]
+  | _ ++ ?l => list_find_tac_noindex cont l
   end.
-Ltac list_find_tac_noindex cont l := list_find_tac_noindex' cont l.
+
+(* Similar to [list_find_tac_noindex], but searches for a symbolic sublist used as an application. *)
+Ltac list_find_tac_app cont l :=
+  match l with
+  | [] => fail
+  | _ :: ?l => list_find_tac_app cont l
+  | ?a ++ ?b =>
+      first [cont a | list_find_tac_app cont a | list_find_tac_app cont b]
+  | ?a => cont a
+  end.
+
 
 (* Very simple list containment solver, tailored for the goals we usually get around external lifetime contexts. *)
 Ltac elctx_list_elem_solver :=
@@ -449,6 +462,8 @@ Ltac elctx_list_elem_solver :=
   | |- ?a ∈ _ ++ ?L =>
       apply elem_of_app; right
   end.
+
+(* TODO: what about symbolic lifetimes like ty_lfts? *)
 
 (** Basic algorithm: Want to eliminate the RHS to [], so that the inclusion to [static] holds trivially.
   For that, expand inclusions on the LHS, until we can eliminate one lifetime on the RHS *)
@@ -619,31 +634,121 @@ Ltac solve_lft_incl :=
 Section alive_tac.
   Context `{typeGS Σ}.
 
+  Definition lctx_lft_alive_list (E : elctx) (L : llctx) (κs : list lft) : Prop :=
+    lctx_lft_alive E L (lft_intersect_list κs).
+  Arguments lctx_lft_alive_list : simpl never.
 
-  Lemma tac_lctx_lft_alive_intersect E L κ κ' :
-    lctx_lft_alive E L κ →
-    lctx_lft_alive E L κ' →
-    lctx_lft_alive E L (κ ⊓ κ').
-  Proof. apply lctx_lft_alive_intersect. Qed.
-
-  Lemma tac_lctx_lft_alive_local_owned E L κ κs i c :
-    L !! i = Some (κ ⊑ₗ{c} κs) →
-    Forall_cb (lctx_lft_alive E L) κs →
+  Lemma tac_lctx_lft_alive_init E L κ :
+    lctx_lft_alive_list E L [κ] ∨ False →
     lctx_lft_alive E L κ.
   Proof.
-    intros ?%elem_of_list_lookup_2 ?%Forall_Forall_cb.
-    by eapply lctx_lft_alive_local_owned.
+    rewrite /lctx_lft_alive_list. simpl.
+    by rewrite !right_id.
   Qed.
-
-  Lemma tac_lctx_lft_alive_local_alias E L κ κs i :
-    L !! i = Some (κ ≡ₗ κs) →
-    Forall_cb (lctx_lft_alive E L) κs →
-    lctx_lft_alive E L κ.
+  Lemma tac_lctx_lft_alive_init_forall E L κs :
+    lctx_lft_alive_list E L (κs ++ []) ∨ False →
+    Forall (lctx_lft_alive E L) κs.
   Proof.
-    intros ?%elem_of_list_lookup_2 ?%Forall_Forall_cb.
-    by eapply lctx_lft_alive_local_alias.
+    rewrite /lctx_lft_alive_list. simpl.
+    rewrite !right_id.
+    apply lctx_lft_alive_intersect_list.
   Qed.
 
+  Lemma tac_lctx_lft_alive_list_assoc E L κs1 κs2 κs3 P :
+    lctx_lft_alive_list E L (κs1 ++ κs2 ++ κs3) ∨ P →
+    lctx_lft_alive_list E L ((κs1 ++ κs2) ++ κs3) ∨ P.
+  Proof.
+    by rewrite app_assoc.
+  Qed.
+  Lemma tac_lctx_lft_alive_list_intersect_list E L κs κs' P :
+    lctx_lft_alive_list E L (κs ++ κs') ∨ P →
+    lctx_lft_alive_list E L (lft_intersect_list κs :: κs') ∨ P.
+  Proof.
+    rewrite /lctx_lft_alive_list/=.
+    by rewrite -lft_intersect_list_app.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_list_static E L κs P :
+    lctx_lft_alive_list E L κs ∨ P →
+    lctx_lft_alive_list E L (static :: κs) ∨ P.
+  Proof.
+    rewrite /lctx_lft_alive_list/=.
+    rewrite left_id//.
+  Qed.
+  Lemma tac_lctx_lft_alive_list_nil E L P :
+    lctx_lft_alive_list E L [] ∨ P.
+  Proof.
+    left.
+    rewrite /lctx_lft_alive_list/=.
+    apply lctx_lft_alive_static.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_list_intersect E L κs κ κ' P :
+    lctx_lft_alive_list E L (κ :: κ' :: κs) ∨ P →
+    lctx_lft_alive_list E L ((κ ⊓ κ') :: κs) ∨ P.
+  Proof.
+    rewrite /lctx_lft_alive_list/=.
+    intros [Ha | ?]; last by eauto. left.
+    by rewrite -lft_intersect_assoc.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_local_owned E L κ κs κs' i c P :
+    L !! i = Some (κ ⊑ₗ{c} κs') →
+    lctx_lft_alive_list E L (κs' ++ κs) ∨ P →
+    lctx_lft_alive_list E L (κ :: κs) ∨ P.
+  Proof.
+    intros ?%elem_of_list_lookup_2.
+    rewrite /lctx_lft_alive_list/=.
+    rewrite lft_intersect_list_app.
+    intros [Ha | ?]; last by eauto. left.
+    apply lctx_lft_alive_intersect_2 in Ha as [Ha Hb].
+    apply lctx_lft_alive_intersect; last done.
+    eapply lctx_lft_alive_local_owned; first done.
+    by apply lctx_lft_alive_intersect_list.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_local_alias E L κ κs κs' i P :
+    L !! i = Some (κ ≡ₗ κs') →
+    lctx_lft_alive_list E L (κs' ++ κs) ∨ P →
+    lctx_lft_alive_list E L (κ :: κs) ∨ P.
+  Proof.
+    intros ?%elem_of_list_lookup_2.
+    rewrite /lctx_lft_alive_list/=.
+    rewrite lft_intersect_list_app.
+    intros [Ha | ?]; last by eauto. left.
+    apply lctx_lft_alive_intersect_2 in Ha as [Ha Hb].
+    apply lctx_lft_alive_intersect; last done.
+    eapply lctx_lft_alive_local_alias; first done.
+    by apply lctx_lft_alive_intersect_list.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_list_ty_lfts {rt} (ty : type rt) E L i κ1 n1 κs P :
+    ty_outlives_E ty κ1 ⊆ E →
+    L !! i = Some (κ1 ⊑ₗ{n1} []) →
+    lctx_lft_alive_list E L κs ∨ P →
+    lctx_lft_alive_list E L (ty_lfts ty ++ κs) ∨ P.
+  Proof.
+    unfold ty_outlives_E, lfts_outlives_E.
+    unfold subseteq, list_subseteq.
+    rewrite /lctx_lft_alive_list/=.
+    rewrite lft_intersect_list_app.
+    generalize (ty_lfts ty); intros κs'.
+    intros Hel Hlook.
+    intros [Ha | ?]; last by eauto. left.
+
+    apply lctx_lft_alive_intersect; last done.
+    apply lctx_lft_alive_intersect_list.
+
+    apply Forall_forall.
+    intros κ Hκ.
+    eapply (lctx_lft_alive_external _ _ κ1).
+    { eapply Hel. apply elem_of_list_fmap. eauto. }
+    eapply lctx_lft_alive_local_owned.
+    { by eapply elem_of_list_lookup_2. }
+    by apply Forall_nil.
+  Qed.
+
+  (*
   (* This weakens the elctx by removing the inclusion we used.
     This should ensure termination of the solver without making goals unprovable.
     (once we need to prove liveness of an external lifetime, the only local lifetime we should
@@ -661,38 +766,184 @@ Section alive_tac.
     iApply (big_sepL_submseteq with "HE").
     apply submseteq_delete.
   Qed.
-End alive_tac.
+  *)
+  (* for this, I should again have a candidate list of expansions. But this time, I expand in the other direction. *)
 
-Ltac solve_lft_alive :=
-  repeat match goal with
-  | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
-      notypeclasses refine (proj2 (Forall_Forall_cb _ _) _);
-        simpl; first [exact I | split_and! ]
-  | |- lctx_lft_alive ?E ?L static =>
-      notypeclasses refine (lctx_lft_alive_static E L)
-  | |- lctx_lft_alive ?E ?L (?κ ⊓ ?κ') =>
-      notypeclasses refine (tac_lctx_lft_alive_intersect _ _ _ _ _ _);
-        [solve_lft_alive | solve_lft_alive]
+End alive_tac.
+Section alive_external_tac.
+  Context `{!typeGS Σ}.
+
+  Definition lctx_lft_alive_list_expand_ext
+    (candidates : list lft)
+    (E : elctx) (L : llctx) (κs : list lft) : Prop :=
+    lctx_lft_alive_list E L κs.
+  Arguments lctx_lft_alive_list_expand_ext : simpl never.
+
+  (* Switch to reasoning about external inclusions *)
+  Lemma tac_lctx_lft_alive_list_expand_ext_init E L candidates κs P :
+    lctx_lft_alive_list_expand_ext candidates E L κs ∨ P →
+    lctx_lft_alive_list E L κs ∨ P.
+  Proof. done. Qed.
+
+  (* Pick an expansion *)
+  (* TODO maybe we can use the heuristic that, if there is a local lifetime to expand to, we only use that.
+     That should suffice, since we anyways always have to go to a local lifetime to prove liveness. *)
+  Lemma tac_lctx_lft_alive_list_expand_ext_choose E L (c1 : lft) candidates κ κs P :
+    (c1 ⊑ₑ κ) ∈ E →
+    (lctx_lft_alive_list E L (c1 :: κs)
+      ∨ (lctx_lft_alive_list_expand_ext candidates E L (κ :: κs) ∨ P)) →
+    lctx_lft_alive_list_expand_ext (c1 :: candidates) E L (κ :: κs) ∨ P.
+  Proof.
+    rewrite /lctx_lft_alive_list_expand_ext.
+    rewrite /lctx_lft_alive_list /=.
+    intros Hel [Ha | [Ha | Ha]]; [ | by eauto..].
+    left.
+    apply lctx_lft_alive_intersect_2 in Ha as [? ?].
+    apply lctx_lft_alive_intersect; last done.
+    by eapply lctx_lft_alive_external.
+  Qed.
+
+  Lemma tac_lctx_lft_alive_list_expand_ext_done E L κs (P : Prop) :
+    P →
+    lctx_lft_alive_list_expand_ext [] E L κs ∨ P.
+  Proof. by right. Qed.
+
+  (* If we can't make progress on the left goal... *)
+  Lemma tac_lctx_lft_alive_list_give_up E L κs (P : Prop) :
+    P →
+    lctx_lft_alive_list E L κs ∨ P.
+  Proof.
+    by right.
+  Qed.
+End alive_external_tac.
+
+Ltac solve_lft_alive_init :=
+  simpl;
+  match goal with
   | |- lctx_lft_alive ?E ?L ?κ =>
+      notypeclasses refine (tac_lctx_lft_alive_init E L κ _)
+  | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
+      notypeclasses refine (tac_lctx_lft_alive_init_forall E L κs _)
+  end.
+
+(* Find inclusions to use for expanding external lifetimes *)
+Ltac elctx_find_expansions_for_rhs E κ :=
+  match constr:(E) with
+  | [] => constr:([] : list lft)
+  | (?e ⊑ₑ κ) :: ?E =>
+      let candidates := (elctx_find_expansions_for_rhs E κ) in
+      constr:(e :: candidates)
+  | (?e ⊑ₑ _) :: ?E =>
+      elctx_find_expansions_for_rhs E κ
+  | ty_outlives_E _ _ ++ ?E =>
+      elctx_find_expansions_for_rhs E κ
+  | ty_wf_E _ ++ ?E =>
+      elctx_find_expansions_for_rhs E κ
+  | lfts_outlives_E _ _ ++ ?E =>
+      elctx_find_expansions_for_rhs E κ
+  | _ =>
+      constr:([] : list lft)
+  end.
+
+Ltac solve_lft_alive := idtac.
+Ltac solve_lft_alive_step :=
+  simpl;
+  match goal with
+  (* done *)
+  | |- lctx_lft_alive_list ?E ?L [] ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_nil E L _)
+
+  (* associativity *)
+  | |- lctx_lft_alive_list ?E ?L ((_ ++ _) ++ _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_assoc E L _ _ _ _ _)
+
+  (* intersection *)
+  | |- lctx_lft_alive_list ?E ?L ((lft_intersect_list ?κs) :: _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_intersect_list E L κs _ _ _)
+  (* split intersections *)
+  | |- lctx_lft_alive_list ?E ?L ((?κ ⊓ ?κ') :: _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_intersect E L _ κ κ' _ _)
+  (* eliminate static *)
+  | |- lctx_lft_alive_list ?E ?L (static :: _) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_static E L _ _ _)
+
+  (* If we prove liveness of lifetimes of a type parameter,
+     we search for a constraint that this lifetime outlives something *)
+  | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
+      is_var ty;
+      let find_outlives al :=
+        match al with
+        | ty_outlives_E ty ?κ1 =>
+            list_find_tac ltac:(fun i el =>
+              match el with
+              | κ1 ⊑ₗ{_} [] =>
+                notypeclasses refine (tac_lctx_lft_alive_list_ty_lfts ty E L i κ1 _ _ _ _ _ _);
+                [ set_solver | reflexivity | ]
+              end) L
+        | _ => fail
+        end
+      in
+      list_find_tac_app find_outlives E
+
+  (* liveness of local lifetimes *)
+  | |- lctx_lft_alive_list ?E ?L (?κ :: ?κs) ∨ _ =>
       list_find_tac ltac:(fun i el =>
         match el with
-        | κ ⊑ₗ{_} ?κs =>
-            notypeclasses refine (tac_lctx_lft_alive_local_owned E L κ κs i _ _ _);
-              [ reflexivity | simpl; first [exact I | split_and! ] ]
-        | κ ≡ₗ ?κs =>
-            notypeclasses refine (tac_lctx_lft_alive_local_alias E L κ κs i _ _);
-              [ reflexivity | simpl; first [exact I | split_and! ] ]
+        | κ ⊑ₗ{_} ?κs' =>
+            notypeclasses refine (tac_lctx_lft_alive_local_owned E L κ κs _ i _ _ _ _);
+              [ reflexivity | ]
+        | κ ≡ₗ ?κs' =>
+            notypeclasses refine (tac_lctx_lft_alive_local_alias E L κ κs _ i _ _ _);
+              [ reflexivity | ]
         | _ => fail
         end) L
+
+  (* Expand an external lifetime.
+     We first find candidate inclusions to use. *)
+  | |- lctx_lft_alive_list ?E ?L (?κ :: ?κs) ∨ _ =>
+      (* first make sure that there exists an inclusion we use, to make sure we can make progress *)
+      list_find_tac_noindex ltac:(fun el =>
+        match el with
+        | ?κ' ⊑ₑ ?κ => idtac
+        | _ => fail
+        end
+      ) E;
+
+      let expansions := elctx_find_expansions_for_rhs E κ in
+      notypeclasses refine (tac_lctx_lft_alive_list_expand_ext_init E L expansions _ _ _)
+
+  (* Otherwise, give up on this branch *)
+  | |- lctx_lft_alive_list ?E ?L ?κs1 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_give_up E L _ _ _)
+
+  (* Try a candidate for external lifetime expansion *)
+  | |- lctx_lft_alive_list_expand_ext (?c1 :: ?cs) ?E ?L (?κ :: ?κs) ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_expand_ext_choose E L c1 cs κ κs _ _ _);
+      [elctx_list_elem_solver | ]
+
+  (* The expansion candidates are exhausted *)
+  | |- lctx_lft_alive_list_expand_ext [] ?E ?L ?κs1 ∨ _ =>
+      notypeclasses refine (tac_lctx_lft_alive_list_expand_ext_done E L _ _ _)
+
+  (* old rule *)
+  (*
+  (* use external inclusions by rewriting right-to-left *)
+  (* TODO this relies on internal backtracking, as we may have multiple choices, hence the recursive call *)
   | |- lctx_lft_alive ?E ?L ?κ =>
       list_find_tac ltac:(fun i el =>
         match el with
         | ?κ' ⊑ₑ κ =>
             notypeclasses refine (tac_lctx_lft_alive_external E L κ κ' i _ _);
-            [reflexivity | simpl; solve[solve_lft_alive]]
+            [reflexivity | simpl; solve_lft_alive ]
         | _ => fail
         end) E
-  end; fast_done.
+        *)
+  end.
+
+Ltac solve_lft_alive ::=
+  solve_lft_alive_init;
+  repeat solve_lft_alive_step;
+  fast_done.
 
 (** simplify_elctx *)
 

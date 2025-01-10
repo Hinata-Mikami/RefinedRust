@@ -873,6 +873,24 @@ Section test.
   Proof.
     solve_lft_alive; solve[fail].
   Abort.
+
+  Lemma test6 {W_rt} (W_ty : type W_rt) ϝ :
+    Forall (lctx_lft_alive ((ϝ ⊑ₑ ϝ) ::  ty_wf_E W_ty ++ ty_outlives_E W_ty ϝ) [ϝ ⊑ₗ{0} []]) (ty_lfts W_ty).
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+
+  Lemma test7 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) : 
+    lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] κ.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
+  
+  Lemma test8 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) : 
+    lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] static.
+  Proof.
+    solve_lft_alive; solve[fail].
+  Abort.
 End test.
 
 (** simplify_elctx *)
