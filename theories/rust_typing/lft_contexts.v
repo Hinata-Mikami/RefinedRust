@@ -89,6 +89,15 @@ Section lft_contexts.
     Persistent (elctx_interp E).
   Proof. apply _. Qed.
 
+  Lemma elctx_interp_submseteq E E' :
+    E' ⊆+ E →
+    elctx_interp E -∗
+    elctx_interp E'.
+  Proof.
+    rewrite /elctx_interp.
+    iIntros (?) "Ha". iApply big_sepL_submseteq; done.
+  Qed.
+
   (* Local lifetime contexts. *)
   (** The fraction_map for [κ] is stored at [γ]. *)
   Definition lft_has_gname_def (κ : lft) (γ : gname) : iProp Σ :=
@@ -473,6 +482,17 @@ Section lft_contexts.
     iDestruct (big_sepL_elem_of with "HE") as "#Hincl'"; first done.
     iApply lft_intersect_mono; first done.
     iApply lft_incl_refl.
+  Qed.
+
+  Lemma lctx_lft_incl_external_full_r κ1 κ2 κ κ' :
+    κ2 ⊑ₑ κ1 ∈ E → lctx_lft_incl κ (κ2 ⊓ κ') → lctx_lft_incl κ (κ1 ⊓ κ').
+  Proof.
+    intros Hin Hincl. etrans; first done.
+    iIntros (?) "HL". iPoseProof (Hincl with "HL") as "#Hincl".
+    iIntros "!>#HE". iDestruct ("Hincl" with "HE") as "#?".
+    iApply lft_intersect_mono; last iApply lft_incl_refl.
+    iDestruct (big_sepL_elem_of with "HE") as "#Hincl'"; first done.
+    done.
   Qed.
 
   Lemma lctx_lft_incl_external κ κ' : κ ⊑ₑ κ' ∈ E → lctx_lft_incl κ κ'.

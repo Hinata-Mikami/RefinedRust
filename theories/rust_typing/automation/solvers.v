@@ -339,7 +339,7 @@ Section incl_tac.
     rewrite lft_intersect_list_app.
     rewrite lft_intersect_comm. done.
   Qed.
-  Lemma lctx_lft_incl_list_intersect_l E L κs1 κs2 κs i P : 
+  Lemma lctx_lft_incl_list_intersect_l E L κs1 κs2 κs i P :
     κs1 !! i = Some (lft_intersect_list κs) →
     lctx_lft_incl_list E L (delete i κs1 ++ κs) κs2 ∨ P →
     lctx_lft_incl_list E L κs1 κs2 ∨ P.
@@ -351,7 +351,7 @@ Section incl_tac.
     move: Ha.
     rewrite !lft_intersect_list_app. simpl.
     rewrite [lft_intersect_list κs ⊓ lft_intersect_list (drop _ _)]lft_intersect_comm.
-    rewrite lft_intersect_assoc. 
+    rewrite lft_intersect_assoc.
     done.
   Qed.
 
@@ -407,7 +407,10 @@ Section incl_external_tac.
   Proof. done. Qed.
 
   (* Pick an expansion *)
-  (* TODO: why don't I expand from the RHS, and then only expand the head lft, one by one? *)
+  (* We also expand from the LHS, as we expand local lifetimes from the LHS.
+     Expanding external lifetimes from the RHS would make some goals unprovable, e.g.
+      [lctx_lft_incl [κ ⊑ₑ κ'] [κ' ⊑ₗ{ c1} [κ'']] κ κ'']
+  *)
   Lemma tac_lctx_lft_incl_list_expand_ext_choose E L (e1 c1 : lft) candidates κs1 κs2 i P :
     (e1 ⊑ₑ c1) ∈ E →
     κs1 !! i = Some e1 →
@@ -1192,6 +1195,63 @@ Ltac reorder_elctx :=
       [ solve [repeat reorder_elctx_step]
       | rewrite ?app_nil_r; reflexivity ]
   end.
+
+(* TODO eliminate cyclic external inclusions *)
+
+(** Optimize an elctx by removing unnecessary inclusions *)
+Section optimize_elctx.
+  Context `{!typeGS Σ}.
+
+  Lemma tac_optimize_elctx_remove (E E' : elctx) κ κ' :
+    E' ⊆+ E →
+    E' ⊆+ (κ ⊑ₑ κ') :: E.
+  Proof.
+    intros ->. by apply submseteq_cons.
+  Qed.
+  Lemma tac_optimize_elctx_keep (E E' E'' : elctx) κ κ' :
+    E' = (κ ⊑ₑ κ') :: E'' →
+    E'' ⊆+ E →
+    E' ⊆+ (κ ⊑ₑ κ') :: E.
+  Proof.
+    intros ->. by apply submseteq_skip.
+  Qed.
+  Lemma tac_optimize_elctx_finish (E E' : elctx) :
+    E' = E →
+    E' ⊆+ E.
+  Proof. by intros ->. Qed.
+End optimize_elctx.
+
+Ltac optimize_elctx_step :=
+  lazymatch goal with
+  | |- ?E' ⊆+ (?κ ⊑ₑ ?κ) :: ?E =>
+      notypeclasses refine (tac_optimize_elctx_remove _ _ _ _ _)
+  | |- ?E' ⊆+ (?κ ⊑ₑ ?κ') :: ?E =>
+      notypeclasses refine (tac_optimize_elctx_keep _ _ _ _ _ _ _);
+      [ reflexivity | ]
+  | |- ?E' ⊆+ _ =>
+      notypeclasses refine (tac_optimize_elctx_finish _ _ _);
+      reflexivity
+  end.
+Ltac optimize_elctx :=
+  repeat optimize_elctx_step.
+
+(** Combined elctx preprocessing *)
+Lemma tac_preprocess_elctx (E1 E2 E E' : elctx) :
+  E = E1 →
+  E1 ≡ₚ E2 →
+  E' ⊆+ E2 →
+  E' ⊆+ E.
+Proof.
+  intros -> ->. done.
+Qed.
+
+Ltac preprocess_elctx :=
+  match goal with
+  | |- ?E' ⊆+ ?E =>
+      notypeclasses refine (tac_preprocess_elctx _ _ _ _ _ _ _);
+      [simplify_elctx | reorder_elctx | optimize_elctx]
+  end.
+
 
 (** elctx_sat solver *)
 Section elctx_sat.

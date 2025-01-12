@@ -785,13 +785,13 @@ Section test.
   Abort.
 
   Lemma test2 κ κ' :
-    lctx_lft_incl [κ' ⊑ₑ κ'; κ ⊑ₑ κ'] [] κ κ'.
+    lctx_lft_incl [(* κ' ⊑ₑ κ'; *) κ ⊑ₑ κ'] [] κ κ'.
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
 
   Lemma test2' {rt} (T : type rt) κ κ' :
-    lctx_lft_incl (ty_wf_E T ++ [κ' ⊑ₑ κ'; κ ⊑ₑ κ']) [] κ κ'.
+    lctx_lft_incl (ty_wf_E T ++ [(* κ' ⊑ₑ κ';*) κ ⊑ₑ κ']) [] κ κ'.
   Proof.
     solve_lft_incl; solve[fail].
   Abort.
@@ -842,6 +842,15 @@ Section test.
     lctx_lft_incl_list [ϝ0 ⊑ₑ ϝ; ϝ ⊑ₑ ulft_a] [ϝ ⊑ₗ{ 0} []] [ϝ0] [ϝ] ∨ False.
   Proof.
     solve_lft_incl_list; solve[fail].
+  Abort.
+
+  (* This demonstrates that we have to expand both external and local lifetimes from the same direction.
+     If we expand local lifetimes left to right and external lifetimes right to left,
+     we may fail to make any progress. *)
+  Lemma test9 κ κ' κ'' c1 :
+    lctx_lft_incl [κ ⊑ₑ κ'] [κ' ⊑ₗ{ c1} [κ'']] κ κ''.
+  Proof.
+    solve_lft_incl; solve[fail].
   Abort.
 End test.
 
@@ -1044,6 +1053,18 @@ Section test.
   Abort.
 End test.
 
+(** optimize_elctx *)
+Section test.
+  Context `{!typeGS Σ}.
+
+  Lemma test1 E1 κ1 κ2 :
+    ∃ K0, K0 ⊆+ (κ1 ⊑ₑ κ2) :: (κ1 ⊑ₑ κ1) :: (κ2 ⊑ₑ κ1) :: E1 ∧ K0 = (κ1 ⊑ₑ κ2) :: (κ2 ⊑ₑ κ1) :: E1.
+  Proof.
+    eexists _. split.
+    { optimize_elctx. }
+    done.
+  Abort.
+End test.
 
 
 (** solve_elctx_sat *)

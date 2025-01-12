@@ -752,9 +752,9 @@ Section tac.
            in
       let E := ((fp.2 κs tys x).(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in
-      ∃ E' E'', ⌜E = E'⌝ ∗ ⌜E' ≡ₚ E''⌝ ∗
-      (credit_store 0 0 -∗ introduce_with_hooks E'' L (Qinit) (λ L2,
-        introduce_typed_stmt π E'' L2 ϝ fn lsa lsv lya lyv (
+      ∃ E', ⌜E' ⊆+ E⌝ ∗
+      (credit_store 0 0 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
+        introduce_typed_stmt π E' L2 ϝ fn lsa lsv lya lyv (
         λ v L2,
             prove_with_subtype E L2 false ProveDirect (fn_ret_prop π (fp.2 κs tys x).(fp_fr) v) (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
@@ -773,8 +773,8 @@ Section tac.
     iIntros (?) "#CTX #HE HL Hna Hcont".
     iApply fupd_wps.
     iPoseProof ("Ha" with "Hx1 Hx2") as "HT".
-    iDestruct ("HT" $! lsa lsv) as "(%E' & %E'' & <- & %Heq & HT)".
-    iPoseProof (elctx_interp_permut with "HE") as "HE'". { symmetry. apply Heq. }
+    iDestruct ("HT" $! lsa lsv) as "(%E' & %Hsub & HT)".
+    iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE") as "HE'".
     rewrite /introduce_with_hooks.
     iMod ("HT" with "Hstore [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
@@ -805,9 +805,8 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     let lsa := fresh "lsa" in let lsv := fresh "lsv" in
     iIntros (lsa lsv);
     prepare_initial_coq_context;
-    iExists _, _; iSplitR;
-    [iPureIntro; solve [simplify_elctx] | ];
-    iSplitR; [iPureIntro; solve[reorder_elctx] | ];
+    iExists _; iSplitR;
+    [iPureIntro; solve [preprocess_elctx] | ];
     inv_vec lsv; inv_vec lsa;
     simpl; unfold typarams_wf, typaram_wf;
     init_cache
