@@ -151,7 +151,9 @@ Section fixpoint_def.
   (* For the ownership and sharing predicate, we take the fixpoint found above. *)
   (* For the other components, we use the 0 base case (where the functor is applied at least once) in order to be able to show the unfolding equation later. *)
   Program Definition type_fixpoint : type rt := {|
-    ty_rt_inhabited := _;
+    ty_xt := (Fn 0).(ty_xt);
+    ty_xt_inhabited := (Fn 0).(ty_xt_inhabited);
+    ty_xrt := (Fn 0).(ty_xrt);
     ty_syn_type := (Fn 0).(ty_syn_type);
     _ty_has_op_type := (Fn 0).(_ty_has_op_type _);
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;
@@ -338,9 +340,8 @@ Lemma type_fixpoint_ne `{!typeGS Σ} {rt} `{!Inhabited rt} (T1 T2 : type rt → 
 Proof.
   intros Heq.
   constructor.
-  - done.
   - simpl.
-    destruct (Heq inhabitant) as [_ Hot].
+    destruct (Heq inhabitant) as [Hot].
     move: Hot. rewrite ty_has_op_type_unfold. done.
   - iIntros (???).
     rewrite !type_fixpoint_own_val_unfold_n.

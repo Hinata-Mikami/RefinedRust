@@ -9,6 +9,8 @@ Section box.
 
   Program Definition box : type (place_rfn rt) := {|
     ty_sidecond := True;
+    ty_xt := inner.(ty_xt);
+    ty_xrt := λ x, #(inner.(ty_xrt) x);
     ty_own_val π r v :=
       ∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗

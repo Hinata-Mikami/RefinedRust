@@ -12,6 +12,9 @@ Section type.
      Note that this really makes it isomorphic to [MaybeUninit<T>] in our model,
      which is a union and thus would also get the place wrapper. *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
+    ty_xt := option rt;
+    ty_xrt := λ x, PlaceIn <$> x;
+
     ty_own_val π r v :=
       match r with
       | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' v

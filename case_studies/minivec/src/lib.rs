@@ -211,7 +211,7 @@ pub struct Vec<T> {
 impl<T> RawVec<T> {
     // needed for VecDeque
     #[rr::params("l", "cap")]
-    #[rr::args("#(l, cap)")]
+    #[rr::args("(l, cap)")]
     #[rr::returns("l" @ "alias_ptr_t")]
     pub fn ptr(&self) -> *mut T {
         self.ptr as *mut T
@@ -219,7 +219,7 @@ impl<T> RawVec<T> {
 
     // needed for VecDeque
     #[rr::params("l", "cap")]
-    #[rr::args("#(l, cap)")]
+    #[rr::args("(l, cap)")]
     #[rr::returns("cap")]
     pub fn cap(&self) -> usize {
         self.cap
@@ -242,7 +242,7 @@ impl<T> RawVec<T> {
     }
 
     #[rr::params("l", "xs", "cap" : "nat", "γ")]
-    #[rr::args("(#(l, cap), γ)")]
+    #[rr::args("((l, cap), γ)")]
     #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * cap) ≤ MaxInt isize_t)%Z")]
     #[rr::requires("Hnot_sz": "(size_of_st {st_of T} > 0)%Z")]
     #[rr::requires(#type "l" : "xs" @ "array_t cap (maybe_uninit {T})")]
@@ -299,7 +299,7 @@ impl<T> Vec<T> {
     // private function, take an unfolded type
     // we do not move ownership out, but return an alias to the ptr
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref {'a} (Vec_ty {T})")]
+    #[rr::args(#raw "( *[(l, cap); len])" @ "shr_ref {'a} (Vec_ty {T})")]
     #[rr::returns("l" @ "alias_ptr_t")]
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
@@ -307,14 +307,14 @@ impl<T> Vec<T> {
 
     // private function, take an unfolded type
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref {'a} (Vec_ty {T})")]
+    #[rr::args(#raw "( *[(l, cap); len])" @ "shr_ref {'a} (Vec_ty {T})")]
     #[rr::returns("cap")]
     fn cap<'a>(&'a self) -> usize {
         self.buf.cap
     }
 
     #[rr::params("xs")]
-    #[rr::args("#xs")]
+    #[rr::args("xs")]
     #[rr::returns("length xs")]
     pub fn len(&self) -> usize {
         self.len
@@ -329,10 +329,10 @@ impl<T> Vec<T> {
     }
 
     #[rr::params("xs", "γ", "x")]
-    #[rr::args("(#xs, γ)", "x")]
+    #[rr::args("(xs, γ)", "x")]
     #[rr::requires("Hlen_cap": "(length xs < MaxInt usize_t)%Z")]
     #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ MaxInt isize_t)%Z")]
-    #[rr::observe("γ": "xs ++ [ #x]")]
+    #[rr::observe("γ": "<#> <$#> (xs ++ [ x])")]
     pub fn push(&mut self, elem: T) {
         if self.len == self.cap() {
             self.buf.grow();
@@ -348,9 +348,9 @@ impl<T> Vec<T> {
     }
 
     #[rr::params("xs", "γ")]
-    #[rr::args("(#(<#> xs), γ)")]
-    #[rr::returns("<#>@{option} (last xs)")]
-    #[rr::observe("γ": "(take (length xs - 1) (<#> xs))")]
+    #[rr::args("(xs, γ)")]
+    #[rr::returns("last xs")]
+    #[rr::observe("γ": "(take (length xs - 1) (<#> <$#> xs))")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -363,11 +363,11 @@ impl<T> Vec<T> {
     // Not currently verified
     #[rr::trust_me]
     #[rr::params("xs", "γ", "i" : "nat", "x")]
-    #[rr::args("(#(<#>xs), γ)", "Z.of_nat i", "x")]
+    #[rr::args("(xs, γ)", "Z.of_nat i", "x")]
     #[rr::requires("i ≤ length xs")]
     #[rr::requires("(length xs < max_int usize_t)%Z")]
     #[rr::requires("(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ max_int isize_t)%Z")]
-    #[rr::observe("γ": "(<#> take i xs) ++ [ #x] ++ (<#> drop i xs)")]
+    #[rr::observe("γ": "<#> <$#> ((take i xs) ++ [ x] ++ (drop i xs))")]
     pub fn insert(&mut self, index: usize, elem: T) {
         // index out of bounds?
         assert!(index <= self.len);
@@ -391,9 +391,9 @@ impl<T> Vec<T> {
     // Not currently verified
     #[rr::trust_me]
     #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(#(<#> xs), γ)", "Z.of_nat i")]
+    #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::requires("i < length xs")]
-    #[rr::observe("γ": "delete i (<#> xs)")]
+    #[rr::observe("γ": "delete i (<#> <$#> xs)")]
     #[rr::returns("xs !!! i")]
     pub fn remove(&mut self, index: usize) -> T {
         // index out of bounds?
@@ -411,12 +411,12 @@ impl<T> Vec<T> {
         }
     }
 
-    #[rr::params("xs" : "list {rt_of T}", "γ", "i" : "nat")]
-    #[rr::args("(#(<#> xs), γ)", "Z.of_nat i")]
+    #[rr::params("xs", "γ", "i" : "nat")]
+    #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::requires("Hi": "i < length xs")]
     #[rr::exists("γi")]
-    #[rr::returns("(#(xs !!! i), γi)")]
-    #[rr::observe("γ": "<[i := PlaceGhost γi]> (<#> xs)")]
+    #[rr::returns("(xs !!! i, γi)")]
+    #[rr::observe("γ": "<[i := PlaceGhost γi]> (<#> <$#> xs)")]
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         self.len;
         unsafe {
@@ -426,11 +426,11 @@ impl<T> Vec<T> {
         }
     }
 
-    #[rr::params("xs" : "list {rt_of T}", "γ", "i" : "nat")]
-    #[rr::args("(#(<#> xs), γ)", "Z.of_nat i")]
+    #[rr::params("xs", "γ", "i" : "nat")]
+    #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::exists("γi", "γ1", "γ2")]
-    #[rr::observe("γ2": "if decide (i < length xs) then <[i := PlaceGhost γ1]> (<#> xs) else <#> xs")]
-    #[rr::returns("if decide (i < length xs) then Some (#(#(xs !!! i), γi)) else None")]
+    #[rr::observe("γ2": "if decide (i < length xs) then <[i := PlaceGhost γ1]> (<#> <$#> xs) else <#> <$#> xs")]
+    #[rr::returns("if decide (i < length xs) then Some (xs !!! i, γi) else None")]
     // NOTE: currently, we need a slightly more complicated specification that explicitly closes
     // under ghost variable equivalence: the "Inherit" part states that, after 'a has ended, the
     // ghost variables will have identical values
@@ -446,9 +446,9 @@ impl<T> Vec<T> {
     }
 
     #[rr::params("xs", "i" : "nat")]
-    #[rr::args("#(<#> xs)", "Z.of_nat i")]
+    #[rr::args("xs", "Z.of_nat i")]
     #[rr::requires("Hi": "i < length xs")]
-    #[rr::returns("#(xs !!! i)")]
+    #[rr::returns("xs !!! i")]
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
         self.len;
         unsafe {
@@ -459,8 +459,8 @@ impl<T> Vec<T> {
     }
 
     #[rr::params("xs", "i" : "nat")]
-    #[rr::args("#(<#> xs)", "Z.of_nat i")]
-    #[rr::returns("if decide (i < length xs) then Some (#(#(xs !!! i))) else None")]
+    #[rr::args("xs", "Z.of_nat i")]
+    #[rr::returns("if decide (i < length xs) then Some (xs !!! i) else None")]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index < self.len() {
             unsafe { Some (self.get_unchecked(index)) }

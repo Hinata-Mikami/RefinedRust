@@ -56,7 +56,7 @@ impl<T, R> Once<T, R> {
     #[rr::params("x")]
     #[rr::args("x")]
     #[rr::exists("η")]
-    #[rr::ensures(#iris "once_status_tok η (Some x)")]
+    #[rr::ensures(#iris "once_status_tok η (Some ($# x))")]
     #[rr::returns("η")]
     pub const fn initialized(data: T) -> Self {
         unimplemented!();

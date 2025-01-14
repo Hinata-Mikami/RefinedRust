@@ -119,7 +119,7 @@ mod foo {
         type Output;
         
         #[rr::params("a", "b")]
-        #[rr::args("#a", "b")]
+        #[rr::args("a", "b")]
         #[rr::exists("y")]
         #[rr::returns("y")]
         fn bar<U> (&self, x: U) -> (Self::Output, T, U);
@@ -130,7 +130,7 @@ mod foo {
         type Output = i32;
         
         #[rr::params("a", "b")]
-        #[rr::args("#a", "b")]
+        #[rr::args("a", "b")]
         #[rr::exists("y")]
         #[rr::returns("y")]
         fn bar<U> (&self, x: U) -> (i32, u32, U) {
@@ -180,13 +180,13 @@ mod foo {
     */
 
     #[rr::params("w")]
-    #[rr::args("#w")]
+    #[rr::args("w")]
     fn foobar<W, T> (x: &W) where W: Foo<T> {
         x.bar(true);
     }
 
     #[rr::params("w")]
-    #[rr::args("#w")]
+    #[rr::args("w")]
     fn call_foobar2<W>(x: &W) where W: Foo<i32> {
         foobar(x); 
     }
@@ -355,14 +355,14 @@ mod iter {
     trait Iter {
         type Elem;
 
-        #[rr::params("it_state" : "{rt_of Self}", "γ")]
-        #[rr::args("(#it_state, γ)")]
+        #[rr::params("it_state" : "{xt_of Self}", "γ")]
+        #[rr::args("(it_state, γ)")]
         /// Postcondition: There exists an optional next item and the successor state of the iterator.
-        #[rr::exists("x", "new_it_state" : "{rt_of Self}")]
-        #[rr::observe("γ": "new_it_state")]
-        #[rr::ensures("{Next} new_it_state")]
+        #[rr::exists("x", "new_it_state" : "{xt_of Self}")]
+        #[rr::observe("γ": "$# new_it_state")]
+        #[rr::ensures("{Next} ($# new_it_state)")]
         /// Postcondition: We return the optional next element.
-        #[rr::returns("<#>@{option} x")]
+        #[rr::returns("x")]
         fn next(&mut self) -> Option<Self::Elem>;
     }
 
@@ -373,7 +373,7 @@ mod iter {
     impl Counter {
         #[rr::params("c", "m")]
         #[rr::args("c", "m")]
-        #[rr::returns("-[ #c; #m]")]
+        #[rr::returns("-[ c; m]")]
         fn new(cur: i32, max: i32) -> Self {
             Self {
                 cur,
@@ -409,11 +409,11 @@ mod iter {
 
 
     #[rr::params("x", "γ")]
-    #[rr::args("(#x, γ)")]
-    #[rr::exists("y" : "option {rt_of T::Elem}", "x'")]
+    #[rr::args("(x, γ)")]
+    #[rr::exists("y" : "option {xt_of T::Elem}", "x'")]
     #[rr::observe("γ" : "x'")]
     #[rr::ensures("{T::Next} x'")]
-    #[rr::returns("<#>@{option} y")]
+    #[rr::returns("y")]
     fn test_counter_2<T: Iter>(x: &mut T) -> Option<<T as Iter>::Elem> {
         x.next()
     }

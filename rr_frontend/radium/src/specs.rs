@@ -756,6 +756,10 @@ pub struct InvariantSpec {
 
     /// the refinement type of this struct
     rfn_type: coq::term::Type,
+    /// the xt type
+    xt_type: coq::term::Type,
+    /// the injection from xt to rfn
+    xt_injection: String,
     /// the binding pattern for the refinement of this type
     rfn_pat: coq::binder::Pattern,
 
@@ -782,6 +786,8 @@ impl InvariantSpec {
         flags: InvariantSpecFlags,
         shr_lft_binder: String,
         rfn_type: coq::term::Type,
+        xt_type: coq::term::Type,
+        xt_injection: String,
         rfn_pat: coq::binder::Pattern,
         existentials: Vec<coq::binder::Binder>,
         invariants: Vec<(IProp, InvariantMode)>,
@@ -798,6 +804,8 @@ impl InvariantSpec {
             flags,
             shr_lft_binder,
             rfn_type,
+            xt_type,
+            xt_injection,
             rfn_pat,
             existentials,
             invariants,
@@ -949,8 +957,8 @@ impl InvariantSpec {
         let spec_name = format!("{}_inv_spec", self.type_name);
         write!(
             out,
-            "{indent}Program Definition {} : ex_inv_def ({}) ({}) := ",
-            spec_name, base_rfn_type, self.rfn_type
+            "{indent}Program Definition {} : ex_inv_def ({}) ({}) ({}) := ",
+            spec_name, base_rfn_type, self.rfn_type, self.xt_type,
         )
         .unwrap();
 
@@ -960,9 +968,10 @@ impl InvariantSpec {
                 write!(
                     out,
                     "mk_pers_ex_inv_def\n\
+                       {indent}{indent}({})\n\
                        {indent}{indent}({})%I _ _\n\
                        {indent}.\n",
-                    inv
+                    self.xt_injection, inv
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -977,12 +986,14 @@ impl InvariantSpec {
                 write!(
                     out,
                     "mk_ex_inv_def\n\
+                    {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
                     {indent}{indent}({shr_inv})%I\n\
                     {indent}{indent}({lft_outlives})\n\
                     {indent}{indent}({lft_wf_elctx})\n\
                     {indent}{indent}_ _ _\n\
-                    {indent}.\n"
+                    {indent}.\n",
+                    self.xt_injection
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -1018,7 +1029,7 @@ impl InvariantSpec {
         write!(
             out,
             "{indent}Definition {} : type ({}) :=\n\
-            {indent}{indent}ex_plain_t _ _ {spec_name} {}.\n",
+            {indent}{indent}ex_plain_t _ _ _ {spec_name} {}.\n",
             self.type_name, self.rfn_type, base_type
         )
         .unwrap();
@@ -1945,6 +1956,10 @@ impl<'def> AbstractStructUse<'def> {
 pub struct EnumSpec {
     /// the refinement type of the enum
     pub rfn_type: coq::term::Type,
+    /// the surface refinement type of the enum
+    pub xt_type: coq::term::Type,
+    /// the injection from from xt to rfn
+    pub xt_injection: String,
     /// the refinement patterns for each of the variants
     /// eg. for options:
     /// - `(None, [], -[])`
@@ -2351,6 +2366,9 @@ impl<'def> AbstractEnum<'def> {
         write!(
             out,
             "{indent}Program Definition {} : enum ({}) := mk_enum\n\
+               {indent}{indent}({})\n\
+               {indent}{indent}({})\n\
+               {indent}{indent}_\n\
                {indent}{indent}({els_app_term})\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
@@ -2362,6 +2380,8 @@ impl<'def> AbstractEnum<'def> {
                {indent}{indent}_ _ _.\n",
             self.enum_def_name,
             self.spec.rfn_type,
+            self.spec.xt_type,
+            self.spec.xt_injection,
             self.generate_enum_tag(),
             self.generate_enum_rt(),
             self.generate_enum_ty(),
@@ -2891,13 +2911,14 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
                 .iter()
                 .chain(self.generics.get_direct_trait_requirements().iter())
             {
-                let spec_params_param_name = trait_use.make_spec_params_param_name();
+                //let spec_params_param_name = trait_use.make_spec_params_param_name();
 
-                let spec_params_type_name = trait_use.trait_ref.spec_params_record.clone();
+                //let spec_params_type_name = trait_use.trait_ref.spec_params_record.clone();
 
                 let spec_param_name = trait_use.make_spec_param_name();
                 let spec_attrs_param_name = trait_use.make_spec_attrs_param_name();
-                let spec_type = format!("{} {spec_params_param_name}", trait_use.trait_ref.spec_record);
+                //let spec_type = format!("{} {spec_params_param_name}", trait_use.trait_ref.spec_record);
+                let spec_type = trait_use.trait_ref.spec_record.clone();
 
                 // add the attr param, first building the args we pass to it
                 let assoc_ty_inst: Vec<_> =
@@ -2924,11 +2945,11 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
                 if !trait_use.is_used_in_self_trait {
                     // add the spec params
-                    params.0.push(coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        Some(spec_params_param_name),
-                        coq::term::Type::Literal(spec_params_type_name),
-                    ));
+                    //params.0.push(coq::binder::Binder::new_generalized(
+                    //coq::binder::Kind::MaxImplicit,
+                    //Some(spec_params_param_name),
+                    //coq::term::Type::Literal(spec_params_type_name),
+                    //));
                     // add the spec itself
                     params.0.push(coq::binder::Binder::new(
                         Some(spec_param_name),
@@ -3484,8 +3505,14 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Make the term for the specification of the given method.
     #[must_use]
     pub fn make_method_spec_term(&self, method_name: &str) -> String {
+        //format!(
+        //"(@{} _ RRGS _ {})",
+        //self.trait_ref.make_spec_method_name(method_name),
+        //self.make_spec_param_name(),
+        //)
+        // the first _ is Σ
         format!(
-            "(@{} _ RRGS _ {})",
+            "(@{} _ RRGS {})",
             self.trait_ref.make_spec_method_name(method_name),
             self.make_spec_param_name(),
         )
@@ -3967,6 +3994,7 @@ fn make_trait_instance<'def>(
     let def_rts_params = coq::binder::BinderList::new(def_rts_params);
     let def_rts_params_uses = def_rts_params.make_using_terms();
 
+    /*
     let param_record_term = if spec.methods.is_empty() {
         coq::term::Gallina::Literal(of_trait.spec_record_params_constructor_name())
     } else {
@@ -4012,6 +4040,7 @@ fn make_trait_instance<'def>(
         ty: Some(coq::term::Type::Literal(of_trait.spec_params_record.clone())),
         body: param_record_term,
     }));
+    */
 
     // write the attr record decl, if provided
     let mut attrs_type_rts = Vec::new();
@@ -4042,7 +4071,7 @@ fn make_trait_instance<'def>(
     // for this, we assume that the semantic type parameters are all in scope
     let body_term = if spec.methods.is_empty() {
         // special-case this, as we cannot use record constructor syntax for empty records
-        coq::term::Gallina::Literal(format!("@{} _", of_trait.spec_record_constructor_name()))
+        coq::term::Gallina::Literal(format!("@{}", of_trait.spec_record_constructor_name()))
     } else {
         let mut components = Vec::new();
         for (item_name, spec) in &spec.methods {
@@ -4085,11 +4114,17 @@ fn make_trait_instance<'def>(
             write!(body, " : (spec_with {num_lifetimes} [")?;
             let direct_tys = spec.generics.get_direct_ty_params_with_assocs();
             write_list!(body, &direct_tys.params, "; ", |x| x.refinement_type.clone())?;
-            write!(body, "] (_ ({spec_record_params_name} ")?;
-            write_list!(body, &def_rts_params_uses, " ")?;
-            write!(body, ") ")?;
-            write_list!(body, direct_tys.params, " ", |_| "_".to_owned())?;
-            write!(body, "→ _))")?;
+
+            write!(body, "] fn_spec)")?;
+            //write!(body, "] (_ ({spec_record_params_name} ")?;
+            //write_list!(body, &def_rts_params_uses, " ")?;
+            //write!(body, ") ")?;
+
+            //write!(body, "] (_ ({spec_record_params_name} ")?;
+            //write_list!(body, &def_rts_params_uses, " ")?;
+            //write!(body, ") ")?;
+            //write_list!(body, direct_tys.params, " ", |_| "_".to_owned())?;
+            //write!(body, "→ _))")?;
 
             let item = coq::term::RecordBodyItem {
                 name: record_item_name,
@@ -4107,9 +4142,10 @@ fn make_trait_instance<'def>(
     write!(term_with_specs, " {body_term}")?;
 
     let mut ty_annot = String::with_capacity(100);
-    write!(ty_annot, "spec_with _ _ ({} ({spec_record_params_name} ", of_trait.spec_record)?;
-    write_list!(ty_annot, &def_rts_params_uses, " ")?;
-    write!(ty_annot, "))")?;
+    //write!(ty_annot, "spec_with _ _ ({} ({spec_record_params_name} ", of_trait.spec_record)?;
+    //write_list!(ty_annot, &def_rts_params_uses, " ")?;
+    //write!(ty_annot, "))")?;
+    write!(ty_annot, "spec_with _ _ ({})", of_trait.spec_record)?;
 
     document.push(coq::command::Command::Definition(coq::command::Definition {
         name: spec_record_name.to_owned(),
@@ -4156,6 +4192,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
         let spec_attrs_record_constructor = self.lit.spec_record_attrs_constructor_name();
 
         // write spec param record
+        /*
         let mut record_items = Vec::new();
         for (item_name, item_spec) in &self.default_spec.methods {
             let record_item_name = self.lit.make_spec_method_params_name(item_name);
@@ -4178,6 +4215,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
             body: record_items,
         };
         write!(f, "{spec_param_record}\n")?;
+        */
 
         // write attr record
         let mut record_items = Vec::new();
@@ -4241,9 +4279,10 @@ impl<'def> Display for TraitSpecDecl<'def> {
             let mut ty_term = String::with_capacity(100);
             write!(ty_term, "spec_with {num_lifetimes} [")?;
             write_list!(ty_term, &rt_param_uses, "; ")?;
-            write!(ty_term, "] (_P.({record_params_item_name}) ")?;
-            write_list!(ty_term, &rt_param_uses, " ")?;
-            write!(ty_term, " → fn_params)")?;
+            write!(ty_term, "] fn_spec")?;
+            //write!(ty_term, "] (_P.({record_params_item_name}) ")?;
+            //write_list!(ty_term, &rt_param_uses, " ")?;
+            //write!(ty_term, " → fn_params)")?;
 
             let item = coq::term::RecordDeclItem {
                 name: record_item_name,
@@ -4252,11 +4291,12 @@ impl<'def> Display for TraitSpecDecl<'def> {
             };
             record_items.push(item);
         }
-        let spec_params = vec![coq::binder::Binder::new_generalized(
-            coq::binder::Kind::MaxImplicit,
-            Some("_P".to_owned()),
-            coq::term::Type::Literal(self.lit.spec_params_record.clone()),
-        )];
+        //let spec_params = vec![coq::binder::Binder::new_generalized(
+        //coq::binder::Kind::MaxImplicit,
+        //Some("_P".to_owned()),
+        //coq::term::Type::Literal(self.lit.spec_params_record.clone()),
+        //)];
+        let spec_params = vec![];
         let spec_record = coq::term::Record {
             name: self.lit.spec_record.clone(),
             params: coq::binder::BinderList::new(spec_params),
@@ -4273,20 +4313,22 @@ impl<'def> Display for TraitSpecDecl<'def> {
         let spec_incl_name = self.lit.spec_incl_name();
         let spec_param_name1 = "spec1".to_owned();
         let spec_param_name2 = "spec2".to_owned();
-        let spec_param_type1 = format!("{} _P1", self.lit.spec_record);
-        let spec_param_type2 = format!("{} _P2", self.lit.spec_record);
+        //let spec_param_type1 = format!("{} _P1", self.lit.spec_record);
+        //let spec_param_type2 = format!("{} _P2", self.lit.spec_record);
+        let spec_param_type1 = self.lit.spec_record.clone();
+        let spec_param_type2 = self.lit.spec_record.clone();
         let spec_incl_params = vec![
             // the two spec params
-            coq::binder::Binder::new_generalized(
-                coq::binder::Kind::MaxImplicit,
-                Some("_P1".to_owned()),
-                coq::term::Type::Literal(self.lit.spec_params_record.clone()),
-            ),
-            coq::binder::Binder::new_generalized(
-                coq::binder::Kind::MaxImplicit,
-                Some("_P2".to_owned()),
-                coq::term::Type::Literal(self.lit.spec_params_record.clone()),
-            ),
+            //coq::binder::Binder::new_generalized(
+            //coq::binder::Kind::MaxImplicit,
+            //Some("_P1".to_owned()),
+            //coq::term::Type::Literal(self.lit.spec_params_record.clone()),
+            //),
+            //coq::binder::Binder::new_generalized(
+            //coq::binder::Kind::MaxImplicit,
+            //Some("_P2".to_owned()),
+            //coq::term::Type::Literal(self.lit.spec_params_record.clone()),
+            //),
             // the two actual specs
             coq::binder::Binder::new(
                 Some(spec_param_name1.clone()),

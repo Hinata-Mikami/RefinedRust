@@ -18,14 +18,14 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: try (rewrite project_vec_els_insert_lt /=; [|lia]; normalize_and_simpl_goal).
-  all: assert (length xs ≤ length x2); first (rewrite -(fmap_length PlaceIn xs); rewrite Hxs project_vec_els_length; lia).
+  all: assert (length xs ≤ length x2); first (specialize (project_vec_els_length (length xs) x2); rewrite -Hxs; solve_goal).
   all: normalize_and_simpl_goal; try solve_goal with lia.
 
   { solve_goal with nia. }
   { solve_goal with nia. }
   { apply list_lookup_insert_Some'. 
     split; normalize_and_simpl_goal.
-    { lia. }
+    { simpl in *. lia. }
     { rewrite Hxs. solve_goal with lia. }
   }
   { by rewrite Hxs. }

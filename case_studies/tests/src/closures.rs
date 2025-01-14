@@ -114,7 +114,7 @@ fn closure_test2() {
 }
 
 #[rr::params("a", "γ")]
-#[rr::args("(#a, γ)")]
+#[rr::args("(a, γ)")]
 #[rr::requires("(4*a)%Z ∈ i32")]
 //#[rr::observe("γ" : "(4 * a)%Z")]
 #[rr::observe("γ" : "a")]

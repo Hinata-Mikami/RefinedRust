@@ -18,7 +18,8 @@ use std::cmp::Ord;
 #[rr::export_as(alloc::collections::BTreeMap)]
 #[rr::context("EqDecision {rt_of K}")]
 #[rr::context("Countable {rt_of K}")]
-#[rr::refined_by("M" : "gmap {rt_of K} (place_rfn {rt_of V})")]
+// TODO: ideally, we'd use xt instead of rt
+#[rr::refined_by("M" : "gmap {rt_of K} (place_rfn {rt_of V})" ; "gmap {rt_of K} ({xt_of V})")]
 #[rr::exists("k", "v", "a")]
 pub struct BTreeMap<
     K,
@@ -54,9 +55,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     #[rr::skip]
     #[rr::params("m", "k")]
-    #[rr::args("#m", "#k")]
+    #[rr::args("m", "k")]
     // TODO: Borrow trait has two pure conversion functions between the refinement types
-    #[rr::returns("<#>@{option} (m !! borrow_from k)")]
+    #[rr::returns("(m !! borrow_from k)")]
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
         K: Borrow<Q> + Ord,
@@ -67,7 +68,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     #[rr::skip]
     #[rr::params("m", "k", "γ")]
-    #[rr::args("(#m, γ)", "#k")]
+    #[rr::args("(m, γ)", "k")]
     #[rr::exists("γi")]
     #[rr::returns("if decide (is_Some (m !! k)) then Some (m !!! k, γi) else None")]
     #[rr::observe("γ": "if decide (is_Some (m !! k)) then <[k := PlaceGhost γi]> m else m")]
@@ -81,9 +82,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     #[rr::only_spec]
     #[rr::params("m", "k", "v", "γ")]
-    #[rr::args("(#m, γ)", "k", "v")]
-    #[rr::observe("γ": "<[k := #v]> m")]
-    #[rr::returns("(m !! k)")]
+    #[rr::args("(m, γ)", "k", "v")]
+    #[rr::observe("γ": "<$#> (<[k := v]> m)")]
+    #[rr::returns("m !! k")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,

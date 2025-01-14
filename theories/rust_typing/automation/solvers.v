@@ -3381,6 +3381,13 @@ Ltac destruct_product_hypothesis name H :=
                       destruct H as [tmp1 tmp2];
                       destruct_product_hypothesis name tmp1;
                       destruct_product_hypothesis name tmp2
+  | nil_unit => destruct H
+  | cons_prod _ _ =>
+      let tmp1 := fresh "tmp" in
+      let tmp2 := fresh "tmp" in
+      destruct H as [tmp1 tmp2];
+      destruct_product_hypothesis name tmp1;
+      destruct_product_hypothesis name tmp2
   | plist _ ?xs =>
       let ys := eval simpl in xs in
       match ys with
@@ -3440,7 +3447,7 @@ Ltac find_trait_term cont :=
           let d := type of a in
           let e := eval simpl in d in
           match e with
-          | prod_vec _ _ → plist _ _ → (_ → fn_params) =>
+          | prod_vec _ _ → plist _ _ → fn_spec =>
               (* Which is a projection of the universal spec record *)
               strip_applied_params a (hnil id) ltac:(fun a acc =>
               is_projection a;

@@ -287,6 +287,7 @@ pub trait ParamLookup<'def> {
     /// - `{{...}}` is replaced by `{...}`
     /// - `{ty_of T}` is replaced by the type for the type parameter `T`
     /// - `{rt_of T}` is replaced by the refinement type of the type parameter `T`
+    /// - `{xt_of T}` is replaced by the xt type of the type parameter `T`
     /// - `{st_of T}` is replaced by the syntactic type of the type parameter `T`
     /// - `{ly_of T}` is replaced by a term giving the layout of the type parameter `T`'s syntactic type
     /// - `{'a}` is replaced by a term corresponding to the lifetime parameter 'a
@@ -295,15 +296,11 @@ pub trait ParamLookup<'def> {
     /// variables.
     /// (This is needed for computing the lifetime constraints of invariant types)
     fn process_coq_literal(&self, s: &str) -> (String, specs::TypeAnnotMeta) {
+        self.process_coq_literal_xt(s, false)
+    }
+
+    fn process_coq_literal_xt(&self, s: &str, rt_is_xt: bool) -> (String, specs::TypeAnnotMeta) {
         let mut annot_meta = specs::TypeAnnotMeta::empty();
-
-        //let mut literal_lfts: HashSet<String> = HashSet::new();
-        //let mut literal_tyvars: HashSet<specs::LiteralTyParam> = HashSet::new();
-
-        // TODOs:
-        // - associated types, we should split them here already. We need to adjust the matching to accept ::
-        //   and then split
-        // - lookup other literals in ParamLookup
 
         let s = handle_escapes(s);
 
@@ -325,6 +322,7 @@ pub trait ParamLookup<'def> {
             static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
             static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
             static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_XT_OF: Regex = Regex::new(r"([^{]|^)\{\s*xt_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
             static ref RE_LFT_OF: Regex = Regex::new(r"([^{]|^)\{\s*'([[:alpha:]]+)\s*\}").unwrap();
 
             static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
@@ -359,7 +357,26 @@ pub trait ParamLookup<'def> {
             };
 
             annot_meta.add_type(&param);
-            format!("{}{}", &c[1], &param.get_rfn_type())
+            if rt_is_xt {
+                format!("{}(ty_xt {})", &c[1], param)
+            } else {
+                format!("{}{}", &c[1], &param.get_rfn_type())
+            }
+        });
+
+        let cs = RE_XT_OF.replace_all(&cs, |c: &Captures<'_>| {
+            let mut path = parse_path(c.get(2));
+
+            path.push(RustPathElem::AssocItem(c[4].to_string()));
+
+            let param = self.lookup_ty_param(&path);
+
+            let Some(param) = param else {
+                return "ERR".to_owned();
+            };
+
+            annot_meta.add_type(&param);
+            format!("{}(ty_xt {})", &c[1], param)
         });
 
         let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {

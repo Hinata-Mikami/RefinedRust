@@ -9,7 +9,7 @@ impl<T, U> Pair<T, U> {
 
     #[rr::params(x, y)]
     #[rr::args("x", "y")]
-    #[rr::returns("-[#x; #y]")]
+    #[rr::returns(" *[x; y]")]
     pub fn new(x: T, y: U) -> Self {
         Self{x, y}
     }
@@ -37,7 +37,7 @@ impl EvenInt {
     }
 
     #[rr::params("x", "γ")]
-    #[rr::args(#raw "(#(-[#x]), γ)")]
+    #[rr::args(#raw "((-[x]), γ)")]
     #[rr::requires("(x + 1 ≤ MaxInt i32)%Z")]
     #[rr::observe("γ": "(-[#(x+1)%Z] : plist place_rfn _)")]
     fn add(&mut self) {
@@ -45,7 +45,7 @@ impl EvenInt {
     }
 
     #[rr::params("x", "γ", "y")]
-    #[rr::args("(#x, γ)", "#y")]
+    #[rr::args("(x, γ)", "y")]
     #[rr::requires("(x + y ∈ i32)%Z")]
     #[rr::observe("γ": "(x+y)")]
     #[rr::tactics("apply Zeven_plus_Zeven; solve_goal.")]
@@ -54,7 +54,7 @@ impl EvenInt {
     }
 
     #[rr::params("x", "γ")]
-    #[rr::args("(#x, γ)")]
+    #[rr::args("(x, γ)")]
     #[rr::requires("(x + 2 ≤ MaxInt i32)%Z")]
     #[rr::observe("γ": "(x+2)")]
     #[rr::tactics("rewrite -Z.add_assoc; apply Zeven_plus_Zeven; solve_goal.")]
@@ -72,14 +72,14 @@ pub struct Foo {}
 
 impl Foo {
     #[rr::params("x", "γ")]
-    #[rr::args("(#x, γ)")]
+    #[rr::args("(x, γ)")]
     #[rr::returns("()")]
     pub fn a(&mut self) {
         assert!(true);
     }
 
     #[rr::params("x", "γ")]
-    #[rr::args("(#x, γ)")]
+    #[rr::args("(x, γ)")]
     #[rr::returns("()")]
     pub fn b(&mut self) {
         assert!(true);

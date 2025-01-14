@@ -3,7 +3,7 @@ From refinedrust Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import ident_to_string lookup_definition.
-From refinedrust Require Import int programs program_rules functions mut_ref shr_ref products arrays enum.
+From refinedrust Require Import int programs program_rules functions mut_ref shr_ref products arrays enum xmap.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
 From refinedrust.automation Require Export simpl solvers proof_state.
 Set Default Proof Using "Type".
@@ -706,6 +706,9 @@ Tactic Notation "liRStepUntil" open_constr(id) :=
 Ltac prepare_initial_coq_context :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
   repeat lazymatch goal with
+  | H : fn_A _ |- _ => simpl in H
+  | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
+  | H : plist _ _ |- _ => destruct_product_hypothesis H H
   | H : _ * _ |- _ => destruct_product_hypothesis H H
   (*| H : named_binder ?n |- _ =>*)
                       (*let temp := fresh "tmp" in*)
@@ -741,28 +744,28 @@ Ltac inv_local_ly Harg_ly :=
 Section tac.
   Context `{!typeGS Σ}.
 
-  Lemma intro_typed_function {A} {rts : list Type} (n : nat) π (fn : function) (local_sts : list syn_type) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → A → fn_params)) :
+  Lemma intro_typed_function {rts : list Type} (n : nat) π (fn : function) (local_sts : list syn_type) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft),
       □ (
       let lya := fn.(f_args).*2 in
       let lyv := fn.(f_local_vars).*2 in
-      ⌜fn_arg_layout_assumptions (fp.2 κs tys x).(fp_atys) lya⌝ -∗
+      ⌜fn_arg_layout_assumptions ((fp.2 κs tys).(fn_p) x).(fp_atys) lya⌝ -∗
       ⌜fn_local_layout_assumptions local_sts lyv⌝ -∗
-      ∀ (lsa : vec loc (length (fp.2 κs tys x).(fp_atys))) (lsv : vec loc (length fn.(f_local_vars))),
+      ∀ (lsa : vec loc (length ((fp.2 κs tys).(fn_p) x).(fp_atys))) (lsv : vec loc (length fn.(f_local_vars))),
         let Qinit :=
           (* sidecondition first *)
-          (fp.2 κs tys x).(fp_Sc) π ∗
-          (fp.2 κs tys x).(fp_Pa) π ∗
-          ([∗list] l;t∈lsa;(fp.2 κs tys x).(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty)) ∗
-          ([∗list] l;p∈lsv;local_sts, (l ◁ₗ[π, Owned false] (PlaceIn ()) @ (◁ (uninit p))))
+          ((fp.2 κs tys).(fn_p) x).(fp_Sc) π ∗
+          ((fp.2 κs tys).(fn_p) x).(fp_Pa) π ∗
+          ([∗list] l;t∈lsa;((fp.2 κs tys).(fn_p) x).(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] #r @ (◁ ty)) ∗
+          ([∗list] l;p∈lsv;local_sts, (l ◁ₗ[π, Owned false] .@ (◁ (uninit p))))
            in
-      let E := ((fp.2 κs tys x).(fp_elctx) ϝ) in
+      let E := (((fp.2 κs tys).(fn_p) x).(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in
       ∃ E', ⌜E' ⊆+ E⌝ ∗
       (credit_store 0 0 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
         introduce_typed_stmt π E' L2 ϝ fn lsa lsv lya lyv (
         λ v L2,
-            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π (fp.2 κs tys x).(fp_fr) v) (λ L3 _ R3,
+            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
@@ -943,7 +946,21 @@ Ltac after_intro_hook ::=
       unfold enter_cache_hint in H;
       try simplify_layout_alg H;
       enter_cache H
+  | H : ty_is_xrfn ?ty ?r |- _ =>
+        first [
+          is_var r;
+          (let r2 := fresh r in
+           rename r into r2;
+           destruct H as (r, ->);
+           simpl in r)
+        | let Heq := fresh in
+          let r2 := fresh "xr" in
+          destruct H as (r2 & Heq);
+          simpl in Heq;
+          simpl in r2;
+          simplify_eq ]
   end;
+  (* TODO optimize this *)
   inv_layout_alg
 .
 
@@ -968,6 +985,7 @@ Proof. done. Qed.
 
 Ltac unfold_common_defs :=
   unfold_common_caesium_defs;
+  unfold xmap, xmap_id in *;
   unfold num_cred in *;
   unfold unit_sl in *.
 

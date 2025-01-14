@@ -1205,40 +1205,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         false
     }
 
-    /// Get the spec for a built-in enum like `std::option::Option`.
-    fn get_builtin_enum_spec(&self, did: DefId) -> Option<radium::EnumSpec> {
-        let option_spec = radium::EnumSpec {
-            rfn_type: coq::term::Type::Literal("_".to_owned()),
-            variant_patterns: vec![
-                ("None".to_owned(), vec![], "-[]".to_owned()),
-                ("Some".to_owned(), vec!["x".to_owned()], "-[x]".to_owned()),
-            ],
-        };
-
-        let enum_spec = radium::EnumSpec {
-            rfn_type: coq::term::Type::Literal("_".to_owned()),
-            variant_patterns: vec![
-                ("inl".to_owned(), vec!["x".to_owned()], "-[x]".to_owned()),
-                ("inr".to_owned(), vec!["x".to_owned()], "-[x]".to_owned()),
-            ],
-        };
-
-        // TODO: find a more modular way to do this.
-        if self.does_did_match(did, &["std", "option", "Option"])
-            || self.does_did_match(did, &["core", "option", "Option"])
-        {
-            return Some(option_spec);
-        }
-
-        if self.does_did_match(did, &["std", "result", "Result"])
-            || self.does_did_match(did, &["core", "result", "Result"])
-        {
-            return Some(enum_spec);
-        }
-
-        None
-    }
-
     /// Given a Rust enum which has already been registered and whose fields have been translated, generate a
     /// corresponding Coq Inductive as well as an `EnumSpec`.
     fn generate_enum_spec(
@@ -1279,7 +1245,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         );
 
         let enum_spec = radium::EnumSpec {
-            rfn_type: coq::term::Type::Literal(inductive_name),
+            rfn_type: coq::term::Type::Literal(inductive_name.clone()),
+            xt_type: coq::term::Type::Literal(inductive_name),
+            xt_injection: "id".to_owned(),
             variant_patterns,
         };
 
@@ -1385,10 +1353,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let enum_spec;
             let mut inductive_decl = None;
 
-            let builtin_spec = self.get_builtin_enum_spec(def.did());
-            if let Some(spec) = builtin_spec {
-                enum_spec = spec;
-            } else if self.env.has_tool_attribute(def.did(), "refined_by") {
+            if self.env.has_tool_attribute(def.did(), "refined_by") {
                 let attributes = self.env.get_attributes(def.did());
                 let attributes = attrs::filter_for_tool(attributes);
 

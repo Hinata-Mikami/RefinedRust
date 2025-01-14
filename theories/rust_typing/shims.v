@@ -237,6 +237,7 @@ Definition type_of_copy_nonoverlapping `{RRGS : !refinedrustGS Σ} (T_rt : Type)
     → ∃ () : unit, () @ unit_t; λ π,
         l_s ◁ₗ[π, Owned false] PlaceIn v_s @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) len))) ∗
         l_t ◁ₗ[π, Owned false] PlaceIn v_s @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) len))).
+
 Lemma copy_nonoverlapping_typed `{RRGS : !refinedrustGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
   ⊢ typed_function π (copy_nonoverlapping T_st) [IntSynType usize_t] (<tag_type> type_of_copy_nonoverlapping T_rt T_st).
@@ -244,13 +245,14 @@ Proof.
   start_function "copy_nonoverlapping" ϝ ( () ) ( [T_ty []] ) ( [[[len l_s] l_t] v_s] ).
   intros ls_size ls_src ls_dst ls_count.
   repeat liRStep; liShow.
+  open_cache.
 
   (* manual proof from here to formulate the loop invariant *)
   iApply typed_stmt_annot_skip.
-  iSelect (_ ◁ₗ[_, _] PlaceIn (Z.of_nat len) @ _)%I (fun H => iRename H into "Hlen").
-  iSelect (_ ◁ₗ[_, _] PlaceIn 0%Z @ _)%I (fun H => iRename H into "Hcount").
-  iSelect (_ ◁ₗ[_, _] PlaceIn l_s @ (◁ alias_ptr_t))%I (fun H => iRename H into "Hsrc").
-  iSelect (_ ◁ₗ[_, _] PlaceIn l_t @ (◁ alias_ptr_t))%I (fun H => iRename H into "Hdst").
+  iSelect (_ ◁ₗ[_, _] # (Z.of_nat len) @ _)%I (fun H => iRename H into "Hlen").
+  iSelect (_ ◁ₗ[_, _] #0%Z @ _)%I (fun H => iRename H into "Hcount").
+  iSelect (_ ◁ₗ[_, _] #l_s @ (◁ alias_ptr_t))%I (fun H => iRename H into "Hsrc").
+  iSelect (_ ◁ₗ[_, _] #l_t @ (◁ alias_ptr_t))%I (fun H => iRename H into "Hdst").
   iSelect (l_s ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hs").
   iSelect (l_t ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Ht").
   iApply fupd_typed_stmt.
@@ -272,12 +274,12 @@ Proof.
     ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
     ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
     (credit_store 0 0 ∗
-    ls_size ◁ₗ[π, Owned false] PlaceIn (Z.of_nat len) @ (◁ int usize_t) ∗
-    ls_count ◁ₗ[π, Owned false] PlaceIn (Z.of_nat i) @ (◁ int usize_t) ∗
-    ls_src ◁ₗ[π, Owned false] PlaceIn l_s @ (◁ alias_ptr_t) ∗
-    ls_dst ◁ₗ[π, Owned false] PlaceIn l_t @ (◁ alias_ptr_t) ∗
-    l_s ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate len (ly_size T_st_ly)) v_s)) @ (◁ array_t len (value_t (UntypedSynType T_st_ly))) ∗
-    l_t ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate len (ly_size T_st_ly)) v_s) ++ drop i (reshape (replicate len (ly_size T_st_ly)) v_t))) @ (◁ array_t len (value_t (UntypedSynType T_st_ly)))))%I).
+    ls_size ◁ₗ[π, Owned false] #(Z.of_nat len) @ (◁ int usize_t) ∗
+    ls_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int usize_t) ∗
+    ls_src ◁ₗ[π, Owned false] #l_s @ (◁ alias_ptr_t) ∗
+    ls_dst ◁ₗ[π, Owned false] #l_t @ (◁ alias_ptr_t) ∗
+    l_s ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate len (ly_size T_st_ly)) v_s)) @ (◁ array_t (value_t (UntypedSynType T_st_ly)) len) ∗
+    l_t ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate len (ly_size T_st_ly)) v_s) ++ drop i (reshape (replicate len (ly_size T_st_ly)) v_t))) @ (◁ array_t (value_t (UntypedSynType T_st_ly)) len)))%I).
   iApply (typed_goto_acc _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   liRStep; liShow. iExists 0%nat.
@@ -345,11 +347,11 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
 
 (* Maybe this should also be specced in terms of value? *)
 Definition type_of_ptr_write `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
-  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * T_rt), (λ ϝ, []);
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
       l :@: alias_ptr_t, r :@: T_ty; λ π,
       (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type)))))
     → ∃ () : unit, () @ unit_t; λ π,
-        l ◁ₗ[π, Owned false] PlaceIn r @ ◁ T_ty.
+        l ◁ₗ[π, Owned false] #$# r @ ◁ T_ty.
 
 
 Lemma ptr_write_typed `{RRGS : !refinedrustGS Σ} π T_rt T_st T_ly :
@@ -375,10 +377,10 @@ Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_init := "_bb0";
 |}.
 Definition type_of_ptr_read `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
-  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * T_rt), (λ ϝ, []);
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
       l :@: alias_ptr_t; λ π,
       (*(l ◁ₗ[π, Owned false] PlaceIn vs @ (◁ value_t (T_ty.(ty_syn_type))))*)
-      (l ◁ₗ[π, Owned false] #r @ (◁ T_ty))
+      (l ◁ₗ[π, Owned false] # $# r @ (◁ T_ty))
   )
   (* TODO really, we would like to have this stronger spec that looses less information.
       However, some parts of the type system (e.g. enum initialization) cannot deal well yet with moving in values again. *)
@@ -539,7 +541,7 @@ Proof.
   repeat liRStep; liShow.
   Unshelve.
   all: unshelve_sidecond; sidecond_hook.
-  Unshelve. all: solve_goal.
+  Unshelve. all: sidecond_hammer.
 Qed.
 
 
@@ -661,8 +663,11 @@ Proof.
   start_function "mut_ptr_add" ϝ ( () ) ( [T_ty []] ) ( [l offset] ) => l_self l_count.
   init_lfts ∅.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
+
   repeat liRStep; liShow.
-  Unshelve. all: unshelve_sidecond; sidecond_hook; prepare_sideconditions; normalize_and_simpl_goal; try solve_goal.
+
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
 
   (* basically, the reasoning is:
       - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
@@ -673,7 +678,6 @@ Proof.
     [ lia | assert (MinInt isize_t ≤ offset ≤ MaxInt isize_t)%Z by solve_goal with nia; prepare_sideconditions; normalize_and_simpl_goal; try (unfold_common_defs; solve_goal)].
   all: rewrite wrap_to_int_id'.
   all: prepare_sideconditions; normalize_and_simpl_goal; try solve_goal; try (unfold_common_defs; solve_goal).
-  Unshelve. all: unfold_common_defs; solve_goal.
 Qed.
 
 Definition ptr_is_null `{!LayoutAlg} (T_st : syn_type) : function := {|
@@ -977,8 +981,8 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
 |}.
 
 Definition type_of_box_new `{RRGS : !refinedrustGS Σ} T_rt T_st :=
-  fn(∀ ( *[]) : 0 | ( *[T]) : [(T_rt, T_st)] | (x) : T_rt, (λ ϝ, []); x :@: T; λ π, True)
-    → ∃ () : (), PlaceIn x @ box T; λ π, True.
+  fn(∀ ( *[]) : 0 | ( *[T]) : [(T_rt, T_st)] | (x) : _, (λ ϝ, []); x :@: T; λ π, True)
+    → ∃ () : (), x @ box T; λ π, True.
 Lemma box_new_typed `{RRGS : !refinedrustGS Σ} π T_st (T_rt : Type) (mem_size_of_T_loc ptr_dangling_T_loc : loc) :
   syn_type_is_layoutable T_st →
   mem_size_of_T_loc ◁ᵥ{π} mem_size_of_T_loc @ function_ptr [] (<tag_type> type_of_mem_size_of T_rt T_st) -∗

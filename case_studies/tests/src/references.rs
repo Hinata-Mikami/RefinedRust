@@ -1,7 +1,7 @@
 #![rr::include("option")]
 
 #[rr::params("γ1", "γ2", "i")]
-#[rr::args("(#(#i, γ1), γ2)")]
+#[rr::args("((i, γ1), γ2)")]
 #[rr::observe("γ2": "(#i, γ1)")]
 #[rr::returns("i")]
 fn mut_ref_test1(x: &mut &mut i32) -> i32 {
@@ -9,7 +9,7 @@ fn mut_ref_test1(x: &mut &mut i32) -> i32 {
 }
 
 #[rr::params("γ1", "γ2", "i", "j")]
-#[rr::args("(#(-[#(#i, γ1); #j]), γ2)")]
+#[rr::args("((-[(i, γ1); j]), γ2)")]
 #[rr::observe("γ2": "(-[#(#i, γ1); #j] : plist place_rfn _)")]
 #[rr::returns("i")]
 fn mut_ref_test2(x: &mut (&mut i32, i32)) -> i32 {
@@ -67,8 +67,8 @@ fn call_generic_id1() {
 }
 
 #[rr::params("x")]
-#[rr::args("#x")]
-#[rr::returns("#x")]
+#[rr::args("x")]
+#[rr::returns("x")]
 fn shr_ref_id<'a, T: 'a>(x : &'a T) -> &'a T {
     x
 }

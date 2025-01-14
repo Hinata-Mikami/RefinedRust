@@ -85,6 +85,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
     ) -> Result<specs::EnumSpec, String> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
+        let mut xt_type = None;
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -98,8 +99,10 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
             match seg.ident.name.as_str() {
                 "refined_by" => {
                     let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                    let (ty, _) = self.scope.process_coq_literal(ty.value().as_str());
-                    rfn_type = Some(coq::term::Type::Literal(ty));
+                    let (rt_processed, _) = self.scope.process_coq_literal(ty.value().as_str());
+                    let (xt_processed, _) = self.scope.process_coq_literal_xt(ty.value().as_str(), true);
+                    rfn_type = Some(rt_processed);
+                    xt_type = Some(xt_processed.replace("place_rfn", ""));
                 },
                 "export_as" => {},
                 _ => {
@@ -127,8 +130,8 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
                     },
                     "refinement" => {
                         let rfn: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                        let (rfn, _) = self.scope.process_coq_literal(rfn.value().as_str());
-                        refinement = Some(rfn);
+                        let (rfn_processed, _) = self.scope.process_coq_literal(rfn.value().as_str());
+                        refinement = Some(rfn_processed);
                     },
                     _ => {
                         // skip and ignore other attributes
@@ -145,9 +148,18 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
         let Some(rfn_type) = rfn_type else {
             return Err(format!("No refined_by clause provided for enum {:?}", ty_name));
         };
+        let Some(xt_type) = xt_type else {
+            return Err(format!("No refined_by clause provided for enum {:?}", ty_name));
+        };
+
+        let xt_type = coq::term::Type::Literal(xt_type);
+        let rfn_type = coq::term::Type::Literal(rfn_type);
+        let xt_injection = "xmap".to_owned();
 
         Ok(specs::EnumSpec {
             rfn_type,
+            xt_type,
+            xt_injection,
             variant_patterns,
         })
     }

@@ -22,21 +22,21 @@ pub enum Option<T> {
 impl<T> Option<T> {
 
     #[rr::params("x")]
-    #[rr::args("#x")]
+    #[rr::args("x")]
     #[rr::returns("bool_decide (is_Some x)")]
     pub fn is_some(&self) -> bool {
         unimplemented!();
     }
 
     #[rr::params("x")]
-    #[rr::args("#x")]
+    #[rr::args("x")]
     #[rr::returns("bool_decide (¬ is_Some x)")]
     pub fn is_none(&self) -> bool {
         unimplemented!()
     }
 
     #[rr::params("x")]
-    #[rr::args("Some (#x)")]
+    #[rr::args("Some x")]
     #[rr::returns("x")]
     pub fn unwrap(self) -> T {
         unimplemented!();

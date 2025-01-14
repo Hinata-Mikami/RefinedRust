@@ -1,5 +1,5 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import util hlist.
+From refinedrust Require Import util hlist axioms.
 From refinedrust Require Import uninit_def.
 From refinedrust Require Import uninit programs ltype_rules.
 Set Default Proof Using "Type".
@@ -241,11 +241,49 @@ Section structs.
     iFrame. done.
   Qed.
 
+  (* Conversion of the xt refinement to the rt refinement *)
+  Definition struct_xt {rts : list Type} (tys : hlist type rts) : Type :=
+    plist (λ '(existT _ ty), ty.(ty_xt)) (hzipl _ tys).
+  Definition struct_xrtm {rts : list Type} (tys : hlist type rts)
+    : ∀ (xl : list (sigT type)), _
+    :=
+    @pmap (sigT type) (λ '(existT _ ty), ty.(ty_xt)) (λ '(existT rt _), place_rfn rt)
+      (λ '(existT _ ty) x, #(ty.(ty_xrt) x)).
+  Definition struct_xrt' {rts : list Type} (tys : hlist type rts) (xs : struct_xt tys) :=
+    struct_xrtm tys (hzipl _ tys) xs.
+  Fixpoint convert_struct_xrt {Xs : list Type} {Ty : Type → Type} (F : Type → Type) (tys : hlist Ty Xs) :
+    plist (λ '(existT rt _), F rt) (hzipl Xs tys) →
+    plist F Xs :=
+    match tys with
+    | +[] => λ _, -[]
+    | _ +:: tys' => λ pl,
+        match pl with
+        | pl1 *:: pl =>
+            pl1 *:: convert_struct_xrt F tys' pl
+        end
+    end.
+  Definition struct_xrt {rts : list Type} (tys : hlist type rts) (xs : struct_xt tys) :=
+    convert_struct_xrt _ tys (struct_xrt' tys xs).
+  Fixpoint struct_xt_inhabitant {rts : list Type} (tys : hlist type rts) :
+    Inhabited (struct_xt tys).
+  Proof.
+    refine (populate _).
+    unfold struct_xt.
+    destruct tys as [ | ?? ty]; simpl.
+    - exact nil_tt.
+    - refine (cons_pair ty.(ty_xt_inhabited).(inhabitant) _).
+      apply struct_xt_inhabitant.
+  Defined.
+
 
   (** We use a [hlist] for the list of types and a [plist] for the refinement, to work around universe problems.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
   Program Definition struct_t {rts : list Type} (sls : struct_layout_spec) (tys : hlist type rts) : type (plist place_rfn rts) := {|
+
+    ty_xt := struct_xt tys;
+    ty_xrt := struct_xrt tys;
+
     ty_own_val π r v :=
       (∃ sl,
         ⌜use_struct_layout_alg sls = Some sl⌝ ∗
@@ -270,10 +308,8 @@ Section structs.
     _ty_wf_E := mjoin (fmap (λ ty, ty_wf_E (projT2 ty)) (hzipl rts tys));
   |}.
   Next Obligation.
-    intros rts _ _. apply inhabited_plist.
-    induction rts as [ | rt rts IH]; first apply _.
-    econstructor; first apply _. apply IH.
-  Qed.
+    intros. eapply struct_xt_inhabitant.
+  Defined.
   Next Obligation.
     iIntros (rts sls tys π r v) "(%sl & %Halg & %Hlen & %Hly & ?)".
     iExists sl. iPureIntro. split; last done.

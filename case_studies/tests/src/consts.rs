@@ -19,7 +19,7 @@ fn use_result() -> i32{
 }
 
 #[rr::params("x")]
-#[rr::args("#x")]
+#[rr::args("x")]
 #[rr::returns("()")]
 fn use_ref(x: &i32) {
 

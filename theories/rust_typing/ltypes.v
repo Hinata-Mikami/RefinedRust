@@ -18,7 +18,11 @@ Section enum.
   (*Set Universe Polymorphism.*)
 
   Record enum (rt : Type) : Type := mk_enum {
-    enum_rt_inhabited : Inhabited rt;
+    (* refinement injection *)
+    enum_xt : Type;
+    enum_xrt : enum_xt → rt;
+
+    enum_xt_inhabited : Inhabited enum_xt;
     (* the layout spec *)
     enum_els : enum_layout_spec;
     (* out of the current refinement, extract the tag *)
@@ -38,8 +42,10 @@ Section enum.
       enum_tag r = variant →
       enum_tag_ty variant = Some (existT (enum_rt r) (enum_ty r))
   }.
-  Global Arguments mk_enum {_ _}.
-  Global Arguments enum_rt_inhabited {_}.
+  Global Arguments enum_xt {_}.
+  Global Arguments enum_xrt {_}.
+  Global Arguments mk_enum {_}.
+  Global Arguments enum_xt_inhabited {_}.
   Global Arguments enum_els {_}.
   Global Arguments enum_tag {_}.
   Global Arguments enum_rt {_}.
@@ -48,6 +54,8 @@ Section enum.
   Global Arguments enum_tag_ty {_}.
   Global Arguments enum_lfts {_}.
   Global Arguments enum_wf_E {_}.
+  Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
+    populate (e.(enum_xrt) e.(enum_xt_inhabited).(inhabitant)). 
 
   (*Set Universe Polymorphism.*)
   Definition enum_tag_ty' {rt} (en : enum rt) (v : var_name) : sigT type :=

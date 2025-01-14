@@ -10,6 +10,9 @@ Section owned_ptr.
   Context `{typeGS Σ} {rt} (inner : type rt).
 
   Program Definition owned_ptr : type (place_rfn rt * loc) := {|
+    ty_xt := (rt * loc)%type;
+    ty_xrt := λ x, (#x.1, x.2); 
+
     ty_sidecond := True;
     ty_own_val π '(r, l) v :=
       ∃ (ly : layout), ⌜v = l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗

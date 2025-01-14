@@ -1,4 +1,5 @@
 Require Import Coq.Logic.ProofIrrelevance.
+Require Export Coq.Logic.FunctionalExtensionality.
 From Equations Require Import Equations.
 From stdpp Require Import base.
 From iris Require Import prelude.

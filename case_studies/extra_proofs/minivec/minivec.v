@@ -80,13 +80,14 @@ Section project_vec_els.
     rewrite Hlook. done.
   Qed.
 
-  Lemma project_vec_els_length' xs x2 len :
-    PlaceIn <$> xs = project_vec_els len x2 → length xs ≤ min len (length x2).
+  Lemma project_vec_els_length' `{!typeGS Σ} (T : type rt) xs x2 len :
+    <#> (<$#@{T}> xs) = project_vec_els len x2 → length xs ≤ min len (length x2).
   Proof.
     intros Ha.
-    assert (length (PlaceIn <$> xs) = length (project_vec_els len x2)) as Hlen.
+    assert (length (<#> <$#> xs) = length (project_vec_els len x2)) as Hlen.
     { rewrite Ha. done. }
     rewrite fmap_length project_vec_els_length in Hlen.
+    rewrite fmap_length in Hlen.
     lia.
   Qed.
 End project_vec_els.
@@ -95,3 +96,4 @@ Global Typeclasses Opaque project_vec_els.
 Global Opaque project_vec_els.
 
 Global Hint Rewrite @project_vec_els_length : lithium_rewrite.
+Global Hint Rewrite @list_fmap_compose : lithium_rewrite.

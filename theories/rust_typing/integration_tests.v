@@ -8,7 +8,43 @@ Definition bla1 `{typeGS Σ} :=
 Definition bla2 `{typeGS Σ} :=
   (fn(∀ ( *[]) : 0 | ( *[]) : [] | x : unit, (λ _, []); () :@: (uninit PtrSynType), () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
 Definition bla3 `{typeGS Σ} T_st T_rt :=
-  (fn(∀ ( *[]) : 0 | ( *[ T_ty]) : [ (T_rt, T_st) ] | (x) : T_rt, (λ _, []); x :@: T_ty, () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
+  (fn(∀ ( *[]) : 0 | ( *[ T_ty]) : [ (T_rt, T_st) ] | (x) : _, (λ _, []); x :@: T_ty, () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
+
+(* this is a problem, because the type of the function depends on the params, but the _type_ of the function type cannot depend on  it. only the term.
+
+Alternative solutions:
+   - we quantify over the xt as well. This seems ugly and like a hack.
+     + I guess we could get away with only doing that for function specs.
+       ie. we quantify over the xt and then require that it's the same in the extra preconds.
+   - we do some weird closed world thing.
+   - we refactor the specification format to always universally quantify over the xt of the args.
+   - we universally quantify over the rt but require that it's equal to projection of xt
+   - we bundle the params type. 
+     + This doesn't really work because of how we setup the notations.
+   
+   Problem: if I can't quantify over it, how will I encode rr frontend specs?
+   I guess I could always generically quantify over the refinements r1 .. rn. 
+
+   It will be hard to keep the ability to treat args as mixed input/output.
+   In general I should move to using projections more.
+
+   But we can keep args clauses as a way to specify the name we can use to refer to an arg, in the first step.
+   Then I existentially quantify over the args. (combined params + args) 
+   ∃ arg1, arg2.
+   r1 = ty.(ty_xt) arg1
+   r2 = ty.(ty_xt) arg2
+
+   Point: I need to separately existentially quantify over the xts, because it's not in scope for the outside params.
+
+   Problem: I cannot refer to the args in the postcondition.
+    -> this is really a problem. 
+
+
+   What is the point of having the params exposed?
+   - for traits, do I need to know that the params are consistent between impls?
+   - I don't immediately see why we should need it. Try it out, I guess? 
+
+*)
 
 (** Testing type parameter instantiation *)
 Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
@@ -25,10 +61,10 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
 
 (* Maybe this should also be specced in terms of value? *)
 Definition type_of_ptr_write `{!typeGS Σ} (T_rt : Type) (T_st : syn_type) :=
-  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * T_rt), (λ ϝ, []);
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
       l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type)))))
     → ∃ () : unit, () @ unit_t; λ π,
-        l ◁ₗ[π, Owned false] PlaceIn r @ ◁ T_ty.
+        l ◁ₗ[π, Owned false] #$# r @ ◁ T_ty.
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →

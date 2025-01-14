@@ -1,5 +1,5 @@
 From refinedrust Require Export base hlist type ltypes.
-From lithium Require Export all.
+From lithium Require Export simpl_classes normalize.
 Set Default Proof Using "Type".
 
 (** ** Additional Simpl instances *)

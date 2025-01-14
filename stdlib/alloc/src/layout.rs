@@ -24,7 +24,7 @@ pub struct Layout {
 #[rr::export_as(alloc::alloc::Layout)]
 impl Layout {
     #[rr::params("x")]
-    #[rr::args("#x")]
+    #[rr::args("x")]
     #[rr::returns("x.(layout_sz)")]
     pub const fn size(&self) -> usize {
         self.size

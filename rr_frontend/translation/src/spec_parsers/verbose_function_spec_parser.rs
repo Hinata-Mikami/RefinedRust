@@ -501,7 +501,7 @@ where
                             let (processed_ty, _) = self.make_type_with_ref(&pre, auto_type);
                             // now wrap it in a shared reference again
                             let altered_ty = specs::Type::ShrRef(Box::new(processed_ty.0), lft.clone());
-                            let altered_rfn = format!("#({})", processed_ty.1);
+                            let altered_rfn = format!("({})", processed_ty.1);
                             pre_types.push(specs::TypeWithRef::new(altered_ty, altered_rfn.clone()));
 
                             // push the same pattern for the post, no ghost variable
@@ -520,7 +520,7 @@ where
                             let ghost_var = format!("_γ{base}");
                             new_ghost_vars.push(ghost_var.clone());
                             let altered_ty = specs::Type::MutRef(Box::new(processed_ty.0), lft.clone());
-                            let altered_rfn = format!("(#({}), {ghost_var})", processed_ty.1);
+                            let altered_rfn = format!("(({}), {ghost_var})", processed_ty.1);
                             pre_types.push(specs::TypeWithRef::new(altered_ty, altered_rfn));
 
                             if let Some(post) = post {
@@ -549,8 +549,8 @@ where
         if pre_types.is_empty() {
             pre_rfn.push_str("()");
         } else {
-            pre_rfn.push_str("-[");
-            push_str_list!(pre_rfn, pre_types.clone(), "; ", |x| format!("#({})", x.1));
+            pre_rfn.push_str("*[");
+            push_str_list!(pre_rfn, pre_types.clone(), "; ", |x| format!("({})", x.1));
             pre_rfn.push(']');
 
             pre_tys = pre_types.iter().map(|x| x.0.clone()).collect();
@@ -580,7 +580,7 @@ where
 
                 let lft = meta.closure_lifetime.unwrap();
                 let ref_ty = specs::Type::ShrRef(Box::new(tuple), lft);
-                let ref_rfn = format!("#{}", pre_rfn);
+                let ref_rfn = pre_rfn.clone();
 
                 builder.add_arg(specs::TypeWithRef::new(ref_ty, ref_rfn));
             },
@@ -593,7 +593,7 @@ where
 
                 let lft = meta.closure_lifetime.unwrap();
                 let ref_ty = specs::Type::MutRef(Box::new(tuple), lft);
-                let ref_rfn = format!("(#({}), {})", pre_rfn, post_name);
+                let ref_rfn = format!("(({}), {})", pre_rfn, post_name);
 
                 builder.add_arg(specs::TypeWithRef::new(ref_ty, ref_rfn));
 
@@ -602,10 +602,10 @@ where
                 // references
                 let mut post_term = String::new();
 
-                post_term.push_str("-[");
+                post_term.push_str("*[");
                 push_str_list!(post_term, post_patterns, "; ", |p| match p {
-                    CapturePostRfn::ImmutOrConsume(pat) => format!("#({pat})"),
-                    CapturePostRfn::Mut(pat, gvar) => format!("#(#({pat}), {gvar})"),
+                    CapturePostRfn::ImmutOrConsume(pat) => format!("({pat})"),
+                    CapturePostRfn::Mut(pat, gvar) => format!("(({pat}), {gvar})"),
                 });
                 post_term.push(']');
 

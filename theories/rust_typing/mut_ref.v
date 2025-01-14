@@ -12,6 +12,8 @@ Section mut_ref.
     because we cannot make strong updates to the inner type -- thus the inner refinement needs to be
      exposed through the mutable reference's refinement *)
   Program Definition mut_ref  {rt} (κ : lft) (inner : type rt) : type (place_rfn rt * gname) := {|
+    ty_xt := (inner.(ty_xt) * gname);
+    ty_xrt := λ '(x, y), (#(inner.(ty_xrt) x), y);
     ty_sidecond := True;
     ty_own_val π '(r, γ) v :=
       (∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗

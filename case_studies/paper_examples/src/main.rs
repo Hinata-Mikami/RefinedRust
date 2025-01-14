@@ -12,16 +12,16 @@ fn main() {
 
 
 #[rr::params(x : "Z")]
-#[rr::args("#x")]
+#[rr::args("x")]
 #[rr::requires("(x + 42)%Z ∈ i32")]
-#[rr::returns("#(x + 42)")]
+#[rr::returns("(x + 42)")]
 fn box_add_42(mut x : Box<i32>) -> Box<i32> {
     *x += 42;
     x
 }
 
 #[rr::params(x : "Z", "γ")]
-#[rr::args("(#x, γ)")]
+#[rr::args("(x, γ)")]
 #[rr::requires("(x + 42)%Z ∈ i32")]
 #[rr::observe("γ": "x + 42")]
 fn mut_ref_add_42(x : &mut i32) {

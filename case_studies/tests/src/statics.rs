@@ -11,7 +11,7 @@ fn read_static_1() -> i32 {
 
 #[rr::params("x")]
 #[rr::requires(#iris "initialized π \"MYINT\" x")]
-#[rr::returns("#x")]
+#[rr::returns("x")]
 fn ref_static_1() -> &'static i32 {
     &MYINT
 }
@@ -27,7 +27,7 @@ fn read_static_2() {
 #[rr::skip]
 #[rr::params("x")]
 #[rr::requires(#iris "initialized π \"MYINT\" x")]
-#[rr::returns("Some(#(#x))")]
+#[rr::returns("Some x")]
 fn ref_static_2() -> Option<&'static i32> {
     Some(&MYINT)
 }

@@ -92,7 +92,10 @@ Section union.
       but we are anyways already not handling tags correctly, so who cares... *)
   (* TODO rather factor out into a padded type, as in RefinedC? *)
   Program Definition active_union_t {rt} (ty : type rt) (variant : string) (uls : union_layout_spec) : type rt := {|
-    ty_rt_inhabited := ty.(ty_rt_inhabited);
+    ty_xt := rt;
+    ty_xrt := λ x, x;
+
+    ty_xt_inhabited := ty_rt_inhabited ty;
     ty_own_val π r v :=
       (∃ ul ly, ⌜use_union_layout_alg uls = Some ul⌝ ∗
         ⌜layout_of_union_member variant ul = Some ly⌝ ∗
@@ -436,9 +439,11 @@ Section enum.
 
   (* NOTE: in principle, we might want to formulate this with [ex_plain_t] as an existential abstraction over a struct.
      However, here the inner type also depends on the outer refinement, which is not supported by [ex_plain_t] right now. *)
-  Program Definition enum_t {rt} (e : enum rt) : type rt :=
-    {|
-    ty_rt_inhabited := e.(enum_rt_inhabited);
+  Program Definition enum_t {rt} (e : enum rt) : type rt := {|
+    ty_xt := e.(enum_xt);
+    ty_xrt := e.(enum_xrt);
+
+    ty_xt_inhabited := enum_xt_inhabited e;
     ty_own_val π r v :=
       (∃ el,
       ⌜use_enum_layout_alg e.(enum_els) = Some el⌝ ∗

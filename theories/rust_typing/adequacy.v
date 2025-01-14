@@ -104,6 +104,7 @@ Proof.
     rewrite /initial_prog.
     iApply (type_call_fnptr π [] [] 0 [] [] [] main main [] [] eq_refl (main_type P) [] (λ _ _ _ _ _, True%I) with "[HP ] Hmain [] [] [] [] [Hna]").
     + iIntros "_". iExists eq_refl, -[], tt.
+      rewrite /li_tactic/ensure_evars_instantiated_goal.
       iIntros (???) "#CTX #HE HL".
       iModIntro. iExists [], [], True%I.
       iFrame. iSplitR.
@@ -113,7 +114,7 @@ Proof.
       iExists [], [], True%I. iFrame.
       iSplitL "HP". { iApply maybe_logical_step_intro. eauto. }
       simpl.
-      rewrite /li_tactic/ensure_evars_instantiated_goal. iSplitR; first done.
+      iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
       iSplitR. { iPureIntro. intros. rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
       iIntros (v []).

@@ -27,6 +27,7 @@ Ltac normalize_goal_impl :=
 Create HintDb lithium_rewrite discriminated.
 
 Ltac normalize_autorewrite :=
+  autounfold with lithium_rewrite;
   autorewrite with lithium_rewrite; exact: eq_refl.
 
 #[export] Hint Rewrite @drop_0 @take_ge using can_solve : lithium_rewrite.

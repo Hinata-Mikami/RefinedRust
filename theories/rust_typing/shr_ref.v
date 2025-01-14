@@ -13,6 +13,9 @@ Section shr_ref.
     a location not under a later (to prove the agreement with the ltype unfolding),
      so the simple_type interface doesn't suffice *)
   Program Definition shr_ref {rt} κ (inner : type rt) : type (place_rfn rt) := {|
+    ty_xt := inner.(ty_xt);
+    ty_xrt := λ x, #(inner.(ty_xrt) x);
+
     ty_sidecond := True;
     ty_own_val π r v :=
       (∃ (l : loc) (ly : layout) (r' : rt),
