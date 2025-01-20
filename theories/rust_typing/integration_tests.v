@@ -59,7 +59,7 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : Type) (U_st : syn_type
   (* First add a new type parameter and a new lifetime *)
   fnspec! ( *[κ]) : 1 | ( *[U_ty]) : [(U_rt, U_st)],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
-    (type_of_ptr_write (place_rfn U_rt) (PtrSynType) <TY>@{0} shr_ref U_ty κ) <MERGE!>.
+    (type_of_ptr_write (place_rfn U_rt) (PtrSynType) <TY>@{0} shr_ref κ U_ty) <MERGE!>.
 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
   ⊢ typed_function π (ptr_write (PtrSynType)) [] (<tag_type> type_of_ptr_write_shrref U_rt U_st).

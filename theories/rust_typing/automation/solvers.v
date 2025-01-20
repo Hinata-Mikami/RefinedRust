@@ -133,7 +133,7 @@ Ltac interpret_rust_type_core lfts env ty ::=
         | Mut =>
             refine (mut_ref _ κ); interpret_rust_type_core lfts env ty
         | Shr =>
-            refine (shr_ref _ κ); interpret_rust_type_core lfts env ty
+            refine (shr_ref κ _); interpret_rust_type_core lfts env ty
         end
       | None =>
           fail 3 "did not find lifetime"

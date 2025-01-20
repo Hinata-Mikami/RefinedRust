@@ -534,7 +534,7 @@ impl<'def> Display for Type<'def> {
             Self::Int(it) => write!(f, "(int {})", it),
 
             Self::MutRef(ty, lft) => write!(f, "(mut_ref {} {})", ty, lft),
-            Self::ShrRef(ty, lft) => write!(f, "(shr_ref {} {})", ty, lft),
+            Self::ShrRef(ty, lft) => write!(f, "(shr_ref {} {})", lft, ty),
             Self::BoxType(ty) => write!(f, "(box {})", ty),
             Self::RawPtr => write!(f, "alias_ptr_t"),
 

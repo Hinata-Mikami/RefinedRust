@@ -5,14 +5,14 @@ From iris.prelude Require Import options.
 
 (** * Shared references *)
 Section shr_ref.
-  Context `{typeGS Σ} {rt} (inner : type rt).
+  Context `{typeGS Σ}.
   Implicit Types (κ : lft).
 
   (* this is almost a simple type, but we have to be careful with
     the sharing predicate: we want to obtain the knowledge that l points to
     a location not under a later (to prove the agreement with the ltype unfolding),
      so the simple_type interface doesn't suffice *)
-  Program Definition shr_ref κ : type (place_rfn rt) := {|
+  Program Definition shr_ref {rt} κ (inner : type rt) : type (place_rfn rt) := {|
     ty_sidecond := True;
     ty_own_val π r v :=
       (∃ (l : loc) (ly : layout) (r' : rt),
@@ -40,17 +40,17 @@ Section shr_ref.
     ty_lfts := [κ];
     ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
-  Next Obligation. iIntros (????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
+  Next Obligation. iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
   Next Obligation.
-    iIntros (? ot Hot) => /=. destruct ot => /=// -> //.
+    iIntros (? ?? ot Hot) => /=. destruct ot => /=// -> //.
   Qed.
-  Next Obligation. iIntros (????) "_". done. Qed.
-  Next Obligation. iIntros (?????) "_". done. Qed.
+  Next Obligation. iIntros (??????) "_". done. Qed.
+  Next Obligation. iIntros (???????) "_". done. Qed.
   Next Obligation.
-    iIntros (?????). simpl. iIntros "(%l' & %ly & %r' & ? & ? & ? & _)". eauto.
+    iIntros (???????). simpl. iIntros "(%l' & %ly & %r' & ? & ? & ? & _)". eauto.
   Qed.
   Next Obligation.
-    iIntros (κ E κ' l ly π r q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
+    iIntros (? κ ? E κ' l ly π r q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
     simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
     iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
     iApply fupd_logical_step.
@@ -74,7 +74,7 @@ Section shr_ref.
     iFrame.
   Qed.
   Next Obligation.
-    iIntros (? κ' κ'' π r l) "#Hord H".
+    iIntros (? ? ? κ' κ'' π r l) "#Hord H".
     iDestruct "H" as (li ly ri) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & #Hown)".
     iExists li, ly, ri. iFrame. iSplit.
     - by iApply (frac_bor_shorten with "Hord").
@@ -82,11 +82,11 @@ Section shr_ref.
       done.
   Qed.
   Next Obligation.
-    iIntros (??????) "Ha".
+    iIntros (????????) "Ha".
     iApply logical_step_intro. done.
   Qed.
   Next Obligation.
-    iIntros (? ot mt st ? r ? Hot).
+    iIntros (? ?? ot mt st ? r ? Hot).
     destruct mt.
     - eauto.
     - iIntros "(%l & %ly & %ri & -> & ? & ? & ?)".
@@ -97,7 +97,7 @@ Section shr_ref.
       iIntros "(%l & %ly & %ri & -> & _)". eauto.
   Qed.
 
-  Global Instance shr_ref_copyable κ : Copyable (shr_ref κ).
+  Global Instance shr_ref_copyable {rt} (ty : type rt) κ : Copyable (shr_ref κ ty).
   Proof.
     constructor; first apply _.
     iIntros (κ' π E  F l ly r ? ? Ha ?) "[LFT TIME] (%li & %ly' & %r' & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Htok Hlft".
@@ -114,6 +114,48 @@ Section shr_ref.
     iPoseProof (heap_mapsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
     rewrite heap_mapsto_fractional. iFrame.
   Qed.
+
+  Global Instance shr_ref_type_contractive {rt : Type} κ : TypeContractive (shr_ref (rt:=rt) κ).
+  Proof.
+    intros n ?? Heq. constructor; simpl; try done.
+    - admit. (* this is a problem *)
+    - intros ot mt. rewrite ty_has_op_type_unfold. done.
+    - intros. dist_later_fin_intro.
+      unfold ty_own_val; simpl.
+      simpl in Heq.
+      destruct Heq as [Heq_st ].
+      do 10 f_equiv. { by rewrite Heq_st. }
+      f_equiv. { done. }
+      do 3 f_equiv. done.
+    - intros.
+      unfold ty_shr; simpl.
+      do 10 f_equiv. 
+      (* this is a problem, same for ty_sidecond. *)
+      (*{ by rewrite Heq_st. }*)
+      (*f_equiv. { done. }*)
+      (*do 3 f_equiv. done.*)
+    (*solve_type_proper.*)
+
+    (* Solution approaches: 
+        - we define dist2_later by pushing down the later below the pure equivalences and the sidecond
+          + but then type_later_dist2_later doesn't work anymore, and so the proof that it is contractive. 
+
+        - we try to push down the layout alg stuff below a later.
+          This is likely to have unpleasant repercussions with ltype unfolding 
+
+
+       Is there some fundamental problem here? 
+
+
+       Some observations:
+       - the functor is constant over the layout (and also over the sidecond)
+       - 
+
+     *)
+  Abort.
+
+  (*Global Instance shr_ne κ : NonExpansive (shr_bor κ).*)
+  (*Proof. apply type_contractive_ne, _. Qed.*)
 End shr_ref.
 
 Section ofty.
@@ -121,7 +163,7 @@ Section ofty.
 
   (** A very fundamental equivalence that should hold *)
   Lemma shr_ref_ofty_shared_equiv {rt} (ty : type rt) π κ l r :
-    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} #r @ shr_ref ty κ.
+    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} #r @ shr_ref κ ty.
   Proof.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own /ty_own_val/=.
     iSplit.
@@ -139,8 +181,8 @@ Section subtype.
   Lemma shr_ref_own_val_mono_in {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) v π r1 r2 κ1 κ2 :
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty1 ty2 -∗
-    v ◁ᵥ{π} #r1 @ shr_ref ty1 κ2 -∗
-    v ◁ᵥ{π} #r2 @ shr_ref ty2 κ1.
+    v ◁ᵥ{π} #r1 @ shr_ref κ2 ty1 -∗
+    v ◁ᵥ{π} #r2 @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl (%Hst_eq & #Hsc_eq & _ & #Hincl_shr)".
     iIntros "(%l & %ly & %r' & -> & ? & ? & Hlb & Hsc & -> & #Hl)". iExists l, ly, r2.
@@ -150,11 +192,11 @@ Section subtype.
     iApply ty_shr_mono; first iApply "Hincl".
     by iApply "Hincl_shr".
   Qed.
-  Lemma shr_ref_own_val_mono {rt} `{!Inhabited rt} (ty1 ty2 : type rt) v π r κ1 κ2 :
+  Lemma shr_ref_own_val_mono {rt} (ty1 ty2 : type rt) v π r κ1 κ2 :
     κ1 ⊑ κ2 -∗
     (∀ r, type_incl r r ty1 ty2) -∗
-    v ◁ᵥ{π} r @ shr_ref ty1 κ2 -∗
-    v ◁ᵥ{π} r @ shr_ref ty2 κ1.
+    v ◁ᵥ{π} r @ shr_ref κ2 ty1 -∗
+    v ◁ᵥ{π} r @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl #Hsub".
     iDestruct ("Hsub" $! inhabitant) as "(%Hst_eq & #Hsc_eq & _)".
@@ -170,8 +212,8 @@ Section subtype.
   Lemma shr_ref_shr_mono_in {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) l π κ r1 r2 κ1 κ2 :
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty1 ty2 -∗
-    l ◁ₗ{π, κ} #r1 @ shr_ref ty1 κ2 -∗
-    l ◁ₗ{π, κ} #r2 @ shr_ref ty2 κ1.
+    l ◁ₗ{π, κ} #r1 @ shr_ref κ2 ty1 -∗
+    l ◁ₗ{π, κ} #r2 @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl (%Hst_eq & #Hsc_eq & _ & #Hincl_shr)".
     iIntros "(%li & %ly & %r' & ? & ? & ? & Hlb & Hsc & -> & Hli & #Hb)".
@@ -181,11 +223,11 @@ Section subtype.
     iApply ty_shr_mono; first iApply "Hincl".
     by iApply "Hincl_shr".
   Qed.
-  Lemma shr_ref_shr_mono {rt} `{!Inhabited rt} (ty1 ty2 : type rt) l π κ r κ1 κ2 :
+  Lemma shr_ref_shr_mono {rt} (ty1 ty2 : type rt) l π κ r κ1 κ2 :
     κ1 ⊑ κ2 -∗
     (∀ r, type_incl r r ty1 ty2) -∗
-    l ◁ₗ{π, κ} r @ shr_ref ty1 κ2 -∗
-    l ◁ₗ{π, κ} r @ shr_ref ty2 κ1.
+    l ◁ₗ{π, κ} r @ shr_ref κ2 ty1 -∗
+    l ◁ₗ{π, κ} r @ shr_ref κ1 ty2.
   Proof.
     iIntros "#Hincl #Hsub".
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst_eq & #Hsc_eq & _)".
@@ -201,7 +243,7 @@ Section subtype.
   Lemma shr_ref_type_incl_in {rt1 rt2} κ2 κ1 (ty1 : type rt1) (ty2 : type rt2) r1 r2 :
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty2 ty1 -∗
-    type_incl #r1 #r2 (shr_ref ty2 κ2) (shr_ref ty1 κ1).
+    type_incl #r1 #r2 (shr_ref κ2 ty2) (shr_ref κ1 ty1).
   Proof.
     iIntros "#Hincl #Hsub".
     iSplitR; first done. iSplitR; first done.
@@ -209,28 +251,28 @@ Section subtype.
     - iIntros (??). by iApply shr_ref_own_val_mono_in.
     - iIntros (???). by iApply shr_ref_shr_mono_in.
   Qed.
-  Lemma shr_ref_type_incl {rt} `{!Inhabited rt} κ2 κ1 (ty1 ty2 : type rt) r :
+  Lemma shr_ref_type_incl {rt} κ2 κ1 (ty1 ty2 : type rt) r :
     κ1 ⊑ κ2 -∗
     (∀ r, type_incl r r ty2 ty1) -∗
-    type_incl r r (shr_ref ty2 κ2) (shr_ref ty1 κ1).
+    type_incl r r (shr_ref κ2 ty2) (shr_ref κ1 ty1).
   Proof.
     iIntros "#Hincl #Hsub".
     iSplitR; first done. iSplitR; first done.
     iSplit; iIntros "!#".
-    - iIntros (??). by unshelve iApply shr_ref_own_val_mono.
-    - iIntros (???). by unshelve iApply shr_ref_shr_mono.
+    - iIntros (??). by iApply shr_ref_own_val_mono.
+    - iIntros (???). by iApply shr_ref_shr_mono.
   Qed.
 
-  Lemma shr_ref_full_subtype {rt} `{!Inhabited rt} E L κ2 κ1 (ty1 ty2 : type rt) :
+  Lemma shr_ref_full_subtype {rt} E L κ2 κ1 (ty1 ty2 : type rt) :
     lctx_lft_incl E L κ1 κ2 →
     full_subtype E L ty2 ty1 →
-    full_subtype E L (shr_ref ty2 κ2) (shr_ref ty1 κ1).
+    full_subtype E L (shr_ref κ2 ty2) (shr_ref κ1 ty1).
   Proof.
     iIntros (Hincl Hsubt r ?) "HL #HE".
     iPoseProof (Hincl with "HL") as "#Hincl".
     iSpecialize ("Hincl" with "HE").
     iPoseProof (full_subtype_acc_noend with "HE HL") as "#Hsubt"; first apply Hsubt.
-    unshelve iApply shr_ref_type_incl; done.
+    iApply shr_ref_type_incl; done.
   Qed.
 End subtype.
 
@@ -461,7 +503,7 @@ Section ltype_agree.
     (ty : type rt).
 
   Lemma shr_ref_unfold_1_owned κ wl r :
-    ⊢ ltype_incl' (Owned wl) r r (ShrLtype (◁ ty) κ) (◁ (shr_ref ty κ)).
+    ⊢ ltype_incl' (Owned wl) r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & #Hlb & ? &  %ri & Hrfn & Hb)".
@@ -472,8 +514,8 @@ Section ltype_agree.
     iDestruct "Hb" as "(%ly' & ? & ? & Hsc & Hlb' & %ri' & Hrfn' & Hb)".
     iExists l'. iFrame. iExists l', _, _. iFrame. done.
   Qed.
-  Lemma shr_ref_unfold_1_shared `{!Inhabited rt} κ κ' r :
-    ⊢ ltype_incl' (Shared κ') r r (ShrLtype (◁ ty) κ) (◁ (shr_ref ty κ)).
+  Lemma shr_ref_unfold_1_shared κ κ' r :
+    ⊢ ltype_incl' (Shared κ') r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & %Ha & % & #Hlb & %ri & Hrfn & #Hb)".
@@ -486,7 +528,7 @@ Section ltype_agree.
     injection Ha as <-. done.
   Qed.
   Lemma shr_ref_unfold_1_uniq κ κ' γ r :
-    ⊢ ltype_incl' (Uniq κ' γ) r r (ShrLtype (◁ ty) κ) (◁ (shr_ref ty κ)).
+    ⊢ ltype_incl' (Uniq κ' γ) r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & ? & ? & ?  & Hb)". iExists ly. iFrame. iMod "Hb". iModIntro.
@@ -520,16 +562,16 @@ Section ltype_agree.
         iExists _. by iFrame.
   Qed.
 
-  Local Lemma shr_ref_unfold_1' `{!Inhabited rt} κ k r :
-    ⊢ ltype_incl' k r r (ShrLtype (◁ ty) κ) (◁ (shr_ref ty κ)).
+  Local Lemma shr_ref_unfold_1' κ k r :
+    ⊢ ltype_incl' k r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
     iModIntro. destruct k.
     - iApply shr_ref_unfold_1_owned.
     - iApply shr_ref_unfold_1_shared.
     - iApply shr_ref_unfold_1_uniq.
   Qed.
-  Lemma shr_ref_unfold_1 `{!Inhabited rt} κ k r :
-    ⊢ ltype_incl k r r (ShrLtype (◁ ty) κ) (◁ (shr_ref ty κ)).
+  Lemma shr_ref_unfold_1 κ k r :
+    ⊢ ltype_incl k r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
     iSplitR; first done. iModIntro. iSplit.
     - iApply shr_ref_unfold_1'.
@@ -537,7 +579,7 @@ Section ltype_agree.
   Qed.
 
   Lemma shr_ref_unfold_2_owned κ wl r :
-    ⊢ ltype_incl' (Owned wl) r r (◁ (shr_ref ty κ)) (ShrLtype (◁ ty) κ).
+    ⊢ ltype_incl' (Owned wl) r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & Hlb & ? & %r' & Hrfn & Hb)".
@@ -548,7 +590,7 @@ Section ltype_agree.
     iExists _. by iFrame.
   Qed.
   Lemma shr_ref_unfold_2_shared κ κ' r :
-    ⊢ ltype_incl' (Shared κ') r r (◁ (shr_ref ty κ)) (ShrLtype (◁ ty) κ).
+    ⊢ ltype_incl' (Shared κ') r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & Hlb & %r' & Hrfn & #Hb)". iExists ly. iFrame.
@@ -560,7 +602,7 @@ Section ltype_agree.
     iExists _. iFrame. done.
   Qed.
   Lemma shr_ref_unfold_2_uniq κ κ' γ r :
-    ⊢ ltype_incl' (Uniq κ' γ) r r (◁ (shr_ref ty κ)) (ShrLtype (◁ ty) κ).
+    ⊢ ltype_incl' (Uniq κ' γ) r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     (* same proof as above essentially *)
@@ -596,7 +638,7 @@ Section ltype_agree.
 
 
   Local Lemma shr_ref_unfold_2' κ k r :
-    ⊢ ltype_incl' k r r (◁ (shr_ref ty κ)) (ShrLtype (◁ ty) κ).
+    ⊢ ltype_incl' k r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     destruct k.
     - iApply shr_ref_unfold_2_owned.
@@ -604,24 +646,24 @@ Section ltype_agree.
     - iApply shr_ref_unfold_2_uniq.
   Qed.
   Lemma shr_ref_unfold_2 κ k r :
-    ⊢ ltype_incl k r r (◁ (shr_ref ty κ)) (ShrLtype (◁ ty) κ).
+    ⊢ ltype_incl k r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     iSplitR; first done. iModIntro; iSplit.
     - iApply shr_ref_unfold_2'.
     - simp_ltypes. iApply shr_ref_unfold_2'.
   Qed.
 
-  Lemma shr_ref_unfold `{!Inhabited rt} κ k r :
-    ⊢ ltype_eq k r r (ShrLtype (◁ (ty)) κ) (◁ (shr_ref ty κ)).
+  Lemma shr_ref_unfold κ k r :
+    ⊢ ltype_eq k r r (ShrLtype (◁ (ty)) κ) (◁ (shr_ref κ ty)).
   Proof.
     iSplit.
     - iApply shr_ref_unfold_1.
     - iApply shr_ref_unfold_2.
   Qed.
 
-  Lemma shr_ref_unfold_full_eqltype `{!Inhabited rt} E L κ (lt : ltype rt) :
+  Lemma shr_ref_unfold_full_eqltype E L κ (lt : ltype rt) :
     full_eqltype E L lt (◁ ty)%I →
-    full_eqltype E L (ShrLtype lt κ) (◁ (shr_ref ty κ))%I.
+    full_eqltype E L (ShrLtype lt κ) (◁ (shr_ref κ ty))%I.
   Proof.
     iIntros (Heql ?) "HL #CTX #HE". iIntros (??).
     iPoseProof (Heql with "HL CTX HE") as "#Heql".
@@ -825,7 +867,7 @@ Section rules.
 
   Global Instance get_lft_names_shr_ref {rt} (ty : type rt) κ lfts lfts' name tree :
     GetLftNames ty lfts tree lfts' →
-    GetLftNames (shr_ref ty κ) lfts (LftNameTreeRef name tree) (named_lft_update name κ lfts') := λ _, GLN.
+    GetLftNames (shr_ref κ ty) lfts (LftNameTreeRef name tree) (named_lft_update name κ lfts') := λ _, GLN.
 
   Lemma typed_place_shr_owned {rto} π κ (lt2 : ltype rto) P E L l r wl bmin0 (T : place_cont_t (place_rfn rto)) :
     (∀ l', typed_place π E L l' lt2 r (Shared κ ⊓ₖ bmin0) (Shared κ) P
@@ -876,7 +918,7 @@ Section rules.
       + iPureIntro. apply place_access_rt_rel_refl.
   Qed.
   Global Instance typed_place_shr_owned_inst {rto} E L π κ (lt2 : ltype rto) bmin0 r l wl P :
-    TypedPlace E L π l (ShrLtype lt2 κ) (PlaceIn (r)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_owned π κ lt2 P E L l r wl bmin0 T).
+    TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_owned π κ lt2 P E L l r wl bmin0 T).
 
   Lemma typed_place_shr_uniq {rto} π κ (lt2 : ltype rto) P E L l r κ' γ bmin0 (T : place_cont_t (place_rfn rto)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L2),
@@ -1005,23 +1047,23 @@ Section rules.
 
   (* TODO more place instances *)
 
-  Lemma typed_place_ofty_shr {rt} `{Inhabited rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P T :
+  Lemma typed_place_ofty_shr {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P T :
     typed_place π E L l (ShrLtype (◁ ty) κ) r bmin0 b P T
-    ⊢ typed_place π E L l (◁ (shr_ref ty κ)) r bmin0 b P T.
+    ⊢ typed_place π E L l (◁ (shr_ref κ ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
     iIntros (?) "HL CTX HE".
     iIntros (??). iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
-  Global Instance typed_place_ofty_shr_inst {rt} `{Inhabited rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P :
-    TypedPlace E L π l (◁ (shr_ref ty κ))%I r bmin0 b P | 30 := λ T, i2p (typed_place_ofty_shr π E L l ty κ r bmin0 b P T).
+  Global Instance typed_place_ofty_shr_inst {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P :
+    TypedPlace E L π l (◁ (shr_ref κ ty))%I r bmin0 b P | 30 := λ T, i2p (typed_place_ofty_shr π E L l ty κ r bmin0 b P T).
 
   Lemma stratify_ltype_shr_owned {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl
       (T : stratify_ltype_cont_t) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
-          ∃ (_ : Inhabited rt'), cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref ty' κ))%I (#r'))
+          ∃ (_ : Inhabited rt'), cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref κ ty'))%I (#r'))
       | _ => T L' R _ (ShrLtype lt' κ) (#r')
       end))
     ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned wl) T.
@@ -1125,34 +1167,34 @@ Section rules.
     StratifyLtype π E L mu mdu StratRefoldOpened ml l lt r (Shared κ) :=
     λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldOpened ml l lt κ r T).
 
-  Lemma stratify_ltype_ofty_shr {rt} `{Inhabited rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b T :
+  Lemma stratify_ltype_ofty_shr {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b T :
     stratify_ltype π E L mu StratDoUnfold ma ml l (ShrLtype (◁ ty) κ) r b T
-    ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (shr_ref ty κ)) r b T.
+    ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (shr_ref κ ty)) r b T.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_shr_inst {rt} `{Inhabited rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b :
-    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (shr_ref ty κ))%I r b | 30 := λ T, i2p (stratify_ltype_ofty_shr π E L mu ma ml l ty κ r b T).
+  Global Instance stratify_ltype_ofty_shr_inst {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b :
+    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (shr_ref κ ty))%I r b | 30 := λ T, i2p (stratify_ltype_ofty_shr π E L mu ma ml l ty κ r b T).
   (** prove_place_cond instances *)
   (* These need to have a lower priority than the ofty_refl instance (level 2) and the unblocking instances (level 5), but higher than the trivial "no" instance *)
-  Lemma prove_place_cond_unfold_shr_l E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) κ k T :
+  Lemma prove_place_cond_unfold_shr_l E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k T :
     prove_place_cond E L k (ShrLtype (◁ ty) κ) lt T
-    ⊢ prove_place_cond E L k (◁ (shr_ref ty κ)) lt T.
+    ⊢ prove_place_cond E L k (◁ (shr_ref κ ty)) lt T.
   Proof.
     iApply prove_place_cond_eqltype_l. apply symmetry. apply shr_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_shr_l_inst E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k (◁ (shr_ref ty κ))%I lt | 10 := λ T, i2p (prove_place_cond_unfold_shr_l E L ty lt κ k T).
-  Lemma prove_place_cond_unfold_shr_r E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) κ k T :
+  Global Instance prove_place_cond_unfold_shr_l_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
+    ProvePlaceCond E L k (◁ (shr_ref κ ty))%I lt | 10 := λ T, i2p (prove_place_cond_unfold_shr_l E L ty lt κ k T).
+  Lemma prove_place_cond_unfold_shr_r E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k T :
     prove_place_cond E L k lt (ShrLtype (◁ ty) κ) T
-    ⊢ prove_place_cond E L k lt (◁ (shr_ref ty κ)) T.
+    ⊢ prove_place_cond E L k lt (◁ (shr_ref κ ty)) T.
   Proof.
     iApply prove_place_cond_eqltype_r. apply symmetry. apply shr_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_shr_r_inst E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k lt (◁ (shr_ref ty κ))%I | 10 := λ T, i2p (prove_place_cond_unfold_shr_r E L ty lt κ k T).
+  Global Instance prove_place_cond_unfold_shr_r_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
+    ProvePlaceCond E L k lt (◁ (shr_ref κ ty))%I | 10 := λ T, i2p (prove_place_cond_unfold_shr_r E L ty lt κ k T).
 
   Lemma prove_place_cond_ShrLtype E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ k T :
     prove_place_cond E L (Shared κ ⊓ₖ k) lt1 lt2 (λ upd, T $ access_result_lift place_rfn upd)
@@ -1164,7 +1206,7 @@ Section rules.
   (** Typing rule for shared borrowing, manually applied by the tactics *)
   Lemma type_shr_bor E L T e π κ_name ty_annot :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
-    (named_lfts M -∗ typed_borrow_shr π E L e κ ty_annot (λ L' v rt ty r, T L' v (place_rfn rt) (shr_ref ty κ) (r)))))
+    (named_lfts M -∗ typed_borrow_shr π E L e κ ty_annot (λ L' v rt ty r, T L' v (place_rfn rt) (shr_ref κ ty) (r)))))
     ⊢ typed_val_expr π E L (&ref{Shr, ty_annot, κ_name} e)%E T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
@@ -1183,22 +1225,22 @@ Section rules.
   Qed.
 
   (** cast_ltype *)
-  Lemma cast_ltype_to_type_shr E L {rt} `{Inhabited rt} (lt : ltype rt) κ T  :
-    cast_ltype_to_type E L lt (λ ty, T (shr_ref ty κ))
+  Lemma cast_ltype_to_type_shr E L {rt} (lt : ltype rt) κ T  :
+    cast_ltype_to_type E L lt (λ ty, T (shr_ref κ ty))
     ⊢ cast_ltype_to_type E L (ShrLtype lt κ) T.
   Proof.
     iIntros "Hs". iDestruct "Hs" as "(%ty & %Heq & HT)".
-    iExists (shr_ref ty κ). iFrame "HT". iPureIntro.
+    iExists (shr_ref κ ty). iFrame "HT". iPureIntro.
     by apply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance cast_ltype_to_type_shr_inst E L {rt} `{Inhabited rt} (lt : ltype rt) κ :
+  Global Instance cast_ltype_to_type_shr_inst E L {rt} (lt : ltype rt) κ :
     CastLtypeToType E L (ShrLtype lt κ) :=
     λ T, i2p (cast_ltype_to_type_shr E L lt κ T).
 
   (** subtyping *)
   Lemma weak_subtype_shr_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 T :
     (⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subtype E L r1 r2 ty1 ty2 T)
-    ⊢ weak_subtype E L #r1 #r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⊢ weak_subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(%Hincl & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
@@ -1207,11 +1249,11 @@ Section rules.
     iApply shr_ref_type_incl_in; done.
   Qed.
   Global Instance weak_subtype_shr_in_inst E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ1 κ2 r1 r2 :
-    Subtype E L #r1 #r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 10:= λ T, i2p (weak_subtype_shr_in E L ty1 ty2 κ1 κ2 r1 r2 T).
+    Subtype E L #r1 #r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 10:= λ T, i2p (weak_subtype_shr_in E L ty1 ty2 κ1 κ2 r1 r2 T).
 
-  Lemma weak_subtype_shr E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 T :
+  Lemma weak_subtype_shr E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 T :
     (⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_subtype E L ty1 ty2 T)
-    ⊢ weak_subtype E L r1 r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⊢ weak_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(-> & %Hincl & %Hsubt & HT)". iIntros (??) "#CTX #HE HL".
     iPoseProof (lctx_lft_incl_incl with "HL") as "#Hincl"; first done.
@@ -1219,47 +1261,47 @@ Section rules.
     iPoseProof (full_subtype_acc with "HE HL") as "#Hsub"; first done.
     iFrame. unshelve iApply shr_ref_type_incl; done.
   Qed.
-  Global Instance weak_subtype_shr_inst E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 :
-    Subtype E L r1 r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 11 := λ T, i2p (weak_subtype_shr E L ty1 ty2 κ1 κ2 r1 r2 T).
+  Global Instance weak_subtype_shr_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 :
+    Subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 11 := λ T, i2p (weak_subtype_shr E L ty1 ty2 κ1 κ2 r1 r2 T).
 
   Lemma weak_subtype_shr_evar_lft E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ weak_subtype E L r1 r2 (shr_ref ty1 κ1) (shr_ref ty2 κ1) T
-    ⊢ weak_subtype E L r1 r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⌜κ1 = κ2⌝ ∗ weak_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ1 ty2) T
+    ⊢ weak_subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof. iIntros "(<- & $)". Qed.
   Global Instance weak_subtype_shr_evar_lft_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 r1 r2 `{!IsProtected κ2} :
-    Subtype E L r1 r2 (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 9 := λ T, i2p (weak_subtype_shr_evar_lft E L ty1 ty2 κ1 κ2 r1 r2 T).
+    Subtype E L r1 r2 (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 9 := λ T, i2p (weak_subtype_shr_evar_lft E L ty1 ty2 κ1 κ2 r1 r2 T).
 
-  Lemma mut_subtype_shr E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 T :
+  Lemma mut_subtype_shr E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_subtype E L ty1 ty2 T
-    ⊢ mut_subtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⊢ mut_subtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(%Hincl & %Hsub & $)". iPureIntro. by eapply shr_ref_full_subtype.
   Qed.
-  Global Instance mut_subtype_shr_inst E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 :
-    MutSubtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 10 := λ T, i2p (mut_subtype_shr E L ty1 ty2 κ1 κ2 T).
+  Global Instance mut_subtype_shr_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
+    MutSubtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 10 := λ T, i2p (mut_subtype_shr E L ty1 ty2 κ1 κ2 T).
   Lemma mut_subtype_shr_evar_lft E L {rt} (ty1 ty2 : type rt) κ1 κ2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ mut_subtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ1) T
-    ⊢ mut_subtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⌜κ1 = κ2⌝ ∗ mut_subtype E L (shr_ref κ1 ty1) (shr_ref κ1 ty2) T
+    ⊢ mut_subtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof. iIntros "(<- & $)". Qed.
   Global Instance mut_subtype_shr_evar_lft_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 `{!IsProtected κ2} :
-    MutSubtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 9:= λ T, i2p (mut_subtype_shr_evar_lft E L ty1 ty2 κ1 κ2 T).
+    MutSubtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 9:= λ T, i2p (mut_subtype_shr_evar_lft E L ty1 ty2 κ1 κ2 T).
 
-  Lemma mut_eqtype_shr E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 T :
+  Lemma mut_eqtype_shr E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ mut_eqtype E L ty1 ty2 T
-    ⊢ mut_eqtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⊢ mut_eqtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof.
     iIntros "(%Hincl & %Hsub & %Hsub2 & $)". iPureIntro. split.
     - eapply shr_ref_full_subtype; first done. by eapply full_eqtype_subtype_l.
     - eapply shr_ref_full_subtype; first done. by eapply full_eqtype_subtype_r.
   Qed.
-  Global Instance mut_eqtype_shr_inst E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) κ1 κ2 :
-    MutEqtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 10 := λ T, i2p (mut_eqtype_shr E L ty1 ty2 κ1 κ2 T).
+  Global Instance mut_eqtype_shr_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
+    MutEqtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 10 := λ T, i2p (mut_eqtype_shr E L ty1 ty2 κ1 κ2 T).
   Lemma mut_eqtype_shr_evar_lft E L {rt} (ty1 ty2 : type rt) κ1 κ2 T `{!IsProtected κ2} :
-    ⌜κ1 = κ2⌝ ∗ mut_eqtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ1) T
-    ⊢ mut_eqtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) T.
+    ⌜κ1 = κ2⌝ ∗ mut_eqtype E L (shr_ref κ1 ty1) (shr_ref κ1 ty2) T
+    ⊢ mut_eqtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) T.
   Proof. iIntros "(<- & $)". Qed.
   Global Instance mut_eqtype_shr_evar_lft_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 `{!IsProtected κ2} :
-    MutEqtype E L (shr_ref ty1 κ1) (shr_ref ty2 κ2) | 9:= λ T, i2p (mut_eqtype_shr_evar_lft E L ty1 ty2 κ1 κ2 T).
+    MutEqtype E L (shr_ref κ1 ty1) (shr_ref κ2 ty2) | 9:= λ T, i2p (mut_eqtype_shr_evar_lft E L ty1 ty2 κ1 κ2 T).
 
   (** subltyping *)
   Lemma weak_subltype_shr_owned_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) wl κ1 κ2 r1 r2 T :
@@ -1376,98 +1418,98 @@ Section rules.
     MutEqLtype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) := λ T, i2p (mut_eqltype_shr_evar_lft E L lt1 lt2 κ1 κ2 T).
 
   (* Ofty unfolding if necessary *)
-  Lemma weak_subltype_shr_ofty_1_evar E L {rt1 rt2} `{!Inhabited rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2)) k κ1 r1 r2 T :
-    (∃ ty2', ⌜ty2 = shr_ref ty2' κ1⌝ ∗ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref ty2' κ1)) T)
+  Lemma weak_subltype_shr_ofty_1_evar E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2)) k κ1 r1 r2 T :
+    (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance weak_subltype_shr_ofty_1_evar_inst E L {rt1 rt2} `{!Inhabited rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2)) k κ1 r1 r2 `{!IsProtected ty2} :
+  Global Instance weak_subltype_shr_ofty_1_evar_inst E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2)) k κ1 r1 r2 `{!IsProtected ty2} :
     SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (weak_subltype_shr_ofty_1_evar E L lt1 ty2 k κ1 r1 r2 T).
 
-  Lemma weak_subltype_shr_ofty_1 E L {rt1 rt2} `{!Inhabited rt2} (lt1 : ltype rt1) (ty2 : type (rt2)) k κ1 κ2 r1 r2 T :
+  Lemma weak_subltype_shr_ofty_1 E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (rt2)) k κ1 κ2 r1 r2 T :
     weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
-    ⊢ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2)) T.
+    ⊢ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2)) T.
   Proof.
     iIntros "HT". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     iApply (ltype_incl_trans with "Hincl").
     iApply shr_ref_unfold_1.
   Qed.
-  Global Instance weak_subltype_shr_ofty_1_inst E L {rt1 rt2} `{!Inhabited rt2} (lt1 : ltype (rt1)) (ty2 : type rt2) k r1 r2 κ1 κ2 :
-    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2))%I | 12 := λ T, i2p (weak_subltype_shr_ofty_1 E L lt1 ty2 k κ1 κ2 r1 r2 T).
+  Global Instance weak_subltype_shr_ofty_1_inst E L {rt1 rt2} (lt1 : ltype (rt1)) (ty2 : type rt2) k r1 r2 κ1 κ2 :
+    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (weak_subltype_shr_ofty_1 E L lt1 ty2 k κ1 κ2 r1 r2 T).
 
-  Lemma weak_subltype_shr_ofty_2 E L {rt1 rt2} `{!Inhabited rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 T :
+  Lemma weak_subltype_shr_ofty_2 E L {rt1 rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 T :
     (weak_subltype E L k r1 r2 (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
-    ⊢ weak_subltype E L k r1 r2 (◁ (shr_ref ty1 κ1)) (ShrLtype lt2 κ2) T.
+    ⊢ weak_subltype E L k r1 r2 (◁ (shr_ref κ1 ty1)) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "HT" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     iApply (ltype_incl_trans with "[] Hincl").
     iApply shr_ref_unfold_2.
   Qed.
-  Global Instance weak_subltype_shr_ofty_2_inst E L {rt1 rt2} `{!Inhabited rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 :
-    SubLtype E L k r1 r2 (◁ (shr_ref ty1 κ1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_shr_ofty_2 E L ty1 lt2 k r1 r2 κ1 κ2 T).
+  Global Instance weak_subltype_shr_ofty_2_inst E L {rt1 rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 :
+    SubLtype E L k r1 r2 (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_shr_ofty_2 E L ty1 lt2 k r1 r2 κ1 κ2 T).
 
   (* same for [mut_subltype] *)
-  Lemma mut_subltype_shr_ofty_1_evar E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
-    (∃ ty2', ⌜ty2 = shr_ref ty2' κ1⌝ ∗ mut_subltype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2' κ1)) T)
+  Lemma mut_subltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
+    (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ mut_subltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ mut_subltype E L (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_subltype_shr_ofty_1_evar_inst E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
+  Global Instance mut_subltype_shr_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
     MutSubLtype E L (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_subltype_shr_ofty_1_evar E L lt1 ty2 κ1 T).
 
-  Lemma mut_subltype_shr_ofty_1 E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
+  Lemma mut_subltype_shr_ofty_1 E L {rt} `(lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
     mut_subltype E L (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
-    ⊢ mut_subltype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2)) T.
+    ⊢ mut_subltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2)) T.
   Proof.
     iIntros "(%Hsub & $)". iPureIntro.
     etrans; first done. eapply full_eqltype_subltype_l. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_subltype_shr_ofty_1_inst E L {rt} `{!Inhabited rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
-    MutSubLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2))%I | 12 := λ T, i2p (mut_subltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
+  Global Instance mut_subltype_shr_ofty_1_inst E L {rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
+    MutSubLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (mut_subltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
 
-  Lemma mut_subltype_shr_ofty_2 E L {rt} `{!Inhabited rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
+  Lemma mut_subltype_shr_ofty_2 E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
     (mut_subltype E L (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
-    ⊢ mut_subltype E L (◁ (shr_ref ty1 κ1)) (ShrLtype lt2 κ2) T.
+    ⊢ mut_subltype E L (◁ (shr_ref κ1 ty1)) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(%Hsub & $)". iPureIntro.
     etrans; last done. eapply full_eqltype_subltype_r. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_subltype_shr_ofty_2_inst E L {rt} `{!Inhabited rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
-    MutSubLtype E L (◁ (shr_ref ty1 κ1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_subltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
+  Global Instance mut_subltype_shr_ofty_2_inst E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
+    MutSubLtype E L (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_subltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
 
   (* same for [mut_eqltype] *)
-  Lemma mut_eqltype_shr_ofty_1_evar E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
-    (∃ ty2', ⌜ty2 = shr_ref ty2' κ1⌝ ∗ mut_eqltype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2' κ1)) T)
+  Lemma mut_eqltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
+    (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ mut_eqltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ mut_eqltype E L (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_1_evar_inst E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
+  Global Instance mut_eqltype_shr_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
     MutEqLtype E L (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_eqltype_shr_ofty_1_evar E L lt1 ty2 κ1 T).
 
-  Lemma mut_eqltype_shr_ofty_1 E L {rt} `{!Inhabited rt} (lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
+  Lemma mut_eqltype_shr_ofty_1 E L {rt} (lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
     mut_eqltype E L (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
-    ⊢ mut_eqltype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2)) T.
+    ⊢ mut_eqltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2)) T.
   Proof.
     iIntros "(%Heq & $)". iPureIntro.
     etrans; first done. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_1_inst E L {rt} `{!Inhabited rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
-    MutEqLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref ty2 κ2))%I | 12 := λ T, i2p (mut_eqltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
+  Global Instance mut_eqltype_shr_ofty_1_inst E L {rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
+    MutEqLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (mut_eqltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
 
-  Lemma mut_eqltype_shr_ofty_2 E L {rt} `{!Inhabited rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
+  Lemma mut_eqltype_shr_ofty_2 E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
     (mut_eqltype E L (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
-    ⊢ mut_eqltype E L (◁ (shr_ref ty1 κ1)) (ShrLtype lt2 κ2) T.
+    ⊢ mut_eqltype E L (◁ (shr_ref κ1 ty1)) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(%Heq & $)". iPureIntro.
     etrans; last done. symmetry. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_2_inst E L {rt} `{!Inhabited rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
-    MutEqLtype E L (◁ (shr_ref ty1 κ1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
+  Global Instance mut_eqltype_shr_ofty_2_inst E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
+    MutEqLtype E L (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
 
   (** shortenlft *)
   (*

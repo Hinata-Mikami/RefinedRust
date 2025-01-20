@@ -57,7 +57,7 @@ Section statics.
     ∃ (l : loc) (ty : btype), ⌜static_locs !! name = Some l⌝ ∗ ⌜static_types !! name = Some ty⌝ ∗
       ∃ (Heq : rt = ty.(btype_rt)),
         ⌜(rew [id] Heq in r) = ty.(btype_r) ⌝ ∗
-        (l ◁ᵥ{π} (#ty.(btype_r)) @ shr_ref ty.(btype_ty) static)%I.
+        (l ◁ᵥ{π} (#ty.(btype_r)) @ shr_ref static ty.(btype_ty))%I.
 
   Global Instance initialized_persistent {rt} (π : thread_id) (name : string) (r : rt) :
     Persistent (initialized π name r).
@@ -70,7 +70,7 @@ Section statics.
   (* On introduction of `initialized`, destruct it *)
   Lemma simplify_initialized_hyp {rt} π (x : rt) name ty l
     `{!TCFastDone (static_is_registered name l ty)} T:
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref (projT2 ty) static -∗ ⌜static_has_refinement name x⌝ -∗ T)
+    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty) -∗ ⌜static_has_refinement name x⌝ -∗ T)
     ⊢ simplify_hyp (initialized π name x) T.
   Proof.
     unfold TCFastDone in *. destruct ty as [rt' ty].
@@ -92,7 +92,7 @@ Section statics.
   Lemma initialized_intro {rt} π ty name l (x : rt) :
     static_is_registered name l ty →
     static_has_refinement name x →
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref (projT2 ty) static) -∗
+    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty)) -∗
     initialized π name x.
   Proof.
     iIntros ([Hl1 Hl2] (ty2 & Hl3 & Heq' & Hb)) "(%Heq & Hl)".
@@ -109,7 +109,7 @@ Section statics.
 
   Lemma simplify_initialized_goal {rt} π (x : rt) name l ty
     `{!TCFastDone (static_is_registered name l ty)} `{!TCFastDone (static_has_refinement name x)} T:
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref (projT2 ty) static ∗ T)
+    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty) ∗ T)
     ⊢ simplify_goal (initialized π name x) T.
   Proof.
     unfold TCFastDone in *. iIntros "[% [? $]]". subst.
