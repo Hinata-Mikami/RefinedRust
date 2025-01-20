@@ -1,4 +1,4 @@
-From refinedrust Require Import functions int alias_ptr products automation references.
+From refinedrust Require Import functions int alias_ptr products automation shr_ref mut_ref.
 
 Module test.
 Definition bla0 `{typeGS Σ} :=
