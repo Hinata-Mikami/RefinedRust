@@ -602,7 +602,7 @@ Section ofe.
   Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. Qed.
   Global Instance ty_own_val_proper : Proper ((≡) ==> eq ==> eq ==> eq ==> (≡)) ty_own_val.
   Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. Qed.
-  Lemma ty_own_val_entails `{!typeGS Σ} ty1 ty2 π r v:
+  Lemma ty_own_val_entails ty1 ty2 π r v:
     ty1 ≡@{type rt} ty2 →
     ty_own_val ty1 π r v -∗
     ty_own_val ty2 π r v.
@@ -613,11 +613,27 @@ Section ofe.
   Proof. intros ?? EQ ??-> ?? -> ??-> ??->. apply EQ. Qed.
   Global Instance ty_shr_proper : Proper ((≡) ==> eq ==> eq ==> eq ==> eq ==> (≡)) ty_shr.
   Proof. intros ?? EQ ??-> ?? -> ??-> ??->. apply EQ. Qed.
-  Lemma ty_shr_entails `{!typeGS Σ} ty1 ty2 κ π r l:
+  Lemma ty_shr_entails ty1 ty2 κ π r l:
     ty1 ≡@{type rt} ty2 →
     ty_shr ty1 κ π r l -∗
     ty_shr ty2 κ π r l.
   Proof. intros [_ _ _ -> _]; eauto. Qed.
+
+  Global Instance ty_sidecond_ne n:
+    Proper (dist n ==> dist n) ty_sidecond.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Global Instance ty_sidecond_proper : Proper ((≡) ==> (≡)) ty_sidecond.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Lemma ty_sidecond_entails ty1 ty2:
+    ty1 ≡@{type rt} ty2 →
+    ty_sidecond ty1 -∗
+    ty_sidecond ty2.
+  Proof. intros [? ? ? ? ? -> ]; eauto. Qed.
+
+  Global Instance ty_syn_type_ne n : Proper (dist n ==> eq) ty_syn_type.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Global Instance ty_syn_type_proper : Proper ((≡) ==> eq) ty_syn_type.
+  Proof. intros ?? EQ. apply EQ. Qed.
 
   Local Ltac intro_T :=
         intros [[[[[[[[T_inh T_own_val] T_shr ] T_syn_type] T_ot] T_sidecond] T_drop] T_lfts] T_wf_E].
@@ -672,8 +688,107 @@ Section ofe.
         *)
       + apply bi.limit_preserving_entails => n ty1 ty2; intro_T; f_equiv; done.
       + apply bi.limit_preserving_Persistent => n ty1 ty2; intro_T. apply T_sidecond.
-    Qed.
+  Qed.
 End ofe.
+Section st_ofe.
+  Context `{!typeGS Σ}.
+  Context {rt : Type}.
+
+  Inductive st_equiv' (ty1 ty2 : simple_type rt) : Prop :=
+    St_equiv :
+      (ty1.(ty_rt_inhabited).(inhabitant) = ty2.(ty_rt_inhabited).(inhabitant)) →
+      (∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt) →
+      (∀ π r vs, ty1.(ty_own_val) π r vs ≡ ty2.(ty_own_val) π r vs) →
+      (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
+      st_equiv' ty1 ty2.
+  Local Instance st_equiv : Equiv (simple_type rt) := st_equiv'.
+
+  Inductive st_dist' (n : nat) (ty1 ty2 : simple_type rt) : Prop :=
+    St_dist :
+      (ty1.(ty_rt_inhabited).(inhabitant) = ty2.(ty_rt_inhabited).(inhabitant)) →
+      (∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt) →
+      (∀ π r vs, ty1.(ty_own_val) π r vs ≡{n}≡ (ty2.(ty_own_val) π r vs)) →
+      (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
+      st_dist' n ty1 ty2.
+  Local Instance st_dist : Dist (simple_type rt) := st_dist'.
+
+  (* type rt is isomorphic to { x : T | P x } *)
+  Let T :=
+    prodO (prodO (prodO
+      (leibnizO rt)
+      (thread_id -d> rt -d> val -d> iPropO Σ))
+      (syn_typeO))
+      (op_type -d> leibnizO memcast_compat_type -d> PropO).
+  Let P (x : T) : Prop :=
+    (* st_has_layout *)
+    (∀ π r v, x.1.1.2 π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout x.1.2 ly⌝ ∗ ⌜v `has_layout_val` ly⌝) ∧
+    (* ty_op_type_stable *)
+    (∀ ot mt, x.2 ot mt → syn_type_has_layout x.1.2 (ot_layout ot)) ∧
+    (* ty_shr_persistent *)
+    (∀ π r v, Persistent (x.1.1.2 π r v)) ∧
+    (* ty_memcast_compat *)
+    (∀ ot mt st π r v, x.2 ot mt → x.1.1.2 π r v -∗
+      match mt with | MCNone => True | MCCopy => x.1.1.2 π r (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end).
+
+  (* to handle the let destruct in an acceptable way *)
+  Local Set Program Cases.
+
+  Definition simple_type_unpack (ty : simple_type rt) : T :=
+    (ty.(ty_rt_inhabited).(inhabitant),
+     ty.(ty_own_val),
+     ty.(ty_syn_type),
+     ty_has_op_type ty).
+  Program Definition simple_type_pack (x : T) (H : P x) : simple_type rt :=
+    let '(T_inh, T_own_val, T_syn_type, T_ot) := x in
+    {|
+      st_rt_inhabited := populate T_inh;
+      st_own := T_own_val;
+      st_has_op_type := T_ot;
+      st_syn_type := T_syn_type;
+    |}.
+  Solve Obligations with
+    intros [[[T_inh T_own_val] T_syn_type] T_ot];
+    intros (? & ? & ? & ?);
+    intros ???? Heq; injection Heq; intros -> -> -> ->;
+    done.
+
+  Definition simple_type_ofe_mixin : OfeMixin (simple_type rt).
+  Proof.
+    apply (iso_ofe_mixin simple_type_unpack).
+    - intros t1 t2. split.
+      + destruct 1; done.
+      + intros [[[]]]; simpl in *.
+        by constructor.
+    - intros t1 t2. split.
+      + destruct 1. done.
+      + intros [[[]]]; simpl in *.
+        by constructor.
+  Qed.
+  Canonical Structure stO : ofe := Ofe (simple_type rt) simple_type_ofe_mixin.
+
+  Global Instance st_own_ne n :
+    Proper (dist n ==> eq ==> eq ==> eq ==> dist n) st_own.
+  Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. Qed.
+  Global Instance st_own_proper : Proper ((≡) ==> eq ==> eq ==> eq ==> (≡)) st_own.
+  Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. Qed.
+
+  Global Instance st_syn_type_ne n : Proper (dist n ==> eq) st_syn_type.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Global Instance st_syn_type_proper : Proper ((≡) ==> eq) st_syn_type.
+  Proof. intros ?? EQ. apply EQ. Qed.
+
+  Global Instance ty_of_st_ne : NonExpansive (ty_of_st rt).
+  Proof.
+    intros n ?? EQ. constructor; try apply EQ; try done.
+    - simpl. intros. unfold ty_shr; simpl.
+      do 7 f_equiv. 
+      { f_equiv. apply EQ. }
+      do 2 f_equiv. apply EQ.
+  Qed.
+  Global Instance ty_of_st_proper : Proper ((≡) ==> (≡)) (ty_of_st rt).
+  Proof. apply (ne_proper _). Qed.
+
+End st_ofe.
 
 (** ** Subtyping etc. *)
 Definition type_incl `{!typeGS Σ} {rt1 rt2}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
@@ -974,3 +1089,158 @@ Section subtyping.
 
 
 End subtyping.
+
+(** Special metric for type-nonexpansive and Type-contractive functions. *)
+Section type_dist2.
+  Context `{!typeGS Σ}.
+  (* Metrics all assume one fixed refinement type *)
+  Context {rt : Type}.
+
+  (* Size and shr are n-equal, but own is only n-1-equal.
+     We need this to express what shr has to satisfy on a Type-NE-function:
+     It may only depend contractively on own. *)
+  (* TODO: Find a better name for this metric. *)
+  Inductive type_dist2 (n : nat) (ty1 ty2 : type rt) : Prop :=
+    Type_dist2 :
+      ty1.(ty_syn_type) = ty2.(ty_syn_type) →
+      ty1.(ty_lfts) = ty2.(ty_lfts) →
+      ty1.(ty_wf_E) = ty2.(ty_wf_E) →
+      (@inhabitant rt (ty1.(ty_rt_inhabited))) = (@inhabitant rt (ty2.(ty_rt_inhabited))) →
+      (∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt) →
+      (∀ π r vs, dist_later n (ty1.(ty_own_val) π r vs) (ty2.(ty_own_val) π r vs)) →
+      (∀ κ π r l, ty1.(ty_shr) κ π r l ≡{n}≡ ty2.(ty_shr) κ π r l) →
+      (ty1.(ty_sidecond) ≡{n}≡ ty2.(ty_sidecond)) →
+      (∀ π r, ty1.(ty_ghost_drop) π r ≡{n}≡ ty2.(ty_ghost_drop) π r) →
+      type_dist2 n ty1 ty2.
+
+  Global Instance type_dist2_equivalence n : Equivalence (type_dist2 n).
+  Proof.
+    constructor.
+    - by constructor.
+    - intros ?? Heq; constructor; symmetry; eapply Heq.
+    - intros ??? Heq1 Heq2; constructor; etrans; (eapply Heq1 || eapply Heq2).
+  Qed.
+
+  Definition type_dist2_later (n : nat) ty1 ty2 : Prop :=
+    match n with O => True | S n => type_dist2 n ty1 ty2 end.
+  Global Arguments type_dist2_later !_ _ _ /.
+
+  Global Instance type_dist2_later_equivalence n :
+    Equivalence (type_dist2_later n).
+  Proof. destruct n as [|n]; first by split. apply type_dist2_equivalence. Qed.
+
+  (* The hierarchy of metrics:
+     dist n → type_dist2 n → dist_later n → type_dist2_later n. *)
+  Lemma type_dist_dist2 n ty1 ty2 :
+    dist n ty1 ty2 → type_dist2 n ty1 ty2.
+  Proof. intros EQ. split; intros; try apply dist_dist_later; apply EQ. Qed.
+  Lemma type_dist2_dist_later n ty1 ty2 :
+    type_dist2 n ty1 ty2 → dist_later n ty1 ty2.
+  Proof.
+    intros EQ. eapply dist_later_fin_iff. destruct n; first done.
+    split; intros. 
+    all: try (apply EQ; si_solver).
+    all: apply dist_S, EQ.
+  Qed.
+  Lemma type_later_dist2_later n ty1 ty2 :
+    dist_later n ty1 ty2 → type_dist2_later n ty1 ty2.
+  Proof.
+    destruct n; first done. rewrite dist_later_fin_iff. exact: type_dist_dist2.
+  Qed.
+  Lemma type_dist2_dist n ty1 ty2 :
+    type_dist2 (S n) ty1 ty2 → dist n ty1 ty2.
+  Proof.
+    move=>/type_dist2_dist_later. rewrite dist_later_fin_iff. done.
+  Qed.
+  Lemma type_dist2_S n ty1 ty2 :
+    type_dist2 (S n) ty1 ty2 → type_dist2 n ty1 ty2.
+  Proof.
+    intros. apply type_dist_dist2, type_dist2_dist. done. 
+  Qed.
+
+  Lemma ty_syn_type_type_dist n : Proper (type_dist2 n ==> eq) ty_syn_type.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Lemma ty_own_val_type_dist n:
+    Proper (type_dist2 (S n) ==> eq ==> eq ==> eq ==> dist n) ty_own_val.
+  Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. si_solver. Qed.
+  Lemma ty_shr_type_dist n :
+    Proper (type_dist2 n ==> eq ==> eq ==> eq ==> eq ==> dist n) ty_shr.
+  Proof. intros ?? EQ ??-> ??-> ??-> ??->. apply EQ. Qed.
+End type_dist2.
+
+(** Type-nonexpansive and Type-contractive functions. *)
+(* Note that TypeContractive is neither weaker nor stronger than Contractive, because
+   (a) it allows the dependency of own on shr to be non-expansive, and
+   (b) it forces the dependency of shr on own to be doubly-contractive.
+   It would be possible to weaken this so that no double-contractivity is required.
+   However, then it is no longer possible to write TypeContractive as just a
+   Proper, which makes it significantly more annoying to use.
+   For similar reasons, TypeNonExpansive is incomparable to NonExpansive.
+*)
+Notation TypeNonExpansive T := (∀ n, Proper (type_dist2 n ==> type_dist2 n) T).
+Notation TypeContractive T := (∀ n, Proper (type_dist2_later n ==> type_dist2 n) T).
+
+Section type_contractive.
+  Context `{!typeGS Σ}.
+  Context {rt1 rt2 rt3 : Type}.
+
+  Lemma type_ne_dist_later (T : type rt1 → type rt2) :
+    TypeNonExpansive T → ∀ n, Proper (type_dist2_later n ==> type_dist2_later n) T.
+  Proof. intros Hf [|n]; last exact: Hf. hnf. by intros. Qed.
+
+  (* From the above, it easily follows that TypeNonExpansive functions compose with
+     TypeNonExpansive and with TypeContractive functions. *)
+  Lemma type_ne_ne_compose (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
+    TypeNonExpansive T1 → TypeNonExpansive T2 → TypeNonExpansive (T1 ∘ T2).
+  Proof. intros NE1 NE2 ? ???; simpl. apply: NE1. exact: NE2. Qed.
+
+  Lemma type_contractive_compose_right (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
+    TypeContractive T1 → TypeNonExpansive T2 → TypeContractive (T1 ∘ T2).
+  Proof. intros HT1 HT2 ? ???. apply: HT1. exact: type_ne_dist_later. Qed.
+
+  Lemma type_contractive_compose_left (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
+    TypeNonExpansive T1 → TypeContractive T2 → TypeContractive (T1 ∘ T2).
+  Proof. intros HT1 HT2 ? ???; simpl. apply: HT1. exact: HT2. Qed.
+
+  (* Show some more relationships between properties. *)
+  Lemma type_contractive_type_ne (T : type rt1 → type rt2) :
+    TypeContractive T → TypeNonExpansive T.
+  Proof.
+    intros HT ? ???.
+    eapply type_dist_dist2, dist_later_S, type_dist2_dist_later, HT. done.
+  Qed.
+
+  Lemma type_contractive_ne (T : type rt1 → type rt2) :
+    TypeContractive T → NonExpansive T.
+  Proof.
+    intros HT ? ???. apply dist_later_S, type_dist2_dist_later, HT, type_dist_dist2. done.
+  Qed.
+
+  (* This lemma from RustBelt does not hold in our model, as the syn_type of all simple types is not the same.
+     (In RustBelt, all have size 1).
+     This lemma only holds for sufficiently equal types, which only differ in the ownership predicate.*)
+  (*
+  Global Instance ty_of_st_type_ne n :
+    Proper (dist_later n ==> type_dist2 n) (ty_of_st rt1).
+  Proof.
+    intros ?? Hdst. constructor.
+    - 
+      (*apply Hdst.*)
+      (*done.*)
+    - intros. dist_later_intro. eapply Hdst.
+    - intros. solve_contractive.
+  Qed.
+  *)
+End type_contractive.
+
+(* Tactic automation. *)
+(*
+Ltac f_type_equiv :=
+  first [ ((eapply ty_size_type_dist || eapply ty_shr_type_dist || eapply ty_own_type_dist); try reflexivity) |
+          match goal with | |- @dist_later ?A _ ?n ?x ?y =>
+                            eapply dist_later_fin_iff; destruct n as [|n]; [exact I|change (@dist A _ n x y)]
+          end ].
+Ltac solve_type_proper :=
+  constructor;
+  solve_proper_core ltac:(fun _ => f_type_equiv || f_contractive_fin || f_equiv).
+  *)
