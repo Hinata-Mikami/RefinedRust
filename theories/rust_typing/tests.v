@@ -714,7 +714,7 @@ Section test.
   Abort.
 
   Lemma interpret_rust_type_test4 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref (int i32) κ).
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int i32)).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [solve_interpret_rust_type | ]. done.
@@ -1019,12 +1019,12 @@ Section test.
    tyl_wf_E
      (map map_rtype
         [existT (place_rfn (list (place_rfn T_rt)) * gname)%type
-           (mut_ref (Vec_inv_t T_ty) ulft__, (# xs, γ));
+           (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ++
    tyl_outlives_E
      (map map_rtype
         [existT (place_rfn (list (place_rfn T_rt)) * gname)%type
-           (mut_ref (Vec_inv_t T_ty) ulft__, (# xs, γ));
+           (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ϝ ++ ty_wf_E unit_t ++ ty_outlives_E unit_t ϝ) = E' ∧ E' = E'.
   Proof.
     eexists.

@@ -131,7 +131,7 @@ Ltac interpret_rust_type_core lfts env ty ::=
       | Some ?κ =>
         match mut with
         | Mut =>
-            refine (mut_ref _ κ); interpret_rust_type_core lfts env ty
+            refine (mut_ref κ _); interpret_rust_type_core lfts env ty
         | Shr =>
             refine (shr_ref κ _); interpret_rust_type_core lfts env ty
         end
