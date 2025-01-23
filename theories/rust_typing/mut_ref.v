@@ -47,6 +47,7 @@ Section mut_ref.
       | #r' => gvar_pobs γ r'
       | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
       end;
+    (* We need the inner lifetimes also to initiate sharing *)
     ty_lfts := [κ] ++ inner.(ty_lfts);
     ty_wf_E := ty_outlives_E inner κ;
   |}.

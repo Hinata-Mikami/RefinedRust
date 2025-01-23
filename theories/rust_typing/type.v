@@ -533,6 +533,7 @@ Section ofe.
   Global Instance ty_syn_type_proper : Proper ((≡) ==> eq) ty_syn_type.
   Proof. intros ?? EQ. apply EQ. Qed.
 
+  (*
   Local Ltac intro_T :=
         intros [[[[[[[[T_inh T_own_val] T_shr ] T_syn_type] T_ot] T_sidecond] T_drop] T_lfts] T_wf_E].
   Global Instance type_cofe : Cofe typeO.
@@ -587,6 +588,7 @@ Section ofe.
       + apply bi.limit_preserving_entails => n ty1 ty2; intro_T; f_equiv; done.
       + apply bi.limit_preserving_Persistent => n ty1 ty2; intro_T. apply T_sidecond.
   Qed.
+   *)
 End ofe.
 Section st_ofe.
   Context `{!typeGS Σ}.
@@ -688,6 +690,216 @@ Section st_ofe.
 
 End st_ofe.
 
+
+Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
+  type_ne_syn_type : 
+    ∀ ty ty', 
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      (F ty).(ty_syn_type) = (F ty').(ty_syn_type);
+  (*type_ne_lfts :*)
+    (*∀ ty ty', lft_intersect_list (F ty).(ty_lfts) ≡ₗ lft_intersect_list (F ty').(ty_lfts);*)
+  (*type_ne_wf_E :*)
+    (*∀ ty ty', (F ty).(ty_wf_E) ≡ (F ty').(ty_wf_E);*)
+
+  type_ne_has_op_type : 
+    ∀ ty ty', 
+      (∀ ot mt, ty_has_op_type ty ot mt ↔ ty_has_op_type ty' ot mt) →
+      (∀ ot mt, ty_has_op_type (F ty) ot mt ↔ ty_has_op_type (F ty') ot mt);
+
+  type_ne_sidecond :
+    ∀ ty ty',
+      ty_sidecond (F ty) ≡ ty_sidecond (F ty');
+
+  type_ne_ghost_drop :
+    ∀ ty ty',
+      (∀ π r, ty_ghost_drop ty π r ≡ ty_ghost_drop ty' π r) →
+      (∀ π r, ty_ghost_drop (F ty) π r ≡ ty_ghost_drop (F ty') π r);
+
+  type_ne_own_val :
+    ∀ n ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, (v ◁ᵥ{π} r @ ty ≡{n}≡ v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      (∀ π r v, (v ◁ᵥ{π} r @ F ty ≡{n}≡ v ◁ᵥ{π} r @ F ty')%I);
+
+      (* TODO *)
+  type_ne_shr :
+    ∀ n ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ F ty ≡{n}≡ l ◁ₗ{π, κ} r @ F ty')%I);
+}.
+
+Definition dist_later_2 {A : Type} `{!Dist A} (n : nat) (a b : A) : Prop :=
+  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
+Global Typeclasses Opaque dist_later_2.
+Lemma dist_later_2_lt {A : Type} `{!Dist A} (n : nat) (a b : A) :
+  dist_later_2 n a b →
+  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
+Proof.
+  done.
+Qed.
+Lemma dist_later_2_intro {A : Type} `{!Dist A} (n : nat) (a b : A) :
+  (∀ m, (S m < n)%nat → a ≡{m}≡ b) →
+  dist_later_2 n a b.
+Proof. done. Qed.
+Ltac dist_later_2_intro :=
+  refine (dist_later_2_intro _ _ _ _);
+  intros ??.
+
+Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
+  type_ctr_syn_type : 
+    ∀ ty ty', 
+      (* Contractive functors need to introduce a pointer indirection over recursive occurrences,
+         hence their syn_type should be trivially equal *)
+      (*ty.(ty_syn_type) = ty'.(ty_syn_type) →*)
+      (F ty).(ty_syn_type) = (F ty').(ty_syn_type);
+  (*type_ne_lfts :*)
+    (*∀ ty ty', lft_intersect_list (F ty).(ty_lfts) ≡ₗ lft_intersect_list (F ty').(ty_lfts);*)
+  (*type_ne_wf_E :*)
+    (*∀ ty ty', (F ty).(ty_wf_E) ≡ (F ty').(ty_wf_E);*)
+
+  type_ctr_has_op_type : 
+    ∀ ty ty', 
+      (* Contractive functors need to introduce a pointer indirection over recursive occurrences,
+         hence their op_type should be trivially equal *)
+      (*(∀ ot mt, ty_has_op_type ty ot mt ↔ ty_has_op_type ty' ot mt) →*)
+      (∀ ot mt, ty_has_op_type (F ty) ot mt ↔ ty_has_op_type (F ty') ot mt);
+
+  type_ctr_sidecond :
+    ∀ ty ty',
+      ty_sidecond (F ty) ≡ ty_sidecond (F ty');
+
+  type_ctr_ghost_drop :
+    ∀ ty ty',
+      (∀ π r, ty_ghost_drop ty π r ≡ ty_ghost_drop ty' π r) →
+      (∀ π r, ty_ghost_drop (F ty) π r ≡ ty_ghost_drop (F ty') π r);
+
+  type_ctr_own_val :
+    ∀ n ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      (∀ π r v, (v ◁ᵥ{π} r @ F ty ≡{n}≡ v ◁ᵥ{π} r @ F ty')%I);
+
+  (* TODO *)
+  type_ctr_shr :
+    ∀ n ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (* This needs two laters for the fixpoint to go through *)
+      (∀ π r v, dist_later_2 n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty)%I (l ◁ₗ{π, κ} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ F ty ≡{n}≡ l ◁ₗ{π, κ} r @ F ty')%I);
+}.
+
+(** Properties about [TypeNonExpansive] and [TypeContractive] *)
+Section properties.
+  Context `{!typeGS Σ}.
+
+  Global Instance type_contractive_type_ne {rt1 rt2} (F : type rt1 → type rt2) :
+    TypeContractive F → TypeNonExpansive F.
+  Proof.
+    intros [Hst Hot Hsc Hdrop Hv Hshr]. constructor. 
+    - done.
+    - done.
+    - done.
+    - done.
+    - intros n ty ty' Hst' Hsc' Hv' Hshr'.
+      eapply Hv; [done.. | | ].
+      + intros.  by eapply dist_dist_later.
+      + done.
+    - intros n ty ty' Hst' Hsc' Hv' Hshr'.
+      eapply Hshr; [done.. | | ].
+      + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia.
+      + intros. by eapply dist_dist_later.
+  Qed.
+
+  Global Instance type_ne_ne_compose {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
+    TypeNonExpansive F1 → TypeNonExpansive F2 → TypeNonExpansive (F2 ∘ F1).
+  Proof.
+    intros [Hst1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    constructor; simpl in *.
+    - naive_solver.
+    - intros ?? Ha. by eapply Hot2, Hot1.
+    - naive_solver. 
+    - naive_solver. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hv2; [naive_solver.. | | ].
+      + eapply Hv1; naive_solver. 
+      + eapply Hshr1; [ done.. | | done]. 
+        intros. by eapply dist_dist_later. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hshr2; [naive_solver.. | | ].
+      + intros. dist_later_intro.
+        eapply Hv1; [done.. | | ].
+        * intros. by eapply dist_later_lt.
+        * intros. eapply dist_le; first done. lia.
+      + eapply Hshr1; done.
+  Qed.
+
+  Global Instance type_contractive_compose_right {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
+    TypeContractive F1 → TypeNonExpansive F2 → TypeContractive (F2 ∘ F1).
+  Proof.
+    intros [Hst1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    constructor; simpl in *.
+    - naive_solver.
+    - intros ?? Ha. by eapply Hot2, Hot1.
+    - naive_solver. 
+    - naive_solver. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hv2; [naive_solver.. | | ].
+      + eapply Hv1; naive_solver. 
+      + eapply Hshr1; [ done.. | | ]. 
+        * intros. dist_later_2_intro.
+          eapply dist_later_lt; first done. lia.
+        * intros. by eapply dist_dist_later. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hshr2; [naive_solver.. | | ].
+      + intros. dist_later_intro.
+        eapply Hv1; [done.. | | ].
+        * intros. dist_later_intro. 
+          eapply dist_later_2_lt; first done. lia.
+        * intros. eapply dist_later_lt; first done. lia.
+      + eapply Hshr1; done.
+  Qed.
+
+  Global Instance type_contractive_compose_left {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
+    TypeNonExpansive F1 → TypeContractive F2 → TypeContractive (F2 ∘ F1).
+  Proof.
+    intros [Hst1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    constructor; simpl in *.
+    - naive_solver.
+    - intros ?? Ha. eapply Hot2.
+    - naive_solver. 
+    - naive_solver. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hv2; [naive_solver.. | | ].
+      + intros. dist_later_intro.
+        eapply Hv1; [naive_solver.. | | ].
+        * intros. eapply dist_later_lt; first done. lia.
+        * intros. eapply dist_le; first done. lia.
+      + eapply Hshr1; done. 
+    - intros n ?? Hst' Hsc' Hv' Hshr'.
+      eapply Hshr2; [naive_solver.. | | ].
+      + intros. dist_later_2_intro.
+        eapply Hv1; [done.. | | ].
+        * intros. eapply dist_later_2_lt; first done. lia. 
+        * intros. eapply dist_later_lt; first done. lia.
+      + intros. dist_later_intro.
+        eapply Hshr1; [done.. | | ].
+        * intros. dist_later_intro.
+          eapply dist_later_2_lt; first done. lia. 
+        * intros. eapply dist_later_lt; first done. lia.
+  Qed.
+End properties.
+
+
+(*
 (** Special metric for type-nonexpansive and Type-contractive functions. *)
 Section type_dist2.
   Context `{!typeGS Σ}.
@@ -821,6 +1033,7 @@ Section type_contractive.
     Proper (dist_later n ==> type_dist2 n) (ty_of_st rt1).
   Proof. Abort.
 End type_contractive.
+ *)
 
 (* Tactic automation. *)
 (*

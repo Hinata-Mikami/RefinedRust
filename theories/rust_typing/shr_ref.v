@@ -117,45 +117,29 @@ Section shr_ref.
 
   Global Instance shr_ref_type_contractive {rt : Type} κ : TypeContractive (shr_ref (rt:=rt) κ).
   Proof.
-    intros n ?? Heq. constructor; simpl; try done.
-    - admit. (* this is a problem *)
-    - intros ot mt. rewrite ty_has_op_type_unfold. done.
-    - intros. dist_later_fin_intro.
-      unfold ty_own_val; simpl.
-      simpl in Heq.
-      destruct Heq as [Heq_st ].
-      do 10 f_equiv. { by rewrite Heq_st. }
-      f_equiv. { done. }
+    constructor; simpl.
+    - done.
+    - rewrite ty_has_op_type_unfold/=. done.
+    - done.
+    - done.
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros π r v. rewrite /ty_own_val/=.
+      do 11 f_equiv.
+      { done. }
+      { by rewrite Hsc. }
       do 3 f_equiv. done.
-    - intros.
-      unfold ty_shr; simpl.
-      do 10 f_equiv. 
-      (* this is a problem, same for ty_sidecond. *)
-      (*{ by rewrite Heq_st. }*)
-      (*f_equiv. { done. }*)
-      (*do 3 f_equiv. done.*)
-    (*solve_type_proper.*)
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros κ' π r l. rewrite /ty_shr/=.
+      do 11 f_equiv.
+      { done. }
+      { by rewrite Hsc. }
+      do 2 f_equiv. f_contractive.
+      do 2 f_equiv.
+      eapply dist_later_lt; done.
+  Qed.
 
-    (* Solution approaches: 
-        - we define dist2_later by pushing down the later below the pure equivalences and the sidecond
-          + but then type_later_dist2_later doesn't work anymore, and so the proof that it is contractive. 
-
-        - we try to push down the layout alg stuff below a later.
-          This is likely to have unpleasant repercussions with ltype unfolding 
-
-
-       Is there some fundamental problem here? 
-
-
-       Some observations:
-       - the functor is constant over the layout (and also over the sidecond)
-       - 
-
-     *)
-  Abort.
-
-  (*Global Instance shr_ne κ : NonExpansive (shr_bor κ).*)
-  (*Proof. apply type_contractive_ne, _. Qed.*)
+  Global Instance shr_ref_type_ne {rt : Type} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
+  Proof. apply type_contractive_type_ne, _. Qed.
 End shr_ref.
 
 Section ofty.
