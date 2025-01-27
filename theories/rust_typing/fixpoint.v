@@ -28,7 +28,8 @@ Section type_inh.
     iIntros "->".
     destruct mt; simpl; iPureIntro; done.
   Qed.
-  Global Instance type_inhabited : Inhabited (type T_rt) := populate (ty_of_st _ inhabitant).
+  Definition type_inhabitant : type T_rt := ty_of_st _ inhabitant.
+  Global Instance type_inhabited : Inhabited (type T_rt) := populate type_inhabitant.
 End type_inh.
 
 Section fixpoint_def.
@@ -44,6 +45,10 @@ Section fixpoint_def.
   *)
   Definition Fn n := Nat.iter (S n) F inhabitant. 
 
+  Lemma Fn_succ n : 
+    Fn (S n) = F (Fn n).
+  Proof. done. Qed.
+
   Lemma Fn_syn_type_const n m : 
     ty_syn_type (Fn n) = ty_syn_type (Fn m).
   Proof using Hcr.
@@ -55,9 +60,7 @@ Section fixpoint_def.
     unfold Fn; simpl. eapply Hcr.
   Qed.
 
-  Search logical_step.
-
-
+  (*Search logical_step.*)
   (* what can we prove about ghost_drop? *)
   (* TODO The problem: 
      I don't have laters over there. 
@@ -75,39 +78,47 @@ Section fixpoint_def.
      Ideally, logical_step would be contractive....
      But I guess it's not.
 
-     I want amortized reasoning also at the logic level!! 
+     I want amortized reasoning also at the SI level.
+     can something like that be sound? 
 
      Alternatively, I would define a version that has laters and provides a later credit, to make it guarded.
      Then I want to derive something on top that uses the logical step.
 
    *)
 
-  Lemma Fn_lfts_const n m : 
-    ty_lfts (Fn n) = ty_lfts (Fn m).
-  Proof.
-    (* TODO *)
-    (*
-       What can I do about this? 
-       - we need a notion of lifetime equivalence that is okay with idempotence.
-       - 
-
-
-
-    *)
-
-
-  Admitted.
-
+  Lemma Fn_lfts_const_0 n : 
+    ⊢ lft_equiv (lft_intersect_list (ty_lfts (Fn n))) (lft_intersect_list (ty_lfts (Fn 0))).
+  Proof using Hcr.
+    induction n as [ n IH] using lt_wf_ind.
+    destruct n as [ | [ | n]].
+    - iApply lft_equiv_refl.
+    - iApply TyLftMorphism_ty_lfts_idempotent.
+    - rewrite !Fn_succ.
+      iApply lft_equiv_trans.
+      { iApply TyLftMorphism_ty_lfts_idempotent. }
+      iApply (IH (S n)). lia.
+  Qed.
+  Lemma Fn_wf_E_const_1 n :
+    n ≥ 1 →
+    elctx_interp (ty_wf_E (Fn n)) ≡ elctx_interp (ty_wf_E (Fn 1)).
+  Proof using Hcr.
+    intros ?.
+    induction n as [ n IH] using lt_wf_ind.
+    destruct n as [ | [ | [ | n]]].
+    - lia.
+    - reflexivity.
+    - iApply TyLftMorphism_ty_wf_E_idempotent.
+    - rewrite !Fn_succ.
+      etrans.
+      { eapply TyLftMorphism_ty_wf_E_idempotent. apply _. }
+      iApply (IH (S (S n))); lia.
+  Qed.
 
   Lemma Fn_has_op_type_const n m ot mt :
     ty_has_op_type (Fn n) ot mt ↔ ty_has_op_type (Fn m) ot mt.
   Proof using Hcr.
     unfold Fn; simpl. eapply Hcr.
   Qed.
-
-  Lemma Fn_succ n : 
-    Fn (S n) = F (Fn n).
-  Proof. done. Qed.
 
   (* We define a chain consisting of the ownership and sharing predicate and take the fixpoint over that. *)
   Definition ty_own_shrO : ofe := prodO (thread_id -d> rt -d> val -d> iPropO Σ) (lft -d> thread_id -d> rt -d> loc -d> iPropO Σ).
@@ -169,7 +180,7 @@ Section fixpoint_def.
     ty_sidecond := (Fn 0).(ty_sidecond);
     ty_ghost_drop := (Fn 0).(ty_ghost_drop);
     ty_lfts := (Fn 0).(ty_lfts);
-    ty_wf_E := (Fn 0).(ty_wf_E);
+    ty_wf_E := (Fn 1).(ty_wf_E);
   |}.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
@@ -222,10 +233,18 @@ Section fixpoint_def.
       { do 2 f_equiv. apply Heq. }
       apply Heq.
     - intros ?. simpl. 
-      erewrite Fn_syn_type_const. 
-      erewrite Fn_lfts_const.
-      eapply ty_share.
-      done.
+      iIntros "#RUST Htok %% Hlb Hb".
+      iApply fupd_logical_step.
+      iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
+      iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
+      { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
+      iPoseProof (ty_share with "RUST Htok [] [//] Hlb Hb") as "Hlb"; first done.
+      { erewrite Fn_syn_type_const. done. }
+      iApply logical_step_fupd.
+      iApply (logical_step_compose with "Hlb").
+      iApply logical_step_intro.
+      iModIntro. iIntros "($ & Htok)".
+      iApply ("Hcl_tok" with "Htok").
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
@@ -241,7 +260,6 @@ Section fixpoint_def.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?. simpl.
-
       (* TODO *)
   Admitted.
   Next Obligation.
@@ -326,16 +344,20 @@ Section fixpoint_def.
   Lemma type_fixpoint_ty_lfts : 
     type_fixpoint.(ty_lfts) = (Fn 0).(ty_lfts).
   Proof.
-  Admitted.
+    done.
+  Qed.
   Lemma type_fixpoint_ty_wf_E : 
-    type_fixpoint.(ty_wf_E) = (Fn 0).(ty_wf_E).
+    type_fixpoint.(ty_wf_E) = (Fn 1).(ty_wf_E).
   Proof.
-  Admitted.
+    done.
+  Qed.
 
   (*Lemma type_fixpoint_ghost_drop : *)
     (*type_fixpoint.(ty_ghost_drop) *)
 
+
 End fixpoint_def.
+
 
 Lemma type_fixpoint_ne `{!typeGS Σ} {rt} `{!Inhabited rt} (T1 T2 : type rt → type rt)
     `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} n :
@@ -371,7 +393,10 @@ Proof.
   - simpl. destruct (Heq inhabitant). done.
   - intros. simpl. destruct (Heq inhabitant). done.
   - intros. simpl. destruct (Heq inhabitant). done.
-  - intros. simpl. destruct (Heq inhabitant). done.
+  - intros. simpl. unfold Fn; simpl. 
+    (* uses that T2 is also non-expansive *)
+    rewrite -(Heq type_inhabitant).
+    rewrite Heq. done.
 Qed.
 
 (* TODO: should we also have something that states that fixpoint is TypeNonExpansive / TypeContractive? *)
@@ -469,4 +494,13 @@ Section fixpoint.
   Qed.
 
   (* TODO subtyping -- think of the right lemmas here *)
+  (* 
+     - we should unfold when subtyping
+       + if the goal is a fixpoint and the current thing is not a fixpoint, unfold in the goal.
+       + => TODO look at refinedc for unfolding strategy
+
+     - when accessing a place, we should have unfolding lemmas for type_fixpoint similarly as for existentials.
+       + 
+   *)
+
 End fixpoint.

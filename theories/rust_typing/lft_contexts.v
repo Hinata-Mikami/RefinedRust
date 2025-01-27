@@ -1375,3 +1375,63 @@ Proof.
     iApply lft_intersect_mono; first iApply lft_incl_refl.
     by iApply "IH".
 Qed.
+
+
+(* Lifetime equivalence *)
+Section lft_equiv.
+  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
+  Implicit Type (κ : lft).
+
+  Definition lft_equiv (κ1 κ2 : lft) : iProp Σ :=
+    κ1 ⊑ κ2 ∧ κ2 ⊑ κ1.
+
+  Lemma lft_equiv_trans κ1 κ2 κ3 : 
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ2 κ3 -∗
+    lft_equiv κ1 κ3.
+  Proof.
+    iIntros "#[??] #[??]". iSplit.
+    - iApply lft_incl_trans; done.
+    - iApply lft_incl_trans; done.
+  Qed.
+  Lemma lft_equiv_sym κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ2 κ1.
+  Proof.
+    iIntros "#[??]". iSplit; done.
+  Qed.
+  Lemma lft_equiv_refl κ :
+    ⊢ lft_equiv κ κ.
+  Proof.
+    iSplit; iApply lft_incl_refl.
+  Qed.
+
+  Lemma lft_equiv_intersect κ1 κ2 κ3 κ4 : 
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ3 κ4 -∗
+    lft_equiv (κ1 ⊓ κ3) (κ2 ⊓ κ4).
+  Proof. 
+    iIntros "#[??] #[??]". iSplit.
+    all: iApply lft_intersect_mono; done.
+  Qed.
+  Lemma lft_intersect_idempotent κ : 
+    ⊢ lft_equiv κ (κ ⊓ κ).
+  Proof.
+    iSplit.
+    - iApply lft_incl_glb; iApply lft_incl_refl.
+    - iApply lft_intersect_incl_l.
+  Qed.
+
+  Lemma lft_equiv_incl_l κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    κ1 ⊑ κ2.
+  Proof.
+    iIntros "[$ _]".
+  Qed.
+  Lemma lft_equiv_incl_r κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    κ2 ⊑ κ1.
+  Proof.
+    iIntros "[_ $]".
+  Qed.
+End lft_equiv.

@@ -37,7 +37,7 @@ Section shr_ref.
         place_rfn_interp_shared r ri ∗
         &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri li)%I;
     ty_ghost_drop _ _ := True%I;
-    ty_lfts := [κ];
+    ty_lfts := [κ] ++ ty_lfts inner;
     ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation. iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
@@ -119,6 +119,7 @@ Section shr_ref.
   Proof.
     constructor; simpl.
     - done.
+    - eapply ty_lft_morph_make_ref; done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - done.

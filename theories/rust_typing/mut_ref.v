@@ -49,7 +49,7 @@ Section mut_ref.
       end;
     (* We need the inner lifetimes also to initiate sharing *)
     ty_lfts := [κ] ++ inner.(ty_lfts);
-    ty_wf_E := ty_outlives_E inner κ;
+    ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation.
     iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)". eauto.
@@ -200,6 +200,7 @@ Section mut_ref.
   Proof.
     constructor; simpl.
     - done.
+    - eapply ty_lft_morph_make_ref; done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - done.
