@@ -361,7 +361,21 @@ Section pinned_borrows.
   Global Instance pinned_bor_ne κ n :
     Proper (dist n ==> dist n ==> dist n) (pinned_bor κ).
   Proof. rewrite pinned_bor_unseal. solve_proper. Qed.
-
+  Global Instance pinned_bor_contractive κ n :
+    Proper (dist_later n ==> dist_later n ==> dist n) (pinned_bor κ).
+  Proof. 
+    rewrite pinned_bor_unseal. 
+    intros ?? Ha ?? Hb. unfold pinned_bor_def. 
+    do 5 f_equiv. 
+    do 4 f_equiv.
+    { f_contractive. do 2 f_equiv. done. }
+    f_equiv.
+    { f_contractive. do 2 f_equiv; first done. 
+      f_equiv. done. }
+    f_contractive.
+    repeat f_equiv.
+    done.
+  Qed.
   Global Instance pinned_bor_equiv κ :
     Proper (equiv ==> equiv ==> equiv) (pinned_bor κ).
   Proof. rewrite pinned_bor_unseal. solve_proper. Qed.

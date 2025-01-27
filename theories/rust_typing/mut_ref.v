@@ -195,6 +195,36 @@ Section mut_ref.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%l & %ly & -> & _)". eauto.
   Qed.
+
+  Global Instance mut_ref_type_contractive {rt : Type} κ : TypeContractive (mut_ref (rt:=rt) κ).
+  Proof.
+    constructor; simpl.
+    - done.
+    - rewrite ty_has_op_type_unfold/=. done.
+    - done.
+    - done.
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros π [] v. rewrite /ty_own_val/=.
+      do 9 f_equiv.
+      { done. }
+      { by rewrite Hsc. }
+      do 3 f_equiv.
+      f_contractive.
+      all: do 7 f_equiv.
+      all: eapply dist_later_lt; done.
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros κ' π [] l. rewrite /ty_shr/=.
+      do 13 f_equiv.
+      { done. }
+      f_equiv.
+      { by rewrite Hsc. }
+      f_contractive.
+      do 2 f_equiv.
+      eapply dist_later_lt; done.
+  Qed.
+
+  Global Instance mut_ref_type_ne {rt : Type} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).
+  Proof. apply type_contractive_type_ne, _. Qed.
 End mut_ref.
 
 Section ofty.
