@@ -502,5 +502,45 @@ Section fixpoint.
      - when accessing a place, we should have unfolding lemmas for type_fixpoint similarly as for existentials.
        + 
    *)
+  (* Next step: 
+     - ex_inv:
+        - we need to make sure that it makes up a lifetime morphism. 
+       How do we show that Vec is contractive? 
+       + In that case, we need to show that it is contractive in one of the type args.
+         * I want to reduce that to a condition on the predicates. 
+         * i.e. a condition on how I'm able to use the type parameters, I guess.
+
+       Definition ExInvNe := ...
+       Definition ExInvContractive := ...
+
+       We can also use stuff in the nested type.
+       I want to show: 
+        ??
+
+       So, first: I need an OFE structure on ex_inv_def. 
+       - Then I can have a notion of contractiveness and non-expansiveness.
+       - 
+       
+       What if I have multiple arguments?
+       I cannot just say that I have a multivariable thing, as I don't have an isolated notion of distance, so can't use the Proper mechanism.
+       Instead, I have to explicitly quantify over functors for all the type parameters, require that they are non-expansive. Then I can say that the whole thing is contractive.
+       Or in case it doesn't introduce a guard itself, require that they are contractive for the whole thing to be contractive.
+
+
+
+
+
+           
+
+     TODO: do I have a problem with the Shared case? Do I also need a guard there?
+     + probably yes. I'm referring to the recursive case, after all, and need that to be contractive.
+     + I could wrap it in a guarded predicate or so. Strip via later credits.
+     + Why don't I already have a later there? shared reference has a later after all
+       I guess other nested Shared cases have a later. But OfTy doesn't.
+     TypeContractive means I can only use recursive sharing predicate under a later, so clearly it doesn't work like that.
+          
+
+
+   *)
 
 End fixpoint.

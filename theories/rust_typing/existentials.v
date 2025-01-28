@@ -10,9 +10,11 @@ Set Default Proof Using "Type".
 Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
   inv_P : thread_id → X → Y → iProp Σ;
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
+
   (* extra requirements on E and lfts, e.g. in case that P asserts extra location ownership *)
   inv_P_lfts : list lft;
   inv_P_wf_E : elctx;
+
   inv_P_shr_pers : ∀ π κ x y, Persistent (inv_P_shr π κ x y);
   inv_P_shr_mono : ∀ π κ κ' x y, κ' ⊑ κ -∗ inv_P_shr π κ x y -∗ inv_P_shr π κ' x y;
   inv_P_share :
@@ -64,6 +66,76 @@ Next Obligation.
 Qed.
 Global Typeclasses Opaque mk_pers_ex_inv_def.
 
+(* TODO can I have something where I structurally descend into the term to prove non-expansiveness?
+*)
+(*Class TyPredNe `{!typeGS Σ} *)
+
+Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
+  (* TODO lft morphism *)
+  ex_inv_def_ne_val_own : 
+    ∀ (n : nat) (ty ty' : type rt),
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, (v ◁ᵥ{π} r @ ty ≡{n}≡ v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      ∀ π x y,
+        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
+
+  ex_inv_def_ne_shr :
+    ∀ (n : nat) (ty ty' : type rt),
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      ∀ π κ x y,
+        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
+}.
+
+Class ExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
+  (* TODO lft morphism *)
+  ex_inv_def_contr_val_own : 
+    ∀ (n : nat) (ty ty' : type rt),
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      ∀ π x y,
+        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
+
+  ex_inv_def_contr_shr :
+    ∀ (n : nat) (ty ty' : type rt),
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
+      (∀ π r v, dist_later_2 n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+      (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty)%I (l ◁ₗ{π, κ} r @ ty')%I) →
+      ∀ π κ x y,
+        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
+}.
+
+
+(* Let's say I have one concrete instance of ex_inv_def, x_inv.
+   It has two type parameters, T and U.
+
+   I want to say that x_inv is contractive in T and U.
+
+   Then I need to generate: 
+      TypeNe T →
+      TypeNe U →
+      TypeContractive (λ ty, ex_inv (x_inv (T ty) (U ty))).
+
+   i.e. I fill the arguments with arbitrary functors in order to extract the dependency on the recursive argument.
+   This allows me to generalize to more than unary functors.
+
+   Now, I want a general lemma for ex_inv that allows me to prove this.
+   Necessary for this: a general condition on ex_inv_def. 
+
+   Condition: ExInvNonExpansive (type rt → ex_inv_def X Y)
+
+  
+*)
+
+
+
 Section ex.
   Context `{!typeGS Σ}.
   (* [Y] is the abstract refinement type, [X] is the inner refinement type *)
@@ -83,7 +155,8 @@ Section ex.
       (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x l)%I;
     ty_syn_type := ty.(ty_syn_type);
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
-    ty_sidecond := ty.(ty_sidecond);
+    ty_sidecond := 
+    ty.(ty_sidecond);
     (* TODO generalize ghost_drop in the type def *)
     ty_ghost_drop π r := (∃ x, P.(inv_P) π x r ∗ ty.(ty_ghost_drop) π x)%I;
     ty_lfts := P.(inv_P_lfts) ++ ty.(ty_lfts);
@@ -147,6 +220,144 @@ Section ex.
     destruct mt; eauto with iFrame.
   Qed.
 End ex.
+
+Section contr.
+  Context `{!typeGS Σ}.
+
+  Lemma ex_inv_def_contractive {rt X Y : Type} `{!Inhabited Y}
+    (P : type rt → ex_inv_def X Y) 
+    (F : type rt → type X) :
+    ExInvDefContractive P →
+    TypeContractive F →
+    TypeContractive (λ ty, ex_plain_t X Y (P ty) (F ty)).
+  Proof. 
+    intros HP HF. 
+    constructor; simpl.
+    - apply HF.
+    - admit. 
+    - rewrite ty_has_op_type_unfold. eapply HF.
+    - simpl. eapply HF.
+    - admit. 
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros π r v. rewrite /ty_own_val/=.
+      do 3 f_equiv. 
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros ????. rewrite /ty_shr/=.
+      do 3 f_equiv. 
+      { apply HP; done. }
+      apply HF; done.
+  Admitted.
+  (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
+
+  Lemma ex_inv_def_ne {rt X Y : Type} `{!Inhabited Y}
+    (P : type rt → ex_inv_def X Y) 
+    (F : type rt → type X)
+    :
+    ExInvDefNonExpansive P →
+    TypeNonExpansive F →
+    TypeNonExpansive (λ ty, ex_plain_t X Y (P ty) (F ty)).
+  Proof. 
+    intros HP HF. 
+    constructor; simpl.
+    - apply HF.
+    - admit. 
+    - rewrite ty_has_op_type_unfold. intros. 
+      eapply HF.
+      rewrite ty_has_op_type_unfold. done.
+    - simpl. eapply HF.
+    - admit. 
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros π r v. rewrite /ty_own_val/=.
+      do 3 f_equiv. 
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' Hst Hsc Hv Hshr.
+      intros ????. rewrite /ty_shr/=.
+      do 3 f_equiv. 
+      { apply HP; done. }
+      apply HF; done.
+  Admitted.
+
+  (* Now, I want to apply this to Vec.
+
+     TypeContractive Vec.
+     Show: TypeContractive (λ _, Vec_inner_t)
+     Show: ExInvDefContractive (λ T, Vec_inv_def T)
+      How do I show this?
+      - I guess i should have a solver.
+      - Need an instance for ltype_own OfTy being contractive/etc in ty.
+
+     Maybe we can have a PredContractive thing? 
+  *)
+
+  Lemma ofty_own_contr_owned {rt} (n : nat) (ty ty' : type rt) :
+    st_of ty = st_of ty' →
+    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
+    (∀ π v r, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+    ∀ l π r,
+    (l ◁ₗ[π, Owned true] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Owned true] r @ (◁ ty'))%I.
+  Proof.
+    intros Hst Hsc Hv l π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { done. }
+    { done. }
+    do 5 f_equiv.
+    f_contractive.
+    do 4 f_equiv.
+    eapply dist_later_lt; done.
+  Qed.
+  Lemma ofty_own_ne_owned {rt} (n : nat) (ty ty' : type rt) :
+    st_of ty = st_of ty' →
+    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
+    (∀ π v r, (v ◁ᵥ{π} r @ ty)%I ≡{n}≡ (v ◁ᵥ{π} r @ ty')%I) →
+    ∀ l π r,
+    (l ◁ₗ[π, Owned false] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Owned false] r @ (◁ ty'))%I.
+  Proof.
+    intros Hst Hsc Hv l π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { done. }
+    { done. }
+    do 9 f_equiv.
+    done.
+  Qed.
+  Lemma ofty_own_ne_shared {rt} (n : nat) (ty ty' : type rt) :
+    st_of ty = st_of ty' →
+    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
+    (∀ π κ l r, (l ◁ₗ{π, κ} r @ ty)%I ≡{n}≡ (l ◁ₗ{π, κ} r @ ty')%I) →
+    ∀ l κ π r,
+    (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Shared κ] r @ (◁ ty'))%I.
+  Proof.
+    intros Hst Hsc Hshr l κ π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { done. }
+    { done. }
+    do 6 f_equiv.
+    done.
+  Qed.
+  Lemma ofty_own_contr_uniq {rt} (n : nat) (ty ty' : type rt) :
+    st_of ty = st_of ty' →
+    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
+    (∀ π v r, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
+    ∀ l κ γ π r,
+    (l ◁ₗ[π, Uniq κ γ] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Uniq κ γ] r @ (◁ ty'))%I.
+  Proof.
+    intros Hst Hsc Hv l κ γ π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { done. }
+    { done. }
+    do 4 f_equiv.
+    f_contractive.
+    all: do 7 f_equiv.
+    all: eapply dist_later_lt; done.
+  Qed.
+    
+End contr.
 
 Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
 Section open.

@@ -1044,22 +1044,6 @@ Ltac dist_later_2_intro :=
   refine (dist_later_2_intro _ _ _ _);
   intros ??.
 
-Search list Equiv.
-(*
-  What we need in terms of lifetime conditions?
-   - local lifetime context is equivalent.
-     also idempotent.
-
-   - external lifetimes:
-     + I guess I need to be able to add ty_outlives_E
-       => What is the right notion of equivalence to allow that?
-          Maybe set equivalence.
-     +
-
-
- *)
-
-
 Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
   type_ctr_syn_type :
     ∀ ty ty',
