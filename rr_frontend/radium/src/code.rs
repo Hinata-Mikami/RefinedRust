@@ -104,6 +104,9 @@ impl RustType {
                     return Self::Unit;
                 };
 
+                let def = def.borrow();
+                let def = def.as_ref().unwrap();
+
                 // translate type parameter instantiations
                 let typarams: Vec<_> = as_use.ty_params.iter().map(|ty| Self::of_type(ty)).collect();
                 let ty_name = if is_raw { def.plain_ty_name() } else { def.public_type_name() };
@@ -114,7 +117,9 @@ impl RustType {
             Type::Enum(ae_use) => {
                 let typarams: Vec<_> = ae_use.ty_params.iter().map(|ty| Self::of_type(ty)).collect();
 
-                Self::Lit(vec![ae_use.def.public_type_name().to_owned()], typarams)
+                let def = ae_use.def.borrow();
+                let def = def.as_ref().unwrap();
+                Self::Lit(vec![def.public_type_name().to_owned()], typarams)
             },
 
             Type::LiteralParam(lit) => Self::TyVar(lit.rust_name.clone()),

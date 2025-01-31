@@ -350,14 +350,16 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let enum_defs = self.type_translator.get_enum_defs();
 
         for (did, entry) in &variant_defs {
-            if let Some(entry) = entry {
+            let entry = entry.borrow();
+            if let Some(entry) = entry.as_ref() {
                 if let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type()) {
                     adt_shims.push(shim);
                 }
             }
         }
         for (did, entry) in &enum_defs {
-            if let Some(entry) = entry {
+            let entry = entry.borrow();
+            if let Some(entry) = entry.as_ref() {
                 if let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type()) {
                     adt_shims.push(shim);
                 }
@@ -476,6 +478,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             for did in &ordered {
                 if let Some(su_ref) = struct_defs.get(did) {
+                    let su_ref = su_ref.borrow();
                     info!("writing struct {:?}, {:?}", did, su_ref);
                     let su = su_ref.as_ref().unwrap();
 
@@ -490,7 +493,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                         writeln!(spec_file, "{}", inv_spec).unwrap();
                     }
                 } else {
-                    let eu = enum_defs[did].unwrap();
+                    let eu = enum_defs[did].borrow();
+                    let eu = eu.as_ref().unwrap();
                     info!("writing enum {:?}, {:?}", did, eu);
 
                     // layout specs
