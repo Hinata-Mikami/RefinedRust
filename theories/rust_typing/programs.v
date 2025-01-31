@@ -3994,6 +3994,46 @@ Global Hint Mode GetLftNames ! ! + + - + - : typeclass_instances.
 Global Arguments GLN {_ _ _ _ _ _ _}.
 Global Instance get_lft_names_leaf `{!typeGS Σ} {rt} (ty : type rt) lfts : GetLftNames ty lfts LftNameTreeLeaf lfts := GLN.
 
+Section guarded.
+  Context `{!typeGS Σ}.
+
+
+  Lemma introduce_with_hooks_guarded (E : elctx) (L : llctx) (P : iProp Σ) T :
+    find_in_context (FindCreditStore) (λ '(c, a),
+      ⌜1 ≤ c⌝ ∗ (credit_store (c - 1)%nat a -∗
+        introduce_with_hooks E L P T)) ⊢
+    introduce_with_hooks E L (guarded P) T.
+  Proof.
+    iIntros "Ha" (??) "HE HL HP".
+    rewrite /guarded/FindCreditStore/=.
+    iDestruct "Ha" as ([n m]) "(Hc & % & Ha)".
+    simpl.
+    iPoseProof (credit_store_scrounge _ _ 1 with "Hc") as "(Hc1 & Hc)"; first lia.
+    iMod (lc_fupd_elim_later with "Hc1 HP") as "HP".
+    iApply ("Ha" with "Hc [//] HE HL HP").
+  Qed.
+  Global Instance introduce_with_hooks_guarded_inst E L P :
+    IntroduceWithHooks E L (guarded P) :=
+    λ T, i2p (introduce_with_hooks_guarded E L P T).
+
+  Lemma prove_with_subtype_guarded E L b pm P T :
+    prove_with_subtype E L b pm P T ⊢
+    prove_with_subtype E L b pm (guarded P) T.
+  Proof.
+    iIntros "HT" (???) "#CTX HE HL".
+    iMod ("HT" with "[] [] CTX HE HL") as "(%L2 & % & % & Hs & HL & HT)"; [done.. | ].
+    iModIntro. iExists _, _, _. iFrame.
+    iApply (maybe_logical_step_wand with "[] Hs").
+    iIntros "(Ha & $)".
+    unfold guarded. destruct pm.
+    - eauto.
+    - iIntros "Hd". iMod ("Ha" with "Hd") as "Ha". eauto.
+  Qed.
+  Global Instance prove_with_subtype_guarded_inst E L b pm P :
+    ProveWithSubtype E L b pm (guarded P) :=
+    λ T, i2p (prove_with_subtype_guarded E L b pm P T).
+
+End guarded.
 
 
 From lithium Require Import hooks.

@@ -95,8 +95,25 @@ Section type.
     destruct r as [r | ]; simpl; done.
   Qed.
 End type.
-
 Global Typeclasses Opaque maybe_uninit.
+
+Section ne.
+  Context `{!typeGS Σ}.
+
+  Global Instance maybe_uninit_ne {rt} : 
+    TypeNonExpansive (maybe_uninit (rt:=rt)).
+  Proof.
+    constructor; simpl.
+    - done.
+    - eapply ty_lft_morph_make_id; done.
+    - rewrite ty_has_op_type_unfold/=. 
+      intros ?? ->. done.
+    - done.
+    - done.
+    - solve_type_proper.
+    - solve_type_proper.
+  Qed.
+End ne.
 
 Section subtype.
   Context `{!typeGS Σ}.

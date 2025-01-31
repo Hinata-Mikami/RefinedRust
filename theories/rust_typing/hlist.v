@@ -459,6 +459,11 @@ Inductive HForall (Φ: ∀X, F X → Prop) : ∀{Xl}, hlist F Xl → Prop :=
 | HForall_cons {X Xl} (x: _ X) (xl: _ Xl) :
     Φ _ x → HForall Φ xl → HForall Φ (x +:: xl).
 
+Inductive HTForall (Φ: ∀X, F X → Type) : ∀{Xl}, hlist F Xl → Type :=
+| HTForall_nil: HTForall Φ +[]
+| HTForall_cons {X Xl} (x: _ X) (xl: _ Xl) :
+    Φ _ x → HTForall Φ xl → HTForall Φ (x +:: xl).
+
 Inductive TCHForall (Φ : ∀ X, F X → Prop) : ∀ {Xl}, hlist F Xl → Prop :=
 | TCHForall_nil: TCHForall Φ +[]
 | TCHForall_cons {X Xl} (x : F X) (xl : hlist F Xl) :

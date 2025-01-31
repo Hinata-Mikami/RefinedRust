@@ -5,7 +5,7 @@ Set Default Proof Using "Type".
 (** * Existential types and invariants *)
 
 (** ** Existential types with "simple" invariants that are tacked on via a separating conjunction *)
-(* Note: this does not allow for, e.g., Cell or Mutex -- we will need a different version using non-atomic/atomic invariants for those *)
+(*Note: this does not allow for, e.g., Cell or Mutex -- we will need a different version using non-atomic/atomic invariants for those *)
 
 Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
   inv_P : thread_id → X → Y → iProp Σ;
@@ -26,7 +26,7 @@ Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
     &{κ} (inv_P π x y) -∗
     logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
 }.
-(* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
+(*Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
 Definition mk_ex_inv_def `{!typeGS Σ} {X Y : Type}
   (inv_P : thread_id → X → Y → iProp Σ)
   inv_P_shr
@@ -66,75 +66,42 @@ Next Obligation.
 Qed.
 Global Typeclasses Opaque mk_pers_ex_inv_def.
 
+
+
 (* TODO can I have something where I structurally descend into the term to prove non-expansiveness?
 *)
 (*Class TyPredNe `{!typeGS Σ} *)
-
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
-  (* TODO lft morphism *)
-  ex_inv_def_ne_val_own : 
+  ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
+
+  ex_inv_def_ne_val_own :
     ∀ (n : nat) (ty ty' : type rt),
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, (v ◁ᵥ{π} r @ ty ≡{n}≡ v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist n ty ty' →
       ∀ π x y,
         (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
 
   ex_inv_def_ne_shr :
     ∀ (n : nat) (ty ty' : type rt),
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist2 n ty ty' →
       ∀ π κ x y,
         (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
 }.
 
 Class ExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
-  (* TODO lft morphism *)
-  ex_inv_def_contr_val_own : 
+  ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
+
+  ex_inv_def_contr_val_own :
     ∀ (n : nat) (ty ty' : type rt),
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist2 n ty ty' →
       ∀ π x y,
         (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
 
   ex_inv_def_contr_shr :
     ∀ (n : nat) (ty ty' : type rt),
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, dist_later_2 n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty)%I (l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDistLater2 n ty ty' →
       ∀ π κ x y,
         (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
 }.
-
-
-(* Let's say I have one concrete instance of ex_inv_def, x_inv.
-   It has two type parameters, T and U.
-
-   I want to say that x_inv is contractive in T and U.
-
-   Then I need to generate: 
-      TypeNe T →
-      TypeNe U →
-      TypeContractive (λ ty, ex_inv (x_inv (T ty) (U ty))).
-
-   i.e. I fill the arguments with arbitrary functors in order to extract the dependency on the recursive argument.
-   This allows me to generalize to more than unary functors.
-
-   Now, I want a general lemma for ex_inv that allows me to prove this.
-   Necessary for this: a general condition on ex_inv_def. 
-
-   Condition: ExInvNonExpansive (type rt → ex_inv_def X Y)
-
-  
-*)
-
-
 
 Section ex.
   Context `{!typeGS Σ}.
@@ -155,7 +122,7 @@ Section ex.
       (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x l)%I;
     ty_syn_type := ty.(ty_syn_type);
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
-    ty_sidecond := 
+    ty_sidecond :=
     ty.(ty_sidecond);
     (* TODO generalize ghost_drop in the type def *)
     ty_ghost_drop π r := (∃ x, P.(inv_P) π x r ∗ ty.(ty_ghost_drop) π x)%I;
@@ -225,57 +192,67 @@ Section contr.
   Context `{!typeGS Σ}.
 
   Lemma ex_inv_def_contractive {rt X Y : Type} `{!Inhabited Y}
-    (P : type rt → ex_inv_def X Y) 
+    (P : type rt → ex_inv_def X Y)
     (F : type rt → type X) :
     ExInvDefContractive P →
     TypeContractive F →
     TypeContractive (λ ty, ex_plain_t X Y (P ty) (F ty)).
-  Proof. 
-    intros HP HF. 
+  Proof.
+    intros HP HF.
     constructor; simpl.
     - apply HF.
-    - admit. 
+    - destruct HP as [Hlft _ _].
+      destruct HF as [_ Hlft' _ _ _ _ _].
+      apply ty_lft_morphism_of_direct.
+      apply ty_lft_morphism_to_direct in Hlft'.
+      simpl in *.
+      apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
-    - admit. 
-    - intros n ty ty' Hst Hsc Hv Hshr.
+    - admit.
+    - intros n ty ty' ?.
       intros π r v. rewrite /ty_own_val/=.
-      do 3 f_equiv. 
+      do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
+    - intros n ty ty' ?.
       intros ????. rewrite /ty_shr/=.
-      do 3 f_equiv. 
-      { apply HP; done. }
+      do 3 f_equiv.
+      { apply HP. done. }
       apply HF; done.
   Admitted.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
   Lemma ex_inv_def_ne {rt X Y : Type} `{!Inhabited Y}
-    (P : type rt → ex_inv_def X Y) 
+    (P : type rt → ex_inv_def X Y)
     (F : type rt → type X)
     :
     ExInvDefNonExpansive P →
     TypeNonExpansive F →
     TypeNonExpansive (λ ty, ex_plain_t X Y (P ty) (F ty)).
-  Proof. 
-    intros HP HF. 
+  Proof.
+    intros HP HF.
     constructor; simpl.
     - apply HF.
-    - admit. 
-    - rewrite ty_has_op_type_unfold. intros. 
-      eapply HF.
+    - destruct HP as [Hlft _ _].
+      destruct HF as [_ Hlft' _ _ _ _ _].
+      apply ty_lft_morphism_of_direct.
+      apply ty_lft_morphism_to_direct in Hlft'.
+      simpl in *.
+      apply direct_lft_morphism_app; done.
+    - rewrite ty_has_op_type_unfold. intros.
+      eapply HF; first done.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
-    - admit. 
-    - intros n ty ty' Hst Hsc Hv Hshr.
+    - admit.
+    - intros n ty ty' ?.
       intros π r v. rewrite /ty_own_val/=.
-      do 3 f_equiv. 
+      do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
+    - intros n ty ty' ?.
       intros ????. rewrite /ty_shr/=.
-      do 3 f_equiv. 
+      do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
   Admitted.
@@ -289,74 +266,10 @@ Section contr.
       - I guess i should have a solver.
       - Need an instance for ltype_own OfTy being contractive/etc in ty.
 
-     Maybe we can have a PredContractive thing? 
+     Maybe we can have a PredContractive thing?
   *)
 
-  Lemma ofty_own_contr_owned {rt} (n : nat) (ty ty' : type rt) :
-    st_of ty = st_of ty' →
-    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
-    (∀ π v r, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-    ∀ l π r,
-    (l ◁ₗ[π, Owned true] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Owned true] r @ (◁ ty'))%I.
-  Proof.
-    intros Hst Hsc Hv l π r.
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
-    do 5 f_equiv.
-    { done. }
-    { done. }
-    do 5 f_equiv.
-    f_contractive.
-    do 4 f_equiv.
-    eapply dist_later_lt; done.
-  Qed.
-  Lemma ofty_own_ne_owned {rt} (n : nat) (ty ty' : type rt) :
-    st_of ty = st_of ty' →
-    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
-    (∀ π v r, (v ◁ᵥ{π} r @ ty)%I ≡{n}≡ (v ◁ᵥ{π} r @ ty')%I) →
-    ∀ l π r,
-    (l ◁ₗ[π, Owned false] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Owned false] r @ (◁ ty'))%I.
-  Proof.
-    intros Hst Hsc Hv l π r.
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
-    do 5 f_equiv.
-    { done. }
-    { done. }
-    do 9 f_equiv.
-    done.
-  Qed.
-  Lemma ofty_own_ne_shared {rt} (n : nat) (ty ty' : type rt) :
-    st_of ty = st_of ty' →
-    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
-    (∀ π κ l r, (l ◁ₗ{π, κ} r @ ty)%I ≡{n}≡ (l ◁ₗ{π, κ} r @ ty')%I) →
-    ∀ l κ π r,
-    (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Shared κ] r @ (◁ ty'))%I.
-  Proof.
-    intros Hst Hsc Hshr l κ π r.
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
-    do 5 f_equiv.
-    { done. }
-    { done. }
-    do 6 f_equiv.
-    done.
-  Qed.
-  Lemma ofty_own_contr_uniq {rt} (n : nat) (ty ty' : type rt) :
-    st_of ty = st_of ty' →
-    ty_sidecond ty ≡{n}≡ ty_sidecond ty' →
-    (∀ π v r, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-    ∀ l κ γ π r,
-    (l ◁ₗ[π, Uniq κ γ] r @ (◁ ty))%I ≡{n}≡ (l ◁ₗ[π, Uniq κ γ] r @ (◁ ty'))%I.
-  Proof.
-    intros Hst Hsc Hv l κ γ π r.
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
-    do 5 f_equiv.
-    { done. }
-    { done. }
-    do 4 f_equiv.
-    f_contractive.
-    all: do 7 f_equiv.
-    all: eapply dist_later_lt; done.
-  Qed.
-    
+
 End contr.
 
 Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
@@ -1034,12 +947,14 @@ Ltac ex_t_merge_lft_tokens tokty ident :=
     ]
   end.
 
-
 (** Hook for proving the shared predicate after having shared all the assumptions *)
 Ltac ex_plain_t_solve_shr_solve_hook :=
   repeat iExists _;
   iFrame "%∗";
-  try done. (* TODO generalize *)
+  try done;
+  rewrite -!guarded_intro;
+  iFrame
+. (* TODO generalize *)
 
 Ltac ex_plain_t_solve_shr :=
   iIntros (???????); prepare_initial_coq_context;
@@ -1069,6 +984,10 @@ Ltac handle_monotonicity_prim iH :=
       iApply (ltype_rules.ltype_own_shr_mono with "[]");
       [ | iApply iH];
       done (* TODO: generalize? *)
+  | (guarded _)%I =>
+      iApply (guarded_mono with "[] " +:+ iH);
+      iIntros "__H0";
+      handle_monotonicity_prim "__H0"
   | (⌜_⌝)%I => iApply iH
   |  _ => iApply iH
   end.
@@ -1105,7 +1024,7 @@ Module test.
   Local Definition Pty := (∃; Pdef, int i32)%I.
 
   Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ l ◁ₗ[π, Owned true] #42%Z @ (◁ int i32))%I : iProp Σ.
-  Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ l ◁ₗ[π, Shared κ] #42%Z @ (◁ int i32))%I : iProp Σ.
+  Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int i32)))%I : iProp Σ.
 
   Local Program Definition Adef := mk_ex_inv_def P_b S_b [] [] _ _ _.
   Next Obligation. ex_t_solve_persistent. Qed.

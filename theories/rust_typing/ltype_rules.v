@@ -886,3 +886,162 @@ Section deinit.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.
 End deinit.
+
+Section ne.
+  Context `{!typeGS Σ}.
+
+  Lemma ofty_own_contr_owned {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
+    TypeNonExpansive T →
+    TypeDistLater n ty ty' →
+    ∀ l π r,
+    (l ◁ₗ[π, Owned true] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Owned true] r @ (◁ (T ty')))%I.
+  Proof.
+    intros HT Hd l π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { apply HT. apply Hd. }
+    { apply equiv_dist. apply HT; apply Hd. }
+    do 5 f_equiv.
+    f_contractive.
+    do 4 f_equiv.
+    apply HT.
+    eapply type_dist_later_dist; first done.
+    unfold CanSolve; lia.
+  Qed.
+  Lemma ofty_own_ne_owned {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
+    TypeNonExpansive T →
+    TypeDist n ty ty' →
+    ∀ l π r,
+    (l ◁ₗ[π, Owned false] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Owned false] r @ (◁ (T ty')))%I.
+  Proof.
+    intros HT Hd l π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { apply HT. apply Hd. }
+    { apply equiv_dist. apply HT; apply Hd. }
+    do 9 f_equiv.
+    apply HT.
+    apply Hd.
+  Qed.
+  Lemma ofty_own_ne_shared {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
+    TypeNonExpansive T →
+    TypeDist2 n ty ty' →
+    ∀ l κ π r,
+    (l ◁ₗ[π, Shared κ] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Shared κ] r @ (◁ (T ty')))%I.
+  Proof.
+    intros HT Hd l κ π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { apply HT. apply Hd. }
+    { apply equiv_dist. apply HT; apply Hd. }
+    do 6 f_equiv.
+    apply HT. apply Hd.
+  Qed.
+  Lemma ofty_own_contr_uniq {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
+    TypeNonExpansive T →
+    TypeDistLater n ty ty' →
+    ∀ l κ γ π r,
+    (l ◁ₗ[π, Uniq κ γ] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Uniq κ γ] r @ (◁ (T ty')))%I.
+  Proof.
+    intros HT Hd l κ γ π r.
+    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
+    do 5 f_equiv.
+    { apply HT. apply Hd. }
+    { apply equiv_dist. apply HT; apply Hd. }
+    do 4 f_equiv.
+    f_contractive.
+    all: do 7 f_equiv.
+    all: apply HT.
+    all: eapply type_dist_later_dist; first done.
+    all: unfold CanSolve; lia.
+  Qed.
+End ne.
+(*Ltac solve_type_proper_step :=*)
+  (*first [*)
+    (*match goal with*)
+    (*| H : TypeNonExpansive _ |- _ => apply H*)
+    (*| H : TypeContractive _ |- _ => apply H*)
+    (*end*)
+  (*| match goal with*)
+    (*| H : ?a ≡ ?b |- ?a ≡{_}≡ ?b => apply equiv_dist; apply H*)
+    (*end*)
+  (*| done*)
+  (*| eapply dist_later_lt; [done | lia]*)
+  (*| eapply dist_later_2_lt; [done | lia]*)
+  (*| f_contractive | f_equiv ].*)
+
+
+Section guarded.
+  Context `{!typeGS Σ}.
+
+  Definition guarded (P : iProp Σ) : iProp Σ :=
+    ▷ P.
+  Global Typeclasses Opaque guarded.
+  Global Arguments guarded : simpl never.
+
+  Global Instance guarded_pers P :
+    Persistent P → Persistent (guarded P).
+  Proof.
+    unfold guarded.
+    apply _.
+  Qed.
+
+  Lemma guarded_mono (P Q : iProp Σ) :
+    (P -∗ Q) -∗
+    guarded P -∗
+    guarded Q.
+  Proof.
+    rewrite /guarded.
+    iIntros "H HP !>". by iApply "H".
+  Qed.
+  Lemma guarded_intro (P : iProp Σ) :
+    P ⊢ guarded P.
+  Proof.
+    rewrite /guarded. eauto.
+  Qed.
+
+  Lemma guarded_dist (P Q : iProp Σ) n :
+    (∀ m, m < n → P ≡{m}≡ Q) →
+    guarded P ≡{n}≡ guarded Q.
+  Proof.
+    rewrite /guarded. 
+    intros Hle. f_contractive.
+    by apply Hle. 
+  Qed.
+End guarded.
+
+Ltac solve_type_proper_step :=
+  first [
+    match goal with
+    | H : TypeNonExpansive _ |- _ => apply H
+    | H : TypeContractive _ |- _ => apply H
+    | H : TypeDist _ _ _ |- _ => apply H
+    | H : TypeDist2 _ _ _ |- _ => apply H
+    | H : TypeDistLater _ _ _ |- _ => apply H
+    | H : TypeDistLater2 _ _ _ |- _ => apply H
+    end
+  | match goal with
+    | |- ty_sidecond _ ≡{_}≡ ty_sidecond _ => apply equiv_dist
+    end
+
+  | match goal with
+    | |- ltype_own (OfTy _) ?bk _ _ _ ≡{_}≡ ltype_own (OfTy _) ?bk _ _ _ =>
+      match bk with
+      | Shared _ => apply ofty_own_ne_shared; try apply _
+      | Uniq _ _ => apply ofty_own_contr_uniq; try apply _
+      | Owned true => apply ofty_own_contr_owned; try apply _
+      | Owned false => apply ofty_own_ne_owned; try apply _
+      end
+    | |- guarded _ ≡{_}≡ guarded _ =>
+      apply guarded_dist; intros
+    end
+  (*| done*)
+  (*| eapply dist_later_lt; [done | lia]*)
+  (*| eapply dist_later_2_lt; [done | lia]*)
+  | f_contractive | f_equiv
+      ].
+Ltac solve_proper_step := first [eassumption | solve_type_proper_step].
+Ltac solve_type_proper :=
+  solve_proper_core ltac:(fun _ => solve_type_proper_step).
+
+

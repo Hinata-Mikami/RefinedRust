@@ -3143,11 +3143,15 @@ Section typing.
   (** statements *)
   Lemma type_goto E L π b fn R s ϝ :
     fn.(rf_fn).(f_code) !! b = Some s →
-    typed_stmt π E L s fn R ϝ
+    introduce_with_hooks E L (£ 1) (λ L2,
+      typed_stmt π E L2 s fn R ϝ)
     ⊢ typed_stmt π E L (Goto b) fn R ϝ.
   Proof.
-    iIntros (HQ) "Hs". iIntros (?) "#LFT #HE HL Hna Hcont". iApply wps_goto => //.
-    iModIntro. iIntros "Hcred". by iApply ("Hs" with "LFT HE HL Hna").
+    iIntros (HQ) "Hs". iIntros (?) "#LFT #HE HL Hna Hcont". 
+    iApply wps_goto => //.
+    iModIntro. iIntros "Hcred". 
+    iMod ("Hs" with "[] HE HL Hcred") as "(%L2 & HL & HT)"; first done.
+    by iApply ("HT" with "LFT HE HL Hna").
   Qed.
 
   (** Goto a block if we have already proved it with a particular precondition [P]. *)

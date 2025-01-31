@@ -204,24 +204,12 @@ Section mut_ref.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
+    - intros n ty ty' ?.
       intros π [] v. rewrite /ty_own_val/=.
-      do 9 f_equiv.
-      { done. }
-      { by rewrite Hsc. }
-      do 3 f_equiv.
-      f_contractive.
-      all: do 7 f_equiv.
-      all: eapply dist_later_lt; done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
+      solve_type_proper.
+    - intros n ty ty' ?.
       intros κ' π [] l. rewrite /ty_shr/=.
-      do 13 f_equiv.
-      { done. }
-      f_equiv.
-      { by rewrite Hsc. }
-      f_contractive.
-      do 2 f_equiv.
-      eapply dist_later_lt; done.
+      solve_type_proper.
   Qed.
 
   Global Instance mut_ref_type_ne {rt : Type} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).

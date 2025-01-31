@@ -54,10 +54,15 @@ Section fixpoint_def.
   Proof using Hcr.
     unfold Fn. simpl. apply Hcr.
   Qed.
-  Lemma Fn_sidecond_const n m : 
-    ty_sidecond (Fn n) ≡ ty_sidecond (Fn m).
+  Lemma Fn_sidecond_const n : 
+    n ≥ 1 →
+    ty_sidecond (Fn n) ≡ ty_sidecond (Fn 1).
   Proof using Hcr.
-    unfold Fn; simpl. eapply Hcr.
+    unfold Fn; simpl. intros Hn. 
+    eapply Hcr.
+    destruct n; first lia.
+    erewrite (Fn_syn_type_const 0).
+    done.
   Qed.
 
   (*Search logical_step.*)
@@ -131,9 +136,9 @@ Section fixpoint_def.
   Proof using Hcr.
     induction n as [ | n IH] in i |-*; simpl; intros Hle.
     { split; first (intros; dist_later_intro; lia).
-      intros. eapply Hcr.
+      intros. eapply Hcr. constructor.
       - eapply Hcr.
-      - eapply Hcr.
+      - eapply Hcr. erewrite (Fn_syn_type_const i 0); done.
       - intros. dist_later_2_intro; lia.
       - intros. dist_later_intro; lia.
     } 
@@ -141,15 +146,15 @@ Section fixpoint_def.
     destruct (IH i) as [Hown Hshr]; first lia.
     split.
     - intros. dist_later_intro.
-      simpl. eapply Hcr.
+      simpl. eapply Hcr. constructor.
       + eapply Hcr.
-      + eapply Hcr.
+      + eapply Hcr. rewrite (Fn_syn_type_const (1+i) (1+n)); done.
       + intros. dist_later_intro.
         eapply dist_later_lt; [eapply Hown | ]. lia.
       + intros. eapply dist_le; first apply Hshr. lia.
-    - intros. simpl. eapply Hcr.
+    - intros. simpl. eapply Hcr. constructor.
       + eapply Hcr.
-      + eapply Hcr.
+      + eapply Hcr. rewrite (Fn_syn_type_const (1+i) (1+n)); done.
       + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia. 
       + intros. dist_later_intro. eapply dist_le; first apply Hshr. lia.
   Qed.
@@ -177,7 +182,7 @@ Section fixpoint_def.
     _ty_has_op_type := (Fn 0).(_ty_has_op_type _);
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;
     ty_shr := F_ty_own_val_ty_shr_fixpoint.2;
-    ty_sidecond := (Fn 0).(ty_sidecond);
+    ty_sidecond := (Fn 1).(ty_sidecond);
     ty_ghost_drop := (Fn 0).(ty_ghost_drop);
     ty_lfts := (Fn 0).(ty_lfts);
     ty_wf_E := (Fn 1).(ty_wf_E);
@@ -199,7 +204,8 @@ Section fixpoint_def.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?. 
-      simpl. erewrite Fn_sidecond_const. eapply ty_own_val_sidecond.
+      simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_own_val_sidecond.
+      lia.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
@@ -207,7 +213,8 @@ Section fixpoint_def.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?. 
-      simpl. erewrite Fn_sidecond_const. eapply ty_shr_sidecond.
+      simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_shr_sidecond.
+      lia.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
@@ -293,7 +300,7 @@ Section fixpoint_def.
     type_fixpoint.(ty_syn_type) = (Fn 0).(ty_syn_type).
   Proof. done. Qed.
   Lemma type_fixpoint_sidecond :
-    type_fixpoint.(ty_sidecond) = (Fn 0).(ty_sidecond).
+    type_fixpoint.(ty_sidecond) = (Fn 1).(ty_sidecond).
   Proof. done. Qed.
 
   Lemma type_fixpoint_own_val_unfold v π r : 
@@ -301,9 +308,10 @@ Section fixpoint_def.
   Proof.
     apply equiv_dist => n. rewrite type_fixpoint_own_val_unfold_n.
     rewrite Fn_succ.
-    eapply Hcr.
+    eapply Hcr. constructor.
     - rewrite type_fixpoint_syn_type. erewrite Fn_syn_type_const; done.
-    - rewrite type_fixpoint_sidecond. erewrite Fn_sidecond_const; done.
+    - rewrite type_fixpoint_sidecond. rewrite (Fn_sidecond_const (2+n)); first done.
+      lia.
     - intros. dist_later_intro.
       rewrite type_fixpoint_own_val_unfold_n.
       eapply dist_later_lt.
@@ -320,9 +328,10 @@ Section fixpoint_def.
   Proof.
     apply equiv_dist => n. rewrite type_fixpoint_shr_unfold_n.
     rewrite Fn_succ.
-    eapply Hcr.
+    eapply Hcr. constructor.
     - rewrite type_fixpoint_syn_type. erewrite Fn_syn_type_const; done.
-    - rewrite type_fixpoint_sidecond. erewrite Fn_sidecond_const; done.
+    - rewrite type_fixpoint_sidecond.
+      rewrite (Fn_sidecond_const (2+n)); first done. lia.
     - intros. dist_later_2_intro.
       rewrite type_fixpoint_own_val_unfold_n.
       simpl. eapply dist_later_lt.
@@ -390,10 +399,14 @@ Proof.
     (* here we need that T2 is also non-expansive *)
     by rewrite IH.
   - simpl. destruct (Heq inhabitant). done.
-  - simpl. destruct (Heq inhabitant). done.
+  - simpl. unfold Fn; simpl.
+    eapply ty_sidecond_ne.
+    rewrite -(Heq type_inhabitant).
+    rewrite Heq. done.
   - intros. simpl. destruct (Heq inhabitant). done.
   - intros. simpl. destruct (Heq inhabitant). done.
   - intros. simpl. unfold Fn; simpl. 
+    eapply ty_wf_E_ne.
     (* uses that T2 is also non-expansive *)
     rewrite -(Heq type_inhabitant).
     rewrite Heq. done.
@@ -464,7 +477,7 @@ Section fixpoint.
   Proof. 
     iSplit; last iSplit; last iSplit.
     - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
-    - iModIntro. simpl. rewrite type_ctr_sidecond. eauto.
+    - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
     - iModIntro. iIntros (π v). rewrite type_fixpoint_own_val_unfold. eauto.
     - iModIntro. iIntros (???). rewrite type_fixpoint_shr_unfold. eauto.
   Qed.
@@ -472,7 +485,7 @@ Section fixpoint.
   Proof. 
     iSplit; last iSplit; last iSplit.
     - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
-    - iModIntro. simpl. rewrite type_ctr_sidecond. eauto.
+    - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
     - iModIntro. iIntros (π v). rewrite type_fixpoint_own_val_unfold. eauto.
     - iModIntro. iIntros (???). rewrite type_fixpoint_shr_unfold. eauto.
   Qed.
@@ -503,44 +516,10 @@ Section fixpoint.
        + 
    *)
   (* Next step: 
-     - ex_inv:
-        - we need to make sure that it makes up a lifetime morphism. 
-       How do we show that Vec is contractive? 
-       + In that case, we need to show that it is contractive in one of the type args.
-         * I want to reduce that to a condition on the predicates. 
-         * i.e. a condition on how I'm able to use the type parameters, I guess.
-
-       Definition ExInvNe := ...
-       Definition ExInvContractive := ...
-
-       We can also use stuff in the nested type.
-       I want to show: 
-        ??
-
-       So, first: I need an OFE structure on ex_inv_def. 
-       - Then I can have a notion of contractiveness and non-expansiveness.
-       - 
-       
-       What if I have multiple arguments?
-       I cannot just say that I have a multivariable thing, as I don't have an isolated notion of distance, so can't use the Proper mechanism.
-       Instead, I have to explicitly quantify over functors for all the type parameters, require that they are non-expansive. Then I can say that the whole thing is contractive.
-       Or in case it doesn't introduce a guard itself, require that they are contractive for the whole thing to be contractive.
-
-
-
-
-
-           
-
-     TODO: do I have a problem with the Shared case? Do I also need a guard there?
-     + probably yes. I'm referring to the recursive case, after all, and need that to be contractive.
-     + I could wrap it in a guarded predicate or so. Strip via later credits.
-     + Why don't I already have a later there? shared reference has a later after all
-       I guess other nested Shared cases have a later. But OfTy doesn't.
-     TypeContractive means I can only use recursive sharing predicate under a later, so clearly it doesn't work like that.
-          
+     
 
 
    *)
 
 End fixpoint.
+

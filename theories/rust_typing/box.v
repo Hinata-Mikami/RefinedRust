@@ -152,6 +152,30 @@ Section box.
   Qed.
 End box.
 
+Section contractive.
+  Context `{!typeGS Σ}.
+
+  Global Instance box_type_contractive {rt : Type} : TypeContractive (box (rt:=rt)).
+  Proof.
+    constructor; simpl.
+    - done.
+    - eapply ty_lft_morph_make_id; done.
+    - rewrite ty_has_op_type_unfold/=. done.
+    - done.
+    - admit. 
+    - intros n ty ty' ?.
+      intros π ? v. rewrite /ty_own_val/=.
+      solve_type_proper.
+    - intros n ty ty' ?.
+      intros κ' π ? l. rewrite /ty_shr/=.
+      solve_type_proper.
+  (*Qed.*)
+  Abort.
+
+  (*Global Instance box_type_ne {rt : Type} : TypeNonExpansive (box (rt:=rt)).*)
+  (*Proof. apply type_contractive_type_ne, _. Qed.*)
+End contractive.
+
 Section subtype.
   Context `{!typeGS Σ}.
 

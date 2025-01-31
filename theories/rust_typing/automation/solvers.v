@@ -123,7 +123,7 @@ Ltac interpret_rust_type_core lfts env ty ::=
   | RSTStruct ?sls ?tys =>
       refine (struct_t sls ltac:(interpret_rust_type_list lfts env tys))
   | RSTArray ?len ?ty =>
-      fail 2 "not implemented"
+      refine (array_t len _); interpret_rust_type_core lfts env ty
   | RSTRef ?mut ?κ ?ty =>
       (* TODO not great *)
       let κ := eval vm_compute in (lfts !! κ) in

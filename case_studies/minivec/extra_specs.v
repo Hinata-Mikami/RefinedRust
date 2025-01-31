@@ -12,3 +12,51 @@ Section resolve_ghost.
   Global Instance resolve_ghost_Vec_T_inst π E L rm l rs : ResolveGhost π E L rm true l (◁ Vec_inv_t T_ty)%I (Owned false) (#rs) :=
     λ T, i2p (resolve_ghost_Vec_T π E L rm l rs T).
 End resolve_ghost.
+
+Section Vec_inv_t_ne.
+  Context `{!refinedrustGS Σ}.
+
+  Global Instance RawVec_inv_t_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, RawVec_inv_t (T ty)).
+  Proof.
+    intros.
+    apply ex_inv_def_contractive.
+    - constructor.
+      + simpl. apply direct_lft_morph_make_const.
+      + solve_type_proper.
+      + solve_type_proper.
+    - apply _. 
+  Qed.
+  Global Instance RawVec_inv_t_ne {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, RawVec_inv_t (T ty)).
+  Proof. apply _. Qed.
+End Vec_inv_t_ne. 
+
+Section Vec_inv_t_ne.
+  Context `{!refinedrustGS Σ}.
+
+  Global Instance Vec_inv_t_contr {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, Vec_inv_t (T ty)).
+  Proof.
+    intros X.
+    apply ex_inv_def_contractive.
+    - constructor.
+      + simpl. apply ty_lft_morphism_to_direct.
+        apply X.
+      + solve_proper_prepare.
+        repeat solve_proper_step.
+        rewrite type_dist2_st. done.
+      + solve_proper_prepare.
+        repeat solve_proper_step.
+        erewrite type_ne_syn_type; last apply type_dist_later2_st.
+        done.
+    - apply _.
+  Qed.
+  Global Instance Vec_inv_t_ne {rt1 T_rt} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, Vec_inv_t (T ty)).
+  Proof. apply _. Qed.
+End Vec_inv_t_ne. 

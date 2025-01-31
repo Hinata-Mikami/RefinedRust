@@ -501,94 +501,213 @@ Section structs.
     - iPureIntro. done.
   Qed.
 
-  Global Instance struct_t_ne {rts : list Type} n : Proper ((=) ==> (dist n) ==> (dist n)) (struct_t (rts := rts)).
+  (* TODO move *)
+  Lemma HTForall_cons_inv {A} {F : A → Type} (x : A) (xl : list A) (X : F x) (Xs : hlist F xl) (P : ∀ X : A, F X → Type) :
+    HTForall P (X +:: Xs) →
+    (P _ X * HTForall P Xs)%type.
   Proof.
-    intros ? sls -> tys1 tys2 Htys.
-    constructor.
-    - done.
-    - move => ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot. rewrite !fmap_length !hzipl_length.
+    inversion 1. subst.
+    repeat revert select (existT _ _ = existT _ _).
+    intros Heq1 Heq2.
+    apply existT_inj in Heq1.
+    apply existT_inj in Heq2.
+    subst. done.
+  Qed.
+
+  Global Instance struct_t_ne {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+    (*(∀ st, length (sls st) = length (sls st')) →*)
+    HTypeNonExpansive Ts →
+    TypeNonExpansive (λ ty, struct_t (sls (st_of ty)) (Ts ty)).
+  Proof.
+    intros HT. constructor.
+    - simpl. intros ?? ->. done.
+    - apply ty_lft_morphism_of_direct.
+      simpl.
+      destruct HT as [HT' Hne ->].
+      induction rts as [ | rt1 rts IH].
+      + inv_hlist HT'. intros _. simpl.
+        apply direct_lft_morph_make_const.
+      + inv_hlist HT' => T1 HT.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. apply direct_lft_morphism_app; last by apply IH.
+        eapply ty_lft_morphism_to_direct.
+        apply Hne1.
+    - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
+      rewrite !fmap_length !hzipl_length.
+      rewrite Hst.
       apply and_proper => Hsl.
+      destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
       + f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
         erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
         rewrite -field_members_length in Hsl.
-        elim: (field_members (sl_members sl)) ots rts tys1 tys2 Htys Hsl Hots => //; csimpl.
-        { intros ots rts tys1 tys2 Heq Hlen. destruct rts; last done.
-          inv_hlist tys1. inv_hlist tys2. intros _ ?. destruct ots; done. }
-        move => [m ?] s IH ots rts tys1 tys2 Htys Hlen1 Hlen2.
-        destruct rts as [ | rt rts]; first done. destruct ots as [ | ot ots]; first done.
-        inv_hlist tys1 => ty1 tys1. inv_hlist tys2 => ty2 tys2.
-        intros Heq.
-        eapply HForallTwo_cons_inv in Heq as [Hty1_ty2 Heq].
+
+        elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
+        { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
+          inv_hlist Ts'. intros _. destruct ots; done. }
+        move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
+        destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros Ha.
+        apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
         simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
-        { f_equiv; first apply Hty1_ty2.
-          f_equiv. apply Hty1_ty2. }
+        { solve_type_proper. }
         eapply IH; done.
       + f_equiv. intros sl. apply and_proper => Halg.
         apply and_proper => Heq. subst ly.
         rewrite -!Forall_fold_right.
         specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen.
         rewrite -field_members_length Hsl in Hlen. clear Hsl.
-        elim: (field_members (sl_members sl)) rts tys1 tys2 Htys Hlen => //; csimpl.
-        { intros rts tys1 tys2 Heq Hlen. destruct rts; last done.
-          inv_hlist tys1; inv_hlist tys2; intros _. done. }
-        move => [m ?] s IH rts tys1 tys2 Heq Hlen.
-        destruct rts as [ | rt rts]; first done.
-        inv_hlist tys1 => ty1 tys1. inv_hlist tys2 => ty2 tys2 Heq.
-        apply HForallTwo_cons_inv in Heq as [Hty1_ty2 Heq].
+        elim: (field_members (sl_members sl)) rts Ts' Hne Hlen => //; csimpl.
+        { intros rts Ts' Hne Hlen. destruct rts; last done.
+          inv_hlist Ts'. intros _. done. }
+        move => [m ?] s IH rts Ts' Hne Hlen.
+        destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne2]%HTForall_cons_inv.
         rewrite !Forall_cons/=; f_equiv.
-        { f_equiv; f_equiv; f_equiv; last apply Hty1_ty2.
-          f_equiv; apply Hty1_ty2. }
+        { solve_type_proper. }
         eapply IH; first done. by simplify_eq/=.
-    - iIntros (π r v). rewrite /ty_own_val/=.
+    - simpl. intros ?? ->.  done.
+    - simpl. done.
+    - intros n ty ty' Hd.
+      destruct HT as [Ts' Hne ->].
+      iIntros (π r v). rewrite /ty_own_val/=.
       f_equiv => sl.
+      rewrite type_dist_st.
       rewrite /struct_own_el_val.
       apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
       f_equiv.
       specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
       rewrite -field_members_length -Hlen in Hlen2. clear Hlen.
-      elim: (sl_members sl) rts tys1 tys2 r Htys Hlen2 v => //. intros [m ?] s IH rts tys1 tys2 r Htys Hlen v; csimpl.
+      elim: (sl_members sl) rts Ts' Hne r Hlen2 v => //.
+      intros [m ?] s IH rts Ts' Hne r Hlen v; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt rts]; first done.
-        inv_hlist tys1 => ty1 tys1. inv_hlist tys2 => ty2 tys2.
-        intros [Hty1_ty2 Heq]%HForallTwo_cons_inv.
-        simpl. f_equiv. { rewrite /struct_own_el_val. do 8 f_equiv; [f_equiv | ]; apply Hty1_ty2. }
+      + destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. f_equiv. { rewrite /struct_own_el_val. solve_type_proper. }
         eapply IH; first done. simpl in Hlen. lia.
       + f_equiv. eapply IH; done.
-    - iIntros (κ π r l). rewrite /ty_shr /= /struct_own_el_shr/=.
+    - intros n ty ty' Hd.
+      destruct HT as [Ts' Hne ->].
+      iIntros (κ π r l). rewrite /ty_shr /= /struct_own_el_shr/=.
+      rewrite type_dist2_st.
       f_equiv => sl. apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
       f_equiv.
       f_equiv.
       specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
       rewrite -field_members_length -Hlen in Hlen2. clear Hlen.
-      elim: (sl_members sl) rts tys1 tys2 r Htys Hlen2 l => //. intros [m ly] s IH rts tys1 tys2 r Htys Hlen l; csimpl.
+      elim: (sl_members sl) rts Ts' Hne r Hlen2 l => //.
+      intros [m ly] s IH rts Ts' Hne r Hlen l; csimpl.
       destruct m; simpl in *.
-      + destruct rts as [ | rt rts]; first done.
-        inv_hlist tys1 => ty1 tys1. inv_hlist tys2 => ty2 tys2.
-        intros [Hty1_ty2 Heq]%HForallTwo_cons_inv.
-        simpl. f_equiv. { do 8 f_equiv; [f_equiv | | ]; apply Hty1_ty2. }
+      + destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. f_equiv. { solve_type_proper. }
         cbn. setoid_rewrite <-shift_loc_assoc_nat.
         eapply IH; first done. simpl in Hlen. lia.
       + f_equiv. setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
-    - done.
-    - done.
-    - done.
-    - rewrite /ty_lfts /=.
-      induction rts as [ | rt rts IH] in tys1, tys2, Htys |-*; inv_hlist tys1; inv_hlist tys2; simpl; first done.
-      intros ty2 tys2 ty1 tys1 [Hty1_ty2 Heq]%HForallTwo_cons_inv.
-      f_equiv. { apply Hty1_ty2. }
-      eapply IH; done.
-    - rewrite /ty_wf_E /=.
-      induction rts as [ | rt rts IH] in tys1, tys2, Htys |-*; inv_hlist tys1; inv_hlist tys2; simpl; first done.
-      intros ty2 tys2 ty1 tys1 [Hty1_ty2 Heq]%HForallTwo_cons_inv.
-      f_equiv. { apply Hty1_ty2. }
-      eapply IH; done.
   Qed.
-  Global Instance struct_t_proper {rts : list Type} : Proper ((=) ==> (≡) ==> (≡)) (struct_t (rts := rts)).
+
+  (* For this to be contractive, the [sls] must not depend on the recursive type *)
+  (* TODO reduce duplication? *)
+  Global Instance struct_t_contr {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+    TCDone (∀ st1 st2, sls st1 = sls st2) →
+    HTypeContractive Ts →
+    TypeContractive (λ ty, struct_t (sls (st_of ty)) (Ts ty)).
   Proof.
-    move => ??->  tys1 tys2 Htys.
-    apply equiv_dist. rewrite equiv_dist in Htys. intros n. by rewrite Htys.
+    intros Hst HT. constructor.
+    - simpl. intros. erewrite Hst. done.
+    - apply ty_lft_morphism_of_direct.
+      simpl.
+      destruct HT as [HT' Hne ->].
+      induction rts as [ | rt1 rts IH].
+      + inv_hlist HT'. intros _. simpl.
+        apply direct_lft_morph_make_const.
+      + inv_hlist HT' => T1 HT.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. apply direct_lft_morphism_app; last by apply IH.
+        eapply ty_lft_morphism_to_direct.
+        apply Hne1.
+    - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
+      rewrite !fmap_length !hzipl_length.
+      erewrite Hst. 
+      apply and_proper => Hsl.
+      destruct HT as [Ts' Hne ->].
+      destruct ot as [ | | | sl ots | ly | ] => //=.
+      + f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
+        erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
+        rewrite -field_members_length in Hsl.
+
+        elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
+        { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
+          inv_hlist Ts'. intros _. destruct ots; done. }
+        move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
+        destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros Ha.
+        apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
+        simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
+        { solve_type_proper. }
+        eapply IH; done.
+      + f_equiv. intros sl. apply and_proper => Halg.
+        apply and_proper => Heq. subst ly.
+        rewrite -!Forall_fold_right.
+        specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen.
+        rewrite -field_members_length Hsl in Hlen. clear Hsl.
+        elim: (field_members (sl_members sl)) rts Ts' Hne Hlen => //; csimpl.
+        { intros rts Ts' Hne Hlen. destruct rts; last done.
+          inv_hlist Ts'. intros _. done. }
+        move => [m ?] s IH rts Ts' Hne Hlen.
+        destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne2]%HTForall_cons_inv.
+        rewrite !Forall_cons/=; f_equiv.
+        { solve_type_proper. }
+        eapply IH; first done. by simplify_eq/=.
+    - simpl. intros. erewrite Hst. done.
+    - simpl. done.
+    - intros n ty ty' Hd.
+      destruct HT as [Ts' Hne ->].
+      iIntros (π r v). rewrite /ty_own_val/=.
+      f_equiv => sl.
+      rewrite /struct_own_el_val.
+      erewrite Hst.
+      apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
+      f_equiv.
+      specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
+      rewrite -field_members_length -Hlen in Hlen2. clear Hlen.
+      elim: (sl_members sl) rts Ts' Hne r Hlen2 v => //.
+      intros [m ?] s IH rts Ts' Hne r Hlen v; csimpl.
+      destruct m; simpl in *.
+      + destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. f_equiv. { rewrite /struct_own_el_val. solve_type_proper. }
+        eapply IH; first done. simpl in Hlen. lia.
+      + f_equiv. eapply IH; done.
+    - intros n ty ty' Hd.
+      destruct HT as [Ts' Hne ->].
+      iIntros (κ π r l). rewrite /ty_shr /= /struct_own_el_shr/=.
+      erewrite Hst.
+      f_equiv => sl. apply sep_ne_proper => Halg. apply sep_ne_proper => Hlen.
+      f_equiv.
+      f_equiv.
+      specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
+      rewrite -field_members_length -Hlen in Hlen2. clear Hlen.
+      elim: (sl_members sl) rts Ts' Hne r Hlen2 l => //.
+      intros [m ly] s IH rts Ts' Hne r Hlen l; csimpl.
+      destruct m; simpl in *.
+      + destruct rts as [ | rt1 rts]; first done.
+        inv_hlist Ts' => T1 Ts'.
+        intros [Hne1 Hne]%HTForall_cons_inv.
+        simpl. f_equiv. { solve_type_proper. }
+        cbn. setoid_rewrite <-shift_loc_assoc_nat.
+        eapply IH; first done. simpl in Hlen. lia.
+      + f_equiv. setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
   Qed.
+
 End structs.
 
 Global Hint Unfold struct_t : tyunfold.

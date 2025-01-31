@@ -192,7 +192,7 @@ pub struct RawVec<T> {
 
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
 #[rr::exists("cap" : "nat", "l" : "loc", "len" : "nat", "els")]
-#[rr::invariant(#type "l" : "els" @ "array_t (maybe_uninit {T}) cap")]
+#[rr::invariant(#type "l" : "els" @ "array_t cap (maybe_uninit {T})")]
 #[rr::invariant("Hxs" : "xs = project_vec_els len els")]
 #[rr::invariant("Hlook_1": "∀ i, (0 ≤ i < len)%nat → els !! i = Some (#(Some (xs !!! i)))")]
 #[rr::invariant("Hlook_2": "∀ i, (len ≤ i < cap)%nat → els !! i = Some (#None)")]
@@ -227,7 +227,7 @@ impl<T> RawVec<T> {
 
     #[rr::exists("l" : "loc", "cap" : "nat")]
     #[rr::ensures("cap = if decide (size_of_st {st_of T} = 0%nat) then Z.to_nat (MaxInt usize_t) else 0%nat")]
-    #[rr::ensures(#type "l" : "(replicate cap #None)" @ "array_t (maybe_uninit {T}) cap")]
+    #[rr::ensures(#type "l" : "(replicate cap #None)" @ "array_t cap (maybe_uninit {T})")]
     #[rr::returns("(l, cap)")]
     pub fn new() -> Self {
         // !0 is usize::MAX. This branch should be stripped at compile time.
@@ -245,10 +245,10 @@ impl<T> RawVec<T> {
     #[rr::args("(#(l, cap), γ)")]
     #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * cap) ≤ MaxInt isize_t)%Z")]
     #[rr::requires("Hnot_sz": "(size_of_st {st_of T} > 0)%Z")]
-    #[rr::requires(#type "l" : "xs" @ "array_t (maybe_uninit {T}) cap")]
+    #[rr::requires(#type "l" : "xs" @ "array_t cap (maybe_uninit {T})")]
     #[rr::exists("new_cap" : "nat", "l'" : "loc")]
     #[rr::observe("γ": "(l', new_cap)")]
-    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) #None)" @ "array_t (maybe_uninit {T}) new_cap")]
+    #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) #None)" @ "array_t new_cap (maybe_uninit {T})")]
     #[rr::ensures("new_cap > cap")]
     #[rr::ensures("(size_of_array_in_bytes {st_of T} new_cap ≤ MaxInt isize_t)%Z")]
     pub fn grow(&mut self) {
@@ -299,7 +299,7 @@ impl<T> Vec<T> {
     // private function, take an unfolded type
     // we do not move ownership out, but return an alias to the ptr
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref (Vec_ty {T}) {'a}")]
+    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref {'a} (Vec_ty {T})")]
     #[rr::returns("l" @ "alias_ptr_t")]
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
@@ -307,7 +307,7 @@ impl<T> Vec<T> {
 
     // private function, take an unfolded type
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref (Vec_ty {T}) {'a}")]
+    #[rr::args(#raw "#(-[#(l, cap); #len])" @ "shr_ref {'a} (Vec_ty {T})")]
     #[rr::returns("cap")]
     fn cap<'a>(&'a self) -> usize {
         self.buf.cap

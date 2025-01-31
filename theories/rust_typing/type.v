@@ -2,7 +2,7 @@ From iris.bi Require Export fractional.
 From iris.base_logic.lib Require Export invariants na_invariants.
 From caesium Require Export proofmode notation syntypes.
 From lrust.lifetime Require Export frac_borrow.
-From refinedrust Require Export base util pinned_borrows lft_contexts gvar_refinement memcasts.
+From refinedrust Require Export base util hlist pinned_borrows lft_contexts gvar_refinement memcasts.
 From caesium Require Import loc.
 From iris Require Import options.
 
@@ -70,7 +70,7 @@ Record type `{!typeGS Σ} (rt : Type) := {
   (* [ty_wf_E] is a set of inclusion constraints on lifetimes that need to hold for the type to make sense. *)
   ty_wf_E : elctx;
 
-  (** Given the concrete layout algorithm at runtime, we can get a layout *)
+(** Given the concrete layout algorithm at runtime, we can get a layout *)
   ty_has_layout π r v :
     ty_own_val π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout ty_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
 
@@ -517,10 +517,10 @@ Section ofe.
     ty_shr ty2 κ π r l.
   Proof. intros [_ _ _ -> _]; eauto. Qed.
 
-  Global Instance ty_sidecond_ne n:
+  Instance ty_sidecond_ne n:
     Proper (dist n ==> dist n) ty_sidecond.
   Proof. intros ?? EQ. apply EQ. Qed.
-  Global Instance ty_sidecond_proper : Proper ((≡) ==> (≡)) ty_sidecond.
+  Instance ty_sidecond_proper : Proper ((≡) ==> (≡)) ty_sidecond.
   Proof. intros ?? EQ. apply EQ. Qed.
   Lemma ty_sidecond_entails ty1 ty2:
     ty1 ≡@{type rt} ty2 →
@@ -528,19 +528,19 @@ Section ofe.
     ty_sidecond ty2.
   Proof. intros [? ? ? ? ? -> ]; eauto. Qed.
 
-  Global Instance ty_syn_type_ne n : Proper (dist n ==> eq) ty_syn_type.
+  Instance ty_syn_type_ne n : Proper (dist n ==> eq) ty_syn_type.
   Proof. intros ?? EQ. apply EQ. Qed.
-  Global Instance ty_syn_type_proper : Proper ((≡) ==> eq) ty_syn_type.
-  Proof. intros ?? EQ. apply EQ. Qed.
-
-  Global Instance ty_wf_E_ne n : Proper (dist n ==> eq) ty_wf_E.
-  Proof. intros ?? EQ. apply EQ. Qed.
-  Global Instance ty_wf_E_proper : Proper ((≡) ==> eq) ty_wf_E.
+  Instance ty_syn_type_proper : Proper ((≡) ==> eq) ty_syn_type.
   Proof. intros ?? EQ. apply EQ. Qed.
 
-  Global Instance ty_lfts_ne n : Proper (dist n ==> eq) ty_lfts.
+  Instance ty_wf_E_ne n : Proper (dist n ==> eq) ty_wf_E.
   Proof. intros ?? EQ. apply EQ. Qed.
-  Global Instance ty_lfts_proper : Proper ((≡) ==> eq) ty_lfts.
+  Instance ty_wf_E_proper : Proper ((≡) ==> eq) ty_wf_E.
+  Proof. intros ?? EQ. apply EQ. Qed.
+
+  Instance ty_lfts_ne n : Proper (dist n ==> eq) ty_lfts.
+  Proof. intros ?? EQ. apply EQ. Qed.
+  Instance ty_lfts_proper : Proper ((≡) ==> eq) ty_lfts.
   Proof. intros ?? EQ. apply EQ. Qed.
 
 
@@ -749,32 +749,6 @@ Section lft_morph.
   .
   Existing Class TyLftMorphism.
 
-  Lemma elctx_interp_app E1 E2 :
-    elctx_interp (E1 ++ E2) ⊣⊢ elctx_interp E1 ∗ elctx_interp E2.
-  Proof.
-    rewrite /elctx_interp.
-    rewrite big_sepL_app. done.
-  Qed.
-
-  Lemma lft_incl_proper κ1 κ2 κ3 κ4 :
-    (⊢ lft_equiv κ1 κ3) →
-    (⊢ lft_equiv κ2 κ4) →
-    (κ1 ⊑ κ2) ⊣⊢ (κ3 ⊑ κ4).
-  Proof.
-    iIntros (Ha Hb).
-    iPoseProof Ha as "[Ha1 Ha2]".
-    iPoseProof Hb as "[Hb1 Hb2]".
-    iSplit.
-    - iIntros "Hc".
-      iApply (lft_incl_trans with "Ha2").
-      iApply (lft_incl_trans with "Hc").
-      done.
-    - iIntros "Hc".
-      iApply (lft_incl_trans with "Ha1").
-      iApply (lft_incl_trans with "Hc").
-      done.
-  Qed.
-
   Global Instance TyLftMorphism_compose {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
     TyLftMorphism F1 →
     TyLftMorphism F2 →
@@ -956,7 +930,6 @@ Section lft_morph.
       rewrite elctx_interp_app elctx_interp_nil left_id//.
       f_equiv.
       rewrite /ty_outlives_E /lfts_outlives_E /elctx_interp/elctx_elt_interp big_sepL_fmap/=.
-      Search lft_intersect_list.
       generalize (ty_lfts ty) as l.
       induction l as [ | ? l IH]; simpl.
       { iSplit; last eauto. iIntros "_". iApply lft_incl_static. }
@@ -978,6 +951,153 @@ Section lft_morph.
   Qed.
 End lft_morph.
 
+Definition dist_later_2 {A : Type} `{!Dist A} (n : nat) (a b : A) : Prop :=
+  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
+Global Typeclasses Opaque dist_later_2.
+Lemma dist_later_2_lt {A : Type} `{!Dist A} (n : nat) (a b : A) :
+  dist_later_2 n a b →
+  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
+Proof.
+  done.
+Qed.
+Lemma dist_later_2_intro {A : Type} `{!Dist A} (n : nat) (a b : A) :
+  (∀ m, (S m < n)%nat → a ≡{m}≡ b) →
+  dist_later_2 n a b.
+Proof. done. Qed.
+Ltac dist_later_2_intro :=
+  refine (dist_later_2_intro _ _ _ _);
+  intros ??.
+
+Class TypeDist `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+  type_dist_st :
+    ty1.(ty_syn_type) = ty2.(ty_syn_type);
+  type_dist_sc :
+    ty1.(ty_sidecond) ≡ ty2.(ty_sidecond);
+  (*type_dist_ot : *)
+    (*(∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt);*)
+  type_dist_own_val :
+    (∀ π r v, (v ◁ᵥ{π} r @ ty1 ≡{n}≡ v ◁ᵥ{π} r @ ty2)%I);
+  type_dist_shr :
+    (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty1 ≡{n}≡ l ◁ₗ{π, κ} r @ ty2)%I);
+}.
+Class TypeDist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+  type_dist2_st :
+    ty1.(ty_syn_type) = ty2.(ty_syn_type);
+  type_dist2_sc :
+    ty1.(ty_sidecond) ≡ ty2.(ty_sidecond);
+  (*type_dist_ot : *)
+    (*(∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt);*)
+  type_dist2_own_val :
+    (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty1)%I (v ◁ᵥ{π} r @ ty2)%I);
+  type_dist2_shr :
+    (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty1 ≡{n}≡ l ◁ₗ{π, κ} r @ ty2)%I);
+}.
+Class TypeDistLater `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+  type_dist_later_st :
+    ty1.(ty_syn_type) = ty2.(ty_syn_type);
+  type_dist_later_sc :
+    ty1.(ty_sidecond) ≡ ty2.(ty_sidecond);
+  (*type_dist_ot : *)
+    (*(∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt);*)
+  type_dist_later_own_val :
+    (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty1)%I (v ◁ᵥ{π} r @ ty2)%I);
+  type_dist_later_shr :
+    (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty1)%I (l ◁ₗ{π, κ} r @ ty2)%I);
+}.
+Class TypeDistLater2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+  type_dist_later2_st :
+    ty1.(ty_syn_type) = ty2.(ty_syn_type);
+  type_dist_later2_sc :
+    ty1.(ty_sidecond) ≡ ty2.(ty_sidecond);
+  (*type_dist_ot : *)
+    (*(∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt);*)
+  type_dist_later2_own_val :
+    (∀ π r v, dist_later_2 n (v ◁ᵥ{π} r @ ty1)%I (v ◁ᵥ{π} r @ ty2)%I);
+  type_dist_later2_shr :
+    (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty1)%I (l ◁ₗ{π, κ} r @ ty2)%I);
+}.
+Global Instance type_dist_later `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) :
+  TypeDist (Nat.pred n) ty1 ty2 → TypeDistLater n ty1 ty2.
+Proof.
+  intros [? ? ? ?].
+  constructor; [done.. | | ].
+  - intros. dist_later_intro. eapply dist_le; first done. lia.
+  - intros. dist_later_intro. eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist2_dist_later `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TCFastDone (TypeDist2 m ty1 ty2) → CanSolve (n ≤ m) → TypeDistLater n ty1 ty2.
+Proof.
+  rewrite /TCFastDone/CanSolve.
+  intros [? ? ? ?] Hle. constructor; [done.. | | ].
+  - intros. dist_later_intro. eapply dist_later_lt; first done. lia.
+  - intros. dist_later_intro. eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist_le `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TCFastDone (TypeDist n ty1 ty2) → CanSolve (m ≤ n) → TypeDist m ty1 ty2 | 100.
+Proof.
+  rewrite /CanSolve. intros [? ? ? ?] Hle. constructor; [done.. | | ].
+  - intros. eapply dist_le; first done. lia.
+  - intros. eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist_dist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) :
+  TypeDist n ty1 ty2 → TypeDist2 n ty1 ty2 | 50.
+Proof.
+  intros [? ? ? ?].
+  constructor; [done.. | | ].
+  - intros. dist_later_intro. eapply dist_le; first done. lia.
+  - intros. done.
+Qed.
+Lemma type_dist2_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TypeDist2 n ty1 ty2 →
+  CanSolve (m < n) →
+  TypeDist m ty1 ty2.
+Proof.
+  rewrite /CanSolve. intros [? ? ? ?] Hle. constructor; [done.. | | ].
+  - intros. eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist2_le `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TCFastDone (TypeDist2 n ty1 ty2) →
+  CanSolve (m ≤ n) →
+  TypeDist2 m ty1 ty2 | 100.
+Proof.
+  rewrite /CanSolve. intros [? ? ? ?] Hle. constructor; [done.. | | ].
+  - intros. dist_later_intro.
+    eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist2_later `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) :
+  TypeDist2 (Nat.pred n) ty1 ty2 → TypeDistLater2 n ty1 ty2.
+Proof.
+  intros [? ? ? ?].
+  constructor; [done.. | | ].
+  - intros. dist_later_2_intro.
+    eapply dist_later_lt; first done. lia.
+  - intros. dist_later_intro.
+    eapply dist_le; first done. lia.
+Qed.
+Global Instance type_dist_later2_dist2 `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TCFastDone (TypeDistLater2 n ty1 ty2) →
+  CanSolve (m < n) →
+  TypeDist2 m ty1 ty2.
+Proof.
+  unfold CanSolve. intros [? ? ? ?] Hle.
+  constructor; [done.. | | ].
+  - intros. dist_later_intro.
+    eapply dist_later_2_lt; first done. lia.
+  - intros. eapply dist_later_lt; first done. lia.
+Qed.
+Lemma type_dist_later_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
+  TypeDistLater n ty1 ty2 →
+  CanSolve (m < n) →
+  TypeDist m ty1 ty2.
+Proof.
+  rewrite /CanSolve.
+  intros [? ? ? ?] ?. constructor; [done.. | | ].
+  - intros. eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_later_lt; first done. lia.
+Qed.
+
 Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
   type_ne_syn_type :
     ∀ ty ty',
@@ -997,11 +1117,14 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
 
   type_ne_has_op_type :
     ∀ ty ty',
+      ty_syn_type ty = ty_syn_type ty' →
       (∀ ot mt, ty_has_op_type ty ot mt ↔ ty_has_op_type ty' ot mt) →
       (∀ ot mt, ty_has_op_type (F ty) ot mt ↔ ty_has_op_type (F ty') ot mt);
 
   type_ne_sidecond :
     ∀ ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
+      ty_sidecond ty ≡ ty_sidecond ty' →
       ty_sidecond (F ty) ≡ ty_sidecond (F ty');
 
   type_ne_ghost_drop :
@@ -1011,38 +1134,14 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
 
   type_ne_own_val :
     ∀ n ty ty',
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, (v ◁ᵥ{π} r @ ty ≡{n}≡ v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist n ty ty' →
       (∀ π r v, (v ◁ᵥ{π} r @ F ty ≡{n}≡ v ◁ᵥ{π} r @ F ty')%I);
 
-      (* TODO *)
   type_ne_shr :
     ∀ n ty ty',
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist2 n ty ty' →
       (∀ κ π r l, (l ◁ₗ{π, κ} r @ F ty ≡{n}≡ l ◁ₗ{π, κ} r @ F ty')%I);
 }.
-
-Definition dist_later_2 {A : Type} `{!Dist A} (n : nat) (a b : A) : Prop :=
-  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
-Global Typeclasses Opaque dist_later_2.
-Lemma dist_later_2_lt {A : Type} `{!Dist A} (n : nat) (a b : A) :
-  dist_later_2 n a b →
-  ∀ m, (S m < n)%nat → a ≡{m}≡ b.
-Proof.
-  done.
-Qed.
-Lemma dist_later_2_intro {A : Type} `{!Dist A} (n : nat) (a b : A) :
-  (∀ m, (S m < n)%nat → a ≡{m}≡ b) →
-  dist_later_2 n a b.
-Proof. done. Qed.
-Ltac dist_later_2_intro :=
-  refine (dist_later_2_intro _ _ _ _);
-  intros ??.
 
 Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
   type_ctr_syn_type :
@@ -1063,6 +1162,7 @@ Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type
 
   type_ctr_sidecond :
     ∀ ty ty',
+      ty.(ty_syn_type) = ty'.(ty_syn_type) →
       ty_sidecond (F ty) ≡ ty_sidecond (F ty');
 
   type_ctr_ghost_drop :
@@ -1072,26 +1172,62 @@ Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type
 
   type_ctr_own_val :
     ∀ n ty ty',
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
-      (∀ π r v, dist_later n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty ≡{n}≡ l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDist2 n ty ty' →
       (∀ π r v, (v ◁ᵥ{π} r @ F ty ≡{n}≡ v ◁ᵥ{π} r @ F ty')%I);
 
-  (* TODO *)
   type_ctr_shr :
     ∀ n ty ty',
-      ty.(ty_syn_type) = ty'.(ty_syn_type) →
-      ty.(ty_sidecond) ≡ ty'.(ty_sidecond) →
       (* This needs two laters for the fixpoint to go through *)
-      (∀ π r v, dist_later_2 n (v ◁ᵥ{π} r @ ty)%I (v ◁ᵥ{π} r @ ty')%I) →
-      (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty)%I (l ◁ₗ{π, κ} r @ ty')%I) →
+      TypeDistLater2 n ty ty' →
       (∀ κ π r l, (l ◁ₗ{π, κ} r @ F ty ≡{n}≡ l ◁ₗ{π, κ} r @ F ty')%I);
 }.
 
 (** Properties about [TypeNonExpansive] and [TypeContractive] *)
 Section properties.
   Context `{!typeGS Σ}.
+
+  Global Instance type_dist_use_ne {rt1 rt2} (n : nat) (ty1 ty2 : type rt1) (F : type rt1 → type rt2) :
+    TypeNonExpansive F → TypeDist n ty1 ty2 → TypeDist n (F ty1) (F ty2).
+  Proof.
+    intros Hne [????].
+    constructor.
+    - apply Hne. done.
+    - apply Hne; done.
+    - intros. apply Hne; done.
+    - intros. apply Hne. constructor; [done | done | | done].
+      intros. dist_later_intro. eapply dist_le; first done. lia.
+  Qed.
+  Global Instance type_dist2_use_ne {rt1 rt2} (n : nat) (ty1 ty2 : type rt1) (F : type rt1 → type rt2) :
+    TypeNonExpansive F → TypeDist2 n ty1 ty2 → TypeDist2 n (F ty1) (F ty2).
+  Proof.
+    intros Hne [????].
+    constructor.
+    - apply Hne. done.
+    - apply Hne; done.
+    - intros. dist_later_intro.
+      apply Hne. constructor; [done.. | | ].
+      + intros. eapply dist_later_lt; first done. done.
+      + intros. eapply dist_le; first done. lia.
+    - intros. apply Hne; done.
+  Qed.
+  Global Instance type_dist_later_use_ne {rt1 rt2} (n : nat) (ty1 ty2 : type rt1) (F : type rt1 → type rt2) :
+    TypeNonExpansive F → TypeDistLater n ty1 ty2 → TypeDistLater n (F ty1) (F ty2).
+  Proof.
+    intros Hne Hd.
+    pose proof Hd as [????].
+    constructor.
+    - apply Hne. done.
+    - apply Hne; done.
+    - intros. dist_later_intro.
+      apply Hne.
+      eapply type_dist_later_dist; first done.
+      unfold CanSolve; lia.
+    - intros. dist_later_intro.
+      apply Hne.
+      apply type_dist_dist2.
+      eapply type_dist_later_dist; first done.
+      unfold CanSolve; lia.
+  Qed.
 
   Global Instance type_contractive_type_ne {rt1 rt2} (F : type rt1 → type rt2) :
     TypeContractive F → TypeNonExpansive F.
@@ -1100,248 +1236,198 @@ Section properties.
     - done.
     - done.
     - done.
+    - intros ?? Hst' Hsc'. apply Hsc. done.
     - done.
-    - done.
-    - intros n ty ty' Hst' Hsc' Hv' Hshr'.
-      eapply Hv; [done.. | | ].
-      + intros.  by eapply dist_dist_later.
-      + done.
-    - intros n ty ty' Hst' Hsc' Hv' Hshr'.
-      eapply Hshr; [done.. | | ].
-      + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia.
-      + intros. by eapply dist_dist_later.
+    - intros n ty ty' Hd.
+      eapply Hv. by apply type_dist_dist2.
+    - intros n ty ty' Hd.
+      eapply Hshr.
+      (* TODO instance too weak *)
+      eapply type_dist2_later.
+      eapply type_dist2_le. { apply _. }
+      unfold CanSolve. lia.
   Qed.
 
   Global Instance type_ne_ne_compose {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
     TypeNonExpansive F1 → TypeNonExpansive F2 → TypeNonExpansive (F2 ∘ F1).
   Proof.
-    intros [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    intros Hne1 Hne2.
+    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
+    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
-    - intros ?? Ha. by eapply Hot2, Hot1.
+    - intros ?? ? Ha. eapply Hot2.
+      { by eapply Hst1. }
+      by eapply Hot1.
     - naive_solver.
     - naive_solver.
+    - intros n ?? Hd.
+      eapply Hv2. apply _.
     - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hv2; [naive_solver.. | | ].
-      + eapply Hv1; naive_solver.
-      + eapply Hshr1; [ done.. | | done].
-        intros. by eapply dist_dist_later.
-    - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hshr2; [naive_solver.. | | ].
-      + intros. dist_later_intro.
-        eapply Hv1; [done.. | | ].
-        * intros. by eapply dist_later_lt.
-        * intros. eapply dist_le; first done. lia.
-      + eapply Hshr1; done.
+      eapply Hshr2. apply _.
+  Qed.
+  Global Instance type_ne_ne_compose' {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
+    TypeNonExpansive F1 → TypeNonExpansive F2 → TypeNonExpansive (λ ty, F2 (F1 ty)).
+  Proof.
+    intros. by eapply type_ne_ne_compose.
   Qed.
 
   Global Instance type_contractive_compose_right {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
     TypeContractive F1 → TypeNonExpansive F2 → TypeContractive (F2 ∘ F1).
   Proof.
-    intros [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    intros Hc1 Hne2.
+    pose proof Hc1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
+    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
     - intros ?? Ha. by eapply Hot2, Hot1.
     - naive_solver.
     - naive_solver.
-    - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hv2; [naive_solver.. | | ].
+    - intros n ?? Hd.
+      eapply Hv2. constructor.
+      + naive_solver.
+      + apply Hsc1. apply Hd.
       + eapply Hv1; naive_solver.
-      + eapply Hshr1; [ done.. | | ].
-        * intros. dist_later_2_intro.
-          eapply dist_later_lt; first done. lia.
-        * intros. by eapply dist_dist_later.
-    - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hshr2; [naive_solver.. | | ].
+      + intros. eapply Hshr1.
+        apply type_dist2_later.
+        eapply type_dist2_le; first done. unfold CanSolve; lia.
+    - intros n ?? Hd.
+      eapply Hshr2. constructor.
+      + naive_solver.
+      + apply Hsc1. apply Hd.
       + intros. dist_later_intro.
-        eapply Hv1; [done.. | | ].
-        * intros. dist_later_intro.
-          eapply dist_later_2_lt; first done. lia.
-        * intros. eapply dist_later_lt; first done. lia.
+        eapply Hv1.
+        eapply type_dist_later2_dist2; first done.
+        unfold CanSolve; lia.
       + eapply Hshr1; done.
   Qed.
 
   Global Instance type_contractive_compose_left {rt1 rt2 rt3} (F1 : type rt1 → type rt2) (F2 : type rt2 → type rt3) :
     TypeNonExpansive F1 → TypeContractive F2 → TypeContractive (F2 ∘ F1).
   Proof.
-    intros [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1] [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    intros Hne1 Hc2.
+    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
+    pose proof Hc2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
     - intros ?? Ha. eapply Hot2.
     - naive_solver.
     - naive_solver.
-    - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hv2; [naive_solver.. | | ].
-      + intros. dist_later_intro.
-        eapply Hv1; [naive_solver.. | | ].
-        * intros. eapply dist_later_lt; first done. lia.
-        * intros. eapply dist_le; first done. lia.
-      + eapply Hshr1; done.
-    - intros n ?? Hst' Hsc' Hv' Hshr'.
-      eapply Hshr2; [naive_solver.. | | ].
+    - intros n ?? Hd. eapply Hv2. apply _.
+    - intros n ?? Hd.
+      eapply Hshr2.
+      constructor.
+      + apply Hst1. apply Hd.
+      + apply Hsc1; apply Hd.
       + intros. dist_later_2_intro.
-        eapply Hv1; [done.. | | ].
-        * intros. eapply dist_later_2_lt; first done. lia.
-        * intros. eapply dist_later_lt; first done. lia.
+        eapply Hv1.
+        eapply type_dist2_dist; first eapply (type_dist_later2_dist2 _ (S m)); first done.
+        all: unfold CanSolve; lia.
       + intros. dist_later_intro.
-        eapply Hshr1; [done.. | | ].
-        * intros. dist_later_intro.
-          eapply dist_later_2_lt; first done. lia.
-        * intros. eapply dist_later_lt; first done. lia.
+        eapply Hshr1.
+        eapply type_dist_later2_dist2; first done. unfold CanSolve; lia.
+  Qed.
+
+  Global Instance TypeNe_const {rt1 rt2} (ty : type rt2) :
+    TypeNonExpansive (λ _ : type rt1, ty).
+  Proof.
+    constructor.
+    - done.
+    - eapply ty_lft_morph_make_const; done.
+    - done.
+    - done.
+    - eauto.
+    - eauto.
+    - eauto.
+  Qed.
+
+  Global Instance TypeNe_id {rt1} :
+    TypeNonExpansive (rt1:=rt1) id.
+  Proof.
+    constructor.
+    - done.
+    - eapply ty_lft_morph_make_id; done.
+    - done.
+    - done.
+    - eauto.
+    - intros ??? Ha. apply Ha.
+    - intros ??? Ha. apply Ha.
+  Qed.
+
+  Global Instance TypeContr_const {rt1 rt2} (ty : type rt2) :
+    TypeContractive (λ _ : type rt1, ty).
+  Proof.
+    constructor.
+    - done.
+    - eapply ty_lft_morph_make_const; done.
+    - done.
+    - done.
+    - eauto.
+    - eauto.
+    - eauto.
   Qed.
 End properties.
 
-
-(*
-(** Special metric for type-nonexpansive and Type-contractive functions. *)
-Section type_dist2.
+(** Point-wise non-expansive type lists *)
+Class HTypeNonExpansive `{!typeGS Σ} {rt} {rts : list Type}
+  (Ts : type rt → hlist type rts) : Type := mk_htype_ne {
+    HTypeNe_Ts' : hlist (λ rt', type rt → type rt') rts;
+    HTypeNe_Ne : HTForall (λ _, TypeNonExpansive) HTypeNe_Ts';
+    HtypeNe_Eq : Ts = happly HTypeNe_Ts';
+}.
+Arguments mk_htype_ne {_ _ _ _}.
+Class HTypeContractive `{!typeGS Σ} {rt} {rts : list Type}
+  (Ts : type rt → hlist type rts) : Type := mk_htype_contr {
+    HTypeContr_Ts' : hlist (λ rt', type rt → type rt') rts;
+    HTypeContr_Ne : HTForall (λ _, TypeContractive) HTypeContr_Ts';
+    HtypeContr_Eq : Ts = happly HTypeContr_Ts';
+}.
+Arguments mk_htype_contr {_ _ _ _}.
+Section ne.
   Context `{!typeGS Σ}.
-  (* Metrics all assume one fixed refinement type *)
-  Context {rt : Type}.
 
-  (* Size and shr are n-equal, but own is only n-1-equal.
-     We need this to express what shr has to satisfy on a Type-NE-function:
-     It may only depend contractively on own. *)
-  (* TODO: Find a better name for this metric. *)
-  Inductive type_dist2 (n : nat) (ty1 ty2 : type rt) : Prop :=
-    Type_dist2 :
-      ty1.(ty_syn_type) = ty2.(ty_syn_type) →
-      ty1.(ty_lfts) = ty2.(ty_lfts) →
-      ty1.(ty_wf_E) = ty2.(ty_wf_E) →
-      (@inhabitant rt (ty1.(ty_rt_inhabited))) = (@inhabitant rt (ty2.(ty_rt_inhabited))) →
-      (∀ ot mt, ty_has_op_type ty1 ot mt ↔ ty_has_op_type ty2 ot mt) →
-      (∀ π r vs, dist_later n (ty1.(ty_own_val) π r vs) (ty2.(ty_own_val) π r vs)) →
-      (∀ κ π r l, ty1.(ty_shr) κ π r l ≡{n}≡ ty2.(ty_shr) κ π r l) →
-      (ty1.(ty_sidecond) ≡{n}≡ ty2.(ty_sidecond)) →
-      (∀ π r, ty1.(ty_ghost_drop) π r ≡{n}≡ ty2.(ty_ghost_drop) π r) →
-      type_dist2 n ty1 ty2.
-
-  Global Instance type_dist2_equivalence n : Equivalence (type_dist2 n).
+  Global Instance HTypeNonExpansive_nil {rt} :
+    HTypeNonExpansive (λ _ : type rt, +[]).
   Proof.
-    constructor.
-    - by constructor.
-    - intros ?? Heq; constructor; symmetry; eapply Heq.
-    - intros ??? Heq1 Heq2; constructor; etrans; (eapply Heq1 || eapply Heq2).
+    refine (mk_htype_ne _ +[] _ _).
+    - constructor.
+    - done.
+  Qed.
+  Global Instance HTypeNonExpansive_cons {rt rt1 rts} (F : type rt → type rt1) (Fs : type rt → hlist type rts) :
+    HTypeNonExpansive Fs →
+    TypeNonExpansive F →
+    HTypeNonExpansive (λ ty : type rt, (F ty) +:: (Fs ty)).
+  Proof.
+    intros Hne1 Hne.
+    destruct Hne1 as [Fs' ? ?].
+    refine (mk_htype_ne _ (F +:: Fs') _ _).
+    - constructor; done.
+    - simpl. naive_solver.
   Qed.
 
-  Definition type_dist2_later (n : nat) ty1 ty2 : Prop :=
-    match n with O => True | S n => type_dist2 n ty1 ty2 end.
-  Global Arguments type_dist2_later !_ _ _ /.
-
-  Global Instance type_dist2_later_equivalence n :
-    Equivalence (type_dist2_later n).
-  Proof. destruct n as [|n]; first by split. apply type_dist2_equivalence. Qed.
-
-  (* The hierarchy of metrics:
-     dist n → type_dist2 n → dist_later n → type_dist2_later n. *)
-  Lemma type_dist_dist2 n ty1 ty2 :
-    dist n ty1 ty2 → type_dist2 n ty1 ty2.
-  Proof. intros EQ. split; intros; try apply dist_dist_later; apply EQ. Qed.
-  Lemma type_dist2_dist_later n ty1 ty2 :
-    type_dist2 n ty1 ty2 → dist_later n ty1 ty2.
+  Global Instance HTypeContractive_nil {rt} :
+    HTypeContractive (λ _ : type rt, +[]).
   Proof.
-    intros EQ. eapply dist_later_fin_iff. destruct n; first done.
-    split; intros.
-    all: try (apply EQ; si_solver).
-    all: apply dist_S, EQ.
+    refine (mk_htype_contr _ +[] _ _).
+    - constructor.
+    - done.
   Qed.
-  Lemma type_later_dist2_later n ty1 ty2 :
-    dist_later n ty1 ty2 → type_dist2_later n ty1 ty2.
+  Global Instance HTypeContractive_cons {rt rt1 rts} (F : type rt → type rt1) (Fs : type rt → hlist type rts) :
+    HTypeContractive Fs →
+    TypeContractive F →
+    HTypeContractive (λ ty : type rt, (F ty) +:: (Fs ty)).
   Proof.
-    destruct n; first done. rewrite dist_later_fin_iff. exact: type_dist_dist2.
+    intros Hne1 Hne.
+    destruct Hne1 as [Fs' ? ?].
+    refine (mk_htype_contr _ (F +:: Fs') _ _).
+    - constructor; done.
+    - simpl. naive_solver.
   Qed.
-  Lemma type_dist2_dist n ty1 ty2 :
-    type_dist2 (S n) ty1 ty2 → dist n ty1 ty2.
-  Proof.
-    move=>/type_dist2_dist_later. rewrite dist_later_fin_iff. done.
-  Qed.
-  Lemma type_dist2_S n ty1 ty2 :
-    type_dist2 (S n) ty1 ty2 → type_dist2 n ty1 ty2.
-  Proof.
-    intros. apply type_dist_dist2, type_dist2_dist. done.
-  Qed.
+End ne.
 
-  Lemma ty_syn_type_type_dist n : Proper (type_dist2 n ==> eq) ty_syn_type.
-  Proof. intros ?? EQ. apply EQ. Qed.
-  Lemma ty_own_val_type_dist n:
-    Proper (type_dist2 (S n) ==> eq ==> eq ==> eq ==> dist n) ty_own_val.
-  Proof. intros ?? EQ ??-> ??-> ??->. apply EQ. si_solver. Qed.
-  Lemma ty_shr_type_dist n :
-    Proper (type_dist2 n ==> eq ==> eq ==> eq ==> eq ==> dist n) ty_shr.
-  Proof. intros ?? EQ ??-> ??-> ??-> ??->. apply EQ. Qed.
-End type_dist2.
-
-(** Type-nonexpansive and Type-contractive functions. *)
-(* Note that TypeContractive is neither weaker nor stronger than Contractive, because
-   (a) it allows the dependency of own on shr to be non-expansive, and
-   (b) it forces the dependency of shr on own to be doubly-contractive.
-   It would be possible to weaken this so that no double-contractivity is required.
-   However, then it is no longer possible to write TypeContractive as just a
-   Proper, which makes it significantly more annoying to use.
-   For similar reasons, TypeNonExpansive is incomparable to NonExpansive.
-*)
-Notation TypeNonExpansive T := (∀ n, Proper (type_dist2 n ==> type_dist2 n) T).
-Notation TypeContractive T := (∀ n, Proper (type_dist2_later n ==> type_dist2 n) T).
-
-Section type_contractive.
-  Context `{!typeGS Σ}.
-  Context {rt1 rt2 rt3 : Type}.
-
-  Lemma type_ne_dist_later (T : type rt1 → type rt2) :
-    TypeNonExpansive T → ∀ n, Proper (type_dist2_later n ==> type_dist2_later n) T.
-  Proof. intros Hf [|n]; last exact: Hf. hnf. by intros. Qed.
-
-  (* From the above, it easily follows that TypeNonExpansive functions compose with
-     TypeNonExpansive and with TypeContractive functions. *)
-  Lemma type_ne_ne_compose (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
-    TypeNonExpansive T1 → TypeNonExpansive T2 → TypeNonExpansive (T1 ∘ T2).
-  Proof. intros NE1 NE2 ? ???; simpl. apply: NE1. exact: NE2. Qed.
-
-  Lemma type_contractive_compose_right (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
-    TypeContractive T1 → TypeNonExpansive T2 → TypeContractive (T1 ∘ T2).
-  Proof. intros HT1 HT2 ? ???. apply: HT1. exact: type_ne_dist_later. Qed.
-
-  Lemma type_contractive_compose_left (T1 : type rt2 → type rt3) (T2 : type rt1 → type rt2) :
-    TypeNonExpansive T1 → TypeContractive T2 → TypeContractive (T1 ∘ T2).
-  Proof. intros HT1 HT2 ? ???; simpl. apply: HT1. exact: HT2. Qed.
-
-  (* Show some more relationships between properties. *)
-  Lemma type_contractive_type_ne (T : type rt1 → type rt2) :
-    TypeContractive T → TypeNonExpansive T.
-  Proof.
-    intros HT ? ???.
-    eapply type_dist_dist2, dist_later_S, type_dist2_dist_later, HT. done.
-  Qed.
-
-  Lemma type_contractive_ne (T : type rt1 → type rt2) :
-    TypeContractive T → NonExpansive T.
-  Proof.
-    intros HT ? ???. apply dist_later_S, type_dist2_dist_later, HT, type_dist_dist2. done.
-  Qed.
-
-  (* This lemma from RustBelt does not hold in our model, as the syn_type of all simple types is not the same.
-     (In RustBelt, all have size 1).
-     This lemma only holds for sufficiently equal types, which only differ in the ownership predicate.*)
-  Global Instance ty_of_st_type_ne n :
-    Proper (dist_later n ==> type_dist2 n) (ty_of_st rt1).
-  Proof. Abort.
-End type_contractive.
- *)
-
-(* Tactic automation. *)
-(*
-Ltac f_type_equiv :=
-  first [ ((eapply ty_size_type_dist || eapply ty_shr_type_dist || eapply ty_own_type_dist); try reflexivity) |
-          match goal with | |- @dist_later ?A _ ?n ?x ?y =>
-                            eapply dist_later_fin_iff; destruct n as [|n]; [exact I|change (@dist A _ n x y)]
-          end ].
-Ltac solve_type_proper :=
-  constructor;
-  solve_proper_core ltac:(fun _ => f_type_equiv || f_contractive_fin || f_equiv).
-  *)
 
 (** ** Subtyping etc. *)
 Definition type_incl `{!typeGS Σ} {rt1 rt2}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
@@ -1777,3 +1863,135 @@ Section copy.
       apply copy_shr_acc.
   Qed.
 End copy.
+
+
+(** Lifetime morphisms which are not composable, but work for any projections into a lifetime list + elctx *)
+(* This is very convenient to use in order to show that something is a [TyLftMorphism]. *)
+Section lft_mor.
+Context `{!typeGS Σ}.
+
+(* TODO deduplicate def *)
+(* The functor has constant lifetime requirements *)
+Record DirectLftMorphismConst {rt1} (Flfts : type rt1 → list lft) (FE : type rt1 → elctx) : Type := mk_direct_lft_morph_const {
+  direct_lft_morph_const_α : lft;
+  direct_lft_morph_const_E : elctx;
+  direct_lft_morph_const_lfts :
+    ⊢ ∀ ty, lft_equiv (lft_intersect_list (Flfts ty)) direct_lft_morph_const_α;
+  direct_lft_morph_const_wf_E :
+    ∀ ty, elctx_interp (FE ty) ≡ elctx_interp direct_lft_morph_const_E;
+}.
+Global Arguments mk_direct_lft_morph_const {_ _ _}.
+Global Arguments direct_lft_morph_const_lfts {_ _ _ _}.
+Global Arguments direct_lft_morph_const_wf_E {_ _ _ _}.
+
+(* An application of the functor adds some lifetime requirements which are essentially constant *)
+Record DirectLftMorphismAdd {rt1} (Flfts : type rt1 → list lft) (FE : type rt1 → elctx) : Type := mk_direct_lft_morph_add {
+  direct_lft_morph_add_α : lft;
+  direct_lft_morph_add_E : elctx;
+  direct_lft_morph_add_βs : list lft;
+  direct_lft_morph_add_lfts :
+    ⊢ ∀ ty, lft_equiv (lft_intersect_list (Flfts ty)) (direct_lft_morph_add_α ⊓ lft_intersect_list ty.(ty_lfts));
+  direct_lft_morph_add_wf_E :
+    ∀ ty, elctx_interp (FE ty) ≡
+        (elctx_interp direct_lft_morph_add_E ∗ elctx_interp ty.(ty_wf_E) ∗
+          (* some requirements of lifetimes that the type has to outlive *)
+          [∗ list] β ∈ direct_lft_morph_add_βs, β ⊑ lft_intersect_list ty.(ty_lfts))%I;
+}.
+Global Arguments mk_direct_lft_morph_add {_ _ _}.
+
+Inductive DirectLftMorphism {rt1} (Flfts : type rt1 → list lft) (FE : type rt1 → elctx) : Type :=
+| direct_lft_morph_const (_ : DirectLftMorphismConst Flfts FE)
+| direct_lft_morph_add (_ : DirectLftMorphismAdd Flfts FE)
+.
+
+Lemma ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
+  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)) →
+  TyLftMorphism F.
+Proof.
+  intros [Hm | Hm].
+  - apply ty_lft_morph_const.
+    destruct Hm as [α E Hα HE].
+    refine (mk_lft_morph_const α E _ _); done.
+  - destruct Hm as [α E βs Hα HE].
+    apply ty_lft_morph_add.
+    refine (mk_lft_morph_add α E βs _ _); done.
+Qed.
+Lemma ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
+  TyLftMorphism F →
+  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)).
+Proof.
+  intros [Hm | Hm].
+  - apply direct_lft_morph_const.
+    destruct Hm as [α E Hα HE].
+    refine (mk_direct_lft_morph_const α E _ _); done.
+  - destruct Hm as [α E βs Hα HE].
+    apply direct_lft_morph_add.
+    refine (mk_direct_lft_morph_add α E βs _ _); done.
+Qed.
+
+Lemma direct_lft_morphism_app {rt1} (Flft1 Flft2 : type rt1 → list lft) (FE1 FE2 : type rt1 → elctx) :
+  DirectLftMorphism Flft1 FE1 →
+  DirectLftMorphism Flft2 FE2 →
+  DirectLftMorphism (λ ty, Flft1 ty ++ Flft2 ty) (λ ty, FE1 ty ++ FE2 ty).
+Proof.
+  intros [Hl1 | Hl1] [Hl2 | Hl2].
+  - destruct Hl1 as [α1 E1 Hα1 HE1].
+    destruct Hl2 as [α2 E2 Hα2 HE2].
+    apply direct_lft_morph_const.
+    refine (mk_direct_lft_morph_const (α1 ⊓ α2) (E1 ++ E2) _ _).
+    + iIntros (ty). rewrite lft_intersect_list_app.
+      iApply lft_equiv_intersect; done.
+    + intros ty. rewrite !elctx_interp_app.
+      rewrite HE1 HE2. done.
+  - destruct Hl1 as [α1 E1 Hα1 HE1].
+    destruct Hl2 as [α2 E2 βs2 Hα2 HE2].
+    apply direct_lft_morph_add.
+    refine (mk_direct_lft_morph_add (α1 ⊓ α2) (E1 ++ E2) βs2 _ _).
+    + iIntros (ty). rewrite lft_intersect_list_app.
+      iApply lft_equiv_trans.
+      { iApply lft_equiv_intersect; [iApply Hα1 |  iApply Hα2]. }
+      rewrite assoc. iApply lft_equiv_refl.
+    + intros ty. rewrite elctx_interp_app.
+      rewrite HE1 HE2. rewrite elctx_interp_app assoc. done.
+  - destruct Hl1 as [α1 E1 βs1 Hα1 HE1].
+    destruct Hl2 as [α2 E2 Hα2 HE2].
+    apply direct_lft_morph_add.
+    refine (mk_direct_lft_morph_add (α1 ⊓ α2) (E1 ++ E2) βs1 _ _).
+    + iIntros (ty). rewrite lft_intersect_list_app.
+      iApply lft_equiv_trans.
+      { iApply lft_equiv_intersect; [iApply Hα1 |  iApply Hα2]. }
+      rewrite -assoc. rewrite [lft_intersect_list _ ⊓ _]comm assoc.
+      iApply lft_equiv_refl.
+    + intros ty. rewrite elctx_interp_app.
+      rewrite HE1 HE2. rewrite elctx_interp_app.
+      rewrite -!assoc.
+      iSplit; iIntros "(? & ? & ? & ?)"; iFrame.
+  - destruct Hl1 as [α1 E1 βs1 Hα1 HE1].
+    destruct Hl2 as [α2 E2 βs2 Hα2 HE2].
+    apply direct_lft_morph_add.
+    refine (mk_direct_lft_morph_add (α1 ⊓ α2) (E1 ++ E2) (βs1 ++ βs2) _ _).
+    + iIntros (ty). rewrite lft_intersect_list_app.
+      iApply lft_equiv_trans.
+      { iApply lft_equiv_intersect; [iApply Hα1 |  iApply Hα2]. }
+      rewrite -assoc. rewrite [lft_intersect_list _ ⊓ _]comm.
+      rewrite -assoc.
+      rewrite assoc.
+      iApply lft_equiv_intersect; first iApply lft_equiv_refl.
+      iApply lft_equiv_sym. iApply lft_intersect_idempotent.
+    + intros ty. rewrite elctx_interp_app.
+      rewrite HE1 HE2. rewrite elctx_interp_app.
+      rewrite -!assoc.
+      iSplit.
+      * iIntros "(? & ? & ? & ? & ? & ?)". iFrame.
+      * iIntros "(? & ? & #? & ? & ?)". iFrame. iFrame "#".
+Qed.
+
+Lemma direct_lft_morph_make_const {rt} κs E :
+  DirectLftMorphism (λ _ : type rt, κs) (λ _, E).
+Proof.
+  constructor.
+  apply (mk_direct_lft_morph_const (lft_intersect_list κs) E).
+  - iIntros (_). iApply lft_equiv_refl.
+  - done.
+Qed.
+End lft_mor.

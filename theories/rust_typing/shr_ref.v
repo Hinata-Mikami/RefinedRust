@@ -123,20 +123,8 @@ Section shr_ref.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
-      intros π r v. rewrite /ty_own_val/=.
-      do 11 f_equiv.
-      { done. }
-      { by rewrite Hsc. }
-      do 3 f_equiv. done.
-    - intros n ty ty' Hst Hsc Hv Hshr.
-      intros κ' π r l. rewrite /ty_shr/=.
-      do 11 f_equiv.
-      { done. }
-      { by rewrite Hsc. }
-      do 2 f_equiv. f_contractive.
-      do 2 f_equiv.
-      eapply dist_later_lt; done.
+    - solve_type_proper.
+    - solve_type_proper.
   Qed.
 
   Global Instance shr_ref_type_ne {rt : Type} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).

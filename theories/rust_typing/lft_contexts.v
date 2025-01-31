@@ -97,6 +97,12 @@ Section lft_contexts.
     rewrite /elctx_interp.
     iIntros (?) "Ha". iApply big_sepL_submseteq; done.
   Qed.
+  Lemma elctx_interp_app E1 E2 :
+    elctx_interp (E1 ++ E2) ⊣⊢ elctx_interp E1 ∗ elctx_interp E2.
+  Proof.
+    rewrite /elctx_interp.
+    rewrite big_sepL_app. done.
+  Qed.
 
   (* Local lifetime contexts. *)
   (** The fraction_map for [κ] is stored at [γ]. *)
@@ -1385,7 +1391,7 @@ Section lft_equiv.
   Definition lft_equiv (κ1 κ2 : lft) : iProp Σ :=
     κ1 ⊑ κ2 ∧ κ2 ⊑ κ1.
 
-  Lemma lft_equiv_trans κ1 κ2 κ3 : 
+  Lemma lft_equiv_trans κ1 κ2 κ3 :
     lft_equiv κ1 κ2 -∗
     lft_equiv κ2 κ3 -∗
     lft_equiv κ1 κ3.
@@ -1406,15 +1412,15 @@ Section lft_equiv.
     iSplit; iApply lft_incl_refl.
   Qed.
 
-  Lemma lft_equiv_intersect κ1 κ2 κ3 κ4 : 
+  Lemma lft_equiv_intersect κ1 κ2 κ3 κ4 :
     lft_equiv κ1 κ2 -∗
     lft_equiv κ3 κ4 -∗
     lft_equiv (κ1 ⊓ κ3) (κ2 ⊓ κ4).
-  Proof. 
+  Proof.
     iIntros "#[??] #[??]". iSplit.
     all: iApply lft_intersect_mono; done.
   Qed.
-  Lemma lft_intersect_idempotent κ : 
+  Lemma lft_intersect_idempotent κ :
     ⊢ lft_equiv κ (κ ⊓ κ).
   Proof.
     iSplit.
@@ -1433,5 +1439,24 @@ Section lft_equiv.
     κ2 ⊑ κ1.
   Proof.
     iIntros "[_ $]".
+  Qed.
+
+  Lemma lft_incl_proper κ1 κ2 κ3 κ4 :
+    (⊢ lft_equiv κ1 κ3) →
+    (⊢ lft_equiv κ2 κ4) →
+    (κ1 ⊑ κ2) ⊣⊢ (κ3 ⊑ κ4).
+  Proof.
+    iIntros (Ha Hb).
+    iPoseProof Ha as "[Ha1 Ha2]".
+    iPoseProof Hb as "[Hb1 Hb2]".
+    iSplit.
+    - iIntros "Hc".
+      iApply (lft_incl_trans with "Ha2").
+      iApply (lft_incl_trans with "Hc").
+      done.
+    - iIntros "Hc".
+      iApply (lft_incl_trans with "Ha1").
+      iApply (lft_incl_trans with "Hc").
+      done.
   Qed.
 End lft_equiv.
