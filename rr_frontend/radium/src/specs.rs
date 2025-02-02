@@ -1982,9 +1982,23 @@ impl<'def> AbstractEnum<'def> {
         out
     }
 
-    /// Generate a function that maps the refinement to the variant type and refinement.
+    /// Generate a function that maps the refinement to the refinement type.
     /// Assumes that the generated code is placed in an environment where all the type parameters
     /// are available and the variant types have been instantiated already.
+    fn generate_enum_rt(&self) -> String {
+        let mut out = String::with_capacity(200);
+        let spec = &self.spec;
+
+        write!(out, "λ rfn, match rfn with ").unwrap();
+        for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+            write!(out, "| {} => _", coq::term::App::new(pat, apps.clone())).unwrap();
+        }
+        write!(out, " end").unwrap();
+
+        out
+    }
+
+    /// Generate a function that maps the refinement to the semantic type.
     fn generate_enum_ty(&self) -> String {
         let mut out = String::with_capacity(200);
         let spec = &self.spec;
@@ -1997,7 +2011,27 @@ impl<'def> AbstractEnum<'def> {
             // environment where all the type parametes are already instantiated.
             let ty = v.public_type_name();
 
-            write!(out, "| {} => existT _ ({ty}, {rfn})", coq::term::App::new(pat, apps.clone())).unwrap();
+            write!(out, "| {} => {ty}", coq::term::App::new(pat, apps.clone())).unwrap();
+        }
+        write!(out, " end").unwrap();
+
+        out
+    }
+
+    /// Generate a function that maps the refinement to the refinement.
+    fn generate_enum_rfn(&self) -> String {
+        let mut out = String::with_capacity(200);
+        let spec = &self.spec;
+
+        write!(out, "λ rfn, match rfn with ").unwrap();
+        for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+            let v = var.borrow();
+            let v = v.as_ref().unwrap();
+            // we can just use the plain name here, because we assume this is used in an
+            // environment where all the type parametes are already instantiated.
+            let ty = v.public_type_name();
+
+            write!(out, "| {} => {rfn}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
         write!(out, " end").unwrap();
 
@@ -2061,7 +2095,7 @@ impl<'def> AbstractEnum<'def> {
 
             write!(
                 out,
-                ": ConstructEnum {} \"{}\" ({}) {} {} := construct_enum _ _.\n",
+                ": ConstructEnum {} \"{}\" ({}) {} {} := construct_enum _ _ _ _ _.\n",
                 self.enum_def_name,
                 tag,
                 ty_def_term,
@@ -2069,6 +2103,9 @@ impl<'def> AbstractEnum<'def> {
                 coq::term::App::new(pat, args.clone())
             )
             .unwrap();
+            write!(out, "{indent}Next Obligation. done. Defined.\n").unwrap();
+            write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
+            write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
             write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
         }
 
@@ -2167,11 +2204,15 @@ impl<'def> AbstractEnum<'def> {
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
+               {indent}{indent}({})\n\
+               {indent}{indent}({})\n\
                {indent}{indent}_ _ _.\n",
             self.enum_def_name,
             self.spec.rfn_type,
             self.generate_enum_tag(),
+            self.generate_enum_rt(),
             self.generate_enum_ty(),
+            self.generate_enum_rfn(),
             self.generate_enum_match(),
             self.generate_lfts(),
             self.generate_wf_elctx(),

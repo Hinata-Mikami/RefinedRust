@@ -64,7 +64,7 @@ Section unit.
     destruct mt.
     - done.
     - destruct ot; try by destruct Hot. destruct Hot as [-> ->]. done.
-    - iApply (mem_cast_compat_unit (λ _, True)%I); eauto.
+- iApply (mem_cast_compat_unit (λ _, True)%I); eauto.
   Qed.
 
   Global Instance unit_copyable : Copyable unit_t.
@@ -514,6 +514,96 @@ Section structs.
     subst. done.
   Qed.
 
+  Lemma struct_t_own_val_dist {rts1 rts2} sls (Ts1 : hlist type rts1) (Ts2 : hlist type rts2) r1 r2 v π n :
+    Forall2 (λ '(existT _ (T1, r1)) '(existT _ (T2, r2)),
+        ∀ i fields v,
+          struct_own_el_val π i fields v r1 T1 ≡{n}≡ struct_own_el_val π i fields v r2 T2
+    ) (hpzipl _ Ts1 r1) (hpzipl _ Ts2 r2) →
+    (v ◁ᵥ{π} r1 @ struct_t sls Ts1)%I ≡{n}≡ (v ◁ᵥ{π} r2 @ struct_t sls Ts2)%I.
+  Proof.
+    intros Hel.
+    specialize (Forall2_length  _ _ _ Hel) as Hlen.
+    rewrite !hpzipl_length in Hlen.
+    rewrite /ty_own_val/=.
+    f_equiv => sl.
+    apply sep_ne_proper => Halg.
+    rewrite Hlen.
+    apply sep_ne_proper => Hlen'.
+    f_equiv.
+    specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
+    rewrite -field_members_length -Hlen' in Hlen2. clear Hlen'.
+
+    elim: (sl_members sl) rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen v => //.
+    intros [m ?] s IH rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen v; csimpl.
+    destruct m; simpl in *.
+    + destruct rts1 as [ | rt1 rts1]; destruct rts2 as [ | rt2 rts2]; try done.
+      inv_hlist Ts1 => T1 Ts1.
+      inv_hlist Ts2 => T2 Ts2.
+      destruct r1 as [r1' r1]. destruct r2 as [r2' r2].
+      simpl.
+      intros Hel. apply Forall2_cons_inv in Hel as [Hel1 Hel].
+      f_equiv. { apply Hel1. }
+      eapply IH.
+      { simpl in *. lia. }
+      { done. }
+      { simpl in *. lia. }
+    + f_equiv. eapply IH; done.
+  Qed.
+
+  Lemma struct_t_shr_dist {rts1 rts2} sls (Ts1 : hlist type rts1) (Ts2 : hlist type rts2) r1 r2 l π κ n :
+    Forall2 (λ '(existT _ (T1, r1)) '(existT _ (T2, r2)),
+        ∀ i fields l,
+          struct_own_el_shr π κ i fields l r1 T1 ≡{n}≡ struct_own_el_shr π κ i fields l r2 T2
+    ) (hpzipl _ Ts1 r1) (hpzipl _ Ts2 r2) →
+    (l ◁ₗ{π, κ} r1 @ struct_t sls Ts1)%I ≡{n}≡ (l ◁ₗ{π, κ} r2 @ struct_t sls Ts2)%I.
+  Proof.
+    intros Hel.
+    specialize (Forall2_length  _ _ _ Hel) as Hlen.
+    rewrite !hpzipl_length in Hlen.
+    rewrite /ty_shr/=.
+    f_equiv => sl.
+    apply sep_ne_proper => Halg.
+    rewrite Hlen.
+    apply sep_ne_proper => Hlen'.
+    f_equiv. f_equiv.
+    specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
+    rewrite -field_members_length -Hlen' in Hlen2. clear Hlen'.
+
+    enough (
+    ∀ m : nat,
+      ([∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts1 Ts1 r1)
+      struct_make_uninit_type, struct_own_el_shr π κ (m + i)
+                                              (sl_members sl) l
+                                              (projT2 ty).2
+                                              (projT2 ty).1)%I ≡{n}≡
+      ([∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts2 Ts2 r2)
+      struct_make_uninit_type, struct_own_el_shr π κ (m + i)
+                                                (sl_members sl) l
+                                                (projT2 ty).2
+                                                (projT2 ty).1)%I) as Hd.
+    { apply (Hd 0). }
+
+    intros m.
+    elim: (sl_members sl) m rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l => //.
+    intros [m ly] s IH k rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l; csimpl.
+    destruct m; simpl in *.
+    + destruct rts1 as [ | rt1 rts1]; destruct rts2 as [ | rt2 rts2]; try done.
+      inv_hlist Ts1 => T1 Ts1.
+      inv_hlist Ts2 => T2 Ts2.
+      destruct r1 as [r1' r1]. destruct r2 as [r2' r2].
+      simpl.
+      intros Hel. apply Forall2_cons_inv in Hel as [Hel1 Hel].
+      f_equiv. { apply Hel1. }
+      (*eapply (IH (S k)).*)
+      (*{ simpl in *. lia. }*)
+      (*{ done. }*)
+      (*{ simpl in *. lia. }*)
+      admit.
+    + f_equiv.
+      admit.
+      (*eapply IH; done.*)
+  Admitted.
+
   Global Instance struct_t_ne {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
     (*(∀ st, length (sls st) = length (sls st')) →*)
     HTypeNonExpansive Ts →
@@ -632,7 +722,7 @@ Section structs.
         apply Hne1.
     - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite !fmap_length !hzipl_length.
-      erewrite Hst. 
+      erewrite Hst.
       apply and_proper => Hsl.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
@@ -706,6 +796,14 @@ Section structs.
         cbn. setoid_rewrite <-shift_loc_assoc_nat.
         eapply IH; first done. simpl in Hlen. lia.
       + f_equiv. setoid_rewrite <-shift_loc_assoc_nat. apply IH; done.
+  Qed.
+
+  (* variant with constant sls *)
+  Global Instance struct_t_contr' {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+    HTypeContractive Ts →
+    TypeContractive (λ ty, struct_t sls (Ts ty)).
+  Proof.
+    intros. eapply (struct_t_contr (λ _, _)); done.
   Qed.
 
 End structs.

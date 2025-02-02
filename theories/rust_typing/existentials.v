@@ -68,9 +68,6 @@ Global Typeclasses Opaque mk_pers_ex_inv_def.
 
 
 
-(* TODO can I have something where I structurally descend into the term to prove non-expansiveness?
-*)
-(*Class TyPredNe `{!typeGS Σ} *)
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
@@ -102,6 +99,31 @@ Class ExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_
       ∀ π κ x y,
         (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
 }.
+
+Section insts.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_inv_def_contractive_const {rt X Y} (v : ex_inv_def X Y) :
+    ExInvDefContractive (λ _ : type rt, v).
+  Proof.
+    constructor.
+    - apply (direct_lft_morph_make_const _ _).
+    - eauto.
+    - eauto.
+  Qed.
+
+  Global Instance ex_inv_def_ne_const {rt X Y} (v : ex_inv_def X Y) :
+    ExInvDefNonExpansive (λ _ : type rt, v).
+  Proof.
+    constructor.
+    - apply (direct_lft_morph_make_const _ _).
+    - eauto.
+    - eauto.
+  Qed.
+
+  (* TODO: instance for showing non-expansiveness from contractiveness *)
+
+End insts.
 
 Section ex.
   Context `{!typeGS Σ}.
@@ -191,7 +213,7 @@ End ex.
 Section contr.
   Context `{!typeGS Σ}.
 
-  Lemma ex_inv_def_contractive {rt X Y : Type} `{!Inhabited Y}
+  Global Instance ex_inv_def_contractive {rt X Y : Type} `{!Inhabited Y}
     (P : type rt → ex_inv_def X Y)
     (F : type rt → type X) :
     ExInvDefContractive P →
@@ -223,7 +245,7 @@ Section contr.
   Admitted.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
-  Lemma ex_inv_def_ne {rt X Y : Type} `{!Inhabited Y}
+  Global Instance ex_inv_def_ne {rt X Y : Type} `{!Inhabited Y}
     (P : type rt → ex_inv_def X Y)
     (F : type rt → type X)
     :
@@ -256,20 +278,6 @@ Section contr.
       { apply HP; done. }
       apply HF; done.
   Admitted.
-
-  (* Now, I want to apply this to Vec.
-
-     TypeContractive Vec.
-     Show: TypeContractive (λ _, Vec_inner_t)
-     Show: ExInvDefContractive (λ T, Vec_inv_def T)
-      How do I show this?
-      - I guess i should have a solver.
-      - Need an instance for ltype_own OfTy being contractive/etc in ty.
-
-     Maybe we can have a PredContractive thing?
-  *)
-
-
 End contr.
 
 Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
