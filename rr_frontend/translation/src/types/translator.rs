@@ -588,6 +588,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
+    fn is_adt_variant_already_registered(&self, did: DefId) -> bool {
+        if self.lookup_adt_shim(did).is_some() {
+            return true;
+        }
+        let reg = self.variant_registry.borrow();
+        reg.get(&did).is_some()
+    }
+
     /// Lookup the literal for an ADT variant.
     fn lookup_adt_variant_literal(
         &self,
@@ -615,6 +623,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         } else {
             Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
         }
+    }
+
+    fn is_enum_already_registered(&self, did: DefId) -> bool {
+        if self.lookup_adt_shim(did).is_some() {
+            return true;
+        }
+        let reg = self.enum_registry.borrow();
+        reg.get(&did).is_some()
     }
 
     /// Lookup the literal for an enum.
@@ -778,9 +794,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
         let params = self.translate_generic_args(args, &mut *state)?;
-        let key = scope::AdtUseKey::new(variant_id, &params);
+        info!("struct use has params: {params:?}");
 
         if let STInner::InFunction(scope) = state {
+            let key = scope::AdtUseKey::new(variant_id, &params);
             let lit_uses = &mut scope.shim_uses;
 
             lit_uses
@@ -911,7 +928,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef,
     ) -> Result<(), TranslationError<'tcx>> {
-        if self.lookup_adt_variant_literal(ty.def_id).is_ok() {
+        if self.is_adt_variant_already_registered(ty.def_id) {
             // already there, that's fine.
             return Ok(());
         }
@@ -945,6 +962,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.variant_registry
             .borrow_mut()
             .insert(ty.def_id, (struct_name, &*struct_def_init, ty, false, None));
+        // TODO: can we also add the literal already?
 
         let translate_adt = || {
             let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
@@ -959,8 +977,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         };
 
         match translate_adt() {
-            Ok(struct_def) => {
+            Ok(mut struct_def) => {
                 let lit = self.intern_literal(struct_def.make_literal_type());
+
+                // check the deps
+                let is_rec_type = deps.contains(&adt.did());
+                if is_rec_type {
+                    // remove it
+                    deps.remove(&adt.did());
+                    struct_def.set_is_recursive();
+                }
 
                 // finalize the definition
                 // TODO for generating the semtype definition, we will also need to track dependencies
@@ -971,6 +997,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let mut deps_ref = self.adt_deps.borrow_mut();
                 deps_ref.insert(adt.did(), deps);
 
+                // also add the entry for the literal
                 let mut reg = self.variant_registry.borrow_mut();
                 let aref = reg.get_mut(&ty.def_id).unwrap();
                 aref.4 = Some(lit);
@@ -1047,7 +1074,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let field_spec =
                 parser.parse_field_spec(&f_name, &attrs).map_err(TranslationError::UnknownError)?;
 
-            info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
+            //info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
             builder.add_field(&f_name, field_spec.ty);
 
             if expect_refinement {
@@ -1257,7 +1284,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Register an enum ADT
     fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
-        if self.lookup_enum_literal(def.did()).is_ok() {
+        if self.is_enum_already_registered(def.did()) {
             // already there, that's fine.
             return Ok(());
         }

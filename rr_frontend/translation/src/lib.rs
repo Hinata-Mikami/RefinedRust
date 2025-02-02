@@ -55,6 +55,8 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
     let mut topo = TopologicalSort::new();
     let mut defs = HashSet::new();
 
+    info!("Ordering ADT defs: {deps:?}");
+
     for (did, referenced_dids) in deps {
         defs.insert(did);
         topo.insert(*did);
@@ -70,6 +72,7 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
         next.sort();
         if next.is_empty() {
             // dependency cycle detected
+            // TODO
             panic!("RefinedRust does not currently support mutually recursive types");
         }
         // only track actual definitions

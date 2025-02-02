@@ -7,10 +7,10 @@
 use core::cell::RefCell;
 /// Provides the Spec AST and utilities for interfacing with it.
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Formatter, Write};
+use std::fmt::{self, Debug, Formatter, Write};
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::{Add, Range};
-use std::{fmt, mem};
 
 use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
@@ -1171,8 +1171,6 @@ pub fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&
 pub struct AbstractVariant<'def> {
     /// the fields, closed under a surrounding scope
     fields: Vec<(String, Type<'def>)>,
-    /// the refinement type of the plain struct
-    rfn_type: coq::term::Type,
     /// the struct representation mode
     repr: StructRepr,
     /// the struct's name
@@ -1192,6 +1190,13 @@ impl<'def> AbstractVariant<'def> {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    fn rfn_type(&self) -> coq::term::Type {
+        coq::term::Type::PList(
+            "place_rfn".to_owned(),
+            self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
+        )
     }
 
     /// The core of generating the sls definition, without the section + context intro.
@@ -1282,7 +1287,7 @@ impl<'def> AbstractVariant<'def> {
         }
 
         // intro to main def
-        write!(out, "{}Definition {} : type ({}).\n", indent, self.plain_ty_name, self.rfn_type).unwrap();
+        write!(out, "{}Definition {} : type ({}).\n", indent, self.plain_ty_name, self.rfn_type()).unwrap();
         write!(
             out,
             "{indent}Proof using {} {}. exact ({}). Defined.\n",
@@ -1400,7 +1405,7 @@ where
 
 /// Description of a struct type.
 // TODO: mechanisms for resolving mutually recursive types.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct AbstractStruct<'def> {
     /// an optional invariant/ existential abstraction for this struct
     invariant: Option<InvariantSpec>,
@@ -1411,6 +1416,15 @@ pub struct AbstractStruct<'def> {
     /// names for the type parameters (for the Coq definitions)
     /// TODO: will make those options once we handle lifetime parameters properly.
     ty_params: Vec<LiteralTyParam>,
+
+    /// true iff this is recursive
+    is_recursive: bool,
+}
+
+impl<'def> Debug for AbstractStruct<'def> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "AbstractStruct<name={}>", self.variant_def.name)
+    }
 }
 
 pub type AbstractStructRef<'def> = &'def RefCell<Option<AbstractStruct<'def>>>;
@@ -1422,7 +1436,13 @@ impl<'def> AbstractStruct<'def> {
             invariant: None,
             variant_def,
             ty_params,
+            is_recursive: false,
         }
+    }
+
+    /// Register that this type is recursive.
+    pub fn set_is_recursive(&mut self) {
+        self.is_recursive = true;
     }
 
     /// Check if the struct has type parameters.
@@ -1534,13 +1554,7 @@ impl<'def> VariantBuilder<'def> {
         let plain_ty_name: String = format!("{}_ty", &self.name);
         let plain_rt_def_name: String = format!("{}_rt", &self.name);
 
-        let rfn_type = coq::term::Type::PList(
-            "place_rfn".to_owned(),
-            self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
-        );
-
         AbstractVariant {
-            rfn_type,
             fields: self.fields,
             repr: self.repr,
             name: self.name,
@@ -1559,6 +1573,7 @@ impl<'def> VariantBuilder<'def> {
             variant_def: variant,
             invariant: None,
             ty_params,
+            is_recursive: false,
         }
     }
 
