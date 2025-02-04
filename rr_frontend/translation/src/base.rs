@@ -6,6 +6,7 @@
 
 use derive_more::Display;
 use rr_rustc_interface::borrowck::consumers::RustcFacts;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::Location;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::polonius_engine::FactTypes;
@@ -36,6 +37,8 @@ pub enum TranslationError<'tcx> {
     UnsupportedFeature { description: String },
     #[display("Unsupported Type: {}", description)]
     UnsupportedType { description: String },
+    #[display("Recursive type does not have an invariant: {:?}", _0)]
+    RecursiveTypeWithoutInvariant(DefId),
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },
     #[display("Invalid Layout")]

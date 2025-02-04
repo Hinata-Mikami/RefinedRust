@@ -983,6 +983,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // check the deps
                 let is_rec_type = deps.contains(&adt.did());
                 if is_rec_type {
+                    if !struct_def.has_invariant() {
+                        // this is an error, we need an invariant on recursive types
+                        self.variant_registry.borrow_mut().remove(&ty.def_id);
+                        return Err(TranslationError::RecursiveTypeWithoutInvariant(ty.def_id));
+                    }
+
                     // remove it
                     deps.remove(&adt.did());
                     struct_def.set_is_recursive();
@@ -1461,15 +1467,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let params = self.translate_generic_args(substs.iter(), &mut *state)?;
 
-        let key = scope::AdtUseKey::new(adt.did(), &params);
-        let shim_use = radium::LiteralTypeUse::new(shim, params);
-
         if let STInner::InFunction(scope) = state {
+            let key = scope::AdtUseKey::new(adt.did(), &params);
+            let shim_use = radium::LiteralTypeUse::new(shim, params);
             // track this shim use for the current function
             scope.shim_uses.entry(key).or_insert_with(|| shim_use.clone());
+            Ok(radium::Type::Literal(shim_use))
+        } else {
+            let shim_use = radium::LiteralTypeUse::new(shim, params);
+            Ok(radium::Type::Literal(shim_use))
         }
-
-        Ok(radium::Type::Literal(shim_use))
     }
 
     /// Translate types, while placing the `DefIds` of ADTs that this type uses in the `adt_deps`

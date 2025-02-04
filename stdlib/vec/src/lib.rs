@@ -9,6 +9,7 @@
 #![allow(unused)]
 
 use std::alloc::{Allocator, Global};
+use std::marker::PhantomData;
 
 
 #[rr::refined_by("xs" : "list (place_rfn {rt_of T})")]
@@ -16,7 +17,7 @@ use std::alloc::{Allocator, Global};
 #[rr::export_as(alloc::vec::Vec)]
 pub struct Vec<T, A: Allocator = Global> {
     #[rr::field("x")]
-    _x: T,
+    _x: PhantomData<T>,
     #[rr::field("y")]
     _y: A,
 }

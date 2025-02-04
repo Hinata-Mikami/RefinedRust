@@ -641,6 +641,15 @@ Section ne.
       unfold struct_own_el_val; simpl.
 
       rewrite /ty_own_val/=.
+      (* TODO how to do this? 
+
+        
+         
+
+      *)
+
+
+      
       admit.
     - intros n ty ty' Hd. 
       iIntros (κ π r l). rewrite /ty_shr/=.

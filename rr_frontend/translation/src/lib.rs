@@ -490,11 +490,6 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
                     // type aliases
                     writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
-
-                    // abstracted type
-                    if let Some(inv_spec) = su.generate_optional_invariant_def() {
-                        writeln!(spec_file, "{}", inv_spec).unwrap();
-                    }
                 } else {
                     let eu = enum_defs[did].borrow();
                     let eu = eu.as_ref().unwrap();

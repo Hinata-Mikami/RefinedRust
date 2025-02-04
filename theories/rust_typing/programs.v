@@ -1908,6 +1908,66 @@ Section judgments.
   Global Instance owned_subtype_id_inst π E L step {rt} (r1 r2 : rt) (ty : type rt) :
     OwnedSubtype π E L step r1 r2 ty ty | 5 := λ T, i2p (owned_subtype_id π E L step r1 r2 ty T).
 
+  Lemma owned_type_incl_incl_l π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    type_incl r1 r2 ty1 ty2 -∗
+    owned_type_incl π r2 r3 ty2 ty3 -∗
+    owned_type_incl π r1 r3 ty1 ty3.
+  Proof. 
+    iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
+    iSplit; last iSplitR "Hv1 Hv2".
+    - iPureIntro. 
+      intros ?? Ha1 Ha2. 
+      apply Hst2; last done. rewrite -Hst1. done.
+    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
+    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
+  Qed.
+  Lemma owned_type_incl_incl_r π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    owned_type_incl π r1 r2 ty1 ty2 -∗
+    type_incl r2 r3 ty2 ty3 -∗
+    owned_type_incl π r1 r3 ty1 ty3.
+  Proof. 
+    iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
+    iSplit; last iSplitR "Hv1 Hv2".
+    - iPureIntro. 
+      intros ?? Ha1 Ha2. 
+      apply Hst1; first done. rewrite Hst2. done.
+    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
+    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
+  Qed.
+  Lemma owned_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 π E L b T :
+    subtype E L r1 r1' ty1 ty1' →
+    owned_subtype π E L b r1' r2 ty1' ty2 T -∗
+    owned_subtype π E L b r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Heqt) "HT". 
+    rewrite /owned_subtype.
+    iIntros (???) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] [] CTX HE HL") as "(%L2 & Hincl & HL & HT)"; [done.. | ].
+    iModIntro. iExists L2. iFrame.
+    destruct b; simpl.
+    - iDestruct "Hincl" as "#Hincl". iModIntro.
+      iApply owned_type_incl_incl_l; done.
+    - iApply owned_type_incl_incl_l; done.
+  Qed.
+  Lemma owned_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 π E L b T :
+    subtype E L r2' r2 ty2' ty2 →
+    owned_subtype π E L b r1 r2' ty1 ty2' T -∗
+    owned_subtype π E L b r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Heqt) "HT". 
+    rewrite /owned_subtype.
+    iIntros (???) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] [] CTX HE HL") as "(%L2 & Hincl & HL & HT)"; [done.. | ].
+    iModIntro. iExists L2. iFrame.
+    destruct b; simpl.
+    - iDestruct "Hincl" as "#Hincl". iModIntro.
+      iApply owned_type_incl_incl_r; done.
+    - iApply (owned_type_incl_incl_r with "Hincl"); done.
+  Qed.
+
+
   (** Owned location subtyping with a logical step (used for extracting ghost observations) *)
   Definition owned_subltype_step (π : thread_id) E L (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : llctx → iProp Σ → iProp Σ) : iProp Σ :=
     ∀ F,

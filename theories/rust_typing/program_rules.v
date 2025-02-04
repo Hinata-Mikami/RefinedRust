@@ -588,6 +588,29 @@ Section typing.
   Global Instance weak_subtype_evar2_inst E L {rt} (ty : type rt) r r2 `{!IsProtected ty2} :
     Subtype E L r r2 ty ty2 | 100 := λ T, i2p (weak_subtype_evar2 E L ty ty2 r r2 T).
 
+  Lemma weak_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 E L T :
+    subtype E L r1 r1' ty1 ty1' →
+    weak_subtype E L r1' r2 ty1' ty2 T -∗
+    weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Hsub) "HT". rewrite /weak_subtype.
+    iIntros (??) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
+    iModIntro. iApply type_incl_trans; done.
+  Qed.
+  Lemma weak_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 E L T :
+    subtype E L r2' r2 ty2' ty2 →
+    weak_subtype E L r1 r2' ty1 ty2' T -∗
+    weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Hsub) "HT". rewrite /weak_subtype.
+    iIntros (??) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
+    iModIntro. iApply type_incl_trans; done.
+  Qed.
+
   (** ** Subtyping instances: [mut_subtype] *)
   Lemma mut_subtype_id E L {rt} (ty : type rt) T :
     T ⊢ mut_subtype E L ty ty T.
@@ -3147,9 +3170,9 @@ Section typing.
       typed_stmt π E L2 s fn R ϝ)
     ⊢ typed_stmt π E L (Goto b) fn R ϝ.
   Proof.
-    iIntros (HQ) "Hs". iIntros (?) "#LFT #HE HL Hna Hcont". 
+    iIntros (HQ) "Hs". iIntros (?) "#LFT #HE HL Hna Hcont".
     iApply wps_goto => //.
-    iModIntro. iIntros "Hcred". 
+    iModIntro. iIntros "Hcred".
     iMod ("Hs" with "[] HE HL Hcred") as "(%L2 & HL & HT)"; first done.
     by iApply ("HT" with "LFT HE HL Hna").
   Qed.

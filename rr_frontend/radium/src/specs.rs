@@ -941,14 +941,7 @@ impl InvariantSpec {
         out
     }
 
-    /// Generate the Coq definition of the type, without the surrounding context assumptions.
-    fn generate_coq_type_def_core(
-        &self,
-        base_type: &str,
-        base_rfn_type: &str,
-        generics: &[String],
-        context_names: &[String],
-    ) -> String {
+    pub(crate) fn generate_coq_invariant_def(&self, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
@@ -1001,6 +994,25 @@ impl InvariantSpec {
             },
         }
         write!(out, "\n").unwrap();
+
+        out
+    }
+
+    /// Generate the Coq definition of the type, without the surrounding context assumptions.
+    fn generate_coq_type_def_core(
+        &self,
+        base_type: &str,
+        base_rfn_type: &str,
+        generics: &[String],
+        context_names: &[String],
+    ) -> String {
+        let mut out = String::with_capacity(200);
+        let indent = "  ";
+
+        // generate the spec definition
+        let spec_name = format!("{}_inv_spec", self.type_name);
+
+        write!(out, "{}", self.generate_coq_invariant_def(base_rfn_type)).unwrap();
 
         // generate the definition itself.
         write!(
@@ -1192,7 +1204,7 @@ impl<'def> AbstractVariant<'def> {
         &self.name
     }
 
-    fn rfn_type(&self) -> coq::term::Type {
+    pub(crate) fn rfn_type(&self) -> coq::term::Type {
         coq::term::Type::PList(
             "place_rfn".to_owned(),
             self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
@@ -1206,12 +1218,22 @@ impl<'def> AbstractVariant<'def> {
         let indent = "  ";
 
         // intro to main def
-        out.push_str(&format!(
-            "{indent}Definition {} {} : struct_layout_spec := mk_sls \"{}\" [",
+        write!(
+            out,
+            "{indent}Definition {} {} : struct_layout_spec :=\n",
             self.sls_def_name,
             typarams.join(" "),
-            self.name
-        ));
+        )
+        .unwrap();
+        // for recursive uses
+        write!(
+            out,
+            "{indent}{indent}let {} {} := UnitSynType in\n",
+            self.st_def_name,
+            typarams.iter().join(" ")
+        )
+        .unwrap();
+        write!(out, "{indent}{indent}mk_sls \"{}\" [", self.name).unwrap();
 
         push_str_list!(out, &self.fields, ";", |(name, ty)| {
             let synty: SynType = ty.into();
@@ -1219,16 +1241,18 @@ impl<'def> AbstractVariant<'def> {
             format!("\n{indent}{indent}(\"{name}\", {synty})")
         });
 
-        out.push_str(&format!("] {}.\n", self.repr));
+        write!(out, "] {}.\n", self.repr).unwrap();
 
         // also generate a definition for the syntype
-        out.push_str(&format!(
+        write!(
+            out,
             "{indent}Definition {} {} : syn_type := {} {}.\n",
             self.st_def_name,
             typarams.join(" "),
             self.sls_def_name,
             typarams_use.join(" ")
-        ));
+        )
+        .unwrap();
 
         out
     }
@@ -1350,6 +1374,7 @@ impl<'def> AbstractVariant<'def> {
 
         // write coq parameters
         let (context_names, dep_sigma) = format_extra_context_items(extra_context, &mut out).unwrap();
+
         write!(out, "{}", self.generate_coq_type_def_core(ty_params, &context_names)).unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
@@ -1445,6 +1470,12 @@ impl<'def> AbstractStruct<'def> {
         self.is_recursive = true;
     }
 
+    /// Check if an invariant has been declared on this type.
+    #[must_use]
+    pub const fn has_invariant(&self) -> bool {
+        self.invariant.is_some()
+    }
+
     /// Check if the struct has type parameters.
     #[must_use]
     pub fn has_type_params(&self) -> bool {
@@ -1511,17 +1542,139 @@ impl<'def> AbstractStruct<'def> {
     /// Generate a Coq definition for the struct type alias.
     #[must_use]
     pub fn generate_coq_type_def(&self) -> String {
-        let extra_context = if let Some(inv) = &self.invariant { inv.coq_params.as_slice() } else { &[] };
+        if self.is_recursive {
+            self.generate_recursive_type_def()
+        } else {
+            let extra_context = if let Some(inv) = &self.invariant { inv.coq_params.as_slice() } else { &[] };
 
-        self.variant_def.generate_coq_type_def(&self.ty_params, extra_context)
+            // the raw type
+            let mut out = self.variant_def.generate_coq_type_def(&self.ty_params, extra_context);
+
+            // the invariant
+            let inv = self.invariant.as_ref().map(|spec| {
+                let s = spec.generate_coq_type_def(
+                    self.plain_ty_name(),
+                    self.plain_rt_def_name(),
+                    &self.ty_params,
+                );
+                out.push_str(&s);
+            });
+            out
+        }
     }
 
-    /// Generate an optional definition for the invariant of this type, if one has been specified.
-    #[must_use]
-    pub fn generate_optional_invariant_def(&self) -> Option<String> {
-        self.invariant.as_ref().map(|spec| {
-            spec.generate_coq_type_def(self.plain_ty_name(), self.plain_rt_def_name(), &self.ty_params)
-        })
+    /// Generate a type definition in case this type is a recursive type.
+    fn generate_recursive_type_def(&self) -> String {
+        let mut out = String::with_capacity(200);
+
+        // we need an invariant, otherwise we cannot define a recursive type
+        if let Some(inv) = self.invariant.as_ref() {
+            let generic_params = &self.ty_params;
+
+            let Some(abstracted_rt) = &inv.abstracted_refinement else {
+                panic!("no abstracted refinement");
+            };
+
+            let indent = "  ";
+            // the write_str impl will always return Ok.
+            write!(out, "Section {}.\n", inv.type_name).unwrap();
+            write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
+
+            // add type parameters
+            if !generic_params.is_empty() {
+                // first push the (implicit) refinement type parameters
+                write!(out, "{}Context", indent).unwrap();
+                for names in generic_params {
+                    write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
+                }
+                out.push_str(".\n");
+
+                write!(out, "{}Context", indent).unwrap();
+                for names in generic_params {
+                    write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
+                }
+                out.push_str(".\n");
+            }
+
+            let (context_names, dep_sigma) = format_extra_context_items(&inv.coq_params, &mut out).unwrap();
+
+            // generate terms to apply the sls app to
+            let mut sls_app = Vec::new();
+            for names in &self.ty_params {
+                // TODO this is duplicated with the same processing for Type::Literal...
+                let term = format!("(ty_syn_type {})", names.type_term);
+                sls_app.push(term);
+            }
+
+            // generate the raw rt def
+            // we introduce a let binding for the recursive rt type
+            write!(out, "{indent}Definition {} : Type :=\n", self.variant_def.plain_rt_def_name).unwrap();
+            let ty_rt_params: Vec<_> = self.ty_params.iter().map(|x| x.refinement_type.clone()).collect();
+            write!(out, "{indent}{indent}let {} ", inv.rt_def_name()).unwrap();
+            push_str_list!(out, &ty_rt_params, " ");
+            write!(out, " := {} in\n", inv.rfn_type).unwrap();
+            write!(out, "{indent}{indent}{}.\n", self.variant_def.rfn_type()).unwrap();
+
+            // invariant def
+            write!(out, "{}", inv.generate_coq_invariant_def(&self.variant_def.plain_rt_def_name)).unwrap();
+
+            // generate the functor itself
+            let type_name = &inv.type_name;
+            let rfn_type = &inv.rfn_type;
+            let spec_name = format!("{}_inv_spec", inv.type_name);
+
+            write!(
+                out,
+                "{indent}Definition {type_name}_rec ({type_name}_rec' : type ({rfn_type})) : type ({rfn_type}) :=\n\
+                {indent}{indent}let {type_name} ").unwrap();
+            push_str_list!(out, &ty_rt_params, " ");
+            write!(
+                out,
+                " := {type_name}_rec' in\n\
+                {indent}{indent}ex_plain_t _ _ {spec_name} ({}).\n",
+                self.variant_def.generate_coq_type_term(sls_app)
+            )
+            .unwrap();
+
+            // write the fixpoint
+            write!(
+                out,
+                "{indent}Definition {type_name} : type ({rfn_type}) := type_fixpoint {type_name}_rec.\n"
+            )
+            .unwrap();
+
+            write!(out, "{indent}Global Typeclasses Transparent {}.\n", type_name).unwrap();
+            write!(out, "{indent}Definition {}_rt : Type.\n", type_name).unwrap();
+            write!(
+                out,
+                "{indent}Proof using {} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
+                ty_rt_params.join(" "),
+                context_names.join(" "),
+                type_name
+            )
+            .unwrap();
+            write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", type_name).unwrap();
+
+            // finish
+            write!(out, "End {}.\n", inv.type_name).unwrap();
+            write!(out, "Global Arguments {} : clear implicits.\n", inv.rt_def_name()).unwrap();
+            if !context_names.is_empty() {
+                let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+
+                write!(
+                    out,
+                    "Global Arguments {} {}{} {{{}}}.\n",
+                    inv.rt_def_name(),
+                    dep_sigma_str,
+                    "_ ".repeat(generic_params.len()),
+                    "_ ".repeat(context_names.len())
+                )
+                .unwrap();
+            }
+        } else {
+            panic!("Recursive types need an invariant");
+        }
+        out
     }
 
     /// Make a literal type.

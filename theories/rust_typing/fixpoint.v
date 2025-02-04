@@ -1,7 +1,7 @@
-From refinedrust Require Import type.
+From refinedrust Require Import type programs program_rules.
 From iris.prelude Require Import options.
 
-Section type_inh. 
+Section type_inh.
   Context `{!typeGS Σ}.
 
   (* We need [Inhabited T_rt] because of [ty_rt_inhabited]. *)
@@ -13,10 +13,10 @@ Section type_inh.
       st_has_op_type ot _ := ot = UntypedOp unit_sl;
   |}.
   Next Obligation.
-    simpl. 
+    simpl.
     iIntros (??? ->).
-    iExists unit_sl. iPureIntro. 
-    split. 
+    iExists unit_sl. iPureIntro.
+    split.
     - by apply syn_type_has_layout_unit.
     - done.
   Qed.
@@ -34,7 +34,7 @@ End type_inh.
 
 Section fixpoint_def.
   Context `{!typeGS Σ}.
-  
+
   (* We assume a contractive functor *)
   Context {rt : Type} (F : type rt → type rt) `{Hcr : !TypeContractive F}.
   (* [rt] needs to be inhabited *)
@@ -43,22 +43,22 @@ Section fixpoint_def.
   (* Iterate the functor [S n] times, starting with the inhabitant.
      We use at least one iteration, so that the [ty_syn_type] is always constant.
   *)
-  Definition Fn n := Nat.iter (S n) F inhabitant. 
+  Definition Fn n := Nat.iter (S n) F inhabitant.
 
-  Lemma Fn_succ n : 
+  Lemma Fn_succ n :
     Fn (S n) = F (Fn n).
   Proof. done. Qed.
 
-  Lemma Fn_syn_type_const n m : 
+  Lemma Fn_syn_type_const n m :
     ty_syn_type (Fn n) = ty_syn_type (Fn m).
   Proof using Hcr.
     unfold Fn. simpl. apply Hcr.
   Qed.
-  Lemma Fn_sidecond_const n : 
+  Lemma Fn_sidecond_const n :
     n ≥ 1 →
     ty_sidecond (Fn n) ≡ ty_sidecond (Fn 1).
   Proof using Hcr.
-    unfold Fn; simpl. intros Hn. 
+    unfold Fn; simpl. intros Hn.
     eapply Hcr.
     destruct n; first lia.
     erewrite (Fn_syn_type_const 0).
@@ -67,9 +67,9 @@ Section fixpoint_def.
 
   (*Search logical_step.*)
   (* what can we prove about ghost_drop? *)
-  (* TODO The problem: 
-     I don't have laters over there. 
-     With the current setup, I probably cannot prove that it's a fixpoint wrt ghost_drop 
+  (* TODO The problem:
+     I don't have laters over there.
+     With the current setup, I probably cannot prove that it's a fixpoint wrt ghost_drop
 
      What do I expect the ghost_drop to be?
 
@@ -78,20 +78,20 @@ Section fixpoint_def.
      Now I drop the linked list.
      Ideally, I want a bigsep over all the observations.
      - i.e., the Box needs to pass through the inner ghost drop, with the respective smaller refinement.
-      For this, I need to make this guarded over that also. 
-     I guess in the end I get some laters. But I can also provide some later credits. 
+      For this, I need to make this guarded over that also.
+     I guess in the end I get some laters. But I can also provide some later credits.
      Ideally, logical_step would be contractive....
      But I guess it's not.
 
      I want amortized reasoning also at the SI level.
-     can something like that be sound? 
+     can something like that be sound?
 
      Alternatively, I would define a version that has laters and provides a later credit, to make it guarded.
      Then I want to derive something on top that uses the logical step.
 
    *)
 
-  Lemma Fn_lfts_const_0 n : 
+  Lemma Fn_lfts_const_0 n :
     ⊢ lft_equiv (lft_intersect_list (ty_lfts (Fn n))) (lft_intersect_list (ty_lfts (Fn 0))).
   Proof using Hcr.
     induction n as [ n IH] using lt_wf_ind.
@@ -129,7 +129,7 @@ Section fixpoint_def.
   Definition ty_own_shrO : ofe := prodO (thread_id -d> rt -d> val -d> iPropO Σ) (lft -d> thread_id -d> rt -d> loc -d> iPropO Σ).
 
   (* We have the [2+] in order to fix up the [0] base case *)
-  Lemma ty_own_shr_cauchy (i n : nat) : 
+  Lemma ty_own_shr_cauchy (i n : nat) :
     n ≤ i →
     (∀ π r v, dist_later n (v ◁ᵥ{π} r @ (Fn (2+i)))%I (v ◁ᵥ{π} r @ (Fn (2+n)))%I) ∧
     (∀ κ π r l, (l ◁ₗ{π, κ} r @ (Fn (2+i)))%I ≡{n}≡ (l ◁ₗ{π, κ} r @ (Fn (2+n)))%I).
@@ -141,7 +141,7 @@ Section fixpoint_def.
       - eapply Hcr. erewrite (Fn_syn_type_const i 0); done.
       - intros. dist_later_2_intro; lia.
       - intros. dist_later_intro; lia.
-    } 
+    }
     destruct i; first lia.
     destruct (IH i) as [Hown Hshr]; first lia.
     split.
@@ -155,7 +155,7 @@ Section fixpoint_def.
     - intros. simpl. eapply Hcr. constructor.
       + eapply Hcr.
       + eapply Hcr. rewrite (Fn_syn_type_const (1+i) (1+n)); done.
-      + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia. 
+      + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia.
       + intros. dist_later_intro. eapply dist_le; first apply Hshr. lia.
   Qed.
 
@@ -192,7 +192,7 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. erewrite Fn_syn_type_const. eapply ty_has_layout.
   Qed.
   Next Obligation.
@@ -203,7 +203,7 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_own_val_sidecond.
       lia.
   Qed.
@@ -212,7 +212,7 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. rewrite -(Fn_sidecond_const (3+n)); first eapply ty_shr_sidecond.
       lia.
   Qed.
@@ -221,7 +221,7 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_Persistent.
       intros ? [] [] Heq. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. eapply ty_shr_persistent.
   Qed.
   Next Obligation.
@@ -229,17 +229,17 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. erewrite Fn_syn_type_const. eapply ty_shr_aligned.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 8 f_equiv. 
+      intros ? [] [] Heq. do 8 f_equiv.
       { do 2 f_equiv. apply Heq. }
       apply Heq.
-    - intros ?. simpl. 
+    - intros ?. simpl.
       iIntros "#RUST Htok %% Hlb Hb".
       iApply fupd_logical_step.
       iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
@@ -258,7 +258,7 @@ Section fixpoint_def.
     eapply @limit_preserving.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. eapply ty_shr_mono.
   Qed.
   Next Obligation.
@@ -275,20 +275,20 @@ Section fixpoint_def.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv; first eapply Heq.
       f_equiv. eapply Heq.
-    - intros ?. 
+    - intros ?.
       simpl. eapply _ty_memcast_compat.
       rewrite -ty_has_op_type_unfold.
-      eapply Fn_has_op_type_const. by rewrite ty_has_op_type_unfold. 
+      eapply Fn_has_op_type_const. by rewrite ty_has_op_type_unfold.
   Qed.
 
-  Lemma type_fixpoint_own_val_unfold_n n v π r : 
+  Lemma type_fixpoint_own_val_unfold_n n v π r :
     (v ◁ᵥ{π} r @ type_fixpoint)%I ≡{n}≡ (v ◁ᵥ{π} r @ Fn (3+n))%I.
   Proof.
     rewrite {1}/ty_own_val/=/F_ty_own_val_ty_shr_fixpoint/=.
     etrans. { apply (conv_compl n _). }
     simpl. done.
   Qed.
-  Lemma type_fixpoint_shr_unfold_n n l κ π r : 
+  Lemma type_fixpoint_shr_unfold_n n l κ π r :
     (l ◁ₗ{π, κ} r @ type_fixpoint)%I ≡{n}≡ (l ◁ₗ{π, κ} r @ Fn (3+n))%I.
   Proof.
     rewrite {1}/ty_shr/=/F_ty_own_val_ty_shr_fixpoint/=.
@@ -296,14 +296,14 @@ Section fixpoint_def.
     simpl. done.
   Qed.
 
-  Lemma type_fixpoint_syn_type : 
+  Lemma type_fixpoint_syn_type :
     type_fixpoint.(ty_syn_type) = (Fn 0).(ty_syn_type).
   Proof. done. Qed.
   Lemma type_fixpoint_sidecond :
     type_fixpoint.(ty_sidecond) = (Fn 1).(ty_sidecond).
   Proof. done. Qed.
 
-  Lemma type_fixpoint_own_val_unfold v π r : 
+  Lemma type_fixpoint_own_val_unfold v π r :
     (v ◁ᵥ{π} r @ type_fixpoint)%I ≡ (v ◁ᵥ{π} r @ F type_fixpoint)%I.
   Proof.
     apply equiv_dist => n. rewrite type_fixpoint_own_val_unfold_n.
@@ -319,11 +319,11 @@ Section fixpoint_def.
       lia.
     - intros.
       rewrite type_fixpoint_shr_unfold_n.
-      etrans. 
+      etrans.
       { symmetry. eapply (ty_own_shr_cauchy (S n) (n)). lia. }
       done.
   Qed.
-  Lemma type_fixpoint_shr_unfold l π κ r : 
+  Lemma type_fixpoint_shr_unfold l π κ r :
     (l ◁ₗ{π, κ} r @ type_fixpoint)%I ≡ (l ◁ₗ{π, κ} r @ F type_fixpoint)%I.
   Proof.
     apply equiv_dist => n. rewrite type_fixpoint_shr_unfold_n.
@@ -341,21 +341,21 @@ Section fixpoint_def.
       rewrite type_fixpoint_shr_unfold_n.
       eapply dist_le.
       { eapply (ty_own_shr_cauchy n (S m) ). lia. }
-      lia. 
+      lia.
   Qed.
-  Lemma type_fixpoint_equiv : 
+  Lemma type_fixpoint_equiv :
     type_fixpoint ≡ F type_fixpoint.
   Proof.
     (* The fixpoint operator does NOT preserve everything (e.g. the inhabitant),
        so this does not hold. *)
   Abort.
 
-  Lemma type_fixpoint_ty_lfts : 
+  Lemma type_fixpoint_ty_lfts :
     type_fixpoint.(ty_lfts) = (Fn 0).(ty_lfts).
   Proof.
     done.
   Qed.
-  Lemma type_fixpoint_ty_wf_E : 
+  Lemma type_fixpoint_ty_wf_E :
     type_fixpoint.(ty_wf_E) = (Fn 1).(ty_wf_E).
   Proof.
     done.
@@ -371,7 +371,7 @@ End fixpoint_def.
 Lemma type_fixpoint_ne `{!typeGS Σ} {rt} `{!Inhabited rt} (T1 T2 : type rt → type rt)
     `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} n :
   (∀ t, T1 t ≡{n}≡ T2 t) → type_fixpoint T1 ≡{n}≡ type_fixpoint T2.
-Proof. 
+Proof.
   intros Heq.
   constructor.
   - done.
@@ -380,22 +380,22 @@ Proof.
     move: Hot. rewrite ty_has_op_type_unfold. done.
   - iIntros (???).
     rewrite !type_fixpoint_own_val_unfold_n.
-    f_equiv. 
+    f_equiv.
     generalize (3+n) as m.
     induction m as [ | m IH]; simpl.
     { apply Heq. }
     specialize (Heq (Fn T1 m)).
-    setoid_rewrite Heq. 
+    setoid_rewrite Heq.
     (* here we need that T2 is also non-expansive *)
     by rewrite IH.
-  - iIntros (????). 
+  - iIntros (????).
     rewrite !type_fixpoint_shr_unfold_n.
-    f_equiv. 
+    f_equiv.
     generalize (3+n) as m.
     induction m as [ | m IH]; simpl.
     { apply Heq. }
     specialize (Heq (Fn T1 m)).
-    setoid_rewrite Heq. 
+    setoid_rewrite Heq.
     (* here we need that T2 is also non-expansive *)
     by rewrite IH.
   - simpl. destruct (Heq inhabitant). done.
@@ -405,7 +405,7 @@ Proof.
     rewrite Heq. done.
   - intros. simpl. destruct (Heq inhabitant). done.
   - intros. simpl. destruct (Heq inhabitant). done.
-  - intros. simpl. unfold Fn; simpl. 
+  - intros. simpl. unfold Fn; simpl.
     eapply ty_wf_E_ne.
     (* uses that T2 is also non-expansive *)
     rewrite -(Heq type_inhabitant).
@@ -426,24 +426,24 @@ Section fixpoint.
   Proof.
     intros ?.
     (* the chain is copyable *)
-    assert (∀ n, Copyable (Fn T n)). 
+    assert (∀ n, Copyable (Fn T n)).
     { induction n as [ | n IH]; simpl; apply _. }
     constructor.
     - intros. rewrite /ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
       eapply @limit_preserving.
-      { eapply bi.limit_preserving_Persistent. 
+      { eapply bi.limit_preserving_Persistent.
         intros n [][][Heq1 Heq2].
         simpl in *. apply Heq1. }
       apply _.
-    - intros ? ? ? ? ? ? ? ? ? Hst. intros. 
+    - intros ? ? ? ? ? ? ? ? ? Hst. intros.
       rewrite /ty_shr/ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
       eapply @limit_preserving.
-      { eapply bi.limit_preserving_entails; first apply _. 
+      { eapply bi.limit_preserving_entails; first apply _.
         intros n [][][Heq1 Heq2].
         repeat f_equiv; simpl; [apply Heq2 | apply Heq1]. }
-      intros ?. 
+      intros ?.
       eapply copy_shr_acc; [done | | done].
-      move: Hst. rewrite type_fixpoint_syn_type.  
+      move: Hst. rewrite type_fixpoint_syn_type.
       erewrite Fn_syn_type_const; done.
   Qed.
 
@@ -474,7 +474,7 @@ Section fixpoint.
   *)
 
   Lemma type_fixpoint_incl_1 r : ⊢ type_incl r r (type_fixpoint T) (T (type_fixpoint T)).
-  Proof. 
+  Proof.
     iSplit; last iSplit; last iSplit.
     - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
     - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
@@ -482,7 +482,7 @@ Section fixpoint.
     - iModIntro. iIntros (???). rewrite type_fixpoint_shr_unfold. eauto.
   Qed.
   Lemma type_fixpoint_incl_2 r : ⊢ type_incl r r (T (type_fixpoint T)) (type_fixpoint T).
-  Proof. 
+  Proof.
     iSplit; last iSplit; last iSplit.
     - iPureIntro. rewrite !type_fixpoint_syn_type. apply HT.
     - iModIntro. simpl. rewrite type_ctr_sidecond; eauto.
@@ -491,35 +491,75 @@ Section fixpoint.
   Qed.
 
   Lemma type_fixpoint_subtype_1 E L r : subtype E L r r (type_fixpoint T) (T (type_fixpoint T)).
-  Proof. 
+  Proof.
     iIntros (?) "HL HE". iApply type_fixpoint_incl_1.
   Qed.
   Lemma type_fixpoint_subtype_2 E L r : subtype E L r r (T (type_fixpoint T)) (type_fixpoint T).
-  Proof. 
+  Proof.
     iIntros (?) "HL HE". iApply type_fixpoint_incl_2.
   Qed.
 
   Lemma type_fixpoint_unfold_eqtype E L r : eqtype E L r r (type_fixpoint T) (T (type_fixpoint T)).
-  Proof. 
+  Proof.
     split.
     - apply type_fixpoint_subtype_1.
     - apply type_fixpoint_subtype_2.
   Qed.
 
   (* TODO subtyping -- think of the right lemmas here *)
-  (* 
+  (*
      - we should unfold when subtyping
        + if the goal is a fixpoint and the current thing is not a fixpoint, unfold in the goal.
        + => TODO look at refinedc for unfolding strategy
 
      - when accessing a place, we should have unfolding lemmas for type_fixpoint similarly as for existentials.
-       + 
+       +
    *)
-  (* Next step: 
-     
+  (* Next step:
+
 
 
    *)
 
 End fixpoint.
 
+Section rules.
+  Context `{!typeGS Σ}.
+  Context {rt} `{!Inhabited rt}.
+  Context (F : type rt → type rt) `{!TypeContractive F}.
+
+  (* on place access, unfold *)
+  Lemma typed_place_fixpoint_unfold π E L l r k1 k2 P (T : place_cont_t rt) :
+    typed_place π E L l (◁ (type_fixpoint F)) r k1 k2 P T :-
+    return (typed_place π E L l (◁ (F (type_fixpoint F))) r k1 k2 P T).
+  Proof.
+    iApply typed_place_eqltype.
+    apply full_eqtype_eqltype; first apply _.
+    intros ?.
+    apply type_fixpoint_unfold_eqtype.
+  Qed.
+  Definition typed_place_fixpoint_unfold_inst := [instance typed_place_fixpoint_unfold].
+  Global Existing Instance typed_place_fixpoint_unfold_inst.
+
+  Lemma owned_subtype_fixpoint_r {rt1} (ty1 : type rt1) π E L b r1 r2 T :
+    owned_subtype π E L b r1 r2 ty1 (type_fixpoint F) T :-
+    return (owned_subtype π E L b r1 r2 ty1 (F (type_fixpoint F)) T).
+  Proof.
+    iIntros "HT".
+    iApply owned_subtype_subtype_r; last iApply "HT".
+    apply type_fixpoint_subtype_2.
+  Qed.
+  Definition owned_subtype_fixpoint_r_inst := [instance @owned_subtype_fixpoint_r].
+  Global Existing Instance owned_subtype_fixpoint_r_inst.
+
+  Lemma weak_subtype_fixpoint_r {rt1} (ty1 : type rt1) E L r1 r2 T :
+    weak_subtype E L r1 r2 ty1 (type_fixpoint F) T :-
+    return (weak_subtype E L r1 r2 ty1 (F (type_fixpoint F)) T).
+  Proof.
+    iIntros "HT".
+    iApply weak_subtype_subtype_r; last done.
+    apply type_fixpoint_subtype_2.
+  Qed.
+  Definition weak_subtype_fixpoint_r_inst := [instance @weak_subtype_fixpoint_r].
+  Global Existing Instance weak_subtype_fixpoint_r_inst.
+End rules.
