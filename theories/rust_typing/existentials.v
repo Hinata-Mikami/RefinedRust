@@ -146,8 +146,6 @@ Section ex.
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
     ty_sidecond :=
     ty.(ty_sidecond);
-    (* TODO generalize ghost_drop in the type def *)
-    ty_ghost_drop π r := (∃ x, P.(inv_P) π x r ∗ ty.(ty_ghost_drop) π x)%I;
     ty_lfts := P.(inv_P_lfts) ++ ty.(ty_lfts);
     ty_wf_E := P.(inv_P_wf_E) ++ ty.(ty_wf_E);
   |}.
@@ -197,16 +195,21 @@ Section ex.
     iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    iIntros (ty π r v F ?) "(%x & HP & Ha)".
+    iIntros (ty ot mt st π r v Hot) "(%x & HP & Hv)".
+    iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
+    destruct mt; eauto with iFrame.
+  Qed.
+
+  (* TODO generalize ghost_drop in the type def *)
+  (* Instance has low priority to allow overrides *)
+  Global Program Instance ex_plain_t_ghost_drop ty `{Hg : !TyGhostDrop ty} : TyGhostDrop (ex_plain_t ty) | 100 :=
+    mk_ty_ghost_drop _ (λ π r, (∃ x, P.(inv_P) π x r ∗ ty_ghost_drop_for ty Hg π x)%I) _.
+  Next Obligation.
+    iIntros (ty Hg π r v F ?) "(%x & HP & Ha)".
     iPoseProof (ty_own_ghost_drop with "Ha") as "Ha"; first done.
     iApply (logical_step_compose with "Ha").
     iApply logical_step_intro.
     iIntros "Hdrop". eauto with iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (ty ot mt st π r v Hot) "(%x & HP & Hv)".
-    iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
-    destruct mt; eauto with iFrame.
   Qed.
 End ex.
 
@@ -224,14 +227,13 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - destruct HP as [Hlft _ _].
-      destruct HF as [_ Hlft' _ _ _ _ _].
+      destruct HF as [_ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
-    - admit.
     - intros n ty ty' ?.
       intros π r v. rewrite /ty_own_val/=.
       do 3 f_equiv.
@@ -242,7 +244,7 @@ Section contr.
       do 3 f_equiv.
       { apply HP. done. }
       apply HF; done.
-  Admitted.
+  Qed.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
   Global Instance ex_inv_def_ne {rt X Y : Type} `{!Inhabited Y}
@@ -257,7 +259,7 @@ Section contr.
     constructor; simpl.
     - apply HF.
     - destruct HP as [Hlft _ _].
-      destruct HF as [_ Hlft' _ _ _ _ _].
+      destruct HF as [_ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
@@ -266,7 +268,6 @@ Section contr.
       eapply HF; first done.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
-    - admit.
     - intros n ty ty' ?.
       intros π r v. rewrite /ty_own_val/=.
       do 3 f_equiv.
@@ -277,7 +278,7 @@ Section contr.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
-  Admitted.
+  Qed.
 End contr.
 
 Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.

@@ -36,7 +36,6 @@ Section shr_ref.
         inner.(ty_sidecond) ∗
         place_rfn_interp_shared r ri ∗
         &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri li)%I;
-    ty_ghost_drop _ _ := True%I;
     ty_lfts := [κ] ++ ty_lfts inner;
     ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
@@ -82,10 +81,6 @@ Section shr_ref.
       done.
   Qed.
   Next Obligation.
-    iIntros (????????) "Ha".
-    iApply logical_step_intro. done.
-  Qed.
-  Next Obligation.
     iIntros (? ?? ot mt st ? r ? Hot).
     destruct mt.
     - eauto.
@@ -95,6 +90,13 @@ Section shr_ref.
       rewrite /mem_cast val_to_of_loc //.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%l & %ly & %ri & -> & _)". eauto.
+  Qed.
+
+  Global Program Instance shr_ref_ghost_drop {rt} κ (ty : type rt) : TyGhostDrop (shr_ref κ ty) :=
+    mk_ty_ghost_drop _ (λ _ _, True)%I _.
+  Next Obligation.
+    iIntros (????????) "Ha".
+    iApply logical_step_intro. done.
   Qed.
 
   Global Instance shr_ref_copyable {rt} (ty : type rt) κ : Copyable (shr_ref κ ty).
@@ -121,7 +123,6 @@ Section shr_ref.
     - done.
     - eapply ty_lft_morph_make_ref; done.
     - rewrite ty_has_op_type_unfold/=. done.
-    - done.
     - done.
     - solve_type_proper.
     - solve_type_proper.

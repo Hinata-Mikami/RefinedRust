@@ -41,12 +41,6 @@ Section mut_ref.
           ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') tid r' li))%I;
     (* NOTE: we cannot descend below the borrow here to get more information recursively.
        But this is fine, since the observation about γ here already contains all the information we need. *)
-    ty_ghost_drop _ '(r, γ) :=
-    (*place_rfn_interp_mut r γ;*)
-      match r with
-      | #r' => gvar_pobs γ r'
-      | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
-      end;
     (* We need the inner lifetimes also to initiate sharing *)
     ty_lfts := [κ] ++ inner.(ty_lfts);
     ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
@@ -179,13 +173,6 @@ Section mut_ref.
     iApply lft_intersect_mono; last done. iApply lft_incl_refl.
   Qed.
   Next Obligation.
-    iIntros (????[r γ]???) "(%l & %ly & -> & _ & _ & _ & _ & Hrfn & Hcred &  _)".
-    iApply fupd_logical_step. destruct r as [ r | γ'].
-    - iMod (gvar_obs_persist with "Hrfn") as "?".
-      iApply logical_step_intro. by iFrame.
-    - by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
     iIntros (??? ot mt st ? [r γ] ? Hot).
     destruct mt.
     - eauto.
@@ -196,13 +183,29 @@ Section mut_ref.
       iIntros "(%l & %ly & -> & _)". eauto.
   Qed.
 
+  Global Program Instance mut_ref_ghost_drop {rt} κ (ty : type rt)  : TyGhostDrop (mut_ref κ ty) :=
+    mk_ty_ghost_drop _ (
+      λ _ '(r, γ),
+      (*place_rfn_interp_mut r γ;*)
+      match r with
+      | #r' => gvar_pobs γ r'
+      | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
+      end
+    ) _.
+  Next Obligation.
+    iIntros (????[r γ]???) "(%l & %ly & -> & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+    iApply fupd_logical_step. destruct r as [ r | γ'].
+    - iMod (gvar_obs_persist with "Hrfn") as "?".
+      iApply logical_step_intro. by iFrame.
+    - by iApply logical_step_intro.
+  Qed.
+
   Global Instance mut_ref_type_contractive {rt : Type} κ : TypeContractive (mut_ref (rt:=rt) κ).
   Proof.
     constructor; simpl.
     - done.
     - eapply ty_lft_morph_make_ref; done.
     - rewrite ty_has_op_type_unfold/=. done.
-    - done.
     - done.
     - intros n ty ty' ?.
       intros π [] v. rewrite /ty_own_val/=.

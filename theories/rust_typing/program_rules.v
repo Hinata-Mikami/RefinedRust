@@ -2443,9 +2443,9 @@ Section typing.
   (* TODO the syntype equality requirement currently is too strong: it does not allow us to go from UntypedSynType to "proper sy types".
     more broadly, this is a symptom of our language not understanding about syntypes.
   *)
-  Lemma type_write_ofty_strong E L {rt rt2} π (T : typed_write_end_cont_t rt2) l (ty : type rt) (ty2 : type rt2) r1 (r2 : rt2) v ot wl wl' :
+  Lemma type_write_ofty_strong E L {rt rt2} π (T : typed_write_end_cont_t rt2) l (ty : type rt) (ty2 : type rt2) `{Hg : !TyGhostDrop ty2} r1 (r2 : rt2) v ot wl wl' :
     (⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗
-        (ty2.(ty_ghost_drop) π r2 -∗ T L rt ty r1 ResultStrong))
+        (ty_ghost_drop_for ty2 Hg π r2 -∗ T L rt ty r1 ResultStrong))
     ⊢ typed_write_end π E L ot v ty r1 (Owned wl) (Owned wl') AllowStrong l (◁ ty2) (#r2) T.
   Proof.
     iIntros "(%Hot & %Hst_eq & HT)".
@@ -2472,7 +2472,7 @@ Section typing.
     iR.
     iApply ("HT" with "Hgdrop").
   Qed.
-  Global Instance type_write_ofty_strong_inst E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) (r1 : rt) (r2 : rt2) v ot wl wl' :
+  Global Instance type_write_ofty_strong_inst E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) `{!TyGhostDrop ty2} (r1 : rt) (r2 : rt2) v ot wl wl' :
     TypedWriteEnd π E L ot v ty r1 (Owned wl) (Owned wl') AllowStrong l (◁ ty2)%I (PlaceIn r2) | 10 :=
     λ T, i2p (type_write_ofty_strong E L π T l ty ty2 r1 r2 v ot wl wl').
 
@@ -2480,10 +2480,10 @@ Section typing.
   (* TODO: also allow writes here if the place is not an ofty *)
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2. We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
-  Lemma type_write_ofty_weak E L {rt} π (T : typed_write_end_cont_t rt) b2 bmin ac l (ty ty2 : type rt) r1 r2 v ot :
+  Lemma type_write_ofty_weak E L {rt} π (T : typed_write_end_cont_t rt) b2 bmin ac l (ty ty2 : type rt) `{Hg : !TyGhostDrop ty2} r1 r2 v ot :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
-      ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗ ⌜bor_kind_writeable b2⌝ ∗ (ty2.(ty_ghost_drop) π r2 -∗ T L2 rt ty2 r3 (ResultWeak eq_refl))))
+      ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗ ⌜bor_kind_writeable b2⌝ ∗ (ty_ghost_drop_for ty2 Hg π r2 -∗ T L2 rt ty2 r3 (ResultWeak eq_refl))))
     ⊢ typed_write_end π E L ot v ty r1 b2 bmin ac l (◁ ty2) (#r2) T.
   Proof.
     iIntros "(%r3 & HT)".
@@ -2547,7 +2547,7 @@ Section typing.
       { iSplit; first iApply typed_place_cond_ty_refl_ofty. done. }
       iApply ("HT" with "Hgdrop").
   Qed.
-  Global Instance type_write_ofty_weak_inst E L {rt} π b2 bmin br l ty ty2 (r1 r2 : rt) v ot :
+  Global Instance type_write_ofty_weak_inst E L {rt} π b2 bmin br l ty ty2 `{!TyGhostDrop ty2} (r1 r2 : rt) v ot :
     TypedWriteEnd π E L ot v ty r1 b2 bmin br l (◁ ty2)%I (PlaceIn r2) | 20 :=
     λ T, i2p (type_write_ofty_weak E L π T b2 bmin br l ty ty2 r1 r2 v ot).
 

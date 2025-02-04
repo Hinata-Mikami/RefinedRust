@@ -34,8 +34,6 @@ Section owned_ptr.
         &frac{κ}(λ q', l ↦{q'} li) ∗
         (* later for contractiveness *)
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
-    ty_ghost_drop π '(r, l) :=
-      ∃ ri, place_rfn_interp_owned r ri ∗ inner.(ty_ghost_drop) π ri;
 
     ty_lfts := inner.(ty_lfts);
     ty_wf_E := inner.(ty_wf_E);
@@ -126,7 +124,23 @@ Section owned_ptr.
     by iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    simpl. iIntros (π [r l] v??) "(%ly & -> & Halg & Hly & Hlb & Hsc & Hcred & Hat & Hb)".
+    iIntros (ot mt st π [r l] ? Hot).
+    destruct mt.
+    - eauto.
+    - iIntros "(%ly & -> & ?)".
+      iExists ly. iFrame.
+      iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
+      + eauto.
+      + iPureIntro. by apply Hl.
+    - iApply (mem_cast_compat_loc (λ v, _)); first done.
+      iIntros "(%ly & -> & _)". eauto.
+  Qed.
+
+  Global Program Instance owned_ptr_ghost_drop `{Hg : !TyGhostDrop inner} : TyGhostDrop owned_ptr :=
+    mk_ty_ghost_drop _ (λ π '(r, l),
+      ∃ ri, place_rfn_interp_owned r ri ∗ ty_ghost_drop_for inner Hg π ri)%I _.
+  Next Obligation.
+    simpl. iIntros (Hg π [r l] v??) "(%ly & -> & Halg & Hly & Hlb & Hsc & Hcred & Hat & Hb)".
     iDestruct "Hb" as "(%r' & Hr & Hv)".
     iApply fupd_logical_step.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -138,18 +152,6 @@ Section owned_ptr.
     iApply (logical_step_intro_atime with "Hat").
     iIntros "!> Hcred' Hat !> Hgdrop".
     eauto with iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (ot mt st π [r l] ? Hot).
-    destruct mt.
-    - eauto.
-    - iIntros "(%ly & -> & ?)".
-      iExists ly. iFrame.
-      iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
-      + eauto.
-      + iPureIntro. by apply Hl.
-    - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%ly & -> & _)". eauto.
   Qed.
 
 End owned_ptr.

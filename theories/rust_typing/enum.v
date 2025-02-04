@@ -110,7 +110,6 @@ Section union.
         ⌜l `has_layout_loc` ul⌝ ∗
         l ◁ₗ{π, κ} r @ ty ∗
         (l +ₗ ly.(ly_size)) ◁ₗ{π, κ} () @ uninit (UntypedSynType $ active_union_rest_ly ul ly))%I;
-    ty_ghost_drop r := ty.(ty_ghost_drop) r;
     ty_lfts := ty_lfts ty;
     ty_wf_E := ty_wf_E ty;
     ty_sidecond := True;
@@ -239,15 +238,18 @@ Section union.
     iApply ty_shr_mono; done.
   Qed.
   Next Obligation.
-    iIntros (?????????) "Hb".
-    iDestruct "Hb" as "(%ul & %ly & %Halg & %Hly & ? & Hv & _)".
-    iPoseProof (ty_own_ghost_drop with "Hv") as "Ha"; last iApply (logical_step_wand with "Ha"); eauto.
-  Qed.
-  Next Obligation.
     intros rt ty variant uls ot mt st π r v (ul & Hul & ->).
     iIntros "Hv".
     destruct mt; first done; last done.
     by rewrite mem_cast_UntypedOp.
+  Qed.
+
+  Global Program Instance active_union_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty} v uls : TyGhostDrop (active_union_t ty v uls) :=
+    mk_ty_ghost_drop _ (λ π r, ty_ghost_drop_for ty Hg π r) _.
+  Next Obligation.
+    iIntros (??????????) "Hb".
+    iDestruct "Hb" as "(%ul & %ly & %Halg & %Hly & ? & Hv & _)".
+    iPoseProof (ty_own_ghost_drop with "Hv") as "Ha"; last iApply (logical_step_wand with "Ha"); eauto.
   Qed.
 End union.
 Global Typeclasses Opaque active_union_t.
@@ -452,7 +454,6 @@ Section enum.
     _ty_has_op_type ot mt :=
       is_enum_ot e ot mt;
     ty_sidecond := True%I;
-    ty_ghost_drop π r := True%I; (* TODO *)
     ty_lfts := e.(enum_lfts);
     ty_wf_E := e.(enum_wf_E);
   |}.
@@ -526,10 +527,6 @@ Section enum.
     iApply (ty_shr_mono with "Hincl Hl").
   Qed.
   Next Obligation.
-    iIntros (rt e π r v F ?) "Hv".
-    iApply logical_step_intro. done.
-  Qed.
-  Next Obligation.
     iIntros (rt en ot mt st π r v Hot) "Hl".
     iDestruct "Hl" as "(%ly & %Hst & Ha)".
     destruct mt; first done; first last.
@@ -566,6 +563,13 @@ Section enum.
   Proof.
     (* TODO *)
   Admitted.
+
+  Global Program Instance enum_t_ghost_drop {rt} (en : enum rt) : TyGhostDrop (enum_t en) :=
+    mk_ty_ghost_drop _ (λ _ _, True)%I _.
+  Next Obligation.
+    iIntros (rt e π r v F ?) "Hv".
+    iApply logical_step_intro. done.
+  Qed.
 End enum.
 Global Typeclasses Opaque enum_t.
 
@@ -593,25 +597,25 @@ Section ne.
     enum_ne_ty :
       ∀ r n ty ty',
       TypeDist n ty ty' →
-      TypeDist 
+      TypeDist
         n
         (rew [λ x, type x] (enum_ne_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
         ((F ty').(enum_ty) r);
   }.
-  Lemma enum_ne_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r : 
+  Lemma enum_ne_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r :
     EnumNonExpansive F →
     st_of ty = st_of ty' →
     enum_lookup_tag (F ty) r = enum_lookup_tag (F ty') r.
   Proof.
     intros Hne Hd.
-    unfold enum_lookup_tag. 
+    unfold enum_lookup_tag.
     erewrite enum_ne_els; last apply Hd.
     erewrite enum_ne_tag_consistent; done.
   Qed.
 
 
   (* TODO *)
-  Lemma enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) : 
+  Lemma enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
     EnumNonExpansive F →
     TypeNonExpansive (λ ty : type rt1, enum_t (F ty)).
   Proof.
@@ -622,13 +626,12 @@ Section ne.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' Hst Hot ot mt. simpl.
       unfold is_enum_ot.
-      destruct ot as [ | | | | ly | ]; try done. 
-      do 3 f_equiv. 
+      destruct ot as [ | | | | ly | ]; try done.
+      do 3 f_equiv.
       erewrite enum_ne_els; last done.
       done.
     - simpl. eauto.
-    - simpl. eauto.
-    - intros n ty ty' Hd. 
+    - intros n ty ty' Hd.
       iIntros (π r v). rewrite /ty_own_val/=.
       do 3 f_equiv.
       { erewrite enum_ne_els; first done. apply Hd. }
@@ -641,17 +644,17 @@ Section ne.
       unfold struct_own_el_val; simpl.
 
       rewrite /ty_own_val/=.
-      (* TODO how to do this? 
+      (* TODO how to do this?
 
-        
-         
+
+
 
       *)
 
 
-      
+
       admit.
-    - intros n ty ty' Hd. 
+    - intros n ty ty' Hd.
       iIntros (κ π r l). rewrite /ty_shr/=.
       do 3 f_equiv.
       { erewrite enum_ne_els; first done. apply Hd. }
@@ -682,7 +685,7 @@ Section subtype.
   Definition enum_incl {rt} (e1 e2 : enum rt) : iProp Σ :=
     ⌜e1.(enum_els) = e2.(enum_els)⌝ ∗
     ⌜e1.(enum_tag) = e2.(enum_tag)⌝ ∗
-    (∀ r, ∃ (Heq : e1.(enum_rt) r = e2.(enum_rt) r), 
+    (∀ r, ∃ (Heq : e1.(enum_rt) r = e2.(enum_rt) r),
       type_incl (rew [λ x, x]Heq in e1.(enum_r) r) (e2.(enum_r) r) (rew Heq in e1.(enum_ty) r) (e2.(enum_ty) r))
   .
   Global Instance enum_incl_pers {rt} (e1 e2 : enum rt) : Persistent (enum_incl e1 e2).
@@ -703,7 +706,7 @@ Section subtype.
     rewrite /struct_t_incl_precond. simpl.
     iSplit. { rewrite /enum_lookup_tag Hels Htag. iApply type_incl_refl. }
     iSplit; last done.
-    simpl. rewrite Htag. iApply active_union_type_incl; first done. 
+    simpl. rewrite Htag. iApply active_union_type_incl; first done.
     destruct Heq. done.
   Qed.
   Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r :
@@ -1166,7 +1169,7 @@ Module enum_test.
       (λ variant, if (decide (variant = "None")) then Some $ existT _ std_option_Option_None_ty else if decide (variant = "Some") then Some $ existT _ std_option_Option_Some_ty else None)
       (ty_lfts T_ty)
       (ty_wf_E T_ty)
-      _ _ _ 
+      _ _ _
     .
     Next Obligation.
       intros []; simpl; set_solver.

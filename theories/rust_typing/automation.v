@@ -356,9 +356,12 @@ Section automation.
     typed_stmt π E L (subst_stmt xs (W.to_stmt s)) fn R ϝ.
   Proof. rewrite W.to_stmt_subst. auto. Qed.
 
-  Lemma tac_trigger_tc {A} (a : A) (H : A → Prop) (HP : H a) (T : A → iProp Σ) :
+  Lemma tac_trigger_tc {A} (a : A) (H : A → Type) (HP : H a) (T : A → iProp Σ) :
     T a ⊢ trigger_tc H T.
-  Proof. iIntros "HT". iExists a. iFrame. done. Qed.
+  Proof. iIntros "HT". iExists a, HP. iFrame. Qed.
+  Lemma tac_find_tc_inst (H : Type) (HP : H) (T : H → iProp Σ) :
+    T HP ⊢ find_tc_inst H T.
+  Proof. iIntros "HT". iExists HP. iFrame. Qed.
 End automation.
 
 Ltac liRIntroduceLetInGoal :=
@@ -636,6 +639,9 @@ Ltac liRJudgement :=
     (* trigger tc search *)
     | |- envs_entails _ (trigger_tc ?H ?T) =>
         notypeclasses refine (tac_fast_apply (tac_trigger_tc _ _ _ _) _); [solve [refine _] | ]
+    (* find tc search *)
+    | |- envs_entails _ (find_tc_inst ?H ?T) =>
+        unshelve notypeclasses refine (tac_fast_apply (tac_find_tc_inst _ _ _) _); [solve [refine _] | ]
     (* stratification for structs *)
     | |- envs_entails _ (@stratify_ltype_struct_iter _ _ ?π ?E ?L ?mu ?mdu ?ma _ ?m ?l ?i ?sls ?rts ?lts ?rs ?k ?T) =>
         match rts with

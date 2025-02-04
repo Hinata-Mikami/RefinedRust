@@ -25,7 +25,6 @@ Section type.
       | None => (uninit T.(ty_syn_type)).(ty_shr) κ π () l
       end%I;
     ty_sidecond := True;
-    ty_ghost_drop π r := True%I; (* TODO ? *)
     ty_lfts := T.(ty_lfts);
     ty_wf_E := T.(ty_wf_E);
   |}.
@@ -87,12 +86,28 @@ Section type.
     iExists _. iFrame. by iApply ty_shr_mono.
   Qed.
   Next Obligation.
-    iIntros (rt T π r v F ?) "?". iApply logical_step_intro. done.
-  Qed.
-  Next Obligation.
     iIntros (rt T ot mt st π r v (ly & Hst & ->)) "Ha".
     destruct mt; [done | | done].
     destruct r as [r | ]; simpl; done.
+  Qed.
+
+  Global Program Instance maybe_uninit_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty}: TyGhostDrop (maybe_uninit ty) :=
+    mk_ty_ghost_drop _ (λ π r,
+      match r with
+      | None => True
+      | Some r =>
+          ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop_for ty Hg π r'
+      end)%I _.
+  Next Obligation.
+    iIntros (rt ty Hg π r v F ?) "Hv".
+    rewrite /ty_own_val/=.
+    destruct r as [r' | ]; first last.
+    { by iApply logical_step_intro. }
+    iDestruct "Hv" as "(%r'' & Hinterp & Hv)".
+    iApply (logical_step_wand with "[Hv]").
+    { iApply (ty_own_ghost_drop with "Hv"); done. }
+    iIntros "Ha".
+    iExists _. iFrame.
   Qed.
 End type.
 Global Typeclasses Opaque maybe_uninit.
@@ -100,15 +115,14 @@ Global Typeclasses Opaque maybe_uninit.
 Section ne.
   Context `{!typeGS Σ}.
 
-  Global Instance maybe_uninit_ne {rt} : 
+  Global Instance maybe_uninit_ne {rt} :
     TypeNonExpansive (maybe_uninit (rt:=rt)).
   Proof.
     constructor; simpl.
     - done.
     - eapply ty_lft_morph_make_id; done.
-    - rewrite ty_has_op_type_unfold/=. 
+    - rewrite ty_has_op_type_unfold/=.
       intros ?? ->. done.
-    - done.
     - done.
     - solve_type_proper.
     - solve_type_proper.

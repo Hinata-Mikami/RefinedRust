@@ -362,6 +362,8 @@ Global Typeclasses Opaque FindRelatedLoc.
 (** A judgment to trigger TC search on [H] for some output [a : A]. *)
 Definition trigger_tc `{!typeGS Σ} {A} (H : A → Type) (T : A → iProp Σ) : iProp Σ :=
   ∃ (a : A) (x : H a), T a.
+Definition find_tc_inst `{!typeGS Σ} (H : Type) (T : H → iProp Σ) : iProp Σ :=
+  ∃ (x : H), T x.
 
 Section judgments.
   Context `{typeGS Σ}.
@@ -1912,11 +1914,11 @@ Section judgments.
     type_incl r1 r2 ty1 ty2 -∗
     owned_type_incl π r2 r3 ty2 ty3 -∗
     owned_type_incl π r1 r3 ty1 ty3.
-  Proof. 
+  Proof.
     iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
     iSplit; last iSplitR "Hv1 Hv2".
-    - iPureIntro. 
-      intros ?? Ha1 Ha2. 
+    - iPureIntro.
+      intros ?? Ha1 Ha2.
       apply Hst2; last done. rewrite -Hst1. done.
     - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
     - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
@@ -1925,11 +1927,11 @@ Section judgments.
     owned_type_incl π r1 r2 ty1 ty2 -∗
     type_incl r2 r3 ty2 ty3 -∗
     owned_type_incl π r1 r3 ty1 ty3.
-  Proof. 
+  Proof.
     iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
     iSplit; last iSplitR "Hv1 Hv2".
-    - iPureIntro. 
-      intros ?? Ha1 Ha2. 
+    - iPureIntro.
+      intros ?? Ha1 Ha2.
       apply Hst1; first done. rewrite Hst2. done.
     - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
     - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
@@ -1939,7 +1941,7 @@ Section judgments.
     owned_subtype π E L b r1' r2 ty1' ty2 T -∗
     owned_subtype π E L b r1 r2 ty1 ty2 T.
   Proof.
-    iIntros (Heqt) "HT". 
+    iIntros (Heqt) "HT".
     rewrite /owned_subtype.
     iIntros (???) "#CTX #HE HL".
     iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.
@@ -1955,7 +1957,7 @@ Section judgments.
     owned_subtype π E L b r1 r2' ty1 ty2' T -∗
     owned_subtype π E L b r1 r2 ty1 ty2 T.
   Proof.
-    iIntros (Heqt) "HT". 
+    iIntros (Heqt) "HT".
     rewrite /owned_subtype.
     iIntros (???) "#CTX #HE HL".
     iPoseProof (subtype_acc with "HE  HL") as "#Hincl1"; first done.

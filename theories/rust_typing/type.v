@@ -60,17 +60,13 @@ Record type `{!typeGS Σ} (rt : Type) := {
     the type's structure. Needed to evade troubles with the ltype unfolding equations. *)
   ty_sidecond : iProp Σ;
 
-  (** In essence, this is a kind of "ghost-drop" that only happens at the level of the logic when a value goes out-of-scope/ is unused.)
-    Most importantly, we use it to get observations out of mutable borrows. *)
-  ty_ghost_drop : thread_id → rt → iProp Σ;
-
   (* [ty_lfts] is the set of lifetimes that needs to be active for this type to make sense.*)
   ty_lfts : list lft;
 
   (* [ty_wf_E] is a set of inclusion constraints on lifetimes that need to hold for the type to make sense. *)
   ty_wf_E : elctx;
 
-(** Given the concrete layout algorithm at runtime, we can get a layout *)
+  (** Given the concrete layout algorithm at runtime, we can get a layout *)
   ty_has_layout π r v :
     ty_own_val π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout ty_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
 
@@ -106,10 +102,6 @@ Record type `{!typeGS Σ} (rt : Type) := {
   ty_shr_mono κ κ' tid r l :
     κ' ⊑ κ -∗ ty_shr κ tid r l -∗ ty_shr κ' tid r l;
 
-  (** We can ghost-drop *)
-  ty_own_ghost_drop π r v F :
-    lftE ⊆ F → ty_own_val π r v -∗ logical_step F (ty_ghost_drop π r);
-
   (** We can transport value ownership over memcasts according to the specification by [ty_has_op_type] *)
   _ty_memcast_compat ot mt st π r v :
     _ty_has_op_type ot mt →
@@ -143,11 +135,9 @@ Arguments ty_own_val {_ _ _}.
 Arguments ty_sidecond {_ _ _}.
 Arguments ty_syn_type {_ _ _}.
 Arguments ty_shr {_ _ _}.
-Arguments ty_ghost_drop {_ _ _}.
 Arguments ty_lfts {_ _ _} _.
 Arguments ty_wf_E {_ _ _} _.
 Arguments ty_share {_ _ _}.
-Arguments ty_own_ghost_drop {_ _ _}.
 
 (** We seal [ty_has_op_type] in order to avoid performance issues with automation accidentally unfolding it. *)
 Definition ty_has_op_type_aux `{!typeGS Σ} : seal (@_ty_has_op_type _ _). Proof. by eexists. Qed.
@@ -202,6 +192,26 @@ Record rtype `{!typeGS Σ} `{!LayoutAlg} := mk_rtype {
   rt_ty : type rt_rty;
 }.
 Global Arguments mk_rtype {_ _ _ _}.
+
+(** Ghost drop *)
+Class TyGhostDrop `{!typeGS Σ} {rt} (ty : type rt) := mk_ty_ghost_drop {
+  ty_ghost_drop : thread_id → rt → iProp Σ;
+  ty_own_ghost_drop π r v F :
+    lftE ⊆ F → ty_own_val ty π r v -∗ logical_step F (ty_ghost_drop π r);
+}.
+Global Arguments ty_ghost_drop {_ _ _} _ {_}.
+Global Arguments ty_own_ghost_drop {_ _ _} _ {_}.
+Global Arguments mk_ty_ghost_drop {_ _ _}.
+
+Definition ty_ghost_drop_for `{!typeGS Σ} {rt} (ty : type rt) (Hg : TyGhostDrop ty) := @ty_ghost_drop _ _ _ ty Hg.
+
+(* trivial instance that gets picked in case we don't have a more specific instance *)
+Global Program Instance TyGhostDrop_id `{!typeGS Σ} {rt} (ty : type rt) : TyGhostDrop ty | 1000 :=
+  mk_ty_ghost_drop _ (λ _ _, True)%I _.
+Next Obligation.
+  intros. iIntros "Hv".
+  iApply logical_step_intro. done.
+Qed.
 
 (** Well-formedness of a type with respect to lifetimes.  *)
 (* Generate a constraint that a type outlives κ. *)
@@ -300,7 +310,6 @@ Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
         ▷ st.(st_own) tid r vl ∗
         ⌜syn_type_has_layout st.(st_syn_type) ly⌝ ∗
         ⌜l `has_layout_loc` ly⌝)%I;
-     ty_ghost_drop _ _ := True%I;
      ty_lfts := [];
      ty_wf_E := [];
   |}.
@@ -335,10 +344,6 @@ Next Obligation.
   iIntros (??? st κ κ' π r l) "#Hord H".
   iDestruct "H" as (vl ly) "(#Hf & #Hown)".
   iExists vl, ly. iFrame "Hown". by iApply (frac_bor_shorten with "Hord").
-Qed.
-Next Obligation.
-  simpl. iIntros (??? st π r v ? ?) "_".
-  by iApply logical_step_intro.
 Qed.
 Next Obligation.
   intros. by iApply st_memcast_compat.
@@ -382,7 +387,6 @@ Section ofe.
       (∀ κ π r l, ty1.(ty_shr) κ π r l ≡ ty2.(ty_shr) κ π r l) →
       (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
       (ty1.(ty_sidecond) ≡ ty2.(ty_sidecond)) →
-      (∀ π r, ty1.(ty_ghost_drop) π r ≡ ty2.(ty_ghost_drop) π r) →
       (ty1.(ty_lfts) = ty2.(ty_lfts)) →
       (ty1.(ty_wf_E) = ty2.(ty_wf_E)) →
       type_equiv' ty1 ty2.
@@ -395,7 +399,6 @@ Section ofe.
       (∀ κ π r v, ty1.(ty_shr) κ π r v ≡{n}≡ ty2.(ty_shr) κ π r v) →
       (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
       (ty1.(ty_sidecond) ≡{n}≡ ty2.(ty_sidecond)) →
-      (∀ π r, ty1.(ty_ghost_drop) π r ≡{n}≡ ty2.(ty_ghost_drop) π r) →
       (ty1.(ty_lfts) = ty2.(ty_lfts)) →
       (ty1.(ty_wf_E) = ty2.(ty_wf_E)) →
       type_dist' n ty1 ty2.
@@ -403,51 +406,48 @@ Section ofe.
 
   (* type rt is isomorphic to { x : T | P x } *)
   Let T :=
-    prodO (prodO (prodO (prodO (prodO (prodO (prodO (prodO
+    prodO (prodO (prodO (prodO (prodO (prodO (prodO
       (leibnizO rt)
       (thread_id -d> rt -d> val -d> iPropO Σ))
       (lft -d> thread_id -d> rt -d> loc -d> iPropO Σ))
       (syn_typeO))
       (op_type -d> leibnizO memcast_compat_type -d> PropO))
       (iPropO Σ))
-      (thread_id -d> rt -d> iPropO Σ))
       (leibnizO (list lft)))
       (leibnizO elctx).
   Let P (x : T) : Prop :=
     (*let '(T_own_val, T_shr, T_syn_type, T_depth, T_ot, T_sidecond, T_drop, T_lfts, T_wf_E) := x in*)
     (* ty_has_layout *)
-    (∀ π r v, x.1.1.1.1.1.1.1.2 π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout x.1.1.1.1.1.2 ly⌝ ∗ ⌜v `has_layout_val` ly⌝) ∧
+    (∀ π r v, x.1.1.1.1.1.1.2 π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout x.1.1.1.1.2 ly⌝ ∗ ⌜v `has_layout_val` ly⌝) ∧
     (* ty_op_type_stable *)
-    (∀ ot mt, x.1.1.1.1.2 ot mt → syn_type_has_layout x.1.1.1.1.1.2 (ot_layout ot)) ∧
+    (∀ ot mt, x.1.1.1.2 ot mt → syn_type_has_layout x.1.1.1.1.2 (ot_layout ot)) ∧
     (* ty_own_val_sidecond *)
-    (∀ π r v, x.1.1.1.1.1.1.1.2 π r v -∗ x.1.1.1.2) ∧
+    (∀ π r v, x.1.1.1.1.1.1.2 π r v -∗ x.1.1.2) ∧
     (* ty_shr_sidecond *)
-    (∀ κ π r l, x.1.1.1.1.1.1.2 κ π r l -∗ x.1.1.1.2) ∧
+    (∀ κ π r l, x.1.1.1.1.1.2 κ π r l -∗ x.1.1.2) ∧
     (* ty_shr_persistent *)
-    (∀ κ π r l, Persistent (x.1.1.1.1.1.1.2 κ π r l)) ∧
+    (∀ κ π r l, Persistent (x.1.1.1.1.1.2 κ π r l)) ∧
     (* ty_shr_aligned *)
-    (∀ κ π l r, x.1.1.1.1.1.1.2 κ π r l -∗ ∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout x.1.1.1.1.1.2 ly⌝) ∧
+    (∀ κ π l r, x.1.1.1.1.1.2 κ π r l -∗ ∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout x.1.1.1.1.2 ly⌝) ∧
     (* ty_share *)
     (∀ E κ l ly π r q, lftE ⊆ E → rrust_ctx -∗
       let κ' := lft_intersect_list x.1.2 in
       q.[κ ⊓ κ'] -∗
-      ⌜syn_type_has_layout x.1.1.1.1.1.2 ly⌝ -∗
+      ⌜syn_type_has_layout x.1.1.1.1.2 ly⌝ -∗
       ⌜l `has_layout_loc` ly⌝ -∗
       loc_in_bounds l 0 (ly_size ly) -∗
-      &{κ} (∃ v, l ↦ v ∗ x.1.1.1.1.1.1.1.2 π r v) -∗ logical_step E (x.1.1.1.1.1.1.2 κ π r l ∗ q.[κ ⊓ κ'])) ∧
+      &{κ} (∃ v, l ↦ v ∗ x.1.1.1.1.1.1.2 π r v) -∗ logical_step E (x.1.1.1.1.1.2 κ π r l ∗ q.[κ ⊓ κ'])) ∧
     (* ty_shr_mono *)
-    (∀ κ κ' π r (l : loc), κ' ⊑ κ -∗ x.1.1.1.1.1.1.2 κ π r l -∗ x.1.1.1.1.1.1.2 κ' π r l) ∧
-    (* ty_own_ghost_drop *)
-    (∀ π r v F, lftE ⊆ F → x.1.1.1.1.1.1.1.2 π r v -∗ logical_step F (x.1.1.2 π r)) ∧
+    (∀ κ κ' π r (l : loc), κ' ⊑ κ -∗ x.1.1.1.1.1.2 κ π r l -∗ x.1.1.1.1.1.2 κ' π r l) ∧
     (* ty_memcast_compat *)
-    (∀ ot mt st π r v, x.1.1.1.1.2 ot mt → x.1.1.1.1.1.1.1.2 π r v -∗
-      match mt with | MCNone => True | MCCopy => x.1.1.1.1.1.1.1.2 π r (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end) ∧
+    (∀ ot mt st π r v, x.1.1.1.2 ot mt → x.1.1.1.1.1.1.2 π r v -∗
+      match mt with | MCNone => True | MCCopy => x.1.1.1.1.1.1.2 π r (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end) ∧
     (* ty_has_op_type_compat *)
     (*(∀ ot mt, use_op_alg x.1.1.1.1.1.2 = Some ot → mt ≠ MCId → x.1.1.1.1.2 ot mt) ∧*)
     (* ty_sidecond_timeless *)
-    (Timeless (x.1.1.1.2)) ∧
+    (Timeless (x.1.1.2)) ∧
     (* ty_sidecond_persistent *)
-    (Persistent (x.1.1.1.2)).
+    (Persistent (x.1.1.2)).
 
   (* to handle the let destruct in an acceptable way *)
   Local Set Program Cases.
@@ -459,11 +459,10 @@ Section ofe.
      ty.(ty_syn_type),
      ty_has_op_type ty,
      ty.(ty_sidecond),
-     ty.(ty_ghost_drop),
      ty.(ty_lfts),
      ty.(ty_wf_E)).
   Program Definition type_pack (x : T) (H : P x) : type rt :=
-    let '(T_inh, T_own_val, T_shr, T_syn_type, T_ot, T_sidecond, T_drop, T_lfts, T_wf_E) := x in
+    let '(T_inh, T_own_val, T_shr, T_syn_type, T_ot, T_sidecond, T_lfts, T_wf_E) := x in
     {|
       ty_rt_inhabited := populate T_inh;
       ty_own_val := T_own_val;
@@ -471,14 +470,13 @@ Section ofe.
       ty_syn_type := T_syn_type;
       ty_shr := T_shr;
       ty_sidecond := T_sidecond;
-      ty_ghost_drop := T_drop;
       ty_lfts := T_lfts;
       ty_wf_E := T_wf_E;
     |}.
   Solve Obligations with
-    intros [[[[[[[[T_inh T_own_val] T_shr] T_syn_type] T_ot] T_sidecond] T_drop] T_lfts] T_wf_E];
-    intros (? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?);
-    intros ????????? Heq; injection Heq; intros -> -> -> -> -> -> -> ->;
+    intros [[[[[[[T_inh T_own_val] T_shr] T_syn_type] T_ot] T_sidecond] T_lfts] T_wf_E];
+    intros (? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?);
+    intros ???????? Heq; injection Heq; intros -> -> -> -> -> -> ->;
     done.
 
   Definition type_ofe_mixin : OfeMixin (type rt).
@@ -486,11 +484,11 @@ Section ofe.
     apply (iso_ofe_mixin type_unpack).
     - intros t1 t2. split.
       + destruct 1; done.
-      + intros [[[[[[[[]]]]]]]]; simpl in *.
+      + intros [[[[[[[]]]]]]]; simpl in *.
         by constructor.
     - intros t1 t2. split.
       + destruct 1; done.
-      + intros [[[[[[[[]]]]]]]]; simpl in *.
+      + intros [[[[[[[]]]]]]]; simpl in *.
         by constructor.
   Qed.
   Canonical Structure typeO : ofe := Ofe (type rt) type_ofe_mixin.
@@ -1127,11 +1125,6 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
       ty_sidecond ty ≡ ty_sidecond ty' →
       ty_sidecond (F ty) ≡ ty_sidecond (F ty');
 
-  type_ne_ghost_drop :
-    ∀ ty ty',
-      (∀ π r, ty_ghost_drop ty π r ≡ ty_ghost_drop ty' π r) →
-      (∀ π r, ty_ghost_drop (F ty) π r ≡ ty_ghost_drop (F ty') π r);
-
   type_ne_own_val :
     ∀ n ty ty',
       TypeDist n ty ty' →
@@ -1164,11 +1157,6 @@ Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type
     ∀ ty ty',
       ty.(ty_syn_type) = ty'.(ty_syn_type) →
       ty_sidecond (F ty) ≡ ty_sidecond (F ty');
-
-  type_ctr_ghost_drop :
-    ∀ ty ty',
-      (∀ π r, ty_ghost_drop ty π r ≡ ty_ghost_drop ty' π r) →
-      (∀ π r, ty_ghost_drop (F ty) π r ≡ ty_ghost_drop (F ty') π r);
 
   type_ctr_own_val :
     ∀ n ty ty',
@@ -1232,12 +1220,11 @@ Section properties.
   Global Instance type_contractive_type_ne {rt1 rt2} (F : type rt1 → type rt2) :
     TypeContractive F → TypeNonExpansive F.
   Proof.
-    intros [Hst Hlft Hot Hsc Hdrop Hv Hshr]. constructor.
+    intros [Hst Hlft Hot Hsc Hv Hshr]. constructor.
     - done.
     - done.
     - done.
     - intros ?? Hst' Hsc'. apply Hsc. done.
-    - done.
     - intros n ty ty' Hd.
       eapply Hv. by apply type_dist_dist2.
     - intros n ty ty' Hd.
@@ -1252,15 +1239,14 @@ Section properties.
     TypeNonExpansive F1 → TypeNonExpansive F2 → TypeNonExpansive (F2 ∘ F1).
   Proof.
     intros Hne1 Hne2.
-    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
-    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1].
+    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
     - intros ?? ? Ha. eapply Hot2.
       { by eapply Hst1. }
       by eapply Hot1.
-    - naive_solver.
     - naive_solver.
     - intros n ?? Hd.
       eapply Hv2. apply _.
@@ -1277,13 +1263,12 @@ Section properties.
     TypeContractive F1 → TypeNonExpansive F2 → TypeContractive (F2 ∘ F1).
   Proof.
     intros Hc1 Hne2.
-    pose proof Hc1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
-    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    pose proof Hc1 as [Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1].
+    pose proof Hne2 as [Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
     - intros ?? Ha. by eapply Hot2, Hot1.
-    - naive_solver.
     - naive_solver.
     - intros n ?? Hd.
       eapply Hv2. constructor.
@@ -1308,13 +1293,12 @@ Section properties.
     TypeNonExpansive F1 → TypeContractive F2 → TypeContractive (F2 ∘ F1).
   Proof.
     intros Hne1 Hc2.
-    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hdrop1 Hv1 Hshr1].
-    pose proof Hc2 as [Hst2 Hlft2 Hot2 Hsc2 Hdrop2 Hv2 Hshr2].
+    pose proof Hne1 as [Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1].
+    pose proof Hc2 as [Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2].
     constructor; simpl in *.
     - naive_solver.
     - apply _.
     - intros ?? Ha. eapply Hot2.
-    - naive_solver.
     - naive_solver.
     - intros n ?? Hd. eapply Hv2. apply _.
     - intros n ?? Hd.
@@ -1341,7 +1325,6 @@ Section properties.
     - done.
     - eauto.
     - eauto.
-    - eauto.
   Qed.
 
   Global Instance TypeNe_id {rt1} :
@@ -1352,7 +1335,6 @@ Section properties.
     - eapply ty_lft_morph_make_id; done.
     - done.
     - done.
-    - eauto.
     - intros ??? Ha. apply Ha.
     - intros ??? Ha. apply Ha.
   Qed.
@@ -1365,7 +1347,6 @@ Section properties.
     - eapply ty_lft_morph_make_const; done.
     - done.
     - done.
-    - eauto.
     - eauto.
     - eauto.
   Qed.
@@ -1903,8 +1884,9 @@ Inductive DirectLftMorphism {rt1} (Flfts : type rt1 → list lft) (FE : type rt1
 | direct_lft_morph_const (_ : DirectLftMorphismConst Flfts FE)
 | direct_lft_morph_add (_ : DirectLftMorphismAdd Flfts FE)
 .
+Existing Class DirectLftMorphism.
 
-Lemma ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
+Global Instance ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
   DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)) →
   TyLftMorphism F.
 Proof.
@@ -1916,7 +1898,7 @@ Proof.
     apply ty_lft_morph_add.
     refine (mk_lft_morph_add α E βs _ _); done.
 Qed.
-Lemma ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
+Global Instance ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
   TyLftMorphism F →
   DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)).
 Proof.
@@ -1929,7 +1911,7 @@ Proof.
     refine (mk_direct_lft_morph_add α E βs _ _); done.
 Qed.
 
-Lemma direct_lft_morphism_app {rt1} (Flft1 Flft2 : type rt1 → list lft) (FE1 FE2 : type rt1 → elctx) :
+Global Instance direct_lft_morphism_app {rt1} (Flft1 Flft2 : type rt1 → list lft) (FE1 FE2 : type rt1 → elctx) :
   DirectLftMorphism Flft1 FE1 →
   DirectLftMorphism Flft2 FE2 →
   DirectLftMorphism (λ ty, Flft1 ty ++ Flft2 ty) (λ ty, FE1 ty ++ FE2 ty).
@@ -1986,7 +1968,7 @@ Proof.
       * iIntros "(? & ? & #? & ? & ?)". iFrame. iFrame "#".
 Qed.
 
-Lemma direct_lft_morph_make_const {rt} κs E :
+Global Instance direct_lft_morph_make_const {rt} κs E :
   DirectLftMorphism (λ _ : type rt, κs) (λ _, E).
 Proof.
   constructor.

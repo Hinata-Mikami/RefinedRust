@@ -34,8 +34,6 @@ Section box.
         &frac{κ}(λ q', l ↦{q'} li) ∗
         (* later for contractiveness *)
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
-    ty_ghost_drop π r :=
-      ∃ ri, place_rfn_interp_owned r ri ∗ inner.(ty_ghost_drop) π ri;
 
     ty_lfts := inner.(ty_lfts);
     ty_wf_E := inner.(ty_wf_E);
@@ -125,7 +123,24 @@ Section box.
     by iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    simpl. iIntros (π r v??) "(%l & %ly & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+    iIntros (ot mt st π r ? Hot).
+    destruct mt.
+    - eauto.
+    - iIntros "(%l & %ly & -> & ?)".
+      iExists l, ly. iFrame.
+      iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
+      + eauto.
+      + iPureIntro. by apply Hl.
+    - iApply (mem_cast_compat_loc (λ v, _)); first done.
+      iIntros "(%l & %ly & -> & _)". eauto.
+  Qed.
+
+
+  Global Program Instance box_ghost_drop `{Hg : !TyGhostDrop inner} : TyGhostDrop box :=
+    mk_ty_ghost_drop _ (λ π r,
+      ∃ ri, place_rfn_interp_owned r ri ∗ ty_ghost_drop_for inner Hg π ri)%I _.
+  Next Obligation.
+    simpl. iIntros (? π r v??) "(%l & %ly & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
     iDestruct "Hb" as "(%r' & Hr & Hv)".
     iApply fupd_logical_step.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -137,18 +152,6 @@ Section box.
     iApply (logical_step_intro_atime with "Hat").
     iIntros "!> Hcred' Hat !> Hgdrop".
     eauto with iFrame.
-  Qed.
-  Next Obligation.
-    iIntros (ot mt st π r ? Hot).
-    destruct mt.
-    - eauto.
-    - iIntros "(%l & %ly & -> & ?)".
-      iExists l, ly. iFrame.
-      iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
-      + eauto.
-      + iPureIntro. by apply Hl.
-    - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%l & %ly & -> & _)". eauto.
   Qed.
 End box.
 
@@ -162,18 +165,16 @@ Section contractive.
     - eapply ty_lft_morph_make_id; done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
-    - admit. 
     - intros n ty ty' ?.
       intros π ? v. rewrite /ty_own_val/=.
       solve_type_proper.
     - intros n ty ty' ?.
       intros κ' π ? l. rewrite /ty_shr/=.
       solve_type_proper.
-  (*Qed.*)
-  Abort.
+  Qed.
 
-  (*Global Instance box_type_ne {rt : Type} : TypeNonExpansive (box (rt:=rt)).*)
-  (*Proof. apply type_contractive_type_ne, _. Qed.*)
+  Global Instance box_type_ne {rt : Type} : TypeNonExpansive (box (rt:=rt)).
+  Proof. apply type_contractive_type_ne, _. Qed.
 End contractive.
 
 Section subtype.

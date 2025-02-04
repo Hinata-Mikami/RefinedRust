@@ -65,32 +65,6 @@ Section fixpoint_def.
     done.
   Qed.
 
-  (*Search logical_step.*)
-  (* what can we prove about ghost_drop? *)
-  (* TODO The problem:
-     I don't have laters over there.
-     With the current setup, I probably cannot prove that it's a fixpoint wrt ghost_drop
-
-     What do I expect the ghost_drop to be?
-
-     Let's say I have a linked list defined via Box.
-     I store mutable references in there.
-     Now I drop the linked list.
-     Ideally, I want a bigsep over all the observations.
-     - i.e., the Box needs to pass through the inner ghost drop, with the respective smaller refinement.
-      For this, I need to make this guarded over that also.
-     I guess in the end I get some laters. But I can also provide some later credits.
-     Ideally, logical_step would be contractive....
-     But I guess it's not.
-
-     I want amortized reasoning also at the SI level.
-     can something like that be sound?
-
-     Alternatively, I would define a version that has laters and provides a later credit, to make it guarded.
-     Then I want to derive something on top that uses the logical step.
-
-   *)
-
   Lemma Fn_lfts_const_0 n :
     ⊢ lft_equiv (lft_intersect_list (ty_lfts (Fn n))) (lft_intersect_list (ty_lfts (Fn 0))).
   Proof using Hcr.
@@ -183,7 +157,6 @@ Section fixpoint_def.
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;
     ty_shr := F_ty_own_val_ty_shr_fixpoint.2;
     ty_sidecond := (Fn 1).(ty_sidecond);
-    ty_ghost_drop := (Fn 0).(ty_ghost_drop);
     ty_lfts := (Fn 0).(ty_lfts);
     ty_wf_E := (Fn 1).(ty_wf_E);
   |}.
@@ -261,14 +234,6 @@ Section fixpoint_def.
     - intros ?.
       simpl. eapply ty_shr_mono.
   Qed.
-  Next Obligation.
-    intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
-    - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. f_equiv. eapply Heq.
-    - intros ?. simpl.
-      (* TODO *)
-  Admitted.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving.
@@ -404,7 +369,6 @@ Proof.
     rewrite -(Heq type_inhabitant).
     rewrite Heq. done.
   - intros. simpl. destruct (Heq inhabitant). done.
-  - intros. simpl. destruct (Heq inhabitant). done.
   - intros. simpl. unfold Fn; simpl.
     eapply ty_wf_E_ne.
     (* uses that T2 is also non-expansive *)
@@ -505,22 +469,6 @@ Section fixpoint.
     - apply type_fixpoint_subtype_1.
     - apply type_fixpoint_subtype_2.
   Qed.
-
-  (* TODO subtyping -- think of the right lemmas here *)
-  (*
-     - we should unfold when subtyping
-       + if the goal is a fixpoint and the current thing is not a fixpoint, unfold in the goal.
-       + => TODO look at refinedc for unfolding strategy
-
-     - when accessing a place, we should have unfolding lemmas for type_fixpoint similarly as for existentials.
-       +
-   *)
-  (* Next step:
-
-
-
-   *)
-
 End fixpoint.
 
 Section rules.

@@ -140,8 +140,6 @@ Section array.
     ty_syn_type := ArraySynType ty.(ty_syn_type) len;
     _ty_has_op_type := is_array_ot ty len;
     ty_sidecond := True;
-    ty_ghost_drop π r :=
-      [∗ list] r' ∈ r, match r' with | #r'' => ty.(ty_ghost_drop) π r'' | _ => True end;
     ty_lfts := ty.(ty_lfts);
     ty_wf_E := ty.(ty_wf_E);
   |}%I.
@@ -253,21 +251,27 @@ Section array.
     iExists _; iFrame. iApply ty_shr_mono; done.
   Qed.
   Next Obligation.
-    iIntros (len ty π r v F ?) "(%ly & ? & ? & ? & ? & Hb)".
-    iAssert (logical_step F $ [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
-      match r' with | # r'' => ty_ghost_drop ty π r'' | PlaceGhost _ => True end)%I with "[Hb]" as "Hb".
-    { iApply logical_step_big_sepL2. iApply (big_sepL2_mono with "Hb"). iIntros (? r' ???).
-      iIntros "(%r'' & Hrfn & Hb)". destruct r'; last by iApply logical_step_intro.
-      iDestruct "Hrfn" as "->". by iApply ty_own_ghost_drop. }
-    iApply (logical_step_wand with "Hb").
-    iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
-  Qed.
-  Next Obligation.
     iIntros (len ty ot mt st π r v Hot) "Hb".
     destruct ot as [ | | | | ly' | ]; try done.
     destruct Hot as (ly0 & -> & Hot & Hwf).
     destruct mt; [done | done | done].
     (* TODO maybe the second case should really change once we support an ArrayOpType? *)
+  Qed.
+
+  Global Program Instance array_ghost_drop (ty : type rt) `{Hg : !TyGhostDrop ty} len : TyGhostDrop (array_t len ty) :=
+    mk_ty_ghost_drop _ (λ π r,
+      [∗ list] r' ∈ r, ∃ r'', place_rfn_interp_owned r' r'' ∗ ty_ghost_drop_for ty Hg π r'')%I _.
+  Next Obligation.
+    iIntros (ty Hg len π r v F ?) "(%ly & ? & ? & ? & ? & Hb)".
+    iAssert (logical_step F $ [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
+      ∃ r'', place_rfn_interp_owned r' r'' ∗ ty_ghost_drop_for ty Hg π r'')%I with "[Hb]" as "Hb".
+    { iApply logical_step_big_sepL2. iApply (big_sepL2_mono with "Hb"). iIntros (? r' ???).
+      iIntros "(%r'' & Hrfn & Hb)". 
+      iApply (logical_step_wand with "[Hb]").
+      { iApply (ty_own_ghost_drop with "Hb"); done. }
+      iIntros "Hg". iExists _. iFrame. }
+    iApply (logical_step_wand with "Hb").
+    iIntros "Hb". iPoseProof (big_sepL2_const_sepL_l with "Hb") as "(_ & $)".
   Qed.
 
   (* TODO copy *)
@@ -292,7 +296,6 @@ Section ne.
       setoid_rewrite Hot.
       done.
     - done.
-    - admit.
     - intros.
       rewrite /ty_own_val/=.
       unfold array_own_el_val.
@@ -301,7 +304,7 @@ Section ne.
       rewrite /ty_shr/=.
       unfold array_own_el_shr.
       solve_type_proper.
-  Admitted.
+  Qed.
 End ne.
 
 Section lemmas.

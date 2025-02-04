@@ -266,7 +266,6 @@ Section structs.
         loc_in_bounds l 0 (ly_size sl) ∗
         [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
           struct_own_el_shr π κ i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1)%I;
-    ty_ghost_drop π r := True%I; (* TODO *)
     ty_lfts := mjoin (fmap (λ ty, (projT2 ty).(ty_lfts)) (hzipl rts tys));
     ty_wf_E := mjoin (fmap (λ ty, (projT2 ty).(ty_wf_E)) (hzipl rts tys));
   |}.
@@ -425,10 +424,6 @@ Section structs.
     iApply (ty_shr_mono with "Hincl Hb").
   Qed.
   Next Obligation.
-    iIntros (rts sls tys π r v F ?) "(%sl & %Halg & Hlen & %Hly & Hmem)".
-    by iApply logical_step_intro.
-  Qed.
-  Next Obligation.
     iIntros (rts sls tys ot mt st π r v Hot).
     apply (mem_cast_compat_Untyped) => ?.
     iIntros "(%sl & %Halg & %Hlen & %Hsl & Hmem)".
@@ -500,6 +495,15 @@ Section structs.
         split; first done. by apply Forall_true.
     - iPureIntro. done.
   Qed.
+
+  (* TODO *)
+  Global Program Instance struct_t_ghost_drop {rts} (tys : hlist type rts) sls : TyGhostDrop (struct_t sls tys) :=
+    mk_ty_ghost_drop _ (λ _ _, True)%I _.
+  Next Obligation.
+    iIntros (rts sls tys π r v F ?) "(%sl & %Halg & Hlen & %Hly & Hmem)".
+    by iApply logical_step_intro.
+  Qed.
+
 
   (* TODO move *)
   Lemma HTForall_cons_inv {A} {F : A → Type} (x : A) (xl : list A) (X : F x) (Xs : hlist F xl) (P : ∀ X : A, F X → Type) :
@@ -659,7 +663,6 @@ Section structs.
         { solve_type_proper. }
         eapply IH; first done. by simplify_eq/=.
     - simpl. intros ?? ->.  done.
-    - simpl. done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r v). rewrite /ty_own_val/=.
@@ -757,7 +760,6 @@ Section structs.
         { solve_type_proper. }
         eapply IH; first done. by simplify_eq/=.
     - simpl. intros. erewrite Hst. done.
-    - simpl. done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
       iIntros (π r v). rewrite /ty_own_val/=.

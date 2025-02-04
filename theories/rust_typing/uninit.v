@@ -92,16 +92,18 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
   (* Two low-priority instances that trigger as a fallback for ltypes foldable to a ty (no borrows below) *)
   Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st l T :
     cast_ltype_to_type E L lt (λ ty,
+    find_tc_inst (TyGhostDrop ty) (λ Hg,
     li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
       ⌜syn_type_has_layout (ty_syn_type ty) ly1⌝ -∗
       li_tactic (compute_layout_goal st) (λ ly2,
         ⌜syn_type_has_layout st ly2⌝ -∗
-        ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗ 
+        ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗
         ⌜ly_size ly1 = ly_size ly2⌝ ∗
-        T L (ty_ghost_drop ty π r))))
+        T L (ty_ghost_drop_for ty Hg π r)))))
     ⊢ owned_subltype_step π E L l #r #() lt (◁ uninit st) T.
   Proof.
     iDestruct 1 as "(%ty & %Heqt & HT)".
+    iDestruct "HT" as (?) "HT".
     rewrite /compute_layout_goal.
     iDestruct "HT" as "(%ly1 & %Hst1 & HT)".
     iDestruct ("HT" with "[//]") as "(%ly2 & %Hst2 & HT)".
@@ -114,11 +116,11 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
 
     iPoseProof (ltype_own_has_layout' with "Hl") as "%". { simp_ltype. rewrite Heq_lt. done. }
     iDestruct ("HT" with "[//] [//]") as "(%Hly' & %Hsz & HT)".
-    
+
     iExists _, _. iFrame.
     assert (syn_type_size_eq (ltype_st lt) st) as ?.
-    { rewrite Hst ltype_st_ofty. 
-      intros ly3 ly4 Hst3 Hst4. 
+    { rewrite Hst ltype_st_ofty.
+      intros ly3 ly4 Hst3 Hst4.
       assert (ly3 = ly1) as -> by by eapply syn_type_has_layout_inj.
       assert (ly4 = ly2) as -> by by eapply syn_type_has_layout_inj.
       done. }
@@ -130,8 +132,8 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
       iApply (ofty_owned_subtype_aligned with "[] Hl"); [done | | ].
       { done. }
       iApply owned_type_incl_uninit'; last done.
-      simpl. 
-      intros ?? (-> & _)%syn_type_has_layout_untyped_inv Hst4. 
+      simpl.
+      intros ?? (-> & _)%syn_type_has_layout_untyped_inv Hst4.
       assert (ly2 = ly3) as <- by by eapply syn_type_has_layout_inj. done.
     }
     iPureIntro. done.
@@ -182,14 +184,14 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
   *)
 
   (* TODO move *)
-  Lemma syn_type_has_layout_untyped_mono ly1 ly2 : 
+  Lemma syn_type_has_layout_untyped_mono ly1 ly2 :
     ly_align_log ly2 ≤ ly_align_log ly1 →
     ly_size ly1 = ly_size ly2 →
     syn_type_has_layout (UntypedSynType ly1) ly1 →
     syn_type_has_layout (UntypedSynType ly2) ly2.
   Proof.
     intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
-    apply syn_type_has_layout_untyped; first done. 
+    apply syn_type_has_layout_untyped; first done.
     - eapply layout_wf_mono; done.
     - lia.
     - by eapply ly_align_in_bounds_mono.
@@ -198,33 +200,36 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
   (* Higher-priority instacne for the special case that we go to Untyped *)
   Lemma owned_subltype_step_ofty_uninit_untyped π E L l {rt} (lt : ltype rt) r ly T :
     cast_ltype_to_type E L lt (λ ty,
+      find_tc_inst (TyGhostDrop ty) (λ Hg,
       li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
-      ⌜syn_type_has_layout (ty_syn_type ty) ly1⌝ -∗ 
+      ⌜syn_type_has_layout (ty_syn_type ty) ly1⌝ -∗
       ⌜l `has_layout_loc` ly⌝ ∗
       ⌜syn_type_has_layout (UntypedSynType ly) ly⌝ ∗
       (⌜l `has_layout_loc` ly1⌝ -∗
-      ⌜ly_size ly1 = ly_size ly⌝ ∗ T L (ty_ghost_drop ty π r))))
+      ⌜ly_size ly1 = ly_size ly⌝ ∗ T L (ty_ghost_drop_for ty Hg π r)))))
     ⊢ owned_subltype_step π E L l #r #() lt (◁ uninit (UntypedSynType ly)) T.
   Proof.
     iDestruct 1 as "(%ty & %Heqt & HT)".
+    iDestruct "HT" as (Hg) "HT".
     rewrite /compute_layout_goal.
     iDestruct "HT" as "(%ly1 & %Hst & HT)".
     iApply owned_subltype_step_ofty_uninit.
     iExists ty. iR.
+    iExists Hg.
     iExists ly1. iR. iIntros (_). iExists ly.
-    iPoseProof ("HT" with "[//]") as "(%Hly & %Hwf & HT)". 
-    iR. 
+    iPoseProof ("HT" with "[//]") as "(%Hly & %Hwf & HT)".
+    iR.
     (*iSplitR. { iPureIntro. *)
       (*eapply (syn_type_has_layout_untyped_mono ly1); [done.. | ].*)
       (*by eapply syn_type_has_layout_make_untyped. }*)
-    iIntros (? ?). 
+    iIntros (? ?).
     iPoseProof ("HT" with "[//]") as "(%Hsz & ?)".
     iR. iR. done.
   Qed.
   Global Instance owned_subltype_step_ofty_uninit_untyped_inst π E L l {rt} (lt : ltype rt) r ly :
     OwnedSubltypeStep π E L l #r #() lt (◁ uninit (UntypedSynType ly))%I | 100 :=
     λ T, i2p (owned_subltype_step_ofty_uninit_untyped π E L l lt r ly T).
-  
+
   (*
   Lemma owned_subltype_step_ofty_uninit_untyped π E L {rt} (lt : ltype rt) r ly T :
     cast_ltype_to_type E L lt (λ ty,
@@ -255,7 +260,7 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     iExists _, _. iFrame.
     iSplitL. { iApply logical_step_intro. by iFrame. }
     iModIntro. iPureIntro. intros ?? Hst1 Hst2.
-    destruct Hstcomp as [<- | (ly1' & Hst' & ->)]. 
+    destruct Hstcomp as [<- | (ly1' & Hst' & ->)].
     + f_equiv. by eapply syn_type_has_layout_inj.
     + eapply syn_type_has_layout_untyped_inv in Hst2 as (<- & _).
       f_equiv. by eapply syn_type_has_layout_inj.
