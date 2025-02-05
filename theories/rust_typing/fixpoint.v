@@ -326,10 +326,8 @@ Section fixpoint_def.
     done.
   Qed.
 
-  (*Lemma type_fixpoint_ghost_drop : *)
-    (*type_fixpoint.(ty_ghost_drop) *)
-
-
+  (** NOTE: We do not have a generic ghost_drop instance, as the solution of the recursive cycle
+      strongly depends on the particular type. *)
 End fixpoint_def.
 
 

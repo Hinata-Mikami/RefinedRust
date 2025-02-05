@@ -480,6 +480,18 @@ Lemma TCHForall_nth {Xl D} (Φ : ∀ X, F X → Prop) (d : F D) (xl : hlist F Xl
   Φ _ d → TCHForall Φ xl → Φ _ (hnth d xl i).
 Proof. move=> ? All. move: i. elim All; [done|]=> > ???. by case. Qed.
 
+Lemma HTForall_cons_inv (x : A) (xl : list A) (X : F x) (Xs : hlist F xl) (P : ∀ X : A, F X → Type) :
+  HTForall P (X +:: Xs) →
+  (P _ X * HTForall P Xs)%type.
+Proof.
+  inversion 1. subst.
+  repeat revert select (existT _ _ = existT _ _).
+  intros Heq1 Heq2.
+  apply existT_inj in Heq1.
+  apply existT_inj in Heq2.
+  subst. done.
+Qed.
+
 Context {G: A → Type}.
 
 Inductive HForall_1 (Φ: ∀X, F X → G X → Prop)

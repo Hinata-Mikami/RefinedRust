@@ -505,19 +505,7 @@ Section structs.
   Qed.
 
 
-  (* TODO move *)
-  Lemma HTForall_cons_inv {A} {F : A → Type} (x : A) (xl : list A) (X : F x) (Xs : hlist F xl) (P : ∀ X : A, F X → Type) :
-    HTForall P (X +:: Xs) →
-    (P _ X * HTForall P Xs)%type.
-  Proof.
-    inversion 1. subst.
-    repeat revert select (existT _ _ = existT _ _).
-    intros Heq1 Heq2.
-    apply existT_inj in Heq1.
-    apply existT_inj in Heq2.
-    subst. done.
-  Qed.
-
+  (* Useful lemmas for proving properties about our interpretation of enums *)
   Lemma struct_t_own_val_dist {rts1 rts2} sls (Ts1 : hlist type rts1) (Ts2 : hlist type rts2) r1 r2 v π n :
     Forall2 (λ '(existT _ (T1, r1)) '(existT _ (T2, r2)),
         ∀ i fields v,
@@ -553,7 +541,6 @@ Section structs.
       { simpl in *. lia. }
     + f_equiv. eapply IH; done.
   Qed.
-
   Lemma struct_t_shr_dist {rts1 rts2} sls (Ts1 : hlist type rts1) (Ts2 : hlist type rts2) r1 r2 l π κ n :
     Forall2 (λ '(existT _ (T1, r1)) '(existT _ (T2, r2)),
         ∀ i fields l,
@@ -572,24 +559,8 @@ Section structs.
     f_equiv. f_equiv.
     specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen2.
     rewrite -field_members_length -Hlen' in Hlen2. clear Hlen'.
-
-    enough (
-    ∀ m : nat,
-      ([∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts1 Ts1 r1)
-      struct_make_uninit_type, struct_own_el_shr π κ (m + i)
-                                              (sl_members sl) l
-                                              (projT2 ty).2
-                                              (projT2 ty).1)%I ≡{n}≡
-      ([∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts2 Ts2 r2)
-      struct_make_uninit_type, struct_own_el_shr π κ (m + i)
-                                                (sl_members sl) l
-                                                (projT2 ty).2
-                                                (projT2 ty).1)%I) as Hd.
-    { apply (Hd 0). }
-
-    intros m.
-    elim: (sl_members sl) m rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l => //.
-    intros [m ly] s IH k rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l; csimpl.
+    elim: (sl_members sl) rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l => //.
+    intros [m ly] s IH rts1 rts2 Ts1 Ts2 r1 r2 Hlen2 Hel Hlen l; csimpl.
     destruct m; simpl in *.
     + destruct rts1 as [ | rt1 rts1]; destruct rts2 as [ | rt2 rts2]; try done.
       inv_hlist Ts1 => T1 Ts1.
@@ -598,18 +569,21 @@ Section structs.
       simpl.
       intros Hel. apply Forall2_cons_inv in Hel as [Hel1 Hel].
       f_equiv. { apply Hel1. }
-      (*eapply (IH (S k)).*)
-      (*{ simpl in *. lia. }*)
-      (*{ done. }*)
-      (*{ simpl in *. lia. }*)
-      admit.
+      rewrite /struct_own_el_shr/=.
+      unfold offset_of_idx; simpl.
+      setoid_rewrite <-shift_loc_assoc_nat.
+      eapply IH.
+      { simpl in *. lia. }
+      { done. }
+      { simpl in *. lia. }
     + f_equiv.
-      admit.
-      (*eapply IH; done.*)
-  Admitted.
+      rewrite /struct_own_el_shr/=.
+      unfold offset_of_idx; simpl.
+      setoid_rewrite <-shift_loc_assoc_nat.
+      apply IH; done.
+  Qed.
 
   Global Instance struct_t_ne {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
-    (*(∀ st, length (sls st) = length (sls st')) →*)
     HTypeNonExpansive Ts →
     TypeNonExpansive (λ ty, struct_t (sls (st_of ty)) (Ts ty)).
   Proof.

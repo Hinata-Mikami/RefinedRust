@@ -576,7 +576,6 @@ Global Typeclasses Opaque enum_t.
 Section ne.
   Context `{!typeGS Σ}.
 
-  (*TypeNonExpansive*)
   Import EqNotations.
   Class EnumNonExpansive {rt1 rt2} (F : type rt1 → enum rt2) := {
     enum_ne_els :
@@ -594,10 +593,19 @@ Section ne.
       ∀ ty ty' r, rew [id] (enum_ne_rt_consistent ty ty' r) in (F ty).(enum_r) r = (F ty').(enum_r) r;
 
     (* the functor on types is non-expansive *)
-    enum_ne_ty :
+    enum_ne_ty_dist :
       ∀ r n ty ty',
       TypeDist n ty ty' →
       TypeDist
+        n
+        (rew [λ x, type x] (enum_ne_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
+        ((F ty').(enum_ty) r);
+    (* same for Dist2, for the sharing predicate *)
+    (* [enum_ne_ty_dist] and [enum_ne_ty_dist2] are incomparable in strength *)
+    enum_ne_ty_dist2 :
+      ∀ r n ty ty',
+      TypeDist2 n ty ty' →
+      TypeDist2
         n
         (rew [λ x, type x] (enum_ne_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
         ((F ty').(enum_ty) r);
@@ -613,9 +621,61 @@ Section ne.
     erewrite enum_ne_tag_consistent; done.
   Qed.
 
+  Global Instance enum_ne_const {rt1 rt2} (en : enum rt2) :
+    EnumNonExpansive (λ _ : type rt1, en).
+  Proof.
+    unshelve econstructor.
+    - done.
+    - done.
+    - apply _.
+    - done.
+    - done.
+    - done.
+    - done.
+  Qed.
 
-  (* TODO *)
-  Lemma enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
+  Local Lemma enum_el_val_unfold {rt} (ty : type rt) π i fields v r tag uls :
+    struct_own_el_val π i fields v r (active_union_t ty tag uls) ≡
+      (∃ (ly0 : layout), ⌜snd <$> fields !! i = Some ly0⌝ ∗ ⌜syn_type_has_layout uls ly0⌝ ∗
+        (∃ (ul : union_layout) (ly : layout),
+        ⌜use_union_layout_alg uls = Some ul⌝ ∗
+        ⌜layout_of_union_member tag ul = Some ly⌝ ∗
+        ⌜syn_type_has_layout (st_of ty) ly⌝ ∗
+        (∃ r' : rt, place_rfn_interp_owned r r' ∗
+          take (ly_size ly) v ◁ᵥ{ π} r' @ ty) ∗
+        drop (ly_size ly) v ◁ᵥ{ π} .@ uninit (UntypedSynType (active_union_rest_ly ul ly))))%I.
+  Proof.
+    rewrite /struct_own_el_val{1}/ty_own_val/=.
+    iSplit.
+    - iIntros "(%r' & %ly & Hrfn & ? & ? & %ul & %ly' & ? & ? & ? & ? & ?)".
+      iExists ly. iFrame. iExists ul, ly'. iFrame.
+      iExists r'. iFrame.
+    - iIntros "(%ly' & ? & ? & %ul & %ly & ? & ? & ? & (%r' & ? & ?) & ?)".
+      iExists r', ly'. iFrame. iExists ul, ly. iFrame.
+  Qed.
+
+  Local Lemma enum_el_shr_unfold {rt} (ty : type rt) π κ i fields l r tag uls :
+    struct_own_el_shr π κ i fields l r (active_union_t ty tag uls) ≡
+    (∃ (ly : layout), ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout uls ly⌝ ∗ True ∗
+      (∃ (ul : union_layout) (ly0 : layout),
+      ⌜use_union_layout_alg uls = Some ul⌝ ∗
+      ⌜layout_of_union_member tag ul = Some ly0⌝ ∗
+      ⌜(l +ₗ offset_of_idx fields i) `has_layout_loc` ul⌝ ∗
+      (∃ r' : rt, place_rfn_interp_shared r r' ∗
+        (l +ₗ offset_of_idx fields i) ◁ₗ{π,κ} r'@ty) ∗
+      (l +ₗ offset_of_idx fields i +ₗ ly_size ly0) ◁ₗ{π,κ} .@
+      uninit (UntypedSynType (active_union_rest_ly ul ly0))))%I.
+  Proof.
+    rewrite /struct_own_el_shr{1}/ty_shr/=.
+    iSplit.
+    - iIntros "(%r' & %ly & Hrfn & ? & ? & _ & %ul & %ly' & ? & ? & ? & ? & ?)".
+      iExists ly. iFrame. iR. iExists ul, ly'. iFrame.
+      iExists r'. iFrame.
+    - iIntros "(%ly' & ? & ? & _ & %ul & %ly & ? & ? & ? & (%r' & ? & ?) & ?)".
+      iExists r', ly'. iFrame. iExists ul, ly. iFrame.
+  Qed.
+
+  Global Instance enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
     EnumNonExpansive F →
     TypeNonExpansive (λ ty : type rt1, enum_t (F ty)).
   Proof.
@@ -641,19 +701,33 @@ Section ne.
       eapply struct_t_own_val_dist. simpl.
       constructor; last constructor; last constructor; first done.
       intros ???.
-      unfold struct_own_el_val; simpl.
-
-      rewrite /ty_own_val/=.
-      (* TODO how to do this?
-
-
-
-
-      *)
-
-
-
-      admit.
+      rewrite !enum_el_val_unfold.
+      do 10 f_equiv.
+      { erewrite enum_ne_tag_consistent; done. }
+      f_equiv.
+      { simpl.
+        f_equiv.
+        eapply (enum_ne_ty_dist r) in Hd.
+        destruct Hd as [Hst _ _ _].
+        rewrite -Hst.
+        generalize (enum_ne_rt_consistent ty ty' r) as Heq.
+        destruct Heq. done. }
+      f_equiv. simpl.
+      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ take (ly_size a2) v0 ◁ᵥ{ π} r' @ enum_ty (F ty) r)%I
+        ≡ (take (ly_size a2) v0 ◁ᵥ{ π} enum_r (F ty) r @ enum_ty (F ty) r)%I) as Heq.
+      { iIntros (?). iSplit.
+        - iIntros "(% & <- & $)".
+        - iIntros "Ha". iExists _. iFrame. done. }
+      rewrite !Heq.
+      clear -Hen Hd.
+      eapply (enum_ne_ty_dist r) in Hd.
+      destruct Hd as [_ _ Hv _].
+      rewrite -Hv.
+      clear.
+      rewrite -(enum_ne_r_consistent ty ty' r).
+      generalize (enum_ne_rt_consistent ty ty' r); intros Heq.
+      destruct Heq.
+      done.
     - intros n ty ty' Hd.
       iIntros (κ π r l). rewrite /ty_shr/=.
       do 3 f_equiv.
@@ -664,11 +738,28 @@ Section ne.
       eapply struct_t_shr_dist. simpl.
       constructor; last constructor; last constructor; first done.
       intros ???.
-      unfold struct_own_el_shr; simpl.
 
-      rewrite /ty_shr/=.
-      admit.
-  Admitted.
+      rewrite !enum_el_shr_unfold.
+      do 12 f_equiv.
+      { erewrite enum_ne_tag_consistent; done. }
+      f_equiv.
+      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ (l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} r'@enum_ty (F ty) r)%I
+        ≡ ((l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} enum_r (F ty) r @enum_ty (F ty) r)%I) as Heq.
+      { iIntros (?). iSplit.
+        - iIntros "(% & <- & $)".
+        - iIntros "Ha". iExists _. iFrame. done. }
+      rewrite !Heq.
+      clear -Hen Hd.
+
+      eapply (enum_ne_ty_dist2 r) in Hd.
+      destruct Hd as [_ _ _ Hshr].
+      rewrite -Hshr.
+      clear.
+      rewrite -(enum_ne_r_consistent ty ty' r).
+      generalize (enum_ne_rt_consistent ty ty' r); intros Heq.
+      destruct Heq.
+      done.
+  Qed.
 End ne.
 
 Section subtype.
