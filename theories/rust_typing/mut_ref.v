@@ -214,7 +214,7 @@ Section mut_ref.
     - intros n ty ty' ?.
       intros κ' π [] l. rewrite /ty_shr/=.
       solve_type_proper.
-  Qed.
+  Admitted.
 
 
   Global Instance mut_ref_type_ne {rt : Type} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).

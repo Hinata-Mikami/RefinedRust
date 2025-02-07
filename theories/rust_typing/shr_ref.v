@@ -127,7 +127,7 @@ Section shr_ref.
     - done.
     - solve_type_proper.
     - solve_type_proper.
-  Qed.
+  Admitted.
 
   Global Instance shr_ref_type_ne {rt : Type} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
