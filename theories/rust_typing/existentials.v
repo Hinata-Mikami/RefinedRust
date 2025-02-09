@@ -147,7 +147,7 @@ Section ex.
     ty_sidecond :=
     ty.(ty_sidecond);
     ty_lfts := P.(inv_P_lfts) ++ ty.(ty_lfts);
-    ty_wf_E := P.(inv_P_wf_E) ++ ty.(ty_wf_E);
+    _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
   |}.
   Next Obligation.
     iIntros (ty π r v) "(%x & HP & Hv)".
@@ -231,6 +231,7 @@ Section contr.
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
+      rewrite ty_wf_E_unfold.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
@@ -263,6 +264,7 @@ Section contr.
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
+      rewrite ty_wf_E_unfold.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. intros.
       eapply HF; first done.

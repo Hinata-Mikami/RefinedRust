@@ -158,7 +158,7 @@ Section fixpoint_def.
     ty_shr := F_ty_own_val_ty_shr_fixpoint.2;
     ty_sidecond := (Fn 1).(ty_sidecond);
     ty_lfts := (Fn 0).(ty_lfts);
-    ty_wf_E := (Fn 1).(ty_wf_E);
+    _ty_wf_E := ty_wf_E (Fn 1);
   |}.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
@@ -321,8 +321,9 @@ Section fixpoint_def.
     done.
   Qed.
   Lemma type_fixpoint_ty_wf_E :
-    type_fixpoint.(ty_wf_E) = (Fn 1).(ty_wf_E).
+    ty_wf_E type_fixpoint = ty_wf_E (Fn 1).
   Proof.
+    rewrite {1}ty_wf_E_unfold.
     done.
   Qed.
 
@@ -367,7 +368,9 @@ Proof.
     rewrite -(Heq type_inhabitant).
     rewrite Heq. done.
   - intros. simpl. destruct (Heq inhabitant). done.
-  - intros. simpl. unfold Fn; simpl.
+  - intros.
+    rewrite ty_wf_E_unfold.
+    simpl. unfold Fn; simpl.
     eapply ty_wf_E_ne.
     (* uses that T2 is also non-expansive *)
     rewrite -(Heq type_inhabitant).

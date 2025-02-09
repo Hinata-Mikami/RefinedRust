@@ -1049,7 +1049,8 @@ Ltac simplify_elctx_subterm :=
   match goal with
   | |- ty_wf_E ?ty = _ =>
       assert_fails (is_var ty);
-      rewrite [ty_wf_E ty]/ty_wf_E/=;
+      rewrite [@ty_wf_E _ _]ty_wf_E_unfold;
+      rewrite [(_ty_wf_E _ ty)]/_ty_wf_E /=;
       cbn;
       reflexivity
       (*autounfold with tyunfold; cbn*)

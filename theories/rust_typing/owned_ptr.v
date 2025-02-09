@@ -36,7 +36,7 @@ Section owned_ptr.
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
 
     ty_lfts := inner.(ty_lfts);
-    ty_wf_E := inner.(ty_wf_E);
+    _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
     iIntros (π [r l] v) "(%ly & -> & ? & ? & _)". eauto with iFrame.

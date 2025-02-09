@@ -36,7 +36,7 @@ Section box.
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
 
     ty_lfts := inner.(ty_lfts);
-    ty_wf_E := inner.(ty_wf_E);
+    _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
     iIntros (π v r) "(%l & %ly & -> & ? & ? & _)". eauto with iFrame.
@@ -162,7 +162,8 @@ Section contractive.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id; done.
+    - eapply ty_lft_morph_make_id; first done.
+      rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.

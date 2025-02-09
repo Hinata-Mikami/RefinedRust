@@ -267,7 +267,7 @@ Section structs.
         [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
           struct_own_el_shr π κ i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1)%I;
     ty_lfts := mjoin (fmap (λ ty, (projT2 ty).(ty_lfts)) (hzipl rts tys));
-    ty_wf_E := mjoin (fmap (λ ty, (projT2 ty).(ty_wf_E)) (hzipl rts tys));
+    _ty_wf_E := mjoin (fmap (λ ty, ty_wf_E (projT2 ty)) (hzipl rts tys));
   |}.
   Next Obligation.
     intros rts _ _. apply inhabited_plist.
@@ -590,6 +590,7 @@ Section structs.
     intros HT. constructor.
     - simpl. intros ?? ->. done.
     - apply ty_lft_morphism_of_direct.
+      rewrite ty_wf_E_unfold/=.
       simpl.
       destruct HT as [HT' Hne ->].
       induction rts as [ | rt1 rts IH].
@@ -597,9 +598,10 @@ Section structs.
         apply direct_lft_morph_make_const.
       + inv_hlist HT' => T1 HT.
         intros [Hne1 Hne]%HTForall_cons_inv.
-        simpl. apply direct_lft_morphism_app; last by apply IH.
-        eapply ty_lft_morphism_to_direct.
-        apply Hne1.
+        simpl. apply direct_lft_morphism_app.
+        { eapply ty_lft_morphism_to_direct.
+          apply Hne1. }
+        by apply IH.
     - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite !fmap_length !hzipl_length.
       rewrite Hst.
@@ -688,6 +690,7 @@ Section structs.
     - simpl. intros. erewrite Hst. done.
     - apply ty_lft_morphism_of_direct.
       simpl.
+      rewrite ty_wf_E_unfold/=.
       destruct HT as [HT' Hne ->].
       induction rts as [ | rt1 rts IH].
       + inv_hlist HT'. intros _. simpl.

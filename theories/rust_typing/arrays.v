@@ -141,7 +141,7 @@ Section array.
     _ty_has_op_type := is_array_ot ty len;
     ty_sidecond := True;
     ty_lfts := ty.(ty_lfts);
-    ty_wf_E := ty.(ty_wf_E);
+    _ty_wf_E := ty_wf_E ty;
   |}%I.
   Next Obligation.
     iIntros (len ty π r v) "(%ly & %Hst & %Hsz & %Hlen & %Hly & Hv)".
@@ -285,9 +285,9 @@ Section ne.
   Proof.
     constructor; simpl.
     - intros ?? ->. done.
-    - eapply ty_lft_morph_make_id; done.
-    -
-      rewrite ty_has_op_type_unfold/=.
+    - eapply ty_lft_morph_make_id; first done.
+      rewrite {1}ty_wf_E_unfold//.
+    - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
       rewrite ty_has_op_type_unfold/=.
       intros ?? Hst Hot.

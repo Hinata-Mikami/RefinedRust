@@ -64,7 +64,7 @@ Record type `{!typeGS Σ} (rt : Type) := {
   ty_lfts : list lft;
 
   (* [ty_wf_E] is a set of inclusion constraints on lifetimes that need to hold for the type to make sense. *)
-  ty_wf_E : elctx;
+  _ty_wf_E : elctx;
 
   (** Given the concrete layout algorithm at runtime, we can get a layout *)
   ty_has_layout π r v :
@@ -136,7 +136,6 @@ Arguments ty_sidecond {_ _ _}.
 Arguments ty_syn_type {_ _ _}.
 Arguments ty_shr {_ _ _}.
 Arguments ty_lfts {_ _ _} _.
-Arguments ty_wf_E {_ _ _} _.
 Arguments ty_share {_ _ _}.
 
 (** We seal [ty_has_op_type] in order to avoid performance issues with automation accidentally unfolding it. *)
@@ -148,6 +147,12 @@ Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot mt :
   ty_has_op_type ty ot mt → syn_type_has_layout ty.(ty_syn_type) (ot_layout ot).
 Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
 Arguments ty_op_type_stable {_ _ _} [_ _ _].
+
+(** We seal [ty_wf_E] in order to avoid performance issues with Qed time. *)
+Definition ty_wf_E_aux `{!typeGS Σ} : seal (@_ty_wf_E _ _). Proof. by eexists. Qed.
+Definition ty_wf_E `{!typeGS Σ} := ty_wf_E_aux.(unseal).
+Definition ty_wf_E_unfold `{!typeGS Σ} : ty_wf_E = _ty_wf_E := ty_wf_E_aux.(seal_eq).
+Arguments ty_wf_E {_ _ _} _.
 
 Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot mt st π r v :
   ty_has_op_type ty ot mt →
@@ -232,8 +237,8 @@ Fixpoint tyl_lfts `{!typeGS Σ} tyl : list lft :=
 Fixpoint tyl_wf_E `{!typeGS Σ} tyl : elctx :=
   match tyl with
   | [] => []
-  | [ty] => ty.(rt_ty).(ty_wf_E)
-  | ty :: tyl => ty.(rt_ty).(ty_wf_E) ++ tyl.(tyl_wf_E)
+  | [ty] => ty_wf_E ty.(rt_ty)
+  | ty :: tyl => ty_wf_E ty.(rt_ty) ++ tyl.(tyl_wf_E)
   end.
 
 Fixpoint tyl_outlives_E `{!typeGS Σ} tyl (κ : lft) : elctx :=
@@ -311,7 +316,7 @@ Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
         ⌜syn_type_has_layout st.(st_syn_type) ly⌝ ∗
         ⌜l `has_layout_loc` ly⌝)%I;
      ty_lfts := [];
-     ty_wf_E := [];
+     _ty_wf_E := [];
   |}.
 Next Obligation.
   iIntros (???????) "Hown".
@@ -388,7 +393,7 @@ Section ofe.
       (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
       (ty1.(ty_sidecond) ≡ ty2.(ty_sidecond)) →
       (ty1.(ty_lfts) = ty2.(ty_lfts)) →
-      (ty1.(ty_wf_E) = ty2.(ty_wf_E)) →
+      (ty_wf_E ty1 = ty_wf_E ty2) →
       type_equiv' ty1 ty2.
   Instance type_equiv : Equiv (type rt) := type_equiv'.
   Inductive type_dist' (n : nat) (ty1 ty2 : type rt) : Prop :=
@@ -400,7 +405,7 @@ Section ofe.
       (ty1.(ty_syn_type) = ty2.(ty_syn_type)) →
       (ty1.(ty_sidecond) ≡{n}≡ ty2.(ty_sidecond)) →
       (ty1.(ty_lfts) = ty2.(ty_lfts)) →
-      (ty1.(ty_wf_E) = ty2.(ty_wf_E)) →
+      (ty_wf_E ty1 = ty_wf_E ty2) →
       type_dist' n ty1 ty2.
   Instance type_dist : Dist (type rt) := type_dist'.
 
@@ -460,7 +465,7 @@ Section ofe.
      ty_has_op_type ty,
      ty.(ty_sidecond),
      ty.(ty_lfts),
-     ty.(ty_wf_E)).
+     ty_wf_E ty).
   Program Definition type_pack (x : T) (H : P x) : type rt :=
     let '(T_inh, T_own_val, T_shr, T_syn_type, T_ot, T_sidecond, T_lfts, T_wf_E) := x in
     {|
@@ -471,7 +476,7 @@ Section ofe.
       ty_shr := T_shr;
       ty_sidecond := T_sidecond;
       ty_lfts := T_lfts;
-      ty_wf_E := T_wf_E;
+      _ty_wf_E := T_wf_E;
     |}.
   Solve Obligations with
     intros [[[[[[[T_inh T_own_val] T_shr] T_syn_type] T_ot] T_sidecond] T_lfts] T_wf_E];
@@ -693,6 +698,7 @@ Section st_ofe.
       do 7 f_equiv.
       { f_equiv. apply EQ. }
       do 2 f_equiv. apply EQ.
+    - rewrite ty_wf_E_unfold. done.
   Qed.
   Global Instance ty_of_st_proper : Proper ((≡) ==> (≡)) (ty_of_st rt).
   Proof. apply (ne_proper _). Qed.
@@ -716,7 +722,7 @@ Section lft_morph.
     ty_lft_morph_const_lfts :
       ⊢ ∀ ty, lft_equiv (lft_intersect_list ((F ty).(ty_lfts))) ty_lft_morph_const_α;
     ty_lft_morph_const_wf_E :
-      ∀ ty, elctx_interp ((F ty).(ty_wf_E)) ≡ elctx_interp ty_lft_morph_const_E;
+      ∀ ty, elctx_interp (ty_wf_E (F ty)) ≡ elctx_interp ty_lft_morph_const_E;
   }.
   Existing Class TyLftMorphismConst.
   Global Arguments mk_lft_morph_const {_ _ _}.
@@ -731,8 +737,8 @@ Section lft_morph.
     ty_lft_morph_add_lfts :
       ⊢ ∀ ty, lft_equiv (lft_intersect_list ((F ty).(ty_lfts))) (ty_lft_morph_add_α ⊓ lft_intersect_list ty.(ty_lfts));
     ty_lft_morph_add_wf_E :
-      ∀ ty, elctx_interp ((F ty).(ty_wf_E)) ≡
-          (elctx_interp ty_lft_morph_add_E ∗ elctx_interp ty.(ty_wf_E) ∗
+      ∀ ty, elctx_interp (ty_wf_E (F ty)) ≡
+          (elctx_interp ty_lft_morph_add_E ∗ elctx_interp (ty_wf_E ty) ∗
             (* some requirements of lifetimes that the type has to outlive *)
             [∗ list] β ∈ ty_lft_morph_add_βs, β ⊑ lft_intersect_list ty.(ty_lfts))%I;
   }.
@@ -837,9 +843,9 @@ Section lft_morph.
       Unshelve. apply _.
   Qed.
   Lemma TyLftMorphism_ty_wf_E_proper {rt1 rt2} (F : type rt1 → type rt2) `{HF : !TyLftMorphism F} ty ty' :
-    elctx_interp (ty.(ty_wf_E)) ≡ elctx_interp (ty'.(ty_wf_E)) →
+    elctx_interp (ty_wf_E ty) ≡ elctx_interp (ty_wf_E ty') →
     (⊢ lft_equiv (lft_intersect_list (ty_lfts ty)) (lft_intersect_list (ty_lfts ty'))) →
-    elctx_interp ((F ty).(ty_wf_E)) ≡ elctx_interp ((F ty').(ty_wf_E)).
+    elctx_interp (ty_wf_E (F ty)) ≡ elctx_interp (ty_wf_E (F ty')).
   Proof.
     intros Heq Heq2. destruct HF as [HF | HF].
     - etrans. { iApply ty_lft_morph_const_wf_E. }
@@ -906,7 +912,7 @@ Section lft_morph.
   (* Constructors *)
   Lemma ty_lft_morph_make_id {rt1 rt2} (F : type rt1 → type rt2) :
     (∀ ty, (F ty).(ty_lfts) = ty.(ty_lfts)) →
-    (∀ ty, (F ty).(ty_wf_E) = ty.(ty_wf_E)) →
+    (∀ ty, (ty_wf_E (F ty)) = (ty_wf_E ty)) →
     TyLftMorphism F.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_add.
@@ -918,7 +924,7 @@ Section lft_morph.
 
   Lemma ty_lft_morph_make_ref {rt1 rt2} (F : type rt1 → type rt2) α :
     (∀ ty, (F ty).(ty_lfts) = α :: ty.(ty_lfts)) →
-    (∀ ty, (F ty).(ty_wf_E) = ty.(ty_wf_E) ++ ty_outlives_E ty α) →
+    (∀ ty, (ty_wf_E (F ty)) = (ty_wf_E ty) ++ ty_outlives_E ty α) →
     TyLftMorphism F.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_add.
@@ -939,7 +945,7 @@ Section lft_morph.
 
   Lemma ty_lft_morph_make_const {rt1 rt2} (F : type rt1 → type rt2) α E :
     (∀ ty, (F ty).(ty_lfts) = α) →
-    (∀ ty, (F ty).(ty_wf_E) = E) →
+    (∀ ty, (ty_wf_E (F ty)) = E) →
     TyLftMorphism F.
   Proof.
     intros Hlfts HwfE. eapply ty_lft_morph_const.
@@ -1874,7 +1880,7 @@ Record DirectLftMorphismAdd {rt1} (Flfts : type rt1 → list lft) (FE : type rt1
     ⊢ ∀ ty, lft_equiv (lft_intersect_list (Flfts ty)) (direct_lft_morph_add_α ⊓ lft_intersect_list ty.(ty_lfts));
   direct_lft_morph_add_wf_E :
     ∀ ty, elctx_interp (FE ty) ≡
-        (elctx_interp direct_lft_morph_add_E ∗ elctx_interp ty.(ty_wf_E) ∗
+        (elctx_interp direct_lft_morph_add_E ∗ elctx_interp (ty_wf_E ty) ∗
           (* some requirements of lifetimes that the type has to outlive *)
           [∗ list] β ∈ direct_lft_morph_add_βs, β ⊑ lft_intersect_list ty.(ty_lfts))%I;
 }.
@@ -1887,7 +1893,7 @@ Inductive DirectLftMorphism {rt1} (Flfts : type rt1 → list lft) (FE : type rt1
 Existing Class DirectLftMorphism.
 
 Global Instance ty_lft_morphism_of_direct {rt1 rt2} (F : type rt1 → type rt2) :
-  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)) →
+  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (ty_wf_E (F ty))) →
   TyLftMorphism F.
 Proof.
   intros [Hm | Hm].
@@ -1900,7 +1906,7 @@ Proof.
 Qed.
 Global Instance ty_lft_morphism_to_direct {rt1 rt2} (F : type rt1 → type rt2) :
   TyLftMorphism F →
-  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (F ty).(ty_wf_E)).
+  DirectLftMorphism (λ ty, (F ty).(ty_lfts)) (λ ty, (ty_wf_E (F ty))).
 Proof.
   intros [Hm | Hm].
   - apply direct_lft_morph_const.

@@ -115,7 +115,7 @@ Proof.
       simpl.
       rewrite /li_tactic/ensure_evars_instantiated_goal. iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
-      iSplitR. { iPureIntro. intros. apply elctx_sat_nil. }
+      iSplitR. { iPureIntro. intros. rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
       iIntros (v []).
       iIntros (??) "_ HL _". eauto with iFrame.
     + by iApply big_sepL2_nil.

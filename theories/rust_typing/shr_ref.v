@@ -37,7 +37,7 @@ Section shr_ref.
         place_rfn_interp_shared r ri ∗
         &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri li)%I;
     ty_lfts := [κ] ++ ty_lfts inner;
-    ty_wf_E := (* ty_wf_E inner ++ *) ty_outlives_E inner κ;
+    _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation. iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
   Next Obligation.
@@ -121,13 +121,15 @@ Section shr_ref.
   Proof.
     constructor; simpl.
     - done.
-    (*- eapply ty_lft_morph_make_ref; done.*)
-    - admit.
+    - eapply ty_lft_morph_make_ref; first done.
+      rewrite {1}ty_wf_E_unfold; done.
+    (*- admit.*)
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - solve_type_proper.
     - solve_type_proper.
-  Admitted.
+  (*Admitted.*)
+Qed.
 
   Global Instance shr_ref_type_ne {rt : Type} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.

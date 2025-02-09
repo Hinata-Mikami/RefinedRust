@@ -43,7 +43,7 @@ Section mut_ref.
        But this is fine, since the observation about γ here already contains all the information we need. *)
     (* We need the inner lifetimes also to initiate sharing *)
     ty_lfts := [κ] ++ inner.(ty_lfts);
-    ty_wf_E := (* ty_wf_E inner ++ *) ty_outlives_E inner κ;
+    _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation.
     iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)". eauto.
@@ -204,8 +204,9 @@ Section mut_ref.
   Proof.
     constructor; simpl.
     - done.
-    - admit.
-    (*- eapply ty_lft_morph_make_ref; done.*)
+    (*- admit.*)
+    - eapply ty_lft_morph_make_ref; first done.
+      rewrite {1}ty_wf_E_unfold. done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.
@@ -214,7 +215,8 @@ Section mut_ref.
     - intros n ty ty' ?.
       intros κ' π [] l. rewrite /ty_shr/=.
       solve_type_proper.
-  Admitted.
+  (*Admitted.*)
+  Qed.
 
 
   Global Instance mut_ref_type_ne {rt : Type} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).

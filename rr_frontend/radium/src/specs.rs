@@ -2372,7 +2372,8 @@ impl<'def> AbstractEnum<'def> {
         )
         .unwrap();
         write!(out, "{indent}Next Obligation. intros []; set_solver. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. intros []; set_solver. Qed.\n").unwrap();
+        write!(out, "{indent}Next Obligation. intros []; rewrite {{1}}ty_wf_E_unfold/=; set_solver. Qed.\n")
+            .unwrap();
         write!(out, "{indent}Next Obligation. intros []; naive_solver. Qed.\n\n").unwrap();
 
         // define the actual type

@@ -111,7 +111,7 @@ Section union.
         l ◁ₗ{π, κ} r @ ty ∗
         (l +ₗ ly.(ly_size)) ◁ₗ{π, κ} () @ uninit (UntypedSynType $ active_union_rest_ly ul ly))%I;
     ty_lfts := ty_lfts ty;
-    ty_wf_E := ty_wf_E ty;
+    _ty_wf_E := ty_wf_E ty;
     ty_sidecond := True;
   |}.
   Next Obligation.
@@ -455,7 +455,7 @@ Section enum.
       is_enum_ot e ot mt;
     ty_sidecond := True%I;
     ty_lfts := e.(enum_lfts);
-    ty_wf_E := e.(enum_wf_E);
+    _ty_wf_E := e.(enum_wf_E);
   |}.
   Next Obligation.
     iIntros (rt e π r v).
@@ -682,7 +682,9 @@ Section ne.
     intros Hen. constructor.
     - simpl. intros. erewrite enum_ne_els; done.
     - apply ty_lft_morphism_of_direct.
-      simpl. apply enum_ne_lft_mor.
+      simpl.
+      rewrite ty_wf_E_unfold.
+      apply enum_ne_lft_mor.
     - rewrite !ty_has_op_type_unfold.
       intros ty ty' Hst Hot ot mt. simpl.
       unfold is_enum_ot.

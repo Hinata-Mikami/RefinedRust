@@ -26,7 +26,7 @@ Section type.
       end%I;
     ty_sidecond := True;
     ty_lfts := T.(ty_lfts);
-    ty_wf_E := T.(ty_wf_E);
+    _ty_wf_E := ty_wf_E T;
   |}.
   Next Obligation.
     iIntros (rt T π r v) "Hv". destruct r as [r | ].
@@ -120,7 +120,8 @@ Section ne.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id; done.
+    - eapply ty_lft_morph_make_id; first done.
+      rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
       intros ?? ->. done.
     - done.
