@@ -38,20 +38,20 @@ Section function.
     (* bundled assume condition *)
     fp_Pa : thread_id → iProp Σ;
     (* bundled sidecondition precondition *)
-    fp_Sc : thread_id → iProp Σ;
+fp_Sc : thread_id → iProp Σ;
     (* external lifetimes, parameterized over a lifetime for the function *)
     fp_elctx : lft → elctx;
     (* existential condition for return type *)
     fp_extype : Type;
     (* return type *)
     fp_fr: fp_extype → fn_ret;
-  }.
+}.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
     FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr).
-  Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
+Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
+FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
 
-  (**
+ (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the
      used argument and return types (according to their typeclass instances).
      This is currently a bit more restrictive than it needs to be:
@@ -61,9 +61,9 @@ Section function.
   Definition map_rtype : (@sigT Type (λ rt, type rt * rt)%type) → rtype :=
     (λ '(existT rt (ty, _)), {| rt_rty := rt; rt_ty := ty|}).
   Definition FP_wf
-      E
+E
       (atys : list (@sigT Type (λ rt, type rt * rt)%type))
-      (pa : thread_id → iProp Σ)
+   (pa : thread_id → iProp Σ)
       (sc : thread_id → iProp Σ)
       (exty : Type)
       (retrt : Type)
@@ -585,6 +585,7 @@ Section function_subsume.
     iApply "Ha".
   Qed.
 
+
   (* If I have f ◁ F1, then f ◁ F2. *)
   (* I can strengthen the precondition and weaken the postcondition *)
   (*elctx_sat*)
@@ -602,91 +603,24 @@ Section function_subsume.
 
      I don't think I can always just subtype that to use the lifetime of the closure. That would definitely break ghostcell etc. And also not everything might be covariant in the lifetime.
   *)
-  Lemma subsume_function_ptr π v l1 l2 sts1 sts2 {lfts : nat} {rts : list Type} {A B : Type} eqp1 eqp2 (F1 : spec_with lfts rts (A → fn_params)) (F2 : spec_with lfts rts (B → fn_params)) T :
-    subsume (v ◁ᵥ{π} l1 @ function_ptr sts1 (eqp1, F1)) (v ◁ᵥ{π} l2 @ function_ptr sts2 (eqp2, F2)) T :-
-    and:
-    | drop_spatial;
-        (* TODO could also just require that the layouts are compatible *)
-        exhale ⌜sts1 = sts2⌝;
-        ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
-        (* NOTE: this is more restrictive than necessary *)
-        exhale ⌜∀ a b ϝ, (F1 κs tys a).(fp_elctx) ϝ = (F2 κs tys b).(fp_elctx) ϝ⌝;
-        ∀ (b : B),
-        inhale (fp_Pa (F2 κs tys b) π);
-        ls ← iterate: fp_atys (F2 κs tys b) with [] {{ ty T ls,
-               ∀ l : loc,
-                inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
-        ∃ (a : A),
-        exhale ⌜length (fp_atys (F1 κs tys a)) = length (fp_atys (F2 κs tys b))⌝%I;
-        iterate: zip ls (fp_atys (F1 κs tys a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
-        exhale (fp_Pa (F1 κs tys a) π);
-        (* show that F1.ret implies F2.ret *)
-        ∀ (vr : val) a2,
-        inhale ((F1 κs tys a).(fp_fr) a2).(fr_R) π;
-        inhale (vr ◁ᵥ{π} ((F1 κs tys a).(fp_fr) a2).(fr_ref) @ ((F1 κs tys a).(fp_fr) a2).(fr_ty));
-        ∃ b2,
-        exhale ((F2 κs tys b).(fp_fr) b2).(fr_R) π;
-        exhale (vr ◁ᵥ{π} ((F2 κs tys b).(fp_fr) b2).(fr_ref) @ ((F2 κs tys b).(fp_fr) b2).(fr_ty));
-        done
-    | exhale ⌜l1 = l2⌝; return T.
-  Proof.
-    iIntros "(#Ha & (-> & HT))".
-    iIntros "Hv". iFrame.
-    Set Debug Eauto.
-    iDestruct "Ha" as "(-> & Ha)".
-    iEval (rewrite /ty_own_val/=) in "Hv".
-    iDestruct "Hv" as "(%fn & %local_sts & -> & Hen & %Halg1 & %Halg2 & #Htf)".
-    iEval (rewrite /ty_own_val/=).
-    iExists fn, local_sts. iR. iFrame.
-    iSplitR. {
-      done. }
-    iR.
-    iNext.
-
-    rewrite /typed_function.
-    iIntros (κs tys b ϝ) "!>".
-    iIntros (Hargly Hlocally lsa lsv).
-    iIntros "(Hcred & Hargs & Hlocals & Hsc & Hpre)".
-    iSpecialize ("Ha" $! κs tys).
-    iDestruct "Ha" as "(%Helctx & Ha)".
-    iSpecialize ("Ha" $! b with "Hpre").
-    (*iterate_elim0*)
-    (*Locate "|".*)
-    (*
-    Search Z.divide.
-    Search aligned_to
-    is_aligned_to
-    iterate_elim0
-    Locate "iterate:".
-    iDestruct ("Ha" with "[Hargs]") as "(%a & %Hlen & Hargs & Hpre & Ha)".
-     *)
-
-
-  Admitted.
-  (*Definition subsume_function_ptr_inst := [instance subsume_function_ptr].*)
-  (*Global Existing Instance subsume_function_ptr_inst  | 10.*)
-  (* TODO: maybe also make this a subsume_full instance *)
-
-
-  (* A variant operating directly on our [typed_function] definition, used to statically prove subtyping.
-     This leads to a stronger notion of subsumption. *)
-  (* TODO: do we need the above notion at all? *)
+  (* This variant operates directly on our [typed_function] definition, used to statically prove subtyping. *)
   Lemma subsume_typed_function π fn local_sts {lfts : nat} {rts : list Type} {A B : Type} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts (A → fn_params)) (F2 : spec_with lfts rts (B → fn_params)) T :
     subsume (typed_function π fn local_sts (eqp1, F1)) (typed_function π fn local_sts (eqp2, F2)) T :-
       and:
       | drop_spatial;
         ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
-        (* NOTE: this is more restrictive than necessary *)
-        exhale ⌜∀ a b ϝ, (F1 κs tys a).(fp_elctx) ϝ = (F2 κs tys b).(fp_elctx) ϝ⌝;
+        exhale ⌜∀ a b ϝ, elctx_sat ((F2 κs tys b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] ((F1 κs tys a).(fp_elctx) ϝ)⌝;
         ∀ (b : B),
         inhale (fp_Pa (F2 κs tys b) π);
+        inhale (fp_Sc (F2 κs tys b) π);
         ls ← iterate: fp_atys (F2 κs tys b) with [] {{ ty T ls,
                ∀ l : loc,
                 inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
         ∃ (a : A),
-        exhale ⌜length (fp_atys (F1 κs tys a)) = length (fp_atys (F2 κs tys b))⌝%I;
+        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 = ty_syn_type ty2) (fp_atys (F1 κs tys a)) (fp_atys (F2 κs tys b))⌝);
         iterate: zip ls (fp_atys (F1 κs tys a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa (F1 κs tys a) π);
+        exhale (fp_Sc (F1 κs tys a) π);
         (* show that F1.ret implies F2.ret *)
         ∀ (vr : val) a2,
         inhale ((F1 κs tys a).(fp_fr) a2).(fr_R) π;
@@ -699,28 +633,171 @@ Section function_subsume.
     .
   Proof.
     iIntros "[#Ha Hb] #Hf". iFrame "Hb".
+
     rewrite /typed_function.
     iIntros (κs tys b ϝ) "!>".
     iIntros (Hargly Hlocally lsa lsv).
     iIntros "(Hcred & Hargs & Hlocals & Hsc & Hpre)".
     iSpecialize ("Ha" $! κs tys).
     iDestruct "Ha" as "(%Helctx & Ha)".
-    iSpecialize ("Ha" $! b with "Hpre").
-    (*iterate_elim0*)
-    (*Locate "|".*)
-    (*
-    Search Z.divide.
-    Search aligned_to
-    is_aligned_to
-    iterate_elim0
-    Locate "iterate:".
-    iDestruct ("Ha" with "[Hargs]") as "(%a & %Hlen & Hargs & Hpre & Ha)".
-     *)
+    iSpecialize ("Ha" $! b with "Hpre Hsc").
+    simpl in *.
 
-  Admitted.
+    (* provide the argument ownership *)
+    set (INV n ls := (⌜ls = take n lsa⌝ ∗ [∗ list] i ↦ l;'(existT rt (ty, r)) ∈ lsa;fp_atys (F2 κs tys b),
+        if decide (n ≤ i) then l ◁ₗ[ π, Owned false] # r @ (◁ ty) else True)%I).
+    iPoseProof (iterate_elim1 INV with "Ha [Hargs] []") as "Hb".
+    { unfold INV. iR. iApply (big_sepL2_impl with "Hargs").
+      iModIntro. iIntros (?? [? []] ??).
+      setoid_rewrite decide_True; last lia. eauto. }
+    { unfold INV. iModIntro. iIntros (? [rt [ty r]] ? ? Hlook) "(-> & Hi) Hs".
+      specialize (lookup_lt_Some _ _ _ Hlook) as Hlt1.
+      edestruct (lookup_lt_is_Some_2 lsa i) as (l1 & Hlook1).
+      { rewrite vec_to_list_length. lia. }
+      iPoseProof (big_sepL2_delete _ _ _ i with "Hi") as "(Ha & Hi)"; [done.. | ].
+      simpl. rewrite decide_True; last lia.
+      iExists (take (S i) lsa). rewrite -assoc. iR.
+      iPoseProof ("Hs" with "Ha") as "Hs".
+      erewrite take_S_r; last done.
+      iFrame.
+      iApply (big_sepL2_impl with "Hi").
+      iModIntro. iIntros (k ? [? [??]] ? ?).
+      simpl. case_decide.
+      { rewrite decide_False; last lia. eauto. }
+      case_decide.
+      { rewrite decide_True; last lia. eauto. }
+      rewrite decide_False; last lia. eauto. }
+    iDestruct "Hb" as "(%lsa' & (-> & _) & %a & %Hsts & Hc)".
+    clear INV.
+    specialize (Forall2_length _ _ _ Hsts) as Hlen.
+
+    (* take the argument ownership *)
+    set (INV n := ([∗ list] i ↦ l;'(existT rt (ty, r)) ∈ lsa;fp_atys (F1 κs tys a),
+        if decide (i < n) then l ◁ₗ[ π, Owned false] # r @ (◁ ty) else True)%I).
+    iPoseProof (iterate_elim0 INV with "Hc [] []") as "Hb".
+    { unfold INV. iApply big_sepL2_intro.
+      { rewrite vec_to_list_length. lia. }
+      iModIntro. iIntros (?? [? []] ??).
+      setoid_rewrite decide_False; last lia. done. }
+    { unfold INV. iModIntro. iIntros (? [l [rt [ty r]]] ? Hlook) "Hi Hs".
+      apply lookup_zip in Hlook as (Hlook1 & Hlook2).
+      rewrite firstn_all2 in Hlook1; first last.
+      { rewrite vec_to_list_length. lia. }
+      iDestruct "Hs" as "(Hs & $)". simpl.
+      rewrite -(list_insert_id lsa i l); last done.
+      rewrite -(list_insert_id (fp_atys (F1 κs tys a)) i (r :@: ty)%F); last done.
+      efeed pose proof (big_sepL2_insert lsa (fp_atys (F1 κs tys a)) i l (r :@: ty)%F
+        (λ i0 l0 '(existT rt0 (ty0, r0)), if decide (i0 < S i) then l0 ◁ₗ[ π, Owned false] # r0 @ (◁ ty0) else True)%I 0%nat) as Hr.
+      { eapply lookup_lt_Some; done. }
+      { eapply lookup_lt_Some; done. }
+      simpl in Hr. rewrite Hr. clear Hr.
+      rewrite decide_True; last lia. iFrame.
+      rewrite !list_insert_id; [ | done..].
+      iApply (big_sepL2_impl with "Hi").
+      iModIntro. iIntros (?? [? []] ??) "Ha".
+      destruct (decide (k = i)); first done.
+      case_decide.
+      { rewrite decide_True; first done. lia. }
+      { rewrite decide_False; first done. lia. }
+    }
+    subst INV. simpl.
+    iDestruct "Hb" as "(Hargs & Hpre & Hsc & HT)".
+
+    iSpecialize ("Hf" $! κs tys a ϝ with "[] [//]").
+    { (* the arg assumptions transfer *)
+      iPureIntro.
+      eapply Forall2_transitive; last done; last done.
+      intros [? []] [? []] ly ->; done. }
+    rewrite Hlen.
+    iSpecialize ("Hf" $! lsa lsv).
+    iSpecialize ("Hf" with "[Hcred Hlocals Hargs Hsc Hpre]").
+    { iFrame. iApply (big_sepL2_impl with "Hargs").
+      iModIntro. iIntros (?? [? []] Hlook1 Hlook2).
+      rewrite decide_True; first eauto.
+      rewrite zip_length.
+      rewrite take_length.
+      apply lookup_lt_Some in Hlook1.
+      apply lookup_lt_Some in Hlook2.
+      lia. }
+    rewrite /introduce_typed_stmt.
+    iIntros (?) "#CTX HE HL Hna Hrt".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
+    iDestruct (Helctx with "HL") as "#HEincl".
+    iPoseProof ("HLcl" with "HL") as "HL".
+    iApply ("Hf" with "CTX [HE] HL Hna").
+    { by iApply "HEincl". }
+    iIntros (L' v) "HL Hna Hlocs Hpost".
+    iApply ("Hrt" with "HL Hna Hlocs").
+    iIntros (???) "_ HE HL".
+    iPoseProof ("HEincl" with "HE") as "HE".
+    iMod ("Hpost" with "[//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
+    iMod "Hs" as "((%x & Hrt & Hpost & _) & HR)".
+    iDestruct ("HT" with "Hpost Hrt") as "(%y & Hpost & Hrt & _)".
+    (* TODO could also allow prove_with_subtype etc here? *)
+    iModIntro.
+    simpl. iExists L2, [], R. iFrame.
+    iSplitR "Hintro".
+    { iModIntro. iExists _. iFrame. }
+    iIntros (??) "HE HL HP".
+    iPoseProof ("HEincl" with "HE") as "HE".
+    rewrite /llctx_find_llft_goal.
+    rewrite /FindCreditStore.
+    iMod ("Hintro" with "[//] HE HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
+    simpl.
+    iModIntro. iExists L3. iFrame.
+    iExists _, _. iR. iExists _. iFrame.
+  Qed.
   Global Instance subsume_typed_function_inst π fn local_sts {lfts : nat} {rts : list Type} {A B : Type} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts (A → fn_params)) (F2 : spec_with lfts rts (B → fn_params)) :
     Subsume (typed_function π fn local_sts (eqp1, F1)) (typed_function π fn local_sts (eqp2, F2)) | 10 :=
     λ T, i2p (subsume_typed_function π fn local_sts eqp1 eqp2 F1 F2 T).
+
+  (* This weaker notion operates on the [function_ptr] indirection *)
+  Lemma subsume_function_ptr π v l1 l2 sts1 sts2 {lfts : nat} {rts : list Type} {A B : Type} eqp1 eqp2 (F1 : spec_with lfts rts (A → fn_params)) (F2 : spec_with lfts rts (B → fn_params)) T :
+    subsume (v ◁ᵥ{π} l1 @ function_ptr sts1 (eqp1, F1)) (v ◁ᵥ{π} l2 @ function_ptr sts2 (eqp2, F2)) T :-
+    and:
+    | drop_spatial;
+        exhale ⌜sts1 = sts2⌝;
+        ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
+        exhale ⌜∀ a b ϝ, elctx_sat ((F2 κs tys b).(fp_elctx) ϝ) [ϝ ⊑ₗ{ 0} []] ((F1 κs tys a).(fp_elctx) ϝ)⌝;
+        ∀ (b : B),
+        inhale (fp_Pa (F2 κs tys b) π);
+        inhale (fp_Sc (F2 κs tys b) π);
+        ls ← iterate: fp_atys (F2 κs tys b) with [] {{ ty T ls,
+               ∀ l : loc,
+                inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
+        ∃ (a : A),
+        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 = ty_syn_type ty2) (fp_atys (F1 κs tys a)) (fp_atys (F2 κs tys b))⌝);
+        iterate: zip ls (fp_atys (F1 κs tys a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
+        exhale (fp_Pa (F1 κs tys a) π);
+        exhale (fp_Sc (F1 κs tys a) π);
+        (* show that F1.ret implies F2.ret *)
+        ∀ (vr : val) a2,
+        inhale ((F1 κs tys a).(fp_fr) a2).(fr_R) π;
+        inhale (vr ◁ᵥ{π} ((F1 κs tys a).(fp_fr) a2).(fr_ref) @ ((F1 κs tys a).(fp_fr) a2).(fr_ty));
+        ∃ b2,
+        exhale ((F2 κs tys b).(fp_fr) b2).(fr_R) π;
+        exhale (vr ◁ᵥ{π} ((F2 κs tys b).(fp_fr) b2).(fr_ref) @ ((F2 κs tys b).(fp_fr) b2).(fr_ty));
+        done
+    | exhale ⌜l1 = l2⌝; return T.
+  Proof.
+    iIntros "(#Ha & (-> & HT))".
+    iIntros "Hv". iFrame.
+    iDestruct "Ha" as "(-> & Ha)".
+    iEval (rewrite /ty_own_val/=) in "Hv".
+    iDestruct "Hv" as "(%fn & %local_sts & -> & Hen & %Halg1 & %Halg2 & #Htf)".
+    iEval (rewrite /ty_own_val/=).
+    iExists fn, local_sts. iR. iFrame.
+    iR. iR.
+    iNext.
+    iPoseProof (subsume_typed_function with "[Ha] Htf") as "(Hb & _)".
+    { iSplit; first iModIntro; first done. done. }
+    iApply "Hb".
+  Qed.
+  (*Definition subsume_function_ptr_inst := [instance subsume_function_ptr].*)
+  (*Global Existing Instance subsume_function_ptr_inst  | 10.*)
+  (* TODO: maybe also make this a subsume_full instance *)
+
+
 
   (* A pure version that we can shelve as a pure sidecondition. *)
   Definition function_subtype `{!typeGS Σ} {lfts : nat} {rts : list Type} {A} {B} (a : spec_with lfts rts (A → fn_params)) (b : spec_with lfts rts (B → fn_params)) : Prop :=

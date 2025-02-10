@@ -846,6 +846,7 @@ Ltac sidecond_hook ::=
   unfold_no_enrich;
   open_cache;
   intros;
+  prepare_initial_coq_context;
   match goal with
   | |- Forall ?P ?l =>
       sidecond_hook_list
@@ -1018,7 +1019,9 @@ Ltac sidecond_solver :=
 Ltac solve_function_subtype_hook ::=
   rewrite /function_subtype;
   iStartProof;
-  repeat liRStep
+  unshelve (repeat liRStep);
+  unshelve (sidecond_solver);
+  sidecond_hammer
 .
 
 Ltac print_remaining_goal :=

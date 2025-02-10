@@ -15,13 +15,8 @@ Proof.
   repeat liRStep; liShow.
 
   all: print_remaining_goal.
-  Unshelve. 
-  all: sidecond_solver.
+  Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { unshelve_sidecond.
-    (* TODO improve solver *)
-    intros. prepare_initial_coq_context.
-    simpl. done. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.
