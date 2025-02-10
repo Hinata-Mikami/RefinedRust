@@ -1027,8 +1027,7 @@ Section test.
            (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ϝ ++ ty_wf_E unit_t ++ ty_outlives_E unit_t ϝ) = E' ∧ E' = E'.
   Proof.
-    eexists.
-    split; [solve simplify_elctx | done].
+    eexists. split; [solve simplify_elctx | done].
   Abort.
 End test.
 

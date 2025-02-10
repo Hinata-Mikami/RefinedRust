@@ -982,6 +982,14 @@ Ltac solve_goal_normalized_prepare_hook ::=
   idtac
 .
 
+(** Enum-related tactic calls *)
+Ltac solve_mk_enum_ty_lfts_incl :=
+  unfold_opaque (@ty_lfts); simpl; intros []; set_solver.
+Ltac solve_mk_enum_ty_wf_E :=
+  intros []; rewrite {1}ty_wf_E_unfold/=; set_solver.
+Ltac solve_mk_enum_tag_consistent :=
+  intros []; naive_solver.
+
 
 (** User facing tactic calls *)
 Ltac sidecond_hammer_it :=

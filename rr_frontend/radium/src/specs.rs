@@ -2371,10 +2371,9 @@ impl<'def> AbstractEnum<'def> {
             self.generate_wf_elctx(),
         )
         .unwrap();
-        write!(out, "{indent}Next Obligation. intros []; set_solver. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. intros []; rewrite {{1}}ty_wf_E_unfold/=; set_solver. Qed.\n")
-            .unwrap();
-        write!(out, "{indent}Next Obligation. intros []; naive_solver. Qed.\n\n").unwrap();
+        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
+        write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
+        write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Qed.\n\n").unwrap();
 
         // define the actual type
         write!(out, "{indent}Definition {} : type _ := enum_t {}.\n", self.plain_ty_name, self.enum_def_name)

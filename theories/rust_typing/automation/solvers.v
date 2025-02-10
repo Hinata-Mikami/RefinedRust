@@ -1005,6 +1005,9 @@ Global Arguments ty_outlives_E : simpl never.
 (* Otherwise [simpl] will unfold too much despite [simpl never], breaking the solver *)
 Global Opaque ty_outlives_E.
 
+(* Otherwise Qed is slow *)
+Global Opaque ty_lfts.
+
 Section tac.
   Context `{!typeGS Σ}.
   Lemma simplify_app_head_tac (E1 E1' E2 E : elctx) :
@@ -1057,12 +1060,15 @@ Ltac simplify_elctx_subterm :=
   | |- ty_outlives_E ?ty _ = _ =>
       assert_fails (is_var ty);
       unfold_opaque (@ty_outlives_E);
-      rewrite [ty_outlives_E ty]/ty_outlives_E/=;
-      first [rewrite lfts_outlives_app | autounfold with tyunfold; rewrite /ty_lfts ]; cbn;
+      (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
+      first [rewrite lfts_outlives_app |
+          unfold_opaque (@ty_lfts);
+          autounfold with tyunfold; rewrite /ty_lfts ]; cbn;
       reflexivity
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
       (*(is_var ty);*)
       (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
+      unfold_opaque (@ty_lfts);
       first [is_var ty | rewrite lfts_outlives_app | autounfold with tyunfold; rewrite /ty_lfts ]; cbn;
       reflexivity
   | |- lfts_outlives_E [?κ2] _ = _ =>
@@ -1092,7 +1098,6 @@ match goal with
     is_var ty; f_equiv
 | |- ty_outlives_E ?ty _ ++ _ = _ =>
     assert_fails (is_var ty);
-    unfold_opaque (@ty_outlives_E);
     refine (simplify_app_head_tac _ _ _ _ _ _);
     [ simplify_elctx_subterm | ]
 | |- ty_outlives_E ?ty _ ++ _ = _ =>
