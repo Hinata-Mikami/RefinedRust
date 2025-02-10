@@ -34,6 +34,7 @@ Ltac sidecond_hook := idtac.
 Ltac unsolved_sidecond_hook := idtac.
 
 Tactic Notation "unfold_opaque" constr(c) := with_strategy 0 [c] (unfold c).
+Tactic Notation "unfold_opaque" constr(c) "in" constr(d) := with_strategy 0 [c] (rewrite [d] /c).
 
 (** ** interpret_rust_type solver *)
 
@@ -933,6 +934,9 @@ Ltac solve_lft_alive_step :=
         end
       in
       list_find_tac_app find_outlives E
+  (* If it is not a var, unfold *)
+  | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
+      unfold_opaque (@ty_lfts) in (ty_lfts ty); simpl
 
   (* liveness of local lifetimes *)
   | |- lctx_lft_alive_list ?E ?L (?κ :: ?κs) ∨ _ =>
