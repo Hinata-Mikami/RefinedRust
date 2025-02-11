@@ -52,7 +52,6 @@ Section int.
 End int.
 
 Global Hint Unfold int : ty_unfold.
-Global Typeclasses Opaque int.
 Notation "int< it >" := (int it) (only printing, format "'int<' it '>'") : printing_sugar.
 
 (** This represents the Rust bool type, which just has valid bit patterns 0x01 and 0x00 *)
@@ -96,7 +95,6 @@ Section boolean.
 End boolean.
 
 Global Hint Unfold bool_t : ty_unfold.
-Global Typeclasses Opaque bool_t.
 Notation "'bool'" := (bool_t) (only printing, format "'bool'") : printing_sugar.
 
 (** This represents the Rust char type. *)
@@ -140,7 +138,6 @@ Section char.
 End char.
 
 Global Hint Unfold char_t : ty_unfold.
-Global Typeclasses Opaque char_t.
 Notation "'char'" := (char_t) (only printing, format "'char'") : printing_sugar.
 
 

@@ -1642,7 +1642,7 @@ impl<'def> AbstractStruct<'def> {
             write!(
                 out,
                 " := {type_name}_rec' in\n\
-                {indent}{indent}ex_plain_t _ _ {spec_name} ({}).\n",
+                {indent}{indent}ex_plain_t _ _ _ {spec_name} ({}).\n",
                 self.variant_def.generate_coq_type_term(sls_app)
             )
             .unwrap();

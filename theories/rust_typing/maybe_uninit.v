@@ -113,7 +113,6 @@ Section type.
     iExists _. iFrame.
   Qed.
 End type.
-Global Typeclasses Opaque maybe_uninit.
 
 Section ne.
   Context `{!typeGS Σ}.

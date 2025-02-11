@@ -128,7 +128,7 @@ enum MetaIProp {
     /// #[rr::requires(#type "l" : "rfn" @ "ty")]
     Type(specs::TyOwnSpec),
     /// #[rr::ensures(#observe "γ" : "2 * x")]
-    Observe(String, String),
+    Observe(String, Option<String>, String),
     /// #[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]
     Linktime(String),
 }
@@ -170,7 +170,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
                     let term: parse::LitStr = input.parse(meta)?;
                     let (term, _meta) = meta.process_coq_literal(&term.value());
 
-                    Ok(Self::Observe(gname.value(), term))
+                    Ok(Self::Observe(gname.value(), None, term))
                 },
                 "linktime" => {
                     let term: parse::LitStr = input.parse(meta)?;
@@ -216,7 +216,13 @@ impl From<MetaIProp> for specs::IProp {
                 let lit = spec.fmt_owned("π");
                 Self::Atom(lit)
             },
-            MetaIProp::Observe(name, term) => Self::Atom(format!("gvar_pobs {name} ({term})")),
+            MetaIProp::Observe(name, ty_hint, term) => {
+                if let Some(ty_hint) = ty_hint {
+                    Self::Atom(format!("gvar_pobs {name} ($#@{{{ty_hint}}} {term})"))
+                } else {
+                    Self::Atom(format!("gvar_pobs {name} ({term})"))
+                }
+            },
             MetaIProp::Linktime(p) => Self::True,
         }
     }
@@ -389,7 +395,7 @@ where
 
                     let term: parse::LitStr = buffer.parse(scope)?;
                     let (term, _) = scope.process_coq_literal(&term.value());
-                    Ok(MetaIProp::Observe(gname.value(), term))
+                    Ok(MetaIProp::Observe(gname.value(), None, term))
                 };
                 let m = m().map_err(str_err)?;
                 builder.add_postcondition(m.into());
@@ -450,8 +456,8 @@ where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
         enum CapturePostRfn {
-            // mutable capture: (pattern, ghost_var)
-            Mut(String, String),
+            // mutable capture: (pattern, ghost_var, type_behind_reference)
+            Mut(String, String, String),
             // immutable or once capture: pattern
             ImmutOrConsume(String),
         }
@@ -523,11 +529,16 @@ where
                             let altered_rfn = format!("(({}), {ghost_var})", processed_ty.1);
                             pre_types.push(specs::TypeWithRef::new(altered_ty, altered_rfn));
 
+                            let type_hint = auto_type.to_string();
                             if let Some(post) = post {
-                                post_patterns.push(CapturePostRfn::Mut(post.rfn.to_string(), ghost_var));
+                                post_patterns.push(CapturePostRfn::Mut(
+                                    post.rfn.to_string(),
+                                    ghost_var,
+                                    type_hint,
+                                ));
                             } else {
                                 // push the same pattern for the post
-                                post_patterns.push(CapturePostRfn::Mut(processed_ty.1, ghost_var));
+                                post_patterns.push(CapturePostRfn::Mut(processed_ty.1, ghost_var, type_hint));
                             }
                         }
                     },
@@ -549,7 +560,7 @@ where
         if pre_types.is_empty() {
             pre_rfn.push_str("()");
         } else {
-            pre_rfn.push_str("*[");
+            pre_rfn.push_str(" *[");
             push_str_list!(pre_rfn, pre_types.clone(), "; ", |x| format!("({})", x.1));
             pre_rfn.push(']');
 
@@ -567,9 +578,9 @@ where
                         CapturePostRfn::ImmutOrConsume(_) => {
                             // nothing mutated
                         },
-                        CapturePostRfn::Mut(pat, gvar) => {
+                        CapturePostRfn::Mut(pat, gvar, type_hint) => {
                             // add an observation on `gvar`
-                            builder.add_postcondition(MetaIProp::Observe(gvar, pat).into());
+                            builder.add_postcondition(MetaIProp::Observe(gvar, Some(type_hint), pat).into());
                         },
                     }
                 }
@@ -592,7 +603,7 @@ where
                     .unwrap();
 
                 let lft = meta.closure_lifetime.unwrap();
-                let ref_ty = specs::Type::MutRef(Box::new(tuple), lft);
+                let ref_ty = specs::Type::MutRef(Box::new(tuple.clone()), lft);
                 let ref_rfn = format!("(({}), {})", pre_rfn, post_name);
 
                 builder.add_arg(specs::TypeWithRef::new(ref_ty, ref_rfn));
@@ -602,14 +613,16 @@ where
                 // references
                 let mut post_term = String::new();
 
-                post_term.push_str("*[");
+                post_term.push_str(" *[");
                 push_str_list!(post_term, post_patterns, "; ", |p| match p {
                     CapturePostRfn::ImmutOrConsume(pat) => format!("({pat})"),
-                    CapturePostRfn::Mut(pat, gvar) => format!("(({pat}), {gvar})"),
+                    CapturePostRfn::Mut(pat, gvar, _) => format!("(({pat}), {gvar})"),
                 });
                 post_term.push(']');
 
-                builder.add_postcondition(MetaIProp::Observe(post_name.to_owned(), post_term).into());
+                builder.add_postcondition(
+                    MetaIProp::Observe(post_name.to_owned(), Some(tuple.to_string()), post_term).into(),
+                );
             },
         }
         Ok(())

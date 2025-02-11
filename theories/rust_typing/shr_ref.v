@@ -653,7 +653,6 @@ Section ltype_agree.
   Qed.
 End ltype_agree.
 
-Global Typeclasses Opaque shr_ref.
 Notation "&shr< κ , τ >" := (shr_ref τ κ) (only printing, format "'&shr<' κ , τ '>'") : stdpp_scope.
 
 Section acc.

@@ -486,7 +486,6 @@ Section ofty_lemmas.
 End ofty_lemmas.
 
 Global Hint Unfold value_t : tyunfold.
-Global Typeclasses Opaque value_t.
 
 (** ** value rules *)
 Section rules.

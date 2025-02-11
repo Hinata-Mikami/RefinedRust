@@ -3582,8 +3582,6 @@ End offset_rules.
 Global Hint Mode TypedArrayAccess + + + + + + + + + + + + : typeclass_instances.
 Global Typeclasses Opaque typed_array_access.
 
-Global Typeclasses Opaque offset_ptr_t.
-Global Typeclasses Opaque array_t.
 
 
 Global Typeclasses Opaque weak_subltype_list_interp.

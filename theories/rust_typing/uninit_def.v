@@ -119,8 +119,6 @@ End bytewise.
 Notation "bytewise< P , st >" := (bytewise P st)
   (only printing, format "'bytewise<' P ',' st '>'") : printing_sugar.
 
-Global Typeclasses Opaque bytewise.
-
 Notation uninit := (bytewise (λ _, True)).
 
 Section uninit.

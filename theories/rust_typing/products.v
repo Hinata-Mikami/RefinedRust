@@ -4089,9 +4089,6 @@ Global Typeclasses Opaque MutEqltypeStructHFR.
 Global Typeclasses Opaque cast_ltype_to_type_iter.
 Global Typeclasses Opaque stratify_ltype_struct_iter.
 
-Global Typeclasses Opaque unit_t.
-Global Typeclasses Opaque struct_t.
-
 (* Need this for unification to figure out how to apply typed_place lemmas -- if the plist simplifies, unification will be stuck *)
 Arguments plist : simpl never.
 

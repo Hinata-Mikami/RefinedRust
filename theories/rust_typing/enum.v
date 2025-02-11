@@ -255,7 +255,6 @@ Section union.
     iPoseProof (ty_own_ghost_drop with "Hv") as "Ha"; last iApply (logical_step_wand with "Ha"); eauto.
   Qed.
 End union.
-Global Typeclasses Opaque active_union_t.
 
 Section type_incl.
   Context `{!typeGS Σ}.
@@ -576,7 +575,6 @@ Section enum.
     iApply logical_step_intro. done.
   Qed.
 End enum.
-Global Typeclasses Opaque enum_t.
 
 Section ne.
   Context `{!typeGS Σ}.
@@ -943,8 +941,8 @@ Section unfold.
         rewrite /offset_of.
         (*erewrite sl_index_of_lookup_2. done.*)
         admit. }
-      iR.
       iSplitR. { admit. }
+      iR.
       iDestruct "Htag" as "(%j & %ly' & %n & % & % & %v' & %r'' & %ly'' & <- & % & % & ? & Hl & %Hlyv & Hv)".
       iExists _. iR. iModIntro.
       iExists v'. iFrame.

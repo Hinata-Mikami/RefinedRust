@@ -19,17 +19,17 @@ Alternative solutions:
    - we do some weird closed world thing.
    - we refactor the specification format to always universally quantify over the xt of the args.
    - we universally quantify over the rt but require that it's equal to projection of xt
-   - we bundle the params type. 
+   - we bundle the params type.
      + This doesn't really work because of how we setup the notations.
-   
+
    Problem: if I can't quantify over it, how will I encode rr frontend specs?
-   I guess I could always generically quantify over the refinements r1 .. rn. 
+   I guess I could always generically quantify over the refinements r1 .. rn.
 
    It will be hard to keep the ability to treat args as mixed input/output.
    In general I should move to using projections more.
 
    But we can keep args clauses as a way to specify the name we can use to refer to an arg, in the first step.
-   Then I existentially quantify over the args. (combined params + args) 
+   Then I existentially quantify over the args. (combined params + args)
    ∃ arg1, arg2.
    r1 = ty.(ty_xt) arg1
    r2 = ty.(ty_xt) arg2
@@ -37,12 +37,12 @@ Alternative solutions:
    Point: I need to separately existentially quantify over the xts, because it's not in scope for the outside params.
 
    Problem: I cannot refer to the args in the postcondition.
-    -> this is really a problem. 
+    -> this is really a problem.
 
 
    What is the point of having the params exposed?
    - for traits, do I need to know that the params are consistent between impls?
-   - I don't immediately see why we should need it. Try it out, I guess? 
+   - I don't immediately see why we should need it. Try it out, I guess?
 
 *)
 

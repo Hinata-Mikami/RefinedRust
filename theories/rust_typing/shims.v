@@ -278,8 +278,8 @@ Proof.
     ls_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int usize_t) ∗
     ls_src ◁ₗ[π, Owned false] #l_s @ (◁ alias_ptr_t) ∗
     ls_dst ◁ₗ[π, Owned false] #l_t @ (◁ alias_ptr_t) ∗
-    l_s ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate len (ly_size T_st_ly)) v_s)) @ (◁ array_t (value_t (UntypedSynType T_st_ly)) len) ∗
-    l_t ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate len (ly_size T_st_ly)) v_s) ++ drop i (reshape (replicate len (ly_size T_st_ly)) v_t))) @ (◁ array_t (value_t (UntypedSynType T_st_ly)) len)))%I).
+    l_s ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate len (ly_size T_st_ly)) v_s)) @ (◁ array_t len (value_t (UntypedSynType T_st_ly))) ∗
+    l_t ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate len (ly_size T_st_ly)) v_s) ++ drop i (reshape (replicate len (ly_size T_st_ly)) v_t))) @ (◁ array_t len (value_t (UntypedSynType T_st_ly)))))%I).
   iApply (typed_goto_acc _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   liRStep; liShow. iExists 0%nat.

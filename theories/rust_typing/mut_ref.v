@@ -1694,6 +1694,5 @@ Section rules.
    *)
 End rules.
 
-Global Typeclasses Opaque mut_ref.
 Notation "&mut< κ , τ >" := (mut_ref κ τ) (only printing, format "'&mut<' κ , τ '>'") : stdpp_scope.
 

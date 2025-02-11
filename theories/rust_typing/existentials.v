@@ -720,7 +720,6 @@ Section stratify.
     λ T, i2p (typed_place_ex_plain_t_shared π E L l ty x κ bmin K T).
 
 End stratify.
-Global Typeclasses Opaque ex_plain_t.
 (* How to reflect that into subtyping?
 
    - It gives a clear proof principle for adding a later via subsume.

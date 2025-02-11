@@ -1458,4 +1458,3 @@ Section rules.
     MutEqLtype E L (◁ ty1)%I (BoxLtype lt2) | 10 := λ T, i2p (mut_eqltype_box_ofty_2 E L ty1 lt2 T).
 End rules.
 Global Typeclasses Opaque BoxLtype.
-Global Typeclasses Opaque box.

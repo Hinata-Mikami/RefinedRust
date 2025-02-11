@@ -709,13 +709,25 @@ Ltac prepare_initial_coq_context :=
   | H : fn_A _ |- _ => simpl in H
   | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
   | H : plist _ _ |- _ => destruct_product_hypothesis H H
-  | H : _ * _ |- _ => destruct_product_hypothesis H H
+  | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
+  | H : unit |- _ => destruct H
+  end.
+
+Ltac strong_prepare_initial_coq_context :=
+  (* The automation assumes that all products in the context are destructed, see liForall *)
+  repeat lazymatch goal with
+  | H : fn_A _ |- _ => simpl in H
+  | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
+  | H : plist _ _ |- _ => destruct_product_hypothesis H H
+  | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
   (*| H : named_binder ?n |- _ =>*)
                       (*let temp := fresh "tmp" in*)
                       (*destruct H as [tmp];*)
                       (*rename_by_string tmp n*)
   | H : unit |- _ => destruct H
+  | H : ty_xt _ |- _ => simpl in H
   end.
+
 
 Ltac inv_arg_ly_rec Harg_ly :=
   match type of Harg_ly with
@@ -849,7 +861,7 @@ Ltac sidecond_hook ::=
   unfold_no_enrich;
   open_cache;
   intros;
-  prepare_initial_coq_context;
+  strong_prepare_initial_coq_context;
   match goal with
   | |- Forall ?P ?l =>
       sidecond_hook_list
