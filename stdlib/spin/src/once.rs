@@ -64,16 +64,19 @@ impl<T, R> Once<T, R> {
 
     /// Returns a reference to the inner value if the [`Once`] has been initialized.
     #[rr::params("η", "o")]
-    #[rr::args("#η")]
+    #[rr::args("η")]
     #[rr::requires(#iris "once_status_tok η o")]
+    #[rr::requires("if_Some o (ty_is_xrfn {T})")]
     #[rr::ensures(#iris "once_status_tok η o")]
-    #[rr::returns("<#>@{option}<#>@{option} o")]
+    #[rr::exists("o'" : "option {xt_of T}")]
+    #[rr::ensures("o = fmap (ty_xrt {T}) o'")]
+    #[rr::returns("o'")]
     pub fn get(&self) -> Option<&T> {
         unimplemented!();
     }
 
     #[rr::params("η", "o")]
-    #[rr::args("#η")]
+    #[rr::args("η")]
     #[rr::requires(#iris "once_status_tok η o")]
     #[rr::ensures(#iris "once_status_tok η o")]
     #[rr::returns("bool_decide (is_Some o)")]
@@ -82,16 +85,17 @@ impl<T, R> Once<T, R> {
     }
 
     #[rr::params("γ", "η", "o")]
-    #[rr::args("(#η, γ)")]
+    #[rr::args("(η, γ)")]
     #[rr::requires(#iris "once_status_tok η o")]
-    #[rr::exists("o'" : "option (place_rfn {rt_of T} * gname)%type")]
+    #[rr::requires("if_Some o (ty_is_xrfn {T})")]
+    #[rr::exists("o'" : "option ({xt_of T} * gname)%type")]
     #[rr::observe("γ": "η")]
-    #[rr::returns("<#>@{option} o'")]
+    #[rr::returns("o'")]
     #[rr::ensures(#iris "if bool_decide (is_Some o)
                     then
-                        ∃ (x : {rt_of T}) γ2, 
-                            ⌜o' = Some (#x, γ2)⌝ ∗ ⌜o = Some x⌝ ∗
-                            Inherit {'a} InheritGhost (∃ x', gvar_obs γ2 x' ∗ once_status_tok η (Some x'))
+                        ∃ (x : {xt_of T}) γ2, 
+                            ⌜o' = Some (x, γ2)⌝ ∗ ⌜o = Some ($# x)⌝ ∗
+                            Inherit {'a} InheritGhost (∃ x' : {rt_of T}, gvar_obs γ2 x' ∗ once_status_tok η (Some x'))
                     else ⌜o' = None⌝ ∗ once_status_tok η o")]
     pub fn get_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         unimplemented!();
