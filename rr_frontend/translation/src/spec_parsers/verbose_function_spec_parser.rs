@@ -690,6 +690,21 @@ where
             }
         }
 
+        // in case we didn't get an args annotation,
+        // implicitly add argument parameters matching their Rust names
+        // IMPORTANT: We do this after `merge_capture_information`, since that adds the first arg
+        if !self.got_args {
+            if let Some(arg_names) = self.arg_names {
+                for (arg, ty) in arg_names.iter().zip(self.arg_types) {
+                    builder
+                        .add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
+                    let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
+                    builder.add_arg(ty_with_ref);
+                }
+                self.got_args = true;
+            }
+        }
+
         if self.got_ret && self.got_args {
             builder.have_spec();
         }

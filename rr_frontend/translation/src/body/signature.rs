@@ -358,8 +358,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
                 }
 
+                // get argument names
+                let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
+                let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+                info!("arg names: {arg_names:?}");
+
                 // process attributes
-                t.process_closure_attrs(&inputs, output, meta)?;
+                t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
                 Ok(t)
             },
             Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
@@ -647,6 +652,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         inputs: &[Ty<'tcx>],
         output: Ty<'tcx>,
+        arg_names: &[String],
         meta: ClosureMetaInfo<'b, 'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("entering process_closure_attrs");
@@ -694,7 +700,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut parser = VerboseFunctionSpecParser::new(
                 &translated_arg_types,
                 &translated_ret_type,
-                None,
+                Some(arg_names),
                 &*scope,
                 |lit| ty_translator.translator.intern_literal(lit),
             );

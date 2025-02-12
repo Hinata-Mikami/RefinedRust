@@ -22,10 +22,8 @@ fn closure_test1() {
 
     // Fn-closure
     let x =
-        #[rr::params("i")]
-        #[rr::args("i")]
-        #[rr::requires("(2 * i)%Z ∈ i32")]
-        #[rr::returns("(2 * i)%Z")]
+        #[rr::requires("(2 * x)%Z ∈ i32")]
+        #[rr::returns("(2 * x)%Z")]
         |x: i32| {
             x * 2
         };
@@ -39,10 +37,8 @@ fn closure_test12() {
 
     // Fn-closure
     let x =
-        #[rr::params("i", "j")]
-        #[rr::args("i", "j")]
-        #[rr::requires("(j * i)%Z ∈ i32")]
-        #[rr::returns("(j * i)%Z")]
+        #[rr::requires("(y * x)%Z ∈ i32")]
+        #[rr::returns("(y * x)%Z")]
         |x: i32, y: i32| {
             x * y
         };
