@@ -79,3 +79,7 @@ convert the goal to the Lithium syntax. If one overrides
 [liToSyntax_hook] with [fail], conversion to the syntax is disabled. *)
 Ltac liToSyntax_hook :=
   idtac.
+
+(* Check whether the current goal is a backtracking point. *)
+Ltac rep_check_backtrack_point_hook :=
+  fail.

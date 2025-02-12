@@ -956,7 +956,8 @@ Section test.
     Context {T_rt : Type}.
     Context (T_ty : type (T_rt)).
 
-    Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)) (loc * nat) := mk_ex_inv_def
+    Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)) := mk_ex_inv_def
+      _ 
       id
       (λ π inner_rfn '(l, cap) , ⌜inner_rfn = (-[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
@@ -973,7 +974,7 @@ Section test.
     Qed.
 
     Definition RawVec_inv_t : type ((loc * nat)) :=
-      ex_plain_t _ _ _ RawVec_inv_t_inv_spec (RawVec_ty T_ty).
+      ex_plain_t _ _ RawVec_inv_t_inv_spec (RawVec_ty T_ty).
   End RawVec_inv_t.
 
   Section Vec_ty.
@@ -993,7 +994,8 @@ Section test.
     Context {T_rt : Type}.
     Context (T_ty : type (T_rt)).
 
-    Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) (list T_rt) := mk_ex_inv_def
+    Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
+      (list T_rt)
       (fmap PlaceIn) 
       (λ π inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = -[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = -[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
@@ -1012,7 +1014,7 @@ Section test.
     Qed.
 
     Definition Vec_inv_t : type (list (place_rfn T_rt)) :=
-      ex_plain_t _ _ _ Vec_inv_t_inv_spec (Vec_ty T_ty).
+      ex_plain_t _ _ Vec_inv_t_inv_spec (Vec_ty T_ty).
     Hint Unfold Vec_inv_t : tyunfold.
   End Vec_inv_t.
 

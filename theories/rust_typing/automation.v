@@ -47,7 +47,7 @@ Ltac can_solve_hook ::= first [
 Ltac liTrace_hook info ::=
   add_case_distinction_info info.
 
-Ltac rep_check_backtrack_point ::=
+Ltac rep_check_backtrack_point_hook ::=
   lazymatch goal with
   | |- BACKTRACK_POINT ?P => idtac
   | |- envs_entails _ ?P =>

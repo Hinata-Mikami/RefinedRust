@@ -25,7 +25,6 @@ Global Instance simpl_forall_hlist_nil {X} (F : X → Type) T :
   SimplForall (hlist F []) 0 T (T +[]).
 Proof. intros Q a. inv_hlist a. apply Q. Qed.
 
-
 Global Open Scope Z_scope.
 
 Notation Obs := gvar_pobs.
@@ -67,3 +66,7 @@ Ltac instantiate_benign_universals term ::=
 (*Global Typeclasses Opaque ex_plain_t.*)
 (*Global Typeclasses Opaque bytewise.*)
 (*Global Typeclasses Opaque value_t.*)
+
+
+(*Global Typeclasses Opaque mk_ex_inv_def.*)
+(*Global Typeclasses Opaque mk_pers_ex_inv_def.*)

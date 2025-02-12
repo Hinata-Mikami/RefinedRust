@@ -11,8 +11,10 @@ Set Default Proof Using "Type".
   [Y] is the type it is being abstracted to,
   [YR] is the refinement type constructor (Y without place_rfn).
 *)
-Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) (YR : Type) : Type := mk_ex_inv_def' {
-  inv_xrt : YR → Y;
+Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
+  inv_xr : Type;
+  inv_xr_inh : Inhabited inv_xr;
+  inv_xrt : inv_xr → Y;
   inv_P : thread_id → X → Y → iProp Σ;
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
 
@@ -32,7 +34,7 @@ Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) (YR : Type) : Type := mk_e
     logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
 }.
 (* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
-Definition mk_ex_inv_def `{!typeGS Σ} {X Y YR : Type}
+Definition mk_ex_inv_def `{!typeGS Σ} {X Y : Type} (YR : Type) `{!Inhabited YR}
   (inv_xrt : YR → Y)
   (inv_P : thread_id → X → Y → iProp Σ)
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
@@ -40,7 +42,8 @@ Definition mk_ex_inv_def `{!typeGS Σ} {X Y YR : Type}
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
-  inv_P_share := mk_ex_inv_def' _ _ _ _ _ inv_xrt inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
+  inv_P_share := mk_ex_inv_def' _ _ _ _ _ _ inv_xrt inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
+Global Arguments inv_xr {_ _ _ _ _}.
 Global Arguments inv_xrt {_ _ _ _ _}.
 Global Arguments inv_P {_ _ _ _ _}.
 Global Arguments inv_P_shr {_ _ _ _ _}.
@@ -50,12 +53,11 @@ Global Arguments inv_P_share {_ _ _ _ _}.
 Global Arguments inv_P_shr_mono {_ _ _ _ _}.
 Global Arguments inv_P_shr_pers {_ _ _ _ _}.
 Global Existing Instance inv_P_shr_pers.
-Global Typeclasses Opaque mk_ex_inv_def.
 
 (** Smart constructor for persistent and timeless [P] *)
-Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : Type} {Y : Type} {YR : Type} (xtr : YR → Y) (P : X → Y → iProp Σ)
-  (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y YR :=
-  mk_ex_inv_def xtr (λ _, P) (λ _ _, P) [] [] _ _ _.
+Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : Type} {Y : Type} (YR : Type) `{!Inhabited YR} (xtr : YR → Y) (P : X → Y → iProp Σ)
+  (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
+  mk_ex_inv_def YR xtr (λ _, P) (λ _ _, P) [] [] _ _ _.
 Next Obligation.
   rewrite /TCNoResolve.
   eauto with iFrame.
@@ -65,17 +67,16 @@ Next Obligation.
 Qed.
 Next Obligation.
   rewrite /TCNoResolve.
-  iIntros (?????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
+  iIntros (??????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
   iDestruct "CTX" as "(LFT & TIME & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
   iApply logical_step_intro. by iFrame.
 Qed.
-Global Typeclasses Opaque mk_pers_ex_inv_def.
 
 
 
-Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y YR : Type} (F : type rt → ex_inv_def X Y YR) : Type := {
+Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_ne_val_own :
@@ -91,7 +92,7 @@ Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y YR : Type} (F : type rt → ex_
         (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
 }.
 
-Class ExInvDefContractive `{!typeGS Σ} {rt X Y YR : Type} (F : type rt → ex_inv_def X Y YR) : Type := {
+Class ExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_contr_val_own :
@@ -110,7 +111,7 @@ Class ExInvDefContractive `{!typeGS Σ} {rt X Y YR : Type} (F : type rt → ex_i
 Section insts.
   Context `{!typeGS Σ}.
 
-  Global Instance ex_inv_def_contractive_const {rt X Y YR} (v : ex_inv_def X Y YR) :
+  Global Instance ex_inv_def_contractive_const {rt X Y} (v : ex_inv_def X Y) :
     ExInvDefContractive (λ _ : type rt, v).
   Proof.
     constructor.
@@ -119,7 +120,7 @@ Section insts.
     - eauto.
   Qed.
 
-  Global Instance ex_inv_def_ne_const {rt X Y YR} (v : ex_inv_def X Y YR) :
+  Global Instance ex_inv_def_ne_const {rt X Y} (v : ex_inv_def X Y) :
     ExInvDefNonExpansive (λ _ : type rt, v).
   Proof.
     constructor.
@@ -135,9 +136,9 @@ End insts.
 Section ex.
   Context `{!typeGS Σ}.
   (* [Y] is the abstract refinement type, [X] is the inner refinement type *)
-  Context (X Y YR : Type) `{!Inhabited YR}
+  Context (X Y : Type)
     (* invariant on the contained refinement *)
-    (P : ex_inv_def X Y YR)
+    (P : ex_inv_def X Y)
   .
 
   (** Provide an abstraction over [ty], by accepting a refinement [Y] and existentially quantifying over [X].
@@ -145,7 +146,7 @@ Section ex.
      [R] determines a relation between the inner and outer refinement. *)
   Program Definition ex_plain_t (ty : type X) : type Y := {|
     ty_xt_inhabited := _;
-    ty_xt := YR;
+    ty_xt := P.(inv_xr);
     ty_xrt := P.(inv_xrt);
     ty_own_val π r v :=
       (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x v)%I;
@@ -158,6 +159,9 @@ Section ex.
     ty_lfts := P.(inv_P_lfts) ++ ty.(ty_lfts);
     _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
   |}.
+  Next Obligation.
+    intros. apply P.
+  Qed.
   Next Obligation.
     iIntros (ty π r v) "(%x & HP & Hv)".
     by iApply ty_has_layout.
@@ -225,12 +229,12 @@ End ex.
 Section contr.
   Context `{!typeGS Σ}.
 
-  Global Instance ex_inv_def_contractive {rt X Y YR : Type} `{!Inhabited YR}
-    (P : type rt → ex_inv_def X Y YR)
+  Global Instance ex_inv_def_contractive {rt X Y : Type}
+    (P : type rt → ex_inv_def X Y)
     (F : type rt → type X) :
     ExInvDefContractive P →
     TypeContractive F →
-    TypeContractive (λ ty, ex_plain_t X Y YR (P ty) (F ty)).
+    TypeContractive (λ ty, ex_plain_t X Y (P ty) (F ty)).
   Proof.
     intros HP HF.
     constructor; simpl.
@@ -257,13 +261,13 @@ Section contr.
   Qed.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
-  Global Instance ex_inv_def_ne {rt X Y YR : Type} `{!Inhabited YR}
-    (P : type rt → ex_inv_def X Y YR)
+  Global Instance ex_inv_def_ne {rt X Y : Type}
+    (P : type rt → ex_inv_def X Y)
     (F : type rt → type X)
     :
     ExInvDefNonExpansive P →
     TypeNonExpansive F →
-    TypeNonExpansive (λ ty, ex_plain_t X Y YR (P ty) (F ty)).
+    TypeNonExpansive (λ ty, ex_plain_t X Y (P ty) (F ty)).
   Proof.
     intros HP HF.
     constructor; simpl.
@@ -292,11 +296,11 @@ Section contr.
   Qed.
 End contr.
 
-Notation "'∃;' P ',' τ" := (ex_plain_t _ _ _ P τ) (at level 40) : stdpp_scope.
+Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
 
 Section open.
   Context `{!typeGS Σ}.
-  Context {rt X rtx : Type} (P : ex_inv_def rt X rtx) `{!Inhabited rtx}.
+  Context {rt X : Type} (P : ex_inv_def rt X).
 
   Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
     lftE ⊆ F →
@@ -464,8 +468,8 @@ End open.
 
 Section subtype.
   Context `{!typeGS Σ}.
-  Context {rt X rtx : Type} `{!Inhabited rtx}.
-  Lemma weak_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) (r1 r2 : X) T :
+  Context {rt X : Type}.
+  Lemma weak_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) T :
     ⌜r1 = r2⌝ ∗ ⌜ty1 = ty2⌝ ∗ ⌜P1 = P2⌝ ∗ T
     ⊢ weak_subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) T.
   Proof.
@@ -473,29 +477,29 @@ Section subtype.
     iIntros (? ?) "#CTX #HE HL".
     iFrame. iApply type_incl_refl.
   Qed.
-  Global Instance weak_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) (r1 r2 : X) :
+  Global Instance weak_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) :
     Subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (weak_subtype_ex_plain_t E L P1 P2 ty1 ty2 r1 r2 T).
-  Lemma mut_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) T :
+  Lemma mut_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
     ⌜P1 = P2⌝ ∗ ⌜ty1 = ty2⌝ ∗ T
     ⊢ mut_subtype E L (∃; P1, ty1) (∃; P2, ty2) T.
   Proof.
     iIntros "(-> & -> & HT)". iFrame. iPureIntro. intros ?. apply subtype_refl.
   Qed.
-  Global Instance mut_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) :
+  Global Instance mut_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
     MutSubtype E L (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (mut_subtype_ex_plain_t E L P1 P2 ty1 ty2 T).
 
-  Lemma mut_eqtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) T :
+  Lemma mut_eqtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
     ⌜P1 = P2⌝ ∗ ⌜ty1 = ty2⌝ ∗ T ⊢ mut_eqtype E L (∃; P1, ty1) (∃; P2, ty2) T.
   Proof.
     iIntros "(-> & -> & HT)". iFrame. iPureIntro. intros ?. apply eqtype_refl.
   Qed.
-  Global Instance mut_eqtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X rtx) (ty1 ty2 : type rt) :
+  Global Instance mut_eqtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
     MutEqtype E L (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (mut_eqtype_ex_plain_t E L P1 P2 ty1 ty2 T).
 End subtype.
 
 Section stratify.
   Context `{!typeGS Σ}.
-  Context {rt X rtx : Type} `{!Inhabited rtx} (P : ex_inv_def rt X rtx).
+  Context {rt X : Type} (P : ex_inv_def rt X).
 
   (** Subsumption rule for introducing an existential *)
   (* TODO could have a more specific instance for persistent invariants with pers = true *)
@@ -1039,7 +1043,7 @@ Module test.
 
   (* The subtype of positive integers *)
   Local Definition P_a := λ (x : Z) (y : Z), (∃ z : Z, ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝)%I : iProp Σ.
-  Local Program Definition Pdef := mk_pers_ex_inv_def P_a _ _.
+  Local Program Definition Pdef := mk_pers_ex_inv_def id P_a _ _.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. ex_t_solve_timeless. Qed.
   Local Definition Pty := (∃; Pdef, int i32)%I.
@@ -1047,7 +1051,7 @@ Module test.
   Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ l ◁ₗ[π, Owned true] #42%Z @ (◁ int i32))%I : iProp Σ.
   Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int i32)))%I : iProp Σ.
 
-  Local Program Definition Adef := mk_ex_inv_def P_b S_b [] [] _ _ _.
+  Local Program Definition Adef := mk_ex_inv_def id P_b S_b [] [] _ _ _.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. rewrite /S_b. ex_plain_t_solve_shr_mono. Qed.
   Next Obligation. rewrite /P_b. ex_plain_t_solve_shr. Qed.

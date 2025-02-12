@@ -20,13 +20,13 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { 
+  {
     move: Hsz Hnot_sz.
     match goal with H : MaxInt isize_t < MaxInt usize_t |- _ => move: H end.
     rewrite /size_of_array_in_bytes; simplify_layout_goal.
     clear. solve_goal with nia.
   }
-  
+
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.
