@@ -4,6 +4,9 @@ From refinedrust.examples.evenint.generated Require Import generated_code_evenin
 
 Set Default Proof Using "Type".
 
+
+From iris.proofmode Require Import coq_tactics reduction string_ident.
+
 Section proof.
 Context `{!refinedrustGS Σ}.
 
@@ -18,7 +21,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { unsafe_unfold_common_caesium_defs. simpl. lia. }
-  { revert select (Zeven z). revert select (z `rem` 2 ≠ 0).
+  { revert select (Zeven z). revert select (z `rem` 2 ≠ 0%Z).
     rewrite Zeven_ex_iff Z.rem_divide; last done.
     setoid_rewrite Z.mul_comm; done. }
   Unshelve. all: print_remaining_sidecond.

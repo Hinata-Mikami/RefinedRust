@@ -166,6 +166,7 @@ Ltac liForall :=
                     do_intro sn name
                 end
               | liForall_hook
+              | intro name
               | let H := fresh name in intro H
               ]
         end
