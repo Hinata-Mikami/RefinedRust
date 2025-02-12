@@ -957,8 +957,8 @@ impl InvariantSpec {
         let spec_name = format!("{}_inv_spec", self.type_name);
         write!(
             out,
-            "{indent}Program Definition {} : ex_inv_def ({}) ({}) ({}) := ",
-            spec_name, base_rfn_type, self.rfn_type, self.xt_type,
+            "{indent}Program Definition {} : ex_inv_def ({}) ({}) := ",
+            spec_name, base_rfn_type, self.rfn_type,
         )
         .unwrap();
 
@@ -968,10 +968,11 @@ impl InvariantSpec {
                 write!(
                     out,
                     "mk_pers_ex_inv_def\n\
+                       {indent}{indent}({})%type\n\
                        {indent}{indent}({})\n\
                        {indent}{indent}({})%I _ _\n\
                        {indent}.\n",
-                    self.xt_injection, inv
+                    self.xt_type, self.xt_injection, inv
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -986,6 +987,7 @@ impl InvariantSpec {
                 write!(
                     out,
                     "mk_ex_inv_def\n\
+                    {indent}{indent}({})%type\n\
                     {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
                     {indent}{indent}({shr_inv})%I\n\
@@ -993,7 +995,7 @@ impl InvariantSpec {
                     {indent}{indent}({lft_wf_elctx})\n\
                     {indent}{indent}_ _ _\n\
                     {indent}.\n",
-                    self.xt_injection
+                    self.xt_type, self.xt_injection
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -1029,7 +1031,7 @@ impl InvariantSpec {
         write!(
             out,
             "{indent}Definition {} : type ({}) :=\n\
-            {indent}{indent}ex_plain_t _ _ _ {spec_name} {}.\n",
+            {indent}{indent}ex_plain_t _ _ {spec_name} {}.\n",
             self.type_name, self.rfn_type, base_type
         )
         .unwrap();
@@ -1642,7 +1644,7 @@ impl<'def> AbstractStruct<'def> {
             write!(
                 out,
                 " := {type_name}_rec' in\n\
-                {indent}{indent}ex_plain_t _ _ _ {spec_name} ({}).\n",
+                {indent}{indent}ex_plain_t _ _ {spec_name} ({}).\n",
                 self.variant_def.generate_coq_type_term(sls_app)
             )
             .unwrap();
