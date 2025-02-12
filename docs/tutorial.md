@@ -161,18 +161,18 @@ This is why we have marked `add` as unsafe.
 For `add` we take the following specification:
 ```
 #[rr::params("x", "γ")]
-#[rr::args(#raw "(#(-[#x]), γ)")]
+#[rr::args(#raw "((-[x]), γ)")]
 #[rr::requires("(x + 1 ≤ MaxInt i32)%Z")]
 #[rr::observe("γ": "(-[#(x+1)%Z] : plist place_rfn _)")]
 ```
 The first noteworthy part is the `#raw` annotation on the first argument: it asserts that we do not require the invariant on `EvenInt` to currently hold.
-That is why we also use `-[#x]` for the contents of the mutable reference, which is the "raw" refinement for the struct (where `x` is the refinement of the first field) without the annotated invariant.
+That is why we also use `-[x]` for the contents of the mutable reference, which is the "raw" refinement for the struct (where `x` is the refinement of the first field) without the annotated invariant.
 As we add 1, we require that `x + 1` fits into a `i32` integer.
 
 For `add_two`, we add the following specification:
 ```
 #[rr::params("x", "γ")]
-#[rr::args("(#x, γ)")]
+#[rr::args("(x, γ)")]
 #[rr::requires("(x + 2 ≤ MaxInt i32)%Z")]
 #[rr::observe("γ": "(x+2)")]
 ```

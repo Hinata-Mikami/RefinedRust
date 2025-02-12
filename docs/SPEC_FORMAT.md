@@ -20,11 +20,24 @@ The `params` clause specifies a universally-quantified parameter of the specific
 The `args` clause specifies the refinement and (optionally) a type for the single argument `x` of the function.
 RefinedRust infers a "default" type for the argument from Rust's type, but this can also be overridden by providing an explicit type after a `@`.
 For instance, the clause `#[rr::args("z" @ "int i32")]` would be equivalent to the one specified above.
-In addition, for types (like structs) with invariants declared on them, the argument can be prefixed with `#raw` in order to not require the invariant on them to hold (e.g. `#[rr::args("z", #raw "-[#x]")]`).
+In addition, for types (like structs) with invariants declared on them, the argument can be prefixed with `#raw` in order to not require the invariant on them to hold (e.g. `#[rr::args("z", #raw "-[x]")]`).
 
 The `requires` clause specifies the requirement that the result of the addition fits into an `i32` (see [RefinedRust propositions](#refinedrust-propositions) for details on the syntax).
 
 Finally, the `returns` clause specifies a refinement (and optionally, a type) for the return value of the function.
+
+### Shortcut attributes
+As an alternative to specifying the refinement for arguments explicitly, we can also let RefinedRust automatically introduce a parameter for them.
+If the `rr::args` clause is missing, RefinedRust will automatically introduce one parameter for every argument, named after the Rust variable name, and assume that the arguments are refined accordingly.
+For instance, we can equivalently specify the `add_42` as:
+```rust
+#[rr::requires("x + 42 ∈ i32")]
+#[rr::returns("x + 42")]
+fn add_42(x : i32) -> i32 {
+  x + 42
+}
+```
+For mutable reference arguments `x`, you can use the notations `x.cur` and `x.ghost` to refer to the references current value and ghost variable, respectively.
 
 
 | Keyword   | Purpose                      | Properties | Example                          |
@@ -43,7 +56,7 @@ Finally, the `returns` clause specifies a refinement (and optionally, a type) fo
 There are further attributes that influence the proof-checking behaviour:
 | Keyword   | Purpose                      | Properties | Example                          |
 |-----------|------------------------------|------------|----------------------------------|
-| `verify`  | Tell RefinedRust to verify this function with the default specification | none | `#[rr::verify]` | 
+| `verify`  | Tell RefinedRust to verify this function with the default specification | none | `#[rr::verify]` |
 | `trust_me`  | generate and type-check the specification and code, but do not generate a proof | none   | `#[rr::trust_me]` |
 | `only_spec`  | only generate and type-check the specification, but do not generate the code | none   | `#[rr::only_spec]` |
 | `skip`  | ignore annotations on this function completely | none   | `#[rr::skip]` |
