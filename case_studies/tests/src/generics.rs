@@ -1,6 +1,5 @@
 
-#[rr::params("x")]
-#[rr::args("x")]
+#[rr::verify]
 fn generic1<T>(x: T) {
 
 }
@@ -24,8 +23,7 @@ fn call_generic1_3() {
     generic1((&x, &y));
 }
 
-#[rr::params("x")]
-#[rr::args("x")]
+#[rr::verify]
 fn generic2<'a, T>(x : &'a T) {
 
 }
@@ -36,8 +34,7 @@ fn call_generic2_1() {
     generic2(&x);
 }
 
-#[rr::params("x")]
-#[rr::args("x")]
+#[rr::verify]
 fn generic3<'a>(x : &'a i32) {
 
 }

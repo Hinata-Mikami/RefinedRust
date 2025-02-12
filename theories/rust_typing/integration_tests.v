@@ -70,7 +70,7 @@ Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
   ⊢ typed_function π (ptr_write T_st) [] (<tag_type> type_of_ptr_write T_rt T_st).
 Proof.
-  start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ).
+  start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
   Unshelve. all: unshelve_sidecond; sidecond_hook.
@@ -83,7 +83,7 @@ Definition type_of_ptr_write_int `{!typeGS Σ} :=
 Lemma ptr_write_typed_int `{!typeGS Σ} π :
   ⊢ typed_function π (ptr_write (IntSynType i32)) [] (<tag_type> type_of_ptr_write_int).
 Proof.
-  start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ).
+  start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
   Unshelve. all: unshelve_sidecond; sidecond_hook.
@@ -100,7 +100,7 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : Type) (U_st : syn_type
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
   ⊢ typed_function π (ptr_write (PtrSynType)) [] (<tag_type> type_of_ptr_write_shrref U_rt U_st).
 Proof.
-  start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ).
+  start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
   Unshelve. all: unshelve_sidecond; sidecond_hook.

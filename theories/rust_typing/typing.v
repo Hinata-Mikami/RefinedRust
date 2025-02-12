@@ -49,6 +49,10 @@ Ltac instantiate_benign_universals term ::=
       constr:(term)
   end.
 
+
+Notation "x '.ghost'" := (x.2) (at level 8, only parsing).
+Notation "x '.cur'" := (x.1) (at level 8, only parsing).
+
 (*Global Typeclasses Opaque enum_t.*)
 (*Global Typeclasses Opaque active_union_t.*)
 (*Global Typeclasses Opaque array_t.*)

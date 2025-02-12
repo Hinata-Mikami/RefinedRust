@@ -1,9 +1,7 @@
 #![rr::include("option")]
 
-#[rr::params("γ1", "γ2", "i")]
-#[rr::args("((i, γ1), γ2)")]
-#[rr::observe("γ2": "(#i, γ1)")]
-#[rr::returns("i")]
+#[rr::observe("x.ghost": "(#x.cur.cur, x.cur.ghost)")]
+#[rr::returns("x.cur.cur")]
 fn mut_ref_test1(x: &mut &mut i32) -> i32 {
     **x
 }
@@ -51,14 +49,12 @@ fn mut_ref_test4<'a, 'b, 'c>(x: &'a mut (&'b mut i32, &'c mut i32)) -> i32 {
     *y
 }
 
-#[rr::params("x")]
-#[rr::args("x")]
 #[rr::returns("x")]
 fn generic_id<T>(x : T) -> T {
     x
 }
 
-#[rr::returns("()")]
+#[rr::verify]
 fn call_generic_id1() {
     let x = 5;
     let y = generic_id(&x);
@@ -66,14 +62,12 @@ fn call_generic_id1() {
     let _ = *y;
 }
 
-#[rr::params("x")]
-#[rr::args("x")]
 #[rr::returns("x")]
 fn shr_ref_id<'a, T: 'a>(x : &'a T) -> &'a T {
     x
 }
 
-#[rr::returns("()")]
+#[rr::verify]
 fn call_shr_ref_id1() {
     let x = 5;
     let y = shr_ref_id(&x);

@@ -11,8 +11,6 @@ struct Tree<T> {
 }
 
 impl<T> Tree<T> {
-    #[rr::params("x")]
-    #[rr::args("x")]
     #[rr::exists("y")]
     #[rr::returns("y")]
     fn new(d: T) -> Self {

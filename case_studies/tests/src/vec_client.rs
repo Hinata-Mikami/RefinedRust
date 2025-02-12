@@ -5,7 +5,7 @@
 
 use std::vec::Vec;
 
-#[rr::returns("()")]
+#[rr::verify]
 fn init_vec() {
     let mut v: Vec<i32> = Vec::new();
 

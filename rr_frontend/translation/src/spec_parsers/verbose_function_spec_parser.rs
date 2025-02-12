@@ -235,6 +235,9 @@ pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// return types with substituted type parameters
     ret_type: &'a specs::Type<'def>,
 
+    /// optionally, the argument names of this function
+    arg_names: Option<&'a [String]>,
+
     /// the scope of generics
     scope: &'a T,
 
@@ -282,12 +285,14 @@ where
     pub fn new(
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
+        arg_names: Option<&'a [String]>,
         scope: &'a T,
         make_literal: F,
     ) -> Self {
         VerboseFunctionSpecParser {
             arg_types,
             ret_type,
+            arg_names,
             make_literal,
             scope,
             fn_requirements: FunctionRequirements::default(),
@@ -323,10 +328,11 @@ where
             // no literal type given, just a refinement
             // we use the translated Rust type with the given refinement
             let mut ty = ty.clone();
-            let rt = ty.get_rfn_type();
             if lit.raw == specs::TypeIsRaw::Yes {
                 ty.make_raw();
             }
+            // TODO should use the xt?
+            let rt = ty.get_rfn_type();
             (specs::TypeWithRef::new(ty, lit.rfn.to_string()), Some(rt))
         }
     }
@@ -715,6 +721,20 @@ where
                 Err(e) => {
                     return Err(e);
                 },
+            }
+        }
+
+        // in case we didn't get an args annotation,
+        // implicitly add argument parameters matching their Rust names
+        if !self.got_args {
+            if let Some(arg_names) = self.arg_names {
+                for (arg, ty) in arg_names.iter().zip(self.arg_types) {
+                    builder
+                        .add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
+                    let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
+                    builder.add_arg(ty_with_ref);
+                }
+                self.got_args = true;
             }
         }
 

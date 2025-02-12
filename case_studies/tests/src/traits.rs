@@ -2,8 +2,6 @@
 
 mod add {
     pub trait MyAdd {
-        #[rr::params("x", "y")]
-        #[rr::args("x", "y")]
         #[rr::exists("z")]
         #[rr::returns("z")]
         fn my_add(x: Self, y: Self) -> Self;
@@ -11,8 +9,6 @@ mod add {
 
     impl MyAdd for usize {
         #[rr::trust_me]
-        #[rr::params("x", "y")]
-        #[rr::args("x", "y")]
         #[rr::returns("x + y")]
         fn my_add(x: Self, y: Self) -> Self {
             x + y
@@ -24,8 +20,7 @@ mod add {
         MyAdd::my_add(5usize, 5usize);
     }
 
-    #[rr::params("x", "y")]
-    #[rr::args("x", "y")]
+    #[rr::verify]
     fn test_add_2<T>(x: T, y: T) where T: MyAdd {
         MyAdd::my_add(x, y);
     }
@@ -179,14 +174,12 @@ mod foo {
     }
     */
 
-    #[rr::params("w")]
-    #[rr::args("w")]
+    #[rr::verify]
     fn foobar<W, T> (x: &W) where W: Foo<T> {
         x.bar(true);
     }
 
-    #[rr::params("w")]
-    #[rr::args("w")]
+    #[rr::verify]
     fn call_foobar2<W>(x: &W) where W: Foo<i32> {
         foobar(x); 
     }
@@ -371,9 +364,7 @@ mod iter {
         max: i32,
     }
     impl Counter {
-        #[rr::params("c", "m")]
-        #[rr::args("c", "m")]
-        #[rr::returns("-[ c; m]")]
+        #[rr::returns("-[ cur; max]")]
         fn new(cur: i32, max: i32) -> Self {
             Self {
                 cur,
@@ -407,11 +398,8 @@ mod iter {
         c.next();
     }
 
-
-    #[rr::params("x", "γ")]
-    #[rr::args("(x, γ)")]
     #[rr::exists("y" : "option {xt_of T::Elem}", "x'")]
-    #[rr::observe("γ" : "x'")]
+    #[rr::observe("x.ghost" : "x'")]
     #[rr::ensures("{T::Next} x'")]
     #[rr::returns("y")]
     fn test_counter_2<T: Iter>(x: &mut T) -> Option<<T as Iter>::Elem> {

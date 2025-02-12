@@ -71,6 +71,10 @@ Ltac liExtensible_hook := idtac.
 for specific types. *)
 Ltac liExist_hook A protect := fail "No liExist_hook provided!".
 
+(** [liForall_hook] can be used to override the behavior of [liForall]
+for specific types. *)
+Ltac liForall_hook := fail.
+
 (** [liTrace_hook] is called on each liTrace. *)
 Ltac liTrace_hook info := idtac.
 

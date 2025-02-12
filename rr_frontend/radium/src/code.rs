@@ -1006,12 +1006,18 @@ impl<'def> Function<'def> {
 
         write!(
             f,
-            "start_function \"{}\" ϝ ( {} ) ( {} ) ( {} );\n",
+            "start_function \"{}\" ϝ ( {} ) ( {} ) ( {} ) ( ",
             self.name(),
             lft_pattern.as_str(),
             typaram_pattern.as_str(),
             ip_params.as_str()
         )?;
+        if let Some(params) = params {
+            for param in params {
+                write!(f, " {}", param.get_name())?;
+            }
+        }
+        write!(f, " );\n")?;
 
         write!(f, "set (loop_map := BB_INV_MAP {});\n", self.loop_invariants)?;
 
@@ -1029,6 +1035,7 @@ impl<'def> Function<'def> {
         write!(f, ";\n")?;
 
         // destruct specification-level parameters
+        /*
         if let Some(params) = params {
             write!(f, "prepare_parameters (")?;
             for param in params {
@@ -1036,6 +1043,8 @@ impl<'def> Function<'def> {
             }
             write!(f, " );\n")?;
         }
+        write!(f, "prepare_initial_coq_context;\n")?;
+        */
 
         // initialize lifetimes
         let mut lfts: Vec<_> =

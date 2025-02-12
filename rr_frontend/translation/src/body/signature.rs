@@ -21,7 +21,7 @@ use rr_rustc_interface::middle::mir::{
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
+use rr_rustc_interface::{abi, ast, middle, span};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -113,8 +113,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // TODO: add universal constraints (ideally in setup_local_scope)
 
-        let spec_builder =
-            Self::process_attrs(attrs, &type_translator, &mut translated_fn, inputs.as_slice(), output)?;
+        // get argument names
+        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc_did);
+        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        info!("arg names: {arg_names:?}");
+
+        let spec_builder = Self::process_attrs(
+            attrs,
+            &type_translator,
+            &mut translated_fn,
+            &arg_names,
+            inputs.as_slice(),
+            output,
+        )?;
         translated_fn.add_function_spec_from_builder(spec_builder);
 
         translated_fn.try_into().map_err(TranslationError::AttributeError)
@@ -434,11 +445,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 )?;
                 let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
+                // get argument names
+                let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
+                let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+                info!("arg names: {arg_names:?}");
+
                 // process attributes
                 let mut spec_builder = Self::process_attrs(
                     attrs,
                     &type_translator,
                     &mut translated_fn,
+                    &arg_names,
                     inputs.as_slice(),
                     output,
                 )?;
@@ -674,10 +691,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut tuple_uses = HashMap::new();
         {
             let scope = ty_translator.scope.borrow();
-            let mut parser =
-                VerboseFunctionSpecParser::new(&translated_arg_types, &translated_ret_type, &*scope, |lit| {
-                    ty_translator.translator.intern_literal(lit)
-                });
+            let mut parser = VerboseFunctionSpecParser::new(
+                &translated_arg_types,
+                &translated_ret_type,
+                None,
+                &*scope,
+                |lit| ty_translator.translator.intern_literal(lit),
+            );
 
             parser
                 .parse_closure_spec(v, &mut spec_builder, meta, |x| {
@@ -700,6 +720,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &[&ast::ast::AttrItem],
         ty_translator: &types::LocalTX<'def, 'tcx>,
         translator: &mut radium::FunctionBuilder<'def>,
+        arg_names: &[String],
         inputs: &[Ty<'tcx>],
         output: Ty<'tcx>,
     ) -> Result<radium::LiteralFunctionSpecBuilder<'def>, TranslationError<'tcx>> {
@@ -724,6 +745,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         VerboseFunctionSpecParser::new(
                             &translated_arg_types,
                             &translated_ret_type,
+                            Some(arg_names),
                             &*scope,
                             |lit| ty_translator.translator.intern_literal(lit),
                         );

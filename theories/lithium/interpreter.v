@@ -165,6 +165,7 @@ Ltac liForall :=
                     refine (@simpl_forall_proof _ _ _ _ p _);
                     do_intro sn name
                 end
+              | liForall_hook
               | let H := fresh name in intro H
               ]
         end

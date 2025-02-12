@@ -59,6 +59,17 @@ Ltac rep_check_backtrack_point_hook ::=
       end
   end.
 
+Ltac liForall_hook ::=
+  (* simpl ty_xt *)
+  lazymatch goal with
+  | |- forall e : ?A, @?P e =>
+      match A with
+      | ty_xt ?ty =>
+          assert_fails (is_var ty);
+          simpl
+      end
+  end.
+
 Ltac liExtensible_to_i2p_hook P bind cont ::=
   lazymatch P with
   | subsume_full ?E ?L ?step ?P ?Q ?T =>
@@ -710,16 +721,6 @@ Ltac prepare_initial_coq_context :=
   | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
   | H : plist _ _ |- _ => destruct_product_hypothesis H H
   | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
-  | H : unit |- _ => destruct H
-  end.
-
-Ltac strong_prepare_initial_coq_context :=
-  (* The automation assumes that all products in the context are destructed, see liForall *)
-  repeat lazymatch goal with
-  | H : fn_A _ |- _ => simpl in H
-  | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
-  | H : plist _ _ |- _ => destruct_product_hypothesis H H
-  | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
   (*| H : named_binder ?n |- _ =>*)
                       (*let temp := fresh "tmp" in*)
                       (*destruct H as [tmp];*)
@@ -803,11 +804,18 @@ Section tac.
   Qed.
 End tac.
 
+
+Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
+  revert i; repeat liForall.
+
 (* IMPORTANT: We need to make sure to never call simpl while the code
 (fn) is part of the goal, because simpl seems to take exponential time
-in the number of blocks! *)
+in the number of blocks! 
+
+TODO: does this still hold? we've since started doing this...
+*)
 (* TODO: don't use i... tactics here *)
-Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" :=
+Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
   intros;
   inv_layout_alg;
   iStartProof;
@@ -825,18 +833,18 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     iIntros (_ _);
     let lsa := fresh "lsa" in let lsv := fresh "lsv" in
     iIntros (lsa lsv);
+    simpl in lsa;
+    revert params; 
+    repeat liForall;
     prepare_initial_coq_context;
     iExists _; iSplitR;
     [iPureIntro; solve [preprocess_elctx] | ];
     inv_vec lsv; inv_vec lsa;
-    simpl; unfold typarams_wf, typaram_wf;
+    simpl; 
+    unfold typarams_wf, typaram_wf;
     init_cache
   end
 .
-
-Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
-  revert i; repeat liForall.
-
 
 Ltac liRSplitBlocksIntro :=
   repeat (
@@ -861,7 +869,7 @@ Ltac sidecond_hook ::=
   unfold_no_enrich;
   open_cache;
   intros;
-  strong_prepare_initial_coq_context;
+  prepare_initial_coq_context;
   match goal with
   | |- Forall ?P ?l =>
       sidecond_hook_list
