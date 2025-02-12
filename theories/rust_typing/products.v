@@ -23,7 +23,7 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec) (tys : list rtyp
       length ots = length tys ∧
       (* pointwise, the members have the right op_type and a layout matching the optype *)
       foldr (λ ty, and (let '(ty, ot) := ty in
-          ty_has_op_type (ty.(rt_ty) : type _) ot mt ∧
+     ty_has_op_type (ty.(rt_ty) : type _) ot mt ∧
           syn_type_has_layout (ty.(rt_ty).(ty_syn_type)) (ot_layout ot)))
         True (zip tys ots)
   | UntypedOp ly =>
@@ -304,7 +304,7 @@ Section structs.
         loc_in_bounds l 0 (ly_size sl) ∗
         [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts tys r) struct_make_uninit_type,
           struct_own_el_shr π κ i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1)%I;
-    ty_lfts := mjoin (fmap (λ ty, (projT2 ty).(ty_lfts)) (hzipl rts tys));
+    _ty_lfts := mjoin (fmap (λ ty, ty_lfts (projT2 ty)) (hzipl rts tys));
     _ty_wf_E := mjoin (fmap (λ ty, ty_wf_E (projT2 ty)) (hzipl rts tys));
   |}.
   Next Obligation.
@@ -410,7 +410,8 @@ Section structs.
         - injection Heq => Heq1 Heq2 ?. subst.
           apply existT_inj in Heq1 as ->.
           apply existT_inj in Heq2 as ->.
-          simpl. set_solver.
+          rewrite ty_lfts_unfold; simpl.
+          set_solver.
       }
       rewrite -{1}lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
       iMod (bor_exists_tok with "LFT Hb Htok1") as "(%r'' & Hb & Htok1)"; first done.
@@ -432,6 +433,7 @@ Section structs.
           iFrame. done. }
 
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
+      subst κ''. rewrite ty_lfts_unfold.
       iPoseProof (ty_share with "[$LFT $TIME $LLCTX] Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro. by apply struct_layout_field_aligned.
@@ -627,6 +629,7 @@ Section structs.
     - simpl. intros ?? ->. done.
     - apply ty_lft_morphism_of_direct.
       rewrite ty_wf_E_unfold/=.
+      rewrite ty_lfts_unfold/=.
       simpl.
       destruct HT as [HT' Hne ->].
       induction rts as [ | rt1 rts IH].
@@ -727,6 +730,7 @@ Section structs.
     - apply ty_lft_morphism_of_direct.
       simpl.
       rewrite ty_wf_E_unfold/=.
+      rewrite ty_lfts_unfold/=.
       destruct HT as [HT' Hne ->].
       induction rts as [ | rt1 rts IH].
       + inv_hlist HT'. intros _. simpl.

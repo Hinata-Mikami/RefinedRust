@@ -936,7 +936,8 @@ Ltac solve_lft_alive_step :=
       list_find_tac_app find_outlives E
   (* If it is not a var, unfold *)
   | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
-      unfold_opaque (@ty_lfts) in (ty_lfts ty); simpl
+      rewrite [@ty_lfts _ _]ty_lfts_unfold; simpl
+      (*unfold_opaque (@ty_lfts) in (ty_lfts ty); simpl*)
 
   (* liveness of local lifetimes *)
   | |- lctx_lft_alive_list ?E ?L (?κ :: ?κs) ∨ _ =>
@@ -1010,7 +1011,7 @@ Global Arguments ty_outlives_E : simpl never.
 Global Opaque ty_outlives_E.
 
 (* Otherwise Qed is slow *)
-Global Opaque ty_lfts.
+(*Global Opaque ty_lfts.*)
 
 Section tac.
   Context `{!typeGS Σ}.
@@ -1066,14 +1067,16 @@ Ltac simplify_elctx_subterm :=
       unfold_opaque (@ty_outlives_E);
       (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
       first [rewrite lfts_outlives_app |
-          unfold_opaque (@ty_lfts);
-          autounfold with tyunfold; rewrite /ty_lfts ]; cbn;
+          rewrite [@ty_lfts _ _]ty_lfts_unfold;
+          autounfold with tyunfold; rewrite /_ty_lfts ]; cbn;
       reflexivity
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
       (*(is_var ty);*)
       (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
-      unfold_opaque (@ty_lfts);
-      first [is_var ty | rewrite lfts_outlives_app | autounfold with tyunfold; rewrite /ty_lfts ]; cbn;
+      (*unfold_opaque (@ty_lfts);*)
+      rewrite [@ty_lfts _ _]ty_lfts_unfold;
+      (*rewrite [(_ty_lfts _ ty)]/_ty_lfts/=;*)
+      first [is_var ty | rewrite lfts_outlives_app | autounfold with tyunfold; rewrite /_ty_lfts ]; cbn;
       reflexivity
   | |- lfts_outlives_E [?κ2] _ = _ =>
       rewrite lfts_outlives_singleton;

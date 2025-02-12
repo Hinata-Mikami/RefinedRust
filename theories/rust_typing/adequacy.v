@@ -65,7 +65,7 @@ Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains :
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
   move => -> Hwp. apply: wp_strong_adequacy. move => ?.
-  (* heap/Caesium stuff *)
+(* heap/Caesium stuff *)
   set h := to_heapUR ∅.
   iMod (own_alloc (● h ⋅ ◯ h)) as (γh) "[Hh _]" => //.
   { apply auth_both_valid_discrete. split => //. }
@@ -116,7 +116,9 @@ Proof.
       simpl.
       iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
-      iSplitR. { iPureIntro. intros. rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
+      iSplitR. { iPureIntro. intros. 
+        rewrite /ty_outlives_E ty_lfts_unfold.
+        rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
       iIntros (v []).
       iIntros (??) "_ HL _". eauto with iFrame.
     + by iApply big_sepL2_nil.

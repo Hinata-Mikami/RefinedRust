@@ -3026,7 +3026,7 @@ Section typing.
   Lemma type_borrow_shr_end_owned E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) bmin wl T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
-    ⌜Forall (lctx_lft_alive E L) ty.(ty_lfts)⌝ ∗
+    ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
     (T (ShrBlockedLtype ty κ) r)
     ⊢ typed_borrow_shr_end π E L κ l ty r (Owned wl) bmin T.
   Proof.
@@ -3034,7 +3034,7 @@ Section typing.
     iIntros (F ???) "#[LFT TIME] #HE HL Hna #Hincl0 Hl".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
     iDestruct (Hincl with "HL HE") as "#Hincl".
-    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list ty.(ty_lfts))) with "HE HL") as "Ha"; first done.
+    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list (ty_lfts ty))) with "HE HL") as "Ha"; first done.
     { eapply lctx_lft_alive_intersect; first done. by eapply lctx_lft_alive_intersect_list. }
     iDestruct "Ha" as "(%q' & Htok & HL & Hcl_L')".
     (* owned *)
@@ -3046,6 +3046,7 @@ Section typing.
     { eauto with iFrame. }
     iMod "Hcl_F" as "_".
     iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".
+    rewrite ty_lfts_unfold.
     iPoseProof (ty_share _ F with "[$LFT $TIME] Htok [//] [//] Hlb Hb") as "Hshr"; first done.
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hshr").
@@ -3078,7 +3079,7 @@ Section typing.
   Lemma type_borrow_shr_end_uniq E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) bmin κ' γ T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
-    ⌜Forall (lctx_lft_alive E L) ty.(ty_lfts)⌝ ∗
+    ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
     (T (ShrBlockedLtype ty κ) r)
     ⊢ typed_borrow_shr_end π E L κ l ty r (Uniq κ' γ) bmin T.
   Proof.
@@ -3087,7 +3088,7 @@ Section typing.
     iIntros (F ???) "#(LFT & TIME & LLCTX) #HE HL Hna #Hincl0 Hl".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
     iDestruct (Hincl with "HL HE") as "#Hincl".
-    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list ty.(ty_lfts))) with "HE HL") as "Ha"; first done.
+    iMod (lctx_lft_alive_tok_noend (κ ⊓ (lft_intersect_list (ty_lfts ty))) with "HE HL") as "Ha"; first done.
     { eapply lctx_lft_alive_intersect; first done. by eapply lctx_lft_alive_intersect_list. }
     iDestruct "Ha" as "(%q' & Htok & HL & Hcl_L')".
     (* owned *)
@@ -3112,7 +3113,7 @@ Section typing.
     iMod (place_rfn_interp_mut_share' with "LFT Hrfn Hauth Htok1") as "(#Hrfn & Hmut & Hauth & Htok1)"; first done.
     iPoseProof (ty_share _ F with "[$LFT $TIME $LLCTX] [Htok1 Htok2] [] [] Hlb Hl") as "Hstep".
     { done. }
-    { rewrite -lft_tok_sep. iFrame. }
+    { rewrite ty_lfts_unfold -lft_tok_sep. iFrame. }
     { done. }
     { done. }
     iApply (logical_step_compose with "Hstep").
@@ -3122,6 +3123,7 @@ Section typing.
     iExists _, _, _. iFrame.
     iFrame. iR. iR. iR.
     rewrite lft_tok_sep.
+    rewrite ty_lfts_unfold.
     iMod ("Hcl_L'" with "Htok HL") as "HL".
     iPoseProof ("Hcl_L" with "HL") as "$".
 

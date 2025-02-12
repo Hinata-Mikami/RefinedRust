@@ -159,7 +159,7 @@ Section fixpoint_def.
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;
     ty_shr := F_ty_own_val_ty_shr_fixpoint.2;
     ty_sidecond := (Fn 1).(ty_sidecond);
-    ty_lfts := (Fn 0).(ty_lfts);
+    _ty_lfts := ty_lfts (Fn 0);
     _ty_wf_E := ty_wf_E (Fn 1);
   |}.
   Next Obligation.
@@ -220,6 +220,7 @@ Section fixpoint_def.
       iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
       iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
       { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
+      rewrite ty_lfts_unfold.
       iPoseProof (ty_share with "RUST Htok [] [//] Hlb Hb") as "Hlb"; first done.
       { erewrite Fn_syn_type_const. done. }
       iApply logical_step_fupd.
@@ -318,8 +319,9 @@ Section fixpoint_def.
   Abort.
 
   Lemma type_fixpoint_ty_lfts :
-    type_fixpoint.(ty_lfts) = (Fn 0).(ty_lfts).
+    ty_lfts type_fixpoint = ty_lfts (Fn 0).
   Proof.
+    rewrite {1}ty_lfts_unfold; simpl.
     done.
   Qed.
   Lemma type_fixpoint_ty_wf_E :
@@ -368,7 +370,8 @@ Proof.
     eapply ty_sidecond_ne.
     rewrite -(Heq type_inhabitant).
     rewrite Heq. done.
-  - intros. simpl. destruct (Heq inhabitant). done.
+  - intros. simpl. destruct (Heq inhabitant).
+    rewrite ty_lfts_unfold. done.
   - intros.
     rewrite ty_wf_E_unfold.
     simpl. unfold Fn; simpl.

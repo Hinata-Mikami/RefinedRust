@@ -14,6 +14,7 @@ Section mut_ref.
   Program Definition mut_ref  {rt} (κ : lft) (inner : type rt) : type (place_rfn rt * gname) := {|
     ty_xt := (inner.(ty_xt) * gname);
     ty_xrt := λ '(x, y), (#(inner.(ty_xrt) x), y);
+
     ty_sidecond := True;
     ty_own_val π '(r, γ) v :=
       (∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗
@@ -44,7 +45,7 @@ Section mut_ref.
     (* NOTE: we cannot descend below the borrow here to get more information recursively.
        But this is fine, since the observation about γ here already contains all the information we need. *)
     (* We need the inner lifetimes also to initiate sharing *)
-    ty_lfts := [κ] ++ inner.(ty_lfts);
+    _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation.
@@ -145,7 +146,7 @@ Section mut_ref.
     (* recursively share *)
     iDestruct "Htok" as "(Htok1 & Htok2)".
     iPoseProof (ty_share _ E with "[$LFT $TIME] [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
-    { rewrite -!lft_tok_sep. iFrame. }
+    { rewrite ty_lfts_unfold. rewrite -!lft_tok_sep. iFrame. }
     iModIntro. iApply (logical_step_compose with "Hu").
     iApply (logical_step_intro_atime with "Hat").
     iIntros "Hcred Hat".
@@ -156,7 +157,10 @@ Section mut_ref.
     iCombine "Htok_κ2 Htok_κ'2 Htok1" as "Htok2".
     rewrite !lft_tok_sep.
     rewrite lft_intersect_assoc.
-    iCombine "Htok Htok2" as "Htok". rewrite {2}lft_intersect_comm lft_intersect_assoc. iFrame "Htok".
+    rewrite ty_lfts_unfold.
+    iCombine "Htok Htok2" as "Htok".
+    rewrite {2}lft_intersect_comm lft_intersect_assoc.
+    iFrame "Htok".
     iExists l0, ly0, r'. iFrame "Hl".
     inversion Hst; subst ly.
     iR. iSplitR. { destruct r; simpl; eauto. }
@@ -206,9 +210,9 @@ Section mut_ref.
   Proof.
     constructor; simpl.
     - done.
-    (*- admit.*)
-    - eapply ty_lft_morph_make_ref; first done.
-      rewrite {1}ty_wf_E_unfold. done.
+    - eapply ty_lft_morph_make_ref.
+      + rewrite {1}ty_lfts_unfold. done.
+      + rewrite {1}ty_wf_E_unfold. done.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.
@@ -217,7 +221,6 @@ Section mut_ref.
     - intros n ty ty' ?.
       intros κ' π [] l. rewrite /ty_shr/=.
       solve_type_proper.
-  (*Admitted.*)
   Qed.
 
 

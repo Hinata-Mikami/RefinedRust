@@ -37,7 +37,7 @@ Section box.
         (* later for contractiveness *)
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
 
-    ty_lfts := inner.(ty_lfts);
+    _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
@@ -101,13 +101,14 @@ Section box.
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
     iPoseProof (ty_share with "[$LFT $TIME $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
-    { rewrite -lft_tok_sep. iFrame. }
+    { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
 
     iApply (logical_step_intro_atime with "Hat").
     iModIntro. iIntros "Hcred' Hat !> [#Hshr Htok]".
     iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(? & Htok2)".
+    rewrite ty_lfts_unfold.
     iCombine "Htok2 Htoki2" as "Htok2". rewrite !lft_tok_sep.
     iCombine "Htok Htok2" as "$".
     iModIntro.
@@ -164,8 +165,9 @@ Section contractive.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id; first done.
-      rewrite {1}ty_wf_E_unfold//.
+    - eapply ty_lft_morph_make_id. 
+      + rewrite {1}ty_lfts_unfold//.
+      + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=. done.
     - done.
     - intros n ty ty' ?.

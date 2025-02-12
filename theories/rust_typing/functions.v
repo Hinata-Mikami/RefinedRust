@@ -38,7 +38,7 @@ Section function.
     (* bundled assume condition *)
     fp_Pa : thread_id → iProp Σ;
     (* bundled sidecondition precondition *)
-fp_Sc : thread_id → iProp Σ;
+    fp_Sc : thread_id → iProp Σ;
     (* external lifetimes, parameterized over a lifetime for the function *)
     fp_elctx : lft → elctx;
     (* existential condition for return type *)
@@ -48,8 +48,8 @@ fp_Sc : thread_id → iProp Σ;
 }.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
     FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr).
-Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
+  Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
+  FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
 
  (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the

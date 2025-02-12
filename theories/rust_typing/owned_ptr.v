@@ -38,7 +38,7 @@ Section owned_ptr.
         (* later for contractiveness *)
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
 
-    ty_lfts := inner.(ty_lfts);
+    _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
@@ -103,7 +103,7 @@ Section owned_ptr.
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
     iPoseProof (ty_share with "[$LFT $TIME $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
-    { rewrite -lft_tok_sep. iFrame. }
+    { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
 
@@ -111,6 +111,7 @@ Section owned_ptr.
     iModIntro. iIntros "Hcred' Hat !> [#Hshr Htok]".
     iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(? & Htok2)".
     iCombine "Htok2 Htoki2" as "Htok2". rewrite !lft_tok_sep.
+    rewrite ty_lfts_unfold.
     iCombine "Htok Htok2" as "$".
     iModIntro.
     iExists ly', ri. iFrame.

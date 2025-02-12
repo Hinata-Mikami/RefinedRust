@@ -156,7 +156,7 @@ Section ex.
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
     ty_sidecond :=
     ty.(ty_sidecond);
-    ty_lfts := P.(inv_P_lfts) ++ ty.(ty_lfts);
+    _ty_lfts := P.(inv_P_lfts) ++ ty_lfts ty;
     _ty_wf_E := P.(inv_P_wf_E) ++ ty_wf_E ty;
   |}.
   Next Obligation.
@@ -192,13 +192,14 @@ Section ex.
     iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
     iPoseProof (P.(inv_P_share) E with "[$LFT $TIME $LLCTX] Htok2 HP") as "HP"; first done.
     iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
+    rewrite ty_lfts_unfold.
     iPoseProof (ty_share with "[$] Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
     iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
     iIntros "(Hshr & Htok) (HP & Htok2)".
     iSplitL "HP Hshr". { eauto with iFrame. }
     iCombine "Htok2 Htoki2" as "Htok2". rewrite lft_tok_sep -lft_intersect_assoc.
     iCombine "Htok HtokP" as "Htok". rewrite lft_tok_sep -lft_intersect_assoc.
-    rewrite [lft_intersect_list (ty_lfts ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
+    rewrite [lft_intersect_list (_ty_lfts _ ty) ⊓ lft_intersect_list P.(inv_P_lfts)]lft_intersect_comm.
     iCombine "Htok Htok2" as "$".
   Qed.
   Next Obligation.
@@ -245,6 +246,7 @@ Section contr.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
       rewrite ty_wf_E_unfold.
+      rewrite ty_lfts_unfold.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
@@ -278,6 +280,7 @@ Section contr.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
       rewrite ty_wf_E_unfold.
+      rewrite ty_lfts_unfold.
       apply direct_lft_morphism_app; done.
     - rewrite ty_has_op_type_unfold. intros.
       eapply HF; first done.
@@ -780,13 +783,14 @@ Proof.
   iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Ha" as "(Hl & Htok)".
   iDestruct "Htok2" as "(Htok2 & Htok2')".
   iPoseProof (ty_share _ F with "[$LFT $TIME $LLCTX] [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
-  { rewrite -lft_tok_sep. iFrame. }
+  { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_compose with "Hstep").
   iApply (logical_step_intro_atime with "Hat").
   iModIntro. iIntros "Hcred' Hat".
   iModIntro. iIntros "(#Hshr & Htok)".
   iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(Hcred' & Htok1)".
+  rewrite ty_lfts_unfold.
   iCombine "Htok1 Htok2'" as "Htok1".
   rewrite !lft_tok_sep. iFrame "Htok Htok1".
   iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own/=.
@@ -916,7 +920,10 @@ Ltac ex_t_destruct_bor :=
           iModStrict (bor_persistent with ("LFT __H0 Htok1")) as ("(>% & Htok1)");
           [done | ]
       | (?l ◁ₗ[?π, Owned true] ?r @ (◁ ?ty))%I =>
-          iApply (ltype_own_ofty_share_tac with "[$] Htok1 Htok __H0"); [done | set_solver | ];
+          iApply (ltype_own_ofty_share_tac with "[$] Htok1 Htok __H0");
+          [ done
+          | repeat rewrite ty_lfts_unfold/=; set_solver
+          | ];
           iIntros "!> Htok1 Htok";
           iApply fupd_logical_step
       | (?l ◁ₗ[?π, Owned false] ?r @ (◁ ?ty))%I =>

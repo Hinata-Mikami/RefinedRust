@@ -143,7 +143,7 @@ Section array.
     ty_syn_type := ArraySynType ty.(ty_syn_type) len;
     _ty_has_op_type := is_array_ot ty len;
     ty_sidecond := True;
-    ty_lfts := ty.(ty_lfts);
+    _ty_lfts := ty_lfts ty;
     _ty_wf_E := ty_wf_E ty;
   |}%I.
   Next Obligation.
@@ -223,6 +223,7 @@ Section array.
       iMod (bor_sep with "LFT Ha") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
+      rewrite ty_lfts_unfold.
       iPoseProof (ty_share with "[$LFT $TIME $LCTX] Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro.
@@ -288,8 +289,9 @@ Section ne.
   Proof.
     constructor; simpl.
     - intros ?? ->. done.
-    - eapply ty_lft_morph_make_id; first done.
-      rewrite {1}ty_wf_E_unfold//.
+    - eapply ty_lft_morph_make_id.
+      + rewrite {1}ty_lfts_unfold//.
+      + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
       unfold is_array_ot.
       rewrite ty_has_op_type_unfold/=.

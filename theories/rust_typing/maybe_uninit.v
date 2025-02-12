@@ -28,7 +28,7 @@ Section type.
       | None => (uninit T.(ty_syn_type)).(ty_shr) κ π () l
       end%I;
     ty_sidecond := True;
-    ty_lfts := T.(ty_lfts);
+    _ty_lfts := ty_lfts T;
     _ty_wf_E := ty_wf_E T;
   |}.
   Next Obligation.
@@ -66,6 +66,7 @@ Section type.
       iMod (bor_sep with "LFT Hb") as "(Hrfn & Hb)"; first done.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
+      rewrite ty_lfts_unfold.
       iPoseProof (ty_share _ E with "[$LFT $TIME $LLCTX] Htok [//] [//] Hlb Hb") as "Hstep"; first done.
       iApply (logical_step_wand with "Hstep").
       iIntros "!> (Hl & $)". eauto with iFrame.
@@ -122,8 +123,9 @@ Section ne.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id; first done.
-      rewrite {1}ty_wf_E_unfold//.
+    - eapply ty_lft_morph_make_id. 
+      + rewrite {1}ty_lfts_unfold//.
+      + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
       intros ?? ->. done.
     - done.
