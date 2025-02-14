@@ -10,9 +10,9 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
 use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
+    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, Location, Mutability,
+    NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, TerminatorKind,
+    UnOp, VarDebugInfoContents,
 };
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
@@ -20,7 +20,10 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, middle};
 
 use super::TX;
+use crate::attrs;
 use crate::base::*;
+use crate::environment::mir_analyses::initialization;
+use crate::spec_parsers::loop_attr_parser::{LoopAttrParser, VerboseLoopAttrParser};
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Parse the attributes on spec closure `did` as loop annotations and add it as an invariant
@@ -29,22 +32,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         loop_head: BasicBlock,
         did: Option<DefId>,
-    ) -> radium::LoopSpec {
-        // for now: just make invariants True.
-
-        // need to do:
-        // - find out the locals in the right order, make parameter names for them. based on their type and
-        //   initialization status, get the refinement type.
-        // - output/pretty-print this map when generating the typing proof of each function. [done]
-        //  + should not be a separate definition, but rather a "set (.. := ...)" with a marker type so
-        //    automation can find it.
-
-        // representation of loop invariants:
-        // - introduce parameters for them.
-
-        let mut rfn_binders = Vec::new();
-        let prop_body = radium::IProp::True;
-
+    ) -> Result<radium::LoopSpec, TranslationError<'tcx>> {
         // determine invariant on initialization:
         // - we need this both for the refinement invariant (though this could be removed if we make uninit
         //   generic over the refinement)
@@ -61,34 +49,34 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //  - this does not cause issues with posing a too strong loop invariant,
         //  - but this poses an issue for annotations
         //
-        //
+
+        let init_result = initialization::compute_definitely_initialized(
+            self.proc.get_id(),
+            self.proc.get_mir(),
+            self.env.tcx(),
+        );
+        let init_places = init_result.get_before_block(loop_head);
 
         // get locals
-        for (_, name, ty) in &self.fn_locals {
-            // get the refinement type
-            let mut rfn_ty = ty.get_rfn_type();
-            // wrap it in place_rfn, since we reason about places
-            rfn_ty = coq::term::Type::PlaceRfn(Box::new(rfn_ty));
+        let mut locals_with_initialization: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)> =
+            Vec::new();
+        for (local, kind, name, ty) in &self.fn_locals {
+            let place = mir::Place::from(*local);
+            let initialized = init_places.contains(place);
 
-            // determine their initialization status
-            //let initialized = true; // TODO
-            // determine the actual refinement type for the current initialization status.
-
-            let rfn_name = format!("r_{}", name);
-            rfn_binders.push(coq::binder::Binder::new(Some(rfn_name), rfn_ty));
+            locals_with_initialization.push((name.to_owned(), kind.to_owned(), initialized, ty.to_owned()));
         }
 
-        // TODO what do we do about stuff connecting borrows?
+        let scope = self.ty_translator.scope.borrow();
+        let mut parser = VerboseLoopAttrParser::new(locals_with_initialization, &*scope);
+
         if let Some(did) = did {
             let attrs = self.env.get_attributes(did);
+            let attrs = attrs::filter_for_tool(attrs);
             info!("attrs for loop {:?}: {:?}", loop_head, attrs);
+            parser.parse_loop_attrs(&attrs).map_err(TranslationError::LoopSpec)
         } else {
-            info!("no attrs for loop {:?}", loop_head);
-        }
-
-        let pred = radium::IPropPredicate::new(rfn_binders, prop_body);
-        radium::LoopSpec {
-            func_predicate: pred,
+            parser.parse_loop_attrs(&[]).map_err(TranslationError::LoopSpec)
         }
     }
 

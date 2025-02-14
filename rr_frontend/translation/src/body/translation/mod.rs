@@ -14,14 +14,14 @@ mod terminator;
 
 use std::collections::{HashMap, HashSet};
 
-use log::info;
+use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
 use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
+    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, Location, Mutability,
+    NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, TerminatorKind,
+    UnOp, VarDebugInfoContents,
 };
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
@@ -92,7 +92,7 @@ pub struct TX<'a, 'def, 'tcx> {
     loop_specs: HashMap<BasicBlock, Option<DefId>>,
 
     /// relevant locals: (local, name, type)
-    fn_locals: Vec<(Local, String, radium::Type<'def>)>,
+    fn_locals: Vec<(Local, radium::LocalKind, String, radium::Type<'def>)>,
 
     /// result temporaries of checked ops that we rewrite
     /// we assume that this place is typed at (result_type, bool)
@@ -129,6 +129,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut checked_op_analyzer = CheckedOpLocalAnalysis::new(env.tcx(), body);
         checked_op_analyzer.analyze();
         let checked_op_temporaries = checked_op_analyzer.results();
+        info!("Checked op temporaries: {checked_op_temporaries:?}");
 
         // map to translate between locals and the string names we use in radium::
         let mut variable_map: HashMap<Local, String> = HashMap::new();
@@ -173,16 +174,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let name = Self::make_local_name(body, local, &mut used_names);
             variable_map.insert(local, name.clone());
 
-            fn_locals.push((local, name.clone(), tr_ty));
+            let local_kind = Self::get_local_kind(body, local);
+
+            fn_locals.push((local, local_kind, name.clone(), tr_ty));
 
             match kind {
-                LocalKind::Arg => {
+                mir::LocalKind::Arg => {
                     translated_fn.code.add_argument(&name, st);
                     arg_tys.push(ty);
                 },
-                //LocalKind::Var => translated_fn.code.add_local(&name, st),
-                LocalKind::Temp => translated_fn.code.add_local(&name, st),
-                LocalKind::ReturnPointer => {
+                mir::LocalKind::Temp => translated_fn.code.add_local(&name, st),
+                mir::LocalKind::ReturnPointer => {
                     return_synty = st.clone();
                     translated_fn.code.add_local(&name, st);
                     opt_return_name = Ok(name);
@@ -283,12 +285,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.translated_fn.assume_synty_layoutable(g.generate_syn_type_term());
         }
 
-        // TODO: process self.loop_specs
+        // process the collected loop heads
         // - collect the relevant bb -> def_id mappings for this function (so we can eventually generate the
         //   definition)
         // - have a function that takes the def_id and then parses the attributes into a loop invariant
         for (head, did) in &self.loop_specs {
-            let spec = self.parse_attributes_on_loop_spec_closure(*head, *did);
+            let spec = self.parse_attributes_on_loop_spec_closure(*head, *did)?;
             self.translated_fn.register_loop_invariant(head.as_usize(), spec);
         }
 
@@ -320,6 +322,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut name = "__".to_owned();
             name.push_str(&local.index().to_string());
             name
+        }
+    }
+
+    /// Classify the kind of a local.
+    fn get_local_kind(mir_body: &Body<'tcx>, local: Local) -> radium::LocalKind {
+        let kind = mir_body.local_kind(local);
+        match kind {
+            mir::LocalKind::Arg => radium::LocalKind::Arg,
+            mir::LocalKind::Temp | mir::LocalKind::ReturnPointer => {
+                let used_names = HashSet::new();
+                if Self::find_name_for_local(mir_body, local, &used_names).is_some() {
+                    radium::LocalKind::Local
+                } else {
+                    radium::LocalKind::CompilerTemp
+                }
+            },
         }
     }
 
@@ -481,13 +499,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // check if we should ignore this
         let local_type = self.get_type_of_local(l)?;
 
+        trace!("is_spec_closure_local: checking {l:?} of type {local_type:?}");
+
         let TyKind::Closure(did, _) = local_type.kind() else {
             return Ok(None);
         };
 
-        Ok(self
-            .procedure_registry
-            .lookup_function_mode(*did)
-            .and_then(|m| m.is_ignore().then_some(*did)))
+        let mode = self.procedure_registry.lookup_function_mode(*did);
+        let res = mode.and_then(|m| m.is_ignore().then_some(*did));
+
+        trace!("is_spec_closure_local: found closure {res:?} with mode {mode:?}");
+
+        Ok(res)
     }
 }

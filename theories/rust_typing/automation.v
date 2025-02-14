@@ -183,8 +183,13 @@ Arguments PolySome {_}.
 
 (* Wrapper to store predicates of arbitrary arity. *)
 Definition wrap_inv {T} (x : T) := existT (P := id) _ x.
-(* Type of loop invariants: a predicate on the refinements, and a predicate on the lifetime contexts *)
-Definition bb_inv_t := (sigT (@id Type) * sigT (@id Type))%type.
+(* Type of loop invariants:
+   - list of variables the invariant is over
+   - list of variables whose type is preserved
+   - list of uninit variables
+   - a predicate on the refinements,
+   - and a predicate on the lifetime contexts *)
+Definition bb_inv_t := (list loc * list loc * list loc * sigT (@id Type) * sigT (@id Type))%type.
 (* Type of the loop invariant map we keep in the context *)
 Definition bb_inv_map_t := poly_list (var_name * bb_inv_t)%type.
 Inductive bb_inv_map_marker : bb_inv_map_t → Type :=
@@ -247,11 +252,12 @@ Proof.
 Defined.
 
 (** Generates [count] successive fresh identifiers as Coq strings with prefix [prefix].
-  Returns a Coq list [list string]. *)
+  Poses the result as a hypothesis [out]. *)
 (* TODO: potentially take a list of suffix strings, so that we can we also get the variable names for the refinements, e.g. x, y? *)
-Ltac get_idents_rec prefix count acc :=
+Ltac get_idents_rec' prefix count acc out :=
   match count with
-  | 0%nat => constr:(acc)
+  | 0%nat =>
+      set (out := acc)
   | (S ?n)%nat =>
       (* need to prefix with some symbol because just a number is not a valid ident *)
       let count_str := eval cbv in (append "_" (nat_to_string n)) in
@@ -261,8 +267,11 @@ Ltac get_idents_rec prefix count acc :=
       (* convert to string so we can store it *)
       let Hident_str := constr:(ident_to_string! Hident) in
       let acc := constr:(Hident_str :: acc) in
-      get_idents_rec prefix constr:(n) constr:(acc))
+      get_idents_rec' prefix constr:(n) constr:(acc) out)
   end.
+Ltac get_idents_rec prefix count res :=
+  get_idents_rec' ident:(prefix) constr:(count) constr:(@nil string) ident:(res)
+.
 
 (** Finds the type assignments for the locations [local_locs] in the spatial context [spatial_env],
   and abstracts their refinements to existentials [x_1, ..., x_n] whose names get picked from the list [ex_names : list string].
@@ -299,18 +308,23 @@ Ltac build_local_sepconj local_locs spatial_env ex_names base base_app :=
     end
   end.
 
+Ltac get_Σ :=
+  let tgs := constr:(_ : typeGS _) in
+  match type of tgs with
+  | typeGS ?Σ => Σ
+  end.
+Ltac get_π :=
+  match goal with
+  | π : thread_id |- _ => π
+  end.
+
 (** Composes the loop invariant from the invariant [Inv : bb_inv_t] (a constr),
   the runtime function [FN : runtime_function], the current Iris environment [env : env],
   and the current contexts [current_E : elctx], [current_L : llctx],
   and poses it with the identifier [Hinv]. *)
 Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
   (* find Σ *)
-  let Σ :=
-    let tgs := constr:(_ : typeGS _) in
-    match type of tgs with
-    | typeGS ?Σ => Σ
-    end
-  in
+  let Σ := get_Σ in
   (* get spatial env *)
   let envs := eval hnf in envs in
   let spatial_env :=
@@ -321,21 +335,29 @@ Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
   in
 
   (* extract the invariants *)
+  let inv_locals :=
+    match Inv with
+    | (?inv_locals, _, _, _, _) => constr:(inv_locals)
+    end in
+  let preserved_locals :=
+    match Inv with
+    | (_, ?pres_locals, _, _, _) => constr:(pres_locals)
+    end in
   let functional_inv := match Inv with
-                       | (wrap_inv ?inv, _) => uconstr:(inv)
+                       | (_, _, _, wrap_inv ?inv, _) => uconstr:(inv)
                        end
   in
-  let llctx_inv := match Inv with
-                   | (_, wrap_inv ?inv) => uconstr:(inv)
+  let llctx_inv := match inv with
+                   | (_, _, _, _, wrap_inv ?inv) => uconstr:(inv)
                    end
   in
 
-  (* find the locals in the context *)
-  let FN := eval hnf in FN in
-  let local_locs := gather_locals FN in
   (* generate names for the existentially abstracted refinements *)
-  let num_locs := eval cbv in (length local_locs) in
-  let names := get_idents_rec ident:(r) constr:(num_locs) constr:(@nil string) in
+  let num_locs := eval cbv in (length inv_locals) in
+  let names_ident := fresh "tmp" in
+  get_idents_rec ident:(r) constr:(num_locs) ident:(names_ident);
+  let names := eval cbv in names_ident in
+  clear names_ident;
 
   pose (Hinv :=
     λ (E : elctx) (L : llctx),
@@ -352,7 +374,7 @@ Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
       let Ha := fresh "Hinv" in
       pose (Ha := functional_inv);
 
-      build_local_sepconj local_locs spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
+      build_local_sepconj inv_locals spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
   ));
   (* get rid of all the lets we introduced *)
   simpl in Hinv.
@@ -457,7 +479,7 @@ Ltac liRGoto goto_bb :=
             pose_loop_invariant Hinv fn inv Δ E L;
             (* finally initiate Löb *)
             notypeclasses refine (tac_fast_apply (typed_goto_acc _ _ _ _ _ Hinv goto_bb _ _ _) _);
-              [unfold_code_marker_and_compute_map_lookup| ]
+              [unfold_code_marker_and_compute_map_lookup| unfold Hinv; clear Hinv ]
             )
         end
       | (* do a direct jump *)

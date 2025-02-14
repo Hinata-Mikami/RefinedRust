@@ -79,6 +79,8 @@ pub enum TranslationError<'tcx> {
     ProcedureRegistry(String),
     #[display("Lookup in a dummy scope: {}", _0)]
     DummyScope(String),
+    #[display("Could not parse loop spec: {}", _0)]
+    LoopSpec(String),
 }
 
 impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {

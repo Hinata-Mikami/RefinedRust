@@ -1473,7 +1473,7 @@ Section typing.
   Qed.
   Global Instance stratify_ltype_shadowed_shared_inst {rt_cur rt_full} π E L mu mdu ma {M} (ml : M) l
       (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (r_cur : place_rfn rt_cur) (r_full : place_rfn rt_full) κ :
-    StratifyLtype π E L mu mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) := 
+    StratifyLtype π E L mu mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) :=
       λ T, i2p (stratify_ltype_shadowed_shared π E L mu mdu ma ml l lt_cur lt_full r_cur r_full κ T).
 
   (* TODO: OpenedNaType *)
@@ -1972,7 +1972,7 @@ Section typing.
 
   Lemma type_val_context v π (T : typed_value_cont_t) :
     (find_in_context (FindVal v) (λ '(existT rt (ty, r, π')),
-      ⌜π = π'⌝ ∗ T rt ty r)) ⊢ 
+      ⌜π = π'⌝ ∗ T rt ty r)) ⊢
     typed_value π v T.
   Proof.
     iDestruct 1 as ([rt [[ty r] π']]) "(Hv & <- & HT)". simpl in *.
@@ -2072,7 +2072,7 @@ Section typing.
   Qed.
 
   Lemma type_ife E L e1 e2 e3 T:
-    typed_val_expr E L e1 (λ L' π v rt ty r, 
+    typed_val_expr E L e1 (λ L' π v rt ty r,
       typed_if E L' v (v ◁ᵥ{π} r @ ty) (typed_val_expr E L' e2 T) (typed_val_expr E L' e3 T))
     ⊢ typed_val_expr E L (IfE BoolOp e1 e2 e3) T.
   Proof.
@@ -2126,7 +2126,7 @@ Section typing.
   Lemma type_logical_or E L e1 e2 T:
     typed_val_expr E L e1 (λ L1 π1 v1 rt1 ty1 r1, typed_if E L1 v1 (v1 ◁ᵥ{π1} r1 @ ty1)
       (typed_value π1 (val_of_bool true) (T L1 π1 (val_of_bool true)))
-      (typed_val_expr E L1 e2 (λ L2 π2 v2 rt2 ty2 r2, 
+      (typed_val_expr E L1 e2 (λ L2 π2 v2 rt2 ty2 r2,
         typed_if E L2 v2 (v2 ◁ᵥ{π2} r2 @ ty2)
           (typed_value π1 (val_of_bool true) (T L2 π1 (val_of_bool true)))
           (typed_value π1 (val_of_bool false) (T L2 π1 (val_of_bool false))))))
@@ -3305,13 +3305,22 @@ Section typing.
     (* TODO maybe also stratify? *)
     prove_with_subtype E L false ProveDirect (P E L) (λ L' _ R2, R2 -∗
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
-      □ (∀ E L, (□ typed_block P b fn R ϝ) -∗ P E L -∗ typed_stmt E L s fn R ϝ))
+      (* gather up the remaining ownership *)
+      accu (λ Q,
+      (∀ E L, (□ typed_block (λ E L, P E L ∗ Q) b fn R ϝ) -∗
+          P E L ∗ Q -∗
+          typed_stmt E L s fn R ϝ)))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & >(Hinv &HR2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "HR2") as "(-> & Hrec)".
-    iApply (typed_block_rec with "Hrec CTX HE HL Hinv"); done.
+    rewrite /accu.
+    iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
+    iApply (typed_block_rec with "Hrec CTX HE HL [Hinv HQ]").
+    - done.
+    - iFrame.
+    - done.
   Qed.
 
   Lemma type_assert E L e s fn R ϝ :

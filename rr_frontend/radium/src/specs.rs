@@ -2778,8 +2778,11 @@ impl Display for IProp {
             Self::Conj(v) => fmt_with_op(v, "∧", f),
             Self::Wand(l, r) => write!(f, "({l}) -∗ {r}"),
             Self::Exists(b, p) => {
-                fmt_binders(b, "∃", f)?;
-                write!(f, ", {p}")
+                if !b.is_empty() {
+                    fmt_binders(b, "∃", f)?;
+                    write!(f, ", ")?;
+                }
+                write!(f, "{p}")
             },
             Self::All(b, p) => {
                 fmt_binders(b, "∀", f)?;
@@ -2806,15 +2809,32 @@ impl IPropPredicate {
 impl Display for IPropPredicate {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         fmt_binders(&self.binders, "λ", f)?;
-        write!(f, ", {}", self.prop)
+        write!(f, ", ({})%I : iProp Σ", self.prop)
     }
 }
 
 /// Representation of a loop invariant
-#[derive(Clone, Debug)]
+#[derive(Clone, Constructor, Debug)]
 pub struct LoopSpec {
     /// the functional invariant as a predicate on the refinement of local variables.
-    pub func_predicate: IPropPredicate,
+    func_predicate: IPropPredicate,
+    inv_locals: Vec<String>,
+    preserved_locals: Vec<String>,
+    uninit_locals: Vec<String>,
+}
+impl Display for LoopSpec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "([{}], [{}], [{}], wrap_inv ({}), wrap_inv (λ (L : llctx), True%I : iProp Σ))",
+            self.inv_locals.join("; "),
+            self.preserved_locals.join("; "),
+            self.uninit_locals.join("; "),
+            self.func_predicate
+        )?;
+
+        Ok(())
+    }
 }
 
 /// A finished inner function specification.

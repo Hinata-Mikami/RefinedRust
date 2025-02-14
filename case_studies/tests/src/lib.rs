@@ -12,7 +12,7 @@ mod traits;
 
 mod statics;
 
-//mod vec_client;
+mod vec_client;
 mod mixed;
 mod closures;
 
@@ -23,3 +23,5 @@ mod consts;
 mod generics;
 
 mod rectypes;
+
+mod loops;

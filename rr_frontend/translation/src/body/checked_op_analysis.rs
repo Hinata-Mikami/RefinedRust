@@ -6,6 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use log::{info, trace};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
 use rr_rustc_interface::middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Place, Rvalue, StatementKind, TerminatorKind,
@@ -70,6 +71,10 @@ impl<'def, 'tcx> CheckedOpLocalAnalysis<'def, 'tcx> {
                 ..
             } => v.push(*destination),
 
+            TerminatorKind::FalseUnwind { real_target, .. } => {
+                v.push(*real_target);
+            },
+
             TerminatorKind::SwitchInt { targets, .. } => {
                 for target in targets.all_targets() {
                     v.push(*target);
@@ -111,6 +116,7 @@ impl<'def, 'tcx> CheckedOpLocalAnalysis<'def, 'tcx> {
             };
 
             let (plc, val) = b.as_ref();
+            trace!("checking assignment {b:?}");
 
             // if this is a checked op, be sure to remember it
             if Self::is_checked_op(val) {

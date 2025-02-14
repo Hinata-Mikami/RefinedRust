@@ -761,9 +761,32 @@ impl FunctionCodeBuilder {
     }
 }
 
+/// Classifies the kind of a local variable similar to `mir::LocalKind`,
+/// but distinguishes user-specified locals from compiler-generated temporaries.
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum LocalKind {
+    Arg,
+    Local,
+    CompilerTemp,
+}
+
+impl LocalKind {
+    #[must_use]
+    pub fn mk_local_name(&self, name: &str) -> String {
+        match self {
+            Self::Arg => {
+                format!("arg_{name}")
+            },
+            Self::CompilerTemp | Self::Local => {
+                format!("local_{name}")
+            },
+        }
+    }
+}
+
 #[derive(Clone, Debug, Display)]
 #[display("({}PolyNil)", display_list!(_0, "",
-    |(bb, spec)| format!("PolyCons ({}, wrap_inv ({})) $ ", bb, spec.func_predicate))
+    |(bb, spec)| format!("PolyCons (\"_bb{}\", {}) $ ", bb, spec))
 )]
 struct InvariantMap(HashMap<usize, LoopSpec>);
 
@@ -1019,20 +1042,22 @@ impl<'def> Function<'def> {
         }
         write!(f, " );\n")?;
 
-        write!(f, "set (loop_map := BB_INV_MAP {});\n", self.loop_invariants)?;
-
         // intro stack locations
         write!(f, "intros")?;
 
         for Variable((arg, _)) in &self.code.stack_layout.args {
-            write!(f, " arg_{}", arg)?;
+            write!(f, " arg_{}", LocalKind::Arg.mk_local_name(arg))?;
         }
 
         for Variable((local, _)) in &self.code.stack_layout.locals {
-            write!(f, " local_{}", local)?;
+            write!(f, " {}", LocalKind::Local.mk_local_name(local))?;
         }
-
         write!(f, ";\n")?;
+
+        write!(f, "let π := get_π in\n")?;
+        write!(f, "let Σ := get_Σ in\n")?;
+
+        write!(f, "set (loop_map := BB_INV_MAP {});\n", self.loop_invariants)?;
 
         // destruct specification-level parameters
         /*
