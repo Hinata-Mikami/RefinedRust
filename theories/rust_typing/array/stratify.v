@@ -30,7 +30,7 @@ Section stratify.
         + for Vec/VecDeque, we don't need that.
    *)
 
-  Definition stratify_ltype_array_iter_cont_t (rt : Type) := llctx → iProp Σ → list (nat * ltype rt) → list (place_rfn rt) → iProp Σ.
+  Definition stratify_ltype_array_iter_cont_t (rt : RT) := llctx → iProp Σ → list (nat * ltype rt) → list (place_rfn rt) → iProp Σ.
   Definition stratify_ltype_array_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) (T : stratify_ltype_array_iter_cont_t rt) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
@@ -78,7 +78,7 @@ Section stratify.
               (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
               ∃ r4, weak_subltype E L3 k r3 r4 (ltype_core lty3) (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2))
           end
-        else 
+        else
             ∃ (Heq : rt = rt3),
             T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <- Heq in r3]> rs2)
       )))
@@ -109,7 +109,7 @@ Section stratify.
 
     destruct (decide (ma = StratRefoldFull)); first last.
     { iDestruct "HT" as "(%Heq & HT)".
-      subst. 
+      subst.
       iExists _, _, _, _. iFrame.
       iSplitR. { iPureIntro. rewrite length_insert//. }
       iApply logical_step_fupd.
@@ -123,7 +123,7 @@ Section stratify.
       { lia. }
       rewrite -Hleneq. iApply "Ha".
       iSplitL "Hl".
-      { rewrite decide_True; last set_solver. iFrame. 
+      { rewrite decide_True; last set_solver. iFrame.
         iPureIntro. rewrite -Hst' Hst//. }
       iApply (big_sepL2_mono with "Hl2").
       iIntros (k0 ? ? Hlook1 Hlook2) "Ha".

@@ -333,7 +333,7 @@ Section instances.
     iModIntro.
     iApply array_ltype_incl_owned_in; first done.
     simpl. iIntros (?). rewrite length_interpret_iml.
-    iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. lia. }
+    iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. simpl in *. lia. }
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
   Qed.
@@ -371,7 +371,7 @@ Section instances.
     iModIntro.
     iApply array_ltype_incl_shared_in; first done.
     simpl. iIntros (?). rewrite length_interpret_iml.
-    iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. lia. }
+    iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. simpl in *. lia. }
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
   Qed.

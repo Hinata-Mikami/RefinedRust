@@ -14,12 +14,12 @@ Section place.
       But it's not clear that that is possible: We can arbitrarily shorten the lifetime of outer things -- then at the later point we just don't knwo anymore that really the lender expects it back at a later point.
     *)
 
-  Local Lemma struct_lift_place_cond_ty_homo {rts} (lts : hlist ltype rts) i (lto lto' : ltype (lnth (unit : Type) rts i)) bmin0 :
+  Local Lemma struct_lift_place_cond_ty_homo {rts} (lts : hlist ltype rts) i (lto lto' : ltype (lnth (unit : RT) rts i)) bmin0 :
     hnth (UninitLtype UnitSynType) lts i = lto →
     i < length rts →
-    ([∗ list] κ0 ∈ concat ((λ X : Type, ltype_blocked_lfts) +c<$> lts), bor_kind_outlives bmin0 κ0) -∗
+    ([∗ list] κ0 ∈ concat ((λ X : RT, ltype_blocked_lfts) +c<$> lts), bor_kind_outlives bmin0 κ0) -∗
     typed_place_cond_ty bmin0 lto lto' -∗
-    [∗ list] ty1;ty2 ∈ hzipl rts lts;hzipl rts (hlist_insert_id (unit : Type) rts lts i lto'), typed_place_cond_ty bmin0 (projT2 ty1) (projT2 ty2).
+    [∗ list] ty1;ty2 ∈ hzipl rts lts;hzipl rts (hlist_insert_id (unit : RT) rts lts i lto'), typed_place_cond_ty bmin0 (projT2 ty1) (projT2 ty2).
   Proof.
     iIntros (Hlto ?) "#Houtl Hcond".
     rewrite hzipl_hlist_insert_id.
@@ -40,11 +40,11 @@ Section place.
     { eapply hcmap_lookup_hzipl. done. }
     simpl. done.
   Qed.
-  Local Lemma struct_lift_place_cond_rfn_homo {rts} (rs : plist place_rfn rts) i (ro ro' : place_rfn (lnth (unit : Type) rts i)) bmin0 :
+  Local Lemma struct_lift_place_cond_rfn_homo {rts} (rs : plist place_rfn rts) i (ro ro' : place_rfn (lnth (unit : RT) rts i)) bmin0 :
     pnth (#tt) rs i = ro →
     i < length rts →
     ⊢@{iProp Σ} typed_place_cond_rfn bmin0 ro ro' -∗
-    ([∗ list] ty1;ty2 ∈ pzipl rts rs;pzipl rts (plist_insert_id (unit : Type) rts rs i ro'), typed_place_cond_rfn bmin0 (projT2 ty1) (projT2 ty2)).
+    ([∗ list] ty1;ty2 ∈ pzipl rts rs;pzipl rts (plist_insert_id (unit : RT) rts rs i ro'), typed_place_cond_rfn bmin0 (projT2 ty1) (projT2 ty2)).
   Proof.
     (* plan: first separate the first one also into an insert, then show a general lemma about inserting into big_sepL2 *)
     iIntros (Hro ?) "Hcond".
@@ -71,7 +71,7 @@ Section place.
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)
     (∃ i, ⌜sls_field_index_of sls.(sls_fields) f = Some i⌝ ∗
-     ∃ lto (ro : place_rfn (lnth (unit : Type) rts i)),
+     ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
@@ -83,8 +83,8 @@ Section place.
             (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
             strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak
-            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
-            (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
+            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
+            (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
             weak.(weak_R)) mstrong.(mstrong_weak))
           ))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
@@ -110,7 +110,7 @@ Section place.
     iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : Type) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
@@ -163,7 +163,7 @@ Section place.
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
     (* recursively check place *)
     (∃ i, ⌜sls_field_index_of sls.(sls_fields) f = Some i⌝ ∗
-     ∃ lto (ro : place_rfn (lnth (unit : Type) rts i)),
+     ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L2 (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
@@ -180,8 +180,8 @@ Section place.
             strong.(strong_R)) strong)
             *)
           (fmap (λ weak, mk_weak
-            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
-            (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
+            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
+            (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
             weak.(weak_R)) mstrong.(mstrong_weak))
           )))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) T.
@@ -214,7 +214,7 @@ Section place.
     iModIntro. iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : Type) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
@@ -258,7 +258,7 @@ Section place.
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)
     (∃ i, ⌜sls_field_index_of sls.(sls_fields) f = Some i⌝ ∗
-     ∃ lto (ro : place_rfn (lnth (unit : Type) rts i)),
+     ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Shared κ) P
@@ -272,8 +272,8 @@ Section place.
             (*(λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))*)
             (*strong.(strong_R)) strong)*)
           (fmap (λ weak, mk_weak
-            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
-            (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
+            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
+            (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
             weak.(weak_R)) mstrong.(mstrong_weak))
           ))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
@@ -299,7 +299,7 @@ Section place.
     iModIntro. iNext. iIntros "Hcred". iExists _. iR.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : Type) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.

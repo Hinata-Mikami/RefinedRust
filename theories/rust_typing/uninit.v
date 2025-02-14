@@ -47,7 +47,7 @@ Section lemmas.
     by iApply "Hvi".
   Qed.
 
-  Lemma owned_type_incl_uninit' π {rt1} (r1 : rt1) r2 (ty1 : type rt1) st ly :
+  Lemma owned_type_incl_uninit' π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st ly :
     syn_type_size_eq (ty_syn_type ty1) st →
     syn_type_has_layout st ly →
     ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
@@ -61,7 +61,7 @@ Section lemmas.
       iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hly)".
       iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly. apply Hst; done.
   Qed.
-  Lemma owned_type_incl_uninit π {rt1} (r1 : rt1) r2 (ty1 : type rt1) st :
+  Lemma owned_type_incl_uninit π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st :
     st = ty_syn_type ty1 →
     ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
   Proof.

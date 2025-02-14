@@ -8,7 +8,7 @@ Section place.
   Context `{!typeGS Σ}.
 
   Lemma typed_place_mut_owned {rto} π κ (lt2 : ltype rto) P E L γ l r wl bmin0
-    (T : place_cont_t ((place_rfn rto) * gname)) :
+    (T : place_cont_t ((place_rfn rto) * gname)%type) :
     (∀ l', typed_place π E L l' lt2 r (Uniq κ γ ⊓ₖ bmin0) (Uniq κ γ) P
         (λ L' κs l2 b2 bmin rti tyli ri mstrong,
           T L' (κs) l2 b2 bmin rti tyli ri
@@ -62,7 +62,7 @@ Section place.
   Global Instance typed_place_mut_owned_inst {rto} E L π κ γ (lt2 : ltype rto) bmin0 r l wl P :
     TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_owned π κ lt2 P E L γ l r wl bmin0 T).
 
-  Lemma typed_place_mut_uniq {rto} π E L (lt2 : ltype rto) P l r κ γ κ' γ' bmin0 (T : place_cont_t (place_rfn rto * gname)) :
+  Lemma typed_place_mut_uniq {rto} π E L (lt2 : ltype rto) P l r κ γ κ' γ' bmin0 (T : place_cont_t (place_rfn rto * gname)%type) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (Uniq κ γ ⊓ₖ bmin0) (Uniq κ γ) P
         (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
@@ -125,7 +125,7 @@ Section place.
   Global Instance typed_place_mut_uniq_inst {rto} E L π κ κ' γ γ' (lt2 : ltype rto) bmin0 r l P :
     TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_uniq π E L lt2 P l r κ γ κ' γ' bmin0 T).
 
-  Lemma typed_place_mut_shared {rto} π E L (lt2 : ltype rto) P l r κ γ κ' bmin0 (T : place_cont_t (place_rfn rto * gname)) :
+  Lemma typed_place_mut_shared {rto} π E L (lt2 : ltype rto) P l r κ γ κ' bmin0 (T : place_cont_t (place_rfn rto * gname)%type) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (Shared (κ ⊓ κ') ⊓ₖ bmin0) (Shared (κ ⊓ κ')) P
         (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,

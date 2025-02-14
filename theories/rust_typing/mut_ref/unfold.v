@@ -7,7 +7,7 @@ From refinedrust Require Import options.
 
 Section ltype_agree.
   Context `{typeGS Σ}
-    {rt}
+    {rt : RT}
     (ty: type rt).
 
   Lemma mut_ref_unfold_1_owned κ wl r :
@@ -160,7 +160,7 @@ Section place.
   Context `{!typeGS Σ}.
 
   (* This needs to have a lower priority than the id instances, because we do not want to unfold when P = []. *)
-  Lemma typed_place_ofty_mut {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)) bmin0 b P T :
+  Lemma typed_place_ofty_mut {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) bmin0 b P T :
     typed_place π E L l (MutLtype (◁ ty) κ) r bmin0 b P T
     ⊢ typed_place π E L l (◁ (mut_ref κ ty)) r bmin0 b P T.
   Proof.
@@ -168,7 +168,7 @@ Section place.
     iIntros (?) "HL CTX HE". iIntros (??).
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
-  Global Instance typed_place_ofty_mut_inst {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)) bmin0 b P :
+  Global Instance typed_place_ofty_mut_inst {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) bmin0 b P :
     TypedPlace E L π l (◁ (mut_ref κ ty))%I r bmin0 b P | 30 := λ T, i2p (typed_place_ofty_mut π E L l ty κ r bmin0 b P T).
 End place.
 

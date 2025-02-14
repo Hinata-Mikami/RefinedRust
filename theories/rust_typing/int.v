@@ -154,5 +154,3 @@ End char.
 
 Global Hint Unfold char_t : ty_unfold.
 Notation "'char'" := (char_t) (only printing, format "'char'") : printing_sugar.
-
-

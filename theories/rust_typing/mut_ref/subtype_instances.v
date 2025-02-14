@@ -151,13 +151,13 @@ Section subltype.
     MutEqLtype E L (MutLtype lt1 κ1) (MutLtype lt2 κ2) := λ T, i2p (mut_eqltype_mut_evar_lft E L lt1 lt2 κ1 κ2 T).
 
   (* Ofty unfolding if necessary *)
-  Lemma weak_subltype_mut_ofty_1_evar E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2 * gname)) k κ1 r1 r2 T :
+  Lemma weak_subltype_mut_ofty_1_evar E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2 * gname)%type) k κ1 r1 r2 T :
     (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ weak_subltype E L k r1 r2 (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance weak_subltype_mut_ofty_1_evar_inst E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2 * gname)) k κ1 r1 r2 `{!IsProtected ty2} :
+  Global Instance weak_subltype_mut_ofty_1_evar_inst E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfn rt2 * gname)%type) k κ1 r1 r2 `{!IsProtected ty2} :
     SubLtype E L k r1 r2 (MutLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (weak_subltype_mut_ofty_1_evar E L lt1 ty2 k κ1 r1 r2 T).
 
   Lemma weak_subltype_mut_ofty_1 E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type rt2) k κ1 κ2 r1 r2 T :
@@ -185,13 +185,13 @@ Section subltype.
     SubLtype E L k r1 r2 (◁ (mut_ref κ1 ty1))%I (MutLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_mut_ofty_2 E L ty1 lt2 k r1 r2 κ1 κ2 T).
 
   (* Same for mut_subltype *)
-  Lemma mut_subltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)) κ1 T :
+  Lemma mut_subltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1 T :
     (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ mut_subltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ mut_subltype E L (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_subltype_mut_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)) κ1 `{!IsProtected ty2} :
+  Global Instance mut_subltype_mut_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1 `{!IsProtected ty2} :
     MutSubLtype E L (MutLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_subltype_mut_ofty_1_evar E L lt1 ty2 κ1 T).
 
   Lemma mut_subltype_mut_ofty_1 E L {rt} (lt1 : ltype rt) (ty2 : type rt) κ1 κ2 T :
@@ -217,13 +217,13 @@ Section subltype.
     MutSubLtype E L (◁ (mut_ref κ1 ty1))%I (MutLtype lt2 κ2) | 10 := λ T, i2p (mut_subltype_mut_ofty_2 E L ty1 lt2 κ1 κ2 T).
 
   (* Same for mut_eqltype *)
-  Lemma mut_eqltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)) κ1 T :
+  Lemma mut_eqltype_mut_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1 T :
     (∃ ty2', ⌜ty2 = mut_ref κ1 ty2'⌝ ∗ mut_eqltype E L (MutLtype lt1 κ1) (◁ (mut_ref κ1 ty2')) T)
     ⊢ mut_eqltype E L (MutLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_eqltype_mut_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)) κ1 `{!IsProtected ty2} :
+  Global Instance mut_eqltype_mut_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt * gname)%type) κ1 `{!IsProtected ty2} :
     MutEqLtype E L (MutLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_eqltype_mut_ofty_1_evar E L lt1 ty2 κ1 T).
 
   Lemma mut_eqltype_mut_ofty_1 E L {rt} (lt1 : ltype rt) (ty2 : type rt) κ1 κ2 T :

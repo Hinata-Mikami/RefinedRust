@@ -47,6 +47,8 @@ Qed.
 Section value.
   Context `{!typeGS Σ}.
 
+  Canonical Structure valRT := directRT val.
+
   (* Intuitively: want to say that the value is v _up to memcasts_ at st.  *)
   Program Definition value_t (st : syn_type) : type val := {|
     st_own π vs v :=
@@ -366,7 +368,7 @@ Section ofty_lemmas.
     syn_type_has_layout (UntypedSynType ly3) ly3 →
     (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1)) -∗
     ((l +ₗ ly_size ly1) ◁ₗ[π, Owned false] #vs2 @ ◁ value_t (UntypedSynType ly2)) -∗
-    (l ◁ₗ[π, Owned false] #(vs1++vs2) @ ◁ value_t (UntypedSynType ly3)).
+    (l ◁ₗ[π, Owned false] #(vs1++vs2 : val) @ ◁ value_t (UntypedSynType ly3)).
   Proof.
     iIntros (Hal Hsz Hlysz ?) "Hl1 Hl2".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own. simpl.
@@ -395,7 +397,7 @@ Section ofty_lemmas.
     - rewrite Hlysz. lia.
   Qed.
 
-  Lemma ofty_value_untyped_app_split F π l v1 v2 v3 ly1 ly2 ly3 :
+  Lemma ofty_value_untyped_app_split F π l (v1 v2 v3 : val) ly1 ly2 ly3 :
     lftE ⊆ F →
     ly_align_log ly3 ≤ ly_align_log ly2 →
     ly_align_log ly2 ≤ ly_align_log ly1 →
@@ -443,8 +445,8 @@ Section ofty_lemmas.
     n = (m + k)%nat →
     layout_wf ly →
     l ◁ₗ[ π, Owned false] # v1 @ (◁ value_t (UntypedSynType (mk_array_layout ly n))) ={F}=∗
-    l ◁ₗ[ π, Owned false] # (take (ly_size ly * k) v1) @ (◁ value_t (UntypedSynType (mk_array_layout ly k))) ∗
-    (l offset{ly}ₗ k) ◁ₗ[ π, Owned false] # (drop (ly_size ly * k) v1) @ (◁ value_t (UntypedSynType (mk_array_layout ly m))).
+    l ◁ₗ[ π, Owned false] # (take (ly_size ly * k) v1 : val) @ (◁ value_t (UntypedSynType (mk_array_layout ly k))) ∗
+    (l offset{ly}ₗ k) ◁ₗ[ π, Owned false] # (drop (ly_size ly * k) v1 : val) @ (◁ value_t (UntypedSynType (mk_array_layout ly m))).
   Proof.
     iIntros (? Hn ?).
     rewrite /offset_loc.
@@ -719,11 +721,11 @@ Section unify_loc.
 
 
   (* Prove a prefix of the goal, and continue finding the rest of the ownership *)
-  Lemma subsume_full_ofty_value_untyped_prefix π E L step l vs1 vs2 ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
+  Lemma subsume_full_ofty_value_untyped_prefix π E L step l (vs1 vs2 : val) ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
     (⌜syn_type_has_layout (UntypedSynType ly2) ly2⌝ ∗
     (⌜l `has_layout_loc` ly1⌝ -∗
     ⌜l `has_layout_loc` ly2⌝ ∗
-    ∃ vs2', ⌜vs2 = vs1 ++ vs2'⌝ ∗
+    ∃ vs2' : val, ⌜vs2 = vs1 ++ vs2'⌝ ∗
     ∃ ly1', prove_with_subtype E L step ProveDirect ((l +ₗ ly_size ly1) ◁ₗ[π, Owned false] #vs2' @ ◁ value_t (UntypedSynType ly1'))
         (λ L2 _ R2, ⌜ly_size ly1' = ly_size ly2 - ly_size ly1⌝ ∗ T L2 R2)))
     ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1))

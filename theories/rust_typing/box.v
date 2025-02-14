@@ -5,7 +5,7 @@ From refinedrust Require Import options.
 (** * Box *)
 
 Section box.
-  Context `{typeGS Σ} {rt} `{Inhabited rt} (inner : type rt).
+  Context `{typeGS Σ} {rt : RT} `{Inhabited rt} (inner : type rt).
 
   Program Definition box : type (place_rfn rt) := {|
     ty_sidecond := True;
@@ -168,7 +168,7 @@ End box.
 Section contractive.
   Context `{!typeGS Σ}.
 
-  Global Instance box_type_contractive {rt : Type} : TypeContractive (box (rt:=rt)).
+  Global Instance box_type_contractive {rt : RT} : TypeContractive (box (rt:=rt)).
   Proof.
     constructor; simpl.
     - done.
@@ -185,7 +185,7 @@ Section contractive.
       solve_type_proper.
   Qed.
 
-  Global Instance box_type_ne {rt : Type} : TypeNonExpansive (box (rt:=rt)).
+  Global Instance box_type_ne {rt : RT} : TypeNonExpansive (box (rt:=rt)).
   Proof. apply type_contractive_type_ne, _. Qed.
 End contractive.
 
@@ -486,7 +486,7 @@ Section subltype.
 End subltype.
 
 Section unfold.
-  Context `{typeGS Σ} {rt} (ty : type rt).
+  Context `{typeGS Σ} {rt : RT} (ty : type rt).
 
   Lemma box_ltype_unfold_1_owned wl r :
     ⊢ ltype_incl' (Owned wl) r r (BoxLtype (◁ ty)) (◁ (box (ty))).
@@ -860,6 +860,7 @@ End lemmas.
 Section rules.
   Context `{!typeGS Σ}.
 
+  Implicit Types (rt : RT).
 
   (** Place access *)
   (* Needs to have lower priority than the id instance *)

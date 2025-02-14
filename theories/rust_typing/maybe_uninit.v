@@ -8,6 +8,10 @@ From refinedrust Require Import options.
 Section type.
   Context `{!typeGS Σ}.
 
+  Definition optionRT (A : RT) : RT :=
+    mk_RT (option A).
+  Canonical Structure optionRT.
+
   (** We refine by [option (place_rfn rt)] in order to borrow the optional contents.
      Note that this really makes it isomorphic to [MaybeUninit<T>] in our model,
      which is a union and thus would also get the place wrapper. *)
@@ -110,7 +114,7 @@ Section type.
       rewrite mem_cast_UntypedOp//.
   Qed.
   Next Obligation.
-    intros ?? ly mt Hst. 
+    intros ?? ly mt Hst.
     simpl. exists ly. split_and!; [done.. | ].
     destruct mt; [done | | done].
     by apply ty_has_op_type_untyped.

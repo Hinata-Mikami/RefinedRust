@@ -9,7 +9,7 @@ Section init.
   Context `{!typeGS Σ}.
 
   (** Struct initialization *)
-  Fixpoint struct_init_fold π E L (fields : list (string * expr)) (sts : list (string * syn_type)) (T : ∀ (L : llctx) (rts : list Type), list val → hlist type rts → plist id rts → iProp Σ) : iProp Σ :=
+  Fixpoint struct_init_fold π E L (fields : list (string * expr)) (sts : list (string * syn_type)) (T : ∀ (L : llctx) (rts : list RT), list val → hlist type rts → plist (@id RT) rts → iProp Σ) : iProp Σ :=
     match sts with
     | [] =>
         T L [] [] +[] -[]
@@ -30,7 +30,7 @@ Section init.
     struct_init_fold π E L fields sts T -∗
     (∀ vs L3,
       llctx_interp L3 -∗
-      (∃ (rts : list Type) (tys : hlist type rts) (rs : plist id rts),
+      (∃ (rts : list RT) (tys : hlist type rts) (rs : plist (@id RT) rts),
       (* get a type assignment for the values *)
       ⌜length rts = length (sts)⌝ ∗
       ([∗ list] i ↦ v; Ty ∈ vs; hpzipl rts tys rs,

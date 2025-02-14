@@ -37,17 +37,24 @@ Proof.
   rewrite /num_cred/num_laters_per_step /=. lia.
 Qed.
 
+#[universes(polymorphic)]
+Record RT : Type := mk_RT {
+  RT_rt :> Type
+}.
+
+Implicit Type (rt : RT).
+
 (** Types are defined semantically by what it means for a value to have a particular type.
     Types are indexed by their refinement type [rt].
 *)
-Record type `{!typeGS Σ} (rt : Type) := {
+Record type `{!typeGS Σ} (rt : RT) := {
   ty_xt : Type;
-  ty_xrt : ty_xt → rt;
+  ty_xrt : ty_xt → RT_rt rt;
   (* The xt type should be inhabited *)
   ty_xt_inhabited : Inhabited ty_xt;
 
   (** Ownership of values *)
-  ty_own_val : thread_id → rt → val → iProp Σ;
+  ty_own_val : thread_id → RT_rt rt → val → iProp Σ;
 
   (** This type's syntactic type *)
   ty_syn_type : syn_type;
@@ -57,7 +64,7 @@ Record type `{!typeGS Σ} (rt : Type) := {
   _ty_has_op_type : op_type → memcast_compat_type → Prop;
 
   (** The sharing predicate: what does it mean to have a shared reference to this type at a particular lifetime? *)
-  ty_shr : lft → thread_id → rt → loc → iProp Σ;
+  ty_shr : lft → thread_id → RT_rt rt → loc → iProp Σ;
 
   (** We have a separate well-formedness predicate to capture persistent + timeless information about
     the type's structure. Needed to evade troubles with the ltype unfolding equations. *)
@@ -192,7 +199,7 @@ Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply
 Definition rt_of `{!typeGS Σ} {rt} (ty : type rt) : Type := rt.
 Notation st_of ty := (ty_syn_type ty).
 
-Definition ty_is_xrfn `{!typeGS Σ} {rt : Type} (ty : type rt) (r : rt) :=
+Definition ty_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) (r : rt) :=
   ∃ xr, r = ty.(ty_xrt) xr.
 Arguments ty_is_xrfn : simpl never.
 Global Typeclasses Opaque ty_is_xrfn.
@@ -221,7 +228,7 @@ Definition ty_allows_reads `{!typeGS Σ} {rt} (ty : type rt) :=
   ty_has_op_type ty (use_op_alg' ty.(ty_syn_type)) MCCopy.
 
 Record rtype `{!typeGS Σ} `{!LayoutAlg} := mk_rtype {
-  rt_rty : Type;
+  rt_rty : RT;
   rt_ty : type rt_rty;
 }.
 Global Arguments mk_rtype {_ _ _ _}.
@@ -300,7 +307,7 @@ End memcast.
 
 (** simple types *)
 (* Simple types are copy, have a simple sharing predicate, and do not nest. *)
-Record simple_type `{!typeGS Σ} (rt : Type) :=
+Record simple_type `{!typeGS Σ} rt :=
   { st_rt_inhabited : Inhabited rt;
     st_own : thread_id → rt → val → iProp Σ;
     st_syn_type : syn_type;
@@ -434,7 +441,7 @@ Notation "'<$#>@{' B '}' x" := (fmap (M := B) (ty_xrt _) x) (at level 30).
 
 
 Record xtype `{!typeGS Σ} := mk_xtype {
-  xtype_rt : Type;
+  xtype_rt : RT;
   xtype_ty : type xtype_rt;
   xtype_rfn : ty_xt xtype_ty;
 }.
@@ -443,7 +450,7 @@ Global Arguments mk_xtype {_ _ _}.
 (*** Cofe and Ofe *)
 Section ofe.
   Context `{!typeGS Σ}.
-  Context {rt : Type}.
+  Context {rt : RT}.
 
   Import EqNotations.
 
@@ -689,7 +696,7 @@ Section ofe.
 End ofe.
 Section st_ofe.
   Context `{!typeGS Σ}.
-  Context {rt : Type}.
+  Context {rt : RT}.
 
   Inductive st_equiv' (ty1 ty2 : simple_type rt) : Prop :=
     St_equiv :
@@ -1460,14 +1467,14 @@ Section properties.
 End properties.
 
 (** Point-wise non-expansive type lists *)
-Class HTypeNonExpansive `{!typeGS Σ} {rt} {rts : list Type}
+Class HTypeNonExpansive `{!typeGS Σ} {rt} {rts : list RT}
   (Ts : type rt → hlist type rts) : Type := mk_htype_ne {
     HTypeNe_Ts' : hlist (λ rt', type rt → type rt') rts;
     HTypeNe_Ne : HTForall (λ _, TypeNonExpansive) HTypeNe_Ts';
     HtypeNe_Eq : Ts = happly HTypeNe_Ts';
 }.
 Arguments mk_htype_ne {_ _ _ _}.
-Class HTypeContractive `{!typeGS Σ} {rt} {rts : list Type}
+Class HTypeContractive `{!typeGS Σ} {rt} {rts : list RT}
   (Ts : type rt → hlist type rts) : Type := mk_htype_contr {
     HTypeContr_Ts' : hlist (λ rt', type rt → type rt') rts;
     HTypeContr_Ne : HTForall (λ _, TypeContractive) HTypeContr_Ts';
@@ -2083,3 +2090,28 @@ Proof.
   - done.
 Qed.
 End lft_mor.
+
+
+
+
+(* Common RTs *)
+Definition directRT (ty : Type) : RT :=
+  mk_RT ty.
+Canonical Structure unitRT := directRT unit.
+Canonical Structure ZRT := directRT Z.
+Canonical Structure boolRT := directRT bool.
+
+Canonical Structure gnameRT := directRT gname.
+Canonical Structure locRT := directRT loc.
+
+Definition prodRT (rt1 rt2 : RT) : RT :=
+  mk_RT (rt1 * rt2)%type.
+Canonical Structure prodRT.
+
+Definition listRT (A : RT) : RT :=
+  mk_RT (list A).
+Canonical Structure listRT.
+
+Definition plistRT {A} (F : A → RT) (l : list A) : RT :=
+  mk_RT (plist F l).
+Canonical Structure plistRT.

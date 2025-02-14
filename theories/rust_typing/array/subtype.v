@@ -7,6 +7,8 @@ From refinedrust Require Import options.
 Section subtype.
   Context `{!typeGS Σ}.
 
+  Implicit Types (rt : RT).
+
   Import EqNotations.
   Local Definition array_t_incl_precond_elem {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 :=
     (match r1, r2 with

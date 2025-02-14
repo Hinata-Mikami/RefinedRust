@@ -147,7 +147,7 @@ Section stratify.
       λ T, i2p (stratify_ltype_mut_uniq π E L StratMutNone mdu ma ml l lt κ r κ' γ' γ T).
 
   (** Unfolding instances *)
-  Lemma stratify_ltype_ofty_mut {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)) b T :
+  Lemma stratify_ltype_ofty_mut {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b T :
     stratify_ltype π E L mu StratDoUnfold ma ml l (MutLtype (◁ ty) κ) r b T
     ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (mut_ref κ ty)) r b T.
   Proof.
@@ -155,7 +155,7 @@ Section stratify.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_mut_inst {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)) b :
+  Global Instance stratify_ltype_ofty_mut_inst {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b :
     StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (mut_ref κ ty))%I r b | 30 :=
       λ T, i2p (stratify_ltype_ofty_mut π E L mu ma ml l ty κ r b T).
 

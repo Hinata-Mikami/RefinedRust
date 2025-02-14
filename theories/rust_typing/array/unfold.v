@@ -226,7 +226,8 @@ Section unfold.
     iExists _. iR.
     iSplitR. { iPureIntro. apply has_layout_loc_offset_loc; last done. by eapply use_layout_alg_wf. }
     iPoseProof (ty_shr_sidecond with "Hl") as "#Hsc".
-    iR. iSplitR. { iApply loc_in_bounds_array_offset; last done. apply lookup_lt_Some in Hlook. lia. }
+    iR. iSplitR. { iApply loc_in_bounds_array_offset; last done. apply lookup_lt_Some in Hlook.
+      simpl in *. lia. }
     iExists _. iFrame. eauto.
   Qed.
 

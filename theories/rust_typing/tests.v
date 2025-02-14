@@ -751,8 +751,8 @@ Section test_evar.
   Abort.
 
   Lemma test3 :
-    ∃ x : plist type [Z : Type; Z: Type],
-    ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : Type) (int I32); existT (Z : Type) (int U32)].
+    ∃ x : plist type [Z : RT; Z: RT],
+    ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : RT) (int I32); existT (Z : RT) (int U32)].
   Proof.
     let Hevar := create_protected_evar (type Z) in
     let Hevar2 := create_protected_evar (type Z) in
@@ -902,13 +902,13 @@ Section test.
     solve_lft_alive; solve[fail].
   Abort.
 
-  Lemma test7 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) :
+  Lemma test7 κ ulft_1 ϝ {T_rt : RT} (T_ty : type T_rt) :
     lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] κ.
   Proof.
     solve_lft_alive; solve[fail].
   Abort.
 
-  Lemma test8 κ ulft_1 ϝ {T_rt : Type} (T_ty : type T_rt) :
+  Lemma test8 κ ulft_1 ϝ {T_rt : RT} (T_ty : type T_rt) :
     lctx_lft_alive ((ϝ ⊑ₑ ulft_1) :: (ϝ ⊑ₑ ulft_1) :: ty_outlives_E T_ty ϝ) [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 0} []] static.
   Proof.
     solve_lft_alive; solve[fail].
@@ -935,26 +935,28 @@ Section test.
   End Vec_sls.
   Section RawVec_ty.
     Context `{!typeGS Σ}.
-    Context {T_rt : Type}.
+    Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition RawVec_ty : type (plist place_rfn [_ : Type; Z : Type; unit : Type]) := struct_t (RawVec_sls (ty_syn_type T_ty)) +[
+    Definition RawVec_ty : type (plist place_rfn [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty)) +[
       alias_ptr_t;
       (int USize);
       unit_t].
-    Definition RawVec_rt : Type := Eval hnf in rt_of RawVec_ty.
+    Definition RawVec_rt : RT := Eval hnf in rt_of RawVec_ty.
     Global Typeclasses Transparent RawVec_ty.
   End RawVec_ty.
 
   Section RawVec_inv_t.
     Context `{!typeGS Σ}.
-    Context {T_rt : Type}.
+    Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)) := mk_ex_inv_def
+    Canonical Structure natRT := directRT nat.
+
+    Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)%type) := mk_ex_inv_def
       _
       id
-      (λ π inner_rfn '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
+      (λ π (inner_rfn : RawVec_rt) '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
       ([])
       ([])
@@ -968,31 +970,31 @@ Section test.
       ex_plain_t_solve_shr.
     Qed.
 
-    Definition RawVec_inv_t : type ((loc * nat)) :=
+    Definition RawVec_inv_t : type ((loc * nat)%type) :=
       ex_plain_t _ _ RawVec_inv_t_inv_spec (RawVec_ty T_ty).
   End RawVec_inv_t.
 
   Section Vec_ty.
     Context `{!typeGS Σ}.
-    Context {T_rt : Type}.
+    Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition Vec_ty : type (plist place_rfn [_ : Type; Z : Type]) := struct_t (Vec_sls (ty_syn_type T_ty)) +[
+    Definition Vec_ty : type (plist place_rfn [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty)) +[
       (RawVec_inv_t (T_ty));
       (int USize)].
-    Definition Vec_rt : Type := Eval hnf in rt_of Vec_ty.
+    Definition Vec_rt : RT := Eval hnf in rt_of Vec_ty.
     Global Typeclasses Transparent Vec_ty.
   End Vec_ty.
 
   Section Vec_inv_t.
     Context `{!typeGS Σ}.
-    Context {T_rt : Type}.
+    Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
     Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
       (list T_rt)
       (fmap PlaceIn)
-      (λ π inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ π (inner_rfn : Vec_rt) 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       ([] ++ (ty_lfts T_ty))
       ([] ++ (ty_wf_E T_ty))
@@ -1013,16 +1015,16 @@ Section test.
     Hint Unfold Vec_inv_t : tyunfold.
   End Vec_inv_t.
 
-  Lemma test1 `{!typeGS Σ} {T_rt} (T_ty : type T_rt) xs γ x ulft__ ϝ : ∃ E',
+  Lemma test1 `{!typeGS Σ} {T_rt : RT} (T_ty : type T_rt) xs γ x ulft__ ϝ : ∃ E',
     ([] ++
    tyl_wf_E
      (map map_rtype
-        [existT (place_rfn (list (place_rfn T_rt)) * gname)%type
+        [existT (place_rfn (list (place_rfn T_rt)) * gname : RT)%type
            (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ++
    tyl_outlives_E
      (map map_rtype
-        [existT (place_rfn (list (place_rfn T_rt)) * gname)%type
+        [existT (place_rfn (list (place_rfn T_rt)) * gname : RT)%type
            (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ϝ ++ ty_wf_E unit_t ++ ty_outlives_E unit_t ϝ) = E' ∧ E' = E'.
   Proof.

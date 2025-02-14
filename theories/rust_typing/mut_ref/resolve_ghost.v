@@ -10,7 +10,7 @@ Section resolve_ghost.
 
   (** resolve_ghost *)
   Lemma resolve_ghost_mut_Owned {rt} π E L l (lt : ltype rt) γ rm lb κ wl T :
-    find_observation (place_rfn rt * gname) γ FindObsModeDirect (λ or,
+    find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L #r True true
@@ -33,7 +33,7 @@ Section resolve_ghost.
     ResolveGhost π E L rm lb l (MutLtype lt κ) (Owned wl) (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_mut_Owned π E L l lt γ rm lb κ wl T).
 
   Lemma resolve_ghost_mut_Uniq {rt} π E L l (lt : ltype rt) γ rm lb κ κ' γ' T :
-    find_observation (place_rfn rt * gname) γ FindObsModeDirect (λ or,
+    find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L #r True true
@@ -56,7 +56,7 @@ Section resolve_ghost.
     ResolveGhost π E L rm lb l (MutLtype lt κ) (Uniq κ' γ') (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_mut_Uniq π E L l lt γ rm lb κ κ' γ' T).
 
   Lemma resolve_ghost_mut_shared {rt} π E L l (lt : ltype rt) γ rm lb κ κ' T :
-    find_observation (place_rfn rt * gname) γ FindObsModeDirect (λ or,
+    find_observation (place_rfn rt * gname)%type γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L #r True true

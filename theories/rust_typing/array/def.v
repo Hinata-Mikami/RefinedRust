@@ -28,7 +28,7 @@ Global Typeclasses Opaque is_array_ot.
 
 Section array.
   Context `{!typeGS Σ}.
-  Context {rt : Type}.
+  Context {rt : RT}.
 
   Definition array_own_el_val (π : thread_id) (ty : type rt) (r : place_rfn rt) (v : val) : iProp Σ :=
     ∃ r', place_rfn_interp_owned r r' ∗ ty.(ty_own_val) π r' v.
@@ -262,7 +262,7 @@ Section array.
   Qed.
   Next Obligation.
     intros len ty ly mt Hst.
-    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz). 
+    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
     simpl. eexists.
     split_and!; [done | | done | ].
     - by apply ty_has_op_type_untyped.

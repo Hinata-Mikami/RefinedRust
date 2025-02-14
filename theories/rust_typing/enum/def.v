@@ -480,7 +480,7 @@ Section ne.
       ∀ ty ty' r, (F ty).(enum_rt) r = (F ty').(enum_rt) r;
     (* the refinement of the variant should not depend on the ty *)
     enum_ne_r_consistent :
-      ∀ ty ty' r, rew [id] (enum_ne_rt_consistent ty ty' r) in (F ty).(enum_r) r = (F ty').(enum_r) r;
+      ∀ ty ty' r, rew [RT_rt] (enum_ne_rt_consistent ty ty' r) in (F ty).(enum_r) r = (F ty').(enum_r) r;
 
     (* the functor on types is non-expansive *)
     enum_ne_ty_dist :

@@ -110,8 +110,8 @@ Section rules.
       ∃ (Heq : enum_tag en r = Some tag),
       ∃ (i : nat),
       exhale (⌜sls_field_index_of (sls_fields sls) mem = Some i⌝);
-      ∃ (lto : ltype (lnth (() : Type) rts i))
-        (ro : place_rfn (lnth (() : Type) rts i)),
+      ∃ (lto : ltype (lnth (unit : RT) rts i))
+        (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
       return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Owned false) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
@@ -130,8 +130,8 @@ Section rules.
             strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak
             (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (() : Type) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (() : Type) rts rs i (weak.(weak_rfn) ri)))
+              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
+              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
             (λ ri,
               (* no update, as we are owned *)
               #r
@@ -154,8 +154,8 @@ Section rules.
       ∃ (Heq : enum_tag en r = Some tag),
       ∃ (i : nat),
       exhale (⌜sls_field_index_of (sls_fields sls) mem = Some i⌝);
-      ∃ (lto : ltype (lnth (() : Type) rts i))
-        (ro : place_rfn (lnth (() : Type) rts i)),
+      ∃ (lto : ltype (lnth (unit : RT) rts i))
+        (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
       return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
@@ -173,8 +173,8 @@ Section rules.
             strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak
             (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (() : Type) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (() : Type) rts rs i (weak.(weak_rfn) ri)))
+              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
+              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
             (λ ri,
               (* no update, as we are shared we can just override this *)
               #r
@@ -213,12 +213,12 @@ Section rules.
       (* the variant is in sync with the tag
         (we could also assume this from the interpretation, but we want that this is eq_refl) *)
       ∃ (Heq2 : enum_rt en r = plist place_rfn rts),
-      inhale (⌜rs = rew [id] Heq2 in (enum_r en r)⌝);
+      inhale (⌜rs = rew [RT_rt] Heq2 in (enum_r en r)⌝);
       (* access the struct field *)
       ∃ (i : nat),
       exhale (⌜sls_field_index_of (sls_fields sls) mem = Some i⌝);
-      ∃ (lto : ltype (lnth (() : Type) rts i))
-        (ro : place_rfn (lnth (() : Type) rts i)),
+      ∃ (lto : ltype (lnth (unit : RT) rts i))
+        (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
       return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Uniq κ γ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
@@ -239,11 +239,11 @@ Section rules.
               strong.(strong_R)) mstrong.(mstrong_strong)) *)
           (fmap (λ weak, mk_weak
             (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (() : Type) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (() : Type) rts rs i (weak.(weak_rfn) ri)))
+              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
+              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
             (λ ri,
               (* inject back *)
-              #(enum_tag_rfn_inj en tag r Heq (rew <- [id] Heq2 in (plist_insert_id (() : Type) rts rs i (weak.(weak_rfn) ri))))
+              #(enum_tag_rfn_inj en tag r Heq (rew <- [RT_rt] Heq2 in (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri))))
               )
             weak.(weak_R)) mstrong.(mstrong_weak))
           )

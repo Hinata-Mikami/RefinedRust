@@ -12,7 +12,7 @@ Section subtype.
     ([∗ list] t1; t2 ∈ hpzipl _ tys1 rs1; hpzipl _ tys2 rs2,
       match (projT2 t1).2, (projT2 t2).2 with
       | #r1, #r2 => type_incl r1 r2 (projT2 t1).1 (projT2 t2).1
-      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <-Heq in (projT2 t2).2⌝ ∗ ∀ (r : projT1 t1), type_incl r (rew [id] Heq in r) (projT2 t1).1 (projT2 t2).1
+      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <-Heq in (projT2 t2).2⌝ ∗ ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
       end)%I.
   Global Instance struct_t_incl_precond_pers {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 :
     Persistent (struct_t_incl_precond tys1 tys2 rs1 rs2).

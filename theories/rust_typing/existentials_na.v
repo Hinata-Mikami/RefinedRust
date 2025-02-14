@@ -3,7 +3,7 @@ From refinedrust Require Import uninit int ltype_rules.
 From lrust.lifetime Require Import na_borrow.
 From refinedrust Require Import options.
 
-Record na_ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := na_mk_ex_inv_def' {
+Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def' {
   na_inv_xr : Type;
   na_inv_xr_inh : Inhabited na_inv_xr;
   na_inv_xrt : na_inv_xr → Y;
@@ -16,7 +16,7 @@ Record na_ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := na_mk_ex_inv_
 }.
 
 (* Stop Typeclass resolution for the [inv_P_pers] argument, to make it more deterministic. *)
-Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : Type} (YR : Type) `{!Inhabited YR}
+Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : RT} (YR : Type) `{!Inhabited YR}
   (inv_xrt : YR → Y)
 
   (inv_P : thread_id → X → Y → iProp Σ)
@@ -35,12 +35,12 @@ Global Arguments na_inv_P_wf_E {_ _ _ _}.
 
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition na_mk_pers_ex_inv_def
-  `{!typeGS Σ} {X : Type} {Y : Type}
+  `{!typeGS Σ} {X : RT} {Y : RT}
   (YR : Type) `{!Inhabited YR} (xtr : YR → Y)
   (P : X → Y → iProp Σ) :=
     na_mk_ex_inv_def YR xtr (λ _, P) [] [] (* _ *).
 
-Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → na_ex_inv_def X Y) : Type := {
+Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
 
   ex_inv_def_ne_val_own :
@@ -50,7 +50,7 @@ Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → na_e
         (F ty).(na_inv_P) π x y ≡{n}≡ (F ty').(na_inv_P) π x y;
 }.
 
-Class NaExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → na_ex_inv_def X Y) : Type := {
+Class NaExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
   ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
 
   ex_inv_def_contr_val_own :
@@ -85,7 +85,7 @@ End insts.
 
 Section na_ex.
   Context `{!typeGS Σ}.
-  Context (X Y : Type) (P : na_ex_inv_def X Y).
+  Context (X Y : RT) (P : na_ex_inv_def X Y).
 
   Program Definition na_ex_plain_t (ty : type X) : type Y := {|
     ty_xt := P.(na_inv_xr);
@@ -191,7 +191,7 @@ End na_ex.
 Section contr.
   Context `{!typeGS Σ}.
 
-  Global Instance na_ex_inv_def_contractive {rt X Y : Type}
+  Global Instance na_ex_inv_def_contractive {rt X Y : RT}
     (P : type rt → na_ex_inv_def X Y)
     (F : type rt → type X) :
     NaExInvDefContractive P →
@@ -235,7 +235,7 @@ Section contr.
       apply HF.
   Qed.
 
-  Global Instance na_ex_inv_def_ne {rt X Y : Type}
+  Global Instance na_ex_inv_def_ne {rt X Y : RT}
     (P : type rt → na_ex_inv_def X Y)
     (F : type rt → type X)
     :
@@ -286,7 +286,7 @@ Notation "'∃na;' P ',' τ" := (na_ex_plain_t _ _ P τ) (at level 40) : stdpp_s
 
 Section na_subtype.
   Context `{!typeGS Σ}.
-  Context {rt X : Type} (P : na_ex_inv_def rt X).
+  Context {rt X : RT} (P : na_ex_inv_def rt X).
 
   Lemma owned_subtype_na_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
     (prove_with_subtype E L false ProveDirect (P.(na_inv_P) π r r') (λ L1 _ R, R -∗ T L1))

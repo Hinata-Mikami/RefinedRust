@@ -11,7 +11,7 @@ From refinedrust Require Import options.
 Section uninit.
   Context `{!typeGS Σ}.
 
-  Program Definition uninit (st : syn_type) : type unit := {|
+  Program Definition uninit (st : syn_type) : type unitRT := {|
     st_own π _ v :=
         (∃ ly, ⌜syn_type_has_layout st ly⌝ ∗
         ⌜v `has_layout_val` ly⌝)%I;

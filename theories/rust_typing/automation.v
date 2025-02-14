@@ -862,7 +862,7 @@ Ltac inv_local_ly Harg_ly :=
 Section tac.
   Context `{!typeGS Σ}.
 
-  Lemma intro_typed_function {rts : list Type} (n : nat) π (fn : function) (local_sts : list syn_type) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
+  Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (local_sts : list syn_type) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
     (∀ κs tys x (ϝ : lft),
       □ (
       let lya := fn.(f_args).*2 in
@@ -916,7 +916,7 @@ Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
   revert i; repeat liForall.
 
 (* Put function assumptions into the persistent context *)
-Global Instance intro_pers_fn `{!typeGS Σ} {rts : list Type} v π l sts lfts (fnspec : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) :
+Global Instance intro_pers_fn `{!typeGS Σ} {rts : list RT} v π l sts lfts (fnspec : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) :
   IntroPersistent (v ◁ᵥ{π} l @ function_ptr sts fnspec) (v ◁ᵥ{π} l @ function_ptr sts fnspec).
 Proof.
   constructor. iIntros "#HA". done.

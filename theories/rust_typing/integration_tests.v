@@ -24,7 +24,7 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 (* Maybe this should also be specced in terms of value? *)
-Definition type_of_ptr_write `{!typeGS Σ} (T_rt : Type) (T_st : syn_type) :=
+Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
       l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type)))))
     → ∃ () : unit, () @ unit_t; λ π,
@@ -59,7 +59,7 @@ Proof.
 Qed.
 
 (** Same for shared references *)
-Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : Type) (U_st : syn_type) :=
+Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) :=
   (* First add a new type parameter and a new lifetime *)
   spec! ( *[κ]) : 1 | ( *[U_ty]) : [U_rt],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
@@ -99,25 +99,25 @@ End std_option_Option_els.
 (* maybe we should represent this with a gmap for easy lookup? *)
 
 Section std_option_Option_ty.
-  Context {T_rt : Type}.
+  Context {T_rt : RT}.
   Context (T_ty : type (T_rt)).
 
-  Definition std_option_Option_None_ty : type (plist place_rfn []) := struct_t std_option_Option_None_sls +[].
-  Definition std_option_Option_None_rt : Type := rt_of std_option_Option_None_ty.
+  Definition std_option_Option_None_ty : type (plist place_rfn [] : RT) := struct_t std_option_Option_None_sls +[].
+  Definition std_option_Option_None_rt : RT := rt_of std_option_Option_None_ty.
   Global Typeclasses Transparent std_option_Option_None_ty.
 
-  Definition std_option_Option_Some_ty : type (plist place_rfn [T_rt : Type]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
+  Definition std_option_Option_Some_ty : type (plist place_rfn [T_rt : RT]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
     T_ty].
-  Definition std_option_Option_Some_rt : Type := rt_of std_option_Option_Some_ty.
+  Definition std_option_Option_Some_rt : RT := rt_of std_option_Option_Some_ty.
   Global Typeclasses Transparent std_option_Option_Some_ty.
 
   Program Definition std_option_Option_enum : enum (option (place_rfn T_rt)) := mk_enum
     (option (ty_xt T_ty))
-    (λ x, fmap (PlaceIn ∘ ty_xrt T_ty) x)
+    (λ x, fmap (M := option) (PlaceIn ∘ ty_xrt T_ty) x)
     _
     ((std_option_Option_els (ty_syn_type T_ty)))
     (λ rfn, match rfn with | None => Some "None" | Some x => Some "Some" end)
-    (λ rfn, match rfn with | None => _ | Some x => _ end)
+    (λ rfn, match rfn with | None => std_option_Option_None_rt | Some x => std_option_Option_Some_rt end)
     (λ rfn, match rfn with | None => std_option_Option_None_ty | Some x => std_option_Option_Some_ty end)
     (λ rfn, match rfn with | None => -[] | Some x => -[x] end)
     (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None) else if decide (variant = "Some") then Some $ mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x) else None)
@@ -125,6 +125,12 @@ Section std_option_Option_ty.
     (ty_wf_E T_ty)
     _ _ _
   .
+  Next Obligation.
+    done.
+  Defined.
+  Next Obligation.
+    done.
+  Defined.
   Next Obligation.
     solve_mk_enum_ty_lfts_incl.
   Qed.
@@ -144,7 +150,7 @@ End test.
 Section test_struct.
   Context `{!typeGS Σ}.
 
-  Definition test_rt : list Type := [Z: Type; Z : Type].
+  Definition test_rt : list RT := [Z: RT; Z : RT].
   Definition test_lts : hlist ltype test_rt := (◁ int I32)%I +:: (◁ int I32)%I +:: +[].
   Definition test_rfn : plist place_rfn test_rt := #32 -:: #22 -:: -[].
 
@@ -153,7 +159,7 @@ Section test_struct.
   Lemma bla : pnth (#()) test_rfn 1 = #22.
   Proof. simpl. done. Abort.
 
-  Lemma bla : hlist_insert_id (unit : Type) _ test_lts 1 (◁ int I32)%I = test_lts.
+  Lemma bla : hlist_insert_id (unit : RT) _ test_lts 1 (◁ int I32)%I = test_lts.
   Proof.
     simpl. rewrite /hlist_insert_id. simpl.
     (*rewrite /list_insert_lnth. *)
@@ -171,7 +177,7 @@ Section test_struct.
     simpl. done.
   Abort.
 
-  Lemma bla : plist_insert_id (unit : Type) _ test_rfn 1 (#22) = test_rfn.
+  Lemma bla : plist_insert_id (unit : RT) _ test_rfn 1 (#22) = test_rfn.
   Proof.
     simpl. cbn. done.
     (*rewrite /plist_insert_id. cbn. *)

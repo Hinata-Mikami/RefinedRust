@@ -204,7 +204,7 @@ Section subtype.
     λ T, i2p (weak_subltype_struct_base E L lts1 lts2 rs1 rs2 sls1 sls2 k T).
 
 
-  Program Definition MutEqltypeStructHFR (cap : nat) : HetFoldableRelation (A := Type) (G := ltype) := {|
+  Program Definition MutEqltypeStructHFR (cap : nat) : HetFoldableRelation (A := RT) (G := ltype) := {|
     hfr_rel E L i rt lt1 lt2 T := mut_eqltype E L lt1 lt2 T;
     hfr_cap := cap;
     hfr_inv := True;

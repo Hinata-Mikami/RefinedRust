@@ -7,7 +7,7 @@ Section mut_ref.
   Context `{typeGS Σ}.
   Implicit Types (κ : lft) (γ : gname).
 
-  Program Definition mut_ref  {rt} (κ : lft) (inner : type rt) : type (place_rfn rt * gname) := {|
+  Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
     ty_xt := (inner.(ty_xt) * gname);
     ty_xrt := λ '(x, y), (#(inner.(ty_xrt) x), y);
 
@@ -45,12 +45,12 @@ Section mut_ref.
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation.
-    iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)". 
+    iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (??? ot Hot) => /=. destruct ot => /=//. 
+    iIntros (??? ot Hot) => /=. destruct ot => /=//.
     - intros _; by apply syn_type_has_layout_ptr.
     - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
@@ -64,7 +64,7 @@ Section mut_ref.
     iIntros (? κ ? κ' π l [r γ]). apply _.
   Qed.
   Next Obligation.
-    iIntros (??????[r γ]) "(%li & %ly & %r' & % & ? &  _)". 
+    iIntros (??????[r γ]) "(%li & %ly & %r' & % & ? &  _)".
     iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -212,7 +212,7 @@ Section mut_ref.
     - by iApply logical_step_intro.
   Qed.
 
-  Global Instance mut_ref_type_contractive {rt : Type} κ : TypeContractive (mut_ref (rt:=rt) κ).
+  Global Instance mut_ref_type_contractive {rt : RT} κ : TypeContractive (mut_ref (rt:=rt) κ).
   Proof.
     constructor; simpl.
     - done.
@@ -230,7 +230,7 @@ Section mut_ref.
   Qed.
 
 
-  Global Instance mut_ref_type_ne {rt : Type} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).
+  Global Instance mut_ref_type_ne {rt : RT} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
 End mut_ref.
 

@@ -8,7 +8,7 @@ From refinedrust Require Import options.
 Section stratify.
   Context `{!typeGS Σ}.
 
-  Definition stratify_ltype_struct_iter_cont_t := llctx → iProp Σ → ∀ rts' : list Type, hlist ltype rts' → plist place_rfn rts' → iProp Σ.
+  Definition stratify_ltype_struct_iter_cont_t := llctx → iProp Σ → ∀ rts' : list RT, hlist ltype rts' → plist place_rfn rts' → iProp Σ.
   Definition stratify_ltype_struct_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (i0 : nat) (sls : struct_layout_spec) {rts} (ltys : hlist ltype rts) (rfns : plist place_rfn rts) (k : bor_kind) (T : stratify_ltype_struct_iter_cont_t) : iProp Σ :=
     ∀ F sl, ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
@@ -22,7 +22,7 @@ Section stratify.
     ([∗ list] i ↦ p ∈ hpzipl rts ltys rfns, let '(existT rt (lt, r)) := p in
       ∃ name st, ⌜sls.(sls_fields) !! (i + i0)%nat = Some (name, st)⌝ ∗
       (l atst{sls}ₗ name) ◁ₗ[π, k] r @ lt) ={F}=∗
-    ∃ (L' : llctx) (R' : iProp Σ) (rts' : list Type) (ltys' : hlist ltype rts') (rfns' : plist place_rfn rts'),
+    ∃ (L' : llctx) (R' : iProp Σ) (rts' : list RT) (ltys' : hlist ltype rts') (rfns' : plist place_rfn rts'),
       ⌜length rts = length rts'⌝ ∗
       ([∗ list] i ↦ p; p2 ∈ hpzipl rts ltys rfns; hpzipl rts' ltys' rfns',
           let '(existT rt (lt, r)) := p in
@@ -118,7 +118,7 @@ Section stratify.
   (* TODO: stratification instance for StructLtype with optional refolding *)
 
 
-  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfn rts) sls wl T :
+  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfn rts) sls wl (T : stratify_ltype_cont_t) :
     stratify_ltype_struct_iter π E L mu mdu ma m l 0 sls lts rs (Owned false) (λ L2 R2 rts' lts' rs',
       T L2 R2 (plist place_rfn rts') (StructLtype lts' sls) (#rs'))
     ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) T.

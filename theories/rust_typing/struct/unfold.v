@@ -7,7 +7,7 @@ From refinedrust Require Import options.
 
 Section unfold.
   Context `{!typeGS Σ}.
-  Lemma struct_t_unfold_1_owned {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
+  Lemma struct_t_unfold_1_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
     ⊢ ltype_incl' (Owned wl) r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     iModIntro. iIntros (π l).
@@ -45,7 +45,7 @@ Section unfold.
     iExists _. by iFrame.
   Qed.
 
-  Lemma struct_t_unfold_1_shared {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
+  Lemma struct_t_unfold_1_shared {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
     ⊢ ltype_incl' (Shared κ) r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     iModIntro. iIntros (π l).
@@ -86,7 +86,7 @@ Section unfold.
       (∃ r' : plist place_rfn rts, gvar_auth γ r' ∗
         (|={lftE}=> ∃ v : val, l ↦ v ∗ v ◁ᵥ{ π} r' @ struct_t sls tys)) ↔
       (∃ r' : plist place_rfn rts, gvar_auth γ r' ∗ (|={lftE}=>
-        [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts ((λ X : Type, OfTy) +<$> tys) r') struct_make_uninit_ltype,
+        [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts ((λ X : RT, OfTy) +<$> tys) r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
             ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
             (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, Owned wl] (projT2 ty).2 @ if b then ltype_core (projT2 ty).1 else (projT2 ty).1)).
@@ -226,7 +226,7 @@ Section unfold.
           rewrite -Hly0'. rewrite drop_app_length. done.
   Qed.
 
-  Lemma struct_t_unfold_1_uniq {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
+  Lemma struct_t_unfold_1_uniq {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
     ⊢ ltype_incl' (Uniq κ γ) r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
@@ -248,7 +248,7 @@ Section unfold.
       iSplit; done.
   Qed.
 
-  Local Lemma struct_t_unfold_1' {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) k r :
+  Local Lemma struct_t_unfold_1' {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl' k r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     destruct k.
@@ -257,13 +257,13 @@ Section unfold.
     - iApply struct_t_unfold_1_uniq.
   Qed.
 
-  Local Lemma ltype_core_hmap_ofty {rts : list Type} (tys : hlist type rts) :
+  Local Lemma ltype_core_hmap_ofty {rts : list RT} (tys : hlist type rts) :
     @ltype_core _ _ +<$> ((λ _, OfTy) +<$> tys) = ((λ _, OfTy) +<$> tys).
   Proof.
     induction tys as [ | rt rts ty tys IH]; simpl; first done. f_equiv. { simp_ltypes. done. } eapply IH.
   Qed.
 
-  Lemma struct_t_unfold_1 {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) k r :
+  Lemma struct_t_unfold_1 {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl k r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     iSplitR; first done. iModIntro. iSplit.
@@ -271,7 +271,7 @@ Section unfold.
     + simp_ltypes. rewrite ltype_core_hmap_ofty. by iApply struct_t_unfold_1'.
   Qed.
 
-  Lemma struct_t_unfold_2_owned {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
+  Lemma struct_t_unfold_2_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
     ⊢ ltype_incl' (Owned wl) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
@@ -385,7 +385,7 @@ Section unfold.
         rewrite -Hly0'. rewrite drop_app_length. done.
   Qed.
 
-  Lemma struct_t_unfold_2_shared {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
+  Lemma struct_t_unfold_2_shared {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
     ⊢ ltype_incl' (Shared κ) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     iModIntro. iIntros (π l).
@@ -411,7 +411,7 @@ Section unfold.
     iFrame "# ∗". iSplit; done.
   Qed.
 
-  Lemma struct_t_unfold_2_uniq {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
+  Lemma struct_t_unfold_2_uniq {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
     ⊢ ltype_incl' (Uniq κ γ) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
@@ -432,7 +432,7 @@ Section unfold.
       iSplit; done.
   Qed.
 
-  Local Lemma struct_t_unfold_2' {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) k r :
+  Local Lemma struct_t_unfold_2' {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl' k r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     destruct k.
@@ -440,7 +440,7 @@ Section unfold.
     - iApply struct_t_unfold_2_shared.
     - iApply struct_t_unfold_2_uniq.
   Qed.
-  Lemma struct_t_unfold_2 {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) k r :
+  Lemma struct_t_unfold_2 {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) k r :
     ⊢ ltype_incl k r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     iSplitR; first done. iModIntro. iSplit.
@@ -524,9 +524,9 @@ Section cast.
   Context `{!typeGS Σ}.
 
   (** CastLtypeToType *)
-  Definition hlist_list_of {A} {F : A → Type} (l : list A) (hl : hlist F l) := l.
-  Fixpoint cast_ltype_to_type_iter (E : elctx) (L : llctx) {rts} (lts : hlist ltype rts) : (hlist type rts → iProp Σ) → iProp Σ :=
-    match lts as rts2 return (hlist type (hlist_list_of _ rts2) → iProp Σ) → iProp Σ with
+  Definition hlist_list_of {A} {F : A → RT} (l : list A) (hl : hlist F l) := l.
+  Fixpoint cast_ltype_to_type_iter (E : elctx) (L : llctx) {rts : list RT} (lts : hlist ltype rts) : (hlist type rts → iProp Σ) → iProp Σ :=
+    match lts with
     | +[] => λ T, T +[]
     | lt +:: lts => λ T,
         cast_ltype_to_type E L lt (λ ty,
@@ -535,7 +535,7 @@ Section cast.
 
   Local Lemma cast_ltype_to_type_iter_elim E L {rts} (lts : hlist ltype rts) T :
     cast_ltype_to_type_iter E L lts T -∗
-    ∃ tys : hlist type rts, T tys ∗ ⌜Forall (λ '(existT x (lt1, lt2)), full_eqltype E L lt1 lt2) (hzipl2 rts lts ((λ X : Type, OfTy) +<$> tys))⌝.
+    ∃ tys : hlist type rts, T tys ∗ ⌜Forall (λ '(existT x (lt1, lt2)), full_eqltype E L lt1 lt2) (hzipl2 rts lts ((λ X : RT, OfTy) +<$> tys))⌝.
   Proof.
     iIntros "HT".
     iInduction rts as [ | rt rts] "IH"; inv_hlist lts; simpl.

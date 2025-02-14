@@ -10,14 +10,14 @@ From refinedrust Require Import options.
 Section access.
   Context `{!typeGS Σ}.
   (* TODO maybe we also generally want this to unblock/stratify first? *)
-  Definition typed_array_access_cont_t : Type := llctx → ∀ (rt' : Type), type rt' → nat → list (nat * ltype rt') → list (place_rfn rt') → bor_kind → ∀ rte, ltype rte → place_rfn rte → iProp Σ.
+  Definition typed_array_access_cont_t : Type := llctx → ∀ (rt' : RT), type rt' → nat → list (nat * ltype rt') → list (place_rfn rt') → bor_kind → ∀ rte, ltype rte → place_rfn rte → iProp Σ.
   Definition typed_array_access (π : thread_id) (E : elctx) (L : llctx) (base : loc) (off : Z) (st : syn_type) {rt} (lt : ltype rt) (r : place_rfn rt) (k : bor_kind) (T : typed_array_access_cont_t) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
     base ◁ₗ[π, k] r @ lt ={F}=∗
-    ∃ L' k' rt' (ty' : type rt') (len : nat) (iml : list (nat * ltype rt')) rs' (rte : Type) re (lte : ltype rte),
+    ∃ L' k' rt' (ty' : type rt') (len : nat) (iml : list (nat * ltype rt')) rs' (rte : RT) re (lte : ltype rte),
       (* updated array assignment *)
       base ◁ₗ[π, k'] #rs' @ ArrayLtype ty' len iml ∗
       (base offsetst{st}ₗ off) ◁ₗ[π, k'] re @ lte ∗

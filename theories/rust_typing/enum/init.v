@@ -22,7 +22,7 @@ Section init.
             (* could try to remove this by strengthening enum *)
             ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
             ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
-            ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [id] Heq in ri')⌝ ∗
+            ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [RT_rt] Heq in ri')⌝ ∗
               ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
     ⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
   Proof.

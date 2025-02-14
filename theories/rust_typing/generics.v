@@ -38,11 +38,11 @@ Definition plist_replace_here {X : Type} `{!Inhabited X} {F : X → Type} (Xl : 
   (pl : plist F (delete i Xl)) (fx : F (Xl !!! i)) : plist F Xl :=
   rew (list_insert_lookup_total _ _) in plist_replace Xl i Hi pl _ fx.
 
-Local Instance inh_Type : Inhabited Type.
-Proof. refine (populate _). exact (nat : Type). Qed.
+Local Instance inh_Type : Inhabited RT.
+Proof. refine (populate _). refine (mk_RT _). exact (nat : Type). Qed.
 
 (** Instantiate a given type parameter *)
-Definition spec_instantiate_typaram `{!typeGS Σ} {SPEC} {lfts : nat} (rts : list Type)
+Definition spec_instantiate_typaram `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
   (n : nat)
   (Hn : Nat.ltb n (length rts) = true)
   (ty : type (rts !!! n))
@@ -51,7 +51,7 @@ Definition spec_instantiate_typaram `{!typeGS Σ} {SPEC} {lfts : nat} (rts : lis
   λ κs tys,
   F κs (plist_replace_here rts n Hn tys ty).
 
-Definition spec_instantiate_typaram_fst `{!typeGS Σ} {SPEC} {lfts : nat} (rt : Type) (rts : list Type)
+Definition spec_instantiate_typaram_fst `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rt : RT) (rts : list RT)
   (ty : type rt)
   (F : prod_vec lft lfts → plist type (rt :: rts) → SPEC) :
   prod_vec lft lfts → plist type rts → SPEC :=
@@ -66,7 +66,7 @@ Proof.
   by rewrite IH.
 Defined.
 
-Definition spec_instantiate_lft_fst `{!typeGS Σ} {SPEC} {lfts : nat} (rts : list Type)
+Definition spec_instantiate_lft_fst `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
   (κ : lft)
   (F : prod_vec lft (S lfts) → plist type rts → SPEC) :
   prod_vec lft lfts → plist type rts → SPEC :=
@@ -74,8 +74,8 @@ Definition spec_instantiate_lft_fst `{!typeGS Σ} {SPEC} {lfts : nat} (rts : lis
   F (κ -:: κs) tys.
 
 (** Add a new type parameter *)
-Definition spec_add_typaram `{!typeGS Σ} {SPEC} {lfts : nat} (rts : list Type)
-  (rt : Type) (st : syn_type)
+Definition spec_add_typaram `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
+  (rt : RT) (st : syn_type)
   (F : type rt → prod_vec lft lfts → plist type rts → SPEC) :
   prod_vec lft lfts → plist type (rt :: rts) → SPEC :=
   λ κs '(ty *:: tys),
@@ -108,7 +108,7 @@ Proof.
   by rewrite IH.
 Defined.
 
-Definition spec_collapse_params `{!typeGS Σ} {SPEC} {lfts1 lfts2 : nat} (rts1 rts2 : list Type)
+Definition spec_collapse_params `{!typeGS Σ} {SPEC : Type} {lfts1 lfts2 : nat} (rts1 rts2 : list RT)
   (F : prod_vec lft lfts1 → plist type rts1 → prod_vec lft lfts2 → plist type rts2 → SPEC) :
   prod_vec lft (lfts1 + lfts2) → plist type (rts1 ++ rts2) → SPEC :=
   λ κs tys,
@@ -121,7 +121,7 @@ Definition spec_collapse_params `{!typeGS Σ} {SPEC} {lfts1 lfts2 : nat} (rts1 r
 
 Definition spec_instantiated `{!typeGS Σ} {SPEC : Type} (F : prod_vec lft 0 → plist type [] → SPEC) : SPEC :=
   F -[] -[].
-Definition spec_with `{!typeGS Σ} (lfts : nat) (rts : list Type) (SPEC : Type) :=
+Definition spec_with `{!typeGS Σ} (lfts : nat) (rts : list RT) (SPEC : Type) :=
   prod_vec lft lfts → plist type rts → SPEC.
 Arguments spec_with {_ _} / _ _ .
 

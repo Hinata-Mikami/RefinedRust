@@ -12,7 +12,7 @@ Global Instance fmap_xmap {A1 A2} {M : Type → Type} (X : XMap A1 A2) (F : FMap
   F _ _ X.
 Global Instance xmap_id {A : Type} : XMap A A := id.
 
-Global Instance xmap_place_rfn {A B} (X : XMap A B) :
+Global Instance xmap_place_rfn {A B : RT} (X : XMap A B) :
   XMap A (place_rfn B) := PlaceIn ∘ X.
 
 Global Instance xt_inj_xmap `{!typeGS Σ} {rt} (ty : type rt) : XMap (ty_xt ty) rt :=

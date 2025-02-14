@@ -495,7 +495,7 @@ Section accessors.
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
-      (∀ (rt' : Type) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
+      (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         (if wl then £1 else True) -∗
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         (*⌜Forall (λ '(i, _), i < len) lts'⌝ -∗*)
@@ -531,7 +531,7 @@ Section accessors.
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       logical_step F
-      (∀ (rt' : Type) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
+      (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         (*⌜Forall (λ '(i, _), i < len) lts'⌝ -∗*)
         (* new ownership *)

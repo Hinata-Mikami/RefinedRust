@@ -11,7 +11,7 @@ Section shr_ref.
     the sharing predicate: we want to obtain the knowledge that l points to
     a location not under a later (to prove the agreement with the ltype unfolding),
      so the simple_type interface doesn't suffice *)
-  Program Definition shr_ref {rt} κ (inner : type rt) : type (place_rfn rt) := {|
+  Program Definition shr_ref {rt : RT} κ (inner : type rt) : type (place_rfn rt) := {|
     ty_xt := inner.(ty_xt);
     ty_xrt := λ x, #(inner.(ty_xrt) x);
 
@@ -129,7 +129,7 @@ Section shr_ref.
     rewrite heap_pointsto_fractional. iFrame.
   Qed.
 
-  Global Instance shr_ref_type_contractive {rt : Type} κ : TypeContractive (shr_ref (rt:=rt) κ).
+  Global Instance shr_ref_type_contractive {rt : RT} κ : TypeContractive (shr_ref (rt:=rt) κ).
   Proof.
     constructor; simpl.
     - done.
@@ -142,7 +142,7 @@ Section shr_ref.
     - solve_type_proper.
 Qed.
 
-  Global Instance shr_ref_type_ne {rt : Type} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
+  Global Instance shr_ref_type_ne {rt : RT} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
 End shr_ref.
 

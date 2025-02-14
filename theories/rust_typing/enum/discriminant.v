@@ -39,8 +39,8 @@ Section discriminant.
   Qed.
 
   Definition typed_discriminant_end_cont_t : Type :=
-    llctx → val → ∀ (rt : Type), type rt → rt → iProp Σ.
-  Definition typed_discriminant_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt: Type} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) (T : typed_discriminant_end_cont_t) :=
+    llctx → val → ∀ (rt : RT), type rt → rt → iProp Σ.
+  Definition typed_discriminant_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt: RT} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) (T : typed_discriminant_end_cont_t) :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       bmin ⊑ₖ b2 -∗
@@ -55,7 +55,7 @@ Section discriminant.
         logical_step F (
           (* assuming that the client provides the ownership back... *)
           (GetEnumDiscriminantLocSt l els) ↦{q} v ={F}=∗
-          ∃ (L' : llctx) (rt3 : Type) (ty3 : type rt3) (r3 : rt3),
+          ∃ (L' : llctx) (rt3 : RT) (ty3 : type rt3) (r3 : rt3),
             v ◁ᵥ{ π} r3 @ ty3 ∗
             llctx_interp L' ∗
             l ◁ₗ[π, b2] r @ lt ∗

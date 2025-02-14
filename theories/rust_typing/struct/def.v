@@ -41,7 +41,7 @@ Proof. move => ? ?. destruct ot => //; naive_solver. Qed.
 Section structs.
   Context `{!typeGS Σ}.
 
-  Polymorphic Definition zip_to_rtype (rt : list Type) (tys : hlist type rt) :=
+  Polymorphic Definition zip_to_rtype (rt : list RT) (tys : hlist type rt) :=
     (fmap (λ x, mk_rtype (projT2 x)) (hzipl rt tys)).
 
   Definition struct_own_el_val (π : thread_id) (i : nat) (fields : field_list) (v : val) {rt} (r : place_rfn rt) (ty : type rt) : iProp Σ :=
@@ -72,8 +72,8 @@ Section structs.
       ty_sidecond ty ∗
       (l +ₗ Z.of_nat (offset_of_idx fields i)) ◁ₗ{π, κ} r' @ ty.
 
-  Definition struct_make_uninit_type (ly : layout) : sigT (λ rt : Type, (type rt * place_rfn rt)%type) :=
-    existT (unit : Type) (uninit (UntypedSynType ly), #()).
+  Definition struct_make_uninit_type (ly : layout) : sigT (λ rt : RT, (type rt * place_rfn rt)%type) :=
+    existT (unit : RT) (uninit (UntypedSynType ly), #()).
 
   Lemma struct_own_val_extract_pointsto' π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) ys :
     use_struct_layout_alg sls = Some sl →
@@ -83,7 +83,7 @@ Section structs.
       struct_own_el_loc' π q x.1 i (sl_members sl) l (projT2 a).2 (projT2 a).1 x.2) -∗
     l ↦{q} (mjoin ys.*1) ∗ ⌜Forall2 (λ (v : val) (ly : layout), v `has_layout_val` ly) ys.*1 ((sl_members sl).*2)⌝ ∗
       ([∗ list] i↦v';ty ∈ reshape (ly_size <$> (sl_members sl).*2) (mjoin ys.*1);
-            pad_struct (sl_members sl) tys (λ ly0 : layout, existT (unit : Type) (uninit (UntypedSynType ly0), # ())),
+            pad_struct (sl_members sl) tys (λ ly0 : layout, existT (unit : RT) (uninit (UntypedSynType ly0), # ())),
       struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1).
   Proof.
     iIntros (??) "#Hlb Hl".
@@ -120,7 +120,7 @@ Section structs.
     iR.
     iAssert (
       [∗ list] i ↦ y2; y1 ∈ vs; pad_struct (sl_members sl) tys struct_make_uninit_type,
-        let 'existT rt (ty, r0) := y1 in ∃ (r' : rt) (ly : layout), place_rfn_interp_owned r0 r' ∗
+        let 'existT rt (ty, r0) := y1 in ∃ (r' : (rt : RT)) (ly : layout), place_rfn_interp_owned r0 r' ∗
             ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty) ly⌝ ∗ ty_sidecond ty ∗ y2 ◁ᵥ{ π} r' @ ty)%I with "[Hb]" as "Hb".
     { iApply big_sepL2_flip. rewrite big_sepL2_fmap_r. iApply (big_sepL2_wand with "Hb").
       iApply big_sepL2_intro. { rewrite pad_struct_length Hlen_eq //. }
@@ -154,7 +154,7 @@ Section structs.
   Proof.
     iIntros (??) "#Hlb Hl".
     iAssert (
-      [∗ list] i↦ty ∈ pad_struct (sl_members sl) tys (λ ly0, existT (unit : Type) (uninit (UntypedSynType ly0), # ())),
+      [∗ list] i↦ty ∈ pad_struct (sl_members sl) tys (λ ly0, existT (unit : RT) (uninit (UntypedSynType ly0), # ())),
       ∃ (y : val * layout),
       struct_own_el_loc' π q y.1 i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1 y.2)%I with "[Hl]" as "Hl".
     { iApply (big_sepL_wand with "Hl"). iApply big_sepL_intro.
@@ -193,16 +193,16 @@ Section structs.
   Qed.
 
   (* Conversion of the xt refinement to the rt refinement *)
-  Definition struct_xt {rts : list Type} (tys : hlist type rts) : Type :=
+  Definition struct_xt {rts : list RT} (tys : hlist type rts) : Type :=
     plist (λ '(existT _ ty), ty.(ty_xt)) (hzipl _ tys).
-  Definition struct_xrtm {rts : list Type} (tys : hlist type rts)
+  Definition struct_xrtm {rts : list RT} (tys : hlist type rts)
     : ∀ (xl : list (sigT type)), _
     :=
     @pmap (sigT type) (λ '(existT _ ty), ty.(ty_xt)) (λ '(existT rt _), place_rfn rt)
       (λ '(existT _ ty) x, #(ty.(ty_xrt) x)).
-  Definition struct_xrt' {rts : list Type} (tys : hlist type rts) (xs : struct_xt tys) :=
+  Definition struct_xrt' {rts : list RT} (tys : hlist type rts) (xs : struct_xt tys) :=
     struct_xrtm tys (hzipl _ tys) xs.
-  Fixpoint convert_struct_xrt {Xs : list Type} {Ty : Type → Type} (F : Type → Type) (tys : hlist Ty Xs) :
+  Fixpoint convert_struct_xrt {Xs : list RT} {Ty : RT → Type} (F : RT → RT) (tys : hlist Ty Xs) :
     plist (λ '(existT rt _), F rt) (hzipl Xs tys) →
     plist F Xs :=
     match tys with
@@ -213,9 +213,9 @@ Section structs.
             pl1 *:: convert_struct_xrt F tys' pl
         end
     end.
-  Definition struct_xrt {rts : list Type} (tys : hlist type rts) (xs : struct_xt tys) :=
+  Definition struct_xrt {rts : list RT} (tys : hlist type rts) (xs : struct_xt tys) :=
     convert_struct_xrt _ tys (struct_xrt' tys xs).
-  Fixpoint struct_xt_inhabitant {rts : list Type} (tys : hlist type rts) :
+  Fixpoint struct_xt_inhabitant {rts : list RT} (tys : hlist type rts) :
     Inhabited (struct_xt tys).
   Proof.
     refine (populate _).
@@ -230,7 +230,7 @@ Section structs.
   (** We use a [hlist] for the list of types and a [plist] for the refinement, to work around universe problems.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
-  Program Definition struct_t {rts : list Type} (sls : struct_layout_spec) (tys : hlist type rts) : type (plist place_rfn rts) := {|
+  Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plist place_rfn rts) := {|
 
     ty_xt := struct_xt tys;
     ty_xrt := struct_xrt tys;
@@ -323,7 +323,7 @@ Section structs.
     set (κ' := lft_intersect_list (mjoin ((λ ty, ty_lfts (projT2 ty)) <$> hzipl rts tys))).
     iPoseProof (Fractional_split_big_sepL (λ q, q.[_]%I) len with "Htok") as "(%qs & %Hlen' & Htoks & Hcl_toks)".
     iAssert ([∗ list] i ↦ ty; q' ∈ (pad_struct (sl_members sl) (hpzipl rts tys r) struct_make_uninit_type); qs,
-      &{κ} ((∃ (r' : projT1 ty) (ly : layout), place_rfn_interp_owned (projT2 ty).2 r' ∗ ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type (projT2 ty).1) ly⌝ ∗ ty_sidecond (projT2 ty).1 ∗ ∃ v, (l +ₗ offset_of_idx sl.(sl_members) i) ↦ v ∗ ⌜v `has_layout_val` ly⌝ ∗ v ◁ᵥ{ π} r' @ (projT2 ty).1)) ∗
+      &{κ} ((∃ (r' : (projT1 ty : RT)) (ly : layout), place_rfn_interp_owned (projT2 ty).2 r' ∗ ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type (projT2 ty).1) ly⌝ ∗ ty_sidecond (projT2 ty).1 ∗ ∃ v, (l +ₗ offset_of_idx sl.(sl_members) i) ↦ v ∗ ⌜v `has_layout_val` ly⌝ ∗ v ◁ᵥ{ π} r' @ (projT2 ty).1)) ∗
       q'.[κ ⊓ κ'])%I with "[Htoks Hb]" as "Hb".
     { iApply big_sepL2_sep_sepL_r; iFrame. iApply big_sepL2_const_sepL_l.
       iSplitR. { rewrite pad_struct_length Hlen' //. }
@@ -353,7 +353,7 @@ Section structs.
         apply pad_struct_lookup_Some in Hlook1; first last.
         { rewrite length_hpzipl Hlen. erewrite struct_layout_spec_has_layout_fields_length; done. }
         destruct Hlook1 as (n & ly & ? & [ (? & Hlook) | (-> & Heq)]).
-        - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
+        - simpl in Hlook. apply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
           apply list_subseteq_mjoin. apply list_elem_of_fmap.
           exists (existT _ ty). split; first done.
           apply list_elem_of_lookup_2 in Hlook. done.
@@ -577,7 +577,7 @@ Section structs.
       apply IH; done.
   Qed.
 
-  Global Instance struct_t_ne {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+  Global Instance struct_t_ne {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
     HTypeNonExpansive Ts →
     TypeNonExpansive (λ ty, struct_t (sls (st_of ty)) (Ts ty)).
   Proof.
@@ -661,7 +661,7 @@ Section structs.
 
   (* For this to be contractive, the [sls] must not depend on the recursive type *)
   (* TODO reduce duplication? *)
-  Global Instance struct_t_contr {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+  Global Instance struct_t_contr {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
     TCDone (∀ st1 st2, sls st1 = sls st2) →
     HTypeContractive Ts →
     TypeContractive (λ ty, struct_t (sls (st_of ty)) (Ts ty)).
@@ -744,7 +744,7 @@ Section structs.
   Qed.
 
   (* variant with constant sls *)
-  Global Instance struct_t_contr' {rt} {rts : list Type} sls (Ts : type rt → hlist type rts) :
+  Global Instance struct_t_contr' {rt} {rts : list RT} sls (Ts : type rt → hlist type rts) :
     HTypeContractive Ts →
     TypeContractive (λ ty, struct_t sls (Ts ty)).
   Proof.
@@ -773,14 +773,14 @@ Section init.
     - intros Hf. rewrite length_app length_replicate. erewrite IH; last done. done.
   Qed.
 
-  Lemma struct_init_val π sls sl vs {rts} (tys : hlist type rts) (rs : plist id rts) :
+  Lemma struct_init_val π sls sl vs {rts : list RT} (tys : hlist type rts) (rs : plist (@id RT) rts) :
     use_struct_layout_alg sls = Some sl →
     length rts = length (sls_fields sls) →
     ([∗ list] i↦v;Ty ∈ vs;hpzipl rts tys rs, let 'existT rt (ty, r) := Ty in
       ∃ (name : string) (st : syn_type) (ly : layout),
         ⌜sls_fields sls !! i = Some (name, st)⌝ ∗ ⌜syn_type_has_layout st ly⌝ ∗
         ⌜syn_type_has_layout (ty_syn_type ty) ly⌝ ∗ v ◁ᵥ{ π} r @ ty) -∗
-    mjoin (pad_struct (sl_members sl) vs (λ ly : layout, replicate (ly_size ly) ☠%V)) ◁ᵥ{ π} (λ (X : Type) (a : X), # a) -<$> rs @ struct_t sls tys.
+    mjoin (pad_struct (sl_members sl) vs (λ ly : layout, replicate (ly_size ly) ☠%V)) ◁ᵥ{ π} (λ (X : RT) (a : X), # a) -<$> rs @ struct_t sls tys.
   Proof.
     iIntros (Hsl Hlen) "Hv".
     rewrite {2}/ty_own_val /=/struct_own_el_val/=.
@@ -887,7 +887,7 @@ Section copy.
       apply pad_struct_lookup_Some in Hlook2 as (n & ly & ? & Hlook2); first last.
       { rewrite length_hpzipl. erewrite struct_layout_spec_has_layout_fields_length; done. }
       destruct Hlook2 as [[? Hlook2] | [-> Hlook2]].
-      + apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as [Hlook21 Hlook22].
+      + simpl in Hlook2. apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as [Hlook21 Hlook22].
         eapply TCHForall_nth_hzipl in Hcopy; last apply Hlook21.
         eapply bi.exist_persistent => r0.
         eapply bi.exist_persistent => ly'.

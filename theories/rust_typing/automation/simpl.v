@@ -126,7 +126,7 @@ Global Hint Extern 50 (SimplBothRel (=) (?l !! ?j) (Some ?x) (_)) =>
       apply _
   end : typeclass_instances.
 
-Global Instance simpl_eq_PlaceIn {rt} (n m : rt) : SimplBothRel (=) (A := place_rfn rt) (#n) (#m) (n = m).
+Global Instance simpl_eq_PlaceIn {rt : RT} (n m : rt) : SimplBothRel (=) (A := place_rfn rt) (#n) (#m) (n = m).
 Proof. split; naive_solver. Qed.
 Global Instance simpl_eq_PlaceGhost {rt} (γ1 γ2 : gname) : SimplBothRel (=) (A := place_rfn rt) (PlaceGhost γ1) (PlaceGhost γ2) (γ1 = γ2).
 Proof. split; naive_solver. Qed.
@@ -192,7 +192,7 @@ Proof.
 Qed.
 
 Global Instance simplify_all_xtype `{!typeGS Σ} Q :
-  SimplForall xtype 3 Q (∀ (rt : Type) (ty : type rt) (r : ty_xt ty), Q (mk_xtype (xtype_rt:=rt) ty r)).
+  SimplForall xtype 3 Q (∀ (rt : RT) (ty : type rt) (r : ty_xt ty), Q (mk_xtype (xtype_rt:=rt) ty r)).
 Proof.
   intros ? []. done.
 Qed.

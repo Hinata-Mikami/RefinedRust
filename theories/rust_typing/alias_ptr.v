@@ -31,7 +31,7 @@ Section alias.
   Next Obligation.
     iIntros (ot mt st π l v Hot) "Hv".
     simpl in Hot.
-    iPoseProof (mem_cast_compat_loc (λ v, ⌜v = l⌝ ∗ ⌜l.2 ∈ USize⌝)%I with "Hv") as "%Hid"; first done.
+    iPoseProof (mem_cast_compat_loc (λ v, ⌜v = val_of_loc l⌝ ∗ ⌜l.2 ∈ USize⌝)%I with "Hv") as "%Hid"; first done.
     { iIntros "(-> & ?)". eauto. }
     destruct mt; [done | | done].
     rewrite Hid. done.

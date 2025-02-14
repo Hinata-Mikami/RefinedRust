@@ -9,7 +9,7 @@ From refinedrust Require Import options.
 Section deinit.
   Context `{!typeGS Σ}.
 
-  Fixpoint uninit_tys (ls : list syn_type) : hlist type (replicate (length ls) (unit : Type)) :=
+  Fixpoint uninit_tys (ls : list syn_type) : hlist type (replicate (length ls) (unit : RT)) :=
     match ls with
     | [] => +[]
     | st :: sts =>
@@ -17,7 +17,7 @@ Section deinit.
     end.
   Lemma uninit_tys_lookup_inv (sts : list syn_type) k x :
     hzipl _ (uninit_tys sts) !! k = Some x →
-    ∃ st, sts !! k = Some st ∧ x = existT (unit : Type) (uninit st).
+    ∃ st, sts !! k = Some st ∧ x = existT (unit : RT) (uninit st).
   Proof.
     induction sts as [ | st sts IH] in k, x |-*; simpl; first done.
     destruct k as [ | k]; simpl.
@@ -25,7 +25,7 @@ Section deinit.
     - apply IH.
   Qed.
 
-  Fixpoint uninit_rs (ls : list syn_type) : plist id (replicate (length ls) (unit : Type)) :=
+  Fixpoint uninit_rs (ls : list syn_type) : plist (@id RT) (replicate (length ls) (unit : RT)) :=
     match ls with
     | [] => *[]
     | st :: sts =>
@@ -33,7 +33,7 @@ Section deinit.
     end.
   Lemma uninit_rs_lookup_inv (sts : list syn_type) k x :
     pzipl _ (uninit_rs sts) !! k = Some x →
-    ∃ st, sts !! k = Some st ∧ x = existT (unit : Type) tt.
+    ∃ st, sts !! k = Some st ∧ x = existT (unit : RT) tt.
   Proof.
     induction sts as [ | st sts IH] in k, x |-*; simpl; first done.
     destruct k as [ | k]; simpl.

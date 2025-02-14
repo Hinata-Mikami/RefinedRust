@@ -10,7 +10,7 @@ Section value.
     ly_size ly' = ly_size ly * n →
     syn_type_has_layout (UntypedSynType ly) ly →
     v ◁ᵥ{π} vs @ value_t (UntypedSynType ly') -∗
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ reshape (replicate n (ly_size ly)) vs) @ (array_t n (value_t (UntypedSynType ly))).
+    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (Hsz ?) "Hv". rewrite /ty_own_val/=.
     iDestruct "Hv" as "(%ot & %Hot & %Hmv & %Hv & %Hst)".
@@ -50,7 +50,7 @@ Section value.
   Lemma value_t_untyped_to_array  π v vs n ly :
     syn_type_has_layout (UntypedSynType ly) ly →
     v ◁ᵥ{π} vs @ value_t (UntypedSynType (mk_array_layout ly n)) -∗
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ reshape (replicate n (ly_size ly)) vs) @ (array_t n (value_t (UntypedSynType ly))).
+    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (?) "Hv".
     iApply (value_t_untyped_to_array' with "Hv").
@@ -104,7 +104,7 @@ Section value.
   Qed.
   Lemma value_t_untyped_from_array π v vs n ly :
     length vs = n * ly_size ly →
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ reshape (replicate n (ly_size ly)) vs) @ (array_t n (value_t (UntypedSynType ly))) -∗
+    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))) -∗
     v ◁ᵥ{π} vs @ value_t (UntypedSynType (mk_array_layout ly n)).
   Proof.
     iIntros (?) "Hv". iApply value_t_untyped_from_array'; last done.
@@ -117,7 +117,7 @@ Section value.
   Lemma ofty_value_untyped_to_array π l vs ly n :
     syn_type_has_layout (UntypedSynType ly) ly →
     (l ◁ₗ[π, Owned false] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I -∗
-    l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ reshape (replicate n (ly_size ly)) vs) @ ◁ (array_t n (value_t (UntypedSynType ly))).
+    l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (?) "Ha".
     iPoseProof (ltype_own_has_layout with "Ha") as "(%ly' & %Hst & %Hly)".
@@ -156,9 +156,9 @@ Section value.
       iApply value_t_untyped_from_array'; done.
     - simpl. eauto.
   Qed.
-  Lemma ofty_value_untyped_from_array  π l vs ly n :
+  Lemma ofty_value_untyped_from_array  π l (vs : val) ly n :
     length vs = n * ly_size ly →
-    (l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ reshape (replicate n (ly_size ly)) vs) @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
+    (l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
     (l ◁ₗ[π, Owned false] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I.
   Proof.
     iIntros (?) "Hv". iApply ofty_value_untyped_from_array'; last done.

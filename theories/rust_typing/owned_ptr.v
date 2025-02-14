@@ -10,13 +10,13 @@ From refinedrust Require Import options.
 Section owned_ptr.
   Context `{typeGS Σ} {rt} (inner : type rt).
 
-  Program Definition owned_ptr : type (place_rfn rt * loc) := {|
+  Program Definition owned_ptr : type (place_rfn rt * loc)%type := {|
     ty_xt := (rt * loc)%type;
     ty_xrt := λ x, (#x.1, x.2);
 
     ty_sidecond := True;
-    ty_own_val π '(r, l) v :=
-      ∃ (ly : layout), ⌜v = l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    ty_own_val π '(r, l) (v : val) :=
+      ∃ (ly : layout), ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
         £ num_cred ∗ atime 1 ∗
@@ -35,7 +35,7 @@ Section owned_ptr.
         loc_in_bounds l 0 void*.(ly_size) ∗
         (* also need this for the inner location to get the right unfolding equations *)
         loc_in_bounds li 0 ly.(ly_size) ∗
-        &frac{κ}(λ q', l ↦{q'} li) ∗
+        &frac{κ}(λ q', l ↦{q'} val_of_loc li) ∗
         (* later for contractiveness *)
         ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
 
@@ -103,7 +103,7 @@ Section owned_ptr.
     iApply (lc_fupd_add_later with "Hcred2"); iNext.
     iMod "Hu" as "(Hb & Htok & _)".
 
-    iMod (bor_fracture (λ q, l ↦{q} li)%I with "LFT Hl") as "Hl"; first solve_ndisj.
+    iMod (bor_fracture (λ q, l ↦{q} val_of_loc li)%I with "LFT Hl") as "Hl"; first solve_ndisj.
 
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".

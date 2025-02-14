@@ -5,7 +5,7 @@ Section type_inh.
   Context `{!typeGS Σ}.
 
   (* We need [Inhabited T_rt] because of [ty_xt_inhabited]. *)
-  Context {T_rt : Type} `{!Inhabited T_rt}.
+  Context {T_rt : RT} `{!Inhabited T_rt}.
 
   Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
       st_own π r v := ⌜v = []⌝%I;
@@ -42,7 +42,7 @@ Section fixpoint_def.
   Context `{!typeGS Σ}.
 
   (* We assume a contractive functor *)
-  Context {rt : Type} (F : type rt → type rt) `{Hcr : !TypeContractive F}.
+  Context {rt : RT} (F : type rt → type rt) `{Hcr : !TypeContractive F}.
   (* [rt] needs to be inhabited *)
   Context `{!Inhabited rt}.
 
@@ -349,7 +349,7 @@ Section fixpoint_def.
 End fixpoint_def.
 
 
-Lemma type_fixpoint_ne `{!typeGS Σ} {rt} `{!Inhabited rt} (T1 T2 : type rt → type rt)
+Lemma type_fixpoint_ne `{!typeGS Σ} {rt : RT} `{!Inhabited rt} (T1 T2 : type rt → type rt)
     `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} n :
   (∀ t, T1 t ≡{n}≡ T2 t) → type_fixpoint T1 ≡{n}≡ type_fixpoint T2.
 Proof.
@@ -401,7 +401,7 @@ Qed.
 
 Section fixpoint.
   Context `{!typeGS Σ}.
-  Context {rt} `{!Inhabited rt} (T : type rt → type rt) {HT: TypeContractive T}.
+  Context {rt : RT} `{!Inhabited rt} (T : type rt → type rt) {HT: TypeContractive T}.
 
   (* prevent [simpl] from unfolding it too much here *)
   Opaque prod_cofe.
@@ -495,7 +495,7 @@ End fixpoint.
 
 Section rules.
   Context `{!typeGS Σ}.
-  Context {rt} `{!Inhabited rt}.
+  Context {rt : RT} `{!Inhabited rt}.
   Context (F : type rt → type rt) `{!TypeContractive F}.
 
   (* on place access, unfold *)

@@ -8,6 +8,9 @@ From refinedrust Require Import options.
 
 Section typing.
   Context `{typeGS Σ}.
+
+  Implicit Types (rt : RT).
+
   (* NOTE: find_in_context instances should always have a sep conj in their premise, even if the LHS is just [True].
     This is needed by the liFindInContext/ liFindHypOrTrue automation!
   *)
@@ -964,7 +967,7 @@ Section typing.
 
   (** find obs *)
   Import EqNotations.
-  Lemma find_observation_direct (rt : Type) γ (T : find_observation_cont_t rt) :
+  Lemma find_observation_direct (rt : RT) γ (T : find_observation_cont_t rt) :
     find_in_context (FindOptGvarPobs γ) (λ res,
       match res with
       | inr _ => find_observation rt γ FindObsModeRel T
@@ -977,10 +980,10 @@ Section typing.
       iLeft. eauto with iFrame.
     - iIntros (??). by iApply "HT".
   Qed.
-  Global Instance find_observation_direct_inst (rt : Type) γ :
+  Global Instance find_observation_direct_inst (rt : RT) γ :
     FindObservation rt γ FindObsModeDirect := λ T, i2p (find_observation_direct rt γ T).
 
-  Lemma find_observation_rel (rt : Type) γ (T : find_observation_cont_t rt) :
+  Lemma find_observation_rel (rt : RT) γ (T : find_observation_cont_t rt) :
     find_in_context (FindOptGvarRel γ) (λ res,
       match res with
       | inr _ => T None
@@ -1003,7 +1006,7 @@ Section typing.
       iModIntro. iLeft. eauto with iFrame.
     - iIntros (??). iRight. done.
   Qed.
-  Global Instance find_observation_rel_inst (rt : Type) γ :
+  Global Instance find_observation_rel_inst (rt : RT) γ :
     FindObservation rt γ FindObsModeRel := λ T, i2p (find_observation_rel rt γ T).
 
   (** ** resolve_ghost *)
@@ -1819,9 +1822,9 @@ Section typing.
     iIntros (Φ) "#CTX #HE HL HΦ".
     rewrite /CallE.
     iApply wp_call_bind. iApply ("He" with "Hnamed CTX HE HL"). iIntros (L' π vf rtf tyf rf) "HL Hvf HT".
-    iAssert ([∗ list] v;rty∈[];([] : list $ @sigT Type (λ rt, (type rt * rt)%type)), let '(existT rt (ty, r)) := rty in v ◁ᵥ{π} r @ ty)%I as "-#Htys". { done. }
+    iAssert ([∗ list] v;rty∈[];([] : list $ @sigT RT (λ rt, (type rt * rt)%type)), let '(existT rt (ty, r)) := rty in v ◁ᵥ{π} r @ ty)%I as "-#Htys". { done. }
     move: {2 3 5} ([] : list val) => vl.
-    generalize (@nil (@sigT Type (fun rt : Type => prod (@type Σ H rt) rt))) at 2 3 as tys'; intros tys'.
+    generalize (@nil (@sigT RT (fun rt : RT => prod (@type Σ H rt) rt))) at 2 3 as tys'; intros tys'.
     iInduction es as [|e es] "IH" forall (L' vl tys') => /=. 2: {
       iApply ("HT" with "CTX HE HL"). iIntros (L'' π' v rt ty r) "HL Hv (-> & Hnext)".
       iApply ("IH" with "HΦ HL Hvf Hnext").
@@ -2278,7 +2281,7 @@ Section typing.
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
         prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri3 (
         (* end writing *)
-        typed_write_end π E L2 ot v ty r b2 bmin (if mstrong.(mstrong_strong) is Some _ then AllowStrong else AllowWeak) l2 lt3 ri3 (λ L3 (rt3' : Type) (ty3 : type rt3') (r3 : rt3') upd2,
+        typed_write_end π E L2 ot v ty r b2 bmin (if mstrong.(mstrong_strong) is Some _ then AllowStrong else AllowWeak) l2 lt3 ri3 (λ L3 (rt3' : RT) (ty3 : type rt3') (r3 : rt3') upd2,
         typed_place_finish π E L3 mstrong (access_result_meet upd upd2) R (llft_elt_toks κs) l b lt1 r1 lt2 ri2 (◁ ty3)%I (#r3) T)))))))
     ⊢ typed_write π E L e ot v ty r T.
   Proof.
@@ -2698,7 +2701,7 @@ Section typing.
   Qed.
 
   (** Finish a mutable borrow *)
-  Lemma type_borrow_mut_end E L π κ l (rt : Type) (ty : type rt) (r : place_rfn rt) b2 bmin T:
+  Lemma type_borrow_mut_end E L π κ l (rt : RT) (ty : type rt) (r : place_rfn rt) b2 bmin T:
     (** Check that the place is owned in a way which allows borrows *)
     ⌜bor_kind_mut_borrowable b2⌝ ∗
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
@@ -2921,7 +2924,7 @@ Section typing.
       iSplitR; done.
   Qed.
 
-  Lemma type_borrow_shr_end_owned E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) bmin wl T:
+  Lemma type_borrow_shr_end_owned E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) bmin wl T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
     ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
@@ -2974,7 +2977,7 @@ Section typing.
     TypedBorrowShrEnd π E L κ l ty r (Owned wl) bmin | 20 :=
     λ T, i2p (type_borrow_shr_end_owned E L π κ l ty r bmin wl T).
 
-  Lemma type_borrow_shr_end_uniq E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) bmin κ' γ T:
+  Lemma type_borrow_shr_end_uniq E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) bmin κ' γ T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
     ⌜lctx_lft_alive E L κ⌝ ∗
     ⌜Forall (lctx_lft_alive E L) (ty_lfts ty)⌝ ∗
@@ -3037,7 +3040,7 @@ Section typing.
     TypedBorrowShrEnd π E L κ l ty r (Uniq κ' γ) bmin | 20 :=
     λ T, i2p (type_borrow_shr_end_uniq E L π κ l ty r bmin κ' γ T).
 
-  Lemma type_borrow_shr_end_shared E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) κ' bmin T:
+  Lemma type_borrow_shr_end_shared E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) κ' bmin T:
     ⌜lctx_bor_kind_incl E L (Shared κ) bmin⌝ ∗
     (T (◁ ty) r)
     ⊢ typed_borrow_shr_end π E L κ l ty r (Shared κ') bmin T.

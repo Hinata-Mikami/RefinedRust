@@ -5,7 +5,7 @@ From refinedrust Require Import options.
 (** * Support for static variables *)
 
 Record btype `{!typeGS Σ} : Type := {
-  btype_rt : Type;
+  btype_rt : RT;
   btype_ty : type btype_rt;
   btype_r : btype_rt;
 }.
@@ -90,7 +90,7 @@ Section statics.
   Definition simplify_initialized_hyp_inst := [instance @simplify_initialized_hyp with 0%N].
   Global Existing Instance simplify_initialized_hyp_inst.
 
-  Lemma initialized_intro {rt} π ty name l (x : rt) :
+  Lemma initialized_intro {rt : RT} π ty name l (x : rt) :
     static_is_registered name l ty →
     static_has_refinement name x →
     (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty)) -∗
@@ -105,10 +105,12 @@ Section statics.
     repeat match goal with | H : existT _ _ = existT _ _ |- _ => apply existT_inj in H end.
     subst.
     iExists _, _. iR. iR.
-    by iFrame.
+    simpl. cbn.
+    rewrite (UIP_refl _ _ Heq').
+    done.
   Qed.
 
-  Lemma simplify_initialized_goal {rt} π (x : rt) name l ty
+  Lemma simplify_initialized_goal {rt : RT} π (x : rt) name l ty
     `{!TCFastDone (static_is_registered name l ty)} `{!TCFastDone (static_has_refinement name x)} T:
     (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty) ∗ T)
     ⊢ simplify_goal (initialized π name) T.

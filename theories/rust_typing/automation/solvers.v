@@ -32,11 +32,12 @@ Tactic Notation "unfold_opaque" constr(c) "in" constr(d) := with_strategy 0 [c] 
    explicitly give all implicit arguments, we need some hackery to
    apply the arguments of literal type terms that would usually be implicit.
    Basically, we handle the case that the literal term expects a [typeGS] assumption
-   and then a number of [Type]s that are later determined by the parameters we instantiate. *)
+   and then a number of [RT]s that are later determined by the parameters we instantiate. *)
 Ltac count_in_term' term acc :=
   match type of term with
-  | ∀ _ : Type, _ =>
-      count_in_term' constr:(term nat) constr:(S acc)
+  | ∀ _ : RT, _ =>
+      (* [ZRT] is a dummy to instantiate the generic *)
+      count_in_term' constr:(term ZRT) constr:(S acc)
   | _ => acc
   end.
 Ltac count_in_term term :=

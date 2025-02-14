@@ -10,7 +10,7 @@ Section rules.
 
 
   (** Typing rule for mutable borrows, manually applied by the tactics *)
-  Lemma type_mut_bor E L T e κ_name (ty_annot : option rust_type) :
+  Lemma type_mut_bor E L (T : typed_val_expr_cont_t) e κ_name (ty_annot : option rust_type) :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
       (named_lfts M -∗ typed_borrow_mut E L e κ ty_annot (λ L' π v γ rt ty r,
         T L' π v (place_rfn rt * gname)%type (mut_ref κ ty) (#r, γ)))))

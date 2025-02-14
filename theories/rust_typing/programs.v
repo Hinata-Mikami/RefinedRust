@@ -246,7 +246,7 @@ Global Hint Mode TypedOptionMap + + + ! - - : typeclass_instances.
 
 (** find type of val in context *)
 Definition FindVal `{!typeGS Σ} (v : val) :=
-  {| fic_A := @sigT Type (λ rt, type rt * rt * thread_id)%type; fic_Prop '(existT rt (ty, r, π)) := (v ◁ᵥ{π} r @ ty)%I; |}.
+  {| fic_A := @sigT RT (λ rt, type rt * rt * thread_id)%type; fic_Prop '(existT rt (ty, r, π)) := (v ◁ᵥ{π} r @ ty)%I; |}.
 Global Typeclasses Opaque FindVal.
 
 (** find type of val in context -- also allows to find location assignments by accepting an arbitrary prop [P].
@@ -256,17 +256,17 @@ Definition FindValP `{!typeGS Σ} (v : val) :=
 Global Typeclasses Opaque FindValP.
 
 (** find type of val with known rt in context *)
-Definition FindValWithRt `{!typeGS Σ} (rt : Type) (v : val) (π : thread_id) :=
+Definition FindValWithRt `{!typeGS Σ} (rt : RT) (v : val) (π : thread_id) :=
   {| fic_A := (type rt * rt)%type; fic_Prop '(ty, r) := (v ◁ᵥ{π} r @ ty)%I; |}.
 Global Typeclasses Opaque FindValWithRt.
 
 (** find type of location in context *)
 Definition FindLoc `{!typeGS Σ} (l : loc) :=
-  {| fic_A := @sigT Type (λ rt, ltype rt * (place_rfn rt) * bor_kind * thread_id)%type; fic_Prop '(existT rt (lt, r, b, π)) := (l ◁ₗ[π, b] r @ lt)%I; |}.
+  {| fic_A := @sigT RT (λ rt, ltype rt * (place_rfn rt) * bor_kind * thread_id)%type; fic_Prop '(existT rt (lt, r, b, π)) := (l ◁ₗ[π, b] r @ lt)%I; |}.
 Global Typeclasses Opaque FindLoc.
 
 Definition FindOptLoc `{!typeGS Σ} (l : loc) :=
-  {| fic_A := option (@sigT Type (λ rt, ltype rt * (place_rfn rt) * bor_kind * thread_id)%type); fic_Prop a :=
+  {| fic_A := option (@sigT RT (λ rt, ltype rt * (place_rfn rt) * bor_kind * thread_id)%type); fic_Prop a :=
       match a with Some (existT rt (lt, r, b, π)) => (l ◁ₗ[π, b] r @ lt)%I | _ => True%I end; |}.
 Global Typeclasses Opaque FindOptLoc.
 
@@ -282,7 +282,7 @@ Definition FindLocP `{!typeGS Σ} (l : loc) :=
 Global Typeclasses Opaque FindLocP.
 
 (** find type of location with known rt in context *)
-Definition FindLocWithRt `{!typeGS Σ} (rt : Type) (l : loc) (π : thread_id) :=
+Definition FindLocWithRt `{!typeGS Σ} (rt : RT) (l : loc) (π : thread_id) :=
   {| fic_A := (ltype rt * (place_rfn rt) * bor_kind)%type; fic_Prop '(lt, r, b) := (l ◁ₗ[π, b] r @ lt)%I; |}.
 Global Typeclasses Opaque FindLocWithRt.
 
@@ -325,7 +325,7 @@ Global Typeclasses Opaque FindOptLftDead.
 
 (** attempt to find an observation, or give up if there is none *)
 Definition FindOptGvarPobs `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT Type (λ rt, rt) + unit)%type;
+  {| fic_A := (@sigT RT (λ rt, rt) + unit)%type;
     fic_Prop a :=
       match a with
       | inl (existT rt r) => (gvar_pobs γ r)%I
@@ -339,7 +339,7 @@ Global Typeclasses Opaque FindOptGvarPobs.
   However, that leads to universe trouble when using the definition that I have not yet figured out.
 *)
 Definition FindGvarPobs `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT Type (λ rt, rt))%type;
+  {| fic_A := (@sigT RT (λ rt, rt))%type;
     fic_Prop '(existT rt r) := (gvar_pobs γ r)%I
   |}.
 Global Typeclasses Opaque FindGvarPobs.
@@ -351,7 +351,7 @@ Global Typeclasses Opaque FindGvarPobsP.
 
 (** Find a relation with the given gvar on the right hand side. *)
 Definition FindOptGvarRel `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT Type (λ rt, gname * (rt → rt → Prop)) + unit)%type;
+  {| fic_A := (@sigT RT (λ rt, gname * (rt → rt → Prop)) + unit)%type;
     fic_Prop a :=
       match a with
       | inl (existT rt (γ', R)) => (Rel2 γ' γ R)%I
@@ -374,7 +374,7 @@ Global Typeclasses Opaque FindInherit.
    The client needing this information will have to spawn a sidecondition (re-)proving it.
 *)
 Definition FindRelatedLoc `{!typeGS Σ} (π : thread_id) :=
-  {| fic_A := @sigT Type (λ rt, loc * ltype rt * (place_rfn rt) * bor_kind)%type;
+  {| fic_A := @sigT RT (λ rt, loc * ltype rt * (place_rfn rt) * bor_kind)%type;
      fic_Prop '(existT rt (l', lt, r, b)) := (l' ◁ₗ[π, b] r @ lt)%I;
   |}.
 Global Typeclasses Opaque FindRelatedLoc.
@@ -388,6 +388,7 @@ Definition find_tc_inst `{!typeGS Σ} (H : Type) (T : H → iProp Σ) : iProp Σ
 
 Section judgments.
   Context `{typeGS Σ}.
+  Implicit Types (rt : RT).
 
   Class SimplifyHypPlace (l : loc) (π : thread_id) {rt} (ty : type rt) (r : place_rfn rt) (n : option N) : Type :=
     simplify_hyp_place :: SimplifyHyp (l ◁ₗ[π, Owned false] r @ (◁ ty)%I) n.
@@ -451,7 +452,7 @@ Section judgments.
     typed_value_proof T : iProp_to_Prop (typed_value π v T).
 
   (** Typing of value expressions (unfolding [typed_value] for easier usage) *)
-  Definition typed_val_expr_cont_t := llctx → thread_id → val → ∀ (rt : Type), type rt → rt → iProp Σ.
+  Definition typed_val_expr_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → rt → iProp Σ.
   Definition typed_val_expr (E : elctx) (L : llctx) (e : expr) (T : typed_val_expr_cont_t) : iProp Σ :=
     (∀ Φ, rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       (∀ L' π v rt (ty : type rt) r, llctx_interp L' -∗ v ◁ᵥ{π} r @ ty -∗ T L' π v rt ty r -∗ Φ v) -∗
@@ -498,9 +499,9 @@ Section judgments.
 
   (** Typed call expressions, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
-  Definition typed_call π E L (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) (T : typed_val_expr_cont_t) : iProp Σ :=
+  Definition typed_call π E L (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_val_expr_cont_t) : iProp Σ :=
     (P -∗
-     ([∗ list] v;rt∈vl;tys, let '(existT rt (ty, r)) := rt in v ◁ᵥ{π} r @ ty) -∗
+     ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{π} r @ ty) -∗
      typed_val_expr E L (Call v (Val <$> vl)) T)%I.
   Class TypedCall π (E : elctx) (L : llctx) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
     typed_call_proof T : iProp_to_Prop (typed_call π E L eκs etys v P vl tys T).
@@ -512,7 +513,7 @@ Section judgments.
 
   (** Typing of annotated expressions -- annotation determined by the [A]*)
   (* A is the annotation from the code *)
-  Definition typed_annot_expr_cont_t := llctx → thread_id → val → ∀ (rt : Type), type rt → rt → iProp Σ.
+  Definition typed_annot_expr_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → rt → iProp Σ.
   Definition typed_annot_expr (E : elctx) (L : llctx) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) (T : typed_annot_expr_cont_t) : iProp Σ :=
     (rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ P ={⊤}[∅]▷=∗^n |={⊤}=> ∃ L2 π rt (ty : type rt) r, llctx_interp L2 ∗ v ◁ᵥ{π} r @ ty ∗ T L2 π v rt ty r).
   Class TypedAnnotExpr (E : elctx) (L : llctx) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) : Type :=
@@ -941,7 +942,7 @@ Section judgments.
     under a context where the intersected [bor_kind] is [b]?
     *)
   Section fix_inner.
-    Context {rt rt2 : Type}
+    Context {rt rt2 : RT}
     .
 
     (** [b] is the intersection of all bor_kinds which are "above" the position affecting this place.
@@ -1160,7 +1161,7 @@ Section judgments.
   Qed.
 
   (* controls conditions on refinement type changes *)
-  Definition place_access_rt_rel (bmin : bor_kind) (rt1 rt2 : Type) :=
+  Definition place_access_rt_rel (bmin : bor_kind) (rt1 rt2 : RT) :=
     match bmin with
     | Owned _ => True
     | _ => rt1 = rt2
@@ -1319,7 +1320,7 @@ Section judgments.
     | _ => True
     end.
 
-  Record weak_ctx (rto rti : Type) : Type := mk_weak {
+  Record weak_ctx (rto rti : RT) : Type := mk_weak {
     weak_lt : (ltype rti → place_rfn rti → ltype rto);
     weak_rfn : (place_rfn rti → place_rfn rto);
     weak_R : (ltype rti → place_rfn rti → iProp Σ)
@@ -1330,8 +1331,8 @@ Section judgments.
   Global Arguments mk_weak {_ _}.
   Add Printing Constructor weak_ctx.
 
-  Record strong_ctx (rti : Type) : Type := mk_strong {
-    strong_rt : Type → Type;
+  Record strong_ctx (rti : RT) : Type := mk_strong {
+    strong_rt : RT → RT;
     strong_lt : (∀ rti2, ltype rti2 → place_rfn rti2 → ltype (strong_rt rti2));
     strong_rfn : (∀ rti2, place_rfn rti2 → place_rfn (strong_rt rti2));
     strong_R : (∀ rti2, ltype rti2 → place_rfn rti2 → iProp Σ)
@@ -1348,7 +1349,7 @@ Section judgments.
   }.
   Add Printing Constructor immut_ctx.
 
-  Record mstrong_ctx (rto rti : Type) : Type := mk_mstrong {
+  Record mstrong_ctx (rto rti : RT) : Type := mk_mstrong {
     (* rt-changing *)
     mstrong_strong : option (strong_ctx rti);
     (* non-rt-changing *)
@@ -1402,7 +1403,7 @@ Section judgments.
       (* assume ownership of l1 *)
       l1 ◁ₗ[π, b1] r1 @ ltyo -∗
       (* precondition provided by the client that we necessarily need to go through to get Φ *)
-      (∀ (L' : llctx) (κs : list lft) (l2 : loc) (b2 bmin : bor_kind) (rti : Type) (ltyi : ltype rti) (ri : place_rfn rti)
+      (∀ (L' : llctx) (κs : list lft) (l2 : loc) (b2 bmin : bor_kind) (rti : RT) (ltyi : ltype rti) (ri : place_rfn rti)
         (mstrong : mstrong_ctx rto rti),
         (* sanity check *)
         (*bmin ⊑ₖ bmin0 -∗*)
@@ -1413,7 +1414,7 @@ Section judgments.
         (* for any update to l2 by the client, we need to update our "outer" place accordingly: *)
         (* we have a conjunction: the client can choose to do a strong, refinement-type changing update, or a weak update *)
         (match mstrong.(mstrong_strong) with | Some strong =>
-          ∀ (rti2 : Type) (ltyi2 : ltype rti2) (ri2 : place_rfn rti2),
+          ∀ (rti2 : RT) (ltyi2 : ltype rti2) (ri2 : place_rfn rti2),
           (* assume an update by the client *)
           l2 ◁ₗ[π, b2] ri2 @ ltyi2 -∗
           (* needs to have the same st *)
@@ -1519,7 +1520,7 @@ Section judgments.
     ty_has_op_type ty PtrOp MCCopy →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{π} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : Type) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
         typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
           T L' [] li b3 bmin rti ltyi ri
@@ -1590,7 +1591,7 @@ Section judgments.
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{π} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : Type) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
         typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
           T L' κs li b3 bmin rti ltyi ri
@@ -1649,7 +1650,7 @@ Section judgments.
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{π} r @ ty ={F}=∗
-      ∃ (l2 : loc) (rt2 : Type) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
+      ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
         typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
           T L' κs li b3 bmin rti ltyi ri
@@ -1736,10 +1737,10 @@ Section judgments.
   Inductive FindObsMode : Set :=
     | FindObsModeDirect
     | FindObsModeRel.
-  Definition find_observation_cont_t (rt : Type) : Type := option rt → iProp Σ.
-  Definition find_observation (rt : Type) (γ : gname) (m : FindObsMode) (T : find_observation_cont_t rt) : iProp Σ :=
+  Definition find_observation_cont_t (rt : RT) : Type := option rt → iProp Σ.
+  Definition find_observation (rt : RT) (γ : gname) (m : FindObsMode) (T : find_observation_cont_t rt) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗ |={F}=> (∃ r : rt, gvar_pobs γ r ∗ T (Some r)) ∨ T None.
-  Class FindObservation (rt : Type) (γ : gname) (m : FindObsMode) : Type :=
+  Class FindObservation (rt : RT) (γ : gname) (m : FindObsMode) : Type :=
     find_observation_proof T : iProp_to_Prop (find_observation rt γ m T).
 
 
@@ -1791,7 +1792,7 @@ Section judgments.
       ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       l ◁ₗ[π, b] r @ lt ={F}=∗
-      ∃ L' R (rt' : Type) (lt' : ltype rt') (r' : place_rfn rt'),
+      ∃ L' R (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt'),
       llctx_interp L' ∗
       ⌜ltype_st lt = ltype_st lt'⌝ ∗
       logical_step F (l ◁ₗ[π, b] r' @ lt' ∗ R) ∗
@@ -1808,7 +1809,7 @@ Section judgments.
       ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       l ◁ₗ[π, b] r @ lt ={F}=∗
-      ∃ L' R (rt' : Type) (lt' : ltype rt') (r' : place_rfn rt'),
+      ∃ L' R (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt'),
       llctx_interp L' ∗
       ⌜ltype_st lt = ltype_st lt'⌝ ∗
       l ◁ₗ[π, b] r' @ lt' ∗ R ∗
@@ -1920,7 +1921,7 @@ Section judgments.
     subltype_proof T : iProp_to_Prop (weak_subltype E L b r1 r2 lt1 lt2 T).
 
   (** Owned value subtyping (is NOT compatible with shared references). *)
-  Definition owned_type_incl π {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
+  Definition owned_type_incl π {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
     ⌜syn_type_size_eq (ty_syn_type ty1) (ty_syn_type ty2)⌝ ∗
     (ty_sidecond ty1 -∗ ty_sidecond ty2) ∗
     (∀ (v : val), v ◁ᵥ{ π} r1 @ ty1 -∗ v ◁ᵥ{ π} r2 @ ty2).
@@ -1934,14 +1935,14 @@ Section judgments.
     intros ly1 ly2 Hst1 Hst2. f_equiv. by eapply syn_type_has_layout_inj.
   Qed.
 
-  Definition owned_subtype π E L (pers : bool) {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
+  Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗ |={F}=> ∃ L',
     (□?pers owned_type_incl π r1 r2 ty1 ty2) ∗ llctx_interp L' ∗ T L'.
-  Class OwnedSubtype (π : thread_id) (E : elctx) (L : llctx) (pers : bool) {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Type :=
+  Class OwnedSubtype (π : thread_id) (E : elctx) (L : llctx) (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Type :=
     owned_subtype_proof T : iProp_to_Prop (owned_subtype π E L pers r1 r2 ty1 ty2 T).
 
   Lemma owned_subtype_weak_subtype π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) T :
@@ -2414,7 +2415,7 @@ Section judgments.
   | AllowStrong
   | AllowWeak.
   (* Lattice with ResultStrong < ResultWeak *)
-  Inductive access_result (rti rti2 : Type) : Type :=
+  Inductive access_result (rti rti2 : RT) : Type :=
   | ResultWeak (Heq : rti = rti2)
   | ResultStrong.
   Global Arguments ResultStrong {_ _}.
@@ -2424,7 +2425,7 @@ Section judgments.
     if mstrong.(mstrong_strong) is Some _ then AllowStrong
     else AllowWeak.
 
-  Definition access_result_meet {rti1 rti2 rti3 : Type} (r1 : access_result rti1 rti2) (r2 : access_result rti2 rti3) : access_result rti1 rti3 :=
+  Definition access_result_meet {rti1 rti2 rti3 : RT} (r1 : access_result rti1 rti2) (r2 : access_result rti2 rti3) : access_result rti1 rti3 :=
     match r1, r2 with
     | ResultWeak Heq1, ResultWeak Heq2 => ResultWeak $ eq_trans Heq1 Heq2
     | _, _ => ResultStrong
@@ -2436,7 +2437,7 @@ Section judgments.
     @access_result_meet rt1 rt2 rt3 ResultStrong o = ResultStrong.
   Proof. done. Qed.
 
-  Lemma access_result_lift (f : Type → Type) {rt1 rt2} :
+  Lemma access_result_lift (f : RT → RT) {rt1 rt2} :
     access_result rt1 rt2 → access_result (f rt1) (f rt2).
   Proof.
     refine (λ Ha,
@@ -2574,7 +2575,7 @@ Section judgments.
 
   (** ** Some utilities for finishing a place access by either using the strong or the weak VS *)
 
-  Inductive access_result_ctx {rto rti rti2 : Type} :=
+  Inductive access_result_ctx {rto rti rti2 : RT} :=
   | ARweak (Heq : rti = rti2) (weak : weak_ctx rto rti)
   | ARstrong (strong : strong_ctx rti).
   Global Arguments access_result_ctx : clear implicits.
@@ -2656,7 +2657,7 @@ Section judgments.
           + [ty' : type rt] : the type of the read value
           + [r' : rt] : the refinement of the read value
   *)
-  Definition typed_read_cont_t : Type := llctx → thread_id → val → ∀ rt : Type, type rt → rt → iProp Σ.
+  Definition typed_read_cont_t : Type := llctx → thread_id → val → ∀ rt : RT, type rt → rt → iProp Σ.
   Definition typed_read (E : elctx) (L : llctx) (e : expr) (ot : op_type) (T : typed_read_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -2687,7 +2688,7 @@ Section judgments.
     The continuation [T] has access to the new place type and refinement of [l] after reading ([lt']),
     and the type ([ty3]) and refinement that is "moved out" of [l] for the client to keep (i.e., the ownership of the read value)
   *)
-  Definition typed_read_end_cont_t (rt : Type) : Type :=
+  Definition typed_read_end_cont_t (rt : RT) : Type :=
     llctx → val → ∀ rt3, type rt3 → rt3 → ∀ rt', ltype rt' → place_rfn rt' → access_result rt rt' → iProp Σ.
   Definition typed_read_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (ac : access_allowed) (ot : op_type) (T : typed_read_end_cont_t rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
@@ -2708,7 +2709,7 @@ Section judgments.
           l ↦{q} v -∗
           v ◁ᵥ{π} r2 @ ty2 ={F}=∗
           (* ... we transform to some new ownership [ty3] that the client "can keep" (imagine we move out of [l]) *)
-          ∃ (L' : llctx) (rt3 : Type) (ty3 : type rt3) r3,
+          ∃ (L' : llctx) (rt3 : RT) (ty3 : type rt3) r3,
             (mem_cast v ot st) ◁ᵥ{π} r3 @ ty3 ∗
             (* and the lifetime context *)
             llctx_interp L' ∗
@@ -2758,7 +2759,7 @@ Section judgments.
 
     After the write, [l2] has a new type [ty3] that is passed on to the continuation.
   *)
-  Definition typed_write_end_cont_t rt2 := llctx → ∀ rt3 : Type, type rt3 → rt3 → access_result rt2 rt3 → iProp Σ.
+  Definition typed_write_end_cont_t rt2 := llctx → ∀ rt3 : RT, type rt3 → rt3 → access_result rt2 rt3 → iProp Σ.
   Definition typed_write_end (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 bmin : bor_kind) (ac : access_allowed) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) (T : typed_write_end_cont_t rt2) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -2774,7 +2775,7 @@ Section judgments.
 
       (* and after the client has written to [l2] ... *)
       logical_step F (l2 ↦ v1 ={F}=∗
-        ((∃ L' (rt3 : Type) (ty3 : type rt3) (r3 : rt3) res,
+        ((∃ L' (rt3 : RT) (ty3 : type rt3) (r3 : rt3) res,
         llctx_interp L' ∗
         (* [l2] is typed at a new type [ty3] satisfying the postcondition *)
         l2 ◁ₗ[π, b2] PlaceIn r3 @ (◁ ty3) ∗
@@ -2797,7 +2798,7 @@ Section judgments.
     * we type the place context with [typed_place]
     * we use [typed_borrow_mut_end] to do the final checking
   *)
-  Definition typed_borrow_mut_cont_t := llctx → thread_id → val → gname → ∀ (rt : Type), type rt → rt → iProp Σ.
+  Definition typed_borrow_mut_cont_t := llctx → thread_id → val → gname → ∀ (rt : RT), type rt → rt → iProp Σ.
   Definition typed_borrow_mut (E : elctx) (L : llctx) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_mut_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -2811,7 +2812,7 @@ Section judgments.
           £ num_cred -∗
           (* and the returned receipt *)
           atime 1 ={F}=∗
-          ∃ L' (π : thread_id) (rt : Type) (ty : type rt) (r : rt) (γ : gname) (ly : layout),
+          ∃ L' (π : thread_id) (rt : RT) (ty : type rt) (r : rt) (γ : gname) (ly : layout),
           (* a new observation *)
           gvar_obs γ r ∗
           (* and a borrow *)
@@ -2857,7 +2858,7 @@ Section judgments.
     * we type the place context with [typed_place]
     * we use [typed_borrow_shr_end] to do the final checking
   *)
-  Definition typed_borrow_shr_cont_t := llctx → thread_id → val → ∀ (rt : Type), type rt → place_rfn rt → iProp Σ.
+  Definition typed_borrow_shr_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → place_rfn rt → iProp Σ.
   Definition typed_borrow_shr (E : elctx) (L : llctx) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_shr_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -2868,7 +2869,7 @@ Section judgments.
       logical_step F (logical_step F (
         (* one credit for the inheritance VS *)
         £1 ={F}=∗
-        ∃ (L' : llctx) (π : thread_id) (rt : Type) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
+        ∃ (L' : llctx) (π : thread_id) (rt : RT) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
           place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ π r' l ∗
           ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
           ⌜l `has_layout_loc` ly⌝ ∗
@@ -2911,14 +2912,14 @@ Section judgments.
 
   (** ** Address-of judgments *)
   (** [*mut] address of *)
-  Definition typed_addr_of_mut_cont_t := llctx → thread_id → val → ∀ (rt : Type), type rt → rt → iProp Σ.
+  Definition typed_addr_of_mut_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → rt → iProp Σ.
   Definition typed_addr_of_mut (E : elctx) (L : llctx) (e : expr) (T : typed_addr_of_mut_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
     (* for any location provided to the client *)
     (∀ (l : loc),
       logical_step F (
-        ∃ L' (π : thread_id) (rt : Type) (ty : type rt) (r : rt),
+        ∃ L' (π : thread_id) (rt : RT) (ty : type rt) (r : rt),
         l ◁ᵥ{π} r @ ty ∗
         llctx_interp L' ∗
         T L' π (val_of_loc l) rt ty r) -∗
@@ -2938,8 +2939,8 @@ Section judgments.
     (* do a logical step in order to be able to create [OpenedLtype] *)
     logical_step F (
     ∃ (L' : llctx)
-      (rt0 : Type) (ty0 : type rt0) (r0 : rt0)
-      (rt' : Type) (lt' : ltype rt') (r' : place_rfn rt'),
+      (rt0 : RT) (ty0 : type rt0) (r0 : rt0)
+      (rt' : RT) (lt' : ltype rt') (r' : place_rfn rt'),
     (* provide ownership of some ty0, the result of the operation -- usually will be alias_ptr_t *)
     l ◁ᵥ{π} r0 @ ty0 ∗
     (* and blocked ownership of the borrowed location (where the notion of blocking is not fixed, and determined by the existentially-quantified lt');
@@ -3108,7 +3109,7 @@ Qed.
 
 (** Tactic hint to compute a semantic Rust type for a given syntactic [rust_type] *)
 Definition interpret_rust_type_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) (T : sigT type → iProp Σ) : iProp Σ :=
-  ∃ (rt : Type) (ty : type rt), T (existT _ ty).
+  ∃ (rt : RT) (ty : type rt), T (existT _ ty).
 #[global] Typeclasses Opaque interpret_rust_type_goal.
 Definition interpret_rust_type_pure_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) {rt} (ty : type rt) := True.
 Global Typeclasses Opaque interpret_rust_type_pure_goal.
@@ -3250,7 +3251,7 @@ Section folding.
 
   (* bundled ltypes *)
   Record bltype := mk_bltype {
-    bltype_rt : Type;
+    bltype_rt : RT;
     bltype_rfn : place_rfn bltype_rt;
     bltype_ltype : ltype bltype_rt;
   }.

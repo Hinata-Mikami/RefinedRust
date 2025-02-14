@@ -11,7 +11,7 @@ From refinedrust Require Import options.
   [Y] is the type it is being abstracted to,
   [YR] is the refinement type constructor (Y without place_rfn).
 *)
-Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
+Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
   inv_xr : Type;
   inv_xr_inh : Inhabited inv_xr;
   inv_xrt : inv_xr → Y;
@@ -34,7 +34,7 @@ Record ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := mk_ex_inv_def' {
     logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
 }.
 (* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
-Definition mk_ex_inv_def `{!typeGS Σ} {X Y : Type} (YR : Type) `{!Inhabited YR}
+Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} (YR : Type) `{!Inhabited YR}
   (inv_xrt : YR → Y)
   (inv_P : thread_id → X → Y → iProp Σ)
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
@@ -55,7 +55,7 @@ Global Arguments inv_P_shr_pers {_ _ _ _ _}.
 Global Existing Instance inv_P_shr_pers.
 
 (** Smart constructor for persistent and timeless [P] *)
-Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : Type} {Y : Type} (YR : Type) `{!Inhabited YR} (xtr : YR → Y) (P : X → Y → iProp Σ)
+Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} (YR : Type) `{!Inhabited YR} (xtr : YR → Y) (P : X → Y → iProp Σ)
   (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
   mk_ex_inv_def YR xtr (λ _, P) (λ _ _, P) [] [] _ _ _.
 Next Obligation.
@@ -76,7 +76,7 @@ Qed.
 
 
 
-Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
+Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_ne_val_own :
@@ -92,7 +92,7 @@ Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv
         (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
 }.
 
-Class ExInvDefContractive `{!typeGS Σ} {rt X Y : Type} (F : type rt → ex_inv_def X Y) : Type := {
+Class ExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
 
   ex_inv_def_contr_val_own :
@@ -136,7 +136,7 @@ End insts.
 Section ex.
   Context `{!typeGS Σ}.
   (* [Y] is the abstract refinement type, [X] is the inner refinement type *)
-  Context (X Y : Type)
+  Context (X Y : RT)
     (* invariant on the contained refinement *)
     (P : ex_inv_def X Y)
   .
@@ -234,7 +234,7 @@ End ex.
 Section contr.
   Context `{!typeGS Σ}.
 
-  Global Instance ex_inv_def_contractive {rt X Y : Type}
+  Global Instance ex_inv_def_contractive {rt X Y : RT}
     (P : type rt → ex_inv_def X Y)
     (F : type rt → type X) :
     ExInvDefContractive P →
@@ -267,7 +267,7 @@ Section contr.
   Qed.
   (* This should also work if only one of them is actually using the recursive argument. The other argument is trivially contractive, as it is constant. *)
 
-  Global Instance ex_inv_def_ne {rt X Y : Type}
+  Global Instance ex_inv_def_ne {rt X Y : RT}
     (P : type rt → ex_inv_def X Y)
     (F : type rt → type X)
     :
@@ -307,7 +307,7 @@ Notation "'∃;' P ',' τ" := (ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
 
 Section open.
   Context `{!typeGS Σ}.
-  Context {rt X : Type} (P : ex_inv_def rt X).
+  Context {rt X : RT} (P : ex_inv_def rt X).
 
   Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
     lftE ⊆ F →
@@ -473,7 +473,7 @@ End open.
 
 Section subtype.
   Context `{!typeGS Σ}.
-  Context {rt X : Type}.
+  Context {rt X : RT}.
   Lemma weak_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) T :
     ⌜r1 = r2⌝ ∗ ⌜ty1 = ty2⌝ ∗ ⌜P1 = P2⌝ ∗ T
     ⊢ weak_subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) T.
@@ -504,7 +504,7 @@ End subtype.
 
 Section stratify.
   Context `{!typeGS Σ}.
-  Context {rt X : Type} (P : ex_inv_def rt X).
+  Context {rt X : RT} (P : ex_inv_def rt X).
 
   (** Subsumption rule for introducing an existential *)
   (* TODO could have a more specific instance for persistent invariants with pers = true *)

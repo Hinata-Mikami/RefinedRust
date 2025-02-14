@@ -7,7 +7,7 @@ From refinedrust Require Import options.
 
 Section ltype_agree.
   Context `{typeGS Σ}
-    {rt}
+    {rt : RT}
     (ty : type rt).
 
   Lemma shr_ref_unfold_1_owned κ wl r :

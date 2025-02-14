@@ -20,7 +20,7 @@ Section subtype.
     ⌜e1.(enum_els) = e2.(enum_els)⌝ ∗
     ⌜e1.(enum_tag) = e2.(enum_tag)⌝ ∗
     (∀ r, ∃ (Heq : e1.(enum_rt) r = e2.(enum_rt) r),
-      type_incl (rew [λ x, x]Heq in e1.(enum_r) r) (e2.(enum_r) r) (rew Heq in e1.(enum_ty) r) (e2.(enum_ty) r))
+      type_incl (rew [RT_rt]Heq in e1.(enum_r) r) (e2.(enum_r) r) (rew Heq in e1.(enum_ty) r) (e2.(enum_ty) r))
   .
   Global Instance enum_incl_pers {rt} (e1 e2 : enum rt) : Persistent (enum_incl e1 e2).
   Proof. apply _. Qed.

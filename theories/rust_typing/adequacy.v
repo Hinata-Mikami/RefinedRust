@@ -15,7 +15,7 @@ Class typePreG Σ := PreTypeG {
   type_lftG                      :: lftGpreS Σ;
   type_frac_borrowG              :: frac_borG Σ;
   type_lctxG                     :: lctxGPreS Σ;
-  type_ghost_varG                :: ghost_varG Σ RT;
+  type_ghost_varG                :: ghost_varG Σ gvar_refinement.RT;
   type_pinnedBorG                :: pinnedBorG Σ;
   type_timeG                     :: timeGpreS Σ;
   type_heap_heap_inG             :: inG Σ (authR heapUR);
@@ -30,7 +30,7 @@ Definition typeΣ : gFunctors :=
     lftΣ;
     GFunctor (constRF fracR);
     lctxΣ;
-    ghost_varΣ RT;
+    ghost_varΣ gvar_refinement.RT;
     pinnedBorΣ;
     timeΣ;
     GFunctor (constRF (authR heapUR));
@@ -58,7 +58,7 @@ Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains :
   (* show that the main functions for the individual threads are well-typed for a provable precondition [P] *)
   (∀ {HtypeG : typeGS Σ},
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
-      [∗ list] main ∈ thread_mains, ∀ π, ∃ P, main ◁ᵥ{π} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
+      [∗ list] main ∈ thread_mains, ∀ π, ∃ P, (val_of_loc main) ◁ᵥ{π} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
   nsteps (Λ := c_lang) n (initial_prog <$> thread_mains, σ) obs (t2, σ2) →
   (* then it has not gotten stuck *)
@@ -102,7 +102,7 @@ Proof.
     iMod (na_alloc) as "(%π & Hna)".
     iDestruct ("Hfn" $! π) as (P) "[Hmain HP]".
     rewrite /initial_prog.
-    iApply (type_call_fnptr π [] [] 0 [] [] [] main main [] [] eq_refl (main_type P) [] (λ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
+    iApply (type_call_fnptr π [] [] 0 [] [] [] main (val_of_loc main) [] [] eq_refl (main_type P) [] (λ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
     + iExists (π, ⊤) => /=.
       iFrame. do 2 iR.
       iIntros "_". iExists eq_refl, -[], tt.

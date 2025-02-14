@@ -127,6 +127,7 @@ Proof.
     * simpl. specialize (IH (existT rt lt)).
       iIntros "(%ly0 & ? & ? & Hb)".
       iExists ly0. iFrame. iApply (IH with "[] Hb"); last done.
+      simpl in Hlook.
       eapply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
       by eapply list_elem_of_lookup_2.
     * injection Heq as -> Heq1 Heq2. simpl.
@@ -369,7 +370,7 @@ Section accessors.
   Lemma shadowed_ltype_acc_cur {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (r_cur : place_rfn rt_cur) l π b r :
     l ◁ₗ[π, b] r @ ShadowedLtype lt_cur r_cur lt_full -∗
     l ◁ₗ[π, b] r_cur @ lt_cur ∗
-    (∀ (rt_cur' : Type) (lt_cur' : ltype rt_cur') (r_cur' : place_rfn rt_cur'),
+    (∀ (rt_cur' : RT) (lt_cur' : ltype rt_cur') (r_cur' : place_rfn rt_cur'),
     ⌜ltype_st lt_cur = ltype_st lt_cur'⌝ -∗
       l ◁ₗ[π, b] r_cur' @ lt_cur' -∗
       l ◁ₗ[π, b] r @ ShadowedLtype lt_cur' (r_cur') lt_full).
