@@ -23,9 +23,10 @@ mod shims;
 mod spec_parsers;
 mod traits;
 mod types;
+mod unification;
 mod utils;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -239,6 +240,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         };
 
         let impl_ref = normalize_in_function(did, self.env.tcx(), impl_ref.skip_binder()).unwrap();
+        trace!("normalized impl_ref: {impl_ref:?}");
 
         let args = impl_ref.args;
         let trait_did = impl_ref.def_id;
@@ -269,10 +271,10 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             trait_path,
             for_type,
             method_specs,
-            spec_params_record: decl.names.spec_params_record.clone(),
-            spec_attrs_record: decl.names.spec_attrs_record.clone(),
-            spec_record: decl.names.spec_record.clone(),
-            spec_subsumption_proof: decl.names.spec_subsumption_proof.clone(),
+            spec_params_record: decl.trait_ref.impl_ref.spec_params_record.clone(),
+            spec_attrs_record: decl.trait_ref.impl_ref.spec_attrs_record.clone(),
+            spec_record: decl.trait_ref.impl_ref.spec_record.clone(),
+            spec_subsumption_proof: decl.trait_ref.impl_ref.spec_subsumption_proof.clone(),
         };
 
         Some(a)
@@ -1412,7 +1414,7 @@ fn assemble_trait_impls<'tcx, 'rcx>(
             let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
             let subject = vcx.env.tcx().impl_subject(did).skip_binder();
             if let ty::ImplSubject::Trait(trait_ref) = subject {
-                let mut methods = HashMap::new();
+                let mut methods = BTreeMap::new();
 
                 // TODO don't rely on definition order
                 // maybe instead iterate over the assoc items of the trait
@@ -1441,7 +1443,7 @@ fn assemble_trait_impls<'tcx, 'rcx>(
                 let instance_spec = radium::TraitInstanceSpec::new(methods);
 
                 // assemble the spec and register it
-                let spec = radium::TraitImplSpec::new(lit, impl_info, instance_spec);
+                let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
                 vcx.trait_impls.insert(did, spec);
             }
         }

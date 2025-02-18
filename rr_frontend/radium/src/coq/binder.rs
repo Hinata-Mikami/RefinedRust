@@ -34,6 +34,15 @@ impl Binder {
     }
 
     #[must_use]
+    pub fn new_rrgs() -> Self {
+        Self::new_generalized(
+            Kind::MaxImplicit,
+            Some("RRGS".to_owned()),
+            term::Type::Literal("refinedrustGS Σ".to_owned()),
+        )
+    }
+
+    #[must_use]
     pub(crate) fn get_name(&self) -> String {
         match self {
             Self::Default(name, _) => name.clone().unwrap_or_else(|| "_".to_owned()),

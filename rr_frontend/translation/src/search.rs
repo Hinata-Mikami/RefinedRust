@@ -2,6 +2,7 @@
 
 //! Utility functions for finding Rust source objects.
 
+use std::collections::HashMap;
 use std::mem;
 
 use log::{info, trace};
@@ -9,7 +10,7 @@ use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
 use rr_rustc_interface::{middle, span};
 
-use crate::types;
+use crate::{types, unification};
 
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
@@ -69,35 +70,6 @@ where
     }
 }
 
-/// Determine whether the two argument lists match for the type positions (ignoring consts and regions).
-/// The first argument is the authority determining which argument positions are types.
-/// The second argument may contain `None` for non-type positions.
-fn args_match_types<'tcx>(
-    reference: &[ty::GenericArg<'tcx>],
-    compare: &[Option<ty::GenericArg<'tcx>>],
-) -> bool {
-    if reference.len() != compare.len() {
-        return false;
-    }
-
-    for (arg1, arg2) in reference.iter().zip(compare.iter()) {
-        if let Some(ty1) = arg1.as_type() {
-            if let Some(arg2) = arg2 {
-                if let Some(ty2) = arg2.as_type() {
-                    if ty1 != ty2 {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-    true
-}
-
 /// Try to resolve the `DefId` of an implementation of a trait for a particular type.
 /// Note that this does not, in general, find a unique solution, in case there are complex things
 /// with different where clauses going on.
@@ -110,21 +82,23 @@ pub fn try_resolve_trait_impl_did<'tcx>(
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
 
-    let simplified_type =
-        middle::ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
-    let defs = impls.non_blanket_impls().get(&simplified_type)?;
-    info!("found implementations: {:?}", impls);
+    if let ty::TyKind::Param(_) = for_type.kind() {
+        // this is a blanket impl
+        let defs = impls.blanket_impls();
+        info!("found blanket implementations: {:?}", defs);
 
-    let mut solution = None;
-    for did in defs {
-        let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
-        let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
-
-        // check if this is an implementation for the right type
-        // TODO: is this the right way to compare the types?
-        if impl_self_ty == for_type {
+        let mut solution = None;
+        for did in defs {
             let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
-
+            // now we need to get the constraints and see if we can unify them
+            // TODO: come up with algorithm for that
+            // - I guess we need to unify the type variables here.
+            // - I'm assuming all type variables are open (this should be true -- all variables need to be
+            //   universally quantified)
+            // - I can just compute a mapping of indices to TyParam
+            // - and check that it remains consistent.
+            // Then I have an output mapping, and can check if the where clauses are satisfied for
+            // that mapping
             if let Some(impl_ref) = impl_ref {
                 let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
@@ -134,9 +108,16 @@ pub fn try_resolve_trait_impl_did<'tcx>(
                 // args has self at position 0 and generics of the trait at position 1..
 
                 // check if the generic argument types match up
-                if !args_match_types(&this_impl_args.as_slice()[1..], trait_args) {
+                let mut unification_map = HashMap::new();
+                if !unification::args_unify_types(
+                    &this_impl_args.as_slice()[1..],
+                    trait_args,
+                    &mut unification_map,
+                ) {
                     continue;
                 }
+
+                // TODO check if the where clauses match up
 
                 info!("found impl {:?}", impl_ref);
                 if solution.is_some() {
@@ -152,9 +133,64 @@ pub fn try_resolve_trait_impl_did<'tcx>(
                 }
             }
         }
-    }
 
-    solution
+        solution
+    } else {
+        let mut unification_map = HashMap::new();
+
+        // this is a non-blanket impl
+        let simplified_type = middle::ty::fast_reject::simplify_type(
+            tcx,
+            for_type,
+            ty::fast_reject::TreatParams::AsCandidateKey,
+        )?;
+        let defs = impls.non_blanket_impls().get(&simplified_type)?;
+        info!("found non-blanket implementations: {:?}", defs);
+
+        let mut solution = None;
+        for did in defs {
+            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
+            let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
+
+            // check if this is an implementation for the right type
+            if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
+                let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
+
+                if let Some(impl_ref) = impl_ref {
+                    let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
+
+                    let this_impl_args = impl_ref.args;
+                    // filter by the generic instantiation for the trait
+                    info!("found impl with args {:?}", this_impl_args);
+                    // args has self at position 0 and generics of the trait at position 1..
+
+                    // check if the generic argument types match up
+                    let mut unification_map = unification_map.clone();
+                    if !unification::args_unify_types(
+                        &this_impl_args.as_slice()[1..],
+                        trait_args,
+                        &mut unification_map,
+                    ) {
+                        continue;
+                    }
+
+                    info!("found impl {:?}", impl_ref);
+                    if solution.is_some() {
+                        println!(
+                            "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
+                            trait_did,
+                            for_type,
+                            solution.unwrap(),
+                            impl_ref.def_id,
+                        );
+                    } else {
+                        solution = Some(*did);
+                    }
+                }
+            }
+        }
+        solution
+    }
 }
 
 /// Try to resolve the `DefId` of a method in an implementation of a trait for a particular type.
@@ -175,14 +211,15 @@ pub fn try_resolve_trait_method_did<'tcx>(
     let defs = impls.non_blanket_impls().get(&simplified_type)?;
     info!("found implementations: {:?}", impls);
 
+    let mut unification_map = HashMap::new();
+
     let mut solution = None;
     for did in defs {
         let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
         let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
         // check if this is an implementation for the right type
-        // TODO: is this the right way to compare the types?
-        if impl_self_ty == for_type {
+        if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
             let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
 
             if let Some(impl_ref) = impl_ref {
@@ -194,7 +231,12 @@ pub fn try_resolve_trait_method_did<'tcx>(
                 // args has self at position 0 and generics of the trait at position 1..
 
                 // check if the generic argument types match up
-                if !args_match_types(&this_impl_args.as_slice()[1..], trait_args) {
+                let mut unification_map = unification_map.clone();
+                if !unification::args_unify_types(
+                    &this_impl_args.as_slice()[1..],
+                    trait_args,
+                    &mut unification_map,
+                ) {
                     continue;
                 }
 

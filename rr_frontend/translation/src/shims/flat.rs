@@ -10,6 +10,7 @@ use log::{info, trace};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
+use rr_rustc_interface::span::Symbol;
 use serde::{Deserialize, Serialize};
 
 use crate::spec_parsers::get_export_as_attr;
@@ -52,17 +53,11 @@ impl PathWithArgs {
     ) -> Option<Self> {
         let path = get_export_path_for_did(env, did);
         let mut flattened_args = Vec::new();
-        // TODO: how to represent type variables in case the definition is open?
-        let mut index = 0;
-        info!("flattening args {:?}", args);
+        info!("flattening args {args:?} for did {did:?}");
         for arg in args {
             if let Some(ty) = arg.as_type() {
-                // TODO not quite right yet (see above)
-                if !ty.is_param(index) {
-                    let flattened_ty = convert_ty_to_flat_type(env, ty)?;
-                    flattened_args.push(Some(flattened_ty));
-                }
-                index += 1;
+                let flattened_ty = convert_ty_to_flat_type(env, ty)?;
+                flattened_args.push(Some(flattened_ty));
             } else {
                 flattened_args.push(None);
             }
@@ -109,6 +104,7 @@ pub enum Type {
     Uint(ty::UintTy),
     Char,
     Bool,
+    Param(u32),
     // TODO: more cases
 }
 
@@ -150,6 +146,13 @@ impl Type {
             Self::Char => Some(tcx.mk_ty_from_kind(ty::TyKind::Char)),
             Self::Int(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Int(it.to_owned()))),
             Self::Uint(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Uint(it.to_owned()))),
+            Self::Param(idx) => {
+                // use a dummy. For matching with the procedures from `unification.rs`, we only
+                // need the indices to be consistent.
+                let param = ty::ParamTy::new(*idx, Symbol::intern("dummy"));
+                let kind = ty::TyKind::Param(param);
+                Some(tcx.mk_ty_from_kind(kind))
+            },
         }
     }
 }
@@ -167,6 +170,7 @@ pub fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) 
         ty::TyKind::Char => Some(Type::Char),
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
+        ty::TyKind::Param(p) => Some(Type::Param(p.index)),
         _ => None,
     }
 }
@@ -227,4 +231,9 @@ pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
     }
 
     get_cleaned_def_path(env.tcx(), did)
+}
+
+#[cfg(test)]
+mod tests {
+    // TODO can we test conversion to and from?
 }

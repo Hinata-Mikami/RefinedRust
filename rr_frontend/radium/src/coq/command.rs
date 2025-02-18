@@ -8,14 +8,15 @@
 //!
 //! [command]: https://coq.inria.fr/doc/v8.20/refman/coq-cmdindex.html
 
-use std::fmt;
+use std::fmt::{self, Write};
 
 use derive_more::Display;
 use from_variants::FromVariants;
+use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
 use crate::coq::{binder, eval, inductive, module, syntax, term, typeclasses, Attribute, Document, Sentence};
-use crate::make_indent;
+use crate::{make_indent, BASE_INDENT};
 
 /// A [command], with optional attributes.
 ///
@@ -198,11 +199,7 @@ impl Context {
     #[must_use]
     pub fn refinedrust() -> Self {
         Self {
-            items: binder::BinderList::new(vec![binder::Binder::new_generalized(
-                binder::Kind::MaxImplicit,
-                Some("RRGS".to_owned()),
-                term::Type::Literal("refinedrustGS Σ".to_owned()),
-            )]),
+            items: binder::BinderList::new(vec![binder::Binder::new_rrgs()]),
         }
     }
 }
@@ -224,10 +221,12 @@ pub struct Definition {
 
 impl Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
+
         if let Some(ty) = &self.ty {
-            write!(f, "Definition {} {} : {ty} := {}", self.name, self.params, self.body)
+            write!(f2, "Definition {} {} : {ty} :=\n{}", self.name, self.params, self.body)
         } else {
-            write!(f, "Definition {} {} := {}", self.name, self.params, self.body)
+            write!(f2, "Definition {} {} :=\n{}", self.name, self.params, self.body)
         }
     }
 }

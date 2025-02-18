@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 
 use log::{info, trace};
@@ -208,7 +208,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
             // get items
-            let mut methods = HashMap::new();
+            let mut methods = BTreeMap::new();
             let mut assoc_types = Vec::new();
             let items: &ty::AssocItems = self.env.tcx().associated_items(did);
             for c in items.in_definition_order() {
@@ -405,11 +405,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // Get the trait requirements of the callee
         let callee_requirements = scope::Params::get_trait_requirements_with_origin(self.env, did);
         trace!("non-trivial callee requirements: {callee_requirements:?}");
-        trace!("subsituting with args {:?}", params);
+        trace!("substituting with args {:?}", params);
 
         // For each trait requirement, resolve to a trait spec that we can provide
 
         // separate direct and indirect origins
+        // (indirect = surrounding scope)
+        // (direct = directly on this item)
         let mut direct_trait_spec_terms = Vec::new();
         let mut indirect_trait_spec_terms = Vec::new();
 
@@ -723,20 +725,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
         }
 
-        // Compute the instantiation of associated types of trait requirements
+        // keep this empty for now, as this may use other trait requirements from the current scope
+        // which have not been filled yet
         let mut assoc_dep_inst = Vec::new();
-        let trait_reqs = self.resolve_trait_requirements_in_state(scope, did, trait_ref.args)?;
-        trace!("Determined trait requirements: {trait_reqs:?}");
-
-        for req in trait_reqs {
-            let mut tys = Vec::new();
-            for ty in req.assoc_ty_inst {
-                let translated_ty = self.type_translator.translate_type_in_state(ty, scope)?;
-                tys.push(translated_ty);
-            }
-            let translated_req = radium::TraitReqInst::new(req.spec, req.origin, tys);
-            assoc_dep_inst.push(translated_req);
-        }
 
         // TODO: allow to override the assumed specification using attributes
         let spec_override = None;

@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
@@ -79,7 +79,7 @@ where
 {
     fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitAttrs, String> {
         let mut context_items = Vec::new();
-        let mut trait_attrs = HashMap::new();
+        let mut trait_attrs = BTreeMap::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;

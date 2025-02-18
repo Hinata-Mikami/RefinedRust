@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;
-use log::info;
+use log::{info, trace};
 use parse::{Parse, Peek};
 use radium::{coq, specs};
 use regex::{self, Captures, Regex};
@@ -20,6 +20,18 @@ use regex::{self, Captures, Regex};
 pub enum IdentOrTerm {
     Ident(String),
     Term(String),
+}
+
+impl IdentOrTerm {
+    fn process<'def, T: ParamLookup<'def>>(self, meta: &T) -> Self {
+        match self {
+            Self::Ident(id) => Self::Ident(id),
+            Self::Term(t) => {
+                let (s, _) = meta.process_coq_literal(&t);
+                Self::Term(s)
+            },
+        }
+    }
 }
 
 impl<U> parse::Parse<U> for IdentOrTerm
@@ -72,6 +84,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
 
         // refinement
         let rfn: IdentOrTerm = input.parse(meta)?;
+        let rfn = rfn.process(meta);
 
         // optionally, parse a type annotation (otherwise, use the translated Rust type)
         if parse::At::peek(input) {
@@ -300,6 +313,9 @@ pub trait ParamLookup<'def> {
     }
 
     fn process_coq_literal_xt(&self, s: &str, rt_is_xt: bool) -> (String, specs::TypeAnnotMeta) {
+        static IDENTCHARR: &str = "[_[[:alpha:]]]";
+        static PREFIXR: &str = "([^{]|^)";
+
         let mut annot_meta = specs::TypeAnnotMeta::empty();
 
         let s = handle_escapes(s);
@@ -318,14 +334,16 @@ pub trait ParamLookup<'def> {
         // compile these just once, not for every invocation of the method
         lazy_static! {
             //(::[[:alpha:]]*)?
-            static ref RE_RT_OF: Regex = Regex::new(r"([^{]|^)\{\s*rt_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
-            static ref RE_ST_OF: Regex = Regex::new(r"([^{]|^)\{\s*st_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
-            static ref RE_LY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ly_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
-            static ref RE_TY_OF: Regex = Regex::new(r"([^{]|^)\{\s*ty_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
-            static ref RE_XT_OF: Regex = Regex::new(r"([^{]|^)\{\s*xt_of\s+(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
-            static ref RE_LFT_OF: Regex = Regex::new(r"([^{]|^)\{\s*'([[:alpha:]]+)\s*\}").unwrap();
+            static ref IDENTR: String = format!(r"{IDENTCHARR}[0-9{IDENTCHARR}]*");
+            static ref PATHR: String = format!(r"(({}::)*)({})", *IDENTR, *IDENTR);
+            static ref RE_RT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*rt_of\s+{}\s*\}}", *PATHR)).unwrap();
+            static ref RE_ST_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*st_of\s+{}\s*\}}", *PATHR)).unwrap();
+            static ref RE_LY_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*ly_of\s+{}\s*\}}", *PATHR)).unwrap();
+            static ref RE_TY_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*ty_of\s+{}\s*\}}", *PATHR)).unwrap();
+            static ref RE_XT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*xt_of\s+{}\s*\}}", *PATHR)).unwrap();
+            static ref RE_LFT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*'({})\s*\}}", *IDENTR)).unwrap();
 
-            static ref RE_LIT: Regex = Regex::new(r"([^{]|^)\{\s*(([[:alpha:]]+::)*)([[:alpha:]]+)\s*\}").unwrap();
+            static ref RE_LIT: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*{}\s*\}}", *PATHR)).unwrap();
 
             static ref RE_DIRECT: Regex = Regex::new(r"\{(\{.*\})\}").unwrap();
         }
@@ -434,6 +452,8 @@ pub trait ParamLookup<'def> {
         let cs = RE_LIT.replace_all(&cs, |c: &Captures<'_>| {
             let mut path = parse_path(c.get(2));
             path.push(RustPathElem::AssocItem(c[4].to_string()));
+
+            trace!("looking up literal {path:?}");
 
             // first lookup literals
             let lit = self.lookup_literal(&path);
@@ -580,6 +600,18 @@ mod tests {
         scope
             .literals
             .insert(vec![RustPathElem::AssocItem("Size".to_owned())], "(trait_attrs).(size)".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "(trait_attrs).(size) 4");
+    }
+
+    #[test]
+    fn test_lit_2() {
+        let lit = "{Size_bla} 4";
+        let mut scope = TestScope::default();
+        scope
+            .literals
+            .insert(vec![RustPathElem::AssocItem("Size_bla".to_owned())], "(trait_attrs).(size)".to_owned());
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(trait_attrs).(size) 4");

@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use attribute_parse::{parse, MToken};
 use rr_rustc_interface::ast::ast::AttrItem;
@@ -37,7 +37,7 @@ impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
 
 impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
     fn parse_trait_impl_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitImplAttrs, String> {
-        let mut trait_attrs = HashMap::new();
+        let mut trait_attrs = BTreeMap::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
