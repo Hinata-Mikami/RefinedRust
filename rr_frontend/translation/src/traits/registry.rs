@@ -19,7 +19,9 @@ use crate::base::TranslationError;
 use crate::body::signature;
 use crate::environment::Environment;
 use crate::spec_parsers::propagate_method_attr_from_impl;
-use crate::spec_parsers::trait_attr_parser::{TraitAttrParser, VerboseTraitAttrParser};
+use crate::spec_parsers::trait_attr_parser::{
+    get_declared_trait_attrs, TraitAttrParser, VerboseTraitAttrParser,
+};
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
 use crate::types::scope;
 use crate::{attrs, base, traits, types};
@@ -174,28 +176,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
         }
 
-        // TODO: can we handle the case that this depends on a generic having the same trait?
-        // In principle, yes, but currently the implementation does not allow it.
-        // => Think more about this.
-
-        // get generics
-        let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
-        let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
-        param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
-
+        // first register the shim so we can handle recursive traits
         let trait_name = base::strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
-
-        // parse trait spec
         let trait_attrs = attrs::filter_for_tool(self.env.get_attributes(did.into()));
-        // As different attributes of the spec may depend on each other, we need to pass a closure
-        // determining under which Coq name we are going to introduce them
-        // Note: This needs to match up with `radium::LiteralTraitSpec.make_spec_attr_name`!
-        let mut attr_parser = VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
-        let trait_spec =
-            attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
         // get the declared attributes that are allowed on impls
-        let valid_attrs: HashSet<String> = trait_spec.attrs.attrs.keys().cloned().collect();
+        let valid_attrs: HashSet<String> =
+            get_declared_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
         // make the literal we are going to use
         let lit_trait_spec = self.make_literal_trait_spec(did.to_def_id(), trait_name.clone(), valid_attrs);
@@ -205,58 +192,83 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // (in fact, their environment contains their self instance)
         let lit_trait_spec_ref = self.register_shim(did.to_def_id(), lit_trait_spec)?;
 
-        // get items
-        let mut methods = HashMap::new();
-        let mut assoc_types = Vec::new();
-        let items: &ty::AssocItems = self.env.tcx().associated_items(did);
-        for c in items.in_definition_order() {
-            if ty::AssocKind::Fn == c.kind {
-                // get attributes
-                let attrs = self.env.get_attributes_of_function(c.def_id, &propagate_method_attr_from_impl);
+        let cont = || -> Result<(), TranslationError<'tcx>> {
+            // get generics
+            let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
+            let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
+            param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
 
-                // get function name
-                let method_name =
-                    self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let method_name = base::strip_coq_ident(&method_name);
+            // parse trait spec
+            // As different attributes of the spec may depend on each other, we need to pass a closure
+            // determining under which Coq name we are going to introduce them
+            // Note: This needs to match up with `radium::LiteralTraitSpec.make_spec_attr_name`!
+            let mut attr_parser =
+                VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
+            let trait_spec =
+                attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
-                let name = format!("{trait_name}_{method_name}");
-                let spec_name = format!("{name}_base_spec");
+            // get items
+            let mut methods = HashMap::new();
+            let mut assoc_types = Vec::new();
+            let items: &ty::AssocItems = self.env.tcx().associated_items(did);
+            for c in items.in_definition_order() {
+                if ty::AssocKind::Fn == c.kind {
+                    // get attributes
+                    let attrs =
+                        self.env.get_attributes_of_function(c.def_id, &propagate_method_attr_from_impl);
 
-                // get spec
-                let spec = signature::TX::spec_for_trait_method(
-                    self.env,
-                    c.def_id,
-                    &name,
-                    &spec_name,
-                    attrs.as_slice(),
-                    self.type_translator,
-                    self,
-                )?;
-                let spec_ref = self.fn_spec_arena.alloc(spec);
+                    // get function name
+                    let method_name =
+                        self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
+                    let method_name = base::strip_coq_ident(&method_name);
 
-                methods.insert(method_name, &*spec_ref);
-            } else if ty::AssocKind::Type == c.kind {
-                // get name
-                let type_name =
-                    self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
-                let type_name = base::strip_coq_ident(&type_name);
-                let lit = radium::LiteralTyParam::new(&type_name, &type_name);
-                assoc_types.push(lit);
+                    let name = format!("{trait_name}_{method_name}");
+                    let spec_name = format!("{name}_base_spec");
+
+                    // get spec
+                    let spec = signature::TX::spec_for_trait_method(
+                        self.env,
+                        c.def_id,
+                        &name,
+                        &spec_name,
+                        attrs.as_slice(),
+                        self.type_translator,
+                        self,
+                    )?;
+                    let spec_ref = self.fn_spec_arena.alloc(spec);
+
+                    methods.insert(method_name, &*spec_ref);
+                } else if ty::AssocKind::Type == c.kind {
+                    // get name
+                    let type_name =
+                        self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
+                    let type_name = base::strip_coq_ident(&type_name);
+                    let lit = radium::LiteralTyParam::new(&type_name, &type_name);
+                    assoc_types.push(lit);
+                }
             }
+
+            let base_instance_spec = radium::TraitInstanceSpec::new(methods);
+            let decl = radium::TraitSpecDecl::new(
+                lit_trait_spec_ref,
+                coq::binder::BinderList::new(trait_spec.context_items),
+                param_scope.into(),
+                assoc_types,
+                base_instance_spec,
+                trait_spec.attrs,
+            );
+
+            let mut scope = self.trait_decls.borrow_mut();
+            scope.insert(did, decl);
+            Ok(())
+        };
+
+        if let Err(err) = cont() {
+            // if there is an error, rollback the registration of the shim
+            let mut trait_literals = self.trait_literals.borrow_mut();
+            trait_literals.remove(&did.to_def_id());
+            return Err(err);
         }
-
-        let base_instance_spec = radium::TraitInstanceSpec::new(methods);
-        let decl = radium::TraitSpecDecl::new(
-            lit_trait_spec_ref,
-            coq::binder::BinderList::new(trait_spec.context_items),
-            param_scope.into(),
-            assoc_types,
-            base_instance_spec,
-            trait_spec.attrs,
-        );
-
-        let mut scope = self.trait_decls.borrow_mut();
-        scope.insert(did, decl);
 
         trace!("leave TR::register_trait");
         Ok(())

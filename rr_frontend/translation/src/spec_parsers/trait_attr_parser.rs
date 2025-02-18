@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
@@ -129,4 +129,29 @@ where
             context_items,
         })
     }
+}
+
+/// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
+pub fn get_declared_trait_attrs(attrs: &[&AttrItem]) -> Result<HashSet<String>, String> {
+    let mut trait_attrs = HashSet::new();
+
+    for &it in attrs {
+        let path_segs = &it.path.segments;
+        let args = &it.args;
+
+        let Some(seg) = path_segs.get(1) else {
+            continue;
+        };
+
+        let buffer = parse::Buffer::new(&it.args.inner_tokens());
+
+        if "exists" == seg.ident.name.as_str() {
+            let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
+            let parsed_name = parsed_name.to_string();
+            buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
+            trait_attrs.insert(parsed_name);
+        }
+    }
+
+    Ok(trait_attrs)
 }

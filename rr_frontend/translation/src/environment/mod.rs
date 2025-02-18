@@ -323,6 +323,11 @@ impl<'tcx> Environment<'tcx> {
 
     /// Check if this is the `DefId` of a method.
     pub fn is_method_did(&self, did: DefId) -> bool {
+        if self.tcx.is_trait(did) {
+            return false;
+        }
+
+        // TODO: find a more robust way to check this. We cannot call `type_of` on all dids.
         let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.tcx.type_of(did);
         let ty = ty.skip_binder();
         matches!(ty.kind(), ty::TyKind::FnDef(_, _))

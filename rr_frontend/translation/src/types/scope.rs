@@ -144,9 +144,10 @@ impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
         // first lookup if this is a type parameter
         if path.len() == 1 {
             if let RustPathElem::AssocItem(it) = &path[0] {
-                let idx = self.ty_names.get(it)?;
-                if let Some(n) = self.lookup_ty_param_idx(*idx) {
-                    return Some(radium::Type::LiteralParam(n.to_owned()));
+                if let Some(idx) = self.ty_names.get(it) {
+                    if let Some(n) = self.lookup_ty_param_idx(*idx) {
+                        return Some(radium::Type::LiteralParam(n.to_owned()));
+                    }
                 }
             }
         }
@@ -294,6 +295,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         //
         // In addition, also add special cases for when we are in a trait declaration or trait impl.
 
+        let is_trait = env.tcx().is_trait(did);
         let requirements = Self::get_trait_requirements_with_origin(env, did);
 
         // pre-register all the requirements, in order to resolve dependencies
@@ -304,6 +306,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
 
         for (trait_ref, origin, is_used_in_self_trait) in &requirements {
+            // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             if let Some(trait_spec) = trait_registry.lookup_trait(trait_ref.def_id) {
                 let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
@@ -333,7 +336,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
-        for (trait_ref, origin, _) in &requirements {
+        for (trait_ref, origin, is_used_in_self_trait) in &requirements {
             let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, *trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
@@ -445,7 +448,23 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        trace!("Leave add_param_env for did = {did:?}");
+        // if we are declaring the trait itself, add the associated types of the trait to the scope
+        // (we skip the self trait requirement above)
+        if is_trait {
+            let assoc_types = env.get_trait_assoc_types(did);
+            for ty_did in &assoc_types {
+                let name = env.get_assoc_item_name(*ty_did).unwrap();
+                let path = vec![RustPathElem::AssocItem(name.clone())];
+                let ty = radium::Type::LiteralParam(radium::LiteralTyParam::new(&name, &name));
+                if self.trait_scope.assoc_ty_names.get(&path).is_some() {
+                    warn!("Associated type path collision on did={did:?} for name={name:?}");
+                } else {
+                    self.trait_scope.assoc_ty_names.insert(path, ty);
+                }
+            }
+        }
+
+        trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
         Ok(())
     }
 }
@@ -570,10 +589,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 }
             }
 
-            // we are processing the Self requirement in the scope of a trait declaration, so skip
-            // this.
+            // we are processing the Self requirement in the scope of a trait declaration, so skip this.
             if is_trait && is_self {
                 continue;
+                //is_used_in_self_trait = true;
             }
 
             let origin =
