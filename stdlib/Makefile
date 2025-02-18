@@ -1,4 +1,4 @@
-STDLIB = ptr alloc option result vec btreemap rwlock closures spin 
+STDLIB = ptr alloc option result vec btreemap rwlock closures spin iterator
 
 RUST_TARGET ?= $(shell rustc -vV | sed -n 's|host: ||p')
 RUST_PATH ?=	target/$(RUST_TARGET)/release

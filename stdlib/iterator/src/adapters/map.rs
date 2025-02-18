@@ -1,4 +1,5 @@
 
+/*
 // TODO: problematic for this specification: The trait bounds for I, F are not in scope here.
 // TODO: should we expose the closure state?
 #[rr::refined_by("history" : "_", "iter" : "{rt_of I}", "clos" : "{rt_of F}")]
@@ -53,3 +54,4 @@ where
             .map(&mut self.f)
     }
 }
+*/

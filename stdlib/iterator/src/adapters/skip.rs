@@ -23,6 +23,7 @@ pub struct Skip<I> {
 // - either we skip (in the first call to next)
 // - or we just pass through
 
+/*
 #[rr::instantiate("History" := "λ s, s.(history)")]
 #[rr::instantiate("Next" := "λ s1 e s2,
         ⌜s2.(n) = 0⌝ ∗
@@ -41,6 +42,7 @@ pub struct Skip<I> {
                     m < n ∗
                     [∗ list] ...
         )")]
+*/
 impl<I> Iterator for Skip<I>
 where
     I: Iterator,

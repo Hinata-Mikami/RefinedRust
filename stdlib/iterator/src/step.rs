@@ -1,7 +1,6 @@
 #![rr::import("stdlib.iterator.theories", "step")]
 
 #[rr::export_as(core::iter::Step)]
-// TODO add support for using Self.
 #[rr::context("Steppable {rt_of Self}")]
 pub trait Step: Clone + PartialOrd + Sized {
     #[rr::args("#x", "#y")]

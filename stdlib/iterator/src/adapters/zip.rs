@@ -11,6 +11,7 @@ pub struct Zip<A, B> {
 
 /// NOTE: This impl isn't using the indirection via ZipImpl.
 
+/*
 /// Spec: history projection
 #[rr::instantiate("History" := "λ s, s.(history)")]
 #[rr::instantiate("Next" := "λ s1 e s2,
@@ -21,6 +22,7 @@ pub struct Zip<A, B> {
         {B.Next} s1.(b) e2 s2.(b) ∗
         ⌜if_Some e (λ e, ∃ e1' e2', e1 = Some e1' ∧ e2 = Some e2' ∧ e = (e1', e2'))⌝ ∗
         ⌜if_None e (e1 = None ∨ e2 = None)⌝")]
+*/
 impl<A, B> Iterator for Zip<A, B>
 where
     A: Iterator,

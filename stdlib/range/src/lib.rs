@@ -2,6 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("stdlib.range")]
 #![rr::include("option")]
 #![rr::include("iterator")]
@@ -10,7 +11,7 @@
 use std::iter::Step;
 
 #[rr::refined_by("start" : "{rt_of Idx}", "end" : "{rt_of Idx}")]
-#[rr::export_as(std::ops::Range)]
+#[rr::export_as(core::ops::Range)]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     #[rr::field("start")]
@@ -21,7 +22,7 @@ pub struct Range<Idx> {
 }
 
 
-#[rr::context()]
+//#[rr::context()]
 impl<A: Step> Iterator for Range<A> {
     type Item = A;
 
