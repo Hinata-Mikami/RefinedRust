@@ -975,6 +975,10 @@ Global Arguments Rel2 : simpl never.
 
 Global Hint Unfold OffsetLocSt : core.
 
+Global Typeclasses Opaque loc.
+Global Instance loc_inh : Inhabited loc.
+Proof. unfold loc. apply _. Qed.
+
 #[global] Typeclasses Opaque layout_wf.
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)

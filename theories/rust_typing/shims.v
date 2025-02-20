@@ -1,5 +1,6 @@
 From refinedrust Require Import typing.
 
+
 (** * Built-in shims for low-level pointer operations *)
 
 (** Tuple defs *)
@@ -499,7 +500,8 @@ Proof.
   { rewrite /ty_own_val /=. done. }
   iAssert (val_of_loc (ProvAlloc None, n : addr) ◁ᵥ{π} (ProvAlloc None, n : addr) @ alias_ptr_t)%I as "?".
   { rewrite /ty_own_val /= //. }
-  iAssert ((ProvAlloc None, n : addr) ◁ₗ[π, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "?".
+  set (l2 := (ProvAlloc None, n : addr) : loc).
+  iAssert (l2 ◁ₗ[π, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "?".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. simpl. iSplitR; first done.
     iSplitR. { iPureIntro. rewrite /has_layout_loc/aligned_to.

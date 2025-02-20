@@ -87,6 +87,13 @@ Proof.
   intros (p & ps & Hx). exists (p -:: ps). done.
 Qed.
 
+(* Instance that fires in case the product is hidden behind a definition, which the built-in Lithium support for pairs cannot see through. *)
+Global Instance simpl_exist_prod {A B} (Q : A * B → Prop) :
+  SimplExist (A * B) Q (∃ (a : A) (b : B), Q (a, b)).
+Proof.
+  intros (a & b & HQ). eauto.
+Qed.
+
 Global Instance simpl_forall_plist_cons {X} (F : X → Type) x xs T :
   SimplForall (plist F (x :: xs)) 1 T (∀ (a : F x) (s : plist F xs), T (a -:: s)).
 Proof. intros Q [? ?]. apply Q. Qed.

@@ -401,6 +401,7 @@ Notation "'$#@{' A '}' x" := (ty_xrt A x) (at level 9).
 Notation "'<$#>' x" := (fmap (M := list) (ty_xrt _) x) (at level 30).
 Notation "'<$#@{' A '}>' x" := (fmap (M := list) (ty_xrt A) x) (at level 30).
 Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (ty_xrt A) x) (at level 30).
+Notation "'<$#>@{' B '}' x" := (fmap (M := B) (ty_xrt _) x) (at level 30).
 
 (*** Cofe and Ofe *)
 Section ofe.
