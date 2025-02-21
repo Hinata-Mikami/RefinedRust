@@ -144,14 +144,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 loc_name, callee_did, translated_params, syntypes
             );
 
-            let specs = trait_specs.into_iter().map(|x| x.try_into().unwrap()).collect();
+            // translate the assoc tys of requirements
+            let mut trait_reqs = Vec::new();
+            for req in trait_specs {
+                let mut assoc_ty_inst = Vec::new();
+                for ty in req.assoc_ty_inst {
+                    self.ty_translator.translate_type(ty)?;
+                }
+                let new_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_ty_inst);
+                trait_reqs.push(new_req);
+            }
 
             let proc_use = radium::UsedProcedure::new(
                 loc_name,
                 spec_name,
                 extra_spec_args,
                 quantified_args.scope,
-                specs,
+                trait_reqs,
                 translated_params,
                 quantified_args.fn_lft_param_inst,
                 syntypes,
@@ -207,13 +216,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 method_loc_name, callee_did, translated_params, syntypes
             );
 
-            let specs = trait_specs.into_iter().map(|x| x.try_into().unwrap()).collect();
+            // translate the assoc tys of requirements
+            let mut trait_reqs = Vec::new();
+            for req in trait_specs {
+                let mut assoc_ty_inst = Vec::new();
+                for ty in req.assoc_ty_inst {
+                    self.ty_translator.translate_type(ty)?;
+                }
+                let new_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_ty_inst);
+                trait_reqs.push(new_req);
+            }
+
             let proc_use = radium::UsedProcedure::new(
                 method_loc_name,
                 method_spec_term,
                 vec![],
                 quantified_args.scope,
-                specs,
+                trait_reqs,
                 translated_params,
                 quantified_args.fn_lft_param_inst,
                 syntypes,

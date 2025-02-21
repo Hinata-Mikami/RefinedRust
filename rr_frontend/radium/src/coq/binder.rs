@@ -105,7 +105,7 @@ impl Binder {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Kind {
     /// `()
     Implicit,
@@ -152,6 +152,12 @@ impl BinderList {
     #[must_use]
     pub const fn empty() -> Self {
         Self(vec![])
+    }
+
+    pub fn make_implicit(&mut self, kind: Kind) {
+        for x in &mut self.0 {
+            x.make_implicit(kind);
+        }
     }
 
     pub fn append(&mut self, params: Vec<Binder>) {

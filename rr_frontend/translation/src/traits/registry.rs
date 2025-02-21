@@ -374,6 +374,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     all_impl_args.push(ty);
                 }
             }
+            //resolve_trait_requirements_in_state
+            // TODO we also need to resolve this impl's trait dependencies
+            // - then this becomes mutually recursive with `resolve_trait_requirements_in_state`,
+            // which is what I would expect.
+            // i.e. we need a GenericScopInst as well.
 
             radium::SpecializedTraitImpl::new(impl_spec, all_impl_args)
         } else {
@@ -605,6 +610,26 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 }
             }
 
+            // set up scope
+            let mut deps = HashSet::new();
+            let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(trait_impl_did);
+            let state = types::AdtState::new(&mut deps, &param_scope, &param_env);
+            let mut state = types::STInner::TranslateAdt(state);
+
+            let trait_reqs = self.resolve_trait_requirements_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+            trace!("Determined trait requirements in impl: {trait_reqs:?}");
+
+            let mut assoc_dep_inst = Vec::new();
+            for req in trait_reqs {
+                let mut tys = Vec::new();
+                for ty in req.assoc_ty_inst {
+                    let translated_ty = self.type_translator.translate_type_in_state(ty, &mut state)?;
+                    tys.push(translated_ty);
+                }
+                let translated_req = radium::TraitReqInst::new(req.spec, req.origin, tys);
+                assoc_dep_inst.push(translated_req);
+            }
+
             Ok(radium::TraitRefInst::new(
                 trait_spec_ref,
                 impl_ref,
@@ -612,6 +637,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 lft_inst,
                 params_inst,
                 assoc_types_inst,
+                assoc_dep_inst,
                 impl_spec.attrs,
             ))
         } else {
@@ -763,7 +789,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
         let trait_reqs = self.resolve_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
-        trace!("Determined trait requirements: {trait_reqs:?}");
+        trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
 
         let mut assoc_dep_inst = Vec::new();
         for req in trait_reqs {
@@ -775,6 +801,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let translated_req = radium::TraitReqInst::new(req.spec, req.origin, tys);
             assoc_dep_inst.push(translated_req);
         }
+        trace!("finalize_trait_use for {:?}: computed instantiation {assoc_dep_inst:?}", trait_use.did);
 
         let mut trait_use_ref = trait_use.trait_use.borrow_mut();
         let trait_use = trait_use_ref.as_mut().unwrap();

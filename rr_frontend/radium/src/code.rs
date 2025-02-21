@@ -1172,10 +1172,11 @@ pub struct UsedProcedure<'def> {
     ///   function)
     /// - additional lifetimes that the generic instantiation introduces, as well as all lifetime parameters
     ///   of this function
-    pub quantified_scope: GenericScope<'def, LiteralTraitSpecUse<'def>>,
+    pub quantified_scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
-    /// specialized specs for the trait assumptions
-    pub trait_specs: Vec<SpecializedTraitSpec<'def>>,
+    /// specialized specs for the trait assumptions of this procedure
+    /// TODO: should we use TraitReqInst instead?
+    pub trait_specs: Vec<TraitReqInst<'def, Type<'def>>>,
 
     /// The type parameters to instantiate the spec with
     pub type_params: Vec<Type<'def>>,
@@ -1210,8 +1211,9 @@ impl<'def> Display for UsedProcedure<'def> {
 
         // apply to trait specs
         for x in &self.trait_specs {
-            write!(f, "{} ", x.specialized_attr)?;
-            write!(f, "{} ", x)?;
+            let y: SpecializedTraitSpec<'def> = x.clone().try_into().unwrap();
+            write!(f, "{} ", y.specialized_attr)?;
+            write!(f, "{} ", y)?;
         }
 
         // instantiate lifetimes
@@ -1256,6 +1258,9 @@ pub struct FunctionBuilder<'def> {
 
     /// Extra link-time assumptions
     extra_link_assum: Vec<String>,
+
+    /// Do we already have a generic scope?
+    has_generic_scope: bool,
 }
 
 impl<'def> FunctionBuilder<'def> {
@@ -1272,6 +1277,7 @@ impl<'def> FunctionBuilder<'def> {
             tactics: Vec::new(),
             used_statics: Vec::new(),
             extra_link_assum: Vec::new(),
+            has_generic_scope: false,
         }
     }
 
@@ -1294,11 +1300,6 @@ impl<'def> FunctionBuilder<'def> {
     /// Add a manual tactic used for a sidecondition proof.
     pub fn add_manual_tactic(&mut self, tac: String) {
         self.tactics.push(tac);
-    }
-
-    /// Add a generic type used by this function.
-    pub fn add_ty_param(&mut self, t: LiteralTyParam) {
-        self.spec.generics.add_ty_param(t);
     }
 
     /// Get the universal lifetimes.
@@ -1330,9 +1331,13 @@ impl<'def> FunctionBuilder<'def> {
         self.spec.add_late_coq_param(param);
     }
 
-    /// Require that a particular trait is in scope.
-    pub fn add_trait_requirement(&mut self, req: LiteralTraitSpecUse<'def>) {
-        self.spec.generics.add_trait_requirement(req);
+    /// Set this function's generic scope.
+    pub fn provide_generic_scope(&mut self, scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>) {
+        if self.has_generic_scope {
+            panic!("Logic error: Function's generic scope has been initialized twice!");
+        }
+        self.spec.generics = scope;
+        self.has_generic_scope = true;
     }
 
     /// Add an extra link-time assumption.

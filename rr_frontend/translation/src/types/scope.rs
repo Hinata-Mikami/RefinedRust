@@ -117,7 +117,7 @@ pub struct Params<'tcx, 'def> {
 }
 
 #[allow(clippy::fallible_impl_from)]
-impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium::LiteralTraitSpecUse<'def>> {
+impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>> {
     fn from(mut x: Params<'tcx, 'def>) -> Self {
         let mut scope = Self::empty();
         for x in x.scope {
@@ -132,10 +132,11 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium:
             }
         }
         for key in x.trait_scope.ordered_assumptions {
+            // TODO: this is destroying everything since i'm taking stuff out of the refcells....
             let trait_use = x.trait_scope.used_traits.remove(&key).unwrap().trait_use;
-            let trait_use = trait_use.borrow_mut().take().unwrap();
             scope.add_trait_requirement(trait_use);
         }
+        trace!("Computed GenericScope: {scope:?}");
         scope
     }
 }

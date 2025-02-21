@@ -30,7 +30,7 @@ use crate::{base, regions, traits};
 /// Determines how to specialize the callee's generics in our spec assumption.
 pub struct AbstractedGenerics<'def> {
     /// the scope with new generics to quantify over for the function's specialized spec
-    pub scope: radium::GenericScope<'def, radium::LiteralTraitSpecUse<'def>>,
+    pub scope: radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>,
     /// instantiations for the specialized spec hint
     pub callee_lft_param_inst: Vec<radium::Lft>,
     pub callee_ty_param_inst: Vec<radium::Type<'def>>,

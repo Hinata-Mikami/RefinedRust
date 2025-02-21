@@ -223,7 +223,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Result<&registry::GenericTraitUse<'def>, TranslationError<'tcx>> {
-        trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
+        //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
         let res = match &self {
             Self::InFunction(state) => {
                 let res = state.generic_scope.trait_scope().lookup_trait_use(tcx, trait_did, args)?;
@@ -238,7 +238,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 res
             },
         };
-        trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
+        //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
         Ok(res)
     }
 

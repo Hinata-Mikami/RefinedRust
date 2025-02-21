@@ -593,17 +593,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add generic args to the fn
         let generics = &type_scope.generic_scope;
-        for t in generics.tyvars() {
-            translated_fn.add_ty_param(t);
-        }
-
-        // add specs for traits of generics
-        let trait_uses = type_scope.generic_scope.trait_scope().get_trait_uses();
-        for ((did, params), trait_ref) in trait_uses {
-            let trait_use_ref = trait_ref.trait_use.borrow();
-            let trait_use = trait_use_ref.as_ref().unwrap();
-            translated_fn.add_trait_requirement(trait_use.clone());
-        }
+        translated_fn.provide_generic_scope(generics.clone().into());
 
         // TODO: can we also setup the lifetime constraints here?
         // TODO: understand better how these clauses relate to Polonius
