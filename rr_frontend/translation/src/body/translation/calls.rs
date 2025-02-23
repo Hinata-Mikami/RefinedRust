@@ -126,7 +126,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .lookup_function(callee_did)
                 .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", callee_did)))?;
             // explicit instantiation is needed sometimes
-            let spec_name = format!("{} (RRGS:=RRGS)", meta.get_spec_name());
+            let spec_term = radium::UsedProcedureSpec::Literal(meta.get_spec_name().to_owned());
+
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
 
@@ -146,7 +147,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let proc_use = radium::UsedProcedure::new(
                 loc_name,
-                spec_name,
+                spec_term,
                 extra_spec_args,
                 quantified_args.scope,
                 fn_inst,
@@ -173,15 +174,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // explanation.
         let key = types::generate_args_inst_key(self.env.tcx(), ty_params)?;
 
-        let (method_loc_name, method_spec_term, method_params) =
+        let (method_loc_name, (method_spec_term, spec_scope, spec_inst), method_params) =
             self.ty_translator.register_use_trait_procedure(self.env, callee_did, ty_params)?;
+
         // re-quantify
-        let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
+        let mut quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             method_params,
             trait_specs,
             false,
         )?;
+
+        // we add spec_scope and spec_inst as the first lifetimes to quantify in the new scope
+        let mut function_spec_scope: radium::GenericScope<'_, _> = spec_scope.into();
+        function_spec_scope.append(&quantified_args.scope);
+
+        let ty_param_hint = quantified_args.callee_ty_param_inst;
+        let mut lft_param_hint = spec_inst.lft_insts;
+        lft_param_hint.append(&mut quantified_args.callee_lft_param_inst);
 
         let tup = (callee_did, key);
         let res;
@@ -207,7 +217,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 method_loc_name,
                 method_spec_term,
                 vec![],
-                quantified_args.scope,
+                function_spec_scope,
                 fn_inst,
                 syntypes,
             );
@@ -216,7 +226,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.collected_procedures.insert(tup, proc_use);
         }
         trace!("leave register_use_procedure");
-        Ok((res, quantified_args.callee_ty_param_inst, quantified_args.callee_lft_param_inst))
+        Ok((res, ty_param_hint, lft_param_hint))
     }
 
     /// Resolve the trait requirements of a function call.

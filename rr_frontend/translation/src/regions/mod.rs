@@ -6,7 +6,7 @@
 
 //! Utilities for translating region information.
 
-mod arg_folder;
+pub mod arg_folder;
 pub mod assignment;
 pub mod calls;
 pub mod composite;
@@ -31,7 +31,7 @@ use crate::environment::polonius_info;
 pub struct EarlyLateRegionMap {
     // maps indices of early and late regions to Polonius region ids
     pub early_regions: Vec<Option<ty::RegionVid>>,
-    pub late_regions: Vec<ty::RegionVid>,
+    pub late_regions: Vec<Vec<ty::RegionVid>>,
 
     // maps Polonius region ids to names
     pub region_names: BTreeMap<ty::RegionVid, radium::Lft>,
@@ -70,8 +70,9 @@ impl EarlyLateRegionMap {
         self.lookup_region(*vid)
     }
 
-    pub fn lookup_late_region(&self, idx: usize) -> Option<&radium::Lft> {
-        let vid = self.late_regions.get(idx)?;
+    pub fn lookup_late_region(&self, idx: usize, var: usize) -> Option<&radium::Lft> {
+        let binder = self.late_regions.get(idx)?;
+        let vid = binder.get(var)?;
         self.lookup_region(*vid)
     }
 

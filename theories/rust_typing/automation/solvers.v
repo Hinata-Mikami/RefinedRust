@@ -3368,15 +3368,6 @@ Ltac solve_function_subtype :=
       solve_function_subtype_hook
   end.
 
-Ltac solve_trait_incl :=
-  lazymatch goal with
-  | |- trait_incl_marker ?P =>
-      rewrite trait_incl_marker_unfold;
-      hnf;
-      intros;
-      split_and?;
-      first [solve_function_subtype | done ]
-end.
 
 (* Recursively destruct a product in hypothesis H, using the given name as template. *)
 Ltac destruct_product_hypothesis name H :=
@@ -3435,15 +3426,92 @@ Local Ltac strip_applied_params a acc cont :=
       end
   end.
 
-Local Ltac is_projection a :=
+(** Check if [a] is a projection of a record. *)
+Ltac is_projection a :=
   let a := eval hnf in a in
   match a with
   | match _ with _ => _ end =>
     idtac
   end.
 
-(** Find the trait parameter and trait spec record projection and pass it to [cont]. *)
-Ltac find_trait_term cont :=
+Local Ltac decompose_instantiated_spec_rec a ty_acc lft_acc cont :=
+  lazymatch a with
+  | spec_instantiate_lft_fst _ ?κ ?a =>
+      decompose_instantiated_spec_rec a ty_acc (κ :: lft_acc) cont
+  | spec_instantiate_typaram_fst _ _ ?ty ?a =>
+      decompose_instantiated_spec_rec a (ty +:: ty_acc) (lft_acc) cont
+  | _ => cont a ty_acc lft_acc
+  end.
+(** Decompose a term [a] of the shape [b <TY> ... <LFT> ... <INST!>]
+   into the list of type instantiations [ty_inst] and lifetime instantiations
+   [lft_inst], calling [cont b ty_inst lft_inst] afterwards. *)
+Ltac decompose_instantiated_spec a cont :=
+  lazymatch a with
+  | spec_instantiated (?a) =>
+      decompose_instantiated_spec_rec a (hnil id) (@nil lft) cont
+  end.
+
+(** Instantiate a spec term [spec] with types [tys] and lfts [lfts].
+  [tys] has to be a [plist id Type].
+  In contrast to directly applying [spec tys lfts], this works if it is not statically known that [spec] and [tys] have compatible types. *)
+Ltac instantiate_spec_rec spec tys lfts :=
+  lazymatch tys with
+  | +[] =>
+      lazymatch lfts with
+      | [] => constr:(spec)
+      | (?κ :: ?lfts) =>
+          instantiate_spec_rec constr:(spec <LFT> κ) tys lfts
+      end
+  | (?ty +:: ?tys) =>
+      instantiate_spec_rec constr:(spec <TY> ty) tys lfts
+  end.
+
+
+(** Given a quantified [trait_spec], find the spec inclusion assumption for this [trait_spec] and generate an instance of it for the instantiation [trait_ty_inst] and [trait_lft_inst].
+  Calls [cont t1 t2 H] afterwards, where [t1] and [t2] are the applied trait specs and [H] is the generated proof hypothesis. *)
+Ltac prove_trait_incl_for trait_spec trait_ty_inst trait_lft_inst cont :=
+  lazymatch goal with
+  | H : trait_incl_marker (lift_trait_incl ?incl trait_spec ?spec2) |- _ =>
+      let H2 := fresh in
+
+      let t1 := instantiate_spec_rec trait_spec trait_ty_inst trait_lft_inst in
+      let t1 := constr:(t1 <INST!>) in
+
+      let t2 := instantiate_spec_rec spec2 trait_ty_inst trait_lft_inst in
+      let t2 := constr:(t2 <INST!>) in
+
+      assert (incl t1 t2) as H2;
+      [ rewrite trait_incl_marker_unfold in H;
+        apply H
+      | cont t1 t2 H2 ]
+  end.
+(** Given a quantified [trait_spec], find the spec inclusion assumption for this [trait_spec] and generate an instance of it for the instantiation [trait_ty_inst] and [trait_lft_inst].
+  Then, get its projection [trait_proj] and apply it to [appspec].
+  Calls [cont t1 t2 H] afterwards, where [t1] and [t2] are the projected specs and [H] is the generated proof hypothesis. *)
+Ltac prove_trait_proj_incl_for trait_proj appspec trait_spec trait_ty_inst trait_lft_inst cont :=
+  prove_trait_incl_for trait_spec trait_ty_inst trait_lft_inst ltac:(fun t1 t2 H =>
+    let t1 := constr:(trait_proj t1) in
+    let t1 := apply_term_het constr:(t1) constr:(appspec) in
+
+    let t2 := constr:(trait_proj t2) in
+    let t2 := apply_term_het constr:(t2) constr:(appspec) in
+
+    let H2 := fresh in
+    assert (function_subtype t1 t2) as H2;
+    [ apply H
+    | clear H; cont H2 ]
+  ).
+
+
+(**
+  Given a [function_subtype] proof goal, check whether the left function spec is a projection of an assumed trait spec.
+  If that is the case, call [cont trait_proj trait_spec ty_inst lft_inst app],
+   where [trait_proj] is the projection of the trait spec record,
+   [trait_spec] is the quantified trait spec,
+   [ty_inst] is the instantiation of its type parameters,
+   [lft_inst] is the instantiation of its lifetime parameters,
+   and [app] is the list of terms the resuling spec was applied to. *)
+Ltac function_subtype_find_trait_spec cont :=
   match goal with
   | |- function_subtype ?a _ =>
       (* Find a subtype with function type... *)
@@ -3457,46 +3525,96 @@ Ltac find_trait_term cont :=
               strip_applied_params a (hnil id) ltac:(fun a acc =>
               is_projection a;
               match a with
-              | (?c1 ?c2) ?d =>
-                  (* d should be the spec parameter *)
-                  is_var d;
-                  (* c2 is the implicit params parameter *)
-                  is_var c2;
-                  cont c1 d acc
-              end)
+              | ?c1 ?d =>
+                  (* now decompose d into the instantiation *)
+                  decompose_instantiated_spec d ltac:(fun d ty lft =>
+                    is_var d;
+                    cont c1 d ty lft acc
+                  )
+              end
+              )
           end
       end
   end.
-(** Generate a [function_subtype] hypothesis from the assumed trait subsumption and pass it to [cont]. *)
-Ltac prove_trait_incl_for trait_spec trait_proj appspec cont :=
-  lazymatch goal with
-  | H : trait_incl_marker (?incl trait_spec ?spec2) |- _ =>
-      let H2 := fresh in
-      let t1 := constr:(trait_proj _ trait_spec) in
-      let t1 := apply_term_het constr:(t1) constr:(appspec) in
-      let t2 := constr:(trait_proj _ spec2) in
-      let t2 := apply_term_het constr:(t2) constr:(appspec) in
-      assert (function_subtype t1 t2) as H2;
-      [ rewrite trait_incl_marker_unfold in H; apply H | cont H2]
-  end.
-Ltac solve_trait_subtype :=
+
+Ltac function_subtype_solve_trait :=
   lazymatch goal with
   | |- FunctionSubtype ?a ?b =>
       is_evar b;
       rewrite /FunctionSubtype;
-      eapply (function_subtype_lift_generics_1 _ (λ x y, _));
+
+      (* we lift out all the generics *)
+      let κs := fresh "κs" in let tys := fresh "tys" in
+
+      (* we have to be a bit careful here with the RHS term, to make sure that the instantiation below doesn't fail due to evar scopes. *)
+      let evar_ident := fresh "_fn_term" in
+      eapply (function_subtype_lift_generics_1 _ (λ κs tys,
+        ltac:(evar (evar_ident : fn_spec); exact evar_ident)));
+
+      (* we destruct the tuples *)
+      intros κs tys;
+      destruct_product_hypothesis κs κs;
+      destruct_product_hypothesis tys tys;
+
+      (* and do the same in the context of the evar *)
+      let evar_ident := fresh "_fn_term2" in
+      only [_fn_term]: (destruct_product_hypothesis κs κs; evar (evar_ident : fn_spec); exact evar_ident);
+      only [_fn_term2]: destruct_product_hypothesis tys tys;
+
+      (* unfold <MERGE!>, so that the application can properly reduce *)
+      unfold spec_collapse_params;
+
+      simpl;
+      function_subtype_find_trait_spec ltac:(fun trait_proj trait_spec trait_ty_inst trait_lft_inst appspec =>
+        (* Prove the inclusion for this projection *)
+        prove_trait_proj_incl_for trait_proj appspec trait_spec trait_ty_inst trait_lft_inst
+        ltac:(fun H =>
+          (* apply the generated inclusion proof *)
+          eapply function_subtype_lift_generics_2 in H; simpl in H;
+          eapply function_subtype_trans; [apply H | ];
+          eapply function_subtype_refl
+        )
+      )
+  end.
+
+
+Global Hint Extern 3 (FunctionSubtype _ _) => function_subtype_solve_trait : typeclass_instances.
+
+Ltac strip_all_applied_params a acc cont :=
+  match a with
+  | ?a1 ?a2 =>
+      strip_all_applied_params a1 uconstr:(a2 +:: acc) cont
+  | _ => cont a acc
+  end.
+Ltac solve_trait_incl :=
+  lazymatch goal with
+  | |- trait_incl_marker ?P =>
+      rewrite trait_incl_marker_unfold;
       let κs := fresh in let tys := fresh in
       intros κs tys;
       destruct_product_hypothesis κs κs;
       destruct_product_hypothesis tys tys;
-      simpl;
-      find_trait_term ltac:(fun trait_proj trait_spec appspec => prove_trait_incl_for trait_spec trait_proj appspec
-        ltac:(fun H =>
-          eapply function_subtype_lift_generics_2 in H; simpl in H;
-          eapply function_subtype_trans; [apply H | ];
-          eapply function_subtype_refl
-        ))
-  end.
-
-
-Global Hint Extern 3 (FunctionSubtype _ _) => solve_trait_subtype : typeclass_instances.
+      (* check if we can decompose the first term *)
+      lazymatch goal with
+      | |- ?incl ?spec1 ?spec2 =>
+        decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
+          first [
+            (* look for an assumption we can specialize *)
+            is_var spec1;
+            prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
+              (* TODO: ideally, we should use transitivity instead and then go on *)
+              apply H2
+            )
+          | (* directly solve the inclusion *)
+            (* first unfold the inclusion *)
+            strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
+              unfold a;
+              intros;
+              split_and?;
+              intros;
+              first [solve_function_subtype | done ]
+            )
+          ]
+        )
+      end
+end.

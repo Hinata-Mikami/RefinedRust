@@ -18,7 +18,7 @@ use crate::base;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::{polonius_info, Environment};
-use crate::regions::arg_folder::ty_instantiate;
+use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::EarlyLateRegionMap;
 
@@ -118,16 +118,16 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
     let inputs: Vec<_> = late_sig
         .inputs()
         .iter()
-        .map(|ty| ty_instantiate(*ty, env.tcx(), subst_early_bounds))
+        .map(|ty| instantiate_open(*ty, env.tcx(), subst_early_bounds))
         .collect();
 
-    let output = ty_instantiate(late_sig.output(), env.tcx(), subst_early_bounds);
+    let output = instantiate_open(late_sig.output(), env.tcx(), subst_early_bounds);
 
     info!("Computed late region map {region_substitution_late:?}");
 
     let region_map = EarlyLateRegionMap::new(
         region_substitution_early,
-        region_substitution_late,
+        vec![region_substitution_late],
         universal_lifetimes,
         lifetime_names,
     );

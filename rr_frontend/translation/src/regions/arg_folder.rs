@@ -8,9 +8,113 @@ use rr_rustc_interface::middle::ty::visit::*;
 use rr_rustc_interface::middle::ty::{self, GenericArg, GenericArgKind, ParamConst, Ty, TyCtxt, TypeFolder};
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
 
+pub fn relabel_erased_regions<'tcx, T>(x: T, tcx: TyCtxt<'tcx>) -> (T, usize)
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
+    let mut folder = RegionRelabelVisitor {
+        tcx,
+        new_regions: 0_usize,
+    };
+    (x.fold_with(&mut folder), folder.new_regions)
+}
+
+/// Relabel erased regions into `RegionVid`s.
+struct RegionRelabelVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    new_regions: usize,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReErased => {
+                let new_idx = self.new_regions;
+                self.new_regions += 1;
+
+                ty::Region::new_var(self.interner(), ty::RegionVid::from(new_idx))
+            },
+            _ => r,
+        }
+    }
+}
+
+pub fn rename_region_vids<'tcx, T>(x: T, tcx: TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
+    let mut folder = RegionRenameVisitor {
+        tcx,
+        rename_map: map,
+    };
+    x.fold_with(&mut folder)
+}
+
+/// Rename `RegionVid`s.
+struct RegionRenameVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    rename_map: Vec<ty::Region<'tcx>>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(v) => {
+                let idx = v.index();
+                self.rename_map[idx]
+            },
+            _ => r,
+        }
+    }
+}
+
+/// Relable late bound regions.
+pub fn relabel_late_bounds<'tcx, T>(x: T, tcx: TyCtxt<'tcx>) -> T
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
+    let mut folder = RelabelLateBoundVisitor { tcx };
+    x.fold_with(&mut folder)
+}
+
+/// Rename `RegionVid`s.
+struct RelabelLateBoundVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReLateBound(idx, _) => {
+                //let idx = v.index();
+                //let new_idx = self.rename_map.get(idx).unwrap();
+
+                //new_idx.to_owned()
+                ty::Region::new_from_kind(self.interner(), ty::ReErased)
+            },
+            _ => r,
+        }
+    }
+}
+
 /// Instantiate a type with arguments.
 /// The type may contain open region variables `ReVar`.
-pub fn ty_instantiate<'tcx>(x: Ty<'tcx>, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> Ty<'tcx> {
+pub fn instantiate_open<'tcx, T>(x: T, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> T
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
     let mut folder = ArgFolder {
         tcx,
         args,

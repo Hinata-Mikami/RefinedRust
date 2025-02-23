@@ -15,7 +15,6 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable;
 
-use crate::base;
 use crate::base::*;
 use crate::environment::Environment;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
@@ -23,6 +22,7 @@ use crate::traits::registry::GenericTraitUse;
 use crate::traits::{self, registry};
 use crate::types::translator::*;
 use crate::types::tyvars::*;
+use crate::{base, regions};
 
 /// Key used for resolving early-bound parameters for function calls.
 /// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
@@ -106,6 +106,9 @@ impl Param {
 pub struct Params<'tcx, 'def> {
     /// maps generic indices (De Bruijn) to the corresponding Coq names in the current environment
     scope: Vec<Param>,
+    /// maps De Bruijn indices for late lifetimes to the lifetime
+    /// since rustc groups De Bruijn indices by (binder, var in the binder), this is a nested vec.
+    late_scope: Vec<Vec<radium::Lft>>,
 
     /// conversely, map the declaration name of a lifetime to an index
     lft_names: HashMap<String, usize>,
@@ -177,6 +180,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         with_origin: Option<(ty::TyCtxt<'tcx>, DefId)>,
     ) -> Self {
         let mut scope = Vec::new();
+        let mut late_scope = Vec::new();
+
         let mut region_count = 0;
 
         let mut ty_names = HashMap::new();
@@ -213,6 +218,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
         Self {
             scope,
+            late_scope,
             lft_names,
             ty_names,
             trait_scope: Traits::default(),
@@ -233,6 +239,14 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         lft.as_region()
     }
 
+    /// Lookup a late region parameter by its De Bruijn index.
+    #[must_use]
+    pub fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&radium::Lft> {
+        let binder = self.late_scope.get(binder)?;
+        let lft = binder.get(var)?;
+        Some(lft)
+    }
+
     /// Get all type parameters in scope.
     #[must_use]
     pub fn tyvars(&self) -> Vec<radium::LiteralTyParam> {
@@ -243,6 +257,70 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
         tyvars
+    }
+
+    /// Add bound regions when descending under a for<...> binder.
+    #[must_use]
+    pub fn translate_bound_regions(
+        &mut self,
+        bound_regions: &[ty::BoundRegionKind],
+    ) -> radium::TraitReqScope {
+        // We add these lifetimes to a special late scope, as the de bruijn indices are different
+        // from the early-bound binders
+        let mut regions_to_quantify = Vec::new();
+
+        let mut new_binder = Vec::new();
+        // the last element should be the one with the lowest index
+        for (idx, region) in bound_regions.iter().rev().enumerate().rev() {
+            // TODO smarter way to autogenerate anonymous names?
+            let name = region.get_name().map_or_else(
+                || format!("_lft_for_{idx}"),
+                |x| format!("lft_{}", strip_coq_ident(x.as_str())),
+            );
+
+            new_binder.push(name.clone());
+            if region.get_name().is_some() {
+                self.lft_names.insert(name.clone(), idx);
+            }
+
+            regions_to_quantify.push(name);
+        }
+        self.late_scope.insert(0, new_binder);
+
+        radium::TraitReqScope::new(regions_to_quantify)
+    }
+
+    /// Add bound regions when descending under a for<...> binder.
+    pub fn add_trait_req_scope(&mut self, scope: &radium::TraitReqScope) {
+        self.late_scope.insert(0, scope.quantified_lfts.clone());
+    }
+
+    /// Update the lifetimes in this scope with the information from a region map for a function.
+    /// We use this in order to get a scope that is sufficient for type translation out of a
+    /// `FunctionState`.
+    pub fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
+        // replace the early region names
+        for (idx, param) in self.scope.iter_mut().enumerate() {
+            if let Some(r) = param.as_region() {
+                let early_vid = map.early_regions[idx].as_ref().unwrap();
+                let name = &map.region_names[early_vid];
+                *param = Param::Region(name.to_owned());
+            }
+        }
+
+        // fill the late scope
+        assert!(self.late_scope.is_empty());
+        let mut idx = 0_usize;
+        for binder in &map.late_regions {
+            let mut new_binder = Vec::new();
+            for late_vid in binder {
+                let name = map.region_names.get(late_vid);
+                let name = name.map_or_else(|| format!("_lft_for_fn_{idx}"), ToOwned::to_owned);
+                new_binder.push(name);
+                idx += 1;
+            }
+            self.late_scope.push(new_binder);
+        }
     }
 
     /// Create a scope of typarams masked by a set of parameters.
@@ -298,29 +376,32 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // In addition, also add special cases for when we are in a trait declaration or trait impl.
 
         let is_trait = env.tcx().is_trait(did);
-        let requirements = Self::get_trait_requirements_with_origin(env, did);
+        let requirements = traits::requirements::get_trait_requirements_with_origin(env, did);
 
         // pre-register all the requirements, in order to resolve dependencies
-        for (trait_ref, _, _) in &requirements {
+        for (trait_ref, bound_regions, _, _) in &requirements {
             let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
-            let dummy_trait_use = trait_registry.make_empty_trait_use(*trait_ref);
+            let dummy_trait_use = trait_registry.make_empty_trait_use(*trait_ref, bound_regions.as_slice());
             self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
         }
 
-        for (trait_ref, origin, is_used_in_self_trait) in &requirements {
+        for (trait_ref, bound_regions, origin, is_used_in_self_trait) in &requirements {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             if let Some(trait_spec) = trait_registry.lookup_trait(trait_ref.def_id) {
                 let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
                 let entry = &self.trait_scope.used_traits[&key];
 
-                let mut deps = HashSet::new();
                 // the scope to translate the arguments in
-                let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &param_env));
+                // TODO add bound regions
+                // for that, have a wrapping scope that shadows stuff, I guess.
+                // - I need to push up the existing indices, I think.
+                // - clone and add the requirements?
 
                 trait_registry.fill_trait_use(
                     entry,
-                    &mut state,
+                    &*self,
+                    param_env,
                     trait_ref.to_owned(),
                     trait_spec,
                     *is_used_in_self_trait,
@@ -338,7 +419,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
-        for (trait_ref, origin, is_used_in_self_trait) in &requirements {
+        for (trait_ref, bound_regions, origin, is_used_in_self_trait) in &requirements {
             let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, *trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
@@ -369,7 +450,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
 
         // make a final pass to precompute the paths to associated types and attributes
-        for (trait_ref, origin, _) in requirements {
+        for (trait_ref, bound_regions, origin, _) in requirements {
             let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
             let entry = &self.trait_scope.used_traits[&key];
 
@@ -518,97 +599,6 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         0
     }
-
-    /// Determine the origin of a trait obligation.
-    /// `surrounding_reqs` are the requirements of a surrounding impl or decl.
-    fn determine_origin_of_trait_requirement(
-        did: DefId,
-        tcx: ty::TyCtxt<'tcx>,
-        surrounding_reqs: &Option<Vec<ty::TraitRef<'tcx>>>,
-        req: ty::TraitRef<'tcx>,
-    ) -> radium::TyParamOrigin {
-        if let Some(surrounding_reqs) = surrounding_reqs {
-            let in_trait_decl = tcx.trait_of_item(did);
-
-            if surrounding_reqs.contains(&req) {
-                if in_trait_decl.is_some() {
-                    return radium::TyParamOrigin::SurroundingTrait;
-                }
-                return radium::TyParamOrigin::SurroundingImpl;
-            }
-        }
-        radium::TyParamOrigin::Direct
-    }
-
-    /// Get the trait requirements of a [did], also determining their origin relative to the [did].
-    /// The requirements are sorted in a way that is stable across compilations.
-    pub fn get_trait_requirements_with_origin(
-        env: &Environment<'tcx>,
-        did: DefId,
-    ) -> Vec<(ty::TraitRef<'tcx>, radium::TyParamOrigin, bool)> {
-        trace!("Enter get_trait_requirements_with_origin for did={did:?}");
-        let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
-
-        // Are we declaring the scope of a trait?
-        let is_trait = env.tcx().is_trait(did);
-
-        // Determine whether we are declaring the scope of a trait method or trait impl method
-        let in_trait_decl = env.tcx().trait_of_item(did);
-        let in_trait_impl = env.trait_impl_of_method(did);
-
-        // if this has a surrounding scope, get the requirements declared on that, so that we can
-        // determine the origin of this requirement below
-        let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
-            let trait_param_env = env.tcx().param_env(trait_did);
-            Some(traits::requirements::get_nontrivial(env.tcx(), trait_param_env, None))
-        } else if let Some(impl_did) = in_trait_impl {
-            let impl_param_env = env.tcx().param_env(impl_did);
-            Some(traits::requirements::get_nontrivial(env.tcx(), impl_param_env, None))
-        } else {
-            None
-        };
-
-        let clauses = param_env.caller_bounds();
-        info!("Caller bounds: {:?}", clauses);
-
-        let in_trait_decl = if is_trait { Some(did) } else { in_trait_decl };
-        let requirements = traits::requirements::get_nontrivial(env.tcx(), param_env, in_trait_decl);
-        let mut annotated_requirements = Vec::new();
-
-        for trait_ref in requirements {
-            // check if we are in the process of translating a trait decl
-            let is_self = trait_ref.args[0].as_type().unwrap().is_param(0);
-            let mut is_used_in_self_trait = false;
-            if let Some(trait_decl_did) = in_trait_decl {
-                // is this a reference to the trait we are currently declaring
-                let is_use_of_self_trait = trait_decl_did == trait_ref.def_id;
-
-                if is_use_of_self_trait && is_self {
-                    // This is the self assumption of the trait we are currently implementing
-                    // For a function spec in a trait decl, we remember this, as we do not require
-                    // a quantified spec for the Self trait.
-                    is_used_in_self_trait = true;
-                }
-            }
-
-            // we are processing the Self requirement in the scope of a trait declaration, so skip this.
-            if is_trait && is_self {
-                continue;
-                //is_used_in_self_trait = true;
-            }
-
-            let origin =
-                Self::determine_origin_of_trait_requirement(did, env.tcx(), &surrounding_reqs, trait_ref);
-            info!("Determined origin of requirement {trait_ref:?} as {origin:?}");
-
-            annotated_requirements.push((trait_ref, origin, is_used_in_self_trait));
-        }
-
-        trace!(
-            "Leave get_trait_requirements_with_origin for did={did:?} with annotated_requirements={annotated_requirements:?}"
-        );
-        annotated_requirements
-    }
 }
 
 impl<'tcx, 'def> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, 'def> {
@@ -620,6 +610,7 @@ impl<'tcx, 'def> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, 'def> {
 impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
     fn from(x: &[ty::GenericParamDef]) -> Self {
         let mut scope = Vec::new();
+        let mut late_scope = Vec::new();
 
         let mut ty_names = HashMap::new();
         let mut lft_names = HashMap::new();
@@ -644,6 +635,7 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
         }
         Self {
             scope,
+            late_scope,
             lft_names,
             ty_names,
             trait_scope: Traits::default(),
@@ -654,7 +646,7 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
 /// A scope for translated trait requirements from `where` clauses.
 #[derive(Clone, Debug, Default)]
 pub struct Traits<'tcx, 'def> {
-    used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'def>>,
+    used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
     ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
 
     /// mapping of associated type paths in scope
@@ -672,7 +664,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&GenericTraitUse<'def>, traits::Error<'tcx>> {
+    ) -> Result<&GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
         if !tcx.is_trait(trait_did) {
             return Err(traits::Error::NotATrait(trait_did));
         }
@@ -687,12 +679,12 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
     }
 
     /// Get trait uses in the current scope.
-    pub const fn get_trait_uses(&self) -> &HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'def>> {
+    pub const fn get_trait_uses(&self) -> &HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>> {
         &self.used_traits
     }
 
     /// Within a trait declaration, get the Self trait use.
-    pub fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'def>> {
+    pub fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
         for trait_use in self.used_traits.values() {
             // check if this is the Self trait use
             {

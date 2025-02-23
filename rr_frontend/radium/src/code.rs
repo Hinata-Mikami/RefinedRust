@@ -875,7 +875,7 @@ impl<'def> Function<'def> {
             write!(f, "⊢ ")?;
         } else {
             for proc_use in &self.other_functions {
-                info!("Using other function: {:?} with insts: {:?}", proc_use.spec_name, proc_use.scope_inst);
+                info!("Using other function: {:?} with insts: {:?}", proc_use.spec_term, proc_use.scope_inst);
 
                 let arg_syntys: Vec<String> =
                     proc_use.syntype_of_all_args.iter().map(ToString::to_string).collect();
@@ -1152,13 +1152,42 @@ pub struct ConstPlaceMeta<'def> {
     pub ty: Type<'def>,
 }
 
+/// The specification of the procedure we call.
+#[derive(Clone, Debug)]
+pub enum UsedProcedureSpec<'def> {
+    /// A direct specification term.
+    Literal(String),
+    /// A method of a trait impl we quantify over.
+    TraitMethod(QuantifiedTraitImpl<'def>, String),
+}
+impl<'def> Display for UsedProcedureSpec<'def> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Literal(lit) => {
+                write!(f, "{lit} (RRGS:=RRGS)")
+            },
+            Self::TraitMethod(spec_use, method_name) => {
+                let spec = spec_use.trait_ref.borrow();
+                let spec = spec.as_ref().unwrap();
+
+                write!(
+                    f,
+                    "({} (RRGS:=RRGS) ({}))",
+                    spec.trait_ref.make_spec_method_name(method_name),
+                    spec_use.get_spec_term(),
+                )
+            },
+        }
+    }
+}
+
 /// Information about another procedure this function uses
 #[derive(Constructor, Clone, Debug)]
 pub struct UsedProcedure<'def> {
     /// The name to use for the location parameter
     pub loc_name: String,
-    /// The name of the specification definition
-    pub spec_name: String,
+    /// The term for the specification definition
+    pub spec_term: UsedProcedureSpec<'def>,
 
     /// extra arguments to pass to the spec
     pub extra_spec_args: Vec<String>,
@@ -1197,7 +1226,7 @@ impl<'def> Display for UsedProcedure<'def> {
             gen_rfn_type_inst.push(format!("({})", st));
         }
 
-        write!(f, "{} {} {} ", self.spec_name, gen_rfn_type_inst.join(" "), self.extra_spec_args.join(" "))?;
+        write!(f, "{} {} {} ", self.spec_term, gen_rfn_type_inst.join(" "), self.extra_spec_args.join(" "))?;
 
         // apply to trait specs
         for x in self

@@ -941,10 +941,16 @@ Section function_subsume.
   Definition type_call_fnptr_simplify_inst := [instance type_call_fnptr_simplify].
   Global Existing Instance type_call_fnptr_simplify_inst | 1.
 
+  (** Marker for automation to find trait inclusions *)
   Definition trait_incl_def (P : Prop) := P.
   Definition trait_incl_aux (P : Prop) : seal (trait_incl_def P). Proof. by eexists. Qed.
   Definition trait_incl_marker (P : Prop) := (trait_incl_aux P).(unseal).
   Definition trait_incl_marker_unfold (P : Prop) : trait_incl_marker P = P := (trait_incl_aux P).(seal_eq).
+
+  (** Lift trait inclusions to polymorphic contexts *)
+  Definition lift_trait_incl {A} (F : A → A → Prop) {lfts : nat} {rts : list Type} (a1 a2 : spec_with lfts rts A) :=
+    ∀ lfts tys, F (a1 lfts tys) (a2 lfts tys).
+
 End function_subsume.
 (* The last argument might contain evars when we start the search *)
 Global Hint Mode FunctionSubtype + + + - + - : typeclass_instances.

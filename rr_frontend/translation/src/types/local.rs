@@ -7,7 +7,7 @@
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use log::{info, trace, warn};
@@ -214,7 +214,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         env: &Environment<'tcx>,
         trait_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<GenericTraitUse<'def>, traits::Error<'tcx>> {
+    ) -> Result<GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
         let scope = self.scope.borrow();
         scope.generic_scope.trait_scope().lookup_trait_use(env.tcx(), trait_did, args).cloned()
     }
@@ -230,40 +230,67 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         env: &Environment<'tcx>,
         trait_method_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-    ) -> Result<(String, String, ty::GenericArgsRef<'tcx>), TranslationError<'tcx>> {
+    ) -> Result<
+        (
+            String,
+            (radium::UsedProcedureSpec<'def>, radium::TraitReqScope, radium::TraitReqScopeInst),
+            ty::GenericArgsRef<'tcx>,
+        ),
+        TranslationError<'tcx>,
+    > {
         let trait_did = env
             .tcx()
             .trait_of_item(trait_method_did)
             .ok_or(traits::Error::NotATrait(trait_method_did))?;
 
+        // get name of the method
+        let method_name = env.get_assoc_item_name(trait_method_did).unwrap();
+
         // split args
         let (trait_args, method_args) = Self::split_trait_method_args(env, trait_did, ty_params);
 
-        let trait_spec_use = {
+        // restrict the scope of the borrow
+        let (trait_use_ref, bound_regions_inst) = {
             let scope = self.scope.borrow();
             let entry = scope.generic_scope.trait_scope().lookup_trait_use(
                 env.tcx(),
                 trait_did,
                 trait_args.as_slice(),
             )?;
-            let trait_use_ref = entry.trait_use.borrow();
-            trait_use_ref.as_ref().unwrap().clone()
+            let trait_use_ref = entry.trait_use;
+
+            // compute the instantiation of this trait use's params by unifying the args
+            // this instantiation will be used as the instantiation hint in the function
+            let mut unifier = traits::registry::LateBoundUnifier::new(&entry.bound_regions);
+            unifier.unify_generic_args(entry.trait_ref.args, trait_args);
+            let bound_regions_inst = unifier.get_result();
+
+            (trait_use_ref, bound_regions_inst)
         };
 
-        // get name of the trait
-        let trait_name = trait_spec_use.trait_ref.name.clone();
+        let mut mapped_inst = Vec::new();
+        for region in bound_regions_inst {
+            let translated_region = self.translate_region(region)?;
+            mapped_inst.push(translated_region);
+        }
+        let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
+        trace!("using trait procedure with mapped instantiation: {mapped_inst:?}");
 
-        // get name of the method
-        let method_name = env.get_assoc_item_name(trait_method_did).unwrap();
-        let mangled_method_name =
-            types::mangle_name_with_args(&base::strip_coq_ident(&method_name), method_args.as_slice());
+        let trait_spec_use = trait_use_ref.borrow();
+        let trait_spec_use = trait_spec_use.as_ref().unwrap();
 
-        let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
+        let lifted_scope = trait_spec_use.scope.clone();
+        let quantified_impl =
+            radium::QuantifiedTraitImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
 
         // get spec. the spec takes the generics of the method as arguments
-        let method_spec_term = trait_spec_use.make_method_spec_term(&method_name);
+        let method_spec_term = radium::UsedProcedureSpec::TraitMethod(quantified_impl, method_name.clone());
 
-        Ok((method_loc_name, method_spec_term, method_args))
+        let mangled_method_name =
+            types::mangle_name_with_args(&base::strip_coq_ident(&method_name), method_args.as_slice());
+        let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
+
+        Ok((method_loc_name, (method_spec_term, lifted_scope, mapped_inst), method_args))
     }
 
     /// Abstract over the generics of a function and partially instantiate them.
@@ -392,12 +419,23 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // add trait requirements
         for req in trait_reqs {
+            // translate type in scope with HRTB binders
+            let scope = self.scope.borrow();
+            let param_env = self.translator.env().tcx().param_env(scope.did);
+            let mut scope = scope.make_params_scope();
+            scope.add_trait_req_scope(&req.scope);
+            let mut deps = HashSet::new();
+            let state = types::AdtState::new(&mut deps, &scope, &param_env);
+            let mut state = types::STInner::TranslateAdt(state);
+
+            // TODO: we need to add to lift up the HRTB lifetimes here.
+
             let mut assoc_inst = Vec::new();
             for ty in req.assoc_ty_inst {
-                let ty = self.translate_type(ty)?;
+                let ty = types::TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_inst);
+            let trait_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_inst, req.scope);
             fn_inst.add_trait_requirement(trait_req);
         }
 

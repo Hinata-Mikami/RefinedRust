@@ -131,6 +131,13 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             lifetime_scope: lifetimes,
         })
     }
+
+    /// Make a params scope including all late-bound lifetimes.
+    pub fn make_params_scope(&self) -> scope::Params<'tcx, 'def> {
+        let mut scope = self.generic_scope.clone();
+        scope.with_region_map(&self.lifetime_scope);
+        scope
+    }
 }
 
 /// Type translation state when translating an ADT.
@@ -157,6 +164,19 @@ impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
     }
 }
 
+/// Type translation state when translating trait requirements.
+#[derive(Constructor, Debug)]
+pub struct TraitState<'a, 'tcx, 'def> {
+    /// scope to track parameters
+    scope: scope::Params<'tcx, 'def>,
+    /// the current paramenv
+    param_env: ty::ParamEnv<'tcx>,
+    /// optional Polonius Info for the current function
+    #[debug(ignore)]
+    polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
+    lifetime_scope: Option<&'a EarlyLateRegionMap>,
+}
+
 /// Translation state for translating the interface of a called function.
 /// Lifetimes are completely erased since we only need these types for syntactic types.
 #[derive(Constructor, Debug)]
@@ -181,6 +201,8 @@ pub enum STInner<'b, 'def: 'b, 'tcx: 'def> {
     /// We are translating in an empty dummy scope.
     /// All regions are erased.
     CalleeTranslation(CalleeState<'b, 'tcx, 'def>),
+    /// we are translating trait requirements
+    TraitReqs(TraitState<'b, 'tcx, 'def>),
 }
 pub type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
 pub type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
@@ -195,12 +217,61 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         matches!(*self, Self::TranslateAdt(_))
     }
 
+    /// Create a copy of the param scope.
+    pub fn get_param_scope(&self) -> scope::Params<'tcx, 'def> {
+        match &self {
+            Self::InFunction(state) => state.make_params_scope(),
+            Self::TranslateAdt(state) => state.scope.to_owned(),
+            Self::CalleeTranslation(state) => state.param_scope.to_owned(),
+            Self::TraitReqs(state) => state.scope.clone(),
+        }
+    }
+
+    fn param_scope(&self) -> &scope::Params<'tcx, 'def> {
+        match &self {
+            Self::InFunction(state) => &state.generic_scope,
+            Self::TranslateAdt(state) => state.scope,
+            Self::CalleeTranslation(state) => state.param_scope,
+            Self::TraitReqs(state) => &state.scope,
+        }
+    }
+
+    pub fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
+        match &self {
+            Self::InFunction(state) => state.polonius_info,
+            Self::TranslateAdt(state) => None,
+            Self::CalleeTranslation(state) => None,
+            Self::TraitReqs(state) => state.polonius_info,
+        }
+    }
+
+    pub fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap> {
+        match &self {
+            Self::InFunction(state) => Some(&state.lifetime_scope),
+            Self::TranslateAdt(state) => None,
+            Self::CalleeTranslation(state) => None,
+            Self::TraitReqs(state) => state.lifetime_scope,
+        }
+    }
+
+    pub fn setup_trait_state<'b>(
+        &'b self,
+        tcx: ty::TyCtxt<'tcx>,
+        params: scope::Params<'tcx, 'def>,
+    ) -> STInner<'b, 'def, 'tcx> {
+        let param_env = self.get_param_env(tcx);
+        let state = TraitState::new(params, param_env, self.polonius_info(), self.polonius_region_map());
+        let state = STInner::TraitReqs(state);
+        state
+    }
+
     /// Get the `ParamEnv` for the current state.
     pub fn get_param_env(&self, tcx: ty::TyCtxt<'tcx>) -> ty::ParamEnv<'tcx> {
         match &self {
             Self::InFunction(state) => tcx.param_env(state.did),
             Self::TranslateAdt(state) => *state.param_env,
             Self::CalleeTranslation(state) => *state.param_env,
+            Self::TraitReqs(state) => state.param_env,
         }
     }
 
@@ -222,49 +293,19 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
-    ) -> Result<&registry::GenericTraitUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<&registry::GenericTraitUse<'tcx, 'def>, TranslationError<'tcx>> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
-        let res = match &self {
-            Self::InFunction(state) => {
-                let res = state.generic_scope.trait_scope().lookup_trait_use(tcx, trait_did, args)?;
-                res
-            },
-            Self::TranslateAdt(state) => {
-                let res = state.scope.trait_scope().lookup_trait_use(tcx, trait_did, args)?;
-                res
-            },
-            Self::CalleeTranslation(state) => {
-                let res = state.param_scope.trait_scope().lookup_trait_use(tcx, trait_did, args)?;
-                res
-            },
-        };
+        let res = self.param_scope().trait_scope().lookup_trait_use(tcx, trait_did, args)?;
         //trace!("Leave lookup_trait_use for trait_did = {trait_did:?}, args = {args:?} with res = {res:?}");
         Ok(res)
     }
 
     /// Lookup a type parameter in the current state
     fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
-        match self {
-            STInner::InFunction(scope) => {
-                let ty =
-                    scope.generic_scope.lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
-                        TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
-                    })?;
-                Ok(radium::Type::LiteralParam(ty.clone()))
-            },
-            STInner::TranslateAdt(scope) => {
-                let ty = scope.scope.lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
-                    TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
-                })?;
-                Ok(radium::Type::LiteralParam(ty.clone()))
-            },
-            Self::CalleeTranslation(state) => {
-                let ty = state.param_scope.lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
-                    TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
-                })?;
-                Ok(radium::Type::LiteralParam(ty.clone()))
-            },
-        }
+        let ty = self.param_scope().lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
+            TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
+        })?;
+        Ok(radium::Type::LiteralParam(ty.clone()))
     }
 
     /// Lookup an early-bound region.
@@ -289,24 +330,42 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 }
                 return Err(TranslationError::UnknownEarlyRegion(*region));
             },
+            STInner::TraitReqs(scope) => {
+                // TODO: ?
+                if region.has_name() {
+                    let name = region.name.as_str();
+                    return Ok(format!("ulft_{}", base::strip_coq_ident(name)));
+                }
+                return Err(TranslationError::UnknownEarlyRegion(*region));
+            },
             STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
         }
     }
 
     /// Lookup a late-bound region.
-    fn lookup_late_region(&self, region: usize) -> Result<radium::Lft, TranslationError<'tcx>> {
+    fn lookup_late_region(&self, binder: usize, var: usize) -> Result<radium::Lft, TranslationError<'tcx>> {
         match self {
             STInner::InFunction(scope) => {
-                info!("Looking up lifetime {region:?} in scope {:?}", scope.lifetime_scope);
+                info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
                 let lft = scope
                     .lifetime_scope
-                    .lookup_late_region(region)
-                    .ok_or(TranslationError::UnknownLateRegion(region))?;
+                    .lookup_late_region(binder, var)
+                    .ok_or(TranslationError::UnknownLateRegion(binder, var))?;
                 Ok(lft.to_owned())
             },
             STInner::TranslateAdt(scope) => {
-                info!("Translating region: ReLateBound {region:?} as None (outside of function)");
-                return Err(TranslationError::UnknownLateRegionOutsideFunction(region));
+                let lft = scope
+                    .scope
+                    .lookup_late_region_idx(binder, var)
+                    .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
+                Ok(lft.to_owned())
+            },
+            STInner::TraitReqs(scope) => {
+                let lft = scope
+                    .scope
+                    .lookup_late_region_idx(binder, var)
+                    .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
+                Ok(lft.to_owned())
             },
             STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
         }
@@ -330,6 +389,27 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                         .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
                     Ok(r.to_owned())
+                }
+            },
+            STInner::TraitReqs(scope) => {
+                if let Some(info) = scope.polonius_info {
+                    // If there is Polonius Info available, use that for translation
+                    let x = info.mk_atomic_region(v);
+                    let r = format_atomic_region_direct(&x, scope.lifetime_scope);
+                    info!("Translating region: ReVar {:?} as {:?}", v, r);
+                    Ok(r)
+                } else {
+                    // otherwise, just use the universal scope
+                    let r = scope
+                        .lifetime_scope
+                        .as_ref()
+                        .ok_or(TranslationError::UnknownPoloniusRegion(v))?
+                        .lookup_region(v)
+                        .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
+                    info!("Translating region: ReVar {:?} as {:?}", v, r);
+                    Ok(r.to_owned())
+                    //info!("Translating region: ReVar {:?} as None (trait)", v);
+                    //return Err(TranslationError::UnknownPoloniusRegion(v));
                 }
             },
             STInner::TranslateAdt(scope) => {
@@ -554,7 +634,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::RegionKind::ReLateBound(idx, r) => {
                 info!("Translating region: LateBound {:?} {:?}", idx, r);
-                translation_state.lookup_late_region(usize::from(idx))
+                translation_state.lookup_late_region(usize::from(idx), r.var.index())
             },
 
             ty::RegionKind::RePlaceholder(placeholder) => {

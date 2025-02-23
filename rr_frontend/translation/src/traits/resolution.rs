@@ -1,15 +1,20 @@
 //! Interface for resolving trait requirements using `rustc`'s trait resolution.
+use std::collections::HashMap;
+use std::mem;
+
 /// Inspired by (in terms of rustc APIs used) by
 /// <https://github.com/xldenis/creusot/blob/9d8b1822cd0c43154a6d5d4d05460be56710399c/creusot/src/translation/traits.rs>
-use log::info;
+use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::{
     AssocItem, AssocItemContainer, GenericArgsRef, ParamEnv, TraitRef, TyCtxt, TypeVisitableExt,
 };
-use rr_rustc_interface::trait_selection::traits::{ImplSource, NormalizeExt};
+use rr_rustc_interface::trait_selection::traits::{ImplSource, ImplSourceUserDefinedData, NormalizeExt};
 use rr_rustc_interface::{middle, trait_selection};
+
+use crate::regions::arg_folder;
 
 pub fn associated_items(tcx: TyCtxt, def_id: DefId) -> impl Iterator<Item = &AssocItem> {
     tcx.associated_items(def_id).in_definition_order()
@@ -68,34 +73,171 @@ pub fn resolve_impl_source<'tcx>(
     param_env: ParamEnv<'tcx>,
     did: DefId,
     substs: GenericArgsRef<'tcx>,
-) -> Option<&'tcx ImplSource<'tcx, ()>> {
-    let substs = tcx.normalize_erasing_regions(param_env, substs);
+) -> Option<ImplSource<'tcx, ()>> {
+    // we erase regions, because candidate selection cannot deal with open region variables
+    let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
+    //tcx.erase_regions
+    trace!("erased args: {erased_substs:?}");
+    let erased_substs = arg_folder::relabel_late_bounds(erased_substs, tcx);
+    trace!("erased args: {erased_substs:?}");
+    // TODO this will still have late bounds, which trait selection cannot deal with.
+    // what if I erase them as well?
 
     // Check if the `did` is an associated item
     let trait_ref = if let Some(item) = tcx.opt_associated_item(did) {
         match item.container {
             AssocItemContainer::TraitContainer => {
                 // this is part of a trait declaration
-                TraitRef::new(tcx, item.container_id(tcx), substs)
+                TraitRef::new(tcx, item.container_id(tcx), erased_substs)
             },
             AssocItemContainer::ImplContainer => {
                 // this is part of an implementation of a trait
-                tcx.impl_trait_ref(item.container_id(tcx))?.instantiate(tcx, substs)
+                tcx.impl_trait_ref(item.container_id(tcx))?.instantiate(tcx, erased_substs)
             },
         }
     } else {
         // Otherwise, check if it's a reference to a trait itself
         if tcx.is_trait(did) {
-            TraitRef::new(tcx, did, substs)
+            TraitRef::new(tcx, did, erased_substs)
         } else {
             return None;
         }
     };
 
-    tcx.codegen_select_candidate((param_env, trait_ref)).ok()
+    let res = tcx.codegen_select_candidate((param_env, trait_ref)).ok()?;
+    Some(recover_lifetimes_for_impl_source(tcx, param_env, trait_ref, substs, res))
 }
 
-pub fn resolve_trait_or_item<'tcx>(
+fn recover_lifetimes_for_impl_source<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    trait_ref: TraitRef<'tcx>,
+    substs: GenericArgsRef<'tcx>,
+    impl_source: &'tcx ImplSource<'tcx, ()>,
+) -> ImplSource<'tcx, ()> {
+    match impl_source {
+        ImplSource::UserDefined(impl_data) => {
+            let impl_did = impl_data.impl_def_id;
+            let impl_args = impl_data.args;
+
+            trace!("resolved to impl {impl_did:?} with args {impl_args:?}");
+
+            // enumerate regions in args
+            let (enumerated_impl_args, num_regions) = arg_folder::relabel_erased_regions(impl_args, tcx);
+
+            trace!("re-enumerated impl args: {enumerated_impl_args:?}");
+
+            // translate to trait args
+            let subject = tcx.impl_subject(impl_did);
+            //let subject = subject.instantiate(tcx, enumerated_impl_args.as_slice());
+            let subject = subject.skip_binder();
+            let subject = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
+
+            let ty::ImplSubject::Trait(subject_ref) = subject else {
+                unreachable!();
+            };
+
+            trace!("implementing trait {:?} for args {:?}", subject_ref.def_id, subject_ref.args);
+
+            // find the mapping
+            let mut mapper = RegionMapper {
+                map: HashMap::new(),
+            };
+            mapper.map_generic_args(subject_ref.args, substs);
+            let region_map = mapper.get_result(num_regions);
+            trace!("recovered region map: {region_map:?}");
+
+            // then instantiate the enumerated_impl_args with the mapping
+            let renamed_impl_args = arg_folder::rename_region_vids(enumerated_impl_args, tcx, region_map);
+
+            let new_data = ImplSourceUserDefinedData {
+                impl_def_id: impl_did,
+                args: renamed_impl_args,
+                nested: impl_data.nested.clone(),
+            };
+            ImplSource::UserDefined(new_data)
+        },
+        ImplSource::Param(_) => {
+            // TODO?
+            impl_source.to_owned()
+        },
+        ImplSource::Builtin(_, _) => impl_source.to_owned(),
+    }
+}
+
+struct RegionMapper<'tcx> {
+    map: HashMap<ty::RegionVid, ty::Region<'tcx>>,
+}
+impl<'tcx> RegionMapper<'tcx> {
+    fn get_result(mut self, num_regions: usize) -> Vec<ty::Region<'tcx>> {
+        let mut res = Vec::new();
+        for i in 0..num_regions {
+            let r = self.map.remove(&ty::RegionVid::from(i)).unwrap();
+            res.push(r);
+        }
+        res
+    }
+
+    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        if let ty::RegionKind::ReVar(v1) = *r1 {
+            assert!(self.map.get(&v1).is_none());
+
+            self.map.insert(v1, r2);
+        }
+    }
+
+    fn map_tys(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) {
+        assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
+
+        match ty1.kind() {
+            ty::TyKind::Ref(r1, ty1, m1) => {
+                let ty::TyKind::Ref(r2, ty2, m2) = ty2.kind() else {
+                    unreachable!();
+                };
+
+                self.map_regions(*r1, *r2);
+                self.map_tys(*ty1, *ty2);
+            },
+            ty::TyKind::Adt(_, _) => {
+                // TODO
+            },
+            _ => (),
+        }
+    }
+
+    fn map_generic_arg(&mut self, a1: ty::GenericArg<'tcx>, a2: ty::GenericArg<'tcx>) {
+        match a1.unpack() {
+            ty::GenericArgKind::Lifetime(r1) => {
+                let r2 = a2.expect_region();
+                self.map_regions(r1, r2);
+            },
+            ty::GenericArgKind::Type(ty1) => {
+                let ty2 = a2.expect_ty();
+                self.map_tys(ty1, ty2);
+            },
+            _ => (),
+        }
+    }
+
+    fn map_generic_args(&mut self, a1: ty::GenericArgsRef<'tcx>, a2: ty::GenericArgsRef<'tcx>) {
+        for (a1, a2) in a1.iter().zip(a2.iter()) {
+            self.map_generic_arg(a1, a2);
+        }
+    }
+}
+
+// Design for type unification:
+// - we get a trait_ref, param_env and the resolved ImplSource.
+// - the impl args have erased lifetimes.
+// - given the impl args, compute the corresponding trait args
+// - can lifetime args appear in impl args that are not also mentioned in trait args? no, probably not. Maybe
+//   'static..
+//   + so I can make a fairly simple structural traversal, I guess.
+//   + How do I know which variable to map to what? maybe I need to give all erased variables a fresh name
+//     first. then backtranslate then compare and compute mapping
+
+// Maybe get rid of this
+fn resolve_trait_or_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     def_id: DefId,

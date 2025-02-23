@@ -12,7 +12,98 @@ use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
+use crate::environment::Environment;
 use crate::{search, shims};
+
+/// Determine the origin of a trait obligation.
+/// `surrounding_reqs` are the requirements of a surrounding impl or decl.
+fn determine_origin_of_trait_requirement<'tcx>(
+    did: DefId,
+    tcx: ty::TyCtxt<'tcx>,
+    surrounding_reqs: &Option<Vec<ty::TraitRef<'tcx>>>,
+    req: ty::TraitRef<'tcx>,
+) -> radium::TyParamOrigin {
+    if let Some(surrounding_reqs) = surrounding_reqs {
+        let in_trait_decl = tcx.trait_of_item(did);
+
+        if surrounding_reqs.contains(&req) {
+            if in_trait_decl.is_some() {
+                return radium::TyParamOrigin::SurroundingTrait;
+            }
+            return radium::TyParamOrigin::SurroundingImpl;
+        }
+    }
+    radium::TyParamOrigin::Direct
+}
+
+/// Get the trait requirements of a [did], also determining their origin relative to the [did].
+/// The requirements are sorted in a way that is stable across compilations.
+pub fn get_trait_requirements_with_origin<'tcx>(
+    env: &Environment<'tcx>,
+    did: DefId,
+) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, radium::TyParamOrigin, bool)> {
+    trace!("Enter get_trait_requirements_with_origin for did={did:?}");
+    let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
+
+    // Are we declaring the scope of a trait?
+    let is_trait = env.tcx().is_trait(did);
+
+    // Determine whether we are declaring the scope of a trait method or trait impl method
+    let in_trait_decl = env.tcx().trait_of_item(did);
+    let in_trait_impl = env.trait_impl_of_method(did);
+
+    // if this has a surrounding scope, get the requirements declared on that, so that we can
+    // determine the origin of this requirement below
+    let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
+        let trait_param_env = env.tcx().param_env(trait_did);
+        Some(get_nontrivial(env.tcx(), trait_param_env, None).into_iter().map(|(x, _)| x).collect())
+    } else if let Some(impl_did) = in_trait_impl {
+        let impl_param_env = env.tcx().param_env(impl_did);
+        Some(get_nontrivial(env.tcx(), impl_param_env, None).into_iter().map(|(x, _)| x).collect())
+    } else {
+        None
+    };
+
+    let clauses = param_env.caller_bounds();
+    info!("Caller bounds: {:?}", clauses);
+
+    let in_trait_decl = if is_trait { Some(did) } else { in_trait_decl };
+    let requirements = get_nontrivial(env.tcx(), param_env, in_trait_decl);
+    let mut annotated_requirements = Vec::new();
+
+    for (trait_ref, bound_regions) in requirements {
+        // check if we are in the process of translating a trait decl
+        let is_self = trait_ref.args[0].as_type().unwrap().is_param(0);
+        let mut is_used_in_self_trait = false;
+        if let Some(trait_decl_did) = in_trait_decl {
+            // is this a reference to the trait we are currently declaring
+            let is_use_of_self_trait = trait_decl_did == trait_ref.def_id;
+
+            if is_use_of_self_trait && is_self {
+                // This is the self assumption of the trait we are currently implementing
+                // For a function spec in a trait decl, we remember this, as we do not require
+                // a quantified spec for the Self trait.
+                is_used_in_self_trait = true;
+            }
+        }
+
+        // we are processing the Self requirement in the scope of a trait declaration, so skip this.
+        if is_trait && is_self {
+            continue;
+            //is_used_in_self_trait = true;
+        }
+
+        let origin = determine_origin_of_trait_requirement(did, env.tcx(), &surrounding_reqs, trait_ref);
+        info!("Determined origin of requirement {trait_ref:?} as {origin:?}");
+
+        annotated_requirements.push((trait_ref, bound_regions, origin, is_used_in_self_trait));
+    }
+
+    trace!(
+        "Leave get_trait_requirements_with_origin for did={did:?} with annotated_requirements={annotated_requirements:?}"
+    );
+    annotated_requirements
+}
 
 /// Get non-trivial trait requirements of a `ParamEnv`,
 /// ordered deterministically.
@@ -20,7 +111,7 @@ pub fn get_nontrivial<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,
-) -> Vec<ty::TraitRef<'tcx>> {
+) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>)> {
     let mut trait_refs = Vec::new();
     trace!(
         "Enter get_nontrivial_trait_requirements with param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
@@ -29,6 +120,21 @@ pub fn get_nontrivial<'tcx>(
     let clauses = param_env.caller_bounds();
     for cl in clauses {
         let cl_kind = cl.kind();
+
+        let mut bound_regions = Vec::new();
+        let bound_vars = cl_kind.bound_vars();
+        for v in bound_vars {
+            match v {
+                ty::BoundVariableKind::Region(r) => {
+                    bound_regions.push(r);
+                },
+                _ => {
+                    unimplemented!("do not support higher-ranked bounds for non-lifetimes");
+                },
+            }
+        }
+
+        // TODO: maybe problematic
         let cl_kind = cl_kind.skip_binder();
 
         // only look for trait predicates for now
@@ -43,13 +149,13 @@ pub fn get_nontrivial<'tcx>(
                 }
 
                 // this is a nontrivial requirement
-                trait_refs.push(trait_ref);
+                trait_refs.push((trait_ref, bound_regions));
             }
         }
     }
 
     // Make sure the order is stable across compilations
-    trait_refs.sort_by(|a, b| cmp_trait_ref(tcx, in_trait_decl, a, b));
+    trait_refs.sort_by(|(a, _), (b, _)| cmp_trait_ref(tcx, in_trait_decl, a, b));
 
     trace!("Leave get_nontrivial_trait_requirements with trait_refs = {trait_refs:?}");
 

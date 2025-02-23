@@ -137,7 +137,7 @@ mod foo {
     {
         type Output = i32;
 
-        #[rr::verify]
+        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (53, 54, x)
         }
@@ -146,7 +146,7 @@ mod foo {
     impl<T: Foo<i32>> Foo<i32> for (T, T) {
         type Output = i32;
 
-        #[rr::verify]
+        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (53, 54, x)
         }
@@ -157,7 +157,7 @@ mod foo {
     {
         type Output = i32;
 
-        #[rr::verify]
+        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (64, 54, x)
         }
@@ -377,7 +377,7 @@ mod iter {
     impl Iter for Counter {
         type Elem = i32;
 
-        #[rr::verify]
+        #[rr::default_spec]
         fn next(&mut self) -> Option<i32> {
             None
             //if self.cur < self.max {

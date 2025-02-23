@@ -81,3 +81,29 @@ pub trait Iterator {
     // Basically, we should have a common interface for types implementing the Iterator trait, and
     // when we generate a specific instantiation, we want to instantiate that interface.
 }
+
+#[rr::export_as(core::iter::IntoIterator)]
+#[rr::exists("into_iter" : "{rt_of Self} → {rt_of IntoIter}")]
+pub trait IntoIterator {
+    /// The type of the elements being iterated over.
+    type Item;
+
+    /// Which kind of iterator are we turning this into?
+    type IntoIter: Iterator<Item = Self::Item>;
+
+    #[rr::exists("res")]
+    #[rr::ensures("$# res = {into_iter} ($# self)")]
+    #[rr::returns("res")]
+    fn into_iter(self) -> Self::IntoIter;
+}
+
+#[rr::instantiate("into_iter" := "id")]
+impl<I> IntoIterator for I where I: Iterator {
+    type Item = <I as Iterator>::Item;
+    type IntoIter = I;
+
+    #[rr::default_spec]
+    fn into_iter(self) -> I {
+        self
+    }
+}

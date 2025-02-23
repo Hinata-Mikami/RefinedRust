@@ -8,7 +8,7 @@ mod structs;
 mod char;
 
 mod traits;
-//mod trait_deps;
+mod trait_deps;
 
 mod statics;
 

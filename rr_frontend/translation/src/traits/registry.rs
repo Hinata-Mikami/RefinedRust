@@ -7,6 +7,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
+use std::mem;
 
 use log::{info, trace};
 use radium::{self, coq, specs};
@@ -23,6 +24,7 @@ use crate::spec_parsers::trait_attr_parser::{
     get_declared_trait_attrs, TraitAttrParser, VerboseTraitAttrParser,
 };
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
+use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, base, traits, types};
 
@@ -392,12 +394,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
 
         let current_param_env: ty::ParamEnv<'tcx> = state.get_param_env(self.env.tcx());
+        trace!("current param env: {current_param_env:?}");
 
         let callee_param_env = self.env.tcx().param_env(did);
         trace!("callee param env {callee_param_env:?}");
 
         // Get the trait requirements of the callee
-        let callee_requirements = scope::Params::get_trait_requirements_with_origin(self.env, did);
+        let callee_requirements = requirements::get_trait_requirements_with_origin(self.env, did);
         trace!("non-trivial callee requirements: {callee_requirements:?}");
         trace!("substituting with args {:?}", params);
 
@@ -409,7 +412,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut direct_trait_spec_terms = Vec::new();
         let mut indirect_trait_spec_terms = Vec::new();
 
-        for (trait_ref, origin, _) in &callee_requirements {
+        for (trait_ref, bound_regions, origin, _) in &callee_requirements {
             // substitute the args with the arg instantiation of the callee at this call site
             // in order to get the args of this trait instance
             let args = trait_ref.args;
@@ -445,6 +448,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             {
                 info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
 
+                // compute the new scope including the bound regions for HRTBs
+                let mut scope = state.get_param_scope();
+                let binders = scope.translate_bound_regions(bound_regions.as_slice());
+                let mut state = state.setup_trait_state(self.env.tcx(), scope);
+
                 let req_inst = match kind {
                     resolution::TraitResolutionKind::UserDefined => {
                         // we can resolve it to a concrete implementation of the trait that the
@@ -455,15 +463,17 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         // the trait reference in codegen
 
                         let (spec_term, assoc_tys) = self.get_impl_spec_term(
-                            state,
+                            &mut state,
                             impl_did,
                             impl_args.as_slice(),
                             subst_args.as_slice(),
                         )?;
+
                         radium::TraitReqInst::new(
                             radium::TraitReqInstSpec::Specialized(spec_term),
                             *origin,
                             assoc_tys,
+                            binders,
                         )
                     },
                     resolution::TraitResolutionKind::Param => {
@@ -481,18 +491,39 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         }
                         info!("Param associated types: {:?}", assoc_types);
 
-                        let trait_use_ref = state
-                            .lookup_trait_use(self.env.tcx(), trait_did, subst_args.as_slice())?
-                            .trait_use;
+                        let trait_use =
+                            state.lookup_trait_use(self.env.tcx(), trait_did, subst_args.as_slice())?;
+                        let trait_use_ref = trait_use.trait_use;
 
-                        // TODO: do we have to requantify here?
-                        // I guess for HRTBs we might need to requantify lifetimes
+                        trace!(
+                            "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
+                            trait_use.bound_regions,
+                            trait_use.trait_ref.args,
+                            subst_args
+                        );
 
-                        let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref);
+                        // compute the instantiation of the quantified trait assumption in terms
+                        // of the variables introduced by the trait assumption we are proving.
+                        let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
+                        unifier.unify_generic_args(trait_use.trait_ref.args, subst_args);
+                        let inst = unifier.get_result();
+                        trace!("computed instantiation: {inst:?}");
+
+                        // lookup the instances in the `binders` scope for the new trait assumption
+                        let mut mapped_inst = Vec::new();
+                        for region in inst {
+                            let translated_region = types::TX::translate_region(&mut state, region)?;
+                            mapped_inst.push(translated_region);
+                        }
+                        let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
+                        trace!("mapped instantiation: {mapped_inst:?}");
+
+                        let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref, mapped_inst);
                         radium::TraitReqInst::new(
                             radium::TraitReqInstSpec::Quantified(trait_impl),
                             *origin,
                             assoc_types,
+                            binders,
                         )
                     },
                     resolution::TraitResolutionKind::Closure => {
@@ -553,16 +584,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
-        // compute trait instantiations
-        // (this makes this function mutually recursive with
-        // `resolve_trait_requirements_in_state`)
         for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst)? {
+            // compute the new scope including the bound regions.
+            let mut scope = state.get_param_scope();
+            scope.add_trait_req_scope(&trait_req.scope);
+            let mut state = state.setup_trait_state(self.env.tcx(), scope);
+
             let mut assoc_inst = Vec::new();
             for ty in trait_req.assoc_ty_inst {
-                let ty = self.type_translator.translate_type_in_state(ty, state)?;
+                let ty = self.type_translator.translate_type_in_state(ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req = radium::TraitReqInst::new(trait_req.spec, trait_req.origin, assoc_inst);
+            let trait_req =
+                radium::TraitReqInst::new(trait_req.spec, trait_req.origin, assoc_inst, trait_req.scope);
 
             trait_reqs.push(trait_req);
         }
@@ -622,10 +656,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
         if let ty::ImplSubject::Trait(trait_ref) = subject {
             // set up scope
-            let mut deps = HashSet::new();
             let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(trait_impl_did);
-            let state = types::AdtState::new(&mut deps, &param_scope, &param_env);
-            let mut state = types::STInner::TranslateAdt(state);
+            let state = types::TraitState::new(param_scope.clone(), param_env, None, None);
+            let mut state = types::STInner::TraitReqs(state);
 
             let scope_inst =
                 self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
@@ -673,16 +706,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
 /// A using occurrence of a trait in the signature of the function.
 #[derive(Debug, Clone)]
-pub struct GenericTraitUse<'def> {
+pub struct GenericTraitUse<'tcx, 'def> {
     /// the DefId of the trait
     pub did: DefId,
+    pub trait_ref: ty::TraitRef<'tcx>,
     /// the self type this is implemented for
     pub self_ty: ty::ParamTy,
     /// the Coq-level trait use
     pub trait_use: radium::LiteralTraitSpecUseRef<'def>,
+    /// quantifiers for HRTBs
+    pub bound_regions: Vec<ty::BoundRegionKind>,
 }
 
-impl<'def> GenericTraitUse<'def> {
+impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     /// Get the names of associated types of this trait.
     pub fn get_associated_type_names(&self, env: &Environment<'_>) -> Vec<String> {
         let mut assoc_tys = Vec::new();
@@ -730,7 +766,11 @@ impl<'def> GenericTraitUse<'def> {
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Allocate an empty trait use reference.
-    pub fn make_empty_trait_use(&self, trait_ref: ty::TraitRef<'tcx>) -> GenericTraitUse<'def> {
+    pub fn make_empty_trait_use(
+        &self,
+        trait_ref: ty::TraitRef<'tcx>,
+        bound_regions: &[ty::BoundRegionKind],
+    ) -> GenericTraitUse<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
 
@@ -745,8 +785,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         GenericTraitUse {
             did,
+            trait_ref,
             self_ty: param,
             trait_use,
+            bound_regions: bound_regions.to_vec(),
         }
     }
 
@@ -756,8 +798,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     #[allow(clippy::unnecessary_wraps)]
     pub fn fill_trait_use(
         &self,
-        trait_use: &GenericTraitUse<'def>,
-        scope: types::ST<'_, '_, 'def, 'tcx>,
+        trait_use: &GenericTraitUse<'tcx, 'def>,
+        scope: &types::scope::Params<'tcx, 'def>,
+        param_env: ty::ParamEnv<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
         is_used_in_self_trait: bool,
@@ -767,8 +810,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let did = trait_ref.def_id;
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
 
+        let mut new_scope = scope.clone();
+        let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
+        let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, param_env, None, None));
+
         let mut scope_inst =
-            self.compute_params_scope_inst_in_state(scope, trait_ref.def_id, trait_ref.args)?;
+            self.compute_params_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the
         // current scope which have not been filled yet
 
@@ -779,6 +826,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
         let spec_use = radium::LiteralTraitSpecUse::new(
             spec_ref,
+            quantified_regions,
             scope_inst,
             spec_override,
             mangled_base,
@@ -800,7 +848,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Finalize a trait use by computing the dependencies on other traits.
     pub fn finalize_trait_use(
         &self,
-        trait_use: &GenericTraitUse<'def>,
+        trait_use: &GenericTraitUse<'tcx, 'def>,
         scope: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
@@ -816,5 +864,82 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
 
         Ok(())
+    }
+}
+
+pub struct LateBoundUnifier<'tcx, 'a> {
+    binders_to_unify: &'a [ty::BoundRegionKind],
+    instantiation: HashMap<usize, ty::Region<'tcx>>,
+}
+impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
+    pub fn new(binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
+        Self {
+            binders_to_unify,
+            instantiation: HashMap::new(),
+        }
+    }
+
+    pub fn get_result(mut self) -> Vec<ty::Region<'tcx>> {
+        trace!("computed latebound unification map {:?}", self.instantiation);
+        let mut res = Vec::new();
+        for i in 0..self.binders_to_unify.len() {
+            let r = self.instantiation.remove(&i).unwrap();
+            res.push(r);
+        }
+        res
+    }
+
+    pub fn unify_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        if let ty::RegionKind::ReLateBound(_, b1) = *r1 {
+            trace!("trying to unify region {r1:?} with {r2:?}");
+            // only unify if this is in the range of binders to unify
+            let index1 = b1.var.index();
+            if index1 < self.binders_to_unify.len() {
+                if let Some(r1_l) = self.instantiation.get(&index1) {
+                    assert!(*r1_l == r2);
+                } else {
+                    self.instantiation.insert(index1, r2);
+                }
+            }
+        }
+    }
+
+    pub fn unify_tys(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) {
+        assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
+
+        match ty1.kind() {
+            ty::TyKind::Ref(r1, ty1, m1) => {
+                let ty::TyKind::Ref(r2, ty2, m2) = ty2.kind() else {
+                    unreachable!();
+                };
+
+                self.unify_regions(*r1, *r2);
+                self.unify_tys(*ty1, *ty2);
+            },
+            ty::TyKind::Adt(_, _) => {
+                // TODO
+            },
+            _ => (),
+        }
+    }
+
+    pub fn unify_generic_arg(&mut self, a1: ty::GenericArg<'tcx>, a2: ty::GenericArg<'tcx>) {
+        match a1.unpack() {
+            ty::GenericArgKind::Lifetime(r1) => {
+                let r2 = a2.expect_region();
+                self.unify_regions(r1, r2);
+            },
+            ty::GenericArgKind::Type(ty1) => {
+                let ty2 = a2.expect_ty();
+                self.unify_tys(ty1, ty2);
+            },
+            _ => (),
+        }
+    }
+
+    pub fn unify_generic_args(&mut self, a1: ty::GenericArgsRef<'tcx>, a2: ty::GenericArgsRef<'tcx>) {
+        for (a1, a2) in a1.iter().zip(a2.iter()) {
+            self.unify_generic_arg(a1, a2);
+        }
     }
 }

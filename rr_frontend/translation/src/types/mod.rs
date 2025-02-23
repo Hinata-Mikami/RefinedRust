@@ -17,7 +17,7 @@ pub use local::{normalize_erasing_regions_in_function, normalize_in_function, Lo
 /// We export these parts of the private modules
 use rr_rustc_interface::middle::ty;
 pub use scope::{generate_args_inst_key, GenericsKey};
-pub use translator::{AdtState, CalleeState, FunctionState, STInner, ST, TX};
+pub use translator::{AdtState, CalleeState, FunctionState, STInner, TraitState, ST, TX};
 
 use crate::base;
 

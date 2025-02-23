@@ -956,8 +956,7 @@ Global Typeclasses Opaque ty_shr.
 Global Typeclasses Opaque ty_own_val.
 Global Typeclasses Opaque ty_has_op_type.
 
-(* We get performance problems if discriminate (as part of done) or simpl try to look into this. *)
-(* TODO: maybe properly seal? *)
+(* Even though we seal it, we should still make this opaque so it doesn't simplify. *)
 Global Opaque ty_has_op_type.
 
 Global Typeclasses Opaque find_in_context.

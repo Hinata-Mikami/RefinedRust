@@ -59,10 +59,10 @@ pub enum TranslationError<'tcx> {
     UnknownProcedure(String),
     #[display("Unknown early region: {:?}", _0)]
     UnknownEarlyRegion(ty::EarlyBoundRegion),
-    #[display("Unknown late region (outside function): {}", _0)]
-    UnknownLateRegionOutsideFunction(usize),
-    #[display("Unknown late region: {}", _0)]
-    UnknownLateRegion(usize),
+    #[display("Unknown late region (outside function): (binder {}, var {})", _0, _1)]
+    UnknownLateRegionOutsideFunction(usize, usize),
+    #[display("Unknown late region: (binder {}, var {})", _0, _1)]
+    UnknownLateRegion(usize, usize),
     #[display("Cannot translate placeholder region")]
     PlaceholderRegion(),
     #[display("Cannot translate unknown region: {:?}", _0)]
