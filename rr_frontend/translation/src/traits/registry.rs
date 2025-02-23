@@ -366,7 +366,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // check if there's a more specific impl spec
         let term = if let Some(impl_spec) = self.lookup_impl(impl_did) {
-            let scope_inst = self.compute_scope_inst_in_state(state, impl_did, self.env.tcx().mk_args(impl_args))?;
+            let scope_inst =
+                self.compute_scope_inst_in_state(state, impl_did, self.env.tcx().mk_args(impl_args))?;
 
             radium::SpecializedTraitImpl::new(impl_spec, scope_inst)
         } else {
@@ -524,10 +525,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// TODO: handle surrounding params
-    fn compute_params_scope_inst_in_state(&self,
+    fn compute_params_scope_inst_in_state(
+        &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: DefId, params_inst: ty::GenericArgsRef<'tcx>) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
-
+        did: DefId,
+        params_inst: ty::GenericArgsRef<'tcx>,
+    ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = radium::GenericScopeInst::empty();
 
         // pass the args for this specific impl
@@ -535,24 +538,26 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             if let ty::GenericArgKind::Type(ty) = arg.unpack() {
                 let ty = self.type_translator.translate_type_in_state(ty, state)?;
                 scope_inst.add_direct_ty_param(ty);
-            }
-            else if let Some(lft) = arg.as_region() {
+            } else if let Some(lft) = arg.as_region() {
                 let lft = types::TX::translate_region(state, lft)?;
                 scope_inst.add_lft_param(lft);
             }
         }
         Ok(scope_inst)
     }
-    fn resolve_radium_trait_requirements_in_state(&self,
-        state: types::ST<'_, '_, 'def, 'tcx>,
-        did: DefId, params_inst: ty::GenericArgsRef<'tcx>) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
 
+    fn resolve_radium_trait_requirements_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        did: DefId,
+        params_inst: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
         // compute trait instantiations
         // (this makes this function mutually recursive with
         // `resolve_trait_requirements_in_state`)
         for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst)? {
-            let mut assoc_inst = Vec::new(); 
+            let mut assoc_inst = Vec::new();
             for ty in trait_req.assoc_ty_inst {
                 let ty = self.type_translator.translate_type_in_state(ty, state)?;
                 assoc_inst.push(ty);
@@ -563,10 +568,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
         Ok(trait_reqs)
     }
+
     /// Compute the instantiation of the generic scope for a particular instantiation of an object.
-    fn compute_scope_inst_in_state(&self,
+    fn compute_scope_inst_in_state(
+        &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: DefId, params_inst: ty::GenericArgsRef<'tcx>) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
+        did: DefId,
+        params_inst: ty::GenericArgsRef<'tcx>,
+    ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = self.compute_params_scope_inst_in_state(state, did, params_inst)?;
 
         for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst)? {
@@ -618,7 +627,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let state = types::AdtState::new(&mut deps, &param_scope, &param_env);
             let mut state = types::STInner::TranslateAdt(state);
 
-            let scope_inst = self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+            let scope_inst =
+                self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
             //trace!("Determined trait requirements in impl: {trait_reqs:?}");
 
             // get instantiation for the associated types
@@ -646,7 +656,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     }
                 }
             }
-
 
             Ok(radium::TraitRefInst::new(
                 trait_spec_ref,
@@ -758,10 +767,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let did = trait_ref.def_id;
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
 
-        let mut scope_inst = 
+        let mut scope_inst =
             self.compute_params_scope_inst_in_state(scope, trait_ref.def_id, trait_ref.args)?;
-        // do not compute the assoc dep inst for now, as this may use other trait requirements from the current scope
-        // which have not been filled yet
+        // do not compute the assoc dep inst for now, as this may use other trait requirements from the
+        // current scope which have not been filled yet
 
         // TODO: allow to override the assumed specification using attributes
         let spec_override = None;
@@ -795,7 +804,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         scope: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
-        let trait_reqs = self.resolve_radium_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
+        let trait_reqs =
+            self.resolve_radium_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
 
         let mut trait_use_ref = trait_use.trait_use.borrow_mut();

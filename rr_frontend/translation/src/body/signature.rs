@@ -455,16 +455,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
                 info!("arg names: {arg_names:?}");
 
-                // process attributes
-                let mut spec_builder = Self::process_attrs(
-                    attrs,
-                    &type_translator,
-                    &mut translated_fn,
-                    &arg_names,
-                    inputs.as_slice(),
-                    output,
-                )?;
-
                 let mut t = Self {
                     env,
                     proc,
@@ -479,26 +469,42 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     inputs: inputs.clone(),
                 };
 
-                if spec_builder.has_spec() {
-                    // add universal constraints
-                    {
-                        let scope = t.ty_translator.scope.borrow();
-                        let universal_constraints = regions::init::get_relevant_universal_constraints(
-                            &scope.lifetime_scope,
-                            &mut t.inclusion_tracker,
-                            t.info,
-                        );
-                        info!("univeral constraints: {:?}", universal_constraints);
-                        for (lft1, lft2) in universal_constraints {
-                            spec_builder.add_lifetime_constraint(lft1, lft2);
-                        }
-                    }
-
-                    t.translated_fn.add_function_spec_from_builder(spec_builder);
-                } else {
+                if env.has_tool_attribute(proc.get_id(), "default_spec") {
                     let spec = t.make_trait_instance_spec()?;
                     if let Some(spec) = spec {
                         t.translated_fn.add_trait_function_spec(spec);
+                    } else {
+                        return Err(TranslationError::AttributeError(
+                            "No valid specification provided".to_owned(),
+                        ));
+                    }
+                } else {
+                    // process attributes
+                    let mut spec_builder = Self::process_attrs(
+                        attrs,
+                        &t.ty_translator,
+                        &mut t.translated_fn,
+                        &arg_names,
+                        inputs.as_slice(),
+                        output,
+                    )?;
+
+                    if spec_builder.has_spec() {
+                        // add universal constraints
+                        {
+                            let scope = t.ty_translator.scope.borrow();
+                            let universal_constraints = regions::init::get_relevant_universal_constraints(
+                                &scope.lifetime_scope,
+                                &mut t.inclusion_tracker,
+                                t.info,
+                            );
+                            info!("univeral constraints: {:?}", universal_constraints);
+                            for (lft1, lft2) in universal_constraints {
+                                spec_builder.add_lifetime_constraint(lft1, lft2);
+                            }
+                        }
+
+                        t.translated_fn.add_function_spec_from_builder(spec_builder);
                     } else {
                         return Err(TranslationError::AttributeError(
                             "No valid specification provided".to_owned(),
@@ -598,11 +604,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         scope.clear_lfts();
         translated_fn.provide_generic_scope(scope);
 
-
         // add universals to the function (these are not included in the generic scope)
         // important: these need to be in the right order!
-        for (vid, name) in &region_substitution.region_names {
-            translated_fn.add_universal_lifetime(name.to_owned());
+        for (vid, name) in region_substitution.region_names {
+            translated_fn.add_universal_lifetime(name);
         }
 
         // TODO: can we also setup the lifetime constraints here?

@@ -117,7 +117,9 @@ pub struct Params<'tcx, 'def> {
 }
 
 #[allow(clippy::fallible_impl_from)]
-impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>> {
+impl<'tcx, 'def> From<Params<'tcx, 'def>>
+    for radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>
+{
     fn from(mut x: Params<'tcx, 'def>) -> Self {
         let mut scope = Self::empty();
         for x in x.scope {

@@ -875,10 +875,7 @@ impl<'def> Function<'def> {
             write!(f, "⊢ ")?;
         } else {
             for proc_use in &self.other_functions {
-                info!(
-                    "Using other function: {:?} with insts: {:?}",
-                    proc_use.spec_name, proc_use.scope_inst
-                );
+                info!("Using other function: {:?} with insts: {:?}", proc_use.spec_name, proc_use.scope_inst);
 
                 let arg_syntys: Vec<String> =
                     proc_use.syntype_of_all_args.iter().map(ToString::to_string).collect();
@@ -1203,7 +1200,12 @@ impl<'def> Display for UsedProcedure<'def> {
         write!(f, "{} {} {} ", self.spec_name, gen_rfn_type_inst.join(" "), self.extra_spec_args.join(" "))?;
 
         // apply to trait specs
-        for x in self.scope_inst.get_surrounding_trait_requirements().iter().chain(self.scope_inst.get_direct_trait_requirements()) {
+        for x in self
+            .scope_inst
+            .get_surrounding_trait_requirements()
+            .iter()
+            .chain(self.scope_inst.get_direct_trait_requirements())
+        {
             write!(f, "{} ", x.get_attr_term())?;
             write!(f, "{} ", x.get_spec_term())?;
         }

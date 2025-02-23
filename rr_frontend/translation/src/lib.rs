@@ -1403,7 +1403,7 @@ fn assemble_trait_impls<'tcx, 'rcx>(
 ) -> Result<(), base::TranslationError<'tcx>> {
     let trait_impl_ids = vcx.env.get_trait_impls();
 
-    for trait_impl_id in trait_impl_ids {
+    'outer: for trait_impl_id in trait_impl_ids {
         let did = trait_impl_id.to_def_id();
         let trait_did = vcx.env.tcx().trait_id_of_impl(did).unwrap();
 
@@ -1431,8 +1431,8 @@ fn assemble_trait_impls<'tcx, 'rcx>(
                             if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
                                 methods.insert(x.name.as_str().to_owned(), spec);
                             } else {
-                                // TODO should handle this case
-                                unreachable!("");
+                                warn!("Incomplete specification for {}", fn_item.name);
+                                continue 'outer;
                             }
                         } else {
                             // this is possible for functions with a default impl.

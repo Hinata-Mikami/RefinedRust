@@ -392,14 +392,13 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // add trait requirements
         for req in trait_reqs {
-            let mut assoc_inst = Vec::new(); 
+            let mut assoc_inst = Vec::new();
             for ty in req.assoc_ty_inst {
                 let ty = self.translate_type(ty)?;
                 assoc_inst.push(ty);
             }
             let trait_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_inst);
             fn_inst.add_trait_requirement(trait_req);
-            
         }
 
         info!("Abstraction scope: {:?}", scope);
