@@ -584,7 +584,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             proc_did,
             env,
             env.tcx().mk_args(params),
-            region_substitution,
+            region_substitution.clone(),
             param_env,
             ty_translator,
             trait_registry,
@@ -593,7 +593,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add generic args to the fn
         let generics = &type_scope.generic_scope;
-        translated_fn.provide_generic_scope(generics.clone().into());
+        let mut scope: radium::GenericScope<_> = generics.clone().into();
+        // TODO: hack because we add the lifetime names manually below
+        scope.clear_lfts();
+        translated_fn.provide_generic_scope(scope);
+
+
+        // add universals to the function (these are not included in the generic scope)
+        // important: these need to be in the right order!
+        for (vid, name) in &region_substitution.region_names {
+            translated_fn.add_universal_lifetime(name.to_owned());
+        }
 
         // TODO: can we also setup the lifetime constraints here?
         // TODO: understand better how these clauses relate to Polonius

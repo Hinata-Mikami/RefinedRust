@@ -877,7 +877,7 @@ impl<'def> Function<'def> {
             for proc_use in &self.other_functions {
                 info!(
                     "Using other function: {:?} with insts: {:?}",
-                    proc_use.spec_name, proc_use.type_params
+                    proc_use.spec_name, proc_use.scope_inst
                 );
 
                 let arg_syntys: Vec<String> =
@@ -1175,15 +1175,7 @@ pub struct UsedProcedure<'def> {
     pub quantified_scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// specialized specs for the trait assumptions of this procedure
-    /// TODO: should we use TraitReqInst instead?
-    pub trait_specs: Vec<TraitReqInst<'def, Type<'def>>>,
-
-    /// The type parameters to instantiate the spec with
-    pub type_params: Vec<Type<'def>>,
-
-    /// The lifetime paramters to instantiate the spec with
-    /// (after the lifting of all parameters into the `quantified_scope`)
-    pub lifetimes: Vec<Lft>,
+    pub scope_inst: GenericScopeInst<'def>,
 
     /// The syntactic types of all arguments
     pub syntype_of_all_args: Vec<SynType>,
@@ -1196,13 +1188,14 @@ impl<'def> Display for UsedProcedure<'def> {
 
         // instantiate refinement types
         let mut gen_rfn_type_inst = Vec::new();
-        for p in &self.type_params {
+        let all_tys = self.scope_inst.get_all_ty_params_with_assocs();
+        for p in &all_tys {
             // use an empty env, these should be closed in the current environment
             let rfn = p.get_rfn_type();
             gen_rfn_type_inst.push(format!("({})", rfn));
         }
         // instantiate syntypes
-        for p in &self.type_params {
+        for p in &all_tys {
             let st = SynType::from(p);
             gen_rfn_type_inst.push(format!("({})", st));
         }
@@ -1210,19 +1203,18 @@ impl<'def> Display for UsedProcedure<'def> {
         write!(f, "{} {} {} ", self.spec_name, gen_rfn_type_inst.join(" "), self.extra_spec_args.join(" "))?;
 
         // apply to trait specs
-        for x in &self.trait_specs {
-            let y: SpecializedTraitSpec<'def> = x.clone().try_into().unwrap();
-            write!(f, "{} ", y.specialized_attr)?;
-            write!(f, "{} ", y)?;
+        for x in self.scope_inst.get_surrounding_trait_requirements().iter().chain(self.scope_inst.get_direct_trait_requirements()) {
+            write!(f, "{} ", x.get_attr_term())?;
+            write!(f, "{} ", x.get_spec_term())?;
         }
 
         // instantiate lifetimes
-        for lft in &self.lifetimes {
+        for lft in self.scope_inst.get_lfts() {
             write!(f, " <LFT> {lft}")?;
         }
 
         // instantiate type variables
-        for ty in &self.type_params {
+        for ty in &all_tys {
             write!(f, " <TY> {ty}")?;
         }
 

@@ -112,7 +112,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             ty_params,
-            &trait_specs,
+            trait_specs,
             true,
         )?;
 
@@ -137,32 +137,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty_params.as_slice(),
             )?;
 
-            let mut translated_params = quantified_args.fn_ty_param_inst;
+            let fn_inst = quantified_args.fn_scope_inst;
 
             info!(
                 "Registered procedure instance {} of {:?} with {:?} and layouts {:?}",
-                loc_name, callee_did, translated_params, syntypes
+                loc_name, callee_did, fn_inst, syntypes
             );
-
-            // translate the assoc tys of requirements
-            let mut trait_reqs = Vec::new();
-            for req in trait_specs {
-                let mut assoc_ty_inst = Vec::new();
-                for ty in req.assoc_ty_inst {
-                    self.ty_translator.translate_type(ty)?;
-                }
-                let new_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_ty_inst);
-                trait_reqs.push(new_req);
-            }
 
             let proc_use = radium::UsedProcedure::new(
                 loc_name,
                 spec_name,
                 extra_spec_args,
                 quantified_args.scope,
-                trait_reqs,
-                translated_params,
-                quantified_args.fn_lft_param_inst,
+                fn_inst,
                 syntypes,
             );
 
@@ -192,7 +179,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             method_params,
-            &trait_specs,
+            trait_specs,
             false,
         )?;
 
@@ -209,32 +196,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty_params.as_slice(),
             )?;
 
-            let mut translated_params = quantified_args.fn_ty_param_inst;
+            let mut fn_inst = quantified_args.fn_scope_inst;
 
             info!(
                 "Registered procedure instance {} of {:?} with {:?} and layouts {:?}",
-                method_loc_name, callee_did, translated_params, syntypes
+                method_loc_name, callee_did, fn_inst, syntypes
             );
-
-            // translate the assoc tys of requirements
-            let mut trait_reqs = Vec::new();
-            for req in trait_specs {
-                let mut assoc_ty_inst = Vec::new();
-                for ty in req.assoc_ty_inst {
-                    self.ty_translator.translate_type(ty)?;
-                }
-                let new_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_ty_inst);
-                trait_reqs.push(new_req);
-            }
 
             let proc_use = radium::UsedProcedure::new(
                 method_loc_name,
                 method_spec_term,
                 vec![],
                 quantified_args.scope,
-                trait_reqs,
-                translated_params,
-                quantified_args.fn_lft_param_inst,
+                fn_inst,
                 syntypes,
             );
 

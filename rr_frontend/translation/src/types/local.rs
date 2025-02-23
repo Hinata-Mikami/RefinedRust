@@ -35,8 +35,7 @@ pub struct AbstractedGenerics<'def> {
     pub callee_lft_param_inst: Vec<radium::Lft>,
     pub callee_ty_param_inst: Vec<radium::Type<'def>>,
     /// instantiations for the function use
-    pub fn_lft_param_inst: Vec<radium::Lft>,
-    pub fn_ty_param_inst: Vec<radium::Type<'def>>,
+    pub fn_scope_inst: radium::GenericScopeInst<'def>,
 }
 
 /// Type translator bundling the function scope
@@ -275,7 +274,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_reqs: &[radium::TraitReqInst<'def, ty::Ty<'tcx>>],
+        trait_reqs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
         // get all the regions and type variables appearing that generics are instantiated with
@@ -300,7 +299,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
         // also find generics in the associated types
-        for req in trait_reqs {
+        for req in &trait_reqs {
             for ty in &req.assoc_ty_inst {
                 tyvar_folder.fold_ty(*ty);
                 lft_folder.fold_ty(*ty);
@@ -313,14 +312,13 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let mut scope = radium::GenericScope::empty();
 
         // instantiations for the function spec's parameters
-        let mut fn_lft_param_inst = Vec::new();
-        let mut fn_ty_param_inst = Vec::new();
+        let mut fn_inst = radium::GenericScopeInst::empty();
 
         // re-bind the function's lifetime parameters
         for i in 0..num_param_regions {
             let lft_name = format!("ulft_{i}");
             scope.add_lft_param(lft_name.clone());
-            fn_lft_param_inst.push(lft_name);
+            fn_inst.add_lft_param(lft_name);
         }
 
         // bind the additional lifetime parameters
@@ -344,7 +342,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             scope.add_ty_param(lit);
         }
         // also bind associated types which we translate as generics
-        for req in trait_reqs {
+        for req in &trait_reqs {
             for ty in &req.assoc_ty_inst {
                 // we should check if it there is a parameter in the current scope for it
                 let translated_ty = self.translate_type(*ty)?;
@@ -371,16 +369,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             for v in &ty_params.as_slice()[..num_surrounding_params] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
-                    fn_ty_param_inst.push(translated_ty);
-                }
-            }
-            // same for the associated types this function depends on
-            for req in trait_reqs {
-                if req.origin != radium::TyParamOrigin::Direct {
-                    for ty in &req.assoc_ty_inst {
-                        let translated_ty = self.translate_type(*ty)?;
-                        fn_ty_param_inst.push(translated_ty);
-                    }
+                    fn_inst.add_surrounding_ty_param(translated_ty);
                 }
             }
 
@@ -388,16 +377,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             for v in &ty_params.as_slice()[num_surrounding_params..] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
-                    fn_ty_param_inst.push(translated_ty);
-                }
-            }
-            // same for the associated types this function depends on
-            for req in trait_reqs {
-                if req.origin == radium::TyParamOrigin::Direct {
-                    for ty in &req.assoc_ty_inst {
-                        let translated_ty = self.translate_type(*ty)?;
-                        fn_ty_param_inst.push(translated_ty);
-                    }
+                    fn_inst.add_direct_ty_param(translated_ty);
                 }
             }
         } else {
@@ -405,30 +385,32 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             for v in ty_params {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
-                    fn_ty_param_inst.push(translated_ty);
-                }
-            }
-            // same for the associated types this function depends on
-            for req in trait_reqs {
-                if req.origin == radium::TyParamOrigin::Direct {
-                    for ty in &req.assoc_ty_inst {
-                        let translated_ty = self.translate_type(*ty)?;
-                        fn_ty_param_inst.push(translated_ty);
-                    }
+                    fn_inst.add_direct_ty_param(translated_ty);
                 }
             }
         }
 
+        // add trait requirements
+        for req in trait_reqs {
+            let mut assoc_inst = Vec::new(); 
+            for ty in req.assoc_ty_inst {
+                let ty = self.translate_type(ty)?;
+                assoc_inst.push(ty);
+            }
+            let trait_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_inst);
+            fn_inst.add_trait_requirement(trait_req);
+            
+        }
+
         info!("Abstraction scope: {:?}", scope);
-        info!("Fn instantiation: {:?}, {:?}", fn_lft_param_inst, fn_ty_param_inst);
+        info!("Fn instantiation: {fn_inst:?}");
         info!("Callee instantiation: {:?}, {:?}", callee_lft_param_inst, callee_ty_param_inst);
 
         let res = AbstractedGenerics {
             scope,
             callee_lft_param_inst,
             callee_ty_param_inst,
-            fn_lft_param_inst,
-            fn_ty_param_inst,
+            fn_scope_inst: fn_inst,
         };
 
         Ok(res)

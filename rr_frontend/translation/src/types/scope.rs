@@ -132,7 +132,6 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>> for radium::GenericScope<'def, radium:
             }
         }
         for key in x.trait_scope.ordered_assumptions {
-            // TODO: this is destroying everything since i'm taking stuff out of the refcells....
             let trait_use = x.trait_scope.used_traits.remove(&key).unwrap().trait_use;
             scope.add_trait_requirement(trait_use);
         }
@@ -378,7 +377,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 let mut trait_use_ref = entry.trait_use.borrow();
                 let trait_use = trait_use_ref.as_ref().unwrap();
 
-                let self_ty = &trait_use.params_inst[0];
+                let self_ty = &trait_use.trait_inst.get_direct_ty_params()[0];
                 let radium::Type::LiteralParam(self_param) = self_ty else {
                     // trait requirement for complex type, don't add shorthand notation
                     continue;
