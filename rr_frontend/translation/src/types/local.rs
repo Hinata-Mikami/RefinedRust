@@ -300,10 +300,15 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub fn get_generic_abstraction_for_procedure(
         &self,
         callee_did: DefId,
-        ty_params: ty::GenericArgsRef<'tcx>,
+        method_params: ty::GenericArgsRef<'tcx>,
+        all_params: ty::GenericArgsRef<'tcx>,
         trait_reqs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
+        trace!(
+            "enter get_generic_abstraction_for_procedure with callee_did={callee_did:?} and method_params={method_params:?}"
+        );
+
         // get all the regions and type variables appearing that generics are instantiated with
         let mut tyvar_folder = TyVarFolder::new(self.translator.env().tcx());
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.env().tcx());
@@ -313,7 +318,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         let mut callee_lft_param_inst: Vec<radium::Lft> = Vec::new();
         let mut callee_ty_param_inst = Vec::new();
-        for v in ty_params {
+        for v in method_params {
             if let Some(ty) = v.as_type() {
                 tyvar_folder.fold_ty(ty);
                 lft_folder.fold_ty(ty);
@@ -361,6 +366,31 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             callee_lft_param_inst.push(lft_name);
         }
 
+        // also need to re-bind late bound regions
+        let tcx = self.translator.env().tcx();
+        let fn_ty: ty::EarlyBinder<ty::Ty<'_>> = tcx.type_of(callee_did);
+        let fn_ty = fn_ty.instantiate(tcx, all_params);
+        let sig = fn_ty.fn_sig(tcx);
+        trace!("computing abstraction for {callee_did:?}, sig: {sig:?}");
+
+        for (late_bound_idx, late_bound) in sig.bound_vars().into_iter().enumerate() {
+            match late_bound {
+                ty::BoundVariableKind::Region(r) => {
+                    let name = r
+                        .get_name()
+                        .map_or_else(|| format!("late_lft_{late_bound_idx}"), |x| strip_coq_ident(x.as_str()));
+
+                    // push this to the context.
+                    scope.add_lft_param(name.clone());
+                    fn_inst.add_lft_param(name);
+                    // TODO: also add instantiation for callee_lft_param_inst?
+                },
+                _ => {
+                    unimplemented!("late bound is not a region");
+                },
+            }
+        }
+
         // bind the generics we use
         for param in &tyvars {
             // NOTE: this should have the same name as the using occurrences
@@ -383,17 +413,17 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         }
 
         // NOTE: we need to be careful with the order here.
-        // - the ty_params are all the generics the function has.
+        // - the method_params are all the generics the function has.
         // - the trait_reqs are also all the associated types the function has
         // We need to distinguish these between direct and surrounding.
         let num_surrounding_params =
             scope::Params::determine_number_of_surrounding_params(callee_did, self.translator.env().tcx());
-        info!("num_surrounding_params={num_surrounding_params:?}, ty_params={ty_params:?}");
+        info!("num_surrounding_params={num_surrounding_params:?}, method_params={method_params:?}");
 
         // figure out instantiation for the function's generics
         // first the surrounding parameters
         if with_surrounding_deps {
-            for v in &ty_params.as_slice()[..num_surrounding_params] {
+            for v in &method_params.as_slice()[..num_surrounding_params] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_surrounding_ty_param(translated_ty);
@@ -401,7 +431,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
 
             // now the direct parameters
-            for v in &ty_params.as_slice()[num_surrounding_params..] {
+            for v in &method_params.as_slice()[num_surrounding_params..] {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_direct_ty_param(translated_ty);
@@ -409,7 +439,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         } else {
             // now the direct parameters
-            for v in ty_params {
+            for v in method_params {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
                     fn_inst.add_direct_ty_param(translated_ty);

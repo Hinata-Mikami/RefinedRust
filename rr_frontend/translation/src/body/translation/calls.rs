@@ -112,6 +112,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             ty_params,
+            ty_params,
             trait_specs,
             true,
         )?;
@@ -181,6 +182,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             method_params,
+            ty_params,
             trait_specs,
             false,
         )?;

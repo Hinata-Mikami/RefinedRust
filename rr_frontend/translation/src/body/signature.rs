@@ -394,15 +394,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
-        let sig = match ty.kind() {
-            TyKind::FnDef(_def, _args) => {
-                assert!(ty.is_fn());
-                let sig = ty.fn_sig(env.tcx());
-                sig
-            },
-            _ => panic!("can not handle non-fns"),
-        };
-
+        assert!(ty.is_fn());
+        let sig = ty.fn_sig(env.tcx());
         info!("Function signature: {:?}", sig);
 
         match PoloniusInfo::new(env, proc) {

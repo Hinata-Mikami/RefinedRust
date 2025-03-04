@@ -912,7 +912,12 @@ impl<'def> Function<'def> {
         // write local syntypes
         write!(f, ") [")?;
         write_list!(f, &self.code.stack_layout.locals, "; ", |Variable((_, st))| st.to_string())?;
-        write!(f, "] (<tag_type> {} ", self.spec.get_spec_name())?;
+        write!(f, "] (<tag_type> ")?;
+
+        let mut scope_str = String::new();
+        self.spec.generics.format(&mut scope_str, false, false, &[], &[], &[]).unwrap();
+
+        write!(f, "{scope_str} {} ", self.spec.get_spec_name())?;
 
         // write type args (passed to the type definition)
         for param in &params.0 {
@@ -920,6 +925,15 @@ impl<'def> Function<'def> {
                 write!(f, "{} ", param.get_name())?;
             }
         }
+
+        // instantiate semantic args
+        for ty in self.spec.generics.get_all_ty_params_with_assocs().params {
+            write!(f, " <TY> {}", ty.type_term)?;
+        }
+        for lft in self.spec.generics.get_lfts() {
+            write!(f, " <LFT> {}", lft)?;
+        }
+        write!(f, " <INST!>")?;
 
         write!(f, ").\n")
     }
@@ -1249,7 +1263,7 @@ impl<'def> Display for UsedProcedure<'def> {
             write!(f, " <TY> {ty}")?;
         }
 
-        write!(f, " <MERGE!>)")
+        write!(f, " <INST!>)")
     }
 }
 
