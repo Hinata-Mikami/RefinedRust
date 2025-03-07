@@ -32,6 +32,8 @@ struct ShimFunctionEntry {
     name: String,
     /// the Coq name of the spec
     spec: String,
+    /// the Coq name of the trait assumption inclusion for this function
+    trait_req_incl: String,
 }
 
 /// A file entry for a trait shim.
@@ -57,6 +59,8 @@ struct ShimTraitEntry {
     spec_subsumption: String,
     /// allowed attributes on impls of this trait
     allowed_attrs: HashSet<String>,
+    /// definition names for the canonical trait linking assumption for each method
+    method_trait_incl_decls: HashMap<String, String>,
 }
 
 /// A file entry for a trait method implementation.
@@ -70,8 +74,8 @@ struct ShimTraitImplEntry {
     /// a kind: always "trait_impl"
     kind: String,
 
-    /// map from method names to (base name, specification name)
-    method_specs: HashMap<String, (String, String)>,
+    /// map from method names to (base name, specification name, trait incl name)
+    method_specs: HashMap<String, (String, String, String)>,
 
     /// the Coq def name of the spec record inst
     spec_record: String,
@@ -132,6 +136,7 @@ pub struct FunctionShim<'a> {
     pub is_method: bool,
     pub name: String,
     pub spec_name: String,
+    pub trait_req_incl_name: String,
 }
 
 impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
@@ -141,6 +146,7 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
             kind: if shim.is_method { "method".to_owned() } else { "function".to_owned() },
             name: shim.name,
             spec: shim.spec_name,
+            trait_req_incl: shim.trait_req_incl_name,
         }
     }
 }
@@ -150,7 +156,7 @@ pub struct TraitImplShim {
     pub trait_path: flat::PathWithArgs,
     pub for_type: flat::Type,
 
-    pub method_specs: HashMap<String, (String, String)>,
+    pub method_specs: HashMap<String, (String, String, String)>,
 
     pub spec_record: String,
     pub spec_params_record: String,
@@ -205,6 +211,7 @@ pub struct TraitShim<'a> {
     pub base_spec_params: String,
     pub spec_subsumption: String,
     pub allowed_attrs: HashSet<String>,
+    pub method_trait_incl_decls: HashMap<String, String>,
 }
 
 impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
@@ -220,6 +227,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
             base_spec_params: shim.base_spec_params,
             spec_subsumption: shim.spec_subsumption,
             allowed_attrs: shim.allowed_attrs,
+            method_trait_incl_decls: shim.method_trait_incl_decls,
         }
     }
 }
@@ -400,6 +408,7 @@ impl<'a> SR<'a> {
                         is_method: kind == ShimKind::Method,
                         name: b.name,
                         spec_name: b.spec,
+                        trait_req_incl_name: b.trait_req_incl,
                     };
 
                     self.function_shims.push(entry);
@@ -444,6 +453,7 @@ impl<'a> SR<'a> {
                         base_spec_params: b.base_spec_params,
                         spec_subsumption: b.spec_subsumption,
                         allowed_attrs: b.allowed_attrs,
+                        method_trait_incl_decls: b.method_trait_incl_decls,
                     };
 
                     self.trait_shims.push(entry);

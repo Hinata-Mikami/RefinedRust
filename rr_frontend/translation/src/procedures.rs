@@ -56,14 +56,16 @@ impl Mode {
 #[derive(Clone)]
 pub struct Meta {
     spec_name: String,
+    trait_req_incl_name: String,
     name: String,
     mode: Mode,
 }
 
 impl Meta {
-    pub const fn new(spec_name: String, name: String, mode: Mode) -> Self {
+    pub const fn new(spec_name: String, trait_req_incl_name: String, name: String, mode: Mode) -> Self {
         Self {
             spec_name,
+            trait_req_incl_name,
             name,
             mode,
         }
@@ -71,6 +73,10 @@ impl Meta {
 
     pub fn get_spec_name(&self) -> &str {
         &self.spec_name
+    }
+
+    pub fn get_trait_req_incl_name(&self) -> &str {
+        &self.trait_req_incl_name
     }
 
     pub fn get_name(&self) -> &str {
@@ -88,7 +94,7 @@ impl Meta {
  * actually translated the function.
  */
 pub struct Scope<'def> {
-    /// maps the defid to (code_name, spec_name, name)
+    /// maps the defid to (code_name, spec_name, trait_req_incl_name, name)
     name_map: BTreeMap<DefId, Meta>,
     /// track the actually translated functions
     translated_functions: BTreeMap<DefId, radium::Function<'def>>,

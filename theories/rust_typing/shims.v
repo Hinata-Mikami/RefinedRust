@@ -545,7 +545,9 @@ Proof.
   start_function "ptr_dangling" ϝ ( () ) ( [T_ty []] ) ( () ) ( ) => l_align.
   init_lfts (∅).
   init_tyvars (<["T" := existT _ (T_ty)]> ∅).
+
   repeat liRStep; liShow.
+
   Unshelve.
   all: unshelve_sidecond; sidecond_hook.
   Unshelve. all: sidecond_hammer.

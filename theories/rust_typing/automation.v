@@ -895,6 +895,7 @@ Ltac sidecond_hook ::=
   intros;
   prepare_initial_coq_context;
   match goal with
+  | |- _ ∧ _ => split; sidecond_hook
   | |- Forall ?P ?l =>
       sidecond_hook_list
   | |- lctx_lft_alive ?E ?L ?κ =>
@@ -1092,6 +1093,11 @@ Ltac solve_function_subtype_hook ::=
   unshelve (sidecond_solver);
   sidecond_hammer
 .
+
+Ltac unfold_generic_inst :=
+  unfold spec_instantiate_lft_fst;
+  unfold spec_instantiate_typaram_fst;
+  unfold spec_instantiated.
 
 Ltac print_remaining_goal :=
   match goal with

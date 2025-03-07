@@ -113,10 +113,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         interned_path
     }
 
-    fn make_shim_function_entry(&self, did: DefId, spec_name: &str) -> Option<shims::registry::FunctionShim> {
-        let Some(mode) = self.procedure_registry.lookup_function_mode(did) else {
+    fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim> {
+        let Some(meta) = self.procedure_registry.lookup_function(did) else {
             return None;
         };
+        let mode = meta.get_mode();
 
         if mode != procedures::Mode::Prove
             && mode != procedures::Mode::OnlySpec
@@ -141,10 +142,13 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             path: interned_path,
             is_method,
             name,
-            spec_name: spec_name.to_owned(),
+            trait_req_incl_name: meta.get_trait_req_incl_name().to_owned(),
+            spec_name: meta.get_spec_name().to_owned(),
         })
     }
 
+    // TODO we never read these shims currently. Maybe unnecessary to have this now that we have
+    // complete trait impl support?
     fn make_shim_trait_method_entry(
         &self,
         did: DefId,
@@ -264,7 +268,14 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         let mut method_specs = HashMap::new();
         for (name, spec) in &decl.methods.methods {
-            method_specs.insert(name.to_owned(), (spec.function_name.clone(), spec.spec_name.clone()));
+            method_specs.insert(
+                name.to_owned(),
+                (
+                    spec.function_name.clone(),
+                    spec.spec_name.clone(),
+                    spec.trait_req_incl_name.clone().unwrap(),
+                ),
+            );
         }
 
         let a = shim_registry::TraitImplShim {
@@ -299,6 +310,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 base_spec_params: decl.base_spec_params.clone(),
                 spec_subsumption: decl.spec_subsumption.clone(),
                 allowed_attrs: decl.declared_attrs.clone(),
+                method_trait_incl_decls: decl.method_trait_incl_decls.clone(),
             };
             return Some(a);
         }
@@ -384,7 +396,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                     continue;
                 }
             }
-            if let Some(shim) = self.make_shim_function_entry(*did, &fun.spec.spec_name) {
+            if let Some(shim) = self.make_shim_function_entry(*did) {
                 function_shims.push(shim);
             }
         }
@@ -398,7 +410,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                     continue;
                 }
             }
-            if let Some(shim) = self.make_shim_function_entry(*did, &fun.spec_name) {
+            if let Some(shim) = self.make_shim_function_entry(*did) {
                 function_shims.push(shim);
             }
         }
@@ -935,8 +947,12 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             Some(did) => {
                 // register as usual in the procedure registry
                 info!("registering shim for {:?}", shim.path);
-                let meta =
-                    procedures::Meta::new(shim.spec_name.clone(), shim.name.clone(), procedures::Mode::Shim);
+                let meta = procedures::Meta::new(
+                    shim.spec_name.clone(),
+                    shim.trait_req_incl_name.clone(),
+                    shim.name.clone(),
+                    procedures::Mode::Shim,
+                );
                 vcx.procedure_registry.register_function(did, meta)?;
             },
             _ => {
@@ -978,6 +994,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 base_spec_params: shim.base_spec_params.clone(),
                 spec_subsumption: shim.spec_subsumption.clone(),
                 declared_attrs: shim.allowed_attrs.clone(),
+                method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };
 
             vcx.trait_registry.register_shim(did, spec)?;
@@ -1024,7 +1041,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
 
         // now register all the method shims
         let impl_assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
-        for (method_name, (name, spec_name)) in &shim.method_specs {
+        for (method_name, (name, spec_name, trait_req_incl_name)) in &shim.method_specs {
             // find the right item
             if let Some(item) = impl_assoc_items.find_by_name_and_kind(
                 vcx.env.tcx(),
@@ -1039,7 +1056,12 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     shim.trait_path, method_name, for_type, method_did
                 );
 
-                let meta = procedures::Meta::new(spec_name.clone(), name.clone(), procedures::Mode::Shim);
+                let meta = procedures::Meta::new(
+                    spec_name.clone(),
+                    trait_req_incl_name.clone(),
+                    name.clone(),
+                    procedures::Mode::Shim,
+                );
 
                 vcx.procedure_registry.register_function(method_did, meta)?;
             }
@@ -1098,7 +1120,12 @@ fn register_functions<'tcx>(
                 annot.spec_name,
                 annot.code_name
             );
-            let meta = procedures::Meta::new(annot.spec_name, annot.code_name, procedures::Mode::Shim);
+            let meta = procedures::Meta::new(
+                annot.spec_name,
+                annot.trait_req_incl_name,
+                annot.code_name,
+                procedures::Mode::Shim,
+            );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
             continue;
@@ -1115,8 +1142,9 @@ fn register_functions<'tcx>(
 
         let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
         let spec_name = format!("type_of_{}", fname);
+        let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
-        let meta = procedures::Meta::new(spec_name, fname, mode);
+        let meta = procedures::Meta::new(spec_name, trait_req_incl_name, fname, mode);
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
     }

@@ -208,7 +208,7 @@ Section function.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%fn & % & -> & _)". eauto.
   Qed.
-  Global Instance copyable_function_ptr {lfts : nat} {rts : list (Type)} fal fp : 
+  Global Instance copyable_function_ptr {lfts : nat} {rts : list (Type)} fal fp :
     Copyable (function_ptr (lfts:=lfts) fal (rts := rts) fp) := _.
 End function.
 
@@ -249,7 +249,7 @@ Section call.
           but even the logical step thing is problematic.
         *)
       prove_with_subtype E L1 true ProveDirect (fps.(fp_Pa) π) (λ L2 _ R3,
-      
+
       (* finally, prove the sidecondition *)
       fps.(fp_Sc) π ∗
       ⌜Forall (lctx_lft_alive E L2) (L2.*1.*2)⌝ ∗
@@ -478,8 +478,8 @@ Definition arg_ty_is_xrfn `{!typeGS Σ} (ty : sigT (λ rt : Type, type rt * rt)%
   ty_is_xrfn ty r.
 
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
-  ((fun κs tys => 
-    mk_fn_spec (A : Type) (fun x => 
+  ((fun κs tys =>
+    mk_fn_spec (A : Type) (fun x =>
     FP_wf
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
     (@nil _)
@@ -491,7 +491,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' 
   (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
-  ((fun κs tys => 
+  ((fun κs tys =>
     (mk_fn_spec (A : Type) ((fun x =>
     FP_wf
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
@@ -504,7 +504,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
   (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 (** With a late precondition Pb *)
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
-  ((fun κs tys => 
+  ((fun κs tys =>
     mk_fn_spec (A : Type) ((fun x =>
     FP_wf
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
@@ -516,7 +516,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')'
     : spec_with n (fmap (A := Type * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
-  ((fun κs tys => 
+  ((fun κs tys =>
     mk_fn_spec (A : Type) ((fun x =>
     FP_wf
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
@@ -571,6 +571,11 @@ Notation "'fnspec!' κs ':' n '|' tys ':' rsts ',' S" :=
       : spec_with n (fmap (A := Type * syn_type) fst rsts) _))
   (at level 99, S at level 180, κs pattern, tys pattern, only parsing) : stdpp_scope.
 
+(** Add a new late precondition to a fn specification *)
+Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id → iProp Σ) : fn_params :=
+  FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr).
+Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
+  mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
 (** Notation to get the params of a function type.
   The function type might be parametric in some [syn_type]s.
@@ -879,6 +884,33 @@ Section function_subsume.
     function_subtype S1 S2.
   Proof.
     split; [apply function_subtype_lift_generics_1 | apply function_subtype_lift_generics_2].
+  Qed.
+
+  (* We can lift additional preconditions over the inclusion, needed for trait incl requirements. *)
+  Lemma function_subtype_lift_late_pre_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) `{!∀ π, Persistent (P π)} : 
+    function_subtype (lfts:= 0) (rts:=[]) (λ '*[] '*[], S1) (λ '*[] '*[], S2) →
+    function_subtype (lfts:=0) (rts:=[]) (λ '*[] '*[], fn_spec_add_late_pre S1 P) (λ '*[] '*[], fn_spec_add_late_pre S2 P).
+  Proof.
+    intros Hsub. 
+    iIntros (π fn sts Heq1 Heq2 [] []).
+    iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
+    iIntros "#HT". iSplitL; last done.
+    iEval (unfold typed_function).
+    iIntros ([] [] x ϝ); simpl. 
+    iModIntro. iIntros (????) "(Hs & Ha & Hl & [Hsc #HP] & Hpre)".
+    iDestruct ("Hsub" with "[]") as "(Hsub' & _)". 
+    { clear. iEval (rewrite /typed_function).
+      iIntros ([] []). simpl. iIntros (x ϝ). 
+      iModIntro. iIntros (?? ??).
+      iIntros "(? & ? & ? & ? & ?)".
+      iEval (rewrite /typed_function) in "HT".
+      iApply ("HT" $! *[] *[] x ϝ); [done.. | ].
+      iFrame "∗ #". }
+    simpl. 
+    iEval (rewrite /typed_function) in "Hsub'".
+    iSpecialize ("Hsub'" $! *[] *[]).
+    simpl. 
+    iApply "Hsub'"; last iFrame; done.
   Qed.
 
   Lemma use_function_subtype {lfts : nat} {rts : list Type} eqp1 eqp2 (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) π v l sts :

@@ -49,6 +49,7 @@ pub fn get_export_as_attr(attrs: &[&AttrItem]) -> Result<Vec<String>, String> {
 pub struct ShimAnnot {
     pub code_name: String,
     pub spec_name: String,
+    pub trait_req_incl_name: String,
 }
 
 impl<U> parse::Parse<U> for ShimAnnot
@@ -60,8 +61,11 @@ where
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
 
-        if args.len() != 2 {
-            return Err(parse::Error::OtherErr(pos, "Expected exactly two arguments to rr::shim".to_owned()));
+        if args.len() != 3 {
+            return Err(parse::Error::OtherErr(
+                pos,
+                "Expected exactly three arguments to rr::shim".to_owned(),
+            ));
         }
 
         let args: Vec<_> = args.into_iter().collect();
@@ -69,6 +73,7 @@ where
         Ok(Self {
             code_name: args[0].value(),
             spec_name: args[1].value(),
+            trait_req_incl_name: args[2].value(),
         })
     }
 }

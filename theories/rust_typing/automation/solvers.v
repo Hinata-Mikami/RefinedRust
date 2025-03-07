@@ -3442,6 +3442,21 @@ Local Ltac decompose_instantiated_spec_rec a ty_acc lft_acc cont :=
       decompose_instantiated_spec_rec a (ty +:: ty_acc) (lft_acc) cont
   | _ => cont a ty_acc lft_acc
   end.
+Local Ltac decompose_instantiated_tys tys :=
+  lazymatch tys with
+  | -[] => constr:(hnil id)
+  | ?ty -:: ?tys => 
+      let a := decompose_instantiated_tys tys in
+      constr:(ty +:: a)
+  end.
+Local Ltac decompose_instantiated_lfts lfts :=
+  lazymatch lfts with
+  | -[] => constr:(@nil lft)
+  | ?lft -:: ?lfts => 
+      let a := decompose_instantiated_lfts lfts in
+      constr:(lft :: a)
+  end.
+
 (** Decompose a term [a] of the shape [b <TY> ... <LFT> ... <INST!>]
    into the list of type instantiations [ty_inst] and lifetime instantiations
    [lft_inst], calling [cont b ty_inst lft_inst] afterwards. *)
@@ -3449,6 +3464,11 @@ Ltac decompose_instantiated_spec a cont :=
   lazymatch a with
   | spec_instantiated (?a) =>
       decompose_instantiated_spec_rec a (hnil id) (@nil lft) cont
+  (* also handle the case that the instantiation has been reduced *)
+  | ?a ?lfts ?tys =>
+      let lfts := decompose_instantiated_lfts lfts in
+      let tys := decompose_instantiated_tys tys in
+      cont a tys lfts
   end.
 
 (** Instantiate a spec term [spec] with types [tys] and lfts [lfts].
@@ -3561,20 +3581,30 @@ Ltac function_subtype_solve_trait :=
       only [_fn_term]: (destruct_product_hypothesis κs κs; evar (evar_ident : fn_spec); exact evar_ident);
       only [_fn_term2]: destruct_product_hypothesis tys tys;
 
-      (* unfold <MERGE!>, so that the application can properly reduce *)
-      unfold spec_collapse_params;
+      (* lift the trait incl precondition *)
+      lazymatch goal with
+      | |- function_subtype ?a _ =>
+        lazymatch a with
+        | context [fn_spec_add_late_pre _ _] =>
 
-      simpl;
-      function_subtype_find_trait_spec ltac:(fun trait_proj trait_spec trait_ty_inst trait_lft_inst appspec =>
-        (* Prove the inclusion for this projection *)
-        prove_trait_proj_incl_for trait_proj appspec trait_spec trait_ty_inst trait_lft_inst
-        ltac:(fun H =>
-          (* apply the generated inclusion proof *)
-          eapply function_subtype_lift_generics_2 in H; simpl in H;
-          eapply function_subtype_trans; [apply H | ];
-          eapply function_subtype_refl
+        notypeclasses refine (function_subtype_lift_late_pre_2 _ _  _ _); [apply _ | ];
+
+        (* unfold <MERGE!>, so that the application can properly reduce *)
+        unfold spec_collapse_params;
+
+        simpl;
+        function_subtype_find_trait_spec ltac:(fun trait_proj trait_spec trait_ty_inst trait_lft_inst appspec =>
+          (* Prove the inclusion for this projection *)
+          prove_trait_proj_incl_for trait_proj appspec trait_spec trait_ty_inst trait_lft_inst
+          ltac:(fun H =>
+            (* apply the generated inclusion proof *)
+            eapply function_subtype_lift_generics_2 in H; simpl in H;
+            eapply function_subtype_trans; [apply H | ];
+            eapply function_subtype_refl
+          )
         )
-      )
+        end
+      end
   end.
 
 
@@ -3597,14 +3627,14 @@ Ltac solve_trait_incl :=
       (* check if we can decompose the first term *)
       lazymatch goal with
       | |- ?incl ?spec1 ?spec2 =>
-        decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
-          first [
+        first [
+            decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
             (* look for an assumption we can specialize *)
             is_var spec1;
             prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
               (* TODO: ideally, we should use transitivity instead and then go on *)
               apply H2
-            )
+            ))
           | (* directly solve the inclusion *)
             (* first unfold the inclusion *)
             strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
@@ -3615,6 +3645,5 @@ Ltac solve_trait_incl :=
               first [solve_function_subtype | done ]
             )
           ]
-        )
       end
 end.

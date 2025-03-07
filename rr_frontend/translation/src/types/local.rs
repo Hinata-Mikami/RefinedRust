@@ -376,9 +376,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         for (late_bound_idx, late_bound) in sig.bound_vars().into_iter().enumerate() {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
-                    let name = r
-                        .get_name()
-                        .map_or_else(|| format!("late_lft_{late_bound_idx}"), |x| strip_coq_ident(x.as_str()));
+                    let name = r.get_name().map_or_else(
+                        || format!("late_lft_{late_bound_idx}"),
+                        |x| strip_coq_ident(x.as_str()),
+                    );
 
                     // push this to the context.
                     scope.add_lft_param(name.clone());
@@ -465,7 +466,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 let ty = types::TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req = radium::TraitReqInst::new(req.spec, req.origin, assoc_inst, req.scope);
+            let trait_req =
+                radium::TraitReqInst::new(req.spec, req.origin, assoc_inst, req.of_trait, req.scope);
             fn_inst.add_trait_requirement(trait_req);
         }
 

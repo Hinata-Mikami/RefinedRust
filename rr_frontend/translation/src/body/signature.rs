@@ -75,7 +75,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
     ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(name, spec_name);
+        let mut translated_fn = radium::FunctionBuilder::new(name, spec_name, None);
 
         let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc_did);
         let ty = ty.instantiate_identity();
@@ -142,7 +142,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         proc_registry: &'a procedures::Scope<'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(meta.get_name(), meta.get_spec_name());
+        let mut translated_fn = radium::FunctionBuilder::new(
+            meta.get_name(),
+            meta.get_spec_name(),
+            Some(meta.get_trait_req_incl_name()),
+        );
 
         // TODO can we avoid the leak
         let proc: &'def Procedure = &*Box::leak(Box::new(proc));
@@ -382,7 +386,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         proc_registry: &'a procedures::Scope<'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(meta.get_name(), meta.get_spec_name());
+        let mut translated_fn = radium::FunctionBuilder::new(
+            meta.get_name(),
+            meta.get_spec_name(),
+            Some(meta.get_trait_req_incl_name()),
+        );
 
         // TODO can we avoid the leak
         let proc: &'def Procedure = &*Box::leak(Box::new(proc));

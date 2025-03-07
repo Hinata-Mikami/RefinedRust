@@ -145,7 +145,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         name: String,
         declared_attrs: HashSet<String>,
-    ) -> specs::LiteralTraitSpec {
+    ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
         let phys_record = format!("{name}_phys");
         let spec_record = format!("{name}_spec");
         let spec_params_record = format!("{name}_spec_params");
@@ -154,7 +154,22 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let base_spec_params = format!("{name}_base_spec_params");
         let spec_subsumption = format!("{name}_spec_incl");
 
-        specs::LiteralTraitSpec {
+        let mut method_trait_incl_decls = HashMap::new();
+
+        let items: &ty::AssocItems = self.env.tcx().associated_items(did);
+        for c in items.in_definition_order() {
+            if ty::AssocKind::Fn == c.kind {
+                // get function name
+                let method_name =
+                    self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
+                let method_name = base::strip_coq_ident(&method_name);
+
+                let trait_incl_decl = format!("trait_incl_of_{name}_{method_name}");
+                method_trait_incl_decls.insert(method_name, trait_incl_decl);
+            }
+        }
+
+        Ok(specs::LiteralTraitSpec {
             name,
             assoc_tys: self.get_associated_type_names(did),
             spec_record,
@@ -164,7 +179,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             base_spec_params,
             spec_subsumption,
             declared_attrs,
-        }
+            method_trait_incl_decls,
+        })
     }
 
     /// Register a new annotated trait in the local crate with the registry.
@@ -187,7 +203,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             get_declared_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
         // make the literal we are going to use
-        let lit_trait_spec = self.make_literal_trait_spec(did.to_def_id(), trait_name.clone(), valid_attrs);
+        let lit_trait_spec =
+            self.make_literal_trait_spec(did.to_def_id(), trait_name.clone(), valid_attrs)?;
         // already register it for use
         // In particular, this is also needed to be able to register the methods of this trait
         // below, as they need to be able to access the associated types of this trait already.
@@ -423,6 +440,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 subst_args.push(bound);
             }
 
+            let trait_spec = self.lookup_trait(trait_ref.def_id).ok_or(Error::NotATrait(trait_ref.def_id))?;
+
             // Check if the target is a method of the same trait with the same args
             // Since this happens in the same ParamEnv, this is the assumption of the trait method
             // for its own trait, so we skip it.
@@ -473,6 +492,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             radium::TraitReqInstSpec::Specialized(spec_term),
                             *origin,
                             assoc_tys,
+                            trait_spec,
                             binders,
                         )
                     },
@@ -523,6 +543,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             radium::TraitReqInstSpec::Quantified(trait_impl),
                             *origin,
                             assoc_types,
+                            trait_spec,
                             binders,
                         )
                     },
@@ -595,8 +616,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 let ty = self.type_translator.translate_type_in_state(ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req =
-                radium::TraitReqInst::new(trait_req.spec, trait_req.origin, assoc_inst, trait_req.scope);
+            let trait_req = radium::TraitReqInst::new(
+                trait_req.spec,
+                trait_req.origin,
+                assoc_inst,
+                trait_req.of_trait,
+                trait_req.scope,
+            );
 
             trait_reqs.push(trait_req);
         }
