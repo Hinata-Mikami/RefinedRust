@@ -68,7 +68,9 @@ Definition type_of_ptr_write `{!typeGS Σ} (T_rt : Type) (T_st : syn_type) :=
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
-  ⊢ typed_function π (ptr_write T_st) [] (<tag_type> type_of_ptr_write T_rt T_st).
+  ⊢ typed_function π (ptr_write T_st) [] (<tag_type> 
+      spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
+    (fn_spec_add_late_pre (type_of_ptr_write T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
 Proof.
   start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
@@ -93,9 +95,11 @@ Qed.
 (** Same for shared references *)
 Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : Type) (U_st : syn_type) :=
   (* First add a new type parameter and a new lifetime *)
-  fnspec! ( *[κ]) : 1 | ( *[U_ty]) : [(U_rt, U_st)],
+  spec! ( *[κ]) : 1 | ( *[U_ty]) : [U_rt],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
-    (type_of_ptr_write (place_rfn U_rt) (PtrSynType) <TY>@{0} shr_ref κ U_ty) <MERGE!>.
+    fn_spec_add_late_pre ((type_of_ptr_write (place_rfn U_rt) (PtrSynType) <TY> shr_ref κ U_ty) <INST!>)
+    (λ π, typaram_wf U_rt U_st U_ty)
+.
 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
   ⊢ typed_function π (ptr_write (PtrSynType)) [] (<tag_type> type_of_ptr_write_shrref U_rt U_st).

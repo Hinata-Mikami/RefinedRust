@@ -88,11 +88,9 @@ Section function.
     fn_p : fn_A → fn_params;
   }.
   Definition fn_spec_add_pre (pre : iProp Σ) (F : fn_spec) : fn_spec :=
-    let '(mk_fn_spec A fp) := F in
-    mk_fn_spec A (λ x, fn_params_add_pre pre (fp x)).
+    mk_fn_spec F.(fn_A) (λ x, fn_params_add_pre pre (F.(fn_p) x)).
   Definition fn_spec_add_elctx (E : lft → elctx) (F : fn_spec) : fn_spec :=
-    let '(mk_fn_spec A fp) := F in
-    mk_fn_spec A (λ x, fn_params_add_elctx E (fp x)).
+    mk_fn_spec F.(fn_A) (λ x, fn_params_add_elctx E (F.(fn_p) x)).
 
 
   (* the return continuation for type-checking the body.
@@ -484,7 +482,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' 
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
     (@nil _)
     Pa%I
-    (λ π, typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys)%I
+    (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys*) True)%I
     B _
     rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)))
     : spec_with n (fmap (A := Type * syn_type) fst rts) fn_spec)
@@ -497,7 +495,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
     (@cons (@sigT Type _) x1%F .. (@cons (@sigT Type _) xn%F (@nil (@sigT Type _))) ..)
     Pa%I
-    (λ π, typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys)%I
+    (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys *) True)%I
     B _
     rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params)))
     : spec_with n (fmap (A := Type * syn_type) fst rts) fn_spec)
@@ -510,7 +508,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')'
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
     (@nil _)
     Pa%I
-    (λ π, typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ Pb%I π)%I
+    (λ π, (*typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
     rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params))
     : spec_with n (fmap (A := Type * syn_type) fst rts) fn_spec)
@@ -522,7 +520,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     (λ ϝ, typarams_elctx ϝ (fmap (A := Type * syn_type) fst rts) tys ++ E ϝ)
     (@cons (@sigT Type _) x1%F .. (@cons (@sigT Type _) xn%F (@nil (@sigT Type _))) ..)
     Pa%I
-    (λ π, typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ Pb%I π)%I
+    (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
     rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params))
     : spec_with n (fmap (A := Type * syn_type) fst rts) fn_spec)
@@ -576,6 +574,10 @@ Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id
   FP S.(fp_atys) S.(fp_Pa) (λ π, S.(fp_Sc) π ∗ pre π)%I S.(fp_elctx) S.(fp_extype) S.(fp_fr).
 Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
+
+Definition fn_spec_add_linking_condition `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) (ectx : lft → elctx) : fn_spec :=
+  fn_spec_add_late_pre (fn_spec_add_elctx ectx S) pre.
+  
 
 (** Notation to get the params of a function type.
   The function type might be parametric in some [syn_type]s.
@@ -682,8 +684,8 @@ Section function_subsume.
         inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
         inhale (vr ◁ᵥ{π} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
         ∃ b2,
-        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
         exhale (vr ◁ᵥ{π} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
+        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
         done
       | return T
     .
@@ -830,8 +832,8 @@ Section function_subsume.
         inhale (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_R) π;
         inhale (vr ◁ᵥ{π} (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ref) @ (((F1 κs tys).(fn_p) a).(fp_fr) a2).(fr_ty));
         ∃ b2,
-        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
         exhale (vr ◁ᵥ{π} (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ref) @ (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_ty));
+        exhale (((F2 κs tys).(fn_p) b).(fp_fr) b2).(fr_R) π;
         done
     | exhale ⌜l1 = l2⌝; return T.
   Proof.
@@ -912,6 +914,80 @@ Section function_subsume.
     simpl. 
     iApply "Hsub'"; last iFrame; done.
   Qed.
+  Lemma function_subtype_lift_linking_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) (E : lft → elctx) `{!∀ π, Persistent (P π)} : 
+    function_subtype (lfts:= 0) (rts:=[]) (λ '*[] '*[], S1) (λ '*[] '*[], S2) →
+    function_subtype (lfts:=0) (rts:=[]) 
+      (λ '*[] '*[], fn_spec_add_linking_condition S1 P E) (λ '*[] '*[], fn_spec_add_linking_condition S2 P E).
+  Proof.
+    intros Hsub. 
+    iIntros (π fn sts Heq1 Heq2 [] []).
+    iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
+    iIntros "#HT". iSplitL; last done.
+    iEval (unfold typed_function).
+    iIntros ([] [] x ϝ); simpl. 
+    iModIntro. iIntros (????) "(Hs & Ha & Hl & [Hsc #HP] & Hpre)".
+    iDestruct ("Hsub" with "[]") as "(Hsub' & _)". 
+    { clear. iEval (rewrite /typed_function).
+      iIntros ([] []). simpl. iIntros (x ϝ). 
+      iModIntro. iIntros (?? ??).
+      iIntros "(? & ? & ? & ? & ?)".
+      iEval (rewrite /typed_function) in "HT".
+      simpl.
+      
+      (* 
+         What is happening here? 
+         - I guess this doesn't work. The problem is that the elctx of what I prove up there is different.
+           This influences other stuff. I don't know how to deal with that.
+           I cannot just lift that out.
+           So how does the specialization here work then? 
+         - Maybe I should handle these lifetime constraints differently.
+           Why do they arise? 
+           If I partially specialize, the original constraints probably always imply the new ones.
+           i.e., stuff is nicely recursive. But I should check that this is indeed the case.
+           What are the fundamental constraints I need? 
+           + 
+         TODO look at an example.
+         - 
+
+         Constraints I need:
+         - all the 
+
+         Every function is verified against an actual polymorphic specification.
+         This verification assumes that the subjective polymorphic context is well-formed.
+         With regards to lifetimes, this means:
+         - type variables live long enough
+         - lifetimes outlive function lifetime
+
+         When I call the function, I need to ensure that this is true.
+
+         If I verify a function with a specialized trait spec (i.e. an impl): 
+         - I might verify against more specific parameters. I should use these more specific parameters.
+           + If I bake it into the specification, what I assume might be too weak or too strong. Or maybe not? If I impl trait for &'a &'b T, then maybe also the well-formedness for that should be included in our contract 
+            Q: does 'a subset 'b become a constraint that also materializes in the translation anyways? Currently not. If I 
+           + 
+         - How do I ensure that these are actually satisfied then?
+           + If baked into the spec, then all is good. 
+           + I could add constraints at linktime. Then the verification has to assume exactly these constraints.
+             Also, I have a problem with the way I handle trait inclusions then, as evidenced by this lemma not working.
+
+         => For now, bake into the spec, until I understand this better or this actually makes somethign unprovable.
+
+       *)
+
+
+      (*iSpecialize ("HT" $! *[] *[] x ϝ). *)
+      (*simpl. *)
+      (*[done.. | ].*)
+      (*iFrame "∗ #". }*)
+    (*simpl. *)
+    (*iEval (rewrite /typed_function) in "Hsub'".*)
+    (*iSpecialize ("Hsub'" $! *[] *[]).*)
+    (*simpl. *)
+    (*iApply "Hsub'"; last iFrame; done.*)
+  (*Qed.*)
+  Abort.
+
+
 
   Lemma use_function_subtype {lfts : nat} {rts : list Type} eqp1 eqp2 (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) π v l sts :
     function_subtype a b →

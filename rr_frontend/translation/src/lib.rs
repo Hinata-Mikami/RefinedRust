@@ -286,6 +286,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             spec_attrs_record: decl.trait_ref.impl_ref.spec_attrs_record.clone(),
             spec_record: decl.trait_ref.impl_ref.spec_record.clone(),
             spec_subsumption_proof: decl.trait_ref.impl_ref.spec_subsumption_proof.clone(),
+            spec_subsumption_statement: decl.trait_ref.impl_ref.spec_subsumption_statement.clone(),
         };
 
         Some(a)
@@ -681,26 +682,38 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     }
 
     /// Write proofs for a verification unit.
-    fn write_proofs<F>(&self, file_path: F, stem: &str)
+    fn write_proofs<F, G>(
+        &self,
+        proof_dir_path: &Path,
+        file_path: F,
+        trait_file_path: G,
+        stem: &str,
+    ) -> Vec<String>
     where
-        F: Fn(&str) -> PathBuf,
+        F: Fn(&str) -> String,
+        G: Fn(&str) -> String,
     {
         let common_imports = vec![
             coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
+        let mut proof_modules = Vec::new();
+
         // write proofs
         // each function gets a separate file in order to parallelize
         for (did, fun) in self.procedure_registry.iter_code() {
-            let path = file_path(fun.name());
+            let module_path = file_path(fun.name());
+            let path = proof_dir_path.join(format!("{module_path}.v"));
 
-            if path.exists() {
-                info!("Proof file for function {} already exists, skipping creation", fun.name());
+            if !self.check_function_needs_proof(*did, fun) {
                 continue;
             }
 
-            if !self.check_function_needs_proof(*did, fun) {
+            proof_modules.push(module_path);
+
+            if path.exists() {
+                info!("Proof file for function {} already exists, skipping creation", fun.name());
                 continue;
             }
 
@@ -736,6 +749,55 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             writeln!(proof_file, "End proof.").unwrap();
         }
+
+        // write file for trait incl
+        for spec in self.trait_impls.values() {
+            //writeln!(spec_file, "{spec}").unwrap();
+
+            let name = &spec.trait_ref.impl_ref.spec_subsumption_proof;
+            let module_path = trait_file_path(name.as_str());
+            let path = proof_dir_path.join(format!("{module_path}.v"));
+
+            proof_modules.push(module_path);
+
+            if path.exists() {
+                info!("Proof file for trait impl {} already exists, skipping creation", name);
+                continue;
+            }
+
+            info!("Proof file for trait impl {} does not yet exist, creating", name);
+
+            let mut proof_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
+
+            let mut imports = common_imports.clone();
+
+            imports.append(&mut vec![
+                coq::module::Import::new(vec![&format!("generated_specs_{stem}")]).from(vec![
+                    &self.coq_path_prefix,
+                    stem,
+                    "generated",
+                ]),
+            ]);
+
+            writeln!(proof_file, "{}", coq::module::ImportList(&imports)).unwrap();
+
+            // Note: we do not export the self.extra_exports explicitly, as we rely on them
+            // being re-exported from the template -- we want to be stable under changes of the
+            // extras
+
+            writeln!(proof_file, "Set Default Proof Using \"Type\".").unwrap();
+            writeln!(proof_file).unwrap();
+
+            writeln!(proof_file, "Section proof.").unwrap();
+            writeln!(proof_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+            writeln!(proof_file).unwrap();
+
+            write!(proof_file, "{}", spec.generate_proof()).unwrap();
+
+            writeln!(proof_file, "End proof.").unwrap();
+        }
+
+        proof_modules
     }
 
     /// Write Coq files for this verification unit.
@@ -909,16 +971,14 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             fs::create_dir_all(proof_dir_path).unwrap();
         }
 
-        self.write_proofs(|name| proof_dir_path.join(format!("proof_{name}.v")), stem);
-
         // explicitly spell out the proof modules we want to compile so we don't choke on stale
         // proof files
-        let mut proof_modules = Vec::new();
-        for (did, fun) in self.procedure_registry.iter_code() {
-            if self.check_function_needs_proof(*did, fun) {
-                proof_modules.push(format!("proof_{}", fun.name()));
-            }
-        }
+        let proof_modules = self.write_proofs(
+            proof_dir_path,
+            |name| format!("proof_{name}"),
+            |name| format!("trait_incl_{name}"),
+            stem,
+        );
 
         // write proof dune file
         let proof_dune_path = proof_dir_path.join("dune");
@@ -1036,6 +1096,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             shim.spec_params_record.clone(),
             shim.spec_attrs_record.clone(),
             shim.spec_subsumption_proof.clone(),
+            shim.spec_subsumption_statement.clone(),
         );
         vcx.trait_registry.register_impl_shim(did, impl_lit)?;
 
@@ -1084,6 +1145,9 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
         return procedures::Mode::Shim;
     }
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "code_shim") {
+        return procedures::Mode::CodeShim;
+    }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
         return procedures::Mode::TrustMe;
@@ -1108,6 +1172,10 @@ fn register_functions<'tcx>(
     for &f in vcx.functions {
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
 
+        let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
+        let spec_name = format!("type_of_{}", fname);
+        let trait_req_incl_name = format!("trait_incl_of_{}", fname);
+
         if mode == procedures::Mode::Shim {
             // TODO better error message
             let attrs = vcx.env.get_attributes(f.to_def_id());
@@ -1130,19 +1198,32 @@ fn register_functions<'tcx>(
 
             continue;
         }
+        if mode == procedures::Mode::CodeShim {
+            // TODO better error message
+            let attrs = vcx.env.get_attributes(f.to_def_id());
+            let v = attrs::filter_for_tool(attrs);
+            let annot = spec_parsers::get_code_shim_attrs(v.as_slice()).unwrap();
+
+            info!("Registering code shim: {:?} as {}", f.to_def_id(), annot.code_name);
+            let meta = procedures::Meta::new(
+                spec_name,
+                trait_req_incl_name,
+                annot.code_name,
+                procedures::Mode::CodeShim,
+            );
+            vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
+
+            continue;
+        }
 
         if mode == procedures::Mode::Prove && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
             mode = get_most_restrictive_function_mode(vcx, impl_did);
         }
 
-        if mode == procedures::Mode::Shim {
+        if mode.is_shim() || mode.is_code_shim() {
             warn!("Nonsensical shim attribute on impl; ignoring");
             mode = procedures::Mode::Prove;
         }
-
-        let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
-        let spec_name = format!("type_of_{}", fname);
-        let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
         let meta = procedures::Meta::new(spec_name, trait_req_incl_name, fname, mode);
 
@@ -1408,13 +1489,15 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let spec_name = format!("{base_name}_spec");
             let spec_params_name = format!("{base_name}_spec_params");
             let spec_attrs_name = format!("{base_name}_spec_attrs");
-            let proof_name = format!("{base_name}_spec_subsumption");
+            let proof_name = format!("{base_name}_spec_subsumption_correct");
+            let proof_statement = format!("{base_name}_spec_subsumption");
 
             let impl_lit = radium::LiteralTraitImpl {
                 spec_record: spec_name,
                 spec_params_record: spec_params_name,
                 spec_attrs_record: spec_attrs_name,
                 spec_subsumption_proof: proof_name,
+                spec_subsumption_statement: proof_statement,
             };
             vcx.trait_registry
                 .register_impl_shim(did, impl_lit)

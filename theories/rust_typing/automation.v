@@ -1089,7 +1089,7 @@ Ltac sidecond_solver :=
 Ltac solve_function_subtype_hook ::=
   rewrite /function_subtype;
   iStartProof;
-  unshelve (repeat liRStep);
+  unshelve (repeat liRStep; solve[fail]);
   unshelve (sidecond_solver);
   sidecond_hammer
 .
@@ -1109,4 +1109,18 @@ Ltac print_remaining_sidecond :=
   match goal with
   | H := FUNCTION_NAME ?s |- _ =>
     print_remaining_shelved_goal s
+  end.
+
+(* Prelude for trait incl files *)
+Ltac solve_trait_incl_prelude :=
+  solve_trait_incl_prepare;
+  solve_trait_incl_core;
+  first [
+    rewrite /function_subtype;
+    iStartProof
+  | fast_done].
+Ltac print_remaining_trait_goal :=
+  match goal with
+  | |- _ =>
+  idtac "Type system got stuck while proving trait inclusion"; print_goal; admit
   end.

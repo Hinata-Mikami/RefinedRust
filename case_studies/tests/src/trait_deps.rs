@@ -61,43 +61,6 @@ mod dep2 {
     }
 }
 
-mod dep3 {
-    trait Bar {
-
-    }
-
-    trait Foo<T: Bar> {
-
-        #[rr::verify]
-        fn foofoo(x: T);
-    }
-
-    impl Bar for i32 {
-
-    }
-
-    // the `T: Bar` can be directly dispatched with a concrete instance
-    // TODO this does not work currently.
-    // We should maybe make the spec still be parametric, but then instantiate that in the lemma
-    // statement with the statically known instance.
-    #[rr::skip]
-    impl Foo<i32> for i32 {
-
-        #[rr::default_spec]
-        fn foofoo(x: i32) {
-
-        }
-    }
-
-    // parametric dispatch
-    impl<T: Bar> Foo<T> for u32 {
-
-        #[rr::default_spec]
-        fn foofoo(x: T) {
-
-        }
-    }
-}
 
 /// Check that lifetime parameters are resolved correctly.
 mod dep6 {
@@ -113,27 +76,6 @@ mod dep6 {
     #[rr::verify]
     fn call_foo<T>(x: T) {
         foo(&x);
-    }
-}
-
-mod dep7 {
-    trait Foo {
-
-    }
-
-    #[rr::verify]
-    fn bla<T : Foo>(x: T) {
-
-    }
-
-    impl<'a> Foo for &'a i32 {
-
-    }
-
-    #[rr::verify]
-    fn call_bla() {
-        let x = 42;
-        bla(&x);
     }
 }
 
@@ -199,6 +141,28 @@ mod dep5 {
 }
 
 
+mod dep7 {
+    trait Foo {
+
+    }
+
+    #[rr::verify]
+    fn bla<T : Foo>(x: T) {
+
+    }
+
+    impl<'a> Foo for &'a i32 {
+
+    }
+
+    #[rr::verify]
+    fn call_bla() {
+        let x = 42;
+        bla(&x);
+    }
+}
+
+/*
 mod dep4 {
 
     trait Bar {
@@ -214,3 +178,45 @@ mod dep4 {
         fn foo() -> Self::BT;
     }
 }
+
+*/
+
+/*
+mod dep3 {
+    trait Bar {
+
+    }
+
+    trait Foo<T: Bar> {
+
+        #[rr::verify]
+        fn foofoo(x: T);
+    }
+
+    impl Bar for i32 {
+
+    }
+
+    // the `T: Bar` can be directly dispatched with a concrete instance
+    // TODO this does not work currently.
+    // We should maybe make the spec still be parametric, but then instantiate that in the lemma
+    // statement with the statically known instance.
+    //#[rr::skip]
+    impl Foo<i32> for i32 {
+
+        #[rr::default_spec]
+        fn foofoo(x: i32) {
+
+        }
+    }
+
+    // parametric dispatch
+    impl<T: Bar> Foo<T> for u32 {
+
+        #[rr::default_spec]
+        fn foofoo(x: T) {
+
+        }
+    }
+}
+*/

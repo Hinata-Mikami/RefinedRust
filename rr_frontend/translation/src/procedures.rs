@@ -16,6 +16,7 @@ pub enum Mode {
     OnlySpec,
     TrustMe,
     Shim,
+    CodeShim,
     Ignore,
 }
 
@@ -36,12 +37,16 @@ impl Mode {
         self == Self::Shim
     }
 
+    pub fn is_code_shim(self) -> bool {
+        self == Self::CodeShim
+    }
+
     pub fn is_ignore(self) -> bool {
         self == Self::Ignore
     }
 
     pub fn needs_proof(self) -> bool {
-        self == Self::Prove
+        self == Self::Prove || self == Self::CodeShim
     }
 
     pub fn needs_def(self) -> bool {
@@ -49,7 +54,7 @@ impl Mode {
     }
 
     pub fn needs_spec(self) -> bool {
-        self == Self::Prove || self == Self::TrustMe || self == Self::OnlySpec
+        self == Self::Prove || self == Self::TrustMe || self == Self::OnlySpec || self == Self::CodeShim
     }
 }
 

@@ -18,11 +18,11 @@ pub trait Iterator {
     #[rr::args("(it_state, γ)")]
     /// Postcondition: There exists an optional next item and the successor state of the iterator.
     #[rr::exists("x" : "option {xt_of Item}", "new_it_state" : "{xt_of Self}")]
+    /// Postcondition: The state of the iterator has been updated.
+    #[rr::observe("γ": "($# new_it_state)")]
     /// Postcondition: If there is a next item, it obeys the iterator's relation, and similarly the
     /// successor state is determined.
     #[rr::ensures(#iris "{Next} ($# it_state) (<$#>@{{option}} x) ($# new_it_state)")]
-    /// Postcondition: The state of the iterator has been updated.
-    #[rr::observe("γ": "($# new_it_state)")]
     /// Postcondition: We return the optional next element.
     #[rr::returns("x")]
     fn next(&mut self) -> Option<Self::Item>;

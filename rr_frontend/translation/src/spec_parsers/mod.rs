@@ -95,6 +95,52 @@ pub fn get_shim_attrs(attrs: &[&AttrItem]) -> Result<ShimAnnot, String> {
     Err("Did not find shim annotation".to_owned())
 }
 
+/// Parser for getting code shim attributes
+#[derive(Debug)]
+pub struct CodeShimAnnot {
+    pub code_name: String,
+}
+
+impl<U> parse::Parse<U> for CodeShimAnnot
+where
+    U: ?Sized,
+{
+    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
+        let pos = input.pos().unwrap();
+        let args: parse::Punctuated<parse::LitStr, MToken![,]> =
+            parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+
+        if args.len() != 1 {
+            return Err(parse::Error::OtherErr(
+                pos,
+                "Expected exactly one argument to rr::code_shim".to_owned(),
+            ));
+        }
+        let args: Vec<_> = args.into_iter().collect();
+
+        Ok(Self {
+            code_name: args[0].value(),
+        })
+    }
+}
+
+/// Extract a code shim annotation from a list of annotations of a function or method.
+pub fn get_code_shim_attrs(attrs: &[&AttrItem]) -> Result<CodeShimAnnot, String> {
+    for &it in attrs {
+        let path_segs = &it.path.segments;
+
+        if let Some(seg) = path_segs.get(1) {
+            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+
+            if seg.ident.name.as_str() == "code_shim" {
+                let annot = CodeShimAnnot::parse(&buffer, &()).map_err(parse_utils::str_err)?;
+                return Ok(annot);
+            }
+        }
+    }
+    Err("Did not find shim annotation".to_owned())
+}
+
 /// Check whether we should propagate this attribute of a method from a surrounding impl.
 pub fn propagate_method_attr_from_impl(it: &ast::ast::AttrItem) -> bool {
     if let Some(ident) = it.path.segments.get(1) {

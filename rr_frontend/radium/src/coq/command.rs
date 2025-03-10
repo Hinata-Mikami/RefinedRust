@@ -155,6 +155,12 @@ pub enum Command {
     #[display("{}", _0)]
     Definition(Definition),
 
+    /// The [`Lemma`] command.
+    ///
+    /// [`Lemma`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Lemma
+    #[display("{}", _0)]
+    Lemma(Lemma),
+
     /// The [`Section`] command.
     ///
     /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
@@ -228,5 +234,19 @@ impl Display for Definition {
         } else {
             write!(f2, "Definition {} {} :=\n{}", self.name, self.params, self.body)
         }
+    }
+}
+
+/// A Rocq lemma declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Lemma {
+    pub name: String,
+    pub params: binder::BinderList,
+    pub ty: term::Type,
+}
+
+impl Display for Lemma {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Lemma {} {} : {}\n", self.name, self.params, self.ty)
     }
 }

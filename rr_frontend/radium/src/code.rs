@@ -937,7 +937,10 @@ impl<'def> Function<'def> {
         }
         write!(f, " <INST!>")?;
 
-        let late_pre = {
+        // I know which generics i'm quantifying over here. I should add the validity requirements
+        // for all of them.
+
+        let trait_late_pre = {
             if let Some(trait_req_incl_name) = &self.spec.trait_req_incl_name {
                 let args = self.spec.get_all_trait_req_coq_params().make_using_terms();
                 let term = coq::term::App::new(trait_req_incl_name.to_owned(), args);
@@ -958,8 +961,9 @@ impl<'def> Function<'def> {
                 "True".to_owned()
             }
         };
+        let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
-        write!(f, ") (λ π, ⌜{late_pre}⌝)")?;
+        write!(f, ") (λ π, {params_late_pre} ∗ ⌜{trait_late_pre}⌝)")?;
 
         write!(f, ").\n")
     }
@@ -1481,7 +1485,8 @@ impl<'def> Display for UsedProcedure<'def> {
         write!(f, " <INST!>)")?;
 
         let trait_req_term = self.get_trait_req_incl_term()?;
-        write!(f, " (λ π, ⌜{trait_req_term}⌝)%I)")
+        let generics_term = self.quantified_scope.generate_validity_term_for_generics();
+        write!(f, " (λ π, {generics_term} ∗ ⌜{trait_req_term}⌝)%I)")
     }
 }
 

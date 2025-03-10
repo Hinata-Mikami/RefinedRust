@@ -3616,34 +3616,41 @@ Ltac strip_all_applied_params a acc cont :=
       strip_all_applied_params a1 uconstr:(a2 +:: acc) cont
   | _ => cont a acc
   end.
-Ltac solve_trait_incl :=
+Ltac solve_trait_incl_prepare :=
   lazymatch goal with
   | |- trait_incl_marker ?P =>
       rewrite trait_incl_marker_unfold;
       let κs := fresh in let tys := fresh in
       intros κs tys;
       destruct_product_hypothesis κs κs;
-      destruct_product_hypothesis tys tys;
-      (* check if we can decompose the first term *)
-      lazymatch goal with
-      | |- ?incl ?spec1 ?spec2 =>
-        first [
-            decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
-            (* look for an assumption we can specialize *)
-            is_var spec1;
-            prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
-              (* TODO: ideally, we should use transitivity instead and then go on *)
-              apply H2
-            ))
-          | (* directly solve the inclusion *)
-            (* first unfold the inclusion *)
-            strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
-              unfold a;
-              intros;
-              split_and?;
-              intros;
-              first [solve_function_subtype | done ]
-            )
-          ]
-      end
-end.
+      destruct_product_hypothesis tys tys
+  end.
+Ltac solve_trait_incl_core :=
+  lazymatch goal with
+    | |- ?incl ?spec1 ?spec2 =>
+      first [
+          decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
+          (* look for an assumption we can specialize *)
+          is_var spec1;
+          prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
+            (* TODO: ideally, we should use transitivity instead and then go on *)
+            apply H2
+          ))
+        | (* directly solve the inclusion *)
+          (* first unfold the inclusion *)
+          strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
+            unfold a;
+            intros;
+            split_and?;
+            intros
+          )
+        ]
+    end.
+Ltac solve_trait_incl_fn :=
+  first [solve_function_subtype | done ].
+
+Ltac solve_trait_incl :=
+  solve_trait_incl_prepare;
+  solve_trait_incl_core;
+  try solve_trait_incl_fn.
+

@@ -85,6 +85,8 @@ struct ShimTraitImplEntry {
     spec_attrs_record: String,
     /// the Coq lemma name of the spec subsumption proof
     spec_subsumption_proof: String,
+    /// the Coq definition giving the lemma statement for the subsumption
+    spec_subsumption_statement: String,
 }
 
 /// A file entry for a trait method implementation.
@@ -162,6 +164,7 @@ pub struct TraitImplShim {
     pub spec_params_record: String,
     pub spec_attrs_record: String,
     pub spec_subsumption_proof: String,
+    pub spec_subsumption_statement: String,
 }
 impl From<TraitImplShim> for ShimTraitImplEntry {
     fn from(shim: TraitImplShim) -> Self {
@@ -174,6 +177,7 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
             spec_params_record: shim.spec_params_record,
             spec_attrs_record: shim.spec_attrs_record,
             spec_subsumption_proof: shim.spec_subsumption_proof,
+            spec_subsumption_statement: shim.spec_subsumption_statement,
         }
     }
 }
@@ -437,6 +441,7 @@ impl<'a> SR<'a> {
                         spec_params_record: b.spec_params_record,
                         spec_attrs_record: b.spec_attrs_record,
                         spec_subsumption_proof: b.spec_subsumption_proof,
+                        spec_subsumption_statement: b.spec_subsumption_statement,
                     };
 
                     self.trait_impl_shims.push(entry);

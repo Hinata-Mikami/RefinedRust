@@ -4143,6 +4143,44 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         }
     }
 
+    /// Get the validity term for a generic on a function.
+    #[must_use]
+    pub fn generate_validity_term_for_generics(&self) -> IProp {
+        let mut props = Vec::new();
+        for ty in self.get_all_ty_params_with_assocs().params {
+            props.push(Self::generate_validity_term_for_typaram(&ty));
+        }
+        IProp::Sep(props)
+    }
+
+    #[must_use]
+    fn generate_validity_term_for_typaram(ty: &LiteralTyParam) -> IProp {
+        let prop = format!("typaram_wf {} {} {}", ty.refinement_type, ty.syn_type, ty.type_term);
+        IProp::Atom(prop)
+    }
+
+    /*
+    /// Get the validity elctx for lifetime parameters on a function.
+    #[must_use]
+    pub fn generate_validity_elctx_for_generics(&self) -> String {
+        let mut term = String::new();
+
+        for ty in self.get_all_ty_params_with_assocs().params {
+            term.push_str(&Self::generate_validity_elctx_for_typaram(&ty));
+            term.push_str(" ++ ");
+        }
+        term.push_str("[]");
+        // TODO: all lifetime parameters should outlive ϝ?
+
+        term
+    }
+    #[must_use]
+    fn generate_validity_elctx_for_typaram(ty: &LiteralTyParam) -> String {
+        let semty = &ty.type_term;
+        format!("typaram_elctx ϝ _ {semty}")
+    }
+    */
+
     // TODO hack
     pub fn clear_lfts(&mut self) {
         self.lfts = Vec::new();
@@ -4287,7 +4325,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
             if as_fn {
                 format!("({}, {})", x.refinement_type, x.syn_type)
             } else {
-                format!("{}", x.refinement_type)
+                x.refinement_type.clone()
             }
         })?;
         write!(typarams_ty_list, "]")?;
@@ -4296,6 +4334,12 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
             write!(
                 f,
                 "{lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list (Type * syn_type)%type)",
+                self.lfts.len() + extra_lfts.len()
+            )
+        } else if as_fn {
+            write!(
+                f,
+                "fnspec! {lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list Type),",
                 self.lfts.len() + extra_lfts.len()
             )
         } else {
@@ -4874,6 +4918,8 @@ pub struct LiteralTraitImpl {
     pub spec_attrs_record: String,
     /// The name of the proof that the base spec is implied by the more specific spec
     pub spec_subsumption_proof: String,
+    /// The name of the definition for the lemma statement
+    pub spec_subsumption_statement: String,
 }
 pub type LiteralTraitImplRef<'def> = &'def LiteralTraitImpl;
 
@@ -4922,18 +4968,70 @@ impl<'def> TraitRefInst<'def> {
     /// Get the term for referring to the attr record of this impl
     /// The parameters are expected to be in scope.
     #[must_use]
-    fn get_attr_record_term(&self) -> String {
+    fn get_attr_record_term(&self) -> coq::term::Gallina {
         let attr_record = &self.impl_ref.spec_attrs_record;
 
-        let mut attr_term = String::with_capacity(100);
-        write!(attr_term, "{attr_record}").unwrap();
+        let binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
+        let args = binders.make_using_terms();
 
-        // add the type parameters of the impl
-        for ty in self.generics.get_all_ty_params_with_assocs().params {
-            write!(attr_term, " {}", ty.refinement_type).unwrap();
+        coq::term::Gallina::App(Box::new(coq::term::App::new(
+            coq::term::Gallina::Literal(attr_record.to_owned()),
+            args,
+        )))
+    }
+
+    /// Get the term for referring to the spec record of this impl
+    /// The parameters are expected to be in scope.
+    #[must_use]
+    fn get_spec_record_term(&self) -> coq::term::Gallina {
+        let spec_record = &self.impl_ref.spec_record;
+
+        let tys = self.generics.get_all_ty_params_with_assocs();
+        let mut binders = tys.get_coq_ty_params();
+        binders.append(self.generics.get_all_attr_trait_parameters(false).0);
+        let args = binders.make_using_terms();
+
+        let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args).to_string();
+
+        // specialize to semtys
+        push_str_list!(specialized_spec, &tys.params, " ", |x| { format!("<TY> {}", x.type_term) });
+        // specialize to lfts
+        push_str_list!(specialized_spec, self.generics.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
+        specialized_spec.push_str(" <INST!>");
+
+        coq::term::Gallina::Literal(specialized_spec)
+        //coq::term::Gallina::App(Box::new(coq::term::App::new(coq::term::Gallina::Literal(spec_record.
+        // to_owned()), args)))
+    }
+
+    #[must_use]
+    fn get_base_spec_term(&self) -> coq::term::Gallina {
+        let spec_record = &self.of_trait.base_spec;
+
+        let all_args = self.get_ordered_params_inst();
+
+        let mut specialized_spec = String::new();
+        specialized_spec.push_str(&format!("({spec_record} "));
+        // specialize to rts
+        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", x.get_rfn_type()) });
+        // specialize to sts
+        specialized_spec.push(' ');
+        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", SynType::from(x)) });
+
+        // specialize to further args
+        specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        for req in self.trait_inst.get_direct_trait_requirements() {
+            // get attrs + spec term
+            specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
         }
 
-        attr_term
+        // specialize to semtys
+        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("<TY> {}", x) });
+        // specialize to lfts
+        push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
+        specialized_spec.push_str(" <INST!>)");
+
+        coq::term::Gallina::Literal(specialized_spec)
     }
 
     /// Get the term for referring to an item of the attr record of this impl.
@@ -4941,10 +5039,7 @@ impl<'def> TraitRefInst<'def> {
     #[must_use]
     pub fn get_attr_record_item_term(&self, attr: &str) -> coq::term::Gallina {
         let item_name = self.of_trait.make_spec_attr_name(attr);
-        coq::term::Gallina::RecordProj(
-            Box::new(coq::term::Gallina::Literal(self.get_attr_record_term())),
-            item_name,
-        )
+        coq::term::Gallina::RecordProj(Box::new(self.get_attr_record_term()), item_name)
     }
 }
 
@@ -5006,16 +5101,89 @@ impl<'def> TraitImplSpec<'def> {
             body: attr_record_term,
         }
     }
+
+    #[must_use]
+    pub fn generate_lemma_statement(&self) -> coq::Document {
+        let mut doc = coq::Document::default();
+
+        let spec_name = &self.trait_ref.impl_ref.spec_subsumption_statement;
+
+        // generate the lemma statement
+        // get parameters
+        // this is parametric in the rts, sts, semtys attrs of all trait deps.
+        let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
+        let mut params = ty_params.get_coq_ty_params();
+        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
+
+        // instantiation of the trait
+        let params_inst = self.trait_ref.get_ordered_params_inst();
+
+        let incl_name = self.trait_ref.of_trait.spec_incl_name();
+        let own_spec = self.trait_ref.get_spec_record_term();
+        let base_spec = self.trait_ref.get_base_spec_term();
+
+        let scope = &self.trait_ref.generics;
+        let mut ty_term = format!("trait_incl_marker (lift_trait_incl {incl_name} (");
+        scope.format(&mut ty_term, false, false, &[], &[], &[]).unwrap();
+        ty_term.push_str(&format!(" {own_spec}) ("));
+        scope.format(&mut ty_term, false, false, &[], &[], &[]).unwrap();
+        ty_term.push_str(&format!(" {base_spec}))"));
+
+        let lem = coq::command::Definition {
+            name: spec_name.to_owned(),
+            params,
+            ty: None,
+            body: coq::term::Gallina::Literal(ty_term),
+        };
+        doc.push(coq::command::Command::Definition(lem));
+
+        doc
+    }
+
+    #[must_use]
+    pub fn generate_proof(&self) -> coq::Document {
+        let mut doc = coq::Document::default();
+
+        let lemma_name = &self.trait_ref.impl_ref.spec_subsumption_proof;
+
+        // generate the lemma statement
+        // get parameters
+        // this is parametric in the rts, sts, semtys attrs of all trait deps.
+        let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
+        let mut params = ty_params.get_coq_ty_params();
+        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
+
+        let mut ty_term = format!("{} ", self.trait_ref.impl_ref.spec_subsumption_statement);
+        push_str_list!(ty_term, &params.make_using_terms(), " ");
+
+        let lem = coq::command::Lemma {
+            name: lemma_name.to_owned(),
+            params,
+            ty: coq::term::Type::Literal(ty_term),
+        };
+        doc.push(coq::command::Command::Lemma(lem));
+
+        doc.push(coq::command::Command::Proof);
+        let prelude_tac = format!(
+            "unfold {}; solve_trait_incl_prelude",
+            self.trait_ref.impl_ref.spec_subsumption_statement
+        );
+        doc.push(coq::ltac::LTac::Literal(prelude_tac));
+        doc.push(coq::ltac::LTac::Literal("all: repeat liRStep; liShow".to_owned()));
+        doc.push(coq::ltac::LTac::Literal("all: print_remaining_trait_goal".to_owned()));
+        doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
+        doc.push(coq::ltac::LTac::Literal("all: sidecond_solver".to_owned()));
+        doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
+        doc.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
+        doc.push(coq::command::Command::Qed);
+
+        doc
+    }
 }
 
 impl<'def> Display for TraitImplSpec<'def> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        // TODO: what's the right choice here?
-        //let assoc_types = self.trait_ref.generics.get_ass();
         let assoc_types = Vec::new();
-
-        // TODO: figure out how we deal with the surrounding scope and its trait requiremeents
-        // here.
 
         // instantiate with the parameter and associated types
         let params_inst = self.trait_ref.get_ordered_params_inst();
@@ -5037,6 +5205,9 @@ impl<'def> Display for TraitImplSpec<'def> {
                 coq::command::CommandAttrs::new(coq::command::Context::refinedrust()),
             ),
         );
+
+        instance.append(&mut self.generate_lemma_statement().0);
+        //instance.append(&mut self.generate_proof().0);
 
         write!(
             f,
@@ -5070,9 +5241,9 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
         // write the scope of the impl
         // (this excludes the function's own direct scope, as that is already quantified in the
         // base spec we are going to instantiate)
-        write!(f, "fnspec!")?;
-        self.trait_ref.generics.format(f, true, true, &[], &[], &[])?;
-        write!(f, ",\n ")?;
+        //write!(f, "spec!")?;
+        self.trait_ref.generics.format(f, false, false, &[], &[], &[])?;
+        //write!(f, ",\n ")?;
 
         let all_ty_params = self.trait_ref.get_ordered_params_inst();
 
@@ -5090,7 +5261,7 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
 
         // also instantiate with the attrs that are quantified on the outside
         let attr_term = self.trait_ref.get_attr_record_term();
-        params.push(attr_term);
+        params.push(attr_term.to_string());
 
         // instantiate with the attrs of trait requirements
         for trait_req in self.trait_ref.trait_inst.get_direct_trait_requirements() {
