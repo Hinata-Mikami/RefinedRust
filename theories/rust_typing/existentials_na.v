@@ -193,7 +193,40 @@ Section contr.
     TypeContractive F →
     TypeContractive (λ ty, na_ex_plain_t X Y (P ty) (F ty)).
   Proof.
-  Admitted.
+    intros HP HF.
+    constructor; simpl.
+    - apply HF.
+    - destruct HP as [Hlft _ _].
+      destruct HF as [_ Hlft' _ _ _ _].
+      apply ty_lft_morphism_of_direct.
+      apply ty_lft_morphism_to_direct in Hlft'.
+      simpl in *.
+      rewrite ty_wf_E_unfold.
+      rewrite ty_lfts_unfold.
+      apply direct_lft_morphism_app; done.
+    - rewrite ty_has_op_type_unfold. eapply HF.
+    - simpl. eapply HF.
+    - intros n ty ty' ?.
+      intros π r v. rewrite /ty_own_val/=.
+      do 3 f_equiv.
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' Hd.
+      intros ????. rewrite /ty_shr/=.
+      do 1 f_equiv.
+      { rewrite type_ctr_sidecond; first done.
+        apply Hd. }
+      f_equiv.
+      { f_contractive. do 3 f_equiv.
+        - do 4 solve_type_proper_step.
+          eapply type_dist_later2_dist2; first done.
+          unfold CanSolve. lia.
+        - apply HP.
+          eapply type_dist_later2_dist2; first done.
+          unfold CanSolve. lia. }
+      do 5 f_equiv.
+      apply HF.
+  Qed.
 
   Global Instance na_ex_inv_def_ne {rt X Y : Type}
     (P : type rt → na_ex_inv_def X Y)
@@ -203,7 +236,41 @@ Section contr.
     TypeNonExpansive F →
     TypeNonExpansive (λ ty, na_ex_plain_t X Y (P ty) (F ty)).
   Proof.
-  Admitted.
+    intros HP HF.
+    constructor; simpl.
+    - apply HF.
+    - destruct HP as [Hlft _ _].
+      destruct HF as [_ Hlft' _ _ _ _].
+      apply ty_lft_morphism_of_direct.
+      apply ty_lft_morphism_to_direct in Hlft'.
+      simpl in *.
+      rewrite ty_wf_E_unfold.
+      rewrite ty_lfts_unfold.
+      apply direct_lft_morphism_app; done.
+    - rewrite ty_has_op_type_unfold. intros.
+      eapply HF; first done.
+      rewrite ty_has_op_type_unfold. done.
+    - simpl. eapply HF.
+    - intros n ty ty' ?.
+      intros π r v. rewrite /ty_own_val/=.
+      do 3 f_equiv.
+      { apply HP; done. }
+      apply HF; done.
+    - intros n ty ty' Hd.
+      intros ????. rewrite /ty_shr/=.
+      do 1 f_equiv.
+      { rewrite type_ne_sidecond; first done; apply Hd. }
+      do 1 f_equiv.
+      { f_contractive. do 3 f_equiv.
+        - do 4 solve_type_proper_step.
+          eapply type_dist2_dist; first done.
+          unfold CanSolve. lia.
+        - apply HP.
+          eapply type_dist2_dist; first done.
+          unfold CanSolve. lia. }
+      do 5 f_equiv.
+      apply HF. apply Hd.
+  Qed.
 End contr.
 
 Notation "'∃na;' P ',' τ" := (na_ex_plain_t _ _ P τ) (at level 40) : stdpp_scope.
