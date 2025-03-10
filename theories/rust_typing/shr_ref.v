@@ -1144,10 +1144,10 @@ Section rules.
     iApply logical_step_intro. iSplitL; done.
   Qed.
   Global Instance stratify_ltype_shared_inst1 {rt} π E L mu mdu {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) :
-    StratifyLtype π E L mu mdu StratRefoldFull ml l lt r (Shared κ) :=
+    StratifyLtype π E L mu mdu StratRefoldFull ml l lt r (Shared κ) | 100 :=
     λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldFull ml l lt κ r T).
   Global Instance stratify_ltype_shared_inst2 {rt} π E L mu mdu {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) :
-    StratifyLtype π E L mu mdu StratRefoldOpened ml l lt r (Shared κ) :=
+    StratifyLtype π E L mu mdu StratRefoldOpened ml l lt r (Shared κ) | 100 :=
     λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldOpened ml l lt κ r T).
 
   Lemma stratify_ltype_ofty_shr {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b T :

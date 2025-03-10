@@ -361,11 +361,6 @@ Section proof.
   Proof.
     UnsafeCell_get_old_prelude.
 
-    do 324 liRStep; liShow.
-
-    (* TODO: This instance isn't properly found *)
-    iApply stratify_ltype_shadowed_shared.
-
     repeat liRStep; liShow.
 
     Unshelve. all: sidecond_solver.

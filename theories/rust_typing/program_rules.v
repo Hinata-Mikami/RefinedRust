@@ -1473,7 +1473,8 @@ Section typing.
   Qed.
   Global Instance stratify_ltype_shadowed_shared_inst {rt_cur rt_full} π E L mu mdu ma {M} (ml : M) l
       (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (r_cur : place_rfn rt_cur) (r_full : place_rfn rt_full) κ :
-    StratifyLtype π E L mu mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) := λ T, i2p (stratify_ltype_shadowed_shared π E L mu mdu ma ml l lt_cur lt_full r_cur r_full κ T).
+    StratifyLtype π E L mu mdu ma ml l (ShadowedLtype lt_cur r_cur lt_full) r_full (Shared κ) := 
+      λ T, i2p (stratify_ltype_shadowed_shared π E L mu mdu ma ml l lt_cur lt_full r_cur r_full κ T).
 
   (* TODO: OpenedNaType *)
 
