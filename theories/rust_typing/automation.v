@@ -9,41 +9,6 @@ From refinedrust.automation Require Export simpl solvers proof_state.
 Set Default Proof Using "Type".
 
 
-(** * Registering extensions to Lithium *)
-(** More automation for sets *)
-Lemma difference_union_subseteq (E F H H': coPset):
-  E ⊆ F →
-  F ∖ H ∪ H' = F →
-  (F ∖ H ∖ E) ∪ H' ∪ E = F.
-Proof.
-  set_unfold.
-  intros ? Hcond x.
-  specialize Hcond with x.
-  split; first intuition.
-  destruct (decide (x ∈ E)); intuition.
-Qed.
-
-Lemma difference_union_subseteq' (E F: coPset):
-  E ⊆ F →
-  F ∖ E ∪ E = F.
-Proof.
-  set_unfold.
-  intros ? x.
-  split; first intuition.
-  destruct (decide (x ∈ E)); intuition.
-Qed.
-
-Lemma difference_union_comm (E E' A B: coPset):
-  A ∪ E' ∪ E = B →
-  A ∪ E ∪ E' = B.
-Proof.
-  set_solver.
-Qed.
-
-Global Hint Resolve difference_union_subseteq' | 30 : ndisj.
-Global Hint Resolve difference_union_subseteq | 50 : ndisj.
-Global Hint Resolve difference_union_comm | 80 : ndisj.
-
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
@@ -836,8 +801,8 @@ Section tac.
     iMod ("HT" with "Hstore Hna [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
     iApply ("HT" with "CTX HE' HL").
-    (* TODO: Should be `by iApply`, but `done` hangs *)
-  Admitted.
+    iModIntro. done.
+  Qed.
 End tac.
 
 
@@ -846,7 +811,7 @@ Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
 
 (* IMPORTANT: We need to make sure to never call simpl while the code
 (fn) is part of the goal, because simpl seems to take exponential time
-in the number of blocks! 
+in the number of blocks!
 
 TODO: does this still hold? we've since started doing this...
 *)
@@ -870,13 +835,13 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     let lsa := fresh "lsa" in let lsv := fresh "lsv" in
     iIntros (lsa lsv);
     simpl in lsa;
-    revert params; 
+    revert params;
     repeat liForall;
     prepare_initial_coq_context;
     iExists _; iSplitR;
     [iPureIntro; solve [preprocess_elctx] | ];
     inv_vec lsv; inv_vec lsa;
-    simpl; 
+    simpl;
     unfold typarams_wf, typaram_wf;
     init_cache
   end
