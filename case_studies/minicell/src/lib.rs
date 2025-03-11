@@ -6,6 +6,7 @@ use std::mem;
 use std::ptr;
 
 mod example;
+mod evencell;
 
 /* TODO:
  * 1. Add support for non-atomic invariants (na mode)
@@ -17,7 +18,6 @@ mod example;
 
 // We make UnsafeCell behave the same (in terms of refinements) as a value of T.
 #[repr(transparent)]
-// T_ty : type T_rt
 #[rr::refined_by("x" : "{rt_of T}")]
 pub struct UnsafeCell<T> {
     #[rr::field("x")]
@@ -25,25 +25,21 @@ pub struct UnsafeCell<T> {
 }
 
 impl<T> UnsafeCell<T> {
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("x")]
+    #[rr::returns("value")]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
     }
 
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("x")]
+    #[rr::only_spec]
+    #[rr::returns("self")]
     pub fn into_inner(self) -> T {
         self.value
     }
 
-    #[rr::params("x")]
-    #[rr::args("(#x, γ)")]
+    #[rr::skip]
     #[rr::exists("γ'")]
-    #[rr::returns("(#x, γ')")]
-    #[rr::ensures(#iprop "inherit {'a} (Rel2 γ' γ eq)")]
+    #[rr::returns("(self.cur, γ')")]
+    #[rr::ensures(#iris "Inherit ulft_a InheritGhost (Rel2 γ' self.ghost (@eq (ty_xt T_ty → Prop)))")]
     pub fn get_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.value
     }
@@ -54,7 +50,8 @@ impl<T> UnsafeCell<T> {
     // which nice abstraction barriers are hard/annoying
     // Idea: add annotation to skip spec generation, at call sites add annotation in Coq code to inline.
     // Need new call-inline lemma
-    #[rr::inline]
+    //#[rr::inline]
+    #[rr::skip]
     pub const fn get(&self) -> *mut T {
         // TODO: we don't have repr(transparent) currently. We could change the code
         //
@@ -68,21 +65,19 @@ impl<T> UnsafeCell<T> {
     }
 }
 
-#[rr::refined_by("P" : "{rt_of T} → Prop")]
-#[rr::exists("x" : "{rt_of T}")]
-#[rr::invariant("P x")]
-// TODO: add support for this mode
-// #[rr::mode("na")]
+#[rr::refined_by("P" : "{rt_of T} → Prop" ; "{rt_of T} → Prop" )]
+#[rr::exists("x" : "{xt_of T}")]
+#[rr::invariant("P ($# x)")]
+#[rr::mode(na)]
 pub struct Cell<T> {
-    #[rr::field("x")]
+    #[rr::field("$# x")]
     value: UnsafeCell<T>,
 }
 
 impl<T> Cell<T> {
     // // NOTE: calling this function requires manual effort to instantiate P
-    #[rr::params("x" : "{rt_of T}", "P")]
-    #[rr::args("x")]
-    #[rr::requires("P x")]
+    #[rr::params("P")]
+    #[rr::requires("P ($# value)")]
     #[rr::returns("P")]
     pub const fn new(value: T) -> Cell<T> {
         Cell {
@@ -90,17 +85,15 @@ impl<T> Cell<T> {
         }
     }
 
-    #[rr::params("P", "x")]
-    #[rr::args("P", "x")]
-    #[rr::requires("P x")]
+    #[rr::only_spec]
+    #[rr::requires("self ($# val)")]
     pub fn set(&self, val: T) {
         let old = self.replace(val);
         drop(old);
     }
 
-    #[rr::params("P1", "P2")]
-    #[rr::args("#P1", "#P2")]
-    #[rr::requires("⌜∀ x, P1 x ↔ P2 x⌝")]
+    #[rr::only_spec]
+    #[rr::requires("∀ x, self (x) ↔ other (x)")]
     pub fn swap(&self, other: &Self) {
         // NOTE: will need to manually verify ptr::eq intrinsic
         if ptr::eq(self, other) {
@@ -115,10 +108,10 @@ impl<T> Cell<T> {
         }
     }
 
-    #[rr::args("#P", "x")]
-    #[rr::requires("P x")]
+    #[rr::only_spec]
+    #[rr::requires("self ($# val)")]
     #[rr::exists("y")]
-    #[rr::ensures("P y")]
+    #[rr::ensures("self ($# y)")]
     #[rr::returns("y")]
     pub fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
@@ -126,15 +119,16 @@ impl<T> Cell<T> {
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
 
-    #[rr::params("P")]
-    #[rr::args("P")]
+    // TODO: proof fails because we try to refold the (deinitialized) invariant
+    #[rr::only_spec]
     #[rr::exists("x")]
     #[rr::returns("x")]
-    #[rr::ensures("⌜P x⌝")]
+    #[rr::ensures("self ($# x)")]
     pub fn into_inner(self) -> T {
         self.value.into_inner()
     }
 
+    #[rr::skip]
     #[rr::params("P", "γ")]
     #[rr::args("(P, γ)")]
     #[rr::exists("x", "γ'")]
@@ -147,11 +141,10 @@ impl<T> Cell<T> {
 }
 
 impl<T: Copy> Cell<T> {
-    #[rr::params("P")]
-    #[rr::args("#P")]
+    #[rr::skip]
     #[rr::exists("x")]
     #[rr::returns("x")]
-    #[rr::ensures("⌜P x⌝")]
+    #[rr::ensures("self ($# x)")]
     pub fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.

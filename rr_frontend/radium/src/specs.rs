@@ -955,12 +955,25 @@ impl InvariantSpec {
 
         // generate the spec definition
         let spec_name = format!("{}_inv_spec", self.type_name);
-        write!(
-            out,
-            "{indent}Program Definition {} : ex_inv_def ({}) ({}) := ",
-            spec_name, base_rfn_type, self.rfn_type,
-        )
-        .unwrap();
+
+        match self.flags {
+            InvariantSpecFlags::NonAtomic => {
+                write!(
+                    out,
+                    "{indent}Program Definition {} : na_ex_inv_def ({}) ({}) := ",
+                    spec_name, base_rfn_type, self.rfn_type,
+                )
+                .unwrap();
+            },
+            _ => {
+                write!(
+                    out,
+                    "{indent}Program Definition {} : ex_inv_def ({}) ({}) := ",
+                    spec_name, base_rfn_type, self.rfn_type,
+                )
+                .unwrap();
+            },
+        }
 
         match self.flags {
             InvariantSpecFlags::Persistent => {
@@ -1002,6 +1015,24 @@ impl InvariantSpec {
                 write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_mono. Qed.\n").unwrap();
                 write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr. Qed.\n").unwrap();
             },
+            InvariantSpecFlags::NonAtomic => {
+                let own_inv = self.assemble_plain_owned_invariant();
+                let lft_outlives = self.assemble_ty_lfts();
+                let lft_wf_elctx = self.assemble_ty_wf_elctx();
+
+                write!(
+                    out,
+                    "na_mk_ex_inv_def\n\
+                    {indent}{indent}({})%type\n\
+                    {indent}{indent}({})\n\
+                    {indent}{indent}({own_inv})%I\n\
+                    {indent}{indent}({lft_outlives})\n\
+                    {indent}{indent}({lft_wf_elctx})\n\
+                    {indent}.\n",
+                    self.xt_type, self.xt_injection
+                )
+                .unwrap();
+            },
             _ => {
                 panic!("unimplemented invariant spec flag: {:?}", self.flags);
             },
@@ -1028,13 +1059,23 @@ impl InvariantSpec {
         write!(out, "{}", self.generate_coq_invariant_def(base_rfn_type)).unwrap();
 
         // generate the definition itself.
-        write!(
-            out,
-            "{indent}Definition {} : type ({}) :=\n\
-            {indent}{indent}ex_plain_t _ _ {spec_name} {}.\n",
-            self.type_name, self.rfn_type, base_type
-        )
-        .unwrap();
+        if InvariantSpecFlags::NonAtomic == self.flags {
+            write!(
+                out,
+                "{indent}Definition {} : type ({}) :=\n\
+                {indent}{indent}na_ex_plain_t _ _ {spec_name} {}.\n",
+                self.type_name, self.rfn_type, base_type
+            )
+            .unwrap();
+        } else {
+            write!(
+                out,
+                "{indent}Definition {} : type ({}) :=\n\
+                {indent}{indent}ex_plain_t _ _ {spec_name} {}.\n",
+                self.type_name, self.rfn_type, base_type
+            )
+            .unwrap();
+        }
         write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name).unwrap();
         write!(out, "{indent}Definition {}_rt : Type.\n", self.type_name).unwrap();
         write!(

@@ -1,4 +1,4 @@
-From refinedrust Require Export static type program_rules int int_rules products mut_ref shr_ref functions uninit box programs enum maybe_uninit alias_ptr fixpoint existentials arrays value generics xmap.
+From refinedrust Require Export static type program_rules int int_rules products mut_ref shr_ref functions uninit box programs enum maybe_uninit alias_ptr fixpoint existentials existentials_na arrays value generics xmap.
 From refinedrust Require Export automation.loc_eq manual automation.
 From refinedrust Require Export simpl.
 

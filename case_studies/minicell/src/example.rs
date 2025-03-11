@@ -1,6 +1,6 @@
 use crate::Cell;
 
-#[rr::returns("()")]
+#[rr::verify]
 fn test1() {
     // pick invariant P := Zeven
     //#[rr::instantiate("Zeven")]
@@ -9,8 +9,7 @@ fn test1() {
     test2(&c);
 }
 
-#[rr::args("#Zeven")]
-#[rr::returns("()")]
+#[rr::args("Zeven")]
 fn test2(c: &Cell<i32>) {
     assert!(c.replace(2) % 2 == 0);
 }
