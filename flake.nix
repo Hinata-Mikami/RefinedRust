@@ -1,12 +1,9 @@
 {
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-23.11";
+    nixpkgs.url = "nixpkgs/nixos-24.11";
     flake-utils.url = "github:numtide/flake-utils";
 
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -23,23 +20,31 @@
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       ocamlFlambda = _: prev: rec {
-        ocamlPackages_4_14 = prev.ocamlPackages.overrideScope' (_: prev: {
-          ocaml = prev.ocaml.override {flambdaSupport = true;};
+        ocamlPackages = prev.ocamlPackages.overrideScope (_: prev: {
+          ocaml = prev.ocaml.override {
+            flambdaSupport = true;
+          };
         });
-        coqPackages_8_17 = prev.coqPackages_8_17.overrideScope' (_: prev: {
+        coqPackages = prev.coqPackages_8_17.overrideScope (_: prev: {
           coq = prev.coq.override {
-            ocamlPackages_4_14 = ocamlPackages_4_14;
+            customOCamlPackages = ocamlPackages;
           };
         });
       };
+
       overlays = [fenix.overlays.default ocamlFlambda];
       pkgs = import nixpkgs {inherit overlays system;};
 
       name = "refinedrust";
       version = "0.1.0";
 
+      meta = with pkgs.lib; {
+        homepage = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev";
+        license = licenses.bsd3;
+      };
+
       coq = {
-        pkgs = pkgs.coqPackages_8_17;
+        pkgs = pkgs.coqPackages;
         toolchain = [coq.pkgs.coq] ++ coq.pkgs.coq.nativeBuildInputs;
         version = coq.pkgs.coq.coq-version;
 
@@ -59,36 +64,13 @@
         };
       };
 
-      meta = with pkgs.lib; {
-        homepage = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev";
-        license = licenses.bsd3;
-      };
-
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
           file = ./rust-toolchain.toml;
           sha256 = "sha256-0NR5RJ4nNCMl9ZQDA6eGAyrDWS8fB28xIIS1QGLlOxw=";
         };
 
-        env = let
-          cargo-bindeps = pkgs.symlinkJoin {
-            name = "cargo-bindeps";
-            paths = [pkgs.cargo];
-            nativeBuildInputs = [pkgs.makeWrapper];
-            postBuild = ''
-              wrapProgram $out/bin/cargo \
-                --add-flags "-Zbindeps"
-            '';
-          };
-
-          craneLib = (crane.mkLib pkgs).overrideScope (_: prev: {
-            downloadCargoPackageFromGit = prev.downloadCargoPackageFromGit.override (args: {
-              pkgsBuildBuild = args.pkgsBuildBuild // {cargo = cargo-bindeps;};
-            });
-          });
-        in
-          craneLib.overrideToolchain rust.toolchain;
-
+        env = (crane.mkLib pkgs).overrideToolchain rust.toolchain;
         lib = "${rust.toolchain}/lib/rustlib/$(rustc -Vv | grep '^host:' | cut -d' ' -f2)/lib";
         src = "${rust.toolchain}/lib/rustlib/rustc-src/rust/compiler";
       };
@@ -159,6 +141,8 @@
             nativeBuildInputs = with pkgs;
               [makeWrapper]
               ++ lib.optionals stdenv.isDarwin [libzip libiconv];
+
+            doNotRemoveReferencesToRustToolchain = true;
 
             postInstall = with pkgs.lib.strings; ''
               wrapProgram $out/bin/refinedrust-rustc \
