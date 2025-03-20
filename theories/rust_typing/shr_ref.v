@@ -69,11 +69,9 @@ Section shr_ref.
     iModIntro.
     iApply logical_step_intro.
     rewrite -!lft_tok_sep. iFrame.
-    iExists l', ly', r'.
+    iExists ly'.
     iSplitR. { inversion Halg; subst; done. }
-    iSplitR; first done. iSplitR; first done.
-    iSplitR; first done. iSplitR; first done.
-    iFrame.
+    do 3 iR. iFrame "Hsc".
   Qed.
   Next Obligation.
     iIntros (? ? ? κ' κ'' π r l) "#Hord H".
@@ -114,8 +112,8 @@ Section shr_ref.
     iSplitL "Hmt1". { iNext. iFrame "Hmt1". iExists li, ly', r'. iFrame "#". eauto. }
     iIntros "Hmt1".
     iApply "Hclose". iModIntro. rewrite -{3}(Qp.div_2 q').
-    iPoseProof (heap_mapsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
-    rewrite heap_mapsto_fractional. iFrame.
+    iPoseProof (heap_pointsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
+    rewrite heap_pointsto_fractional. iFrame.
   Qed.
 
   Global Instance shr_ref_type_contractive {rt : Type} κ : TypeContractive (shr_ref (rt:=rt) κ).
@@ -148,7 +146,7 @@ Section ofty.
       iExists _, _, _. iR. iR. iR. iFrame "#". done.
     -iIntros "(%l' & %ly & %r' & %Hl & % & % & #Hsc & #Hlb & <- & #Ha)".
       apply val_of_loc_inj in Hl. subst.
-      iExists _. iR. iR. iFrame "#". iExists _. iR. done.
+      iExists _. iR. iR. iFrame "#". done.
   Qed.
 End ofty.
 
@@ -298,7 +296,7 @@ Section subltype.
     iIntros (π l). rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
     iIntros "(%ly & ? & ? & Hlb & %ri & Hrfn & #Hb)".
     iExists ly. iFrame. rewrite -?Hd -?Hly_eq. iFrame.
-    iExists ri. iFrame. iModIntro. iMod "Hb".
+    iModIntro. iMod "Hb".
     iDestruct "Hb" as "(%li & Hs & Hb)". iModIntro. iExists li. iFrame. iNext.
     iDestruct ("Heq" $! _) as "(_ & Hi1 & _)".
     iApply ltype_own_shr_mono; last by iApply "Hi1". done.
@@ -356,7 +354,7 @@ Section subltype.
     iIntros "(%ly & ? & ? & Hlb & ? & %ri & Hrfn & Hb)".
     iModIntro.
     iExists ly. iFrame. rewrite -?Hd -?Hly_eq.
-    iFrame. iExists ri. iFrame. iNext.
+    iFrame. iNext.
     iMod "Hb" as "(%li & Hli & Hb)". iExists li. iFrame "Hli".
     iDestruct ("Heq" $! _) as "(_ & Heq' & _)".
     iApply ltype_own_shr_mono; last by iApply "Heq'". done.
@@ -486,24 +484,28 @@ Section ltype_agree.
     iIntros "(%ly & ? & ? & #Hlb & ? &  %ri & Hrfn & Hb)".
     iModIntro.
     iExists ly.
-    iFrame. iFrame "Hlb". iExists _. iFrame. iNext. iMod "Hb" as "(%l' & Hl & Hb)".
+    iFrame. iR. iNext. iMod "Hb" as "(%l' & Hl & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & ? & ? & Hsc & Hlb' & %ri' & Hrfn' & Hb)".
-    iExists l'. iFrame. iExists l', _, _. iFrame. done.
+    iModIntro. iFrame. done.
   Qed.
+
   Lemma shr_ref_unfold_1_shared κ κ' r :
     ⊢ ltype_incl' (Shared κ') r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
-    iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
+    iModIntro. iIntros (π l).
+    rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & %Ha & % & #Hlb & %ri & Hrfn & #Hb)".
-    iExists ly. iFrame. iFrame "Hlb %". iExists _. iFrame.
+    iExists ly. iFrame. do 3 iR.
     iModIntro. iMod "Hb".
     iDestruct "Hb" as "(%li & #Hs & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & Hb)". iModIntro.
+    iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & Hb)".
+    iModIntro.
     iExists _, _, _. iFrame. iSplitR; last done.
     injection Ha as <-. done.
   Qed.
+
   Lemma shr_ref_unfold_1_uniq κ κ' γ r :
     ⊢ ltype_incl' (Uniq κ' γ) r r (ShrLtype (◁ ty) κ) (◁ (shr_ref κ ty)).
   Proof.
@@ -520,8 +522,7 @@ Section ltype_agree.
         iMod "Hb" as "(%v & Hl & Hb)".
         iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iFrame. iExists ly'. iFrame.
-        iExists _. by iFrame.
+        by iFrame.
     - iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)". iExists l'. iFrame.
@@ -535,8 +536,7 @@ Section ltype_agree.
         iExists _. iFrame.
         rewrite ltype_own_core_equiv. simp_ltype.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iFrame. iExists ly'. iFrame.
-        iExists _. by iFrame.
+        by iFrame.
   Qed.
 
   Local Lemma shr_ref_unfold_1' κ k r :
@@ -560,28 +560,31 @@ Section ltype_agree.
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & Hlb & ? & %r' & Hrfn & Hb)".
-    iModIntro. iExists ly. iFrame. iExists _. iFrame.
-    iNext. iMod "Hb" as "(%v & Hl & %li & %ly' & %ri & -> & ? & ? & Hlb' & Hsc' & Hrfn' & Hb)".
-    iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iModIntro. iExists ly. iFrame.
+    iModIntro.
+    iMod "Hb" as "(%v & Hl & %li & %ly' & %ri & -> & ? & ? & Hlb' & Hsc' & Hrfn' & Hb)".
+    iModIntro.
+    iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists ly'. iFrame.
-    iExists _. by iFrame.
   Qed.
+
   Lemma shr_ref_unfold_2_shared κ κ' r :
     ⊢ ltype_incl' (Shared κ') r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & Hlb & %r' & Hrfn & #Hb)". iExists ly. iFrame.
-    iExists r'. iFrame. iModIntro. iMod "Hb".
+    iModIntro. iMod "Hb".
     iDestruct "Hb" as "(%li & %ly' & %ri & ? & ? & ? & Hlb' & Hsc & Hrfn & Hs & Hb)".
     iModIntro. iExists _. iFrame. iNext. iDestruct "Hb" as "#Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly'. iFrame.
-    iExists _. iFrame. done.
+    iExists ly'. by iFrame.
   Qed.
+
   Lemma shr_ref_unfold_2_uniq κ κ' γ r :
     ⊢ ltype_incl' (Uniq κ' γ) r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
-    iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
+    iModIntro. iIntros (π l).
+    rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     (* same proof as above essentially *)
     iIntros "(%ly & ? & ? & Hsc & ? & ? & ? & Hb)". iExists ly. iFrame. iMod "Hb". iModIntro.
     iApply (pinned_bor_iff with "[] [] Hb").
@@ -590,8 +593,7 @@ Section ltype_agree.
         iMod "Hb" as "(%v & Hl & Hb)".
         iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iExists ly'. iFrame.
-        iExists _. by iFrame.
+        iExists ly'. by iFrame.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)".
         iExists l'. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -603,8 +605,7 @@ Section ltype_agree.
         iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_core_equiv. simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iExists ly'. iFrame.
-        iExists _. by iFrame.
+        iExists ly'. by iFrame.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
         iMod "Hb" as "(%l' & Hl & Hb)".
         iExists l'. iFrame. rewrite ltype_own_core_equiv. simp_ltype.
@@ -612,7 +613,6 @@ Section ltype_agree.
         iDestruct "Hb" as "(%ly' & ? & ? & Hsc & Hlb & %ri & Hrfn & Hb)".
         iExists l', _, _. iFrame. done.
   Qed.
-
 
   Local Lemma shr_ref_unfold_2' κ k r :
     ⊢ ltype_incl' k r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
@@ -622,6 +622,7 @@ Section ltype_agree.
     - iApply shr_ref_unfold_2_shared.
     - iApply shr_ref_unfold_2_uniq.
   Qed.
+
   Lemma shr_ref_unfold_2 κ k r :
     ⊢ ltype_incl k r r (◁ (shr_ref κ ty)) (ShrLtype (◁ ty) κ).
   Proof.
@@ -697,7 +698,7 @@ Section acc.
     iModIntro. iSplitL.
     - rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*.
       iSplitR; first done. iFrame "Hlb % ∗".
-      iExists _. iSplitR; first done. iNext. eauto with iFrame.
+      iSplitR; first done. iNext. eauto with iFrame.
     - iIntros "Hcond %Hrt". iDestruct "Hcond" as "[Hty Hrfn]".
       subst. iSplit.
       + by iApply (shr_ltype_place_cond_ty).
@@ -826,8 +827,7 @@ Section acc.
     iIntros (lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
     iFrame. iSplitL.
-    { iModIntro. rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*. iFrame "% #".
-      iR. iExists _. iR. iModIntro. iModIntro. iExists _. iFrame "#". }
+    { iModIntro. rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*. by iFrame "% #". }
     iModIntro. iIntros (bmin) "Hincl Hcond".
     iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
     iModIntro. iSplit.

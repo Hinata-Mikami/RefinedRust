@@ -21,7 +21,7 @@ Proof.
   all: match type of Hxs with _ = project_vec_els ?len2 ?xs2 => 
       rename xs2 into xs';
       specialize (project_vec_els_length len2 xs') as Hlen_eq;
-      rewrite -Hxs !fmap_length in Hlen_eq
+      rewrite -Hxs !length_fmap in Hlen_eq
     end.
   (*all: rewrite project_vec_els_length in Hlen_cap.*)
 
@@ -44,7 +44,7 @@ Proof.
     apply (list_eq_split (length xs)).
     - rewrite take_insert/=; [|lia]. 
       rewrite !fmap_app.
-      rewrite take_app_alt ?project_vec_els_length; last solve_goal.
+      rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take project_vec_els_take_r.
       rewrite take_app_le; [|lia]. 
       rewrite take_ge; [|lia].
@@ -52,7 +52,7 @@ Proof.
       rewrite -Hxs list_fmap_compose//.
     - rewrite drop_insert_le/=; [|lia].
       rewrite !fmap_app.
-      rewrite drop_app_alt ?project_vec_els_length; last solve_goal.
+      rewrite drop_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_drop. apply list_eq_singleton. 
       split; solve_goal.
   }
@@ -60,7 +60,7 @@ Proof.
   {
     (* TODO *)
     assert (length xs < length xs') as Hlt.
-    { efeed pose proof (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia). 
+    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     simpl in Hlt.
@@ -73,23 +73,23 @@ Proof.
   {
     (* TODO should get this in a different way *)
     assert (length xs < length xs') as Hlt.
-    { efeed pose proof (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia). 
+    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     simpl in *. lia. }
   {
     (* TODO we should get this in a different way *)
     assert (length xs < length xs') as Hlt.
-    { efeed pose proof (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia). 
+    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length xs)).
     - rewrite take_insert/=; [|lia]. 
       rewrite !fmap_app.
-      rewrite take_app_alt ?project_vec_els_length; last solve_goal.
+      rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take. rewrite Hxs. f_equal. lia.
-    - rewrite drop_insert_le/=; [|lia]. rewrite !fmap_app drop_app_alt ?project_vec_els_length; [|solve_goal].
+    - rewrite drop_insert_le/=; [|lia]. rewrite !fmap_app drop_app_length' ?project_vec_els_length; [|solve_goal].
       rewrite project_vec_els_drop.
       apply list_eq_singleton. split; first solve_goal.
       normalize_and_simpl_goal. solve_goal.

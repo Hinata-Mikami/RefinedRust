@@ -14,7 +14,7 @@ Proof. apply proof_irrelevance. Qed.
   We might be able to get by without it however and just require UIP. *)
 
 (* Equations seems to change the arguments for eq_refl, restore *)
-Global Arguments eq_refl {A}%type_scope {x}, [_] _.
+Global Arguments eq_refl {A}%_type_scope {x}, [_] _.
 
 (* Uniqueness of identity proofs *)
 (*Axiom (UIP_t : ∀ T, UIP_ T).*)

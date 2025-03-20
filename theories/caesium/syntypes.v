@@ -43,7 +43,7 @@ Proof.
   - destruct vs as [ | v vs].
     { apply Forall2_nil_inv_l in Hf. naive_solver. }
     apply Forall2_cons_inv in Hf as (Hlen & Hf).
-    simpl. rewrite app_length Hlen.
+    simpl. rewrite length_app Hlen.
     rewrite IH; done.
 Qed.
 
@@ -452,7 +452,8 @@ Proof.
   { apply Nat2Z.inj_le. etrans; first apply Hb.
     rewrite Nat2Z.inj_pow. nia.
   }
-  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; last lia.
+  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle.
+  2: { clear. lia. }
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_log_in_usize ly :
@@ -1530,7 +1531,7 @@ Proof.
     inversion IH as [ | ?? Hst IH1]; subst.
     apply Forall2_cons_inv_l in Hfields as ([n' ly] & fields' & [<- Hst'] & Hfields & ->).
     apply Hst in Hst' as (ot & Hot & <-).
-    efeed pose proof (IH') as Ha; [done.. | ].
+    opose proof* (IH') as Ha; [done.. | ].
     destruct Ha as (ots & Hots').
     exists (ot :: ots). econstructor; done.
   }
@@ -1671,5 +1672,3 @@ Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
 Proof.
   intros ly1 ly2 ? ?. assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj. done.
 Qed.
-
-

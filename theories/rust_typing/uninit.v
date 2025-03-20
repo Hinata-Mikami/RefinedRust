@@ -321,7 +321,7 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
     iExists ly. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iFrame. iExists _. iSplitR; first done.
-    iModIntro. iModIntro. iExists v. iFrame.
+    iModIntro. iModIntro.
     iExists ly. iSplitR; first done. iSplitR; first done.
     iPureIntro. rewrite Forall_forall. done.
   Qed.

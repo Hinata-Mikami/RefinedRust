@@ -124,7 +124,7 @@ Section structs.
   Definition struct_make_uninit_type (ly : layout) : sigT (λ rt : Type, (type rt * place_rfn rt)%type) :=
     existT (unit : Type) (uninit (UntypedSynType ly), #()).
 
-  Lemma struct_own_val_extract_mapsto' π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) ys :
+  Lemma struct_own_val_extract_pointsto' π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) ys :
     use_struct_layout_alg sls = Some sl →
     length tys = length (sls_fields sls) →
     loc_in_bounds l 0 (ly_size sl) -∗
@@ -148,17 +148,17 @@ Section structs.
     assert (Forall2 (λ (v : val) (ly : layout), v `has_layout_val` ly) vs ((sl_members sl).*2)).
     { rewrite Forall2_fmap_r.
       apply Forall2_same_length_lookup.
-      split. { rewrite Hlen_eq /vs fmap_length//. }
+      split. { rewrite Hlen_eq /vs length_fmap//. }
       intros i v' [n ly'] Hlook1 Hlook2.
       apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->) .
       simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
       rewrite Hlook2 /= => [= ->]. apply (Hlyv _ _ Hlook1). }
 
     iSplitL "Hl".
-    { iApply heap_mapsto_reshape_sl. { apply mjoin_has_struct_layout. done. }
+    { iApply heap_pointsto_reshape_sl. { apply mjoin_has_struct_layout. done. }
       rewrite reshape_join. { iFrame "Hlb". by iApply big_sepL_fmap. }
       apply Forall2_same_length_lookup.
-      split. { rewrite !fmap_length//. }
+      split. { rewrite !length_fmap//. }
       intros i v' sz Hlook1 Hlook2.
       apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->) .
       simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
@@ -176,7 +176,7 @@ Section structs.
       iModIntro. iIntros (k [? []] [v1 ly1] ? Hlook2) "(%r' & ? & ? & ? & ?)".
       iExists _,_. iFrame. iPureIntro. apply (Hsl _ _ Hlook2). }
     rewrite reshape_join; first last.
-    { apply Forall2_same_length_lookup. rewrite !fmap_length Hlen_eq. split; first done.
+    { apply Forall2_same_length_lookup. rewrite !length_fmap Hlen_eq. split; first done.
       intros ??? Hlook1 Hlook2.
       apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->).
       specialize (Hlyv _ _ Hlook1). rewrite Hlyv.
@@ -185,13 +185,13 @@ Section structs.
       rewrite list_lookup_fmap in Hlook2. f_equiv.
       rewrite Hsl in Hlook2. injection Hlook2 as [= ->]; done. }
     iApply (big_sepL2_wand with "Hb").
-    iApply big_sepL2_intro. { rewrite pad_struct_length Hlen_eq fmap_length //. }
+    iApply big_sepL2_intro. { rewrite pad_struct_length Hlen_eq length_fmap //. }
     iModIntro. iIntros (?? [? []] ? ?). iIntros "(% & % & ? & ? & ? & ? & ?)".
     rewrite /struct_own_el_val.
     eauto with iFrame.
   Qed.
 
-  Lemma struct_own_val_extract_mapsto π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :
+  Lemma struct_own_val_extract_pointsto π q sls sl l (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :
     use_struct_layout_alg sls = Some sl →
     length tys = length (sls_fields sls) →
     loc_in_bounds l 0 (ly_size sl) -∗
@@ -211,11 +211,11 @@ Section structs.
       iExists (v, ly0). rewrite /struct_own_el_loc'. eauto with iFrame. }
     rewrite big_sepL_exists. iDestruct "Hl" as "(%ys & Hl)".
     iExists (mjoin ys.*1).
-    iPoseProof (struct_own_val_extract_mapsto' with "Hlb Hl") as "(Hl & %Ha & Hs)"; [done.. | ].
+    iPoseProof (struct_own_val_extract_pointsto' with "Hlb Hl") as "(Hl & %Ha & Hs)"; [done.. | ].
     iFrame. iPureIntro. by apply mjoin_has_struct_layout.
   Qed.
 
-  Lemma struct_own_val_join_mapsto π q sls sl l v (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :
+  Lemma struct_own_val_join_pointsto π q sls sl l v (tys : list (sigT (λ rt, type rt * place_rfn rt)%type)) :
     use_struct_layout_alg sls = Some sl →
     length tys = length (sls_fields sls) →
     v `has_layout_val` sl →
@@ -226,14 +226,14 @@ Section structs.
       ∃ v, struct_own_el_loc π q v i sl.(sl_members) l (projT2 ty).2 (projT2 ty).1).
   Proof.
     iIntros (???) "Hl Hv".
-    rewrite heap_mapsto_reshape_sl; last done.
+    rewrite heap_pointsto_reshape_sl; last done.
     iDestruct "Hl" as "(_ & Hp)".
     iPoseProof (big_sepL_extend_r (pad_struct (sl_members sl) tys struct_make_uninit_type) with "Hp") as "Hp".
-    { rewrite pad_struct_length reshape_length !fmap_length//. }
+    { rewrite pad_struct_length length_reshape !length_fmap//. }
     iPoseProof (big_sepL2_sep_1 with "Hv Hp") as "Ha".
     iApply big_sepL2_elim_l. iApply (big_sepL2_wand with "Ha").
     iApply big_sepL2_intro.
-    { rewrite pad_struct_length reshape_length !fmap_length//. }
+    { rewrite pad_struct_length length_reshape !length_fmap//. }
     iModIntro. iIntros (k v' [rt [ty r']] Hlook1 Hlook2).
     iIntros "((%r'' & %ly' & Hrfn & %Hlook3 & %Hst & Hv) & Hp)".
     iExists v', r'', ly'. iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
@@ -348,17 +348,17 @@ Section structs.
     { iNext. iModIntro. iSplit.
       - iIntros "(%v & Hl & %sl & %Hst' & %Hlen & %Hv & Hv)".
         iExists sl. iR. iR.
-        iApply (struct_own_val_join_mapsto with "Hl Hv"); [done | | done].
+        iApply (struct_own_val_join_pointsto with "Hl Hv"); [done | | done].
         rewrite hpzipl_length//.
 
       - iIntros "(%sl & %Hst' & %Hlen & Hl)".
         assert (ly = sl) as ->.
         { apply use_struct_layout_alg_Some_inv in Hst'. by eapply syn_type_has_layout_inj. }
 
-        iPoseProof (struct_own_val_extract_mapsto with "Hlb Hl") as "(%v & Hl & %Hlyv & Hv)".
+        iPoseProof (struct_own_val_extract_pointsto with "Hlb Hl") as "(%v & Hl & %Hlyv & Hv)".
         { done. }
         { rewrite hpzipl_length//. }
-        iExists v. iFrame. iExists sl. iR. iR. iR. done.
+        iExists v. by iFrame.
     }
 
     iMod (bor_exists with "LFT Hb") as "(%sl & Hb)"; first done.
@@ -442,7 +442,7 @@ Section structs.
         iApply (logical_step_wand with "Hb"). iIntros "(? & Htok)".
         iMod ("Hvs" with "Htok").
         iFrame. iModIntro. simpl.
-        iExists _, _. iFrame. done.
+        by iExists _.
     }
     iPoseProof (logical_step_big_sepL2 with "Hb") as "Hb".
     iModIntro. iApply (logical_step_wand with "Hb"). iIntros "Hb".
@@ -495,7 +495,7 @@ Section structs.
         assert (ly0 = ly') as -> by by eapply syn_type_has_layout_inj.
         rewrite Hly in Ha. by injection Ha.
       }
-      iFrame. iApply (big_sepL2_impl' with "Hmem"); [by rewrite !reshape_length |done|].
+      iFrame. iApply (big_sepL2_impl' with "Hmem"); [by rewrite !length_reshape |done|].
       iIntros "!>" (k v1 ty1 v2 ty2 Hv1 Hty1 Hv2 Hty2) "Hv"; simplify_eq.
       destruct ty1 as (rt1 & ty1 & r1).
       rewrite mem_cast_struct_reshape // in Hv2; last congruence.
@@ -504,7 +504,7 @@ Section structs.
       iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & % & Hv)". iExists r', _. iFrame.
       move: Hty1 => /pad_struct_lookup_Some[|n[?[Hlook2 Hor1]]].
       { rewrite hpzipl_length Hlen. done. }
-      move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite fmap_length. congruence. } simplify_eq.
+      move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite length_fmap. congruence. } simplify_eq.
       destruct Hor1 as [[??] | [? ?]], Hor2 as [[? Hl] |[? ?]]; simplify_eq.
       + rewrite list_lookup_fmap in Hl. move: Hl => /fmap_Some[ot [??]]. simplify_eq.
         iSplitR; first done. iSplitR; first done.
@@ -528,7 +528,7 @@ Section structs.
         apply existT_inj in Heq1. apply existT_inj in Heq2. subst.
         iSplitR; first done. iSplitR; first done.
         iExists _; iPureIntro. split; first done.
-        rewrite /has_layout_val replicate_length.
+        rewrite /has_layout_val length_replicate.
         rewrite Hlook2 in Hlook. injection Hlook as [= ->].
         split; first done. by apply Forall_true.
     - iPureIntro. done.
@@ -642,7 +642,7 @@ Section structs.
           apply Hne1. }
         by apply IH.
     - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !fmap_length !hzipl_length.
+      rewrite !length_fmap !hzipl_length.
       rewrite Hst.
       apply and_proper => Hsl.
       destruct HT as [Ts' Hne ->].
@@ -741,7 +741,7 @@ Section structs.
         eapply ty_lft_morphism_to_direct.
         apply Hne1.
     - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !fmap_length !hzipl_length.
+      rewrite !length_fmap !hzipl_length.
       erewrite Hst.
       apply and_proper => Hsl.
       destruct HT as [Ts' Hne ->].
@@ -842,9 +842,9 @@ Section init.
     destruct oname as [ name | ].
     - (* named *)
       intros Hf. apply Forall3_cons_inv_l in Hf as ([name2 st] & fields' & v & vs' & -> & -> & [Hst Hv] & Hf).
-      rewrite app_length. erewrite IH; last done.
+      rewrite length_app. erewrite IH; last done.
       simpl. rewrite Hv. done.
-    - intros Hf. rewrite app_length replicate_length. erewrite IH; last done. done.
+    - intros Hf. rewrite length_app length_replicate. erewrite IH; last done. done.
   Qed.
 
   Lemma struct_init_val π sls sl vs {rts} (tys : hlist type rts) (rs : plist id rts) :
@@ -905,8 +905,8 @@ Section init.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hly"; first done.
       rewrite -Hly.
       iSplitL "Hv".
-      { iExists _, _. iR.  iR. iR. rewrite take_app. done. }
-      rewrite drop_app.
+      { iExists _, _. iR.  iR. iR. rewrite take_app_length. done. }
+      rewrite drop_app_length.
       iApply ("IH" with "[//] [] [] [] Hvs").
       + simpl in *. iPureIntro. lia.
       + inversion Hpad. done.
@@ -914,7 +914,7 @@ Section init.
     - (* padding *)
       simpl in Hsts. simpl.
       iSplitR; first last.
-      { rewrite drop_app'; first last. { rewrite replicate_length//. }
+      { rewrite drop_app_length'; first last. { rewrite length_replicate//. }
         iApply ("IH" with "[//] [//] [] [] Hv").
         - inversion Hpad. done.
         - simpl in Hsize. rewrite /fmap. iPureIntro. lia. }
@@ -924,10 +924,10 @@ Section init.
         - inversion Hpad; subst. apply layout_wf_align_log_0. done.
         - simpl in Hsize. rewrite MaxInt_eq. lia.
         - apply ly_align_in_bounds_1. inversion Hpad; subst. done. }
-      iR. rewrite take_app'; first last. { rewrite replicate_length//. }
+      iR. rewrite take_app_length'; first last. { rewrite length_replicate//. }
       rewrite uninit_own_spec.
       iExists ly. iR.
-      rewrite /has_layout_val replicate_length //.
+      rewrite /has_layout_val length_replicate //.
   Qed.
 
   Lemma struct_zst_empty_typed π sls sl :
@@ -1074,10 +1074,10 @@ Section copy.
       { iPureIntro. simpl in *. lia. }
       { iPureIntro. simpl in *.  subst fields1' tys1'.
         move: Hlen2. rewrite !named_fields_field_names_length.
-        rewrite /field_names omap_app/= !app_length /=. lia. }
-      { iPureIntro. subst vs1' qs1a. rewrite !app_length/=. lia. }
-      { iPureIntro. subst qs1a qs1a'. rewrite !app_length/=. lia. }
-      { iPureIntro. subst vs1' fields1'. rewrite !app_length/=. lia. }
+        rewrite /field_names omap_app/= !length_app /=. lia. }
+      { iPureIntro. subst vs1' qs1a. rewrite !length_app/=. lia. }
+      { iPureIntro. subst qs1a qs1a'. rewrite !length_app/=. lia. }
+      { iPureIntro. subst vs1' fields1'. rewrite !length_app/=. lia. }
       { done. }
       { (* need to shift the indices etc *)
         iPoseProof (big_sepL2_length with "Hshr") as "%Hlen7".
@@ -1086,7 +1086,7 @@ Section copy.
         rewrite /struct_own_el_shr. simpl.
         iIntros "((% & % & ? & Hlook & ? & ? & Hl) & $)".
         iExists _, _. iFrame.
-        rewrite /fields1' app_length -Nat.add_assoc -!app_assoc/=. iFrame. }
+        rewrite /fields1' length_app -Nat.add_assoc -!app_assoc/=. iFrame. }
       { iNext. subst tys1' fields1' vs1' qs1a'.
         rewrite zip_app; last lia.
         rewrite pad_struct_snoc_Some; first last.
@@ -1099,7 +1099,7 @@ Section copy.
         iSplitR. {
           iPureIntro. rewrite pad_struct_length. rewrite lookup_app_l.
           - rewrite !lookup_app_r; [ | lia..]. rewrite !right_id !Nat.sub_diag//.
-          - rewrite app_length/=. lia.
+          - rewrite length_app/=. lia.
         }
         rewrite pad_struct_length -app_assoc/=. iFrame.
       }
@@ -1143,10 +1143,10 @@ Section copy.
       { iPureIntro. simpl in *. lia. }
       { iPureIntro. simpl in *.  subst fields1'.
         move: Hlen2. rewrite !named_fields_field_names_length.
-        rewrite /field_names omap_app/= !app_length /=. lia. }
-      { iPureIntro. subst vs1' qs1a. rewrite !app_length/=. lia. }
-      { iPureIntro. subst qs1a qs1a'. rewrite !app_length/=. lia. }
-      { iPureIntro. subst vs1' fields1'. rewrite !app_length/=. lia. }
+        rewrite /field_names omap_app/= !length_app /=. lia. }
+      { iPureIntro. subst vs1' qs1a. rewrite !length_app/=. lia. }
+      { iPureIntro. subst qs1a qs1a'. rewrite !length_app/=. lia. }
+      { iPureIntro. subst vs1' fields1'. rewrite !length_app/=. lia. }
       { iPureIntro. done. }
       { (* need to shift the indices etc *)
         iPoseProof (big_sepL2_length with "Hshr") as "%Hlen7".
@@ -1155,7 +1155,7 @@ Section copy.
         rewrite /struct_own_el_shr. simpl.
         iIntros "((% & % & ? & Hlook & ? & ? & Hl) & $)".
         iExists _, _. iFrame.
-        rewrite /fields1' app_length -Nat.add_assoc -!app_assoc/=. iFrame. }
+        rewrite /fields1' length_app -Nat.add_assoc -!app_assoc/=. iFrame. }
       { iNext. subst fields1' vs1' qs1a'.
         rewrite zip_app; last lia.
         rewrite pad_struct_snoc_None; first last.
@@ -1167,7 +1167,7 @@ Section copy.
         iSplitR. {
           iPureIntro. rewrite pad_struct_length. rewrite lookup_app_l.
           - rewrite !lookup_app_r; [ | lia..]. rewrite !right_id !Nat.sub_diag//.
-          - rewrite app_length/=. lia.
+          - rewrite length_app/=. lia.
         }
         rewrite pad_struct_length -app_assoc/=. iFrame.
       }
@@ -1243,19 +1243,19 @@ Section copy.
     iAssert (([∗ list] i↦ty;vq ∈ pad_struct fields tys struct_make_uninit_type; zip vs qs',
        ▷ struct_own_el_loc π q' vq.1 i fields l (projT2 ty).2 (projT2 ty).1 ∗
       (▷ (l +ₗ offset_of_idx fields i) ↦{q'} vq.1 -∗ ▷ (l +ₗ offset_of_idx fields i) ↦{vq.2} vq.1)))%I with "[Hloc]" as "Hloc".
-    { rewrite big_sepL2_later; first last. { rewrite pad_struct_length zip_with_length. lia. }
-      iApply (big_sepL2_wand with "Hloc"). iApply big_sepL2_intro. { rewrite pad_struct_length zip_with_length. lia. }
+    { rewrite big_sepL2_later; first last. { rewrite pad_struct_length length_zip_with. lia. }
+      iApply (big_sepL2_wand with "Hloc"). iApply big_sepL2_intro. { rewrite pad_struct_length length_zip_with. lia. }
       iModIntro. iIntros (k [rt [ty r]] [v q''] Hlook1 Hlook2) "Hloc".
       simpl. rewrite /struct_own_el_loc.
       iDestruct "Hloc" as "(%r' & %ly & Hrfn & Hlook & Hst & Hty & Hl & Hlyv & Hv)".
       iPoseProof (Fractional_fractional_le (λ q, _) q'' q' with "Hl") as "(Hl & Hal)".
       { eapply (Hmin k). apply lookup_zip in Hlook2. apply Hlook2. }
-      iFrame. iNext. eauto with iFrame.
+      iFrame.
     }
 
     rewrite big_sepL2_sep. iDestruct "Hloc" as "(Hloc & Hcl_loc)".
     iPoseProof (big_sepL2_elim_l with "Hcl_loc") as "Hcl_loc".
-    rewrite -big_sepL2_later; first last. { rewrite pad_struct_length zip_with_length. lia. }
+    rewrite -big_sepL2_later; first last. { rewrite pad_struct_length length_zip_with. lia. }
     rewrite -(big_sepL2_fmap_r (λ x, x.1) (λ _ _ y2, struct_own_el_loc _ _ y2 _ _ _ _ _)).
     rewrite fst_zip; first last. { lia. }
 
@@ -1264,12 +1264,12 @@ Section copy.
 
     iIntros "Hloc".
     iPoseProof (big_sepL2_length with "Hcl") as "%Hlen".
-    rewrite zip_with_length in Hlen.
+    rewrite length_zip_with in Hlen.
     iPoseProof (big_sepL2_to_zip with "Hcl") as "Hcl".
     rewrite [zip qs qs']zip_flip zip_fmap_r zip_assoc_r -list_fmap_compose big_sepL_fmap.
 
     iPoseProof (big_sepL_extend_r qs with "Hcl_loc") as "Hcl_loc".
-    { rewrite zip_with_length. lia. }
+    { rewrite length_zip_with. lia. }
     iPoseProof (big_sepL2_to_zip with "Hcl_loc") as "Hcl_loc".
     iPoseProof (big_sepL_sep_2 with "Hcl Hcl_loc") as "Hcl".
 
@@ -1277,7 +1277,7 @@ Section copy.
     { lia. }
     iPoseProof (big_sepL2_to_zip with "Hloc") as "Hloc".
     iPoseProof (big_sepL_extend_r qs with "Hloc") as "Hloc".
-    { rewrite zip_with_length. lia. }
+    { rewrite length_zip_with. lia. }
     iPoseProof (big_sepL2_to_zip with "Hloc") as "Hloc".
     iPoseProof (big_sepL_sep_2 with "Hcl Hloc") as "Hcl".
     rewrite zip_assoc_l big_sepL_fmap.
@@ -1290,7 +1290,7 @@ Section copy.
           iDestruct "Ha" as "((Ha & Hcl) & Hl)".
           iPoseProof ("Hcl" with "Hl") as "Hl".
           iApply ("Ha" with "Hl"). }
-        rewrite zip_with_length. lia. }
+        rewrite length_zip_with. lia. }
       lia. }
 
     (* now collapse the whole sequence *)
@@ -1337,19 +1337,18 @@ Section copy.
           iModIntro. iIntros (? [? []] ? ? ?) "(% & % & ? & ? & ? & ? & ? & ? & ?)". rewrite /struct_own_el_loc'. eauto with iFrame. }
         rewrite big_sepL2_exists_r. iDestruct "Hs" as "(%l3 & >%Hlen2 & Ha)".
         iExists l3. iR. iModIntro. iNext. done. }
-    iPoseProof (struct_own_val_extract_mapsto' with "Hlb Hs") as "(Hl & >%Hlyv & Hs)".
+    iPoseProof (struct_own_val_extract_pointsto' with "Hlb Hs") as "(Hl & >%Hlyv & Hs)".
     { done. }
     { rewrite hpzipl_length. done. }
 
     rewrite fst_zip in Hlyv; last lia.
     iExists q', (mjoin vs). simpl. iFrame.
     iSplitL "Hl Hs".
-    { iModIntro. iNext. rewrite fst_zip; last lia. iFrame. iExists _. iR. iR.
-      iSplitR. { iPureIntro. by apply mjoin_has_struct_layout. }
-      done. }
+    { iModIntro. iNext. rewrite fst_zip; last lia. iFrame. iR. iR.
+      iPureIntro. by apply mjoin_has_struct_layout. }
     iModIntro. iIntros "Hpts".
     iApply ("Hcl" with "[Hpts]").
-    iApply big_sepL_later. iNext. rewrite heap_mapsto_reshape_sl; last by apply mjoin_has_struct_layout.
+    iApply big_sepL_later. iNext. rewrite heap_pointsto_reshape_sl; last by apply mjoin_has_struct_layout.
     iDestruct "Hpts" as "(_ & Hpts)". rewrite reshape_join; first done.
     rewrite Forall2_fmap_r. eapply Forall2_impl; first done.
     done.
@@ -1491,7 +1490,7 @@ Section subtype.
     apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook11 & Hlook12).
     apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook21 & Hlook22).
     rewrite Hlook22 in Hlook12. injection Hlook12 as [= <-%existT_inj].
-    efeed pose proof (hzipl_hzipl2_lookup _ tys1 tys2) as Hlook; [done.. | ].
+    opose proof* (hzipl_hzipl2_lookup _ tys1 tys2) as Hlook; [done.. | ].
     specialize (Forall_lookup_1 _ _ _ _ Hsubt Hlook) as Hx.
     iPoseProof (full_subtype_acc_noend with "HE HL") as "Ha"; first apply Hx.
     destruct r2.
@@ -1869,8 +1868,7 @@ Section unfold.
     eapply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
     (*assert (ly = sl) as ->. { eapply syn_type_has_layout_inj; first done.*)
       (*eapply use_struct_layout_alg_Some_inv. done. }*)
-    iExists sl. do 4 iR.
-    iFrame. iExists r'. iFrame.
+    iExists sl. do 4 iR. iFrame.
     iModIntro. iNext. iMod "Hv" as "(%v & Hl & Hv)".
     iDestruct "Hv" as "(%sl' & %Halg' & _ & %Hly' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
@@ -1878,14 +1876,14 @@ Section unfold.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
     rewrite (pad_struct_ext _ _ _ (λ ly, f (struct_make_uninit_type ly))); last done.
     rewrite pad_struct_fmap big_sepL_fmap.
-    rewrite /struct_own_el_val heap_mapsto_reshape_sl; last done.
+    rewrite /struct_own_el_val heap_pointsto_reshape_sl; last done.
     iDestruct "Hl" as "(_ & Hl)".
     iPoseProof (big_sepL2_sep_sepL_l with "[$Hl $Hb]") as "Ha".
 
     iApply (big_sepL2_elim_l). iApply big_sepL2_fupd.
     iApply (big_sepL2_wand with "Ha").
     iApply big_sepL2_intro.
-    { rewrite reshape_length pad_struct_length fmap_length fmap_length //. }
+    { rewrite length_reshape pad_struct_length length_fmap length_fmap //. }
     iIntros "!>" (k w [rt [ty r0]] Hlook1 Hlook2) => /=.
     iIntros "(Hl & %r0' & %ly & Hrfn & %Hmem & %st & Hty)".
     iExists ly. iSplitR; first done. simp_ltypes.
@@ -1896,7 +1894,7 @@ Section unfold.
     iPoseProof (ty_own_val_sidecond with "Hty") as "#$".
     iSplitR. { iApply loc_in_bounds_sl_offset; done. }
     iSplitR; first done.
-    iExists _. iFrame. iModIntro. iNext. iModIntro. iExists w. iFrame.
+    iExists _. by iFrame.
   Qed.
 
   Lemma struct_t_unfold_1_shared {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
@@ -1955,13 +1953,13 @@ Section unfold.
       set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
       rewrite (pad_struct_ext _ _ _ (λ ly, f $ struct_make_uninit_type ly)); last done.
       rewrite pad_struct_fmap big_sepL_fmap.
-      rewrite heap_mapsto_reshape_sl; last done. iDestruct "Hl" as "(_ & Hl)".
+      rewrite heap_pointsto_reshape_sl; last done. iDestruct "Hl" as "(_ & Hl)".
       iPoseProof (big_sepL2_sep_sepL_l with "[$Hl $Hb]") as "Ha".
 
       iApply big_sepL2_elim_l.
       iApply (big_sepL2_wand with "Ha").
       iApply big_sepL2_intro.
-      { rewrite reshape_length pad_struct_length fmap_length fmap_length //. }
+      { rewrite length_reshape pad_struct_length length_fmap length_fmap //. }
       iIntros "!>" (k w [rt [ty r0]] Hlook1 Hlook2) => /=.
       iIntros "(Hl & %r0' & %ly & Hrfn & %Hmem & %st & Hty)".
       iExists ly. iSplitR; first done. simp_ltypes.
@@ -1973,7 +1971,7 @@ Section unfold.
       iPoseProof (ty_own_val_sidecond with "Hty") as "#$".
       iSplitR. { iApply loc_in_bounds_sl_offset; done. }
       iSplitR; first done.
-      iExists _. iFrame. iModIntro. iModIntro. iExists w. iFrame.
+      iExists _. by iFrame.
     * iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame "Hauth".
       iMod "Hb".
       specialize (struct_layout_field_aligned _ _ Hly) as Hfield_ly.
@@ -1989,7 +1987,7 @@ Section unfold.
 
       iInduction (slm) as [ | [m ly] slm] "IH" forall (l slsm rts tys r' Hlen Hsc Hfield_ly); simpl.
       { iExists [].
-        iSplitR. { iApply heap_mapsto_nil. iApply loc_in_bounds_shorten_suf; last done. lia. }
+        iSplitR. { iApply heap_pointsto_nil. iApply loc_in_bounds_shorten_suf; last done. lia. }
         iSplitR; first done. done. }
       rewrite -Hsc in Hlen.
       iDestruct "Hb" as "(Hb0 & Hb)".
@@ -2029,15 +2027,15 @@ Section unfold.
           move: Halg0. simp_ltypes. intros Halg0.
           assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
           iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
-          iExists (v0 ++ v1). rewrite heap_mapsto_app.
+          iExists (v0 ++ v1). rewrite heap_pointsto_app.
           iSplitL "Hl0 Hl1".
           { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
             rewrite Hly0'. done. }
-          iSplitR. { iPureIntro. rewrite app_length Hv1_len Hly0'. done. }
+          iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
           iSplitL "Hb0 Hrfn0".
           { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
-            rewrite -Hly0'. rewrite take_app. done. }
-          rewrite -Hly0'. rewrite drop_app. done.
+            rewrite -Hly0'. rewrite take_app_length. done. }
+          rewrite -Hly0'. rewrite drop_app_length. done.
       -- simpl in Hlen. simpl.
          (* use the iH *)
           iSpecialize ("IH" $! (l +ₗ ly_size ly) slsm rts tys r').
@@ -2069,15 +2067,15 @@ Section unfold.
           move: Halg0. simp_ltypes. intros Halg0.
           assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
           iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
-          iExists (v0 ++ v1). rewrite heap_mapsto_app.
+          iExists (v0 ++ v1). rewrite heap_pointsto_app.
           iSplitL "Hl0 Hl1".
           { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
             rewrite Hly0'. done. }
-          iSplitR. { iPureIntro. rewrite app_length Hv1_len Hly0'. done. }
+          iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
           iSplitL "Hb0 Hrfn0".
           { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
-            rewrite -Hly0'. rewrite take_app. done. }
-          rewrite -Hly0'. rewrite drop_app. done.
+            rewrite -Hly0'. rewrite take_app_length. done. }
+          rewrite -Hly0'. rewrite drop_app_length. done.
   Qed.
 
   Lemma struct_t_unfold_1_uniq {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
@@ -2132,8 +2130,7 @@ Section unfold.
     iIntros "(%sl & %Halg & %Hsc & %Hly & #Hlb & ? & %r' & Hrfn & Hb)".
     iExists sl. iSplitR. { iPureIntro. eapply use_struct_layout_alg_Some_inv. done. }
     iSplitR; first done. iSplitR; first done.
-    iSplitR; first done. iModIntro. iFrame. iExists r'. iFrame "Hrfn".
-    iNext. iMod "Hb".
+    iSplitR; first done. iModIntro. iFrame. iNext. iMod "Hb".
     specialize (struct_layout_field_aligned _ _ Hly) as Hfield_ly.
     (* generalize *)
     (* TODO mostly duplicated with the Uniq lemma above *)
@@ -2148,7 +2145,7 @@ Section unfold.
 
     iInduction (slm) as [ | [m ly] slm] "IH" forall (l slsm rts tys r' Hsc Hlen Hfield_ly); simpl.
     { iExists [].
-      iSplitR. { iApply heap_mapsto_nil. iApply loc_in_bounds_shorten_suf; last done. lia. }
+      iSplitR. { iApply heap_pointsto_nil. iApply loc_in_bounds_shorten_suf; last done. lia. }
       iSplitR; first done. iModIntro. done. }
     rewrite -Hsc in Hlen.
     iDestruct "Hb" as "(Hb0 & Hb)".
@@ -2188,15 +2185,15 @@ Section unfold.
         assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
         iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
         iModIntro.
-        iExists (v0 ++ v1). rewrite heap_mapsto_app.
+        iExists (v0 ++ v1). rewrite heap_pointsto_app.
         iSplitL "Hl0 Hl1".
         { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
           rewrite Hly0'. done. }
-        iSplitR. { iPureIntro. rewrite app_length Hv1_len Hly0'. done. }
+        iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
         iSplitL "Hb0 Hrfn0".
         { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
-          rewrite -Hly0'. rewrite take_app. done. }
-        rewrite -Hly0'. rewrite drop_app. done.
+          rewrite -Hly0'. rewrite take_app_length. done. }
+        rewrite -Hly0'. rewrite drop_app_length. done.
     -- simpl in Hlen. simpl.
        (* use the iH *)
         iSpecialize ("IH" $! (l +ₗ ly_size ly) slsm rts tys r').
@@ -2229,16 +2226,17 @@ Section unfold.
         move: Halg0. simp_ltypes. intros Halg0.
         assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
         iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
-        iExists (v0 ++ v1). rewrite heap_mapsto_app.
+        iExists (v0 ++ v1). rewrite heap_pointsto_app.
         iSplitL "Hl0 Hl1".
         { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
           rewrite Hly0'. done. }
-        iSplitR. { iPureIntro. rewrite app_length Hv1_len Hly0'. done. }
+        iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
         iSplitL "Hb0 Hrfn0".
         { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
-          rewrite -Hly0'. rewrite take_app. done. }
-        rewrite -Hly0'. rewrite drop_app. done.
+          rewrite -Hly0'. rewrite take_app_length. done. }
+        rewrite -Hly0'. rewrite drop_app_length. done.
   Qed.
+
   Lemma struct_t_unfold_2_shared {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ r :
     ⊢ ltype_incl' (Shared κ) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
@@ -2249,7 +2247,7 @@ Section unfold.
     iSplitR; first done. iSplitR; first done. iFrame "Hlb".
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
 
-    rewrite /ty_shr /=. iExists sl. do 4 iR.
+    rewrite /ty_shr /=. do 3 iR.
     rewrite -big_sepL_fupd.
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
@@ -2264,6 +2262,7 @@ Section unfold.
     move: Hst. simp_ltypes => Hst. assert (ly0 = ly) as ->. { by eapply syn_type_has_layout_inj. }
     iFrame "# ∗". iSplit; done.
   Qed.
+
   Lemma struct_t_unfold_2_uniq {rts : list Type} (tys : hlist type rts) (sls : struct_layout_spec) κ γ r :
     ⊢ ltype_incl' (Uniq κ γ) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
@@ -2411,7 +2410,7 @@ Section lemmas.
   Proof.
     induction fields as [ | [x st] fields IH] in i |-*; simpl; first lia.
     intros Ha. destruct i; first by eauto.
-    efeed pose proof (IH i) as Hb; first lia.
+    opose proof* (IH i) as Hb; first lia.
     destruct Hb as (? & ? & Hlook & Hlook'). eauto.
   Qed.
 
@@ -2425,12 +2424,12 @@ Section lemmas.
     rewrite /ty_own_val /=.
     iIntros "(%ly & %Halg & %Hly & _)".
     apply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
-    iExists sl. iR. rewrite replicate_length. iR. iR.
+    iExists sl. iR. rewrite length_replicate. iR. iR.
     iApply big_sepL2_intro.
-    { rewrite pad_struct_length reshape_length !fmap_length //. }
+    { rewrite pad_struct_length length_reshape !length_fmap //. }
     iModIntro. iIntros (k v1 [rt [ty r]] Hlook1 Hlook2).
     apply pad_struct_lookup_Some in Hlook2; first last.
-    { rewrite hpzipl_length replicate_length.
+    { rewrite hpzipl_length length_replicate.
       erewrite struct_layout_spec_has_layout_fields_length; done. }
     destruct Hlook2 as (n & ly & Hlook2 & [ [? Hlook3] | [-> Heq]]).
     - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook3 as [Hlook31 Hlook32].
@@ -2665,8 +2664,7 @@ Section rules.
     iApply (logical_step_intro_maybe with "Hat"). iIntros "Hcred' !>".
     iIntros (rts' lts' r) "%Hlen_eq Hb".
     rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iExists sl. rewrite Hlen_eq. iFrame "%#∗".
-    iExists r. iSplitR; first done. iModIntro. done.
+    iExists sl. rewrite Hlen_eq. by iFrame "%#∗".
   Qed.
 
   Definition sigT_ltype_core : (sigT (λ rt, ltype rt * place_rfn rt)%type) → (sigT (λ rt, ltype rt * place_rfn rt)%type) := λ '(existT _ (lt, r)), existT _ (ltype_core lt, r).
@@ -2873,7 +2871,7 @@ Section rules.
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ ltype_own (projT2 ty).1 (Owned false) π (projT2 ty).2 (l +ₗ offset_of_idx (sl_members sl) i)))%I).
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
-      efeed pose proof struct_layout_spec_has_layout_fields_length as Ha; first done.
+      opose proof* struct_layout_spec_has_layout_fields_length as Ha; first done.
       iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hl]") as "(Hb & Htok)".
       { iNext. iIntros "(%r' & Hauth & Hb) Hdead".
         iModIntro. iNext. iExists r'. iFrame "Hauth".
@@ -2954,8 +2952,7 @@ Section rules.
             iMod "Hb"; iModIntro; iApply (big_sepL_impl with "Hb");
             iIntros "!>" (? [? []] ?); eauto. }
       { rewrite ltype_own_struct_unfold /struct_ltype_own.
-        iExists sl. iFrame "% ∗". rewrite Hlen'. iR. iR. iR.
-        iExists rs'. iR. iModIntro. iFrame. }
+        iExists sl. iFrame "% ∗". rewrite Hlen'. by do 3 iR. }
   Qed.
 
   Lemma struct_ltype_acc_shared {rts} F π (lts : hlist ltype rts) (r : plist place_rfn rts) l sls κ :
@@ -2982,8 +2979,7 @@ Section rules.
     iModIntro. iFrame.
     iIntros (rts' lts' r) "%Hlen_eq #Hb'".
     rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iExists sl. rewrite Hlen_eq. iFrame "%#∗".
-    iExists r. iSplitR; first done. iModIntro. done.
+    iExists sl. rewrite Hlen_eq. by iFrame "%#∗".
   Qed.
 
    (** Place lemmas for products *)
@@ -3005,9 +3001,9 @@ Section rules.
     2: { rewrite -Hlto. apply hzipl_lookup_hnth. done. }
     rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, typed_place_cond_ty _ _ _) 0%nat); simpl.
     2: { rewrite hzipl_length. lia. }
-    2: { rewrite insert_length hzipl_length. lia. }
+    2: { rewrite length_insert hzipl_length. lia. }
     iSplitL "Hcond"; first done.
-    iApply big_sepL2_intro. { rewrite insert_length; done. }
+    iApply big_sepL2_intro. { rewrite length_insert; done. }
     iIntros "!>" (k [rt1 lt1] [rt2 lt2] Hlook1 Hlook2).
     case_decide as Heqki; first done.
     rewrite list_lookup_insert_ne in Hlook2; last done.
@@ -3031,9 +3027,9 @@ Section rules.
     2: { rewrite -Hro. apply pzipl_lookup_pnth. done. }
     rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, _) 0%nat); simpl.
     2: { rewrite pzipl_length. lia. }
-    2: { rewrite insert_length pzipl_length. lia. }
+    2: { rewrite length_insert pzipl_length. lia. }
     iSplitL "Hcond"; first done.
-    iApply big_sepL2_intro. { rewrite insert_length; done. }
+    iApply big_sepL2_intro. { rewrite length_insert; done. }
     iIntros "!>" (k [rt1 r1] [rt2 r2] Hlook1 Hlook2).
     case_decide as Heqki; first done.
     rewrite list_lookup_insert_ne in Hlook2; last done.
@@ -3121,7 +3117,7 @@ Section rules.
       { rewrite -Hst2. done. }
       iFrame.
       iMod ("Hcl" with "[] Hb") as "Hb".
-      { rewrite insert_length //. }
+      { rewrite length_insert //. }
       iFrame. iPureIntro. done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
@@ -3380,7 +3376,7 @@ Section rules.
     iSplitR. { rewrite Hlen'. done. }
     iApply (logical_step_compose with "Hl2"). iApply (logical_step_wand with "Hl").
     iIntros "(Hl & HR1) (Hl2 & HR2)".
-    simpl. iFrame.
+    simpl. iFrame "HR1 HR2".
     iSplitL "Hl". { iExists _, _. iFrame. done. }
     iApply (big_sepL_mono with "Hl2"). intros ? [? []] ?. by rewrite Nat.add_succ_r.
   Qed.
@@ -3460,7 +3456,7 @@ Section rules.
     rewrite ltype_own_struct_unfold /struct_ltype_own.
     iExists _. iFrame "∗%".
     iSplitR. { by rewrite -Hleneq. }
-    iExists _. iR. iNext. by iFrame.
+    done.
   Qed.
   Global Instance stratify_ltype_struct_owned_inst {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfn rts) sls wl :
     StratifyLtype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) :=
@@ -3967,7 +3963,7 @@ Section rules.
       simpl. iPoseProof (gvar_pobs_agree_2 with "Hinterp HObs") as "#<-".
       iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
       iL. rewrite ltype_own_struct_unfold /struct_ltype_own.
-      iExists _. iFrame. iExists _. iR. by iFrame.
+      iExists _. by iFrame.
     - iExists _, _, _, _. iFrame.  iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Definition resolve_ghost_struct_Owned_inst := [instance @resolve_ghost_struct_Owned].
@@ -4010,7 +4006,7 @@ Section rules.
       simpl. iPoseProof (gvar_pobs_agree_2 with "Hinterp HObs") as "#<-".
       iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
       iL. rewrite ltype_own_struct_unfold /struct_ltype_own.
-      iExists _. iFrame. iExists _. iR. by iFrame.
+      iExists _. by iFrame.
     - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Definition resolve_ghost_struct_Shared_inst := [instance @resolve_ghost_struct_Shared].

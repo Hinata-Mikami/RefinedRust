@@ -126,7 +126,7 @@ Section union.
     iPureIntro. apply syn_type_has_layout_untyped_inv in Halg1 as (-> & _ & _).
     move: Hv0 Hv1. apply ly_size_layout_of_union_member in Hly.
     rewrite /has_layout_val/active_union_rest_ly.
-    rewrite take_length drop_length.
+    rewrite length_take length_drop.
     rewrite {4}/ly_size.
     lia.
   Qed.
@@ -178,14 +178,14 @@ Section union.
     { iNext. iModIntro. iSplit.
       - iIntros "(%v & Hl & Ha & Hb)".
         rewrite -{1}(take_drop (ly_size ly') v).
-        rewrite heap_mapsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
+        rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
         iPoseProof (ty_own_val_has_layout with "Ha") as "%Hlyv"; first done.
-        rewrite /has_layout_val take_length in Hlyv.
+        rewrite /has_layout_val length_take in Hlyv.
         iSplitL "Hl1 Ha". { iExists _. iFrame. }
         iPoseProof (ty_has_layout with "Hb") as "(%ly2 & %Hst2 & %Hlyv2)".
         apply syn_type_has_layout_untyped_inv in Hst2 as (-> & ? & ? & ?).
-        move: Hlyv2. rewrite /has_layout_val drop_length /active_union_rest_ly {2}/ly_size/= => Hlyv2.
-        rewrite take_length. rewrite Nat.min_l; last lia.
+        move: Hlyv2. rewrite /has_layout_val length_drop /active_union_rest_ly {2}/ly_size/= => Hlyv2.
+        rewrite length_take. rewrite Nat.min_l; last lia.
         eauto with iFrame.
       - iIntros "((%v1 & Hl1 & Hv1) & (%v2 & Hl2 & Hv2))".
         iExists (v1 ++ v2).
@@ -194,9 +194,9 @@ Section union.
         apply syn_type_has_layout_untyped_inv in Hst2 as (-> & ? & ? & ?).
         move: Hlyv2. rewrite /has_layout_val /active_union_rest_ly {1}/ly_size/= => Hlyv2.
         rewrite /has_layout_val in Hlyv.
-        rewrite heap_mapsto_app. rewrite Hlyv. iFrame.
-        iSplitL "Hv1". { rewrite take_app'; first done. lia. }
-        rewrite drop_app'; last lia. done. }
+        rewrite heap_pointsto_app. rewrite Hlyv. iFrame.
+        iSplitL "Hv1". { rewrite take_app_length'; first done. lia. }
+        rewrite drop_app_length'; last lia. done. }
     iMod (bor_sep with "LFT Hb") as "(Hb1 & Hb2)"; first done.
 
     (* now share both parts *)
@@ -231,8 +231,7 @@ Section union.
     simpl. rewrite right_id.
     rewrite -lft_tok_sep.
     rewrite ty_lfts_unfold.
-    iDestruct "Htok2" as "(? & ?)". iFrame.
-    iExists ul, ly'. iR. iR. iR. done.
+    iDestruct "Htok2" as "(? & ?)". by iFrame.
   Qed.
   Next Obligation.
     iIntros (rt ty variant uls κ κ' π r l) "#Hincl Hb".
@@ -383,7 +382,7 @@ Section enum.
      Note that, crucially, also the [e : enum rto] is already an input to this typeclass (determined by the [rust_type] annotation on [EnumInit]), because we need the type parameters of the enum to already be determined.
      (As an example, imagine constructing the [None] variant of [Option<T>]).
   *)
-  Class ConstructEnum {rti rto} (e : enum rto) (variant : string) (ty : type rti) (input : rti) (out : rto) : Type := construct_enum {
+  Class ConstructEnum {rti rto} (e : enum rto) (variant : string) (ty : type rti) (input : rti) (out : rto) : Prop := construct_enum {
     (* sidecondition that we need to solve *)
     (*construct_enum_sc : Prop;*)
     (* agreemtn that we get as a result *)
@@ -652,11 +651,10 @@ Section ne.
   Proof.
     rewrite /struct_own_el_val{1}/ty_own_val/=.
     iSplit.
-    - iIntros "(%r' & %ly & Hrfn & ? & ? & %ul & %ly' & ? & ? & ? & ? & ?)".
-      iExists ly. iFrame. iExists ul, ly'. iFrame.
-      iExists r'. iFrame.
+    - iIntros "(%r' & %ly & Hrfn & $ & $ & %ul & %ly' & ? & ? & ? & ? & ?)".
+      iExists ul, ly'. iFrame.
     - iIntros "(%ly' & ? & ? & %ul & %ly & ? & ? & ? & (%r' & ? & ?) & ?)".
-      iExists r', ly'. iFrame. iExists ul, ly. iFrame.
+      iExists r', ly'. iFrame.
   Qed.
 
   Local Lemma enum_el_shr_unfold {rt} (ty : type rt) π κ i fields l r tag uls :
@@ -674,10 +672,9 @@ Section ne.
     rewrite /struct_own_el_shr{1}/ty_shr/=.
     iSplit.
     - iIntros "(%r' & %ly & Hrfn & ? & ? & _ & %ul & %ly' & ? & ? & ? & ? & ?)".
-      iExists ly. iFrame. iR. iExists ul, ly'. iFrame.
-      iExists r'. iFrame.
+      iExists ly. iFrame.
     - iIntros "(%ly' & ? & ? & _ & %ul & %ly & ? & ? & ? & (%r' & ? & ?) & ?)".
-      iExists r', ly'. iFrame. iExists ul, ly. iFrame.
+      iExists r', ly'. iFrame.
   Qed.
 
   Global Instance enum_t_ne {rt1 rt2} (F : type rt1 → enum rt2) :
@@ -923,8 +920,8 @@ Section unfold.
 
     (*assert (syn_type_has_layout (ty_syn_type (enum_tag_type en (enum_tag en r'))) ly0).*)
 
-    (*rewrite heap_mapsto_reshape_sl; last done. iDestruct "Hl" as "(_ & Hl)".*)
-    iPoseProof (struct_own_val_join_mapsto with "Hl Hv") as "Hl".
+    (*rewrite heap_pointsto_reshape_sl; last done. iDestruct "Hl" as "(_ & Hl)".*)
+    iPoseProof (struct_own_val_join_pointsto with "Hl Hv") as "Hl".
     { done. }
     { done. }
     { done. }
@@ -960,7 +957,7 @@ Section unfold.
 
     iPoseProof (ty_own_val_active_union_split with "Hv") as "(%ul' & %ly & %v1 & %v2 & -> & %Huls & %Hty & Hv1 & Hv2)".
     assert (ul' = ul) as ->. { admit. }
-    rewrite heap_mapsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
+    rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
     iSplitL "Hl1 Hv1".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly.
@@ -1180,15 +1177,15 @@ Section rules.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
     iR.
     iSplitL "Hv".
-    - rewrite take_app'; first done. done.
-    - rewrite drop_app'; last done.
+    - rewrite take_app_length'; first done. done.
+    - rewrite drop_app_length'; last done.
       iApply uninit_own_spec.
       iExists _. iSplitR. { iPureIntro. apply syn_type_has_layout_untyped; first done.
         - by apply layout_wf_align_log_0.
         - rewrite ly_size_active_union_rest_ly. apply use_union_layout_alg_size in Hul'. lia.
         - by apply ly_align_in_bounds_1. }
       iPureIntro. rewrite /has_layout_val.
-      rewrite replicate_length. rewrite /use_layout_alg'.
+      rewrite length_replicate. rewrite /use_layout_alg'.
       erewrite elem_of_list_to_map_1; first last.
       { eapply elem_of_list_lookup_2. done. }
       { apply els_variants_nodup. }
@@ -1485,7 +1482,7 @@ End enum_test.
     (drop o v) `has_layout_val` (ly_offset ly o) →
     v `has_layout_val` ly ∨ (ly_size ly ≤ o ∧ length v ≤ o).
   Proof.
-    rewrite /has_layout_val. rewrite drop_length.
+    rewrite /has_layout_val. rewrite length_drop.
     destruct ly as [sz al].
     rewrite /ly_offset /ly_size /=.
     intros ?. destruct (decide (length v = sz)); first by left. right. lia.

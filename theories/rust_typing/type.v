@@ -1010,7 +1010,7 @@ Ltac dist_later_2_intro :=
   refine (dist_later_2_intro _ _ _ _);
   intros ??.
 
-Class TypeDist `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+Class TypeDist `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := {
   type_dist_st :
     ty1.(ty_syn_type) = ty2.(ty_syn_type);
   type_dist_sc :
@@ -1022,7 +1022,7 @@ Class TypeDist `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
   type_dist_shr :
     (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty1 ≡{n}≡ l ◁ₗ{π, κ} r @ ty2)%I);
 }.
-Class TypeDist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+Class TypeDist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := {
   type_dist2_st :
     ty1.(ty_syn_type) = ty2.(ty_syn_type);
   type_dist2_sc :
@@ -1034,7 +1034,7 @@ Class TypeDist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
   type_dist2_shr :
     (∀ κ π r l, (l ◁ₗ{π, κ} r @ ty1 ≡{n}≡ l ◁ₗ{π, κ} r @ ty2)%I);
 }.
-Class TypeDistLater `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+Class TypeDistLater `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := {
   type_dist_later_st :
     ty1.(ty_syn_type) = ty2.(ty_syn_type);
   type_dist_later_sc :
@@ -1046,7 +1046,7 @@ Class TypeDistLater `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
   type_dist_later_shr :
     (∀ κ π r l, dist_later n (l ◁ₗ{π, κ} r @ ty1)%I (l ◁ₗ{π, κ} r @ ty2)%I);
 }.
-Class TypeDistLater2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Type := {
+Class TypeDistLater2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := {
   type_dist_later2_st :
     ty1.(ty_syn_type) = ty2.(ty_syn_type);
   type_dist_later2_sc :
@@ -1872,8 +1872,8 @@ Section copy.
     iSplitL "Hmt1"; first by auto with iFrame.
     iIntros "Hmt1".
     iApply "Hclose". iModIntro. rewrite -{3}(Qp.div_2 q').
-    iPoseProof (heap_mapsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
-    rewrite heap_mapsto_fractional. iFrame.
+    iPoseProof (heap_pointsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
+    rewrite heap_pointsto_fractional. iFrame.
   Qed.
 
   Global Instance copy_equiv `{!typeGS Σ} {rt} : Proper (equiv ==> impl) (@Copyable _ _ rt).

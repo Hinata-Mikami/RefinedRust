@@ -62,7 +62,7 @@ Proof. eauto. Qed.
 (** TODO: replace this with [do [ tac ] in H] from ssreflect? *)
 Tactic Notation "tactic" tactic3(tac) "in" ident(H) :=
   let H' := fresh in
-  unshelve epose proof (tac_tactic_in_hyp _ _ H _) as H'; [shelve|
+  unshelve opose proof* (tac_tactic_in_hyp _ _ H _) as H'; [shelve|
     tac; let H := fresh H in intros H; exact H |];
   clear H; rename H' into H.
 
@@ -516,10 +516,8 @@ Tactic Notation "bitblast" ident(H) :=
   tactic bitblast_bool_decide_simplify in H.
 Tactic Notation "bitblast" ident(H) "with" constr(i) "as" ident(H') :=
   lazymatch type of H with
-  (* We cannot use [efeed pose proof] since this causes weird failures
-  in combination with [Set Mangle Names]. *)
-  | @eq Z _ _ => pose proof (Z_bits_inj'' _ _ H i) as H'; efeed specialize H'; [try bitblast_done..|]
-  | ∀ x, _ => pose proof (H i) as H'; efeed specialize H'; [try bitblast_done..|]
+  | @eq Z _ _ => opose proof* (Z_bits_inj'' _ _ H i); [try bitblast_done..|]
+  | ∀ x, _ => opose proof* (H i); [try bitblast_done..|]
   end; bitblast H'.
 Tactic Notation "bitblast" ident(H) "with" constr(i) :=
   let H' := fresh "H" in bitblast H with i as H'.

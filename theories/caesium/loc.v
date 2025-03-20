@@ -98,7 +98,7 @@ Lemma shift_loc_inj1 l1 l2 n : l1 +ₗ n = l2 +ₗ n → l1 = l2.
 Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
 
 Global Instance shift_loc_inj2 l : Inj (=) (=) (shift_loc l).
-Proof. destruct l as [b o]; intros n n' [=?]; lia. Qed.
+Proof. destruct l as [b o]; intros n n' H; inversion H; lia. Qed.
 
 Lemma shift_loc_block l n : (l +ₗ n).1 = l.1.
 Proof. done. Qed.

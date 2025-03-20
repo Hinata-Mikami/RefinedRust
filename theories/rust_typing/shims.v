@@ -57,9 +57,9 @@ Proof.
   rewrite /bits_per_byte/=.
   assert ((2 ^ ly_align_log ly) ≤ 2 ^ (8%nat * 8))%nat as Hle.
   { apply Nat2Z.inj_le. etrans; first apply Hb.
-    rewrite Nat2Z.inj_pow. nia.
+    rewrite Nat2Z.inj_pow. clear. nia.
   }
-  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; last lia.
+  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; [| clear; lia ].
   nia.
 Qed.
 Lemma ly_align_log_in_usize ly :
@@ -298,7 +298,7 @@ Proof.
   iPoseProof (ofty_value_untyped_from_array with "Hs") as "Hs".
   { rewrite Hlen_s ly_size_mk_array_layout. lia. }
   iPoseProof (ofty_value_untyped_from_array with "Ht") as "Ht".
-  { rewrite app_length take_length drop_length. rewrite Hlen_t Hlen_s !ly_size_mk_array_layout. lia. }
+  { rewrite length_app length_take length_drop. rewrite Hlen_t Hlen_s !ly_size_mk_array_layout. lia. }
 
   iApply typed_stmt_annot_skip.
   repeat liRStep; liShow.
@@ -309,9 +309,9 @@ Proof.
   Unshelve.
   + cbn. rewrite -list_fmap_insert.
     rewrite insert_app_r_alt; first last.
-    { rewrite take_length. lia. }
-    rewrite take_length reshape_length.
-    rewrite Nat.min_l; first last. { rewrite replicate_length. lia. }
+    { rewrite length_take. lia. }
+    rewrite length_take length_reshape.
+    rewrite Nat.min_l; first last. { rewrite length_replicate. lia. }
     rewrite Nat.sub_diag.
     f_equiv.
     rename select (reshape _ v_s !! i = Some _) into Hlook.
@@ -321,17 +321,17 @@ Proof.
     erewrite take_S_r; last done.
     rewrite -app_assoc.
     f_equiv.
-    rewrite insert_take_drop; first last. { rewrite drop_length reshape_length replicate_length. lia. }
+    rewrite insert_take_drop; first last. { rewrite length_drop length_reshape length_replicate. lia. }
     rewrite take_0 drop_drop. rewrite Nat.add_1_r. done.
   + rewrite take_ge; last solve_goal with nia.
     rewrite drop_ge; last solve_goal with nia.
     by rewrite app_nil_r.
-  + rewrite  drop_ge; first last. { rewrite reshape_length replicate_length. lia. }
+  + rewrite  drop_ge; first last. { rewrite length_reshape length_replicate. lia. }
     rewrite app_nil_r.
     rewrite drop_ge; first last. { solve_goal with nia. }
     rewrite app_nil_r.
     assert (len ≤ i) as Hle by lia. clear -Hle Hlen_s.
-    rewrite take_ge. 2: { rewrite reshape_length replicate_length. lia. }
+    rewrite take_ge. 2: { rewrite length_reshape length_replicate. lia. }
     rewrite take_ge; first done.
     rewrite Hlen_s /mk_array_layout{1}/ly_size/=. nia.
 Qed.
@@ -506,7 +506,7 @@ Proof.
       destruct caesium_config.enforce_alignment; last done.
       eapply Z.divide_1_l. }
     iSplitR; first done.
-    iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
     iSplitR; first done. iSplitR; first done.
     iExists (). iSplitR; first done.
     iModIntro. iExists []. iFrame. rewrite /ty_own_val /= //. }
@@ -768,12 +768,12 @@ Proof.
     { solve_layout_alg. }
     iExists ly. simpl. iSplitR; first done.
     iSplitR; first done. iSplitR; first done.
-    iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
-    iSplitR. { rewrite replicate_length /ly /ly_size /=. done. }
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+    iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
     iSplitR; first done.
     iExists tt. iSplitR; first done.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iExists ly.
-    iSplitR; first done. iPureIntro. rewrite /has_layout_val replicate_length /ly /ly_size //. }
+    iSplitR; first done. iPureIntro. rewrite /has_layout_val length_replicate /ly /ly_size //. }
 
   iRevert "Hf".
 
@@ -945,7 +945,7 @@ Proof.
   Unshelve. all: prepare_sideconditions; normalize_and_simpl_goal; try solve_goal; try (unfold_common_defs; solve_goal); unsolved_sidecond_hook.
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/u8/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/u8/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
-  { rewrite /has_layout_val drop_length/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
+  { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
 Qed.
 
 
@@ -1045,7 +1045,7 @@ Proof.
     unfold_no_enrich. inv_layout_alg.
     match goal with | H: Z.of_nat (ly_size ?Hly) ≠ 0%Z |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ usize_t by done.
-    efeed pose proof (ly_align_log_in_usize T_st_ly) as Ha; first done.
+    opose proof* (ly_align_log_in_usize T_st_ly) as Ha; first done.
     move: Ha. rewrite int_elem_of_it_iff int_elem_of_it_iff.
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
@@ -1065,12 +1065,12 @@ Proof.
     { iExists _, _. iSplitR; first done. iSplitR; first done.
       match goal with | H : CACHED (use_layout_alg (ty_syn_type T) = Some ?ly) |- _ => rename ly into T_ly; rename H into H_T end.
       iR.
-      iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
-      rewrite replicate_length. iFrame "Hlb". simpl. iSplitR; first done. iFrame.
+      iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+      rewrite length_replicate. iFrame "Hlb". simpl. iSplitR; first done. iFrame.
       iSplitL "Hfree". { by iApply freeable_freeable_nz. }
       iExists (). iSplitR; first done. iNext. iModIntro.
-      iExists _. iFrame. rewrite uninit_own_spec. iExists T_ly.
-      iSplitR; first done. rewrite /has_layout_val replicate_length //. }
+      rewrite uninit_own_spec. iExists T_ly.
+      iSplitR; first done. rewrite /has_layout_val length_replicate //. }
     iSplitR; first done.
     repeat liRStep; liShow.
 

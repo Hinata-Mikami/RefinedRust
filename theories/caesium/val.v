@@ -67,7 +67,7 @@ Global Typeclasses Opaque NULL.
 Lemma val_of_loc_n_length n l:
   length (val_of_loc_n n l) = n.
 Proof.
-  by rewrite /val_of_loc_n fmap_length rev_length seq_length.
+  by rewrite /val_of_loc_n length_fmap length_rev length_seq.
 Qed.
 
 Lemma val_to_of_loc_n n l:
@@ -144,7 +144,7 @@ Definition val_to_Z (v : val) (it : int_type) : option Z :=
 
 Definition val_to_byte_prov (v : val) : option alloc_id :=
   if v is MByte _ (Some p) :: _ then
-    guard (Forall (λ e, Is_true (if e is MByte _ (Some p') then bool_decide (p = p') else false)) v); Some p
+    guard (Forall (λ e, Is_true (if e is MByte _ (Some p') then bool_decide (p = p') else false)) v);; Some p
   else None.
 
 Definition provs_in_bytes (v : val) : list alloc_id :=
@@ -198,7 +198,7 @@ Lemma i2v_length n it: length (i2v n it) = bytes_per_int it.
 Proof.
   rewrite /i2v. destruct (val_of_Z n it None) eqn:Heq.
   - by apply val_of_Z_length in Heq.
-  - by rewrite replicate_length.
+  - by rewrite length_replicate.
 Qed.
 
 Lemma val_to_Z_length v it z:
@@ -293,7 +293,7 @@ Lemma val_of_Z_go_to_prov z n p :
   val_to_byte_prov (val_of_Z_go z n p) = p.
 Proof.
   destruct n as [|n] => // _. destruct p as [a|] => //.
-  rewrite /val_to_byte_prov/=. case_option_guard as Hf => //.
+  rewrite /val_to_byte_prov/=. case_guard as Hf => //.
   contradict Hf. constructor; [by eauto|].
   move: (z `div` byte_modulus) => {}z.
   elim: n z => /=; eauto.
@@ -477,7 +477,7 @@ Qed.
 Lemma erase_prov_length v :
   length (erase_prov v) = length v.
 Proof.
-  rewrite /erase_prov fmap_length //.
+  rewrite /erase_prov length_fmap //.
 Qed.
 Lemma val_to_Z_go_erase_prov v z :
   val_to_Z_go v = Some z →

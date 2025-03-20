@@ -72,9 +72,9 @@ Section bytewise.
     iIntros (?[Hv HP]). iSplitL.
     - eapply Forall_take in HP; iSplitL; last done.
       iPureIntro. rewrite /has_layout_val in Hv.
-      by rewrite /has_layout_val take_length min_l // Hv.
+      by rewrite /has_layout_val length_take min_l // Hv.
     - eapply Forall_drop in HP; iSplitL; last done.
-      iPureIntro. by rewrite /has_layout_val drop_length Hv.
+      iPureIntro. by rewrite /has_layout_val length_drop Hv.
   Qed.
   (* the corresponding lemma for shared ownership does not seem provable currently: how should we split the fractured borrow?*)
   (* TODO: check if this is a fundamental limitation / why are fractured borrows not covariant in their predicate? *)
@@ -88,7 +88,7 @@ Section bytewise.
   Proof.
     iIntros (??) "(%Hv1 & %HP1) (%Hv2 & %HP2)".
     iSplitL; iPureIntro.
-    - rewrite /has_layout_val app_length Hv1 Hv2.
+    - rewrite /has_layout_val length_app Hv1 Hv2.
       rewrite {2}/ly_size/=. lia.
     - by apply Forall_app.
   Qed.

@@ -48,7 +48,7 @@ Inductive expr :=
 | StuckE (* stuck expression *)
 .
 End expr.
-Arguments Call _%E _%E.
+Arguments Call _%_E _%_E.
 Lemma expr_ind (P : expr → Prop) :
   (∀ (x : var_name), P (Var x)) →
   (∀ (v : val), P (Val v)) →
@@ -95,7 +95,7 @@ Inductive stmt :=
 | ExprS (e : expr) (s : stmt)
 .
 
-Arguments Switch _%E _%E _%E.
+Arguments Switch _%_E _%_E _%_E.
 
 Record function := {
   f_args : list (var_name * layout);
@@ -854,7 +854,7 @@ Lemma fill_item_no_val_inj Ki1 Ki2 e1 e2 :
 Proof.
   move: Ki1 Ki2 => [ ^ Ki1] [ ^Ki2] He1 He2 ? //; simplify_eq; try done; f_equal.
   all: destruct Ki1E, Ki2E => //; simplify_eq => //.
-  all: efeed pose proof list_expr_val_eq_inv as HEQ; [| | done |] => //; naive_solver.
+  all: opose proof* list_expr_val_eq_inv as HEQ; [| | done |] => //; naive_solver.
 Qed.
 
 Lemma expr_ctx_step_val Ki e σ1 κ e2 σ2 ef :
@@ -911,5 +911,3 @@ Ltac unfold_common_caesium_defs :=
     bits_per_int, bytes_per_int, bytes_per_addr_log,
   (* Other byte-level definitions *)
     bits_per_byte in *.
-
-

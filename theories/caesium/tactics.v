@@ -39,7 +39,7 @@ Inductive expr :=
 | LocInfoE (a : location_info) (e : expr)
 | StructInit (sls : struct_layout_spec) (fs : list (string * expr))
 | EnumInit (els : enum_layout_spec) (variant : var_name) (ty : rust_type) (e : expr)
-| MacroE (m : list lang.expr → lang.expr) (es : list expr) (wf : MacroWfSubst m)
+| MacroE (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m)
 | Borrow (m : mutability) (κn : string) (ty : option rust_type) (e : expr)
 | Box (st : syn_type)
 (* for opaque expressions*)
@@ -79,7 +79,7 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (a : location_info) (e : expr), P e → P (LocInfoE a e)) →
   (∀ (ly : struct_layout_spec) (fs : list (string * expr)), Forall P fs.*2 → P (StructInit ly fs)) →
   (∀ (els : enum_layout_spec) (variant : var_name) (ty : rust_type) (e : expr), P e → P (EnumInit els variant ty e)) →
-  (∀ (m : list lang.expr → lang.expr) (es : list expr) (wf : MacroWfSubst m), Forall P es → P (MacroE m es wf)) →
+  (∀ (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m), Forall P es → P (MacroE m es well_founded)) →
   (∀ (m : mutability) (ty : option rust_type) (κn : string) (e : expr), P e → P (Borrow m κn ty e)) →
   (∀ (st : syn_type), P (Box st)) →
   (∀ (e : lang.expr), P (Expr e)) → ∀ (e : expr), P e.
@@ -687,7 +687,7 @@ Fixpoint subst_l (xs : list (var_name * val)) (e : expr)  : expr :=
   | EnumData els variant e => EnumData els variant (subst_l xs e)
   | OffsetOf s m => OffsetOf s m
   | OffsetOfUnion ul m => OffsetOfUnion ul m
-  | MacroE m es wf => MacroE m (subst_l xs <$> es) wf
+  | MacroE m es well_founded => MacroE m (subst_l xs <$> es) well_founded
   | Borrow m κn ty e => Borrow m κn ty (subst_l xs e)
   | Box st => Box st
   | Expr e => Expr (lang.subst_l xs e)

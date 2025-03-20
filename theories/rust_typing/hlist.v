@@ -129,9 +129,9 @@ End hlist.
 Ltac inv_hlist xl := let A := type of xl in
   match eval hnf in A with hlist _ ?Xl =>
     match eval hnf in Xl with
-    | [] => revert dependent xl;
+    | [] => generalize dependent xl;
         match goal with |- ∀xl, @?P xl => apply (hlist_nil_inv P) end
-    | _ :: _ => revert dependent xl;
+    | _ :: _ => generalize dependent xl;
         match goal with |- ∀xl, @?P xl => apply (hlist_cons_inv P) end;
         (* Try going on recursively. *)
         try (let x := fresh "x" in intros x xl; inv_hlist xl; revert x)

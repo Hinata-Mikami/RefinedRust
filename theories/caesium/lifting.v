@@ -86,7 +86,8 @@ Section time.
     iMod (own_update with "Hd") as "Hd".
     { eapply (auth_update_dealloc _ _ (m - k)%nat). eapply nat_local_update. rewrite right_id. lia. }
     iModIntro. assert (m = ((m - k) + k)%nat) as Heq by lia. rewrite {1} Heq.
-    iDestruct "Hcd" as "(Hcd & $)".
+    iDestruct "Hcd" as "(Hcd & Hatime)".
+    iSplitR "Hatime"; last iFrame.
     iExists (m - k)%nat. iFrame.
     replace (m - k + (n + k))%nat with (m + n)%nat by lia. done.
   Qed.
@@ -100,9 +101,10 @@ Section time.
     iMod (step_additive_time_receipt _ m with "CTX Ht") as "(Ht & Hv)"; first done.
     iMod (own_update with "Ht") as "Ht".
     { apply (mono_nat.mono_nat_update (m + (k + n))). lia. }
-    iMod ("Hv" with "Ht") as "(Ht & $)".
-    iModIntro. iExists k.
-    iFrame. replace (m + (k + n))%nat with (k + (m + n))%nat by lia. done.
+    iMod ("Hv" with "Ht") as "(Ht & Hatime)".
+    iModIntro.
+    iSplitR "Hatime"; iFrame.
+    by replace (m + (k + n))%nat with (k + (m + n))%nat by lia.
   Qed.
 
   Lemma timec_interp_bound_both E n m k :
@@ -128,7 +130,7 @@ Section time.
       iPureIntro. lia.
     }
     iMod ("Hcl" with "Hi") as "_".
-    iFrame. iPureIntro. done.
+    iFrame "Ht Hpc". iPureIntro. done.
   Qed.
 
   Lemma timec_interp_bound_atime E n m :
@@ -178,7 +180,7 @@ Lemma to_expr_wp `{!refinedcG Σ} (e : expr) s E Φ :
 Proof. auto. Qed.
 
 Local Hint Extern 0 (reducible _ _) => eexists _, _, _, _; simpl : core.
-Local Hint Extern 0 (head_reducible _ _) => eexists _, _, _, _; simpl : core.
+Local Hint Extern 0 (base_reducible _ _) => eexists _, _, _, _; simpl : core.
 Local Hint Unfold heap_at : core.
 
 
@@ -408,7 +410,7 @@ Section lifting.
     iIntros (???) "Hcred [Hst Htime]".
     iMod (timec_interp_enable_atime with "[$Htime $Hd]") as "(Htime & Hc)".
     replace (S (ns - n) + n)%nat with (S ns) by lia.
-    replace (S (ns - n + n))%nat with (S ns) by lia.
+    iFrame "Htime".
     by iFrame.
   Qed.
 
@@ -474,11 +476,11 @@ Section lifting.
   Qed.
 
   (* TODO: add this lemma to iris? *)
-  Lemma wp_lift_head_step_fupdN {s E Φ} e1 :
+  Lemma wp_lift_base_step_fupdN {s E Φ} e1 :
     to_val e1 = None →
     (∀ σ1 ns κ κs nt, state_interp σ1 ns (κ ++ κs) nt ={E,∅}=∗
-      ⌜head_reducible e1 σ1⌝ ∗
-      ∀ e2 σ2 efs, ⌜head_step e1 σ1 κ e2 σ2 efs⌝ -∗
+      ⌜base_reducible e1 σ1⌝ ∗
+      ∀ e2 σ2 efs, ⌜base_step e1 σ1 κ e2 σ2 efs⌝ -∗
         £ (S (num_laters_per_step ns)) ={∅}=∗ ▷ |={∅,E}=>
         state_interp σ2 (S ns) κs (length efs + nt) ∗
         WP e2 @ s; E {{ Φ }} ∗
@@ -487,11 +489,11 @@ Section lifting.
   Proof.
     iIntros (?) "H". iApply wp_lift_step_fupdN=>//. iIntros (σ1 ns κ κs nt) "Hσ".
     iMod ("H" with "Hσ") as "[% H]"; iModIntro.
-    iSplit. { destruct s; iPureIntro; first apply head_prim_reducible; done. }
+    iSplit. { destruct s; iPureIntro; first apply base_prim_reducible; done. }
     iIntros (e2 σ2 efs ?).
     iIntros "Hcred".
     iMod ("H" with "[] Hcred") as "H".
-    { iPureIntro. by eapply head_reducible_prim_step. }
+    { iPureIntro. by eapply base_reducible_prim_step. }
     iApply step_fupd_intro; first done.
     iApply step_fupdN_intro; first done.
     iNext. iNext. done.
@@ -501,7 +503,7 @@ Section lifting.
     ⊢ WP AllocFailed @ E {{ Φ }}.
   Proof.
     iLöb as "IH".
-    iApply wp_lift_pure_det_head_step_no_fork'; [done|by eauto using AllocFailedStep| | by iIntros "!> _"].
+    iApply wp_lift_pure_det_base_step_no_fork'; [done|by eauto using AllocFailedStep| | by iIntros "!> _"].
     move => ????? . inversion 1; simplify_eq => //.
     match goal with | H: to_rtexpr ?e = AllocFailed |- _ => destruct e; discriminate end.
   Qed.
@@ -521,7 +523,7 @@ Section lifting.
       -∗ WP e @ E {{ Φ }}.
   Proof.
     iIntros (? He ?) "#CTX Hc Hp HWP".
-    iApply wp_lift_head_step_fupdN => //.
+    iApply wp_lift_base_step_fupdN => //.
     iIntros (σ1 ns κ κs nt) "([[% Hhctx] Hfnctx] & Htime)".
     iMod (timec_interp_bound_both with "CTX Htime Hc Hp") as "(Htime & Hc & %)"; first done.
     iMod (timec_interp_alloc_atime _ 1 with "CTX Htime") as "(Htime & Hc2)"; first done.
@@ -580,7 +582,7 @@ Section lifting.
       -∗ WP e @ E {{ Φ }}.
   Proof.
     iIntros (He ?) "HWP".
-    iApply wp_lift_head_step_fupd => //.
+    iApply wp_lift_base_step_fupd => //.
     iIntros (σ1 ns κ κs nt) "([[% Hhctx] Hfnctx] & Htime)".
     iMod ("HWP" $! σ1 with "[$Hhctx $Hfnctx//]") as (Hstep) "HWP".
     iModIntro. iSplit. {
@@ -892,9 +894,9 @@ Proof.
   iIntros (? Ho Hl Hll Hlv) "#CTX Hc Hp Hmt HΦ".
   iApply (wp_lift_expr_step_credits with "CTX Hc Hp"); auto.
   iIntros ([[h ub] fn]) "((%&Hhctx&Hactx)&Hfctx)/=".
-  iDestruct (heap_mapsto_is_alloc with "Hmt") as %Haid.
+  iDestruct (heap_pointsto_is_alloc with "Hmt") as %Haid.
   destruct o; try by destruct Ho.
-  - iModIntro. iDestruct (heap_mapsto_lookup_q (λ st, ∃ n, st = RSt n) with "Hhctx Hmt") as %Hat. { naive_solver. }
+  - iModIntro. iDestruct (heap_pointsto_lookup_q (λ st, ∃ n, st = RSt n) with "Hhctx Hmt") as %Hat. { naive_solver. }
     iSplit; first by eauto 11 using DerefS.
     iIntros (? e2 σ2 efs Hst ?) "!> Hcred Hc !>". inv_expr_step.
     iSplit => //. unfold end_st, end_expr.
@@ -927,9 +929,9 @@ Proof.
   iIntros (Ho Hl Hll Hlv) "Hmt HΦ".
   iApply wp_lift_expr_step; auto.
   iIntros ([[h ub] fn]) "((%&Hhctx&Hactx)&Hfctx)/=".
-  iDestruct (heap_mapsto_is_alloc with "Hmt") as %Haid.
+  iDestruct (heap_pointsto_is_alloc with "Hmt") as %Haid.
   destruct o; try by destruct Ho.
-  - iModIntro. iDestruct (heap_mapsto_lookup_q (λ st, ∃ n, st = RSt n) with "Hhctx Hmt") as %Hat. { naive_solver. }
+  - iModIntro. iDestruct (heap_pointsto_lookup_q (λ st, ∃ n, st = RSt n) with "Hhctx Hmt") as %Hat. { naive_solver. }
     iSplit; first by eauto 11 using DerefS.
     iIntros (? e2 σ2 efs Hst ?) "!> Hcred !>". inv_expr_step.
     iSplit => //. unfold end_st, end_expr.
@@ -987,11 +989,11 @@ Proof.
   iIntros (? Hl1 Hl2 Hly1 Hly2 Hvo Hve Hlen1 Hlen2 Hneq) "#CTX Hc Hp Hl1 Hl2 HΦ".
   iApply (wp_lift_expr_step_credits with "CTX Hc Hp"); auto.
   iIntros (σ1) "((%&Hhctx&?)&Hfctx)".
-  iDestruct (heap_mapsto_is_alloc with "Hl1") as %Haid1.
-  iDestruct (heap_mapsto_is_alloc with "Hl2") as %Haid2.
+  iDestruct (heap_pointsto_is_alloc with "Hl1") as %Haid1.
+  iDestruct (heap_pointsto_is_alloc with "Hl2") as %Haid2.
   move: (Hvo) (Hve) => /val_to_Z_ot_length ? /val_to_Z_ot_length ?.
-  iDestruct (heap_mapsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl1") as %? => //. { naive_solver. }
-  iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl2") as %? => //.
+  iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl1") as %? => //. { naive_solver. }
+  iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl2") as %? => //.
 
   iModIntro. iSplit; first by eauto 15 using CasFailS.
   iIntros (? e2 σ2 efs Hst ?) "!> Hcred Hc". inv_expr_step;
@@ -1019,11 +1021,11 @@ Proof.
   iIntros (Hl1 Hl2 Hly1 Hly2 Hvo Hve Hlen1 Hlen2 Hneq) "Hl1 Hl2 HΦ".
   iApply wp_lift_expr_step; auto.
   iIntros (σ1) "((%&Hhctx&?)&Hfctx)".
-  iDestruct (heap_mapsto_is_alloc with "Hl1") as %Haid1.
-  iDestruct (heap_mapsto_is_alloc with "Hl2") as %Haid2.
+  iDestruct (heap_pointsto_is_alloc with "Hl1") as %Haid1.
+  iDestruct (heap_pointsto_is_alloc with "Hl2") as %Haid2.
   move: (Hvo) (Hve) => /val_to_Z_ot_length ? /val_to_Z_ot_length ?.
-  iDestruct (heap_mapsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl1") as %? => //. { naive_solver. }
-  iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl2") as %? => //.
+  iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl1") as %? => //. { naive_solver. }
+  iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl2") as %? => //.
   iModIntro. iSplit; first by eauto 15 using CasFailS.
   iIntros (? e2 σ2 efs Hst ?) "!> Hcred". inv_expr_step;
     have ? : (vo = vo0) by [apply: heap_lookup_loc_inj_val => //; congruence];
@@ -1053,11 +1055,11 @@ Proof.
   iIntros (? Hl1 Hl2 Hly1 Hly2 Hvo Hve Hlen1 Hlen2 Hneq) "#CTX Hc Hp Hl1 Hl2 HΦ".
   iApply (wp_lift_expr_step_credits with "CTX Hc Hp"); auto.
   iIntros (σ1) "((%&Hhctx&?)&Hfctx)".
-  iDestruct (heap_mapsto_is_alloc with "Hl1") as %Haid1.
-  iDestruct (heap_mapsto_is_alloc with "Hl2") as %Haid2.
+  iDestruct (heap_pointsto_is_alloc with "Hl1") as %Haid1.
+  iDestruct (heap_pointsto_is_alloc with "Hl2") as %Haid2.
   move: (Hvo) (Hve) => /val_to_Z_ot_length ? /val_to_Z_ot_length ?.
-  iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl1") as %? => //.
-  iDestruct (heap_mapsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl2") as %? => //. { naive_solver. }
+  iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl1") as %? => //.
+  iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl2") as %? => //. { naive_solver. }
   iModIntro. iSplit; first by eauto 15 using CasSucS.
   iIntros (? e2 σ2 efs Hst ?) "!> Hcred Hc". inv_expr_step;
       have ? : (ve = ve0) by [apply: heap_lookup_loc_inj_val => //; congruence];
@@ -1084,11 +1086,11 @@ Proof.
   iIntros (Hl1 Hl2 Hly1 Hly2 Hvo Hve Hlen1 Hlen2 Hneq) "Hl1 Hl2 HΦ".
   iApply wp_lift_expr_step; auto.
   iIntros (σ1) "((%&Hhctx&?)&Hfctx)".
-  iDestruct (heap_mapsto_is_alloc with "Hl1") as %Haid1.
-  iDestruct (heap_mapsto_is_alloc with "Hl2") as %Haid2.
+  iDestruct (heap_pointsto_is_alloc with "Hl1") as %Haid1.
+  iDestruct (heap_pointsto_is_alloc with "Hl2") as %Haid2.
   move: (Hvo) (Hve) => /val_to_Z_ot_length ? /val_to_Z_ot_length ?.
-  iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl1") as %? => //.
-  iDestruct (heap_mapsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl2") as %? => //. { naive_solver. }
+  iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl1") as %? => //.
+  iDestruct (heap_pointsto_lookup_q (λ st : lock_state, ∃ n : nat, st = RSt n) with "Hhctx Hl2") as %? => //. { naive_solver. }
   iModIntro. iSplit; first by eauto 15 using CasSucS.
   iIntros (? e2 σ2 efs Hst ?) "!> Hcred". inv_expr_step;
       have ? : (ve = ve0) by [apply: heap_lookup_loc_inj_val => //; congruence];
@@ -1259,7 +1261,7 @@ Proof.
   iIntros "!>" (v' Hv') "Hcred". iMod "HE". iModIntro. iFrame.
   inversion Hv'; simplify_eq.
   case_bool_decide.
-  { rewrite Hprov. iApply ("HΦ" with "[] Hcred"). iApply heap_mapsto_prov_none_nil; done. }
+  { rewrite Hprov. iApply ("HΦ" with "[] Hcred"). iApply heap_pointsto_prov_none_nil; done. }
   exfalso. match goal with H : ¬ (valid_ptr _ _) |- _ => apply H end.
   rewrite Hprov. split; right; done.
 Qed.
@@ -1337,7 +1339,7 @@ Proof.
   { iIntros (? vt). split.
     - by inversion 1.
     - intros ->. econstructor; [done | | done].
-      rewrite /erase_prov /has_layout_val fmap_length //. }
+      rewrite /erase_prov /has_layout_val length_fmap //. }
   eauto.
 Qed.
 
@@ -1973,14 +1975,14 @@ Proof.
     iApply (wp_wand with "HT").
     iIntros (v0) "HT". iPoseProof ("IH" $! (vs ++ [v0]) (previous_mems ++ [(Some s, ly)]) with "[] [] [HT]") as "HT".
     { done. }
-    { rewrite /field_names. rewrite omap_app !app_length/=. rewrite Heq//. }
+    { rewrite /field_names. rewrite omap_app !length_app/=. rewrite Heq//. }
     { rewrite -app_assoc. simpl. done. }
     simpl.
     rewrite pad_struct_snoc_Some; done.
   - simpl. iApply wp_value.
     iPoseProof ("IH" $! (vs) (previous_mems ++ [(None, ly)]) field_specs with "[] [] [HT]") as "HT".
     { done. }
-    { rewrite /field_names omap_app !app_length/=. rewrite Nat.add_0_r. done. }
+    { rewrite /field_names omap_app !length_app/=. rewrite Nat.add_0_r. done. }
     { simpl. rewrite -app_assoc. done. }
     simpl. rewrite pad_struct_snoc_None; done.
 Qed.
@@ -2011,7 +2013,7 @@ Proof.
   iIntros (Halg) "Hinit".
   iApply wp_struct_init; first done.
   apply use_struct_layout_alg_inv in Halg as (mems & Halg & Hfields).
-  efeed pose proof struct_layout_alg_has_fields as Hmems; first apply Halg.
+  opose proof* struct_layout_alg_has_fields as Hmems; first apply Halg.
   move: Hfields Hmems. clear Halg.
   generalize (sls_fields sls) as fields => fields.
   rewrite /sl_has_members.
@@ -2273,7 +2275,7 @@ Proof.
     iApply wp_alloc_failed.
   }
   iMod (heap_alloc_new_block_upd with "[$Hhctx $Hactx]") as "(Hctx & Hlv & Hlf)" => //.
-  rewrite replicate_length.
+  rewrite length_replicate.
   iDestruct ("Hwp" with "Hlv Hlf [//]") as "Hpost".
   iModIntro. iSplit => //.
   iFrame "Hctx Hfctx". iApply wp_value. iApply ("Hpost" with "Hcred Hc").
@@ -2297,7 +2299,7 @@ Proof.
     iApply wp_alloc_failed.
   }
   iMod (heap_alloc_new_block_upd with "[$Hhctx $Hactx]") as "(Hctx & Hlv & Hlf)" => //.
-  rewrite replicate_length.
+  rewrite length_replicate.
   iDestruct ("Hwp" with "Hlv Hlf [//]") as "Hpost".
   iModIntro. iSplit => //.
   iFrame "Hctx Hfctx". iApply wp_value. iApply ("Hpost" with "Hcred").
@@ -2376,7 +2378,7 @@ Lemma wp_call_credits vf vl f fn Φ n m :
    ) -∗
    WP (Call (Val vf) (Val <$> vl)) {{ Φ }}.
 Proof.
-  move => Hf Hly. move: (Hly) => /Forall2_length. rewrite fmap_length => Hlen_vs.
+  move => Hf Hly. move: (Hly) => /Forall2_length. rewrite length_fmap => Hlen_vs.
   iIntros "#TIME Hc Hp Hf HWP". iApply (wp_lift_expr_step_credits with "TIME Hc Hp"); [done.. | ].
   iIntros (σ1) "((%&Hhctx&Hbctx)&Hfctx)".
   iDestruct (fntbl_entry_lookup with "Hfctx Hf") as %[a [? Hfn]]; subst. iModIntro.
@@ -2395,7 +2397,7 @@ Proof.
   iFrame.
   iDestruct ("HWP" $! lsa lsv with "[//] Hla [Hlv] Hcred Hc") as "Ha". {
     rewrite big_sepL2_fmap_r. iApply (big_sepL2_mono with "Hlv") => ??? ?? /=.
-    iIntros "?". iExists _. iFrame. iPureIntro. split; first by apply replicate_length.
+    iIntros "?". iExists _. iFrame. iPureIntro. split; first by apply length_replicate.
     apply: Forall2_lookup_lr. 2: done. 1: done. rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
   }
   iApply fupd_wp. iMod "Ha" as (Ψ') "(HQinit & HΨ')". iModIntro.
@@ -2411,9 +2413,9 @@ Proof.
     iDestruct "Ha" as "[% Ha]". iDestruct "Hv" as "[% Hv]".
     iDestruct "Hfree_a" as "[% Hfree_a]". iDestruct "Hfree_v" as "[% Hfree_v]".
     rewrite !zip_fmap_r !big_sepL_fmap/=. iFrame.
-    setoid_rewrite replicate_length. iFrame.
+    setoid_rewrite length_replicate. iFrame.
     iApply (big_sepL_impl' with "Hfree_a").
-    { rewrite !zip_with_length !min_l ?fmap_length //; lia. }
+    { rewrite !length_zip_with !min_l ?length_fmap //; lia. }
     iIntros (??? [?[v0[?[??]]]]%lookup_zip_with_Some [?[ly0[?[??]]]]%lookup_zip_with_Some) "!> H2"; simplify_eq/=.
     have -> : v0 `has_layout_val` ly0.2; last done.
     eapply Forall2_lookup_lr; [done..|].
@@ -2440,7 +2442,7 @@ Lemma wp_call vf vl f fn Φ:
    ) -∗
    WP (Call (Val vf) (Val <$> vl)) {{ Φ }}.
 Proof.
-  move => Hf Hly. move: (Hly) => /Forall2_length. rewrite fmap_length => Hlen_vs.
+  move => Hf Hly. move: (Hly) => /Forall2_length. rewrite length_fmap => Hlen_vs.
   iIntros "Hf HWP". iApply wp_lift_expr_step; first done.
   iIntros (σ1) "((%&Hhctx&Hbctx)&Hfctx)".
   iDestruct (fntbl_entry_lookup with "Hfctx Hf") as %[a [? Hfn]]; subst. iModIntro.
@@ -2458,7 +2460,7 @@ Proof.
 
   iDestruct ("HWP" $! lsa lsv with "[//] Hla [Hlv] Hcred") as (Ψ') "(HQinit & HΨ')". {
     rewrite big_sepL2_fmap_r. iApply (big_sepL2_mono with "Hlv") => ??? ?? /=.
-    iIntros "?". iExists _. iFrame. iPureIntro. split; first by apply replicate_length.
+    iIntros "?". iExists _. iFrame. iPureIntro. split; first by apply length_replicate.
     apply: Forall2_lookup_lr. 2: done. 1: done. rewrite list_lookup_fmap. apply fmap_Some. naive_solver.
   }
   iFrame. rewrite stmt_wp_eq. iApply "HQinit" => //.
@@ -2472,9 +2474,9 @@ Proof.
     iDestruct "Ha" as "[% Ha]". iDestruct "Hv" as "[% Hv]".
     iDestruct "Hfree_a" as "[% Hfree_a]". iDestruct "Hfree_v" as "[% Hfree_v]".
     rewrite !zip_fmap_r !big_sepL_fmap/=. iFrame.
-    setoid_rewrite replicate_length. iFrame.
+    setoid_rewrite length_replicate. iFrame.
     iApply (big_sepL_impl' with "Hfree_a").
-    { rewrite !zip_with_length !min_l ?fmap_length //; lia. }
+    { rewrite !length_zip_with !min_l ?length_fmap //; lia. }
     iIntros (??? [?[v0[?[??]]]]%lookup_zip_with_Some [?[ly0[?[??]]]]%lookup_zip_with_Some) "!> H2"; simplify_eq/=.
     have -> : v0 `has_layout_val` ly0.2; last done.
     eapply Forall2_lookup_lr; [done..|].
@@ -2512,7 +2514,7 @@ Lemma wps_free Q Ψ s l v_size v_align (n_size n_align : nat) :
   WPs (Free (Val v_size) (Val v_align) (val_of_loc l) s) {{ Q, Ψ }}.
 Proof.
   iIntros (???) "Hl Hf HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
-  iPoseProof (heap_mapsto_layout_has_layout with "Hl") as "%".
+  iPoseProof (heap_pointsto_layout_has_layout with "Hl") as "%".
   iApply wp_lift_stmt_step. iIntros (σ) "(Hhctx&Hfctx)".
   iMod (heap_free_block_upd with "Hl Hf Hhctx") as (σ') "(%Hf & Hhctx)".
   iModIntro. iSplit; first by eauto 10 using FreeS, val_to_of_loc.
@@ -2575,10 +2577,10 @@ Proof.
   iIntros ([h1 ?]) "((%&Hhctx&Hfctx)&?) /=". iMod "HWP" as (Hly) "[Hl HWP]".
   iApply (fupd_mask_weaken ∅); first set_solver. iIntros "HE".
   iDestruct "Hl" as (v' Hlyv' ?) "Hl".
-  iDestruct (heap_mapsto_is_alloc with "Hl") as %Haid.
+  iDestruct (heap_pointsto_is_alloc with "Hl") as %Haid.
   unfold E. case: Ho => ->.
   - iModIntro.
-    iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl") as %? => //.
+    iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl") as %? => //.
     iSplit; first by eauto 12 using AssignS.
     iIntros (? e2 σ2 efs Hstep ?) "Hcred Hat !> !>". inv_stmt_step. unfold end_val.
     iMod (heap_write with "Hhctx Hl") as "[$ Hl]" => //; first congruence.
@@ -2613,10 +2615,10 @@ Proof.
   iApply wp_lift_stmt_step_fupd. iIntros ([h1 ?]) "((%&Hhctx&Hfctx)&?) /=". iMod "HWP" as (Hly) "[Hl HWP]".
   iApply (fupd_mask_weaken ∅); first set_solver. iIntros "HE".
   iDestruct "Hl" as (v' Hlyv' ?) "Hl".
-  iDestruct (heap_mapsto_is_alloc with "Hl") as %Haid.
+  iDestruct (heap_pointsto_is_alloc with "Hl") as %Haid.
   unfold E. case: Ho => ->.
   - iModIntro.
-    iDestruct (heap_mapsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl") as %? => //.
+    iDestruct (heap_pointsto_lookup_1 (λ st : lock_state, st = RSt 0%nat) with "Hhctx Hl") as %? => //.
     iSplit; first by eauto 12 using AssignS.
     iIntros (? e2 σ2 efs Hstep ?) "Hcred !> !>". inv_stmt_step. unfold end_val.
     iMod (heap_write with "Hhctx Hl") as "[$ Hl]" => //; first congruence.

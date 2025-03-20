@@ -252,12 +252,12 @@ Proof.
   unfold min_int, max_int in *.
   destruct (it_signed it) eqn:Heq.
   - rewrite /wrap_signed.
-    efeed pose proof (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
+    opose proof* (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
     { specialize (int_modulus_ge_1 it). lia. }
     specialize (int_modulus_twice_half_modulus it).
     lia.
   - rewrite /wrap_unsigned.
-    efeed pose proof (Z_mod_lt (z) (int_modulus it)).
+    opose proof* (Z_mod_lt (z) (int_modulus it)).
     { specialize (int_modulus_ge_1 it). lia. }
     lia.
 Qed.

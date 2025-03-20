@@ -186,7 +186,7 @@ Ltac enrich_context_base :=
          | |- context C [ length (filter ?P ?l) ] =>
            let G := context C[enrich_marker length (filter P l)] in
            change_no_check G;
-           pose proof (filter_length P l)
+           pose proof (length_filter P l)
            end.
 
 Ltac enrich_context :=
@@ -249,7 +249,7 @@ Module Rep.
   Import Ltac2.Printf.
 
   (* Check whether the current goal is a backtracking point *)
-  Ltac2 rep_check_backtrack_point (x : unit) : bool :=
+  Ltac2 rep_check_backtrack_point (_ : unit) : bool :=
     let tac_res := Control.focus 1 1 (fun _ => Control.case (fun _ => ltac1:(rep_check_backtrack_point_hook))) in
     match tac_res with
     | Err _ => false

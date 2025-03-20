@@ -160,7 +160,7 @@ Section time.
     iDestruct (own_valid_2 with "Hm0 Hm") as %?%mono_nat_both_valid.
     iDestruct (own_valid_2 with "Hm'0 Hm'")
       as %[?%nat_included _]%auth_both_valid_discrete.
-    iModIntro. iFrame. iSplitL; auto with iFrame lia.
+    iModIntro. iFrame. iPureIntro. lia.
   Qed.
 End time.
 

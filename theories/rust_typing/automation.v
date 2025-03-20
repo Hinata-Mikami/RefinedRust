@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type.
 From lithium Require Export all.
@@ -234,7 +235,7 @@ Definition digit_to_ascii (n : nat) : ascii :=
   end.
 Definition nat_to_string (n : nat) : string.
 Proof.
-  refine (string_rev _).
+  refine (String.rev _).
   refine (lt_wf_rec n (λ _, string) _).
   intros m rec.
   refine (match m as m' return m = m' → _ with
@@ -298,11 +299,11 @@ Ltac build_local_sepconj local_locs spatial_env ex_names base base_app :=
     end
   end.
 
-(** Composes the loop invariant from the invariant [inv : bb_inv_t] (a constr),
+(** Composes the loop invariant from the invariant [Inv : bb_inv_t] (a constr),
   the runtime function [FN : runtime_function], the current Iris environment [env : env],
   and the current contexts [current_E : elctx], [current_L : llctx],
   and poses it with the identifier [Hinv]. *)
-Ltac pose_loop_invariant Hinv FN inv envs current_E current_L :=
+Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
   (* find Σ *)
   let Σ :=
     let tgs := constr:(_ : typeGS _) in
@@ -320,11 +321,11 @@ Ltac pose_loop_invariant Hinv FN inv envs current_E current_L :=
   in
 
   (* extract the invariants *)
-  let functional_inv := match inv with
+  let functional_inv := match Inv with
                        | (wrap_inv ?inv, _) => uconstr:(inv)
                        end
   in
-  let llctx_inv := match inv with
+  let llctx_inv := match Inv with
                    | (_, wrap_inv ?inv) => uconstr:(inv)
                    end
   in
@@ -443,9 +444,9 @@ Ltac liRGoto goto_bb :=
         | H : bb_inv_map_marker ?LOOP_INV_MAP |- _ =>
             let loop_inv_map := eval hnf in LOOP_INV_MAP in
             (* find the loop invariant *)
-            let inv := find_bb_inv loop_inv_map goto_bb in
-            let inv := match inv with
-            | PolySome ?inv => inv
+            let Inv := find_bb_inv loop_inv_map goto_bb in
+            let Inv := match Inv with
+            | PolySome ?Inv => Inv
             | PolyNone =>
                 (* we are not jumping to a loop head *)
                 fail 1 "infer_loop_invariant: no loop invariant found"
@@ -955,7 +956,7 @@ Global Hint Unfold OffsetLocSt : core.
 #[global] Typeclasses Opaque layout_wf.
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
-Export Unset Keyed Unification.
+#[export] Unset Keyed Unification.
 
 Create HintDb unfold_tydefs.
 

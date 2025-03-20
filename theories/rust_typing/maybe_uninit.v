@@ -247,7 +247,7 @@ Section rules.
     iMod "Hl" as "(%v & Hl & Hv)".
     iModIntro. iExists ly. iR. iR. iSplitR. { rewrite /maybe_uninit. done. }
     iFrame. iExists (Some (👻 γ)). iR. iModIntro.
-    iExists v. iFrame. rewrite {2}/ty_own_val/=.
+    rewrite {2}/ty_own_val/=.
     eauto with iFrame.
   Qed.
   Global Instance weak_subltype_maybe_uninit_ghost_inst E L {rt} (ty : type rt) γ r2 :

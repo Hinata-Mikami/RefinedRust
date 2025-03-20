@@ -376,7 +376,7 @@ Section call.
           simpl in Halg_st. rewrite /use_layout_alg' Halg_st in Hly'. rewrite /use_layout_alg' Halg_st in Hly''.
           iExists _. iSplitR; first done.
           iSplitR; first done. iSplitR; first done.
-          iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
+          iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
           rewrite Hly'. iFrame "Hlb". iSplitR; first done.
           iExists _. iSplitR; first done. iModIntro. iExists _. iFrame.
           rewrite uninit_own_spec.
@@ -396,7 +396,7 @@ Section call.
           assert (ly = ly') as <-. { by eapply syn_type_has_layout_inj. }
           iExists _. iSplitR; first done. iSplitR; first done.
           iPoseProof (ty_own_val_sidecond with "Hvl") as "#$".
-          iPoseProof (heap_mapsto_loc_in_bounds with "Ha") as "#Hlb".
+          iPoseProof (heap_pointsto_loc_in_bounds with "Ha") as "#Hlb".
           rewrite Hlyv. iSplitR; first done. iSplitR; first done.
           iExists _. iSplitR; first done. iNext. eauto with iFrame. }
         iApply ("IH" with "[//] [//] [//] [//] [$] [$] [$]").
@@ -426,7 +426,7 @@ Section call.
       rewrite !zip_fmap_r !big_sepL_fmap. iFrame.
 
       iSplitR. { iPureIntro. apply Forall2_length in Halg.
-        rewrite map_length in Halg. rewrite Hlen1 Hlen3 Halg fmap_length. done. }
+        rewrite length_map in Halg. rewrite Hlen1 Hlen3 Halg length_fmap. done. }
       iSplitR; first done.
       iIntros "Hcred Hat".
       iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
@@ -462,6 +462,10 @@ Proof.
 Defined.
 
 (** ** Notations *)
+
+(* TODO figure out how to annotate the scope properly *)
+Local Set Warnings "-inconsistent-scopes".
+
 (* Hack: in order to make this compatible with Coq argument parsing, we declare a small helper notation for arguments *)
 Declare Scope fnarg_scope.
 Delimit Scope fnarg_scope with F.
@@ -473,8 +477,6 @@ Definition arg_ty_is_xrfn `{!typeGS Σ} (ty : sigT (λ rt : Type, type rt * rt)%
   let '(existT _ (ty, r)) := ty in
   ty_is_xrfn ty r.
 
-(* TODO figure out how to annotate the scope properly *)
-Local Set Warnings "-inconsistent-scopes".
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
   ((fun κs tys => 
     mk_fn_spec (A : Type) (fun x => 
@@ -702,7 +704,7 @@ Section function_subsume.
     { unfold INV. iModIntro. iIntros (? [rt [ty r]] ? ? Hlook) "(-> & Hi) Hs".
       specialize (lookup_lt_Some _ _ _ Hlook) as Hlt1.
       edestruct (lookup_lt_is_Some_2 lsa i) as (l1 & Hlook1).
-      { rewrite vec_to_list_length. lia. }
+      { rewrite length_vec_to_list. lia. }
       iPoseProof (big_sepL2_delete _ _ _ i with "Hi") as "(Ha & Hi)"; [done.. | ].
       simpl. rewrite decide_True; last lia.
       iExists (take (S i) lsa). rewrite -assoc. iR.
@@ -725,17 +727,17 @@ Section function_subsume.
         if decide (i < n) then l ◁ₗ[ π, Owned false] # r @ (◁ ty) else True)%I).
     iPoseProof (iterate_elim0 INV with "Hc [] []") as "Hb".
     { unfold INV. iApply big_sepL2_intro.
-      { rewrite vec_to_list_length. lia. }
+      { rewrite length_vec_to_list. lia. }
       iModIntro. iIntros (?? [? []] ??).
       setoid_rewrite decide_False; last lia. done. }
     { unfold INV. iModIntro. iIntros (? [l [rt [ty r]]] ? Hlook) "Hi Hs".
       apply lookup_zip in Hlook as (Hlook1 & Hlook2).
       rewrite firstn_all2 in Hlook1; first last.
-      { rewrite vec_to_list_length. lia. }
+      { rewrite length_vec_to_list. lia. }
       iDestruct "Hs" as "(Hs & $)". simpl.
       rewrite -(list_insert_id lsa i l); last done.
       rewrite -(list_insert_id (fp_atys ((F1 κs tys).(fn_p) a)) i (r :$@: ty)%F); last done.
-      efeed pose proof (big_sepL2_insert lsa (fp_atys ((F1 κs tys).(fn_p) a)) i l (r :$@: ty)%F
+      opose proof* (big_sepL2_insert lsa (fp_atys ((F1 κs tys).(fn_p) a)) i l (r :$@: ty)%F
         (λ i0 l0 '(existT rt0 (ty0, r0)), if decide (i0 < S i) then l0 ◁ₗ[ π, Owned false] # r0 @ (◁ ty0) else True)%I 0%nat) as Hr.
       { eapply lookup_lt_Some; done. }
       { eapply lookup_lt_Some; done. }
@@ -764,7 +766,7 @@ Section function_subsume.
       iModIntro. iIntros (?? [? []] Hlook1 Hlook2).
       rewrite decide_True; first eauto.
       rewrite zip_length.
-      rewrite take_length.
+      rewrite length_take.
       apply lookup_lt_Some in Hlook1.
       apply lookup_lt_Some in Hlook2.
       lia. }
@@ -785,8 +787,7 @@ Section function_subsume.
     (* TODO could also allow prove_with_subtype etc here? *)
     iModIntro.
     simpl. iExists L2, [], R. iFrame.
-    iSplitR "Hintro".
-    { iModIntro. iExists _. iFrame. }
+    iSplitR "Hintro"; first done.
     iIntros (??) "HE HL HP".
     iPoseProof ("HEincl" with "HE") as "HE".
     rewrite /llctx_find_llft_goal.
@@ -794,7 +795,7 @@ Section function_subsume.
     iMod ("Hintro" with "[//] HE HL HP") as "(%L3 & HL & %L4 & %κs3 & % & % & Hc & HT)".
     simpl.
     iModIntro. iExists L3. iFrame.
-    iExists _, _. iR. iExists _. iFrame.
+    by iExists _, _.
   Qed.
   Global Instance subsume_typed_function_inst π fn local_sts {lfts : nat} {rts : list Type} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
     Subsume (typed_function π fn local_sts (eqp1, F1)) (typed_function π fn local_sts (eqp2, F2)) | 10 :=

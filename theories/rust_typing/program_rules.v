@@ -950,7 +950,7 @@ Section typing.
   Proof.
     iIntros "HT". iIntros (F ?) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & HT)".
-    iFrame. iExists upd. iFrame.
+    iFrame.
     destruct upd.
     - subst rt2. iDestruct "Hcond" as "(%Heq & Heq & Hub)".
       rewrite (UIP_refl _ _ Heq).
@@ -3250,7 +3250,7 @@ Section typing.
     iPoseProof (ty_shr_mono with "Hinclκ Hl") as "$".
     iR. iFrame "Hlb Hsc". iModIntro. iR.
     iSplitR. { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iR. iR. iFrame "∗ #". iExists _. iR. done. }
+      iExists ly. iR. iR. by iFrame "∗ #". }
     iFrame. iSplitL; first iApply typed_place_cond_ty_refl_ofty.
     iApply typed_place_cond_rfn_refl.
   Qed.

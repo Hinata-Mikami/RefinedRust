@@ -346,9 +346,7 @@ Section open.
     iModIntro.
     rewrite ltype_own_core_equiv. simp_ltypes.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. simpl. iFrame "#%". iFrame.
-    iExists r''. iSplitR; first done. iModIntro.
-    iExists v'. iFrame. iExists r0. by iFrame.
+    iExists ly. simpl. iFrame "#%". by iFrame.
   Qed.
 
   (* We open this into a ShadowedLtype for [Shared].
@@ -373,7 +371,7 @@ Section open.
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
     simp_ltypes. iSplitR; first done. iSplitL; last done.
     iApply ltype_own_ofty_unfold. rewrite /lty_of_ty_own.
-    iExists ly. iSplitR; first done. iSplitR; first done. iFrame "#".
+    iExists ly. iSplitR; first done. do 3 iR.
     iExists r. iSplitR; first done. iModIntro. done.
   Qed.
 
@@ -445,7 +443,7 @@ Section open.
       iMod ("Hub" with "Hdead' Hb") as "Hown".
       rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
       iDestruct "Hown" as "(% &_ & _ & _ & _ & _ & %r1 & -> & >(%v1 & Hl & Hv))".
-      iModIntro. iExists v1. iFrame. iExists r1. iFrame. }
+      iModIntro. iFrame. }
     { iNext. rewrite /V. iFrame. }
     iMod ("Hcl_tok" with "Htok") as "$".
 
@@ -465,7 +463,7 @@ Section open.
     iDestruct "Hb" as "(% & _ & _ & _ & _ & _ & Hb)".
     iDestruct "Hb" as "(%r1 & -> & >(%v1 & Hl & Hv1))".
     iMod ("HP" with "Hdead") as "HP".
-    iModIntro. iExists v1. iFrame. iExists r1. iFrame.
+    iModIntro. iFrame.
   Qed.
 End open.
 

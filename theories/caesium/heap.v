@@ -343,10 +343,10 @@ Definition heap_loc_eq (l1 l2 : loc) (st : heap_state) : option bool :=
   (* Allocations are different from NULL pointers. But the comparison
   is only defined if the location is in bounds of its allocation. *)
   else if bool_decide (l1 = NULL_loc) then
-    guard (heap_state_loc_in_bounds l2 0 st);
+    guard (heap_state_loc_in_bounds l2 0 st);;
     Some false
   else if bool_decide (l2 = NULL_loc) then
-    guard (heap_state_loc_in_bounds l1 0 st);
+    guard (heap_state_loc_in_bounds l1 0 st);;
     Some false
   (* Two function pointers compare equal if their address is equal. *)
   else if bool_decide (l1.1 = ProvFnPtr ∧ l2.1 = ProvFnPtr) then
@@ -355,15 +355,15 @@ Definition heap_loc_eq (l1 l2 : loc) (st : heap_state) : option bool :=
   (* Two allocations can be compared if they are both alive and in
   bounds (it is ok if they have different provenances). Comparison
   compares the addresses. *)
-    guard (valid_ptr l1 st);
-    guard (valid_ptr l2 st);
+    guard (valid_ptr l1 st);;
+    guard (valid_ptr l2 st);;
     Some (bool_decide (l1.2 = l2.2)).
 
 Lemma heap_loc_eq_symmetric l1 l2 st:
   heap_loc_eq l1 l2 st = heap_loc_eq l2 l1 st.
 Proof.
   rewrite /heap_loc_eq.
-  repeat case_bool_decide=> //; repeat case_option_guard => //; naive_solver.
+  repeat case_bool_decide=> //; repeat case_guard => //; naive_solver.
 Qed.
 
 Lemma heap_loc_eq_NULL_NULL st:
@@ -457,25 +457,25 @@ Proof.
   destruct ot => /=.
   - destruct (val_to_bool v) => /=.
     + destruct (val_to_bytes v) eqn:Hv => //=.
-      * move: Hv => /mapM_length. lia.
-      * by rewrite replicate_length.
-    + by rewrite replicate_length.
+      * move: Hv => /length_mapM. lia.
+      * by rewrite length_replicate.
+    + by rewrite length_replicate.
   - destruct (val_to_bytes v) eqn:Hv => //=.
-    + move: Hv => /mapM_length. lia.
-    + by rewrite replicate_length.
+    + move: Hv => /length_mapM. lia.
+    + by rewrite length_replicate.
   - case_match => //=.
-    destruct (val_to_bytes v) as [v'|] eqn:Hv => //=. 2: by rewrite replicate_length.
-    move: Hv => /mapM_length ->.
-    destruct (val_to_Z v') eqn:Hv' => //=. 2: by rewrite replicate_length.
+    destruct (val_to_bytes v) as [v'|] eqn:Hv => //=. 2: by rewrite length_replicate.
+    move: Hv => /length_mapM ->.
+    destruct (val_to_Z v') eqn:Hv' => //=. 2: by rewrite length_replicate.
     move: Hv' => /val_to_Z_length /=?.
     by repeat case_match.
-  - by rewrite resize_length.
+  - by rewrite length_resize.
   - done.
   - destruct (val_to_char v) => /=.
     + destruct (val_to_bytes v) eqn:Hv => //=.
-      * move: Hv => /mapM_length. lia.
-      * by rewrite replicate_length.
-    + by rewrite replicate_length.
+      * move: Hv => /length_mapM. lia.
+      * by rewrite length_replicate.
+    + by rewrite length_replicate.
 Qed.
 
 Lemma mem_cast_id_loc l :
@@ -510,27 +510,27 @@ Lemma mem_cast_struct_reshape sl v st ots:
             (reshape (ly_size <$> (sl_members sl).*2) v)).
 Proof.
   move => ? Hv Hly. rewrite /mem_cast/=-/mem_cast resize_all_alt. 2: {
-    rewrite join_length Hv {1}/ly_size /=.
+    rewrite length_join Hv {1}/ly_size /=.
     apply: sum_list_eq.
     (* TODO: This is the same proof as below. Somehow unify these two proofs. *)
     apply Forall2_same_length_lookup_2.
-    { rewrite !fmap_length zip_with_length reshape_length pad_struct_length !fmap_length. lia. }
+    { rewrite !length_fmap length_zip_with length_reshape pad_struct_length !length_fmap. lia. }
     move => i n1 n2. rewrite !list_lookup_fmap.
     move => /fmap_Some[?[/fmap_Some[?[??]]?]]; simplify_eq.
     move => /fmap_Some[?[/lookup_zip_with_Some[?[?[?[Hs?]]]]?]].
-    move: Hs => /pad_struct_lookup_Some[|n[?[? Hor]]]. { by rewrite fmap_length. }
+    move: Hs => /pad_struct_lookup_Some[|n[?[? Hor]]]. { by rewrite length_fmap. }
     unfold field_list in *. simplify_eq/=.
-    destruct Hor as [[? Hl] | [??]]; simplify_eq/=. 2: by rewrite replicate_length.
+    destruct Hor as [[? Hl] | [??]]; simplify_eq/=. 2: by rewrite length_replicate.
     move: Hl. rewrite list_lookup_fmap. move => /fmap_Some[?[??]]. simplify_eq.
     destruct n as [n|] => //. rewrite mem_cast_length. by erewrite Hly.
   }
   rewrite reshape_join //.
   apply Forall2_same_length_lookup_2.
-  { rewrite zip_with_length reshape_length pad_struct_length !fmap_length. lia. }
+  { rewrite length_zip_with length_reshape pad_struct_length !length_fmap. lia. }
   move => i v' sz /lookup_zip_with_Some[?[?[?[/pad_struct_lookup_Some Hl ?]]]].
-  move: Hl => [|n[?[Hin2 Hor]]]. { rewrite fmap_length //. } simplify_eq.
+  move: Hl => [|n[?[Hin2 Hor]]]. { rewrite length_fmap //. } simplify_eq.
   rewrite !list_lookup_fmap => /fmap_Some[?[/fmap_Some[?[Hin ?]]?]]. rewrite Hin2 in Hin. simplify_eq/=.
-  destruct Hor as [[? Hl] |[??]]; simplify_eq. 2: by rewrite replicate_length.
+  destruct Hor as [[? Hl] |[??]]; simplify_eq. 2: by rewrite length_replicate.
   move: Hl. rewrite list_lookup_fmap => /fmap_Some[?[??]]. simplify_eq. rewrite mem_cast_length.
   destruct n => //. by apply: Hly.
 Qed.
@@ -546,11 +546,11 @@ Proof.
     destruct (val_to_bool v) as [b | ] eqn:Heq.
     + rewrite (val_to_bytes_id_bool _ b); last done. simpl.
       rewrite Heq. simpl. rewrite (val_to_bytes_id_bool _ b); done.
-    + simpl. destruct v; simpl; first done. rewrite replicate_length. done.
+    + simpl. destruct v; simpl; first done. rewrite length_replicate. done.
   - rewrite /mem_cast.
     destruct (val_to_bytes v) as [v' | ] eqn:Heq; simpl.
     + erewrite val_to_bytes_idemp; done.
-    + rewrite replicate_length.
+    + rewrite length_replicate.
       generalize (length v). intros []; done.
   - rewrite /mem_cast.
     destruct (val_to_loc v) as [l | ] eqn:Heq; simpl.
@@ -561,11 +561,11 @@ Proof.
         case_bool_decide; first by rewrite val_to_of_loc //.
         case_bool_decide; by rewrite val_to_of_loc //.
       * destruct v; simpl; first done.
-        rewrite replicate_length. done.
+        rewrite length_replicate. done.
     + destruct v; simpl; first done.
-      rewrite replicate_length //.
+      rewrite length_replicate //.
   - rewrite /mem_cast. fold mem_cast.
-    simpl. rewrite resize_length.
+    simpl. rewrite length_resize.
     simpl in Hly.
     f_equiv. f_equiv.
 
@@ -581,40 +581,40 @@ Proof.
       simpl in Hwf; destruct Hwf as ((Hwf1 & <-) & Hwf).
       rewrite take_resize.
       rewrite resize_app; first last.
-      { rewrite mem_cast_length take_length//. }
+      { rewrite mem_cast_length length_take//. }
       inversion IH as [ | ? IH1 ? IH2 ]; subst.
 
       f_equiv.
       * apply IH1; last done.
-        rewrite /has_layout_val take_length. lia.
+        rewrite /has_layout_val length_take. lia.
       * (* use IH *)
         specialize (IH' (drop (ly_size (ot_layout ot)) v) _ IH2).
         rewrite drop_resize_le; last lia.
         rewrite -{2}IH'; last done; first last.
-        { rewrite drop_length. unfold fmap. lia. }
+        { rewrite length_drop. unfold fmap. lia. }
         f_equiv; first done.
         f_equiv; first done.
-        rewrite drop_length.
+        rewrite length_drop.
         f_equiv.
-        rewrite drop_app'; first done.
-        rewrite mem_cast_length take_length. lia.
+        rewrite drop_app_length'; first done.
+        rewrite mem_cast_length length_take. lia.
     + (* padding field *)
       f_equiv.
       rewrite drop_resize_le; last lia.
       specialize (IH' (drop (ly_size ly) v) _ IH).
       rewrite -{2}IH'; last done; first last.
-      { rewrite drop_length. unfold fmap. lia. }
+      { rewrite length_drop. unfold fmap. lia. }
       f_equiv. f_equiv; first done.
-      rewrite drop_length.
+      rewrite length_drop.
       f_equiv.
-      rewrite drop_app'; first done.
-      rewrite replicate_length//.
+      rewrite drop_app_length'; first done.
+      rewrite length_replicate//.
   - done.
   - rewrite /mem_cast.
     destruct (val_to_char v) as [z | ] eqn:Heq.
     + rewrite (val_to_bytes_id_char _ z); last done. simpl.
       rewrite Heq. simpl. rewrite (val_to_bytes_id_char _ z); done.
-    + rewrite replicate_length.
+    + rewrite length_replicate.
       generalize (length v) as n. simpl.
       clear.
       intros n. case_match eqn:Heq1; last done.
@@ -894,7 +894,7 @@ Proof.
     rewrite heap_update_lookup_not_in_range; last lia. rewrite Heq /= Hfaid.
     apply (Hσ a2 _ Heq).
   - rewrite lookup_partial_alter_ne // -/heap_update in H.
-    by unshelve eapply (IH _ _ Hσ _ Hfaid Hlen a2 hc) => //.
+    by apply (IH _ _ Hσ Hcontains Hfaid Hlen a2 hc) => //.
 Qed.
 
 Lemma heap_update_heap_cell_alloc_alive σ a v1 v2 Paid Plk faid flk:
@@ -915,7 +915,7 @@ Proof.
     rewrite heap_update_lookup_not_in_range; last lia. rewrite Heq /= Hfaid.
     apply (Hσ a2 _ Heq).
   - rewrite lookup_partial_alter_ne // -/heap_update in H.
-    by unshelve eapply (IH _ _ Hσ _ Hfaid Hlen a2 hc) => //.
+    by apply (IH _ _ Hσ Hcontains Hfaid Hlen a2 hc) => //.
 Qed.
 
 Lemma heap_update_alloc_alive_in_heap σ a v1 v2 Paid Plk faid flk:

@@ -25,7 +25,7 @@
             flambdaSupport = true;
           };
         });
-        coqPackages = prev.coqPackages_8_17.overrideScope (_: prev: {
+        coqPackages = prev.coqPackages_8_20.overrideScope (_: prev: {
           coq = prev.coq.override {
             customOCamlPackages = ocamlPackages;
           };
@@ -49,18 +49,18 @@
         version = coq.pkgs.coq.coq-version;
 
         stdpp = {
-          version = "4be5fd62ddbd5359f912e2cebb415b015c37e565";
-          sha256 = "sha256-9pNWjPy1l1EovcKZchC/23FwlllD/Oa3jEOtN5tDzik=";
+          version = "coq-stdpp-1.11.0";
+          sha256 = "sha256-yqnkaA5gUdZBJZ3JnvPYh11vKQRl0BAnior1yGowG7k=";
         };
 
         iris = {
-          version = "1de1b3112754e14a4968534572e118a23344eafe";
-          sha256 = "sha256-Cimb3XxnchPSWVGMSyWmJdLQqHMilw11o2hq/4h8dVQ=";
+          version = "iris-4.3.0";
+          sha256 = "sha256-3qhjiFI+A3I3fD8rFfJL5Hek77wScfn/FNNbDyGqA1k=";
         };
 
         lambda-rust = {
-          version = "4ec2733cce240e3595c37cb926eb000455be77a4";
-          sha256 = "sha256-kX9NIPPOoajuJDVly9qGUCCd3lt8Da2k0dZnDY2zKbY=";
+          version = "f55b9243fe4c0f6e2ed2649819b2e447ede2b5e9";
+          sha256 = "sha256-6nc48FCuIWFEln9qpjgpvPuz1Ez79xJJPHI1SshwQ9M=";
         };
       };
 
@@ -107,7 +107,6 @@
 
           lambda-rust = mkDepCoqDerivation coq.lambda-rust {
             pname = "lambda-rust";
-            owner = "lgaeher";
 
             propagatedBuildInputs = [iris];
           };

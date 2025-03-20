@@ -12,6 +12,23 @@ Set Default Proof Using "Type".
 
 (** * Lifetime contexts for keeping track of which lifetimes are alive *)
 
+(* TODO: Waiting for changes within LambdaRust *)
+Section LambdaRust.
+  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
+
+  Global Declare Instance lft_eqdecision: EqDecision lft.
+  Global Declare Instance lft_countable: Countable lft.
+
+  Parameter lft_fresh_strong : ∀ κ κ', ∃ i : positive, ∀ m : positive, (i < m)%positive → (positive_to_lft m) ⊓ κ' ≠ κ.
+  Parameter lft_create_strong : ∀ P E, pred_infinite P → ↑lftN ⊆ E →
+    lft_ctx ={E}=∗
+      ∃ p : positive, let κ := positive_to_lft p in ⌜P p⌝ ∗
+       (1).[κ] ∗ □ ((1).[κ] ={↑lftN ∪ lft_userE}[lft_userE]▷=∗ [†κ]).
+
+End LambdaRust.
+
+
+
 Class lctxGS Σ := LctxGS {
   (* maps local lifetime names to their corresponding ghost name *)
   lctx_name_inG :: ghost_mapG Σ lft gname;
@@ -24,6 +41,7 @@ Class lctxGS Σ := LctxGS {
   (* name for the decomposition map *)
   lctx_decomp_name : gname;
 }.
+
 Global Hint Mode lctxGS - : typeclass_instances.
 Class lctxGPreS Σ := LctxGPreS {
   lctx_pre_name_inG :: ghost_mapG Σ lft gname;
@@ -665,7 +683,7 @@ Section lft_contexts.
     iPoseProof ("Hcl_auth" with "[Hi1 Hex1 Hi2 Hex2] Hauth") as "Hauth".
     { iExists _, _, _. iFrame "Hd". rewrite Hmax !lft_tok_fractional. by iFrame. }
     iApply "Hclose". iModIntro. iExists γ. iFrame "#∗".
-    iExists _, _, _. eauto with iFrame.
+    eauto with iFrame.
   Qed.
 
   Lemma lctx_lft_alive_intersect κ1 κ2 :
@@ -1092,7 +1110,7 @@ Section lft_contexts.
     iAssert (∃ κi κex qex, lft_decomp κ κi κex qex ∗ llctx_elt_interp (κ ⊑ₗ{ 0} κs))%I with "[Helt]" as "Ha".
     { iDestruct "Helt" as "(%γ & Hname & Hauth & #Hshape & Hkill)".
       iDestruct "Hshape" as "(% & % & % & Hde & ?)".
-      iExists _, _, _. iFrame "Hde". iExists _. iFrame. iExists _, _, _. eauto with iFrame. }
+      iExists _, _, _. iR. iExists _. iFrame. iExists _, _, _. eauto with iFrame. }
     iDestruct "Ha" as "(% & % & % & Hde & Helt)".
     iFrame. iPoseProof (llctx_elt_reclaim with "Helt Hde") as "(_ & $)"; done.
   Qed.
@@ -1142,10 +1160,8 @@ Section lft_contexts.
     iModIntro. iExists κ.
     iSplitL "Hkill Hfrac".
     { iExists γfrac. iFrame "# Hfrac".
-      iSplitR.
-      - iExists _, _, _. iFrame "Hde".
-        rewrite [_ ⊓ positive_to_lft _]lft_intersect_comm -lft_intersect_assoc. done.
-      - iExists _, _, _. iFrame "Hde". done.
+      iSplitR; last done.
+      by rewrite [_ ⊓ positive_to_lft _]lft_intersect_comm -lft_intersect_assoc.
     }
     iSplitR.
     { iPureIntro. subst κ κ'.
@@ -1364,7 +1380,7 @@ Proof.
   induction κs1 as [ | κ κs1 IH]; simpl.
   { intros. iApply lft_incl_static. }
   intros Hincl.
-  efeed pose proof (Hincl κ) as Helem.
+  opose proof* (Hincl κ) as Helem.
   { apply elem_of_cons; by left. }
   iApply (lft_incl_trans _ (κ ⊓ lft_intersect_list κs2)); first last.
   { iApply lft_intersect_mono; first iApply lft_incl_refl.

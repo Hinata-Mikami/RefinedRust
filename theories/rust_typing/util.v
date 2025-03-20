@@ -156,9 +156,9 @@ Proof.
   { rewrite elem_of_nil; done. }
   rewrite elem_of_cons.
   intros [-> | Hel].
-  - rewrite take_length. lia.
+  - rewrite length_take. lia.
   - eapply IH; last apply Hel.
-    rewrite drop_length. lia.
+    rewrite length_drop. lia.
 Qed.
 
 Lemma reshape_replicate_0 {A} (xs : list A) n :
@@ -551,7 +551,7 @@ Proof.
   { iIntros "_ $ _ "; done. }
   iIntros "Hl HP #Hstep".
   rewrite big_sepL_app.
-  rewrite !app_length/=.
+  rewrite !length_app/=.
   rewrite Nat.add_0_r. iDestruct "Hl" as "(Hl & Ha & _)".
   rewrite Nat.add_succ_r Nat.add_0_r.
   iPoseProof ("Hstep" with "[] HP Ha") as "HP".
@@ -566,7 +566,7 @@ Lemma big_sepL2_from_big_sepL {Σ} {A B} (l : list (A * B)) (Φ : _ → _ → _ 
   ([∗ list] i ↦ x ∈ l, Φ i x.1 x.2) ⊢
   [∗ list] i ↦ x; y ∈ l.*1; l.*2, Φ i x y.
 Proof.
-  iIntros "Ha". iApply big_sepL2_alt. rewrite !fmap_length. iR.
+  iIntros "Ha". iApply big_sepL2_alt. rewrite !length_fmap. iR.
   rewrite zip_fst_snd//.
 Qed.
 Lemma big_sepL2_from_zip {Σ} {A B} (l1 : list A) (l2 : list B) (Φ : _ → _ → _ → iProp Σ) :
@@ -626,11 +626,11 @@ Proof.
   rewrite big_sepL2_to_zip.
   rewrite big_sepL_exists. iDestruct "Ha" as "(%l3 & Ha)".
   iPoseProof (big_sepL2_length with "Ha") as "%Hlen2".
-  rewrite zip_with_length in Hlen2.
+  rewrite length_zip_with in Hlen2.
   rewrite big_sepL2_to_zip.
   rewrite zip_assoc_l big_sepL_fmap.
   iExists l3. iSplitR. { iPureIntro. lia. }
-  iApply (big_sepL2_from_zip). { rewrite zip_with_length. lia. }
+  iApply (big_sepL2_from_zip). { rewrite length_zip_with. lia. }
   iApply (big_sepL_impl with "Ha").
   iModIntro. iIntros (? [? [? ?]] ?); simpl. eauto.
 Qed.

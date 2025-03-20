@@ -211,7 +211,6 @@ Section subtype.
     iDestruct ("Hincl" $! ri) as "(%Hst_eq & #Hsc_eq & #Hinclv & #Hincl_shr)".
     rewrite -Hst_eq. iExists ly. iSplitR; first done. iFrame.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
-    iExists _. iFrame.
     iNext. iMod "Hb". iDestruct "Hb" as (v) "(Hl & Hv)". iExists v. iFrame. by iApply "Hinclv".
   Qed.
 
@@ -322,7 +321,6 @@ Section subltype.
     iIntros (π l). rewrite !ltype_own_box_unfold /box_ltype_own.
     iIntros "(%ly & ? & ? & ? & %r' & Hrfn & #Hb)".
     iExists ly. iFrame.
-    iExists _. iFrame.
     iModIntro. iMod "Hb". iDestruct "Hb" as "(%li & Hs & Hb)".
     iDestruct ("Heq" $! _) as "(_ & Heq' & _)".
     iModIntro. iExists _. iFrame "Hs". iApply ("Heq'" with "Hb").
@@ -489,53 +487,53 @@ Section unfold.
     iModIntro. iIntros (π l). rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hlb & Hcred & %r' & Hrfn & Hb)".
     iModIntro. iExists ly. iFrame "∗".
-    iExists _. iFrame. iNext. iMod "Hb".
+    iNext. iMod "Hb".
     iDestruct "Hb" as (l' ly') "(Hl & % & % & Hf & Hb)".
     iExists l'. iFrame.
-    iExists l', ly'. iSplitR; first done. iFrame "∗ %".
+    iSplitR; first done. iFrame "∗ %".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly'' & % & % & Hsc & Hlb' & [Hcred Hat] & Hb)".
     enough (ly'' = ly') as ->. { iModIntro. by iFrame. }
     eapply syn_type_has_layout_inj; done.
   Qed.
+
   Lemma box_ltype_unfold_2_owned wl r :
     ⊢ ltype_incl' (Owned wl) r r (◁ (box (ty))) (BoxLtype (◁ ty)).
   Proof.
     iModIntro. iIntros (π l).
     rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & Halg & Hly & Hsc & Hlb & Hcred & %r' & Hrfn & Hb)".
-    iModIntro. iExists ly. iFrame.
-    iExists r'. iFrame. iNext.
+    iModIntro. iExists ly. iFrame. iNext.
     iDestruct "Hb" as ">(%v & Hl & %l' & %ly' & -> & %Halg & %Hly & Hlb & Hsc' & Hf & Hcred & Hat & Hb)".
     iExists l', ly'. iFrame "∗ %".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. iModIntro. iR. iExists ly'.
     iDestruct "Hb" as "(%ri & Hrfn & Hb)". iFrame "% ∗".
-    eauto with iFrame.
   Qed.
 
   Lemma box_ltype_unfold_1_shared `{!Inhabited rt} κ r :
     ⊢ ltype_incl' (Shared κ) r r (BoxLtype (◁ ty)) (◁ (box (ty))).
   Proof.
-    iModIntro. iIntros (π l). rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
+    iModIntro. iIntros (π l).
+    rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & %Ha & % & #Hlb & %ri & Hrfn & #Hb)".
-    iExists ly. iFrame. iFrame "Hlb %".
-    iExists _. iFrame. iModIntro. iMod "Hb".
+    iExists ly. iFrame. do 3 iR.
+    iModIntro. iMod "Hb".
     iDestruct "Hb" as "(%li & Hs & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %ri' & >Hrfn & Hb)".
     iExists _, _, _. iFrame.
     injection Ha as <-. iFrame "#". done.
   Qed.
+
   Lemma box_ltype_unfold_2_shared κ r :
     ⊢ ltype_incl' (Shared κ) r r (◁ (box (ty))) (BoxLtype (◁ ty)).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & ? & %r' & Hrfn & #Hb)". iExists ly. iFrame "∗ %".
-    iExists _. iFrame. iModIntro.
-    iMod "Hb". iDestruct "Hb" as "(%li & %ly' & %ri & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hs & Hb)".
+    iModIntro. iMod "Hb".
+    iDestruct "Hb" as "(%li & %ly' & %ri & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hs & Hb)".
     iModIntro. iExists li. iFrame. iNext. iDestruct "Hb" as "#Hb".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame.
-    iExists _. iFrame. done.
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. by iFrame.
   Qed.
 
   Lemma box_ltype_unfold_1_uniq κ γ r :
@@ -550,9 +548,8 @@ Section unfold.
     iNext. iModIntro. iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb".
       iDestruct "Hb" as "(%l' & %ly' & Hl & %Halg & Hly & Hf & Hb)".
-      iExists l'. iFrame.
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists l', ly'. iFrame "∗". iSplitR; first done.
+      iFrame "∗". iSplitR; first done.
       iDestruct "Hb" as "(%ly'' & %Halg' & Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
       iModIntro. iFrame. iSplitR; first done.
       simp_ltypes in Halg. replace ly'' with ly'; first done.
@@ -564,9 +561,9 @@ Section unfold.
       iModIntro. iExists l', ly'. iFrame.
       iSplitR; first done. iSplitR; first done.
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly'. iFrame. iSplitR; first done. iSplitR; first done.
-      iExists _. iFrame.
+      iExists ly'. by iFrame.
   Qed.
+
   Lemma box_ltype_unfold_2_uniq κ γ r :
     ⊢ ltype_incl' (Uniq κ γ) r r (◁ (box (ty))) (BoxLtype (◁ ty)).
   Proof.
@@ -585,13 +582,11 @@ Section unfold.
       iModIntro. iExists l', ly'. iFrame.
       iSplitR; first done. iSplitR; first done.
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly'. iFrame. iSplitR; first done. iSplitR; first done.
-      iExists _. iFrame.
+      iExists ly'. by iFrame.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb".
       iDestruct "Hb" as "(%l' & %ly' & Hl & %Halg & Hly & Hf & Hb)".
-      iExists l'. iFrame.
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists l', ly'. iFrame "∗". iSplitR; first done.
+      iFrame "∗". iSplitR; first done.
       iDestruct "Hb" as "(%ly'' & %Halg' & Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
       iModIntro. iFrame. iSplitR; first done.
       simp_ltypes in Halg. replace ly'' with ly'; first done.
@@ -685,17 +680,12 @@ Section lemmas.
     iIntros "Hcred' !>". iIntros (rt2 lt2 r2 Hst) "Hl Hb". iModIntro.
     iSplitL "Hf Hl Hb Hcred'".
     { rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. iFrame "# ∗".
-      iSplitR; first done. iSplitR; first done.
-      iExists r2. iSplitR; first done. iNext.
-      iExists l', ly'. iFrame. rewrite Hst.
-      iFrame "%#". done. }
+      iSplitR; first done. iSplitR; first done. iR. iNext.
+      rewrite Hst. by iFrame "%#". }
     iIntros (bmin) "%Hrt Hcond".
     iDestruct "Hcond" as "(Hcondt & Hcondr)".
-    iSplit.
-    + iApply box_ltype_place_cond_ty; done.
-    + destruct bmin; simpl; [done | | done].
-      done.
-      (*iExists eq_refl. done.*)
+    iSplit; [| done ].
+    by iApply box_ltype_place_cond_ty.
   Qed.
 
   Lemma box_ltype_acc_uniq {rt} F π (lt : ltype rt) (r : place_rfn rt) l q κ γ R :
@@ -844,8 +834,7 @@ Section lemmas.
     iIntros (lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
     iFrame. iSplitL.
-    { iModIntro. rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. iFrame "% #".
-      iR. iExists _. iR. iModIntro. iModIntro. iExists _. iFrame "#". }
+    { iModIntro. rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. by iFrame "% #". }
     iModIntro. iIntros (bmin) "Hincl Hcond".
     iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
     iModIntro. iSplit.
@@ -1226,8 +1215,8 @@ Section rules.
       simpl. iPoseProof (gvar_pobs_agree_2 with "Hinterp HObs") as "#<-".
       iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
       iL. rewrite ltype_own_box_unfold /box_ltype_own.
-      iExists _. iFrame. iExists _. iR. by iFrame.
-    - iExists _, _, _, _. iFrame.  iApply maybe_logical_step_intro. by iFrame.
+      iExists _. by iFrame.
+    - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Global Instance resolve_ghost_box_owned_inst {rt} π E L l (lt : ltype rt) γ wl rm lb :
     ResolveGhost π E L rm lb l (BoxLtype lt) (Owned wl) (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_box_Owned π E L l lt γ wl rm lb T).
@@ -1269,7 +1258,7 @@ Section rules.
       simpl. iPoseProof (gvar_pobs_agree_2 with "Hinterp HObs") as "#<-".
       iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
       iL. rewrite ltype_own_box_unfold /box_ltype_own.
-      iExists _. iFrame. iExists _. iR. by iFrame.
+      iExists _. by iFrame.
     - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
   Global Instance resolve_ghost_box_shared_inst {rt} π E L l (lt : ltype rt) γ κ rm lb :

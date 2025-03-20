@@ -158,8 +158,7 @@ Section na_ex.
       iDestruct "Hinv" as (v) "((% & Hl & HP) & Hv)".
       iPoseProof (ty_own_val_sidecond with "HP") as "#>Hsc".
       iModIntro; iSplit; [iNext | done].
-      iExists v; iFrame.
-      iExists v0; iFrame. }
+      iExists v; iFrame. }
 
     iMod (bor_na with "Hbor") as "Hbor"; first solve_ndisj.
 
@@ -196,7 +195,7 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
-    - destruct HP as [Hlft _ _].
+    - destruct HP as [Hlft _].
       destruct HF as [_ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
@@ -239,7 +238,7 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
-    - destruct HP as [Hlft _ _].
+    - destruct HP as [Hlft _].
       destruct HF as [_ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
@@ -350,9 +349,7 @@ Section na_subtype.
     iModIntro.
     rewrite ltype_own_core_equiv. simp_ltypes.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. simpl. iFrame "#%". iFrame.
-    iExists r''. iSplitR; first done. iModIntro.
-    iExists v'. iFrame. iExists r0. by iFrame.
+    iExists ly. simpl. iFrame "#%". by iFrame.
   Qed.
 
   Lemma typed_place_na_ex_plain_t_owned π E L l (ty : type rt) x wl bmin K T :

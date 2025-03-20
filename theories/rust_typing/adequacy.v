@@ -129,9 +129,8 @@ Proof.
     + by iApply big_sepL_nil.
     + by iIntros (??????) "HL Hv _".
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
-  - iFrame.
-    rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
-    iFrame. iR. iExists 0. iFrame.
+  - rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
+    by iFrame.
 Qed.
 
 (*Print Assumptions refinedrust_adequacy.*)

@@ -34,7 +34,7 @@ Section project_vec_els.
 
   Lemma project_vec_els_length len els :
     length (project_vec_els len els) = (len `min` length els)%nat.
-  Proof. by rewrite /project_vec_els fmap_length take_length. Qed.
+  Proof. by rewrite /project_vec_els length_fmap length_take. Qed.
 
   Lemma project_vec_els_insert_lt (len : nat) (i : nat) x els:
     (i < len)%nat →
@@ -86,8 +86,8 @@ Section project_vec_els.
     intros Ha.
     assert (length (<#> <$#> xs) = length (project_vec_els len x2)) as Hlen.
     { rewrite Ha. done. }
-    rewrite fmap_length project_vec_els_length in Hlen.
-    rewrite fmap_length in Hlen.
+    rewrite length_map project_vec_els_length in Hlen.
+    rewrite length_map in Hlen.
     lia.
   Qed.
 End project_vec_els.

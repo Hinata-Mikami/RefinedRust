@@ -1,6 +1,6 @@
 From refinedrust Require Import base.
 
-Inductive stop_annot : Type :=
+Inductive stop_annot : Prop :=
   StopAnnot.
 
 (** Annotation for starting a local lifetime [n ⊑ ⨅ sup].
@@ -22,7 +22,7 @@ Inductive extend_annot : Type :=
 
 
 (** Annotation for stratifying the context at this point. *)
-Inductive stratify_context_annot : Type :=
+Inductive stratify_context_annot : Prop :=
   StratifyContextAnnot.
 
 (** Annotation for creating a dynamic inclusion of a lifetime κ1 ⊑ κ2 *)
@@ -50,7 +50,7 @@ Inductive get_lft_names_annot : Type :=
 
 (** This indicates that a goto to the head of a loop is following.
   Invariants are specified in the context. *)
-Inductive loop_start_annot : Type :=
+Inductive loop_start_annot : Prop :=
   | InitLoopAnnot.
 
 (** This asserts that an expression has a particular syntactic Rust type by triggering subtyping to the intended type. *)
@@ -58,10 +58,10 @@ Inductive assert_type_annot : Type :=
   | AssertTypeAnnot (ty : rust_type).
 
 (** TODO: just a place holder until we handle drops properly. *)
-Inductive drop_annot : Type :=
+Inductive drop_annot : Prop :=
   | DropAnnot.
 
 (** Annotation to extract a value assignment for the given expression.
   This is a hack we currently need due to restricted evar instantiation on function calls. *)
-Inductive extract_value_annot : Type :=
+Inductive extract_value_annot : Prop :=
   | ExtractValueAnnot.

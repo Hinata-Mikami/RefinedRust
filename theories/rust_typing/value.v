@@ -176,7 +176,7 @@ Section lemmas.
     iExists _. iR. simpl.
     iPureIntro. split_and!.
     - eapply is_memcast_val_untyped_app; [ | done..]. done.
-    - rewrite /has_layout_val. rewrite app_length. lia.
+    - rewrite /has_layout_val. rewrite length_app. lia.
     - done.
   Qed.
 
@@ -196,16 +196,16 @@ Section lemmas.
     apply use_op_alg_untyped_inv in Hot as ->.
     apply syn_type_has_layout_untyped_inv in Hst as (<- & Hwf & Hsz' & ?).
     apply is_memcast_val_untyped_inv in Hmc as <-.
-    rewrite /has_layout_val/= app_length in Hly.
+    rewrite /has_layout_val/= length_app in Hly.
     simpl in *.
     iSplit.
     - iPureIntro. exists (UntypedOp ly2). split; first done.
-      split. { left. rewrite take_app//. }
-      split. { rewrite take_app. rewrite /has_layout_val/=. lia. }
+      split. { left. rewrite take_app_length//. }
+      split. { rewrite take_app_length. rewrite /has_layout_val/=. lia. }
       apply syn_type_has_layout_untyped; try naive_solver lia.
     - iPureIntro. exists (UntypedOp ly3). split; first done.
-      split. { left. rewrite drop_app//. }
-      split. { rewrite drop_app. rewrite /has_layout_val/=. lia. }
+      split. { left. rewrite drop_app_length//. }
+      split. { rewrite drop_app_length. rewrite /has_layout_val/=. lia. }
       apply syn_type_has_layout_untyped; naive_solver lia.
   Qed.
 End lemmas.
@@ -225,8 +225,7 @@ Section ofty_lemmas.
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
     iPoseProof (value_has_length with "Hv") as "(% & %)"; first done.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
-    iR. iModIntro. iExists _. iFrame. iR. iR. iExists _. iR.
-    iModIntro. eauto with iFrame.
+    iR. iModIntro. iExists _. by iFrame.
   Qed.
 
   (* NOTE: We can make this into a typed value afterwards using [ofty_value_untyped_make_typed] *)
@@ -248,10 +247,9 @@ Section ofty_lemmas.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. simpl.
     iSplitR. { iPureIntro. eapply syn_type_has_layout_make_untyped; done. }
-    iSplitR; first done. iFrame.
-    iExists _. iSplitR; first done. iModIntro.
-    iExists v. by iFrame.
+    iSplitR; first done. by iFrame.
   Qed.
+
   Lemma ofty_own_split_value_untyped_lc π F l wl {rt} (ty : type rt) r ly :
     lftE ⊆ F →
     syn_type_has_layout (ty_syn_type ty) ly →
@@ -281,12 +279,13 @@ Section ofty_lemmas.
     iDestruct "Hl" as "(%ly & %Halg & % & Hsc & Hlb & Hcred & %r' & Hrfn & Hb)".
     simpl in Halg.
     iExists ly.
-    iFrame. iFrame "%".
+    iFrame "%".
     iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
     assert ((∃ ly1, st = UntypedSynType ly1 ∧ syn_type_has_layout (ty_syn_type ty) ly1 ∧ ty_has_op_type ty (UntypedOp ly1) MCCopy) ∨ (ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st)) as Hb.
     { destruct st; eauto. }
     iSplitR. { iPureIntro. destruct Hb as [(ly1 & -> & ? & ?) | (? & <-)]; last done.
       apply syn_type_has_layout_untyped_inv in Halg as (-> & _). done. }
+    iFrame "Hlb Hcred".
     iExists r. iSplitR; first done.
     iNext. iMod "Hb" as "(%v' & Hl & Hv')". iModIntro.
     iDestruct "Hrfn" as "<-".
@@ -379,7 +378,7 @@ Section ofty_lemmas.
     iMod (fupd_mask_mono with "Hb2") as "(%v2 & Hl2 & Hv2)"; first done.
     iModIntro.
     iExists (v1 ++ v2).
-    rewrite heap_mapsto_app. iFrame.
+    rewrite heap_pointsto_app. iFrame.
     iPoseProof (ty_has_layout with "Hv1") as "(%ly' & %Halg & %Hlyv)".
     apply syn_type_has_layout_untyped_inv in Halg as (-> & ? & ?).
     iSplitL "Hl2". { rewrite /has_layout_val in Hlyv. rewrite Hlyv. done. }
@@ -407,34 +406,27 @@ Section ofty_lemmas.
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
     specialize (syn_type_has_layout_untyped_inv _ _  Halg) as (-> & ? & ? &?).
     rewrite Hsz. rewrite -loc_in_bounds_split_suf. iDestruct "Hlb" as "(Hlb1 & Hlb2)".
-    efeed pose proof (ly_align_in_bounds_mono ly1 ly2); [done.. | ].
-    efeed pose proof (ly_align_in_bounds_mono ly1 ly3); [lia | done | ].
+    opose proof* (ly_align_in_bounds_mono ly1 ly2); [done.. | ].
+    opose proof* (ly_align_in_bounds_mono ly1 ly3); [lia | done | ].
     iPoseProof (value_has_length with "Hv") as "(%Hlen1 & %Hlen2)"; first done.
-    rewrite app_length in Hlen1.
+    rewrite length_app in Hlen1.
     iPoseProof (value_untyped_app_split _ _ _ _ ly1 ly2 ly3 with "Hv") as "(Hv1 & Hv2)".
-    { done. }
-    { done. }
-    { done. }
-    { done. }
-    { done. }
-    { done. }
+    1-6: done.
     (rewrite -{1}(take_drop (length v2) v)).
-    rewrite heap_mapsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
+    rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
     iSplitL "Hv1 Hl1 Hlb1".
     - iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly2. iSplitR. { iPureIntro. apply syn_type_has_layout_untyped; naive_solver lia. }
       iSplitR. { iPureIntro. eapply has_layout_loc_trans; first done. lia. }
-      simpl. iR. iFrame. iR. iExists v2. iR.
-      iModIntro. iExists _. iFrame.
+      simpl. by iFrame.
     - iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly3. iSplitR. { iPureIntro. apply syn_type_has_layout_untyped; naive_solver lia. }
       iSplitR. { iPureIntro. apply has_layout_loc_shift_loc_nat.
         + eapply has_layout_loc_trans; first done. lia.
         + trans (ly_align ly2); first last. { rewrite -Nat2Z.divide//. }
           rewrite -Nat2Z.divide. apply Zdivide_nat_pow. done. }
-      simpl. iR. iFrame. iExists v3. iR.
-      iModIntro. iExists _. iFrame.
-      rewrite take_length. rewrite Hszeq Nat.min_l; first done.
+      simpl. iR. iFrame. iR.
+      iModIntro. rewrite length_take. rewrite Hszeq Nat.min_l; first done.
       lia.
   Qed.
 
@@ -460,7 +452,7 @@ Section ofty_lemmas.
     - simpl. lia.
     - simpl. rewrite !ly_size_mk_array_layout. lia.
     - rewrite take_drop//.
-    - rewrite take_length. simpl.
+    - rewrite length_take. simpl.
       apply syn_type_has_layout_untyped_inv in Hstly as (-> & ? & ? & ?).
       rewrite Hlen !ly_size_mk_array_layout. lia.
     - by apply array_layout_wf.
@@ -901,7 +893,7 @@ Section rules.
     iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
     iModIntro. iExists _, _,_, _. iFrame.
     (* strong update *)
-    iExists _, _, _, ResultStrong. iFrame.
+    iExists ResultStrong.
     iSplitR; first done.
     iR.
     done.
@@ -944,7 +936,7 @@ Section rules.
     iMod "Hcl_F" as "_".
     iModIntro. iExists _, _,_, _. iFrame.
     (* strong update *)
-    iExists _, _, _, ResultStrong. iFrame.
+    iExists ResultStrong. iFrame.
     iSplitR; first done.
     iR.
     done.
@@ -990,7 +982,7 @@ Section rules.
     (*iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.*)
     iModIntro. iExists _, _, (value_t (ty_syn_type ty)), _. iFrame "∗ #".
     (* strong update *)
-    iExists _, _, _, ResultStrong. iFrame.
+    iExists ResultStrong. iFrame.
     do 2 iR.
     iApply "Hs". done.
   Qed.
@@ -1033,7 +1025,7 @@ Section rules.
     iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
     iModIntro. iExists _, _,_, _. iFrame.
     (* strong update *)
-    iExists _, _, _, ResultStrong. iFrame.
+    iExists ResultStrong. iFrame.
     iSplitR; first done.
     iR.
     done.

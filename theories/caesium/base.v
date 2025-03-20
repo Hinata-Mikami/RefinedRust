@@ -71,12 +71,12 @@ Proof.
   - rewrite Forall2_cons. by rewrite IH.
 Qed.
 
-Lemma drop_app' {A} (l k : list A) n :
+Lemma drop_app_length' {A} (l k : list A) n :
   length l = n → drop n (l ++ k) = k.
-Proof. intros <-. apply drop_app. Qed.
-Lemma take_app' {A} (l k : list A) n :
+Proof. intros <-. apply drop_app_length. Qed.
+Lemma take_app_length' {A} (l k : list A) n :
   length l = n → take n (l ++ k) = l.
-Proof. intros <-. apply take_app. Qed.
+Proof. intros <-. apply take_app_length. Qed.
 
 
 (* TODO move *)
@@ -90,7 +90,7 @@ Proof.
   intros [-> | Ha]%elem_of_cons Hnodup.
   { exists v1. apply lookup_insert. }
   inversion Hnodup as [ | ? ? Hnel Hnodup']; subst.
-  efeed pose proof IH as Hb; [done | done | ].
+  opose proof* IH as Hb; [done | done | ].
   destruct Hb as (v & Hlook). exists v.
   rewrite lookup_insert_ne; first done.
   intros ->. apply Hnel. done.

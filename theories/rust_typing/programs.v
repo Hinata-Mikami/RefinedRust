@@ -531,8 +531,7 @@ Section judgments.
     iDestruct "Hl" as "(%ly & %Halg & % & ? & #Hlb & ? & %r' & -> & HT)".
     iMod (fupd_mask_mono with "HT") as "(%v & Hl & Hv)"; first done.
     iMod (HQ with "[//] Hv") as "(Hv & #HQ')".
-    iSplitL. { iModIntro. iExists _. iFrame. iR. iR. iR. iExists _. iR.
-      iModIntro. eauto 8 with iFrame. }
+    iSplitL. { iModIntro. iExists _. iFrame. do 4 iR. done. }
     iModIntro. iFrame "HQ'". iExists _. iFrame "Hlb".
     rewrite /enter_cache_hint. done.
   Qed.
@@ -705,7 +704,7 @@ Section judgments.
         Φ v) -∗
       (*typed_stmt_post_cond π ϝ fn R L')*)
       WPs s {{fn.(rf_fn).(f_code), Φ}})%I.
-  Global Arguments typed_stmt _ _ _%E _ _%I _.
+  Global Arguments typed_stmt _ _ _%_E _ _%_I _.
 
   (* [P] is an invariant on the context. *)
   Definition typed_block (P : elctx → llctx → iProp Σ) (b : label) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
@@ -3417,7 +3416,7 @@ Section relate_list.
     - iR.
       iApply (big_sepL2_wand with "(Ha [] [//])").
       { iPureIntro. lia. }
-      iApply big_sepL2_intro; first (by rewrite !replicate_length).
+      iApply big_sepL2_intro; first (by rewrite !length_replicate).
       iModIntro. iIntros (?????). rewrite Nat.add_succ_r. eauto.
     - iSplitR. { iApply "HR"; simpl in Hinv; iPureIntro; first [lia | done]. }
       iApply (big_sepL2_mono with "(Ha [] [//])"); last by (iPureIntro; lia).
@@ -3438,7 +3437,7 @@ Section relate_list.
     case_decide.
     - iR.
       iApply (big_sepL2_wand with "Ha").
-      iApply big_sepL2_intro; first (by rewrite !replicate_length).
+      iApply big_sepL2_intro; first (by rewrite !length_replicate).
       iModIntro. iIntros (?????). rewrite Nat.add_succ_r. eauto.
     - iSplitR. { iApply "HR"; simpl in Hinv; iPureIntro; first [lia | done]. }
       iApply (big_sepL2_mono with "Ha"). iIntros (?????). rewrite Nat.add_succ_r. done.
@@ -3451,7 +3450,7 @@ Section relate_list.
   Proof.
     iIntros (Hel) "Ha %Hinv %".
     iSpecialize ("Ha" with "[] [//]").
-    { rewrite insert_length in Hinv. done. }
+    { rewrite length_insert in Hinv. done. }
     iInduction l1 as [ | a l1] "IH" forall (l2 i i0 Hel Hinv); simpl; first done.
     destruct l2 as [ | b l2]. { destruct i; done. }
     destruct i as [ | i].
@@ -3526,7 +3525,7 @@ Section relate_list.
     (⌜i0 + length (<[i:=a]> l1) ≤ fr_cap R⌝ -∗ ⌜fr_inv R⌝ -∗ [∗ list] i1↦a0;b0 ∈ <[i:=a]> l1;l2, if decide ((i1 + i0)%nat ∈ ig) then True else fr_core_rel R E L (i1 + i0) a0 b0).
   Proof.
     iIntros (Hnel Hi Hlook) "HR Ha %Hinv %". iSpecialize ("Ha" with "[] [//]").
-    { iPureIntro. rewrite insert_length in Hinv. lia. }
+    { iPureIntro. rewrite length_insert in Hinv. lia. }
     iInduction l1 as [ | a' l1] "IH" forall (l2 i i0 Hnel Hi Hlook Hinv).
     { simpl in *. lia. }
     destruct i as [ | i]; simpl.
@@ -3601,7 +3600,7 @@ Section relate_list.
       iMod ("Ha" with "[//] CTX HE HL") as "(Ha & HL & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(Hb & $ & $)".
       iModIntro. iIntros "%Hinv %".
-      rewrite app_length in Hinv.
+      rewrite length_app in Hinv.
       iSpecialize ("Ha" with "[] [//]").
       { iPureIntro. lia. }
       iSpecialize ("Hb" with "[] [//]").
@@ -3611,7 +3610,7 @@ Section relate_list.
       iApply (big_sepL2_mono with "Hb").
       iIntros. rewrite Nat.add_assoc [(k + _)%nat]Nat.add_comm//.
     - iDestruct "Ha" as "(Ha & Hb & $)". iIntros "%Hinv %".
-      rewrite app_length in Hinv.
+      rewrite length_app in Hinv.
       iSpecialize ("Ha" with "[] [//]").
       { iPureIntro. lia. }
       iSpecialize ("Hb" with "[] [//]").
@@ -3863,7 +3862,7 @@ Section fold_list.
     (⌜i0 + length (<[i:=x]> l1) ≤ fp_cap R⌝ -∗ ⌜fp_inv R⌝ -∗ [∗ list] i1↦a ∈ <[i:=x]> l1, if decide ((i1 + i0)%nat ∈ ig) then True else fp_core_pred R E L (i1 + i0) a).
   Proof.
     iIntros (Hel) "Ha". iIntros "%Hinv %". iSpecialize ("Ha" with "[] [//]").
-    { rewrite insert_length in Hinv. done. }
+    { rewrite length_insert in Hinv. done. }
     iInduction l1 as [ | a l1] "IH" forall (i i0 Hel Hinv); simpl; first done.
     destruct i as [ | i].
     - simpl.
@@ -3948,7 +3947,7 @@ Section fold_list.
   Proof.
     iIntros (Hnel Hi) "HR Ha".
     iIntros "%Hinv %". iSpecialize ("Ha" with "[] [//]").
-    { iPureIntro. rewrite insert_length in Hinv. lia. }
+    { iPureIntro. rewrite length_insert in Hinv. lia. }
     iInduction l1 as [ | a' l1] "IH" forall (i i0 Hnel Hi Hinv).
     { simpl in *. lia. }
     destruct i as [ | i]; simpl.
@@ -4011,14 +4010,14 @@ Section fold_list.
     - iIntros "Ha" (??) "#CTX #HE HL".
       iMod ("Ha" with "[//] CTX HE HL") as "(Ha & HL & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(Hb & $ & $)".
-      iModIntro. iIntros "%Hinv %". rewrite app_length in Hinv.
+      iModIntro. iIntros "%Hinv %". rewrite length_app in Hinv.
       iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
       iSpecialize ("Hb" with "[] [//]"). { iPureIntro. lia. }
       rewrite big_sepL_app. iFrame.
       iApply (big_sepL_mono with "Hb").
       iIntros. rewrite Nat.add_assoc [(k + _)%nat]Nat.add_comm//.
     - iIntros "(Ha & Hb & $)".
-      iIntros "%Hinv %". rewrite app_length in Hinv.
+      iIntros "%Hinv %". rewrite length_app in Hinv.
       iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
       iSpecialize ("Hb" with "[] [//]"). { iPureIntro. lia. }
       rewrite big_sepL_app. iFrame.

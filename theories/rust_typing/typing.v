@@ -3,7 +3,7 @@ From refinedrust Require Export automation.loc_eq manual automation.
 From refinedrust Require Export simpl.
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
-Export Unset Keyed Unification.
+#[export] Unset Keyed Unification.
 
 (* For some reason, we need to declare this instance here for stuff to work, despite exporting [simpl] as the last thing above! So weird! *)
 Global Instance simpl_exist_plist_cons' {X : Type} (F : X → Type) (x : X) xs (Q : plist F (x :: xs) → Prop) :

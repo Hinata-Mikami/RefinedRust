@@ -134,9 +134,7 @@ Section laws.
     rewrite ghost_map_auth_fractional. iDestruct "Hauth" as "(Hauth' & Hauth)".
     rewrite Hfrac. iDestruct "Hprop" as "($ & Hprop)".
     iSplitL "Hauth' Hprop".
-    { iExists _, _. iFrame. iSplitR; first done. iSplitR; first done.
-      iExists qr. iSplitR; done.
-    }
+    { iExists _, _. iFrame. iSplitR; first done. iSplitR; done. }
     iIntros "Hprop Hauth'".
     iDestruct "Hauth'" as "(%M' & %next_fresh' & Hauth' & _ & _ & %qr' & % & Hfrac)".
     iExists M, next_fresh. iDestruct (ghost_map_auth_agree with "Hauth Hauth'") as %<-.
@@ -215,7 +213,8 @@ Section laws.
     iIntros "(%M & %nf & Hauth & %Hsz & %Hfresh & %q' & %Hrem & Hprop) (%q & Hprop' & %k & Helem)".
     iPoseProof (ghost_map_lookup with "Hauth Helem") as "%Hlook".
     iMod (ghost_map_delete with "Hauth Helem") as "Hauth".
-    iModIntro. iExists (delete k M), nf. iFrame.
+    iModIntro. iExists (delete k M), nf.
+    iSplitL "Hauth"; first iFrame.
     iSplitR. { iPureIntro.
       rewrite dom_delete_L size_difference.
       2: { apply singleton_subseteq_l. apply elem_of_dom. eauto. }
