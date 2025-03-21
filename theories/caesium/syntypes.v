@@ -150,7 +150,7 @@ Ltac unsafe_unfold_common_caesium_defs :=
 Definition I2v_def (z : Z) (I : IntType) : val := i2v z I.
 Definition I2v_aux z I : seal (I2v_def z I). Proof. by eexists. Qed.
 Definition I2v z I : val := (I2v_aux z I).(unseal).
-Definition I2v_unfold z I : I2v z I = i2v z I := (I2v_aux z I).(seal_eq). 
+Definition I2v_unfold z I : I2v z I = i2v z I := (I2v_aux z I).(seal_eq).
 
 (** Rust repr options *)
 Inductive struct_repr :=
@@ -452,8 +452,7 @@ Proof.
   { apply Nat2Z.inj_le. etrans; first apply Hb.
     rewrite Nat2Z.inj_pow. nia.
   }
-  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle.
-  2: { clear. lia. }
+  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; last lia.
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_log_in_usize ly :

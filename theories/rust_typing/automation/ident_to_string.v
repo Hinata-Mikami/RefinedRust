@@ -47,7 +47,7 @@ Module Import IdentToStringImpl .
     if Int.equal n 1 then [1] else
     let r := powers_of_two (Int.sub n 1) in
     match r with
-    | h :: t => Int.mul 2 h :: r
+    | h :: _ => Int.mul 2 h :: r
     | [] => []
     end.
 
@@ -112,6 +112,7 @@ Module Import IdentToStringImpl .
   Local Open Scope string_scope.
   Set Default Proof Mode "Classic".
   Goal forall my_var: nat, my_var = my_var.
+  Proof.
     intros.
     match goal with
     | |- _ = ?x => let r := varconstr_to_string x in pose r

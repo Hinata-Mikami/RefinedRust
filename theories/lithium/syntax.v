@@ -126,8 +126,8 @@ Notation "'accu'" := (li.accu) (in custom lithium at level 0) : lithium_scope.
 Notation "'trace' x" := (li.trace x) (in custom lithium at level 0, x constr,
                            format "'trace'  '[' x ']'") : lithium_scope.
 
-Notation "x :> y" := (li.subsume x y) (in custom lithium at level 0, x constr, y constr,
-                           format "'[' x ']'  :>  '[' y ']'") : lithium_scope.
+Notation "x :>> y" := (li.subsume x y) (in custom lithium at level 0, x constr, y constr,
+                           format "'[' x ']'  :>>  '[' y ']'") : lithium_scope.
 
 Notation "'return' x" := (li.ret x) (in custom lithium at level 0, x constr,
                            format "'return'  '[' x ']'") : lithium_scope.
@@ -382,6 +382,14 @@ Section test.
 
   Lemma ex1_1 :
     ⊢ [{ '(x1, x2, x3) ← {get_tuple}; exhale ⌜x1 = 0⌝; done }].
+  Proof.
+    iStartProof.
+    liFromSyntax.
+  Abort.
+
+  (* TODO: investigate why the () around False is necessary. *)
+  Lemma ex1_2 :
+    ⊢ [{ '(x1, _, _) ← {get_tuple}; exhale ⌜x1 = 0⌝; (False) :>> [{ false }]; done }].
   Proof.
     iStartProof.
     liFromSyntax.

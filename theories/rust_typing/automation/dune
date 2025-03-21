@@ -1,6 +1,6 @@
 (coq.theory
  (name refinedrust.automation)
  (package refinedrust)
- (flags -w -notation-overridden -w -redundant-canonical-projection)
+ (flags -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "RefinedRust automation components")
  (theories stdpp iris RecordUpdate Ltac2 caesium refinedrust lithium))

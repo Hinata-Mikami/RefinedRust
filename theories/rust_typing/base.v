@@ -28,6 +28,7 @@ Definition lftE : coPset := ↑lftN.
 Definition timeE : coPset := ↑timeN.
 Definition shrE : coPset := ↑shrN.
 
+(* We want unit to be in Type, not in Set *)
 Definition unitt : Type := unit.
 Definition ttt : unitt := tt.
 Notation "()" := ttt.

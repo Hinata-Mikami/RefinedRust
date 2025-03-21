@@ -55,7 +55,7 @@ Section enum.
   Global Arguments enum_lfts {_}.
   Global Arguments enum_wf_E {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
-    populate (e.(enum_xrt) e.(enum_xt_inhabited).(inhabitant)). 
+    populate (e.(enum_xrt) e.(enum_xt_inhabited).(inhabitant)).
 
   (*Set Universe Polymorphism.*)
   Definition enum_tag_ty' {rt} (en : enum rt) (v : var_name) : sigT type :=
@@ -2193,7 +2193,7 @@ Section ltype_def.
     (∀ lt : lty, lt ∈ lts → ∀ k π r (Heq : lty_rt lt = lty_rt (lty_core lt)) l, lty_own_pre true lt k π (r) l ≡ lty_own_pre core (lty_core lt) k π (transport_rfn Heq r) l) →
     ([∗ list] i ↦ ty ∈ zip (fmap lty_core lts) r', ∃ Heq : lty_rt ty.1 = rt, ⌜lty_st ty.1 = st⌝ ∗ lty_own_pre core ty.1 k π (rew <- [place_rfn] Heq in ty.2) (l offset{ly}ₗ i)) ⊣⊢
     ([∗ list] i ↦ ty ∈ zip lts r', ∃ Heq : lty_rt ty.1 = rt, ⌜lty_st ty.1 = st⌝ ∗ lty_own_pre true ty.1 k π (rew <- [place_rfn] Heq in ty.2) (l offset{ly}ₗ i)).
-  Proof. 
+  Proof.
     intros IH.
     rewrite zip_fmap_l big_sepL_fmap.
     apply big_sepL_proper.
