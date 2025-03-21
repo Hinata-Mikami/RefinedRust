@@ -75,7 +75,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
     ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(name, spec_name, None);
+        // use a dummy name as we're never going to use the code.
+        let mut translated_fn = radium::FunctionBuilder::new(name, "dummy", spec_name, None);
 
         let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc_did);
         let ty = ty.instantiate_identity();
@@ -144,6 +145,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<Self, TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(
             meta.get_name(),
+            meta.get_code_name(),
             meta.get_spec_name(),
             Some(meta.get_trait_req_incl_name()),
         );
@@ -388,6 +390,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<Self, TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(
             meta.get_name(),
+            meta.get_code_name(),
             meta.get_spec_name(),
             Some(meta.get_trait_req_incl_name()),
         );

@@ -12,10 +12,10 @@ Lemma RawVec_T_grow_proof (π : thread_id) :
 Proof.
   RawVec_T_grow_prelude.
 
-  rep <-! liRStep; liShow.
+  rep <-! liRStep. 
   (* Manual step to extract the array value before the call to realloc *)
   apply_update (updateable_extract_value l).
-  repeat liRStep; liShow.
+  repeat liRStep. 
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

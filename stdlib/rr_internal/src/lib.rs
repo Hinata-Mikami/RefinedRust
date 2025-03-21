@@ -1,0 +1,13 @@
+#![feature(register_tool)]
+#![register_tool(rr)]
+#![feature(custom_inner_attributes)]
+
+#![feature(allocator_api)]
+#![rr::package("refinedrust-stdlib")]
+#![rr::coq_prefix("stdlib.rr_internal")]
+#![rr::import("stdlib.rr_internal.theories", "shims")]
+
+#![rr::include("ptr")]
+#![allow(unused)]
+
+use std::alloc;

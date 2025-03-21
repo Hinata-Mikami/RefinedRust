@@ -652,6 +652,7 @@ impl StackMap {
 #[allow(clippy::module_name_repetitions)]
 pub struct FunctionCode {
     name: String,
+    code_name: String,
     stack_layout: StackMap,
     basic_blocks: BTreeMap<usize, Stmt>,
 
@@ -703,7 +704,7 @@ impl Display for FunctionCode {
 
         writedoc!(
             f,
-            r#"Definition {}_def {} : function := {{|
+            r#"Definition {} {} : function := {{|
                 f_args := [
                  {}
                 ];
@@ -715,7 +716,7 @@ impl Display for FunctionCode {
                  ∅;
                 f_init := "_bb0";
                |}}."#,
-            self.name,
+            self.code_name,
             self.required_parameters,
             args.indented_skip_initial(&make_indent(2)),
             locals.indented_skip_initial(&make_indent(2)),
@@ -892,7 +893,7 @@ impl<'def> Function<'def> {
         }
 
         write!(f, "typed_function π ")?;
-        write!(f, "({}_def ", self.name())?;
+        write!(f, "({} ", self.code.code_name)?;
 
         // add arguments for the code definition
         let mut code_params: Vec<_> =
@@ -1496,6 +1497,7 @@ impl<'def> Display for UsedProcedure<'def> {
 #[allow(clippy::partial_pub_fields)]
 pub struct FunctionBuilder<'def> {
     pub code: FunctionCodeBuilder,
+    pub code_name: String,
 
     /// optionally, a specification, if one has been created
     pub spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
@@ -1525,7 +1527,7 @@ pub struct FunctionBuilder<'def> {
 
 impl<'def> FunctionBuilder<'def> {
     #[must_use]
-    pub fn new(name: &str, spec_name: &str, trait_req_incl_name: Option<&str>) -> Self {
+    pub fn new(name: &str, code_name: &str, spec_name: &str, trait_req_incl_name: Option<&str>) -> Self {
         let code_builder = FunctionCodeBuilder::new();
         let spec = FunctionSpec::empty(
             spec_name.to_owned(),
@@ -1536,6 +1538,7 @@ impl<'def> FunctionBuilder<'def> {
         FunctionBuilder {
             other_functions: Vec::new(),
             code: code_builder,
+            code_name: code_name.to_owned(),
             spec,
             layoutable_syntys: Vec::new(),
             loop_invariants: InvariantMap(HashMap::new()),
@@ -1653,6 +1656,7 @@ impl<'def> FunctionBuilder<'def> {
 
         let code = FunctionCode {
             stack_layout: self.code.stack_layout,
+            code_name: self.code_name,
             name: self.spec.function_name.clone(),
             basic_blocks: self.code.basic_blocks,
             required_parameters: coq::binder::BinderList::new(parameters),

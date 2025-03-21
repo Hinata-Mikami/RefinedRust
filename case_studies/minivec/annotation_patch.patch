@@ -1,10 +1,10 @@
-100a101,102
+102a103,104
 >    (* TODO fix update of lft name map here, manually added *)
 >    annot: CopyLftNameAnnot "plft15" "vlft23";
-126a129,130
+128a131,132
 >    (* TODO fix update of lft name map here, manually added *)
 >    annot: CopyLftNameAnnot "plft18" "vlft24";
-1055c1059,1063
+1057c1061,1065
 <    "ret" <-{ PtrOp } AnnotExpr (* assignment *) 0 (GetLftNamesAnnot (LftNameTreeRef "plft14" (LftNameTreeLeaf))) (&ref{ Mut, Some (RSTTyVar "T"), "vlft4" } (!{ PtrOp } ( "p" )));
 ---
 >    (* TODO: I edited the code, some of the annotations are currently wrong *)
@@ -12,34 +12,34 @@
 >    "__0" <-{ PtrOp } AnnotExpr (* assignment *) 0 (GetLftNamesAnnot (LftNameTreeRef "plft14" (LftNameTreeLeaf))) (&ref{ Mut, Some (RSTTyVar "T"), "llft6" } (!{ PtrOp } ( "p" )));
 >    annot: ExtendLftAnnot "llft6";
 >    (*
-1061a1070
+1063a1072
 >     *)
-1119a1129,1131
+1121a1131,1133
 >    (* TODO manually inserted extendlft *)
 >    annot: ExtendLftAnnot "llft4";
 >    annot: ExtendLftAnnot "llft5";
-1124c1136,1137
+1126c1138,1139
 <    "__0" <-{ (use_op_alg' (((Option_els ((PtrSynType))) : syn_type))) } EnumInit (Option_els ((PtrSynType))) "None" (RSTLitType ["Option_ty"] [RSTRef Mut "vlft7" (RSTTyVar "T")]) (StructInit (Option_None_sls ((PtrSynType))) []);
 ---
 >    (* TODO inserted the right lifetime manually *)
 >    "__0" <-{ (use_op_alg' (((Option_els ((PtrSynType))) : syn_type))) } EnumInit (Option_els ((PtrSynType))) "None" (RSTLitType ["Option_ty"] [RSTRef Mut "plft10" (RSTTyVar "T")]) (StructInit (Option_None_sls ((PtrSynType))) []);
-1169c1182,1183
+1171c1184,1185
 <    annot: StartLftAnnot "vlft4" []; (* borrow *)
 ---
 >    (* TODO: manually constrained this by "ulft_1",  maybe this should just be copylftannot instead? *)
 >    annot: StartLftAnnot "vlft4" ["ulft_1"]; (* borrow *)
-1173a1188,1189
+1175a1190,1191
 >    (* TODO: manually added *)
 >    annot: ExtendLftAnnot "plft7";
-1223a1240,1241
+1225a1242,1243
 >    (* TODO manually inserted *)
 >    annot: CopyLftNameAnnot "plft13" "vlft16";
-1237c1255,1256
+1239c1257,1258
 <    "__0" <-{ (use_op_alg' (((Option_els ((PtrSynType))) : syn_type))) } EnumInit (Option_els ((PtrSynType))) "None" (RSTLitType ["Option_ty"] [RSTRef Shr "vlft7" (RSTTyVar "T")]) (StructInit (Option_None_sls ((PtrSynType))) []);
 ---
 >    (* TODO manually inserted the right lifetime *)
 >    "__0" <-{ (use_op_alg' (((Option_els ((PtrSynType))) : syn_type))) } EnumInit (Option_els ((PtrSynType))) "None" (RSTLitType ["Option_ty"] [RSTRef Shr "vlft15" (RSTTyVar "T")]) (StructInit (Option_None_sls ((PtrSynType))) []);
-1248c1267
+1250c1269
 < End code.
 \ No newline at end of file
 ---

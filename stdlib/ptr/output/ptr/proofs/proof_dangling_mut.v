@@ -1,0 +1,23 @@
+From caesium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From stdlib.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_dangling_mut.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+
+Lemma dangling_mut_proof (π : thread_id) :
+  dangling_mut_lemma π.
+Proof.
+  dangling_mut_prelude.
+
+  repeat liRStep; liShow.
+
+  all: print_remaining_goal.
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
+  all: rename select (ly_align_in_bounds _) into Hb; apply Hb.
+  Unshelve. all: print_remaining_sidecond.
+Qed.
+End proof.

@@ -1,4 +1,4 @@
-STDLIB = ptr alloc option result vec btreemap rwlock closures spin iterator
+STDLIB = ptr alloc option result vec btreemap rwlock closures spin iterator rr_internal boxed
 
 RUST_TARGET ?= $(shell rustc -vV | sed -n 's|host: ||p')
 RUST_PATH ?=	target/$(RUST_TARGET)/release
@@ -8,7 +8,11 @@ RUST_PATH ?=	target/$(RUST_TARGET)/release
 
 generate_stdlib: $(STDLIB:=.crate)
 
-clean_stdlib: $(STDLIB:=.clean)
+#clean_stdlib: $(STDLIB:=.clean)
+clean_stdlib:
+	@for dir in $(shell find . -maxdepth 1 -type d -print); do \
+		(cd $$dir && cargo clean); \
+	done
 
 stdlib.proof: generate_stdlib
 	dune build --display short

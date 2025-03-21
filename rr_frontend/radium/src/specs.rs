@@ -4322,11 +4322,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         let mut typarams_ty_list = String::with_capacity(100);
         write!(typarams_ty_list, "[")?;
         write_list!(typarams_ty_list, &all_params.params, "; ", |x| {
-            if as_fn {
-                format!("({}, {})", x.refinement_type, x.syn_type)
-            } else {
-                x.refinement_type.clone()
-            }
+            if as_fn { format!("({}, {})", x.refinement_type, x.syn_type) } else { x.refinement_type.clone() }
         })?;
         write!(typarams_ty_list, "]")?;
 

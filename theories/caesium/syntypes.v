@@ -136,6 +136,10 @@ Lemma int_elem_of_it_iff z it :
 Proof.
   rewrite /elem_of/int_elem_of_it' MinInt_eq MaxInt_eq//.
 Qed.
+Lemma wrap_to_int_id' z it :
+  int_elem_of_it' z it → wrap_to_it z it = z.
+Proof. rewrite int_elem_of_it_iff. apply wrap_to_int_id. Qed.
+
 
 Ltac unsafe_unfold_common_caesium_defs :=
   rewrite ?MaxInt_eq ?MinInt_eq;

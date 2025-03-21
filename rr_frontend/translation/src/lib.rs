@@ -122,6 +122,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         if mode != procedures::Mode::Prove
             && mode != procedures::Mode::OnlySpec
             && mode != procedures::Mode::TrustMe
+            && mode != procedures::Mode::CodeShim
         {
             return None;
         }
@@ -548,9 +549,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             writeln!(code_file, "Open Scope printing_sugar.").unwrap();
             writeln!(code_file).unwrap();
 
-            for (_, fun) in self.procedure_registry.iter_code() {
-                writeln!(code_file, "{}", fun.code).unwrap();
-                writeln!(code_file).unwrap();
+            for (did, fun) in self.procedure_registry.iter_code() {
+                if self.procedure_registry.lookup_function_mode(*did).unwrap().needs_def() {
+                    writeln!(code_file, "{}", fun.code).unwrap();
+                    writeln!(code_file).unwrap();
+                }
             }
 
             write!(code_file, "End code.").unwrap();
@@ -1009,6 +1012,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 info!("registering shim for {:?}", shim.path);
                 let meta = procedures::Meta::new(
                     shim.spec_name.clone(),
+                    "dummy".to_owned(),
                     shim.trait_req_incl_name.clone(),
                     shim.name.clone(),
                     procedures::Mode::Shim,
@@ -1119,6 +1123,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
 
                 let meta = procedures::Meta::new(
                     spec_name.clone(),
+                    "dummy".to_owned(),
                     trait_req_incl_name.clone(),
                     name.clone(),
                     procedures::Mode::Shim,
@@ -1169,11 +1174,16 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 fn register_functions<'tcx>(
     vcx: &mut VerificationCtxt<'tcx, '_>,
 ) -> Result<(), base::TranslationError<'tcx>> {
+    //let crate_name: span::symbol::Symbol = vcx.env.tcx().crate_name(span::def_id::LOCAL_CRATE);
+    //let stem = crate_name.as_str();
+
     for &f in vcx.functions {
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
 
         let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
+        //let fname = format!("{stem}_{fname}");
         let spec_name = format!("type_of_{}", fname);
+        let code_name = format!("{}_def", fname);
         let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
         if mode == procedures::Mode::Shim {
@@ -1190,8 +1200,9 @@ fn register_functions<'tcx>(
             );
             let meta = procedures::Meta::new(
                 annot.spec_name,
-                annot.trait_req_incl_name,
                 annot.code_name,
+                annot.trait_req_incl_name,
+                fname.clone(),
                 procedures::Mode::Shim,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
@@ -1207,8 +1218,9 @@ fn register_functions<'tcx>(
             info!("Registering code shim: {:?} as {}", f.to_def_id(), annot.code_name);
             let meta = procedures::Meta::new(
                 spec_name,
-                trait_req_incl_name,
                 annot.code_name,
+                trait_req_incl_name,
+                fname.clone(),
                 procedures::Mode::CodeShim,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
@@ -1225,7 +1237,7 @@ fn register_functions<'tcx>(
             mode = procedures::Mode::Prove;
         }
 
-        let meta = procedures::Meta::new(spec_name, trait_req_incl_name, fname, mode);
+        let meta = procedures::Meta::new(spec_name, code_name, trait_req_incl_name, fname, mode);
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
     }

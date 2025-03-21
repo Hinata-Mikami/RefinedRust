@@ -3,6 +3,8 @@
 #![feature(custom_inner_attributes)]
 #![rr::import("refinedrust.extra_proofs.minivec", "minivec")]
 #![rr::include("option")]
+#![rr::include("ptr")]
+#![rr::include("rr_internal")]
 #![allow(dead_code)]
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
@@ -23,7 +25,7 @@ mod client;
 mod rralloc {
     use std::alloc::{self, Layout};
 
-    #[rr::shim("alloc_array", "type_of_alloc_array")]
+    #[rr::shim("alloc_array", "type_of_alloc_array", "trait_incl_of_alloc_array")]
     pub unsafe fn alloc_array<T>(len: usize) -> *mut T {
         assert!(len > 0);
         // checks that size is ≤ MaxInt isize
@@ -41,7 +43,7 @@ mod rralloc {
     }
 
     // For preconditions, see the preconditions of the shim.
-    #[rr::shim("realloc_array", "type_of_realloc_array")]
+    #[rr::shim("realloc_array", "type_of_realloc_array", "trait_incl_of_realloc_array")]
     pub unsafe fn realloc_array<T>(old_len: usize, ptr: *mut T, new_len: usize) -> *mut T {
         assert!(new_len > 0);
         // fine: checks that size is ≤ MaxInt isize
@@ -71,13 +73,13 @@ mod rralloc {
         ptr as *mut T
     }
 
-    #[rr::shim("free_array", "type_of_free_array")]
+    #[rr::shim("dealloc_array", "type_of_dealloc_array", "trait_incl_of_dealloc_array")]
     pub unsafe fn dealloc_array<T>(len: usize, ptr: *mut T) {
         alloc::dealloc(ptr as *mut u8, Layout::array::<T>(len).unwrap());
     }
 
     /// Check that an array of `T` with length `len` is layoutable.
-    #[rr::shim("check_array_layoutable", "type_of_check_array_layoutable")]
+    #[rr::shim("check_array_layoutable", "type_of_check_array_layoutable", "trait_incl_of_check_array_layoutable")]
     pub fn check_array_layoutable<T>(len: usize) -> bool {
         let layout = Layout::array::<T>(len);
         layout.is_ok()
@@ -89,27 +91,27 @@ mod rrptr {
     use std::ptr::NonNull;
 
 
-    #[rr::shim("ptr_dangling", "type_of_ptr_dangling")]
+    #[rr::shim("dangling", "type_of_dangling", "trait_incl_of_dangling")]
     pub fn dangling<T>() -> *mut T{
         NonNull::dangling().as_ptr()
     }
 
     // We only need these shims because we cannot get their DefIds in the frontend currently..
-    #[rr::shim("ptr_offset", "type_of_ptr_offset")]
+    #[rr::shim("ptr_mut_ptr_offset", "type_of_mut_ptr_offset", "trait_incl_of_mut_ptr_offset")]
     pub unsafe fn mut_offset<T>(ptr: *mut T, count: isize) -> *mut T {
         ptr.offset(count)
     }
 
-    #[rr::shim("ptr_add", "type_of_ptr_offset")]
+    #[rr::shim("const_ptr_offset", "type_of_const_ptr_offset", "trait_incl_of_const_ptr_offset")]
     pub unsafe fn const_offset<T>(ptr: *const T, count: isize) -> *const T {
         ptr.offset(count)
     }
-    #[rr::shim("ptr_add", "type_of_ptr_add")]
+    #[rr::shim("mut_ptr_add", "type_of_mut_ptr_add", "trait_incl_of_mut_ptr_add")]
     pub unsafe fn mut_add<T>(ptr: *mut T, count: usize) -> *mut T {
         ptr.add(count)
     }
 
-    #[rr::shim("ptr_add", "type_of_ptr_add")]
+    #[rr::shim("const_ptr_add", "type_of_const_ptr_add", "trait_incl_of_const_ptr_add")]
     pub unsafe fn const_add<T>(ptr: *const T, count: usize) -> *const T {
         ptr.add(count)
     }

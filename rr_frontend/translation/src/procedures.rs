@@ -61,15 +61,23 @@ impl Mode {
 #[derive(Clone)]
 pub struct Meta {
     spec_name: String,
+    code_name: String,
     trait_req_incl_name: String,
     name: String,
     mode: Mode,
 }
 
 impl Meta {
-    pub const fn new(spec_name: String, trait_req_incl_name: String, name: String, mode: Mode) -> Self {
+    pub const fn new(
+        spec_name: String,
+        code_name: String,
+        trait_req_incl_name: String,
+        name: String,
+        mode: Mode,
+    ) -> Self {
         Self {
             spec_name,
+            code_name,
             trait_req_incl_name,
             name,
             mode,
@@ -86,6 +94,10 @@ impl Meta {
 
     pub fn get_name(&self) -> &str {
         &self.name
+    }
+
+    pub fn get_code_name(&self) -> &str {
+        &self.code_name
     }
 
     pub const fn get_mode(&self) -> Mode {
@@ -165,7 +177,7 @@ impl<'def> Scope<'def> {
     /// Provide the code for a translated function.
     pub fn provide_translated_function(&mut self, did: DefId, trf: radium::Function<'def>) {
         let meta = &self.name_map[&did];
-        assert!(meta.get_mode().needs_def());
+        assert!(meta.get_mode().needs_def() || meta.get_mode().is_code_shim());
         assert!(self.translated_functions.insert(did, trf).is_none());
     }
 

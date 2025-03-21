@@ -1,0 +1,17 @@
+From caesium Require Import lang notation.
+From refinedrust Require Import typing shims.
+From stdlib.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_mut_ptr_add.
+From stdlib.ptr.ptr.proofs Require Import proof_const_ptr_add.
+
+Set Default Proof Using "Type".
+
+Section proof.
+Context `{RRGS : !refinedrustGS Σ}.
+
+Lemma mut_ptr_add_proof (π : thread_id) :
+  mut_ptr_add_lemma π.
+Proof.
+  (* same proof *)
+  apply const_ptr_add_proof.
+Qed.
+End proof.

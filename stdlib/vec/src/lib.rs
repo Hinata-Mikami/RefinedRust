@@ -3,6 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![rr::include("option")]
 #![rr::include("alloc")]
+#![rr::include("rr_internal")]
 #![rr::package("refinedrust-stdlib")]
 #![feature(allocator_api)]
 #![rr::coq_prefix("stdlib.alloc")]

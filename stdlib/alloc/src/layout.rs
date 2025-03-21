@@ -7,7 +7,7 @@ use std::ptr::Alignment;
 #[rr::refined_by("l" : "rust_layout")]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
-    #[rr::field("l.(layout_sz)")]
+    #[rr::field("Z.of_nat l.(layout_sz)")]
     size: usize,
 
     // alignment of the requested block of memory, measured in bytes.
@@ -25,7 +25,7 @@ pub struct Layout {
 impl Layout {
     #[rr::params("x")]
     #[rr::args("x")]
-    #[rr::returns("x.(layout_sz)")]
+    #[rr::returns("Z.of_nat x.(layout_sz)")]
     pub const fn size(&self) -> usize {
         self.size
     }

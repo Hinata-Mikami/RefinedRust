@@ -70,7 +70,21 @@ Lemma int_elem_of_it_iff z it :
 Proof.
   rewrite /elem_of/int_elem_of_it' MinInt_eq MaxInt_eq//.
 Qed.
-
+Lemma ly_align_log_in_u8 ly :
+  ly_align_in_bounds ly → Z.of_nat (ly_align_log ly) ∈ u8.
+Proof.
+  apply ly_align_log_in_u8.
+Qed.
+Lemma ly_align_log_in_usize ly :
+  ly_align_in_bounds ly → Z.of_nat (ly_align_log ly) ∈ usize_t.
+Proof.
+  apply ly_align_log_in_usize.
+Qed.
+Lemma ly_align_in_usize ly :
+  ly_align_in_bounds ly → Z.of_nat (ly_align ly) ∈ usize_t.
+Proof.
+  apply ly_align_in_usize.
+Qed.
 
 (** Block typeclass resolution for an argument *)
 Definition TCNoResolve (P : Type) := P.

@@ -738,7 +738,7 @@ Tactic Notation "liRStepUntil" open_constr(id) :=
 (** * Tactics for starting a function *)
 Ltac prepare_initial_coq_context :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
-  repeat lazymatch goal with
+  repeat match goal with
   | H : fn_A _ |- _ => simpl in H
   | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
   | H : plist _ _ |- _ => destruct_product_hypothesis H H
@@ -748,7 +748,7 @@ Ltac prepare_initial_coq_context :=
                       (*destruct H as [tmp];*)
                       (*rename_by_string tmp n*)
   | H : unit |- _ => destruct H
-  | H : ty_xt _ |- _ => simpl in H
+  | H : ty_xt _ |- _ => progress (simpl in H)
   end.
 
 
