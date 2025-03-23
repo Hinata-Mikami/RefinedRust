@@ -10,6 +10,18 @@ use derive_more::Display;
 use crate::coq::term;
 use crate::display_list;
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub enum Kind {
+    /// `()
+    Explicit,
+
+    /// `{}
+    MaxImplicit,
+
+    /// `[]
+    NonMaxImplicit,
+}
+
 /// A [binder].
 ///
 /// [binder]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#grammar-token-binder
@@ -17,6 +29,9 @@ use crate::display_list;
 pub enum Binder {
     #[display("({}: {})", self.get_name(), _1)]
     Default(Option<String>, term::Type),
+
+    #[display("{}", _0)]
+    Implicit(Implicit),
 
     #[display("{}", _0)]
     Generalizing(Generalizing),
@@ -29,8 +44,13 @@ impl Binder {
     }
 
     #[must_use]
-    pub const fn new_generalized(kind: Kind, name: Option<String>, ty: term::Type) -> Self {
-        Self::Generalizing(Generalizing { kind, name, ty })
+    pub const fn new_implicit(kind: Kind, name: Option<String>, ty: Option<term::Type>) -> Self {
+        Self::Implicit(Implicit { kind, name, ty })
+    }
+
+    #[must_use]
+    pub const fn new_generalized(kind: Kind, name: Option<String>, term: term::Type) -> Self {
+        Self::Generalizing(Generalizing { kind, name, term })
     }
 
     #[must_use]
@@ -46,6 +66,7 @@ impl Binder {
     pub(crate) fn get_name(&self) -> String {
         match self {
             Self::Default(name, _) => name.clone().unwrap_or_else(|| "_".to_owned()),
+            Self::Implicit(i) => i.name.clone().unwrap_or_else(|| "_".to_owned()),
             Self::Generalizing(g) => g.name.clone().unwrap_or_else(|| "_".to_owned()),
         }
     }
@@ -53,14 +74,16 @@ impl Binder {
     pub(crate) const fn get_name_ref(&self) -> &Option<String> {
         match self {
             Self::Default(name, _) => name,
+            Self::Implicit(i) => &i.name,
             Self::Generalizing(g) => &g.name,
         }
     }
 
-    pub(crate) const fn get_type(&self) -> &term::Type {
+    pub(crate) const fn get_type(&self) -> Option<&term::Type> {
         match self {
-            Self::Default(_, ty) => ty,
-            Self::Generalizing(g) => &g.ty,
+            Self::Default(_, ty) => Some(ty),
+            Self::Implicit(i) => i.ty.as_ref(),
+            Self::Generalizing(g) => Some(&g.term),
         }
     }
 
@@ -71,7 +94,7 @@ impl Binder {
 
     #[must_use]
     pub(crate) fn is_dependent_on_sigma(&self) -> bool {
-        let term::Type::Literal(lit) = self.get_type() else {
+        let Some(term::Type::Literal(lit)) = self.get_type() else {
             return false;
         };
 
@@ -82,6 +105,10 @@ impl Binder {
     pub fn set_name(self, name: String) -> Self {
         match self {
             Self::Default(_, ty) => Self::Default(Some(name), ty),
+            Self::Implicit(i) => Self::Implicit(Implicit {
+                name: Some(name),
+                ..i
+            }),
             Self::Generalizing(g) => Self::Generalizing(Generalizing {
                 name: Some(name),
                 ..g
@@ -91,27 +118,48 @@ impl Binder {
 
     pub fn make_implicit(&mut self, kind: Kind) {
         match self {
-            Self::Default(name, ty) => {
+            Self::Default(name, term) => {
                 *self = Self::Generalizing(Generalizing {
                     kind,
                     name: name.clone(),
-                    ty: ty.clone(),
+                    term: term.clone(),
                 });
             },
             Self::Generalizing(ref mut g) => {
                 g.kind = kind;
             },
+            Self::Implicit(ref mut i) => {
+                i.kind = kind;
+            },
         }
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum Kind {
-    /// `()
-    Implicit,
+/// [Implicit argument] binders.
+///
+/// [Implicit argument]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-implicit_binders
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub struct Implicit {
+    kind: Kind,
+    name: Option<String>,
+    ty: Option<term::Type>,
+}
 
-    /// `{}
-    MaxImplicit,
+impl fmt::Display for Implicit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = match (&self.name, &self.ty) {
+            (Some(name), Some(ty)) => format!("{} : {}", name, ty),
+            (Some(name), None) => name.to_owned(),
+            (None, Some(ty)) => ty.to_string(),
+            (None, None) => String::new(),
+        };
+
+        match &self.kind {
+            Kind::Explicit => panic!("Implicit argument binders cannot have Kind::Explicit"),
+            Kind::MaxImplicit => write!(f, "{{{}}}", inner),
+            Kind::NonMaxImplicit => write!(f, "[{}]", inner),
+        }
+    }
 }
 
 /// [Implicit generalization] binders.
@@ -121,16 +169,20 @@ pub enum Kind {
 pub struct Generalizing {
     kind: Kind,
     name: Option<String>,
-    ty: term::Type,
+    term: term::Type,
 }
 
 impl fmt::Display for Generalizing {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match (&self.kind, &self.name) {
-            (Kind::Implicit, Some(name)) => write!(f, "`({} : !{})", name, self.ty),
-            (Kind::Implicit, None) => write!(f, "`(!{})", self.ty),
-            (Kind::MaxImplicit, Some(name)) => write!(f, "`{{{} : !{}}}", name, self.ty),
-            (Kind::MaxImplicit, None) => write!(f, "`{{!{}}}", self.ty),
+        let inner = match &self.name {
+            Some(name) => format!("{} : !{}", name, self.term),
+            None => format!("!{}", self.term),
+        };
+
+        match &self.kind {
+            Kind::Explicit => write!(f, "`({})", inner),
+            Kind::MaxImplicit => write!(f, "`{{{}}}", inner),
+            Kind::NonMaxImplicit => write!(f, "`[{}]", inner),
         }
     }
 }

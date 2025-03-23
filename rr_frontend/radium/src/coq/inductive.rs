@@ -12,7 +12,7 @@ use derive_more::{Constructor, Display};
 use indent_write::indentable::Indentable;
 
 use crate::coq::binder;
-use crate::{display_list, make_indent};
+use crate::{display_list, BASE_INDENT};
 
 /// An [Inductive] type.
 ///
@@ -21,7 +21,7 @@ use crate::{display_list, make_indent};
 #[display("Inductive {} {} :=\n{}\n",
     name,
     parameters,
-    display_list!(variants, "\n| ").indented(&make_indent(1))
+    display_list!(variants, "\n| ").indented(BASE_INDENT)
 )]
 pub struct Inductive {
     name: String,

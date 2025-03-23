@@ -16,7 +16,7 @@ use indent_write::indentable::Indentable;
 use itertools::Itertools;
 
 use crate::coq::binder;
-use crate::{display_list, make_indent, BASE_INDENT};
+use crate::{display_list, BASE_INDENT};
 
 /// A [term].
 ///

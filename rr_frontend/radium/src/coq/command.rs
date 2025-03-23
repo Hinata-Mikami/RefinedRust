@@ -164,7 +164,7 @@ pub enum Command {
     /// The [`Section`] command.
     ///
     /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
-    #[display("Section {}.\n{}End {}.", _0.0, _0.1.to_string().indented(&make_indent(1)), _0.0)]
+    #[display("Section {}.\n{}End {}.", _0.0, _0.1.to_string().indented(BASE_INDENT), _0.0)]
     Section((String, Document)),
 }
 

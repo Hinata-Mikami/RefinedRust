@@ -3237,7 +3237,7 @@ impl<'def> LiteralFunctionSpec<'def> {
             }
 
             pattern.push_str(&binder.get_name());
-            types.push_str(&format!("{}", binder.get_type()));
+            types.push_str(&format!("{}", binder.get_type().unwrap()));
 
             need_sep = true;
         }
@@ -3371,7 +3371,11 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
             };
 
             if param_name == name {
-                if *param.get_type() == coq::term::Type::Infer {
+                let Some(param_ty) = param.get_type() else {
+                    unreachable!("Binder is typed");
+                };
+
+                if *param_ty == coq::term::Type::Infer {
                     *param = coq::binder::Binder::new(Some(name.clone()), ty);
                 }
                 return Ok(());
