@@ -255,6 +255,10 @@ pub enum Type {
     #[display("(place_rfn {})", &_0)]
     PlaceRfn(Box<Type>),
 
+    /// ty_syn_type
+    #[display("(ty_syn_type {})", &_0)]
+    TySynType(Box<Type>),
+
     /// gname
     #[display("gname")]
     Gname,

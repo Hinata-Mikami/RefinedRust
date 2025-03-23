@@ -3129,7 +3129,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name,
             params,
             ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-            body: coq::term::Gallina::Literal(quantified_term),
+            body: Some(coq::term::Gallina::Literal(quantified_term)),
         }
     }
 }
@@ -3152,7 +3152,7 @@ impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name: self.spec_name.clone(),
             params,
             ty: None,
-            body: coq::term::Gallina::Literal(term),
+            body: Some(coq::term::Gallina::Literal(term)),
         };
         doc.push(coq::command::Command::Definition(coq_def));
 
@@ -4741,7 +4741,7 @@ fn make_trait_instance<'def>(
         name: spec_record_name.to_owned(),
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
-        body: coq::term::Gallina::Literal(term_with_specs),
+        body: Some(coq::term::Gallina::Literal(term_with_specs)),
     }));
 
     Ok(document)
@@ -4922,7 +4922,7 @@ impl<'def> TraitSpecDecl<'def> {
             name: spec_incl_name,
             params: spec_incl_params,
             ty: Some(coq::term::Type::Prop),
-            body,
+            body: Some(body),
         }
     }
 
@@ -4965,7 +4965,7 @@ impl<'def> TraitSpecDecl<'def> {
                 name: trait_incl_decl_name.to_owned(),
                 params,
                 ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-                body: coq::term::Gallina::Literal(quantified_term),
+                body: Some(coq::term::Gallina::Literal(quantified_term)),
             };
             let command = coq::command::Command::from(def);
             doc.push(command);
@@ -5232,7 +5232,7 @@ impl<'def> TraitImplSpec<'def> {
             name: attrs_name.to_owned(),
             params: def_rts_params,
             ty: Some(attrs_type),
-            body: attr_record_term,
+            body: Some(attr_record_term),
         }
     }
 
@@ -5267,7 +5267,7 @@ impl<'def> TraitImplSpec<'def> {
             name: spec_name.to_owned(),
             params,
             ty: None,
-            body: coq::term::Gallina::Literal(ty_term),
+            body: Some(coq::term::Gallina::Literal(ty_term)),
         };
         doc.push(coq::command::Command::Definition(lem));
 

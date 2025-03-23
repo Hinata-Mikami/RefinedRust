@@ -228,7 +228,7 @@ pub struct Definition {
     pub name: String,
     pub params: binder::BinderList,
     pub ty: Option<term::Type>,
-    pub body: term::Gallina,
+    pub body: Option<term::Gallina>,
 }
 
 impl Display for Definition {
@@ -236,10 +236,16 @@ impl Display for Definition {
         let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
 
         if let Some(ty) = &self.ty {
-            write!(f2, "Definition {} {} : {ty} :=\n{}", self.name, self.params, self.body)
+            write!(f2, "Definition {} {} : {ty}", self.name, self.params)?;
         } else {
-            write!(f2, "Definition {} {} :=\n{}", self.name, self.params, self.body)
+            write!(f2, "Definition {} {}", self.name, self.params)?;
         }
+
+        if let Some(body) = &self.body {
+            write!(f2, " := {}", body)?;
+        }
+
+        Ok(())
     }
 }
 
