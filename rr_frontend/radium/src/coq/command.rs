@@ -166,6 +166,12 @@ pub enum Command {
     /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
     #[display("Section {}.\n{}End {}.", _0.0, _0.1.to_string().indented(BASE_INDENT), _0.0)]
     Section((String, Document)),
+
+    /// The [`Typeclasses Transparent`] command.
+    ///
+    /// [`Typeclasses Transparent`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Typeclasses-Transparent
+    #[display("Typeclasses Transparent {}.", _0)]
+    TypeclassesTransparent(String),
 }
 
 impl From<Command> for Sentence {
