@@ -15,6 +15,7 @@ Set Default Proof Using "Type".
 
 #[export] Unset Program Cases.
 #[export] Set Keyed Unification.
+#[export] Unset Automatic Proposition Inductives.
 
 #[export] Set Default Goal Selector "!".
 
