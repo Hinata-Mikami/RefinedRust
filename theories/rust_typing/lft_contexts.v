@@ -14,8 +14,6 @@ Set Default Proof Using "Type".
 
 (* TODO: Waiting for changes within LambdaRust *)
 Section LambdaRust.
-  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
-
   Global Declare Instance lft_eqdecision: EqDecision lft.
   Global Declare Instance lft_countable: Countable lft.
 End LambdaRust.
@@ -1125,7 +1123,7 @@ Section lft_contexts.
     iInv "LCTX" as "(%M & %M' & >Hauth_name & >Hauth_decomp & >%Hdom)" "Hcl".
     set (κ' := lft_intersect_list κs ⊓ κex).
     set (P := startlft_choose_pred (dom M) κ').
-    iMod (lft_create_strong P with "LFT") as "(%i & %Hfresh & Htok & Hkill)";
+    iMod (lft_create_strong P with "LFT") as "(%i & %Hfresh & Htok)";
       [apply startlft_choose_pred_infinite | solve_ndisj | ].
     set (κ := positive_to_lft i ⊓ κ').
     assert (M !! κ = None) as Hfresh'.
@@ -1151,10 +1149,12 @@ Section lft_contexts.
     iMod ("Hcl" with "[Hauth_name Hauth_decomp]") as "_".
     { iExists _, _. iFrame. rewrite !dom_insert_L Hdom. done. }
     iModIntro. iExists κ.
-    iSplitL "Hkill Hfrac".
+    iSplitL "Hfrac".
     { iExists γfrac. iFrame "# Hfrac".
-      iSplitR; last done.
-      by rewrite [_ ⊓ positive_to_lft _]lft_intersect_comm -lft_intersect_assoc.
+      (*iMod (lft_kill_atomic)*)
+      iSplitR.
+      { by rewrite [_ ⊓ positive_to_lft _]lft_intersect_comm -lft_intersect_assoc. }
+      iPoseProof (lft_kill_atomic with "LFT") as "#Ha". iApply "Ha".
     }
     iSplitR.
     { iPureIntro. subst κ κ'.

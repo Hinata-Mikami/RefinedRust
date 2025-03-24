@@ -49,13 +49,13 @@
         version = coq.pkgs.coq.coq-version;
 
         stdpp = {
-          version = "coq-stdpp-1.11.0";
-          sha256 = "sha256-yqnkaA5gUdZBJZ3JnvPYh11vKQRl0BAnior1yGowG7k=";
+          version = "9b19c60ce8fb8ccc518b5ecdbf025642afab7835";
+          sha256 = "sha256-BJ3nmS//EQFaU4kaJsUTZ9MO5zw3V3aoCPB62I0h/OI=";
         };
 
         iris = {
-          version = "iris-4.3.0";
-          sha256 = "sha256-3qhjiFI+A3I3fD8rFfJL5Hek77wScfn/FNNbDyGqA1k=";
+          version = "8a8f05fb7de603d25df5797d1ba5a0efb2cbc658";
+          sha256 = "sha256-Ypffk0cnhKRODRQylsP3/kyRQ2dSMOJ1sCkA/v89z34=";
         };
 
         lambda-rust = {
