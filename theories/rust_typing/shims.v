@@ -57,9 +57,9 @@ Proof.
   rewrite /bits_per_byte/=.
   assert ((2 ^ ly_align_log ly) ≤ 2 ^ (8%nat * 8))%nat as Hle.
   { apply Nat2Z.inj_le. etrans; first apply Hb.
-    rewrite Nat2Z.inj_pow. clear. nia.
+    rewrite Nat2Z.inj_pow. nia.
   }
-  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; [| clear; lia ].
+  apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; [| lia ].
   nia.
 Qed.
 Lemma ly_align_log_in_usize ly :
