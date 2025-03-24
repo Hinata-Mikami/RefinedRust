@@ -18,13 +18,6 @@ Section LambdaRust.
 
   Global Declare Instance lft_eqdecision: EqDecision lft.
   Global Declare Instance lft_countable: Countable lft.
-
-  Parameter lft_fresh_strong : ∀ κ κ', ∃ i : positive, ∀ m : positive, (i < m)%positive → (positive_to_lft m) ⊓ κ' ≠ κ.
-  Parameter lft_create_strong : ∀ P E, pred_infinite P → ↑lftN ⊆ E →
-    lft_ctx ={E}=∗
-      ∃ p : positive, let κ := positive_to_lft p in ⌜P p⌝ ∗
-       (1).[κ] ∗ □ ((1).[κ] ={↑lftN ∪ lft_userE}[lft_userE]▷=∗ [†κ]).
-
 End LambdaRust.
 
 
@@ -1031,7 +1024,7 @@ Section lft_contexts.
     generalize (elements M) as l.
     induction l as [ | κ l IH].
     - exists 1%positive. intros m ? []%elem_of_nil.
-    - destruct IH as (i & IH). destruct (lft_fresh_strong κ κ') as (i' & Hi).
+    - destruct IH as (i & IH). destruct (lft_fresh κ κ') as (i' & Hi).
       exists (Pos.max i i'). intros m Hlt [ | ]%elem_of_cons.
       + eapply Hi; last done. lia.
       + eapply IH; last done. lia.
