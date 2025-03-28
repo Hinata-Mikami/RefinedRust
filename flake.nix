@@ -59,8 +59,8 @@
         };
 
         lambda-rust = {
-          version = "f55b9243fe4c0f6e2ed2649819b2e447ede2b5e9";
-          sha256 = "sha256-6nc48FCuIWFEln9qpjgpvPuz1Ez79xJJPHI1SshwQ9M=";
+          version = "74bdf4e8a67147232f0a80ab6f648c20503a76bb";
+          sha256 = "sha256-cq5eroG13wnfbFGGLuqCm+9425ZmPaboj7CZaPBx35g=";
         };
       };
 

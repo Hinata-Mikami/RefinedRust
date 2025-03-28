@@ -12,14 +12,6 @@ Set Default Proof Using "Type".
 
 (** * Lifetime contexts for keeping track of which lifetimes are alive *)
 
-(* TODO: Waiting for changes within LambdaRust *)
-Section LambdaRust.
-  Global Declare Instance lft_eqdecision: EqDecision lft.
-  Global Declare Instance lft_countable: Countable lft.
-End LambdaRust.
-
-
-
 Class lctxGS Σ := LctxGS {
   (* maps local lifetime names to their corresponding ghost name *)
   lctx_name_inG :: ghost_mapG Σ lft gname;
