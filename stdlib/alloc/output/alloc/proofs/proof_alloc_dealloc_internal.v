@@ -25,7 +25,7 @@ Proof.
   iDestruct "Halign_log2" as "[%Halign_log2 _]".
 
   rewrite /typed_stmt.
-  iIntros (?) "#CTX #HE HL Hna Hcont".
+  iIntros (?) "#CTX #HE HL Hcont".
   rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
   set (ly := Layout (Z.to_nat size) (Z.to_nat align_log2)).
   iDestruct "Hptr" as "(%ly' & %Hst & %Hly & _ & #Hlb & _ & %r' & <- & Hb)".
@@ -45,7 +45,7 @@ Proof.
     destruct ((Z.to_nat size)) eqn:Heq; first lia. done. }
   iIntros "!> Hcred".
 
-  to_typed_stmt "CTX HE HL Hna Hcont".
+  to_typed_stmt "CTX HE HL Hcont".
   (* TODO *)
   instantiate (1 := ϝ).
   repeat liRStep; liShow.

@@ -15,19 +15,19 @@ Proof.
   repeat liRStep. liShow.
   (* EraseProv *)
   rewrite /typed_un_op/typed_val_expr.
-  iIntros "Hv" (Φ) "#CTX #HE HL Hna Hcont".
+  iIntros "Hv" (Φ) "#CTX #HE HL Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv" as %[Hv Hsz].
   iApply wp_erase_prov.
   { rewrite /has_layout_val. erewrite (val_to_Z_ot_length _ (IntOp usize_t)); done. }
-  iApply  ("Hcont" $! _ _ _ (int usize_t) _ with "HL Hna []").
+  iApply  ("Hcont" $! _ π _ _ (int usize_t) _ with "HL []").
   { rewrite /ty_own_val/=. iSplit; last done. iPureIntro. by apply val_to_Z_erase_prov. }
 
-  iIntros "Hv" (Φ') "_ _ HL Hna Hcont".
+  iIntros "Hv" (Φ') "_ _ HL Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv" as %[Hv' _].
   iApply wp_cast_int_ptr_prov_none; [done | done | done | | done | ].
   { apply val_to_byte_prov_erase_prov. }
   iIntros "!> Hl Hcred".
-  iApply ("Hcont" $! _ _ _ (alias_ptr_t) _ with "HL Hna").
+  iApply ("Hcont" $! _ π _ _ (alias_ptr_t) _ with "HL").
   { rewrite /ty_own_val /=. done. }
   iAssert (val_of_loc (ProvAlloc None, addr : caesium.loc.addr) ◁ᵥ{π} (ProvAlloc None, addr : caesium.loc.addr) @ alias_ptr_t)%I as "?".
   { rewrite /ty_own_val /= //. }
@@ -39,7 +39,7 @@ Proof.
       destruct caesium_config.enforce_alignment; last done.
       eapply Z.divide_1_l. }
     iSplitR; first done.
-    iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
     iSplitR; first done. iSplitR; first done.
     iExists (). iSplitR; first done.
     iModIntro. iExists []. iFrame. rewrite /ty_own_val /= //. }

@@ -577,7 +577,7 @@ Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id →
 
 Definition fn_spec_add_linking_condition `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) (ectx : lft → elctx) : fn_spec :=
   fn_spec_add_late_pre (fn_spec_add_elctx ectx S) pre.
-  
+
 
 (** Notation to get the params of a function type.
   The function type might be parametric in some [syn_type]s.
@@ -889,68 +889,68 @@ Section function_subsume.
   Qed.
 
   (* We can lift additional preconditions over the inclusion, needed for trait incl requirements. *)
-  Lemma function_subtype_lift_late_pre_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) `{!∀ π, Persistent (P π)} : 
+  Lemma function_subtype_lift_late_pre_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) `{!∀ π, Persistent (P π)} :
     function_subtype (lfts:= 0) (rts:=[]) (λ '*[] '*[], S1) (λ '*[] '*[], S2) →
     function_subtype (lfts:=0) (rts:=[]) (λ '*[] '*[], fn_spec_add_late_pre S1 P) (λ '*[] '*[], fn_spec_add_late_pre S2 P).
   Proof.
-    intros Hsub. 
+    intros Hsub.
     iIntros (π fn sts Heq1 Heq2 [] []).
     iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
     iIntros "#HT". iSplitL; last done.
     iEval (unfold typed_function).
-    iIntros ([] [] x ϝ); simpl. 
-    iModIntro. iIntros (????) "(Hs & Ha & Hl & [Hsc #HP] & Hpre)".
-    iDestruct ("Hsub" with "[]") as "(Hsub' & _)". 
+    iIntros ([] [] x ϝ); simpl.
+    iModIntro. iIntros (????) "(Hs & Hna & Ha & Hl & [Hsc #HP] & Hpre)".
+    iDestruct ("Hsub" with "[]") as "(Hsub' & _)".
     { clear. iEval (rewrite /typed_function).
-      iIntros ([] []). simpl. iIntros (x ϝ). 
+      iIntros ([] []). simpl. iIntros (x ϝ).
       iModIntro. iIntros (?? ??).
-      iIntros "(? & ? & ? & ? & ?)".
+      iIntros "(? & ? & ? & ? & ? & ?)".
       iEval (rewrite /typed_function) in "HT".
       iApply ("HT" $! *[] *[] x ϝ); [done.. | ].
       iFrame "∗ #". }
-    simpl. 
+    simpl.
     iEval (rewrite /typed_function) in "Hsub'".
     iSpecialize ("Hsub'" $! *[] *[]).
-    simpl. 
+    simpl.
     iApply "Hsub'"; last iFrame; done.
   Qed.
-  Lemma function_subtype_lift_linking_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) (E : lft → elctx) `{!∀ π, Persistent (P π)} : 
+  Lemma function_subtype_lift_linking_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) (E : lft → elctx) `{!∀ π, Persistent (P π)} :
     function_subtype (lfts:= 0) (rts:=[]) (λ '*[] '*[], S1) (λ '*[] '*[], S2) →
-    function_subtype (lfts:=0) (rts:=[]) 
+    function_subtype (lfts:=0) (rts:=[])
       (λ '*[] '*[], fn_spec_add_linking_condition S1 P E) (λ '*[] '*[], fn_spec_add_linking_condition S2 P E).
   Proof.
-    intros Hsub. 
+    intros Hsub.
     iIntros (π fn sts Heq1 Heq2 [] []).
     iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
     iIntros "#HT". iSplitL; last done.
     iEval (unfold typed_function).
-    iIntros ([] [] x ϝ); simpl. 
-    iModIntro. iIntros (????) "(Hs & Ha & Hl & [Hsc #HP] & Hpre)".
-    iDestruct ("Hsub" with "[]") as "(Hsub' & _)". 
+    iIntros ([] [] x ϝ); simpl.
+    iModIntro. iIntros (????) "(Hs & Hna & Ha & Hl & [Hsc #HP] & Hpre)".
+    iDestruct ("Hsub" with "[]") as "(Hsub' & _)".
     { clear. iEval (rewrite /typed_function).
-      iIntros ([] []). simpl. iIntros (x ϝ). 
+      iIntros ([] []). simpl. iIntros (x ϝ).
       iModIntro. iIntros (?? ??).
-      iIntros "(? & ? & ? & ? & ?)".
+      iIntros "(? & ? & ? & ? & ? & ?)".
       iEval (rewrite /typed_function) in "HT".
       simpl.
-      
-      (* 
-         What is happening here? 
+
+      (*
+         What is happening here?
          - I guess this doesn't work. The problem is that the elctx of what I prove up there is different.
            This influences other stuff. I don't know how to deal with that.
            I cannot just lift that out.
-           So how does the specialization here work then? 
+           So how does the specialization here work then?
          - Maybe I should handle these lifetime constraints differently.
-           Why do they arise? 
+           Why do they arise?
            If I partially specialize, the original constraints probably always imply the new ones.
            i.e., stuff is nicely recursive. But I should check that this is indeed the case.
-           What are the fundamental constraints I need? 
-           + 
+           What are the fundamental constraints I need?
+           +
          TODO look at an example.
-         - 
+         -
 
          Constraints I need:
-         - all the 
+         - all the
 
          Every function is verified against an actual polymorphic specification.
          This verification assumes that the subjective polymorphic context is well-formed.
@@ -960,13 +960,13 @@ Section function_subsume.
 
          When I call the function, I need to ensure that this is true.
 
-         If I verify a function with a specialized trait spec (i.e. an impl): 
+         If I verify a function with a specialized trait spec (i.e. an impl):
          - I might verify against more specific parameters. I should use these more specific parameters.
-           + If I bake it into the specification, what I assume might be too weak or too strong. Or maybe not? If I impl trait for &'a &'b T, then maybe also the well-formedness for that should be included in our contract 
-            Q: does 'a subset 'b become a constraint that also materializes in the translation anyways? Currently not. If I 
-           + 
+           + If I bake it into the specification, what I assume might be too weak or too strong. Or maybe not? If I impl trait for &'a &'b T, then maybe also the well-formedness for that should be included in our contract
+            Q: does 'a subset 'b become a constraint that also materializes in the translation anyways? Currently not. If I
+           +
          - How do I ensure that these are actually satisfied then?
-           + If baked into the spec, then all is good. 
+           + If baked into the spec, then all is good.
            + I could add constraints at linktime. Then the verification has to assume exactly these constraints.
              Also, I have a problem with the way I handle trait inclusions then, as evidenced by this lemma not working.
 

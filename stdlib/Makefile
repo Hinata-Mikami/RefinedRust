@@ -10,7 +10,7 @@ generate_stdlib: $(STDLIB:=.crate)
 
 #clean_stdlib: $(STDLIB:=.clean)
 clean_stdlib:
-	@for dir in $(shell find . -maxdepth 1 -type d -print); do \
+	@for dir in $(shell find . -mindepth 1 -maxdepth 1 -type d -print); do \
 		(cd $$dir && cargo clean); \
 	done
 

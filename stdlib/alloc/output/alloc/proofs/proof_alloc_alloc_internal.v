@@ -22,7 +22,7 @@ Proof.
   rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "[%Hsize _]".
   iDestruct "Halign_log2" as "[%Halign_log2 _]".
   rewrite /typed_val_expr.
-  iIntros (Φ) "#CTX HE HL Hna Hcont".
+  iIntros (Φ) "#CTX HE HL Hcont".
   iApply (wp_alloc _ _ _ _ (Z.to_nat size) (Z.to_nat align_log2)).
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
@@ -30,7 +30,7 @@ Proof.
     apply val_to_Z_unsigned_nonneg in Halign_log2; last done. lia. }
   { lia. }
   iIntros "!>" (l) "Hl Hf %Hly Hcred".
-  iApply ("Hcont" $! _ _ _ (alias_ptr_t) l with "HL Hna []").
+  iApply ("Hcont" $! _ π _  _ (alias_ptr_t) l with "HL []").
   { rewrite /ty_own_val /=. done. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
   iAssert (l ◁ₗ[π, Owned false] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
@@ -39,12 +39,12 @@ Proof.
     { solve_layout_alg. }
     iExists ly. simpl. iSplitR; first done.
     iSplitR; first done. iSplitR; first done.
-    iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
-    iSplitR. { rewrite replicate_length /ly /ly_size /=. done. }
+    iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+    iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
     iSplitR; first done.
     iExists tt. iSplitR; first done.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iExists ly.
-    iSplitR; first done. iPureIntro. rewrite /has_layout_val replicate_length /ly /ly_size //. }
+    iSplitR; first done. iPureIntro. rewrite /has_layout_val length_replicate /ly /ly_size //. }
 
   iRevert "Hf".
 

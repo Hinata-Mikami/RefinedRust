@@ -132,7 +132,7 @@ Proof.
   Unshelve. all: sidecond_hammer.
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/u8/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/u8/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
-  { rewrite /has_layout_val drop_length/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
+  { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
 Qed.
 
 
@@ -239,12 +239,12 @@ Proof.
     repeat liRStep.
   - (* non-zero branch, do the allocation *)
     rewrite /typed_val_expr.
-    iIntros (?) "#CTX #HE HL Hna Hcont".
+    iIntros (?) "#CTX #HE HL Hcont".
     rewrite /Box.
     unfold_no_enrich. inv_layout_alg.
     match goal with | H: Z.of_nat (ly_size ?Hly) ≠ 0%Z |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ usize_t by done.
-    efeed pose proof (ly_align_log_in_usize T_st_ly) as Ha; first done.
+    opose proof* (ly_align_log_in_usize T_st_ly) as Ha; first done.
     move: Ha. rewrite int_elem_of_it_iff int_elem_of_it_iff.
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
@@ -260,16 +260,16 @@ Proof.
     iEval (rewrite (additive_time_receipt_succ 1)) in "Hat".
     iDestruct "Hat" as "[Hat1 Hat]".
     iPoseProof ("Hstore" with "Hat1") as "Hstore".
-    iApply ("Hcont" $! _ _ _ (box (uninit (ty_syn_type T))) (PlaceIn ()) with "HL Hna [Hfree Hl Hcred Hat]").
+    iApply ("Hcont" $! _ π _ _ (box (uninit (ty_syn_type T))) (# ()) with "HL [Hfree Hl Hcred Hat]").
     { iExists _, _. iSplitR; first done. iSplitR; first done.
       match goal with | H : CACHED (use_layout_alg (ty_syn_type T) = Some ?ly) |- _ => rename ly into T_ly; rename H into H_T end.
       iR.
-      iPoseProof (heap_mapsto_loc_in_bounds with "Hl") as "#Hlb".
-      rewrite replicate_length. iFrame "Hlb". simpl. iSplitR; first done. iFrame.
+      iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+      rewrite length_replicate. iFrame "Hlb". simpl. iSplitR; first done. iFrame.
       iSplitL "Hfree". { by iApply freeable_freeable_nz. }
       iExists (). iSplitR; first done. iNext. iModIntro.
-      iExists _. iFrame. rewrite uninit_own_spec. iExists T_ly.
-      iSplitR; first done. rewrite /has_layout_val replicate_length //. }
+      rewrite uninit_own_spec. iExists T_ly.
+      iSplitR; first done. rewrite /has_layout_val length_replicate //. }
     iSplitR; first done.
     repeat liRStep; liShow.
 
@@ -664,7 +664,7 @@ Proof.
   typed_val_expr_bind.
   repeat liRStep; liShow.
   rewrite /typed_val_expr.
-  iIntros (?) "#CTX #HE HL Hna HC".
+  iIntros (?) "#CTX #HE HL HC".
   iRename select (_ ◁ᵥ{_} size @ int usize_t)%I into "Hv1".
   iRename select (_ ◁ᵥ{_} ly_size T_st_ly @ int usize_t)%I into "Hv2".
   iPoseProof (ty_own_int_in_range with "Hv1") as "%Hsz". destruct Hsz.
@@ -676,7 +676,7 @@ Proof.
   { simpl. rewrite /check_arith_bin_op. simpl. f_equiv.
     rewrite /elem_of/int_elem_of_it/int_elem_of_it' MinInt_eq MaxInt_eq//. }
   iNext. iIntros "_".
-  iApply ("HC" $! _ _ _ (bool_t) with "HL Hna"). { iApply type_val_bool'. }
+  iApply ("HC" $! _ π _ _ (bool_t) with "HL"). { iApply type_val_bool'. }
 
   repeat liRStep.
 

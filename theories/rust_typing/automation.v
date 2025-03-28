@@ -347,7 +347,7 @@ Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
                        | (_, _, _, wrap_inv ?inv, _) => uconstr:(inv)
                        end
   in
-  let llctx_inv := match inv with
+  let llctx_inv := match Inv with
                    | (_, _, _, _, wrap_inv ?inv) => uconstr:(inv)
                    end
   in

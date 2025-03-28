@@ -48,7 +48,7 @@ Proof.
     arg_arg_dst ◁ₗ[π, Owned false] #dst @ (◁ alias_ptr_t) ∗
     src ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
     dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
-  iApply (typed_goto_acc _ _ _ _ _ loop_inv).
+  iApply (typed_goto_acc _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   liRStep; liShow. iExists 0%nat.
   repeat liRStep; liShow.
@@ -61,7 +61,7 @@ Proof.
   iPoseProof (ofty_value_untyped_from_array with "Hs") as "Hs".
   { rewrite Hlen_s ly_size_mk_array_layout. lia. }
   iPoseProof (ofty_value_untyped_from_array with "Ht") as "Ht".
-  { rewrite app_length take_length drop_length. rewrite Hlen_t Hlen_s !ly_size_mk_array_layout. lia. }
+  { rewrite length_app length_take length_drop. rewrite Hlen_t Hlen_s !ly_size_mk_array_layout. lia. }
 
   iApply typed_stmt_annot_skip.
   repeat liRStep; liShow.
@@ -72,9 +72,9 @@ Proof.
 
   + cbn. rewrite -list_fmap_insert.
     rewrite insert_app_r_alt; first last.
-    { rewrite take_length. lia. }
-    rewrite take_length reshape_length.
-    rewrite Nat.min_l; first last. { rewrite replicate_length. lia. }
+    { rewrite length_take. lia. }
+    rewrite length_take length_reshape.
+    rewrite Nat.min_l; first last. { rewrite length_replicate. lia. }
     rewrite Nat.sub_diag.
     f_equiv.
     rename select (reshape _ vs !! i = Some _) into Hlook.
@@ -84,17 +84,17 @@ Proof.
     erewrite take_S_r; last done.
     rewrite -app_assoc.
     f_equiv.
-    rewrite insert_take_drop; first last. { rewrite drop_length reshape_length replicate_length. lia. }
+    rewrite insert_take_drop; first last. { rewrite length_drop length_reshape length_replicate. lia. }
     rewrite take_0 drop_drop. rewrite Nat.add_1_r. done.
   + rewrite take_ge; last solve_goal with nia.
     rewrite drop_ge; last solve_goal with nia.
     by rewrite app_nil_r.
-  + rewrite  drop_ge; first last. { rewrite reshape_length replicate_length. lia. }
+  + rewrite  drop_ge; first last. { rewrite length_reshape length_replicate. lia. }
     rewrite app_nil_r.
     rewrite drop_ge; first last. { solve_goal with nia. }
     rewrite app_nil_r.
     assert (Z.to_nat size ≤ i) as Hle by lia. clear -Hle Hlen_s.
-    rewrite take_ge. 2: { rewrite reshape_length replicate_length. lia. }
+    rewrite take_ge. 2: { rewrite length_reshape length_replicate. lia. }
     rewrite take_ge; first done.
     rewrite Hlen_s /mk_array_layout{1}/ly_size/=. nia.
 
