@@ -8,6 +8,7 @@
 #![rr::import("stdlib.rr_internal.theories", "shims")]
 
 #![rr::include("ptr")]
+#![rr::include("alloc")]
 #![allow(unused)]
 
 use std::alloc;
