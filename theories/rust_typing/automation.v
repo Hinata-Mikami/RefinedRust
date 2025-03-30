@@ -476,9 +476,9 @@ Ltac liRGoto goto_bb :=
             (* pose the composed loop invariant *)
             string_to_ident_cps goto_bb ltac:(fun bb_ident =>
             let Hinv := fresh "Hinv_" bb_ident in
-            pose_loop_invariant Hinv fn inv Δ E L;
+            pose_loop_invariant Hinv fn Inv Δ E L;
             (* finally initiate Löb *)
-            notypeclasses refine (tac_fast_apply (typed_goto_acc _ _ _ _ _ Hinv goto_bb _ _ _) _);
+            notypeclasses refine (tac_fast_apply (typed_goto_acc E L fn R Hinv goto_bb ϝ _ _) _);
               [unfold_code_marker_and_compute_map_lookup| unfold Hinv; clear Hinv ]
             )
         end
