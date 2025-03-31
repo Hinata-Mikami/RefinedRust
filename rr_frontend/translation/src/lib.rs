@@ -1670,7 +1670,7 @@ where
         };
 
         let f = File::open(p).map_err(|e| e.to_string())?;
-        shim_registry.add_source(f)?;
+        shim_registry.add_source(f).map_err(|e| e.to_string())?;
     }
 
     // register shims from the shim config
@@ -1678,7 +1678,7 @@ where
         None => (),
         Some(file) => {
             let f = File::open(file).map_err(|a| a.to_string())?;
-            shim_registry.add_source(f)?;
+            shim_registry.add_source(f).map_err(|e| e.to_string())?;
         },
     }
 

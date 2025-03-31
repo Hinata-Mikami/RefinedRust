@@ -10,8 +10,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter};
 
+use derive_more::{Display, From};
 use log::info;
 use radium::coq;
 use serde::{Deserialize, Serialize};
@@ -256,6 +257,26 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
     }
 }
 
+#[derive(Debug, From, Display)]
+pub enum Error {
+    #[from]
+    #[display("Deserialization error: {:?}", _0)]
+    Deserialize(serde_json::Error),
+    #[display("Missing field: {}", _0)]
+    MissingField(String),
+    #[from]
+    #[display("IO error: {:?}", _0)]
+    Io(io::Error),
+    #[display("Expected type {} for attribute {}", attribute, expected)]
+    Type { attribute: String, expected: String },
+    #[display("Missing attribute: {}", _0)]
+    MissingAttribute(String),
+    #[display("Not an object")]
+    NotAnObject,
+    #[display("Unknown shim kind: {}", _0)]
+    UnknownShimKind(String),
+}
+
 /// Registry of function shims loaded by the user. Substitutes path to the function/method with a
 /// code definition name and a spec name.
 pub struct SR<'a> {
@@ -284,10 +305,13 @@ pub struct SR<'a> {
 }
 
 impl<'a> SR<'a> {
-    fn get_shim_kind(v: &serde_json::Value) -> Result<ShimKind, String> {
-        let obj = v.as_object().ok_or_else(|| "element is not an object".to_owned())?;
-        let vk = obj.get("kind").ok_or_else(|| "object does not have \"kind\" attribute".to_owned())?;
-        let kind_str = vk.as_str().ok_or_else(|| "\"kind\" attribute is not a string".to_owned())?;
+    fn get_shim_kind(v: &serde_json::Value) -> Result<ShimKind, Error> {
+        let obj = v.as_object().ok_or_else(|| Error::NotAnObject)?;
+        let vk = obj.get("kind").ok_or_else(|| Error::MissingField("kind".to_owned()))?;
+        let kind_str = vk.as_str().ok_or_else(|| Error::Type {
+            attribute: "kind".to_owned(),
+            expected: "str".to_owned(),
+        })?;
 
         match kind_str {
             "function" => Ok(ShimKind::Function),
@@ -296,7 +320,7 @@ impl<'a> SR<'a> {
             "trait" => Ok(ShimKind::Trait),
             "trait_method" => Ok(ShimKind::TraitMethod),
             "trait_impl" => Ok(ShimKind::TraitImpl),
-            k => Err(format!("unknown kind {:?}", k)),
+            k => Err(Error::UnknownShimKind(k.to_owned())),
         }
     }
 
@@ -322,13 +346,13 @@ impl<'a> SR<'a> {
         }
     }
 
-    pub fn new(arena: &'a Arena<String>) -> Result<SR<'a>, String> {
+    pub fn new(arena: &'a Arena<String>) -> Result<SR<'a>, Error> {
         let mut reg = Self::empty(arena);
 
         match rrconfig::shim_file() {
             None => (),
             Some(file) => {
-                let f = File::open(file).map_err(|a| a.to_string())?;
+                let f = File::open(file)?;
                 reg.add_source(f)?;
             },
         }
@@ -336,56 +360,78 @@ impl<'a> SR<'a> {
         Ok(reg)
     }
 
-    pub fn add_source(&mut self, f: File) -> Result<(), String> {
+    pub fn add_source(&mut self, f: File) -> Result<(), Error> {
+        info!("Adding file {f:?}");
         let reader = BufReader::new(f);
-        let deser: serde_json::Value = serde_json::from_reader(reader).unwrap();
+        let deser: serde_json::Value = serde_json::from_reader(reader)?;
 
         // We support both directly giving the items array, or also specifying a path to import
         let v = match deser {
             serde_json::Value::Object(obj) => {
                 let path = obj
                     .get("refinedrust_path")
-                    .ok_or_else(|| "Missing attribute \"refinedrust_path\"".to_owned())?
+                    .ok_or_else(|| Error::MissingAttribute("refinedrust_path".to_owned()))?
                     .as_str()
-                    .ok_or_else(|| "Expected string for \"refinedrust_path\" attribute".to_owned())?;
+                    .ok_or_else(|| Error::Type {
+                        attribute: "refinedrust_path".to_owned(),
+                        expected: "str".to_owned(),
+                    })?;
 
                 let module = obj
                     .get("refinedrust_module")
-                    .ok_or_else(|| "Missing attribute \"refinedrust_module\"".to_owned())?
+                    .ok_or_else(|| Error::MissingAttribute("refinedrust_module".to_owned()))?
                     .as_str()
-                    .ok_or_else(|| "Expected string for \"refinedrust_module\" attribute".to_owned())?;
+                    .ok_or_else(|| Error::Type {
+                        attribute: "refinedrust_module".to_owned(),
+                        expected: "str".to_owned(),
+                    })?;
 
                 obj.get("refinedrust_name")
-                    .ok_or_else(|| "Missing attribute \"refinedrust_name\"".to_owned())?
+                    .ok_or_else(|| Error::MissingAttribute("refinedrust_name".to_owned()))?
                     .as_str()
-                    .ok_or_else(|| "Expected string for \"refinedrust_name\" attribute".to_owned())?;
+                    .ok_or_else(|| Error::Type {
+                        attribute: "refinedrust_name".to_owned(),
+                        expected: "str".to_owned(),
+                    })?;
 
                 self.exports.push(coq::module::Export::new(vec![module]).from(vec![path]));
 
                 let dependencies = obj
                     .get("module_dependencies")
-                    .ok_or_else(|| "Missing attribute \"module_dependencies\"".to_owned())?
+                    .ok_or_else(|| Error::MissingAttribute("module_dependencies".to_owned()))?
                     .as_array()
-                    .ok_or_else(|| "Expected array for \"module_dependencies\" attribute".to_owned())?;
+                    .ok_or_else(|| Error::Type {
+                        attribute: "module_dependencies".to_owned(),
+                        expected: "array".to_owned(),
+                    })?;
 
                 for dependency in dependencies {
-                    let path = dependency.as_str().ok_or_else(|| {
-                        "Expected string for element of \"module_dependencies\" array".to_owned()
+                    let path = dependency.as_str().ok_or_else(|| Error::Type {
+                        attribute: "element of module_dependencies".to_owned(),
+                        expected: "str".to_owned(),
                     })?;
 
                     self.dependencies.push(coq::module::DirPath::from(vec![path]));
                 }
 
                 obj.get("items")
-                    .ok_or_else(|| "Missing attribute \"items\"".to_owned())?
+                    .ok_or_else(|| Error::MissingAttribute("items".to_owned()))?
                     .as_array()
-                    .ok_or_else(|| "Expected array for \"items\" attribute".to_owned())?
+                    .ok_or_else(|| Error::Type {
+                        attribute: "items".to_owned(),
+                        expected: "array".to_owned(),
+                    })?
                     .clone()
             },
 
             serde_json::Value::Array(arr) => arr,
 
-            _ => return Err("invalid Json format".to_owned()),
+            _ => {
+                return Err(Error::Type {
+                    attribute: String::new(),
+                    expected: "array or object".to_owned(),
+                });
+            },
         };
 
         for i in v {
@@ -393,7 +439,7 @@ impl<'a> SR<'a> {
 
             match kind {
                 ShimKind::Adt => {
-                    let b: ShimAdtEntry = serde_json::value::from_value(i).map_err(|e| e.to_string())?;
+                    let b: ShimAdtEntry = serde_json::value::from_value(i)?;
                     let path = self.intern_path(b.path);
                     let entry = AdtShim {
                         path,
@@ -405,7 +451,7 @@ impl<'a> SR<'a> {
                     self.adt_shims.push(entry);
                 },
                 ShimKind::Function | ShimKind::Method => {
-                    let b: ShimFunctionEntry = serde_json::value::from_value(i).map_err(|e| e.to_string())?;
+                    let b: ShimFunctionEntry = serde_json::value::from_value(i)?;
                     let path = self.intern_path(b.path);
                     let entry = FunctionShim {
                         path,
@@ -418,8 +464,7 @@ impl<'a> SR<'a> {
                     self.function_shims.push(entry);
                 },
                 ShimKind::TraitMethod => {
-                    let b: ShimTraitMethodImplEntry =
-                        serde_json::value::from_value(i).map_err(|e| e.to_string())?;
+                    let b: ShimTraitMethodImplEntry = serde_json::value::from_value(i)?;
                     let entry = TraitMethodImplShim {
                         trait_path: b.trait_path,
                         method_ident: b.method_ident,
@@ -431,8 +476,7 @@ impl<'a> SR<'a> {
                     self.trait_method_shims.push(entry);
                 },
                 ShimKind::TraitImpl => {
-                    let b: ShimTraitImplEntry =
-                        serde_json::value::from_value(i).map_err(|e| e.to_string())?;
+                    let b: ShimTraitImplEntry = serde_json::value::from_value(i)?;
                     let entry = TraitImplShim {
                         trait_path: b.trait_path,
                         for_type: b.for_type,
@@ -447,7 +491,7 @@ impl<'a> SR<'a> {
                     self.trait_impl_shims.push(entry);
                 },
                 ShimKind::Trait => {
-                    let b: ShimTraitEntry = serde_json::value::from_value(i).map_err(|e| e.to_string())?;
+                    let b: ShimTraitEntry = serde_json::value::from_value(i)?;
                     let entry = TraitShim {
                         path: self.intern_path(b.path),
                         name: b.name,

@@ -38,6 +38,22 @@ pub const fn read<T>(src: *const T) -> T {
     unimplemented!();
 }
 
+#[rr::export_as(core::ptr::write_volatile)]
+#[rr::requires(#type "dst" : "()" @ "uninit {st_of T}")]
+#[rr::ensures(#type "dst" : "$# src" @ "{ty_of T}")]
+pub const fn write_volatile<T>(dst: *mut T, src:T) {
+    write(dst, src)
+}
+
+#[rr::export_as(core::ptr::read_volatile)]
+#[rr::params("r")]
+#[rr::requires(#type "src" : "$# r" @ "{ty_of T}")]
+#[rr::returns("r")]
+#[rr::ensures(#type "src" : "()" @ "uninit {st_of T}")]
+pub const fn read_volatile<T>(src: *const T) -> T {
+    read(src)
+}
+
 // TODO: replaced in newer Rust versions by `without_provenance`
 #[rr::export_as(core::ptr::invalid)]
 #[rr::code_shim("ptr_invalid")]
