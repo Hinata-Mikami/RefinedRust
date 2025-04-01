@@ -2493,6 +2493,23 @@ Lemma wps_return Q Ψ v:
   Ψ v -∗ WPs (Return (Val v)) {{ Q , Ψ }}.
 Proof. rewrite stmt_wp_unfold. iIntros "Hb" (? rf ?) "HΨ". by iApply "HΨ". Qed.
 
+Lemma wps_goto_credits Q Ψ b s n m:
+  Q !! b = Some s →
+  time_ctx -∗ atime n -∗ ptime m -∗
+  (|={⊤}[∅]▷=> (£(1+num_laters_per_step(n+m)) -∗ atime (S n) -∗ WPs s {{ Q, Ψ }})) -∗
+  WPs Goto b {{ Q , Ψ }}.
+Proof.
+  iIntros (Hs) "#TIME Hat Hpt HWP". rewrite !stmt_wp_unfold. iIntros (???) "?". subst.
+  iApply (wp_lift_stmt_step_fupd_credits with "TIME Hat Hpt"); first done .
+  iIntros (?) "Hσ".
+  iMod ("HWP") as "HWP". iModIntro.
+  iSplit; first by eauto 10 using GotoS.
+  iIntros (???? Hstep ?) "Hcred Hat !> !>".
+  iMod ("HWP"). iSpecialize ("HWP" with "Hcred Hat").
+  inv_stmt_step. iModIntro.
+  iSplit; first done. iFrame. by iApply ("HWP").
+Qed.
+
 Lemma wps_goto Q Ψ b s:
   Q !! b = Some s →
   ▷ (£1 -∗ WPs s {{ Q, Ψ }}) -∗ WPs Goto b {{ Q , Ψ }}.

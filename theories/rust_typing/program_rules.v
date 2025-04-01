@@ -3276,13 +3276,17 @@ Section typing.
   (* This is not in Lithium goal shape, but that's fine since it is only manually applied by automation. *)
   Lemma type_goto_precond E L P b fn R ϝ :
     (* TODO maybe we should also stratify? *)
-    typed_block P b fn R ϝ ∗ prove_with_subtype E L false ProveDirect (P E L) (λ L' _ R, R -∗⌜L = L'⌝ ∗ True (* TODO maybe relax *))
+    typed_block P b fn R ϝ ∗ prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R,
+      ⌜L = L'⌝ ∗ True (* TODO maybe relax *))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros "(Hblock & Hsubt)". iIntros (?) "#CTX #HE HL Hcont".
-    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & >(HP & HR2) & HL & HT)"; [done.. | ].
-    iDestruct ("HT" with "HR2") as "(<- & _)".
-    by iApply ("Hblock" with "CTX HE HL HP").
+    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & HP & HL & HT)"; [done.. | ].
+    simpl.
+    iDestruct ("HT") as "(<- & _)".
+    iSpecialize ("Hblock" with "CTX HE HL [HP]").
+    { iApply (logical_step_wand with "HP"). iIntros "($ & _)". }
+    by iApply "Hblock".
   Qed.
 
   Lemma typed_block_rec fn R P b ϝ s :
@@ -3292,7 +3296,17 @@ Section typing.
   Proof.
     iIntros (Hs) "#Hb". iLöb as "IH".
     iIntros (? E L) "#CTX #HE HL HP Hcont".
-    iApply wps_goto => //=. iNext. iIntros "Hcred".
+    rewrite /logical_step.
+    iMod "HP" as "(%n & Hat & HP)".
+    iMod (persistent_time_receipt_0) as "Hpt".
+    iApply (wps_goto_credits with "[] Hat Hpt") => //=.
+    { iDestruct "CTX" as "(? & $ & ?)". }
+    rewrite Nat.add_0_r.
+    rewrite lc_succ. rewrite additive_time_receipt_succ.
+    iMod (fupd_mask_subseteq ∅) as "Hcl"; first done.
+    iModIntro.  iModIntro. iMod "Hcl" as "_". iModIntro.
+    iIntros "(Hcred1 & Hcred) (_ & Hat)".
+    iMod ("HP" with "Hcred Hat") as "HP".
     by iApply ("Hb" with "IH HP CTX HE HL").
   Qed.
 
@@ -3303,7 +3317,7 @@ Section typing.
   Lemma typed_goto_acc E L fn R P b ϝ s :
     fn.(rf_fn).(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L false ProveDirect (P E L) (λ L' _ R2, R2 -∗
+    prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
@@ -3313,13 +3327,13 @@ Section typing.
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
-    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & >(Hinv &HR2) & HL & HT)"; [done.. | ].
-    iDestruct ("HT" with "HR2") as "(-> & Hrec)".
+    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
+    iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.
     iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
     iApply (typed_block_rec with "Hrec CTX HE HL [Hinv HQ]").
     - done.
-    - iFrame.
+    - iApply (logical_step_wand with "Hinv"). iIntros "(? & ?)". iFrame.
     - done.
   Qed.
 

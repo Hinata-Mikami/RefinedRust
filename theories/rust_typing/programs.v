@@ -710,7 +710,7 @@ Section judgments.
   Definition typed_block (P : elctx → llctx → iProp Σ) (b : label) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
     (∀ Φ E L,
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      P E L -∗
+      logical_step ⊤ (P E L) -∗
       (∀ L' (v : val),
         llctx_interp L' -∗
         ([∗ list] l ∈ (fn.(rf_locs)), l.1 ↦|l.2|) -∗
