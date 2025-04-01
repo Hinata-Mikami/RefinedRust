@@ -41,6 +41,7 @@ fn determine_origin_of_trait_requirement<'tcx>(
 pub struct TraitReqMeta<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub bound_regions: Vec<ty::BoundRegionKind>,
+    pub binders: ty::Binder<'tcx, ()>,
     pub origin: radium::TyParamOrigin,
     pub is_used_in_self_trait: bool,
     pub is_self_in_trait_decl: bool,
@@ -66,10 +67,10 @@ pub fn get_trait_requirements_with_origin<'tcx>(
     // determine the origin of this requirement below
     let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
         let trait_param_env = env.tcx().param_env(trait_did);
-        Some(get_nontrivial(env.tcx(), trait_param_env, None).into_iter().map(|(x, _)| x).collect())
+        Some(get_nontrivial(env.tcx(), trait_param_env, None).into_iter().map(|(x, _, _)| x).collect())
     } else if let Some(impl_did) = in_trait_impl {
         let impl_param_env = env.tcx().param_env(impl_did);
-        Some(get_nontrivial(env.tcx(), impl_param_env, None).into_iter().map(|(x, _)| x).collect())
+        Some(get_nontrivial(env.tcx(), impl_param_env, None).into_iter().map(|(x, _, _)| x).collect())
     } else {
         None
     };
@@ -81,7 +82,7 @@ pub fn get_trait_requirements_with_origin<'tcx>(
     let requirements = get_nontrivial(env.tcx(), param_env, in_trait_decl);
     let mut annotated_requirements = Vec::new();
 
-    for (trait_ref, bound_regions) in requirements {
+    for (trait_ref, bound_regions, binders) in requirements {
         // check if we are in the process of translating a trait decl
         let is_self = trait_ref.args[0].as_type().unwrap().is_param(0);
         let mut is_used_in_self_trait = false;
@@ -106,6 +107,7 @@ pub fn get_trait_requirements_with_origin<'tcx>(
         let req = TraitReqMeta {
             trait_ref,
             bound_regions,
+            binders,
             origin,
             is_used_in_self_trait,
             is_self_in_trait_decl,
@@ -125,7 +127,7 @@ pub fn get_nontrivial<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,
-) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>)> {
+) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, ty::Binder<'tcx, ()>)> {
     let mut trait_refs = Vec::new();
     trace!(
         "Enter get_nontrivial_trait_requirements with param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
@@ -148,6 +150,9 @@ pub fn get_nontrivial<'tcx>(
             }
         }
 
+        // keep the binders around
+        let binders = cl_kind.rebind(());
+
         // TODO: maybe problematic
         let cl_kind = cl_kind.skip_binder();
 
@@ -163,13 +168,13 @@ pub fn get_nontrivial<'tcx>(
                 }
 
                 // this is a nontrivial requirement
-                trait_refs.push((trait_ref, bound_regions));
+                trait_refs.push((trait_ref, bound_regions, binders));
             }
         }
     }
 
     // Make sure the order is stable across compilations
-    trait_refs.sort_by(|(a, _), (b, _)| cmp_trait_ref(tcx, in_trait_decl, a, b));
+    trait_refs.sort_by(|(a, _, _), (b, _, _)| cmp_trait_ref(tcx, in_trait_decl, a, b));
 
     trace!("Leave get_nontrivial_trait_requirements with trait_refs = {trait_refs:?}");
 

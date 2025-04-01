@@ -87,9 +87,7 @@ pub trait RegionBiFolder<'tcx> {
                 }
             },
 
-            ty::TyKind::Char | ty::TyKind::Bool | ty::TyKind::Str => {
-
-            },
+            ty::TyKind::Char | ty::TyKind::Bool | ty::TyKind::Str => {},
 
             _ => unimplemented!("implement RegionMapper::map_tys for {ty1:}"),
         }

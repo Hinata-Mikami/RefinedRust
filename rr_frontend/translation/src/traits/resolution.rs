@@ -74,6 +74,7 @@ pub fn resolve_impl_source<'tcx>(
     param_env: ParamEnv<'tcx>,
     did: DefId,
     substs: GenericArgsRef<'tcx>,
+    below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
@@ -104,7 +105,7 @@ pub fn resolve_impl_source<'tcx>(
     };
 
     let res = tcx.codegen_select_candidate((param_env, trait_ref)).ok()?;
-    Some(recover_lifetimes_for_impl_source(tcx, param_env, trait_ref, substs, res))
+    Some(recover_lifetimes_for_impl_source(tcx, param_env, trait_ref, substs, res, below_binders))
 }
 
 fn recover_lifetimes_for_impl_source<'tcx>(
@@ -113,6 +114,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
     trait_ref: TraitRef<'tcx>,
     substs: GenericArgsRef<'tcx>,
     impl_source: &'tcx ImplSource<'tcx, ()>,
+    below_binders: ty::Binder<'tcx, ()>,
 ) -> ImplSource<'tcx, ()> {
     match impl_source {
         ImplSource::UserDefined(impl_data) => {
@@ -136,8 +138,19 @@ fn recover_lifetimes_for_impl_source<'tcx>(
                 unreachable!();
             };
 
-            trace!("implementing trait {:?} for args {:?}", subject_ref.def_id, subject_ref.args);
-            trace!("mapping regions from {substs:?} to {:?}", subject_ref.args);
+            let impl_args = subject_ref.args;
+            let required_args = substs;
+            trace!("implementing trait {:?} for args {:?}", subject_ref.def_id, impl_args);
+            trace!("mapping regions from {required_args:?} to {impl_args:?}");
+
+            // normalize both args first, taking into account the late bound binders
+            let bound_impl_args = below_binders.rebind(impl_args);
+            let impl_args = normalize_type(tcx, param_env, bound_impl_args).unwrap();
+            let impl_args = impl_args.skip_binder();
+
+            let bound_required_args = below_binders.rebind(required_args);
+            let required_args = normalize_type(tcx, param_env, bound_required_args).unwrap();
+            let required_args = required_args.skip_binder();
 
             // find the mapping
             let mut mapper = RegionMapper {
@@ -145,8 +158,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
                 param_env,
                 map: HashMap::new(),
             };
-            // TODO: figure out what happens here.
-            mapper.map_generic_args(subject_ref.args, substs);
+            mapper.map_generic_args(impl_args, required_args);
             let region_map = mapper.get_result(num_regions);
             trace!("recovered region map: {region_map:?}");
 
@@ -187,6 +199,7 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -199,8 +212,6 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
         }
     }
 }
-
-
 
 // Design for type unification:
 // - we get a trait_ref, param_env and the resolved ImplSource.
@@ -218,11 +229,12 @@ fn resolve_trait_or_item<'tcx>(
     param_env: ParamEnv<'tcx>,
     def_id: DefId,
     substs: GenericArgsRef<'tcx>,
+    below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(def_id) {
-        resolve_trait(tcx, param_env, def_id, substs)
+        resolve_trait(tcx, param_env, def_id, substs, below_binders)
     } else {
-        resolve_assoc_item(tcx, param_env, def_id, substs)
+        resolve_assoc_item(tcx, param_env, def_id, substs, below_binders)
     }
 }
 
@@ -233,9 +245,10 @@ pub fn resolve_trait<'tcx>(
     param_env: ParamEnv<'tcx>,
     did: DefId,
     substs: GenericArgsRef<'tcx>,
+    below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(did) {
-        let impl_source = resolve_impl_source(tcx, param_env, did, substs);
+        let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders);
         info!("trait impl_source for {:?}: {:?}", did, impl_source);
         match impl_source? {
             ImplSource::UserDefined(impl_data) => {
@@ -266,6 +279,7 @@ pub fn resolve_assoc_item<'tcx>(
     param_env: ParamEnv<'tcx>,
     did: DefId,
     substs: GenericArgsRef<'tcx>,
+    below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
     let assoc = tcx.opt_associated_item(did)?;
 
@@ -281,7 +295,7 @@ pub fn resolve_assoc_item<'tcx>(
 
     let trait_ref = TraitRef::from_method(tcx, tcx.trait_of_item(did).unwrap(), substs);
 
-    let impl_source = resolve_impl_source(tcx, param_env, did, substs)?;
+    let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders)?;
     info!("trait impl_source for {:?}: {:?}", did, impl_source);
 
     match impl_source {

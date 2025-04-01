@@ -13,10 +13,10 @@ use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
 
+pub mod region_bi_folder;
 pub mod registry;
 pub mod requirements;
 pub mod resolution;
-pub mod region_bi_folder;
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {

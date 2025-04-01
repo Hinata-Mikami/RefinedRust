@@ -19,9 +19,9 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::TyRegionCollectFolder;
+use crate::traits::region_bi_folder::RegionBiFolder;
 use crate::traits::registry::GenericTraitUse;
 use crate::traits::resolution;
-use crate::traits::region_bi_folder::RegionBiFolder;
 use crate::types::translator::*;
 use crate::types::tyvars::*;
 use crate::types::{self, scope};
@@ -264,7 +264,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
             // compute the instantiation of this trait use's params by unifying the args
             // this instantiation will be used as the instantiation hint in the function
-            let mut unifier = traits::registry::LateBoundUnifier::new(env.tcx(), param_env, &entry.bound_regions);
+            let mut unifier =
+                traits::registry::LateBoundUnifier::new(env.tcx(), param_env, &entry.bound_regions);
             unifier.map_generic_args(entry.trait_ref.args, trait_args);
             let bound_regions_inst = unifier.get_result();
 

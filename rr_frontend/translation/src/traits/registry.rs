@@ -24,10 +24,10 @@ use crate::spec_parsers::trait_attr_parser::{
     get_declared_trait_attrs, TraitAttrParser, VerboseTraitAttrParser,
 };
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
+use crate::traits::region_bi_folder::RegionBiFolder;
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, base, traits, types};
-use crate::traits::region_bi_folder::RegionBiFolder;
 
 pub struct TR<'tcx, 'def> {
     /// environment
@@ -438,7 +438,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             if req.is_self_in_trait_decl {
                 continue;
             }
-    
+
             // substitute the args with the arg instantiation of the callee at this call site
             // in order to get the args of this trait instance
             let args = req.trait_ref.args;
@@ -449,7 +449,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 subst_args.push(bound);
             }
 
-            let trait_spec = self.lookup_trait(req.trait_ref.def_id).ok_or(Error::NotATrait(req.trait_ref.def_id))?;
+            let trait_spec =
+                self.lookup_trait(req.trait_ref.def_id).ok_or(Error::NotATrait(req.trait_ref.def_id))?;
 
             // Check if the target is a method of the same trait with the same args
             // Since this happens in the same ParamEnv, this is the assumption of the trait method
@@ -468,12 +469,21 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 }
             }
 
-            // try to infer an instance for this
+            // build the new args
             let subst_args = self.env.tcx().mk_args(subst_args.as_slice());
-            trace!("Trying to resolve requirement def_id={:?} with args = {subst_args:?}", req.trait_ref.def_id);
-            if let Some((impl_did, impl_args, kind)) =
-                resolution::resolve_trait(self.env.tcx(), current_param_env, req.trait_ref.def_id, subst_args)
-            {
+
+            // try to infer an instance for this
+            trace!(
+                "Trying to resolve requirement def_id={:?} with args = {subst_args:?}",
+                req.trait_ref.def_id
+            );
+            if let Some((impl_did, impl_args, kind)) = resolution::resolve_trait(
+                self.env.tcx(),
+                current_param_env,
+                req.trait_ref.def_id,
+                subst_args,
+                req.binders,
+            ) {
                 info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
 
                 // compute the new scope including the bound regions for HRTBs
@@ -533,7 +543,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         // compute the instantiation of the quantified trait assumption in terms
                         // of the variables introduced by the trait assumption we are proving.
-                        let mut unifier = LateBoundUnifier::new(self.env.tcx(), current_param_env, &trait_use.bound_regions);
+                        let mut unifier = LateBoundUnifier::new(
+                            self.env.tcx(),
+                            current_param_env,
+                            &trait_use.bound_regions,
+                        );
                         unifier.map_generic_args(trait_use.trait_ref.args, subst_args);
                         let inst = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
@@ -770,17 +784,22 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     }
 
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
-    pub fn get_associated_type_use(&self, env: &Environment<'tcx>, did: DefId) -> Result<radium::Type<'def>, traits::Error<'tcx>> {
-        let type_name = env
-            .get_assoc_item_name(did)
-            .ok_or(traits::Error::NotAnAssocType(did))?;
+    pub fn get_associated_type_use(
+        &self,
+        env: &Environment<'tcx>,
+        did: DefId,
+    ) -> Result<radium::Type<'def>, traits::Error<'tcx>> {
+        let type_name = env.get_assoc_item_name(did).ok_or(traits::Error::NotAnAssocType(did))?;
 
         if self.is_self_use {
             // make a literal
-            let lit = radium::LiteralTyParam::new_with_origin(&type_name, &type_name, radium::TyParamOrigin::AssocConstraint);
+            let lit = radium::LiteralTyParam::new_with_origin(
+                &type_name,
+                &type_name,
+                radium::TyParamOrigin::AssocConstraint,
+            );
             Ok(radium::Type::LiteralParam(lit))
-        }
-        else {
+        } else {
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
 
@@ -850,10 +869,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Make a trait use for the identity trait use in a trait declaration.
-    pub fn make_trait_self_use(
-        &self,
-        trait_ref: ty::TraitRef<'tcx>,
-    ) -> GenericTraitUse<'tcx, 'def> {
+    pub fn make_trait_self_use(&self, trait_ref: ty::TraitRef<'tcx>) -> GenericTraitUse<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
 
@@ -958,7 +974,11 @@ pub struct LateBoundUnifier<'tcx, 'a> {
     instantiation: HashMap<usize, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub fn new(tcx: ty::TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
+    pub fn new(
+        tcx: ty::TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        binders_to_unify: &'a [ty::BoundRegionKind],
+    ) -> Self {
         Self {
             tcx,
             param_env,
@@ -981,6 +1001,7 @@ impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
     fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }

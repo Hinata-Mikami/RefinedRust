@@ -358,9 +358,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 assert!(req.bound_regions.is_empty());
                 let dummy_trait_use = trait_registry.make_trait_self_use(req.trait_ref);
                 self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
-            }
-            else {
-                let dummy_trait_use = trait_registry.make_empty_trait_use(req.trait_ref, req.bound_regions.as_slice());
+            } else {
+                let dummy_trait_use =
+                    trait_registry.make_empty_trait_use(req.trait_ref, req.bound_regions.as_slice());
                 self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
             }
             self.trait_scope.ordered_assumptions.push(key);
@@ -374,7 +374,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             if let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) {
-                let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
+                let key =
+                    (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
                 let entry = &self.trait_scope.used_traits[&key];
 
                 // the scope to translate the arguments in

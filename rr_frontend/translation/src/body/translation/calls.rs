@@ -282,9 +282,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // Otherwise, we are calling a trait method
         // Resolve the trait instance using trait selection
-        let Some((resolved_did, resolved_params, kind)) =
-            resolution::resolve_assoc_item(self.env.tcx(), current_param_env, *defid, params)
-        else {
+        let Some((resolved_did, resolved_params, kind)) = resolution::resolve_assoc_item(
+            self.env.tcx(),
+            current_param_env,
+            *defid,
+            params,
+            ty::Binder::dummy(()),
+        ) else {
             return Err(TranslationError::TraitResolution(format!("Could not resolve trait {:?}", defid)));
         };
 
