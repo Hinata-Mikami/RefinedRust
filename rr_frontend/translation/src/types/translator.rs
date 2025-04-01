@@ -1669,15 +1669,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                         let trait_did = self.env.tcx().parent(alias_ty.def_id);
                         let entry = &state.lookup_trait_use(self.env.tcx(), trait_did, alias_ty.args)?;
-
-                        let trait_use_ref = entry.trait_use.borrow();
-                        let trait_use = trait_use_ref.as_ref().unwrap();
-
-                        let type_name = self
-                            .env
-                            .get_assoc_item_name(alias_ty.def_id)
-                            .ok_or(traits::Error::NotAnAssocType(alias_ty.def_id))?;
-                        let assoc_type = trait_use.make_assoc_type_use(&base::strip_coq_ident(&type_name));
+                        let assoc_type = entry.get_associated_type_use(self.env, alias_ty.def_id)?;
 
                         info!("Resolved projection to {assoc_type:?}");
 

@@ -15,6 +15,7 @@ use rr_rustc_interface::trait_selection::traits::{ImplSource, ImplSourceUserDefi
 use rr_rustc_interface::{middle, trait_selection};
 
 use crate::regions::arg_folder;
+use crate::traits::region_bi_folder::RegionBiFolder;
 
 pub fn associated_items(tcx: TyCtxt, def_id: DefId) -> impl Iterator<Item = &AssocItem> {
     tcx.associated_items(def_id).in_definition_order()
@@ -76,12 +77,10 @@ pub fn resolve_impl_source<'tcx>(
 ) -> Option<ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
-    //tcx.erase_regions
+    //let erased_substs = normalize_type(tcx, param_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
     let erased_substs = arg_folder::relabel_late_bounds(erased_substs, tcx);
     trace!("erased args: {erased_substs:?}");
-    // TODO this will still have late bounds, which trait selection cannot deal with.
-    // what if I erase them as well?
 
     // Check if the `did` is an associated item
     let trait_ref = if let Some(item) = tcx.opt_associated_item(did) {
@@ -138,11 +137,15 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             };
 
             trace!("implementing trait {:?} for args {:?}", subject_ref.def_id, subject_ref.args);
+            trace!("mapping regions from {substs:?} to {:?}", subject_ref.args);
 
             // find the mapping
             let mut mapper = RegionMapper {
+                tcx,
+                param_env,
                 map: HashMap::new(),
             };
+            // TODO: figure out what happens here.
             mapper.map_generic_args(subject_ref.args, substs);
             let region_map = mapper.get_result(num_regions);
             trace!("recovered region map: {region_map:?}");
@@ -166,6 +169,8 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 }
 
 struct RegionMapper<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     map: HashMap<ty::RegionVid, ty::Region<'tcx>>,
 }
 impl<'tcx> RegionMapper<'tcx> {
@@ -177,6 +182,14 @@ impl<'tcx> RegionMapper<'tcx> {
         }
         res
     }
+}
+impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReVar(v1) = *r1 {
@@ -185,46 +198,9 @@ impl<'tcx> RegionMapper<'tcx> {
             self.map.insert(v1, r2);
         }
     }
-
-    fn map_tys(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) {
-        assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
-
-        match ty1.kind() {
-            ty::TyKind::Ref(r1, ty1, m1) => {
-                let ty::TyKind::Ref(r2, ty2, m2) = ty2.kind() else {
-                    unreachable!();
-                };
-
-                self.map_regions(*r1, *r2);
-                self.map_tys(*ty1, *ty2);
-            },
-            ty::TyKind::Adt(_, _) => {
-                // TODO
-            },
-            _ => (),
-        }
-    }
-
-    fn map_generic_arg(&mut self, a1: ty::GenericArg<'tcx>, a2: ty::GenericArg<'tcx>) {
-        match a1.unpack() {
-            ty::GenericArgKind::Lifetime(r1) => {
-                let r2 = a2.expect_region();
-                self.map_regions(r1, r2);
-            },
-            ty::GenericArgKind::Type(ty1) => {
-                let ty2 = a2.expect_ty();
-                self.map_tys(ty1, ty2);
-            },
-            _ => (),
-        }
-    }
-
-    fn map_generic_args(&mut self, a1: ty::GenericArgsRef<'tcx>, a2: ty::GenericArgsRef<'tcx>) {
-        for (a1, a2) in a1.iter().zip(a2.iter()) {
-            self.map_generic_arg(a1, a2);
-        }
-    }
 }
+
+
 
 // Design for type unification:
 // - we get a trait_ref, param_env and the resolved ImplSource.

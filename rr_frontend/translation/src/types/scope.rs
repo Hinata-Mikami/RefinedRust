@@ -137,8 +137,10 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
             }
         }
         for key in x.trait_scope.ordered_assumptions {
-            let trait_use = x.trait_scope.used_traits.remove(&key).unwrap().trait_use;
-            scope.add_trait_requirement(trait_use);
+            let trait_use = x.trait_scope.used_traits.remove(&key).unwrap();
+            if !trait_use.is_self_use {
+                scope.add_trait_requirement(trait_use.trait_use);
+            }
         }
         trace!("Computed GenericScope: {scope:?}");
         scope
@@ -346,50 +348,33 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         trace!("Enter add_param_env for did = {did:?}");
         let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
 
-        // TODO
-        // What happens when we encounter the Self requirement when registering a trait?
-        // Is it okay to skip that?
-
-        // TODO: add scope for referring to associated types in specs
-        //  - figure out a good syntax for this.
-        //  - If we are declaring a trait, we should add the attributes without a prefix.
-        //  - But otherwise, we should have some other syntax to refer to that. Use Rust-inspired syntax?
-        //
-        //  => iterate over requirements + assoc types, make_assoc_type_use
-        //  => Have a hashtable for this?
-        //
-        // TODO: we also want to refer to the trait attributes.
-        //  - Note: in general, we cannot assume that for every type there is only one
-        //  implementation of any given trait.
-        //  - Also multiple traits can have the same attributes.
-        //  - Maybe have a cute shorthand syntax that works in most cases, and then a more
-        //  complicated Rust-inspired syntax that works always?
-        //   [ latter is optional to implement ]
-        //
-        //  => iterate, lookup declared_attrs.
-        //  => have a hashtable for this?
-        //
-        //
-        // Should we use T:: or T. ?  => T::
-        //
-        //
-        // In addition, also add special cases for when we are in a trait declaration or trait impl.
-
         let is_trait = env.tcx().is_trait(did);
         let requirements = traits::requirements::get_trait_requirements_with_origin(env, did);
 
         // pre-register all the requirements, in order to resolve dependencies
-        for (trait_ref, bound_regions, _, _) in &requirements {
-            let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
-            let dummy_trait_use = trait_registry.make_empty_trait_use(*trait_ref, bound_regions.as_slice());
-            self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
+        for req in &requirements {
+            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
+            if req.is_self_in_trait_decl {
+                assert!(req.bound_regions.is_empty());
+                let dummy_trait_use = trait_registry.make_trait_self_use(req.trait_ref);
+                self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
+            }
+            else {
+                let dummy_trait_use = trait_registry.make_empty_trait_use(req.trait_ref, req.bound_regions.as_slice());
+                self.trait_scope.used_traits.insert(key.clone(), dummy_trait_use);
+            }
+            self.trait_scope.ordered_assumptions.push(key);
         }
 
-        for (trait_ref, bound_regions, origin, is_used_in_self_trait) in &requirements {
+        for req in &requirements {
+            if req.is_self_in_trait_decl {
+                continue;
+            }
+
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
-            if let Some(trait_spec) = trait_registry.lookup_trait(trait_ref.def_id) {
-                let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
+            if let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) {
+                let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
                 let entry = &self.trait_scope.used_traits[&key];
 
                 // the scope to translate the arguments in
@@ -402,25 +387,27 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     entry,
                     &*self,
                     param_env,
-                    trait_ref.to_owned(),
+                    req.trait_ref,
                     trait_spec,
-                    *is_used_in_self_trait,
+                    req.is_used_in_self_trait,
                     // trait associated types are fully generic for now, we make a second pass
                     // below
                     HashMap::new(),
-                    *origin,
+                    req.origin,
                 )?;
-
-                self.trait_scope.ordered_assumptions.push(key);
             } else {
-                return Err(traits::Error::UnregisteredTrait(trait_ref.def_id).into());
+                return Err(traits::Error::UnregisteredTrait(req.trait_ref.def_id).into());
             }
         }
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
-        for (trait_ref, bound_regions, origin, is_used_in_self_trait) in &requirements {
-            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, *trait_ref);
+        for req in &requirements {
+            if req.is_self_in_trait_decl {
+                continue;
+            }
+
+            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, req.trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
                 .into_iter()
@@ -431,7 +418,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 .collect();
 
             // lookup the trait use
-            let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
+            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
             let entry = &self.trait_scope.used_traits[&key];
 
             {
@@ -446,12 +433,16 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // finalize the entry by adding dependencies on other trait parameters
             let mut deps = HashSet::new();
             let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &param_env));
-            trait_registry.finalize_trait_use(entry, &mut state, *trait_ref)?;
+            trait_registry.finalize_trait_use(entry, &mut state, req.trait_ref)?;
         }
 
         // make a final pass to precompute the paths to associated types and attributes
-        for (trait_ref, bound_regions, origin, _) in requirements {
-            let key = (trait_ref.def_id, generate_args_inst_key(env.tcx(), trait_ref.args).unwrap());
+        for req in requirements {
+            if req.is_self_in_trait_decl {
+                continue;
+            }
+
+            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
             let entry = &self.trait_scope.used_traits[&key];
 
             let assoc_tys = entry.get_associated_types(env);

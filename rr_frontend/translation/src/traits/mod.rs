@@ -16,6 +16,7 @@ use crate::environment::Environment;
 pub mod registry;
 pub mod requirements;
 pub mod resolution;
+pub mod region_bi_folder;
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {

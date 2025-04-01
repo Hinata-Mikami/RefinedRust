@@ -36,12 +36,22 @@ fn determine_origin_of_trait_requirement<'tcx>(
     radium::TyParamOrigin::Direct
 }
 
+/// Meta information of a trait requirement.
+#[derive(Debug)]
+pub struct TraitReqMeta<'tcx> {
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub bound_regions: Vec<ty::BoundRegionKind>,
+    pub origin: radium::TyParamOrigin,
+    pub is_used_in_self_trait: bool,
+    pub is_self_in_trait_decl: bool,
+}
+
 /// Get the trait requirements of a [did], also determining their origin relative to the [did].
 /// The requirements are sorted in a way that is stable across compilations.
 pub fn get_trait_requirements_with_origin<'tcx>(
     env: &Environment<'tcx>,
     did: DefId,
-) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, radium::TyParamOrigin, bool)> {
+) -> Vec<TraitReqMeta<'tcx>> {
     trace!("Enter get_trait_requirements_with_origin for did={did:?}");
     let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
 
@@ -88,15 +98,19 @@ pub fn get_trait_requirements_with_origin<'tcx>(
         }
 
         // we are processing the Self requirement in the scope of a trait declaration, so skip this.
-        if is_trait && is_self {
-            continue;
-            //is_used_in_self_trait = true;
-        }
+        let is_self_in_trait_decl = is_trait && is_used_in_self_trait && is_self;
 
         let origin = determine_origin_of_trait_requirement(did, env.tcx(), &surrounding_reqs, trait_ref);
         info!("Determined origin of requirement {trait_ref:?} as {origin:?}");
 
-        annotated_requirements.push((trait_ref, bound_regions, origin, is_used_in_self_trait));
+        let req = TraitReqMeta {
+            trait_ref,
+            bound_regions,
+            origin,
+            is_used_in_self_trait,
+            is_self_in_trait_decl,
+        };
+        annotated_requirements.push(req);
     }
 
     trace!(
