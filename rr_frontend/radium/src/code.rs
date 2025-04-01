@@ -1031,6 +1031,7 @@ impl<'def> Function<'def> {
         let mut ip_params = String::with_capacity(100);
 
         let params = self.spec.spec.get_params();
+        
         /*
         for _ in 0..params.len() {
             write!(ip_params, "[ ").unwrap();
@@ -1046,6 +1047,10 @@ impl<'def> Function<'def> {
                 // (and no empty intropatterns are allowed)
                 ip_params.push('?');
             } else {
+                for param in params {
+                    write!(f, "let {} := fresh \"{}\" in\n", param.get_name(), param.get_name())?;
+                }
+
                 // product is left-associative
                 for _ in 0..(params.len() - 1) {
                     ip_params.push_str("[ ");

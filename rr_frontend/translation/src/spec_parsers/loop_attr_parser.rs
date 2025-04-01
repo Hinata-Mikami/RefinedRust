@@ -4,6 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::HashSet;
 use attribute_parse::{parse, MToken};
 use parse::{Parse, Peek};
 use radium::{coq, specs};
@@ -143,6 +144,7 @@ impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'d
     fn parse_loop_attrs<'b>(&'b mut self, attrs: &'b [&'b AttrItem]) -> Result<radium::LoopSpec, String> {
         let mut invariant: Vec<specs::IProp> = Vec::new();
         let mut inv_vars: Vec<InvVar> = Vec::new();
+        let mut inv_var_set: HashSet<String> = HashSet::new();
         let mut existentials: Vec<coq::binder::Binder> = Vec::new();
 
         for &it in attrs {
@@ -168,6 +170,7 @@ impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'d
                 },
                 "inv_var" => {
                     let parsed_inv_var: InvVar = buffer.parse(self.scope).map_err(str_err)?;
+                    inv_var_set.insert(parsed_inv_var.local.clone());
                     inv_vars.push(parsed_inv_var);
                 },
                 "ignore" => {
@@ -214,7 +217,7 @@ impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'d
                 uninit_locals_prop.push(specs::IProp::Atom(pred));
 
                 uninit_locals.push(local_name);
-            } else if *initialized {
+            } else if *initialized && inv_var_set.contains(name) {
                 inv_locals.push(local_name);
 
                 rfn_binders.push(coq::binder::Binder::new(Some(name.to_owned()), rfn_ty));
