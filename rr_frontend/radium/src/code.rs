@@ -1088,7 +1088,7 @@ impl<'def> Function<'def> {
         write!(f, "intros")?;
 
         for Variable((arg, _)) in &self.code.stack_layout.args {
-            write!(f, " arg_{}", LocalKind::Arg.mk_local_name(arg))?;
+            write!(f, " {}", LocalKind::Arg.mk_local_name(arg))?;
         }
 
         for Variable((local, _)) in &self.code.stack_layout.locals {
