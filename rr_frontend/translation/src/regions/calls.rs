@@ -133,6 +133,10 @@ pub fn compute_call_regions<'tcx>(
             if *r2 != *r {
                 continue;
             }
+            // reflexive constraints do not help us, of course.
+            if *r1 == *r2 {
+                continue;
+            }
 
             // i.e. (flipping it around when we are talking about lifetimes),
             // r needs to be a sublft of r1
@@ -143,7 +147,7 @@ pub fn compute_call_regions<'tcx>(
                     continue;
                 }
                 // need an equality constraint
-                new_regions_classification.insert(*r, CallRegionKind::EqR(*r1));
+                new_regions_classification.insert(*r2, CallRegionKind::EqR(*r1));
                 // do not consider the rest of the constraints as r is already
                 // fully specified
                 break;
@@ -174,4 +178,41 @@ pub fn compute_call_regions<'tcx>(
         late_regions,
         classification: new_regions_classification,
     }
+}
+
+/// Compute annotations for recovering unconstrained regions.
+pub fn compute_unconstrained_region_annots<'tcx>(
+    env: &Environment<'tcx>,
+    inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
+    loc: Location,
+    unconstrained_regions: HashSet<facts::Region>,
+    early_region_map: &HashMap<String, usize>,
+) -> Result<(Vec<radium::Annotation>, HashSet<facts::Region>), base::TranslationError<'tcx>> {
+    let info = inclusion_tracker.info();
+    let midpoint = info.interner.get_point_index(&facts::Point {
+        location: loc,
+        typ: facts::PointType::Mid,
+    });
+
+    let mut remaining_regions = HashSet::new();
+
+    let mut unconstrained_annotations = Vec::new();
+    for r in unconstrained_regions {
+        let translated_region = ty_translator.translate_region_var(r)?;
+        if let Some(early_region_idx) = early_region_map.get(&translated_region) {
+            let scope = ty_translator.scope.borrow();
+
+            let early_lft_vid = scope.lifetime_scope.early_regions[*early_region_idx].unwrap();
+            let early_lft_name = &scope.lifetime_scope.region_names[&early_lft_vid];
+            unconstrained_annotations
+                .push(radium::Annotation::CopyLftName(early_lft_name.to_owned(), translated_region));
+
+            inclusion_tracker.add_static_inclusion(r, early_lft_vid, midpoint);
+            inclusion_tracker.add_static_inclusion(early_lft_vid, r, midpoint);
+        } else {
+            remaining_regions.insert(r);
+        }
+    }
+    Ok((unconstrained_annotations, remaining_regions))
 }

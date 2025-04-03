@@ -549,7 +549,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             &trait_use.bound_regions,
                         );
                         unifier.map_generic_args(trait_use.trait_ref.args, subst_args);
-                        let inst = unifier.get_result();
+                        let (inst, _) = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
 
                         // lookup the instances in the `binders` scope for the new trait assumption
@@ -972,6 +972,7 @@ pub struct LateBoundUnifier<'tcx, 'a> {
     param_env: ty::ParamEnv<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
+    early_instantiation: HashMap<ty::EarlyBoundRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
     pub fn new(
@@ -984,17 +985,18 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
             param_env,
             binders_to_unify,
             instantiation: HashMap::new(),
+            early_instantiation: HashMap::new(),
         }
     }
 
-    pub fn get_result(mut self) -> Vec<ty::Region<'tcx>> {
+    pub fn get_result(mut self) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyBoundRegion, ty::Region<'tcx>>) {
         trace!("computed latebound unification map {:?}", self.instantiation);
         let mut res = Vec::new();
         for i in 0..self.binders_to_unify.len() {
             let r = self.instantiation.remove(&i).unwrap();
             res.push(r);
         }
-        res
+        (res, self.early_instantiation)
     }
 }
 impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
@@ -1017,6 +1019,13 @@ impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
                 } else {
                     self.instantiation.insert(index1, r2);
                 }
+            }
+        } else if let ty::RegionKind::ReEarlyBound(e1) = *r1 {
+            trace!("trying to unify region {r1:?} with {r2:?}");
+            if let Some(r1_l) = self.early_instantiation.get(&e1) {
+                assert!(*r1_l == r2);
+            } else {
+                self.early_instantiation.insert(e1, r2);
             }
         }
     }

@@ -13,7 +13,7 @@ Proof.
   Vec_T_get_prelude.
 
   rep <-! liRStep; liShow.
-    
+
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.

@@ -1,4 +1,4 @@
-dump_borrowck_info=false
+dump_borrowck_info=true
 output_dir="./output"
 log_dir = "./log"
 run_check = false

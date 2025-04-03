@@ -211,7 +211,7 @@ pub enum Expr {
 
     /// A call target, annotated with the type instantiation
     #[display("{}", _0)]
-    CallTarget(String, Vec<RustType>, Vec<Lft>),
+    CallTarget(String, Vec<RustType>, Vec<Lft>, HashMap<Lft, usize>),
 
     #[display("{}", _0)]
     Literal(Literal),
@@ -1031,7 +1031,7 @@ impl<'def> Function<'def> {
         let mut ip_params = String::with_capacity(100);
 
         let params = self.spec.spec.get_params();
-        
+
         /*
         for _ in 0..params.len() {
             write!(ip_params, "[ ").unwrap();
@@ -1122,6 +1122,7 @@ impl<'def> Function<'def> {
         let mut lfts: Vec<_> =
             self.spec.generics.get_lfts().iter().map(|n| (n.to_string(), n.to_string())).collect();
         lfts.push(("_flft".to_owned(), "ϝ".to_owned()));
+        lfts.push(("static".to_owned(), "static".to_owned()));
         let formatted_lifetimes = make_lft_map_string(&lfts);
         write!(f, "init_lfts ({} );\n", formatted_lifetimes.as_str())?;
 

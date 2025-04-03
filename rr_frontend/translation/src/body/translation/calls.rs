@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::HashMap;
+
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
@@ -83,6 +85,13 @@ fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     Ok(syntypes)
 }
 
+pub struct ProcedureInst<'def> {
+    pub loc_name: String,
+    pub type_hint: Vec<radium::Type<'def>>,
+    pub lft_hint: Vec<radium::Lft>,
+    pub mapped_early_regions: HashMap<radium::Lft, usize>,
+}
+
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Internally register that we have used a procedure with a particular instantiation of generics, and
     /// return the code parameter name.
@@ -99,7 +108,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         extra_spec_args: Vec<String>,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
-    ) -> Result<(String, Vec<radium::Type<'def>>, Vec<radium::Lft>), TranslationError<'tcx>> {
+    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
         // should always be unique for one combination of type parameters, as long as we remain in
@@ -162,7 +171,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.collected_procedures.insert(tup, proc_use);
         }
         trace!("leave register_use_procedure");
-        Ok((res, quantified_args.callee_ty_param_inst, quantified_args.callee_lft_param_inst))
+        let inst = ProcedureInst {
+            loc_name: res,
+            type_hint: quantified_args.callee_ty_param_inst,
+            lft_hint: quantified_args.callee_lft_param_inst,
+            mapped_early_regions: HashMap::new(),
+        };
+        Ok(inst)
     }
 
     /// Internally register that we have used a trait method with a particular instantiation of
@@ -172,13 +187,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
-    ) -> Result<(String, Vec<radium::Type<'def>>, Vec<radium::Lft>), TranslationError<'tcx>> {
+    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
         // explanation.
         let key = types::generate_args_inst_key(self.env.tcx(), ty_params)?;
 
-        let (method_loc_name, (method_spec_term, spec_scope, spec_inst), method_params) =
+        let (method_loc_name, (method_spec_term, spec_scope, spec_inst), mapped_early_regions, method_params) =
             self.ty_translator.register_use_trait_procedure(self.env, callee_did, ty_params)?;
 
         // re-quantify
@@ -231,7 +246,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.collected_procedures.insert(tup, proc_use);
         }
         trace!("leave register_use_procedure");
-        Ok((res, ty_param_hint, lft_param_hint))
+
+        let inst = ProcedureInst {
+            loc_name: res,
+            type_hint: ty_param_hint,
+            lft_hint: lft_param_hint,
+            mapped_early_regions,
+        };
+        Ok(inst)
     }
 
     /// Resolve the trait requirements of a function call.
@@ -272,12 +294,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
             // track that we are using this function and generate the Coq location name
-            let (code_param_name, ty_hint, lft_hint) =
-                self.register_use_procedure(*defid, vec![], params, trait_spec_terms)?;
+            let code_inst = self.register_use_procedure(*defid, vec![], params, trait_spec_terms)?;
 
-            let ty_hint = ty_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+            let ty_hint = code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
-            return Ok(radium::Expr::CallTarget(code_param_name, ty_hint, lft_hint));
+            return Ok(radium::Expr::CallTarget(
+                code_inst.loc_name,
+                ty_hint,
+                code_inst.lft_hint,
+                code_inst.mapped_early_regions,
+            ));
         };
 
         // Otherwise, we are calling a trait method
@@ -306,11 +332,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let trait_spec_terms =
                     self.resolve_trait_requirements_of_call(resolved_did, resolved_params)?;
 
-                let (param_name, ty_hint, lft_hint) =
+                let code_inst =
                     self.register_use_procedure(resolved_did, vec![], resolved_params, trait_spec_terms)?;
-                let ty_hint = ty_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+                let ty_hint =
+                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
-                Ok(radium::Expr::CallTarget(param_name, ty_hint, lft_hint))
+                Ok(radium::Expr::CallTarget(
+                    code_inst.loc_name,
+                    ty_hint,
+                    code_inst.lft_hint,
+                    code_inst.mapped_early_regions,
+                ))
             },
 
             resolution::TraitResolutionKind::Param => {
@@ -319,11 +351,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // resolve the trait requirements
                 let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
-                let (param_name, ty_hint, lft_hint) =
+                let code_inst =
                     self.register_use_trait_method(resolved_did, resolved_params, trait_spec_terms)?;
-                let ty_hint = ty_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+                let ty_hint =
+                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
-                Ok(radium::Expr::CallTarget(param_name, ty_hint, lft_hint))
+                Ok(radium::Expr::CallTarget(
+                    code_inst.loc_name,
+                    ty_hint,
+                    code_inst.lft_hint,
+                    code_inst.mapped_early_regions,
+                ))
             },
 
             resolution::TraitResolutionKind::Closure => {
@@ -343,11 +381,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // resolve the trait requirements
                 let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
-                let (param_name, ty_hint, lft_hint) =
+                let code_inst =
                     self.register_use_procedure(resolved_did, vec![], ty::List::empty(), trait_spec_terms)?;
-                let ty_hint = ty_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+                let ty_hint =
+                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
-                Ok(radium::Expr::CallTarget(param_name, ty_hint, lft_hint))
+                Ok(radium::Expr::CallTarget(
+                    code_inst.loc_name,
+                    ty_hint,
+                    code_inst.lft_hint,
+                    code_inst.mapped_early_regions,
+                ))
             },
         }
     }
@@ -482,7 +526,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let func_expr = self.translate_operand(func, false)?;
         // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
         // instantiate it with.
-        let radium::Expr::CallTarget(func_lit, ty_param_annots, mut lft_param_annots) = func_expr else {
+        let radium::Expr::CallTarget(func_lit, ty_param_annots, mut lft_param_annots, mapped_early_regions) =
+            func_expr
+        else {
             unreachable!("Logic error in call target translation");
         };
         let func_expr = radium::Expr::MetaParam(func_lit);
@@ -512,7 +558,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // compute the resulting annotations
         let lhs_ty = self.get_type_of_place(destination);
         let lhs_strongly_writeable = !self.check_place_below_reference(destination);
-        let (rhs_annots, pre_stmt_annots, post_stmt_annots) = regions::assignment::get_assignment_annots(
+        let assignment_annots = regions::assignment::get_assignment_annots(
             self.env,
             &mut self.inclusion_tracker,
             &self.ty_translator,
@@ -521,17 +567,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             lhs_ty,
             output_ty,
         );
-        info!(
-            "assignment annots after call: expr: {:?}, pre-stmt: {:?}, post-stmt: {:?}",
-            rhs_annots, pre_stmt_annots, post_stmt_annots
-        );
+        info!("assignment annots after call: {assignment_annots:?}");
 
-        // TODO: add annotations for the assignment
-        // for that:
-        // - get the type of the place
-        // - enforce constraints as necessary. this might spawn dyninclusions with some of the new regions =>
-        //   In Coq, also the aliases should get proper endlft events to resolve the dyninclusions.
-        // - update the name map
+        // build annotations for unconstrained regions
+        let (unconstrained_annotations, unconstrained_regions) =
+            regions::calls::compute_unconstrained_region_annots(
+                self.env,
+                &mut self.inclusion_tracker,
+                &self.ty_translator,
+                loc,
+                assignment_annots.unconstrained_regions,
+                &mapped_early_regions,
+            )?;
+        let remaining_unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(
+            self.env,
+            &self.inclusion_tracker,
+            &self.ty_translator,
+            loc,
+            unconstrained_regions,
+        )?;
+
+        // add annotations for the assignment
         let call_expr = radium::Expr::Call {
             f: Box::new(func_expr),
             lfts: lft_param_annots,
@@ -547,8 +603,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let cont_stmt = radium::Stmt::with_annotations(
                     cont_stmt,
-                    post_stmt_annots,
-                    &Some("post_function_call".to_owned()),
+                    assignment_annots.stmt_annot,
+                    &Some("post_function_call (assign)".to_owned()),
+                );
+
+                let cont_stmt = radium::Stmt::with_annotations(
+                    cont_stmt,
+                    unconstrained_annotations,
+                    &Some("post_function_call (assign, early)".to_owned()),
                 );
 
                 // assign stmt with call; then jump to bb
@@ -559,8 +621,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let annotated_rhs = radium::Expr::with_optional_annotation(
                     call_expr,
-                    rhs_annots,
-                    Some("function_call".to_owned()),
+                    assignment_annots.expr_annot,
+                    Some("function_call (assign)".to_owned()),
                 );
                 let assign_stmt = radium::Stmt::Assign {
                     ot,
@@ -568,10 +630,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     e2: annotated_rhs,
                     s: Box::new(cont_stmt),
                 };
-                radium::Stmt::with_annotations(
+                let cont = radium::Stmt::with_annotations(
                     assign_stmt,
-                    pre_stmt_annots,
-                    &Some("function_call".to_owned()),
+                    assignment_annots.new_dyn_inclusions,
+                    &Some("function_call (assign)".to_owned()),
+                );
+                radium::Stmt::with_annotations(
+                    cont,
+                    remaining_unconstrained_annots,
+                    &Some("function_call (unconstrained)".to_owned()),
                 )
             },
             None => {

@@ -1,7 +1,5 @@
 #![rr::include("iterator")]
 
-// TODO write some simple test cases
-
 #[rr::verify]
 fn loop1() {
     
@@ -151,7 +149,6 @@ fn loop4() {
     }
 }
 
-
 /*
 trait RecBla {
     type Bla : RecBla;
@@ -195,3 +192,4 @@ fn call_recbla_test<T: RecBla>(x: T) {
 */
 
 // Options: 
+//

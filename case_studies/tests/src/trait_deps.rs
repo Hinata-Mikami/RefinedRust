@@ -162,26 +162,20 @@ mod dep7 {
     }
 }
 
-/*
 mod dep4 {
 
     trait Bar {
         type BT;
     }
 
-    // TODO: does not work -- the base spec is currently not aware of the Self req.
-    // debug more.
     trait Foo: Bar {
 
-        //#[rr::exists("x")]
-        //#[rr::returns("x")]
+        #[rr::exists("x")]
+        #[rr::returns("x")]
         fn foo() -> Self::BT;
     }
 }
 
-*/
-
-/*
 mod dep3 {
     trait Bar {
 
@@ -201,7 +195,7 @@ mod dep3 {
     // TODO this does not work currently.
     // We should maybe make the spec still be parametric, but then instantiate that in the lemma
     // statement with the statically known instance.
-    //#[rr::skip]
+    #[rr::skip]
     impl Foo<i32> for i32 {
 
         #[rr::default_spec]
@@ -219,4 +213,3 @@ mod dep3 {
         }
     }
 }
-*/

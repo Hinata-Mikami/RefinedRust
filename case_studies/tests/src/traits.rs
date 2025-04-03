@@ -117,7 +117,7 @@ mod foo {
         #[rr::args("a", "b")]
         #[rr::exists("y")]
         #[rr::returns("y")]
-        fn bar<U> (&self, x: U) -> (Self::Output, T, U);
+        fn bar<U>(&self, x: U) -> (Self::Output, T, U);
     }
 
     impl Foo<u32> for i32 {
@@ -202,7 +202,29 @@ mod foo {
     #[rr::params("w")]
     #[rr::args("w")]
     fn foobar_ref3<'a, W>(x: W) where W: Foo<&'a mut i32, Output=i32> {
+        // I guess at this point I get the vlft4 from the return value, but need to figure out
+        // where it comes from. 
+        // This is similar to other cases 
         x.bar(32); 
+    }
+
+    #[rr::params("w")]
+    #[rr::args("w")]
+    fn foobar_ref4<'a, W>(x: W) where W: Foo<&'a mut i32, Output=i32> {
+        let (_, y, _) = x.bar(32); 
+        let _ = *y;
+    }
+
+    // TODO: missing ExtendLftAnnot
+    #[rr::skip]
+    #[rr::params("w")]
+    #[rr::args("w")]
+    #[rr::exists("x")]
+    #[rr::returns("x")]
+    fn foobar_ref5<'a, W>(x: W) -> &'a mut i32 where W: Foo<&'a mut i32, Output=i32> {
+        let (_, y, _) = x.bar(32); 
+        y
+
     }
 
     /*

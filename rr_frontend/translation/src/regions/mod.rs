@@ -90,6 +90,7 @@ pub fn format_atomic_region_direct(
         polonius_info::AtomicRegion::Loan(_, r) => format!("llft{}", r.index()),
         polonius_info::AtomicRegion::PlaceRegion(r) => format!("plft{}", r.index()),
         polonius_info::AtomicRegion::Unknown(r) => format!("vlft{}", r.index()),
+        polonius_info::AtomicRegion::Unconstrained(r) => format!("clft{}", r.index()),
 
         polonius_info::AtomicRegion::Universal(_, r) => {
             let Some(scope) = scope else {

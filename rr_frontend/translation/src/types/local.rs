@@ -235,6 +235,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         (
             String,
             (radium::UsedProcedureSpec<'def>, radium::TraitReqScope, radium::TraitReqScopeInst),
+            HashMap<radium::Lft, usize>,
             ty::GenericArgsRef<'tcx>,
         ),
         TranslationError<'tcx>,
@@ -251,8 +252,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let (trait_args, method_args) = Self::split_trait_method_args(env, trait_did, ty_params);
 
         // restrict the scope of the borrow
-        let (trait_use_ref, bound_regions_inst) = {
-            let scope = self.scope.borrow();
+        let (trait_use_ref, bound_regions_inst, mapped_early_regions) = {
+            let mut scope = self.scope.borrow_mut();
             let entry = scope.generic_scope.trait_scope().lookup_trait_use(
                 env.tcx(),
                 trait_did,
@@ -267,9 +268,21 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let mut unifier =
                 traits::registry::LateBoundUnifier::new(env.tcx(), param_env, &entry.bound_regions);
             unifier.map_generic_args(entry.trait_ref.args, trait_args);
-            let bound_regions_inst = unifier.get_result();
+            let (bound_regions_inst, early_regions_inst) = unifier.get_result();
 
-            (trait_use_ref, bound_regions_inst)
+            // we use the constraints between early regions to restore some information that
+            // Polonius doesn't get
+            let mut mapped_early_regions = HashMap::new();
+            for (early, polonius) in early_regions_inst {
+                let mut scope = STInner::InFunction(&mut scope);
+                let polonius_lft = TX::translate_region(&mut scope, polonius)?;
+                mapped_early_regions.insert(polonius_lft, early.index as usize);
+            }
+
+            //trace!("register_use_trait_procedure: mapped {:?} with {:?}; early_regions_inst =
+            // {mapped_early_regions:?}", entry.trait_ref.args, trait_args);
+
+            (trait_use_ref, bound_regions_inst, mapped_early_regions)
         };
 
         let mut mapped_inst = Vec::new();
@@ -294,7 +307,12 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             types::mangle_name_with_args(&base::strip_coq_ident(&method_name), method_args.as_slice());
         let method_loc_name = trait_spec_use.make_loc_name(&mangled_method_name);
 
-        Ok((method_loc_name, (method_spec_term, lifted_scope, mapped_inst), method_args))
+        Ok((
+            method_loc_name,
+            (method_spec_term, lifted_scope, mapped_inst),
+            mapped_early_regions,
+            method_args,
+        ))
     }
 
     /// Abstract over the generics of a function and partially instantiate them.

@@ -173,6 +173,13 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         self.full_incl.as_ref().unwrap().contains(&(r1, r2, p)) || r1 == r2
     }
 
+    pub fn is_constrained(&mut self, r1: Region, p: PointIndex) -> bool {
+        if self.invalidated || self.full_incl.is_none() {
+            self.recompute();
+        }
+        self.full_incl.as_ref().unwrap().iter().any(|(r1x, r2x, px)| *r2x == r1 && *px == p)
+    }
+
     /// Check if an inclusion (r1, r2, p) holds via static inclusion in the current context.
     pub fn check_static_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
         if self.invalidated || self.static_incl.is_none() {

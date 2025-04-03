@@ -25,3 +25,4 @@ mod generics;
 mod rectypes;
 
 mod loops;
+mod leftpad;

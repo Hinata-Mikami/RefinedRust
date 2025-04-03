@@ -109,7 +109,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                         let plc_ty = self.get_type_of_place(plc);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
-                        let (expr_annot, pre_stmt_annots, post_stmt_annots) =
+                        let assignment_annots =
                             regions::assignment::get_assignment_annots(
                                 self.env, &mut self.inclusion_tracker, &self.ty_translator,
                                 loc, plc_strongly_writeable, plc_ty, rhs_ty);
@@ -118,15 +118,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
                             self.env, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
 
+                        let unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(self.env, &self.inclusion_tracker, &self.ty_translator, loc, assignment_annots.unconstrained_regions)?;
+
                         cont_stmt = radium::Stmt::with_annotations(
                             cont_stmt,
-                            post_stmt_annots,
+                            assignment_annots.stmt_annot,
                             &Some("post-assignment".to_owned()),
                         );
 
                         let translated_val = radium::Expr::with_optional_annotation(
                             self.translate_rvalue(loc, val)?,
-                            expr_annot,
+                            assignment_annots.expr_annot,
                             Some("assignment".to_owned()),
                         );
                         let translated_place = self.translate_place(plc)?;
@@ -139,7 +141,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         };
                         cont_stmt = radium::Stmt::with_annotations(
                             cont_stmt,
-                            pre_stmt_annots,
+                            assignment_annots.new_dyn_inclusions,
                             &Some("assignment".to_owned()),
                         );
                         cont_stmt = radium::Stmt::with_annotations(
@@ -151,6 +153,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             cont_stmt,
                             composite_annots,
                             &Some("composite".to_owned()),
+                        );
+                        cont_stmt = radium::Stmt::with_annotations(
+                            cont_stmt,
+                            unconstrained_annots,
+                            &Some("assignment (unconstrained)".to_owned()),
                         );
                     }
                 },

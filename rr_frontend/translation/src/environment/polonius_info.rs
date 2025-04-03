@@ -54,6 +54,7 @@ pub enum AtomicRegion {
     Loan(facts::Loan, facts::Region),
     Universal(UniversalRegionKind, facts::Region),
     PlaceRegion(facts::Region),
+    Unconstrained(facts::Region),
     Unknown(facts::Region),
 }
 
@@ -79,9 +80,18 @@ impl AtomicRegion {
     }
 
     #[must_use]
+    pub const fn is_unconstrained(&self) -> bool {
+        matches!(*self, Self::Unconstrained(_))
+    }
+
+    #[must_use]
     pub const fn get_region(&self) -> facts::Region {
         match self {
-            Self::Loan(_, r) | Self::Universal(_, r) | Self::PlaceRegion(r) | Self::Unknown(r) => *r,
+            Self::Loan(_, r)
+            | Self::Universal(_, r)
+            | Self::PlaceRegion(r)
+            | Self::Unconstrained(r)
+            | Self::Unknown(r) => *r,
         }
     }
 }
@@ -107,6 +117,8 @@ pub enum RegionKind {
     Universal(UniversalRegionKind),
     /// inference variable in the type of a local
     PlaceRegion,
+    /// unconstrained inference variables (i.e., may live arbitrarily long)
+    Unconstrained,
     /// unknown region kind; for instance used for the inference variables introduced on a call to
     /// a function with lifetime parameters
     Unknown,
@@ -647,7 +659,17 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             folder.fold_ty(local.ty);
         }
 
-        if found_region { RegionKind::PlaceRegion } else { RegionKind::Unknown }
+        if found_region {
+            return RegionKind::PlaceRegion;
+        }
+
+        // check if this is an unconstrained region
+        if !self.borrowck_in_facts.subset_base.iter().any(|(_, r2, _)| *r2 == region) {
+            // no constraints
+            return RegionKind::Unconstrained;
+        }
+
+        RegionKind::Unknown
     }
 
     #[must_use]
@@ -657,6 +679,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             RegionKind::Loan(l) => AtomicRegion::Loan(l, r),
             RegionKind::PlaceRegion => AtomicRegion::PlaceRegion(r),
             RegionKind::Universal(uk) => AtomicRegion::Universal(uk, r),
+            RegionKind::Unconstrained => AtomicRegion::Unconstrained(r),
             RegionKind::Unknown => AtomicRegion::Unknown(r),
         }
     }
