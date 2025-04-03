@@ -1329,6 +1329,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             xt_type: coq::term::Type::Literal(inductive_name),
             xt_injection: "id".to_owned(),
             variant_patterns,
+            is_partial: false,
         };
 
         info!("Generated inductive for {:?}: {:?}", def, inductive);

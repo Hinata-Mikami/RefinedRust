@@ -86,6 +86,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
         let mut xt_type = None;
+        let mut is_partial = false;
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -103,6 +104,9 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
                     let (xt_processed, _) = self.scope.process_coq_literal_xt(ty.value().as_str(), true);
                     rfn_type = Some(rt_processed);
                     xt_type = Some(xt_processed.replace("place_rfn", ""));
+                },
+                "partial" => {
+                    is_partial = true;
                 },
                 "export_as" => {},
                 _ => {
@@ -161,6 +165,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
             xt_type,
             xt_injection,
             variant_patterns,
+            is_partial,
         })
     }
 }

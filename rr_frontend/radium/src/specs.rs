@@ -620,7 +620,7 @@ impl<'def> Type<'def> {
             },
             Self::Enum(su) => {
                 // similar to structs, we don't need to subst
-                su.get_rfn_type()
+                coq::term::Type::Literal(su.get_rfn_type())
             },
 
             Self::Unit | Self::Never | Self::Uninit(_) => {
@@ -2009,6 +2009,8 @@ pub struct EnumSpec {
     /// - `(None, [], -[])`
     /// - `(Some, [x], -[x])`
     pub variant_patterns: Vec<(String, Vec<String>, String)>,
+    /// true if the map from refinement to variants is partial
+    pub is_partial: bool,
 }
 
 /// Enum to represent large discriminants
@@ -2187,7 +2189,10 @@ impl<'def> AbstractEnum<'def> {
         let spec = &self.spec;
         write!(out, "λ rfn, match rfn with ").unwrap();
         for ((name, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
-            write!(out, "| {} => \"{name}\" ", coq::term::App::new(pat, apps.clone())).unwrap();
+            write!(out, "| {} => Some \"{name}\" ", coq::term::App::new(pat, apps.clone())).unwrap();
+        }
+        if spec.is_partial {
+            write!(out, "| _ => None ").unwrap();
         }
         write!(out, "end").unwrap();
 
@@ -2204,6 +2209,9 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "λ rfn, match rfn with ").unwrap();
         for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             write!(out, "| {} => _", coq::term::App::new(pat, apps.clone())).unwrap();
+        }
+        if spec.is_partial {
+            write!(out, "| _ => unit%type ").unwrap();
         }
         write!(out, " end").unwrap();
 
@@ -2225,6 +2233,9 @@ impl<'def> AbstractEnum<'def> {
 
             write!(out, "| {} => {ty}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
+        if spec.is_partial {
+            write!(out, "| _ => unit_t ").unwrap();
+        }
         write!(out, " end").unwrap();
 
         out
@@ -2245,6 +2256,9 @@ impl<'def> AbstractEnum<'def> {
 
             write!(out, "| {} => {rfn}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
+        if spec.is_partial {
+            write!(out, "| _ => () ").unwrap();
+        }
         write!(out, " end").unwrap();
 
         out
@@ -2263,7 +2277,11 @@ impl<'def> AbstractEnum<'def> {
                 format!("if (decide (variant = \"{name}\")) then Some $ existT _ {ty}")
             })
             .collect();
-        format!("λ variant, {} else None", conditions.join(" else "))
+        if conditions.is_empty() {
+            "λ variant, None".to_owned()
+        } else {
+            format!("λ variant, {} else None", conditions.join(" else "))
+        }
     }
 
     fn generate_lfts(&self) -> String {
@@ -2581,10 +2599,15 @@ impl<'def> AbstractEnumUse<'def> {
     /// Get the refinement type of an enum usage.
     /// This requires that all type parameters of the enum have been instantiated.
     #[must_use]
-    pub fn get_rfn_type(&self) -> coq::term::Type {
+    pub fn get_rfn_type(&self) -> String {
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
-        def.spec.rfn_type.clone()
+
+        let rfn_instantiations: Vec<String> =
+            self.ty_params.iter().map(|ty| ty.get_rfn_type().to_string()).collect();
+
+        let applied = coq::term::App::new(def.plain_rt_name.clone(), rfn_instantiations);
+        applied.to_string()
     }
 
     /// Generate a term for the enum layout (of type `struct_layout`)

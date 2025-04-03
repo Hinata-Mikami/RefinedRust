@@ -5,6 +5,7 @@
 
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("stdlib.controlflow")]
+#![rr::include("option")]
 #![allow(unused)]
 
 #[rr::refined_by("sum (place_rfn {rt_of C}) (place_rfn {rt_of B})")]
@@ -21,7 +22,27 @@ pub enum ControlFlow<B, C = ()> {
     Break(B),
 }
 
+#[rr::export_as(core::ops::FromResidual)]
+#[rr::exists("FromResidualFn" : "{rt_of R} → option {rt_of Self}")]
+pub trait FromResidual<R = <Self as Try>::Residual> {
+    /// Constructs the type from a compatible `Residual` type.
+    ///
+    /// This should be implemented consistently with the `branch` method such
+    /// that applying the `?` operator will get back an equivalent residual:
+    /// `FromResidual::from_residual(r).branch() --> ControlFlow::Break(r)`.
+    /// (It must not be an *identical* residual when interconversion is involved.)
+    #[rr::exists("x")]
+    #[rr::ensures("Some ($# x) = {FromResidualFn} ($# residual)")]
+    #[rr::returns("x")]
+    fn from_residual(residual: R) -> Self;
+}
+
 #[rr::export_as(core::ops::Try)]
+#[rr::exists("FromOutputFn" : "{rt_of Output} → {rt_of Self}")]
+#[rr::exists("BranchFn" : "{rt_of Self} → sum (place_rfn {rt_of Output}) (place_rfn {rt_of Residual})")]
+// TODO: state the law here
+// TODO: needs dep on FromResidual attrs
+//#[rr::exists("BranchLaw" : "∀ r, {BranchFn} ({FromResidualFn} r) = inr r")]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     type Output;
@@ -38,9 +59,8 @@ pub trait Try: FromResidual {
     /// This should be implemented consistently with the `branch` method
     /// such that applying the `?` operator will get back the original value:
     /// `Try::from_output(x).branch() --> ControlFlow::Continue(x)`.
-    #[rr::params("x")]
-    #[rr::args("x")]
     #[rr::exists("y")]
+    #[rr::ensures("$# y = {FromOutputFn} ($# output)")]
     #[rr::returns("y")]
     fn from_output(output: Self::Output) -> Self;
 
@@ -48,50 +68,32 @@ pub trait Try: FromResidual {
     /// (because this returned [`ControlFlow::Continue`])
     /// or propagate a value back to the caller
     /// (because this returned [`ControlFlow::Break`]).
-    #[rr::params("x")]
-    #[rr::args("x")]
     #[rr::exists("y")]
+    #[rr::ensures("$# y = {BranchFn} ($# self)")]
     #[rr::returns("y")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
-#[rr::export_as(core::ops::FromResidual)]
-pub trait FromResidual<R = <Self as Try>::Residual> {
-    /// Constructs the type from a compatible `Residual` type.
-    ///
-    /// This should be implemented consistently with the `branch` method such
-    /// that applying the `?` operator will get back an equivalent residual:
-    /// `FromResidual::from_residual(r).branch() --> ControlFlow::Break(r)`.
-    /// (It must not be an *identical* residual when interconversion is involved.)
-    fn from_residual(residual: R) -> Self;
-}
-
 #[rr::export_as(core::convert::Infallible)]
 #[rr::refined_by("()")]
+#[rr::partial]
 pub enum Infallible {
-    // In the model, we put a constructor, whereas the real type does not have a constructor.
-    // This should be fine.
-    #[rr::pattern("tt")]
-    #[rr::refinement("-[]")]
-    I
 }
 
-#[rr::only_spec]
-#[rr::export]
+#[rr::instantiate("FromOutputFn" := "λ out, Some (# out)")]
+#[rr::instantiate("BranchFn" := "λ s, match s with | Some(x) => inl(x) | None => inr(# None) end")]
+//#[rr::instantiate("BranchLaw" := "ltac:(naive_solver)")]
 impl<T> Try for Option<T> {
     type Output = T;
     type Residual = Option<Infallible>;
 
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("Some(#x)")]
+    #[rr::default_spec]
     fn from_output(output: Self::Output) -> Self {
         Some(output)
     }
 
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("match x with | Some(x) => inl(x) | None => inr(#None) end")]
+    #[rr::trust_me]
+    #[rr::default_spec]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
@@ -100,12 +102,47 @@ impl<T> Try for Option<T> {
     }
 }
 
-#[rr::only_spec]
+#[rr::instantiate("FromResidualFn" := "λ _, Some None")]
 impl<T> FromResidual for Option<T> {
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("None")]
+    #[rr::default_spec]
     fn from_residual(residual: Option<Infallible>) -> Self {
         None
+    }
+}
+
+
+#[rr::instantiate("FromOutputFn" := "λ out, inl (# out)")]
+#[rr::instantiate("BranchFn" := "λ s, match s with | inl(x) => inl(x) | inr(x) => inr(# (inr x)) end")]
+impl<B, C> Try for ControlFlow<B, C> {
+    type Output = C;
+    type Residual = ControlFlow<B, Infallible>;
+
+    #[rr::default_spec]
+    fn from_output(output: Self::Output) -> Self {
+        ControlFlow::Continue(output)
+    }
+
+    #[rr::trust_me]
+    #[rr::default_spec]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            ControlFlow::Continue(c) => ControlFlow::Continue(c),
+            ControlFlow::Break(b) => ControlFlow::Break(ControlFlow::Break(b)),
+        }
+    }
+}
+
+#[rr::instantiate("FromResidualFn" := "λ s, match s with | inl(x) => None | inr(x) => Some (inr x) end")]
+// Note: manually specifying the residual type instead of using the default to work around
+// https://github.com/rust-lang/rust/issues/99940
+impl<B, C> FromResidual<ControlFlow<B, Infallible>> for ControlFlow<B, C> {
+
+    #[rr::trust_me]
+    #[rr::default_spec]
+    fn from_residual(residual: ControlFlow<B, Infallible>) -> Self {
+        match residual {
+            ControlFlow::Break(b) => ControlFlow::Break(b),
+            ControlFlow::Continue(i) => unreachable!(),
+        }
     }
 }

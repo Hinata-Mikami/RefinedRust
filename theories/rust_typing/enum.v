@@ -389,7 +389,7 @@ Section enum.
     construct_enum_rti : e.(enum_rt) out = rti;
     construct_enum_ty : (rew [λ x, (type x)] construct_enum_rti in e.(enum_ty) out) = ty;
     construct_enum_rfn : (rew [λ x, x] construct_enum_rti in e.(enum_r) out) = input;
-    construct_enum_tag : e.(enum_tag) out = variant;
+    construct_enum_tag : e.(enum_tag) out = Some variant;
   }.
   Global Hint Mode ConstructEnum + + + + + + - : typeclass_instances.
   Global Arguments construct_enum {_ _ _ _ _ _}.
@@ -444,16 +444,18 @@ Section enum.
 
     ty_xt_inhabited := enum_xt_inhabited e;
     ty_own_val π r v :=
-      (∃ el,
+      (∃ el tag,
       ⌜use_enum_layout_alg e.(enum_els) = Some el⌝ ∗
+      ⌜(e.(enum_tag) r) = Some tag⌝ ∗
       (* we cannot directly borrow the variant or data fields while in this interpretation *)
-      v ◁ᵥ{π} -[#(enum_lookup_tag e r); #(e.(enum_r) r)] @ struct_t (sls_of_els e.(enum_els))
-        +[int e.(enum_els).(els_tag_it); active_union_t (e.(enum_ty) r) (e.(enum_tag) r) (uls_of_els e.(enum_els))])%I;
+      v ◁ᵥ{π} -[#(els_lookup_tag e.(enum_els) tag); #(e.(enum_r) r)] @ struct_t (sls_of_els e.(enum_els))
+        +[int e.(enum_els).(els_tag_it); active_union_t (e.(enum_ty) r) tag (uls_of_els e.(enum_els))])%I;
     ty_shr κ π r l :=
-      (∃ ly,
+      (∃ ly tag,
       ⌜syn_type_has_layout e.(enum_els) ly⌝ ∗
-      l ◁ₗ{π, κ} -[#(enum_lookup_tag e r); #(e.(enum_r) r)] @ struct_t (sls_of_els e.(enum_els))
-        +[int e.(enum_els).(els_tag_it); active_union_t (e.(enum_ty) r) (enum_tag e r) (uls_of_els e.(enum_els))])%I;
+      ⌜e.(enum_tag) r = Some tag⌝ ∗
+      l ◁ₗ{π, κ} -[#(els_lookup_tag e.(enum_els) tag); #(e.(enum_r) r)] @ struct_t (sls_of_els e.(enum_els))
+        +[int e.(enum_els).(els_tag_it); active_union_t (e.(enum_ty) r) tag (uls_of_els e.(enum_els))])%I;
     ty_syn_type := e.(enum_els);
     _ty_has_op_type ot mt :=
       is_enum_ot e ot mt;
@@ -463,7 +465,7 @@ Section enum.
   |}.
   Next Obligation.
     iIntros (rt e π r v).
-    iIntros "(%el & %Halg & Hv)".
+    iIntros "(%el & %tag & %Halg & %Htag & Hv)".
     (*specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg' & ->).*)
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv".
     { simpl. by apply use_struct_layout_alg_Some_inv. }
@@ -484,7 +486,7 @@ Section enum.
     eauto.
   Qed.
   Next Obligation.
-    iIntros (rt e κ π l r) "(%ly & %Halg & Hl)".
+    iIntros (rt e κ π l r) "(%ly & %tag & %Halg & %Htag & Hl)".
     iPoseProof (ty_shr_aligned with "Hl") as "(%ly' & %Hly & %Halg')". simpl in *.
     specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
     apply use_struct_layout_alg_Some_inv in Halg''.
@@ -493,17 +495,20 @@ Section enum.
   Qed.
   Next Obligation.
     iIntros (rt e E κ l ly π r q ?) "#CTX Htok %Halg %Hly Hlb Hb".
-    iAssert (&{κ} ((∃ (el : struct_layout), ⌜use_enum_layout_alg (enum_els e) = Some el⌝ ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{ π} -[# (enum_lookup_tag e r); # (e.(enum_r) r)] @ struct_t (sls_of_els (enum_els e)) +[int (els_tag_it (enum_els e)); active_union_t (e.(enum_ty) r) (enum_tag e r) (uls_of_els (enum_els e))])))%I with "[Hb]" as "Hb".
+    iAssert (&{κ} ((∃ (el : struct_layout) (tag : string), ⌜use_enum_layout_alg (enum_els e) = Some el⌝ ∗ ⌜e.(enum_tag) r = Some tag⌝ ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{ π} -[# (els_lookup_tag e.(enum_els) tag); # (e.(enum_r) r)] @ struct_t (sls_of_els (enum_els e)) +[int (els_tag_it (enum_els e)); active_union_t (e.(enum_ty) r) tag (uls_of_els (enum_els e))])))%I with "[Hb]" as "Hb".
     { iApply (bor_iff with "[] Hb"). iNext. iModIntro.
       iSplit.
-      - iIntros "(%v & Hl & % & ? & ?)". eauto 8 with iFrame.
-      - iIntros "(% & ? & % & ? & ?)". eauto 8 with iFrame. }
+      - iIntros "(%v & Hl & % & % & ? & ? & ?)". eauto 8 with iFrame.
+      - iIntros "(% & % & ? & ? & % & ? & ?)". eauto 8 with iFrame. }
     simpl. iEval (rewrite -lft_tok_sep) in "Htok". iDestruct "Htok" as "(Htok1 & Htok2)".
     iApply fupd_logical_step.
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iMod (bor_exists_tok with "LFT Hb Htok1") as "(%ly' & Hb & Htok1)"; first done.
+    iMod (bor_exists_tok with "LFT Hb Htok1") as "(%tag & Hb & Htok1)"; first done.
     iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.
     iMod (bor_persistent with "LFT Halg Htok1") as "(>%Halg' & Htok1)"; first done.
+    iMod (bor_sep with "LFT Hb") as "(Htag & Hb)"; first done.
+    iMod (bor_persistent with "LFT Htag Htok1") as "(>%Htag & Htok1)"; first done.
     iPoseProof (list_incl_lft_incl_list (ty_lfts (e.(enum_ty) r)) (enum_lfts e)) as "Hincl".
     { etrans; last eapply (enum_lfts_complete _ e r). done. }
     iMod (lft_incl_acc with "Hincl Htok2") as "(%q' & Htok2 & Htok2_cl)"; first done.
@@ -527,16 +532,16 @@ Section enum.
     iExists _. by iFrame.
   Qed.
   Next Obligation.
-    iIntros (rt e κ κ' π r l) "#Hincl (%ly & ? & Hl)".
-    iExists ly. iFrame.
+    iIntros (rt e κ κ' π r l) "#Hincl (%ly & %tag & ? & ? & Hl)".
+    iExists ly, tag. iFrame.
     iApply (ty_shr_mono with "Hincl Hl").
   Qed.
   Next Obligation.
     iIntros (rt en ot mt st π r v Hot) "Hl".
-    iDestruct "Hl" as "(%ly & %Hst & Ha)".
+    iDestruct "Hl" as "(%ly & %tag & %Hst & %Htag & Ha)".
     destruct mt; first done; first last.
     { destruct ot; done. }
-    iExists ly. iR.
+    iExists ly, tag. iR. iR.
 
     iApply (ty_memcast_compat _ _ _ MCCopy with "Ha").
     rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=. split; first done.
@@ -697,18 +702,18 @@ Section ne.
     - simpl. eauto.
     - intros n ty ty' Hd.
       iIntros (π r v). rewrite /ty_own_val/=.
-      do 3 f_equiv.
+      do 5 f_equiv.
       { erewrite enum_ne_els; first done. apply Hd. }
       erewrite enum_ne_els; last apply Hd.
 
-      erewrite enum_ne_lookup_tag_consistent; [ | done | apply Hd ].
+      erewrite enum_ne_tag_consistent. f_equiv; first done.
       eapply struct_t_own_val_dist. simpl.
       constructor; last constructor; last constructor; first done.
       intros ???.
       rewrite !enum_el_val_unfold.
-      do 10 f_equiv.
-      { erewrite enum_ne_tag_consistent; done. }
-      f_equiv.
+      do 7 f_equiv.
+      intros ly.
+      do 3 f_equiv.
       { simpl.
         f_equiv.
         eapply (enum_ne_ty_dist r) in Hd.
@@ -717,8 +722,8 @@ Section ne.
         generalize (enum_ne_rt_consistent ty ty' r) as Heq.
         destruct Heq. done. }
       f_equiv. simpl.
-      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ take (ly_size a2) v0 ◁ᵥ{ π} r' @ enum_ty (F ty) r)%I
-        ≡ (take (ly_size a2) v0 ◁ᵥ{ π} enum_r (F ty) r @ enum_ty (F ty) r)%I) as Heq.
+      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ take (ly_size ly) v0 ◁ᵥ{ π} r' @ enum_ty (F ty) r)%I
+        ≡ (take (ly_size ly) v0 ◁ᵥ{ π} enum_r (F ty) r @ enum_ty (F ty) r)%I) as Heq.
       { iIntros (?). iSplit.
         - iIntros "(% & <- & $)".
         - iIntros "Ha". iExists _. iFrame. done. }
@@ -734,19 +739,17 @@ Section ne.
       done.
     - intros n ty ty' Hd.
       iIntros (κ π r l). rewrite /ty_shr/=.
-      do 3 f_equiv.
+      do 5 f_equiv.
       { erewrite enum_ne_els; first done. apply Hd. }
       erewrite enum_ne_els; last apply Hd.
 
-      erewrite enum_ne_lookup_tag_consistent; [ | done | apply Hd ].
+      f_equiv. { erewrite enum_ne_tag_consistent. done. }
       eapply struct_t_shr_dist. simpl.
       constructor; last constructor; last constructor; first done.
       intros ???.
 
       rewrite !enum_el_shr_unfold.
       do 12 f_equiv.
-      { erewrite enum_ne_tag_consistent; done. }
-      f_equiv.
       assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ (l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} r'@enum_ty (F ty) r)%I
         ≡ ((l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} enum_r (F ty) r @enum_ty (F ty) r)%I) as Heq.
       { iIntros (?). iSplit.
@@ -793,15 +796,15 @@ Section subtype.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (π v) "Hv".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly & %Hst & Hv)".
+    iDestruct "Hv" as "(%ly & %tag & %Hst & %Htag' & Hv)".
     iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
-    iExists ly.
-    rewrite -Hels. iR.
+    iExists ly, tag.
+    rewrite -Hels. iR. rewrite -Htag. iR.
     iApply (struct_t_own_val_mono with "[] Hv").
     rewrite /struct_t_incl_precond. simpl.
-    iSplit. { rewrite /enum_lookup_tag Hels Htag. iApply type_incl_refl. }
+    iSplit. { rewrite Hels. iApply type_incl_refl. }
     iSplit; last done.
-    simpl. rewrite Htag. iApply active_union_type_incl; first done.
+    simpl. iApply active_union_type_incl; first done.
     destruct Heq. done.
   Qed.
   Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r :
@@ -811,15 +814,15 @@ Section subtype.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (κ π l) "Hl".
     rewrite /ty_shr/=.
-    iDestruct "Hl" as "(%ly & %Hst & Hl)".
+    iDestruct "Hl" as "(%ly & %tag & %Hst & %Htag' & Hl)".
     iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
-    iExists ly.
-    rewrite -Hels. iR.
+    iExists ly, tag.
+    rewrite -Hels. rewrite -Htag. iR. iR.
     iApply (struct_t_shr_mono with "[] Hl").
     rewrite /struct_t_incl_precond. simpl.
-    iSplit. { rewrite /enum_lookup_tag Hels Htag. iApply type_incl_refl. }
+    iSplit. { rewrite Hels. iApply type_incl_refl. }
     iSplit; last done.
-    simpl. rewrite Htag. iApply active_union_type_incl; first done. destruct Heq. done.
+    simpl. iApply active_union_type_incl; first done. destruct Heq. done.
   Qed.
 
   Lemma enum_type_incl {rt} (e1 e2 : enum rt) r :
@@ -855,9 +858,9 @@ Section unfold.
      I think this should not be a problem.
   *)
   Lemma enum_variant_rt_tag_rt_eq {rt} (en : enum rt) (r : rt) (tag : var_name) :
-    tag = enum_tag en r → enum_variant_rt en r = enum_tag_rt en tag.
+    enum_tag en r = Some tag → enum_variant_rt en r = enum_tag_rt en tag.
   Proof.
-    intros ->. symmetry. by apply enum_tag_rt_variant_rt_eq.
+    intros. symmetry. by apply enum_tag_rt_variant_rt_eq.
   Qed.
 
   (* TODO move *)
@@ -892,7 +895,7 @@ Section unfold.
   Qed.
 
   Lemma enum_unfold_1_owned {rt : Type} (en : enum rt) wl r :
-    ⊢ ltype_incl' (Owned wl) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag en r) (◁ enum_tag_type en (enum_tag en r))).
+    ⊢ ltype_incl' (Owned wl) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))).
   Proof.
     iModIntro. iIntros (π l) "Hl".
     rewrite ltype_own_ofty_unfold/lty_of_ty_own.
@@ -904,16 +907,15 @@ Section unfold.
     iExists el.
     iSplitR. { iPureIntro. eapply use_enum_layout_alg_Some; eauto. }
     iR. iFrame "# ∗".
-    iSplitR. { rewrite enum_tag_ty_Some; done. }
+    (*iSplitR. { rewrite enum_tag_ty_Some; done. }*)
     iExists r'. iR.
     iNext. iMod "Ha" as "(%v & Hl & Hv)".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly & %Hly' & Hv)".
+    iDestruct "Hv" as "(%ly & %tag & Hv)".
     iModIntro.
-
     (* split up the struct ownership *)
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%sl & %Halg' & _ & %Hvly & Hv)".
+    iDestruct "Hv" as "(%Hly' & %Htag & %sl & %Halg' & _ & %Hvly & Hv)".
 
     assert (sl = el) as ->. { admit. }
     assert (ly = el) as ->. { admit. }
@@ -930,7 +932,9 @@ Section unfold.
     { specialize (sl_nodup el). apply bool_decide_spec. }
     simpl.
     iDestruct "Hinit" as "(Htag & Hdata & _)".
-    iExists (enum_variant_rt_tag_rt_eq _ _ _ eq_refl). iR.
+    rewrite /enum_tag' Htag.
+    iExists (enum_variant_rt_tag_rt_eq _ _ _ Htag). iR.
+    simpl. iSplitR. { erewrite enum_tag_ty_Some; done. }
     iSplitL "Htag".
     { iExists _. iSplitR. { iPureIntro.
       apply syn_type_has_layout_int; first done.
@@ -961,27 +965,18 @@ Section unfold.
     iSplitL "Hl1 Hv1".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly.
-      iSplitR. {
-        iPureIntro.
-        rewrite enum_tag_type_variant_type_eq.
-        generalize ((enum_tag_rt_variant_rt_eq _ _ (enum_tag en r') eq_refl)) as Heq.
-        rewrite /enum_variant_type /enum_tag_rt/enum_tag_ty' /enum_variant_rt. simpl.
-        admit.
-        (*intros <-. done.*)
-      }
-      simpl.
+      iSplitR. { admit. }
       iSplitR. { admit. }
       iPoseProof (ty_own_val_sidecond with "Hv1") as "#Hsc".
       iSplitR. {
-        rewrite enum_tag_type_variant_type_eq.
-        generalize ((enum_tag_rt_variant_rt_eq _ _ (enum_tag en r') eq_refl)) as Heq.
-        rewrite /enum_variant_type /enum_tag_rt/enum_tag_ty' /enum_variant_rt. simpl.
+        erewrite enum_tag_type_variant_type_eq.
+        (*generalize ((enum_tag_rt_variant_rt_eq _ _ (enum_tag en r') eq_refl)) as Heq.*)
+        (*rewrite /enum_variant_type /enum_tag_rt/enum_tag_ty' /enum_variant_rt. simpl.*)
         admit.
         (*intros <-. done. *)
       }
       iSplitR. { admit. }
       iR.
-      (*generalize ((enum_variant_rt_tag_rt_eq en r' (enum_tag en r') eq_refl)).*)
       admit.
     }
     iSplitL "Hl2 Hv2".
@@ -994,9 +989,9 @@ Section unfold.
       rewrite ly_size_active_union_rest_ly ly_size_ly_offset.
       rewrite /els_data_ly/use_union_layout_alg' Huls/=.
       rewrite /size_of_st /use_layout_alg'.
-      rewrite enum_tag_type_variant_type_eq.
-      generalize (enum_tag_rt_variant_rt_eq en r' (enum_tag en r') eq_refl) as Heq.
-      rewrite /enum_variant_type /enum_tag_rt/enum_tag_ty' /enum_variant_rt. simpl.
+      erewrite enum_tag_type_variant_type_eq.
+      (*generalize (enum_tag_rt_variant_rt_eq en r' (enum_tag en r') eq_refl) as Heq.*)
+      (*rewrite /enum_variant_type /enum_tag_rt/enum_tag_ty' /enum_variant_rt. simpl.*)
       (*intros <-.*)
       (*rewrite Hty/=//. *)
       admit.
@@ -1008,16 +1003,16 @@ Section unfold.
     iExists lyx.
   Admitted.
   Lemma enum_unfold_1_shared {rt : Type} (en : enum rt) κ r :
-    ⊢ ltype_incl' (Shared κ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag en r) (◁ enum_tag_type en (enum_tag en r))).
+    ⊢ ltype_incl' (Shared κ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))).
   Proof.
   Abort.
   Lemma enum_unfold_1_uniq {rt : Type} (en : enum rt) κ γ r :
-    ⊢ ltype_incl' (Uniq κ γ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag en r) (◁ enum_tag_type en (enum_tag en r))).
+    ⊢ ltype_incl' (Uniq κ γ) (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))).
   Proof.
   Abort.
 
   Local Lemma enum_unfold_1' {rt : Type} (en : enum rt) k r :
-    ⊢ ltype_incl' k (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag en r) (◁ enum_tag_type en (enum_tag en r))).
+    ⊢ ltype_incl' k (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))).
   Proof.
     destruct k.
     - iApply enum_unfold_1_owned.
@@ -1026,7 +1021,7 @@ Section unfold.
   Abort.
 
   Lemma enum_unfold_1 {rt : Type} (en : enum rt) k r :
-    ⊢ ltype_incl k (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag en r) (◁ enum_tag_type en (enum_tag en r))).
+    ⊢ ltype_incl k (#r) (#r) (◁ (enum_t en))%I (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))).
   Proof.
     iSplitR; first done. iModIntro. iSplit.
     (*+ iApply enum_unfold_1'.*)
@@ -1050,10 +1045,11 @@ Section rules.
 
   (* needs to have lower priority than the id instance *)
   Import EqNotations.
-  Definition enum_variant_type' {rt} (en : enum rt) (r : rt) : type (enum_tag_rt en (enum_tag en r)) :=
-    rew (enum_variant_rt_tag_rt_eq en r _ eq_refl) in enum_variant_type en r.
+  (*Definition enum_variant_type' {rt} (en : enum rt) (r : rt) : type (enum_tag_rt en (enum_tag' en r)) :=*)
+    (*rew (enum_variant_rt_tag_rt_eq en r _ eq_refl) in enum_variant_type en r.*)
+    (*(◁ enum_tag_type en (enum_tag' en r))*)
   Lemma typed_place_ofty_enum {rt} π E L l (en : enum rt) (r : rt) bmin0 wl P T :
-    typed_place π E L l (EnumLtype en (enum_tag en r) (◁ (enum_variant_type' en r))) (#r) bmin0 (Owned wl) P T
+    typed_place π E L l (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))) (#r) bmin0 (Owned wl) P T
     ⊢ typed_place π E L l (◁ (enum_t en)) (#r) bmin0 (Owned wl) P T.
   Proof.
     (*iIntros "Hp". iApply typed_place_eqltype; last iFrame.*)
@@ -1123,16 +1119,17 @@ Section rules.
     iEval (rewrite /ty_own_val/=).
     destruct Hc as [Heq1 Heq2 Heq3 Htag].
     subst.
-    iExists _.
-    iR.
+    iExists _, variant.
+    iR. iR.
     iApply (struct_init_val _ _ _ _ +[_; _] -[_; _]).
     { done. }
     { done. }
     simpl.
-    assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! enum_tag en ro = Some tag) as (tag & Htag_lookup).
+
+    assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! variant = Some tag) as (tag & Htag_lookup).
     { apply list_to_map_lookup_fst.
       - rewrite els_tag_int_agree.
-        apply elem_of_list_fmap. exists (enum_tag en ro, ty_syn_type (enum_ty en ro)).
+        apply elem_of_list_fmap. exists (variant, ty_syn_type (enum_ty en ro)).
         split; first done. apply elem_of_list_to_map; last done.
         apply els_variants_nodup.
       - rewrite els_tag_int_agree. apply els_variants_nodup. }

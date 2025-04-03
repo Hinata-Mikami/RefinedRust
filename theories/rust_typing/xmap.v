@@ -37,3 +37,9 @@ Global Hint Rewrite @fmap_xmap_unfold : lithium_rewrite.
 
 Global Hint Unfold xt_inj_xmap : lithium_rewrite.
 
+Global Instance simpl_both_xmap_inl {A1 A2 B1 B2} (f : A1 → A2) (g : B1 → B2) (x : result A1 B1) (y : A2): 
+  SimplBothRel (=) (result_xmap f g x) (inl y) (∃ x', x = inl x' ∧ y = f x').
+Proof. unfold SimplBothRel. destruct x; naive_solver. Qed.
+Global Instance simpl_both_xmap_inr {A1 A2 B1 B2} (f : A1 → A2) (g : B1 → B2) (x : result A1 B1) (y : B2): 
+  SimplBothRel (=) (result_xmap f g x) (inr y) (∃ x', x = inr x' ∧ y = g x').
+Proof. unfold SimplBothRel. destruct x; naive_solver. Qed.

@@ -137,10 +137,12 @@ Proof.
   intros ? (-> & -> & ?). done.
 Qed.
 
+(*
 Global Instance simpl_eq_OffsetSt `{!LayoutAlg} st i i' x : SimplAndUnsafe (x offsetst{st}ₗ i = x offsetst{st}ₗ i') (λ T, i = i' ∧ T).
 Proof.
   intros T [-> ?]. done.
 Qed.
+ *)
 
 
 
@@ -157,6 +159,13 @@ Proof.
   rewrite /SimplAndUnsafe.
   intros T (<- & <- & HT).
   done.
+Qed.
+
+Global Instance simpl_inj {A B} (f : A → B) x y :
+  Inj (=) (=) f →
+  SimplBothRel (=) (f x) (f y) (x = y).
+Proof.
+  intros ?. rewrite /SimplBothRel. naive_solver. 
 Qed.
 
 (** ** Additional normalization instances *)
