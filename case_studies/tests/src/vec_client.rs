@@ -1,8 +1,3 @@
-#![rr::include("vec")]
-#![rr::include("alloc")]
-#![rr::include("option")]
-
-
 use std::vec::Vec;
 
 #[rr::verify]

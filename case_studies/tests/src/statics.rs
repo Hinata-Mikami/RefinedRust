@@ -1,4 +1,3 @@
-#![rr::include("option")]
 
 #[rr::name("MYINT")]
 static MYINT: i32 = 42;

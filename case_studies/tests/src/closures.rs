@@ -1,5 +1,4 @@
 #![allow(unused)]
-#![rr::include("closures")]
 
 #[rr::params("x")]
 #[rr::args("x")]

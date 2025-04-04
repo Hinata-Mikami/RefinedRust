@@ -301,7 +301,7 @@ pub struct SR<'a> {
     trait_impl_shims: Vec<TraitImplShim>,
 
     /// extra module dependencies
-    dependencies: Vec<coq::module::DirPath>,
+    dependencies: HashSet<coq::module::DirPath>,
 }
 
 impl<'a> SR<'a> {
@@ -340,7 +340,7 @@ impl<'a> SR<'a> {
             trait_method_shims: Vec::new(),
             adt_shims: Vec::new(),
             exports: Vec::new(),
-            dependencies: Vec::new(),
+            dependencies: HashSet::new(),
             trait_shims: Vec::new(),
             trait_impl_shims: Vec::new(),
         }
@@ -360,13 +360,13 @@ impl<'a> SR<'a> {
         Ok(reg)
     }
 
-    pub fn add_source(&mut self, f: File) -> Result<(), Error> {
+    pub fn add_source(&mut self, f: File) -> Result<Option<HashSet<String>>, Error> {
         info!("Adding file {f:?}");
         let reader = BufReader::new(f);
         let deser: serde_json::Value = serde_json::from_reader(reader)?;
 
         // We support both directly giving the items array, or also specifying a path to import
-        let v = match deser {
+        let (v, export_libs) = match deser {
             serde_json::Value::Object(obj) => {
                 let path = obj
                     .get("refinedrust_path")
@@ -396,7 +396,7 @@ impl<'a> SR<'a> {
 
                 self.exports.push(coq::module::Export::new(vec![module]).from(vec![path]));
 
-                let dependencies = obj
+                let coq_dependencies = obj
                     .get("module_dependencies")
                     .ok_or_else(|| Error::MissingAttribute("module_dependencies".to_owned()))?
                     .as_array()
@@ -405,26 +405,45 @@ impl<'a> SR<'a> {
                         expected: "array".to_owned(),
                     })?;
 
-                for dependency in dependencies {
+                for dependency in coq_dependencies {
                     let path = dependency.as_str().ok_or_else(|| Error::Type {
                         attribute: "element of module_dependencies".to_owned(),
                         expected: "str".to_owned(),
                     })?;
 
-                    self.dependencies.push(coq::module::DirPath::from(vec![path]));
+                    self.dependencies.insert(coq::module::DirPath::from(vec![path]));
                 }
 
-                obj.get("items")
+                let mut export_libs = HashSet::new();
+                let export_lib_arr = obj
+                    .get("export_libs")
+                    .ok_or_else(|| Error::MissingAttribute("export_libs".to_owned()))?
+                    .as_array()
+                    .ok_or_else(|| Error::Type {
+                        attribute: "export_libs".to_owned(),
+                        expected: "array".to_owned(),
+                    })?;
+                for dependency in export_lib_arr {
+                    let dep = dependency.as_str().ok_or_else(|| Error::Type {
+                        attribute: "element of export_libs".to_owned(),
+                        expected: "str".to_owned(),
+                    })?;
+                    export_libs.insert(dep.to_owned());
+                }
+
+                let items = obj
+                    .get("items")
                     .ok_or_else(|| Error::MissingAttribute("items".to_owned()))?
                     .as_array()
                     .ok_or_else(|| Error::Type {
                         attribute: "items".to_owned(),
                         expected: "array".to_owned(),
                     })?
-                    .clone()
+                    .clone();
+                (items, Some(export_libs))
             },
 
-            serde_json::Value::Array(arr) => arr,
+            serde_json::Value::Array(arr) => (arr, None),
 
             _ => {
                 return Err(Error::Type {
@@ -510,7 +529,7 @@ impl<'a> SR<'a> {
             }
         }
 
-        Ok(())
+        Ok(export_libs)
     }
 
     pub fn get_function_shims(&self) -> &[FunctionShim] {
@@ -537,7 +556,7 @@ impl<'a> SR<'a> {
         &self.trait_impl_shims
     }
 
-    pub fn get_extra_dependencies(&self) -> &[coq::module::DirPath] {
+    pub const fn get_extra_dependencies(&self) -> &HashSet<coq::module::DirPath> {
         &self.dependencies
     }
 }
@@ -548,7 +567,8 @@ pub fn write_shims<'a>(
     load_path: &str,
     load_module: &str,
     name: &str,
-    module_dependencies: &[coq::module::DirPath],
+    module_dependencies: &HashSet<coq::module::DirPath>,
+    export_libs: &HashSet<String>,
     adt_shims: Vec<AdtShim<'a>>,
     function_shims: Vec<FunctionShim<'a>>,
     trait_method_shims: Vec<TraitMethodImplShim>,
@@ -590,6 +610,7 @@ pub fn write_shims<'a>(
         "refinedrust_module": load_module,
         "refinedrust_name": name,
         "module_dependencies": module_dependencies,
+        "export_libs": export_libs,
         "items": array_val
     });
 

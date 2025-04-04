@@ -98,6 +98,9 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     /// extra Coq module dependencies (for generated dune files)
     extra_dependencies: HashSet<coq::module::DirPath>,
 
+    /// RefinedRust modules to export
+    lib_exports: HashSet<String>,
+
     coq_path_prefix: String,
     dune_package: Option<String>,
     shim_registry: shims::registry::SR<'rcx>,
@@ -429,7 +432,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             }
         }
 
-        let mut module_dependencies: Vec<coq::module::DirPath> =
+        let mut module_dependencies: HashSet<coq::module::DirPath> =
             self.extra_exports.iter().filter_map(|(export, _)| export.get_path()).collect();
 
         module_dependencies.extend(self.extra_dependencies.iter().cloned());
@@ -444,6 +447,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             module,
             name,
             &module_dependencies,
+            &self.lib_exports,
             adt_shims,
             function_shims,
             trait_method_shims,
@@ -1630,10 +1634,18 @@ where
     let mut includes: HashSet<String> = HashSet::new();
     crate_spec.includes.into_iter().map(|name| includes.insert(name)).count();
     module_attrs
-        .into_values()
-        .map(|attrs| attrs.includes.into_iter().map(|name| includes.insert(name)).count())
+        .values()
+        .map(|attrs| attrs.includes.iter().map(|name| includes.insert(name.to_owned())).count())
         .count();
     info!("Including RefinedRust modules: {:?}", includes);
+    // process export_includes
+    let mut export_includes: HashSet<String> = HashSet::new();
+    crate_spec.export_includes.into_iter().map(|name| export_includes.insert(name)).count();
+    module_attrs
+        .into_values()
+        .map(|attrs| attrs.export_includes.into_iter().map(|name| export_includes.insert(name)).count())
+        .count();
+    info!("Exporting RefinedRust modules: {:?}", export_includes);
 
     let functions = get_filtered_functions(env);
 
@@ -1663,15 +1675,51 @@ where
     let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
-    for incl in &includes {
-        let Some(p) = found_libs.get(incl) else {
+    let mut included_libs = HashSet::new();
+    while !includes.is_empty() {
+        let incl = includes.iter().next().unwrap().to_owned();
+        includes.remove(&incl);
+        let Some(p) = found_libs.get(&incl) else {
             println!("Warning: did not find library {} in loadpath", incl);
             continue;
         };
+        included_libs.insert(incl);
 
         let f = File::open(p).map_err(|e| e.to_string())?;
-        shim_registry.add_source(f).map_err(|e| e.to_string())?;
+        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+            for incl in new_includes {
+                if !included_libs.contains(&incl) {
+                    includes.insert(incl);
+                }
+            }
+        }
     }
+
+    let mut export_included_libs = HashSet::new();
+    while !export_includes.is_empty() {
+        let incl = export_includes.iter().next().unwrap().to_owned();
+        export_includes.remove(&incl);
+        let Some(p) = found_libs.get(&incl) else {
+            println!("Warning: did not find library {} in loadpath", incl);
+            continue;
+        };
+        let skip = included_libs.contains(&incl);
+        export_included_libs.insert(incl);
+
+        if skip {
+            continue;
+        }
+
+        let f = File::open(p).map_err(|e| e.to_string())?;
+        if let Some(new_includes) = shim_registry.add_source(f).map_err(|e| e.to_string())? {
+            for incl in new_includes {
+                if !included_libs.contains(&incl) && !export_included_libs.contains(&incl) {
+                    export_includes.insert(incl);
+                }
+            }
+        }
+    }
+    // TODO: next: save export_included_libs and put them in the shim file.
 
     // register shims from the shim config
     match rrconfig::shim_file() {
@@ -1689,6 +1737,7 @@ where
         type_translator: &type_translator,
         trait_registry: &trait_registry,
         procedure_registry,
+        lib_exports: export_included_libs,
         extra_exports: exports.into_iter().map(|x| (x, false)).collect(),
         extra_dependencies: HashSet::new(),
         coq_path_prefix: path_prefix,

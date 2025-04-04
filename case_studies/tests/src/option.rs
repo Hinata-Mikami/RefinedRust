@@ -1,7 +1,3 @@
-#![rr::include("option")]
-#![rr::include("result")]
-#![rr::include("controlflow")]
-
 
 #[rr::returns("Some 2")]
 fn maybe_fails() -> Option<i32> {

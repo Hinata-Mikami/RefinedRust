@@ -3,6 +3,8 @@
 #![feature(custom_inner_attributes)]
 #![feature(stmt_expr_attributes)]
 
+#![rr::include("stdlib")]
+
 mod enums;
 mod structs;
 mod char;

@@ -1,4 +1,3 @@
-#![rr::include("iterator")]
 
 #[rr::verify]
 fn loop1() {

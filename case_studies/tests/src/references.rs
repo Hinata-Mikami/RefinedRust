@@ -1,4 +1,3 @@
-#![rr::include("option")]
 
 #[rr::observe("x.ghost": "(#x.cur.cur, x.cur.ghost)")]
 #[rr::returns("x.cur.cur")]

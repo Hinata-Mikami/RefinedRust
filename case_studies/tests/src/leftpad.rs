@@ -1,9 +1,3 @@
-#![rr::include("clone")]
-#![rr::include("vec")]
-#![rr::include("alloc")]
-#![rr::include("option")]
-
-
 
 // attaching axiomatic specs to these, as we do not have specifications for these parts of std yet.
 #[rr::only_spec]

@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::HashSet;
+
 use attribute_parse::parse;
 use radium::coq;
 use rr_rustc_interface::ast::ast::AttrItem;
@@ -25,7 +27,8 @@ pub trait ModuleAttrParser {
 #[derive(Clone, Debug)]
 pub struct ModuleAttrs {
     pub exports: Vec<coq::module::Export>,
-    pub includes: Vec<String>,
+    pub includes: HashSet<String>,
+    pub export_includes: HashSet<String>,
     pub context_params: Vec<coq::binder::Binder>,
 }
 
@@ -45,7 +48,8 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
         attrs: &'a [&'a AttrItem],
     ) -> Result<ModuleAttrs, String> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
-        let mut includes: Vec<String> = Vec::new();
+        let mut includes: HashSet<String> = HashSet::new();
+        let mut export_includes: HashSet<String> = HashSet::new();
         let mut context_params = Vec::new();
 
         for &it in attrs {
@@ -64,7 +68,11 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
                 },
                 "include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
-                    includes.push(name.value());
+                    includes.insert(name.value());
+                },
+                "export_include" => {
+                    let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+                    export_includes.insert(name.value());
                 },
                 "context" => {
                     let param: parse_utils::RRGlobalCoqContextItem = buffer.parse(&()).map_err(str_err)?;
@@ -83,6 +91,7 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
         Ok(ModuleAttrs {
             exports,
             includes,
+            export_includes,
             context_params,
         })
     }

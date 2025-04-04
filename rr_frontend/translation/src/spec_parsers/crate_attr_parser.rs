@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::HashSet;
+
 use attribute_parse::parse;
 use radium::coq;
 use rr_rustc_interface::ast::ast::AttrItem;
@@ -21,7 +23,8 @@ pub trait CrateAttrParser {
 pub struct CrateAttrs {
     pub exports: Vec<coq::module::Export>,
     pub prefix: Option<String>,
-    pub includes: Vec<String>,
+    pub includes: HashSet<String>,
+    pub export_includes: HashSet<String>,
     pub package: Option<String>,
     pub context_params: Vec<coq::binder::Binder>,
 }
@@ -38,7 +41,8 @@ impl VerboseCrateAttrParser {
 impl CrateAttrParser for VerboseCrateAttrParser {
     fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<CrateAttrs, String> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
-        let mut includes: Vec<String> = Vec::new();
+        let mut includes: HashSet<String> = HashSet::new();
+        let mut export_includes: HashSet<String> = HashSet::new();
         let mut prefix: Option<String> = None;
         let mut package: Option<String> = None;
         let mut context_params = Vec::new();
@@ -59,7 +63,11 @@ impl CrateAttrParser for VerboseCrateAttrParser {
                 },
                 "include" => {
                     let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
-                    includes.push(name.value());
+                    includes.insert(name.value());
+                },
+                "export_include" => {
+                    let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+                    export_includes.insert(name.value());
                 },
                 "coq_prefix" => {
                     let path: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
@@ -93,6 +101,7 @@ impl CrateAttrParser for VerboseCrateAttrParser {
             exports,
             prefix,
             includes,
+            export_includes,
             package,
             context_params,
         })

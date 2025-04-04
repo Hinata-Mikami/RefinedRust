@@ -1,4 +1,3 @@
-#![rr::include("option")]
 
 mod add {
     pub trait MyAdd {

@@ -1,4 +1,3 @@
-#![rr::include("vec")]
 
 #[rr::refined_by("()" : "unit")]
 #[rr::exists("d" : "{rt_of T}")]
