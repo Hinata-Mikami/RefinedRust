@@ -1,6 +1,7 @@
 //! core::convert module`
 
 
+#[rr::export_as(core::convert::AsRef)]
 #[rr::exists("AsRefFn" : "{rt_of Self} → {rt_of T}")]
 pub trait AsRef<T: ?Sized> {
     /// Converts this type into a shared reference of the (usually inferred) input type.
@@ -10,6 +11,7 @@ pub trait AsRef<T: ?Sized> {
     fn as_ref(&self) -> &T;
 }
 
+#[rr::export_as(core::convert::AsMut)]
 // TODO: look at some example clients to figure out what kind of spec would be sensible
 #[rr::exists("AsMutFn" : "{rt_of Self} → {rt_of T}")]
 #[rr::exists("AsMutBackFn" : "{rt_of T} → {rt_of Self}")]
@@ -21,6 +23,7 @@ pub trait AsMut<T: ?Sized> {
     fn as_mut(&mut self) -> &mut T;
 }
 
+#[rr::export_as(core::convert::Into)]
 #[rr::exists("IntoFn" : "{rt_of Self} → {rt_of T}")]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
@@ -30,6 +33,7 @@ pub trait Into<T>: Sized {
     fn into(self) -> T;
 }
 
+#[rr::export_as(core::convert::From)]
 #[rr::exists("FromFn" : "{rt_of T} → {rt_of Self}")]
 pub trait From<T>: Sized {
     #[rr::exists("y")]
@@ -38,6 +42,7 @@ pub trait From<T>: Sized {
     fn from(value: T) -> Self;
 }
 
+#[rr::export_as(core::convert::TryInto)]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
     type Error;
@@ -46,6 +51,7 @@ pub trait TryInto<T>: Sized {
     fn try_into(self) -> Result<T, Self::Error>;
 }
 
+#[rr::export_as(core::convert::TryFrom)]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
     type Error;
