@@ -344,8 +344,6 @@ pub trait ParamLookup<'def> {
             static ref RE_LFT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*'({})\s*\}}", *IDENTR)).unwrap();
 
             static ref RE_LIT: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*{}\s*\}}", *PATHR)).unwrap();
-
-            static ref RE_DIRECT: Regex = Regex::new(r"\{(\{.*\})\}").unwrap();
         }
 
         // Parse a path to an item.
@@ -473,9 +471,10 @@ pub trait ParamLookup<'def> {
             format!("{}{}", &c[1], ty)
         });
 
-        let cs = RE_DIRECT.replace_all(&cs, |c: &Captures<'_>| c[1].to_string());
+        let cs = cs.replace("{{", "{");
+        let cs = cs.replace("}}", "}");
 
-        (cs.to_string(), annot_meta)
+        (cs, annot_meta)
     }
 }
 
