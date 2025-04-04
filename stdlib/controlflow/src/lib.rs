@@ -6,7 +6,11 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("stdlib.controlflow")]
 #![rr::include("option")]
+#![rr::include("result")]
 #![allow(unused)]
+
+mod convert;
+use convert::*;
 
 #[rr::refined_by("sum (place_rfn {rt_of C}) (place_rfn {rt_of B})")]
 #[rr::export_as(core::ops::ControlFlow)]
@@ -42,7 +46,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
 #[rr::exists("BranchFn" : "{rt_of Self} → sum (place_rfn {rt_of Output}) (place_rfn {rt_of Residual})")]
 // TODO: state the law here
 // TODO: needs dep on FromResidual attrs
-//#[rr::exists("BranchLaw" : "∀ r, {BranchFn} ({FromResidualFn} r) = inr r")]
+//#[rr::exists("BranchLaw" : "∀ x r, {Self::FromResidualFn} r = Some x → {BranchFn} x = inr r")]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     type Output;
@@ -72,12 +76,6 @@ pub trait Try: FromResidual {
     #[rr::ensures("$# y = {BranchFn} ($# self)")]
     #[rr::returns("y")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
-}
-
-#[rr::export_as(core::convert::Infallible)]
-#[rr::refined_by("()")]
-#[rr::partial]
-pub enum Infallible {
 }
 
 #[rr::instantiate("FromOutputFn" := "λ out, Some (# out)")]
@@ -143,6 +141,40 @@ impl<B, C> FromResidual<ControlFlow<B, Infallible>> for ControlFlow<B, C> {
         match residual {
             ControlFlow::Break(b) => ControlFlow::Break(b),
             ControlFlow::Continue(i) => unreachable!(),
+        }
+    }
+}
+
+
+#[rr::instantiate("FromOutputFn" := "λ out, Ok (# out)")]
+#[rr::instantiate("BranchFn" := "λ s, match s with | Ok(x) => inl(x) | Err(x) => inr(# (Err x)) end")]
+impl<T, E> Try for Result<T, E> {
+    type Output = T;
+    type Residual = Result<Infallible, E>;
+
+    #[rr::default_spec]
+    fn from_output(output: Self::Output) -> Self {
+        Ok(output)
+    }
+
+    #[rr::trust_me]
+    #[rr::default_spec]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(Err(e)),
+        }
+    }
+}
+
+#[rr::instantiate("FromResidualFn" := "λ s, match s with | inl(x) => None | inr(# x) => Some (inr (# ({F::FromFn} x))) | _ => None end")]
+impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
+    #[rr::trust_me]
+    #[rr::default_spec]
+    fn from_residual(residual: Result<Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Err(From::from(e)),
+            Ok(_) => unreachable!(),
         }
     }
 }

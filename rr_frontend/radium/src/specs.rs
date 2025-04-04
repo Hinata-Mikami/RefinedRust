@@ -3856,9 +3856,8 @@ impl<'def> SpecializedTraitImpl<'def> {
 
         // add trait requirements
         for req in self.impl_inst.get_direct_trait_requirements() {
-            // get attrs + spec term
+            // get attrs
             out.push_str(&format!(" {}", req.get_attr_term()));
-            //out.push_str(&format!(" {}", req.get_spec_term()));
         }
 
         // specialize to semtys
@@ -3956,6 +3955,11 @@ impl<'def, T> TraitReqInst<'def, T> {
                 for ty in s.impl_inst.get_direct_ty_params_with_assocs() {
                     args.push(format!("{}", ty.get_rfn_type()));
                 }
+                // get the attr terms this depends on
+                for req in s.impl_inst.get_direct_trait_requirements() {
+                    args.push(req.get_attr_term());
+                }
+
                 let attr_term =
                     format!("{}", coq::term::App::new(s.impl_ref.spec_attrs_record.clone(), args));
                 attr_term
@@ -4990,7 +4994,10 @@ impl<'def> TraitRefInst<'def> {
     fn get_attr_record_term(&self) -> coq::term::Gallina {
         let attr_record = &self.impl_ref.spec_attrs_record;
 
-        let binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
+        // get all type parameters
+        let mut binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
+        // add all dependent attrs
+        binders.append(self.generics.get_all_attr_trait_parameters(false).0);
         let args = binders.make_using_terms();
 
         coq::term::Gallina::App(Box::new(coq::term::App::new(
@@ -5005,8 +5012,10 @@ impl<'def> TraitRefInst<'def> {
     fn get_spec_record_term(&self) -> coq::term::Gallina {
         let spec_record = &self.impl_ref.spec_record;
 
+        // specialize to all type parameters
         let tys = self.generics.get_all_ty_params_with_assocs();
         let mut binders = tys.get_coq_ty_params();
+        // specialize to all attribute records
         binders.append(self.generics.get_all_attr_trait_parameters(false).0);
         let args = binders.make_using_terms();
 
@@ -5037,10 +5046,11 @@ impl<'def> TraitRefInst<'def> {
         specialized_spec.push(' ');
         push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", SynType::from(x)) });
 
-        // specialize to further args
+        // specialize to further args: first the attrs of this impl
         specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
+        // then the dependent attrs
         for req in self.trait_inst.get_direct_trait_requirements() {
-            // get attrs + spec term
+            // get attrs
             specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
         }
 
@@ -5085,7 +5095,9 @@ impl<'def> TraitImplSpec<'def> {
         let mut def_rts_params =
             self.trait_ref.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
         def_rts_params.0.insert(0, coq::binder::Binder::new_rrgs());
-        let def_rts_params_uses = def_rts_params.make_using_terms();
+
+        // add other attrs
+        def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
 
         // instantiate the type of the spec record
         let mut attrs_type_rts: Vec<coq::term::Type> =
