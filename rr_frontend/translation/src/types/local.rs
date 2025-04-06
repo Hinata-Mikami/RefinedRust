@@ -104,14 +104,11 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_enum_use<F>(
+    pub fn generate_enum_use(
         &self,
         adt_def: ty::AdtDef<'tcx>,
-        args: F,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_use(adt_def, args, &mut scope)
     }
@@ -120,28 +117,22 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Returns None if this should be unit.
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_struct_use<F>(
+    pub fn generate_struct_use(
         &self,
         variant_id: DefId,
-        args: F,
-    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_struct_use(variant_id, args, &mut scope)
     }
 
     /// Generate a struct use.
     /// Returns None if this should be unit.
-    pub fn generate_enum_variant_use<F>(
+    pub fn generate_enum_variant_use(
         &self,
         variant_id: DefId,
-        args: F,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_variant_use(variant_id, args, &mut scope)
     }

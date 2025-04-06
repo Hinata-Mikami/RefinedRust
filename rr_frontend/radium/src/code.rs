@@ -38,6 +38,7 @@ fn fmt_option<T: Display>(o: &Option<T>) -> String {
 /// A representation of syntactic Rust types that we can use in annotations for the `RefinedRust`
 /// type system.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
+// TODO: handle lifetime parameters in this representation
 pub enum RustType {
     #[display("RSTLitType [{}] [{}]", display_list!(_0, "; ", "\"{}\""), display_list!(_1, "; "))]
     Lit(Vec<String>, Vec<RustType>),
@@ -108,14 +109,16 @@ impl RustType {
                 let def = def.as_ref().unwrap();
 
                 // translate type parameter instantiations
-                let typarams: Vec<_> = as_use.ty_params.iter().map(|ty| Self::of_type(ty)).collect();
+                let typarams: Vec<_> =
+                    as_use.scope_inst.get_all_ty_params_with_assocs().iter().map(Self::of_type).collect();
                 let ty_name = if is_raw { def.plain_ty_name() } else { def.public_type_name() };
 
                 Self::Lit(vec![ty_name.to_owned()], typarams)
             },
 
             Type::Enum(ae_use) => {
-                let typarams: Vec<_> = ae_use.ty_params.iter().map(|ty| Self::of_type(ty)).collect();
+                let typarams: Vec<_> =
+                    ae_use.scope_inst.get_all_ty_params_with_assocs().iter().map(Self::of_type).collect();
 
                 let def = ae_use.def.borrow();
                 let def = def.as_ref().unwrap();
@@ -125,7 +128,12 @@ impl RustType {
             Type::LiteralParam(lit) => Self::TyVar(lit.rust_name.clone()),
 
             Type::Literal(lit) => {
-                let typarams: Vec<_> = lit.params.iter().map(|ty| Self::of_type(ty)).collect();
+                let typarams: Vec<_> = lit
+                    .scope_inst
+                    .get_all_ty_params_with_assocs()
+                    .iter()
+                    .map(|ty| Self::of_type(ty))
+                    .collect();
                 Self::Lit(vec![lit.def.type_term.clone()], typarams)
             },
 

@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::mem;
@@ -32,7 +32,7 @@ use crate::{attrs, base, traits, types};
 pub struct TR<'tcx, 'def> {
     /// environment
     env: &'def Environment<'tcx>,
-    type_translator: &'def types::TX<'def, 'tcx>,
+    type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
 
     /// trait declarations
     trait_decls: RefCell<HashMap<LocalDefId, radium::TraitSpecDecl<'def>>>,
@@ -54,10 +54,13 @@ pub struct TR<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
+    pub fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
+        self.type_translator.get().unwrap()
+    }
+
     /// Create an empty trait registry.
     pub fn new(
         env: &'def Environment<'tcx>,
-        ty_translator: &'def types::TX<'def, 'tcx>,
         trait_arena: &'def Arena<specs::LiteralTraitSpec>,
         impl_arena: &'def Arena<specs::LiteralTraitImpl>,
         trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
@@ -65,7 +68,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Self {
         Self {
             env,
-            type_translator: ty_translator,
+            type_translator: Cell::new(None),
             trait_arena,
             impl_arena,
             trait_use_arena,
@@ -74,6 +77,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_literals: RefCell::new(HashMap::new()),
             impl_literals: RefCell::new(HashMap::new()),
         }
+    }
+
+    pub fn provide_type_translator(&self, ty_translator: &'def types::TX<'def, 'tcx>) {
+        self.type_translator.set(Some(ty_translator));
     }
 
     /// Get registered trait declarations in the local crate.
@@ -216,7 +223,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // get generics
             let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
             let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
-            param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator, self)?;
+            param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator(), self)?;
 
             let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(did.to_def_id());
             trace!("param env is {:?}", param_env);
@@ -255,7 +262,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         &name,
                         &spec_name,
                         attrs.as_slice(),
-                        self.type_translator,
+                        self.type_translator(),
                         self,
                     )?;
                     let spec_ref = self.fn_spec_arena.alloc(spec);
@@ -600,10 +607,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// TODO: handle surrounding params
-    fn compute_params_scope_inst_in_state(
+    pub fn compute_scope_inst_in_state_without_traits(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = radium::GenericScopeInst::empty();
@@ -611,7 +617,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // pass the args for this specific impl
         for arg in params_inst {
             if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                let ty = self.type_translator.translate_type_in_state(ty, state)?;
+                let ty = self.type_translator().translate_type_in_state(ty, state)?;
                 scope_inst.add_direct_ty_param(ty);
             } else if let Some(lft) = arg.as_region() {
                 let lft = types::TX::translate_region(state, lft)?;
@@ -636,7 +642,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             let mut assoc_inst = Vec::new();
             for ty in trait_req.assoc_ty_inst {
-                let ty = self.type_translator.translate_type_in_state(ty, &mut state)?;
+                let ty = self.type_translator().translate_type_in_state(ty, &mut state)?;
                 assoc_inst.push(ty);
             }
             let trait_req = radium::TraitReqInst::new(
@@ -653,13 +659,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Compute the instantiation of the generic scope for a particular instantiation of an object.
-    fn compute_scope_inst_in_state(
+    pub fn compute_scope_inst_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
-        let mut scope_inst = self.compute_params_scope_inst_in_state(state, did, params_inst)?;
+        let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
         for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst)? {
             scope_inst.add_trait_requirement(trait_req);
@@ -692,7 +698,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // figure out the parameters this impl gets and make a scope
         let impl_generics: &'tcx ty::Generics = self.env.tcx().generics_of(trait_impl_did);
         let mut param_scope = scope::Params::from(impl_generics.params.as_slice());
-        param_scope.add_param_env(trait_impl_did, self.env, self.type_translator, self)?;
+        param_scope.add_param_env(trait_impl_did, self.env, self.type_translator(), self)?;
 
         // parse specification
         let trait_impl_attrs = attrs::filter_for_tool(self.env.get_attributes(trait_impl_did));
@@ -731,7 +737,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         let ty_did = ty_item.def_id;
                         let ty = self.env.tcx().type_of(ty_did);
                         let translated_ty =
-                            self.type_translator.translate_type_in_scope(&param_scope, ty.skip_binder())?;
+                            self.type_translator().translate_type_in_scope(&param_scope, ty.skip_binder())?;
                         assoc_types_inst.push(translated_ty);
                     } else {
                         unreachable!("trait impl does not have required item");
@@ -914,8 +920,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
         let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, param_env, None, None));
 
-        let mut scope_inst =
-            self.compute_params_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+        let mut scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the
         // current scope which have not been filled yet
 

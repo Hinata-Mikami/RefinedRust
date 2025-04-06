@@ -88,7 +88,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
                     if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind() {
                         if def.is_enum() {
-                            let enum_use = self.ty_translator.generate_enum_use(*def, args.iter())?;
+                            let enum_use = self.ty_translator.generate_enum_use(*def, args)?;
                             let els = enum_use.generate_raw_syn_type_term();
 
                             let variant_name = types::TX::get_variant_name_of(cur_ty.ty, *variant_idx)?;

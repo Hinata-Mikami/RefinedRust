@@ -76,6 +76,15 @@ impl AdtUseKey {
             generics: generic_syntys,
         }
     }
+
+    pub fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
+        let generic_syntys: Vec<_> =
+            params.get_all_ty_params_with_assocs().iter().map(radium::SynType::from).collect();
+        Self {
+            base_did: defid,
+            generics: generic_syntys,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

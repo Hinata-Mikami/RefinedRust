@@ -450,7 +450,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     });
                 };
 
-                let enum_use = self.ty_translator.generate_enum_use(*adt_def, args.iter())?;
+                let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
                 let discriminant_acc = radium::Expr::EnumDiscriminant {

@@ -1657,14 +1657,12 @@ where
     let trait_use_arena = Arena::new();
     let fn_spec_arena = Arena::new();
     let type_translator = types::TX::new(env, &struct_arena, &enum_arena, &shim_arena);
-    let trait_registry = registry::TR::new(
-        env,
-        &type_translator,
-        &trait_arena,
-        &trait_impl_arena,
-        &trait_use_arena,
-        &fn_spec_arena,
-    );
+    let trait_registry =
+        registry::TR::new(env, &trait_arena, &trait_impl_arena, &trait_use_arena, &fn_spec_arena);
+    // establish the cycle
+    type_translator.provide_trait_registry(&trait_registry);
+    trait_registry.provide_type_translator(&type_translator);
+
     let procedure_registry = procedures::Scope::new();
     let shim_string_arena = Arena::new();
     let mut shim_registry = shim_registry::SR::empty(&shim_string_arena);

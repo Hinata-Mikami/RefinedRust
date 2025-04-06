@@ -6,7 +6,7 @@
 
 //! The main translator for translating types within certain environments.
 
-use std::cell::{OnceCell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
@@ -424,6 +424,8 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
 pub struct TX<'def, 'tcx> {
     env: &'def Environment<'tcx>,
 
+    trait_registry: Cell<Option<&'def registry::TR<'tcx, 'def>>>,
+
     /// arena for keeping ownership of structs
     /// during building, it will be None, afterwards it will always be Some
     struct_arena: &'def Arena<RefCell<Option<radium::AbstractStruct<'def>>>>,
@@ -474,6 +476,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     ) -> Self {
         TX {
             env,
+            trait_registry: Cell::new(None),
             adt_deps: RefCell::new(HashMap::new()),
             adt_shims: RefCell::new(HashMap::new()),
             struct_arena,
@@ -483,6 +486,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             enum_registry: RefCell::new(HashMap::new()),
             tuple_registry: RefCell::new(HashMap::new()),
         }
+    }
+
+    pub fn trait_registry(&self) -> &'def registry::TR<'tcx, 'def> {
+        self.trait_registry.get().unwrap()
+    }
+
+    pub fn provide_trait_registry(&self, tr: &'def registry::TR<'tcx, 'def>) {
+        self.trait_registry.set(Some(tr));
     }
 
     /// Intern a literal.
@@ -755,7 +766,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     self.register_adt(*adt)?;
 
                     return self
-                        .generate_struct_use_noshim(adt.did(), *args, adt_deps)
+                        .generate_struct_use_noshim(adt.did(), args, adt_deps)
                         .map(radium::Type::Struct);
                 }
 
@@ -769,7 +780,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     self.register_adt(*adt)?;
 
                     return self
-                        .generate_enum_variant_use_noshim(adt.did(), variant, args.iter(), adt_deps)
+                        .generate_enum_variant_use_noshim(adt.did(), variant, args, adt_deps)
                         .map(radium::Type::Struct);
                 }
 
@@ -786,21 +797,18 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Generate the use of an enum.
     /// Only for internal references as part of type translation.
-    fn generate_enum_use_noshim<'a, 'b, F>(
+    fn generate_enum_use_noshim<'a, 'b>(
         &self,
         adt_def: ty::AdtDef<'tcx>,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
-    ) -> Result<radium::AbstractEnumUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<radium::AbstractEnumUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let params = self.translate_generic_args(args, &mut *state)?;
-        let key = scope::AdtUseKey::new(adt_def.did(), &params);
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
 
         // track this enum use for the current function
         if let STInner::InFunction(state) = state {
@@ -828,43 +836,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.is_phantom_data(did)
     }
 
-    /// Translate `generic_args` of an ADT instantiation, tracking dependencies on other ADTs in `adt_deps`.
-    fn translate_generic_args<'a, 'b, F>(
-        &self,
-        args: F,
-        state: ST<'a, 'b, 'def, 'tcx>,
-    ) -> Result<Vec<radium::Type<'def>>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
-        let mut params = Vec::new();
-
-        for arg in args {
-            let Some(arg_ty) = arg.as_type() else {
-                return Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does currently not support ADTs with lifetime parameters"
-                        .to_owned(),
-                });
-            };
-
-            let translated_ty = self.translate_type_in_state(arg_ty, state)?;
-            params.push(translated_ty);
-        }
-
-        Ok(params)
-    }
-
     /// Generate the use of a struct.
     /// Only for internal references as part of type translation.
-    fn generate_struct_use_noshim<'a, 'b, F>(
+    fn generate_struct_use_noshim<'a, 'b>(
         &self,
         variant_id: DefId,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
-    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
         if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
@@ -873,11 +852,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
-        let params = self.translate_generic_args(args, &mut *state)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
         info!("struct use has params: {params:?}");
 
         if let STInner::InFunction(scope) = state {
-            let key = scope::AdtUseKey::new(variant_id, &params);
+            let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
             let lit_uses = &mut scope.shim_uses;
 
             lit_uses
@@ -891,16 +870,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Generate the use of an enum variant.
     /// Only for internal references as part of type translation.
-    fn generate_enum_variant_use_noshim<'a, 'b, F>(
+    fn generate_enum_variant_use_noshim<'a, 'b>(
         &self,
         adt_id: DefId,
         variant_idx: target::abi::VariantIdx,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
-    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
@@ -912,7 +888,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let struct_ref: radium::AbstractStructRef<'def> = *struct_ref;
 
         // apply the generic parameters according to the mask
-        let params = self.translate_generic_args(args, state)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args)?;
 
         let struct_use = radium::AbstractStructUse::new(struct_ref, params, radium::TypeIsRaw::No);
 
@@ -933,15 +909,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     where
         F: IntoIterator<Item = Ty<'tcx>>,
     {
-        let tys = tys.into_iter();
+        let args: Vec<ty::GenericArg<'tcx>> = tys.into_iter().map(ty::GenericArg::from).collect();
+        let args = self.env().tcx().mk_args(&args);
+        let params = self.trait_registry().compute_scope_inst_in_state_without_traits(state, args)?;
 
-        let generic_args: Vec<_> = tys.into_iter().map(Into::into).collect();
-        let params = self.translate_generic_args(generic_args, &mut *state)?;
-
-        let num_components = params.len();
+        let num_components = params.get_direct_ty_params().len();
         let (_, lit) = self.get_tuple_struct_ref(num_components);
 
-        let key: Vec<_> = params.iter().map(radium::SynType::from).collect();
+        let key: Vec<_> = params.get_direct_ty_params().iter().map(radium::SynType::from).collect();
         let struct_use = radium::LiteralTypeUse::new(lit, params);
         if let STInner::InFunction(ref mut scope) = *state {
             let tuple_uses = &mut scope.tuple_uses;
@@ -1511,10 +1486,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             )));
         };
 
-        let params = self.translate_generic_args(substs.iter(), &mut *state)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
 
         if let STInner::InFunction(scope) = state {
-            let key = scope::AdtUseKey::new(adt.did(), &params);
+            let key = scope::AdtUseKey::new_from_inst(adt.did(), &params);
             let shim_use = radium::LiteralTypeUse::new(shim, params);
             // track this shim use for the current function
             scope.shim_uses.entry(key).or_insert_with(|| shim_use.clone());
@@ -1611,7 +1586,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
 
                 if adt.is_enum() {
-                    return self.generate_enum_use_noshim(*adt, *substs, &mut *state).map(radium::Type::Enum);
+                    return self.generate_enum_use_noshim(*adt, substs, &mut *state).map(radium::Type::Enum);
                 }
 
                 Err(TranslationError::UnsupportedFeature {
@@ -1879,12 +1854,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     info!("generating struct use for {:?}", adt.did());
                     // register the ADT, if necessary
                     self.register_adt(*adt)?;
-                    self.generate_struct_use(adt.did(), *args, &mut *scope)
+                    self.generate_struct_use(adt.did(), args, &mut *scope)
                 } else if adt.is_enum() {
                     if let Some(variant) = variant {
                         self.register_adt(*adt)?;
                         let v = &adt.variants()[variant];
-                        self.generate_enum_variant_use(v.def_id, args.iter(), scope).map(Some)
+                        self.generate_enum_variant_use(v.def_id, args, scope).map(Some)
                     } else {
                         Err(TranslationError::UnknownError(
                             "a non-downcast enum is not a structlike".to_owned(),
@@ -1909,21 +1884,22 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_enum_use<F>(
+    pub fn generate_enum_use(
         &self,
         adt_def: ty::AdtDef<'tcx>,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         state: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
         let enum_ref: radium::LiteralTypeRef<'def> = self.lookup_enum_literal(adt_def.did())?;
-        let params = self.translate_generic_args(args, &mut STInner::InFunction(&mut *state))?;
-        let key = scope::AdtUseKey::new(adt_def.did(), &params);
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            &mut STInner::InFunction(&mut *state),
+            adt_def.did(),
+            args,
+        )?;
+        let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
         let enum_use = radium::LiteralTypeUse::new(enum_ref, params);
 
         // track this enum use for the current function
@@ -1937,15 +1913,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// Returns None if this should be unit.
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_struct_use<F>(
+    pub fn generate_struct_use(
         &self,
         variant_id: DefId,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
         if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
@@ -1953,8 +1926,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             return Ok(None);
         }
 
-        let params = self.translate_generic_args(args, &mut STInner::InFunction(&mut *scope))?;
-        let key = scope::AdtUseKey::new(variant_id, &params);
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            &mut STInner::InFunction(&mut *scope),
+            variant_id,
+            args,
+        )?;
+        let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
         let struct_ref: radium::LiteralTypeRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
         let struct_use = radium::LiteralTypeUse::new(struct_ref, params);
@@ -1966,20 +1943,21 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
     /// Generate a struct use.
     /// Returns None if this should be unit.
-    pub fn generate_enum_variant_use<'a, F>(
+    pub fn generate_enum_variant_use<'a>(
         &self,
         variant_id: DefId,
-        args: F,
+        args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'a, 'def, 'tcx>,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
-    where
-        F: IntoIterator<Item = ty::GenericArg<'tcx>>,
-    {
+    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         info!("generating enum variant use for {:?}", variant_id);
 
         let x: ST<'_, '_, 'def, 'tcx> = &mut STInner::InFunction(&mut *scope);
-        let params = self.translate_generic_args(args, x)?;
-        let _key = scope::AdtUseKey::new(variant_id, &params);
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            &mut STInner::InFunction(&mut *scope),
+            variant_id,
+            args,
+        )?;
+        let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
         let struct_ref: radium::LiteralTypeRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
         let struct_use = radium::LiteralTypeUse::new(struct_ref, params);
@@ -2009,7 +1987,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
         let (_, lit) = self.get_tuple_struct_ref(num_components);
         let key: Vec<_> = translated_tys.iter().map(radium::SynType::from).collect();
-        let struct_use = radium::LiteralTypeUse::new(lit, translated_tys);
+        let mut scope_inst = radium::GenericScopeInst::empty();
+        for ty in translated_tys {
+            scope_inst.add_direct_ty_param(ty);
+        }
+        let struct_use = radium::LiteralTypeUse::new(lit, scope_inst);
         if let Some(tuple_uses) = uses {
             tuple_uses.entry(key).or_insert_with(|| struct_use.clone());
         }

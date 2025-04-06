@@ -19,7 +19,7 @@ use log::{info, trace, warn};
 
 use crate::{coq, display_list, push_str_list, write_list, BASE_INDENT};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 /// Encodes a RR type with an accompanying refinement.
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
@@ -338,31 +338,35 @@ pub struct LiteralType {
 
 pub type LiteralTypeRef<'def> = &'def LiteralType;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct LiteralTypeUse<'def> {
     /// definition
     pub def: LiteralTypeRef<'def>,
     /// parameters
-    pub params: Vec<Type<'def>>,
+    pub scope_inst: GenericScopeInst<'def>,
     /// annotation information
     pub annot: TypeAnnotMeta,
 }
 
 impl<'def> LiteralTypeUse<'def> {
     #[must_use]
-    pub fn new(s: LiteralTypeRef<'def>, params: Vec<Type<'def>>) -> Self {
+    pub fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
         LiteralTypeUse {
             def: s,
-            params,
+            scope_inst,
             annot: TypeAnnotMeta::empty(),
         }
     }
 
     #[must_use]
-    pub fn new_with_annot(s: LiteralTypeRef<'def>, params: Vec<Type<'def>>, annot: TypeAnnotMeta) -> Self {
+    pub const fn new_with_annot(
+        s: LiteralTypeRef<'def>,
+        scope_inst: GenericScopeInst<'def>,
+        annot: TypeAnnotMeta,
+    ) -> Self {
         LiteralTypeUse {
             def: s,
-            params,
+            scope_inst,
             annot,
         }
     }
@@ -383,47 +387,40 @@ impl<'def> LiteralTypeUse<'def> {
     /// This requires that all type parameters of the struct have been instantiated.
     #[must_use]
     pub fn get_rfn_type(&self) -> String {
-        let rfn_instantiations: Vec<String> =
-            self.params.iter().map(|ty| ty.get_rfn_type().to_string()).collect();
+        let ty_inst: Vec<_> = self
+            .scope_inst
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(|ty| ty.get_rfn_type())
+            .collect();
 
         let rfn_type = self.def.refinement_type.to_string();
-        let applied = coq::term::App::new(rfn_type, rfn_instantiations);
+        let applied = coq::term::App::new(rfn_type, ty_inst);
         applied.to_string()
     }
 
     /// Get the `syn_type` term for this struct use.
     #[must_use]
     pub fn generate_raw_syn_type_term(&self) -> SynType {
-        // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), param_sts);
+        let ty_inst: Vec<SynType> =
+            self.scope_inst.get_direct_ty_params_with_assocs().into_iter().map(Into::into).collect();
+        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
         SynType::Literal(specialized_spec.to_string())
     }
 
     #[must_use]
     pub fn generate_syn_type_term(&self) -> SynType {
-        // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), param_sts).to_string();
+        let ty_inst: Vec<SynType> =
+            self.scope_inst.get_direct_ty_params_with_assocs().into_iter().map(Into::into).collect();
+        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
         SynType::Literal(format!("({specialized_spec} : syn_type)"))
     }
 
     /// Generate a string representation of this struct use.
     #[must_use]
     pub fn generate_type_term(&self) -> String {
-        let mut param_tys = Vec::new();
-        for p in &self.params {
-            param_tys.push(format!("({})", p));
-        }
-        let specialized_term = coq::term::App::new(self.def.type_term.clone(), param_tys);
+        let ty_inst = self.scope_inst.get_direct_ty_params_with_assocs();
+        let specialized_term = coq::term::App::new(self.def.type_term.clone(), ty_inst);
         specialized_term.to_string()
     }
 }
@@ -500,7 +497,7 @@ impl LiteralTyParam {
 
 /// Representation of (semantic) `RefinedRust` types.
 /// 'def is the lifetime of the frontend for referencing struct definitions.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Type<'def> {
     Int(IntType),
     Bool,
@@ -1234,7 +1231,7 @@ pub fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&
 }
 
 /// Description of a variant of a struct or enum.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct AbstractVariant<'def> {
     /// the fields, closed under a surrounding scope
     fields: Vec<(String, Type<'def>)>,
@@ -1485,7 +1482,7 @@ where
 
 /// Description of a struct type.
 // TODO: mechanisms for resolving mutually recursive types.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct AbstractStruct<'def> {
     /// an optional invariant/ existential abstraction for this struct
     invariant: Option<InvariantSpec>,
@@ -1824,32 +1821,32 @@ pub fn make_tuple_struct_repr<'def>(num_fields: usize) -> AbstractStruct<'def> {
 }
 
 /// A usage of an `AbstractStruct` that instantiates its type parameters.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct AbstractStructUse<'def> {
     /// reference to the struct's definition, or None if unit
     pub def: Option<AbstractStructRef<'def>>,
     /// Instantiations for type parameters
-    pub ty_params: Vec<Type<'def>>,
+    pub scope_inst: GenericScopeInst<'def>,
     /// does this refer to the raw type without invariants?
     pub raw: TypeIsRaw,
 }
 
 impl<'def> AbstractStructUse<'def> {
     #[must_use]
-    pub fn new(s: AbstractStructRef<'def>, params: Vec<Type<'def>>, raw: TypeIsRaw) -> Self {
+    pub const fn new(s: AbstractStructRef<'def>, scope_inst: GenericScopeInst<'def>, raw: TypeIsRaw) -> Self {
         AbstractStructUse {
             def: Some(s),
-            ty_params: params,
+            scope_inst,
             raw,
         }
     }
 
     /// Creates a new use of unit.
     #[must_use]
-    pub const fn new_unit() -> Self {
+    pub fn new_unit() -> Self {
         AbstractStructUse {
             def: None,
-            ty_params: Vec::new(),
+            scope_inst: GenericScopeInst::empty(),
             raw: TypeIsRaw::Yes,
         }
     }
@@ -1889,8 +1886,8 @@ impl<'def> AbstractStructUse<'def> {
             return coq::term::Type::Unit.to_string();
         };
 
-        let rfn_instantiations: Vec<String> =
-            self.ty_params.iter().map(|ty| ty.get_rfn_type().to_string()).collect();
+        let rfn_instantiations: Vec<_> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Type::get_rfn_type).collect();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -1915,11 +1912,8 @@ impl<'def> AbstractStructUse<'def> {
         };
 
         // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -1935,12 +1929,8 @@ impl<'def> AbstractStructUse<'def> {
         };
 
         // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
-        // TODO generates too many apps
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -1956,12 +1946,8 @@ impl<'def> AbstractStructUse<'def> {
         };
 
         // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
-        // TODO generates too many apps
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -1976,10 +1962,7 @@ impl<'def> AbstractStructUse<'def> {
             return Type::Unit.to_string();
         };
 
-        let mut param_tys = Vec::new();
-        for p in &self.ty_params {
-            param_tys.push(format!("({})", p));
-        }
+        let param_tys = self.scope_inst.get_all_ty_params_with_assocs();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -2032,7 +2015,7 @@ impl Add<u32> for Int128 {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct AbstractEnum<'def> {
     /// variants of this enum: name, variant, a mask describing which of the type parameters it uses, and the
     /// discriminant
@@ -2567,21 +2550,18 @@ impl<'def> EnumBuilder<'def> {
 }
 
 /// A usage of an `AbstractEnum` that instantiates its type parameters.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct AbstractEnumUse<'def> {
     /// reference to the enum's definition
     pub def: AbstractEnumRef<'def>,
     /// Instantiations for type parameters
-    pub ty_params: Vec<Type<'def>>,
+    pub scope_inst: GenericScopeInst<'def>,
 }
 
 impl<'def> AbstractEnumUse<'def> {
     #[must_use]
-    pub fn new(s: AbstractEnumRef<'def>, params: Vec<Type<'def>>) -> Self {
-        AbstractEnumUse {
-            def: s,
-            ty_params: params,
-        }
+    pub const fn new(s: AbstractEnumRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
+        AbstractEnumUse { def: s, scope_inst }
     }
 
     /// Add the lifetimes appearing in this type to `s`.
@@ -2603,8 +2583,8 @@ impl<'def> AbstractEnumUse<'def> {
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
 
-        let rfn_instantiations: Vec<String> =
-            self.ty_params.iter().map(|ty| ty.get_rfn_type().to_string()).collect();
+        let rfn_instantiations: Vec<_> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Type::get_rfn_type).collect();
 
         let applied = coq::term::App::new(def.plain_rt_name.clone(), rfn_instantiations);
         applied.to_string()
@@ -2613,29 +2593,21 @@ impl<'def> AbstractEnumUse<'def> {
     /// Generate a term for the enum layout (of type `struct_layout`)
     #[must_use]
     pub fn generate_enum_layout_term(&self) -> String {
-        // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
         // use_struct_layout_alg' ([my_spec] [params])
-        let specialized_spec = format!("({})", coq::term::App::new(def.els_def_name.clone(), param_sts));
+        let specialized_spec = coq::term::App::new(def.els_def_name.clone(), param_sts);
         coq::term::App::new("use_enum_layout_alg'".to_owned(), vec![specialized_spec]).to_string()
     }
 
     /// Generate a term for the enum layout spec (of type `enum_layout_spec`).
     #[must_use]
     pub fn generate_enum_layout_spec_term(&self) -> String {
-        // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
@@ -2646,12 +2618,8 @@ impl<'def> AbstractEnumUse<'def> {
     /// Get the `syn_type` term for this enum use.
     #[must_use]
     pub fn generate_syn_type_term(&self) -> SynType {
-        // first get the syntys for the type params
-        let mut param_sts = Vec::new();
-        for p in &self.ty_params {
-            let st: SynType = p.into();
-            param_sts.push(format!("({})", st));
-        }
+        let param_sts: Vec<SynType> =
+            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
@@ -2663,10 +2631,7 @@ impl<'def> AbstractEnumUse<'def> {
     /// Generate a string representation of this enum use.
     #[must_use]
     pub fn generate_type_term(&self) -> String {
-        let mut param_tys = Vec::new();
-        for p in &self.ty_params {
-            param_tys.push(format!("({})", p));
-        }
+        let param_tys = self.scope_inst.get_all_ty_params_with_assocs();
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
         let term = coq::term::App::new(def.plain_ty_name.clone(), param_tys);
