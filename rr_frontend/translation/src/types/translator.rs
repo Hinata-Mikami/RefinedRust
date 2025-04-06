@@ -991,21 +991,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let generics: &'tcx ty::Generics = self.env.tcx().generics_of(adt.did());
         let mut deps = HashSet::new();
-        let scope = scope::Params::from(generics.params.as_slice());
+        let mut scope = scope::Params::from(generics.params.as_slice());
+        scope.add_param_env(adt.did(), self.env(), self, self.trait_registry())?;
         let param_env = self.env.tcx().param_env(adt.did());
-
-        // first thing: figure out the generics we are using here.
-        let mut folder = TyVarFolder::new(self.env.tcx());
-        for f in &ty.fields {
-            let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
-            f_ty.fold_with(&mut folder);
-        }
-        let mut used_generics: Vec<ty::ParamTy> = folder.get_result().into_iter().collect();
-        // sort according to the index, i.e., the declaration order of the params.
-        used_generics.sort();
-        info!("used generics: {:?}", used_generics);
-        // these type params need to be actually quantified in the definition
-        let ty_param_defs = scope.mask_typarams(&used_generics);
 
         // to account for recursive structs and enable establishing circular references,
         // we first generate a dummy struct (None)
@@ -1024,7 +1012,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let (variant_def, invariant_def) =
                 self.make_adt_variant(&struct_name, ty, adt, AdtState::new(&mut deps, &scope, &param_env))?;
 
-            let mut struct_def = radium::AbstractStruct::new(variant_def, ty_param_defs);
+            let mut struct_def = radium::AbstractStruct::new(variant_def, scope.into());
             if let Some(invariant_def) = invariant_def {
                 struct_def.add_invariant(invariant_def);
             }
@@ -1323,7 +1311,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let tcx = self.env.tcx();
 
         let generics: &'tcx ty::Generics = self.env.tcx().generics_of(def.did());
-        let scope = scope::Params::from(generics.params.as_slice());
+        let mut scope = scope::Params::from(generics.params.as_slice());
+        scope.add_param_env(def.did(), self.env(), self, self.trait_registry())?;
+
         let mut deps = HashSet::new();
         let param_env = tcx.param_env(def.did());
 
@@ -1332,22 +1322,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         // TODO: currently a hack, I don't know how to query the name properly
         let enum_name = base::strip_coq_ident(format!("{:?}", def).as_str());
-
-        // first thing: figure out the generics we are using here.
-        // we need to search all of the variant types for that.
-        let mut folder = TyVarFolder::new(self.env.tcx());
-        for v in def.variants() {
-            for f in &v.fields {
-                let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
-                f_ty.fold_with(&mut folder);
-            }
-        }
-        let mut used_generics: Vec<ty::ParamTy> = folder.get_result().into_iter().collect();
-        // sort according to the index, i.e., the declaration order of the params.
-        used_generics.sort();
-        let ty_param_defs = scope.mask_typarams(&used_generics);
-
-        info!("enum using generics: {:?}", used_generics);
 
         // insert partial definition for recursive occurrences
         self.enum_registry
@@ -1372,7 +1346,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     AdtState::new(&mut deps, &scope, &param_env),
                 )?;
 
-                let mut struct_def = radium::AbstractStruct::new(variant_def, ty_param_defs.clone());
+                let mut struct_def = radium::AbstractStruct::new(variant_def, scope.clone().into());
                 if let Some(invariant_def) = invariant_def {
                     struct_def.add_invariant(invariant_def);
                 }
@@ -1436,7 +1410,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 inductive_decl = Some(decl);
             }
 
-            let mut enum_builder = radium::EnumBuilder::new(enum_name, ty_param_defs, translated_it, repr);
+            let mut enum_builder = radium::EnumBuilder::new(enum_name, scope.into(), translated_it, repr);
 
             // now build the enum itself
             for v in def.variants() {

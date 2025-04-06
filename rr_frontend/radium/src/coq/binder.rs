@@ -166,7 +166,7 @@ impl BinderList {
 
     /// Make using terms for this list of binders
     #[must_use]
-    pub fn make_using_terms(&self) -> Vec<term::Gallina> {
-        self.0.iter().map(|x| term::Gallina::Literal(format!("{}", x.get_name()))).collect()
+    pub fn make_using_terms(&self) -> term::TermList {
+        term::TermList::new(self.0.iter().map(|x| term::Gallina::Literal(x.get_name())).collect())
     }
 }

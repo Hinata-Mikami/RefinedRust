@@ -334,18 +334,6 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
     }
 
-    /// Create a scope of typarams masked by a set of parameters.
-    /// The input must be sorted.
-    #[must_use]
-    pub fn mask_typarams(&self, used_params: &[ty::ParamTy]) -> Vec<radium::LiteralTyParam> {
-        let mut res = Vec::new();
-        for x in used_params {
-            let ty = self.lookup_ty_param_idx(x.index as usize).unwrap();
-            res.push(ty.to_owned());
-        }
-        res
-    }
-
     /// Add a `ParamEnv` of a given `DefId` to the scope to process trait obligations.
     pub fn add_param_env(
         &mut self,

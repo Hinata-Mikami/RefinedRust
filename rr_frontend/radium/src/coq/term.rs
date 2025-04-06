@@ -84,6 +84,27 @@ impl Display for Gallina {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("{}", display_list!(_0, " ", "{}"))]
+pub struct TermList(pub Vec<Gallina>);
+
+impl TermList {
+    #[must_use]
+    pub const fn new(params: Vec<Gallina>) -> Self {
+        Self(params)
+    }
+
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self(vec![])
+    }
+
+    pub fn append(&mut self, params: Vec<Gallina>) {
+        self.0.extend(params);
+    }
+}
+
 /// An [application].
 ///
 /// [application]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#function-application

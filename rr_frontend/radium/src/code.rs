@@ -908,7 +908,7 @@ impl<'def> Function<'def> {
             self.other_functions.iter().map(|proc_use| proc_use.loc_name.clone()).collect();
 
         let ty_params = self.spec.generics.get_all_ty_params_with_assocs();
-        for names in ty_params.get_coq_ty_st_params().make_using_terms() {
+        for names in ty_params.get_coq_ty_st_params().make_using_terms().0 {
             code_params.push(format!("{names}"));
         }
         for s in &self.used_statics {
@@ -938,13 +938,7 @@ impl<'def> Function<'def> {
         }
 
         // instantiate semantic args
-        for ty in self.spec.generics.get_all_ty_params_with_assocs().params {
-            write!(f, " <TY> {}", ty.type_term)?;
-        }
-        for lft in self.spec.generics.get_lfts() {
-            write!(f, " <LFT> {}", lft)?;
-        }
-        write!(f, " <INST!>")?;
+        write!(f, "{}", self.spec.generics.identity_instantiation())?;
 
         // I know which generics i'm quantifying over here. I should add the validity requirements
         // for all of them.
@@ -952,17 +946,11 @@ impl<'def> Function<'def> {
         let trait_late_pre = {
             if let Some(trait_req_incl_name) = &self.spec.trait_req_incl_name {
                 let args = self.spec.get_all_trait_req_coq_params().make_using_terms();
-                let term = coq::term::App::new(trait_req_incl_name.to_owned(), args);
+                let term = coq::term::App::new(trait_req_incl_name.to_owned(), args.0);
 
                 let mut term = term.to_string();
                 // instantiate semantic args
-                for ty in self.spec.generics.get_all_ty_params_with_assocs().params {
-                    write!(term, " <TY> {}", ty.type_term).unwrap();
-                }
-                for lft in self.spec.generics.get_lfts() {
-                    write!(term, " <LFT> {}", lft).unwrap();
-                }
-                write!(term, " <INST!>").unwrap();
+                write!(term, "{}", self.spec.generics.identity_instantiation()).unwrap();
 
                 term
             } else {
@@ -1298,17 +1286,8 @@ impl<'def> UsedProcedure<'def> {
                     write!(term, "{} ", x.get_spec_term())?;
                 }
 
-                // instantiate lifetimes
-                for lft in self.scope_inst.get_lfts() {
-                    write!(term, " <LFT> {lft}")?;
-                }
-
-                // instantiate type variables
-                for ty in &all_tys {
-                    write!(term, " <TY> {ty}")?;
-                }
-
-                write!(term, " <INST!>")?;
+                // instantiate semantics args
+                write!(term, "{}", self.scope_inst.instantiation())?;
             },
             UsedProcedureSpec::TraitMethod(trait_spec, method_name) => {
                 /*
@@ -1487,17 +1466,8 @@ impl<'def> Display for UsedProcedure<'def> {
             //write!(f, "{} ", x.get_spec_term())?;
         }
 
-        // instantiate lifetimes
-        for lft in self.scope_inst.get_lfts() {
-            write!(f, " <LFT> {lft}")?;
-        }
-
-        // instantiate type variables
-        for ty in &all_tys {
-            write!(f, " <TY> {ty}")?;
-        }
-
-        write!(f, " <INST!>)")?;
+        // instantiate semantic terms
+        write!(f, "{})", self.scope_inst.instantiation())?;
 
         let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();

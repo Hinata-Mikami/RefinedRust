@@ -1045,7 +1045,7 @@ impl InvariantSpec {
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics: &[String],
+        generics_rts: &coq::term::TermList,
         context_names: &[String],
     ) -> String {
         let mut out = String::with_capacity(200);
@@ -1078,8 +1078,7 @@ impl InvariantSpec {
         write!(out, "{indent}Definition {}_rt : Type.\n", self.type_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
-            generics.join(" "),
+            "{indent}Proof using {generics_rts} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
             context_names.join(" "),
             self.type_name
         )
@@ -1095,7 +1094,7 @@ impl InvariantSpec {
         &self,
         base_type_name: &str,
         base_rfn_type: &str,
-        generic_params: &[LiteralTyParam],
+        scope: &GenericScope<'_>,
     ) -> String {
         let mut out = String::with_capacity(200);
 
@@ -1106,17 +1105,19 @@ impl InvariantSpec {
         write!(out, "Section {}.\n", self.type_name).unwrap();
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
+        let all_ty_params = scope.get_all_ty_params_with_assocs();
+
         // add type parameters
-        if !generic_params.is_empty() {
+        if !all_ty_params.params.is_empty() {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
-            for names in generic_params {
+            for names in &all_ty_params.params {
                 write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
 
             write!(out, "{}Context", indent).unwrap();
-            for names in generic_params {
+            for names in &all_ty_params.params {
                 write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
             }
             out.push_str(".\n");
@@ -1125,12 +1126,12 @@ impl InvariantSpec {
         let (context_names, dep_sigma) = format_extra_context_items(&self.coq_params, &mut out).unwrap();
 
         // get the applied base_rfn_type
-        let rfn_instantiations: Vec<String> =
-            generic_params.iter().map(|names| names.refinement_type.clone()).collect();
-        let applied_base_rfn_type = coq::term::App::new(base_rfn_type, rfn_instantiations.clone());
+        let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+        let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.0.clone());
 
         // get the applied base type
-        let base_type_app: Vec<String> = generic_params.iter().map(|names| names.type_term.clone()).collect();
+        let base_type_app: Vec<String> =
+            all_ty_params.params.iter().map(|names| names.type_term.clone()).collect();
         let applied_base_type = coq::term::App::new(base_type_name, base_type_app);
 
         write!(
@@ -1138,8 +1139,8 @@ impl InvariantSpec {
             "{}",
             self.generate_coq_type_def_core(
                 applied_base_type.to_string().as_str(),
-                applied_base_rfn_type.to_string().as_str(),
-                &rfn_instantiations,
+                applied_base_rt.to_string().as_str(),
+                &rt_instantiations,
                 &context_names
             )
         )
@@ -1156,7 +1157,7 @@ impl InvariantSpec {
                 "Global Arguments {} {}{} {{{}}}.\n",
                 self.rt_def_name(),
                 dep_sigma_str,
-                "_ ".repeat(generic_params.len()),
+                "_ ".repeat(all_ty_params.params.len()),
                 "_ ".repeat(context_names.len())
             )
             .unwrap();
@@ -1265,26 +1266,15 @@ impl<'def> AbstractVariant<'def> {
 
     /// The core of generating the sls definition, without the section + context intro.
     #[must_use]
-    pub fn generate_coq_sls_def_core(&self, typarams: &[String], typarams_use: &[String]) -> String {
+    pub fn generate_coq_sls_def_core(&self, typarams: &coq::binder::BinderList) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
         // intro to main def
-        write!(
-            out,
-            "{indent}Definition {} {} : struct_layout_spec :=\n",
-            self.sls_def_name,
-            typarams.join(" "),
-        )
-        .unwrap();
+        write!(out, "{indent}Definition {} {typarams} : struct_layout_spec :=\n", self.sls_def_name,)
+            .unwrap();
         // for recursive uses
-        write!(
-            out,
-            "{indent}{indent}let {} {} := UnitSynType in\n",
-            self.st_def_name,
-            typarams.iter().join(" ")
-        )
-        .unwrap();
+        write!(out, "{indent}{indent}let {} {typarams} := UnitSynType in\n", self.st_def_name,).unwrap();
         write!(out, "{indent}{indent}mk_sls \"{}\" [", self.name).unwrap();
 
         push_str_list!(out, &self.fields, ";", |(name, ty)| {
@@ -1298,11 +1288,10 @@ impl<'def> AbstractVariant<'def> {
         // also generate a definition for the syntype
         write!(
             out,
-            "{indent}Definition {} {} : syn_type := {} {}.\n",
+            "{indent}Definition {} {typarams} : syn_type := {} {}.\n",
             self.st_def_name,
-            typarams.join(" "),
-            self.sls_def_name,
-            typarams_use.join(" ")
+            self.sls_def_name.clone(),
+            typarams.make_using_terms(),
         )
         .unwrap();
 
@@ -1311,7 +1300,7 @@ impl<'def> AbstractVariant<'def> {
 
     /// Generate a Coq definition for the struct layout spec.
     #[must_use]
-    pub fn generate_coq_sls_def(&self, ty_params: &[LiteralTyParam]) -> String {
+    pub fn generate_coq_sls_def(&self, scope: &GenericScope<'def>) -> String {
         let mut out = String::with_capacity(200);
 
         let indent = "  ";
@@ -1319,15 +1308,10 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
         // add syntype parameters
-        let mut typarams = Vec::new();
-        let mut typarams_use = Vec::new();
-        for names in ty_params {
-            typarams.push(format!("({} : syn_type)", names.syn_type));
-            typarams_use.push(names.syn_type.clone());
-        }
+        let mut typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
         out.push('\n');
 
-        write!(out, "{}", self.generate_coq_sls_def_core(&typarams, &typarams_use)).unwrap();
+        write!(out, "{}", self.generate_coq_sls_def_core(&typarams)).unwrap();
 
         // finish
         write!(out, "End {}.\n", self.sls_def_name).unwrap();
@@ -1348,15 +1332,17 @@ impl<'def> AbstractVariant<'def> {
     #[must_use]
     pub fn generate_coq_type_def_core(
         &self,
-        ty_params: &[LiteralTyParam],
+        ty_params: &GenericScope<'def>,
         context_names: &[String],
     ) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
+        let all_ty_params = ty_params.get_all_ty_params_with_assocs();
+
         // generate terms to apply the sls app to
         let mut sls_app = Vec::new();
-        for names in ty_params {
+        for names in &all_ty_params.params {
             // TODO this is duplicated with the same processing for Type::Literal...
             let term = format!("(ty_syn_type {})", names.type_term);
             sls_app.push(term);
@@ -1367,19 +1353,19 @@ impl<'def> AbstractVariant<'def> {
         write!(
             out,
             "{indent}Proof using {} {}. exact ({}). Defined.\n",
-            ty_params.iter().map(|x| x.type_term.clone()).collect::<Vec<_>>().join(" "),
+            all_ty_params.params.iter().map(|x| x.type_term.clone()).collect::<Vec<_>>().join(" "),
             context_names.join(" "),
             self.generate_coq_type_term(sls_app)
         )
         .unwrap();
 
         // generate the refinement type definition
-        let rt_params: Vec<_> = ty_params.iter().map(|x| x.refinement_type.clone()).collect();
+        let rt_params = all_ty_params.get_coq_ty_rt_params();
         write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_def_name).unwrap();
         write!(
             out,
             "{indent}Proof using {} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
-            rt_params.join(" "),
+            rt_params.make_using_terms(),
             context_names.join(" "),
             self.plain_ty_name
         )
@@ -1398,7 +1384,7 @@ impl<'def> AbstractVariant<'def> {
     #[must_use]
     pub fn generate_coq_type_def(
         &self,
-        ty_params: &[LiteralTyParam],
+        scope: &GenericScope<'def>,
         extra_context: &[coq::binder::Binder],
     ) -> String {
         let mut out = String::with_capacity(200);
@@ -1407,17 +1393,19 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "Section {}.\n", self.plain_ty_name).unwrap();
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
+        let all_ty_params = scope.get_all_ty_params_with_assocs();
+
         // add type parameters, and build a list of terms to apply the sls def to
-        if !ty_params.is_empty() {
+        if !all_ty_params.params.is_empty() {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
-            for names in ty_params {
+            for names in &all_ty_params.params {
                 write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
 
             write!(out, "{}Context", indent).unwrap();
-            for names in ty_params {
+            for names in &all_ty_params.params {
                 write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
             }
             out.push_str(".\n");
@@ -1427,7 +1415,7 @@ impl<'def> AbstractVariant<'def> {
         // write coq parameters
         let (context_names, dep_sigma) = format_extra_context_items(extra_context, &mut out).unwrap();
 
-        write!(out, "{}", self.generate_coq_type_def_core(ty_params, &context_names)).unwrap();
+        write!(out, "{}", self.generate_coq_type_def_core(scope, &context_names)).unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_def_name).unwrap();
@@ -1439,7 +1427,7 @@ impl<'def> AbstractVariant<'def> {
                 "Global Arguments {} {}{} {{{}}}.\n",
                 self.plain_rt_def_name,
                 dep_sigma_str,
-                "_ ".repeat(ty_params.len()),
+                "_ ".repeat(all_ty_params.params.len()),
                 "_ ".repeat(extra_context.len())
             )
             .unwrap();
@@ -1490,9 +1478,8 @@ pub struct AbstractStruct<'def> {
     /// the actual definition of the variant
     variant_def: AbstractVariant<'def>,
 
-    /// names for the type parameters (for the Coq definitions)
-    /// TODO: will make those options once we handle lifetime parameters properly.
-    ty_params: Vec<LiteralTyParam>,
+    /// scope this is generic over
+    scope: GenericScope<'def>,
 
     /// true iff this is recursive
     is_recursive: bool,
@@ -1508,11 +1495,11 @@ pub type AbstractStructRef<'def> = &'def RefCell<Option<AbstractStruct<'def>>>;
 
 impl<'def> AbstractStruct<'def> {
     #[must_use]
-    pub fn new(variant_def: AbstractVariant<'def>, ty_params: Vec<LiteralTyParam>) -> Self {
+    pub const fn new(variant_def: AbstractVariant<'def>, scope: GenericScope<'def>) -> Self {
         AbstractStruct {
             invariant: None,
             variant_def,
-            ty_params,
+            scope,
             is_recursive: false,
         }
     }
@@ -1528,11 +1515,13 @@ impl<'def> AbstractStruct<'def> {
         self.invariant.is_some()
     }
 
+    /*
     /// Check if the struct has type parameters.
     #[must_use]
     pub fn has_type_params(&self) -> bool {
         !self.ty_params.is_empty()
     }
+    */
 
     /// Get the name of this struct
     #[must_use]
@@ -1588,7 +1577,7 @@ impl<'def> AbstractStruct<'def> {
     /// Generate a Coq definition for the struct layout spec.
     #[must_use]
     pub fn generate_coq_sls_def(&self) -> String {
-        self.variant_def.generate_coq_sls_def(&self.ty_params)
+        self.variant_def.generate_coq_sls_def(&self.scope)
     }
 
     /// Generate a Coq definition for the struct type alias.
@@ -1600,15 +1589,12 @@ impl<'def> AbstractStruct<'def> {
             let extra_context = if let Some(inv) = &self.invariant { inv.coq_params.as_slice() } else { &[] };
 
             // the raw type
-            let mut out = self.variant_def.generate_coq_type_def(&self.ty_params, extra_context);
+            let mut out = self.variant_def.generate_coq_type_def(&self.scope, extra_context);
 
             // the invariant
             let inv = self.invariant.as_ref().map(|spec| {
-                let s = spec.generate_coq_type_def(
-                    self.plain_ty_name(),
-                    self.plain_rt_def_name(),
-                    &self.ty_params,
-                );
+                let s =
+                    spec.generate_coq_type_def(self.plain_ty_name(), self.plain_rt_def_name(), &self.scope);
                 out.push_str(&s);
             });
             out
@@ -1621,7 +1607,7 @@ impl<'def> AbstractStruct<'def> {
 
         // we need an invariant, otherwise we cannot define a recursive type
         if let Some(inv) = self.invariant.as_ref() {
-            let generic_params = &self.ty_params;
+            let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
             let Some(abstracted_rt) = &inv.abstracted_refinement else {
                 panic!("no abstracted refinement");
@@ -1633,16 +1619,16 @@ impl<'def> AbstractStruct<'def> {
             write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
             // add type parameters
-            if !generic_params.is_empty() {
+            if !all_ty_params.params.is_empty() {
                 // first push the (implicit) refinement type parameters
                 write!(out, "{}Context", indent).unwrap();
-                for names in generic_params {
+                for names in &all_ty_params.params {
                     write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
                 }
                 out.push_str(".\n");
 
                 write!(out, "{}Context", indent).unwrap();
-                for names in generic_params {
+                for names in &all_ty_params.params {
                     write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
                 }
                 out.push_str(".\n");
@@ -1652,7 +1638,7 @@ impl<'def> AbstractStruct<'def> {
 
             // generate terms to apply the sls app to
             let mut sls_app = Vec::new();
-            for names in &self.ty_params {
+            for names in &all_ty_params.params {
                 // TODO this is duplicated with the same processing for Type::Literal...
                 let term = format!("(ty_syn_type {})", names.type_term);
                 sls_app.push(term);
@@ -1661,9 +1647,8 @@ impl<'def> AbstractStruct<'def> {
             // generate the raw rt def
             // we introduce a let binding for the recursive rt type
             write!(out, "{indent}Definition {} : Type :=\n", self.variant_def.plain_rt_def_name).unwrap();
-            let ty_rt_params: Vec<_> = self.ty_params.iter().map(|x| x.refinement_type.clone()).collect();
-            write!(out, "{indent}{indent}let {} ", inv.rt_def_name()).unwrap();
-            push_str_list!(out, &ty_rt_params, " ");
+            let ty_rt_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
+            write!(out, "{indent}{indent}let {} {ty_rt_uses}", inv.rt_def_name()).unwrap();
             write!(out, " := {} in\n", inv.rfn_type).unwrap();
             write!(out, "{indent}{indent}{}.\n", self.variant_def.rfn_type()).unwrap();
 
@@ -1678,8 +1663,7 @@ impl<'def> AbstractStruct<'def> {
             write!(
                 out,
                 "{indent}Definition {type_name}_rec ({type_name}_rec' : type ({rfn_type})) : type ({rfn_type}) :=\n\
-                {indent}{indent}let {type_name} ").unwrap();
-            push_str_list!(out, &ty_rt_params, " ");
+                {indent}{indent}let {type_name} {ty_rt_uses}").unwrap();
             write!(
                 out,
                 " := {type_name}_rec' in\n\
@@ -1699,8 +1683,7 @@ impl<'def> AbstractStruct<'def> {
             write!(out, "{indent}Definition {}_rt : Type.\n", type_name).unwrap();
             write!(
                 out,
-                "{indent}Proof using {} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
-                ty_rt_params.join(" "),
+                "{indent}Proof using {ty_rt_uses} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
                 context_names.join(" "),
                 type_name
             )
@@ -1718,7 +1701,7 @@ impl<'def> AbstractStruct<'def> {
                     "Global Arguments {} {}{} {{{}}}.\n",
                     inv.rt_def_name(),
                     dep_sigma_str,
-                    "_ ".repeat(generic_params.len()),
+                    "_ ".repeat(all_ty_params.params.len()),
                     "_ ".repeat(context_names.len())
                 )
                 .unwrap();
@@ -1772,12 +1755,12 @@ impl<'def> VariantBuilder<'def> {
 
     /// Finish building the struct type and generate an abstract struct definition.
     #[must_use]
-    pub fn finish_as_struct(self, ty_params: Vec<LiteralTyParam>) -> AbstractStruct<'def> {
+    pub fn finish_as_struct(self, scope: GenericScope<'def>) -> AbstractStruct<'def> {
         let variant = self.finish();
         AbstractStruct {
             variant_def: variant,
             invariant: None,
-            ty_params,
+            scope,
             is_recursive: false,
         }
     }
@@ -1804,20 +1787,18 @@ impl<'def> VariantBuilder<'def> {
 pub fn make_tuple_struct_repr<'def>(num_fields: usize) -> AbstractStruct<'def> {
     let name = format!("tuple{}", num_fields);
 
-    let mut ty_params = Vec::new();
-    for i in 0..num_fields {
-        let param_name = format!("T{}", i);
-        ty_params.push(param_name);
-    }
-    let ty_param_defs: Vec<_> = ty_params.iter().map(|name| LiteralTyParam::new(name, name)).collect();
-
+    let mut scope = GenericScope::empty();
     let mut builder = VariantBuilder::new(name, StructRepr::ReprRust);
 
-    for (i, lit) in ty_param_defs.iter().enumerate() {
-        builder.add_field(&i.to_string(), Type::LiteralParam(lit.to_owned()));
+    for i in 0..num_fields {
+        let param_name = format!("T{}", i);
+        let lit = LiteralTyParam::new(&param_name, &param_name);
+        scope.add_ty_param(lit.clone());
+
+        builder.add_field(&i.to_string(), Type::LiteralParam(lit));
     }
 
-    builder.finish_as_struct(ty_param_defs)
+    builder.finish_as_struct(scope)
 }
 
 /// A usage of an `AbstractStruct` that instantiates its type parameters.
@@ -2044,17 +2025,19 @@ pub struct AbstractEnum<'def> {
     discriminant_type: IntType,
 
     /// these should be the same also across all the variants
-    ty_params: Vec<LiteralTyParam>,
+    scope: GenericScope<'def>,
 }
 
 pub type AbstractEnumRef<'def> = &'def RefCell<Option<AbstractEnum<'def>>>;
 
 impl<'def> AbstractEnum<'def> {
+    /*
     /// Check whether this enum has any type parameters.
     #[must_use]
     pub fn has_type_params(&self) -> bool {
         !self.ty_params.is_empty()
     }
+    */
 
     /// Get the name of this enum.
     #[must_use]
@@ -2100,39 +2083,29 @@ impl<'def> AbstractEnum<'def> {
         out.push('\n');
 
         // add syntype parameters
-        let mut typarams = Vec::new();
-        let mut typarams_use = Vec::new();
-
-        if !self.ty_params.is_empty() {
-            for names in &self.ty_params {
-                typarams.push(format!("({} : syn_type)", names.syn_type));
-                typarams_use.push(names.syn_type.clone());
-            }
-        }
+        let all_ty_st_params = self.scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
+        let all_ty_st_params_uses = all_ty_st_params.make_using_terms();
 
         // generate all the component structs
         for (_, v, _) in &self.variants {
             let vbor = v.borrow();
             let vbor = vbor.as_ref().unwrap();
 
-            out.push_str(&vbor.variant_def.generate_coq_sls_def_core(&typarams, &typarams_use));
+            out.push_str(&vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params));
             out.push('\n');
         }
 
         // intro to main def
         out.push_str(&format!(
-            "{indent}Program Definition {} {}: enum_layout_spec := mk_els \"{}\" {} [",
-            self.els_def_name,
-            typarams.join(" "),
-            self.name,
-            self.discriminant_type
+            "{indent}Program Definition {} {all_ty_st_params} : enum_layout_spec := mk_els \"{}\" {} [",
+            self.els_def_name, self.name, self.discriminant_type
         ));
 
         push_str_list!(out, &self.variants, ";", |(name, var, _)| {
             let vbor = var.borrow();
             let vbor = vbor.as_ref().unwrap();
 
-            format!("\n{}{}(\"{}\", {} {})", indent, indent, name, vbor.st_def_name(), typarams.join(" "))
+            format!("\n{}{}(\"{}\", {} {all_ty_st_params})", indent, indent, name, vbor.st_def_name())
         });
 
         // write the repr
@@ -2152,11 +2125,8 @@ impl<'def> AbstractEnum<'def> {
 
         // also write an st definition
         out.push_str(&format!(
-            "{indent}Definition {} {} : syn_type := {} {}.\n",
-            self.st_def_name,
-            typarams.join(" "),
-            self.els_def_name,
-            typarams_use.join(" ")
+            "{indent}Definition {} {all_ty_st_params} : syn_type := {} {all_ty_st_params_uses}.\n",
+            self.st_def_name, self.els_def_name,
         ));
 
         // finish
@@ -2270,14 +2240,26 @@ impl<'def> AbstractEnum<'def> {
     fn generate_lfts(&self) -> String {
         // TODO: probably should build this up modularly over the fields
 
-        let mut v: Vec<_> = self.ty_params.iter().map(|p| format!("(ty_lfts {})", p.type_term)).collect();
+        let mut v: Vec<_> = self
+            .scope
+            .get_all_ty_params_with_assocs()
+            .params
+            .iter()
+            .map(|p| format!("(ty_lfts {})", p.type_term))
+            .collect();
         v.push("[]".to_owned());
         v.join(" ++ ")
     }
 
     fn generate_wf_elctx(&self) -> String {
         // TODO: probably should build this up modularly over the fields
-        let mut v: Vec<_> = self.ty_params.iter().map(|p| format!("(ty_wf_E {})", p.type_term)).collect();
+        let mut v: Vec<_> = self
+            .scope
+            .get_all_ty_params_with_assocs()
+            .params
+            .iter()
+            .map(|p| format!("(ty_wf_E {})", p.type_term))
+            .collect();
         v.push("[]".to_owned());
         v.join(" ++ ")
     }
@@ -2297,7 +2279,7 @@ impl<'def> AbstractEnum<'def> {
 
             // add st constraints on params
             let mut sls_app = Vec::new();
-            for ty in &self.ty_params {
+            for ty in &self.scope.get_all_ty_params_with_assocs().params {
                 write!(out, "{} `{{!TCDone ({} = ty_syn_type {})}} ", ty.syn_type, ty.syn_type, ty.type_term)
                     .unwrap();
                 sls_app.push(ty.syn_type.clone());
@@ -2329,29 +2311,31 @@ impl<'def> AbstractEnum<'def> {
     pub fn generate_coq_type_def(&self) -> String {
         let mut out = String::with_capacity(200);
 
+        let all_ty_params = self.scope.get_all_ty_params_with_assocs();
+
         let indent = "  ";
         // the write_str impl will always return Ok.
         write!(out, "Section {}.\n", self.plain_ty_name).unwrap();
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
         // add type parameters, and build a list of terms to apply the els def to
-        if !self.ty_params.is_empty() {
+        if !all_ty_params.params.is_empty() {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
-            for names in &self.ty_params {
+            for names in &all_ty_params.params {
                 write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
 
             write!(out, "{}Context", indent).unwrap();
-            for names in &self.ty_params {
+            for names in &all_ty_params.params {
                 write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
         out.push('\n');
 
-        let rt_params: Vec<_> = self.ty_params.iter().map(|x| x.refinement_type.clone()).collect();
+        let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
 
         // define types and type abstractions for all the component types.
         // TODO: we should actually use the abstracted types here.
@@ -2359,13 +2343,13 @@ impl<'def> AbstractEnum<'def> {
             let v = variant.borrow();
             let v = v.as_ref().unwrap();
             // TODO: might also need to handle extra context items
-            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.ty_params, &[])).unwrap();
+            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &[])).unwrap();
 
             if let Some(inv) = &v.invariant {
                 let inv_def = inv.generate_coq_type_def_core(
                     v.variant_def.plain_ty_name.as_str(),
                     v.variant_def.plain_rt_def_name.as_str(),
-                    &rt_params,
+                    &rt_param_uses,
                     &[],
                 );
                 write!(out, "{}\n", inv_def).unwrap();
@@ -2401,7 +2385,7 @@ impl<'def> AbstractEnum<'def> {
         // build the els term applied to generics
         // generate terms to apply the sls app to
         let mut els_app = Vec::new();
-        for names in &self.ty_params {
+        for names in &all_ty_params.params {
             let term = format!("(ty_syn_type {})", names.type_term);
             els_app.push(term);
         }
@@ -2448,8 +2432,7 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
-            rt_params.join(" "),
+            "{indent}Proof using {rt_param_uses}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
             self.plain_ty_name
         )
         .unwrap();
@@ -2486,7 +2469,7 @@ pub struct EnumBuilder<'def> {
     /// the enum's name
     name: String,
     /// names for the type parameters (for the Coq definitions)
-    ty_params: Vec<LiteralTyParam>,
+    scope: GenericScope<'def>,
     /// type of the integer discriminant
     discriminant_type: IntType,
     /// representation options for the enum
@@ -2517,7 +2500,7 @@ impl<'def> EnumBuilder<'def> {
             enum_def_name,
             spec,
             optional_inductive_def,
-            ty_params: self.ty_params,
+            scope: self.scope,
             discriminant_type: self.discriminant_type,
             repr: self.repr,
         }
@@ -2528,14 +2511,14 @@ impl<'def> EnumBuilder<'def> {
     #[must_use]
     pub fn new(
         name: String,
-        ty_param_defs: Vec<LiteralTyParam>,
+        scope: GenericScope<'def>,
         discriminant_type: IntType,
         repr: EnumRepr,
     ) -> EnumBuilder<'def> {
         EnumBuilder {
             variants: Vec::new(),
             name,
-            ty_params: ty_param_defs,
+            scope,
             discriminant_type,
             repr,
         }
@@ -4086,6 +4069,22 @@ impl<'def> GenericScopeInst<'def> {
         params
     }
 
+    /// Generate an instantiation of a term with the identity
+    #[must_use]
+    pub fn instantiation(&self) -> String {
+        let mut out = String::new();
+
+        for ty in self.get_all_ty_params_with_assocs() {
+            out.push_str(&format!(" <TY> {}", ty));
+        }
+        for lft in self.get_lfts() {
+            out.push_str(&format!(" <LFT> {}", lft));
+        }
+        out.push_str(" <INST!>");
+
+        out
+    }
+
     #[must_use]
     pub fn get_lfts(&self) -> &[Lft] {
         &self.lfts
@@ -4104,7 +4103,7 @@ impl<'def> GenericScopeInst<'def> {
 
 /// A scope of generics.
 #[derive(Clone, Debug)]
-pub struct GenericScope<'def, T> {
+pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
     /// generics quantified on this object.
     direct_tys: TyParamList,
     /// generics quantified by a surrounding scope.
@@ -4230,6 +4229,22 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         params.merge(direct);
         trace!("all params: {params:?}");
         params
+    }
+
+    /// Generate an instantiation of a term with the identity
+    #[must_use]
+    pub fn identity_instantiation(&self) -> String {
+        let mut out = String::new();
+
+        for ty in self.get_all_ty_params_with_assocs().params {
+            out.push_str(&format!(" <TY> {}", ty.type_term));
+        }
+        for lft in self.get_lfts() {
+            out.push_str(&format!(" <LFT> {}", lft));
+        }
+        out.push_str(" <INST!>");
+
+        out
     }
 
     #[must_use]
@@ -4527,8 +4542,7 @@ fn make_trait_instance<'def>(
             let mut body = String::with_capacity(100);
 
             // first instantiate with all rt + st
-            write!(body, "{} ", spec.spec_name)?;
-            write_list!(body, &param_uses, " ")?;
+            write!(body, "{} {param_uses}", spec.spec_name)?;
 
             // then the attrs, if we have the base spec
             // This comes before other trait requirement's attrs, as the Self requirement is always
@@ -4539,8 +4553,7 @@ fn make_trait_instance<'def>(
 
             // instantiate with all trait specs
             let trait_params = spec.generics.get_all_attr_trait_parameters(false).make_using_terms();
-            write!(body, " ")?;
-            write_list!(body, &trait_params, " ")?;
+            write!(body, " {trait_params}")?;
 
             write!(body, "\n")?;
 
@@ -4682,7 +4695,7 @@ impl<'def> TraitSpecDecl<'def> {
                 .make_using_terms();
             let mut ty_term = String::with_capacity(100);
             ty_term.push_str(&format!("spec_with {num_lifetimes} ["));
-            push_str_list!(ty_term, &rt_param_uses, "; ");
+            push_str_list!(ty_term, &rt_param_uses.0, "; ");
             ty_term.push_str("] fn_spec");
 
             // params are the rt and st of the direct type parameters
@@ -4729,7 +4742,7 @@ impl<'def> TraitSpecDecl<'def> {
 
         // compute the type of the two spec params
         let spec_param_type =
-            coq::term::App::new(self.lit.spec_record.clone(), spec_rt_using_terms).to_string();
+            coq::term::App::new(self.lit.spec_record.clone(), spec_rt_using_terms.0).to_string();
 
         // add the two spec params
         spec_incl_params.0.push(coq::binder::Binder::new(
@@ -4761,14 +4774,14 @@ impl<'def> TraitSpecDecl<'def> {
                                 Box::new(coq::term::Gallina::Literal(spec_param_name1.clone())),
                                 record_item_name.clone(),
                             ),
-                            param_uses.clone(),
+                            param_uses.0.clone(),
                         ))),
                         coq::term::Gallina::App(Box::new(coq::term::App::new(
                             coq::term::Gallina::RecordProj(
                                 Box::new(coq::term::Gallina::Literal(spec_param_name2.clone())),
                                 record_item_name.clone(),
                             ),
-                            param_uses.clone(),
+                            param_uses.0.clone(),
                         ))),
                     ],
                 )))),
@@ -4967,7 +4980,7 @@ impl<'def> TraitRefInst<'def> {
 
         coq::term::Gallina::App(Box::new(coq::term::App::new(
             coq::term::Gallina::Literal(attr_record.to_owned()),
-            args,
+            args.0,
         )))
     }
 
@@ -4984,13 +4997,10 @@ impl<'def> TraitRefInst<'def> {
         binders.append(self.generics.get_all_attr_trait_parameters(false).0);
         let args = binders.make_using_terms();
 
-        let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args).to_string();
+        let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args.0).to_string();
 
         // specialize to semtys
-        push_str_list!(specialized_spec, &tys.params, " ", |x| { format!("<TY> {}", x.type_term) });
-        // specialize to lfts
-        push_str_list!(specialized_spec, self.generics.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
-        specialized_spec.push_str(" <INST!>");
+        specialized_spec.push_str(&self.generics.identity_instantiation());
 
         coq::term::Gallina::Literal(specialized_spec)
         //coq::term::Gallina::App(Box::new(coq::term::App::new(coq::term::Gallina::Literal(spec_record.
@@ -5149,8 +5159,8 @@ impl<'def> TraitImplSpec<'def> {
         let mut params = ty_params.get_coq_ty_params();
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
 
-        let mut ty_term = format!("{} ", self.trait_ref.impl_ref.spec_subsumption_statement);
-        push_str_list!(ty_term, &params.make_using_terms(), " ");
+        let mut ty_term =
+            format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
 
         let lem = coq::command::Lemma {
             name: lemma_name.to_owned(),
@@ -5291,13 +5301,9 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
 
         write!(
             f,
-            "({applied_base_spec}).({}) ",
+            "({applied_base_spec}).({}) {spec_params} {trait_params_inst} <MERGE!>",
             self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name)
         )?;
-        write_list!(f, &spec_params, " ")?;
-        write_list!(f, &trait_params_inst, " ")?;
-
-        write!(f, " <MERGE!>")?;
 
         Ok(())
     }
