@@ -6,7 +6,7 @@ From lithium Require Import hooks.
 From refinedrust.automation Require Import ident_to_string lookup_definition.
 From refinedrust Require Import int programs program_rules functions mut_ref shr_ref products arrays enum xmap.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
-From refinedrust.automation Require Export simpl solvers proof_state.
+From refinedrust.automation Require Export existentials simpl solvers proof_state.
 Set Default Proof Using "Type".
 
 
@@ -1054,11 +1054,15 @@ Ltac solve_goal_normalized_prepare_hook ::=
 .
 
 (** Enum-related tactic calls *)
+
 Ltac solve_mk_enum_ty_lfts_incl :=
+  simpl; intro_adt_params;
   intros []; rewrite {1}ty_lfts_unfold; simpl; set_solver.
 Ltac solve_mk_enum_ty_wf_E :=
+  simpl; intro_adt_params;
   intros []; rewrite {1}ty_wf_E_unfold/=; set_solver.
 Ltac solve_mk_enum_tag_consistent :=
+  simpl; intro_adt_params;
   intros []; naive_solver.
 
 
@@ -1093,6 +1097,13 @@ Ltac solve_function_subtype_hook ::=
   unshelve (sidecond_solver);
   sidecond_hammer
 .
+
+Ltac normalized_rt_of_spec_ty ty :=
+  match type of ty with
+  | spec_with _ _ (type ?ty) =>
+      let hnf_ty := eval hnf in ty in
+      constr:(ty)
+  end.
 
 Ltac unfold_generic_inst :=
   unfold spec_instantiate_lft_fst;

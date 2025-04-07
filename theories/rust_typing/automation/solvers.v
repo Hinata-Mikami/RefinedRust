@@ -80,7 +80,10 @@ Ltac apply_term_het term apps :=
   end.
 Ltac apply_term_het_evar term apps :=
   let term := instantiate_universals term in
-  apply_term_het term apps.
+  let term := constr:(term *[] (hlist_to_plist apps)) in
+  let term := eval simpl in term in
+  constr:(term)
+.
 
 (** This interprets syntactic Rust types used in some annotations into semantic RefinedRust types *)
 (* NOTE: Be REALLY careful with this. The Ltac2 for looking up definitions will easily go haywire, and we cannot properly handle the exceptions here or show them.
@@ -780,7 +783,8 @@ Section alive_tac.
     lctx_lft_alive_list E L κs ∨ P →
     lctx_lft_alive_list E L (ty_lfts ty ++ κs) ∨ P.
   Proof.
-    unfold ty_outlives_E, lfts_outlives_E.
+    unfold ty_outlives_E.
+    rewrite lfts_outlives_E_fmap /lfts_outlives_E.
     unfold subseteq, list_subseteq.
     rewrite /lctx_lft_alive_list/=.
     rewrite lft_intersect_list_app.
@@ -1006,14 +1010,10 @@ Ltac solve_lft_alive ::=
 Global Arguments ty_lfts : simpl never.
 Global Arguments ty_wf_E : simpl never.
 Global Arguments ty_outlives_E : simpl never.
-(*Global Arguments tyl_outlives_E : simpl never.*)
-(*Global Arguments tyl_wf_E : simpl never.*)
 
 (* Otherwise [simpl] will unfold too much despite [simpl never], breaking the solver *)
 Global Opaque ty_outlives_E.
-
-(* Otherwise Qed is slow *)
-(*Global Opaque ty_lfts.*)
+Global Opaque lfts_outlives_E.
 
 Section tac.
   Context `{!typeGS Σ}.
@@ -1032,71 +1032,89 @@ Section tac.
     rewrite app_nil_r. done.
   Qed.
 
-  Lemma lfts_outlives_cons κ1 κs2 κ :
-    lfts_outlives_E (κ1 :: κs2) κ = lfts_outlives_E [κ1] κ ++ lfts_outlives_E κs2 κ.
+  Lemma tac_lfts_outlives_E_cons κ1 κs2 κ E :
+    lfts_outlives_E [κ1] κ ++ lfts_outlives_E κs2 κ = E →
+    lfts_outlives_E (κ1 :: κs2) κ = E.
   Proof.
-    rewrite /lfts_outlives_E fmap_cons//.
+    rewrite !lfts_outlives_E_fmap fmap_cons//.
   Qed.
-  Lemma lfts_outlives_app κs1 κs2 κ :
-    lfts_outlives_E (κs1 ++ κs2) κ = lfts_outlives_E κs1 κ ++ lfts_outlives_E κs2 κ.
+  Lemma tac_lfts_outlives_E_app κs1 κs2 κ E :
+    lfts_outlives_E κs1 κ ++ lfts_outlives_E κs2 κ = E →
+    lfts_outlives_E (κs1 ++ κs2) κ = E.
   Proof.
-    rewrite /lfts_outlives_E fmap_app//.
+    rewrite !lfts_outlives_E_fmap fmap_app//.
   Qed.
-  Lemma lfts_outlives_nil κ :
+  Lemma tac_lfts_outlives_E_nil κ :
     lfts_outlives_E [] κ = [].
   Proof. done. Qed.
-  Lemma lfts_outlives_singleton κ2 κ :
+  Lemma tac_lfts_outlives_E_singleton κ2 κ :
     lfts_outlives_E [κ2] κ = [κ ⊑ₑ κ2].
   Proof. done. Qed.
-  Lemma ty_outlives_E_eq {rt} (ty : type rt) κ :
-    ty_outlives_E ty κ = lfts_outlives_E (ty_lfts ty) κ.
-  Proof.
-    unfold_opaque @ty_outlives_E. done.
-  Qed.
+  (*Lemma ty_outlives_E_eq {rt} (ty : type rt) κ :*)
+    (*ty_outlives_E ty κ = lfts_outlives_E (ty_lfts ty) κ.*)
+  (*Proof.*)
+    (*unfold_opaque @ty_outlives_E. done.*)
+  (*Qed.*)
+
+  Lemma tac_unfold_ty_wf_E {rt} (ty : type rt) E :
+    _ty_wf_E _ ty = E →
+    ty_wf_E ty = E.
+  Proof. rewrite ty_wf_E_unfold. done. Qed.
+  Lemma tac_unfold_ty_outlives_E {rt} (ty : type rt) κ E :
+    lfts_outlives_E (ty_lfts ty) κ = E →
+    ty_outlives_E ty κ = E.
+  Proof. done. Qed.
+  Lemma tac_lfts_outlives_E_unfold_ty {rt} (ty : type rt) κ E :
+    lfts_outlives_E (_ty_lfts _ ty) κ = E →
+    lfts_outlives_E (ty_lfts ty) κ = E.
+  Proof. rewrite ty_lfts_unfold. done. Qed.
+
+  Lemma tac_lfts_outlives_E_tyvar_fold {rt} (ty : type rt) κ E1 E2 :
+    ty_outlives_E ty κ ++ E1 = E2 →
+    lfts_outlives_E (ty_lfts ty) κ ++ E1 = E2.
+  Proof. done. Qed.
+  Lemma tac_lfts_outlives_E_app_nil κ E1 E2 :
+    E1 = E2 →
+    lfts_outlives_E [] κ ++ E1 = E2.
+  Proof. done. Qed.
 End tac.
 
+(* TODO: eliminate rewrites and use tacs instead *)
 Ltac simplify_elctx_subterm :=
+  try match goal with
+  | |- ty_outlives_E ?ty _ = _ =>
+      assert_fails (is_var ty);
+      notypeclasses refine (tac_unfold_ty_outlives_E ty _ _ _)
+  end;
   match goal with
   | |- ty_wf_E ?ty = _ =>
       assert_fails (is_var ty);
-      rewrite [@ty_wf_E _ _]ty_wf_E_unfold;
+      notypeclasses refine (tac_unfold_ty_wf_E ty _ _);
       rewrite [(_ty_wf_E _ ty)]/_ty_wf_E /=;
-      cbn;
-      reflexivity
-      (*autounfold with tyunfold; cbn*)
-  | |- ty_outlives_E ?ty _ = _ =>
-      assert_fails (is_var ty);
-      unfold_opaque (@ty_outlives_E);
-      (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
-      first [rewrite lfts_outlives_app |
-          rewrite [@ty_lfts _ _]ty_lfts_unfold;
-          autounfold with tyunfold; rewrite /_ty_lfts ]; cbn;
+      simpl;
       reflexivity
   | |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>
-      (*(is_var ty);*)
-      (*rewrite [ty_outlives_E ty]/ty_outlives_E/=;*)
-      (*unfold_opaque (@ty_lfts);*)
-      rewrite [@ty_lfts _ _]ty_lfts_unfold;
-      (*rewrite [(_ty_lfts _ ty)]/_ty_lfts/=;*)
-      first [is_var ty | rewrite lfts_outlives_app | autounfold with tyunfold; rewrite /_ty_lfts ]; cbn;
-      reflexivity
+      first [is_var ty |
+          notypeclasses refine (tac_lfts_outlives_E_unfold_ty ty _ _ _);
+          first [
+            notypeclasses refine (tac_lfts_outlives_E_app _ _ _ _ _) |
+            autounfold with tyunfold; rewrite /_ty_lfts ]
+            ];
+      simpl; reflexivity
   | |- lfts_outlives_E [?κ2] _ = _ =>
-      rewrite lfts_outlives_singleton;
-      reflexivity
+      notypeclasses refine (tac_lfts_outlives_E_singleton _ _)
   | |- lfts_outlives_E (?κs1 ++ ?κs2) _ = _ =>
-      (*assert_fails (is_var κs);*)
-      rewrite lfts_outlives_app; cbn;
+      notypeclasses refine (tac_lfts_outlives_E_app _ _ _ _ _);
+      simpl;
       reflexivity
   | |- lfts_outlives_E (?κ1 :: ?κs2) _ = _ =>
-      (*assert_fails (is_var κs);*)
-      rewrite lfts_outlives_cons; cbn;
+      notypeclasses refine (tac_lfts_outlives_E_cons _ _ _ _ _);
+      simpl;
       reflexivity
-  (*| |- lfts_outlives_E (ty_lfts ?ty) _ = _ =>*)
-      (*idtac*)
   end.
 
 Ltac simplify_elctx_step :=
-cbn;
+simpl;
 rewrite -?app_assoc;
 match goal with
 | |- ty_wf_E ?ty ++ _ = _ =>
@@ -1114,10 +1132,10 @@ match goal with
 | |- lfts_outlives_E (ty_lfts ?T) ?κ ++ _ = _ =>
     is_var T;
     (*fold (ty_outlives_E T κ);*)
-    rewrite -(ty_outlives_E_eq T κ);
+    notypeclasses refine (tac_lfts_outlives_E_tyvar_fold T κ _ _ _);
     f_equiv
 | |- lfts_outlives_E [] _ ++ _ = _ =>
-    rewrite lfts_outlives_nil
+    notypeclasses refine (tac_lfts_outlives_E_app_nil _ _ _ _)
 | |- lfts_outlives_E ?κs _ ++ _ = _ =>
     assert_fails (is_var κs);
     refine (simplify_app_head_tac _ _ _ _ _ _);
@@ -1132,9 +1150,7 @@ Ltac simplify_elctx :=
   match goal with
   | |- ?E = ?E' =>
     is_evar E';
-    (* Unfold here. Important: do not use [simpl] after that, because it will unfold too much so that stuff breaks. *)
-    (*unfold_opaque (@ty_outlives_E);*)
-    cbn;
+    simpl;
     refine (simplify_app_head_init_tac _ _ _);
     rewrite -?app_assoc;
     repeat simplify_elctx_step
@@ -1191,10 +1207,10 @@ Ltac reorder_elctx_step :=
   | |- ?E ≡ₚ ?E' ++ ?E'' =>
       match E with
       | _ :: ?E =>
-          refine (reorder_elctx_shuffle_left_tac E E' _ E'' _ _ _ _);
+          notypeclasses refine (reorder_elctx_shuffle_left_tac E E' _ E'' _ _ _ _);
           [reflexivity | ]
       | ?E0 ++ ?E =>
-          refine (reorder_elctx_shuffle_right_tac E E' _ E'' E0 _ _);
+          notypeclasses refine (reorder_elctx_shuffle_right_tac E E' _ E'' E0 _ _);
           [reflexivity | ]
       | [] => unify E' ([] : elctx); unify E'' ([] : elctx); reflexivity
       | ?E =>
@@ -1315,6 +1331,7 @@ Section elctx_sat.
     iPoseProof ("Houtl" with "HE") as "Houtl'".
     iClear "Hincl Houtl HE".
     unfold_opaque @ty_outlives_E.
+    unfold_opaque @lfts_outlives_E.
     rewrite /ty_outlives_E /lfts_outlives_E.
     generalize (ty_lfts ty) => κs. clear.
     iInduction κs as [ | κ0 κs] "IH"; simpl; first done.
@@ -3445,14 +3462,14 @@ Local Ltac decompose_instantiated_spec_rec a ty_acc lft_acc cont :=
 Local Ltac decompose_instantiated_tys tys :=
   lazymatch tys with
   | -[] => constr:(hnil id)
-  | ?ty -:: ?tys => 
+  | ?ty -:: ?tys =>
       let a := decompose_instantiated_tys tys in
       constr:(ty +:: a)
   end.
 Local Ltac decompose_instantiated_lfts lfts :=
   lazymatch lfts with
   | -[] => constr:(@nil lft)
-  | ?lft -:: ?lfts => 
+  | ?lft -:: ?lfts =>
       let a := decompose_instantiated_lfts lfts in
       constr:(lft :: a)
   end.

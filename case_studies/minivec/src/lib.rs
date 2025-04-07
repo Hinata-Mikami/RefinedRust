@@ -301,7 +301,7 @@ impl<T> Vec<T> {
     // private function, take an unfolded type
     // we do not move ownership out, but return an alias to the ptr
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])" @ "shr_ref {'a} (Vec_ty {T})")]
+    #[rr::args(#raw "( *[(l, cap); len])")]
     #[rr::returns("l" @ "alias_ptr_t")]
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
@@ -309,7 +309,7 @@ impl<T> Vec<T> {
 
     // private function, take an unfolded type
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
-    #[rr::args(#raw "( *[(l, cap); len])" @ "shr_ref {'a} (Vec_ty {T})")]
+    #[rr::args(#raw "( *[(l, cap); len])")]
     #[rr::returns("cap")]
     fn cap<'a>(&'a self) -> usize {
         self.buf.cap

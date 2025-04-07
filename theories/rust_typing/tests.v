@@ -674,12 +674,12 @@ End test.
 Section test.
   Context `{!typeGS Σ}.
 
-  Context (testX : ∀ `{!typeGS Σ} {rt} (ty : type rt), type rt).
+  Context (testX : ∀ `{!typeGS Σ} {rt}, spec_with 0 [rt] (type rt)).
 
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] [RSTInt I32]) ty ∧ ty = testX _ _ (int i32).
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] [RSTInt I32]) ty ∧ ty = testX _ _ *[] *[(int i32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -1031,7 +1031,7 @@ Section test.
            (mut_ref  ulft__ (Vec_inv_t T_ty), (# xs, γ));
         existT T_rt (T_ty, x)]) ϝ ++ ty_wf_E unit_t ++ ty_outlives_E unit_t ϝ) = E' ∧ E' = E'.
   Proof.
-    eexists. split; [solve simplify_elctx | done].
+    eexists. split; [solve [simplify_elctx] | done].
   Abort.
 End test.
 

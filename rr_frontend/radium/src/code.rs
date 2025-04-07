@@ -128,13 +128,16 @@ impl RustType {
             Type::LiteralParam(lit) => Self::TyVar(lit.rust_name.clone()),
 
             Type::Literal(lit) => {
-                let typarams: Vec<_> = lit
-                    .scope_inst
-                    .get_all_ty_params_with_assocs()
-                    .iter()
-                    .map(|ty| Self::of_type(ty))
-                    .collect();
-                Self::Lit(vec![lit.def.type_term.clone()], typarams)
+                if let Some(scope_inst) = lit.scope_inst.as_ref() {
+                    let typarams: Vec<_> = scope_inst
+                        .get_all_ty_params_with_assocs()
+                        .iter()
+                        .map(|ty| Self::of_type(ty))
+                        .collect();
+                    Self::Lit(vec![lit.def.type_term.clone()], typarams)
+                } else {
+                    Self::Lit(vec![lit.def.type_term.clone()], vec![])
+                }
             },
 
             Type::Uninit(_) => {

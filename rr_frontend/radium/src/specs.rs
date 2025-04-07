@@ -343,7 +343,7 @@ pub struct LiteralTypeUse<'def> {
     /// definition
     pub def: LiteralTypeRef<'def>,
     /// parameters
-    pub scope_inst: GenericScopeInst<'def>,
+    pub scope_inst: Option<GenericScopeInst<'def>>,
     /// annotation information
     pub annot: TypeAnnotMeta,
 }
@@ -353,20 +353,16 @@ impl<'def> LiteralTypeUse<'def> {
     pub fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
         LiteralTypeUse {
             def: s,
-            scope_inst,
+            scope_inst: Some(scope_inst),
             annot: TypeAnnotMeta::empty(),
         }
     }
 
     #[must_use]
-    pub const fn new_with_annot(
-        s: LiteralTypeRef<'def>,
-        scope_inst: GenericScopeInst<'def>,
-        annot: TypeAnnotMeta,
-    ) -> Self {
+    pub const fn new_with_annot(s: LiteralTypeRef<'def>, annot: TypeAnnotMeta) -> Self {
         LiteralTypeUse {
             def: s,
-            scope_inst,
+            scope_inst: None,
             annot,
         }
     }
@@ -389,6 +385,8 @@ impl<'def> LiteralTypeUse<'def> {
     pub fn get_rfn_type(&self) -> String {
         let ty_inst: Vec<_> = self
             .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
             .get_direct_ty_params_with_assocs()
             .into_iter()
             .map(|ty| ty.get_rfn_type())
@@ -402,16 +400,28 @@ impl<'def> LiteralTypeUse<'def> {
     /// Get the `syn_type` term for this struct use.
     #[must_use]
     pub fn generate_raw_syn_type_term(&self) -> SynType {
-        let ty_inst: Vec<SynType> =
-            self.scope_inst.get_direct_ty_params_with_assocs().into_iter().map(Into::into).collect();
+        let ty_inst: Vec<SynType> = self
+            .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(Into::into)
+            .collect();
         let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
         SynType::Literal(specialized_spec.to_string())
     }
 
     #[must_use]
     pub fn generate_syn_type_term(&self) -> SynType {
-        let ty_inst: Vec<SynType> =
-            self.scope_inst.get_direct_ty_params_with_assocs().into_iter().map(Into::into).collect();
+        let ty_inst: Vec<SynType> = self
+            .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(Into::into)
+            .collect();
         let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
         SynType::Literal(format!("({specialized_spec} : syn_type)"))
     }
@@ -419,9 +429,16 @@ impl<'def> LiteralTypeUse<'def> {
     /// Generate a string representation of this struct use.
     #[must_use]
     pub fn generate_type_term(&self) -> String {
-        let ty_inst = self.scope_inst.get_direct_ty_params_with_assocs();
-        let specialized_term = coq::term::App::new(self.def.type_term.clone(), ty_inst);
-        specialized_term.to_string()
+        if let Some(scope_inst) = self.scope_inst.as_ref() {
+            let rt_inst = scope_inst
+                .get_all_ty_params_with_assocs()
+                .iter()
+                .map(|ty| format!("({})", ty.get_rfn_type()))
+                .join(" ");
+            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation())
+        } else {
+            self.def.type_term.clone()
+        }
     }
 }
 
@@ -492,6 +509,14 @@ impl LiteralTyParam {
     #[must_use]
     pub fn make_syntype_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(Some(self.syn_type.clone()), coq::term::Type::SynType)
+    }
+
+    #[must_use]
+    pub fn make_semantic_param(&self) -> coq::binder::Binder {
+        coq::binder::Binder::new(
+            Some(self.type_term.clone()),
+            coq::term::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
+        )
     }
 }
 
@@ -947,27 +972,38 @@ impl InvariantSpec {
         out
     }
 
-    pub(crate) fn generate_coq_invariant_def(&self, base_rfn_type: &str) -> String {
+    #[must_use]
+    fn spec_name(&self) -> String {
+        format!("{}_inv_spec", self.type_name)
+    }
+
+    pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
         // generate the spec definition
-        let spec_name = format!("{}_inv_spec", self.type_name);
+        let spec_name = self.spec_name();
 
         match self.flags {
             InvariantSpecFlags::NonAtomic => {
                 write!(
                     out,
-                    "{indent}Program Definition {} : na_ex_inv_def ({}) ({}) := ",
-                    spec_name, base_rfn_type, self.rfn_type,
+                    "{indent}Program Definition {} : {} (na_ex_inv_def ({}) ({})) := ",
+                    spec_name,
+                    scope.get_all_type_term(),
+                    base_rfn_type,
+                    self.rfn_type,
                 )
                 .unwrap();
             },
             _ => {
                 write!(
                     out,
-                    "{indent}Program Definition {} : ex_inv_def ({}) ({}) := ",
-                    spec_name, base_rfn_type, self.rfn_type,
+                    "{indent}Program Definition {} : {} (ex_inv_def ({}) ({})) := ",
+                    spec_name,
+                    scope.get_all_type_term(),
+                    base_rfn_type,
+                    self.rfn_type,
                 )
                 .unwrap();
             },
@@ -978,12 +1014,12 @@ impl InvariantSpec {
                 let inv = self.assemble_pers_invariant();
                 write!(
                     out,
-                    "mk_pers_ex_inv_def\n\
+                    "{scope} mk_pers_ex_inv_def\n\
                        {indent}{indent}({})%type\n\
                        {indent}{indent}({})\n\
-                       {indent}{indent}({})%I _ _\n\
+                       {indent}{indent}({inv})%I _ _\n\
                        {indent}.\n",
-                    self.xt_type, self.xt_injection, inv
+                    self.xt_type, self.xt_injection,
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -997,7 +1033,7 @@ impl InvariantSpec {
 
                 write!(
                     out,
-                    "mk_ex_inv_def\n\
+                    "{scope} mk_ex_inv_def\n\
                     {indent}{indent}({})%type\n\
                     {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
@@ -1020,7 +1056,7 @@ impl InvariantSpec {
 
                 write!(
                     out,
-                    "na_mk_ex_inv_def\n\
+                    "{scope} na_mk_ex_inv_def\n\
                     {indent}{indent}({})%type\n\
                     {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
@@ -1046,31 +1082,40 @@ impl InvariantSpec {
         base_type: &str,
         base_rfn_type: &str,
         generics_rts: &coq::term::TermList,
+        scope: &GenericScope<'_>,
         context_names: &[String],
     ) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
         // generate the spec definition
-        let spec_name = format!("{}_inv_spec", self.type_name);
+        let spec_name = self.spec_name();
 
-        write!(out, "{}", self.generate_coq_invariant_def(base_rfn_type)).unwrap();
+        write!(out, "{}", self.generate_coq_invariant_def(scope, base_rfn_type)).unwrap();
 
         // generate the definition itself.
         if InvariantSpecFlags::NonAtomic == self.flags {
             write!(
                 out,
-                "{indent}Definition {} : type ({}) :=\n\
-                {indent}{indent}na_ex_plain_t _ _ {spec_name} {}.\n",
-                self.type_name, self.rfn_type, base_type
+                "{indent}Definition {} : {} (type ({})) :=\n\
+                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {}) {}.\n",
+                self.type_name,
+                scope.get_all_type_term(),
+                self.rfn_type,
+                scope.identity_instantiation(),
+                base_type
             )
             .unwrap();
         } else {
             write!(
                 out,
-                "{indent}Definition {} : type ({}) :=\n\
-                {indent}{indent}ex_plain_t _ _ {spec_name} {}.\n",
-                self.type_name, self.rfn_type, base_type
+                "{indent}Definition {} : {} (type ({})) :=\n\
+                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {}) {}.\n",
+                self.type_name,
+                scope.get_all_type_term(),
+                self.rfn_type,
+                scope.identity_instantiation(),
+                base_type
             )
             .unwrap();
         }
@@ -1078,7 +1123,7 @@ impl InvariantSpec {
         write!(out, "{indent}Definition {}_rt : Type.\n", self.type_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {generics_rts} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
+            "{indent}Proof using {generics_rts} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
             context_names.join(" "),
             self.type_name
         )
@@ -1112,13 +1157,7 @@ impl InvariantSpec {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
-            }
-            out.push_str(".\n");
-
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
+                write!(out, " ({} : Type)", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
@@ -1130,17 +1169,17 @@ impl InvariantSpec {
         let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.0.clone());
 
         // get the applied base type
-        let base_type_app: Vec<String> =
-            all_ty_params.params.iter().map(|names| names.type_term.clone()).collect();
-        let applied_base_type = coq::term::App::new(base_type_name, base_type_app);
+        let applied_base_type = coq::term::App::new(base_type_name, rt_instantiations.0.clone());
+        let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation());
 
         write!(
             out,
             "{}",
             self.generate_coq_type_def_core(
-                applied_base_type.to_string().as_str(),
+                &applied_base_type,
                 applied_base_rt.to_string().as_str(),
                 &rt_instantiations,
+                scope,
                 &context_names
             )
         )
@@ -1349,11 +1388,17 @@ impl<'def> AbstractVariant<'def> {
         }
 
         // intro to main def
-        write!(out, "{}Definition {} : type ({}).\n", indent, self.plain_ty_name, self.rfn_type()).unwrap();
         write!(
             out,
-            "{indent}Proof using {} {}. exact ({}). Defined.\n",
-            all_ty_params.params.iter().map(|x| x.type_term.clone()).collect::<Vec<_>>().join(" "),
+            "{indent}Definition {} : {} (type ({})).\n",
+            self.plain_ty_name,
+            ty_params.get_all_type_term(),
+            self.rfn_type()
+        )
+        .unwrap();
+        write!(
+            out,
+            "{indent}Proof using {}. exact ({ty_params} {}). Defined.\n",
             context_names.join(" "),
             self.generate_coq_type_term(sls_app)
         )
@@ -1364,7 +1409,7 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_def_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
+            "{indent}Proof using {} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
             rt_params.make_using_terms(),
             context_names.join(" "),
             self.plain_ty_name
@@ -1400,13 +1445,7 @@ impl<'def> AbstractVariant<'def> {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
-            }
-            out.push_str(".\n");
-
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
+                write!(out, " ({} : Type)", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
@@ -1623,13 +1662,7 @@ impl<'def> AbstractStruct<'def> {
                 // first push the (implicit) refinement type parameters
                 write!(out, "{}Context", indent).unwrap();
                 for names in &all_ty_params.params {
-                    write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
-                }
-                out.push_str(".\n");
-
-                write!(out, "{}Context", indent).unwrap();
-                for names in &all_ty_params.params {
-                    write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
+                    write!(out, " ({} : Type)", names.refinement_type).unwrap();
                 }
                 out.push_str(".\n");
             }
@@ -1653,21 +1686,34 @@ impl<'def> AbstractStruct<'def> {
             write!(out, "{indent}{indent}{}.\n", self.variant_def.rfn_type()).unwrap();
 
             // invariant def
-            write!(out, "{}", inv.generate_coq_invariant_def(&self.variant_def.plain_rt_def_name)).unwrap();
+            write!(
+                out,
+                "{}",
+                inv.generate_coq_invariant_def(&self.scope, &self.variant_def.plain_rt_def_name)
+            )
+            .unwrap();
 
             // generate the functor itself
             let type_name = &inv.type_name;
             let rfn_type = &inv.rfn_type;
-            let spec_name = format!("{}_inv_spec", inv.type_name);
+            let spec_name = inv.spec_name();
 
             write!(
                 out,
-                "{indent}Definition {type_name}_rec ({type_name}_rec' : type ({rfn_type})) : type ({rfn_type}) :=\n\
-                {indent}{indent}let {type_name} {ty_rt_uses}").unwrap();
+                "{indent}Definition {type_name}_rec {} ({type_name}_rec' : type ({rfn_type})) : type ({rfn_type}) :=\n",
+                all_ty_params.get_semantic_ty_params(),
+                ).unwrap();
             write!(
                 out,
-                " := {type_name}_rec' in\n\
-                {indent}{indent}ex_plain_t _ _ {spec_name} ({}).\n",
+                "{indent}{indent}let {type_name} {ty_rt_uses} := {} {type_name}_rec' in\n",
+                self.scope,
+            )
+            .unwrap();
+            write!(out, "{indent}{indent}let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n").unwrap();
+            write!(
+                out,
+                "{indent}{indent}ex_plain_t _ _ ({spec_name} {}) ({}).\n",
+                self.scope.identity_instantiation(),
                 self.variant_def.generate_coq_type_term(sls_app)
             )
             .unwrap();
@@ -1675,7 +1721,10 @@ impl<'def> AbstractStruct<'def> {
             // write the fixpoint
             write!(
                 out,
-                "{indent}Definition {type_name} : type ({rfn_type}) := type_fixpoint {type_name}_rec.\n"
+                "{indent}Definition {type_name} : {} (type ({rfn_type})) := {} type_fixpoint ({type_name}_rec {}).\n",
+                self.scope.get_all_type_term(),
+                self.scope,
+                all_ty_params.get_semantic_ty_params().make_using_terms(),
             )
             .unwrap();
 
@@ -1683,7 +1732,7 @@ impl<'def> AbstractStruct<'def> {
             write!(out, "{indent}Definition {}_rt : Type.\n", type_name).unwrap();
             write!(
                 out,
-                "{indent}Proof using {ty_rt_uses} {}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
+                "{indent}Proof using {ty_rt_uses} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
                 context_names.join(" "),
                 type_name
             )
@@ -1943,7 +1992,12 @@ impl<'def> AbstractStructUse<'def> {
             return Type::Unit.to_string();
         };
 
-        let param_tys = self.scope_inst.get_all_ty_params_with_assocs();
+        let rt_inst = self
+            .scope_inst
+            .get_all_ty_params_with_assocs()
+            .iter()
+            .map(|ty| format!("({})", ty.get_rfn_type()))
+            .join(" ");
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
@@ -1952,9 +2006,9 @@ impl<'def> AbstractStructUse<'def> {
                 unreachable!();
             };
 
-            coq::term::App::new(inv.type_name.clone(), param_tys).to_string()
+            format!("({} {rt_inst} {})", inv.type_name, self.scope_inst.instantiation())
         } else {
-            coq::term::App::new(def.plain_ty_name(), param_tys).to_string()
+            format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation())
         }
     }
 }
@@ -2184,7 +2238,13 @@ impl<'def> AbstractEnum<'def> {
             // environment where all the type parametes are already instantiated.
             let ty = v.public_type_name();
 
-            write!(out, "| {} => {ty}", coq::term::App::new(pat, apps.clone())).unwrap();
+            write!(
+                out,
+                "| {} => {ty} {}",
+                coq::term::App::new(pat, apps.clone()),
+                v.scope.identity_instantiation()
+            )
+            .unwrap();
         }
         if spec.is_partial {
             write!(out, "| _ => unit_t ").unwrap();
@@ -2227,7 +2287,10 @@ impl<'def> AbstractEnum<'def> {
                 let v = v.as_ref().unwrap();
                 let ty = v.public_type_name();
 
-                format!("if (decide (variant = \"{name}\")) then Some $ existT _ {ty}")
+                format!(
+                    "if (decide (variant = \"{name}\")) then Some $ existT _ ({ty} {})",
+                    v.scope.identity_instantiation()
+                )
             })
             .collect();
         if conditions.is_empty() {
@@ -2271,8 +2334,9 @@ impl<'def> AbstractEnum<'def> {
         for ((tag, s, _), (pat, args, res)) in self.variants.iter().zip(self.spec.variant_patterns.iter()) {
             write!(
                 out,
-                "{indent}Global Program Instance construct_enum_{}_{tag} {} ",
+                "{indent}Global Program Instance construct_enum_{}_{tag} {} {} ",
                 self.name,
+                self.scope.get_all_ty_params_with_assocs().params.iter().map(|ty| &ty.type_term).join(" "),
                 args.join(" ")
             )
             .unwrap();
@@ -2290,11 +2354,9 @@ impl<'def> AbstractEnum<'def> {
 
             write!(
                 out,
-                ": ConstructEnum {} \"{}\" ({}) {} {} := construct_enum _ _ _ _ _.\n",
+                ": ConstructEnum ({} {}) \"{tag}\" ({ty_def_term}) {res} {} := construct_enum _ _ _ _ _.\n",
                 self.enum_def_name,
-                tag,
-                ty_def_term,
-                res,
+                self.scope.identity_instantiation(),
                 coq::term::App::new(pat, args.clone())
             )
             .unwrap();
@@ -2326,12 +2388,6 @@ impl<'def> AbstractEnum<'def> {
                 write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
-
-            write!(out, "{}Context", indent).unwrap();
-            for names in &all_ty_params.params {
-                write!(out, " ({} : type ({}))", names.type_term, names.refinement_type).unwrap();
-            }
-            out.push_str(".\n");
         }
         out.push('\n');
 
@@ -2346,10 +2402,16 @@ impl<'def> AbstractEnum<'def> {
             write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &[])).unwrap();
 
             if let Some(inv) = &v.invariant {
-                let inv_def = inv.generate_coq_type_def_core(
+                let base_type = format!(
+                    "({} {})",
                     v.variant_def.plain_ty_name.as_str(),
+                    v.scope.identity_instantiation(),
+                );
+                let inv_def = inv.generate_coq_type_def_core(
+                    &base_type,
                     v.variant_def.plain_rt_def_name.as_str(),
                     &rt_param_uses,
+                    &v.scope,
                     &[],
                 );
                 write!(out, "{}\n", inv_def).unwrap();
@@ -2394,7 +2456,7 @@ impl<'def> AbstractEnum<'def> {
         // main def
         write!(
             out,
-            "{indent}Program Definition {} : enum ({}) := mk_enum\n\
+            "{indent}Program Definition {} : {} (enum ({})) := {} mk_enum\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
                {indent}{indent}_\n\
@@ -2408,7 +2470,9 @@ impl<'def> AbstractEnum<'def> {
                {indent}{indent}({})\n\
                {indent}{indent}_ _ _.\n",
             self.enum_def_name,
+            self.scope.get_all_type_term(),
             self.spec.rfn_type,
+            self.scope,
             self.spec.xt_type,
             self.spec.xt_injection,
             self.generate_enum_tag(),
@@ -2425,14 +2489,22 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Qed.\n\n").unwrap();
 
         // define the actual type
-        write!(out, "{indent}Definition {} : type _ := enum_t {}.\n", self.plain_ty_name, self.enum_def_name)
-            .unwrap();
+        write!(
+            out,
+            "{indent}Definition {} : {} (type _) := {} enum_t ({} {}).\n",
+            self.plain_ty_name,
+            self.scope.get_all_type_term(),
+            self.scope,
+            self.enum_def_name,
+            self.scope.identity_instantiation(),
+        )
+        .unwrap();
 
         // generate the refinement type definition
         write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {rt_param_uses}. let __a := eval hnf in (rt_of {}) in exact __a. Defined.\n",
+            "{indent}Proof using {rt_param_uses}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
             self.plain_ty_name
         )
         .unwrap();
@@ -2445,6 +2517,8 @@ impl<'def> AbstractEnum<'def> {
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_name).unwrap();
+        write!(out, "Global Arguments {} : clear implicits.\n", self.plain_ty_name).unwrap();
+        write!(out, "Global Arguments {} {{_ _}}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Hint Unfold {} : solve_protected_eq_db.\n", self.plain_ty_name).unwrap();
 
         out
@@ -2614,11 +2688,16 @@ impl<'def> AbstractEnumUse<'def> {
     /// Generate a string representation of this enum use.
     #[must_use]
     pub fn generate_type_term(&self) -> String {
-        let param_tys = self.scope_inst.get_all_ty_params_with_assocs();
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
-        let term = coq::term::App::new(def.plain_ty_name.clone(), param_tys);
-        term.to_string()
+
+        let rt_inst = self
+            .scope_inst
+            .get_all_ty_params_with_assocs()
+            .iter()
+            .map(|ty| format!("({})", ty.get_rfn_type()))
+            .join(" ");
+        format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation())
     }
 }
 
@@ -3971,6 +4050,15 @@ impl TyParamList {
         rt_params.append(st_params.0);
         rt_params
     }
+
+    #[must_use]
+    pub fn get_semantic_ty_params(&self) -> coq::binder::BinderList {
+        let mut ty_coq_params = Vec::new();
+        for names in &self.params {
+            ty_coq_params.push(names.make_semantic_param());
+        }
+        coq::binder::BinderList::new(ty_coq_params)
+    }
 }
 
 /// An instantiation of a scope of generics `GenericScope`.
@@ -4243,6 +4331,42 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
             out.push_str(&format!(" <LFT> {}", lft));
         }
         out.push_str(" <INST!>");
+
+        out
+    }
+
+    #[must_use]
+    pub fn get_all_type_term(&self) -> String {
+        let mut out = String::new();
+
+        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
+        let tys = self.get_all_ty_params_with_assocs();
+        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
+        out.push(']');
+
+        out
+    }
+
+    #[must_use]
+    pub fn get_direct_type_term(&self) -> String {
+        let mut out = String::new();
+
+        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
+        let tys = self.get_direct_ty_params_with_assocs();
+        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
+        out.push(']');
+
+        out
+    }
+
+    #[must_use]
+    pub fn get_surrounding_type_term(&self) -> String {
+        let mut out = String::new();
+
+        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
+        let tys = self.get_direct_ty_params_with_assocs();
+        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
+        out.push(']');
 
         out
     }

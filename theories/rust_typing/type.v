@@ -236,8 +236,17 @@ Qed.
 
 (** Well-formedness of a type with respect to lifetimes.  *)
 (* Generate a constraint that a type outlives κ. *)
-Definition lfts_outlives_E `{!typeGS Σ} (κs : list lft) (κ : lft) : elctx :=
-  (λ α, (κ, α)) <$> κs.
+Fixpoint lfts_outlives_E `{!typeGS Σ} (κs : list lft) (κ : lft) : elctx :=
+  match κs with
+  | [] => []
+  | α :: κs => (κ, α) :: lfts_outlives_E κs κ
+  end.
+Lemma lfts_outlives_E_fmap `{!typeGS Σ} κs κ : 
+  lfts_outlives_E κs κ = (λ α, (κ, α)) <$> κs.
+Proof.
+  induction κs; simpl; first done. 
+  f_equiv. done. 
+Qed.
 Arguments lfts_outlives_E : simpl never.
 Definition ty_outlives_E `{!typeGS Σ} {rt} (ty : type rt) (κ : lft) : elctx :=
   lfts_outlives_E (ty_lfts ty) κ.
@@ -972,7 +981,7 @@ Section lft_morph.
     - intros ty. rewrite HwfE. simpl. rewrite right_id.
       rewrite elctx_interp_app elctx_interp_nil left_id//.
       f_equiv.
-      rewrite /ty_outlives_E /lfts_outlives_E /elctx_interp/elctx_elt_interp big_sepL_fmap/=.
+      rewrite /ty_outlives_E lfts_outlives_E_fmap /elctx_interp/elctx_elt_interp big_sepL_fmap/=.
       generalize (ty_lfts ty) as l.
       induction l as [ | ? l IH]; simpl.
       { iSplit; last eauto. iIntros "_". iApply lft_incl_static. }

@@ -395,8 +395,7 @@ where
             syn_type: ty.into(),
         };
         let lit_ref = (self.make_literal)(lit_ty);
-        let lit_use =
-            specs::LiteralTypeUse::new_with_annot(lit_ref, specs::GenericScopeInst::empty(), lit.meta);
+        let lit_use = specs::LiteralTypeUse::new_with_annot(lit_ref, lit.meta);
 
         specs::Type::Literal(lit_use)
     }
