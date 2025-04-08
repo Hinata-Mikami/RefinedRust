@@ -3062,17 +3062,19 @@ Section rules.
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
-        (λ L' κs l1 b2 bmin rti ltyi ri strong weak,
+        (λ L' κs l1 b2 bmin rti ltyi ri mstrong,
           T L' κs l1 b2 bmin rti ltyi ri
-          (fmap (λ strong, mk_strong
+          (mk_mstrong (fmap (λ strong, mk_strong
             (λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))
             (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
             (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
-            strong.(strong_R)) strong)
+            strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
-            weak.(weak_R)) weak))))
+            weak.(weak_R)) mstrong.(mstrong_weak))
+           None
+          ))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
@@ -3104,9 +3106,9 @@ Section rules.
     rewrite Hleq.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 [Hb]").
     { rewrite -Hlto -Hro. done. }
-    iModIntro. iIntros (L' κs l2 b2 bmin rti ltyi ri strong weak) "#Hincl1 Hli Hcont".
-    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
-    simpl. iSplit.
+    iModIntro. iIntros (L' κs l2 b2 bmin rti ltyi ri [strong weak]) "#Hincl1 Hli Hcont".
+    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
+    simpl. iSplit; last iSplit.
     - (* strong *)
       destruct strong as [strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hli %Hst'".
@@ -3121,7 +3123,7 @@ Section rules.
       iFrame. iPureIntro. done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hcont" as "[_ Hcont]".
+      iDestruct "Hcont" as "(_ & Hcont & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hli Hcond".
       iMod ("Hcont" $! _ _ bmin' with "Hincl2 Hli Hcond") as "(Hb1 & Hcond & HL & HR)".
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
@@ -3137,6 +3139,8 @@ Section rules.
       + iApply (struct_lift_place_cond_rfn_homo with "Hcond_rfn"); [done | lia].
       + iPureIntro. clear. induction rts; simpl; first done.
         constructor; first apply place_access_rt_rel_refl. done.
+    - (* immut *)
+      done.
   Qed.
   Global Instance typed_place_struct_owned_inst π E L {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sls wl bmin0 f l P :
     TypedPlace E L π l (StructLtype lts sls) (PlaceIn r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) | 30 :=
@@ -3154,8 +3158,9 @@ Section rules.
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L2 (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
-        (λ L' κs' l1 b2 bmin rti ltyi ri strong weak,
+        (λ L' κs' l1 b2 bmin rti ltyi ri mstrong,
           T L' (κs ++ κs') l1 b2 bmin rti ltyi ri
+          (mk_mstrong
           None
           (* TODO allow strong by opening *)
           (*
@@ -3168,7 +3173,9 @@ Section rules.
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
-            weak.(weak_R)) weak)))))
+            weak.(weak_R)) mstrong.(mstrong_weak))
+          None
+          )))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -3208,15 +3215,15 @@ Section rules.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [Hincl0] [Hb]").
     { destruct bmin0; done. }
     { rewrite -Hlto -Hro. done. }
-    iModIntro. iIntros (L2 κs' l2 b2 bmin rti ltyi ri strong weak) "#Hincl1 Hli Hcont".
-    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
-    simpl. iSplit.
+    iModIntro. iIntros (L2 κs' l2 b2 bmin rti ltyi ri [strong weak]) "#Hincl1 Hli Hcont".
+    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
+    simpl. iSplit; last iSplit.
     - (* strong *)
       destruct strong as [strong | ]; last done.
       done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hcont" as "[_ Hcont]".
+      iDestruct "Hcont" as "(_ & Hcont & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hli Hcond".
       iMod ("Hcont" $! _ _ bmin' with "Hincl2 Hli Hcond") as "(Hb1 & Hcond & HL & HR)".
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
@@ -3233,6 +3240,7 @@ Section rules.
       rewrite llft_elt_toks_app. iFrame.
       iApply typed_place_cond_incl; last done.
       iApply bor_kind_min_incl_r.
+    - done.
   Qed.
   Global Instance typed_place_struct_uniq_inst π E L {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sls κ γ bmin0 f l P :
     TypedPlace E L π l (StructLtype lts sls) (PlaceIn r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) | 30 :=
@@ -3248,8 +3256,9 @@ Section rules.
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
       typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Shared κ) P
-        (λ L' κs l1 b2 bmin rti ltyi ri strong weak,
+        (λ L' κs l1 b2 bmin rti ltyi ri mstrong,
           T L' κs l1 b2 bmin rti ltyi ri
+          (mk_mstrong
           None (* TODO *)
           (*(fmap (λ strong, mk_strong*)
             (*(λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))*)
@@ -3259,7 +3268,9 @@ Section rules.
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
-            weak.(weak_R)) weak))))
+            weak.(weak_R)) mstrong.(mstrong_weak))
+          None
+          ))))
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(% & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
@@ -3291,14 +3302,14 @@ Section rules.
     rewrite Hleq.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 [Hb]").
     { rewrite -Hlto -Hro. done. }
-    iIntros (L' κs l2 b2 bmin rti ltyi ri strong weak) "#Hincl1 Hli Hcont".
-    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
-    simpl. iSplit.
+    iIntros (L' κs l2 b2 bmin rti ltyi ri [strong weak]) "#Hincl1 Hli Hcont".
+    iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
+    simpl. iSplit; last iSplit.
     - (* strong *)
       done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hcont" as "[_ Hcont]".
+      iDestruct "Hcont" as "(_ & Hcont & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hli Hcond".
       iMod ("Hcont" $! _ _ bmin' with "Hincl2 Hli Hcond") as "(Hb1 & Hcond & HL & HR)".
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
@@ -3314,6 +3325,8 @@ Section rules.
       + iApply (struct_lift_place_cond_rfn_homo with "Hcond_rfn"); [done | lia].
       + iPureIntro. clear. induction rts; simpl; first done.
         constructor; first apply place_access_rt_rel_refl. done.
+    - (* immut *)
+      done.
   Qed.
   Global Instance typed_place_struct_shared_inst π E L {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sls κ bmin0 f l P :
     TypedPlace E L π l (StructLtype lts sls) #r bmin0 (Shared κ) (GetMemberPCtx sls f :: P) | 30 :=

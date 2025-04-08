@@ -46,6 +46,9 @@ Ltac solve_protected_eq_hook := idtac.
 (** [after_intro_hook] is executed after introducing a pure Coq assumption. *)
 Ltac after_intro_hook := idtac.
 
+(** [before_revert_hook H] is executed before reverting a pure Coq assumption [H]. *)
+Ltac before_revert_hook H := idtac.
+
 (** [shelve_sidecond_hook] is executed before shelving a sidecondition *)
 Ltac shelve_sidecond_hook := idtac.
 

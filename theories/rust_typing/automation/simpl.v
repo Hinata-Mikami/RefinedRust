@@ -165,7 +165,30 @@ Global Instance simpl_inj {A B} (f : A → B) x y :
   Inj (=) (=) f →
   SimplBothRel (=) (f x) (f y) (x = y).
 Proof.
-  intros ?. rewrite /SimplBothRel. naive_solver. 
+  intros ?. rewrite /SimplBothRel. naive_solver.
+Qed.
+
+(** Things for fallible ops *)
+Global Typeclasses Opaque if_None if_Ok if_Some if_Err.
+Global Instance simpl_both_if_ok_inl {A B} (x : A) P :
+  SimplBoth (if_Ok (A:=A)(B:=B) (inl x) P) (P x).
+Proof.
+  rewrite /SimplBoth. naive_solver.
+Qed.
+Global Instance simpl_both_if_err_inr {A B} (x : B) P :
+  SimplBoth (if_Err (A:=A)(B:=B) (inr x) P) (P x).
+Proof.
+  rewrite /SimplBoth. naive_solver.
+Qed.
+Global Instance simpl_both_if_some_some {A} (x : A) P :
+  SimplBoth (if_Some (A:=A) (Some x) P) (P x).
+Proof.
+  rewrite /SimplBoth. naive_solver.
+Qed.
+Global Instance simpl_both_if_none_none {A} P :
+  SimplBoth (if_None (A:=A) (None) P) (P).
+Proof.
+  rewrite /SimplBoth. naive_solver.
 Qed.
 
 (** ** Additional normalization instances *)

@@ -68,11 +68,12 @@ Definition type_of_ptr_write `{!typeGS Σ} (T_rt : Type) (T_st : syn_type) :=
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
-  ⊢ typed_function π (ptr_write T_st) [] (<tag_type> 
+  ⊢ typed_function π (ptr_write T_st) [] (<tag_type>
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
     (fn_spec_add_late_pre (type_of_ptr_write T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
 Proof.
   start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
+
   intros ls_dst ls_src.
   repeat liRStep; liShow.
   Unshelve. all: unshelve_sidecond; sidecond_hook.

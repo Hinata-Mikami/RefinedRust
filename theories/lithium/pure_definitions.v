@@ -40,3 +40,9 @@ Require Import Coq.Strings.String.
 Definition name_hint (n : string) (P : Prop) : Prop := P.
 Global Typeclasses Opaque name_hint.
 Arguments name_hint : simpl never.
+
+(** * [discriminate_hint] *)
+Definition discriminate_hint (P : Prop) : Prop := P.
+Global Typeclasses Opaque discriminate_hint.
+Arguments discriminate_hint : simpl never.
+

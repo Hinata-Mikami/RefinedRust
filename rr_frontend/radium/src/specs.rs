@@ -2316,7 +2316,7 @@ impl<'def> AbstractEnum<'def> {
         .unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
-        write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Qed.\n\n").unwrap();
+        write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
 
         // define the actual type
         #[allow(deprecated)]

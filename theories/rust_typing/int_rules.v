@@ -206,12 +206,12 @@ Section typing.
   Lemma type_switch_int π E L n it m ss def fn R ϝ v:
     ([∧ map] i↦mi ∈ m,
       li_trace (DestructHintSwitchIntCase i) (
-             ⌜n = i⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ)) ∧
+             ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ)) ∧
     (li_trace (DestructHintSwitchIntDefault) (
-                     ⌜n ∉ (map_to_list m).*1⌝ -∗ typed_stmt E L def fn R ϝ))
+                     ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L def fn R ϝ))
     ⊢ typed_switch π E L v _ (int it) n it m ss def fn R ϝ.
   Proof.
-    unfold li_trace.
+    unfold li_trace, discriminate_hint.
     iIntros "HT Hit". rewrite /ty_own_val/=. iDestruct "Hit" as "[%Hv %Hit]".
     iExists n. iSplit; first done.
     iInduction m as [] "IH" using map_ind; simplify_map_eq => //.

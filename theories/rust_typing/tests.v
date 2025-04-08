@@ -15,7 +15,7 @@ Section test.
     M !! "lft1" = Some κ.
   Proof.
     intros ->.
-    solve_compute_map_lookup; solve[fail].
+    solve_compute_map_lookup true; solve[fail].
   Abort.
 
   Lemma test_compute_map_lookup_1 (M : gmap string lft) (κ : lft) :
@@ -23,7 +23,7 @@ Section test.
     M !! "lft1" = Some κ.
   Proof.
     intros ->.
-    solve_compute_map_lookup; solve[fail].
+    solve_compute_map_lookup true; solve[fail].
   Abort.
 
   Lemma test_compute_map_lookup_2 (M : gmap string lft) (κ : lft) :
@@ -31,12 +31,12 @@ Section test.
     ∃ κ', M !! "lft1" = Some κ'.
   Proof.
     intros ->. eexists _.
-    solve_compute_map_lookup; solve[fail].
+    solve_compute_map_lookup true; solve[fail].
   Abort.
 
   Lemma test_compute_map_lookup_3 M (κ : lft) :
     M = <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1") (λ v,
+    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1" true) (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     intros ->.
@@ -45,7 +45,7 @@ Section test.
 
   Lemma test_compute_map_lookup_3 M (κ : lft) :
     M = named_lft_update "lft1" κ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1") (λ v,
+    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft1" true) (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     intros ->.
@@ -57,13 +57,14 @@ Section test.
     ⊢@{iPropI Σ} li_tactic (compute_map_lookup_nofail_goal M "lft1") (λ v,
       ⌜v = κ⌝ ∗ True).
   Proof.
-    liRStep.
-    iStartProof. unshelve (repeat liRStep); solve[fail].
+    liStep.
+    iStartProof.
+    unshelve (repeat liRStep); solve[fail].
   Abort.
 
   Lemma test_compute_map_lookup_5 M (κ : lft) :
     M = <[ "lft1" := κ]> $ ∅ →
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft2") (λ v,
+    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal M "lft2" true) (λ v,
       ⌜v = None⌝ ∗ True).
   Proof.
     liRStep.
@@ -78,7 +79,7 @@ Section test.
   Abort.
 
   Lemma test κ ulft__ :
-    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal (named_lft_update "plft17" κ (named_lft_update "plft12" κ (named_lft_update "llft6" κ (named_lft_update "plft11" ulft__ (named_lft_update "ulft__" ulft__ ∅))))) "llft6") (λ v,
+    ⊢@{iPropI Σ} li_tactic (compute_map_lookup_goal (named_lft_update "plft17" κ (named_lft_update "plft12" κ (named_lft_update "llft6" κ (named_lft_update "plft11" ulft__ (named_lft_update "ulft__" ulft__ ∅))))) "llft6" true) (λ v,
       ⌜v = Some κ⌝ ∗ True).
   Proof.
     iStartProof.

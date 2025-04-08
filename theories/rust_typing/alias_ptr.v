@@ -117,21 +117,21 @@ Section rules.
   Lemma typed_place_ofty_alias_ptr_owned π E L l l2 bmin0 wl P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
-      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri strong weak,
+      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
         T L' [] li b3 bmin rti ltyi ri
-          (match strong with
+          (mk_mstrong (match mstrong.(mstrong_strong) with
            | Some strong => Some $ mk_strong (λ _, _) (λ _ _ _, ◁ alias_ptr_t) (λ _ _, #l2) (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
            | None => None
            end)
-          (match weak with
+          (match mstrong.(mstrong_weak) with
            | Some weak => Some $ mk_weak (λ _ _, ◁ alias_ptr_t) (λ _, #l2) (λ ltyi2 ri2, llft_elt_toks κs ∗ l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)
            | None =>
-               match strong with
+               match mstrong.(mstrong_strong) with
                 | Some strong => Some $ mk_weak (λ _ _, ◁ alias_ptr_t) (λ _, #l2) (λ ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
                 | None => None
                 end
-            end)
-          ))
+            end) None
+          )))
     ⊢ typed_place π E L l (◁ alias_ptr_t) (#l2) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iDestruct 1 as ((rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & <- & HP)". simpl.
@@ -146,13 +146,15 @@ Section rules.
     ⌜lctx_lft_alive E L κ⌝ ∗
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
-      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri strong weak,
+      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
         T L' κs li b3 bmin rti ltyi ri
-          (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ alias_ptr_t) (λ _ _, #l2)
+          (mk_mstrong (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ alias_ptr_t) (λ _ _, #l2)
             (* give back ownership through R *)
-            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) strong)
+            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak (λ _ _, ◁ alias_ptr_t) (λ _, PlaceIn l2)
-            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) weak)
+            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
+            None
+          )
           ))
     ⊢ typed_place π E L l (◁ alias_ptr_t) (#l2) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -168,13 +170,15 @@ Section rules.
     ⌜lctx_lft_alive E L κ⌝ ∗
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
-      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri strong weak,
+      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
         T L' κs li b3 bmin rti ltyi ri
-          (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ alias_ptr_t) (λ _ _, #l2)
+          (mk_mstrong (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ alias_ptr_t) (λ _ _, #l2)
             (* give back ownership through R *)
-            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) strong)
+            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
           (option_map (λ weak, mk_weak (λ _ _, ◁ alias_ptr_t) (λ _, PlaceIn l2)
-            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) weak)
+            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
+          None
+          )
           ))
     ⊢ typed_place π E L l (◁ alias_ptr_t) (#l2) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -213,25 +217,28 @@ Section alias_ltype.
   Lemma typed_place_alias_owned π E L l l2 rt (r : place_rfn rt) st bmin0 wl P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
-      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri strong weak,
+      typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
         T L' κs li b3 bmin rti ltyi ri
-          (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, AliasLtype rt st l2) (λ _ _, r)
+          (mk_mstrong (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, AliasLtype rt st l2) (λ _ _, r)
             (* give back ownership through R *)
-            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) strong)
+            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak (λ _ _, AliasLtype rt st l2) (λ _, r)
-            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) weak)
+            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
+            None
+          )
           ))
     ⊢ typed_place π E L l (AliasLtype rt st l2) r bmin0 (Owned wl) P T.
   Proof.
     iDestruct 1 as ((rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & <- & HP)". simpl.
     iIntros (????) "#CTX #HE HL #Hincl Hl Hcont".
-    rewrite ltype_own_alias_unfold /alias_lty_own.
+    simpl.
+    iEval (rewrite ltype_own_alias_unfold /alias_lty_own) in "Hl".
     iDestruct "Hl" as "(%ly & % & -> & #? & #? & Hcred)".
     iApply ("HP" with "[//] [//] CTX HE HL [] Hl2").
     { iApply bor_kind_incl_refl. }
-    iIntros (L' κs l2 b0 bmin rti ltyi ri strong weak) "#Hincl1 Hl2 Hcl HT HL".
+    iIntros (L' κs l2 b0 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl2 Hcl HT HL".
     iApply ("Hcont" with "[//] Hl2 [Hcl Hcred] HT HL").
-    iSplit.
+    iSplit; last iSplit.
     -  (* strong *)
       destruct strong as [ strong | ]; last done.
       iDestruct "Hcl" as "[Hcl _]". simpl.
@@ -240,7 +247,7 @@ Section alias_ltype.
       iModIntro. iSplitL "Hcred".
       { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
       iSplitR; first done. iFrame.
-    - (* weak *) iDestruct "Hcl" as "[_ Hcl]". simpl.
+    - (* weak *) iDestruct "Hcl" as "(_ & Hcl & _)". simpl.
       destruct weak as [weak | ]; simpl; last done.
       iIntros (ltyi2 ri2 ?) "#Hincl3 Hl2 Hcond".
       iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl & Hcond & Htoks & Hweak)".
@@ -248,6 +255,7 @@ Section alias_ltype.
       { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
       iFrame.
       iApply typed_place_cond_refl. done.
+    - done.
   Qed.
   Global Instance typed_place_alias_owned_inst π E L l l2 rt r st bmin0 wl P :
     TypedPlace E L π l (AliasLtype rt st l2) r bmin0 (Owned wl) P :=

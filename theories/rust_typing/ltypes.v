@@ -34,7 +34,7 @@ Section enum.
     (* convenience function: given the variant name, also project out the type *)
     enum_tag_ty : var_name → option (sigT type);
     (* explicitly track the lifetimes each of the variants needs -- needed for sharing *)
-  enum_lfts : list lft;
+    enum_lfts : list lft;
     enum_wf_E : elctx;
     enum_lfts_complete : ∀ (r : rt), ty_lfts (enum_ty r) ⊆ enum_lfts;
     enum_wf_E_complete : ∀ (r : rt), ty_wf_E (enum_ty r) ⊆ enum_wf_E;
@@ -68,6 +68,7 @@ Section enum.
   Definition enum_tag_type {rt} (en : enum rt) (v : var_name) : type (enum_tag_rt en v) :=
     projT2 (enum_tag_ty' en v).
 
+
   Definition enum_variant_rt {rt} (en : enum rt) (r : rt) : Type :=
     (enum_rt en r).
   Definition enum_variant_rfn {rt} (en : enum rt) (r : rt) : (enum_variant_rt en r) :=
@@ -91,6 +92,10 @@ Section enum.
     rewrite /enum_tag_rt /enum_variant_rt /enum_tag_ty'.
     intros Htag. rewrite (enum_tag_compat _ en r); done.
   Defined.
+
+  Import EqNotations.
+  Definition enum_tag_rfn {rt} (en : enum rt) (v : var_name) (r : rt) (Heq : enum_tag en r = Some v): enum_tag_rt en v :=
+    rew <- [id] (enum_tag_rt_variant_rt_eq en r v Heq) in (en.(enum_r) r).
 
   Lemma enum_tag_ty_Some {rt} (en : enum rt) r tag :
     enum_tag en r = Some tag →

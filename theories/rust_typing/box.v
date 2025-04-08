@@ -165,7 +165,7 @@ Section contractive.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id. 
+    - eapply ty_lft_morph_make_id.
       + rewrite {1}ty_lfts_unfold//.
       + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=. done.
@@ -861,18 +861,21 @@ Section rules.
 
   Lemma typed_place_box_owned {rto} π E L (lt2 : ltype rto) P l r wl bmin0 (T : place_cont_t (place_rfn rto)) :
     (∀ l', typed_place π E L l' lt2 r (bmin0) (Owned true) P
-      (λ L' κs l2 b2 bmin rti tyli ri strong weak,
+      (λ L' κs l2 b2 bmin rti tyli ri mstrong,
         T L' κs l2 b2 bmin rti tyli ri
+          (mk_mstrong
           (fmap (λ strong, mk_strong
             (λ rti2, place_rfn (strong.(strong_rt) rti2))
             (λ rti2 lti2 ri2, BoxLtype (strong.(strong_lt) _ lti2 ri2))
             (λ rti2 (r : place_rfn rti2), PlaceIn (strong.(strong_rfn) _ r))
-            strong.(strong_R)) strong)
+            strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2))
             (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r))
-            weak.(weak_R)) weak)))
-    ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+            weak.(weak_R)) mstrong.(mstrong_weak))
+          None
+          )))
+    ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros "HR" (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL Hincl0 HP HΦ/=".
     iPoseProof (box_ltype_acc_owned F with "HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
@@ -884,9 +887,9 @@ Section rules.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ _ with "Hincl1 Hb") => /=.
-    iSplit.
+    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb") => /=.
+    iSplit; last iSplit.
     - (* strong update *) iDestruct "Hs" as "[Hs _]".
       destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2).
@@ -908,6 +911,7 @@ Section rules.
       { iPureIntro. apply place_access_rt_rel_refl. }
       iModIntro. iFrame "HR Hb".
       done.
+    - done.
   Qed.
   Global Instance typed_place_box_owned_inst {rto} π E L (lt2 : ltype rto) bmin0 r l wl P :
     TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_owned π E L lt2 P l r wl bmin0 T).
@@ -916,16 +920,19 @@ Section rules.
     (T : place_cont_t (place_rfn rto)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (bmin0) (Owned true) P
-        (λ L'' κs' l2 b2 bmin rti tyli ri strong weak,
+        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
           T L'' (κs ++ κs') l2 b2 (Uniq κ' γ' ⊓ₖ bmin) rti tyli ri
+            (mk_mstrong
             (* strong branch: fold to OpenedLtype *)
             (fmap (λ strong, mk_strong (place_rfn ∘ strong.(strong_rt))
               (λ rti2 ltyi2 ri2,
                 OpenedLtype (BoxLtype (strong.(strong_lt) _ ltyi2 ri2)) (BoxLtype lt2) (BoxLtype lt2) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
               (λ rti2 ri2, PlaceIn $ strong.(strong_rfn) _ ri2)
-              strong.(strong_R)) strong)
+              strong.(strong_R)) mstrong.(mstrong_strong))
             (* weak branch: just keep the Box *)
-            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r)) weak.(weak_R)) weak))))
+            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
+            None
+            ))))
     ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -944,10 +951,10 @@ Section rules.
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ _ with "[Hincl1] Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
+    simpl. iSplit; last iSplit.
     - (* strong update *)
       iDestruct "Hs" as "(Hs & _)". iDestruct "Hcl" as "(_ & Hcl)".
       destruct strong as [strong | ]; last done.
@@ -966,6 +973,7 @@ Section rules.
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
       iMod ("Hcl" with "Hl Hb [//] Hcond") as "(Hb & Hκ' & Hcond)".
       iModIntro. rewrite llft_elt_toks_app. iFrame.
+    - done.
   Qed.
   Global Instance typed_place_box_uniq_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' γ' P :
     TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_uniq π E L lt2 P l r κ' γ' bmin0 T).
@@ -973,14 +981,16 @@ Section rules.
   Lemma typed_place_box_shared {rto} π E L (lt2 : ltype rto) P l r κ' bmin0 (T : place_cont_t (place_rfn rto)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (bmin0) (Shared κ') P
-        (λ L'' κs' l2 b2 bmin rti tyli ri strong weak,
+        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
           T L'' (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
+            (mk_mstrong
             (* strong branch: fold to ShadowedLtype *)
             (* TODO *)
               None
             (* weak branch: just keep the Box *)
-            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r)) weak.(weak_R)) weak))))
-    ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
+            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
+            None))))
+    ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
@@ -1000,15 +1010,15 @@ Section rules.
     iExists l'. iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ _ with "[Hincl1] Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
+    simpl. iSplit; last iSplit.
     - (* strong update *)
       done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs)".
+      iDestruct "Hs" as "(_ & Hs & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
       iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb & Hcond & ? & HR)".
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
@@ -1016,6 +1026,7 @@ Section rules.
       iMod (fupd_mask_mono with "(Hclκ' Hκ')") as "?"; first done.
       rewrite llft_elt_toks_app. iFrame.
       cbn. iApply "Hcond'"; last done. done.
+    - done.
   Qed.
   Global Instance typed_place_box_shared_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' P :
     TypedPlace E L π l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_shared π E L lt2 P l r κ' bmin0 T).

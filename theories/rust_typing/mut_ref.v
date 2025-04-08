@@ -967,17 +967,20 @@ Section rules.
   Lemma typed_place_mut_owned {rto} π κ (lt2 : ltype rto) P E L γ l r wl bmin0
     (T : place_cont_t ((place_rfn rto) * gname)) :
     (∀ l', typed_place π E L l' lt2 r (Uniq κ γ ⊓ₖ bmin0) (Uniq κ γ) P
-        (λ L' κs l2 b2 bmin rti tyli ri strong weak,
+        (λ L' κs l2 b2 bmin rti tyli ri mstrong,
           T L' (κs) l2 b2 bmin rti tyli ri
+          (mk_mstrong
           (option_map (λ strong, mk_strong
             (λ rti2, (place_rfn (strong.(strong_rt) rti2)) * gname)%type
             (λ rti2 lti2 ri, MutLtype (strong.(strong_lt) _ lti2 ri) κ)
             (λ rti2 (r : place_rfn rti2), PlaceIn (strong.(strong_rfn) _ r, γ))
-            strong.(strong_R)) strong)
+            strong.(strong_R)) mstrong.(mstrong_strong))
           (fmap (λ weak,  mk_weak
             (λ ltyi2 ri2, MutLtype (weak.(weak_lt) ltyi2 ri2) κ)
             (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r, γ))
-            weak.(weak_R)) weak)))
+            weak.(weak_R)) mstrong.(mstrong_weak))
+          None
+          )))
     ⊢ typed_place π E L l (MutLtype lt2 κ) (PlaceIn (r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
@@ -992,9 +995,9 @@ Section rules.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_min_incl_l. }
-    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ _ with "Hincl1 Hb").
-    simpl. iSplit.
+    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb").
+    simpl. iSplit; last iSplit.
     - (* strong *) iDestruct "Hs" as "[Hs _]".
       destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
@@ -1003,7 +1006,7 @@ Section rules.
       iFrame. iPureIntro. simp_ltypes. done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "[_ Hs]".
+      iDestruct "Hs" as "(_ & Hs & _)".
       iIntros (ltyi2 ri2 bmin').
       iIntros "Hincl2 Hl2 Hcond".
       iMod ("Hs" with "Hincl2 Hl2 Hcond") as "(Hb & Hcond & $ & HR)".
@@ -1013,23 +1016,27 @@ Section rules.
       iApply typed_place_cond_incl; last iApply "Hcond".
       + iApply bor_kind_min_incl_r.
       + iPureIntro. apply place_access_rt_rel_refl.
+    - done.
   Qed.
   Global Instance typed_place_mut_owned_inst {rto} E L π κ γ (lt2 : ltype rto) bmin0 r l wl P :
-    TypedPlace E L π l (MutLtype lt2 κ) (PlaceIn (r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_owned π κ lt2 P E L γ l r wl bmin0 T).
+    TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_owned π κ lt2 P E L γ l r wl bmin0 T).
 
   Lemma typed_place_mut_uniq {rto} π E L (lt2 : ltype rto) P l r κ γ κ' γ' bmin0 (T : place_cont_t (place_rfn rto * gname)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (Uniq κ γ ⊓ₖ bmin0) (Uniq κ γ) P
-        (λ L'' κs' l2 b2 bmin rti tyli ri strong weak,
+        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
           T L'' (κs ++ κs') l2 b2 (Uniq κ' γ' ⊓ₖ bmin) rti tyli ri
+            (mk_mstrong
             (* strong branch: fold to OpenedLtype *)
             (fmap (λ strong, mk_strong (λ rti, (place_rfn (strong.(strong_rt) rti) * gname)%type)
               (λ rti2 ltyi2 ri2,
                 OpenedLtype (MutLtype (strong.(strong_lt) _ ltyi2 ri2) κ) (MutLtype lt2 κ) (MutLtype lt2 κ) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
               (λ rti2 ri2, #((strong.(strong_rfn) _ ri2), γ))
-              strong.(strong_R)) strong)
+              strong.(strong_R)) mstrong.(mstrong_strong))
             (* weak branch: just keep the MutLtype *)
-            (fmap (λ weak, mk_weak (λ lti' ri', MutLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r, γ)) weak.(weak_R)) weak))))
+            (fmap (λ weak, mk_weak (λ lti' ri', MutLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r, γ)) weak.(weak_R)) mstrong.(mstrong_weak))
+            None
+            ))))
     ⊢ typed_place π E L l (MutLtype lt2 κ) #(r, γ) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -1048,10 +1055,10 @@ Section rules.
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_min_incl_l. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ _ with "[Hincl1] Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
+    simpl. iSplit; last iSplit.
     - (* strong update *)
       iDestruct "Hs" as "(Hs & _)". iDestruct "Hcl" as "(_ & Hcl)".
       destruct strong as [ strong | ]; last done.
@@ -1064,7 +1071,7 @@ Section rules.
       iFrame. done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs)". iDestruct "Hcl" as "(Hcl & _)".
+      iDestruct "Hs" as "(_ & Hs & _)". iDestruct "Hcl" as "(Hcl & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
       iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb & Hcond & ? & HR)".
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
@@ -1074,6 +1081,7 @@ Section rules.
       iModIntro. iFrame. rewrite llft_elt_toks_app. iFrame.
       iApply typed_place_cond_incl; last done.
       iApply bor_kind_min_incl_r.
+    - done. 
   Qed.
   Global Instance typed_place_mut_uniq_inst {rto} E L π κ κ' γ γ' (lt2 : ltype rto) bmin0 r l P :
     TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_uniq π E L lt2 P l r κ γ κ' γ' bmin0 T).
@@ -1081,8 +1089,9 @@ Section rules.
   Lemma typed_place_mut_shared {rto} π E L (lt2 : ltype rto) P l r κ γ κ' bmin0 (T : place_cont_t (place_rfn rto * gname)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       (∀ l', typed_place π E L' l' lt2 r (Shared (κ ⊓ κ') ⊓ₖ bmin0) (Shared (κ ⊓ κ')) P
-        (λ L'' κs' l2 b2 bmin rti tyli ri strong weak,
+        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
           T L'' (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
+            (mk_mstrong
             (* strong branch: fold to ShadowedLtype *)
               None (* TODO *)
             (*(fmap (λ strong, mk_strong (λ rti, (place_rfn (strong.(strong_rt) rti) * gname)%type)*)
@@ -1091,7 +1100,9 @@ Section rules.
               (*(λ rti2 ri2, #((strong.(strong_rfn) _ ri2), γ))*)
               (*strong.(strong_R)) strong)*)
             (* weak branch: just keep the MutLtype *)
-            (fmap (λ weak, mk_weak (λ lti' ri', MutLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r, γ)) weak.(weak_R)) weak))))
+            (fmap (λ weak, mk_weak (λ lti' ri', MutLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r, γ)) weak.(weak_R)) mstrong.(mstrong_weak))
+            None
+            ))))
     ⊢ typed_place π E L l (MutLtype lt2 κ) #(r, γ) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -1109,15 +1120,15 @@ Section rules.
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_min_incl_l. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri strong weak) "#Hincl1 Hb' Hs".
-    iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ _ with "[Hincl1] Hb'").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb' Hs".
+    iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb'").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
+    simpl. iSplit; last iSplit.
     - (* strong update *)
       done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs)".
+      iDestruct "Hs" as "(_ & Hs & _)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
       iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb' & Hcond & ? & HR)".
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
@@ -1129,6 +1140,7 @@ Section rules.
       + done.
       + iApply typed_place_cond_incl; last done.
         iApply bor_kind_min_incl_r.
+    - done.
   Qed.
   Global Instance typed_place_mut_shared_inst {rto} E L π κ κ' γ (lt2 : ltype rto) bmin0 r l P :
     TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_shared π E L lt2 P l r κ γ κ' bmin0 T).

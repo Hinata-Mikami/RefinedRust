@@ -110,7 +110,7 @@ impl<T> FromResidual for Option<T> {
 
 
 #[rr::instantiate("FromOutputFn" := "λ out, inl (# out)")]
-#[rr::instantiate("BranchFn" := "λ s, match s with | inl(x) => inl(x) | inr(x) => inr(# (inr x)) end")]
+#[rr::instantiate("BranchFn" := "result_xmap id (λ x, #(inr x))")]
 impl<B, C> Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, Infallible>;
@@ -147,7 +147,7 @@ impl<B, C> FromResidual<ControlFlow<B, Infallible>> for ControlFlow<B, C> {
 
 
 #[rr::instantiate("FromOutputFn" := "λ out, Ok (# out)")]
-#[rr::instantiate("BranchFn" := "λ s, match s with | Ok(x) => inl(x) | Err(x) => inr(# (Err x)) end")]
+#[rr::instantiate("BranchFn" := "result_xmap id (λ x, # (Err x))")]
 impl<T, E> Try for Result<T, E> {
     type Output = T;
     type Residual = Result<Infallible, E>;

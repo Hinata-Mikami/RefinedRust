@@ -92,8 +92,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedPlace E L π l lt r bmin0 b P) T))
   | typed_if ?E ?L ?v ?P ?T1 ?T2 =>
       cont uconstr:(((_ : TypedIf E L v P) T1 T2))
-  | typed_switch ?π ?E ?L ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R =>
-      cont uconstr:(((_ : TypedSwitch π E L v rt ty r it) m ss def fn R))
+  | typed_switch ?π ?E ?L ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
+      cont uconstr:(((_ : TypedSwitch π E L v rt ty r it) m ss def fn R ϝ))
   | typed_assert ?π ?E ?L ?v ?ty ?r ?s ?fn ?R ?ϝ =>
       cont uconstr:(((_ : TypedAssert π E L v ty r) s fn R ϝ))
   | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?br ?ot ?T =>
@@ -633,9 +633,9 @@ Ltac liROnEndlftTriggerInit :=
 Ltac liRJudgement :=
   lazymatch goal with
     (* place finish *)
-    | |- envs_entails _ (typed_place_finish ?π ?E ?L _ _ _ _ _ _ _ _ _ ?T) =>
+    | |- envs_entails _ (typed_place_finish ?π ?E ?L _ _ _ _ _ _ _ _ _ _ _ _ ?T) =>
       (* simplify eqcasts and the match on strong/weak branch *)
-      cbn
+        unfold typed_place_finish; simpl
     (* write *)
     | |- envs_entails _ (typed_write ?π ?E ?L _ _ _ ?ty ?r ?T) =>
         notypeclasses refine (tac_fast_apply (type_write E L T _ _ _ _ _ ty r π _) _); [ solve [refine _ ] |]
@@ -975,6 +975,8 @@ Global Arguments Rel2 : simpl never.
 
 Global Hint Unfold OffsetLocSt : core.
 
+Hint Unfold els_lookup_tag : lithium_rewrite.
+
 Global Typeclasses Opaque loc.
 Global Instance loc_inh : Inhabited loc.
 Proof. unfold loc. apply _. Qed.
@@ -1016,6 +1018,13 @@ Ltac after_intro_hook ::=
   inv_layout_alg
 .
 
+(* TODO: put a name_hint to preserve names? *)
+Ltac before_revert_hook H ::=
+  match type of H with
+  | CACHED _ =>
+      unfold CACHED in H
+  | _ => idtac
+  end.
 
 Ltac enter_cache_hook H cont ::=
   first [
@@ -1063,7 +1072,8 @@ Ltac solve_mk_enum_ty_wf_E :=
   intros []; rewrite {1}ty_wf_E_unfold/=; set_solver.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
-  intros []; naive_solver.
+  (*intros []; naive_solver.*)
+  intros [] ? [= <-]; done.
 
 
 (** User facing tactic calls *)

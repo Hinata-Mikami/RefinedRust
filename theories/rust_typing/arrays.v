@@ -1785,13 +1785,16 @@ Section rules.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜Forall (lctx_bor_kind_outlives E L1 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri strong weak,
-          T L2 κs li bi bmin2 rti ltyi ri None
+        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri mstrong,
+          T L2 κs li bi bmin2 rti ltyi ri
+          (mk_mstrong None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
-              ) weak))))
+              ) mstrong.(mstrong_weak))
+              None
+          ))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
@@ -1835,9 +1838,10 @@ Section rules.
     iApply ("Hc" with "[] [Hb]").
     { destruct bmin; done. }
     { subst i. rewrite Z2Nat.id//. }
-    iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' strong weak) "#Hincl1 Hi Hc".
+    iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. destruct weak as [ weak | ]; last done.
+    iSplitR; first done. iSplitL; last done.
+    destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
     iMod ("Hc" with "[//] Hi Hcond") as "(Hi & Hcond & Htoks & HR)".
@@ -1872,13 +1876,16 @@ Section rules.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜Forall (lctx_bor_kind_outlives E L2 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
-        typed_place π E L2 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri strong weak,
-        T L3 (κs ++ κs') li bi bmin2 rti ltyi ri None
+        typed_place π E L2 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri mstrong,
+        T L3 (κs ++ κs') li bi bmin2 rti ltyi ri
+          (mk_mstrong None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
-              ) weak)))))
+              ) mstrong.(mstrong_weak))
+            None
+          )))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -1926,9 +1933,10 @@ Section rules.
     iApply ("Hc" with "[] [Hb]").
     { destruct bmin; done. }
     { subst i. rewrite Z2Nat.id//. }
-    iIntros (L2 κs' l2 b2 bmin0 rti ltyi ri' strong weak) "#Hincl1 Hi Hc".
+    iIntros (L2 κs' l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. destruct weak as [ weak | ]; last done.
+    iSplitR; first done. iSplitL; last done. 
+    destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
     iMod ("Hc" with "[//] Hi Hcond") as "(Hi & #Hcond & Htoks & HR)".
@@ -1965,13 +1973,16 @@ Section rules.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜Forall (lctx_bor_kind_outlives E L1 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri strong weak,
-        T L3 (κs') li bi bmin2 rti ltyi ri None
+        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri mstrong,
+        T L3 (κs') li bi bmin2 rti ltyi ri
+          (mk_mstrong None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
-              ) weak))))
+              ) mstrong.(mstrong_weak))
+            None
+          ))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
@@ -2015,9 +2026,10 @@ Section rules.
     iApply ("Hc" with "[] [Hb]").
     { destruct bmin; done. }
     { subst i. rewrite Z2Nat.id//. }
-    iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' strong weak) "#Hincl1 Hi Hc".
+    iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. destruct weak as [ weak | ]; last done.
+    iSplitR; first done. iSplitL; last done. 
+    destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
     iMod ("Hc" with "[//] Hi Hcond") as "(Hi & Hcond & Htoks & HR)".
@@ -3415,20 +3427,22 @@ Section offset_rules.
       ⌜π = π'⌝ ∗
       typed_array_access π E L base offset st lt r b (λ L2 rt2 ty2 len2 iml2 rs2 k2 rte lte re,
         base ◁ₗ[ π, k2] # rs2 @ ArrayLtype ty2 len2 iml2 -∗
-        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri strong weak,
+        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri mstrong,
           T L2 [] li bi bmin' rti lti ri
-            (match strong with
+            (mk_mstrong (match mstrong.(mstrong_strong) with
              | Some strong => Some $ mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
              | None => None
              end)
-            (match weak with
+            (match mstrong.(mstrong_weak) with
              | Some weak => Some $ mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, llft_elt_toks κs ∗ (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)
              | None =>
-                 match strong with
+                 match mstrong.(mstrong_strong) with
                   | Some strong => Some $ mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
                   | None => None
                   end
               end)
+            None
+            )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -3456,10 +3470,12 @@ Section offset_rules.
       typed_array_access π E L base offset st lt r b (λ L2 rt2 ty2 len2 iml2 rs2 k2 rte lte re,
         base ◁ₗ[ π, k2] # rs2 @ ArrayLtype ty2 len2 iml2 -∗
         ⌜lctx_lft_alive E L2 κ⌝ ∗
-        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri strong weak,
+        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri mstrong,
           T L2 κs li bi bmin' rti lti ri
-            (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) strong)
-            (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) weak)
+            (mk_mstrong (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
+            (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
+            None
+            )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -3487,10 +3503,12 @@ Section offset_rules.
       typed_array_access π E L base offset st lt r b (λ L2 rt2 ty2 len2 iml2 rs2 k2 rte lte re,
         base ◁ₗ[ π, k2] # rs2 @ ArrayLtype ty2 len2 iml2 -∗
         ⌜lctx_lft_alive E L2 κ⌝ ∗
-        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri strong weak,
+        typed_place π E L2 (base offsetst{st}ₗ offset) lte re k2 k2 P (λ L2 κs li bi bmin' rti lti ri mstrong,
           T L2 κs li bi bmin' rti lti ri
-            (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) strong)
-            (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) weak)
+            (mk_mstrong (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
+            (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
+            None
+            )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.

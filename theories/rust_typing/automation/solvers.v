@@ -1832,7 +1832,7 @@ Ltac solve_llctx_find_llft ::=
 
 (** solve_map_lookup *)
 (* this extends the Lithium solver with support for goals where the lookup is None *)
-Ltac compute_map_lookup :=
+Ltac compute_map_lookup_unchecked :=
   unfold_opaque @named_lft_delete;
   unfold_opaque @named_lft_update;
   lazymatch goal with
@@ -1850,10 +1850,31 @@ Ltac compute_map_lookup :=
       | |- ∅ !! _ = ?res =>
          change_no_check (None = res); reflexivity
       end ]).
-Ltac solve_compute_map_lookup ::=
-  compute_map_lookup.
+Ltac compute_map_lookup_checked :=
+  unfold_opaque @named_lft_delete;
+  unfold_opaque @named_lft_update;
+  lazymatch goal with
+  | |- ?Q !! _ = Some _ => try (is_var Q; unfold Q)
+  | |- ?Q !! _ = ?e => idtac
+  | _ => fail "unknown goal for compute_map_lookup"
+  end; (solve
+   [ repeat
+      lazymatch goal with
+      | |- <[?x:=?s]> ?Q !! ?y = ?res =>
+            lazymatch x with
+            | y => change (Some s = res); reflexivity
+            | _ => change (Q !! y = res)
+            end
+      | |- ∅ !! _ = ?res =>
+         change (None = res); reflexivity
+      end ]).
+Ltac solve_compute_map_lookup unchecked ::=
+  match unchecked with
+  | true => compute_map_lookup_unchecked
+  | false => compute_map_lookup_checked
+  end.
 Ltac solve_compute_map_lookup_nofail ::=
-  compute_map_lookup.
+  compute_map_lookup_unchecked.
 
 Lemma compute_map_lookups_cons_tac (M : gmap string lft) (ns : list string) (n : string) (κs κs' : list lft) κ :
   M !! n = Some κ →
@@ -1871,7 +1892,7 @@ Ltac compute_map_lookups :=
         unify out (@nil lft); by apply (Forall2_nil)
   | |- Forall2 _ (?x :: ?xs) ?out =>
       refine (compute_map_lookups_cons_tac _ xs x _ _ _ _ _ _);
-      [ compute_map_lookup | compute_map_lookups | reflexivity]
+      [ compute_map_lookup_unchecked | compute_map_lookups | reflexivity]
   end.
 Ltac solve_compute_map_lookups_nofail ::=
   compute_map_lookups.

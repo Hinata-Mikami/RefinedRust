@@ -28,7 +28,7 @@ Section union.
     1 ≤ n →
     n ^ (max_list l) = max 1 (max_list ((λ x, n^x) <$> l)).
   Proof.
-    intros ?.
+intros ?.
     induction l as [ | x l IH]; simpl; first done.
     rewrite Nat_pow_max; last done.
     rewrite IH.
@@ -1040,57 +1040,34 @@ Section subltype.
 
 End subltype.
 
-Section rules.
+Section init.
   Context `{!typeGS Σ}.
 
-  (* needs to have lower priority than the id instance *)
-  Import EqNotations.
-  (*Definition enum_variant_type' {rt} (en : enum rt) (r : rt) : type (enum_tag_rt en (enum_tag' en r)) :=*)
-    (*rew (enum_variant_rt_tag_rt_eq en r _ eq_refl) in enum_variant_type en r.*)
-    (*(◁ enum_tag_type en (enum_tag' en r))*)
-  Lemma typed_place_ofty_enum {rt} π E L l (en : enum rt) (r : rt) bmin0 wl P T :
-    typed_place π E L l (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))) (#r) bmin0 (Owned wl) P T
-    ⊢ typed_place π E L l (◁ (enum_t en)) (#r) bmin0 (Owned wl) P T.
-  Proof.
-    (*iIntros "Hp". iApply typed_place_eqltype; last iFrame.*)
-    (*iIntros (?) "HL CTX HE".*)
-    (*iIntros (??). iApply struct_t_unfold.*)
-  (*Qed.*)
-  Admitted.
-  Global Instance typed_place_ofty_enum_inst {rt} π E L l (en : enum rt) (r : rt) bmin0 wl P :
-    TypedPlace E L π l (◁ (enum_t en))%I (#r) bmin0 (Owned wl) P | 30 :=
-        λ T, i2p (typed_place_ofty_enum π E L l en r bmin0 wl P T).
-
-  (*
-  Lemma typed_place_enum_owned {rt} (en : enum rt) tag1 cur π E L r tag2 wl bmin0 P l
-    (T : place_cont_t (plist place_rfn rts)) :
-    (* recursively check place *)
-    ⌜tag1 = tag2⌝ ∗
-    (∃ i, ⌜sls_field_index_of sls.(sls_fields) f = Some i⌝ ∗
-     ∃ lto (ro : place_rfn (lnth (unit : Type) rts i)),
-      ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
-      ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
-        (λ L' κs l1 b2 bmin rti ltyi ri strong weak,
-          T L' κs l1 b2 bmin rti ltyi ri
-          (fmap (λ strong, mk_strong
-            (λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))
-            (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
-            (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
-            strong.(strong_R)) strong)
-          (fmap (λ weak, mk_weak
-            (λ lti2 ri2, StructLtype (hlist_insert_id (unit : Type) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
-            (λ (r' : place_rfn rti), #(plist_insert_id (unit : Type) rts r i (weak.(weak_rfn) r')))
-            weak.(weak_R)) weak))))
-    ⊢ typed_place π E L l (EnumLtype en tag1 cur) (#r) bmin0 (Owned wl) (EnumDataPCtx els tag2 :: P) T.
-  Proof.
-  Admitted.
-  Global Instance typed_place_struct_owned_inst π E L {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sls wl bmin0 f l P :
-    TypedPlace E L π l (StructLtype lts sls) (PlaceIn r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) | 30 :=
-        λ T, i2p (typed_place_struct_owned lts π E L r sls f wl bmin0 P l T).
-
-        *)
-
+  Program Definition enum_discriminant_t {rt} (en : enum rt) : type rt := {|
+    st_own π r v :=
+      ∃ tag, ⌜en.(enum_tag) r = Some tag⌝ ∗
+      v ◁ᵥ{π} (els_lookup_tag en.(enum_els) tag) @ int en.(enum_els).(els_tag_it);
+    st_has_op_type ot mt := is_int_ot ot en.(enum_els).(els_tag_it);
+    st_syn_type := IntSynType en.(enum_els).(els_tag_it);
+  |}%I.
+  Next Obligation.
+    intros. apply populate. eapply enum_xrt. apply (enum_xt_inhabited en).
+  Qed.
+  Next Obligation.
+    simpl. intros.
+    iIntros "(%tag & %Htag & Hv)".
+    iApply (ty_has_layout with "Hv").
+  Qed.
+  Next Obligation.
+    simpl. intros. eapply (@ty_op_type_stable _ _ _ (int _) _ mt).
+    rewrite ty_has_op_type_unfold. done.
+  Qed.
+  Next Obligation.
+    simpl. intros ???????? Hv. iIntros "(%tag & %Htag & Hv)".
+    iPoseProof (ty_memcast_compat _ _ _ mt with "Hv") as "Ha".
+    { rewrite ty_has_op_type_unfold. apply Hv. }
+    destruct mt; eauto.
+  Qed.
 
   Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
     ⌜enum_layout_spec_is_layoutable els⌝ ∗
@@ -1211,6 +1188,173 @@ Section rules.
   Proof.
   Admitted.
    *)
+End init.
+
+Section rules.
+  Context `{!typeGS Σ}.
+
+  (* needs to have lower priority than the id instance *)
+  Import EqNotations.
+  Lemma typed_place_ofty_enum_owned {rt} π E L l (en : enum rt) (r : rt) bmin0 wl P T :
+    typed_place π E L l (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))) (#r) bmin0 (Owned wl) P T
+    ⊢ typed_place π E L l (◁ (enum_t en)) (#r) bmin0 (Owned wl) P T.
+  Proof.
+    (*iIntros "Hp". iApply typed_place_eqltype; last iFrame.*)
+    (*iIntros (?) "HL CTX HE".*)
+    (*iIntros (??). iApply struct_t_unfold.*)
+  (*Qed.*)
+  Admitted.
+  Definition typed_place_ofty_enum_owned_inst := [instance @typed_place_ofty_enum_owned].
+  Global Existing Instance typed_place_ofty_enum_owned_inst | 30.
+
+  Lemma typed_place_ofty_enum_shared {rt} π E L l (en : enum rt) (r : rt) bmin0 κ P T :
+    typed_place π E L l (EnumLtype en (enum_tag' en r) (◁ enum_tag_type en (enum_tag' en r))) (#r) bmin0 (Shared κ) P T
+    ⊢ typed_place π E L l (◁ (enum_t en)) (#r) bmin0 (Shared κ) P T.
+  Proof.
+    (*iIntros "Hp". iApply typed_place_eqltype; last iFrame.*)
+    (*iIntros (?) "HL CTX HE".*)
+    (*iIntros (??). iApply struct_t_unfold.*)
+  (*Qed.*)
+  Admitted.
+  Definition typed_place_ofty_enum_shared_inst := [instance @typed_place_ofty_enum_shared].
+  Global Existing Instance typed_place_ofty_enum_shared_inst | 30.
+
+  Lemma typed_place_enum_discriminant_owned {rt} π E L l (en : enum rt) (r : rt) bmin0 wl els tag lt P T :
+    typed_place π E L l (EnumLtype en tag lt) (#r) bmin0 (Owned wl) (EnumDiscriminantPCtx els :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      return (typed_place π E L (GetEnumDiscriminantLocSt l els) (◁ enum_discriminant_t en) (#r) bmin0 (Owned false) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (mk_mstrong
+          None
+          None
+          (Some $ mk_immut True))
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_discriminant_owned_inst := [instance @typed_place_enum_discriminant_owned].
+  Global Existing Instance typed_place_enum_discriminant_owned_inst.
+
+  Lemma typed_place_enum_discriminant_shared {rt} π E L l (en : enum rt) (r : rt) bmin0 κ els tag lt P T :
+    typed_place π E L l (EnumLtype en tag lt) (#r) bmin0 (Shared κ) (EnumDiscriminantPCtx els :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      return (typed_place π E L (GetEnumDiscriminantLocSt l els) (◁ enum_discriminant_t en) (#r) bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (mk_mstrong
+          None
+          None
+          (Some $ mk_immut True))
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_discriminant_shared_inst := [instance @typed_place_enum_discriminant_shared].
+  Global Existing Instance typed_place_enum_discriminant_shared_inst.
+
+  (* TODO: need back-injection into the whole enum rfn (?). 
+        In order to handle weak updates.
+  *)
+  (* TODO also need resolve ghost instances, eventually *)
+  (* TODO: plan for allowing strong updates:
+      - OpenedLtype? but to what do we open...
+      - we could also have an argument for the current refinement type and refinement.
+        TODO: try this maybe
+      - or we refine EnumLtype by the current inner refinement..
+        Problem: then we do strong refinement updates, which isn't cool below mutable refs.
+   *)
+  Lemma typed_place_enum_data_owned {rt} π E L l (en : enum rt) (r : rt) bmin0 els tag tag' lt P T :
+    typed_place π E L l (EnumLtype en tag lt) (#r) bmin0 (Owned false) (EnumDataPCtx els tag' :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      exhale (⌜tag = tag'⌝);
+      ∃ (Heq : enum_tag en r = Some tag),
+      return (typed_place π E L (GetEnumDataLocSt l els) lt (# (enum_tag_rfn en tag r Heq)) bmin0 (Owned false) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (mk_mstrong
+          (*(fmap (λ strong, mk_strong (λ rti ltyi ri, *)
+          None
+          (fmap (λ weak, mk_weak (λ ltyi ri, EnumLtype en tag (weak.(weak_lt) ltyi ri)) (λ ri, (* TODO *) #r) weak.(weak_R)) mstrong.(mstrong_weak))
+          None)
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_data_owned_inst := [instance @typed_place_enum_data_owned].
+  Global Existing Instance typed_place_enum_data_owned_inst.
+
+  Lemma typed_place_enum_data_shared {rt} π E L l (en : enum rt) (r : rt) bmin0 els tag tag' κ lt P T :
+    typed_place π E L l (EnumLtype en tag lt) (#r) bmin0 (Shared κ) (EnumDataPCtx els tag' :: P) T :-
+      exhale (⌜en.(enum_els) = els⌝);
+      exhale (⌜tag = tag'⌝);
+      ∃ (Heq : enum_tag en r = Some tag),
+      return (typed_place π E L (GetEnumDataLocSt l els) lt (# (enum_tag_rfn en tag r Heq)) bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+        T L2 κs l2 b2 bmin2 rti ltyi ri
+          (mk_mstrong
+          None
+          (fmap (λ weak, mk_weak (λ ltyi ri, EnumLtype en tag (weak.(weak_lt) ltyi ri)) (λ ri, (* TODO *) #r) weak.(weak_R)) mstrong.(mstrong_weak))
+          None)
+      )).
+  Proof.
+  Admitted.
+  Definition typed_place_enum_data_shared_inst := [instance @typed_place_enum_data_shared].
+  Global Existing Instance typed_place_enum_data_shared_inst.
+
+
+  (** cast_ltype *)
+  Lemma cast_ltype_to_type_enum E L {rt} (en : enum rt) tag lt T :
+    cast_ltype_to_type E L lt (λ ty,
+      mut_eqtype E L ty (enum_tag_type en tag) (T (enum_t en)))
+    ⊢ cast_ltype_to_type E L (EnumLtype en tag lt) T.
+  Proof.
+  Admitted.
+  Definition cast_ltype_to_type_enum_inst := [instance @cast_ltype_to_type_enum].
+  Global Existing Instance cast_ltype_to_type_enum_inst.
+
+
+  Inductive destruct_hint_switch_enum :=
+  | DestructHintSwitchEnumCase (n : string)
+  | DestructHintSwitchEnumDefault.
+
+  (* What is the strategy?
+     - One strategy: case analysis on the refinement
+     - case analysis on the tag + info
+   *)
+  Lemma type_switch_enum π E L {rt} (en : enum rt) r (it : int_type) m ss def fn R ϝ v:
+    (*⌜it = en.(enum_els).(els_tag_it)⌝ ∗*)
+    (*case_destruct r (λ c b,*)
+      (*∃ tag idx, ⌜enum_tag en c = Some tag⌝ ∗*)
+        (*⌜m !! els_lookup_tag en.(enum_els) tag = idx⌝ ∗*)
+        (*match idx with*)
+        (*| Some mi =>*)
+           (*∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ*)
+        (*| None => *)
+          (*typed_stmt E L def fn R ϝ*)
+        (*end)*)
+    (*⊢ typed_switch π E L v _ (enum_discriminant_t en) r it m ss def fn R ϝ.*)
+    ⌜it = en.(enum_els).(els_tag_it)⌝ ∗
+    case_destruct r (λ c b,
+      ∃ tag, ⌜enum_tag en c = Some tag⌝ ∗
+        li_tactic (compute_map_lookup_goal (list_to_map (els_tag_int en.(enum_els))) tag false) (λ idx,
+        li_tactic (compute_map_lookup_goal m (default 0%Z idx) false) (λ o,
+        match o with
+        | Some mi =>
+           ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ
+        | None =>
+          typed_stmt E L def fn R ϝ
+        end)))
+    ⊢ typed_switch π E L v _ (enum_discriminant_t en) r it m ss def fn R ϝ.
+  Proof.
+    (*unfold li_trace, discriminate_hint.*)
+    iIntros "HT Hit". rewrite /ty_own_val/=.
+    iDestruct "Hit" as "(%tag & %Htag & %Hv & %Hit)".
+    iDestruct "HT" as "(-> & Hc)".
+    rewrite /compute_map_lookup_goal.
+    iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".
+    simplify_eq.
+    iExists _. iR.
+    unfold els_lookup_tag. done.
+    (*unfold compute_map_lookup_goal.*)
+    (*iDestruct "Ha" as "(%res & <- & Ha)".*)
+    (*done.*)
+  Qed.
+  Global Instance type_switch_enum_inst π E L {rt} (en : enum rt) r v it : TypedSwitch π E L v _ (enum_discriminant_t en) r it :=
+    λ m ss def fn R ϝ, i2p (type_switch_enum π E L en r it m ss def fn R ϝ v).
 
 End rules.
 

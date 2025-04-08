@@ -345,6 +345,10 @@ where
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
         scope: &T,
     ) -> Result<bool, String> {
+
+        // Plan: for requires / ensures / exists clauses coming after the rr::ok,
+        // just collect them separately. Then assemble afterwards.
+
         match name {
             "params" => {
                 let params = RRParams::parse(buffer, scope).map_err(str_err)?;

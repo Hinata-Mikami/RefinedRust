@@ -64,6 +64,12 @@ Tactic Notation "refined_solver" := refined_solver eauto.
 
 (** * [normalize_and_simpl_goal] *)
 Ltac normalize_and_simpl_impl handle_exist :=
+  let discr :=
+    lazymatch goal with
+    | |- discriminate_hint ?P → ?Q =>
+        constr:(true)
+    | |- _ => constr:(false)
+    end in
   let do_intro :=
     idtac;
     match goal with
@@ -73,15 +79,41 @@ Ltac normalize_and_simpl_impl handle_exist :=
         | false => fail 1 "exist not handled"
         end
     | |- (_ = _) → _ =>
-        check_injection_hook;
+        hooks.check_injection_hook;
         let Hi := fresh "Hi" in move => Hi; injection Hi; clear Hi
+    | |- (?x = _) → _ =>
+        is_var x;
+        let He := fresh "Heq" in move => He; 
+        repeat match goal with 
+               | H : context[x] |- _ => 
+                   assert_fails (unify H He);
+                   before_revert_hook H;
+                   revert H
+                   (*generalize dependent H*)
+        end;
+        subst
+    | |- (_ = ?x) → _ =>
+        is_var x;
+        let He := fresh "Heq" in move => He; 
+        repeat match goal with 
+               | H : context[x] |- _ => 
+                   assert_fails (unify H He);
+                   before_revert_hook H;
+                   revert H
+                   (*generalize dependent H*)
+        end;
+        subst
+    | |- discriminate_hint ?P → ?Q =>
+        change (P → Q);
+         let Hd := fresh "Hd" in move => Hd; try discriminate Hd
     | |- name_hint ?s ?P → ?Q =>
         change_no_check (P → Q);
         string_ident.string_to_ident_cps s ltac:(fun H => first [intros H | intros ?])
-    | |- ?P → _ => assert_is_not_trivial P; intros ?; subst
+    | |- ?P → _ => 
+        assert_is_not_trivial P; intros ?
     | |- _ => move => _
     end;
-    after_intro_hook
+    hooks.after_intro_hook
   in
   lazymatch goal with
   (* relying on the fact that unification variables cannot contain
