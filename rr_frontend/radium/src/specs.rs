@@ -17,7 +17,7 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools;
 use log::{info, trace, warn};
 
-use crate::{coq, display_list, push_str_list, write_list, BASE_INDENT};
+use crate::{coq, display_list, push_str_list, term, write_list, BASE_INDENT};
 
 #[derive(Clone, Debug)]
 /// Encodes a RR type with an accompanying refinement.
@@ -328,10 +328,13 @@ impl TypeAnnotMeta {
 pub struct LiteralType {
     /// Rust name
     pub rust_name: Option<String>,
-    /// Coq name of the type
+
+    /// Rocq name of the type
     pub type_term: String,
+
     /// the refinement type
     pub refinement_type: coq::term::Type,
+
     /// the syntactic type
     pub syn_type: SynType,
 }
@@ -458,12 +461,16 @@ pub enum TyParamOrigin {
 pub struct LiteralTyParam {
     /// Rust name
     pub rust_name: String,
+
     /// Coq name of the type
     pub type_term: String,
+
     /// the refinement type
     pub refinement_type: String,
+
     /// the syntactic type
     pub syn_type: String,
+
     /// the declaration site of this type parameter
     pub origin: TyParamOrigin,
 }
@@ -508,14 +515,15 @@ impl LiteralTyParam {
 
     #[must_use]
     pub fn make_syntype_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.syn_type.clone()), coq::term::Type::SynType)
+        coq::binder::Binder::new(Some(self.syn_type.clone()), term::RefinedRustType::SynType.into())
     }
 
     #[must_use]
     pub fn make_semantic_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(
             Some(self.type_term.clone()),
-            coq::term::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
+            term::RefinedRustType::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone())))
+                .into(),
         )
     }
 }
@@ -622,15 +630,15 @@ impl<'def> Type<'def> {
             Self::Char | Self::Int(_) => coq::term::Type::Z,
 
             Self::MutRef(box ty, _) => coq::term::Type::Prod(vec![
-                coq::term::Type::PlaceRfn(Box::new(ty.get_rfn_type())),
-                coq::term::Type::Gname,
+                term::RefinedRustType::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
+                term::RefinedRustType::Gname.into(),
             ]),
 
             Self::ShrRef(box ty, _) | Self::BoxType(box ty) => {
-                coq::term::Type::PlaceRfn(Box::new(ty.get_rfn_type()))
+                term::RefinedRustType::PlaceRfn(Box::new(ty.get_rfn_type())).into()
             },
 
-            Self::RawPtr => coq::term::Type::Loc,
+            Self::RawPtr => term::RefinedRustType::Loc.into(),
 
             Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type.clone()),
             Self::Literal(lit) => coq::term::Type::Literal(lit.get_rfn_type()),
@@ -1297,10 +1305,11 @@ impl<'def> AbstractVariant<'def> {
     }
 
     pub(crate) fn rfn_type(&self) -> coq::term::Type {
-        coq::term::Type::PList(
+        term::RefinedRustType::PList(
             "place_rfn".to_owned(),
             self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
         )
+        .into()
     }
 
     /// The core of generating the sls definition, without the section + context intro.
@@ -4623,7 +4632,8 @@ fn make_trait_instance<'def>(
     }
     // all sts
     for param in ty_params.params.iter().chain(assoc_types).chain(assoc_params.params.iter()) {
-        let rt_param = coq::binder::Binder::new(Some(param.syn_type.clone()), coq::term::Type::SynType);
+        let rt_param =
+            coq::binder::Binder::new(Some(param.syn_type.clone()), term::RefinedRustType::SynType.into());
         def_params.push(rt_param);
     }
 

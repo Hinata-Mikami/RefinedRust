@@ -16,7 +16,7 @@ use indent_write::indentable::Indentable;
 use itertools::Itertools;
 
 use crate::coq::binder;
-use crate::{display_list, BASE_INDENT};
+use crate::{display_list, term, BASE_INDENT};
 
 /// A [term].
 ///
@@ -178,7 +178,12 @@ impl Display for RecordBodyItem {
     }
 }
 
-fn fmt_prod(v: &Vec<Type>) -> String {
+/// A [type], extended with user defined types.
+///
+/// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
+pub type Type = RocqType<term::RefinedRustType>;
+
+fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),
@@ -186,94 +191,51 @@ fn fmt_prod(v: &Vec<Type>) -> String {
     }
 }
 
-/// A [type], limited to specific cases.
+/// A Rocq [type], limited to Rocq defined types.
 ///
 /// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-pub enum Type {
-    /// Literal types that are not contained in the grammar
-    #[display("{}", _0)]
+pub enum RocqType<T> {
+    /// Literals
     Literal(String),
 
-    /// Function types; the argument vector should be non-empty
+    /// Function type
+    ///
+    /// The argument vector should be non-empty.
     #[display("{} → {}", display_list!(_0, " → ", "({})"), *_1)]
-    Function(Vec<Type>, Box<Type>),
+    Function(Vec<Box<RocqType<T>>>, Box<RocqType<T>>),
 
-    /// Placeholder that should be inferred by Coq if possible
+    /// Placeholder
     #[display("_")]
     Infer,
 
-    /// Rocq type `lft`
-    #[display("lft")]
-    Lft,
+    /// `Prop` type
+    #[display("Prop")]
+    Prop,
 
-    /// Rocq type `loc`
-    #[display("loc")]
-    Loc,
-
-    /// Rocq type `layout`
-    #[display("layout")]
-    Layout,
-
-    /// Rocq type `syn_type`
-    #[display("syn_type")]
-    SynType,
-
-    /// Rocq type `struct_layout`
-    #[display("struct_layout")]
-    StructLayout,
-
-    /// Rocq type `Type`
+    /// `Type` type
     #[display("Type")]
     Type,
 
-    /// Rocq type `type rt`
-    #[display("(type {})", &_0)]
-    Ttype(Box<Type>),
-
-    /// Rocq type `rtype`
-    #[display("rtype")]
-    Rtype,
-
-    /// Unit type
+    /// `Unit` type
     #[display("unit")]
     Unit,
 
-    /// Integers
+    /// Integers type
     #[display("Z")]
     Z,
 
-    /// Booleans
+    /// Booleans type
     #[display("bool")]
     Bool,
 
     /// Product type
     #[display("{}", fmt_prod(_0))]
-    Prod(Vec<Type>),
+    Prod(Vec<RocqType<T>>),
 
-    /// place_rfn
-    #[display("(place_rfn {})", &_0)]
-    PlaceRfn(Box<Type>),
-
-    /// ty_syn_type
-    #[display("(ty_syn_type {})", &_0)]
-    TySynType(Box<Type>),
-
-    /// gname
-    #[display("gname")]
-    Gname,
-
-    /// A plist with a given type constructor over a list of types
-    #[display("plist {} [{}]", _0, display_list!(_1, "; ", "{} : Type"))]
-    PList(String, Vec<Type>),
-
-    /// The semantic type of a function
-    #[display("function_ty")]
-    FunctionTy,
-
-    /// The Rocq type Prop of propositions
-    #[display("Prop")]
-    Prop,
+    /// User defined type
+    #[display("{}", _0)]
+    UserDefined(T),
 }
 
 /* TODO: Definitions and constructors use the same grammar (`term_record`): Merge them. */

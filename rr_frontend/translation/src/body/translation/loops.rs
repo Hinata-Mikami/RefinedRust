@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use radium::coq;
+use radium::{coq, term};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;
@@ -60,6 +60,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // get locals
         let mut locals_with_initialization: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)> =
             Vec::new();
+
         for (local, kind, name, ty) in &self.fn_locals {
             let place = mir::Place::from(*local);
             let initialized = init_places.contains(place);

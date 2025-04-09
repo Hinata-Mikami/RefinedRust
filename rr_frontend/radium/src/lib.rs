@@ -5,6 +5,7 @@
 pub mod code;
 pub mod coq;
 pub mod specs;
+pub mod term;
 
 pub use code::*;
 pub use specs::*;

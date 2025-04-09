@@ -9,7 +9,7 @@
 /// [Sections]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html
 use derive_more::Display;
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("Section {}", name)]
 pub struct Section {
     name: String,
