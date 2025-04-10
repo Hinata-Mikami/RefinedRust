@@ -1022,7 +1022,9 @@ Ltac after_intro_hook ::=
 Ltac before_revert_hook H ::=
   match type of H with
   | CACHED _ =>
-      unfold CACHED in H
+      (* don't alter this *)
+      fail 2
+      (*unfold CACHED in H*)
   | _ => idtac
   end.
 
