@@ -12,10 +12,232 @@ From iris Require Import options.
 
 (** * Place types *)
 
+Section place_rfn.
+  Context `{!typeGS Σ}.
+
+  (**
+    [PlaceIn]: the current inner refinement is accurate (no blocking of the inner refinement).
+    [PlaceGhost]: the current inner refinement is determined by a ghost variable, either because it is currently blocked or was implicitly unblocked.
+  *)
+  Inductive place_rfn_mode := PlaceModeIn | PlaceModeGhost.
+  (* concrete refinements *)
+  Inductive place_rfn (rt : Type) :=
+    | PlaceIn (r : rt)
+    | PlaceGhost (γ : gname).
+  Global Arguments PlaceIn {_}.
+  Global Arguments PlaceGhost {_}.
+
+  Global Instance place_rfn_inh rt : Inhabited (place_rfn rt).
+  Proof. refine (populate (PlaceGhost inhabitant )). Qed.
+  Global Instance place_rfn_mode_inh : Inhabited (place_rfn_mode).
+  Proof. refine (populate (PlaceModeGhost)). Qed.
+
+  (* interpretation of place_rfn under owned *)
+  Definition place_rfn_interp_owned {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
+    match r with
+    | PlaceIn r'' => ⌜r'' = r'⌝
+    | PlaceGhost γ' => gvar_pobs γ' r'
+    end.
+
+  Definition place_rfn_interp_owned_blocked {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
+    match r with
+    | PlaceIn r'' => ⌜r'' = r'⌝
+    | PlaceGhost γ' => gvar_auth γ' r'
+    end.
+
+  (* interpretation of place_rfn under mut *)
+  Definition place_rfn_interp_mut {rt} (r : place_rfn rt) γ : iProp Σ :=
+    match r with
+    | PlaceIn r' => gvar_obs γ r'
+    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
+    end.
+  Definition place_rfn_interp_mut_blocked {rt} (r : place_rfn rt) γ : iProp Σ :=
+    match r with
+    | PlaceIn r' => gvar_obs γ r'
+    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
+    end.
+
+  (* interpretation of place_rfn under shared *)
+  (* we don't get any knowledge for PlaceGhost: we should really unblock before initiating sharing *)
+  Definition place_rfn_interp_shared {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
+    match r with
+    | PlaceIn r'' => ⌜r'' = r'⌝
+    | PlaceGhost γ => gvar_pobs γ r'
+    end.
+  Global Instance place_rfn_interp_shared_pers {rt} (r : place_rfn rt) r' : Persistent (place_rfn_interp_shared r r').
+  Proof. destruct r; apply _. Qed.
+  (* NOTE: It's a bit unlucky that we have to rely on timelessness of this in some cases, in particular for some of the unfolding lemmas. *)
+  (* Global Instance place_rfn_interp_shared_timeless {rt} (r : place_rfn rt) r' : Timeless (place_rfn_interp_shared r r'). *)
+  (* Proof. destruct r; apply _. Qed. *)
+  Global Instance place_rfn_interp_owned_timeless {rt} (r : place_rfn rt) r' : Timeless (place_rfn_interp_owned r r').
+  Proof. destruct r; apply _. Qed.
+  Global Instance place_rfn_interp_mut_timeless {rt} (r : place_rfn rt) γ : Timeless (place_rfn_interp_mut r γ).
+  Proof. destruct r; apply _. Qed.
+
+  Lemma place_rfn_interp_mut_iff {rt} (r : place_rfn rt) γ :
+    place_rfn_interp_mut r γ ⊣⊢ ∃ r' : rt, gvar_obs γ r' ∗ match r with | PlaceGhost γ' => gvar_pobs γ' r' | PlaceIn r => ⌜r = r'⌝ end.
+  Proof.
+    destruct r as [ r | γ']; simpl.
+    - iSplit.
+      + iIntros "?"; eauto with iFrame.
+      + iIntros "(%r' & ? & ->)"; iFrame.
+    - iSplit.
+      + iIntros "(%r1 & %r2 & ? & ? & ->)". iExists _. iFrame.
+      + iIntros "(%r' & ? & ?)". iExists _, _. iFrame. done.
+  Qed.
+
+  Lemma place_rfn_interp_mut_owned {rt} (r : place_rfn rt) (r' : rt) γ :
+    place_rfn_interp_mut r γ -∗
+    gvar_auth γ r' ==∗
+    place_rfn_interp_owned r r' ∗
+    gvar_obs γ r' ∗ gvar_auth γ r'.
+  Proof.
+    iIntros "Hrfn Hauth".
+    destruct r as [r'' | γ']; simpl.
+    - iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
+      iSplitR; first done. by iFrame.
+    - iDestruct "Hrfn" as "(%r1 & %r2 & Hauth' & Hobs & ->)".
+      iPoseProof (gvar_agree with "Hauth Hobs") as "#->". iFrame. done.
+  Qed.
+  Lemma place_rfn_interp_owned_mut {rt} (r : place_rfn rt) r' γ :
+    place_rfn_interp_owned r r' -∗
+    gvar_obs γ r' -∗
+    place_rfn_interp_mut r γ.
+  Proof.
+    iIntros "Hrfn Hobs".
+    destruct r as [r'' | γ'].
+    - iDestruct "Hrfn" as "<-". iFrame.
+    - iDestruct "Hrfn" as "Hauth'". simpl.
+      rewrite /Rel2. iExists _, _. by iFrame.
+  Qed.
+
+  (** lemmas for unblocking *)
+  Lemma place_rfn_interp_owned_blocked_unblock {rt} (r : place_rfn rt) (r' : rt) :
+    place_rfn_interp_owned_blocked r r' ==∗ place_rfn_interp_owned r r'.
+  Proof.
+    destruct r as [ r'' | γ]; simpl; first by eauto.
+    iApply gvar_auth_persist.
+  Qed.
+  Lemma place_rfn_interp_mut_blocked_unblock {rt} (r : place_rfn rt) (γ : gname) :
+    place_rfn_interp_mut_blocked r γ ==∗ place_rfn_interp_mut r γ.
+  Proof.
+    destruct r as [ r' | γ']; simpl; first by eauto.
+    eauto.
+  Qed.
+
+  (** lemmas for sharing *)
+  Lemma place_rfn_interp_owned_share' {rt} (r : place_rfn rt) (r' : rt) :
+    place_rfn_interp_owned r r' -∗
+    place_rfn_interp_shared r r'.
+  Proof.
+    iIntros "Hrfn".
+    destruct r.
+    - iDestruct "Hrfn" as "->". eauto.
+    - iDestruct "Hrfn" as "#Hrfn". eauto.
+  Qed.
+  Lemma place_rfn_interp_owned_share F {rt} (r : place_rfn rt) (r' : rt) q κ :
+    lftE ⊆ F →
+    lft_ctx -∗
+    &{κ} (place_rfn_interp_owned r r') -∗
+    q.[κ] ={F}=∗
+    place_rfn_interp_shared r r' ∗ q.[κ].
+  Proof.
+    iIntros (?) "#LFT Hb Htok".
+    iMod (bor_acc with "LFT Hb Htok") as "(>Hrfn & Hcl)"; first solve_ndisj.
+    iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".
+    iMod ("Hcl" with "[//]") as "(? & $)". eauto.
+  Qed.
+  Lemma place_rfn_interp_mut_share' (F : coPset) {rt} `{!Inhabited rt} (r : place_rfn rt) (r' : rt) γ (q : Qp) κ :
+    lftE ⊆ F →
+    lft_ctx -∗
+    place_rfn_interp_mut r γ -∗
+    &{κ} (gvar_auth γ r') -∗
+    q.[κ] ={F}=∗
+    place_rfn_interp_shared r r' ∗ (▷ place_rfn_interp_mut r γ) ∗ &{κ} (gvar_auth γ r') ∗ q.[κ].
+  Proof.
+    iIntros (?) "#CTX Hobs Hauth Htok".
+    iMod (bor_acc with "CTX Hauth Htok") as "(>Hauth & Hcl_auth)"; first solve_ndisj.
+    iAssert (|={F}=> place_rfn_interp_shared r r' ∗ gvar_auth γ r' ∗ ▷ place_rfn_interp_mut r γ)%I with "[Hauth Hobs]" as ">(Hrfn & Hauth & Hobs)".
+    { destruct r.
+      - iDestruct "Hobs" as "Hobs". iPoseProof (gvar_agree with "Hauth Hobs") as "#->". eauto with iFrame.
+      - simpl. rewrite /Rel2. iDestruct "Hobs" as "(%v1 & %v2 & #Hpobs & Hobs & %Heq')". rewrite Heq'.
+        iPoseProof (gvar_agree with "Hauth Hobs") as "%Heq". rewrite Heq.
+        iFrame. iR. iModIntro. iModIntro. iExists _. iR. done.
+    }
+    iMod ("Hcl_auth" with "[$Hauth]") as "($ & Htoka2)".
+    by iFrame.
+  Qed.
+  Lemma place_rfn_interp_mut_share (F : coPset) {rt} `{!Inhabited rt} (r : place_rfn rt) (r' : rt) γ (q : Qp) κ :
+    lftE ⊆ F →
+    lft_ctx -∗
+    &{κ} (place_rfn_interp_mut r γ) -∗
+    &{κ} (gvar_auth γ r') -∗
+    q.[κ] ={F}=∗
+    place_rfn_interp_shared r r' ∗ &{κ} (place_rfn_interp_mut r γ) ∗ &{κ} (gvar_auth γ r') ∗ q.[κ].
+  Proof.
+    iIntros (?) "#CTX Hobs Hauth (Htok1 & Htok2)".
+    iMod (bor_acc with "CTX Hobs Htok1") as "(>Hobs & Hcl_obs)"; first solve_ndisj.
+    iMod (place_rfn_interp_mut_share' with "CTX Hobs Hauth Htok2") as "($ & Hmut & $ & $)"; first done.
+    iMod ("Hcl_obs" with "[$Hmut]") as "($ & Htok_κ')".
+    by iFrame.
+  Qed.
+
+  Lemma place_rfn_interp_shared_mut {rt} (r : place_rfn rt) r' γ :
+    place_rfn_interp_shared r r' -∗
+    gvar_obs γ r' -∗
+    place_rfn_interp_mut r γ.
+  Proof.
+    iIntros "Hrfn Hobs".
+    destruct r as [ r | γ']; simpl.
+    - iDestruct "Hrfn" as "<-"; eauto with iFrame.
+    - iExists _, _. eauto with iFrame.
+  Qed.
+  Lemma place_rfn_interp_shared_owned {rt} (r : place_rfn rt) r' :
+    place_rfn_interp_shared r r' -∗
+    place_rfn_interp_owned r r'.
+  Proof. destruct r; eauto with iFrame. Qed.
+
+
+  (** For adding information to the context *)
+  Definition place_rfn_interp_mut_extracted {rt} (r : place_rfn rt) (γ : gname) : iProp Σ :=
+    match r with
+    | PlaceIn r' => gvar_pobs γ r'
+    | PlaceGhost γ' => Rel2 (T:=rt) γ' γ eq
+    end.
+  Definition place_rfn_interp_owned_extracted {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
+    match r with
+    | PlaceIn r'' => ⌜r'' = r'⌝
+    | PlaceGhost γ' => gvar_pobs γ' r'
+    end.
+
+  Lemma place_rfn_interp_mut_extract {rt} (r : place_rfn rt) (γ : gname) :
+    place_rfn_interp_mut r γ ==∗ place_rfn_interp_mut_extracted r γ.
+  Proof.
+    destruct r; simpl.
+    - iIntros "Hobs". iApply (gvar_obs_persist with "Hobs").
+    - eauto.
+  Qed.
+  Lemma place_rfn_interp_owned_extract {rt} (r : place_rfn rt) (r' : rt) :
+    place_rfn_interp_owned r r' ==∗ place_rfn_interp_owned_extracted r r'.
+  Proof.
+    destruct r; simpl.
+    - eauto.
+    - eauto.
+  Qed.
+End place_rfn.
+
 (** ** Basic enum infrastructure *)
 Section enum.
   Context `{!typeGS Σ}.
   (*Set Universe Polymorphism.*)
+
+  Record enum_tag_sem {rt : Type} := mk_enum_tag_sem {
+    enum_tag_sem_rt : Type;
+    enum_tag_sem_ty : type enum_tag_sem_rt;
+    enum_tag_rt_inj : enum_tag_sem_rt → rt;
+  }.
+  Global Arguments enum_tag_sem : clear implicits.
+  Global Arguments mk_enum_tag_sem {_}.
 
   Record enum (rt : Type) : Type := mk_enum {
     (* refinement injection *)
@@ -31,8 +253,13 @@ Section enum.
     enum_rt : rt → Type;
     enum_ty : ∀ r, type (enum_rt r);
     enum_r : ∀ r, enum_rt r;
+    (* back injection when we update a variant or borrow from it. *)
+    (*enum_rt_inj : *)
+      (*∀ (tag : var_name) (rt : Type) (xr : projT1 (enum_tag_ty tag)), rt;*)
     (* convenience function: given the variant name, also project out the type *)
-    enum_tag_ty : var_name → option (sigT type);
+    enum_tag_ty_inj :
+      var_name → 
+      option (enum_tag_sem rt);
     (* explicitly track the lifetimes each of the variants needs -- needed for sharing *)
     enum_lfts : list lft;
     enum_wf_E : elctx;
@@ -40,10 +267,12 @@ Section enum.
     enum_wf_E_complete : ∀ (r : rt), ty_wf_E (enum_ty r) ⊆ enum_wf_E;
     enum_tag_compat : ∀ (r : rt) (variant : var_name),
       enum_tag r = Some variant →
-      enum_tag_ty variant = Some (existT (enum_rt r) (enum_ty r))
+      (*enum_tag_ty_inj variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r));*)
+      sigT (λ vinj, enum_tag_ty_inj variant = Some (mk_enum_tag_sem (enum_rt r) (enum_ty r) vinj));
   }.
   Global Arguments enum_xt {_}.
   Global Arguments enum_xrt {_}.
+  (*Global Arguments enum_rt_inj {_}.*)
   Global Arguments mk_enum {_}.
   Global Arguments enum_xt_inhabited {_}.
   Global Arguments enum_els {_}.
@@ -51,7 +280,7 @@ Section enum.
   Global Arguments enum_rt {_}.
   Global Arguments enum_r {_}.
   Global Arguments enum_ty {_}.
-  Global Arguments enum_tag_ty {_}.
+  Global Arguments enum_tag_ty_inj {_}.
   Global Arguments enum_lfts {_}.
   Global Arguments enum_wf_E {_}.
   Global Instance enum_rt_inhabited {rt} (e : enum rt) : Inhabited rt :=
@@ -60,14 +289,22 @@ Section enum.
   Definition enum_tag' {rt} (en : enum rt) (r : rt) : string :=
     default "" (enum_tag en r).
 
-  (*Set Universe Polymorphism.*)
+  Definition enum_tag_ty {rt} (en : enum rt) (v : var_name) : option (sigT type) :=
+    option_map (λ x, existT _ x.(enum_tag_sem_ty)) (enum_tag_ty_inj en v).
   Definition enum_tag_ty' {rt} (en : enum rt) (v : var_name) : sigT type :=
     default (existT _ $ uninit UnitSynType) (enum_tag_ty en v).
-  Definition enum_tag_rt {rt} (en : enum rt) (v : var_name) : Type :=
+  Definition enum_tag_rt' {rt} (en : enum rt) (v : var_name) : Type :=
     projT1 (enum_tag_ty' en v).
-  Definition enum_tag_type {rt} (en : enum rt) (v : var_name) : type (enum_tag_rt en v) :=
+  Definition enum_tag_type' {rt} (en : enum rt) (v : var_name) : type (enum_tag_rt' en v) :=
     projT2 (enum_tag_ty' en v).
-
+  Lemma enum_tag_ty_compat {rt} (en : enum rt) r tag :
+    enum_tag en r = Some tag → enum_tag_ty en tag = Some (existT (enum_rt en r) (enum_ty en r)).
+  Proof.
+    rewrite /enum_tag_ty. intros Htag.
+    odestruct enum_tag_compat as (vinj & Htg); first done.
+    (*opose proof* enum_tag_compat as Htg; first done.*)
+    rewrite Htg. done.
+  Defined.
 
   Definition enum_variant_rt {rt} (en : enum rt) (r : rt) : Type :=
     (enum_rt en r).
@@ -87,14 +324,14 @@ Section enum.
 
   Lemma enum_tag_rt_variant_rt_eq {rt} (en : enum rt) r tag :
     enum_tag en r = Some tag →
-    enum_tag_rt en tag = enum_variant_rt en r.
+    enum_tag_rt' en tag = enum_variant_rt en r.
   Proof.
-    rewrite /enum_tag_rt /enum_variant_rt /enum_tag_ty'.
-    intros Htag. rewrite (enum_tag_compat _ en r); done.
+    rewrite /enum_tag_rt' /enum_variant_rt /enum_tag_ty'.
+    intros Htag. rewrite (enum_tag_ty_compat en r); done.
   Defined.
 
   Import EqNotations.
-  Definition enum_tag_rfn {rt} (en : enum rt) (v : var_name) (r : rt) (Heq : enum_tag en r = Some v): enum_tag_rt en v :=
+  Definition enum_tag_rfn {rt} (en : enum rt) (v : var_name) (r : rt) (Heq : enum_tag en r = Some v): enum_tag_rt' en v :=
     rew <- [id] (enum_tag_rt_variant_rt_eq en r v Heq) in (en.(enum_r) r).
 
   Lemma enum_tag_ty_Some {rt} (en : enum rt) r tag :
@@ -102,18 +339,18 @@ Section enum.
     enum_tag_ty en tag = Some (existT (enum_rt en r) (enum_ty en r)).
   Proof.
     intros ?.
-    rewrite (enum_tag_compat _ en r _ _); done.
+    erewrite (enum_tag_ty_compat); done.
   Qed.
 
   Import EqNotations.
   Lemma enum_tag_type_variant_type_eq {rt} (en : enum rt) r tag (Heq : enum_tag en r = Some tag) :
-    enum_tag_type en tag = rew <-[type] (enum_tag_rt_variant_rt_eq en r _ Heq) in enum_variant_type en r.
+    enum_tag_type' en tag = rew <-[type] (enum_tag_rt_variant_rt_eq en r _ Heq) in enum_variant_type en r.
   Proof.
     (*destruct (enum_ty en r) as [rte [lte re]] eqn:Heq.*)
-    rewrite /enum_tag_type/enum_variant_type/enum_tag_ty'.
-    specialize (enum_tag_compat _ en r tag Heq) as Hb.
+    rewrite /enum_tag_type'/enum_variant_type/enum_tag_ty'.
+    specialize (enum_tag_ty_compat en r tag Heq) as Hb.
     generalize (enum_tag_rt_variant_rt_eq en r tag Heq) as Heq2.
-    rewrite /enum_tag_rt /enum_tag_ty' /enum_variant_rt.
+    rewrite /enum_tag_rt' /enum_tag_ty' /enum_variant_rt.
     rewrite Hb. simpl.
     intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
   Qed.
@@ -531,215 +768,6 @@ Global Arguments bor_kind_direct_incl : simpl never.
 Section ltype_def.
   Context `{typeGS Σ}.
 
-  (**
-    [PlaceIn]: the current inner refinement is accurate (no blocking of the inner refinement).
-    [PlaceGhost]: the current inner refinement is determined by a ghost variable, either because it is currently blocked or was implicitly unblocked.
-  *)
-  Inductive place_rfn_mode := PlaceModeIn | PlaceModeGhost.
-  (* concrete refinements *)
-  Inductive place_rfn (rt : Type) :=
-    | PlaceIn (r : rt)
-    | PlaceGhost (γ : gname).
-  Global Arguments PlaceIn {_}.
-  Global Arguments PlaceGhost {_}.
-
-  Global Instance place_rfn_inh rt : Inhabited (place_rfn rt).
-  Proof. refine (populate (PlaceGhost inhabitant )). Qed.
-  Global Instance place_rfn_mode_inh : Inhabited (place_rfn_mode).
-  Proof. refine (populate (PlaceModeGhost)). Qed.
-
-  (* interpretation of place_rfn under owned *)
-  Definition place_rfn_interp_owned {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
-    match r with
-    | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ' => gvar_pobs γ' r'
-    end.
-
-  Definition place_rfn_interp_owned_blocked {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
-    match r with
-    | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ' => gvar_auth γ' r'
-    end.
-
-  (* interpretation of place_rfn under mut *)
-  Definition place_rfn_interp_mut {rt} (r : place_rfn rt) γ : iProp Σ :=
-    match r with
-    | PlaceIn r' => gvar_obs γ r'
-    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
-    end.
-  Definition place_rfn_interp_mut_blocked {rt} (r : place_rfn rt) γ : iProp Σ :=
-    match r with
-    | PlaceIn r' => gvar_obs γ r'
-    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
-    end.
-
-  (* interpretation of place_rfn under shared *)
-  (* we don't get any knowledge for PlaceGhost: we should really unblock before initiating sharing *)
-  Definition place_rfn_interp_shared {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
-    match r with
-    | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ => gvar_pobs γ r'
-    end.
-  Global Instance place_rfn_interp_shared_pers {rt} (r : place_rfn rt) r' : Persistent (place_rfn_interp_shared r r').
-  Proof. destruct r; apply _. Qed.
-  (* NOTE: It's a bit unlucky that we have to rely on timelessness of this in some cases, in particular for some of the unfolding lemmas. *)
-  (* Global Instance place_rfn_interp_shared_timeless {rt} (r : place_rfn rt) r' : Timeless (place_rfn_interp_shared r r'). *)
-  (* Proof. destruct r; apply _. Qed. *)
-  Global Instance place_rfn_interp_owned_timeless {rt} (r : place_rfn rt) r' : Timeless (place_rfn_interp_owned r r').
-  Proof. destruct r; apply _. Qed.
-  Global Instance place_rfn_interp_mut_timeless {rt} (r : place_rfn rt) γ : Timeless (place_rfn_interp_mut r γ).
-  Proof. destruct r; apply _. Qed.
-
-  Lemma place_rfn_interp_mut_iff {rt} (r : place_rfn rt) γ :
-    place_rfn_interp_mut r γ ⊣⊢ ∃ r' : rt, gvar_obs γ r' ∗ match r with | PlaceGhost γ' => gvar_pobs γ' r' | PlaceIn r => ⌜r = r'⌝ end.
-  Proof.
-    destruct r as [ r | γ']; simpl.
-    - iSplit.
-      + iIntros "?"; eauto with iFrame.
-      + iIntros "(%r' & ? & ->)"; iFrame.
-    - iSplit.
-      + iIntros "(%r1 & %r2 & ? & ? & ->)". iExists _. iFrame.
-      + iIntros "(%r' & ? & ?)". iExists _, _. iFrame. done.
-  Qed.
-
-  Lemma place_rfn_interp_mut_owned {rt} (r : place_rfn rt) (r' : rt) γ :
-    place_rfn_interp_mut r γ -∗
-    gvar_auth γ r' ==∗
-    place_rfn_interp_owned r r' ∗
-    gvar_obs γ r' ∗ gvar_auth γ r'.
-  Proof.
-    iIntros "Hrfn Hauth".
-    destruct r as [r'' | γ']; simpl.
-    - iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
-      iSplitR; first done. by iFrame.
-    - iDestruct "Hrfn" as "(%r1 & %r2 & Hauth' & Hobs & ->)".
-      iPoseProof (gvar_agree with "Hauth Hobs") as "#->". iFrame. done.
-  Qed.
-  Lemma place_rfn_interp_owned_mut {rt} (r : place_rfn rt) r' γ :
-    place_rfn_interp_owned r r' -∗
-    gvar_obs γ r' -∗
-    place_rfn_interp_mut r γ.
-  Proof.
-    iIntros "Hrfn Hobs".
-    destruct r as [r'' | γ'].
-    - iDestruct "Hrfn" as "<-". iFrame.
-    - iDestruct "Hrfn" as "Hauth'". simpl.
-      rewrite /Rel2. iExists _, _. by iFrame.
-  Qed.
-
-  (** lemmas for unblocking *)
-  Lemma place_rfn_interp_owned_blocked_unblock {rt} (r : place_rfn rt) (r' : rt) :
-    place_rfn_interp_owned_blocked r r' ==∗ place_rfn_interp_owned r r'.
-  Proof.
-    destruct r as [ r'' | γ]; simpl; first by eauto.
-    iApply gvar_auth_persist.
-  Qed.
-  Lemma place_rfn_interp_mut_blocked_unblock {rt} (r : place_rfn rt) (γ : gname) :
-    place_rfn_interp_mut_blocked r γ ==∗ place_rfn_interp_mut r γ.
-  Proof.
-    destruct r as [ r' | γ']; simpl; first by eauto.
-    eauto.
-  Qed.
-
-  (** lemmas for sharing *)
-  Lemma place_rfn_interp_owned_share' {rt} (r : place_rfn rt) (r' : rt) :
-    place_rfn_interp_owned r r' -∗
-    place_rfn_interp_shared r r'.
-  Proof.
-    iIntros "Hrfn".
-    destruct r.
-    - iDestruct "Hrfn" as "->". eauto.
-    - iDestruct "Hrfn" as "#Hrfn". eauto.
-  Qed.
-  Lemma place_rfn_interp_owned_share F {rt} (r : place_rfn rt) (r' : rt) q κ :
-    lftE ⊆ F →
-    lft_ctx -∗
-    &{κ} (place_rfn_interp_owned r r') -∗
-    q.[κ] ={F}=∗
-    place_rfn_interp_shared r r' ∗ q.[κ].
-  Proof.
-    iIntros (?) "#LFT Hb Htok".
-    iMod (bor_acc with "LFT Hb Htok") as "(>Hrfn & Hcl)"; first solve_ndisj.
-    iPoseProof (place_rfn_interp_owned_share' with "Hrfn") as "#Hrfn'".
-    iMod ("Hcl" with "[//]") as "(? & $)". eauto.
-  Qed.
-  Lemma place_rfn_interp_mut_share' (F : coPset) {rt} `{!Inhabited rt} (r : place_rfn rt) (r' : rt) γ (q : Qp) κ :
-    lftE ⊆ F →
-    lft_ctx -∗
-    place_rfn_interp_mut r γ -∗
-    &{κ} (gvar_auth γ r') -∗
-    q.[κ] ={F}=∗
-    place_rfn_interp_shared r r' ∗ (▷ place_rfn_interp_mut r γ) ∗ &{κ} (gvar_auth γ r') ∗ q.[κ].
-  Proof.
-    iIntros (?) "#CTX Hobs Hauth Htok".
-    iMod (bor_acc with "CTX Hauth Htok") as "(>Hauth & Hcl_auth)"; first solve_ndisj.
-    iAssert (|={F}=> place_rfn_interp_shared r r' ∗ gvar_auth γ r' ∗ ▷ place_rfn_interp_mut r γ)%I with "[Hauth Hobs]" as ">(Hrfn & Hauth & Hobs)".
-    { destruct r.
-      - iDestruct "Hobs" as "Hobs". iPoseProof (gvar_agree with "Hauth Hobs") as "#->". eauto with iFrame.
-      - simpl. rewrite /Rel2. iDestruct "Hobs" as "(%v1 & %v2 & #Hpobs & Hobs & %Heq')". rewrite Heq'.
-        iPoseProof (gvar_agree with "Hauth Hobs") as "%Heq". rewrite Heq.
-        iFrame. iR. iModIntro. iModIntro. iExists _. iR. done.
-    }
-    iMod ("Hcl_auth" with "[$Hauth]") as "($ & Htoka2)".
-    by iFrame.
-  Qed.
-  Lemma place_rfn_interp_mut_share (F : coPset) {rt} `{!Inhabited rt} (r : place_rfn rt) (r' : rt) γ (q : Qp) κ :
-    lftE ⊆ F →
-    lft_ctx -∗
-    &{κ} (place_rfn_interp_mut r γ) -∗
-    &{κ} (gvar_auth γ r') -∗
-    q.[κ] ={F}=∗
-    place_rfn_interp_shared r r' ∗ &{κ} (place_rfn_interp_mut r γ) ∗ &{κ} (gvar_auth γ r') ∗ q.[κ].
-  Proof.
-    iIntros (?) "#CTX Hobs Hauth (Htok1 & Htok2)".
-    iMod (bor_acc with "CTX Hobs Htok1") as "(>Hobs & Hcl_obs)"; first solve_ndisj.
-    iMod (place_rfn_interp_mut_share' with "CTX Hobs Hauth Htok2") as "($ & Hmut & $ & $)"; first done.
-    iMod ("Hcl_obs" with "[$Hmut]") as "($ & Htok_κ')".
-    by iFrame.
-  Qed.
-
-  Lemma place_rfn_interp_shared_mut {rt} (r : place_rfn rt) r' γ :
-    place_rfn_interp_shared r r' -∗
-    gvar_obs γ r' -∗
-    place_rfn_interp_mut r γ.
-  Proof.
-    iIntros "Hrfn Hobs".
-    destruct r as [ r | γ']; simpl.
-    - iDestruct "Hrfn" as "<-"; eauto with iFrame.
-    - iExists _, _. eauto with iFrame.
-  Qed.
-  Lemma place_rfn_interp_shared_owned {rt} (r : place_rfn rt) r' :
-    place_rfn_interp_shared r r' -∗
-    place_rfn_interp_owned r r'.
-  Proof. destruct r; eauto with iFrame. Qed.
-
-
-  (** For adding information to the context *)
-  Definition place_rfn_interp_mut_extracted {rt} (r : place_rfn rt) (γ : gname) : iProp Σ :=
-    match r with
-    | PlaceIn r' => gvar_pobs γ r'
-    | PlaceGhost γ' => Rel2 (T:=rt) γ' γ eq
-    end.
-  Definition place_rfn_interp_owned_extracted {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
-    match r with
-    | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ' => gvar_pobs γ' r'
-    end.
-
-  Lemma place_rfn_interp_mut_extract {rt} (r : place_rfn rt) (γ : gname) :
-    place_rfn_interp_mut r γ ==∗ place_rfn_interp_mut_extracted r γ.
-  Proof.
-    destruct r; simpl.
-    - iIntros "Hobs". iApply (gvar_obs_persist with "Hobs").
-    - eauto.
-  Qed.
-  Lemma place_rfn_interp_owned_extract {rt} (r : place_rfn rt) (r' : rt) :
-    place_rfn_interp_owned r r' ==∗ place_rfn_interp_owned_extracted r r'.
-  Proof.
-    destruct r; simpl.
-    - eauto.
-    - eauto.
-  Qed.
 
   Implicit Types
     (κ : lft)
@@ -865,7 +893,7 @@ Section ltype_def.
     | @ArrayLty rt def len lts =>
         Forall_cb (λ '(i, lt), lty_wf lt ∧ lty_rt lt = rt(*∧ i < len *)) lts
     | EnumLty en variant lte =>
-        lty_wf lte ∧ lty_rt lte = (enum_tag_rt en variant)
+        lty_wf lte ∧ lty_rt lte = (enum_tag_rt' en variant)
     | @OpenedLty rt_inner rt_full lt_cur lt_inner lt_full _ _ =>
         (* require that the refinements actually match *)
         rt_inner = lty_rt lt_inner ∧ rt_full = lty_rt lt_full ∧ lty_wf lt_cur ∧ lty_wf lt_inner ∧ lty_wf lt_full
@@ -999,7 +1027,7 @@ Section ltype_def.
       (∀ (rt : Type) (def : type rt) (len : nat) (lts : list (nat * lty)),
         (∀ i lt, (i, lt) ∈ lts → P lt ∧ lty_rt lt = rt) → P (ArrayLty def len lts)) →
       (∀ (rt : Type) (en : enum rt) (variant : var_name) (lte : lty),
-        (P lte ∧ lty_rt lte = (enum_tag_rt en variant)) → P (EnumLty en variant lte)) →
+        (P lte ∧ lty_rt lte = (enum_tag_rt' en variant)) → P (EnumLty en variant lte)) →
       (∀ (lt_cur lt_inner lt_full : lty) (Cpre : (lty_rt lt_inner) → lty_rt lt_full → iProp Σ)
         (Cpost : (lty_rt lt_inner) → (lty_rt lt_full) → iProp Σ),
           P lt_cur → P lt_inner → P lt_full → P (OpenedLty lt_cur lt_inner lt_full Cpre Cpost)) →
@@ -1596,11 +1624,11 @@ Section ltype_def.
         maybe_creds wl ∗
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
         ▷?wl |={lftE}=>(
-        ∃ rty,
-        ⌜lty_rt lte = projT1 rty⌝ ∗
+        ∃ rty : enum_tag_sem rt,
+        ⌜lty_rt lte = rty.(enum_tag_sem_rt)⌝ ∗
         ⌜enum_tag en r' = Some variant⌝ ∗
         (* require all the tag info to be coherent -- in particular the refinement type *)
-        ⌜enum_tag_ty en variant = Some rty⌝ ∗
+        ⌜enum_tag_ty_inj en variant = Some rty⌝ ∗
         ∃ (Heq : lty_rt lte = enum_variant_rt en r'),
         (* ownership of the discriminant *)
         lty_of_ty_own (int en.(enum_els).(els_tag_it)) (Owned false) π (PlaceIn ((els_lookup_tag en.(enum_els) variant))) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
@@ -2647,7 +2675,7 @@ Section ltype_def.
   Global Arguments ArrayLtype : simpl never.
   Global Typeclasses Opaque ArrayLtype.
 
-  Program Definition EnumLtype {rt : Type} (en : enum rt) (variant : string) (lte : ltype ((enum_tag_rt en variant))) : ltype rt := {|
+  Program Definition EnumLtype {rt : Type} (en : enum rt) (variant : string) (lte : ltype ((enum_tag_rt' en variant))) : ltype rt := {|
     ltype_lty := @EnumLty rt en variant lte.(ltype_lty);
   |}.
   Next Obligation.
@@ -2821,7 +2849,7 @@ Section ltype_def.
       (∀ (rt : Type) (def : type rt) (len : nat) (lts : list (nat * ltype rt)),
         (∀ i lt, (i, lt) ∈ lts → P _ lt) →
         P _ (ArrayLtype def len lts)) →
-      (∀ (rt : Type) (en : enum rt) (variant : var_name) (lte : ltype (enum_tag_rt en variant)),
+      (∀ (rt : Type) (en : enum rt) (variant : var_name) (lte : ltype (enum_tag_rt' en variant)),
         P _ lte → P _ (EnumLtype en variant lte)) →
       (∀ (rt_cur rt_inner rt_full : Type) (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full)
         (Cpre : rt_inner → rt_full → iProp Σ) (Cpost : rt_inner → rt_full → iProp Σ),
@@ -2879,7 +2907,7 @@ Section ltype_def.
         subst ltypee.
         move: IH.
         clear.
-        move: Hrt. generalize (enum_tag_rt en variant). intros ??. subst.
+        move: Hrt. generalize (enum_tag_rt' en variant). intros ??. subst.
         done.
       - destruct Hwf as (Heq1 & Heq2 & Hwf_cur & Hwf_inner & Hwf_full); subst.
         specialize (Hopened _ _ _ _ _ _ Cpre Cpost (IH_cur Hwf_cur) (IH_inner Hwf_inner) (IH_full Hwf_full)).
@@ -3154,7 +3182,7 @@ Section ltype_def.
     (rec : ltype_own_type)
     (rec_core : ltype_own_type)
     (rt : Type) (en : enum rt)
-    (tag : var_name) (lte : ltype (enum_tag_rt en tag))
+    (tag : var_name) (lte : ltype (enum_tag_rt' en tag))
     (k : bor_kind) (π : thread_id) (r : place_rfn rt) (l : loc) : iProp Σ :=
       ∃ el,
       ⌜enum_layout_spec_has_layout en.(enum_els) el⌝ ∗
@@ -3165,9 +3193,9 @@ Section ltype_def.
         maybe_creds wl ∗
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
         ▷?wl |={lftE}=>(
-        ∃ (Heq : enum_variant_rt en r' = enum_tag_rt en tag),
+        ∃ (Heq : enum_variant_rt en r' = enum_tag_rt' en tag),
         ⌜enum_tag en r' = Some tag⌝ ∗
-        ⌜is_Some (enum_tag_ty en tag)⌝ ∗
+        ⌜is_Some (enum_tag_ty_inj en tag)⌝ ∗
         (* ownership of the discriminant *)
         lty_of_ty_own (int en.(enum_els).(els_tag_it)) (Owned false) π (PlaceIn (els_lookup_tag en.(enum_els) tag)) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
         (* ownership of the data *)
@@ -3669,7 +3697,7 @@ Section ltype_def.
     ltype_own_core (ArrayLtype def len lts) k π r l ≡ array_ltype_own (@ltype_own_core) (@ltype_own_core) rt def len lts k π r l.
   Proof. rewrite {1 2} ltype_own_core_unseal. apply ltype_own_pre_array_unfold. Qed.
 
-  Lemma ltype_own_pre_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) (core : bool) k π r l :
+  Lemma ltype_own_pre_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) (core : bool) k π r l :
     ltype_own_pre core (EnumLtype en tag lte) k π r l ≡ enum_ltype_own (@ltype_own_pre core) (@ltype_own_core) rt en tag lte k π r l.
   Proof.
     rewrite /enum_ltype_own ?ltype_own_core_unseal /ltype_own_core_def ?ltype_own_unseal /ltype_own_def /ltype_own_pre.
@@ -3682,8 +3710,8 @@ Section ltype_def.
     do 3 f_equiv.
     iSplit.
     - iIntros "(%rty & %Hrty & %Htag & %Htag2 & Hl)".
-      destruct rty as (rte & tye).
-      assert (Heq' : enum_variant_rt en r' = enum_tag_rt en tag).
+      destruct rty as [rte tye ?]. simpl.
+      assert (Heq' : enum_variant_rt en r' = enum_tag_rt' en tag).
       { symmetry. by apply enum_tag_rt_variant_rt_eq. }
       iExists Heq'. iR. iR.
       iDestruct "Hl" as "(%Heq2 & ? & Ha & ?)".
@@ -3691,15 +3719,16 @@ Section ltype_def.
       iApply (lty_own_pre_rfn_eq with "Ha").
       apply rew_swap'. rewrite !rew_compose rew_UIP//.
     - iIntros "(%Hels & %Htag & %Htag2 & Hdisc & Hdata & Hl)".
-      destruct Htag2 as [[rte tye] Htag2].
-      iExists (existT rte tye).
+      destruct Htag2 as [[rte tye inje] Htag2].
+      iExists (mk_enum_tag_sem rte tye inje).
       iFrame "%".
-      erewrite enum_tag_compat in Htag2; last done.
-      injection Htag2. intros Htag2' <-.
+      odestruct enum_tag_compat as (einj' & Htag'); first apply Htag.
+      rewrite Htag' in Htag2.
+      injection Htag2. intros ? Htag2' <-.
       apply existT_inj in Htag2'. subst.
       simpl.
       specialize (ltype_lty_wf _ (EnumLtype en tag lte)); simpl; intros [_ Hrt].
-      iSplitR. { rewrite {1}Hrt /enum_tag_rt/enum_tag_ty'//. }
+      iSplitR. { rewrite {1}Hrt /enum_tag_rt'/enum_tag_ty'//. }
       assert (Heq' : lty_rt (ltype_lty lte) = enum_variant_rt en r').
       { rewrite Hrt. by apply enum_tag_rt_variant_rt_eq. }
       iExists Heq'. iFrame.
@@ -3707,10 +3736,10 @@ Section ltype_def.
       apply rew_swap. rewrite !rew_compose rew_UIP//.
   Qed.
 
-  Lemma ltype_own_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) k π r l :
+  Lemma ltype_own_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) k π r l :
     ltype_own (EnumLtype en tag lte) k π r l ≡ enum_ltype_own (@ltype_own) (@ltype_own_core) rt en tag lte k π r l.
   Proof. rewrite ?ltype_own_unseal. apply ltype_own_pre_enum_unfold. Qed.
-  Lemma ltype_own_core_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) k π r l :
+  Lemma ltype_own_core_enum_unfold {rt : Type} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) k π r l :
     ltype_own_core (EnumLtype en tag lte) k π r l ≡ enum_ltype_own (@ltype_own_core) (@ltype_own_core) rt en tag lte k π r l.
   Proof. rewrite {1 2} ltype_own_core_unseal. apply ltype_own_pre_enum_unfold. Qed.
 
@@ -4053,7 +4082,7 @@ Section ltype_def.
     specialize (proof_irrelevance _  Hwf1 Hwf2) as ?. subst.
     done.
   Qed.
-  Lemma ltype_core_enum {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) :
+  Lemma ltype_core_enum {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) :
     ltype_core (EnumLtype en tag lte) = EnumLtype en tag (ltype_core lte).
   Proof.
     rewrite /ltype_core /EnumLtype /=.
@@ -4136,7 +4165,7 @@ Section ltype_def.
   Lemma ltype_st_array {rt} (def : type rt) (len : nat) (lts : list (nat * ltype rt)) :
     ltype_st (ArrayLtype def len lts) = ArraySynType (ty_syn_type def) len.
   Proof. rewrite /ltype_st /= //. Qed.
-  Lemma ltype_st_enum {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) :
+  Lemma ltype_st_enum {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) :
     ltype_st (EnumLtype en tag lte) = en.(enum_els).
   Proof. rewrite /ltype_st /= //. Qed.
   Lemma ltype_st_opened {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost :
@@ -5492,7 +5521,7 @@ Section blocked.
       rewrite ltype_own_core_equiv. done.
   Qed.
 
-  Lemma enum_ltype_imp_unblockable {rt} κs (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) :
+  Lemma enum_ltype_imp_unblockable {rt} κs (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) :
     imp_unblockable κs lte -∗
     imp_unblockable κs (EnumLtype en tag lte).
   Proof.

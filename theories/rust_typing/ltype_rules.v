@@ -161,7 +161,7 @@ Proof.
     iExists ly. iFrame.
     iMod "Hb". iModIntro. iApply pinned_bor_shorten; done.
 Qed.
-Local Lemma enum_ltype_mono `{!typeGS Σ} {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt en tag)) π :
+Local Lemma enum_ltype_mono `{!typeGS Σ} {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) π :
   (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lte -∗ l ◁ₗ[π, b2] r @ lte) →
   ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
     l ◁ₗ[π, b1] r @ EnumLtype en tag lte -∗ l ◁ₗ[π, b2] r @ EnumLtype en tag lte.
