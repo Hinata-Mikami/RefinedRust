@@ -15,7 +15,9 @@ use from_variants::FromVariants;
 use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
-use crate::coq::{binder, eval, inductive, module, syntax, term, typeclasses, Attribute, Document, Sentence};
+use crate::coq::{
+    binder, eval, inductive, module, syntax, term, typeclasses, Attribute, Document, ProofDocument, Sentence,
+};
 use crate::{make_indent, BASE_INDENT};
 
 /// A [command], with optional attributes.
@@ -33,7 +35,7 @@ impl Display for CommandAttrs {
         if let Some(attributes) = &self.attributes {
             write!(f, "{} ", attributes)?;
         }
-        write!(f, "{}.", self.command)
+        write!(f, "{}", self.command)
     }
 }
 
@@ -74,7 +76,7 @@ impl Display for QueryCommandAttrs {
             write!(f, "{}: ", natural)?;
         }
 
-        write!(f, "{}.", self.command)
+        write!(f, "{}", self.command)
     }
 }
 
@@ -104,61 +106,73 @@ pub enum Command {
     /// The [`From ... Require`] command.
     ///
     /// [`From ... Require`]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     FromRequire(module::FromRequire),
 
     /// The [`Inductive`] command.
     ///
     /// [`Inductive`]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Inductive(inductive::Inductive),
 
     /// The [`Instance`] command.
     ///
     /// [`Instance`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Instance(typeclasses::Instance),
 
     /// The [`Proof`] command.
     ///
     /// [`Proof`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof
-    #[display("Proof")]
-    Proof,
+    #[display("Proof.\n{}\n", _0.to_string().indented(BASE_INDENT))]
+    Proof(ProofDocument),
+
+    /// The [`Proof using`] command.
+    ///
+    /// [`Proof using`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof-using
+    #[display("Proof using {}.\n{}\n", _0.0, _0.1.to_string().indented(BASE_INDENT))]
+    ProofUsing((String, ProofDocument)),
+
+    /// The [`Defined`] command.
+    ///
+    /// [`Defined`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Defined
+    #[display("Defined.")]
+    Defined,
 
     /// The [`Open Scope`] command.
     ///
     /// [`Open Scope`]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     OpenScope(syntax::OpenScope),
 
     /// The [`Qed`] command.
     ///
     /// [`Qed`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Qed
-    #[display("Qed")]
+    #[display("Qed.")]
     Qed,
 
     /// The [`Record`] command.
     ///
     /// [`Record`]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#coq:cmd.Record
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Record(term::Record),
 
     /// The [`Context`] command.
     ///
     /// [`Command`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#coq:cmd.Context
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Context(Context),
 
     /// The [`Definition`] command.
     ///
     /// [`Definition`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Definition
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Definition(Definition),
 
     /// The [`Lemma`] command.
     ///
     /// [`Lemma`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Lemma
-    #[display("{}", _0)]
+    #[display("{}.", _0)]
     Lemma(Lemma),
 
     /// The [`Section`] command.

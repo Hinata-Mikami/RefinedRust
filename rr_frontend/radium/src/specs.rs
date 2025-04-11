@@ -2446,9 +2446,14 @@ impl<'def> AbstractEnum<'def> {
                 )))
                 .attributes("global"),
             );
-            document.push(coq::command::Command::Proof);
-            document.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
-            document.push(coq::command::Command::Qed);
+            {
+                let mut proof_document = coq::ProofDocument::default();
+
+                proof_document.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
+
+                document.push(coq::command::Command::Proof(proof_document));
+                document.push(coq::command::Command::Qed);
+            }
 
             writeln!(out, "{}", document).unwrap();
         }
@@ -5307,19 +5312,24 @@ impl<'def> TraitImplSpec<'def> {
         };
         doc.push(coq::command::Command::Lemma(lem));
 
-        doc.push(coq::command::Command::Proof);
-        let prelude_tac = format!(
-            "unfold {}; solve_trait_incl_prelude",
-            self.trait_ref.impl_ref.spec_subsumption_statement
-        );
-        doc.push(coq::ltac::LTac::Literal(prelude_tac));
-        doc.push(coq::ltac::LTac::Literal("all: repeat liRStep; liShow".to_owned()));
-        doc.push(coq::ltac::LTac::Literal("all: print_remaining_trait_goal".to_owned()));
-        doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
-        doc.push(coq::ltac::LTac::Literal("all: sidecond_solver".to_owned()));
-        doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
-        doc.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
-        doc.push(coq::command::Command::Qed);
+        {
+            let mut proof_doc = coq::ProofDocument::default();
+
+            let prelude_tac = format!(
+                "unfold {}; solve_trait_incl_prelude",
+                self.trait_ref.impl_ref.spec_subsumption_statement
+            );
+            proof_doc.push(coq::ltac::LTac::Literal(prelude_tac));
+            proof_doc.push(coq::ltac::LTac::Literal("all: repeat liRStep; liShow".to_owned()));
+            proof_doc.push(coq::ltac::LTac::Literal("all: print_remaining_trait_goal".to_owned()));
+            proof_doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
+            proof_doc.push(coq::ltac::LTac::Literal("all: sidecond_solver".to_owned()));
+            proof_doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
+            proof_doc.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
+
+            doc.push(coq::command::Command::Proof(proof_doc));
+            doc.push(coq::command::Command::Qed);
+        }
 
         doc
     }

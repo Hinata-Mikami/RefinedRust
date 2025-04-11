@@ -16,5 +16,5 @@ use crate::coq::term;
 ///
 /// [`Compute`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/equality.html#coq:cmd.Compute
 #[derive(Clone, Eq, PartialEq, Debug, Display, Deref, DerefMut)]
-#[display("Compute {}", _0)]
+#[display("Compute {}.", _0)]
 pub struct Compute(pub term::Gallina);

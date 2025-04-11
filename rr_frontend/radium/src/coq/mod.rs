@@ -335,7 +335,7 @@ use from_variants::FromVariants;
 
 use crate::display_list;
 
-/// A [document].
+/// A [document], composed of commands.
 ///
 /// [document]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-document
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
@@ -364,8 +364,35 @@ pub enum Sentence {
     #[display("{}", _0)]
     QueryCommandAttrs(command::QueryCommandAttrs),
 
+    #[display("(* {} *)", _0)]
+    Comment(String),
+}
+
+/// A [proof document], composed of tactics.
+///
+/// [proof document]: https://coq.inria.fr/doc/V8.20/refman/proof-engine/ltac.html#ltac
+#[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
+#[display("{}\n", display_list!(_0, "\n"))]
+pub struct ProofDocument(pub Vec<Vernac>);
+
+impl ProofDocument {
+    #[must_use]
+    pub fn new(vernacs: Vec<impl Into<Vernac>>) -> Self {
+        Self(vernacs.into_iter().map(Into::into).collect())
+    }
+
+    pub fn push(&mut self, vernac: impl Into<Vernac>) {
+        self.0.push(vernac.into());
+    }
+}
+
+/// [Vernacular] language, or a comment.
+///
+/// [Vernacular]: https://coq.inria.fr/doc/V8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
+#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+pub enum Vernac {
     #[display("{}", _0)]
-    LTacAttrs(ltac::LTacAttrs),
+    LTac(ltac::LTac),
 
     #[display("(* {} *)", _0)]
     Comment(String),
