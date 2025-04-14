@@ -1075,7 +1075,7 @@ Ltac solve_mk_enum_ty_wf_E :=
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   (*intros []; naive_solver.*)
-  intros [] ? [= <-]; done.
+  intros [] ? [=<-]; eexists _; done.
 
 
 (** User facing tactic calls *)

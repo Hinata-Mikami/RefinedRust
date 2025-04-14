@@ -3823,28 +3823,6 @@ Section rules.
   Global Instance mut_eqltype_struct_ofty_2_inst E L {rts} (lts2 : hlist ltype rts) (tys1 : hlist type rts) sls1 sls2 :
     MutEqLtype E L (◁ struct_t sls1 tys1)%I (StructLtype lts2 sls2) := λ T, i2p (mut_eqltype_struct_ofty_2 E L lts2 tys1 sls1 sls2 T).
 
-  (*
-  Lemma subsume_place_struct_uninit π E L wl l {rts} (lts : hlist ltype rts) (rs : plist place_rfn rts) (sls : struct_layout_spec) (st : syn_type) T :
-    ⌜st = sls⌝ ∗ (* TODO: maybe make this more flexible? *)
-    foldr (λ '((existT rt1 (lt1, r1)), (x, st)) T,
-      λ L, subsume_full E L (l atst{sls}ₗ x ◁ₗ[π, Owned false] r1 @ lt1) (l atst{sls}ₗ x ◁ₗ[π, Owned false] .@ ◁ uninit st) T)
-        T (zip (hpzipl rts lts rs) (sls_fields sls)) L -∗
-    subsume_full E L (l ◁ₗ[π, Owned wl] #rs @ StructLtype lts sls) (l ◁ₗ[π, Owned wl] .@ ◁ uninit st) T.
-  Proof.
-    (* TODO *)
-  Abort.
-
-  Lemma subsume_place_struct π E L wl l {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) (rs1 : plist place_rfn rts1) (rs2 : plist place_rfn rts2) sls1 sls2 T :
-    ⌜sls1 = sls2⌝ ∗ foldr (λ '((existT rt1 (lt1, r1), existT rt2 (lt2, r2)), (x, st)) T,
-      λ L, subsume_full E L (l atst{sls1}ₗ x ◁ₗ[π, Owned false] r1 @ lt1) (l atst{sls1}ₗ x ◁ₗ[π, Owned false] r2 @ lt2) T)
-        T (zip (zip (hpzipl rts1 lts1 rs1) (hpzipl rts2 lts2 rs2)) (sls_fields sls1)) L -∗
-    subsume_full E L (l ◁ₗ[π, Owned wl] #rs1 @ StructLtype lts1 sls1) (l ◁ₗ[π, Owned wl] #rs2 @ StructLtype lts2 sls2) T.
-  Proof.
-    (* TODO *)
-  Abort.
-   *)
-  (* TODO: owned subtype instances for deinit *)
-
   (** CastLtypeToType *)
   Definition hlist_list_of {A} {F : A → Type} (l : list A) (hl : hlist F l) := l.
   Fixpoint cast_ltype_to_type_iter (E : elctx) (L : llctx) {rts} (lts : hlist ltype rts) : (hlist type rts → iProp Σ) → iProp Σ :=

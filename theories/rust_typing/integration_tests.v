@@ -1,4 +1,4 @@
-From refinedrust Require Import functions int alias_ptr products automation shr_ref mut_ref.
+From refinedrust Require Import functions int alias_ptr products automation shr_ref mut_ref enum.
 
 Module test.
 Definition bla0 `{typeGS Σ} :=
@@ -111,4 +111,80 @@ Proof.
   Unshelve. all: unshelve_sidecond; sidecond_hook.
   Unshelve. all: unfold_common_defs; try solve_goal.
 Qed.
+
+Section enum.
+Context `{!typeGS Σ}.
+(* Example enum spec: option *)
+Section std_option_Option_els.
+  Definition std_option_Option_None_sls  : struct_layout_spec := mk_sls "std_option_Option_None" [] StructReprRust.
+
+  Definition std_option_Option_Some_sls T_st : struct_layout_spec := mk_sls "std_option_Option_Some" [
+    ("0", T_st)] StructReprRust.
+
+  Program Definition std_option_Option_els (T_st : syn_type): enum_layout_spec := mk_els "std_option_Option" ISize [
+    ("None", std_option_Option_None_sls  : syn_type);
+    ("Some", std_option_Option_Some_sls T_st : syn_type)] EnumReprRust [("None", 0); ("Some", 1)] _ _ _ _.
+  Next Obligation. admit. Admitted.
+  Next Obligation. done. Qed.
+  Next Obligation. admit. Admitted.
+  Next Obligation. admit. Admitted.
+
+Global Typeclasses Opaque std_option_Option_els.
+End std_option_Option_els.
+(* maybe we should represent this with a gmap for easy lookup? *)
+
+Section std_option_Option_ty.
+  Context {T_rt : Type}.
+  Context (T_ty : type (T_rt)).
+
+  Definition std_option_Option_None_ty : type (plist place_rfn []) := struct_t std_option_Option_None_sls +[].
+  Definition std_option_Option_None_rt : Type := rt_of std_option_Option_None_ty.
+  Global Typeclasses Transparent std_option_Option_None_ty.
+
+  Definition std_option_Option_Some_ty : type (plist place_rfn [T_rt : Type]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
+    T_ty].
+  Definition std_option_Option_Some_rt : Type := rt_of std_option_Option_Some_ty.
+  Global Typeclasses Transparent std_option_Option_Some_ty.
+
+  Program Definition std_option_Option_enum : enum (option (place_rfn T_rt)) := mk_enum
+    (option (ty_xt T_ty))
+    (λ x, fmap (PlaceIn ∘ ty_xrt T_ty) x)
+    _
+    ((std_option_Option_els (ty_syn_type T_ty)))
+    (λ rfn, match rfn with | None => Some "None" | Some x => Some "Some" end)
+    (λ rfn, match rfn with | None => _ | Some x => _ end)
+    (λ rfn, match rfn with | None => std_option_Option_None_ty | Some x => std_option_Option_Some_ty end)
+    (λ rfn, match rfn with | None => -[] | Some x => -[x] end)
+    (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None) else if decide (variant = "Some") then Some $ mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x) else None)
+    (ty_lfts T_ty)
+    (ty_wf_E T_ty)
+    _ _ _
+  .
+  Next Obligation.
+    solve_mk_enum_ty_lfts_incl.
+  Qed.
+  Next Obligation.
+    solve_mk_enum_ty_wf_E.
+  Qed.
+  Next Obligation.
+    solve_mk_enum_tag_consistent.
+  Defined.
+
+  Global Program Instance construct_enum_Some x : ConstructEnum (std_option_Option_enum) "Some" (std_option_Option_Some_ty) -[x] (Some (x)) :=
+    construct_enum _ _ _ _ _.
+  Next Obligation. done. Defined.
+  Next Obligation. simpl. done. Qed.
+  Next Obligation. simpl. done. Qed.
+  Next Obligation. simpl. done. Qed.
+  Global Program Instance construct_enum_None : ConstructEnum (std_option_Option_enum) "None" (std_option_Option_None_ty) -[] None :=
+    construct_enum _ _ _ _ _.
+  Next Obligation. done. Defined.
+  Next Obligation. simpl. done. Qed.
+  Next Obligation. simpl. done. Qed.
+  Next Obligation. simpl. done. Qed.
+
+  Definition std_option_Option_ty : type _ := enum_t std_option_Option_enum.
+  Global Typeclasses Transparent std_option_Option_ty.
+End std_option_Option_ty.
+End enum.
 End test.

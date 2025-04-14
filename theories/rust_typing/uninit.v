@@ -74,23 +74,143 @@ Section lemmas.
       eapply Forall_forall.  eauto.
   Qed.
 
+  (* TODO move *)
+  Lemma syn_type_has_layout_untyped_mono ly1 ly2 :
+    ly_align_log ly2 ≤ ly_align_log ly1 →
+    ly_size ly1 = ly_size ly2 →
+    syn_type_has_layout (UntypedSynType ly1) ly1 →
+    syn_type_has_layout (UntypedSynType ly2) ly2.
+  Proof.
+    intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
+    apply syn_type_has_layout_untyped; first done.
+    - eapply layout_wf_mono; done.
+    - lia.
+    - by eapply ly_align_in_bounds_mono.
+  Qed.
 End lemmas.
 
-Section typing.
+Section deinit.
   Context `{!typeGS Σ}.
 
   (** ** Instances for deinitializing a type *)
 
+
+  (** More specific instances that we generally prefer *)
+
+  (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
+  Lemma owned_subltype_step_shrltype_uninit π E L {rt} (lt : ltype rt) r st κ l T  :
+    owned_subltype_step π E L l r #() (ShrLtype lt κ) (◁ uninit st) T :-
+    exhale (⌜syn_type_compat PtrSynType st⌝);
+    return T L True%I.
+  Proof.
+    iIntros "(%Hstcomp & HT)".
+    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
+    iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
+    iExists _, _. iFrame.
+    iSplitL. { iApply logical_step_intro. by iFrame. }
+    iModIntro. iPureIntro. intros ?? Hst1 Hst2.
+    destruct Hstcomp as [<- | (ly1' & Hst' & ->)].
+    + f_equiv. by eapply syn_type_has_layout_inj.
+    + eapply syn_type_has_layout_untyped_inv in Hst2 as (<- & _).
+      f_equiv. by eapply syn_type_has_layout_inj.
+  Qed.
+  Definition owned_subltype_step_shrltype_uninit_inst := [instance owned_subltype_step_shrltype_uninit].
+  Global Existing Instance owned_subltype_step_shrltype_uninit_inst | 20.
+
+  Lemma owned_subltype_step_mutltype_uninit π E L {rt} (lt : ltype rt) r γ st κ l T :
+    owned_subltype_step π E L l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T :-
+    return match ltype_uniq_extractable lt with
+    | None => False
+    | Some κm =>
+        [{ exhale (⌜syn_type_compat PtrSynType st⌝);
+        return T L (MaybeInherit κm InheritGhost (place_rfn_interp_mut_extracted r γ)) }]
+    end.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
+    destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
+    iDestruct "HT" as "(%Hstcomp & HT)".
+    iExists _, _. iFrame.
+    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
+    iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
+    { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
+    iModIntro. iSplitL. { iApply logical_step_intro. iFrame. }
+    iPureIntro. iIntros (ly1 ly2 Halg1 Halg2).
+    specialize (syn_type_compat_layout_trans _ _ _ Hstcomp Halg2) as ?.
+    f_equiv. by eapply syn_type_has_layout_inj.
+  Qed.
+  Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
+  Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.
+
+  (* Required instances;
+     - box (maybe not?)
+     - struct
+     - enum
+     - array
+     Maybe:
+     - opened (in case we did not re-establish the invariant, but still have the underlying struct etc) *)
+
+  (* I guess i iterate over the fields and call owned_subltype_step for all of them. *)
+  Lemma owned_subltype_step_struct_uninit π E L l {rts} (lts : hlist ltype rts) rs sls st T :
+    owned_subltype_step π E L l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
+    exhale (⌜st = sls⌝);
+    L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
+      return owned_subltype_step π E L2 (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
+        T L3 (R2 ∗ R3))
+      }};
+    return T L2 R2.
+  Proof.
+    iIntros "(-> & Hit)".
+    iIntros (??) "#CTX #HE HL Hl".
+    (* use struct_ltype_focus_components *)
+    (*rewrite ltype_own_struct_unfold/struct_ltype_own/=.*)
+    (*iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hl & Hlb & _ & %rs' & -> & Ha)".*)
+    (*iMod (fupd_mask_mono with "Ha") as "Ha"; first done.*)
+
+    (*Search li.iterate "elim".*)
+    (* invariant: ownership of the first n uninit segments.
+        ownership for the rest 
+    *)
+
+    (*
+    set (INV := λ (i : nat) (L2 : llctx) (R2 : iProp Σ),
+      llctx_interp L2 ∗
+
+      logical_step F ( ∗ R2)).
+     *)
+
+    (*Search iterate_elim2*)
+
+  Admitted.
+  Definition owned_subltype_step_struct_uninit_inst := [instance owned_subltype_step_struct_uninit].
+  Global Existing Instance owned_subltype_step_struct_uninit_inst | 20.
+
+  Lemma owned_subltype_step_enum_uninit π E L l {rt rte} (en : enum rt) (lte : ltype rte) rs tag re st T  :
+    owned_subltype_step π E L l #rs #() (EnumLtype en tag lte re) (◁ uninit st) T :-
+    ∀ le,
+      (*ste ← tactic (compute_map_lookup_goal (list_to_map (en.(enum_els).(els_variants))) tag false);*)
+      return owned_subltype_step π E L le #re #() lte (◁ uninit (ltype_st lte)) T.
+  Proof.
+  Admitted.
+  Definition owned_subltype_step_enum_uninit_inst := [instance owned_subltype_step_enum_uninit].
+  Global Existing Instance owned_subltype_step_enum_uninit_inst | 20.
+
   (*
-li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
-      (* augment context *) ⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝ -∗
-      li_tactic (compute_layout_goal (ty_syn_type ty2)) (λ ly2,
-        (* augment context *) ⌜syn_type_has_layout (ty_syn_type ty2) ly2⌝ -∗
-        ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗ owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)))
-        *)
+  Lemma owned_subltype_step_array_uninit π E L l {rts} (lts : hlist ltype rts) rs sls st T :
+    owned_subltype_step π E L l #rs #() (ArrayLtype def len iml) (◁ uninit st) T :-
+    exhale (⌜st = sls⌝);
+    L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
+      return owned_subltype_step π E L2 (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
+        T L3 (R2 ∗ R3))
+      }};
+    return T L2 R2.
+  Proof.
+    *)
 
   (* Two low-priority instances that trigger as a fallback for ltypes foldable to a ty (no borrows below) *)
   Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st l T :
+    owned_subltype_step π E L l #r #() lt (◁ uninit st) T :-
+    return
     cast_ltype_to_type E L lt (λ ty,
     find_tc_inst (TyGhostDrop ty) (λ Hg,
     li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
@@ -99,8 +219,7 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
         ⌜syn_type_has_layout st ly2⌝ -∗
         ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗
         ⌜ly_size ly1 = ly_size ly2⌝ ∗
-        T L (ty_ghost_drop_for ty Hg π r)))))
-    ⊢ owned_subltype_step π E L l #r #() lt (◁ uninit st) T.
+        T L (ty_ghost_drop_for ty Hg π r))))).
   Proof.
     iDestruct 1 as "(%ty & %Heqt & HT)".
     iDestruct "HT" as (?) "HT".
@@ -138,64 +257,8 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     }
     iPureIntro. done.
   Qed.
-  Global Instance owned_subltype_step_ofty_uninit_inst π E L l {rt} (lt : ltype rt) r st :
-    OwnedSubltypeStep π E L l #r #() lt (◁ uninit st)%I | 101:=
-    λ T, i2p (owned_subltype_step_ofty_uninit π E L lt r st l T).
-
-  (*
-  Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st T :
-    cast_ltype_to_type E L lt (λ ty,
-    li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
-      li_tactic (compute_layout_goal st) (λ ly2,
-        ⌜ly1 = ly2⌝ ∗ T L (ty_ghost_drop ty π r))))
-    ⊢ owned_subltype_step π E L #r #() lt (◁ uninit st) T.
-  Proof.
-    iDestruct 1 as "(%ty & %Heqt & HT)".
-    rewrite /compute_layout_goal.
-    iDestruct "HT" as "(%ly1 & %Hst1 & %ly2 & %Hst2 & <- & HT)".
-    iIntros (???) "CTX HE HL Hl". simp_ltypes; simpl.
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
-    iSpecialize ("Hincl" $! (Owned false) (#r)).
-    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
-    iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
-    iExists _, _. iFrame.
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Halg & %Hly & Hsc & Hlb & _ & %r' & <- & Hb)".
-    assert (ly1 = ly) as -> by by eapply (syn_type_has_layout_inj (ty_syn_type ty)).
-    iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
-    iModIntro. iSplitL.
-    { iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-      iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
-      iApply (logical_step_wand with "Hb"). iIntros "$".
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists _. iR. iR. simpl. iR. iFrame. iR.
-      iExists _. iR. iModIntro. iExists _. iFrame.
-      rewrite uninit_own_spec. eauto. }
-    iPureIntro.
-    iIntros (ly1' ly2' Hst1' Hst2').
-    rewrite Hst in Hst1'. simp_ltypes in Hst1'.
-    assert (ly1' = ly) as -> by by eapply syn_type_has_layout_inj.
-    assert (ly2' = ly) as -> by by eapply syn_type_has_layout_inj.
-    done.
-  Qed.
-  Global Instance owned_subltype_step_ofty_uninit_inst π E L {rt} (lt : ltype rt) r st :
-    OwnedSubltypeStep π E L #r #() lt (◁ uninit st)%I | 101:=
-    λ T, i2p (owned_subltype_step_ofty_uninit π E L lt r st T).
-  *)
-
-  (* TODO move *)
-  Lemma syn_type_has_layout_untyped_mono ly1 ly2 :
-    ly_align_log ly2 ≤ ly_align_log ly1 →
-    ly_size ly1 = ly_size ly2 →
-    syn_type_has_layout (UntypedSynType ly1) ly1 →
-    syn_type_has_layout (UntypedSynType ly2) ly2.
-  Proof.
-    intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
-    apply syn_type_has_layout_untyped; first done.
-    - eapply layout_wf_mono; done.
-    - lia.
-    - by eapply ly_align_in_bounds_mono.
-  Qed.
+  Definition owned_subltype_step_ofty_uninit_inst := [instance owned_subltype_step_ofty_uninit].
+  Global Existing Instance owned_subltype_step_ofty_uninit_inst | 101.
 
   (* Higher-priority instacne for the special case that we go to Untyped *)
   Lemma owned_subltype_step_ofty_uninit_untyped π E L l {rt} (lt : ltype rt) r ly T :
@@ -229,85 +292,23 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
   Global Instance owned_subltype_step_ofty_uninit_untyped_inst π E L l {rt} (lt : ltype rt) r ly :
     OwnedSubltypeStep π E L l #r #() lt (◁ uninit (UntypedSynType ly))%I | 100 :=
     λ T, i2p (owned_subltype_step_ofty_uninit_untyped π E L l lt r ly T).
+End deinit.
 
-  (*
-  Lemma owned_subltype_step_ofty_uninit_untyped π E L {rt} (lt : ltype rt) r ly T :
-    cast_ltype_to_type E L lt (λ ty,
-    ⌜syn_type_has_layout (ty_syn_type ty) ly⌝ ∗ T L (ty_ghost_drop ty π r))
-    ⊢ owned_subltype_step π E L #r #() lt (◁ uninit (UntypedSynType ly)) T.
-  Proof.
-    iDestruct 1 as "(%ty & %Heqt & HT)".
-    iDestruct "HT" as "(%Hst & HT)".
-    iApply owned_subltype_step_ofty_uninit.
-    iExists ty. iR.
-    iExists ly. iR. iExists ly.
-    iSplitR. { iPureIntro. by eapply syn_type_has_layout_make_untyped. }
-    iR. done.
-  Qed.
-  Global Instance owned_subltype_step_ofty_uninit_untyped_inst π E L {rt} (lt : ltype rt) r ly :
-    OwnedSubltypeStep π E L #r #() lt (◁ uninit (UntypedSynType ly))%I | 100 :=
-    λ T, i2p (owned_subltype_step_ofty_uninit_untyped π E L lt r ly T).
-   *)
+Section deinit_fallback.
+  Context `{!typeGS Σ}.
 
-  (* More specific instances *)
-  Lemma owned_subltype_step_shrltype_uninit π E L {rt} (lt : ltype rt) r st κ l T  :
-    ⌜syn_type_compat PtrSynType st⌝ ∗ T L True%I
-    ⊢ owned_subltype_step π E L l r #() (ShrLtype lt κ) (◁ uninit st) T.
-  Proof.
-    iIntros "(%Hstcomp & HT)".
-    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
-    iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
-    iExists _, _. iFrame.
-    iSplitL. { iApply logical_step_intro. by iFrame. }
-    iModIntro. iPureIntro. intros ?? Hst1 Hst2.
-    destruct Hstcomp as [<- | (ly1' & Hst' & ->)].
-    + f_equiv. by eapply syn_type_has_layout_inj.
-    + eapply syn_type_has_layout_untyped_inv in Hst2 as (<- & _).
-      f_equiv. by eapply syn_type_has_layout_inj.
-  Qed.
-  Global Instance owned_subltype_step_shrltype_uninit_inst π E L {rt} (lt : ltype rt) r st κ l :
-    OwnedSubltypeStep π E L l (r) #() (ShrLtype lt κ) (◁ uninit st)%I | 20 :=
-    λ T, i2p (owned_subltype_step_shrltype_uninit π E L lt r st κ l T).
+  (** Fallback instances without a logical step -- here, we cannot ghost_drop *)
 
-  Lemma owned_subltype_step_mutltype_uninit π E L {rt} (lt : ltype rt) r γ st κ l T  :
-    match ltype_uniq_extractable lt with
-    | None => False
-    | Some κm =>
-        ⌜syn_type_compat PtrSynType st⌝ ∗ T L (MaybeInherit κm InheritGhost (place_rfn_interp_mut_extracted r γ))
-    end
-    ⊢ owned_subltype_step π E L l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T.
-  Proof.
-    iIntros "HT".
-    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
-    destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
-    iDestruct "HT" as "(%Hstcomp & HT)".
-    iExists _, _. iFrame.
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
-    iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
-    { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
-    iModIntro. iSplitL. { iApply logical_step_intro. iFrame. }
-    iPureIntro. iIntros (ly1 ly2 Halg1 Halg2).
-    specialize (syn_type_compat_layout_trans _ _ _ Hstcomp Halg2) as ?.
-    f_equiv. by eapply syn_type_has_layout_inj.
-  Qed.
-  Global Instance owned_subltype_step_mutltype_uninit_inst π E L {rt} (lt : ltype rt) r γ st κ l :
-    OwnedSubltypeStep π E L l #(r, γ) #() (MutLtype lt κ) (◁ uninit st)%I | 20 :=
-    λ T, i2p (owned_subltype_step_mutltype_uninit π E L lt r γ st κ l T).
-
-  (*Lemma owned_subltype_step_cast_to_type_uninit : *)
-    (*cast_ltype_to_type E L lt (λ ty, *)
-      (*⌜syn_type_compat (ty_syn_type ty) st⌝ ∗ T L (ty_ghost_drop ty)) -∗*)
-    (*owned_subltype_step π E L r #() lt (◁ uninit st) T.*)
-
-  (* TODO have fallback instance that uses cast_ltype *)
-
-  (* TODO more instances for other ltypes under which borrows can happen, e.g. for structs *)
-
-  (* Fallback without a logical step -- here, we cannot ghost_drop *)
   (* TODO: maybe restrict this instance more for earlier failure *)
-  Lemma uninit_mono E L l {rt} (ty : type rt) r π st T :
-    (li_tactic (compute_layout_goal st) (λ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗ (∀ v, v ◁ᵥ{π} r @ ty -∗ T L True%I)))
-    ⊢ subsume_full E L false (l ◁ₗ[π, Owned false] #r @ (◁ ty)) (l ◁ₗ[π, Owned false] .@ (◁ (uninit st))) T.
+  Lemma uninit_mono π E L l {rt} (ty : type rt) r st T :
+    subsume_full E L false
+      (l ◁ₗ[π, Owned false] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned false] .@ (◁ (uninit st))) T :-
+    ly ← tactic (compute_layout_goal st);
+    exhale (⌜syn_type_has_layout ty.(ty_syn_type) ly⌝);
+    ∀ v,
+    inhale (v ◁ᵥ{π} r @ ty);
+    return T L True%I.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%ly & %Halg1 & %Halg2 & HT)".
@@ -325,15 +326,14 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     iExists ly. iSplitR; first done. iSplitR; first done.
     iPureIntro. rewrite Forall_forall. done.
   Qed.
-  Global Instance uninit_mono_inst π E L l {rt} (ty : type rt) (r : rt) st :
-    SubsumeFull E L false (l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty))%I (l ◁ₗ[π, Owned false] .@ ◁ (uninit st))%I | 40 :=
-    λ T, i2p (uninit_mono E L l ty r π st T).
-
+  Definition uninit_mono_inst := [instance uninit_mono].
+  Global Existing Instance uninit_mono_inst | 40.
 
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
-    ⌜ty_syn_type ty = st⌝ ∗ T
-    ⊢ weak_subltype E L (Owned false) r1 #r2 (◁ ty) (◁ uninit st) T.
+    weak_subltype E L (Owned false) r1 #r2 (◁ ty) (◁ uninit st) T :-
+    exhale (⌜ty_syn_type ty = st⌝);
+    return T.
   Proof.
     iIntros "(%Hst & HT)".
     iIntros  (??) "#CTX #HE HL". iFrame.
@@ -346,42 +346,19 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     { done. }
     iIntros. iApply owned_type_incl_uninit. done.
   Qed.
-  Global Instance weak_subltype_deinit_inst E L {rt1} (r1 : place_rfn rt1) r2 (ty : type rt1) st :
-    SubLtype E L (Owned false) r1 #r2 (◁ ty)%I (◁ uninit st)%I := λ T, i2p (weak_subltype_deinit E L r1 r2 ty st T).
-
-  (** ** Subsumption with uninit on the LHS (for initializing) *)
-  (* TODO consider: we could also support the case where ty just takes a prefix of the chunk. *)
-  Lemma subsume_full_ofty_owned_subtype π E L step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
-    li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
-      (* augment context *) ⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝ -∗
-      li_tactic (compute_layout_goal (ty_syn_type ty2)) (λ ly2,
-        (* augment context *) ⌜syn_type_has_layout (ty_syn_type ty2) ly2⌝ -∗
-        ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗ owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)))
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1) (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2) T.
-  Proof.
-    rewrite /compute_layout_goal. iIntros "(%ly1 & %Halg1 & HT)".
-    iDestruct ("HT" with "[//]") as "(%ly2 & %Halg2 & HT)".
-    iIntros (????) "#CTX #HE HL Hl".
-    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly1' & %Halg1' & %Hlyl)".
-    assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
-    iDestruct ("HT" with "[//] [//]") as "(%Hl_ly2 & Hsubt)".
-    iMod ("Hsubt" with "[//] [//] [//] CTX HE HL") as "(%L' & Hv & ? & ?)".
-    iExists L', True%I. iFrame.
-    iApply maybe_logical_step_intro. rewrite right_id.
-    iApply (ofty_owned_subtype_aligned with "Hv Hl"); done.
-  Qed.
-  (** We only declare an instance for this where the LHS is uninit -- generally, we'd rather want to  go via the "full subtyping" judgments,
-    because the alignment sidecondition here may be hard to prove explicitly. *)
-  Global Instance subsume_full_ofty_uninit_owned_subtype_inst π E L step l {rt2} (ty2 : type rt2) r2 st :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] .@ ◁ (uninit st))%I (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2)%I | 30 :=
-    λ T, i2p (subsume_full_ofty_owned_subtype π E L step l (uninit st) ty2 () r2 T).
+  Definition weak_subltype_deinit_inst := [instance weak_subltype_deinit].
+  Global Existing Instance weak_subltype_deinit_inst.
 
   Lemma owned_subtype_to_uninit π E L pers {rt} (ty1 : type rt) r st2 T :
-    li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
-      (* augment context *) ⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝ -∗
-      li_tactic (compute_layout_goal st2) (λ ly2,
-        (* augment context *) ⌜syn_type_has_layout st2 ly2⌝ -∗ ⌜ly_size ly1 = ly_size ly2⌝ ∗ T L))
-    ⊢ owned_subtype π E L pers r () (ty1) (uninit st2) T.
+    owned_subtype π E L pers r () (ty1) (uninit st2) T :-
+    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
+    (* augment context *)
+    inhale (⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝);
+    ly2 ← tactic (compute_layout_goal st2);
+    (* augment context *)
+    inhale (⌜syn_type_has_layout st2 ly2⌝);
+    exhale (⌜ly_size ly1 = ly_size ly2⌝);
+    return T L.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%ly1 & %Hst1 & HT)".
@@ -404,23 +381,29 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
       + iPureIntro. move: Hv. rewrite /has_layout_val Hsz//.
       + iPureIntro. apply Forall_forall. eauto.
   Qed.
-  Global Instance owned_subtype_to_uninit_inst π E L pers {rt} (ty : type rt) r st2 :
-    OwnedSubtype π E L pers r () (ty) (uninit st2) :=
-    λ T, i2p (owned_subtype_to_uninit π E L pers ty r st2 T).
+  Definition owned_subtype_to_uninit_inst := [instance owned_subtype_to_uninit].
+  Global Existing Instance owned_subtype_to_uninit_inst.
+End deinit_fallback.
 
+Section evar.
+  Context `{!typeGS Σ}.
 
   (** ** Evar instantiation *)
-  Lemma uninit_mono_untyped_evar π E L step l ly1 ly2 T `{!IsProtected ly2} :
-    ⌜ly1 = ly2⌝ ∗ T L True%I
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1))) (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T.
+  Lemma uninit_mono_untyped_evar π E L step l ly1 ly2 `{!IsProtected ly2} T :
+    subsume_full E L step
+      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))
+      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T :-
+    exhale (⌜ly1 = ly2⌝);
+    return (T L True%I).
   Proof. iIntros "(-> & HT)". iApply subsume_full_subsume. iFrame. eauto. Qed.
-  Global Instance uninit_mono_untyped_evar_inst π E L step l ly1 ly2 `{!IsProtected ly2} :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))%I (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2)))%I | 10 :=
-    λ T, i2p (uninit_mono_untyped_evar π E L step l ly1 ly2 T).
+  Definition uninit_mono_untyped_evar_inst := [instance uninit_mono_untyped_evar].
+  Global Existing Instance uninit_mono_untyped_evar_inst | 10.
 
-  Lemma uninit_mono_untyped_id E L π step l (ly1 ly2 : layout) T `{TCDone (ly1 = ly2)}:
-    T L True%I
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1))) (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T.
+  Lemma uninit_mono_untyped_id E L π step l (ly1 ly2 : layout) `{TCDone (ly1 = ly2)} T:
+    subsume_full E L step
+      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))
+      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T :-
+    return (T L True%I).
   Proof.
     match goal with
     | H : TCDone _ |- _ => rename H into Heq
@@ -428,42 +411,43 @@ li_tactic (compute_layout_goal (ty_syn_type ty1)) (λ ly1,
     rewrite /TCDone in Heq. subst. iIntros "HL".
     iApply subsume_full_subsume. iFrame. eauto.
   Qed.
-  Global Instance uninit_mono_untyped_id_inst E L step π l (ly1 ly2 : layout) `{!TCDone (ly1 = ly2)} :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))%I (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2)))%I | 11 :=
-    λ T, i2p (uninit_mono_untyped_id E L π step l ly1 ly2 T).
+  Definition uninit_mono_untyped_id_inst := [instance uninit_mono_untyped_id].
+  Global Existing Instance uninit_mono_untyped_id_inst | 11.
+End evar.
 
-  (*
-  (* TODO: ideally generalize this to non-arrays too ; e.g. consider doing some copying into a repr(C) struct *)
-     TODO: first develop more principled theory for splitting up memory structures into multiple chunks.
-  Lemma uninit_mono_untyped_strong E L π step l (ly1 ly2 : layout) T :
-    (⌜ly_size ly2 ≤ ly_size ly1⌝ ∗
-     ⌜l +ₗ(ly_size ly2) `has_layout_loc` (ly_offset ly1 (ly_size ly2))⌝ ∗
-     ⌜l `has_layout_loc` ly2⌝ ∗
-    ((l +ₗ(ly_size ly2)) ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (ly_offset ly1 (ly_size ly2)))) -∗ T L True%I)) -∗
-    subsume_full E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1))) (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T.
+Section init.
+  Context `{!typeGS Σ}.
+
+  (** ** Subsumption with uninit on the LHS (for initializing) *)
+  Lemma subsume_full_ofty_owned_subtype π E L step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
+    subsume_full E L step
+      (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1)
+      (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2) T :-
+    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
+      (* augment context *)
+    inhale (⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝);
+    ly2 ← tactic (compute_layout_goal (ty_syn_type ty2));
+    (* augment context *)
+    inhale (⌜syn_type_has_layout (ty_syn_type ty2) ly2⌝);
+    inhale (⌜l `has_layout_loc` ly1⌝);
+    exhale (⌜l `has_layout_loc` ly2⌝);
+    return (owned_subtype π E L false r1 r2 ty1 ty2 (λ L', (T L' True%I))).
   Proof.
-    (* split up the uninit value *)
-  Admitted.
-  Global Instance uninit_mono_untyped_strong_inst E L π step l (ly1 ly2 : layout) :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))%I (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2)))%I | 21 :=
-    λ T, i2p (uninit_mono_untyped_strong E L π step l ly1 ly2 T).
-
-  Lemma uninit_mono_untyped_array E L π step l (ly1' ly2' : layout) sz1 sz2 T :
-    (⌜ly1' = ly2'⌝ ∗
-    ⌜sz1 ≤ sz2⌝ ∗
-    ((l offset{ly1'}ₗ sz1) ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout ly1' (sz1 - sz2)))) -∗ T L True%I)) -∗
-    subsume_full E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout ly1' sz1)))) (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout ly2' sz2)))) T.
-  Proof.
-    iIntros "(<- & %Hle & HT)" (???) "#CTX #HE HL Hl".
-    rewrite !ltype_own_ofty_unfold /lty_of_ty_own. simpl.
-    iDestruct "Hl" as "(%ly & %Halg & %Hly & _ & ? & _ & %r' & <- & Hv)".
-    iMod (fupd_mask_mono with "Hv") as "(%v & Hl & Hv)"; first done.
-    (* split up the uninit value *)
-  Admitted.
-  Global Instance uninit_mono_untyped_array_inst E L π step l (ly1' ly2' : layout) sz1 sz2 :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout ly1' sz1))))%I (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout ly2' sz2))))%I | 20 :=
-    λ T, i2p (uninit_mono_untyped_array E L π step l ly1' ly2' sz1 sz2 T).
-   *)
-
-
-End typing.
+    rewrite /compute_layout_goal. iIntros "(%ly1 & %Halg1 & HT)".
+    iDestruct ("HT" with "[//]") as "(%ly2 & %Halg2 & HT)".
+    iIntros (????) "#CTX #HE HL Hl".
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly1' & %Halg1' & %Hlyl)".
+    assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
+    iDestruct ("HT" with "[//] [//]") as "(%Hl_ly2 & Hsubt)".
+    iMod ("Hsubt" with "[//] [//] [//] CTX HE HL") as "(%L' & Hv & ? & ?)".
+    iExists L', True%I. iFrame.
+    iApply maybe_logical_step_intro. rewrite right_id.
+    iApply (ofty_owned_subtype_aligned with "Hv Hl"); done.
+  Qed.
+  (** We only declare an instance for this where the LHS is uninit -- generally, we'd rather want to  go via the "full subtyping" judgments,
+    because the alignment sidecondition here may be hard to prove explicitly. *)
+  Definition subsume_full_ofty_owned_subtype_uninit π E L step l {rt2} (ty2 : type rt2) r2 st :=
+    subsume_full_ofty_owned_subtype π E L step l (uninit st) ty2 () r2.
+  Definition subsume_full_ofty_owned_subtype_uninit_inst := [instance subsume_full_ofty_owned_subtype_uninit].
+  Global Existing Instance subsume_full_ofty_owned_subtype_uninit_inst | 30.
+End init.

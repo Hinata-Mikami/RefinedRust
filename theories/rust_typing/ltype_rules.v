@@ -161,10 +161,10 @@ Proof.
     iExists ly. iFrame.
     iMod "Hb". iModIntro. iApply pinned_bor_shorten; done.
 Qed.
-Local Lemma enum_ltype_mono `{!typeGS Σ} {rt} (en : enum rt) (tag : string) (lte : ltype (enum_tag_rt' en tag)) π :
+Local Lemma enum_ltype_mono `{!typeGS Σ} {rt rte} (en : enum rt) (tag : string) (lte : ltype rte) (re : rte) π :
   (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lte -∗ l ◁ₗ[π, b2] r @ lte) →
   ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
-    l ◁ₗ[π, b1] r @ EnumLtype en tag lte -∗ l ◁ₗ[π, b2] r @ EnumLtype en tag lte.
+    l ◁ₗ[π, b1] r @ EnumLtype en tag lte re -∗ l ◁ₗ[π, b2] r @ EnumLtype en tag lte re.
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
@@ -254,7 +254,7 @@ Proof.
       apply elem_of_interpret_iml_inv in Hel as [ -> | []].
       { simp_ltypes. rewrite !ltype_own_ofty_unfold. by iApply lty_of_ty_mono. }
       by iDestruct (IH with "Hincl") as "(_ & $)".
-  - iIntros (rt en variant lte IH r l b1 b2) "#Hincl".
+  - iIntros (rt rte en variant lte re IH r l b1 b2) "#Hincl".
     simp_ltypes. iSplitL; (iApply enum_ltype_mono; [ | done]).
     + iIntros (????) "Hincl". iPoseProof (IH with "Hincl") as "($ & _)".
     + iIntros (????) "Hincl". iPoseProof (IH with "Hincl") as "(_ & $)".

@@ -13,6 +13,7 @@ Proof.
   option_get_result_3_prelude.
 
   rep liRStep; liShow.
+  (*
     iApply type_read_ofty_copy.
     { simpl. apply enum_t_copyable.
       intros. destruct r; simpl. 
@@ -23,6 +24,7 @@ Proof.
         intros []. apply _.
     } 
   repeat liRStep. 
+   *)
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
