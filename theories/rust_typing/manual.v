@@ -1,5 +1,5 @@
 From iris.proofmode Require Import coq_tactics reduction string_ident.
-From refinedrust Require Import programs arrays automation value.
+From refinedrust Require Import programs array.array automation value.
 
 
 (** * Proofmode support for manual proofs *)
