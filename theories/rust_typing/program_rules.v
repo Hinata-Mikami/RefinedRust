@@ -3289,24 +3289,6 @@ Section typing.
     TypedAnnotExpr E L n (AssertTypeAnnot sty) v (v ◁ᵥ{π} r @ ty) :=
     λ T, i2p (typed_expr_assert_type π E L n sty v ty r T).
 
-  Lemma typed_expr_get_lft_names π E L n tree v {rt} (ty : type rt) r T :
-    (∃ lfts, named_lfts lfts ∗
-      trigger_tc (GetLftNames ty lfts tree) (λ lfts',
-        (* simplify the updated map *)
-        li_tactic (simplify_lft_map_goal lfts') (λ lfts',
-          named_lfts lfts' -∗ T L π v _ ty r)))
-    ⊢ typed_annot_expr E L n (GetLftNamesAnnot tree) v (v ◁ᵥ{π} r @ ty) T.
-  Proof.
-    rewrite /simplify_lft_map_goal.
-    iIntros "(%lfts & Hnamed & %lfts' & %_ & %lfts'' & _ & HT)".
-    iPoseProof (named_lfts_update _ lfts'' with "Hnamed") as "Hnamed".
-    iIntros "? ? HL Hv". iApply step_fupdN_intro; first done. iNext.
-    iModIntro. iExists L, _, _, _, _. iFrame. by iApply "HT".
-  Qed.
-  Global Instance typed_expr_get_lft_names_inst π E L n tree v {rt} (ty : type rt) r :
-    TypedAnnotExpr E L n (GetLftNamesAnnot tree) v (v ◁ᵥ{π} r @ ty) :=
-    λ T, i2p (typed_expr_get_lft_names π E L n tree v ty r T).
-
   (** ** Handling of lifetime-related annotations *)
   (** Endlft triggers *)
   (** Instance for returning lifetime tokens [Inherit κ1 InheritDynIncl (llft_elt_toks κs)] *)

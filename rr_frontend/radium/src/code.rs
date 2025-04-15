@@ -362,16 +362,6 @@ pub enum BorKind {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-pub enum LftNameTree {
-    #[display("LftNameTreeLeaf")]
-    Leaf,
-
-    #[display("LftNameTreeRef \"{}\" ({})", _0, &_1)]
-    Ref(Lft, Box<LftNameTree>),
-    // TODO structs etc
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Annotation {
     /// Start a lifetime as a sublifetime of the intersection of a few other lifetimes
     #[display("StartLftAnnot \"{}\" [{}]", _0, display_list!(_1, "; ", "\"{}\""))]
@@ -389,15 +379,6 @@ pub enum Annotation {
     #[display("DynIncludeLftAnnot \"{}\" \"{}\"", _0, _1)]
     DynIncludeLft(Lft, Lft),
 
-    /// Shorten the lifetime of an object to the given lifetimes, according to the name map
-    #[display("ShortenLftAnnot ({})", _0)]
-    ShortenLft(LftNameTree),
-
-    /// add naming for the lifetimes in the type of the expression to the name context,
-    /// at the given names
-    #[display("GetLftNamesAnnot ({})", _0)]
-    GetLftNames(LftNameTree),
-
     /// Copy a lft name map entry from lft1 to lft2
     #[display("CopyLftNameAnnot \"{}\" \"{}\"", _1, _0)]
     CopyLftName(Lft, Lft),
@@ -405,10 +386,6 @@ pub enum Annotation {
     /// Create an alias for an intersection of lifetimes
     #[display("AliasLftAnnot \"{}\" [{}]", _0, display_list!(_1, "; ", "\"{}\""))]
     AliasLftIntersection(Lft, Vec<Lft>),
-
-    /// The following Goto will enter a loop
-    #[display("EnterLoopAnnot")]
-    EnterLoop,
 }
 
 impl Annotation {

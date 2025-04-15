@@ -711,10 +711,6 @@ End ltype_agree.
 Section rules.
   Context `{!typeGS Σ}.
 
-  Global Instance get_lft_names_mut_ref {rt} (ty : type rt) κ lfts lfts' name tree :
-    GetLftNames ty lfts tree lfts' →
-    GetLftNames (mut_ref κ ty) lfts (LftNameTreeRef name tree) (named_lft_update name κ lfts') := λ _, GLN.
-
   (* extraction *)
   Lemma stratify_ltype_extract_ofty_mut π E L {rt} (ty : type rt) r κ γ l (wl : bool) (T : stratify_ltype_post_hook_cont_t) :
     T L (place_rfn_interp_mut r γ) _ (◁ uninit PtrSynType)%I (#())
@@ -1081,7 +1077,7 @@ Section rules.
       iModIntro. iFrame. rewrite llft_elt_toks_app. iFrame.
       iApply typed_place_cond_incl; last done.
       iApply bor_kind_min_incl_r.
-    - done. 
+    - done.
   Qed.
   Global Instance typed_place_mut_uniq_inst {rto} E L π κ κ' γ γ' (lt2 : ltype rto) bmin0 r l P :
     TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_uniq π E L lt2 P l r κ γ κ' γ' bmin0 T).
@@ -1689,28 +1685,6 @@ Section rules.
   Qed.
   Global Instance mut_eqltype_mut_ofty_2_inst E L {rt} (ty1 : type (rt)) (lt2 : ltype rt) κ1 κ2 :
     MutEqLtype E L (◁ (mut_ref κ1 ty1))%I (MutLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_mut_ofty_2 E L ty1 lt2 κ1 κ2 T).
-
-  (** Annotations for shortening the lifetime of a reference *)
-  (* TODO: generalize this to nametrees and nested stuff *)
-  (* TODO think about how this should deal with structs and descending below them *)
-  (*
-  Lemma type_shortenlft_mut E L sup_lfts {rt} `{!Inhabited rt} (ty : type rt) r κ π v T :
-    (∃ M κs, named_lfts M ∗ ⌜lookup_named_lfts M sup_lfts = Some κs⌝ ∗
-      ⌜lctx_lft_incl E L (lft_intersect_list' κs) κ⌝ ∗
-      (named_lfts M -∗ v ◁ᵥ{π} r @ mut_ref ty (lft_intersect_list' κs) -∗ T L)) -∗
-    typed_annot_expr E L 0 (ShortenLftAnnot sup_lfts) v (v ◁ᵥ{π} r @ mut_ref ty κ) T.
-  Proof.
-    iIntros "(%M & %κs & Hnamed & % & %Hincl & HT)".
-    iIntros "#CTX #HE HL Hv /=".
-    iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hincl"; first done.
-    iModIntro. iExists L. iFrame "HL". iApply ("HT" with "Hnamed").
-    unshelve iApply (mut_ref_own_val_mono with "[//] [] [] Hv"); first done.
-    all: iIntros (?); iApply type_incl_refl.
-  Qed.
-  Global Instance type_shortenlft_mut_inst E L sup_lfts {rt} `{!Inhabited rt} (ty : type rt) r κ π v :
-    TypedAnnotExpr E L 0 (ShortenLftAnnot sup_lfts) v (v ◁ᵥ{π} r @ mut_ref ty κ) :=
-    λ T, i2p (type_shortenlft_mut E L sup_lfts ty r κ π v T).
-   *)
 End rules.
 
 Notation "&mut< κ , τ >" := (mut_ref κ τ) (only printing, format "'&mut<' κ , τ '>'") : stdpp_scope.

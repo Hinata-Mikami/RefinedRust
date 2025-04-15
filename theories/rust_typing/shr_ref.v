@@ -841,10 +841,6 @@ End acc.
 Section rules.
   Context `{!typeGS Σ}.
 
-  Global Instance get_lft_names_shr_ref {rt} (ty : type rt) κ lfts lfts' name tree :
-    GetLftNames ty lfts tree lfts' →
-    GetLftNames (shr_ref κ ty) lfts (LftNameTreeRef name tree) (named_lft_update name κ lfts') := λ _, GLN.
-
   Lemma typed_place_shr_owned {rto} π κ (lt2 : ltype rto) P E L l r wl bmin0 (T : place_cont_t (place_rfn rto)) :
    introduce_with_hooks E L (£1) (λ L1,
      ∀ l', typed_place π E L1 l' lt2 r (Shared κ ⊓ₖ bmin0) (Shared κ) P
@@ -1510,24 +1506,4 @@ Section rules.
   Qed.
   Global Instance mut_eqltype_shr_ofty_2_inst E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
     MutEqLtype E L (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
-
-  (** shortenlft *)
-  (*
-  Lemma type_shortenlft_shr E L sup_lfts {rt} `{!Inhabited rt} (ty : type rt) r κ π v T :
-    (∃ M κs, named_lfts M ∗ ⌜lookup_named_lfts M sup_lfts = Some κs⌝ ∗
-      ⌜lctx_lft_incl E L (lft_intersect_list' κs) κ⌝ ∗
-      (named_lfts M -∗ v ◁ᵥ{π} r @ shr_ref ty (lft_intersect_list' κs) -∗ T L)) -∗
-    typed_annot_expr E L 0 (ShortenLftAnnot sup_lfts) v (v ◁ᵥ{π} r @ shr_ref ty κ) T.
-  Proof.
-    iIntros "(%M & %κs & Hnamed & % & %Hincl & HT)".
-    iIntros "#CTX #HE HL Hv /=".
-    iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hsyn"; first done.
-    iModIntro. iExists L. iFrame "HL". iApply ("HT" with "Hnamed").
-    unshelve iApply (shr_ref_own_val_mono with "[//] [] Hv"); first done.
-    iIntros (?). iApply type_incl_refl.
-  Qed.
-  Global Instance type_shortenlft_shr_inst E L sup_lfts {rt} `{Inhabited rt} (ty : type rt) r κ π v :
-    TypedAnnotExpr E L 0 (ShortenLftAnnot sup_lfts) v (v ◁ᵥ{π} r @ shr_ref ty κ) :=
-    λ T, i2p (type_shortenlft_shr E L sup_lfts ty r κ π v T).
-   *)
 End rules.

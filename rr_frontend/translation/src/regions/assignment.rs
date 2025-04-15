@@ -185,7 +185,6 @@ pub fn get_assignment_annots<'tcx>(
             inclusion_tracker.add_static_inclusion(*r1, *r2, *p);
             inclusion_tracker.add_static_inclusion(*r2, *r1, *p);
 
-            // TODO: use this instead of the expr_annot below
             let ar1 = inclusion_tracker.info().mk_atomic_region(*r1);
             let ar2 = inclusion_tracker.info().mk_atomic_region(*r2);
             stmt_annot.push(radium::Annotation::CopyLftName(
@@ -193,16 +192,6 @@ pub fn get_assignment_annots<'tcx>(
                 ty_translator.format_atomic_region(&ar2),
             ));
         }
-
-        // I guess the problem here is, in general, that I get a new lifetime (from a function
-        // return or from a static) for which I don't have any constraints that would bind it.
-        // TODO: -- for the return case, we can fix it. We are ignoring that constraint, currently.
-        // For the reference case, I'm not sure. Where does ?2 come from?
-        // maybe try to implicitly make it static for now?
-        //
-        // Alternative: look at the type of the RHS of the assignment and the return type of the
-        // function and reconstruct based on that.
-        // TODO.
 
         expr_annot = None;
 

@@ -14,11 +14,11 @@ use std::fmt;
 pub enum Result<T, E> {
     #[rr::export_as(core::result::Result::Ok)]
     #[rr::pattern("Ok" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     Ok(T),
     #[rr::export_as(core::result::Result::Err)]
     #[rr::pattern("Err" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     Err(E),
 }
 

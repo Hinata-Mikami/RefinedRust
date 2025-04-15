@@ -33,26 +33,6 @@ Inductive includelft_annot : Set :=
 Inductive copylftname_annot : Set :=
   CopyLftNameAnnot (n1 n2 : string).
 
-(** LftNameTrees for copying lifetime names *)
-Inductive LftNameTree : Set :=
-  | LftNameTreeLeaf
-  | LftNameTreeRef (lft : string) (t : LftNameTree)
-  (* TODO struct etc *)
-.
-
-(** Annotation for shortening the lifetime of an expression *)
-Inductive shortenlft_annot : Set :=
-  ShortenLftAnnot (t : LftNameTree).
-
-(** Annotation for adding lifetime names to the context for the semantic lifetimes of the given expression *)
-Inductive get_lft_names_annot : Set :=
-  GetLftNamesAnnot (t : LftNameTree).
-
-(** This indicates that a goto to the head of a loop is following.
-  Invariants are specified in the context. *)
-Inductive loop_start_annot : Set :=
-  | InitLoopAnnot.
-
 (** This asserts that an expression has a particular syntactic Rust type by triggering subtyping to the intended type. *)
 Inductive assert_type_annot : Set :=
   | AssertTypeAnnot (ty : rust_type).
@@ -60,8 +40,3 @@ Inductive assert_type_annot : Set :=
 (** TODO: just a place holder until we handle drops properly. *)
 Inductive drop_annot : Set :=
   | DropAnnot.
-
-(** Annotation to extract a value assignment for the given expression.
-  This is a hack we currently need due to restricted evar instantiation on function calls. *)
-Inductive extract_value_annot : Set :=
-  | ExtractValueAnnot.

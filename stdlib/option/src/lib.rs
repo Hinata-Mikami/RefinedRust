@@ -12,7 +12,7 @@ pub enum Option<T> {
     #[rr::export_as(core::option::Option::None)]
     None,
     #[rr::pattern("Some" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     #[rr::export_as(core::option::Option::Some)]
     Some(T)
 }

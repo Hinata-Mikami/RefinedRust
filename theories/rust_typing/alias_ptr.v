@@ -379,34 +379,6 @@ Section alias_ltype.
     λ T, i2p (typed_addr_of_mut_end_uniq π E L l (◁ ty)%I r κ γ bmin T _).
   Next Obligation. intros. apply ltype_uniq_openable_ofty. Qed.
   (* TODO more instances for other ltypes *)
-
-  (** ExtractValueAnnot for splitting into a value assignment [◁ᵥ] and a [value_t] location *)
-  Lemma type_extract_value_annot_alias π E L (n : nat) v l (T : typed_annot_expr_cont_t) :
-    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π2)),
-      ∃ wl ty r', ⌜π = π2⌝ ∗ ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
-      (⌜Nat.b2n wl ≤ n⌝ ∗
-      li_tactic (compute_layout_goal ty.(ty_syn_type)) (λ ly,
-      (∀ v3, v3 ◁ᵥ{π} r' @ ty -∗ l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (UntypedSynType ly)) -∗ T L π v _ alias_ptr_t l))))
-    ⊢ typed_annot_expr E L n ExtractValueAnnot v (v ◁ᵥ{π} l @ alias_ptr_t) T.
-  Proof.
-    rewrite /FindLoc.
-    iIntros "(%a & Hl & HT)". destruct a as [rt [[[lt r] bk] π2]].
-    iDestruct "HT" as "(%wl & %ty & %r' & <- & -> & -> & -> & HT)".
-    rewrite /compute_layout_goal. simpl.
-    iDestruct "HT" as "(%Hle & %ly & %Hst & HT)".
-    iIntros "#CTX #HE HL Halias". iApply step_fupdN_intro; first done.
-    iPoseProof (ofty_own_split_value_untyped with "Hl") as "Ha"; [done.. | ].
-    iPoseProof (bi.laterN_le (Nat.b2n wl) n with "Ha") as "Ha".
-    { lia. }
-    iNext.
-    iMod (fupd_mask_mono with "Ha") as "(%v3 & Hv & Hl)"; first done.
-    iPoseProof ("HT" with "Hv Hl") as "HT".
-    iModIntro. eauto 8 with iFrame.
-  Qed.
-  Global Instance type_extract_value_annot_alias_inst π E L n v l :
-    TypedAnnotExpr E L n ExtractValueAnnot v (v ◁ᵥ{π} l @ alias_ptr_t)%I :=
-    λ T, i2p (type_extract_value_annot_alias π E L n v l T).
-
 End alias_ltype.
 
 Global Typeclasses Opaque alias_ptr_t.

@@ -16,12 +16,12 @@ use convert::*;
 #[rr::export_as(core::ops::ControlFlow)]
 pub enum ControlFlow<B, C = ()> {
     #[rr::pattern("inl" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     #[rr::export_as(core::ops::ControlFlow::Continue)]
     Continue(C),
     /// Exit the operation without running subsequent phases.
     #[rr::pattern("inr" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     #[rr::export_as(core::ops::ControlFlow::Break)]
     Break(B),
 }

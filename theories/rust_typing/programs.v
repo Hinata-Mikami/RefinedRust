@@ -4125,15 +4125,6 @@ Section endlft_triggers.
     λ T, i2p (typed_on_endlft_cons E L κ key P worklist T).
 End endlft_triggers.
 
-(** For implementation of [GetLftNamesAnnot].
-   Get the symbolic lifetimes associated for a type [ty], according to the structure given by [tree],
-    and map the names given in [tree] to the symbolic lifetimes in [ty].
-   Outputs an updated map [lfts'] with those names. *)
-Class GetLftNames `{!typeGS Σ} {rt} (ty : type rt) (lfts : gmap string lft) (tree : LftNameTree) (lfts' : gmap string lft) := GLN {}.
-Global Hint Mode GetLftNames ! ! + + - + - : typeclass_instances.
-Global Arguments GLN {_ _ _ _ _ _ _}.
-Global Instance get_lft_names_leaf `{!typeGS Σ} {rt} (ty : type rt) lfts : GetLftNames ty lfts LftNameTreeLeaf lfts := GLN.
-
 Section guarded.
   Context `{!typeGS Σ}.
 
