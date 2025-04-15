@@ -5,7 +5,7 @@ enum Option<T> {
     #[rr::pattern("None")]
     None,
     #[rr::pattern("Some" $ "x")]
-    #[rr::refinement("-[x]")]
+    #[rr::refinement("*[x]")]
     Some(T)
 }
 
@@ -24,13 +24,13 @@ impl<T> Option<T> {
 }
 
 
-#[rr::refined_by("result {rt_of T} {rt_of U}")]
+#[rr::refined_by("result (place_rfn {rt_of T}) (place_rfn {rt_of U})")]
 enum Result<T, U> {
     #[rr::pattern("Ok" $ "x")]
-    #[rr::refinement("-[#x]")]
+    #[rr::refinement("*[x]")]
     Ok(T),
     #[rr::pattern("Err" $ "x")]
-    #[rr::refinement("-[#x]")]
+    #[rr::refinement("*[x]")]
     Err(U),
 }
 

@@ -144,7 +144,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
             }
 
             if let Some(pattern) = pattern {
-                let refinement = refinement.unwrap_or_else(|| "-[]".to_owned());
+                let refinement = refinement.unwrap_or_else(|| "*[]".to_owned());
                 variant_patterns.push((pattern.pat, pattern.args, refinement));
             }
         }

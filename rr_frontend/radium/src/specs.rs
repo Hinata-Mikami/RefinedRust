@@ -2110,13 +2110,17 @@ impl<'def> AbstractEnum<'def> {
         let conditions: Vec<_> = self
             .variants
             .iter()
-            .map(|(name, var, _)| {
+            .zip(self.spec.variant_patterns.iter())
+            .map(|((name, var, _), (pat, apps, rfn))| {
                 let v = var.borrow();
                 let v = v.as_ref().unwrap();
                 let ty = v.public_type_name();
 
+                // injection
+                let inj = format!("(λ '( {rfn}), {})", coq::term::App::new(pat, apps.clone()));
+
                 format!(
-                    "if (decide (variant = \"{name}\")) then Some $ existT _ ({ty} {})",
+                    "if (decide (variant = \"{name}\")) then Some $ mk_enum_tag_sem _ ({ty} {}) {inj}",
                     v.scope.identity_instantiation()
                 )
             })

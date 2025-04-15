@@ -345,7 +345,6 @@ where
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
         scope: &T,
     ) -> Result<bool, String> {
-
         // Plan: for requires / ensures / exists clauses coming after the rr::ok,
         // just collect them separately. Then assemble afterwards.
 

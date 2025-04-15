@@ -1229,7 +1229,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             // simple optimization: if the variant has no fields, also this constructor gets no arguments
             let (variant_args, variant_arg_binders, variant_rfn) = if variant_def.fields.is_empty() {
-                (vec![], vec![], "-[]".to_owned())
+                (vec![], vec![], "*[]".to_owned())
             } else {
                 let args = vec![coq::binder::Binder::new(None, coq::term::Type::Literal(refinement_type))];
                 (args, vec!["x".to_owned()], "x".to_owned())
