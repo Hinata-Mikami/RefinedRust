@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::collections::HashMap;
+use std::mem;
 
 use attribute_parse::{parse, MToken};
 use log::{info, warn};
@@ -223,12 +224,33 @@ impl From<MetaIProp> for specs::IProp {
     }
 }
 
+/// Try to make it into a pure term
+impl TryFrom<MetaIProp> for coq::term::Term {
+    type Error = ();
+
+    fn try_from(meta: MetaIProp) -> Result<Self, ()> {
+        if let MetaIProp::Pure(p, name) = meta {
+            let term = if let Some(name) = name { format!("name_hint \"{name}\" ({p})") } else { p };
+
+            Ok(Self::Literal(term))
+        } else {
+            Err(())
+        }
+    }
+}
+
 /// The main parser.
+#[allow(clippy::struct_excessive_bools)]
 pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
     /// return types with substituted type parameters
     ret_type: &'a specs::Type<'def>,
+
+    /// whether the return type is an Option
+    ret_is_option: bool,
+    /// whether the return type is a Result
+    ret_is_result: bool,
 
     /// optionally, the argument names of this function
     arg_names: Option<&'a [String]>,
@@ -244,6 +266,27 @@ pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// track whether we got argument and returns specifications
     got_args: bool,
     got_ret: bool,
+
+    ok_spec: OkSpec,
+}
+
+/// State for assembling fallible specs
+pub struct OkSpec {
+    ok_mode: bool,
+    ok_exists: Vec<coq::binder::Binder>,
+    ok_requires: Vec<coq::term::Term>,
+    ok_ensures: Vec<coq::term::Term>,
+}
+
+impl OkSpec {
+    fn new() -> Self {
+        Self {
+            ok_mode: false,
+            ok_exists: Vec::new(),
+            ok_requires: Vec::new(),
+            ok_ensures: Vec::new(),
+        }
+    }
 }
 
 /// Extra requirements of a function.
@@ -280,6 +323,8 @@ where
     pub fn new(
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
+        ret_is_option: bool,
+        ret_is_result: bool,
         arg_names: Option<&'a [String]>,
         scope: &'a T,
         make_literal: F,
@@ -287,12 +332,15 @@ where
         VerboseFunctionSpecParser {
             arg_types,
             ret_type,
+            ret_is_option,
+            ret_is_result,
             arg_names,
             make_literal,
             scope,
             fn_requirements: FunctionRequirements::default(),
             got_args: arg_types.is_empty(),
             got_ret: matches!(ret_type, specs::Type::Unit),
+            ok_spec: OkSpec::new(),
         }
     }
 
@@ -345,10 +393,14 @@ where
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
         scope: &T,
     ) -> Result<bool, String> {
-        // Plan: for requires / ensures / exists clauses coming after the rr::ok,
-        // just collect them separately. Then assemble afterwards.
+        // true if we have encountered an rr::ok annotation.
+        // The assertions afterwards are interpreted as pre-/postconditions purely for functional
+        // correctness
 
         match name {
+            "ok" => {
+                self.ok_spec.ok_mode = true;
+            },
             "params" => {
                 let params = RRParams::parse(buffer, scope).map_err(str_err)?;
                 for param in params.params {
@@ -384,13 +436,29 @@ where
                 let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
                 if let MetaIProp::Linktime(assum) = iprop {
                     self.fn_requirements.proof_info.linktime_assumptions.push(assum);
+                } else if self.ok_spec.ok_mode {
+                    // only accept pure assertions
+                    if !matches!(iprop, MetaIProp::Pure(_, _)) {
+                        return Err("non-pure requires clause after rr::ok".to_owned());
+                    }
+                    let term = iprop.try_into().unwrap();
+                    self.ok_spec.ok_requires.push(term);
                 } else {
                     builder.add_precondition(iprop.into());
                 }
             },
             "ensures" => {
                 let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
-                builder.add_postcondition(iprop.into());
+
+                if self.ok_spec.ok_mode {
+                    // only accept pure assertions
+                    if !matches!(iprop, MetaIProp::Pure(_, _)) {
+                        return Err("non-pure ensures clause after rr::ok".to_owned());
+                    }
+                    self.ok_spec.ok_ensures.push(iprop.try_into().unwrap());
+                } else {
+                    builder.add_postcondition(iprop.into());
+                }
             },
             "observe" => {
                 let m = || {
@@ -413,8 +481,15 @@ where
             },
             "exists" => {
                 let params = RRParams::parse(buffer, scope).map_err(str_err)?;
-                for param in params.params {
-                    builder.add_existential(param.into())?;
+
+                if self.ok_spec.ok_mode {
+                    for param in params.params {
+                        self.ok_spec.ok_exists.push(param.into());
+                    }
+                } else {
+                    for param in params.params {
+                        builder.add_existential(param.into())?;
+                    }
                 }
             },
             "tactics" => {
@@ -442,7 +517,82 @@ where
                 return Ok(false);
             },
         }
+
         Ok(true)
+    }
+
+    /// Assemble a fallible specification.
+    fn assemble_fallible_spec(
+        &mut self,
+        ret_name: &str,
+        builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
+    ) -> Result<(), String> {
+        let ok_spec = mem::replace(&mut self.ok_spec, OkSpec::new());
+
+        // now assemble the ok-specification
+        if ok_spec.ok_mode {
+            if !(self.ret_is_option || self.ret_is_result) {
+                return Err(
+                    "specified rr::ok but the return type is neither an Option nor a Result".to_owned()
+                );
+            }
+
+            let conjoined_postconds = coq::term::Term::Exists(
+                coq::binder::BinderList::new(ok_spec.ok_exists),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_ensures)),
+            );
+
+            // The encoding assumes that the preconditions are precise to distinguish the success
+            // and failure cases.
+            let mut ok_case_conjuncts = ok_spec.ok_requires.clone();
+            ok_case_conjuncts.push(conjoined_postconds);
+            let ok_condition = coq::term::Term::Infix("∧".to_owned(), ok_case_conjuncts);
+
+            let lambda_binders = coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                Some(ret_name.to_owned()),
+                coq::term::Type::Infer,
+            )]);
+            let ok_condition = coq::term::Term::Lambda(lambda_binders.clone(), Box::new(ok_condition));
+
+            let err_condition = coq::term::Term::Prefix(
+                "¬".to_owned(),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_requires)),
+            );
+
+            if self.ret_is_result {
+                let ok_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Ok {ret_name}")),
+                    vec![ok_condition],
+                )));
+
+                builder.add_postcondition(specs::IProp::Pure(ok_condition.to_string()));
+
+                let err_condition = coq::term::Term::Lambda(lambda_binders, Box::new(err_condition));
+                let err_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Err {ret_name}")),
+                    vec![err_condition],
+                )));
+
+                builder.add_postcondition(specs::IProp::Pure(err_condition.to_string()));
+            } else if self.ret_is_option {
+                let some_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Some {ret_name}")),
+                    vec![ok_condition],
+                )));
+
+                builder.add_postcondition(specs::IProp::Pure(some_condition.to_string()));
+
+                let none_condition = err_condition;
+                let none_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_None {ret_name}")),
+                    vec![none_condition],
+                )));
+
+                builder.add_postcondition(specs::IProp::Pure(none_condition.to_string()));
+            }
+        }
+
+        Ok(())
     }
 
     /// Merges information on captured variables with specifications on captures.
@@ -703,6 +853,37 @@ where
             }
         }
 
+        let implicit_ret_name = "ret";
+        let is_implicit_ret = if self.got_ret {
+            false
+        } else {
+            // create a new ret val that is existentially quantified
+            builder.add_existential(coq::binder::Binder::new(
+                Some(implicit_ret_name.to_owned()),
+                coq::term::Type::Infer,
+            ))?;
+
+            let tr = LiteralTypeWithRef {
+                rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
+                ty: None,
+                raw: specs::TypeIsRaw::No,
+                meta: specs::TypeAnnotMeta::empty(),
+            };
+            let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
+
+            builder.set_ret_type(ty)?;
+            self.got_ret = true;
+
+            true
+        };
+
+        if self.ok_spec.ok_mode {
+            if !is_implicit_ret {
+                return Err("specified rr::returns and rr::ok at the same time".to_owned());
+            }
+            self.assemble_fallible_spec(implicit_ret_name, builder)?;
+        }
+
         if self.got_ret && self.got_args {
             builder.have_spec();
         }
@@ -749,6 +930,37 @@ where
                 }
                 self.got_args = true;
             }
+        }
+
+        let implicit_ret_name = "ret";
+        let is_implicit_ret = if self.got_ret {
+            false
+        } else {
+            // create a new ret val that is existentially quantified
+            builder.add_existential(coq::binder::Binder::new(
+                Some(implicit_ret_name.to_owned()),
+                coq::term::Type::Infer,
+            ))?;
+
+            let tr = LiteralTypeWithRef {
+                rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
+                ty: None,
+                raw: specs::TypeIsRaw::No,
+                meta: specs::TypeAnnotMeta::empty(),
+            };
+            let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
+
+            builder.set_ret_type(ty)?;
+            self.got_ret = true;
+
+            true
+        };
+
+        if self.ok_spec.ok_mode {
+            if !is_implicit_ret {
+                return Err("specified rr::returns and rr::ok at the same time".to_owned());
+            }
+            self.assemble_fallible_spec(implicit_ret_name, builder)?;
         }
 
         if self.got_ret && self.got_args {

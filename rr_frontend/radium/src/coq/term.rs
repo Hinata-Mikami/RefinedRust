@@ -45,9 +45,17 @@ pub enum Term {
     #[from_variants(skip)]
     Exists(binder::BinderList, Box<Term>),
 
+    /// A lambda
+    #[from_variants(skip)]
+    Lambda(binder::BinderList, Box<Term>),
+
     /// An infix operator
     #[from_variants(skip)]
     Infix(String, Vec<Term>),
+
+    /// A prefix operator
+    #[from_variants(skip)]
+    Prefix(String, Box<Term>),
 }
 
 impl Display for Term {
@@ -78,12 +86,23 @@ impl Display for Term {
                 }
                 write!(f, "{body}")
             },
+            Self::Lambda(binders, box body) => {
+                if binders.0.is_empty() {
+                    write!(f, "λ '(), ")?;
+                } else {
+                    write!(f, "λ {binders}, ")?;
+                }
+                write!(f, "{body}")
+            },
             Self::Infix(op, terms) => {
                 if terms.is_empty() {
                     write!(f, "True")
                 } else {
                     write!(f, "{}", terms.iter().format(&format!(" {op} ")))
                 }
+            },
+            Self::Prefix(op, term) => {
+                write!(f, "{op} ({term})")
             },
         }
     }

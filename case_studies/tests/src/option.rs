@@ -25,9 +25,7 @@ fn match_option(x: &Option<i32>) -> i32{
 }
 
 
-
-#[rr::exists("y")]
-#[rr::returns("y")]
+#[rr::verify]
 fn result_get_shr(x: &Result<u32, u32>) -> &u32 {
     match x {
         Ok(y) => y,
@@ -59,9 +57,9 @@ fn get_result_2() -> Result<i32, Error> {
     Ok(x + y)
 }
 
-#[rr::exists("y")]
-#[rr::ensures("if_Ok y (λ y, y < 10)")]
-#[rr::returns("y")]
+#[rr::ok]
+#[rr::requires("False")]
+#[rr::ensures("ret < 10")]
 fn maybe_fails_3() -> Result<i32, Error> {
     Err(Error::MyError)
 }

@@ -638,6 +638,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let translated_ret_type: radium::Type<'def> = self.ty_translator.translate_type(output)?;
         info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
 
+        let ret_is_option = self.ty_translator.translator.is_builtin_option_type(output);
+        let ret_is_result = self.ty_translator.translator.is_builtin_result_type(output);
+
         // Determine parser
         let parser = rrconfig::attribute_parser();
         if parser.as_str() != "verbose" {
@@ -670,6 +673,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut parser = VerboseFunctionSpecParser::new(
                 &translated_arg_types,
                 &translated_ret_type,
+                ret_is_option,
+                ret_is_result,
                 Some(arg_names),
                 &*scope,
                 |lit| ty_translator.translator.intern_literal(lit),
@@ -710,6 +715,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let translated_ret_type: radium::Type<'def> = ty_translator.translate_type(output)?;
         info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
 
+        let ret_is_option = ty_translator.translator.is_builtin_option_type(output);
+        let ret_is_result = ty_translator.translator.is_builtin_result_type(output);
+
         let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
 
         let parser = rrconfig::attribute_parser();
@@ -721,6 +729,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         VerboseFunctionSpecParser::new(
                             &translated_arg_types,
                             &translated_ret_type,
+                            ret_is_option,
+                            ret_is_result,
                             Some(arg_names),
                             &*scope,
                             |lit| ty_translator.translator.intern_literal(lit),

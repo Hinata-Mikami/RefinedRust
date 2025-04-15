@@ -28,6 +28,7 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
 use crate::traits::registry;
 use crate::types::scope;
+use crate::search;
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -1206,6 +1207,32 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
         info!("Discriminant map for {:?}: {:?}", def, map);
         Ok(map)
+    }
+
+    fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
+        let lookup_did = search::try_resolve_did(self.env.tcx(), path);
+        if let Some(lookup_did) = lookup_did {
+            if lookup_did == did {
+                return true;
+            }
+        }
+        false
+    }
+    /// Check whether this is an Option type.
+    pub fn is_builtin_option_type(&self, ty: ty::Ty<'tcx>) -> bool {
+        if let ty::TyKind::Adt(def, _) = ty.kind() {
+            self.does_did_match(def.did(), &["core", "option", "Option"])
+        } else {
+            false
+        }
+    }
+    /// Check whether this is an Option type.
+    pub fn is_builtin_result_type(&self, ty: ty::Ty<'tcx>) -> bool {
+        if let ty::TyKind::Adt(def, _) = ty.kind() {
+            self.does_did_match(def.did(), &["core", "result", "Result"])
+        } else {
+            false
+        }
     }
 
     /// Given a Rust enum which has already been registered and whose fields have been translated, generate a
