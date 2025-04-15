@@ -1,0 +1,6 @@
+(coq.theory
+ (name refinedrust.mut_ref)
+ (package refinedrust)
+ (flags -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)
+ (synopsis "RefinedRust mutable references")
+ (theories stdpp iris RecordUpdate Ltac2 caesium refinedrust lithium))
