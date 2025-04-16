@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import uninit int int_rules.
-From refinedrust Require Import products programs.
+From refinedrust Require Import struct.def struct.subtype programs.
 Set Default Proof Using "Type".
 
 (** * Enums *)

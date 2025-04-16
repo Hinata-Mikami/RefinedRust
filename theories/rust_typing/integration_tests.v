@@ -1,4 +1,4 @@
-From refinedrust Require Import functions int alias_ptr products automation shr_ref mut_ref enum.
+From refinedrust Require Import typing.
 
 Module test.
 Definition bla0 `{typeGS Σ} :=
@@ -9,42 +9,6 @@ Definition bla2 `{typeGS Σ} :=
   (fn(∀ ( *[]) : 0 | ( *[]) : [] | x : unit, (λ _, []); () :@: (uninit PtrSynType), () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
 Definition bla3 `{typeGS Σ} T_st T_rt :=
   (fn(∀ ( *[]) : 0 | ( *[ T_ty]) : [ (T_rt, T_st) ] | (x) : _, (λ _, []); x :@: T_ty, () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
-
-(* this is a problem, because the type of the function depends on the params, but the _type_ of the function type cannot depend on  it. only the term.
-
-Alternative solutions:
-   - we quantify over the xt as well. This seems ugly and like a hack.
-     + I guess we could get away with only doing that for function specs.
-       ie. we quantify over the xt and then require that it's the same in the extra preconds.
-   - we do some weird closed world thing.
-   - we refactor the specification format to always universally quantify over the xt of the args.
-   - we universally quantify over the rt but require that it's equal to projection of xt
-   - we bundle the params type.
-     + This doesn't really work because of how we setup the notations.
-
-   Problem: if I can't quantify over it, how will I encode rr frontend specs?
-   I guess I could always generically quantify over the refinements r1 .. rn.
-
-   It will be hard to keep the ability to treat args as mixed input/output.
-   In general I should move to using projections more.
-
-   But we can keep args clauses as a way to specify the name we can use to refer to an arg, in the first step.
-   Then I existentially quantify over the args. (combined params + args)
-   ∃ arg1, arg2.
-   r1 = ty.(ty_xt) arg1
-   r2 = ty.(ty_xt) arg2
-
-   Point: I need to separately existentially quantify over the xts, because it's not in scope for the outside params.
-
-   Problem: I cannot refer to the args in the postcondition.
-    -> this is really a problem.
-
-
-   What is the point of having the params exposed?
-   - for traits, do I need to know that the params are consistent between impls?
-   - I don't immediately see why we should need it. Try it out, I guess?
-
-*)
 
 (** Testing type parameter instantiation *)
 Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
@@ -188,3 +152,54 @@ Section std_option_Option_ty.
 End std_option_Option_ty.
 End enum.
 End test.
+
+Section test_struct.
+  Context `{!typeGS Σ}.
+
+  Definition test_rt : list Type := [Z: Type; Z : Type].
+  Definition test_lts : hlist ltype test_rt := (◁ int i32)%I +:: (◁ int i32)%I +:: +[].
+  Definition test_rfn : plist place_rfn test_rt := #32 -:: #22 -:: -[].
+
+  Lemma bla : hnth (UninitLtype UnitSynType) test_lts 1 = (◁ int i32)%I.
+  Proof. simpl. done. Abort.
+  Lemma bla : pnth (#()) test_rfn 1 = #22.
+  Proof. simpl. done. Abort.
+
+  Lemma bla : hlist_insert_id (unit : Type) _ test_lts 1 (◁ int i32)%I = test_lts.
+  Proof.
+    simpl. rewrite /hlist_insert_id. simpl.
+    (*rewrite /list_insert_lnth. *)
+    (*generalize (list_insert_lnth test_rt unit 1).*)
+    (*simpl. intros ?. rewrite (UIP_refl _ _ e). done.*)
+  Abort.
+
+  Lemma bla : hlist_insert _ test_lts 1 _ (◁ int i32)%I = test_lts.
+  Proof.
+    simpl. done.
+  Abort.
+
+  Lemma bla : plist_insert _ test_rfn 1 _ (#22) = test_rfn.
+  Proof.
+    simpl. done.
+  Abort.
+
+  Lemma bla : plist_insert_id (unit : Type) _ test_rfn 1 (#22) = test_rfn.
+  Proof.
+    simpl. cbn. done.
+    (*rewrite /plist_insert_id. cbn. *)
+    (*generalize (list_insert_lnth test_rt unit 1).*)
+    (*simpl. intros ?. rewrite (UIP_refl _ _ e). done.*)
+  Abort.
+
+  (* Options:
+     - some simplification machinery via tactic support
+        li_tactic. should just rewrite a bit.
+     - some simplification machinery via SimplifyHyp instances or so?
+        not the right way to do it. Rather specialized SimplifyHypVal or so.
+     - some simplification machinery via a new SimplifyLtype thing and have rules for judgments for that?
+        How do we capture a progress condition? via .. try to simplify, then require that it is Some. This is like SimplifyHyp
+       This seems unnecessarily expensive, since we usually need not be able to do it.
+
+
+   *)
+End test_struct.
