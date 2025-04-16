@@ -287,6 +287,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             spec_params_record: decl.trait_ref.impl_ref.spec_params_record.clone(),
             spec_attrs_record: decl.trait_ref.impl_ref.spec_attrs_record.clone(),
             spec_record: decl.trait_ref.impl_ref.spec_record.clone(),
+            spec_semantic: decl.trait_ref.impl_ref.spec_semantic.clone(),
             spec_subsumption_proof: decl.trait_ref.impl_ref.spec_subsumption_proof.clone(),
             spec_subsumption_statement: decl.trait_ref.impl_ref.spec_subsumption_statement.clone(),
         };
@@ -309,6 +310,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 spec_param_record: decl.spec_params_record.clone(),
                 spec_attrs_record: decl.spec_attrs_record.clone(),
                 spec_record: decl.spec_record.clone(),
+                spec_semantic: decl.spec_semantic.clone(),
                 base_spec: decl.base_spec.clone(),
                 base_spec_params: decl.base_spec_params.clone(),
                 spec_subsumption: decl.spec_subsumption.clone(),
@@ -1056,6 +1058,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 spec_attrs_record: shim.spec_attrs_record.clone(),
                 spec_params_record: shim.spec_param_record.clone(),
                 spec_record: shim.spec_record.clone(),
+                spec_semantic: shim.spec_semantic.clone(),
                 base_spec: shim.base_spec.clone(),
                 base_spec_params: shim.base_spec_params.clone(),
                 spec_subsumption: shim.spec_subsumption.clone(),
@@ -1101,6 +1104,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             shim.spec_record.clone(),
             shim.spec_params_record.clone(),
             shim.spec_attrs_record.clone(),
+            shim.spec_semantic.clone(),
             shim.spec_subsumption_proof.clone(),
             shim.spec_subsumption_statement.clone(),
         );
@@ -1481,7 +1485,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
         let trait_did = vcx.env.tcx().trait_id_of_impl(did).unwrap();
 
         // check if this trait has been registered
-        if vcx.trait_registry.lookup_trait(trait_did).is_some() {
+        if let Some(registered) = vcx.trait_registry.lookup_trait(trait_did) {
             // make sure all functions have a spec; otherwise, this is not a complete trait impl
             let assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
             let mut all_specced = true;
@@ -1507,10 +1511,14 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let proof_name = format!("{base_name}_spec_subsumption_correct");
             let proof_statement = format!("{base_name}_spec_subsumption");
 
+            let spec_semantic =
+                registered.spec_semantic.is_some().then(|| format!("{base_name}_semantic_interp"));
+
             let impl_lit = radium::LiteralTraitImpl {
                 spec_record: spec_name,
                 spec_params_record: spec_params_name,
                 spec_attrs_record: spec_attrs_name,
+                spec_semantic,
                 spec_subsumption_proof: proof_name,
                 spec_subsumption_statement: proof_statement,
             };

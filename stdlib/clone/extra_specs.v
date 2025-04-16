@@ -1,0 +1,5 @@
+Existing Class Copy_semantic_interp. 
+Global Instance Copy_semantic_Copyable `{!refinedrustGS Σ} {rt} (ty : type rt) : 
+  Copy_semantic_interp rt ty →
+  Copyable ty.
+Proof. done. Qed.

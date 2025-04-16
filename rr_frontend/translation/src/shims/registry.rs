@@ -52,6 +52,8 @@ struct ShimTraitEntry {
     spec_attrs_record: String,
     /// the Coq def name of the spec record
     spec_record: String,
+    /// the optional Coq def name of the spec semantic interpretation
+    spec_semantic: Option<String>,
     /// the Coq def name of the base spec
     base_spec: String,
     /// the Coq def name of the base spec params
@@ -84,6 +86,8 @@ struct ShimTraitImplEntry {
     spec_params_record: String,
     /// the Coq def name of the spec attrs record inst
     spec_attrs_record: String,
+    /// the optional Coq def name of the spec semantic interp
+    spec_semantic: Option<String>,
     /// the Coq lemma name of the spec subsumption proof
     spec_subsumption_proof: String,
     /// the Coq definition giving the lemma statement for the subsumption
@@ -164,6 +168,7 @@ pub struct TraitImplShim {
     pub spec_record: String,
     pub spec_params_record: String,
     pub spec_attrs_record: String,
+    pub spec_semantic: Option<String>,
     pub spec_subsumption_proof: String,
     pub spec_subsumption_statement: String,
 }
@@ -177,6 +182,7 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
             spec_record: shim.spec_record,
             spec_params_record: shim.spec_params_record,
             spec_attrs_record: shim.spec_attrs_record,
+            spec_semantic: shim.spec_semantic,
             spec_subsumption_proof: shim.spec_subsumption_proof,
             spec_subsumption_statement: shim.spec_subsumption_statement,
         }
@@ -212,6 +218,7 @@ pub struct TraitShim<'a> {
     pub spec_param_record: String,
     pub spec_attrs_record: String,
     pub spec_record: String,
+    pub spec_semantic: Option<String>,
     pub base_spec: String,
     pub base_spec_params: String,
     pub spec_subsumption: String,
@@ -228,6 +235,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
             spec_param_record: shim.spec_param_record,
             spec_attrs_record: shim.spec_attrs_record,
             spec_record: shim.spec_record,
+            spec_semantic: shim.spec_semantic,
             base_spec: shim.base_spec,
             base_spec_params: shim.base_spec_params,
             spec_subsumption: shim.spec_subsumption,
@@ -489,6 +497,7 @@ impl<'a> SR<'a> {
                         spec_record: b.spec_record,
                         spec_params_record: b.spec_params_record,
                         spec_attrs_record: b.spec_attrs_record,
+                        spec_semantic: b.spec_semantic,
                         spec_subsumption_proof: b.spec_subsumption_proof,
                         spec_subsumption_statement: b.spec_subsumption_statement,
                     };
@@ -503,6 +512,7 @@ impl<'a> SR<'a> {
                         spec_param_record: b.spec_param_record,
                         spec_attrs_record: b.spec_attrs_record,
                         spec_record: b.spec_record,
+                        spec_semantic: b.spec_semantic,
                         base_spec: b.base_spec,
                         base_spec_params: b.base_spec_params,
                         spec_subsumption: b.spec_subsumption,

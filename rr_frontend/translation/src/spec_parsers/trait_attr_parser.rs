@@ -88,6 +88,8 @@ where
         let mut context_items = Vec::new();
         let mut trait_attrs = BTreeMap::new();
 
+        let mut semantic_interp = None;
+
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
@@ -115,6 +117,15 @@ where
                         ));
                     }
                 },
+                "semantic" => {
+                    let parsed_term: parse::LitStr = buffer.parse(&self.scope).map_err(str_err)?;
+                    let (lit, _) = self.scope.process_coq_literal(&parsed_term.value());
+
+                    if semantic_interp.is_some() {
+                        return Err("rr::semantic has been declared multiple times".to_owned());
+                    }
+                    semantic_interp = Some(lit);
+                },
                 "context" => {
                     let context_item: RRCoqContextItem = buffer.parse(&self.scope).map_err(str_err)?;
                     let param = coq::binder::Binder::new_generalized(
@@ -132,7 +143,7 @@ where
         }
 
         Ok(TraitAttrs {
-            attrs: radium::TraitSpecAttrsDecl::new(trait_attrs),
+            attrs: radium::TraitSpecAttrsDecl::new(trait_attrs, semantic_interp),
             context_items,
         })
     }

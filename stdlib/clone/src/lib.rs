@@ -15,3 +15,26 @@ pub trait Clone: Sized {
     #[rr::observe("self.ghost": "source")]
     fn clone_from(&mut self, source: &Self);
 }
+
+//#[rr::export_as(core::marker::Sized)]
+//pub trait Sized { }
+
+
+#[rr::export_as(core::marker::Copy)]
+#[rr::semantic("Copyable {Self}")]
+pub trait Copy: Clone {
+}
+
+// TODO: before advancing this further, handle default impls.
+impl Clone for i32 { 
+    #[rr::default_spec]
+    fn clone(&self) -> Self {
+        *self
+    }
+    #[rr::default_spec]
+    fn clone_from(&mut self, source: &Self) {
+        *self = *source;
+    }
+}
+
+impl Copy for i32 { }

@@ -185,21 +185,10 @@ pub fn get_nontrivial<'tcx>(
 fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let sized_did = search::try_resolve_did(tcx, &["core", "marker", "Sized"])?;
 
-    // TODO: for these, should instead require the primitive encoding of our Coq formalization
-    let send_did = search::try_resolve_did(tcx, &["core", "marker", "Send"])?;
-    let sync_did = search::try_resolve_did(tcx, &["core", "marker", "Sync"])?;
-    let copy_did = search::try_resolve_did(tcx, &["core", "marker", "Copy"])?;
-
     // used for closures
     let tuple_did = search::try_resolve_did(tcx, &["core", "marker", "Tuple"])?;
 
-    Some(
-        trait_did == sized_did
-            || trait_did == copy_did
-            || trait_did == tuple_did
-            || trait_did == send_did
-            || trait_did == sync_did,
-    )
+    Some(trait_did == sized_did || trait_did == tuple_did)
 }
 
 /// Compare two `GenericArg` deterministically.

@@ -151,6 +151,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         name: String,
         declared_attrs: HashSet<String>,
+        has_semantic_interp: bool,
     ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
         let spec_record = format!("{name}_spec");
         let spec_params_record = format!("{name}_spec_params");
@@ -158,6 +159,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let base_spec = format!("{name}_base_spec");
         let base_spec_params = format!("{name}_base_spec_params");
         let spec_subsumption = format!("{name}_spec_incl");
+
+        let spec_semantic = has_semantic_interp.then(|| format!("{name}_semantic_interp"));
 
         let mut method_trait_incl_decls = HashMap::new();
 
@@ -180,6 +183,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             spec_record,
             spec_params_record,
             spec_attrs_record,
+            spec_semantic,
             base_spec,
             base_spec_params,
             spec_subsumption,
@@ -203,13 +207,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_name = strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
         let trait_attrs = attrs::filter_for_tool(self.env.get_attributes(did.into()));
 
+        let has_semantic_interp = self.env.has_tool_attribute(did.into(), "semantic");
+
         // get the declared attributes that are allowed on impls
         let valid_attrs: HashSet<String> =
             get_declared_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
         // make the literal we are going to use
-        let lit_trait_spec =
-            self.make_literal_trait_spec(did.to_def_id(), trait_name.clone(), valid_attrs)?;
+        let lit_trait_spec = self.make_literal_trait_spec(
+            did.to_def_id(),
+            trait_name.clone(),
+            valid_attrs,
+            has_semantic_interp,
+        )?;
         // already register it for use
         // In particular, this is also needed to be able to register the methods of this trait
         // below, as they need to be able to access the associated types of this trait already.

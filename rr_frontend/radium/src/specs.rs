@@ -3027,8 +3027,7 @@ impl<'def> LiteralFunctionSpec<'def> {
         write!(f3, "(* precondition. *) (λ π : thread_id, {}) |\n", self.pre)?;
 
         // late precondition with trait requirements
-        let late_pre = Vec::new();
-        /*
+        let mut late_pre = Vec::new();
         for trait_use in scope
             .get_surrounding_trait_requirements()
             .iter()
@@ -3037,11 +3036,12 @@ impl<'def> LiteralFunctionSpec<'def> {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
             if !trait_use.is_used_in_self_trait {
-                let spec_precond = trait_use.make_spec_param_precond();
-                late_pre.push(spec_precond);
+                if let Some(spec_precond) = trait_use.make_semantic_spec_term() {
+                    //let spec_precond = trait_use.make_spec_param_precond();
+                    late_pre.push(IProp::Pure(spec_precond));
+                }
             }
         }
-        */
         let mut f3 = IndentWriter::new_skip_initial(BASE_INDENT, &mut f2);
         write!(f3, "(* trait reqs... *) (λ π : thread_id, {})) →\n", IProp::Sep(late_pre))?;
 
@@ -3224,6 +3224,7 @@ pub struct TraitInstanceSpec<'def> {
 pub struct TraitSpecAttrsDecl {
     /// a map of attributes and their types
     attrs: BTreeMap<String, coq::term::Type>,
+    semantic_interp: Option<String>,
 }
 
 /// Implementation of the attributes of a trait
@@ -3231,6 +3232,7 @@ pub struct TraitSpecAttrsDecl {
 pub struct TraitSpecAttrsInst {
     /// a map of attributes and their implementation
     attrs: BTreeMap<String, coq::term::Term>,
+    //pub semantic_interp: Option<String>,
 }
 
 /// A using occurrence of a trait spec.
@@ -3245,6 +3247,9 @@ pub struct LiteralTraitSpec {
     pub spec_params_record: String,
     /// The name of the Coq definition for the spec attributes
     pub spec_attrs_record: String,
+
+    /// The optional name of the Coq definition for the traits's semantic interpretation
+    pub spec_semantic: Option<String>,
 
     /// The name of the Coq definition for the spec information
     pub spec_record: String,
@@ -3427,6 +3432,23 @@ impl<'def> LiteralTraitSpecUse<'def> {
         spec_param_ty.push(')');
 
         coq::binder::Binder::new(Some(self.make_spec_param_name()), coq::term::Type::Literal(spec_param_ty))
+    }
+
+    /// Get the optional specialized semantic term for this trait assumption.
+    #[must_use]
+    pub fn make_semantic_spec_term(&self) -> Option<String> {
+        if let Some(semantic_def) = &self.trait_ref.spec_semantic {
+            let inst = &self.trait_inst;
+            let args = inst.get_all_ty_params_with_assocs();
+
+            let mut specialized_semantic = format!("{} ", semantic_def.to_owned());
+            push_str_list!(specialized_semantic, &args, " ", |x| { format!("{}", x.get_rfn_type()) });
+            specialized_semantic.push(' ');
+            push_str_list!(specialized_semantic, &args, " ", |x| { x.to_string() });
+            Some(specialized_semantic)
+        } else {
+            None
+        }
     }
 
     /// Make the precondition on the spec parameter we need to require.
@@ -4439,6 +4461,30 @@ impl<'def> TraitSpecDecl<'def> {
         }
     }
 
+    /// Make the definition for the semantic declaration.
+    fn make_semantic_decl(&self) -> Option<coq::command::Command> {
+        if let Some(semantic_interp) = &self.attrs.semantic_interp {
+            let def_name = self.lit.spec_semantic.as_ref().unwrap();
+
+            let ordered_params = self.get_ordered_params();
+            let mut params = ordered_params.get_coq_ty_rt_params();
+            params.0.insert(0, coq::binder::Binder::new_rrgs());
+            params.append(ordered_params.get_semantic_ty_params().0);
+
+            let body = semantic_interp.to_owned();
+
+            Some(coq::command::Command::Definition(coq::command::Definition {
+                name: def_name.to_owned(),
+                params,
+                ty: Some(coq::term::Type::Prop),
+                body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(body)),
+            }))
+        } else {
+            None
+        }
+    }
+
+    /// Make the spec record declaration.
     fn make_spec_record_decl(&self) -> coq::term::Record {
         let mut record_items = Vec::new();
         for (item_name, item_spec) in &self.default_spec.methods {
@@ -4635,6 +4681,10 @@ impl<'def> Display for TraitSpecDecl<'def> {
         // make rrgs implicit again
         write!(f, "Global Arguments {} {{_ _}}.\n", self.lit.spec_record)?;
 
+        if let Some(decl) = self.make_semantic_decl() {
+            write!(f, "{decl}.\n")?;
+        }
+
         write!(f, "Context `{{RRGS : !refinedrustGS Σ}}.\n")?;
 
         // write spec incl relation
@@ -4675,6 +4725,8 @@ pub struct LiteralTraitImpl {
     pub spec_record: String,
     pub spec_params_record: String,
     pub spec_attrs_record: String,
+    /// the optional definition for the trait's semantic interpretation
+    pub spec_semantic: Option<String>,
     /// The name of the proof that the base spec is implied by the more specific spec
     pub spec_subsumption_proof: String,
     /// The name of the definition for the lemma statement
@@ -4864,6 +4916,60 @@ impl<'def> TraitImplSpec<'def> {
         }
     }
 
+    /// Make the definition for the semantic declaration.
+    fn make_semantic_decl(&self) -> Option<coq::Document> {
+        if let Some(def_name) = &self.trait_ref.impl_ref.spec_semantic {
+            let base_name = self.trait_ref.of_trait.spec_semantic.as_ref().unwrap();
+
+            let generics = &self.trait_ref.generics;
+
+            // build params
+            let all_tys = generics.get_all_ty_params_with_assocs();
+            let mut params = all_tys.get_coq_ty_rt_params();
+            params.append(all_tys.get_semantic_ty_params().0);
+
+            // add semantic assumptions for all trait requirements
+            for x in generics
+                .get_surrounding_trait_requirements()
+                .iter()
+                .chain(generics.get_direct_trait_requirements().iter())
+            {
+                let y = x.borrow();
+                let x = y.as_ref().unwrap();
+                if let Some(term) = x.make_semantic_spec_term() {
+                    params.0.push(coq::binder::Binder::new(None, coq::term::Type::Literal(term)));
+                }
+            }
+
+            let trait_inst = &self.trait_ref.trait_inst;
+            let inst_args = trait_inst.get_all_ty_params_with_assocs();
+
+            // type
+            let mut specialized_semantic = format!("{} ", base_name.to_owned());
+            push_str_list!(specialized_semantic, &inst_args, " ", |x| { format!("{}", x.get_rfn_type()) });
+            specialized_semantic.push(' ');
+            push_str_list!(specialized_semantic, &inst_args, " ", |x| { x.to_string() });
+
+            let body = coq::proof::Proof::new(coq::proof::Terminator::Qed, |doc| {
+                let vernac: coq::Vernac = coq::ltac::LTac::Literal(format!("unfold {base_name} in *; apply _")).into();
+                doc.push(vernac);
+                });
+            let commands = vec![
+                coq::command::Command::Lemma(coq::command::Lemma {
+                    name: def_name.to_owned(),
+                    params,
+                    ty: coq::term::Type::Literal(specialized_semantic),
+                    body,
+                })
+                .into(),
+            ];
+
+            Some(coq::Document(commands))
+        } else {
+            None
+        }
+    }
+
     #[must_use]
     fn generate_lemma_statement(&self) -> coq::Document {
         let mut doc = coq::Document::default();
@@ -4960,9 +5066,13 @@ impl<'def> Display for TraitImplSpec<'def> {
             section.append(&mut instance.0);
 
             section.append(&mut self.generate_lemma_statement().0);
+
+            if let Some(mut doc) = self.make_semantic_decl() {
+                section.append(&mut doc);
+            }
         });
 
-        writeln!(f, "{}", section)
+        write!( f, "{section}\n")
     }
 }
 

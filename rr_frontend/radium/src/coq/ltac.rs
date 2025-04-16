@@ -40,6 +40,11 @@ pub enum RocqLTac<T> {
     #[display("{}.", _0)]
     #[from_variants(skip)]
     UserDefined(T),
+
+    /// Literal Ltac strings for backwards compatibility
+    #[display("{}.", _0)]
+    #[from_variants(skip)]
+    Literal(String),
 }
 
 /// [`Let-in`] syntax: `let <name> := <t1> in <t2>`
