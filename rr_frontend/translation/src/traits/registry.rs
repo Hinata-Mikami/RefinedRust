@@ -262,12 +262,15 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     let name = format!("{trait_name}_{method_name}");
                     let spec_name = format!("{name}_base_spec");
 
+                    let trait_incl_name = &lit_trait_spec_ref.method_trait_incl_decls[&method_name];
+
                     // get spec
                     let spec = signature::TX::spec_for_trait_method(
                         self.env,
                         c.def_id,
                         &name,
                         &spec_name,
+                        trait_incl_name,
                         attrs.as_slice(),
                         self.type_translator(),
                         self,

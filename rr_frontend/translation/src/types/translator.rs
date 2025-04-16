@@ -17,7 +17,6 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, target};
 use typed_arena::Arena;
 
-use crate::attrs;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
@@ -28,7 +27,7 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
 use crate::traits::registry;
 use crate::types::scope;
-use crate::search;
+use crate::{attrs, search};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -1218,6 +1217,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
         false
     }
+
     /// Check whether this is an Option type.
     pub fn is_builtin_option_type(&self, ty: ty::Ty<'tcx>) -> bool {
         if let ty::TyKind::Adt(def, _) = ty.kind() {
@@ -1226,6 +1226,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             false
         }
     }
+
     /// Check whether this is an Option type.
     pub fn is_builtin_result_type(&self, ty: ty::Ty<'tcx>) -> bool {
         if let ty::TyKind::Adt(def, _) = ty.kind() {

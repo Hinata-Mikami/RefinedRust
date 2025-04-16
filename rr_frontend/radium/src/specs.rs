@@ -2701,8 +2701,7 @@ pub struct FunctionSpec<'def, T> {
     pub function_name: String,
 
     /// The name of the trait incl definition
-    /// This is `Some` if this is a function spec that is not part of a trait decl.
-    pub trait_req_incl_name: Option<String>,
+    pub trait_req_incl_name: String,
 
     /// Generics
     pub(crate) generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
@@ -2728,12 +2727,7 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub(crate) fn empty(
-        spec_name: String,
-        trait_req_incl_name: Option<String>,
-        function_name: String,
-        spec: T,
-    ) -> Self {
+    pub(crate) fn empty(spec_name: String, trait_req_incl_name: String, function_name: String, spec: T) -> Self {
         Self {
             spec_name,
             trait_req_incl_name,
@@ -2866,7 +2860,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         self.generics.format(&mut quantified_term, false, false, &[], &[], &[]).unwrap();
         quantified_term.push_str(&format!(" ({term})"));
 
-        let name = self.trait_req_incl_name.clone().unwrap();
+        let name = self.trait_req_incl_name.clone();
         coq::command::Definition {
             name,
             params,
@@ -2880,10 +2874,8 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut doc = coq::Document::default();
-        if self.trait_req_incl_name.is_some() {
-            // first generate the trait req incl definition, if this spec needs one.
-            doc.push(coq::command::Command::Definition(self.generate_trait_req_incl_def()));
-        }
+        // first generate the trait req incl definition
+        doc.push(coq::command::Command::Definition(self.generate_trait_req_incl_def()));
 
         let params = self.get_all_spec_coq_params();
 
@@ -4602,54 +4594,6 @@ impl<'def> TraitSpecDecl<'def> {
             body: coq::command::DefinitionBody::Term(body),
         }
     }
-
-    fn make_trait_incl_defs(&self) -> coq::Document {
-        let mut doc = coq::Document::default();
-
-        // write the trait inclusion decls for each method
-        for (fn_name, spec) in &self.default_spec.methods {
-            let trait_incl_decl_name = &self.lit.method_trait_incl_decls[fn_name];
-
-            // for the args, consider the functions scope
-            let scope = &spec.generics;
-
-            let typarams = scope.get_all_ty_params_with_assocs();
-            let mut params = typarams.get_coq_ty_params();
-            let trait_params = scope.get_all_trait_parameters(true);
-            params.append(trait_params.0);
-
-            let mut late_pre = Vec::new();
-            for trait_use in scope
-                .get_surrounding_trait_requirements()
-                .iter()
-                .chain(scope.get_direct_trait_requirements().iter())
-            {
-                let trait_use = trait_use.borrow();
-                let trait_use = trait_use.as_ref().unwrap();
-                if !trait_use.is_used_in_self_trait {
-                    let spec_precond = trait_use.make_spec_param_precond();
-                    late_pre.push(spec_precond);
-                }
-            }
-            let term = coq::term::Term::Infix("∧".to_owned(), late_pre);
-
-            // quantify over the generic scope
-            let mut quantified_term = String::new();
-            scope.format(&mut quantified_term, false, false, &[], &[], &[]).unwrap();
-            quantified_term.push_str(&format!(" ({term})"));
-
-            let def = coq::command::Definition {
-                name: trait_incl_decl_name.to_owned(),
-                params,
-                ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-                body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(quantified_term)),
-            };
-            let command = coq::command::Command::from(def);
-            doc.push(command);
-        }
-
-        doc
-    }
 }
 
 // TODO: Deprecated: Generate a coq::Document instead.
@@ -4711,8 +4655,6 @@ impl<'def> Display for TraitSpecDecl<'def> {
             &self.lit.base_spec,
         )?;
         write!(f, "{base_decls}\n")?;
-
-        write!(f, "{}", self.make_trait_incl_defs())?;
 
         write!(f, "End {}.\n", self.lit.name)
     }

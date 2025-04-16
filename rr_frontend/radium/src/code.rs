@@ -895,19 +895,15 @@ impl<'def> Function<'def> {
         // for all of them.
 
         let trait_late_pre = {
-            if let Some(trait_req_incl_name) = &self.spec.trait_req_incl_name {
-                let args = self.spec.get_all_trait_req_coq_params().make_using_terms();
-                let term = coq::term::App::new(trait_req_incl_name.to_owned(), args.0);
+            let trait_req_incl_name = &self.spec.trait_req_incl_name;
+            let args = self.spec.get_all_trait_req_coq_params().make_using_terms();
+            let term = coq::term::App::new(trait_req_incl_name.to_owned(), args.0);
 
-                let mut term = term.to_string();
-                // instantiate semantic args
-                write!(term, "{}", self.spec.generics.identity_instantiation()).unwrap();
+            let mut term = term.to_string();
+            // instantiate semantic args
+            write!(term, "{}", self.spec.generics.identity_instantiation()).unwrap();
 
-                term
-            } else {
-                // TODO: in this case, incl to default spec
-                "True".to_owned()
-            }
+            term
         };
         let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
@@ -1435,14 +1431,10 @@ pub struct FunctionBuilder<'def> {
 
 impl<'def> FunctionBuilder<'def> {
     #[must_use]
-    pub fn new(name: &str, code_name: &str, spec_name: &str, trait_req_incl_name: Option<&str>) -> Self {
+    pub fn new(name: &str, code_name: &str, spec_name: &str, trait_req_incl_name: &str) -> Self {
         let code_builder = FunctionCodeBuilder::new();
-        let spec = FunctionSpec::empty(
-            spec_name.to_owned(),
-            trait_req_incl_name.map(ToOwned::to_owned),
-            name.to_owned(),
-            None,
-        );
+        let spec =
+            FunctionSpec::empty(spec_name.to_owned(), trait_req_incl_name.to_owned(), name.to_owned(), None);
         FunctionBuilder {
             other_functions: Vec::new(),
             code: code_builder,

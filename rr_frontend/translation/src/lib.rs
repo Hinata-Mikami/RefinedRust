@@ -272,11 +272,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         for (name, spec) in &decl.methods.methods {
             method_specs.insert(
                 name.to_owned(),
-                (
-                    spec.function_name.clone(),
-                    spec.spec_name.clone(),
-                    spec.trait_req_incl_name.clone().unwrap(),
-                ),
+                (spec.function_name.clone(), spec.spec_name.clone(), spec.trait_req_incl_name.clone()),
             );
         }
 
