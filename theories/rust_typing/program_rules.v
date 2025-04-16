@@ -1081,53 +1081,7 @@ Section typing.
     ResolveGhost π E L rm lb l (◁ ty)%I (Uniq κ γ') (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_ofty_Uniq π E L l ty γ rm lb κ γ' T).
 
 
-  (** ** Extraction *)
-  (* We register a few post-hooks for actually extracting stuff. *)
-  Lemma stratify_ltype_extract_mutltype π E L {rt} (lt : ltype rt) r κ γ l (wl : bool) (T : stratify_ltype_post_hook_cont_t) :
-    match ltype_uniq_extractable lt with
-    | None =>
-        T L True%I _ (MutLtype lt κ) (#(r, γ))
-    | Some κm =>
-        prove_with_subtype E L false ProveDirect (£ (Nat.b2n wl)) (λ L' κs R,
-          (R -∗ T L' (MaybeInherit κm InheritGhost (place_rfn_interp_mut_extracted r γ)) _ (◁ uninit PtrSynType)%I (#())))
-    end
-    ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (MutLtype lt κ) (#(r, γ)) (Owned wl) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    destruct (ltype_uniq_extractable lt) as [ κm | ] eqn:Hextract; first last.
-    { iExists L, True%I, _, _, _. iFrame. done. }
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & >(Hcred & HR)& HL & HT)".
-    iMod (ltype_uniq_extractable_deinit_mut' with "Hcred Hl") as "(Hl & Hrfn)"; [done.. | | ].
-    { left. done. }
-    iSpecialize ("HT" with "HR").
-    iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hrfn") as "Ha".
-    { iIntros (?) "Ha". iMod (place_rfn_interp_mut_extract with "Ha") as "?". done. }
-    iExists _, _, _, _, _. iFrame.
-    iFrame. simp_ltypes. done.
-  Qed.
-  Global Instance stratify_ltype_extract_mutltype_inst π E L {rt} (lt : ltype rt) r κ γ l (wl : bool) :
-    StratifyLtypePostHook π E L (StratifyExtractOp κ) l (MutLtype lt κ) (#(r, γ)) (Owned wl) :=
-    λ T, i2p (stratify_ltype_extract_mutltype π E L lt r κ γ l wl T).
-
-  Lemma stratify_ltype_extract_shrltype π E L {rt} (lt : ltype rt) r κ l (wl : bool) (T : stratify_ltype_post_hook_cont_t) :
-    prove_with_subtype E L false ProveDirect (£ (Nat.b2n wl)) (λ L' κs R, (R -∗ T L' (True) _ (◁ uninit PtrSynType)%I (#())))
-    ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & >(Hcred & HR)& HL & HT)".
-    iMod (ltype_deinit_shr' with "Hcred Hl") as "Hl"; [done.. | | ].
-    { left. done. }
-    iSpecialize ("HT" with "HR").
-    iExists _, _, _, _, _. iFrame.
-    iFrame. simp_ltypes. done.
-  Qed.
-  Global Instance stratify_ltype_extract_shrltype_inst π E L {rt} (lt : ltype rt) r κ l (wl : bool) :
-    StratifyLtypePostHook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) :=
-    λ T, i2p (stratify_ltype_extract_shrltype π E L lt r κ l wl T).
-
-
+  
   (** ** ltype stratification *)
   (* TODO change the ResolveTry and also make it a parameter of stratify *)
 

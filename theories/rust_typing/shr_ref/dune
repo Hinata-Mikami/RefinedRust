@@ -1,0 +1,6 @@
+(coq.theory
+ (name refinedrust.shr_ref)
+ (package refinedrust)
+ (flags -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)
+ (synopsis "RefinedRust shared references")
+ (theories stdpp iris RecordUpdate Ltac2 caesium refinedrust lithium))

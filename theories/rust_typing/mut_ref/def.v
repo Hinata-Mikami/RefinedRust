@@ -1,6 +1,6 @@
 From caesium Require Import derived.
 From refinedrust Require Export base type ltypes.
-From refinedrust Require Import programs.
+From refinedrust Require Import ltype_rules.
 From iris.prelude Require Import options.
 
 (** * Mutable references *)
