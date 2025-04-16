@@ -1,6 +1,6 @@
-From caesium Require Import derived.
 From refinedrust Require Export base type.
 From refinedrust Require Import programs uninit ltypes ltype_rules.
+From refinedrust Require Import options.
 
 (** * Box *)
 

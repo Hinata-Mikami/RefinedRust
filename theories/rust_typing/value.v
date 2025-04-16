@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes programs.
 From refinedrust Require Import memcasts ltype_rules.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * The value type *)
 (** The value type just says that there is a particular sequence of bytes which can be read and written from memory at a particular [op_type]. *)

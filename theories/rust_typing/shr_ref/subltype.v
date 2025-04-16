@@ -1,7 +1,6 @@
-From caesium Require Import derived.
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import programs.
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 (** ** Lemmas about [ShrLtype] *)
 

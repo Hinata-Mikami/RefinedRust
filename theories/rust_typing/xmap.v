@@ -1,6 +1,6 @@
 From stdpp Require Import base.
 From refinedrust Require Import type ltypes.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 Class XMap (A B : Type) := xmap : (A → B).
 

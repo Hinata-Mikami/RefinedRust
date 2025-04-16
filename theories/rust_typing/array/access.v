@@ -3,7 +3,7 @@ From refinedrust Require Import ltype_rules.
 From refinedrust Require Import uninit_def int.
 From refinedrust Require Import uninit value alias_ptr programs.
 From refinedrust.array Require Import def subltype unfold.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Judgment for accessing an array component in a general fashion *)
 

@@ -1,6 +1,5 @@
 From refinedrust Require Export type.
-From iris Require Import options.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Uninitialized memory *)
 

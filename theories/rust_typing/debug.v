@@ -1,5 +1,5 @@
 From refinedrust Require Export automation.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * File to import for debugging sidecondition solving *)
 

@@ -3,7 +3,7 @@ From refinedrust Require Import ltype_rules.
 From refinedrust Require Import uninit_def int.
 From refinedrust Require Import uninit value alias_ptr programs.
 From refinedrust.array Require Import def subltype unfold access.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * An aliased pointer which has been offset from a base pointer.
   Used to help automation when offsetting into arrays. *)

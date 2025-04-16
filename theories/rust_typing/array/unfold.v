@@ -1,9 +1,8 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
 From refinedrust Require Import uninit_def.
 From refinedrust Require Import programs.
 From refinedrust.array Require Import def.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** ** Unfolding [array_t] into [ArrayLtype]. *)
 

@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes programs.
 From refinedrust Require Import memcasts ltype_rules value int.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * Raw pointers *)
 

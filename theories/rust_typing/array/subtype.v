@@ -1,9 +1,7 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import uninit value alias_ptr programs.
+From refinedrust Require Import programs.
 From refinedrust.array Require Import def.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (* Note: We don't support things like [u16; 2] <: [u8; 4]. *)
 Section subtype.

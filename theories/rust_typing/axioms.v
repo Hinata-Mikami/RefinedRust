@@ -4,6 +4,7 @@ From Equations Require Import Equations.
 From stdpp Require Import base.
 From iris Require Import prelude.
 Require Import Coq.Logic.EqdepFacts.
+From refinedrust Require Import options.
 
 (** We assume proof irrelevance. *)
 

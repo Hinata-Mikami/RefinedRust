@@ -2,7 +2,7 @@ From stdpp Require Import gmap.
 From caesium Require Import lang proofmode derived lifting.
 From refinedrust Require Export base type lft_contexts annotations ltypes programs.
 From refinedrust Require Import ltype_rules.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Core rules of the type system *)
 

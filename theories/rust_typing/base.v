@@ -2,7 +2,7 @@ From lrust.lifetime Require Export lifetime.
 From lithium Require Export all.
 From caesium Require Export proofmode notation syntypes.
 From refinedrust Require Export axioms pinned_borrows.
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 Ltac iR := iSplitR; first done.
 Ltac iL := iSplitL; last done.

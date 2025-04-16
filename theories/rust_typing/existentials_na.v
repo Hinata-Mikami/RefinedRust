@@ -1,7 +1,7 @@
 From refinedrust Require Export type ltypes programs.
 From refinedrust Require Import uninit int ltype_rules.
 From lrust.lifetime Require Import na_borrow.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 Record na_ex_inv_def `{!typeGS Σ} (X : Type) (Y : Type) : Type := na_mk_ex_inv_def' {
   na_inv_xr : Type;

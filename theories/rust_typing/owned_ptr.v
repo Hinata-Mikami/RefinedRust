@@ -1,6 +1,7 @@
 From caesium Require Import derived.
 From refinedrust Require Export base type.
 From refinedrust Require Import programs uninit ltypes.
+From refinedrust Require Import options.
 
 (** * Owned pointers as value types. *)
 (** This isn't fully developed currently, but should eventually replace the primitive Box type *)

@@ -7,8 +7,7 @@ From iris.base_logic Require Import ghost_map.
 From lrust.lifetime Require Import frac_borrow.
 From refinedrust Require Export base.
 From refinedrust Require Import fraction_counting util.
-From iris.prelude Require Import options.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Lifetime contexts for keeping track of which lifetimes are alive *)
 

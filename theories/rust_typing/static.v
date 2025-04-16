@@ -1,5 +1,8 @@
 From refinedrust Require Import base type ltypes programs shr_ref.
 From iris.base_logic Require Import ghost_map.
+From refinedrust Require Import options.
+
+(** * Support for static variables *)
 
 Record btype `{!typeGS Σ} : Type := {
   btype_rt : Type;

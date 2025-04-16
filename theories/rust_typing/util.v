@@ -3,8 +3,7 @@ From caesium Require Import derived.
 From iris.bi Require Import fractional.
 From iris.proofmode Require Import tactics.
 From refinedrust Require Export base.
-From iris.prelude Require Import options.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Random collection of lemmas *)
 (* TODO: probably some of this could be upstreamed *)

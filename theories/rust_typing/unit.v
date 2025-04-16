@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** ** Unit type *)
 (** [unit_t] gets some special treatment, because it occurs frequently and is specced to be a ZST *)

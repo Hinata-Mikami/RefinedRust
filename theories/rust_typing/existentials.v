@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes programs.
 From refinedrust Require Import uninit int ltype_rules.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Existential types and invariants *)
 

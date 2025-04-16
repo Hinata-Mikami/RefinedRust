@@ -1,9 +1,7 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import int.
-From refinedrust Require Import programs.
+From refinedrust Require Import int programs.
 From refinedrust.array Require Import def subltype.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 Section place.
   Context `{!typeGS Σ}.

@@ -1,4 +1,5 @@
 From refinedrust Require Import base util.
+From refinedrust Require Import options.
 
 (** ** op_types and mem_casts *)
 

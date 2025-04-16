@@ -1,6 +1,6 @@
 From refinedrust Require Export type generics.
 From refinedrust Require Import programs uninit.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Function types *)
 

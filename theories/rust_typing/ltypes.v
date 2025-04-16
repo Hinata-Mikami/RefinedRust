@@ -7,8 +7,7 @@ From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Import int.
 From refinedrust Require Export hlist.
 From refinedrust Require Export base lft_contexts gvar_refinement type uninit_def.
-
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * Place types *)
 

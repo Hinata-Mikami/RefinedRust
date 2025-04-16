@@ -1,9 +1,7 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import uninit value alias_ptr programs.
+From refinedrust Require Import programs.
 From refinedrust.array Require Import def unfold.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 Section stratify.
   Context `{!typeGS Σ}.

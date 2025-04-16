@@ -1,6 +1,6 @@
 From refinedrust Require Import type.
 From refinedrust Require Import programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 Definition prod_vec (A : Type) (n : nat) := plist id (replicate n A).
 Definition list_to_tup {A} (l : list A) : prod_vec A (length l) := list_to_plist A l.

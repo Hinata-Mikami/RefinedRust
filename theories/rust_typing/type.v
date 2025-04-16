@@ -4,7 +4,7 @@ From caesium Require Export proofmode notation syntypes.
 From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Export base util hlist pinned_borrows lft_contexts gvar_refinement memcasts.
 From caesium Require Import loc.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * RefinedRust's notion of value types *)
 

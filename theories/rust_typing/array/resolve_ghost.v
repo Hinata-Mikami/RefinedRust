@@ -1,8 +1,6 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import uninit value alias_ptr programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import programs.
+From refinedrust Require Import options.
 
 (** * Iterated version of resolve_ghost for arrays *)
 

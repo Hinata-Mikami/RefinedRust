@@ -1,6 +1,7 @@
 From iris.bi Require Export fractional.
 From refinedrust Require Export base.
 From refinedrust Require Export ghost_var_dfrac.
+From refinedrust Require Import options.
 
 (** * Borrow variables *)
 

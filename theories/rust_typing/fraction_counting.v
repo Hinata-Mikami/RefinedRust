@@ -2,8 +2,8 @@ From iris.proofmode Require Import tactics.
 From iris.base_logic Require Import ghost_map.
 From iris.bi.lib Require Export fractional.
 From iris.algebra Require Import frac.
-From iris Require Import prelude options.
-Set Default Proof Using "Type".
+From iris Require Import prelude.
+From refinedrust Require Import options.
 
 (** * Ghost state for turning fractional permissions into counting permissions, used by our lifetime contexts *)
 

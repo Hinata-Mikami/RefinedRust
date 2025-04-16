@@ -1,8 +1,7 @@
-From caesium Require Import derived.
 From refinedrust Require Export base type ltypes.
 From refinedrust Require Import programs.
 From refinedrust.mut_ref Require Import def subltype unfold. 
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 (** ** Stratification rules for mutable references *)
 Section extract.

@@ -1,6 +1,6 @@
 From refinedrust Require Export type ltypes programs .
 From refinedrust Require Import uninit.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * A type modelled after Rust's MaybeUninit *)
 (** We do not represent this directly with a union abstraction for simplicity, but rather directly define what the Rust memory representation of [MaybeUninit] is. *)

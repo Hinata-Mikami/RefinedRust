@@ -1,6 +1,6 @@
 From refinedrust Require Export type int.
 From refinedrust Require Import programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Rules for integer types *)
 

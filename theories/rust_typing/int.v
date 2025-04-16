@@ -1,5 +1,5 @@
 From refinedrust Require Export type.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Integer types *)
 

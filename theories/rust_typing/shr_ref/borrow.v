@@ -1,8 +1,7 @@
-From caesium Require Import derived.
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import programs.
 From refinedrust.shr_ref Require Import def.
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 (** ** Borrow rule for shared references *)
 

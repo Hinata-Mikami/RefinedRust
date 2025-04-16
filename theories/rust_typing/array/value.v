@@ -1,9 +1,7 @@
 From refinedrust Require Export type ltypes.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import uninit value programs.
+From refinedrust Require Import value programs.
 From refinedrust.array Require Import def.
-Set Default Proof Using "Type".
-
+From refinedrust Require Import options.
 
 Section value.
   Context `{!typeGS Σ}.

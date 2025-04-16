@@ -1,5 +1,5 @@
 From refinedrust Require Import type programs program_rules.
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 Section type_inh.
   Context `{!typeGS Σ}.

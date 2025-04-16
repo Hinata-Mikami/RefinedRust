@@ -1,7 +1,7 @@
 From lrust.lifetime Require Export lifetime.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic Require Import saved_prop.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 (** * Defining pinned borrows on top of the existing lifetime logic. *)
 

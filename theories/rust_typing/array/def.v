@@ -1,7 +1,7 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import uninit_def int.
 From refinedrust Require Import programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** * Array types *)
 

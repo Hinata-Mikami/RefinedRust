@@ -1,6 +1,6 @@
 From caesium Require Import lang proofmode derived lifting.
 From refinedrust Require Export base type ltypes lft_contexts annotations ltype_rules.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 
 Section named_lfts.
@@ -61,7 +61,7 @@ Section credits.
    *)
   Definition credit_store_def (n m : nat) : iProp Σ :=
     £(S n) ∗ atime (S m).
-  Definition credit_store_aux : seal (@credit_store_def). by eexists. Qed.
+  Definition credit_store_aux : seal (@credit_store_def). Proof. by eexists. Qed.
   Definition credit_store := unseal credit_store_aux.
   Definition credit_store_eq : @credit_store = @credit_store_def := seal_eq credit_store_aux.
 

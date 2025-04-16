@@ -1,7 +1,7 @@
 From caesium Require Export proofmode notation.
 From caesium Require Import derived.
 From refinedrust Require Export ltypes.
-From iris Require Import options.
+From refinedrust Require Import options.
 
 
 (** * Ltype rules *)

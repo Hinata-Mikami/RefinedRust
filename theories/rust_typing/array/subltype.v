@@ -1,7 +1,7 @@
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import ltype_rules.
 From refinedrust Require Import programs.
-Set Default Proof Using "Type".
+From refinedrust Require Import options.
 
 (** ** Properties of the [ArrayLtype] *)
 

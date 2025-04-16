@@ -1,8 +1,7 @@
-From caesium Require Import derived.
 From refinedrust Require Export type ltypes.
 From refinedrust Require Import programs.
 From refinedrust.shr_ref Require Import def subtype subltype unfold.
-From iris.prelude Require Import options.
+From refinedrust Require Import options.
 
 (** ** Subtyping instances for shared references *)
 
