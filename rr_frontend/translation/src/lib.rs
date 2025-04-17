@@ -565,17 +565,20 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
             writeln!(spec_file).unwrap();
 
-            for (_, fun) in self.procedure_registry.iter_code() {
-                if fun.spec.is_complete() {
-                    //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
-                    //warn!("Function specification for {} is missing arguments", fun.name());
-                    //}
+            for (did, fun) in self.procedure_registry.iter_code() {
+                let meta = self.procedure_registry.lookup_function(*did).unwrap();
+                if !meta.is_trait_default() {
+                    if fun.spec.is_complete() {
+                        //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
+                        //warn!("Function specification for {} is missing arguments", fun.name());
+                        //}
+                        writeln!(spec_file, "{}.", fun.spec.generate_trait_req_incl_def()).unwrap();
+                        writeln!(spec_file, "{}", fun.spec).unwrap();
+                    } else {
+                        warn!("No specification for {}", fun.name());
 
-                    writeln!(spec_file, "{}", fun.spec).unwrap();
-                } else {
-                    warn!("No specification for {}", fun.name());
-
-                    writeln!(spec_file, "(* No specification provided for {} *)", fun.name()).unwrap();
+                        writeln!(spec_file, "(* No specification provided for {} *)", fun.name()).unwrap();
+                    }
                 }
             }
             writeln!(spec_file).unwrap();
@@ -583,12 +586,16 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         // also write only-spec functions specs
         {
-            for (_, spec) in self.procedure_registry.iter_only_spec() {
-                if spec.is_complete() {
-                    writeln!(spec_file, "{spec}").unwrap();
-                } else {
-                    writeln!(spec_file, "(* No specification provided for {} *)", spec.function_name)
-                        .unwrap();
+            for (did, spec) in self.procedure_registry.iter_only_spec() {
+                let meta = self.procedure_registry.lookup_function(*did).unwrap();
+                if !meta.is_trait_default() {
+                    if spec.is_complete() {
+                        writeln!(spec_file, "{}.", spec.generate_trait_req_incl_def()).unwrap();
+                        writeln!(spec_file, "{spec}").unwrap();
+                    } else {
+                        writeln!(spec_file, "(* No specification provided for {} *)", spec.function_name)
+                            .unwrap();
+                    }
                 }
             }
             writeln!(spec_file).unwrap();
@@ -638,7 +645,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             let path = file_path(fun.name());
             let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
 
-            let mode = self.procedure_registry.lookup_function_mode(*did).unwrap();
+            let meta = self.procedure_registry.lookup_function(*did).unwrap();
+            let mode = meta.get_mode();
 
             if fun.spec.is_complete() && mode.needs_proof() {
                 let mut imports = common_imports.clone();
@@ -666,11 +674,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 )
                 .unwrap();
 
-                fun.generate_lemma_statement(&mut template_file).unwrap();
+                fun.generate_lemma_statement(&mut template_file, meta.is_trait_default()).unwrap();
 
                 write!(template_file, "End proof.\n\n").unwrap();
 
-                fun.generate_proof_prelude(&mut template_file).unwrap();
+                fun.generate_proof_prelude(&mut template_file, meta.is_trait_default()).unwrap();
             } else if !fun.spec.is_complete() {
                 write!(template_file, "(* No specification provided *)").unwrap();
             } else {
@@ -1016,6 +1024,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     shim.trait_req_incl_name.clone(),
                     shim.name.clone(),
                     procedures::Mode::Shim,
+                    false,
                 );
                 vcx.procedure_registry.register_function(did, meta)?;
             },
@@ -1129,6 +1138,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     trait_req_incl_name.clone(),
                     name.clone(),
                     procedures::Mode::Shim,
+                    false,
                 );
 
                 vcx.procedure_registry.register_function(method_did, meta)?;
@@ -1185,6 +1195,13 @@ fn register_functions<'tcx>(
         let code_name = format!("{}_def", fname);
         let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
+        // check whether this is part of a trait decl
+        let is_default_trait_impl = vcx.env.tcx().trait_of_item(f.to_def_id()).is_some();
+
+        if mode == procedures::Mode::Shim && is_default_trait_impl {
+            warn!("ignoring rr::shim attribute on default trait impl");
+            mode = procedures::Mode::Prove;
+        }
         if mode == procedures::Mode::Shim {
             // TODO better error message
             let attrs = vcx.env.get_attributes(f.to_def_id());
@@ -1203,6 +1220,7 @@ fn register_functions<'tcx>(
                 annot.trait_req_incl_name,
                 fname.clone(),
                 procedures::Mode::Shim,
+                is_default_trait_impl,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
@@ -1221,6 +1239,7 @@ fn register_functions<'tcx>(
                 trait_req_incl_name,
                 fname.clone(),
                 procedures::Mode::CodeShim,
+                is_default_trait_impl,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
@@ -1238,7 +1257,15 @@ fn register_functions<'tcx>(
             mode = procedures::Mode::Prove;
         }
 
-        let meta = procedures::Meta::new(spec_name, code_name, trait_req_incl_name, fname, mode);
+        //info!("Registering function {f:?} with is_default_trait_impl={is_default_trait_impl}");
+        let meta = procedures::Meta::new(
+            spec_name,
+            code_name,
+            trait_req_incl_name,
+            fname,
+            mode,
+            is_default_trait_impl,
+        );
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
     }
@@ -1429,7 +1456,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
 }
 
 /// Register traits.
-fn register_traits(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
     let traits = vcx.env.get_traits();
 
     // order according to dependencies first
@@ -1463,7 +1490,7 @@ fn register_traits(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
         }
 
         vcx.trait_registry
-            .register_trait(t)
+            .register_trait(t, &mut vcx.procedure_registry)
             .map_err(|x| format!("{x:?}"))
             .map_err(|e| format!("{e:?}"))?;
     }
@@ -1570,7 +1597,19 @@ fn assemble_trait_impls<'tcx, 'rcx>(
                     }
                 } else {
                     // this is possible for functions with a default impl.
-                    // TODO think about that case.
+
+                            // TODO
+                            // we need the spec name / term and the direct generic scope of the function.
+
+                            // for the generic scope:
+                            // - we are already quantifying the impl args.
+                            // - we need to instantiate the trait's args.
+                            // - I guess
+
+                            let fn_name = base::strip_coq_ident(vcx.env.tcx().item_name(x.def_id).as_str());
+                            let _spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
+
+                            unimplemented!();
                 }
             }
         }
@@ -1756,7 +1795,7 @@ where
 
     register_functions(&mut vcx).map_err(|x| x.to_string())?;
 
-    register_traits(&vcx)?;
+    register_traits(&mut vcx)?;
 
     register_consts(&mut vcx)?;
 

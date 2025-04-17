@@ -441,6 +441,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
+                // TODO: EnumDiscriminant should already do the load.
                 let discriminant_acc = radium::Expr::EnumDiscriminant {
                     els: els.to_string(),
                     e: Box::new(translated_pl),

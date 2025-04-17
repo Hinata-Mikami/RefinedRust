@@ -2771,9 +2771,9 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
         // finally, the trait spec parameters
         let trait_params = if self.spec.needs_trait_req_params() {
-            self.generics.get_all_attr_trait_parameters(true)
+            self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Attrs)
         } else {
-            self.generics.get_surrounding_attr_trait_parameters(true)
+            self.generics.get_surrounding_attr_trait_parameters(IncludeSelfReq::Attrs)
         };
 
         params.append(trait_params.0);
@@ -2789,9 +2789,11 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
         // finally, the trait spec parameters
         let trait_params = if self.spec.needs_trait_req_params() {
-            self.generics.get_all_trait_parameters(true)
+            // TODO?
+            self.generics.get_all_trait_parameters(IncludeSelfReq::AttrsSpec)
         } else {
-            self.generics.get_surrounding_trait_parameters(true)
+            // TODO?
+            self.generics.get_surrounding_trait_parameters(IncludeSelfReq::AttrsSpec)
         };
 
         params.append(trait_params.0);
@@ -2801,7 +2803,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
     /// Get all Coq binders for the Coq lemma definition.
     #[must_use]
-    pub(crate) fn get_all_lemma_coq_params(&self) -> coq::binder::BinderList {
+    pub(crate) fn get_all_lemma_coq_params(&self, self_req: IncludeSelfReq) -> coq::binder::BinderList {
         // Important: early parameters should always be first, as they include trait specs.
         // Important: the type parameters should be introduced before late parameters to ensure they are in
         // scope.
@@ -2814,9 +2816,9 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
         // finally, the trait spec parameters
         let trait_params = if self.spec.needs_trait_req_params() {
-            self.generics.get_all_trait_parameters(true)
+            self.generics.get_all_trait_parameters(self_req)
         } else {
-            self.generics.get_surrounding_trait_parameters(true)
+            self.generics.get_surrounding_trait_parameters(self_req)
         };
 
         params.append(trait_params.0);
@@ -2836,7 +2838,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
     }
 
     #[must_use]
-    fn generate_trait_req_incl_def(&self) -> coq::command::Definition {
+    pub fn generate_trait_req_incl_def(&self) -> coq::command::Definition {
         let params = self.get_all_trait_req_coq_params();
 
         let mut late_pre = Vec::new();
@@ -2848,10 +2850,11 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
-            if !trait_use.is_used_in_self_trait {
-                let spec_precond = trait_use.make_spec_param_precond();
-                late_pre.push(spec_precond);
-            }
+            // TODO?
+            //if !trait_use.is_used_in_self_trait {
+            let spec_precond = trait_use.make_spec_param_precond();
+            late_pre.push(spec_precond);
+            //}
         }
         let term = coq::term::Term::Infix("∧".to_owned(), late_pre);
 
@@ -2874,8 +2877,6 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut doc = coq::Document::default();
-        // first generate the trait req incl definition
-        doc.push(coq::command::Command::Definition(self.generate_trait_req_incl_def()));
 
         let params = self.get_all_spec_coq_params();
 
@@ -3896,6 +3897,28 @@ impl<'def> GenericScopeInst<'def> {
     }
 }
 
+/// How to handle the Self trait requirement in the context of a trait declaration.
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum IncludeSelfReq {
+    // Do not include the self requirement at all
+    Dont,
+    // only include the attributes
+    Attrs,
+    // include both the attribute and specification
+    AttrsSpec,
+}
+impl IncludeSelfReq {
+    #[must_use]
+    pub fn include_attrs(self) -> bool {
+        self == Self::Attrs || self == Self::AttrsSpec
+    }
+
+    #[must_use]
+    pub fn include_spec(self) -> bool {
+        self == Self::AttrsSpec
+    }
+}
+
 /// A scope of generics.
 #[derive(Clone, Debug)]
 pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
@@ -4173,27 +4196,27 @@ impl<'def, T: TraitReqInfo> Display for GenericScope<'def, T> {
 
 impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
     #[must_use]
-    fn get_direct_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_direct_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(false, true, include_self, false)
     }
 
     #[must_use]
-    fn get_surrounding_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_surrounding_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, false, include_self, true)
     }
 
     #[must_use]
-    fn get_surrounding_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_surrounding_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, false, include_self, false)
     }
 
     #[must_use]
-    fn get_all_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_all_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, true)
     }
 
     #[must_use]
-    fn get_all_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_all_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
 
@@ -4202,7 +4225,7 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
         &self,
         include_surrounding: bool,
         include_direct: bool,
-        include_self: bool,
+        include_self: IncludeSelfReq,
         include_spec: bool,
     ) -> coq::binder::BinderList {
         let mut params = Vec::new();
@@ -4219,12 +4242,12 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
 
-            if !trait_use.is_used_in_self_trait || include_self {
+            if !trait_use.is_used_in_self_trait || include_self.include_attrs() {
                 params.push(trait_use.get_attr_param());
             }
 
             // if we're not in the same trait declaration, add the spec
-            if include_spec && !trait_use.is_used_in_self_trait {
+            if include_spec && (!trait_use.is_used_in_self_trait || include_self.include_spec()) {
                 params.push(trait_use.get_spec_param());
             }
         }
@@ -4290,7 +4313,7 @@ fn make_trait_instance<'def>(
     }
 
     // also quantify over all trait deps
-    let mut trait_params = scope.get_all_attr_trait_parameters(false);
+    let mut trait_params = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
     def_params.append(&mut trait_params.0);
 
     let def_params = coq::binder::BinderList::new(def_params);
@@ -4328,7 +4351,8 @@ fn make_trait_instance<'def>(
             }
 
             // instantiate with all trait specs
-            let trait_params = spec.generics.get_all_attr_trait_parameters(false).make_using_terms();
+            let trait_params =
+                spec.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
             write!(body, " {trait_params}")?;
 
             write!(body, "\n")?;
@@ -4352,7 +4376,7 @@ fn make_trait_instance<'def>(
             // we leave the direct type parameters and associated types of the function uninstantiated
 
             // provide type annotation
-            let num_lifetimes = spec.generics.get_num_lifetimes() - scope.lfts.len();
+            let num_lifetimes = spec.generics.get_num_lifetimes() - scope.get_num_lifetimes();
             write!(body, " : (spec_with {num_lifetimes} [")?;
             let direct_tys = spec.generics.get_direct_ty_params_with_assocs();
             write_list!(body, &direct_tys.params, "; ", |x| x.refinement_type.clone())?;
@@ -4363,7 +4387,7 @@ fn make_trait_instance<'def>(
             // We quantify over these at the record item level.
             let mut direct_params = spec.generics.get_direct_ty_params_with_assocs().get_coq_ty_params();
             // also quantify over direct trait requirements
-            let direct_trait_params = spec.generics.get_direct_attr_trait_parameters(false);
+            let direct_trait_params = spec.generics.get_direct_attr_trait_parameters(IncludeSelfReq::Dont);
             direct_params.append(direct_trait_params.0);
 
             let item = coq::term::RecordBodyItem {
@@ -4498,7 +4522,7 @@ impl<'def> TraitSpecDecl<'def> {
             // params are the rt and st of the direct type parameters
             let mut params = item_spec.generics.get_direct_ty_params_with_assocs().get_coq_ty_params();
             // also quantify over the trait specs etc.
-            let trait_params = item_spec.generics.get_direct_attr_trait_parameters(false);
+            let trait_params = item_spec.generics.get_direct_attr_trait_parameters(IncludeSelfReq::Dont);
             params.append(trait_params.0);
 
             let item = coq::term::RecordDeclItem {
@@ -4555,7 +4579,7 @@ impl<'def> TraitSpecDecl<'def> {
         for (name, decl) in &self.default_spec.methods {
             let mut param_decls = decl.generics.get_direct_ty_params_with_assocs().get_coq_ty_params();
             // also quantify over the trait specs etc.
-            let trait_params = decl.generics.get_direct_attr_trait_parameters(false);
+            let trait_params = decl.generics.get_direct_attr_trait_parameters(IncludeSelfReq::Dont);
             param_decls.append(trait_params.0);
 
             let param_uses = param_decls.make_using_terms();
@@ -4656,6 +4680,11 @@ impl<'def> Display for TraitSpecDecl<'def> {
         )?;
         write!(f, "{base_decls}\n")?;
 
+        // write the trait_req_incls for the functions
+        for item_spec in self.default_spec.methods.values() {
+            write!(f, "{}.\n", item_spec.generate_trait_req_incl_def())?;
+        }
+
         write!(f, "End {}.\n", self.lit.name)
     }
 }
@@ -4728,7 +4757,7 @@ impl<'def> TraitRefInst<'def> {
         // get all type parameters
         let mut binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
         // add all dependent attrs
-        binders.append(self.generics.get_all_attr_trait_parameters(false).0);
+        binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
         coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args.0)
@@ -4744,7 +4773,7 @@ impl<'def> TraitRefInst<'def> {
         let tys = self.generics.get_all_ty_params_with_assocs();
         let mut binders = tys.get_coq_ty_params();
         // specialize to all attribute records
-        binders.append(self.generics.get_all_attr_trait_parameters(false).0);
+        binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
         let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args.0).to_string();
@@ -4822,7 +4851,7 @@ impl<'def> TraitImplSpec<'def> {
         def_rts_params.0.insert(0, coq::binder::Binder::new_rrgs());
 
         // add other attrs
-        def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
+        def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiate the type of the spec record
         let attrs_type_rts: Vec<coq::term::Type> =
@@ -4923,7 +4952,7 @@ impl<'def> TraitImplSpec<'def> {
         // this is parametric in the rts, sts, semtys attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
         let mut params = ty_params.get_coq_ty_params();
-        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
+        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiation of the trait
         let incl_name = self.trait_ref.of_trait.spec_incl_name();
@@ -4959,7 +4988,7 @@ impl<'def> TraitImplSpec<'def> {
         // this is parametric in the rts, sts, semtys attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
         let mut params = ty_params.get_coq_ty_params();
-        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
+        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         let ty_term =
             format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
@@ -5092,7 +5121,8 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
 
         // also instantiate the direct trait requirements of the function, which should be
         // quantified in the same way in the surrounding scope
-        let trait_params_inst = scope.get_direct_attr_trait_parameters(false).make_using_terms();
+        let trait_params_inst =
+            scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms();
 
         write!(
             f,

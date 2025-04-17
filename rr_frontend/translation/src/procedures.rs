@@ -61,11 +61,18 @@ impl Mode {
 
 #[derive(Clone)]
 pub struct Meta {
+    /// name for the specification
     spec_name: String,
+    /// name for the code
     code_name: String,
+    /// name for the trait inclusion def
     trait_req_incl_name: String,
+    /// mangled name of the function
     name: String,
+    /// what should RefinedRust do with this function?
     mode: Mode,
+    /// true if this is a default trait impl
+    is_default_trait_impl: bool,
 }
 
 impl Meta {
@@ -75,6 +82,7 @@ impl Meta {
         trait_req_incl_name: String,
         name: String,
         mode: Mode,
+        is_default_trait_impl: bool,
     ) -> Self {
         Self {
             spec_name,
@@ -82,6 +90,7 @@ impl Meta {
             trait_req_incl_name,
             name,
             mode,
+            is_default_trait_impl,
         }
     }
 
@@ -103,6 +112,10 @@ impl Meta {
 
     pub const fn get_mode(&self) -> Mode {
         self.mode
+    }
+
+    pub const fn is_trait_default(&self) -> bool {
+        self.is_default_trait_impl
     }
 }
 
@@ -162,6 +175,21 @@ impl<'def> Scope<'def> {
             )))
         } else {
             Ok(())
+        }
+    }
+
+    /// For a function which is a trait member's default impl, provide the overridden spec names
+    /// from the trait registry.
+    pub fn override_trait_default_impl_names(
+        &mut self,
+        did: DefId,
+        spec_name: &str,
+        trait_req_incl_name: &str,
+    ) {
+        if let Some(names) = self.name_map.get_mut(&did) {
+            assert!(names.is_default_trait_impl);
+            names.spec_name = spec_name.to_owned();
+            names.trait_req_incl_name = trait_req_incl_name.to_owned();
         }
     }
 

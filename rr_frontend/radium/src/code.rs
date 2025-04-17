@@ -780,7 +780,7 @@ impl<'def> Function<'def> {
         &self.code.name
     }
 
-    pub fn generate_lemma_statement<F>(&self, f: &mut F) -> Result<(), io::Error>
+    pub fn generate_lemma_statement<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
     where
         F: io::Write,
     {
@@ -790,8 +790,11 @@ impl<'def> Function<'def> {
 
         writeln!(f, "Definition {}_lemma (π : thread_id) : Prop :=", self.name())?;
 
+        let include_self_req =
+            if is_default_trait_impl { IncludeSelfReq::AttrsSpec } else { IncludeSelfReq::Attrs };
+
         // write coq parameters
-        let params = self.spec.get_all_lemma_coq_params();
+        let params = self.spec.get_all_lemma_coq_params(include_self_req);
         let has_params =
             !params.0.is_empty() || !self.other_functions.is_empty() || !self.used_statics.is_empty();
         if has_params {
@@ -912,7 +915,7 @@ impl<'def> Function<'def> {
         write!(f, ").\n")
     }
 
-    pub fn generate_proof_prelude<F>(&self, f: &mut F) -> Result<(), io::Error>
+    pub fn generate_proof_prelude<F>(&self, f: &mut F, is_default_trait_impl: bool) -> Result<(), io::Error>
     where
         F: io::Write,
     {
@@ -920,13 +923,16 @@ impl<'def> Function<'def> {
         let mut writer = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
         let f = &mut writer;
 
+        let include_self_req =
+            if is_default_trait_impl { IncludeSelfReq::AttrsSpec } else { IncludeSelfReq::Attrs };
+
         write!(f, "Ltac {}_prelude :=\n", self.name())?;
 
         write!(f, "unfold {}_lemma;\n", self.name())?;
         write!(f, "set (FN_NAME := FUNCTION_NAME \"{}\");\n", self.name())?;
 
         // intros spec params
-        let params = self.spec.get_all_lemma_coq_params();
+        let params = self.spec.get_all_lemma_coq_params(include_self_req);
         if !params.0.is_empty() {
             write!(f, "intros")?;
             for param in &params.0 {

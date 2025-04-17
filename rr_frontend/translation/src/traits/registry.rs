@@ -25,7 +25,7 @@ use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTr
 use crate::traits::region_bi_folder::RegionBiFolder;
 use crate::traits::requirements;
 use crate::types::scope;
-use crate::{attrs, traits, types};
+use crate::{attrs, procedures, traits, types};
 
 pub struct TR<'tcx, 'def> {
     /// environment
@@ -193,7 +193,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Register a new annotated trait in the local crate with the registry.
-    pub fn register_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
+    pub fn register_trait(
+        &'def self,
+        did: LocalDefId,
+        proc_registry: &mut procedures::Scope<'def>,
+    ) -> Result<(), TranslationError<'tcx>> {
         trace!("enter TR::register_trait for did={did:?}");
 
         {
@@ -226,7 +230,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // (in fact, their environment contains their self instance)
         let lit_trait_spec_ref = self.register_shim(did.to_def_id(), lit_trait_spec)?;
 
-        let cont = || -> Result<(), TranslationError<'tcx>> {
+        let mut cont = || -> Result<(), TranslationError<'tcx>> {
             // get generics
             let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
             let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
@@ -276,6 +280,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         self,
                     )?;
                     let spec_ref = self.fn_spec_arena.alloc(spec);
+
+                    // override the names in the procedure registry
+                    proc_registry.override_trait_default_impl_names(c.def_id, &spec_name, trait_incl_name);
 
                     methods.insert(method_name, &*spec_ref);
                 } else if ty::AssocKind::Type == c.kind {
