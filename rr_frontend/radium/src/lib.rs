@@ -18,8 +18,8 @@ fn make_indent(i: usize) -> String {
 
 /// Extend the `core::fmt::Display` trait to display a collection separated by a separator.
 ///
-/// The macro can take an optional fourth argument to customise the format string (default: `"{}"`).
-/// This fourth argument can also be a closure that takes an element from the collection and returns the
+/// The macro can take an optional third argument to customise the format string (default: `"{}"`).
+/// This third argument can also be a closure that takes an element from the collection and returns the
 /// formatted string.
 #[macro_export]
 macro_rules! display_list {

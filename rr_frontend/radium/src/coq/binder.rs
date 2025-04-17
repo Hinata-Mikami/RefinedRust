@@ -10,7 +10,7 @@ use derive_more::Display;
 use crate::coq::term;
 use crate::display_list;
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Kind {
     /// `()
     Explicit,
@@ -25,7 +25,7 @@ pub enum Kind {
 /// A [binder].
 ///
 /// [binder]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#grammar-token-binder
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum Binder {
     #[display("({}: {})", self.get_name(), _1)]
     Default(Option<String>, term::Type),
@@ -138,7 +138,7 @@ impl Binder {
 /// [Implicit argument] binders.
 ///
 /// [Implicit argument]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-implicit_binders
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Implicit {
     kind: Kind,
     name: Option<String>,
@@ -165,7 +165,7 @@ impl fmt::Display for Implicit {
 /// [Implicit generalization] binders.
 ///
 /// [Implicit generalization]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-generalizing_binder
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Generalizing {
     kind: Kind,
     name: Option<String>,
@@ -191,7 +191,7 @@ impl fmt::Display for Generalizing {
 pub type Pattern = String;
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 #[display("{}", display_list!(_0, " "))]
 pub struct BinderList(pub Vec<Binder>);
 

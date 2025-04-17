@@ -46,25 +46,35 @@ pub enum RefinedRustType {
     #[display("rtype")]
     Rtype,
 
+    /// `spec_with (lfts: nat) (rts: list Type) (SPEC: Type)` type
+    #[display("(spec_with {} {} {})", _0, coq::term::fmt_list(_1), &_2)]
+    SpecWith(usize, Vec<coq::term::Type>, Box<coq::term::Type>),
+
     /// `struct_layout` type
     #[display("struct_layout")]
     StructLayout,
+
+    /// `struct_t (sls: struct_layout_spec) (tys: hlist type (list Type))` type
+    #[display("(struct_t {} {})", _0, coq::term::fmt_hlist(_1))]
+    StructT(Box<coq::term::Gallina>, Vec<coq::term::Type>),
 
     /// `syn_type` type
     #[display("syn_type")]
     SynType,
 
-    /// `(type _)` type
+    /// `type (rt: Type)` type
     #[display("(type {})", &_0)]
     Ttype(Box<coq::term::Type>),
-
-    /// `(ty_syn_type _)` type
-    #[display("(ty_syn_type {})", &_0)]
-    TySynType(Box<coq::term::Type>),
 }
 
 impl From<RefinedRustType> for coq::term::Type {
     fn from(ty: RefinedRustType) -> Self {
         Self::UserDefined(ty)
+    }
+}
+
+impl From<Box<RefinedRustType>> for Box<coq::term::Type> {
+    fn from(ty: Box<RefinedRustType>) -> Self {
+        Self::new(coq::term::Type::UserDefined(*ty))
     }
 }

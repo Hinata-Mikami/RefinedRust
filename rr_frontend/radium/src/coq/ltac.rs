@@ -20,7 +20,7 @@ use crate::coq::{term, Vernac};
 /// [tactic]: https://coq.inria.fr/doc/v8.20/refman/coq-tacindex.html
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum LTac {
-    /// Placeholder for not yet imported definitions. Will be removed.
+    /// TODO: To be removed - LTac<T> instead
     #[display("{}.", _0)]
     Literal(String),
 
@@ -33,7 +33,7 @@ pub enum LTac {
     /// [`Let-in`] syntax
     ///
     /// [`Let-in`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
-    #[display("{}.", *_0)]
+    #[display("{}", *_0)]
     LetIn(Box<LetIn>),
 }
 
@@ -44,6 +44,13 @@ pub enum LTac {
 #[display("let {} := {} in {}", name, t1, t2)]
 pub struct LetIn {
     name: String,
-    t1: LTac,
+    t1: term::Gallina,
     t2: LTac,
+}
+
+impl LetIn {
+    #[must_use]
+    pub const fn new(name: String, t1: term::Gallina, t2: LTac) -> Self {
+        Self { name, t1, t2 }
+    }
 }

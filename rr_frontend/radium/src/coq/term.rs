@@ -21,7 +21,7 @@ use crate::{display_list, term, BASE_INDENT};
 /// A [term].
 ///
 /// [term]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-term
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Gallina {
     /// A literal
     Literal(String),
@@ -144,7 +144,7 @@ impl<T, U> App<T, U> {
 /// A [record].
 ///
 /// [record]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#constructing-records
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RecordBody {
     pub items: Vec<RecordBodyItem>,
 }
@@ -162,7 +162,7 @@ impl Display for RecordBody {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RecordBodyItem {
     pub name: String,
     pub params: binder::BinderList,
@@ -183,7 +183,15 @@ impl Display for RecordBodyItem {
 /// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 pub type Type = RocqType<term::RefinedRustType>;
 
-fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+    format!("[{}]", display_list!(v, "; "))
+}
+
+pub(crate) fn fmt_hlist<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+    format!("+[{}]", display_list!(v, "; "))
+}
+
+pub(crate) fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),

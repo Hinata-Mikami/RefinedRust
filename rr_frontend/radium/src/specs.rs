@@ -1367,6 +1367,7 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
+    #[deprecated(note = "Use `get_coq_type_term` instead")]
     pub fn generate_coq_type_term(&self, sls_app: Vec<String>) -> String {
         let mut out = String::with_capacity(200);
 
@@ -1378,58 +1379,103 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
+    pub fn get_coq_type_term(&self, sls_app: Vec<coq::term::Gallina>) -> coq::term::Type {
+        let sls = coq::term::Gallina::App(Box::new(coq::term::App::new(
+            coq::term::Gallina::Literal(self.sls_def_name.clone()),
+            sls_app,
+        )));
+
+        let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
+
+        term::RefinedRustType::StructT(Box::new(sls), tys).into()
+    }
+
+    #[must_use]
     pub fn generate_coq_type_def_core(
         &self,
         ty_params: &GenericScope<'def>,
         context_names: &[String],
-    ) -> String {
-        let mut out = String::with_capacity(200);
-        let indent = "  ";
+    ) -> coq::Document {
+        let mut document = coq::Document::default();
 
         let all_ty_params = ty_params.get_all_ty_params_with_assocs();
 
-        // generate terms to apply the sls app to
-        let mut sls_app = Vec::new();
-        for names in &all_ty_params.params {
-            // TODO this is duplicated with the same processing for Type::Literal...
-            let term = format!("(ty_syn_type {})", names.type_term);
-            sls_app.push(term);
+        // Generate terms to apply the sls app to
+        let sls_app: Vec<_> = all_ty_params
+            .params
+            .iter()
+            .map(|names| {
+                coq::term::Gallina::RecordProj(
+                    Box::new(coq::term::Gallina::Literal(names.type_term.clone())),
+                    "ty_syn_type".to_owned(),
+                )
+            })
+            .collect();
+
+        // Intro to main def
+        document.push(coq::command::Command::Definition(coq::command::Definition {
+            name: self.plain_ty_name.clone(),
+            params: coq::binder::BinderList::empty(),
+            ty: Some(ty_params.get_spec_all_type_term(
+                Box::new(term::RefinedRustType::Ttype(Box::new(self.rfn_type()))).into(),
+            )),
+            body: None,
+        }));
+
+        {
+            let mut proof_document = coq::ProofDocument::default();
+
+            proof_document.push(coq::Vernac::LTac(coq::ltac::LTac::Exact(coq::term::Gallina::App(
+                Box::new(coq::term::App::new(
+                    // TODO: `ty_params` must create a specific Coq object.
+                    coq::term::Gallina::Literal(ty_params.to_string()),
+                    vec![coq::term::Gallina::Literal(self.get_coq_type_term(sls_app).to_string())],
+                )),
+            ))));
+
+            document.push(coq::command::Command::ProofUsing((context_names.join("{}"), proof_document)));
+            document.push(coq::command::Command::Defined);
         }
 
-        // intro to main def
-        write!(
-            out,
-            "{indent}Definition {} : {} (type ({})).\n",
-            self.plain_ty_name,
-            ty_params.get_all_type_term(),
-            self.rfn_type()
-        )
-        .unwrap();
-        write!(
-            out,
-            "{indent}Proof using {}. exact ({ty_params} {}). Defined.\n",
-            context_names.join(" "),
-            self.generate_coq_type_term(sls_app)
-        )
-        .unwrap();
+        // Generate the refinement type definition
+        document.push(coq::command::Command::Definition(coq::command::Definition {
+            name: self.plain_rt_def_name.clone(),
+            params: coq::binder::BinderList::empty(),
+            ty: Some(coq::term::Type::Type),
+            body: None,
+        }));
 
-        // generate the refinement type definition
-        let rt_params = all_ty_params.get_coq_ty_rt_params();
-        write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_def_name).unwrap();
-        write!(
-            out,
-            "{indent}Proof using {} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-            rt_params.make_using_terms(),
-            context_names.join(" "),
-            self.plain_ty_name
-        )
-        .unwrap();
+        {
+            let mut proof_document = coq::ProofDocument::default();
 
-        // make it Typeclasses Transparent
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_ty_name).unwrap();
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_rt_def_name).unwrap();
+            let rt_params = all_ty_params.get_coq_ty_rt_params();
+            let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
 
-        out
+            proof_document.push(coq::ltac::LTac::LetIn(Box::new(coq::ltac::LetIn::new(
+                "__a".to_owned(),
+                coq::term::Gallina::App(Box::new(coq::term::App::new(
+                    coq::term::Gallina::Literal("normalized_rt_of_spec_ty".to_owned()),
+                    vec![coq::term::Gallina::Literal(self.plain_ty_name.clone())],
+                ))),
+                coq::ltac::LTac::Exact(coq::term::Gallina::Literal("__a".to_owned())),
+            ))));
+
+            document.push(coq::command::Command::ProofUsing((using, proof_document)));
+            document.push(coq::command::Command::Defined);
+        }
+
+        // Make it Typeclasses Transparent
+        let typeclasses_ty = coq::command::Command::TypeclassesTransparent(self.plain_ty_name.clone());
+        let typeclasses_rt = coq::command::Command::TypeclassesTransparent(self.plain_rt_def_name.clone());
+
+        document.push(coq::Sentence::CommandAttrs(
+            coq::command::CommandAttrs::new(typeclasses_ty).attributes("global"),
+        ));
+        document.push(coq::Sentence::CommandAttrs(
+            coq::command::CommandAttrs::new(typeclasses_rt).attributes("global"),
+        ));
+
+        document
     }
 
     /// Generate a Coq definition for the struct type alias.
@@ -4354,6 +4400,23 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
+    pub fn get_spec_all_type_term(&self, spec: Box<coq::term::Type>) -> coq::term::Type {
+        let params = self.get_all_ty_params_with_assocs();
+
+        coq::term::Type::UserDefined(term::RefinedRustType::SpecWith(
+            self.get_num_lifetimes(),
+            // TODO: `LiteralTyParam` should take `Type` instead of `String`
+            params
+                .params
+                .iter()
+                .map(|x| coq::term::Type::Literal(x.refinement_type.clone()))
+                .collect(),
+            spec,
+        ))
+    }
+
+    #[must_use]
+    #[deprecated(note = "Use `get_spec_all_type_term` instead")]
     pub fn get_all_type_term(&self) -> String {
         let mut out = String::new();
 
@@ -5337,37 +5400,31 @@ impl<'def> TraitImplSpec<'def> {
 
 impl<'def> Display for TraitImplSpec<'def> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let assoc_types = Vec::new();
+        let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
+            section.push(coq::command::Command::Context(coq::command::Context::refinedrust()));
 
-        // instantiate with the parameter and associated types
-        let params_inst = self.trait_ref.get_ordered_params_inst();
+            // Instantiate with the parameter and associated types
+            let params_inst = self.trait_ref.get_ordered_params_inst();
 
-        // This relies on all the impl's functions already having been printed
-        let mut instance = make_trait_instance(
-            &self.trait_ref.generics,
-            &assoc_types,
-            &params_inst,
-            &self.methods,
-            self.trait_ref.of_trait,
-            false,
-            &self.trait_ref.impl_ref.spec_record,
-        )?;
+            // This relies on all the impl's functions already having been printed
+            let mut instance = make_trait_instance(
+                &self.trait_ref.generics,
+                &Vec::new(),
+                &params_inst,
+                &self.methods,
+                self.trait_ref.of_trait,
+                false,
+                &self.trait_ref.impl_ref.spec_record,
+            )?;
 
-        instance.insert(
-            0,
-            coq::Sentence::CommandAttrs(
-                coq::command::CommandAttrs::new(coq::command::Context::refinedrust()),
-            ),
-        );
+            section.append(&mut instance.0);
 
-        instance.append(&mut self.generate_lemma_statement().0);
-        //instance.append(&mut self.generate_proof().0);
+            section.append(&mut self.generate_lemma_statement().0);
 
-        write!(
-            f,
-            "{}\n",
-            coq::command::Command::Section((self.trait_ref.impl_ref.spec_record.clone(), instance))
-        )
+            Ok(())
+        })?;
+
+        writeln!(f, "{}", section)
     }
 }
 

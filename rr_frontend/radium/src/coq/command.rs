@@ -16,9 +16,10 @@ use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
 use crate::coq::{
-    binder, eval, inductive, module, syntax, term, typeclasses, Attribute, Document, ProofDocument, Sentence,
+    binder, eval, inductive, module, section, syntax, term, typeclasses, Attribute, Document, ProofDocument,
+    Sentence,
 };
-use crate::{make_indent, BASE_INDENT};
+use crate::BASE_INDENT;
 
 /// A [command], with optional attributes.
 ///
@@ -178,8 +179,8 @@ pub enum Command {
     /// The [`Section`] command.
     ///
     /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
-    #[display("Section {}.\n{}End {}.", _0.0, _0.1.to_string().indented(BASE_INDENT), _0.0)]
-    Section((String, Document)),
+    #[display("{}", _0)]
+    Section(section::Section),
 
     /// The [`Typeclasses Transparent`] command.
     ///

@@ -326,6 +326,7 @@ pub mod eval;
 pub mod inductive;
 pub mod ltac;
 pub mod module;
+pub mod section;
 pub mod syntax;
 pub mod term;
 pub mod typeclasses;
