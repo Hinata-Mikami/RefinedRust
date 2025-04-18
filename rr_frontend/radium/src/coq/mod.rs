@@ -326,10 +326,10 @@ pub mod eval;
 pub mod inductive;
 pub mod ltac;
 pub mod module;
+pub mod proof;
 pub mod section;
 pub mod syntax;
 pub mod term;
-pub mod typeclasses;
 
 use derive_more::{Deref, DerefMut, Display, From};
 use from_variants::FromVariants;
@@ -371,7 +371,7 @@ pub enum Sentence {
 
 /// A [proof document], composed of tactics.
 ///
-/// [proof document]: https://coq.inria.fr/doc/V8.20/refman/proof-engine/ltac.html#ltac
+/// [proof document]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#ltac
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
 #[display("{}\n", display_list!(_0, "\n"))]
 pub struct ProofDocument(pub Vec<Vernac>);
@@ -389,7 +389,7 @@ impl ProofDocument {
 
 /// [Vernacular] language, or a comment.
 ///
-/// [Vernacular]: https://coq.inria.fr/doc/V8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
+/// [Vernacular]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum Vernac {
     #[display("{}", _0)]

@@ -15,7 +15,7 @@ use derive_more::{Deref, DerefMut, Display, From};
 /// [`Open Scope`]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut, From)]
 #[from(forward)]
-#[display("Open Scope {}", _0)]
+#[display("Open Scope {}.", _0)]
 pub struct OpenScope(pub String);
 
 impl OpenScope {

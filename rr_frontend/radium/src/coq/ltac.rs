@@ -26,7 +26,7 @@ pub enum LTac {
 
     /// [`Exact`] tactic
     ///
-    /// [`Exact`]: https://rocq-prover.org/doc/V8.20.1/refman/proof-engine/tactics.html#coq:tacn.exact
+    /// [`Exact`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/tactics.html#coq:tacn.exact
     #[display("exact {}.", _0)]
     Exact(term::Gallina),
 

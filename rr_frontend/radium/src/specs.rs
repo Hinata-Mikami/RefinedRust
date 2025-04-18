@@ -17,6 +17,8 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools;
 use log::{info, trace, warn};
 
+use crate::coq::command::{Definition, DefinitionBody};
+use crate::coq::proof::Proof;
 use crate::{coq, display_list, push_str_list, term, write_list, BASE_INDENT};
 
 #[derive(Clone, Debug)]
@@ -1419,50 +1421,52 @@ impl<'def> AbstractVariant<'def> {
             ty: Some(ty_params.get_spec_all_type_term(
                 Box::new(term::RefinedRustType::Ttype(Box::new(self.rfn_type()))).into(),
             )),
-            body: None,
+            body: coq::command::DefinitionBody::Proof(coq::proof::Proof {
+                using: Some(context_names.join("{}")).filter(|s| !s.is_empty()),
+                proof: {
+                    let mut proof_document = coq::ProofDocument::default();
+
+                    proof_document.push(coq::Vernac::LTac(coq::ltac::LTac::Exact(coq::term::Gallina::App(
+                        Box::new(coq::term::App::new(
+                            // TODO: `ty_params` must create a specific Coq object.
+                            coq::term::Gallina::Literal(ty_params.to_string()),
+                            vec![coq::term::Gallina::Literal(self.get_coq_type_term(sls_app).to_string())],
+                        )),
+                    ))));
+
+                    proof_document
+                },
+                terminator: coq::proof::Terminator::Defined,
+            }),
         }));
 
-        {
-            let mut proof_document = coq::ProofDocument::default();
-
-            proof_document.push(coq::Vernac::LTac(coq::ltac::LTac::Exact(coq::term::Gallina::App(
-                Box::new(coq::term::App::new(
-                    // TODO: `ty_params` must create a specific Coq object.
-                    coq::term::Gallina::Literal(ty_params.to_string()),
-                    vec![coq::term::Gallina::Literal(self.get_coq_type_term(sls_app).to_string())],
-                )),
-            ))));
-
-            document.push(coq::command::Command::ProofUsing((context_names.join("{}"), proof_document)));
-            document.push(coq::command::Command::Defined);
-        }
-
         // Generate the refinement type definition
+        let rt_params = all_ty_params.get_coq_ty_rt_params();
+        let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
+
         document.push(coq::command::Command::Definition(coq::command::Definition {
             name: self.plain_rt_def_name.clone(),
             params: coq::binder::BinderList::empty(),
             ty: Some(coq::term::Type::Type),
-            body: None,
+            body: coq::command::DefinitionBody::Proof(coq::proof::Proof {
+                using: Some(using).filter(|s| !s.is_empty()),
+                proof: {
+                    let mut proof_document = coq::ProofDocument::default();
+
+                    proof_document.push(coq::ltac::LTac::LetIn(Box::new(coq::ltac::LetIn::new(
+                        "__a".to_owned(),
+                        coq::term::Gallina::App(Box::new(coq::term::App::new(
+                            coq::term::Gallina::Literal("normalized_rt_of_spec_ty".to_owned()),
+                            vec![coq::term::Gallina::Literal(self.plain_ty_name.clone())],
+                        ))),
+                        coq::ltac::LTac::Exact(coq::term::Gallina::Literal("__a".to_owned())),
+                    ))));
+
+                    proof_document
+                },
+                terminator: coq::proof::Terminator::Defined,
+            }),
         }));
-
-        {
-            let mut proof_document = coq::ProofDocument::default();
-
-            let rt_params = all_ty_params.get_coq_ty_rt_params();
-            let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
-
-            proof_document.push(coq::ltac::LTac::LetIn(Box::new(coq::ltac::LetIn::new(
-                "__a".to_owned(),
-                coq::term::Gallina::App(Box::new(coq::term::App::new(
-                    coq::term::Gallina::Literal("normalized_rt_of_spec_ty".to_owned()),
-                    vec![coq::term::Gallina::Literal(self.plain_ty_name.clone())],
-                ))),
-                coq::ltac::LTac::Exact(coq::term::Gallina::Literal("__a".to_owned())),
-            ))));
-
-            document.push(coq::command::Command::ProofUsing((using, proof_document)));
-            document.push(coq::command::Command::Defined);
-        }
 
         // Make it Typeclasses Transparent
         let typeclasses_ty = coq::command::Command::TypeclassesTransparent(self.plain_ty_name.clone());
@@ -2486,20 +2490,20 @@ impl<'def> AbstractEnum<'def> {
             document.push(coq::Sentence::Comment(comment));
             document.push(coq::command::Command::Inductive(ind.clone()));
 
+            let mut proof_document = coq::ProofDocument::default();
+            proof_document.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
+
             document.push(
-                coq::command::CommandAttrs::new(coq::command::Command::Instance(coq::typeclasses::Instance(
+                coq::command::CommandAttrs::new(coq::command::Command::Instance(coq::command::Instance(
                     coq::term::Type::Literal(format!("Inhabited {}", name)),
+                    coq::proof::Proof {
+                        using: None,
+                        proof: proof_document,
+                        terminator: coq::proof::Terminator::Qed,
+                    },
                 )))
                 .attributes("global"),
             );
-            {
-                let mut proof_document = coq::ProofDocument::default();
-
-                proof_document.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
-
-                document.push(coq::command::Command::Proof(proof_document));
-                document.push(coq::command::Command::Qed);
-            }
 
             writeln!(out, "{}", document).unwrap();
         }
@@ -3189,7 +3193,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name,
             params,
             ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-            body: Some(coq::term::Gallina::Literal(quantified_term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(quantified_term)),
         }
     }
 }
@@ -3212,7 +3216,7 @@ impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name: self.spec_name.clone(),
             params,
             ty: None,
-            body: Some(coq::term::Gallina::Literal(term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(term)),
         };
         doc.push(coq::command::Command::Definition(coq_def));
 
@@ -4819,7 +4823,7 @@ fn make_trait_instance<'def>(
         name: spec_record_name.to_owned(),
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
-        body: Some(coq::term::Gallina::Literal(term_with_specs)),
+        body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(term_with_specs)),
     }));
 
     Ok(document)
@@ -5000,7 +5004,7 @@ impl<'def> TraitSpecDecl<'def> {
             name: spec_incl_name,
             params: spec_incl_params,
             ty: Some(coq::term::Type::Prop),
-            body: Some(body),
+            body: coq::command::DefinitionBody::Term(body),
         }
     }
 
@@ -5043,7 +5047,7 @@ impl<'def> TraitSpecDecl<'def> {
                 name: trait_incl_decl_name.to_owned(),
                 params,
                 ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-                body: Some(coq::term::Gallina::Literal(quantified_term)),
+                body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(quantified_term)),
             };
             let command = coq::command::Command::from(def);
             doc.push(command);
@@ -5087,7 +5091,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
 
         // write spec incl relation
         let spec_incl_def = self.make_spec_incl_decl();
-        write!(f, "{spec_incl_def}.\n")?;
+        write!(f, "{spec_incl_def}\n")?;
 
         // write the individual function specs
         for (item_name, item_spec) in &self.default_spec.methods {
@@ -5310,7 +5314,7 @@ impl<'def> TraitImplSpec<'def> {
             name: attrs_name.to_owned(),
             params: def_rts_params,
             ty: Some(attrs_type),
-            body: Some(attr_record_term),
+            body: coq::command::DefinitionBody::Term(attr_record_term),
         }
     }
 
@@ -5345,7 +5349,7 @@ impl<'def> TraitImplSpec<'def> {
             name: spec_name.to_owned(),
             params,
             ty: None,
-            body: Some(coq::term::Gallina::Literal(ty_term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(ty_term)),
         };
         doc.push(coq::command::Command::Definition(lem));
 
@@ -5368,14 +5372,7 @@ impl<'def> TraitImplSpec<'def> {
         let mut ty_term =
             format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
 
-        let lem = coq::command::Lemma {
-            name: lemma_name.to_owned(),
-            params,
-            ty: coq::term::Type::Literal(ty_term),
-        };
-        doc.push(coq::command::Command::Lemma(lem));
-
-        {
+        let proof_doc = {
             let mut proof_doc = coq::ProofDocument::default();
 
             let prelude_tac = format!(
@@ -5390,9 +5387,21 @@ impl<'def> TraitImplSpec<'def> {
             proof_doc.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
             proof_doc.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
 
-            doc.push(coq::command::Command::Proof(proof_doc));
-            doc.push(coq::command::Command::Qed);
-        }
+            proof_doc
+        };
+
+        let lem = coq::command::Lemma {
+            name: lemma_name.to_owned(),
+            params,
+            ty: coq::term::Type::Literal(ty_term),
+            body: coq::proof::Proof {
+                using: None,
+                proof: proof_doc,
+                terminator: coq::proof::Terminator::Qed,
+            },
+        };
+
+        doc.push(coq::command::Command::Lemma(lem));
 
         doc
     }

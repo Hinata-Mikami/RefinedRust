@@ -18,7 +18,7 @@ use crate::{display_list, BASE_INDENT};
 ///
 /// [`Inductive`]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types
 #[derive(Clone, Eq, PartialEq, Debug, Display, Constructor)]
-#[display("Inductive {} {} :=\n{}\n",
+#[display("Inductive {} {} :=\n{}.\n",
     name,
     parameters,
     display_list!(variants, "\n| ").indented(BASE_INDENT)

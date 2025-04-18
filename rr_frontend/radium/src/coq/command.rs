@@ -16,7 +16,7 @@ use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
 use crate::coq::{
-    binder, eval, inductive, module, section, syntax, term, typeclasses, Attribute, Document, ProofDocument,
+    binder, eval, inductive, module, proof, section, syntax, term, Attribute, Document, ProofDocument,
     Sentence,
 };
 use crate::BASE_INDENT;
@@ -113,67 +113,43 @@ pub enum Command {
     /// The [`Inductive`] command.
     ///
     /// [`Inductive`]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     Inductive(inductive::Inductive),
 
     /// The [`Instance`] command.
     ///
     /// [`Instance`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
-    #[display("{}.", _0)]
-    Instance(typeclasses::Instance),
-
-    /// The [`Proof`] command.
-    ///
-    /// [`Proof`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof
-    #[display("Proof.\n{}\n", _0.to_string().indented(BASE_INDENT))]
-    Proof(ProofDocument),
-
-    /// The [`Proof using`] command.
-    ///
-    /// [`Proof using`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof-using
-    #[display("Proof using {}.\n{}\n", _0.0, _0.1.to_string().indented(BASE_INDENT))]
-    ProofUsing((String, ProofDocument)),
-
-    /// The [`Defined`] command.
-    ///
-    /// [`Defined`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Defined
-    #[display("Defined.")]
-    Defined,
+    #[display("{}", _0)]
+    Instance(Instance),
 
     /// The [`Open Scope`] command.
     ///
     /// [`Open Scope`]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     OpenScope(syntax::OpenScope),
-
-    /// The [`Qed`] command.
-    ///
-    /// [`Qed`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Qed
-    #[display("Qed.")]
-    Qed,
 
     /// The [`Record`] command.
     ///
     /// [`Record`]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#coq:cmd.Record
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     Record(term::Record),
 
     /// The [`Context`] command.
     ///
     /// [`Command`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#coq:cmd.Context
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     Context(Context),
 
     /// The [`Definition`] command.
     ///
     /// [`Definition`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Definition
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     Definition(Definition),
 
     /// The [`Lemma`] command.
     ///
     /// [`Lemma`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Lemma
-    #[display("{}.", _0)]
+    #[display("{}", _0)]
     Lemma(Lemma),
 
     /// The [`Section`] command.
@@ -233,7 +209,7 @@ impl Context {
 
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.items.0.is_empty() { Ok(()) } else { write!(f, "Context {}", self.items) }
+        if self.items.0.is_empty() { Ok(()) } else { write!(f, "Context {}.", self.items) }
     }
 }
 
@@ -243,25 +219,40 @@ pub struct Definition {
     pub name: String,
     pub params: binder::BinderList,
     pub ty: Option<term::Type>,
-    pub body: Option<term::Gallina>,
+    pub body: DefinitionBody,
 }
 
 impl Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
-
         if let Some(ty) = &self.ty {
-            write!(f2, "Definition {} {} : {ty}", self.name, self.params)?;
+            write!(f, "Definition {} {} : {ty}", self.name, self.params)?;
         } else {
-            write!(f2, "Definition {} {}", self.name, self.params)?;
+            write!(f, "Definition {} {}", self.name, self.params)?;
         }
 
-        if let Some(body) = &self.body {
-            write!(f2, " := {}", body)?;
+        match &self.body {
+            DefinitionBody::Term(term) => {
+                writeln!(f, " :=")?;
+                write!(f, "{}.", term.indented(BASE_INDENT))?;
+            },
+
+            DefinitionBody::Proof(proof) => {
+                writeln!(f, ".")?;
+                write!(f, "{}", proof)?;
+            },
         }
 
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub enum DefinitionBody {
+    #[display("{}", _0)]
+    Term(term::Gallina),
+
+    #[display("{}", _0)]
+    Proof(proof::Proof),
 }
 
 /// A Rocq lemma declaration.
@@ -270,10 +261,19 @@ pub struct Lemma {
     pub name: String,
     pub params: binder::BinderList,
     pub ty: term::Type,
+    pub body: proof::Proof,
 }
 
 impl Display for Lemma {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Lemma {} {} : {}\n", self.name, self.params, self.ty)
+        writeln!(f, "Lemma {} {} : {}.", self.name, self.params, self.ty)?;
+        write!(f, "{}", self.body)
     }
 }
+
+/// The [`Instance`] command.
+///
+/// [`Instance`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("Instance: {}.\n{}", _0, _1)]
+pub struct Instance(pub term::Type, pub proof::Proof);
