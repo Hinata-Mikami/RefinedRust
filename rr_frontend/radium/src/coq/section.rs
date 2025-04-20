@@ -12,22 +12,21 @@ use derive_more::Display;
 use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
-use crate::coq::Document;
-use crate::BASE_INDENT;
+use crate::{coq, BASE_INDENT};
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("Section {}.\n{}End {}.", name, proof.to_string().indented(BASE_INDENT), name)]
+#[display("Section {}.\n{}End {}.", name, content.to_string().indented(BASE_INDENT), name)]
 pub struct Section {
     name: String,
-    proof: Document,
+    content: coq::Document,
 }
 
 impl Section {
-    pub fn new<Err>(name: String, callback: impl Fn(&mut Document) -> Result<(), Err>) -> Result<Self, Err> {
-        let mut proof = Document::default();
+    pub fn new(name: String, callback: impl FnOnce(&mut coq::Document)) -> Self {
+        let mut content = coq::Document::default();
 
-        callback(&mut proof)?;
+        callback(&mut content);
 
-        Ok(Self { name, proof })
+        Self { name, content }
     }
 }

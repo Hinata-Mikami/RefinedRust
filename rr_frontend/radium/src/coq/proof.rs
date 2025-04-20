@@ -23,7 +23,7 @@ use crate::{coq, BASE_INDENT};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof {
     pub using: Option<String>,
-    pub proof: coq::ProofDocument,
+    pub content: coq::ProofDocument,
     pub terminator: Terminator,
 }
 
@@ -35,8 +35,42 @@ impl Display for Proof {
             writeln!(f, "Proof.")?;
         }
 
-        write!(f, "{}", (&self.proof).indented(BASE_INDENT))?;
+        write!(f, "{}", (&self.content).indented(BASE_INDENT))?;
         writeln!(f, "{}.", self.terminator)
+    }
+}
+
+impl Proof {
+    pub fn new_using(
+        using: String,
+        terminator: Terminator,
+        callback: impl FnOnce(&mut coq::ProofDocument),
+    ) -> Self {
+        if using.is_empty() {
+            return Self::new(terminator, callback);
+        }
+
+        let mut content = coq::ProofDocument::default();
+
+        callback(&mut content);
+
+        Self {
+            using: Some(using),
+            content,
+            terminator,
+        }
+    }
+
+    pub fn new(terminator: Terminator, callback: impl FnOnce(&mut coq::ProofDocument)) -> Self {
+        let mut content = coq::ProofDocument::default();
+
+        callback(&mut content);
+
+        Self {
+            using: None,
+            content,
+            terminator,
+        }
     }
 }
 
