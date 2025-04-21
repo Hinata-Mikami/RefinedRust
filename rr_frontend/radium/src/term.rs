@@ -56,7 +56,7 @@ pub enum RefinedRustType {
 
     /// `struct_t (sls: struct_layout_spec) (tys: hlist type (list Type))` type
     #[display("(struct_t {} {})", _0, coq::term::fmt_hlist(_1))]
-    StructT(Box<coq::term::Gallina>, Vec<coq::term::Type>),
+    StructT(coq::term::Gallina, Vec<coq::term::Type>),
 
     /// `syn_type` type
     #[display("syn_type")]

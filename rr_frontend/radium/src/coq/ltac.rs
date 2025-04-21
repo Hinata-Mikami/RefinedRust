@@ -34,6 +34,7 @@ pub enum LTac {
     ///
     /// [`Let-in`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
     #[display("{}", *_0)]
+    #[from_variants(into)]
     LetIn(Box<LetIn>),
 }
 
@@ -50,7 +51,11 @@ pub struct LetIn {
 
 impl LetIn {
     #[must_use]
-    pub const fn new(name: String, t1: term::Gallina, t2: LTac) -> Self {
-        Self { name, t1, t2 }
+    pub fn new(name: impl Into<String>, t1: impl Into<term::Gallina>, t2: impl Into<LTac>) -> Self {
+        Self {
+            name: name.into(),
+            t1: t1.into(),
+            t2: t2.into(),
+        }
     }
 }

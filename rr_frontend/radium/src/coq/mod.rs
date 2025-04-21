@@ -13,7 +13,7 @@
 //!
 //! This crate defines structures in a similar way to the grammar defined in the [Rocq reference]
 //! documentation, but unstructured sentences have been reunited under a single structure, such as
-//! `Section`/`End`.
+//! `Section`/`End` or `Proof`/`Qed`.
 //!
 //! The syntax used to create structures is designed to write as little code as possible, with choices
 //! explained in the Notes section.
@@ -333,6 +333,7 @@ pub mod term;
 
 use derive_more::{Deref, DerefMut, Display, From};
 use from_variants::FromVariants;
+use transitive::Transitive;
 
 use crate::display_list;
 
@@ -357,7 +358,17 @@ impl Document {
 /// A [sentence], or a comment.
 ///
 /// [sentence]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-sentence
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
+#[transitive(from(command::Command, command::CommandAttrs))]
+#[transitive(from(command::QueryCommand, command::QueryCommandAttrs))]
+#[transitive(from(command::Context, command::Command))]
+#[transitive(from(command::Definition, command::Command))]
+#[transitive(from(command::Lemma, command::Command))]
+#[transitive(from(eval::Compute, command::QueryCommand))]
+#[transitive(from(inductive::Inductive, command::Command))]
+#[transitive(from(module::FromRequire, command::Command))]
+#[transitive(from(term::Record, command::Command))]
+#[transitive(from(section::Section, command::Command))]
 pub enum Sentence {
     #[display("{}", _0)]
     CommandAttrs(command::CommandAttrs),
@@ -390,7 +401,8 @@ impl ProofDocument {
 /// [Vernacular] language, or a comment.
 ///
 /// [Vernacular]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
+#[transitive(from(ltac::LetIn, ltac::LTac))]
 pub enum Vernac {
     #[display("{}", _0)]
     LTac(ltac::LTac),

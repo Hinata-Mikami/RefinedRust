@@ -165,9 +165,9 @@ pub enum Command {
     TypeclassesTransparent(String),
 }
 
-impl From<Command> for Sentence {
+impl From<Command> for CommandAttrs {
     fn from(command: Command) -> Self {
-        Self::CommandAttrs(CommandAttrs::new(command))
+        Self::new(command)
     }
 }
 
@@ -181,9 +181,9 @@ pub enum QueryCommand {
     Compute(eval::Compute),
 }
 
-impl From<QueryCommand> for Sentence {
+impl From<QueryCommand> for QueryCommandAttrs {
     fn from(command: QueryCommand) -> Self {
-        Self::QueryCommandAttrs(QueryCommandAttrs::new(command))
+        Self::new(command)
     }
 }
 

@@ -11,6 +11,7 @@
 use std::fmt;
 
 use derive_more::Display;
+use from_variants::FromVariants;
 use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 use itertools::Itertools;
@@ -21,27 +22,32 @@ use crate::{display_list, term, BASE_INDENT};
 /// A [term].
 ///
 /// [term]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-term
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, FromVariants)]
 pub enum Gallina {
     /// A literal
     Literal(String),
 
     /// An application
+    #[from_variants(into)]
     App(Box<App<Gallina, Gallina>>),
 
     /// A record constructor
     RecordBody(RecordBody),
 
     /// A projection `a.(b)` from a record `a`
+    #[from_variants(skip)]
     RecordProj(Box<Gallina>, String),
 
     /// A universal quantifier
+    #[from_variants(skip)]
     All(binder::BinderList, Box<Gallina>),
 
     /// An existential quantifier
+    #[from_variants(skip)]
     Exists(binder::BinderList, Box<Gallina>),
 
     /// An infix operator
+    #[from_variants(skip)]
     Infix(String, Vec<Gallina>),
 }
 

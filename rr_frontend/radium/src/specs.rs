@@ -1382,14 +1382,11 @@ impl<'def> AbstractVariant<'def> {
 
     #[must_use]
     pub fn get_coq_type_term(&self, sls_app: Vec<coq::term::Gallina>) -> coq::term::Type {
-        let sls = coq::term::Gallina::App(Box::new(coq::term::App::new(
-            coq::term::Gallina::Literal(self.sls_def_name.clone()),
-            sls_app,
-        )));
+        let sls = coq::term::App::new(coq::term::Gallina::Literal(self.sls_def_name.clone()), sls_app);
 
         let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
 
-        term::RefinedRustType::StructT(Box::new(sls), tys).into()
+        term::RefinedRustType::StructT(Box::new(sls).into(), tys).into()
     }
 
     #[must_use]
@@ -1415,7 +1412,7 @@ impl<'def> AbstractVariant<'def> {
             .collect();
 
         // Intro to main def
-        document.push(coq::command::Command::Definition(coq::command::Definition {
+        document.push(coq::command::Definition {
             name: self.plain_ty_name.clone(),
             params: coq::binder::BinderList::empty(),
             ty: Some(ty_params.get_spec_all_type_term(
@@ -1425,22 +1422,22 @@ impl<'def> AbstractVariant<'def> {
                 context_names.join("{}"),
                 coq::proof::Terminator::Defined,
                 |proof| {
-                    proof.push(coq::Vernac::LTac(coq::ltac::LTac::Exact(coq::term::Gallina::App(Box::new(
+                    proof.push(coq::ltac::LTac::Exact(coq::term::Gallina::App(Box::new(
                         coq::term::App::new(
                             // TODO: `ty_params` must create a specific Coq object.
                             coq::term::Gallina::Literal(ty_params.to_string()),
                             vec![coq::term::Gallina::Literal(self.get_coq_type_term(sls_app).to_string())],
                         ),
-                    )))));
+                    ))));
                 },
             )),
-        }));
+        });
 
         // Generate the refinement type definition
         let rt_params = all_ty_params.get_coq_ty_rt_params();
         let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
 
-        document.push(coq::command::Command::Definition(coq::command::Definition {
+        document.push(coq::command::Definition {
             name: self.plain_rt_def_name.clone(),
             params: coq::binder::BinderList::empty(),
             ty: Some(coq::term::Type::Type),
@@ -1448,28 +1445,24 @@ impl<'def> AbstractVariant<'def> {
                 using,
                 coq::proof::Terminator::Defined,
                 |proof| {
-                    proof.push(coq::ltac::LTac::LetIn(Box::new(coq::ltac::LetIn::new(
-                        "__a".to_owned(),
-                        coq::term::Gallina::App(Box::new(coq::term::App::new(
+                    proof.push(coq::ltac::LetIn::new(
+                        "__a",
+                        coq::term::App::new(
                             coq::term::Gallina::Literal("normalized_rt_of_spec_ty".to_owned()),
                             vec![coq::term::Gallina::Literal(self.plain_ty_name.clone())],
-                        ))),
+                        ),
                         coq::ltac::LTac::Exact(coq::term::Gallina::Literal("__a".to_owned())),
-                    ))));
+                    ));
                 },
             )),
-        }));
+        });
 
         // Make it Typeclasses Transparent
         let typeclasses_ty = coq::command::Command::TypeclassesTransparent(self.plain_ty_name.clone());
         let typeclasses_rt = coq::command::Command::TypeclassesTransparent(self.plain_rt_def_name.clone());
 
-        document.push(coq::Sentence::CommandAttrs(
-            coq::command::CommandAttrs::new(typeclasses_ty).attributes("global"),
-        ));
-        document.push(coq::Sentence::CommandAttrs(
-            coq::command::CommandAttrs::new(typeclasses_rt).attributes("global"),
-        ));
+        document.push(coq::command::CommandAttrs::new(typeclasses_ty).attributes("global"));
+        document.push(coq::command::CommandAttrs::new(typeclasses_rt).attributes("global"));
 
         document
     }
@@ -2483,12 +2476,12 @@ impl<'def> AbstractEnum<'def> {
             document.push(coq::command::Command::Inductive(ind.clone()));
 
             document.push(
-                coq::command::CommandAttrs::new(coq::command::Command::Instance(coq::command::Instance(
+                coq::command::CommandAttrs::new(coq::command::Instance(
                     coq::term::Type::Literal(format!("Inhabited {}", name)),
                     coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
                         proof.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
                     }),
-                )))
+                ))
                 .attributes("global"),
             );
 
@@ -4806,12 +4799,12 @@ fn make_trait_instance<'def>(
     let spec_record_type = coq::term::App::new(of_trait.spec_record.clone(), param_inst_rts);
     write!(ty_annot, "spec_with _ _ {}", spec_record_type)?;
 
-    document.push(coq::command::Command::Definition(coq::command::Definition {
+    document.push(coq::command::Definition {
         name: spec_record_name.to_owned(),
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
         body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(term_with_specs)),
-    }));
+    });
 
     Ok(document)
 }
@@ -5166,7 +5159,7 @@ impl<'def> TraitRefInst<'def> {
     /// Get the term for referring to the attr record of this impl
     /// The parameters are expected to be in scope.
     #[must_use]
-    fn get_attr_record_term(&self) -> coq::term::Gallina {
+    fn get_attr_record_term(&self) -> coq::term::App<coq::term::Gallina, coq::term::Gallina> {
         let attr_record = &self.impl_ref.spec_attrs_record;
 
         // get all type parameters
@@ -5175,10 +5168,7 @@ impl<'def> TraitRefInst<'def> {
         binders.append(self.generics.get_all_attr_trait_parameters(false).0);
         let args = binders.make_using_terms();
 
-        coq::term::Gallina::App(Box::new(coq::term::App::new(
-            coq::term::Gallina::Literal(attr_record.to_owned()),
-            args.0,
-        )))
+        coq::term::App::new(coq::term::Gallina::Literal(attr_record.to_owned()), args.0)
     }
 
     /// Get the term for referring to the spec record of this impl
@@ -5240,7 +5230,7 @@ impl<'def> TraitRefInst<'def> {
     #[must_use]
     pub fn get_attr_record_item_term(&self, attr: &str) -> coq::term::Gallina {
         let item_name = self.of_trait.make_spec_attr_name(attr);
-        coq::term::Gallina::RecordProj(Box::new(self.get_attr_record_term()), item_name)
+        coq::term::Gallina::RecordProj(Box::new(Box::new(self.get_attr_record_term()).into()), item_name)
     }
 }
 
@@ -5359,7 +5349,7 @@ impl<'def> TraitImplSpec<'def> {
         let mut ty_term =
             format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
 
-        let lem = coq::command::Lemma {
+        doc.push(coq::command::Lemma {
             name: lemma_name.to_owned(),
             params,
             ty: coq::term::Type::Literal(ty_term),
@@ -5377,9 +5367,7 @@ impl<'def> TraitImplSpec<'def> {
                 proof.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
                 proof.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
             }),
-        };
-
-        doc.push(coq::command::Command::Lemma(lem));
+        });
 
         doc
     }
@@ -5388,7 +5376,7 @@ impl<'def> TraitImplSpec<'def> {
 impl<'def> Display for TraitImplSpec<'def> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
-            section.push(coq::command::Command::Context(coq::command::Context::refinedrust()));
+            section.push(coq::command::Context::refinedrust());
 
             // Instantiate with the parameter and associated types
             let params_inst = self.trait_ref.get_ordered_params_inst();
