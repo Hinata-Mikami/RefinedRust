@@ -54,7 +54,7 @@ We assume that you have `opam` installed on your system. Setup instructions can 
 opam switch create refinedrust --packages=ocaml-variants.4.14.0+options,ocaml-option-flambda
 opam switch link refinedrust .
 opam switch refinedrust
-opam repo add coq-released https://coq.inria.fr/opam/released
+opam repo add coq-released https://rocq-prover.org/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 ```
 2. Install the necessary dependencies:

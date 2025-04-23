@@ -316,9 +316,9 @@
 //! </section>
 //!
 //! [RefinedRust project]: https://plv.mpi-sws.org/refinedrust/
-//! [Rocq]: https://coq.inria.fr
-//! [Rocq reference]: https://coq.inria.fr/doc/v8.20/refman/index.html
-//! [sections]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html
+//! [Rocq]: https://rocq-prover.org/
+//! [Rocq reference]: https://rocq-prover.org/doc/v8.20/refman/index.html
+//! [sections]: https://rocq-prover.org/doc/v8.20/refman/language/core/sections.html
 
 pub mod binder;
 pub mod command;
@@ -339,7 +339,7 @@ use crate::display_list;
 
 /// A [document], composed of commands.
 ///
-/// [document]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-document
+/// [document]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-document
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
 #[display("{}\n", display_list!(_0, "\n"))]
 pub struct Document(pub Vec<Sentence>);
@@ -357,7 +357,7 @@ impl Document {
 
 /// A [sentence], or a comment.
 ///
-/// [sentence]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-sentence
+/// [sentence]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-sentence
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
 #[transitive(from(command::Command, command::CommandAttrs))]
 #[transitive(from(command::QueryCommand, command::QueryCommandAttrs))]
@@ -382,7 +382,7 @@ pub enum Sentence {
 
 /// A [proof document], composed of tactics.
 ///
-/// [proof document]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#ltac
+/// [proof document]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#ltac
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
 #[display("{}\n", display_list!(_0, "\n"))]
 pub struct ProofDocument(pub Vec<Vernac>);
@@ -400,7 +400,7 @@ impl ProofDocument {
 
 /// [Vernacular] language, or a comment.
 ///
-/// [Vernacular]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
+/// [Vernacular]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
 #[transitive(from(ltac::LetIn, ltac::LTac))]
 pub enum Vernac {
@@ -413,7 +413,7 @@ pub enum Vernac {
 
 /// An [attribute].
 ///
-/// [attribute]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-attribute
+/// [attribute]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-attribute
 #[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 #[from(forward)]
 #[display("#[{}]", _0)]

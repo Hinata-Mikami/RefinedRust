@@ -6,13 +6,13 @@
 
 //! The [syntax and notations] section.
 //!
-//! [syntax and notations]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html
+//! [syntax and notations]: https://rocq-prover.org/doc/v8.20/refman/user-extensions/syntax-extensions.html
 
 use derive_more::{Deref, DerefMut, Display, From};
 
 /// The [`Open Scope`] command.
 ///
-/// [`Open Scope`]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
+/// [`Open Scope`]: https://rocq-prover.org/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut, From)]
 #[from(forward)]
 #[display("Open Scope {}.", _0)]

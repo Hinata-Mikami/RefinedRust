@@ -6,7 +6,7 @@
 
 //! The [command] section.
 //!
-//! [command]: https://coq.inria.fr/doc/v8.20/refman/coq-cmdindex.html
+//! [command]: https://rocq-prover.org/doc/v8.20/refman/coq-cmdindex.html
 
 use std::fmt::{self, Write};
 
@@ -23,7 +23,7 @@ use crate::BASE_INDENT;
 
 /// A [command], with optional attributes.
 ///
-/// [command]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-command
+/// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CommandAttrs {
@@ -59,7 +59,7 @@ impl CommandAttrs {
 
 /// A [query command], with optional attributes.
 ///
-/// [query command]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
+/// [query command]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct QueryCommandAttrs {
     pub command: QueryCommand,
@@ -101,66 +101,66 @@ impl QueryCommandAttrs {
 
 /// A [command].
 ///
-/// [command]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-command
+/// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum Command {
     /// The [`From ... Require`] command.
     ///
-    /// [`From ... Require`]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
+    /// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
     #[display("{}.", _0)]
     FromRequire(module::FromRequire),
 
     /// The [`Inductive`] command.
     ///
-    /// [`Inductive`]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types
+    /// [`Inductive`]: https://rocq-prover.org/doc/v8.20/refman/language/core/inductive.html#inductive-types
     #[display("{}", _0)]
     Inductive(inductive::Inductive),
 
     /// The [`Instance`] command.
     ///
-    /// [`Instance`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
+    /// [`Instance`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
     #[display("{}", _0)]
     Instance(Instance),
 
     /// The [`Open Scope`] command.
     ///
-    /// [`Open Scope`]: https://coq.inria.fr/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
+    /// [`Open Scope`]: https://rocq-prover.org/doc/v8.20/refman/user-extensions/syntax-extensions.html#coq:cmd.Open-Scope
     #[display("{}", _0)]
     OpenScope(syntax::OpenScope),
 
     /// The [`Record`] command.
     ///
-    /// [`Record`]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#coq:cmd.Record
+    /// [`Record`]: https://rocq-prover.org/doc/v8.20/refman/language/core/records.html#coq:cmd.Record
     #[display("{}", _0)]
     Record(term::Record),
 
     /// The [`Context`] command.
     ///
-    /// [`Command`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#coq:cmd.Context
+    /// [`Command`]: https://rocq-prover.org/doc/v8.20/refman/language/core/sections.html#coq:cmd.Context
     #[display("{}", _0)]
     Context(Context),
 
     /// The [`Definition`] command.
     ///
-    /// [`Definition`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Definition
+    /// [`Definition`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Definition
     #[display("{}", _0)]
     Definition(Definition),
 
     /// The [`Lemma`] command.
     ///
-    /// [`Lemma`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Lemma
+    /// [`Lemma`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#coq:cmd.Lemma
     #[display("{}", _0)]
     Lemma(Lemma),
 
     /// The [`Section`] command.
     ///
-    /// [`Section`]: https://coq.inria.fr/doc/v8.20/refman/language/core/sections.html#using-sections
+    /// [`Section`]: https://rocq-prover.org/doc/v8.20/refman/language/core/sections.html#using-sections
     #[display("{}", _0)]
     Section(section::Section),
 
     /// The [`Typeclasses Transparent`] command.
     ///
-    /// [`Typeclasses Transparent`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Typeclasses-Transparent
+    /// [`Typeclasses Transparent`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Typeclasses-Transparent
     #[display("Typeclasses Transparent {}.", _0)]
     TypeclassesTransparent(String),
 }
@@ -173,7 +173,7 @@ impl From<Command> for CommandAttrs {
 
 /// A [query command].
 ///
-/// [query command]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
+/// [query command]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum QueryCommand {
@@ -273,7 +273,7 @@ impl Display for Lemma {
 
 /// The [`Instance`] command.
 ///
-/// [`Instance`]: https://coq.inria.fr/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
+/// [`Instance`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("Instance: {}.\n{}", _0, _1)]
 pub struct Instance(pub term::Type, pub proof::Proof);

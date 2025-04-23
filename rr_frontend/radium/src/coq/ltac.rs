@@ -6,7 +6,7 @@
 
 //! The [LTac] section.
 //!
-//! [LTac]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/ltac.html#ltac
+//! [LTac]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#ltac
 
 use std::fmt;
 
@@ -17,7 +17,7 @@ use crate::coq::{term, Vernac};
 
 /// A [tactic].
 ///
-/// [tactic]: https://coq.inria.fr/doc/v8.20/refman/coq-tacindex.html
+/// [tactic]: https://rocq-prover.org/doc/v8.20/refman/coq-tacindex.html
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum LTac {
     /// TODO: To be removed - LTac<T> instead
@@ -32,7 +32,7 @@ pub enum LTac {
 
     /// [`Let-in`] syntax
     ///
-    /// [`Let-in`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
+    /// [`Let-in`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
     #[display("{}", *_0)]
     #[from_variants(into)]
     LetIn(Box<LetIn>),
@@ -40,7 +40,7 @@ pub enum LTac {
 
 /// [`Let-in`] syntax: `let <name> := <t1> in <t2>`
 ///
-/// [`Let-in`]: https://coq.inria.fr/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
+/// [`Let-in`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("let {} := {} in {}", name, t1, t2)]
 pub struct LetIn {

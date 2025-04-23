@@ -6,7 +6,7 @@
 
 //! The [terms] section.
 //!
-//! [terms]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#term-term
+//! [terms]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#term-term
 
 use std::fmt;
 
@@ -21,7 +21,7 @@ use crate::{display_list, term, BASE_INDENT};
 
 /// A [term].
 ///
-/// [term]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-term
+/// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 #[derive(Clone, Eq, PartialEq, Hash, Debug, FromVariants)]
 pub enum Gallina {
     /// A literal
@@ -113,7 +113,7 @@ impl TermList {
 
 /// An [application].
 ///
-/// [application]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#function-application
+/// [application]: https://rocq-prover.org/doc/v8.20/refman/language/core/assumptions.html#function-application
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct App<T, U> {
     pub(crate) lhs: T,
@@ -149,7 +149,7 @@ impl<T, U> App<T, U> {
 
 /// A [record].
 ///
-/// [record]: https://coq.inria.fr/doc/v8.20/refman/language/core/records.html#constructing-records
+/// [record]: https://rocq-prover.org/doc/v8.20/refman/language/core/records.html#constructing-records
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RecordBody {
     pub items: Vec<RecordBodyItem>,
@@ -186,7 +186,7 @@ impl Display for RecordBodyItem {
 
 /// A [type], extended with user defined types.
 ///
-/// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
+/// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 pub type Type = RocqType<term::RefinedRustType>;
 
 pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
@@ -207,7 +207,7 @@ pub(crate) fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
 
 /// A Rocq [type], limited to Rocq defined types.
 ///
-/// [type]: https://coq.inria.fr/doc/v8.20/refman/language/core/basic.html#grammar-token-type
+/// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum RocqType<T> {
     /// Literals

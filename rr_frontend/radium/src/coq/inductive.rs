@@ -6,7 +6,7 @@
 
 //! The [inductive] section.
 //!
-//! [inductive]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types-and-recursive-functions
+//! [inductive]: https://rocq-prover.org/doc/v8.20/refman/language/core/inductive.html#inductive-types-and-recursive-functions
 
 use derive_more::{Constructor, Display};
 use indent_write::indentable::Indentable;
@@ -16,7 +16,7 @@ use crate::{display_list, BASE_INDENT};
 
 /// An [Inductive] type.
 ///
-/// [`Inductive`]: https://coq.inria.fr/doc/v8.20/refman/language/core/inductive.html#inductive-types
+/// [`Inductive`]: https://rocq-prover.org/doc/v8.20/refman/language/core/inductive.html#inductive-types
 #[derive(Clone, Eq, PartialEq, Debug, Display, Constructor)]
 #[display("Inductive {} {} :=\n{}.\n",
     name,

@@ -6,7 +6,7 @@
 
 //! The [proof mode].
 //!
-//! [proof mode]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#proof-mode
+//! [proof mode]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#proof-mode
 
 use std::fmt;
 
@@ -18,7 +18,7 @@ use crate::{coq, BASE_INDENT};
 
 /// The [`Proof`], or [`Proof using`] command.
 ///
-/// [`Proof`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof
+/// [`Proof`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof
 /// [`Proof using`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Proof-using
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof {
@@ -76,24 +76,24 @@ impl Proof {
 
 /// A proof terminator, [exiting the proof state].
 ///
-/// [exiting the proof state]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#entering-and-exiting-proof-mode
+/// [exiting the proof state]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#entering-and-exiting-proof-mode
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Terminator {
     /// The [`Admitted`] command.
     ///
-    /// [`Admitted`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Admitted
+    /// [`Admitted`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Admitted
     #[display("Admitted")]
     Admitted,
 
     /// The [`Defined`] command.
     ///
-    /// [`Defined`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Defined
+    /// [`Defined`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Defined
     #[display("Defined")]
     Defined,
 
     /// The [`Qed`] command.
     ///
-    /// [`Qed`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Qed
+    /// [`Qed`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#coq:cmd.Qed
     #[display("Qed")]
     Qed,
 }

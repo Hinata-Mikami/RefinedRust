@@ -1,7 +1,7 @@
 //! The [implicit arguments], and [binders].
 //!
-//! [implicit arguments]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#implicit-arguments
-//! [binders]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#binders
+//! [implicit arguments]: https://rocq-prover.org/doc/v8.20/refman/language/extensions/implicit-arguments.html#implicit-arguments
+//! [binders]: https://rocq-prover.org/doc/v8.20/refman/language/core/assumptions.html#binders
 
 use std::fmt;
 
@@ -24,7 +24,7 @@ pub enum Kind {
 
 /// A [binder].
 ///
-/// [binder]: https://coq.inria.fr/doc/v8.20/refman/language/core/assumptions.html#grammar-token-binder
+/// [binder]: https://rocq-prover.org/doc/v8.20/refman/language/core/assumptions.html#grammar-token-binder
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum Binder {
     #[display("({}: {})", self.get_name(), _1)]
@@ -137,7 +137,7 @@ impl Binder {
 
 /// [Implicit argument] binders.
 ///
-/// [Implicit argument]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-implicit_binders
+/// [Implicit argument]: https://rocq-prover.org/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-implicit_binders
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Implicit {
     kind: Kind,
@@ -164,7 +164,7 @@ impl fmt::Display for Implicit {
 
 /// [Implicit generalization] binders.
 ///
-/// [Implicit generalization]: https://coq.inria.fr/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-generalizing_binder
+/// [Implicit generalization]: https://rocq-prover.org/doc/v8.20/refman/language/extensions/implicit-arguments.html#grammar-token-generalizing_binder
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Generalizing {
     kind: Kind,

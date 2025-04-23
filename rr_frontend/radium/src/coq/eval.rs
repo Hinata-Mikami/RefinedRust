@@ -6,7 +6,7 @@
 
 //! The [eval] section.
 //!
-//! [eval]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/equality.html#computing-in-a-term-eval-and-eval
+//! [eval]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/equality.html#computing-in-a-term-eval-and-eval
 
 use derive_more::{Deref, DerefMut, Display};
 
@@ -14,7 +14,7 @@ use crate::coq::term;
 
 /// The [`Compute`] command.
 ///
-/// [`Compute`]: https://coq.inria.fr/doc/v8.20/refman/proofs/writing-proofs/equality.html#coq:cmd.Compute
+/// [`Compute`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/equality.html#coq:cmd.Compute
 #[derive(Clone, Eq, PartialEq, Debug, Display, Deref, DerefMut)]
 #[display("Compute {}.", _0)]
 pub struct Compute(pub term::Gallina);

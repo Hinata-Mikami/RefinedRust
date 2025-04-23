@@ -6,7 +6,7 @@
 
 //! The [module] section.
 //!
-//! [module]: https://coq.inria.fr/doc/v8.20/refman/language/core/modules.html
+//! [module]: https://rocq-prover.org/doc/v8.20/refman/language/core/modules.html
 
 use std::fmt;
 
@@ -16,7 +16,7 @@ use crate::{display_list, write_list};
 
 /// A [dirpath].
 ///
-/// [dirpath]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-dirpath
+/// [dirpath]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-dirpath
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Default, Deref, DerefMut)]
 #[display("{}", display_list!(_0, "."))]
 pub struct DirPath(pub Vec<String>);
@@ -42,7 +42,7 @@ pub enum Kind {
 
 /// The [`From ... Require`] command.
 ///
-/// [`From ... Require`]: https://coq.inria.fr/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
+/// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct FromRequire {
     pub from: Option<DirPath>,

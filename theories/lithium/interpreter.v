@@ -320,7 +320,7 @@ Ltac liFindHyp key :=
              to unify GetMemberLoc for the same struct but with
              different names.) TODO: investigate if constr_eq
              could help even more
-             https://coq.inria.fr/distrib/current/refman/proof-engine/tactics.html#coq:tacn.constr-eq*)
+             https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#coq:tacn.constr_eq *)
           unify Q P with typeclass_instances
       | _ =>
           notypeclasses refine (tac_find_hyp_equal key Q _ _ _ _ _); [solve [refine _]|];

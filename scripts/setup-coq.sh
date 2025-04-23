@@ -6,7 +6,7 @@
 
 cd $REFINEDRUST_ROOT
 eval $(opam env)
-opam repo add coq-released https://coq.inria.fr/opam/released
+opam repo add coq-released https://rocq-prover.org/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 
 # install deps
