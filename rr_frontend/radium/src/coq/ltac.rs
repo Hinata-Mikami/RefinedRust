@@ -14,16 +14,15 @@ use derive_more::Display;
 use from_variants::FromVariants;
 
 use crate::coq::{term, Vernac};
+use crate::model;
 
 /// A [tactic].
 ///
 /// [tactic]: https://rocq-prover.org/doc/v8.20/refman/coq-tacindex.html
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
-pub enum LTac {
-    /// TODO: To be removed - LTac<T> instead
-    #[display("{}.", _0)]
-    Literal(String),
+pub type LTac = RocqLTac<model::LTac>;
 
+#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+pub enum RocqLTac<T> {
     /// [`Exact`] tactic
     ///
     /// [`Exact`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/tactics.html#coq:tacn.exact
@@ -36,6 +35,11 @@ pub enum LTac {
     #[display("{}", *_0)]
     #[from_variants(into)]
     LetIn(Box<LetIn>),
+
+    /// User defined type
+    #[display("{}.", _0)]
+    #[from_variants(skip)]
+    UserDefined(T),
 }
 
 /// [`Let-in`] syntax: `let <name> := <t1> in <t2>`

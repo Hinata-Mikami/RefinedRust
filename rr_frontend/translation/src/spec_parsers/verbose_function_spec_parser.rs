@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use attribute_parse::{parse, MToken};
 use log::{info, warn};
 use parse::{Parse, Peek};
-use radium::{coq, push_str_list, specs, term};
+use radium::{coq, model, push_str_list, specs};
 use rr_rustc_interface::ast::ast::AttrItem;
 use rr_rustc_interface::middle::ty;
 
@@ -556,9 +556,7 @@ where
 
         // push everything to the builder
         for x in new_ghost_vars {
-            builder
-                .add_param(coq::binder::Binder::new(Some(x), term::RefinedRustType::Gname.into()))
-                .unwrap();
+            builder.add_param(coq::binder::Binder::new(Some(x), model::Type::Gname)).unwrap();
         }
 
         // assemble a string for the closure arg
@@ -607,10 +605,7 @@ where
                 // wrap the argument in a mutable reference
                 let post_name = "__γclos";
                 builder
-                    .add_param(coq::binder::Binder::new(
-                        Some(post_name.to_owned()),
-                        term::RefinedRustType::Gname.into(),
-                    ))
+                    .add_param(coq::binder::Binder::new(Some(post_name.to_owned()), model::Type::Gname))
                     .unwrap();
 
                 let lft = meta.closure_lifetime.unwrap();

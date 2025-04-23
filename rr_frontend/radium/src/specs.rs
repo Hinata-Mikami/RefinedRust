@@ -19,7 +19,7 @@ use log::{info, trace, warn};
 
 use crate::coq::command::{Definition, DefinitionBody};
 use crate::coq::proof::Proof;
-use crate::{coq, display_list, push_str_list, term, write_list, BASE_INDENT};
+use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
 
 #[derive(Clone, Debug)]
 /// Encodes a RR type with an accompanying refinement.
@@ -517,15 +517,14 @@ impl LiteralTyParam {
 
     #[must_use]
     pub fn make_syntype_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.syn_type.clone()), term::RefinedRustType::SynType.into())
+        coq::binder::Binder::new(Some(self.syn_type.clone()), model::Type::SynType)
     }
 
     #[must_use]
     pub fn make_semantic_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(
             Some(self.type_term.clone()),
-            term::RefinedRustType::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone())))
-                .into(),
+            model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
         )
     }
 }
@@ -632,15 +631,15 @@ impl<'def> Type<'def> {
             Self::Char | Self::Int(_) => coq::term::Type::Z,
 
             Self::MutRef(box ty, _) => coq::term::Type::Prod(vec![
-                term::RefinedRustType::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
-                term::RefinedRustType::Gname.into(),
+                model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
+                model::Type::Gname.into(),
             ]),
 
             Self::ShrRef(box ty, _) | Self::BoxType(box ty) => {
-                term::RefinedRustType::PlaceRfn(Box::new(ty.get_rfn_type())).into()
+                model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into()
             },
 
-            Self::RawPtr => term::RefinedRustType::Loc.into(),
+            Self::RawPtr => model::Type::Loc.into(),
 
             Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type.clone()),
             Self::Literal(lit) => coq::term::Type::Literal(lit.get_rfn_type()),
@@ -1307,7 +1306,7 @@ impl<'def> AbstractVariant<'def> {
     }
 
     pub(crate) fn rfn_type(&self) -> coq::term::Type {
-        term::RefinedRustType::PList(
+        model::Type::PList(
             "place_rfn".to_owned(),
             self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
         )
@@ -1386,7 +1385,7 @@ impl<'def> AbstractVariant<'def> {
 
         let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
 
-        term::RefinedRustType::StructT(Box::new(sls).into(), tys).into()
+        model::Type::StructT(Box::new(sls).into(), tys).into()
     }
 
     #[must_use]
@@ -1415,9 +1414,10 @@ impl<'def> AbstractVariant<'def> {
         document.push(coq::command::Definition {
             name: self.plain_ty_name.clone(),
             params: coq::binder::BinderList::empty(),
-            ty: Some(ty_params.get_spec_all_type_term(
-                Box::new(term::RefinedRustType::Ttype(Box::new(self.rfn_type()))).into(),
-            )),
+            ty: Some(
+                ty_params
+                    .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(self.rfn_type()))).into()),
+            ),
             body: coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
                 context_names.join("{}"),
                 coq::proof::Terminator::Defined,
@@ -2477,7 +2477,7 @@ impl<'def> AbstractEnum<'def> {
                 coq::command::CommandAttrs::new(coq::command::Instance(
                     coq::term::Type::Literal(format!("Inhabited {}", name)),
                     coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                        proof.push(coq::ltac::LTac::Literal("solve_inhabited".to_owned()));
+                        proof.push(model::LTac::SolveInhabited);
                     }),
                 ))
                 .attributes("global"),
@@ -4385,7 +4385,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     pub fn get_spec_all_type_term(&self, spec: Box<coq::term::Type>) -> coq::term::Type {
         let params = self.get_all_ty_params_with_assocs();
 
-        coq::term::Type::UserDefined(term::RefinedRustType::SpecWith(
+        coq::term::Type::UserDefined(model::Type::SpecWith(
             self.get_num_lifetimes(),
             // TODO: `LiteralTyParam` should take `Type` instead of `String`
             params
@@ -4682,8 +4682,7 @@ fn make_trait_instance<'def>(
     }
     // all sts
     for param in ty_params.params.iter().chain(assoc_types).chain(assoc_params.params.iter()) {
-        let rt_param =
-            coq::binder::Binder::new(Some(param.syn_type.clone()), term::RefinedRustType::SynType.into());
+        let rt_param = coq::binder::Binder::new(Some(param.syn_type.clone()), model::Type::SynType);
         def_params.push(rt_param);
     }
 
@@ -5352,18 +5351,15 @@ impl<'def> TraitImplSpec<'def> {
             params,
             ty: coq::term::Type::Literal(ty_term),
             body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
-                let prelude_tac = format!(
-                    "unfold {}; solve_trait_incl_prelude",
-                    self.trait_ref.impl_ref.spec_subsumption_statement
-                );
-
-                proof.push(coq::ltac::LTac::Literal(prelude_tac));
-                proof.push(coq::ltac::LTac::Literal("all: repeat liRStep; liShow".to_owned()));
-                proof.push(coq::ltac::LTac::Literal("all: print_remaining_trait_goal".to_owned()));
-                proof.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
-                proof.push(coq::ltac::LTac::Literal("all: sidecond_solver".to_owned()));
-                proof.push(coq::ltac::LTac::Literal("Unshelve".to_owned()));
-                proof.push(coq::ltac::LTac::Literal("all: sidecond_hammer".to_owned()));
+                proof.push(model::LTac::SolveTraitInclPrelude(
+                    self.trait_ref.impl_ref.spec_subsumption_statement.clone(),
+                ));
+                proof.push(model::LTac::RepeatLiRStep);
+                proof.push(model::LTac::PrintRemainingTraitGoal);
+                proof.push(model::LTac::Unshelve);
+                proof.push(model::LTac::SidecondSolver);
+                proof.push(model::LTac::Unshelve);
+                proof.push(model::LTac::SidecondHammer);
             }),
         });
 

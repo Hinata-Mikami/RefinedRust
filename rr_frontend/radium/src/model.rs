@@ -4,14 +4,14 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-//! Extended terms, specifically for `RefinedRust`.
+//! Extended Rocq definitions, specifically made for `RefinedRust`.
 
 use derive_more::Display;
 
 use crate::{coq, display_list};
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-pub enum RefinedRustType {
+pub enum Type {
     /// `function_ty` type
     #[display("function_ty")]
     FunctionTy,
@@ -67,14 +67,44 @@ pub enum RefinedRustType {
     Ttype(Box<coq::term::Type>),
 }
 
-impl From<RefinedRustType> for coq::term::Type {
-    fn from(ty: RefinedRustType) -> Self {
+impl From<Type> for coq::term::Type {
+    fn from(ty: Type) -> Self {
         Self::UserDefined(ty)
     }
 }
 
-impl From<Box<RefinedRustType>> for Box<coq::term::Type> {
-    fn from(ty: Box<RefinedRustType>) -> Self {
+impl From<Box<Type>> for Box<coq::term::Type> {
+    fn from(ty: Box<Type>) -> Self {
         Self::new(coq::term::Type::UserDefined(*ty))
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+pub enum LTac {
+    #[display("all: print_remaining_trait_goal")]
+    PrintRemainingTraitGoal,
+
+    #[display("all: repeat liRStep; liShow")]
+    RepeatLiRStep,
+
+    #[display("all: sidecond_hammer")]
+    SidecondHammer,
+
+    #[display("all: sidecond_solver")]
+    SidecondSolver,
+
+    #[display("solve_inhabited")]
+    SolveInhabited,
+
+    #[display("unfold {}; solve_trait_incl_prelude", _0)]
+    SolveTraitInclPrelude(String),
+
+    #[display("Unshelve")]
+    Unshelve,
+}
+
+impl From<LTac> for coq::ltac::LTac {
+    fn from(ty: LTac) -> Self {
+        Self::UserDefined(ty)
     }
 }

@@ -4,8 +4,8 @@
 
 pub mod code;
 pub mod coq;
+pub mod model;
 pub mod specs;
-pub mod term;
 
 pub use code::*;
 pub use specs::*;

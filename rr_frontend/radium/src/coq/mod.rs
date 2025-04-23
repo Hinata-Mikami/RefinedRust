@@ -62,7 +62,7 @@
 //!     }),
 //!     Sentence::QueryCommandAttrs(command::QueryCommandAttrs {
 //!         attributes: None,
-//!         command: command::QueryCommand::Compute(eval::Compute(term::Gallina::Literal(
+//!         command: command::QueryCommand::Compute(eval::Compute(term::Term::Literal(
 //!             "\"Hello World\"".to_owned(),
 //!         ))),
 //!         natural: None,
@@ -79,7 +79,7 @@
 //!     module::Import::new(vec!["String"]).from(vec!["Coq", "Strings"]).into(),
 //! ));
 //! doc.push(command::Command::OpenScope(syntax::OpenScope::new("string_scope")));
-//! doc.push(command::QueryCommand::Compute(eval::Compute(term::Gallina::Literal(
+//! doc.push(command::QueryCommand::Compute(eval::Compute(term::Term::Literal(
 //!     "\"Hello World\"".to_owned(),
 //! ))));
 //! ```
@@ -335,7 +335,7 @@ use derive_more::{Deref, DerefMut, Display, From};
 use from_variants::FromVariants;
 use transitive::Transitive;
 
-use crate::display_list;
+use crate::{display_list, model};
 
 /// A [document], composed of commands.
 ///
@@ -369,6 +369,7 @@ impl Document {
 #[transitive(from(module::FromRequire, command::Command))]
 #[transitive(from(term::Record, command::Command))]
 #[transitive(from(section::Section, command::Command))]
+#[transitive(from(syntax::OpenScope, command::Command))]
 pub enum Sentence {
     #[display("{}", _0)]
     CommandAttrs(command::CommandAttrs),
@@ -403,6 +404,7 @@ impl ProofDocument {
 /// [Vernacular]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
 #[transitive(from(ltac::LetIn, ltac::LTac))]
+#[transitive(from(model::LTac, ltac::LTac))]
 pub enum Vernac {
     #[display("{}", _0)]
     LTac(ltac::LTac),
@@ -430,10 +432,8 @@ mod tests {
         doc.push(command::Command::FromRequire(
             module::Import::new(vec!["String"]).from(vec!["Coq", "Strings"]).into(),
         ));
-        doc.push(command::Command::OpenScope(syntax::OpenScope::new("string_scope")));
-        doc.push(command::QueryCommand::Compute(eval::Compute(term::Term::Literal(
-            "\"Hello World\"".to_owned(),
-        ))));
+        doc.push(syntax::OpenScope::new("string_scope"));
+        doc.push(eval::Compute(term::Term::Literal("\"Hello World\"".to_owned())));
 
         assert_eq!(doc.to_string(), indoc::indoc! {r#"
             From Coq.Strings Require Import String.
@@ -459,7 +459,7 @@ mod tests {
             }),
             Sentence::QueryCommandAttrs(command::QueryCommandAttrs {
                 attributes: None,
-                command: command::QueryCommand::Compute(eval::Compute(term::Gallina::Literal(
+                command: command::QueryCommand::Compute(eval::Compute(term::Term::Literal(
                     "\"Hello World\"".to_owned(),
                 ))),
                 natural: None,

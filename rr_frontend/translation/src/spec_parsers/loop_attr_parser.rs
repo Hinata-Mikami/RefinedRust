@@ -8,7 +8,7 @@ use std::collections::HashSet;
 
 use attribute_parse::{parse, MToken};
 use parse::{Parse, Peek};
-use radium::{coq, specs, term};
+use radium::{coq, model, specs};
 use rr_rustc_interface::ast::ast::AttrItem;
 use rr_rustc_interface::hir::def_id::LocalDefId;
 
@@ -209,7 +209,7 @@ impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'d
             let mut rfn_ty = ty.get_rfn_type();
             let ty_st: specs::SynType = ty.into();
             // wrap it in place_rfn, since we reason about places
-            rfn_ty = term::RefinedRustType::PlaceRfn(Box::new(rfn_ty)).into();
+            rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 
             let local_name = kind.mk_local_name(name);
 

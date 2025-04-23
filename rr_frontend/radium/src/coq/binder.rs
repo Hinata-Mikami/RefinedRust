@@ -39,8 +39,8 @@ pub enum Binder {
 
 impl Binder {
     #[must_use]
-    pub const fn new(name: Option<String>, ty: term::Type) -> Self {
-        Self::Default(name, ty)
+    pub fn new(name: Option<String>, ty: impl Into<term::Type>) -> Self {
+        Self::Default(name, ty.into())
     }
 
     #[must_use]

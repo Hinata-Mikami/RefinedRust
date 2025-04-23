@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use radium::{coq, term};
+use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rr_rustc_interface::middle::mir::tcx::PlaceTy;

@@ -17,7 +17,7 @@ use indent_write::indentable::Indentable;
 use itertools::Itertools;
 
 use crate::coq::binder;
-use crate::{display_list, term, BASE_INDENT};
+use crate::{display_list, model, BASE_INDENT};
 
 /// A [term].
 ///
@@ -187,7 +187,7 @@ impl Display for RecordBodyItem {
 /// A [type], extended with user defined types.
 ///
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
-pub type Type = RocqType<term::RefinedRustType>;
+pub type Type = RocqType<model::Type>;
 
 pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     format!("[{}]", display_list!(v, "; "))

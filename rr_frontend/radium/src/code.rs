@@ -19,7 +19,7 @@ use log::info;
 use typed_arena::Arena;
 
 use crate::specs::*;
-use crate::{coq, display_list, make_indent, push_str_list, term, write_list, BASE_INDENT};
+use crate::{coq, display_list, make_indent, model, push_str_list, write_list, BASE_INDENT};
 
 fn fmt_comment(o: &Option<String>) -> String {
     match o {
@@ -1628,15 +1628,12 @@ impl<'def> FunctionBuilder<'def> {
         let mut parameters: Vec<coq::binder::Binder> = self
             .other_functions
             .iter()
-            .map(|f_inst| {
-                coq::binder::Binder::new(Some(f_inst.loc_name.clone()), term::RefinedRustType::Loc.into())
-            })
+            .map(|f_inst| coq::binder::Binder::new(Some(f_inst.loc_name.clone()), model::Type::Loc))
             .collect();
 
         // generate location parameters for statics used by this function
         self.used_statics.iter().for_each(|s| {
-            parameters
-                .push(coq::binder::Binder::new(Some(s.loc_name.clone()), term::RefinedRustType::Loc.into()));
+            parameters.push(coq::binder::Binder::new(Some(s.loc_name.clone()), model::Type::Loc));
         });
 
         // add generic syntype parameters for generics that this function uses.
