@@ -109,7 +109,7 @@ Section typing.
     λ T, i2p (find_in_context_type_opt_loc_none l T).
 
   Lemma find_in_context_type_locp_loc l T :
-    (∃ π rt (lt : ltype rt) r (b : bor_kind), l ◁ₗ[π, b] r @ lt ∗ T (l ◁ₗ[π, b] r @ lt))
+(∃ π rt (lt : ltype rt) r (b : bor_kind), l ◁ₗ[π, b] r @ lt ∗ T (l ◁ₗ[π, b] r @ lt))
     ⊢ find_in_context (FindLocP l) T.
   Proof. iDestruct 1 as (π rt lt r b) "[Hl HT]". iExists (l ◁ₗ[π, b] r @ lt)%I => /=. iFrame. Qed.
   Global Instance find_in_context_type_locp_loc_inst l :
@@ -1081,7 +1081,7 @@ Section typing.
     ResolveGhost π E L rm lb l (◁ ty)%I (Uniq κ γ') (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_ofty_Uniq π E L l ty γ rm lb κ γ' T).
 
 
-  
+
   (** ** ltype stratification *)
   (* TODO change the ResolveTry and also make it a parameter of stratify *)
 
@@ -1476,7 +1476,7 @@ Section typing.
   Lemma typed_place_blocked_unblock {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
     ⌜bor_kind_writeable bmin0⌝ ∗ [† κ] ∗ typed_place π E L l (◁ ty) r bmin0 b P (
       λ L2 κs li b2 bmin2 rti ltyi ri mstrong,
-        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak) None))
+        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak)))
     ⊢ typed_place π E L l (BlockedLtype ty κ) r bmin0 b P T.
   Proof.
     iIntros "(%Hw & Hdead & Hp)". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hincl0 Hl HΦ".
@@ -1484,9 +1484,9 @@ Section typing.
     iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
     iModIntro.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 Hl").
-    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak immut]) "Hincl1 Hl2 Hs HT HL".
+    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "Hincl1 Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     - destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
       iMod ("Hs" with "Hl2 Hcond") as "(Hl & Hcond & HR)".
@@ -1499,7 +1499,6 @@ Section typing.
       + destruct bmin0; [done.. | ].
         unfold typed_place_cond_ty. simp_ltypes. done.
       + done.
-    - done.
   Qed.
   Global Instance typed_place_blocked_unblock_inst {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P:
     TypedPlace E L π l (BlockedLtype ty κ) r bmin0 b P | 5 := λ T, i2p (typed_place_blocked_unblock π E L l ty κ r bmin0 b P T).
@@ -1507,7 +1506,7 @@ Section typing.
   Lemma typed_place_shrblocked_unblock {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
     ⌜bor_kind_writeable bmin0⌝ ∗ [† κ] ∗ typed_place π E L l (◁ ty) r bmin0 b P (
       λ L2 κs li b2 bmin2 rti ltyi ri mstrong,
-        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak) None))
+        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak)))
     ⊢ typed_place π E L l (ShrBlockedLtype ty κ) r bmin0 b P T.
   Proof.
     iIntros "(%Hw & Hdead & Hp)". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hincl0 Hl HΦ".
@@ -1515,9 +1514,9 @@ Section typing.
     iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
     iModIntro.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 Hl").
-    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak immut]) "Hincl1 Hl2 Hs HT HL".
+    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "Hincl1 Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     - destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
       iMod ("Hs" with "Hl2 Hcond") as "(Hl & Hcond & HR)".
@@ -1530,7 +1529,6 @@ Section typing.
       + destruct bmin0; [done.. | ].
         unfold typed_place_cond_ty. simp_ltypes. done.
       + done.
-    - done.
   Qed.
   Global Instance typed_place_shrblocked_unblock_inst {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P:
     TypedPlace E L π l (ShrBlockedLtype ty κ) r bmin0 b P | 5 := λ T, i2p (typed_place_shrblocked_unblock π E L l ty κ r bmin0 b P T).
@@ -1538,7 +1536,7 @@ Section typing.
   Lemma typed_place_coreable_unblock {rt} π E L l (lt : ltype rt) κs (r : place_rfn rt) bmin0 b P T :
     ⌜bor_kind_writeable bmin0⌝ ∗ lft_dead_list κs ∗ typed_place π E L l (ltype_core lt) r bmin0 b P (
       λ L2 κs li b2 bmin2 rti ltyi ri mstrong,
-        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak) None))
+        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak)))
     ⊢ typed_place π E L l (CoreableLtype κs lt) r bmin0 b P T.
   Proof.
     iIntros "(%Hw & Hdead & Hp)". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hincl0 Hl HΦ".
@@ -1546,9 +1544,9 @@ Section typing.
     iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
     iModIntro.
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 Hl").
-    iIntros (L' κs' l2 b2 bmin rti tyli ri [strong weak immut]) "Hincl1 Hl2 Hs HT HL".
+    iIntros (L' κs' l2 b2 bmin rti tyli ri [strong weak]) "Hincl1 Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     - destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
       iMod ("Hs" with "Hl2 Hcond") as "(Hl & Hcond & HR)".
@@ -1561,7 +1559,6 @@ Section typing.
       + destruct bmin0; simpl; [simp_ltypes; done | done | ].
         unfold typed_place_cond_ty. simp_ltypes. done.
       + done.
-    - done.
   Qed.
   Global Instance typed_place_coreable_unblock_inst {rt} π E L l (lt : ltype rt) κs r bmin0 b P :
     TypedPlace E L π l (CoreableLtype κs lt) r bmin0 b P | 5 :=
@@ -1572,7 +1569,7 @@ Section typing.
     resolve_ghost π E L ResolveAll false l lt b (PlaceGhost γ) (λ L' r R progress,
       introduce_with_hooks E L' R (λ L'', typed_place π E L'' l lt r bmin0 b P (
       λ L2 κs li b2 bmin2 rti ltyi ri mstrong,
-        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak) None))))
+        T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak)))))
     ⊢ typed_place π E L l lt (PlaceGhost γ) bmin0 b P T.
   Proof.
     iIntros "(% & %Hw & Hres)". iIntros (????) "#CTX #HE HL Hincl0 Hl HΦ".
@@ -1581,9 +1578,9 @@ Section typing.
     iMod "Hstep" as "(Hl & HR)".
     iMod ("HP" with "[] HE HL HR") as "(%L'' & HL & HP)"; first done.
     iModIntro. iApply ("HP" with "[//] [//] CTX HE HL Hincl0 Hl").
-    iIntros (L1 κs l2 b2 bmin rti tyli ri [strong weak immut]) "Hincl1 Hl2 Hs HT HL".
+    iIntros (L1 κs l2 b2 bmin rti tyli ri [strong weak]) "Hincl1 Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     - destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
       iMod ("Hs" with "Hl2 Hcond") as "(Hl & Hcond & HR)".
@@ -1595,7 +1592,6 @@ Section typing.
       done.
       (*iDestruct "Hcond" as "(Ht & Hr)". iSplit; first done.*)
       (*destruct bmin0; done.*)
-    - done.
   Qed.
   (* this needs to have a lower priority than place_blocked_unblock *)
   Global Instance typed_place_resolve_ghost_inst {rt} π E L l (lt : ltype rt) bmin0 b γ P :
@@ -1616,7 +1612,6 @@ Section typing.
           (λ rti2 ri2, strong.(strong_rfn) _ ri2)
           strong.(strong_R)) mstrong.(mstrong_strong))
         (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
-        None
         None))
     ⊢ typed_place π E L l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin0 (Owned wl) P T.
   Proof.
@@ -1646,7 +1641,7 @@ Section typing.
           (λ rti2 ri2, strong.(strong_rfn) _ ri2)
           strong.(strong_R)) mstrong.(mstrong_strong))
         (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
-        None None))
+        None))
     ⊢ typed_place π E L l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin0 (Uniq κ γ) P T.
   Proof.
     iIntros "HT". iIntros (Φ F ??) "#CTX #HE HL #Hincl0 Hl HR".
@@ -1674,8 +1669,7 @@ Section typing.
       T L' κs l2 b2 bmin rti ltyi ri
           (mk_mstrong
           (option_map (λ strong, mk_strong (λ _, rt_full) (λ rti ltyi ri, ShadowedLtype (strong.(strong_lt) _ ltyi ri) (strong.(strong_rfn) _ ri) lt_full) (λ _ _, r_full) strong.(strong_R)) mstrong.(mstrong_strong))
-          (option_map (λ weak, mk_weak (λ ltyi ri, ShadowedLtype (weak.(weak_lt) ltyi ri) (weak.(weak_rfn) ri) lt_full) (λ _, r_full) weak.(weak_R)) mstrong.(mstrong_weak))
-          None)
+          (option_map (λ weak, mk_weak (λ ltyi ri, ShadowedLtype (weak.(weak_lt) ltyi ri) (weak.(weak_rfn) ri) lt_full) (λ _, r_full) weak.(weak_R)) mstrong.(mstrong_weak)))
     )
     ⊢ typed_place π E L l (ShadowedLtype lt_cur (#r_cur) lt_full) r_full bmin0 (Shared κ) P T.
   Proof.
@@ -1684,9 +1678,9 @@ Section typing.
     iPoseProof (lctx_bor_kind_outlives_all_use with "Houtl HE HL") as "#Houtl'".
     iPoseProof (shadowed_ltype_acc_cur with "Hl") as "(Hcur & Hcl)".
     iApply ("HT" with "[//] [//] CTX HE HL Hincl Hcur").
-    iIntros (L' κs l2 b2 bmin rti ltyi ri [strong weak immut]) "Hincl' Hl Hcc".
+    iIntros (L' κs l2 b2 bmin rti ltyi ri [strong weak]) "Hincl' Hl Hcc".
     iApply ("Hc" with "Hincl' Hl").
-    iSplit; last iSplit; simpl.
+    iSplit; simpl.
     - destruct strong as [ strong | ]; simpl; last done.
       iIntros (rti2 ltyi2 ri2) "Hl %Hst".
       iDestruct "Hcc" as "[ Hcc _]".
@@ -1705,7 +1699,6 @@ Section typing.
       iPoseProof ("Hcl" with "[//] Hl") as "Hl".
       iFrame. iSplitL; first last. { destruct bmin0; done. }
       iApply typed_place_cond_ty_shadowed_update_cur. done.
-    - done.
   Qed.
   Global Instance typed_place_shadowed_shr_inst π E L {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r_cur r_full bmin0 l κ P :
     TypedPlace E L π l (ShadowedLtype lt_cur #r_cur lt_full) r_full bmin0 (Shared κ) P | 5 :=
@@ -2078,14 +2071,12 @@ Section typing.
     iMod ("Hcl" $! st with "Hl2 Hv") as (L3 rt4 ty4 r4) "(Hmv & HL & Hcl)".
     iDestruct "Hcl" as "(%rt' & %lt' & %r' & %res & Hl2 & %Hsteq & Hx & Hfin)" => /=.
     unfold typed_place_finish.
-    (*destruct access_result_meet_mstrong_ctx as [ [] | ] eqn:Heq_ctx; last done.*)
-    (*
+    destruct access_result_meet_mstrong_ctx as [ [] | ] eqn:Heq_ctx; last done.
     + (* do a weak update *)
-      simpl. iDestruct "Hweak" as "(%weak' & %Heq & -> & %Hw & Hfin)". subst rt'.
-      destruct upd as [ upd | ]; last done.
-      simpl in Hw. iDestruct "Hs" as "[_ Hs]". subst rt2'.
-      destruct res; last done.
-      (*rewrite (UIP_refl _ _ Heq).*)
+      apply access_result_meet_mstrong_ctx_inv_weak in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->]. subst.
+      destruct upd, res; try done. subst.
+      iDestruct "Hs" as "[_ Hs]".
       iMod ("Hs" with "[] Hl2 [Hcond Hx Hrcond]") as "(Hl & Hcond'' & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
       { iApply (typed_place_cond_trans with "[-Hx] Hx").
@@ -2096,7 +2087,8 @@ Section typing.
       iMod ("Hfin" with "[] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)"; first done.
       iModIntro. iExists _, _, _, _. iFrame.
     + (* also need to do a strong update due to the stratification *)
-      simpl. iDestruct "Hstrong" as "(%strong' & -> & %Hw & Hfin)".
+      apply access_result_meet_mstrong_ctx_inv_strong in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->].
       iDestruct "Hs" as "[Hs _]".
       iMod ("Hs" with "Hl2 [Hcond]") as "(Hl & Hcond'' & HR')".
       { unshelve iSpecialize ("Heq" $! (Owned false) inhabitant); first apply _.
@@ -2110,8 +2102,6 @@ Section typing.
       iMod ("Hfin" with "[] HE HL HR") as "(%L4 & HL & HT)"; first done.
       iModIntro. iExists _, _, _, _. iFrame.
   Qed.
-     *)
-  Admitted.
 
   (** [type_read_end] instance that does a copy *)
   Lemma type_read_ofty_copy E L {rt} π (T : typed_read_end_cont_t rt) b2 bmin br l (ty : type rt) r ot `{!Copyable ty}:
@@ -2292,21 +2282,22 @@ Section typing.
     iIntros "Hcl Hl2".
     iMod ("Hcl" with "Hl2") as "Hcl".
     iDestruct "Hcl" as "(%L3 & %rt3 & %ty3 & %r3 & %res & HL & Hl2 & %Hsteq & Hx & Hfin)".
-    (*
-    iPoseProof (typed_place_finish_elim with "Hfin") as "[Hweak | Hstrong]".
-    - (* weak *)
-      simpl. iDestruct "Hweak" as "(%weak' & %Heq & -> & %Hres & Hfin)".
-      iDestruct "Hs" as "[_ Hs]". subst rt3.
-      destruct upd as [ upd | ]; last done. subst rt2'.
+    unfold typed_place_finish.
+    destruct access_result_meet_mstrong_ctx as [ [] | ] eqn:Heq_ctx; last done.
+    - (* do a weak update *)
+      apply access_result_meet_mstrong_ctx_inv_weak in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->]. subst.
+      destruct upd, res; try done. subst.
+      iDestruct "Hs" as "[_ Hs]".
       iMod ("Hs" with "[] Hl2 [Hcond Hx Hrcond]") as "(Hl & Hcond'' & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
-      { destruct res; last done.
-        iApply (typed_place_cond_trans with "[$Hcond $Hrcond] Hx"). }
+      { iApply (typed_place_cond_trans with "[$Hcond $Hrcond] Hx"). }
       cbn. iPoseProof ("Hfin" with "Hl HR'") as "Hfin".
       iMod ("Hfin" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
       iModIntro. iExists L4. iFrame.
     - (* strong *)
-      simpl. iDestruct "Hstrong" as "(%strong' & -> & %Hres & Hfin)".
+      apply access_result_meet_mstrong_ctx_inv_strong in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->].
       iDestruct "Hs" as "[Hs _]".
       iMod ("Hs" with "Hl2 [Hcond Hrcond]") as "(Hl & Hcond'' & HR')".
       { destruct upd.
@@ -2317,8 +2308,6 @@ Section typing.
         iMod ("Hfin" with "[//] HE HL HR") as "(%L4 & HL & HT)".
         iModIntro. iExists _. iFrame.
   Qed.
-     *)
-  Admitted.
 
   (* TODO: generalize to other places where we can overwrite, but which can't be folded to an ofty *)
 
@@ -2556,9 +2545,8 @@ Section typing.
 
       iExists L4, _, _, tyb, rb. iFrame.
       by iApply "HT".
-    -
-  Admitted.
-  (*Qed.*)
+    - done.
+  Qed.
   (* NOTE: instances for [typed_addr_of_mut_end] are in alias_ptr.v *)
 
   (** Top-level rule for creating a mutable borrow *)
@@ -2653,15 +2641,13 @@ Section typing.
     iSpecialize ("HT" with "Hstore").
     assert (ly' = ly) as ->. { move: Hst_eq Halg' Halg. simp_ltypes => -> ??. by eapply syn_type_has_layout_inj. }
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heq.
-
-    (*
-    iPoseProof (typed_place_finish_elim with "HT") as "[Hweak | Hstrong]".
-    - (* weak update *)
-      iDestruct "Hweak" as "(%weak' & %Heq' & -> & %Hmeet & HT)".
-      iDestruct "Hs" as "[_ Hs]". subst rt4.
-      destruct upd; last done. destruct upd'; last done. simpl in Hmeet.
-      subst rt'.
-      (*rewrite (UIP_refl _ _ Heq1) in Hmeet. simpl in Hmeet. *)
+    unfold typed_place_finish.
+    destruct access_result_meet_mstrong_ctx as [ [] | ] eqn:Heq_ctx; last done.
+    - (* do a weak update *)
+      apply access_result_meet_mstrong_ctx_inv_weak in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->]. subst.
+      destruct upd, upd'; try done. subst.
+      iDestruct "Hs" as "[_ Hs]".
       iMod ("Hs" with "[] Hblock [Hcond Hcond' Hrcond]") as "(Hl & Hcond & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
       { iApply (typed_place_cond_trans with "[$Hcond]"); first iApply typed_place_cond_rfn_refl.
@@ -2676,8 +2662,10 @@ Section typing.
       iMod ("HT" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
       iModIntro. iExists L4, _,  _, _, _, γ, ly. iFrame.
       iSplitR; done.
-    - (* strong update *) iDestruct "Hs" as "[Hs _]".
-      iDestruct "Hstrong" as "(%strong' & -> & %Hw & HT)".
+    - (* strong update *)
+      apply access_result_meet_mstrong_ctx_inv_strong in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->].
+      iDestruct "Hs" as "[Hs _]".
       iMod ("Hs" with "Hblock [Hcond Hcond']") as "(Hl & Hcond & HR')".
       { iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "%Heq2".
         move: Hst_eq. simp_ltypes => Hst_eq.
@@ -2688,8 +2676,6 @@ Section typing.
       iModIntro. iExists L4, _, _, _, _, γ, ly. iFrame.
       iSplitR; done.
   Qed.
-     *)
-  Admitted.
 
   (** Finish a mutable borrow *)
   Lemma type_borrow_mut_end E L π κ l (rt : Type) (ty : type rt) (r : place_rfn rt) b2 bmin T:
@@ -2879,14 +2865,13 @@ Section typing.
     iDestruct ("Ha" with "Hcred") as ">(%ly' & %lt' & %r' & Hrfn & Hshr & %Halg' & Hlb & Hsc & Hblocked & Hcond' & HL & HT)".
     assert (ly' = ly) as ->. { move: Hst_eq Halg' Halg. simp_ltypes => -> ??. by eapply syn_type_has_layout_inj. }
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heq.
-
-    (*
-    iPoseProof (typed_place_finish_elim with "HT") as "[Hweak | Hstrong]".
-    - (* weak update *)
-      iDestruct "Hweak" as "(%weak' & %Heq' & -> & %Hmeet & HT)".
-      iDestruct "Hs" as "[_ Hs]". subst rt4.
-      destruct upd; last done. destruct upd'; last done. simpl in Hmeet.
-      (*rewrite (UIP_refl _ _ Heq1) in Hmeet. simpl in Hmeet. *)
+    unfold typed_place_finish.
+    destruct access_result_meet_mstrong_ctx as [ [] | ] eqn:Heq_ctx; last done.
+    - (* do a weak update *)
+      apply access_result_meet_mstrong_ctx_inv_weak in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->]. subst.
+      destruct upd, upd'; try done. subst.
+      iDestruct "Hs" as "[_ Hs]".
       iMod ("Hs" with "[] Hblocked [Hcond Hcond' Hrcond]") as "(Hl & Hcond & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
       { iApply (typed_place_cond_trans with "[$Hcond $Hrcond]").
@@ -2900,9 +2885,11 @@ Section typing.
       iMod ("HT" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
       iModIntro. iExists L4, π, _, _, _, _, ly. iFrame.
       iSplitR; done.
-    - (* strong update *) iDestruct "Hs" as "[Hs _]".
+    - (* strong update *)
+      apply access_result_meet_mstrong_ctx_inv_strong in Heq_ctx; simpl in Heq_ctx.
+      destruct Heq_ctx as [Heq1 ->]. subst.
+      iDestruct "Hs" as "[Hs _]".
       iPoseProof (typed_place_cond_syn_type_eq with "Hcond'") as "%Heq'".
-      iDestruct "Hstrong" as "(%strong' & -> & %Hw & HT)".
       iMod ("Hs" with "Hblocked [Hcond Hcond']") as "(Hl & Hcond & HR')".
       { iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "%Heq2".
         move: Hst_eq. simp_ltypes => Hst_eq.
@@ -2913,8 +2900,6 @@ Section typing.
       iModIntro. iExists L4, π, _, _, _, _, ly. iFrame.
       iSplitR; done.
   Qed.
-     *)
-  Admitted.
 
   Lemma type_borrow_shr_end_owned E L π κ l {rt : Type} (ty : type rt) (r : place_rfn rt) bmin wl T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗

@@ -28,7 +28,7 @@ Section union.
     1 ≤ n →
     n ^ (max_list l) = max 1 (max_list ((λ x, n^x) <$> l)).
   Proof.
-intros ?.
+    intros ?.
     induction l as [ | x l IH]; simpl; first done.
     rewrite Nat_pow_max; last done.
     rewrite IH.
@@ -1193,6 +1193,100 @@ Section init.
    *)
 End init.
 
+Section discriminant.
+  Context `{!typeGS Σ}.
+
+  Definition typed_discriminant_end_cont_t : Type :=
+    llctx → val → ∀ (rt : Type), type rt → rt → iProp Σ.
+  Definition typed_discriminant_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt: Type} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) (T : typed_discriminant_end_cont_t) :=
+    (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      bmin ⊑ₖ b2 -∗
+      (* given ownership of the read location *)
+      l ◁ₗ[π, b2] r @ lt ={F}=∗
+      ∃ q v discr,
+        ⌜GetEnumDiscriminantLocSt l els `has_layout_loc` els.(els_tag_it)⌝ ∗
+        ⌜v `has_layout_val` els.(els_tag_it)⌝ ∗
+        (GetEnumDiscriminantLocSt l els) ↦{q} v ∗
+        ▷ v ◁ᵥ{π} discr @ (int els.(els_tag_it)) ∗
+        (* prove the continuation after the client is done *)
+        logical_step F (
+          (* assuming that the client provides the ownership back... *)
+          (GetEnumDiscriminantLocSt l els) ↦{q} v ={F}=∗
+          ∃ (L' : llctx) (rt3 : Type) (ty3 : type rt3) (r3 : rt3), 
+            v ◁ᵥ{ π} r3 @ ty3 ∗ 
+            llctx_interp L' ∗
+            l ◁ₗ[π, b2] r @ lt ∗
+            T L' v rt3 ty3 r3))%I.
+  Class TypedDiscriminantEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) : Type :=
+    typed_discriminant_end_proof T : iProp_to_Prop (typed_discriminant_end π E L l lt r b2 bmin els T).
+
+  Lemma typed_discriminant_end_enum_ltype π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 bmin els (T : typed_discriminant_end_cont_t) : 
+    typed_discriminant_end π E L l (EnumLtype en tag lte re) (#r) b2 bmin els T :-
+    exhale (⌜en.(enum_els) = els⌝);
+    ∀ v,
+    return (T L v rt  (enum_discriminant_t en) (r)).
+  Proof.
+  Admitted.
+  Global Instance typed_discriminant_end_enum_ltype_inst π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 bmin els:
+    TypedDiscriminantEnd π E L l (EnumLtype en tag lte re) (#r) b2 bmin els :=
+    λ T, i2p (typed_discriminant_end_enum_ltype π E L l en tag lte re r b2 bmin els T).
+
+  Lemma typed_discriminant_end_enum π E L l {rt} (en : enum rt) r b2 bmin els (T : typed_discriminant_end_cont_t) : 
+    typed_discriminant_end π E L l (◁ enum_t en) (#r) b2 bmin els T :-
+    exhale (⌜en.(enum_els) = els⌝);
+    ∀ v,
+    return (T L v rt (enum_discriminant_t en) (r)).
+  Proof.
+  Admitted.
+  Global Instance typed_discriminant_end_enum_inst π E L l {rt} (en : enum rt) r b2 bmin els:
+    TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 bmin els :=
+    λ T, i2p (typed_discriminant_end_enum π E L l en r b2 bmin els T).
+
+  Lemma type_discriminant E L e els T' (T : typed_read_cont_t) :
+    IntoPlaceCtx E e T' →
+    (** Decompose the expression *)
+    T' L (λ L' K l,
+      (** Find the type assignment *)
+      find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
+      (** Check the place access *)
+      typed_place π E L' l lt1 r1 b b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 bmin : bor_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) (mstrong : mstrong_ctx rto rti),
+        (** Stratify *)
+        stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
+        (** Certify that this stratification is allowed, or otherwise commit to a strong update *)
+        prove_place_cond E L2 bmin lt2 lt3 (λ upd,
+        prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri3 (
+        (** Finish reading *)
+        typed_discriminant_end π E L2 l2 lt3 ri3 b2 bmin els (λ L3 v rt3 ty3 r3,
+        typed_place_finish π E L3 mstrong upd True%I (llft_elt_toks κs) l b lt1 r1 lt2 ri2 lt3 ri3 (λ L4, T L4 π v _ (ty3) r3))
+      ))))))%I
+    ⊢ typed_val_expr E L (EnumDiscriminant els e)%E T.
+  Proof.
+    (*iIntros "[% Hread]" (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".*)
+    (*wp_bind.*)
+    (*iApply ("Hread" $! _ ⊤ with "[//] [//] [//] [//] [$TIME $LFT $LLCTX] HE HL").*)
+    (*iIntros (l) "Hl".*)
+    (*iApply ewp_fupd.*)
+    (*rewrite /Use. wp_bind.*)
+    (*iApply (wp_logical_step with "TIME Hl"); [solve_ndisj.. | ].*)
+    (*iMod (persistent_time_receipt_0) as "#Hp".*)
+    (*iMod (additive_time_receipt_0) as "Ha".*)
+    (*iApply (wp_skip_credits with "TIME Ha Hp"); first done.*)
+    (*iNext. iIntros "Hcred Hat".*)
+    (*iIntros "(%v & %q & %π & %rt & %ty & %r & %Hlyv & %Hv & Hl & Hv & Hcl)".*)
+    (*iModIntro. iApply (wp_logical_step with "TIME Hcl"); [solve_ndisj.. | ].*)
+    (*iApply (wp_deref_credits with "TIME Hat Hp Hl") => //; try by eauto using val_to_of_loc.*)
+    (*{ destruct o; naive_solver. }*)
+    (*iIntros "!> %st Hl Hcred2 Hat Hcl".*)
+    (*iMod ("Hcl" with "Hl Hv") as "(%L' & %rt' & %ty' & %r' & HL & Hv & HT)"; iModIntro.*)
+    (*iDestruct "Hcred2" as "(Hcred1' & Hcred2)".*)
+    (*iMod ("HT" with "[] HE HL [$Hat $Hcred2]") as "(%L3 & HL & HT)"; first done.*)
+    (*by iApply ("HΦ" with "HL Hv HT").*)
+  (*Qed.*)
+  Admitted.
+
+End discriminant.
+
 Section rules.
   Context `{!typeGS Σ}.
 
@@ -1259,9 +1353,9 @@ Section rules.
   Admitted.
    *)
 
-
-
   (** Discriminant instances *)
+
+  (*
   Lemma typed_place_enum_discriminant_owned {rt rte} π E L l (en : enum rt) (r : rt) bmin0 wl els tag (lte : ltype rte) re P T :
     typed_place π E L l (EnumLtype en tag lte re) (#r) bmin0 (Owned wl) (EnumDiscriminantPCtx els :: P) T :-
       exhale (⌜en.(enum_els) = els⌝);
@@ -1291,6 +1385,7 @@ Section rules.
   Admitted.
   Definition typed_place_enum_discriminant_shared_inst := [instance @typed_place_enum_discriminant_shared].
   Global Existing Instance typed_place_enum_discriminant_shared_inst.
+  *)
 
   (* TODO: need back-injection into the whole enum rfn (?). 
         In order to handle weak updates.
@@ -1451,8 +1546,7 @@ Section rules.
               )
             (*(λ ri, #(enum_tag_rfn_inj' en tag r Heq (placein_or_default (weak.(weak_rfn) ri) (enum_tag_rfn en tag r Heq)))) *)
             weak.(weak_R)) mstrong.(mstrong_weak))
-          (*None*)
-          None)
+          )
       )).
   Proof.
   Admitted.
@@ -1495,8 +1589,7 @@ Section rules.
               )
             (*(λ ri, #(enum_tag_rfn_inj' en tag r Heq (placein_or_default (weak.(weak_rfn) ri) (enum_tag_rfn en tag r Heq)))) *)
             weak.(weak_R)) mstrong.(mstrong_weak))
-          (*None*)
-          None)
+          )
       )).
   Proof.
   Admitted.
@@ -1564,8 +1657,7 @@ Section rules.
               #(enum_tag_rfn_inj en tag r Heq (rew <- [id] Heq2 in (plist_insert_id (() : Type) rts rs i (weak.(weak_rfn) ri))))
               )
             weak.(weak_R)) mstrong.(mstrong_weak))
-          (*None*)
-          None)
+          )
       )).
   Proof.
   Admitted.

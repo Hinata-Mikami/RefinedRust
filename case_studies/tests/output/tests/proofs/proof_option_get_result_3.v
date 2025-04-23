@@ -35,7 +35,29 @@ Proof.
   (* 
      - Maybe let's just do some manual hackery.
      - Cleaner: allow attributes to depend on semty, and implement it via trait attrs.
-     TODO.
+
+      Q: can we put it in the trait_incl requirements that we anyways have? (and make it a kindof semantic assumption?)
+      - Why do that instead of just hard-coding it in the spec? 
+        + because of generic specialization of specs of default specs.
+      - I moved the trait incl there to allow cyclic impls.
+
+      In this case however it doesn't matter that we put it for the actual generics.
+      I need to show that it is Copy.
+      I guess I could put it there though. (Q: default stuff doesn't have trait incls now, right?)
+      So let's just add it to the spec for now.
+
+
+    Implementation plan: 
+    - we represent builtin traits in GenericScope, somehow.
+     + TODO: figure out details. maybe we just have a marker for a trait assumption that says whether its Copy. 
+    - alternative: we add general support for semantic requirements on Self. 
+       this might be neater and more general. It's an optional definition that every trait can declare.
+       If we assume a trait somewhere (in a function), we assume it. 
+       If I implement an impl, I need to prove it.
+       Maybe for now restrict this to just the Self type.
+       + then we have a general mechanism for when to generate Copy/Send/Sync etc.
+    - if a function requires copyable, we add it as a semantic assumption.
+      
 
    *)
 

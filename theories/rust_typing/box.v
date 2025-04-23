@@ -873,7 +873,6 @@ Section rules.
             (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2))
             (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r))
             weak.(weak_R)) mstrong.(mstrong_weak))
-          None
           )))
     ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -889,7 +888,7 @@ Section rules.
     iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
     iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb") => /=.
-    iSplit; last iSplit.
+    iSplit.
     - (* strong update *) iDestruct "Hs" as "[Hs _]".
       destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2).
@@ -911,7 +910,6 @@ Section rules.
       { iPureIntro. apply place_access_rt_rel_refl. }
       iModIntro. iFrame "HR Hb".
       done.
-    - done.
   Qed.
   Global Instance typed_place_box_owned_inst {rto} π E L (lt2 : ltype rto) bmin0 r l wl P :
     TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_owned π E L lt2 P l r wl bmin0 T).
@@ -931,7 +929,6 @@ Section rules.
               strong.(strong_R)) mstrong.(mstrong_strong))
             (* weak branch: just keep the Box *)
             (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
-            None
             ))))
     ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -954,7 +951,7 @@ Section rules.
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit; last iSplit.
+    simpl. iSplit.
     - (* strong update *)
       iDestruct "Hs" as "(Hs & _)". iDestruct "Hcl" as "(_ & Hcl)".
       destruct strong as [strong | ]; last done.
@@ -973,7 +970,6 @@ Section rules.
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
       iMod ("Hcl" with "Hl Hb [//] Hcond") as "(Hb & Hκ' & Hcond)".
       iModIntro. rewrite llft_elt_toks_app. iFrame.
-    - done.
   Qed.
   Global Instance typed_place_box_uniq_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' γ' P :
     TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_uniq π E L lt2 P l r κ' γ' bmin0 T).
@@ -988,8 +984,7 @@ Section rules.
             (* TODO *)
               None
             (* weak branch: just keep the Box *)
-            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
-            None))))
+            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))))))
     ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
@@ -1013,12 +1008,12 @@ Section rules.
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit; last iSplit.
+    simpl. iSplit.
     - (* strong update *)
       done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs & _)".
+      iDestruct "Hs" as "(_ & Hs)".
       iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
       iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb & Hcond & ? & HR)".
       { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
@@ -1026,7 +1021,6 @@ Section rules.
       iMod (fupd_mask_mono with "(Hclκ' Hκ')") as "?"; first done.
       rewrite llft_elt_toks_app. iFrame.
       cbn. iApply "Hcond'"; last done. done.
-    - done.
   Qed.
   Global Instance typed_place_box_shared_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' P :
     TypedPlace E L π l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_shared π E L lt2 P l r κ' bmin0 T).

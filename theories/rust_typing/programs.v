@@ -757,7 +757,6 @@ Section judgments.
   | BinOpPCtx (op : bin_op) (ot : op_type) (π : thread_id) (v : val) rt (ty : type rt) (r : rt)
     (* for ptr-to-ptr casts, ot must be PtrOp *)
   | UnOpPCtx (op : un_op)
-  | EnumDiscriminantPCtx (els : enum_layout_spec)
   | EnumDataPCtx (els : enum_layout_spec) (variant : var_name)
   .
 
@@ -773,7 +772,6 @@ Section judgments.
       note that the offset is on the left and evaluated first *)
     | BinOpPCtx op ot π v rt ty r => v ◁ᵥ{π} r @ ty -∗ WP BinOp op ot PtrOp v l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
     | UnOpPCtx op => WP UnOp op PtrOp l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | EnumDiscriminantPCtx els => WP EnumDiscriminant els l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
     | EnumDataPCtx els variant => WP EnumData els variant l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
     end%I.
   Definition place_to_wp (K : list place_ectx_item) (Φ : loc → iProp Σ) : (loc → iProp Σ) := foldr (place_item_to_wp) (λ v, |={⊤}=> Φ v)%I K.
@@ -812,10 +810,10 @@ Section judgments.
   Lemma place_item_to_wp_mono K Φ1 Φ2 l:
     place_item_to_wp K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_item_to_wp K Φ2 l.
   Proof.
-    iIntros "HP HΦ". move: K => [o ly mc|sls m|uls m |n A x|op ot π v rt ty r|op | els | els variant]//=.
+    iIntros "HP HΦ". move: K => [o ly mc|sls m|uls m |n A x|op ot π v rt ty r|op | els variant]//=.
     5: iIntros "Hv".
-    1-4,6-8: iApply (@wp_wand with "HP").
-    8: iApply (@wp_wand with "[Hv HP]"); first by iApply "HP".
+    1-4,6-7: iApply (@wp_wand with "HP").
+    7: iApply (@wp_wand with "[Hv HP]"); first by iApply "HP".
     all: iIntros (?); iDestruct 1 as (l' ->) "HΦ1".
     all: iExists _; iSplit => //; by iApply "HΦ".
   Qed.
@@ -846,7 +844,6 @@ Section judgments.
       T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [DerefPCtx o ot mc]) l))
     | W.GetMember e sls m => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberPCtx sls m]) l))
     | W.GetMemberUnion e uls m => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberUnionPCtx uls m]) l))
-    | W.EnumDiscriminant els e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDiscriminantPCtx els]) l))
     | W.EnumData els variant e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDataPCtx els variant]) l))
     | W.AnnotExpr n x e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [AnnotExprPCtx n x]) l))
     | W.LocInfoE a e => find_place_ctx E e
@@ -907,13 +904,13 @@ Section judgments.
     2: iApply ("HT" with "LFT HE HL"); iIntros (L' π v rt ty r) "HL Hv HT".
     2: iDestruct (IH with "LFT HE HL HT") as "HT" => //.
     2: fold W.to_expr.
-    1, 3-8: iDestruct (IH with "LFT HE HL HT") as " HT" => //.
+    1, 3-7: iDestruct (IH with "LFT HE HL HT") as " HT" => //.
     all: wp_bind; iApply "HT".
     all: iIntros (L'' K l) "HL HT" => /=.
     all: iDestruct ("HΦ'" with "HL HT") as "HΦ"; rewrite place_to_wp_app /=.
     all: iApply (place_to_wp_mono with "HΦ"); iIntros (l') "HWP" => /=.
-    8: iApply (@wp_wand with "[Hv HWP]"); first by iApply "HWP".
-    1-7: iApply (@wp_wand with "HWP").
+    7: iApply (@wp_wand with "[Hv HWP]"); first by iApply "HWP".
+    1-6: iApply (@wp_wand with "HWP").
     all: iIntros (?); by iDestruct 1 as (? ->) "$".
   Qed.
   End find_place_ctx_correct.
@@ -1335,12 +1332,9 @@ Section judgments.
     mstrong_strong : option (strong_ctx rti);
     (* non-rt-changing *)
     mstrong_weak : option (weak_ctx rto rti);
-    (* immutable / no changes *)
-    mstrong_immut : option (immut_ctx);
   }.
   Global Arguments mstrong_strong {_ _}.
   Global Arguments mstrong_weak {_ _}.
-  Global Arguments mstrong_immut {_ _}.
   Global Arguments mk_mstrong {_ _}.
   (* Note: this gives us three distinct update modes, and we cannot subsume one into the other, because all of this is invariant. *)
 
@@ -1430,15 +1424,7 @@ Section judgments.
           (* as well as a "remaining" ownership that we get out from the update *)
           weak.(weak_R) ltyi2 ri2
          | None => True
-         end)  ∧
-
-       (* no update *)
-       (match mstrong.(mstrong_immut) with
-        | Some immut =>
-          l2 ◁ₗ[π, b2] ri @ ltyi ={F}=∗
-          l1 ◁ₗ[π, b1] r1 @ ltyo ∗ immut.(immut_R)
-        | _ => True
-        end) -∗
+         end) -∗
 
         (* provide the continuation condition *)
         T L' κs l2 b2 bmin rti ltyi ri mstrong -∗
@@ -1458,7 +1444,6 @@ Section judgments.
       (mk_mstrong
         (Some $ mk_strong id (λ _ lti2 _, lti2) (λ _ , id) (λ _ _ _, True))
         (Some $ mk_weak (λ lti2 _, lti2) id (λ _ _, True))
-        (Some $ mk_immut True)
        )
     ⊢ typed_place π E L l lt r bmin0 b [] T.
   Proof.
@@ -1467,13 +1452,12 @@ Section judgments.
     iSpecialize ("HΦ" $! _ _ _ _ _ _ _ _ _ with "[] HP").
     { iApply "Hincl". }
     iApply ("HΦ" with "[] Hs HL").
-    iSplit; last iSplit.
+    iSplit.
     - iIntros (rti2 tyli2 ri2) "Hl Hcond" => /=. iFrame. done.
     - iIntros (tyli2 ri2 bmin') "Hincl' Hl Hcond" => /=. iFrame.
       iSplitL. { iApply (typed_place_cond_incl with "Hincl' Hcond"). }
       rewrite /llft_elt_toks.
       iSplitR; first iApply big_sepL_nil; done.
-    - simpl. eauto.
   Qed.
   Global Instance typed_place_id_inst {rt} π E L (lt : ltype rt) bmin0 b r l :
     TypedPlace E L π l lt r bmin0 b [] | 9 := λ T, i2p (typed_place_id π E L lt bmin0 b r l T).
@@ -1491,9 +1475,9 @@ Section judgments.
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
 
     iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 Hl").
-    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak immut]) "#Hincl1 Hl2 Hs HT HL".
+    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     - destruct strong as [ strong | ]; last done.
       iIntros (rti2 tyli2 ri2) "Hl2 %Hcond". iDestruct "Hs" as "[Hs _]".
       iMod ("Hs" with "Hl2 [//]") as "(Hl & %Hcond2 & HR)".
@@ -1506,11 +1490,6 @@ Section judgments.
       iFrame. iModIntro.
       iApply ltype_eq_place_cond_trans; last done.
       iApply "Heq".
-    - simpl. destruct immut; last done.
-      iDestruct "Hs" as "(_ & _ & Hs)". iIntros "Ha".
-      iMod ("Hs" with "Ha") as "(Hs & $)".
-      iMod (ltype_incl_use with "Hi2 Hs") as "$"; first done.
-      by iFrame.
   Qed.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
@@ -1535,7 +1514,6 @@ Section judgments.
                   | None => None
                   end
               end)
-            None
             )
         ))
       ⊢
@@ -1559,9 +1537,9 @@ Section judgments.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
     { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak immut]) "#Hincl1 Hl3 Hcl HT HL".
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
     iApply ("Hcont" with "[//] Hl3 [Hcl Hl] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
       destruct strong as [ strong | ]; simpl; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
@@ -1583,10 +1561,6 @@ Section judgments.
         iFrame. iModIntro.
         iSplitL. { iApply typed_place_cond_refl. done. }
         rewrite /llft_elt_toks. done.
-    - (* immut *)
-      done.
-      (*destruct immut as [immut | ]; simpl; last done. iDestruct "Hcl" as "(_ & _ & Hcl)".*)
-      (*iIntros "Ha". iFrame. iMod ("Hcl" with "Ha") as "(Ha & $)". by iFrame.*)
   Qed.
 
   (* TODO generalize this similarly as the one above? *)
@@ -1605,8 +1579,6 @@ Section judgments.
             (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
           (option_map (λ weak, mk_weak (λ _ _, ◁ ty) (λ _, PlaceIn r)
             (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-          None
-          (*(option_map (λ immut, mk_immut (l2 ◁ₗ[π, b2] r2 @ lt2 ∗ immut.(immut_R))) mstrong.(mstrong_immut))*)
           )
         ))
     ⊢ typed_place π E L l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
@@ -1634,9 +1606,9 @@ Section judgments.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
     { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak immut]) "#Hincl1 Hl3 Hcl HT HL".
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
     iApply ("Hcont" with "[//] Hl3 [Hcl Hl] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
       destruct strong as [ strong | ]; simpl; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
@@ -1648,10 +1620,6 @@ Section judgments.
       iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl' & Hcond & Htoks & Hweak)".
       iModIntro. iFrame.
       iApply typed_place_cond_refl. done.
-    - (* immut *)
-      done.
-      (*destruct immut as [immut | ]; simpl; last done. iDestruct "Hcl" as "(_ & _ & Hcl)".*)
-      (*iIntros "Ha". iMod ("Hcl" with "Ha") as "(Ha & $)". by iFrame.*)
   Qed.
 
   (* NOTE: we need to require it to be a simple type to get this generic lemma *)
@@ -1670,8 +1638,6 @@ Section judgments.
             (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
           (option_map (λ weak, mk_weak (λ _ _, ◁ ty) (λ _, PlaceIn r)
             (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-          None
-          (*(option_map (λ immut, mk_immut (l2 ◁ₗ[π, b2] r2 @ lt2 ∗ immut.(immut_R))) mstrong.(mstrong_immut))*)
           )
         ))
     ⊢ typed_place π E L l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
@@ -1701,9 +1667,9 @@ Section judgments.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
     { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak immut]) "#Hincl1 Hl3 Hcl HT HL".
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
     iApply ("Hcont" with "[//] Hl3 [Hcl Hv] HT HL").
-    iSplit; last iSplit.
+    iSplit.
     -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
       destruct strong as [ strong | ]; simpl; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
@@ -1715,10 +1681,6 @@ Section judgments.
       iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl' & Hcond & Htoks & Hweak)".
       iModIntro. iFrame. iSplitR; first done.
       iApply typed_place_cond_refl. done.
-    - (* immut *)
-      done.
-      (*destruct immut as [immut | ]; simpl; last done. iDestruct "Hcl" as "(_ & _ & Hcl)".*)
-      (*iIntros "Ha". iMod ("Hcl" with "Ha") as "(Ha & $)". by iFrame.*)
   Qed.
 
   (** Fold an [lty] to a [type].
@@ -2614,6 +2576,23 @@ Section judgments.
         | None => None
         end
     end.
+  Lemma access_result_meet_mstrong_ctx_inv_weak {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) Heq weak: 
+    access_result_meet_mstrong_ctx mstrong upd = Some (ARweak Heq weak) →
+    upd = ResultWeak Heq ∧ mstrong.(mstrong_weak) = Some weak.
+  Proof.
+    unfold access_result_meet_mstrong_ctx.
+    destruct mstrong as [strong weak'].
+    destruct upd, strong, weak'; simpl; intros ?; simplify_eq; try naive_solver. 
+    all: by rewrite (UIP_refl _ _ Heq). 
+  Qed.
+  Lemma access_result_meet_mstrong_ctx_inv_strong {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) strong : 
+    access_result_meet_mstrong_ctx mstrong upd = Some (ARstrong strong) →
+    (upd = ResultStrong ∨ mstrong.(mstrong_weak) = None) ∧ mstrong.(mstrong_strong) = Some strong.
+  Proof.
+    unfold access_result_meet_mstrong_ctx.
+    destruct mstrong as [strong' weak].
+    destruct upd, strong', weak; simpl; intros ?; simplify_eq; try naive_solver. 
+  Qed.
 
   Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2}
     (mstrong : mstrong_ctx rto rti)
@@ -2633,19 +2612,7 @@ Section judgments.
         l ◁ₗ[π, b] (strong.(strong_rfn) rti2 r2) @ (strong.(strong_lt) rti2 lt2 r2) -∗
         strong.(strong_R) rti2 lt2 r2 -∗
         introduce_with_hooks E L R T
-    | None =>
-        match mstrong.(mstrong_immut) with
-        | Some immut =>
-          (* TODO lets put a hack here:
-               if we can prove that the types are the same, just take the weak version.
-            *)
-            weak_subltype E L b r1 r2 lt1 lt2 (
-              weak_subltype E L b r2 r1 lt2 lt1 (
-              l ◁ₗ[π, b] ro @ lto -∗
-              immut.(immut_R) -∗
-              introduce_with_hooks E L (R_weak ∗ R) T))
-        | None => False
-        end
+    | None => False
     end.
 
   (** ** Read judgments *)

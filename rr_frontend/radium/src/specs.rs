@@ -2727,7 +2727,12 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub(crate) fn empty(spec_name: String, trait_req_incl_name: String, function_name: String, spec: T) -> Self {
+    pub(crate) fn empty(
+        spec_name: String,
+        trait_req_incl_name: String,
+        function_name: String,
+        spec: T,
+    ) -> Self {
         Self {
             spec_name,
             trait_req_incl_name,
@@ -4922,9 +4927,10 @@ impl<'def> TraitImplSpec<'def> {
             push_str_list!(specialized_semantic, &inst_args, " ", |x| { x.to_string() });
 
             let body = coq::proof::Proof::new(coq::proof::Terminator::Qed, |doc| {
-                let vernac: coq::Vernac = coq::ltac::LTac::Literal(format!("unfold {base_name} in *; apply _")).into();
+                let vernac: coq::Vernac =
+                    coq::ltac::LTac::Literal(format!("unfold {base_name} in *; apply _")).into();
                 doc.push(vernac);
-                });
+            });
             let commands = vec![
                 coq::command::Command::Lemma(coq::command::Lemma {
                     name: def_name.to_owned(),
@@ -5043,7 +5049,7 @@ impl<'def> Display for TraitImplSpec<'def> {
             }
         });
 
-        write!( f, "{section}\n")
+        write!(f, "{section}\n")
     }
 }
 

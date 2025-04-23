@@ -162,6 +162,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedArrayAccess π E L base offset st lt r k) T))
   | resolve_ghost_iter ?π ?E ?L ?rm ?lb ?l ?st ?lts ?b ?rs ?ig ?i0 ?T =>
       cont uconstr:(((_ : ResolveGhostIter π E L rm lb l st lts b rs ig i0) T))
+  | typed_discriminant_end ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?els ?T =>
+      cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 bmin els) T))
   end.
 
 
@@ -544,6 +546,7 @@ Ltac liRExpr :=
     | W.Val _ => notypeclasses refine (tac_fast_apply (type_val E L _ T) _)
     | W.Loc _ => notypeclasses refine (tac_fast_apply (type_val E L _ T) _)
     | W.Use _ _ true _ => notypeclasses refine (tac_fast_apply (type_use E L _ _ _ T) _)
+    | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L _ _ _ T _) _); [apply _ | ]
     | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L T _ _ _) _)
     | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L T _ _ _) _)
     | W.AddrOf _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L _ T) _)

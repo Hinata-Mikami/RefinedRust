@@ -629,7 +629,7 @@ Section stratify.
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, True)) (#r) bmin (Owned wl) K
       (λ L2 κs li b2 bmin' rti ltyi ri mstrong,
         (* no weak update possible - after all, we have just opened this invariant *)
-        T L2 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None None))))
+        T L2 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None))))
     ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) bmin (Owned wl) K T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hincl Hb Hcont".
@@ -655,7 +655,7 @@ Section stratify.
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) (#r) bmin (Uniq κ γ) K
       (λ L4 κs li b2 bmin' rti ltyi ri mstrong,
         (* no weak update possible - after all, we have just opened this invariant *)
-        T L4 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None None)))))
+        T L4 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None )))))
     ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) bmin (Uniq κ γ) K T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hincl Hb Hcont".
@@ -704,12 +704,12 @@ Section stratify.
     iMod (ex_plain_t_open_shared with "Hb") as "(%r & HP & Hb)"; first done.
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
     iApply ("HT" with "[//] [//] CTX HE HL Hincl Hb").
-    iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri [strong weak immut]) "Hincl Hl Hc".
+    iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri [strong weak]) "Hincl Hl Hc".
     iApply ("Hcont" with "Hincl Hl").
-    iSplit; last iSplit.
+    iSplit.
     - iDestruct "Hc" as "[Hc _]".
       simp_ltypes. done.
-    - iDestruct "Hc" as "(_ & Hc & _)".
+    - iDestruct "Hc" as "(_ & Hc)".
       destruct weak; last done.
       iIntros (???) "Hincl Hl Hcond".
       iMod ("Hc" with "Hincl Hl Hcond") as "(Ha & Hb & Htoks & Hc)".
@@ -719,12 +719,6 @@ Section stratify.
       + iApply (typed_place_cond_ty_trans with "[] Hcond_ty").
         iApply typed_place_cond_ty_ex_shadowed.
       + destruct bmin; done.
-    - iDestruct "Hc" as "(_ & _ & Hc)".
-      destruct immut; last done. simpl.
-      iIntros "Ha".
-      iMod ("Hc" with "Ha") as "(Ha & $)".
-      rewrite ltype_own_shadowed_unfold /shadowed_ltype_own. 
-      simpl. by iDestruct "Ha" as "(_ & _ & $)".
   Qed.
   Global Instance typed_place_ex_plain_t_shared_inst π E L l (ty : type rt) x κ bmin K `{!TCDone (K ≠ [])} :
     TypedPlace E L π l (◁ (∃; P, ty))%I #x bmin (Shared κ) K | 15 :=

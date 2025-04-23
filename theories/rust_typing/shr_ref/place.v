@@ -22,7 +22,6 @@ Section place.
             (λ lti2 ri2, ShrLtype (weak.(weak_lt) lti2 ri2) κ)
             (λ (r : place_rfn rti), #(weak.(weak_rfn) r))
             weak.(weak_R)) mstrong.(mstrong_weak))
-          mstrong.(mstrong_immut)
           )))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -38,9 +37,9 @@ Section place.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HR" with "[] HE HL Hcred") as "(%L1 & HL & HR)"; first done.
     iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_min_incl_l. }
-    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak immut]) "#Hincl1 Hb Hs".
+    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb").
-    simpl. iSplit; last iSplit.
+    simpl. iSplit.
     - (* strong *) iDestruct "Hs" as "[Hs _]".
       destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
@@ -49,7 +48,7 @@ Section place.
       iFrame. iPureIntro. simp_ltypes. done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs & _)".
+      iDestruct "Hs" as "(_ & Hs)".
       iIntros (ltyi2 ri2 bmin').
       iIntros "Hincl2 Hl2 Hcond".
       iMod ("Hs" with "Hincl2 Hl2 Hcond") as "(Hb & Hcond & $ & HR)".
@@ -59,12 +58,6 @@ Section place.
       iApply typed_place_cond_incl; last iApply "Hcond".
       + iApply bor_kind_min_incl_r.
       + iPureIntro. apply place_access_rt_rel_refl.
-    - (* immut *)
-      destruct immut as [immut | ]; last done.
-      iDestruct "Hs" as "(_ & _ & Hs)". simpl.
-      iIntros "Ha". iMod ("Hs" with "Ha") as "(Ha & $)".
-      iMod ("Hc" with "Hl Ha") as "($ & _)".
-      done.
   Qed.
   Global Instance typed_place_shr_owned_inst {rto} E L π κ (lt2 : ltype rto) bmin0 r l wl P :
     TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_owned π κ lt2 P E L l r wl bmin0 T).
@@ -90,7 +83,7 @@ Section place.
             (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r))
             weak.(weak_R)) mstrong.(mstrong_weak))
                *)
-              None None)
+              None )
         ))))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -112,7 +105,7 @@ Section place.
     iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_incl_refl. }
     iModIntro. iIntros (L' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb").
-    simpl. iSplit; last iSplitL.
+    simpl. iSplit.
     - (* strong *) iDestruct "Hs" as "[Hs _]".
       destruct strong as [ strong | ]; last done.
       iIntros (rti2 ltyi2 ri2) "Hl2 Hcond".
@@ -138,8 +131,6 @@ Section place.
       + iApply bor_kind_min_incl_r.
       + iPureIntro. apply place_access_rt_rel_refl.
        *)
-    - (* immut *)
-      done.
   Qed.
   Global Instance typed_place_shr_uniq_inst {rto} E L π κ (lt2 : ltype rto) bmin0 r l κ' γ P :
     TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_uniq π κ lt2 P E L l r κ' γ bmin0 T).
@@ -160,7 +151,6 @@ Section place.
               (*strong.(strong_R)) strong)*)
             (* weak branch: just keep the MutLtype *)
             (fmap (λ weak, mk_weak (λ lti' ri', ShrLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
-            None
             )))))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -184,7 +174,7 @@ Section place.
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb' Hs".
     iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb'").
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit; last iSplit.
+    simpl. iSplit.
     - (* strong update *)
       done.
     - (* weak update *)
@@ -201,8 +191,6 @@ Section place.
       + done.
       + iApply typed_place_cond_incl; last done.
         iApply bor_kind_min_incl_r.
-    - (* immut *)
-      done.
   Qed.
   Global Instance typed_place_shr_shared_inst {rto} E L π κ κ' (lt2 : ltype rto) bmin0 r l P :
     TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_shared π E L lt2 P l r κ κ' bmin0 T).

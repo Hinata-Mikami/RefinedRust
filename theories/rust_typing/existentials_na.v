@@ -359,7 +359,7 @@ Section na_subtype.
               (#r) bmin (Owned wl) K
         (λ L2 κs li b2 bmin' rti ltyi ri mstrong,
           (* no weak update possible - after all, we have just opened this invariant *)
-          T L2 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None None))))
+          T L2 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None))))
     ⊢ typed_place π E L l (◁ (∃na; P, ty))%I (#x) bmin (Owned wl) K T.
   Proof.
     unfold introduce_with_hooks, typed_place.
@@ -410,7 +410,7 @@ Section na_subtype.
           (λ rti2 ri2, strong.(strong_rfn) _ ri2)
           strong.(strong_R)) mstrong.(mstrong_strong))
         (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
-        None None))
+        None))
     ⊢ typed_place π E L l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r bmin0 (Owned wl) P''' T.
   Proof.
     unfold introduce_with_hooks, typed_place.
@@ -520,7 +520,7 @@ Section na_subtype.
                 (ShadowedLtype (AliasLtype _ (ty_syn_type ty) l) #tt (◁ (∃na; P, ty)))
                 (#x) (bmin ⊓ₖ Shared κ) (Shared κ) K
                 (λ L4 κs li b2 bmin' rti ltyi ri mstrong,
-                  T L4 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None None))))))
+                  T L4 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None))))))
     ⊢ typed_place π E L l (◁ (∃na; P, ty))%I (#x) bmin (Shared κ) K T.
   Proof.
     rewrite /find_in_context.
@@ -611,7 +611,7 @@ Section na_subtype.
           (fmap (λ strong, mk_strong (λ _, _) (λ _ _ _, AliasLtype rt''' st l2) (λ _ _, r)
             (* give back ownership through R *)
             (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
-          None None)))
+          None)))
     ⊢ typed_place π E L l (AliasLtype rt''' st l2) r bmin0 (Shared κ) P''' T.
   Proof.
     unfold find_in_context, typed_place.

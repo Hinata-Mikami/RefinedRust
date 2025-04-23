@@ -153,7 +153,6 @@ Section place.
                   | None => None
                   end
               end)
-            None
             )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
@@ -187,7 +186,6 @@ Section place.
           T L2 κs li bi bmin' rti lti ri
             (mk_mstrong (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
             (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-            None
             )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
@@ -220,7 +218,6 @@ Section place.
           T L2 κs li bi bmin' rti lti ri
             (mk_mstrong (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, (◁ offset_ptr_t st)) (λ _ _, #(base, offset)) (λ rti2 ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
             (option_map (λ weak, mk_weak (λ _ _, (◁ offset_ptr_t st)) (λ _, #(base, offset)) (λ ltyi2 ri2, (base offsetst{st}ₗ offset) ◁ₗ[π, k2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-            None
             )
     )))
     ⊢ typed_place π E L l (◁ offset_ptr_t st) (#(base, offset)) bmin (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.

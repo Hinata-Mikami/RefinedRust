@@ -487,6 +487,23 @@ Section unfold.
   Qed.
 End unfold.
 
+Section place.
+  Context `{!typeGS Σ}.
+
+  (* needs to have lower priority than the id instance *)
+  Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls bmin0 b P T :
+    typed_place π E L l (StructLtype (hmap (λ _, OfTy) tys) sls) r bmin0 b P T
+    ⊢ typed_place π E L l (◁ (struct_t sls tys)) r bmin0 b P T.
+  Proof.
+    iIntros "Hp". iApply typed_place_eqltype; last iFrame.
+    iIntros (?) "HL CTX HE".
+    iIntros (??). iApply struct_t_unfold.
+  Qed.
+  Global Instance typed_place_ofty_struct_inst {rts} π E L l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls bmin0 b P :
+    TypedPlace E L π l (◁ (struct_t sls tys))%I r bmin0 b P | 30 :=
+        λ T, i2p (typed_place_ofty_struct π E L l tys r sls bmin0 b P T).
+End place.
+
 Section stratify.
   Context `{!typeGS Σ}.
 

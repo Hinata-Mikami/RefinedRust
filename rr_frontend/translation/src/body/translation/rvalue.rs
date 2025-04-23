@@ -441,29 +441,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
-                // TODO: EnumDiscriminant should already do the load.
                 let discriminant_acc = radium::Expr::EnumDiscriminant {
                     els: els.to_string(),
                     e: Box::new(translated_pl),
                 };
 
-                // need to do a load from this place
-                let it = ty.ty.discriminant_ty(self.env.tcx());
-                let translated_it = self.ty_translator.translate_type(it)?;
-
-                let radium::Type::Int(translated_it) = translated_it else {
-                    return Err(TranslationError::UnknownError(format!(
-                        "type of discriminant is not an integer type {:?}",
-                        it
-                    )));
-                };
-
-                let ot = radium::OpType::Int(translated_it);
-
-                Ok(radium::Expr::Use {
-                    ot,
-                    e: Box::new(discriminant_acc),
-                })
+                Ok(discriminant_acc)
             },
 
             mir::Rvalue::Aggregate(kind, op) => self.translate_aggregate(kind.as_ref(), op),

@@ -1598,18 +1598,23 @@ fn assemble_trait_impls<'tcx, 'rcx>(
                 } else {
                     // this is possible for functions with a default impl.
 
-                            // TODO
-                            // we need the spec name / term and the direct generic scope of the function.
+                    // TODO
+                    // we need the spec name / term and the direct generic scope of the function.
 
-                            // for the generic scope:
-                            // - we are already quantifying the impl args.
-                            // - we need to instantiate the trait's args.
-                            // - I guess
+                    // for the generic scope:
+                    // - we are already quantifying the impl args.
+                    // - we need to instantiate the trait's args.
+                    // - I guess
 
-                            let fn_name = base::strip_coq_ident(vcx.env.tcx().item_name(x.def_id).as_str());
-                            let _spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
+                    // Plan:
+                    // - take the generic scope of the trait default function.
+                    // - instantiate the first n args with the ones from the trait_ref.
 
-                            unimplemented!();
+                    let fn_name = base::strip_coq_ident(vcx.env.tcx().item_name(x.def_id).as_str());
+                    let _spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
+
+                    // TODO
+                    //unimplemented!();
                 }
             }
         }

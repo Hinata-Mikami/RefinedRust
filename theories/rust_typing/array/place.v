@@ -63,7 +63,6 @@ Section place.
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
               ) mstrong.(mstrong_weak))
-              None
           ))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
@@ -110,7 +109,7 @@ Section place.
     { subst i. rewrite Z2Nat.id//. }
     iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. iSplitL; last done.
+    iSplitR; first done.
     destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
@@ -154,7 +153,6 @@ Section place.
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
               ) mstrong.(mstrong_weak))
-            None
           )))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
@@ -205,7 +203,7 @@ Section place.
     { subst i. rewrite Z2Nat.id//. }
     iIntros (L2 κs' l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. iSplitL; last done.
+    iSplitR; first done.
     destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
@@ -251,7 +249,6 @@ Section place.
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
               (weak.(weak_R))
               ) mstrong.(mstrong_weak))
-            None
           ))))
     ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
   Proof.
@@ -298,7 +295,7 @@ Section place.
     { subst i. rewrite Z2Nat.id//. }
     iIntros (L2 κs l2 b2 bmin0 rti ltyi ri' [strong weak]) "#Hincl1 Hi Hc".
     iApply ("Hcont" with "[//] Hi").
-    iSplitR; first done. iSplitL; last done.
+    iSplitR; first done.
     destruct weak as [ weak | ]; last done.
     simpl. iIntros (ltyi2 ri2 bmin') "#Hincl2 Hi Hcond".
     iDestruct "Hc" as "(_ & Hc)".
