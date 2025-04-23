@@ -1381,8 +1381,8 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
-    pub fn get_coq_type_term(&self, sls_app: Vec<coq::term::Gallina>) -> coq::term::Type {
-        let sls = coq::term::App::new(coq::term::Gallina::Literal(self.sls_def_name.clone()), sls_app);
+    pub fn get_coq_type_term(&self, sls_app: Vec<coq::term::Term>) -> coq::term::Type {
+        let sls = coq::term::App::new(coq::term::Term::Literal(self.sls_def_name.clone()), sls_app);
 
         let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
 
@@ -1404,8 +1404,8 @@ impl<'def> AbstractVariant<'def> {
             .params
             .iter()
             .map(|names| {
-                coq::term::Gallina::RecordProj(
-                    Box::new(coq::term::Gallina::Literal(names.type_term.clone())),
+                coq::term::Term::RecordProj(
+                    Box::new(coq::term::Term::Literal(names.type_term.clone())),
                     "ty_syn_type".to_owned(),
                 )
             })
@@ -1422,13 +1422,11 @@ impl<'def> AbstractVariant<'def> {
                 context_names.join("{}"),
                 coq::proof::Terminator::Defined,
                 |proof| {
-                    proof.push(coq::ltac::LTac::Exact(coq::term::Gallina::App(Box::new(
-                        coq::term::App::new(
-                            // TODO: `ty_params` must create a specific Coq object.
-                            coq::term::Gallina::Literal(ty_params.to_string()),
-                            vec![coq::term::Gallina::Literal(self.get_coq_type_term(sls_app).to_string())],
-                        ),
-                    ))));
+                    proof.push(coq::ltac::LTac::Exact(coq::term::Term::App(Box::new(coq::term::App::new(
+                        // TODO: `ty_params` must create a specific Coq object.
+                        coq::term::Term::Literal(ty_params.to_string()),
+                        vec![coq::term::Term::Literal(self.get_coq_type_term(sls_app).to_string())],
+                    )))));
                 },
             )),
         });
@@ -1448,10 +1446,10 @@ impl<'def> AbstractVariant<'def> {
                     proof.push(coq::ltac::LetIn::new(
                         "__a",
                         coq::term::App::new(
-                            coq::term::Gallina::Literal("normalized_rt_of_spec_ty".to_owned()),
-                            vec![coq::term::Gallina::Literal(self.plain_ty_name.clone())],
+                            coq::term::Term::Literal("normalized_rt_of_spec_ty".to_owned()),
+                            vec![coq::term::Term::Literal(self.plain_ty_name.clone())],
                         ),
-                        coq::ltac::LTac::Exact(coq::term::Gallina::Literal("__a".to_owned())),
+                        coq::ltac::LTac::Exact(coq::term::Term::Literal("__a".to_owned())),
                     ));
                 },
             )),
@@ -3161,7 +3159,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
                 late_pre.push(spec_precond);
             }
         }
-        let term = coq::term::Gallina::Infix("∧".to_owned(), late_pre);
+        let term = coq::term::Term::Infix("∧".to_owned(), late_pre);
 
         // quantify over the generic scope
         let mut quantified_term = String::new();
@@ -3173,7 +3171,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name,
             params,
             ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(quantified_term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(quantified_term)),
         }
     }
 }
@@ -3196,7 +3194,7 @@ impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
             name: self.spec_name.clone(),
             params,
             ty: None,
-            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(term)),
         };
         doc.push(coq::command::Command::Definition(coq_def));
 
@@ -3552,7 +3550,7 @@ pub struct TraitSpecAttrsDecl {
 #[derive(Constructor, Clone, Debug)]
 pub struct TraitSpecAttrsInst {
     /// a map of attributes and their implementation
-    pub attrs: BTreeMap<String, coq::term::Gallina>,
+    pub attrs: BTreeMap<String, coq::term::Term>,
 }
 
 /// A using occurrence of a trait spec.
@@ -3708,9 +3706,9 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Get the term for accessing a particular attribute in a context where the attribute record
     /// is quantified.
     #[must_use]
-    pub fn make_attr_item_term(&self, attr_name: &str) -> coq::term::Gallina {
-        coq::term::Gallina::RecordProj(
-            Box::new(coq::term::Gallina::Literal(self.make_spec_attrs_param_name())),
+    pub fn make_attr_item_term(&self, attr_name: &str) -> coq::term::Term {
+        coq::term::Term::RecordProj(
+            Box::new(coq::term::Term::Literal(self.make_spec_attrs_param_name())),
             self.trait_ref.make_spec_attr_name(attr_name),
         )
     }
@@ -3772,7 +3770,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Make the precondition on the spec parameter we need to require.
     #[must_use]
-    pub fn make_spec_param_precond(&self) -> coq::term::Gallina {
+    pub fn make_spec_param_precond(&self) -> coq::term::Term {
         // the spec we have to require for this verification
         let (spec_to_require, need_attrs) = if let Some(override_spec) = &self.overridden_spec_def {
             (override_spec.to_string(), false)
@@ -3812,7 +3810,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
             self.make_spec_param_name(),
         );
 
-        coq::term::Gallina::Literal(spec)
+        coq::term::Term::Literal(spec)
     }
 
     /// Make the name for the location parameter of a use of a method of this trait parameter.
@@ -4717,7 +4715,7 @@ fn make_trait_instance<'def>(
             format!("@{} _ _", of_trait.spec_record_constructor_name()),
             param_inst_rts.clone(),
         );
-        coq::term::Gallina::Literal(t.to_string())
+        coq::term::Term::Literal(t.to_string())
     } else {
         let mut components = Vec::new();
 
@@ -4783,12 +4781,12 @@ fn make_trait_instance<'def>(
             let item = coq::term::RecordBodyItem {
                 name: record_item_name,
                 params: direct_params,
-                term: coq::term::Gallina::Literal(body),
+                term: coq::term::Term::Literal(body),
             };
             components.push(item);
         }
         let record_body = coq::term::RecordBody { items: components };
-        coq::term::Gallina::RecordBody(record_body)
+        coq::term::Term::RecordBody(record_body)
     };
     // add the surrounding quantifiers over the semantic types
     let mut term_with_specs = String::with_capacity(100);
@@ -4803,7 +4801,7 @@ fn make_trait_instance<'def>(
         name: spec_record_name.to_owned(),
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
-        body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(term_with_specs)),
+        body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(term_with_specs)),
     });
 
     Ok(document)
@@ -4954,21 +4952,21 @@ impl<'def> TraitSpecDecl<'def> {
             let param_uses = param_decls.make_using_terms();
 
             let record_item_name = self.lit.make_spec_method_name(name);
-            let incl_term = coq::term::Gallina::All(
+            let incl_term = coq::term::Term::All(
                 param_decls,
-                Box::new(coq::term::Gallina::App(Box::new(coq::term::App::new(
-                    coq::term::Gallina::Literal("function_subtype".to_owned()),
+                Box::new(coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal("function_subtype".to_owned()),
                     vec![
-                        coq::term::Gallina::App(Box::new(coq::term::App::new(
-                            coq::term::Gallina::RecordProj(
-                                Box::new(coq::term::Gallina::Literal(spec_param_name1.clone())),
+                        coq::term::Term::App(Box::new(coq::term::App::new(
+                            coq::term::Term::RecordProj(
+                                Box::new(coq::term::Term::Literal(spec_param_name1.clone())),
                                 record_item_name.clone(),
                             ),
                             param_uses.0.clone(),
                         ))),
-                        coq::term::Gallina::App(Box::new(coq::term::App::new(
-                            coq::term::Gallina::RecordProj(
-                                Box::new(coq::term::Gallina::Literal(spec_param_name2.clone())),
+                        coq::term::Term::App(Box::new(coq::term::App::new(
+                            coq::term::Term::RecordProj(
+                                Box::new(coq::term::Term::Literal(spec_param_name2.clone())),
                                 record_item_name.clone(),
                             ),
                             param_uses.0.clone(),
@@ -4978,7 +4976,7 @@ impl<'def> TraitSpecDecl<'def> {
             );
             incls.push(incl_term);
         }
-        let body = coq::term::Gallina::Infix("∧".to_owned(), incls);
+        let body = coq::term::Term::Infix("∧".to_owned(), incls);
 
         coq::command::Definition {
             name: spec_incl_name,
@@ -5016,7 +5014,7 @@ impl<'def> TraitSpecDecl<'def> {
                     late_pre.push(spec_precond);
                 }
             }
-            let term = coq::term::Gallina::Infix("∧".to_owned(), late_pre);
+            let term = coq::term::Term::Infix("∧".to_owned(), late_pre);
 
             // quantify over the generic scope
             let mut quantified_term = String::new();
@@ -5027,7 +5025,7 @@ impl<'def> TraitSpecDecl<'def> {
                 name: trait_incl_decl_name.to_owned(),
                 params,
                 ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
-                body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(quantified_term)),
+                body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(quantified_term)),
             };
             let command = coq::command::Command::from(def);
             doc.push(command);
@@ -5159,7 +5157,7 @@ impl<'def> TraitRefInst<'def> {
     /// Get the term for referring to the attr record of this impl
     /// The parameters are expected to be in scope.
     #[must_use]
-    fn get_attr_record_term(&self) -> coq::term::App<coq::term::Gallina, coq::term::Gallina> {
+    fn get_attr_record_term(&self) -> coq::term::App<coq::term::Term, coq::term::Term> {
         let attr_record = &self.impl_ref.spec_attrs_record;
 
         // get all type parameters
@@ -5168,13 +5166,13 @@ impl<'def> TraitRefInst<'def> {
         binders.append(self.generics.get_all_attr_trait_parameters(false).0);
         let args = binders.make_using_terms();
 
-        coq::term::App::new(coq::term::Gallina::Literal(attr_record.to_owned()), args.0)
+        coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args.0)
     }
 
     /// Get the term for referring to the spec record of this impl
     /// The parameters are expected to be in scope.
     #[must_use]
-    fn get_spec_record_term(&self) -> coq::term::Gallina {
+    fn get_spec_record_term(&self) -> coq::term::Term {
         let spec_record = &self.impl_ref.spec_record;
 
         // specialize to all type parameters
@@ -5189,13 +5187,13 @@ impl<'def> TraitRefInst<'def> {
         // specialize to semtys
         specialized_spec.push_str(&self.generics.identity_instantiation());
 
-        coq::term::Gallina::Literal(specialized_spec)
-        //coq::term::Gallina::App(Box::new(coq::term::App::new(coq::term::Gallina::Literal(spec_record.
+        coq::term::Term::Literal(specialized_spec)
+        //coq::term::Term::App(Box::new(coq::term::App::new(coq::term::Term::Literal(spec_record.
         // to_owned()), args)))
     }
 
     #[must_use]
-    fn get_base_spec_term(&self) -> coq::term::Gallina {
+    fn get_base_spec_term(&self) -> coq::term::Term {
         let spec_record = &self.of_trait.base_spec;
 
         let all_args = self.get_ordered_params_inst();
@@ -5222,15 +5220,15 @@ impl<'def> TraitRefInst<'def> {
         push_str_list!(specialized_spec, self.trait_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
         specialized_spec.push_str(" <INST!>)");
 
-        coq::term::Gallina::Literal(specialized_spec)
+        coq::term::Term::Literal(specialized_spec)
     }
 
     /// Get the term for referring to an item of the attr record of this impl.
     /// The parameters are expected to be in scope.
     #[must_use]
-    pub fn get_attr_record_item_term(&self, attr: &str) -> coq::term::Gallina {
+    pub fn get_attr_record_item_term(&self, attr: &str) -> coq::term::Term {
         let item_name = self.of_trait.make_spec_attr_name(attr);
-        coq::term::Gallina::RecordProj(Box::new(Box::new(self.get_attr_record_term()).into()), item_name)
+        coq::term::Term::RecordProj(Box::new(Box::new(self.get_attr_record_term()).into()), item_name)
     }
 }
 
@@ -5269,7 +5267,7 @@ impl<'def> TraitImplSpec<'def> {
 
         // write the attr record decl
         let attr_record_term = if attrs.attrs.is_empty() {
-            coq::term::Gallina::Literal(of_trait.spec_record_attrs_constructor_name())
+            coq::term::Term::Literal(of_trait.spec_record_attrs_constructor_name())
         } else {
             let mut components = Vec::new();
             for (attr_name, inst) in &attrs.attrs {
@@ -5284,7 +5282,7 @@ impl<'def> TraitImplSpec<'def> {
                 components.push(item);
             }
             let record_body = coq::term::RecordBody { items: components };
-            coq::term::Gallina::RecordBody(record_body)
+            coq::term::Term::RecordBody(record_body)
         };
 
         coq::command::Definition {
@@ -5326,7 +5324,7 @@ impl<'def> TraitImplSpec<'def> {
             name: spec_name.to_owned(),
             params,
             ty: None,
-            body: coq::command::DefinitionBody::Term(coq::term::Gallina::Literal(ty_term)),
+            body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(ty_term)),
         };
         doc.push(coq::command::Command::Definition(lem));
 

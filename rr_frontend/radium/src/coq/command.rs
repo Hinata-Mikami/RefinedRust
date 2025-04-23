@@ -249,7 +249,7 @@ impl Display for Definition {
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum DefinitionBody {
     #[display("{}", _0)]
-    Term(term::Gallina),
+    Term(term::Term),
 
     #[display("{}", _0)]
     Proof(proof::Proof),

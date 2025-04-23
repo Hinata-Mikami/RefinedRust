@@ -431,7 +431,7 @@ mod tests {
             module::Import::new(vec!["String"]).from(vec!["Coq", "Strings"]).into(),
         ));
         doc.push(command::Command::OpenScope(syntax::OpenScope::new("string_scope")));
-        doc.push(command::QueryCommand::Compute(eval::Compute(term::Gallina::Literal(
+        doc.push(command::QueryCommand::Compute(eval::Compute(term::Term::Literal(
             "\"Hello World\"".to_owned(),
         ))));
 

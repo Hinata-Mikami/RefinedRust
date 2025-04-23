@@ -50,7 +50,11 @@ impl Binder {
 
     #[must_use]
     pub const fn new_generalized(kind: Kind, name: Option<String>, term: term::Type) -> Self {
-        Self::Generalizing(Generalizing { kind, name, term })
+        Self::Generalizing(Generalizing {
+            kind,
+            name,
+            ty: term,
+        })
     }
 
     #[must_use]
@@ -83,7 +87,7 @@ impl Binder {
         match self {
             Self::Default(_, ty) => Some(ty),
             Self::Implicit(i) => i.ty.as_ref(),
-            Self::Generalizing(g) => Some(&g.term),
+            Self::Generalizing(g) => Some(&g.ty),
         }
     }
 
@@ -122,7 +126,7 @@ impl Binder {
                 *self = Self::Generalizing(Generalizing {
                     kind,
                     name: name.clone(),
-                    term: term.clone(),
+                    ty: term.clone(),
                 });
             },
             Self::Generalizing(ref mut g) => {
@@ -169,14 +173,14 @@ impl fmt::Display for Implicit {
 pub struct Generalizing {
     kind: Kind,
     name: Option<String>,
-    term: term::Type,
+    ty: term::Type,
 }
 
 impl fmt::Display for Generalizing {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inner = match &self.name {
-            Some(name) => format!("{} : !{}", name, self.term),
-            None => format!("!{}", self.term),
+            Some(name) => format!("{} : !{}", name, self.ty),
+            None => format!("!{}", self.ty),
         };
 
         match &self.kind {
@@ -219,6 +223,6 @@ impl BinderList {
     /// Make using terms for this list of binders
     #[must_use]
     pub fn make_using_terms(&self) -> term::TermList {
-        term::TermList::new(self.0.iter().map(|x| term::Gallina::Literal(x.get_name())).collect())
+        term::TermList::new(self.0.iter().map(|x| term::Term::Literal(x.get_name())).collect())
     }
 }

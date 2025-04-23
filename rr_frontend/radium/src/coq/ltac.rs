@@ -28,7 +28,7 @@ pub enum LTac {
     ///
     /// [`Exact`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/tactics.html#coq:tacn.exact
     #[display("exact {}.", _0)]
-    Exact(term::Gallina),
+    Exact(term::Term),
 
     /// [`Let-in`] syntax
     ///
@@ -45,13 +45,13 @@ pub enum LTac {
 #[display("let {} := {} in {}", name, t1, t2)]
 pub struct LetIn {
     name: String,
-    t1: term::Gallina,
+    t1: term::Term,
     t2: LTac,
 }
 
 impl LetIn {
     #[must_use]
-    pub fn new(name: impl Into<String>, t1: impl Into<term::Gallina>, t2: impl Into<LTac>) -> Self {
+    pub fn new(name: impl Into<String>, t1: impl Into<term::Term>, t2: impl Into<LTac>) -> Self {
         Self {
             name: name.into(),
             t1: t1.into(),

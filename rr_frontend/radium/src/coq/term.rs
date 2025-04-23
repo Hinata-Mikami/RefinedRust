@@ -23,35 +23,35 @@ use crate::{display_list, term, BASE_INDENT};
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 #[derive(Clone, Eq, PartialEq, Hash, Debug, FromVariants)]
-pub enum Gallina {
+pub enum Term {
     /// A literal
     Literal(String),
 
     /// An application
     #[from_variants(into)]
-    App(Box<App<Gallina, Gallina>>),
+    App(Box<App<Term, Term>>),
 
     /// A record constructor
     RecordBody(RecordBody),
 
     /// A projection `a.(b)` from a record `a`
     #[from_variants(skip)]
-    RecordProj(Box<Gallina>, String),
+    RecordProj(Box<Term>, String),
 
     /// A universal quantifier
     #[from_variants(skip)]
-    All(binder::BinderList, Box<Gallina>),
+    All(binder::BinderList, Box<Term>),
 
     /// An existential quantifier
     #[from_variants(skip)]
-    Exists(binder::BinderList, Box<Gallina>),
+    Exists(binder::BinderList, Box<Term>),
 
     /// An infix operator
     #[from_variants(skip)]
-    Infix(String, Vec<Gallina>),
+    Infix(String, Vec<Term>),
 }
 
-impl Display for Gallina {
+impl Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write;
 
@@ -93,11 +93,11 @@ impl Display for Gallina {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("{}", display_list!(_0, " ", "{}"))]
-pub struct TermList(pub Vec<Gallina>);
+pub struct TermList(pub Vec<Term>);
 
 impl TermList {
     #[must_use]
-    pub const fn new(params: Vec<Gallina>) -> Self {
+    pub const fn new(params: Vec<Term>) -> Self {
         Self(params)
     }
 
@@ -106,7 +106,7 @@ impl TermList {
         Self(vec![])
     }
 
-    pub fn append(&mut self, params: Vec<Gallina>) {
+    pub fn append(&mut self, params: Vec<Term>) {
         self.0.extend(params);
     }
 }
@@ -172,7 +172,7 @@ impl Display for RecordBody {
 pub struct RecordBodyItem {
     pub name: String,
     pub params: binder::BinderList,
-    pub term: Gallina,
+    pub term: Term,
 }
 
 impl Display for RecordBodyItem {
