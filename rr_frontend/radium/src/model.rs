@@ -81,16 +81,16 @@ impl From<Box<Type>> for Box<coq::term::Type> {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum LTac {
-    #[display("all: print_remaining_trait_goal")]
+    #[display("print_remaining_trait_goal")]
     PrintRemainingTraitGoal,
 
-    #[display("all: repeat liRStep; liShow")]
+    #[display("repeat liRStep; liShow")]
     RepeatLiRStep,
 
-    #[display("all: sidecond_hammer")]
+    #[display("sidecond_hammer")]
     SidecondHammer,
 
-    #[display("all: sidecond_solver")]
+    #[display("sidecond_solver")]
     SidecondSolver,
 
     #[display("solve_inhabited")]
@@ -106,5 +106,12 @@ pub enum LTac {
 impl From<LTac> for coq::ltac::LTac {
     fn from(ty: LTac) -> Self {
         Self::UserDefined(ty)
+    }
+}
+
+impl LTac {
+    #[must_use]
+    pub fn scope(self, scope: impl Into<coq::ltac::Scope>) -> coq::ltac::Attrs {
+        coq::ltac::Attrs::new(self).scope(scope)
     }
 }

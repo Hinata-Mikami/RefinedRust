@@ -63,3 +63,50 @@ impl LetIn {
         }
     }
 }
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Attrs {
+    pub ltac: LTac,
+    pub scope: Option<Scope>,
+}
+
+impl Display for Attrs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(scope) = &self.scope {
+            write!(f, "{}: ", scope)?;
+        }
+        write!(f, "{}", self.ltac)
+    }
+}
+
+impl From<LTac> for Attrs {
+    fn from(ltac: LTac) -> Self {
+        Self::new(ltac)
+    }
+}
+
+impl Attrs {
+    #[must_use]
+    pub fn new(ltac: impl Into<LTac>) -> Self {
+        Self {
+            ltac: ltac.into(),
+            scope: None,
+        }
+    }
+
+    #[must_use]
+    pub fn scope(self, scope: impl Into<Scope>) -> Self {
+        let scope = Some(scope.into());
+
+        Self { scope, ..self }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
+pub enum Scope {
+    #[display("{}", _0)]
+    Focus(usize),
+
+    #[display("all")]
+    All,
+}

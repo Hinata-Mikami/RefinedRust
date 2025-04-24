@@ -5354,12 +5354,12 @@ impl<'def> TraitImplSpec<'def> {
                 proof.push(model::LTac::SolveTraitInclPrelude(
                     self.trait_ref.impl_ref.spec_subsumption_statement.clone(),
                 ));
-                proof.push(model::LTac::RepeatLiRStep);
-                proof.push(model::LTac::PrintRemainingTraitGoal);
+                proof.push(model::LTac::RepeatLiRStep.scope(coq::ltac::Scope::All));
+                proof.push(model::LTac::PrintRemainingTraitGoal.scope(coq::ltac::Scope::All));
                 proof.push(model::LTac::Unshelve);
-                proof.push(model::LTac::SidecondSolver);
+                proof.push(model::LTac::SidecondSolver.scope(coq::ltac::Scope::All));
                 proof.push(model::LTac::Unshelve);
-                proof.push(model::LTac::SidecondHammer);
+                proof.push(model::LTac::SidecondHammer.scope(coq::ltac::Scope::All));
             }),
         });
 

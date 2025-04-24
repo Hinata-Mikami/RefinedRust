@@ -403,11 +403,12 @@ impl ProofDocument {
 ///
 /// [Vernacular]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
+#[transitive(from(ltac::LTac, ltac::Attrs))]
 #[transitive(from(ltac::LetIn, ltac::LTac))]
 #[transitive(from(model::LTac, ltac::LTac))]
 pub enum Vernac {
     #[display("{}", _0)]
-    LTac(ltac::LTac),
+    LTac(ltac::Attrs),
 
     #[display("(* {} *)", _0)]
     Comment(String),
