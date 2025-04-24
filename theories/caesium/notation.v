@@ -295,7 +295,7 @@ Arguments OffsetOfUnion : simpl never.
 
 Definition EnumDiscriminant `{!LayoutAlg} (els : enum_layout_spec) (e : expr) : expr :=
   let el := use_enum_layout_alg' els in
-  GetMember' e el "discriminant".
+  (Deref Na1Ord (IntOp (els.(els_tag_it))) true (GetMember' e el "discriminant"))%E.
 Global Typeclasses Opaque EnumDiscriminant.
 Arguments EnumDiscriminant : simpl never.
 

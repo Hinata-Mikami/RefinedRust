@@ -427,7 +427,7 @@ Proof.
     apply: [lang.SkipECtx; lang.SkipECtx]|
     apply: [lang.BinOpRCtx _ _ _ _]|
     apply: []|
-    apply: [lang.BinOpRCtx _ _ _ _]|
+    apply: [lang.BinOpRCtx _ _ _ _; lang.DerefCtx _ _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
   move: K => [||||||||||||||||||||||n||||||] * //=.
@@ -709,6 +709,10 @@ Proof.
   - (** Use *)
     rewrite /notation.Use /=. do 2 f_equal; eauto.
   - (** GetMember *)
+    match goal with
+    | _ : ?e1 = ?e2 |- _ => assert (e1 = e2) as -> by assumption
+    end; done.
+  - (** EnumDiscriminant *)
     match goal with
     | _ : ?e1 = ?e2 |- _ => assert (e1 = e2) as -> by assumption
     end; done.
