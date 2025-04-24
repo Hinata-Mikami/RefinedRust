@@ -55,36 +55,34 @@ Section statics.
     done.
   Qed.
 
-  (* The global variable "name" has been initialized with refinement "r" *)
-  Definition initialized {rt} (π : thread_id) (name : string) (r : rt) : iProp Σ :=
+  (* The global variable "name" has been initialized *)
+  Definition initialized (π : thread_id) (name : string) : iProp Σ :=
     ∃ (l : loc) (ty : btype), ⌜static_locs !! name = Some l⌝ ∗ ⌜static_types !! name = Some ty⌝ ∗
-      ∃ (Heq : rt = ty.(btype_rt)),
-        ⌜(rew [id] Heq in r) = ty.(btype_r) ⌝ ∗
         (l ◁ᵥ{π} (#ty.(btype_r)) @ shr_ref static ty.(btype_ty))%I.
 
-  Global Instance initialized_persistent {rt} (π : thread_id) (name : string) (r : rt) :
-    Persistent (initialized π name r).
+  Global Instance initialized_persistent (π : thread_id) (name : string) :
+    Persistent (initialized π name).
   Proof. apply _. Qed.
 
-  Global Instance initialized_intro_persistent {rt} (π : thread_id) name (r : rt) :
-    IntroPersistent (initialized π name r) (initialized π name r).
-  Proof. constructor. iIntros "#$". Qed.
+  (*Global Instance initialized_intro_persistent (π : thread_id) name :*)
+    (*IntroPersistent (initialized π name) (initialized π name).*)
+  (*Proof. constructor. iIntros "#$". Qed.*)
 
   (* On introduction of `initialized`, destruct it *)
-  Lemma simplify_initialized_hyp {rt} π (x : rt) name ty l
+  Lemma simplify_initialized_hyp π name ty l
     `{!TCFastDone (static_is_registered name l ty)} T:
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty) -∗ ⌜static_has_refinement name x⌝ -∗ T)
-    ⊢ simplify_hyp (initialized π name x) T.
+    (∀ r, (□ l ◁ᵥ{π} (#r) @ shr_ref static (projT2 ty)) -∗ ⌜static_has_refinement name r⌝ -∗ T)
+    ⊢ simplify_hyp (initialized π name) T.
   Proof.
     unfold TCFastDone in *. destruct ty as [rt' ty].
-    iDestruct 1 as (?) "HT". subst; simpl in *.
+    iDestruct 1 as "HT". subst; simpl in *.
     iIntros "Hinit".
-    iDestruct "Hinit" as "(%l' & %ty' & %Hlook1 & %Hlook2 & %Heq & %Hrfn & Hl)".
-    subst. simpl in *. subst.
+    iDestruct "Hinit" as "(%l' & %ty' & %Hlook1 & %Hlook2 & #Hl)".
     destruct ty'; simpl in *.
     repeat match goal with | H : static_is_registered _ _ _ |- _ => destruct H as [H1 H2] end.
     apply fmap_Some in H2 as ([] & H2 & Hb).
     simplify_eq. unfold btype_to_rtype in Hb; simpl in *.
+    injection Hb. intros ? ->.
     repeat match goal with | H : existT _ _ = existT _ _ |- _ => apply existT_inj in H end.
     subst. iApply ("HT" with "Hl").
     iPureIntro. eexists _. split; first done. exists eq_refl. done.
@@ -96,9 +94,9 @@ Section statics.
     static_is_registered name l ty →
     static_has_refinement name x →
     (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty)) -∗
-    initialized π name x.
+    initialized π name.
   Proof.
-    iIntros ([Hl1 Hl2] (ty2 & Hl3 & Heq' & Hb)) "(%Heq & Hl)".
+    iIntros ([Hl1 Hl2] (ty2 & Hl3 & Heq' & Hb)) "(%Heq & #Hl)".
     subst. destruct ty. destruct ty2. simpl in *.
     apply fmap_Some in Hl2 as (bt & Hl2 & Ha). subst.
     destruct bt. simpl in *.
@@ -107,13 +105,13 @@ Section statics.
     repeat match goal with | H : existT _ _ = existT _ _ |- _ => apply existT_inj in H end.
     subst.
     iExists _, _. iR. iR.
-    iExists eq_refl. simpl. iR. by iFrame.
+    by iFrame.
   Qed.
 
   Lemma simplify_initialized_goal {rt} π (x : rt) name l ty
     `{!TCFastDone (static_is_registered name l ty)} `{!TCFastDone (static_has_refinement name x)} T:
     (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew Heq in #x) @ shr_ref static (projT2 ty) ∗ T)
-    ⊢ simplify_goal (initialized π name x) T.
+    ⊢ simplify_goal (initialized π name) T.
   Proof.
     unfold TCFastDone in *. iIntros "[% [? $]]". subst.
     iApply initialized_intro; [done..|]. by iExists _.
@@ -122,26 +120,26 @@ Section statics.
   Global Existing Instance simplify_initialized_goal_inst.
 
   (** Subsumption *)
-  Definition FindInitialized (π : thread_id) (rt : Type) (name : string) :=
-    {| fic_A := rt; fic_Prop r := (initialized π name r); |}.
-  Global Instance related_to_initialized (π : thread_id) {rt} name (r : rt) :
-    RelatedTo (initialized π name r) :=
-    {| rt_fic := FindInitialized π rt name|}.
+  Definition FindInitialized (π : thread_id) (name : string) :=
+    {| fic_A := unit: Type; fic_Prop '() := (initialized π name); |}.
+  Global Instance related_to_initialized (π : thread_id) name :
+    RelatedTo (initialized π name) :=
+    {| rt_fic := FindInitialized π name|}.
 
-  Lemma find_in_context_initialized π name rt (T : rt → iProp Σ):
-    (∃ x, initialized π name x ∗ T x)
-    ⊢ find_in_context (FindInitialized π rt name) T.
-  Proof. iDestruct 1 as (x) "[Hinit HT]". iExists _. iFrame. Qed.
+  Lemma find_in_context_initialized π name (T : unit → iProp Σ):
+    (initialized π name ∗ T ())
+    ⊢ find_in_context (FindInitialized π name) T.
+  Proof. iDestruct 1 as "[Hinit HT]". iExists _. iFrame. Qed.
   Definition find_in_context_initialized_inst :=
     [instance find_in_context_initialized with FICSyntactic].
   Global Existing Instance find_in_context_initialized_inst | 1.
 
-  Lemma subsume_initialized π {rt} name (r1 r2 : rt) T:
-    (⌜r1 = r2⌝ ∗ T)
-    ⊢ subsume (initialized π name r1) (initialized π name r2) T.
-  Proof. iIntros "(-> & HT) ?". iFrame. Qed.
-  Definition subsume_initialized_inst := [instance subsume_initialized].
-  Global Existing Instance subsume_initialized_inst.
+  (*Lemma subsume_initialized π {rt} name (r1 r2 : rt) T:*)
+    (*(⌜r1 = r2⌝ ∗ T)*)
+    (*⊢ subsume (initialized π name r1) (initialized π name r2) T.*)
+  (*Proof. iIntros "(-> & HT) ?". iFrame. Qed.*)
+  (*Definition subsume_initialized_inst := [instance subsume_initialized].*)
+  (*Global Existing Instance subsume_initialized_inst.*)
 End statics.
 Global Typeclasses Opaque initialized.
 Global Typeclasses Opaque static_has_refinement.

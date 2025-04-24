@@ -835,6 +835,13 @@ End tac.
 Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
   revert i; repeat liForall.
 
+(* Put function assumptions into the persistent context *)
+Global Instance intro_pers_fn `{!typeGS Σ} {rts : list Type} v π l sts lfts (fnspec : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) :
+  IntroPersistent (v ◁ᵥ{π} l @ function_ptr sts fnspec) (v ◁ᵥ{π} l @ function_ptr sts fnspec).
+Proof.
+  constructor. iIntros "#HA". done.
+Qed.
+
 (* IMPORTANT: We need to make sure to never call simpl while the code
 (fn) is part of the goal, because simpl seems to take exponential time
 in the number of blocks!
@@ -846,7 +853,8 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
   intros;
   inv_layout_alg;
   iStartProof;
-  repeat iIntros "#?";
+  repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl);
+  li_unfold_lets_in_context;
   lazymatch goal with
   | |- envs_entails _ (typed_function _ _ _ _) =>
     iApply (intro_typed_function);

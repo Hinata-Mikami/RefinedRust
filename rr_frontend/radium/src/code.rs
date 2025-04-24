@@ -823,9 +823,13 @@ impl<'def> Function<'def> {
         }
 
         // write iris assums
-        if self.other_functions.is_empty() {
+        if self.other_functions.is_empty() && self.used_statics.is_empty() {
             write!(f, "⊢ ")?;
         } else {
+            for s in &self.used_statics {
+                write!(f, "initialized π \"{}\" -∗\n", s.ident)?;
+            }
+
             for proc_use in &self.other_functions {
                 info!("Using other function: {:?} with insts: {:?}", proc_use.spec_term, proc_use.scope_inst);
 

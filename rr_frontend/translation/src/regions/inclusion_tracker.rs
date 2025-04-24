@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use log::{info, trace, warn};
+use log::{info, warn};
 
 use crate::base::*;
 use crate::environment::polonius_info::{self, PoloniusInfo};
@@ -170,7 +170,6 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         if self.invalidated || self.full_incl.is_none() {
             self.recompute();
         }
-        trace!("Inclusion tracker full incl {:?}", self.full_incl);
         self.full_incl.as_ref().unwrap().contains(&(r1, r2, p)) || r1 == r2
     }
 

@@ -38,7 +38,6 @@ fn get_assignment_strong_update_constraints(
     // TODO: alternative implementation: structurally compare regions in LHS type and RHS type
     for (s1, s2, point) in subset_base {
         if *point == midpoint {
-            let lft1 = info.mk_atomic_region(*s1);
             let lft2 = info.mk_atomic_region(*s2);
 
             if inclusion_tracker.check_inclusion(*s1, *s2, *point) {
@@ -280,7 +279,7 @@ pub fn get_assignment_loan_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
-    rhs: &mir::Rvalue<'tcx>,
+    _rhs: &mir::Rvalue<'tcx>,
 ) -> Vec<radium::Annotation> {
     let info = inclusion_tracker.info();
     let mut stmt_annots = Vec::new();
@@ -336,53 +335,68 @@ pub fn make_unconstrained_region_annotations<'tcx>(
     let loan_point = info.get_point(loc, facts::PointType::Mid);
 
     for r in unconstrained_regions {
-        if let Some(mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _)) = rhs {
-            // for shared reborrows, Polonius does not create a new loan, and so the
-            // previous case did not match.
-            // However, we still need to track the region created for the reborrow in an
-            // annotation.
+        if let Some(rhs) = rhs {
+            if let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs {
+                // for shared reborrows, Polonius does not create a new loan, and so the
+                // previous case did not match.
+                // However, we still need to track the region created for the reborrow in an
+                // annotation.
 
-            let region = regions::region_to_region_vid(*region);
+                let region = regions::region_to_region_vid(*region);
 
-            // find inclusion ?r1 ⊑ region -- we will actually enforce region = r1
-            let new_constrs: Vec<(facts::Region, facts::Region)> =
-                info.get_new_subset_constraints_at_point(loan_point);
-            info!("Shared reborrow at {:?} with new constrs: {:?}", region, new_constrs);
-            let mut included_region = None;
-            for (r1, r2) in &new_constrs {
-                if *r2 == region {
-                    included_region = Some(r1);
-                    break;
+                // find inclusion ?r1 ⊑ region -- we will actually enforce region = r1
+                let new_constrs: Vec<(facts::Region, facts::Region)> =
+                    info.get_new_subset_constraints_at_point(loan_point);
+                info!("Shared reborrow at {:?} with new constrs: {:?}", region, new_constrs);
+                let mut included_region = None;
+                for (r1, r2) in &new_constrs {
+                    if *r2 == region {
+                        included_region = Some(r1);
+                        break;
+                    }
                 }
-            }
-            if let Some(r) = included_region {
-                //info!("Found inclusion {:?}⊑  {:?}", r, region);
-                annotations.push(radium::Annotation::CopyLftName(
-                    ty_translator.format_atomic_region(&info.mk_atomic_region(*r)),
-                    ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
-                ));
+                if let Some(r) = included_region {
+                    //info!("Found inclusion {:?}⊑  {:?}", r, region);
+                    annotations.push(radium::Annotation::CopyLftName(
+                        ty_translator.format_atomic_region(&info.mk_atomic_region(*r)),
+                        ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
+                    ));
 
-                // also add this to the inclusion checker
-                inclusion_tracker.add_static_inclusion(*r, region, loan_point);
+                    // also add this to the inclusion checker
+                    inclusion_tracker.add_static_inclusion(*r, region, loan_point);
+                    continue;
+                }
+                /*
+                // This happens e.g. when borrowing from a raw pointer etc.
+                info!("Found unconstrained shared borrow for {:?}", region);
+                let inferred_constrained = vec![];
+
+                // add statement for issuing the loan
+                annotations.push(radium::Annotation::StartLft(
+                    ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
+                    inferred_constrained,
+                ));
+                */
+            }
+
+            if let mir::Rvalue::Use(mir::Operand::Constant(_)) = rhs {
+                // we are probably using a static variable here
+                let lft = ty_translator.translate_region_var(r)?;
+                annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
                 continue;
             }
-            /*
-            // This happens e.g. when borrowing from a raw pointer etc.
-            info!("Found unconstrained shared borrow for {:?}", region);
-            let inferred_constrained = vec![];
-
-            // add statement for issuing the loan
-            annotations.push(radium::Annotation::StartLft(
-                ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
-                inferred_constrained,
-            ));
-            */
         }
 
         //if !inclusion_tracker.is_constrained(r, loan_point) {
-        let lft = ty_translator.translate_region_var(r)?;
-        annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
+        //let lft = ty_translator.translate_region_var(r)?;
+        //annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
         //}
+
+        // otherwise TODO
+        annotations.push(radium::Annotation::StartLft(
+            ty_translator.format_atomic_region(&info.mk_atomic_region(r)),
+            vec![],
+        ));
     }
 
     Ok(annotations)
