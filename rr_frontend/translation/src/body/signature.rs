@@ -237,12 +237,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // Process the lifetime parameters that come from the captures
         for r in capture_regions {
-            // TODO: problem: we're introducing inconsistent names here.
             if let ty::RegionKind::ReVar(r) = r.kind() {
-                let lft = info.mk_atomic_region(r);
+                // We need to do some hacks here to find the right Polonius region:
+                // `r` is the non-placeholder region that the variable gets, but we are
+                // looking for the corresponding placeholder region
+                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
+
+                let lft = info.mk_atomic_region(r2);
                 let name = regions::format_atomic_region_direct(&lft, None);
-                region_substitution.region_names.insert(r, name);
-                // TODO: add to region_substitution?
+                region_substitution.region_names.insert(r2, name);
             } else {
                 unreachable!();
             }
@@ -256,7 +259,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // looking for the corresponding placeholder region
                 let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
 
-                info!("using lifetime {:?} for closure universal", r2);
                 let lft = info.mk_atomic_region(r2);
                 let name = regions::format_atomic_region_direct(&lft, None);
                 region_substitution.region_names.insert(r2, name);
@@ -546,12 +548,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         region_substitution: regions::EarlyLateRegionMap,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
-        // add universals to the function
-        // important: these need to be in the right order!
-        for name in region_substitution.region_names.values() {
-            translated_fn.add_universal_lifetime(name.to_owned());
-        }
-
         // enter the procedure
         let type_scope = types::FunctionState::new_with_traits(
             proc_did,

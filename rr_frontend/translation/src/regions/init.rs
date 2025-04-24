@@ -145,7 +145,8 @@ pub fn find_placeholder_region_for(r: ty::RegionVid, info: &PoloniusInfo) -> Opt
     });
 
     for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
-        if *p == root_point && *r2 == r {
+        let k1 = info.get_region_kind(*r1);
+        if *p == root_point && *r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
             info!("find placeholder region for: {:?} ⊑ {:?} = r = {:?}", r1, r2, r);
             return Some(*r1);
         }
@@ -232,14 +233,22 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     // Potentially, we should instead just equalize the types
 
     let mut initial_arg_mapping = Vec::new();
-    for (r1, r2, _) in subset_base {
+    for (r1, r2, p) in subset_base {
         let lft1 = info.mk_atomic_region(*r1);
         let lft2 = info.mk_atomic_region(*r2);
+
+        //if *p != root_point {
+        //continue;
+        //}
 
         let polonius_info::AtomicRegion::Universal(polonius_info::UniversalRegionKind::Local, _) = lft1
         else {
             continue;
         };
+
+        if !matches!(lft2, polonius_info::AtomicRegion::PlaceRegion(_, _)) {
+            continue;
+        }
 
         // this is a constraint we care about here, add it
         if inclusion_tracker.check_inclusion(*r1, *r2, root_point) {
@@ -248,8 +257,6 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
         inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
         inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
-
-        assert!(matches!(lft2, polonius_info::AtomicRegion::PlaceRegion(_)));
 
         initial_arg_mapping.push((lft1, lft2));
     }

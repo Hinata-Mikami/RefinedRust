@@ -568,9 +568,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             )?;
 
         let remaining_unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(
-            &self.inclusion_tracker,
+            &mut self.inclusion_tracker,
             &self.ty_translator,
             unconstrained_regions,
+            loc,
+            None,
         )?;
 
         // add annotations for the assignment

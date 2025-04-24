@@ -29,9 +29,8 @@ use crate::environment::Environment;
 pub enum AtomicRegion {
     Loan(facts::Loan, facts::Region),
     Universal(UniversalRegionKind, facts::Region),
-    PlaceRegion(facts::Region),
-    Unconstrained(facts::Region),
-    Unknown(facts::Region),
+    PlaceRegion(facts::Region, bool),
+    Unknown(facts::Region, bool),
 }
 
 impl AtomicRegion {
@@ -42,27 +41,27 @@ impl AtomicRegion {
 
     #[must_use]
     pub(crate) const fn is_place(&self) -> bool {
-        matches!(*self, Self::PlaceRegion(_))
+        matches!(*self, Self::PlaceRegion(_, _))
     }
 
     #[must_use]
     pub(crate) const fn is_value(&self) -> bool {
-        matches!(*self, Self::Unknown(_))
+        matches!(*self, Self::Unknown(_, _))
     }
 
     #[must_use]
     pub(crate) const fn is_unconstrained(&self) -> bool {
-        matches!(*self, Self::Unconstrained(_))
+        match *self {
+            Self::PlaceRegion(_, b) => b,
+            Self::Unknown(_, b) => b,
+            _ => false,
+        }
     }
 
     #[must_use]
     pub(crate) const fn get_region(&self) -> facts::Region {
         match self {
-            Self::Loan(_, r)
-            | Self::Universal(_, r)
-            | Self::PlaceRegion(r)
-            | Self::Unconstrained(r)
-            | Self::Unknown(r) => *r,
+            Self::Loan(_, r) | Self::Universal(_, r) | Self::PlaceRegion(r, _) | Self::Unknown(r, _) => *r,
         }
     }
 }
@@ -87,12 +86,12 @@ pub enum RegionKind {
     /// this is a universal region
     Universal(UniversalRegionKind),
     /// inference variable in the type of a local
-    PlaceRegion,
-    /// unconstrained inference variables (i.e., may live arbitrarily long)
-    Unconstrained,
+    /// boolean indicates whether it is unconstrained
+    PlaceRegion(bool),
     /// unknown region kind; for instance used for the inference variables introduced on a call to
     /// a function with lifetime parameters
-    Unknown,
+    /// boolean indicates whether it is unconstrained
+    Unknown(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -150,8 +149,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         let interner = facts::Interner::new(facts.location_table.take().unwrap());
         let mut all_facts = facts.input_facts.take().unwrap();
 
-        Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)
-            .map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
+        // TODO: check if this is the right thing?
+        //Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)
+        //.map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
 
         let output = polonius_engine::Output::compute(&all_facts, polonius_engine::Algorithm::Naive, true);
 
@@ -259,6 +259,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             return RegionKind::Universal(UniversalRegionKind::Local);
         }
 
+        // check if this is an unconstrained region
+        let unconstrained = !self.borrowck_in_facts.subset_base.iter().any(|(_, r2, _)| *r2 == region);
+
         // check if this is a place region
         let mut found_region = false;
         let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
@@ -275,16 +278,10 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         }
 
         if found_region {
-            return RegionKind::PlaceRegion;
+            return RegionKind::PlaceRegion(unconstrained);
         }
 
-        // check if this is an unconstrained region
-        if !self.borrowck_in_facts.subset_base.iter().any(|(_, r2, _)| *r2 == region) {
-            // no constraints
-            return RegionKind::Unconstrained;
-        }
-
-        RegionKind::Unknown
+        RegionKind::Unknown(unconstrained)
     }
 
     #[must_use]
@@ -292,10 +289,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         let kind = self.get_region_kind(r);
         match kind {
             RegionKind::Loan(l) => AtomicRegion::Loan(l, r),
-            RegionKind::PlaceRegion => AtomicRegion::PlaceRegion(r),
+            RegionKind::PlaceRegion(b) => AtomicRegion::PlaceRegion(r, b),
             RegionKind::Universal(uk) => AtomicRegion::Universal(uk, r),
-            RegionKind::Unconstrained => AtomicRegion::Unconstrained(r),
-            RegionKind::Unknown => AtomicRegion::Unknown(r),
+            RegionKind::Unknown(b) => AtomicRegion::Unknown(r, b),
         }
     }
 

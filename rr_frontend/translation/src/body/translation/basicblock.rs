@@ -105,7 +105,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
                             self.env, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
 
-                        let unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(&self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions)?;
+                        let unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(
+                            &mut self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions, loc,
+                            Some(val))?;
 
                         cont_stmt = radium::Stmt::with_annotations(
                             cont_stmt,

@@ -35,7 +35,10 @@ pub struct CallRegions {
     pub classification: HashMap<Region, CallRegionKind>,
 }
 
-// `substs` are the substitutions for the early-bound regions
+/// Compute instantiations for the lifetime parameters of a function.
+/// Each of the lifetimes in the function's signature has one Polonius inference variable at the
+/// call site, and we need to find an instantiation for these.
+/// `substs` are the substitutions for the early-bound regions
 pub fn compute_call_regions<'tcx>(
     env: &Environment<'tcx>,
     incl_tracker: &InclusionTracker<'_, '_>,
@@ -90,12 +93,12 @@ pub fn compute_call_regions<'tcx>(
     let mut new_regions = HashSet::new();
     let mut relevant_constraints = Vec::new();
     for (r1, r2) in &new_constraints {
-        if matches!(info.get_region_kind(*r1), polonius_info::RegionKind::Unknown) {
+        if matches!(info.get_region_kind(*r1), polonius_info::RegionKind::Unknown(_)) {
             // this is probably a inference variable for the call
             new_regions.insert(*r1);
             relevant_constraints.push((*r1, *r2));
         }
-        if matches!(info.get_region_kind(*r2), polonius_info::RegionKind::Unknown) {
+        if matches!(info.get_region_kind(*r2), polonius_info::RegionKind::Unknown(_)) {
             new_regions.insert(*r2);
             relevant_constraints.push((*r1, *r2));
         }
@@ -178,7 +181,11 @@ pub fn compute_call_regions<'tcx>(
     }
 }
 
-/// Compute annotations for recovering unconstrained regions.
+/// Compute annotations for recovering unconstrained regions that we have recovered by analyzing
+/// the function's signature.\
+/// Returns:
+/// - the vector of annotations to emit
+/// - the set of remaining unconstrained regions for which we have not figured out a mapping
 pub fn compute_unconstrained_region_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
@@ -197,6 +204,7 @@ pub fn compute_unconstrained_region_annots<'tcx>(
     let mut unconstrained_annotations = Vec::new();
     for r in unconstrained_regions {
         let translated_region = ty_translator.translate_region_var(r)?;
+        // check if we have recovered a mapping
         if let Some(early_region_idx) = early_region_map.get(&translated_region) {
             let scope = ty_translator.scope.borrow();
 

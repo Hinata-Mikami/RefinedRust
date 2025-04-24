@@ -1576,9 +1576,6 @@ fn assemble_trait_impls<'tcx, 'rcx>(
 
         let mut methods = BTreeMap::new();
 
-        // TODO don't rely on definition order
-        // maybe instead iterate over the assoc items of the trait
-
         for x in trait_assoc_items.in_definition_order() {
             if x.kind == ty::AssocKind::Fn {
                 let fn_item = assoc_items.find_by_name_and_kind(
@@ -1601,14 +1598,23 @@ fn assemble_trait_impls<'tcx, 'rcx>(
                     // TODO
                     // we need the spec name / term and the direct generic scope of the function.
 
+                    // for the spec name and term:
+                    // - we should change the radium representation to not have a full spec
+                    // but just the term + generic scope it quantifies over.
+                    // -
+
                     // for the generic scope:
                     // - we are already quantifying the impl args.
                     // - we need to instantiate the trait's args.
-                    // - I guess
-
                     // Plan:
                     // - take the generic scope of the trait default function.
                     // - instantiate the first n args with the ones from the trait_ref.
+                    // - then make that into a genericscope.
+                    //
+                    // we probably also need to instantiate the paramenv, right?
+                    // - i.e., some trait assumptions of that function might be dispatched
+                    // by impl args??
+                    // - No. Only assumptions of the trait itself.
 
                     let fn_name = base::strip_coq_ident(vcx.env.tcx().item_name(x.def_id).as_str());
                     let _spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);

@@ -86,11 +86,25 @@ pub fn format_atomic_region_direct(
 ) -> String {
     match r {
         polonius_info::AtomicRegion::Loan(_, r) => format!("llft{}", r.index()),
-        polonius_info::AtomicRegion::PlaceRegion(r) => format!("plft{}", r.index()),
-        polonius_info::AtomicRegion::Unknown(r) => format!("vlft{}", r.index()),
-        polonius_info::AtomicRegion::Unconstrained(r) => format!("clft{}", r.index()),
+        polonius_info::AtomicRegion::PlaceRegion(r, uc) => {
+            if *uc {
+                format!("puclft{}", r.index())
+            } else {
+                format!("plft{}", r.index())
+            }
+        },
+        polonius_info::AtomicRegion::Unknown(r, uc) => {
+            if *uc {
+                format!("vuclft{}", r.index())
+            } else {
+                format!("vlft{}", r.index())
+            }
+        },
+        polonius_info::AtomicRegion::Universal(k, r) => {
+            if matches!(k, polonius_info::UniversalRegionKind::Static) {
+                return "static".to_owned();
+            }
 
-        polonius_info::AtomicRegion::Universal(_, r) => {
             let Some(scope) = scope else {
                 return format!("ulft{}", r.index());
             };
