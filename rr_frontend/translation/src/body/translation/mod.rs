@@ -229,18 +229,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // first translate the initial basic block; we add some additional annotations to the front
         let initial_bb_idx = mir::BasicBlock::from_u32(0);
         if let Some(bb) = basic_blocks.get(initial_bb_idx) {
-            let mut translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
+            let translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
             // push annotation for initial constraints that relate argument's place regions to universals
+            let mut annots = Vec::new();
             for (r1, r2) in &self.initial_constraints {
-                translated_bb = radium::Stmt::Annot {
-                    a: radium::Annotation::CopyLftName(
+                annots.push(radium::Annotation::CopyLftName(
                         self.ty_translator.format_atomic_region(r1),
                         self.ty_translator.format_atomic_region(r2),
-                    ),
-                    s: Box::new(translated_bb),
-                    why: Some("initialization".to_owned()),
-                };
+                    ));
             }
+            let translated_bb = radium::Stmt::Prim(
+                vec![radium::PrimStmt::Annot {
+                    a: annots,
+                    why: Some("initialization".to_owned()),
+                }], Box::new(translated_bb));
             self.translated_fn.code.add_basic_block(initial_bb_idx.as_usize(), translated_bb);
         } else {
             info!("No basic blocks");
@@ -425,24 +427,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Prepend endlft annotations for dying loans to a statement.
-    fn prepend_endlfts<I>(&self, st: radium::Stmt, dying: I) -> radium::Stmt
+    /// Generate endlft annotations
+    fn generate_endlfts<I>(&self, dying: I) -> Vec<radium::PrimStmt>
     where
         I: ExactSizeIterator<Item = facts::Loan>,
     {
-        let mut cont_stmt = st;
-        if dying.len() > 0 {
-            //info!("Dying at {:?}: {:?}", loc, dying);
-            for d in dying {
-                let lft = self.info.atomic_region_of_loan(d);
-                cont_stmt = radium::Stmt::Annot {
-                    a: radium::Annotation::EndLft(self.ty_translator.format_atomic_region(&lft)),
-                    s: Box::new(cont_stmt),
-                    why: Some("endlft".to_owned()),
-                };
-            }
+        let mut stmts = Vec::new();
+        for d in dying {
+            let lft = self.info.atomic_region_of_loan(d);
+            stmts.push(radium::PrimStmt::Annot {
+                a: vec![radium::Annotation::EndLft(self.ty_translator.format_atomic_region(&lft))],
+                why: Some("endlft".to_owned()),
+            });
         }
-        cont_stmt
+        stmts
     }
 
     /// Make a trivial place accessing `local`.

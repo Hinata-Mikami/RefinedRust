@@ -398,6 +398,28 @@ impl Annotation {
 type BlockLabel = usize;
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
+pub enum PrimStmt {
+    #[display("{} <-{{ {} }} {};\n", e1, ot, e2)]
+    Assign {
+        ot: OpType,
+        e1: Expr,
+        e2: Expr,
+    },
+
+    #[display("expr: {};\n", _0)]
+    ExprS(Expr),
+
+    #[display("assert{{ {} }}: {};\n", OpType::Bool, _0)]
+    AssertS(Expr),
+
+    #[display("{}", display_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why))}))]
+    Annot {
+        a: Vec<Annotation>,
+        why: Option<String>,
+    },
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Stmt {
     #[display("Goto \"_bb{}\"", _0)]
     GotoBlock(BlockLabel),
@@ -436,44 +458,11 @@ pub enum Stmt {
         def: Box<Stmt>,
     },
 
-    #[display("{} <-{{ {} }} {};\n{}", e1, ot, e2, &s)]
-    Assign {
-        ot: OpType,
-        e1: Expr,
-        e2: Expr,
-        s: Box<Stmt>,
-    },
-
-    #[display("expr: {};\n{}", e, &s)]
-    ExprS { e: Expr, s: Box<Stmt> },
-
-    #[display("assert{{ {} }}: {};\n{}", OpType::Bool, e, &s)]
-    AssertS { e: Expr, s: Box<Stmt> },
-
-    #[display("annot: {};{}\n{}", a, fmt_comment(why), &s)]
-    Annot {
-        a: Annotation,
-        s: Box<Stmt>,
-        why: Option<String>,
-    },
+    #[display("{}{}", display_list!(_0, ""), *_1)]
+    Prim(Vec<PrimStmt>, Box<Stmt>),
 
     #[display("StuckS")]
     Stuck,
-}
-
-impl Stmt {
-    /// Annotate a statement with a list of annotations
-    #[must_use]
-    pub fn with_annotations(mut s: Self, a: Vec<Annotation>, why: &Option<String>) -> Self {
-        for annot in a {
-            s = Self::Annot {
-                a: annot,
-                s: Box::new(s),
-                why: why.clone(),
-            };
-        }
-        s
-    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]

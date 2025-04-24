@@ -60,6 +60,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
+
+        let mut endlfts = self.generate_endlfts(dying_loans.into_iter());
+
         match &term.kind {
             mir::TerminatorKind::Goto { target } => self.translate_goto_like(&loc, *target),
 
@@ -76,7 +79,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok(radium::Stmt::Stuck);
                 }
 
-                self.translate_function_call(func, args, destination, *target, loc, dying_loans.as_slice())
+                self.translate_function_call(func, args, destination, *target, loc, endlfts)
             },
 
             mir::TerminatorKind::Return => {
@@ -92,13 +95,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 });
 
                 // TODO is this right?
-                Ok(self.prepend_endlfts(stmt, dying_loans.into_iter()))
+                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
-            //TerminatorKind::Abort => {
-            //res_stmt = radium::Stmt::Stuck;
-            //res_stmt = self.prepend_endlfts(res_stmt, dying_loans.into_iter());
-            //},
             mir::TerminatorKind::SwitchInt { discr, targets } => {
                 let operand = self.translate_operand(discr, true)?;
                 let all_targets: &[mir::BasicBlock] = targets.all_targets();
@@ -123,7 +122,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     };
 
                     // TODO: is this right?
-                    return Ok(self.prepend_endlfts(stmt, dying_loans.into_iter()));
+                    return Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)));
                 }
 
                 //info!("switchint: {:?}", term.kind);
@@ -179,12 +178,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let stmt = self.translate_goto_like(&loc, *target)?;
 
                 // TODO: should we really have this?
-                let stmt = self.prepend_endlfts(stmt, dying_loans.into_iter());
-
-                Ok(radium::Stmt::AssertS {
-                    e: comp,
-                    s: Box::new(stmt),
-                })
+                endlfts.insert(0, radium::PrimStmt::AssertS(comp));
+                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
@@ -196,9 +191,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
 
-                Ok(self.prepend_endlfts(stmt, dying_loans.into_iter()))
-
-                //res_stmt = radium::Stmt::ExprS { e: drope, s: Box::new(res_stmt)};
+                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
             // just a goto for our purposes

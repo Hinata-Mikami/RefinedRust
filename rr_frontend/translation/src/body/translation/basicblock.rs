@@ -20,25 +20,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         bb_idx: mir::BasicBlock,
         bb: &mir::BasicBlockData<'tcx>,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
-        // we translate from back to front, starting with the terminator, since Caesium statements
-        // have a continuation (the next statement to execute)
+        let mut prim_stmts = Vec::new();
 
-        // first do the endlfts for the things right before the terminator
-        let mut idx = bb.statements.len();
-        let loc = mir::Location {
-            block: bb_idx,
-            statement_index: idx,
-        };
-        let dying = self.info.get_dying_loans(loc);
-        // TODO zombie?
-        let _dying_zombie = self.info.get_dying_zombie_loans(loc);
-        let mut cont_stmt: radium::Stmt = self.translate_terminator(bb.terminator(), loc, dying)?;
-
-        //cont_stmt = self.prepend_endlfts(cont_stmt, loc, dying);
-        //cont_stmt = self.prepend_endlfts(cont_stmt, loc, dying_zombie);
-
-        for stmt in bb.statements.iter().rev() {
-            idx -= 1;
+        for (idx, stmt) in bb.statements.iter().enumerate() {
             let loc = mir::Location {
                 block: bb_idx,
                 statement_index: idx,
@@ -61,6 +45,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             }
             // we prepend them before the current statement
+            prim_stmts.extend(self.generate_endlfts(dying_loans.into_iter()));
 
             match &stmt.kind {
                 mir::StatementKind::Assign(b) => {
@@ -81,12 +66,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         assert!(plc.projection.is_empty());
 
                         let ot = synty.into();
-                        cont_stmt = radium::Stmt::Assign {
+                        prim_stmts.push(radium::PrimStmt::Assign {
                             ot,
                             e1: translated_place,
                             e2: translated_val,
-                            s: Box::new(cont_stmt),
-                        };
+                        });
                     } else {
                         let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.env.tcx());
 
@@ -109,11 +93,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             &mut self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions, loc,
                             Some(val))?;
 
-                        cont_stmt = radium::Stmt::with_annotations(
-                            cont_stmt,
-                            assignment_annots.stmt_annot,
-                            &Some("post-assignment".to_owned()),
-                        );
+
+                        prim_stmts.push(radium::PrimStmt::Annot{
+                            a: unconstrained_annots,
+                            why: Some("assignment (unconstrained)".to_owned()),
+                        });
+
+                        prim_stmts.push(radium::PrimStmt::Annot{
+                            a: composite_annots,
+                            why: Some("composite".to_owned()),
+                        });
+
+                        prim_stmts.push(radium::PrimStmt::Annot{
+                            a: borrow_annots,
+                            why: Some("borrow".to_owned()),
+                        });
+
+                        prim_stmts.push(radium::PrimStmt::Annot{
+                            a: assignment_annots.new_dyn_inclusions,
+                            why: Some("assignment".to_owned()),
+                        });
+
 
                         let translated_val = radium::Expr::with_optional_annotation(
                             self.translate_rvalue(loc, val)?,
@@ -122,32 +122,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         );
                         let translated_place = self.translate_place(plc)?;
                         let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
-                        cont_stmt = radium::Stmt::Assign {
+                        prim_stmts.push(radium::PrimStmt::Assign {
                             ot: synty.into(),
                             e1: translated_place,
                             e2: translated_val,
-                            s: Box::new(cont_stmt),
-                        };
-                        cont_stmt = radium::Stmt::with_annotations(
-                            cont_stmt,
-                            assignment_annots.new_dyn_inclusions,
-                            &Some("assignment".to_owned()),
-                        );
-                        cont_stmt = radium::Stmt::with_annotations(
-                            cont_stmt,
-                            borrow_annots,
-                            &Some("borrow".to_owned()),
-                        );
-                        cont_stmt = radium::Stmt::with_annotations(
-                            cont_stmt,
-                            composite_annots,
-                            &Some("composite".to_owned()),
-                        );
-                        cont_stmt = radium::Stmt::with_annotations(
-                            cont_stmt,
-                            unconstrained_annots,
-                            &Some("assignment (unconstrained)".to_owned()),
-                        );
+                        });
+
+                        prim_stmts.push(radium::PrimStmt::Annot{
+                            a: assignment_annots.stmt_annot,
+                            why: Some("post-assignment".to_owned()),
+                        });
                     }
                 },
 
@@ -207,9 +191,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // just ignore retags
                 | mir::StatementKind::Retag(_, _) => (),
             }
-
-            cont_stmt = self.prepend_endlfts(cont_stmt, dying_loans.into_iter());
         }
+
+        let idx = bb.statements.len();
+        let loc = mir::Location {
+            block: bb_idx,
+            statement_index: idx,
+        };
+        let dying = self.info.get_dying_loans(loc);
+        // TODO zombie?
+        let _dying_zombie = self.info.get_dying_zombie_loans(loc);
+        let cont_stmt: radium::Stmt = self.translate_terminator(bb.terminator(), loc, dying)?;
+
+        let cont_stmt = radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 
         Ok(cont_stmt)
     }
