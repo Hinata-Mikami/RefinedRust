@@ -38,7 +38,6 @@ rustflags = [
     "-Aclippy::write_with_newline",
 
     # clippy::suspicious
-    "-Aclippy::non_canonical_partial_ord_impl",
     "-Aclippy::suspicious_doc_comments",
 
     # === REQUIRE DISCUSSION ===

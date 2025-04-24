@@ -45,29 +45,10 @@ pub struct Borrowck {
 
 /// The type of the point. Either the start of a statement or in the
 /// middle of it.
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum PointType {
     Start,
     Mid,
-}
-
-impl cmp::PartialOrd for PointType {
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        let res = match (self, other) {
-            (Self::Start, Self::Mid) => cmp::Ordering::Less,
-            (Self::Mid, Self::Start) => cmp::Ordering::Greater,
-
-            (Self::Start, Self::Start) | (Self::Mid, Self::Mid) => cmp::Ordering::Equal,
-        };
-
-        Some(res)
-    }
-}
-
-impl cmp::Ord for PointType {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
 }
 
 /// A program point used in the borrow checker analysis.
