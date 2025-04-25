@@ -3448,6 +3448,14 @@ Section typing.
     by iApply ("Hs" with "Hnamed [$] HE HL").
   Qed.
 
+  (** UnconstrainedLftAnnot *)
+  Lemma type_unconstrained_lft E L (n : string) s fn R ϝ sup `{!TCFastDone (UnconstrainedLftHint n sup)} :
+    typed_stmt E L (annot: (StartLftAnnot n sup); s) fn R ϝ
+    ⊢ typed_stmt E L (annot: (UnconstrainedLftAnnot n); s) fn R ϝ.
+  Proof.
+    done.
+  Qed.
+
   (** CopyLftNameAnnot *)
   Lemma type_copy_lft_name E L n1 n2 s fn R ϝ :
     (∃ M, named_lfts M ∗

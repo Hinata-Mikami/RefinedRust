@@ -517,6 +517,9 @@ Ltac liRStmt :=
       | W.AnnotStmt _ (CopyLftNameAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_copy_lft_name E L n1 n2 _ fn R ϝ) _)
       | W.AnnotStmt _ (DynIncludeLftAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_dyn_include_lft E L n1 n2 _ fn R ϝ) _)
       | W.AnnotStmt _ (ExtendLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_extendlft E L κ _ fn R ϝ) _)
+      | W.AnnotStmt _ (UnconstrainedLftAnnot ?κ) _ =>
+        notypeclasses refine (tac_fast_apply (type_unconstrained_lft E L κ _ fn R ϝ _) _);
+          [solve [refine _] | ]
       | _ => fail "do_stmt: unknown stmt" s
       end
     end

@@ -383,6 +383,10 @@ pub enum Annotation {
     #[display("CopyLftNameAnnot \"{}\" \"{}\"", _1, _0)]
     CopyLftName(Lft, Lft),
 
+    /// Creation an annotation for introducing an unconstrained lifetime
+    #[display("UnconstrainedLftAnnot \"{}\"", _0)]
+    UnconstrainedLft(Lft),
+
     /// Create an alias for an intersection of lifetimes
     #[display("AliasLftAnnot \"{}\" [{}]", _0, display_list!(_1, "; ", "\"{}\""))]
     AliasLftIntersection(Lft, Vec<Lft>),
@@ -400,11 +404,7 @@ type BlockLabel = usize;
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum PrimStmt {
     #[display("{} <-{{ {} }} {};\n", e1, ot, e2)]
-    Assign {
-        ot: OpType,
-        e1: Expr,
-        e2: Expr,
-    },
+    Assign { ot: OpType, e1: Expr, e2: Expr },
 
     #[display("expr: {};\n", _0)]
     ExprS(Expr),
@@ -754,6 +754,8 @@ pub struct Function<'def> {
     manual_tactics: Vec<String>,
     /// used statics
     used_statics: Vec<StaticMeta<'def>>,
+    /// unconstrained lfts used by the function
+    unconstrained_lfts: Vec<Lft>,
 
     /// invariants for loop head bbs
     loop_invariants: InvariantMap,
@@ -1058,6 +1060,9 @@ impl<'def> Function<'def> {
         );
 
         write!(f, "init_tyvars ({} );\n", formatted_tyvars.as_str())?;
+        for lft in &self.unconstrained_lfts {
+            write!(f, "check_unconstrained_lft \"{lft}\";\n")?;
+        }
         write!(f, "unfold_generic_inst; simpl.\n")
     }
 
@@ -1415,6 +1420,9 @@ pub struct FunctionBuilder<'def> {
     /// used statics
     used_statics: Vec<StaticMeta<'def>>,
 
+    /// unconstrained lfts used by the annotations
+    unconstrained_lfts: Vec<Lft>,
+
     /// manually specified tactics that will be emitted in the typing proof
     tactics: Vec<String>,
 
@@ -1443,6 +1451,7 @@ impl<'def> FunctionBuilder<'def> {
             loop_invariants: InvariantMap(HashMap::new()),
             tactics: Vec::new(),
             used_statics: Vec::new(),
+            unconstrained_lfts: Vec::new(),
             extra_link_assum: Vec::new(),
             has_generic_scope: false,
         }
@@ -1467,6 +1476,17 @@ impl<'def> FunctionBuilder<'def> {
     /// Add a manual tactic used for a sidecondition proof.
     pub fn add_manual_tactic(&mut self, tac: String) {
         self.tactics.push(tac);
+    }
+
+    /// Add a hint request for an unconstrained lifetime.
+    pub fn add_unconstrained_lft_hint(&mut self, lft: Lft) {
+        self.unconstrained_lfts.push(lft);
+    }
+
+    /// Get the universal lifetimes.
+    #[must_use]
+    pub fn get_lfts(&self) -> &[Lft] {
+        self.spec.generics.get_lfts()
     }
 
     /// Add the assumption that a particular syntype is layoutable to the typing proof.
@@ -1568,6 +1588,7 @@ impl<'def> FunctionBuilder<'def> {
             loop_invariants: self.loop_invariants,
             manual_tactics: self.tactics,
             used_statics: self.used_statics,
+            unconstrained_lfts: self.unconstrained_lfts,
             extra_link_assum: self.extra_link_assum,
         }
     }

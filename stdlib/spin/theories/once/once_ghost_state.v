@@ -121,7 +121,7 @@ Section statics.
     ∃ γ, ⌜static_has_refinement s γ⌝ ∗ once_status_tok γ a.
 
   Definition once_initialized π (s : string) (a : option A) : iProp Σ :=
-    ∃ γ, initialized π s γ ∗ once_status_tok γ a.
+    ∃ γ, initialized π s ∗ ⌜static_has_refinement s γ⌝ ∗ once_status_tok γ a.
 
 
   (* I guess in the beginning I allocate this for every global.

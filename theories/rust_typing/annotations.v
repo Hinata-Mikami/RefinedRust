@@ -20,7 +20,6 @@ Inductive endlft_annot : Set :=
 Inductive extend_annot : Set :=
   ExtendLftAnnot (n : string).
 
-
 (** Annotation for stratifying the context at this point. *)
 Inductive stratify_context_annot : Set :=
   StratifyContextAnnot.
@@ -40,3 +39,32 @@ Inductive assert_type_annot : Set :=
 (** TODO: just a place holder until we handle drops properly. *)
 Inductive drop_annot : Set :=
   | DropAnnot.
+
+(** Annotation for manual unconstrained lft annotations *)
+Inductive unconstrained_lft_annot : Set :=
+  UnconstrainedLftAnnot (n1 : string).
+
+Definition UnconstrainedLftHint_def (n1 : string) (sup : list string) :=
+  True.
+Definition UnconstrainedLftHint_aux : seal UnconstrainedLftHint_def. Proof. by eexists. Qed.
+Definition UnconstrainedLftHint := UnconstrainedLftHint_aux.(unseal).
+Definition UnconstrainedLftHint_unfold :
+  UnconstrainedLftHint = UnconstrainedLftHint_def :=
+  UnconstrainedLftHint_aux.(seal_eq).
+Lemma pose_unconstrained_lft_hint (n1 : string) (sup : list string) (T : Prop) :
+  (UnconstrainedLftHint n1 sup → T) → T.
+Proof.
+  rewrite UnconstrainedLftHint_unfold.
+  intros Ha. apply Ha. done.
+Qed.
+Ltac pose_unconstrained_lft_hint n sup :=
+  apply (pose_unconstrained_lft_hint n sup); intros ?.
+Ltac check_unconstrained_lft n :=
+  match goal with
+  | H : UnconstrainedLftHint n _ |- _ =>
+      idtac
+  | |- _ =>
+    idtac "Lifetime " n " is unconstrained, pose a hint using 'pose_unconstrained_lft_hint' "
+  end.
+
+

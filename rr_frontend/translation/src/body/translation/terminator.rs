@@ -60,7 +60,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
-
         let mut endlfts = self.generate_endlfts(dying_loans.into_iter());
 
         match &term.kind {

@@ -52,8 +52,7 @@ impl AtomicRegion {
     #[must_use]
     pub(crate) const fn is_unconstrained(&self) -> bool {
         match *self {
-            Self::PlaceRegion(_, b) => b,
-            Self::Unknown(_, b) => b,
+            Self::PlaceRegion(_, b) | Self::Unknown(_, b) => b,
             _ => false,
         }
     }
@@ -147,7 +146,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         let place_regions = place_regions::load(mir);
 
         let interner = facts::Interner::new(facts.location_table.take().unwrap());
-        let mut all_facts = facts.input_facts.take().unwrap();
+        let all_facts = facts.input_facts.take().unwrap();
 
         // TODO: check if this is the right thing?
         //Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)

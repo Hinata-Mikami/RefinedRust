@@ -1,28 +1,19 @@
-1080,1081c1080,1082
-<    annot: CopyLftNameAnnot "clft4" "static"; (* assignment (unconstrained) *)
-<    "ret" <-{ PtrOp } &ref{ Mut, Some (RSTTyVar "T"), "clft4" } (!{ PtrOp } ( "p" ));
+1081c1081
+<    "ret" <-{ PtrOp } &ref{ Mut, Some (RSTTyVar "T"), "vuclft4" } (!{ PtrOp } ( "p" ));
 ---
->    (* TODO: I edited the code, some of the annotations are currently wrong *)
->    annot: StartLftAnnot "clft4" ["plft10"];
->    "__0" <-{ PtrOp } &ref{ Mut, Some (RSTTyVar "T"), "clft4" } (!{ PtrOp } ( "p" ));
-1082a1084,1085
->    annot: ExtendLftAnnot "clft4";
+>    "__0" <-{ PtrOp } &ref{ Mut, Some (RSTTyVar "T"), "vuclft4" } (!{ PtrOp } ( "p" ));
+1082a1083,1084
+>    annot: ExtendLftAnnot "vuclft4";
 >    (*
-1091a1095
+1091a1094
 >    *)
-1154a1159,1161
+1154a1158,1160
 >    (* TODO manually inserted extendlft *)
 >    annot: ExtendLftAnnot "llft4";
 >    annot: ExtendLftAnnot "llft5";
-1207,1208c1214,1215
-<    annot: CopyLftNameAnnot "clft4" "static"; (* assignment (unconstrained) *)
-<    annot: StartLftAnnot "clft4" []; (* borrow *)
----
->    (* TODO: manually constrained this by "ulft_1",  maybe this should just be copylftannot instead? *)
->    annot: StartLftAnnot "clft4" ["ulft_1"]; (* borrow *)
-1214a1222
+1213a1220
 >    annot: ExtendLftAnnot "plft7"; (* TODO: manually added *)
-1296c1304
+1293c1300
 < End code.
 \ No newline at end of file
 ---

@@ -234,15 +234,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut annots = Vec::new();
             for (r1, r2) in &self.initial_constraints {
                 annots.push(radium::Annotation::CopyLftName(
-                        self.ty_translator.format_atomic_region(r1),
-                        self.ty_translator.format_atomic_region(r2),
-                    ));
+                    self.ty_translator.format_atomic_region(r1),
+                    self.ty_translator.format_atomic_region(r2),
+                ));
             }
             let translated_bb = radium::Stmt::Prim(
                 vec![radium::PrimStmt::Annot {
                     a: annots,
                     why: Some("initialization".to_owned()),
-                }], Box::new(translated_bb));
+                }],
+                Box::new(translated_bb),
+            );
             self.translated_fn.code.add_basic_block(initial_bb_idx.as_usize(), translated_bb);
         } else {
             info!("No basic blocks");

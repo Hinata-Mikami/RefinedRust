@@ -10,6 +10,7 @@ Context `{!refinedrustGS Σ}.
 Lemma Vec_T_get_unchecked_proof (π : thread_id) :
   Vec_T_get_unchecked_lemma π.
 Proof.
+  pose_unconstrained_lft_hint "vuclft4" ["ulft_1"].
   Vec_T_get_unchecked_prelude.
 
   repeat liRStep; liShow.

@@ -8,7 +8,7 @@
 
 use std::collections::HashSet;
 
-use log::{info, trace};
+use log::{info, trace, warn};
 use rr_rustc_interface::middle::ty::TypeFoldable;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -328,12 +328,13 @@ pub fn make_unconstrained_region_annotations<'tcx>(
     unconstrained_regions: HashSet<Region>,
     loc: mir::Location,
     rhs: Option<&mir::Rvalue<'tcx>>,
-) -> Result<Vec<radium::Annotation>, TranslationError<'tcx>> {
+) -> Result<(Vec<radium::Annotation>, Vec<radium::Lft>), TranslationError<'tcx>> {
     let mut annotations = Vec::new();
 
     let info = inclusion_tracker.info();
     let loan_point = info.get_point(loc, facts::PointType::Mid);
 
+    let mut unconstrained_hints = Vec::new();
     for r in unconstrained_regions {
         if let Some(rhs) = rhs {
             if let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs {
@@ -366,38 +367,35 @@ pub fn make_unconstrained_region_annotations<'tcx>(
                     inclusion_tracker.add_static_inclusion(*r, region, loan_point);
                     continue;
                 }
-                /*
-                // This happens e.g. when borrowing from a raw pointer etc.
-                info!("Found unconstrained shared borrow for {:?}", region);
-                let inferred_constrained = vec![];
-
-                // add statement for issuing the loan
-                annotations.push(radium::Annotation::StartLft(
-                    ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
-                    inferred_constrained,
-                ));
-                */
             }
 
+            // Detect uses of static variables
             if let mir::Rvalue::Use(mir::Operand::Constant(_)) = rhs {
                 // we are probably using a static variable here
                 let lft = ty_translator.translate_region_var(r)?;
                 annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
                 continue;
             }
+
+            // If we do a borrow, probably this is a borrow from below a raw pointer.
+            // In this case, ask the user to provide the constraints for this borrow.
+            if let mir::Rvalue::Ref(region, _, _) = rhs {
+                if region.as_var() == r {
+                    let lft = ty_translator.translate_region_var(r)?;
+                    annotations.push(radium::Annotation::UnconstrainedLft(lft.clone()));
+                    unconstrained_hints.push(lft);
+                    continue;
+                }
+            }
+
+            // other cases?
+            warn!("Encountered unconstrained region {r:?}, proof will likely fail");
+
+            // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
+            let lft = ty_translator.translate_region_var(r)?;
+            annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
         }
-
-        //if !inclusion_tracker.is_constrained(r, loan_point) {
-        //let lft = ty_translator.translate_region_var(r)?;
-        //annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
-        //}
-
-        // otherwise TODO
-        annotations.push(radium::Annotation::StartLft(
-            ty_translator.format_atomic_region(&info.mk_atomic_region(r)),
-            vec![],
-        ));
     }
 
-    Ok(annotations)
+    Ok((annotations, unconstrained_hints))
 }

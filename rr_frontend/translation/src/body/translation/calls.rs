@@ -567,14 +567,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 &mapped_early_regions,
             )?;
 
-        let remaining_unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(
-            &mut self.inclusion_tracker,
-            &self.ty_translator,
-            unconstrained_regions,
-            loc,
-            None,
-        )?;
-
+        let (remaining_unconstrained_annots, unconstrained_hints) =
+            regions::assignment::make_unconstrained_region_annotations(
+                &mut self.inclusion_tracker,
+                &self.ty_translator,
+                unconstrained_regions,
+                loc,
+                None,
+            )?;
+        for hint in unconstrained_hints {
+            self.translated_fn.add_unconstrained_lft_hint(hint);
+        }
 
         // add annotations to initialize the regions for the call (before the call)
         let mut stmt_annots = Vec::new();
@@ -623,60 +626,56 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             tys: ty_param_annots,
             args: translated_args,
         };
-        let stmt = match target {
-            Some(target) => {
+        let stmt = if let Some(target) = target {
+            prim_stmts.push(radium::PrimStmt::Annot {
+                a: remaining_unconstrained_annots,
+                why: Some("function_call (unconstrained)".to_owned()),
+            });
 
-                prim_stmts.push(radium::PrimStmt::Annot {
-                    a: remaining_unconstrained_annots,
-                    why: Some("function_call (unconstrained)".to_owned()),
-                });
+            prim_stmts.push(radium::PrimStmt::Annot {
+                a: assignment_annots.new_dyn_inclusions,
+                why: Some("function_call (assign)".to_owned()),
+            });
 
-                prim_stmts.push(radium::PrimStmt::Annot {
-                    a: assignment_annots.new_dyn_inclusions,
-                    why: Some("function_call (assign)".to_owned()),
-                });
+            // assign stmt with call; then jump to bb
+            let place_ty = self.get_type_of_place(destination);
+            let place_st = self.ty_translator.translate_type_to_syn_type(place_ty.ty)?;
+            let place_expr = self.translate_place(destination)?;
+            let ot = place_st.into();
 
-                // assign stmt with call; then jump to bb
-                let place_ty = self.get_type_of_place(destination);
-                let place_st = self.ty_translator.translate_type_to_syn_type(place_ty.ty)?;
-                let place_expr = self.translate_place(destination)?;
-                let ot = place_st.into();
+            let annotated_rhs = radium::Expr::with_optional_annotation(
+                call_expr,
+                assignment_annots.expr_annot,
+                Some("function_call (assign)".to_owned()),
+            );
+            let assign_stmt = radium::PrimStmt::Assign {
+                ot,
+                e1: place_expr,
+                e2: annotated_rhs,
+            };
+            prim_stmts.push(assign_stmt);
 
-                let annotated_rhs = radium::Expr::with_optional_annotation(
-                    call_expr,
-                    assignment_annots.expr_annot,
-                    Some("function_call (assign)".to_owned()),
-                );
-                let assign_stmt = radium::PrimStmt::Assign {
-                    ot,
-                    e1: place_expr,
-                    e2: annotated_rhs,
-                };
-                prim_stmts.push(assign_stmt);
+            prim_stmts.push(radium::PrimStmt::Annot {
+                a: unconstrained_annotations,
+                why: Some("post_function_call (assign, early)".to_owned()),
+            });
 
-                prim_stmts.push(radium::PrimStmt::Annot {
-                    a: unconstrained_annotations,
-                    why: Some("post_function_call (assign, early)".to_owned()),
-                });
+            prim_stmts.push(radium::PrimStmt::Annot {
+                a: assignment_annots.stmt_annot,
+                why: Some("post_function_call (assign)".to_owned()),
+            });
 
-                prim_stmts.push(radium::PrimStmt::Annot {
-                    a: assignment_annots.stmt_annot,
-                    why: Some("post_function_call (assign)".to_owned()),
-                });
+            // end loans before the goto, but after the call.
+            // TODO: may cause duplications?
+            prim_stmts.extend(endlfts);
 
-                // end loans before the goto, but after the call.
-                // TODO: may cause duplications?
-                prim_stmts.extend(endlfts);
+            let cont_stmt = self.translate_goto_like(&loc, target)?;
 
-                let cont_stmt = self.translate_goto_like(&loc, target)?;
-
-                radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
-            },
-            None => {
-                // expr stmt with call; then stuck (we have not provided a continuation, after all)
-                let exprs = radium::PrimStmt::ExprS(call_expr);
-                radium::Stmt::Prim(vec![exprs], Box::new(radium::Stmt::Stuck))
-            },
+            radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
+        } else {
+            // expr stmt with call; then stuck (we have not provided a continuation, after all)
+            let exprs = radium::PrimStmt::ExprS(call_expr);
+            radium::Stmt::Prim(vec![exprs], Box::new(radium::Stmt::Stuck))
         };
 
         Ok(stmt)

@@ -10,9 +10,10 @@ Context `{!refinedrustGS Σ}.
 Lemma Vec_T_get_unchecked_mut_proof (π : thread_id) :
   Vec_T_get_unchecked_mut_lemma π.
 Proof.
+  pose_unconstrained_lft_hint "vuclft4" ["ulft_1"].
   Vec_T_get_unchecked_mut_prelude.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
@@ -23,7 +24,7 @@ Proof.
 
   { solve_goal with nia. }
   { solve_goal with nia. }
-  { apply list_lookup_insert_Some'. 
+  { apply list_lookup_insert_Some'.
     split; normalize_and_simpl_goal.
     { simpl in *. lia. }
     { rewrite Hxs. solve_goal with lia. }
