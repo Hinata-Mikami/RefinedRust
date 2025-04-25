@@ -524,7 +524,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Translate the body of the function.
     pub fn translate(
-        mut self,
+        self,
         spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
         let translator = translation::TX::new(

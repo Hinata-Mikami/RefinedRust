@@ -1607,7 +1607,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 
     /// Add a functon specification from a specification builder.
-    pub fn add_function_spec_from_builder(&mut self, mut spec_builder: LiteralFunctionSpecBuilder<'def>) {
+    pub fn add_function_spec_from_builder(&mut self, spec_builder: LiteralFunctionSpecBuilder<'def>) {
         assert!(self.spec.spec.is_none(), "Overriding specification of FunctionBuilder");
         let lit_spec = spec_builder.into_function_spec();
         self.spec.spec = Some(InnerFunctionSpec::Lit(lit_spec));

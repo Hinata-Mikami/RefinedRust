@@ -920,7 +920,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
         let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, param_env, None, None));
 
-        let mut scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
+        let scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the
         // current scope which have not been filled yet
 

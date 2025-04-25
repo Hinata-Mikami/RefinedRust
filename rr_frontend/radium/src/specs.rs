@@ -1361,7 +1361,7 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
         // add syntype parameters
-        let mut typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
+        let typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
         out.push('\n');
 
         write!(out, "{}", self.generate_coq_sls_def_core(&typarams)).unwrap();
@@ -3336,7 +3336,7 @@ impl<'def> LiteralFunctionSpec<'def> {
         write!(f3, "(* precondition. *) (λ π : thread_id, {}) |\n", self.pre)?;
 
         // late precondition with trait requirements
-        let mut late_pre = Vec::new();
+        let late_pre = Vec::new();
         /*
         for trait_use in scope
             .get_surrounding_trait_requirements()
@@ -3527,7 +3527,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     }
 
     /// Generate an actual function spec.
-    pub fn into_function_spec(mut self) -> LiteralFunctionSpec<'def> {
+    pub fn into_function_spec(self) -> LiteralFunctionSpec<'def> {
         LiteralFunctionSpec {
             params: self.params,
             elctx: self.elctx,
@@ -4075,7 +4075,7 @@ impl TyParamList {
         self.params.append(&mut other);
     }
 
-    pub fn merge(&mut self, mut other: Self) {
+    pub fn merge(&mut self, other: Self) {
         self.append(other.params);
     }
 
@@ -5268,7 +5268,7 @@ impl<'def> TraitImplSpec<'def> {
         def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
 
         // instantiate the type of the spec record
-        let mut attrs_type_rts: Vec<coq::term::Type> =
+        let attrs_type_rts: Vec<coq::term::Type> =
             self.trait_ref.get_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_rts);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -5352,7 +5352,7 @@ impl<'def> TraitImplSpec<'def> {
         let mut params = ty_params.get_coq_ty_params();
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
 
-        let mut ty_term =
+        let ty_term =
             format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
 
         doc.push(coq::command::Lemma {

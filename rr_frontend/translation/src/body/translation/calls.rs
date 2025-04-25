@@ -226,7 +226,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty_params.as_slice(),
             )?;
 
-            let mut fn_inst = quantified_args.fn_scope_inst;
+            let fn_inst = quantified_args.fn_scope_inst;
 
             info!(
                 "Registered procedure instance {} of {:?} with {:?} and layouts {:?}",

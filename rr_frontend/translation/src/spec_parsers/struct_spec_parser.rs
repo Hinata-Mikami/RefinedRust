@@ -267,7 +267,7 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
                     }
                 },
                 "exists" => {
-                    let mut params = RRParams::parse(&buffer, self.scope).map_err(str_err)?;
+                    let params = RRParams::parse(&buffer, self.scope).map_err(str_err)?;
                     existentials.append(&mut params.params.into_iter().map(Into::into).collect());
                 },
                 "mode" => {

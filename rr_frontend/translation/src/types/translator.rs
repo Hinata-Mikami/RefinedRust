@@ -627,7 +627,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
         let mut deps = HashSet::new();
         let env = ty::ParamEnv::empty();
-        let mut state = AdtState::new(&mut deps, scope, &env);
+        let state = AdtState::new(&mut deps, scope, &env);
         let mut state = STInner::TranslateAdt(state);
         Self::translate_region(&mut state, region)
     }
@@ -1009,8 +1009,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let translate_adt = || {
             let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
-            let (variant_def, invariant_def) =
-                self.make_adt_variant(&struct_name, ty, adt, AdtState::new(&mut deps, &scope, &param_env))?;
+            let (variant_def, invariant_def) = self.make_adt_variant(
+                &struct_name,
+                ty,
+                adt,
+                &mut AdtState::new(&mut deps, &scope, &param_env),
+            )?;
 
             let mut struct_def = radium::AbstractStruct::new(variant_def, scope.into());
             if let Some(invariant_def) = invariant_def {
@@ -1069,7 +1073,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         struct_name: &str,
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef,
-        mut adt_deps: TranslateAdtState<'a, 'tcx, 'def>,
+        adt_deps: &mut TranslateAdtState<'a, 'tcx, 'def>,
     ) -> Result<(radium::AbstractVariant<'def>, Option<radium::InvariantSpec>), TranslationError<'tcx>> {
         info!("adt variant: {:?}", ty);
 
@@ -1109,7 +1113,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let attrs = attrs::filter_for_tool(attrs);
 
             let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
-            let mut ty = self.translate_type_in_state(
+            let ty = self.translate_type_in_state(
                 f_ty,
                 &mut STInner::TranslateAdt(AdtState::new(adt_deps.deps, adt_deps.scope, adt_deps.param_env)),
             )?;
@@ -1343,7 +1347,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     struct_name.as_str(),
                     v,
                     def,
-                    AdtState::new(&mut deps, &scope, &param_env),
+                    &mut AdtState::new(&mut deps, &scope, &param_env),
                 )?;
 
                 let mut struct_def = radium::AbstractStruct::new(variant_def, scope.clone().into());
@@ -1810,7 +1814,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         let mut deps = HashSet::new();
         let param_env = ty::ParamEnv::empty();
-        let mut state = AdtState::new(&mut deps, scope, &param_env);
+        let state = AdtState::new(&mut deps, scope, &param_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
     }
 

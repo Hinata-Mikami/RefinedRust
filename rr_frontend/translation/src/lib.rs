@@ -1431,7 +1431,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
 
 /// Register traits.
 fn register_traits(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
-    let mut traits = vcx.env.get_traits();
+    let traits = vcx.env.get_traits();
 
     // order according to dependencies first
     let deps = vcx.trait_registry.get_trait_deps(traits.as_slice());

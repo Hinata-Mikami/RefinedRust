@@ -191,7 +191,6 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         with_origin: Option<(ty::TyCtxt<'tcx>, DefId)>,
     ) -> Self {
         let mut scope = Vec::new();
-        let mut late_scope = Vec::new();
 
         let mut region_count = 0;
 
@@ -229,7 +228,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
         Self {
             scope,
-            late_scope,
+            late_scope: Vec::new(),
             lft_names,
             ty_names,
             trait_scope: Traits::default(),
@@ -446,7 +445,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             let assoc_tys = entry.get_associated_types(env);
 
             {
-                let mut trait_use_ref = entry.trait_use.borrow();
+                let trait_use_ref = entry.trait_use.borrow();
                 let trait_use = trait_use_ref.as_ref().unwrap();
 
                 let self_ty = &trait_use.trait_inst.get_direct_ty_params()[0];
@@ -599,7 +598,6 @@ impl<'tcx, 'def> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, 'def> {
 impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
     fn from(x: &[ty::GenericParamDef]) -> Self {
         let mut scope = Vec::new();
-        let mut late_scope = Vec::new();
 
         let mut ty_names = HashMap::new();
         let mut lft_names = HashMap::new();
@@ -624,7 +622,7 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
         }
         Self {
             scope,
-            late_scope,
+            late_scope: Vec::new(),
             lft_names,
             ty_names,
             trait_scope: Traits::default(),

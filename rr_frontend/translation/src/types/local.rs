@@ -81,7 +81,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Translate a Polonius region variable in the scope of the current function.
     pub fn translate_region_var(&self, region: facts::Region) -> Result<radium::Lft, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
-        let mut scope = STInner::InFunction(&mut scope);
+        let scope = STInner::InFunction(&mut scope);
         scope.lookup_polonius_var(region)
     }
 
