@@ -5,11 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use derive_more::Display;
-use rr_rustc_interface::borrowck::consumers::RustcFacts;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::Location;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::polonius_engine::FactTypes;
+use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::{borrowck, hir, polonius_engine};
 
 use crate::environment::borrowck::facts;
 use crate::traits;
@@ -23,11 +20,11 @@ pub fn strip_coq_ident(s: &str) -> String {
         .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "")
 }
 
-pub type Region = <RustcFacts as FactTypes>::Origin;
-pub type Loan = <RustcFacts as FactTypes>::Loan;
-pub type PointIndex = <RustcFacts as FactTypes>::Point;
-pub type Variable = <RustcFacts as FactTypes>::Variable;
-pub type Path = <RustcFacts as FactTypes>::Path;
+pub type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
+pub type Loan = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Loan;
+pub type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
+pub type Variable = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Variable;
+pub type Path = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Path;
 
 /// Error type used for the MIR to Caesium translation.
 //TODO: add location info based on Span
@@ -35,50 +32,73 @@ pub type Path = <RustcFacts as FactTypes>::Path;
 pub enum TranslationError<'tcx> {
     #[display("Unsupported Feature: {}", description)]
     UnsupportedFeature { description: String },
+
     #[display("Unsupported Type: {}", description)]
     UnsupportedType { description: String },
+
     #[display("Recursive type does not have an invariant: {:?}", _0)]
-    RecursiveTypeWithoutInvariant(DefId),
+    RecursiveTypeWithoutInvariant(hir::def_id::DefId),
+
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },
+
     #[display("Invalid Layout")]
     InvalidLayout,
+
     #[display("Unknown Variable: {}", _0)]
     UnknownVar(String),
+
     #[display("Unknown Error: {}", _0)]
     UnknownError(String),
+
     #[display("Fatal Error: {}", _0)]
     FatalError(String),
+
     #[display("Loan was not found at location {:?}", _0)]
-    LoanNotFound(Location),
+    LoanNotFound(mir::Location),
+
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
+
     #[display("Configured attribute-parser is unknown: {}", _0)]
     UnknownAttributeParser(String),
+
     #[display("Unknown procedure: {}", _0)]
     UnknownProcedure(String),
+
     #[display("Unknown early region: {:?}", _0)]
     UnknownEarlyRegion(ty::EarlyBoundRegion),
+
     #[display("Unknown late region (outside function): (binder {}, var {})", _0, _1)]
     UnknownLateRegionOutsideFunction(usize, usize),
+
     #[display("Unknown late region: (binder {}, var {})", _0, _1)]
     UnknownLateRegion(usize, usize),
+
     #[display("Cannot translate placeholder region")]
     PlaceholderRegion(),
+
     #[display("Cannot translate unknown region: {:?}", _0)]
     UnknownRegion(ty::Region<'tcx>),
+
     #[display("Encountered Polonius region outside function: {:?}", _0)]
     PoloniusRegionOutsideFunction(facts::Region),
+
     #[display("Cannot translate Polonius region: {:?}", _0)]
     UnknownPoloniusRegion(facts::Region),
+
     #[display("Trait could not be resolved: {}", _0)]
     TraitResolution(String),
+
     #[display("Trait translation failed: {}", _0)]
     TraitTranslation(traits::Error<'tcx>),
+
     #[display("Procedure could not be registered: {}", _0)]
     ProcedureRegistry(String),
+
     #[display("Lookup in a dummy scope: {}", _0)]
     DummyScope(String),
+
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(String),
 }

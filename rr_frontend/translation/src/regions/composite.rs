@@ -8,10 +8,8 @@
 
 use std::collections::HashSet;
 
-use log::{info, warn};
-use rr_rustc_interface::middle::mir::Location;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TypeFolder};
+use rr_rustc_interface::middle::ty::TypeFolder;
+use rr_rustc_interface::middle::{mir, ty};
 
 use crate::environment::borrowck::facts;
 use crate::environment::Environment;
@@ -24,7 +22,7 @@ pub fn get_composite_rvalue_creation_annots<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: Location,
+    loc: mir::Location,
     rhs_ty: ty::Ty<'tcx>,
 ) -> Vec<radium::Annotation> {
     let info = inclusion_tracker.info();
@@ -67,7 +65,7 @@ pub fn get_composite_rvalue_creation_annots<'tcx>(
 }
 
 /// Get the regions appearing in a type.
-fn get_regions_of_ty<'tcx>(env: &Environment<'tcx>, ty: Ty<'tcx>) -> HashSet<ty::RegionVid> {
+fn get_regions_of_ty<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> HashSet<ty::RegionVid> {
     let mut regions = HashSet::new();
     let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
         ty::RegionKind::ReVar(rv) => {

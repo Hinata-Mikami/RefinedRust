@@ -7,14 +7,8 @@
 //! Procedures for checking whether two types are the same modulo renaming of variables.
 
 use std::collections::HashMap;
-use std::mem;
 
-use log::{info, trace};
-use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::{middle, span};
-
-use crate::{types, unification};
+use rr_rustc_interface::middle::ty;
 
 type UnificationMap<'a, 'tcx> = &'a mut HashMap<u32, ty::GenericArg<'tcx>>;
 

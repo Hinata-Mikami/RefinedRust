@@ -5,18 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
+use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
 
 use super::TX;
 use crate::base::*;
@@ -26,11 +16,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
     pub(super) fn translate_place(
         &mut self,
-        pl: &Place<'tcx>,
+        pl: &mir::Place<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
-        let mut cur_ty = self.get_type_of_local(pl.local).map(PlaceTy::from_ty)?;
+        let mut cur_ty = self.get_type_of_local(pl.local).map(mir::tcx::PlaceTy::from_ty)?;
 
         let local_name = self
             .variable_map
@@ -42,7 +32,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // iterate in evaluation order
         for it in pl.projection {
             match &it {
-                ProjectionElem::Deref => {
+                mir::ProjectionElem::Deref => {
                     // use the type of the dereferencee
                     let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
                     acc_expr = radium::Expr::Deref {
@@ -50,7 +40,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         e: Box::new(acc_expr),
                     };
                 },
-                ProjectionElem::Field(f, _) => {
+                mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!
                     let lit = self.ty_translator.generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
                     // TODO: does not do the right thing for accesses to fields of zero-sized objects.
@@ -67,24 +57,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         sls: struct_sls.to_string(),
                     };
                 },
-                ProjectionElem::Index(_v) => {
+                mir::ProjectionElem::Index(_v) => {
                     //TODO
                     return Err(TranslationError::UnsupportedFeature {
                         description: "places: implement index access".to_owned(),
                     });
                 },
-                ProjectionElem::ConstantIndex { .. } => {
+                mir::ProjectionElem::ConstantIndex { .. } => {
                     //TODO
                     return Err(TranslationError::UnsupportedFeature {
                         description: "places: implement const index access".to_owned(),
                     });
                 },
-                ProjectionElem::Subslice { .. } => {
+                mir::ProjectionElem::Subslice { .. } => {
                     return Err(TranslationError::UnsupportedFeature {
                         description: "places: implement subslicing".to_owned(),
                     });
                 },
-                ProjectionElem::Downcast(_, variant_idx) => {
+                mir::ProjectionElem::Downcast(_, variant_idx) => {
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
                     if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind() {
                         if def.is_enum() {
@@ -109,7 +99,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         ));
                     }
                 },
-                ProjectionElem::OpaqueCast(_) => {
+                mir::ProjectionElem::OpaqueCast(_) => {
                     return Err(TranslationError::UnsupportedFeature {
                         description: "places: implement opaque casts".to_owned(),
                     });

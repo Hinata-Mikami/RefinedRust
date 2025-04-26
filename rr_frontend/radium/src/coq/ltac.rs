@@ -13,7 +13,7 @@ use std::fmt;
 use derive_more::Display;
 use from_variants::FromVariants;
 
-use crate::coq::{term, Vernac};
+use crate::coq::term;
 use crate::model;
 
 /// A [tactic].

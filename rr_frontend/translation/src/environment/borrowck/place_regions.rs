@@ -7,7 +7,6 @@
 ///! Code for finding `rustc::ty::sty::RegionVid` associated with local
 ///! reference typed variables.
 use std::collections::HashMap;
-use std::io;
 
 use log::{debug, trace};
 use rr_rustc_interface::middle::{mir, ty};

@@ -4,13 +4,13 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use rr_rustc_interface::middle::ty::visit::*;
-use rr_rustc_interface::middle::ty::{self, GenericArg, GenericArgKind, ParamConst, Ty, TyCtxt, TypeFolder};
+use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::ty::visit::TypeVisitableExt;
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
 
-pub fn relabel_erased_regions<'tcx, T>(x: T, tcx: TyCtxt<'tcx>) -> (T, usize)
+pub fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
 where
-    T: TypeFoldable<TyCtxt<'tcx>>,
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     let mut folder = RegionRelabelVisitor {
         tcx,
@@ -21,12 +21,12 @@ where
 
 /// Relabel erased regions into `RegionVid`s.
 struct RegionRelabelVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     new_regions: usize,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -43,9 +43,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
     }
 }
 
-pub fn rename_region_vids<'tcx, T>(x: T, tcx: TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
+pub fn rename_region_vids<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
 where
-    T: TypeFoldable<TyCtxt<'tcx>>,
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     let mut folder = RegionRenameVisitor {
         tcx,
@@ -56,12 +56,12 @@ where
 
 /// Rename `RegionVid`s.
 struct RegionRenameVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     rename_map: Vec<ty::Region<'tcx>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -77,9 +77,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
 }
 
 /// Relable late bound regions.
-pub fn relabel_late_bounds<'tcx, T>(x: T, tcx: TyCtxt<'tcx>) -> T
+pub fn relabel_late_bounds<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> T
 where
-    T: TypeFoldable<TyCtxt<'tcx>>,
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     let mut folder = RelabelLateBoundVisitor { tcx };
     x.fold_with(&mut folder)
@@ -87,11 +87,11 @@ where
 
 /// Rename `RegionVid`s.
 struct RelabelLateBoundVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -111,9 +111,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
 
 /// Instantiate a type with arguments.
 /// The type may contain open region variables `ReVar`.
-pub fn instantiate_open<'tcx, T>(x: T, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> T
+pub fn instantiate_open<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, args: &[ty::GenericArg<'tcx>]) -> T
 where
-    T: TypeFoldable<TyCtxt<'tcx>>,
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     let mut folder = ArgFolder {
         tcx,
@@ -126,20 +126,23 @@ where
 /// A version of the `ArgFolder` in `rr_rustc_interface::middle::src::ty::generic_args` that skips over
 /// `ReVar` (instead of triggering a bug).
 struct ArgFolder<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    args: &'a [GenericArg<'tcx>],
+    tcx: ty::TyCtxt<'tcx>,
+    args: &'a [ty::GenericArg<'tcx>],
 
     /// Number of region binders we have passed through while doing the substitution
     binders_passed: u32,
 }
 
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
+impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     #[inline]
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T> {
+    fn fold_binder<T: TypeFoldable<ty::TyCtxt<'tcx>>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
@@ -149,7 +152,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion, args: &[GenericArg<'_>]) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyBoundRegion, args: &[ty::GenericArg<'_>]) -> ! {
             panic!(
                 "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
                 data.name, data.index, args,
@@ -158,7 +161,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         #[cold]
         #[inline(never)]
-        fn region_param_invalid(data: ty::EarlyBoundRegion, other: &GenericArgKind<'_>) -> ! {
+        fn region_param_invalid(data: ty::EarlyBoundRegion, other: &ty::GenericArgKind<'_>) -> ! {
             panic!(
                 "Unexpected parameter {:?} when substituting in region {} (index={})",
                 other, data.name, data.index
@@ -174,7 +177,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
             ty::ReEarlyBound(data) => {
                 let rk = self.args.get(data.index as usize).map(|k| k.unpack());
                 match rk {
-                    Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
+                    Some(ty::GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
                     Some(other) => region_param_invalid(data, &other),
                     None => region_param_out_of_range(data, self.args),
                 }
@@ -190,7 +193,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         if !t.has_param() {
             return t;
         }
@@ -211,11 +214,11 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
-    fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn ty_for_param(&self, p: ty::ParamTy, source_ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         // Look up the type in the args. It really should be in there.
         let opt_ty = self.args.get(p.index as usize).map(|k| k.unpack());
         let ty = match opt_ty {
-            Some(GenericArgKind::Type(ty)) => ty,
+            Some(ty::GenericArgKind::Type(ty)) => ty,
             Some(kind) => self.type_param_expected(p, source_ty, &kind),
             None => self.type_param_out_of_range(p, source_ty),
         };
@@ -225,7 +228,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
 
     #[cold]
     #[inline(never)]
-    fn type_param_expected(&self, p: ty::ParamTy, ty: Ty<'tcx>, kind: &GenericArgKind<'tcx>) -> ! {
+    fn type_param_expected(&self, p: ty::ParamTy, ty: ty::Ty<'tcx>, kind: &ty::GenericArgKind<'tcx>) -> ! {
         panic!(
             "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting, args={:?}",
             p, ty, p.index, kind, self.args,
@@ -234,18 +237,18 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
 
     #[cold]
     #[inline(never)]
-    fn type_param_out_of_range(&self, p: ty::ParamTy, ty: Ty<'tcx>) -> ! {
+    fn type_param_out_of_range(&self, p: ty::ParamTy, ty: ty::Ty<'tcx>) -> ! {
         panic!(
             "type parameter `{:?}` ({:?}/{}) out of range when substituting, args={:?}",
             p, ty, p.index, self.args,
         )
     }
 
-    fn const_for_param(&self, p: ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+    fn const_for_param(&self, p: ty::ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         // Look up the const in the args. It really should be in there.
         let opt_ct = self.args.get(p.index as usize).map(|k| k.unpack());
         let ct = match opt_ct {
-            Some(GenericArgKind::Const(ct)) => ct,
+            Some(ty::GenericArgKind::Const(ct)) => ct,
             Some(kind) => self.const_param_expected(p, source_ct, &kind),
             None => self.const_param_out_of_range(p, source_ct),
         };
@@ -255,7 +258,12 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
 
     #[cold]
     #[inline(never)]
-    fn const_param_expected(&self, p: ty::ParamConst, ct: ty::Const<'tcx>, kind: &GenericArgKind<'tcx>) -> ! {
+    fn const_param_expected(
+        &self,
+        p: ty::ParamConst,
+        ct: ty::Const<'tcx>,
+        kind: &ty::GenericArgKind<'tcx>,
+    ) -> ! {
         panic!(
             "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting args={:?}",
             p, ct, p.index, kind, self.args,
@@ -313,12 +321,12 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders<T: TypeFoldable<TyCtxt<'tcx>>>(&self, val: T) -> T {
+    fn shift_vars_through_binders<T: TypeFoldable<ty::TyCtxt<'tcx>>>(&self, val: T) -> T {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             return val;
         }
 
-        ty::fold::shift_vars(TypeFolder::interner(self), val, self.binders_passed)
+        ty::fold::shift_vars(ty::TypeFolder::interner(self), val, self.binders_passed)
     }
 
     fn shift_region_through_binders(&self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {

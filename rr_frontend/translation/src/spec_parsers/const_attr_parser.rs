@@ -5,8 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use attribute_parse::parse;
-use rr_rustc_interface::ast::ast::AttrItem;
-use rr_rustc_interface::hir::def_id::LocalDefId;
+use rr_rustc_interface::{ast, hir};
 
 use crate::spec_parsers::parse_utils::str_err;
 
@@ -16,8 +15,8 @@ use crate::spec_parsers::parse_utils::str_err;
 pub trait ConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
-        did: LocalDefId,
-        attrs: &'a [&'a AttrItem],
+        did: hir::def_id::LocalDefId,
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<ConstAttrs, String>;
 }
 
@@ -38,8 +37,8 @@ impl VerboseConstAttrParser {
 impl ConstAttrParser for VerboseConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
-        _did: LocalDefId,
-        attrs: &'a [&'a AttrItem],
+        _did: hir::def_id::LocalDefId,
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<ConstAttrs, String> {
         let mut name: Option<String> = None;
 

@@ -6,38 +6,25 @@
 
 //! Part of the function translation responsible for translating the signature and specification.
 
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+use std::collections::HashMap;
 
-use log::{info, trace, warn};
-use radium::coq;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
+use log::{info, trace};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle, span};
+use rr_rustc_interface::{ast, hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::body::translation;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
+use crate::environment::{dump_borrowck_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
 };
-use crate::traits::{registry, resolution};
-use crate::{base, consts, procedures, regions, search, traits, types};
+use crate::traits::registry;
+use crate::{consts, procedures, regions, types};
 
 pub struct TX<'a, 'def, 'tcx> {
     env: &'def Environment<'tcx>,
@@ -61,14 +48,14 @@ pub struct TX<'a, 'def, 'tcx> {
     /// trait registry in the current scope
     trait_registry: &'def registry::TR<'tcx, 'def>,
     /// argument types (from the signature, with generics substituted)
-    inputs: Vec<Ty<'tcx>>,
+    inputs: Vec<ty::Ty<'tcx>>,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
     pub fn spec_for_trait_method(
         env: &'def Environment<'tcx>,
-        proc_did: DefId,
+        proc_did: hir::def_id::DefId,
         name: &str,
         spec_name: &str,
         attrs: &'a [&'a ast::ast::AttrItem],
@@ -78,12 +65,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // use a dummy name as we're never going to use the code.
         let mut translated_fn = radium::FunctionBuilder::new(name, "dummy", spec_name, None);
 
-        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc_did);
+        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc_did);
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         let sig = match ty.kind() {
-            TyKind::FnDef(_def, _args) => {
+            ty::TyKind::FnDef(_def, _args) => {
                 assert!(ty.is_fn());
                 let sig = ty.fn_sig(env.tcx());
                 sig
@@ -155,10 +142,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let body = proc.get_mir();
         Self::dump_body(body);
 
-        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
         let ty = ty.instantiate_identity();
         let closure_kind = match ty.kind() {
-            TyKind::Closure(_def, closure_args) => {
+            ty::TyKind::Closure(_def, closure_args) => {
                 assert!(ty.is_closure());
                 let clos = closure_args.as_closure();
                 clos.kind()
@@ -167,7 +154,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         let local_decls = &body.local_decls;
-        let closure_arg = local_decls.get(Local::from_usize(1)).unwrap();
+        let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
         let closure_ty;
 
         match closure_kind {
@@ -308,7 +295,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut inclusion_tracker = InclusionTracker::new(info);
                 // add placeholder subsets
                 let initial_point: facts::Point = facts::Point {
-                    location: BasicBlock::from_u32(0).start_location(),
+                    location: mir::BasicBlock::from_u32(0).start_location(),
                     typ: facts::PointType::Start,
                 };
                 for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
@@ -401,7 +388,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let body = proc.get_mir();
         Self::dump_body(body);
 
-        let ty: ty::EarlyBinder<Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
@@ -430,7 +417,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut inclusion_tracker = InclusionTracker::new(info);
                 // add placeholder subsets
                 let initial_point: facts::Point = facts::Point {
-                    location: BasicBlock::from_u32(0).start_location(),
+                    location: mir::BasicBlock::from_u32(0).start_location(),
                     typ: facts::PointType::Start,
                 };
                 for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
@@ -553,7 +540,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get type parameters of the given procedure.
-    fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
+    fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: hir::def_id::DefId) -> ty::GenericArgsRef<'tcx> {
         let ty = tcx.type_of(did).instantiate_identity();
         match ty.kind() {
             ty::TyKind::FnDef(_, params) => params,
@@ -575,7 +562,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         env: &Environment<'tcx>,
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-        proc_did: DefId,
+        proc_did: hir::def_id::DefId,
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut radium::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap,
@@ -659,8 +646,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Parse and process attributes of this closure.
     fn process_closure_attrs<'b>(
         &mut self,
-        inputs: &[Ty<'tcx>],
-        output: Ty<'tcx>,
+        inputs: &[ty::Ty<'tcx>],
+        output: ty::Ty<'tcx>,
         arg_names: &[String],
         meta: ClosureMetaInfo<'b, 'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
@@ -736,8 +723,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty_translator: &types::LocalTX<'def, 'tcx>,
         translator: &mut radium::FunctionBuilder<'def>,
         arg_names: &[String],
-        inputs: &[Ty<'tcx>],
-        output: Ty<'tcx>,
+        inputs: &[ty::Ty<'tcx>],
+        output: ty::Ty<'tcx>,
     ) -> Result<radium::LiteralFunctionSpecBuilder<'def>, TranslationError<'tcx>> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
@@ -788,7 +775,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     .trait_registry
                     .lookup_trait(trait_did)
                     .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
-                let fn_name = base::strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
+                let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
                 let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
                 return Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)));
@@ -798,7 +785,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(None)
     }
 
-    fn dump_body(body: &Body) {
+    fn dump_body(body: &mir::Body) {
         // TODO: print to file
         //for dec in &body.local_decls {
         //info!("Local decl: {:?}", dec);
@@ -811,7 +798,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Dump a basic block as info debug output.
-    fn dump_basic_block(bb_idx: BasicBlock, bb: &BasicBlockData) {
+    fn dump_basic_block(bb_idx: mir::BasicBlock, bb: &mir::BasicBlockData) {
         info!("Basic block {:?}:", bb_idx);
         let mut i = 0;
         for s in &bb.statements {

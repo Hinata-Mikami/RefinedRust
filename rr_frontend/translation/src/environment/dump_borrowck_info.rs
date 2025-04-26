@@ -7,15 +7,13 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
 use std::{cell, fs, io};
 
 use log::{debug, trace};
 use rr_rustc_interface::hash::FxHashMap;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::index::Idx;
-use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::ty::TyCtxt;
-use rr_rustc_interface::{hir, middle};
+use rr_rustc_interface::middle::{mir, ty};
 
 use crate::data::ProcedureDefId;
 use crate::environment::borrowck::facts;
@@ -64,7 +62,7 @@ pub fn dump_borrowck_info<'a, 'tcx>(
 
 struct InfoPrinter<'a, 'tcx: 'a> {
     env: &'a Environment<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
@@ -238,7 +236,7 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 struct MirInfoPrinter<'a, 'tcx: 'a> {
     #[allow(dead_code)]
     pub def_path: hir::definitions::DefPath,
-    pub tcx: TyCtxt<'tcx>,
+    pub tcx: ty::TyCtxt<'tcx>,
     pub mir: &'a mir::Body<'tcx>,
     pub graph: cell::RefCell<BufWriter<File>>,
     pub loops: loops::ProcedureLoops,
@@ -781,33 +779,32 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
     }
 
     fn visit_terminator(&self, bb: mir::BasicBlock, terminator: &mir::Terminator) -> Result<(), io::Error> {
-        use middle::mir::TerminatorKind;
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
+            mir::TerminatorKind::Goto { target } => {
                 write_edge!(self, bb, target);
             },
-            TerminatorKind::SwitchInt { targets, .. } => {
+            mir::TerminatorKind::SwitchInt { targets, .. } => {
                 for target in targets.all_targets() {
                     write_edge!(self, bb, target);
                 }
             },
-            TerminatorKind::Return => {
+            mir::TerminatorKind::Return => {
                 write_edge!(self, bb, str return);
             },
-            TerminatorKind::Unreachable => {},
-            TerminatorKind::UnwindResume => {
+            mir::TerminatorKind::Unreachable => {},
+            mir::TerminatorKind::UnwindResume => {
                 write_edge!(self, bb, str resume);
             },
-            TerminatorKind::UnwindTerminate(_) => {
+            mir::TerminatorKind::UnwindTerminate(_) => {
                 write_edge!(self, bb, str terminate);
             },
-            TerminatorKind::Drop { target, unwind, .. } => {
+            mir::TerminatorKind::Drop { target, unwind, .. } => {
                 write_edge!(self, bb, target);
                 //if let Some(target) = unwind {
                 //write_edge!(self, bb, unwind target);
                 //}
             },
-            TerminatorKind::Call { target, unwind, .. } => {
+            mir::TerminatorKind::Call { target, unwind, .. } => {
                 if let Some(target) = target {
                     write_edge!(self, bb, target);
                 }
@@ -815,22 +812,22 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 //write_edge!(self, bb, unwind target);
                 //}
             },
-            TerminatorKind::Assert { target, unwind, .. } => {
+            mir::TerminatorKind::Assert { target, unwind, .. } => {
                 write_edge!(self, bb, target);
                 //if let Some(target) = unwind {
                 //write_edge!(self, bb, unwind target);
                 //}
             },
-            TerminatorKind::Yield { .. } => unimplemented!(),
-            TerminatorKind::GeneratorDrop => unimplemented!(),
-            TerminatorKind::FalseEdge {
+            mir::TerminatorKind::Yield { .. } => unimplemented!(),
+            mir::TerminatorKind::GeneratorDrop => unimplemented!(),
+            mir::TerminatorKind::FalseEdge {
                 real_target,
                 imaginary_target,
             } => {
                 write_edge!(self, bb, real_target);
                 write_edge!(self, bb, imaginary_target);
             },
-            TerminatorKind::FalseUnwind {
+            mir::TerminatorKind::FalseUnwind {
                 real_target,
                 unwind,
             } => {
@@ -839,7 +836,7 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 //write_edge!(self, bb, imaginary target);
                 //}
             },
-            TerminatorKind::InlineAsm { .. } => unimplemented!(),
+            mir::TerminatorKind::InlineAsm { .. } => unimplemented!(),
         };
         Ok(())
     }

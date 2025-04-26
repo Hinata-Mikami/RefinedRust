@@ -7,8 +7,7 @@
 use std::mem;
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::ty::TyCtxt;
+use rr_rustc_interface::middle::{mir, ty};
 
 use crate::utils;
 
@@ -69,7 +68,7 @@ impl<'tcx> PlaceSet<'tcx> {
     }
 
     /// Insert `place`.
-    pub fn insert(&mut self, place: mir::Place<'tcx>, mir: &mir::Body<'tcx>, tcx: TyCtxt<'tcx>) {
+    pub fn insert(&mut self, place: mir::Place<'tcx>, mir: &mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>) {
         self.check_invariant();
         // First, check that the place is not already marked as
         // definitely initialized.
@@ -87,7 +86,7 @@ impl<'tcx> PlaceSet<'tcx> {
     }
 
     /// Remove `place`.
-    pub fn remove(&mut self, place: mir::Place<'tcx>, mir: &mir::Body<'tcx>, tcx: TyCtxt<'tcx>) {
+    pub fn remove(&mut self, place: mir::Place<'tcx>, mir: &mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>) {
         self.check_invariant();
         let mut places = Vec::new();
         let old_places = mem::take(&mut self.places);

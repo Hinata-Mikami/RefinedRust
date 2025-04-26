@@ -9,32 +9,30 @@
 use std::collections::{HashMap, HashSet};
 
 use derive_more::Debug;
-use log::{info, warn};
-use rr_rustc_interface::middle::mir::Location;
-use rr_rustc_interface::middle::ty;
+use log::info;
 use rr_rustc_interface::middle::ty::TypeFolder;
+use rr_rustc_interface::middle::{mir, ty};
 
+use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
-use crate::regions::EarlyLateRegionMap;
-use crate::{base, regions, types};
+use crate::types;
 
 // solve the constraints for the new_regions
 // we first identify what kinds of constraints these new regions are subject to
 #[derive(Debug)]
 pub enum CallRegionKind {
     // this is just an intersection of local regions.
-    Intersection(HashSet<base::Region>),
+    Intersection(HashSet<Region>),
     // this is equal to a specific region
-    EqR(base::Region),
+    EqR(Region),
 }
 
 pub struct CallRegions {
-    pub early_regions: Vec<base::Region>,
-    pub late_regions: Vec<base::Region>,
-    pub classification: HashMap<base::Region, CallRegionKind>,
+    pub early_regions: Vec<Region>,
+    pub late_regions: Vec<Region>,
+    pub classification: HashMap<Region, CallRegionKind>,
 }
 
 // `substs` are the substitutions for the early-bound regions
@@ -42,7 +40,7 @@ pub fn compute_call_regions<'tcx>(
     env: &Environment<'tcx>,
     incl_tracker: &InclusionTracker<'_, '_>,
     substs: &[ty::GenericArg<'tcx>],
-    loc: Location,
+    loc: mir::Location,
 ) -> CallRegions {
     let info = incl_tracker.info();
 
@@ -103,7 +101,7 @@ pub fn compute_call_regions<'tcx>(
         }
     }
     // first sort this to enable cycle resolution
-    let mut new_regions_sorted: Vec<base::Region> = new_regions.iter().copied().collect();
+    let mut new_regions_sorted: Vec<Region> = new_regions.iter().copied().collect();
     new_regions_sorted.sort();
 
     // identify the late-bound regions
@@ -185,10 +183,10 @@ pub fn compute_unconstrained_region_annots<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: Location,
+    loc: mir::Location,
     unconstrained_regions: HashSet<facts::Region>,
     early_region_map: &HashMap<String, usize>,
-) -> Result<(Vec<radium::Annotation>, HashSet<facts::Region>), base::TranslationError<'tcx>> {
+) -> Result<(Vec<radium::Annotation>, HashSet<facts::Region>), TranslationError<'tcx>> {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {
         location: loc,

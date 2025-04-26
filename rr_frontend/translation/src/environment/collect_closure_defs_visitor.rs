@@ -1,16 +1,12 @@
 use log::trace;
-use rr_rustc_interface::hir;
-use rr_rustc_interface::hir::def_id::LocalDefId;
-use rr_rustc_interface::hir::intravisit::{walk_expr, Visitor};
-use rr_rustc_interface::middle::hir::map::Map;
-use rr_rustc_interface::middle::hir::nested_filter::OnlyBodies;
+use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
 
 pub struct CollectClosureDefsVisitor<'env, 'tcx: 'env> {
     env: &'env Environment<'tcx>,
-    map: Map<'tcx>,
-    result: Vec<LocalDefId>,
+    map: middle::hir::map::Map<'tcx>,
+    result: Vec<hir::def_id::LocalDefId>,
 }
 
 impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
@@ -22,7 +18,7 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
         }
     }
 
-    pub fn get_closure_defs(self) -> Vec<LocalDefId> {
+    pub fn get_closure_defs(self) -> Vec<hir::def_id::LocalDefId> {
         self.result
     }
 
@@ -30,9 +26,9 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
     pub fn run(&mut self) {}
 }
 
-impl<'env, 'tcx> Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {
-    type Map = Map<'tcx>;
-    type NestedFilter = OnlyBodies;
+impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {
+    type Map = middle::hir::map::Map<'tcx>;
+    type NestedFilter = middle::hir::nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.map
@@ -50,6 +46,6 @@ impl<'env, 'tcx> Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {
             self.result.push(*local_def_id);
         }
 
-        walk_expr(self, expr);
+        hir::intravisit::walk_expr(self, expr);
     }
 }

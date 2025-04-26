@@ -13,7 +13,6 @@ use std::fmt;
 use derive_more::Display;
 use from_variants::FromVariants;
 use indent_write::fmt::IndentWriter;
-use indent_write::indentable::Indentable;
 use itertools::Itertools;
 
 use crate::coq::binder;

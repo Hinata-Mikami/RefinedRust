@@ -8,8 +8,7 @@ use std::collections::HashSet;
 
 use attribute_parse::parse;
 use radium::coq;
-use rr_rustc_interface::ast::ast::AttrItem;
-use rr_rustc_interface::hir::def_id::LocalDefId;
+use rr_rustc_interface::{ast, hir};
 
 use crate::spec_parsers::parse_utils::{self, str_err};
 
@@ -19,8 +18,8 @@ use crate::spec_parsers::parse_utils::{self, str_err};
 pub trait ModuleAttrParser {
     fn parse_module_attrs<'a>(
         &'a mut self,
-        did: LocalDefId,
-        attrs: &'a [&'a AttrItem],
+        did: hir::def_id::LocalDefId,
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<ModuleAttrs, String>;
 }
 
@@ -44,8 +43,8 @@ impl VerboseModuleAttrParser {
 impl ModuleAttrParser for VerboseModuleAttrParser {
     fn parse_module_attrs<'a>(
         &'a mut self,
-        _did: LocalDefId,
-        attrs: &'a [&'a AttrItem],
+        _did: hir::def_id::LocalDefId,
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<ModuleAttrs, String> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();

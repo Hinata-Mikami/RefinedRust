@@ -9,16 +9,13 @@ use core::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::marker::PhantomData;
-use std::mem;
-use std::ops::{Add, Range};
+use std::ops::Add;
 
 use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
 use itertools::Itertools;
-use log::{info, trace, warn};
+use log::trace;
 
-use crate::coq::command::{Definition, DefinitionBody};
-use crate::coq::proof::Proof;
 use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
 
 #[derive(Clone, Debug)]

@@ -6,31 +6,19 @@
 
 //! Utility functions for obtaining relevant attributes.
 
-use std::mem;
-
-use log::{info, trace};
-use rr_rustc_interface::ast::ast;
-use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::{hir, middle, span};
-use serde::{Deserialize, Serialize};
-
-use crate::spec_parsers::get_export_as_attr;
-use crate::{force_matches, types, Environment};
+use rr_rustc_interface::ast;
 
 /// Check if `<tool>::<name>` is among the attributes, where `tool` is determined by the
 /// `spec_hotword` config.
 /// Any arguments of the attribute are ignored.
-pub fn has_tool_attr(attrs: &[ast::Attribute], name: &str) -> bool {
+pub fn has_tool_attr(attrs: &[ast::ast::Attribute], name: &str) -> bool {
     get_tool_attr(attrs, name).is_some()
 }
 
 /// Get the arguments for a tool attribute, if it exists.
-pub fn get_tool_attr<'a>(attrs: &'a [ast::Attribute], name: &str) -> Option<&'a ast::AttrArgs> {
+pub fn get_tool_attr<'a>(attrs: &'a [ast::ast::Attribute], name: &str) -> Option<&'a ast::ast::AttrArgs> {
     attrs.iter().find_map(|attr| match &attr.kind {
-        ast::AttrKind::Normal(na) => {
+        ast::ast::AttrKind::Normal(na) => {
             let segments = &na.item.path.segments;
             let args = &na.item.args;
             (segments.len() == 2
@@ -43,7 +31,7 @@ pub fn get_tool_attr<'a>(attrs: &'a [ast::Attribute], name: &str) -> Option<&'a 
 }
 
 /// Check if `<tool>::name` is among the filtered attributes.
-pub fn has_tool_attr_filtered(attrs: &[&ast::AttrItem], name: &str) -> bool {
+pub fn has_tool_attr_filtered(attrs: &[&ast::ast::AttrItem], name: &str) -> bool {
     attrs.iter().any(|item| {
         let segments = &item.path.segments;
         segments.len() == 2
@@ -53,9 +41,9 @@ pub fn has_tool_attr_filtered(attrs: &[&ast::AttrItem], name: &str) -> bool {
 }
 
 /// Check if any attribute starting with `<tool>` is among the attributes.
-pub fn has_any_tool_attr(attrs: &[ast::Attribute]) -> bool {
+pub fn has_any_tool_attr(attrs: &[ast::ast::Attribute]) -> bool {
     attrs.iter().any(|attr| match &attr.kind {
-        ast::AttrKind::Normal(na) => {
+        ast::ast::AttrKind::Normal(na) => {
             let segments = &na.item.path.segments;
             segments[0].ident.as_str() == rrconfig::spec_hotword().as_str()
         },
@@ -65,11 +53,11 @@ pub fn has_any_tool_attr(attrs: &[ast::Attribute]) -> bool {
 
 /// Get all tool attributes, i.e. attributes of the shape `<tool>::attr`, where `tool` is
 /// determined by the `spec_hotword` config.
-pub fn filter_for_tool(attrs: &[ast::Attribute]) -> Vec<&ast::AttrItem> {
+pub fn filter_for_tool(attrs: &[ast::ast::Attribute]) -> Vec<&ast::ast::AttrItem> {
     attrs
         .iter()
         .filter_map(|attr| match &attr.kind {
-            ast::AttrKind::Normal(na) => {
+            ast::ast::AttrKind::Normal(na) => {
                 let item = &na.item;
 
                 let seg = item.path.segments.get(0)?;

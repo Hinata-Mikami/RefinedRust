@@ -12,7 +12,6 @@ pub mod verbose_function_spec_parser;
 use attribute_parse::{parse, MToken};
 use parse::Parse;
 use rr_rustc_interface::ast;
-use rr_rustc_interface::ast::ast::AttrItem;
 
 /// For parsing of `RustPaths`
 pub struct RustPath {
@@ -28,7 +27,7 @@ impl<F> parse::Parse<F> for RustPath {
     }
 }
 
-pub fn get_export_as_attr(attrs: &[&AttrItem]) -> Result<Vec<String>, String> {
+pub fn get_export_as_attr(attrs: &[&ast::ast::AttrItem]) -> Result<Vec<String>, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -79,7 +78,7 @@ where
 }
 
 /// Extract a shim annotation from a list of annotations of a function or method.
-pub fn get_shim_attrs(attrs: &[&AttrItem]) -> Result<ShimAnnot, String> {
+pub fn get_shim_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<ShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -125,7 +124,7 @@ where
 }
 
 /// Extract a code shim annotation from a list of annotations of a function or method.
-pub fn get_code_shim_attrs(attrs: &[&AttrItem]) -> Result<CodeShimAnnot, String> {
+pub fn get_code_shim_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<CodeShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 

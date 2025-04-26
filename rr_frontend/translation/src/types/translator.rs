@@ -6,16 +6,14 @@
 
 //! The main translator for translating types within certain environments.
 
-use std::cell::{Cell, OnceCell, RefCell};
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
-use log::{info, trace, warn};
-use radium::{self, coq, push_str_list};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{IntTy, Ty, TyKind, TypeFoldable, UintTy};
-use rr_rustc_interface::{abi, ast, attr, middle, target};
+use log::{info, trace};
+use radium::{coq, push_str_list};
+use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::{abi, ast, attr, hir, target};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -24,12 +22,11 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
 use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
 use crate::spec_parsers::enum_spec_parser::{parse_enum_refine_as, EnumSpecParser, VerboseEnumSpecParser};
-use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
+use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
-use crate::traits::{self, registry};
+use crate::traits::registry;
 use crate::types::scope;
-use crate::types::tyvars::*;
-use crate::{attrs, base, search};
+use crate::{attrs, search};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -37,7 +34,7 @@ use crate::{attrs, base, search};
 #[derive(Debug)]
 pub struct FunctionState<'tcx, 'def> {
     /// defid of the current function
-    pub(crate) did: DefId,
+    pub(crate) did: hir::def_id::DefId,
 
     /// generic mapping: map DeBruijn indices to type parameters
     pub(crate) generic_scope: scope::Params<'tcx, 'def>,
@@ -72,7 +69,7 @@ impl<'tcx, 'def> ParamLookup<'def> for FunctionState<'tcx, 'def> {
 
 impl<'tcx, 'def> FunctionState<'tcx, 'def> {
     /// Create a new empty scope for a function.
-    pub fn empty(did: DefId) -> Self {
+    pub fn empty(did: hir::def_id::DefId) -> Self {
         Self {
             did,
             tuple_uses: HashMap::new(),
@@ -85,7 +82,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 
     /// Create a new scope for a function translation with the given generic parameters.
     fn new(
-        did: DefId,
+        did: hir::def_id::DefId,
         tcx: ty::TyCtxt<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap,
@@ -108,7 +105,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
     /// Create a new scope for a function translation with the given generic parameters and
     /// incorporating the trait environment.
     pub fn new_with_traits(
-        did: DefId,
+        did: hir::def_id::DefId,
         env: &Environment<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap,
@@ -144,15 +141,16 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 #[derive(Debug)]
 pub struct AdtState<'a, 'tcx, 'def> {
     /// track dependencies on other ADTs
-    deps: &'a mut HashSet<DefId>,
+    deps: &'a mut HashSet<hir::def_id::DefId>,
     /// scope to track parameters
     scope: &'a scope::Params<'tcx, 'def>,
     /// the current paramenv
     param_env: &'a ty::ParamEnv<'tcx>,
 }
+
 impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
     pub fn new(
-        deps: &'a mut HashSet<DefId>,
+        deps: &'a mut HashSet<hir::def_id::DefId>,
         scope: &'a scope::Params<'tcx, 'def>,
         param_env: &'a ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -279,8 +277,8 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     fn normalize_type_erasing_regions(
         &self,
         tcx: ty::TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Result<Ty<'tcx>, TranslationError<'tcx>> {
+        ty: ty::Ty<'tcx>,
+    ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         let param_env = self.get_param_env(tcx);
         tcx.try_normalize_erasing_regions(param_env, ty)
             .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
@@ -291,7 +289,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     pub fn lookup_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,
-        trait_did: DefId,
+        trait_did: hir::def_id::DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Result<&registry::GenericTraitUse<'tcx, 'def>, TranslationError<'tcx>> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
@@ -326,7 +324,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    return Ok(format!("ulft_{}", base::strip_coq_ident(name)));
+                    return Ok(format!("ulft_{}", strip_coq_ident(name)));
                 }
                 return Err(TranslationError::UnknownEarlyRegion(*region));
             },
@@ -334,7 +332,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    return Ok(format!("ulft_{}", base::strip_coq_ident(name)));
+                    return Ok(format!("ulft_{}", strip_coq_ident(name)));
                 }
                 return Err(TranslationError::UnknownEarlyRegion(*region));
             },
@@ -439,7 +437,7 @@ pub struct TX<'def, 'tcx> {
     /// the literal is present after the variant has been fully translated
     variant_registry: RefCell<
         HashMap<
-            DefId,
+            hir::def_id::DefId,
             (
                 String,
                 radium::AbstractStructRef<'def>,
@@ -453,7 +451,7 @@ pub struct TX<'def, 'tcx> {
     /// the literal is present after the enum has been fully translated
     enum_registry: RefCell<
         HashMap<
-            DefId,
+            hir::def_id::DefId,
             (String, radium::AbstractEnumRef<'def>, ty::AdtDef<'tcx>, Option<radium::LiteralTypeRef<'def>>),
         >,
     >,
@@ -461,10 +459,10 @@ pub struct TX<'def, 'tcx> {
     tuple_registry: RefCell<HashMap<usize, (radium::AbstractStructRef<'def>, radium::LiteralTypeRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
-    adt_deps: RefCell<HashMap<DefId, HashSet<DefId>>>,
+    adt_deps: RefCell<HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>>>,
 
     /// shims for ADTs
-    adt_shims: RefCell<HashMap<DefId, radium::LiteralTypeRef<'def>>>,
+    adt_shims: RefCell<HashMap<hir::def_id::DefId, radium::LiteralTypeRef<'def>>>,
 }
 
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
@@ -506,7 +504,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register a shim for an ADT.
-    pub fn register_adt_shim(&self, did: DefId, lit: &radium::LiteralType) -> Result<(), String> {
+    pub fn register_adt_shim(
+        &self,
+        did: hir::def_id::DefId,
+        lit: &radium::LiteralType,
+    ) -> Result<(), String> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
         if let Some(old) = shims.insert(did, lit_ref) {
@@ -517,12 +519,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Lookup a shim for an ADT.
-    fn lookup_adt_shim(&self, did: DefId) -> Option<radium::LiteralTypeRef<'def>> {
+    fn lookup_adt_shim(&self, did: hir::def_id::DefId) -> Option<radium::LiteralTypeRef<'def>> {
         self.adt_shims.borrow().get(&did).copied()
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
-    pub fn get_struct_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
+    pub fn get_struct_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractStructRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, is_of_enum, _)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
@@ -534,7 +536,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the variant definitions that clients have used (including the variants of enums).
-    pub fn get_variant_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
+    pub fn get_variant_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractStructRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -543,7 +545,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the enum definitions that clients have used.
-    pub fn get_enum_defs(&self) -> HashMap<DefId, radium::AbstractEnumRef<'def>> {
+    pub fn get_enum_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractEnumRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -552,7 +554,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get the dependency map between ADTs.
-    pub fn get_adt_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
+    pub fn get_adt_deps(&self) -> HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>> {
         let deps = self.adt_deps.borrow();
         deps.clone()
     }
@@ -669,7 +671,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup an ADT variant and return a reference to its struct def.
     fn lookup_adt_variant(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
     ) -> Result<(radium::AbstractStructRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
     {
         if let Some((_n, st, _, _, lit)) = self.variant_registry.borrow().get(&did) {
@@ -679,7 +681,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_adt_variant_already_registered(&self, did: DefId) -> bool {
+    fn is_adt_variant_already_registered(&self, did: hir::def_id::DefId) -> bool {
         if self.lookup_adt_shim(did).is_some() {
             return true;
         }
@@ -690,7 +692,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup the literal for an ADT variant.
     fn lookup_adt_variant_literal(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
     ) -> Result<radium::LiteralTypeRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             return Ok(lit);
@@ -706,7 +708,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup an enum ADT and return a reference to its enum def.
     fn lookup_enum(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
     ) -> Result<(radium::AbstractEnumRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
     {
         if let Some((_n, st, _, lit)) = self.enum_registry.borrow().get(&did) {
@@ -716,7 +718,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_enum_already_registered(&self, did: DefId) -> bool {
+    fn is_enum_already_registered(&self, did: hir::def_id::DefId) -> bool {
         if self.lookup_adt_shim(did).is_some() {
             return true;
         }
@@ -727,7 +729,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup the literal for an enum.
     fn lookup_enum_literal(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
     ) -> Result<radium::LiteralTypeRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             Ok(lit)
@@ -743,12 +745,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Only for internal references as part of type translation.
     fn generate_structlike_use_internal<'a, 'b>(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         variant: Option<target::abi::VariantIdx>,
         adt_deps: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
-            TyKind::Adt(adt, args) => {
+            ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
                 if self.lookup_adt_shim(adt.did()).is_some() {
                     return self.generate_adt_shim_use(*adt, args, adt_deps);
@@ -789,7 +791,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 })
             },
 
-            TyKind::Tuple(args) => self.generate_tuple_use(*args, adt_deps).map(radium::Type::Literal),
+            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, adt_deps).map(radium::Type::Literal),
 
             _ => Err(TranslationError::UnknownError("not a structlike".to_owned())),
         }
@@ -822,8 +824,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(radium::AbstractEnumUse::new(enum_ref, params))
     }
 
-    /// Check if a variant given by a [`DefId`] is [`std::marker::PhantomData`].
-    fn is_phantom_data(&self, did: DefId) -> Option<bool> {
+    /// Check if a variant given by a [`hir::def_id::DefId`] is [`std::marker::PhantomData`].
+    fn is_phantom_data(&self, did: hir::def_id::DefId) -> Option<bool> {
         let ty: ty::Ty<'tcx> = self.env.tcx().type_of(did).instantiate_identity();
         match ty.kind() {
             ty::TyKind::Adt(def, _) => Some(def.is_phantom_data()),
@@ -832,7 +834,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Check if a struct is definitely zero-sized.
-    fn is_struct_definitely_zero_sized(&self, did: DefId) -> Option<bool> {
+    fn is_struct_definitely_zero_sized(&self, did: hir::def_id::DefId) -> Option<bool> {
         self.is_phantom_data(did)
     }
 
@@ -840,7 +842,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Only for internal references as part of type translation.
     fn generate_struct_use_noshim<'a, 'b>(
         &self,
-        variant_id: DefId,
+        variant_id: hir::def_id::DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
@@ -872,7 +874,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Only for internal references as part of type translation.
     fn generate_enum_variant_use_noshim<'a, 'b>(
         &self,
-        adt_id: DefId,
+        adt_id: hir::def_id::DefId,
         variant_idx: target::abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
@@ -907,7 +909,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         state: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
     where
-        F: IntoIterator<Item = Ty<'tcx>>,
+        F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
         let args: Vec<ty::GenericArg<'tcx>> = tys.into_iter().map(ty::GenericArg::from).collect();
         let args = self.env().tcx().mk_args(&args);
@@ -1000,7 +1002,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
         let tcx = self.env.tcx();
-        let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
+        let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
 
         self.variant_registry
             .borrow_mut()
@@ -1008,7 +1010,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
-            let struct_name = base::strip_coq_ident(&ty.ident(tcx).to_string());
+            let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
             let (variant_def, invariant_def) = self.make_adt_variant(
                 &struct_name,
                 ty,
@@ -1091,7 +1093,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         if attrs::has_tool_attr(outer_attrs, "refined_by") {
             let outer_attrs = attrs::filter_for_tool(outer_attrs);
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(adt_deps.scope);
-            let ty_name = base::strip_coq_ident(format!("{}_inv_t", struct_name).as_str());
+            let ty_name = strip_coq_ident(format!("{}_inv_t", struct_name).as_str());
             let res = spec_parser
                 .parse_invariant_spec(&ty_name, &outer_attrs)
                 .map_err(TranslationError::FatalError)?;
@@ -1168,16 +1170,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Make a `GlobalId` for constants (use for discriminants).
     fn make_global_id_for_discr<'a>(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
         env: &'a [ty::GenericArg<'tcx>],
-    ) -> middle::mir::interpret::GlobalId<'tcx> {
-        middle::mir::interpret::GlobalId {
+    ) -> mir::interpret::GlobalId<'tcx> {
+        mir::interpret::GlobalId {
             instance: ty::Instance::new(did, self.env.tcx().mk_args(env)),
             promoted: None,
         }
     }
 
-    fn try_scalar_int_to_int128(s: middle::ty::ScalarInt, signed: bool) -> Option<radium::Int128> {
+    fn try_scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> Option<radium::Int128> {
         if signed {
             s.try_to_int(s.size()).ok().map(radium::Int128::Signed)
         } else {
@@ -1242,7 +1244,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(map)
     }
 
-    fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
+    fn does_did_match(&self, did: hir::def_id::DefId, path: &[&str]) -> bool {
         let lookup_did = search::try_resolve_did(self.env.tcx(), path);
         if let Some(lookup_did) = lookup_did {
             if lookup_did == did {
@@ -1325,7 +1327,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let enum_def_init = self.enum_arena.alloc(RefCell::new(None));
 
         // TODO: currently a hack, I don't know how to query the name properly
-        let enum_name = base::strip_coq_ident(format!("{:?}", def).as_str());
+        let enum_name = strip_coq_ident(format!("{:?}", def).as_str());
 
         // insert partial definition for recursive occurrences
         self.enum_registry
@@ -1338,7 +1340,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // now generate the variant
                 let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
-                let struct_name = base::strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
+                let struct_name = strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
                 self.variant_registry
                     .borrow_mut()
                     .insert(v.def_id, (struct_name.clone(), &*struct_def_init, v, true, None));
@@ -1419,7 +1421,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             // now build the enum itself
             for v in def.variants() {
                 let (variant_ref, _) = self.lookup_adt_variant(v.def_id)?;
-                let variant_name = base::strip_coq_ident(&v.ident(tcx).to_string());
+                let variant_name = strip_coq_ident(&v.ident(tcx).to_string());
                 let discriminant = discrs[&variant_name];
                 enum_builder.add_variant(&variant_name, variant_ref, discriminant);
             }
@@ -1482,34 +1484,34 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// argument, if provided.
     pub fn translate_type_in_state<'a, 'b>(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
-            TyKind::Bool => Ok(radium::Type::Bool),
-            TyKind::Char => Ok(radium::Type::Char),
+            ty::TyKind::Bool => Ok(radium::Type::Bool),
+            ty::TyKind::Char => Ok(radium::Type::Char),
 
-            TyKind::Int(it) => Ok(radium::Type::Int(match it {
-                IntTy::I8 => radium::IntType::I8,
-                IntTy::I16 => radium::IntType::I16,
-                IntTy::I32 => radium::IntType::I32,
-                IntTy::I64 => radium::IntType::I64,
-                IntTy::I128 => radium::IntType::I128,
-                IntTy::Isize => radium::IntType::ISize, // should have same size as pointer types
+            ty::TyKind::Int(it) => Ok(radium::Type::Int(match it {
+                ty::IntTy::I8 => radium::IntType::I8,
+                ty::IntTy::I16 => radium::IntType::I16,
+                ty::IntTy::I32 => radium::IntType::I32,
+                ty::IntTy::I64 => radium::IntType::I64,
+                ty::IntTy::I128 => radium::IntType::I128,
+                ty::IntTy::Isize => radium::IntType::ISize, // should have same size as pointer types
             })),
 
-            TyKind::Uint(it) => Ok(radium::Type::Int(match it {
-                UintTy::U8 => radium::IntType::U8,
-                UintTy::U16 => radium::IntType::U16,
-                UintTy::U32 => radium::IntType::U32,
-                UintTy::U64 => radium::IntType::U64,
-                UintTy::U128 => radium::IntType::U128,
-                UintTy::Usize => radium::IntType::USize, // should have same size as pointer types
+            ty::TyKind::Uint(it) => Ok(radium::Type::Int(match it {
+                ty::UintTy::U8 => radium::IntType::U8,
+                ty::UintTy::U16 => radium::IntType::U16,
+                ty::UintTy::U32 => radium::IntType::U32,
+                ty::UintTy::U64 => radium::IntType::U64,
+                ty::UintTy::U128 => radium::IntType::U128,
+                ty::UintTy::Usize => radium::IntType::USize, // should have same size as pointer types
             })),
 
-            TyKind::RawPtr(_) => Ok(radium::Type::RawPtr),
+            ty::TyKind::RawPtr(_) => Ok(radium::Type::RawPtr),
 
-            TyKind::Ref(region, ty, mutability) => {
+            ty::TyKind::Ref(region, ty, mutability) => {
                 // TODO: this will have to change for handling fat ptrs. see the corresponding rustc
                 // def for inspiration.
 
@@ -1530,9 +1532,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
             },
 
-            TyKind::Never => Ok(radium::Type::Never),
+            ty::TyKind::Never => Ok(radium::Type::Never),
 
-            TyKind::Adt(adt, substs) => {
+            ty::TyKind::Adt(adt, substs) => {
                 if adt.is_box() {
                     // extract the type parameter
                     // the second parameter is the allocator, which we ignore for now
@@ -1572,7 +1574,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 })
             },
 
-            TyKind::Closure(_def, closure_args) => {
+            ty::TyKind::Closure(_def, closure_args) => {
                 // We replace this with the tuple of the closure's state
                 let clos = closure_args.as_closure();
                 let upvar_tys = clos.tupled_upvars_ty();
@@ -1580,7 +1582,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.translate_type_in_state(upvar_tys, &mut *state)
             },
 
-            TyKind::Tuple(params) => {
+            ty::TyKind::Tuple(params) => {
                 if params.len() == 0 {
                     return Ok(radium::Type::Unit);
                 }
@@ -1588,24 +1590,24 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 self.generate_tuple_use(params.iter(), &mut *state).map(radium::Type::Literal)
             },
 
-            TyKind::Param(param_ty) => state.lookup_ty_param(*param_ty),
+            ty::TyKind::Param(param_ty) => state.lookup_ty_param(*param_ty),
 
-            TyKind::Float(_) => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Float(_) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support floats".to_owned(),
             }),
 
-            TyKind::Array(_, _) => Err(TranslationError::UnsupportedFeature {
+            ty::TyKind::Array(_, _) => Err(TranslationError::UnsupportedFeature {
                 description: "RefinedRust does not support arrays".to_owned(),
             }),
 
-            TyKind::Slice(_) => {
+            ty::TyKind::Slice(_) => {
                 // TODO this should really be a fat ptr?
                 Err(TranslationError::UnsupportedFeature {
                     description: "RefinedRust does not support slices".to_owned(),
                 })
             },
 
-            TyKind::Alias(kind, alias_ty) => {
+            ty::TyKind::Alias(kind, alias_ty) => {
                 // TODO do we get a problem because we are erasing regions?
                 if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.env.tcx(), ty) {
                     if !matches!(normalized_ty.kind(), ty::TyKind::Alias(_, _)) {
@@ -1635,37 +1637,37 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
             },
 
-            TyKind::Foreign(_) => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Foreign(_) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support extern types".to_owned(),
             }),
 
-            TyKind::Str => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Str => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support str".to_owned(),
             }),
 
-            TyKind::FnDef(_, _) => Err(TranslationError::Unimplemented {
+            ty::TyKind::FnDef(_, _) => Err(TranslationError::Unimplemented {
                 description: "RefinedRust does not support FnDef".to_owned(),
             }),
 
-            TyKind::FnPtr(_) => Err(TranslationError::Unimplemented {
+            ty::TyKind::FnPtr(_) => Err(TranslationError::Unimplemented {
                 description: "RefinedRust does not support FnPtr".to_owned(),
             }),
 
-            TyKind::Dynamic(_, _, _) => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Dynamic(_, _, _) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 
-            TyKind::Generator(_, _, _) | TyKind::GeneratorWitness(_) | TyKind::GeneratorWitnessMIR(_, _) => {
-                Err(TranslationError::UnsupportedType {
-                    description: "RefinedRust does currently not support generators".to_owned(),
-                })
-            },
+            ty::TyKind::Generator(_, _, _)
+            | ty::TyKind::GeneratorWitness(_)
+            | ty::TyKind::GeneratorWitnessMIR(_, _) => Err(TranslationError::UnsupportedType {
+                description: "RefinedRust does currently not support generators".to_owned(),
+            }),
 
-            TyKind::Infer(_) => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Infer(_) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support infer types".to_owned(),
             }),
 
-            TyKind::Bound(_, _) | TyKind::Placeholder(_) | TyKind::Error(_) => {
+            ty::TyKind::Bound(_, _) | ty::TyKind::Placeholder(_) | ty::TyKind::Error(_) => {
                 Err(TranslationError::UnsupportedType {
                     description: "RefinedRust does not support higher-ranked types".to_owned(),
                 })
@@ -1733,12 +1735,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub fn get_field_name_of(
         &self,
         f: target::abi::FieldIdx,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         variant: Option<usize>,
     ) -> Result<String, TranslationError<'tcx>> {
         let tcx = self.env.tcx();
         match ty.kind() {
-            TyKind::Adt(def, _) => {
+            ty::TyKind::Adt(def, _) => {
                 info!("getting field name of {:?} at {} (variant {:?})", f, ty, variant);
                 if def.is_struct() {
                     let i = def.variants().get(target::abi::VariantIdx::from_usize(0)).unwrap();
@@ -1758,9 +1760,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
             },
 
-            TyKind::Tuple(_) => Ok(f.index().to_string()),
+            ty::TyKind::Tuple(_) => Ok(f.index().to_string()),
 
-            TyKind::Closure(_, _) => {
+            ty::TyKind::Closure(_, _) => {
                 // treat as tuple of upvars
                 Ok(f.index().to_string())
             },
@@ -1771,11 +1773,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Get the name of a variant of an enum.
     pub fn get_variant_name_of(
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         variant: target::abi::VariantIdx,
     ) -> Result<String, TranslationError<'tcx>> {
         match ty.kind() {
-            TyKind::Adt(def, _) => {
+            ty::TyKind::Adt(def, _) => {
                 info!("getting variant name of {:?} at {}", variant, ty);
                 let i = def.variants().get(variant).unwrap();
                 Ok(i.name.to_string())
@@ -1791,7 +1793,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// substituting all generics.
     pub fn translate_type_to_syn_type(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         scope: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::SynType, TranslationError<'tcx>> {
         self.translate_type_in_state(ty, scope).map(radium::SynType::from)
@@ -1800,7 +1802,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// Translate type in the scope of a function.
     pub fn translate_type(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         self.translate_type_in_state(ty, &mut STInner::InFunction(&mut *scope))
@@ -1810,7 +1812,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     pub fn translate_type_in_scope(
         &self,
         scope: &scope::Params<'tcx, 'def>,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         let mut deps = HashSet::new();
         let param_env = ty::ParamEnv::empty();
@@ -1822,12 +1824,12 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// registering a new ADT.
     pub fn generate_structlike_use<'a>(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
         variant: Option<target::abi::VariantIdx>,
         scope: InFunctionState<'a, 'def, 'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         match ty.kind() {
-            TyKind::Adt(adt, args) => {
+            ty::TyKind::Adt(adt, args) => {
                 if adt.is_struct() {
                     info!("generating struct use for {:?}", adt.did());
                     // register the ADT, if necessary
@@ -1849,8 +1851,10 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
                     })
                 }
             },
-            TyKind::Tuple(args) => self.generate_tuple_use(*args, &mut STInner::InFunction(scope)).map(Some),
-            TyKind::Closure(_, args) => {
+            ty::TyKind::Tuple(args) => {
+                self.generate_tuple_use(*args, &mut STInner::InFunction(scope)).map(Some)
+            },
+            ty::TyKind::Closure(_, args) => {
                 // use the upvar tuple
                 let closure_args = args.as_closure();
                 let upvars = closure_args.upvar_tys();
@@ -1893,7 +1897,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// registering a new ADT.
     pub fn generate_struct_use(
         &self,
-        variant_id: DefId,
+        variant_id: hir::def_id::DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
@@ -1923,7 +1927,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// Returns None if this should be unit.
     pub fn generate_enum_variant_use<'a>(
         &self,
-        variant_id: DefId,
+        variant_id: hir::def_id::DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'a, 'def, 'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {

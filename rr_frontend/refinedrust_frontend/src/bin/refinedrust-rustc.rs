@@ -12,14 +12,8 @@ use std::process::Command;
 use std::{env, process};
 
 use log::{debug, info};
-use rr_rustc_interface::driver::Compilation;
-use rr_rustc_interface::hir::def_id::LocalDefId;
-use rr_rustc_interface::interface::Config;
-use rr_rustc_interface::middle::query::queries::mir_borrowck;
-use rr_rustc_interface::middle::query::{ExternProviders, Providers};
-use rr_rustc_interface::middle::ty::TyCtxt;
-use rr_rustc_interface::session::Session;
-use rr_rustc_interface::{borrowck, driver, interface};
+use rr_rustc_interface::middle::{query, ty};
+use rr_rustc_interface::{borrowck, driver, hir, interface, session};
 use translation::environment::mir_storage;
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
@@ -38,7 +32,10 @@ fn get_rr_version_info() -> String {
 struct RRCompilerCalls;
 
 // From Prusti.
-fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> mir_borrowck::ProvidedValue<'_> {
+fn mir_borrowck(
+    tcx: ty::TyCtxt<'_>,
+    def_id: hir::def_id::LocalDefId,
+) -> query::queries::mir_borrowck::ProvidedValue<'_> {
     let body_with_facts = borrowck::consumers::get_body_with_borrowck_facts(
         tcx,
         def_id,
@@ -49,13 +46,17 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> mir_borrowck::ProvidedVa
     unsafe {
         mir_storage::store_mir_body(tcx, def_id, body_with_facts);
     }
-    let mut providers = Providers::default();
+    let mut providers = query::Providers::default();
     borrowck::provide(&mut providers);
     let original_mir_borrowck = providers.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }
 
-fn override_queries(_session: &Session, local: &mut Providers, _: &mut ExternProviders) {
+fn override_queries(
+    _session: &session::Session,
+    local: &mut query::Providers,
+    _: &mut query::ExternProviders,
+) {
     // overriding these queries makes sure that the `mir_storage` gets all the relevant bodies,
     // also for external crates?
     local.mir_borrowck = mir_borrowck;
@@ -64,7 +65,7 @@ fn override_queries(_session: &Session, local: &mut Providers, _: &mut ExternPro
 
 /// Main entry point to the frontend that is called by the driver.
 /// This translates a crate.
-pub fn analyze(tcx: TyCtxt<'_>) {
+pub fn analyze(tcx: ty::TyCtxt<'_>) {
     match translation::generate_coq_code(tcx, |vcx| vcx.write_coq_files()) {
         Ok(()) => (),
         Err(e) => {
@@ -108,7 +109,7 @@ pub fn analyze(tcx: TyCtxt<'_>) {
 }
 
 impl driver::Callbacks for RRCompilerCalls {
-    fn config(&mut self, config: &mut Config) {
+    fn config(&mut self, config: &mut interface::Config) {
         assert!(config.override_queries.is_none());
         if !rrconfig::no_verify() {
             config.override_queries = Some(override_queries);
@@ -119,11 +120,11 @@ impl driver::Callbacks for RRCompilerCalls {
         &mut self,
         _: &interface::interface::Compiler,
         queries: &'tcx interface::Queries<'tcx>,
-    ) -> Compilation {
+    ) -> driver::Compilation {
         if rrconfig::no_verify() {
             // TODO: We also need this to properly compile deps.
             // However, for deps I'd ideally anyways have be_rustc??
-            return Compilation::Continue;
+            return driver::Compilation::Continue;
         }
 
         // Analyze the crate and inspect the types under the cursor.
@@ -131,7 +132,7 @@ impl driver::Callbacks for RRCompilerCalls {
             analyze(tcx);
         });
 
-        Compilation::Stop
+        driver::Compilation::Stop
     }
 }
 

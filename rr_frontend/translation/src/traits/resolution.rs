@@ -1,30 +1,25 @@
 //! Interface for resolving trait requirements using `rustc`'s trait resolution.
 use std::collections::HashMap;
-use std::mem;
 
 /// Inspired by (in terms of rustc APIs used) by
 /// <https://github.com/xldenis/creusot/blob/9d8b1822cd0c43154a6d5d4d05460be56710399c/creusot/src/translation/traits.rs>
 use log::{info, trace};
-use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{
-    AssocItem, AssocItemContainer, GenericArgsRef, ParamEnv, TraitRef, TyCtxt, TypeVisitableExt,
-};
-use rr_rustc_interface::trait_selection::traits::{ImplSource, ImplSourceUserDefinedData, NormalizeExt};
-use rr_rustc_interface::{middle, trait_selection};
+use rr_rustc_interface::middle::ty::TypeVisitableExt;
+use rr_rustc_interface::{hir, middle, trait_selection};
 
 use crate::regions::arg_folder;
 use crate::traits::region_bi_folder::RegionBiFolder;
 
-pub fn associated_items(tcx: TyCtxt, def_id: DefId) -> impl Iterator<Item = &AssocItem> {
+pub fn associated_items(tcx: ty::TyCtxt, def_id: hir::def_id::DefId) -> impl Iterator<Item = &ty::AssocItem> {
     tcx.associated_items(def_id).in_definition_order()
 }
 
 /// Normalize a type in the given environment.
 pub fn normalize_type<'tcx, T>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     ty: T,
 ) -> Result<T, Vec<trait_selection::traits::FulfillmentError<'tcx>>>
 where
@@ -42,8 +37,8 @@ where
 
 /// Normalize a type in the given environment.
 pub fn normalize_projection_type<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     ty: ty::AliasTy<'tcx>,
 ) -> Result<ty::Ty<'tcx>, ()> {
     let canonical_infos = tcx.mk_canonical_var_infos(&[]);
@@ -70,12 +65,12 @@ pub fn normalize_projection_type<'tcx>(
 /// Resolve an implementation of a trait using codegen candidate selection.
 /// `did` can be the id of a trait, or the id of an associated item of a trait.
 pub fn resolve_impl_source<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    did: DefId,
-    substs: GenericArgsRef<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    did: hir::def_id::DefId,
+    substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<ImplSource<'tcx, ()>> {
+) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
     //let erased_substs = normalize_type(tcx, param_env, substs).unwrap();
@@ -86,11 +81,11 @@ pub fn resolve_impl_source<'tcx>(
     // Check if the `did` is an associated item
     let trait_ref = if let Some(item) = tcx.opt_associated_item(did) {
         match item.container {
-            AssocItemContainer::TraitContainer => {
+            ty::AssocItemContainer::TraitContainer => {
                 // this is part of a trait declaration
-                TraitRef::new(tcx, item.container_id(tcx), erased_substs)
+                ty::TraitRef::new(tcx, item.container_id(tcx), erased_substs)
             },
-            AssocItemContainer::ImplContainer => {
+            ty::AssocItemContainer::ImplContainer => {
                 // this is part of an implementation of a trait
                 tcx.impl_trait_ref(item.container_id(tcx))?.instantiate(tcx, erased_substs)
             },
@@ -98,7 +93,7 @@ pub fn resolve_impl_source<'tcx>(
     } else {
         // Otherwise, check if it's a reference to a trait itself
         if tcx.is_trait(did) {
-            TraitRef::new(tcx, did, erased_substs)
+            ty::TraitRef::new(tcx, did, erased_substs)
         } else {
             return None;
         }
@@ -109,15 +104,15 @@ pub fn resolve_impl_source<'tcx>(
 }
 
 fn recover_lifetimes_for_impl_source<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    trait_ref: TraitRef<'tcx>,
-    substs: GenericArgsRef<'tcx>,
-    impl_source: &'tcx ImplSource<'tcx, ()>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
+    substs: ty::GenericArgsRef<'tcx>,
+    impl_source: &'tcx trait_selection::traits::ImplSource<'tcx, ()>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> ImplSource<'tcx, ()> {
+) -> trait_selection::traits::ImplSource<'tcx, ()> {
     match impl_source {
-        ImplSource::UserDefined(impl_data) => {
+        trait_selection::traits::ImplSource::UserDefined(impl_data) => {
             let impl_did = impl_data.impl_def_id;
             let impl_args = impl_data.args;
 
@@ -165,23 +160,23 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             // then instantiate the enumerated_impl_args with the mapping
             let renamed_impl_args = arg_folder::rename_region_vids(enumerated_impl_args, tcx, region_map);
 
-            let new_data = ImplSourceUserDefinedData {
+            let new_data = trait_selection::traits::ImplSourceUserDefinedData {
                 impl_def_id: impl_did,
                 args: renamed_impl_args,
                 nested: impl_data.nested.clone(),
             };
-            ImplSource::UserDefined(new_data)
+            trait_selection::traits::ImplSource::UserDefined(new_data)
         },
-        ImplSource::Param(_) => {
+        trait_selection::traits::ImplSource::Param(_) => {
             // TODO?
             impl_source.to_owned()
         },
-        ImplSource::Builtin(_, _) => impl_source.to_owned(),
+        trait_selection::traits::ImplSource::Builtin(_, _) => impl_source.to_owned(),
     }
 }
 
 struct RegionMapper<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     map: HashMap<ty::RegionVid, ty::Region<'tcx>>,
 }
@@ -196,7 +191,7 @@ impl<'tcx> RegionMapper<'tcx> {
     }
 }
 impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -225,12 +220,12 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 
 // Maybe get rid of this
 fn resolve_trait_or_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    def_id: DefId,
-    substs: GenericArgsRef<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    def_id: hir::def_id::DefId,
+    substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(def_id) {
         resolve_trait(tcx, param_env, def_id, substs, below_binders)
     } else {
@@ -241,21 +236,21 @@ fn resolve_trait_or_item<'tcx>(
 /// Resolve a reference to a trait using codegen trait selection.
 /// `did` should be the id of a trait.
 pub fn resolve_trait<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    did: DefId,
-    substs: GenericArgsRef<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    did: hir::def_id::DefId,
+    substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(did) {
         let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders);
         info!("trait impl_source for {:?}: {:?}", did, impl_source);
         match impl_source? {
-            ImplSource::UserDefined(impl_data) => {
+            trait_selection::traits::ImplSource::UserDefined(impl_data) => {
                 Some((impl_data.impl_def_id, impl_data.args, TraitResolutionKind::UserDefined))
             },
-            ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
-            ImplSource::Builtin(_, _) => {
+            trait_selection::traits::ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
+            trait_selection::traits::ImplSource::Builtin(_, _) => {
                 // TODO: maybe this should be Some if this is a closure?
                 None
             },
@@ -275,12 +270,12 @@ pub enum TraitResolutionKind {
 /// Resolve a reference to a trait item using codegen trait selection.
 /// `did` should be the id of a trait item.
 pub fn resolve_assoc_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    did: DefId,
-    substs: GenericArgsRef<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    did: hir::def_id::DefId,
+    substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     let assoc = tcx.opt_associated_item(did)?;
 
     /*
@@ -293,17 +288,17 @@ pub fn resolve_assoc_item<'tcx>(
     }
     */
 
-    let trait_ref = TraitRef::from_method(tcx, tcx.trait_of_item(did).unwrap(), substs);
+    let trait_ref = ty::TraitRef::from_method(tcx, tcx.trait_of_item(did).unwrap(), substs);
 
     let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders)?;
     info!("trait impl_source for {:?}: {:?}", did, impl_source);
 
     match impl_source {
-        ImplSource::UserDefined(impl_data) => {
+        trait_selection::traits::ImplSource::UserDefined(impl_data) => {
             // this is a user-defined trait, and we found the right impl
             // now map back to the item we were looking for
             let trait_did = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
-            let trait_def: &'tcx middle::ty::TraitDef = tcx.trait_def(trait_did);
+            let trait_def: &'tcx ty::TraitDef = tcx.trait_def(trait_did);
 
             // Find the id of the actual associated method we will be running
             let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id).unwrap();
@@ -334,14 +329,14 @@ pub fn resolve_assoc_item<'tcx>(
 
             Some((leaf_def.item.def_id, leaf_substs, TraitResolutionKind::UserDefined))
         },
-        ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
-        ImplSource::Builtin(_, _) =>
+        trait_selection::traits::ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
+        trait_selection::traits::ImplSource::Builtin(_, _) =>
         // the 0-th parameter should be self
         // if this is a closure, we want to call that closure
         {
             match *substs[0].as_type().unwrap().kind() {
                 // try to get the body
-                middle::ty::Closure(closure_def_id, closure_substs) => {
+                ty::Closure(closure_def_id, closure_substs) => {
                     Some((closure_def_id, closure_substs, TraitResolutionKind::Closure))
                 },
                 _ => unimplemented!(),

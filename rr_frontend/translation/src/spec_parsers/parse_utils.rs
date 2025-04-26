@@ -5,14 +5,12 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 /// This provides some general utilities for RefinedRust-specific attribute parsing.
-use std::collections::HashSet;
-
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;
-use log::{info, trace};
-use parse::{Parse, Peek};
+use log::trace;
+use parse::Peek;
 use radium::{coq, specs};
-use regex::{self, Captures, Regex};
+use regex::{Captures, Regex};
 
 /// Parse either a literal string (a term/pattern) or an identifier, e.g.
 /// `x`, `z`, `"w"`, `"(a, b)"`

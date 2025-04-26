@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use rr_rustc_interface::index::IndexVec;
-use rr_rustc_interface::middle::mir::{self, TerminatorKind};
+use rr_rustc_interface::middle::mir;
 
 /// A data structure to store the non-virtual CFG edges of a MIR body.
 pub struct RealEdges {
@@ -45,32 +45,33 @@ impl RealEdges {
 
 fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
     match &terminator.kind {
-        TerminatorKind::Goto { target } | TerminatorKind::Assert { target, .. } => {
+        mir::TerminatorKind::Goto { target } | mir::TerminatorKind::Assert { target, .. } => {
             vec![*target]
         },
 
-        TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
+        mir::TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
 
-        TerminatorKind::GeneratorDrop
-        | TerminatorKind::Return
-        | TerminatorKind::Unreachable
-        | TerminatorKind::UnwindResume
-        | TerminatorKind::UnwindTerminate(_) => vec![],
+        mir::TerminatorKind::GeneratorDrop
+        | mir::TerminatorKind::Return
+        | mir::TerminatorKind::Unreachable
+        | mir::TerminatorKind::UnwindResume
+        | mir::TerminatorKind::UnwindTerminate(_) => vec![],
 
-        TerminatorKind::Drop { target, .. } => vec![*target],
+        mir::TerminatorKind::Drop { target, .. } => vec![*target],
 
-        TerminatorKind::Call { target, .. } => match target {
+        mir::TerminatorKind::Call { target, .. } => match target {
             Some(target) => vec![*target],
             None => vec![],
         },
 
-        TerminatorKind::FalseEdge { real_target, .. } | TerminatorKind::FalseUnwind { real_target, .. } => {
+        mir::TerminatorKind::FalseEdge { real_target, .. }
+        | mir::TerminatorKind::FalseUnwind { real_target, .. } => {
             vec![*real_target]
         },
 
-        TerminatorKind::Yield { resume, .. } => vec![*resume],
+        mir::TerminatorKind::Yield { resume, .. } => vec![*resume],
 
-        TerminatorKind::InlineAsm { destination, .. } => match destination {
+        mir::TerminatorKind::InlineAsm { destination, .. } => match destination {
             Some(target) => vec![*target],
             None => vec![],
         },

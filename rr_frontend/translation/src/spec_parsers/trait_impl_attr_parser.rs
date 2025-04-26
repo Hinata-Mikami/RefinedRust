@@ -4,19 +4,22 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use attribute_parse::{parse, MToken};
-use rr_rustc_interface::ast::ast::AttrItem;
+use rr_rustc_interface::ast;
 
-use crate::spec_parsers::parse_utils::*;
+use crate::spec_parsers::parse_utils::{str_err, IdentOrTerm, ParamLookup};
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::instantiate("x" := "True")`, which will instantiate a specification attribute "x" to a given term
 ///   "True"
 pub trait TraitImplAttrParser {
-    fn parse_trait_impl_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitImplAttrs, String>;
+    fn parse_trait_impl_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a ast::ast::AttrItem],
+    ) -> Result<TraitImplAttrs, String>;
 }
 
 #[derive(Clone, Debug)]
@@ -36,7 +39,10 @@ impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
 }
 
 impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
-    fn parse_trait_impl_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitImplAttrs, String> {
+    fn parse_trait_impl_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a ast::ast::AttrItem],
+    ) -> Result<TraitImplAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
 
         for &it in attrs {

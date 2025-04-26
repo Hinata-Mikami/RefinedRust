@@ -34,15 +34,13 @@ use std::{fs, io, process};
 
 use log::{info, trace, warn};
 use radium::coq;
-use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::{ast, hir, span};
+use rr_rustc_interface::{hir, span};
 use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
 use crate::body::signature;
 use crate::environment::Environment;
-use crate::procedures::{Mode, Scope};
 use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
@@ -52,7 +50,9 @@ use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
-fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
+fn order_adt_defs(
+    deps: &HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>>,
+) -> Vec<hir::def_id::DefId> {
     let mut topo = TopologicalSort::new();
     let mut defs = HashSet::new();
 
@@ -89,7 +89,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     const_registry: consts::Scope<'rcx>,
     type_translator: &'rcx types::TX<'rcx, 'tcx>,
     trait_registry: &'rcx registry::TR<'tcx, 'rcx>,
-    functions: &'rcx [LocalDefId],
+    functions: &'rcx [hir::def_id::LocalDefId],
     fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
 
     /// the second component determines whether to include it in the code file as well
@@ -106,17 +106,17 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: HashMap<DefId, radium::TraitImplSpec<'rcx>>,
+    trait_impls: HashMap<hir::def_id::DefId, radium::TraitImplSpec<'rcx>>,
 }
 
 impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
-    fn get_path_for_shim(&self, did: DefId) -> Vec<&str> {
+    fn get_path_for_shim(&self, did: hir::def_id::DefId) -> Vec<&str> {
         let path = shims::flat::get_export_path_for_did(self.env, did);
         let interned_path = self.shim_registry.intern_path(path);
         interned_path
     }
 
-    fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim> {
+    fn make_shim_function_entry(&self, did: hir::def_id::DefId) -> Option<shims::registry::FunctionShim> {
         let Some(meta) = self.procedure_registry.lookup_function(did) else {
             return None;
         };
@@ -155,7 +155,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     // complete trait impl support?
     fn make_shim_trait_method_entry(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
         spec_name: &str,
     ) -> Option<shim_registry::TraitMethodImplShim> {
         trace!("enter make_shim_trait_method_entry; did={did:?}");
@@ -236,7 +236,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     /// Make a shim entry for a trait.
     fn make_trait_impl_shim_entry(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
         decl: &radium::TraitImplSpec<'rcx>,
     ) -> Option<shim_registry::TraitImplShim> {
         info!("making shim entry for impl {did:?}");
@@ -299,7 +299,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     /// Make a shim entry for a trait.
     fn make_trait_shim_entry(
         &self,
-        did: LocalDefId,
+        did: hir::def_id::LocalDefId,
         decl: radium::LiteralTraitSpecRef<'rcx>,
     ) -> Option<shim_registry::TraitShim> {
         info!("making shim entry for {did:?}");
@@ -322,7 +322,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         None
     }
 
-    fn make_adt_shim_entry(&self, did: DefId, lit: radium::LiteralType) -> Option<shim_registry::AdtShim> {
+    fn make_adt_shim_entry(
+        &self,
+        did: hir::def_id::DefId,
+        lit: radium::LiteralType,
+    ) -> Option<shim_registry::AdtShim> {
         info!("making shim entry for {did:?}");
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
             // only export public items
@@ -683,7 +687,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         }
     }
 
-    fn check_function_needs_proof(&self, did: DefId, fun: &radium::Function) -> bool {
+    fn check_function_needs_proof(&self, did: hir::def_id::DefId, fun: &radium::Function) -> bool {
         let mode = self.procedure_registry.lookup_function_mode(did).unwrap();
         fun.spec.is_complete() && mode.needs_proof()
     }
@@ -1147,7 +1151,10 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     Ok(())
 }
 
-fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> procedures::Mode {
+fn get_most_restrictive_function_mode(
+    vcx: &VerificationCtxt<'_, '_>,
+    did: hir::def_id::DefId,
+) -> procedures::Mode {
     let attrs = vcx.env.get_attributes_of_function(did, &propagate_method_attr_from_impl);
 
     // check if this is a purely spec function; if so, skip.
@@ -1353,7 +1360,7 @@ fn exit_with_error(s: &str) {
 
 /// Get all functions and closures in the current crate that have attributes on them and are not
 /// skipped due to `rr::skip` attributes.
-pub fn get_filtered_functions(env: &Environment<'_>) -> Vec<LocalDefId> {
+pub fn get_filtered_functions(env: &Environment<'_>) -> Vec<hir::def_id::LocalDefId> {
     let mut functions = env.get_procedures();
     let closures = env.get_closures();
     info!("Found {} function(s) and {} closure(s)", functions.len(), closures.len());
@@ -1579,7 +1586,9 @@ fn assemble_trait_impls<'tcx, 'rcx>(
 }
 
 /// Get and parse all module attributes.
-pub fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId, ModuleAttrs>, String> {
+pub fn get_module_attributes(
+    env: &Environment<'_>,
+) -> Result<HashMap<hir::def_id::LocalDefId, ModuleAttrs>, String> {
     let modules = env.get_modules();
     let mut attrs = HashMap::new();
     info!("collected modules: {:?}", modules);

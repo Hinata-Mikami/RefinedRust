@@ -5,16 +5,15 @@
 use std::collections::HashMap;
 use std::mem;
 
-use log::{info, trace};
-use rr_rustc_interface::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::{middle, span};
+use log::info;
+use rr_rustc_interface::middle::{metadata, ty};
+use rr_rustc_interface::{hir, span};
 
 use crate::{types, unification};
 
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
-pub fn try_resolve_did_direct<T>(tcx: TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
 where
     T: AsRef<str>,
 {
@@ -22,17 +21,17 @@ where
         .iter()
         .find(|&&krate| tcx.crate_name(krate).as_str() == path[0].as_ref())
         .and_then(|krate| {
-            let krate = DefId {
+            let krate = hir::def_id::DefId {
                 krate: *krate,
-                index: CRATE_DEF_INDEX,
+                index: hir::def_id::CRATE_DEF_INDEX,
             };
 
-            let mut items: &[middle::metadata::ModChild] = tcx.module_children(krate);
+            let mut items: &[metadata::ModChild] = tcx.module_children(krate);
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
                 for item in mem::take(&mut items) {
-                    let item: &middle::metadata::ModChild = item;
+                    let item: &metadata::ModChild = item;
                     if item.ident.name.as_str() == segment.as_ref() {
                         if path_it.peek().is_none() {
                             return Some(item.res.def_id());
@@ -47,7 +46,7 @@ where
         })
 }
 
-pub fn try_resolve_did<T>(tcx: TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
 where
     T: AsRef<str>,
 {
@@ -74,11 +73,11 @@ where
 /// Note that this does not, in general, find a unique solution, in case there are complex things
 /// with different where clauses going on.
 pub fn try_resolve_trait_impl_did<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_did: DefId,
+    tcx: ty::TyCtxt<'tcx>,
+    trait_did: hir::def_id::DefId,
     trait_args: &[Option<ty::GenericArg<'tcx>>],
     for_type: ty::Ty<'tcx>,
-) -> Option<DefId> {
+) -> Option<hir::def_id::DefId> {
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
 
@@ -139,11 +138,8 @@ pub fn try_resolve_trait_impl_did<'tcx>(
         let mut unification_map = HashMap::new();
 
         // this is a non-blanket impl
-        let simplified_type = middle::ty::fast_reject::simplify_type(
-            tcx,
-            for_type,
-            ty::fast_reject::TreatParams::AsCandidateKey,
-        )?;
+        let simplified_type =
+            ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
         let defs = impls.non_blanket_impls().get(&simplified_type)?;
         info!("found non-blanket implementations: {:?}", defs);
 
@@ -197,17 +193,17 @@ pub fn try_resolve_trait_impl_did<'tcx>(
 /// Note that this does not, in general, find a unique solution, in case there are complex things
 /// with different where clauses going on.
 pub fn try_resolve_trait_method_did<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_did: DefId,
+    tcx: ty::TyCtxt<'tcx>,
+    trait_did: hir::def_id::DefId,
     trait_args: &[Option<ty::GenericArg<'tcx>>],
     method_name: &str,
     for_type: ty::Ty<'tcx>,
-) -> Option<DefId> {
+) -> Option<hir::def_id::DefId> {
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
 
     let simplified_type =
-        middle::ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
+        ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
     let defs = impls.non_blanket_impls().get(&simplified_type)?;
     info!("found implementations: {:?}", impls);
 
@@ -271,7 +267,7 @@ pub fn try_resolve_trait_method_did<'tcx>(
 /// Try to get a defid of a method at the given path.
 /// This does not handle trait methods.
 /// This also does not handle overlapping method definitions/specialization well.
-pub fn try_resolve_method_did_direct<T>(tcx: TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub fn try_resolve_method_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
 where
     T: AsRef<str>,
 {
@@ -279,18 +275,18 @@ where
         .iter()
         .find(|&&krate| tcx.crate_name(krate).as_str() == path[0].as_ref())
         .and_then(|krate| {
-            let krate = DefId {
+            let krate = hir::def_id::DefId {
                 krate: *krate,
-                index: CRATE_DEF_INDEX,
+                index: hir::def_id::CRATE_DEF_INDEX,
             };
 
-            let mut items: &[middle::metadata::ModChild] = tcx.module_children(krate);
+            let mut items: &[metadata::ModChild] = tcx.module_children(krate);
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
                 //info!("items to look at: {:?}", items);
                 for item in mem::take(&mut items) {
-                    let item: &middle::metadata::ModChild = item;
+                    let item: &metadata::ModChild = item;
 
                     if item.ident.name.as_str() != segment.as_ref() {
                         continue;
@@ -307,8 +303,8 @@ where
                         break;
                     }
 
-                    let did: DefId = item.res.def_id();
-                    let impls: &[DefId] = tcx.inherent_impls(did);
+                    let did: hir::def_id::DefId = item.res.def_id();
+                    let impls: &[hir::def_id::DefId] = tcx.inherent_impls(did);
                     info!("trying to find method among impls {:?}", impls);
 
                     let find = path_it.next().unwrap();
@@ -336,7 +332,7 @@ where
         })
 }
 
-pub fn try_resolve_method_did<T>(tcx: TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub fn try_resolve_method_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
 where
     T: AsRef<str>,
 {

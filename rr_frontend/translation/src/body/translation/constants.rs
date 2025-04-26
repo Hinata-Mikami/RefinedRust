@@ -5,18 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
 
 use super::TX;
 use crate::base::*;
@@ -26,8 +15,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     // TODO: Use `TryFrom` instead
     fn translate_scalar(
         &mut self,
-        sc: &Scalar,
-        ty: Ty<'tcx>,
+        sc: &mir::interpret::Scalar,
+        ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // TODO: Use `TryFrom` instead
         fn translate_literal<'tcx, T, U>(
@@ -38,9 +27,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         match ty.kind() {
-            TyKind::Bool => translate_literal(sc.to_bool(), radium::Literal::Bool),
+            ty::TyKind::Bool => translate_literal(sc.to_bool(), radium::Literal::Bool),
 
-            TyKind::Int(it) => match it {
+            ty::TyKind::Int(it) => match it {
                 ty::IntTy::I8 => translate_literal(sc.to_i8(), radium::Literal::I8),
                 ty::IntTy::I16 => translate_literal(sc.to_i16(), radium::Literal::I16),
                 ty::IntTy::I32 => translate_literal(sc.to_i32(), radium::Literal::I32),
@@ -50,7 +39,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty::IntTy::I64 | ty::IntTy::Isize => translate_literal(sc.to_i64(), radium::Literal::I64),
             },
 
-            TyKind::Uint(it) => match it {
+            ty::TyKind::Uint(it) => match it {
                 ty::UintTy::U8 => translate_literal(sc.to_u8(), radium::Literal::U8),
                 ty::UintTy::U16 => translate_literal(sc.to_u16(), radium::Literal::U16),
                 ty::UintTy::U32 => translate_literal(sc.to_u32(), radium::Literal::U32),
@@ -60,11 +49,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty::UintTy::U64 | ty::UintTy::Usize => translate_literal(sc.to_u64(), radium::Literal::U64),
             },
 
-            TyKind::Char => translate_literal(sc.to_char(), radium::Literal::Char),
+            ty::TyKind::Char => translate_literal(sc.to_char(), radium::Literal::Char),
 
-            TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
+            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
 
-            TyKind::Tuple(tys) => {
+            ty::TyKind::Tuple(tys) => {
                 if tys.is_empty() {
                     return Ok(radium::Expr::Literal(radium::Literal::ZST));
                 }
@@ -77,13 +66,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            TyKind::Ref(_, _, _) => match sc {
-                Scalar::Int(_) => unreachable!(),
+            ty::TyKind::Ref(_, _, _) => match sc {
+                mir::interpret::Scalar::Int(_) => unreachable!(),
 
-                Scalar::Ptr(pointer, _) => {
+                mir::interpret::Scalar::Ptr(pointer, _) => {
                     let glob_alloc = self.env.tcx().global_alloc(pointer.provenance);
                     match glob_alloc {
-                        middle::mir::interpret::GlobalAlloc::Static(did) => {
+                        mir::interpret::GlobalAlloc::Static(did) => {
                             info!(
                                 "Found static GlobalAlloc {:?} for Ref scalar {:?} at type {:?}",
                                 did, sc, ty
@@ -93,7 +82,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             self.collected_statics.insert(did);
                             Ok(radium::Expr::Literal(radium::Literal::Loc(s.loc_name.clone())))
                         },
-                        middle::mir::interpret::GlobalAlloc::Memory(alloc) => {
+                        mir::interpret::GlobalAlloc::Memory(alloc) => {
                             // TODO: this is needed
                             Err(TranslationError::UnsupportedFeature {
                                 description: format!(
@@ -125,14 +114,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_constant_value(
         &mut self,
         v: mir::interpret::ConstValue<'tcx>,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match v {
-            ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
-            ConstValue::ZeroSized => {
+            mir::interpret::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
+            mir::interpret::ConstValue::ZeroSized => {
                 // TODO are there more special cases we need to handle somehow?
                 match ty.kind() {
-                    TyKind::FnDef(_, _) => {
+                    ty::TyKind::FnDef(_, _) => {
                         info!("Translating ZST val for function call target: {:?}", ty);
                         self.translate_fn_def_use(ty)
                     },
@@ -149,17 +138,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Translate a Constant to a `radium::Expr`.
+    /// Translate a `mir::Constant` to a `radium::Expr`.
     pub(super) fn translate_constant(
         &mut self,
-        constant: &Constant<'tcx>,
+        constant: &mir::Constant<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match constant.literal {
-            ConstantKind::Ty(v) => {
+            mir::ConstantKind::Ty(v) => {
                 let const_ty = v.ty();
 
                 match v.kind() {
-                    ConstKind::Value(v) => {
+                    ty::ConstKind::Value(v) => {
                         // this doesn't contain the necessary structure anymore. Need to reconstruct using the
                         // type.
                         match v.try_to_scalar() {
@@ -174,19 +163,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            ConstantKind::Val(val, ty) => self.translate_constant_value(val, ty),
-            ConstantKind::Unevaluated(c, ty) => {
+            mir::ConstantKind::Val(val, ty) => self.translate_constant_value(val, ty),
+            mir::ConstantKind::Unevaluated(c, ty) => {
                 // call const evaluation
                 let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(self.proc.get_id());
                 match self.env.tcx().const_eval_resolve(param_env, c, None) {
                     Ok(res) => self.translate_constant_value(res, ty),
                     Err(e) => match e {
-                        ErrorHandled::Reported(_) => Err(TranslationError::UnsupportedFeature {
-                            description: "Cannot interpret constant".to_owned(),
-                        }),
-                        ErrorHandled::TooGeneric => Err(TranslationError::UnsupportedFeature {
-                            description: "Const use is too generic".to_owned(),
-                        }),
+                        mir::interpret::ErrorHandled::Reported(_) => {
+                            Err(TranslationError::UnsupportedFeature {
+                                description: "Cannot interpret constant".to_owned(),
+                            })
+                        },
+                        mir::interpret::ErrorHandled::TooGeneric => {
+                            Err(TranslationError::UnsupportedFeature {
+                                description: "Const use is too generic".to_owned(),
+                            })
+                        },
                     },
                 }
             },

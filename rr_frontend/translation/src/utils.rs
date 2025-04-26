@@ -5,11 +5,9 @@
 
 //! Utility functions for manipulating places.
 
-use log::{info, trace};
-use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::ty::{self, TyCtxt};
-use rr_rustc_interface::{hir, middle, span};
+use log::trace;
+use rr_rustc_interface::data_structures;
+use rr_rustc_interface::middle::{mir, ty};
 
 use crate::force_matches;
 
@@ -33,7 +31,7 @@ pub fn is_prefix<'tcx>(place: &mir::Place<'tcx>, potential_prefix: &mir::Place<'
 pub fn expand_struct_place<'tcx>(
     place: &mir::Place<'tcx>,
     mir: &mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     without_field: Option<usize>,
 ) -> Vec<mir::Place<'tcx>> {
     let mut places = Vec::new();
@@ -87,7 +85,7 @@ pub fn expand_struct_place<'tcx>(
 /// could have resulted from the expansion.
 pub fn expand_one_level<'tcx>(
     mir: &mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     current_place: mir::Place<'tcx>,
     guide_place: mir::Place<'tcx>,
 ) -> (mir::Place<'tcx>, Vec<mir::Place<'tcx>>) {
@@ -114,7 +112,7 @@ pub fn expand_one_level<'tcx>(
 
 /// Pop the last projection from the place and return the new place with the popped element.
 pub fn try_pop_one_level<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     place: mir::Place<'tcx>,
 ) -> Option<(mir::PlaceElem<'tcx>, mir::Place<'tcx>)> {
     if place.projection.is_empty() {
@@ -131,7 +129,7 @@ pub fn try_pop_one_level<'tcx>(
 }
 
 /// Pop the last element from the place if it is a dereference.
-pub fn try_pop_deref<'tcx>(tcx: TyCtxt<'tcx>, place: mir::Place<'tcx>) -> Option<mir::Place<'tcx>> {
+pub fn try_pop_deref<'tcx>(tcx: ty::TyCtxt<'tcx>, place: mir::Place<'tcx>) -> Option<mir::Place<'tcx>> {
     try_pop_one_level(tcx, place)
         .and_then(|(elem, base)| (elem == mir::ProjectionElem::Deref).then_some(base))
 }
@@ -146,7 +144,7 @@ pub fn try_pop_deref<'tcx>(tcx: TyCtxt<'tcx>, place: mir::Place<'tcx>) -> Option
 /// x.f.f, x.f.h, x.f.g.f, x.f.g.g}`.
 pub fn expand<'tcx>(
     mir: &mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     minuend: &mir::Place<'tcx>,
     subtrahend: &mir::Place<'tcx>,
 ) -> Vec<mir::Place<'tcx>> {
@@ -168,14 +166,14 @@ pub fn expand<'tcx>(
 /// `expand_struct_place`.
 pub fn collapse<'tcx>(
     mir: &mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    places: &mut FxHashSet<mir::Place<'tcx>>,
+    tcx: ty::TyCtxt<'tcx>,
+    places: &mut data_structures::fx::FxHashSet<mir::Place<'tcx>>,
     guide_place: &mir::Place<'tcx>,
 ) {
     fn recurse<'tcx>(
         mir: &mir::Body<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        places: &mut FxHashSet<mir::Place<'tcx>>,
+        tcx: ty::TyCtxt<'tcx>,
+        places: &mut data_structures::fx::FxHashSet<mir::Place<'tcx>>,
         current_place: mir::Place<'tcx>,
         guide_place: mir::Place<'tcx>,
     ) {
@@ -218,7 +216,7 @@ pub struct VecPlace<'tcx> {
 }
 
 impl<'tcx> VecPlace<'tcx> {
-    pub fn new(mir: &mir::Body<'tcx>, tcx: TyCtxt<'tcx>, place: &mir::Place<'tcx>) -> VecPlace<'tcx> {
+    pub fn new(mir: &mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>, place: &mir::Place<'tcx>) -> VecPlace<'tcx> {
         let mut vec_place = Self {
             components: Vec::new(),
         };

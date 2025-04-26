@@ -8,17 +8,13 @@
 //!
 //! [command]: https://rocq-prover.org/doc/v8.20/refman/coq-cmdindex.html
 
-use std::fmt::{self, Write};
+use std::fmt;
 
 use derive_more::Display;
 use from_variants::FromVariants;
-use indent_write::fmt::IndentWriter;
 use indent_write::indentable::Indentable;
 
-use crate::coq::{
-    binder, eval, inductive, module, proof, section, syntax, term, Attribute, Document, ProofDocument,
-    Sentence,
-};
+use crate::coq::{binder, eval, inductive, module, proof, section, syntax, term, Attribute};
 use crate::BASE_INDENT;
 
 /// A [command], with optional attributes.

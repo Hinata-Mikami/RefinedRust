@@ -29,69 +29,68 @@ use std::cell::Cell;
 use std::str::FromStr;
 use std::{fmt, result, vec};
 
-use rr_rustc_interface::ast::token::{BinOpToken, Lit, LitKind, TokenKind};
-use rr_rustc_interface::ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use rr_rustc_interface::span::{Span, Symbol};
+use rr_rustc_interface::ast::token::{BinOpToken, TokenKind};
+use rr_rustc_interface::{ast, span};
 use unicode_xid::UnicodeXID;
 
 pub trait IntoSpans<S> {
     fn into_spans(self) -> S;
 }
 
-impl IntoSpans<[Self; 1]> for Span {
+impl IntoSpans<[Self; 1]> for span::Span {
     fn into_spans(self) -> [Self; 1] {
         [self]
     }
 }
 
-impl IntoSpans<[Self; 2]> for Span {
+impl IntoSpans<[Self; 2]> for span::Span {
     fn into_spans(self) -> [Self; 2] {
         [self, self]
     }
 }
 
-impl IntoSpans<[Self; 3]> for Span {
+impl IntoSpans<[Self; 3]> for span::Span {
     fn into_spans(self) -> [Self; 3] {
         [self, self, self]
     }
 }
 
-impl IntoSpans<[Span; 1]> for [Span; 1] {
-    fn into_spans(self) -> [Span; 1] {
+impl IntoSpans<[span::Span; 1]> for [span::Span; 1] {
+    fn into_spans(self) -> [span::Span; 1] {
         self
     }
 }
 
-impl IntoSpans<[Span; 2]> for [Span; 2] {
-    fn into_spans(self) -> [Span; 2] {
+impl IntoSpans<[span::Span; 2]> for [span::Span; 2] {
+    fn into_spans(self) -> [span::Span; 2] {
         self
     }
 }
 
-impl IntoSpans<[Span; 3]> for [Span; 3] {
-    fn into_spans(self) -> [Span; 3] {
+impl IntoSpans<[span::Span; 3]> for [span::Span; 3] {
+    fn into_spans(self) -> [span::Span; 3] {
         self
     }
 }
 
 pub trait FromSpans: Sized {
-    fn from_spans(spans: &[Span]) -> Self;
+    fn from_spans(spans: &[span::Span]) -> Self;
 }
 
-impl FromSpans for [Span; 1] {
-    fn from_spans(spans: &[Span]) -> Self {
+impl FromSpans for [span::Span; 1] {
+    fn from_spans(spans: &[span::Span]) -> Self {
         [spans[0]]
     }
 }
 
-impl FromSpans for [Span; 2] {
-    fn from_spans(spans: &[Span]) -> Self {
+impl FromSpans for [span::Span; 2] {
+    fn from_spans(spans: &[span::Span]) -> Self {
         [spans[0], spans[1]]
     }
 }
 
-impl FromSpans for [Span; 3] {
-    fn from_spans(spans: &[Span]) -> Self {
+impl FromSpans for [span::Span; 3] {
+    fn from_spans(spans: &[span::Span]) -> Self {
         [spans[0], spans[1], spans[2]]
     }
 }
@@ -99,12 +98,12 @@ impl FromSpans for [Span; 3] {
 #[derive(Debug)]
 pub enum Error {
     EOF,
-    WrongTokenKind(TokenKind, TokenKind, Span),
-    UnexpectedDelim(DelimSpan),
-    ExpectedIdent(TokenKind, Span),
-    ExpectedLiteral(TokenKind, Span),
-    UnexpectedLitKind(LitKind, LitKind),
-    OtherErr(Span, String),
+    WrongTokenKind(ast::token::TokenKind, ast::token::TokenKind, span::Span),
+    UnexpectedDelim(ast::tokenstream::DelimSpan),
+    ExpectedIdent(ast::token::TokenKind, span::Span),
+    ExpectedLiteral(ast::token::TokenKind, span::Span),
+    UnexpectedLitKind(ast::token::LitKind, ast::token::LitKind),
+    OtherErr(span::Span, String),
 }
 
 pub type Result<T> = result::Result<T, Error>;
@@ -114,15 +113,15 @@ pub type Result<T> = result::Result<T, Error>;
 // having multiple different cursors at once into the same vector.
 #[derive(Clone, Debug)]
 pub struct Buffer {
-    trees: Vec<TokenTree>,
+    trees: Vec<ast::tokenstream::TokenTree>,
     index: Cell<usize>,
 }
 
 impl Buffer {
     #[must_use]
-    pub fn new(stream: &TokenStream) -> Self {
+    pub fn new(stream: &ast::tokenstream::TokenStream) -> Self {
         // TODO; maybe avoid the cloning
-        let trees: Vec<TokenTree> = stream.trees().cloned().collect();
+        let trees: Vec<ast::tokenstream::TokenTree> = stream.trees().cloned().collect();
 
         Self {
             trees,
@@ -141,11 +140,11 @@ impl Buffer {
         function(self)
     }
 
-    pub fn pos(&self) -> Option<Span> {
-        self.trees.get(self.index.get()).map(TokenTree::span)
+    pub fn pos(&self) -> Option<span::Span> {
+        self.trees.get(self.index.get()).map(ast::tokenstream::TokenTree::span)
     }
 
-    pub fn peek(&self, n: usize) -> Result<&TokenTree> {
+    pub fn peek(&self, n: usize) -> Result<&ast::tokenstream::TokenTree> {
         self.trees.get(self.index.get() + n).ok_or(Error::EOF)
     }
 
@@ -153,7 +152,7 @@ impl Buffer {
         self.index.set(self.index.get() + n);
     }
 
-    pub fn advance_get(&self) -> Result<&TokenTree> {
+    pub fn advance_get(&self) -> Result<&ast::tokenstream::TokenTree> {
         let i = self.index.get();
         let r = self.trees.get(i).ok_or(Error::EOF)?;
         self.index.set(i + 1);
@@ -165,20 +164,20 @@ impl Buffer {
     }
 
     /// Check if the next symbol is a token matching the given kind.
-    pub fn peek_token(&self, token: &TokenKind) -> bool {
+    pub fn peek_token(&self, token: &ast::token::TokenKind) -> bool {
         let tok = self.peek(0);
 
         match tok {
-            Ok(TokenTree::Token(tok, _)) => tok.kind == *token,
+            Ok(ast::tokenstream::TokenTree::Token(tok, _)) => tok.kind == *token,
             _ => false,
         }
     }
 
     /// Consume a token of the given kind.
-    pub fn expect_token(&self, token: TokenKind) -> Result<Span> {
+    pub fn expect_token(&self, token: ast::token::TokenKind) -> Result<span::Span> {
         let tok = self.peek(0)?;
         match tok {
-            TokenTree::Token(tok, _) => {
+            ast::tokenstream::TokenTree::Token(tok, _) => {
                 if tok.kind == token {
                     self.advance(1);
                     Ok(tok.span)
@@ -186,37 +185,37 @@ impl Buffer {
                     Err(Error::WrongTokenKind(token, tok.kind.clone(), tok.span))
                 }
             },
-            TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 
     /// Consume an identifier.
-    pub fn expect_ident(&self) -> Result<(Symbol, Span)> {
+    pub fn expect_ident(&self) -> Result<(span::Symbol, span::Span)> {
         let tok = self.peek(0)?;
         match tok {
-            TokenTree::Token(tok, _) => match tok.kind {
-                TokenKind::Ident(sym, _) => {
+            ast::tokenstream::TokenTree::Token(tok, _) => match tok.kind {
+                ast::token::TokenKind::Ident(sym, _) => {
                     self.advance(1);
                     Ok((sym, tok.span))
                 },
                 _ => Err(Error::ExpectedIdent(tok.kind.clone(), tok.span)),
             },
-            TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 
     /// Consume a literal.
-    pub fn expect_literal(&self) -> Result<(Lit, Span)> {
+    pub fn expect_literal(&self) -> Result<(ast::token::Lit, span::Span)> {
         let tok = self.peek(0)?;
         match tok {
-            TokenTree::Token(tok, _) => match tok.kind {
-                TokenKind::Literal(lit) => {
+            ast::tokenstream::TokenTree::Token(tok, _) => match tok.kind {
+                ast::token::TokenKind::Literal(lit) => {
                     self.advance(1);
                     Ok((lit, tok.span))
                 },
                 _ => Err(Error::ExpectedLiteral(tok.kind.clone(), tok.span)),
             },
-            TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 }
@@ -255,7 +254,7 @@ macro_rules! define_punctuation_structs {
             /// Don't try to remember the name of this type &mdash; use the
             /// [`MToken!`] macro instead.
             pub struct $name {
-                pub span: Span,
+                pub span: span::Span,
             }
 
             //#[doc(hidden)]
@@ -435,11 +434,9 @@ macro_rules! MToken {
     [_]           => { $crate::parse::Underscore };
 }
 
-pub(crate) use MToken;
-
 pub struct LitStr {
-    span: Span,
-    sym: Symbol,
+    span: span::Span,
+    sym: span::Symbol,
 }
 
 impl LitStr {
@@ -456,18 +453,18 @@ where
     fn parse(input: Stream, _: &U) -> Result<Self> {
         let lit = input.expect_literal()?;
         match lit.0.kind {
-            LitKind::Str => Ok(Self {
+            ast::token::LitKind::Str => Ok(Self {
                 span: lit.1,
                 sym: lit.0.symbol,
             }),
-            _ => Err(Error::UnexpectedLitKind(LitKind::Str, lit.0.kind)),
+            _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Str, lit.0.kind)),
         }
     }
 }
 
 pub struct Ident {
-    span: Span,
-    sym: Symbol,
+    span: span::Span,
+    sym: span::Symbol,
 }
 
 impl<U> Parse<U> for Ident
@@ -488,8 +485,8 @@ impl Ident {
 }
 
 pub struct LitInt {
-    span: Span,
-    sym: Symbol,
+    span: span::Span,
+    sym: span::Symbol,
     digits: Box<str>,
     suffix: Box<str>,
 }
@@ -514,7 +511,7 @@ where
     fn parse(input: Stream, _: &U) -> Result<Self> {
         let (lit, span) = input.expect_literal()?;
         match lit.kind {
-            LitKind::Integer => {
+            ast::token::LitKind::Integer => {
                 let sym = lit.symbol;
 
                 let Some((digits, suffix)) = value::parse_lit_int(&sym.to_string()) else {
@@ -528,7 +525,7 @@ where
                     suffix,
                 })
             },
-            _ => Err(Error::UnexpectedLitKind(LitKind::Integer, lit.kind)),
+            _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Integer, lit.kind)),
         }
     }
 }

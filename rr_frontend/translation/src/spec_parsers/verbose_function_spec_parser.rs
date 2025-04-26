@@ -10,10 +10,12 @@ use attribute_parse::{parse, MToken};
 use log::{info, warn};
 use parse::{Parse, Peek};
 use radium::{coq, model, push_str_list, specs};
-use rr_rustc_interface::ast::ast::AttrItem;
+use rr_rustc_interface::ast;
 use rr_rustc_interface::middle::ty;
 
-use crate::spec_parsers::parse_utils::*;
+use crate::spec_parsers::parse_utils::{
+    str_err, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem, RRParam, RRParams,
+};
 
 pub struct ClosureMetaInfo<'a, 'tcx, 'def> {
     /// the closure kind
@@ -33,7 +35,7 @@ pub trait FunctionSpecParser<'def> {
     /// that it does not need to deal with any other attributes.
     fn parse_function_spec<'a>(
         &'a mut self,
-        attrs: &'a [&'a AttrItem],
+        attrs: &'a [&'a ast::ast::AttrItem],
         spec: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String>;
 
@@ -42,7 +44,7 @@ pub trait FunctionSpecParser<'def> {
     /// that it does not need to deal with any other attributes.
     fn parse_closure_spec<'tcx, 'a, 'c, F>(
         &'a mut self,
-        attrs: &'a [&'a AttrItem],
+        attrs: &'a [&'a ast::ast::AttrItem],
         spec: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
         meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         make_tuple: F,
@@ -641,7 +643,7 @@ where
 {
     fn parse_closure_spec<'tcx, 'b, 'c, H>(
         &'b mut self,
-        attrs: &'b [&'b AttrItem],
+        attrs: &'b [&'b ast::ast::AttrItem],
         builder: &'b mut radium::LiteralFunctionSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         make_tuple: H,
@@ -714,7 +716,7 @@ where
 
     fn parse_function_spec(
         &mut self,
-        attrs: &[&AttrItem],
+        attrs: &[&ast::ast::AttrItem],
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String> {
         for &it in attrs {

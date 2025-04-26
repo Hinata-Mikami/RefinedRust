@@ -1,20 +1,9 @@
-use std::collections::HashMap;
 use std::mem;
 
-use log::{info, trace};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{
-    AssocItem, AssocItemContainer, GenericArgsRef, ParamEnv, TraitRef, TyCtxt, TypeVisitableExt,
-};
-use rr_rustc_interface::trait_selection::traits::{ImplSource, ImplSourceUserDefinedData, NormalizeExt};
-use rr_rustc_interface::{middle, trait_selection};
-
-use crate::traits::resolution::normalize_type;
 
 pub trait RegionBiFolder<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx>;
+    fn tcx(&self) -> ty::TyCtxt<'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>);

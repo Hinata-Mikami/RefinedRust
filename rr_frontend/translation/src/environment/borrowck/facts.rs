@@ -5,8 +5,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
-use std::{cmp, fmt};
 
 use rr_rustc_interface::borrowck;
 use rr_rustc_interface::borrowck::consumers::{LocationTable, RichLocation, RustcFacts};

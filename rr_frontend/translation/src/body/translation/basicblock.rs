@@ -4,40 +4,28 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+use std::collections::HashSet;
 
 use log::info;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
-use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
+use rr_rustc_interface::middle::mir;
 
 use super::TX;
 use crate::base::*;
-use crate::traits::{registry, resolution};
-use crate::{base, consts, procedures, regions, search, traits, types};
+use crate::regions;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a single basic block.
     pub(super) fn translate_basic_block(
         &mut self,
-        bb_idx: BasicBlock,
-        bb: &BasicBlockData<'tcx>,
+        bb_idx: mir::BasicBlock,
+        bb: &mir::BasicBlockData<'tcx>,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
         // we translate from back to front, starting with the terminator, since Caesium statements
         // have a continuation (the next statement to execute)
 
         // first do the endlfts for the things right before the terminator
         let mut idx = bb.statements.len();
-        let loc = Location {
+        let loc = mir::Location {
             block: bb_idx,
             statement_index: idx,
         };
@@ -51,7 +39,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         for stmt in bb.statements.iter().rev() {
             idx -= 1;
-            let loc = Location {
+            let loc = mir::Location {
                 block: bb_idx,
                 statement_index: idx,
             };
@@ -75,7 +63,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // we prepend them before the current statement
 
             match &stmt.kind {
-                StatementKind::Assign(b) => {
+                mir::StatementKind::Assign(b) => {
                     let (plc, val) = b.as_ref();
 
                     if (self.is_spec_closure_local(plc.local)?).is_some() {
@@ -162,25 +150,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }
                 },
 
-                StatementKind::Deinit(_) => {
+                mir::StatementKind::Deinit(_) => {
                     // TODO: find out where this is emitted
                     return Err(TranslationError::UnsupportedFeature {
                         description: "RefinedRust does currently not support Deinit".to_owned(),
                     });
                 },
 
-                StatementKind::FakeRead(b) => {
+                mir::StatementKind::FakeRead(b) => {
                     // we can probably ignore this, but I'm not sure
                     info!("Ignoring FakeRead: {:?}", b);
                 },
 
-                StatementKind::Intrinsic(intrinsic) => {
+                mir::StatementKind::Intrinsic(intrinsic) => {
                     match intrinsic.as_ref() {
-                        NonDivergingIntrinsic::Assume(_) => {
+                        mir::NonDivergingIntrinsic::Assume(_) => {
                             // ignore
                             info!("Ignoring Assume: {:?}", intrinsic);
                         },
-                        NonDivergingIntrinsic::CopyNonOverlapping(_) => {
+                        mir::NonDivergingIntrinsic::CopyNonOverlapping(_) => {
                             return Err(TranslationError::UnsupportedFeature {
                                 description: "RefinedRust does currently not support the CopyNonOverlapping Intrinsic".to_owned(),
                             });
@@ -188,12 +176,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }
                 },
 
-                StatementKind::PlaceMention(place) => {
+                mir::StatementKind::PlaceMention(place) => {
                     // TODO: this is missed UB
                     info!("Ignoring PlaceMention: {:?}", place);
                 },
 
-                StatementKind::SetDiscriminant {
+                mir::StatementKind::SetDiscriminant {
                     place: _place,
                     variant_index: _variant_index,
                 } => {
@@ -204,19 +192,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
 
                 // don't need that info
-                | StatementKind::AscribeUserType(_, _)
+                | mir::StatementKind::AscribeUserType(_, _)
                 // don't need that
-                | StatementKind::Coverage(_)
+                | mir::StatementKind::Coverage(_)
                 // no-op
-                | StatementKind::ConstEvalCounter
+                | mir::StatementKind::ConstEvalCounter
                 // ignore
-                | StatementKind::Nop
+                | mir::StatementKind::Nop
                 // just ignore
-                | StatementKind::StorageLive(_)
+                | mir::StatementKind::StorageLive(_)
                 // just ignore
-                | StatementKind::StorageDead(_)
+                | mir::StatementKind::StorageDead(_)
                 // just ignore retags
-                | StatementKind::Retag(_, _) => (),
+                | mir::StatementKind::Retag(_, _) => (),
             }
 
             cont_stmt = self.prepend_endlfts(cont_stmt, dying_loans.into_iter());
@@ -226,9 +214,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get predecessors in the CFG.
-    fn get_loc_predecessors(&self, loc: Location) -> Vec<Location> {
+    fn get_loc_predecessors(&self, loc: mir::Location) -> Vec<mir::Location> {
         if loc.statement_index > 0 {
-            let pred = Location {
+            let pred = mir::Location {
                 block: loc.block,
                 statement_index: loc.statement_index - 1,
             };
@@ -241,7 +229,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .iter()
                 .map(|bb| {
                     let data = &basic_blocks[*bb];
-                    Location {
+                    mir::Location {
                         block: *bb,
                         statement_index: data.statements.len(),
                     }

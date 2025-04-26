@@ -9,9 +9,8 @@ use std::collections::{HashMap, HashSet};
 use log::{debug, info, trace};
 use rr_rustc_interface::data_structures::graph::dominators::{dominators, Dominators};
 use rr_rustc_interface::index::{Idx, IndexVec};
-use rr_rustc_interface::middle;
 use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::mir::visit::{PlaceContext, Visitor};
+use rr_rustc_interface::middle::mir::visit::Visitor;
 
 use crate::environment::mir_sets::place_set::PlaceSet;
 use crate::environment::mir_utils::real_edges::RealEdges;
@@ -88,7 +87,7 @@ struct AccessCollector<'b, 'tcx> {
     pub accessed_places: Vec<PlaceAccess<'tcx>>,
 }
 
-impl<'b, 'tcx> Visitor<'tcx> for AccessCollector<'b, 'tcx> {
+impl<'b, 'tcx> mir::visit::Visitor<'tcx> for AccessCollector<'b, 'tcx> {
     fn visit_place(
         &mut self,
         place: &mir::Place<'tcx>,
@@ -105,26 +104,30 @@ impl<'b, 'tcx> Visitor<'tcx> for AccessCollector<'b, 'tcx> {
 
         #[allow(clippy::unnested_or_patterns)]
         let access_kind = match context {
-            PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Store)
-            | PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Call) => PlaceAccessKind::Store,
+            mir::visit::PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Store)
+            | mir::visit::PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Call) => {
+                PlaceAccessKind::Store
+            },
 
-            PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Move)
-            | PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Drop) => PlaceAccessKind::Move,
+            mir::visit::PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Move)
+            | mir::visit::PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Drop) => {
+                PlaceAccessKind::Move
+            },
 
-            PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Copy)
-            | PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Inspect) => {
+            mir::visit::PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Copy)
+            | mir::visit::PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::Inspect) => {
                 PlaceAccessKind::Read
             },
 
-            PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Borrow) => {
+            mir::visit::PlaceContext::MutatingUse(mir::visit::MutatingUseContext::Borrow) => {
                 PlaceAccessKind::MutableBorrow
             },
 
-            PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::SharedBorrow) => {
+            mir::visit::PlaceContext::NonMutatingUse(mir::visit::NonMutatingUseContext::SharedBorrow) => {
                 PlaceAccessKind::SharedBorrow
             },
 
-            PlaceContext::NonUse(_) => unreachable!(),
+            mir::visit::PlaceContext::NonUse(_) => unreachable!(),
             x => unimplemented!("{:?}", x),
         };
 
@@ -379,7 +382,7 @@ impl ProcedureLoops {
     }
 
     #[must_use]
-    pub const fn get_back_edges(&self) -> &HashSet<(middle::mir::BasicBlock, middle::mir::BasicBlock)> {
+    pub const fn get_back_edges(&self) -> &HashSet<(mir::BasicBlock, mir::BasicBlock)> {
         &self.back_edges
     }
 

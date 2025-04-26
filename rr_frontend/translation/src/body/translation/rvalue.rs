@@ -6,19 +6,8 @@
 
 use log::{info, trace};
 use radium::coq;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::index::IndexVec;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
+use rr_rustc_interface::{abi, index};
 
 use super::TX;
 use crate::base::*;
@@ -28,13 +17,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate an aggregate expression.
     fn translate_aggregate(
         &mut self,
-        loc: Location,
+        loc: mir::Location,
         kind: &mir::AggregateKind<'tcx>,
-        op: &IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // translate operands
         let mut translated_ops: Vec<radium::Expr> = Vec::new();
-        let mut operand_types: Vec<Ty<'tcx>> = Vec::new();
+        let mut operand_types: Vec<ty::Ty<'tcx>> = Vec::new();
 
         for o in op {
             let translated_o = self.translate_operand(o, true)?;
@@ -221,7 +210,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
-                    (TyKind::RawPtr(_), TyKind::RawPtr(_)) => {
+                    (ty::TyKind::RawPtr(_), ty::TyKind::RawPtr(_)) => {
                         // Casts between raw pointers are NOPs for us
                         Ok(translated_op)
                     },
@@ -272,18 +261,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// does not typecheck, and produces a stuck program).
     pub(super) fn translate_operand(
         &mut self,
-        op: &Operand<'tcx>,
+        op: &mir::Operand<'tcx>,
         to_rvalue: bool,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match op {
             // In Caesium: typed_place needs deref (not use) for place accesses.
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
-            Operand::Copy(place) | Operand::Move(place) => {
+            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
                 // check if this goes to a temporary of a checked op
                 let place_kind = if self.checked_op_temporaries.contains_key(&place.local) {
                     assert!(place.projection.len() == 1);
 
-                    let ProjectionElem::Field(f, _0) = place.projection[0] else {
+                    let mir::ProjectionElem::Field(f, _0) = place.projection[0] else {
                         unreachable!("invariant violation for access to checked op temporary");
                     };
 
@@ -313,7 +302,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     Ok(translated_place)
                 }
             },
-            Operand::Constant(constant) => {
+            mir::Operand::Constant(constant) => {
                 // TODO: possibly need different handling of the rvalue flag
                 // when this also handles string literals etc.
                 return self.translate_constant(constant.as_ref());
@@ -324,16 +313,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translates an Rvalue.
     pub(super) fn translate_rvalue(
         &mut self,
-        loc: Location,
-        rval: &Rvalue<'tcx>,
+        loc: mir::Location,
+        rval: &mir::Rvalue<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match rval {
-            Rvalue::Use(op) => {
+            mir::Rvalue::Use(op) => {
                 // converts an lvalue to an rvalue
                 self.translate_operand(op, true)
             },
 
-            Rvalue::Ref(region, bk, pl) => {
+            mir::Rvalue::Ref(region, bk, pl) => {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_bk = TX::translate_borrow_kind(*bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
@@ -361,7 +350,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             },
 
-            Rvalue::AddressOf(mt, pl) => {
+            mir::Rvalue::AddressOf(mt, pl) => {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_mt = TX::translate_mutability(*mt);
 
@@ -371,7 +360,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::BinaryOp(op, operands) => {
+            mir::Rvalue::BinaryOp(op, operands) => {
                 let e1 = &operands.as_ref().0;
                 let e2 = &operands.as_ref().1;
 
@@ -393,7 +382,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::CheckedBinaryOp(op, operands) => {
+            mir::Rvalue::CheckedBinaryOp(op, operands) => {
                 let e1 = &operands.as_ref().0;
                 let e2 = &operands.as_ref().1;
 
@@ -415,7 +404,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::UnaryOp(op, operand) => {
+            mir::Rvalue::UnaryOp(op, operand) => {
                 let translated_e1 = self.translate_operand(operand, true)?;
                 let e1_ty = self.get_type_of_operand(operand);
                 let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
@@ -428,7 +417,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::NullaryOp(op, _ty) => {
+            mir::Rvalue::NullaryOp(op, _ty) => {
                 // TODO: SizeOf
                 Err(TranslationError::UnsupportedFeature {
                     description: "RefinedRust does currently not support nullary ops (AlignOf, Sizeof)"
@@ -436,7 +425,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::Discriminant(pl) => {
+            mir::Rvalue::Discriminant(pl) => {
                 let ty = self.get_type_of_place(pl);
                 let translated_pl = self.translate_place(pl)?;
                 info!("getting discriminant of {:?} at type {:?}", pl, ty);
@@ -477,15 +466,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            Rvalue::Aggregate(kind, op) => self.translate_aggregate(loc, kind.as_ref(), op),
+            mir::Rvalue::Aggregate(kind, op) => self.translate_aggregate(loc, kind.as_ref(), op),
 
-            Rvalue::Cast(kind, op, to_ty) => self.translate_cast(*kind, op, *to_ty),
+            mir::Rvalue::Cast(kind, op, to_ty) => self.translate_cast(*kind, op, *to_ty),
 
-            Rvalue::CopyForDeref(_)
-            | Rvalue::Len(..)
-            | Rvalue::Repeat(..)
-            | Rvalue::ThreadLocalRef(..)
-            | Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {
+            mir::Rvalue::CopyForDeref(_)
+            | mir::Rvalue::Len(..)
+            | mir::Rvalue::Repeat(..)
+            | mir::Rvalue::ThreadLocalRef(..)
+            | mir::Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {
                 description: format!(
                     "RefinedRust does currently not support this kind of rvalue (got: {:?})",
                     rval
@@ -497,10 +486,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get the type to annotate a borrow with.
     fn get_type_annotation_for_borrow(
         &self,
-        bk: BorrowKind,
-        pl: &Place<'tcx>,
+        bk: mir::BorrowKind,
+        pl: &mir::Place<'tcx>,
     ) -> Result<Option<radium::RustType>, TranslationError<'tcx>> {
-        let BorrowKind::Mut { .. } = bk else {
+        let mir::BorrowKind::Mut { .. } = bk else {
             return Ok(None);
         };
 
@@ -518,31 +507,31 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Caesium layout annotation.
     fn translate_binop(
         &self,
-        op: BinOp,
-        e1: &Operand<'tcx>,
-        _e2: &Operand<'tcx>,
+        op: mir::BinOp,
+        e1: &mir::Operand<'tcx>,
+        _e2: &mir::Operand<'tcx>,
     ) -> Result<radium::Binop, TranslationError<'tcx>> {
         match op {
-            BinOp::Add | BinOp::AddUnchecked => Ok(radium::Binop::Add),
-            BinOp::Sub | BinOp::SubUnchecked => Ok(radium::Binop::Sub),
-            BinOp::Mul | BinOp::MulUnchecked => Ok(radium::Binop::Mul),
-            BinOp::Div => Ok(radium::Binop::Div),
-            BinOp::Rem => Ok(radium::Binop::Mod),
+            mir::BinOp::Add | mir::BinOp::AddUnchecked => Ok(radium::Binop::Add),
+            mir::BinOp::Sub | mir::BinOp::SubUnchecked => Ok(radium::Binop::Sub),
+            mir::BinOp::Mul | mir::BinOp::MulUnchecked => Ok(radium::Binop::Mul),
+            mir::BinOp::Div => Ok(radium::Binop::Div),
+            mir::BinOp::Rem => Ok(radium::Binop::Mod),
 
-            BinOp::BitXor => Ok(radium::Binop::BitXor),
-            BinOp::BitAnd => Ok(radium::Binop::BitAnd),
-            BinOp::BitOr => Ok(radium::Binop::BitOr),
-            BinOp::Shl | BinOp::ShlUnchecked => Ok(radium::Binop::Shl),
-            BinOp::Shr | BinOp::ShrUnchecked => Ok(radium::Binop::Shr),
+            mir::BinOp::BitXor => Ok(radium::Binop::BitXor),
+            mir::BinOp::BitAnd => Ok(radium::Binop::BitAnd),
+            mir::BinOp::BitOr => Ok(radium::Binop::BitOr),
+            mir::BinOp::Shl | mir::BinOp::ShlUnchecked => Ok(radium::Binop::Shl),
+            mir::BinOp::Shr | mir::BinOp::ShrUnchecked => Ok(radium::Binop::Shr),
 
-            BinOp::Eq => Ok(radium::Binop::Eq),
-            BinOp::Lt => Ok(radium::Binop::Lt),
-            BinOp::Le => Ok(radium::Binop::Le),
-            BinOp::Ne => Ok(radium::Binop::Ne),
-            BinOp::Ge => Ok(radium::Binop::Ge),
-            BinOp::Gt => Ok(radium::Binop::Gt),
+            mir::BinOp::Eq => Ok(radium::Binop::Eq),
+            mir::BinOp::Lt => Ok(radium::Binop::Lt),
+            mir::BinOp::Le => Ok(radium::Binop::Le),
+            mir::BinOp::Ne => Ok(radium::Binop::Ne),
+            mir::BinOp::Ge => Ok(radium::Binop::Ge),
+            mir::BinOp::Gt => Ok(radium::Binop::Gt),
 
-            BinOp::Offset => {
+            mir::BinOp::Offset => {
                 // we need to get the layout of the thing we're offsetting
                 // try to get the type of e1.
                 let e1_ty = self.get_type_of_operand(e1);
@@ -555,10 +544,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the inner type of a type to which we can apply the offset operator.
-    fn get_offset_ty(ty: Ty<'tcx>) -> Result<Ty<'tcx>, TranslationError<'tcx>> {
+    fn get_offset_ty(ty: ty::Ty<'tcx>) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         match ty.kind() {
-            TyKind::Array(t, _) | TyKind::Slice(t) | TyKind::Ref(_, t, _) => Ok(*t),
-            TyKind::RawPtr(tm) => Ok(tm.ty),
+            ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
+            ty::TyKind::RawPtr(tm) => Ok(tm.ty),
             _ => Err(TranslationError::UnknownError(format!("cannot take offset of {}", ty))),
         }
     }
@@ -566,15 +555,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate checked binary operators.
     /// We need access to the operands, too, to handle the offset operator and get the right
     /// Caesium layout annotation.
-    fn translate_checked_binop(op: BinOp) -> Result<radium::Binop, TranslationError<'tcx>> {
+    fn translate_checked_binop(op: mir::BinOp) -> Result<radium::Binop, TranslationError<'tcx>> {
         match op {
-            BinOp::Add => Ok(radium::Binop::CheckedAdd),
-            BinOp::Sub => Ok(radium::Binop::CheckedSub),
-            BinOp::Mul => Ok(radium::Binop::CheckedMul),
-            BinOp::Shl => Err(TranslationError::UnsupportedFeature {
+            mir::BinOp::Add => Ok(radium::Binop::CheckedAdd),
+            mir::BinOp::Sub => Ok(radium::Binop::CheckedSub),
+            mir::BinOp::Mul => Ok(radium::Binop::CheckedMul),
+            mir::BinOp::Shl => Err(TranslationError::UnsupportedFeature {
                 description: "RefinedRust does currently not support checked Shl".to_owned(),
             }),
-            BinOp::Shr => Err(TranslationError::UnsupportedFeature {
+            mir::BinOp::Shr => Err(TranslationError::UnsupportedFeature {
                 description: "RefinedRust does currently not support checked Shr".to_owned(),
             }),
             _ => Err(TranslationError::UnknownError(
@@ -584,41 +573,41 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate unary operators.
-    fn translate_unop(op: UnOp, ty: Ty<'tcx>) -> Result<radium::Unop, TranslationError<'tcx>> {
+    fn translate_unop(op: mir::UnOp, ty: ty::Ty<'tcx>) -> Result<radium::Unop, TranslationError<'tcx>> {
         match op {
-            UnOp::Not => match ty.kind() {
+            mir::UnOp::Not => match ty.kind() {
                 ty::TyKind::Bool => Ok(radium::Unop::NotBool),
                 ty::TyKind::Int(_) | ty::TyKind::Uint(_) => Ok(radium::Unop::NotInt),
                 _ => Err(TranslationError::UnknownError(
                     "application of UnOp::Not to non-{Int, Bool}".to_owned(),
                 )),
             },
-            UnOp::Neg => Ok(radium::Unop::Neg),
+            mir::UnOp::Neg => Ok(radium::Unop::Neg),
         }
     }
 
     /// Translate a `BorrowKind`.
-    fn translate_borrow_kind(kind: BorrowKind) -> Result<radium::BorKind, TranslationError<'tcx>> {
+    fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<radium::BorKind, TranslationError<'tcx>> {
         match kind {
-            BorrowKind::Shared => Ok(radium::BorKind::Shared),
-            BorrowKind::Shallow => {
+            mir::BorrowKind::Shared => Ok(radium::BorKind::Shared),
+            mir::BorrowKind::Shallow => {
                 // TODO: figure out what to do with this
                 // arises in match lowering
                 Err(TranslationError::UnsupportedFeature {
                     description: "RefinedRust does currently not support shallow borrows".to_owned(),
                 })
             },
-            BorrowKind::Mut { .. } => {
+            mir::BorrowKind::Mut { .. } => {
                 // TODO: handle two-phase borrows?
                 Ok(radium::BorKind::Mutable)
             },
         }
     }
 
-    const fn translate_mutability(mt: Mutability) -> radium::Mutability {
+    const fn translate_mutability(mt: mir::Mutability) -> radium::Mutability {
         match mt {
-            Mutability::Mut => radium::Mutability::Mut,
-            Mutability::Not => radium::Mutability::Shared,
+            mir::Mutability::Mut => radium::Mutability::Mut,
+            mir::Mutability::Not => radium::Mutability::Shared,
         }
     }
 }

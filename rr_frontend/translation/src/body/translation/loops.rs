@@ -5,19 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use radium::coq;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, Location, Mutability,
-    NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, TerminatorKind,
-    UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
-use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
+use rr_rustc_interface::hir;
+use rr_rustc_interface::middle::mir;
 
 use super::TX;
 use crate::attrs;
@@ -30,8 +19,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// to the generated code.
     pub(super) fn parse_attributes_on_loop_spec_closure(
         &self,
-        loop_head: BasicBlock,
-        did: Option<DefId>,
+        loop_head: mir::BasicBlock,
+        did: Option<hir::def_id::DefId>,
     ) -> Result<radium::LoopSpec, TranslationError<'tcx>> {
         // determine invariant on initialization:
         // - we need this both for the refinement invariant (though this could be removed if we make uninit
@@ -84,8 +73,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Find the optional `DefId` of the closure giving the invariant for the loop with head `head_bb`.
     pub(super) fn find_loop_spec_closure(
         &self,
-        head_bb: BasicBlock,
-    ) -> Result<Option<DefId>, TranslationError<'tcx>> {
+        head_bb: mir::BasicBlock,
+    ) -> Result<Option<hir::def_id::DefId>, TranslationError<'tcx>> {
         let bodies = self.proc.loop_info().get_loop_body(head_bb);
         let basic_blocks = &self.proc.get_mir().basic_blocks;
 
@@ -97,7 +86,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // check the statements for an assignment
                 let data = basic_blocks.get(*body).unwrap();
                 for stmt in &data.statements {
-                    if let StatementKind::Assign(box (pl, _)) = stmt.kind {
+                    if let mir::StatementKind::Assign(box (pl, _)) = stmt.kind {
                         if let Some(did) = self.is_spec_closure_local(pl.local)? {
                             return Ok(Some(did));
                         }

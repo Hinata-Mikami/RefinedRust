@@ -8,13 +8,10 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use log::{info, warn};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::{BasicBlock, Location};
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::Ty;
+use log::info;
+use rr_rustc_interface::middle::{mir, ty};
 
-use crate::base;
+use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::{polonius_info, Environment};
@@ -54,7 +51,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 
             match *r {
                 ty::RegionKind::ReEarlyBound(r) => {
-                    let name = base::strip_coq_ident(r.name.as_str());
+                    let name = strip_coq_ident(r.name.as_str());
                     universal_lifetimes.insert(next_id, format!("ulft_{}", name));
                     lifetime_names.insert(name, next_id);
                 },
@@ -85,7 +82,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 
         match r {
             ty::BoundRegionKind::BrNamed(_, sym) => {
-                let mut region_name = base::strip_coq_ident(sym.as_str());
+                let mut region_name = strip_coq_ident(sym.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();
                     universal_lifetimes.insert(next_id, format!("ulft_{}", region_name));
@@ -138,8 +135,8 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 /// These get subsequently relabeled.
 /// Given the relabeled region, find the original placeholder region.
 pub fn find_placeholder_region_for(r: ty::RegionVid, info: &PoloniusInfo) -> Option<ty::RegionVid> {
-    let root_location = Location {
-        block: BasicBlock::from_u32(0),
+    let root_location = mir::Location {
+        block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
     };
     let root_point = info.interner.get_point_index(&facts::Point {
@@ -167,8 +164,8 @@ pub fn get_relevant_universal_constraints<'a>(
     let input_facts = &info.borrowck_in_facts;
     let placeholder_subset = &input_facts.known_placeholder_subset;
 
-    let root_location = Location {
-        block: BasicBlock::from_u32(0),
+    let root_location = mir::Location {
+        block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
     };
     let root_point = info.interner.get_point_index(&facts::Point {
@@ -213,16 +210,16 @@ pub fn get_relevant_universal_constraints<'a>(
 pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     info: &'a PoloniusInfo<'a, 'tcx>,
     inclusion_tracker: &mut InclusionTracker<'a, 'tcx>,
-    _sig_args: &[Ty<'tcx>],
-    _local_args: &[Ty<'tcx>],
+    _sig_args: &[ty::Ty<'tcx>],
+    _local_args: &[ty::Ty<'tcx>],
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
     // Polonius generates a base subset constraint uregion ⊑ pregion.
     // We turn that into pregion = uregion, as we do strong updates at the top-level.
     let input_facts = &info.borrowck_in_facts;
     let subset_base = &input_facts.subset_base;
 
-    let root_location = Location {
-        block: BasicBlock::from_u32(0),
+    let root_location = mir::Location {
+        block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
     };
     let root_point = info.interner.get_point_index(&facts::Point {
@@ -260,8 +257,8 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
 }
 
 pub fn get_initial_universal_arg_constraints2<'tcx>(
-    sig_args: &[Ty<'tcx>],
-    local_args: &[Ty<'tcx>],
+    sig_args: &[ty::Ty<'tcx>],
+    local_args: &[ty::Ty<'tcx>],
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
     // Polonius generates a base subset constraint uregion ⊑ pregion.
     // We turn that into pregion = uregion, as we do strong updates at the top-level.

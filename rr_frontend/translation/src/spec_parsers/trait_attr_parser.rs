@@ -9,15 +9,18 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
 use radium::coq;
-use rr_rustc_interface::ast::ast::AttrItem;
+use rr_rustc_interface::ast;
 
-use crate::spec_parsers::parse_utils::*;
+use crate::spec_parsers::parse_utils::{
+    str_err, IdentOrTerm, ParamLookup, RRCoqContextItem, RRCoqType, RustPath, RustPathElem,
+};
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::exists("x" : "Prop")`, which will declare a specification attribute "x" of the given type "Prop"
 pub trait TraitAttrParser {
-    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitAttrs, String>;
+    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a ast::ast::AttrItem])
+    -> Result<TraitAttrs, String>;
 }
 
 /// Extends an existing scope with additional literals of attributes parsed so far.
@@ -27,6 +30,7 @@ struct TraitAttrScope<'a, T> {
     // spec attrs that were parsed so far mapped to the record item name
     literals: HashMap<String, String>,
 }
+
 impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         self.inner_scope.lookup_ty_param(path)
@@ -77,7 +81,10 @@ impl<'b, 'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrPars
 where
     F: Fn(&str) -> String,
 {
-    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a AttrItem]) -> Result<TraitAttrs, String> {
+    fn parse_trait_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a ast::ast::AttrItem],
+    ) -> Result<TraitAttrs, String> {
         let mut context_items = Vec::new();
         let mut trait_attrs = BTreeMap::new();
 
@@ -132,7 +139,7 @@ where
 }
 
 /// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
-pub fn get_declared_trait_attrs(attrs: &[&AttrItem]) -> Result<HashSet<String>, String> {
+pub fn get_declared_trait_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<HashSet<String>, String> {
     let mut trait_attrs = HashSet::new();
 
     for &it in attrs {

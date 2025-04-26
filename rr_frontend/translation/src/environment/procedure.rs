@@ -8,9 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use log::{debug, trace};
-use rr_rustc_interface::middle::mir::{self, BasicBlock, Body as Mir, TerminatorKind};
-use rr_rustc_interface::middle::ty::{self, Ty, TyCtxt};
-use rr_rustc_interface::span::Span;
+use rr_rustc_interface::middle::{mir, ty};
 
 use crate::data::ProcedureDefId;
 use crate::environment::mir_utils::real_edges::RealEdges;
@@ -21,12 +19,12 @@ pub type BasicBlockIndex = mir::BasicBlock;
 
 /// A facade that provides information about the Rust procedure.
 pub struct Procedure<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     proc_def_id: ProcedureDefId,
-    mir: Rc<Mir<'tcx>>,
+    mir: Rc<mir::Body<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
-    reachable_basic_blocks: HashSet<BasicBlock>,
+    reachable_basic_blocks: HashSet<mir::BasicBlock>,
     //nonspec_basic_blocks: HashSet<BasicBlock>,
 }
 
@@ -61,8 +59,8 @@ impl<'tcx> Procedure<'tcx> {
     /// Returns all the types used in the procedure, and any types reachable from them
     #[must_use]
     #[allow(clippy::unused_self)]
-    pub fn get_declared_types(&self) -> Vec<Ty<'tcx>> {
-        let _types: HashSet<Ty> = HashSet::new();
+    pub fn get_declared_types(&self) -> Vec<ty::Ty<'tcx>> {
+        let _types: HashSet<ty::Ty> = HashSet::new();
         // for var in &self.mir.local_decls {
         //     for ty in var.ty.walk() {
         //         let declared_ty = ty;
@@ -83,13 +81,13 @@ impl<'tcx> Procedure<'tcx> {
 
     /// Get the MIR of the procedure
     #[must_use]
-    pub fn get_mir(&self) -> &Mir<'tcx> {
+    pub fn get_mir(&self) -> &mir::Body<'tcx> {
         &self.mir
     }
 
     /// Get the typing context.
     #[must_use]
-    pub const fn get_tcx(&self) -> TyCtxt<'tcx> {
+    pub const fn get_tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -160,7 +158,7 @@ impl<'tcx> Procedure<'tcx> {
 
     #[must_use]
     pub fn is_panic_block(&self, bbi: BasicBlockIndex) -> bool {
-        let TerminatorKind::Call { func, .. } = &self.mir[bbi].terminator().kind else {
+        let mir::TerminatorKind::Call { func, .. } = &self.mir[bbi].terminator().kind else {
             return false;
         };
 
@@ -198,10 +196,10 @@ impl<'tcx> Procedure<'tcx> {
 }
 
 /// Returns the set of basic blocks that are not used as part of the typechecking of Prusti specifications
-fn build_reachable_basic_blocks(mir: &Mir, real_edges: &RealEdges) -> HashSet<BasicBlock> {
-    let mut reachable_basic_blocks: HashSet<BasicBlock> = HashSet::new();
-    let mut visited: HashSet<BasicBlock> = HashSet::new();
-    let mut to_visit: Vec<BasicBlock> = vec![mir.basic_blocks.indices().next().unwrap()];
+fn build_reachable_basic_blocks(mir: &mir::Body, real_edges: &RealEdges) -> HashSet<mir::BasicBlock> {
+    let mut reachable_basic_blocks: HashSet<mir::BasicBlock> = HashSet::new();
+    let mut visited: HashSet<mir::BasicBlock> = HashSet::new();
+    let mut to_visit: Vec<mir::BasicBlock> = vec![mir.basic_blocks.indices().next().unwrap()];
 
     while let Some(source) = to_visit.pop() {
         if visited.contains(&source) {
@@ -223,15 +221,15 @@ fn build_reachable_basic_blocks(mir: &Mir, real_edges: &RealEdges) -> HashSet<Ba
 
 #[derive(Debug)]
 struct BasicBlockNode {
-    successors: HashSet<BasicBlock>,
-    predecessors: HashSet<BasicBlock>,
+    successors: HashSet<mir::BasicBlock>,
+    predecessors: HashSet<mir::BasicBlock>,
 }
 
 fn _blocks_definitely_leading_to<'a>(
-    bb_graph: &'a HashMap<BasicBlock, BasicBlockNode>,
-    target: BasicBlock,
-    blocks: &'a mut HashSet<BasicBlock>,
-) -> &'a mut HashSet<BasicBlock> {
+    bb_graph: &'a HashMap<mir::BasicBlock, BasicBlockNode>,
+    target: mir::BasicBlock,
+    blocks: &'a mut HashSet<mir::BasicBlock>,
+) -> &'a mut HashSet<mir::BasicBlock> {
     for pred in &bb_graph[&target].predecessors {
         debug!("target: {:#?}, pred: {:#?}", target, pred);
         if bb_graph[pred].successors.len() == 1 {
@@ -244,22 +242,22 @@ fn _blocks_definitely_leading_to<'a>(
 }
 
 fn blocks_definitely_leading_to(
-    bb_graph: &HashMap<BasicBlock, BasicBlockNode>,
-    target: BasicBlock,
-) -> HashSet<BasicBlock> {
+    bb_graph: &HashMap<mir::BasicBlock, BasicBlockNode>,
+    target: mir::BasicBlock,
+) -> HashSet<mir::BasicBlock> {
     let mut blocks = HashSet::new();
     _blocks_definitely_leading_to(bb_graph, target, &mut blocks);
     blocks
 }
 
 /*
-fn get_nonspec_basic_blocks(bb_graph: HashMap<BasicBlock, BasicBlockNode>, mir: &Mir, tcx: &TyCtxt) -> HashSet<BasicBlock>{
+fn get_nonspec_basic_blocks(bb_graph: HashMap<BasicBlock, BasicBlockNode>, mir: &Body, tcx: &TyCtxt) -> HashSet<BasicBlock>{
     let all_basic_blocks: HashSet<BasicBlock> = bb_graph.keys().cloned().collect();
     all_basic_blocks
 }
 
 /// Returns the set of basic blocks that are not used as part of the typechecking of Prusti specifications
-fn build_nonspec_basic_blocks(mir: &Mir, real_edges: &RealEdges, tcx: &TyCtxt) -> HashSet<BasicBlock> {
+fn build_nonspec_basic_blocks(mir: &Body, real_edges: &RealEdges, tcx: &TyCtxt) -> HashSet<BasicBlock> {
     let dominators = mir.dominators();
     let mut loop_heads: HashSet<BasicBlock> = HashSet::new();
 

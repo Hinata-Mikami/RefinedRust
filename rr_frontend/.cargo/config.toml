@@ -3,6 +3,7 @@ rustflags = [
     # === ENABLE ALL LINTS ===
 
     # Rust lints
+    "-Dunused_imports",
     "-Dunused_mut",
 
     # Clippy lints
@@ -19,7 +20,6 @@ rustflags = [
 
     # Rust warnings
     "-Adead_code",
-    "-Aunused_imports",
     "-Aunused_variables",
 
     # clippy::correctness

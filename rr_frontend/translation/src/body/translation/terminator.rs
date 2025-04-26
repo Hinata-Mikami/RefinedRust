@@ -7,18 +7,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace, warn};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
 
 use super::TX;
 use crate::base::*;
@@ -27,16 +16,16 @@ use crate::search;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Check if a call goes to `std::rt::begin_panic`
-    fn is_call_destination_panic(&mut self, func: &Operand) -> bool {
-        let Operand::Constant(box c) = func else {
+    fn is_call_destination_panic(&mut self, func: &mir::Operand) -> bool {
+        let mir::Operand::Constant(box c) = func else {
             return false;
         };
 
-        let ConstantKind::Val(_, ty) = c.literal else {
+        let mir::ConstantKind::Val(_, ty) = c.literal else {
             return false;
         };
 
-        let TyKind::FnDef(did, _) = ty.kind() else {
+        let ty::TyKind::FnDef(did, _) = ty.kind() else {
             return false;
         };
 
@@ -67,14 +56,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// intermediate point.
     pub(super) fn translate_terminator(
         &mut self,
-        term: &Terminator<'tcx>,
-        loc: Location,
+        term: &mir::Terminator<'tcx>,
+        loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
         match &term.kind {
-            TerminatorKind::Goto { target } => self.translate_goto_like(&loc, *target),
+            mir::TerminatorKind::Goto { target } => self.translate_goto_like(&loc, *target),
 
-            TerminatorKind::Call {
+            mir::TerminatorKind::Call {
                 func,
                 args,
                 destination,
@@ -90,7 +79,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.translate_function_call(func, args, destination, *target, loc, dying_loans.as_slice())
             },
 
-            TerminatorKind::Return => {
+            mir::TerminatorKind::Return => {
                 // TODO: this requires additional handling for reborrows
 
                 // read from the return place
@@ -110,9 +99,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             //res_stmt = radium::Stmt::Stuck;
             //res_stmt = self.prepend_endlfts(res_stmt, dying_loans.into_iter());
             //},
-            TerminatorKind::SwitchInt { discr, targets } => {
+            mir::TerminatorKind::SwitchInt { discr, targets } => {
                 let operand = self.translate_operand(discr, true)?;
-                let all_targets: &[BasicBlock] = targets.all_targets();
+                let all_targets: &[mir::BasicBlock] = targets.all_targets();
 
                 if self.get_type_of_operand(discr).is_bool() {
                     // we currently special-case this as Caesium has a built-in if and this is more
@@ -145,7 +134,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut translated_targets: Vec<radium::Stmt> = Vec::new();
 
                 for (idx, (tgt, bb)) in targets.iter().enumerate() {
-                    let bb: BasicBlock = bb;
+                    let bb: mir::BasicBlock = bb;
                     let translated_target = self.translate_goto_like(&loc, bb)?;
 
                     target_map.insert(tgt, idx);
@@ -171,7 +160,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            TerminatorKind::Assert {
+            mir::TerminatorKind::Assert {
                 cond,
                 expected,
                 target,
@@ -198,7 +187,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            TerminatorKind::Drop { place, target, .. } => {
+            mir::TerminatorKind::Drop { place, target, .. } => {
                 let ty = self.get_type_of_place(place);
                 self.register_drop_shim_for(ty.ty);
 
@@ -213,25 +202,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             // just a goto for our purposes
-            TerminatorKind::FalseEdge { real_target, .. }
+            mir::TerminatorKind::FalseEdge { real_target, .. }
             // this is just a virtual edge for the borrowchecker, we can translate this to a normal goto
-            | TerminatorKind::FalseUnwind { real_target, .. } => {
+            | mir::TerminatorKind::FalseUnwind { real_target, .. } => {
                 self.translate_goto_like(&loc, *real_target)
             },
 
-            TerminatorKind::Unreachable => Ok(radium::Stmt::Stuck),
+            mir::TerminatorKind::Unreachable => Ok(radium::Stmt::Stuck),
 
-            TerminatorKind::UnwindResume => Err(TranslationError::Unimplemented {
+            mir::TerminatorKind::UnwindResume => Err(TranslationError::Unimplemented {
                 description: "implement UnwindResume".to_owned(),
             }),
 
-            TerminatorKind::UnwindTerminate(_) => Err(TranslationError::Unimplemented {
+            mir::TerminatorKind::UnwindTerminate(_) => Err(TranslationError::Unimplemented {
                 description: "implement UnwindTerminate".to_owned(),
             }),
 
-            TerminatorKind::GeneratorDrop
-            | TerminatorKind::InlineAsm { .. }
-            | TerminatorKind::Yield { .. } => Err(TranslationError::UnsupportedFeature {
+            mir::TerminatorKind::GeneratorDrop
+            | mir::TerminatorKind::InlineAsm { .. }
+            | mir::TerminatorKind::Yield { .. } => Err(TranslationError::UnsupportedFeature {
                 description: format!(
                     "RefinedRust does currently not support this kind of terminator (got: {:?})",
                     term

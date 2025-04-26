@@ -8,13 +8,11 @@
 
 use std::collections::HashSet;
 
-use log::{info, trace, warn};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{BorrowKind, Location, Rvalue};
-use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TypeFoldable};
+use log::info;
+use rr_rustc_interface::middle::ty::TypeFoldable;
+use rr_rustc_interface::middle::{mir, ty};
 
-use crate::base::{self, Region};
+use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
@@ -24,8 +22,8 @@ use crate::{regions, types};
 /// Generate inclusions for a strong update assignment.
 fn get_assignment_strong_update_constraints(
     inclusion_tracker: &InclusionTracker<'_, '_>,
-    loc: Location,
-) -> HashSet<(Region, Region, base::PointIndex)> {
+    loc: mir::Location,
+) -> HashSet<(Region, Region, PointIndex)> {
     let info = inclusion_tracker.info();
     let input_facts = &info.borrowck_in_facts;
     let subset_base = &input_facts.subset_base;
@@ -59,8 +57,8 @@ fn get_assignment_strong_update_constraints(
 /// Generate inclusions for a weak update assignment.
 fn get_assignment_weak_update_constraints(
     inclusion_tracker: &mut InclusionTracker<'_, '_>,
-    loc: Location,
-) -> HashSet<(Region, Region, base::PointIndex)> {
+    loc: mir::Location,
+) -> HashSet<(Region, Region, PointIndex)> {
     let info = inclusion_tracker.info();
     let input_facts = &info.borrowck_in_facts;
     let subset_base = &input_facts.subset_base;
@@ -93,7 +91,10 @@ fn get_assignment_weak_update_constraints(
 }
 
 /// Get all region variables mentioned in a place type.
-fn find_region_variables_of_place_type<'tcx>(env: &Environment<'tcx>, ty: PlaceTy<'tcx>) -> HashSet<Region> {
+fn find_region_variables_of_place_type<'tcx>(
+    env: &Environment<'tcx>,
+    ty: mir::tcx::PlaceTy<'tcx>,
+) -> HashSet<Region> {
     let mut collector = regions::TyRegionCollectFolder::new(env.tcx());
     if ty.variant_index.is_some() {
         panic!("find_region_variables_of_place_type: don't support enums");
@@ -105,7 +106,7 @@ fn find_region_variables_of_place_type<'tcx>(env: &Environment<'tcx>, ty: PlaceT
 
 fn get_new_unconstrained_regions(
     inclusion_tracker: &InclusionTracker<'_, '_>,
-    loc: Location,
+    loc: mir::Location,
 ) -> HashSet<Region> {
     let info = inclusion_tracker.info();
     let input_facts = &info.borrowck_in_facts;
@@ -149,10 +150,10 @@ pub fn get_assignment_annots<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: Location,
+    loc: mir::Location,
     lhs_strongly_writeable: bool,
-    lhs_ty: PlaceTy<'tcx>,
-    _rhs_ty: Ty<'tcx>,
+    lhs_ty: mir::tcx::PlaceTy<'tcx>,
+    _rhs_ty: ty::Ty<'tcx>,
 ) -> RegionInfo {
     let info = inclusion_tracker.info();
     let new_dyn_inclusions;
@@ -236,7 +237,7 @@ pub fn get_assignment_annots<'tcx>(
 fn generate_dyn_inclusion_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    incls: &HashSet<(Region, Region, base::PointIndex)>,
+    incls: &HashSet<(Region, Region, PointIndex)>,
 ) -> Vec<radium::Annotation> {
     // before executing the assignment, first enforce dynamic inclusions
     info!("Generating dynamic inclusions {:?}", incls);
@@ -261,7 +262,7 @@ fn generate_dyn_inclusion_annots<'tcx>(
 fn generate_strong_update_annot<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     info: &PoloniusInfo<'_, 'tcx>,
-    ty: PlaceTy<'tcx>,
+    ty: mir::tcx::PlaceTy<'tcx>,
 ) -> Option<radium::Annotation> {
     let (interesting, tree) = generate_strong_update_annot_rec(ty_translator, info, ty.ty);
     interesting.then(|| radium::Annotation::GetLftNames(tree))
@@ -273,7 +274,7 @@ fn generate_strong_update_annot<'tcx>(
 fn generate_strong_update_annot_rec<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     info: &PoloniusInfo<'_, 'tcx>,
-    ty: Ty<'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> (bool, radium::LftNameTree) {
     // TODO for now this just handles nested references
     match ty.kind() {
@@ -296,8 +297,8 @@ fn generate_strong_update_annot_rec<'tcx>(
 fn generate_shortenlft_annot<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     info: &PoloniusInfo<'_, 'tcx>,
-    target_ty: Ty<'tcx>,
-    _current_ty: Ty<'tcx>,
+    target_ty: ty::Ty<'tcx>,
+    _current_ty: ty::Ty<'tcx>,
     mut expr: radium::Expr,
 ) -> radium::Expr {
     // this is not so different from the strong update annotation
@@ -317,7 +318,7 @@ fn generate_shortenlft_annot<'tcx>(
 fn get_outliving_regions_on_loan(
     inclusion_tracker: &mut InclusionTracker<'_, '_>,
     r: Region,
-    loan_point: base::PointIndex,
+    loan_point: PointIndex,
 ) -> Vec<Region> {
     // get all base subset constraints r' ⊆ r
     let info = inclusion_tracker.info();
@@ -340,8 +341,8 @@ fn get_outliving_regions_on_loan(
 pub fn get_assignment_loan_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: Location,
-    rhs: &Rvalue<'tcx>,
+    loc: mir::Location,
+    rhs: &mir::Rvalue<'tcx>,
 ) -> Vec<radium::Annotation> {
     let info = inclusion_tracker.info();
     let mut stmt_annots = Vec::new();
@@ -378,7 +379,7 @@ pub fn get_assignment_loan_annots<'tcx>(
 
         let a = info.get_region_kind(r);
         info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
-    } else if let Rvalue::Ref(region, BorrowKind::Shared, _) = rhs {
+    } else if let mir::Rvalue::Ref(region, mir::BorrowKind::Shared, _) = rhs {
         // for shared reborrows, Polonius does not create a new loan, and so the
         // previous case did not match.
         // However, we still need to track the region created for the reborrow in an
@@ -426,9 +427,9 @@ pub fn make_unconstrained_region_annotations<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
-    loc: Location,
+    loc: mir::Location,
     unconstrained_regions: HashSet<Region>,
-) -> Result<Vec<radium::Annotation>, base::TranslationError<'tcx>> {
+) -> Result<Vec<radium::Annotation>, TranslationError<'tcx>> {
     let mut annotations = Vec::new();
 
     let info = inclusion_tracker.info();

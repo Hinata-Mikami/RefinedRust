@@ -16,7 +16,7 @@
 
 use analysis::abstract_interpretation::{AbstractState, FixpointEngine};
 use analysis::domains::DefinitelyAllocatedAnalysis;
-use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::mir;
 
 use crate::environment::mir_analyses::initialization::AnalysisResult;
@@ -26,7 +26,7 @@ use crate::environment::mir_sets::local_set::LocalSet;
 pub type DefinitelyAllocatedAnalysisResult = AnalysisResult<LocalSet>;
 
 pub fn compute_definitely_allocated<'a, 'tcx: 'a>(
-    def_id: DefId,
+    def_id: hir::def_id::DefId,
     body: &'a mir::Body<'tcx>,
 ) -> DefinitelyAllocatedAnalysisResult {
     let analysis = DefinitelyAllocatedAnalysis::new(def_id, body);

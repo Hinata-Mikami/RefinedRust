@@ -6,35 +6,11 @@
 
 mod checked_op_analysis;
 
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
-
-use log::{info, trace, warn};
-use radium::coq;
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, Location, Mutability,
-    NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, TerminatorKind,
-    UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
-use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
-use typed_arena::Arena;
+use rr_rustc_interface::hir;
+use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
-use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::procedure::Procedure;
-use crate::environment::{dump_borrowck_info, polonius_info, Environment};
-use crate::spec_parsers::parse_utils::ParamLookup;
-use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
-};
-use crate::traits::{registry, resolution};
-use crate::{base, consts, procedures, regions, search, traits, types};
+use crate::types;
 
 pub mod signature;
 mod translation;
@@ -43,13 +19,13 @@ mod translation;
 pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     tcx: ty::TyCtxt<'tcx>,
     ty_translator: &types::LocalTX<'def, 'tcx>,
-    callee_did: DefId,
+    callee_did: hir::def_id::DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
     let caller_did = ty_translator.get_proc_did();
 
     // Get the type of the callee, fully instantiated
-    let full_ty: ty::EarlyBinder<Ty<'tcx>> = tcx.type_of(callee_did);
+    let full_ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
 
     // We create a dummy scope in order to make the lifetime lookups succeed, since we only want

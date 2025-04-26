@@ -8,17 +8,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
 
 use log::{debug, trace};
-use rr_rustc_interface::data_structures::fx::FxHashMap;
-use rr_rustc_interface::hir;
 use rr_rustc_interface::index::Idx;
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::polonius_engine::{Algorithm, Output};
-use rr_rustc_interface::span::def_id::DefId;
-use rr_rustc_interface::span::Span;
+use rr_rustc_interface::{data_structures, hir, polonius_engine, span};
 
 use crate::environment::borrowck::facts::PointType;
 use crate::environment::borrowck::place_regions::PlaceRegions;
@@ -181,14 +176,14 @@ pub enum Error {
     /// We currently support only one reborrowing chain per loop
     MultipleMagicWandsPerLoop(mir::Location),
     MagicWandHasNoRepresentativeLoan(mir::Location),
-    PlaceRegions(place_regions::Error, Span),
+    PlaceRegions(place_regions::Error, span::Span),
     LoanInUnsupportedStatement(String, mir::Location),
 }
 
 pub fn graphviz<'tcx>(
     env: &Environment<'tcx>,
     def_path: &hir::definitions::DefPath,
-    def_id: DefId,
+    def_id: span::def_id::DefId,
     info: &PoloniusInfo<'_, 'tcx>,
 ) -> io::Result<()> {
     macro_rules! to_html {
@@ -500,11 +495,14 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)
             .map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
 
-        let output = Output::compute(&all_facts, Algorithm::Naive, true);
+        let output = polonius_engine::Output::compute(&all_facts, polonius_engine::Algorithm::Naive, true);
         let all_facts_without_back_edges =
             remove_back_edges(*all_facts.clone(), &interner, loop_info.get_back_edges());
-        let output_without_back_edges =
-            Output::compute(&all_facts_without_back_edges, Algorithm::Naive, true);
+        let output_without_back_edges = polonius_engine::Output::compute(
+            &all_facts_without_back_edges,
+            polonius_engine::Algorithm::Naive,
+            true,
+        );
 
         let loan_position: HashMap<_, _> = all_facts
             .loan_issued_at
@@ -554,7 +552,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         mir: &mir::Body<'tcx>,
         place_regions: &PlaceRegions,
         all_facts: &mut facts::AllInput,
-    ) -> Result<(), (place_regions::Error, Span)> {
+    ) -> Result<(), (place_regions::Error, span::Span)> {
         let mut return_regions = vec![];
         let return_span = mir.local_decls[mir::RETURN_PLACE].source_info.span;
         // find regions for all subplaces (e.g. fields of tuples)
@@ -873,7 +871,10 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     fn get_loans_kept_alive_by(
         point: facts::PointIndex,
         region: facts::Region,
-        restricts_map: &FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
+        restricts_map: &data_structures::fx::FxHashMap<
+            facts::PointIndex,
+            BTreeMap<facts::Region, BTreeSet<facts::Loan>>,
+        >,
     ) -> Vec<facts::Loan> {
         restricts_map
             .get(&point)
@@ -909,7 +910,10 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         (loans, zombie_loans)
     }
 
-    const fn get_borrow_live_at(&self, zombie: bool) -> &FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
+    const fn get_borrow_live_at(
+        &self,
+        zombie: bool,
+    ) -> &data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
         if zombie {
             &self.additional_facts.zombie_borrow_live_at
         } else {
@@ -1502,7 +1506,8 @@ pub struct AdditionalFacts {
     ///     cfg_edge(P, Q),
     ///     origin_live_on_entry(R, Q).
     /// ```
-    pub zombie_requires: FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
+    pub zombie_requires:
+        data_structures::fx::FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
     /// for the loans that were loan_killed_at.
     ///
@@ -1511,9 +1516,9 @@ pub struct AdditionalFacts {
     ///     zombie_requires(R, L, P),
     ///     origin_live_on_entry(R, P).
     /// ```
-    pub zombie_borrow_live_at: FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+    pub zombie_borrow_live_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
     /// Which loans were loan_killed_at (become zombies) at a given point.
-    pub borrow_become_zombie_at: FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+    pub borrow_become_zombie_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
 }
 
 impl AdditionalFacts {
@@ -1523,9 +1528,9 @@ impl AdditionalFacts {
         all_facts: &facts::AllInput,
         output: &facts::AllOutput,
     ) -> (
-        FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
-        FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
-        FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+        data_structures::fx::FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
+        data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+        data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
     ) {
         use datafrog::{Iteration, Relation};
         use facts::{Loan, PointIndex, Region};
@@ -1637,7 +1642,7 @@ impl AdditionalFacts {
         }
 
         let zombie_requires = zombie_requires.complete();
-        let mut zombie_requires_map = FxHashMap::default();
+        let mut zombie_requires_map = data_structures::fx::FxHashMap::default();
         for (region, loan, point) in &zombie_requires.elements {
             zombie_requires_map
                 .entry(*point)
@@ -1648,13 +1653,13 @@ impl AdditionalFacts {
         }
 
         let zombie_borrow_live_at = zombie_borrow_live_at.complete();
-        let mut zombie_borrow_live_at_map = FxHashMap::default();
+        let mut zombie_borrow_live_at_map = data_structures::fx::FxHashMap::default();
         for (loan, point) in &zombie_borrow_live_at.elements {
             zombie_borrow_live_at_map.entry(*point).or_insert_with(Vec::new).push(*loan);
         }
 
         let borrow_become_zombie_at = borrow_become_zombie_at.complete();
-        let mut borrow_become_zombie_at_map = FxHashMap::default();
+        let mut borrow_become_zombie_at_map = data_structures::fx::FxHashMap::default();
         for (loan, point) in &borrow_become_zombie_at.elements {
             borrow_become_zombie_at_map.entry(*point).or_insert_with(Vec::new).push(*loan);
         }

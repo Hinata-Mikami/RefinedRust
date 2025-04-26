@@ -9,17 +9,16 @@
 use std::collections::{HashMap, HashSet};
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::{Ty, TyCtxt, TyKind};
-use ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::TypeSuperFoldable;
 
 /// A `TypeFolder` that gathers all the type variables.
 pub struct TyVarFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     tyvars: HashSet<ty::ParamTy>,
 }
 
 impl<'tcx> TyVarFolder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyVarFolder {
             tcx,
             tyvars: HashSet::new(),
@@ -31,22 +30,22 @@ impl<'tcx> TyVarFolder<'tcx> {
     }
 }
 
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyVarFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     // TODO: handle the case that we pass below binders
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
+        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
     {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         match t.kind() {
-            TyKind::Param(param) => {
+            ty::TyKind::Param(param) => {
                 self.tyvars.insert(*param);
                 t
             },
@@ -56,7 +55,7 @@ impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyVarFolder<'tcx> {
 }
 
 struct TyVarRenameFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     /// the generated substitution to get back the original type
     new_subst: Vec<ty::ParamTy>,
     /// maps old names to new names
@@ -64,7 +63,7 @@ struct TyVarRenameFolder<'tcx> {
 }
 
 impl<'tcx> TyVarRenameFolder<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
+    fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyVarRenameFolder {
             tcx,
             new_subst: Vec::new(),
@@ -78,31 +77,31 @@ impl<'tcx> TyVarRenameFolder<'tcx> {
     }
 }
 
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyVarRenameFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarRenameFolder<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     // TODO: handle the case that we pass below binders
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
+        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
     {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         match t.kind() {
-            TyKind::Param(param) => {
+            ty::TyKind::Param(param) => {
                 if let Some(new_param) = self.name_map.get(param) {
-                    return Ty::new_param(self.interner(), new_param.index, new_param.name);
+                    return ty::Ty::new_param(self.interner(), new_param.index, new_param.name);
                 }
 
                 // create another type param
                 let new_index = self.new_subst.len() as u32;
                 // reuse the name
                 let name = param.name;
-                let new_ty = Ty::new_param(self.interner(), new_index, name);
+                let new_ty = ty::Ty::new_param(self.interner(), new_index, name);
                 let new_param = ty::ParamTy::new(new_index, name);
 
                 self.name_map.insert(*param, new_param);
@@ -117,22 +116,24 @@ impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyVarRenameFolder<'tcx> {
 
 /// A `TypeFolder` that erases all regions.
 pub struct TyRegionEraseFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 }
+
 impl<'tcx> TyRegionEraseFolder<'tcx> {
-    pub const fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyRegionEraseFolder { tcx }
     }
 }
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyRegionEraseFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionEraseFolder<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     // TODO: handle the case that we pass below binders
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
+        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
     {
         t.super_fold_with(self)
     }

@@ -11,7 +11,7 @@ use attribute_parse::{parse, MToken};
 use log::info;
 use parse::{Parse, Peek};
 use radium::{coq, specs};
-use rr_rustc_interface::ast::ast::AttrItem;
+use rr_rustc_interface::ast;
 
 use crate::spec_parsers::parse_utils::*;
 
@@ -31,7 +31,7 @@ pub trait InvariantSpecParser {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a AttrItem],
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<(specs::InvariantSpec, bool), String>;
 }
 
@@ -198,7 +198,7 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a AttrItem],
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<(specs::InvariantSpec, bool), String> {
         if attrs.is_empty() {
             return Err("no invariant specifications given".to_owned());
@@ -337,7 +337,7 @@ pub trait StructFieldSpecParser<'def> {
     fn parse_field_spec<'a>(
         &'a mut self,
         field_name: &str,
-        attrs: &'a [&'a AttrItem],
+        attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<StructFieldSpec<'def>, String>;
 }
 
@@ -409,7 +409,7 @@ where
     fn parse_field_spec(
         &mut self,
         field_name: &str,
-        attrs: &[&AttrItem],
+        attrs: &[&ast::ast::AttrItem],
     ) -> Result<StructFieldSpec<'def>, String> {
         info!("parsing attributes of field {:?}: {:?}", field_name, attrs);
 

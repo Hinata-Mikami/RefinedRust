@@ -7,7 +7,7 @@
 use attribute_parse::{parse, MToken};
 use parse::Peek;
 use radium::{coq, specs};
-use rr_rustc_interface::ast::ast::{AttrArgs, AttrItem};
+use rr_rustc_interface::ast;
 
 use crate::spec_parsers::parse_utils::*;
 
@@ -25,8 +25,8 @@ pub trait EnumSpecParser {
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a AttrItem],
-        variant_attrs: &[Vec<&'a AttrItem>],
+        attrs: &'a [&'a ast::ast::AttrItem],
+        variant_attrs: &[Vec<&'a ast::ast::AttrItem>],
     ) -> Result<specs::EnumSpec, String>;
 }
 
@@ -80,8 +80,8 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a AttrItem],
-        variant_attrs: &[Vec<&'a AttrItem>],
+        attrs: &'a [&'a ast::ast::AttrItem],
+        variant_attrs: &[Vec<&'a ast::ast::AttrItem>],
     ) -> Result<specs::EnumSpec, String> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
@@ -172,10 +172,10 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
 
 /// Parse the arguments of a `rr::refine_as` annotation.
 /// Returns the optional specified name.
-pub fn parse_enum_refine_as(attrs: &AttrArgs) -> Result<Option<String>, String> {
+pub fn parse_enum_refine_as(attrs: &ast::ast::AttrArgs) -> Result<Option<String>, String> {
     let buffer = parse::Buffer::new(&attrs.inner_tokens());
 
-    if matches!(attrs, AttrArgs::Empty) {
+    if matches!(attrs, ast::ast::AttrArgs::Empty) {
         Ok(None)
     } else {
         let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;

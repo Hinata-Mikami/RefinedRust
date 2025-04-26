@@ -15,18 +15,8 @@ mod terminator;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, Location, Mutability,
-    NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, TerminatorKind,
-    UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
+use rr_rustc_interface::{ast, hir};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -37,7 +27,7 @@ use crate::environment::procedure::Procedure;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
-use crate::{base, consts, procedures, regions, types};
+use crate::{consts, procedures, regions, types};
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `radium::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.
@@ -62,7 +52,7 @@ pub struct TX<'a, 'def, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
 
     /// maps locals to variable names
-    variable_map: HashMap<Local, String>,
+    variable_map: HashMap<mir::Local, String>,
 
     /// name of the return variable
     return_name: String,
@@ -70,9 +60,10 @@ pub struct TX<'a, 'def, 'tcx> {
     return_synty: radium::SynType,
     /// all the other procedures used by this function, and:
     /// (code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)
-    collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
+    collected_procedures:
+        HashMap<(hir::def_id::DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
     /// used statics
-    collected_statics: HashSet<DefId>,
+    collected_statics: HashSet<hir::def_id::DefId>,
 
     /// tracking lifetime inclusions for the generation of lifetime inclusions
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
@@ -84,15 +75,15 @@ pub struct TX<'a, 'def, 'tcx> {
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
     /// skipping unwinding)
-    bb_queue: Vec<BasicBlock>,
+    bb_queue: Vec<mir::BasicBlock>,
     /// set of already processed blocks
-    processed_bbs: HashSet<BasicBlock>,
+    processed_bbs: HashSet<mir::BasicBlock>,
 
     /// map of loop heads to their optional spec closure defid
-    loop_specs: HashMap<BasicBlock, Option<DefId>>,
+    loop_specs: HashMap<mir::BasicBlock, Option<hir::def_id::DefId>>,
 
     /// relevant locals: (local, name, type)
-    fn_locals: Vec<(Local, radium::LocalKind, String, radium::Type<'def>)>,
+    fn_locals: Vec<(mir::Local, radium::LocalKind, String, radium::Type<'def>)>,
 
     /// result temporaries of checked ops that we rewrite
     /// we assume that this place is typed at (result_type, bool)
@@ -100,7 +91,7 @@ pub struct TX<'a, 'def, 'tcx> {
     /// while rewriting accesses to the second component to true.
     /// TODO: once we handle panics properly, we should use a different translation.
     /// NOTE: we only rewrite for uses, as these are the only places these are used.
-    checked_op_temporaries: HashMap<Local, Ty<'tcx>>,
+    checked_op_temporaries: HashMap<mir::Local, ty::Ty<'tcx>>,
 
     /// the Caesium function buildder
     translated_fn: radium::FunctionBuilder<'def>,
@@ -132,7 +123,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("Checked op temporaries: {checked_op_temporaries:?}");
 
         // map to translate between locals and the string names we use in radium::
-        let mut variable_map: HashMap<Local, String> = HashMap::new();
+        let mut variable_map: HashMap<mir::Local, String> = HashMap::new();
 
         let local_decls = &body.local_decls;
         info!("Have {} local decls\n", local_decls.len());
@@ -150,7 +141,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // go over local_decls and create the right radium:: stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
             let kind = body.local_kind(local);
-            let ty: Ty<'tcx>;
+            let ty: ty::Ty<'tcx>;
             if let Some(rewritten_ty) = checked_op_temporaries.get(&local) {
                 ty = *rewritten_ty;
             } else {
@@ -158,7 +149,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
 
             // check if the type is of a spec fn -- in this case, we can skip this temporary
-            if let TyKind::Closure(id, _) = ty.kind() {
+            if let ty::TyKind::Closure(id, _) = ty.kind() {
                 if procedure_registry.lookup_function_mode(*id).map_or(false, procedures::Mode::is_ignore) {
                     // this is a spec fn
                     info!("skipping local which has specfn closure type: {:?}", local);
@@ -244,7 +235,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let basic_blocks = &self.proc.get_mir().basic_blocks;
 
         // first translate the initial basic block; we add some additional annotations to the front
-        let initial_bb_idx = BasicBlock::from_u32(0);
+        let initial_bb_idx = mir::BasicBlock::from_u32(0);
         if let Some(bb) = basic_blocks.get(initial_bb_idx) {
             let mut translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
             // push annotation for initial constraints that relate argument's place regions to universals
@@ -313,9 +304,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a string identifier for a Local.
     /// Tries to find the Rust source code name of the local, otherwise simply enumerates.
     /// `used_names` keeps track of the Rust source code names that have already been used.
-    fn make_local_name(mir_body: &Body<'tcx>, local: Local, used_names: &mut HashSet<String>) -> String {
+    fn make_local_name(
+        mir_body: &mir::Body<'tcx>,
+        local: mir::Local,
+        used_names: &mut HashSet<String>,
+    ) -> String {
         if let Some(mir_name) = Self::find_name_for_local(mir_body, local, used_names) {
-            let name = base::strip_coq_ident(&mir_name);
+            let name = strip_coq_ident(&mir_name);
             used_names.insert(mir_name);
             name
         } else {
@@ -326,7 +321,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Classify the kind of a local.
-    fn get_local_kind(mir_body: &Body<'tcx>, local: Local) -> radium::LocalKind {
+    fn get_local_kind(mir_body: &mir::Body<'tcx>, local: mir::Local) -> radium::LocalKind {
         let kind = mir_body.local_kind(local);
         match kind {
             mir::LocalKind::Arg => radium::LocalKind::Arg,
@@ -352,7 +347,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for dbg in debug_info {
             let name = &dbg.name;
             let val = &dbg.value;
-            if let VarDebugInfoContents::Place(l) = *val {
+            if let mir::VarDebugInfoContents::Place(l) = *val {
                 // make sure that the place projection is empty -- otherwise this might just
                 // refer to the capture of a closure
                 if let Some(this_local) = l.as_local() {
@@ -380,7 +375,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Checks whether a place access descends below a reference.
-    fn check_place_below_reference(&self, place: &Place<'tcx>) -> bool {
+    fn check_place_below_reference(&self, place: &mir::Place<'tcx>) -> bool {
         if self.checked_op_temporaries.contains_key(&place.local) {
             // temporaries are never below references
             return false;
@@ -389,7 +384,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for (pl, _) in place.iter_projections() {
             // check if the current ty is a reference that we then descend under with proj
             let cur_ty_kind = pl.ty(&self.proc.get_mir().local_decls, self.env.tcx()).ty.kind();
-            if let TyKind::Ref(_, _, _) = cur_ty_kind {
+            if let ty::TyKind::Ref(_, _, _) = cur_ty_kind {
                 return true;
             }
         }
@@ -399,7 +394,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Registers a drop shim for a particular type for the translation.
     #[allow(clippy::unused_self)]
-    const fn register_drop_shim_for(&self, _ty: Ty<'tcx>) {
+    const fn register_drop_shim_for(&self, _ty: ty::Ty<'tcx>) {
         // TODO!
         //let drop_in_place_did: DefId = search::try_resolve_did(self.env.tcx(), &["std", "ptr",
         // "drop_in_place"]).unwrap();
@@ -414,8 +409,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a goto-like jump to `target`.
     fn translate_goto_like(
         &mut self,
-        _loc: &Location,
-        target: BasicBlock,
+        _loc: &mir::Location,
+        target: mir::BasicBlock,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
         self.enqueue_basic_block(target);
         let res_stmt = radium::Stmt::GotoBlock(target.as_usize());
@@ -431,7 +426,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Enqueues a basic block for processing, if it has not already been processed,
     /// and marks it as having been processed.
-    fn enqueue_basic_block(&mut self, bb: BasicBlock) {
+    fn enqueue_basic_block(&mut self, bb: mir::BasicBlock) {
         if !self.processed_bbs.contains(&bb) {
             self.bb_queue.push(bb);
             self.processed_bbs.insert(bb);
@@ -459,15 +454,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Make a trivial place accessing `local`.
-    fn make_local_place(&self, local: Local) -> Place<'tcx> {
-        Place {
+    fn make_local_place(&self, local: mir::Local) -> mir::Place<'tcx> {
+        mir::Place {
             local,
             projection: self.env.tcx().mk_place_elems(&[]),
         }
     }
 
     /// Get the type of a local in a body.
-    fn get_type_of_local(&self, local: Local) -> Result<Ty<'tcx>, TranslationError<'tcx>> {
+    fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         self.proc
             .get_mir()
             .local_decls
@@ -477,31 +472,34 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the type of a place expression.
-    fn get_type_of_place(&self, pl: &Place<'tcx>) -> PlaceTy<'tcx> {
+    fn get_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::tcx::PlaceTy<'tcx> {
         pl.ty(&self.proc.get_mir().local_decls, self.env.tcx())
     }
 
     /// Get the type of a const.
-    fn get_type_of_const(cst: &Constant<'tcx>) -> Ty<'tcx> {
+    fn get_type_of_const(cst: &mir::Constant<'tcx>) -> ty::Ty<'tcx> {
         match cst.literal {
-            ConstantKind::Ty(cst) => cst.ty(),
-            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => ty,
+            mir::ConstantKind::Ty(cst) => cst.ty(),
+            mir::ConstantKind::Val(_, ty) | mir::ConstantKind::Unevaluated(_, ty) => ty,
         }
     }
 
     /// Get the type of an operand.
-    fn get_type_of_operand(&self, op: &Operand<'tcx>) -> Ty<'tcx> {
+    fn get_type_of_operand(&self, op: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
         op.ty(&self.proc.get_mir().local_decls, self.env.tcx())
     }
 
     /// Check if a local is used for a spec closure.
-    fn is_spec_closure_local(&self, l: Local) -> Result<Option<DefId>, TranslationError<'tcx>> {
+    fn is_spec_closure_local(
+        &self,
+        l: mir::Local,
+    ) -> Result<Option<hir::def_id::DefId>, TranslationError<'tcx>> {
         // check if we should ignore this
         let local_type = self.get_type_of_local(l)?;
 
         trace!("is_spec_closure_local: checking {l:?} of type {local_type:?}");
 
-        let TyKind::Closure(did, _) = local_type.kind() else {
+        let ty::TyKind::Closure(did, _) = local_type.kind() else {
             return Ok(None);
         };
 

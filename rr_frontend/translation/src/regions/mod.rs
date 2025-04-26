@@ -16,12 +16,10 @@ pub mod init;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
-use log::{info, warn};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TyCtxt;
-use ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::TypeSuperFoldable;
 
-use crate::base::Region;
+use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 
@@ -115,11 +113,12 @@ pub fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
 
 /// A `TypeFolder` that finds all regions occurring in a type.
 pub struct TyRegionCollectFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
     regions: HashSet<Region>,
 }
+
 impl<'tcx> TyRegionCollectFolder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyRegionCollectFolder {
             tcx,
             regions: HashSet::new(),
@@ -130,15 +129,16 @@ impl<'tcx> TyRegionCollectFolder<'tcx> {
         self.regions
     }
 }
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     // TODO: handle the case that we pass below binders
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
+        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
     {
         t.super_fold_with(self)
     }

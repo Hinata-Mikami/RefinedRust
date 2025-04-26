@@ -19,7 +19,7 @@ use log::info;
 use typed_arena::Arena;
 
 use crate::specs::*;
-use crate::{coq, display_list, make_indent, model, push_str_list, write_list, BASE_INDENT};
+use crate::{coq, display_list, make_indent, model, write_list, BASE_INDENT};
 
 fn fmt_comment(o: &Option<String>) -> String {
     match o {

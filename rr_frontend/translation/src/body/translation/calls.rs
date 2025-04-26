@@ -7,18 +7,8 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
-use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::mir::interpret::{ConstValue, ErrorHandled, Scalar};
-use rr_rustc_interface::middle::mir::tcx::PlaceTy;
-use rr_rustc_interface::middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, BorrowKind, Constant, ConstantKind, Local, LocalKind, Location,
-    Mutability, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfoContents,
-};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
-use rr_rustc_interface::middle::ty::{ConstKind, Ty, TyKind};
+use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, middle};
 
 use super::TX;
 use crate::base::*;
@@ -30,13 +20,13 @@ use crate::{regions, types};
 fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     tcx: ty::TyCtxt<'tcx>,
     ty_translator: &types::LocalTX<'def, 'tcx>,
-    callee_did: DefId,
+    callee_did: hir::def_id::DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
     let caller_did = ty_translator.get_proc_did();
 
     // Get the type of the callee, fully instantiated
-    let full_ty: ty::EarlyBinder<Ty<'tcx>> = tcx.type_of(callee_did);
+    let full_ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
 
     // We create a dummy scope in order to make the lifetime lookups succeed, since we only want
@@ -104,7 +94,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ///   associated types
     fn register_use_procedure(
         &mut self,
-        callee_did: DefId,
+        callee_did: hir::def_id::DefId,
         extra_spec_args: Vec<String>,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
@@ -184,7 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// generics, and return the code parameter name.
     fn register_use_trait_method<'c>(
         &'c mut self,
-        callee_did: DefId,
+        callee_did: hir::def_id::DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
@@ -261,9 +251,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// as the requirements of a call can be different depending on which impl we consider.
     fn resolve_trait_requirements_of_call(
         &self,
-        did: DefId,
+        did: hir::def_id::DefId,
         params: ty::GenericArgsRef<'tcx>,
-    ) -> Result<Vec<radium::TraitReqInst<'def, Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = types::STInner::InFunction(&mut scope);
         self.trait_registry.resolve_trait_requirements_in_state(&mut state, did, params)
@@ -275,9 +265,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// this function annotated.
     pub(super) fn translate_fn_def_use(
         &mut self,
-        ty: Ty<'tcx>,
+        ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
-        let TyKind::FnDef(defid, params) = ty.kind() else {
+        let ty::TyKind::FnDef(defid, params) = ty.kind() else {
             return Err(TranslationError::UnknownError("not a FnDef type".to_owned()));
         };
 
@@ -400,16 +390,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// generics.
     fn call_expr_op_split_inst(
         &self,
-        constant: &Constant<'tcx>,
+        constant: &mir::Constant<'tcx>,
     ) -> Result<
-        (DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
+        (hir::def_id::DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
         TranslationError<'tcx>,
     > {
         match constant.literal {
-            ConstantKind::Ty(c) => {
+            mir::ConstantKind::Ty(c) => {
                 match c.ty().kind() {
-                    TyKind::FnDef(def, args) => {
-                        let ty: ty::EarlyBinder<Ty<'tcx>> = self.env.tcx().type_of(def);
+                    ty::TyKind::FnDef(def, args) => {
+                        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
                         let ty_ident = ty.instantiate_identity();
                         assert!(ty_ident.is_fn());
                         let ident_sig = ty_ident.fn_sig(self.env.tcx());
@@ -425,10 +415,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            ConstantKind::Val(_, ty) => {
+            mir::ConstantKind::Val(_, ty) => {
                 match ty.kind() {
-                    TyKind::FnDef(def, args) => {
-                        let ty: ty::EarlyBinder<Ty<'tcx>> = self.env.tcx().type_of(def);
+                    ty::TyKind::FnDef(def, args) => {
+                        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
 
                         let ty_ident = ty.instantiate_identity();
                         assert!(ty_ident.is_fn());
@@ -445,7 +435,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            ConstantKind::Unevaluated(_, _) => Err(TranslationError::Unimplemented {
+            mir::ConstantKind::Unevaluated(_, _) => Err(TranslationError::Unimplemented {
                 description: "implement ConstantKind::Unevaluated".to_owned(),
             }),
         }
@@ -453,11 +443,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     pub(super) fn translate_function_call(
         &mut self,
-        func: &Operand<'tcx>,
-        args: &[Operand<'tcx>],
-        destination: &Place<'tcx>,
-        target: Option<middle::mir::BasicBlock>,
-        loc: Location,
+        func: &mir::Operand<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        destination: &mir::Place<'tcx>,
+        target: Option<mir::BasicBlock>,
+        loc: mir::Location,
         dying_loans: &[facts::Loan],
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
         let startpoint = self.info.interner.get_point_index(&facts::Point {
@@ -465,7 +455,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             typ: facts::PointType::Start,
         });
 
-        let Operand::Constant(box func_constant) = func else {
+        let mir::Operand::Constant(box func_constant) = func else {
             return Err(TranslationError::UnsupportedFeature {
                 description: format!(
                     "RefinedRust does currently not support this kind of call operand (got: {:?})",
