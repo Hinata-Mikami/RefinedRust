@@ -353,6 +353,12 @@ Section enum.
     rewrite Hb. simpl.
     intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
   Qed.
+
+  Lemma enum_variant_rt_tag_rt_eq {rt} (en : enum rt) (r : rt) (tag : var_name) :
+    enum_tag en r = Some tag → enum_variant_rt en r = enum_tag_rt' en tag.
+  Proof.
+    intros. symmetry. by apply enum_tag_rt_variant_rt_eq.
+  Qed.
 End enum.
 
 Section array.
