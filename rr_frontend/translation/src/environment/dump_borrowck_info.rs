@@ -798,13 +798,13 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => {
                 write_edge!(self, bb, str terminate);
             },
-            mir::TerminatorKind::Drop { target, unwind, .. } => {
+            mir::TerminatorKind::Drop { target, .. } => {
                 write_edge!(self, bb, target);
                 //if let Some(target) = unwind {
                 //write_edge!(self, bb, unwind target);
                 //}
             },
-            mir::TerminatorKind::Call { target, unwind, .. } => {
+            mir::TerminatorKind::Call { target, .. } => {
                 if let Some(target) = target {
                     write_edge!(self, bb, target);
                 }
@@ -812,7 +812,7 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 //write_edge!(self, bb, unwind target);
                 //}
             },
-            mir::TerminatorKind::Assert { target, unwind, .. } => {
+            mir::TerminatorKind::Assert { target, .. } => {
                 write_edge!(self, bb, target);
                 //if let Some(target) = unwind {
                 //write_edge!(self, bb, unwind target);
@@ -827,10 +827,7 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 write_edge!(self, bb, real_target);
                 write_edge!(self, bb, imaginary_target);
             },
-            mir::TerminatorKind::FalseUnwind {
-                real_target,
-                unwind,
-            } => {
+            mir::TerminatorKind::FalseUnwind { real_target, .. } => {
                 write_edge!(self, bb, real_target);
                 //if let Some(target) = unwind {
                 //write_edge!(self, bb, imaginary target);
@@ -884,13 +881,14 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
 /// Maybe blocking analysis.
 impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
     /// Print the subset relation at a given program point.
+    #[allow(clippy::missing_const_for_fn)]
+    #[allow(clippy::unused_self)]
     #[allow(clippy::unnecessary_wraps)]
-    fn print_subset_at_start(&self, location: mir::Location) -> Result<(), io::Error> {
-        let point = self.get_point(location, facts::PointType::Start);
-        let subset_map = &self.polonius_info.borrowck_out_facts.subset;
-        if let Some(subset) = subset_map.get(&point).as_ref() {
-            return Ok(());
-            /*
+    fn print_subset_at_start(&self, _location: mir::Location) -> Result<(), io::Error> {
+        /*
+            let point = self.get_point(location, facts::PointType::Start);
+            let subset_map = &self.polonius_info.borrowck_out_facts.subset;
+            if let Some(subset) = subset_map.get(&point).as_ref() {
                 write_graph!(self, "subgraph cluster_{:?} {{", point);
                 let mut used_regions = HashSet::new();
                 for (from_region, to_regions) in subset.iter() {
@@ -928,8 +926,9 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                     }
                 }
                 write_graph!(self, "}}");
-            */
-        }
+            }
+        */
+
         Ok(())
     }
 

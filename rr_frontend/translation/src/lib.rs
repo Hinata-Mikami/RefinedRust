@@ -1542,45 +1542,47 @@ fn assemble_trait_impls<'tcx, 'rcx>(
         let trait_did = vcx.env.tcx().trait_id_of_impl(did).unwrap();
 
         // check if we registered this impl previously
-        if let Some(lit) = vcx.trait_registry.lookup_impl(did) {
-            let impl_info = vcx.trait_registry.get_trait_impl_info(did)?;
-            let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
-            let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
-            let subject = vcx.env.tcx().impl_subject(did).skip_binder();
-            if let ty::ImplSubject::Trait(trait_ref) = subject {
-                let mut methods = BTreeMap::new();
+        let Some(_) = vcx.trait_registry.lookup_impl(did) else { continue };
 
-                // TODO don't rely on definition order
-                // maybe instead iterate over the assoc items of the trait
+        let impl_info = vcx.trait_registry.get_trait_impl_info(did)?;
+        let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
+        let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
+        let subject = vcx.env.tcx().impl_subject(did).skip_binder();
 
-                for x in trait_assoc_items.in_definition_order() {
-                    if x.kind == ty::AssocKind::Fn {
-                        let fn_item = assoc_items.find_by_name_and_kind(
-                            vcx.env.tcx(),
-                            x.ident(vcx.env.tcx()),
-                            ty::AssocKind::Fn,
-                            did,
-                        );
-                        if let Some(fn_item) = fn_item {
-                            if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                                methods.insert(x.name.as_str().to_owned(), spec);
-                            } else {
-                                warn!("Incomplete specification for {}", fn_item.name);
-                                continue 'outer;
-                            }
-                        } else {
-                            // this is possible for functions with a default impl.
-                            // TODO think about that case.
-                        }
+        let ty::ImplSubject::Trait(_) = subject else { continue };
+
+        let mut methods = BTreeMap::new();
+
+        // TODO don't rely on definition order
+        // maybe instead iterate over the assoc items of the trait
+
+        for x in trait_assoc_items.in_definition_order() {
+            if x.kind == ty::AssocKind::Fn {
+                let fn_item = assoc_items.find_by_name_and_kind(
+                    vcx.env.tcx(),
+                    x.ident(vcx.env.tcx()),
+                    ty::AssocKind::Fn,
+                    did,
+                );
+
+                if let Some(fn_item) = fn_item {
+                    if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
+                        methods.insert(x.name.as_str().to_owned(), spec);
+                    } else {
+                        warn!("Incomplete specification for {}", fn_item.name);
+                        continue 'outer;
                     }
+                } else {
+                    // this is possible for functions with a default impl.
+                    // TODO think about that case.
                 }
-                let instance_spec = radium::TraitInstanceSpec::new(methods);
-
-                // assemble the spec and register it
-                let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
-                vcx.trait_impls.insert(did, spec);
             }
         }
+        let instance_spec = radium::TraitInstanceSpec::new(methods);
+
+        // assemble the spec and register it
+        let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
+        vcx.trait_impls.insert(did, spec);
     }
     Ok(())
 }

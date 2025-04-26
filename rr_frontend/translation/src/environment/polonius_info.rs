@@ -180,6 +180,7 @@ pub enum Error {
     LoanInUnsupportedStatement(String, mir::Location),
 }
 
+#[allow(unused_variables)]
 pub fn graphviz<'tcx>(
     env: &Environment<'tcx>,
     def_path: &hir::definitions::DefPath,

@@ -94,7 +94,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params.as_slice(),
             &mut translated_fn,
             region_substitution,
-            false,
             None,
         )?;
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
@@ -314,9 +313,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     params,
                     &mut translated_fn,
                     region_substitution,
-                    true,
                     Some(info),
                 )?;
+
                 let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
                 let mut t = Self {
@@ -436,9 +435,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     params.as_slice(),
                     &mut translated_fn,
                     region_substitution,
-                    true,
                     Some(info),
                 )?;
+
                 let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
                 // get argument names
@@ -566,23 +565,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut radium::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap,
-        add_trait_specs: bool,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
         // add universals to the function
         // important: these need to be in the right order!
-        for (vid, name) in &region_substitution.region_names {
+        for name in region_substitution.region_names.values() {
             translated_fn.add_universal_lifetime(name.to_owned());
         }
 
         // enter the procedure
-        let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(proc_did);
         let type_scope = types::FunctionState::new_with_traits(
             proc_did,
             env,
             env.tcx().mk_args(params),
             region_substitution.clone(),
-            param_env,
             ty_translator,
             trait_registry,
             info,
@@ -597,7 +593,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add universals to the function (these are not included in the generic scope)
         // important: these need to be in the right order!
-        for (vid, name) in region_substitution.region_names {
+        for (_, name) in region_substitution.region_names {
             translated_fn.add_universal_lifetime(name);
         }
 
@@ -769,20 +765,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
     ) -> Result<Option<radium::InstantiatedTraitFunctionSpec<'def>>, TranslationError<'tcx>> {
         let did = self.proc.get_id();
-        if let Some(impl_did) = self.env.tcx().impl_of_method(did) {
-            if let Some(trait_did) = self.env.tcx().trait_id_of_impl(impl_did) {
-                let trait_ref = self
-                    .trait_registry
-                    .lookup_trait(trait_did)
-                    .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
-                let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
-                let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
-                return Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)));
-            }
-        }
+        let Some(impl_did) = self.env.tcx().impl_of_method(did) else {
+            return Ok(None);
+        };
 
-        Ok(None)
+        let Some(trait_did) = self.env.tcx().trait_id_of_impl(impl_did) else {
+            return Ok(None);
+        };
+
+        self.trait_registry
+            .lookup_trait(trait_did)
+            .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
+
+        let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
+
+        let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
+        Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)))
     }
 
     fn dump_body(body: &mir::Body) {

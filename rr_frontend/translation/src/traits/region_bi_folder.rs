@@ -25,8 +25,8 @@ pub trait RegionBiFolder<'tcx> {
         assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
 
         match ty1.kind() {
-            ty::TyKind::Ref(r1, ty1, m1) => {
-                let ty::TyKind::Ref(r2, ty2, m2) = ty2.kind() else {
+            ty::TyKind::Ref(r1, ty1, _) => {
+                let ty::TyKind::Ref(r2, ty2, _) = ty2.kind() else {
                     unreachable!();
                 };
 

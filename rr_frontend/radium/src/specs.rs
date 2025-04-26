@@ -1674,11 +1674,12 @@ impl<'def> AbstractStruct<'def> {
             let mut out = self.variant_def.generate_coq_type_def(&self.scope, extra_context);
 
             // the invariant
-            let inv = self.invariant.as_ref().map(|spec| {
+            if let Some(spec) = self.invariant.as_ref() {
                 let s =
                     spec.generate_coq_type_def(self.plain_ty_name(), self.plain_rt_def_name(), &self.scope);
                 out.push_str(&s);
-            });
+            }
+
             out
         }
     }
@@ -1691,7 +1692,7 @@ impl<'def> AbstractStruct<'def> {
         if let Some(inv) = self.invariant.as_ref() {
             let all_ty_params = self.scope.get_all_ty_params_with_assocs();
 
-            let Some(abstracted_rt) = &inv.abstracted_refinement else {
+            let Some(_) = &inv.abstracted_refinement else {
                 panic!("no abstracted refinement");
             };
 
@@ -2259,7 +2260,7 @@ impl<'def> AbstractEnum<'def> {
         let spec = &self.spec;
 
         write!(out, "λ rfn, match rfn with ").unwrap();
-        for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+        for ((_, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             write!(out, "| {} => _", coq::term::App::new(pat, apps.clone())).unwrap();
         }
         if spec.is_partial {
@@ -2276,7 +2277,7 @@ impl<'def> AbstractEnum<'def> {
         let spec = &self.spec;
 
         write!(out, "λ rfn, match rfn with ").unwrap();
-        for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+        for ((_, var, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             let v = var.borrow();
             let v = v.as_ref().unwrap();
             // we can just use the plain name here, because we assume this is used in an
@@ -2305,13 +2306,7 @@ impl<'def> AbstractEnum<'def> {
         let spec = &self.spec;
 
         write!(out, "λ rfn, match rfn with ").unwrap();
-        for ((_name, var, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
-            let v = var.borrow();
-            let v = v.as_ref().unwrap();
-            // we can just use the plain name here, because we assume this is used in an
-            // environment where all the type parametes are already instantiated.
-            let ty = v.public_type_name();
-
+        for ((_, _, _), (pat, apps, rfn)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             write!(out, "| {} => {rfn}", coq::term::App::new(pat, apps.clone())).unwrap();
         }
         if spec.is_partial {
@@ -4876,7 +4871,6 @@ impl<'def> TraitSpecDecl<'def> {
         let mut record_items = Vec::new();
         for (item_name, item_spec) in &self.default_spec.methods {
             let record_item_name = self.lit.make_spec_method_name(item_name);
-            let record_params_item_name = self.lit.make_spec_method_params_name(item_name);
 
             // get number of lifetime parameters of the function
             let num_lifetimes = item_spec.generics.get_num_lifetimes();
@@ -5045,7 +5039,6 @@ impl<'def> Display for TraitSpecDecl<'def> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "Section {}.\n", self.lit.name)?;
 
-        let spec_record_constructor = self.lit.spec_record_constructor_name();
         let spec_attrs_record_constructor = self.lit.spec_record_attrs_constructor_name();
 
         // write attr record
@@ -5056,7 +5049,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
         write!(f, "Global Arguments {} ", spec_attrs_record_constructor)?;
         // first two are for refinedrustGS *)
         let attr_param_count = 2 + self.get_ordered_params().params.len();
-        for i in 0..attr_param_count {
+        for _ in 0..attr_param_count {
             write!(f, " {{_}}")?;
         }
         write!(f, ".\n")?;
@@ -5077,7 +5070,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
         write!(f, "{spec_incl_def}\n")?;
 
         // write the individual function specs
-        for (item_name, item_spec) in &self.default_spec.methods {
+        for item_spec in self.default_spec.methods.values() {
             write!(f, "{item_spec}\n")?;
         }
 
@@ -5312,8 +5305,6 @@ impl<'def> TraitImplSpec<'def> {
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(false).0);
 
         // instantiation of the trait
-        let params_inst = self.trait_ref.get_ordered_params_inst();
-
         let incl_name = self.trait_ref.of_trait.spec_incl_name();
         let own_spec = self.trait_ref.get_spec_record_term();
         let base_spec = self.trait_ref.get_base_spec_term();

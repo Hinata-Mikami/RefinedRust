@@ -5,6 +5,7 @@ rustflags = [
     # Rust lints
     "-Dunused_imports",
     "-Dunused_mut",
+    "-Dunused_variables",
 
     # Clippy lints
     "-Dclippy::complexity",
@@ -20,7 +21,6 @@ rustflags = [
 
     # Rust warnings
     "-Adead_code",
-    "-Aunused_variables",
 
     # clippy::correctness
     "-Aclippy::unused_io_amount",

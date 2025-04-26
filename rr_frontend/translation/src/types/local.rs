@@ -512,6 +512,7 @@ where
 {
     let param_env = tcx.param_env(function_did);
     info!("Normalizing type {ty:?} in env {param_env:?}");
+
     resolution::normalize_type(tcx, param_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
 }
@@ -526,6 +527,7 @@ where
 {
     let param_env = tcx.param_env(function_did);
     info!("Normalizing type {ty:?} in env {param_env:?}");
+
     tcx.try_normalize_erasing_regions(param_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
 }
@@ -537,6 +539,7 @@ pub fn normalize_projection_in_function<'tcx>(
 ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
     let param_env = tcx.param_env(function_did);
     info!("Normalizing type {ty:?} in env {param_env:?}");
+
     resolution::normalize_projection_type(tcx, param_env, ty)
-        .map_err(|e| TranslationError::TraitResolution(format!("could not normalize projection {ty:?}")))
+        .ok_or_else(|| TranslationError::TraitResolution(format!("could not normalize projection {ty:?}")))
 }

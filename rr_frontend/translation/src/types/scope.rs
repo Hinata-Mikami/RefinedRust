@@ -310,11 +310,11 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     pub fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
         // replace the early region names
         for (idx, param) in self.scope.iter_mut().enumerate() {
-            if let Some(r) = param.as_region() {
-                let early_vid = map.early_regions[idx].as_ref().unwrap();
-                let name = &map.region_names[early_vid];
-                *param = Param::Region(name.to_owned());
-            }
+            let Some(_) = param.as_region() else { continue };
+
+            let early_vid = map.early_regions[idx].as_ref().unwrap();
+            let name = &map.region_names[early_vid];
+            *param = Param::Region(name.to_owned());
         }
 
         // fill the late scope
@@ -368,32 +368,31 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
-            if let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) {
-                let key =
-                    (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
-                let entry = &self.trait_scope.used_traits[&key];
-
-                // the scope to translate the arguments in
-                // TODO add bound regions
-                // for that, have a wrapping scope that shadows stuff, I guess.
-                // - I need to push up the existing indices, I think.
-                // - clone and add the requirements?
-
-                trait_registry.fill_trait_use(
-                    entry,
-                    &*self,
-                    param_env,
-                    req.trait_ref,
-                    trait_spec,
-                    req.is_used_in_self_trait,
-                    // trait associated types are fully generic for now, we make a second pass
-                    // below
-                    HashMap::new(),
-                    req.origin,
-                )?;
-            } else {
+            let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
                 return Err(traits::Error::UnregisteredTrait(req.trait_ref.def_id).into());
-            }
+            };
+
+            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
+            let entry = &self.trait_scope.used_traits[&key];
+
+            // the scope to translate the arguments in
+            // TODO add bound regions
+            // for that, have a wrapping scope that shadows stuff, I guess.
+            // - I need to push up the existing indices, I think.
+            // - clone and add the requirements?
+
+            trait_registry.fill_trait_use(
+                entry,
+                &*self,
+                param_env,
+                req.trait_ref,
+                trait_spec,
+                req.is_used_in_self_trait,
+                // trait associated types are fully generic for now, we make a second pass
+                // below
+                HashMap::new(),
+                req.origin,
+            )?;
         }
 
         // make a second pass to specify constraints on associated types
@@ -506,8 +505,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 }
             }
         }
+
         if let Some(impl_did) = env.tcx().impl_of_method(did) {
-            if let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) {
+            if env.tcx().trait_id_of_impl(impl_did).is_some() {
                 // we are in a trait impl
                 let impl_ref = trait_registry.get_trait_impl_info(impl_did)?;
                 for attr in &impl_ref.of_trait.declared_attrs {

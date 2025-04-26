@@ -24,11 +24,11 @@ pub fn unify_args<'tcx>(
             };
             unify_types(ty1, ty2, mapping)
         },
-        ty::GenericArgKind::Const(c) => {
+        ty::GenericArgKind::Const(_c) => {
             // TODO
             false
         },
-        ty::GenericArgKind::Lifetime(l) => {
+        ty::GenericArgKind::Lifetime(_l) => {
             // TODO
             false
         },

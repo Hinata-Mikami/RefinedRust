@@ -82,7 +82,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             self.collected_statics.insert(did);
                             Ok(radium::Expr::Literal(radium::Literal::Loc(s.loc_name.clone())))
                         },
-                        mir::interpret::GlobalAlloc::Memory(alloc) => {
+                        mir::interpret::GlobalAlloc::Memory(_) => {
                             // TODO: this is needed
                             Err(TranslationError::UnsupportedFeature {
                                 description: format!(

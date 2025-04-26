@@ -1292,7 +1292,8 @@ impl<'def> UsedProcedure<'def> {
                 // instantiate semantics args
                 write!(term, "{}", self.scope_inst.instantiation())?;
             },
-            UsedProcedureSpec::TraitMethod(trait_spec, method_name) => {
+
+            UsedProcedureSpec::TraitMethod(_trait_spec, _method_name) => {
                 /*
                 let trait_ref = trait_spec.trait_ref.borrow();
                 let trait_ref = trait_ref.as_ref().unwrap();

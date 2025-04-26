@@ -225,7 +225,7 @@ impl From<MetaIProp> for specs::IProp {
                     Self::Atom(format!("gvar_pobs {name} ({term})"))
                 }
             },
-            MetaIProp::Linktime(p) => Self::True,
+            MetaIProp::Linktime(_) => Self::True,
         }
     }
 }

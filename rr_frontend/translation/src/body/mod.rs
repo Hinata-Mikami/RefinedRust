@@ -22,8 +22,6 @@ pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     callee_did: hir::def_id::DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
-    let caller_did = ty_translator.get_proc_did();
-
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);

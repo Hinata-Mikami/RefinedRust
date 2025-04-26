@@ -88,7 +88,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             s: Box::new(cont_stmt),
                         };
                     } else {
-                        let plc_ty = self.get_type_of_place(plc);
                         let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.env.tcx());
 
                         let borrow_annots = regions::assignment::get_assignment_loan_annots(
@@ -106,7 +105,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
                             self.env, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
 
-                        let unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(self.env, &self.inclusion_tracker, &self.ty_translator, loc, assignment_annots.unconstrained_regions)?;
+                        let unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(&self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions)?;
 
                         cont_stmt = radium::Stmt::with_annotations(
                             cont_stmt,

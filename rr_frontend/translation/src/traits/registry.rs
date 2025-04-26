@@ -155,7 +155,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         name: String,
         declared_attrs: HashSet<String>,
     ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
-        let phys_record = format!("{name}_phys");
         let spec_record = format!("{name}_spec");
         let spec_params_record = format!("{name}_spec_params");
         let spec_attrs_record = format!("{name}_spec_attrs");
@@ -379,7 +378,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         );
         let trait_did = self.env.tcx().trait_id_of_impl(impl_did).ok_or(Error::NotATraitImpl(impl_did))?;
 
-        let trait_instance = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
 
         let mut assoc_args = Vec::new();
         // get associated types of this impl
@@ -472,7 +471,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         // if they match, this is the Self assumption, so skip
                         continue;
                     }
-                } else if let Some(impl_did) = self.env.trait_impl_of_method(did) {
+                } else if let Some(_impl_did) = self.env.trait_impl_of_method(did) {
                     // TODO
                 }
             }
@@ -689,8 +688,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // check if we registered this impl previously
         let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
         let impl_ref = self.lookup_impl(trait_impl_did).ok_or(Error::NotATraitImpl(trait_impl_did))?;
-
-        let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(trait_impl_did);
 
         // get all associated items
         let assoc_items: &'tcx ty::AssocItems = self.env.tcx().associated_items(trait_impl_did);
@@ -914,7 +911,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         assoc_ty_constraints: HashMap<String, radium::Type<'def>>,
         origin: radium::TyParamOrigin,
     ) -> Result<(), TranslationError<'tcx>> {
-        let did = trait_ref.def_id;
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
 
         let mut new_scope = scope.clone();

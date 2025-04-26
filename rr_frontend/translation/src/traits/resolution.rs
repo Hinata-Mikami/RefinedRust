@@ -40,8 +40,9 @@ pub fn normalize_projection_type<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: ty::AliasTy<'tcx>,
-) -> Result<ty::Ty<'tcx>, ()> {
+) -> Option<ty::Ty<'tcx>> {
     let canonical_infos = tcx.mk_canonical_var_infos(&[]);
+
     let canonical = middle::infer::canonical::Canonical {
         value: ty::ParamEnvAnd {
             param_env,
@@ -50,16 +51,10 @@ pub fn normalize_projection_type<'tcx>(
         variables: canonical_infos,
         max_universe: ty::UniverseIndex::from(0_usize),
     };
-    let res: Result<
-        &'tcx middle::infer::canonical::Canonical<
-            'tcx,
-            middle::infer::canonical::QueryResponse<'tcx, middle::traits::query::NormalizationResult<'tcx>>,
-        >,
-        middle::traits::query::NoSolution,
-    > = tcx.normalize_projection_ty(canonical);
-    let res = res.map_err(|a| ())?;
-    let ty = res.value.value.normalized_ty;
-    Ok(ty)
+
+    let Ok(res) = tcx.normalize_projection_ty(canonical) else { return None };
+
+    Some(res.value.value.normalized_ty)
 }
 
 /// Resolve an implementation of a trait using codegen candidate selection.
@@ -100,13 +95,12 @@ pub fn resolve_impl_source<'tcx>(
     };
 
     let res = tcx.codegen_select_candidate((param_env, trait_ref)).ok()?;
-    Some(recover_lifetimes_for_impl_source(tcx, param_env, trait_ref, substs, res, below_binders))
+    Some(recover_lifetimes_for_impl_source(tcx, param_env, substs, res, below_binders))
 }
 
 fn recover_lifetimes_for_impl_source<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
     substs: ty::GenericArgsRef<'tcx>,
     impl_source: &'tcx trait_selection::traits::ImplSource<'tcx, ()>,
     below_binders: ty::Binder<'tcx, ()>,

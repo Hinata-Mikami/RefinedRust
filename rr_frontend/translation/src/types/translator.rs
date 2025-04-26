@@ -109,7 +109,6 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         env: &Environment<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap,
-        param_env: ty::ParamEnv<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
@@ -237,18 +236,16 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     pub fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
         match &self {
             Self::InFunction(state) => state.polonius_info,
-            Self::TranslateAdt(state) => None,
-            Self::CalleeTranslation(state) => None,
             Self::TraitReqs(state) => state.polonius_info,
+            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
         }
     }
 
     pub fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
-            Self::TranslateAdt(state) => None,
-            Self::CalleeTranslation(state) => None,
             Self::TraitReqs(state) => state.lifetime_scope,
+            Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
         }
     }
 
@@ -320,7 +317,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                     .ok_or(TranslationError::UnknownEarlyRegion(*region))?;
                 Ok(lft.to_owned())
             },
-            STInner::TranslateAdt(scope) => {
+            STInner::TranslateAdt(_scope) => {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
@@ -328,7 +325,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 }
                 return Err(TranslationError::UnknownEarlyRegion(*region));
             },
-            STInner::TraitReqs(scope) => {
+            STInner::TraitReqs(_scope) => {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
@@ -410,7 +407,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                     //return Err(TranslationError::UnknownPoloniusRegion(v));
                 }
             },
-            STInner::TranslateAdt(scope) => {
+            STInner::TranslateAdt(_scope) => {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
                 return Err(TranslationError::PoloniusRegionOutsideFunction(v));
             },
@@ -1933,7 +1930,6 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         info!("generating enum variant use for {:?}", variant_id);
 
-        let x: ST<'_, '_, 'def, 'tcx> = &mut STInner::InFunction(&mut *scope);
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(&mut *scope),
             variant_id,

@@ -144,7 +144,6 @@ pub fn get_declared_trait_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<HashSet
 
     for &it in attrs {
         let path_segs = &it.path.segments;
-        let args = &it.args;
 
         let Some(seg) = path_segs.get(1) else {
             continue;

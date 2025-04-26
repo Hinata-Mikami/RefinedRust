@@ -17,7 +17,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate an aggregate expression.
     fn translate_aggregate(
         &mut self,
-        loc: mir::Location,
         kind: &mir::AggregateKind<'tcx>,
         op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
@@ -417,7 +416,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::Rvalue::NullaryOp(op, _ty) => {
+            mir::Rvalue::NullaryOp(_, _) => {
                 // TODO: SizeOf
                 Err(TranslationError::UnsupportedFeature {
                     description: "RefinedRust does currently not support nullary ops (AlignOf, Sizeof)"
@@ -466,7 +465,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::Rvalue::Aggregate(kind, op) => self.translate_aggregate(loc, kind.as_ref(), op),
+            mir::Rvalue::Aggregate(kind, op) => self.translate_aggregate(kind.as_ref(), op),
 
             mir::Rvalue::Cast(kind, op, to_ty) => self.translate_cast(*kind, op, *to_ty),
 

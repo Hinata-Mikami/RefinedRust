@@ -97,7 +97,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(idx, _) => {
+            ty::ReLateBound(_idx, _) => {
                 //let idx = v.index();
                 //let new_idx = self.rename_map.get(idx).unwrap();
 

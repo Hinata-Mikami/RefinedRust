@@ -177,7 +177,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         if self.invalidated || self.full_incl.is_none() {
             self.recompute();
         }
-        self.full_incl.as_ref().unwrap().iter().any(|(r1x, r2x, px)| *r2x == r1 && *px == p)
+        self.full_incl.as_ref().unwrap().iter().any(|(_, r2x, px)| *r2x == r1 && *px == p)
     }
 
     /// Check if an inclusion (r1, r2, p) holds via static inclusion in the current context.

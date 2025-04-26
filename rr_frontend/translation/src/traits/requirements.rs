@@ -204,14 +204,14 @@ fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: hir::def_id::DefId) -> Optio
 
 /// Compare two `GenericArg` deterministically.
 /// Should only be called on equal discriminants.
-fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
+fn cmp_arg_ref<'tcx>(a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
     match (a.unpack(), b.unpack()) {
         (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => c1.cmp(&c2),
         (ty::GenericArgKind::Type(ty1), ty::GenericArgKind::Type(ty2)) => {
             // we should make sure that this always orders the Self instance first.
             match (ty1.kind(), ty2.kind()) {
                 (ty::TyKind::Param(p1), ty::TyKind::Param(p2)) => p1.cmp(p2),
-                (ty::TyKind::Param(p1), _) => Ordering::Less,
+                (ty::TyKind::Param(_), _) => Ordering::Less,
                 (_, _) => ty1.cmp(&ty2),
             }
         },
@@ -223,17 +223,13 @@ fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::Gene
 }
 
 /// Compare two sequences of `GenericArg`s for the same `DefId`, where the discriminants are pairwise equal.
-fn cmp_arg_refs<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    a: &[ty::GenericArg<'tcx>],
-    b: &[ty::GenericArg<'tcx>],
-) -> Ordering {
+fn cmp_arg_refs<'tcx>(a: &[ty::GenericArg<'tcx>], b: &[ty::GenericArg<'tcx>]) -> Ordering {
     match a.len().cmp(&b.len()) {
         Ordering::Equal => {
             // compare elements
             for (x, y) in a.iter().zip(b.iter()) {
                 // the discriminants are the same as the DefId we are calling into is the same
-                let xy_cmp = cmp_arg_ref(tcx, *x, *y);
+                let xy_cmp = cmp_arg_ref(*x, *y);
                 if xy_cmp != Ordering::Equal {
                     return xy_cmp;
                 }
@@ -270,7 +266,7 @@ fn cmp_trait_ref<'tcx>(
     if path_cmp == Ordering::Equal {
         let args_a = a.args.as_slice();
         let args_b = b.args.as_slice();
-        cmp_arg_refs(tcx, args_a, args_b)
+        cmp_arg_refs(args_a, args_b)
     } else {
         path_cmp
     }

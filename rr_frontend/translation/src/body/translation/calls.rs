@@ -23,8 +23,6 @@ fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     callee_did: hir::def_id::DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
-    let caller_did = ty_translator.get_proc_did();
-
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
@@ -279,7 +277,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let calling_trait = self.env.tcx().trait_of_item(*defid);
 
         // Check whether we are calling a plain function or a trait method
-        let Some(calling_trait) = calling_trait else {
+        let Some(_) = calling_trait else {
             // resolve the trait requirements
             let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
@@ -562,18 +560,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // build annotations for unconstrained regions
         let (unconstrained_annotations, unconstrained_regions) =
             regions::calls::compute_unconstrained_region_annots(
-                self.env,
                 &mut self.inclusion_tracker,
                 &self.ty_translator,
                 loc,
                 assignment_annots.unconstrained_regions,
                 &mapped_early_regions,
             )?;
+
         let remaining_unconstrained_annots = regions::assignment::make_unconstrained_region_annotations(
-            self.env,
             &self.inclusion_tracker,
             &self.ty_translator,
-            loc,
             unconstrained_regions,
         )?;
 

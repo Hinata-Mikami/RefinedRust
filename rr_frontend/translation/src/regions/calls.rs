@@ -180,7 +180,6 @@ pub fn compute_call_regions<'tcx>(
 
 /// Compute annotations for recovering unconstrained regions.
 pub fn compute_unconstrained_region_annots<'tcx>(
-    env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
