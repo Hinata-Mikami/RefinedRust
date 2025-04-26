@@ -64,11 +64,8 @@ fn closure_test5() {
     //x(2);
 }
 
-/*
-#[rr::params("x")]
-#[rr::args("#x")]
 #[rr::returns("()")]
-fn closure_test6(z: &i32) {
+fn closure_test9(z: &i32) {
     let x = 5;
 
     // Fn-closure
@@ -77,15 +74,16 @@ fn closure_test6(z: &i32) {
         #[rr::capture("x": "i")]
         #[rr::capture("z": "j")]
         #[rr::requires("(j * i)%Z ∈ i32")]
-        #[rr::returns("(j * i)%Z")]
+        //#[rr::returns("(j * i)%Z")]
         || {
-            x * z
+            x;
+            z;
+            //x * z
         };
 
     // here we call the closure's implementation
     //x(2);
 }
-*/
 
 #[rr::returns("()")]
 fn closure_test2() {

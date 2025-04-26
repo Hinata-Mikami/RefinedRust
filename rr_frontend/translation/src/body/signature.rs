@@ -120,6 +120,58 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         translated_fn.try_into().map_err(TranslationError::AttributeError)
     }
 
+    /// Compute meta information for a closure we are processing.
+    /// Adds all universal regions for closure captures to the region map.
+    /// Returns the upvar types with normalized regions as well as the optional region for the
+    /// capture.
+    fn compute_closure_meta(
+        clos_args: ty::ClosureArgs<'tcx>,
+        closure_arg: &mir::LocalDecl<'tcx>,
+        region_substitution: &mut regions::EarlyLateRegionMap,
+        info: &PoloniusInfo<'def, 'tcx>,
+        env: &Environment<'tcx>,
+    ) -> (Vec<ty::Ty<'tcx>>, Option<radium::Lft>) {
+        // Add missing universals for the captures to the scope
+        /*
+        for v in &info.borrowck_in_facts.universal_region {
+            if region_substitution.region_names.get(v).is_none() {
+                let lft = info.mk_atomic_region(*v);
+                let name = regions::format_atomic_region_direct(&lft, None);
+                region_substitution.region_names.insert(*v, name);
+            }
+        }
+        */
+
+        // Process the lifetime parameters that come from the captures
+        let upvars_tys = clos_args.upvar_tys();
+        let mut fixed_upvars_tys = Vec::new();
+        for ty in upvars_tys.iter() {
+            let fixed_ty =
+                regions::arg_folder::rename_closure_capture_regions(ty, env.tcx(), region_substitution, info);
+            fixed_upvars_tys.push(fixed_ty);
+        }
+        // also add the lifetime for the outer reference
+        let mut maybe_outer_lifetime = None;
+        if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
+            if let ty::RegionKind::ReVar(r) = r.kind() {
+                // We need to do some hacks here to find the right Polonius region:
+                // `r` is the non-placeholder region that the variable gets, but we are
+                // looking for the corresponding placeholder region
+                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
+
+                let lft = info.mk_atomic_region(r2);
+                let name = regions::format_atomic_region_direct(&lft, None);
+                region_substitution.region_names.insert(r2, name.clone());
+
+                maybe_outer_lifetime = Some(name);
+            } else {
+                unreachable!();
+            }
+        }
+
+        (fixed_upvars_tys, maybe_outer_lifetime)
+    }
+
     /// Create a translation instance for a closure.
     pub fn new_closure(
         env: &'def Environment<'tcx>,
@@ -178,33 +230,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
         }
 
-        let mut capture_regions = Vec::new();
-
         let ty::TyKind::Closure(did, closure_args) = closure_ty.kind() else {
             unreachable!();
         };
 
-        let clos = closure_args.as_closure();
+        let clos_args = closure_args.as_closure();
 
-        let tupled_upvars_tys = clos.tupled_upvars_ty();
-        let upvars_tys = clos.upvar_tys();
-        let parent_args = clos.parent_args();
-        let sig = clos.sig();
+        let tupled_upvars_tys = clos_args.tupled_upvars_ty();
+        let parent_args = clos_args.parent_args();
+        let unnormalized_sig = clos_args.sig();
+        let sig = unnormalized_sig;
         info!("closure sig: {:?}", sig);
 
         let captures = env.tcx().closure_captures(did.as_local().unwrap());
         info!("Closure has captures: {:?}", captures);
-
-        // find additional lifetime parameters
-        for (place, ty) in captures.iter().zip(clos.upvar_tys().iter()) {
-            if place.region.is_some() {
-                // find region from ty
-                if let ty::TyKind::Ref(region, _, _) = ty.kind() {
-                    capture_regions.push(*region);
-                }
-            }
-        }
-        info!("Closure capture regions: {:?}", capture_regions);
 
         info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
         info!("Function signature: {:?}", sig);
@@ -235,40 +274,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (tupled_inputs, output, mut region_substitution) =
             regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
 
-        // Process the lifetime parameters that come from the captures
-        for r in capture_regions {
-            if let ty::RegionKind::ReVar(r) = r.kind() {
-                // We need to do some hacks here to find the right Polonius region:
-                // `r` is the non-placeholder region that the variable gets, but we are
-                // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
-
-                let lft = info.mk_atomic_region(r2);
-                let name = regions::format_atomic_region_direct(&lft, None);
-                region_substitution.region_names.insert(r2, name);
-            } else {
-                unreachable!();
-            }
-        }
-        // also add the lifetime for the outer reference
-        let mut maybe_outer_lifetime = None;
-        if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
-            if let ty::RegionKind::ReVar(r) = r.kind() {
-                // We need to do some hacks here to find the right Polonius region:
-                // `r` is the non-placeholder region that the variable gets, but we are
-                // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
-
-                let lft = info.mk_atomic_region(r2);
-                let name = regions::format_atomic_region_direct(&lft, None);
-                region_substitution.region_names.insert(r2, name);
-
-                maybe_outer_lifetime = Some(r2);
-            } else {
-                unreachable!();
-            }
-        }
-
         // detuple the inputs
         assert!(tupled_inputs.len() == 1);
         let input_tuple_ty = tupled_inputs[0];
@@ -279,6 +284,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
+
+        let (upvars_tys, maybe_outer_lifetime) = Self::compute_closure_meta(
+            clos_args,
+            closure_arg,
+            &mut region_substitution,
+            info,
+            env,
+        );
 
         let mut inclusion_tracker = InclusionTracker::new(info);
         // add placeholder subsets
@@ -323,17 +336,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let translated_ty = t.ty_translator.translate_type(ty)?;
             translated_upvars_types.push(translated_ty);
         }
-        let meta;
-        {
-            let scope = t.ty_translator.scope.borrow();
-            meta = ClosureMetaInfo {
-                kind: closure_kind,
-                captures,
-                capture_tys: &translated_upvars_types,
-                closure_lifetime: maybe_outer_lifetime
-                    .map(|x| scope.lifetime_scope.lookup_region(x).unwrap().to_owned()),
-            };
-        }
+        let meta = ClosureMetaInfo {
+            kind: closure_kind,
+            captures,
+            capture_tys: &translated_upvars_types,
+            closure_lifetime: maybe_outer_lifetime,
+        };
+
 
         // get argument names
         let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());

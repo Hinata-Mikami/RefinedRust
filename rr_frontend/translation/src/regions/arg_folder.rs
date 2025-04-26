@@ -8,6 +8,10 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::visit::TypeVisitableExt;
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
 
+use crate::environment::polonius_info::PoloniusInfo;
+use crate::regions;
+use crate::regions::EarlyLateRegionMap;
+
 pub fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
@@ -52,6 +56,56 @@ where
         rename_map: map,
     };
     x.fold_with(&mut folder)
+}
+
+pub fn rename_closure_capture_regions<'tcx, 'a, T>(
+    x: T,
+    tcx: ty::TyCtxt<'tcx>,
+    substitution: &'a mut EarlyLateRegionMap,
+    info: &'a PoloniusInfo<'a, 'tcx>,
+) -> T
+where
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
+{
+    let mut folder = ClosureCaptureRegionVisitor {
+        tcx,
+        substitution,
+        info,
+    };
+    x.fold_with(&mut folder)
+}
+
+/// Rename the regions appearing in closure captures to use the universal regions.
+struct ClosureCaptureRegionVisitor<'a, 'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    substitution: &'a mut EarlyLateRegionMap,
+    info: &'a PoloniusInfo<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'a, 'tcx> {
+    fn interner(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(v) => {
+                // We need to do some hacks here to find the right Polonius region:
+                // `r` is the non-placeholder region that the variable gets, but we are
+                // looking for the corresponding placeholder region
+                let r2 = regions::init::find_placeholder_region_for(v, self.info).unwrap();
+
+                if self.substitution.region_names.get(&r2).is_none() {
+                    let lft = self.info.mk_atomic_region(r2);
+                    let name = regions::format_atomic_region_direct(&lft, None);
+                    self.substitution.region_names.insert(r2, name);
+                }
+
+                ty::Region::new_var(self.interner(), r2)
+            },
+            _ => r,
+        }
+    }
 }
 
 /// Rename `RegionVid`s.
