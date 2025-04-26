@@ -17,7 +17,9 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
+use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::regions::EarlyLateRegionMap;
+use crate::traits::resolution;
 
 /// Process the signature of a function by instantiating the region variables with their
 /// Polonius variables.
@@ -206,18 +208,34 @@ pub fn get_relevant_universal_constraints<'a>(
 }
 
 /// Determine initial constraints between universal regions and local place regions.
-/// Returns an initial mapping for the name _map that initializes place regions of arguments
+/// Returns an initial mapping for the name map that initializes place regions of arguments
 /// with universals.
+/// We structurally compare the regions in the function signature args `sig_args` with the regions
+/// in the body's `local_args`.
 pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     info: &'a PoloniusInfo<'a, 'tcx>,
     inclusion_tracker: &mut InclusionTracker<'a, 'tcx>,
-    _sig_args: &[ty::Ty<'tcx>],
-    _local_args: &[ty::Ty<'tcx>],
+    sig_args: &[ty::Ty<'tcx>],
+    local_args: &[ty::Ty<'tcx>],
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
+    info!("computing initial universal constraints for {sig_args:?} and {local_args:?}");
+
     // Polonius generates a base subset constraint uregion ⊑ pregion.
     // We turn that into pregion = uregion, as we do strong updates at the top-level.
-    let input_facts = &info.borrowck_in_facts;
-    let subset_base = &input_facts.subset_base;
+    assert!(sig_args.len() == local_args.len());
+
+    // compute the mapping
+    let mut unifier = InitialPoloniusUnifier::new(tcx);
+    for (a1, a2) in local_args.iter().zip(sig_args.iter()) {
+        // TODO: normalize here.
+        let a1_normalized = resolution::normalize_type(tcx, param_env, *a1).unwrap();
+        let a2_normalized = resolution::normalize_type(tcx, param_env, *a2).unwrap();
+        unifier.map_tys(a1_normalized, a2_normalized);
+    }
+
+    // add the inclusions to the inclusion tracker
 
     let root_location = mir::Location {
         block: mir::BasicBlock::from_u32(0),
@@ -228,37 +246,49 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
         typ: facts::PointType::Start,
     });
 
-    // TODO: for nested references, this doesn't really seem to work.
-    // Problem is that we don't have constraints for the mapping of nested references.
-    // Potentially, we should instead just equalize the types
-
     let mut initial_arg_mapping = Vec::new();
-    for (r1, r2, p) in subset_base {
-        let lft1 = info.mk_atomic_region(*r1);
-        let lft2 = info.mk_atomic_region(*r2);
+    for (l, s) in unifier.get_result() {
+        inclusion_tracker.add_static_inclusion(s, l, root_point);
+        inclusion_tracker.add_static_inclusion(l, s, root_point);
 
-        //if *p != root_point {
-        //continue;
-        //}
-
-        let polonius_info::AtomicRegion::Universal(polonius_info::UniversalRegionKind::Local, _) = lft1
-        else {
-            continue;
-        };
-
-        if !matches!(lft2, polonius_info::AtomicRegion::PlaceRegion(_, _)) {
-            continue;
-        }
-
-        // this is a constraint we care about here, add it
-        if inclusion_tracker.check_inclusion(*r1, *r2, root_point) {
-            continue;
-        }
-
-        inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
-        inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
-
-        initial_arg_mapping.push((lft1, lft2));
+        let lft1 = info.mk_atomic_region(l);
+        let lft2 = info.mk_atomic_region(s);
+        initial_arg_mapping.push((lft2, lft1));
     }
+
     initial_arg_mapping
+}
+
+pub struct InitialPoloniusUnifier<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    mapping: HashMap<Region, Region>,
+}
+impl<'tcx> InitialPoloniusUnifier<'tcx> {
+    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            mapping: HashMap::new(),
+        }
+    }
+
+    pub fn get_result(self) -> HashMap<Region, Region> {
+        self.mapping
+    }
+}
+impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        if let ty::RegionKind::ReVar(l1) = *r1 {
+            if let ty::RegionKind::ReVar(l2) = *r2 {
+                if let Some(l22) = self.mapping.get(&l1) {
+                    assert_eq!(l2, *l22);
+                } else {
+                    self.mapping.insert(l1, l2);
+                }
+            }
+        }
+    }
 }

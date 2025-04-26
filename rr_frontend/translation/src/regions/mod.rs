@@ -12,6 +12,7 @@ pub mod calls;
 pub mod composite;
 pub mod inclusion_tracker;
 pub mod init;
+pub mod region_bi_folder;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 

@@ -130,7 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         region_substitution: &mut regions::EarlyLateRegionMap,
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
-    ) -> (Vec<ty::Ty<'tcx>>, Option<radium::Lft>) {
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<radium::Lft>) {
         // Add missing universals for the captures to the scope
         /*
         for v in &info.borrowck_in_facts.universal_region {
@@ -150,26 +150,27 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 regions::arg_folder::rename_closure_capture_regions(ty, env.tcx(), region_substitution, info);
             fixed_upvars_tys.push(fixed_ty);
         }
-        // also add the lifetime for the outer reference
+
+        // Do the same to the whole closure arg
+        let fixed_closure_arg_ty = regions::arg_folder::rename_closure_capture_regions(
+            closure_arg.ty,
+            env.tcx(),
+            region_substitution,
+            info,
+        );
+
+        // find the optional lifetime for the outer reference
         let mut maybe_outer_lifetime = None;
-        if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
+        if let ty::TyKind::Ref(r, _, _) = fixed_closure_arg_ty.kind() {
             if let ty::RegionKind::ReVar(r) = r.kind() {
-                // We need to do some hacks here to find the right Polonius region:
-                // `r` is the non-placeholder region that the variable gets, but we are
-                // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
-
-                let lft = info.mk_atomic_region(r2);
-                let name = regions::format_atomic_region_direct(&lft, None);
-                region_substitution.region_names.insert(r2, name.clone());
-
-                maybe_outer_lifetime = Some(name);
+                let name = &region_substitution.region_names[&r];
+                maybe_outer_lifetime = Some(name.to_owned());
             } else {
                 unreachable!();
             }
         }
 
-        (fixed_upvars_tys, maybe_outer_lifetime)
+        (fixed_closure_arg_ty, fixed_upvars_tys, maybe_outer_lifetime)
     }
 
     /// Create a translation instance for a closure.
@@ -285,7 +286,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
 
-        let (upvars_tys, maybe_outer_lifetime) = Self::compute_closure_meta(
+        let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) = Self::compute_closure_meta(
             clos_args,
             closure_arg,
             &mut region_substitution,
@@ -316,6 +317,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
+        info!("tupled closure upvars: {fixed_closure_arg_ty:?}");
+        let mut all_inputs = inputs.clone();
+        all_inputs.insert(0, fixed_closure_arg_ty);
+
+
         let mut t = Self {
             env,
             proc,
@@ -327,7 +333,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ty_translator: type_translator,
             trait_registry,
             const_registry,
-            inputs: inputs.clone(),
+            inputs: all_inputs,
         };
 
         // compute meta information needed to generate the spec

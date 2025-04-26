@@ -17,12 +17,12 @@ use typed_arena::Arena;
 use crate::base::*;
 use crate::body::signature;
 use crate::environment::Environment;
+use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{
     get_declared_trait_attrs, TraitAttrParser, VerboseTraitAttrParser,
 };
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
-use crate::traits::region_bi_folder::RegionBiFolder;
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, procedures, traits, types};
@@ -1019,10 +1019,6 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
 impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
     fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {

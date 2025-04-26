@@ -181,7 +181,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let return_name = opt_return_name?;
 
         // add lifetime parameters to the map
+        let param_env = env.tcx().param_env(proc.get_id());
         let initial_constraints = regions::init::get_initial_universal_arg_constraints(
+            env.tcx(),
+            param_env,
             info,
             &mut inclusion_tracker,
             inputs,

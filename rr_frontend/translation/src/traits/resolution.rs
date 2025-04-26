@@ -11,7 +11,7 @@ use rr_rustc_interface::middle::ty::TypeVisitableExt;
 use rr_rustc_interface::{middle, trait_selection};
 
 use crate::regions::arg_folder;
-use crate::traits::region_bi_folder::RegionBiFolder;
+use crate::regions::region_bi_folder::RegionBiFolder;
 
 /// Normalize a type in the given environment.
 pub fn normalize_type<'tcx, T>(
@@ -162,10 +162,6 @@ impl<'tcx> RegionMapper<'tcx> {
 impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
     fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {

@@ -4,7 +4,6 @@ use rr_rustc_interface::middle::ty;
 
 pub trait RegionBiFolder<'tcx> {
     fn tcx(&self) -> ty::TyCtxt<'tcx>;
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>);
 
@@ -75,10 +74,50 @@ pub trait RegionBiFolder<'tcx> {
                     self.map_tys(ty1, ty2);
                 }
             },
+            ty::TyKind::Slice(ty1) => {
+                let ty::TyKind::Slice(ty2) = ty2.kind() else {
+                    unreachable!();
+                };
+                self.map_tys(*ty1, *ty2);
+            },
+            ty::TyKind::Closure(_, args1) => {
+                let ty::TyKind::Closure(_, args2) = ty2.kind() else {
+                    unreachable!();
+                };
+                let args1 = args1.as_closure();
+                let args2 = args2.as_closure();
+                let upvars1 = args1.upvar_tys();
+                let upvars2 = args2.upvar_tys();
+                assert_eq!(upvars1.len(), upvars2.len());
+                for (ty1, ty2) in upvars1.iter().zip(upvars2.iter()) {
+                    self.map_tys(ty1, ty2);
+                }
+            },
 
-            ty::TyKind::Char | ty::TyKind::Bool | ty::TyKind::Str => {},
+            ty::TyKind::RawPtr(ty1) => {
+                let ty::TyKind::RawPtr(ty2) = ty2.kind() else {
+                    unreachable!();
+                };
+                assert_eq!(ty1.mutbl, ty2.mutbl);
 
-            _ => unimplemented!("implement RegionMapper::map_tys for {ty1:}"),
+                self.map_tys(ty1.ty, ty2.ty);
+            },
+
+            ty::TyKind::Array(ty1, _len1) => {
+                let ty::TyKind::Array(ty2, _len2) = ty2.kind() else {
+                    unreachable!();
+                };
+
+                self.map_tys(*ty1, *ty2);
+            },
+
+            ty::TyKind::Never
+            | ty::TyKind::Float(_)
+            | ty::TyKind::Char
+            | ty::TyKind::Bool
+            | ty::TyKind::Str => {},
+
+            _ => unimplemented!("implement RegionBiFolder::map_tys for {ty1:}"),
         }
     }
 
