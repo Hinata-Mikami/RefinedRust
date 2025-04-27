@@ -4556,48 +4556,28 @@ impl<'def, T: TraitReqInfo> Display for GenericScope<'def, T> {
 
 impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
     #[must_use]
-    pub fn get_direct_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(false, true, include_self, true, true)
-    }
-
-    #[must_use]
-    pub fn get_direct_spec_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(false, true, include_self, true, false)
-    }
-
-    #[must_use]
     pub fn get_direct_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(false, true, include_self, false, true)
+        self.get_trait_req_parameters(false, true, include_self, false)
     }
 
     #[must_use]
     pub fn get_surrounding_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, false, include_self, true, true)
-    }
-
-    #[must_use]
-    pub fn get_surrounding_spec_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, false, include_self, true, false)
+        self.get_trait_req_parameters(true, false, include_self, true)
     }
 
     #[must_use]
     pub fn get_surrounding_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, false, include_self, false, true)
+        self.get_trait_req_parameters(true, false, include_self, false)
     }
 
     #[must_use]
     pub fn get_all_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, true, include_self, true, true)
-    }
-
-    #[must_use]
-    pub fn get_all_spec_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, true, include_self, true, false)
+        self.get_trait_req_parameters(true, true, include_self, true)
     }
 
     #[must_use]
     pub fn get_all_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, true, include_self, false, true)
+        self.get_trait_req_parameters(true, true, include_self, false)
     }
 
     #[allow(clippy::fn_params_excessive_bools)]
@@ -4607,7 +4587,6 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
         include_direct: bool,
         include_self: bool,
         include_spec: bool,
-        include_attrs: bool,
     ) -> coq::binder::BinderList {
         let mut params = Vec::new();
 
@@ -4623,7 +4602,7 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
 
-            if include_attrs && (!trait_use.is_used_in_self_trait || include_self) {
+            if !trait_use.is_used_in_self_trait || include_self {
                 params.push(trait_use.get_attr_param());
             }
 

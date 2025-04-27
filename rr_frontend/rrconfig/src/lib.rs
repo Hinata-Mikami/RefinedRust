@@ -14,7 +14,6 @@ use path_clean::PathClean;
 use serde::Deserialize;
 
 pub mod arg_value;
-pub mod launch;
 
 lazy_static! {
     // RwLock due to rustc parallelism

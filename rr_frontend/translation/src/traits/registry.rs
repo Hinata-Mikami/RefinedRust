@@ -899,7 +899,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Fills an existing trait use.
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
-    #[allow(clippy::unnecessary_wraps)]
     pub fn fill_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,

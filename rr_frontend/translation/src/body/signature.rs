@@ -176,191 +176,183 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
         }
 
-        let parent_args;
         let mut capture_regions = Vec::new();
-        let sig;
-        let captures;
-        let upvars_tys;
-        if let ty::TyKind::Closure(did, closure_args) = closure_ty.kind() {
-            let clos = closure_args.as_closure();
 
-            let tupled_upvars_tys = clos.tupled_upvars_ty();
-            upvars_tys = clos.upvar_tys();
-            parent_args = clos.parent_args();
-            let unnormalized_sig = clos.sig();
-            sig = unnormalized_sig;
-            info!("closure sig: {:?}", sig);
+        let ty::TyKind::Closure(did, closure_args) = closure_ty.kind() else {
+            unreachable!();
+        };
 
-            captures = env.tcx().closure_captures(did.as_local().unwrap());
-            info!("Closure has captures: {:?}", captures);
+        let clos = closure_args.as_closure();
 
-            // find additional lifetime parameters
-            for (place, ty) in captures.iter().zip(clos.upvar_tys().iter()) {
-                if place.region.is_some() {
-                    // find region from ty
-                    if let ty::TyKind::Ref(region, _, _) = ty.kind() {
-                        capture_regions.push(*region);
-                    }
+        let tupled_upvars_tys = clos.tupled_upvars_ty();
+        let upvars_tys = clos.upvar_tys();
+        let parent_args = clos.parent_args();
+        let sig = clos.sig();
+        info!("closure sig: {:?}", sig);
+
+        let captures = env.tcx().closure_captures(did.as_local().unwrap());
+        info!("Closure has captures: {:?}", captures);
+
+        // find additional lifetime parameters
+        for (place, ty) in captures.iter().zip(clos.upvar_tys().iter()) {
+            if place.region.is_some() {
+                // find region from ty
+                if let ty::TyKind::Ref(region, _, _) = ty.kind() {
+                    capture_regions.push(*region);
                 }
             }
-            info!("Closure capture regions: {:?}", capture_regions);
+        }
+        info!("Closure capture regions: {:?}", capture_regions);
 
-            info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
-            info!("Function signature: {:?}", sig);
-            info!("Closure generic args: {:?}", parent_args);
-        } else {
-            unreachable!();
+        info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
+        info!("Function signature: {:?}", sig);
+        info!("Closure generic args: {:?}", parent_args);
+
+        let info = match PoloniusInfo::new(env, proc) {
+            Ok(info) => info,
+            Err(err) => return Err(TranslationError::UnknownError(format!("{:?}", err))),
+        };
+
+        // TODO: avoid leak
+        let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+
+        // For closures, we only handle the parent's args here!
+        // TODO: do we need to do something special for the parent's late-bound region
+        // parameters?
+        // TODO: should we always take the lifetime parameters?
+        let params = parent_args;
+        //proc.get_type_params();
+        info!("Function generic args: {:?}", params);
+
+        // dump graphviz files
+        // color code: red: dying loan, pink: becoming a zombie; green: is zombie
+        if rrconfig::dump_borrowck_info() {
+            dump_borrowck_info(env, proc.get_id(), info);
         }
 
-        match PoloniusInfo::new(env, proc) {
-            Ok(info) => {
-                // TODO: avoid leak
-                let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+        let (tupled_inputs, output, mut region_substitution) =
+            regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
 
-                // For closures, we only handle the parent's args here!
-                // TODO: do we need to do something special for the parent's late-bound region
-                // parameters?
-                // TODO: should we always take the lifetime parameters?
-                let params = parent_args;
-                //proc.get_type_params();
-                info!("Function generic args: {:?}", params);
-
-                // dump graphviz files
-                // color code: red: dying loan, pink: becoming a zombie; green: is zombie
-                if rrconfig::dump_borrowck_info() {
-                    dump_borrowck_info(env, proc.get_id(), info);
-                }
-
-                let (tupled_inputs, output, mut region_substitution) =
-                    regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
-
-                // Process the lifetime parameters that come from the captures
-                for r in capture_regions {
-                    // TODO: problem: we're introducing inconsistent names here.
-                    if let ty::RegionKind::ReVar(r) = r.kind() {
-                        let lft = info.mk_atomic_region(r);
-                        let name = regions::format_atomic_region_direct(&lft, None);
-                        region_substitution.region_names.insert(r, name);
-                        // TODO: add to region_substitution?
-                    } else {
-                        unreachable!();
-                    }
-                }
-                // also add the lifetime for the outer reference
-                let mut maybe_outer_lifetime = None;
-                if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
-                    if let ty::RegionKind::ReVar(r) = r.kind() {
-                        // We need to do some hacks here to find the right Polonius region:
-                        // `r` is the non-placeholder region that the variable gets, but we are
-                        // looking for the corresponding placeholder region
-                        let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
-
-                        info!("using lifetime {:?} for closure universal", r2);
-                        let lft = info.mk_atomic_region(r2);
-                        let name = regions::format_atomic_region_direct(&lft, None);
-                        region_substitution.region_names.insert(r2, name);
-
-                        maybe_outer_lifetime = Some(r2);
-                    } else {
-                        unreachable!();
-                    }
-                }
-
-                // detuple the inputs
-                assert!(tupled_inputs.len() == 1);
-                let input_tuple_ty = tupled_inputs[0];
-                let mut inputs = Vec::new();
-
-                // push the closure as the first argument
-                /*
-                if let Some(r2) = maybe_outer_lifetime {
-                    // in this case, we need to patch the region first
-                    if let ty::TyKind::Ref(_, ty, m) = closure_arg.ty.kind() {
-                        let new_region = ty::Region::new_var(env.tcx(), r2);
-                        inputs.push(env.tcx().mk_ty_from_kind(ty::TyKind::Ref(new_region, *ty, *m)));
-                    }
-                }
-                else {
-                    inputs.push(closure_arg.ty);
-                }
-                */
-
-                if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
-                    inputs.extend(args.iter());
-                }
-
-                info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
-
-                let mut inclusion_tracker = InclusionTracker::new(info);
-                // add placeholder subsets
-                let initial_point: facts::Point = facts::Point {
-                    location: mir::BasicBlock::from_u32(0).start_location(),
-                    typ: facts::PointType::Start,
-                };
-                for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-                    inclusion_tracker.add_static_inclusion(
-                        *r1,
-                        *r2,
-                        info.interner.get_point_index(&initial_point),
-                    );
-                }
-
-                let type_scope = Self::setup_local_scope(
-                    env,
-                    ty_translator,
-                    trait_registry,
-                    proc.get_id(),
-                    params,
-                    &mut translated_fn,
-                    region_substitution,
-                    Some(info),
-                )?;
-
-                let type_translator = types::LocalTX::new(ty_translator, type_scope);
-
-                let mut t = Self {
-                    env,
-                    proc,
-                    info,
-                    translated_fn,
-                    inclusion_tracker,
-                    procedure_registry: proc_registry,
-                    attrs,
-                    ty_translator: type_translator,
-                    trait_registry,
-                    const_registry,
-                    inputs: inputs.clone(),
-                };
-
-                // compute meta information needed to generate the spec
-                let mut translated_upvars_types = Vec::new();
-                for ty in upvars_tys {
-                    let translated_ty = t.ty_translator.translate_type(ty)?;
-                    translated_upvars_types.push(translated_ty);
-                }
-                let meta;
-                {
-                    let scope = t.ty_translator.scope.borrow();
-                    meta = ClosureMetaInfo {
-                        kind: closure_kind,
-                        captures,
-                        capture_tys: &translated_upvars_types,
-                        closure_lifetime: maybe_outer_lifetime
-                            .map(|x| scope.lifetime_scope.lookup_region(x).unwrap().to_owned()),
-                    };
-                }
-
-                // get argument names
-                let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
-                let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
-                info!("arg names: {arg_names:?}");
-
-                // process attributes
-                t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
-                Ok(t)
-            },
-            Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
+        // Process the lifetime parameters that come from the captures
+        for r in capture_regions {
+            // TODO: problem: we're introducing inconsistent names here.
+            if let ty::RegionKind::ReVar(r) = r.kind() {
+                let lft = info.mk_atomic_region(r);
+                let name = regions::format_atomic_region_direct(&lft, None);
+                region_substitution.region_names.insert(r, name);
+                // TODO: add to region_substitution?
+            } else {
+                unreachable!();
+            }
         }
+        // also add the lifetime for the outer reference
+        let mut maybe_outer_lifetime = None;
+        if let ty::TyKind::Ref(r, _, _) = closure_arg.ty.kind() {
+            if let ty::RegionKind::ReVar(r) = r.kind() {
+                // We need to do some hacks here to find the right Polonius region:
+                // `r` is the non-placeholder region that the variable gets, but we are
+                // looking for the corresponding placeholder region
+                let r2 = regions::init::find_placeholder_region_for(r, info).unwrap();
+
+                info!("using lifetime {:?} for closure universal", r2);
+                let lft = info.mk_atomic_region(r2);
+                let name = regions::format_atomic_region_direct(&lft, None);
+                region_substitution.region_names.insert(r2, name);
+
+                maybe_outer_lifetime = Some(r2);
+            } else {
+                unreachable!();
+            }
+        }
+
+        // detuple the inputs
+        assert!(tupled_inputs.len() == 1);
+        let input_tuple_ty = tupled_inputs[0];
+        let mut inputs = Vec::new();
+
+        // push the closure as the first argument
+        /*
+        if let Some(r2) = maybe_outer_lifetime {
+            // in this case, we need to patch the region first
+            if let ty::TyKind::Ref(_, ty, m) = closure_arg.ty.kind() {
+                let new_region = ty::Region::new_var(env.tcx(), r2);
+                inputs.push(env.tcx().mk_ty_from_kind(ty::TyKind::Ref(new_region, *ty, *m)));
+            }
+        }
+        else {
+            inputs.push(closure_arg.ty);
+        }
+        */
+
+        if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
+            inputs.extend(args.iter());
+        }
+
+        info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
+
+        let mut inclusion_tracker = InclusionTracker::new(info);
+        // add placeholder subsets
+        let initial_point: facts::Point = facts::Point {
+            location: mir::BasicBlock::from_u32(0).start_location(),
+            typ: facts::PointType::Start,
+        };
+        for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
+            inclusion_tracker.add_static_inclusion(*r1, *r2, info.interner.get_point_index(&initial_point));
+        }
+
+        let type_scope = Self::setup_local_scope(
+            env,
+            ty_translator,
+            trait_registry,
+            proc.get_id(),
+            params,
+            &mut translated_fn,
+            region_substitution,
+            Some(info),
+        )?;
+
+        let type_translator = types::LocalTX::new(ty_translator, type_scope);
+
+        let mut t = Self {
+            env,
+            proc,
+            info,
+            translated_fn,
+            inclusion_tracker,
+            procedure_registry: proc_registry,
+            attrs,
+            ty_translator: type_translator,
+            trait_registry,
+            const_registry,
+            inputs: inputs.clone(),
+        };
+
+        // compute meta information needed to generate the spec
+        let mut translated_upvars_types = Vec::new();
+        for ty in upvars_tys {
+            let translated_ty = t.ty_translator.translate_type(ty)?;
+            translated_upvars_types.push(translated_ty);
+        }
+        let meta;
+        {
+            let scope = t.ty_translator.scope.borrow();
+            meta = ClosureMetaInfo {
+                kind: closure_kind,
+                captures,
+                capture_tys: &translated_upvars_types,
+                closure_lifetime: maybe_outer_lifetime
+                    .map(|x| scope.lifetime_scope.lookup_region(x).unwrap().to_owned()),
+            };
+        }
+
+        // get argument names
+        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        info!("arg names: {arg_names:?}");
+
+        // process attributes
+        t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
+        Ok(t)
     }
 
     /// Translate the body of a function.

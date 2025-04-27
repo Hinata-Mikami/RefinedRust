@@ -26,7 +26,6 @@ rustflags = [
     "-Aclippy::unused_io_amount",
 
     # clippy::nursery
-    "-Aclippy::empty_line_after_doc_comments",
     "-Aclippy::option_if_let_else",
 
     # clippy::restriction
@@ -64,9 +63,7 @@ rustflags = [
     "-Aclippy::print_stderr",
     "-Aclippy::print_stdout",
     "-Aclippy::string_slice",
-    "-Aclippy::undocumented_unsafe_blocks",
     "-Aclippy::unimplemented",
-    "-Aclippy::unnecessary_safety_comment",
     "-Aclippy::unwrap_used",
     "-Aclippy::use_debug",
 

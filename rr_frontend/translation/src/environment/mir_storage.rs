@@ -29,7 +29,6 @@ thread_local! {
 /// # Safety
 ///
 /// See the module level comment.
-#[allow(unused_unsafe)]
 pub unsafe fn store_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
     def_id: hir::def_id::LocalDefId,
@@ -47,7 +46,6 @@ pub unsafe fn store_mir_body<'tcx>(
 ///
 /// See the module level comment.
 #[allow(clippy::needless_lifetimes)] // We want to be very explicit about lifetimes here
-#[allow(unused_unsafe)]
 pub(super) unsafe fn retrieve_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
     def_id: hir::def_id::LocalDefId,

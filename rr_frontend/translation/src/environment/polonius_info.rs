@@ -1524,7 +1524,6 @@ pub struct AdditionalFacts {
 
 impl AdditionalFacts {
     /// Derive ``zombie_requires``.
-    #[allow(clippy::type_complexity)]
     fn derive_zombie_requires(
         all_facts: &facts::AllInput,
         output: &facts::AllOutput,
