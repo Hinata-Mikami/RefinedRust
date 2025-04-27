@@ -190,13 +190,13 @@ impl Buffer {
     }
 
     /// Consume an identifier.
-    pub fn expect_ident(&self) -> Result<(span::Symbol, span::Span)> {
+    pub fn expect_ident(&self) -> Result<span::Symbol> {
         let tok = self.peek(0)?;
         match tok {
             ast::tokenstream::TokenTree::Token(tok, _) => match tok.kind {
                 ast::token::TokenKind::Ident(sym, _) => {
                     self.advance(1);
-                    Ok((sym, tok.span))
+                    Ok(sym)
                 },
                 _ => Err(Error::ExpectedIdent(tok.kind.clone(), tok.span)),
             },
@@ -435,7 +435,6 @@ macro_rules! MToken {
 }
 
 pub struct LitStr {
-    span: span::Span,
     sym: span::Symbol,
 }
 
@@ -453,17 +452,13 @@ where
     fn parse(input: Stream, _: &U) -> Result<Self> {
         let lit = input.expect_literal()?;
         match lit.0.kind {
-            ast::token::LitKind::Str => Ok(Self {
-                span: lit.1,
-                sym: lit.0.symbol,
-            }),
+            ast::token::LitKind::Str => Ok(Self { sym: lit.0.symbol }),
             _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Str, lit.0.kind)),
         }
     }
 }
 
 pub struct Ident {
-    span: span::Span,
     sym: span::Symbol,
 }
 
@@ -472,8 +467,8 @@ where
     U: ?Sized,
 {
     fn parse(input: Stream, _: &U) -> Result<Self> {
-        let (sym, span) = input.expect_ident()?;
-        Ok(Self { span, sym })
+        let sym = input.expect_ident()?;
+        Ok(Self { sym })
     }
 }
 
@@ -486,15 +481,10 @@ impl Ident {
 
 pub struct LitInt {
     span: span::Span,
-    sym: span::Symbol,
     digits: Box<str>,
-    suffix: Box<str>,
 }
 
 impl LitInt {
-    //pub fn value(&self) -> String {
-    //self.sym.to_string()
-    //}
     pub fn base10_parse<N>(&self) -> Result<N>
     where
         N: FromStr,
@@ -514,16 +504,11 @@ where
             ast::token::LitKind::Integer => {
                 let sym = lit.symbol;
 
-                let Some((digits, suffix)) = value::parse_lit_int(&sym.to_string()) else {
+                let Some(digits) = value::parse_lit_int(&sym.to_string()) else {
                     return Err(Error::OtherErr(span, format!("Not an integer literal: {}", sym)));
                 };
 
-                Ok(Self {
-                    span,
-                    sym: lit.symbol,
-                    digits,
-                    suffix,
-                })
+                Ok(Self { span, digits })
             },
             _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Integer, lit.kind)),
         }
@@ -534,7 +519,7 @@ mod value {
     use crate::parse::BigInt;
 
     // Returns base 10 digits and suffix.
-    pub fn parse_lit_int(mut s: &str) -> Option<(Box<str>, Box<str>)> {
+    pub fn parse_lit_int(mut s: &str) -> Option<Box<str>> {
         let negative = byte(s, 0) == b'-';
         if negative {
             s = &s[1..];
@@ -611,7 +596,7 @@ mod value {
             if negative {
                 repr.insert(0, '-');
             }
-            (repr.into_boxed_str(), suffix.to_owned().into_boxed_str())
+            repr.into_boxed_str()
         })
     }
 

@@ -3427,14 +3427,6 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         Err("could not find name".to_owned())
     }
 
-    fn ensure_coq_bound(&self, name: &str) -> Result<(), String> {
-        if !self.coq_names.contains(name) {
-            return Err(format!("Unbound Coq name {} ", name));
-        }
-
-        Ok(())
-    }
-
     fn ensure_coq_not_bound(&self, name: &Option<String>) -> Result<(), String> {
         if let Some(name) = &name {
             if self.coq_names.contains(name) {
