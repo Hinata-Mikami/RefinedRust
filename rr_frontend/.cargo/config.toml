@@ -40,9 +40,6 @@ rustflags = [
     "-Aclippy::new_without_default",
     "-Aclippy::write_with_newline",
 
-    # clippy::suspicious
-    "-Aclippy::suspicious_doc_comments",
-
     # === REQUIRE DISCUSSION ===
 
     # clippy::pedantic
