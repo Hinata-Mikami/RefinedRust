@@ -995,6 +995,7 @@ impl InvariantSpec {
 
         match self.flags {
             InvariantSpecFlags::NonAtomic => {
+                #[allow(deprecated)]
                 write!(
                     out,
                     "{indent}Program Definition {} : {} (na_ex_inv_def ({}) ({})) := ",
@@ -1006,6 +1007,7 @@ impl InvariantSpec {
                 .unwrap();
             },
             _ => {
+                #[allow(deprecated)]
                 write!(
                     out,
                     "{indent}Program Definition {} : {} (ex_inv_def ({}) ({})) := ",
@@ -1104,6 +1106,7 @@ impl InvariantSpec {
 
         // generate the definition itself.
         if InvariantSpecFlags::NonAtomic == self.flags {
+            #[allow(deprecated)]
             write!(
                 out,
                 "{indent}Definition {} : {} (type ({})) :=\n\
@@ -1116,6 +1119,7 @@ impl InvariantSpec {
             )
             .unwrap();
         } else {
+            #[allow(deprecated)]
             write!(
                 out,
                 "{indent}Definition {} : {} (type ({})) :=\n\
@@ -1752,6 +1756,7 @@ impl<'def> AbstractStruct<'def> {
             )
             .unwrap();
             write!(out, "{indent}{indent}let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n").unwrap();
+            #[allow(deprecated)]
             write!(
                 out,
                 "{indent}{indent}ex_plain_t _ _ ({spec_name} {}) ({}).\n",
@@ -1761,6 +1766,7 @@ impl<'def> AbstractStruct<'def> {
             .unwrap();
 
             // write the fixpoint
+            #[allow(deprecated)]
             write!(
                 out,
                 "{indent}Definition {type_name} : {} (type ({rfn_type})) := {} type_fixpoint ({type_name}_rec {}).\n",
@@ -2392,6 +2398,7 @@ impl<'def> AbstractEnum<'def> {
             }
             let s = s.borrow();
             let s = s.as_ref().unwrap();
+            #[allow(deprecated)]
             let ty_def_term = s.variant_def.generate_coq_type_term(sls_app);
 
             write!(
@@ -2496,6 +2503,7 @@ impl<'def> AbstractEnum<'def> {
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);
 
         // main def
+        #[allow(deprecated)]
         write!(
             out,
             "{indent}Program Definition {} : {} (enum ({})) := {} mk_enum\n\
@@ -2531,6 +2539,7 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Qed.\n\n").unwrap();
 
         // define the actual type
+        #[allow(deprecated)]
         write!(
             out,
             "{indent}Definition {} : {} (type _) := {} enum_t ({} {}).\n",
@@ -4427,7 +4436,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         let mut out = String::new();
 
         out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
-        let tys = self.get_direct_ty_params_with_assocs();
+        let tys = self.get_surrounding_ty_params_with_assocs();
         push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
         out.push(']');
 
