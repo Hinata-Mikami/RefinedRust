@@ -76,6 +76,13 @@ fmt:
    - cd rr_frontend
    - nix develop -c cargo fmt --check
 
+machete:
+  stage: lint
+  needs: [ "nix-cache" ]
+  script:
+   - cd rr_frontend
+   - nix develop -c cargo machete
+
 theories:
   stage: build
   needs: [ "nix-cache" ]
