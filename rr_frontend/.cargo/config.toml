@@ -33,7 +33,6 @@ rustflags = [
     "-Aclippy::non_ascii_literal",
     "-Aclippy::panic_in_result_fn",
     "-Aclippy::unwrap_in_result",
-    "-Aclippy::separated_literal_suffix",
     "-Aclippy::pub_use",
 
     # clippy::style
@@ -121,6 +120,7 @@ rustflags = [
     "-Aclippy::mod_module_files", # see: self_named_module_files
     "-Aclippy::pub_with_shorthand", # see: pub_without_shortand
     "-Aclippy::semicolon_outside_block", # see: semicolon_inline_block
+    "-Aclippy::separated_literal_suffix", # see: unseparated_literal_suffix
 ]
 
 [unstable.gitoxide]
