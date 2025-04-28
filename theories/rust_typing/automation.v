@@ -1079,13 +1079,33 @@ Ltac solve_goal_normalized_prepare_hook ::=
 .
 
 (** Enum-related tactic calls *)
-
+(* TODO better inclusion solvers *)
+Ltac ty_lfts_incl_solver :=
+  repeat match goal with
+  | |- ?a ⊆ _ =>
+    match a with
+    | context[ty_lfts _] =>
+        rewrite {1}ty_lfts_unfold
+    end;
+    simpl;
+    try set_solver
+  end.
 Ltac solve_mk_enum_ty_lfts_incl :=
   simpl; intro_adt_params;
-  intros []; rewrite {1}ty_lfts_unfold; simpl; set_solver.
+  intros []; ty_lfts_incl_solver.
+Ltac ty_wf_E_incl_solver :=
+  repeat match goal with
+  | |- ?a ⊆ _ =>
+    match a with
+    | context[ty_wf_E _] =>
+        rewrite {1}ty_wf_E_unfold
+    end;
+    simpl;
+    try set_solver
+  end.
 Ltac solve_mk_enum_ty_wf_E :=
   simpl; intro_adt_params;
-  intros []; rewrite {1}ty_wf_E_unfold/=; set_solver.
+  intros []; ty_wf_E_incl_solver.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   (*intros []; naive_solver.*)

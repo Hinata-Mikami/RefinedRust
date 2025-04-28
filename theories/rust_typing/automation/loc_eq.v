@@ -53,7 +53,9 @@ Ltac prepare_loc_eq :=
   (* Rewrite with the hints. *)
   autorewrite with refinedrust_loc_eq_rewrite;
   (* Simplify layout terms *)
-  simplify_layout_goal_noshelve; simpl.
+  simplify_layout_goal_noshelve;
+  unfold_common_defs;
+  simpl.
 
 (** Solver for location equality. *)
 Ltac solve_loc_eq :=
@@ -112,6 +114,8 @@ Section test.
   Goal (l offsetst{IntSynType usize_t}ₗ n1) = l +ₗ (ly_size usize_t * n1).
   init_cache; solve_loc_eq. Qed.
 
+  Goal (l offsetst{IntSynType usize_t}ₗ n1) = l +ₗ (n1 * 8).
+  Proof. init_cache. solve_loc_eq. Qed.
   (*Goal (l +ₗ offset) = l +ₗ (len * size_of  *)
 End test.
 

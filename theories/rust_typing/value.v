@@ -616,7 +616,7 @@ Section unify_loc.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
-  Global Instance subsume_full_ofty_value_st_evar_inst π E L step l st1 st2 vs1 vs2 `{!IsProtected st2} :
+  Global Instance subsume_full_ofty_value_st_evar_inst π E L step l st1 st2 vs1 vs2 `{!ContainsProtected st2} :
     SubsumeFull E L step (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t st1)%I (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t st2)%I | 10 :=
     λ T, i2p (subsume_full_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 T).
 

@@ -121,13 +121,6 @@ Proof.
   iModIntro.
   repeat liRStep; liShow.
 
-  rewrite Nat.add_0_r.
-  assert ((x' offset{u8}ₗ Z.to_nat old_size) = x' +ₗ Z.to_nat old_size) as ->.
-  { rewrite /offset_loc. rewrite /ly_size/=/bytes_per_int/=.
-    f_equiv. lia. }
-  liInst Hevar1 (mk_array_layout u8 (Z.to_nat new_size - Z.to_nat old_size)).
-  repeat liRStep; liShow.
-
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/u8/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
