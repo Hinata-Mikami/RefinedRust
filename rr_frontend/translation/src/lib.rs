@@ -1555,9 +1555,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
 }
 
 /// Generate trait instances.
-fn assemble_trait_impls<'tcx, 'rcx>(
-    vcx: &mut VerificationCtxt<'tcx, 'rcx>,
-) {
+fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
     let trait_impl_ids = vcx.env.get_trait_impls();
 
     for trait_impl_id in trait_impl_ids {

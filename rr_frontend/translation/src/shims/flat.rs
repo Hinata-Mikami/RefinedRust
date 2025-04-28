@@ -217,5 +217,8 @@ pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
         }
     }
 
-    get_cleaned_def_path(env.tcx(), did)
+    let mut basic_path = get_cleaned_def_path(env.tcx(), did);
+    let crate_name = env.tcx().crate_name(span::def_id::LOCAL_CRATE);
+    basic_path.insert(0, crate_name.as_str().to_owned());
+    basic_path
 }
