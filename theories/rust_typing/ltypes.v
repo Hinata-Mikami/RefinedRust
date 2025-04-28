@@ -404,6 +404,26 @@ Section array.
         intros Ha b ??. destruct b as [ | b]; first (simpl; congruence).
         simpl. intros Hlook. eapply IH; done.
     Qed.
+
+    Lemma lookup_iml_list_to_map {X} `{!Countable K} (l : list (K * X)) x y :
+      NoDup l.*1 →
+      lookup_iml l x = Some y ↔ (list_to_map l : gmap _ _) !! x = Some y.
+    Proof.
+      intros Hnd.
+      rewrite -lookup_iml_Some_iff. split.
+      - intros (a & Hlook & Hb).
+        apply elem_of_list_to_map_1; first done.
+        by eapply elem_of_list_lookup_2.
+      - intros Ha%elem_of_list_to_map_2.
+        apply elem_of_list_lookup_1 in Ha as (i & Hlook).
+        exists i. split; first done.
+        intros i' ?? ? Hlook'.
+        intros ->.
+        enough (i = i') by lia.
+        eapply NoDup_lookup; first apply Hnd.
+        + rewrite list_lookup_fmap Hlook//.
+        + rewrite list_lookup_fmap Hlook'//.
+    Qed.
   End list_map.
 
   (* Interpretation of an insertion list: from front to back. The same index may appear multiple times,

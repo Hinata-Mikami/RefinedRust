@@ -10,7 +10,7 @@ Section init.
   Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
     ⌜enum_layout_spec_is_layoutable els⌝ ∗
     typed_val_expr E L e (λ L2 π v rti tyi ri,
-      ⌜((list_to_map (els_variants els) : gmap _ _) !! variant) = Some (ty_syn_type tyi)⌝ ∗
+      ⌜(lookup_iml (els_variants els) variant) = Some (ty_syn_type tyi)⌝ ∗
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
       li_tactic (interpret_rust_type_goal M rsty) (λ '(existT rto tyo),
@@ -41,6 +41,8 @@ Section init.
     { done. }
     simpl.
 
+    apply lookup_iml_list_to_map in Hlook_st; first last.
+    { apply els_variants_nodup. }
     assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! variant = Some tag) as (tag & Htag_lookup).
     { apply list_to_map_lookup_fst.
       - rewrite els_tag_int_agree.
