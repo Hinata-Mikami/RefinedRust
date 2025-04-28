@@ -99,6 +99,8 @@ pub enum TranslationError<'tcx> {
 
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(String),
+    #[display("Incomplete specification for trait impl {:?}", _0)]
+    IncompleteTraitImplSpec(DefId),
 }
 
 impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {

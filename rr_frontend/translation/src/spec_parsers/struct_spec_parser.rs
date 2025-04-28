@@ -302,7 +302,7 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
 
         let refinement_included = abstracted_refinement.is_some();
 
-        let xt_injection = "xmap".to_owned();
+        let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
         let spec = specs::InvariantSpec::new(
             ty_name.to_owned(),

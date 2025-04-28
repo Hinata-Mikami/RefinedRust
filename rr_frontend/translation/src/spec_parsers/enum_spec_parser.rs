@@ -158,7 +158,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
 
         let xt_type = coq::term::Type::Literal(xt_type);
         let rfn_type = coq::term::Type::Literal(rfn_type);
-        let xt_injection = "xmap".to_owned();
+        let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
         Ok(specs::EnumSpec {
             rfn_type,
