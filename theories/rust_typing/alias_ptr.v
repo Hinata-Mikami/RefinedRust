@@ -114,6 +114,73 @@ Section rules.
     λ T, i2p (alias_ptr_simplify_goal_unsafe2 π l ty r T).
    *)
 
+End rules.
+
+Section comparison.
+  Context `{!typeGS Σ}.
+
+  Lemma type_relop_ptr_ptr E L v1 (l1 : loc) v2 (l2 : loc) (T : typed_val_expr_cont_t) b op π :
+    match op with
+    | EqOp rit => Some (bool_decide (l1.2 = l2.2)%Z, rit)
+    | NeOp rit => Some (bool_decide (l1.2 ≠ l2.2)%Z, rit)
+    | LtOp rit => Some (bool_decide (l1.2 < l2.2)%Z, rit)
+    | GtOp rit => Some (bool_decide (l1.2 > l2.2)%Z, rit)
+    | LeOp rit => Some (bool_decide (l1.2 <= l2.2)%Z, rit)
+    | GeOp rit => Some (bool_decide (l1.2 >= l2.2)%Z, rit)
+    | _ => None
+    end = Some (b, u8) →
+    T L π (val_of_bool b) bool bool_t b
+    ⊢ typed_bin_op E L v1 (v1 ◁ᵥ{π} l1 @ alias_ptr_t) v2 (v2 ◁ᵥ{π} l2 @ alias_ptr_t) op (PtrOp) (PtrOp) T.
+  Proof.
+    rewrite /ty_own_val/=.
+    iIntros "%Hop HT %Hv1 %Hv2" (Φ) "#CTX #HE HL HΦ".
+    subst.
+    iApply wp_ptr_relop; [| | | done | ].
+    { apply val_to_of_loc. }
+    { apply val_to_of_loc. }
+    {  by apply val_of_bool_iff_val_of_Z. }
+    iIntros "!> Hcred". iApply ("HΦ" with "HL") => //.
+    rewrite /ty_own_val/=. by destruct b.
+  Qed.
+
+  Global Program Instance type_eq_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (EqOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 = l2.2)) _ π _).
+  Solve Obligations with done.
+  Global Program Instance type_ne_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (NeOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 ≠ l2.2)) _ π _).
+  Solve Obligations with done.
+  Global Program Instance type_lt_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LtOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 < l2.2)%Z) _ π _).
+  Solve Obligations with done.
+  Global Program Instance type_gt_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GtOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 > l2.2)%Z) _ π _).
+  Solve Obligations with done.
+  Global Program Instance type_le_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LeOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 <= l2.2)%Z) _ π _).
+  Solve Obligations with done.
+  Global Program Instance type_ge_ptr_ptr_inst E L v1 l1 v2 l2 π :
+    TypedBinOpVal π E L v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GeOp u8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L v1 l1 v2 l2 T (bool_decide (l1.2 >= l2.2)%Z) _ π _).
+  Solve Obligations with done.
+End comparison.
+
+Section offset.
+  Context `{!typeGS Σ}.
+
+  (* TODO offset rules:
+      should these be on offset_ptr_t or alias_ptr_t?
+      - wrapping offset needs to be on alias_ptr, I guess.
+      - 
+
+     - normal offset op requiring loc_in_bounds
+     -
+
+   *)
+
+End offset.
+
+Section place.
+  Context `{!typeGS Σ}.
+
   Lemma typed_place_ofty_alias_ptr_owned π E L l l2 bmin0 wl P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
@@ -191,7 +258,7 @@ Section rules.
   (* TODO is there a better design that does not require us to essentially duplicate this?
      we have alias_ltype in the first place only because of the interaction with OpenedLtype, when we do a raw-pointer-addrof below references.
    *)
-End rules.
+End place.
 
 (** Rules for AliasLtype *)
 Section alias_ltype.

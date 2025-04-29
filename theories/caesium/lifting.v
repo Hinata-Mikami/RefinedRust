@@ -1295,6 +1295,7 @@ Proof.
   - move => ->. econstructor => //=. by rewrite Hv.
 Qed.
 
+(*
 Lemma wp_cast_NULL_bool Φ E:
   ▷ (£1 -∗ Φ (val_of_bool false)) -∗
   WP UnOp (CastOp BoolOp) PtrOp (Val NULL) @ E {{ Φ }}.
@@ -1302,13 +1303,15 @@ Proof.
   iIntros "HΦ". iApply wp_unop_det_pure; [|done].
   move => ??. split.
   - inversion 1; simplify_eq.
-    revert select (cast_to_bool _ _ _ = _) => /=.
-    rewrite val_to_of_loc /= heap_loc_eq_NULL_NULL /=.
-    by move => [<-].
+    (*revert select (cast_to_bool _ _ _ = _) => /=.*)
+    (*rewrite val_to_of_loc /= heap_loc_eq_NULL_NULL /=.*)
+    (*by move => [<-].*)
   - move => ->. econstructor => //=.
     rewrite val_to_of_loc /= heap_loc_eq_NULL_NULL //.
 Qed.
+ *)
 
+(*
 Lemma wp_cast_ptr_bool Φ v l p:
   val_to_loc v = Some l →
   l.1 = ProvAlloc p →
@@ -1325,10 +1328,11 @@ Proof.
   iSplit; last first. { iIntros "!> Hcred". iMod "HE". iFrame. by iApply "HΦ". }
   iPureIntro. split.
   - inversion 1; simplify_eq.
-    revert select (cast_to_bool _ _ _ = _) => /=.
-    rewrite Hv /= heap_loc_eq_alloc_NULL //=. by move => [<-].
+    (*revert select (cast_to_bool _ _ _ = _) => /=.*)
+    (*rewrite Hv /= heap_loc_eq_alloc_NULL //=. by move => [<-].*)
   - move => ->. econstructor => //=. by rewrite Hv /= heap_loc_eq_alloc_NULL.
 Qed.
+ *)
 
 Lemma wp_erase_prov Φ v ly :
   v `has_layout_val` ly →
@@ -1482,12 +1486,12 @@ Proof.
     all: inversion 1; simplify_eq/=.
     all: try case_bool_decide => //.
     all: destruct it as [? []]; simplify_eq/= => //.
-    all: try by rewrite ->it_in_range_mod in * => //; simplify_eq.
+    all: try by rewrite ->wrap_unsigned_in_range in * => //; simplify_eq.
   + move => ->. destruct op.
-    1-20: (apply: ArithOpII; [try done; case_bool_decide; naive_solver|done|done|]).
-    21-23: (apply: ArithOpCheckedII; [try done; case_bool_decide; naive_solver|done|done|]).
+    1-22: (apply: ArithOpII; [try done; case_bool_decide; naive_solver|done|done|]).
+    23-25: (apply: ArithOpCheckedII; [try done; case_bool_decide; naive_solver|done|done|]).
     all: destruct it as [? []]; simplify_eq/= => //.
-    all: try by rewrite it_in_range_mod.
+    all: try by rewrite wrap_unsigned_in_range.
 Qed.
 
 Lemma wp_check_int_arithop Φ op v1 v2 n1 n2 b it:
@@ -1524,44 +1528,25 @@ Lemma wp_ptr_relop Φ op v1 v2 v l1 l2 b rit:
   match op with
   | EqOp rit => Some (bool_decide (l1.2 = l2.2), rit)
   | NeOp rit => Some (bool_decide (l1.2 ≠ l2.2), rit)
-  | LtOp rit => if bool_decide (l1.1 = l2.1) then Some (bool_decide (l1.2 < l2.2), rit) else None
-  | GtOp rit => if bool_decide (l1.1 = l2.1) then Some (bool_decide (l1.2 > l2.2), rit) else None
-  | LeOp rit => if bool_decide (l1.1 = l2.1) then Some (bool_decide (l1.2 <= l2.2), rit) else None
-  | GeOp rit => if bool_decide (l1.1 = l2.1) then Some (bool_decide (l1.2 >= l2.2), rit) else None
+  | LtOp rit => Some (bool_decide (l1.2 < l2.2), rit)
+  | GtOp rit => Some (bool_decide (l1.2 > l2.2), rit)
+  | LeOp rit => Some (bool_decide (l1.2 <= l2.2), rit)
+  | GeOp rit => Some (bool_decide (l1.2 >= l2.2), rit)
   | _ => None
   end = Some (b, rit) →
-  loc_in_bounds l1 0 0 -∗ loc_in_bounds l2 0 0 -∗
-  (alloc_alive_loc l1 ∧ alloc_alive_loc l2 ∧ ▷ (£1 -∗ Φ v)) -∗
+  ▷ (£1 -∗ Φ v) -∗
   WP BinOp op PtrOp PtrOp (Val v1) (Val v2) {{ Φ }}.
 Proof.
-  iIntros (Hv1 Hv2 Hv Hop) "#Hl1 #Hl2 HΦ".
-  iDestruct (loc_in_bounds_is_alloc with "Hl1") as %Haid1.
-  iDestruct (loc_in_bounds_is_alloc with "Hl2") as %Haid2.
-  assert (∃ paid1, l1.1 = ProvAlloc paid1) as [??].
-  { destruct Haid1 as [[??]|[??]]; eauto. }
-  assert (∃ paid2, l2.1 = ProvAlloc paid2) as [??].
-  { destruct Haid2 as [[??]|[??]]; eauto. }
+  iIntros (Hv1 Hv2 Hv Hop) "HΦ".
   iApply wp_binop. iIntros (σ) "Hσ".
-  destruct (decide (valid_ptr l1 σ.(st_heap))). 2: {
-    iDestruct "HΦ" as "[Ha _]".
-    by iMod (alloc_alive_loc_to_valid_ptr with "Hl1 Ha Hσ") as %?.
-  }
-  destruct (decide (valid_ptr l2 σ.(st_heap))). 2: {
-    iDestruct "HΦ" as "[_ [Ha _]]".
-    by iMod (alloc_alive_loc_to_valid_ptr with "Hl2 Ha Hσ") as %?.
-  }
   iApply fupd_mask_intro; [done|]. iIntros "HE".
   destruct l1, l2; simplify_eq/=. iSplit. {
     iPureIntro. destruct op; simplify_eq/=; eexists _.
-    1-2: apply: CmpOpPP => //; by rewrite ?heap_loc_eq_alloc_alloc//= negb_bool_decide_eq.
     all: apply: RelOpPP => //; repeat case_bool_decide; naive_solver.
   }
-  iDestruct "HΦ" as "(_&_&HΦ)". iIntros "!>" (v' Hstep) "Hcred". iMod "HE". iModIntro. iFrame.
+  iIntros "!>" (v' Hstep) "Hcred". iMod "HE". iModIntro. iFrame.
   iSpecialize ("HΦ" with "Hcred").
   inversion Hstep; simplify_eq => //.
-  - revert select (heap_loc_eq _ _ _ = _). rewrite heap_loc_eq_alloc_alloc // => ?. simplify_eq.
-    destruct op; simplify_eq/= => //. by repeat case_bool_decide => //; simplify_eq/=.
-  - destruct op; repeat case_bool_decide; by simplify_eq.
 Qed.
 
 Lemma wp_ptr_offset_credits Φ vl l E it o ly vo n m:
@@ -1806,6 +1791,7 @@ Proof.
   iSplit => //. iFrame. iSpecialize ("HΦ" with "Hcred"). by destruct b.
 Qed.
 
+(*
 Definition wp_if_precond (l : loc) : iProp Σ :=
   match l.1 with | ProvNull => ⌜l = NULL_loc⌝ | ProvAlloc _ => loc_in_bounds l 0 0 | _ => True end.
 
@@ -1847,6 +1833,7 @@ Proof.
   iIntros (? ? σ2 efs Hst ?) "!> Hcred !>". inv_expr_step.
   iSplit => //. iFrame. iSpecialize ("HΦ" with "Hcred"). by repeat case_bool_decide.
 Qed.
+*)
 
 Lemma wp_skip_credits Φ v E n m:
   ↑timeN ⊆ E → time_ctx -∗ atime n -∗ ptime m -∗
@@ -2711,6 +2698,7 @@ Proof.
   iFrame "Hσ". destruct b; by iApply ("Hs" with "Hcred").
 Qed.
 
+(*
 Lemma wps_if_ptr Q Ψ v s1 s2 l join:
   val_to_loc v = Some l →
   wp_if_precond l -∗
@@ -2724,6 +2712,7 @@ Proof.
   iIntros (???? Hstep ?) "!> Hcred !>". inv_stmt_step. iSplit; first done.
   iFrame "Hσ1". do 2 case_bool_decide => //; by iApply ("Hs" with "Hcred").
 Qed.
+ *)
 
 Lemma wps_assert_bool Q Ψ v s b:
   val_to_bool v = Some b →
@@ -2745,6 +2734,7 @@ Proof.
   iApply wps_if => //. by case_decide.
 Qed.
 
+(*
 Lemma wps_assert_ptr Q Ψ v s l:
   val_to_loc v = Some l →
   l ≠ NULL_loc →
@@ -2755,6 +2745,7 @@ Proof.
   iIntros (Hv Hl) "Hlib Hs". rewrite /notation.Assert.
   iApply (wps_if_ptr with "Hlib"); by rewrite ?bool_decide_true.
 Qed.
+*)
 
 Definition wps_block (P : iProp Σ) (b : label) (Q : gmap label stmt) (Ψ : val → iProp Σ) : iProp Σ :=
   (□ (P -∗ WPs Goto b {{ Q, Ψ }})).

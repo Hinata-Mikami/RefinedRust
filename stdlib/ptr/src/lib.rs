@@ -215,13 +215,16 @@ pub const fn mut_ptr_offset<T>(l: *mut T, count: isize) -> *mut T
     unimplemented!();
 }
 
+// TODO: offset_ptr_t or alias_ptr_t?
 #[rr::export_as(core::ptr::const_ptr::add)]
 #[rr::requires("l `has_layout_loc` {ly_of T}")]
 #[rr::requires("(count * size_of_st {st_of T})%Z ∈ isize_t")]
 #[rr::requires(#iris "loc_in_bounds l 0 ((Z.to_nat count) * size_of_st {st_of T})")]
-#[rr::returns("(l, count)" @ "offset_ptr_t {st_of T}")]
+#[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
+//#[rr::returns("(l, count)" @ "offset_ptr_t {st_of T}")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn const_ptr_add<T>(l: *const T, count: usize) -> *const T {
+    // TODO: this seems wrong, we should allow doing a big offset on ZSTs
     const_ptr_offset(l, count as isize)
 }
 
@@ -229,8 +232,12 @@ pub const fn const_ptr_add<T>(l: *const T, count: usize) -> *const T {
 #[rr::requires("l `has_layout_loc` {ly_of T}")]
 #[rr::requires("(count * size_of_st {st_of T})%Z ∈ isize_t")]
 #[rr::requires(#iris "loc_in_bounds l 0 ((Z.to_nat count) * size_of_st {st_of T})")]
-#[rr::returns("(l, count)" @ "offset_ptr_t {st_of T}")]
+//#[rr::returns("(l, count)" @ "offset_ptr_t {st_of T}")]
+#[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn mut_ptr_add<T>(l: *mut T, count: usize) -> *mut T {
+    // TODO: this seems wrong, we should allow doing a big offset on ZSTs
     mut_ptr_offset(l, count as isize)
 }
+
+// TODO: add sub

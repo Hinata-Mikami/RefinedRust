@@ -15,6 +15,7 @@ Inductive bin_op : Set :=
 | GtOp (rit : int_type) | LeOp (rit : int_type) | GeOp (rit : int_type) | Comma
 (* Ptr is the second argument and offset the first *)
 | PtrOffsetOp (ly : layout) | PtrNegOffsetOp (ly : layout)
+| PtrWrappingOffsetOp (ly : layout) | PtrWrappingNegOffsetOp (ly : layout)
 | PtrDiffOp (ly : layout)
 (* checked operations: get stuck on overflow/underflow *)
 (* TODO: also have other checkedops as primitives (e.g. for Shl, Shr)? *)
@@ -283,40 +284,43 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     ly_size ly * -o ∈ isize_t →
 
     eval_bin_op (PtrNegOffsetOp ly) (IntOp it) PtrOp σ v1 v2 (val_of_loc (l offset{ly}ₗ -o))
+
+| PtrWrappingOffsetOpIP v1 v2 σ o l ly it :
+    val_to_Z v1 it = Some o →
+    val_to_loc v2 = Some l →
+    eval_bin_op (PtrWrappingOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 (val_of_loc (l wrapping_offset{ly}ₗ o))
+| PtrWrappingNegOffsetOpIP v1 v2 σ o l ly it :
+    val_to_Z v1 it = Some o →
+    val_to_loc v2 = Some l →
+    eval_bin_op (PtrWrappingNegOffsetOp ly) (IntOp it) (PtrOp) σ v1 v2 (val_of_loc (l wrapping_offset{ly}ₗ -o))
+
+(* for `offset_from` *)
 | PtrDiffOpPP v1 v2 σ l1 l2 ly v:
     val_to_loc v1 = Some l1 →
     val_to_loc v2 = Some l2 →
+    (* derived from the same object, i.e., same provenance *)
     l1.1 = l2.1 →
+    (* excludes the case of ZSTs (the Rust version panics in that case) *)
     0 < ly.(ly_size) →
+    (* both pointers are valid, i.e. in bounds of that allocation *)
     valid_ptr l1 σ.(st_heap) →
     valid_ptr l2 σ.(st_heap) →
     val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ptrdiff_t None = Some v →
     eval_bin_op (PtrDiffOp ly) PtrOp PtrOp σ v1 v2 v
-| CmpOpPP v1 v2 σ l1 l2 v op e b rit:
+
+| RelOpPP v1 v2 σ l1 l2 p1 p2 a1 a2 v b op rit:
     val_to_loc v1 = Some l1 →
     val_to_loc v2 = Some l2 →
-    heap_loc_eq l1 l2 σ.(st_heap) = Some e →
-    match op with
-    | EqOp rit => Some (e, rit)
-    | NeOp rit => Some (negb e, rit)
-    | _ => None
-    end = Some (b, rit) →
-    (* equivalent to [val_of_bool] if using [u8] by [val_of_bool_iff_val_of_Z] *)
-    val_of_Z (bool_to_Z b) rit None = Some v →
-    eval_bin_op op PtrOp PtrOp σ v1 v2 v
-| RelOpPP v1 v2 σ l1 l2 p a1 a2 v b op rit:
-    val_to_loc v1 = Some l1 →
-    val_to_loc v2 = Some l2 →
-    (* Note that this enforces that the locations have the same provenance. *)
-    l1 = (ProvAlloc p, a1) →
-    l2 = (ProvAlloc p, a2) →
-    valid_ptr l1 σ.(st_heap) → valid_ptr l2 σ.(st_heap) →
-    (* Equal comparison is handled by heap_loc_eq *)
+    (* We do not compare the provenance *)
+    l1 = (p1, a1) →
+    l2 = (p2, a2) →
     match op with
     | LtOp rit => Some (bool_decide (a1 < a2), rit)
     | GtOp rit => Some (bool_decide (a1 > a2), rit)
     | LeOp rit => Some (bool_decide (a1 <= a2), rit)
     | GeOp rit => Some (bool_decide (a1 >= a2), rit)
+    | EqOp rit => Some (bool_decide (a1 = a2), rit)
+    | NeOp rit => Some (bool_decide (a1 <> a2), rit)
     | _ => None
     end = Some (b, rit) →
     val_of_Z (bool_to_Z b) rit None = Some v →
@@ -379,7 +383,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* wrap on unsigned overflows, get stuck on signed overflows*)
     (* TODO: what about always making it wrapping, so we can use it implement Rust's wrapping operations?
       For the checked operations, we anyways have separate ops/ Rust inserts checks *)
-    val_of_Z (if it_signed it then n else n `mod` int_modulus it) it None = Some v →
+    val_of_Z (if it_signed it then n else wrap_unsigned n it) it None = Some v →
     eval_bin_op op (IntOp it) (IntOp it) σ v1 v2 v
 | ArithOpCheckedII op v1 v2 σ n1 n2 it n v :
     match op with

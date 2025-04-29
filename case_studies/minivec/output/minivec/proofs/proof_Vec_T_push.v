@@ -12,7 +12,13 @@ Lemma Vec_T_push_proof (π : thread_id) :
 Proof.
   Vec_T_push_prelude.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
+  { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty)).
+    repeat liRStep; liShow. }
+  { rep <-! liRStep; liShow.
+    apply_update (updateable_typed_array_access x1 (length self ) (st_of T_ty)).
+    repeat liRStep; liShow. }
+
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
@@ -41,7 +47,7 @@ Proof.
   }
   {
     rewrite project_vec_els_insert_lt /=; [|lia].
-    apply (list_eq_split (length xs)).
+    apply (list_eq_split (length self)).
     - rewrite take_insert/=; [|lia]. 
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.
@@ -59,8 +65,8 @@ Proof.
   { move: Hcap. clear. nia. }
   {
     (* TODO *)
-    assert (length xs < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
+    assert (length self < length xs') as Hlt.
+    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     simpl in Hlt.
@@ -72,19 +78,19 @@ Proof.
   }
   {
     (* TODO should get this in a different way *)
-    assert (length xs < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
+    assert (length self < length xs') as Hlt.
+    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     simpl in *. lia. }
   {
     (* TODO we should get this in a different way *)
-    assert (length xs < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length xs)) as Hlook_3; first (simpl; lia).
+    assert (length self < length xs') as Hlt.
+    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
       apply lookup_lt_Some in Hlook_3.
       lia. }
     rewrite project_vec_els_insert_lt /=; [|lia].
-    apply (list_eq_split (length xs)).
+    apply (list_eq_split (length self)).
     - rewrite take_insert/=; [|lia]. 
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.

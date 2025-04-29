@@ -14,12 +14,14 @@ Proof.
   Vec_T_get_unchecked_mut_prelude.
 
   rep <-! liRStep; liShow.
+  apply_update (updateable_typed_array_access x0 index (st_of T_ty)).
+  repeat liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: try (rewrite project_vec_els_insert_lt /=; [|lia]; normalize_and_simpl_goal).
-  all: assert (length xs ≤ length x2); first (specialize (project_vec_els_length (length xs) x2); rewrite -Hxs; solve_goal).
+  all: assert (length self ≤ length x2); first (specialize (project_vec_els_length (length self) x2); rewrite -Hxs; solve_goal).
   all: normalize_and_simpl_goal; try solve_goal with lia.
 
   { solve_goal with nia. }

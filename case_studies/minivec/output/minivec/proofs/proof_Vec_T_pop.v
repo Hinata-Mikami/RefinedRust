@@ -12,6 +12,8 @@ Lemma Vec_T_pop_proof (π : thread_id) :
 Proof.
   Vec_T_pop_prelude.
 
+  rep <-! liRStep; liShow.
+  apply_update (updateable_typed_array_access x1 (length xs - 1) (st_of T_ty)).
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

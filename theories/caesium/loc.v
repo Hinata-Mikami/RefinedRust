@@ -1,4 +1,4 @@
-From caesium Require Export base layout.
+From caesium Require Export base layout int_type.
 Set Default Proof Using "Type".
 
 (** * Representation of locations. *)
@@ -59,11 +59,24 @@ Notation "l +ₗ z" := (shift_loc l%L z%Z)
   (at level 50, left associativity) : loc_scope.
 Global Typeclasses Opaque shift_loc.
 
+(** Shifts location [l] by offset [z], wrapping at the address space boundary. *)
+Definition wrapping_shift_loc (l : loc) (z : Z) : loc :=
+  (l.1, wrap_unsigned (l.2 + z) usize_t).
+Notation "l +wₗ z" := (wrapping_shift_loc l%L z%Z)
+  (at level 50, left associativity) : loc_scope.
+Global Typeclasses Opaque wrapping_shift_loc.
+
 (** Shift a location by [z] times the size of [ly]. *)
 Definition offset_loc (l : loc) (ly : layout) (z : Z) : loc := (l +ₗ ly.(ly_size) * z).
 Notation "l 'offset{' ly '}ₗ' z" := (offset_loc l%L ly z%Z)
   (at level 50, format "l  'offset{' ly '}ₗ'  z", left associativity) : loc_scope.
 Global Typeclasses Opaque offset_loc.
+
+(** Shift a location by [z] times the size of [ly], wrapping at the address space boundary. *)
+Definition wrapping_offset_loc (l : loc) (ly : layout) (z : Z) : loc := (l +wₗ ly.(ly_size) * z).
+Notation "l 'wrapping_offset{' ly '}ₗ' z" := (wrapping_offset_loc l%L ly z%Z)
+  (at level 50, format "l  'wrapping_offset{' ly '}ₗ'  z", left associativity) : loc_scope.
+Global Typeclasses Opaque wrapping_offset_loc.
 
 (** Proposition stating that location [l] is aligned to [n] *)
 Definition aligned_to (l : loc) (n : nat) : Prop := if caesium_config.enforce_alignment then (n | l.2) else True.
@@ -103,7 +116,38 @@ Proof. destruct l as [b o]; intros n n' H; inversion H; lia. Qed.
 Lemma shift_loc_block l n : (l +ₗ n).1 = l.1.
 Proof. done. Qed.
 
-(** ** Properties of [offset_locs]. *)
+
+(** ** Properties of [wrapping_shift_loc]. *)
+
+Lemma wrapping_shift_loc_assoc l n1 n2 : l +wₗ n1 +wₗ n2 = l +wₗ (n1 + n2).
+Proof.
+  rewrite /wrapping_shift_loc/=. f_equal.
+  rewrite wrap_unsigned_add_l.
+  rewrite Z.add_assoc; done.
+Qed.
+
+(* TODO: need to know that the original address is in range *)
+Lemma wrapping_shift_loc_0 l : l +wₗ 0 = l.
+Proof.
+  destruct l as [??]. rewrite /wrapping_shift_loc; f_equal.
+Abort.
+
+Lemma wrapping_shift_loc_assoc_nat l (n1 n2 : nat) : l +wₗ n1 +wₗ n2 = l +wₗ (n1 + n2)%nat.
+Proof. rewrite wrapping_shift_loc_assoc. by rewrite Nat2Z.inj_add. Qed.
+
+(*Lemma shift_loc_0_nat l : l +ₗ 0%nat = l.*)
+(*Proof. have: Z.of_nat 0%nat = 0 by lia. move => ->. apply shift_loc_0. Qed.*)
+
+Lemma wrapping_shift_loc_S l n: l +wₗ S n = (l +wₗ 1%nat +wₗ n).
+Proof. by rewrite wrapping_shift_loc_assoc_nat. Qed.
+
+Lemma wrapping_shift_loc_inj1 l1 l2 n : l1 +ₗ n = l2 +ₗ n → l1 = l2.
+Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
+
+Lemma wrapping_shift_loc_block l n : (l +wₗ n).1 = l.1.
+Proof. done. Qed.
+
+(** ** Properties of [offset_locs. *)
 
 Lemma offset_loc_0 l ly : l offset{ly}ₗ 0 = l.
 Proof. by rewrite /offset_loc Z.mul_0_r shift_loc_0. Qed.

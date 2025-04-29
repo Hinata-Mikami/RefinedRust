@@ -118,15 +118,6 @@ Proof.
   apply Z.pow_pos_nonneg; lia.
 Qed.
 
-Lemma it_in_range_mod n it:
-  n ∈ it → it_signed it = false →
-  n `mod` int_modulus it = n.
-Proof.
-  move => [??] ?. rewrite Z.mod_small //.
-  destruct it as [? []] => //. unfold min_int, max_int in *. simpl in *.
-  lia.
-Qed.
-
 (* TODO move *)
 Lemma Nat_pow_ge_1 (n : nat) :
   (1 ≤ 2^n)%nat.
@@ -260,4 +251,25 @@ Proof.
     opose proof* (Z_mod_lt (z) (int_modulus it)).
     { specialize (int_modulus_ge_1 it). lia. }
     lia.
+Qed.
+
+Lemma wrap_unsigned_add_l it n1 n2 :
+  wrap_unsigned (wrap_unsigned n1 it + n2) it = wrap_unsigned (n1 + n2) it.
+Proof.
+  rewrite /wrap_unsigned.
+  rewrite Z.add_mod_idemp_l; first done.
+  unfold int_modulus.
+  intros Heq%Z.pow_eq_0; first done.
+  specialize (bits_per_int_gt_0 it).
+  lia.
+Qed.
+
+Lemma wrap_unsigned_in_range n it:
+  n ∈ it → it_signed it = false →
+  wrap_unsigned n it = n.
+Proof.
+  rewrite /wrap_unsigned.
+  move => [??] ?. rewrite Z.mod_small //.
+  destruct it as [? []] => //. unfold min_int, max_int in *. simpl in *.
+  lia.
 Qed.

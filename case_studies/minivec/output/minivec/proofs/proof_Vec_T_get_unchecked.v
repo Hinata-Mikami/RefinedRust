@@ -13,14 +13,17 @@ Proof.
   pose_unconstrained_lft_hint "vuclft4" ["ulft_1"].
   Vec_T_get_unchecked_prelude.
 
+  rep <-! liRStep; liShow.
+
+  apply_update (updateable_typed_array_access x0 i (st_of T_ty)).
   repeat liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { move: _Hsz Hi Hcap. 
+  { move: _Hsz Hi Hcap.
     rewrite ly_size_mk_array_layout.
-    clear. nia. } 
+    clear. nia. }
   { move: Hi Hcap. clear. nia. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
