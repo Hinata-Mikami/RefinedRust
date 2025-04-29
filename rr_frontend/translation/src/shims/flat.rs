@@ -12,7 +12,7 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::span;
 use serde::{Deserialize, Serialize};
 
-use crate::spec_parsers::get_export_as_attr;
+use crate::spec_parsers::{get_export_as_attr, ExportAs, RustPath};
 use crate::{attrs, search, Environment};
 
 /// An item path that receives generic arguments.
@@ -62,7 +62,7 @@ impl PathWithArgs {
             }
         }
         Some(Self {
-            path,
+            path: path.path.path,
             args: flattened_args,
         })
     }
@@ -191,7 +191,7 @@ pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
 }
 
 /// Get the path we should export an item at.
-pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
+pub fn get_export_path_for_did(env: &Environment, did: DefId) -> ExportAs {
     let attrs = env.get_attributes(did);
 
     if attrs::has_tool_attr(attrs, "export_as") {
@@ -211,14 +211,20 @@ pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
             // push the last component of this path
             //let def_path = env.tcx().def_path(did);
             let mut this_path = get_cleaned_def_path(env.tcx(), did);
-            path_prefix.push(this_path.pop().unwrap());
+            path_prefix.path.path.push(this_path.pop().unwrap());
 
             return path_prefix;
         }
     }
 
     let mut basic_path = get_cleaned_def_path(env.tcx(), did);
-    let crate_name = env.tcx().crate_name(span::def_id::LOCAL_CRATE);
-    basic_path.insert(0, crate_name.as_str().to_owned());
-    basic_path
+    // lets check if this is in the current crate, in that case add the current crate prefix
+    if did.as_local().is_some() {
+        let crate_name = env.tcx().crate_name(span::def_id::LOCAL_CRATE);
+        basic_path.insert(0, crate_name.as_str().to_owned());
+    }
+    ExportAs {
+        path: RustPath { path: basic_path },
+        as_method: false,
+    }
 }

@@ -10,12 +10,12 @@ pub mod trait_impl_attr_parser;
 pub mod verbose_function_spec_parser;
 
 use attribute_parse::{parse, MToken};
-use parse::Parse;
+use parse::{Parse, Peek};
 use rr_rustc_interface::ast;
 
 /// For parsing of `RustPaths`
 pub struct RustPath {
-    path: Vec<String>,
+    pub path: Vec<String>,
 }
 
 impl<F> Parse<F> for RustPath {
@@ -27,7 +27,38 @@ impl<F> Parse<F> for RustPath {
     }
 }
 
-pub fn get_export_as_attr(attrs: &[&ast::ast::AttrItem]) -> Result<Vec<String>, String> {
+/// For parsing of `rr::export_as` annotations
+pub struct ExportAs {
+    pub path: RustPath,
+    pub as_method: bool,
+}
+impl<F> parse::Parse<F> for ExportAs {
+    fn parse(input: parse::Stream, meta: &F) -> parse::Result<Self> {
+        let mut as_method = false;
+        if parse::Pound::peek(input) {
+            input.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = input.parse(meta)?;
+            match macro_cmd.value().as_str() {
+                "method" => {
+                    as_method = true;
+                },
+                _ => {
+                    return Err(parse::Error::OtherErr(
+                        input.pos().unwrap(),
+                        format!("invalid macro command: {:?}", macro_cmd.value()),
+                    ));
+                },
+            }
+        }
+
+        let path: RustPath = input.parse(meta)?;
+
+        let export = Self { path, as_method };
+        Ok(export)
+    }
+}
+
+pub fn get_export_as_attr(attrs: &[&ast::ast::AttrItem]) -> Result<ExportAs, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -35,8 +66,8 @@ pub fn get_export_as_attr(attrs: &[&ast::ast::AttrItem]) -> Result<Vec<String>, 
             let buffer = parse::Buffer::new(&it.args.inner_tokens());
 
             if seg.ident.name.as_str() == "export_as" {
-                let path = RustPath::parse(&buffer, &()).map_err(parse_utils::str_err)?;
-                return Ok(path.path);
+                let path = ExportAs::parse(&buffer, &()).map_err(parse_utils::str_err)?;
+                return Ok(path);
             }
         }
     }

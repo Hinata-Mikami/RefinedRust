@@ -108,10 +108,10 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 }
 
 impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
-    fn get_path_for_shim(&self, did: DefId) -> Vec<&str> {
+    fn get_path_for_shim(&self, did: DefId) -> (Vec<&str>, bool) {
         let path = shims::flat::get_export_path_for_did(self.env, did);
-        let interned_path = self.shim_registry.intern_path(path);
-        interned_path
+        let interned_path = self.shim_registry.intern_path(path.path.path);
+        (interned_path, path.as_method)
     }
 
     fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim> {
@@ -134,8 +134,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         }
 
         // only export public items
-        let is_method = self.env.tcx().impl_of_method(did).is_some();
-        let interned_path = self.get_path_for_shim(did);
+        let (interned_path, as_method) = self.get_path_for_shim(did);
+        let is_method = self.env.tcx().impl_of_method(did).is_some() || as_method;
 
         let name = base::strip_coq_ident(&self.env.get_item_name(did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
@@ -299,7 +299,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     ) -> Option<shim_registry::TraitShim> {
         info!("making shim entry for {did:?}");
         if ty::Visibility::Public == self.env.tcx().visibility(did.to_def_id()) {
-            let interned_path = self.get_path_for_shim(did.into());
+            let (interned_path, _) = self.get_path_for_shim(did.into());
             let a = shim_registry::TraitShim {
                 path: interned_path,
                 name: decl.name.clone(),
@@ -322,7 +322,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         info!("making shim entry for {did:?}");
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
             // only export public items
-            let interned_path = self.get_path_for_shim(did);
+            let (interned_path, _) = self.get_path_for_shim(did);
             let name = base::strip_coq_ident(&self.env.get_item_name(did));
 
             info!("Found adt path {:?} for did {:?} with name {:?}", interned_path, did, name);
@@ -1009,7 +1009,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
     for shim in vcx.shim_registry.get_function_shims() {
         let did = if shim.is_method {
-            search::try_resolve_method_did(vcx.env.tcx(), &shim.path)
+            search::try_resolve_method_did(vcx.env.tcx(), shim.path.iter().map(ToString::to_string).collect())
         } else {
             search::try_resolve_did(vcx.env.tcx(), &shim.path)
         };

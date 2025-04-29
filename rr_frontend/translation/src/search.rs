@@ -5,10 +5,11 @@
 use std::collections::HashMap;
 use std::mem;
 
-use log::info;
+use log::{info, trace};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{metadata, ty};
+use rr_rustc_interface::span;
 
 use crate::{types, unification};
 
@@ -210,7 +211,7 @@ where
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
-                //info!("items to look at: {:?}", items);
+                trace!("following segment {:?}; items to look at: {:?}", segment.as_ref(), items);
                 for item in mem::take(&mut items) {
                     let item: &metadata::ModChild = item;
 
@@ -218,7 +219,7 @@ where
                         continue;
                     }
 
-                    info!("taking path: {:?}", segment.as_ref());
+                    trace!("taking path: {:?}", segment.as_ref());
                     if path_it.peek().is_none() {
                         return Some(item.res.def_id());
                     }
@@ -230,8 +231,13 @@ where
                     }
 
                     let did: DefId = item.res.def_id();
+                    // TODO: this is breaking for primitive types because this is the module not
+                    // the type
                     let impls: &[DefId] = tcx.inherent_impls(did);
-                    info!("trying to find method among impls {:?}", impls);
+                    trace!("trying to find method among impls {:?}", impls);
+                    if impls.is_empty() {
+                        trace!("children: {:?}", tcx.module_children(item.res.def_id()));
+                    }
 
                     let find = path_it.next().unwrap();
                     for impl_did in impls {
@@ -258,25 +264,81 @@ where
         })
 }
 
-pub fn try_resolve_method_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
-where
-    T: AsRef<str>,
-{
-    if let Some(did) = try_resolve_method_did_direct(tcx, path) {
+/// Try to resolve a method from an incoherent impl of one of the built-in primitive types.
+pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -> Option<DefId> {
+    let simplified_ty = if path[0..3] == ["core", "ptr", "mut_ptr"] {
+        let param_ty = ty::ParamTy::new(0, span::Symbol::intern("dummy"));
+        let param_ty = ty::TyKind::Param(param_ty);
+        let param_ty = tcx.mk_ty_from_kind(param_ty);
+
+        let ty_and_mut = ty::TypeAndMut {
+            ty: param_ty,
+            mutbl: hir::Mutability::Mut,
+        };
+        let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
+        let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
+
+        Some((ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+    } else if path[0..3] == ["core", "ptr", "const_ptr"] {
+        let param_ty = ty::ParamTy::new(0, span::Symbol::intern("dummy"));
+        let param_ty = ty::TyKind::Param(param_ty);
+        let param_ty = tcx.mk_ty_from_kind(param_ty);
+
+        let ty_and_mut = ty::TypeAndMut {
+            ty: param_ty,
+            mutbl: hir::Mutability::Not,
+        };
+        let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
+        let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
+
+        Some((ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+    }
+    // TODO more primitive types
+    else {
+        None
+    };
+
+    if let Some((simplified_ty, method_idx)) = simplified_ty {
+        if let Some(method) = path.get(method_idx) {
+            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
+
+            trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
+
+            for impl_did in incoherent_impls {
+                let items: &ty::AssocItems = tcx.associated_items(*impl_did);
+                trace!("items in {:?}: {:?}", impl_did, items);
+                // TODO: more robustly handle ambiguous matches
+                for item in items.in_definition_order() {
+                    //info!("comparing: {:?} with {:?}", item.name.as_str(), find);
+                    if item.name.as_str() == method.as_str() {
+                        return Some(item.def_id);
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+pub fn try_resolve_method_did(tcx: ty::TyCtxt<'_>, mut path: Vec<String>) -> Option<DefId> {
+    if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
         return Some(did);
     }
 
     // if the first component is "std", try if we can replace it with "alloc" or "core"
-    if path[0].as_ref() == "std" {
-        let mut components: Vec<_> = path.iter().map(|x| x.as_ref().to_owned()).collect();
-        components[0] = "core".to_owned();
-        if let Some(did) = try_resolve_method_did_direct(tcx, &components) {
+    if path[0] == "std" {
+        path[0] = "core".to_owned();
+        if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
             return Some(did);
         }
         // try "alloc"
-        components[0] = "alloc".to_owned();
-        try_resolve_method_did_direct(tcx, &components)
-    } else {
-        None
+        path[0] = "alloc".to_owned();
+        if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
+            return Some(did);
+        }
     }
+
+    // otherwise, try if this is in an incoherent impl
+    try_resolve_method_did_incoherent(tcx, &path)
 }

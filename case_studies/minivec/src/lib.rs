@@ -95,26 +95,6 @@ mod rrptr {
     pub fn dangling<T>() -> *mut T{
         NonNull::dangling().as_ptr()
     }
-
-    // We only need these shims because we cannot get their DefIds in the frontend currently..
-    #[rr::shim("ptr_mut_ptr_offset", "type_of_mut_ptr_offset", "trait_incl_of_mut_ptr_offset")]
-    pub unsafe fn mut_offset<T>(ptr: *mut T, count: isize) -> *mut T {
-        ptr.offset(count)
-    }
-
-    #[rr::shim("const_ptr_offset", "type_of_const_ptr_offset", "trait_incl_of_const_ptr_offset")]
-    pub unsafe fn const_offset<T>(ptr: *const T, count: isize) -> *const T {
-        ptr.offset(count)
-    }
-    #[rr::shim("mut_ptr_add", "type_of_mut_ptr_add", "trait_incl_of_mut_ptr_add")]
-    pub unsafe fn mut_add<T>(ptr: *mut T, count: usize) -> *mut T {
-        ptr.add(count)
-    }
-
-    #[rr::shim("const_ptr_add", "type_of_const_ptr_add", "trait_incl_of_const_ptr_add")]
-    pub unsafe fn const_add<T>(ptr: *const T, count: usize) -> *const T {
-        ptr.add(count)
-    }
 }
 
 
@@ -330,11 +310,9 @@ impl<T> Vec<T> {
         }
     }
 
-    #[rr::params("xs", "γ", "x")]
-    #[rr::args("(xs, γ)", "x")]
-    #[rr::requires("Hlen_cap": "(length xs < MaxInt usize_t)%Z")]
-    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ MaxInt isize_t)%Z")]
-    #[rr::observe("γ": "<#> <$#> (xs ++ [ x])")]
+    #[rr::requires("Hlen_cap": "(length self.cur < MaxInt usize_t)%Z")]
+    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length self.cur) ≤ MaxInt isize_t)%Z")]
+    #[rr::observe("self.ghost": "<#> <$#> (self.cur ++ [elem])")]
     pub fn push(&mut self, elem: T) {
         if self.len == self.cap() {
             self.buf.grow();
@@ -342,7 +320,7 @@ impl<T> Vec<T> {
 
         // important: ptr::write does not call drop on the uninit mem.
         unsafe {
-            ptr::write(rrptr::mut_add(self.ptr(), self.len), elem);
+            ptr::write(self.ptr().add(self.len), elem);
         }
 
         // Can't overflow, we'll OOM first.
@@ -358,7 +336,7 @@ impl<T> Vec<T> {
             None
         } else {
             self.len -= 1;
-            unsafe { Some(ptr::read(rrptr::mut_add(self.ptr(), self.len))) }
+            unsafe { Some(ptr::read(self.ptr().add(self.len))) }
         }
     }
 
@@ -381,11 +359,11 @@ impl<T> Vec<T> {
             // doing a memmove, effectively
             // we will want to spec this in terms of our array type
             ptr::copy(
-                rrptr::mut_add(self.ptr(), index),
-                rrptr::mut_add(self.ptr(), index + 1),
+                self.ptr().add(index),
+                self.ptr().add(index + 1),
                 self.len - index,
             );
-            ptr::write(rrptr::mut_add(self.ptr(), index), elem);
+            ptr::write(self.ptr().add(index), elem);
             self.len += 1;
         }
     }
@@ -402,27 +380,24 @@ impl<T> Vec<T> {
         assert!(index < self.len);
         unsafe {
             self.len -= 1;
-            let result = ptr::read(rrptr::mut_add(self.ptr(), index));
+            let result = ptr::read(self.ptr().add(index));
             // memmove
             ptr::copy(
-                rrptr::mut_add(self.ptr(), index + 1),
-                rrptr::mut_add(self.ptr(), index),
+                self.ptr().add(index + 1),
+                self.ptr().add(index),
                 self.len - index,
             );
             result
         }
     }
 
-    #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::requires("Hi": "i < length xs")]
-    #[rr::exists("γi")]
-    #[rr::returns("(xs !!! i, γi)")]
-    #[rr::observe("γ": "<[i := PlaceGhost γi]> (<#> <$#> xs)")]
+    #[rr::requires("Hi": "0 ≤ index < length self.cur")]
+    #[rr::ensures("ret.cur = self.cur !!! Z.to_nat index")]
+    #[rr::observe("self.ghost": "<[Z.to_nat index := PlaceGhost ret.ghost]> (<#> <$#> self.cur)")]
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         self.len;
         unsafe {
-            let p = rrptr::mut_add(self.ptr(), index);
+            let p = self.ptr().add(index);
             let ret = &mut *p;
             ret
         }
@@ -454,7 +429,7 @@ impl<T> Vec<T> {
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
         self.len;
         unsafe {
-            let p = rrptr::mut_add(self.ptr(), index);
+            let p = self.ptr().add(index);
             let ret = &*p;
             ret
         }
