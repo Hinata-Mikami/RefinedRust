@@ -161,16 +161,16 @@ Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_init := "_bb0"
 |}.
 
-Definition ptr_add `{!LayoutAlg} (T_st : syn_type) (ptr_offset_loc : loc) : function := {|
+Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", usize_t : layout)];
-  f_local_vars := [];
+  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-      (* cast the usize to isize *)
-      return (CallE ptr_offset_loc [] [RSTTyVar "T"] [@{expr} use{PtrOp} "self"; UnOp (CastOp (IntOp isize_t)) (IntOp usize_t) use{IntOp usize_t} "count"])
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        return (use{PtrOp} "ret")
     ]>%E $
     ∅;
-  f_init := "_bb0";
+  f_init := "_bb0"
 |}.
 
 Definition ptr_is_null `{!LayoutAlg} (T_st : syn_type) : function := {|

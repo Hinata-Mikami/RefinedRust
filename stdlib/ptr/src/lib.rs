@@ -186,7 +186,7 @@ pub const fn mem_align_log_of<T>() -> usize {
     unimplemented!();
 }
 
-/// Shims for *const T impl
+// TODO: offset, add, sub should require that the allocation is still alive, I think
 #[rr::export_as(#method core::ptr::const_ptr::offset)]
 #[rr::code_shim("ptr_offset")]
 #[rr::requires("l `has_layout_loc` {ly_of T}")]
@@ -242,31 +242,24 @@ pub const fn mut_ptr_add<T>(l: *mut T, count: usize) -> *mut T {
 }
 
 
-/*
-// TODO
-#[rr::export_as(core::ptr::const_ptr::sub)]
+#[rr::export_as(#method core::ptr::const_ptr::sub)]
+#[rr::code_shim("ptr_sub")]
 #[rr::requires("l `has_layout_loc` {ly_of T}")]
 #[rr::requires("(count * size_of_st {st_of T})%Z ∈ isize_t")]
-#[rr::requires(#iris "loc_in_bounds l 0 ((Z.to_nat count) * size_of_st {st_of T})")]
-#[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
+#[rr::requires(#iris "loc_in_bounds l (Z.to_nat count * size_of_st {st_of T}) 0")]
+#[rr::returns("l offsetst{{ {st_of T} }}ₗ (-count)")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn const_ptr_sub<T>(l: *const T, count: usize) -> *const T {
-    // NB: We can just truncate count to isize. 
-    // - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
-    // - else, we also know that it's in isize_t, so it's same as before.
-    const_ptr_offset(l, count as isize)
+    unimplemented!();
 }
 
-#[rr::export_as(core::ptr::mut_ptr::sub)]
+#[rr::export_as(#method core::ptr::mut_ptr::sub)]
+#[rr::code_shim("ptr_sub")]
 #[rr::requires("l `has_layout_loc` {ly_of T}")]
 #[rr::requires("(count * size_of_st {st_of T})%Z ∈ isize_t")]
-#[rr::requires(#iris "loc_in_bounds l 0 ((Z.to_nat count) * size_of_st {st_of T})")]
-#[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
+#[rr::requires(#iris "loc_in_bounds l ((Z.to_nat count) * size_of_st {st_of T}) 0")]
+#[rr::returns("l offsetst{{ {st_of T} }}ₗ (-count)")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn mut_ptr_sub<T>(l: *mut T, count: usize) -> *mut T {
-    // NB: We can just truncate count to isize. 
-    // - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
-    // - else, we also know that it's in isize_t, so it's same as before.
-    mut_ptr_offset(l, count as isize)
+    unimplemented!();
 }
-*/
