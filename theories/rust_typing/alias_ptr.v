@@ -163,21 +163,6 @@ Section comparison.
   Solve Obligations with done.
 End comparison.
 
-Section offset.
-  Context `{!typeGS Σ}.
-
-  (* TODO offset rules:
-      should these be on offset_ptr_t or alias_ptr_t?
-      - wrapping offset needs to be on alias_ptr, I guess.
-      - 
-
-     - normal offset op requiring loc_in_bounds
-     -
-
-   *)
-
-End offset.
-
 Section place.
   Context `{!typeGS Σ}.
 

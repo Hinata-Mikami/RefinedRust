@@ -173,6 +173,43 @@ Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_init := "_bb0"
 |}.
 
+
+Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("self", void* ); ("count", isize_t : layout)];
+  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
+  f_code :=
+    <["_bb0" :=
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp isize_t} (use{IntOp isize_t} "count"));
+        return (use{PtrOp} "ret")
+    ]>%E $
+    ∅;
+  f_init := "_bb0"
+|}.
+
+Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("self", void* ); ("count", usize_t : layout)];
+  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
+  f_code :=
+    <["_bb0" :=
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        return (use{PtrOp} "ret")
+    ]>%E $
+    ∅;
+  f_init := "_bb0"
+|}.
+
+Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("self", void* ); ("count", usize_t : layout)];
+  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
+  f_code :=
+    <["_bb0" :=
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        return (use{PtrOp} "ret")
+    ]>%E $
+    ∅;
+  f_init := "_bb0"
+|}.
+
 Definition ptr_is_null `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* )];
   f_local_vars := [];

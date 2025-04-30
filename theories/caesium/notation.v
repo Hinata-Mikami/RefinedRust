@@ -62,6 +62,11 @@ Notation "e1 'at_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrOffsetOp ly) ot2 ot
   (at level 70, format "e1  at_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
 Notation "e1 'at_neg_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrNegOffsetOp ly) ot2 ot1 e2%E e1%E)
   (at level 70, format "e1  at_neg_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 'at_wrapping_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrWrappingOffsetOp ly) ot2 ot1 e2%E e1%E)
+  (at level 70, format "e1  at_wrapping_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 'at_wrapping_neg_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrWrappingNegOffsetOp ly) ot2 ot1 e2%E e1%E)
+  (at level 70, format "e1  at_wrapping_neg_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
+
 Notation "e1 'sub_ptr{' ly , ot1 , ot2 } e2" := (BinOp (PtrDiffOp ly) ot2 ot1 e1%E e2%E)
   (at level 70, format "e1  sub_ptr{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
 Notation "'if{' ot ',' join '}' ':' e1 'then' s1 'else' s2" := (IfS ot join e1%E s1%E s2%E)
@@ -306,11 +311,20 @@ Global Typeclasses Opaque EnumData.
 Arguments EnumData : simpl never.
 
 (** Shift a location by [z] times the size of [ly]. *)
-Definition OffsetLocSt `{!LayoutAlg} (l : loc) (st : syn_type) (z : Z) : loc := (l +ₗ (use_layout_alg' st).(ly_size) * z).
+Definition OffsetLocSt `{!LayoutAlg} (l : loc) (st : syn_type) (z : Z) : loc :=
+  (l offset{(use_layout_alg' st)}ₗ z).
 Notation "l 'offsetst{' st '}ₗ' z" := (OffsetLocSt l%L st z%Z)
   (at level 39, format "l  'offsetst{' st '}ₗ'  z", left associativity) : loc_scope.
 Global Typeclasses Opaque OffsetLocSt.
 Arguments OffsetLocSt : simpl never.
+
+(** Wrapping version *)
+Definition WrappingOffsetLocSt `{!LayoutAlg} (l : loc) (st : syn_type) (z : Z) : loc :=
+  (l wrapping_offset{(use_layout_alg' st)}ₗ z).
+Notation "l 'wrapping_offsetst{' st '}ₗ' z" := (WrappingOffsetLocSt l%L st z%Z)
+  (at level 39, format "l  'wrapping_offsetst{' st '}ₗ'  z", left associativity) : loc_scope.
+Global Typeclasses Opaque WrappingOffsetLocSt.
+Arguments WrappingOffsetLocSt : simpl never.
 
 Definition GetMemberLocSt `{!LayoutAlg} (l : loc) (s : struct_layout_spec) (m : var_name) : loc :=
   (l +ₗ Z.of_nat (default 0%nat (offset_of (use_struct_layout_alg' s).(sl_members) m))).

@@ -1639,6 +1639,43 @@ Proof.
   iIntros "!> Hcred". iMod "HE". iFrame. iApply ("HΦ" with "Hcred").
 Qed.
 
+Lemma wp_ptr_wrapping_neg_offset_credits Φ vl l E it o ly vo n m:
+  ↑timeN ⊆ E →
+  val_to_loc vl = Some l →
+  val_to_Z vo it = Some o →
+  time_ctx -∗ atime n -∗ ptime m -∗
+  ▷ (£(1+num_laters_per_step(n+m)) -∗ atime (S n) -∗ Φ (val_of_loc (l wrapping_offset{ly}ₗ -o))) -∗
+  WP Val vl at_wrapping_neg_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
+Proof.
+  iIntros (? Hvl Hvo) "CTX Hc Hp HΦ".
+  iApply (wp_binop_det_credits with "CTX Hc Hp"); first done. iIntros (σ) "Hσ".
+  iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  iSplit. {
+    iPureIntro. split.
+    - inversion 1. by simplify_eq.
+    - move => ->. by apply PtrWrappingNegOffsetOpIP.
+  }
+  iIntros "!> Hcred Hc". iMod "HE". iFrame. iApply ("HΦ" with "Hcred Hc").
+Qed.
+Lemma wp_ptr_wrapping_offset_credits Φ vl l E it o ly vo n m:
+  ↑timeN ⊆ E →
+  val_to_loc vl = Some l →
+  val_to_Z vo it = Some o →
+  time_ctx -∗ atime n -∗ ptime m -∗
+  ▷ (£(1+num_laters_per_step(n+m)) -∗ atime (S n) -∗ Φ (val_of_loc (l wrapping_offset{ly}ₗ o))) -∗
+  WP Val vl at_wrapping_offset{ ly , PtrOp, IntOp it} Val vo @ E {{ Φ }}.
+Proof.
+  iIntros (? Hvl Hvo) "CTX Hc Hp HΦ".
+  iApply (wp_binop_det_credits with "CTX Hc Hp"); first done. iIntros (σ) "Hσ".
+  iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  iSplit. {
+    iPureIntro. split.
+    - inversion 1. by simplify_eq.
+    - move => ->. by apply PtrWrappingOffsetOpIP.
+  }
+  iIntros "!> Hcred Hc". iMod "HE". iFrame. iApply ("HΦ" with "Hcred Hc").
+Qed.
+
 Lemma wp_ptr_diff Φ vl1 l1 vl2 l2 ly vo:
   val_to_loc vl1 = Some l1 →
   val_to_loc vl2 = Some l2 →

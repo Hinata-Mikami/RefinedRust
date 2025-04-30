@@ -263,3 +263,53 @@ pub const fn const_ptr_sub<T>(l: *const T, count: usize) -> *const T {
 pub const fn mut_ptr_sub<T>(l: *mut T, count: usize) -> *mut T {
     unimplemented!();
 }
+
+
+/// Wrapping operations
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_offset)]
+#[rr::code_shim("ptr_wrapping_offset")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_offset<T>(l: *const T, count: isize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_offset)]
+#[rr::code_shim("ptr_wrapping_offset")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_offset<T>(l: *mut T, count: isize) -> *mut T {
+    unimplemented!();
+}
+
+
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_add)]
+#[rr::code_shim("ptr_wrapping_add")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_add<T>(l: *const T, count: usize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_add)]
+#[rr::code_shim("ptr_wrapping_add")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_add<T>(l: *mut T, count: usize) -> *mut T {
+    unimplemented!();
+}
+
+
+
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_sub)]
+#[rr::code_shim("ptr_wrapping_sub")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ -count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_sub<T>(l: *const T, count: usize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_sub)]
+#[rr::code_shim("ptr_wrapping_sub")]
+#[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ -count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_sub<T>(l: *mut T, count: usize) -> *mut T {
+    unimplemented!();
+}
