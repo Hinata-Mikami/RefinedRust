@@ -20,7 +20,7 @@ Proof.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv1" as %[Hv1 Hsz1].
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "->".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "[-> %]".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds") as %[Hran1 Hran2].
   rewrite /size_of_st. simplify_layout_goal.
   iRename select (credit_store _ _) into "Hstore".
@@ -51,10 +51,12 @@ Proof.
   iPoseProof ("Hatcl" with "Hat'") as "Hstore".
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
   iPoseProof (credit_store_donate_atime with "Hstore Hat") as "Hstore".
+  iAssert (loc_in_bounds (l offsetst{st_of T_ty}ₗ -count) 0 0) as "#Hlb'". 
+  { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
+  iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "%".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
-  { rewrite /ty_own_val /=. done. }
-  iAssert ((l offset{use_layout_alg' (ty_syn_type T_ty)}ₗ count) ◁ᵥ{ π} l offset{use_layout_alg' (ty_syn_type T_ty)}ₗ count @ alias_ptr_t)%I as "?".
-  { rewrite /ty_own_val /= //. }
+  { rewrite /ty_own_val /=. 
+    iPureIntro. split; first done. sidecond_hammer. }
 
   repeat liRStep; liShow.
 

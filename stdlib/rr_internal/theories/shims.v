@@ -119,7 +119,7 @@ Proof.
   { rewrite /layout_wf/ly_align/it_layout. simpl. apply Z.divide_1_l. }
   simpl. rewrite !Nat.add_0_r.
   iModIntro.
-  repeat liRStep; liShow.
+  rep liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
@@ -211,7 +211,8 @@ Proof.
       iSplitR. { iPureIntro. intros ly1 ly2 Hptr1 Hptr2. simpl in *. f_equiv. by eapply syn_type_has_layout_inj. }
       iSplitR. { simpl. eauto. }
       iIntros (v2) "Hv".
-      iEval (rewrite /ty_own_val/=) in "Hv". iDestruct "Hv" as "->".
+      iEval (rewrite /ty_own_val/=) in "Hv".
+      iDestruct "Hv" as "(-> & %)".
       iEval (rewrite /ty_own_val/=).
       iExists x', _. iR. iR. iR.
       iPoseProof (ltype_own_loc_in_bounds with "H_pts") as "#Hlb".

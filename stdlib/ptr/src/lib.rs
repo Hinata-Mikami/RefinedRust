@@ -54,75 +54,7 @@ pub const fn read_volatile<T>(src: *const T) -> T {
     read(src)
 }
 
-// TODO: replaced in newer Rust versions by `without_provenance`
-#[rr::export_as(core::ptr::invalid)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn invalid<T>(addr: usize) -> *const T {
-    unimplemented!();
-}
-#[rr::export_as(core::ptr::invalid_mut)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn invalid_mut<T>(addr: usize) -> *mut T {
-    unimplemented!();
-}
 
-#[rr::export_as(core::ptr::without_provenance)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn without_provenance<T>(addr: usize) -> *const T {
-    unimplemented!();
-}
-#[rr::export_as(core::ptr::without_provenance_mut)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
-    unimplemented!();
-}
-
-#[rr::export_as(core::ptr::dangling)]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `has_layout_loc` {ly_of T}")]
-#[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
-#[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
-pub const fn dangling<T>() -> *const T {
-    without_provenance(mem_align_of::<T>())
-}
-#[rr::export_as(core::ptr::dangling_mut)]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `has_layout_loc` {ly_of T}")]
-#[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
-#[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
-pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem_align_of::<T>())
-}
 
 /* TODO: challenge for speccing this: what ownership do we require for src?
   - technically, we could require a shared ref.
@@ -297,8 +229,6 @@ pub const fn mut_ptr_wrapping_add<T>(l: *mut T, count: usize) -> *mut T {
     unimplemented!();
 }
 
-
-
 #[rr::export_as(#method core::ptr::const_ptr::wrapping_sub)]
 #[rr::code_shim("ptr_wrapping_sub")]
 #[rr::returns("l wrapping_offsetst{{ {st_of T} }}ₗ -count")]
@@ -312,4 +242,112 @@ pub const fn const_ptr_wrapping_sub<T>(l: *const T, count: usize) -> *const T {
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn mut_ptr_wrapping_sub<T>(l: *mut T, count: usize) -> *mut T {
     unimplemented!();
+}
+
+/// Casts
+#[rr::export_as(#method core::ptr::const_ptr::cast)]
+#[rr::returns("x")]
+pub const fn const_ptr_cast<T, U>(x: *const T) -> *const U {
+    x as _
+}
+#[rr::export_as(#method core::ptr::mut_ptr::cast)]
+#[rr::returns("x")]
+pub const fn mut_ptr_cast<T, U>(x: *mut T) -> *mut U {
+    x as _
+}
+
+#[rr::export_as(#method core::ptr::mut_ptr::cast_const)]
+#[rr::returns("x")]
+pub const fn mut_ptr_cast_const<T>(x: *mut T) -> *const T {
+    x as _
+}
+#[rr::export_as(#method core::ptr::const_ptr::cast_mut)]
+#[rr::returns("x")]
+pub const fn const_ptr_cast_mut<T>(x: *const T) -> *mut T {
+    x as _
+}
+
+
+
+/// Strict provenance things
+
+
+// TODO: addr, with_addr, map_addr
+
+//#[rr::export_as(#method core::ptr::const_ptr::addr)]
+//#[rr::code_shim()]
+//#[rr::returns("x.2")]
+//pub fn addr<T>(x: *const T) -> usize {
+    //unimplemented!();
+//}
+
+
+// TODO: replaced in newer Rust versions by `without_provenance`
+#[rr::export_as(core::ptr::invalid)]
+#[rr::code_shim("ptr_invalid")]
+#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::requires("(addr ≤ max_alloc_end)%Z")]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
+#[rr::ensures("l.2 = addr")]
+#[rr::ensures(#type "l" : "()" @ "unit_t")]
+pub const fn invalid<T>(addr: usize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(core::ptr::invalid_mut)]
+#[rr::code_shim("ptr_invalid")]
+#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::requires("(addr ≤ max_alloc_end)%Z")]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
+#[rr::ensures("l.2 = addr")]
+#[rr::ensures(#type "l" : "()" @ "unit_t")]
+pub const fn invalid_mut<T>(addr: usize) -> *mut T {
+    unimplemented!();
+}
+
+#[rr::export_as(core::ptr::without_provenance)]
+#[rr::code_shim("ptr_invalid")]
+#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::requires("(addr ≤ max_alloc_end)%Z")]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
+#[rr::ensures("l.2 = addr")]
+#[rr::ensures(#type "l" : "()" @ "unit_t")]
+pub const fn without_provenance<T>(addr: usize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(core::ptr::without_provenance_mut)]
+#[rr::code_shim("ptr_invalid")]
+#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::requires("(addr ≤ max_alloc_end)%Z")]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
+#[rr::ensures("l.2 = addr")]
+#[rr::ensures(#type "l" : "()" @ "unit_t")]
+pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
+    unimplemented!();
+}
+
+#[rr::export_as(core::ptr::dangling)]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `has_layout_loc` {ly_of T}")]
+#[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
+#[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
+pub const fn dangling<T>() -> *const T {
+    without_provenance(mem_align_of::<T>())
+}
+#[rr::export_as(core::ptr::dangling_mut)]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures("l `has_layout_loc` {ly_of T}")]
+#[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
+#[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
+pub const fn dangling_mut<T>() -> *mut T {
+    without_provenance_mut(mem_align_of::<T>())
 }

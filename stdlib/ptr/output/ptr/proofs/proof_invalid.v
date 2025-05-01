@@ -28,9 +28,13 @@ Proof.
   { apply val_to_byte_prov_erase_prov. }
   iIntros "!> Hl Hcred".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) _ with "HL").
-  { rewrite /ty_own_val /=. done. }
+  { rewrite /ty_own_val /=. iPureIntro. 
+    split; first done.
+    apply int_elem_of_it_iff. by eapply val_to_Z_in_range. }
   iAssert (val_of_loc (ProvAlloc None, addr : caesium.loc.addr) ◁ᵥ{π} (ProvAlloc None, addr : caesium.loc.addr) @ alias_ptr_t)%I as "?".
-  { rewrite /ty_own_val /= //. }
+  { rewrite /ty_own_val /= //. iPureIntro. 
+    split; first done.
+    apply int_elem_of_it_iff. by eapply val_to_Z_in_range. }
   set (l2 := (ProvAlloc None, addr : loc.addr) : loc).
   iAssert (l2 ◁ₗ[π, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "?".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
