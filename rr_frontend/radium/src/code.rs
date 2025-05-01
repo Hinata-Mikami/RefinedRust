@@ -1031,15 +1031,6 @@ impl<'def> Function<'def> {
 
         let params = self.spec.spec.get_params();
 
-        /*
-        for _ in 0..params.len() {
-            write!(ip_params, "[ ").unwrap();
-        }
-        //write!(ip_params, "[]").unwrap();
-        for p in params {
-            write!(ip_params, " {}]", p.0).unwrap();
-        }
-        */
         if let Some(params) = params {
             if params.is_empty() {
                 // no params, but still need to provide something to catch the unit
@@ -1104,18 +1095,6 @@ impl<'def> Function<'def> {
         write!(f, "let Σ := get_Σ in\n")?;
 
         write!(f, "set (loop_map := BB_INV_MAP {});\n", self.loop_invariants)?;
-
-        // destruct specification-level parameters
-        /*
-        if let Some(params) = params {
-            write!(f, "prepare_parameters (")?;
-            for param in params {
-                write!(f, " {}", param.get_name())?;
-            }
-            write!(f, " );\n")?;
-        }
-        write!(f, "prepare_initial_coq_context;\n")?;
-        */
 
         // initialize lifetimes
         let mut lfts: Vec<_> =

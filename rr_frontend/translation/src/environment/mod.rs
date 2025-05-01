@@ -33,7 +33,6 @@ use crate::environment::collect_prusti_spec_visitor::CollectPrustiSpecVisitor;
 use crate::environment::procedure::Procedure;
 
 /// Facade to the Rust compiler.
-// #[derive(Copy, Clone)]
 pub struct Environment<'tcx> {
     /// Cached MIR bodies.
     bodies: RefCell<HashMap<hir::def_id::LocalDefId, Rc<mir::Body<'tcx>>>>,
@@ -74,64 +73,10 @@ impl<'tcx> Environment<'tcx> {
         self.tcx
     }
 
-    /// Returns the type of a `HirId`
-    //pub fn hir_id_to_type(&self, hir_id: HirId) -> ty::EarlyBinder<ty::Ty<'tcx>> {
-    //let def_id = self.tcx.hir().local_def_id(hir_id);
-    //self.tcx.type_of(def_id)
-    //}
-
     /// Returns the `CodeMap`
     pub fn codemap(&self) -> &'tcx span::source_map::SourceMap {
         self.tcx.sess.source_map()
     }
-
-    /*
-    /// Emits an error message.
-    pub fn span_err_with_help_and_notes<S: Into<MultiSpan> + Clone>(
-        &self,
-        sp: S,
-        msg: &str,
-        help: &Option<String>,
-        notes: &[(String, Option<S>)],
-    ) {
-        let mut diagnostic = self.tcx.sess.struct_err(msg);
-        diagnostic.set_span(sp);
-        if let Some(help_msg) = help {
-            diagnostic.help(help_msg);
-        }
-        for (note_msg, opt_note_sp) in notes {
-            if let Some(note_sp) = opt_note_sp {
-                diagnostic.span_note(note_sp.clone(), note_msg);
-            } else {
-                diagnostic.note(note_msg);
-            }
-        }
-        diagnostic.emit();
-    }
-
-    /// Emits an error message.
-    pub fn span_warn_with_help_and_notes<S: Into<MultiSpan> + Clone>(
-        &self,
-        sp: S,
-        msg: &str,
-        help: &Option<String>,
-        notes: &[(String, Option<S>)],
-    ) {
-        let mut diagnostic = self.tcx.sess.struct_warn(msg);
-        diagnostic.set_span(sp);
-        if let Some(help_msg) = help {
-            diagnostic.help(help_msg);
-        }
-        for (note_msg, opt_note_sp) in notes {
-            if let Some(note_sp) = opt_note_sp {
-                diagnostic.span_note(note_sp.clone(), note_msg);
-            } else {
-                diagnostic.note(note_msg);
-            }
-        }
-        diagnostic.emit();
-    }
-    */
 
     /// Returns true if an error has been emitted
     pub fn has_errors(&self) -> bool {
@@ -254,17 +199,6 @@ impl<'tcx> Environment<'tcx> {
 
         filtered_attrs
     }
-
-    /*
-    /// Dump various information from the borrow checker.
-    ///
-    /// Mostly used for experiments and debugging.
-    pub fn dump_borrowck_info(&self, procedure: &ProcedureDefId) {
-        if config::dump_borrowck_info() {
-            dump_borrowck_info::dump_borrowck_info(self, procedure)
-        }
-    }
-    */
 
     /// Get an absolute `def_path`. Note: not preserved across compilations!
     pub fn get_item_def_path(&self, def_id: hir::def_id::DefId) -> String {
@@ -414,124 +348,6 @@ impl<'tcx> Environment<'tcx> {
         });
         result
     }
-
-    /*
-        pub fn type_is_copy(&self, ty: ty::Ty<'tcx>) -> bool {
-            let copy_trait = self.tcx.lang_items().copy_trait();
-            if let Some(copy_trait_def_id) = copy_trait {
-                self.type_implements_trait(&ty, copy_trait_def_id)
-            } else {
-                false
-            }
-        }
-
-        /// Checks whether the given type implements the trait with the given DefId.
-        pub fn type_implements_trait(&self, ty: &ty::Ty<'tcx>, trait_def_id: DefId) -> bool {
-            assert!(self.tcx.is_trait(trait_def_id));
-            match ty.kind() {
-                ty::TyKind::Adt(_, subst)
-                | ty::TyKind::FnDef(_, subst)
-                | ty::TyKind::Closure(_, subst)
-                | ty::TyKind::Opaque(_, subst)
-                | ty::TyKind::Generator(_, subst, _) => {
-                    self.tcx.infer_ctxt().enter(|infcx|
-                        infcx
-                            .type_implements_trait(trait_def_id, *ty, subst, ParamEnv::empty())
-                            .must_apply_considering_regions()
-                    )
-                },
-                // TODO
-                //ty::TyKind::Tuple(subst) => {
-                        //self.tcx.infer_ctxt().enter(|infcx|
-
-                        //infcx
-                            //.types_implements_trait(trait_def_id, *ty, subst, ParamEnv::empty())
-                            //.must_apply_considering_regions()
-                    //)
-                //},
-                ty::TyKind::Bool => {
-                    self.primitive_type_implements_trait(
-                        ty,
-                        self.tcx.lang_items().bool_impl(),
-                        trait_def_id
-                    )
-                }
-                ty::TyKind::Char => {
-                    self.primitive_type_implements_trait(
-                        ty,
-                        self.tcx.lang_items().char_impl(),
-                        trait_def_id
-                    )
-                }
-                ty::TyKind::Int(int_ty) => {
-                    let lang_items = self.tcx.lang_items();
-                    let impl_def = match int_ty {
-                        ty::IntTy::Isize => lang_items.isize_impl(),
-                        ty::IntTy::I8 => lang_items.i8_impl(),
-                        ty::IntTy::I16 => lang_items.i16_impl(),
-                        ty::IntTy::I32 => lang_items.i32_impl(),
-                        ty::IntTy::I64 => lang_items.i64_impl(),
-                        ty::IntTy::I128 => lang_items.i128_impl(),
-                    };
-                    self.primitive_type_implements_trait(
-                        ty,
-                        impl_def,
-                        trait_def_id
-                    )
-                }
-                ty::TyKind::Uint(uint_ty) => {
-                    let lang_items = self.tcx.lang_items();
-                    let impl_def = match uint_ty {
-                        ty::UintTy::Usize => lang_items.usize_impl(),
-                        ty::UintTy::U8 => lang_items.u8_impl(),
-                        ty::UintTy::U16 => lang_items.u16_impl(),
-                        ty::UintTy::U32 => lang_items.u32_impl(),
-                        ty::UintTy::U64 => lang_items.u64_impl(),
-                        ty::UintTy::U128 => lang_items.u128_impl(),
-                    };
-                    self.primitive_type_implements_trait(
-                        ty,
-                        impl_def,
-                        trait_def_id
-                    )
-                }
-                ty::TyKind::Float(float_ty) => {
-                    let lang_items = self.tcx.lang_items();
-                    let impl_def = match float_ty {
-                        ty::FloatTy::F32 => lang_items.f32_impl(),
-                        ty::FloatTy::F64 => lang_items.f64_impl(),
-                    };
-                    self.primitive_type_implements_trait(
-                        ty,
-                        impl_def,
-                        trait_def_id
-                    )
-                }
-                ty::TyKind::Ref(_, ref_ty, _) => {
-                    self.type_implements_trait(ref_ty, trait_def_id)
-                }
-                _ => {
-                    unimplemented!() // none of the remaining types should be supported yet
-                }
-            }
-        }
-    */
-
-    /*
-        fn primitive_type_implements_trait(
-            &self,
-            ty: ty::Ty<'tcx>,
-            impl_def: Option<DefId>,
-            trait_def_id: DefId
-        ) -> bool {
-            assert!(impl_def.is_some());
-            self.tcx.infer_ctxt().enter(|infcx|
-                infcx
-                    .type_implements_trait(trait_def_id, ty, ty::List::empty(), ParamEnv::empty())
-                    .must_apply_considering_regions()
-            )
-        }
-    */
 }
 
 pub fn dump_borrowck_info<'a, 'tcx>(

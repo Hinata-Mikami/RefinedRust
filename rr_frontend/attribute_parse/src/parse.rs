@@ -256,40 +256,6 @@ macro_rules! define_punctuation_structs {
             pub struct $name {
                 pub span: span::Span,
             }
-
-            //#[doc(hidden)]
-            //#[allow(non_snake_case)]
-            //pub fn $name<S: IntoSpans<[Span; $len]>>(spans: S) -> $name {
-                //$name {
-                    //span: spans.into_spans(),
-                //}
-            //}
-
-            //impl std::default::Default for $name {
-                //fn default() -> Self {
-                    //$name {
-                        //spans: [Span::call_site(); $len],
-                    //}
-                //}
-            //}
-
-            //impl Debug for $name {
-                //fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    //f.write_str(stringify!($name))
-                //}
-            //}
-
-            //impl cmp::Eq for $name {}
-
-            //impl PartialEq for $name {
-                //fn eq(&self, _other: &$name) -> bool {
-                    //true
-                //}
-            //}
-
-            //impl Hash for $name {
-                //fn hash<H: Hasher>(&self, _state: &mut H) {}
-            //}
         )*
     };
 }
@@ -300,14 +266,6 @@ macro_rules! define_punctuation {
             define_punctuation_structs! {
                 $token pub struct $name/$len #[$doc]
             }
-
-            //#[cfg(feature = "printing")]
-            //#[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
-            //impl ToTokens for $name {
-                //fn to_tokens(&self, tokens: &mut TokenStream) {
-                    //printing::punct($token, &self.spans, tokens);
-                //}
-            //}
 
             impl<U> Parse<U> for $name where U: ?Sized {
                 fn parse(input: Stream, _: &U) -> Result<Self> {
@@ -321,10 +279,6 @@ macro_rules! define_punctuation {
                 fn peek(input: Stream) -> bool {
                     input.peek_token(&$tk)
                 }
-
-                //fn display() -> &'static str {
-                    //concat!("`", $token, "`")
-                //}
             }
 
             impl PToken for $name {
@@ -731,21 +685,11 @@ impl<T, P> Punctuated<T, P> {
         self.iter().next()
     }
 
-    /// Mutably borrows the first element in this sequence.
-    //pub fn first_mut(&mut self) -> Option<&mut T> {
-    //self.iter_mut().next()
-    //}
-
     /// Borrows the last element in this sequence.
     #[must_use]
     pub fn last(&self) -> Option<&T> {
         self.iter().next_back()
     }
-
-    /// Mutably borrows the last element in this sequence.
-    //pub fn last_mut(&mut self) -> Option<&mut T> {
-    //self.iter_mut().next_back()
-    //}
 
     /// Returns an iterator over borrowed syntax tree nodes of type `&T`.
     pub fn iter(&self) -> Iter<T> {
@@ -756,40 +700,6 @@ impl<T, P> Punctuated<T, P> {
             }),
         }
     }
-
-    /// Returns an iterator over mutably borrowed syntax tree nodes of type
-    /// `&mut T`.
-    //pub fn iter_mut(&mut self) -> IterMut<T> {
-    //IterMut {
-    //inner: Box::new(PrivateIterMut {
-    //inner: self.inner.iter_mut(),
-    //last: self.last.as_mut().map(Box::as_mut).into_iter(),
-    //}),
-    //}
-
-    /// Returns an iterator over the contents of this sequence as borrowed
-    /// punctuated pairs.
-    //pub fn pairs(&self) -> Pairs<T, P> {
-    //Pairs {
-    //inner: self.inner.iter(),
-    //last: self.last.as_ref().map(Box::as_ref).into_iter(),
-    //}
-
-    /// Returns an iterator over the contents of this sequence as mutably
-    /// borrowed punctuated pairs.
-    //pub fn pairs_mut(&mut self) -> PairsMut<T, P> {
-    //PairsMut {
-    //inner: self.inner.iter_mut(),
-    //last: self.last.as_mut().map(Box::as_mut).into_iter(),
-    //}
-
-    /// Returns an iterator over the contents of this sequence as owned
-    /// punctuated pairs.
-    //pub fn into_pairs(self) -> IntoPairs<T, P> {
-    //IntoPairs {
-    //inner: self.inner.into_iter(),
-    //last: self.last.map(|t| *t).into_iter(),
-    //}
 
     /// Appends a syntax tree node onto the end of this punctuated sequence. The
     /// sequence must previously have a trailing punctuation.
@@ -828,15 +738,6 @@ impl<T, P> Punctuated<T, P> {
         let last = self.last.take().unwrap();
         self.inner.push((*last, punctuation));
     }
-
-    /// Removes the last punctuated pair from this sequence, or `None` if the
-    /// sequence is empty.
-    //pub fn pop(&mut self) -> Option<Pair<T, P>> {
-    //if self.last.is_some() {
-    //self.last.take().map(|t| Pair::End(*t))
-    //} else {
-    //self.inner.pop().map(|(t, p)| Pair::Punctuated(t, p))
-    //}
 
     /// Determines whether this punctuated sequence ends with a trailing
     /// punctuation.
@@ -1083,14 +984,6 @@ impl<'a, T, P> IntoIterator for &'a Punctuated<T, P> {
     }
 }
 
-//impl<'a, T, P> IntoIterator for &'a mut Punctuated<T, P> {
-//type Item = &'a mut T;
-//type IntoIter = IterMut<'a, T>;
-
-//fn into_iter(self) -> Self::IntoIter {
-//Punctuated::iter_mut(self)
-//}
-
 impl<T, P> Default for Punctuated<T, P> {
     fn default() -> Self {
         Self::new()
@@ -1306,11 +1199,6 @@ struct PrivateIter<'a, T: 'a, P: 'a> {
     last: option::IntoIter<&'a T>,
 }
 
-//pub(crate) fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
-//Iter {
-//inner: Box::new(iter::empty()),
-//}
-
 // No Clone bound on T.
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Self {
@@ -1457,33 +1345,3 @@ where
         }
     }
 }
-
-/*
-impl<T, P> Index<usize> for Punctuated<T, P> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        if index == self.len() - 1 {
-            match &self.last {
-                Some(t) => t,
-                None => &self.inner[index].0,
-            }
-        } else {
-            &self.inner[index].0
-        }
-    }
-}
-
-impl<T, P> IndexMut<usize> for Punctuated<T, P> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index == self.len() - 1 {
-            match &mut self.last {
-                Some(t) => t,
-                None => &mut self.inner[index].0,
-            }
-        } else {
-            &mut self.inner[index].0
-        }
-    }
-}
-*/

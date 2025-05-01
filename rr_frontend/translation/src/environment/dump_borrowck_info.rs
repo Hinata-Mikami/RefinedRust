@@ -25,22 +25,6 @@ use crate::environment::polonius_info::{graphviz, PoloniusInfo};
 use crate::environment::procedure::Procedure;
 use crate::environment::{loops, Environment};
 
-/*
-pub fn dump_borrowck_info(env: &Environment<'_>, procedures: &[ProcedureDefId]) {
-    trace!("[dump_borrowck_info] enter");
-
-    let printer = InfoPrinter { env, tcx: env.tcx() };
-    //intravisit::walk_crate(&mut printer, tcx.hir.krate());
-    //tcx.hir.krate().visit_all_item_likes(&mut printer);
-
-    for def_id in procedures {
-        printer.print_info(*def_id);
-    }
-
-    trace!("[dump_borrowck_info] exit");
-}
-*/
-
 pub fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
     procedure: ProcedureDefId,
@@ -52,8 +36,6 @@ pub fn dump_borrowck_info<'a, 'tcx>(
         env,
         tcx: env.tcx(),
     };
-    //intravisit::walk_crate(&mut printer, tcx.hir.krate());
-    //tcx.hir.krate().visit_all_item_likes(&mut printer);
 
     printer.print_info(procedure, info);
 
@@ -80,9 +62,6 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 
         write!(writer, "Use of var derefs origin: \n")?;
         write!(writer, "{:?}", input_facts.use_of_var_derefs_origin)?;
-        //for fact in &input_facts.use_of_var_derefs_origin {
-        //write!(writer, "({:?}, {:?}) ",  fact.0, fact.1);
-        //}
         write!(writer, "\n\n")?;
 
         write!(writer, "Loans killed at: \n")?;
@@ -117,8 +96,6 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         }
         write!(writer, "\n\n")?;
 
-        //let output_facts = &self.body.output_facts;
-        //let output_facts = Output::compute(&body.input_facts, Algorithm::DatafrogOpt, true);
         let output_facts = &info.borrowck_out_facts;
 
         // TODO: why doesn't this contain anything???
@@ -146,15 +123,7 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         }
         write!(writer, "\n\n")?;
 
-        // TODO: these things seem really useless, why is that?
-        //println!("Origin live on entry: ");
-        //for (loc, origin) in output_facts.origin_live_on_entry.iter() {
-        //println!("\t {:?} -> {:?}", table.to_location(*loc), origin);
-        //}
-
         write!(writer, "Dump enabled: {:?}\n", output_facts.dump_enabled)?;
-        //output_facts.origins_live_at()
-        //println!("Origins live at: {:?}", );
 
         Ok(())
     }
@@ -162,19 +131,8 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
     fn print_info(&self, def_id: ProcedureDefId, info: &'a PoloniusInfo<'a, 'tcx>) {
         trace!("[print_info] enter {:?}", def_id);
 
-        /*match env::var_os("PRUSTI_DUMP_PROC").and_then(|value| value.into_string().ok()) {
-            Some(value) => {
-                if name != value {
-                    return;
-                }
-            },
-            _ => {},
-        };*/
-
         let procedure = Procedure::new(self.env, def_id);
-
         let local_def_id = def_id.expect_local();
-        //let _ = self.tcx.mir_borrowck(local_def_id);
 
         // Read Polonius facts.
         let def_path = self.tcx.hir().def_path(local_def_id);
@@ -210,9 +168,6 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         let graph = BufWriter::new(graph_file);
 
         let initialization = compute_definitely_initialized(def_id, mir, self.tcx);
-
-        // FIXME: this computes the wrong loop invariant permission
-        //let loop_invariant_block = HashMap::new();
 
         // print polonius.dot
         graphviz(self.env, &def_path, def_id, info).unwrap();
@@ -427,7 +382,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
         }
         for &(loan1, loan2) in &self.polonius_info.additional_facts.reborrows {
             write_graph!(self, "_{:?} -> _{:?} [color=green]", loan1, loan2);
-            // TODO: Compute strongly connected components.
         }
         write_graph!(self, "}}");
         Ok(())
@@ -470,12 +424,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 region
             );
         }
-        // FIXME
-        // for (region, point) in self.polonius_info.borrowck_in_facts.region_live_at.iter() {
-        //     if *point == start_point {
-        //         write_graph!(self, "{:?} -> {:?}_{:?}_{:?}", bb, bb, stmt, region);
-        //     }
-        // }
         write_graph!(self, "}}");
         Ok(())
     }
@@ -606,10 +554,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
                 .copied()
                 .collect();
 
-            // This assertion would fail if instead of reborrow we happen to have a move
-            // like `let mut current = head;`. See issue #18.
-            // TODO: display if we reborrowing an argument.
-            // assert!(all_loans.is_empty() || !loans.is_empty());
             write_graph!(self, "{:?}_{:?} [shape=box color=green]", bb, region);
             write_graph!(self, "{:?}_0_{:?} -> {:?}_{:?} [dir=none]", bb, region, bb, region);
 
@@ -683,19 +627,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
             }
         }
 
-        // FIXME
-        // for (region, point) in self.polonius_info.borrowck_in_facts.region_live_at.iter() {
-        //     if *point == start_point {
-        //         // TODO: the unwrap_or is a temporary workaround
-        //         // See issue prusti-internal/issues/14
-        //         let variable = self
-        //             .polonius_info
-        //             .find_variable(*region)
-        //             .unwrap_or(mir::Local::new(1000));
-        //         self.print_blocked(variable, start_location)?;
-        //     }
-        // }
-
         self.print_subsets(start_location)
     }
 
@@ -738,31 +669,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
             .map(|(region, loan, _)| (region, loan))
             .collect();
         write_graph!(self, "<td>{}</td>", to_sorted_string!(borrow_regions));
-
-        // FIXME
-        // // Regions alive at this program point.
-        // let regions: Vec<_> = self
-        //     .polonius_info
-        //     .borrowck_in_facts
-        //     .region_live_at
-        //     .iter()
-        //     .filter(|(_, point)| *point == start_point)
-        //     .cloned()
-        //     // TODO: Understand why we cannot unwrap here:
-        //     .map(|(region, _)| (region, self.polonius_info.find_variable(region)))
-        //     .collect();
-        // write_graph!(self, "<td>{}</td>", to_sorted_string!(regions));
-        // let regions: Vec<_> = self
-        //     .polonius_info
-        //     .borrowck_in_facts
-        //     .region_live_at
-        //     .iter()
-        //     .filter(|(_, point)| *point == mid_point)
-        //     .cloned()
-        //     // TODO: Understand why we cannot unwrap here:
-        //     .map(|(region, _)| (region, self.polonius_info.find_variable(region)))
-        //     .collect();
-        // write_graph!(self, "<td>{}</td>", to_sorted_string!(regions));
 
         write_graph!(self, "<td>{}</td>", self.get_definitely_initialized_after_statement(location));
 
@@ -840,28 +746,18 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
 
     const fn show_statement_indices() -> bool {
         true
-        //unimplemented!("Should use SETTINGS.");
-        // get_config_option("PRUSTI_DUMP_SHOW_STATEMENT_INDICES", true)
     }
 
     const fn show_temp_variables() -> bool {
         true
-        //unimplemented!("Should use SETTINGS.");
-        // get_config_option("PRUSTI_DUMP_SHOW_TEMP_VARIABLES", true)
     }
 
     const fn show_borrow_regions() -> bool {
-        //true
         false
-        //unimplemented!("Should use SETTINGS.");
-        // get_config_option("PRUSTI_DUMP_SHOW_BORROW_REGIONS", false)
     }
 
     const fn show_restricts() -> bool {
-        //true
         false
-        //unimplemented!("Should use SETTINGS.");
-        // get_config_option("PRUSTI_DUMP_SHOW_RESTRICTS", false)
     }
 }
 
@@ -885,50 +781,6 @@ impl<'a, 'tcx> MirInfoPrinter<'a, 'tcx> {
     #[allow(clippy::unused_self)]
     #[allow(clippy::unnecessary_wraps)]
     fn print_subset_at_start(&self, _location: mir::Location) -> Result<(), io::Error> {
-        /*
-            let point = self.get_point(location, facts::PointType::Start);
-            let subset_map = &self.polonius_info.borrowck_out_facts.subset;
-            if let Some(subset) = subset_map.get(&point).as_ref() {
-                write_graph!(self, "subgraph cluster_{:?} {{", point);
-                let mut used_regions = HashSet::new();
-                for (from_region, to_regions) in subset.iter() {
-                    used_regions.insert(*from_region);
-                    for to_region in to_regions.iter() {
-                        used_regions.insert(*to_region);
-                        write_graph!(
-                            self,
-                            "{:?}_{:?} -> {:?}_{:?}",
-                            point,
-                            from_region,
-                            point,
-                            to_region
-                        );
-                    }
-                }
-                for region in used_regions {
-                    if let Some(local) = self.polonius_info.find_variable(region) {
-                        write_graph!(
-                            self,
-                            "{:?}_{:?} [shape=box label=\"{:?}:{:?}\"]",
-                            point,
-                            region,
-                            local,
-                            region
-                        );
-                    } else {
-                        write_graph!(
-                            self,
-                            "{:?}_{:?} [shape=box label=\"{:?}\"]",
-                            point,
-                            region,
-                            region
-                        );
-                    }
-                }
-                write_graph!(self, "}}");
-            }
-        */
-
         Ok(())
     }
 

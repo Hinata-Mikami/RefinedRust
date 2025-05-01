@@ -270,20 +270,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let input_tuple_ty = tupled_inputs[0];
         let mut inputs = Vec::new();
 
-        // push the closure as the first argument
-        /*
-        if let Some(r2) = maybe_outer_lifetime {
-            // in this case, we need to patch the region first
-            if let ty::TyKind::Ref(_, ty, m) = closure_arg.ty.kind() {
-                let new_region = ty::Region::new_var(env.tcx(), r2);
-                inputs.push(env.tcx().mk_ty_from_kind(ty::TyKind::Ref(new_region, *ty, *m)));
-            }
-        }
-        else {
-            inputs.push(closure_arg.ty);
-        }
-        */
-
         if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
             inputs.extend(args.iter());
         }
@@ -777,11 +763,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     fn dump_body(body: &mir::Body) {
-        // TODO: print to file
-        //for dec in &body.local_decls {
-        //info!("Local decl: {:?}", dec);
-        //}
-
         let basic_blocks = &body.basic_blocks;
         for (bb_idx, bb) in basic_blocks.iter_enumerated() {
             Self::dump_basic_block(bb_idx, bb);

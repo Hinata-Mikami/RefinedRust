@@ -76,7 +76,6 @@ impl Interner {
 
     #[must_use]
     pub fn get_point_index(&self, point: &Point) -> PointIndex {
-        // self.points.get_index(point)
         match point.typ {
             PointType::Start => self.location_table.start_index(point.location),
             PointType::Mid => self.location_table.mid_index(point.location),
@@ -85,7 +84,6 @@ impl Interner {
 
     #[must_use]
     pub fn get_point(&self, index: PointIndex) -> Point {
-        // self.points.get_element(index)
         match self.location_table.to_location(index) {
             RichLocation::Start(location) => Point {
                 location,
@@ -100,7 +98,6 @@ impl Interner {
 
     #[must_use]
     pub fn get_location(&self, index: PointIndex) -> mir::Location {
-        // self.points.get_element(index)
         match self.location_table.to_location(index) {
             RichLocation::Start(location) | RichLocation::Mid(location) => location,
         }

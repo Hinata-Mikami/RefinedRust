@@ -53,7 +53,6 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
     }
 
     pub fn run(&mut self) {
-        //self.tcx.hir().visit_all_item_likes_in_crate
         let it: &middle::hir::ModuleItems = self.tcx.hir_crate_items(());
         for id in it.items() {
             self.visit_item(self.tcx.hir().item(id));
@@ -64,9 +63,6 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
         for id in it.trait_items() {
             self.visit_trait_item(self.tcx.hir().trait_item(id));
         }
-        //for id in it.foreign_items() {
-
-        //}
     }
 }
 
@@ -113,16 +109,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
         //let attrs = self.tcx.get_attrs(trait_item.def_id.to_def_id());
 
         // Skip associated types and other non-methods items
-        if let hir::TraitItemKind::Fn(..) = trait_item.kind {
-            // continue
-        } else {
-            return;
-        }
+        let hir::TraitItemKind::Fn(..) = trait_item.kind else { return };
 
         // Skip body-less trait methods
         if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) = trait_item.kind {
             return;
         }
+
         let def_id = trait_item.hir_id().owner.def_id;
 
         let item_def_path = self.env.get_item_def_path(def_id.to_def_id());
@@ -134,20 +127,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
         //let attrs = self.tcx.get_attrs(impl_item.def_id.to_def_id());
 
         // Skip associated types and other non-methods items
-        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            // continue
-        } else {
-            return;
-        }
+        let hir::ImplItemKind::Fn(..) = impl_item.kind else { return };
 
         let def_id = impl_item.hir_id().owner.def_id;
 
         let item_def_path = self.env.get_item_def_path(def_id.to_def_id());
         trace!("Add impl-fn-item {} to result", item_def_path);
         self.functions.push(def_id);
-    }
-
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem) {
-        // Nothing
     }
 }

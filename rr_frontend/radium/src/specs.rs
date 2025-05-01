@@ -1597,14 +1597,6 @@ impl<'def> AbstractStruct<'def> {
         self.invariant.is_some()
     }
 
-    /*
-    /// Check if the struct has type parameters.
-    #[must_use]
-    pub fn has_type_params(&self) -> bool {
-        !self.ty_params.is_empty()
-    }
-    */
-
     /// Get the name of this struct
     #[must_use]
     pub fn name(&self) -> &str {
@@ -2131,14 +2123,6 @@ pub struct AbstractEnum<'def> {
 pub type AbstractEnumRef<'def> = &'def RefCell<Option<AbstractEnum<'def>>>;
 
 impl<'def> AbstractEnum<'def> {
-    /*
-    /// Check whether this enum has any type parameters.
-    #[must_use]
-    pub fn has_type_params(&self) -> bool {
-        !self.ty_params.is_empty()
-    }
-    */
-
     /// Get the name of this enum.
     #[must_use]
     pub fn name(&self) -> &str {
@@ -4276,28 +4260,6 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         let prop = format!("typaram_wf {} {} {}", ty.refinement_type, ty.syn_type, ty.type_term);
         IProp::Atom(prop)
     }
-
-    /*
-    /// Get the validity elctx for lifetime parameters on a function.
-    #[must_use]
-    pub fn generate_validity_elctx_for_generics(&self) -> String {
-        let mut term = String::new();
-
-        for ty in self.get_all_ty_params_with_assocs().params {
-            term.push_str(&Self::generate_validity_elctx_for_typaram(&ty));
-            term.push_str(" ++ ");
-        }
-        term.push_str("[]");
-        // TODO: all lifetime parameters should outlive ϝ?
-
-        term
-    }
-    #[must_use]
-    fn generate_validity_elctx_for_typaram(ty: &LiteralTyParam) -> String {
-        let semty = &ty.type_term;
-        format!("typaram_elctx ϝ _ {semty}")
-    }
-    */
 
     // TODO hack
     pub fn clear_lfts(&mut self) {

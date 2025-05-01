@@ -119,51 +119,6 @@ pub enum RegionKind {
     Unknown,
 }
 
-/*
-pub struct RegionGraphNode {
-    /// the kind of this node
-    kind: RegionKind,
-    /// the region
-    region: facts::Region,
-    /// the other regions this node is included in
-    included_in: HashSet<facts::Region>,
-}
-
-/// a region graph, with the edges being the subset relation and nodes being regions.
-pub struct RegionGraph {
-    nodes: IndexVec<facts::Region, RegionGraphNode>,
-}
-
-impl RegionGraph {
-    /// Create a new empty `RegionGraph`.
-    pub fn new() -> RegionGraph {
-        RegionGraph { nodes: IndexVec::new() }
-    }
-
-    /// Add a region with a specific `RegionNodeKind`. This will also automatically insert all not
-    /// previously inserted regions with smaller index at a `Intersected` kind (so take care to do
-    /// this in the right order!).
-    pub fn insert_region(&mut self, region: facts::Region, kind: RegionKind) {
-        let mut next_idx = self.nodes.len();
-        while next_idx < region.index() {
-            debug_assert!(self.nodes.next_index().index() == next_idx);
-            let node = RegionGraphNode { kind: RegionKind::Intersected, region: ty::RegionVid::from_usize(next_idx), included_in: HashSet::new() };
-            self.nodes.push(node);
-            next_idx += 1;
-        }
-        let node = RegionGraphNode {kind, region, included_in: HashSet::new() };
-        self.nodes.push(node);
-    }
-
-    /// Add a subset relation.
-    pub fn add_subset_relation(&mut self, from: facts::Region, to: facts::Region) {
-        let mut node_from = &mut self.nodes[from];
-        //let node_to = self.nodes[to];
-        node_from.included_in.insert(to);
-    }
-}
-*/
-
 #[derive(Clone, Debug)]
 pub enum Error {
     /// Loans depending on branches inside loops are not implemented yet
@@ -206,16 +161,10 @@ pub fn graphviz<'tcx>(
         }};
     }
 
-    //let facts = env.local_mir_borrowck_facts(def_id.expect_local());
-    //let location_table = facts.location_table.take().unwrap();
-    //let interner = facts::Interner::new(location_table);
     let interner = &info.interner;
 
     let borrowck_in_facts = &info.borrowck_in_facts;
-    //let borrowed_in_facts = facts.input_facts.borrow();
-    //let borrowck_in_facts = borrowed_in_facts.as_ref().unwrap();
     let borrowck_out_facts = &info.borrowck_out_facts;
-    //let borrowck_out_facts = Output::compute(&borrowck_in_facts, Algorithm::Naive, true);
 
     let graph_path = rrconfig::log_dir()
         .join("nll-facts")
@@ -439,11 +388,11 @@ fn compute_loan_conflict_sets(
 
     for &(_r, loan_created, point) in &borrowck_in_facts.loan_issued_at {
         let location = loan_position[&loan_created];
-        if !procedure.is_reachable_block(location.block)
-        /* || procedure.is_spec_block(location.block) */
-        {
+
+        if !procedure.is_reachable_block(location.block) {
             continue;
         }
+
         for borrowed_place in get_borrowed_places(mir, loan_position, loan_created)? {
             if let Some(live_borrows) = borrowck_out_facts.loan_live_at.get(&point) {
                 for loan_alive in live_borrows {
@@ -476,15 +425,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         // Read Polonius facts.
         let facts = env.local_mir_borrowck_facts(def_id.expect_local());
 
-        // // Read relations between region IDs and local variables.
-        // let renumber_path = PathBuf::from(rrconfig::log_dir()
-        //     .join("mir")
-        //     .join(format!(
-        //         "{}.{}.-------.renumber.0.mir",
-        //         tcx.crate_name(LOCAL_CRATE),
-        //         def_path.to_filename_friendly_no_crate()
-        //     ));
-        // debug!("Renumber path: {:?}", renumber_path);
         let place_regions = place_regions::load(mir);
 
         let interner = facts::Interner::new(facts.location_table.take().unwrap());
@@ -581,32 +521,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         all_facts.universal_region.extend(return_regions);
         Ok(())
     }
-
-    /*
-    pub fn compute_region_graph(&self) -> RegionGraph {
-        let g = RegionGraph::new();
-
-        // TODO
-        // add regions
-
-
-        //self.borrowck_out_facts.subsets_at
-
-        // how do we use this actually?
-        // - compute the transitive closure on the region graph
-        // - then just take the direct edges and filter out the ones that are intersected to get
-        // the relevant universals and loans.
-        //
-        // Problem: does this really work in a location-independent way?
-        //  - the main thing where we care about that are the subtyping annotations. they really
-        //  need to be location-dependent and take into account the kills that happened before.
-        //
-        //  instead: directly use the computed location-dependent subset relation and filter out
-        //  the loans + universals?
-
-        g
-    }
-    */
 
     /// Gets the kind of a region: originating from a loan, a universal region, or none of these.
     #[must_use]
@@ -1063,33 +977,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         dying_loans
     }
 
-    //     /// Get loans including the zombies ``(all_loans, zombie_loans)``.
-    //     pub fn get_all_loans_dying_before(
-    //         &self,
-    //         location: mir::Location,
-    //     ) -> (Vec<facts::Loan>, Vec<facts::Loan>) { let mut loans = self.get_loans_dying_before(location,
-    //       false); let zombie_loans = self.get_loans_dying_before(location, true);
-    //       loans.extend(zombie_loans.iter().cloned()); (loans, zombie_loans)
-    //     }
-
-    //     /// Get loans that die exactly before the given location, but not *at* any of the predecessors.
-    //     /// Note: we don't handle a loan that dies just in a subset of the incoming CFG edges.
-    //     pub fn get_loans_dying_before(
-    //         &self,
-    //         location: mir::Location,
-    //         zombie: bool,
-    //     ) -> Vec<facts::Loan> { let mut predecessors = self.get_predecessors(location); let mut
-    //       dying_before: Option<HashSet<facts::Loan>> = None; for predecessor in predecessors.drain(..) {
-    //       let dying_at_predecessor: HashSet<_> = HashSet::from_iter(self.get_loans_dying_at(predecessor,
-    //       zombie)); let dying_between: HashSet<_> =
-    //       HashSet::from_iter(self.get_loans_dying_between(predecessor, location, zombie)); let
-    //       dying_before_loc: HashSet<_> = dying_between .difference(&dying_at_predecessor) .cloned()
-    //       .collect(); if let Some(ref dying_before_content) = dying_before { if dying_before_content !=
-    //       &dying_before_loc { debug!("Incoming CFG edges have different expiring loans"); return vec![]; }
-    //       } else { dying_before = Some(dying_before_loc); } } dying_before .map(|d|
-    //       d.into_iter().collect()) .unwrap_or(vec![])
-    //     }
-
     #[must_use]
     pub fn get_conflicting_loans(&self, loan: facts::Loan) -> Vec<facts::Loan> {
         self.loan_conflict_sets
@@ -1284,24 +1171,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         None
     }
 
-    //     /// Find variable that was moved into the function.
-    //     pub fn get_moved_variable(&self, kind: &ReborrowingKind) -> mir::Local {
-    //         match kind {
-    //             ReborrowingKind::ArgumentMove { ref loan } => {
-    //                 let index = self
-    //                     .borrowck_in_facts
-    //                     .loan_issued_at
-    //                     .iter()
-    //                     .position(|(_, l, _)| l == loan)
-    //                     .unwrap();
-    //                 let (region, _, _) = self.borrowck_in_facts.loan_issued_at[index];
-    //                 let variable = self.find_variable(region).unwrap();
-    //                 variable
-    //             }
-    //             _ => panic!("This function can be called only with ReborrowingKind::ArgumentMove."),
-    //         }
-    //     }
-
     /// Get loops in which loans are defined (if any).
     pub fn get_loan_loops(
         &self,
@@ -1351,29 +1220,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             successors
         }
     }
-
-    //     fn get_predecessors(&self, location: mir::Location) -> Vec<mir::Location> {
-    //         if location.statement_index > 0 {
-    //             vec![mir::Location {
-    //                 statement_index: location.statement_index - 1,
-    //                 ..location
-    //             }]
-    //         } else {
-    //             debug_assert_eq!(location.statement_index, 0);
-    //             let mut predecessors = HashSet::new();
-    //             for (bbi, bb_data) in self.mir.basic_blocks().iter_enumerated() {
-    //                 for &bb_successor in bb_data.terminator().successors() {
-    //                     if bb_successor == location.block {
-    //                         predecessors.insert(mir::Location {
-    //                             block: bbi,
-    //                             statement_index: bb_data.statements.len(),
-    //                         });
-    //                     }
-    //                 }
-    //             }
-    //             predecessors.into_iter().collect()
-    //         }
-    //     }
 }
 
 /// Check if the statement is assignment.
@@ -1574,22 +1420,6 @@ impl AdditionalFacts {
             output.origin_live_on_entry.iter().flat_map(|(point, origins)| {
                 origins.iter().copied().map(|origin| (origin, *point)).collect::<Vec<_>>()
             })
-
-            // let mut origin_live_on_entry = output.origin_live_on_entry.clone();
-            // let all_points: BTreeSet<PointIndex> = all_facts
-            //     .cfg_edge
-            //     .iter()
-            //     .map(|&(p, _)| p)
-            //     .chain(all_facts.cfg_edge.iter().map(|&(_, q)| q))
-            //     .collect();
-
-            // for &r in &all_facts.universal_region {
-            //     for &p in &all_points {
-            //          FIXME: Check if already added.
-            //         origin_live_on_entry.push((r, p));
-            //     }
-            // }
-            // origin_live_on_entry
         };
         origin_live_on_entry.insert(Relation::from_iter(origin_live_on_entry_vec.map(|(r, p)| ((r, p), ()))));
         subset_r1p.insert(Relation::from_iter(output.subset.iter().flat_map(|(&point, subset_map)| {

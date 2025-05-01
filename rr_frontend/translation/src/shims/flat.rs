@@ -233,8 +233,3 @@ pub fn get_export_path_for_did(env: &Environment, did: hir::def_id::DefId) -> Ve
 
     get_cleaned_def_path(env.tcx(), did)
 }
-
-#[cfg(test)]
-mod tests {
-    // TODO can we test conversion to and from?
-}

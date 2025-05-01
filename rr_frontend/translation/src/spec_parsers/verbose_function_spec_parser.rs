@@ -51,13 +51,6 @@ pub trait FunctionSpecParser<'def> {
     ) -> Result<(), String>
     where
         F: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>;
-
-    //fn parse_trait_method_spec<'a, F>(
-    //&'a mut self,
-    //attrs: &'a [&'a AttrItem],
-    //ty_params:
-    //spec: &'a mut radium::FunctionSpecBuilder<'def>,
-    //) -> Result<(), String>;
 }
 
 /// A sequence of refinements with optional types, e.g.

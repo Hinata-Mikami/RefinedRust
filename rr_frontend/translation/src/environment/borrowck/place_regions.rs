@@ -21,7 +21,6 @@ pub enum Error {
     Unsupported(String),
 }
 
-// TODO: extend to more nested things (nested tuples/structs?)
 impl PlaceRegions {
     fn new() -> Self {
         Self(HashMap::new())
@@ -111,7 +110,6 @@ fn extract_region(place_regions: &mut PlaceRegions, local: mir::Local, ty: ty::T
                         place_regions.add(local, vec![i], extract_region_id(region));
                     },
                     _ => {
-                        // TODO descend into nested types (nested tuples/structs) ?
                         debug!("does not contain regions: {:?}[{}]: {:?} {:?}", local, i, ty, ty.kind());
                     },
                 }
