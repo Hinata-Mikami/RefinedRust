@@ -163,23 +163,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let target_ot = target_st.into();
 
         match kind {
-            mir::CastKind::PointerCoercion(x) => {
-                match x {
-                    ty::adjustment::PointerCoercion::MutToConstPointer => {
-                        // this is a NOP in our model
-                        Ok(translated_op)
-                    },
+            mir::CastKind::PointerCoercion(x) => match x {
+                ty::adjustment::PointerCoercion::MutToConstPointer => Ok(radium::Expr::UnOp {
+                    o: radium::Unop::Cast(radium::OpType::Ptr),
+                    ot: radium::OpType::Ptr,
+                    e: Box::new(translated_op),
+                }),
 
-                    ty::adjustment::PointerCoercion::ArrayToPointer
-                    | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
-                    | ty::adjustment::PointerCoercion::ReifyFnPointer
-                    | ty::adjustment::PointerCoercion::UnsafeFnPointer
-                    | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
-                        description: format!(
-                            "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
-                        ),
-                    }),
-                }
+                ty::adjustment::PointerCoercion::ArrayToPointer
+                | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
+                | ty::adjustment::PointerCoercion::ReifyFnPointer
+                | ty::adjustment::PointerCoercion::UnsafeFnPointer
+                | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
+                    description: format!(
+                        "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
+                    ),
+                }),
             },
 
             mir::CastKind::DynStar => Err(TranslationError::UnsupportedFeature {
@@ -209,10 +208,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
-                    (ty::TyKind::RawPtr(_), ty::TyKind::RawPtr(_)) => {
-                        // Casts between raw pointers are NOPs for us
-                        Ok(translated_op)
-                    },
+                    (ty::TyKind::RawPtr(_), ty::TyKind::RawPtr(_)) => Ok(radium::Expr::UnOp {
+                        o: radium::Unop::Cast(radium::OpType::Ptr),
+                        ot: radium::OpType::Ptr,
+                        e: Box::new(translated_op),
+                    }),
 
                     _ => {
                         // TODO: any other cases we should handle?

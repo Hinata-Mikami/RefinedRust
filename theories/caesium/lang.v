@@ -463,6 +463,7 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
     val_to_loc vs = Some l →
     val_of_Z l.2 it None = Some vt →
     eval_un_op (CastOp (IntOp it)) PtrOp σ vs vt
+(* TODO: we could simplify this, remove the provenance that bytes have, and fully commit to strict provenance. *)
 | CastOpIP it σ vs vt l l' a:
     val_to_Z vs it = Some a →
     (* Check that we can extract a provenance out of the bytes *)

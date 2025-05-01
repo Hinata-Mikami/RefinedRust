@@ -223,35 +223,26 @@ Definition wrap_signed (z : Z) (it : int_type) : Z :=
 Definition wrap_to_it (z : Z) (it : int_type) : Z :=
   if it.(it_signed) then wrap_signed z it else wrap_unsigned z it.
 
-Lemma wrap_to_int_id z it :
-  z ∈ it → wrap_to_it z it = z.
+(** wrap_unsigned lemmas *)
+Lemma wrap_unsigned_id z it :
+  it.(it_signed) = false → z ∈ it → wrap_unsigned z it = z.
 Proof.
-  intros Hit. rewrite /wrap_to_it.
-  destruct Hit. unfold min_int, max_int in *.
-  destruct (it_signed it) eqn:Heq.
-  - rewrite /wrap_signed.
-    specialize (int_modulus_twice_half_modulus it) as ?.
-    rewrite Zmod_small; lia.
-  - rewrite /wrap_unsigned.
-    rewrite Zmod_small; lia.
+  destruct it; simpl. intros -> [].
+  unfold min_int, max_int in *. simpl in*.
+  rewrite /wrap_unsigned/=; rewrite Zmod_small; lia.
 Qed.
 
-Lemma wrap_to_it_in_range z it :
-  wrap_to_it z it ∈ it.
+Lemma wrap_unsigned_in_range z it :
+  it.(it_signed) = false → wrap_unsigned z it ∈ it.
 Proof.
-  rewrite /wrap_to_it /elem_of/int_elem_of_it.
-  unfold min_int, max_int in *.
-  destruct (it_signed it) eqn:Heq.
-  - rewrite /wrap_signed.
-    opose proof* (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
-    { specialize (int_modulus_ge_1 it). lia. }
-    specialize (int_modulus_twice_half_modulus it).
-    lia.
-  - rewrite /wrap_unsigned.
-    opose proof* (Z_mod_lt (z) (int_modulus it)).
-    { specialize (int_modulus_ge_1 it). lia. }
-    lia.
+  opose proof* (Z_mod_lt (z) (int_modulus it)).
+  { specialize (int_modulus_ge_1 it). lia. }
+  destruct it; simpl. intros ->.
+  rewrite /elem_of/int_elem_of_it.
+  unfold min_int, max_int; simpl.
+  rewrite /wrap_unsigned. lia.
 Qed.
+
 
 Lemma wrap_unsigned_add_l it n1 n2 :
   wrap_unsigned (wrap_unsigned n1 it + n2) it = wrap_unsigned (n1 + n2) it.
@@ -264,12 +255,43 @@ Proof.
   lia.
 Qed.
 
-Lemma wrap_unsigned_in_range n it:
-  n ∈ it → it_signed it = false →
-  wrap_unsigned n it = n.
+(** wrap_signed lemmas *)
+Lemma wrap_signed_id z it :
+  it.(it_signed) = true → z ∈ it → wrap_signed z it = z.
 Proof.
-  rewrite /wrap_unsigned.
-  move => [??] ?. rewrite Z.mod_small //.
-  destruct it as [? []] => //. unfold min_int, max_int in *. simpl in *.
-  lia.
+  specialize (int_modulus_twice_half_modulus it) as ?.
+  destruct it; simpl. intros -> [].
+  unfold min_int, max_int in *. simpl in*.
+  rewrite /wrap_signed/=; rewrite Zmod_small; lia.
+Qed.
+
+Lemma wrap_signed_in_range z it :
+  it.(it_signed) = true → wrap_signed z it ∈ it.
+Proof.
+  specialize (int_modulus_twice_half_modulus it) as ?.
+  opose proof* (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
+  { specialize (int_modulus_ge_1 it). lia. }
+  destruct it; simpl. intros ->.
+  rewrite /elem_of/int_elem_of_it.
+  unfold min_int, max_int in *.
+  rewrite /wrap_signed. simpl in *. lia.
+Qed.
+
+(** wrap_to_it lemmas *)
+Lemma wrap_to_int_id z it :
+  z ∈ it → wrap_to_it z it = z.
+Proof.
+  unfold wrap_to_it.
+  destruct (it_signed it) eqn:Heq.
+  - intros; by eapply wrap_signed_id.
+  - intros; by eapply wrap_unsigned_id.
+Qed.
+
+Lemma wrap_to_it_in_range z it :
+  wrap_to_it z it ∈ it.
+Proof.
+  unfold wrap_to_it.
+  destruct (it_signed it) eqn:Heq.
+  - by eapply wrap_signed_in_range.
+  - by eapply wrap_unsigned_in_range.
 Qed.

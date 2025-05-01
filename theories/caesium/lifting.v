@@ -1170,32 +1170,6 @@ Proof.
   iMod "Hcl". by iApply "HΦ".
 Qed.
 
-Lemma wp_cast_ptr_int_prov_none Φ v v' l it :
-  val_to_loc v = Some l →
-  min_alloc_start ≤ l.2 →
-  l.2 ≤ max_alloc_end →
-  l.1 = ProvAlloc None →
-  val_of_Z l.2 it None = Some v' →
-  ▷ (£1 -∗ Φ (v')) -∗
-  WP UnOp (CastOp (IntOp it)) PtrOp (Val v) {{ Φ }}.
-Proof.
-  iIntros (Hv ?? Hp Hv') "HΦ".
-  iApply (wp_unop_det v').
-  iIntros (σ) "Hctx".
-  have ? : block_alive l (st_heap σ).
-  { right. eauto. }
-  iApply fupd_mask_intro; [done|]. iIntros "HE".
-  iSplit. {
-    iPureIntro. split.
-    - have ? := val_to_of_loc NULL_loc. inversion 1; unfold NULL in *; destruct l as [p1 a1]; [ | by simplify_eq/=..].
-      match goal with H : loc |- _ => assert (H = (p1, a1)) as -> by congruence end.
-      match goal with  H : block_alive _ _ |- _ => destruct H as [ (? & ? & _) | [? _]]; first congruence end.
-      simpl in*. by simplify_eq /=.
-    - move => ->. by econstructor.
-  }
-  iModIntro. iMod "HE". iFrame. iIntros "Hc". by iApply "HΦ".
-Qed.
-
 Lemma wp_cast_null_int Φ v E it:
   val_of_Z 0 it None = Some v →
   ▷ (£1 -∗ Φ v) -∗
@@ -1486,12 +1460,12 @@ Proof.
     all: inversion 1; simplify_eq/=.
     all: try case_bool_decide => //.
     all: destruct it as [? []]; simplify_eq/= => //.
-    all: try by rewrite ->wrap_unsigned_in_range in * => //; simplify_eq.
+    all: try by rewrite ->wrap_unsigned_id in * => //; simplify_eq.
   + move => ->. destruct op.
     1-22: (apply: ArithOpII; [try done; case_bool_decide; naive_solver|done|done|]).
     23-25: (apply: ArithOpCheckedII; [try done; case_bool_decide; naive_solver|done|done|]).
     all: destruct it as [? []]; simplify_eq/= => //.
-    all: try by rewrite wrap_unsigned_in_range.
+    all: try by rewrite wrap_unsigned_id.
 Qed.
 
 Lemma wp_check_int_arithop Φ op v1 v2 n1 n2 b it:
