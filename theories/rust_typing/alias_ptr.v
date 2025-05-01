@@ -146,8 +146,9 @@ Section cast.
     iNext. iIntros "Hcred". iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=. iR. done.
   Qed.
-  Definition type_cast_ptr_ptr_inst := [instance type_cast_ptr_ptr].
-  Global Existing Instance type_cast_ptr_ptr_inst.
+  Global Instance type_cast_ptr_ptr_inst E L v l π :
+    TypedUnOpVal π E L v alias_ptr_t l (CastOp PtrOp) PtrOp :=
+    λ T, i2p (type_cast_ptr_ptr π E L l v T).
 
   Lemma type_cast_ptr_int π E L l v (T : typed_un_op_cont_t) :
     (∀ v, T L π v _ (int usize_t) (l.2))
@@ -164,8 +165,9 @@ Section cast.
     rewrite /ty_own_val/= MaxInt_eq.
     iPureIntro. split; last done. by apply: val_to_of_Z.
   Qed.
-  Definition type_cast_ptr_int_inst := [instance type_cast_ptr_int].
-  Global Existing Instance type_cast_ptr_int_inst.
+  Global Instance type_cast_ptr_int_inst E L v l π :
+    TypedUnOpVal π E L v alias_ptr_t l (CastOp (IntOp usize_t)) PtrOp :=
+    λ T, i2p (type_cast_ptr_int π E L l v T).
 End cast.
 
 Section place.

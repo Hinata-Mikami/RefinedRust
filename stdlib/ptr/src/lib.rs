@@ -244,6 +244,47 @@ pub const fn mut_ptr_wrapping_sub<T>(l: *mut T, count: usize) -> *mut T {
     unimplemented!();
 }
 
+/// Bytewise versions
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_byte_offset)]
+#[rr::returns("l +wₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_byte_offset<T>(l: *const T, count: isize) -> *const T {
+    const_ptr_cast(const_ptr_wrapping_offset(const_ptr_cast::<_, u8>(l), count))
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_byte_offset)]
+#[rr::returns("l +wₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_byte_offset<T>(l: *mut T, count: isize) -> *mut T {
+    mut_ptr_cast(mut_ptr_wrapping_offset(mut_ptr_cast::<_, u8>(l), count))
+}
+
+
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_byte_add)]
+#[rr::returns("l +wₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_byte_add<T>(l: *const T, count: usize) -> *const T {
+    const_ptr_cast(const_ptr_wrapping_add(const_ptr_cast::<_, u8>(l), count))
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_byte_add)]
+#[rr::returns("l +wₗ count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_byte_add<T>(l: *mut T, count: usize) -> *mut T {
+    mut_ptr_cast(mut_ptr_wrapping_add(mut_ptr_cast::<_, u8>(l), count))
+}
+
+#[rr::export_as(#method core::ptr::const_ptr::wrapping_byte_sub)]
+#[rr::returns("l +wₗ -count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn const_ptr_wrapping_byte_sub<T>(l: *const T, count: usize) -> *const T {
+    const_ptr_cast(const_ptr_wrapping_sub(const_ptr_cast::<_, u8>(l), count))
+}
+#[rr::export_as(#method core::ptr::mut_ptr::wrapping_byte_sub)]
+#[rr::returns("l +wₗ -count")]
+#[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
+pub const fn mut_ptr_wrapping_byte_sub<T>(l: *mut T, count: usize) -> *mut T {
+    mut_ptr_cast(mut_ptr_wrapping_sub(mut_ptr_cast::<_, u8>(l), count))
+}
+
 /// Casts
 #[rr::export_as(#method core::ptr::const_ptr::cast)]
 #[rr::returns("x")]
@@ -272,15 +313,18 @@ pub const fn const_ptr_cast_mut<T>(x: *const T) -> *mut T {
 /// Strict provenance things
 
 
-// TODO: addr, with_addr, map_addr
+// TODO: with_addr, map_addr
 
-//#[rr::export_as(#method core::ptr::const_ptr::addr)]
-//#[rr::code_shim()]
-//#[rr::returns("x.2")]
-//pub fn addr<T>(x: *const T) -> usize {
-    //unimplemented!();
-//}
-
+#[rr::export_as(#method core::ptr::const_ptr::addr)]
+#[rr::returns("x.2")]
+pub fn const_ptr_addr<T>(x: *const T) -> usize {
+    x as usize
+}
+#[rr::export_as(#method core::ptr::mut_ptr::addr)]
+#[rr::returns("x.2")]
+pub fn mut_ptr_addr<T>(x: *const T) -> usize {
+    x as usize
+}
 
 // TODO: replaced in newer Rust versions by `without_provenance`
 #[rr::export_as(core::ptr::invalid)]
