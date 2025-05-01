@@ -22,9 +22,6 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
     pub fn get_closure_defs(self) -> Vec<LocalDefId> {
         self.result
     }
-
-    #[allow(clippy::unused_self)]
-    pub fn run(&mut self) {}
 }
 
 impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {

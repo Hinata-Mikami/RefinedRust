@@ -9,7 +9,7 @@
 use log::info;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::{hir, span};
+use rr_rustc_interface::span;
 use serde::{Deserialize, Serialize};
 
 use crate::spec_parsers::get_export_as_attr;
@@ -187,18 +187,6 @@ pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
     }
     info!("split def path {:?} to {:?}", def_path, components);
 
-    components
-}
-
-// Alternative implementation of `get_cleaned_def_path`, but this doesn't always yield a rooted
-// path (but only a suffix of the full path)
-fn extract_def_path(path: &hir::definitions::DefPath) -> Vec<String> {
-    let mut components = Vec::new();
-    for p in &path.data {
-        if let Some(name) = p.data.get_opt_name() {
-            components.push(name.as_str().to_owned());
-        }
-    }
     components
 }
 

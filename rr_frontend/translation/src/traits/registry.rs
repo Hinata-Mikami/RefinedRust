@@ -8,7 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use log::{info, trace};
-use radium::{coq, specs};
+use radium::specs;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use traits::{resolution, Error, TraitResult};
@@ -278,7 +278,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let base_instance_spec = radium::TraitInstanceSpec::new(methods);
             let decl = radium::TraitSpecDecl::new(
                 lit_trait_spec_ref,
-                coq::binder::BinderList::new(trait_spec.context_items),
                 param_scope.into(),
                 assoc_types,
                 base_instance_spec,

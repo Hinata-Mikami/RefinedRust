@@ -14,7 +14,6 @@ use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
 use crate::regions::inclusion_tracker::{self, InclusionTracker};
 use crate::{regions, types};
@@ -205,10 +204,6 @@ pub fn get_assignment_annots<'tcx>(
         // function and reconstruct based on that.
         // TODO.
 
-        // TODO: get rid of this
-        // similarly generate an annotation that encodes these constraints in the RR
-        // type system
-        //expr_annot = generate_strong_update_annot(ty_translator, info, lhs_ty);
         expr_annot = None;
 
         new_dyn_inclusions = HashSet::new();
@@ -256,61 +251,6 @@ fn generate_dyn_inclusion_annots<'tcx>(
             ),
         })
         .collect()
-}
-
-/// Generate an annotation on an expression needed to update the region name map.
-fn generate_strong_update_annot<'tcx>(
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    info: &PoloniusInfo<'_, 'tcx>,
-    ty: mir::tcx::PlaceTy<'tcx>,
-) -> Option<radium::Annotation> {
-    let (interesting, tree) = generate_strong_update_annot_rec(ty_translator, info, ty.ty);
-    interesting.then(|| radium::Annotation::GetLftNames(tree))
-}
-
-/// Returns a tree for giving names to Coq lifetimes based on RR types.
-/// The boolean indicates whether the tree is "interesting", i.e. whether it names at least one
-/// lifetime.
-fn generate_strong_update_annot_rec<'tcx>(
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    info: &PoloniusInfo<'_, 'tcx>,
-    ty: ty::Ty<'tcx>,
-) -> (bool, radium::LftNameTree) {
-    // TODO for now this just handles nested references
-    match ty.kind() {
-        ty::TyKind::Ref(r, ty, _) => match r.kind() {
-            ty::RegionKind::ReVar(r) => {
-                let name = ty_translator.format_atomic_region(&info.mk_atomic_region(r));
-                let (_, ty_tree) = generate_strong_update_annot_rec(ty_translator, info, *ty);
-                (true, radium::LftNameTree::Ref(name, Box::new(ty_tree)))
-            },
-            _ => {
-                panic!("generate_strong_update_annot: expected region variable");
-            },
-        },
-        _ => (false, radium::LftNameTree::Leaf),
-    }
-}
-
-/// Generate an annotation to adapt the type of `expr` to `target_ty` from type `current_ty` by
-/// means of shortening lifetimes.
-fn generate_shortenlft_annot<'tcx>(
-    ty_translator: &types::LocalTX<'_, 'tcx>,
-    info: &PoloniusInfo<'_, 'tcx>,
-    target_ty: ty::Ty<'tcx>,
-    _current_ty: ty::Ty<'tcx>,
-    mut expr: radium::Expr,
-) -> radium::Expr {
-    // this is not so different from the strong update annotation
-    let (interesting, tree) = generate_strong_update_annot_rec(ty_translator, info, target_ty);
-    if interesting {
-        expr = radium::Expr::Annot {
-            a: radium::Annotation::ShortenLft(tree),
-            e: Box::new(expr),
-            why: None,
-        };
-    }
-    expr
 }
 
 /// Find all regions that need to outlive a loan region at its point of creation, and

@@ -14,7 +14,7 @@ mod base;
 mod body;
 mod consts;
 mod data;
-pub mod environment;
+mod environment;
 mod force_matches_macro;
 mod procedures;
 mod regions;
@@ -34,6 +34,7 @@ use std::{fs, io, process};
 
 use log::{info, trace, warn};
 use radium::coq;
+use rr_rustc_interface::borrowck::consumers::BodyWithBorrowckFacts;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{hir, span};
@@ -1352,7 +1353,7 @@ fn exit_with_error(s: &str) {
 
 /// Get all functions and closures in the current crate that have attributes on them and are not
 /// skipped due to `rr::skip` attributes.
-pub fn get_filtered_functions(env: &Environment<'_>) -> Vec<LocalDefId> {
+fn get_filtered_functions(env: &Environment<'_>) -> Vec<LocalDefId> {
     let mut functions = env.get_procedures();
     let closures = env.get_closures();
     info!("Found {} function(s) and {} closure(s)", functions.len(), closures.len());
@@ -1580,7 +1581,7 @@ fn assemble_trait_impls<'tcx, 'rcx>(
 }
 
 /// Get and parse all module attributes.
-pub fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId, ModuleAttrs>, String> {
+fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId, ModuleAttrs>, String> {
     let modules = env.get_modules();
     let mut attrs = HashMap::new();
     info!("collected modules: {:?}", modules);
@@ -1767,4 +1768,18 @@ where
     continuation(vcx);
 
     Ok(())
+}
+
+/// # Safety
+///
+/// See the module level comment in `crate::environment::mir_storage`.
+pub unsafe fn store_mir_body<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    body_with_facts: BodyWithBorrowckFacts<'tcx>,
+) {
+    // SAFETY: See the module level comment.
+    unsafe {
+        environment::mir_storage::store_mir_body(tcx, def_id, body_with_facts);
+    }
 }

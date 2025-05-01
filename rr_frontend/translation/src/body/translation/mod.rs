@@ -15,7 +15,6 @@ mod terminator;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
-use rr_rustc_interface::ast;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use typed_arena::Arena;
@@ -47,8 +46,6 @@ pub struct TX<'a, 'def, 'tcx> {
 
     /// this needs to be annotated with the right borrowck things
     proc: &'def Procedure<'tcx>,
-    /// attributes on this function
-    attrs: &'a [&'a ast::ast::AttrItem],
     /// polonius info for this function
     info: &'a PoloniusInfo<'a, 'tcx>,
 
@@ -70,8 +67,6 @@ pub struct TX<'a, 'def, 'tcx> {
     /// initial Polonius constraints that hold at the start of the function
     initial_constraints: Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)>,
 
-    /// local lifetimes: the LHS is the lifetime name, the RHS are the super lifetimes
-    local_lifetimes: Vec<(radium::specs::Lft, Vec<radium::specs::Lft>)>,
     /// data structures for tracking which basic blocks still need to be translated
     /// (we only translate the basic blocks which are actually reachable, in particular when
     /// skipping unwinding)
@@ -106,7 +101,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty_translator: types::LocalTX<'def, 'tcx>,
 
         proc: &'def Procedure<'tcx>,
-        attrs: &'a [&'a ast::ast::AttrItem],
         info: &'a PoloniusInfo<'a, 'tcx>,
         inputs: &[ty::Ty<'tcx>],
 
@@ -206,8 +200,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             inclusion_tracker,
             collected_procedures: HashMap::new(),
             procedure_registry,
-            attrs,
-            local_lifetimes: Vec::new(),
             bb_queue: Vec::new(),
             processed_bbs: HashSet::new(),
             ty_translator,
@@ -474,14 +466,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get the type of a place expression.
     fn get_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::tcx::PlaceTy<'tcx> {
         pl.ty(&self.proc.get_mir().local_decls, self.env.tcx())
-    }
-
-    /// Get the type of a const.
-    fn get_type_of_const(cst: &mir::Constant<'tcx>) -> ty::Ty<'tcx> {
-        match cst.literal {
-            mir::ConstantKind::Ty(cst) => cst.ty(),
-            mir::ConstantKind::Val(_, ty) | mir::ConstantKind::Unevaluated(_, ty) => ty,
-        }
     }
 
     /// Get the type of an operand.

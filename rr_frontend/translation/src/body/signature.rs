@@ -499,7 +499,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.trait_registry,
             self.ty_translator,
             self.proc,
-            self.attrs,
             self.info,
             &self.inputs,
             self.inclusion_tracker,

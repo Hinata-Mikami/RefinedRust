@@ -23,8 +23,10 @@ use crate::environment::mir_analyses::initialization::AnalysisResult;
 use crate::environment::mir_sets::local_set::LocalSet;
 
 /// The result of the definitely allocated analysis.
+#[allow(dead_code)]
 pub type DefinitelyAllocatedAnalysisResult = AnalysisResult<LocalSet>;
 
+#[allow(dead_code)]
 pub fn compute_definitely_allocated<'a, 'tcx: 'a>(
     def_id: DefId,
     body: &'a mir::Body<'tcx>,

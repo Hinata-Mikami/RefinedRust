@@ -15,13 +15,3 @@ pub struct VerificationTask {
     /// A list of procedures to verify.
     pub procedures: Vec<DefId>,
 }
-
-/// Verification result returned by a verifier.
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum VerificationResult {
-    /// Verification was successful.
-    Success,
-    /// Verification failed. Errors should have been already emitted by
-    /// the verifier.
-    Failure,
-}

@@ -21,7 +21,6 @@ use crate::environment::{polonius_info, Environment};
 use crate::regions::TyRegionCollectFolder;
 use crate::traits;
 use crate::traits::region_bi_folder::RegionBiFolder;
-use crate::traits::registry::GenericTraitUse;
 use crate::traits::resolution;
 use crate::types::translator::{FunctionState, STInner, TX};
 use crate::types::tyvars::TyVarFolder;
@@ -52,12 +51,6 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             translator,
             scope: RefCell::new(scope),
         }
-    }
-
-    /// Get the `DefId` of the current function.
-    pub fn get_proc_did(&self) -> DefId {
-        let scope = self.scope.borrow();
-        scope.did
     }
 
     /// Translate a MIR type to the Radium syntactic type we need when storing an element of the type,
@@ -165,24 +158,6 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         scope.lifetime_scope.translate_atomic_region(r)
     }
 
-    /// Normalize a type in the given function environment.
-    pub fn normalize<T>(&self, ty: T) -> Result<T, TranslationError<'tcx>>
-    where
-        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
-    {
-        let scope = self.scope.borrow();
-        normalize_in_function(scope.did, self.translator.env().tcx(), ty)
-    }
-
-    pub fn get_trait_of_method(env: &Environment<'tcx>, method_did: DefId) -> Option<DefId> {
-        if let Some(impl_did) = env.tcx().impl_of_method(method_did) {
-            env.tcx().trait_id_of_impl(impl_did)
-        } else {
-            // else expect it to be an abstract method of a trait decl
-            env.tcx().trait_of_item(method_did)
-        }
-    }
-
     /// Split the params of a trait method into params of the trait and params of the method
     /// itself.
     pub fn split_trait_method_args(
@@ -198,17 +173,6 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let method_args = &ty_params.as_slice()[trait_generic_count..];
 
         (env.tcx().mk_args(trait_args), env.tcx().mk_args(method_args))
-    }
-
-    /// Lookup a trait parameter.
-    pub fn lookup_trait_param(
-        &self,
-        env: &Environment<'tcx>,
-        trait_did: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
-        let scope = self.scope.borrow();
-        scope.generic_scope.trait_scope().lookup_trait_use(env.tcx(), trait_did, args).cloned()
     }
 
     /// Register a procedure use of a trait method.
@@ -513,31 +477,4 @@ where
 
     resolution::normalize_type(tcx, param_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
-}
-
-pub fn normalize_erasing_regions_in_function<'tcx, T>(
-    function_did: DefId,
-    tcx: ty::TyCtxt<'tcx>,
-    ty: T,
-) -> Result<T, TranslationError<'tcx>>
-where
-    T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
-{
-    let param_env = tcx.param_env(function_did);
-    info!("Normalizing type {ty:?} in env {param_env:?}");
-
-    tcx.try_normalize_erasing_regions(param_env, ty)
-        .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
-}
-
-pub fn normalize_projection_in_function<'tcx>(
-    function_did: DefId,
-    tcx: ty::TyCtxt<'tcx>,
-    ty: ty::AliasTy<'tcx>,
-) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
-    let param_env = tcx.param_env(function_did);
-    info!("Normalizing type {ty:?} in env {param_env:?}");
-
-    resolution::normalize_projection_type(tcx, param_env, ty)
-        .ok_or_else(|| TranslationError::TraitResolution(format!("could not normalize projection {ty:?}")))
 }

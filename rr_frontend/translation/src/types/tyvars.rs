@@ -62,21 +62,6 @@ struct TyVarRenameFolder<'tcx> {
     name_map: HashMap<ty::ParamTy, ty::ParamTy>,
 }
 
-impl<'tcx> TyVarRenameFolder<'tcx> {
-    fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
-        TyVarRenameFolder {
-            tcx,
-            new_subst: Vec::new(),
-            name_map: HashMap::new(),
-        }
-    }
-
-    /// Obtain the substitution for getting back the old type.
-    fn get_subst(self) -> Vec<ty::ParamTy> {
-        self.new_subst
-    }
-}
-
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarRenameFolder<'tcx> {
     fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx

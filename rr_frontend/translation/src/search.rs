@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use std::mem;
 
 use log::info;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{metadata, ty};
-use rr_rustc_interface::{hir, span};
 
 use crate::{types, unification};
 
@@ -188,81 +188,6 @@ pub fn try_resolve_trait_impl_did<'tcx>(
         }
         solution
     }
-}
-
-/// Try to resolve the `DefId` of a method in an implementation of a trait for a particular type.
-/// Note that this does not, in general, find a unique solution, in case there are complex things
-/// with different where clauses going on.
-pub fn try_resolve_trait_method_did<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    trait_did: DefId,
-    trait_args: &[Option<ty::GenericArg<'tcx>>],
-    method_name: &str,
-    for_type: ty::Ty<'tcx>,
-) -> Option<DefId> {
-    // get all impls of this trait
-    let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
-
-    let simplified_type =
-        ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
-    let defs = impls.non_blanket_impls().get(&simplified_type)?;
-    info!("found implementations: {:?}", impls);
-
-    let mut unification_map = HashMap::new();
-
-    let mut solution = None;
-    for did in defs {
-        let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
-        let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
-
-        // check if this is an implementation for the right type
-        if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
-            let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
-
-            if let Some(impl_ref) = impl_ref {
-                let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
-
-                let this_impl_args = impl_ref.args;
-                // filter by the generic instantiation for the trait
-                info!("found impl with args {:?}", this_impl_args);
-                // args has self at position 0 and generics of the trait at position 1..
-
-                // check if the generic argument types match up
-                let mut unification_map = unification_map.clone();
-                if !unification::args_unify_types(
-                    &this_impl_args.as_slice()[1..],
-                    trait_args,
-                    &mut unification_map,
-                ) {
-                    continue;
-                }
-
-                let impl_assoc_items: &ty::AssocItems = tcx.associated_items(did);
-                // find the right item
-                if let Some(item) = impl_assoc_items.find_by_name_and_kind(
-                    tcx,
-                    span::symbol::Ident::from_str(method_name),
-                    ty::AssocKind::Fn,
-                    trait_did,
-                ) {
-                    info!("found impl {:?} with item {:?}", impl_ref, item);
-                    if solution.is_some() {
-                        println!(
-                            "Warning: Ambiguous resolution for method {method_name} of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                            trait_did,
-                            for_type,
-                            solution.unwrap(),
-                            item.def_id
-                        );
-                    } else {
-                        solution = Some(item.def_id);
-                    }
-                }
-            }
-        }
-    }
-
-    solution
 }
 
 /// Try to get a defid of a method at the given path.

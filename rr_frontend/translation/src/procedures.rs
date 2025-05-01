@@ -20,6 +20,7 @@ pub enum Mode {
     Ignore,
 }
 
+#[allow(dead_code)]
 impl Mode {
     pub fn is_prove(self) -> bool {
         self == Self::Prove
@@ -145,16 +146,6 @@ impl<'def> Scope<'def> {
         } else {
             None
         }
-    }
-
-    /// Lookup the Coq spec name for a function.
-    pub fn lookup_function_spec_name(&self, did: DefId) -> Option<&str> {
-        self.name_map.get(&did).map(Meta::get_spec_name)
-    }
-
-    /// Lookup the name for a function.
-    pub fn lookup_function_mangled_name(&self, did: DefId) -> Option<&str> {
-        self.name_map.get(&did).map(Meta::get_name)
     }
 
     /// Lookup the mode for a function.

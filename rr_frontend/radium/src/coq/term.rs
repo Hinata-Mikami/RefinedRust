@@ -140,10 +140,6 @@ impl<T, U> App<T, U> {
             rhs: Vec::new(),
         }
     }
-
-    pub(crate) const fn get_lhs(&self) -> &T {
-        &self.lhs
-    }
 }
 
 /// A [record].

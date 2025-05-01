@@ -316,7 +316,7 @@ where
                 syn_type: ty.into(),
             };
             let lit_ref = (self.make_literal)(lit_ty);
-            let lit_ty_use = specs::LiteralTypeUse::new_with_annot(lit_ref, lit.meta.clone());
+            let lit_ty_use = specs::LiteralTypeUse::new_with_annot(lit_ref);
 
             (specs::TypeWithRef::new(specs::Type::Literal(lit_ty_use), lit.rfn.to_string()), None)
         } else {

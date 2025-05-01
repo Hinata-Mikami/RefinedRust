@@ -232,8 +232,6 @@ pub struct ProcedureLoops {
     back_edges: HashSet<(BasicBlockIndex, BasicBlockIndex)>,
     /// Dominators graph.
     dominators: Dominators<BasicBlockIndex>,
-    /// The list of basic blocks ordered in the topological order (ignoring back edges).
-    ordered_blocks: Vec<BasicBlockIndex>,
 }
 
 impl ProcedureLoops {
@@ -363,7 +361,6 @@ impl ProcedureLoops {
             nonconditional_loop_blocks,
             back_edges,
             dominators,
-            ordered_blocks,
         }
     }
 

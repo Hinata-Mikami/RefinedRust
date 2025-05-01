@@ -14,9 +14,10 @@ use log::{info, trace};
 use radium::{coq, push_str_list};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, attr, target};
+use rr_rustc_interface::{abi, ast, target};
 use typed_arena::Arena;
 
+use crate::attrs;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
@@ -27,7 +28,6 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
 use crate::traits::registry;
 use crate::types::scope;
-use crate::{attrs, search};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -78,28 +78,6 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
             generic_scope: scope::Params::default(),
             polonius_info: None,
             lifetime_scope: EarlyLateRegionMap::default(),
-        }
-    }
-
-    /// Create a new scope for a function translation with the given generic parameters.
-    fn new(
-        did: DefId,
-        tcx: ty::TyCtxt<'tcx>,
-        ty_params: ty::GenericArgsRef<'tcx>,
-        lifetimes: EarlyLateRegionMap,
-        info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    ) -> Self {
-        info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
-
-        let generics = scope::Params::new_from_generics(ty_params, Some((tcx, did)));
-
-        Self {
-            did,
-            tuple_uses: HashMap::new(),
-            generic_scope: generics,
-            shim_uses: HashMap::new(),
-            polonius_info: info,
-            lifetime_scope: lifetimes,
         }
     }
 
@@ -207,14 +185,6 @@ pub type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
 pub type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
 
 impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
-    const fn in_function(&self) -> bool {
-        matches!(*self, Self::InFunction(_))
-    }
-
-    const fn translate_adt(&self) -> bool {
-        matches!(*self, Self::TranslateAdt(_))
-    }
-
     /// Create a copy of the param scope.
     pub fn get_param_scope(&self) -> scope::Params<'tcx, 'def> {
         match &self {
@@ -1238,16 +1208,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(map)
     }
 
-    fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
-        let lookup_did = search::try_resolve_did(self.env.tcx(), path);
-        if let Some(lookup_did) = lookup_did {
-            if lookup_did == did {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Given a Rust enum which has already been registered and whose fields have been translated, generate a
     /// corresponding Coq Inductive as well as an `EnumSpec`.
     fn generate_enum_spec(
@@ -1665,29 +1625,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 Err(TranslationError::UnsupportedType {
                     description: "RefinedRust does not support higher-ranked types".to_owned(),
                 })
-            },
-        }
-    }
-
-    /// Translate a `attr::IntType` (this is different from the `ty`
-    /// `IntType`).
-    const fn translate_int_type(it: attr::IntType) -> radium::IntType {
-        match it {
-            attr::IntType::SignedInt(it) => match it {
-                ast::IntTy::I8 => radium::IntType::I8,
-                ast::IntTy::I16 => radium::IntType::I16,
-                ast::IntTy::I32 => radium::IntType::I32,
-                ast::IntTy::I64 => radium::IntType::I64,
-                ast::IntTy::I128 => radium::IntType::I128,
-                ast::IntTy::Isize => radium::IntType::ISize,
-            },
-            attr::IntType::UnsignedInt(it) => match it {
-                ast::UintTy::U8 => radium::IntType::U8,
-                ast::UintTy::U16 => radium::IntType::U16,
-                ast::UintTy::U32 => radium::IntType::U32,
-                ast::UintTy::U64 => radium::IntType::U64,
-                ast::UintTy::U128 => radium::IntType::U128,
-                ast::UintTy::Usize => radium::IntType::USize,
             },
         }
     }

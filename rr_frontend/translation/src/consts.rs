@@ -14,9 +14,6 @@ use crate::base::*;
 pub struct Scope<'def> {
     // statics are explicitly declared
     statics: HashMap<DefId, radium::StaticMeta<'def>>,
-    // const places are constants that lie in a static memory segment because they are referred to
-    // by-ref
-    const_places: HashMap<DefId, radium::ConstPlaceMeta<'def>>,
 }
 
 impl<'def> Scope<'def> {
@@ -24,18 +21,12 @@ impl<'def> Scope<'def> {
     pub fn empty() -> Self {
         Self {
             statics: HashMap::new(),
-            const_places: HashMap::new(),
         }
     }
 
     /// Register a static
     pub fn register_static(&mut self, did: DefId, meta: radium::StaticMeta<'def>) {
         self.statics.insert(did, meta);
-    }
-
-    /// Register a const place
-    pub fn register_const_place(&mut self, did: DefId, meta: radium::ConstPlaceMeta<'def>) {
-        self.const_places.insert(did, meta);
     }
 
     pub fn get_static<'tcx>(&self, did: DefId) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {

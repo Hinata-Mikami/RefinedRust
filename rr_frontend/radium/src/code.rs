@@ -636,27 +636,6 @@ impl StackMap {
         self.args.push(Variable::new(name, st));
         true
     }
-
-    #[must_use]
-    fn lookup_binding(&self, name: &str) -> Option<&SynType> {
-        if !self.used_names.contains(name) {
-            return None;
-        }
-
-        for Variable((nm, st)) in &self.locals {
-            if nm == name {
-                return Some(st);
-            }
-        }
-
-        for Variable((nm, st)) in &self.args {
-            if nm == name {
-                return Some(st);
-            }
-        }
-
-        panic!("StackMap: invariant violation");
-    }
 }
 
 /// Representation of a Caesium function's source code
@@ -734,14 +713,6 @@ impl Display for FunctionCode {
             blocks.indented_skip_initial(&make_indent(2))
         )?;
         Ok(())
-    }
-}
-
-impl FunctionCode {
-    /// Get the number of arguments of the function.
-    #[must_use]
-    fn get_argument_count(&self) -> usize {
-        self.stack_layout.args.len()
     }
 }
 
@@ -1174,14 +1145,6 @@ pub struct StaticMeta<'def> {
     pub ty: Type<'def>,
 }
 
-/// Information on a used const place
-#[derive(Clone, Debug)]
-pub struct ConstPlaceMeta<'def> {
-    ident: String,
-    loc_name: String,
-    ty: Type<'def>,
-}
-
 /// The specification of the procedure we call.
 #[derive(Clone, Debug)]
 pub enum UsedProcedureSpec<'def> {
@@ -1214,6 +1177,7 @@ impl<'def> Display for UsedProcedureSpec<'def> {
 
 /// Information about another procedure this function uses
 #[derive(Constructor, Clone, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct UsedProcedure<'def> {
     /// The name to use for the location parameter
     pub loc_name: String,
@@ -1535,12 +1499,6 @@ impl<'def> FunctionBuilder<'def> {
     /// Add a manual tactic used for a sidecondition proof.
     pub fn add_manual_tactic(&mut self, tac: String) {
         self.tactics.push(tac);
-    }
-
-    /// Get the universal lifetimes.
-    #[must_use]
-    fn get_lfts(&self) -> &[Lft] {
-        self.spec.generics.get_lfts()
     }
 
     /// Add the assumption that a particular syntype is layoutable to the typing proof.

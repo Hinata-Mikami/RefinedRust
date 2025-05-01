@@ -110,30 +110,6 @@ pub fn expand_one_level<'tcx>(
     }
 }
 
-/// Pop the last projection from the place and return the new place with the popped element.
-pub fn try_pop_one_level<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    place: mir::Place<'tcx>,
-) -> Option<(mir::PlaceElem<'tcx>, mir::Place<'tcx>)> {
-    if place.projection.is_empty() {
-        return None;
-    }
-
-    let last_index = place.projection.len() - 1;
-    let new_place = mir::Place {
-        local: place.local,
-        projection: tcx.mk_place_elems(&place.projection[..last_index]),
-    };
-
-    Some((place.projection[last_index], new_place))
-}
-
-/// Pop the last element from the place if it is a dereference.
-pub fn try_pop_deref<'tcx>(tcx: ty::TyCtxt<'tcx>, place: mir::Place<'tcx>) -> Option<mir::Place<'tcx>> {
-    try_pop_one_level(tcx, place)
-        .and_then(|(elem, base)| (elem == mir::ProjectionElem::Deref).then_some(base))
-}
-
 /// Subtract the `subtrahend` place from the `minuend` place. The
 /// subtraction is defined as set minus between `minuend` place replaced
 /// with a set of places that are unrolled up to the same level as
@@ -195,46 +171,4 @@ pub fn collapse<'tcx>(
     }
 
     recurse(mir, tcx, places, guide_place.local.into(), *guide_place);
-}
-
-#[derive(Debug)]
-pub struct VecPlaceComponent<'tcx> {
-    place: mir::Place<'tcx>,
-}
-
-impl<'tcx> VecPlaceComponent<'tcx> {
-    pub const fn get_mir_place(&self) -> &mir::Place<'tcx> {
-        &self.place
-    }
-}
-
-/// A different way to represent a place that is more similar to the one
-/// mentioned in the issue <https://github.com/rust-lang/rust/issues/52708>.
-#[derive(Debug)]
-pub struct VecPlace<'tcx> {
-    components: Vec<VecPlaceComponent<'tcx>>,
-}
-
-impl<'tcx> VecPlace<'tcx> {
-    pub fn new(mir: &mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>, place: &mir::Place<'tcx>) -> VecPlace<'tcx> {
-        let mut vec_place = Self {
-            components: Vec::new(),
-        };
-        let mut prefix: mir::Place = place.local.into();
-        vec_place.components.push(VecPlaceComponent { place: prefix });
-        while prefix.projection.len() < place.projection.len() {
-            let (new_prefix, _) = expand_one_level(mir, tcx, prefix, *place);
-            prefix = new_prefix;
-            vec_place.components.push(VecPlaceComponent { place: prefix });
-        }
-        vec_place
-    }
-
-    pub fn iter<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a VecPlaceComponent<'tcx>> {
-        self.components.iter()
-    }
-
-    pub fn component_count(&self) -> usize {
-        self.components.len()
-    }
 }

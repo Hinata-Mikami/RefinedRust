@@ -379,7 +379,7 @@ where
         }
     }
 
-    fn make_type(&self, lit: LiteralType, ty: &specs::Type<'def>) -> specs::Type<'def> {
+    fn make_type(&self, lit: &LiteralType, ty: &specs::Type<'def>) -> specs::Type<'def> {
         // literal type given, we use this literal type as the RR semantic type
         // just use the syntype from the Rust type
 
@@ -395,7 +395,7 @@ where
             syn_type: ty.into(),
         };
         let lit_ref = (self.make_literal)(lit_ty);
-        let lit_use = specs::LiteralTypeUse::new_with_annot(lit_ref, lit.meta);
+        let lit_use = specs::LiteralTypeUse::new_with_annot(lit_ref);
 
         specs::Type::Literal(lit_use)
     }
@@ -449,7 +449,7 @@ where
                 return Err(format!("field attribute specified twice for field {:?}", field_name));
             }
 
-            field_type = Some(self.make_type(ty, self.field_type));
+            field_type = Some(self.make_type(&ty, self.field_type));
         }
 
         let ty = match field_type {

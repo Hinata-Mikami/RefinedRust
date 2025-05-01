@@ -15,7 +15,6 @@ use log::{debug, info};
 use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::middle::{query, ty};
 use rr_rustc_interface::{borrowck, driver, interface, session};
-use translation::environment::mir_storage;
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
 
@@ -42,7 +41,7 @@ fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_
     // SAFETY: This is safe because we are feeding in the same `tcx` that is
     // going to be used as a witness when pulling out the data.
     unsafe {
-        mir_storage::store_mir_body(tcx, def_id, body_with_facts);
+        translation::store_mir_body(tcx, def_id, body_with_facts);
     }
     let mut providers = query::Providers::default();
     borrowck::provide(&mut providers);

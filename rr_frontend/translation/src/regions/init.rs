@@ -255,15 +255,3 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     }
     initial_arg_mapping
 }
-
-pub fn get_initial_universal_arg_constraints2<'tcx>(
-    sig_args: &[ty::Ty<'tcx>],
-    local_args: &[ty::Ty<'tcx>],
-) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
-    // Polonius generates a base subset constraint uregion ⊑ pregion.
-    // We turn that into pregion = uregion, as we do strong updates at the top-level.
-    assert!(sig_args.len() == local_args.len());
-
-    // TODO: implement a bitypefolder to solve this issue.
-    Vec::new()
-}

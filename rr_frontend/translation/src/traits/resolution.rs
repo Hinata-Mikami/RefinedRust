@@ -13,10 +13,6 @@ use rr_rustc_interface::{middle, trait_selection};
 use crate::regions::arg_folder;
 use crate::traits::region_bi_folder::RegionBiFolder;
 
-pub fn associated_items(tcx: ty::TyCtxt, def_id: DefId) -> impl Iterator<Item = &ty::AssocItem> {
-    tcx.associated_items(def_id).in_definition_order()
-}
-
 /// Normalize a type in the given environment.
 pub fn normalize_type<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
@@ -34,28 +30,6 @@ where
         param_env,
         ty,
     )
-}
-
-/// Normalize a type in the given environment.
-pub fn normalize_projection_type<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: ty::AliasTy<'tcx>,
-) -> Option<ty::Ty<'tcx>> {
-    let canonical_infos = tcx.mk_canonical_var_infos(&[]);
-
-    let canonical = middle::infer::canonical::Canonical {
-        value: ty::ParamEnvAnd {
-            param_env,
-            value: ty,
-        },
-        variables: canonical_infos,
-        max_universe: ty::UniverseIndex::from(0_usize),
-    };
-
-    let Ok(res) = tcx.normalize_projection_ty(canonical) else { return None };
-
-    Some(res.value.value.normalized_ty)
 }
 
 /// Resolve an implementation of a trait using codegen candidate selection.
@@ -212,21 +186,6 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 //   + so I can make a fairly simple structural traversal, I guess.
 //   + How do I know which variable to map to what? maybe I need to give all erased variables a fresh name
 //     first. then backtranslate then compare and compute mapping
-
-// Maybe get rid of this
-fn resolve_trait_or_item<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    def_id: DefId,
-    substs: ty::GenericArgsRef<'tcx>,
-    below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
-    if tcx.is_trait(def_id) {
-        resolve_trait(tcx, param_env, def_id, substs, below_binders)
-    } else {
-        resolve_assoc_item(tcx, param_env, def_id, substs, below_binders)
-    }
-}
 
 /// Resolve a reference to a trait using codegen trait selection.
 /// `did` should be the id of a trait.

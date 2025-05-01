@@ -17,27 +17,6 @@ pub struct LocalSet {
     locals: FxHashSet<mir::Local>,
 }
 
-impl LocalSet {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub fn contains_prefix_of(&self, place: mir::Place) -> bool {
-        self.locals.contains(&place.local)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &mir::Local> {
-        self.locals.iter()
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> impl Iterator<Item = mir::Local> {
-        self.locals.into_iter()
-    }
-}
-
 impl From<FxHashSet<mir::Local>> for LocalSet {
     fn from(locals: FxHashSet<mir::Local>) -> Self {
         Self { locals }

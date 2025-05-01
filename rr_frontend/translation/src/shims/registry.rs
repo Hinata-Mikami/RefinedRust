@@ -346,20 +346,6 @@ impl<'a> SR<'a> {
         }
     }
 
-    pub fn new(arena: &'a Arena<String>) -> Result<SR<'a>, Error> {
-        let mut reg = Self::empty(arena);
-
-        match rrconfig::shim_file() {
-            None => (),
-            Some(file) => {
-                let f = File::open(file)?;
-                reg.add_source(f)?;
-            },
-        }
-
-        Ok(reg)
-    }
-
     pub fn add_source(&mut self, f: File) -> Result<Option<HashSet<String>>, Error> {
         info!("Adding file {f:?}");
         let reader = BufReader::new(f);
@@ -536,6 +522,7 @@ impl<'a> SR<'a> {
         &self.function_shims
     }
 
+    #[allow(dead_code)] // See lib.rs:make_shim_trait_method_entry
     pub fn get_trait_method_shims(&self) -> &[TraitMethodImplShim] {
         &self.trait_method_shims
     }

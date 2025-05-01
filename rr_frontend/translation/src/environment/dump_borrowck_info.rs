@@ -175,7 +175,6 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         // print graph.dot
         let mir_info_printer = MirInfoPrinter {
             def_path,
-            tcx: self.tcx,
             mir,
             graph: cell::RefCell::new(graph),
             loops: loop_info,
@@ -191,7 +190,6 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 struct MirInfoPrinter<'a, 'tcx: 'a> {
     #[allow(dead_code)]
     pub def_path: hir::definitions::DefPath,
-    pub tcx: ty::TyCtxt<'tcx>,
     pub mir: &'a mir::Body<'tcx>,
     pub graph: cell::RefCell<BufWriter<File>>,
     pub loops: loops::ProcedureLoops,

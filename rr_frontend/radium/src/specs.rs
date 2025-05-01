@@ -38,16 +38,6 @@ impl<'def> TypeWithRef<'def> {
     fn make_unit() -> Self {
         TypeWithRef(Type::Unit, "()".to_owned())
     }
-
-    #[must_use]
-    const fn ty(&self) -> &Type<'def> {
-        &self.0
-    }
-
-    #[must_use]
-    fn rfn(&self) -> &str {
-        self.1.as_str()
-    }
 }
 
 pub type Lft = String;
@@ -107,32 +97,6 @@ impl Display for IntType {
 
             Self::ISize => write!(f, "ISize"),
             Self::USize => write!(f, "USize"),
-        }
-    }
-}
-
-impl IntType {
-    /// Get the size in bytes of the Caesium representation.
-    #[must_use]
-    const fn size(self) -> u32 {
-        match self {
-            Self::I8 | Self::U8 => 1,
-            Self::I16 | Self::U16 => 2,
-            Self::I32 | Self::U32 => 4,
-            Self::I64 | Self::U64 | Self::ISize | Self::USize => 8,
-            Self::I128 | Self::U128 => 16,
-        }
-    }
-
-    /// Get the alignment in bytes of the Caesium representation.
-    #[must_use]
-    const fn alignment(self) -> u32 {
-        match self {
-            Self::I8 | Self::U8 => 1,
-            Self::I16 | Self::U16 => 2,
-            Self::I32 | Self::U32 => 4,
-            Self::I64 | Self::U64 | Self::ISize | Self::USize => 8,
-            Self::I128 | Self::U128 => 16,
         }
     }
 }
@@ -295,14 +259,6 @@ impl TypeAnnotMeta {
         }
     }
 
-    #[must_use]
-    const fn new(tyvars: HashSet<LiteralTyParam>, lfts: HashSet<Lft>) -> Self {
-        Self {
-            escaped_lfts: lfts,
-            escaped_tyvars: tyvars,
-        }
-    }
-
     pub fn join(&mut self, s: &Self) {
         let lfts: HashSet<_> = self.escaped_lfts.union(&s.escaped_lfts).cloned().collect();
         let tyvars: HashSet<_> = self.escaped_tyvars.union(&s.escaped_tyvars).cloned().collect();
@@ -347,40 +303,23 @@ pub struct LiteralTypeUse<'def> {
 
     /// parameters
     pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
-
-    /// annotation information
-    annot: TypeAnnotMeta,
 }
 
 impl<'def> LiteralTypeUse<'def> {
     #[must_use]
-    pub fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
+    pub const fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
         LiteralTypeUse {
             def: s,
             scope_inst: Some(scope_inst),
-            annot: TypeAnnotMeta::empty(),
         }
     }
 
     #[must_use]
-    pub const fn new_with_annot(s: LiteralTypeRef<'def>, annot: TypeAnnotMeta) -> Self {
+    pub const fn new_with_annot(s: LiteralTypeRef<'def>) -> Self {
         LiteralTypeUse {
             def: s,
             scope_inst: None,
-            annot,
         }
-    }
-
-    /// Add the lifetimes appearing in this type to `s`.
-    fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
-        // TODO: use meta
-        s.insert(format!("ty_lfts ({})", self.generate_type_term()));
-    }
-
-    /// Add the lifetime constraints in this type to `s`.
-    fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
-        // TODO: use meta
-        s.insert(format!("ty_wf_elctx ({})", self.generate_type_term()));
     }
 
     /// Get the refinement type of a struct usage.
@@ -459,6 +398,7 @@ pub enum TyParamOrigin {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct LiteralTyParam {
     /// Rust name
     pub rust_name: String,
@@ -497,16 +437,6 @@ impl LiteralTyParam {
         let mut x = Self::new(rust_name, base);
         x.origin = origin;
         x
-    }
-
-    #[must_use]
-    fn make_literal_type(&self) -> LiteralType {
-        LiteralType {
-            rust_name: Some(self.rust_name.clone()),
-            type_term: self.type_term.clone(),
-            refinement_type: coq::term::Type::Literal(self.refinement_type.clone()),
-            syn_type: SynType::Literal(self.syn_type.clone()),
-        }
     }
 
     #[must_use]
@@ -656,59 +586,6 @@ impl<'def> Type<'def> {
             Self::Unit | Self::Never | Self::Uninit(_) => {
                 // NOTE: could also choose to use an uninhabited type for Never
                 coq::term::Type::Unit
-            },
-        }
-    }
-
-    fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
-        match self {
-            Self::Bool
-            | Self::Char
-            | Self::Int(_)
-            | Self::Uninit(_)
-            | Self::Unit
-            | Self::Never
-            | Self::RawPtr => (),
-
-            Self::MutRef(box ty, lft) | Self::ShrRef(box ty, lft) => {
-                s.insert(lft.to_owned());
-                ty.get_ty_lfts(s);
-            },
-
-            Self::BoxType(box ty) => ty.get_ty_lfts(s),
-            Self::Literal(lit) => lit.get_ty_lfts(s),
-
-            Self::Struct(su) => su.get_ty_lfts(s),
-            Self::Enum(su) => su.get_ty_lfts(s),
-
-            Self::LiteralParam(lit) => {
-                // TODO: use meta
-                s.insert(format!("ty_lfts {}", lit.type_term));
-            },
-        }
-    }
-
-    fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
-        match self {
-            Self::Bool
-            | Self::Char
-            | Self::Int(_)
-            | Self::Uninit(_)
-            | Self::Unit
-            | Self::Never
-            | Self::RawPtr => (),
-
-            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) | Self::BoxType(box ty) => {
-                ty.get_ty_wf_elctx(s);
-            },
-
-            Self::Literal(lit) => lit.get_ty_wf_elctx(s),
-
-            Self::Struct(su) => su.get_ty_wf_elctx(s),
-            Self::Enum(su) => su.get_ty_wf_elctx(s),
-
-            Self::LiteralParam(lit) => {
-                s.insert(format!("ty_wf_elctx {}", lit.type_term));
             },
         }
     }
@@ -1258,28 +1135,6 @@ impl Display for EnumRepr {
             Self::ReprTransparent => write!(f, "EnumReprTransparent"),
         }
     }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-/// Union representation options supported by Radium
-enum UnionRepr {
-    ReprRust,
-    ReprC,
-}
-
-impl Display for UnionRepr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ReprRust => write!(f, "UnionReprRust"),
-            Self::ReprC => write!(f, "UnionReprC"),
-        }
-    }
-}
-
-/// Lookup a Rust-level type parameter identifier `name` in the given type parameter environment.
-#[must_use]
-fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&'a LiteralTyParam> {
-    env.iter().find(|&names| names.rust_name == name)
 }
 
 /// Description of a variant of a struct or enum.
@@ -1923,12 +1778,6 @@ impl<'def> AbstractStructUse<'def> {
         }
     }
 
-    /// Returns true iff this is a use of unit.
-    #[must_use]
-    const fn is_unit(&self) -> bool {
-        self.def.is_none()
-    }
-
     #[must_use]
     pub(crate) fn is_raw(&self) -> bool {
         self.raw == TypeIsRaw::Yes
@@ -1936,18 +1785,6 @@ impl<'def> AbstractStructUse<'def> {
 
     fn make_raw(&mut self) {
         self.raw = TypeIsRaw::Yes;
-    }
-
-    /// Add the lifetimes appearing in this type to `s`.
-    #[allow(clippy::unused_self)]
-    fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
-        // TODO
-    }
-
-    /// Add the lifetime constraints in this type to `s`.
-    #[allow(clippy::unused_self)]
-    fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
-        // TODO
     }
 
     /// Get the refinement type of a struct usage.
@@ -1974,40 +1811,6 @@ impl<'def> AbstractStructUse<'def> {
             let applied = coq::term::App::new(rfn_type, rfn_instantiations);
             applied.to_string()
         }
-    }
-
-    /// Generate a term for the `struct_layout` (of type `struct_layout`)
-    #[must_use]
-    fn generate_struct_layout_term(&self) -> String {
-        let Some(def) = self.def.as_ref() else {
-            return Layout::Unit.to_string();
-        };
-
-        // first get the syntys for the type params
-        let param_sts: Vec<SynType> =
-            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
-
-        let def = def.borrow();
-        let def = def.as_ref().unwrap();
-        // use_struct_layout_alg' ([my_spec] [params])
-        let specialized_spec = format!("({})", coq::term::App::new(def.sls_def_name(), param_sts));
-        coq::term::App::new("use_struct_layout_alg'".to_owned(), vec![specialized_spec]).to_string()
-    }
-
-    #[must_use]
-    fn generate_struct_layout_spec_term(&self) -> String {
-        let Some(def) = self.def.as_ref() else {
-            panic!("unit has no sls");
-        };
-
-        // first get the syntys for the type params
-        let param_sts: Vec<SynType> =
-            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
-
-        let def = def.borrow();
-        let def = def.as_ref().unwrap();
-        // use_struct_layout_alg' ([my_spec] [params])
-        format!("({})", coq::term::App::new(def.sls_def_name(), param_sts))
     }
 
     /// Get the `syn_type` term for this struct use.
@@ -2146,11 +1949,6 @@ impl<'def> AbstractEnum<'def> {
     #[must_use]
     fn els_def_name(&self) -> &str {
         &self.els_def_name
-    }
-
-    #[must_use]
-    fn st_def_name(&self) -> &str {
-        &self.st_def_name
     }
 
     #[must_use]
@@ -2653,18 +2451,6 @@ impl<'def> AbstractEnumUse<'def> {
         AbstractEnumUse { def: s, scope_inst }
     }
 
-    /// Add the lifetimes appearing in this type to `s`.
-    #[allow(clippy::unused_self)]
-    fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
-        // TODO
-    }
-
-    /// Add the lifetime constraints in this type to `s`.
-    #[allow(clippy::unused_self)]
-    fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
-        // TODO
-    }
-
     /// Get the refinement type of an enum usage.
     /// This requires that all type parameters of the enum have been instantiated.
     #[must_use]
@@ -2677,31 +2463,6 @@ impl<'def> AbstractEnumUse<'def> {
 
         let applied = coq::term::App::new(def.plain_rt_name.clone(), rfn_instantiations);
         applied.to_string()
-    }
-
-    /// Generate a term for the enum layout (of type `struct_layout`)
-    #[must_use]
-    fn generate_enum_layout_term(&self) -> String {
-        let param_sts: Vec<SynType> =
-            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
-
-        let def = self.def.borrow();
-        let def = def.as_ref().unwrap();
-        // use_struct_layout_alg' ([my_spec] [params])
-        let specialized_spec = coq::term::App::new(def.els_def_name.clone(), param_sts);
-        coq::term::App::new("use_enum_layout_alg'".to_owned(), vec![specialized_spec]).to_string()
-    }
-
-    /// Generate a term for the enum layout spec (of type `enum_layout_spec`).
-    #[must_use]
-    fn generate_enum_layout_spec_term(&self) -> String {
-        let param_sts: Vec<SynType> =
-            self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
-
-        let def = self.def.borrow();
-        let def = def.as_ref().unwrap();
-        // use_struct_layout_alg' ([my_spec] [params])
-        format!("({})", coq::term::App::new(def.els_def_name.clone(), param_sts))
     }
 
     /// Get the `syn_type` term for this enum use.
@@ -2732,9 +2493,6 @@ impl<'def> AbstractEnumUse<'def> {
         format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation())
     }
 }
-
-/// Environment that gives concrete layouts to generics and opaque structs
-type LayoutEnv = HashMap<String, Layout>;
 
 /// A representation of Caesium layouts we are interested in.
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -2771,44 +2529,6 @@ impl Display for Layout {
             Self::Unit => write!(f, "(layout_of unit_sl)"),
             Self::Literal(n) => write!(f, "{}", n),
             Self::Pad(s) => write!(f, "(Layout {}%nat 0%nat)", s),
-        }
-    }
-}
-
-impl Layout {
-    #[must_use]
-    fn size(&self, env: &LayoutEnv) -> Option<u32> {
-        match self {
-            Self::Unit => Some(0),
-            Self::Bool => Some(1),
-            Self::Char | Self::Ptr => Some(4),
-            Self::Int(it) => Some(it.size()),
-            Self::Literal(n) => {
-                // TODO: this doesn't work if the layout is applied to things.
-                match env.get(n.get_lhs()) {
-                    None => None,
-                    Some(ly) => ly.size(env),
-                }
-            },
-            //Self::StructLayout(ly) => ly.size(env),
-            Self::Pad(s) => Some(*s),
-        }
-    }
-
-    #[must_use]
-    fn alignment(&self, env: &LayoutEnv) -> Option<u32> {
-        match self {
-            Self::Bool | Self::Unit | Self::Pad(_) => Some(1),
-            Self::Char | Self::Ptr => Some(4),
-            Self::Int(it) => Some(it.alignment()),
-            Self::Literal(n) => {
-                // TODO: this doesn't work if the layout is applied to things.
-                match env.get(n.get_lhs()) {
-                    None => None,
-                    Some(ly) => ly.alignment(env),
-                }
-            },
-            //Self::StructLayout(ly) => ly.alignment(env),
         }
     }
 }
@@ -2964,6 +2684,7 @@ impl<'def> InnerFunctionSpec<'def> {
 
 /// A Radium function specification.
 #[derive(Clone, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct FunctionSpec<'def, T> {
     /// The name of the spec
     pub spec_name: String,
@@ -3010,27 +2731,6 @@ impl<'def, T> FunctionSpec<'def, T> {
             generics: GenericScope::empty(),
             early_coq_params: coq::binder::BinderList::empty(),
             late_coq_params: coq::binder::BinderList::empty(),
-            spec,
-        }
-    }
-
-    #[must_use]
-    const fn new(
-        spec_name: String,
-        trait_req_incl_name: Option<String>,
-        function_name: String,
-        generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
-        early_params: coq::binder::BinderList,
-        late_params: coq::binder::BinderList,
-        spec: T,
-    ) -> Self {
-        Self {
-            spec_name,
-            trait_req_incl_name,
-            function_name,
-            generics,
-            early_coq_params: early_params,
-            late_coq_params: late_params,
             spec,
         }
     }
@@ -3436,18 +3136,6 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         self.args.push(arg);
     }
 
-    /// Prepend a precondition. This will be the new precondition to be inserted first.
-    /// Use only when the position of the precondition absolutely matters.
-    fn prepend_precondition(&mut self, pre: IProp) {
-        assert!(matches!(self.pre, IProp::Sep(_)));
-
-        let IProp::Sep(v) = &mut self.pre else {
-            unreachable!("An incorrect parameter has been given");
-        };
-
-        v.insert(0, pre);
-    }
-
     /// Add a new (separating) conjunct to the function's precondition.
     pub fn add_precondition(&mut self, pre: IProp) {
         assert!(matches!(self.pre, IProp::Sep(_)));
@@ -3576,11 +3264,6 @@ impl LiteralTraitSpec {
     }
 
     #[must_use]
-    fn make_spec_method_params_name(&self, method: &str) -> String {
-        format!("{}_{method}_spec_params", self.name)
-    }
-
-    #[must_use]
     fn make_spec_attr_name(&self, attr: &str) -> String {
         format!("{}_{attr}", self.name)
     }
@@ -3588,11 +3271,6 @@ impl LiteralTraitSpec {
     #[must_use]
     fn spec_record_constructor_name(&self) -> String {
         format!("mk_{}", self.spec_record)
-    }
-
-    #[must_use]
-    fn spec_record_params_constructor_name(&self) -> String {
-        format!("mk_{}", self.spec_params_record)
     }
 
     #[must_use]
@@ -3604,15 +3282,11 @@ impl LiteralTraitSpec {
     fn spec_incl_name(&self) -> String {
         self.spec_subsumption.clone()
     }
-
-    #[must_use]
-    fn make_fnspec_attr_param_name(&self) -> String {
-        format!("{}_attrs", self.name)
-    }
 }
 
 /// A reference to a trait instantiated with its parameters in the verification of a function.
 #[derive(Debug, Constructor, Clone)]
+#[allow(clippy::partial_pub_fields)]
 pub struct LiteralTraitSpecUse<'def> {
     pub trait_ref: LiteralTraitSpecRef<'def>,
 
@@ -3672,12 +3346,6 @@ impl<'def> LiteralTraitSpecUse<'def> {
     #[must_use]
     fn make_spec_param_name(&self) -> String {
         format!("{}_spec", self.mangled_base)
-    }
-
-    /// Get the name for a spec params parameter for this trait instance.
-    #[must_use]
-    fn make_spec_params_param_name(&self) -> String {
-        format!("{}_spec_params", self.mangled_base)
     }
 
     /// Get the name for a spec attrs parameter for this trait instance.
@@ -3814,12 +3482,6 @@ impl<'def> LiteralTraitSpecUse<'def> {
         LiteralTyParam::new_with_origin(&rust_name, &rust_name, self.origin)
     }
 
-    /// Check if this associated type is a fully generic parameter.
-    #[must_use]
-    fn is_assoc_type_generic(&self, assoc_type: &str) -> bool {
-        self.assoc_ty_constraints.get(assoc_type).is_none()
-    }
-
     /// Add a constraint on one of the associated types.
     pub fn specialize_assoc_type(&mut self, assoc_type: String, ty: Type<'def>) {
         self.assoc_ty_constraints.insert(assoc_type, ty);
@@ -3844,17 +3506,11 @@ pub struct TraitReqScope {
 
 impl TraitReqScope {
     #[must_use]
-    const fn empty() -> Self {
-        Self {
-            quantified_lfts: vec![],
-        }
-    }
-
-    #[must_use]
     pub fn identity_instantiation(&self) -> TraitReqScopeInst {
         TraitReqScopeInst::new(self.quantified_lfts.clone())
     }
 }
+
 impl<'def, T: TraitReqInfo> From<TraitReqScope> for GenericScope<'def, T> {
     fn from(scope: TraitReqScope) -> Self {
         let mut generic_scope: GenericScope<'_, T> = GenericScope::empty();
@@ -3878,12 +3534,6 @@ pub struct TraitReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
 
-impl TraitReqScopeInst {
-    #[must_use]
-    const fn empty() -> Self {
-        Self { lft_insts: vec![] }
-    }
-}
 impl Display for TraitReqScopeInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write_list!(f, &self.lft_insts, "", |x| format!(" <LFT> {x}"))
@@ -4376,30 +4026,6 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    fn get_direct_type_term(&self) -> String {
-        let mut out = String::new();
-
-        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
-        let tys = self.get_direct_ty_params_with_assocs();
-        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
-        out.push(']');
-
-        out
-    }
-
-    #[must_use]
-    fn get_surrounding_type_term(&self) -> String {
-        let mut out = String::new();
-
-        out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
-        let tys = self.get_surrounding_ty_params_with_assocs();
-        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
-        out.push(']');
-
-        out
-    }
-
-    #[must_use]
     pub(crate) fn get_lfts(&self) -> &[Lft] {
         &self.lfts
     }
@@ -4440,11 +4066,6 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     #[must_use]
     pub(crate) fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()
-    }
-
-    #[must_use]
-    fn get_num_ty_params(&self) -> usize {
-        self.direct_tys.params.len() + self.surrounding_tys.params.len()
     }
 
     /// Format this generic scope.
@@ -4753,12 +4374,10 @@ fn make_trait_instance<'def>(
 /// When translating a trait declaration, we should generate this, bundling all the components of
 /// the trait together.
 #[derive(Constructor, Clone, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct TraitSpecDecl<'def> {
     /// A reference to all the Coq definition names we should generate.
     pub lit: LiteralTraitSpecRef<'def>,
-
-    /// a list of extra things we assume in the Coq context
-    extra_coq_context: coq::binder::BinderList,
 
     /// The generics this trait uses
     generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
@@ -5056,6 +4675,7 @@ pub type LiteralTraitImplRef<'def> = &'def LiteralTraitImpl;
 /// A full instantiation of a trait spec, e.g. for an impl of a trait,
 /// which may itself be generic in a `GenericScope`.
 #[derive(Constructor, Clone, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct TraitRefInst<'def> {
     /// literals of the trait this implements
     pub of_trait: LiteralTraitSpecRef<'def>,

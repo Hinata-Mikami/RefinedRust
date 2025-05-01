@@ -13,7 +13,7 @@ mod tyvars;
 
 use std::fmt::Write;
 
-pub use local::{normalize_erasing_regions_in_function, normalize_in_function, LocalTX};
+pub use local::{normalize_in_function, LocalTX};
 /// We export these parts of the private modules
 use rr_rustc_interface::middle::ty;
 pub use scope::{generate_args_inst_key, GenericsKey};

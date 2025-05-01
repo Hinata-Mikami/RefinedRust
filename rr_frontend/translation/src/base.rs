@@ -22,10 +22,7 @@ pub fn strip_coq_ident(s: &str) -> String {
 }
 
 pub type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
-pub type Loan = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Loan;
 pub type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
-pub type Variable = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Variable;
-pub type Path = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Path;
 
 /// Error type used for the MIR to Caesium translation.
 //TODO: add location info based on Span

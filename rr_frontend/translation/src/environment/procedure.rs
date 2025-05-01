@@ -4,10 +4,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
-use log::{debug, trace};
+use log::trace;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -54,23 +54,6 @@ impl<'tcx> Procedure<'tcx> {
     #[must_use]
     pub const fn loop_info(&self) -> &loops::ProcedureLoops {
         &self.loop_info
-    }
-
-    /// Returns all the types used in the procedure, and any types reachable from them
-    #[must_use]
-    #[allow(clippy::unused_self)]
-    pub fn get_declared_types(&self) -> Vec<ty::Ty<'tcx>> {
-        let _types: HashSet<ty::Ty> = HashSet::new();
-        // for var in &self.mir.local_decls {
-        //     for ty in var.ty.walk() {
-        //         let declared_ty = ty;
-        //         //let declared_ty = clean_type(tcx, ty);
-        //         //let declared_ty = tcx.erase_regions(&ty);
-        //         types.insert(declared_ty);
-        //     }
-        // }
-        // types.into_iter().collect()
-        unimplemented!();
     }
 
     /// Get definition ID of the procedure.
@@ -167,35 +150,4 @@ fn build_reachable_basic_blocks(mir: &mir::Body, real_edges: &RealEdges) -> Hash
     }
 
     reachable_basic_blocks
-}
-
-#[derive(Debug)]
-struct BasicBlockNode {
-    successors: HashSet<mir::BasicBlock>,
-    predecessors: HashSet<mir::BasicBlock>,
-}
-
-fn _blocks_definitely_leading_to<'a>(
-    bb_graph: &'a HashMap<mir::BasicBlock, BasicBlockNode>,
-    target: mir::BasicBlock,
-    blocks: &'a mut HashSet<mir::BasicBlock>,
-) -> &'a mut HashSet<mir::BasicBlock> {
-    for pred in &bb_graph[&target].predecessors {
-        debug!("target: {:#?}, pred: {:#?}", target, pred);
-        if bb_graph[pred].successors.len() == 1 {
-            debug!("pred {:#?} has 1 successor", pred);
-            blocks.insert(*pred);
-            _blocks_definitely_leading_to(bb_graph, *pred, blocks);
-        }
-    }
-    blocks
-}
-
-fn blocks_definitely_leading_to(
-    bb_graph: &HashMap<mir::BasicBlock, BasicBlockNode>,
-    target: mir::BasicBlock,
-) -> HashSet<mir::BasicBlock> {
-    let mut blocks = HashSet::new();
-    _blocks_definitely_leading_to(bb_graph, target, &mut blocks);
-    blocks
 }

@@ -16,8 +16,6 @@ use rr_rustc_interface::polonius_engine::FactTypes;
 pub type Region = <RustcFacts as FactTypes>::Origin;
 pub type Loan = <RustcFacts as FactTypes>::Loan;
 pub type PointIndex = <RustcFacts as FactTypes>::Point;
-pub type Variable = <RustcFacts as FactTypes>::Variable;
-pub type Path = <RustcFacts as FactTypes>::Path;
 
 pub type AllInput = borrowck::consumers::PoloniusInput;
 pub type AllOutput = borrowck::consumers::PoloniusOutput;
@@ -93,13 +91,6 @@ impl Interner {
                 location,
                 typ: PointType::Mid,
             },
-        }
-    }
-
-    #[must_use]
-    pub fn get_location(&self, index: PointIndex) -> mir::Location {
-        match self.location_table.to_location(index) {
-            RichLocation::Start(location) | RichLocation::Mid(location) => location,
         }
     }
 }

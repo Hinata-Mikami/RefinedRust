@@ -273,37 +273,11 @@ pub struct PoloniusInfo<'a, 'tcx: 'a> {
     pub(crate) additional_facts: AdditionalFacts,
     /// Loans that are created inside loops. Loan → loop head.
     pub(crate) loops: loops::ProcedureLoops,
-    /// Facts without back edges.
-    pub(crate) additional_facts_no_back: AdditionalFacts,
     /// Two loans are conflicting if they borrow overlapping places and
     /// are alive at overlapping regions.
     pub(crate) loan_conflict_sets: HashMap<facts::Loan, HashSet<facts::Loan>>,
     /// The flipped `subset` relation for each point.
     pub(crate) superset: HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>>,
-}
-
-/// Remove back edges to make MIR uncyclic so that we can compute reborrowing dags at the end of
-/// the loop body.
-fn remove_back_edges(
-    mut all_facts: facts::AllInput,
-    interner: &facts::Interner,
-    back_edges: &HashSet<(mir::BasicBlock, mir::BasicBlock)>,
-) -> facts::AllInput {
-    let cfg_edge = all_facts.cfg_edge;
-    let cfg_edge = cfg_edge
-        .into_iter()
-        .filter(|(from, to)| {
-            let from_block = interner.get_point(*from).location.block;
-            let to_block = interner.get_point(*to).location.block;
-            let remove = back_edges.contains(&(from_block, to_block));
-            if remove {
-                debug!("remove cfg_edge: {:?} → {:?}", from_block, to_block);
-            }
-            !remove
-        })
-        .collect();
-    all_facts.cfg_edge = cfg_edge;
-    all_facts
 }
 
 /// Returns the place that is borrowed by the assignment. We assume that
@@ -438,13 +412,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
 
         let output = polonius_engine::Output::compute(&all_facts, polonius_engine::Algorithm::Naive, true);
-        let all_facts_without_back_edges =
-            remove_back_edges(*all_facts.clone(), &interner, loop_info.get_back_edges());
-        let output_without_back_edges = polonius_engine::Output::compute(
-            &all_facts_without_back_edges,
-            polonius_engine::Algorithm::Naive,
-            true,
-        );
 
         let loan_position: HashMap<_, _> = all_facts
             .loan_issued_at
@@ -464,8 +431,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .collect();
 
         let additional_facts = AdditionalFacts::new(&all_facts, &output);
-        let additional_facts_without_back_edges =
-            AdditionalFacts::new(&all_facts_without_back_edges, &output_without_back_edges);
         // FIXME: Check whether the new info in Polonius could be used for computing initialization.
         let loan_conflict_sets = compute_loan_conflict_sets(procedure, &loan_position, &all_facts, &output)?;
 
@@ -481,7 +446,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             loan_at_position,
             place_regions,
             additional_facts,
-            additional_facts_no_back: additional_facts_without_back_edges,
             loops: loop_info,
             loan_conflict_sets,
             superset,
@@ -1149,21 +1113,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         }
     }
 
-    /// Find minimal elements that are the (reborrow) tree roots.
-    fn find_loan_roots(&self, loans: &[facts::Loan]) -> Vec<facts::Loan> {
-        let mut roots = Vec::new();
-        for &loan in loans {
-            let is_smallest = !loans
-                .iter()
-                .any(|&other_loan| self.additional_facts.reborrows.contains(&(other_loan, loan)));
-            debug!("loan={:?} is_smallest={}", loan, is_smallest);
-            if is_smallest {
-                roots.push(loan);
-            }
-        }
-        roots
-    }
-
     /// Find a variable that has the given region in its type.
     #[must_use]
     #[allow(clippy::unused_self)]
@@ -1223,17 +1172,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     }
 }
 
-/// Check if the statement is assignment.
-fn is_assignment(mir: &mir::Body<'_>, location: mir::Location) -> bool {
-    let mir::BasicBlockData { statements, .. } = &mir[location.block];
-
-    if statements.len() == location.statement_index {
-        return false;
-    }
-
-    matches!(statements[location.statement_index].kind, mir::StatementKind::Assign { .. })
-}
-
 /// Check if the terminator is return.
 fn is_return(mir: &mir::Body<'_>, location: mir::Location) -> bool {
     let mir::BasicBlockData {
@@ -1247,71 +1185,6 @@ fn is_return(mir: &mir::Body<'_>, location: mir::Location) -> bool {
     }
 
     matches!(terminator.as_ref().unwrap().kind, mir::TerminatorKind::Return)
-}
-
-fn is_call(mir: &mir::Body<'_>, location: mir::Location) -> bool {
-    let mir::BasicBlockData {
-        statements,
-        terminator,
-        ..
-    } = &mir[location.block];
-
-    if statements.len() != location.statement_index {
-        return false;
-    }
-
-    matches!(terminator.as_ref().unwrap().kind, mir::TerminatorKind::Call { .. })
-}
-
-/// Extract the call terminator at the location. Otherwise return None.
-fn get_call_destination<'tcx>(mir: &mir::Body<'tcx>, location: mir::Location) -> Option<mir::Place<'tcx>> {
-    let mir::BasicBlockData {
-        statements,
-        terminator,
-        ..
-    } = &mir[location.block];
-
-    if statements.len() != location.statement_index {
-        return None;
-    }
-
-    let kind = &terminator.as_ref().unwrap().kind;
-    let mir::TerminatorKind::Call { destination, .. } = kind else {
-        panic!("Expected call, got {:?} at {:?}", kind, location);
-    };
-
-    Some(*destination)
-}
-
-/// Extract reference-typed arguments of the call at the given location.
-fn get_call_arguments(mir: &mir::Body<'_>, location: mir::Location) -> Vec<mir::Local> {
-    let mir::BasicBlockData {
-        statements,
-        terminator,
-        ..
-    } = &mir[location.block];
-
-    assert!(statements.len() == location.statement_index);
-
-    let kind = &terminator.as_ref().unwrap().kind;
-    let mir::TerminatorKind::Call { args, .. } = kind else {
-        panic!("Expected call, got {:?} at {:?}", kind, location);
-    };
-
-    let mut reference_args = Vec::new();
-
-    for arg in args {
-        match arg {
-            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                if place.projection.len() == 0 {
-                    reference_args.push(place.local);
-                }
-            },
-            mir::Operand::Constant(_) => {},
-        }
-    }
-
-    reference_args
 }
 
 /// Additional facts derived from the borrow checker facts.
