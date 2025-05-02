@@ -10,9 +10,10 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder;
-use rr_rustc_interface::{hir, target};
+use rr_rustc_interface::target;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -54,7 +55,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Get the `DefId` of the current function.
-    pub fn get_proc_did(&self) -> hir::def_id::DefId {
+    pub fn get_proc_did(&self) -> DefId {
         let scope = self.scope.borrow();
         scope.did
     }
@@ -118,7 +119,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// registering a new ADT.
     pub fn generate_struct_use(
         &self,
-        variant_id: hir::def_id::DefId,
+        variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
@@ -129,7 +130,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Returns None if this should be unit.
     pub fn generate_enum_variant_use(
         &self,
-        variant_id: hir::def_id::DefId,
+        variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
@@ -173,10 +174,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         normalize_in_function(scope.did, self.translator.env().tcx(), ty)
     }
 
-    pub fn get_trait_of_method(
-        env: &Environment<'tcx>,
-        method_did: hir::def_id::DefId,
-    ) -> Option<hir::def_id::DefId> {
+    pub fn get_trait_of_method(env: &Environment<'tcx>, method_did: DefId) -> Option<DefId> {
         if let Some(impl_did) = env.tcx().impl_of_method(method_did) {
             env.tcx().trait_id_of_impl(impl_did)
         } else {
@@ -189,7 +187,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// itself.
     pub fn split_trait_method_args(
         env: &Environment<'tcx>,
-        trait_did: hir::def_id::DefId,
+        trait_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
     ) -> (ty::GenericArgsRef<'tcx>, ty::GenericArgsRef<'tcx>) {
         // split args
@@ -206,7 +204,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub fn lookup_trait_param(
         &self,
         env: &Environment<'tcx>,
-        trait_did: hir::def_id::DefId,
+        trait_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
         let scope = self.scope.borrow();
@@ -222,7 +220,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub fn register_use_trait_procedure(
         &self,
         env: &Environment<'tcx>,
-        trait_method_did: hir::def_id::DefId,
+        trait_method_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
     ) -> Result<
         (
@@ -314,7 +312,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// params.
     pub fn get_generic_abstraction_for_procedure(
         &self,
-        callee_did: hir::def_id::DefId,
+        callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
         all_params: ty::GenericArgsRef<'tcx>,
         trait_reqs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
@@ -503,7 +501,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
 /// Normalize a type in the given function environment.
 pub fn normalize_in_function<'tcx, T>(
-    function_did: hir::def_id::DefId,
+    function_did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     ty: T,
 ) -> Result<T, TranslationError<'tcx>>
@@ -518,7 +516,7 @@ where
 }
 
 pub fn normalize_erasing_regions_in_function<'tcx, T>(
-    function_did: hir::def_id::DefId,
+    function_did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     ty: T,
 ) -> Result<T, TranslationError<'tcx>>
@@ -533,7 +531,7 @@ where
 }
 
 pub fn normalize_projection_in_function<'tcx>(
-    function_did: hir::def_id::DefId,
+    function_did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     ty: ty::AliasTy<'tcx>,
 ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {

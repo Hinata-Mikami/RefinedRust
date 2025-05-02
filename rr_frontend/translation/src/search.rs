@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::mem;
 
 use log::info;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{metadata, ty};
 use rr_rustc_interface::{hir, span};
 
@@ -13,7 +14,7 @@ use crate::{types, unification};
 
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
-pub fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
+pub fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -21,7 +22,7 @@ where
         .iter()
         .find(|&&krate| tcx.crate_name(krate).as_str() == path[0].as_ref())
         .and_then(|krate| {
-            let krate = hir::def_id::DefId {
+            let krate = DefId {
                 krate: *krate,
                 index: hir::def_id::CRATE_DEF_INDEX,
             };
@@ -46,7 +47,7 @@ where
         })
 }
 
-pub fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
+pub fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -74,10 +75,10 @@ where
 /// with different where clauses going on.
 pub fn try_resolve_trait_impl_did<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    trait_did: hir::def_id::DefId,
+    trait_did: DefId,
     trait_args: &[Option<ty::GenericArg<'tcx>>],
     for_type: ty::Ty<'tcx>,
-) -> Option<hir::def_id::DefId> {
+) -> Option<DefId> {
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
 
@@ -194,11 +195,11 @@ pub fn try_resolve_trait_impl_did<'tcx>(
 /// with different where clauses going on.
 pub fn try_resolve_trait_method_did<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    trait_did: hir::def_id::DefId,
+    trait_did: DefId,
     trait_args: &[Option<ty::GenericArg<'tcx>>],
     method_name: &str,
     for_type: ty::Ty<'tcx>,
-) -> Option<hir::def_id::DefId> {
+) -> Option<DefId> {
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
 
@@ -267,7 +268,7 @@ pub fn try_resolve_trait_method_did<'tcx>(
 /// Try to get a defid of a method at the given path.
 /// This does not handle trait methods.
 /// This also does not handle overlapping method definitions/specialization well.
-pub fn try_resolve_method_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
+pub fn try_resolve_method_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -275,7 +276,7 @@ where
         .iter()
         .find(|&&krate| tcx.crate_name(krate).as_str() == path[0].as_ref())
         .and_then(|krate| {
-            let krate = hir::def_id::DefId {
+            let krate = DefId {
                 krate: *krate,
                 index: hir::def_id::CRATE_DEF_INDEX,
             };
@@ -303,8 +304,8 @@ where
                         break;
                     }
 
-                    let did: hir::def_id::DefId = item.res.def_id();
-                    let impls: &[hir::def_id::DefId] = tcx.inherent_impls(did);
+                    let did: DefId = item.res.def_id();
+                    let impls: &[DefId] = tcx.inherent_impls(did);
                     info!("trying to find method among impls {:?}", impls);
 
                     let find = path_it.next().unwrap();
@@ -332,7 +333,7 @@ where
         })
 }
 
-pub fn try_resolve_method_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<hir::def_id::DefId>
+pub fn try_resolve_method_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {

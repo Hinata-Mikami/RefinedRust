@@ -17,12 +17,12 @@ use std::collections::HashMap;
 use std::{mem, thread_local};
 
 use rr_rustc_interface::borrowck::consumers::BodyWithBorrowckFacts;
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::middle::ty;
 
 thread_local! {
     pub static SHARED_STATE:
-        RefCell<HashMap<hir::def_id::LocalDefId, BodyWithBorrowckFacts<'static>>> =
+        RefCell<HashMap<LocalDefId, BodyWithBorrowckFacts<'static>>> =
         RefCell::new(HashMap::new());
 }
 
@@ -31,7 +31,7 @@ thread_local! {
 /// See the module level comment.
 pub unsafe fn store_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
-    def_id: hir::def_id::LocalDefId,
+    def_id: LocalDefId,
     body_with_facts: BodyWithBorrowckFacts<'tcx>,
 ) {
     // SAFETY: See the module level comment.
@@ -48,7 +48,7 @@ pub unsafe fn store_mir_body<'tcx>(
 #[allow(clippy::needless_lifetimes)] // We want to be very explicit about lifetimes here
 pub(super) unsafe fn retrieve_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
-    def_id: hir::def_id::LocalDefId,
+    def_id: LocalDefId,
 ) -> BodyWithBorrowckFacts<'tcx> {
     let body_with_facts: BodyWithBorrowckFacts<'static> = SHARED_STATE.with(|state| {
         let mut map = state.borrow_mut();

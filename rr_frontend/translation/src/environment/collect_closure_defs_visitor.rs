@@ -1,4 +1,5 @@
 use log::trace;
+use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
@@ -6,7 +7,7 @@ use crate::environment::Environment;
 pub struct CollectClosureDefsVisitor<'env, 'tcx: 'env> {
     env: &'env Environment<'tcx>,
     map: middle::hir::map::Map<'tcx>,
-    result: Vec<hir::def_id::LocalDefId>,
+    result: Vec<LocalDefId>,
 }
 
 impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
@@ -18,7 +19,7 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
         }
     }
 
-    pub fn get_closure_defs(self) -> Vec<hir::def_id::LocalDefId> {
+    pub fn get_closure_defs(self) -> Vec<LocalDefId> {
         self.result
     }
 

@@ -5,6 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use log::trace;
+use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::hir::intravisit::Visitor;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{hir, middle};
@@ -14,12 +15,12 @@ use crate::environment::Environment;
 pub struct CollectPrustiSpecVisitor<'a, 'tcx: 'a> {
     env: &'a Environment<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
-    functions: Vec<hir::def_id::LocalDefId>,
-    modules: Vec<hir::def_id::LocalDefId>,
-    statics: Vec<hir::def_id::LocalDefId>,
-    consts: Vec<hir::def_id::LocalDefId>,
-    traits: Vec<hir::def_id::LocalDefId>,
-    trait_impls: Vec<hir::def_id::LocalDefId>,
+    functions: Vec<LocalDefId>,
+    modules: Vec<LocalDefId>,
+    statics: Vec<LocalDefId>,
+    consts: Vec<LocalDefId>,
+    traits: Vec<LocalDefId>,
+    trait_impls: Vec<LocalDefId>,
 }
 
 impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
@@ -38,17 +39,11 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
 
     pub fn get_results(
         self,
-    ) -> (
-        Vec<hir::def_id::LocalDefId>,
-        Vec<hir::def_id::LocalDefId>,
-        Vec<hir::def_id::LocalDefId>,
-        Vec<hir::def_id::LocalDefId>,
-        Vec<hir::def_id::LocalDefId>,
-    ) {
+    ) -> (Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>) {
         (self.functions, self.modules, self.statics, self.consts, self.traits)
     }
 
-    pub fn get_trait_impls(self) -> Vec<hir::def_id::LocalDefId> {
+    pub fn get_trait_impls(self) -> Vec<LocalDefId> {
         self.trait_impls
     }
 

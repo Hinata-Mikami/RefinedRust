@@ -15,8 +15,9 @@ mod terminator;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
+use rr_rustc_interface::ast;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{ast, hir};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -60,10 +61,9 @@ pub struct TX<'a, 'def, 'tcx> {
     return_synty: radium::SynType,
     /// all the other procedures used by this function, and:
     /// (code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)
-    collected_procedures:
-        HashMap<(hir::def_id::DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
+    collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
     /// used statics
-    collected_statics: HashSet<hir::def_id::DefId>,
+    collected_statics: HashSet<DefId>,
 
     /// tracking lifetime inclusions for the generation of lifetime inclusions
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
@@ -80,7 +80,7 @@ pub struct TX<'a, 'def, 'tcx> {
     processed_bbs: HashSet<mir::BasicBlock>,
 
     /// map of loop heads to their optional spec closure defid
-    loop_specs: HashMap<mir::BasicBlock, Option<hir::def_id::DefId>>,
+    loop_specs: HashMap<mir::BasicBlock, Option<DefId>>,
 
     /// relevant locals: (local, name, type)
     fn_locals: Vec<(mir::Local, radium::LocalKind, String, radium::Type<'def>)>,
@@ -490,10 +490,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Check if a local is used for a spec closure.
-    fn is_spec_closure_local(
-        &self,
-        l: mir::Local,
-    ) -> Result<Option<hir::def_id::DefId>, TranslationError<'tcx>> {
+    fn is_spec_closure_local(&self, l: mir::Local) -> Result<Option<DefId>, TranslationError<'tcx>> {
         // check if we should ignore this
         let local_type = self.get_type_of_local(l)?;
 

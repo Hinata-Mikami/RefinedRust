@@ -12,8 +12,9 @@ use std::process::Command;
 use std::{env, process};
 
 use log::{debug, info};
+use rr_rustc_interface::hir::def_id::LocalDefId;
 use rr_rustc_interface::middle::{query, ty};
-use rr_rustc_interface::{borrowck, driver, hir, interface, session};
+use rr_rustc_interface::{borrowck, driver, interface, session};
 use translation::environment::mir_storage;
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
@@ -32,10 +33,7 @@ fn get_rr_version_info() -> String {
 struct RRCompilerCalls;
 
 // From Prusti.
-fn mir_borrowck(
-    tcx: ty::TyCtxt<'_>,
-    def_id: hir::def_id::LocalDefId,
-) -> query::queries::mir_borrowck::ProvidedValue<'_> {
+fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_borrowck::ProvidedValue<'_> {
     let body_with_facts = borrowck::consumers::get_body_with_borrowck_facts(
         tcx,
         def_id,

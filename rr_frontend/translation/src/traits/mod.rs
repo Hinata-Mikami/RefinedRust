@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use derive_more::Display;
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
@@ -21,35 +21,46 @@ pub mod resolution;
 pub enum Error<'tcx> {
     /// This DefId is not a trait
     #[display("The given DefId {:?} is not a trait", _0)]
-    NotATrait(hir::def_id::DefId),
+    NotATrait(DefId),
+
     /// This DefId is not an impl of a trait
     #[display("The given DefId {:?} is not a trait implementation", _0)]
-    NotATraitImpl(hir::def_id::DefId),
+    NotATraitImpl(DefId),
+
     /// This DefId is not a trait method
     #[display("The given DefId {:?} is not a trait method", _0)]
-    NotATraitMethod(hir::def_id::DefId),
+    NotATraitMethod(DefId),
+
     /// This DefId is not an assoc type
     #[display("The given DefId {:?} is not an associated type", _0)]
-    NotAnAssocType(hir::def_id::DefId),
+    NotAnAssocType(DefId),
+
     /// This trait already exists
     #[display("This trait {:?} already has been registered", _0)]
-    TraitAlreadyExists(hir::def_id::DefId),
+    TraitAlreadyExists(DefId),
+
     /// This trait impl already exists
     #[display("This trait impl {:?} already has been registered", _0)]
-    ImplAlreadyExists(hir::def_id::DefId),
+    ImplAlreadyExists(DefId),
+
     /// Trait hasn't been registered yet but is used
     #[display("This trait {:?} has not been registered yet", _0)]
-    UnregisteredTrait(hir::def_id::DefId),
+    UnregisteredTrait(DefId),
+
     /// Trait impl hasn't been registered yet but is used
     #[display("This trait impl {:?} has not been registered yet", _0)]
-    UnregisteredImpl(hir::def_id::DefId),
+    UnregisteredImpl(DefId),
+
     /// Cannot find this trait instance in the local environment
     #[display("An instance for this trait {:?} cannot by found with generic args {:?}", _0, _1)]
-    UnknownLocalInstance(hir::def_id::DefId, ty::GenericArgsRef<'tcx>),
+    UnknownLocalInstance(DefId, ty::GenericArgsRef<'tcx>),
+
     #[display("An error occurred when parsing the specification of the trait {:?}: {:?}", _0, _1)]
-    TraitSpec(hir::def_id::DefId, String),
+    TraitSpec(DefId, String),
+
     #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
-    TraitImplSpec(hir::def_id::DefId, String),
+    TraitImplSpec(DefId, String),
+
     /// Unknown error
     #[display("Unknown Error")]
     Unknown,

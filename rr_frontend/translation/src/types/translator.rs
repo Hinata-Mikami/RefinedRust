@@ -12,8 +12,9 @@ use std::collections::{HashMap, HashSet};
 use derive_more::{Constructor, Debug};
 use log::{info, trace};
 use radium::{coq, push_str_list};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, attr, hir, target};
+use rr_rustc_interface::{abi, ast, attr, target};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -34,7 +35,7 @@ use crate::{attrs, search};
 #[derive(Debug)]
 pub struct FunctionState<'tcx, 'def> {
     /// defid of the current function
-    pub(crate) did: hir::def_id::DefId,
+    pub(crate) did: DefId,
 
     /// generic mapping: map DeBruijn indices to type parameters
     pub(crate) generic_scope: scope::Params<'tcx, 'def>,
@@ -69,7 +70,7 @@ impl<'tcx, 'def> ParamLookup<'def> for FunctionState<'tcx, 'def> {
 
 impl<'tcx, 'def> FunctionState<'tcx, 'def> {
     /// Create a new empty scope for a function.
-    pub fn empty(did: hir::def_id::DefId) -> Self {
+    pub fn empty(did: DefId) -> Self {
         Self {
             did,
             tuple_uses: HashMap::new(),
@@ -82,7 +83,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 
     /// Create a new scope for a function translation with the given generic parameters.
     fn new(
-        did: hir::def_id::DefId,
+        did: DefId,
         tcx: ty::TyCtxt<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap,
@@ -105,7 +106,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
     /// Create a new scope for a function translation with the given generic parameters and
     /// incorporating the trait environment.
     pub fn new_with_traits(
-        did: hir::def_id::DefId,
+        did: DefId,
         env: &Environment<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
         lifetimes: EarlyLateRegionMap,
@@ -140,7 +141,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 #[derive(Debug)]
 pub struct AdtState<'a, 'tcx, 'def> {
     /// track dependencies on other ADTs
-    deps: &'a mut HashSet<hir::def_id::DefId>,
+    deps: &'a mut HashSet<DefId>,
     /// scope to track parameters
     scope: &'a scope::Params<'tcx, 'def>,
     /// the current paramenv
@@ -149,7 +150,7 @@ pub struct AdtState<'a, 'tcx, 'def> {
 
 impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
     pub fn new(
-        deps: &'a mut HashSet<hir::def_id::DefId>,
+        deps: &'a mut HashSet<DefId>,
         scope: &'a scope::Params<'tcx, 'def>,
         param_env: &'a ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -286,7 +287,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     pub fn lookup_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,
-        trait_did: hir::def_id::DefId,
+        trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Result<&registry::GenericTraitUse<'tcx, 'def>, TranslationError<'tcx>> {
         //trace!("Enter lookup_trait_use for trait_did = {trait_did:?}, args = {args:?}, self = {self:?}");
@@ -434,7 +435,7 @@ pub struct TX<'def, 'tcx> {
     /// the literal is present after the variant has been fully translated
     variant_registry: RefCell<
         HashMap<
-            hir::def_id::DefId,
+            DefId,
             (
                 String,
                 radium::AbstractStructRef<'def>,
@@ -448,7 +449,7 @@ pub struct TX<'def, 'tcx> {
     /// the literal is present after the enum has been fully translated
     enum_registry: RefCell<
         HashMap<
-            hir::def_id::DefId,
+            DefId,
             (String, radium::AbstractEnumRef<'def>, ty::AdtDef<'tcx>, Option<radium::LiteralTypeRef<'def>>),
         >,
     >,
@@ -456,10 +457,10 @@ pub struct TX<'def, 'tcx> {
     tuple_registry: RefCell<HashMap<usize, (radium::AbstractStructRef<'def>, radium::LiteralTypeRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
-    adt_deps: RefCell<HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>>>,
+    adt_deps: RefCell<HashMap<DefId, HashSet<DefId>>>,
 
     /// shims for ADTs
-    adt_shims: RefCell<HashMap<hir::def_id::DefId, radium::LiteralTypeRef<'def>>>,
+    adt_shims: RefCell<HashMap<DefId, radium::LiteralTypeRef<'def>>>,
 }
 
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
@@ -501,11 +502,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register a shim for an ADT.
-    pub fn register_adt_shim(
-        &self,
-        did: hir::def_id::DefId,
-        lit: &radium::LiteralType,
-    ) -> Result<(), String> {
+    pub fn register_adt_shim(&self, did: DefId, lit: &radium::LiteralType) -> Result<(), String> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
         if let Some(old) = shims.insert(did, lit_ref) {
@@ -516,12 +513,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Lookup a shim for an ADT.
-    fn lookup_adt_shim(&self, did: hir::def_id::DefId) -> Option<radium::LiteralTypeRef<'def>> {
+    fn lookup_adt_shim(&self, did: DefId) -> Option<radium::LiteralTypeRef<'def>> {
         self.adt_shims.borrow().get(&did).copied()
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
-    pub fn get_struct_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractStructRef<'def>> {
+    pub fn get_struct_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, is_of_enum, _)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
@@ -533,7 +530,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the variant definitions that clients have used (including the variants of enums).
-    pub fn get_variant_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractStructRef<'def>> {
+    pub fn get_variant_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -542,7 +539,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the enum definitions that clients have used.
-    pub fn get_enum_defs(&self) -> HashMap<hir::def_id::DefId, radium::AbstractEnumRef<'def>> {
+    pub fn get_enum_defs(&self) -> HashMap<DefId, radium::AbstractEnumRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -551,7 +548,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get the dependency map between ADTs.
-    pub fn get_adt_deps(&self) -> HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>> {
+    pub fn get_adt_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
         let deps = self.adt_deps.borrow();
         deps.clone()
     }
@@ -668,7 +665,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup an ADT variant and return a reference to its struct def.
     fn lookup_adt_variant(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Result<(radium::AbstractStructRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
     {
         if let Some((_n, st, _, _, lit)) = self.variant_registry.borrow().get(&did) {
@@ -678,7 +675,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_adt_variant_already_registered(&self, did: hir::def_id::DefId) -> bool {
+    fn is_adt_variant_already_registered(&self, did: DefId) -> bool {
         if self.lookup_adt_shim(did).is_some() {
             return true;
         }
@@ -689,7 +686,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup the literal for an ADT variant.
     fn lookup_adt_variant_literal(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Result<radium::LiteralTypeRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             return Ok(lit);
@@ -705,7 +702,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup an enum ADT and return a reference to its enum def.
     fn lookup_enum(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Result<(radium::AbstractEnumRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
     {
         if let Some((_n, st, _, lit)) = self.enum_registry.borrow().get(&did) {
@@ -715,7 +712,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_enum_already_registered(&self, did: hir::def_id::DefId) -> bool {
+    fn is_enum_already_registered(&self, did: DefId) -> bool {
         if self.lookup_adt_shim(did).is_some() {
             return true;
         }
@@ -726,7 +723,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup the literal for an enum.
     fn lookup_enum_literal(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Result<radium::LiteralTypeRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             Ok(lit)
@@ -821,8 +818,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(radium::AbstractEnumUse::new(enum_ref, params))
     }
 
-    /// Check if a variant given by a [`hir::def_id::DefId`] is [`std::marker::PhantomData`].
-    fn is_phantom_data(&self, did: hir::def_id::DefId) -> Option<bool> {
+    /// Check if a variant given by a [`DefId`] is [`std::marker::PhantomData`].
+    fn is_phantom_data(&self, did: DefId) -> Option<bool> {
         let ty: ty::Ty<'tcx> = self.env.tcx().type_of(did).instantiate_identity();
         match ty.kind() {
             ty::TyKind::Adt(def, _) => Some(def.is_phantom_data()),
@@ -831,7 +828,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Check if a struct is definitely zero-sized.
-    fn is_struct_definitely_zero_sized(&self, did: hir::def_id::DefId) -> Option<bool> {
+    fn is_struct_definitely_zero_sized(&self, did: DefId) -> Option<bool> {
         self.is_phantom_data(did)
     }
 
@@ -839,7 +836,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Only for internal references as part of type translation.
     fn generate_struct_use_noshim<'a, 'b>(
         &self,
-        variant_id: hir::def_id::DefId,
+        variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
@@ -871,7 +868,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Only for internal references as part of type translation.
     fn generate_enum_variant_use_noshim<'a, 'b>(
         &self,
-        adt_id: hir::def_id::DefId,
+        adt_id: DefId,
         variant_idx: target::abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
@@ -1167,7 +1164,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Make a `GlobalId` for constants (use for discriminants).
     fn make_global_id_for_discr<'a>(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
         env: &'a [ty::GenericArg<'tcx>],
     ) -> mir::interpret::GlobalId<'tcx> {
         mir::interpret::GlobalId {
@@ -1241,7 +1238,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(map)
     }
 
-    fn does_did_match(&self, did: hir::def_id::DefId, path: &[&str]) -> bool {
+    fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
         let lookup_did = search::try_resolve_did(self.env.tcx(), path);
         if let Some(lookup_did) = lookup_did {
             if lookup_did == did {
@@ -1894,7 +1891,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// registering a new ADT.
     pub fn generate_struct_use(
         &self,
-        variant_id: hir::def_id::DefId,
+        variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
@@ -1924,7 +1921,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// Returns None if this should be unit.
     pub fn generate_enum_variant_use<'a>(
         &self,
-        variant_id: hir::def_id::DefId,
+        variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'a, 'def, 'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {

@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
@@ -20,7 +20,7 @@ use crate::{regions, types};
 fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     tcx: ty::TyCtxt<'tcx>,
     ty_translator: &types::LocalTX<'def, 'tcx>,
-    callee_did: hir::def_id::DefId,
+    callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
     // Get the type of the callee, fully instantiated
@@ -92,7 +92,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ///   associated types
     fn register_use_procedure(
         &mut self,
-        callee_did: hir::def_id::DefId,
+        callee_did: DefId,
         extra_spec_args: Vec<String>,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
@@ -172,7 +172,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// generics, and return the code parameter name.
     fn register_use_trait_method<'c>(
         &'c mut self,
-        callee_did: hir::def_id::DefId,
+        callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
@@ -249,7 +249,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// as the requirements of a call can be different depending on which impl we consider.
     fn resolve_trait_requirements_of_call(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
         params: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
@@ -390,7 +390,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<
-        (hir::def_id::DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
+        (DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
         TranslationError<'tcx>,
     > {
         match constant.literal {

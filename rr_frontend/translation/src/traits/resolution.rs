@@ -4,15 +4,16 @@ use std::collections::HashMap;
 /// Inspired by (in terms of rustc APIs used) by
 /// <https://github.com/xldenis/creusot/blob/9d8b1822cd0c43154a6d5d4d05460be56710399c/creusot/src/translation/traits.rs>
 use log::{info, trace};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeVisitableExt;
-use rr_rustc_interface::{hir, middle, trait_selection};
+use rr_rustc_interface::{middle, trait_selection};
 
 use crate::regions::arg_folder;
 use crate::traits::region_bi_folder::RegionBiFolder;
 
-pub fn associated_items(tcx: ty::TyCtxt, def_id: hir::def_id::DefId) -> impl Iterator<Item = &ty::AssocItem> {
+pub fn associated_items(tcx: ty::TyCtxt, def_id: DefId) -> impl Iterator<Item = &ty::AssocItem> {
     tcx.associated_items(def_id).in_definition_order()
 }
 
@@ -62,7 +63,7 @@ pub fn normalize_projection_type<'tcx>(
 pub fn resolve_impl_source<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    did: hir::def_id::DefId,
+    did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
@@ -216,10 +217,10 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 fn resolve_trait_or_item<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    def_id: hir::def_id::DefId,
+    def_id: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(def_id) {
         resolve_trait(tcx, param_env, def_id, substs, below_binders)
     } else {
@@ -232,10 +233,10 @@ fn resolve_trait_or_item<'tcx>(
 pub fn resolve_trait<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    did: hir::def_id::DefId,
+    did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(did) {
         let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders);
         info!("trait impl_source for {:?}: {:?}", did, impl_source);
@@ -266,10 +267,10 @@ pub enum TraitResolutionKind {
 pub fn resolve_assoc_item<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    did: hir::def_id::DefId,
+    did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
-) -> Option<(hir::def_id::DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
+) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     let assoc = tcx.opt_associated_item(did)?;
 
     /*

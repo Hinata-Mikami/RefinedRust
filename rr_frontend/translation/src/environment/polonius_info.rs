@@ -10,6 +10,7 @@ use std::io;
 use std::io::Write;
 
 use log::{debug, trace};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::index::Idx;
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::{mir, ty};
@@ -139,7 +140,7 @@ pub enum Error {
 pub fn graphviz<'tcx>(
     env: &Environment<'tcx>,
     def_path: &hir::definitions::DefPath,
-    def_id: span::def_id::DefId,
+    def_id: DefId,
     info: &PoloniusInfo<'_, 'tcx>,
 ) -> io::Result<()> {
     macro_rules! to_html {

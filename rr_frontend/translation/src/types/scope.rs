@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable;
 
@@ -63,12 +63,12 @@ pub fn generate_args_inst_key<'tcx>(
 /// Or types with erased regions?
 #[derive(Eq, PartialEq, Hash, Debug)]
 pub struct AdtUseKey {
-    pub base_did: hir::def_id::DefId,
+    pub base_did: DefId,
     pub generics: Vec<radium::SynType>,
 }
 
 impl AdtUseKey {
-    pub fn new(defid: hir::def_id::DefId, params: &[radium::Type<'_>]) -> Self {
+    pub fn new(defid: DefId, params: &[radium::Type<'_>]) -> Self {
         let generic_syntys: Vec<_> = params.iter().map(radium::SynType::from).collect();
         Self {
             base_did: defid,
@@ -76,7 +76,7 @@ impl AdtUseKey {
         }
     }
 
-    pub fn new_from_inst(defid: hir::def_id::DefId, params: &radium::GenericScopeInst<'_>) -> Self {
+    pub fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
             params.get_all_ty_params_with_assocs().iter().map(radium::SynType::from).collect();
         Self {
@@ -187,7 +187,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Create from generics, optionally annotating the type parameters with their origin.
     pub fn new_from_generics(
         x: ty::GenericArgsRef<'tcx>,
-        with_origin: Option<(ty::TyCtxt<'tcx>, hir::def_id::DefId)>,
+        with_origin: Option<(ty::TyCtxt<'tcx>, DefId)>,
     ) -> Self {
         let mut scope = Vec::new();
 
@@ -335,7 +335,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Add a `ParamEnv` of a given `DefId` to the scope to process trait obligations.
     pub fn add_param_env(
         &mut self,
-        did: hir::def_id::DefId,
+        did: DefId,
         env: &Environment<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
@@ -541,7 +541,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Determine the declaration origin of a type parameter of a function.
     fn determine_origin_of_param(
-        did: hir::def_id::DefId,
+        did: DefId,
         tcx: ty::TyCtxt<'tcx>,
         param: ty::ParamTy,
     ) -> radium::TyParamOrigin {
@@ -570,7 +570,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 
     /// Determine the number of args of a surrounding trait or impl.
-    pub fn determine_number_of_surrounding_params(did: hir::def_id::DefId, tcx: ty::TyCtxt<'tcx>) -> usize {
+    pub fn determine_number_of_surrounding_params(did: DefId, tcx: ty::TyCtxt<'tcx>) -> usize {
         // Check if there is a surrounding trait decl that introduces this parameter
         if let Some(trait_did) = tcx.trait_of_item(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
@@ -632,8 +632,8 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
 /// A scope for translated trait requirements from `where` clauses.
 #[derive(Clone, Debug, Default)]
 pub struct Traits<'tcx, 'def> {
-    used_traits: HashMap<(hir::def_id::DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
-    ordered_assumptions: Vec<(hir::def_id::DefId, GenericsKey<'tcx>)>,
+    used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
+    ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
 
     /// mapping of associated type paths in scope
     assoc_ty_names: HashMap<RustPath, radium::Type<'def>>,
@@ -648,7 +648,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
     pub fn lookup_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,
-        trait_did: hir::def_id::DefId,
+        trait_did: DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Result<&GenericTraitUse<'tcx, 'def>, traits::Error<'tcx>> {
         if !tcx.is_trait(trait_did) {
@@ -665,9 +665,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
     }
 
     /// Get trait uses in the current scope.
-    pub const fn get_trait_uses(
-        &self,
-    ) -> &HashMap<(hir::def_id::DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>> {
+    pub const fn get_trait_uses(&self) -> &HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>> {
         &self.used_traits
     }
 

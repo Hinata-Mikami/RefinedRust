@@ -6,17 +6,17 @@
 
 use std::collections::HashMap;
 
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 
 use crate::base::*;
 
 /// Scope of consts that are available
 pub struct Scope<'def> {
     // statics are explicitly declared
-    statics: HashMap<hir::def_id::DefId, radium::StaticMeta<'def>>,
+    statics: HashMap<DefId, radium::StaticMeta<'def>>,
     // const places are constants that lie in a static memory segment because they are referred to
     // by-ref
-    const_places: HashMap<hir::def_id::DefId, radium::ConstPlaceMeta<'def>>,
+    const_places: HashMap<DefId, radium::ConstPlaceMeta<'def>>,
 }
 
 impl<'def> Scope<'def> {
@@ -29,19 +29,16 @@ impl<'def> Scope<'def> {
     }
 
     /// Register a static
-    pub fn register_static(&mut self, did: hir::def_id::DefId, meta: radium::StaticMeta<'def>) {
+    pub fn register_static(&mut self, did: DefId, meta: radium::StaticMeta<'def>) {
         self.statics.insert(did, meta);
     }
 
     /// Register a const place
-    pub fn register_const_place(&mut self, did: hir::def_id::DefId, meta: radium::ConstPlaceMeta<'def>) {
+    pub fn register_const_place(&mut self, did: DefId, meta: radium::ConstPlaceMeta<'def>) {
         self.const_places.insert(did, meta);
     }
 
-    pub fn get_static<'tcx>(
-        &self,
-        did: hir::def_id::DefId,
-    ) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {
+    pub fn get_static<'tcx>(&self, did: DefId) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {
         self.statics.get(&did).ok_or_else(|| {
             TranslationError::UnknownError(format!(
                 "Did not find a registered static for did {did:?}; registered: {:?}",

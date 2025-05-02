@@ -9,8 +9,9 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{ast, hir, span};
+use rr_rustc_interface::{ast, span};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -55,7 +56,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
     pub fn spec_for_trait_method(
         env: &'def Environment<'tcx>,
-        proc_did: hir::def_id::DefId,
+        proc_did: DefId,
         name: &str,
         spec_name: &str,
         attrs: &'a [&'a ast::ast::AttrItem],
@@ -517,7 +518,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get type parameters of the given procedure.
-    fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: hir::def_id::DefId) -> ty::GenericArgsRef<'tcx> {
+    fn get_proc_ty_params(tcx: ty::TyCtxt<'tcx>, did: DefId) -> ty::GenericArgsRef<'tcx> {
         let ty = tcx.type_of(did).instantiate_identity();
         match ty.kind() {
             ty::TyKind::FnDef(_, params) => params,
@@ -539,7 +540,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         env: &Environment<'tcx>,
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-        proc_did: hir::def_id::DefId,
+        proc_did: DefId,
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut radium::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap,

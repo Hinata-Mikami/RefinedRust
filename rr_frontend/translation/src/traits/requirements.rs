@@ -9,7 +9,7 @@
 use std::cmp::Ordering;
 
 use log::{info, trace};
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
@@ -18,7 +18,7 @@ use crate::{search, shims};
 /// Determine the origin of a trait obligation.
 /// `surrounding_reqs` are the requirements of a surrounding impl or decl.
 fn determine_origin_of_trait_requirement<'tcx>(
-    did: hir::def_id::DefId,
+    did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     surrounding_reqs: &Option<Vec<ty::TraitRef<'tcx>>>,
     req: ty::TraitRef<'tcx>,
@@ -51,7 +51,7 @@ pub struct TraitReqMeta<'tcx> {
 /// The requirements are sorted in a way that is stable across compilations.
 pub fn get_trait_requirements_with_origin<'tcx>(
     env: &Environment<'tcx>,
-    did: hir::def_id::DefId,
+    did: DefId,
 ) -> Vec<TraitReqMeta<'tcx>> {
     trace!("Enter get_trait_requirements_with_origin for did={did:?}");
     let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
@@ -126,7 +126,7 @@ pub fn get_trait_requirements_with_origin<'tcx>(
 pub fn get_nontrivial<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    in_trait_decl: Option<hir::def_id::DefId>,
+    in_trait_decl: Option<DefId>,
 ) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, ty::Binder<'tcx, ()>)> {
     let mut trait_refs = Vec::new();
     trace!(
@@ -182,7 +182,7 @@ pub fn get_nontrivial<'tcx>(
 }
 
 /// Check if this is a built-in trait
-fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: hir::def_id::DefId) -> Option<bool> {
+fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let sized_did = search::try_resolve_did(tcx, &["core", "marker", "Sized"])?;
 
     // TODO: for these, should instead require the primitive encoding of our Coq formalization
@@ -244,7 +244,7 @@ fn cmp_arg_refs<'tcx>(a: &[ty::GenericArg<'tcx>], b: &[ty::GenericArg<'tcx>]) ->
 /// consistent order that is stable across compilations.
 fn cmp_trait_ref<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    in_trait_decl: Option<hir::def_id::DefId>,
+    in_trait_decl: Option<DefId>,
     a: &ty::TraitRef<'tcx>,
     b: &ty::TraitRef<'tcx>,
 ) -> Ordering {

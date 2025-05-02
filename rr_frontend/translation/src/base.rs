@@ -5,8 +5,9 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use derive_more::Display;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{borrowck, hir, polonius_engine};
+use rr_rustc_interface::{borrowck, polonius_engine};
 
 use crate::environment::borrowck::facts;
 use crate::traits;
@@ -37,7 +38,7 @@ pub enum TranslationError<'tcx> {
     UnsupportedType { description: String },
 
     #[display("Recursive type does not have an invariant: {:?}", _0)]
-    RecursiveTypeWithoutInvariant(hir::def_id::DefId),
+    RecursiveTypeWithoutInvariant(DefId),
 
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },

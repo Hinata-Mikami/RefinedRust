@@ -6,7 +6,7 @@
 
 use std::collections::{btree_map, BTreeMap};
 
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 
 use crate::base::*;
 
@@ -112,12 +112,11 @@ impl Meta {
  */
 pub struct Scope<'def> {
     /// maps the defid to (code_name, spec_name, trait_req_incl_name, name)
-    name_map: BTreeMap<hir::def_id::DefId, Meta>,
+    name_map: BTreeMap<DefId, Meta>,
     /// track the actually translated functions
-    translated_functions: BTreeMap<hir::def_id::DefId, radium::Function<'def>>,
+    translated_functions: BTreeMap<DefId, radium::Function<'def>>,
     /// track the functions with just a specification (rr::only_spec)
-    specced_functions:
-        BTreeMap<hir::def_id::DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    specced_functions: BTreeMap<DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
 }
 
 impl<'def> Scope<'def> {
@@ -130,14 +129,14 @@ impl<'def> Scope<'def> {
     }
 
     /// Lookup the meta information of a function.
-    pub fn lookup_function(&self, did: hir::def_id::DefId) -> Option<Meta> {
+    pub fn lookup_function(&self, did: DefId) -> Option<Meta> {
         self.name_map.get(&did).cloned()
     }
 
     /// Lookup a translated function spec
     pub fn lookup_function_spec(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Option<&'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
         if let Some(translated_fn) = self.translated_functions.get(&did) {
             Some(translated_fn.spec)
@@ -149,26 +148,22 @@ impl<'def> Scope<'def> {
     }
 
     /// Lookup the Coq spec name for a function.
-    pub fn lookup_function_spec_name(&self, did: hir::def_id::DefId) -> Option<&str> {
+    pub fn lookup_function_spec_name(&self, did: DefId) -> Option<&str> {
         self.name_map.get(&did).map(Meta::get_spec_name)
     }
 
     /// Lookup the name for a function.
-    pub fn lookup_function_mangled_name(&self, did: hir::def_id::DefId) -> Option<&str> {
+    pub fn lookup_function_mangled_name(&self, did: DefId) -> Option<&str> {
         self.name_map.get(&did).map(Meta::get_name)
     }
 
     /// Lookup the mode for a function.
-    pub fn lookup_function_mode(&self, did: hir::def_id::DefId) -> Option<Mode> {
+    pub fn lookup_function_mode(&self, did: DefId) -> Option<Mode> {
         self.name_map.get(&did).map(Meta::get_mode)
     }
 
     /// Register a function.
-    pub fn register_function<'tcx>(
-        &mut self,
-        did: hir::def_id::DefId,
-        meta: Meta,
-    ) -> Result<(), TranslationError<'tcx>> {
+    pub fn register_function<'tcx>(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
         if self.name_map.insert(did, meta).is_some() {
             Err(TranslationError::ProcedureRegistry(format!(
                 "function for defid {:?} has already been registered",
@@ -180,7 +175,7 @@ impl<'def> Scope<'def> {
     }
 
     /// Provide the code for a translated function.
-    pub fn provide_translated_function(&mut self, did: hir::def_id::DefId, trf: radium::Function<'def>) {
+    pub fn provide_translated_function(&mut self, did: DefId, trf: radium::Function<'def>) {
         let meta = &self.name_map[&did];
         assert!(meta.get_mode().needs_def() || meta.get_mode().is_code_shim());
         assert!(self.translated_functions.insert(did, trf).is_none());
@@ -189,7 +184,7 @@ impl<'def> Scope<'def> {
     /// Provide the specification for an `only_spec` function.
     pub fn provide_specced_function(
         &mut self,
-        did: hir::def_id::DefId,
+        did: DefId,
         spec: &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>,
     ) {
         let meta = &self.name_map[&did];
@@ -198,18 +193,14 @@ impl<'def> Scope<'def> {
     }
 
     /// Iterate over the functions we have generated code for.
-    pub fn iter_code(&self) -> btree_map::Iter<'_, hir::def_id::DefId, radium::Function<'def>> {
+    pub fn iter_code(&self) -> btree_map::Iter<'_, DefId, radium::Function<'def>> {
         self.translated_functions.iter()
     }
 
     /// Iterate over the functions we have generated only specs for.
     pub fn iter_only_spec(
         &self,
-    ) -> btree_map::Iter<
-        '_,
-        hir::def_id::DefId,
-        &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>,
-    > {
+    ) -> btree_map::Iter<'_, DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
         self.specced_functions.iter()
     }
 }

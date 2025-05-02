@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir;
 
 use super::TX;
@@ -20,7 +20,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(super) fn parse_attributes_on_loop_spec_closure(
         &self,
         loop_head: mir::BasicBlock,
-        did: Option<hir::def_id::DefId>,
+        did: Option<DefId>,
     ) -> Result<radium::LoopSpec, TranslationError<'tcx>> {
         // determine invariant on initialization:
         // - we need this both for the refinement invariant (though this could be removed if we make uninit
@@ -74,7 +74,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(super) fn find_loop_spec_closure(
         &self,
         head_bb: mir::BasicBlock,
-    ) -> Result<Option<hir::def_id::DefId>, TranslationError<'tcx>> {
+    ) -> Result<Option<DefId>, TranslationError<'tcx>> {
         let bodies = self.proc.loop_info().get_loop_body(head_bb);
         let basic_blocks = &self.proc.get_mir().basic_blocks;
 

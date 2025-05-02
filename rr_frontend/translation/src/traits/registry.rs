@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use log::{info, trace};
 use radium::{coq, specs};
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use traits::{resolution, Error, TraitResult};
 use typed_arena::Arena;
@@ -33,13 +33,13 @@ pub struct TR<'tcx, 'def> {
     type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
 
     /// trait declarations
-    trait_decls: RefCell<HashMap<hir::def_id::LocalDefId, radium::TraitSpecDecl<'def>>>,
+    trait_decls: RefCell<HashMap<LocalDefId, radium::TraitSpecDecl<'def>>>,
     /// trait literals for using occurrences, including shims we import
-    trait_literals: RefCell<HashMap<hir::def_id::DefId, specs::LiteralTraitSpecRef<'def>>>,
+    trait_literals: RefCell<HashMap<DefId, specs::LiteralTraitSpecRef<'def>>>,
 
     /// for the trait instances in scope, the names for their Coq definitions
     /// (to enable references to them when translating functions)
-    impl_literals: RefCell<HashMap<hir::def_id::DefId, specs::LiteralTraitImplRef<'def>>>,
+    impl_literals: RefCell<HashMap<DefId, specs::LiteralTraitImplRef<'def>>>,
 
     /// arena for allocating trait literals
     trait_arena: &'def Arena<specs::LiteralTraitSpec>,
@@ -82,13 +82,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get registered trait declarations in the local crate.
-    pub fn get_trait_decls(&self) -> HashMap<hir::def_id::LocalDefId, specs::TraitSpecDecl<'def>> {
+    pub fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::TraitSpecDecl<'def>> {
         let decls = self.trait_decls.borrow();
         decls.clone()
     }
 
     /// Get a set of other (different) traits that this trait depends on.
-    pub fn get_deps_of_trait(&self, did: hir::def_id::DefId) -> HashSet<hir::def_id::DefId> {
+    pub fn get_deps_of_trait(&self, did: DefId) -> HashSet<DefId> {
         let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(did);
 
         let mut deps = HashSet::new();
@@ -107,10 +107,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Order the given traits according to their dependencies.
-    pub fn get_trait_deps(
-        &self,
-        traits: &[hir::def_id::LocalDefId],
-    ) -> HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>> {
+    pub fn get_trait_deps(&self, traits: &[LocalDefId]) -> HashMap<DefId, HashSet<DefId>> {
         let mut dep_map = HashMap::new();
 
         for trait_decl in traits {
@@ -122,7 +119,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get a map of dependencies between traits.
-    pub fn get_registered_trait_deps(&self) -> HashMap<hir::def_id::DefId, HashSet<hir::def_id::DefId>> {
+    pub fn get_registered_trait_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
         let mut dep_map = HashMap::new();
 
         let decls = self.trait_decls.borrow();
@@ -135,7 +132,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get the names of associated types of this trait.
-    pub fn get_associated_type_names(&self, did: hir::def_id::DefId) -> Vec<String> {
+    pub fn get_associated_type_names(&self, did: DefId) -> Vec<String> {
         let mut assoc_tys = Vec::new();
 
         // get associated types
@@ -151,7 +148,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Generate names for a trait.
     fn make_literal_trait_spec(
         &self,
-        did: hir::def_id::DefId,
+        did: DefId,
         name: String,
         declared_attrs: HashSet<String>,
     ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
@@ -192,7 +189,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Register a new annotated trait in the local crate with the registry.
-    pub fn register_trait(&'def self, did: hir::def_id::LocalDefId) -> Result<(), TranslationError<'tcx>> {
+    pub fn register_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
         trace!("enter TR::register_trait for did={did:?}");
 
         {
@@ -312,7 +309,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// - TraitAlreadyExists(did) if this trait has already been registered
     pub fn register_shim<'a>(
         &'a self,
-        did: hir::def_id::DefId,
+        did: DefId,
         spec: radium::LiteralTraitSpec,
     ) -> TraitResult<'tcx, radium::LiteralTraitSpecRef<'def>> {
         if !self.env.tcx().is_trait(did) {
@@ -333,7 +330,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Register a shim for a trait impl.
     pub fn register_impl_shim<'a>(
         &'a self,
-        did: hir::def_id::DefId,
+        did: DefId,
         spec: radium::LiteralTraitImpl,
     ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
         if self.env.tcx().trait_id_of_impl(did).is_none() {
@@ -352,14 +349,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Lookup a trait.
-    pub fn lookup_trait(&self, trait_did: hir::def_id::DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
+    pub fn lookup_trait(&self, trait_did: DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
         trait_literals.get(&trait_did).copied()
     }
 
     /// Lookup the spec for an impl.
     /// If None, use the default spec.
-    pub fn lookup_impl(&self, impl_did: hir::def_id::DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
+    pub fn lookup_impl(&self, impl_did: DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
         impl_literals.get(&impl_did).copied()
     }
@@ -369,7 +366,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub fn get_impl_spec_term(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        impl_did: hir::def_id::DefId,
+        impl_did: DefId,
         impl_args: &[ty::GenericArg<'tcx>],
         trait_args: &[ty::GenericArg<'tcx>],
     ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
@@ -417,7 +414,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub fn resolve_trait_requirements_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: hir::def_id::DefId,
+        did: DefId,
         params: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
@@ -630,7 +627,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     fn resolve_radium_trait_requirements_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: hir::def_id::DefId,
+        did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
@@ -662,7 +659,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub fn compute_scope_inst_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        did: hir::def_id::DefId,
+        did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
     ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
@@ -677,7 +674,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Get information on a trait implementation and create its Radium encoding.
     pub fn get_trait_impl_info(
         &self,
-        trait_impl_did: hir::def_id::DefId,
+        trait_impl_did: DefId,
     ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
         let trait_did = self
             .env
@@ -761,7 +758,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 #[derive(Debug, Clone)]
 pub struct GenericTraitUse<'tcx, 'def> {
     /// the DefId of the trait
-    pub did: hir::def_id::DefId,
+    pub did: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     /// the self type this is implemented for
     pub self_ty: ty::ParamTy,
@@ -791,7 +788,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     pub fn get_associated_type_use(
         &self,
         env: &Environment<'tcx>,
-        did: hir::def_id::DefId,
+        did: DefId,
     ) -> Result<radium::Type<'def>, traits::Error<'tcx>> {
         let type_name = env.get_assoc_item_name(did).ok_or(traits::Error::NotAnAssocType(did))?;
 

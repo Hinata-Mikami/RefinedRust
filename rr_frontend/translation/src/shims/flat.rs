@@ -7,6 +7,7 @@
 //! Provides a flat representation of types that is stable across compilations.
 
 use log::info;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{hir, span};
 use serde::{Deserialize, Serialize};
@@ -26,10 +27,7 @@ pub struct PathWithArgs {
 }
 
 impl PathWithArgs {
-    pub fn to_item<'tcx>(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-    ) -> Option<(hir::def_id::DefId, Vec<Option<ty::GenericArg<'tcx>>>)> {
+    pub fn to_item<'tcx>(&self, tcx: ty::TyCtxt<'tcx>) -> Option<(DefId, Vec<Option<ty::GenericArg<'tcx>>>)> {
         let did = search::try_resolve_did(tcx, self.path.as_slice())?;
 
         let mut ty_args = Vec::new();
@@ -49,7 +47,7 @@ impl PathWithArgs {
     /// `args` should be normalized already.
     pub fn from_item<'tcx>(
         env: &Environment<'tcx>,
-        did: hir::def_id::DefId,
+        did: DefId,
         args: &[ty::GenericArg<'tcx>],
     ) -> Option<Self> {
         let path = get_export_path_for_did(env, did);
@@ -176,7 +174,7 @@ pub fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) 
     }
 }
 
-pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: hir::def_id::DefId) -> Vec<String> {
+pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
     let def_path = tcx.def_path_str(did);
     // we clean this up a bit and segment it
     let mut components = Vec::new();
@@ -205,7 +203,7 @@ fn extract_def_path(path: &hir::definitions::DefPath) -> Vec<String> {
 }
 
 /// Get the path we should export an item at.
-pub fn get_export_path_for_did(env: &Environment, did: hir::def_id::DefId) -> Vec<String> {
+pub fn get_export_path_for_did(env: &Environment, did: DefId) -> Vec<String> {
     let attrs = env.get_attributes(did);
 
     if attrs::has_tool_attr(attrs, "export_as") {

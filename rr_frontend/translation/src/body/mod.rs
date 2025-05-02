@@ -6,7 +6,7 @@
 
 mod checked_op_analysis;
 
-use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
@@ -19,7 +19,7 @@ mod translation;
 pub fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     tcx: ty::TyCtxt<'tcx>,
     ty_translator: &types::LocalTX<'def, 'tcx>,
-    callee_did: hir::def_id::DefId,
+    callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
     // Get the type of the callee, fully instantiated

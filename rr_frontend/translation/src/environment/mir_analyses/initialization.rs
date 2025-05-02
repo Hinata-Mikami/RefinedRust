@@ -19,11 +19,10 @@
 use analysis::abstract_interpretation::{AbstractState, FixpointEngine};
 use analysis::domains::DefinitelyInitializedAnalysis;
 //use prusti_common::Stopwatch;
-use rr_rustc_interface::{
-    data_structures::fx::FxHashMap,
-    hir::def_id::DefId,
-    middle::{mir, ty::TyCtxt},
-};
+use rr_rustc_interface::data_structures::fx::FxHashMap;
+use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::mir;
+use rr_rustc_interface::middle::ty::TyCtxt;
 
 use crate::environment::mir_sets::place_set::PlaceSet;
 
