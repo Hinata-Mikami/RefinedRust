@@ -1104,7 +1104,7 @@ Qed.
 (* TODO cred based version of the following? *)
 Lemma wp_neg_int Φ v v' n E it:
   val_to_Z v it = Some n →
-  val_of_Z (-n) it None = Some v' →
+  val_of_Z (wrap_to_it (-n) it) it None = Some v' →
   ▷ (£1 -∗ Φ (v')) -∗ WP UnOp NegOp (IntOp it) (Val v) @ E {{ Φ }}.
 Proof.
   iIntros (Hv Hv') "HΦ".
@@ -1343,7 +1343,6 @@ Qed.
 
 Definition int_arithop_result (it : int_type) n1 n2 op : option Z :=
   match op with
-  (* TODO: maybe change the unchecked ops to wrap *)
   | AddOp => Some (n1 + n2)
   | SubOp => Some (n1 - n2)
   | MulOp => Some (n1 * n2)
@@ -1354,105 +1353,36 @@ Definition int_arithop_result (it : int_type) n1 n2 op : option Z :=
   | ShrOp => Some (n1 ≫ n2)
   | DivOp => Some (n1 `quot` n2)
   | ModOp => Some (n1 `rem` n2)
-  | CheckedAddOp => Some (n1 + n2)
-  | CheckedSubOp => Some (n1 - n2)
-  | CheckedMulOp => Some (n1 * n2)
   | _     => None (* Relational operators. *)
   end.
 
 Definition int_arithop_sidecond (it : int_type) (n1 n2 n : Z) op : Prop :=
   match op with
-  (* NOTE: stricter than necessary for unchecked ops, the opsem also allows wrapping *)
-  | AddOp => n ∈ it
-  | SubOp => n ∈ it
-  | MulOp => n ∈ it
+  | AddOp => True
+  | SubOp => True
+  | MulOp => True
   | AndOp => True
   | OrOp  => True
   | XorOp => True
   (* TODO check semantics of shifting operators *)
   | ShlOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1 ∧ n ≤ max_int it
   | ShrOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1 (* Result of shifting negative numbers is implementation defined. *)
-  | DivOp => n2 ≠ 0 ∧ n ∈ it
-  | ModOp => n2 ≠ 0 ∧ n ∈ it
-  | CheckedAddOp => n ∈ it
-  | CheckedSubOp => n ∈ it
-  | CheckedMulOp => n ∈ it
+  | DivOp => n2 ≠ 0
+  | ModOp => n2 ≠ 0
   | _     => True (* Relational operators. *)
   end.
-
-Lemma bitwise_op_result_in_range op bop (it : int_type) n1 n2 :
-  (0 ≤ n1 → 0 ≤ n2 → 0 ≤ op n1 n2) →
-  bool_decide (op n1 n2 < 0) = bop (bool_decide (n1 < 0)) (bool_decide (n2 < 0)) →
-  (∀ k, Z.testbit (op n1 n2) k = bop (Z.testbit n1 k) (Z.testbit n2 k)) →
-  n1 ∈ it → n2 ∈ it → op n1 n2 ∈ it.
-Proof.
-  move => Hnonneg Hsign Htestbit.
-  rewrite /elem_of /int_elem_of_it /min_int /max_int.
-  have ? := bits_per_int_gt_0 it.
-  destruct (it_signed it).
-  - rewrite /int_half_modulus.
-    move ? : (bits_per_int it - 1) => k.
-    have Hb : ∀ n, -2^k ≤ n ≤ 2^k - 1 ↔ ∀ l, k ≤ l → Z.testbit n l = bool_decide (n < 0).
-    { move => ?. rewrite -Z.bounded_iff_bits; lia. }
-    move => /Hb Hn1 /Hb Hn2.
-    apply Hb => l Hl.
-    by rewrite Htestbit Hsign Hn1 ?Hn2.
-  - rewrite /int_modulus.
-    move ? : (bits_per_int it) => k.
-    have Hb : ∀ n, 0 ≤ n → n ≤ 2^k - 1 ↔ ∀ l, k ≤ l → Z.testbit n l = bool_decide (n < 0).
-    { move => ??. rewrite bool_decide_false -?Z.bounded_iff_bits_nonneg; lia. }
-    move => [Hn1 /Hb HN1] [Hn2 /Hb HN2].
-    have Hn := Hnonneg Hn1 Hn2.
-    split; first done.
-    apply (Hb _ Hn) => l Hl.
-    by rewrite Htestbit HN1 ?HN2.
-Qed.
-
-Lemma int_arithop_result_in_range (it : int_type) (n1 n2 n : Z) op :
-  n1 ∈ it → n2 ∈ it → int_arithop_result it n1 n2 op = Some n →
-  int_arithop_sidecond it n1 n2 n op → n ∈ it.
-Proof.
-  move => Hn1 Hn2 Hn Hsc.
-  destruct op => //=; simpl in Hsc, Hn; destruct_and? => //.
-  all: inversion Hn; simplify_eq.
-  - apply (bitwise_op_result_in_range Z.land andb) => //.
-    + rewrite Z.land_nonneg; naive_solver.
-    + repeat case_bool_decide; try rewrite -> Z.land_neg in *; naive_solver.
-    + by apply Z.land_spec.
-  - apply (bitwise_op_result_in_range Z.lor orb) => //.
-    + by rewrite Z.lor_nonneg.
-    + repeat case_bool_decide; try rewrite -> Z.lor_neg in *; naive_solver.
-    + by apply Z.lor_spec.
-  - apply (bitwise_op_result_in_range Z.lxor xorb) => //.
-    + by rewrite Z.lxor_nonneg.
-    + have Hn : ∀ n, bool_decide (n < 0) = negb (bool_decide (0 ≤ n)).
-      { intros. repeat case_bool_decide => //; lia. }
-      rewrite !Hn.
-      repeat case_bool_decide; try rewrite -> Z.lxor_nonneg in *; naive_solver.
-    + by apply Z.lxor_spec.
-  - split.
-    + trans 0; [ apply min_int_le_0 | by apply Z.shiftl_nonneg ].
-    + done.
-  - split.
-    + trans 0; [ apply min_int_le_0 | by apply Z.shiftr_nonneg ].
-    + destruct Hn1.
-      trans n1; last done. rewrite Z.shiftr_div_pow2; last by lia.
-      apply Z.div_le_upper_bound. { apply Z.pow_pos_nonneg => //. }
-      rewrite -[X in X ≤ _]Z.mul_1_l. apply Z.mul_le_mono_nonneg_r => //.
-      rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia.
-Qed.
 
 Lemma wp_int_arithop Φ op v1 v2 n1 n2 nr it:
   val_to_Z v1 it = Some n1 →
   val_to_Z v2 it = Some n2 →
   int_arithop_result it n1 n2 op = Some nr →
   int_arithop_sidecond it n1 n2 nr op →
-  (∀ v, ⌜val_of_Z nr it None = Some v⌝ -∗ ▷ (£1 -∗ Φ v)) -∗
+  (∀ v, ⌜val_of_Z (wrap_to_it nr it) it None = Some v⌝ -∗ ▷ (£1 -∗ Φ v)) -∗
   WP BinOp op (IntOp it) (IntOp it) (Val v1) (Val v2) {{ Φ }}.
 Proof.
   iIntros (Hn1 Hn2 Hop Hsc) "HΦ".
-  assert (nr ∈ it) as [v Hv]%(val_of_Z_is_Some None).
-  { apply: int_arithop_result_in_range => //; by apply: val_to_Z_in_range. }
+  assert (wrap_to_it nr it ∈ it) as [v Hv]%(val_of_Z_is_Some None).
+  { apply wrap_to_it_in_range. }
   move: (Hv) => /val_of_Z_in_range ?.
   iApply (wp_binop_det_pure v with "[HΦ]"). 2: by iApply "HΦ".
   move => ??. split.
@@ -1462,10 +1392,9 @@ Proof.
     all: destruct it as [? []]; simplify_eq/= => //.
     all: try by rewrite ->wrap_unsigned_id in * => //; simplify_eq.
   + move => ->. destruct op.
-    1-22: (apply: ArithOpII; [try done; case_bool_decide; naive_solver|done|done|]).
-    23-25: (apply: ArithOpCheckedII; [try done; case_bool_decide; naive_solver|done|done|]).
-    all: destruct it as [? []]; simplify_eq/= => //.
-    all: try by rewrite wrap_unsigned_id.
+    1-22: (apply: ArithOpII; [|done|done|];
+        first (simpl; try done; try case_bool_decide; naive_solver)).
+    all: done.
 Qed.
 
 Lemma wp_check_int_arithop Φ op v1 v2 n1 n2 b it:

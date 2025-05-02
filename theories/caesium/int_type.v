@@ -278,7 +278,7 @@ Proof.
 Qed.
 
 (** wrap_to_it lemmas *)
-Lemma wrap_to_int_id z it :
+Lemma wrap_to_it_id z it :
   z ∈ it → wrap_to_it z it = z.
 Proof.
   unfold wrap_to_it.

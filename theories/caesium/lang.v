@@ -17,9 +17,6 @@ Inductive bin_op : Set :=
 | PtrOffsetOp (ly : layout) | PtrNegOffsetOp (ly : layout)
 | PtrWrappingOffsetOp (ly : layout) | PtrWrappingNegOffsetOp (ly : layout)
 | PtrDiffOp (ly : layout)
-(* checked operations: get stuck on overflow/underflow *)
-(* TODO: also have other checkedops as primitives (e.g. for Shl, Shr)? *)
-| CheckedAddOp | CheckedSubOp | CheckedMulOp
 .
 
 Inductive un_op : Set :=
@@ -33,8 +30,10 @@ Local Unset Elimination Schemes.
 Inductive expr :=
 | Var (x : var_name)
 | Val (v : val)
+(* operators which wrap into the target type *)
 | UnOp (op : un_op) (ot : op_type) (e : expr)
 | BinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr)
+(* operators for checking whether an operation would overflow *)
 | CheckUnOp (op : un_op) (ot : op_type) (e : expr)
 | CheckBinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : expr)
 | CopyAllocId (ot1 : op_type) (e1 : expr) (e2 : expr)
@@ -255,8 +254,33 @@ Definition subst_function (xs : list (var_name * val)) (f : function) : function
 |}.
 
 (*** Evaluation of operations *)
+Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
+  match op with
+  | AddOp => Some (n1 + n2)
+  | SubOp => Some (n1 - n2)
+  | MulOp => Some (n1 * n2)
+  (* we need to take `quot` and `rem` here for the correct rounding
+  behavior, i.e. rounding towards 0 (instead of `div` and `mod`,
+  which round towards floor)*)
+  | DivOp => if bool_decide (n2 ≠ 0) then Some (n1 `quot` n2) else None
+  | ModOp => if bool_decide (n2 ≠ 0) then Some (n1 `rem` n2) else None
+  | AndOp => Some (Z.land n1 n2)
+  | OrOp => Some (Z.lor n1 n2)
+  | XorOp => Some (Z.lxor n1 n2)
+  (* For shift operators (`ShlOp` and `ShrOp`), behaviors are defined if:
+     - lhs is nonnegative, and
+     - rhs (also nonnegative) is less than the number of bits in lhs.
+     See: https://en.cppreference.com/w/c/language/operator_arithmetic, "Shift operators". *)
+  (* TODO: this does not match the Rust semantics *)
+  | ShlOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≪ n2) else None
+  (* NOTE: when lhs is negative, Coq's `≫` is not semantically equivalent to C's `>>`.
+     Counterexample: Coq `-1000 ≫ 10 = 0`; C `-1000 >> 10 == -1`.
+     This is because `≫` is implemented by `Z.div`. *)
+  (* TODO: this does not match the Rust semantics *)
+  | ShrOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≫ n2) else None
+  | _ => None
+  end.
 
-(* evaluation can be non-deterministic for comparing pointers *)
 Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val → val → Prop :=
 | PtrOffsetOpIP v1 v2 σ o l ly it:
     val_to_Z v1 it = Some o →
@@ -353,49 +377,11 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
   val_of_Z (bool_to_Z b) rit None = Some v →
   eval_bin_op op BoolOp BoolOp σ v1 v2 v
 | ArithOpII op v1 v2 σ n1 n2 it n v:
-    match op with
-    | AddOp => Some (n1 + n2)
-    | SubOp => Some (n1 - n2)
-    | MulOp => Some (n1 * n2)
-    (* we need to take `quot` and `rem` here for the correct rounding
-    behavior, i.e. rounding towards 0 (instead of `div` and `mod`,
-    which round towards floor)*)
-    | DivOp => if bool_decide (n2 ≠ 0) then Some (n1 `quot` n2) else None
-    | ModOp => if bool_decide (n2 ≠ 0) then Some (n1 `rem` n2) else None
-    | AndOp => Some (Z.land n1 n2)
-    | OrOp => Some (Z.lor n1 n2)
-    | XorOp => Some (Z.lxor n1 n2)
-    (* For shift operators (`ShlOp` and `ShrOp`), behaviors are defined if:
-       - lhs is nonnegative, and
-       - rhs (also nonnegative) is less than the number of bits in lhs.
-       See: https://en.cppreference.com/w/c/language/operator_arithmetic, "Shift operators". *)
-    (* TODO: this does not match the Rust semantics *)
-    | ShlOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≪ n2) else None
-    (* NOTE: when lhs is negative, Coq's `≫` is not semantically equivalent to C's `>>`.
-       Counterexample: Coq `-1000 ≫ 10 = 0`; C `-1000 >> 10 == -1`.
-       This is because `≫` is implemented by `Z.div`. *)
-    (* TODO: this does not match the Rust semantics *)
-    | ShrOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≫ n2) else None
-    | _ => None
-    end = Some n →
+    compute_arith_bin_op n1 n2 it op = Some n →
     val_to_Z v1 it = Some n1 →
     val_to_Z v2 it = Some n2 →
-    (* wrap on unsigned overflows, get stuck on signed overflows*)
-    (* TODO: what about always making it wrapping, so we can use it implement Rust's wrapping operations?
-      For the checked operations, we anyways have separate ops/ Rust inserts checks *)
-    val_of_Z (if it_signed it then n else wrap_unsigned n it) it None = Some v →
-    eval_bin_op op (IntOp it) (IntOp it) σ v1 v2 v
-| ArithOpCheckedII op v1 v2 σ n1 n2 it n v :
-    match op with
-    | CheckedAddOp => Some (n1 + n2)
-    | CheckedSubOp => Some (n1 - n2)
-    | CheckedMulOp => Some (n1 * n2)
-    | _ => None
-    end = Some n →
-    val_to_Z v1 it = Some n1 →
-    val_to_Z v2 it = Some n2 →
-    (* do not wrap, but get stuck on overflow *)
-    val_of_Z n it None = Some v →
+    (* wrap *)
+    val_of_Z (wrap_to_it n it) it None = Some v →
     eval_bin_op op (IntOp it) (IntOp it) σ v1 v2 v
 | ArithOpBB op v1 v2 σ b1 b2 b v :
     match op with
@@ -414,29 +400,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
 
 (** Check if the result of an arithmetic operator is representable in the target integer type. *)
 Definition check_arith_bin_op (op : bin_op) (it : int_type) (n1 n2 : Z) : option bool :=
-  let res := match op with
-  | AddOp => Some (n1 + n2)
-  | SubOp => Some (n1 - n2)
-  | MulOp => Some (n1 * n2)
-  | DivOp => if bool_decide (n2 ≠ 0) then Some (n1 `quot` n2) else None
-  | ModOp => if bool_decide (n2 ≠ 0) then Some (n1 `rem` n2) else None
-  | AndOp => Some (Z.land n1 n2)
-  | OrOp => Some (Z.lor n1 n2)
-  | XorOp => Some (Z.lxor n1 n2)
-  (* For shift operators (`ShlOp` and `ShrOp`), behaviors are defined if:
-     - lhs is nonnegative, and
-     - rhs (also nonnegative) is less than the number of bits in lhs.
-     See: https://en.cppreference.com/w/c/language/operator_arithmetic, "Shift operators". *)
-  (* TODO: this does not match the Rust semantics *)
-  | ShlOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≪ n2) else None
-  (* NOTE: when lhs is negative, Coq's `≫` is not semantically equivalent to C's `>>`.
-     Counterexample: Coq `-1000 ≫ 10 = 0`; C `-1000 >> 10 == -1`.
-     This is because `≫` is implemented by `Z.div`. *)
-  (* TODO: this does not match the Rust semantics *)
-  | ShrOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≫ n2) else None
-  | _ => None
-  end in
-  option_map (λ n, bool_decide (n ∈ it)) res
+  option_map (λ n, bool_decide (n ∈ it)) (compute_arith_bin_op n1 n2 it op)
 .
 
 Inductive check_bin_op : bin_op → op_type → op_type → val → val → bool → Prop :=
@@ -497,9 +461,8 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
     eval_un_op (EraseProv) (UntypedOp ly) σ vs vt
 | NegOpI it σ vs vt n:
     val_to_Z vs it = Some n →
-    (* stuck on overflow *)
-    (* TODO: we could also make this wrapping, Rust in Debug mode anyways inserts a check *)
-    val_of_Z (-n) it None = Some vt →
+    (* wrap *)
+    val_of_Z (wrap_to_it (-n) it) it None = Some vt →
     eval_un_op NegOp (IntOp it) σ vs vt
 | NotIntOpI it σ vs vt n:
     val_to_Z vs it = Some n →
@@ -616,10 +579,10 @@ comparing pointers? (see lambda rust) *)
     expr_step (Call (Val vf) (Val <$> vs)) σ [] AllocFailed σ []
 | ConcatS vs σ:
     expr_step (Concat (Val <$> vs)) σ [] (Val (mjoin vs)) σ []
+(* for ptr::with_addr *)
 | CopyAllocIdS σ v1 v2 a it l:
     val_to_Z v1 it = Some a →
     val_to_loc v2 = Some l →
-    valid_ptr (l.1, a) σ.(st_heap) →
     expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) σ [] (Val (val_of_loc (l.1, a))) σ []
 | IfES v ot e1 e2 b σ:
     cast_to_bool ot v σ.(st_heap) = Some b →

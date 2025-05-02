@@ -138,7 +138,7 @@ Proof.
 Qed.
 Lemma wrap_to_int_id' z it :
   int_elem_of_it' z it → wrap_to_it z it = z.
-Proof. rewrite int_elem_of_it_iff. apply wrap_to_int_id. Qed.
+Proof. rewrite int_elem_of_it_iff. apply wrap_to_it_id. Qed.
 
 
 Ltac unsafe_unfold_common_caesium_defs :=
