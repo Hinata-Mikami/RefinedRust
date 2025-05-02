@@ -27,7 +27,6 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{ast, span};
 
 use crate::attrs;
-use crate::data::ProcedureDefId;
 use crate::environment::borrowck::facts;
 use crate::environment::collect_closure_defs_visitor::CollectClosureDefsVisitor;
 use crate::environment::collect_prusti_spec_visitor::CollectPrustiSpecVisitor;
@@ -146,7 +145,7 @@ impl<'tcx> Environment<'tcx> {
     }
 
     /// Find whether the procedure has a particular `[tool]::<name>` attribute.
-    pub fn has_tool_attribute(&self, def_id: ProcedureDefId, name: &str) -> bool {
+    pub fn has_tool_attribute(&self, def_id: DefId, name: &str) -> bool {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
         attrs::has_tool_attr(tcx.get_attrs_unchecked(def_id), name)
@@ -154,14 +153,14 @@ impl<'tcx> Environment<'tcx> {
 
     /// Find whether the procedure has a particular `[tool]::<name>` attribute; if so, return its
     /// name.
-    pub fn get_tool_attribute<'a>(&'a self, def_id: ProcedureDefId, name: &str) -> Option<&'a ast::AttrArgs> {
+    pub fn get_tool_attribute<'a>(&'a self, def_id: DefId, name: &str) -> Option<&'a ast::AttrArgs> {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
         attrs::get_tool_attr(tcx.get_attrs_unchecked(def_id), name)
     }
 
     /// Check whether the procedure has any `[tool]` attribute.
-    pub fn has_any_tool_attribute(&self, def_id: ProcedureDefId) -> bool {
+    pub fn has_any_tool_attribute(&self, def_id: DefId) -> bool {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
         attrs::has_any_tool_attr(tcx.get_attrs_unchecked(def_id))
@@ -271,7 +270,7 @@ impl<'tcx> Environment<'tcx> {
     }
 
     /// Get a Procedure.
-    pub fn get_procedure(&self, proc_def_id: ProcedureDefId) -> Procedure<'tcx> {
+    pub fn get_procedure(&self, proc_def_id: DefId) -> Procedure<'tcx> {
         Procedure::new(self, proc_def_id)
     }
 
@@ -353,7 +352,7 @@ impl<'tcx> Environment<'tcx> {
 
 pub fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
-    procedure: ProcedureDefId,
+    procedure: DefId,
     info: &'a polonius_info::PoloniusInfo<'a, 'tcx>,
 ) {
     dump_borrowck_info::dump_borrowck_info(env, procedure, info);

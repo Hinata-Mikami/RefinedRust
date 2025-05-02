@@ -8,9 +8,9 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use log::{debug, trace};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
-use crate::data::ProcedureDefId;
 use crate::environment::mir_utils::real_edges::RealEdges;
 use crate::environment::{loops, Environment};
 
@@ -20,7 +20,7 @@ pub type BasicBlockIndex = mir::BasicBlock;
 /// A facade that provides information about the Rust procedure.
 pub struct Procedure<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
-    proc_def_id: ProcedureDefId,
+    proc_def_id: DefId,
     mir: Rc<mir::Body<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
@@ -31,7 +31,7 @@ pub struct Procedure<'tcx> {
 impl<'tcx> Procedure<'tcx> {
     /// Builds an implementation of the Procedure interface, given a typing context and the
     /// identifier of a procedure
-    pub fn new(env: &Environment<'tcx>, proc_def_id: ProcedureDefId) -> Self {
+    pub fn new(env: &Environment<'tcx>, proc_def_id: DefId) -> Self {
         trace!("Encoding procedure {:?}", proc_def_id);
         let tcx = env.tcx();
         let mir = env.local_mir(proc_def_id.expect_local());
@@ -75,7 +75,7 @@ impl<'tcx> Procedure<'tcx> {
 
     /// Get definition ID of the procedure.
     #[must_use]
-    pub const fn get_id(&self) -> ProcedureDefId {
+    pub const fn get_id(&self) -> DefId {
         self.proc_def_id
     }
 

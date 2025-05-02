@@ -9,14 +9,11 @@
 
 use rr_rustc_interface::hir::def_id::DefId;
 
-/// A unique identifier of the Rust procedure.
-pub type ProcedureDefId = DefId;
-
 /// A list of items to verify that is passed to a verifier.
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct VerificationTask {
     /// A list of procedures to verify.
-    pub procedures: Vec<ProcedureDefId>,
+    pub procedures: Vec<DefId>,
 }
 
 /// Verification result returned by a verifier.

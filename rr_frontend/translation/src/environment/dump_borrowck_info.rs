@@ -12,10 +12,10 @@ use std::{cell, fs, io};
 use log::{debug, trace};
 use rr_rustc_interface::hash::FxHashMap;
 use rr_rustc_interface::hir;
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::index::Idx;
 use rr_rustc_interface::middle::{mir, ty};
 
-use crate::data::ProcedureDefId;
 use crate::environment::borrowck::facts;
 use crate::environment::mir_analyses::initialization::{
     compute_definitely_initialized, DefinitelyInitializedAnalysisResult,
@@ -27,7 +27,7 @@ use crate::environment::{loops, Environment};
 
 pub fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
-    procedure: ProcedureDefId,
+    procedure: DefId,
     info: &'a PoloniusInfo<'a, 'tcx>,
 ) {
     trace!("[dump_borrowck_info] enter");
@@ -128,7 +128,7 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         Ok(())
     }
 
-    fn print_info(&self, def_id: ProcedureDefId, info: &'a PoloniusInfo<'a, 'tcx>) {
+    fn print_info(&self, def_id: DefId, info: &'a PoloniusInfo<'a, 'tcx>) {
         trace!("[print_info] enter {:?}", def_id);
 
         let procedure = Procedure::new(self.env, def_id);
