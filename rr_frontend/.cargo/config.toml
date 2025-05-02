@@ -17,6 +17,9 @@ rustflags = [
     "-Dclippy::style",
     "-Dclippy::suspicious",
 
+    # WIP
+    "-Aclippy::partial_pub_fields",
+
     # === REASONABLE LINTS ===
 
     # Rust warnings

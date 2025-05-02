@@ -35,17 +35,17 @@ impl<'def> TypeWithRef<'def> {
     }
 
     #[must_use]
-    pub fn make_unit() -> Self {
+    fn make_unit() -> Self {
         TypeWithRef(Type::Unit, "()".to_owned())
     }
 
     #[must_use]
-    pub const fn ty(&self) -> &Type<'def> {
+    const fn ty(&self) -> &Type<'def> {
         &self.0
     }
 
     #[must_use]
-    pub fn rfn(&self) -> &str {
+    fn rfn(&self) -> &str {
         self.1.as_str()
     }
 }
@@ -114,7 +114,7 @@ impl Display for IntType {
 impl IntType {
     /// Get the size in bytes of the Caesium representation.
     #[must_use]
-    pub const fn size(self) -> u32 {
+    const fn size(self) -> u32 {
         match self {
             Self::I8 | Self::U8 => 1,
             Self::I16 | Self::U16 => 2,
@@ -126,7 +126,7 @@ impl IntType {
 
     /// Get the alignment in bytes of the Caesium representation.
     #[must_use]
-    pub const fn alignment(self) -> u32 {
+    const fn alignment(self) -> u32 {
         match self {
             Self::I8 | Self::U8 => 1,
             Self::I16 | Self::U16 => 2,
@@ -169,7 +169,7 @@ impl Display for OpType {
 }
 
 // NOTE: see ty::layout::layout_of_uncached for the rustc description of this.
-pub static BOOL_REPR: IntType = IntType::U8;
+pub(crate) static BOOL_REPR: IntType = IntType::U8;
 
 /// A syntactic `RefinedRust` type.
 /// Every semantic `RefinedRust` type has a corresponding syntactic type that determines its
@@ -296,7 +296,7 @@ impl TypeAnnotMeta {
     }
 
     #[must_use]
-    pub const fn new(tyvars: HashSet<LiteralTyParam>, lfts: HashSet<Lft>) -> Self {
+    const fn new(tyvars: HashSet<LiteralTyParam>, lfts: HashSet<Lft>) -> Self {
         Self {
             escaped_lfts: lfts,
             escaped_tyvars: tyvars,
@@ -343,11 +343,13 @@ pub type LiteralTypeRef<'def> = &'def LiteralType;
 #[derive(Clone, Debug)]
 pub struct LiteralTypeUse<'def> {
     /// definition
-    pub def: LiteralTypeRef<'def>,
+    pub(crate) def: LiteralTypeRef<'def>,
+
     /// parameters
-    pub scope_inst: Option<GenericScopeInst<'def>>,
+    pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
+
     /// annotation information
-    pub annot: TypeAnnotMeta,
+    annot: TypeAnnotMeta,
 }
 
 impl<'def> LiteralTypeUse<'def> {
@@ -370,13 +372,13 @@ impl<'def> LiteralTypeUse<'def> {
     }
 
     /// Add the lifetimes appearing in this type to `s`.
-    pub fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
+    fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
         // TODO: use meta
         s.insert(format!("ty_lfts ({})", self.generate_type_term()));
     }
 
     /// Add the lifetime constraints in this type to `s`.
-    pub fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
+    fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
         // TODO: use meta
         s.insert(format!("ty_wf_elctx ({})", self.generate_type_term()));
     }
@@ -384,7 +386,7 @@ impl<'def> LiteralTypeUse<'def> {
     /// Get the refinement type of a struct usage.
     /// This requires that all type parameters of the struct have been instantiated.
     #[must_use]
-    pub fn get_rfn_type(&self) -> String {
+    fn get_rfn_type(&self) -> String {
         let ty_inst: Vec<_> = self
             .scope_inst
             .as_ref()
@@ -430,7 +432,7 @@ impl<'def> LiteralTypeUse<'def> {
 
     /// Generate a string representation of this struct use.
     #[must_use]
-    pub fn generate_type_term(&self) -> String {
+    fn generate_type_term(&self) -> String {
         if let Some(scope_inst) = self.scope_inst.as_ref() {
             let rt_inst = scope_inst
                 .get_all_ty_params_with_assocs()
@@ -462,16 +464,16 @@ pub struct LiteralTyParam {
     pub rust_name: String,
 
     /// Coq name of the type
-    pub type_term: String,
+    pub(crate) type_term: String,
 
     /// the refinement type
-    pub refinement_type: String,
+    refinement_type: String,
 
     /// the syntactic type
     pub syn_type: String,
 
     /// the declaration site of this type parameter
-    pub origin: TyParamOrigin,
+    origin: TyParamOrigin,
 }
 
 impl LiteralTyParam {
@@ -498,7 +500,7 @@ impl LiteralTyParam {
     }
 
     #[must_use]
-    pub fn make_literal_type(&self) -> LiteralType {
+    fn make_literal_type(&self) -> LiteralType {
         LiteralType {
             rust_name: Some(self.rust_name.clone()),
             type_term: self.type_term.clone(),
@@ -508,17 +510,17 @@ impl LiteralTyParam {
     }
 
     #[must_use]
-    pub fn make_refinement_param(&self) -> coq::binder::Binder {
+    fn make_refinement_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::Type)
     }
 
     #[must_use]
-    pub fn make_syntype_param(&self) -> coq::binder::Binder {
+    fn make_syntype_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(Some(self.syn_type.clone()), model::Type::SynType)
     }
 
     #[must_use]
-    pub fn make_semantic_param(&self) -> coq::binder::Binder {
+    fn make_semantic_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(
             Some(self.type_term.clone()),
             model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
@@ -658,7 +660,7 @@ impl<'def> Type<'def> {
         }
     }
 
-    pub fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
+    fn get_ty_lfts(&self, s: &mut HashSet<Lft>) {
         match self {
             Self::Bool
             | Self::Char
@@ -686,7 +688,7 @@ impl<'def> Type<'def> {
         }
     }
 
-    pub fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
+    fn get_ty_wf_elctx(&self, s: &mut HashSet<String>) {
         match self {
             Self::Bool
             | Self::Char
@@ -748,7 +750,7 @@ impl TyOwnSpec {
     }
 
     #[must_use]
-    pub fn fmt_shared(&self, tid: &str, lft: &str) -> String {
+    fn fmt_shared(&self, tid: &str, lft: &str) -> String {
         if self.with_later {
             format!("guarded ({} ◁ₗ[{}, Shared {}] #({}) @ (◁ {}))", self.loc, tid, lft, self.rfn, self.ty)
         } else {
@@ -983,7 +985,7 @@ impl InvariantSpec {
         format!("{}_inv_spec", self.type_name)
     }
 
-    pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
+    fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
@@ -1216,7 +1218,7 @@ impl InvariantSpec {
     }
 
     #[must_use]
-    pub fn rt_def_name(&self) -> String {
+    fn rt_def_name(&self) -> String {
         format!("{}_rt", self.type_name)
     }
 }
@@ -1260,7 +1262,7 @@ impl Display for EnumRepr {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 /// Union representation options supported by Radium
-pub enum UnionRepr {
+enum UnionRepr {
     ReprRust,
     ReprC,
 }
@@ -1276,7 +1278,7 @@ impl Display for UnionRepr {
 
 /// Lookup a Rust-level type parameter identifier `name` in the given type parameter environment.
 #[must_use]
-pub fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&'a LiteralTyParam> {
+fn lookup_ty_param<'a>(name: &'_ str, env: &'a [LiteralTyParam]) -> Option<&'a LiteralTyParam> {
     env.iter().find(|&names| names.rust_name == name)
 }
 
@@ -1302,11 +1304,11 @@ pub struct AbstractVariant<'def> {
 impl<'def> AbstractVariant<'def> {
     /// Get the name of this variant
     #[must_use]
-    pub fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.name
     }
 
-    pub(crate) fn rfn_type(&self) -> coq::term::Type {
+    fn rfn_type(&self) -> coq::term::Type {
         model::Type::PList(
             "place_rfn".to_owned(),
             self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
@@ -1316,7 +1318,7 @@ impl<'def> AbstractVariant<'def> {
 
     /// The core of generating the sls definition, without the section + context intro.
     #[must_use]
-    pub fn generate_coq_sls_def_core(&self, typarams: &coq::binder::BinderList) -> String {
+    fn generate_coq_sls_def_core(&self, typarams: &coq::binder::BinderList) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
@@ -1350,7 +1352,7 @@ impl<'def> AbstractVariant<'def> {
 
     /// Generate a Coq definition for the struct layout spec.
     #[must_use]
-    pub fn generate_coq_sls_def(&self, scope: &GenericScope<'def>) -> String {
+    fn generate_coq_sls_def(&self, scope: &GenericScope<'def>) -> String {
         let mut out = String::with_capacity(200);
 
         let indent = "  ";
@@ -1370,7 +1372,7 @@ impl<'def> AbstractVariant<'def> {
 
     #[must_use]
     #[deprecated(note = "Use `get_coq_type_term` instead")]
-    pub fn generate_coq_type_term(&self, sls_app: Vec<String>) -> String {
+    fn generate_coq_type_term(&self, sls_app: Vec<String>) -> String {
         let mut out = String::with_capacity(200);
 
         out.push_str(&format!("struct_t {} +[", coq::term::App::new(&self.sls_def_name, sls_app)));
@@ -1381,7 +1383,7 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
-    pub fn get_coq_type_term(&self, sls_app: Vec<coq::term::Term>) -> coq::term::Type {
+    fn get_coq_type_term(&self, sls_app: Vec<coq::term::Term>) -> coq::term::Type {
         let sls = coq::term::App::new(coq::term::Term::Literal(self.sls_def_name.clone()), sls_app);
 
         let tys = self.fields.iter().map(|(_, ty)| coq::term::Type::Literal(ty.to_string())).collect();
@@ -1390,7 +1392,7 @@ impl<'def> AbstractVariant<'def> {
     }
 
     #[must_use]
-    pub fn generate_coq_type_def_core(
+    fn generate_coq_type_def_core(
         &self,
         ty_params: &GenericScope<'def>,
         context_names: &[String],
@@ -1470,7 +1472,7 @@ impl<'def> AbstractVariant<'def> {
     /// TODO: maybe we should also generate a separate alias def for the refinement type to make
     /// things more readable?
     #[must_use]
-    pub fn generate_coq_type_def(
+    fn generate_coq_type_def(
         &self,
         scope: &GenericScope<'def>,
         extra_context: &[coq::binder::Binder],
@@ -1599,28 +1601,28 @@ impl<'def> AbstractStruct<'def> {
 
     /// Get the name of this struct
     #[must_use]
-    pub fn name(&self) -> &str {
+    fn name(&self) -> &str {
         self.variant_def.name()
     }
 
     #[must_use]
-    pub fn sls_def_name(&self) -> &str {
+    fn sls_def_name(&self) -> &str {
         &self.variant_def.sls_def_name
     }
 
     #[must_use]
-    pub fn st_def_name(&self) -> &str {
+    fn st_def_name(&self) -> &str {
         &self.variant_def.st_def_name
     }
 
     #[must_use]
-    pub fn plain_ty_name(&self) -> &str {
+    pub(crate) fn plain_ty_name(&self) -> &str {
         &self.variant_def.plain_ty_name
     }
 
     /// Get the name of the struct, or an ADT defined on it, if available.
     #[must_use]
-    pub fn public_type_name(&self) -> &str {
+    pub(crate) fn public_type_name(&self) -> &str {
         match &self.invariant {
             Some(inv) => &inv.type_name,
             None => self.plain_ty_name(),
@@ -1633,7 +1635,7 @@ impl<'def> AbstractStruct<'def> {
     }
 
     #[must_use]
-    pub fn public_rt_def_name(&self) -> String {
+    fn public_rt_def_name(&self) -> String {
         match &self.invariant {
             Some(inv) => inv.rt_def_name(),
             None => self.plain_rt_def_name().to_owned(),
@@ -1842,7 +1844,7 @@ impl<'def> VariantBuilder<'def> {
 
     /// Finish building the struct type and generate an abstract struct definition.
     #[must_use]
-    pub fn finish_as_struct(self, scope: GenericScope<'def>) -> AbstractStruct<'def> {
+    fn finish_as_struct(self, scope: GenericScope<'def>) -> AbstractStruct<'def> {
         let variant = self.finish();
         AbstractStruct {
             variant_def: variant,
@@ -1892,11 +1894,13 @@ pub fn make_tuple_struct_repr<'def>(num_fields: usize) -> AbstractStruct<'def> {
 #[derive(Clone, Debug)]
 pub struct AbstractStructUse<'def> {
     /// reference to the struct's definition, or None if unit
-    pub def: Option<AbstractStructRef<'def>>,
+    pub(crate) def: Option<AbstractStructRef<'def>>,
+
     /// Instantiations for type parameters
-    pub scope_inst: GenericScopeInst<'def>,
+    pub(crate) scope_inst: GenericScopeInst<'def>,
+
     /// does this refer to the raw type without invariants?
-    pub raw: TypeIsRaw,
+    raw: TypeIsRaw,
 }
 
 impl<'def> AbstractStructUse<'def> {
@@ -1921,35 +1925,35 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Returns true iff this is a use of unit.
     #[must_use]
-    pub const fn is_unit(&self) -> bool {
+    const fn is_unit(&self) -> bool {
         self.def.is_none()
     }
 
     #[must_use]
-    pub fn is_raw(&self) -> bool {
+    pub(crate) fn is_raw(&self) -> bool {
         self.raw == TypeIsRaw::Yes
     }
 
-    pub fn make_raw(&mut self) {
+    fn make_raw(&mut self) {
         self.raw = TypeIsRaw::Yes;
     }
 
     /// Add the lifetimes appearing in this type to `s`.
     #[allow(clippy::unused_self)]
-    pub fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
+    fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
         // TODO
     }
 
     /// Add the lifetime constraints in this type to `s`.
     #[allow(clippy::unused_self)]
-    pub fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
+    fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
         // TODO
     }
 
     /// Get the refinement type of a struct usage.
     /// This requires that all type parameters of the struct have been instantiated.
     #[must_use]
-    pub fn get_rfn_type(&self) -> String {
+    fn get_rfn_type(&self) -> String {
         let Some(def) = self.def.as_ref() else {
             return coq::term::Type::Unit.to_string();
         };
@@ -1974,7 +1978,7 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Generate a term for the `struct_layout` (of type `struct_layout`)
     #[must_use]
-    pub fn generate_struct_layout_term(&self) -> String {
+    fn generate_struct_layout_term(&self) -> String {
         let Some(def) = self.def.as_ref() else {
             return Layout::Unit.to_string();
         };
@@ -1991,7 +1995,7 @@ impl<'def> AbstractStructUse<'def> {
     }
 
     #[must_use]
-    pub fn generate_struct_layout_spec_term(&self) -> String {
+    fn generate_struct_layout_spec_term(&self) -> String {
         let Some(def) = self.def.as_ref() else {
             panic!("unit has no sls");
         };
@@ -2008,7 +2012,7 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Get the `syn_type` term for this struct use.
     #[must_use]
-    pub fn generate_syn_type_term(&self) -> SynType {
+    fn generate_syn_type_term(&self) -> SynType {
         let Some(def) = self.def.as_ref() else {
             return SynType::Unit;
         };
@@ -2025,7 +2029,7 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Generate a string representation of this struct use.
     #[must_use]
-    pub fn generate_type_term(&self) -> String {
+    fn generate_type_term(&self) -> String {
         let Some(def) = self.def.as_ref() else {
             return Type::Unit.to_string();
         };
@@ -2092,7 +2096,7 @@ impl Add<u32> for Int128 {
 pub struct AbstractEnum<'def> {
     /// variants of this enum: name, variant, a mask describing which of the type parameters it uses, and the
     /// discriminant
-    pub(crate) variants: Vec<(String, AbstractStructRef<'def>, Int128)>,
+    variants: Vec<(String, AbstractStructRef<'def>, Int128)>,
 
     /// specification
     spec: EnumSpec,
@@ -2125,27 +2129,27 @@ pub type AbstractEnumRef<'def> = &'def RefCell<Option<AbstractEnum<'def>>>;
 impl<'def> AbstractEnum<'def> {
     /// Get the name of this enum.
     #[must_use]
-    pub fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.name
     }
 
     #[must_use]
-    pub fn public_type_name(&self) -> &str {
+    pub(crate) fn public_type_name(&self) -> &str {
         &self.plain_ty_name
     }
 
     #[must_use]
-    pub fn public_rt_def_name(&self) -> &str {
+    fn public_rt_def_name(&self) -> &str {
         &self.plain_rt_name
     }
 
     #[must_use]
-    pub fn els_def_name(&self) -> &str {
+    fn els_def_name(&self) -> &str {
         &self.els_def_name
     }
 
     #[must_use]
-    pub fn st_def_name(&self) -> &str {
+    fn st_def_name(&self) -> &str {
         &self.st_def_name
     }
 
@@ -2637,9 +2641,10 @@ impl<'def> EnumBuilder<'def> {
 #[derive(Clone, Debug)]
 pub struct AbstractEnumUse<'def> {
     /// reference to the enum's definition
-    pub def: AbstractEnumRef<'def>,
+    pub(crate) def: AbstractEnumRef<'def>,
+
     /// Instantiations for type parameters
-    pub scope_inst: GenericScopeInst<'def>,
+    pub(crate) scope_inst: GenericScopeInst<'def>,
 }
 
 impl<'def> AbstractEnumUse<'def> {
@@ -2650,20 +2655,20 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Add the lifetimes appearing in this type to `s`.
     #[allow(clippy::unused_self)]
-    pub fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
+    fn get_ty_lfts(&self, _s: &mut HashSet<Lft>) {
         // TODO
     }
 
     /// Add the lifetime constraints in this type to `s`.
     #[allow(clippy::unused_self)]
-    pub fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
+    fn get_ty_wf_elctx(&self, _s: &mut HashSet<String>) {
         // TODO
     }
 
     /// Get the refinement type of an enum usage.
     /// This requires that all type parameters of the enum have been instantiated.
     #[must_use]
-    pub fn get_rfn_type(&self) -> String {
+    fn get_rfn_type(&self) -> String {
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
 
@@ -2676,7 +2681,7 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Generate a term for the enum layout (of type `struct_layout`)
     #[must_use]
-    pub fn generate_enum_layout_term(&self) -> String {
+    fn generate_enum_layout_term(&self) -> String {
         let param_sts: Vec<SynType> =
             self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
@@ -2689,7 +2694,7 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Generate a term for the enum layout spec (of type `enum_layout_spec`).
     #[must_use]
-    pub fn generate_enum_layout_spec_term(&self) -> String {
+    fn generate_enum_layout_spec_term(&self) -> String {
         let param_sts: Vec<SynType> =
             self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
@@ -2701,7 +2706,7 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Get the `syn_type` term for this enum use.
     #[must_use]
-    pub fn generate_syn_type_term(&self) -> SynType {
+    fn generate_syn_type_term(&self) -> SynType {
         let param_sts: Vec<SynType> =
             self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
@@ -2714,7 +2719,7 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Generate a string representation of this enum use.
     #[must_use]
-    pub fn generate_type_term(&self) -> String {
+    fn generate_type_term(&self) -> String {
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
 
@@ -2772,7 +2777,7 @@ impl Display for Layout {
 
 impl Layout {
     #[must_use]
-    pub fn size(&self, env: &LayoutEnv) -> Option<u32> {
+    fn size(&self, env: &LayoutEnv) -> Option<u32> {
         match self {
             Self::Unit => Some(0),
             Self::Bool => Some(1),
@@ -2791,7 +2796,7 @@ impl Layout {
     }
 
     #[must_use]
-    pub fn alignment(&self, env: &LayoutEnv) -> Option<u32> {
+    fn alignment(&self, env: &LayoutEnv) -> Option<u32> {
         match self {
             Self::Bool | Self::Unit | Self::Pad(_) => Some(1),
             Self::Char | Self::Ptr => Some(4),
@@ -2925,7 +2930,7 @@ pub enum InnerFunctionSpec<'def> {
 }
 
 impl<'def> InnerFunctionSpec<'def> {
-    pub(crate) fn write_spec_term<F>(
+    fn write_spec_term<F>(
         &self,
         f: &mut F,
         scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
@@ -2940,7 +2945,7 @@ impl<'def> InnerFunctionSpec<'def> {
     }
 
     #[must_use]
-    pub fn get_params(&self) -> Option<&[coq::binder::Binder]> {
+    pub(crate) fn get_params(&self) -> Option<&[coq::binder::Binder]> {
         match self {
             Self::Lit(lit) => Some(&lit.params),
             Self::TraitDefault(_) => None,
@@ -2969,17 +2974,17 @@ pub struct FunctionSpec<'def, T> {
     pub trait_req_incl_name: Option<String>,
 
     /// Generics
-    pub generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    pub(crate) generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// Coq-level parameters the typing statement needs
-    pub early_coq_params: coq::binder::BinderList,
-    pub late_coq_params: coq::binder::BinderList,
+    early_coq_params: coq::binder::BinderList,
+    late_coq_params: coq::binder::BinderList,
 
-    pub spec: T,
+    pub(crate) spec: T,
 }
 
 impl<'def, T> FunctionSpec<'def, T> {
-    pub fn replace_spec<U>(self, new_spec: U) -> FunctionSpec<'def, U> {
+    pub(crate) fn replace_spec<U>(self, new_spec: U) -> FunctionSpec<'def, U> {
         FunctionSpec {
             spec: new_spec,
             trait_req_incl_name: self.trait_req_incl_name,
@@ -2992,7 +2997,7 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub fn empty(
+    pub(crate) fn empty(
         spec_name: String,
         trait_req_incl_name: Option<String>,
         function_name: String,
@@ -3010,7 +3015,7 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub const fn new(
+    const fn new(
         spec_name: String,
         trait_req_incl_name: Option<String>,
         function_name: String,
@@ -3031,17 +3036,17 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub fn get_spec_name(&self) -> &str {
+    pub(crate) fn get_spec_name(&self) -> &str {
         &self.spec_name
     }
 
     /// Add a coq parameter that comes before type parameters.
-    pub fn add_early_coq_param(&mut self, param: coq::binder::Binder) {
+    pub(crate) fn add_early_coq_param(&mut self, param: coq::binder::Binder) {
         self.early_coq_params.0.push(param);
     }
 
     /// Add a coq parameter that comes after type parameters.
-    pub fn add_late_coq_param(&mut self, param: coq::binder::Binder) {
+    pub(crate) fn add_late_coq_param(&mut self, param: coq::binder::Binder) {
         self.late_coq_params.0.push(param);
     }
 }
@@ -3049,7 +3054,7 @@ impl<'def, T> FunctionSpec<'def, T> {
 impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
     /// Get all Coq binders for the Coq spec definition.
     #[must_use]
-    pub fn get_all_spec_coq_params(&self) -> coq::binder::BinderList {
+    pub(crate) fn get_all_spec_coq_params(&self) -> coq::binder::BinderList {
         // Important: early parameters should always be first, as they include trait specs.
         // Important: the type parameters should be introduced before late parameters to ensure they are in
         // scope.
@@ -3074,7 +3079,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
     /// Get all Coq binders for the Coq trait incl definition.
     #[must_use]
-    pub fn get_all_trait_req_coq_params(&self) -> coq::binder::BinderList {
+    pub(crate) fn get_all_trait_req_coq_params(&self) -> coq::binder::BinderList {
         let typarams = self.generics.get_all_ty_params_with_assocs();
         let mut params = typarams.get_coq_ty_params();
 
@@ -3092,7 +3097,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
     /// Get all Coq binders for the Coq lemma definition.
     #[must_use]
-    pub fn get_all_lemma_coq_params(&self) -> coq::binder::BinderList {
+    pub(crate) fn get_all_lemma_coq_params(&self) -> coq::binder::BinderList {
         // Important: early parameters should always be first, as they include trait specs.
         // Important: the type parameters should be introduced before late parameters to ensure they are in
         // scope.
@@ -3192,23 +3197,23 @@ impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
 /// A function specification below generics.
 #[derive(Clone, Debug)]
 pub struct LiteralFunctionSpec<'def> {
-    pub params: Vec<coq::binder::Binder>,
+    params: Vec<coq::binder::Binder>,
 
     /// external lifetime context
-    pub elctx: Vec<ExtLftConstr>,
+    elctx: Vec<ExtLftConstr>,
     /// precondition as a separating conjunction
-    pub pre: IProp,
+    pre: IProp,
     /// argument types including refinements
-    pub args: Vec<TypeWithRef<'def>>,
+    args: Vec<TypeWithRef<'def>>,
     /// existential quantifiers for the postcondition
-    pub existentials: Vec<coq::binder::Binder>,
+    existentials: Vec<coq::binder::Binder>,
     /// return type
-    pub ret: TypeWithRef<'def>,
+    ret: TypeWithRef<'def>,
     /// postcondition as a separating conjunction
-    pub post: IProp,
+    post: IProp,
 
     // TODO remove
-    pub has_spec: bool,
+    has_spec: bool,
 }
 
 impl<'def> LiteralFunctionSpec<'def> {
@@ -3277,7 +3282,7 @@ impl<'def> LiteralFunctionSpec<'def> {
 
     /// Write the core spec term. Assumes that the coq parameters for the type parameters (as given by
     /// `get_coq_ty_params`) are in scope.
-    pub(crate) fn write_spec_term<F>(
+    fn write_spec_term<F>(
         &self,
         f: &mut F,
         scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
@@ -3433,7 +3438,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
 
     /// Prepend a precondition. This will be the new precondition to be inserted first.
     /// Use only when the position of the precondition absolutely matters.
-    pub fn prepend_precondition(&mut self, pre: IProp) {
+    fn prepend_precondition(&mut self, pre: IProp) {
         assert!(matches!(self.pre, IProp::Sep(_)));
 
         let IProp::Sep(v) = &mut self.pre else {
@@ -3495,7 +3500,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     }
 
     /// Generate an actual function spec.
-    pub fn into_function_spec(self) -> LiteralFunctionSpec<'def> {
+    pub(crate) fn into_function_spec(self) -> LiteralFunctionSpec<'def> {
         LiteralFunctionSpec {
             params: self.params,
             elctx: self.elctx,
@@ -3520,14 +3525,14 @@ pub struct TraitInstanceSpec<'def> {
 #[derive(Constructor, Clone, Debug)]
 pub struct TraitSpecAttrsDecl {
     /// a map of attributes and their types
-    pub attrs: BTreeMap<String, coq::term::Type>,
+    attrs: BTreeMap<String, coq::term::Type>,
 }
 
 /// Implementation of the attributes of a trait
 #[derive(Constructor, Clone, Debug)]
 pub struct TraitSpecAttrsInst {
     /// a map of attributes and their implementation
-    pub attrs: BTreeMap<String, coq::term::Term>,
+    attrs: BTreeMap<String, coq::term::Term>,
 }
 
 /// A using occurrence of a trait spec.
@@ -3566,42 +3571,42 @@ pub type LiteralTraitSpecRef<'def> = &'def LiteralTraitSpec;
 impl LiteralTraitSpec {
     /// Make the name for the method spec field of the spec record.
     #[must_use]
-    pub fn make_spec_method_name(&self, method: &str) -> String {
+    pub(crate) fn make_spec_method_name(&self, method: &str) -> String {
         format!("{}_{method}_spec", self.name)
     }
 
     #[must_use]
-    pub fn make_spec_method_params_name(&self, method: &str) -> String {
+    fn make_spec_method_params_name(&self, method: &str) -> String {
         format!("{}_{method}_spec_params", self.name)
     }
 
     #[must_use]
-    pub fn make_spec_attr_name(&self, attr: &str) -> String {
+    fn make_spec_attr_name(&self, attr: &str) -> String {
         format!("{}_{attr}", self.name)
     }
 
     #[must_use]
-    pub fn spec_record_constructor_name(&self) -> String {
+    fn spec_record_constructor_name(&self) -> String {
         format!("mk_{}", self.spec_record)
     }
 
     #[must_use]
-    pub fn spec_record_params_constructor_name(&self) -> String {
+    fn spec_record_params_constructor_name(&self) -> String {
         format!("mk_{}", self.spec_params_record)
     }
 
     #[must_use]
-    pub fn spec_record_attrs_constructor_name(&self) -> String {
+    fn spec_record_attrs_constructor_name(&self) -> String {
         format!("mk_{}", self.spec_attrs_record)
     }
 
     #[must_use]
-    pub fn spec_incl_name(&self) -> String {
+    fn spec_incl_name(&self) -> String {
         self.spec_subsumption.clone()
     }
 
     #[must_use]
-    pub fn make_fnspec_attr_param_name(&self) -> String {
+    fn make_fnspec_attr_param_name(&self) -> String {
         format!("{}_attrs", self.name)
     }
 }
@@ -3618,20 +3623,21 @@ pub struct LiteralTraitSpecUse<'def> {
     pub trait_inst: GenericScopeInst<'def>,
 
     /// optionally, an override for the trait specification we assume
-    pub overridden_spec_def: Option<String>,
+    overridden_spec_def: Option<String>,
 
     /// the name including the generic args
-    pub mangled_base: String,
+    mangled_base: String,
 
     /// whether this is a usage in the scope of a trait decl of the same trait
     pub is_used_in_self_trait: bool,
 
     /// optional constraints for each associated type
-    pub assoc_ty_constraints: HashMap<String, Type<'def>>,
+    assoc_ty_constraints: HashMap<String, Type<'def>>,
 
     /// origin of this trait assumption
-    pub origin: TyParamOrigin,
+    origin: TyParamOrigin,
 }
+
 /// As trait uses may reference other trait uses, we put them below optional `RefCell`s,
 /// in order to allow cycles during construction.
 pub type LiteralTraitSpecUseCell<'def> = RefCell<Option<LiteralTraitSpecUse<'def>>>;
@@ -3664,19 +3670,19 @@ impl<'def> TraitReqInfo for LiteralTraitSpecUseRef<'def> {
 impl<'def> LiteralTraitSpecUse<'def> {
     /// Get the name for a spec parameter for this trait instance.
     #[must_use]
-    pub fn make_spec_param_name(&self) -> String {
+    fn make_spec_param_name(&self) -> String {
         format!("{}_spec", self.mangled_base)
     }
 
     /// Get the name for a spec params parameter for this trait instance.
     #[must_use]
-    pub fn make_spec_params_param_name(&self) -> String {
+    fn make_spec_params_param_name(&self) -> String {
         format!("{}_spec_params", self.mangled_base)
     }
 
     /// Get the name for a spec attrs parameter for this trait instance.
     #[must_use]
-    pub fn make_spec_attrs_param_name(&self) -> String {
+    fn make_spec_attrs_param_name(&self) -> String {
         format!("{}_spec_attrs", self.mangled_base)
     }
 
@@ -3692,7 +3698,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Get the instantiation of associated types.
     #[must_use]
-    pub fn get_assoc_ty_inst(&self) -> Vec<Type<'def>> {
+    fn get_assoc_ty_inst(&self) -> Vec<Type<'def>> {
         let mut assoc_tys = Vec::new();
         for x in &self.trait_ref.assoc_tys {
             let ty = self.make_assoc_type_use(x);
@@ -3704,7 +3710,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Get the instantiation of the trait spec's parameters, in the same order as
     /// `get_ordered_params`.
     #[must_use]
-    pub fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
+    fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
         let mut params = self.trait_inst.get_direct_ty_params().to_vec();
         params.append(&mut self.get_assoc_ty_inst());
         params.append(&mut self.trait_inst.get_direct_assoc_ty_params());
@@ -3714,7 +3720,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Get the binder for the attribute parameter.
     #[must_use]
-    pub fn get_attr_param(&self) -> coq::binder::Binder {
+    fn get_attr_param(&self) -> coq::binder::Binder {
         let ordered_params = self.get_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
@@ -3730,7 +3736,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Get the binder for the spec record parameter.
     #[must_use]
-    pub fn get_spec_param(&self) -> coq::binder::Binder {
+    fn get_spec_param(&self) -> coq::binder::Binder {
         let ordered_params = self.get_ordered_params_inst();
         let all_args: Vec<_> = ordered_params.iter().map(Type::get_rfn_type).collect();
 
@@ -3747,7 +3753,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Make the precondition on the spec parameter we need to require.
     #[must_use]
-    pub fn make_spec_param_precond(&self) -> coq::term::Term {
+    fn make_spec_param_precond(&self) -> coq::term::Term {
         // the spec we have to require for this verification
         let (spec_to_require, need_attrs) = if let Some(override_spec) = &self.overridden_spec_def {
             (override_spec.to_string(), false)
@@ -3799,7 +3805,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Make the names for the Coq-level parameters for an associated type of this instance.
     /// Warning: If you are making a using occurrence, use `make_assoc_type_use` instead.
     #[must_use]
-    pub fn make_assoc_type_lit(&self, assoc_type: &str) -> LiteralTyParam {
+    fn make_assoc_type_lit(&self, assoc_type: &str) -> LiteralTyParam {
         let rust_name = if self.is_used_in_self_trait {
             assoc_type.to_owned()
         } else {
@@ -3810,7 +3816,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 
     /// Check if this associated type is a fully generic parameter.
     #[must_use]
-    pub fn is_assoc_type_generic(&self, assoc_type: &str) -> bool {
+    fn is_assoc_type_generic(&self, assoc_type: &str) -> bool {
         self.assoc_ty_constraints.get(assoc_type).is_none()
     }
 
@@ -3835,9 +3841,10 @@ impl<'def> LiteralTraitSpecUse<'def> {
 pub struct TraitReqScope {
     pub quantified_lfts: Vec<Lft>,
 }
+
 impl TraitReqScope {
     #[must_use]
-    pub const fn empty() -> Self {
+    const fn empty() -> Self {
         Self {
             quantified_lfts: vec![],
         }
@@ -3870,9 +3877,10 @@ impl Display for TraitReqScope {
 pub struct TraitReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
+
 impl TraitReqScopeInst {
     #[must_use]
-    pub const fn empty() -> Self {
+    const fn empty() -> Self {
         Self { lft_insts: vec![] }
     }
 }
@@ -3884,13 +3892,13 @@ impl Display for TraitReqScopeInst {
 
 #[derive(Debug, Constructor, Clone)]
 pub struct SpecializedTraitImpl<'def> {
-    pub impl_ref: LiteralTraitImplRef<'def>,
-    pub impl_inst: GenericScopeInst<'def>,
+    impl_ref: LiteralTraitImplRef<'def>,
+    impl_inst: GenericScopeInst<'def>,
 }
 
 impl<'def> SpecializedTraitImpl<'def> {
     #[must_use]
-    pub fn get_spec_term(&self) -> String {
+    fn get_spec_term(&self) -> String {
         let mut out = String::new();
         out.push_str(&format!("{} ", self.impl_ref.spec_record));
 
@@ -3922,13 +3930,15 @@ impl<'def> SpecializedTraitImpl<'def> {
 
 #[derive(Debug, Constructor, Clone)]
 pub struct QuantifiedTraitImpl<'def> {
-    pub trait_ref: LiteralTraitSpecUseRef<'def>,
+    pub(crate) trait_ref: LiteralTraitSpecUseRef<'def>,
+
     /// instantiation of the HRTB requirements this trait use is generic over
-    pub scope_inst: TraitReqScopeInst,
+    scope_inst: TraitReqScopeInst,
 }
+
 impl<'def> QuantifiedTraitImpl<'def> {
     #[must_use]
-    pub fn get_spec_term(&self) -> String {
+    pub(crate) fn get_spec_term(&self) -> String {
         let mut out = String::new();
         let spec = self.trait_ref.borrow();
         let spec = spec.as_ref().unwrap();
@@ -3964,22 +3974,22 @@ pub struct TraitReqInst<'def, T> {
     /// i.e., it quantifies over some lifetimes (`for<'a> ...`), HRTBs.
     pub scope: TraitReqScope,
     // remaining quantified associated types
-    //pub quantified_assoc_tys: Vec<LiteralTyParam>,
+    //quantified_assoc_tys: Vec<LiteralTyParam>,
 }
 
 impl<'def, T> TraitReqInst<'def, T> {
     #[must_use]
-    pub const fn get_origin(&self) -> TyParamOrigin {
+    const fn get_origin(&self) -> TyParamOrigin {
         self.origin
     }
 
     #[must_use]
-    pub fn get_assoc_ty_inst(&self) -> &[T] {
+    fn get_assoc_ty_inst(&self) -> &[T] {
         &self.assoc_ty_inst
     }
 
     #[must_use]
-    pub fn get_spec_term(&self) -> String {
+    pub(crate) fn get_spec_term(&self) -> String {
         let mut out = String::new();
         out.push('(');
         out.push_str(&self.scope.to_string());
@@ -3997,7 +4007,7 @@ impl<'def, T> TraitReqInst<'def, T> {
     }
 
     #[must_use]
-    pub fn get_attr_term(&self) -> String {
+    pub(crate) fn get_attr_term(&self) -> String {
         match &self.spec {
             TraitReqInstSpec::Specialized(s) => {
                 // instantiate the attrs suitably
@@ -4029,27 +4039,27 @@ pub trait TraitReqInfo {
 }
 
 #[derive(Clone, Constructor, Debug)]
-pub struct TyParamList {
-    pub params: Vec<LiteralTyParam>,
+pub(crate) struct TyParamList {
+    pub(crate) params: Vec<LiteralTyParam>,
 }
 
 impl TyParamList {
     #[must_use]
-    pub const fn empty() -> Self {
+    const fn empty() -> Self {
         Self { params: vec![] }
     }
 
-    pub fn append(&mut self, mut other: Vec<LiteralTyParam>) {
+    fn append(&mut self, mut other: Vec<LiteralTyParam>) {
         self.params.append(&mut other);
     }
 
-    pub fn merge(&mut self, other: Self) {
+    fn merge(&mut self, other: Self) {
         self.append(other.params);
     }
 
     /// Get the Coq parameters that need to be in scope for the type parameters of this function.
     #[must_use]
-    pub fn get_coq_ty_st_params(&self) -> coq::binder::BinderList {
+    pub(crate) fn get_coq_ty_st_params(&self) -> coq::binder::BinderList {
         let mut ty_coq_params = Vec::new();
         for names in &self.params {
             ty_coq_params.push(names.make_syntype_param());
@@ -4058,7 +4068,7 @@ impl TyParamList {
     }
 
     #[must_use]
-    pub fn get_coq_ty_rt_params(&self) -> coq::binder::BinderList {
+    fn get_coq_ty_rt_params(&self) -> coq::binder::BinderList {
         let mut ty_coq_params = Vec::new();
         for names in &self.params {
             ty_coq_params.push(names.make_refinement_param());
@@ -4067,7 +4077,7 @@ impl TyParamList {
     }
 
     #[must_use]
-    pub fn get_coq_ty_params(&self) -> coq::binder::BinderList {
+    fn get_coq_ty_params(&self) -> coq::binder::BinderList {
         let mut rt_params = self.get_coq_ty_rt_params();
         let st_params = self.get_coq_ty_st_params();
         rt_params.append(st_params.0);
@@ -4075,7 +4085,7 @@ impl TyParamList {
     }
 
     #[must_use]
-    pub fn get_semantic_ty_params(&self) -> coq::binder::BinderList {
+    fn get_semantic_ty_params(&self) -> coq::binder::BinderList {
         let mut ty_coq_params = Vec::new();
         for names in &self.params {
             ty_coq_params.push(names.make_semantic_param());
@@ -4131,7 +4141,7 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    pub fn get_surrounding_ty_params(&self) -> &[Type<'def>] {
+    fn get_surrounding_ty_params(&self) -> &[Type<'def>] {
         &self.surrounding_tys
     }
 
@@ -4141,14 +4151,14 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    pub fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
+    fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
         let ty_params: Vec<_> =
             self.direct_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec()).concat();
         ty_params
     }
 
     #[must_use]
-    pub fn get_surrounding_assoc_ty_params(&self) -> Vec<Type<'def>> {
+    fn get_surrounding_assoc_ty_params(&self) -> Vec<Type<'def>> {
         let ty_params: Vec<_> = self
             .surrounding_trait_requirements
             .iter()
@@ -4158,14 +4168,14 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    pub fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
+    fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
         let mut direct = self.get_direct_ty_params().to_vec();
         direct.append(&mut self.get_direct_assoc_ty_params());
         direct
     }
 
     #[must_use]
-    pub fn get_surrounding_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
+    fn get_surrounding_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
         let mut surrounding = self.get_surrounding_ty_params().to_vec();
         surrounding.append(&mut self.get_surrounding_assoc_ty_params());
         surrounding
@@ -4182,7 +4192,7 @@ impl<'def> GenericScopeInst<'def> {
 
     /// Generate an instantiation of a term with the identity
     #[must_use]
-    pub fn instantiation(&self) -> String {
+    pub(crate) fn instantiation(&self) -> String {
         let mut out = String::new();
 
         for ty in self.get_all_ty_params_with_assocs() {
@@ -4197,17 +4207,17 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    pub fn get_lfts(&self) -> &[Lft] {
+    fn get_lfts(&self) -> &[Lft] {
         &self.lfts
     }
 
     #[must_use]
-    pub fn get_direct_trait_requirements(&self) -> &[TraitReqInst<'def, Type<'def>>] {
+    pub(crate) fn get_direct_trait_requirements(&self) -> &[TraitReqInst<'def, Type<'def>>] {
         &self.direct_trait_requirements
     }
 
     #[must_use]
-    pub fn get_surrounding_trait_requirements(&self) -> &[TraitReqInst<'def, Type<'def>>] {
+    pub(crate) fn get_surrounding_trait_requirements(&self) -> &[TraitReqInst<'def, Type<'def>>] {
         &self.surrounding_trait_requirements
     }
 }
@@ -4247,7 +4257,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get the validity term for a generic on a function.
     #[must_use]
-    pub fn generate_validity_term_for_generics(&self) -> IProp {
+    pub(crate) fn generate_validity_term_for_generics(&self) -> IProp {
         let mut props = Vec::new();
         for ty in self.get_all_ty_params_with_assocs().params {
             props.push(Self::generate_validity_term_for_typaram(&ty));
@@ -4268,19 +4278,19 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get type parameters quantified by a surrounding scope.
     #[must_use]
-    pub const fn get_surrounding_ty_params(&self) -> &TyParamList {
+    const fn get_surrounding_ty_params(&self) -> &TyParamList {
         &self.surrounding_tys
     }
 
     /// Get type parameters quantified on this object.
     #[must_use]
-    pub const fn get_direct_ty_params(&self) -> &TyParamList {
+    const fn get_direct_ty_params(&self) -> &TyParamList {
         &self.direct_tys
     }
 
     /// Get associated type parameters of trait requirements on this object.
     #[must_use]
-    pub fn get_direct_assoc_ty_params(&self) -> TyParamList {
+    fn get_direct_assoc_ty_params(&self) -> TyParamList {
         let ty_params: Vec<_> =
             self.direct_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params).concat();
         TyParamList::new(ty_params)
@@ -4288,7 +4298,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get associated type parameters of trait requirements quantified by a surrounding scope.
     #[must_use]
-    pub fn get_surrounding_assoc_ty_params(&self) -> TyParamList {
+    fn get_surrounding_assoc_ty_params(&self) -> TyParamList {
         let ty_params: Vec<_> =
             self.surrounding_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params).concat();
         TyParamList::new(ty_params)
@@ -4296,7 +4306,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get direct type parameters and associated type parameters.
     #[must_use]
-    pub fn get_direct_ty_params_with_assocs(&self) -> TyParamList {
+    fn get_direct_ty_params_with_assocs(&self) -> TyParamList {
         let mut direct = self.get_direct_ty_params().clone();
         direct.merge(self.get_direct_assoc_ty_params());
         direct
@@ -4304,7 +4314,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get type parameters and associated type parameters quantified by a surrounding scope.
     #[must_use]
-    pub fn get_surrounding_ty_params_with_assocs(&self) -> TyParamList {
+    fn get_surrounding_ty_params_with_assocs(&self) -> TyParamList {
         let mut surrounding = self.get_surrounding_ty_params().clone();
         surrounding.merge(self.get_surrounding_assoc_ty_params());
         surrounding
@@ -4312,7 +4322,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Get all type parameters and associated type parameters.
     #[must_use]
-    pub fn get_all_ty_params_with_assocs(&self) -> TyParamList {
+    pub(crate) fn get_all_ty_params_with_assocs(&self) -> TyParamList {
         let mut params = self.get_surrounding_ty_params_with_assocs();
         let direct = self.get_direct_ty_params_with_assocs();
         params.merge(direct);
@@ -4322,7 +4332,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     /// Generate an instantiation of a term with the identity
     #[must_use]
-    pub fn identity_instantiation(&self) -> String {
+    pub(crate) fn identity_instantiation(&self) -> String {
         let mut out = String::new();
 
         for ty in self.get_all_ty_params_with_assocs().params {
@@ -4337,7 +4347,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_spec_all_type_term(&self, spec: Box<coq::term::Type>) -> coq::term::Type {
+    fn get_spec_all_type_term(&self, spec: Box<coq::term::Type>) -> coq::term::Type {
         let params = self.get_all_ty_params_with_assocs();
 
         coq::term::Type::UserDefined(model::Type::SpecWith(
@@ -4354,7 +4364,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
 
     #[must_use]
     #[deprecated(note = "Use `get_spec_all_type_term` instead")]
-    pub fn get_all_type_term(&self) -> String {
+    fn get_all_type_term(&self) -> String {
         let mut out = String::new();
 
         out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
@@ -4366,7 +4376,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_direct_type_term(&self) -> String {
+    fn get_direct_type_term(&self) -> String {
         let mut out = String::new();
 
         out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
@@ -4378,7 +4388,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_surrounding_type_term(&self) -> String {
+    fn get_surrounding_type_term(&self) -> String {
         let mut out = String::new();
 
         out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
@@ -4390,19 +4400,19 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_lfts(&self) -> &[Lft] {
+    pub(crate) fn get_lfts(&self) -> &[Lft] {
         &self.lfts
     }
 
     /// Get trait requirements declared on the object.
     #[must_use]
-    pub fn get_direct_trait_requirements(&self) -> &[T] {
+    fn get_direct_trait_requirements(&self) -> &[T] {
         &self.direct_trait_requirements
     }
 
     /// Get trait requirements surrounding the object.
     #[must_use]
-    pub fn get_surrounding_trait_requirements(&self) -> &[T] {
+    fn get_surrounding_trait_requirements(&self) -> &[T] {
         &self.surrounding_trait_requirements
     }
 
@@ -4428,17 +4438,17 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_num_lifetimes(&self) -> usize {
+    pub(crate) fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()
     }
 
     #[must_use]
-    pub fn get_num_ty_params(&self) -> usize {
+    fn get_num_ty_params(&self) -> usize {
         self.direct_tys.params.len() + self.surrounding_tys.params.len()
     }
 
     /// Format this generic scope.
-    pub fn format<F>(
+    pub(crate) fn format<F>(
         &self,
         f: &mut F,
         only_core: bool,
@@ -4518,27 +4528,27 @@ impl<'def, T: TraitReqInfo> Display for GenericScope<'def, T> {
 
 impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
     #[must_use]
-    pub fn get_direct_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_direct_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
         self.get_trait_req_parameters(false, true, include_self, false)
     }
 
     #[must_use]
-    pub fn get_surrounding_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_surrounding_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, false, include_self, true)
     }
 
     #[must_use]
-    pub fn get_surrounding_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_surrounding_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, false, include_self, false)
     }
 
     #[must_use]
-    pub fn get_all_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_all_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, true)
     }
 
     #[must_use]
-    pub fn get_all_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
+    fn get_all_attr_trait_parameters(&self, include_self: bool) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
 
@@ -4748,19 +4758,19 @@ pub struct TraitSpecDecl<'def> {
     pub lit: LiteralTraitSpecRef<'def>,
 
     /// a list of extra things we assume in the Coq context
-    pub extra_coq_context: coq::binder::BinderList,
+    extra_coq_context: coq::binder::BinderList,
 
     /// The generics this trait uses
-    pub generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// associated types
-    pub assoc_types: Vec<LiteralTyParam>,
+    assoc_types: Vec<LiteralTyParam>,
 
     /// The default specification from the trait declaration
-    pub default_spec: TraitInstanceSpec<'def>,
+    default_spec: TraitInstanceSpec<'def>,
 
     /// the spec attributes
-    pub attrs: TraitSpecAttrsDecl,
+    attrs: TraitSpecAttrsDecl,
 }
 
 impl<'def> TraitSpecDecl<'def> {
@@ -5053,25 +5063,25 @@ pub struct TraitRefInst<'def> {
     pub impl_ref: LiteralTraitImplRef<'def>,
 
     /// generic scope for this impl, with trait requirements
-    pub generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// instantiation of the trait's scope
     /// Invariant: no surrounding instantiation
-    pub trait_inst: GenericScopeInst<'def>,
+    trait_inst: GenericScopeInst<'def>,
 
     /// the implementation of the associated types
     /// NOTE: in the same order as in the trait definition
-    pub assoc_types_inst: Vec<Type<'def>>,
+    assoc_types_inst: Vec<Type<'def>>,
 
     /// the spec attribute instantiation
-    pub attrs: TraitSpecAttrsInst,
+    attrs: TraitSpecAttrsInst,
 }
 
 impl<'def> TraitRefInst<'def> {
     /// Get the instantiation of the trait's parameters in the same order as the trait's declaration
     /// (`get_ordered_params`).
     #[must_use]
-    pub fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
+    fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
         let mut params: Vec<_> = self
             .trait_inst
             .get_direct_ty_params()
@@ -5225,7 +5235,7 @@ impl<'def> TraitImplSpec<'def> {
     }
 
     #[must_use]
-    pub fn generate_lemma_statement(&self) -> coq::Document {
+    fn generate_lemma_statement(&self) -> coq::Document {
         let mut doc = coq::Document::default();
 
         let spec_name = &self.trait_ref.impl_ref.spec_subsumption_statement;

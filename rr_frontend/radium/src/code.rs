@@ -413,7 +413,7 @@ pub enum Annotation {
 
 impl Annotation {
     #[allow(clippy::unused_self)]
-    pub(crate) const fn needs_laters(&self) -> u32 {
+    const fn needs_laters(&self) -> u32 {
         0
     }
 }
@@ -595,7 +595,7 @@ struct Variable((String, SynType));
 
 impl Variable {
     #[must_use]
-    pub const fn new(name: String, st: SynType) -> Self {
+    const fn new(name: String, st: SynType) -> Self {
         Self((name, st))
     }
 }
@@ -603,7 +603,7 @@ impl Variable {
 /**
  * Maintain necessary info to map MIR places to Caesium stack variables.
  */
-pub struct StackMap {
+struct StackMap {
     args: Vec<Variable>,
     locals: Vec<Variable>,
     used_names: HashSet<String>,
@@ -611,7 +611,7 @@ pub struct StackMap {
 
 impl StackMap {
     #[must_use]
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             args: Vec::new(),
             locals: Vec::new(),
@@ -619,7 +619,7 @@ impl StackMap {
         }
     }
 
-    pub fn insert_local(&mut self, name: String, st: SynType) -> bool {
+    fn insert_local(&mut self, name: String, st: SynType) -> bool {
         if self.used_names.contains(&name) {
             return false;
         }
@@ -628,7 +628,7 @@ impl StackMap {
         true
     }
 
-    pub fn insert_arg(&mut self, name: String, st: SynType) -> bool {
+    fn insert_arg(&mut self, name: String, st: SynType) -> bool {
         if self.used_names.contains(&name) {
             return false;
         }
@@ -638,7 +638,7 @@ impl StackMap {
     }
 
     #[must_use]
-    pub fn lookup_binding(&self, name: &str) -> Option<&SynType> {
+    fn lookup_binding(&self, name: &str) -> Option<&SynType> {
         if !self.used_names.contains(name) {
             return None;
         }
@@ -740,7 +740,7 @@ impl Display for FunctionCode {
 impl FunctionCode {
     /// Get the number of arguments of the function.
     #[must_use]
-    pub fn get_argument_count(&self) -> usize {
+    fn get_argument_count(&self) -> usize {
         self.stack_layout.args.len()
     }
 }
@@ -753,7 +753,7 @@ pub struct FunctionCodeBuilder {
 
 impl FunctionCodeBuilder {
     #[must_use]
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             stack_layout: StackMap::new(),
             basic_blocks: BTreeMap::new(),
@@ -822,7 +822,7 @@ pub struct Function<'def> {
     loop_invariants: InvariantMap,
 
     /// Extra linktime assumptions
-    pub extra_link_assum: Vec<String>,
+    extra_link_assum: Vec<String>,
 }
 
 impl<'def> Function<'def> {
@@ -1177,9 +1177,9 @@ pub struct StaticMeta<'def> {
 /// Information on a used const place
 #[derive(Clone, Debug)]
 pub struct ConstPlaceMeta<'def> {
-    pub ident: String,
-    pub loc_name: String,
-    pub ty: Type<'def>,
+    ident: String,
+    loc_name: String,
+    ty: Type<'def>,
 }
 
 /// The specification of the procedure we call.
@@ -1218,10 +1218,10 @@ pub struct UsedProcedure<'def> {
     /// The name to use for the location parameter
     pub loc_name: String,
     /// The term for the specification definition
-    pub spec_term: UsedProcedureSpec<'def>,
+    spec_term: UsedProcedureSpec<'def>,
 
     /// extra arguments to pass to the spec
-    pub extra_spec_args: Vec<String>,
+    extra_spec_args: Vec<String>,
 
     /// Type parameters to quantify over
     /// This includes:
@@ -1229,13 +1229,13 @@ pub struct UsedProcedure<'def> {
     ///   function)
     /// - additional lifetimes that the generic instantiation introduces, as well as all lifetime parameters
     ///   of this function
-    pub quantified_scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    quantified_scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// specialized specs for the trait assumptions of this procedure
-    pub scope_inst: GenericScopeInst<'def>,
+    scope_inst: GenericScopeInst<'def>,
 
     /// The syntactic types of all arguments
-    pub syntype_of_all_args: Vec<SynType>,
+    syntype_of_all_args: Vec<SynType>,
 }
 
 impl<'def> UsedProcedure<'def> {
@@ -1464,10 +1464,10 @@ impl<'def> Display for UsedProcedure<'def> {
 #[allow(clippy::partial_pub_fields)]
 pub struct FunctionBuilder<'def> {
     pub code: FunctionCodeBuilder,
-    pub code_name: String,
+    code_name: String,
 
     /// optionally, a specification, if one has been created
-    pub spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
+    spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
 
     /// a sequence of other functions used by this function
     /// (Note that there may be multiple assumptions here with the same spec, if they are
@@ -1539,7 +1539,7 @@ impl<'def> FunctionBuilder<'def> {
 
     /// Get the universal lifetimes.
     #[must_use]
-    pub fn get_lfts(&self) -> &[Lft] {
+    fn get_lfts(&self) -> &[Lft] {
         self.spec.generics.get_lfts()
     }
 
