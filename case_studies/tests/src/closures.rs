@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+/// Using closure arguments
 #[rr::params("x")]
 #[rr::args("x")]
 fn closure_test_arg1<T>(x: T) 
@@ -16,6 +17,31 @@ fn closure_test_arg2<T>(x: T)
     let r = x(42);
 }
 
+
+fn closure_test7<T, U>(x: T, y: U) 
+    where U: FnOnce(T)
+{
+    let cls = 
+        #[rr::params("a", "m")]
+        #[rr::capture("y": "m")]
+        #[rr::args("a")]
+        |a: T| { y(a) };
+
+    //cls(x);
+}
+
+fn closure_test8<T, U>(x: T, y: U) 
+    where U: FnOnce(T)
+{
+    let cls = 
+        #[rr::params("a", "w")]
+        #[rr::args("a", "w")]
+        |a: T, w: U| { w(a) };
+
+    //cls(x, y);
+}
+
+/// Closures with no captures
 #[rr::returns("()")]
 fn closure_test1() {
 
@@ -46,6 +72,17 @@ fn closure_test12() {
     //x(2, 2);
 }
 
+fn closure_test6<T>(x: T) {
+    let cls = 
+        #[rr::params("a")]
+        #[rr::args("a")]
+        #[rr::returns("a")]
+        |a: T| { a };
+
+    //cls(x);
+}
+
+/// Closures with shared captures
 #[rr::returns("()")]
 fn closure_test5() {
     let x = 5;
@@ -85,6 +122,7 @@ fn closure_test9(z: &i32) {
     //x(2);
 }
 
+/// Closures with mutable captures
 #[rr::returns("()")]
 fn closure_test2() {
     let mut y = 2;
@@ -147,38 +185,6 @@ fn closure_test4(y: &mut i32) {
 }
 */
 
-fn closure_test6<T>(x: T) {
-    let cls = 
-        #[rr::params("a")]
-        #[rr::args("a")]
-        #[rr::returns("a")]
-        |a: T| { a };
-
-    //cls(x);
-}
-
-fn closure_test7<T, U>(x: T, y: U) 
-    where U: FnOnce(T)
-{
-    let cls = 
-        #[rr::params("a", "m")]
-        #[rr::capture("y": "m")]
-        #[rr::args("a")]
-        |a: T| { y(a) };
-
-    //cls(x);
-}
-
-fn closure_test8<T, U>(x: T, y: U) 
-    where U: FnOnce(T)
-{
-    let cls = 
-        #[rr::params("a", "w")]
-        #[rr::args("a", "w")]
-        |a: T, w: U| { w(a) };
-
-    //cls(x, y);
-}
 
 mod fncoercion {
     fn bla(b: bool) {

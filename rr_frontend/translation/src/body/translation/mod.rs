@@ -204,13 +204,36 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
 
+        let closure_constraints =
+            regions::init::get_initial_closure_constraints(self.info, &mut self.inclusion_tracker);
+        info!("initial closure constraints: {:?}", closure_constraints);
+
         // translate the function's basic blocks
         let basic_blocks = &self.proc.get_mir().basic_blocks;
 
         // first translate the initial basic block; we add some additional annotations to the front
         let initial_bb_idx = mir::BasicBlock::from_u32(0);
         if let Some(bb) = basic_blocks.get(initial_bb_idx) {
-            let translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
+            let mut translated_bb = self.translate_basic_block(initial_bb_idx, bb)?;
+
+            // push annotations for initial closure constraints
+            if !closure_constraints.is_empty() {
+                let mut annots = Vec::new();
+                for (r1, r2) in &closure_constraints {
+                    annots.push(radium::Annotation::CopyLftName(
+                        self.ty_translator.format_atomic_region(r1),
+                        self.ty_translator.format_atomic_region(r2),
+                    ));
+                }
+                translated_bb = radium::Stmt::Prim(
+                    vec![radium::PrimStmt::Annot {
+                        a: annots,
+                        why: Some("initialization (closure)".to_owned()),
+                    }],
+                    Box::new(translated_bb),
+                );
+            }
+
             // push annotation for initial constraints that relate argument's place regions to universals
             let mut annots = Vec::new();
             for (r1, r2) in &self.initial_constraints {
@@ -219,13 +242,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     self.ty_translator.format_atomic_region(r2),
                 ));
             }
-            let translated_bb = radium::Stmt::Prim(
+            translated_bb = radium::Stmt::Prim(
                 vec![radium::PrimStmt::Annot {
                     a: annots,
                     why: Some("initialization".to_owned()),
                 }],
                 Box::new(translated_bb),
             );
+
             self.translated_fn.code.add_basic_block(initial_bb_idx.as_usize(), translated_bb);
         } else {
             info!("No basic blocks");

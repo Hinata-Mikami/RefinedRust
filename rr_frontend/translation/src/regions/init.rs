@@ -207,6 +207,41 @@ pub fn get_relevant_universal_constraints<'a>(
     universal_constraints
 }
 
+/// Get additional constraints between capture places and value lifetimes that hold at the
+/// beginning of the closure.
+pub fn get_initial_closure_constraints<'a>(
+    info: &'a PoloniusInfo<'a, '_>,
+    inclusion_tracker: &mut InclusionTracker<'a, '_>,
+) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
+    let input_facts = &info.borrowck_in_facts;
+
+    let root_location = Location {
+        block: BasicBlock::from_u32(0),
+        statement_index: 0,
+    };
+    let root_point = info.interner.get_point_index(&facts::Point {
+        location: root_location,
+        typ: facts::PointType::Mid,
+    });
+
+    let mut closure_constraints = Vec::new();
+
+    for (r1, r2, p) in &input_facts.subset_base {
+        if *p == root_point && input_facts.subset_base.contains(&(*r2, *r1, *p)) {
+            let lft1 = info.mk_atomic_region(*r1);
+            let lft2 = info.mk_atomic_region(*r2);
+
+            if lft1.is_place() && lft2.is_value() {
+                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+                inclusion_tracker.add_static_inclusion(*r2, *r1, root_point);
+
+                closure_constraints.push((lft1, lft2));
+            }
+        }
+    }
+    closure_constraints
+}
+
 /// Determine initial constraints between universal regions and local place regions.
 /// Returns an initial mapping for the name map that initializes place regions of arguments
 /// with universals.
@@ -229,7 +264,6 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     // compute the mapping
     let mut unifier = InitialPoloniusUnifier::new(tcx);
     for (a1, a2) in local_args.iter().zip(sig_args.iter()) {
-        // TODO: normalize here.
         let a1_normalized = resolution::normalize_type(tcx, param_env, *a1).unwrap();
         let a2_normalized = resolution::normalize_type(tcx, param_env, *a2).unwrap();
         unifier.map_tys(a1_normalized, a2_normalized);

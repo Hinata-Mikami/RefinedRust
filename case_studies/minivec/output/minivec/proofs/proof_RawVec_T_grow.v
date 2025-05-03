@@ -26,6 +26,12 @@ Proof.
     rewrite /size_of_array_in_bytes; simplify_layout_goal.
     clear. solve_goal with nia.
   }
+  {
+    move: Hsz Hnot_sz.
+    match goal with H : MaxInt isize_t < MaxInt usize_t |- _ => move: H end.
+    rewrite /size_of_array_in_bytes; simplify_layout_goal.
+    clear. solve_goal with nia.
+  }
 
   Unshelve. all: print_remaining_sidecond.
 Qed.
