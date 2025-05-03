@@ -463,8 +463,14 @@ Section judgments.
     typed_bin_op_val :: TypedBinOp E L v1 (v1 ◁ᵥ{π} r1 @ ty1) v2 (v2 ◁ᵥ{π} r2 @ ty2) o ot1 ot2.
   Global Hint Mode TypedBinOpVal + + + + + + + + + + + + + + : typeclass_instances.
 
+  (** Checking for overflows *)
+  Definition typed_check_bin_op (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ)
+    (o : bin_op) (ot1 ot2 : op_type) (T : typed_val_expr_cont_t) : iProp Σ :=
+    (P1 -∗ P2 -∗ typed_val_expr E L (CheckBinOp o ot1 ot2 v1 v2) T).
+  Class TypedCheckBinOp (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ) (o : bin_op) (ot1 ot2 : op_type) : Type :=
+    typed_check_bin_op_proof T : iProp_to_Prop (typed_check_bin_op E L v1 P1 v2 P2 o ot1 ot2 T).
+
   (** Typing of unary op expressions *)
-  Definition typed_un_op_cont_t := llctx → thread_id → val → ∀ rt : Type, type rt → rt → iProp Σ.
   Definition typed_un_op (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
     (T : typed_val_expr_cont_t) : iProp Σ :=
     (P -∗ typed_val_expr E L (UnOp o ot v) T).
@@ -475,6 +481,14 @@ Section judgments.
   Class TypedUnOpVal π (E : elctx) (L : llctx) (v : val) {rt} (ty : type rt) (r : rt) (o : un_op) (ot : op_type) : Type :=
     typed_un_op_val :: TypedUnOp E L v (v ◁ᵥ{π} r @ ty) o ot.
   Global Hint Mode TypedUnOpVal + + + + + + + + + : typeclass_instances.
+
+  (** Checking for overflows *)
+  Definition typed_check_un_op (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
+    (T : typed_val_expr_cont_t) : iProp Σ :=
+    (P -∗ typed_val_expr E L (CheckUnOp o ot v) T).
+  Class TypedCheckUnOp (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type) : Type :=
+    typed_check_un_op_proof T : iProp_to_Prop (typed_check_un_op E L v P o ot T).
+
 
   (** Typed call expressions, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
@@ -2577,22 +2591,22 @@ Section judgments.
         | None => None
         end
     end.
-  Lemma access_result_meet_mstrong_ctx_inv_weak {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) Heq weak: 
+  Lemma access_result_meet_mstrong_ctx_inv_weak {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) Heq weak:
     access_result_meet_mstrong_ctx mstrong upd = Some (ARweak Heq weak) →
     upd = ResultWeak Heq ∧ mstrong.(mstrong_weak) = Some weak.
   Proof.
     unfold access_result_meet_mstrong_ctx.
     destruct mstrong as [strong weak'].
-    destruct upd, strong, weak'; simpl; intros ?; simplify_eq; try naive_solver. 
-    all: by rewrite (UIP_refl _ _ Heq). 
+    destruct upd, strong, weak'; simpl; intros ?; simplify_eq; try naive_solver.
+    all: by rewrite (UIP_refl _ _ Heq).
   Qed.
-  Lemma access_result_meet_mstrong_ctx_inv_strong {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) strong : 
+  Lemma access_result_meet_mstrong_ctx_inv_strong {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) strong :
     access_result_meet_mstrong_ctx mstrong upd = Some (ARstrong strong) →
     (upd = ResultStrong ∨ mstrong.(mstrong_weak) = None) ∧ mstrong.(mstrong_strong) = Some strong.
   Proof.
     unfold access_result_meet_mstrong_ctx.
     destruct mstrong as [strong' weak].
-    destruct upd, strong', weak; simpl; intros ?; simplify_eq; try naive_solver. 
+    destruct upd, strong', weak; simpl; intros ?; simplify_eq; try naive_solver.
   Qed.
 
   Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2}
@@ -4141,6 +4155,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_value ?π ?x => constr:(TypedValue π x)
   | typed_bin_op ?E ?L ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedBinOp E L v1 P1 v2 P2 o ot1 ot2)
   | typed_un_op ?E ?L ?v ?P ?o ?ot => constr:(TypedUnOp E L v P o ot)
+  | typed_check_bin_op ?E ?L ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedCheckBinOp E L v1 P1 v2 P2 o ot1 ot2)
+  | typed_check_un_op ?E ?L ?v ?P ?o ?ot => constr:(TypedCheckUnOp E L v P o ot)
   | typed_call ?π ?E ?L ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall π E L κs etys v P vs tys)
   | typed_place ?π ?E ?L ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L π l lto ro b1 b2 K)
   | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?al ?ot => constr:(TypedReadEnd π E L l lt r b1 b2 al  ot)

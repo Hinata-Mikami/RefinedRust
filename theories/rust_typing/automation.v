@@ -86,6 +86,10 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedBinOp E L v1 ty1 v2 ty2 o ot1 ot2) T))
   | typed_un_op ?E ?L ?v ?ty ?o ?ot ?T =>
       cont uconstr:(((_ : TypedUnOp E L v ty o ot) T))
+  | typed_check_bin_op ?E ?L ?v1 ?ty1 ?v2 ?ty2 ?o ?ot1 ?ot2 ?T =>
+      cont uconstr:(((_ : TypedCheckBinOp E L v1 ty1 v2 ty2 o ot1 ot2) T))
+  | typed_check_un_op ?E ?L ?v ?ty ?o ?ot ?T =>
+      cont uconstr:(((_ : TypedCheckUnOp E L v ty o ot) T))
   | typed_call ?π ?E ?L ?eκs ?etys ?v ?P ?vl ?tys ?T =>
       cont uconstr:(((_ : TypedCall π E L eκs etys v P vl tys) T))
   | typed_place ?π ?E ?L ?l ?lt ?r ?bmin0 ?b ?P ?T =>
@@ -555,6 +559,8 @@ Ltac liRExpr :=
     | W.AddrOf _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L _ T) _)
     | W.BinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_bin_op E L _ _ _ _ _ T) _)
     | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L _ _ _ T) _)
+    | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L _ _ _ _ _ T) _)
+    | W.CheckUnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_check_un_op E L _ _ _ T) _)
     | W.Call _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L T _ _ _ _) _)
     | W.AnnotExpr _ ?a _ => notypeclasses refine (tac_fast_apply (type_annot_expr E L _ a _ T) _)
     | W.StructInit ?sls ?init => notypeclasses refine (tac_fast_apply (type_struct_init E L sls _ T) _)

@@ -399,8 +399,9 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
 .
 
 (** Check if the result of an arithmetic operator is representable in the target integer type. *)
+(* Note: this still requires the computation itself to succeed/ be mathematically defined. *)
 Definition check_arith_bin_op (op : bin_op) (it : int_type) (n1 n2 : Z) : option bool :=
-  option_map (λ n, bool_decide (n ∈ it)) (compute_arith_bin_op n1 n2 it op)
+  option_map (λ n, bool_decide (n ∉ it)) (compute_arith_bin_op n1 n2 it op)
 .
 
 Inductive check_bin_op : bin_op → op_type → op_type → val → val → bool → Prop :=
@@ -480,7 +481,7 @@ Definition check_arith_un_op (op : un_op) (it : int_type) (n : Z) : option bool 
     | NegOp => Some (-n)
     | _ => None
     end in
-  option_map (λ n, bool_decide (n ∈ it)) res.
+  option_map (λ n, bool_decide (n ∉ it)) res.
 
 Inductive check_un_op : un_op → op_type → val → bool → Prop :=
 | CheckArithOpI op it vs n b:

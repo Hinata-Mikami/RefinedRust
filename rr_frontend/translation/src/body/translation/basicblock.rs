@@ -53,24 +53,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     if (self.is_spec_closure_local(plc.local)?).is_some() {
                         info!("skipping assignment to spec closure local: {:?}", plc);
-                    } else if let Some(rewritten_ty) = self.checked_op_temporaries.get(&plc.local) {
-                        // if this is a checked op, be sure to remember it
-                        info!("rewriting assignment to checked op: {:?}", plc);
-
-                        let synty = self.ty_translator.translate_type_to_syn_type(*rewritten_ty)?;
-
-                        let translated_val = self.translate_rvalue(loc, val)?;
-                        let translated_place = self.translate_place(plc)?;
-
-                        // this should be a temporary
-                        assert!(plc.projection.is_empty());
-
-                        let ot = synty.into();
-                        prim_stmts.push(radium::PrimStmt::Assign {
-                            ot,
-                            e1: translated_place,
-                            e2: translated_val,
-                        });
                     } else {
                         let rhs_ty = val.ty(&self.proc.get_mir().local_decls, self.env.tcx());
 

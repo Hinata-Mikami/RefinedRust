@@ -1850,6 +1850,26 @@ Section typing.
     by iApply ("Hop" with "Hv LFT HE HL").
   Qed.
 
+  Lemma type_check_bin_op E L o e1 e2 ot1 ot2 T :
+    typed_val_expr E L e1 (λ L1 π1 v1 rt1 ty1 r1, typed_val_expr E L1 e2 (λ L2 π2 v2 rt2 ty2 r2,
+      ⌜π1 = π2⌝ ∗ typed_check_bin_op E L2 v1 (v1 ◁ᵥ{π1} r1 @ ty1) v2 (v2 ◁ᵥ{π1} r2 @ ty2) o ot1 ot2 T))
+    ⊢ typed_val_expr E L (CheckBinOp o ot1 ot2 e1 e2) T.
+  Proof.
+    iIntros "He1" (Φ) "#LFT #HE HL HΦ".
+    wp_bind. iApply ("He1" with "LFT HE HL"). iIntros (L1 π1 v1 rt1 ty1 r1) "HL Hv1 He2".
+    wp_bind. iApply ("He2" with "LFT HE HL"). iIntros (L2 π2 v2 rt2 ty2 r2) "HL Hv2 (<- & Hop)".
+    iApply ("Hop" with "Hv1 Hv2 LFT HE HL HΦ").
+  Qed.
+
+  Lemma type_check_un_op E L o e ot T :
+    typed_val_expr E L e (λ L' π v rt ty r, typed_check_un_op E L' v (v ◁ᵥ{π} r @ ty) o ot T)
+    ⊢ typed_val_expr E L (CheckUnOp o ot e) T.
+  Proof.
+    iIntros "He" (Φ) "#LFT #HE HL HΦ".
+    wp_bind. iApply ("He" with "LFT HE HL"). iIntros (L' π v rt ty r) "HL Hv Hop".
+    by iApply ("Hop" with "Hv LFT HE HL").
+  Qed.
+
   Lemma type_ife E L e1 e2 e3 T:
     typed_val_expr E L e1 (λ L' π v rt ty r,
       typed_if E L' v (v ◁ᵥ{π} r @ ty) (typed_val_expr E L' e2 T) (typed_val_expr E L' e3 T))
@@ -3649,6 +3669,10 @@ Global Typeclasses Opaque typed_val_expr.
 Global Typeclasses Opaque typed_bin_op.
 
 Global Typeclasses Opaque typed_un_op.
+
+Global Typeclasses Opaque typed_check_bin_op.
+
+Global Typeclasses Opaque typed_check_un_op.
 
 Global Typeclasses Opaque typed_if.
 

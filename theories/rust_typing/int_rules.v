@@ -24,7 +24,7 @@ Section typing.
   Global Program Instance learn_from_hyp_val_int_signed it z `{Hs : TCDone (it.(it_signed) = true)} :
     LearnFromHypVal (int it) z :=
     {| learn_from_hyp_val_Q := ⌜MinInt it ≤ z ≤ MaxInt it⌝ |}.
-  Next Obligation.
+Next Obligation.
     iIntros (? z Hs ????) "Hv".
     rewrite /ty_own_val/=.
     rewrite !MaxInt_eq !MinInt_eq.
@@ -56,6 +56,10 @@ Section typing.
   Qed.
   Global Instance type_val_int_inst n (it : IntType) π : TypedValue π (I2v n it) :=
     λ T, i2p (type_val_int π n it T).
+End typing.
+
+Section relop.
+  Context `{!typeGS Σ}.
 
   Lemma type_relop_int_int E L it v1 (n1 : Z) v2 (n2 : Z) (T : typed_val_expr_cont_t) b op π :
     match op with
@@ -103,28 +107,15 @@ Section typing.
   Global Program Instance type_ge_int_int_inst E L it v1 n1 v2 n2 π :
     TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GeOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 >= n2)%Z) _ π _).
   Solve Obligations with done.
+End relop.
 
-  Definition arith_op_sidecond (it : int_type) (n1 n2 n : Z) op : Prop :=
-    match op with
-    (* these sideconditions are stronger than necessary and do not support the wrapping for unsigned unchecked ops that is allowed by the opsem *)
-    | AddOp => True
-    | SubOp => True
-    | MulOp => True
-    | AndOp => True
-    | OrOp  => True
-    | XorOp => True
-    (* TODO: check accuracy of shifting semantics *)
-    | ShlOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1 ∧ n ≤ MaxInt it
-    | ShrOp => 0 ≤ n2 < bits_per_int it ∧ 0 ≤ n1
-    | DivOp => n2 ≠ 0
-    | ModOp => n2 ≠ 0
-    | _     => True (* Relational operators. *)
-    end.
+Section arithop.
+  Context `{!typeGS Σ}.
 
   (** We first define a version that wraps the result and has few sideconditions *)
   Lemma type_arithop_int_int E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op:
     int_arithop_result it n1 n2 op = Some n →
-    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜arith_op_sidecond it n1 n2 n op⌝ ∗ T L π (i2v (wrap_to_it n it) it) Z (int it) (wrap_to_it n it)) ⊢
+    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L π (i2v (wrap_to_it n it) it) Z (int it) (wrap_to_it n it)) ⊢
       typed_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
@@ -132,8 +123,7 @@ Section typing.
     rewrite !int_elem_of_it_iff.
     iDestruct ("HT" with "[] []" ) as (Hsc) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
-    iApply wp_int_arithop; [done..| | ].
-    { move: Hsc. rewrite /int_arithop_sidecond /arith_op_sidecond. destruct op; rewrite ?int_elem_of_it_iff ?MaxInt_eq; done. }
+    iApply wp_int_arithop; [done..| ].
 
     iIntros (v Hv) "!> Hcred". rewrite /i2v Hv/=. iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=.
@@ -151,7 +141,8 @@ Section typing.
     | OrOp  => True
     | XorOp => True
     (* TODO: check accuracy of shifting semantics *)
-    | ShlOp => True
+    | ShlOp =>
+        n ∈ it
     | ShrOp => True
     | DivOp => n ∈ it
     | ModOp => n ∈ it
@@ -212,10 +203,10 @@ Section typing.
         rewrite !Hn.
         repeat case_bool_decide; try rewrite -> Z.lxor_nonneg in *; naive_solver.
       + by apply Z.lxor_spec.
-    - rewrite !int_elem_of_it_iff.
-      split.
-      + trans 0; [ apply min_int_le_0 | by apply Z.shiftl_nonneg ].
-      + done.
+    (*- rewrite !int_elem_of_it_iff.*)
+      (*split.*)
+      (*+ trans 0; [ apply min_int_le_0 | by apply Z.shiftl_nonneg ].*)
+      (*+ rewrite -MaxInt_eq.  done.*)
     - rewrite !int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hn1, Hn2.
       split.
       + trans 0; [ apply min_int_le_0 | by apply Z.shiftr_nonneg ].
@@ -228,7 +219,7 @@ Section typing.
 
   Lemma type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op:
     int_arithop_result it n1 n2 op = Some n →
-    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜arith_op_sidecond it n1 n2 n op⌝ ∗ ⌜int_arithop_in_range it n op⌝ ∗ T L π (i2v n it) Z (int it) n) ⊢
+    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ ⌜int_arithop_in_range it n op⌝ ∗ T L π (i2v n it) Z (int it) n) ⊢
       typed_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
@@ -236,8 +227,6 @@ Section typing.
     rewrite !int_elem_of_it_iff.
     iDestruct ("HT" with "[] []" ) as (Hsc Hran) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
-    assert (int_arithop_sidecond it n1 n2 n op).
-    { move: Hsc. rewrite /int_arithop_sidecond /arith_op_sidecond. destruct op; rewrite ?int_elem_of_it_iff ?MaxInt_eq; done. }
     iApply wp_int_arithop; [done..| ].
 
     iIntros (v Hv) "!> Hcred".
@@ -285,6 +274,103 @@ Section typing.
   Global Program Instance type_shr_int_int_inst E L π it v1 n1 v2 n2:
     TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 ≫ n2) _ _).
   Next Obligation. done. Qed.
+End arithop.
+
+Section check_arithop.
+  Context `{!typeGS Σ}.
+
+  Global Instance int_arithop_in_range_dec it n op :
+    Decision (int_arithop_in_range it n op).
+  Proof.
+    destruct op; solve_decision.
+  Defined.
+
+
+  Lemma int_arithop_result_sidecond_correct it n1 n2 n op :
+    int_arithop_sidecond it n1 n2 n op ↔ compute_arith_bin_op n1 n2 it op = int_arithop_result it n1 n2 op.
+  Proof.
+    rewrite /int_arithop_sidecond /compute_arith_bin_op /int_arithop_result.
+    destruct op; simpl.
+    all: repeat case_bool_decide; try naive_solver.
+  Qed.
+  Lemma check_arith_bin_op_evaluates it n1 n2 n op :
+    int_arithop_sidecond it n1 n2 n op →
+    int_arithop_result it n1 n2 op = Some n →
+    check_arith_bin_op op it n1 n2 = Some (bool_decide (n ∉ it)).
+  Proof.
+    intros Hsc%int_arithop_result_sidecond_correct Hres.
+    rewrite /check_arith_bin_op.
+    rewrite Hsc Hres/=.
+    f_equiv. apply bool_decide_ext.
+    by rewrite int_elem_of_it_iff.
+  Qed.
+
+
+  Lemma type_check_arithop_int_int E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op:
+    int_arithop_result it n1 n2 op = Some n →
+    ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L π (val_of_bool (negb $ bool_decide (int_arithop_in_range it n op))) bool (bool_t) (negb $ bool_decide (int_arithop_in_range it n op)) ⊢
+    typed_check_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
+  Proof.
+    rewrite /ty_own_val/=.
+    iIntros "%Hop [%Hsc HT] [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
+    set (b := (negb $ bool_decide (int_arithop_in_range it n op))).
+
+    iApply wp_check_binop.
+    assert (check_arith_bin_op op it n1 n2 = Some b).
+    { subst.
+      erewrite check_arith_bin_op_evaluates; [ | done..].
+      f_equiv. subst b.
+      rewrite bool_decide_not. f_equiv.
+      apply bool_decide_ext.
+      split; first by destruct op.
+      intros Hran.
+      eapply int_arithop_result_in_range;
+        [ | | done | | done ];
+        [apply int_elem_of_it_iff; eapply val_to_Z_in_range; done.. | done ].
+    }
+    iSplitR.
+    { iPureIntro. exists b. econstructor; done. }
+
+    iIntros (v Hv) "!> Hcred".
+    inversion Hv; subst. simplify_eq/=.
+    iApply ("HΦ" with "HL [] HT").
+    rewrite /ty_own_val.
+    simpl. subst b. case_bool_decide; done.
+  Qed.
+  Global Program Instance type_check_add_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) AddOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 + n2) AddOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_sub_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) SubOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 - n2) SubOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_mul_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) MulOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 * n2) MulOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_div_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) DivOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 `quot` n2) DivOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_mod_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) ModOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 `rem` n2) ModOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_and_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) AndOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.land n1 n2) AndOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_or_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) OrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.lor n1 n2) OrOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_xor_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) XorOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.lxor n1 n2) XorOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_shl_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 ≪  n2) ShlOp _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_check_shr_int_int_inst E L π it v1 n1 v2 n2:
+    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 ≫  n2) ShrOp _).
+  Next Obligation. done. Qed.
+End check_arithop.
+
+Section switch.
+  Context `{!typeGS Σ}.
 
   Inductive destruct_hint_switch_int :=
   | DestructHintSwitchIntCase (n : Z)
@@ -312,9 +398,13 @@ Section typing.
   Qed.
   Global Instance type_switch_int_inst π E L n v it : TypedSwitch π E L v _ (int it) n it :=
     λ m ss def fn R ϝ, i2p (type_switch_int π E L n it m ss def fn R ϝ v).
+End switch.
 
 
-  Lemma type_neg_int π E L n it v (T : typed_un_op_cont_t) :
+Section unop.
+  Context `{!typeGS Σ}.
+
+  Lemma type_neg_int π E L n it v (T : typed_val_expr_cont_t) :
     (⌜n ∈ it⌝ -∗ ⌜it.(it_signed)⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L π (i2v (-n) it) _ (int it) (-n))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NegOp) (IntOp it) T.
   Proof.
@@ -340,7 +430,7 @@ Section typing.
     TypedUnOpVal π E L v (int it)%I n NegOp (IntOp it) :=
     λ T, i2p (type_neg_int π E L n it v T).
 
-  Lemma type_not_int π E L n it v (T : typed_un_op_cont_t) :
+  Lemma type_not_int π E L n it v (T : typed_val_expr_cont_t) :
     (⌜n ∈ it⌝ -∗ T L π (i2v ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)) it) _ (int it) ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NotIntOp) (IntOp it) T.
   Proof.
@@ -372,7 +462,7 @@ Section typing.
     TypedUnOpVal π E L v (int it)%I n NotIntOp (IntOp it) :=
     λ T, i2p (type_not_int π E L n it v T).
 
-  Lemma type_cast_int π E L n (it1 it2 : int_type) v (T : typed_un_op_cont_t) :
+  Lemma type_cast_int π E L n (it1 it2 : int_type) v (T : typed_val_expr_cont_t) :
     ⌜ly_size it2 ≤ MaxInt isize_t⌝ ∗ (⌜n ∈ it1⌝ -∗ ∀ v, T L π v _ (int it2) (wrap_to_it n it2))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
   Proof.
@@ -391,6 +481,10 @@ Section typing.
   Global Instance type_cast_int_inst π E L n it1 it2 v:
     TypedUnOpVal π E L v (int it1)%I n (CastOp (IntOp it2)) (IntOp it1) :=
     λ T, i2p (type_cast_int π E L n it1 it2 v T).
+End unop.
+
+Section bool.
+  Context `{!typeGS Σ}.
 
   (** Bool *)
   Lemma type_val_bool' b π :
@@ -522,7 +616,10 @@ Section typing.
   Qed.
   Global Instance type_assert_bool_inst E L π b v : TypedAssert π E L v (bool_t) b :=
     λ s fn R ϝ, i2p (type_assert_bool E L π b s fn R v ϝ).
+End bool.
 
+Section char.
+  Context `{!typeGS Σ}.
 
   (** Char *)
   Lemma type_char_val z π :
@@ -550,4 +647,4 @@ Section typing.
   Qed.
   Global Instance type_val_char_inst n π : TypedValue π (I2v n CharIt) :=
     λ T, i2p (type_val_char n π T).
-End typing.
+End char.

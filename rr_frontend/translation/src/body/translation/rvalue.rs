@@ -268,24 +268,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
             mir::Operand::Copy(place) | mir::Operand::Move(place) => {
                 // check if this goes to a temporary of a checked op
-                let place_kind = if self.checked_op_temporaries.contains_key(&place.local) {
-                    assert!(place.projection.len() == 1);
-
-                    let mir::ProjectionElem::Field(f, _0) = place.projection[0] else {
-                        unreachable!("invariant violation for access to checked op temporary");
-                    };
-
-                    if f.index() != 0 {
-                        // make this a constant false -- our semantics directly checks for overflows
-                        // and otherwise throws UB.
-                        return Ok(radium::Expr::Literal(radium::Literal::Bool(false)));
-                    }
-
-                    // access to the result of the op
-                    self.make_local_place(place.local)
-                } else {
-                    *place
-                };
+                let place_kind = *place;
 
                 let translated_place = self.translate_place(&place_kind)?;
                 let ty = self.get_type_of_place(place);
@@ -392,14 +375,32 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let translated_e1 = self.translate_operand(e1, true)?;
                 let translated_e2 = self.translate_operand(e2, true)?;
-                let translated_op = TX::translate_checked_binop(*op)?;
+                let translated_op = self.translate_binop(*op, e1, e2)?;
 
-                Ok(radium::Expr::BinOp {
+                // result has the same syntype
+                let result_st = e1_st.clone();
+
+                // the actual value
+                let op_term = radium::Expr::BinOp {
+                    o: translated_op.clone(),
+                    ot1: e1_st.clone().into(),
+                    ot2: e2_st.clone().into(),
+                    e1: Box::new(translated_e1.clone()),
+                    e2: Box::new(translated_e2.clone()),
+                };
+                let overflow_check = radium::Expr::CheckBinOp {
                     o: translated_op,
                     ot1: e1_st.into(),
                     ot2: e2_st.into(),
                     e1: Box::new(translated_e1),
                     e2: Box::new(translated_e2),
+                };
+
+                let sls = coq::term::App::new_lhs(format!("(tuple2_sls ({result_st}) BoolSynType)"));
+
+                Ok(radium::Expr::StructInitE {
+                    sls,
+                    components: vec![("0".to_owned(), op_term), ("1".to_owned(), overflow_check)],
                 })
             },
 
@@ -532,26 +533,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
             ty::TyKind::RawPtr(tm) => Ok(tm.ty),
             _ => Err(TranslationError::UnknownError(format!("cannot take offset of {}", ty))),
-        }
-    }
-
-    /// Translate checked binary operators.
-    /// We need access to the operands, too, to handle the offset operator and get the right
-    /// Caesium layout annotation.
-    fn translate_checked_binop(op: mir::BinOp) -> Result<radium::Binop, TranslationError<'tcx>> {
-        match op {
-            mir::BinOp::Add => Ok(radium::Binop::CheckedAdd),
-            mir::BinOp::Sub => Ok(radium::Binop::CheckedSub),
-            mir::BinOp::Mul => Ok(radium::Binop::CheckedMul),
-            mir::BinOp::Shl => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support checked Shl".to_owned(),
-            }),
-            mir::BinOp::Shr => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support checked Shr".to_owned(),
-            }),
-            _ => Err(TranslationError::UnknownError(
-                "unexpected checked binop that is not Add, Sub, Mul, Shl, or Shr".to_owned(),
-            )),
         }
     }
 

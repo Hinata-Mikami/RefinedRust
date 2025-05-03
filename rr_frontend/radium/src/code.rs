@@ -239,6 +239,15 @@ pub enum Expr {
         e2: Box<Expr>,
     },
 
+    #[display("({}) {} ({})", &e1, o.caesium_checked_fmt(ot1, ot2), &e2)]
+    CheckBinOp {
+        o: Binop,
+        ot1: OpType,
+        ot2: OpType,
+        e1: Box<Expr>,
+        e2: Box<Expr>,
+    },
+
     /// dereference an lvalue
     #[display("!{{ {} }} ( {} )", ot, &e)]
     Deref { ot: OpType, e: Box<Expr> },
@@ -512,11 +521,6 @@ pub enum Binop {
     PtrOffset(Layout),
     PtrNegOffset(Layout),
     PtrDiff(Layout),
-
-    // checked ops
-    CheckedAdd,
-    CheckedSub,
-    CheckedMul,
 }
 
 impl Binop {
@@ -528,9 +532,6 @@ impl Binop {
             Self::Add => format_prim("+{"),
             Self::Sub => format_prim("-{"),
             Self::Mul => format_prim("×{"),
-            Self::CheckedAdd => format_prim("+c{"),
-            Self::CheckedSub => format_prim("-c{"),
-            Self::CheckedMul => format_prim("×c{"),
             Self::Div => format_prim("/{"),
             Self::Mod => format_prim("%{"),
             Self::And => format_bool("&&{"),
@@ -549,6 +550,22 @@ impl Binop {
             Self::PtrOffset(ly) => format!("at_offset{{ {} , {} , {} }}", ly, ot1, ot2),
             Self::PtrNegOffset(ly) => format!("at_neg_offset{{ {} , {} , {} }}", ly, ot1, ot2),
             Self::PtrDiff(ly) => format!("sub_ptr{{ {} , {} , {} }}", ly, ot1, ot2),
+        }
+    }
+
+    fn caesium_checked_fmt(&self, ot1: &OpType, ot2: &OpType) -> String {
+        let format_prim = |st: &str| format!("{} {} , {} }}", st, ot1, ot2);
+        let format_bool = |st: &str| format!("{} {} , {} , {} }}", st, ot1, ot2, BOOL_REPR);
+
+        match self {
+            Self::Add => format_prim("+c{"),
+            Self::Sub => format_prim("-c{"),
+            Self::Mul => format_prim("×c{"),
+            Self::Div => format_prim("/c{"),
+            Self::Mod => format_prim("%c{"),
+            Self::Shl => format_prim("<<c{"),
+            Self::Shr => format_prim(">>c{"),
+            _ => unimplemented!(),
         }
     }
 }

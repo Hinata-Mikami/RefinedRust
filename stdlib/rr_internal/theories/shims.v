@@ -366,7 +366,7 @@ Definition alloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_siz
     <["bb0" :=
       "align_log2" <-{ IntOp usize_t } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp usize_t} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
       "__0" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} use{IntOp usize_t} "bytes"; use{IntOp usize_t} "align_log2"];
       return (use{PtrOp} "__0")
     ]>%E $
@@ -449,8 +449,8 @@ Definition realloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_s
     <["bb0" :=
       "align_log2" <-{ IntOp usize_t } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp usize_t} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "old_bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "old_len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
-      "new_bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "new_len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      "old_bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "old_len") ×{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      "new_bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "new_len") ×{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
       "__0" <-{PtrOp} CallE alloc_realloc_loc [] [] [@{expr} use{IntOp usize_t} "old_bytes"; use{IntOp usize_t} "align_log2"; use{IntOp usize_t} "new_bytes"; use{PtrOp} "ptr"];
       return (use{PtrOp} "__0")
     ]>%E $
@@ -536,7 +536,7 @@ Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc
     <["bb0" :=
       "align_log2" <-{ IntOp usize_t } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp usize_t} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
       expr: CallE alloc_dealloc_loc [] [] [@{expr} use{IntOp usize_t} "bytes"; use{IntOp usize_t} "align_log2"; use{PtrOp} "ptr"];
       "__0" <-{use_op_alg' UnitSynType} zst_val;
       return (use{use_op_alg' UnitSynType} "__0")
@@ -607,11 +607,11 @@ Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_align_log
     <["bb0" :=
       "align_log2" <-{ IntOp usize_t } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp usize_t} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "check" <-{ BoolOp } CheckBinOp MulOp (IntOp usize_t) (IntOp usize_t) (use{IntOp usize_t} "len") (use{IntOp usize_t} "size_of_T");
-      if{BoolOp}: (use{BoolOp} "check") then Goto "bb1" else Goto "bb2" ]>%E $
+      "check" <-{ BoolOp } ((use{IntOp usize_t} "len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      if{BoolOp}: (use{BoolOp} "check") then Goto "bb2" else Goto "bb1" ]>%E $
     <["bb1" :=
       (* result fits into usize *)
-      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×c{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
+      "bytes" <-{ IntOp usize_t } ((use{IntOp usize_t} "len") ×{IntOp usize_t, IntOp usize_t} (use{IntOp usize_t} "size_of_T"));
       "__0" <-{use_op_alg' BoolSynType} ((use{IntOp usize_t} "bytes") ≤{IntOp usize_t, IntOp usize_t, u8} (I2v (MaxInt isize_t) USize));
       return (use{use_op_alg' BoolSynType} "__0")
     ]>%E $
@@ -653,27 +653,6 @@ Proof.
   init_lfts ∅.
   repeat liRStep; liShow.
 
-  typed_val_expr_bind.
-  repeat liRStep; liShow.
-  typed_val_expr_bind.
-  repeat liRStep; liShow.
-  rewrite /typed_val_expr.
-  iIntros (?) "#CTX #HE HL HC".
-  iRename select (_ ◁ᵥ{_} size @ int usize_t)%I into "Hv1".
-  iRename select (_ ◁ᵥ{_} ly_size T_st_ly @ int usize_t)%I into "Hv2".
-  iPoseProof (ty_own_int_in_range with "Hv1") as "%Hsz". destruct Hsz.
-  iEval (rewrite /ty_own_val/=) in "Hv1".
-  iEval (rewrite /ty_own_val/=) in "Hv2".
-  iDestruct "Hv1" as "(%Hsize &_)".
-  iDestruct "Hv2" as "(%HTsize & _)".
-  iApply (wp_check_int_arithop _ _ _ _ _ _ (bool_decide ((size * ly_size T_st_ly ∈ usize_t)))); [done.. | | ].
-  { simpl. rewrite /check_arith_bin_op. simpl. f_equiv.
-    rewrite /elem_of/int_elem_of_it/int_elem_of_it' MinInt_eq MaxInt_eq//. }
-  iNext. iIntros "_".
-  iApply ("HC" $! _ π _ _ (bool_t) with "HL"). { iApply type_val_bool'. }
-
-  repeat liRStep.
-
-  Unshelve. all: unshelve_sidecond; sidecond_hook; prepare_sideconditions; normalize_and_simpl_goal; try solve_goal.
-  Unshelve. all: unfold_common_defs; solve_goal.
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
 Qed.

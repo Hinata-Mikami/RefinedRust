@@ -50,6 +50,22 @@ Notation "e1 ^{ ot1 , ot2 } e2" := (BinOp XorOp ot1 ot2 e1%E e2%E)
 Notation "e1 ,{ ot1 , ot2 } e2" := (BinOp Comma ot1 ot2 e1%E e2%E)
   (at level 30, format "e1  ,{ ot1 ,  ot2 }  e2") : expr_scope.
 
+(* Overflow checking operations *)
+Notation "e1 '+c' '{' ot1 , ot2 } e2" := (CheckBinOp AddOp ot1 ot2 e1%E e2%E)
+  (at level 50, left associativity, format "e1  '+c' '{' ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 '-c' '{' ot1 , ot2 } e2" := (CheckBinOp SubOp ot1 ot2 e1%E e2%E)
+  (at level 50, left associativity, format "e1  '-c' '{' ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 ×c{ ot1 , ot2 } e2" := (CheckBinOp MulOp ot1 ot2 e1%E e2%E)
+  (at level 70, format "e1  ×c{ ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 /c{ ot1 , ot2 } e2" := (CheckBinOp DivOp ot1 ot2 e1%E e2%E)
+  (at level 70, format "e1  /c{ ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 %c{ ot1 , ot2 } e2" := (CheckBinOp ModOp ot1 ot2 e1%E e2%E)
+  (at level 70, format "e1  %c{ ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 <<c{ ot1 , ot2 } e2" := (CheckBinOp ShlOp ot1 ot2 e1%E e2%E)
+  (at level 70, format "e1  <<c{ ot1 ,  ot2 }  e2") : expr_scope.
+Notation "e1 >>c{ ot1 , ot2 } e2" := (CheckBinOp ShrOp ot1 ot2 e1%E e2%E)
+  (at level 70, format "e1  >>c{ ot1 ,  ot2 }  e2") : expr_scope.
+
 (* The offset must be evaluated first for the type system to work, thus the order is switched here. *)
 Notation "e1 'at_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrOffsetOp ly) ot2 ot1 e2%E e1%E)
   (at level 70, format "e1  at_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.

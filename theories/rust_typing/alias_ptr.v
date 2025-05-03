@@ -135,7 +135,7 @@ End comparison.
 Section cast.
   Context `{!typeGS Σ}.
 
-  Lemma type_cast_ptr_ptr π E L l v (T : typed_un_op_cont_t) :
+  Lemma type_cast_ptr_ptr π E L l v (T : typed_val_expr_cont_t) :
     (∀ v, T L π v _ (alias_ptr_t) (l))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} l @ alias_ptr_t)%I (CastOp (PtrOp)) PtrOp T.
   Proof.
@@ -150,7 +150,7 @@ Section cast.
     TypedUnOpVal π E L v alias_ptr_t l (CastOp PtrOp) PtrOp :=
     λ T, i2p (type_cast_ptr_ptr π E L l v T).
 
-  Lemma type_cast_ptr_int π E L l v (T : typed_un_op_cont_t) :
+  Lemma type_cast_ptr_int π E L l v (T : typed_val_expr_cont_t) :
     (∀ v, T L π v _ (int usize_t) (l.2))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} l @ alias_ptr_t)%I (CastOp (IntOp usize_t)) PtrOp T.
   Proof.

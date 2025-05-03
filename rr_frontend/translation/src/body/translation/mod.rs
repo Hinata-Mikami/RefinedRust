@@ -20,7 +20,6 @@ use rr_rustc_interface::middle::{mir, ty};
 use typed_arena::Arena;
 
 use crate::base::*;
-use crate::body::checked_op_analysis::CheckedOpLocalAnalysis;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
@@ -80,14 +79,6 @@ pub struct TX<'a, 'def, 'tcx> {
     /// relevant locals: (local, name, type)
     fn_locals: Vec<(mir::Local, radium::LocalKind, String, radium::Type<'def>)>,
 
-    /// result temporaries of checked ops that we rewrite
-    /// we assume that this place is typed at (result_type, bool)
-    /// and rewrite accesses to the first component to directly use the place,
-    /// while rewriting accesses to the second component to true.
-    /// TODO: once we handle panics properly, we should use a different translation.
-    /// NOTE: we only rewrite for uses, as these are the only places these are used.
-    checked_op_temporaries: HashMap<mir::Local, ty::Ty<'tcx>>,
-
     /// the Caesium function buildder
     translated_fn: radium::FunctionBuilder<'def>,
 }
@@ -109,13 +100,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<Self, TranslationError<'tcx>> {
         let body = proc.get_mir();
 
-        // analyze which locals are used for the result of checked-ops, because we will
-        // override their types (eliminating the tuples)
-        let mut checked_op_analyzer = CheckedOpLocalAnalysis::new(env.tcx(), body);
-        checked_op_analyzer.analyze();
-        let checked_op_temporaries = checked_op_analyzer.results();
-        info!("Checked op temporaries: {checked_op_temporaries:?}");
-
         // map to translate between locals and the string names we use in radium::
         let mut variable_map: HashMap<mir::Local, String> = HashMap::new();
 
@@ -135,12 +119,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // go over local_decls and create the right radium:: stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
             let kind = body.local_kind(local);
-            let ty: ty::Ty<'tcx>;
-            if let Some(rewritten_ty) = checked_op_temporaries.get(&local) {
-                ty = *rewritten_ty;
-            } else {
-                ty = local_decl.ty;
-            }
+            let ty: ty::Ty<'tcx> = local_decl.ty;
 
             // check if the type is of a spec fn -- in this case, we can skip this temporary
             if let ty::TyKind::Closure(id, _) = ty.kind() {
@@ -208,7 +187,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             ty_translator,
             loop_specs: HashMap::new(),
             fn_locals,
-            checked_op_temporaries,
             initial_constraints,
             const_registry,
             trait_registry,
@@ -375,11 +353,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Checks whether a place access descends below a reference.
     fn check_place_below_reference(&self, place: &mir::Place<'tcx>) -> bool {
-        if self.checked_op_temporaries.contains_key(&place.local) {
-            // temporaries are never below references
-            return false;
-        }
-
         for (pl, _) in place.iter_projections() {
             // check if the current ty is a reference that we then descend under with proj
             let cur_ty_kind = pl.ty(&self.proc.get_mir().local_decls, self.env.tcx()).ty.kind();
