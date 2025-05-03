@@ -50,16 +50,6 @@ impl<T> AnalysisResult<T> {
             .get(&bb)
             .unwrap_or_else(|| panic!("Missing initialization info for block {:?}", bb))
     }
-
-    /// Get the initialization set after the statement.
-    /// If `location.statement_index` is equal to the number of statements,
-    /// returns the initialization set after the terminator.
-    #[must_use]
-    pub fn get_after_statement(&self, location: mir::Location) -> &T {
-        self.after_statement
-            .get(&location)
-            .unwrap_or_else(|| panic!("Missing initialization info for location {:?}", location))
-    }
 }
 
 /// The result of the definitely initialized analysis.

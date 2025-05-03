@@ -4,39 +4,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs::File;
-use std::io;
-use std::io::Write;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{debug, trace};
-use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::index::Idx;
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{data_structures, hir, polonius_engine, span};
+use rr_rustc_interface::{data_structures, polonius_engine, span};
 
 use crate::environment::borrowck::facts::PointType;
 use crate::environment::borrowck::place_regions::PlaceRegions;
 use crate::environment::borrowck::{facts, place_regions};
 use crate::environment::mir_utils::all_places::AllPlaces;
-use crate::environment::mir_utils::real_edges::RealEdges;
-use crate::environment::mir_utils::split_aggregate_assignment::SplitAggregateAssignment;
-use crate::environment::mir_utils::statement_as_assign::StatementAsAssign;
-use crate::environment::mir_utils::statement_at::StatementAt;
 use crate::environment::procedure::Procedure;
-use crate::environment::{loops, Environment};
-use crate::utils;
-
-/// This represents the assignment in which a loan was created. The `source`
-/// will contain the creation of the loan, while the `dest` will store the
-/// created reference.
-#[derive(Clone, Debug)]
-pub struct LoanPlaces<'tcx> {
-    pub dest: mir::Place<'tcx>,
-    pub source: mir::Rvalue<'tcx>,
-    pub location: mir::Location,
-}
+use crate::environment::Environment;
 
 /// This represents "rich" regions that are directly annotated with their `RegionKind`.
 ///
@@ -56,32 +37,27 @@ pub enum AtomicRegion {
 
 impl AtomicRegion {
     #[must_use]
-    pub const fn is_loan(&self) -> bool {
-        matches!(*self, Self::Loan(_, _))
-    }
-
-    #[must_use]
-    pub const fn is_universal(&self) -> bool {
+    pub(crate) const fn is_universal(&self) -> bool {
         matches!(*self, Self::Universal(_, _))
     }
 
     #[must_use]
-    pub const fn is_place(&self) -> bool {
+    pub(crate) const fn is_place(&self) -> bool {
         matches!(*self, Self::PlaceRegion(_))
     }
 
     #[must_use]
-    pub const fn is_value(&self) -> bool {
+    pub(crate) const fn is_value(&self) -> bool {
         matches!(*self, Self::Unknown(_))
     }
 
     #[must_use]
-    pub const fn is_unconstrained(&self) -> bool {
+    pub(crate) const fn is_unconstrained(&self) -> bool {
         matches!(*self, Self::Unconstrained(_))
     }
 
     #[must_use]
-    pub const fn get_region(&self) -> facts::Region {
+    pub(crate) const fn get_region(&self) -> facts::Region {
         match self {
             Self::Loan(_, r)
             | Self::Universal(_, r)
@@ -122,120 +98,7 @@ pub enum RegionKind {
 
 #[derive(Clone, Debug)]
 pub enum Error {
-    /// Loans depending on branches inside loops are not implemented yet
-    UnsupportedLoanInLoop {
-        loop_head: mir::BasicBlock,
-        variable: mir::Local,
-    },
-    LoansInNestedLoops(mir::Location, mir::BasicBlock, mir::Location, mir::BasicBlock),
-    ReborrowingDagHasNoMagicWands(mir::Location),
-    /// We currently support only one reborrowing chain per loop
-    MultipleMagicWandsPerLoop(mir::Location),
-    MagicWandHasNoRepresentativeLoan(mir::Location),
     PlaceRegions(place_regions::Error, span::Span),
-    LoanInUnsupportedStatement(String, mir::Location),
-}
-
-#[allow(unused_variables)]
-pub fn graphviz<'tcx>(
-    env: &Environment<'tcx>,
-    def_path: &hir::definitions::DefPath,
-    def_id: DefId,
-    info: &PoloniusInfo<'_, 'tcx>,
-) -> io::Result<()> {
-    macro_rules! to_html {
-        ( $o:expr ) => {{
-            format!("{:?}", $o)
-                .replace("{", "\\{")
-                .replace("}", "\\}")
-                .replace("&", "&amp;")
-                .replace(">", "&gt;")
-                .replace("<", "&lt;")
-                .replace("\n", "<br/>")
-        }};
-    }
-    macro_rules! to_sorted_string {
-        ( $o:expr ) => {{
-            let mut vector = $o.iter().map(|x| to_html!(x)).collect::<Vec<String>>();
-            vector.sort();
-            vector.join(", ")
-        }};
-    }
-
-    let interner = &info.interner;
-
-    let borrowck_in_facts = &info.borrowck_in_facts;
-    let borrowck_out_facts = &info.borrowck_out_facts;
-
-    let graph_path = rrconfig::log_dir()
-        .join("nll-facts")
-        .join(def_path.to_filename_friendly_no_crate())
-        .join("polonius.dot");
-
-    let graph_file = File::create(graph_path).expect("Unable to create file");
-    let mut graph = io::BufWriter::new(graph_file);
-
-    let mut blocks: HashMap<_, _> = HashMap::new();
-    let mut block_edges = HashSet::new();
-    for (from_index, to_index) in &borrowck_in_facts.cfg_edge {
-        let from = interner.get_point(*from_index);
-        let from_block = from.location.block;
-        let to = interner.get_point(*to_index);
-        let to_block = to.location.block;
-        let from_points = blocks.entry(from_block).or_insert_with(HashSet::new);
-        from_points.insert(*from_index);
-        let to_points = blocks.entry(to_block).or_insert_with(HashSet::new);
-        to_points.insert(*to_index);
-        if from_block != to_block {
-            block_edges.insert((from_block, to_block));
-        }
-    }
-
-    writeln!(graph, "digraph G {{")?;
-    write!(graph, "general [ shape=\"record\" ")?;
-    writeln!(graph, "label =<<table>")?;
-    writeln!(
-        graph,
-        "<tr><td>universal region:</td><td>{}</td></tr>",
-        to_sorted_string!(borrowck_in_facts.universal_region)
-    )?;
-    writeln!(
-        graph,
-        "<tr><td>placeholder:</td><td>{}</td></tr>",
-        to_sorted_string!(borrowck_in_facts.placeholder)
-    )?;
-    write!(graph, "</table>>];\n\n")?;
-    for (block, point_indices) in blocks {
-        write!(graph, "node_{:?} [ shape=\"record\" ", block)?;
-        write!(graph, "label =<<table>")?;
-        writeln!(graph, "<th><td>{:?}</td></th>", block)?;
-        write!(graph, "<tr>")?;
-        write!(graph, "<td>point</td>")?;
-        write!(graph, "<td>loan_live_at</td>")?;
-        writeln!(graph, "</tr>")?;
-        let mut points: Vec<_> = point_indices.iter().map(|index| interner.get_point(*index)).collect();
-        points.sort();
-        for point in points {
-            writeln!(graph, "<tr>")?;
-            writeln!(graph, "<td>{}</td>", point)?;
-            write!(graph, "<td>")?;
-            let point_index = interner.get_point_index(&point);
-            if let Some(a) = borrowck_out_facts.loan_live_at.get(&point_index) {
-                for loan in a {
-                    write!(graph, "{:?},", loan)?;
-                }
-            }
-            write!(graph, "</td>")?;
-            writeln!(graph, "</tr>")?;
-        }
-        write!(graph, "</table>>];\n\n")?;
-    }
-    for (from, to) in block_edges {
-        writeln!(graph, "node_{:?} -> node_{:?};", from, to)?;
-    }
-    writeln!(graph, "}}")?;
-
-    Ok(())
 }
 
 /// Compute the transitive closure of a vec of constraints between regions.
@@ -269,130 +132,13 @@ pub struct PoloniusInfo<'a, 'tcx: 'a> {
     /// Position at which a specific loan was created.
     pub(crate) loan_position: HashMap<facts::Loan, mir::Location>,
     pub(crate) loan_at_position: HashMap<mir::Location, facts::Loan>,
-    pub(crate) place_regions: PlaceRegions,
     pub(crate) additional_facts: AdditionalFacts,
-    /// Loans that are created inside loops. Loan → loop head.
-    pub(crate) loops: loops::ProcedureLoops,
-    /// Two loans are conflicting if they borrow overlapping places and
-    /// are alive at overlapping regions.
-    pub(crate) loan_conflict_sets: HashMap<facts::Loan, HashSet<facts::Loan>>,
     /// The flipped `subset` relation for each point.
     pub(crate) superset: HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>>,
 }
 
-/// Returns the place that is borrowed by the assignment. We assume that
-/// all shared references are created only via assignments and ignore
-/// all other cases.
-fn get_borrowed_places<'a, 'tcx: 'a>(
-    mir: &'a mir::Body<'tcx>,
-    loan_position: &HashMap<facts::Loan, mir::Location>,
-    loan: facts::Loan,
-) -> Result<Vec<&'a mir::Place<'tcx>>, Error> {
-    let Some(location) = loan_position.get(&loan) else {
-        // FIXME (Vytautas): This is likely to be wrong.
-        debug!("Not found: {:?}", loan);
-        return Ok(Vec::new());
-    };
-
-    let mir::BasicBlockData { statements, .. } = &mir[location.block];
-
-    if statements.len() == location.statement_index {
-        return Ok(Vec::new());
-    }
-
-    let kind = &statements[location.statement_index].kind;
-    let mir::StatementKind::Assign(box (_, rhs)) = kind else {
-        unreachable!("{:?}", kind);
-    };
-
-    match rhs {
-        mir::Rvalue::Use(mir::Operand::Copy(place) | mir::Operand::Move(place))
-        | mir::Rvalue::Ref(_, _, place)
-        | mir::Rvalue::Discriminant(place) => Ok(vec![place]),
-
-        mir::Rvalue::Use(mir::Operand::Constant(_)) => Ok(Vec::new()),
-
-        mir::Rvalue::Aggregate(_, operands) => Ok(operands
-            .iter()
-            .filter_map(|operand| match operand {
-                mir::Operand::Copy(place) | mir::Operand::Move(place) => Some(place),
-                mir::Operand::Constant(_) => None,
-            })
-            .collect()),
-
-        // slice creation involves an unsize pointer cast like [i32; 3] -> &[i32]
-        mir::Rvalue::Cast(
-            mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
-            operand,
-            ty,
-        ) if ty.is_slice() && !ty.is_unsafe_ptr() => {
-            trace!("slice: operand={:?}, ty={:?}", operand, ty);
-            Ok(match operand {
-                mir::Operand::Copy(place) | mir::Operand::Move(place) => vec![place],
-                mir::Operand::Constant(_) => vec![],
-            })
-        },
-
-        mir::Rvalue::Cast(..) => {
-            // all other loan-casts are unsupported
-            Err(Error::LoanInUnsupportedStatement(
-                "cast statements that create loans are not supported".to_owned(),
-                *location,
-            ))
-        },
-
-        x => unreachable!("{:?}", x),
-    }
-}
-
-fn compute_loan_conflict_sets(
-    procedure: &Procedure,
-    loan_position: &HashMap<facts::Loan, mir::Location>,
-    borrowck_in_facts: &facts::AllInput,
-    borrowck_out_facts: &facts::AllOutput,
-) -> Result<HashMap<facts::Loan, HashSet<facts::Loan>>, Error> {
-    trace!("[enter] compute_loan_conflict_sets");
-
-    let mut loan_conflict_sets = HashMap::new();
-
-    let mir = procedure.get_mir();
-
-    for &(_r, loan, _) in &borrowck_in_facts.loan_issued_at {
-        loan_conflict_sets.insert(loan, HashSet::new());
-    }
-
-    for &(_r, loan_created, point) in &borrowck_in_facts.loan_issued_at {
-        let location = loan_position[&loan_created];
-
-        if !procedure.is_reachable_block(location.block) {
-            continue;
-        }
-
-        for borrowed_place in get_borrowed_places(mir, loan_position, loan_created)? {
-            if let Some(live_borrows) = borrowck_out_facts.loan_live_at.get(&point) {
-                for loan_alive in live_borrows {
-                    if loan_created == *loan_alive {
-                        continue;
-                    }
-                    for place in get_borrowed_places(mir, loan_position, *loan_alive)? {
-                        if utils::is_prefix(borrowed_place, place) || utils::is_prefix(place, borrowed_place)
-                        {
-                            loan_conflict_sets.get_mut(&loan_created).unwrap().insert(*loan_alive);
-                            loan_conflict_sets.get_mut(loan_alive).unwrap().insert(loan_created);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    trace!("[exit] compute_loan_conflict_sets = {:?}", loan_conflict_sets);
-
-    Ok(loan_conflict_sets)
-}
-
 impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
-    pub fn new(env: &'a Environment<'tcx>, procedure: &'a Procedure<'tcx>) -> Result<Self, Error> {
+    pub(crate) fn new(env: &'a Environment<'tcx>, procedure: &'a Procedure<'tcx>) -> Result<Self, Error> {
         let tcx = procedure.get_tcx();
         let def_id = procedure.get_id();
         let mir = procedure.get_mir();
@@ -404,9 +150,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
         let interner = facts::Interner::new(facts.location_table.take().unwrap());
         let mut all_facts = facts.input_facts.take().unwrap();
-
-        let real_edges = RealEdges::new(mir);
-        let loop_info = loops::ProcedureLoops::new(mir, &real_edges);
 
         Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)
             .map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
@@ -431,8 +174,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .collect();
 
         let additional_facts = AdditionalFacts::new(&all_facts, &output);
-        // FIXME: Check whether the new info in Polonius could be used for computing initialization.
-        let loan_conflict_sets = compute_loan_conflict_sets(procedure, &loan_position, &all_facts, &output)?;
 
         let superset = Self::compute_superset(&output);
 
@@ -444,10 +185,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             interner,
             loan_position,
             loan_at_position,
-            place_regions,
             additional_facts,
-            loops: loop_info,
-            loan_conflict_sets,
             superset,
         };
         Ok(info)
@@ -489,7 +227,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
     /// Gets the kind of a region: originating from a loan, a universal region, or none of these.
     #[must_use]
-    pub fn get_region_kind(&self, region: facts::Region) -> RegionKind {
+    pub(crate) fn get_region_kind(&self, region: facts::Region) -> RegionKind {
         // check if this region is induced by a loan
         let v: Vec<facts::Loan> = self
             .borrowck_in_facts
@@ -551,7 +289,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     }
 
     #[must_use]
-    pub fn mk_atomic_region(&self, r: facts::Region) -> AtomicRegion {
+    pub(crate) fn mk_atomic_region(&self, r: facts::Region) -> AtomicRegion {
         let kind = self.get_region_kind(r);
         match kind {
             RegionKind::Loan(l) => AtomicRegion::Loan(l, r),
@@ -562,28 +300,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         }
     }
 
-    /// Enumerate local universal regions (excluding the function lifetime).
-    #[must_use]
-    pub fn enumerate_local_universal_regions(&self) -> Vec<facts::Region> {
-        let mut universals = Vec::new();
-        for (r, _) in &self.borrowck_in_facts.placeholder {
-            if r.index() == 0 {
-                //static
-                continue;
-            }
-            if r.index() + 1 == self.borrowck_in_facts.placeholder.len() {
-                // function lft
-                continue;
-            }
-
-            universals.push(*r);
-        }
-        universals
-    }
-
     /// Get new subset constraints generated at a point.
     #[must_use]
-    pub fn get_new_subset_constraints_at_point(
+    pub(crate) fn get_new_subset_constraints_at_point(
         &self,
         point: facts::PointIndex,
     ) -> Vec<(facts::Region, facts::Region)> {
@@ -596,110 +315,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         constraints
     }
 
-    /// `r` is the region induced by the loan `l`.
-    #[must_use]
-    pub fn get_outliving_atomic_regions_for_loan(
-        &self,
-        r: facts::Region,
-        l: facts::Loan,
-        loc: facts::PointIndex,
-    ) -> Vec<AtomicRegion> {
-        // get set of superset regions
-        let a = self.superset.get(&loc);
-        if a.is_none() {
-            return Vec::new();
-        }
-        let b = a.unwrap().get(&r);
-        if b.is_none() {
-            return Vec::new();
-        }
-        let b: &BTreeSet<facts::Region> = b.unwrap();
-
-        let mut v = Vec::new();
-        for &region in b {
-            let kind = self.get_region_kind(region);
-            match kind {
-                RegionKind::Loan(l) => {
-                    v.push(AtomicRegion::Loan(l, region));
-                },
-                RegionKind::Universal(k) => {
-                    v.push(AtomicRegion::Universal(k, region));
-                },
-                _ => {
-                    // TODO: this is likely to be incorrect
-                },
-            }
-        }
-
-        // add all loans contained in the region at the current point.
-        // these all need to live at least as long as the region, by definition.
-        // (they may be killed and become zombies later on, but that does not really change anything)
-
-        // (TODO: handle universals here. I think however that universals that are
-        // subset of this one should transitively be contained in the other one, since
-        // they are always live??)
-        let contained_loans = self.borrowck_out_facts.origin_contains_loan_at(loc);
-        let contained_loans: &BTreeSet<facts::Loan> = contained_loans.get(&r).unwrap();
-        for &loan in contained_loans {
-            if loan == l {
-                continue;
-            }
-            let r0 = self.get_loan_issued_at_for_loan(loan);
-            v.push(AtomicRegion::Loan(loan, r0));
-        }
-
-        v
-    }
-
-    /// Get regions outliving `r` at point `loc`.
-    #[must_use]
-    pub fn get_outliving_atomic_regions(
-        &self,
-        r: facts::Region,
-        loc: facts::PointIndex,
-    ) -> Vec<AtomicRegion> {
-        // get set of superset regions
-        let a = self.superset.get(&loc);
-        if a.is_none() {
-            return Vec::new();
-        }
-        let b = a.unwrap().get(&r);
-        if b.is_none() {
-            return Vec::new();
-        }
-        let b: &BTreeSet<facts::Region> = b.unwrap();
-
-        let mut v = Vec::new();
-        for &region in b {
-            let kind = self.get_region_kind(region);
-            match kind {
-                RegionKind::Loan(l) => {
-                    v.push(AtomicRegion::Loan(l, region));
-                },
-                RegionKind::Universal(k) => {
-                    v.push(AtomicRegion::Universal(k, region));
-                },
-                _ => {},
-            }
-        }
-        // this is another region, essentially an intersection of loans/universals
-        // so we try to get the loans that need to outlive it.
-        // (TODO: handle universals here. I think however that universals that are
-        // subset of this one should transitively be contained in the other one, since
-        // they are always live??)
-        let contained_loans = self.borrowck_out_facts.origin_contains_loan_at(loc);
-        let contained_loans: &BTreeSet<facts::Loan> = contained_loans.get(&r).unwrap();
-        for &loan in contained_loans {
-            let r0 = self.get_loan_issued_at_for_loan(loan);
-            v.push(AtomicRegion::Loan(loan, r0));
-        }
-
-        v
-    }
-
     /// Flips the `subset` relation computed by Polonius for each point.
     #[must_use]
-    pub fn compute_superset(
+    pub(crate) fn compute_superset(
         output: &facts::AllOutput,
     ) -> HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>> {
         let subset = &output.subset;
@@ -722,46 +340,16 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     }
 
     #[must_use]
-    pub fn get_point(&self, location: mir::Location, point_type: facts::PointType) -> facts::PointIndex {
+    pub(crate) fn get_point(
+        &self,
+        location: mir::Location,
+        point_type: facts::PointType,
+    ) -> facts::PointIndex {
         let point = facts::Point {
             location,
             typ: point_type,
         };
         self.interner.get_point_index(&point)
-    }
-
-    #[must_use]
-    pub fn get_all_loans_kept_alive_by(
-        &self,
-        point: facts::PointIndex,
-        region: facts::Region,
-    ) -> (Vec<facts::Loan>, Vec<facts::Loan>) {
-        let mut loans =
-            Self::get_loans_kept_alive_by(point, region, &self.borrowck_out_facts.origin_contains_loan_at);
-
-        let zombie_loans =
-            Self::get_loans_kept_alive_by(point, region, &self.additional_facts.zombie_requires);
-
-        loans.extend(zombie_loans.iter().copied());
-
-        (loans, zombie_loans)
-    }
-
-    /// Get loans that are kept alive by the given region.
-    fn get_loans_kept_alive_by(
-        point: facts::PointIndex,
-        region: facts::Region,
-        restricts_map: &data_structures::fx::FxHashMap<
-            facts::PointIndex,
-            BTreeMap<facts::Region, BTreeSet<facts::Loan>>,
-        >,
-    ) -> Vec<facts::Loan> {
-        restricts_map
-            .get(&point)
-            .as_ref()
-            .and_then(|origin_contains_loan_at| origin_contains_loan_at.get(&region))
-            .map(|loans| loans.iter().copied().collect())
-            .unwrap_or_default()
     }
 
     /// Get loans that die at the given location.
@@ -776,18 +364,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
     /// Get the atomic region corresponding to a loan.
     #[must_use]
-    pub fn atomic_region_of_loan(&self, l: facts::Loan) -> AtomicRegion {
+    pub(crate) fn atomic_region_of_loan(&self, l: facts::Loan) -> AtomicRegion {
         let r = self.get_loan_issued_at_for_loan(l);
         AtomicRegion::Loan(l, r)
-    }
-
-    /// Get loans including the zombies ``(all_loans, zombie_loans)``.
-    #[must_use]
-    pub fn get_all_active_loans(&self, location: mir::Location) -> (Vec<facts::Loan>, Vec<facts::Loan>) {
-        let mut loans = self.get_active_loans(location, false);
-        let zombie_loans = self.get_active_loans(location, true);
-        loans.extend(zombie_loans.iter().copied());
-        (loans, zombie_loans)
     }
 
     const fn get_borrow_live_at(
@@ -803,7 +382,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
     /// Get loans that are active (including those that are about to die) at the given location.
     #[must_use]
-    pub fn get_active_loans(&self, location: mir::Location, zombie: bool) -> Vec<facts::Loan> {
+    pub(crate) fn get_active_loans(&self, location: mir::Location, zombie: bool) -> Vec<facts::Loan> {
         let loan_live_at = self.get_borrow_live_at(zombie);
         let start_point = self.get_point(location, facts::PointType::Start);
         let mid_point = self.get_point(location, facts::PointType::Mid);
@@ -836,41 +415,9 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         loans
     }
 
-    /// Get loans including the zombies ``(all_loans, zombie_loans)``.
-    #[must_use]
-    pub fn get_all_loans_dying_at(&self, location: mir::Location) -> (Vec<facts::Loan>, Vec<facts::Loan>) {
-        let mut loans = self.get_loans_dying_at(location, false);
-        let zombie_loans = self.get_loans_dying_at(location, true);
-        loans.extend(zombie_loans.iter().copied());
-        (loans, zombie_loans)
-    }
-
-    /// Get loans including the zombies ``(all_loans, zombie_loans)``.
-    #[must_use]
-    pub fn get_all_loans_dying_between(
-        &self,
-        initial_loc: mir::Location,
-        final_loc: mir::Location,
-    ) -> (Vec<facts::Loan>, Vec<facts::Loan>) {
-        trace!("[enter] get_all_loans_dying_between initial_loc={:?} final_loc={:?}", initial_loc, final_loc);
-
-        let mut loans = self.get_loans_dying_between(initial_loc, final_loc, false);
-        let zombie_loans = self.get_loans_dying_between(initial_loc, final_loc, true);
-        loans.extend(zombie_loans.iter().copied());
-        trace!(
-            "[exit] get_all_loans_dying_between \
-             initial_loc={:?} final_loc={:?} all={:?} zombie={:?}",
-            initial_loc,
-            final_loc,
-            loans,
-            zombie_loans
-        );
-        (loans, zombie_loans)
-    }
-
     /// Get loans that die *at* (that is, exactly after) the given location.
     #[must_use]
-    pub fn get_loans_dying_at(&self, location: mir::Location, zombie: bool) -> Vec<facts::Loan> {
+    pub(crate) fn get_loans_dying_at(&self, location: mir::Location, zombie: bool) -> Vec<facts::Loan> {
         // TODO: this needs to change.
         // the problem is that we check explcitly that it is currently live, but not at the next
         // point.
@@ -908,7 +455,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
     /// Get loans that die between two consecutive locations.
     #[must_use]
-    pub fn get_loans_dying_between(
+    pub(crate) fn get_loans_dying_between(
         &self,
         initial_loc: mir::Location,
         final_loc: mir::Location,
@@ -942,147 +489,17 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         dying_loans
     }
 
-    #[must_use]
-    pub fn get_conflicting_loans(&self, loan: facts::Loan) -> Vec<facts::Loan> {
-        self.loan_conflict_sets
-            .get(&loan)
-            .map(|set| set.iter().copied().collect())
-            .unwrap_or_default()
-    }
-
-    #[must_use]
-    pub fn get_alive_conflicting_loans(
-        &self,
-        loan: facts::Loan,
-        location: mir::Location,
-    ) -> Vec<facts::Loan> {
-        let Some(all_conflicting_loans) = self.loan_conflict_sets.get(&loan) else {
-            return Vec::new();
-        };
-
-        let point = self.get_point(location, facts::PointType::Mid);
-        let Some(alive_loans) = self.borrowck_out_facts.loan_live_at.get(&point) else {
-            return Vec::new();
-        };
-
-        let alive_conflicting_loans =
-            all_conflicting_loans.iter().filter(|loan| alive_loans.contains(loan)).copied().collect();
-        trace!("get_alive_conflicting_loans({:?}, {:?}) = {:?}", loan, location, alive_conflicting_loans);
-
-        alive_conflicting_loans
-    }
-
     /// Get the location at which a loan is created, if possible
     #[must_use]
-    pub fn get_loan_location(&self, loan: facts::Loan) -> Option<mir::Location> {
+    pub(crate) fn get_loan_location(&self, loan: facts::Loan) -> Option<mir::Location> {
         self.loan_position.get(&loan).copied()
     }
 
     /// Get the loan that gets created at a location.
     /// TODO: for aggregates, this only finds one loan
     #[must_use]
-    pub fn get_loan_at_location(&self, location: mir::Location) -> facts::Loan {
-        self.loan_at_position[&location]
-    }
-
-    /// Get the loan that gets created at a location.
-    /// TODO: for aggregates, this only finds one loan
-    #[must_use]
-    pub fn get_optional_loan_at_location(&self, location: mir::Location) -> Option<facts::Loan> {
+    pub(crate) fn get_optional_loan_at_location(&self, location: mir::Location) -> Option<facts::Loan> {
         self.loan_at_position.contains_key(&location).then(|| self.loan_at_position[&location])
-    }
-
-    /// Get a map from loans to locations at which they were created.
-    #[must_use]
-    pub fn loan_locations(&self) -> HashMap<facts::Loan, mir::Location> {
-        self.loan_position.iter().map(|(loan, location)| (*loan, *location)).collect()
-    }
-
-    /// Convert a `facts::Loan` to `LoanPlaces`<'tcx> (if possible)
-    pub fn get_loan_places(
-        &self,
-        loan: facts::Loan,
-    ) -> Result<Option<LoanPlaces<'tcx>>, place_regions::Error> {
-        // Implementing get_loan_places is a bit more complicated when there are tuples. This is
-        // because an assignment like
-        //   _3 = (move _4, move _5)
-        // creates two loans on the same line (if both fields of _3 are references), let's call
-        // them L0 and L1. This means we can't just inspect the assign statement to figure out the
-        // loan places for L0 -- we also have to find out which field of _3 L0 is associated with.
-        // This happens in get_assignment_for_loan, which returns an atomic assignment for a given
-        // loan. For the example above, get_assignment_for_loan(L0) would be _3.0 = move _4 and
-        // get_assignment_for_loan(L1) would be _3.1 = move _5. Using these atomic assignments, we
-        // can simply read off the loan places as before.
-
-        let Some(assignment) = self.get_assignment_for_loan(loan)? else {
-            return Ok(None);
-        };
-
-        let (dest, source) = assignment.as_assign().unwrap();
-        let source = source.clone();
-        let location = self.loan_position[&loan];
-
-        Ok(Some(LoanPlaces {
-            dest,
-            source,
-            location,
-        }))
-    }
-
-    /// Returns the atomic assignment that created a loan. Refer to the documentation of
-    /// `SplitAggregateAssignment` for more information on what an atomic assignment is.
-    pub fn get_assignment_for_loan(
-        &self,
-        loan: facts::Loan,
-    ) -> Result<Option<mir::Statement<'tcx>>, place_regions::Error> {
-        let Some(&location) = self.loan_position.get(&loan) else {
-            return Ok(None);
-        };
-
-        let Some(stmt) = self.mir.statement_at(location) else {
-            return Ok(None);
-        };
-
-        let mut assignments: Vec<_> = stmt.clone().split_assignment(self.tcx, self.mir);
-
-        // TODO: This is a workaround. It seems like some local variables don't have a local
-        //  variable declaration in the MIR. One example of this can be observed in the
-        //  implementation of the clone method in `prusti/tests/verify/pass/copy/generics.rs`. We
-        //  don't have region information for these local variables, which is why the code below
-        //  would drop all assignments and return `None`. So if there is only one possible
-        //  assignment that may have created a loan, we return it directly without inspecting the
-        //  region information. Of course once a local variable that is a tuple is not declared
-        //  explicitly, this will fail again.
-        if assignments.len() == 1 {
-            return Ok(assignments.pop());
-        }
-
-        let region = self.get_loan_issued_at_for_loan(loan);
-
-        // Drops all assignments where the LHS region isn't equal to the region of the loan we're
-        // interested in. The reason this works is a bit subtle. First, if execution reaches this
-        // point, the original assignment must have been an aggregate assignment, because in the
-        // case of other assignments the function returns early in the `assignments.len() == 1`
-        // check. For a reference moved into an aggregate via an aggregate assignment, the borrow
-        // region immediately associated with the fake loan created for this reference move is the
-        // region associated with the left-hand side place this reference is moved into. For
-        // example, consider the following assignment:
-        //     let _3 = (move _4, move _5);
-        // The fake loan created for "move_4" is associated with the region of the place _3.0, and
-        // for "move_5" the fake loan is associated with the region of the place _3.1. This
-        // correspondence allows us to identify the correct atomic assignment by comparing the
-        // region of the left-hand side with the borrow region of the loan. This is hacky, and a
-        // solution that does not rely on such subtleties would be much better.
-        let mut retained_assignments = vec![];
-        for stmt in assignments {
-            let (lhs, _) =
-                stmt.as_assign().unwrap_or_else(|| unreachable!("Borrow starts at statement {:?}", stmt));
-            if self.place_regions.for_place(lhs)? == Some(region) {
-                retained_assignments.push(stmt);
-            }
-        }
-
-        Ok(retained_assignments.pop())
     }
 
     /// Returns the borrow region that requires the terms of the given loan to be enforced. This
@@ -1111,45 +528,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
                 loan, regions
             )
         }
-    }
-
-    /// Find a variable that has the given region in its type.
-    #[must_use]
-    #[allow(clippy::unused_self)]
-    pub const fn find_variable(&self, _region: facts::Region) -> Option<mir::Local> {
-        // TODO
-        None
-    }
-
-    /// Get loops in which loans are defined (if any).
-    pub fn get_loan_loops(
-        &self,
-        loans: &[facts::Loan],
-    ) -> Result<Vec<(facts::Loan, mir::BasicBlock)>, Error> {
-        let pairs: Vec<_> = loans
-            .iter()
-            .filter_map(|loan| {
-                let Some(loan_location) = self.loan_position.get(loan) else {
-                    // FIXME (Vytautas): This is likely to be wrong.
-                    debug!("ERROR: not found for loan: {:?}", loan);
-                    return None;
-                };
-
-                self.loops.get_loop_head(loan_location.block).map(|loop_head| (*loan, loop_head))
-            })
-            .collect();
-
-        for (loan1, loop1) in &pairs {
-            let location1 = self.loan_position[loan1];
-            for (loan2, loop2) in &pairs {
-                let location2 = self.loan_position[loan2];
-                if loop1 != loop2 {
-                    return Err(Error::LoansInNestedLoops(location1, *loop1, location2, *loop2));
-                }
-            }
-        }
-
-        Ok(pairs)
     }
 
     fn get_successors(&self, location: mir::Location) -> Vec<mir::Location> {
@@ -1189,46 +567,6 @@ fn is_return(mir: &mir::Body<'_>, location: mir::Location) -> bool {
 
 /// Additional facts derived from the borrow checker facts.
 pub struct AdditionalFacts {
-    /// A list of loans sorted by id.
-    pub loans: Vec<facts::Loan>,
-    /// The ``reborrows`` facts are needed for removing “fake” loans: at
-    /// a specific program point there are often more than one loan active,
-    /// but we are interested in only one of them, which is the original one.
-    /// Therefore, we find all loans that are reborrows of the original loan
-    /// and remove them. Reborrowing is defined as follows:
-    ///
-    /// ```datalog
-    /// reborrows(Loan, Loan);
-    /// reborrows(L1, L2) :-
-    ///     loan_issued_at(R, L1, P),
-    ///     origin_contains_loan_at(R, P, L2).
-    /// reborrows(L1, L3) :-
-    ///     reborrows(L1, L2),
-    ///     reborrows(L2, L3).
-    /// ```
-    pub reborrows: Vec<(facts::Loan, facts::Loan)>,
-    /// Non-transitive `reborrows`.
-    pub reborrows_direct: Vec<(facts::Loan, facts::Loan)>,
-    /// The ``zombie_requires`` facts are ``requires`` facts for the loans
-    /// that were loan_killed_at.
-    ///
-    /// ```datalog
-    /// zombie_requires(Region, Loan, Point);
-    /// zombie_requires(R, L, Q) :-
-    ///     requires(R, L, P),
-    ///     loan_killed_at(L, P),
-    ///     cfg_edge(P, Q),
-    ///     origin_live_on_entry(R, Q).
-    /// zombie_requires(R2, L, P) :-
-    ///     zombie_requires(R1, L, P),
-    ///     subset(R1, R2, P).
-    /// zombie_requires(R, L, Q) :-
-    ///     zombie_requires(R, L, P),
-    ///     cfg_edge(P, Q),
-    ///     origin_live_on_entry(R, Q).
-    /// ```
-    pub zombie_requires:
-        data_structures::fx::FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
     /// for the loans that were loan_killed_at.
     ///
@@ -1237,9 +575,10 @@ pub struct AdditionalFacts {
     ///     zombie_requires(R, L, P),
     ///     origin_live_on_entry(R, P).
     /// ```
-    pub zombie_borrow_live_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+    pub(crate) zombie_borrow_live_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+
     /// Which loans were loan_killed_at (become zombies) at a given point.
-    pub borrow_become_zombie_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
+    pub(crate) borrow_become_zombie_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
 }
 
 impl AdditionalFacts {
@@ -1248,7 +587,6 @@ impl AdditionalFacts {
         all_facts: &facts::AllInput,
         output: &facts::AllOutput,
     ) -> (
-        data_structures::fx::FxHashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Loan>>>,
         data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
         data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
     ) {
@@ -1345,17 +683,6 @@ impl AdditionalFacts {
             );
         }
 
-        let zombie_requires = zombie_requires.complete();
-        let mut zombie_requires_map = data_structures::fx::FxHashMap::default();
-        for (region, loan, point) in &zombie_requires.elements {
-            zombie_requires_map
-                .entry(*point)
-                .or_insert_with(BTreeMap::default)
-                .entry(*region)
-                .or_insert_with(BTreeSet::new)
-                .insert(*loan);
-        }
-
         let zombie_borrow_live_at = zombie_borrow_live_at.complete();
         let mut zombie_borrow_live_at_map = data_structures::fx::FxHashMap::default();
         for (loan, point) in &zombie_borrow_live_at.elements {
@@ -1368,106 +695,18 @@ impl AdditionalFacts {
             borrow_become_zombie_at_map.entry(*point).or_insert_with(Vec::new).push(*loan);
         }
 
-        (zombie_requires_map, zombie_borrow_live_at_map, borrow_become_zombie_at_map)
+        (zombie_borrow_live_at_map, borrow_become_zombie_at_map)
     }
 
     /// Derive additional facts from the borrow checker facts.
     #[must_use]
-    pub fn new(all_facts: &facts::AllInput, output: &facts::AllOutput) -> Self {
-        let (zombie_requires, zombie_borrow_live_at, borrow_become_zombie_at) =
+    pub(crate) fn new(all_facts: &facts::AllInput, output: &facts::AllOutput) -> Self {
+        let (zombie_borrow_live_at, borrow_become_zombie_at) =
             Self::derive_zombie_requires(all_facts, output);
 
-        let origin_contains_loan_at = output.origin_contains_loan_at.iter().chain(zombie_requires.iter());
-        let loan_issued_ats = all_facts.loan_issued_at.iter();
-        let reborrows = Self::load_reborrows(origin_contains_loan_at, loan_issued_ats);
-
-        let mut reborrows = Self::transitive_closure(reborrows);
-
-        // Remove reflexive edges.
-        reborrows.retain(|(l1, l2)| l1 != l2);
-
-        // A non-transitive version of reborrows.
-        let reborrows_direct = Self::derive_nontransitive(&reborrows);
-
-        // Compute the sorted list of all loans.
-        let mut loans: Vec<_> = all_facts.loan_issued_at.iter().map(|&(_, l, _)| l).collect();
-        loans.sort();
-
         Self {
-            loans,
-            reborrows,
-            reborrows_direct,
-            zombie_requires,
             zombie_borrow_live_at,
             borrow_become_zombie_at,
         }
-    }
-
-    fn load_reborrows<'a>(
-        origin_contains_loan_at: impl Iterator<
-            Item = (&'a facts::PointIndex, &'a BTreeMap<facts::Region, BTreeSet<facts::Loan>>),
-        >,
-        loan_issued_ats: impl Iterator<Item = &'a (facts::Region, facts::Loan, facts::PointIndex)>,
-    ) -> Vec<(facts::Loan, facts::Loan)> {
-        use facts::{Loan, PointIndex, Region};
-
-        let mut iteration = datafrog::Iteration::new();
-
-        // Variables that are outputs of our computation.
-        let v_reborrows = iteration.variable::<(Loan, Loan)>("reborrows");
-
-        // Variables for initial data.
-        let v_restricts = iteration.variable::<((PointIndex, Region), Loan)>("origin_contains_loan_at");
-        let v_loan_issued_at = iteration.variable::<((PointIndex, Region), Loan)>("loan_issued_at");
-
-        // Load initial data.
-        let restricts_items = origin_contains_loan_at.flat_map(|(&point, region_map)| {
-            region_map
-                .iter()
-                .flat_map(move |(&region, loans)| loans.iter().map(move |&loan| ((point, region), loan)))
-        });
-        v_restricts.insert(datafrog::Relation::from_iter(restricts_items));
-
-        let loan_issued_at_items = loan_issued_ats.map(|&(r, l, p)| ((p, r), l));
-        v_loan_issued_at.insert(datafrog::Relation::from_iter(loan_issued_at_items));
-
-        while iteration.changed() {
-            // reborrows(L1, L2) :-
-            //   loan_issued_at(R, L1, P),
-            //   origin_contains_loan_at(R, P, L2).
-            v_reborrows.from_join(&v_loan_issued_at, &v_restricts, |_, &l1, &l2| (l1, l2));
-        }
-
-        v_reborrows.complete().elements
-    }
-
-    fn transitive_closure(reborrows: Vec<(facts::Loan, facts::Loan)>) -> Vec<(facts::Loan, facts::Loan)> {
-        let mut iteration = datafrog::Iteration::new();
-
-        let v_reborrows = iteration.variable("reborrows");
-        v_reborrows.insert(reborrows.into());
-
-        let v_reborrows_1 = iteration.variable_indistinct("reborrows_1");
-        let v_reborrows_2 = iteration.variable_indistinct("reborrows_2");
-
-        // Compute transitive closure of reborrows:
-        // reborrows(L1, L3) :-
-        //   reborrows(L1, L2),
-        //   reborrows(L2, L3).
-        while iteration.changed() {
-            v_reborrows_1.from_map(&v_reborrows, |&(l1, l2)| (l2, l1));
-            v_reborrows_2.from_map(&v_reborrows, |&(l2, l3)| (l2, l3));
-            v_reborrows.from_join(&v_reborrows_1, &v_reborrows_2, |_, &l1, &l3| (l1, l3));
-        }
-
-        v_reborrows.complete().elements
-    }
-
-    fn derive_nontransitive(reborrows: &[(facts::Loan, facts::Loan)]) -> Vec<(facts::Loan, facts::Loan)> {
-        reborrows
-            .iter()
-            .copied()
-            .filter(|&(l1, l2)| !reborrows.iter().any(|&(l3, l4)| l4 == l2 && reborrows.contains(&(l1, l3))))
-            .collect()
     }
 }
