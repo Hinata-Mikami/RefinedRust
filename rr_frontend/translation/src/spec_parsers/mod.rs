@@ -18,7 +18,7 @@ pub struct RustPath {
     path: Vec<String>,
 }
 
-impl<F> parse::Parse<F> for RustPath {
+impl<F> Parse<F> for RustPath {
     fn parse(input: parse::Stream, meta: &F) -> parse::Result<Self> {
         let x: parse::Punctuated<parse::Ident, MToken![::]> =
             parse::Punctuated::parse_separated_nonempty(input, meta)?;
@@ -51,7 +51,7 @@ pub struct ShimAnnot {
     pub trait_req_incl_name: String,
 }
 
-impl<U> parse::Parse<U> for ShimAnnot
+impl<U> Parse<U> for ShimAnnot
 where
     U: ?Sized,
 {
@@ -100,7 +100,7 @@ pub struct CodeShimAnnot {
     pub code_name: String,
 }
 
-impl<U> parse::Parse<U> for CodeShimAnnot
+impl<U> Parse<U> for CodeShimAnnot
 where
     U: ?Sized,
 {

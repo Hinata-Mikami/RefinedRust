@@ -3,10 +3,21 @@ rustflags = [
     # === ENABLE ALL LINTS ===
 
     # Rust lints
-    "-Ddead_code",
-    "-Dunused_imports",
-    "-Dunused_mut",
-    "-Dunused_variables",
+    "-Dfuture-incompatible",
+    "-Dlet-underscore",
+    "-Dnonstandard-style",
+    "-Dunused",
+
+    # Rust extra lints
+    "-Dunused_extern_crates",
+    "-Dunused_import_braces",
+    "-Dunused_lifetimes",
+    "-Dunused_macro_rules",
+    "-Dunused_qualifications",
+
+    # `crane` issue
+    "-Wunused_crate_dependencies",
+    "-Wnon_snake_case",
 
     # Clippy lints
     "-Dclippy::complexity",

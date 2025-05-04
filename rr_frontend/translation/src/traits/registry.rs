@@ -788,7 +788,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         &self,
         env: &Environment<'tcx>,
         did: DefId,
-    ) -> Result<radium::Type<'def>, traits::Error<'tcx>> {
+    ) -> Result<radium::Type<'def>, Error<'tcx>> {
         let type_name = env.get_assoc_item_name(did).ok_or(traits::Error::NotAnAssocType(did))?;
 
         if self.is_self_use {

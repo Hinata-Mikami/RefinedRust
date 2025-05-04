@@ -9,7 +9,7 @@ use parse::Peek;
 use radium::{coq, specs};
 use rr_rustc_interface::ast;
 
-use crate::spec_parsers::parse_utils::*;
+use crate::spec_parsers::parse_utils::{str_err, ParamLookup};
 
 /// An attribute spec parser handles the parsing of the attributes of the whole enum and relevant
 /// attributes on the variants at once.

@@ -11,8 +11,6 @@ pub mod scope;
 mod translator;
 mod tyvars;
 
-use std::fmt::Write;
-
 pub use local::{normalize_in_function, LocalTX};
 /// We export these parts of the private modules
 use rr_rustc_interface::middle::ty;
@@ -33,11 +31,13 @@ pub fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
 
 /// Mangle a name by appending generic args to it.
 pub fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String {
-    let mut mangled_base = name.to_owned();
+    let mut mangled_base: String = name.to_owned();
+
     for arg in args {
         if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-            write!(mangled_base, "_{}", strip_coq_ident(&format!("{ty}"))).unwrap();
+            mangled_base.push_str(&format!("_{}", strip_coq_ident(&format!("{ty}"))));
         }
     }
+
     mangled_base
 }

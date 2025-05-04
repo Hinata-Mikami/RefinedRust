@@ -184,15 +184,15 @@ impl Display for RecordBodyItem {
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 pub type Type = RocqType<model::Type>;
 
-pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_list<T: Display>(v: &Vec<RocqType<T>>) -> String {
     format!("[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_hlist<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_hlist<T: Display>(v: &Vec<RocqType<T>>) -> String {
     format!("+[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_prod<T: Display>(v: &Vec<RocqType<T>>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),

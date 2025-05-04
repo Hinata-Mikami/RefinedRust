@@ -60,7 +60,7 @@ struct RRArgs {
     args: Vec<LiteralTypeWithRef>,
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRArgs {
+impl<'def, T: ParamLookup<'def>> Parse<T> for RRArgs {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let args: parse::Punctuated<LiteralTypeWithRef, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
@@ -79,7 +79,7 @@ struct ClosureCaptureSpec {
     post: Option<LiteralTypeWithRef>,
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for ClosureCaptureSpec {
+impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let name_str: parse::LitStr = input.parse(meta)?;
         let name = name_str.value();
@@ -128,7 +128,7 @@ enum MetaIProp {
     Linktime(String),
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
+impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(input) {
             input.parse::<_, MToken![#]>(meta)?;
@@ -446,7 +446,7 @@ where
     /// `capture_specs`: the parsed capture specification
     /// `make_tuple`: closure to make a new Radium tuple type
     /// `builder`: the function builder to push new specification components to
-    fn merge_capture_information<'b, 'c, 'tcx, H>(
+    fn merge_capture_information<'c, 'tcx, H>(
         &mut self,
         capture_specs: Vec<ClosureCaptureSpec>,
         meta: ClosureMetaInfo<'c, 'tcx, 'def>,

@@ -4,10 +4,12 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use core::cell::RefCell;
-/// Provides the Spec AST and utilities for interfacing with it.
+//! Provides the Spec AST and utilities for interfacing with it.
+
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::{self, Debug, Formatter, Write};
+use std::fmt;
+use std::fmt::Write as fmtWrite;
 use std::marker::PhantomData;
 use std::ops::Add;
 
@@ -23,7 +25,7 @@ use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
 impl<'def> Display for TypeWithRef<'def> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{} :@: {}", self.1, self.0)
     }
 }
@@ -52,7 +54,7 @@ pub enum UniversalLft {
 }
 
 impl Display for UniversalLft {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::Function => write!(f, "ϝ"),
             Self::Static => write!(f, "static"),
@@ -81,7 +83,7 @@ pub enum IntType {
 }
 
 impl Display for IntType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::I8 => write!(f, "I8"),
             Self::I16 => write!(f, "I16"),
@@ -115,7 +117,7 @@ pub enum OpType {
 }
 
 impl Display for OpType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "BoolOp"),
             Self::Char => write!(f, "CharOp"),
@@ -156,7 +158,7 @@ pub enum SynType {
 }
 
 impl Display for SynType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "BoolSynType"),
             Self::Char => write!(f, "CharSynType"),
@@ -488,7 +490,7 @@ pub enum Type<'def> {
 }
 
 impl<'def> Display for Type<'def> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "bool_t"),
             Self::Char => write!(f, "char_t"),
@@ -1110,7 +1112,7 @@ pub enum StructRepr {
 }
 
 impl Display for StructRepr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ReprRust => write!(f, "StructReprRust"),
             Self::ReprC => write!(f, "StructReprC"),
@@ -1128,7 +1130,7 @@ pub enum EnumRepr {
 }
 
 impl Display for EnumRepr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ReprRust => write!(f, "EnumReprRust"),
             Self::ReprC => write!(f, "EnumReprC"),
@@ -1380,7 +1382,7 @@ fn format_extra_context_items<F>(
     f: &mut F,
 ) -> Result<(Vec<String>, bool), fmt::Error>
 where
-    F: Write,
+    F: fmt::Write,
 {
     let mut context_names = Vec::new();
     let mut counter = 0;
@@ -1424,8 +1426,8 @@ pub struct AbstractStruct<'def> {
     is_recursive: bool,
 }
 
-impl<'def> Debug for AbstractStruct<'def> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+impl<'def> fmt::Debug for AbstractStruct<'def> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "AbstractStruct<name={}>", self.variant_def.name)
     }
 }
@@ -2520,7 +2522,7 @@ pub enum Layout {
 }
 
 impl Display for Layout {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Ptr => write!(f, "void*"),
             Self::Int(it) => write!(f, "(it_layout {})", it),
@@ -2553,7 +2555,7 @@ pub enum IProp {
     All(Vec<coq::binder::Binder>, Box<IProp>),
 }
 
-fn fmt_with_op<T>(v: &[T], op: &str, f: &mut Formatter<'_>) -> Result<(), fmt::Error>
+fn fmt_with_op<T>(v: &[T], op: &str, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error>
 where
     T: Display,
 {
@@ -2564,13 +2566,17 @@ where
     write_list!(f, v, &format!("\n{op} "), "({})")
 }
 
-fn fmt_binders(binders: &[coq::binder::Binder], op: &str, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+fn fmt_binders(
+    binders: &[coq::binder::Binder],
+    op: &str,
+    f: &mut fmt::Formatter<'_>,
+) -> Result<(), fmt::Error> {
     write!(f, "{} ", op)?;
     write_list!(f, binders, " ")
 }
 
 impl Display for IProp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::True => write!(f, "True"),
             Self::Atom(a) => write!(f, "{a}"),
@@ -2610,7 +2616,7 @@ impl IPropPredicate {
 }
 
 impl Display for IPropPredicate {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         fmt_binders(&self.binders, "λ", f)?;
         write!(f, ", ({})%I : iProp Σ", self.prop)
     }
@@ -2868,7 +2874,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
 // TODO: Deprecated: Generate a coq::Document instead.
 impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut doc = coq::Document::default();
         if self.trait_req_incl_name.is_some() {
             // first generate the trait req incl definition, if this spec needs one.
@@ -4079,7 +4085,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         extra_lfts: &[Lft],
     ) -> fmt::Result
     where
-        F: Write,
+        F: fmt::Write,
     {
         let mut lft_pattern = String::with_capacity(100);
         write!(lft_pattern, "( *[")?;
@@ -4598,7 +4604,7 @@ impl<'def> TraitSpecDecl<'def> {
 
 // TODO: Deprecated: Generate a coq::Document instead.
 impl<'def> Display for TraitSpecDecl<'def> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Section {}.\n", self.lit.name)?;
 
         let spec_attrs_record_constructor = self.lit.spec_record_attrs_constructor_name();
@@ -4928,7 +4934,7 @@ impl<'def> TraitImplSpec<'def> {
 }
 
 impl<'def> Display for TraitImplSpec<'def> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
             section.push(coq::command::Context::refinedrust());
 

@@ -19,7 +19,6 @@ translation.path = "translation"
 
 analysis = { git = "https://github.com/viperproject/prusti-dev.git", rev = "24bd4c5575ff1c0b13eb18cfe1a82992dfdb120d" }
 config = { version = "=0.14.0", default-features = false, features = ["toml"] }
-csv = "1"
 datafrog = "2"
 derive_more = { version = "=1.0.0-beta.6", features = ["constructor", "debug", "deref", "deref_mut", "display", "from", "into"] }
 env_logger = { version = "0.11" }

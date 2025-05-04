@@ -13,7 +13,9 @@ use parse::{Parse, Peek};
 use radium::{coq, specs};
 use rr_rustc_interface::ast;
 
-use crate::spec_parsers::parse_utils::*;
+use crate::spec_parsers::parse_utils::{
+    str_err, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams,
+};
 
 pub trait InvariantSpecParser {
     /// Parse attributes as an invariant type specification.
@@ -43,7 +45,7 @@ struct RfnPattern {
     xt_type: Option<coq::term::Type>,
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RfnPattern {
+impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let pat = parse::LitStr::parse(input, meta)?;
         let (pat, _) = meta.process_coq_literal(pat.value().as_str());
@@ -92,7 +94,7 @@ enum MetaIProp {
     Shared(specs::IProp),
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
+impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(input) {
             input.parse::<_, MToken![#]>(meta)?;
@@ -170,7 +172,7 @@ impl From<InvariantSpecFlags> for specs::InvariantSpecFlags {
     }
 }
 
-impl<U> parse::Parse<U> for InvariantSpecFlags {
+impl<U> Parse<U> for InvariantSpecFlags {
     fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
         let mode: parse::Ident = input.parse(meta)?;
 

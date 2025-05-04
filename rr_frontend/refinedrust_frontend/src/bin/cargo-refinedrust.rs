@@ -5,10 +5,12 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #![feature(let_chains)]
 
-//use prusti_utils::{config, launch};
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, process};
+
+// Unused dependencies
+use {env_logger as _, log as _, rr_rustc_interface as _, shlex as _, translation as _};
 
 fn main() {
     if let Err(code) = process(env::args().skip(1)) {

@@ -47,7 +47,6 @@ use crate::shims::registry as shim_registry;
 use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
-use crate::spec_parsers::*;
 use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
@@ -1148,7 +1147,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
 }
 
 fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> procedures::Mode {
-    let attrs = vcx.env.get_attributes_of_function(did, &propagate_method_attr_from_impl);
+    let attrs = vcx.env.get_attributes_of_function(did, &spec_parsers::propagate_method_attr_from_impl);
 
     // check if this is a purely spec function; if so, skip.
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
@@ -1255,8 +1254,9 @@ fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         let fname = vcx.env.get_item_name(f.to_def_id());
         let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
 
-        let filtered_attrs =
-            vcx.env.get_attributes_of_function(f.to_def_id(), &propagate_method_attr_from_impl);
+        let filtered_attrs = vcx
+            .env
+            .get_attributes_of_function(f.to_def_id(), &spec_parsers::propagate_method_attr_from_impl);
 
         let mode = meta.get_mode();
         if mode.is_shim() {

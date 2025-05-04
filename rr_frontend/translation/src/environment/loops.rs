@@ -87,7 +87,7 @@ struct AccessCollector<'b, 'tcx> {
     pub accessed_places: Vec<PlaceAccess<'tcx>>,
 }
 
-impl<'b, 'tcx> mir::visit::Visitor<'tcx> for AccessCollector<'b, 'tcx> {
+impl<'b, 'tcx> Visitor<'tcx> for AccessCollector<'b, 'tcx> {
     fn visit_place(
         &mut self,
         place: &mir::Place<'tcx>,

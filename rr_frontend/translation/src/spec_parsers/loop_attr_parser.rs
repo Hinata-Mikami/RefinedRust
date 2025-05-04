@@ -33,7 +33,7 @@ enum MetaIProp {
     Type(specs::TyOwnSpec),
 }
 
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for MetaIProp {
+impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(input) {
             input.parse::<_, MToken![#]>(meta)?;
@@ -111,7 +111,8 @@ struct InvVar {
     local: String,
     rfn: String,
 }
-impl<'def, T: ParamLookup<'def>> parse::Parse<T> for InvVar {
+
+impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let local_str: parse::LitStr = input.parse(meta)?;
         let local_str = local_str.value();

@@ -12,7 +12,6 @@ use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{data_structures, polonius_engine, span};
 
-use crate::environment::borrowck::facts::PointType;
 use crate::environment::borrowck::place_regions::PlaceRegions;
 use crate::environment::borrowck::{facts, place_regions};
 use crate::environment::mir_utils::all_places::AllPlaces;
@@ -512,7 +511,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     /// ```
     fn get_loan_issued_at_for_loan(&self, loan: facts::Loan) -> facts::Region {
         let location = self.get_loan_location(loan).unwrap();
-        let point = self.get_point(location, PointType::Mid);
+        let point = self.get_point(location, facts::PointType::Mid);
         let regions = self
             .borrowck_in_facts
             .loan_issued_at

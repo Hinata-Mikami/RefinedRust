@@ -29,7 +29,6 @@ use std::cell::Cell;
 use std::str::FromStr;
 use std::{fmt, result, vec};
 
-use rr_rustc_interface::ast::token::{BinOpToken, TokenKind};
 use rr_rustc_interface::{ast, span};
 use unicode_xid::UnicodeXID;
 
@@ -289,52 +288,52 @@ macro_rules! define_punctuation {
 }
 
 define_punctuation! {
-    "+"           pub struct Add/1              TokenKind::BinOp(BinOpToken::Plus),         /// `+`
-    "+="          pub struct AddEq/2            TokenKind::BinOpEq(BinOpToken::Plus),       /// `+=`
-    "&"           pub struct And/1              TokenKind::BinOp(BinOpToken::And),          /// `&`
-    "&&"          pub struct AndAnd/2           TokenKind::AndAnd,                          /// `&&`
-    "&="          pub struct AndEq/2            TokenKind::BinOpEq(BinOpToken::And),        /// `&=`
-    "@"           pub struct At/1               TokenKind::At,                              /// `@`
-    "!"           pub struct Bang/1             TokenKind::Not,                             /// `!`
-    "^"           pub struct Caret/1            TokenKind::BinOp(BinOpToken::Caret),        /// `^`
-    "^="          pub struct CaretEq/2          TokenKind::BinOpEq(BinOpToken::Caret),      /// `^=`
-    ":"           pub struct Colon/1            TokenKind::Colon,                           /// `:`
-    "::"          pub struct Colon2/2           TokenKind::ModSep,                          /// `::`
-    ","           pub struct Comma/1            TokenKind::Comma,                           /// `,`
-    "/"           pub struct Div/1              TokenKind::BinOp(BinOpToken::Slash),        /// `/`
-    "/="          pub struct DivEq/2            TokenKind::BinOpEq(BinOpToken::Slash),      /// `/=`
-    "$"           pub struct Dollar/1           TokenKind::Dollar,                          /// `$`
-    "."           pub struct Dot/1              TokenKind::Dot,                             /// `.`
-    ".."          pub struct Dot2/2             TokenKind::DotDot,                          /// `..`
-    "..."         pub struct Dot3/3             TokenKind::DotDotDot,                       /// `...`
-    "..="         pub struct DotDotEq/3         TokenKind::DotDotEq,                        /// `..=`
-    "="           pub struct Eq/1               TokenKind::Eq,                              /// `=`
-    "=="          pub struct EqEq/2             TokenKind::EqEq,                            /// `==`
-    ">="          pub struct Ge/2               TokenKind::Ge,                              /// `>=`
-    ">"           pub struct Gt/1               TokenKind::Gt,                              /// `>`
-    "<="          pub struct Le/2               TokenKind::Le,                              /// `<=`
-    "<"           pub struct Lt/1               TokenKind::Lt,                              /// `<`
-    "*="          pub struct MulEq/2            TokenKind::BinOpEq(BinOpToken::Star),       /// `*=`
-    "!="          pub struct Ne/2               TokenKind::Ne,                              /// `!=`
-    "|"           pub struct Or/1               TokenKind::BinOp(BinOpToken::Or),           /// `|`
-    "|="          pub struct OrEq/2             TokenKind::BinOpEq(BinOpToken::Or),         /// `|=`
-    "||"          pub struct OrOr/2             TokenKind::OrOr,                            /// `||`
-    "#"           pub struct Pound/1            TokenKind::Pound,                           /// `#`
-    "?"           pub struct Question/1         TokenKind::Question,                        /// `?`
-    "->"          pub struct RArrow/2           TokenKind::RArrow,                          /// `->`
-    "<-"          pub struct LArrow/2           TokenKind::LArrow,                          /// `<-`
-    "%"           pub struct Rem/1              TokenKind::BinOp(BinOpToken::Percent),      /// `%`
-    "%="          pub struct RemEq/2            TokenKind::BinOpEq(BinOpToken::Percent),    /// `%=`
-    "=>"          pub struct FatArrow/2         TokenKind::FatArrow,                        /// `=>`
-    ";"           pub struct Semi/1             TokenKind::Semi,                            /// `;`
-    "<<"          pub struct Shl/2              TokenKind::BinOp(BinOpToken::Shl),          /// `<<`
-    "<<="         pub struct ShlEq/3            TokenKind::BinOpEq(BinOpToken::Shl),        /// `<<=`
-    ">>"          pub struct Shr/2              TokenKind::BinOp(BinOpToken::Shr),          /// `>>`
-    ">>="         pub struct ShrEq/3            TokenKind::BinOpEq(BinOpToken::Shr),        /// `>>=`
-    "*"           pub struct Star/1             TokenKind::BinOp(BinOpToken::Star),         /// `*`
-    "-"           pub struct Sub/1              TokenKind::BinOp(BinOpToken::Minus),        /// `-`
-    "-="          pub struct SubEq/2            TokenKind::BinOpEq(BinOpToken::Minus),      /// `-=`
-    "~"           pub struct Tilde/1            TokenKind::Tilde,                           /// `~`
+    "+"           pub struct Add/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Plus),         /// `+`
+    "+="          pub struct AddEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Plus),       /// `+=`
+    "&"           pub struct And/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::And),          /// `&`
+    "&&"          pub struct AndAnd/2           ast::token::TokenKind::AndAnd,                                      /// `&&`
+    "&="          pub struct AndEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::And),        /// `&=`
+    "@"           pub struct At/1               ast::token::TokenKind::At,                                          /// `@`
+    "!"           pub struct Bang/1             ast::token::TokenKind::Not,                                         /// `!`
+    "^"           pub struct Caret/1            ast::token::TokenKind::BinOp(ast::token::BinOpToken::Caret),        /// `^`
+    "^="          pub struct CaretEq/2          ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Caret),      /// `^=`
+    ":"           pub struct Colon/1            ast::token::TokenKind::Colon,                                       /// `:`
+    "::"          pub struct Colon2/2           ast::token::TokenKind::ModSep,                                      /// `::`
+    ","           pub struct Comma/1            ast::token::TokenKind::Comma,                                       /// `,`
+    "/"           pub struct Div/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Slash),        /// `/`
+    "/="          pub struct DivEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Slash),      /// `/=`
+    "$"           pub struct Dollar/1           ast::token::TokenKind::Dollar,                                      /// `$`
+    "."           pub struct Dot/1              ast::token::TokenKind::Dot,                                         /// `.`
+    ".."          pub struct Dot2/2             ast::token::TokenKind::DotDot,                                      /// `..`
+    "..."         pub struct Dot3/3             ast::token::TokenKind::DotDotDot,                                   /// `...`
+    "..="         pub struct DotDotEq/3         ast::token::TokenKind::DotDotEq,                                    /// `..=`
+    "="           pub struct Eq/1               ast::token::TokenKind::Eq,                                          /// `=`
+    "=="          pub struct EqEq/2             ast::token::TokenKind::EqEq,                                        /// `==`
+    ">="          pub struct Ge/2               ast::token::TokenKind::Ge,                                          /// `>=`
+    ">"           pub struct Gt/1               ast::token::TokenKind::Gt,                                          /// `>`
+    "<="          pub struct Le/2               ast::token::TokenKind::Le,                                          /// `<=`
+    "<"           pub struct Lt/1               ast::token::TokenKind::Lt,                                          /// `<`
+    "*="          pub struct MulEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Star),       /// `*=`
+    "!="          pub struct Ne/2               ast::token::TokenKind::Ne,                                          /// `!=`
+    "|"           pub struct Or/1               ast::token::TokenKind::BinOp(ast::token::BinOpToken::Or),           /// `|`
+    "|="          pub struct OrEq/2             ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Or),         /// `|=`
+    "||"          pub struct OrOr/2             ast::token::TokenKind::OrOr,                                        /// `||`
+    "#"           pub struct Pound/1            ast::token::TokenKind::Pound,                                       /// `#`
+    "?"           pub struct Question/1         ast::token::TokenKind::Question,                                    /// `?`
+    "->"          pub struct RArrow/2           ast::token::TokenKind::RArrow,                                      /// `->`
+    "<-"          pub struct LArrow/2           ast::token::TokenKind::LArrow,                                      /// `<-`
+    "%"           pub struct Rem/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Percent),      /// `%`
+    "%="          pub struct RemEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Percent),    /// `%=`
+    "=>"          pub struct FatArrow/2         ast::token::TokenKind::FatArrow,                                    /// `=>`
+    ";"           pub struct Semi/1             ast::token::TokenKind::Semi,                                        /// `;`
+    "<<"          pub struct Shl/2              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Shl),          /// `<<`
+    "<<="         pub struct ShlEq/3            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Shl),        /// `<<=`
+    ">>"          pub struct Shr/2              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Shr),          /// `>>`
+    ">>="         pub struct ShrEq/3            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Shr),        /// `>>=`
+    "*"           pub struct Star/1             ast::token::TokenKind::BinOp(ast::token::BinOpToken::Star),         /// `*`
+    "-"           pub struct Sub/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Minus),        /// `-`
+    "-="          pub struct SubEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Minus),      /// `-=`
+    "~"           pub struct Tilde/1            ast::token::TokenKind::Tilde,                                       /// `~`
 }
 
 #[macro_export]
