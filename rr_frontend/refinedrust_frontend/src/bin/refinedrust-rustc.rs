@@ -5,8 +5,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-#![feature(box_patterns)]
 #![feature(rustc_private)]
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, process};

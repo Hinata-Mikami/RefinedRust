@@ -4,9 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-#![feature(fn_traits)]
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![feature(fn_traits)]
 #![feature(rustc_private)]
 
 mod attrs;
@@ -1177,9 +1176,6 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 fn register_functions<'tcx>(
     vcx: &mut VerificationCtxt<'tcx, '_>,
 ) -> Result<(), base::TranslationError<'tcx>> {
-    //let crate_name: span::symbol::Symbol = vcx.env.tcx().crate_name(span::def_id::LOCAL_CRATE);
-    //let stem = crate_name.as_str();
-
     for &f in vcx.functions {
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
 
@@ -1231,8 +1227,10 @@ fn register_functions<'tcx>(
             continue;
         }
 
-        if mode == procedures::Mode::Prove && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
-            mode = get_most_restrictive_function_mode(vcx, impl_did);
+        if mode == procedures::Mode::Prove {
+            if let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
+                mode = get_most_restrictive_function_mode(vcx, impl_did);
+            }
         }
 
         if mode.is_shim() || mode.is_code_shim() {
@@ -1244,6 +1242,7 @@ fn register_functions<'tcx>(
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
     }
+
     Ok(())
 }
 
