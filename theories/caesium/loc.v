@@ -147,7 +147,28 @@ Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
 Lemma wrapping_shift_loc_block l n : (l +wₗ n).1 = l.1.
 Proof. done. Qed.
 
-(** ** Properties of [offset_locs. *)
+Lemma wrapping_shift_loc_0 l :
+  l.2 ∈ usize_t →
+  l +wₗ 0 = l.
+Proof.
+  destruct l as [prov addr]; simpl.
+  intros Hel.
+  rewrite /wrapping_shift_loc/=.
+  f_equiv.
+  rewrite Z.add_0_r. by rewrite wrap_unsigned_id.
+Qed.
+Lemma wrapping_shift_loc_shift_loc a o : 
+  a.2 + o ∈ usize_t →
+  a +wₗ o = a +ₗ o.
+Proof.
+  destruct a as [prov addr].
+  intros ?. 
+  rewrite /wrapping_shift_loc/shift_loc/=. f_equiv.
+  by rewrite wrap_unsigned_id.
+Qed.
+
+
+(** ** Properties of [offset_loc]. *)
 
 Lemma offset_loc_0 l ly : l offset{ly}ₗ 0 = l.
 Proof. by rewrite /offset_loc Z.mul_0_r shift_loc_0. Qed.

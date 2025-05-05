@@ -234,7 +234,8 @@ Proof.
   rewrite /val_to_Z. case_decide as Hlen; last done.
   destruct (val_to_Z_go v) eqn:Heq => /=; last done.
   move: Heq => /val_to_Z_go_in_range.
-  rewrite Hlen /elem_of /int_elem_of_it /max_int /min_int.
+  rewrite int_elem_of_it_iff.
+  rewrite Hlen /max_int /min_int.
   rewrite /int_half_modulus /int_modulus /bits_per_int.
   destruct (it_signed it) eqn:Hsigned => /=.
   - case_decide => /=.
@@ -269,7 +270,7 @@ Proof.
   destruct (bool_decide (z ∈ it)) eqn: Hr => //. simplify_eq.
   move: Hr => /bool_decide_eq_true[Hm HM].
   have Hlen := bytes_per_int_gt_0 it.
-  rewrite /max_int in HM. rewrite /min_int in Hm.
+  rewrite MaxInt_eq /max_int in HM. rewrite MinInt_eq /min_int in Hm.
   rewrite val_of_Z_go_length val_to_of_Z_go /=.
   - case_bool_decide as H => //. clear H.
     destruct (it_signed it) eqn:Hs => /=.
@@ -367,9 +368,13 @@ Qed.
 Lemma val_of_bool_iff_val_of_Z v b:
   val_of_bool b = v ↔ val_of_Z (bool_to_Z b) u8 None = Some v.
 Proof.
-  split.
-  - move => <-. destruct b; cbv; do 3 f_equal; by apply byte_eq.
-  - destruct b; cbv; move => [<-]; do 2 f_equal; by apply byte_eq.
+  destruct b. 
+  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true. 
+    { cbv. split; intros ?; simplify_eq; do 2 f_equal; [f_equal | ]; by apply byte_eq. }
+    rewrite int_elem_of_it_iff//.
+  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true. 
+    { cbv. split; intros ?; simplify_eq; do 2 f_equal; [f_equal | ]; by apply byte_eq. }
+    rewrite int_elem_of_it_iff//.
 Qed.
 
 Lemma i2v_bool_Some b it:

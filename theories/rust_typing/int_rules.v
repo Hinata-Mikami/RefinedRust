@@ -18,31 +18,28 @@ Section typing.
     iDestruct "Hv" as "(%Hit & %)".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iModIntro. iPureIntro. split_and!; [done.. | | ].
-    { specialize (min_int_unsigned_0 it). lia. }
-    { rewrite MaxInt_eq. done. }
+    { specialize (MinInt_unsigned_0 it). lia. }
+    { done. }
   Qed.
   Global Program Instance learn_from_hyp_val_int_signed it z `{Hs : TCDone (it.(it_signed) = true)} :
     LearnFromHypVal (int it) z :=
     {| learn_from_hyp_val_Q := ⌜MinInt it ≤ z ≤ MaxInt it⌝ |}.
-Next Obligation.
+  Next Obligation.
     iIntros (? z Hs ????) "Hv".
     rewrite /ty_own_val/=.
-    rewrite !MaxInt_eq !MinInt_eq.
     iDestruct "Hv" as "(%Hit & %)".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
-    iModIntro. iPureIntro. split_and!; done.
+    iPureIntro. split_and!; done.
   Qed.
 
   Lemma type_int_val z (it : int_type) π :
-    ly_size it ≤ max_int isize_t →
+    ly_size it ≤ MaxInt isize_t →
     z ∈ it → ⊢ i2v z it ◁ᵥ{π} z @ int it.
   Proof.
-    rewrite int_elem_of_it_iff.
     intros ? Hn.
     move: Hn => /(val_of_Z_is_Some None) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
     rewrite /ty_own_val/=. iPureIntro.
-    rewrite MaxInt_eq.
     split; last done. rewrite /i2v Hv/=//.
   Qed.
 
@@ -52,6 +49,7 @@ Next Obligation.
     iIntros "[%Hn HT] #CTX".
     iExists Z, (int it), z. iFrame.
     rewrite I2v_unfold. iApply type_int_val; last done.
+    rewrite MaxInt_eq.
     apply IntType_to_it_size_bounded.
   Qed.
   Global Instance type_val_int_inst n (it : IntType) π : TypedValue π (I2v n it) :=
@@ -76,7 +74,6 @@ Section relop.
   Proof.
     rewrite /ty_own_val/=.
     iIntros "%Hop HT [%Hv1 %] [%Hv2 _]" (Φ) "#CTX #HE HL HΦ".
-    rewrite !int_elem_of_it_iff.
     iDestruct ("HT" with "[] []" ) as "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply (wp_binop_det_pure (val_of_bool b)).
@@ -120,7 +117,6 @@ Section arithop.
   Proof.
     rewrite /ty_own_val/=.
     iIntros "%Hop HT [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
-    rewrite !int_elem_of_it_iff.
     iDestruct ("HT" with "[] []" ) as (Hsc) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
@@ -207,9 +203,8 @@ Section arithop.
       (*split.*)
       (*+ trans 0; [ apply min_int_le_0 | by apply Z.shiftl_nonneg ].*)
       (*+ rewrite -MaxInt_eq.  done.*)
-    - rewrite !int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hn1, Hn2.
-      split.
-      + trans 0; [ apply min_int_le_0 | by apply Z.shiftr_nonneg ].
+    - split.
+      + trans 0; [ apply MinInt_le_0 | by apply Z.shiftr_nonneg ].
       + destruct Hn1.
         trans n1; last done. rewrite Z.shiftr_div_pow2; last by lia.
         apply Z.div_le_upper_bound. { apply Z.pow_pos_nonneg => //. }
@@ -224,17 +219,16 @@ Section arithop.
   Proof.
     rewrite /ty_own_val/=.
     iIntros "%Hop HT [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
-    rewrite !int_elem_of_it_iff.
     iDestruct ("HT" with "[] []" ) as (Hsc Hran) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
 
     iIntros (v Hv) "!> Hcred".
     assert (wrap_to_it n it = n) as Heq.
-    { rewrite wrap_to_it_id; [done | apply int_elem_of_it_iff].
+    { rewrite wrap_to_it_id; [done | ].
       eapply int_arithop_result_in_range.
-      - apply int_elem_of_it_iff; eapply val_to_Z_in_range; apply Hv1.
-      - apply int_elem_of_it_iff; eapply val_to_Z_in_range; apply Hv2.
+      - eapply val_to_Z_in_range; apply Hv1.
+      - eapply val_to_Z_in_range; apply Hv2.
       - done.
       - done.
       - done. }
@@ -300,9 +294,7 @@ Section check_arithop.
   Proof.
     intros Hsc%int_arithop_result_sidecond_correct Hres.
     rewrite /check_arith_bin_op.
-    rewrite Hsc Hres/=.
-    f_equiv. apply bool_decide_ext.
-    by rewrite int_elem_of_it_iff.
+    rewrite Hsc Hres//.
   Qed.
 
 
@@ -326,7 +318,7 @@ Section check_arithop.
       intros Hran.
       eapply int_arithop_result_in_range;
         [ | | done | | done ];
-        [apply int_elem_of_it_iff; eapply val_to_Z_in_range; done.. | done ].
+        [eapply val_to_Z_in_range; done.. | done ].
     }
     iSplitR.
     { iPureIntro. exists b. econstructor; done. }
@@ -409,18 +401,19 @@ Section unop.
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NegOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    rewrite int_elem_of_it_iff MinInt_eq.
-    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range ?.
+    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as (Hs Hn) "HT".
     have [|v' Hv']:= val_of_Z_is_Some None it (- n). {
+      rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
+      rewrite MinInt_eq in Hn.
       unfold elem_of, int_elem_of_it, max_int, min_int in *.
-      destruct it as [?[]] => //; simpl in *; lia.
+      destruct it as [?[]] => //; simpl in *. lia.
     }
     assert (-n ∈ it) as Helem.
-    { apply int_elem_of_it_iff. by eapply val_of_Z_in_range. }
+    { by eapply val_of_Z_in_range. }
     rewrite /i2v Hv'/=.
     iApply wp_neg_int => //.
-    { rewrite wrap_to_it_id; first done. apply int_elem_of_it_iff => //. }
+    { rewrite wrap_to_it_id//. }
     iNext. iIntros "Hcred".
     iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=.
@@ -435,11 +428,11 @@ Section unop.
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NotIntOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    rewrite int_elem_of_it_iff.
-    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range ?.
+    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as "HT".
     set (nz := (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)).
     have [|v' Hv']:= val_of_Z_is_Some None it nz. {
+      rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
       unfold elem_of, int_elem_of_it, max_int, min_int, Z_lunot, Z.lnot, Z.pred in *.
       destruct it as [?[]] => //; simpl in *; first lia.
       split.
@@ -467,7 +460,6 @@ Section unop.
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
   Proof.
     rewrite /ty_own_val/=.
-    rewrite int_elem_of_it_iff MaxInt_eq.
     iIntros "[%Hit2 HT] [%Hv %Hit] %Φ #CTX #HE HL HΦ".
     iSpecialize ("HT" with "[]").
     { iPureIntro. by apply: val_to_Z_in_range. }
@@ -475,7 +467,7 @@ Section unop.
     { apply wrap_to_it_in_range. }
     iApply wp_cast_int => //.
     iNext. iIntros "Hcred". iApply ("HΦ" with "HL [] HT") => //.
-    rewrite /ty_own_val/= MaxInt_eq.
+    rewrite /ty_own_val/=.
     iPureIntro. split; last done. by apply: val_to_of_Z.
   Qed.
   Global Instance type_cast_int_inst π E L n it1 it2 v:

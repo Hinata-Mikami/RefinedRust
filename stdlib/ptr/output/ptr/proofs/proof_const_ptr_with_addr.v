@@ -27,7 +27,7 @@ Proof.
   set (l := (x.1, addr) : loc).
   iAssert (l ◁ᵥ{π} (x.1, addr) @ alias_ptr_t)%I as "?".
   { rewrite /ty_own_val/=. iSplitR; first done.
-    simpl. iPureIntro. apply int_elem_of_it_iff. by eapply val_to_Z_in_range. }
+    simpl. iPureIntro. by eapply val_to_Z_in_range. }
   iApply ("HCont" $! _ π _ _ (alias_ptr_t) l with "HL []").
   { done. }
   repeat liRStep; liShow.

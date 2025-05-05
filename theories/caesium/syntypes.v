@@ -119,28 +119,6 @@ Proof.
   destruct it => /=; lia.
 Qed.
 
-(** Sealed versions of [max_int] / [min_int] in order to avoid Coq from choking on things like [max_int usize_t] *)
-Definition MaxInt_def (it : int_type) := max_int it.
-Definition MaxInt_aux it : seal (MaxInt_def it). by eexists. Qed.
-Definition MaxInt it := (MaxInt_aux it).(unseal).
-Definition MaxInt_eq it : MaxInt it = max_int it := (MaxInt_aux it).(seal_eq).
-
-Definition MinInt_def (it : int_type) := min_int it.
-Definition MinInt_aux it : seal (MinInt_def it). by eexists. Qed.
-Definition MinInt it := (MinInt_aux it).(unseal).
-Definition MinInt_eq it : MinInt it = min_int it := (MinInt_aux it).(seal_eq).
-
-Definition int_elem_of_it' : ElemOf Z int_type := λ z it, (MinInt it ≤ z ≤ MaxInt it)%Z.
-Lemma int_elem_of_it_iff z it :
-  int_elem_of_it' z it ↔ int_elem_of_it z it.
-Proof.
-  rewrite /elem_of/int_elem_of_it' MinInt_eq MaxInt_eq//.
-Qed.
-Lemma wrap_to_int_id' z it :
-  int_elem_of_it' z it → wrap_to_it z it = z.
-Proof. rewrite int_elem_of_it_iff. apply wrap_to_it_id. Qed.
-
-
 Ltac unsafe_unfold_common_caesium_defs :=
   rewrite ?MaxInt_eq ?MinInt_eq;
   repeat match goal with
@@ -346,7 +324,7 @@ Record enum_layout_spec : Set := mk_els
       NoDup (fmap snd els_tag_int);
     (* the tags should be in range of the integer type for the tags *)
     els_tag_int_wf3 :
-      Forall (λ '(_, tag), int_elem_of_it' tag (els_tag_it : int_type)) els_tag_int;
+      Forall (λ '(_, tag), int_elem_of_it tag (els_tag_it : int_type)) els_tag_int;
   }.
 
 Definition syn_type_of_els (els : enum_layout_spec) : syn_type :=
@@ -446,7 +424,7 @@ Proof.
 Qed.
 
 Lemma ly_align_log_in_u8 ly :
-  ly_align_in_bounds ly → int_elem_of_it' (Z.of_nat (ly_align_log ly)) u8.
+  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ u8.
 Proof.
   rewrite /ly_align_in_bounds/min_alloc_start/max_alloc_end/=/ly_align/bytes_per_addr/bytes_per_addr_log/=.
   rewrite /bits_per_byte/=.
@@ -460,14 +438,14 @@ Proof.
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_log_in_usize ly :
-  ly_align_in_bounds ly → int_elem_of_it' (Z.of_nat (ly_align_log ly)) usize_t.
+  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ usize_t.
 Proof.
   intros [_ Ha]%ly_align_log_in_u8.
   split. { unsafe_unfold_common_caesium_defs. simpl in *. lia. }
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_in_usize ly :
-  ly_align_in_bounds ly → int_elem_of_it' (Z.of_nat (ly_align ly)) usize_t.
+  ly_align_in_bounds ly → (Z.of_nat (ly_align ly)) ∈ usize_t.
 Proof.
   intros [Ha Hb].
   split; unsafe_unfold_common_caesium_defs; simpl in *; lia.

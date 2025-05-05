@@ -142,6 +142,7 @@ Inductive rust_type : Type :=
   | RSTLitType (ty : list string) (app : list rust_type)
   | RSTInt (it : IntType)
   | RSTBool
+  | RSTAliasPtr
   | RSTUnit
   | RSTStruct (sls : struct_layout_spec) (components : list rust_type)
   | RSTArray (len : nat) (el : rust_type)

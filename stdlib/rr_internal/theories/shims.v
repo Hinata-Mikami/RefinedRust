@@ -239,7 +239,7 @@ Proof.
     match goal with | H: Z.of_nat (ly_size ?Hly) ≠ 0%Z |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ usize_t by done.
     opose proof* (ly_align_log_in_usize T_st_ly) as Ha; first done.
-    move: Ha. rewrite int_elem_of_it_iff int_elem_of_it_iff.
+    move: Ha. 
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iSelect (credit_store _ _) ltac:(fun H => iRename H into "Hstore").

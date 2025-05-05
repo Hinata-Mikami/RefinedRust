@@ -34,7 +34,7 @@ Proof.
   iApply ("Hcont" $! _ π _  _ (alias_ptr_t) l with "HL []").
   { rewrite /ty_own_val /=. 
     iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
-    iPureIntro. split; first done. apply int_elem_of_it_iff. done. }
+    iPureIntro. done. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
   iAssert (l ◁ₗ[π, Owned false] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.

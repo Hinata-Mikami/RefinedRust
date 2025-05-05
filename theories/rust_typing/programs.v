@@ -46,11 +46,17 @@ Section intro_persistent.
   Context `{!typeGS Σ}.
 
   Global Instance lft_dead_intro_pers κ : IntroPersistent ([† κ]) ([† κ]).
-Proof. constructor. iIntros "#$". Qed.
+  Proof. constructor. iIntros "#$". Qed.
   Global Instance gvar_pobs_intro_pers {T} γ (x : T) : IntroPersistent (gvar_pobs γ x) (gvar_pobs γ x).
   Proof. constructor. iIntros "#$". Qed.
   Global Instance ty_sidecond_intro_pers {rt} (ty : type rt) : IntroPersistent (ty_sidecond ty) (ty_sidecond ty).
   Proof. constructor. iIntros "#$". Qed.
+
+  Global Instance intro_persistent_loc_in_bounds l a b :
+  IntroPersistent (loc_in_bounds l a b) (loc_in_bounds l a b).
+  Proof.
+    constructor. iIntros "#Ha". iFrame "#".
+  Qed.
 End intro_persistent.
 
 Section credits.

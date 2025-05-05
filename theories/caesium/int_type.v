@@ -33,8 +33,23 @@ Definition min_int (it : int_type) : Z :=
 Definition max_int (it : int_type) : Z :=
   (if it.(it_signed) then int_half_modulus it else int_modulus it) - 1.
 
-Global Instance int_elem_of_it : ElemOf Z int_type :=
-  λ z it, min_int it ≤ z ≤ max_int it.
+(* Sealed versions of [max_int] / [min_int] in order to avoid Coq from choking on things like [max_int usize_t] *)
+Definition MaxInt_def (it : int_type) := max_int it.
+Definition MaxInt_aux it : seal (MaxInt_def it). by eexists. Qed.
+Definition MaxInt it := (MaxInt_aux it).(unseal).
+Definition MaxInt_eq it : MaxInt it = max_int it := (MaxInt_aux it).(seal_eq).
+
+Definition MinInt_def (it : int_type) := min_int it.
+Definition MinInt_aux it : seal (MinInt_def it). by eexists. Qed.
+Definition MinInt it := (MinInt_aux it).(unseal).
+Definition MinInt_eq it : MinInt it = min_int it := (MinInt_aux it).(seal_eq).
+
+Global Instance int_elem_of_it : ElemOf Z int_type := λ z it, (MinInt it ≤ z ≤ MaxInt it)%Z.
+Lemma int_elem_of_it_iff z it :
+  z ∈ it ↔ (min_int it ≤ z ≤ max_int it)%Z.
+Proof.
+  rewrite /elem_of/int_elem_of_it MinInt_eq MaxInt_eq//.
+Qed.
 
 Definition it_layout (it : int_type) :=
   Layout (bytes_per_int it) it.(it_byte_size_log).
@@ -67,9 +82,10 @@ Definition ptrdiff_t := intptr_t.
 Definition bool_layout : layout := {| ly_size := 1; ly_align_log := 0 |}.
 
 (*** Lemmas about [int_type] *)
-Lemma max_int_signed_lt_unsigned byte_log :
-  (max_int (int_type.IntType byte_log true) < max_int (int_type.IntType byte_log false))%Z.
+Lemma MaxInt_signed_lt_unsigned byte_log :
+  (MaxInt (int_type.IntType byte_log true) < MaxInt (int_type.IntType byte_log false))%Z.
 Proof.
+  rewrite !MaxInt_eq.
   rewrite /max_int /int_half_modulus /int_modulus /= /bits_per_int /bytes_per_int /bits_per_byte /=.
   assert ((2 ^ byte_log)%nat ≥ 1)%Z as Hle.
   { induction byte_log; simpl; lia. }
@@ -85,10 +101,10 @@ Proof.
   rewrite Z.pow_succ_r; last lia.
   nia.
 Qed.
-Lemma max_int_isize_lt_usize :
-  (max_int isize_t < max_int usize_t)%Z.
+Lemma MaxInt_isize_lt_usize :
+  (MaxInt isize_t < MaxInt usize_t)%Z.
 Proof.
-  apply max_int_signed_lt_unsigned.
+  apply MaxInt_signed_lt_unsigned.
 Qed.
 
 Lemma bytes_per_int_gt_0 it : bytes_per_int it > 0.
@@ -139,16 +155,18 @@ Proof.
   rewrite int_modulus_twice_half_modulus. specialize (int_half_modulus_ge_1 it). lia.
 Qed.
 
-Lemma min_int_le_0 (it : int_type) : min_int it ≤ 0.
+Lemma MinInt_le_0 (it : int_type) : MinInt it ≤ 0.
 Proof.
+  rewrite MinInt_eq.
   have ? := bytes_per_int_gt_0 it. rewrite /min_int /int_half_modulus.
   destruct (it_signed it) => //. trans (- 2 ^ 7) => //.
   rewrite -Z.opp_le_mono. apply Z.pow_le_mono_r => //.
   rewrite /bits_per_int /bits_per_byte. lia.
 Qed.
 
-Lemma max_int_ge_127 (it : int_type) : 127 ≤ max_int it.
+Lemma MaxInt_ge_127 (it : int_type) : 127 ≤ MaxInt it.
 Proof.
+  rewrite MaxInt_eq.
   have ? := bytes_per_int_gt_0 it.
   rewrite /max_int /int_modulus /int_half_modulus.
   rewrite /bits_per_int /bits_per_byte.
@@ -165,26 +183,29 @@ Proof.
     apply: Z.pow_pos_nonneg => //. rewrite /bits_per_int/bits_per_byte/=. lia.
   }
   destruct it as [? []] => //.
+  rewrite int_elem_of_it_iff.
   split; unfold min_int, max_int => /=; lia.
 Qed.
 
 Lemma elem_of_int_type_0_to_127 (n : Z) (it : int_type):
   0 ≤ n ≤ 127 → n ∈ it.
 Proof.
-  move => [??]. rewrite /elem_of /int_elem_of_it.
-  have ? := min_int_le_0 it.
-  have ? := max_int_ge_127 it.
-  lia.
+  move => [??]. 
+  have ? := MinInt_le_0 it.
+  have ? := MaxInt_ge_127 it.
+  split; lia.
 Qed.
 
-Lemma min_int_unsigned_0 it :
-  it_signed it = false → min_int it = 0.
+Lemma MinInt_unsigned_0 it :
+  it_signed it = false → MinInt it = 0.
 Proof.
+  rewrite MinInt_eq.
   destruct it; simpl; intros ->. done.
 Qed.
-Lemma min_int_le_n128_signed it :
-  it_signed it = true → (min_int it ≤ -128%Z)%Z.
+Lemma MinInt_le_n128_signed it :
+  it_signed it = true → (MinInt it ≤ -128%Z)%Z.
 Proof.
+  rewrite MinInt_eq.
   destruct it as [sz sgn]; simpl; intros ->.
   rewrite /min_int/=/int_half_modulus/bits_per_int/bytes_per_int/bits_per_byte/=.
   induction sz; simpl; first lia.
@@ -227,6 +248,7 @@ Definition wrap_to_it (z : Z) (it : int_type) : Z :=
 Lemma wrap_unsigned_id z it :
   it.(it_signed) = false → z ∈ it → wrap_unsigned z it = z.
 Proof.
+  rewrite int_elem_of_it_iff.
   destruct it; simpl. intros -> [].
   unfold min_int, max_int in *. simpl in*.
   rewrite /wrap_unsigned/=; rewrite Zmod_small; lia.
@@ -238,11 +260,10 @@ Proof.
   opose proof* (Z_mod_lt (z) (int_modulus it)).
   { specialize (int_modulus_ge_1 it). lia. }
   destruct it; simpl. intros ->.
-  rewrite /elem_of/int_elem_of_it.
+  rewrite int_elem_of_it_iff.
   unfold min_int, max_int; simpl.
   rewrite /wrap_unsigned. lia.
 Qed.
-
 
 Lemma wrap_unsigned_add_l it n1 n2 :
   wrap_unsigned (wrap_unsigned n1 it + n2) it = wrap_unsigned (n1 + n2) it.
@@ -255,11 +276,65 @@ Proof.
   lia.
 Qed.
 
+Lemma wrap_unsigned_add_did_not_wrap it a b : 
+  it.(it_signed) = false →
+  a ∈ it →
+  b ∈ it →
+  ¬ (wrap_unsigned (a + b) it < a) →
+  wrap_unsigned (a + b) it = a + b.
+Proof.
+  intros Hs [Ha1 Hb1] [Ha2 Hb2].
+  rewrite MaxInt_eq/max_int Hs in Hb1, Hb2.
+  rewrite MinInt_unsigned_0 in Ha1, Ha2; last done.
+
+  destruct (decide (a + b ∈ it)) as [Hel | Hnel].
+  { by rewrite wrap_unsigned_id. }
+  intros Hno_overflow.
+  destruct (decide (a + b > int_modulus it - 1)) as [Hoverflow | Hcontra]; first last.
+  { (* contradiction *)
+    contradict Hnel.
+    split.
+    - rewrite MinInt_unsigned_0; last done. lia.
+    - rewrite MaxInt_eq/max_int Hs. lia. }
+  contradict Hno_overflow.
+  rewrite /wrap_unsigned.
+  erewrite (Z.mod_in_range 1); lia.
+Qed.
+
+Lemma wrap_unsigned_add_did_wrap it a b : 
+  it.(it_signed) = false →
+  a ∈ it →
+  b ∈ it →
+  0 < b →
+  wrap_unsigned (a + b) it ≤ a →
+  a + b ∉ it.
+Proof.
+  intros Hs [Ha1 Hb1] [Ha2 Hb2] ? Hoverflow [Ha Hb].
+  rewrite MaxInt_eq/max_int Hs in Hb1, Hb2, Hb.
+  rewrite MinInt_unsigned_0 in Ha1, Ha2, Ha; last done.
+  move: Hoverflow.
+
+  rewrite /wrap_unsigned.
+  erewrite (Z.mod_in_range 0); lia.
+Qed.
+
+Lemma wrap_unsigned_le a it : 
+  0 ≤ a →
+  wrap_unsigned a it ≤ a.
+Proof.
+  unfold wrap_unsigned.
+  intros. apply Z.mod_le; first done.
+  rewrite /int_modulus.
+  apply Z.pow_pos_nonneg; first done.
+  specialize (bits_per_int_gt_0 it). lia.
+Qed.
+
 (** wrap_signed lemmas *)
 Lemma wrap_signed_id z it :
   it.(it_signed) = true → z ∈ it → wrap_signed z it = z.
 Proof.
   specialize (int_modulus_twice_half_modulus it) as ?.
+  rewrite int_elem_of_it_iff.
   destruct it; simpl. intros -> [].
   unfold min_int, max_int in *. simpl in*.
   rewrite /wrap_signed/=; rewrite Zmod_small; lia.
@@ -272,7 +347,7 @@ Proof.
   opose proof* (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
   { specialize (int_modulus_ge_1 it). lia. }
   destruct it; simpl. intros ->.
-  rewrite /elem_of/int_elem_of_it.
+  rewrite int_elem_of_it_iff.
   unfold min_int, max_int in *.
   rewrite /wrap_signed. simpl in *. lia.
 Qed.

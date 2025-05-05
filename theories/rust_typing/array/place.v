@@ -83,8 +83,8 @@ Section place.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
-    { rewrite /elem_of/int_elem_of_it. rewrite MaxInt_eq in Hsz. split; last nia.
-      specialize (min_int_le_0 isize_t). lia. }
+    { split; last nia.
+      specialize (MinInt_le_0 isize_t). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
@@ -177,8 +177,8 @@ Section place.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
-    { rewrite /elem_of/int_elem_of_it. rewrite MaxInt_eq in Hsz. split; last nia.
-      specialize (min_int_le_0 isize_t). lia. }
+    { split; last nia.
+      specialize (MinInt_le_0 isize_t). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
@@ -269,8 +269,8 @@ Section place.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
-    { rewrite /elem_of/int_elem_of_it. rewrite MaxInt_eq in Hsz. split; last nia.
-      specialize (min_int_le_0 isize_t). lia. }
+    { split; last nia.
+      specialize (MinInt_le_0 isize_t). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }

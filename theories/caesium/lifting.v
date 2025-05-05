@@ -1619,7 +1619,7 @@ Proof.
   rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
   have [|v Hv]:= (val_of_Z_is_Some None isize_t (offset_of_idx sl.(sl_members) i)). {
-    split.
+    rewrite int_elem_of_it_iff. split.
     - rewrite /min_int/=. trans 0; last lia.
       rewrite /int_half_modulus. lia.
     - by apply offset_of_bound. }
@@ -1628,7 +1628,9 @@ Proof.
   { have ? := offset_of_idx_le_size sl i.
     replace (ly_size u8) with 1%nat by done. rewrite Z.mul_1_l.
     have Hs : ly_size sl < max_int isize_t + 1 by apply sl_size.
-    split; last lia. have ? := min_int_le_0 isize_t. lia. }
+    have ? := MinInt_le_0 isize_t.
+    split; first lia.
+    rewrite MaxInt_eq. lia. }
   { have ? := offset_of_idx_le_size sl i.
     rewrite offset_loc_sz1 //.
     iApply (loc_in_bounds_offset with "Hl"); simpl; [done| destruct l => /=; lia  | destruct l => /=; lia ]. }
@@ -1647,6 +1649,7 @@ Proof.
   rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
   have [|v Hv]:= (val_of_Z_is_Some None isize_t (offset_of_idx sl.(sl_members) i)). {
+    rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus/=; lia.
     by apply offset_of_bound. }
   rewrite Hv /=. move: Hv => /val_to_of_Z Hv.
@@ -1654,7 +1657,9 @@ Proof.
   { have ? := offset_of_idx_le_size sl i.
     replace (ly_size u8) with 1%nat by done. rewrite Z.mul_1_l.
     have Hs : ly_size sl < max_int isize_t + 1 by apply sl_size.
-    split; last lia. have ? := min_int_le_0 isize_t. lia. }
+    have ? := MinInt_le_0 isize_t.
+    split; first lia.
+    rewrite MaxInt_eq. lia. }
   { have ? := offset_of_idx_le_size sl i. rewrite offset_loc_sz1 //.
     iApply (loc_in_bounds_offset with "Hl"); simpl; [done| destruct l => /=; lia  | destruct l => /=; lia ]. }
   { iApply loc_in_bounds_shorten_suf; last done. lia. }
@@ -1688,6 +1693,7 @@ Proof.
   rewrite /OffsetOf. iIntros (Halg Ho) "HΦ".
   rewrite /use_struct_layout_alg' Halg /=.
   have [|? Hs]:= (val_of_Z_is_Some None isize_t i). {
+    rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus /=; lia.
     move: Ho => /fmap_Some[?[?->]].
     by apply offset_of_bound.

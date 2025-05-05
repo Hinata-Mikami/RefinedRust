@@ -58,6 +58,9 @@ pub enum RustType {
     #[display("RSTUnit")]
     Unit,
 
+    #[display("RSTAliasPtr")]
+    AliasPtr,
+
     #[display("RSTRef Mut \"{}\" ({})", _1, &_0)]
     MutRef(Box<RustType>, Lft),
 
@@ -150,7 +153,7 @@ impl RustType {
                 panic!("RustType::of_type: cannot translate Never type");
             },
 
-            Type::RawPtr => Self::Lit(vec!["alias_ptr_t".to_owned()], vec![]),
+            Type::RawPtr => Self::AliasPtr,
         }
     }
 }

@@ -61,7 +61,7 @@ Section init.
       rewrite /els_lookup_tag.
       rewrite Htag_lookup /=.
       iApply type_int_val.
-      - rewrite -MaxInt_eq. apply els_tag_it_size.
+      - apply els_tag_it_size.
       - specialize (els_tag_int_wf3 (enum_els en)) as Hels.
         eapply Forall_forall in Hels.
         2: { apply elem_of_list_to_map_2. done. }

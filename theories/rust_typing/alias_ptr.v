@@ -77,12 +77,21 @@ Section rules.
     iIntros "(-> & %a & %b & Hlb & $)".
     iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%".
     rewrite /ty_own_val/=. iR.
-    unfold usize_t. iPureIntro.
-    by apply syntypes.int_elem_of_it_iff.
+    done.
   Qed.
   Global Instance alias_ptr_simplify_goal_inst v π l :
     SimplifyGoalVal v π (alias_ptr_t) l (Some 1%N) :=
     λ T, i2p (alias_ptr_simplify_goal v π l T).
+
+  Global Program Instance learn_from_hyp_val_alias_ptr l :
+    LearnFromHypVal (alias_ptr_t) l :=
+    {| learn_from_hyp_val_Q := ⌜l.2 ∈ usize_t⌝ |}.
+  Next Obligation.
+    iIntros (?????) "Hv".
+    rewrite /ty_own_val/=.
+    iDestruct "Hv" as "(-> & %)".
+    iModIntro. iPureIntro. split_and!; done.
+  Qed.
 End rules.
 
 Section comparison.
@@ -156,7 +165,6 @@ Section cast.
   Proof.
     rewrite /ty_own_val/=.
     iIntros "HT [-> %Husize] %Φ #CTX #HE HL HΦ".
-    apply int_elem_of_it_iff in Husize.
     odestruct (val_of_Z_is_Some _ _ _ _) as (? & ?); first apply Husize.
     iApply wp_cast_ptr_int.
     { apply val_to_of_loc. }
@@ -359,7 +367,6 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
-      apply int_elem_of_it_iff in Husize.
       iSplitR; first done.
       rewrite !ltype_own_alias_unfold /alias_lty_own.
       iSplitL "Hcred". { eauto 8 with iFrame. }
@@ -369,7 +376,6 @@ Section alias_ltype.
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
-      apply int_elem_of_it_iff in Husize.
       iSplitR; first done.
       rewrite !ltype_own_alias_unfold /alias_lty_own.
       iSplitL. { eauto 8 with iFrame. }
@@ -397,7 +403,6 @@ Section alias_ltype.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & % & %)".
     iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
     iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
-    apply int_elem_of_it_iff in Husize.
     iApply logical_step_fupd.
     iApply (logical_step_wand with "Hs").
     iIntros "!> Hcreds".
@@ -436,7 +441,6 @@ Section alias_ltype.
     { simp_ltypes. done. }
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
-    apply int_elem_of_it_iff in Husize.
     iSplitR; done.
   Qed.
   Global Program Instance tyepd_addr_of_mut_end_uniq_ofty_inst π E L l {rt} (ty : type rt) r κ γ bmin :

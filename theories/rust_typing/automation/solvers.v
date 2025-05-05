@@ -4,7 +4,7 @@ From refinedrust Require Export type ltypes hlist.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import ident_to_string lookup_definition proof_state.
-From refinedrust Require Import int programs program_rules functions uninit mut_ref.mut_ref shr_ref.shr_ref struct.struct unit value array.array.
+From refinedrust Require Import int programs program_rules functions uninit mut_ref.mut_ref shr_ref.shr_ref struct.struct unit value array.array alias_ptr.
 
 Set Default Proof Using "Type".
 
@@ -124,6 +124,8 @@ Ltac interpret_rust_type_core lfts env ty ::=
       exact (int (IntType_to_it it))
   | RSTBool =>
       exact bool_t
+  | RSTAliasPtr =>
+      exact alias_ptr_t
   | RSTUnit =>
       exact unit_t
   | RSTStruct ?sls ?tys =>
@@ -2817,16 +2819,6 @@ Ltac solve_bor_kind_outlives :=
 
 (** ** Augment the context with commonly needed facts. *)
 Section augment.
-  Lemma MaxInt_isize_lt_usize : (MaxInt isize_t < MaxInt usize_t)%Z.
-  Proof. rewrite !MaxInt_eq. apply max_int_isize_lt_usize. Qed.
-  Lemma MaxInt_ge_127 (it : int_type) : (127 ≤ MaxInt it)%Z.
-  Proof. rewrite MaxInt_eq. apply max_int_ge_127. Qed.
-  Lemma MinInt_le_n128_signed (it : int_type) :
-    it_signed it = true → (MinInt it ≤ -128)%Z.
-  Proof. rewrite MinInt_eq. apply min_int_le_n128_signed. Qed.
-  Lemma MinInt_unsigned_0 (it : int_type) :
-    it_signed it = false → (MinInt it = 0)%Z.
-  Proof. rewrite MinInt_eq. apply min_int_unsigned_0. Qed.
   Lemma bytes_per_addr_eq :
     bytes_per_addr = 8%nat.
   Proof. done. Qed.

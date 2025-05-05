@@ -7,12 +7,6 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Global Instance intro_persistent_loc_in_bounds l a b :
-  IntroPersistent (loc_in_bounds l a b) (loc_in_bounds l a b).
-Proof.
-  constructor. iIntros "#Ha". iFrame "#".
-Qed.
-
 Lemma const_ptr_add_proof (π : thread_id) :
   const_ptr_add_lemma π.
 Proof.
@@ -35,7 +29,7 @@ Proof.
   4,6: rewrite /OffsetLocSt/offset_loc; simplify_layout (use_layout_alg' (ty_syn_type T_ty)); f_equiv.
   all: destruct (decide (ly_size T_st_ly = 0%nat)); [lia | ].
   all: assert (MinInt isize_t ≤ count ≤ MaxInt isize_t)%Z; first by solve_goal with nia; sidecond_hammer.
-  all: rewrite wrap_to_int_id'; sidecond_hammer.
+  all: rewrite wrap_to_it_id; sidecond_hammer.
 
   Unshelve. all: print_remaining_sidecond.
 Qed.

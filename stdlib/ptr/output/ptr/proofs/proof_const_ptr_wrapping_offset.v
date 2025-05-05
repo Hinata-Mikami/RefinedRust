@@ -32,7 +32,7 @@ Proof.
   iPoseProof (credit_store_donate_atime with "Hstore Hat") as "Hstore".
   assert ((l wrapping_offset{T_st_ly}ₗ count).2 ∈ usize_t).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
-    apply int_elem_of_it_iff. by apply wrap_unsigned_in_range. }
+    by apply wrap_unsigned_in_range. }
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
   { rewrite /ty_own_val /=. iPureIntro. done. }
 

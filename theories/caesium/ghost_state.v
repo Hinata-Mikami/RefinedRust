@@ -586,6 +586,7 @@ Section loc_in_bounds.
   Proof.
     iIntros "Hl". iDestruct (loc_in_bounds_ptr_in_range with "Hl") as %Hrange.
     iPureIntro. move: Hrange.
+    rewrite int_elem_of_it_iff.
     rewrite /min_alloc_start /max_alloc_end /bytes_per_addr /bytes_per_addr_log /=.
     move => [??]. split; cbn; first by lia.
     rewrite /max_int /= /int_modulus /bits_per_int /bytes_per_int /=. lia.

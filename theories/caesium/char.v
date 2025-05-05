@@ -19,7 +19,7 @@ Lemma is_valid_char_in_char_it z :
   is_valid_char z → z ∈ char_it.
 Proof.
   rewrite /is_valid_char.
-  rewrite /elem_of /int_elem_of_it.
+  rewrite int_elem_of_it_iff.
   rewrite /char_it.
   rewrite /min_int/max_int/=/int_modulus.
   rewrite /bits_per_int/bytes_per_int/byte.bits_per_byte.
