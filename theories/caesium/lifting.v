@@ -1324,18 +1324,12 @@ Qed.
 Lemma wp_copy_alloc_id Φ it a l v1 v2:
   val_to_Z v1 it = Some a →
   val_to_loc v2 = Some l →
-  loc_in_bounds (l.1, a) 0 0 -∗
-  alloc_alive_loc l ∧ ▷ (£1 -∗ Φ (val_of_loc (l.1, a))) -∗
+  ▷ (£1 -∗ Φ (val_of_loc (l.1, a))) -∗
   WP CopyAllocId (IntOp it) (Val v1) (Val v2) {{ Φ }}.
 Proof.
-  iIntros (Ha Hl) "#Hlib HΦ". iApply wp_lift_expr_step_fupd => //.
+  iIntros (Ha Hl) "HΦ". iApply wp_lift_expr_step_fupd => //.
   iIntros (σ1) "Hctx".
-  destruct (decide (valid_ptr (l.1, a) σ1.(st_heap))). 2: {
-    iDestruct "HΦ" as "[Ha _]".
-    iMod (alloc_alive_loc_to_valid_ptr with "Hlib [Ha] Hctx") as %Hb; [|done].
-    by iApply alloc_alive_loc_mono; [|done].
-  }
-  iDestruct "HΦ" as "[_ HΦ]". iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
+  iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iSplit; first by eauto 8 using CopyAllocIdS.
   iIntros (???? Hstep ?) "Hcred !>!>". inv_expr_step. iMod "HE". iModIntro. iSplit => //. iFrame.
   iApply wp_value. iApply ("HΦ" with "Hcred").

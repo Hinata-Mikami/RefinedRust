@@ -308,12 +308,22 @@ pub const fn const_ptr_cast_mut<T>(x: *const T) -> *mut T {
     x as _
 }
 
+#[rr::export_as(#method core::ptr::const_ptr::is_null)]
+#[rr::returns("bool_decide (x.2 = 0)")]
+pub fn const_ptr_is_null<T>(x: *const T) -> bool {
+    const_ptr_addr(x) == 0
+}
+#[rr::export_as(#method core::ptr::mut_ptr::is_null)]
+#[rr::returns("bool_decide (x.2 = 0)")]
+pub fn mut_ptr_is_null<T>(x: *mut T) -> bool {
+    mut_ptr_addr(x) == 0
+}
 
 
 /// Strict provenance things
 
 
-// TODO: with_addr, map_addr
+// TODO: map_addr
 
 #[rr::export_as(#method core::ptr::const_ptr::addr)]
 #[rr::returns("x.2")]
@@ -324,6 +334,19 @@ pub fn const_ptr_addr<T>(x: *const T) -> usize {
 #[rr::returns("x.2")]
 pub fn mut_ptr_addr<T>(x: *const T) -> usize {
     x as usize
+}
+
+#[rr::export_as(#method core::ptr::const_ptr::with_addr)]
+#[rr::code_shim("ptr_with_addr")]
+#[rr::returns("(x.1, addr)")]
+pub fn const_ptr_with_addr<T>(x: *const T, addr: usize) -> *const T {
+    unimplemented!();
+}
+#[rr::export_as(#method core::ptr::mut_ptr::with_addr)]
+#[rr::code_shim("ptr_with_addr")]
+#[rr::returns("(x.1, addr)")]
+pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
+    unimplemented!();
 }
 
 // TODO: replaced in newer Rust versions by `without_provenance`

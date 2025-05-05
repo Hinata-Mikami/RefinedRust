@@ -210,13 +210,14 @@ Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_init := "_bb0"
 |}.
 
-Definition ptr_is_null `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* )];
-  f_local_vars := [];
+Definition ptr_with_addr `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("self", void* ); ("addr", usize_t : layout)];
+  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-      return (use{PtrOp} "self" = {PtrOp, PtrOp, u8} NULL)
+        "ret" <-{PtrOp} CopyAllocId (IntOp usize_t) (use{IntOp usize_t} "addr") (use{PtrOp} "self");
+        return (use{PtrOp} "ret")
     ]>%E $
     ∅;
-  f_init := "_bb0";
+  f_init := "_bb0"
 |}.
