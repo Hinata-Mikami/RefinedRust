@@ -286,22 +286,6 @@ Section enum.
 
   Import EqNotations.
 
-  (* For constructing the enum, we need to provide a hint that computes the refinement of the enum fromt the variant and its refinement.
-     Note that, crucially, also the [e : enum rto] is already an input to this typeclass (determined by the [rust_type] annotation on [EnumInit]), because we need the type parameters of the enum to already be determined.
-     (As an example, imagine constructing the [None] variant of [Option<T>]).
-  *)
-  Class ConstructEnum {rti rto} (e : enum rto) (variant : string) (ty : type rti) (input : rti) (out : rto) : Prop := construct_enum {
-    (* sidecondition that we need to solve *)
-    (*construct_enum_sc : Prop;*)
-    (* agreemtn that we get as a result *)
-    construct_enum_rti : e.(enum_rt) out = rti;
-    construct_enum_ty : (rew [λ x, (type x)] construct_enum_rti in e.(enum_ty) out) = ty;
-    construct_enum_rfn : (rew [λ x, x] construct_enum_rti in e.(enum_r) out) = input;
-    construct_enum_tag : e.(enum_tag) out = Some variant;
-  }.
-  Global Hint Mode ConstructEnum + + + + + + - : typeclass_instances.
-  Global Arguments construct_enum {_ _ _ _ _ _}.
-
   (* NOTE: for now, we only support untyped reads from enums.
       To handle this more accurately, we should probably figure out the proper model for enums with niches etc first. *)
   Definition is_enum_ot {rt} (en : enum rt) (ot : op_type) (mt : memcast_compat_type) :=

@@ -292,6 +292,47 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
         Some((ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+    } else if path[0..2] == ["core", "bool"] {
+        let int_ty = ty::TyKind::Bool;
+        let int_ty = tcx.mk_ty_from_kind(int_ty);
+        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 2))
+    } else if path[0..2] == ["core", "char"] {
+        let int_ty = ty::TyKind::Char;
+        let int_ty = tcx.mk_ty_from_kind(int_ty);
+        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 2))
+    } else if path[0..2] == ["core", "num"] {
+        let int_ty = match path[2].as_str() {
+            "isize" => Some(ty::IntTy::Isize),
+            "i8" => Some(ty::IntTy::I8),
+            "i16" => Some(ty::IntTy::I16),
+            "i32" => Some(ty::IntTy::I32),
+            "i64" => Some(ty::IntTy::I64),
+            "i128" => Some(ty::IntTy::I128),
+            _ => None,
+        };
+        let uint_ty = match path[2].as_str() {
+            "usize" => Some(ty::UintTy::Usize),
+            "u8" => Some(ty::UintTy::U8),
+            "u16" => Some(ty::UintTy::U16),
+            "u32" => Some(ty::UintTy::U32),
+            "u64" => Some(ty::UintTy::U64),
+            "u128" => Some(ty::UintTy::U128),
+            _ => None,
+        };
+
+        if let Some(int_ty) = int_ty {
+            let int_ty = ty::TyKind::Int(int_ty);
+            let int_ty = tcx.mk_ty_from_kind(int_ty);
+
+            Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+        } else if let Some(uint_ty) = uint_ty {
+            let int_ty = ty::TyKind::Uint(uint_ty);
+            let int_ty = tcx.mk_ty_from_kind(int_ty);
+
+            Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+        } else {
+            None
+        }
     }
     // TODO more primitive types
     else {

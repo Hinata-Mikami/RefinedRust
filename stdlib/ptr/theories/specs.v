@@ -13,3 +13,9 @@ Definition ptr_copy_result {A} (off_src : Z) (off_dst : Z) (count : nat) (xs : l
 Inductive trace_offset :=
   | TraceOffset (offset : Z).
 
+
+(* with_addr *)
+Definition with_addr (l : loc) (a : addr) : loc :=
+  (l.1, a).
+Arguments with_addr : simpl never.
+

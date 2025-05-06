@@ -10,30 +10,35 @@ Section init.
   Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
     ⌜enum_layout_spec_is_layoutable els⌝ ∗
     typed_val_expr E L e (λ L2 π v rti tyi ri,
-      ⌜(lookup_iml (els_variants els) variant) = Some (ty_syn_type tyi)⌝ ∗
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
       li_tactic (interpret_rust_type_goal M rsty) (λ '(existT rto tyo),
         ∃ (e : enum rto), ⌜tyo = enum_t e⌝ ∗ ⌜e.(enum_els) = els⌝ ∗
-        trigger_tc (ConstructEnum e variant tyi ri) (λ ro,
-          (*⌜construct_enum_sc⌝ ∗*)
-          ∀ v', T L2 π v' _ (enum_t e) ro))))
-    ⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
+        ∃ sem, ⌜e.(enum_tag_ty_inj) variant = Some sem⌝ ∗
+          ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty))⌝ ∗
+          ∃ ri', owned_subtype π E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
+              (* could try to remove this by strengthening enum *)
+              ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗ 
+              ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri')))))
+⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
   Proof.
     iIntros "(%Hly & HT)". destruct Hly as [el Hly].
     iIntros (?) "#CTX #HE HL Hc".
+    iApply wp_fupd.
     iApply wp_enum_init; first done.
     iApply ("HT" with "CTX HE HL [Hc]").
     iIntros (L2 π v rt ty r) "HL Hv HT".
-    iDestruct "HT" as "(%Hlook_st & %M & Hlfts & HT)".
+    iDestruct "HT" as "(%M & Hlfts & HT)".
     iPoseProof ("HT" with "Hlfts") as "HT".
     rewrite /interpret_rust_type_goal.
-    iDestruct "HT" as "(%rto &  %tyo & %en & -> & <- & HT)".
-    rewrite /trigger_tc. iDestruct "HT" as "(%ro & %Hc & HT)".
+    iDestruct "HT" as "(%rto &  %tyo & %en & -> & <- & %sem & %Hinj & %Hlook_st & %ri' & Hsubt)".
+    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L3 & Hincl & HL & HT)"; [done.. | ].
+    iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
+    iPoseProof ("Hincl" with "Hv") as "Hv".
+    iDestruct "HT" as "(%Htagr & HT)".
     iApply ("Hc" with "HL [Hv] HT").
+
     iEval (rewrite /ty_own_val/=).
-    destruct Hc as [Heq1 Heq2 Heq3 Htag].
-    subst.
     iExists _, variant.
     iR. iR.
     iApply (struct_init_val _ _ _ _ +[_; _] -[_; _]).
@@ -41,12 +46,14 @@ Section init.
     { done. }
     simpl.
 
+    set (ro := (enum_tag_rt_inj sem ri')).
+
     apply lookup_iml_list_to_map in Hlook_st; first last.
     { apply els_variants_nodup. }
     assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! variant = Some tag) as (tag & Htag_lookup).
     { apply list_to_map_lookup_fst.
       - rewrite els_tag_int_agree.
-        apply elem_of_list_fmap. exists (variant, ty_syn_type (enum_ty en ro)).
+        apply elem_of_list_fmap. exists (variant, ty_syn_type (enum_tag_sem_ty sem)).
         split; first done. apply elem_of_list_to_map; last done.
         apply els_variants_nodup.
       - rewrite els_tag_int_agree. apply els_variants_nodup. }
@@ -87,8 +94,14 @@ Section init.
       rewrite (index_of_union_lookup _ i _ ly).
       2: { rewrite -Hul_variants. done. }
       simpl. rewrite -Hul_variants. rewrite Hlook_ly. done. }
-    simpl.
+
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
+    (*
+    iSplitR. { 
+      iPureIntro. clear -Hsem_eq Halg.
+      move: Halg.
+      destruct sem. injection Hsem_eq. simpl. 
+      injection 1.
     iR.
     iSplitL "Hv".
     - rewrite take_app_length'; first done. done.
@@ -107,27 +120,8 @@ Section init.
       rewrite /use_union_layout_alg' Hul'/=.
       done.
   Qed.
-
-  (* TODO: would really like to have this lemma instead, but the dependent typing for the evars is trouble *)
-  (*
-  Lemma type_enum_init π E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
-    ⌜enum_layout_spec_is_layoutable els⌝ ∗
-    typed_val_expr π E L e (λ L2 v rti tyi ri,
-      ⌜((list_to_map (els_variants els) : gmap _ _) !! variant) = Some (ty_syn_type tyi)⌝ ∗
-      ∃ M, named_lfts M ∗ (named_lfts M -∗
-      (* get the desired enum type *)
-      li_tactic (interpret_rust_type_goal M rsty) (λ '(existT rto tyo),
-        ∃ (e : enum rto), ⌜tyo = enum_t e⌝ ∗ ⌜e.(enum_els) = els⌝ ∗
-        ∃ rti' tyi', ⌜e.(enum_variant_ty) variant = Some (existT rti' tyi')⌝ ∗
-        (* TODO also need syntypes to be compatible *)
-        ∃ ri' : rti', owned_subtype π E L2 false ri ri' tyi tyi' (λ L3,
-        trigger_tc (ConstructEnum e variant tyi' ri') (λ ro,
-          (*⌜construct_enum_sc⌝ ∗*)
-          ∀ v', T L3 v' _ (enum_t e) ro))))) -∗
-    typed_val_expr π E L (EnumInit els variant rsty e) T.
-  Proof.
+     *)
   Admitted.
-   *)
 End init.
 
 

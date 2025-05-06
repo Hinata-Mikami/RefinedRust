@@ -2159,49 +2159,6 @@ impl<'def> AbstractEnum<'def> {
         v.join(" ++ ")
     }
 
-    fn generate_construct_enum(&self) -> String {
-        let mut out = String::with_capacity(200);
-        let indent = "  ";
-
-        for ((tag, s, _), (pat, args, res)) in self.variants.iter().zip(self.spec.variant_patterns.iter()) {
-            write!(
-                out,
-                "{indent}Global Program Instance construct_enum_{}_{tag} {} {} ",
-                self.name,
-                self.scope.get_all_ty_params_with_assocs().params.iter().map(|ty| &ty.type_term).join(" "),
-                args.join(" ")
-            )
-            .unwrap();
-
-            // add st constraints on params
-            let mut sls_app = Vec::new();
-            for ty in &self.scope.get_all_ty_params_with_assocs().params {
-                write!(out, "{} `{{!TCDone ({} = ty_syn_type {})}} ", ty.syn_type, ty.syn_type, ty.type_term)
-                    .unwrap();
-                sls_app.push(ty.syn_type.clone());
-            }
-            let s = s.borrow();
-            let s = s.as_ref().unwrap();
-            #[allow(deprecated)]
-            let ty_def_term = s.variant_def.generate_coq_type_term(sls_app);
-
-            write!(
-                out,
-                ": ConstructEnum ({} {}) \"{tag}\" ({ty_def_term}) {res} {} := construct_enum _ _ _ _ _.\n",
-                self.enum_def_name,
-                self.scope.identity_instantiation(),
-                coq::term::App::new(pat, args.clone())
-            )
-            .unwrap();
-            write!(out, "{indent}Next Obligation. done. Defined.\n").unwrap();
-            write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
-            write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
-            write!(out, "{indent}Next Obligation. intros; unfold TCDone in *; naive_solver. Qed.\n").unwrap();
-        }
-
-        out
-    }
-
     #[must_use]
     pub fn generate_coq_type_def(&self) -> String {
         let mut out = String::with_capacity(200);
@@ -2347,8 +2304,6 @@ impl<'def> AbstractEnum<'def> {
         // make it Typeclasses Transparent
         write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_ty_name).unwrap();
         write!(out, "{indent}Global Typeclasses Transparent {}.\n\n", self.plain_rt_name).unwrap();
-
-        write!(out, "{}", self.generate_construct_enum()).unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_name).unwrap();

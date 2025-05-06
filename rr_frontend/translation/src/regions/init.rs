@@ -215,8 +215,8 @@ pub fn get_initial_closure_constraints<'a>(
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
     let input_facts = &info.borrowck_in_facts;
 
-    let root_location = Location {
-        block: BasicBlock::from_u32(0),
+    let root_location = mir::Location {
+        block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
     };
     let root_point = info.interner.get_point_index(&facts::Point {

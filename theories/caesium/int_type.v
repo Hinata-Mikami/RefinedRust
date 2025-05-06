@@ -107,6 +107,10 @@ Proof.
   apply MaxInt_signed_lt_unsigned.
 Qed.
 
+Lemma bytes_per_int_usize :
+  bytes_per_int usize_t = bytes_per_addr.
+Proof. done. Qed.
+
 Lemma bytes_per_int_gt_0 it : bytes_per_int it > 0.
 Proof.
   rewrite /bytes_per_int. move: it => [log ?] /=.

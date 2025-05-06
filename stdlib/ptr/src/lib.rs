@@ -37,6 +37,13 @@ pub const fn write<T>(dst: *mut T, src:T) {
 pub const fn read<T>(src: *const T) -> T {
     unimplemented!();
 }
+// Q: what is a good spec for this? 
+// - shared reference is a must. full ownership of the memory doesn't really cut it.
+// - some value formulation would be preferable. I don't want to go to uninit, in case the type is
+// copy.
+//
+// How do I get a shared reference?
+//
 
 #[rr::export_as(core::ptr::write_volatile)]
 #[rr::requires(#type "dst" : "()" @ "uninit {st_of T}")]
@@ -338,13 +345,13 @@ pub fn mut_ptr_addr<T>(x: *const T) -> usize {
 
 #[rr::export_as(#method core::ptr::const_ptr::with_addr)]
 #[rr::code_shim("ptr_with_addr")]
-#[rr::returns("(x.1, addr)")]
+#[rr::returns("with_addr x addr")]
 pub fn const_ptr_with_addr<T>(x: *const T, addr: usize) -> *const T {
     unimplemented!();
 }
 #[rr::export_as(#method core::ptr::mut_ptr::with_addr)]
 #[rr::code_shim("ptr_with_addr")]
-#[rr::returns("(x.1, addr)")]
+#[rr::returns("with_addr x addr")]
 pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
     unimplemented!();
 }
