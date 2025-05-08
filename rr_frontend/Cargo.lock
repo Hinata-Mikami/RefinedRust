@@ -17,11 +17,8 @@ version = "0.1.0"
 dependencies = [
  "compiletest_rs",
  "glob",
- "log",
  "rr_rustc_interface",
  "serde",
- "serde_json",
- "syn 2.0.101",
  "test-binary",
 ]
 

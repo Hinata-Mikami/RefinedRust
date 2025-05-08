@@ -1,7 +1,8 @@
 [package]
 name = "analysis_driver"
+version = "0.1.0"
 edition = "2021"
-version = "1.0.0"
+
 authors = ["Federico Poli <federpoli@gmail.com>"]
 license = "MPL-2.0"
 

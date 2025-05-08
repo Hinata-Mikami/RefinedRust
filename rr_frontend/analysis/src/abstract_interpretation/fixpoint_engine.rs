@@ -9,7 +9,6 @@ use std::hash;
 
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::span::def_id::DefId;
 
 use crate::abstract_interpretation::AbstractState;
 use crate::analysis_error::AnalysisError::NoStateAfterSuccessor;
@@ -23,16 +22,11 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 pub trait FixpointEngine<'mir, 'tcx: 'mir> {
     type State: AbstractState;
 
-    /// Return the `DefId` of the MIR body to be analyzed.
-    fn def_id(&self) -> DefId;
-
     /// Return the MIR body to be analyzed.
     fn body(&self) -> &'mir mir::Body<'tcx>;
 
     /// Creates a new abstract state which corresponds to the bottom element in the lattice
     fn new_bottom(&self) -> Self::State;
-
-    //fn new_top(&self) -> Self::State;
 
     /// Creates the abstract state at the beginning of the `mir` body.
     /// In particular this should take the arguments into account.
@@ -59,7 +53,6 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
 
     /// Produces an abstract state for every program point in `mir` by iterating over all statements
     /// in program order until a fixed point is reached (i.e. by abstract interpretation).
-    // TODO: add tracing like in initialization.rs?
     fn run_fwd_analysis(&self) -> AnalysisResult<PointwiseState<'mir, 'tcx, Self::State>> {
         let mir = self.body();
         let mut p_state = PointwiseState::new(mir);

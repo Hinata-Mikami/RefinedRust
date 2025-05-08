@@ -6,29 +6,23 @@
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::span::def_id::DefId;
 
 use crate::abstract_interpretation::{AnalysisResult, FixpointEngine};
 use crate::domains::DefinitelyAllocatedState;
 
 #[allow(clippy::module_name_repetitions)]
 pub struct DefinitelyAllocatedAnalysis<'mir, 'tcx: 'mir> {
-    def_id: DefId,
     mir: &'mir mir::Body<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> DefinitelyAllocatedAnalysis<'mir, 'tcx> {
-    pub const fn new(def_id: DefId, mir: &'mir mir::Body<'tcx>) -> Self {
-        DefinitelyAllocatedAnalysis { def_id, mir }
+    pub const fn new(mir: &'mir mir::Body<'tcx>) -> Self {
+        DefinitelyAllocatedAnalysis { mir }
     }
 }
 
 impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyAllocatedAnalysis<'mir, 'tcx> {
     type State = DefinitelyAllocatedState<'mir, 'tcx>;
-
-    fn def_id(&self) -> DefId {
-        self.def_id
-    }
 
     fn body(&self) -> &'mir mir::Body<'tcx> {
         self.mir

@@ -16,7 +16,6 @@
 
 use analysis::abstract_interpretation::{AbstractState, FixpointEngine};
 use analysis::domains::DefinitelyAllocatedAnalysis;
-use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::mir;
 
 use crate::environment::mir_analyses::initialization::AnalysisResult;
@@ -28,10 +27,9 @@ pub type DefinitelyAllocatedAnalysisResult = AnalysisResult<LocalSet>;
 
 #[allow(dead_code)]
 pub fn compute_definitely_allocated<'a, 'tcx: 'a>(
-    def_id: DefId,
     body: &'a mir::Body<'tcx>,
 ) -> DefinitelyAllocatedAnalysisResult {
-    let analysis = DefinitelyAllocatedAnalysis::new(def_id, body);
+    let analysis = DefinitelyAllocatedAnalysis::new(body);
     let pointwise_state = analysis
         .run_fwd_analysis()
         .map_err(|e| panic!("Error while analyzing function at {:?}: {}", body.span, e.to_pretty_str(body)))

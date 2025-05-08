@@ -45,10 +45,6 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedAnalysis<'mir, 'tcx> {
 impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyInitializedAnalysis<'mir, 'tcx> {
     type State = DefinitelyInitializedState<'mir, 'tcx>;
 
-    fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
     fn body(&self) -> &'mir mir::Body<'tcx> {
         self.mir
     }

@@ -11,7 +11,7 @@
 pub mod abstract_interpretation;
 mod analysis_error;
 pub mod domains;
-pub mod mir_utils;
+mod mir_utils;
 mod pointwise_state;
 
 pub use analysis_error::AnalysisError;

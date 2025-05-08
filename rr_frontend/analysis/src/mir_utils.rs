@@ -7,7 +7,7 @@
 //! Various helper functions for working with `mir` types.
 //! copied from prusti-interface/utils
 
-use std::{cmp, fmt, mem, ops};
+use std::{cmp, fmt, ops};
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::infer::infer::TyCtxtInferExt;
@@ -101,7 +101,7 @@ pub fn location_to_stmt_str(location: mir::Location, mir: &mir::Body) -> String 
 /// + `is_prefix(x.f, x.f) == true`
 /// + `is_prefix(x.f.g, x.f) == true`
 /// + `is_prefix(x.f, x.f.g) == false`
-pub(crate) fn is_prefix<'tcx>(place: Place<'tcx>, potential_prefix: Place<'tcx>) -> bool {
+pub fn is_prefix<'tcx>(place: Place<'tcx>, potential_prefix: Place<'tcx>) -> bool {
     if place.local != potential_prefix.local || place.projection.len() < potential_prefix.projection.len() {
         false
     } else {
@@ -205,7 +205,7 @@ pub fn expand_one_level<'tcx>(
 /// `{x.g, x.h, x.f.f, x.f.h, x.f.g.f, x.f.g.g, x.f.g.h}` and
 /// subtracting `{x.f.g.h}` from it, which results into `{x.g, x.h,
 /// x.f.f, x.f.h, x.f.g.f, x.f.g.g}`.
-pub(crate) fn expand<'tcx>(
+pub fn expand<'tcx>(
     mir: &mir::Body<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     mut minuend: Place<'tcx>,
@@ -224,7 +224,7 @@ pub(crate) fn expand<'tcx>(
 /// Try to collapse all places in `places` by following the
 /// `guide_place`. This function is basically the reverse of
 /// `expand_struct_place`.
-pub(crate) fn collapse<'tcx>(
+pub fn collapse<'tcx>(
     mir: &mir::Body<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     places: &mut FxHashSet<Place<'tcx>>,
@@ -252,27 +252,6 @@ pub(crate) fn collapse<'tcx>(
     recurse(mir, tcx, places, guide_place.local.into(), guide_place);
 }
 
-/// Remove all extensions of a place from a set, unpacking prefixes as much as needed.
-pub fn remove_place_from_set<'tcx>(
-    body: &mir::Body<'tcx>,
-    tcx: ty::TyCtxt<'tcx>,
-    to_remove: Place<'tcx>,
-    set: &mut FxHashSet<Place<'tcx>>,
-) {
-    let old_set = mem::take(set);
-    for old_place in old_set {
-        if is_prefix(to_remove, old_place) {
-            // Unpack `old_place` and remove `to_remove`.
-            set.extend(expand(body, tcx, old_place, to_remove));
-        } else if is_prefix(old_place, to_remove) {
-            // `to_remove` is a prefix of `old_place`. So, it should *not* be added to `set`.
-        } else {
-            // `old_place` and `to_remove` are unrelated.
-            set.insert(old_place);
-        }
-    }
-}
-
 #[must_use]
 pub fn is_copy<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
     if let ty::TyKind::Ref(_, _, mutability) = ty.kind() {
@@ -291,31 +270,4 @@ pub fn is_copy<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>, param_env: ty::Par
     } else {
         false
     }
-}
-
-/// Given an assignment `let _ = & <borrowed_place>`, this function returns the place that is
-/// blocked by the loan.
-/// For example, `let _ = &x.f.g` blocks just `x.f.g`, but `let _ = &x.f[0].g` blocks `x.f`.
-#[must_use]
-pub fn get_blocked_place<'tcx>(tcx: ty::TyCtxt<'tcx>, borrowed: Place<'tcx>) -> Place<'tcx> {
-    for (place_ref, place_elem) in borrowed.iter_projections() {
-        match place_elem {
-            mir::ProjectionElem::Deref
-            | mir::ProjectionElem::Index(..)
-            | mir::ProjectionElem::ConstantIndex { .. }
-            | mir::ProjectionElem::Subslice { .. } => {
-                return (mir::Place {
-                    local: place_ref.local,
-                    projection: tcx.mk_place_elems(place_ref.projection),
-                })
-                .into();
-            },
-            mir::ProjectionElem::Field(..)
-            | mir::ProjectionElem::Downcast(..)
-            | mir::ProjectionElem::OpaqueCast(..) => {
-                // Continue
-            },
-        }
-    }
-    borrowed
 }

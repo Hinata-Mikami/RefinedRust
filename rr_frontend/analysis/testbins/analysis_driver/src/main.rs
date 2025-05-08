@@ -8,10 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use analysis::abstract_interpretation::FixpointEngine;
-use analysis::domains::{
-    DefinitelyAccessibleAnalysis, DefinitelyInitializedAnalysis, FramingAnalysis, MaybeBorrowedAnalysis,
-    ReachingDefsAnalysis,
-};
+use analysis::domains::DefinitelyInitializedAnalysis;
 use rr_rustc_interface::ast::ast;
 use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
 use rr_rustc_interface::data_structures::fx::FxHashMap;
@@ -183,16 +180,6 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
                 let body = &body_with_facts.body;
 
                 match abstract_domain {
-                    "ReachingDefsAnalysis" => {
-                        let result =
-                            ReachingDefsAnalysis::new(tcx, local_def_id.to_def_id(), body).run_fwd_analysis();
-                        match result {
-                            Ok(state) => {
-                                println!("{}", serde_json::to_string_pretty(&state).unwrap())
-                            },
-                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
-                        }
-                    },
                     "DefinitelyInitializedAnalysis" => {
                         let result = DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
                             .run_fwd_analysis();
@@ -210,37 +197,6 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         match result {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap())
-                            },
-                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
-                        }
-                    },
-                    "MaybeBorrowedAnalysis" => {
-                        let analyzer = MaybeBorrowedAnalysis::new(tcx, &body_with_facts);
-                        match analyzer.run_analysis() {
-                            Ok(state) => {
-                                println!("{}", serde_json::to_string_pretty(&state).unwrap())
-                            },
-                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
-                        }
-                    },
-                    "DefinitelyAccessibleAnalysis" => {
-                        let analyzer = DefinitelyAccessibleAnalysis::new(
-                            tcx,
-                            local_def_id.to_def_id(),
-                            &body_with_facts,
-                        );
-                        match analyzer.run_analysis() {
-                            Ok(state) => {
-                                println!("{}", serde_json::to_string_pretty(&state).unwrap());
-                            },
-                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
-                        }
-                    },
-                    "FramingAnalysis" => {
-                        let analyzer = FramingAnalysis::new(tcx, local_def_id.to_def_id(), &body_with_facts);
-                        match analyzer.run_analysis() {
-                            Ok(state) => {
-                                println!("{}", serde_json::to_string_pretty(&state).unwrap());
                             },
                             Err(e) => eprintln!("{}", e.to_pretty_str(body)),
                         }
