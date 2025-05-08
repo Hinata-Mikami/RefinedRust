@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "analysis",
     "annotations",
     "attribute_parse",
     "radium",
@@ -11,14 +12,15 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
+analysis.path = "analysis"
 attribute_parse.path = "attribute_parse"
 radium.path = "radium"
 rr_rustc_interface.path = "rr_rustc_interface"
 rrconfig.path = "rrconfig"
 translation.path = "translation"
 
-analysis = { git = "https://github.com/viperproject/prusti-dev.git", rev = "24bd4c5575ff1c0b13eb18cfe1a82992dfdb120d" }
 config = { version = "=0.14.0", default-features = false, features = ["toml"] }
+compiletest_rs = "=0.10.2"
 datafrog = "2"
 derive_more = { version = "=1.0.0-beta.6", features = ["constructor", "debug", "deref", "deref_mut", "display", "from", "into"] }
 env_logger = { version = "0.11" }
@@ -34,6 +36,8 @@ regex = "1"
 serde = { version = "=1.0.197", features = ["derive"] }
 serde_json = "1"
 shlex = "1"
+syn = { version = "2", features = ["full"] }
+test-binary = "3"
 topological-sort = "0.2"
 transitive = "1"
 typed-arena = "2"
