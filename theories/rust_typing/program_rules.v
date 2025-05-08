@@ -3497,9 +3497,6 @@ Section typing.
     | CtxFoldStratifyAllInit
     | CtxFoldStratifyAll.
 
-  (* Note: the following two lemmas introduce evars on application and are thus not suitable to be directly applied with Lithium.
-    They either need an Ltac oracle, or (this is what we do) use some evar magic below.
-  *)
   Definition typed_context_fold_stratify_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
     (* TODO: this needs a different stratification strategy *)
@@ -3517,7 +3514,10 @@ Section typing.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame.
   Qed.
+  Definition typed_context_fold_step_stratify_inst := [instance typed_context_fold_step_stratify].
+  Global Existing Instance typed_context_fold_step_stratify_inst.
 
+  (* Note: the following lemma introduces evars on application and is thus not suitable to be directly applied with Lithium. *)
   Lemma typed_context_fold_stratify_init tctx π E L T :
     typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldStratifyAll) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T)
@@ -3549,11 +3549,11 @@ Section typing.
   Qed.
 
   (** We instantiate the context folding mechanism for extraction of observations. *)
-    Definition typed_context_fold_extract_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Definition typed_context_fold_extract_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Lemma typed_context_fold_step_extract π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R κ T :
-    stratify_ltype_extract π E L StratRefoldOpened l lt r (Owned false) κ
+    stratify_ltype_extract π E L StratNoRefold l lt r (Owned false) κ
       (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_stratify_interp π) E L' (CtxFoldExtractAll κ) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_stratify_interp π) π E L (CtxFoldExtractAll κ) l lt r tctx (acc, R) T.
+    ⊢ typed_context_fold_step (typed_context_fold_extract_interp π) π E L (CtxFoldExtractAll κ) l lt r tctx (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
@@ -3565,6 +3565,8 @@ Section typing.
     iIntros "(Hctx & HR) (Hl & HR')".
     iFrame.
   Qed.
+  Definition typed_context_fold_step_extract_inst := [instance typed_context_fold_step_extract].
+  Global Existing Instance typed_context_fold_step_extract_inst.
 
   Lemma typed_context_fold_extract_init tctx π E L κ T :
     typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldExtractAll κ) tctx ([], True%I) (λ L' m' acc, True ∗
@@ -3576,25 +3578,6 @@ Section typing.
   Qed.
 
   (* Typing rule for [Return] *)
-  (*
-    Problem: uninit takes a syn_type, but we only have a layout.
-    Options;
-     - add a "Untyped ly" syn_type that just literally takes a layout.
-     - just track the semantic type in the runtime_function we annotate typed_stmt with;
-        i.e. have a custom notion of runtime_function for the type system that bundles up a bit more info.
-
-     The proper solution would be a tighter integration of the notion of syntactic types into the language, as I had originally planned?
-      - or would it? Really, at runtime we would still have concrete layouts. But in principle, I could then also just store the syn_type, since at runtime a syn_type uniquely identifies its layout.
-
-     What are semantic types? Are they runtime things or static things?
-      - maybe Uninit takes a bit of a special role here. It really specifies a property on the concrete bytes, and that does not make that much sense statically. (it's a "runtime type")
-        => maybe Uninit should be a place type instead?
-          => No. having an uninit value makes sense, it's not inherently tied to a particular location.
-         Still, it takes up a somewhat special role, against the backdrop of the other types that we have (it has no direct correspondence in Rust). Even then, it's also different from e.g. owned-ptr, or place-ptr, which also do not have direct correspondences in Rust.
-      -
-
-   *)
-
   Lemma type_return E L e fn (R : typed_stmt_R_t) ϝ:
     typed_val_expr E L e (λ L' π v rt ty r,
       v ◁ᵥ{π} r @ ty -∗

@@ -134,19 +134,6 @@ Section std_option_Option_ty.
     solve_mk_enum_tag_consistent.
   Defined.
 
-  Global Program Instance construct_enum_Some x : ConstructEnum (std_option_Option_enum) "Some" (std_option_Option_Some_ty) -[x] (Some (x)) :=
-    construct_enum _ _ _ _ _.
-  Next Obligation. done. Defined.
-  Next Obligation. simpl. done. Qed.
-  Next Obligation. simpl. done. Qed.
-  Next Obligation. simpl. done. Qed.
-  Global Program Instance construct_enum_None : ConstructEnum (std_option_Option_enum) "None" (std_option_Option_None_ty) -[] None :=
-    construct_enum _ _ _ _ _.
-  Next Obligation. done. Defined.
-  Next Obligation. simpl. done. Qed.
-  Next Obligation. simpl. done. Qed.
-  Next Obligation. simpl. done. Qed.
-
   Definition std_option_Option_ty : type _ := enum_t std_option_Option_enum.
   Global Typeclasses Transparent std_option_Option_ty.
 End std_option_Option_ty.

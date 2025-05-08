@@ -80,9 +80,7 @@ Section access.
     TypedArrayAccess π E L base off st (ArrayLtype ty len iml) (#rs) (Owned wl) :=
     λ T, i2p (typed_array_access_array_owned π E L base off st ty len iml rs wl T).
 
-  (* NOTE: this will misbehave if we've moved the value out before already!
-     But in that case, the subsumption for offset_ptr will not trigger, because we've got the location assignment in context which will be found with higher priority.
-  *)
+  (* NOTE: this will misbehave if we've moved the value out before already! *)
   Lemma typed_array_access_array_shared π E L base off st {rt} (ty : type rt) (len : nat) iml rs κ (T : typed_array_access_cont_t) :
     (⌜(off < len)%Z⌝ ∗ ⌜(0 ≤ off)%Z⌝ ∗ ⌜st = ty_syn_type ty⌝ ∗ ∀ lt r, ⌜interpret_iml (◁ ty)%I len iml !! Z.to_nat off = Some lt⌝ -∗ ⌜rs !! Z.to_nat off = Some r⌝ -∗
       T L _ ty len iml (rs) (Shared κ) _ lt r)

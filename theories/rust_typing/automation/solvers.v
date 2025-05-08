@@ -1142,6 +1142,11 @@ match goal with
     assert_fails (is_var κs);
     refine (simplify_app_head_tac _ _ _ _ _ _);
     [ simplify_elctx_subterm | ]
+| |- bor_kind_outlives_elctx _ _ ++ _ = _ =>
+    (* TODO: more elaborate simplification? *)
+    f_equiv
+    (*refine (simplify_app_head_tac _ _ _ _ _ _);*)
+    (*[ reflexivity | ]*)
 | |- _ :: _ = _ =>
     f_equiv
 | |- [] = _ =>
@@ -1190,6 +1195,15 @@ Section reorder_elctx.
   Proof.
     intros -> Hp. simpl. f_equiv. done.
   Qed.
+  Lemma reorder_elctx_shuffle_left_app_tac (E E' E1' E'' E1 : elctx) :
+    E' = E1 ++ E1' →
+    E ≡ₚ E1' ++ E'' →
+    E1 ++ E ≡ₚ E' ++ E''.
+  Proof.
+    intros -> Hp. simpl.
+    rewrite -app_assoc.
+    f_equiv. done.
+  Qed.
 
   Lemma reorder_elctx_shuffle_right_tac (E E' E1'' E'' E0 : elctx) :
     E'' = E0 ++ E1'' →
@@ -1211,6 +1225,11 @@ Ltac reorder_elctx_step :=
       | _ :: ?E =>
           notypeclasses refine (reorder_elctx_shuffle_left_tac E E' _ E'' _ _ _ _);
           [reflexivity | ]
+      (* this should simplify later, so also put it left *)
+      | bor_kind_outlives_elctx _ _ ++ _ =>
+          notypeclasses refine (reorder_elctx_shuffle_left_app_tac E E' _ E'' (bor_kind_outlives_elctx _ _) _ _);
+          [reflexivity | ]
+
       | ?E0 ++ ?E =>
           notypeclasses refine (reorder_elctx_shuffle_right_tac E E' _ E'' E0 _ _);
           [reflexivity | ]
@@ -1318,6 +1337,29 @@ Section elctx_sat.
     apply elctx_sat_submseteq; done.
   Qed.
 
+  Lemma tac_elctx_app_bor_kind_outlives_elctx E1 L k κ κ' :
+    (* κ' is an evar that is shared between the two subgoals *)
+    bor_kind_outlives_elctx k κ' ⊆+ E1 ∧ lctx_lft_incl E1 L κ κ' →
+    elctx_sat E1 L (bor_kind_outlives_elctx k κ).
+  Proof.
+    intros [Houtl Hincl].
+    eapply (elctx_sat_submseteq _ _ L) in Houtl.
+    iIntros (qL) "HL".
+    iPoseProof (Hincl with "HL") as "#Hincl".
+    iPoseProof (Houtl with "HL") as "#Houtl".
+    iModIntro. iIntros "#HE".
+    iPoseProof ("Hincl" with "HE") as "Hincl'".
+    iPoseProof ("Houtl" with "HE") as "Houtl'".
+    iClear "Hincl Houtl HE".
+    unfold_opaque @ty_outlives_E.
+    unfold_opaque @lfts_outlives_E.
+    rewrite /bor_kind_outlives_elctx.
+    rewrite /elctx_interp/elctx_elt_interp.
+    destruct k; simpl; first done; (iSplitL; last done);
+      iDestruct "Houtl'" as "(Houtl' & _)".
+    all: iApply lft_incl_trans; done.
+  Qed.
+
   Lemma tac_elctx_app_ty_outlives_E E1 L κ κ' {rt} (ty : type rt) :
     (* κ' is an evar that is shared between the two subgoals *)
     ty_outlives_E ty κ' ⊆+ E1 ∧ lctx_lft_incl E1 L κ κ' →
@@ -1412,6 +1454,13 @@ Ltac solve_elctx_submseteq_step :=
         split; [reflexivity | ]
       | notypeclasses refine (tac_submseteq_skip_app_r _ _ _ _ _)
       ]
+  | |- (bor_kind_outlives_elctx ?k1 ?κ ⊆+ (bor_kind_outlives_elctx ?k2 ?κ') ++ ?E) ∧ _ =>
+      first [
+        unify k1 k2;
+        notypeclasses refine (tac_submseteq_find_app_r _ _ _ _ _);
+        split; [reflexivity | ]
+      | notypeclasses refine (tac_submseteq_skip_app_r _ _ _ _ _)
+      ]
   | |- (_ ⊆+ _ ++ _) ∧ _ =>
         notypeclasses refine (tac_submseteq_skip_app_r _ _ _ _ _)
   end.
@@ -1448,6 +1497,11 @@ Ltac solve_elctx_sat_step :=
       done
   | |- elctx_sat ?E ?L (ty_outlives_E ?ty ?κ) =>
       notypeclasses refine (tac_elctx_app_ty_outlives_E E L κ _ ty _);
+      solve_elctx_submseteq;
+      solve[solve_lft_incl]
+  (* assumption about parametric bor_kinds*)
+  | |- elctx_sat ?E ?L (bor_kind_outlives_elctx ?k ?κ) =>
+      notypeclasses refine (tac_elctx_app_bor_kind_outlives_elctx E L k κ _ _);
       solve_elctx_submseteq;
       solve[solve_lft_incl]
   end.
@@ -1563,6 +1617,11 @@ Section bor_kind_incl_tac.
   Qed.
 End bor_kind_incl_tac.
 Ltac solve_bor_kind_incl :=
+  try match goal with
+  | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>
+      try (is_var b1; destruct b1);
+      try (is_var b2; destruct b2)
+  end;
   (* first compute [bor_kind_min] *)
   let simp_min := let x := fresh in intros x; unfold bor_kind_min; simpl; unfold x; notypeclasses refine eq_refl in
   match goal with
@@ -1625,6 +1684,11 @@ Section bor_kind_direct_incl_tac.
   Qed.
 End bor_kind_direct_incl_tac.
 Ltac solve_bor_kind_direct_incl :=
+  try match goal with
+  | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
+      try (is_var b1; destruct b1);
+      try (is_var b2; destruct b2)
+  end;
   (* first compute [bor_kind_min] *)
   let simp_min := let x := fresh in intros x; unfold bor_kind_min; simpl; unfold x; notypeclasses refine eq_refl in
   match goal with

@@ -708,6 +708,13 @@ Proof.
   iIntros "#Hincl1 #Hincl2". destruct b, b'; unfold bor_kind_incl; simpl; first [done | iApply lft_incl_trans; done ].
 Qed.
 
+Definition bor_kind_outlives_elctx (b : bor_kind) (κ : lft) : elctx :=
+  match b with
+  | Owned _ => []
+  | Uniq κ' _ => [κ ⊑ₑ κ']
+  | Shared κ' => [κ ⊑ₑ κ']
+  end.
+
 Definition lctx_bor_kind_outlives (E : elctx) (L : llctx) (b : bor_kind) (κ : lft) :=
   ∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ bor_kind_outlives b κ.
 Arguments lctx_bor_kind_outlives : simpl nomatch.

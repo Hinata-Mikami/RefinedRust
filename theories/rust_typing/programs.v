@@ -4185,5 +4185,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
+  | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?ls ?acc =>
+      constr:(TypedContextFoldStep P π E L m l lt r ls acc)
   | _ => fail "unknown judgement" c
   end.

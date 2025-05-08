@@ -595,12 +595,33 @@ Ltac liRContextStratifyInit :=
       | _ => fail 1000 "gather_tctx: cannot determine Iris context"
       end
   end.
-Ltac liRContextStratifyStep :=
-  lazymatch goal with
-  | |- envs_entails _ (typed_context_fold_step ?AI ?π ?E ?L (CtxFoldStratifyAll) ?l ?lt ?r ?tctx ?acc ?T) =>
-    notypeclasses refine (tac_fast_apply (typed_context_fold_step_stratify π E L l lt r tctx _ _ T) _)
-  end.
 
+(*
+lty
+Ltac ltype_is_extractable lt :=
+  match lt with
+  | BlockedLtype _ _ => false
+  | ShrBlockedLtype _ _ => false
+  | OfTyLty ?ty => true
+  | AliasLty _ _ _ => false
+  | MutLty _ _ => true
+  | ShrLty _ _ => false
+  | BoxLty ?lt => ltype_is_extractable lt
+  | StructLty ?lts _ =>
+      ltypes_are_extractable
+
+Ltac gather_extract_location_list env :=
+  match env with
+  | Enil => uconstr:([])
+  | Esnoc ?env' _ ?p =>
+      let rs := gather_extract_location_list env' in
+      lazymatch p with
+      | (?l ◁ₗ[?π, Owned false] ?r @ ?lty)%I =>
+          uconstr:(l :: rs)
+      | _ => uconstr:(rs)
+      end
+  end.
+*)
 Ltac liRContextExtractInit :=
   lazymatch goal with
   | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
@@ -611,11 +632,6 @@ Ltac liRContextExtractInit :=
           notypeclasses refine (tac_fast_apply (typed_context_fold_extract_init tctx _ E L κ T) _)
       | _ => fail 1000 "gather_tctx: cannot determine Iris context"
       end
-  end.
-Ltac liRContextExtractStep :=
-  lazymatch goal with
-  | |- envs_entails _ (typed_context_fold_step ?AI ?π ?E ?L (CtxFoldExtractAll ?κ) ?l ?lt ?r ?tctx ?acc ?T) =>
-    notypeclasses refine (tac_fast_apply (typed_context_fold_step_extract π E L l lt r tctx _ _ κ T) _)
   end.
 
 (** Endlft trigger automation for [Inherit] context items *)
@@ -669,15 +685,9 @@ Ltac liRJudgement :=
     (* initialize context folding *)
     | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit) ?T) =>
         liRContextStratifyInit
-    (* unblocking step *)
-    | |- envs_entails _ (typed_context_fold_step ?AI ?π ?E ?L (CtxFoldStratifyAll) ?l ?lt ?r ?tctx ?acc ?T) =>
-        liRContextStratifyStep
     (* initialize context folding *)
     | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
         liRContextExtractInit
-    (* unblocking step *)
-    | |- envs_entails _ (typed_context_fold_step ?AI ?π ?E ?L (CtxFoldExtractAll ?κ) ?l ?lt ?r ?tctx ?acc ?T) =>
-        liRContextExtractStep
     (* initialize OnEndlft triggers *)
     | |- envs_entails _ (typed_on_endlft_pre ?E ?L ?κ ?T) =>
         liROnEndlftTriggerInit
@@ -946,6 +956,8 @@ Ltac sidecond_hook ::=
       solve_ty_allows
   | |- ty_allows_writes _ =>
       solve_ty_allows
+  | |- Copyable _ =>
+      apply _
   | |- trait_incl_marker _ =>
       solve_trait_incl
   | |- _ ## _ =>

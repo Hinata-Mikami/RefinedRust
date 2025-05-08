@@ -12,11 +12,15 @@ Lemma read_proof (π : thread_id) :
 Proof.
   read_prelude.
 
-  (* locally override the instance used for moves *)
-  liRStepUntil (typed_read_end).
-  iApply type_read_ofty_move_owned_value.
-  liFromSyntax.
-  repeat liRStep; liShow.
+  destruct k.
+  { liRStepUntil (typed_read_end).
+    (* locally override the instance used for moves *)
+    (*iApply type_read_ofty_move_owned_value.*)
+    (*liFromSyntax.*)
+    repeat liRStep; liShow.
+  }
+  { repeat liRStep; liShow. }
+  { repeat liRStep; liShow. }
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

@@ -5,7 +5,10 @@ infrastructure for pure sideconditions. *)
 
 (** * [SimplExist] and [SimplForall] *)
 Class SimplExist (T : Type) (e : T → Prop) (Q: Prop) := simpl_exist_proof : Q → ∃ x, e x.
+Global Hint Mode SimplExist ! + - : typeclass_instances.
 Class SimplForall (T : Type) (n : nat) (e : T → Prop) (Q: Prop) := simpl_forall_proof : Q → ∀ x, e x.
+Global Hint Mode SimplForall ! - + - : typeclass_instances.
+
 
 (** * [SimplImpl] and [SimplAnd] *)
 

@@ -65,17 +65,23 @@ Section stratify.
     ⌜j < len⌝ ∗ (∀ r, ⌜rs !! j = Some r⌝ -∗
     stratify_ltype_array_iter π E L mu mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
       stratify_ltype π E L2 mu mdu ma m (l offsetst{ty_syn_type def}ₗ j) lt r k (λ L3 R3 rt3 lty3 r3,
-        match ltype_blocked_lfts lty3 with
-        | [] =>
-            (* directly fold completely *)
-            ∃ r4, weak_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
-        | _ =>
-            (* we directly try to go to Coreable here in order to use the syntactic hint by [def] on which refinement type we need to go to.
-                If arrays supported heterogeneous refinements, we could also defer this. *)
-            (*∃ (Heq : rt3 = rt), T L3 (R3 ∗ R2) ((j, rew Heq in lty3) :: iml2) (<[j := rew Heq in r3]> rs2)*)
-            ⌜if k is Owned _ then True else False⌝ ∗ (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
-            ∃ r4, weak_subltype E L3 k r3 r4 (ltype_core lty3) (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2))
-        end)))
+        if (decide (ma = StratRefoldFull)) then
+          match ltype_blocked_lfts lty3 with
+          | [] =>
+              (* directly fold completely *)
+              ∃ r4, weak_subltype E L3 k r3 r4 lty3 (◁ def) (T L3 (R3 ∗ R2) ((j, ◁ def) :: iml2) (<[j := r4]> rs2))
+          | _ =>
+              (* we directly try to go to Coreable here in order to use the syntactic hint by [def] on which refinement type we need to go to.
+                  If arrays supported heterogeneous refinements, we could also defer this. *)
+              (*∃ (Heq : rt3 = rt), T L3 (R3 ∗ R2) ((j, rew Heq in lty3) :: iml2) (<[j := rew Heq in r3]> rs2)*)
+              ⌜if k is Owned _ then True else False⌝ ∗
+              (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
+              ∃ r4, weak_subltype E L3 k r3 r4 (ltype_core lty3) (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2))
+          end
+        else 
+            ∃ (Heq : rt = rt3),
+            T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <- Heq in r3]> rs2)
+      )))
     ⊢ stratify_ltype_array_iter π E L mu mdu ma m l ig def len ((j, lt) :: iml) rs k T.
   Proof.
     iIntros "(%Hlen & HT)". iIntros (????) "#CTX #HE HL Hl".
@@ -100,6 +106,30 @@ Section stratify.
     unfold CanSolve in *. rewrite decide_True; last set_solver.
     iDestruct "Hl" as "(%Hst & Hl)".
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L3 & %R3 & %rt' & %lt' & %r' & HL & %Hst' & Hstep' & HT)".
+
+    destruct (decide (ma = StratRefoldFull)); first last.
+    { iDestruct "HT" as "(%Heq & HT)".
+      subst. 
+      iExists _, _, _, _. iFrame.
+      iSplitR. { iPureIntro. rewrite length_insert//. }
+      iApply logical_step_fupd.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "Hstep'").
+      iApply logical_step_intro.
+      iIntros "!> (Hl & $) (Hl2 & $)".
+      simpl.
+      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (lt')%I r' (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
+      { rewrite interpret_iml_length. lia. }
+      { lia. }
+      rewrite -Hleneq. iApply "Ha".
+      iSplitL "Hl".
+      { rewrite decide_True; last set_solver. iFrame. 
+        iPureIntro. rewrite -Hst' Hst//. }
+      iApply (big_sepL2_mono with "Hl2").
+      iIntros (k0 ? ? Hlook1 Hlook2) "Ha".
+      destruct (decide (k0 = j)); first done.
+      simpl. destruct (decide (k0 ∉ ig)); last done.
+      rewrite decide_True; last set_solver. done. }
     destruct (ltype_blocked_lfts lt') eqn:Hbl.
     - iDestruct "HT" as "(%r4 & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".

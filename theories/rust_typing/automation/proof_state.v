@@ -1,4 +1,4 @@
-From refinedrust Require Import type programs.
+From refinedrust Require Import type programs functions.
 From lithium Require Import hooks all.
 
 (* Initialize the [named_lfts] assertion with external lifetimes.
@@ -36,6 +36,9 @@ Arguments RETURN_MARKER _ _ /.
 Definition FUNCTION_NAME (s : string) := s.
 Arguments FUNCTION_NAME : simpl never.
 Notation "'HIDDEN'" := (FUNCTION_NAME _) (only printing).
+
+(* Function ptr type assignments *)
+Notation "'HIDDEN_FUNCTION_PTR_T' v" := (ty_own_val (function_ptr _ _) _ _ v) (only printing, at level 100).
 
 (** marker for tactics that have already exploited a particular fact *)
 Definition NO_ENRICH {A} (a : A) := a.

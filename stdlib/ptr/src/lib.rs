@@ -21,29 +21,21 @@ pub const fn write<T>(dst: *mut T, src:T) {
     unimplemented!();
 }
 
+// This spec only works for Copyable type, as it is hard to state what happens for `Shared`
+// ownership otherwise.
+// If you actually own the underlying memory, move out the value ownership before (`value_t` is
+// Copy).
 #[rr::export_as(core::ptr::read)]
 #[rr::code_shim("ptr_read")]
-#[rr::params("r")]
-#[rr::requires(#type "src" : "$# r" @ "{ty_of T}")]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
 #[rr::returns("r")]
-#[rr::ensures(#type "src" : "()" @ "uninit {st_of T}")]
-// TODO alternative spec that looses less information.
-// However, some parts of the type system (e.g. enum initialization) cannot deal well yet with
-// moving in values again.
-//#[rr::params("vs")]
-//#[rr::requires(#type "src" : "vs" @ "value_t {st_of T}")]
-//#[rr::returns("vs" @ "value_t {st_of TA}")]
-//#[rr::ensures(#type "src" : "vs" @ "value_t {st_of T}")]
 pub const fn read<T>(src: *const T) -> T {
     unimplemented!();
 }
-// Q: what is a good spec for this? 
-// - shared reference is a must. full ownership of the memory doesn't really cut it.
-// - some value formulation would be preferable. I don't want to go to uninit, in case the type is
-// copy.
-//
-// How do I get a shared reference?
-//
 
 #[rr::export_as(core::ptr::write_volatile)]
 #[rr::requires(#type "dst" : "()" @ "uninit {st_of T}")]
@@ -53,12 +45,69 @@ pub const fn write_volatile<T>(dst: *mut T, src:T) {
 }
 
 #[rr::export_as(core::ptr::read_volatile)]
-#[rr::params("r")]
-#[rr::requires(#type "src" : "$# r" @ "{ty_of T}")]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+// if it's not Copy, you can move out the value before
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
 #[rr::returns("r")]
-#[rr::ensures(#type "src" : "()" @ "uninit {st_of T}")]
 pub const fn read_volatile<T>(src: *const T) -> T {
     read(src)
+}
+
+#[rr::export_as(#method core::ptr::const_ptr::read_volatile)]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::returns("r")]
+pub const fn const_ptr_read_volatile<T>(src: *const T) -> T {
+    read_volatile(src)
+}
+#[rr::export_as(#method core::ptr::const_ptr::read)]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::returns("r")]
+pub const fn const_ptr_read<T>(src: *const T) -> T {
+    read(src)
+}
+#[rr::export_as(#method core::ptr::mut_ptr::read_volatile)]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::returns("r")]
+pub const fn mut_ptr_read_volatile<T>(src: *mut T) -> T {
+    read_volatile(src)
+}
+#[rr::export_as(#method core::ptr::mut_ptr::read)]
+#[rr::params("r", "k")]
+#[rr::unsafe_elctx("bor_kind_outlives_elctx k ϝ")]
+#[rr::requires("Copyable {ty_of T}")]
+#[rr::requires(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::ensures(#iris "src ◁ₗ[π, k] # ($# r) @ ◁ {ty_of T}")]
+#[rr::returns("r")]
+pub const fn mut_ptr_read<T>(src: *mut T) -> T {
+    read(src)
+}
+
+#[rr::export_as(#method core::ptr::mut_ptr::write_volatile)]
+#[rr::requires(#type "dst" : "()" @ "uninit {st_of T}")]
+#[rr::ensures(#type "dst" : "$# src" @ "{ty_of T}")]
+pub const fn mut_ptr_write_volatile<T>(dst: *mut T, src:T) {
+    write_volatile(dst, src)
+}
+#[rr::export_as(#method core::ptr::mut_ptr::write)]
+#[rr::requires(#type "dst" : "()" @ "uninit {st_of T}")]
+#[rr::ensures(#type "dst" : "$# src" @ "{ty_of T}")]
+pub const fn mut_ptr_write<T>(dst: *mut T, src:T) {
+    write(dst, src)
 }
 
 
@@ -161,7 +210,7 @@ pub const fn mut_ptr_offset<T>(l: *mut T, count: isize) -> *mut T
 #[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn const_ptr_add<T>(l: *const T, count: usize) -> *const T {
-    // NB: We can just truncate count to isize. 
+    // NB: We can just truncate count to isize.
     // - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
     // - else, we also know that it's in isize_t, so it's same as before.
     const_ptr_offset(l, count as isize)
@@ -174,7 +223,7 @@ pub const fn const_ptr_add<T>(l: *const T, count: usize) -> *const T {
 #[rr::returns("l offsetst{{ {st_of T} }}ₗ count")]
 #[rr::ensures(#iris "£ (S (num_laters_per_step 1)) ∗ atime 1")]
 pub const fn mut_ptr_add<T>(l: *mut T, count: usize) -> *mut T {
-    // NB: We can just truncate count to isize. 
+    // NB: We can just truncate count to isize.
     // - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
     // - else, we also know that it's in isize_t, so it's same as before.
     mut_ptr_offset(l, count as isize)
