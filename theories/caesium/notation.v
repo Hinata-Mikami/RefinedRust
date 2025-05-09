@@ -140,7 +140,7 @@ Inductive ptr_kind := | PRaw | PRef.
 Inductive rust_type : Type :=
   | RSTTyVar (name : string)
   | RSTLitType (ty : list string) (app : list rust_type)
-  | RSTInt (it : IntType)
+  | RSTInt (it : int_type)
   | RSTBool
   | RSTAliasPtr
   | RSTUnit
@@ -196,7 +196,7 @@ Global Typeclasses Opaque Move.
 (* This uses a syn_type at the surface level so that we have the syn_type annotation still available in the type system *)
 Definition Box `{!LayoutAlg} (st : syn_type) :=
   let ly := (use_layout_alg' st) in
-  Alloc (Val $ i2v (ly_size ly) usize_t) (Val $ i2v (ly_align_log ly) usize_t).
+  Alloc (Val $ i2v (ly_size ly) USize) (Val $ i2v (ly_align_log ly) USize).
 Notation "'box{' st '}'" := (Box st) (at level 9, format "'box{' st }") : expr_scope.
 Arguments Box : simpl never.
 Global Typeclasses Opaque Box.
@@ -281,10 +281,10 @@ Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (t
 Global Typeclasses Opaque EnumInit.
 Arguments EnumInit : simpl never.
 
-(* NOTE: in contrast to Caesium, this uses isize_t, because LLVMs GEP uses signed integer offsets
+(* NOTE: in contrast to Caesium, this uses ISize, because LLVMs GEP uses signed integer offsets
       https://llvm.org/docs/LangRef.html#getelementptr-instruction *)
 Definition GetMember' (e : expr) (sl : struct_layout) (m : var_name) : expr :=
-  (e at_offset{u8, PtrOp, IntOp isize_t} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) isize_t None))))%E.
+  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize None))))%E.
 Definition GetMember `{!LayoutAlg} (e : expr) (sls : struct_layout_spec) (m : var_name) : expr :=
   let sl := use_struct_layout_alg' sls in
   GetMember' e sl m.
@@ -294,7 +294,7 @@ Arguments GetMember : simpl never.
 
 Definition OffsetOf `{!LayoutAlg} (sls : struct_layout_spec) (m : var_name) : expr :=
   let sl := use_struct_layout_alg' sls in
-  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) isize_t None)))%E.
+  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) ISize None)))%E.
 Global Typeclasses Opaque OffsetOf.
 Arguments OffsetOf : simpl never.
 
@@ -303,8 +303,8 @@ Notation "e 'at_union{' uls } m" := (GetMemberUnion e%E uls m) (at level 10, for
 Global Typeclasses Opaque GetMemberUnion.
 Arguments GetMemberUnion : simpl never.
 
-(* NOTE: this uses isize_t instead of usize_t (in RefinedC) *)
-Definition OffsetOfUnion (ul : union_layout_spec) (m : var_name) : expr := (i2v 0 isize_t).
+(* NOTE: this uses ISize instead of USize (in RefinedC) *)
+Definition OffsetOfUnion (ul : union_layout_spec) (m : var_name) : expr := (i2v 0 ISize).
 Global Typeclasses Opaque OffsetOfUnion.
 Arguments OffsetOfUnion : simpl never.
 
@@ -360,8 +360,8 @@ Notation zst_val := ([] : val).
 
 (*** Tests *)
 Example test1 (l : loc) ly ot :
-  (l <-{ly} use{ot}(&l +{PtrOp, IntOp usize_t} (l ={PtrOp, PtrOp, i32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
-  (AssignSE Na1Ord ly l (Use Na1Ord ot true (BinOp AddOp PtrOp (IntOp usize_t) (AddrOf l) (BinOp (EqOp i32) PtrOp PtrOp l l))))
+  (l <-{ly} use{ot}(&l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
+  (AssignSE Na1Ord ly l (Use Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (AddrOf l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
       (ExprS (Call l [ Val (val_of_loc l); Val (val_of_loc l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 

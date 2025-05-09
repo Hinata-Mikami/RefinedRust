@@ -40,21 +40,22 @@ Proof.
 
   intros ls_dst ls_src.
   repeat liRStep; liShow.
-  Unshelve. all: unshelve_sidecond; sidecond_hook.
+
+  Unshelve. all: sidecond_solver.
   Unshelve. all: unfold_common_defs; try solve_goal.
 Qed.
 
-(** If we specialize the type to [int i32], the proof should still work. *)
+(** If we specialize the type to [int I32], the proof should still work. *)
 Definition type_of_ptr_write_int `{!typeGS Σ} :=
-  spec_instantiate_typaram [_] 0 eq_refl (int i32) (type_of_ptr_write Z (IntSynType i32)).
+  spec_instantiate_typaram [_] 0 eq_refl (int I32) (type_of_ptr_write Z (IntSynType I32)).
 Lemma ptr_write_typed_int `{!typeGS Σ} π :
-  ⊢ typed_function π (ptr_write (IntSynType i32)) [] (<tag_type> type_of_ptr_write_int).
+  ⊢ typed_function π (ptr_write (IntSynType I32)) [] (<tag_type> type_of_ptr_write_int).
 Proof.
   start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
   Unshelve. all: unshelve_sidecond; sidecond_hook.
-  Unshelve. all: unfold_common_defs; try solve_goal.
+  Unshelve. all: sidecond_hammer.
 Qed.
 
 (** Same for shared references *)
@@ -144,15 +145,15 @@ Section test_struct.
   Context `{!typeGS Σ}.
 
   Definition test_rt : list Type := [Z: Type; Z : Type].
-  Definition test_lts : hlist ltype test_rt := (◁ int i32)%I +:: (◁ int i32)%I +:: +[].
+  Definition test_lts : hlist ltype test_rt := (◁ int I32)%I +:: (◁ int I32)%I +:: +[].
   Definition test_rfn : plist place_rfn test_rt := #32 -:: #22 -:: -[].
 
-  Lemma bla : hnth (UninitLtype UnitSynType) test_lts 1 = (◁ int i32)%I.
+  Lemma bla : hnth (UninitLtype UnitSynType) test_lts 1 = (◁ int I32)%I.
   Proof. simpl. done. Abort.
   Lemma bla : pnth (#()) test_rfn 1 = #22.
   Proof. simpl. done. Abort.
 
-  Lemma bla : hlist_insert_id (unit : Type) _ test_lts 1 (◁ int i32)%I = test_lts.
+  Lemma bla : hlist_insert_id (unit : Type) _ test_lts 1 (◁ int I32)%I = test_lts.
   Proof.
     simpl. rewrite /hlist_insert_id. simpl.
     (*rewrite /list_insert_lnth. *)
@@ -160,7 +161,7 @@ Section test_struct.
     (*simpl. intros ?. rewrite (UIP_refl _ _ e). done.*)
   Abort.
 
-  Lemma bla : hlist_insert _ test_lts 1 _ (◁ int i32)%I = test_lts.
+  Lemma bla : hlist_insert _ test_lts 1 _ (◁ int I32)%I = test_lts.
   Proof.
     simpl. done.
   Abort.

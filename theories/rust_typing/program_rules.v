@@ -1910,7 +1910,7 @@ Section typing.
            (typed_value π1 (val_of_bool true) (T L2 π1 (val_of_bool true)))
            (typed_value π1 (val_of_bool false) (T L2 π1 (val_of_bool false)))))
        (typed_value π1 (val_of_bool false) (T L1 π1 (val_of_bool false))))
-    ⊢ typed_val_expr E L (e1 &&{BoolOp, BoolOp, u8} e2)%E T.
+    ⊢ typed_val_expr E L (e1 &&{BoolOp, BoolOp, U8} e2)%E T.
   Proof.
     iIntros "HT". rewrite /LogicalAnd. iApply type_ife.
     iApply (typed_val_expr_wand with "HT"). iIntros (L1 π v rt ty r) "HT".
@@ -1929,7 +1929,7 @@ Section typing.
         typed_if E L2 v2 (v2 ◁ᵥ{π2} r2 @ ty2)
           (typed_value π1 (val_of_bool true) (T L2 π1 (val_of_bool true)))
           (typed_value π1 (val_of_bool false) (T L2 π1 (val_of_bool false))))))
-    ⊢ typed_val_expr E L (e1 ||{BoolOp, BoolOp, u8} e2)%E T.
+    ⊢ typed_val_expr E L (e1 ||{BoolOp, BoolOp, U8} e2)%E T.
   Proof.
     iIntros "HT". rewrite /LogicalOr. iApply type_ife.
     iApply (typed_val_expr_wand with "HT"). iIntros (L1 π1 v rt ty r) "HT".

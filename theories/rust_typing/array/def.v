@@ -19,7 +19,7 @@ Definition is_array_ot `{!typeGS Σ} {rt} (ty : type rt) (len : nat) (ot : op_ty
   | UntypedOp ly =>
       ∃ ly', ly = mk_array_layout ly' len ∧ ty_has_op_type ty (UntypedOp ly') mt ∧
         (* required for offsetting with LLVM's GEP *)
-        (ly_size ly ≤ MaxInt isize_t)%Z ∧
+        (ly_size ly ≤ MaxInt ISize)%Z ∧
         (* enforced by Rust *)
         layout_wf ly'
   | _ => False
@@ -127,7 +127,7 @@ Section array.
     ty_own_val π r v :=
       ∃ ly,
         ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-        ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+        ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜length r = len⌝ ∗
         ⌜v `has_layout_val` (mk_array_layout ly len)⌝ ∗
         [∗ list] r'; v' ∈ r; reshape (replicate len (ly_size ly)) v,
@@ -135,7 +135,7 @@ Section array.
     ty_shr κ π r l :=
       ∃ ly,
         ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-        ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+        ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜length r = len⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
         [∗ list] i ↦ r' ∈ r, array_own_el_shr π κ i ly ty r' l;
@@ -178,7 +178,7 @@ Section array.
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
     (* reshape the borrow - we must not freeze the existential over v to initiate recursive sharing *)
-    iPoseProof (bor_iff _ _ (∃ ly', ⌜syn_type_has_layout (ty_syn_type ty) ly'⌝ ∗ ⌜(ly_size ly' * len ≤ MaxInt isize_t)%Z⌝ ∗  ⌜length r = len⌝ ∗ [∗ list] i ↦ r' ∈ r, ∃ v, array_own_el_loc π 1%Qp v i ly' ty r' l)%I with "[] Hb") as "Hb".
+    iPoseProof (bor_iff _ _ (∃ ly', ⌜syn_type_has_layout (ty_syn_type ty) ly'⌝ ∗ ⌜(ly_size ly' * len ≤ MaxInt ISize)%Z⌝ ∗  ⌜length r = len⌝ ∗ [∗ list] i ↦ r' ∈ r, ∃ v, array_own_el_loc π 1%Qp v i ly' ty r' l)%I with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit.
       - iIntros "(%v & Hl & %ly' & %Hst' & %Hsz & %Hlen & %Hv & Hv)".
         iExists ly'. iSplitR; first done. iSplitR; first done. iSplitR; first done.
@@ -371,7 +371,7 @@ Section lemmas.
   Qed.
 
   Lemma array_t_own_val_merge {rt} (ty : type rt) π (n1 n2 : nat) v1 v2 rs1 rs2 :
-    (size_of_st ty.(ty_syn_type) * (n1 + n2) ≤ MaxInt isize_t)%Z →
+    (size_of_st ty.(ty_syn_type) * (n1 + n2) ≤ MaxInt ISize)%Z →
     v1 ◁ᵥ{π} rs1 @ array_t n1 ty -∗
     v2 ◁ᵥ{π} rs2 @ array_t n2 ty -∗
     (v1 ++ v2) ◁ᵥ{π} (rs1 ++ rs2) @ array_t (n1 + n2) ty.
@@ -416,7 +416,7 @@ Section lemmas.
   Qed.
 
   Lemma array_t_shr_merge {rt} (ty : type rt) π κ (n1 n2 : nat) l rs1 rs2 :
-    (size_of_st ty.(ty_syn_type) * (n1 + n2) ≤ MaxInt isize_t)%Z →
+    (size_of_st ty.(ty_syn_type) * (n1 + n2) ≤ MaxInt ISize)%Z →
     l ◁ₗ{π, κ} rs1 @ array_t n1 ty -∗
     (l offsetst{ty.(ty_syn_type)}ₗ n1) ◁ₗ{π, κ} rs2 @ array_t n2 ty -∗
     l ◁ₗ{π, κ} (rs1 ++ rs2) @ array_t (n1 + n2) ty.

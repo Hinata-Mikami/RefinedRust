@@ -27,7 +27,7 @@ Qed.
 
 (* TODO move *)
 Lemma max_alloc_end_le_usize :
-  (max_alloc_end ≤ max_int usize_t)%Z.
+  (max_alloc_end ≤ max_int USize)%Z.
 Proof.
   unfold_common_caesium_defs. simpl. lia.
 Qed.
@@ -60,65 +60,6 @@ Proof.
   - intros Hf. econstructor; first apply Hb. by apply IH.
 Qed.
 
-(** We define a closed set of integer types that are allowed to appear as literals in the source code,
-  in order to ensure that their size fits into [isize]. *)
-(* TODO: maybe transition everything to that, so that we also don't get sideconditions in is_int_ot? *)
-Inductive IntType : Set :=
-  | I8 | I16 | I32 | I64 | I128
-  | U8 | U16 | U32 | U64 | U128
-  | ISize | USize
-  | CharIt
-.
-Definition IntType_to_it (I : IntType) : int_type :=
-  match I with
-  | I8 => i8
-  | I16 => i16
-  | I32 => i32
-  | I64 => i64
-  | I128 => i128
-  | U8 => u8
-  | U16 => u16
-  | U32 => u32
-  | U64 => u64
-  | U128 => u128
-  | ISize => isize_t
-  | USize => usize_t
-  | CharIt => u32
-  end.
-Coercion IntType_to_it : IntType >-> int_type.
-Lemma IntType_to_it_size_bounded I :
-  (ly_size (it_layout (IntType_to_it I)) ≤ max_int isize_t)%Z.
-Proof.
-  destruct I; done.
-Qed.
-Global Instance IntType_eq_dec : EqDecision IntType.
-Proof. solve_decision. Defined.
-
-Lemma IntType_align_le (it : IntType) :
-  ly_align (it_layout it) ≤ 16.
-Proof.
-  rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
-  destruct it => /=; lia.
-Qed.
-Lemma IntType_align_ge_1 (it : IntType) :
-  1 ≤ ly_align (it_layout it).
-Proof.
-  rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
-  destruct it=> /=; lia.
-Qed.
-Lemma IntType_size_le (it : IntType) :
-  ly_size (it_layout it) ≤ 16.
-Proof.
-  rewrite /it_layout /ly_size/bytes_per_int/it_byte_size_log.
-  destruct it => /=; lia.
-Qed.
-Lemma IntType_size_ge_1 (it : IntType) :
-  1 ≤ ly_size (it_layout it).
-Proof.
-  rewrite /it_layout /ly_size/bytes_per_int/it_byte_size_log.
-  destruct it => /=; lia.
-Qed.
-
 Ltac unsafe_unfold_common_caesium_defs :=
   rewrite ?MaxInt_eq ?MinInt_eq;
   repeat match goal with
@@ -126,13 +67,6 @@ Ltac unsafe_unfold_common_caesium_defs :=
   | H : context[MinInt ?it] |- _ => rewrite !MinInt_eq in H
   end;
   unfold_common_caesium_defs.
-
-(** integer literals in the code should use I2v *)
-(* Sealed to avoid that [I2v x U32] and [I2v x CharIt] are convertible *)
-Definition I2v_def (z : Z) (I : IntType) : val := i2v z I.
-Definition I2v_aux z I : seal (I2v_def z I). Proof. by eexists. Qed.
-Definition I2v z I : val := (I2v_aux z I).(unseal).
-Definition I2v_unfold z I : I2v z I = i2v z I := (I2v_aux z I).(seal_eq).
 
 (** Rust repr options *)
 Inductive struct_repr :=
@@ -196,7 +130,7 @@ Inductive syn_type : Set :=
      especially around the uninit semtype *)
   | UntypedSynType (ly : layout)
   (* enums *)
-  | EnumSynType (en : string) (tag_it : IntType) (variant_list : list (string * syn_type)) (repr : enum_repr)
+  | EnumSynType (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) (repr : enum_repr)
   (* unions *)
   | UnionSynType (un : string) (variant_list : list (string * syn_type)) (repr : union_repr)
   (* char *)
@@ -255,7 +189,7 @@ Lemma syn_type_strong_ind (P : syn_type → Prop) :
   (∀ st : syn_type, P st → ∀ len : nat, P (ArraySynType st len)) →
   (∀ st : syn_type, P st → P (UnsafeCell st)) →
   (∀ ly : layout, P (UntypedSynType ly)) →
-  (∀ (en : string) (tag_it : IntType) (variant_list : list (string * syn_type)) repr,
+  (∀ (en : string) (tag_it : int_type) (variant_list : list (string * syn_type)) repr,
     Forall (λ '(_, st), P st) variant_list →
     P (EnumSynType en tag_it variant_list repr)) →
   (∀ (un : string) (variant_list : list (string * syn_type)) repr,
@@ -308,7 +242,7 @@ Coercion syn_type_of_uls : union_layout_spec >-> syn_type.
 Record enum_layout_spec : Set := mk_els
   { els_name : string;
     (* This is fixed (and not something chooseable by the layout algorithm), because Rust's MIR already has this type fixed. *)
-    els_tag_it : IntType;
+    els_tag_it : int_type;
     els_variants : list (string * syn_type);
     els_repr : enum_repr;
     (* This is additional information that doesn't affect the layout algorithm, but just the operational behavior of enum operations *)
@@ -423,8 +357,8 @@ Proof.
   unfold_common_caesium_defs. simpl. nia.
 Qed.
 
-Lemma ly_align_log_in_u8 ly :
-  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ u8.
+Lemma ly_align_log_in_U8 ly :
+  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ U8.
 Proof.
   rewrite /ly_align_in_bounds/min_alloc_start/max_alloc_end/=/ly_align/bytes_per_addr/bytes_per_addr_log/=.
   rewrite /bits_per_byte/=.
@@ -438,14 +372,14 @@ Proof.
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_log_in_usize ly :
-  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ usize_t.
+  ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ USize.
 Proof.
-  intros [_ Ha]%ly_align_log_in_u8.
+  intros [_ Ha]%ly_align_log_in_U8.
   split. { unsafe_unfold_common_caesium_defs. simpl in *. lia. }
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_in_usize ly :
-  ly_align_in_bounds ly → (Z.of_nat (ly_align ly)) ∈ usize_t.
+  ly_align_in_bounds ly → (Z.of_nat (ly_align ly)) ∈ USize.
 Proof.
   intros [Ha Hb].
   split; unsafe_unfold_common_caesium_defs; simpl in *; lia.
@@ -471,10 +405,10 @@ Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
   match synty with
   | IntSynType it =>
       (* make sure that we respect limits on object size *)
-      if decide (ly_size (it_layout it) ≤ MaxInt isize_t) then
+      if decide (ly_size (it_layout it) ≤ MaxInt ISize) then
         Some (it_layout it)
       else None
-  | BoolSynType => Some (it_layout u8)
+  | BoolSynType => Some (it_layout U8)
   | CharSynType => Some (char_layout)
   | PtrSynType => Some void*
   | FnPtrSynType => Some void*
@@ -488,7 +422,7 @@ Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
   | ArraySynType st len =>
       ly ← use_layout_alg st;
       (* check that this is within the size limits *)
-      if decide (ly_size (mk_array_layout ly len) ≤ MaxInt isize_t) then
+      if decide (ly_size (mk_array_layout ly len) ≤ MaxInt ISize) then
         Some (mk_array_layout ly len)
       else None
   | UnsafeCell st => use_layout_alg st
@@ -507,7 +441,7 @@ Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
       sl ← struct_layout_alg en [("discriminant", it_layout tag); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr);
       Some (layout_of sl)
   | UntypedSynType ly =>
-      if decide (layout_wf ly ∧ ly_size ly ≤ MaxInt isize_t ∧ ly_align_in_bounds ly) then Some ly else None
+      if decide (layout_wf ly ∧ ly_size ly ≤ MaxInt ISize ∧ ly_align_in_bounds ly) then Some ly else None
   end.
 Arguments use_layout_alg : simpl never.
 
@@ -680,10 +614,10 @@ Definition use_enum_layout_alg `{!LayoutAlg} (els : enum_layout_spec) : option s
   use_struct_layout_alg (sls_of_els els).
 
 Lemma els_tag_it_size (els : enum_layout_spec) :
-  ly_size (it_layout $ els_tag_it els) ≤ MaxInt isize_t.
+  ly_size (it_layout $ els_tag_it els) ≤ MaxInt ISize.
 Proof.
   specialize (IntType_size_le els.(els_tag_it)).
-  rewrite MaxInt_eq /max_int /isize_t /int_half_modulus/intptr_t/bits_per_int/bytes_per_int/bits_per_byte/=. lia.
+  rewrite MaxInt_eq /max_int /int_half_modulus/bits_per_int/bytes_per_int/bits_per_byte/=. lia.
 Qed.
 
 Lemma use_enum_layout_alg_Some_inv `{!LayoutAlg} (els : enum_layout_spec) el :
@@ -732,7 +666,7 @@ Qed.
 Lemma syn_type_has_layout_array `{!LayoutAlg} st (len : nat) ly ly' :
   ly' = (mk_array_layout ly len) →
   syn_type_has_layout st ly →
-  (ly_size ly * len) ≤ MaxInt isize_t →
+  (ly_size ly * len) ≤ MaxInt ISize →
   syn_type_has_layout (ArraySynType st len) ly'.
 Proof.
   rewrite /syn_type_has_layout. intros -> Hst Hsize.
@@ -743,7 +677,7 @@ Qed.
 
 Lemma syn_type_has_layout_array_inv `{!LayoutAlg} st len ly :
   syn_type_has_layout (ArraySynType st len) ly →
-  ∃ ly', syn_type_has_layout st ly' ∧ ly = mk_array_layout ly' len ∧ ly_size ly ≤ MaxInt isize_t.
+  ∃ ly', syn_type_has_layout st ly' ∧ ly = mk_array_layout ly' len ∧ ly_size ly ≤ MaxInt ISize.
 Proof.
   rewrite /syn_type_has_layout {1}/use_layout_alg.
   fold use_layout_alg.
@@ -754,7 +688,7 @@ Qed.
 
 Lemma syn_type_has_layout_untyped_inv `{!LayoutAlg} ly ly' :
   use_layout_alg (UntypedSynType ly) = Some ly' →
-  ly' = ly ∧ layout_wf ly ∧ (ly_size ly ≤ MaxInt isize_t)%Z ∧ ly_align_in_bounds ly.
+  ly' = ly ∧ layout_wf ly ∧ (ly_size ly ≤ MaxInt ISize)%Z ∧ ly_align_in_bounds ly.
 Proof.
   rewrite /use_layout_alg /=.
   case_decide; last done.
@@ -763,7 +697,7 @@ Qed.
 Lemma syn_type_has_layout_untyped `{!LayoutAlg} ly ly' :
   ly = ly' →
   layout_wf ly →
-  (ly_size ly ≤ MaxInt isize_t)%Z →
+  (ly_size ly ≤ MaxInt ISize)%Z →
   ly_align_in_bounds ly →
   use_layout_alg (UntypedSynType ly) = Some ly'.
 Proof.
@@ -772,26 +706,27 @@ Qed.
 
 Lemma syn_type_has_layout_int `{!LayoutAlg} (it : int_type) (ly : layout) :
   ly = it_layout it →
-  ly_size (it_layout it) ≤ MaxInt isize_t →
   syn_type_has_layout (IntSynType it) ly.
 Proof.
-  intros; subst. rewrite /syn_type_has_layout /use_layout_alg decide_True; done.
+  intros; subst.
+  rewrite /syn_type_has_layout /use_layout_alg decide_True; first done.
+  apply it_size_bounded.
 Qed.
 Lemma syn_type_has_layout_int_inv `{!LayoutAlg} (it : int_type) (ly : layout) :
   syn_type_has_layout (IntSynType it) ly →
-  ly = it_layout it ∧ ly_size (it_layout it) ≤ MaxInt isize_t.
+  ly = it_layout it.
 Proof.
   rewrite /syn_type_has_layout /use_layout_alg.
   case_decide; naive_solver.
 Qed.
 
 Lemma syn_type_has_layout_bool_inv `{!LayoutAlg} ly :
-  syn_type_has_layout BoolSynType ly → ly = it_layout u8.
+  syn_type_has_layout BoolSynType ly → ly = it_layout U8.
 Proof.
   rewrite /syn_type_has_layout /use_layout_alg => [= <-] //.
 Qed.
 Lemma syn_type_has_layout_bool `{!LayoutAlg} ly :
-  ly = it_layout u8 → syn_type_has_layout BoolSynType ly.
+  ly = it_layout U8 → syn_type_has_layout BoolSynType ly.
 Proof. intros -> => //. Qed.
 
 Lemma syn_type_has_layout_char_inv `{!LayoutAlg} ly :
@@ -992,7 +927,7 @@ Proof.
   apply Forall2_cons_inv_l in Ha as ([? ly2] & lys' & [<- Hly2] & Ha & ->).
   apply Forall2_nil_inv_l in Ha as ->.
   apply syn_type_has_layout_union_inv in Hly2 as (variant_lys & ul & -> & Hul & Hvariants).
-  apply syn_type_has_layout_int_inv in Hly1 as (-> & ?).
+  apply syn_type_has_layout_int_inv in Hly1 as ->.
   exists ul, variant_lys. eauto.
 Qed.
 Lemma syn_type_has_layout_enum_inv `{!LayoutAlg} ly name it variants repr :
@@ -1014,7 +949,7 @@ Proof.
   intros (ly & Halg & [= -> ->])%bind_Some.
   eauto.
 Qed.
-Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : IntType) variants variants' repr ly ul sl :
+Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : int_type) variants variants' repr ly ul sl :
   Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variants' →
   union_layout_alg name variants' (union_repr_of_enum_repr repr) = Some ul →
   struct_layout_alg name [("discriminant", it_layout it); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr) = Some sl →
@@ -1083,7 +1018,7 @@ Qed.
 (** Size limits: object size should be limited by isize *)
 Lemma use_layout_alg_size `{!LayoutAlg} st ly :
   use_layout_alg st = Some ly →
-  ly_size ly ≤ MaxInt isize_t.
+  ly_size ly ≤ MaxInt ISize.
 Proof.
   induction st in ly |-*; rewrite /use_layout_alg => ?; simplify_option_eq; fold use_layout_alg in *.
   - done.
@@ -1108,7 +1043,7 @@ Qed.
 
 Lemma use_struct_layout_alg_size `{!LayoutAlg} sls sl :
   use_struct_layout_alg sls = Some sl →
-  ly_size sl ≤ MaxInt isize_t.
+  ly_size sl ≤ MaxInt ISize.
 Proof.
   intros _.
   rewrite /ly_size /=.
@@ -1116,14 +1051,14 @@ Proof.
 Qed.
 Lemma use_union_layout_alg_size `{!LayoutAlg} uls ul :
   use_union_layout_alg uls = Some ul →
-  ly_size ul ≤ MaxInt isize_t.
+  ly_size ul ≤ MaxInt ISize.
 Proof.
   intros _. rewrite /ly_size /=.
   pose (ul_size ul) as Ha. rewrite MaxInt_eq. lia.
 Qed.
 Lemma use_enum_layout_alg_size `{!LayoutAlg} els el :
   use_enum_layout_alg els = Some el →
-  ly_size el ≤ MaxInt isize_t.
+  ly_size el ≤ MaxInt ISize.
 Proof.
   intros _. rewrite /ly_size /=.
   pose (sl_size el) as Ha. rewrite MaxInt_eq. lia.
@@ -1315,17 +1250,6 @@ Definition use_union_layout_alg' `{!LayoutAlg} (uls : union_layout_spec) : union
 Definition use_enum_layout_alg' `{!LayoutAlg} (els : enum_layout_spec) : struct_layout :=
   default inhabitant (use_enum_layout_alg els).
 
-(** Existential versions *)
-Definition syn_type_is_layoutable `{!LayoutAlg} (st : syn_type) : Prop :=
-  is_Some (use_layout_alg st).
-Definition struct_layout_spec_is_layoutable `{!LayoutAlg} (sls : struct_layout_spec) : Prop :=
-  is_Some (use_struct_layout_alg sls).
-Definition union_layout_spec_is_layoutable `{!LayoutAlg} (uls : union_layout_spec) : Prop :=
-  is_Some (use_union_layout_alg uls).
-Definition enum_layout_spec_is_layoutable `{!LayoutAlg} (els : enum_layout_spec) : Prop :=
-  is_Some (use_enum_layout_alg els).
-
-
 (** Size of syn_types *)
 Definition size_of_st `{!LayoutAlg} (st : syn_type) : nat :=
   ly_size (use_layout_alg' st).
@@ -1339,14 +1263,14 @@ Section size_of.
     size_of_st PtrSynType = ly_size void*.
   Proof. done. Qed.
   Lemma size_of_st_int (it : int_type) :
-    (ly_size (it_layout it) ≤ MaxInt isize_t)%Z → size_of_st (IntSynType it) = ly_size (it_layout it).
+    (ly_size (it_layout it) ≤ MaxInt ISize)%Z → size_of_st (IntSynType it) = ly_size (it_layout it).
   Proof.
     intros. unfold_st. rewrite decide_True; done.
   Qed.
-  Lemma size_of_st_Int (it : IntType) :
+  Lemma size_of_st_Int (it : int_type) :
     size_of_st (IntSynType it) = ly_size (it_layout it).
   Proof.
-    apply size_of_st_int. rewrite MaxInt_eq. apply IntType_to_it_size_bounded.
+    apply size_of_st_int. apply it_size_bounded.
   Qed.
   Lemma size_of_st_bool :
     size_of_st BoolSynType = 1%nat.
@@ -1354,12 +1278,12 @@ Section size_of.
   Lemma size_of_st_unit :
     size_of_st UnitSynType = 0%nat.
   Proof. done. Qed.
-  Lemma size_of_st_array st sz n :
-    syn_type_is_layoutable (ArraySynType st n) →
+  Lemma size_of_st_array st sz n ly :
+    syn_type_has_layout (ArraySynType st n) ly →
     size_of_st st = sz →
     size_of_st (ArraySynType st n) = (n * sz)%nat.
   Proof.
-    intros [ly Halg].
+    intros Halg.
     apply syn_type_has_layout_array_inv in Halg as (ly' & Hst & -> & Hsz).
     intros <-.
     unfold_st; fold use_layout_alg.
@@ -1545,7 +1469,7 @@ Lemma syn_type_has_layout_op_alg `{!LayoutAlg} st ly :
   ∃ ot, use_op_alg st = Some ot ∧ ot_layout ot = ly.
 Proof.
   induction st as [ it | | | | sn fields IH | | st IH len | st IH | ly' | en tag_it variant_list IH | un variant_list IH | ] using syn_type_strong_ind in ly |-*.
-  - intros [-> ?]%syn_type_has_layout_int_inv.
+  - intros ->%syn_type_has_layout_int_inv.
     exists (IntOp it). split; last done. done.
   - intros ->%syn_type_has_layout_bool_inv.
     exists BoolOp. split; last done. done.
@@ -1578,7 +1502,7 @@ Proof.
     efeed pose proof (use_struct_layout_alg_op_alg) as Ha.
     { eapply (use_struct_layout_alg_Some (mk_sls _ [(_, IntSynType tag_it); (_, UnionSynType _ _)])); last done.
       econstructor; simpl.
-      { split; first done. eapply syn_type_has_layout_int; [done | apply IntType_to_it_size_bounded]. }
+      { split; first done. eapply syn_type_has_layout_int; [done | apply it_size_bounded]. }
       econstructor; last constructor.
       split; first done.
       eapply syn_type_has_layout_union; done. }
@@ -1653,3 +1577,14 @@ Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
 Proof.
   intros ly1 ly2 ? ?. assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj. done.
 Qed.
+
+
+(** Existential versions *)
+Definition syn_type_is_layoutable `{!LayoutAlg} (st : syn_type) : Prop :=
+  is_Some (use_layout_alg st).
+Definition struct_layout_spec_is_layoutable `{!LayoutAlg} (sls : struct_layout_spec) : Prop :=
+  is_Some (use_struct_layout_alg sls).
+Definition union_layout_spec_is_layoutable `{!LayoutAlg} (uls : union_layout_spec) : Prop :=
+  is_Some (use_union_layout_alg uls).
+Definition enum_layout_spec_is_layoutable `{!LayoutAlg} (els : enum_layout_spec) : Prop :=
+  is_Some (use_enum_layout_alg els).

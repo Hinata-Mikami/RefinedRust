@@ -230,6 +230,7 @@ Section call.
       (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π} r @ ty) -∗
       ∃ (Heq : lfts = length eκs),
       ∃ tys,
+      (* TODO: currently we instantiate evars very early to make the xt injection work. maybe move that down once we have a better design *)
       li_tactic (ensure_evars_instantiated_goal (pzipl _ tys) etys) (λ _,
       ∃ x,
       let κs := (rew <- Heq in eκs') in

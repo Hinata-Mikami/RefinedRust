@@ -151,7 +151,7 @@ Section switch.
   Proof.
     unfold li_trace.
     iIntros "HT Hit". rewrite /ty_own_val/=.
-    iDestruct "Hit" as "(%tag & %Htag & %Hv & %Hit)".
+    iDestruct "Hit" as "(%tag & %Htag & %Hv)".
     iDestruct "HT" as "(-> & Hc)".
     rewrite /compute_map_lookup_goal.
     iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".

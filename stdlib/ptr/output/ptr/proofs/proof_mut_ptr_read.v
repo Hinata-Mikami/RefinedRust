@@ -12,11 +12,17 @@ Lemma mut_ptr_read_proof (π : thread_id) :
 Proof.
   mut_ptr_read_prelude.
 
-  repeat liRStep; liShow.
+  rep liRStep; liShow.
+  simp_ltypes.
+  rep liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+  all: rename select (st_of _ = st_of _) into Hst_eq; try rewrite -Hst_eq.
+  all: sidecond_hook.
+  { f_equiv. eapply syn_type_has_layout_inj; first done.
+    by rewrite Hst_eq. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

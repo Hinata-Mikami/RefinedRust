@@ -61,7 +61,7 @@ Global Typeclasses Opaque shift_loc.
 
 (** Shifts location [l] by offset [z], wrapping at the address space boundary. *)
 Definition wrapping_shift_loc (l : loc) (z : Z) : loc :=
-  (l.1, wrap_unsigned (l.2 + z) usize_t).
+  (l.1, wrap_unsigned (l.2 + z) USize).
 Notation "l +wₗ z" := (wrapping_shift_loc l%L z%Z)
   (at level 50, left associativity) : loc_scope.
 Global Typeclasses Opaque wrapping_shift_loc.
@@ -148,7 +148,7 @@ Lemma wrapping_shift_loc_block l n : (l +wₗ n).1 = l.1.
 Proof. done. Qed.
 
 Lemma wrapping_shift_loc_0 l :
-  l.2 ∈ usize_t →
+  l.2 ∈ USize →
   l +wₗ 0 = l.
 Proof.
   destruct l as [prov addr]; simpl.
@@ -157,12 +157,12 @@ Proof.
   f_equiv.
   rewrite Z.add_0_r. by rewrite wrap_unsigned_id.
 Qed.
-Lemma wrapping_shift_loc_shift_loc a o : 
-  a.2 + o ∈ usize_t →
+Lemma wrapping_shift_loc_shift_loc a o :
+  a.2 + o ∈ USize →
   a +wₗ o = a +ₗ o.
 Proof.
   destruct a as [prov addr].
-  intros ?. 
+  intros ?.
   rewrite /wrapping_shift_loc/shift_loc/=. f_equiv.
   by rewrite wrap_unsigned_id.
 Qed.

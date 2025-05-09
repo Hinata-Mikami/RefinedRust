@@ -21,8 +21,8 @@ Proof.
   iSelect (_ ◁ᵥ{_} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
   iSelect (ptr ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hptr").
   iSelect (freeable_nz _ _ _ _) (fun H => iRename H into "Hfree").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "[%Hsize _]".
-  iDestruct "Halign_log2" as "[%Halign_log2 _]".
+  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "%Hsize".
+  iDestruct "Halign_log2" as "%Halign_log2".
 
   rewrite /typed_stmt.
   iIntros (?) "#CTX #HE HL Hcont".

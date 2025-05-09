@@ -16,14 +16,14 @@ Proof.
   (* EraseProv *)
   rewrite /typed_un_op/typed_val_expr.
   iIntros "Hv" (Φ) "#CTX #HE HL Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv" as %[Hv Hsz].
+  rewrite {1}/ty_own_val /=. iDestruct "Hv" as %Hv.
   iApply wp_erase_prov.
-  { rewrite /has_layout_val. erewrite (val_to_Z_ot_length _ (IntOp usize_t)); done. }
-  iApply  ("Hcont" $! _ π _ _ (int usize_t) _ with "HL []").
-  { rewrite /ty_own_val/=. iSplit; last done. iPureIntro. by apply val_to_Z_erase_prov. }
+  { rewrite /has_layout_val. erewrite (val_to_Z_ot_length _ (IntOp USize)); done. }
+  iApply  ("Hcont" $! _ π _ _ (int USize) _ with "HL []").
+  { rewrite /ty_own_val/=. iPureIntro. by apply val_to_Z_erase_prov. }
 
   iIntros "Hv" (Φ') "_ _ HL Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv" as %[Hv' _].
+  rewrite {1}/ty_own_val /=. iDestruct "Hv" as %Hv'.
   iApply wp_cast_int_ptr_prov_none; [done | done | done | | done | ].
   { apply val_to_byte_prov_erase_prov. }
   iIntros "!> Hl Hcred".

@@ -497,6 +497,11 @@ where
                 let tacs = tacs.value();
                 self.fn_requirements.proof_info.sidecond_tactics.push(tacs);
             },
+            "unsafe_elctx" => {
+                let term = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
+                let (term, _) = scope.process_coq_literal(&term.value());
+                builder.add_literal_lifetime_constraint(term);
+            },
             "context" => {
                 let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
                 let param = coq::binder::Binder::new_generalized(

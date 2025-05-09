@@ -19,9 +19,9 @@ Proof.
   repeat liRStep; liShow.
   rewrite /typed_val_expr.
   iIntros (?) "#CTX HE HL HCont".
-  iRename select (_ ◁ᵥ{π} addr @ int usize_t)%I into "Hv".
+  iRename select (_ ◁ᵥ{π} addr @ int USize)%I into "Hv".
   iEval (rewrite /ty_own_val/=) in "Hv".
-  iDestruct "Hv" as "[% %]".
+  iDestruct "Hv" as "%".
   iApply wp_copy_alloc_id; [done | apply val_to_of_loc | ].
   iNext. iIntros "_".
   set (l := (x.1, addr) : loc).

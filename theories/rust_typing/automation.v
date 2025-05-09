@@ -425,39 +425,39 @@ Ltac liRIntroduceLetInGoal :=
     end
   end.
 
-Ltac liRInstantiateEvars_hook := idtac.
+Ltac liRInstantiateEvars_hook := fail.
 Ltac liRInstantiateEvars :=
-  liRInstantiateEvars_hook;
+  first [ liRInstantiateEvars_hook |
   lazymatch goal with
   | |- (_ < protected ?H)%nat ∧ _ =>
     (* We would like to use [liInst H (S (protected (EVAR_ID _)))],
       but this causes a Error: No such section variable or assumption
       at Qed. time. Maybe this is related to https://github.com/coq/coq/issues/9937 *)
-    instantiate_protected H ltac:(fun H => instantiate (1:=((S (protected (EVAR_ID _))))) in (value of H))
+    instantiate_protected H (S (protected (EVAR_ID _)))
   (* For some reason [solve_protected_eq] will sometimes not manage to do this.. *)
   | |- (protected ?a = ?b +:: ?c) ∧ _ =>
-    instantiate_protected a ltac:(fun H =>  instantiate (1:= (protected (EVAR_ID _) +:: protected (EVAR_ID _))) in (value of H))
+    instantiate_protected a (protected (EVAR_ID _) +:: protected (EVAR_ID _))
     (* NOTE: Important: We create new evars, instead of instantiating directly with [b] or [c].
         If [b] or [c] contains another evar, the let-definition for that will not be in scope, which can create trouble at Qed. time *)
   | |- (protected ?a = ?b -:: ?c) ∧ _ =>
-    instantiate_protected a ltac:(fun H =>  instantiate (1:= (protected (EVAR_ID _) -:: protected (EVAR_ID _))) in (value of H))
+    instantiate_protected a (protected (EVAR_ID _) -:: protected (EVAR_ID _))
   (* in this case, we do not want it to instantiate the evar for [a], but rather directly instantiate it with the only possible candidate.
      (if the other side also contains an evar, we would be instantiating less than we could otherwise) *)
   | |- (@eq (hlist _ []) _ (protected ?a)) ∧ _ =>
-      instantiate_protected a ltac:(fun H => instantiate (1:= +[]) in (value of H))
-      (*liInst a (+[])*)
+      instantiate_protected a +[]
   | |- (@eq (hlist _ []) (protected ?a) _) ∧ _ =>
-      instantiate_protected a ltac:(fun H => instantiate (1 := +[]) in (value of H))
-      (*liInst a (+[])*)
+      instantiate_protected a +[]
 
-  (* TODO why is this sometimes not done automatically by Lithium? *)
-  (*| |- (protected ?H = ?bla) ∧ _ =>*)
-      (*liInst H bla*)
+  | |- envs_entails _ (subsume_full _ _ _ (@ltype_own _ _ ?rt (◁ ?ty)%I _ _ _ _) (@ltype_own _ _ (xtype_rt (protected ?H)) (◁ xtype_ty (protected ?H))%I _ _ _ _) _) =>
+      instantiate_protected H (@mk_xtype _ _ rt ty (protected (EVAR_ID _)))
 
-    (* TODO: figure out how/when to instantiate evars  *)
+  | |- envs_entails _ (subsume (@ltype_own _ _ (place_rfn ?rt1) _ _ _ _ _) (@ltype_own _ _ (place_rfn (protected ?rt2)) _ _ _ _ _) _) => liInst rt2 rt1
+  | |- envs_entails _ (subsume (@ltype_own _ _ ?rt1 _ _ _ _ _) (@ltype_own _ _ (protected ?rt2) _ _ _ _ _) _) => liInst rt2 rt1
+
+  | |- envs_entails _ (subsume (_ ◁ₗ[?π, ?b] ?r @ (◁ ?ty)%I) (_ ◁ₗ[_, _] _ @ (◁ (protected ?H))%I) _) => liInst H ty
   | |- envs_entails _ (subsume (_ ◁ₗ[?π, ?b] ?r @ ?lt) (_ ◁ₗ[_, _] _ @ (protected ?H)) _) => liInst H lt
   | |- envs_entails _ (subsume (_ ◁ₗ[?π, ?b] ?r @ ?lt) (_ ◁ₗ[_, protected ?H] _ @ _) _) => liInst H b
-  end.
+  end].
 
 (** Goto [goto_bb] *)
 Ltac liRGoto goto_bb :=
@@ -715,13 +715,23 @@ Ltac unfold_introduce_direct :=
     change_no_check (envs_entails E' G)
   end.
 
+Ltac simp_ltypes_in_goal_step :=
+  match goal with
+  | |- context [ ltype_core ?lt ] =>
+        assert_fails Init.is_var lt;
+         (let ltc := fresh "ltc" in
+          let Heq := fresh "Heq_lt" in
+          remember (ltype_core lt) as ltc eqn:Heq ; simp_ltype_core Heq;
+           subst ltc)
+  end.
+Ltac simp_ltypes_in_goal :=
+  repeat simp_ltypes_in_goal_step.
+
 (* This does everything *)
 Ltac liRStep :=
  liEnsureInvariant;
  try liRIntroduceLetInGoal;
- (* TODO these are all hacks right now *)
- simp_ltypes;
- simplify_layout_goal;
+ simp_ltypes_in_goal;
  first [
    liRInstantiateEvars (* must be before do_side_cond and do_extensible_judgement *)
  | liRStmt
@@ -730,7 +740,9 @@ Ltac liRStep :=
  | liRJudgement
  | liStep
  | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
-]; try unfold_introduce_direct; liSimpl.
+];
+(*try unfold_introduce_direct; *)
+liSimpl.
 
 Tactic Notation "liRStepUntil" open_constr(id) :=
   repeat lazymatch goal with
@@ -913,21 +925,21 @@ Ltac liRSplitBlocksIntro :=
   liShow.
 
 
-Ltac sidecond_hook_list :=
-  notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first
-          [ exact I | split_and ! ]);
-  sidecond_hook.
-
 (* TODO : more sideconditions *)
-Ltac sidecond_hook ::=
+Ltac sidecond_hook_init :=
   unfold_no_enrich;
   open_cache;
   intros;
   prepare_initial_coq_context;
-  match goal with
-  | |- _ ∧ _ => split; sidecond_hook
+  try match goal with
+  | |- _ ∧ _ => split
   | |- Forall ?P ?l =>
-      sidecond_hook_list
+    notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first
+   [ exact I | split_and ! ])
+  end
+.
+Ltac sidecond_hook_core :=
+  lazymatch goal with
   | |- lctx_lft_alive ?E ?L ?κ =>
       solve_lft_alive
   | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
@@ -960,17 +972,20 @@ Ltac sidecond_hook ::=
       apply _
   | |- trait_incl_marker _ =>
       solve_trait_incl
+  | |- use_op_alg _ = _ =>
+      solve_op_alg
   | |- _ ## _ =>
       solve_ndisj
   | |- _ ∪ _ = _ =>
       solve_ndisj
-  | |- _ =>
-      try solve_layout_alg;
-      try solve_op_alg;
-      try solve_layout_eq
-      (*try solve [solve_layout_size | solve_layout_eq | solve_op_alg];*)
-      (*try solve_layout_alg*)
-  end.
+  | |- _ => idtac
+  end;
+  try solve_layout_alg
+.
+Ltac sidecond_hook ::=
+  sidecond_hook_init;
+  sidecond_hook_core
+.
 
 (** ** Hints for automation *)
 Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_size : typeclass_instances.
@@ -1018,21 +1033,18 @@ Proof. unfold loc. apply _. Qed.
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
 #[export] Unset Keyed Unification.
 
-Create HintDb unfold_tydefs.
-
 (** Lithium hook *)
 Ltac normalize_hook ::=
   rewrite /size_of_st;
-  (*simplify_layout_goal;*)
+  simplify_layout_normalize;
   normalize_autorewrite.
 
-Ltac after_intro_hook ::=
-  try match goal with
-  | H : enter_cache_hint ?P |- _ =>
+Ltac after_intro_hook H ::=
+  try match type of H with
+  | enter_cache_hint ?P =>
       unfold enter_cache_hint in H;
-      try simplify_layout_alg H;
       enter_cache H
-  | H : ty_is_xrfn ?ty ?r |- _ =>
+  | ty_is_xrfn ?ty ?r =>
         first [
           is_var r;
           (let r2 := fresh r in
@@ -1046,8 +1058,7 @@ Ltac after_intro_hook ::=
           simpl in r2;
           simplify_eq ]
   end;
-  (* TODO optimize this *)
-  inv_layout_alg
+  try (inv_layout_alg_in H)
 .
 
 (* TODO: put a name_hint to preserve names? *)
@@ -1087,12 +1098,10 @@ Ltac unfold_common_defs :=
 Ltac solve_goal_normalized_prepare_hook ::=
   try rewrite -> unfold_int_elem_of_it in *;
   autounfold in *;
-  simplify_layout_assum;
   simplify_layout_goal;
   open_cache;
   unfold_no_enrich;
   simpl in *;
-  (*rewrite /ly_size/ly_align_log //= in **)
   idtac
 .
 
@@ -1138,17 +1147,6 @@ Ltac sidecond_hammer :=
   unshelve sidecond_hammer_it;
   (* hence run another iteration *)
   sidecond_hammer_it
-  (* finally, if we still can't solve it, unfold sealed Caesium definitions (like MaxInt).
-     Since this is very expensive, only do this if these definitions are actually involved in the current goal. *)
-  (*first [*)
-    (*match goal with*)
-    (*| |- (MinInt _ ≤ _)%Z => idtac*)
-    (*| |- (_ ≤ MaxInt _)%Z => idtac*)
-    (*| |- (MinInt _ < _)%Z => idtac*)
-    (*| |- (_ < MaxInt _)%Z => idtac*)
-    (*end; *)
-    (*unsafe_unfold_common_caesium_defs; sidecond_hammer_it*)
-  (*| idtac ]*)
 .
 Ltac sidecond_solver :=
   unshelve_sidecond; sidecond_hook.

@@ -2,19 +2,84 @@ From caesium Require Import base byte layout.
 
 (** Representation of an integer type (size and signedness). *)
 
-Definition signed := bool.
+Notation signed := bool.
 
-Record int_type :=
-  IntType {
-    it_byte_size_log : nat;
-    it_signed : signed;
-  }.
+(* hardcoding 64bit pointers for now *)
+Definition bytes_per_addr_log : nat := 3%nat.
+Definition bytes_per_addr : nat := (2 ^ bytes_per_addr_log)%nat.
 
+Definition void_ptr : layout := {| ly_size := bytes_per_addr; ly_align_log := bytes_per_addr_log |}.
+Notation "'void*'" := (void_ptr).
+
+(** We define a closed set of integer types that are allowed to appear as literals in the source code,
+  in order to ensure that their size fits into [isize]. *)
+Inductive int_type : Set :=
+  | I8 | I16 | I32 | I64 | I128
+  | U8 | U16 | U32 | U64 | U128
+  | ISize | USize
+  | CharIt
+.
 Global Instance int_type_dec : EqDecision int_type.
 Proof. solve_decision. Defined.
 
+Definition it_byte_size_log (it : int_type) : nat :=
+  match it with
+  | I8 => 0
+  | U8 => 0
+  | I16 => 1
+  | U16 => 1
+  | I32 => 2
+  | U32 => 2
+  | I64 => 3
+  | U64 => 3
+  | I128 => 4
+  | U128 => 4
+  | ISize => bytes_per_addr_log
+  | USize => bytes_per_addr_log
+  (* u32 *)
+  | CharIt => 2
+  end.
+Definition it_signed (it : int_type) : signed :=
+  match it with
+  | I8 => true
+  | U8 => false
+  | I16 => true
+  | U16 => false
+  | I32 => true
+  | U32 => false
+  | I64 => true
+  | U64 => false
+  | I128 => true
+  | U128 => false
+  | ISize => true
+  | USize => false
+  | CharIt => false
+  end.
+
+Definition it_to_signed (it : int_type) : int_type :=
+  match it with
+  | U8 => I8
+  | U16 => I16
+  | U32 => I32
+  | U64 => I64
+  | U128 => I128
+  | USize => ISize
+  | CharIt => I32
+  | _ => it
+  end.
+Definition it_to_unsigned (it : int_type) : int_type :=
+  match it with
+  | I8 => U8
+  | I16 => U16
+  | I32 => U32
+  | I64 => U64
+  | I128 => U128
+  | ISize => USize
+  | _ => it
+  end.
+
 Definition bytes_per_int (it : int_type) : nat :=
-  2 ^ it.(it_byte_size_log).
+  2 ^ it_byte_size_log it.
 
 Definition bits_per_int (it : int_type) : Z :=
   bytes_per_int it * bits_per_byte.
@@ -27,11 +92,11 @@ Definition int_half_modulus (it : int_type) : Z :=
 
 (* Minimal representable integer. *)
 Definition min_int (it : int_type) : Z :=
-  if it.(it_signed) then - int_half_modulus it else 0.
+  if it_signed it then - int_half_modulus it else 0.
 
 (* Maximal representable integer. *)
 Definition max_int (it : int_type) : Z :=
-  (if it.(it_signed) then int_half_modulus it else int_modulus it) - 1.
+  (if it_signed it then int_half_modulus it else int_modulus it) - 1.
 
 (* Sealed versions of [max_int] / [min_int] in order to avoid Coq from choking on things like [max_int usize_t] *)
 Definition MaxInt_def (it : int_type) := max_int it.
@@ -51,71 +116,65 @@ Proof.
   rewrite /elem_of/int_elem_of_it MinInt_eq MaxInt_eq//.
 Qed.
 
-Definition it_layout (it : int_type) :=
-  Layout (bytes_per_int it) it.(it_byte_size_log).
-
-Definition i8  := IntType 0 true.
-Definition u8  := IntType 0 false.
-Definition i16 := IntType 1 true.
-Definition u16 := IntType 1 false.
-Definition i32 := IntType 2 true.
-Definition u32 := IntType 2 false.
-Definition i64 := IntType 3 true.
-Definition u64 := IntType 3 false.
-Definition i128 := IntType 4 true.
-Definition u128 := IntType 4 false.
-
-(* hardcoding 64bit pointers for now *)
-Definition bytes_per_addr_log : nat := 3%nat.
-Definition bytes_per_addr : nat := (2 ^ bytes_per_addr_log)%nat.
-
-Definition void_ptr : layout := {| ly_size := bytes_per_addr; ly_align_log := bytes_per_addr_log |}.
-Notation "'void*'" := (void_ptr).
-
-Definition intptr_t  := IntType bytes_per_addr_log true.
-Definition uintptr_t := IntType bytes_per_addr_log false.
-
-Definition usize_t  := uintptr_t.
-Definition isize_t := intptr_t.
-Definition ptrdiff_t := intptr_t.
 
 Definition bool_layout : layout := {| ly_size := 1; ly_align_log := 0 |}.
+Definition it_layout (it : int_type) : layout :=
+  Layout (bytes_per_int it) (it_byte_size_log it).
+
+Lemma it_size_bounded I :
+  (ly_size (it_layout I) ≤ MaxInt ISize)%Z.
+Proof.
+  rewrite MaxInt_eq.
+  destruct I; done.
+Qed.
+
+Lemma IntType_align_le it :
+  ly_align (it_layout it) ≤ 16.
+Proof.
+  rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
+  destruct it => /=; lia.
+Qed.
+Lemma IntType_align_ge_1 it :
+  1 ≤ ly_align (it_layout it).
+Proof.
+  rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
+  destruct it=> /=; lia.
+Qed.
+Lemma IntType_size_le it :
+  ly_size (it_layout it) ≤ 16.
+Proof.
+  rewrite /it_layout /ly_size/bytes_per_int/it_byte_size_log.
+  destruct it => /=; lia.
+Qed.
+Lemma IntType_size_ge_1 it :
+  1 ≤ ly_size (it_layout it).
+Proof.
+  rewrite /it_layout /ly_size/bytes_per_int/it_byte_size_log.
+  destruct it => /=; lia.
+Qed.
 
 (*** Lemmas about [int_type] *)
-Lemma MaxInt_signed_lt_unsigned byte_log :
-  (MaxInt (int_type.IntType byte_log true) < MaxInt (int_type.IntType byte_log false))%Z.
+Lemma MaxInt_signed_lt_unsigned it :
+  (MaxInt (it_to_signed it) < MaxInt (it_to_unsigned it))%Z.
 Proof.
   rewrite !MaxInt_eq.
   rewrite /max_int /int_half_modulus /int_modulus /= /bits_per_int /bytes_per_int /bits_per_byte /=.
-  assert ((2 ^ byte_log)%nat ≥ 1)%Z as Hle.
-  { induction byte_log; simpl; lia. }
-  move : Hle.
-  generalize (2^byte_log)%nat.
-  intros ??.
-  remember (n * 8)%nat as m.
-  replace (n * 8)%Z with (Z.of_nat m) by lia.
-  destruct m; first done.
-  rewrite -(Nat2Z.inj_sub (S m) 1); last lia.
-  simpl. rewrite Nat.sub_0_r.
-  rewrite Nat2Z.inj_succ.
-  rewrite Z.pow_succ_r; last lia.
-  nia.
+  destruct it; simpl; lia.
 Qed.
 Lemma MaxInt_isize_lt_usize :
-  (MaxInt isize_t < MaxInt usize_t)%Z.
+  (MaxInt ISize < MaxInt USize)%Z.
 Proof.
-  apply MaxInt_signed_lt_unsigned.
+  apply (MaxInt_signed_lt_unsigned ISize).
 Qed.
 
 Lemma bytes_per_int_usize :
-  bytes_per_int usize_t = bytes_per_addr.
+  bytes_per_int USize = bytes_per_addr.
 Proof. done. Qed.
 
 Lemma bytes_per_int_gt_0 it : bytes_per_int it > 0.
 Proof.
-  rewrite /bytes_per_int. move: it => [log ?] /=.
-  rewrite Z2Nat.inj_pow. assert (0 < 2%nat ^ log); last lia.
-  apply Z.pow_pos_nonneg; lia.
+  rewrite /bytes_per_int.
+  destruct it; simpl; lia.
 Qed.
 
 Lemma bits_per_int_gt_0 it : bits_per_int it > 0.
@@ -182,19 +241,21 @@ Lemma int_modulus_mod_in_range n it:
   it_signed it = false →
   (n `mod` int_modulus it) ∈ it.
 Proof.
-  move => ?.
+  move => Hs.
   have [|??]:= Z.mod_pos_bound n (int_modulus it). {
     apply: Z.pow_pos_nonneg => //. rewrite /bits_per_int/bits_per_byte/=. lia.
   }
-  destruct it as [? []] => //.
   rewrite int_elem_of_it_iff.
-  split; unfold min_int, max_int => /=; lia.
+  unfold min_int, max_int => /=.
+  rewrite /int_modulus/int_half_modulus Hs.
+  specialize (bits_per_int_gt_0 it).
+  split; lia.
 Qed.
 
 Lemma elem_of_int_type_0_to_127 (n : Z) (it : int_type):
   0 ≤ n ≤ 127 → n ∈ it.
 Proof.
-  move => [??]. 
+  move => [??].
   have ? := MinInt_le_0 it.
   have ? := MaxInt_ge_127 it.
   split; lia.
@@ -203,15 +264,17 @@ Qed.
 Lemma MinInt_unsigned_0 it :
   it_signed it = false → MinInt it = 0.
 Proof.
-  rewrite MinInt_eq.
-  destruct it; simpl; intros ->. done.
+  rewrite MinInt_eq. destruct it; simpl; done.
 Qed.
 Lemma MinInt_le_n128_signed it :
   it_signed it = true → (MinInt it ≤ -128%Z)%Z.
 Proof.
   rewrite MinInt_eq.
-  destruct it as [sz sgn]; simpl; intros ->.
   rewrite /min_int/=/int_half_modulus/bits_per_int/bytes_per_int/bits_per_byte/=.
+  intros ->.
+  generalize (it_byte_size_log it) as sz.
+  intros sz.
+
   induction sz; simpl; first lia.
   rewrite Nat.add_0_r.
   rewrite Nat2Z.inj_add.
@@ -246,27 +309,27 @@ Definition wrap_unsigned (z : Z) (it : int_type) : Z :=
 Definition wrap_signed (z : Z) (it : int_type) : Z :=
   ((z + int_half_modulus it) `mod` (int_modulus it)) - int_half_modulus it.
 Definition wrap_to_it (z : Z) (it : int_type) : Z :=
-  if it.(it_signed) then wrap_signed z it else wrap_unsigned z it.
+  if it_signed it then wrap_signed z it else wrap_unsigned z it.
 
 (** wrap_unsigned lemmas *)
 Lemma wrap_unsigned_id z it :
-  it.(it_signed) = false → z ∈ it → wrap_unsigned z it = z.
+  it_signed it = false → z ∈ it → wrap_unsigned z it = z.
 Proof.
   rewrite int_elem_of_it_iff.
-  destruct it; simpl. intros -> [].
+  (*destruct it; simpl. intros -> [].*)
   unfold min_int, max_int in *. simpl in*.
+  intros -> ?.
   rewrite /wrap_unsigned/=; rewrite Zmod_small; lia.
 Qed.
 
 Lemma wrap_unsigned_in_range z it :
-  it.(it_signed) = false → wrap_unsigned z it ∈ it.
+  it_signed it = false → wrap_unsigned z it ∈ it.
 Proof.
   opose proof* (Z_mod_lt (z) (int_modulus it)).
   { specialize (int_modulus_ge_1 it). lia. }
-  destruct it; simpl. intros ->.
   rewrite int_elem_of_it_iff.
   unfold min_int, max_int; simpl.
-  rewrite /wrap_unsigned. lia.
+  intros ->. rewrite /wrap_unsigned. lia.
 Qed.
 
 Lemma wrap_unsigned_add_l it n1 n2 :
@@ -280,8 +343,8 @@ Proof.
   lia.
 Qed.
 
-Lemma wrap_unsigned_add_did_not_wrap it a b : 
-  it.(it_signed) = false →
+Lemma wrap_unsigned_add_did_not_wrap it a b :
+  it_signed it = false →
   a ∈ it →
   b ∈ it →
   ¬ (wrap_unsigned (a + b) it < a) →
@@ -305,8 +368,8 @@ Proof.
   erewrite (Z.mod_in_range 1); lia.
 Qed.
 
-Lemma wrap_unsigned_add_did_wrap it a b : 
-  it.(it_signed) = false →
+Lemma wrap_unsigned_add_did_wrap it a b :
+  it_signed it = false →
   a ∈ it →
   b ∈ it →
   0 < b →
@@ -322,7 +385,7 @@ Proof.
   erewrite (Z.mod_in_range 0); lia.
 Qed.
 
-Lemma wrap_unsigned_le a it : 
+Lemma wrap_unsigned_le a it :
   0 ≤ a →
   wrap_unsigned a it ≤ a.
 Proof.
@@ -335,24 +398,24 @@ Qed.
 
 (** wrap_signed lemmas *)
 Lemma wrap_signed_id z it :
-  it.(it_signed) = true → z ∈ it → wrap_signed z it = z.
+  it_signed it = true → z ∈ it → wrap_signed z it = z.
 Proof.
   specialize (int_modulus_twice_half_modulus it) as ?.
   rewrite int_elem_of_it_iff.
-  destruct it; simpl. intros -> [].
   unfold min_int, max_int in *. simpl in*.
+  intros -> [].
   rewrite /wrap_signed/=; rewrite Zmod_small; lia.
 Qed.
 
 Lemma wrap_signed_in_range z it :
-  it.(it_signed) = true → wrap_signed z it ∈ it.
+  it_signed it = true → wrap_signed z it ∈ it.
 Proof.
   specialize (int_modulus_twice_half_modulus it) as ?.
   opose proof* (Z_mod_lt (z + int_half_modulus it) (int_modulus it)).
   { specialize (int_modulus_ge_1 it). lia. }
-  destruct it; simpl. intros ->.
   rewrite int_elem_of_it_iff.
   unfold min_int, max_int in *.
+  intros ->.
   rewrite /wrap_signed. simpl in *. lia.
 Qed.
 

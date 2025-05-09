@@ -41,7 +41,7 @@ Record struct_layout := {
    sl_members : field_list;
    sl_nodup : bool_decide (NoDup (field_names sl_members));
    (* Note: difference to RefinedC: using isize_t instead of usize_t *)
-   sl_size : sum_list (ly_size <$> sl_members.*2) < max_int isize_t + 1;
+   sl_size : sum_list (ly_size <$> sl_members.*2) < max_int ISize + 1;
    sl_fields_aligned : check_fields_aligned sl_members 0 = true;
 }.
 
@@ -380,7 +380,7 @@ Proof.
 Qed.
 
 Lemma offset_of_bound i sl:
-  offset_of_idx sl.(sl_members) i ≤ max_int isize_t.
+  offset_of_idx sl.(sl_members) i ≤ max_int ISize.
 Proof.
   have ?:= sl_size sl.
   enough (offset_of_idx (sl_members sl) i ≤ sum_list (ly_size <$> (sl_members sl).*2)) by lia.
@@ -523,7 +523,7 @@ Record union_layout := {
    ul_members : list (var_name * layout);
    ul_nodup : bool_decide (NoDup ul_members.*1);
    (* Note: difference to RefinedC: we require isize_t as the bound, not usize_t *)
-   ul_size : max_list (ly_size <$> ul_members.*2) < max_int isize_t + 1;
+   ul_size : max_list (ly_size <$> ul_members.*2) < max_int ISize + 1;
 }.
 
 Definition ul_layout (ul : union_layout) : layout := {|

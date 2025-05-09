@@ -1162,12 +1162,13 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "shim") {
         return procedures::Mode::Shim;
     }
-    if attrs::has_tool_attr_filtered(attrs.as_slice(), "code_shim") {
-        return procedures::Mode::CodeShim;
-    }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "trust_me") {
         return procedures::Mode::TrustMe;
+    }
+
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "code_shim") {
+        return procedures::Mode::CodeShim;
     }
 
     if attrs::has_tool_attr_filtered(attrs.as_slice(), "only_spec") {

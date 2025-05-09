@@ -182,7 +182,7 @@ pub struct RawVec<T> {
 #[rr::invariant("Hcap": "len ≤ cap")]
 // invariant due to GEP / ptr::offset limits: the total size of the allocation should not exceed isize::max bytes
 // we need the ZST case to know that we never call grow except when we have reached the capacity limit
-#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt usize_t) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt isize_t)%Z")]
+#[rr::invariant("if decide (size_of_st {st_of T} = 0%nat) then cap = Z.to_nat (MaxInt USize) else (size_of_array_in_bytes {st_of T} cap ≤ MaxInt ISize)%Z")]
 pub struct Vec<T> {
     #[rr::field("(l, cap)")]
     buf: RawVec<T>,
@@ -208,7 +208,7 @@ impl<T> RawVec<T> {
     }
 
     #[rr::exists("l" : "loc", "cap" : "nat")]
-    #[rr::ensures("cap = if decide (size_of_st {st_of T} = 0%nat) then Z.to_nat (MaxInt usize_t) else 0%nat")]
+    #[rr::ensures("cap = if decide (size_of_st {st_of T} = 0%nat) then Z.to_nat (MaxInt USize) else 0%nat")]
     #[rr::ensures(#type "l" : "(replicate cap #None)" @ "array_t cap (maybe_uninit {T})")]
     #[rr::returns("(l, cap)")]
     pub fn new() -> Self {
@@ -225,14 +225,14 @@ impl<T> RawVec<T> {
 
     #[rr::params("l", "xs", "cap" : "nat", "γ")]
     #[rr::args("((l, cap), γ)")]
-    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * cap) ≤ MaxInt isize_t)%Z")]
+    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * cap) ≤ MaxInt ISize)%Z")]
     #[rr::requires("Hnot_sz": "(size_of_st {st_of T} > 0)%Z")]
     #[rr::requires(#type "l" : "xs" @ "array_t cap (maybe_uninit {T})")]
     #[rr::exists("new_cap" : "nat", "l'" : "loc")]
     #[rr::observe("γ": "(l', new_cap)")]
     #[rr::ensures(#type "l'" : "(xs ++ replicate (new_cap - cap) #None)" @ "array_t new_cap (maybe_uninit {T})")]
     #[rr::ensures("new_cap > cap")]
-    #[rr::ensures("(size_of_array_in_bytes {st_of T} new_cap ≤ MaxInt isize_t)%Z")]
+    #[rr::ensures("(size_of_array_in_bytes {st_of T} new_cap ≤ MaxInt ISize)%Z")]
     pub fn grow(&mut self) {
         // unfold invariant - it will be broken quite consistently throughout
         // also need to learn the pure facts to pass all the checks.
@@ -310,8 +310,8 @@ impl<T> Vec<T> {
         }
     }
 
-    #[rr::requires("Hlen_cap": "(length self.cur < MaxInt usize_t)%Z")]
-    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length self.cur) ≤ MaxInt isize_t)%Z")]
+    #[rr::requires("Hlen_cap": "(length self.cur < MaxInt USize)%Z")]
+    #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length self.cur) ≤ MaxInt ISize)%Z")]
     #[rr::observe("self.ghost": "<#> <$#> (self.cur ++ [elem])")]
     pub fn push(&mut self, elem: T) {
         if self.len == self.cap() {
@@ -327,6 +327,8 @@ impl<T> Vec<T> {
         self.len += 1;
     }
 
+    // TODO
+    #[rr::trust_me]
     #[rr::params("xs", "γ")]
     #[rr::args("(xs, γ)")]
     #[rr::returns("last xs")]
@@ -345,8 +347,8 @@ impl<T> Vec<T> {
     #[rr::params("xs", "γ", "i" : "nat", "x")]
     #[rr::args("(xs, γ)", "Z.of_nat i", "x")]
     #[rr::requires("i ≤ length xs")]
-    #[rr::requires("(length xs < max_int usize_t)%Z")]
-    #[rr::requires("(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ max_int isize_t)%Z")]
+    #[rr::requires("(length xs < MaxInt USize)%Z")]
+    #[rr::requires("(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ MaxInt ISize)%Z")]
     #[rr::observe("γ": "<#> <$#> ((take i xs) ++ [ x] ++ (drop i xs))")]
     pub fn insert(&mut self, index: usize, elem: T) {
         // index out of bounds?

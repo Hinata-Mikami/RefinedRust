@@ -68,13 +68,14 @@ Section init.
   Lemma type_struct_init E L (sls : struct_layout_spec) (fields : list (string * expr)) (T : typed_val_expr_cont_t) :
     (* find out which thread_id we need *)
     find_in_context FindNaOwn (λ '(π, mask), na_own π mask -∗
-    ⌜struct_layout_spec_is_layoutable sls⌝ ∗
+    li_tactic (compute_struct_layout_goal sls) (λ sl,
     struct_init_fold π E L fields sls.(sls_fields) (λ L2 rts vs tys rs,
-      ∀ v, T L2 π v _ (struct_t sls tys) (pmap (λ _ a, #a) rs)))
+      ∀ v, T L2 π v _ (struct_t sls tys) (pmap (λ _ a, #a) rs))))
     ⊢ typed_val_expr E L (StructInit sls fields) T.
   Proof.
     iIntros "HT". iDestruct "HT" as ([π mask]) "(Hna & HT)".
-    iDestruct ("HT" with "Hna") as ([sl Hsl]) "HT".
+    rewrite /compute_struct_layout_goal.
+    iDestruct ("HT" with "Hna") as (sl) "(%Hsl & HT)".
     iIntros (?) "#CTX #HE HL Hc".
     iApply wp_struct_init2; first done.
     iApply (struct_init_fold_elim with "CTX HE HL HT").

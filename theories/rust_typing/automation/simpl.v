@@ -191,9 +191,15 @@ Proof.
   rewrite /SimplBoth. naive_solver.
 Qed.
 
+Global Instance simplify_all_xtype `{!typeGS Σ} Q :
+  SimplForall xtype 3 Q (∀ (rt : Type) (ty : type rt) (r : ty_xt ty), Q (mk_xtype (xtype_rt:=rt) ty r)).
+Proof.
+  intros ? []. done.
+Qed.
+
 (** ** Additional normalization instances *)
 #[export] Hint Rewrite Nat.add_sub : lithium_rewrite.
-
+#[export] Hint Rewrite Z.mul_1_l Z.mul_1_r Nat.mul_1_l Nat.mul_1_r : lithium_rewrite.
 
 (** More automation for sets *)
 Lemma difference_union_subseteq (E F H H': coPset):

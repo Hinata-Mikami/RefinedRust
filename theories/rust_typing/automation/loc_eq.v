@@ -108,13 +108,13 @@ Section test.
   Goal (l = (l.1, l.2 * 1))%Z.
   solve_loc_eq. Qed.
 
-  Goal (l offsetst{IntSynType u8}ₗ n1) = l +ₗ (ly_size u8 * n1).
+  Goal (l offsetst{IntSynType U8}ₗ n1) = l +ₗ (ly_size U8 * n1).
   init_cache. solve_loc_eq. Qed.
 
-  Goal (l offsetst{IntSynType usize_t}ₗ n1) = l +ₗ (ly_size usize_t * n1).
+  Goal (l offsetst{IntSynType USize}ₗ n1) = l +ₗ (ly_size USize * n1).
   init_cache; solve_loc_eq. Qed.
 
-  Goal (l offsetst{IntSynType usize_t}ₗ n1) = l +ₗ (n1 * 8).
+  Goal (l offsetst{IntSynType USize}ₗ n1) = l +ₗ (n1 * 8).
   Proof. init_cache. solve_loc_eq. Qed.
   (*Goal (l +ₗ offset) = l +ₗ (len * size_of  *)
 End test.

@@ -572,7 +572,7 @@ Section judgments.
 
   Global Program Instance learn_hyp_loc_in_bounds l off1 off2 :
     LearnFromHyp (loc_in_bounds l off1 off2)%I | 10 :=
-    {| learn_from_hyp_Q := ⌜enter_cache_hint (0 < l.2 - off1)%Z⌝ ∗ ⌜enter_cache_hint (l.2 + off2 ≤ MaxInt usize_t)%Z⌝ |}.
+    {| learn_from_hyp_Q := ⌜enter_cache_hint (0 < l.2 - off1)%Z⌝ ∗ ⌜enter_cache_hint (l.2 + off2 ≤ MaxInt USize)%Z⌝ |}.
   Next Obligation.
     iIntros (l off1 off2 ? ?) "Hlb".
     iPoseProof (loc_in_bounds_ptr_in_range with "Hlb") as "%Hinrange".
@@ -3093,6 +3093,19 @@ Next Obligation.
   iIntros (?? sls sl Hly T) "HT". iExists sl. iFrame. done.
 Qed.
 
+(** Tactic hint to compute a enum_layout for a enum_layout_spec *)
+Definition compute_enum_layout_goal `{!typeGS Σ} (sls : enum_layout_spec) (T : struct_layout → iProp Σ) : iProp Σ :=
+  ∃ sl, ⌜enum_layout_spec_has_layout sls sl⌝ ∗ T sl.
+#[global] Typeclasses Opaque compute_enum_layout_goal.
+Program Definition compute_enum_layout_hint `{!typeGS Σ} (sls : enum_layout_spec) (sl : struct_layout) :
+  enum_layout_spec_has_layout sls sl →
+  LiTactic (compute_enum_layout_goal sls) := λ a, {|
+    li_tactic_P T := T sl;
+  |}.
+Next Obligation.
+  iIntros (?? sls sl Hly T) "HT". iExists sl. iFrame. done.
+Qed.
+
 (** Tactic hint to compute a semantic Rust type for a given syntactic [rust_type] *)
 Definition interpret_rust_type_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) (T : sigT type → iProp Σ) : iProp Σ :=
   ∃ (rt : Type) (ty : type rt), T (existT _ ty).
@@ -3210,6 +3223,11 @@ Global Typeclasses Opaque compute_struct_layout_goal.
 Ltac solve_compute_struct_layout := fail "implement solve_compute_struct_layout".
 #[global] Hint Extern 1 (LiTactic (compute_struct_layout_goal _)) =>
     refine (compute_struct_layout_hint _ _ _); solve_compute_struct_layout : typeclass_instances.
+
+Global Typeclasses Opaque compute_enum_layout_goal.
+Ltac solve_compute_enum_layout := fail "implement solve_compute_enum_layout".
+#[global] Hint Extern 1 (LiTactic (compute_enum_layout_goal _)) =>
+    refine (compute_enum_layout_hint _ _ _); solve_compute_enum_layout : typeclass_instances.
 
 Global Typeclasses Opaque interpret_rust_type_goal.
 Ltac solve_interpret_rust_type := fail "implement solve_interpret_rust_type".

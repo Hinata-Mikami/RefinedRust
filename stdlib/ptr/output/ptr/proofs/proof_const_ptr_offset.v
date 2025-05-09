@@ -23,7 +23,7 @@ Proof.
   repeat liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as %[Hv1 Hsz1].
+  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as %Hv1.
   rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "[-> %]".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds'") as %[Hran1 Hran2].
   rewrite /size_of_st. simplify_layout_goal.
@@ -56,9 +56,10 @@ Proof.
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
   { rewrite /ty_own_val /=. 
     iPureIntro. split; first done. 
+    unfold OffsetLocSt in *.
+    simplify_layout_assum.
     split; first sidecond_hammer. 
     move: Hup. 
-    rewrite /OffsetLocSt. simplify_layout_goal.
     unsafe_unfold_common_caesium_defs.
     sidecond_hammer.
   }

@@ -29,12 +29,13 @@ Proof.
   { sidecond_hook. }
   iMod (ofty_value_has_length with "Ht") as "(%Hlen_t & Ht)"; first done.
   { sidecond_hook. }
+  simplify_layout_goal.
 
   (* turn it into arrays *)
   iPoseProof (ofty_value_untyped_to_array with "Hs") as "Hs".
-  { by eapply syn_type_has_layout_make_untyped. }
+  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
   iPoseProof (ofty_value_untyped_to_array with "Ht") as "Ht".
-  { by eapply syn_type_has_layout_make_untyped. }
+  { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
   iModIntro.
 
   set (loop_inv := (λ (E : elctx) (L : llctx),
@@ -42,8 +43,8 @@ Proof.
     ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
     ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
     (credit_store 0 0 ∗
-    arg_size ◁ₗ[π, Owned false] #size @ (◁ int usize_t) ∗
-    local_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int usize_t) ∗
+    arg_size ◁ₗ[π, Owned false] #size @ (◁ int USize) ∗
+    local_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int USize) ∗
     arg_src ◁ₗ[π, Owned false] #src @ (◁ alias_ptr_t) ∗
     arg_dst ◁ₗ[π, Owned false] #dst @ (◁ alias_ptr_t) ∗
     src ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗

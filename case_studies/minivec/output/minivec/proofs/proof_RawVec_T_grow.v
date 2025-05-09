@@ -7,29 +7,31 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{!refinedrustGS Σ}.
+
 Lemma RawVec_T_grow_proof (π : thread_id) :
   RawVec_T_grow_lemma π.
 Proof.
   RawVec_T_grow_prelude.
 
-  rep <-! liRStep. 
+  rep <-! liRStep.
   (* Manual step to extract the array value before the call to realloc *)
   apply_update (updateable_extract_value l).
-  repeat liRStep. 
+  repeat liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+  { unfold size_of_array_in_bytes in *. simplify_layout_assum. nia. }
   {
-    move: Hsz Hnot_sz.
-    match goal with H : MaxInt isize_t < MaxInt usize_t |- _ => move: H end.
-    rewrite /size_of_array_in_bytes; simplify_layout_goal.
+    move: _Hsz Hnot_sz.
+    match goal with H : 2 * MaxInt ISize < MaxInt USize |- _ => move: H end.
+    rewrite ly_size_mk_array_layout.
     clear. solve_goal with nia.
   }
   {
-    move: Hsz Hnot_sz.
-    match goal with H : MaxInt isize_t < MaxInt usize_t |- _ => move: H end.
-    rewrite /size_of_array_in_bytes; simplify_layout_goal.
+    move: _Hsz Hnot_sz.
+    match goal with H : 2 * MaxInt ISize < MaxInt USize |- _ => move: H end.
+    rewrite ly_size_mk_array_layout.
     clear. solve_goal with nia.
   }
 

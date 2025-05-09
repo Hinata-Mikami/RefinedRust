@@ -461,18 +461,18 @@ Section ofty_lemmas.
 
   Lemma ofty_value_untyped_to_bytes π l vn ly :
     l ◁ₗ[π, Owned false] #vn @ (◁ value_t (UntypedSynType ly)) -∗
-    l ◁ₗ[π, Owned false] #vn @ (◁ value_t (UntypedSynType $ mk_array_layout u8 (ly_size ly))).
+    l ◁ₗ[π, Owned false] #vn @ (◁ value_t (UntypedSynType $ mk_array_layout U8 (ly_size ly))).
   Proof.
     (* We can always go to something with a lower alignment *)
     iIntros "Hl". iPoseProof (ltype_own_has_layout with "Hl") as "(%ly' & %Halg & %Hly)".
     simp_ltypes in Halg. simpl in Halg.
     apply syn_type_has_layout_untyped_inv in Halg as (-> & ? & ?).
     iApply (ofty_value_untyped_reduce_alignment with "Hl").
-    - rewrite /mk_array_layout/u8{2}/ly_size/=. lia.
-    - rewrite /has_layout_loc/ly_align/mk_array_layout/u8/=.
+    - rewrite /mk_array_layout{2}/ly_size/=. lia.
+    - rewrite /has_layout_loc/ly_align/mk_array_layout/=.
       rewrite /aligned_to. destruct caesium_config.enforce_alignment; last done.
       apply Z.divide_1_l.
-    - rewrite /layout_wf/ly_align/u8/=. apply Z.divide_1_l.
+    - rewrite /layout_wf/ly_align/=. apply Z.divide_1_l.
     - done.
   Qed.
 End ofty_lemmas.
@@ -622,15 +622,17 @@ Section unify_loc.
 
   (* in case st1 is Untyped, make the goal untyped, too *)
   Lemma subsume_full_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T :
+    li_tactic (compute_layout_goal (UntypedSynType ly1)) (λ ly1',
     (li_tactic (compute_layout_goal st2) (λ ly2,
-      subsume_full E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1))%I
-      (l ◁ₗ[π, Owned false] vs2 @ (◁ value_t (UntypedSynType ly2)))%I T))
+      subsume_full E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1'))%I
+      (l ◁ₗ[π, Owned false] vs2 @ (◁ value_t (UntypedSynType ly2)))%I T)))
     ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1))
       (l ◁ₗ[π, Owned false] vs2 @ (◁ value_t st2)) T.
   Proof.
     rewrite /compute_layout_goal.
-    iIntros "(%ly2 & %Halg & HT)".
+    iIntros "(%ly1' & %Hst1 & %ly2 & %Halg & HT)".
     iIntros (F ???) "#CTX #HE HL Hl".
+    apply syn_type_has_layout_untyped_inv in Hst1 as (-> & ?).
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L' & %R2 & Hl & HL & HT)".
     iModIntro. iExists L', R2. iFrame.
     iApply (maybe_logical_step_wand with "[] Hl"). iIntros "(Hl & $)".
@@ -1044,7 +1046,7 @@ Section rules.
           In particular when we assemble chunks.
           For array, we can work around that, since it is "chunkable", but for everything else, that does not really work.
           Q: do we reallyneed that for anything but arrays?
-          + when we want to have a view on data and change the element type: e.g. in copy_nonoverlapping, would like to have an array of u8.
+          + when we want to have a view on data and change the element type: e.g. in copy_nonoverlapping, would like to have an array of U8.
             We could in principle also do that for the ArraySynType, but it would be more of a hassle, and we would again end up with a different syntype
             OTOH is copy_nonoverlapping that much of a concern?
             In principle, we could also have something that first adapts

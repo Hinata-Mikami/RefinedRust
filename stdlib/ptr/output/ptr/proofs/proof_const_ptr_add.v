@@ -28,7 +28,7 @@ Proof.
     *)
   4,6: rewrite /OffsetLocSt/offset_loc; simplify_layout (use_layout_alg' (ty_syn_type T_ty)); f_equiv.
   all: destruct (decide (ly_size T_st_ly = 0%nat)); [lia | ].
-  all: assert (MinInt isize_t ≤ count ≤ MaxInt isize_t)%Z; first by solve_goal with nia; sidecond_hammer.
+  all: assert (MinInt ISize ≤ count ≤ MaxInt ISize)%Z; first by solve_goal with nia; sidecond_hammer.
   all: rewrite wrap_to_it_id; sidecond_hammer.
 
   Unshelve. all: print_remaining_sidecond.

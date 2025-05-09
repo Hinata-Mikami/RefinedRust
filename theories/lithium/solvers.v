@@ -110,10 +110,11 @@ Ltac normalize_and_simpl_impl handle_exist :=
         change_no_check (P → Q);
         string_ident.string_to_ident_cps s ltac:(fun H => first [intros H | intros ?])
     | |- ?P → _ => 
-        assert_is_not_trivial P; intros ?
+        assert_is_not_trivial P;
+        let H := fresh in 
+        intros H; hooks.after_intro_hook H
     | |- _ => move => _
-    end;
-    hooks.after_intro_hook
+    end
   in
   lazymatch goal with
   (* relying on the fact that unification variables cannot contain

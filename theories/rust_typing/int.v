@@ -10,14 +10,14 @@ Section int.
 
   (* Separate definition such that we can make it typeclasses opaque later. *)
   Program Definition int (it : int_type) : type Z := {|
-    st_own tid z v := ⌜val_to_Z v it = Some z⌝ ∗ ⌜ly_size it ≤ MaxInt isize_t⌝;
+    st_own tid z v := ⌜val_to_Z v it = Some z⌝;
     st_has_op_type ot mt := is_int_ot ot it;
     st_syn_type := IntSynType it;
   |}%I.
   Next Obligation.
-    iIntros (it π z v [Hv ?]). iPureIntro.
+    iIntros (it π z v Hv). iPureIntro.
     exists (it_layout it). split; last by eapply val_to_Z_length.
-    by apply syn_type_has_layout_int.
+    apply syn_type_has_layout_int; first done.
   Qed.
   Next Obligation.
     intros it ot mt Hot. simpl. rewrite (is_int_ot_layout _ _ Hot).
@@ -27,18 +27,18 @@ Section int.
     simpl. iIntros (it ot mt st π r v Hot).
     destruct mt.
     - eauto.
-    - iPureIntro. intros [Hv ?]. destruct ot; simpl in *; try done. subst.
+    - iPureIntro. intros Hv. destruct ot; simpl in *; try done. subst.
       unfold mem_cast. erewrite val_to_bytes_id; last done. done.
     - iApply (mem_cast_compat_int (λ v, _)); first done.
-      iIntros "[% %]". eauto.
+      iIntros "%". eauto.
   Qed.
 
   Lemma ty_own_int_in_range l π n it : l ◁ᵥ{π} n @ int it -∗ ⌜n ∈ it⌝.
-  Proof. iIntros "[%Hl _]". iPureIntro. by eapply val_to_Z_in_range. Qed.
+  Proof. iIntros "%Hl". iPureIntro. by eapply val_to_Z_in_range. Qed.
 
   Lemma ty_shr_int_in_range l π κ n it : l ◁ₗ{π, κ} n @ int it -∗ ▷ ⌜n ∈ it⌝.
   Proof.
-    iIntros "(%v & (%ly & Hv & (Ha & _) & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
+    iIntros "(%v & (%ly & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
     iPureIntro. by eapply val_to_Z_in_range.
   Qed.
 
@@ -65,7 +65,7 @@ Section boolean.
     st_has_op_type ot mt := is_bool_ot ot;
   |}%I.
   Next Obligation.
-    iIntros (π z v Hv). iExists u8. iPureIntro. split; first done.
+    iIntros (π z v Hv). iExists U8. iPureIntro. split; first done.
     unfold has_layout_val. erewrite val_to_bool_length; done.
   Qed.
   Next Obligation.
@@ -108,7 +108,7 @@ Section char.
     st_has_op_type ot mt := is_char_ot ot;
   |}%I.
   Next Obligation.
-    iIntros (π z v Hv). iExists u32. iPureIntro. split; first done.
+    iIntros (π z v Hv). iExists U32. iPureIntro. split; first done.
     unfold has_layout_val. erewrite val_to_char_length; done.
   Qed.
   Next Obligation.

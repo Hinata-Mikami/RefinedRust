@@ -30,11 +30,11 @@ Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
 
 (* Our implementation does not actually do anything with the type parameter, it's just there to mirror the Rust API. *)
 Definition ptr_invalid `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("align", usize_t : layout)];
+  f_args := [("align", USize : layout)];
   f_local_vars := [("ret", use_layout_alg' PtrSynType); ("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp usize_t) (UnOp EraseProv (UntypedOp usize_t) (use{IntOp usize_t} "align")));
+      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (UnOp EraseProv (UntypedOp USize) (use{IntOp USize} "align")));
       return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -43,11 +43,11 @@ Definition ptr_invalid `{!LayoutAlg} (T_st : syn_type) : function := {|
 
 Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc) (ptr_invalid_loc : loc) : function := {|
   f_args := [];
-  f_local_vars := [("align", usize_t : layout)];
+  f_local_vars := [("align", USize : layout)];
   f_code :=
     <["_bb0" :=
-      "align" <-{IntOp usize_t} CallE mem_align_of_loc [] [RSTTyVar "T"] [@{expr} ];
-      return (CallE ptr_invalid_loc [] [RSTTyVar "T"] [@{expr} use{IntOp usize_t} "align"])
+      "align" <-{IntOp USize} CallE mem_align_of_loc [] [RSTTyVar "T"] [@{expr} ];
+      return (CallE ptr_invalid_loc [] [RSTTyVar "T"] [@{expr} use{IntOp USize} "align"])
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -67,8 +67,8 @@ Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc)
             && is_nonoverlapping(src, dst, count)
     );
 
-    let src = src as *const u8;
-    let dst = dst as *mut u8;
+    let src = src as *const U8;
+    let dst = dst as *mut U8;
     // do a bytewise copy
     while count < size {
       // uses untyped read + assignment, NOT the typed assignment in surface Rust!
@@ -78,11 +78,11 @@ Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc)
   }
  *)
 Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("src", void* ); ("dst", void* ); ("size", usize_t : layout)];
-  f_local_vars := [("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType); ("count", usize_t : layout); ("_3", use_layout_alg' UnitSynType)];
+  f_args := [("src", void* ); ("dst", void* ); ("size", USize : layout)];
+  f_local_vars := [("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType); ("count", USize : layout); ("_3", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-      "count" <-{IntOp usize_t} I2v 0 USize;
+      "count" <-{IntOp USize} i2v 0 USize;
       (* TODO: add safety checks *)
       annot: StopAnnot;
       Goto "_bb_loop_head"
@@ -90,18 +90,18 @@ Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : function :=
     <["_bb_loop_head" :=
 
       if{BoolOp}:
-        (use{IntOp usize_t} "count") <{IntOp usize_t, IntOp usize_t, u8} (use{IntOp usize_t} "size")
+        (use{IntOp USize} "count") <{IntOp USize, IntOp USize, U8} (use{IntOp USize} "size")
       then
         Goto "_bb_loop_body"
       else
         Goto "_bb_loop_exit"
     ]>%E $
     <["_bb_loop_body" :=
-        ((!{PtrOp} "dst") at_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} use{IntOp usize_t} "count")
+        ((!{PtrOp} "dst") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} use{IntOp USize} "count")
       <-{UntypedOp (use_layout_alg' T_st)}
         use{UntypedOp (use_layout_alg' T_st)} (
-          ((!{PtrOp} "src") at_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} use{IntOp usize_t} "count"));
-      "count" <-{IntOp usize_t} (use{IntOp usize_t} "count") +{IntOp usize_t, IntOp usize_t} (I2v 1 USize);
+          ((!{PtrOp} "src") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} use{IntOp USize} "count"));
+      "count" <-{IntOp USize} (use{IntOp USize} "count") +{IntOp USize, IntOp USize} (i2v 1 USize);
       Goto "_bb_loop_head"
     ]>%E $
     <["_bb_loop_exit" :=
@@ -118,7 +118,7 @@ Definition mem_size_of `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_local_vars := [("ret", USize : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-      "ret" <-{IntOp USize} (I2v (ly_size (use_layout_alg' T_st)) USize);
+      "ret" <-{IntOp USize} (i2v (ly_size (use_layout_alg' T_st)) USize);
       return (use{IntOp USize} "ret")
     ]>%E $
     ∅;
@@ -130,7 +130,7 @@ Definition mem_align_of `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_local_vars := [("ret", USize : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-    "ret" <-{IntOp USize} (I2v (ly_align (use_layout_alg' T_st)) USize);
+    "ret" <-{IntOp USize} (i2v (ly_align (use_layout_alg' T_st)) USize);
     return (use{IntOp USize} "ret")
     ]>%E $
     ∅;
@@ -142,7 +142,7 @@ Definition mem_align_log_of `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_local_vars := [("ret", USize : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-    "ret" <-{IntOp USize} (I2v (ly_align_log (use_layout_alg' T_st)) USize);
+    "ret" <-{IntOp USize} (i2v (ly_align_log (use_layout_alg' T_st)) USize);
     return (use{IntOp USize} "ret")
     ]>%E $
     ∅;
@@ -150,11 +150,11 @@ Definition mem_align_log_of `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("count", isize_t : layout)];
+  f_args := [("self", void* ); ("count", ISize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_offset{use_layout_alg' T_st, PtrOp, IntOp isize_t} (use{IntOp isize_t} "count"));
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -162,11 +162,11 @@ Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("count", usize_t : layout)];
+  f_args := [("self", void* ); ("count", USize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -175,11 +175,11 @@ Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
 
 
 Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("count", isize_t : layout)];
+  f_args := [("self", void* ); ("count", ISize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp isize_t} (use{IntOp isize_t} "count"));
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -187,11 +187,11 @@ Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("count", usize_t : layout)];
+  f_args := [("self", void* ); ("count", USize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -199,11 +199,11 @@ Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("count", usize_t : layout)];
+  f_args := [("self", void* ); ("count", USize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp usize_t} (use{IntOp usize_t} "count"));
+        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
@@ -211,11 +211,11 @@ Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
 |}.
 
 Definition ptr_with_addr `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("self", void* ); ("addr", usize_t : layout)];
+  f_args := [("self", void* ); ("addr", USize : layout)];
   f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
-        "ret" <-{PtrOp} CopyAllocId (IntOp usize_t) (use{IntOp usize_t} "addr") (use{PtrOp} "self");
+        "ret" <-{PtrOp} CopyAllocId (IntOp USize) (use{IntOp USize} "addr") (use{PtrOp} "self");
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;

@@ -491,7 +491,7 @@ Section accessors.
     l ◁ₗ[π, Owned wl] #rs @ ArrayLtype def len lts -∗
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
-      ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+      ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
@@ -526,7 +526,7 @@ Section accessors.
     l ◁ₗ[π, Owned wl] #rs @ ArrayLtype def len lts -∗
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
-      ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+      ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
@@ -663,7 +663,7 @@ Section accessors.
     l ◁ₗ[π, Uniq κ γ] #rs @ ArrayLtype def len lts -∗
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
-      ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+      ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
@@ -758,7 +758,7 @@ Section accessors.
     l ◁ₗ[π, Shared κ] #rs @ ArrayLtype def len lts -∗
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
-      ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+      ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) rs',

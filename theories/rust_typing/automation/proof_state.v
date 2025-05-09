@@ -76,9 +76,11 @@ Lemma enter_cache {A} : A → CACHED A.
 Proof. apply CACHED. Defined.
 
 Ltac open_cache :=
-  repeat match goal with
-  | H : context[CACHED ?a] |- _ => unfold CACHED in H
-  end.
+  unfold CACHED in *
+  (*repeat match goal with*)
+  (*| H : context[CACHED ?a] |- _ => unfold CACHED in H*)
+  (*end*)
+.
 
 
 (** Hook to process an assumption [H] before entering it into the cache. *)

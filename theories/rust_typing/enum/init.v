@@ -8,7 +8,7 @@ Section init.
   Context `{!typeGS Σ}.
 
   Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
-    ⌜enum_layout_spec_is_layoutable els⌝ ∗
+    li_tactic (compute_enum_layout_goal els) (λ _,
     typed_val_expr E L e (λ L2 π v rti tyi ri,
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
@@ -18,11 +18,12 @@ Section init.
           ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty))⌝ ∗
           ∃ ri', owned_subtype π E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
               (* could try to remove this by strengthening enum *)
-              ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗ 
-              ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri')))))
-⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
+              ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
+              ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
+    ⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
   Proof.
-    iIntros "(%Hly & HT)". destruct Hly as [el Hly].
+    rewrite /compute_enum_layout_goal.
+    iIntros "(%el & %Hly & HT)".
     iIntros (?) "#CTX #HE HL Hc".
     iApply wp_fupd.
     iApply wp_enum_init; first done.
@@ -61,18 +62,17 @@ Section init.
 
     iSplitR.
     { iExists _, _, (els_tag_it (enum_els en)). iR. simpl.
-      iSplitR. { iPureIntro. apply syn_type_has_layout_int; first done. apply els_tag_it_size. }
-      iSplitR. { iPureIntro. apply syn_type_has_layout_int; first done. apply els_tag_it_size. }
+      iSplitR. { iPureIntro. apply syn_type_has_layout_int; done. }
+      iSplitR. { iPureIntro. apply syn_type_has_layout_int; done. }
       rewrite Htag_lookup/=.
       rewrite /enum_lookup_tag.
       rewrite /els_lookup_tag.
       rewrite Htag_lookup /=.
       iApply type_int_val.
-      - apply els_tag_it_size.
-      - specialize (els_tag_int_wf3 (enum_els en)) as Hels.
-        eapply Forall_forall in Hels.
-        2: { apply elem_of_list_to_map_2. done. }
-        done.
+      specialize (els_tag_int_wf3 (enum_els en)) as Hels.
+      eapply Forall_forall in Hels.
+      2: { apply elem_of_list_to_map_2. done. }
+      done.
     }
     iSplitL; last done.
     iExists _, _, ul. iR.
@@ -97,10 +97,10 @@ Section init.
 
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
     (*
-    iSplitR. { 
+    iSplitR. {
       iPureIntro. clear -Hsem_eq Halg.
       move: Halg.
-      destruct sem. injection Hsem_eq. simpl. 
+      destruct sem. injection Hsem_eq. simpl.
       injection 1.
     iR.
     iSplitL "Hv".

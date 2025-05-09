@@ -23,7 +23,7 @@ Section subtype.
   (* TODO: how would that scale to more complex transformations? E.g. what about take etc. -- I guess for that we could have instances as well.
     Basically, I would imagine that we only want to look in the context for primitive values. *)
   Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) T :
-    ⌜(size_of_st (ty_syn_type ty) * len ≤ MaxInt isize_t)%Z⌝ ∗
+    ⌜(size_of_st (ty_syn_type ty) * len ≤ MaxInt ISize)%Z⌝ ∗
     ⌜length r1 ≤ len⌝ ∗
     prove_with_subtype E L false pm (v1 ◁ᵥ{π} r1 @ array_t (length r1) ty) (λ L2 κs1 R2,
       prove_with_subtype E L2 false pm (v2 ◁ᵥ{π} r2 @ array_t (len - length r1) ty) (λ L3 κs2 R3, T L3 (κs1 ++ κs2) (R2 ∗ R3)%I))
@@ -89,12 +89,12 @@ Section subtype.
 
   Lemma owned_subtype_array π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 T :
     (∃ r1' r2', ⌜r1 = replicate len #r1'⌝ ∗ ⌜r2 = replicate len #r2'⌝ ∗
-      ⌜syn_type_is_layoutable (ty_syn_type ty2)⌝ ∗
-      owned_subtype π E L true r1' r2' ty1 ty2 T)
+      li_tactic (compute_layout_goal (ty_syn_type ty2)) (λ _,
+      owned_subtype π E L true r1' r2' ty1 ty2 T))
     ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
   Proof.
-    iIntros "(%r1' & %r2' & -> & -> & %Hly' & HT)".
-    destruct Hly' as (ly' & Hst').
+    rewrite /compute_layout_goal.
+    iIntros "(%r1' & %r2' & -> & -> & %ly' & %Hly' & HT)".
     iIntros (????) "#CTX #HE HL".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & #Hincl & ? & ?)".
     iModIntro. iExists L'. iFrame.

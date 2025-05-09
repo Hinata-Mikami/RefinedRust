@@ -2855,6 +2855,12 @@ impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct Elctx {
+    constrs: Vec<ExtLftConstr>,
+    extra_constraints: Vec<String>,
+}
+
 // TODO: separate this into defining and using occurrence.
 // extra_link_assum should not be part of a using occurrence.
 /// A function specification below generics.
@@ -2863,7 +2869,7 @@ pub struct LiteralFunctionSpec<'def> {
     params: Vec<coq::binder::Binder>,
 
     /// external lifetime context
-    elctx: Vec<ExtLftConstr>,
+    elctx: Elctx,
     /// precondition as a separating conjunction
     pre: IProp,
     /// argument types including refinements
@@ -2887,15 +2893,21 @@ impl<'def> LiteralFunctionSpec<'def> {
         out.push_str("λ ϝ, [");
 
         // implied bounds on inputs/outputs
-        push_str_list!(out, &self.elctx, "; ", |(lft1, lft2)| format!("({lft1}, {lft2})"));
+        push_str_list!(out, &self.elctx.constrs, "; ", |(lft1, lft2)| format!("({lft1}, {lft2})"));
 
         // all lifetime parameters outlive this function
-        if !self.elctx.is_empty() && !scope.lfts.is_empty() {
+        if !self.elctx.constrs.is_empty() && !scope.lfts.is_empty() {
             out.push_str("; ");
         }
         push_str_list!(out, &scope.lfts, "; ", |lft| format!("(ϝ, {lft})"));
 
         out.push(']');
+
+        // extra constraints
+        if !self.elctx.extra_constraints.is_empty() {
+            out.push_str(" ++ ");
+            push_str_list!(out, &self.elctx.extra_constraints, " ++ ");
+        }
 
         out
     }
@@ -3014,7 +3026,7 @@ impl<'def> LiteralFunctionSpec<'def> {
 #[derive(Debug)]
 pub struct LiteralFunctionSpecBuilder<'def> {
     params: Vec<coq::binder::Binder>,
-    elctx: Vec<ExtLftConstr>,
+    elctx: Elctx,
     pre: IProp,
     args: Vec<TypeWithRef<'def>>,
     existential: Vec<coq::binder::Binder>,
@@ -3032,7 +3044,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     pub fn new() -> Self {
         Self {
             params: Vec::new(),
-            elctx: Vec::new(),
+            elctx: Elctx::default(),
             pre: IProp::Sep(Vec::new()),
             args: Vec::new(),
             existential: Vec::new(),
@@ -3091,7 +3103,12 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
 
     /// Add a new universal lifetime constraint.
     pub fn add_lifetime_constraint(&mut self, lft1: UniversalLft, lft2: UniversalLft) {
-        self.elctx.push((lft1, lft2));
+        self.elctx.constrs.push((lft1, lft2));
+    }
+
+    /// Add a literal elctx.
+    pub fn add_literal_lifetime_constraint(&mut self, elctx: String) {
+        self.elctx.extra_constraints.push(elctx);
     }
 
     /// Add a new function argument.

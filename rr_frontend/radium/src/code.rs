@@ -166,40 +166,46 @@ impl RustType {
  */
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Literal {
-    #[display("I2v ({}) {}", _0, IntType::I8)]
+    #[display("i2v ({}) {}", _0, IntType::I8)]
     I8(i8),
 
-    #[display("I2v ({}) {}", _0, IntType::I16)]
+    #[display("i2v ({}) {}", _0, IntType::I16)]
     I16(i16),
 
-    #[display("I2v ({}) {}", _0, IntType::I32)]
+    #[display("i2v ({}) {}", _0, IntType::I32)]
     I32(i32),
 
-    #[display("I2v ({}) {}", _0, IntType::I64)]
+    #[display("i2v ({}) {}", _0, IntType::I64)]
     I64(i64),
 
-    #[display("I2v ({}) {}", _0, IntType::I128)]
+    #[display("i2v ({}) {}", _0, IntType::I128)]
     I128(i128),
 
-    #[display("I2v ({}) {}", _0, IntType::U8)]
+    #[display("i2v ({}) {}", _0, IntType::ISize)]
+    ISize(i64),
+
+    #[display("i2v ({}) {}", _0, IntType::U8)]
     U8(u8),
 
-    #[display("I2v ({}) {}", _0, IntType::U16)]
+    #[display("i2v ({}) {}", _0, IntType::U16)]
     U16(u16),
 
-    #[display("I2v ({}) {}", _0, IntType::U32)]
+    #[display("i2v ({}) {}", _0, IntType::U32)]
     U32(u32),
 
-    #[display("I2v ({}) {}", _0, IntType::U64)]
+    #[display("i2v ({}) {}", _0, IntType::U64)]
     U64(u64),
 
-    #[display("I2v ({}) {}", _0, IntType::U128)]
+    #[display("i2v ({}) {}", _0, IntType::U128)]
     U128(u128),
+
+    #[display("i2v ({}) {}", _0, IntType::USize)]
+    USize(u64),
 
     #[display("val_of_bool {}", _0)]
     Bool(bool),
 
-    #[display("I2v ({}) CharIt", *_0 as u32)]
+    #[display("i2v ({}) CharIt", *_0 as u32)]
     Char(char),
 
     /// name of the loc

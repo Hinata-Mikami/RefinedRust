@@ -50,7 +50,7 @@ pub unsafe trait Allocator {
 
 #[rr::export_as(alloc::alloc)]
 #[rr::only_spec]
-#[rr::requires("Z.of_nat ly.(layout_sz) ∈ isize_t")]
+#[rr::requires("Z.of_nat ly.(layout_sz) ∈ ISize")]
 #[rr::requires("ly.(layout_sz) > 0")]
 // TODO: this restriction would not be necessary, but needed because the layout algorithm requires it. Can we lift this?
 #[rr::requires("layout_wf ly")]
@@ -81,7 +81,7 @@ pub fn alloc_dealloc(ptr: *mut u8, ly: Layout) {
 // TODO: restriction by the spec: we cannot shrink it
 #[rr::requires("(ly.(layout_sz) ≤ new_size)%Z")]
 #[rr::requires("(0 < ly.(layout_sz))%Z")]
-#[rr::requires("new_size ≤ MaxInt isize_t")]
+#[rr::requires("new_size ≤ MaxInt ISize")]
 // TODO: restriction placed by our syntype model, not required in Rust
 #[rr::requires("layout_wf (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly))")]
 #[rr::requires(#type "ptr" : "v" @ "value_t (UntypedSynType ly)")]
@@ -99,7 +99,7 @@ pub fn realloc(ptr: *mut u8, ly: Layout, new_size: usize) -> *mut u8 {
 
 /// Internal shims implemented against the Radium semantics
 #[rr::code_shim("alloc_alloc_def")]
-#[rr::requires("size ∈ isize_t")]
+#[rr::requires("size ∈ ISize")]
 #[rr::requires("(size > 0)%Z")]
 // TODO: this restriction would not be necessary, but needed because the layout algorithm requires it. Can we lift this?
 #[rr::requires("layout_wf (Layout (Z.to_nat size) (Z.to_nat align_log2))")]
@@ -126,7 +126,7 @@ fn alloc_dealloc_internal(size: usize, align_log2: usize, ptr: *mut u8) {
 // TODO: restriction by the spec: we cannot shrink it
 #[rr::requires("(old_size ≤ new_size)%Z")]
 #[rr::requires("(0 < old_size)%Z")]
-#[rr::requires("new_size ≤ MaxInt isize_t")]
+#[rr::requires("new_size ≤ MaxInt ISize")]
 // TODO: restriction placed by our syntype model, not required in Rust
 #[rr::requires("layout_wf (Layout (Z.to_nat new_size) (Z.to_nat align_log2))")]
 #[rr::requires(#type "ptr_old" : "v" @ "value_t (UntypedSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))")]

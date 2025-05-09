@@ -34,9 +34,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty::IntTy::I16 => translate_literal(sc.to_i16(), radium::Literal::I16),
                 ty::IntTy::I32 => translate_literal(sc.to_i32(), radium::Literal::I32),
                 ty::IntTy::I128 => translate_literal(sc.to_i128(), radium::Literal::I128),
-
-                // For Radium, the pointer size is 8 bytes
-                ty::IntTy::I64 | ty::IntTy::Isize => translate_literal(sc.to_i64(), radium::Literal::I64),
+                ty::IntTy::I64 => translate_literal(sc.to_i64(), radium::Literal::I64),
+                // for Radium, we use 64-bit pointers
+                ty::IntTy::Isize => translate_literal(sc.to_i64(), radium::Literal::ISize),
             },
 
             ty::TyKind::Uint(it) => match it {
@@ -44,9 +44,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ty::UintTy::U16 => translate_literal(sc.to_u16(), radium::Literal::U16),
                 ty::UintTy::U32 => translate_literal(sc.to_u32(), radium::Literal::U32),
                 ty::UintTy::U128 => translate_literal(sc.to_u128(), radium::Literal::U128),
-
-                // For Radium, the pointer is 8 bytes
-                ty::UintTy::U64 | ty::UintTy::Usize => translate_literal(sc.to_u64(), radium::Literal::U64),
+                ty::UintTy::U64 => translate_literal(sc.to_u64(), radium::Literal::U64),
+                // for Radium, we use 64-bit pointers
+                ty::UintTy::Usize => translate_literal(sc.to_u64(), radium::Literal::USize),
             },
 
             ty::TyKind::Char => translate_literal(sc.to_char(), radium::Literal::Char),

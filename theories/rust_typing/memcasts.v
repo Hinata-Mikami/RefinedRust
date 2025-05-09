@@ -16,14 +16,14 @@ Inductive memcast_compat_type : Set :=
 
 Definition is_int_ot (ot : op_type) (it : int_type) : Prop :=
   match ot with
-    | IntOp it' => it = it' ∧ (ly_size it ≤ MaxInt isize_t)%Z
-    | UntypedOp ly => ly = it_layout it ∧ (ly_size it ≤ MaxInt isize_t)%Z
+    | IntOp it' => it = it'
+    | UntypedOp ly => ly = it_layout it ∧ (ly_size it ≤ MaxInt ISize)%Z
     | _ => False
   end.
 Definition is_bool_ot (ot : op_type) : Prop :=
-  match ot with | BoolOp => True | UntypedOp ly => ly = it_layout u8 | _ => False end.
+  match ot with | BoolOp => True | UntypedOp ly => ly = it_layout U8 | _ => False end.
 Definition is_char_ot (ot : op_type) : Prop :=
-  match ot with | CharOp => True | UntypedOp ly => ly = it_layout u32 | _ => False end.
+  match ot with | CharOp => True | UntypedOp ly => ly = it_layout U32 | _ => False end.
 Definition is_ptr_ot (ot : op_type) : Prop :=
   match ot with | PtrOp => True | UntypedOp ly => ly = void* | _ => False end.
 Definition is_unit_ot (ot : op_type) : Prop :=
@@ -35,17 +35,17 @@ Proof.
   destruct ot => //=; naive_solver.
 Qed.
 Lemma is_int_ot_size ot it :
-  is_int_ot ot it → (ly_size it ≤ MaxInt isize_t)%Z.
+  is_int_ot ot it → (ly_size it ≤ MaxInt ISize)%Z.
 Proof.
-  destruct ot; try done; intros []; done.
+  intros. apply it_size_bounded.
 Qed.
 
 Lemma is_bool_ot_layout ot :
-  is_bool_ot ot → ot_layout ot = it_layout u8.
+  is_bool_ot ot → ot_layout ot = it_layout U8.
 Proof. destruct ot => //. Qed.
 
 Lemma is_char_ot_layout ot :
-  is_char_ot ot → ot_layout ot = it_layout u32.
+  is_char_ot ot → ot_layout ot = it_layout U32.
 Proof. destruct ot => //. Qed.
 
 Lemma is_ptr_ot_layout ot:
@@ -76,7 +76,7 @@ Section optypes.
     (P v ⊢ ⌜mem_cast_id v ot⌝).
   Proof.
     destruct ot => //; simplify_eq/=.
-    - intros [<- ?].  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_int.
+    - intros <-.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_int.
     - intros [-> ?]. etrans; [done|]. iPureIntro => -[??]. simpl. done.
   Qed.
 

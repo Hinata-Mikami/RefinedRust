@@ -19,8 +19,8 @@ Proof.
   typed_val_expr_bind. repeat liRStep; liShow.
   iSelect (_ ◁ᵥ{_} size @ _)%I (fun H => iRename H into "Hsize").
   iSelect (_ ◁ᵥ{_} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "[%Hsize _]".
-  iDestruct "Halign_log2" as "[%Halign_log2 _]".
+  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "%Hsize".
+  iDestruct "Halign_log2" as "%Halign_log2".
   rewrite /typed_val_expr.
   iIntros (Φ) "#CTX HE HL Hcont".
   iApply (wp_alloc _ _ _ _ (Z.to_nat size) (Z.to_nat align_log2)).
@@ -32,8 +32,8 @@ Proof.
   iIntros "!>" (l) "Hl Hf %Hly Hcred".
   iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
   iApply ("Hcont" $! _ π _  _ (alias_ptr_t) l with "HL []").
-  { rewrite /ty_own_val /=. 
-    iPoseProof (loc_in_bounds_in_range_uintptr_t with "Hlb") as "%Husize".
+  { rewrite /ty_own_val /=.
+    iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
     iPureIntro. done. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
   iAssert (l ◁ₗ[π, Owned false] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".

@@ -241,11 +241,11 @@ Fixpoint lfts_outlives_E `{!typeGS Σ} (κs : list lft) (κ : lft) : elctx :=
   | [] => []
   | α :: κs => (κ, α) :: lfts_outlives_E κs κ
   end.
-Lemma lfts_outlives_E_fmap `{!typeGS Σ} κs κ : 
+Lemma lfts_outlives_E_fmap `{!typeGS Σ} κs κ :
   lfts_outlives_E κs κ = (λ α, (κ, α)) <$> κs.
 Proof.
-  induction κs; simpl; first done. 
-  f_equiv. done. 
+  induction κs; simpl; first done.
+  f_equiv. done.
 Qed.
 Arguments lfts_outlives_E : simpl never.
 Definition ty_outlives_E `{!typeGS Σ} {rt} (ty : type rt) (κ : lft) : elctx :=
@@ -411,6 +411,14 @@ Notation "'<$#>' x" := (fmap (M := list) (ty_xrt _) x) (at level 30).
 Notation "'<$#@{' A '}>' x" := (fmap (M := list) (ty_xrt A) x) (at level 30).
 Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (ty_xrt A) x) (at level 30).
 Notation "'<$#>@{' B '}' x" := (fmap (M := B) (ty_xrt _) x) (at level 30).
+
+
+Record xtype `{!typeGS Σ} := mk_xtype {
+  xtype_rt : Type;
+  xtype_ty : type xtype_rt;
+  xtype_rfn : ty_xt xtype_ty;
+}.
+Global Arguments mk_xtype {_ _ _}.
 
 (*** Cofe and Ofe *)
 Section ofe.
@@ -1466,6 +1474,9 @@ End ne.
 
 (** ** Subtyping etc. *)
 Definition type_incl `{!typeGS Σ} {rt1 rt2}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
+  (* Require equality of the syntypes.
+     This also ensures that the alignment requirements are the same, so that we can use [type_incl] below pointers. *)
+  (* TODO: can we just require the layout to be the same? *)
   (⌜ty1.(ty_syn_type) = ty2.(ty_syn_type)⌝ ∗
   (□ (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond))) ∗
   (□ ∀ π v, ty1.(ty_own_val) π r1 v -∗ ty2.(ty_own_val) π r2 v) ∗

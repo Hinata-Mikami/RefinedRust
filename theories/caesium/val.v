@@ -136,7 +136,7 @@ Fixpoint val_to_Z_go v : option Z :=
 Definition val_to_Z (v : val) (it : int_type) : option Z :=
   if bool_decide (length v = bytes_per_int it) then
     z ← val_to_Z_go v;
-    if it.(it_signed) && bool_decide (int_half_modulus it ≤ z) then
+    if it_signed it && bool_decide (int_half_modulus it ≤ z) then
       Some (z - int_modulus it)
     else
       Some z
@@ -250,7 +250,7 @@ Proof.
 Qed.
 
 Lemma val_to_Z_unsigned_nonneg v z it :
-  it.(it_signed) = false →
+  it_signed it = false →
   val_to_Z v it = Some z →
   (0 ≤ z)%Z.
 Proof.
@@ -358,7 +358,7 @@ Proof.
 Qed.
 
 Lemma val_to_bool_iff_val_to_Z v b:
-  val_to_bool v = Some b ↔ val_to_Z v u8 = Some (bool_to_Z b).
+  val_to_bool v = Some b ↔ val_to_Z v U8 = Some (bool_to_Z b).
 Proof.
   split.
   - destruct v as [|mb []] => //=; repeat case_match => //=; by move => [<-].
@@ -366,13 +366,13 @@ Proof.
 Qed.
 
 Lemma val_of_bool_iff_val_of_Z v b:
-  val_of_bool b = v ↔ val_of_Z (bool_to_Z b) u8 None = Some v.
+  val_of_bool b = v ↔ val_of_Z (bool_to_Z b) U8 None = Some v.
 Proof.
-  destruct b. 
-  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true. 
+  destruct b.
+  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true.
     { cbv. split; intros ?; simplify_eq; do 2 f_equal; [f_equal | ]; by apply byte_eq. }
     rewrite int_elem_of_it_iff//.
-  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true. 
+  - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true.
     { cbv. split; intros ?; simplify_eq; do 2 f_equal; [f_equal | ]; by apply byte_eq. }
     rewrite int_elem_of_it_iff//.
 Qed.
@@ -382,7 +382,7 @@ Lemma i2v_bool_Some b it:
 Proof. apply: val_to_of_Z. apply val_of_Z_bool. Qed.
 
 Lemma val_of_bool_i2v b :
-  val_of_bool b = i2v (bool_to_Z b) u8.
+  val_of_bool b = i2v (bool_to_Z b) U8.
 Proof.
   apply val_of_bool_iff_val_of_Z.
   apply val_of_Z_bool.
@@ -405,7 +405,7 @@ Qed.
 
 Lemma val_to_Z_ot_to_Z z it ot v:
   val_to_Z z it = Some v →
-  match ot with | BoolOp => ∃ b, it = u8 ∧ v = bool_to_Z b | IntOp it' => it = it' | _ => False end →
+  match ot with | BoolOp => ∃ b, it = U8 ∧ v = bool_to_Z b | IntOp it' => it = it' | _ => False end →
   val_to_Z_ot z ot = Some v.
 Proof.
   move => ? Hot. destruct ot => //; simplify_eq/= => //. move: Hot => [?[??]]. simplify_eq.
@@ -413,10 +413,10 @@ Proof.
 Qed.
 
 Definition val_to_char (v : val) : option Z :=
-  z ← val_to_Z v char_it;
+  z ← val_to_Z v CharIt;
   if decide (is_valid_char z) then Some z else None.
 Definition val_of_char (z : Z) :=
-  val_of_Z z char_it.
+  val_of_Z z CharIt.
 
 Lemma val_to_char_length v z :
   val_to_char v = Some z → length v = 4%nat.
@@ -448,7 +448,7 @@ Lemma val_to_bytes_id_char v z:
   val_to_bytes v = Some v.
 Proof.
   rewrite /val_to_char.
-  destruct (val_to_Z v char_it) eqn:Heq; last done.
+  destruct (val_to_Z v CharIt) eqn:Heq; last done.
   simpl. repeat case_match => //.
   intros [= ->].
   by eapply val_to_bytes_id.

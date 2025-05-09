@@ -292,7 +292,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* "Both the starting and resulting pointer must be either in bounds or one byte past the end of the same [allocated object]" *)
     heap_state_loc_in_bounds l 0 σ.(st_heap) →
     (* "The computed offset, **in bytes**, cannot overflow an `isize`" *)
-    ly_size ly * o ∈ isize_t →
+    ly_size ly * o ∈ ISize →
 
     eval_bin_op (PtrOffsetOp ly) (IntOp it) PtrOp σ v1 v2 (val_of_loc (l offset{ly}ₗ o))
 | PtrNegOffsetOpIP v1 v2 σ o l ly it:
@@ -305,7 +305,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* "Both the starting and resulting pointer must be either in bounds or one byte past the end of the same [allocated object]" *)
     heap_state_loc_in_bounds l 0 σ.(st_heap) →
     (* "The computed offset, **in bytes**, cannot overflow an `isize`" *)
-    ly_size ly * -o ∈ isize_t →
+    ly_size ly * -o ∈ ISize →
 
     eval_bin_op (PtrNegOffsetOp ly) (IntOp it) PtrOp σ v1 v2 (val_of_loc (l offset{ly}ₗ -o))
 
@@ -329,7 +329,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* both pointers are valid, i.e. in bounds of that allocation *)
     valid_ptr l1 σ.(st_heap) →
     valid_ptr l2 σ.(st_heap) →
-    val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ptrdiff_t None = Some v →
+    val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize None = Some v →
     eval_bin_op (PtrDiffOp ly) PtrOp PtrOp σ v1 v2 v
 
 | RelOpPP v1 v2 σ l1 l2 p1 p2 a1 a2 v b op rit:
@@ -589,16 +589,16 @@ comparing pointers? (see lambda rust) *)
     cast_to_bool ot v σ.(st_heap) = Some b →
     expr_step (IfE ot (Val v) e1 e2) σ [] (if b then e1 else e2) σ []
 | AllocS v_size v_align (n_size n_align : nat) l σ hs' :
-    val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-    val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+    val_to_Z v_size USize = Some (Z.of_nat n_size) →
+    val_to_Z v_align USize = Some (Z.of_nat n_align) →
     (* Rust's allocation APIs allow allocators to exhibit UB if the size is zero, so we also trigger UB here *)
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align)  →
     alloc_new_block σ.(st_heap) HeapAlloc l (replicate n_size MPoison) hs' →
     expr_step (Alloc (Val v_size) (Val v_align)) σ [] (Val (val_of_loc l)) {| st_heap := hs'; st_fntbl := σ.(st_fntbl) |} []
 | AllocFailS v_size v_align (n_size n_align : nat) σ :
-    val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-    val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+    val_to_Z v_size USize = Some (Z.of_nat n_size) →
+    val_to_Z v_align USize = Some (Z.of_nat n_align) →
     n_size > 0 →
     expr_step (Alloc (Val v_size) (Val v_align)) σ [] AllocFailed σ []
 (* no rule for StuckE *)
@@ -629,8 +629,8 @@ Inductive stmt_step : stmt → runtime_function → state → list Empty_set →
     free_blocks σ.(st_heap) StackAlloc rf.(rf_locs) hs → (* Deallocate the stack. *)
     stmt_step (Return (Val v)) rf σ [] (Val v) {| st_fntbl := σ.(st_fntbl); st_heap := hs |} []
 | FreeS v_size v_align (n_size n_align : nat) v l s rf σ hs' :
-    val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-    val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+    val_to_Z v_size USize = Some (Z.of_nat n_size) →
+    val_to_Z v_align USize = Some (Z.of_nat n_align) →
     val_to_loc v = Some l →
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align) →

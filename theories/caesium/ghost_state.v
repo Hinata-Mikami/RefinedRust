@@ -581,8 +581,8 @@ Section loc_in_bounds.
     - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro. lia.
   Qed.
 
-  Lemma loc_in_bounds_in_range_uintptr_t l pre suf :
-    loc_in_bounds l pre suf -∗ ⌜l.2 ∈ uintptr_t⌝.
+  Lemma loc_in_bounds_in_range_usize l pre suf :
+    loc_in_bounds l pre suf -∗ ⌜l.2 ∈ USize⌝.
   Proof.
     iIntros "Hl". iDestruct (loc_in_bounds_ptr_in_range with "Hl") as %Hrange.
     iPureIntro. move: Hrange.

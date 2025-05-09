@@ -12,19 +12,26 @@ Lemma read_proof (π : thread_id) :
 Proof.
   read_prelude.
 
-  destruct k.
-  { liRStepUntil (typed_read_end).
+  destruct k. 
+  { rep liRStep; simp_ltypes.
+    liRStepUntil (typed_read_end).
     (* locally override the instance used for moves *)
     (*iApply type_read_ofty_move_owned_value.*)
     (*liFromSyntax.*)
     repeat liRStep; liShow.
   }
-  { repeat liRStep; liShow. }
-  { repeat liRStep; liShow. }
+  { rep liRStep; simp_ltypes. 
+    rep liRStep; liShow. }
+  { rep liRStep; simp_ltypes. 
+    repeat liRStep. }
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+  all: rename select (st_of _ = st_of _) into Hst_eq; try rewrite -Hst_eq.
+  all: sidecond_hook.
+  all: f_equiv; eapply syn_type_has_layout_inj; first done; by rewrite Hst_eq.
+
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

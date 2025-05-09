@@ -99,6 +99,13 @@ Section typing.
   Definition subsume_once_status_tok_inst := [instance subsume_once_status_tok].
   Global Existing Instance subsume_once_status_tok_inst.
 
+  Global Instance once_init_tok_intro_persistent γ (a : A) :
+    IntroPersistent (once_init_tok γ a) (once_init_tok γ a).
+  Proof.
+    constructor.
+    iIntros "#Ha". iModIntro. done.
+  Qed.
+
   Definition FindOnceStatusTok γ : find_in_context_info :=
     {| fic_A := option A; fic_Prop a := once_status_tok γ a |}.
   Global Instance once_status_tok_related γ a : RelatedTo (once_status_tok γ a) := {| rt_fic := FindOnceStatusTok γ |}.

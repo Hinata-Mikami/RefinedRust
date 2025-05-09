@@ -1,5 +1,6 @@
 From refinedrust Require Export static type program_rules int int_rules unit struct.struct mut_ref.mut_ref shr_ref.shr_ref functions uninit box programs enum maybe_uninit alias_ptr fixpoint existentials existentials_na array.array value generics xmap.
 From refinedrust Require Export automation.loc_eq manual automation.
+From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export simpl.
 From refinedrust Require Export options.
 
@@ -53,6 +54,20 @@ Ltac instantiate_benign_universals term ::=
 
 Notation "x '.ghost'" := (x.2) (at level 8, only parsing).
 Notation "x '.cur'" := (x.1) (at level 8, only parsing).
+
+Notation "'i8'" := I8.
+Notation "'i16'" := I16.
+Notation "'i32'" := I32.
+Notation "'i64'" := I64.
+Notation "'i128'" := I128.
+Notation "'isize'" := ISize.
+
+Notation "'u8'" := U8.
+Notation "'u16'" := U16.
+Notation "'u32'" := U32.
+Notation "'u64'" := U64.
+Notation "'u128'" := U128.
+Notation "'usize'" := USize.
 
 (*Global Typeclasses Opaque enum_t.*)
 (*Global Typeclasses Opaque active_union_t.*)

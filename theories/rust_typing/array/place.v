@@ -77,14 +77,14 @@ Section place.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "(%Hi & %Hiz)".
+    iDestruct "Hi" as "%Hi".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
     { split; last nia.
-      specialize (MinInt_le_0 isize_t). lia. }
+      specialize (MinInt_le_0 ISize). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
@@ -171,14 +171,14 @@ Section place.
     iMod "HclF" as "_".
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "(%Hi & %Hiz)".
+    iDestruct "Hi" as "%Hi".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
     { split; last nia.
-      specialize (MinInt_le_0 isize_t). lia. }
+      specialize (MinInt_le_0 ISize). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
@@ -263,14 +263,14 @@ Section place.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "(%Hi & %Hiz)".
+    iDestruct "Hi" as "%Hi".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply wp_fupd.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
     { split; last nia.
-      specialize (MinInt_le_0 isize_t). lia. }
+      specialize (MinInt_le_0 ISize). lia. }
     { iPoseProof (loc_in_bounds_array_offset _ _ (Z.to_nat i') with "Hlb") as "Hlb'"; first lia.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }

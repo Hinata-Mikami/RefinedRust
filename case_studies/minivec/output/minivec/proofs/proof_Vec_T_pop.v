@@ -14,7 +14,29 @@ Proof.
 
   rep <-! liRStep; liShow.
   apply_update (updateable_typed_array_access x1 (length xs - 1) (st_of T_ty)).
-  repeat liRStep; liShow.
+  liRStepUntil typed_call.
+  apply_update (updateable_extract_value (x1 offsetst{st_of T_ty}ₗ (length xs - 1))).
+  (* I guess we need to manually extract it now *)
+  liRStepUntil typed_call. 
+  liRStep. liRStep.
+  liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+liRStep. liRStep.
+  liShow.
+  (* hahaha , this doesn't work either: they need to have the right RT here of course. 
+     I guess we can separately quantify over the type in read...
+  *)
+  iExists ( *[value_t])
+  simpl.
+  type_call_fnptr
+  rep 40 liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

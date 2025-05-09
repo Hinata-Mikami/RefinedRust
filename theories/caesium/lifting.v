@@ -1383,7 +1383,7 @@ Proof.
   + destruct op => //.
     all: inversion 1; simplify_eq/=.
     all: try case_bool_decide => //.
-    all: destruct it as [? []]; simplify_eq/= => //.
+    all: simplify_eq/= => //.
     all: try by rewrite ->wrap_unsigned_id in * => //; simplify_eq.
   + move => ->. destruct op.
     1-22: (apply: ArithOpII; [|done|done|];
@@ -1450,7 +1450,7 @@ Lemma wp_ptr_offset_credits Φ vl l E it o ly vo n m:
   ↑timeN ⊆ E →
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  ly_size ly * o ∈ isize_t →
+  ly_size ly * o ∈ ISize →
   time_ctx -∗ atime n -∗ ptime m -∗
   loc_in_bounds (l offset{ly}ₗ o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
@@ -1472,7 +1472,7 @@ Qed.
 Lemma wp_ptr_offset Φ vl l E it o ly vo:
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  ly_size ly * o ∈ isize_t →
+  ly_size ly * o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
   ▷ (£1 -∗ Φ (val_of_loc (l offset{ly}ₗ o))) -∗
@@ -1495,7 +1495,7 @@ Lemma wp_ptr_neg_offset_credits Φ vl l E it o ly vo n m:
   ↑timeN ⊆ E →
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  ly_size ly * -o ∈ isize_t →
+  ly_size ly * -o ∈ ISize →
   time_ctx -∗ atime n -∗ ptime m -∗
   loc_in_bounds (l offset{ly}ₗ -o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
@@ -1517,7 +1517,7 @@ Qed.
 Lemma wp_ptr_neg_offset Φ vl l E it o ly vo:
   val_to_loc vl = Some l →
   val_to_Z vo it = Some o →
-  ly_size ly * -o ∈ isize_t →
+  ly_size ly * -o ∈ ISize →
   loc_in_bounds (l offset{ly}ₗ -o) 0 0 -∗
   loc_in_bounds l 0 0 -∗
   ▷ (£1 -∗ Φ (val_of_loc (l offset{ly}ₗ -o))) -∗
@@ -1576,7 +1576,7 @@ Qed.
 Lemma wp_ptr_diff Φ vl1 l1 vl2 l2 ly vo:
   val_to_loc vl1 = Some l1 →
   val_to_loc vl2 = Some l2 →
-  val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ptrdiff_t None = Some vo →
+  val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize None = Some vo →
   l1.1 = l2.1 →
   0 < ly.(ly_size) →
   loc_in_bounds l1 0 0 -∗
@@ -1618,7 +1618,7 @@ Proof.
   iIntros (? Halg Hvl [i Hi]) "CTX Hc Hp #Hl HΦ".
   rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
-  have [|v Hv]:= (val_of_Z_is_Some None isize_t (offset_of_idx sl.(sl_members) i)). {
+  have [|v Hv]:= (val_of_Z_is_Some None ISize (offset_of_idx sl.(sl_members) i)). {
     rewrite int_elem_of_it_iff. split.
     - rewrite /min_int/=. trans 0; last lia.
       rewrite /int_half_modulus. lia.
@@ -1626,9 +1626,9 @@ Proof.
   rewrite Hv /=. move: Hv => /val_to_of_Z Hv.
   iApply (wp_ptr_offset_credits with "CTX Hc Hp"); [done | done| done | .. ].
   { have ? := offset_of_idx_le_size sl i.
-    replace (ly_size u8) with 1%nat by done. rewrite Z.mul_1_l.
-    have Hs : ly_size sl < max_int isize_t + 1 by apply sl_size.
-    have ? := MinInt_le_0 isize_t.
+    replace (ly_size U8) with 1%nat by done. rewrite Z.mul_1_l.
+    have Hs : ly_size sl < max_int ISize + 1 by apply sl_size.
+    have ? := MinInt_le_0 ISize.
     split; first lia.
     rewrite MaxInt_eq. lia. }
   { have ? := offset_of_idx_le_size sl i.
@@ -1648,16 +1648,16 @@ Proof.
   iIntros (Hvl Halg [i Hi]) "#Hl HΦ".
   rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
-  have [|v Hv]:= (val_of_Z_is_Some None isize_t (offset_of_idx sl.(sl_members) i)). {
+  have [|v Hv]:= (val_of_Z_is_Some None ISize (offset_of_idx sl.(sl_members) i)). {
     rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus/=; lia.
     by apply offset_of_bound. }
   rewrite Hv /=. move: Hv => /val_to_of_Z Hv.
   iApply wp_ptr_offset; [done| done | .. ].
   { have ? := offset_of_idx_le_size sl i.
-    replace (ly_size u8) with 1%nat by done. rewrite Z.mul_1_l.
-    have Hs : ly_size sl < max_int isize_t + 1 by apply sl_size.
-    have ? := MinInt_le_0 isize_t.
+    replace (ly_size U8) with 1%nat by done. rewrite Z.mul_1_l.
+    have Hs : ly_size sl < max_int ISize + 1 by apply sl_size.
+    have ? := MinInt_le_0 ISize.
     split; first lia.
     rewrite MaxInt_eq. lia. }
   { have ? := offset_of_idx_le_size sl i. rewrite offset_loc_sz1 //.
@@ -1687,12 +1687,12 @@ Qed.
 Lemma wp_offset_of `{!LayoutAlg} Φ sls sl m i E:
   use_struct_layout_alg sls = Some sl →
   offset_of sl.(sl_members) m = Some i →
-  (∀ v, ⌜val_of_Z i isize_t None = Some v⌝ -∗ Φ v) -∗
+  (∀ v, ⌜val_of_Z i ISize None = Some v⌝ -∗ Φ v) -∗
   WP OffsetOf sls m @ E {{ Φ }}.
 Proof.
   rewrite /OffsetOf. iIntros (Halg Ho) "HΦ".
   rewrite /use_struct_layout_alg' Halg /=.
-  have [|? Hs]:= (val_of_Z_is_Some None isize_t i). {
+  have [|? Hs]:= (val_of_Z_is_Some None ISize i). {
     rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus /=; lia.
     move: Ho => /fmap_Some[?[?->]].
@@ -1703,7 +1703,7 @@ Proof.
 Qed.
 
 Lemma wp_offset_of_union Φ uls m E:
-  Φ (i2v 0 isize_t) -∗ WP OffsetOfUnion uls m @ E {{ Φ }}.
+  Φ (i2v 0 ISize) -∗ WP OffsetOfUnion uls m @ E {{ Φ }}.
 Proof. by iApply @wp_value. Qed.
 
 Lemma wp_if_int Φ it v e1 e2 n:
@@ -1978,7 +1978,7 @@ Proof.
   iApply wp_struct_init.
   { by apply use_enum_layout_alg_inv'. }
   simpl. iIntros (ly' Hit).
-  apply syn_type_has_layout_int_inv in Hit as (-> & ?).
+  apply syn_type_has_layout_int_inv in Hit as ->.
   rewrite lookup_insert/=.
   iApply wp_value.
   iIntros (ly'' Hunion).
@@ -2184,8 +2184,8 @@ Qed.
 
 Lemma wp_alloc_credits E Φ (v_size v_align : val) (n_size n_align : nat) n m :
   ↑timeN ⊆ E →
-  val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-  val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+  val_to_Z v_size USize = Some (Z.of_nat n_size) →
+  val_to_Z v_align USize = Some (Z.of_nat n_align) →
   n_size > 0 →
   time_ctx -∗ atime n -∗ ptime m -∗
   ▷ (∀ l, l ↦ replicate n_size (MPoison) -∗ freeable l n_size 1 HeapAlloc -∗ ⌜l `has_layout_loc` Layout n_size n_align⌝ -∗ £(1+num_laters_per_step(n+m)) -∗ atime (S n) -∗ Φ (val_of_loc l)) -∗
@@ -2209,8 +2209,8 @@ Proof.
 Qed.
 
 Lemma wp_alloc E Φ (v_size v_align : val) (n_size n_align : nat) :
-  val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-  val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+  val_to_Z v_size USize = Some (Z.of_nat n_size) →
+  val_to_Z v_align USize = Some (Z.of_nat n_align) →
   n_size > 0 →
   ▷ (∀ l, l ↦ (replicate n_size MPoison) -∗ freeable l n_size 1 HeapAlloc -∗ ⌜l `has_layout_loc` Layout n_size n_align⌝ -∗ £1 -∗ Φ (val_of_loc l)) -∗
   WP (Alloc (Val v_size) (Val v_align)) @ E {{ Φ }}.
@@ -2449,8 +2449,8 @@ Proof.
 Qed.
 
 Lemma wps_free Q Ψ s l v_size v_align (n_size n_align : nat) :
-  val_to_Z v_size usize_t = Some (Z.of_nat n_size) →
-  val_to_Z v_align usize_t = Some (Z.of_nat n_align) →
+  val_to_Z v_size USize = Some (Z.of_nat n_size) →
+  val_to_Z v_align USize = Some (Z.of_nat n_align) →
   n_size > 0 →
   l ↦|Layout n_size n_align| -∗
   freeable l n_size 1 HeapAlloc -∗

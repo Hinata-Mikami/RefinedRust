@@ -18,8 +18,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { rewrite /WrappingOffsetLocSt/wrapping_offset_loc. 
-    unshelve simplify_layout_goal. 
-    2: f_equiv. all: sidecond_hammer. }
+    simplify_layout_goal. sidecond_hammer. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

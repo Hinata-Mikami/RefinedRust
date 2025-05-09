@@ -5,13 +5,13 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
  f_args := [("x", use_layout_alg' T_st)];
  f_local_vars := [
    ("__0", void* : layout);
-   ("size", usize_t : layout)
+   ("size", USize : layout)
  ];
  f_code :=
   <["_bb0" :=
    (* check if the size is 0 *)
-   "size" <-{IntOp usize_t} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-   if{BoolOp}: use{IntOp usize_t} "size" = {IntOp usize_t, IntOp usize_t, u8} I2v 0 USize
+   "size" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
+   if{BoolOp}: use{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
    then Goto "_bb1"
    else Goto "_bb2"
   ]>%E $

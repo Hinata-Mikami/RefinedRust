@@ -1605,7 +1605,7 @@ Section ltype_def.
       (** ArrayLty *)
       ∃ ly,
         ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
-        ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+        ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 (ly.(ly_size) * len) ∗
         (*⌜Forall (λ '(i, lts), i < len) lts⌝ ∗*)
@@ -3195,7 +3195,7 @@ Section ltype_def.
     (k : bor_kind) (π : thread_id) (r : place_rfn (list (place_rfn rt))) (l : loc) : iProp Σ :=
     ∃ ly,
       ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
-      ⌜(ly_size ly * len ≤ MaxInt isize_t)%Z⌝ ∗
+      ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)

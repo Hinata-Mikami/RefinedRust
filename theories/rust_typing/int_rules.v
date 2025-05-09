@@ -9,50 +9,47 @@ Open Scope Z_scope.
 Section typing.
   Context `{typeGS Σ}.
 
-  Global Program Instance learn_from_hyp_val_int_unsigned it z `{Hu : TCDone (it.(it_signed) = false)} :
+  Global Program Instance learn_from_hyp_val_int_unsigned it z `{Hu : TCDone (it_signed it = false)} :
     LearnFromHypVal (int it) z :=
     {| learn_from_hyp_val_Q := ⌜0 ≤ z ≤ MaxInt it⌝ |}.
   Next Obligation.
     iIntros (? z Hu ????) "Hv".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%Hit & %)".
+    iDestruct "Hv" as "%Hit".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iModIntro. iPureIntro. split_and!; [done.. | | ].
     { specialize (MinInt_unsigned_0 it). lia. }
     { done. }
   Qed.
-  Global Program Instance learn_from_hyp_val_int_signed it z `{Hs : TCDone (it.(it_signed) = true)} :
+  Global Program Instance learn_from_hyp_val_int_signed it z `{Hs : TCDone (it_signed it = true)} :
     LearnFromHypVal (int it) z :=
     {| learn_from_hyp_val_Q := ⌜MinInt it ≤ z ≤ MaxInt it⌝ |}.
   Next Obligation.
     iIntros (? z Hs ????) "Hv".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%Hit & %)".
+    iDestruct "Hv" as "%Hit".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iPureIntro. split_and!; done.
   Qed.
 
   Lemma type_int_val z (it : int_type) π :
-    ly_size it ≤ MaxInt isize_t →
     z ∈ it → ⊢ i2v z it ◁ᵥ{π} z @ int it.
   Proof.
-    intros ? Hn.
+    intros Hn.
     move: Hn => /(val_of_Z_is_Some None) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
     rewrite /ty_own_val/=. iPureIntro.
-    split; last done. rewrite /i2v Hv/=//.
+    rewrite /i2v Hv/=//.
   Qed.
 
-  Lemma type_val_int π z (it : IntType) (T : typed_value_cont_t):
-    ⌜z ∈ (it : int_type)⌝ ∗ T _ (int it) z ⊢ typed_value π (I2v z it) T.
+  Lemma type_val_int π z (it : int_type) (T : typed_value_cont_t):
+    ⌜z ∈ it⌝ ∗ T _ (int it) z ⊢ typed_value π (i2v z it) T.
   Proof.
     iIntros "[%Hn HT] #CTX".
     iExists Z, (int it), z. iFrame.
-    rewrite I2v_unfold. iApply type_int_val; last done.
-    rewrite MaxInt_eq.
-    apply IntType_to_it_size_bounded.
+    iApply type_int_val; last done.
   Qed.
-  Global Instance type_val_int_inst n (it : IntType) π : TypedValue π (I2v n it) :=
+  Global Instance type_val_int_inst n (it : int_type) π : TypedValue π (i2v n it) :=
     λ T, i2p (type_val_int π n it T).
 End typing.
 
@@ -68,12 +65,12 @@ Section relop.
     | LeOp rit => Some (bool_decide (n1 <= n2)%Z, rit)
     | GeOp rit => Some (bool_decide (n1 >= n2)%Z, rit)
     | _ => None
-    end = Some (b, u8) →
+    end = Some (b, U8) →
     (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ T L π (val_of_bool b) bool bool_t b) ⊢
       typed_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT [%Hv1 %] [%Hv2 _]" (Φ) "#CTX #HE HL HΦ".
+    iIntros "%Hop HT %Hv1 %Hv2" (Φ) "#CTX #HE HL HΦ".
     iDestruct ("HT" with "[] []" ) as "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply (wp_binop_det_pure (val_of_bool b)).
@@ -87,22 +84,22 @@ Section relop.
   Qed.
 
   Global Program Instance type_eq_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (EqOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 = n2)) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (EqOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 = n2)) _ π _).
   Solve Obligations with done.
   Global Program Instance type_ne_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (NeOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 ≠ n2)) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (NeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 ≠ n2)) _ π _).
   Solve Obligations with done.
   Global Program Instance type_lt_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LtOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 < n2)%Z) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 < n2)%Z) _ π _).
   Solve Obligations with done.
   Global Program Instance type_gt_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GtOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 > n2)%Z) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 > n2)%Z) _ π _).
   Solve Obligations with done.
   Global Program Instance type_le_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LeOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 <= n2)%Z) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 <= n2)%Z) _ π _).
   Solve Obligations with done.
   Global Program Instance type_ge_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GeOp u8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 >= n2)%Z) _ π _).
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 >= n2)%Z) _ π _).
   Solve Obligations with done.
 End relop.
 
@@ -116,14 +113,14 @@ Section arithop.
       typed_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop HT %Hv1 %Hv2 %Φ #CTX #HE HL HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
 
     iIntros (v Hv) "!> Hcred". rewrite /i2v Hv/=. iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=.
-    iPureIntro. split; first by apply: val_to_of_Z. done.
+    iPureIntro. by apply: val_to_of_Z.
   Qed.
 
   (** Now we derive a version that gets rid of the wrapping at the cost of additional sideconditions *)
@@ -218,7 +215,7 @@ Section arithop.
       typed_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop HT %Hv1 %Hv2 %Φ #CTX #HE HL HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc Hran) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
@@ -236,7 +233,7 @@ Section arithop.
     rewrite Heq in Hv. rewrite /i2v Hv/=.
     iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=.
-    iPureIntro. split; first by apply: val_to_of_Z. done.
+    iPureIntro. by apply: val_to_of_Z.
   Qed.
   Global Program Instance type_add_int_int_inst E L π it v1 n1 v2 n2:
     TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 AddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 + n2) _ _).
@@ -304,7 +301,7 @@ Section check_arithop.
     typed_check_bin_op E L v1 (v1 ◁ᵥ{π} n1 @ int it) v2 (v2 ◁ᵥ{π} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop [%Hsc HT] [%Hv1 %] [%Hv2 _] %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop [%Hsc HT] %Hv1 %Hv2 %Φ #CTX #HE HL HΦ".
     set (b := (negb $ bool_decide (int_arithop_in_range it n op))).
 
     iApply wp_check_binop.
@@ -377,7 +374,7 @@ Section switch.
     ⊢ typed_switch π E L v _ (int it) n it m ss def fn R ϝ.
   Proof.
     unfold li_trace, discriminate_hint.
-    iIntros "HT Hit". rewrite /ty_own_val/=. iDestruct "Hit" as "[%Hv %Hit]".
+    iIntros "HT Hit". rewrite /ty_own_val/=. iDestruct "Hit" as "%Hv".
     iExists n. iSplit; first done.
     iInduction m as [] "IH" using map_ind; simplify_map_eq => //.
     { iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
@@ -397,17 +394,17 @@ Section unop.
   Context `{!typeGS Σ}.
 
   Lemma type_neg_int π E L n it v (T : typed_val_expr_cont_t) :
-    (⌜n ∈ it⌝ -∗ ⌜it.(it_signed)⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L π (i2v (-n) it) _ (int it) (-n))
+    (⌜n ∈ it⌝ -∗ ⌜it_signed it = true⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L π (i2v (-n) it) _ (int it) (-n))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NegOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
+    iIntros "HT %Hv %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as (Hs Hn) "HT".
     have [|v' Hv']:= val_of_Z_is_Some None it (- n). {
       rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
       rewrite MinInt_eq in Hn.
       unfold elem_of, int_elem_of_it, max_int, min_int in *.
-      destruct it as [?[]] => //; simpl in *. lia.
+      rewrite Hs. rewrite Hs in Hel, Hn. lia.
     }
     assert (-n ∈ it) as Helem.
     { by eapply val_of_Z_in_range. }
@@ -417,7 +414,7 @@ Section unop.
     iNext. iIntros "Hcred".
     iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=.
-    iPureIntro. split; last done. by apply: val_to_of_Z.
+    iPureIntro. by apply: val_to_of_Z.
   Qed.
   Global Instance type_neg_int_inst π E L n it v:
     TypedUnOpVal π E L v (int it)%I n NegOp (IntOp it) :=
@@ -428,13 +425,13 @@ Section unop.
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it)%I (NotIntOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT [%Hv %Hit] %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
+    iIntros "HT %Hv %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as "HT".
     set (nz := (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)).
     have [|v' Hv']:= val_of_Z_is_Some None it nz. {
       rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
       unfold elem_of, int_elem_of_it, max_int, min_int, Z_lunot, Z.lnot, Z.pred in *.
-      destruct it as [?[]] => //; simpl in *; first lia.
+      destruct (it_signed it); simpl in *; first lia.
       split.
       - apply Z.mod_pos. rewrite /bits_per_int/bytes_per_int/bits_per_byte. lia.
       - rewrite /int_modulus. subst nz.
@@ -449,18 +446,18 @@ Section unop.
     rewrite Hv' /=.
     iIntros "!> Hcred". iApply ("HΦ" with "HL"); last done.
     rewrite /ty_own_val/=. iPureIntro.
-    split; last done. by apply: val_to_of_Z.
+    by apply: val_to_of_Z.
   Qed.
   Global Instance type_not_int_inst π E L n it v:
     TypedUnOpVal π E L v (int it)%I n NotIntOp (IntOp it) :=
     λ T, i2p (type_not_int π E L n it v T).
 
   Lemma type_cast_int π E L n (it1 it2 : int_type) v (T : typed_val_expr_cont_t) :
-    ⌜ly_size it2 ≤ MaxInt isize_t⌝ ∗ (⌜n ∈ it1⌝ -∗ ∀ v, T L π v _ (int it2) (wrap_to_it n it2))
+    (⌜n ∈ it1⌝ -∗ ∀ v, T L π v _ (int it2) (wrap_to_it n it2))
     ⊢ typed_un_op E L v (v ◁ᵥ{π} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "[%Hit2 HT] [%Hv %Hit] %Φ #CTX #HE HL HΦ".
+    iIntros "HT %Hv %Φ #CTX #HE HL HΦ".
     iSpecialize ("HT" with "[]").
     { iPureIntro. by apply: val_to_Z_in_range. }
     destruct (val_of_Z_is_Some (val_to_byte_prov v) it2 (wrap_to_it n it2)) as (n' & Hit').
@@ -468,7 +465,7 @@ Section unop.
     iApply wp_cast_int => //.
     iNext. iIntros "Hcred". iApply ("HΦ" with "HL [] HT") => //.
     rewrite /ty_own_val/=.
-    iPureIntro. split; last done. by apply: val_to_of_Z.
+    iPureIntro. by apply: val_to_of_Z.
   Qed.
   Global Instance type_cast_int_inst π E L n it1 it2 v:
     TypedUnOpVal π E L v (int it1)%I n (CastOp (IntOp it2)) (IntOp it1) :=
@@ -490,7 +487,7 @@ Section bool.
 
   Lemma val_to_bool_val_to_Z v b :
     val_to_bool v = Some b →
-    val_to_Z v u8 = Some (bool_to_Z b).
+    val_to_Z v U8 = Some (bool_to_Z b).
   Proof.
     intros Heq; unfold val_to_bool in Heq.
     destruct v as [ | m]; first done.
@@ -512,7 +509,7 @@ Section bool.
     | EqOp rit => Some (eqb b1 b2, rit)
     | NeOp rit => Some (negb (eqb b1 b2), rit)
     | _ => None
-    end = Some (b, u8) →
+    end = Some (b, U8) →
     (T L π (val_of_bool b) bool bool_t b)
     ⊢ typed_bin_op E L v1 (v1 ◁ᵥ{π} b1 @ bool_t) v2 (v2 ◁ᵥ{π} b2 @ bool_t) op (BoolOp) (BoolOp) T.
   Proof.
@@ -530,10 +527,10 @@ Section bool.
   Qed.
 
   Global Program Instance type_eq_bool_bool_inst E L v1 b1 v2 b2 π :
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (EqOp u8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (eqb b1 b2) _ π _).
+    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (EqOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (eqb b1 b2) _ π _).
   Solve Obligations with done.
   Global Program Instance type_ne_bool_bool_inst E L v1 b1 v2 b2 π :
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (NeOp u8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (negb (eqb b1 b2)) _ π _).
+    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (NeOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (negb (eqb b1 b2)) _ π _).
   Solve Obligations with done.
 
   Lemma type_notop_bool π E L v b (T : typed_val_expr_cont_t) :
@@ -615,7 +612,7 @@ Section char.
 
   (** Char *)
   Lemma type_char_val z π :
-    is_valid_char z → ⊢ i2v z char_it ◁ᵥ{π} z @ char_t.
+    is_valid_char z → ⊢ i2v z CharIt ◁ᵥ{π} z @ char_t.
   Proof.
     intros Hvalid.
     specialize (is_valid_char_in_char_it _ Hvalid) as Hn.
@@ -630,13 +627,12 @@ Section char.
   Qed.
 
   Lemma type_val_char z π (T : typed_value_cont_t):
-    ⌜is_valid_char z⌝ ∗ T _ (char_t) z ⊢ typed_value π (I2v z CharIt) T.
+    ⌜is_valid_char z⌝ ∗ T _ (char_t) z ⊢ typed_value π (i2v z CharIt) T.
   Proof.
     iIntros "[%Hn HT] #CTX".
     iExists Z, (char_t), z. iFrame.
-    rewrite I2v_unfold.
-    iApply type_char_val; last done.
+    by iApply type_char_val.
   Qed.
-  Global Instance type_val_char_inst n π : TypedValue π (I2v n CharIt) :=
+  Global Instance type_val_char_inst n π : TypedValue π (i2v n CharIt) :=
     λ T, i2p (type_val_char n π T).
 End char.

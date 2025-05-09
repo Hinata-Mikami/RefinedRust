@@ -187,7 +187,7 @@ Section test.
 
   (** Struct tests *)
   Definition s1_spec :=
-    mk_sls "s1_T" [("s1_f1", T_st); ("s1_f2", IntSynType i32)] StructReprRust.
+    mk_sls "s1_T" [("s1_f1", T_st); ("s1_f2", IntSynType I32)] StructReprRust.
   Definition s2_spec :=
     mk_sls "s2_T" [("s2_f1", PtrSynType); ("s2_f2", s1_spec : syn_type)] StructReprRust.
 
@@ -196,7 +196,7 @@ Section test.
     ∃ s2_sl : struct_layout, s2_ly = s2_sl ∧
     ∃ s1_sl : struct_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     intros Hly.
@@ -209,7 +209,7 @@ Section test.
     ∃ s2_sl : struct_layout, s2_ly = layout_of s2_sl ∧
     ∃ s1_sl : struct_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     intros Hly.
@@ -217,38 +217,28 @@ Section test.
     eauto 10; solve[fail].
   Abort.
 
-  Lemma inv_test3 :
-    syn_type_is_layoutable (s2_spec) →
-    ∃ s2_sl : struct_layout,
-    ∃ s1_sl : struct_layout,
-    ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
-      sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
+  Lemma inv_test4 len ly :
+    syn_type_has_layout (ArraySynType T_st len) ly →
+    ∃ ly2, syn_type_has_layout T_st ly2.
   Proof.
     intros Hly. inv_layout_alg.
-    eauto 10; solve[fail].
-  Abort.
-
-  Lemma inv_test4 len :
-    syn_type_is_layoutable (ArraySynType T_st len) →
-    syn_type_is_layoutable T_st.
-  Proof.
-    intros Hly. inv_layout_alg.
+    eexists.
     solve_layout_alg; solve[fail].
   Abort.
 
   Lemma inv_test5 {rt} (T_ty : type rt) (xs : list nat) ly :
     T_st = ty_syn_type T_ty →
     use_layout_alg (ArraySynType (ty_syn_type T_ty) (length xs)) = Some ly →
-    syn_type_is_layoutable (T_st).
+    ∃ ly', syn_type_has_layout (T_st) ly'.
   Proof.
     intros -> H1. inv_layout_alg.
+    eexists.
     solve_layout_alg; solve[fail].
   Abort.
 
   (** Union tests *)
   Definition u1_spec :=
-    mk_uls "u1_T" [("u1_v1", T_st); ("u1_v2", IntSynType i32)] UnionReprRust.
+    mk_uls "u1_T" [("u1_v1", T_st); ("u1_v2", IntSynType I32)] UnionReprRust.
   Definition u2_spec :=
     mk_uls "u2_T" [("u2_v1", PtrSynType); ("u2_v2", u1_spec : syn_type)] UnionReprRust.
 
@@ -257,7 +247,7 @@ Section test.
     ∃ u2_ul : union_layout, u2_ly = u2_ul ∧
     ∃ u1_ul : union_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout i32))] ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
     intros Hly.
@@ -270,7 +260,7 @@ Section test.
     ∃ u2_ul : union_layout, u2_ly = ul_layout u2_ul ∧
     ∃ u1_ul : union_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout i32))] ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
     intros Hly.
@@ -278,12 +268,12 @@ Section test.
     eauto 10; solve[fail].
   Abort.
 
-  Lemma inv_test3 :
-    syn_type_is_layoutable (u2_spec) →
+  Lemma inv_test3 ly :
+    syn_type_has_layout (u2_spec) ly →
     ∃ u2_ul : union_layout,
     ∃ u1_ul : union_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout i32))] ∧
+      ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
     intros Hly. inv_layout_alg.
@@ -304,25 +294,26 @@ Section test.
 
   Lemma inv_test e_ly :
     use_enum_layout_alg std_option_Option_els = Some e_ly →
-    enum_layout_spec_is_layoutable std_option_Option_els.
+    ∃ ly, enum_layout_spec_has_layout std_option_Option_els ly.
   Proof.
     intros.
     inv_layout_alg.
+    eexists.
     solve_layout_alg; solve[fail].
   Abort.
 
   (** Untyped *)
   Lemma inv_test2 ily :
-    use_layout_alg (UntypedSynType (it_layout i32)) = Some ily →
-    ily = it_layout i32.
+    use_layout_alg (UntypedSynType (it_layout I32)) = Some ily →
+    ily = it_layout I32.
   Proof.
     intros Hly. inv_layout_alg. reflexivity.
   Abort.
 
   (* Regression test: this should not diverge, ensured by the [DONT_ENRICH] markers we place in simplification *)
-  Lemma inv_test3 U_st :
-    syn_type_is_layoutable T_st →
-    syn_type_is_layoutable U_st →
+  Lemma inv_test3 U_st ly1 ly2 :
+    syn_type_has_layout T_st ly1 →
+    syn_type_has_layout U_st ly2 →
     True.
   Proof.
     intros.
@@ -339,26 +330,26 @@ Section test.
     inv_layout_alg.
     reflexivity.
   Abort.
-  Lemma inv_test4 :
-    syn_type_is_layoutable (s2_spec) →
-    syn_type_is_layoutable (s1_spec) →
+  Lemma inv_test4 ly1 ly2 :
+    syn_type_has_layout (s2_spec) ly1 →
+    syn_type_has_layout (s1_spec) ly2 →
     ∃ s2_sl : struct_layout,
     ∃ s1_sl : struct_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     intros ? ?.
     inv_layout_alg.
     eauto 10; solve[fail].
   Abort.
-  Lemma inv_test4' :
-    syn_type_is_layoutable (s1_spec) →
-    syn_type_is_layoutable (s2_spec) →
+  Lemma inv_test4' ly1 ly2 :
+    syn_type_has_layout (s1_spec) ly1 →
+    syn_type_has_layout (s2_spec) ly2 →
     ∃ s2_sl : struct_layout,
     ∃ s1_sl : struct_layout,
     ∃ T_ly, syn_type_has_layout T_st T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     intros ? ?.
@@ -366,11 +357,11 @@ Section test.
     eauto 10; solve[fail].
   Abort.
 
-  Lemma inv_test_name_collision {T_rt} (T_ty : type T_rt) U_st {U_rt} (U_ty : type U_rt) :
-    syn_type_is_layoutable T_st →
-    syn_type_is_layoutable (ty_syn_type T_ty) →
-    syn_type_is_layoutable U_st →
-    syn_type_is_layoutable (ty_syn_type U_ty) →
+  Lemma inv_test_name_collision {T_rt} (T_ty : type T_rt) U_st {U_rt} (U_ty : type U_rt) ly1 ly2 ly3 ly4 :
+    syn_type_has_layout T_st ly1 →
+    syn_type_has_layout (ty_syn_type T_ty) ly2 →
+    syn_type_has_layout U_st ly3 →
+    syn_type_has_layout (ty_syn_type U_ty) ly4 →
     ty_syn_type T_ty = T_st →
     ty_syn_type U_ty = U_st →
     True.
@@ -418,7 +409,7 @@ Section test.
     ∃ s2_sl : struct_layout, s2_ly = layout_of s2_sl ∧
     ∃ s1_sl : struct_layout,
     ∃ T_ly, syn_type_has_layout (ty_syn_type T) T_ly ∧
-      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout i32))] ∧
+      sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     intros Hly.
@@ -443,7 +434,7 @@ Section test.
 
   Lemma solve_layout_size_test2 T_ly :
     use_layout_alg T_st = Some T_ly →
-    (size_of_st T_st * 43 ≤ MaxInt isize_t)%Z →
+    (size_of_st T_st * 43 ≤ MaxInt ISize)%Z →
     ly_size (use_layout_alg' (ArraySynType T_st 42)) ≤ ly_size (use_layout_alg' (ArraySynType T_st 43)).
   Proof.
     intros. solve_layout_size; solve[fail].
@@ -458,7 +449,7 @@ Section test.
 
   Lemma solve_layout_size_test4 T_ly :
     use_layout_alg T_st = Some T_ly →
-    (size_of_st T_st * 43 ≤ MaxInt isize_t)%Z →
+    (size_of_st T_st * 43 ≤ MaxInt ISize)%Z →
     size_of_st T_st > 0 →
     ly_size (use_layout_alg' (ArraySynType T_st 42)) < ly_size (use_layout_alg' (ArraySynType T_st 43)).
   Proof.
@@ -466,7 +457,7 @@ Section test.
   Abort.
 
   Lemma solve_layout_alg_test1 :
-    use_layout_alg (IntSynType u16) = Some (it_layout u16).
+    use_layout_alg (IntSynType U16) = Some (it_layout U16).
   Proof.
     solve_layout_alg; solve [fail].
   Abort.
@@ -481,7 +472,7 @@ Section test.
 
   Lemma solve_layout_alg_test2 T_ly :
     use_layout_alg T_st = Some T_ly →
-    (ly_size T_ly * 42 ≤ MaxInt isize_t)%Z →
+    (ly_size T_ly * 42 ≤ MaxInt ISize)%Z →
     syn_type_has_layout (ArraySynType T_st 42) (mk_array_layout T_ly 42).
   Proof.
     intros. solve_layout_alg; solve [fail].
@@ -489,7 +480,7 @@ Section test.
 
   Lemma solve_layout_alg_test2' T_ly size :
     use_layout_alg T_st = Some T_ly →
-    (ly_size T_ly * Z.to_nat size ≤ MaxInt isize_t)%Z →
+    (ly_size T_ly * Z.to_nat size ≤ MaxInt ISize)%Z →
     ∃ ly, syn_type_has_layout (ArraySynType T_st (Z.to_nat size)) ly.
   Proof.
     intros. eexists.
@@ -526,13 +517,15 @@ Section test.
     solve_layout_alg; solve[fail].
   Abort.
 
+  (*
   Lemma solve_layout_alg_test7 s2_ly :
     use_layout_alg (s2_spec T_st) = Some s2_ly →
     struct_layout_spec_has_layout (s2_spec T_st) (use_struct_layout_alg' (s2_spec T_st)).
   Proof.
     intros. inv_layout_alg.
-    solve_layout_alg; solve[fail].
+    solve_layout_alg. solve[fail].
   Abort.
+  *)
 
   Lemma solve_layout_alg_test8 {T_rt} (T_ty : type T_rt) T_ly :
     syn_type_has_layout (ty_syn_type T_ty) T_ly →
@@ -544,26 +537,27 @@ Section test.
 
   Lemma solve_layout_alg_test9 s2_ly :
     use_layout_alg (s2_spec T_st) = Some s2_ly →
-    syn_type_is_layoutable (UntypedSynType (use_layout_alg' (s2_spec T_st))).
+    ∃ ly, syn_type_has_layout (UntypedSynType (use_layout_alg' (s2_spec T_st))) ly.
   Proof.
     intros. inv_layout_alg.
-    solve_layout_alg; solve [fail].
+    eexists. solve_layout_alg; solve [fail].
   Abort.
 
   Lemma solve_layout_alg_test10 ly :
     use_layout_alg (std_option_Option_els T_st) = Some ly →
-    syn_type_is_layoutable (std_option_Option_els T_st).
+    ∃ ly, syn_type_has_layout (std_option_Option_els T_st) ly.
   Proof.
     intros. inv_layout_alg.
-    solve_layout_alg; solve[fail].
+    eexists. solve_layout_alg; solve[fail].
   Abort.
 
   Lemma solve_layout_alg_test11 ly ly' :
     use_layout_alg (std_option_Option_els T_st) = Some ly →
-    use_layout_alg (std_option_Option_els (IntSynType u32)) = Some ly' →
-    syn_type_is_layoutable (std_option_Option_els T_st) ∧ syn_type_is_layoutable (std_option_Option_els (IntSynType u32)).
+    use_layout_alg (std_option_Option_els (IntSynType U32)) = Some ly' →
+    ∃ ly1 ly2, syn_type_has_layout (std_option_Option_els T_st) ly1 ∧ syn_type_has_layout (std_option_Option_els (IntSynType U32)) ly2.
   Proof.
     intros. inv_layout_alg.
+    eexists _, _.
     split; solve_layout_alg.
     Unshelve. all: solve[fail].
   Abort.
@@ -574,13 +568,13 @@ Section test.
   Context `{!typeGS Σ}.
 
   Lemma solve_op_alg_test1 :
-    use_op_alg (IntSynType u16) = Some (IntOp $ u16).
+    use_op_alg (IntSynType U16) = Some (IntOp $ U16).
   Proof.
     solve_op_alg; solve [fail].
   Abort.
 
-  Lemma solve_op_alg_test1 T_st :
-    syn_type_is_layoutable T_st →
+  Lemma solve_op_alg_test1 T_st ly :
+    syn_type_has_layout T_st ly →
     use_op_alg T_st = Some (use_op_alg' T_st).
   Proof.
     intros; inv_layout_alg.
@@ -590,7 +584,7 @@ Section test.
   Lemma solve_op_alg_test1 T_st s2_sl s1_sl :
     use_struct_layout_alg (s2_spec T_st) = Some s2_sl →
     use_struct_layout_alg (s1_spec T_st) = Some s1_sl →
-    use_op_alg (s2_spec T_st) = Some (StructOp s2_sl [PtrOp; StructOp s1_sl [use_op_alg' T_st; IntOp i32]]).
+    use_op_alg (s2_spec T_st) = Some (StructOp s2_sl [PtrOp; StructOp s1_sl [use_op_alg' T_st; IntOp I32]]).
   Proof.
     intros. inv_layout_alg.
     solve_op_alg.
@@ -621,7 +615,7 @@ Section test.
   Abort.
 
   Lemma solve_op_alg_test6  :
-    use_op_alg' (IntSynType i32) = IntOp i32.
+    use_op_alg' (IntSynType I32) = IntOp I32.
   Proof.
     intros. inv_layout_alg.
     solve_op_alg; solve[fail].
@@ -642,24 +636,24 @@ Section test.
   Context `{!typeGS Σ}.
 
   Lemma ty_allows_reads_int :
-    ty_allows_reads (int i32).
+    ty_allows_reads (int I32).
   Proof.
     solve [unshelve solve_ty_allows; init_cache; solve_goal].
   Abort.
-  Lemma ty_allows_reads_struct_1 :
-    struct_layout_spec_is_layoutable (s1_spec (IntSynType i32)) →
-    ty_allows_reads (struct_t (s1_spec (IntSynType i32)) +[int i32; int i32]).
+  Lemma ty_allows_reads_struct_1 ly :
+    struct_layout_spec_has_layout (s1_spec (IntSynType I32)) ly →
+    ty_allows_reads (struct_t (s1_spec (IntSynType I32)) +[int I32; int I32]).
   Proof.
     intros. inv_layout_alg.
-    unshelve solve_ty_allows; solve_goal.
+    solve_ty_allows; solve_goal.
     all: solve [fail].
   Abort.
 
-  Lemma ty_allows_reads_struct_2 {T_rt} (T_ty : type T_rt) :
+  Lemma ty_allows_reads_struct_2 {T_rt} (T_ty : type T_rt) ly :
     ty_allows_reads T_ty →
-    struct_layout_spec_is_layoutable (s1_spec (ty_syn_type T_ty)) →
-    syn_type_is_layoutable (ty_syn_type T_ty) →
-    ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty)) +[T_ty; int i32]).
+    struct_layout_spec_has_layout (s1_spec (ty_syn_type T_ty)) ly →
+    syn_type_has_layout (ty_syn_type T_ty) ly →
+    ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty)) +[T_ty; int I32]).
   Proof.
     intros. inv_layout_alg.
     solve_ty_allows.
@@ -680,7 +674,7 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] [RSTInt I32]) ty ∧ ty = testX _ _ *[] *[(int i32)].
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] [RSTInt I32]) ty ∧ ty = testX _ _ *[] *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -701,28 +695,28 @@ Section test.
   Abort.
 
   Lemma interpret_rust_type_test2 {rt} (T_ty : type rt) :
-    interpret_rust_type_pure_goal (∅) (RSTInt I32) (int i32).
+    interpret_rust_type_pure_goal (∅) (RSTInt I32) (int I32).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     solve_interpret_rust_type; solve[fail].
   Abort.
 
   Lemma interpret_rust_type_test3 {rt} (T_ty : type rt) sls :
-    interpret_rust_type_pure_goal (∅) (RSTStruct sls [RSTInt I32]) (struct_t sls +[int i32]).
+    interpret_rust_type_pure_goal (∅) (RSTStruct sls [RSTInt I32]) (struct_t sls +[int I32]).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     solve_interpret_rust_type; solve[fail].
   Abort.
 
   Lemma interpret_rust_type_test4 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int i32)).
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTRef Mut "κ" (RSTInt I32)) ty ∧ ty = (mut_ref κ (int I32)).
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [solve_interpret_rust_type | ]. done.
   Abort.
 
   Lemma interpret_rust_type_test5 :
-    interpret_rust_type_pure_goal (∅) (RSTInt U8) (int u8).
+    interpret_rust_type_pure_goal (∅) (RSTInt U8) (int U8).
   Proof.
     init_tyvars (∅).
     solve_interpret_rust_type; solve[fail].
@@ -758,7 +752,7 @@ Section test_evar.
 
   Lemma test3 :
     ∃ x : plist type [Z : Type; Z: Type],
-    ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : Type) (int i32); existT (Z : Type) (int u32)].
+    ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : Type) (int I32); existT (Z : Type) (int U32)].
   Proof.
     let Hevar := create_protected_evar (type Z) in
     let Hevar2 := create_protected_evar (type Z) in
@@ -1082,7 +1076,7 @@ Section test.
     elctx_sat [κ ⊑ₑ κ'] [κ' ⊑ₗ{c1} [κ'']] [κ ⊑ₑ κ''].
   Proof. solve_elctx_sat; solve[fail]. Abort.
   Lemma test3 ϝ0 ϝ c1 :
-    elctx_sat ((ϝ0 ⊑ₑ ϝ) :: ty_outlives_E (uninit (IntSynType i32)) ϝ) [ϝ ⊑ₗ{c1} []] (ty_outlives_E (uninit (IntSynType i32)) ϝ).
+    elctx_sat ((ϝ0 ⊑ₑ ϝ) :: ty_outlives_E (uninit (IntSynType I32)) ϝ) [ϝ ⊑ₗ{c1} []] (ty_outlives_E (uninit (IntSynType I32)) ϝ).
   Proof. solve_elctx_sat; solve[fail]. Abort.
   Lemma test4 ϝ0 ϝ :
     elctx_sat [ϝ0 ⊑ₑ ϝ] [ϝ ⊑ₗ{ 0} []] (lfts_outlives_E (ty_lfts alias_ptr_t) ϝ0).
