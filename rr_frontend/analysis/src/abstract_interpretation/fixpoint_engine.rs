@@ -32,15 +32,11 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
     /// In particular this should take the arguments into account.
     fn new_initial(&self) -> Self::State;
 
-    /// Determines if the number of times a block was traversed by the analyzer given in `counter`
-    /// is large enough to widen the state
-    fn need_to_widen(counter: u32) -> bool;
-
     /// Modify a state according to the statement at `location`.
     ///
     /// The statement can be extracted using
     /// `self.mir[location.block].statements[location.statement_index]`.
-    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location) -> AnalysisResult<()>;
+    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location);
 
     /// Compute the states after a terminator at `location`.
     ///
@@ -88,14 +84,6 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
             let counter = counters.entry(bb).or_insert(0);
             *counter += 1;
 
-            if Self::need_to_widen(*counter) {
-                let location = mir::Location {
-                    block: bb,
-                    statement_index: 0,
-                };
-                state_before_block.widen(p_state.lookup_before(location).unwrap());
-            }
-
             let statements = &mir[bb].statements;
             let mut current_state = state_before_block;
             for statement_index in 0..statements.len() {
@@ -113,7 +101,7 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
                 */
                 p_state.set_before(location, current_state.clone());
                 // normal statement
-                self.apply_statement_effect(&mut current_state, location)?;
+                self.apply_statement_effect(&mut current_state, location);
             }
 
             // terminator effect

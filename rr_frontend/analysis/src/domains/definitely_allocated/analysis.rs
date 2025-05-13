@@ -55,12 +55,8 @@ impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyAllocatedAnalysi
         }
     }
 
-    fn need_to_widen(_counter: u32) -> bool {
-        false
-    }
-
-    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location) -> AnalysisResult<()> {
-        state.apply_statement_effect(location)
+    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location) {
+        state.apply_statement_effect(location);
     }
 
     fn apply_terminator_effect(

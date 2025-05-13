@@ -8,14 +8,13 @@ use std::collections::BTreeSet;
 use std::{fmt, mem};
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::middle::mir;
-use rr_rustc_interface::middle::ty::TyCtxt;
+use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span::def_id::DefId;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
+use super::utils::*;
 use crate::abstract_interpretation::AbstractState;
-use crate::mir_utils::*;
 use crate::AnalysisError;
 
 /// A set of MIR places that are definitely initialized at a program point
@@ -29,7 +28,7 @@ pub struct DefinitelyInitializedState<'mir, 'tcx: 'mir> {
     pub(super) def_init_places: FxHashSet<Place<'tcx>>,
     pub(super) def_id: DefId,
     pub(super) mir: &'mir mir::Body<'tcx>,
-    pub(super) tcx: TyCtxt<'tcx>,
+    pub(super) tcx: ty::TyCtxt<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyInitializedState<'mir, 'tcx> {
@@ -83,17 +82,12 @@ impl<'mir, 'tcx: 'mir> Serialize for DefinitelyInitializedState<'mir, 'tcx> {
 
 impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     #[must_use]
-    pub const fn get_def_init_places(&self) -> &FxHashSet<Place<'tcx>> {
-        &self.def_init_places
-    }
-
-    #[must_use]
     pub fn get_def_init_mir_places(&self) -> FxHashSet<mir::Place<'tcx>> {
         self.def_init_places.iter().map(|place| **place).collect()
     }
 
     /// The top element of the lattice contains no places
-    pub fn new_top(def_id: DefId, mir: &'mir mir::Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    fn new_top(def_id: DefId, mir: &'mir mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>) -> Self {
         Self {
             def_init_places: FxHashSet::default(),
             def_id,
@@ -102,12 +96,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         }
     }
 
-    #[must_use]
-    pub fn is_top(&self) -> bool {
-        self.def_init_places.is_empty()
-    }
-
-    pub fn check_invariant(&self) {
+    fn check_invariant(&self) {
         for &place1 in &self.def_init_places {
             for &place2 in &self.def_init_places {
                 if place1 != place2 {
@@ -186,31 +175,17 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     }
 
     /// If the operand is move, make the place uninitialised
-    /// If the place is a Copy type, uninitialise the place iif `move_out_copy_types` is true.
-    fn apply_operand_effect(&mut self, operand: &mir::Operand<'tcx>, move_out_copy_types: bool) {
+    /// If the place is a Copy type, uninitialise the place.
+    fn apply_operand_effect(&mut self, operand: &mir::Operand<'tcx>) {
         if let mir::Operand::Move(place) = operand {
-            let uninitialise = if move_out_copy_types {
-                true
-            } else {
-                let ty = place.ty(&self.mir.local_decls, self.tcx).ty;
-                let param_env = self.tcx.param_env(self.def_id);
-                !is_copy(self.tcx, ty, param_env)
-            };
-
-            if uninitialise {
-                self.set_place_uninitialised(*place);
-            }
+            self.set_place_uninitialised(*place);
         }
     }
 
-    /// If the place is a Copy type, uninitialise the place iif `move_out_copy_types` is true.
-    #[allow(clippy::unnecessary_wraps)]
-    pub(super) fn apply_statement_effect(
-        &mut self,
-        location: mir::Location,
-        move_out_copy_types: bool,
-    ) -> Result<(), AnalysisError> {
+    /// If the place is a Copy type, uninitialise the place.
+    pub(super) fn apply_statement_effect(&mut self, location: mir::Location) {
         let statement = &self.mir[location.block].statements[location.statement_index];
+
         match &statement.kind {
             mir::StatementKind::Assign(box (target, source)) => {
                 match source {
@@ -218,16 +193,16 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                     | mir::Rvalue::Cast(_, operand, _)
                     | mir::Rvalue::UnaryOp(_, operand)
                     | mir::Rvalue::Use(operand) => {
-                        self.apply_operand_effect(operand, move_out_copy_types);
+                        self.apply_operand_effect(operand);
                     },
                     mir::Rvalue::BinaryOp(_, box (operand1, operand2))
                     | mir::Rvalue::CheckedBinaryOp(_, box (operand1, operand2)) => {
-                        self.apply_operand_effect(operand1, move_out_copy_types);
-                        self.apply_operand_effect(operand2, move_out_copy_types);
+                        self.apply_operand_effect(operand1);
+                        self.apply_operand_effect(operand2);
                     },
                     mir::Rvalue::Aggregate(_, operands) => {
                         for operand in operands {
-                            self.apply_operand_effect(operand, move_out_copy_types);
+                            self.apply_operand_effect(operand);
                         }
                     },
                     _ => {},
@@ -240,15 +215,12 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
             },
             _ => {},
         }
-
-        Ok(())
     }
 
-    /// If the place is a Copy type, uninitialise the place iif `move_out_copy_types` is true.
+    /// If the place is a Copy type, uninitialise the place.
     pub(super) fn apply_terminator_effect(
         &self,
         location: mir::Location,
-        move_out_copy_types: bool,
     ) -> Result<Vec<(mir::BasicBlock, Self)>, AnalysisError> {
         let mut new_state = self.clone();
         let mut res_vec = Vec::new();
@@ -257,7 +229,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
             mir::TerminatorKind::SwitchInt { discr, .. } => {
                 // only operand has an effect on definitely initialized places, all successors
                 // get the same state
-                new_state.apply_operand_effect(discr, move_out_copy_types);
+                new_state.apply_operand_effect(discr);
 
                 for bb in terminator.successors() {
                     res_vec.push((bb, new_state.clone()));
@@ -286,9 +258,9 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                 ..
             } => {
                 for arg in args {
-                    new_state.apply_operand_effect(arg, move_out_copy_types);
+                    new_state.apply_operand_effect(arg);
                 }
-                new_state.apply_operand_effect(func, move_out_copy_types);
+                new_state.apply_operand_effect(func);
                 if let Some(bb) = *target {
                     new_state.set_place_initialised(*destination);
                     res_vec.push((bb, new_state));
@@ -305,7 +277,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                 unwind,
                 ..
             } => {
-                new_state.apply_operand_effect(cond, move_out_copy_types);
+                new_state.apply_operand_effect(cond);
                 res_vec.push((*target, new_state));
 
                 if let mir::UnwindAction::Cleanup(bb) = *unwind {
@@ -320,7 +292,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                 ..
             } => {
                 // TODO: resume_arg?
-                new_state.apply_operand_effect(value, move_out_copy_types);
+                new_state.apply_operand_effect(value);
                 res_vec.push((*resume, new_state));
 
                 if let Some(bb) = *drop {
@@ -345,14 +317,6 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> AbstractState for DefinitelyInitializedState<'mir, 'tcx> {
-    fn is_bottom(&self) -> bool {
-        if self.def_init_places.len() == self.mir.local_decls.len() {
-            self.mir.local_decls.indices().all(|local| self.def_init_places.contains(&local.into()))
-        } else {
-            false
-        }
-    }
-
     /// The lattice join intersects the two place sets
     fn join(&mut self, other: &Self) {
         if cfg!(debug_assertions) {
@@ -386,9 +350,5 @@ impl<'mir, 'tcx: 'mir> AbstractState for DefinitelyInitializedState<'mir, 'tcx> 
         if cfg!(debug_assertions) {
             self.check_invariant();
         }
-    }
-
-    fn widen(&mut self, _previous: &Self) {
-        unimplemented!()
     }
 }

@@ -17,28 +17,11 @@ pub struct DefinitelyInitializedAnalysis<'mir, 'tcx: 'mir> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     mir: &'mir mir::Body<'tcx>,
-    /// If the place is a Copy type, uninitialise the place iif `move_out_copy_types` is true.
-    move_out_copy_types: bool,
 }
 
 impl<'mir, 'tcx: 'mir> DefinitelyInitializedAnalysis<'mir, 'tcx> {
     pub const fn new(tcx: TyCtxt<'tcx>, def_id: DefId, mir: &'mir mir::Body<'tcx>) -> Self {
-        DefinitelyInitializedAnalysis {
-            tcx,
-            def_id,
-            mir,
-            move_out_copy_types: true,
-        }
-    }
-
-    /// This analysis will not uninitialize Copy types when they are moved.
-    pub const fn new_relaxed(tcx: TyCtxt<'tcx>, def_id: DefId, mir: &'mir mir::Body<'tcx>) -> Self {
-        DefinitelyInitializedAnalysis {
-            tcx,
-            def_id,
-            mir,
-            move_out_copy_types: false,
-        }
+        DefinitelyInitializedAnalysis { tcx, def_id, mir }
     }
 }
 
@@ -81,12 +64,8 @@ impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyInitializedAnaly
         }
     }
 
-    fn need_to_widen(_counter: u32) -> bool {
-        false // TODO: check
-    }
-
-    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location) -> AnalysisResult<()> {
-        state.apply_statement_effect(location, self.move_out_copy_types)
+    fn apply_statement_effect(&self, state: &mut Self::State, location: mir::Location) {
+        state.apply_statement_effect(location);
     }
 
     fn apply_terminator_effect(
@@ -94,6 +73,6 @@ impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyInitializedAnaly
         state: &Self::State,
         location: mir::Location,
     ) -> AnalysisResult<Vec<(mir::BasicBlock, Self::State)>> {
-        state.apply_terminator_effect(location, self.move_out_copy_types)
+        state.apply_terminator_effect(location)
     }
 }

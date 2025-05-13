@@ -6,15 +6,9 @@
 
 use rr_rustc_interface::middle::mir;
 
-use crate::mir_utils::location_to_stmt_str;
-
 #[derive(Debug)]
 pub enum AnalysisError {
     UnsupportedStatement(mir::Location),
-    /// The state is not defined before the given location.
-    NoStateBeforeLocation(mir::Location),
-    /// The state is not defined after the given MIR block.
-    NoStateAfterBlock(mir::BasicBlock),
     /// The state is not defined on the edge between two MIR blocks (source, destination).
     NoStateAfterSuccessor(mir::BasicBlock, mir::BasicBlock),
 }
@@ -26,14 +20,6 @@ impl AnalysisError {
                 let stmt = location_to_stmt_str(*location, mir);
                 format!("Unsupported statement at {:?}: {}", location, stmt)
             },
-            Self::NoStateBeforeLocation(location) => {
-                let stmt = location_to_stmt_str(*location, mir);
-                format!("There is no state before the statement at {:?} ({})", location, stmt)
-            },
-            Self::NoStateAfterBlock(bb) => {
-                let terminator = &mir[*bb].terminator();
-                format!("There is no state after the terminator of block {:?} ({:?})", bb, terminator.kind)
-            },
             Self::NoStateAfterSuccessor(bb_src, bb_dst) => {
                 let terminator = &mir[*bb_src].terminator();
                 format!(
@@ -42,5 +28,18 @@ impl AnalysisError {
                 )
             },
         }
+    }
+}
+
+/// Convert a `location` to a string representing the statement or terminator at that `location`
+fn location_to_stmt_str(location: mir::Location, mir: &mir::Body) -> String {
+    let bb_mir = &mir[location.block];
+    if location.statement_index < bb_mir.statements.len() {
+        let stmt = &bb_mir.statements[location.statement_index];
+        format!("{stmt:?}")
+    } else {
+        // location = terminator
+        let terminator = bb_mir.terminator();
+        format!("{:?}", terminator.kind)
     }
 }

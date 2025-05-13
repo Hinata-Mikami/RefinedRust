@@ -75,7 +75,7 @@ impl<'mir, 'tcx: 'mir, S: Serialize> Serialize for PointwiseState<'mir, 'tcx, S>
 }
 
 impl<'mir, 'tcx: 'mir, S: Serialize> PointwiseState<'mir, 'tcx, S> {
-    pub fn new(mir: &'mir mir::Body<'tcx>) -> Self {
+    pub(crate) fn new(mir: &'mir mir::Body<'tcx>) -> Self {
         Self {
             state_before: FxHashMap::default(),
             state_after_block: FxHashMap::default(),
@@ -88,12 +88,6 @@ impl<'mir, 'tcx: 'mir, S: Serialize> PointwiseState<'mir, 'tcx, S> {
     #[must_use]
     pub fn lookup_before(&self, location: mir::Location) -> Option<&S> {
         self.state_before.get(&location)
-    }
-
-    /// Look up the mutable state before the `location`.
-    /// The `location` can point to a statement or terminator.
-    pub fn lookup_mut_before(&mut self, location: mir::Location) -> Option<&mut S> {
-        self.state_before.get_mut(&location)
     }
 
     /// Look up the state after the `location`.
@@ -126,39 +120,5 @@ impl<'mir, 'tcx: 'mir, S: Serialize> PointwiseState<'mir, 'tcx, S> {
     /// The `location` can point to a statement or terminator.
     pub(crate) fn set_before(&mut self, location: mir::Location, state: S) {
         self.state_before.insert(location, state);
-    }
-}
-
-impl<'mir, 'tcx: 'mir, S: Serialize + Default> PointwiseState<'mir, 'tcx, S> {
-    pub fn default(mir: &'mir mir::Body<'tcx>) -> Self {
-        let state_before: FxHashMap<_, _> = mir
-            .basic_blocks
-            .iter_enumerated()
-            .flat_map(|(block, bb_data)| {
-                (0..=bb_data.statements.len()).map(move |statement_index| {
-                    (
-                        mir::Location {
-                            block,
-                            statement_index,
-                        },
-                        S::default(),
-                    )
-                })
-            })
-            .collect();
-        let state_after_block: FxHashMap<_, _> = mir
-            .basic_blocks
-            .iter_enumerated()
-            .map(|(block, bb_data)| {
-                let successors: FxHashMap<_, _> =
-                    bb_data.terminator().successors().map(|successor| (successor, S::default())).collect();
-                (block, successors)
-            })
-            .collect();
-        Self {
-            state_before,
-            state_after_block,
-            mir,
-        }
     }
 }

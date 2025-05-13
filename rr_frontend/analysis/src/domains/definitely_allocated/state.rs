@@ -57,19 +57,6 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
         &self.def_allocated_locals
     }
 
-    /// The top element of the lattice contains no locals
-    pub fn new_top(mir: &'mir mir::Body<'tcx>) -> Self {
-        Self {
-            def_allocated_locals: FxHashSet::default(),
-            mir,
-        }
-    }
-
-    #[must_use]
-    pub fn is_top(&self) -> bool {
-        self.def_allocated_locals.is_empty()
-    }
-
     /// Sets `local` as allocated.
     fn set_local_allocated(&mut self, local: mir::Local) {
         self.def_allocated_locals.insert(local);
@@ -80,9 +67,9 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
         self.def_allocated_locals.remove(&local);
     }
 
-    #[allow(clippy::unnecessary_wraps)]
-    pub(super) fn apply_statement_effect(&mut self, location: mir::Location) -> Result<(), AnalysisError> {
+    pub(super) fn apply_statement_effect(&mut self, location: mir::Location) {
         let statement = &self.mir[location.block].statements[location.statement_index];
+
         match statement.kind {
             mir::StatementKind::StorageLive(local) => {
                 self.set_local_allocated(local);
@@ -92,7 +79,6 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
             },
             _ => {},
         }
-        Ok(())
     }
 
     #[allow(clippy::unnecessary_wraps)]
@@ -110,16 +96,8 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> AbstractState for DefinitelyAllocatedState<'mir, 'tcx> {
-    fn is_bottom(&self) -> bool {
-        self.def_allocated_locals.len() == self.mir.local_decls.len()
-    }
-
     /// The lattice join intersects the two sets of locals
     fn join(&mut self, other: &Self) {
         self.def_allocated_locals.retain(|local| other.def_allocated_locals.contains(local));
-    }
-
-    fn widen(&mut self, _previous: &Self) {
-        unimplemented!()
     }
 }

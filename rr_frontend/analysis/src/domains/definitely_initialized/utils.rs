@@ -10,9 +10,7 @@
 use std::{cmp, fmt, ops};
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
-use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::trait_selection::infer::InferCtxtExt;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
@@ -20,7 +18,7 @@ use rr_rustc_interface::trait_selection::infer::InferCtxtExt;
 pub struct Place<'tcx>(mir::Place<'tcx>);
 
 /// A trait enabling `Place` and `mir::Place` to be treated in the same way
-pub trait PlaceImpl<'tcx> {
+trait PlaceImpl<'tcx> {
     fn from_mir_place(_: mir::Place<'tcx>) -> Self;
     fn to_mir_place(self) -> mir::Place<'tcx>;
 }
@@ -83,37 +81,11 @@ impl<'tcx> PlaceImpl<'tcx> for mir::Place<'tcx> {
     }
 }
 
-/// Convert a `location` to a string representing the statement or terminator at that `location`
-pub fn location_to_stmt_str(location: mir::Location, mir: &mir::Body) -> String {
-    let bb_mir = &mir[location.block];
-    if location.statement_index < bb_mir.statements.len() {
-        let stmt = &bb_mir.statements[location.statement_index];
-        format!("{stmt:?}")
-    } else {
-        // location = terminator
-        let terminator = bb_mir.terminator();
-        format!("{:?}", terminator.kind)
-    }
-}
-
-/// Check if the place `potential_prefix` is a prefix of `place`. For example:
-///
-/// + `is_prefix(x.f, x.f) == true`
-/// + `is_prefix(x.f.g, x.f) == true`
-/// + `is_prefix(x.f, x.f.g) == false`
-pub fn is_prefix<'tcx>(place: Place<'tcx>, potential_prefix: Place<'tcx>) -> bool {
-    if place.local != potential_prefix.local || place.projection.len() < potential_prefix.projection.len() {
-        false
-    } else {
-        place.projection.iter().zip(potential_prefix.projection.iter()).all(|(e1, e2)| e1 == e2)
-    }
-}
-
 /// Expands a place `x.f.g` of type struct into a vector of places for
 /// each of the struct's fields `{x.f.g.f, x.f.g.g, x.f.g.h}`. If
 /// `without_field` is not `None`, then omits that field from the final
 /// vector.
-pub fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
+fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
     place: P,
     mir: &mir::Body<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
@@ -167,34 +139,17 @@ pub fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
     places
 }
 
-/// Expand `current_place` one level down by following the `guide_place`.
-/// Returns the new `current_place` and a vector containing other places that
-/// could have resulted from the expansion.
-pub fn expand_one_level<'tcx>(
-    mir: &mir::Body<'tcx>,
-    tcx: ty::TyCtxt<'tcx>,
-    current_place: Place<'tcx>,
-    guide_place: Place<'tcx>,
-) -> (Place<'tcx>, Vec<Place<'tcx>>) {
-    let index = current_place.projection.len();
-    let new_projection =
-        tcx.mk_place_elems_from_iter(current_place.projection.iter().chain([guide_place.projection[index]]));
-    let new_current_place = Place(mir::Place {
-        local: current_place.local,
-        projection: new_projection,
-    });
-    let other_places = match guide_place.projection[index] {
-        mir::ProjectionElem::Field(projected_field, _field_ty) => {
-            expand_struct_place(current_place, mir, tcx, Some(projected_field.index()))
-        },
-        mir::ProjectionElem::Deref
-        | mir::ProjectionElem::Index(..)
-        | mir::ProjectionElem::ConstantIndex { .. }
-        | mir::ProjectionElem::Subslice { .. }
-        | mir::ProjectionElem::Downcast(..)
-        | mir::ProjectionElem::OpaqueCast(..) => vec![],
-    };
-    (new_current_place, other_places)
+/// Check if the place `potential_prefix` is a prefix of `place`. For example:
+///
+/// + `is_prefix(x.f, x.f) == true`
+/// + `is_prefix(x.f.g, x.f) == true`
+/// + `is_prefix(x.f, x.f.g) == false`
+pub fn is_prefix<'tcx>(place: Place<'tcx>, potential_prefix: Place<'tcx>) -> bool {
+    if place.local != potential_prefix.local || place.projection.len() < potential_prefix.projection.len() {
+        false
+    } else {
+        place.projection.iter().zip(potential_prefix.projection.iter()).all(|(e1, e2)| e1 == e2)
+    }
 }
 
 /// Subtract the `subtrahend` place from the `minuend` place. The
@@ -219,6 +174,36 @@ pub fn expand<'tcx>(
         place_set.extend(places);
     }
     place_set
+}
+
+/// Expand `current_place` one level down by following the `guide_place`.
+/// Returns the new `current_place` and a vector containing other places that
+/// could have resulted from the expansion.
+fn expand_one_level<'tcx>(
+    mir: &mir::Body<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    current_place: Place<'tcx>,
+    guide_place: Place<'tcx>,
+) -> (Place<'tcx>, Vec<Place<'tcx>>) {
+    let index = current_place.projection.len();
+    let new_projection =
+        tcx.mk_place_elems_from_iter(current_place.projection.iter().chain([guide_place.projection[index]]));
+    let new_current_place = Place(mir::Place {
+        local: current_place.local,
+        projection: new_projection,
+    });
+    let other_places = match guide_place.projection[index] {
+        mir::ProjectionElem::Field(projected_field, _field_ty) => {
+            expand_struct_place(current_place, mir, tcx, Some(projected_field.index()))
+        },
+        mir::ProjectionElem::Deref
+        | mir::ProjectionElem::Index(..)
+        | mir::ProjectionElem::ConstantIndex { .. }
+        | mir::ProjectionElem::Subslice { .. }
+        | mir::ProjectionElem::Downcast(..)
+        | mir::ProjectionElem::OpaqueCast(..) => vec![],
+    };
+    (new_current_place, other_places)
 }
 
 /// Try to collapse all places in `places` by following the
@@ -250,24 +235,4 @@ pub fn collapse<'tcx>(
         }
     }
     recurse(mir, tcx, places, guide_place.local.into(), guide_place);
-}
-
-#[must_use]
-pub fn is_copy<'tcx>(tcx: ty::TyCtxt<'tcx>, ty: ty::Ty<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-    if let ty::TyKind::Ref(_, _, mutability) = ty.kind() {
-        // Shared references are copy, mutable references are not.
-        // `type_implements_trait` doesn't consider that.
-        matches!(mutability, mir::Mutability::Not)
-    } else if let Some(copy_trait) = tcx.lang_items().copy_trait() {
-        let infcx = tcx.infer_ctxt().build();
-        // If `ty` has any inference variables (e.g. a region variable), then using it with
-        // the freshly-created `InferCtxt` (i.e. `tcx.infer_ctxt().enter(..)`) will cause
-        // a panic, since those inference variables don't exist in the new `InferCtxt`.
-        // See: https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20Panic.20in.20is_copy_modulo_regions
-        infcx
-            .type_implements_trait(copy_trait, [infcx.freshen(ty)], param_env)
-            .must_apply_considering_regions()
-    } else {
-        false
-    }
 }

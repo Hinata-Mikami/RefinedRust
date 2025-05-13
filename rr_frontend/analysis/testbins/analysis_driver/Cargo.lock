@@ -15,10 +15,8 @@ dependencies = [
 name = "analysis"
 version = "0.1.0"
 dependencies = [
- "log",
  "rr_rustc_interface",
  "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -6,8 +6,6 @@
 
 mod definitely_allocated;
 mod definitely_initialized;
-// mod maybe_borrowed;
 
 pub use definitely_allocated::*;
 pub use definitely_initialized::*;
-// pub use maybe_borrowed::*;
