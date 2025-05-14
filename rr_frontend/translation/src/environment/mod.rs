@@ -18,13 +18,12 @@ pub mod polonius_info;
 pub mod procedure;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::collections::HashMap;
 use std::rc::Rc;
 
+use rr_rustc_interface::ast;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{ast, span};
 
 use crate::attrs;
 use crate::environment::borrowck::facts;
@@ -52,35 +51,9 @@ impl<'tcx> Environment<'tcx> {
         }
     }
 
-    /// Returns the path of the source that is being compiled
-    pub fn source_path(&self) -> PathBuf {
-        self.tcx.sess.local_crate_source_file().unwrap()
-    }
-
-    /// Returns the file name of the source that is being compiled
-    pub fn source_file_name(&self) -> String {
-        let source_path = self.source_path();
-        source_path.file_name().unwrap().to_str().unwrap().to_owned()
-    }
-
-    /// Returns the name of the crate that is being compiled
-    pub fn crate_name(&self) -> String {
-        self.tcx.crate_name(span::def_id::LOCAL_CRATE).to_string()
-    }
-
     /// Returns the typing context
     pub const fn tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
-    }
-
-    /// Returns the `CodeMap`
-    pub fn codemap(&self) -> &'tcx span::source_map::SourceMap {
-        self.tcx.sess.source_map()
-    }
-
-    /// Returns true if an error has been emitted
-    pub fn has_errors(&self) -> bool {
-        self.tcx.sess.has_errors().is_some()
     }
 
     /// Get ids of Rust procedures.
@@ -99,15 +72,6 @@ impl<'tcx> Environment<'tcx> {
         // TODO: cache results
         let (_, _, statics, _, _) = visitor.get_results();
         statics
-    }
-
-    /// Get ids of Rust consts.
-    pub fn get_consts(&self) -> Vec<LocalDefId> {
-        let mut visitor = CollectPrustiSpecVisitor::new(self);
-        visitor.run();
-        // TODO: cache results
-        let (_, _, _, consts, _) = visitor.get_results();
-        consts
     }
 
     /// Get ids of Rust modules.
@@ -208,12 +172,6 @@ impl<'tcx> Environment<'tcx> {
         crate_name
     }
 
-    /// Get the span of a definition
-    /// Note: panics on non-local `def_id`
-    pub fn get_item_span(&self, def_id: DefId) -> span::Span {
-        self.tcx.hir().span_if_local(def_id).unwrap()
-    }
-
     pub fn get_absolute_item_name(&self, def_id: DefId) -> String {
         self.tcx.def_path_str(def_id)
     }
@@ -288,7 +246,6 @@ impl<'tcx> Environment<'tcx> {
         let body = body_with_facts.body;
         let facts = facts::Borrowck {
             input_facts: RefCell::new(body_with_facts.input_facts),
-            output_facts: body_with_facts.output_facts.unwrap(),
             location_table: RefCell::new(body_with_facts.location_table),
         };
 
@@ -304,49 +261,6 @@ impl<'tcx> Environment<'tcx> {
         self.local_mir(def_id);
         let borrowck_facts = self.borrowck_facts.borrow();
         borrowck_facts.get(&def_id).unwrap().clone()
-    }
-
-    /// Get the MIR body of an external procedure.
-    pub fn external_mir<'a>(&self, def_id: DefId) -> &'a mir::Body<'tcx> {
-        self.tcx().optimized_mir(def_id)
-    }
-
-    /// Get all relevant trait declarations for some type.
-    pub fn get_traits_decls_for_type(&self, ty: ty::Ty<'tcx>) -> HashSet<DefId> {
-        let mut res = HashSet::new();
-        let traits = self.tcx().all_traits();
-        for trait_id in traits {
-            self.tcx().for_each_relevant_impl(trait_id, ty, |impl_id| {
-                if let Some(relevant_trait_id) = self.tcx().trait_id_of_impl(impl_id) {
-                    res.insert(relevant_trait_id);
-                }
-            });
-        }
-        res
-    }
-
-    /// Get an associated item by name.
-    pub fn get_assoc_item(&self, id: DefId, name: span::Symbol) -> Option<ty::AssocItem> {
-        // FIXME: Probably we should use https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AssociatedItems.html#method.find_by_name_and_namespace
-        // instead.
-        self.tcx().associated_items(id).filter_by_name_unhygienic(name).next().copied()
-    }
-
-    /// Get a trait method declaration by name for type.
-    pub fn get_trait_method_decl_for_type(
-        &self,
-        typ: ty::Ty<'tcx>,
-        trait_id: DefId,
-        name: span::Symbol,
-    ) -> Vec<ty::AssocItem> {
-        let mut result = Vec::new();
-        self.tcx().for_each_relevant_impl(trait_id, typ, |impl_id| {
-            let item = self.get_assoc_item(impl_id, name);
-            if let Some(inner) = item {
-                result.push(inner);
-            }
-        });
-        result
     }
 }
 

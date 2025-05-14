@@ -6,7 +6,6 @@
 
 use std::cell::RefCell;
 use std::fmt;
-use std::rc::Rc;
 
 use rr_rustc_interface::borrowck;
 use rr_rustc_interface::borrowck::consumers::{LocationTable, RichLocation, RustcFacts};
@@ -35,8 +34,6 @@ impl LocationTableExt for LocationTable {
 pub struct Borrowck {
     /// Polonius input facts.
     pub input_facts: RefCell<Option<Box<AllInput>>>,
-    /// Polonius output facts.
-    pub output_facts: Rc<AllOutput>,
     /// The table that maps Polonius points to locations in the table.
     pub location_table: RefCell<Option<LocationTable>>,
 }

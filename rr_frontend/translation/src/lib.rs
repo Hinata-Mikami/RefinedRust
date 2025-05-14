@@ -14,7 +14,6 @@ mod body;
 mod consts;
 mod data;
 mod environment;
-mod force_matches_macro;
 mod procedures;
 mod regions;
 mod search;
@@ -23,7 +22,6 @@ mod spec_parsers;
 mod traits;
 mod types;
 mod unification;
-mod utils;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;

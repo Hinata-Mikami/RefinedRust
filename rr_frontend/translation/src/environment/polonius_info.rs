@@ -66,8 +66,6 @@ pub enum UniversalRegionKind {
     Function,
     /// a locally declared universal region (except for the function region)
     Local,
-    /// an externally declared universal region (relevant for closures)
-    External,
 }
 
 #[derive(Debug)]

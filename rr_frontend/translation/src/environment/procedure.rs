@@ -4,7 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::HashSet;
 use std::rc::Rc;
 
 use log::trace;
@@ -24,8 +23,6 @@ pub struct Procedure<'tcx> {
     mir: Rc<mir::Body<'tcx>>,
     real_edges: RealEdges,
     loop_info: loops::ProcedureLoops,
-    reachable_basic_blocks: HashSet<mir::BasicBlock>,
-    //nonspec_basic_blocks: HashSet<BasicBlock>,
 }
 
 impl<'tcx> Procedure<'tcx> {
@@ -36,8 +33,6 @@ impl<'tcx> Procedure<'tcx> {
         let tcx = env.tcx();
         let mir = env.local_mir(proc_def_id.expect_local());
         let real_edges = RealEdges::new(&mir);
-        let reachable_basic_blocks = build_reachable_basic_blocks(&mir, &real_edges);
-        //let nonspec_basic_blocks = build_nonspec_basic_blocks(&mir, &real_edges, &tcx);
         let loop_info = loops::ProcedureLoops::new(&mir, &real_edges);
 
         Self {
@@ -46,8 +41,6 @@ impl<'tcx> Procedure<'tcx> {
             mir,
             real_edges,
             loop_info,
-            reachable_basic_blocks,
-            //nonspec_basic_blocks,
         }
     }
 
@@ -74,80 +67,9 @@ impl<'tcx> Procedure<'tcx> {
         self.tcx
     }
 
-    /// Get an absolute `def_path`. Note: not preserved across compilations!
-    #[must_use]
-    pub fn get_def_path(&self) -> String {
-        let def_path = self.tcx.def_path(self.proc_def_id);
-        let mut crate_name = self.tcx.crate_name(def_path.krate).to_string();
-        crate_name.push_str(&def_path.to_string_no_crate_verbose());
-        crate_name
-    }
-
-    /// Check whether the block is reachable
-    #[must_use]
-    pub fn is_reachable_block(&self, bbi: BasicBlockIndex) -> bool {
-        self.reachable_basic_blocks.contains(&bbi)
-    }
-
-    #[must_use]
-    pub fn is_panic_block(&self, bbi: BasicBlockIndex) -> bool {
-        let mir::TerminatorKind::Call { func, .. } = &self.mir[bbi].terminator().kind else {
-            return false;
-        };
-
-        let mir::Operand::Constant(box mir::Constant { literal, .. }) = func else {
-            return false;
-        };
-
-        let mir::ConstantKind::Ty(c) = literal else {
-            return false;
-        };
-
-        let ty::TyKind::FnDef(def_id, ..) = c.ty().kind() else {
-            return false;
-        };
-
-        // let func_proc_name = self.tcx.absolute_item_path_str(def_id);
-        let func_proc_name = self.tcx.def_path_str(*def_id);
-
-        func_proc_name == "std::rt::begin_panic"
-            || func_proc_name == "core::panicking::panic"
-            || func_proc_name == "core::panicking::panic_fmt"
-    }
-
-    /// Get the successors of a basic block.
-    #[must_use]
-    pub fn successors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
-        self.real_edges.successors(bbi)
-    }
-
     /// Get the predecessors of a basic block.
     #[must_use]
     pub fn predecessors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
         self.real_edges.predecessors(bbi)
     }
-}
-
-/// Returns the set of basic blocks that are not used as part of the typechecking of Prusti specifications
-fn build_reachable_basic_blocks(mir: &mir::Body, real_edges: &RealEdges) -> HashSet<mir::BasicBlock> {
-    let mut reachable_basic_blocks: HashSet<mir::BasicBlock> = HashSet::new();
-    let mut visited: HashSet<mir::BasicBlock> = HashSet::new();
-    let mut to_visit: Vec<mir::BasicBlock> = vec![mir.basic_blocks.indices().next().unwrap()];
-
-    while let Some(source) = to_visit.pop() {
-        if visited.contains(&source) {
-            continue;
-        }
-
-        visited.insert(source);
-        reachable_basic_blocks.insert(source);
-
-        for &target in real_edges.successors(source) {
-            if !visited.contains(&target) {
-                to_visit.push(target);
-            }
-        }
-    }
-
-    reachable_basic_blocks
 }

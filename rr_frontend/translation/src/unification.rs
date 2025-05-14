@@ -12,7 +12,7 @@ use rr_rustc_interface::middle::ty;
 
 type UnificationMap<'a, 'tcx> = &'a mut HashMap<u32, ty::GenericArg<'tcx>>;
 
-pub fn unify_args<'tcx>(
+fn unify_args<'tcx>(
     arg1: ty::GenericArg<'tcx>,
     arg2: ty::GenericArg<'tcx>,
     mapping: UnificationMap<'_, 'tcx>,
@@ -34,7 +34,8 @@ pub fn unify_args<'tcx>(
         },
     }
 }
-pub fn unify_generic_args<'tcx>(
+
+fn unify_generic_args<'tcx>(
     arg1: ty::GenericArgsRef<'tcx>,
     arg2: ty::GenericArgsRef<'tcx>,
     mapping: UnificationMap<'_, 'tcx>,
@@ -49,6 +50,7 @@ pub fn unify_generic_args<'tcx>(
     }
     true
 }
+
 pub fn unify_types<'tcx>(ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>, mapping: UnificationMap<'_, 'tcx>) -> bool {
     match ty1.kind() {
         ty::TyKind::Adt(adt, args1) => {
@@ -98,19 +100,16 @@ pub fn args_unify_types<'tcx>(
 
     for (arg1, arg2) in reference.iter().zip(compare.iter()) {
         // TODO check if other kinds of args are unifiable
-        if let Some(ty1) = arg1.as_type() {
-            if let Some(arg2) = arg2 {
-                if let Some(ty2) = arg2.as_type() {
-                    if !unify_types(ty1, ty2, mapping) {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+        let Some(ty1) = arg1.as_type() else { continue };
+
+        let Some(arg2) = arg2 else { return false };
+
+        let Some(ty2) = arg2.as_type() else { return false };
+
+        if !unify_types(ty1, ty2, mapping) {
+            return false;
         }
     }
+
     true
 }

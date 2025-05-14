@@ -52,10 +52,6 @@ impl EarlyLateRegionMap {
             polonius_info::UniversalRegionKind::Local => {
                 self.lookup_region(r).map(|x| radium::UniversalLft::Local(x.to_owned()))
             },
-
-            polonius_info::UniversalRegionKind::External => {
-                self.lookup_region(r).map(|x| radium::UniversalLft::External(x.to_owned()))
-            },
         }
     }
 
