@@ -775,8 +775,6 @@ pub struct GenericTraitUse<'tcx, 'def> {
     /// the DefId of the trait
     pub did: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
-    /// the self type this is implemented for
-    pub self_ty: ty::ParamTy,
     /// the Coq-level trait use
     pub trait_use: radium::LiteralTraitSpecUseRef<'def>,
     /// quantifiers for HRTBs
@@ -786,19 +784,6 @@ pub struct GenericTraitUse<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
-    /// Get the names of associated types of this trait.
-    pub fn get_associated_type_names(&self, env: &Environment<'_>) -> Vec<String> {
-        let mut assoc_tys = Vec::new();
-
-        // get associated types
-        let assoc_types = env.get_trait_assoc_types(self.did);
-        for ty_did in &assoc_types {
-            let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
-            assoc_tys.push(ty_name);
-        }
-        assoc_tys
-    }
-
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
     pub fn get_associated_type_use(
         &self,
@@ -821,22 +806,6 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
 
             Ok(trait_use.make_assoc_type_use(&strip_coq_ident(&type_name)))
         }
-    }
-
-    /// Get the associated type instantiations for this trait use.
-    pub fn get_associated_type_uses(&self, env: &Environment<'_>) -> Vec<radium::Type<'def>> {
-        let mut assoc_tys: Vec<radium::Type> = Vec::new();
-
-        // get associated types
-        let assoc_types = env.get_trait_assoc_types(self.did);
-        for ty_did in &assoc_types {
-            let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
-            let trait_use_ref = self.trait_use.borrow();
-            let trait_use = trait_use_ref.as_ref().unwrap();
-            let lit = trait_use.make_assoc_type_use(&strip_coq_ident(&ty_name));
-            assoc_tys.push(lit);
-        }
-        assoc_tys
     }
 
     pub fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, radium::Type<'def>)> {
@@ -867,17 +836,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let did = trait_ref.def_id;
 
-        // the self param should be a Param that is bound in the current scope
-        let param = if let ty::TyKind::Param(param) = trait_ref.args[0].expect_ty().kind() {
-            *param
-        } else {
-            unreachable!("self should be a Param");
-        };
-
         GenericTraitUse {
             did,
             trait_ref,
-            self_ty: param,
             trait_use,
             bound_regions: bound_regions.to_vec(),
             is_self_use: false,
@@ -891,17 +852,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let did = trait_ref.def_id;
 
-        // the self param should be a Param that is bound in the current scope
-        let param = if let ty::TyKind::Param(param) = trait_ref.args[0].expect_ty().kind() {
-            *param
-        } else {
-            unreachable!("self should be a Param");
-        };
-
         GenericTraitUse {
             did,
             trait_ref,
-            self_ty: param,
             trait_use,
             bound_regions: vec![],
             is_self_use: true,

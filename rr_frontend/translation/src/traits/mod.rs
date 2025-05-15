@@ -59,11 +59,8 @@ pub enum Error<'tcx> {
 
     #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
     TraitImplSpec(DefId, String),
-
-    /// Unknown error
-    #[display("Unknown Error")]
-    Unknown,
 }
+
 pub type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
 
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.
