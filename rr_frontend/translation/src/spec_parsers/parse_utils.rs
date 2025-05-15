@@ -61,7 +61,6 @@ pub struct LiteralTypeWithRef {
     pub rfn: IdentOrTerm,
     pub ty: Option<String>,
     pub raw: specs::TypeIsRaw,
-    pub meta: specs::TypeAnnotMeta,
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
@@ -88,21 +87,15 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
         if parse::At::peek(input) {
             input.parse::<_, MToken![@]>(meta)?;
             let ty: parse::LitStr = input.parse(meta)?;
-            let (ty, meta) = meta.process_coq_literal(&ty.value());
+            let (ty, _) = meta.process_coq_literal(&ty.value());
 
             Ok(Self {
                 rfn,
                 ty: Some(ty),
                 raw,
-                meta,
             })
         } else {
-            Ok(Self {
-                rfn,
-                ty: None,
-                raw,
-                meta: specs::TypeAnnotMeta::empty(),
-            })
+            Ok(Self { rfn, ty: None, raw })
         }
     }
 }
@@ -111,15 +104,14 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
 #[derive(Debug)]
 pub struct LiteralType {
     pub ty: String,
-    pub meta: specs::TypeAnnotMeta,
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
     fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = input.parse(meta)?;
-        let (ty, meta) = meta.process_coq_literal(&ty.value());
+        let (ty, _) = meta.process_coq_literal(&ty.value());
 
-        Ok(Self { ty, meta })
+        Ok(Self { ty })
     }
 }
 
@@ -249,20 +241,6 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
     }
 }
 
-/// a variant of `RRCoqContextItem` for module/crate scope
-#[derive(Debug)]
-pub struct RRGlobalCoqContextItem {
-    pub item: String,
-}
-
-impl<U> parse::Parse<U> for RRGlobalCoqContextItem {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        let item: parse::LitStr = input.parse(meta)?;
-
-        Ok(Self { item: item.value() })
-    }
-}
-
 #[allow(clippy::needless_pass_by_value)]
 pub fn str_err(e: parse::Error) -> String {
     format!("{:?}", e)
@@ -276,12 +254,8 @@ fn handle_escapes(s: &str) -> String {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum RustPathElem {
     AssocItem(String),
-    AsImpl {
-        of_trait: Vec<RustPathElem>,
-        // TODO: these might be much more general.
-        params: Vec<String>,
-    },
 }
+
 pub type RustPath = Vec<RustPathElem>;
 
 /// Lookup of lifetime and type parameters given their Rust source names.
@@ -493,13 +467,13 @@ mod tests {
 
         pub literals: HashMap<RustPath, String>,
     }
+
     impl<'def> ParamLookup<'def> for TestScope {
         fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
             if path.len() == 1 {
-                if let super::RustPathElem::AssocItem(it) = &path[0] {
-                    if let Some(n) = self.ty_names.get(it) {
-                        return Some(radium::Type::LiteralParam(n.to_owned()));
-                    }
+                let super::RustPathElem::AssocItem(it) = &path[0];
+                if let Some(n) = self.ty_names.get(it) {
+                    return Some(radium::Type::LiteralParam(n.to_owned()));
                 }
             }
 

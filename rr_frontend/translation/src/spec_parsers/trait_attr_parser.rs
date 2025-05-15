@@ -8,11 +8,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
-use radium::coq;
 use rr_rustc_interface::ast;
 
 use crate::spec_parsers::parse_utils::{
-    str_err, IdentOrTerm, ParamLookup, RRCoqContextItem, RRCoqType, RustPath, RustPathElem,
+    str_err, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem,
 };
 
 /// Parse attributes on a trait.
@@ -42,10 +41,9 @@ impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T>
 
     fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
         if path.len() == 1 {
-            if let RustPathElem::AssocItem(it) = &path[0] {
-                if let Some(lit) = self.literals.get(it) {
-                    return Some(lit);
-                }
+            let RustPathElem::AssocItem(it) = &path[0];
+            if let Some(lit) = self.literals.get(it) {
+                return Some(lit);
             }
         }
         self.inner_scope.lookup_literal(path)
@@ -55,7 +53,6 @@ impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T>
 #[derive(Clone, Debug)]
 pub struct TraitAttrs {
     pub attrs: radium::TraitSpecAttrsDecl,
-    pub context_items: Vec<coq::binder::Binder>,
 }
 
 #[allow(clippy::module_name_repetitions)]
@@ -85,7 +82,6 @@ where
         &'a mut self,
         attrs: &'a [&'a ast::ast::AttrItem],
     ) -> Result<TraitAttrs, String> {
-        let mut context_items = Vec::new();
         let mut trait_attrs = BTreeMap::new();
 
         let mut semantic_interp = None;
@@ -126,15 +122,6 @@ where
                     }
                     semantic_interp = Some(lit);
                 },
-                "context" => {
-                    let context_item: RRCoqContextItem = buffer.parse(&self.scope).map_err(str_err)?;
-                    let param = coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        None,
-                        coq::term::Type::Literal(context_item.item),
-                    );
-                    context_items.push(param);
-                },
                 "export_as" => (),
                 _ => {
                     return Err(format!("unknown attribute for trait specification: {:?}", args));
@@ -144,7 +131,6 @@ where
 
         Ok(TraitAttrs {
             attrs: radium::TraitSpecAttrsDecl::new(trait_attrs, semantic_interp),
-            context_items,
         })
     }
 }

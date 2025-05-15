@@ -27,7 +27,6 @@ pub struct CrateAttrs {
     pub includes: HashSet<String>,
     pub export_includes: HashSet<String>,
     pub package: Option<String>,
-    pub context_params: Vec<coq::binder::Binder>,
 }
 
 #[allow(clippy::module_name_repetitions)]
@@ -49,7 +48,6 @@ impl CrateAttrParser for VerboseCrateAttrParser {
         let mut export_includes: HashSet<String> = HashSet::new();
         let mut prefix: Option<String> = None;
         let mut package: Option<String> = None;
-        let mut context_params = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -87,14 +85,6 @@ impl CrateAttrParser for VerboseCrateAttrParser {
                     }
                     package = Some(path.value().clone());
                 },
-                "context" => {
-                    let param: parse_utils::RRGlobalCoqContextItem = buffer.parse(&()).map_err(str_err)?;
-                    context_params.push(coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        None,
-                        coq::term::Type::Literal(param.item),
-                    ));
-                },
                 _ => {
                     return Err(format!("unknown attribute for crate specification: {:?}", args));
                 },
@@ -107,7 +97,6 @@ impl CrateAttrParser for VerboseCrateAttrParser {
             includes,
             export_includes,
             package,
-            context_params,
         })
     }
 }

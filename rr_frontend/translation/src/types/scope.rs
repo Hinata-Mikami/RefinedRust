@@ -158,11 +158,10 @@ impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         // first lookup if this is a type parameter
         if path.len() == 1 {
-            if let RustPathElem::AssocItem(it) = &path[0] {
-                if let Some(idx) = self.ty_names.get(it) {
-                    if let Some(n) = self.lookup_ty_param_idx(*idx) {
-                        return Some(radium::Type::LiteralParam(n.to_owned()));
-                    }
+            let RustPathElem::AssocItem(it) = &path[0];
+            if let Some(idx) = self.ty_names.get(it) {
+                if let Some(n) = self.lookup_ty_param_idx(*idx) {
+                    return Some(radium::Type::LiteralParam(n.to_owned()));
                 }
             }
         }

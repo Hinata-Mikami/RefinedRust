@@ -29,7 +29,6 @@ pub struct ModuleAttrs {
     pub exports: Vec<coq::module::Export>,
     pub includes: HashSet<String>,
     pub export_includes: HashSet<String>,
-    pub context_params: Vec<coq::binder::Binder>,
 }
 
 #[allow(clippy::module_name_repetitions)]
@@ -50,7 +49,6 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();
         let mut export_includes: HashSet<String> = HashSet::new();
-        let mut context_params = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -74,14 +72,6 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
                     let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
                     export_includes.insert(name.value());
                 },
-                "context" => {
-                    let param: parse_utils::RRGlobalCoqContextItem = buffer.parse(&()).map_err(str_err)?;
-                    context_params.push(coq::binder::Binder::new_generalized(
-                        coq::binder::Kind::MaxImplicit,
-                        None,
-                        coq::term::Type::Literal(param.item),
-                    ));
-                },
                 _ => {
                     return Err(format!("unknown attribute for module specification: {:?}", args));
                 },
@@ -92,7 +82,6 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
             exports,
             includes,
             export_includes,
-            context_params,
         })
     }
 }
