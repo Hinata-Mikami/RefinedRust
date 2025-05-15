@@ -6,7 +6,7 @@
 
 use derive_more::Display;
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
 
 use crate::environment::borrowck::facts;
@@ -52,9 +52,6 @@ pub enum TranslationError<'tcx> {
     #[display("Fatal Error: {}", _0)]
     FatalError(String),
 
-    #[display("Loan was not found at location {:?}", _0)]
-    LoanNotFound(mir::Location),
-
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
 
@@ -93,9 +90,6 @@ pub enum TranslationError<'tcx> {
 
     #[display("Procedure could not be registered: {}", _0)]
     ProcedureRegistry(String),
-
-    #[display("Lookup in a dummy scope: {}", _0)]
-    DummyScope(String),
 
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(String),

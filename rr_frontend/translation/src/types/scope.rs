@@ -68,14 +68,6 @@ pub struct AdtUseKey {
 }
 
 impl AdtUseKey {
-    pub fn new(defid: DefId, params: &[radium::Type<'_>]) -> Self {
-        let generic_syntys: Vec<_> = params.iter().map(radium::SynType::from).collect();
-        Self {
-            base_did: defid,
-            generics: generic_syntys,
-        }
-    }
-
     pub fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
             params.get_all_ty_params_with_assocs().iter().map(radium::SynType::from).collect();
@@ -661,11 +653,6 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
         } else {
             Err(traits::Error::UnknownLocalInstance(trait_did, tcx.mk_args(args)))
         }
-    }
-
-    /// Get trait uses in the current scope.
-    pub const fn get_trait_uses(&self) -> &HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>> {
-        &self.used_traits
     }
 
     /// Within a trait declaration, get the Self trait use.

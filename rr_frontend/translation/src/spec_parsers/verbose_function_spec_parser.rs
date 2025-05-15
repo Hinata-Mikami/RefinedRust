@@ -872,7 +872,6 @@ where
                 rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
                 ty: None,
                 raw: specs::TypeIsRaw::No,
-                meta: specs::TypeAnnotMeta::empty(),
             };
             let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
 
@@ -951,7 +950,6 @@ where
                 rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
                 ty: None,
                 raw: specs::TypeIsRaw::No,
-                meta: specs::TypeAnnotMeta::empty(),
             };
             let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
 

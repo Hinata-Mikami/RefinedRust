@@ -69,18 +69,6 @@ impl<'tcx, 'def> ParamLookup<'def> for FunctionState<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> FunctionState<'tcx, 'def> {
-    /// Create a new empty scope for a function.
-    pub fn empty(did: DefId) -> Self {
-        Self {
-            did,
-            tuple_uses: HashMap::new(),
-            shim_uses: HashMap::new(),
-            generic_scope: scope::Params::default(),
-            polonius_info: None,
-            lifetime_scope: EarlyLateRegionMap::default(),
-        }
-    }
-
     /// Create a new scope for a function translation with the given generic parameters and
     /// incorporating the trait environment.
     pub fn new_with_traits(
@@ -585,17 +573,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         Ok(radium::StructRepr::ReprRust)
-    }
-
-    pub fn translate_region_in_scope(
-        scope: &scope::Params<'tcx, 'def>,
-        region: ty::Region<'tcx>,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
-        let mut deps = HashSet::new();
-        let env = ty::ParamEnv::empty();
-        let state = AdtState::new(&mut deps, scope, &env);
-        let mut state = STInner::TranslateAdt(state);
-        Self::translate_region(&mut state, region)
     }
 
     /// Try to translate a region to a Caesium lifetime.
