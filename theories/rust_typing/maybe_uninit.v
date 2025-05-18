@@ -20,8 +20,14 @@ Section type.
       | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' v
       | None => (uninit T.(ty_syn_type)).(ty_own_val) π () v
       end%I;
-    ty_syn_type := T.(ty_syn_type);   (* TODO: but every value is valid! - so in principle, this should be Untyped *)
-    _ty_has_op_type ot mt :=  ∃ ly, syn_type_has_layout T.(ty_syn_type) ly ∧ ot = UntypedOp ly;
+    ty_syn_type := T.(ty_syn_type);
+    _ty_has_op_type ot mt :=
+      ∃ ly, syn_type_has_layout T.(ty_syn_type) ly ∧ ot_layout ot = ly ∧
+      match mt with
+      | MCId => ot = UntypedOp ly
+      | MCCopy => ty_has_op_type T ot MCCopy
+      | MCNone => True
+      end;
     ty_shr κ π r l :=
       match r with
       | Some r' => ∃ r'', place_rfn_interp_shared r' r'' ∗ T.(ty_shr) κ π r'' l
@@ -39,7 +45,7 @@ Section type.
   Qed.
   Next Obligation.
     simpl; iIntros (rt T ot mt Hot).
-    destruct Hot as (ly & Hot & ->). done.
+    destruct Hot as (ly & Hot & <- & Hmt). done.
   Qed.
   Next Obligation.
     iIntros (rt T π r v) "_". done.
@@ -90,9 +96,18 @@ Section type.
     iExists _. iFrame. by iApply ty_shr_mono.
   Qed.
   Next Obligation.
-    iIntros (rt T ot mt st π r v (ly & Hst & ->)) "Ha".
-    destruct mt; [done | | done].
-    destruct r as [r | ]; simpl; done.
+    iIntros (rt T ot mt st π r v (ly & Hst & <- & Hmt)) "Ha".
+    destruct mt; [done | | ].
+    - (* copy *)
+      destruct r as [r | ]; simpl; first last.
+      { by iApply uninit_memcast. }
+      iDestruct "Ha" as "(%r'' & Hrfn & Hv)".
+      iExists r''. iFrame.
+      iApply ty_memcast_compat_copy; done.
+    - rewrite Hmt. simpl.
+      iPureIntro.
+      rewrite /mem_cast_id/=. intros ?.
+      rewrite mem_cast_UntypedOp//.
   Qed.
 
   Global Program Instance maybe_uninit_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty}: TyGhostDrop (maybe_uninit ty) :=
@@ -123,11 +138,15 @@ Section ne.
   Proof.
     constructor; simpl.
     - done.
-    - eapply ty_lft_morph_make_id. 
+    - eapply ty_lft_morph_make_id.
       + rewrite {1}ty_lfts_unfold//.
       + rewrite {1}ty_wf_E_unfold//.
     - rewrite ty_has_op_type_unfold/=.
-      intros ?? ->. done.
+      intros ?? -> Hot.
+      intros ot mt.
+      do 4 f_equiv.
+      f_equiv.
+      rewrite ty_has_op_type_unfold Hot//.
     - done.
     - solve_type_proper.
     - solve_type_proper.
@@ -270,12 +289,11 @@ Section rules.
       assert (ly4 = ly2) as <- by by eapply syn_type_has_layout_inj.
       done. }
     { simpl. done. }
-    iIntros (v) "Hv". rewrite {2}/ty_own_val/=. rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly &  %Hst & %Hly & _)".
+    iIntros (v) "Hv". rewrite !uninit_own_spec.
+    iDestruct "Hv" as "(%ly &  %Hst & %Hly)".
     assert (ly1 = ly) as <- by by eapply syn_type_has_layout_inj.
-    iExists _. iR. iSplit.
-    - iPureIntro. rewrite /has_layout_val -Hsz//.
-    - iPureIntro. eapply Forall_forall; done.
+    iExists _. iR.
+    iPureIntro. rewrite /has_layout_val -Hsz//.
   Qed.
   Global Instance owned_subtype_uninit_maybe_uninit_inst π E L pers {rt} (ty : type rt) st :
     OwnedSubtype π E L pers () None (uninit st) (maybe_uninit ty) :=

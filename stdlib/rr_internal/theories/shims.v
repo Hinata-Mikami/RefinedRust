@@ -107,7 +107,7 @@ Proof.
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
   { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
-  { rewrite ly_align_mk_array_layout. 
+  { rewrite ly_align_mk_array_layout.
     unsafe_unfold_common_caesium_defs.
     sidecond_hammer. }
 Qed.
@@ -208,8 +208,8 @@ Proof.
       rewrite ltype_own_ofty_unfold/lty_of_ty_own.
       iDestruct "H_pts" as "(%ly & % & % & _ & _ & _ & %r' & <- & >(%v2 & Hpt & Hb))".
       iModIntro. iExists v2. iFrame.
-      rewrite {3 4}/ty_own_val/=.
-      iDestruct "Hb" as "(%ly' & %Hstly' & %Hlyv & ?)".
+      rewrite !uninit_own_spec.
+      iDestruct "Hb" as "(%ly' & %Hstly' & %Hlyv)".
       iExists _. iR. iFrame. iPureIntro.
       apply syn_type_has_layout_unit_inv in Hstly'; subst.
       move: Hlyv. rewrite /has_layout_val => ->. rewrite Hsz. done.
@@ -223,7 +223,7 @@ Proof.
     match goal with | H: Z.of_nat (ly_size ?Hly) ≠ 0%Z |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ USize by done.
     opose proof* (ly_align_log_in_usize T_st_ly) as Ha; first done.
-    move: Ha. 
+    move: Ha.
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iSelect (credit_store _ _) ltac:(fun H => iRename H into "Hstore").
@@ -412,7 +412,7 @@ Proof.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  Unshelve. 
+  Unshelve.
   1-2: unfold size_of_array_in_bytes in *; simplify_layout_assum; sidecond_hammer.
   all: by apply alloc_array_layout_wf.
 Qed.

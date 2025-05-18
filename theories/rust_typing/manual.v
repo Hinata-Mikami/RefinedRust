@@ -166,6 +166,7 @@ Section updateable_rules.
     iModIntro. iExists _. iFrame.
   Qed.
 
+  (* Extract an untyped value *)
   Lemma updateable_extract_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
@@ -191,6 +192,87 @@ Section updateable_rules.
     iDestruct "Ha" as "(%v & Hv & Hl)".
     iPoseProof ("HT" with "Hv Hl") as "HT".
     iModIntro. iExists _. iFrame.
+  Qed.
+
+  (* Extract a typed value *)
+  Lemma updateable_extract_typed_value l :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
+      prove_with_subtype updateable_E updateable_L false ProveDirect (£ (Nat.b2n wl)) (λ L2 κs R, R -∗
+      (∀ v3, v3 ◁ᵥ{π} r' @ ty -∗
+        l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (st_of ty)) -∗
+        updateable_core updateable_E L2)))
+    ⊢ P.
+  Proof.
+    iIntros "HT".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
+    iDestruct "Hb" as "(%wl & %ty & %r' & -> & -> & -> & HT)".
+    (*rewrite /compute_layout_goal. simpl.*)
+    rewrite /prove_with_subtype.
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R & HR & HL & HT)"; [solve_ndisj.. | ].
+    iMod ("HR") as "(Hcred & HR)".
+    iSpecialize ("HT" with "HR").
+    iPoseProof (ltype_own_has_layout with "Ha") as "(%ly & %Hst & %Hly)".
+    iMod (ofty_own_split_value_untyped_lc with "Hcred Ha") as "Ha"; [done.. | ].
+    iDestruct "Ha" as "(%v & Hv & Hl)".
+    iPoseProof (ofty_value_untyped_make_typed with "Hl") as "Hl"; first done.
+    iPoseProof ("HT" with "Hv Hl") as "HT".
+    iModIntro. iExists _. iFrame.
+  Qed.
+
+  Lemma updateable_merge_value l :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ∃ wl v st,
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned wl] #v @ ◁ value_t st)
+        (λ L2 R2,
+        find_in_context (FindVal v) (λ '(existT rt (ty', r', π')),
+        ⌜π' = π⌝ ∗
+        ⌜ty_has_op_type ty' (use_op_alg' ty'.(ty_syn_type)) MCCopy⌝ ∗
+        ⌜ty'.(ty_syn_type) = st⌝ ∗
+        introduce_with_hooks updateable_E L2 ((l ◁ₗ[π, Owned wl] #r' @ ◁ ty') ∗ R2)%I (λ L3,
+          updateable_core updateable_E L3))))
+    ⊢ P.
+  Proof.
+    iIntros "HT".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %wl & %v & %st & HT)"; simpl.
+    rewrite /subsume_full.
+    iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & HT)"; [done.. | ].
+    iDestruct "HT" as ([rt' [[ty' r'] π']]) "(Hv & -> & %Hot & %Heq & HT)" => /=.
+    iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
+    iPoseProof (ofty_own_merge_value with "Hv Hl") as "Ha".
+    { subst st. destruct (ty_syn_type ty'); try done.
+      simp_ltypes in Hst. simpl in Hst.
+      specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & _).
+      done. }
+    rewrite /introduce_with_hooks.
+    iMod ("HT" with "[] HE HL [$Ha $HR]") as "(%L3 & HL & HT)"; first done.
+    by iFrame.
+  Qed.
+
+  Lemma updateable_subsume_to l {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] r2 @ lt2) (λ L2 R2,
+        introduce_with_hooks updateable_E L2 (l ◁ₗ[π, bk] r2 @ lt2 ∗ R2) (λ L3,
+          updateable_core updateable_E L3)))
+    ⊢ P.
+  Proof.
+    iIntros "HT".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
+    rewrite /subsume_full.
+    iMod ("Hb" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & Hs & HL & HT)"; [done.. | ].
+    simpl. iMod "Hs" as "Hs".
+    rewrite /introduce_with_hooks.
+    iMod ("HT" with "[] HE HL Hs") as "(%L3 & HL & HT)"; first done.
+    by iFrame.
   Qed.
 
   (* TODO: add lemma for unfolding / subtyping? *)

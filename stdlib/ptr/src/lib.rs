@@ -32,6 +32,7 @@ pub const fn write<T>(dst: *mut T, src:T) {
 #[rr::requires(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]
 #[rr::requires("ty_allows_reads ty.(xtype_ty)")]
 #[rr::requires("ty_allows_writes ty.(xtype_ty)")]
+/// (`read` does a typed Copy at the syntype of T)
 #[rr::requires("st_of ty.(xtype_ty) = {st_of T}")]
 #[rr::requires("Copyable ty.(xtype_ty)")]
 #[rr::ensures(#iris "src ◁ₗ[π, k] # ($# ty.(xtype_rfn)) @ ◁ ty.(xtype_ty)")]

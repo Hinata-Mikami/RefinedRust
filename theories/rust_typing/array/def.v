@@ -323,7 +323,7 @@ Section lemmas.
   Proof.
     intros Hst1 Hst2 Hly.
     rewrite /ty_own_val/=.
-    iDestruct 1 as "(%ly0 & %Hly0 & %Hlyv0 & _)".
+    iDestruct 1 as "(%ly0 & %Hly0 & %Hlyv0)".
     assert (ly0 = ly1) as ->. { by eapply syn_type_has_layout_inj. }
     (*assert (ly0 = ly1) as -> by by eapply syn_type_has_layout_inj.*)
     iExists _. iR.

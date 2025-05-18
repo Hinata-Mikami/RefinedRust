@@ -55,10 +55,11 @@ Section lemmas.
     iIntros (Hst ?). iSplitR; last iSplitR.
     - iPureIntro. done.
     - simpl. eauto.
-    - iIntros (v) "Hv". iEval (rewrite /ty_own_val/=).
+    - iIntros (v) "Hv".
+      rewrite uninit_own_spec.
+      iEval (rewrite /ty_own_val/=).
       iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hly)".
-      iExists ly. iR. iSplitR. { iPureIntro. rewrite /has_layout_val Hly. apply Hst; done. }
-      iPureIntro. eapply Forall_forall.  eauto.
+      iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly. apply Hst; done.
   Qed.
   Lemma owned_type_incl_uninit π {rt1} (r1 : rt1) r2 (ty1 : type rt1) st :
     st = ty_syn_type ty1 →
@@ -68,10 +69,9 @@ Section lemmas.
     - iPureIntro. iIntros (?? Hst1 Hst2). subst st. simpl in *.
       f_equiv. by eapply syn_type_has_layout_inj.
     - simpl. eauto.
-    - iIntros (v) "Hv". iEval (rewrite /ty_own_val/=).
+    - iIntros (v) "Hv". rewrite uninit_own_spec.
       iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst' & %Hly)".
-      iExists ly. subst st. iR.  iR. iPureIntro.
-      eapply Forall_forall.  eauto.
+      iExists ly. subst st. iR. done.
   Qed.
 
   (* TODO move *)
@@ -169,7 +169,7 @@ Section deinit.
 
     (*Search li.iterate "elim".*)
     (* invariant: ownership of the first n uninit segments.
-        ownership for the rest 
+        ownership for the rest
     *)
 
     (*
@@ -323,8 +323,8 @@ Section deinit_fallback.
     iExists ly. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iFrame. iExists _. iSplitR; first done.
     iModIntro. iModIntro.
-    iExists ly. iSplitR; first done. iSplitR; first done.
-    iPureIntro. rewrite Forall_forall. done.
+    rewrite uninit_own_spec.
+    iExists ly. done.
   Qed.
   Definition uninit_mono_inst := [instance uninit_mono].
   Global Existing Instance uninit_mono_inst | 40.
@@ -374,12 +374,11 @@ Section deinit_fallback.
       done.
     - simpl. eauto.
     - iIntros (v) "Hv".
-      rewrite {2}/ty_own_val/=.
+      rewrite uninit_own_spec.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
       (*iIntros "(%ly & %Hst & %Hly & Hv)".*)
-      iExists _. iR. iSplitL.
-      + iPureIntro. move: Hv. rewrite /has_layout_val Hsz//.
-      + iPureIntro. apply Forall_forall. eauto.
+      iExists _. iR.
+      iPureIntro. move: Hv. rewrite /has_layout_val Hsz//.
   Qed.
   Definition owned_subtype_to_uninit_inst := [instance owned_subtype_to_uninit].
   Global Existing Instance owned_subtype_to_uninit_inst.

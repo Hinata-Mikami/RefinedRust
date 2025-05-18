@@ -486,7 +486,7 @@ Section structs.
         iExists _; iPureIntro. split; first done.
         rewrite /has_layout_val length_replicate.
         rewrite Hlook2 in Hlook. injection Hlook as [= ->].
-        split; first done. by apply Forall_true.
+        done.
     - iPureIntro. done.
   Qed.
 
