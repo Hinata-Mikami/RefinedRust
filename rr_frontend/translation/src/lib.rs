@@ -1632,7 +1632,6 @@ fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
             Ok(spec)
         };
 
-
         let spec = process_impl();
         match spec {
             Ok(spec) => {

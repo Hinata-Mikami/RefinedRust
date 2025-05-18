@@ -445,14 +445,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         stmts
     }
 
-    /// Make a trivial place accessing `local`.
-    fn make_local_place(&self, local: mir::Local) -> mir::Place<'tcx> {
-        mir::Place {
-            local,
-            projection: self.env.tcx().mk_place_elems(&[]),
-        }
-    }
-
     /// Get the type of a local in a body.
     fn get_type_of_local(&self, local: mir::Local) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         self.proc

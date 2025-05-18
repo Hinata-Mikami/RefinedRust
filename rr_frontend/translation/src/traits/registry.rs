@@ -566,11 +566,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         // compute the instantiation of the quantified trait assumption in terms
                         // of the variables introduced by the trait assumption we are proving.
-                        let mut unifier = LateBoundUnifier::new(
-                            self.env.tcx(),
-                            current_param_env,
-                            &trait_use.bound_regions,
-                        );
+                        let mut unifier = LateBoundUnifier::new(self.env.tcx(), &trait_use.bound_regions);
                         unifier.map_generic_args(trait_use.trait_ref.args, subst_args);
                         let (inst, _) = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
@@ -986,20 +982,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
 pub struct LateBoundUnifier<'tcx, 'a> {
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
     early_instantiation: HashMap<ty::EarlyBoundRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub fn new(
-        tcx: ty::TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        binders_to_unify: &'a [ty::BoundRegionKind],
-    ) -> Self {
+    pub fn new(tcx: ty::TyCtxt<'tcx>, binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
         Self {
             tcx,
-            param_env,
             binders_to_unify,
             instantiation: HashMap::new(),
             early_instantiation: HashMap::new(),

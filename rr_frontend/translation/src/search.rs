@@ -6,10 +6,9 @@ use std::collections::HashMap;
 use std::mem;
 
 use log::{info, trace};
-use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{metadata, ty};
-use rr_rustc_interface::span;
+use rr_rustc_interface::{hir, span};
 
 use crate::{types, unification};
 
@@ -278,7 +277,10 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
-        Some((ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+        Some((
+            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            3,
+        ))
     } else if path[0..3] == ["core", "ptr", "const_ptr"] {
         let param_ty = ty::ParamTy::new(0, span::Symbol::intern("dummy"));
         let param_ty = ty::TyKind::Param(param_ty);
@@ -291,15 +293,24 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
-        Some((ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+        Some((
+            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            3,
+        ))
     } else if path[0..2] == ["core", "bool"] {
         let int_ty = ty::TyKind::Bool;
         let int_ty = tcx.mk_ty_from_kind(int_ty);
-        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 2))
+        Some((
+            ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            2,
+        ))
     } else if path[0..2] == ["core", "char"] {
         let int_ty = ty::TyKind::Char;
         let int_ty = tcx.mk_ty_from_kind(int_ty);
-        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 2))
+        Some((
+            ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            2,
+        ))
     } else if path[0..2] == ["core", "num"] {
         let int_ty = match path[2].as_str() {
             "isize" => Some(ty::IntTy::Isize),
@@ -324,12 +335,18 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
             let int_ty = ty::TyKind::Int(int_ty);
             let int_ty = tcx.mk_ty_from_kind(int_ty);
 
-            Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+            Some((
+                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+                3,
+            ))
         } else if let Some(uint_ty) = uint_ty {
             let int_ty = ty::TyKind::Uint(uint_ty);
             let int_ty = tcx.mk_ty_from_kind(int_ty);
 
-            Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(), 3))
+            Some((
+                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+                3,
+            ))
         } else {
             None
         }

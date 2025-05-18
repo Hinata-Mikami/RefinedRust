@@ -7,14 +7,11 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{debug, trace};
-use rr_rustc_interface::index::Idx;
 use rr_rustc_interface::middle::ty::fold::TypeFolder;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{data_structures, polonius_engine, span};
+use rr_rustc_interface::{data_structures, polonius_engine};
 
-use crate::environment::borrowck::place_regions::PlaceRegions;
-use crate::environment::borrowck::{facts, place_regions};
-use crate::environment::mir_utils::all_places::AllPlaces;
+use crate::environment::borrowck::facts;
 use crate::environment::procedure::Procedure;
 use crate::environment::Environment;
 
@@ -34,11 +31,6 @@ pub enum AtomicRegion {
 }
 
 impl AtomicRegion {
-    #[must_use]
-    pub(crate) const fn is_universal(&self) -> bool {
-        matches!(*self, Self::Universal(_, _))
-    }
-
     #[must_use]
     pub(crate) const fn is_place(&self) -> bool {
         matches!(*self, Self::PlaceRegion(_, _))
@@ -93,11 +85,6 @@ pub enum RegionKind {
     Unknown(bool),
 }
 
-#[derive(Clone, Debug)]
-pub enum Error {
-    PlaceRegions(place_regions::Error, span::Span),
-}
-
 /// Compute the transitive closure of a vec of constraints between regions.
 #[must_use]
 pub fn compute_transitive_closure(
@@ -135,7 +122,7 @@ pub struct PoloniusInfo<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
-    pub(crate) fn new(env: &'a Environment<'tcx>, procedure: &'a Procedure<'tcx>) -> Result<Self, Error> {
+    pub(crate) fn new(env: &'a Environment<'tcx>, procedure: &'a Procedure<'tcx>) -> Self {
         let tcx = procedure.get_tcx();
         let def_id = procedure.get_id();
         let mir = procedure.get_mir();
@@ -143,14 +130,8 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         // Read Polonius facts.
         let facts = env.local_mir_borrowck_facts(def_id.expect_local());
 
-        let place_regions = place_regions::load(mir);
-
         let interner = facts::Interner::new(facts.location_table.take().unwrap());
         let all_facts = facts.input_facts.take().unwrap();
-
-        // TODO: check if this is the right thing?
-        //Self::disconnect_universal_regions(tcx, mir, &place_regions, &mut all_facts)
-        //.map_err(|(err, loc)| Error::PlaceRegions(err, loc))?;
 
         let output = polonius_engine::Output::compute(&all_facts, polonius_engine::Algorithm::Naive, true);
 
@@ -175,7 +156,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
         let superset = Self::compute_superset(&output);
 
-        let info = Self {
+        Self {
             tcx,
             mir,
             borrowck_in_facts: *all_facts,
@@ -185,42 +166,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             loan_at_position,
             additional_facts,
             superset,
-        };
-        Ok(info)
-    }
-
-    fn disconnect_universal_regions(
-        tcx: ty::TyCtxt<'tcx>,
-        mir: &mir::Body<'tcx>,
-        place_regions: &PlaceRegions,
-        all_facts: &mut facts::AllInput,
-    ) -> Result<(), (place_regions::Error, span::Span)> {
-        let mut return_regions = vec![];
-        let return_span = mir.local_decls[mir::RETURN_PLACE].source_info.span;
-        // find regions for all subplaces (e.g. fields of tuples)
-        for place in mir::RETURN_PLACE.all_places(tcx, mir) {
-            if let Some(region) = place_regions.for_place(place).map_err(|err| (err, return_span))? {
-                return_regions.push(region);
-            }
         }
-
-        // regions for arguments
-        let input_regions = (1..=mir.arg_count)
-            .map(mir::Local::new)
-            .filter_map(|l| place_regions.for_local(l))
-            .collect::<Vec<_>>();
-
-        // Disconnect return regions from universal regions.
-        let universal_region = &all_facts.universal_region;
-        let is_universal = |r: &facts::Region| universal_region.contains(r);
-        let is_input_region = |r: &facts::Region| input_regions.contains(r);
-        all_facts
-            .subset_base
-            .retain(|(r1, r2, _)| (!is_universal(r1) || is_input_region(r2)) && (!is_universal(r2)));
-
-        // Add return regions to universal regions.
-        all_facts.universal_region.extend(return_regions);
-        Ok(())
     }
 
     /// Gets the kind of a region: originating from a loan, a universal region, or none of these.

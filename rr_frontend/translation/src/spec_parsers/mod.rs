@@ -32,7 +32,7 @@ pub struct ExportAs {
     pub path: RustPath,
     pub as_method: bool,
 }
-impl<F> parse::Parse<F> for ExportAs {
+impl<F> Parse<F> for ExportAs {
     fn parse(input: parse::Stream, meta: &F) -> parse::Result<Self> {
         let mut as_method = false;
         if parse::Pound::peek(input) {

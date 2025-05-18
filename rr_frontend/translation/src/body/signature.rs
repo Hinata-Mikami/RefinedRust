@@ -145,7 +145,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Process the lifetime parameters that come from the captures
         let upvars_tys = clos_args.upvar_tys();
         let mut fixed_upvars_tys = Vec::new();
-        for ty in upvars_tys.iter() {
+        for ty in upvars_tys {
             let fixed_ty =
                 regions::arg_folder::rename_closure_capture_regions(ty, env.tcx(), region_substitution, info);
             fixed_upvars_tys.push(fixed_ty);
@@ -250,10 +250,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("Function signature: {:?}", sig);
         info!("Closure generic args: {:?}", parent_args);
 
-        let info = match PoloniusInfo::new(env, proc) {
-            Ok(info) => info,
-            Err(err) => return Err(TranslationError::UnknownError(format!("{:?}", err))),
-        };
+        let info = PoloniusInfo::new(env, proc);
 
         // TODO: avoid leak
         let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
@@ -286,13 +283,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
 
-        let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) = Self::compute_closure_meta(
-            clos_args,
-            closure_arg,
-            &mut region_substitution,
-            info,
-            env,
-        );
+        let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) =
+            Self::compute_closure_meta(clos_args, closure_arg, &mut region_substitution, info, env);
 
         let mut inclusion_tracker = InclusionTracker::new(info);
         // add placeholder subsets
@@ -321,7 +313,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut all_inputs = inputs.clone();
         all_inputs.insert(0, fixed_closure_arg_ty);
 
-
         let mut t = Self {
             env,
             proc,
@@ -348,7 +339,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             capture_tys: &translated_upvars_types,
             closure_lifetime: maybe_outer_lifetime,
         };
-
 
         // get argument names
         let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
@@ -392,117 +382,105 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let sig = ty.fn_sig(env.tcx());
         info!("Function signature: {:?}", sig);
 
-        match PoloniusInfo::new(env, proc) {
-            Ok(info) => {
-                // TODO: avoid leak
-                let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+        let info = PoloniusInfo::new(env, proc);
+        // TODO: avoid leak
+        let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
 
-                let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
-                info!("Function generic args: {:?}", params);
+        let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
+        info!("Function generic args: {:?}", params);
 
-                // dump graphviz files
-                // color code: red: dying loan, pink: becoming a zombie; green: is zombie
-                if rrconfig::dump_borrowck_info() {
-                    dump_borrowck_info(env, proc.get_id(), info);
-                }
-
-                let (inputs, output, region_substitution) =
-                    regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
-                info!("inputs: {:?}, output: {:?}", inputs, output);
-
-                let mut inclusion_tracker = InclusionTracker::new(info);
-                // add placeholder subsets
-                let initial_point: facts::Point = facts::Point {
-                    location: mir::BasicBlock::from_u32(0).start_location(),
-                    typ: facts::PointType::Start,
-                };
-                for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-                    inclusion_tracker.add_static_inclusion(
-                        *r1,
-                        *r2,
-                        info.interner.get_point_index(&initial_point),
-                    );
-                }
-
-                let type_scope = Self::setup_local_scope(
-                    env,
-                    ty_translator,
-                    trait_registry,
-                    proc.get_id(),
-                    params.as_slice(),
-                    &mut translated_fn,
-                    region_substitution,
-                    Some(info),
-                )?;
-
-                let type_translator = types::LocalTX::new(ty_translator, type_scope);
-
-                // get argument names
-                let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
-                let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
-                info!("arg names: {arg_names:?}");
-
-                let mut t = Self {
-                    env,
-                    proc,
-                    info,
-                    translated_fn,
-                    inclusion_tracker,
-                    procedure_registry: proc_registry,
-                    attrs,
-                    ty_translator: type_translator,
-                    trait_registry,
-                    const_registry,
-                    inputs: inputs.clone(),
-                };
-
-                if env.has_tool_attribute(proc.get_id(), "default_spec") {
-                    let spec = t.make_trait_instance_spec()?;
-                    if let Some(spec) = spec {
-                        t.translated_fn.add_trait_function_spec(spec);
-                    } else {
-                        return Err(TranslationError::AttributeError(
-                            "No valid specification provided".to_owned(),
-                        ));
-                    }
-                } else {
-                    // process attributes
-                    let mut spec_builder = Self::process_attrs(
-                        attrs,
-                        &t.ty_translator,
-                        &mut t.translated_fn,
-                        &arg_names,
-                        inputs.as_slice(),
-                        output,
-                    )?;
-
-                    if spec_builder.has_spec() {
-                        // add universal constraints
-                        {
-                            let scope = t.ty_translator.scope.borrow();
-                            let universal_constraints = regions::init::get_relevant_universal_constraints(
-                                &scope.lifetime_scope,
-                                &mut t.inclusion_tracker,
-                                t.info,
-                            );
-                            info!("univeral constraints: {:?}", universal_constraints);
-                            for (lft1, lft2) in universal_constraints {
-                                spec_builder.add_lifetime_constraint(lft1, lft2);
-                            }
-                        }
-
-                        t.translated_fn.add_function_spec_from_builder(spec_builder);
-                    } else {
-                        return Err(TranslationError::AttributeError(
-                            "No valid specification provided".to_owned(),
-                        ));
-                    }
-                }
-
-                Ok(t)
-            },
-            Err(err) => Err(TranslationError::UnknownError(format!("{:?}", err))),
+        // dump graphviz files
+        // color code: red: dying loan, pink: becoming a zombie; green: is zombie
+        if rrconfig::dump_borrowck_info() {
+            dump_borrowck_info(env, proc.get_id(), info);
         }
+
+        let (inputs, output, region_substitution) =
+            regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
+        info!("inputs: {:?}, output: {:?}", inputs, output);
+
+        let mut inclusion_tracker = InclusionTracker::new(info);
+        // add placeholder subsets
+        let initial_point: facts::Point = facts::Point {
+            location: mir::BasicBlock::from_u32(0).start_location(),
+            typ: facts::PointType::Start,
+        };
+        for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
+            inclusion_tracker.add_static_inclusion(*r1, *r2, info.interner.get_point_index(&initial_point));
+        }
+
+        let type_scope = Self::setup_local_scope(
+            env,
+            ty_translator,
+            trait_registry,
+            proc.get_id(),
+            params.as_slice(),
+            &mut translated_fn,
+            region_substitution,
+            Some(info),
+        )?;
+
+        let type_translator = types::LocalTX::new(ty_translator, type_scope);
+
+        // get argument names
+        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        info!("arg names: {arg_names:?}");
+
+        let mut t = Self {
+            env,
+            proc,
+            info,
+            translated_fn,
+            inclusion_tracker,
+            procedure_registry: proc_registry,
+            attrs,
+            ty_translator: type_translator,
+            trait_registry,
+            const_registry,
+            inputs: inputs.clone(),
+        };
+
+        if env.has_tool_attribute(proc.get_id(), "default_spec") {
+            let spec = t.make_trait_instance_spec()?;
+            if let Some(spec) = spec {
+                t.translated_fn.add_trait_function_spec(spec);
+            } else {
+                return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
+            }
+        } else {
+            // process attributes
+            let mut spec_builder = Self::process_attrs(
+                attrs,
+                &t.ty_translator,
+                &mut t.translated_fn,
+                &arg_names,
+                inputs.as_slice(),
+                output,
+            )?;
+
+            if spec_builder.has_spec() {
+                // add universal constraints
+                {
+                    let scope = t.ty_translator.scope.borrow();
+                    let universal_constraints = regions::init::get_relevant_universal_constraints(
+                        &scope.lifetime_scope,
+                        &mut t.inclusion_tracker,
+                        t.info,
+                    );
+                    info!("univeral constraints: {:?}", universal_constraints);
+                    for (lft1, lft2) in universal_constraints {
+                        spec_builder.add_lifetime_constraint(lft1, lft2);
+                    }
+                }
+
+                t.translated_fn.add_function_spec_from_builder(spec_builder);
+            } else {
+                return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
+            }
+        }
+
+        Ok(t)
     }
 
     /// Translate the body of the function.

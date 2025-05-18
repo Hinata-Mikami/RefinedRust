@@ -119,7 +119,6 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             // find the mapping
             let mut mapper = RegionMapper {
                 tcx,
-                param_env,
                 map: HashMap::new(),
             };
             mapper.map_generic_args(impl_args, required_args);
@@ -146,7 +145,6 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 
 struct RegionMapper<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     map: HashMap<ty::RegionVid, ty::Region<'tcx>>,
 }
 impl<'tcx> RegionMapper<'tcx> {
