@@ -32,6 +32,11 @@ Section discriminant.
     { rewrite ty_has_op_type_unfold. apply Hv. }
     destruct mt; eauto.
   Qed.
+  Next Obligation.
+    intros ?? mt ly Hst.
+    apply syn_type_has_layout_int_inv in Hst as ->.
+    done.
+  Qed.
 
   Definition typed_discriminant_end_cont_t : Type :=
     llctx → val → ∀ (rt : Type), type rt → rt → iProp Σ.

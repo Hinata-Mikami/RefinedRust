@@ -32,6 +32,10 @@ Section alias.
     destruct mt; [done | | done].
     rewrite Hid. done.
   Qed.
+  Next Obligation.
+    intros mt ly Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    done.
+  Qed.
 
   Global Instance alias_ptr_t_copy : Copyable (alias_ptr_t).
   Proof. apply _. Qed.

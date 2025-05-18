@@ -21,7 +21,8 @@ Section int.
   Qed.
   Next Obligation.
     intros it ot mt Hot. simpl. rewrite (is_int_ot_layout _ _ Hot).
-    destruct ot; try done. all: destruct Hot as [ ]; by apply syn_type_has_layout_int.
+    destruct ot; try done. 
+    all: by eapply syn_type_has_layout_int.
   Qed.
   Next Obligation.
     simpl. iIntros (it ot mt st π r v Hot).
@@ -31,6 +32,10 @@ Section int.
       unfold mem_cast. erewrite val_to_bytes_id; last done. done.
     - iApply (mem_cast_compat_int (λ v, _)); first done.
       iIntros "%". eauto.
+  Qed.
+  Next Obligation.
+    intros ??? Hst. apply syn_type_has_layout_int_inv in Hst as ->.
+    done.
   Qed.
 
   Lemma ty_own_int_in_range l π n it : l ◁ᵥ{π} n @ int it -∗ ⌜n ∈ it⌝.
@@ -81,6 +86,10 @@ Section boolean.
       subst; eauto.
     - iApply (mem_cast_compat_bool (λ v, _)); first done. eauto.
   Qed.
+  Next Obligation.
+    intros ?? Hst. apply syn_type_has_layout_bool_inv in Hst as ->.
+    done.
+  Qed.
 
   Lemma bool_own_val_eq v π b :
     (v ◁ᵥ{π} b @ bool_t)%I ≡ ⌜val_to_bool v = Some b⌝%I.
@@ -123,6 +132,10 @@ Section char.
       { iPureIntro. intros Hv. unfold mem_cast. rewrite Hv.
         by erewrite val_to_bytes_id_char. }
     - iApply (mem_cast_compat_char (λ v, _)); first done. eauto.
+  Qed.
+  Next Obligation.
+    intros ?? Hst. apply syn_type_has_layout_char_inv in Hst as ->.
+    done.
   Qed.
 
   Lemma char_own_val_eq v π z :

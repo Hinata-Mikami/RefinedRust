@@ -109,6 +109,12 @@ Section type.
       rewrite /mem_cast_id/=. intros ?.
       rewrite mem_cast_UntypedOp//.
   Qed.
+  Next Obligation.
+    intros ?? ly mt Hst. 
+    simpl. exists ly. split_and!; [done.. | ].
+    destruct mt; [done | | done].
+    by apply ty_has_op_type_untyped.
+  Qed.
 
   Global Program Instance maybe_uninit_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty}: TyGhostDrop (maybe_uninit ty) :=
     mk_ty_ghost_drop _ (λ π r,

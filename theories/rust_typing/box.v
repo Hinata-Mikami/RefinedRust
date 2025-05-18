@@ -137,6 +137,10 @@ Section box.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%l & %ly & -> & _)". eauto.
   Qed.
+  Next Obligation.
+    intros ly mt Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    done.
+  Qed.
 
 
   Global Program Instance box_ghost_drop `{Hg : !TyGhostDrop inner} : TyGhostDrop box :=

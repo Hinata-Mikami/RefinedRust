@@ -70,7 +70,7 @@ Record type `{!typeGS Σ} (rt : Type) := {
 
   (** Given the concrete layout algorithm at runtime, we can get a layout *)
   ty_has_layout π r v :
-ty_own_val π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout ty_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
+    ty_own_val π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout ty_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
 
   (** if we specify a particular op_type, its layout needs to be compatible with the underlying syntactic type *)
   _ty_op_type_stable ot mt : _ty_has_op_type ot mt → syn_type_has_layout ty_syn_type (ot_layout ot);
@@ -80,7 +80,7 @@ ty_own_val π r v -∗ ∃ ly : layout, ⌜syn_type_has_layout ty_syn_type ly⌝
   ty_shr_sidecond κ π r l : ty_shr κ π r l -∗ ty_sidecond;
 
   (** The sharing predicate is persistent *)
-ty_shr_persistent κ π l r : Persistent (ty_shr κ π r l);
+  ty_shr_persistent κ π l r : Persistent (ty_shr κ π r l);
   (** The address at which a shared type is stored must be correctly aligned *)
   ty_shr_aligned κ π l r :
     ty_shr κ π r l -∗ ∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout ty_syn_type ly⌝;
@@ -121,6 +121,11 @@ ty_shr_persistent κ π l r : Persistent (ty_shr κ π r l);
     (*mt ≠ MCId →*)
     (*ty_has_op_type ot mt;*)
 
+  (** Untyped operations are always allowed *)
+  _ty_has_op_type_untyped ly mt :
+    syn_type_has_layout ty_syn_type ly →
+    _ty_has_op_type (UntypedOp ly) mt;
+
   ty_sidecond_timeless : Timeless ty_sidecond;
   ty_sidecond_persistent : Persistent ty_sidecond;
 
@@ -153,6 +158,22 @@ Lemma ty_op_type_stable `{!typeGS Σ} {rt} (ty : type rt) ot mt :
 Proof. rewrite ty_has_op_type_unfold. apply _ty_op_type_stable. Qed.
 Global Arguments ty_op_type_stable {_ _ _} [_ _ _].
 
+Lemma ty_has_op_type_untyped `{!typeGS Σ} {rt} (ty : type rt) ly mt :
+  syn_type_has_layout ty.(ty_syn_type) ly →
+  ty_has_op_type ty (UntypedOp ly) mt.
+Proof. rewrite ty_has_op_type_unfold. apply _ty_has_op_type_untyped. Qed.
+Global Arguments ty_has_op_type_untyped {_ _ _} [_ _ _].
+
+Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot mt st π r v :
+  ty_has_op_type ty ot mt →
+  ty.(ty_own_val) π r v -∗
+  match mt with
+  | MCNone => True
+  | MCCopy => ty.(ty_own_val) π r (mem_cast v ot st)
+  | MCId => ⌜mem_cast_id v ot⌝
+  end.
+Proof. rewrite ty_has_op_type_unfold. apply _ty_memcast_compat. Qed.
+
 (** We seal [ty_wf_E] in order to avoid performance issues with Qed time. *)
 Definition ty_wf_E_aux `{!typeGS Σ} : seal (@_ty_wf_E _ _). Proof. by eexists. Qed.
 Definition ty_wf_E `{!typeGS Σ} := ty_wf_E_aux.(unseal).
@@ -164,16 +185,6 @@ Definition ty_lfts_aux `{!typeGS Σ} : seal (@_ty_lfts _ _). Proof. by eexists. 
 Definition ty_lfts `{!typeGS Σ} := ty_lfts_aux.(unseal).
 Definition ty_lfts_unfold `{!typeGS Σ} : ty_lfts = _ty_lfts := ty_lfts_aux.(seal_eq).
 Global Arguments ty_lfts {_ _ _} _.
-
-Lemma ty_memcast_compat `{!typeGS Σ} rt (ty : type rt) ot mt st π r v :
-  ty_has_op_type ty ot mt →
-  ty.(ty_own_val) π r v -∗
-  match mt with
-  | MCNone => True
-  | MCCopy => ty.(ty_own_val) π r (mem_cast v ot st)
-  | MCId => ⌜mem_cast_id v ot⌝
-  end.
-Proof. rewrite ty_has_op_type_unfold. apply _ty_memcast_compat. Qed.
 
 Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply H end : typeclass_instances.
 
@@ -306,6 +317,11 @@ Record simple_type `{!typeGS Σ} (rt : Type) :=
       | MCCopy => st_own π r (mem_cast v ot st)
       | MCId => ⌜mem_cast_id v ot⌝
       end;
+
+    st_has_op_type_untyped mt ly :
+      syn_type_has_layout st_syn_type ly →
+      st_has_op_type (UntypedOp ly) mt;
+
     (*st_has_op_type_compat ot mt :*)
       (*use_op_alg st_syn_type = Some ot →*)
       (*mt ≠ MCId →*)
@@ -379,6 +395,9 @@ Next Obligation.
 Qed.
 Next Obligation.
   intros. by iApply st_memcast_compat.
+Qed.
+Next Obligation.
+  intros. by apply st_has_op_type_untyped.
 Qed.
 (*Next Obligation.*)
   (*intros. apply st_has_op_type_compat; done.*)
@@ -487,6 +506,10 @@ Section ofe.
     (* ty_memcast_compat *)
     (∀ ot mt st π r v, x.1.1.1.2 ot mt → x.1.1.1.1.1.1 π r v -∗
       match mt with | MCNone => True | MCCopy => x.1.1.1.1.1.1 π r (mem_cast v ot st) | MCId => ⌜mem_cast_id v ot⌝ end) ∧
+    (* ty_has_op_type_untyped *)
+    (∀ (ly : layout) (mt : memcast_compat_type),
+      syn_type_has_layout x.1.1.1.1.2 ly →
+      x.1.1.1.2 (UntypedOp ly) mt) ∧
     (* ty_has_op_type_compat *)
     (*(∀ ot mt, use_op_alg x.1.1.1.1.1.2 = Some ot → mt ≠ MCId → x.1.1.1.1.2 ot mt) ∧*)
     (* ty_sidecond_timeless *)

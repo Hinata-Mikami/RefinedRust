@@ -41,6 +41,11 @@ Section uninit.
       apply has_layout_val_mem_cast. done.
     - subst. done.
   Qed.
+  Next Obligation.
+    intros st mt ly Hst.
+    simpl. exists ly. split; first done.
+    destruct mt; done.
+  Qed.
 
   Global Instance uninit_copy st : Copyable (uninit st).
   Proof. apply _. Qed.

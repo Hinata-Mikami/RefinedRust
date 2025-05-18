@@ -184,6 +184,10 @@ Section mut_ref.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%l & %ly & -> & _)". eauto.
   Qed.
+  Next Obligation.
+    intros ??? ly mt Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    done.
+  Qed.
 
   Global Program Instance mut_ref_ghost_drop {rt} κ (ty : type rt)  : TyGhostDrop (mut_ref κ ty) :=
     mk_ty_ghost_drop _ (

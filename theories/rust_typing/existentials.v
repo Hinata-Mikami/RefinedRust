@@ -213,6 +213,10 @@ Section ex.
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
     destruct mt; eauto with iFrame.
   Qed.
+  Next Obligation.
+    intros ty ly mt Hst. simpl.
+    by apply ty_has_op_type_untyped.
+  Qed.
 
   (* TODO generalize ghost_drop in the type def *)
   (* Instance has low priority to allow overrides *)

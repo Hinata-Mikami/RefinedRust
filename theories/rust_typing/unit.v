@@ -23,7 +23,12 @@ Section unit.
     destruct mt.
     - done.
     - destruct ot; try by destruct Hot. destruct Hot as [-> ->]. done.
-- iApply (mem_cast_compat_unit (λ _, True)%I); eauto.
+    - iApply (mem_cast_compat_unit (λ _, True)%I); eauto.
+  Qed.
+  Next Obligation.
+    intros mt ly Hst.
+    apply syn_type_has_layout_unit_inv in Hst as ->.
+    done.
   Qed.
 
   Global Instance unit_copyable : Copyable unit_t.

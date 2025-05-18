@@ -260,6 +260,14 @@ Section array.
     destruct mt; [done | done | done].
     (* TODO maybe the second case should really change once we support an ArrayOpType? *)
   Qed.
+  Next Obligation.
+    intros len ty ly mt Hst.
+    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz). 
+    simpl. eexists.
+    split_and!; [done | | done | ].
+    - by apply ty_has_op_type_untyped.
+    - by eapply use_layout_alg_wf.
+  Qed.
 
   Global Program Instance array_ghost_drop (ty : type rt) `{Hg : !TyGhostDrop ty} len : TyGhostDrop (array_t len ty) :=
     mk_ty_ghost_drop _ (λ π r,

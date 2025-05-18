@@ -81,6 +81,13 @@ Section value.
       destruct ot'; simpl in Hot;
         try match type of Hot with | _ ∧ _  => destruct Hot end; subst; done.
   Qed.
+  Next Obligation.
+    intros st mt ly Hst. simpl.
+    unfold is_value_ot.
+    specialize (syn_type_has_layout_op_alg st ly Hst) as (ot & Hot & <-).
+    exists ot. split_and!; [done | | done].
+    destruct ot; simpl; done.
+  Qed.
 
   Global Instance value_copy st : Copyable (value_t st).
   Proof. apply _. Qed.
@@ -266,7 +273,7 @@ Section ofty_lemmas.
   Lemma ofty_own_merge_value {rt} π (ty : type rt) wl v r st l :
     match st with
     | UntypedSynType ly1 =>
-        syn_type_has_layout (ty_syn_type ty) ly1 ∧ ty_has_op_type ty (UntypedOp ly1) MCCopy
+        syn_type_has_layout (ty_syn_type ty) ly1
     | _ =>
         ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st
     end →
@@ -281,9 +288,9 @@ Section ofty_lemmas.
     iExists ly.
     iFrame "%".
     iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
-    assert ((∃ ly1, st = UntypedSynType ly1 ∧ syn_type_has_layout (ty_syn_type ty) ly1 ∧ ty_has_op_type ty (UntypedOp ly1) MCCopy) ∨ (ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st)) as Hb.
+    assert ((∃ ly1, st = UntypedSynType ly1 ∧ syn_type_has_layout (ty_syn_type ty) ly1) ∨ (ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st)) as Hb.
     { destruct st; eauto. }
-    iSplitR. { iPureIntro. destruct Hb as [(ly1 & -> & ? & ?) | (? & <-)]; last done.
+    iSplitR. { iPureIntro. destruct Hb as [(ly1 & -> & ?) | (? & <-)]; last done.
       apply syn_type_has_layout_untyped_inv in Halg as (-> & _). done. }
     iFrame "Hlb Hcred".
     iExists r. iSplitR; first done.
@@ -295,8 +302,9 @@ Section ofty_lemmas.
     destruct Hmc as [-> | [st' ->]]; first done.
     iApply (ty_memcast_compat_copy with "Hv").
 
-    destruct Hb as [(ly1 & -> & Hst & ?) | (Hst & <-)].
-    - injection Hot' as <-. done.
+    destruct Hb as [(ly1 & -> & Hst) | (Hst & <-)].
+    - injection Hot' as <-. 
+      by apply ty_has_op_type_untyped.
     - move: Hst. rewrite /use_op_alg' Hot' //.
   Qed.
 
@@ -528,12 +536,12 @@ Section rules.
 
   Lemma subsume_full_value_merge_ofty_untyped {rt} π E L (ty : type rt) r v l ly1 wl T :
     (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π} r @ ty) (λ L' _ R,
-      ⌜syn_type_has_layout ty.(ty_syn_type) ly1⌝ ∗ ⌜ty_has_op_type ty (UntypedOp ly1) MCCopy⌝ ∗ T L' R))
+      ⌜syn_type_has_layout ty.(ty_syn_type) ly1⌝ ∗ T L' R))
     ⊢ subsume_full E L false (l ◁ₗ[π, Owned wl] PlaceIn v @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty)) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & % & %R & >(Hv & HR) & HL & % & % & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & % & %R & >(Hv & HR) & HL & % & HT)".
     iPoseProof (ofty_own_merge_value with "Hv Hl") as "?"; first done.
     iModIntro. iExists L', R. iFrame. done.
   Qed.
@@ -554,7 +562,7 @@ Section rules.
     iApply (ofty_own_merge_value with "Hv Hl").
     destruct st; try done. simp_ltypes in Hst. simpl in Hst. rewrite Ha.
     specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & _).
-    rewrite Ha in Hc. split; done.
+    rewrite Ha in Hc. done.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
   Global Instance subsume_full_value_merge_ofty_inst {rt} π E L (ty : type rt) r v l st wl :
@@ -997,25 +1005,23 @@ Section rules.
 
   (* TODO for Untyped, we currently cannot leave a value, because we cannot do syntype updates, but [value_t] relies on the syntype to compute the value update *)
   Lemma type_read_ofty_move_owned_untyped E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ly wl bmin :
-    ( ⌜ty_has_op_type ty (UntypedOp ly) MCCopy⌝ ∗
-      ∀ v v', v ◁ᵥ{π} r @ ty -∗
+    ( ∀ v v', v ◁ᵥ{π} r @ ty -∗
       T L v' _ (value_t (UntypedSynType ly)) v val (◁ value_t (UntypedSynType ly)) (#v) ResultStrong) -∗
       typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong (UntypedOp ly) T.
   Proof.
-    iIntros "(%Hot & Hs)" (F ???) "#CTX #HE HL".
+    iIntros "Hs" (F ???) "#CTX #HE HL".
     iIntros "_ Hb".
   Abort.
 
   (* Instead we leave uninit *)
   Lemma type_read_ofty_move_owned_value_untyped E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ly wl bmin :
-    (⌜ty_has_op_type ty (UntypedOp ly) MCCopy⌝ ∗
+    (⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
         ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#()) ResultStrong)
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong (UntypedOp ly) T.
   Proof.
-    iIntros "(%Hot & Hs)" (F ????) "#CTX #HE HL _ Hb".
+    iIntros "(%Hst & Hs)" (F ????) "#CTX #HE HL _ Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    specialize (ty_op_type_stable Hot) as Halg''.
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
@@ -1024,7 +1030,9 @@ Section rules.
     iIntros "Hcl %st Hl Hv". iMod ("Hcl" $! v _ (uninit ty.(ty_syn_type)) tt with "Hl [//] [] []") as "Hl".
     { simpl. done. }
     { iNext. iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
-    iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
+    iPoseProof (ty_memcast_compat _ _ _ MCCopy with "Hv") as "Hid".
+    { by apply ty_has_op_type_untyped. }
+    simpl.
     iModIntro. iExists _, _,_, _. iFrame.
     (* strong update *)
     iExists ResultStrong. iFrame.

@@ -17,7 +17,7 @@ Inductive memcast_compat_type : Set :=
 Definition is_int_ot (ot : op_type) (it : int_type) : Prop :=
   match ot with
     | IntOp it' => it = it'
-    | UntypedOp ly => ly = it_layout it ∧ (ly_size it ≤ MaxInt ISize)%Z
+    | UntypedOp ly => ly = it_layout it
     | _ => False
   end.
 Definition is_bool_ot (ot : op_type) : Prop :=
@@ -77,7 +77,7 @@ Section optypes.
   Proof.
     destruct ot => //; simplify_eq/=.
     - intros <-.  etrans; [done|]. iPureIntro => -[??]. by apply: mem_cast_id_int.
-    - intros [-> ?]. etrans; [done|]. iPureIntro => -[??]. simpl. done.
+    - intros ->. etrans; [done|]. iPureIntro => -[??]. simpl. done.
   Qed.
 
   Lemma mem_cast_compat_bool (P : val → iProp Σ) v ot :

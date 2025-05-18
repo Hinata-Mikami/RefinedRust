@@ -4,7 +4,7 @@ From refinedrust Require Import options.
 Section type_inh.
   Context `{!typeGS Σ}.
 
-  (* We need [Inhabited T_rt] because of [ty_rt_inhabited]. *)
+  (* We need [Inhabited T_rt] because of [ty_xt_inhabited]. *)
   Context {T_rt : Type} `{!Inhabited T_rt}.
 
   Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
@@ -27,6 +27,11 @@ Section type_inh.
     simpl. intros ??? ??? ->.
     iIntros "->".
     destruct mt; simpl; iPureIntro; done.
+  Qed.
+  Next Obligation.
+    intros mt ly Hst.
+    apply syn_type_has_layout_unit_inv in Hst as ->. 
+    done.
   Qed.
   Definition type_inhabitant : type T_rt := ty_of_st _ inhabitant.
   Global Instance type_inhabited : Inhabited (type T_rt) := populate type_inhabitant.
@@ -247,6 +252,10 @@ Section fixpoint_def.
       simpl. eapply _ty_memcast_compat.
       rewrite -ty_has_op_type_unfold.
       eapply Fn_has_op_type_const. by rewrite ty_has_op_type_unfold.
+  Qed.
+  Next Obligation.
+    intros ly mt Hst.
+    by eapply _ty_has_op_type_untyped.
   Qed.
 
   Lemma type_fixpoint_own_val_unfold_n n v π r :

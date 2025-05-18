@@ -206,6 +206,12 @@ Section function.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%fn & % & -> & _)". eauto.
   Qed.
+  Next Obligation.
+    intros ???? mt ly Hst. 
+    apply syn_type_has_layout_fnptr_inv in Hst as ->.
+    done.
+  Qed.
+
   Global Instance copyable_function_ptr {lfts : nat} {rts : list (Type)} fal fp :
     Copyable (function_ptr (lfts:=lfts) fal (rts := rts) fp) := _.
 End function.

@@ -12,9 +12,9 @@ From refinedrust Require Import options.
 (** We define [is_struct_ot] not just on the syntactic type, but also directly involve the component types [tys],
   because this stratifies the recursion going on and we anyways need to define a relation involving the [mt] for the semantic types. *)
 Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec) (tys : list rtype) (ot : op_type) (mt : memcast_compat_type) :=
-  length (sls.(sls_fields)) = length tys ∧
   match ot with
   | StructOp sl ots =>
+      length (sls.(sls_fields)) = length tys ∧
       (* padding bits will be garbled, so we cannot fulfill MCId *)
       mt ≠ MCId ∧
       (* sl is a valid layout for this sls *)
@@ -27,12 +27,7 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec) (tys : list rtyp
         True (zip tys ots)
   | UntypedOp ly =>
       (* ly is a valid layout for this sls *)
-      ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = sl ∧
-      (* pointwise, the members have the right op type *)
-      foldr (λ ty, and (∃ ly,
-            syn_type_has_layout (ty.(rt_ty).(ty_syn_type)) ly ∧ ty_has_op_type (ty.(rt_ty) : type _) (UntypedOp ly) mt
-          ))
-        True tys
+      ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = sl
   | _ => False
   end.
 Global Typeclasses Opaque is_struct_ot.
@@ -40,7 +35,7 @@ Global Typeclasses Opaque is_struct_ot.
 Lemma is_struct_ot_layout `{typeGS Σ} sls sl tys ot mt :
   use_struct_layout_alg sls = Some sl →
   is_struct_ot sls tys ot mt → ot_layout ot = sl.
-Proof. move => ? [?]. destruct ot => //; naive_solver. Qed.
+Proof. move => ? ?. destruct ot => //; naive_solver. Qed.
 
 (** ** Full structs *)
 Section structs.
@@ -273,11 +268,10 @@ Section structs.
   Qed.
   Next Obligation.
     iIntros (rts sls tys ot mt Hot).
-    destruct Hot as [Hlen Hot].
     destruct ot; try done.
-    - destruct Hot as (Halg & Hlen' & Hmem).
+    - destruct Hot as (Hlen & Halg & Hlen' & Hmem).
       simpl. by apply use_struct_layout_alg_Some_inv.
-    - destruct Hot as (sl & Halg & -> & Hmem).
+    - destruct Hot as (sl & Halg & ->).
       simpl. by apply use_struct_layout_alg_Some_inv.
   Qed.
   Next Obligation.
@@ -421,8 +415,8 @@ Section structs.
     iIntros (rts sls tys ot mt st π r v Hot).
     apply (mem_cast_compat_Untyped) => ?.
     iIntros "(%sl & %Halg & %Hlen & %Hsl & Hmem)".
-    destruct Hot as [? Hot]. destruct ot as [ | | | sl' ots | | ]; try done.
-    destruct Hot as (? & Halg' & Hlen_ots & Hot%Forall_fold_right).
+    destruct ot as [ | | | sl' ots | | ]; try done.
+    destruct Hot as (Hlen' & ? & Halg' & Hlen_ots & Hot%Forall_fold_right).
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
     destruct mt.
     - done.
@@ -488,6 +482,12 @@ Section structs.
         rewrite Hlook2 in Hlook. injection Hlook as [= ->].
         done.
     - iPureIntro. done.
+  Qed.
+  Next Obligation.
+    intros ??? ly mt Hst.
+    apply syn_type_has_layout_struct_inv in Hst as (fields & sl & -> & Halg & Hf).
+    simpl. exists sl. split; last done.
+    by eapply use_struct_layout_alg_Some.
   Qed.
 
   (* TODO *)
@@ -600,39 +600,24 @@ Section structs.
     - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite !length_fmap !hzipl_length.
       rewrite Hst.
-      apply and_proper => Hsl.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
-      + f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
-        erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
-        rewrite -field_members_length in Hsl.
+      apply and_proper => Hsl.
+      f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
+      erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
+      rewrite -field_members_length in Hsl.
 
-        elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
-        { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
-          inv_hlist Ts'. intros _. destruct ots; done. }
-        move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
-        destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
-        inv_hlist Ts' => T1 Ts'.
-        intros Ha.
-        apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
-        simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
-        { solve_type_proper. }
-        eapply IH; done.
-      + f_equiv. intros sl. apply and_proper => Halg.
-        apply and_proper => Heq. subst ly.
-        rewrite -!Forall_fold_right.
-        specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen.
-        rewrite -field_members_length Hsl in Hlen. clear Hsl.
-        elim: (field_members (sl_members sl)) rts Ts' Hne Hlen => //; csimpl.
-        { intros rts Ts' Hne Hlen. destruct rts; last done.
-          inv_hlist Ts'. intros _. done. }
-        move => [m ?] s IH rts Ts' Hne Hlen.
-        destruct rts as [ | rt1 rts]; first done.
-        inv_hlist Ts' => T1 Ts'.
-        intros [Hne1 Hne2]%HTForall_cons_inv.
-        rewrite !Forall_cons/=; f_equiv.
-        { solve_type_proper. }
-        eapply IH; first done. by simplify_eq/=.
+      elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
+      { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
+        inv_hlist Ts'. intros _. destruct ots; done. }
+      move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
+      destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+      inv_hlist Ts' => T1 Ts'.
+      intros Ha.
+      apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
+      simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
+      { solve_type_proper. }
+      eapply IH; done.
     - simpl. intros ?? ->.  done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].
@@ -699,39 +684,24 @@ Section structs.
     - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
       rewrite !length_fmap !hzipl_length.
       erewrite Hst.
-      apply and_proper => Hsl.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
-      + f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
-        erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
-        rewrite -field_members_length in Hsl.
+      apply and_proper => Hsl.
+      f_equiv. apply and_proper => Halg. apply and_proper => Hots. rewrite -!Forall_fold_right.
+      erewrite <-struct_layout_spec_has_layout_fields_length in Hsl; last done.
+      rewrite -field_members_length in Hsl.
 
-        elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
-        { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
-          inv_hlist Ts'. intros _. destruct ots; done. }
-        move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
-        destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
-        inv_hlist Ts' => T1 Ts'.
-        intros Ha.
-        apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
-        simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
-        { solve_type_proper. }
-        eapply IH; done.
-      + f_equiv. intros sl. apply and_proper => Halg.
-        apply and_proper => Heq. subst ly.
-        rewrite -!Forall_fold_right.
-        specialize (struct_layout_spec_has_layout_fields_length _ _ Halg) as Hlen.
-        rewrite -field_members_length Hsl in Hlen. clear Hsl.
-        elim: (field_members (sl_members sl)) rts Ts' Hne Hlen => //; csimpl.
-        { intros rts Ts' Hne Hlen. destruct rts; last done.
-          inv_hlist Ts'. intros _. done. }
-        move => [m ?] s IH rts Ts' Hne Hlen.
-        destruct rts as [ | rt1 rts]; first done.
-        inv_hlist Ts' => T1 Ts'.
-        intros [Hne1 Hne2]%HTForall_cons_inv.
-        rewrite !Forall_cons/=; f_equiv.
-        { solve_type_proper. }
-        eapply IH; first done. by simplify_eq/=.
+      elim: (field_members (sl_members sl)) ots rts Ts' Hne Hsl Hots => //; csimpl.
+      { intros ots rts Ts' Hne Heq Hlen. destruct rts; last done.
+        inv_hlist Ts'. intros _. destruct ots; done. }
+      move => [m ?] s IH ots rts Ts' Hne Hlen1 Hlen2.
+      destruct rts as [ | rt1 rts]; first done. destruct ots as [ | ot ots]; first done.
+      inv_hlist Ts' => T1 Ts'.
+      intros Ha.
+      apply HTForall_cons_inv in Ha as (Hne1 & Hne2).
+      simplify_eq/=; rewrite !Forall_cons/=; f_equiv.
+      { solve_type_proper. }
+      eapply IH; done.
     - simpl. intros. erewrite Hst. done.
     - intros n ty ty' Hd.
       destruct HT as [Ts' Hne ->].

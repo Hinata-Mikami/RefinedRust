@@ -180,6 +180,12 @@ Section na_ex.
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
     destruct mt; eauto with iFrame.
   Qed.
+
+  Next Obligation.
+    intros ty ly mt Hst.
+    by apply ty_has_op_type_untyped.
+  Qed.
+
 End na_ex.
 
 Section contr.

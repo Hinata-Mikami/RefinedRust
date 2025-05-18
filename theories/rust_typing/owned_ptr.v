@@ -140,6 +140,12 @@ Section owned_ptr.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
       iIntros "(%ly & -> & _)". eauto.
   Qed.
+  Next Obligation.
+    intros ly mt Hst.
+    apply syn_type_has_layout_ptr_inv in Hst as ->.
+    done.
+  Qed.
+
 
   Global Program Instance owned_ptr_ghost_drop `{Hg : !TyGhostDrop inner} : TyGhostDrop owned_ptr :=
     mk_ty_ghost_drop _ (λ π '(r, l),

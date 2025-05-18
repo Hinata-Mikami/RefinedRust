@@ -246,6 +246,12 @@ Section union.
     destruct mt; first done; last done.
     by rewrite mem_cast_UntypedOp.
   Qed.
+  Next Obligation.
+    intros ??? uls ly mt Hst.
+    apply syn_type_has_layout_union_inv in Hst as (variants & ul & -> & Hul & Hf).
+    exists ul. split; last done.
+    by eapply use_union_layout_alg_Some.
+  Qed.
 
   Global Program Instance active_union_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty} v uls : TyGhostDrop (active_union_t ty v uls) :=
     mk_ty_ghost_drop _ (λ π r, ty_ghost_drop_for ty Hg π r) _.
@@ -412,8 +418,10 @@ Section enum.
     iExists ly, tag. iR. iR.
 
     iApply (ty_memcast_compat _ _ _ MCCopy with "Ha").
-    rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=. split; first done.
+    rewrite ty_has_op_type_unfold. simpl. rewrite /is_struct_ot/=.
+    (*split; first done.*)
     destruct ot as [ | | | | ly' | ]; try done.
+    (*
     rewrite ty_has_op_type_unfold.
     rewrite /is_enum_ot in Hot.
     destruct Hot as (el & Hel & ->).
@@ -431,6 +439,13 @@ Section enum.
     split; first done.
     exists ul. split; last done.
     eapply use_union_layout_alg_Some; done.
+     *)
+  Qed.
+  Next Obligation.
+    intros ?? ly mt Hst.
+    apply syn_type_has_layout_enum_inv in Hst as (el & ul & variants & Hul & Hsl & -> & Hf).
+    simpl. exists el. split; last done.
+    by eapply use_enum_layout_alg_Some.
   Qed.
 
   Global Instance enum_t_copyable {rt} (e : enum rt):

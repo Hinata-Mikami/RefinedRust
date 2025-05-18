@@ -7,6 +7,7 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{!refinedrustGS Σ}.
+
 Lemma Vec_T_pop_proof (π : thread_id) :
   Vec_T_pop_lemma π.
 Proof.
@@ -15,41 +16,27 @@ Proof.
   rep <-! liRStep; liShow.
   apply_update (updateable_typed_array_access x1 (length xs - 1) (st_of T_ty)).
   liRStepUntil typed_call.
-  apply_update (updateable_extract_value (x1 offsetst{st_of T_ty}ₗ (length xs - 1))).
-  (* I guess we need to manually extract it now *)
-  liRStepUntil typed_call. 
-  liRStep. liRStep.
-  liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-liRStep. liRStep.
-  liShow.
-  (* hahaha , this doesn't work either: they need to have the right RT here of course. 
-     I guess we can separately quantify over the type in read...
-  *)
-  iExists ( *[value_t])
-  simpl.
-  type_call_fnptr
-  rep 40 liRStep; liShow.
+  (* We need to manually extract it now *)
+  apply_update (updateable_extract_typed_value (x1 offsetst{st_of T_ty}ₗ (length xs - 1))).
+  rep <-! liRStep; liShow.
+  apply_update (updateable_merge_value local___5).
+  rep <-! liRStep.
+  apply_update (updateable_subsume_to (x1 offsetst{st_of T_ty}ₗ (length xs - 1)) (◁ uninit (st_of T_ty))%I (# ())).
+  rep liRStep. 
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+
   all: prepare_sideconditions; normalize_and_simpl_goal; try solve_goal with (nia).
 
-  all: revert select (<#> (<$#@{_}> _) = _) => Hxs; 
+  all: revert select (<#> (<$#@{_}> _) = _) => Hxs;
     specialize (project_vec_els_length' _ _ _ _ Hxs) as ?.
   {
     rewrite Hxs project_vec_els_insert_ge; [|lia].
     erewrite project_vec_els_lookup_mono; [solve_goal|lia|done].
   }
-  { apply list_lookup_insert_Some'. 
+  { apply list_lookup_insert_Some'.
     split; solve_goal. }
   { solve_goal. }
   {
@@ -59,7 +46,7 @@ liRStep. liRStep.
   }
   {
     rewrite project_vec_els_insert_ge; [|lia].
-    rewrite !fmap_take. 
+    rewrite !fmap_take.
     rewrite Hxs.
     rewrite project_vec_els_take. f_equal. lia.
   }
