@@ -572,7 +572,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                         //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
                         //warn!("Function specification for {} is missing arguments", fun.name());
                         //}
-                        writeln!(spec_file, "{}.", fun.spec.generate_trait_req_incl_def()).unwrap();
+                        writeln!(spec_file, "{}", fun.spec.generate_trait_req_incl_def()).unwrap();
                         writeln!(spec_file, "{}", fun.spec).unwrap();
                     } else {
                         warn!("No specification for {}", fun.name());
@@ -590,7 +590,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 let meta = self.procedure_registry.lookup_function(*did).unwrap();
                 if !meta.is_trait_default() {
                     if spec.is_complete() {
-                        writeln!(spec_file, "{}.", spec.generate_trait_req_incl_def()).unwrap();
+                        writeln!(spec_file, "{}", spec.generate_trait_req_incl_def()).unwrap();
                         writeln!(spec_file, "{spec}").unwrap();
                     } else {
                         writeln!(spec_file, "(* No specification provided for {} *)", spec.function_name)

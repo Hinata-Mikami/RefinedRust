@@ -4627,7 +4627,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
         write!(f, "Global Arguments {} {{_ _}}.\n", self.lit.spec_record)?;
 
         if let Some(decl) = self.make_semantic_decl() {
-            write!(f, "{decl}.\n")?;
+            write!(f, "{decl}\n")?;
         }
 
         write!(f, "Context `{{RRGS : !refinedrustGS Σ}}.\n")?;
@@ -4659,7 +4659,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
 
         // write the trait_req_incls for the functions
         for item_spec in self.default_spec.methods.values() {
-            write!(f, "{}.\n", item_spec.generate_trait_req_incl_def())?;
+            write!(f, "{}\n", item_spec.generate_trait_req_incl_def())?;
         }
 
         write!(f, "End {}.\n", self.lit.name)
