@@ -327,8 +327,6 @@ impl<T> Vec<T> {
         self.len += 1;
     }
 
-    // TODO
-    #[rr::trust_me]
     #[rr::params("xs", "γ")]
     #[rr::args("(xs, γ)")]
     #[rr::returns("last xs")]
