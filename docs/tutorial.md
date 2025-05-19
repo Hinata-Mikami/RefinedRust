@@ -146,9 +146,10 @@ You can inspect the files `generated/generated_code_evenint.v` to see the Radium
 as well as `generated/generated_specs_evenint.v` to see the RefinedRust type definitions generated.
 Finally, the `proofs` directory should contain a proof file `proof_EvenInt_new.v` for `EvenInt::new`.
 
-In order to run these files in your favorite Coq editor (e.g. Emacs with ProofGeneral), you need to add the following line to the `_CoqProject` file in the root of the repository:
+In order to run these files in your favorite Coq editor (e.g. Emacs with ProofGeneral), you need to
+create a `_CoqProject` file in the root of the repository:
 ```
--Q _build/default/case_studies/evenint/output/evenint refinedrust.examples.evenint
+make case_studies/evenint.coqproject
 ```
 
 ## Verifying more functions
