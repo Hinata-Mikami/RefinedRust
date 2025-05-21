@@ -1226,6 +1226,20 @@ Proof.
   - by eapply use_layout_alg_align.
 Qed.
 
+Lemma syn_type_has_layout_untyped_mono `{!LayoutAlg} ly1 ly2 :
+  ly_align_log ly2 ≤ ly_align_log ly1 →
+  ly_size ly1 = ly_size ly2 →
+  syn_type_has_layout (UntypedSynType ly1) ly1 →
+  syn_type_has_layout (UntypedSynType ly2) ly2.
+Proof.
+  intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
+  apply syn_type_has_layout_untyped; first done.
+  - eapply layout_wf_mono; last apply Hwf.
+    all: lia.
+  - lia.
+  - eapply ly_align_in_bounds_mono; last apply Hal.
+    lia.
+Qed.
 
 (** Infallible versions *)
 Definition use_layout_alg' `{!LayoutAlg} (st : syn_type) : layout :=

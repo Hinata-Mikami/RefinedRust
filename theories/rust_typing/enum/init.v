@@ -7,6 +7,8 @@ From refinedrust Require Import options.
 Section init.
   Context `{!typeGS Σ}.
 
+  Import EqNotations.
+
   Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
     li_tactic (compute_enum_layout_goal els) (λ _,
     typed_val_expr E L e (λ L2 π v rti tyi ri,
@@ -15,10 +17,12 @@ Section init.
       li_tactic (interpret_rust_type_goal M rsty) (λ '(existT rto tyo),
         ∃ (e : enum rto), ⌜tyo = enum_t e⌝ ∗ ⌜e.(enum_els) = els⌝ ∗
         ∃ sem, ⌜e.(enum_tag_ty_inj) variant = Some sem⌝ ∗
-          ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty))⌝ ∗
+        ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty))⌝ ∗
           ∃ ri', owned_subtype π E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
-              (* could try to remove this by strengthening enum *)
-              ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
+            (* could try to remove this by strengthening enum *)
+            ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
+            ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
+            ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [id] Heq in ri')⌝ ∗
               ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
     ⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
   Proof.
@@ -36,7 +40,7 @@ Section init.
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L3 & Hincl & HL & HT)"; [done.. | ].
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
     iPoseProof ("Hincl" with "Hv") as "Hv".
-    iDestruct "HT" as "(%Htagr & HT)".
+    iDestruct "HT" as "(%Htagr & %Heq & %Htag_rfn & HT)".
     iApply ("Hc" with "HL [Hv] HT").
 
     iEval (rewrite /ty_own_val/=).
@@ -96,15 +100,27 @@ Section init.
       simpl. rewrite -Hul_variants. rewrite Hlook_ly. done. }
 
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
-    (*
     iSplitR. {
-      iPureIntro. clear -Hsem_eq Halg.
-      move: Halg.
-      destruct sem. injection Hsem_eq. simpl.
-      injection 1.
-    iR.
+      iPureIntro.
+      enough ((st_of (enum_ty en ro)) = (st_of (enum_tag_sem_ty sem))) as -> by done.
+      subst ro.
+      rewrite -(enum_tag_type_eq' _ _ variant _ Htagr Hinj).
+      clear -Hinj.
+      (*unfold enum_tag_rt_eq.*)
+      generalize ((enum_tag_rt_eq en _ variant sem Htagr Hinj)).
+      intros []. done.
+    }
     iSplitL "Hv".
-    - rewrite take_app_length'; first done. done.
+    - rewrite take_app_length'; last done.
+      rewrite Htag_rfn.
+      rewrite -(enum_tag_type_eq' _ _ variant _ Htagr Hinj).
+      unfold ro.
+      generalize (enum_tag_rt_eq en (enum_tag_rt_inj sem ri') _ _ Htagr Hinj) as Heq2 => Heq2.
+      clear.
+      move: Heq2 Heq.
+      intros <- Heq.
+      rewrite (UIP_refl _ _ Heq).
+      done.
     - rewrite drop_app_length'; last done.
       iApply uninit_own_spec.
       iExists _. iSplitR. { iPureIntro. apply syn_type_has_layout_untyped; first done.
@@ -120,8 +136,4 @@ Section init.
       rewrite /use_union_layout_alg' Hul'/=.
       done.
   Qed.
-     *)
-  Admitted.
 End init.
-
-

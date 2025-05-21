@@ -228,7 +228,6 @@ End place_rfn.
 (** ** Basic enum infrastructure *)
 Section enum.
   Context `{!typeGS Σ}.
-  (*Set Universe Polymorphism.*)
 
   Record enum_tag_sem {rt : Type} := mk_enum_tag_sem {
     enum_tag_sem_rt : Type;
@@ -252,9 +251,6 @@ Section enum.
     enum_rt : rt → Type;
     enum_ty : ∀ r, type (enum_rt r);
     enum_r : ∀ r, enum_rt r;
-    (* back injection when we update a variant or borrow from it. *)
-    (*enum_rt_inj : *)
-      (*∀ (tag : var_name) (rt : Type) (xr : projT1 (enum_tag_ty tag)), rt;*)
     (* convenience function: given the variant name, also project out the type *)
     enum_tag_ty_inj :
       var_name →
@@ -288,30 +284,6 @@ Section enum.
   Definition enum_tag' {rt} (en : enum rt) (r : rt) : string :=
     default "" (enum_tag en r).
 
-  Definition enum_tag_ty {rt} (en : enum rt) (v : var_name) : option (sigT type) :=
-    option_map (λ x, existT _ x.(enum_tag_sem_ty)) (enum_tag_ty_inj en v).
-  Definition enum_tag_ty' {rt} (en : enum rt) (v : var_name) : sigT type :=
-    default (existT _ $ uninit UnitSynType) (enum_tag_ty en v).
-  Definition enum_tag_rt' {rt} (en : enum rt) (v : var_name) : Type :=
-    projT1 (enum_tag_ty' en v).
-  Definition enum_tag_type' {rt} (en : enum rt) (v : var_name) : type (enum_tag_rt' en v) :=
-    projT2 (enum_tag_ty' en v).
-  Lemma enum_tag_ty_compat {rt} (en : enum rt) r tag :
-    enum_tag en r = Some tag → enum_tag_ty en tag = Some (existT (enum_rt en r) (enum_ty en r)).
-  Proof.
-    rewrite /enum_tag_ty. intros Htag.
-    odestruct enum_tag_compat as (vinj & Htg); first done.
-    (*opose proof* enum_tag_compat as Htg; first done.*)
-    rewrite Htg. done.
-  Defined.
-
-  Definition enum_variant_rt {rt} (en : enum rt) (r : rt) : Type :=
-    (enum_rt en r).
-  Definition enum_variant_rfn {rt} (en : enum rt) (r : rt) : (enum_variant_rt en r) :=
-    ((enum_r en r)).
-  Definition enum_variant_type {rt} (en : enum rt) (r : rt) : type (enum_variant_rt en r) :=
-    ((enum_ty en r)).
-
   Definition enum_lookup_tag {rt} (e : enum rt) (r : rt) : option Z :=
     fmap (els_lookup_tag e.(enum_els)) (e.(enum_tag) r).
 
@@ -321,43 +293,38 @@ Section enum.
   Definition els_data_ly (els : enum_layout_spec) :=
     use_union_layout_alg' (uls_of_els els).
 
-  Lemma enum_tag_rt_variant_rt_eq {rt} (en : enum rt) r tag :
+  Import EqNotations.
+  Lemma enum_tag_rt_eq {rt} (en : enum rt) r tag sem :
     enum_tag en r = Some tag →
-    enum_tag_rt' en tag = enum_variant_rt en r.
+    enum_tag_ty_inj en tag = Some sem →
+    sem.(enum_tag_sem_rt) = enum_rt en r.
   Proof.
-    rewrite /enum_tag_rt' /enum_variant_rt /enum_tag_ty'.
-    intros Htag. rewrite (enum_tag_ty_compat en r); done.
+    intros Htag Hsem.
+    odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
+    simplify_eq. done.
   Defined.
 
-  Import EqNotations.
-  Definition enum_tag_rfn {rt} (en : enum rt) (v : var_name) (r : rt) (Heq : enum_tag en r = Some v): enum_tag_rt' en v :=
-    rew <- [id] (enum_tag_rt_variant_rt_eq en r v Heq) in (en.(enum_r) r).
-
-  Lemma enum_tag_ty_Some {rt} (en : enum rt) r tag :
-    enum_tag en r = Some tag →
-    enum_tag_ty en tag = Some (existT (enum_rt en r) (enum_ty en r)).
+  Lemma enum_tag_type_eq {rt} (en : enum rt) r tag sem
+    (Heq : enum_tag en r = Some tag)
+    (Hsem : enum_tag_ty_inj en tag = Some sem) :
+    sem.(enum_tag_sem_ty) =
+    rew <-[type] (enum_tag_rt_eq en r _ _ Heq Hsem) in enum_ty en r.
   Proof.
-    intros ?.
-    erewrite (enum_tag_ty_compat); done.
+    odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
+    simplify_eq.
+    generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
+    simpl. intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
   Qed.
-
-  Import EqNotations.
-  Lemma enum_tag_type_variant_type_eq {rt} (en : enum rt) r tag (Heq : enum_tag en r = Some tag) :
-    enum_tag_type' en tag = rew <-[type] (enum_tag_rt_variant_rt_eq en r _ Heq) in enum_variant_type en r.
+  Lemma enum_tag_type_eq' {rt} (en : enum rt) r tag sem
+    (Heq : enum_tag en r = Some tag)
+    (Hsem : enum_tag_ty_inj en tag = Some sem) :
+    rew ->[type] (enum_tag_rt_eq en r _ _ Heq Hsem) in sem.(enum_tag_sem_ty) =
+    enum_ty en r.
   Proof.
-    (*destruct (enum_ty en r) as [rte [lte re]] eqn:Heq.*)
-    rewrite /enum_tag_type'/enum_variant_type/enum_tag_ty'.
-    specialize (enum_tag_ty_compat en r tag Heq) as Hb.
-    generalize (enum_tag_rt_variant_rt_eq en r tag Heq) as Heq2.
-    rewrite /enum_tag_rt' /enum_tag_ty' /enum_variant_rt.
-    rewrite Hb. simpl.
-    intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
-  Qed.
-
-  Lemma enum_variant_rt_tag_rt_eq {rt} (en : enum rt) (r : rt) (tag : var_name) :
-    enum_tag en r = Some tag → enum_variant_rt en r = enum_tag_rt' en tag.
-  Proof.
-    intros. symmetry. by apply enum_tag_rt_variant_rt_eq.
+    odestruct (enum_tag_compat _ en) as (vinj & Htg); first done.
+    simplify_eq.
+    generalize (enum_tag_rt_eq en r tag _ Heq Hsem) as Heq2.
+    simpl. intros Heq2. rewrite (UIP_refl _ _ Heq2); done.
   Qed.
 End enum.
 
@@ -2207,28 +2174,15 @@ Section ltype_def.
         subst. iExists ((lty_core_rt_eq lt)).
         unshelve rewrite IH. { apply lty_core_rt_eq. }
         iApply (lty_own_pre_rfn_eq with "Ha").
-        cbn.
-        rewrite /transport_rfn.
-
-        (*
-        generalize (lty_core_rt_eq lt). intros []. done.
-
-        iExists Heq'. iFrame.
-        unshelve rewrite IH. { apply lty_core_rt_eq. }
-        iApply (lty_own_pre_rfn_eq with "Hb").
-        rewrite /transport_rfn.
-        rewrite rew_compose.
-        apply rew_swap'.
-        rewrite rew_compose.
-        apply elim_id_cast_r.
-         *)
-        admit.
+        cbn. rewrite /transport_rfn.
+        generalize (lty_core_rt_eq lt).
+        rewrite lty_core_rt_eq.
+        intros Heq. rewrite (UIP_refl _ _ Heq)//.
     - simp lty_own_pre. rewrite (UIP_refl _ _ Heq). done.
     - simp lty_own_pre.
     - simp lty_own_pre.
     - simp lty_own_pre. rewrite (UIP_refl _ _ Heq). done.
-  (*Qed.*)
-  Admitted.
+  Qed.
   Lemma lty_own_core_core' (lt : lty) k π r Heq l :
     lty_own_pre true (lty_core lt) k π r l ≡ lty_own_pre true lt k π (transport_rfn Heq r) l.
   Proof.
@@ -2411,13 +2365,10 @@ Section ltype_def.
         subst. iExists ((lty_core_rt_eq lt)).
         unshelve rewrite (IH core). { symmetry. apply lty_core_rt_eq. }
         iApply (lty_own_pre_rfn_eq with "Ha").
-        rewrite /transport_rfn.
+        rewrite /transport_rfn. cbn.
         generalize (lty_core_rt_eq lt).
-        (*rewrite rew_compose.*)
-        (*apply rew_swap.*)
-        (*rewrite rew_compose.*)
-        (*apply elim_id_cast_l.*)
-        admit.
+        rewrite lty_core_rt_eq.
+        intros Heq. rewrite (UIP_refl _ _ Heq)//.
       + iIntros "(%Heq & Ha)".
         match goal with a : rt |- _ => rename a into r1 end.
         (*assert (Heq' : lty_rt lt = enum_variant_rt en r1).*)
@@ -2433,8 +2384,7 @@ Section ltype_def.
     - simp lty_own_pre.
     - simp lty_own_pre.
     - rewrite (UIP_refl _ _ Heq). simp lty_own_pre. done.
-  (*Qed.*)
-  Admitted.
+  Qed.
 
   Local Lemma place_rfn_interp_shared_transport_eq {rt rt'} (r : place_rfn rt) (r' : rt) (Heq : rt = rt') :
     place_rfn_interp_shared r r' -∗

@@ -8,24 +8,6 @@ From refinedrust Require Import options.
 Section stratify.
   Context `{!typeGS Σ}.
 
-  (** Extraction *)
-  Lemma stratify_ltype_extract_shrltype π E L {rt} (lt : ltype rt) r κ l (wl : bool) (T : stratify_ltype_post_hook_cont_t) :
-    prove_with_subtype E L false ProveDirect (£ (Nat.b2n wl)) (λ L' κs R, (R -∗ T L' (True) _ (◁ uninit PtrSynType)%I (#())))
-    ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) T.
-  Proof.
-    iIntros "HT".
-    iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & >(Hcred & HR)& HL & HT)".
-    iMod (ltype_deinit_shr' with "Hcred Hl") as "Hl"; [done.. | | ].
-    { left. done. }
-    iSpecialize ("HT" with "HR").
-    iExists _, _, _, _, _. iFrame.
-    iFrame. simp_ltypes. done.
-  Qed.
-  Global Instance stratify_ltype_extract_shrltype_inst π E L {rt} (lt : ltype rt) r κ l (wl : bool) :
-    StratifyLtypePostHook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) :=
-    λ T, i2p (stratify_ltype_extract_shrltype π E L lt r κ l wl T).
-
   (** Structural instances *)
   Lemma stratify_ltype_shr_owned {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl
       (T : stratify_ltype_cont_t) :

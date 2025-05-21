@@ -73,74 +73,14 @@ Section lemmas.
       iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst' & %Hly)".
       iExists ly. subst st. iR. done.
   Qed.
-
-  (* TODO move *)
-  Lemma syn_type_has_layout_untyped_mono ly1 ly2 :
-    ly_align_log ly2 ≤ ly_align_log ly1 →
-    ly_size ly1 = ly_size ly2 →
-    syn_type_has_layout (UntypedSynType ly1) ly1 →
-    syn_type_has_layout (UntypedSynType ly2) ly2.
-  Proof.
-    intros ?? Hut. apply syn_type_has_layout_untyped_inv in Hut as (_ & Hwf & Hsz & Hal).
-    apply syn_type_has_layout_untyped; first done.
-    - eapply layout_wf_mono; done.
-    - lia.
-    - by eapply ly_align_in_bounds_mono.
-  Qed.
 End lemmas.
 
 Section deinit.
   Context `{!typeGS Σ}.
 
   (** ** Instances for deinitializing a type *)
+  (** Types have more specific instances that we generally prefer in [.../deinit.v] *)
 
-
-  (** More specific instances that we generally prefer *)
-
-  (* Directly subsume ShrLtype, as there can not be any interesting borrow information to extract *)
-  Lemma owned_subltype_step_shrltype_uninit π E L {rt} (lt : ltype rt) r st κ l T  :
-    owned_subltype_step π E L l r #() (ShrLtype lt κ) (◁ uninit st) T :-
-    exhale (⌜syn_type_compat PtrSynType st⌝);
-    return T L True%I.
-  Proof.
-    iIntros "(%Hstcomp & HT)".
-    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
-    iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
-    iExists _, _. iFrame.
-    iSplitL. { iApply logical_step_intro. by iFrame. }
-    iModIntro. iPureIntro. intros ?? Hst1 Hst2.
-    destruct Hstcomp as [<- | (ly1' & Hst' & ->)].
-    + f_equiv. by eapply syn_type_has_layout_inj.
-    + eapply syn_type_has_layout_untyped_inv in Hst2 as (<- & _).
-      f_equiv. by eapply syn_type_has_layout_inj.
-  Qed.
-  Definition owned_subltype_step_shrltype_uninit_inst := [instance owned_subltype_step_shrltype_uninit].
-  Global Existing Instance owned_subltype_step_shrltype_uninit_inst | 20.
-
-  Lemma owned_subltype_step_mutltype_uninit π E L {rt} (lt : ltype rt) r γ st κ l T :
-    owned_subltype_step π E L l #(r, γ) #() (MutLtype lt κ) (◁ uninit st) T :-
-    return match ltype_uniq_extractable lt with
-    | None => False
-    | Some κm =>
-        [{ exhale (⌜syn_type_compat PtrSynType st⌝);
-        return T L (MaybeInherit κm InheritGhost (place_rfn_interp_mut_extracted r γ)) }]
-    end.
-  Proof.
-    iIntros "HT".
-    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
-    destruct (ltype_uniq_extractable lt) eqn:Hextract; last done.
-    iDestruct "HT" as "(%Hstcomp & HT)".
-    iExists _, _. iFrame.
-    iMod (ltype_uniq_extractable_deinit_mut with "Hl") as "(Hl & Hf)"; [done.. | ].
-    iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
-    { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
-    iModIntro. iSplitL. { iApply logical_step_intro. iFrame. }
-    iPureIntro. iIntros (ly1 ly2 Halg1 Halg2).
-    specialize (syn_type_compat_layout_trans _ _ _ Hstcomp Halg2) as ?.
-    f_equiv. by eapply syn_type_has_layout_inj.
-  Qed.
-  Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
-  Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.
 
   (* Required instances;
      - box (maybe not?)
@@ -149,51 +89,6 @@ Section deinit.
      - array
      Maybe:
      - opened (in case we did not re-establish the invariant, but still have the underlying struct etc) *)
-
-  (* I guess i iterate over the fields and call owned_subltype_step for all of them. *)
-  Lemma owned_subltype_step_struct_uninit π E L l {rts} (lts : hlist ltype rts) rs sls st T :
-    owned_subltype_step π E L l #rs #() (StructLtype lts sls) (◁ uninit st) T :-
-    exhale (⌜st = sls⌝);
-    L2, R2 ← iterate: zip (hpzipl rts lts rs) sls.(sls_fields) with L, True%I {{ '((existT rt (lt, r)), (field, stf)) T L2 R2,
-      return owned_subltype_step π E L2 (l atst{sls}ₗ field) r #() lt (◁ uninit stf) (λ L3 R3,
-        T L3 (R2 ∗ R3))
-      }};
-    return T L2 R2.
-  Proof.
-    iIntros "(-> & Hit)".
-    iIntros (??) "#CTX #HE HL Hl".
-    (* use struct_ltype_focus_components *)
-    (*rewrite ltype_own_struct_unfold/struct_ltype_own/=.*)
-    (*iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hl & Hlb & _ & %rs' & -> & Ha)".*)
-    (*iMod (fupd_mask_mono with "Ha") as "Ha"; first done.*)
-
-    (*Search li.iterate "elim".*)
-    (* invariant: ownership of the first n uninit segments.
-        ownership for the rest
-    *)
-
-    (*
-    set (INV := λ (i : nat) (L2 : llctx) (R2 : iProp Σ),
-      llctx_interp L2 ∗
-
-      logical_step F ( ∗ R2)).
-     *)
-
-    (*Search iterate_elim2*)
-
-  Admitted.
-  Definition owned_subltype_step_struct_uninit_inst := [instance owned_subltype_step_struct_uninit].
-  Global Existing Instance owned_subltype_step_struct_uninit_inst | 20.
-
-  Lemma owned_subltype_step_enum_uninit π E L l {rt rte} (en : enum rt) (lte : ltype rte) rs tag re st T  :
-    owned_subltype_step π E L l #rs #() (EnumLtype en tag lte re) (◁ uninit st) T :-
-    ∀ le,
-      (*ste ← tactic (compute_map_lookup_goal (list_to_map (en.(enum_els).(els_variants))) tag false);*)
-      return owned_subltype_step π E L le #re #() lte (◁ uninit (ltype_st lte)) T.
-  Proof.
-  Admitted.
-  Definition owned_subltype_step_enum_uninit_inst := [instance owned_subltype_step_enum_uninit].
-  Global Existing Instance owned_subltype_step_enum_uninit_inst | 20.
 
   (*
   Lemma owned_subltype_step_array_uninit π E L l {rts} (lts : hlist ltype rts) rs sls st T :

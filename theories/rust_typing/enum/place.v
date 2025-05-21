@@ -89,18 +89,19 @@ Section rules.
     (Heq : enum_tag en r_old = Some tag)
     : (enum_rt en r_old) → rt :=
     enum_tag_rt_inj (projT1 (enum_tag_ty_inj' en r_old tag Heq)).
-  Definition enum_tag_rfn_inj' {rt} (en : enum rt) (tag : string)
-    (r_old : rt)
-    (Heq : enum_tag en r_old = Some tag)
-    : (enum_tag_rt' en tag) → rt :=
-    λ ri,
-      enum_tag_rfn_inj en tag r_old Heq (rew <-[id] (enum_variant_rt_tag_rt_eq en r_old tag Heq) in ri).
 
-  Definition placein_or_default {rt} (r : place_rfn rt) (def : rt) : rt :=
-    match r with
-    | PlaceIn r => r
-    | _ => def
-    end.
+  (*Definition enum_tag_rfn_inj' {rt} (en : enum rt) (tag : string)*)
+    (*(r_old : rt)*)
+    (*(Heq : enum_tag en r_old = Some tag)*)
+    (*: (enum_tag_rt' en tag) → rt :=*)
+    (*λ ri,*)
+      (*enum_tag_rfn_inj en tag r_old Heq (rew <-[id] (enum_variant_rt_tag_rt_eq en r_old tag Heq) in ri).*)
+
+  (*Definition placein_or_default {rt} (r : place_rfn rt) (def : rt) : rt :=*)
+    (*match r with*)
+    (*| PlaceIn r => r*)
+    (*| _ => def*)
+    (*end.*)
 
   Lemma typed_place_enum_data_field_owned {rt} π E L l (en : enum rt) (r : rt) bmin0 els tag tag' sls mem {rts} (lts : hlist ltype rts) rs P T :
     typed_place π E L l (EnumLtype en tag (StructLtype lts sls) rs) (#r) bmin0 (Owned false) (EnumDataPCtx els tag' :: GetMemberPCtx sls mem :: P) T :-
