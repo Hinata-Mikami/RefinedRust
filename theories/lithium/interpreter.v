@@ -9,12 +9,12 @@ Set Default Proof Using "Type".
 Tactic Notation "liInst" hyp(H) open_constr(c) :=
   instantiate_protected H c.
 
-Ltac liShow := li_unfold_lets_in_context; try liToSyntaxGoal.
-
 Ltac liSimpl :=
   (* simpl inserts a cast even if it does not do anything
      (see https://coq.zulipchat.com/#narrow/stream/237656-Coq-devs.20.26.20plugin.20devs/topic/exact_no_check.2C.20repeated.20casts.20in.20proof.20terms/near/259371220 ) *)
   try progress simpl.
+
+Ltac liShow := liSimpl; li_unfold_lets_in_context; try liToSyntaxGoal.
 
 Ltac liUnfoldLetGoal :=
   let do_unfold P :=
@@ -542,6 +542,11 @@ Ltac liWand :=
       let n' := eval vm_compute in (Pos.succ n) in
       simple notypeclasses refine (tac_do_intro H n' P _ _ _ _ _ _ _); [li_pm_reflexivity..|]
     ] in
+  lazymatch goal with
+  | |- envs_entails ?Δ (bi_wand ?P ?T) =>
+      let Q := eval simpl in P in
+      change_no_check (envs_entails Δ (bi_wand Q T))
+  end;
   lazymatch goal with
   | |- envs_entails ?Δ (bi_wand ?P ?T) =>
       lazymatch P with

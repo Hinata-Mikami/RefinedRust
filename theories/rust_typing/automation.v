@@ -170,6 +170,17 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 bmin els) T))
   end.
 
+(** Strategy to directly unfold the instance we're applying;
+  otherwise we may sometimes get massive Qed slowdown *)
+Ltac liExtensible_hook ::=
+lazymatch goal with
+  | |- environments.envs_entails ?S ?a =>
+  lazymatch a with
+  | i2p_P (?a ?c) =>
+    let b := eval hnf in a in
+    change_no_check (environments.envs_entails S (b c))
+  end; unfold i2p_P
+end.
 
 (** * Loopy stuff *)
 (* using our own list type here in order to be able to put iProp's in it (universe troubles) *)
@@ -728,6 +739,7 @@ Ltac simp_ltypes_in_goal :=
   repeat simp_ltypes_in_goal_step.
 
 (* This does everything *)
+(*
 Ltac liRStep :=
  liEnsureInvariant;
  try liRIntroduceLetInGoal;
@@ -743,6 +755,43 @@ Ltac liRStep :=
 ];
 (*try unfold_introduce_direct; *)
 liSimpl.
+ *)
+
+Ltac liFastStep :=
+  first
+  [ liExtensible
+  | liSep
+  | liAnd
+  | liWand
+  | liExist
+  | liImpl
+  | liForall
+  | liSideCond
+  | liFindInContext
+  | liCase
+  | liTrace
+  | liTactic; liSimpl
+  | liPersistent
+  | liBoringly
+  | liTrue
+  | liFalse
+  | liAccu
+  | liUnfoldLetGoal ].
+
+Ltac liRStep :=
+  liEnsureInvariant;
+  try liRIntroduceLetInGoal;
+  simp_ltypes_in_goal;
+  first [
+    liRInstantiateEvars (* must be before do_side_cond and do_extensible_judgement *)
+  | liRStmt
+  | liRIntroduceTypedStmt
+  | liRExpr
+  | liRJudgement
+  | liFastStep
+  | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
+  | progress simpl
+ ].
 
 Tactic Notation "liRStepUntil" open_constr(id) :=
   repeat lazymatch goal with
@@ -1149,7 +1198,7 @@ Ltac sidecond_hammer :=
   sidecond_hammer_it
 .
 Ltac sidecond_solver :=
-  unshelve_sidecond; sidecond_hook.
+  unshelve_sidecond; liSimpl; sidecond_hook.
 
 (* Solve this sidecondition within Lithium *)
 Ltac solve_function_subtype_hook ::=
