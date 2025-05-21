@@ -36,7 +36,7 @@ Section ltype_agree.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & Hb)".
     iModIntro.
     iExists _, _, _. iFrame. iSplitR; last done.
-    injection Ha as <-. done.
+    apply syn_type_has_layout_ptr_inv in Ha as ?. subst. done.
   Qed.
 
   Lemma shr_ref_unfold_1_uniq κ κ' γ r :

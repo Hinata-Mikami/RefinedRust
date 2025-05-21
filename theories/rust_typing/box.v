@@ -41,10 +41,13 @@ Section box.
     _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
-    iIntros (π v r) "(%l & %ly & -> & ? & ? & _)". eauto with iFrame.
+    iIntros (π v r) "(%l & %ly & -> & % & % & _)".
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
-    iIntros (ot mt Hot). apply is_ptr_ot_layout in Hot as ->. done.
+    iIntros (ot mt Hot). apply is_ptr_ot_layout in Hot as ->.
+    by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
     iIntros (???) "(%l & %ly & -> & _)". done.
@@ -53,8 +56,9 @@ Section box.
     iIntros (????) "_". done.
   Qed.
   Next Obligation.
-    iIntros (κ π l r) "(%li & %ly & %ri & Hr & ? & ? & ?  & _)".
-    eauto with iFrame.
+    iIntros (κ π l r) "(%li & %ly & %ri & Hr & % & % & %  & _)".
+    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
     iIntros (E κ l ly π r q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
@@ -113,9 +117,8 @@ Section box.
     iCombine "Htok Htok2" as "$".
     iModIntro.
     iExists l', ly', ri. iFrame.
-    iSplitR. { inversion Halg; subst; done. }
-    iSplitR; first done. iSplitR; first done.
-    inversion Halg; subst ly. iFrame "#".
+    apply syn_type_has_layout_ptr_inv in Halg as ->.
+    do 3 iR. iFrame "#".
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.
@@ -526,7 +529,8 @@ Section unfold.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %ri' & >Hrfn & Hb)".
     iExists _, _, _. iFrame.
-    injection Ha as <-. iFrame "#". done.
+    apply syn_type_has_layout_ptr_inv in Ha as ->.
+    iFrame "#". done.
   Qed.
 
   Lemma box_ltype_unfold_2_shared κ r :
@@ -676,7 +680,8 @@ Section lemmas.
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hlb & Hcred & %r' & <- & Hb)".
-    injection Halg as <-. iFrame "#%".
+    apply syn_type_has_layout_ptr_inv in Halg as ->.
+    iFrame "#%".
     iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
     iDestruct "Hb" as "(%l' & %ly' & Hl & %Halg & %Hly' & Hf & Hb)".
     iModIntro. iExists l'. iFrame.
@@ -684,7 +689,9 @@ Section lemmas.
     iIntros "Hcred' !>". iIntros (rt2 lt2 r2 Hst) "Hl Hb". iModIntro.
     iSplitL "Hf Hl Hb Hcred'".
     { rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. iFrame "# ∗".
-      iSplitR; first done. iSplitR; first done. iR. iNext.
+      iSplitR. { iPureIntro. by apply syn_type_has_layout_ptr. }
+      iSplitR; first done.
+      iR. iNext.
       rewrite Hst. by iFrame "%#". }
     iIntros (bmin) "%Hrt Hcond".
     iDestruct "Hcond" as "(Hcondt & Hcondr)".
@@ -719,7 +726,8 @@ Section lemmas.
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ HR Hb". rewrite ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
-    injection Halg as <-. iFrame "#%".
+    apply syn_type_has_layout_ptr_inv in Halg as ?; subst.
+    iFrame "#%".
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iMod "Hb".
     (* NOTE: we are currently throwing away the existing "coring"-viewshift that we get *)
@@ -768,7 +776,8 @@ Section lemmas.
       iSplitL.
       { rewrite ltype_own_box_unfold /box_ltype_own.
         iExists void*. iFrame.
-        iSplitR; first done. iSplitR; first done. iSplitR; first done.
+        iSplitR. { iPureIntro. by apply syn_type_has_layout_ptr. }
+        do 2 iR.
         iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
         iModIntro. subst V.
         (* need to adapt the pinned part, too *)
@@ -797,14 +806,15 @@ Section lemmas.
       iApply (opened_ltype_create_uniq_simple with "Hrfn Hauth Hcred1 Hat Hincl HR Hb_cl [] [Hcred']"); first done.
       { iModIntro. iIntros (?) "Hauth Hc". simp_ltypes.
         rewrite ltype_own_box_unfold /box_ltype_own.
-        iExists _. iFrame. iDestruct "Hc" as ">(% & _ & _ & _ & _ & %r' & -> & >(%l0 & % & Hl & %Halg & % & Hf & Hb))".
+        iExists _. iFrame. iDestruct "Hc" as ">(% & _ & _ & _ & _ & %r' & -> & >(%l0 & % & Hl & %Halg' & % & Hf & Hb))".
         iModIntro. setoid_rewrite ltype_own_core_equiv.
-        iExists _, _. move: Halg. rewrite ltype_core_syn_type_eq => ?.
+        iExists _, _. move: Halg'. rewrite ltype_core_syn_type_eq => ?.
         eauto with iFrame. }
       { iIntros (?) "Hobs Hat Hcred Hp". simp_ltypes.
         rewrite ltype_own_box_unfold /box_ltype_own.
         setoid_rewrite ltype_own_core_equiv. rewrite ltype_core_idemp.
-        rewrite ltype_core_syn_type_eq. iModIntro. eauto 8 with iFrame. }
+        rewrite ltype_core_syn_type_eq. iModIntro.
+        eauto 8 with iFrame. }
       { rewrite ltype_own_box_unfold /box_ltype_own.
         iExists void*. do 4 iR.
         iExists r2. iR. iNext. iModIntro. rewrite Hst'. eauto with iFrame. }
@@ -829,7 +839,7 @@ Section lemmas.
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
-    apply syn_type_has_layout_ptr_inv in Hst. subst ly.
+    apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
     iR. iR.
     iMod (fupd_mask_mono with "Hb") as "(%li & #Hf & #Hl)"; first done.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.

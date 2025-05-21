@@ -35,7 +35,7 @@ Section deinit.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first done.
+    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.
@@ -69,7 +69,7 @@ Section deinit.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first done.
+    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.
@@ -99,7 +99,7 @@ Section deinit.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first done.
+    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.
@@ -133,7 +133,7 @@ Section deinit.
     iExists tt. iR. iModIntro. iExists _. iFrame.
     rewrite uninit_own_spec. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
-    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first done.
+    iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.

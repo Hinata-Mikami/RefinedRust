@@ -401,7 +401,7 @@ Qed.
 (** Use a layout algorithm recursively on a layout spec. *)
 (* NOTE on size limits from https://doc.rust-lang.org/stable/reference/types/numeric.html#machine-dependent-integer-types:
     "The isize type is a signed integer type with the same number of bits as the platform's pointer type. The theoretical upper bound on object and array size is the maximum isize value. This ensures that isize can be used to calculate differences between pointers into an object or array and can address every byte within an object along with one byte past the end." *)
-Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
+Fixpoint use_layout_alg_def `{!LayoutAlg} (synty : syn_type) : option layout :=
   match synty with
   | IntSynType it =>
       (* make sure that we respect limits on object size *)
@@ -414,28 +414,28 @@ Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
   | FnPtrSynType => Some void*
   | StructSynType sn fields repr =>
       field_lys ← list_map_option (λ '(field_name, field_spec),
-        ly ← use_layout_alg field_spec;
+        ly ← use_layout_alg_def field_spec;
         Some (field_name, ly)) fields;
       sl ← struct_layout_alg sn field_lys repr;
       Some (layout_of sl)
   | UnitSynType => Some (layout_of unit_sl)
   | ArraySynType st len =>
-      ly ← use_layout_alg st;
+      ly ← use_layout_alg_def st;
       (* check that this is within the size limits *)
       if decide (ly_size (mk_array_layout ly len) ≤ MaxInt ISize) then
         Some (mk_array_layout ly len)
       else None
-  | UnsafeCell st => use_layout_alg st
+  | UnsafeCell st => use_layout_alg_def st
   | UnionSynType un variants repr =>
       variant_lys ← list_map_option (λ '(variant_name, variant_spec),
-        ly ← use_layout_alg variant_spec;
+        ly ← use_layout_alg_def variant_spec;
         Some (variant_name, ly)) variants;
       ul ← union_layout_alg un variant_lys repr;
       Some (ul_layout ul)
   | EnumSynType en tag variants repr =>
       (* NOTE: this interface currently relies on union layouting not changing the order of variants to correctly map it to the tags. *)
       variant_lys ← list_map_option (λ '(variant_name, variant_spec),
-        ly ← use_layout_alg variant_spec;
+        ly ← use_layout_alg_def variant_spec;
         Some (variant_name, ly)) variants;
       ul ← union_layout_alg en variant_lys (union_repr_of_enum_repr repr);
       sl ← struct_layout_alg en [("discriminant", it_layout tag); ("data", ul_layout ul)] (struct_repr_of_enum_repr repr);
@@ -443,7 +443,12 @@ Fixpoint use_layout_alg `{!LayoutAlg} (synty : syn_type) : option layout :=
   | UntypedSynType ly =>
       if decide (layout_wf ly ∧ ly_size ly ≤ MaxInt ISize ∧ ly_align_in_bounds ly) then Some ly else None
   end.
-Arguments use_layout_alg : simpl never.
+Definition use_layout_alg_aux `{!LayoutAlg} : seal (use_layout_alg_def). Proof. by eexists. Qed.
+Definition use_layout_alg `{!LayoutAlg} := use_layout_alg_aux.(unseal).
+Definition use_layout_alg_unfold `{!LayoutAlg} : use_layout_alg = use_layout_alg_def := use_layout_alg_aux.(seal_eq).
+
+Ltac unfold_layout_alg :=
+  rewrite -> use_layout_alg_unfold in *.
 
 (** Under our current layout environment, [ly] is a valid layout for [synty]. *)
 Definition syn_type_has_layout `{!LayoutAlg} (synty : syn_type) (ly : layout) : Prop :=
@@ -468,7 +473,8 @@ Lemma use_struct_layout_alg_Some_inv `{!LayoutAlg} (sls : struct_layout_spec) sl
 Proof.
   intros Hly.
   unfold use_struct_layout_alg in Hly. simplify_option_eq.
-  unfold use_layout_alg. simpl. fold use_layout_alg.
+  unfold_layout_alg. rewrite /use_layout_alg_def.
+  simpl. fold use_layout_alg_def.
   simplify_option_eq; eauto.
 Qed.
 Lemma use_layout_alg_struct_Some_inv `{!LayoutAlg} (sls : struct_layout_spec) ly :
@@ -476,8 +482,11 @@ Lemma use_layout_alg_struct_Some_inv `{!LayoutAlg} (sls : struct_layout_spec) ly
   ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = layout_of sl.
 Proof.
   intros Hly.
-  unfold use_layout_alg in Hly. simpl in Hly. fold use_layout_alg in Hly. simplify_option_eq.
-  eexists _. unfold use_struct_layout_alg. simplify_option_eq; eauto.
+  unfold_layout_alg.
+  simpl in Hly. simplify_option_eq.
+  eexists _. unfold use_struct_layout_alg.
+  unfold_layout_alg.
+  simplify_option_eq; eauto.
 Qed.
 
 Lemma use_struct_layout_alg_Some `{!LayoutAlg} sls sl fields' :
@@ -524,12 +533,15 @@ Lemma syn_type_has_layout_struct `{!LayoutAlg} name fields fields' repr ly :
   struct_layout_alg name fields' repr = Some ly →
   syn_type_has_layout (StructSynType name fields repr) ly.
 Proof.
-  intros Ha Hb. rewrite /syn_type_has_layout /use_layout_alg /=;
-  fold use_layout_alg.
+  intros Ha Hb. rewrite /syn_type_has_layout /=;
+  unfold_layout_alg; simpl;
+  fold use_layout_alg_def.
   rewrite bind_Some. exists fields'.
   split.
   { rewrite list_map_option_alt.
-    eapply Forall2_impl; first apply Ha. intros [] [] [-> ->] => //. }
+    eapply Forall2_impl; first apply Ha.
+    rewrite /syn_type_has_layout; unfold_layout_alg.
+    intros [] [] [-> ->] => //. }
   rewrite Hb. done.
 Qed.
 
@@ -547,7 +559,7 @@ Lemma use_union_layout_alg_Some_inv `{!LayoutAlg} (uls : union_layout_spec) ul :
 Proof.
   intros Hly.
   unfold use_union_layout_alg in Hly. simplify_option_eq.
-  unfold use_layout_alg. simpl. fold use_layout_alg.
+  unfold_layout_alg. simpl. fold use_layout_alg.
   simplify_option_eq; eauto.
 Qed.
 Lemma use_layout_alg_union_Some_inv `{!LayoutAlg} (uls : union_layout_spec) ly :
@@ -555,8 +567,9 @@ Lemma use_layout_alg_union_Some_inv `{!LayoutAlg} (uls : union_layout_spec) ly :
   ∃ ul, use_union_layout_alg uls = Some ul ∧ ly = ul_layout ul.
 Proof.
   intros Hly.
-  unfold use_layout_alg in Hly. simpl in Hly. fold use_layout_alg in Hly. simplify_option_eq.
-  eexists _. unfold use_union_layout_alg. simplify_option_eq; eauto.
+  unfold_layout_alg. simpl in Hly. simplify_option_eq.
+  eexists _. unfold use_union_layout_alg.
+  unfold_layout_alg. simplify_option_eq; eauto.
 Qed.
 Lemma use_union_layout_alg_Some `{!LayoutAlg} uls ul variants' :
   Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ use_layout_alg fst = Some fly) uls.(uls_variants) variants' →
@@ -577,12 +590,16 @@ Lemma syn_type_has_layout_union `{!LayoutAlg} name variants variants' repr ly :
   union_layout_alg name variants' repr = Some ly →
   syn_type_has_layout (UnionSynType name variants repr) ly.
 Proof.
-  intros Ha Hb. rewrite /syn_type_has_layout /use_layout_alg /=;
-  fold use_layout_alg.
+  intros Ha Hb. rewrite /syn_type_has_layout /=;
+  unfold_layout_alg.
   rewrite bind_Some. exists variants'.
   split.
-  { rewrite list_map_option_alt.
-    eapply Forall2_impl; first apply Ha. intros [] [] [-> ->] => //. }
+  { fold use_layout_alg_def.
+    rewrite list_map_option_alt.
+    eapply Forall2_impl; first apply Ha.
+    rewrite /syn_type_has_layout.
+    unfold_layout_alg.
+    intros [] [] [-> ->] => //. }
   rewrite Hb. done.
 Qed.
 Lemma use_union_layout_alg_inv `{!LayoutAlg} uls ul :
@@ -627,7 +644,7 @@ Proof.
   intros Hly.
   unfold use_enum_layout_alg in Hly.
   apply use_struct_layout_alg_Some_inv in Hly.
-  unfold use_layout_alg. simpl. fold use_layout_alg.
+  unfold_layout_alg. simpl.
   unfold use_layout_alg in Hly. simpl in Hly. fold use_layout_alg in Hly.
   rewrite -Hly. simplify_option_eq; eauto.
 Qed.
@@ -636,12 +653,12 @@ Lemma use_layout_alg_enum_Some_inv `{!LayoutAlg} (els : enum_layout_spec) ly :
   ∃ el, use_enum_layout_alg els = Some el ∧ ly = layout_of el.
 Proof.
   intros Hly.
-  unfold use_layout_alg in Hly. simpl in Hly. fold use_layout_alg in Hly.
+  unfold_layout_alg. simpl in Hly.
   apply bind_Some in Hly as (vars & Hvars & Hul).
   apply bind_Some in Hul as (ul & Hul & Hsl).
   apply bind_Some in Hsl as (sl & Hsl & [= <-]).
   eexists _. unfold use_enum_layout_alg, enum_sls, use_struct_layout_alg. simpl.
-  unfold use_layout_alg; simpl; fold use_layout_alg.
+  unfold_layout_alg; simpl.
   rewrite Hvars /= Hul /=.
   rewrite decide_True; last apply els_tag_it_size.
   simpl. rewrite Hsl //.
@@ -655,7 +672,9 @@ Proof.
   intros Ha Hb Hc. rewrite /use_enum_layout_alg.
   eapply use_struct_layout_alg_Some; last done.
   econstructor.
-  { split; first done. rewrite /use_layout_alg. rewrite decide_True; first done.
+  { split; first done. unfold_layout_alg.
+    rewrite /use_layout_alg_def.
+    rewrite decide_True; first done.
     apply els_tag_it_size. }
   econstructor; last done.
   split; first done.
@@ -670,7 +689,8 @@ Lemma syn_type_has_layout_array `{!LayoutAlg} st (len : nat) ly ly' :
   syn_type_has_layout (ArraySynType st len) ly'.
 Proof.
   rewrite /syn_type_has_layout. intros -> Hst Hsize.
-  unfold use_layout_alg. fold use_layout_alg.
+  unfold_layout_alg. rewrite /use_layout_alg_def/=.
+  fold use_layout_alg_def.
   rewrite Hst //. simpl. rewrite decide_True; first done.
   rewrite /ly_size /=. lia.
 Qed.
@@ -679,9 +699,10 @@ Lemma syn_type_has_layout_array_inv `{!LayoutAlg} st len ly :
   syn_type_has_layout (ArraySynType st len) ly →
   ∃ ly', syn_type_has_layout st ly' ∧ ly = mk_array_layout ly' len ∧ ly_size ly ≤ MaxInt ISize.
 Proof.
-  rewrite /syn_type_has_layout {1}/use_layout_alg.
-  fold use_layout_alg.
-  destruct (use_layout_alg st) as [ ly' | ]; last done.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg. rewrite /use_layout_alg_def/=.
+  fold use_layout_alg_def.
+  destruct (use_layout_alg_def st) as [ ly' | ]; last done.
   simpl. case_decide; last done.
   intros [= <-]. eauto.
 Qed.
@@ -690,7 +711,8 @@ Lemma syn_type_has_layout_untyped_inv `{!LayoutAlg} ly ly' :
   use_layout_alg (UntypedSynType ly) = Some ly' →
   ly' = ly ∧ layout_wf ly ∧ (ly_size ly ≤ MaxInt ISize)%Z ∧ ly_align_in_bounds ly.
 Proof.
-  rewrite /use_layout_alg /=.
+  unfold_layout_alg.
+  rewrite /use_layout_alg_def /=.
   case_decide; last done.
   intros [= <-]. naive_solver.
 Qed.
@@ -701,7 +723,9 @@ Lemma syn_type_has_layout_untyped `{!LayoutAlg} ly ly' :
   ly_align_in_bounds ly →
   use_layout_alg (UntypedSynType ly) = Some ly'.
 Proof.
-  intros -> ???. rewrite /use_layout_alg decide_True; done.
+  intros -> ???.
+  unfold_layout_alg.
+  rewrite /use_layout_alg_def decide_True; done.
 Qed.
 
 Lemma syn_type_has_layout_int `{!LayoutAlg} (it : int_type) (ly : layout) :
@@ -709,62 +733,98 @@ Lemma syn_type_has_layout_int `{!LayoutAlg} (it : int_type) (ly : layout) :
   syn_type_has_layout (IntSynType it) ly.
 Proof.
   intros; subst.
-  rewrite /syn_type_has_layout /use_layout_alg decide_True; first done.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg.
+  rewrite /use_layout_alg_def decide_True; first done.
   apply it_size_bounded.
 Qed.
 Lemma syn_type_has_layout_int_inv `{!LayoutAlg} (it : int_type) (ly : layout) :
   syn_type_has_layout (IntSynType it) ly →
   ly = it_layout it.
 Proof.
-  rewrite /syn_type_has_layout /use_layout_alg.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg.
+  rewrite /use_layout_alg_def.
   case_decide; naive_solver.
 Qed.
 
 Lemma syn_type_has_layout_bool_inv `{!LayoutAlg} ly :
   syn_type_has_layout BoolSynType ly → ly = it_layout U8.
 Proof.
-  rewrite /syn_type_has_layout /use_layout_alg => [= <-] //.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg.
+  rewrite /use_layout_alg => [= <-] //.
 Qed.
 Lemma syn_type_has_layout_bool `{!LayoutAlg} ly :
   ly = it_layout U8 → syn_type_has_layout BoolSynType ly.
-Proof. intros -> => //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  intros -> => //.
+Qed.
 
 Lemma syn_type_has_layout_char_inv `{!LayoutAlg} ly :
   syn_type_has_layout CharSynType ly → ly = char_layout.
 Proof.
-  rewrite /syn_type_has_layout /use_layout_alg => [= <-] //.
+  rewrite /syn_type_has_layout. unfold_layout_alg => [= <-] //.
 Qed.
 Lemma syn_type_has_layout_char `{!LayoutAlg} ly :
   ly = char_layout → syn_type_has_layout CharSynType ly.
-Proof. intros -> => //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  intros -> => //.
+Qed.
 
 Lemma syn_type_has_layout_ptr_inv `{!LayoutAlg} ly :
   syn_type_has_layout PtrSynType ly → ly = void*.
-Proof. rewrite /syn_type_has_layout /use_layout_alg => [= <-] //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  move => [= <-] //.
+Qed.
 Lemma syn_type_has_layout_ptr `{!LayoutAlg} ly :
   ly = void* → syn_type_has_layout PtrSynType ly.
-Proof. intros -> => //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  intros -> => //.
+Qed.
 
 Lemma syn_type_has_layout_fnptr_inv `{!LayoutAlg} ly :
   syn_type_has_layout FnPtrSynType ly → ly = void*.
-Proof. rewrite /syn_type_has_layout /use_layout_alg => [= <-] //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  move => [= <-] //.
+Qed.
 Lemma syn_type_has_layout_fnptr `{!LayoutAlg} ly :
   ly = void* → syn_type_has_layout FnPtrSynType ly.
-Proof. intros -> => //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  intros -> => //.
+Qed.
 
 Lemma syn_type_has_layout_unit_inv `{!LayoutAlg} ly :
   syn_type_has_layout UnitSynType ly → ly = unit_sl.
-Proof. rewrite /syn_type_has_layout /use_layout_alg => [= <-] //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  move => [= <-] //.
+Qed.
 Lemma syn_type_has_layout_unit `{!LayoutAlg} ly :
   ly = unit_sl → syn_type_has_layout UnitSynType ly.
-Proof. intros -> => //. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  intros -> => //.
+Qed.
 
 Lemma syn_type_has_layout_unsafecell_inv `{!LayoutAlg} st ly :
   syn_type_has_layout (UnsafeCell st) ly → syn_type_has_layout st ly.
-Proof. done. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  done.
+Qed.
 Lemma syn_type_has_layout_unsafecell `{!LayoutAlg} st ly :
   syn_type_has_layout st ly → syn_type_has_layout (UnsafeCell st) ly.
-Proof. done. Qed.
+Proof.
+  rewrite /syn_type_has_layout. unfold_layout_alg.
+  done.
+Qed.
 
 (* More on structs *)
 Definition struct_layout_spec_has_layout `{!LayoutAlg} (sls : struct_layout_spec) (sl : struct_layout) : Prop :=
@@ -939,6 +999,7 @@ Lemma syn_type_has_layout_enum_inv `{!LayoutAlg} ly name it variants repr :
     Forall2 (λ '(fname, fst) '(fname', fly), fname = fname' ∧ syn_type_has_layout fst fly) variants variant_lys.
 Proof.
   simpl. rewrite /syn_type_has_layout/=.
+  unfold_layout_alg.
   intros (variant_lys & Hvariants & Ha)%bind_Some.
   apply list_map_option_alt in Hvariants.
   apply bind_Some in Ha as (ul & Hul & Ha).
@@ -957,9 +1018,14 @@ Lemma syn_type_has_layout_enum `{!LayoutAlg} name (it : int_type) variants varia
   syn_type_has_layout (EnumSynType name it variants repr) ly.
 Proof.
   intros Ha Hb Hc ->.
-  rewrite /syn_type_has_layout/use_layout_alg. fold use_layout_alg.
+  rewrite /syn_type_has_layout.
+  unfold_layout_alg.
   eapply bind_Some. exists variants'.
-  split. { apply list_map_option_alt. eapply Forall2_impl; first done. intros [] [] [-> ->]. done. }
+  split. { apply list_map_option_alt. eapply Forall2_impl; first done.
+    rewrite /syn_type_has_layout.
+    unfold_layout_alg.
+    fold use_layout_alg_def.
+    intros [] [] [-> ->]. done. }
   rewrite Hb/=Hc/=//.
 Qed.
 Lemma syn_type_has_layout_els_sls `{!LayoutAlg} (els : enum_layout_spec) (ly : layout) :
@@ -998,7 +1064,8 @@ Lemma use_layout_alg_wf `{!LayoutAlg} st ly :
   use_layout_alg st = Some ly →
   layout_wf ly.
 Proof.
-  induction st in ly |-*; rewrite /use_layout_alg => ?; simplify_option_eq; fold use_layout_alg in *.
+  unfold_layout_alg.
+  induction st in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *.
   - apply int_type_layout_wf.
   - apply int_type_layout_wf.
   - apply ptr_layout_wf.
@@ -1020,7 +1087,8 @@ Lemma use_layout_alg_size `{!LayoutAlg} st ly :
   use_layout_alg st = Some ly →
   ly_size ly ≤ MaxInt ISize.
 Proof.
-  induction st in ly |-*; rewrite /use_layout_alg => ?; simplify_option_eq; fold use_layout_alg in *.
+  unfold_layout_alg.
+  induction st in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *.
   - done.
   - rewrite MaxInt_eq. done.
   - rewrite MaxInt_eq. done.
@@ -1141,7 +1209,8 @@ Lemma use_layout_alg_align `{!LayoutAlg} st ly :
   use_layout_alg st = Some ly →
   ly_align_in_bounds ly.
 Proof.
-  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | ly' | en tag_it variant_list repr IH | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; rewrite /use_layout_alg => ?; simplify_option_eq; fold use_layout_alg in *;
+  unfold_layout_alg.
+  induction st as [ it | | | | sn fields repr IH | | st IH len | st IH | ly' | en tag_it variant_list repr IH | un variant_list repr IH | ] using syn_type_strong_ind in ly |-*; move => ?; simplify_option_eq; fold use_layout_alg_def in *;
       rewrite /ly_align_in_bounds.
   - rewrite /ly_align/it_layout/=.
     revert select (ly_size _ ≤ _). rewrite /ly_size/=/bytes_per_int => Ha.
@@ -1271,11 +1340,11 @@ Definition size_of_st `{!LayoutAlg} (st : syn_type) : nat :=
 Section size_of.
   Context `{!LayoutAlg}.
 
-  Ltac unfold_st := rewrite /size_of_st /use_layout_alg' /use_layout_alg.
+  Ltac unfold_st := rewrite /size_of_st /use_layout_alg'/syn_type_has_layout; unfold_layout_alg; rewrite /use_layout_alg_def.
 
   Lemma size_of_st_ptr :
     size_of_st PtrSynType = ly_size void*.
-  Proof. done. Qed.
+  Proof. unfold_st. done. Qed.
   Lemma size_of_st_int (it : int_type) :
     (ly_size (it_layout it) ≤ MaxInt ISize)%Z → size_of_st (IntSynType it) = ly_size (it_layout it).
   Proof.
@@ -1288,10 +1357,10 @@ Section size_of.
   Qed.
   Lemma size_of_st_bool :
     size_of_st BoolSynType = 1%nat.
-  Proof. done. Qed.
+  Proof. unfold_st. done. Qed.
   Lemma size_of_st_unit :
     size_of_st UnitSynType = 0%nat.
-  Proof. done. Qed.
+  Proof. unfold_st. done. Qed.
   Lemma size_of_st_array st sz n ly :
     syn_type_has_layout (ArraySynType st n) ly →
     size_of_st st = sz →
@@ -1299,8 +1368,9 @@ Section size_of.
   Proof.
     intros Halg.
     apply syn_type_has_layout_array_inv in Halg as (ly' & Hst & -> & Hsz).
-    intros <-.
-    unfold_st; fold use_layout_alg.
+    move: Hst.
+    unfold_st; fold use_layout_alg_def.
+    intros Hst <-.
     rewrite Hst. simpl.
     rewrite decide_True; last done.
     simpl. rewrite /mk_array_layout /ly_mult /ly_size; destruct ly'; lia.
@@ -1473,8 +1543,11 @@ Proof.
   exists (UntypedOp ul). split; last done.
   rewrite /use_op_alg. simpl. fold use_op_alg.
   apply bind_Some. exists ul. split; last done.
-  apply bind_Some. exists variant_lys.
-  split. { apply list_map_option_alt. eapply Forall2_impl; first done. intros [] [] [-> ->]. done. }
+  unfold_layout_alg.
+  apply bind_Some. fold use_layout_alg_def. exists variant_lys.
+  split. { apply list_map_option_alt. eapply Forall2_impl; first done.
+    rewrite /syn_type_has_layout. unfold_layout_alg.
+    intros [] [] [-> ->]. done. }
   rewrite Halg. done.
 Qed.
 
@@ -1489,7 +1562,7 @@ Proof.
     exists BoolOp. split; last done. done.
   - intros ->%syn_type_has_layout_ptr_inv.
     exists PtrOp. split; last done. done.
-  - intros ->%syn_type_has_layout_ptr_inv.
+  - intros ->%syn_type_has_layout_fnptr_inv.
     exists PtrOp. split; last done. done.
   - intros Hsl.
     specialize (syn_type_has_layout_struct_inv _ _ _ _ Hsl) as (field_lys & sl & -> & Halg & Hfields).

@@ -45,10 +45,14 @@ Section mut_ref.
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
   Next Obligation.
-    iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)". eauto.
+    iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)". 
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
-    iIntros (??? ot Hot) => /=. destruct ot => /=// -> //.
+    iIntros (??? ot Hot) => /=. destruct ot => /=//. 
+    - intros _; by apply syn_type_has_layout_ptr.
+    - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
     iIntros (? κ ? π r v) "_". done.
@@ -60,7 +64,9 @@ Section mut_ref.
     iIntros (? κ ? κ' π l [r γ]). apply _.
   Qed.
   Next Obligation.
-    iIntros (??????[r γ]) "(%li & %ly & %r' & ? & ? &  _)". eauto.
+    iIntros (??????[r γ]) "(%li & %ly & %r' & % & ? &  _)". 
+    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
     (* initiate sharing *)
@@ -158,7 +164,7 @@ Section mut_ref.
     rewrite {2}lft_intersect_comm lft_intersect_assoc.
     iFrame "Htok".
     iExists l0, ly0, r'. iFrame "Hl".
-    inversion Hst; subst ly.
+    apply syn_type_has_layout_ptr_inv in Hst as ->.
     iR. iSplitR. { destruct r; simpl; eauto. }
     iSplitR; first done. iSplitR; first done.
     iSplitR; first done.

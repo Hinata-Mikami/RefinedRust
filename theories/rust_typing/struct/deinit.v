@@ -63,7 +63,7 @@ Section rules.
     iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
 
     iPoseProof (struct_ltype_focus_components with "Hl") as "(Hl & Hclose_l)"; [done.. | ].
-    Search li.iterate "elim".
+    (*Search li.iterate "elim".*)
     (* invariant: ownership of the first n uninit segments.
         ownership for the rest
     *)

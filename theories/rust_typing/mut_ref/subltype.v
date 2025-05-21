@@ -264,7 +264,8 @@ Section access.
     iIntros (?) "#[LFT TIME] HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "HP" as "(%ly & %Halg & %Hly & #Hlb & Hcred & %γ & %r' & %Heq & Hb)".
-    injection Halg as <-. injection Heq as <- <-.
+    apply syn_type_has_layout_ptr_inv in Halg as ?. subst.
+    injection Heq as <- <-.
     iFrame "Hlb %".
     iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
     iDestruct "Hb" as "(%l' & Hl & Hb)".
@@ -310,7 +311,8 @@ Section access.
     iIntros (?) "#[LFT TIME] Hκ HR HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "HP" as "(%ly & %Halg & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
-    injection Halg as <-. iFrame "Hlb". iSplitR; first done.
+    apply syn_type_has_layout_ptr_inv in Halg as ?. subst.
+    iFrame "Hlb". iSplitR; first done.
 
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iMod "Hb".
@@ -419,7 +421,7 @@ Section access.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & %γ' & %Ha & #Hb)".
     injection Ha as <- <-.
-    apply syn_type_has_layout_ptr_inv in Hst. subst ly.
+    apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
     iR. iR.
     iMod (fupd_mask_mono with "Hb") as "(%li & #Hf & #Hl)"; first done.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
@@ -430,7 +432,7 @@ Section access.
     iFrame. iSplitL.
     { iModIntro.
       rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-      iExists void*. iFrame "% #". iR. by iExists _. }
+      iExists void*. iFrame "% #". by iExists _. }
     iModIntro. iIntros (bmin) "Hincl Hcond".
     iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
     iModIntro. iSplit.

@@ -21,7 +21,8 @@ Section type_inh.
     - done.
   Qed.
   Next Obligation.
-    simpl. intros ? ? ->. done.
+    simpl. intros ? ? ->.
+    by apply syn_type_has_layout_unit.
   Qed.
   Next Obligation.
     simpl. intros ??? ??? ->.
@@ -30,7 +31,7 @@ Section type_inh.
   Qed.
   Next Obligation.
     intros mt ly Hst.
-    apply syn_type_has_layout_unit_inv in Hst as ->. 
+    apply syn_type_has_layout_unit_inv in Hst as ->.
     done.
   Qed.
   Definition type_inhabitant : type T_rt := ty_of_st _ inhabitant.

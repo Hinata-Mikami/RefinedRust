@@ -191,10 +191,13 @@ Section function.
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
-    simpl. iIntros (lfts rts fal fp π r v) "(%fn & %local_sts & -> & _)". eauto.
+    simpl. iIntros (lfts rts fal fp π r v) "(%fn & %local_sts & -> & _)".
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_fnptr.
+    done.
   Qed.
   Next Obligation.
-    intros ??? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot. done.
+    intros ??? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
+    by apply syn_type_has_layout_fnptr.
   Qed.
   Next Obligation.
     simpl. iIntros (lfts rts lya fp ot mt st π r v Hot).
@@ -207,7 +210,7 @@ Section function.
       iIntros "(%fn & % & -> & _)". eauto.
   Qed.
   Next Obligation.
-    intros ???? mt ly Hst. 
+    intros ???? mt ly Hst.
     apply syn_type_has_layout_fnptr_inv in Hst as ->.
     done.
   Qed.

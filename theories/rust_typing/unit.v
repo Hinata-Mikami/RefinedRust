@@ -13,10 +13,13 @@ Section unit.
     st_has_op_type ot mt := is_unit_ot ot;
   |}%I.
   Next Obligation.
-    iIntros (π _ v ->). eauto.
+    iIntros (π _ v ->).
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_unit.
+    done.
   Qed.
   Next Obligation.
-    intros ot mt ->%is_unit_ot_layout. done.
+    intros ot mt ->%is_unit_ot_layout.
+    by apply syn_type_has_layout_unit.
   Qed.
   Next Obligation.
     simpl. iIntros (ot ?? _ _  v Hot ->).

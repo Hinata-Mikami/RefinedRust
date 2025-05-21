@@ -17,12 +17,16 @@ Section alias.
     st_has_op_type ot mt := is_ptr_ot ot;
   |}.
   Next Obligation.
-    iIntros (π l v [-> ?]). iExists void*. eauto.
+    iIntros (π l v [-> ?]). iExists void*.
+    iPureIntro. split; first by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
+    unfold is_ptr_ot.
     iIntros (ot mt Hot).
     destruct ot; try done.
-    rewrite Hot. done.
+    - by apply syn_type_has_layout_ptr.
+    - subst. by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
     iIntros (ot mt st π l v Hot) "Hv".

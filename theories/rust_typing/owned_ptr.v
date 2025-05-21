@@ -12,7 +12,7 @@ Section owned_ptr.
 
   Program Definition owned_ptr : type (place_rfn rt * loc) := {|
     ty_xt := (rt * loc)%type;
-    ty_xrt := λ x, (#x.1, x.2); 
+    ty_xrt := λ x, (#x.1, x.2);
 
     ty_sidecond := True;
     ty_own_val π '(r, l) v :=
@@ -43,10 +43,13 @@ Section owned_ptr.
     _ty_wf_E := ty_wf_E inner;
   |}%I.
   Next Obligation.
-    iIntros (π [r l] v) "(%ly & -> & ? & ? & _)". eauto with iFrame.
+    iIntros (π [r l] v) "(%ly & -> & % & % & _)".
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
-    iIntros (ot mt Hot). apply is_ptr_ot_layout in Hot as ->. done.
+    iIntros (ot mt Hot). apply is_ptr_ot_layout in Hot as ->.
+    by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
     iIntros (?[] ?) "(%ly & -> & _)". done.
@@ -58,8 +61,9 @@ Section owned_ptr.
     intros ??? []. apply _.
   Qed.
   Next Obligation.
-    iIntros (κ π l []) "(%ly & %ri & Hr & ? & ? & ?  & _)".
-    eauto with iFrame.
+    iIntros (κ π l []) "(%ly & %ri & Hr & % & % & ?  & _)".
+    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
     iIntros (E κ l ly π [r li] q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
@@ -116,9 +120,8 @@ Section owned_ptr.
     iCombine "Htok Htok2" as "$".
     iModIntro.
     iExists ly', ri. iFrame.
-    iSplitR. { inversion Halg; subst; done. }
-    iSplitR; first done. iSplitR; first done.
-    inversion Halg; subst ly. iFrame "#".
+    apply syn_type_has_layout_ptr_inv in Halg as ->.
+    do 3 iR. iFrame "#".
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.

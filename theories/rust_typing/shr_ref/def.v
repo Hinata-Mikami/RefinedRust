@@ -41,14 +41,23 @@ Section shr_ref.
     _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
-  Next Obligation. iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)". eauto. Qed.
   Next Obligation.
-    iIntros (? ?? ot Hot) => /=. destruct ot => /=// -> //.
+    iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)".
+    iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
+    done.
+  Qed.
+  Next Obligation.
+    iIntros (? ?? ot Hot) => /=.
+    destruct ot => /=//.
+    - intros; by apply syn_type_has_layout_ptr.
+    - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation. iIntros (??????) "_". done. Qed.
   Next Obligation. iIntros (???????) "_". done. Qed.
   Next Obligation.
-    iIntros (???????). simpl. iIntros "(%l' & %ly & %r' & ? & ? & ? & _)". eauto.
+    iIntros (???????). simpl. iIntros "(%l' & %ly & %r' & % & ? & ? & _)".
+    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    done.
   Qed.
   Next Obligation.
     iIntros (? κ ? E κ' l ly π r q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
@@ -68,8 +77,9 @@ Section shr_ref.
     iModIntro.
     iApply logical_step_intro.
     rewrite -!lft_tok_sep. iFrame.
+    apply syn_type_has_layout_ptr_inv in Halg as ->.
     iExists ly'.
-    iSplitR. { inversion Halg; subst; done. }
+    iR.
     do 3 iR. iFrame "Hsc".
   Qed.
   Next Obligation.
@@ -109,7 +119,7 @@ Section shr_ref.
     iIntros (κ' π E l ly r ? ? Ha) "[LFT TIME] (%li & %ly' & %r' & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iModIntro.
-    assert (ly = void*) as ->. { injection Ha. done. }
+    apply syn_type_has_layout_ptr_inv in Ha as ->.
     iSplitR; first done.
     iExists _, li. iDestruct "Hmt" as "[Hmt1 Hmt2]".
     iSplitL "Hmt1". { iNext. iFrame "Hmt1". iExists li, ly', r'. iFrame "#". eauto. }

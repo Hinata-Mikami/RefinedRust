@@ -21,7 +21,7 @@ Section int.
   Qed.
   Next Obligation.
     intros it ot mt Hot. simpl. rewrite (is_int_ot_layout _ _ Hot).
-    destruct ot; try done. 
+    destruct ot; try done.
     all: by eapply syn_type_has_layout_int.
   Qed.
   Next Obligation.
@@ -70,11 +70,12 @@ Section boolean.
     st_has_op_type ot mt := is_bool_ot ot;
   |}%I.
   Next Obligation.
-    iIntros (π z v Hv). iExists U8. iPureIntro. split; first done.
+    iIntros (π z v Hv). iExists U8. iPureIntro.
+    split; first by apply syn_type_has_layout_bool.
     unfold has_layout_val. erewrite val_to_bool_length; done.
   Qed.
   Next Obligation.
-    intros ot mt Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). done.
+    intros ot mt Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
   Qed.
   Next Obligation.
     simpl. iIntros (ot mt st π r v Hot).
@@ -117,11 +118,12 @@ Section char.
     st_has_op_type ot mt := is_char_ot ot;
   |}%I.
   Next Obligation.
-    iIntros (π z v Hv). iExists U32. iPureIntro. split; first done.
+    iIntros (π z v Hv). iExists U32. iPureIntro.
+    split; first by apply syn_type_has_layout_char.
     unfold has_layout_val. erewrite val_to_char_length; done.
   Qed.
   Next Obligation.
-    intros ot mt Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). done.
+    intros ot mt Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
   Qed.
   Next Obligation.
     simpl. iIntros (ot mt st π r v Hot).

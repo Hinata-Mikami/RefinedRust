@@ -167,7 +167,7 @@ Section solve_layout_alg_tac.
   Proof.
     intros ->.
     eapply (syn_type_has_layout_make_untyped PtrSynType); first done.
-    done.
+    by apply syn_type_has_layout_ptr.
   Qed.
   Lemma syn_type_has_layout_untyped_int_tac ly' it :
     ly' = it_layout it →

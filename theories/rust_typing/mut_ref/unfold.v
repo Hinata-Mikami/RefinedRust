@@ -50,7 +50,8 @@ Section ltype_agree.
     iModIntro. iIntros (π l).
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & %Hst & % & #Hlb & %ri & %γ & Hrfn & #Hb)".
-    injection Hst as <-. iExists _. iFrame "# ∗". iSplitR; first done. iSplitR; first done.
+    apply syn_type_has_layout_ptr_inv in Hst as ?. subst.
+    iExists _. iFrame "# ∗". iSplitR; first done. iSplitR; first done.
     iModIntro. iMod "Hb" as "(%li & Hs & Hb)".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & #Hb)".
