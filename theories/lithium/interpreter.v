@@ -145,6 +145,12 @@ Ltac liForall :=
     lazymatch n with
     | S ?n' =>
       lazymatch goal with
+        | |- forall x : ?A, ?P =>
+          let B := eval simpl in A in
+          change_no_check (forall x : B, P)
+        | |- _ => idtac
+      end;
+      lazymatch goal with
       (* relying on the fact that unification variables cannot contain
          dependent variables to distinguish between dependent and non dependent forall *)
       | |- ?P -> ?Q =>
@@ -213,6 +219,12 @@ Ltac liExist protect :=
   lazymatch goal with
   | |- envs_entails _ (bi_exist _) => notypeclasses refine (tac_do_exist _ _ _ _)
   | _ => idtac
+  end;
+  lazymatch goal with
+    | |- @ex ?A ?P =>
+      let B := eval simpl in A in
+      change_no_check (@ex B P)
+    | |- _ => idtac
   end;
   lazymatch goal with
   | |- @ex ?A ?P =>
