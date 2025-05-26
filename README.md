@@ -1,5 +1,8 @@
 # RefinedRust verification framework
 
+
+![RefinedRust logo](refinedrust-logo.svg "RefinedRust logo"){width=200}
+
 This repository contains a public mirror of the RefinedRust development version.
 
 ## Structure
