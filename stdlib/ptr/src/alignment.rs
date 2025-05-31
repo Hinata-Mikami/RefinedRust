@@ -76,7 +76,7 @@ enum AlignmentEnum {
 impl Alignment {
 
     // TODO better spec
-    #[rr::trust_me]
+    #[rr::only_spec]
     #[rr::params("x")]
     #[rr::args("x")]
     #[rr::exists("y")]

@@ -146,6 +146,7 @@ Ltac liForall :=
     | S ?n' =>
       lazymatch goal with
         | |- forall x : ?A, ?P =>
+            (*simpl (A) at 1*)
           let B := eval simpl in A in
           change_no_check (forall x : B, P)
         | |- _ => idtac
@@ -222,6 +223,7 @@ Ltac liExist protect :=
   end;
   lazymatch goal with
     | |- @ex ?A ?P =>
+        (*simpl (A) at 1*)
       let B := eval simpl in A in
       change_no_check (@ex B P)
     | |- _ => idtac
@@ -556,6 +558,8 @@ Ltac liWand :=
     ] in
   lazymatch goal with
   | |- envs_entails ?Δ (bi_wand ?P ?T) =>
+      (*let P := fresh "P" in*)
+      (*rewrite [P in iris.proofmode.environments.envs_entails _ (iris.bi.interface.bi_wand P _)]/=*)
       let Q := eval simpl in P in
       change_no_check (envs_entails Δ (bi_wand Q T))
   end;

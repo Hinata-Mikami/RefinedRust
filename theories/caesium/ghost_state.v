@@ -77,7 +77,7 @@ Section definitions.
     (∃ (id : alloc_id) (al : allocation),
     ⌜l.1 = ProvAlloc (Some id)⌝ ∗ ⌜al.(al_start) + pre ≤ l.2⌝ ∗ ⌜l.2 + suf ≤ al_end al⌝ ∗
       ⌜allocation_in_range al⌝ ∗ alloc_meta id al) ∨
-    (⌜l.1 = ProvAlloc None⌝ ∗ ⌜min_alloc_start ≤ l.2⌝ ∗ ⌜l.2 ≤ max_alloc_end⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
+    (⌜l.1 = ProvAlloc None⌝ ∗ ⌜min_alloc_start ≤ l.2⌝ ∗ ⌜l.2 ≤ max_alloc_end_zero⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
   Definition loc_in_bounds_aux : seal (@loc_in_bounds_def). by eexists. Qed.
   Definition loc_in_bounds := unseal loc_in_bounds_aux.
   Definition loc_in_bounds_eq : @loc_in_bounds = @loc_in_bounds_def :=
@@ -574,11 +574,24 @@ Section loc_in_bounds.
   Qed.
 
   Lemma loc_in_bounds_ptr_in_range l pre suf :
-    loc_in_bounds l pre suf -∗ ⌜min_alloc_start ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end⌝.
+    loc_in_bounds l pre suf -∗
+    ⌜min_alloc_start ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end_zero⌝.
   Proof.
     rewrite loc_in_bounds_eq. iIntros "[Hlib | Hlib]".
-    - iDestruct "Hlib" as (?????[??]) "?". iPureIntro. lia.
+    - iDestruct "Hlib" as (?????[??]) "?". iPureIntro.
+      unfold max_alloc_end in *.
+      lia.
     - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro. lia.
+  Qed.
+  Lemma loc_in_bounds_ptr_in_range_alloc l pre suf :
+    l.1 ≠ ProvAlloc None →
+    loc_in_bounds l pre suf -∗
+    ⌜min_alloc_start ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end⌝.
+  Proof.
+    intros ?.
+    rewrite loc_in_bounds_eq. iIntros "[Hlib | Hlib]".
+    - iDestruct "Hlib" as (?????[??]) "?". iPureIntro. lia.
+    - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro. done.
   Qed.
 
   Lemma loc_in_bounds_in_range_usize l pre suf :
@@ -587,9 +600,9 @@ Section loc_in_bounds.
     iIntros "Hl". iDestruct (loc_in_bounds_ptr_in_range with "Hl") as %Hrange.
     iPureIntro. move: Hrange.
     rewrite int_elem_of_it_iff.
-    rewrite /min_alloc_start /max_alloc_end /bytes_per_addr /bytes_per_addr_log /=.
+    rewrite /min_alloc_start /bytes_per_addr /bytes_per_addr_log /=.
     move => [??]. split; cbn; first by lia.
-    rewrite /max_int /= /int_modulus /bits_per_int /bytes_per_int /=. lia.
+    lia.
   Qed.
 
   Lemma loc_in_bounds_is_alloc l pre suf :
@@ -604,7 +617,7 @@ Section loc_in_bounds.
   Lemma loc_in_bounds_prov_none l :
     l.1 = ProvAlloc None →
     min_alloc_start ≤ l.2 →
-    l.2 ≤ max_alloc_end →
+    l.2 ≤ max_alloc_end_zero →
     ⊢ loc_in_bounds l 0 0.
   Proof.
     intros ???. rewrite loc_in_bounds_eq. iRight. done.
@@ -766,7 +779,7 @@ Section heap.
   Proof. iIntros "(% & % & % & ?)". done. Qed.
 
   Lemma heap_pointsto_ptr_in_range l q v :
-    l ↦{q} v -∗ ⌜min_alloc_start ≤ l.2 ∧ l.2 + length v ≤ max_alloc_end⌝.
+    l ↦{q} v -∗ ⌜min_alloc_start ≤ l.2 ∧ l.2 + length v ≤ max_alloc_end_zero⌝.
   Proof.
     iIntros "Hl". iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "Hlb".
     iPoseProof (loc_in_bounds_ptr_in_range with "Hlb") as "%Ha".
@@ -776,7 +789,7 @@ Section heap.
   Lemma heap_pointsto_prov_none_nil l q :
     l.1 = ProvAlloc None →
     min_alloc_start ≤ l.2 →
-    l.2 ≤ max_alloc_end →
+    l.2 ≤ max_alloc_end_zero →
     ⊢ l ↦{q} [].
   Proof.
     intros ???. rewrite heap_pointsto_eq.

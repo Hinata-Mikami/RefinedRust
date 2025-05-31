@@ -24,6 +24,13 @@ Lemma Nat_Z_in_bounds_max (l h : Z) (n1 n2 : nat) :
 Proof.
   intros Ha Hb. destruct (Nat.max_spec n1 n2) as [[Hle ->] | [Hle ->]]; lia.
 Qed.
+Lemma Nat_Z_in_bounds_max_1 (h : Z) (n1 n2 : nat) :
+  (n1 ≤ h) →
+  (n2 ≤ h) →
+  ((n1 `max` n2)%nat ≤ h).
+Proof.
+  intros Ha Hb. destruct (Nat.max_spec n1 n2) as [[Hle ->] | [Hle ->]]; lia.
+Qed.
 
 (* TODO move *)
 Lemma max_alloc_end_le_usize :
@@ -349,7 +356,7 @@ Solve Obligations with done.
 (** The alignment has to fit in [usize].
    More restrictively, in order to make [NonNull::dangling] work, the alignment also needs to be a valid address. *)
 Definition ly_align_in_bounds (ly : layout) :=
-  min_alloc_start ≤ ly_align ly ≤ max_alloc_end.
+  ly_align ly ≤ max_alloc_end_zero.
 Lemma ly_align_in_bounds_1 ly :
   ly_align_log ly = 0%nat → ly_align_in_bounds ly.
 Proof.
@@ -362,11 +369,13 @@ Lemma ly_align_log_in_U8 ly :
 Proof.
   rewrite /ly_align_in_bounds/min_alloc_start/max_alloc_end/=/ly_align/bytes_per_addr/bytes_per_addr_log/=.
   rewrite /bits_per_byte/=.
-  intros [Ha Hb].
+  intros Ha.
   split. { unsafe_unfold_common_caesium_defs. simpl in *. lia. }
   assert ((2 ^ ly_align_log ly) ≤ 2 ^ (8%nat * 8))%nat as Hle.
-  { apply Nat2Z.inj_le. etrans; first apply Hb.
-    rewrite Nat2Z.inj_pow. nia.
+  { apply Nat2Z.inj_le. etrans; first apply Ha.
+    rewrite Nat2Z.inj_pow.
+    unsafe_unfold_common_caesium_defs; simpl.
+    nia.
   }
   apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; last lia.
   unsafe_unfold_common_caesium_defs. simpl in *. lia.
@@ -381,7 +390,8 @@ Qed.
 Lemma ly_align_in_usize ly :
   ly_align_in_bounds ly → (Z.of_nat (ly_align ly)) ∈ USize.
 Proof.
-  intros [Ha Hb].
+  unfold ly_align_in_bounds.
+  intros Ha.
   split; unsafe_unfold_common_caesium_defs; simpl in *; lia.
 Qed.
 
@@ -392,10 +402,8 @@ Lemma ly_align_in_bounds_mono ly1 ly2 :
 Proof.
   rewrite /ly_align_in_bounds.
   intros Hle. rewrite /ly_align/min_alloc_start. intros Ha.
-  split.
-  - specialize (Nat_pow_ge_1 (ly_align_log ly2)). lia.
-  - etrans; last apply Ha.
-    apply inj_le. apply Nat.pow_le_mono_r; last lia. done.
+  etrans; last apply Ha.
+  apply inj_le. apply Nat.pow_le_mono_r; last lia. done.
 Qed.
 
 (** Use a layout algorithm recursively on a layout spec. *)
@@ -1168,20 +1176,21 @@ Proof.
   move: Hfields Hpad.
   generalize (sl_members sl) => mems. intros Halgs Hpad.
   clear sl. induction mems as [ | [n ly] mems IH'] in Halgs, Hpad |-*; simpl in *.
-  { rewrite /min_alloc_start/max_alloc_end.
-    rewrite /bytes_per_addr/bytes_per_addr_log/bits_per_byte. simpl. lia. }
+  { unsafe_unfold_common_caesium_defs. simpl. lia. }
   rewrite Nat.max_assoc. rewrite [(1 `max` _)%nat]Nat.max_comm. rewrite -Nat.max_assoc.
   destruct n as [ n | ].
   + (* named *)
     inversion Hpad; subst.
     inversion Halgs as [ | ? ? Hx Halgs']; subst.
-    eapply Nat_Z_in_bounds_max. { apply Hx. }
+    eapply Nat_Z_in_bounds_max_1. { apply Hx. }
     eapply IH'; done.
   + (* unnamed *)
     inversion Hpad; subst.
     rename select (ly_align_log ly = _) into Hly.
-    eapply Nat_Z_in_bounds_max. {
-      rewrite /ly_align Hly /min_alloc_start. rewrite /max_alloc_end/bytes_per_addr/bytes_per_addr_log/=/bits_per_byte. lia. }
+    eapply Nat_Z_in_bounds_max_1. {
+      rewrite /ly_align Hly.
+      unsafe_unfold_common_caesium_defs.
+      simpl. lia. }
     eapply IH'; done.
 Qed.
 Lemma union_layout_alg_align_in_bounds `{!LayoutAlg} sn variants repr ul :
@@ -1197,11 +1206,10 @@ Proof.
   move: Hfields.
   generalize (ul_members ul) => mems. intros Halgs.
   clear ul. induction mems as [ | [n ly] mems IH'] in Halgs |-*; simpl in *.
-  { rewrite /min_alloc_start/max_alloc_end.
-    rewrite /bytes_per_addr/bytes_per_addr_log/bits_per_byte. simpl. lia. }
+  { unsafe_unfold_common_caesium_defs. simpl. lia. }
   rewrite Nat.max_assoc. rewrite [(1 `max` _)%nat]Nat.max_comm. rewrite -Nat.max_assoc.
   inversion Halgs as [ | ? ? Hx Halgs']; subst.
-  eapply Nat_Z_in_bounds_max. { apply Hx. }
+  eapply Nat_Z_in_bounds_max_1. { apply Hx. }
   eapply IH'; done.
 Qed.
 
@@ -1214,10 +1222,9 @@ Proof.
       rewrite /ly_align_in_bounds.
   - rewrite /ly_align/it_layout/=.
     revert select (ly_size _ ≤ _). rewrite /ly_size/=/bytes_per_int => Ha.
-    split.
-    + rewrite /min_alloc_start. specialize (Nat_pow_ge_1 (it_byte_size_log it)). lia.
-    + etrans; first apply Ha. rewrite MaxInt_eq /max_int/=/int_half_modulus/=/bits_per_int/bytes_per_int/=.
-      rewrite /max_alloc_end/bytes_per_addr/bytes_per_addr_log/=/bits_per_byte. lia.
+    etrans; first apply Ha.
+    specialize MaxInt_isize_lt_usize.
+    rewrite !MaxInt_eq. lia.
   - done.
   - done.
   - done.
@@ -1248,12 +1255,8 @@ Proof.
     eapply struct_layout_alg_align_in_bounds; last done.
     econstructor.
     { rewrite /ly_align_in_bounds.
-      rewrite /min_alloc_start /max_alloc_end.
-      rewrite /bytes_per_addr/bytes_per_addr_log/bits_per_byte.
-      split.
-      - apply IntType_align_ge_1.
-      - specialize (IntType_align_le tag_it). simpl. lia.
-    }
+      specialize (IntType_align_le tag_it). simpl.
+      unsafe_unfold_common_caesium_defs. simpl. lia. }
     econstructor; last econstructor.
     eapply union_layout_alg_align_in_bounds; last done.
     clear -IH Halgs.

@@ -1222,7 +1222,7 @@ Qed.
 Lemma wp_cast_int_ptr_prov_none Φ v a l it :
   val_to_Z v it = Some a →
   min_alloc_start ≤ a →
-  a ≤ max_alloc_end →
+  a ≤ max_alloc_end_zero →
   val_to_byte_prov v = None →
   l = (ProvAlloc None, a) →
   ▷ (l ↦ [] -∗ £1 -∗ Φ (val_of_loc l)) -∗

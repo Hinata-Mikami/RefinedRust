@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: rename select (ly_align_in_bounds _) into Hb; apply Hb.
+  all: apply ly_align_ge_1.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

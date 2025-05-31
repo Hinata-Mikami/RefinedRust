@@ -134,12 +134,6 @@ Proof.
   rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
   destruct it => /=; lia.
 Qed.
-Lemma IntType_align_ge_1 it :
-  1 ≤ ly_align (it_layout it).
-Proof.
-  rewrite /it_layout /ly_align/ly_align_log/it_byte_size_log.
-  destruct it=> /=; lia.
-Qed.
 Lemma IntType_size_le it :
   ly_size (it_layout it) ≤ 16.
 Proof.
@@ -196,11 +190,6 @@ Proof.
   apply Z.mul_pos_pos; last (rewrite /bits_per_byte; lia).
   apply Z.pow_pos_nonneg; lia.
 Qed.
-
-(* TODO move *)
-Lemma Nat_pow_ge_1 (n : nat) :
-  (1 ≤ 2^n)%nat.
-Proof. induction n as [ | n IH]; simpl; lia. Qed.
 
 Lemma int_half_modulus_ge_1 it :
   1 ≤ int_half_modulus it.

@@ -24,7 +24,8 @@ Proof.
 
   iIntros "Hv" (Φ') "_ _ HL Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv" as %Hv'.
-  iApply wp_cast_int_ptr_prov_none; [done | done | done | | done | ].
+  iApply wp_cast_int_ptr_prov_none; [done | done | | | done | ].
+  { by rewrite -MaxInt_eq. }
   { apply val_to_byte_prov_erase_prov. }
   iIntros "!> Hl Hcred".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) _ with "HL").

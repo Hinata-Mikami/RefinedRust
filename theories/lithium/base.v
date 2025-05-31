@@ -1069,3 +1069,11 @@ Proof.
 Qed.
 (* lower priority than rule for constants *)
 Global Hint Resolve bitblast_pos_xI | 15 : bitblast.
+
+
+(** Misc lemmas *)
+Lemma Nat_pow_ge_1 (n : nat) :
+  (1 ≤ 2^n)%nat.
+Proof. induction n as [ | n IH]; simpl; lia. Qed.
+
+

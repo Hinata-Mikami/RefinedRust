@@ -213,9 +213,12 @@ Definition killed (al : allocation) : allocation :=
 (** Smallest allocatable address (we reserve 0 for NULL). *)
 Definition min_alloc_start : Z := 1.
 
+Notation max_alloc_end_zero := (max_int USize) (only parsing).
+
 (** Largest allocatable address (we never allocate the last byte to always
 have valid one-past pointers. *)
-Definition max_alloc_end : Z := 2 ^ (bytes_per_addr * bits_per_byte) - 2.
+Definition max_alloc_end : Z := max_alloc_end_zero - 1.
+
 
 (** Predicate asserting that allocation [a] is in range of the allocatable
 memory (e.g., does not contain NULL). *)
@@ -240,7 +243,7 @@ Definition block_alive (l : loc) (st : heap_state) : Prop :=
   (* Rust: have a virtual allocation of size zero at every non-null address,
      see the comment on [heap_state_loc_in_bounds] below *)
   (* TODO: should this really consider l.2? *)
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end).
+  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero).
 
 (** The address range between [l] and [l +ₗ n] (included) is in range of the
     allocation that contains [l]. Note that we consider the 1-past-the-end
@@ -264,11 +267,11 @@ Definition heap_state_loc_in_bounds (l : loc) (n : nat) (st : heap_state) : Prop
   (* NOTE: new for Rust:
      zero-sized accesses are also allowed with an invalid provenance,
      as long as they are not based off a null ptr *)
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end ∧ n = 0%nat).
+  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat).
 
 Lemma heap_state_loc_in_bounds_zero_or_has_alloc_id l n σ:
   heap_state_loc_in_bounds l n σ →
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end ∧ n = 0%nat) ∨
+  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat) ∨
   (∃ aid, l.1 = ProvAlloc (Some aid)).
 Proof. rewrite /heap_state_loc_in_bounds. naive_solver. Qed.
 
@@ -278,11 +281,20 @@ Definition valid_ptr (l : loc) (st : heap_state) : Prop :=
   block_alive l st ∧ heap_state_loc_in_bounds l 0 st.
 
 Lemma valid_ptr_in_allocation_range l σ:
-  valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end.
+  valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end_zero.
 Proof.
   move => [_] [Ha|Ha].
-  - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]]. lia.
+  - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]].
+    unfold max_alloc_end in *.
+    lia.
   - move : Ha => [? [?[??]]]. lia.
+Qed.
+Lemma valid_ptr_in_allocation_range_alloc l σ:
+  l.1 ≠ ProvAlloc None → valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end.
+Proof.
+  move => ? [_] [Ha|Ha].
+  - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]]. lia.
+  - move : Ha => [? [?[??]]]. done.
 Qed.
 
 Lemma valid_ptr_is_alloc l σ:

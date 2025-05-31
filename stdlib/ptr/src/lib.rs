@@ -5,11 +5,14 @@
 #![feature(allocator_api)]
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("stdlib.ptr")]
+#![rr::include("mem")]
 #![rr::import("stdlib.ptr.theories", "shims")]
 #![rr::import("stdlib.ptr.theories", "specs")]
 #![allow(unused)]
 
 mod alignment;
+mod non_null;
+
 use core::mem;
 
 
@@ -172,27 +175,6 @@ pub const fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unimplemented!();
 }
 
-
-
-#[rr::export_as(core::mem::size_of)]
-#[rr::code_shim("mem_size_of")]
-#[rr::returns("ly_size {ly_of T}")]
-pub const fn mem_size_of<T>() -> usize {
-    unimplemented!();
-}
-
-#[rr::export_as(core::mem::align_of)]
-#[rr::code_shim("mem_align_of")]
-#[rr::returns("ly_align {ly_of T}")]
-pub const fn mem_align_of<T>() -> usize {
-    unimplemented!();
-}
-
-#[rr::code_shim("mem_align_log_of")]
-#[rr::returns("ly_align_log {ly_of T}")]
-pub const fn mem_align_log_of<T>() -> usize {
-    unimplemented!();
-}
 
 // TODO: offset, add, sub should require that the allocation is still alive, I think
 #[rr::export_as(#method core::ptr::const_ptr::offset)]
@@ -429,7 +411,6 @@ pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
 #[rr::export_as(core::ptr::invalid)]
 #[rr::code_shim("ptr_invalid")]
 #[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
@@ -441,7 +422,6 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 #[rr::export_as(core::ptr::invalid_mut)]
 #[rr::code_shim("ptr_invalid")]
 #[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
@@ -454,7 +434,6 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 #[rr::export_as(core::ptr::without_provenance)]
 #[rr::code_shim("ptr_invalid")]
 #[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
@@ -466,7 +445,6 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[rr::export_as(core::ptr::without_provenance_mut)]
 #[rr::code_shim("ptr_invalid")]
 #[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::requires("(addr ≤ max_alloc_end)%Z")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
@@ -483,7 +461,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
 #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
 pub const fn dangling<T>() -> *const T {
-    without_provenance(mem_align_of::<T>())
+    without_provenance(mem::align_of::<T>())
 }
 #[rr::export_as(core::ptr::dangling_mut)]
 #[rr::exists("l")]
@@ -492,5 +470,5 @@ pub const fn dangling<T>() -> *const T {
 #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
 #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
 pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem_align_of::<T>())
+    without_provenance_mut(mem::align_of::<T>())
 }

@@ -161,6 +161,14 @@ Proof.
   apply Z.divide_1_l.
 Qed.
 
+Lemma ly_align_ge_1 ly :
+  1 ≤ ly_align ly.
+Proof.
+  unfold ly_align.
+  specialize (Nat_pow_ge_1 (ly_align_log ly)).
+  lia.
+Qed.
+
 Lemma ly_size_ly_offset ly n :
   ly_size (ly_offset ly n) = (ly_size ly - n)%nat.
 Proof.

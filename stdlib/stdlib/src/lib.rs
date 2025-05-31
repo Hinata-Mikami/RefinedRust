@@ -16,6 +16,7 @@
 #![rr::export_include("controlflow")]
 #![rr::export_include("iterator")]
 #![rr::export_include("option")]
+#![rr::export_include("mem")]
 #![rr::export_include("ptr")]
 #![rr::export_include("result")]
 #![rr::export_include("rr_internal")]

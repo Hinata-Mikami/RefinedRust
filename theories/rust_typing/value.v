@@ -303,7 +303,7 @@ Section ofty_lemmas.
     iApply (ty_memcast_compat_copy with "Hv").
 
     destruct Hb as [(ly1 & -> & Hst) | (Hst & <-)].
-    - injection Hot' as <-. 
+    - injection Hot' as <-.
       by apply ty_has_op_type_untyped.
     - move: Hst. rewrite /use_op_alg' Hot' //.
   Qed.
@@ -414,8 +414,8 @@ Section ofty_lemmas.
     iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
     specialize (syn_type_has_layout_untyped_inv _ _  Halg) as (-> & ? & ? &?).
     rewrite Hsz. rewrite -loc_in_bounds_split_suf. iDestruct "Hlb" as "(Hlb1 & Hlb2)".
-    opose proof* (ly_align_in_bounds_mono ly1 ly2); [done.. | ].
-    opose proof* (ly_align_in_bounds_mono ly1 ly3); [lia | done | ].
+    opose proof (ly_align_in_bounds_mono ly1 ly2 _ _); [done.. | ].
+    opose proof (ly_align_in_bounds_mono ly1 ly3 _ _); [lia | done | ].
     iPoseProof (value_has_length with "Hv") as "(%Hlen1 & %Hlen2)"; first done.
     rewrite length_app in Hlen1.
     iPoseProof (value_untyped_app_split _ _ _ _ ly1 ly2 ly3 with "Hv") as "(Hv1 & Hv2)".
