@@ -518,6 +518,13 @@ pub enum Binop {
     Shl,
     Shr,
 
+    // unchecked variants
+    AddUnchecked,
+    SubUnchecked,
+    MulUnchecked,
+    ShlUnchecked,
+    ShrUnchecked,
+
     // comparison
     Eq,
     Ne,
@@ -550,6 +557,13 @@ impl Binop {
             Self::BitXor => format_prim("^{"),
             Self::Shl => format_prim("<<{"),
             Self::Shr => format_prim(">>{"),
+
+            Self::AddUnchecked => format_prim("+unchecked{"),
+            Self::SubUnchecked => format_prim("-unchecked{"),
+            Self::MulUnchecked => format_prim("×unchecked{"),
+            Self::ShlUnchecked => format_prim("<<unchecked{"),
+            Self::ShrUnchecked => format_prim(">>unchecked{"),
+
             Self::Eq => format_bool("= {"),
             Self::Ne => format_bool("!= {"),
             Self::Lt => format_bool("<{"),

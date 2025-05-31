@@ -130,6 +130,9 @@ Section arithop.
     | AddOp => n ∈ it
     | SubOp => n ∈ it
     | MulOp => n ∈ it
+    | UncheckedAddOp => n ∈ it
+    | UncheckedSubOp => n ∈ it
+    | UncheckedMulOp => n ∈ it
     | AndOp => True
     | OrOp  => True
     | XorOp => True
@@ -265,6 +268,16 @@ Section arithop.
   Global Program Instance type_shr_int_int_inst E L π it v1 n1 v2 n2:
     TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 ≫ n2) _ _).
   Next Obligation. done. Qed.
+
+  Global Program Instance type_unchecked_add_int_int_inst E L π it v1 n1 v2 n2:
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedAddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 + n2) _ _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_unchecked_sub_int_int_inst E L π it v1 n1 v2 n2:
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedSubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 - n2) _ _).
+  Next Obligation. done. Qed.
+  Global Program Instance type_unchecked_mul_int_int_inst E L π it v1 n1 v2 n2:
+    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedMulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 * n2) _ _).
+  Next Obligation. done. Qed.
 End arithop.
 
 Section check_arithop.
@@ -276,9 +289,10 @@ Section check_arithop.
     destruct op; solve_decision.
   Defined.
 
-
   Lemma int_arithop_result_sidecond_correct it n1 n2 n op :
-    int_arithop_sidecond it n1 n2 n op ↔ compute_arith_bin_op n1 n2 it op = int_arithop_result it n1 n2 op.
+    int_arithop_sidecond it n1 n2 n op →
+    int_arithop_result it n1 n2 op = Some n →
+    compute_arith_bin_op n1 n2 it op = Some n.
   Proof.
     rewrite /int_arithop_sidecond /compute_arith_bin_op /int_arithop_result.
     destruct op; simpl.
@@ -289,9 +303,10 @@ Section check_arithop.
     int_arithop_result it n1 n2 op = Some n →
     check_arith_bin_op op it n1 n2 = Some (bool_decide (n ∉ it)).
   Proof.
-    intros Hsc%int_arithop_result_sidecond_correct Hres.
+    intros Hsc Hres.
+    eapply int_arithop_result_sidecond_correct in Hsc; last done.
     rewrite /check_arith_bin_op.
-    rewrite Hsc Hres//.
+    rewrite Hsc/=//.
   Qed.
 
 

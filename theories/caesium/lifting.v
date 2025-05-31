@@ -1340,6 +1340,9 @@ Definition int_arithop_result (it : int_type) n1 n2 op : option Z :=
   | AddOp => Some (n1 + n2)
   | SubOp => Some (n1 - n2)
   | MulOp => Some (n1 * n2)
+  | UncheckedAddOp => Some (n1 + n2)
+  | UncheckedSubOp => Some (n1 - n2)
+  | UncheckedMulOp => Some (n1 * n2)
   | AndOp => Some (Z.land n1 n2)
   | OrOp  => Some (Z.lor n1 n2)
   | XorOp => Some (Z.lxor n1 n2)
@@ -1355,6 +1358,9 @@ Definition int_arithop_sidecond (it : int_type) (n1 n2 n : Z) op : Prop :=
   | AddOp => True
   | SubOp => True
   | MulOp => True
+  | UncheckedAddOp => n ∈ it
+  | UncheckedSubOp => n ∈ it
+  | UncheckedMulOp => n ∈ it
   | AndOp => True
   | OrOp  => True
   | XorOp => True
@@ -1384,11 +1390,11 @@ Proof.
     all: inversion 1; simplify_eq/=.
     all: try case_bool_decide => //.
     all: simplify_eq/= => //.
-    all: try by rewrite ->wrap_unsigned_id in * => //; simplify_eq.
+    all: try rewrite ->wrap_to_it_id in Hv; simplify_eq; done.
   + move => ->. destruct op.
-    1-22: (apply: ArithOpII; [|done|done|];
+    1-25: (apply: ArithOpII; [|done|done|];
         first (simpl; try done; try case_bool_decide; naive_solver)).
-    all: done.
+    all: try done.
 Qed.
 
 Lemma wp_check_int_arithop Φ op v1 v2 n1 n2 b it:

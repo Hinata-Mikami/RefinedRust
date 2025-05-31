@@ -496,17 +496,23 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         _e2: &mir::Operand<'tcx>,
     ) -> Result<radium::Binop, TranslationError<'tcx>> {
         match op {
-            mir::BinOp::Add | mir::BinOp::AddUnchecked => Ok(radium::Binop::Add),
-            mir::BinOp::Sub | mir::BinOp::SubUnchecked => Ok(radium::Binop::Sub),
-            mir::BinOp::Mul | mir::BinOp::MulUnchecked => Ok(radium::Binop::Mul),
+            mir::BinOp::Add => Ok(radium::Binop::Add),
+            mir::BinOp::Sub => Ok(radium::Binop::Sub),
+            mir::BinOp::Mul => Ok(radium::Binop::Mul),
             mir::BinOp::Div => Ok(radium::Binop::Div),
             mir::BinOp::Rem => Ok(radium::Binop::Mod),
 
             mir::BinOp::BitXor => Ok(radium::Binop::BitXor),
             mir::BinOp::BitAnd => Ok(radium::Binop::BitAnd),
             mir::BinOp::BitOr => Ok(radium::Binop::BitOr),
-            mir::BinOp::Shl | mir::BinOp::ShlUnchecked => Ok(radium::Binop::Shl),
-            mir::BinOp::Shr | mir::BinOp::ShrUnchecked => Ok(radium::Binop::Shr),
+            mir::BinOp::Shl => Ok(radium::Binop::Shl),
+            mir::BinOp::Shr => Ok(radium::Binop::Shr),
+
+            mir::BinOp::AddUnchecked => Ok(radium::Binop::AddUnchecked),
+            mir::BinOp::SubUnchecked => Ok(radium::Binop::SubUnchecked),
+            mir::BinOp::MulUnchecked => Ok(radium::Binop::MulUnchecked),
+            mir::BinOp::ShlUnchecked => Ok(radium::Binop::ShlUnchecked),
+            mir::BinOp::ShrUnchecked => Ok(radium::Binop::ShrUnchecked),
 
             mir::BinOp::Eq => Ok(radium::Binop::Eq),
             mir::BinOp::Lt => Ok(radium::Binop::Lt),

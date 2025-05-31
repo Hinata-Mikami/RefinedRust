@@ -17,6 +17,8 @@ Inductive bin_op : Set :=
 | PtrOffsetOp (ly : layout) | PtrNegOffsetOp (ly : layout)
 | PtrWrappingOffsetOp (ly : layout) | PtrWrappingNegOffsetOp (ly : layout)
 | PtrDiffOp (ly : layout)
+(* Unchecked operations that trigger UB on overflows *)
+| UncheckedAddOp | UncheckedSubOp | UncheckedMulOp
 .
 
 Inductive un_op : Set :=
@@ -278,6 +280,13 @@ Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
      This is because `≫` is implemented by `Z.div`. *)
   (* TODO: this does not match the Rust semantics *)
   | ShrOp => if bool_decide (0 ≤ n1 ∧ 0 ≤ n2 < bits_per_int it) then Some (n1 ≫ n2) else None
+  (* unchecked ops get stuck if the result does not fit in the target integer type *)
+  | UncheckedAddOp =>
+      if bool_decide (n1 + n2 ∈ it) then Some (n1 + n2) else None
+  | UncheckedSubOp =>
+      if bool_decide (n1 - n2 ∈ it) then Some (n1 - n2) else None
+  | UncheckedMulOp =>
+      if bool_decide (n1 * n2 ∈ it) then Some (n1 * n2) else None
   | _ => None
   end.
 
