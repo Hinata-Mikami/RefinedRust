@@ -1661,6 +1661,9 @@ Proof.
   intros (-> & _)%syn_type_has_layout_untyped_inv. done.
 Qed.
 
+Global Instance syn_type_comapt_refl `{!LayoutAlg}: Reflexive syn_type_compat.
+Proof. by left. Qed.
+
 Definition syn_type_size_eq `{!LayoutAlg} st1 st2 := ∀ ly1 ly2, syn_type_has_layout st1 ly1 → syn_type_has_layout st2 ly2 → ly_size ly1 = ly_size ly2.
 Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
   syn_type_size_eq st st.
@@ -1668,6 +1671,21 @@ Proof.
   intros ly1 ly2 ? ?. assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj. done.
 Qed.
 
+Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
+  syn_type_compat st1 st2 → syn_type_size_eq st1 st2.
+Proof.
+  intros [-> | (ly1 & Hst & ->)]; first apply syn_type_size_eq_refl.
+  intros ?? Halg1 Halg2.
+  specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as ->.
+  apply syn_type_has_layout_untyped_inv in Halg2 as (-> & _).
+  done.
+Qed.
+
+Global Instance syn_type_size_eq_sym `{!LayoutAlg} : Symmetric syn_type_size_eq.
+Proof.
+  intros st1 st2 Hsz ly1 ly2 Halg1 Halg2.
+  symmetry. by eapply Hsz.
+Qed.
 
 (** Existential versions *)
 Definition syn_type_is_layoutable `{!LayoutAlg} (st : syn_type) : Prop :=

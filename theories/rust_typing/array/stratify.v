@@ -87,12 +87,12 @@ Section stratify.
     iIntros "(%Hlen & HT)". iIntros (????) "#CTX #HE HL Hl".
     simpl.
     iPoseProof (big_sepL2_length with "Hl") as "%Hlen'".
-    rewrite length_insert interpret_iml_length in Hlen'. subst len.
+    rewrite length_insert length_interpret_iml in Hlen'. subst len.
     edestruct (lookup_lt_is_Some_2 rs j) as (r & Hlook); first done.
     rewrite -{5}(list_insert_id _ _ _ Hlook).
 
     iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
-    { rewrite interpret_iml_length. done. }
+    { rewrite length_interpret_iml. done. }
     { done. }
     iDestruct ("Ha" with "Hl") as "(Hl & Hl2)". iClear "Ha".
     simpl.
@@ -119,7 +119,7 @@ Section stratify.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
       iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (lt')%I r' (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
-      { rewrite interpret_iml_length. lia. }
+      { rewrite length_interpret_iml. lia. }
       { lia. }
       rewrite -Hleneq. iApply "Ha".
       iSplitL "Hl".
@@ -143,7 +143,7 @@ Section stratify.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
       iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (◁ def)%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
-      { rewrite interpret_iml_length. lia. }
+      { rewrite length_interpret_iml. lia. }
       { lia. }
       iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
       rewrite -Hleneq. iApply "Ha".
@@ -167,7 +167,7 @@ Section stratify.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
       iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (CoreableLtype (ltype_blocked_lfts lt') (◁ def))%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
-      { rewrite interpret_iml_length. lia. }
+      { rewrite length_interpret_iml. lia. }
       { lia. }
       rewrite -Hleneq -Hbl. iApply "Ha". iClear "Ha".
       iSplitL "Hl".
@@ -203,13 +203,13 @@ Section stratify.
     iIntros "(%Hlen & HT)". iIntros (????) "#CTX #HE HL Hl".
     unfold CanSolve in *.
     iPoseProof (big_sepL2_length with "Hl") as "%Hlen'".
-    rewrite length_insert interpret_iml_length in Hlen'. subst len.
+    rewrite length_insert length_interpret_iml in Hlen'. subst len.
     iMod ("HT" with "[//] [//] [//] CTX HE HL [Hl]") as "(%L2 & %R2 & %iml2 & %rs2 & %Hleneq & Hstep & HL & HT)".
     { edestruct (lookup_lt_is_Some_2 rs j) as (r & Hlook). { lia. }
       rewrite -{2}(list_insert_id _ _ _ Hlook).
       simpl.
       iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
-      { rewrite interpret_iml_length. done. }
+      { rewrite length_interpret_iml. done. }
       { done. }
       iDestruct ("Ha" with "Hl") as "(_ & Hl)". iClear "Ha".
       iApply (big_sepL2_mono with "Hl"). iIntros (??? Hlook1 Hlook2) "Ha".

@@ -286,12 +286,12 @@ Section subltype.
     destruct k.
     - iApply array_ltype_incl_owned; first done.
       iApply (big_sepL2_wand with "Heq"). iApply big_sepL2_intro.
-      { rewrite !interpret_iml_length//. }
+      { rewrite !length_interpret_iml//. }
       iIntros "!>" (? lt1 lt2 ? ?) "Ha". iIntros (r).
       iDestruct ("Ha" $! r) as "[$ _]".
     - iApply array_ltype_incl_shared; first done.
       iApply (big_sepL2_wand with "Heq"). iApply big_sepL2_intro.
-      { rewrite !interpret_iml_length//. }
+      { rewrite !length_interpret_iml//. }
       iIntros "!>" (? lt1 lt2 ? ?) "Ha". iIntros (r).
       iDestruct ("Ha" $! r) as "[$ _]".
     - iApply array_ltype_incl_uniq; done.
@@ -310,7 +310,7 @@ Section subltype.
       iSpecialize ("Heq" $! k').
       iApply big_sepL2_flip.
       iApply (big_sepL2_wand with "Heq").
-      iApply big_sepL2_intro. { rewrite !interpret_iml_length//. }
+      iApply big_sepL2_intro. { rewrite !length_interpret_iml//. }
       iIntros "!>" (? ?? ??) "Heq'".
       iIntros (?). iApply ltype_eq_sym. done.
   Qed.
@@ -326,7 +326,7 @@ Section subltype.
       ∀ r, ltype_eq k r r lt1 lt2)%I with "[HL]" as "#Heq".
     { iIntros (k).
       iPoseProof (Forall2_big_sepL2 with "HL []") as "(Ha & HL)"; first apply Hsub.
-      { rewrite !interpret_iml_length. done. }
+      { rewrite !length_interpret_iml. done. }
       { iModIntro. iIntros (lt1 lt2) "HL %Heqt".
         iPoseProof (Heqt with "HL CTX HE") as "#Ha". iFrame "HL". iApply "Ha". }
       iApply (big_sepL2_mono with "Ha").
@@ -389,8 +389,8 @@ Section to_default.
     { rewrite Nat.add_0_r. rewrite take_drop. done. }
     rewrite IH. simpl.
     destruct (decide (i < length l)) as [Hlt | Hnlt].
-    - rewrite insert_app_l. 2: { rewrite length_take interpret_inserts_length. lia. }
-      rewrite insert_take_drop. 2: { rewrite length_take interpret_inserts_length.  lia. }
+    - rewrite insert_app_l. 2: { rewrite length_take length_interpret_inserts. lia. }
+      rewrite insert_take_drop. 2: { rewrite length_take length_interpret_inserts.  lia. }
       rewrite take_take. rewrite Nat.min_l; last lia.
       rewrite drop_ge; first last. { rewrite length_take. lia. }
       rewrite Nat.add_succ_r.
@@ -401,12 +401,12 @@ Section to_default.
       assert (length l - i = 0) as -> by lia.
       assert (length l - S i = 0) as -> by lia.
       simpl.
-      rewrite drop_ge; first last. { rewrite interpret_inserts_length. lia. }
-      rewrite drop_ge; first last. { rewrite interpret_inserts_length. lia. }
+      rewrite drop_ge; first last. { rewrite length_interpret_inserts. lia. }
+      rewrite drop_ge; first last. { rewrite length_interpret_inserts. lia. }
       rewrite !app_nil_r.
-      rewrite !take_ge; [ | rewrite interpret_inserts_length; lia.. ].
+      rewrite !take_ge; [ | rewrite length_interpret_inserts; lia.. ].
       rewrite list_insert_id'; first done.
-      rewrite interpret_inserts_length. lia.
+      rewrite length_interpret_inserts. lia.
   Qed.
   Lemma interpret_full_iml {A} (def : A) len iml' :
     interpret_iml def len (full_iml def 0 len ++ iml') = interpret_iml def len [].
@@ -415,7 +415,7 @@ Section to_default.
     rewrite interpret_inserts_full_iml.
     rewrite take_0 length_replicate Nat.min_l; last lia.
     rewrite drop_ge; first by rewrite app_nil_r.
-    rewrite interpret_inserts_length length_replicate. lia.
+    rewrite length_interpret_inserts length_replicate. lia.
   Qed.
 
   Lemma array_ltype_make_defaults {rt} (def : type rt) b r len lts :
@@ -427,7 +427,7 @@ Section to_default.
     rewrite -(interpret_full_iml _ _ lts).
     iIntros (k). rewrite interpret_full_iml/=.
     rewrite big_sepL2_replicate_r; first last.
-    { rewrite interpret_iml_length//. }
+    { rewrite length_interpret_iml//. }
     iApply (big_sepL_impl with "Hincl").
     iModIntro. iIntros (?? Hlook) "Ha". iIntros (?). iApply "Ha".
   Qed.
@@ -517,7 +517,7 @@ Section accessors.
     { destruct wl; last done. iFrame. rewrite /num_cred. iApply lc_succ. iFrame. }
     iExists rs'. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hleneq".
-    rewrite interpret_iml_length in Hleneq. iR.
+    rewrite length_interpret_iml in Hleneq. iR.
     iNext. done.
   Qed.
 
@@ -558,7 +558,7 @@ Section accessors.
       iExists ly. rewrite -Hst'. iR. iR. iR. iR. iFrame "Hcred'".
       iExists rs'. iR.
       iPoseProof (big_sepL2_length with "Hb") as "%Hleneq".
-      rewrite interpret_iml_length in Hleneq. iR.
+      rewrite length_interpret_iml in Hleneq. iR.
       iNext. done. }
     (* place cond: *)
     iModIntro.
@@ -605,9 +605,9 @@ Section accessors.
     |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
     iIntros (Hst Hst_eq) "#Hcond #Hdead >Hb". iApply big_sepL2_fupd.
-    iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite interpret_iml_length in Hlen2.
+    iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite length_interpret_iml in Hlen2.
     iPoseProof (big_sepL2_to_zip with "Hb") as "Hb".
-    iApply big_sepL2_from_zip. { rewrite interpret_iml_length. done. }
+    iApply big_sepL2_from_zip. { rewrite length_interpret_iml. done. }
     iPoseProof (big_sepL_extend_r with "Hb") as "Hb"; first last.
     { iApply big_sepL2_elim_l. iApply (big_sepL2_impl with "Hb").
       iModIntro. iIntros (? [lt1 r1] [lt2 r2] Hlook1 Hlook2).
@@ -626,7 +626,7 @@ Section accessors.
       rewrite !ltype_core_syn_type_eq in Hst1'.
       rewrite -Hst1. eauto with iFrame.
     }
-    rewrite !zip_length !interpret_iml_length//.
+    rewrite !zip_length !length_interpret_iml//.
   Qed.
   Local Lemma array_acc_uniq_elems_core_eq π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) :
     syn_type_has_layout (ty_syn_type def) ly →
@@ -636,9 +636,9 @@ Section accessors.
     |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
     iIntros (Hst Hst_eq) "#Heq >Hb". iApply big_sepL2_fupd.
-    iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite interpret_iml_length in Hlen2.
+    iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite length_interpret_iml in Hlen2.
     iPoseProof (big_sepL2_to_zip with "Hb") as "Hb".
-    iApply big_sepL2_from_zip. { rewrite interpret_iml_length. done. }
+    iApply big_sepL2_from_zip. { rewrite length_interpret_iml. done. }
     iPoseProof (big_sepL_extend_r with "Hb") as "Hb"; first last.
     { iApply big_sepL2_elim_l. iApply (big_sepL2_impl with "Hb").
       iModIntro. iIntros (? [lt1 r1] [lt2 r2] Hlook1 Hlook2).
@@ -652,7 +652,7 @@ Section accessors.
       rewrite !ltype_core_syn_type_eq in Hst1'.
       rewrite -Hst1. eauto with iFrame.
     }
-    rewrite !zip_length !interpret_iml_length//.
+    rewrite !zip_length !length_interpret_iml//.
   Qed.
 
   Lemma array_ltype_acc_uniq {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l R q κ γ :

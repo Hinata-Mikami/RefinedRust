@@ -299,7 +299,7 @@ Section structs.
       - iIntros "(%v & Hl & %sl & %Hst' & %Hlen & %Hv & Hv)".
         iExists sl. iR. iR.
         iApply (struct_own_val_join_pointsto with "Hl Hv"); [done | | done].
-        rewrite hpzipl_length//.
+        rewrite length_hpzipl//.
 
       - iIntros "(%sl & %Hst' & %Hlen & Hl)".
         assert (ly = sl) as ->.
@@ -307,7 +307,7 @@ Section structs.
 
         iPoseProof (struct_own_val_extract_pointsto with "Hlb Hl") as "(%v & Hl & %Hlyv & Hv)".
         { done. }
-        { rewrite hpzipl_length//. }
+        { rewrite length_hpzipl//. }
         iExists v. by iFrame.
     }
 
@@ -351,7 +351,7 @@ Section structs.
         rewrite /κ' /κ''.
         iApply list_incl_lft_incl_list.
         apply pad_struct_lookup_Some in Hlook1; first last.
-        { rewrite hpzipl_length Hlen. erewrite struct_layout_spec_has_layout_fields_length; done. }
+        { rewrite length_hpzipl Hlen. erewrite struct_layout_spec_has_layout_fields_length; done. }
         destruct Hlook1 as (n & ly & ? & [ (? & Hlook) | (-> & Heq)]).
         - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
           apply list_subseteq_mjoin. apply elem_of_list_fmap.
@@ -434,7 +434,7 @@ Section structs.
         { have := field_idx_of_idx_bound sl i _ _ ltac:(done). lia. }
         edestruct (hpzipl_lookup rts tys r) as [ty [r' Hlook2]]; first done.
         iDestruct (big_sepL2_lookup with "Hmem") as "Hv"; [done| |].
-        { apply/pad_struct_lookup_Some. { rewrite hpzipl_length Hlen. done. }
+        { apply/pad_struct_lookup_Some. { rewrite length_hpzipl Hlen. done. }
           naive_solver. }
         (* lookup the ot *)
         have [|ot ?]:= lookup_lt_is_Some_2 ots (field_idx_of_idx (sl_members sl) i).
@@ -453,7 +453,7 @@ Section structs.
       rewrite Hv1 in Hv'. simplify_eq.
       iDestruct "Hv" as "(%r' & % & Hrfn & %Hlook & % & Hv)". iExists r', _. iFrame.
       move: Hty1 => /pad_struct_lookup_Some[|n[?[Hlook2 Hor1]]].
-      { rewrite hpzipl_length Hlen. done. }
+      { rewrite length_hpzipl Hlen. done. }
       move: Hpad => /pad_struct_lookup_Some[|?[?[? Hor2]]]. { rewrite length_fmap. congruence. } simplify_eq.
       destruct Hor1 as [[??] | [? ?]], Hor2 as [[? Hl] |[? ?]]; simplify_eq.
       + rewrite list_lookup_fmap in Hl. move: Hl => /fmap_Some[ot [??]]. simplify_eq.
@@ -509,7 +509,7 @@ Section structs.
   Proof.
     intros Hel.
     specialize (Forall2_length  _ _ _ Hel) as Hlen.
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     rewrite /ty_own_val/=.
     f_equiv => sl.
     apply sep_ne_proper => Halg.
@@ -544,7 +544,7 @@ Section structs.
   Proof.
     intros Hel.
     specialize (Forall2_length  _ _ _ Hel) as Hlen.
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     rewrite /ty_shr/=.
     f_equiv => sl.
     apply sep_ne_proper => Halg.
@@ -598,7 +598,7 @@ Section structs.
           apply Hne1. }
         by apply IH.
     - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !length_fmap !hzipl_length.
+      rewrite !length_fmap !length_hzipl.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
@@ -682,7 +682,7 @@ Section structs.
         eapply ty_lft_morphism_to_direct.
         apply Hne1.
     - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !length_fmap !hzipl_length.
+      rewrite !length_fmap !length_hzipl.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
@@ -885,7 +885,7 @@ Section copy.
       apply bi_sep_persistent_pure_l => Hlen. apply bi.sep_persistent; first apply _.
       apply big_sepL2_persistent_strong => _ k v' [rt [ty r']] Hlook1 Hlook2.
       apply pad_struct_lookup_Some in Hlook2 as (n & ly & ? & Hlook2); first last.
-      { rewrite hpzipl_length. erewrite struct_layout_spec_has_layout_fields_length; done. }
+      { rewrite length_hpzipl. erewrite struct_layout_spec_has_layout_fields_length; done. }
       destruct Hlook2 as [[? Hlook2] | [-> Hlook2]].
       + apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as [Hlook21 Hlook22].
         eapply TCHForall_nth_hzipl in Hcopy; last apply Hlook21.
@@ -1219,7 +1219,7 @@ Section copy.
         econstructor; first done. by apply IH.
     }
     { done. }
-    { rewrite hpzipl_length. rewrite named_fields_field_names_length. erewrite struct_layout_spec_has_layout_fields_length; done. }
+    { rewrite length_hpzipl. rewrite named_fields_field_names_length. erewrite struct_layout_spec_has_layout_fields_length; done. }
 
     (* now we need to pull the pointsto *)
     (*iPoseProof (big_sepL2_impl _ (λ i (ty : sigT (λ rt : Type, type rt * place_rfn rt)%type) v', struct_own_el_loc' _ π q' v' i (sl_members sl) l (projT2 ty).2 (projT2 ty).1) with "Hs") as "Hs".*)
@@ -1233,7 +1233,7 @@ Section copy.
         iExists l3. iR. iModIntro. iNext. done. }
     iPoseProof (struct_own_val_extract_pointsto' with "Hlb Hs") as "(Hl & >%Hlyv & Hs)".
     { done. }
-    { rewrite hpzipl_length. done. }
+    { rewrite length_hpzipl. done. }
 
     rewrite fst_zip in Hlyv; last lia.
     iExists q', (mjoin vs). simpl. iFrame.

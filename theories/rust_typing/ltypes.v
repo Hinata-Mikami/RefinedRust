@@ -400,16 +400,16 @@ Section array.
   Definition interpret_iml {X} (def : X) (len : nat) (iml : list (nat * X)) : list X :=
     interpret_inserts iml (replicate len def).
 
-  Lemma interpret_inserts_length {X} (iml : list (nat * X)) (ls : list X) :
+  Lemma length_interpret_inserts {X} (iml : list (nat * X)) (ls : list X) :
     length (interpret_inserts iml ls) = length ls.
   Proof.
     induction iml as [ | [i x] iml IH]; simpl; first done.
     rewrite length_insert //.
   Qed.
-  Lemma interpret_iml_length {X} (def : X) (len : nat) (iml : list (nat * X)) :
+  Lemma length_interpret_iml {X} (def : X) (len : nat) (iml : list (nat * X)) :
     length (interpret_iml def len iml) = len.
   Proof.
-    rewrite /interpret_iml interpret_inserts_length length_replicate //.
+    rewrite /interpret_iml length_interpret_inserts length_replicate //.
   Qed.
 
   Lemma lookup_interpret_inserts_Some_inv {X} (iml : list (nat * X)) (ls : list X) i x :
@@ -435,7 +435,7 @@ Section array.
   Proof.
     rewrite /interpret_iml. intros Ha.
     specialize (lookup_lt_Some _ _ _ Ha) as Hlen.
-    rewrite interpret_inserts_length length_replicate in Hlen.
+    rewrite length_interpret_inserts length_replicate in Hlen.
     split; first done.
     apply lookup_interpret_inserts_Some_inv in Ha as [ | Ha]; first by eauto.
     apply lookup_replicate_1 in Ha as [ ]. by left.
@@ -457,7 +457,7 @@ Section array.
     induction iml as [ | [j y] iml IH]; simpl; first done.
     intros Hlen Ha. destruct (decide (i = j)) as [<- | Hneq].
     - injection Ha as ->. rewrite list_lookup_insert; first done.
-      rewrite interpret_inserts_length //.
+      rewrite length_interpret_inserts //.
     - rewrite list_lookup_insert_ne; last done. by eapply IH.
   Qed.
 
@@ -485,7 +485,7 @@ Section array.
     intros Ha Hlen. induction iml as [ | [j y] iml IH]; simpl; first done.
     simpl in *. destruct (decide (i = j)) as [<- | Hneq].
     - injection Ha as ->. rewrite list_lookup_insert; first done.
-      rewrite interpret_iml_length//.
+      rewrite length_interpret_iml//.
     - rewrite list_lookup_insert_ne; last done. by apply IH.
   Qed.
 
@@ -2486,7 +2486,7 @@ Section ltype_def.
       iIntros (? [? ] Hlook) "(%ly & % & % & Ha)".
       iExists ly. iR. simpl. rewrite lty_core_syn_type_eq. iR.
       apply pad_struct_lookup_Some in Hlook; first last.
-      { rewrite pzipl_length. rewrite -Hlen.
+      { rewrite length_pzipl. rewrite -Hlen.
         erewrite struct_layout_spec_has_layout_fields_length; done. }
       destruct Hlook as (n & ly' & Hlook & [(? & Hlook2) | (-> & Hlook2)]).
       + apply pzipl_lookup_inv in Hlook2.
@@ -3535,7 +3535,7 @@ Section ltype_def.
     assert (Heq2 : plist (λ lt, place_rfn (lty_rt lt)) (hcmap (@ltype_lty) lts) = plist place_rfn rts).
     { rewrite -Heq. done. }
     repeat f_equiv.
-    { rewrite hcmap_length. done. }
+    { rewrite length_hcmap. done. }
     (*{ rewrite fmap_hcmap. done. }*)
     (* TODO deduplicate all this stuff *)
     { setoid_rewrite big_sepL_P_eq.
@@ -3674,19 +3674,19 @@ Section ltype_def.
       rewrite big_sepL_P_eq.
       rewrite -OfTy_ltype_lty.
       rewrite interpret_iml_fmap ArrayLtype_big_sepL_fmap //.
-      rewrite interpret_iml_length //.
+      rewrite length_interpret_iml //.
     - do 3 f_equiv.
       do 2 f_equiv.
       apply sep_equiv_proper => Hlen.
       rewrite big_sepL_P_eq.
       rewrite -OfTy_ltype_lty interpret_iml_fmap ArrayLtype_big_sepL_fmap //.
-      rewrite interpret_iml_length//.
+      rewrite length_interpret_iml//.
     - do 6 f_equiv. all: f_equiv.
       all: f_equiv.
       all: apply sep_equiv_proper => Hlen.
       all: repeat f_equiv; rewrite big_sepL_P_eq.
       all: rewrite -OfTy_ltype_lty interpret_iml_fmap ArrayLtype_big_sepL_fmap//.
-      all: rewrite interpret_iml_length//.
+      all: rewrite length_interpret_iml//.
   Qed.
 
   Lemma ltype_own_array_unfold {rt : Type} (def : type rt) (len : nat) (lts : list (nat * ltype rt)) k π r l :
@@ -3986,6 +3986,21 @@ Section ltype_def.
     rewrite /ltype_own_pre.
     apply lty_own_Owned_false_true.
   Qed.
+  Lemma ltype_own_Owned_to_false {rt} (lt : ltype rt) π r l wl F :
+    match ltype_lty lt with
+    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
+    | _ => True
+    end →
+    ltype_own lt (Owned wl) π r l ={F}=∗
+    ltype_own lt (Owned false) π r l.
+  Proof.
+    iIntros (?) "Ha".
+    destruct wl; last by iFrame.
+    iPoseProof (ltype_own_Owned_true_false with "Ha") as "(Hcreds & Ha)"; first done.
+    iDestruct "Hcreds" as "((Hcred & _) & _)".
+    iApply (lc_fupd_add_later with "Hcred"). iNext. by iFrame.
+  Qed.
+
 
   (** Rules for ltype_core *)
   (** Since [ltype]s bundle equality proofs, [ltype_core] does not compute well, and we need equational lemmas instead. *)
@@ -5399,7 +5414,7 @@ Section blocked.
           iApply (big_sepL_impl with "Ha").
           iModIntro. iIntros (k [rt [lt r'']] Hlook) "(%ly & ? & ? & Hl)". simpl.
           apply pad_struct_lookup_Some in Hlook; first last.
-          { rewrite hpzipl_length -Hlen. erewrite struct_layout_spec_has_layout_fields_length;done. }
+          { rewrite length_hpzipl -Hlen. erewrite struct_layout_spec_has_layout_fields_length;done. }
           destruct Hlook as (n & ly' & Hlook & [(? & Hlook1) | (-> & Hlook1)]).
           { apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & _).
             iPoseProof (big_sepL_lookup with "Hub") as "Hub'"; first done. simpl.
@@ -5457,7 +5472,7 @@ Section blocked.
       iApply (big_sepL_impl with "Hb").
       iModIntro. iIntros (k [rt [lt r'']] Hlook) "(%ly & ? & ? & Hl)". simpl.
       apply pad_struct_lookup_Some in Hlook; first last.
-      { rewrite hpzipl_length -Hlen. erewrite struct_layout_spec_has_layout_fields_length;done. }
+      { rewrite length_hpzipl -Hlen. erewrite struct_layout_spec_has_layout_fields_length;done. }
       destruct Hlook as (n & ly' & Hlook & [(? & Hlook1) | (-> & Hlook1)]).
       { apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & _).
         iPoseProof (big_sepL_lookup with "Hub") as "Hub'"; first done. simpl.

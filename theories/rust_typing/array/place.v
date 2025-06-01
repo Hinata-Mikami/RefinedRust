@@ -92,10 +92,10 @@ Section place.
     iModIntro. iNext. iIntros "Hcred Hcl".
     iModIntro. iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
-    rewrite interpret_iml_length in Hlen_eq.
+    rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
     destruct (lookup_lt_is_Some_2 (interpret_iml (◁ def) len lts)%I i) as (lti & Hlook_lti).
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
     destruct (lookup_lt_is_Some_2 rs i) as (ri & Hlook_ri).
     { lia. }
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
@@ -186,10 +186,10 @@ Section place.
     iModIntro. iNext. iIntros "Hcred Hcl".
     iModIntro. iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
-    rewrite interpret_iml_length in Hlen_eq.
+    rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
     destruct (lookup_lt_is_Some_2 (interpret_iml (◁ def) len lts)%I i) as (lti & Hlook_lti).
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
     destruct (lookup_lt_is_Some_2 rs i) as (ri & Hlook_ri).
     { lia. }
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
@@ -278,10 +278,10 @@ Section place.
     iModIntro. iNext. iIntros "Hcred".
     iModIntro. iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
-    rewrite interpret_iml_length in Hlen_eq.
+    rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
     destruct (lookup_lt_is_Some_2 (interpret_iml (◁ def) len lts)%I i) as (lti & Hlook_lti).
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
     destruct (lookup_lt_is_Some_2 rs i) as (ri & Hlook_ri).
     { lia. }
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
@@ -316,8 +316,8 @@ Section place.
 
     rewrite -{1}(list_insert_id (interpret_iml _ _ _) i lti); last done.
     rewrite (big_sepL2_insert _ _ _ _ _ (λ _ lt1 lt2, typed_place_cond_ty bmin lt1 lt2) 0); cycle 1.
-    { rewrite interpret_iml_length. lia. }
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
+    { rewrite length_interpret_iml. lia. }
     iFrame. iApply big_sepL2_intro; first done.
     iModIntro. iIntros (k lt1 lt2 Hlook ?). case_decide; first done.
     assert (lt1 = lt2) as -> by congruence.

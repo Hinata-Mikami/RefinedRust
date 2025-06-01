@@ -27,7 +27,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl Hv".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     iDestruct "Hv" as "(%sl & %Halg & %Hlen1 & %Hly & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR.
     iApply (big_sepL2_impl' with "Hb").
@@ -37,10 +37,10 @@ Section subtype.
     iDestruct "Hv" as "(%r' & %ly & Hrfn & %Hly' & %Hst' & Hv)".
     rewrite Hlook_v2 in Hlook_v1. injection Hlook_v1 as ->.
     apply pad_struct_lookup_Some in Hlook_ty1 as (n & ly' & Hly'' & Hlook_ty1).
-    2: { rewrite hpzipl_length Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    2: { rewrite length_hpzipl Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
     rewrite Hly'' in Hly'. injection Hly' as ->.
     eapply pad_struct_lookup_Some_1' in Hlook_ty2; last done; first last.
-    { rewrite hpzipl_length -Hlen Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    { rewrite length_hpzipl -Hlen Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
     destruct Hlook_ty1 as [ [? Hlook_ty1] | (-> & Hlook_ty1)]; first last.
     { (* padding *)
       destruct Hlook_ty2 as [ [? ?] | [_ Hlook_ty2]]; first congruence.
@@ -71,7 +71,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl Hl".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     iDestruct "Hl" as "(%sl & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR. iR.
     iApply (big_sepL_impl' with "Hb").
@@ -80,10 +80,10 @@ Section subtype.
     iIntros (k [rt1 [ty1 r1]] [rt2 [ty2 r2]] Hlook_ty1 Hlook_ty2) "Hl".
     iDestruct "Hl" as "(%r' & %ly & Hrfn & %Hly' & %Hst' & #Hsc1 & Hl)".
     apply pad_struct_lookup_Some in Hlook_ty1 as (n & ly' & Hly'' & Hlook_ty1).
-    2: { rewrite hpzipl_length Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    2: { rewrite length_hpzipl Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
     rewrite Hly'' in Hly'. injection Hly' as ->.
     eapply pad_struct_lookup_Some_1' in Hlook_ty2; last done; first last.
-    { rewrite hpzipl_length -Hlen Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
+    { rewrite length_hpzipl -Hlen Hlen1. symmetry. by apply struct_layout_spec_has_layout_fields_length. }
     destruct Hlook_ty1 as [ [? Hlook_ty1] | (-> & Hlook_ty1)]; first last.
     { (* padding *)
       destruct Hlook_ty2 as [ [? ?] | [_ Hlook_ty2]]; first congruence.
@@ -115,7 +115,7 @@ Section subtype.
   Proof.
     iIntros "#Hincl".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     iSplitR; first done. iSplitR. { simpl. rewrite Hlen. done. }
     iSplit; iModIntro.
     - iIntros (??). by iApply struct_t_own_val_mono.
@@ -130,7 +130,7 @@ Section subtype.
     iApply struct_t_type_incl.
     iApply big_sepL2_forall.
     { intros ? [? [? []]] [? [? []]]; apply _. }
-    iSplit. { iPureIntro. rewrite !hpzipl_length. done. }
+    iSplit. { iPureIntro. rewrite !length_hpzipl. done. }
     iIntros (? [rt1 [ty1 r1]] [rt2 [ty2 r2]] Hlook1 Hlook2); simpl.
     specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook1) as Hlook1'.
     specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook2) as Hlook2'.

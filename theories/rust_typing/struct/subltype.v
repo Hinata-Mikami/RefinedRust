@@ -25,14 +25,14 @@ Section subltype.
       destruct Hlook2 as [ (_ & Hlook2) | (Hc & _) ]; first last.
       { destruct Hc as [ | Hc]; first done.
         exfalso. apply lookup_lt_Some in Hlook1.
-        move: Hc Hlook1. rewrite !hpzipl_length. lia. }
+        move: Hc Hlook1. rewrite !length_hpzipl. lia. }
       destruct lt1 as [rt1 [lt1 r1]]. destruct lt2 as [rt2 [lt2 r2]].
       specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook1) as Hrt1.
       specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook2) as Hrt2.
       left. eauto 10.
     - destruct Hlook1 as (Hnone & ->).
       erewrite pad_struct_lookup_field_None_2 in Hlook2; [ | done | reflexivity | ]; first last.
-      { move : Hnone. rewrite !hpzipl_length Hlen. done. }
+      { move : Hnone. rewrite !length_hpzipl Hlen. done. }
       injection Hlook2 as [= <-]. eauto.
   Qed.
   Local Lemma pad_struct_hpzipl_2_inv' {rts} (lts1 lts2 : hlist ltype rts) (rs : plist place_rfn rts) sl f k lt1 lt2 :
@@ -52,7 +52,7 @@ Section subltype.
       destruct Hlook2 as [ (_ & Hlook2) | (Hc & _) ]; first last.
       { destruct Hc as [ | Hc]; first done.
         exfalso. apply lookup_lt_Some in Hlook1.
-        move: Hc Hlook1. rewrite !hpzipl_length. lia. }
+        move: Hc Hlook1. rewrite !length_hpzipl. lia. }
       destruct lt1 as [rt1 [lt1 r1]]. destruct lt2 as [rt2 [lt2 r2]].
       specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook1) as Hrt1.
       specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook2) as Hrt2.
@@ -62,7 +62,7 @@ Section subltype.
       eauto 10.
     - destruct Hlook1 as (Hnone & ->).
       erewrite pad_struct_lookup_field_None_2 in Hlook2; [ | done | reflexivity | ]; first last.
-      { move : Hnone. rewrite !hpzipl_length. done. }
+      { move : Hnone. rewrite !length_hpzipl. done. }
       injection Hlook2 as [= <-]. eauto.
   Qed.
 
@@ -73,7 +73,7 @@ Section subltype.
   Proof.
     iIntros "#Heq".
     iPoseProof (big_sepL2_length with "Heq") as "%Hlen".
-    rewrite !hpzipl_length in Hlen.
+    rewrite !length_hpzipl in Hlen.
     iModIntro.
     iIntros (π l).
     rewrite !ltype_own_struct_unfold /struct_ltype_own.
@@ -152,7 +152,7 @@ Section subltype.
     ltype_incl' (Owned wl) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
-    iPoseProof (big_sepL2_length with "Heq") as "%Hlen". rewrite !hpzipl_length in Hlen.
+    iPoseProof (big_sepL2_length with "Heq") as "%Hlen". rewrite !length_hpzipl in Hlen.
     iModIntro.
     iIntros (π l).
     rewrite !ltype_own_struct_unfold /struct_ltype_own.
@@ -366,7 +366,7 @@ End subltype.
 Section lemmas.
   Context `{!typeGS Σ}.
 
-(** Focusing lemmas for pad_struct big_seps *)
+  (** Focusing lemmas for pad_struct big_seps *)
   Lemma focus_struct_component {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sl π k l i x rto lto ro :
     field_index_of (sl_members sl) x = Some i →
     hpzipl rts lts r !! i = Some (existT rto (lto, ro)) →
@@ -447,7 +447,7 @@ Section lemmas.
   Proof.
     iIntros (Hlen Halg) "Hl".
     iPoseProof (pad_struct_focus_no_uninit with "Hl") as "(Hl & Hl_cl)".
-    { rewrite hpzipl_length. rewrite named_fields_field_names_length (struct_layout_spec_has_layout_fields_length sls); done. }
+    { rewrite length_hpzipl. rewrite named_fields_field_names_length (struct_layout_spec_has_layout_fields_length sls); done. }
     { specialize (sl_nodup sl). rewrite bool_decide_spec. done. }
     (* remember the layouts *)
     iAssert ([∗ list] i↦x ∈ hpzipl rts lts rs, ∃ (ly : layout) (n : string), ⌜named_fields (sl_members sl) !! i = Some (n, ly)⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 x).1) ly⌝)%I with "[Hl]" as "%Hly_agree".
@@ -475,7 +475,7 @@ Section lemmas.
       erewrite sl_index_of_lookup_2; last done.
       done. }
    iIntros (rts' lts' rs') "%Hlen_eq %Hst Hb".
-   iApply "Hl_cl". { rewrite !hpzipl_length//. }
+   iApply "Hl_cl". { rewrite !length_hpzipl//. }
 
    iApply (big_sepL_impl with "Hb").
    iModIntro. iIntros (ka [rt [lt r]] Hlook) "(%n & %st & %Hst' & Hl)".
@@ -682,12 +682,12 @@ Section accessors.
       iModIntro. iIntros (? [? []] [? []] Hlook1 Hlook2).
       simpl. iIntros "(%ly & ? & ? & Hl)".
       apply pad_struct_lookup_Some in Hlook1 as (n & ly1 & Hlook & Hlook1); first last.
-      { rewrite hpzipl_length Ha. lia. }
+      { rewrite length_hpzipl Ha. lia. }
       destruct Hlook1 as [(? & Hlook1) | (-> & Hlook1)].
       - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & Hlook1').
         destruct n; last done.
         eapply pad_struct_lookup_Some_Some in Hlook2; cycle -2.
-        { rewrite hpzipl_length Ha. lia. }
+        { rewrite length_hpzipl Ha. lia. }
         { done. }
         apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook2 & Hlook2').
         rewrite Hlook1' in Hlook2'. injection Hlook2' => Heq1 ?. subst.
@@ -703,7 +703,7 @@ Section accessors.
       - injection Hlook1 => Hlook1_1 Hlook1_2 ?. subst.
         apply existT_inj in Hlook1_2. apply existT_inj in Hlook1_1. subst.
         eapply pad_struct_lookup_Some_None in Hlook2; cycle 1.
-        { rewrite hpzipl_length Ha. lia. }
+        { rewrite length_hpzipl Ha. lia. }
         { done. }
         injection Hlook2 => Hlook2_1 Hlook2_2 ?. subst.
         apply existT_inj in Hlook2_1. apply existT_inj in Hlook2_2. subst.
@@ -728,12 +728,12 @@ Section accessors.
       iModIntro. iIntros (? [? []] [? []] Hlook1 Hlook2).
       simpl. iIntros "(%ly & ? & ? & Hl)".
       apply pad_struct_lookup_Some in Hlook1 as (n & ly1 & Hlook & Hlook1); first last.
-      { rewrite hpzipl_length Ha. lia. }
+      { rewrite length_hpzipl Ha. lia. }
       destruct Hlook1 as [(? & Hlook1) | (-> & Hlook1)].
       - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & Hlook1').
         destruct n; last done.
         eapply pad_struct_lookup_Some_Some in Hlook2; cycle -2.
-        { rewrite hpzipl_length Ha. lia. }
+        { rewrite length_hpzipl Ha. lia. }
         { done. }
         apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook2 & Hlook2').
         rewrite Hlook1' in Hlook2'. injection Hlook2' => Heq1 ?. subst.
@@ -756,7 +756,7 @@ Section accessors.
       - injection Hlook1 => Hlook1_1 Hlook1_2 ?. subst.
         apply existT_inj in Hlook1_2. apply existT_inj in Hlook1_1. subst.
         eapply pad_struct_lookup_Some_None in Hlook2; cycle 1.
-        { rewrite hpzipl_length Ha. lia. }
+        { rewrite length_hpzipl Ha. lia. }
         { done. }
         injection Hlook2 => Hlook2_1 Hlook2_2 ?. subst.
         apply existT_inj in Hlook2_1. apply existT_inj in Hlook2_2. subst.

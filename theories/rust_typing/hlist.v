@@ -105,7 +105,7 @@ Fixpoint hnth {Xl D} (d: F D) (xl: hlist F Xl)
     λ i, match i with 0 => x | S j => hnth d xl' j end
   end.
 
-Fixpoint hrepeat {X} (x: F X) n : hlist F (repeat X n) :=
+Fixpoint hrepeat {X} (x: F X) n : hlist F (replicate n X) :=
   match n with 0 => +[] | S m => x +:: hrepeat x m end.
 
 Fixpoint max_hlist_with {Xl} (f: ∀ X, F X → nat) (xl: hlist F Xl) : nat :=
@@ -147,7 +147,7 @@ Section lemmas.
   Proof. move: i. elim fl; [done|]=> > ?. by case. Qed.
 
 
-  Lemma hcmap_length {Y} (f : ∀ X, F X → Y) {Xl} (xl : hlist F Xl) :
+  Lemma length_hcmap {Y} (f : ∀ X, F X → Y) {Xl} (xl : hlist F Xl) :
     length (hcmap f xl) = length Xl.
   Proof.
     induction Xl as [ | X Xl IH]; simpl.
@@ -379,7 +379,7 @@ Fixpoint list_to_hlist {T A Xl} (xl: list A) : option (hlist (λ _: T,  A) Xl) :
   | _, _ => None
   end.
 
-Lemma list_to_hlist_length {A T Xl} (l : list A) (l' : hlist (λ _: T, A) Xl) :
+Lemma length_list_to_hlist {A T Xl} (l : list A) (l' : hlist (λ _: T, A) Xl) :
   list_to_hlist l = Some l' →
   length l = length Xl.
 Proof.
@@ -913,7 +913,7 @@ Section hzipl.
     | hnil _ => []
     | @hcons _ _ X Xl x xl => (existT X x) :: hzipl Xl xl
     end.
-  Lemma hzipl_length {X F} (l : list X) (hl : hlist F l) :
+  Lemma length_hzipl {X F} (l : list X) (hl : hlist F l) :
     length (hzipl l hl) = length l.
   Proof. induction hl; naive_solver. Qed.
   Lemma hzipl_lookup {X F} (l : list X) (hl : hlist F l) i x :
@@ -969,7 +969,7 @@ Section hzipl.
     - intros Hlook. eapply IH; last apply Hlook. done.
   Qed.
 
-  Lemma hzipl_hmap_lookup_inv {X} {F} (Xl : list X) (xl : hlist F Xl) (f : ∀ x : X, F x → F x) i (x : X) (fx : F x) :
+  Lemma hzipl_hmap_lookup_inv {X} {F G} (Xl : list X) (xl : hlist F Xl) (f : ∀ x : X, F x → G x) i (x : X) (fx : G x) :
     hzipl Xl (f +<$> xl) !! i = Some (existT x fx) →
     ∃ y, hzipl Xl xl !! i = Some (existT x y) ∧ fx = f _ y.
   Proof.
@@ -1069,7 +1069,7 @@ Section pzipl.
     | X :: Xl =>
         λ hl, (existT X (phd hl)) :: pzipl Xl (ptl hl)
     end.
-  Lemma pzipl_length {X} {F : X → Type} (l : list X) (hl : plist F l) :
+  Lemma length_pzipl {X} {F : X → Type} (l : list X) (hl : plist F l) :
     length (pzipl l hl) = length l.
   Proof. induction l; naive_solver. Qed.
   Lemma pzipl_lookup {X} {F : X → Type} (l : list X) (hl : plist F l) i x :
@@ -1139,6 +1139,17 @@ Section pzipl.
     destruct pl as [x1 pl]. destruct k as [ | k]; simpl.
     - intros [= -> Heq2]. apply existT_inj in Heq2 as ->. done.
     - eapply IH.
+  Qed.
+
+  Lemma pzipl_pmap_lookup_inv {X} {F G} (Xl : list X) (xl : plist F Xl) (f : ∀ x : X, F x → G x) i (x : X) (fx : G x) :
+    pzipl Xl (f -<$> xl) !! i = Some (existT x fx) →
+    ∃ y, pzipl Xl xl !! i = Some (existT x y) ∧ fx = f _ y.
+  Proof.
+    induction Xl as [ | a Xl IH] in i, xl |-*; simpl; first done.
+    destruct xl as [fa xl].
+    destruct i as [ | i]; simpl.
+    - intros [= -> Heq]. apply existT_inj in Heq. subst. eauto.
+    - intros Hlook%IH. done.
   Qed.
 End pzipl.
 
@@ -1311,7 +1322,7 @@ Section hpzip.
     end.
 
   Context {X} {F : X → Type} {G : X → Type}.
-  Lemma hpzipl_length (l : list X) (hl : hlist F l) (pl : plist G l) :
+  Lemma length_hpzipl (l : list X) (hl : hlist F l) (pl : plist G l) :
     length (hpzipl l hl pl) = length l.
   Proof. induction hl; naive_solver. Qed.
   Lemma hpzipl_lookup (l : list X) (hl : hlist F l) (pl : plist G l) i x :

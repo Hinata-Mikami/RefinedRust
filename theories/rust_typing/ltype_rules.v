@@ -152,7 +152,7 @@ Proof.
     iExists ly. iFrame.
     iModIntro. iMod "Hb" as "(%Hlen2 & Hb)". iModIntro. iR.
     iApply (big_sepL2_wand with "Hb").
-    iApply big_sepL2_intro. { rewrite interpret_iml_length //. }
+    iApply big_sepL2_intro. { rewrite length_interpret_iml //. }
     iIntros "!>" (?????) "($ & Hb)". iApply IH; last done; [ | done].
     by eapply elem_of_list_lookup_2.
   + rewrite !ltype_own_array_unfold /array_ltype_own.

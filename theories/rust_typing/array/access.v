@@ -61,11 +61,11 @@ Section access.
 
     iPoseProof (array_ltype_acc_owned' with "Hl") as "(%ly & %Halg & % & % & Hlb & >(Hb & Hcl))"; first done.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen".
-    rewrite interpret_iml_length in Hlen.
+    rewrite length_interpret_iml in Hlen.
     specialize (lookup_lt_is_Some_2 rs (Z.to_nat off)) as (r & Hr).
     { lia. }
     specialize (lookup_lt_is_Some_2 (interpret_iml (◁ ty)%I len iml) (Z.to_nat off)) as (lt & Hlt).
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
     iPoseProof (big_sepL2_insert_acc _ _ _ (Z.to_nat off) with "Hb") as "((%Hst' & Hel) & Hcl_b)"; [done.. | ].
     iPoseProof (ltype_own_make_alias false _ _ r with "Hel [//]") as "(Hel & Halias)".
     iPoseProof ("Hcl_b" $! (AliasLtype _ (ty_syn_type ty) (base offsetst{st}ₗ off)) r with "[Halias]") as "Ha".
@@ -90,11 +90,11 @@ Section access.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (array_ltype_acc_shared with "Hl") as "(%ly & %Halg & % & % & Hlb & >(#Hb & Hcl))"; first done.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen".
-    rewrite interpret_iml_length in Hlen.
+    rewrite length_interpret_iml in Hlen.
     specialize (lookup_lt_is_Some_2 rs (Z.to_nat off)) as (r & Hr).
     { lia. }
     specialize (lookup_lt_is_Some_2 (interpret_iml (◁ ty)%I len iml) (Z.to_nat off)) as (lt & Hlt).
-    { rewrite interpret_iml_length. lia. }
+    { rewrite length_interpret_iml. lia. }
     iPoseProof (big_sepL2_lookup _ _ _ (Z.to_nat off) with "Hb") as "(%Hst' & Hel)"; [done.. | ].
     iMod ("Hcl" $! ty iml with "[//] [//] Hb") as "(Ha & _)".
     iPoseProof ("HT" with "[//] [//]") as "HT".

@@ -26,8 +26,8 @@ Section place.
     rewrite -(list_insert_id (hzipl rts lts) i (existT _ lto)).
     2: { rewrite -Hlto. apply hzipl_lookup_hnth. done. }
     rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, typed_place_cond_ty _ _ _) 0%nat); simpl.
-    2: { rewrite hzipl_length. lia. }
-    2: { rewrite length_insert hzipl_length. lia. }
+    2: { rewrite length_hzipl. lia. }
+    2: { rewrite length_insert length_hzipl. lia. }
     iSplitL "Hcond"; first done.
     iApply big_sepL2_intro. { rewrite length_insert; done. }
     iIntros "!>" (k [rt1 lt1] [rt2 lt2] Hlook1 Hlook2).
@@ -52,8 +52,8 @@ Section place.
     rewrite -(list_insert_id (pzipl rts rs) i (existT _ ro)).
     2: { rewrite -Hro. apply pzipl_lookup_pnth. done. }
     rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, _) 0%nat); simpl.
-    2: { rewrite pzipl_length. lia. }
-    2: { rewrite length_insert pzipl_length. lia. }
+    2: { rewrite length_pzipl. lia. }
+    2: { rewrite length_insert length_pzipl. lia. }
     iSplitL "Hcond"; first done.
     iApply big_sepL2_intro. { rewrite length_insert; done. }
     iIntros "!>" (k [rt1 r1] [rt2 r2] Hlook1 Hlook2).

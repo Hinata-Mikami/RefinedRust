@@ -1,4 +1,5 @@
 From lithium Require Export base.
+From iris.base_logic Require Import fancy_updates.
 From lithium Require Import definitions hooks.
 
 Import environments.
@@ -303,62 +304,118 @@ Ltac goal_to_li :=
   end.
 *)
 
-(** * Lemmas for working with [li.iterate] *)
-Lemma iterate_elim0 {Σ A} INV (l : list A) F G:
-  ⊢@{iProp Σ} [{ iterate: l {{ x T, return F x T }}; return G }] -∗
-  INV 0%nat -∗
-  □ (∀ i x T, ⌜l !! i = Some x⌝ -∗ INV i -∗ F x T -∗ INV (S i) ∗ T) -∗
-  INV (length l) ∗ G.
-Proof.
-  liFromSyntax.
-  iIntros "Hiter Hinv #HF".
-  iInduction l as [|? l] "IH" forall (INV) => /=. { iFrame. }
-  iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as "[??]".
-  iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
-  iIntros "!>" (????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
-Qed.
+Section iterate.
+  Context {Σ : gFunctors} `{!invGS Σ}.
 
-Lemma iterate_elim1 {Σ A B} INV (l : list A) F G (a : B) :
-  ⊢@{iProp Σ} [{ x ← iterate: l with a {{ x T a, return F x T a }}; return G x }] -∗
-  INV 0%nat a -∗
-  □ (∀ i x T a, ⌜l !! i = Some x⌝ -∗ INV i a -∗ F x T a -∗ ∃ a', INV (S i) a' ∗ T a') -∗
-  ∃ a', INV (length l) a' ∗ G a'.
-Proof.
-  liFromSyntax.
-  iIntros "Hiter Hinv #HF".
-  iInduction l as [|x l] "IH" forall (INV a) => /=. { iExists _. iFrame. }
-  iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (?) "[??]".
-  iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
-  iIntros "!>" (?????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
-Qed.
+  (** * Lemmas for working with [li.iterate] *)
+  Lemma iterate_elim0 {A} INV (l : list A) F G:
+    ⊢@{iProp Σ} [{ iterate: l {{ x T, return F x T }}; return G }] -∗
+    INV 0%nat -∗
+    □ (∀ i x T, ⌜l !! i = Some x⌝ -∗ INV i -∗ F x T -∗ INV (S i) ∗ T) -∗
+    INV (length l) ∗ G.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|? l] "IH" forall (INV) => /=. { iFrame. }
+    iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+  Lemma iterate_elim0_fupd {A} INV (l : list A) F G E :
+    ⊢@{iProp Σ} [{ iterate: l {{ x T, return F x T }}; return G }] -∗
+    INV 0%nat -∗
+    □ (∀ i x T, ⌜l !! i = Some x⌝ -∗ INV i -∗ F x T ={E}=∗ INV (S i) ∗ T) ={E}=∗
+    INV (length l) ∗ G.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|? l] "IH" forall (INV) => /=. { by iFrame. }
+    iMod ("HF" $! 0%nat with "[//] Hinv Hiter") as "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
 
-Lemma iterate_elim2 {Σ A B C} INV (l : list A) F G (a : B) (b : C) :
-  ⊢@{iProp Σ} [{ x, y ← iterate: l with a, b {{ x T a b, return F x T a b }}; return G x y }] -∗
-  INV 0%nat a b -∗
-  □ (∀ i x T a b, ⌜l !! i = Some x⌝ -∗ INV i a b -∗ F x T a b -∗ ∃ a' b', INV (S i) a' b' ∗ T a' b') -∗
-  ∃ a' b', INV (length l) a' b' ∗ G a' b'.
-Proof.
-  liFromSyntax.
-  iIntros "Hiter Hinv #HF".
-  iInduction l as [|x l] "IH" forall (INV a b) => /=. { iExists _, _. iFrame. }
-  iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (??) "[??]".
-  iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
-  iIntros "!>" (??????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
-Qed.
+  Lemma iterate_elim1 {A B} INV (l : list A) F G (a : B) :
+    ⊢@{iProp Σ} [{ x ← iterate: l with a {{ x T a, return F x T a }}; return G x }] -∗
+    INV 0%nat a -∗
+    □ (∀ i x T a, ⌜l !! i = Some x⌝ -∗ INV i a -∗ F x T a -∗ ∃ a', INV (S i) a' ∗ T a') -∗
+    ∃ a', INV (length l) a' ∗ G a'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a) => /=. { iExists _. iFrame. }
+    iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (?) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (?????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+  Lemma iterate_elim1_fupd {A B} INV (l : list A) F G (a : B) E :
+    ⊢@{iProp Σ} [{ x ← iterate: l with a {{ x T a, return F x T a }}; return G x }] -∗
+    INV 0%nat a -∗
+    □ (∀ i x T a, ⌜l !! i = Some x⌝ -∗ INV i a -∗ F x T a ={E}=∗ ∃ a', INV (S i) a' ∗ T a') ={E}=∗
+    ∃ a', INV (length l) a' ∗ G a'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a) => /=. { iModIntro. iExists _. iFrame. }
+    iMod ("HF" $! 0%nat with "[//] Hinv Hiter") as (?) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (?????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
 
-Lemma iterate_elim3 {Σ A B C D} INV (l : list A) F G (a : B) (b : C) (c : D) :
-  ⊢@{iProp Σ} [{ x, y, z ← iterate: l with a, b, c {{ x T a b c, return F x T a b c }}; return G x y z }] -∗
-  INV 0%nat a b c -∗
-  □ (∀ i x T a b c, ⌜l !! i = Some x⌝ -∗ INV i a b c -∗ F x T a b c -∗ ∃ a' b' c', INV (S i) a' b' c' ∗ T a' b' c') -∗
-  ∃ a' b' c', INV (length l) a' b' c' ∗ G a' b' c'.
-Proof.
-  liFromSyntax.
-  iIntros "Hiter Hinv #HF".
-  iInduction l as [|x l] "IH" forall (INV a b c) => /=. { iExists _, _, _. iFrame. }
-  iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (???) "[??]".
-  iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
-  iIntros "!>" (???????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
-Qed.
+  Lemma iterate_elim2 {A B C} INV (l : list A) F G (a : B) (b : C) :
+    ⊢@{iProp Σ} [{ x, y ← iterate: l with a, b {{ x T a b, return F x T a b }}; return G x y }] -∗
+    INV 0%nat a b -∗
+    □ (∀ i x T a b, ⌜l !! i = Some x⌝ -∗ INV i a b -∗ F x T a b -∗ ∃ a' b', INV (S i) a' b' ∗ T a' b') -∗
+    ∃ a' b', INV (length l) a' b' ∗ G a' b'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a b) => /=. { iExists _, _. iFrame. }
+    iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (??) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (??????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+  Lemma iterate_elim2_fupd {A B C} INV (l : list A) F G (a : B) (b : C) E :
+    ⊢@{iProp Σ} [{ x, y ← iterate: l with a, b {{ x T a b, return F x T a b }}; return G x y }] -∗
+    INV 0%nat a b -∗
+    □ (∀ i x T a b, ⌜l !! i = Some x⌝ -∗ INV i a b -∗ F x T a b ={E}=∗ ∃ a' b', INV (S i) a' b' ∗ T a' b') ={E}=∗
+    ∃ a' b', INV (length l) a' b' ∗ G a' b'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a b) => /=. { iModIntro. iExists _, _. iFrame. }
+    iMod ("HF" $! 0%nat with "[//] Hinv Hiter") as (??) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (??????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+
+  Lemma iterate_elim3 {A B C D} INV (l : list A) F G (a : B) (b : C) (c : D) :
+    ⊢@{iProp Σ} [{ x, y, z ← iterate: l with a, b, c {{ x T a b c, return F x T a b c }}; return G x y z }] -∗
+    INV 0%nat a b c -∗
+    □ (∀ i x T a b c, ⌜l !! i = Some x⌝ -∗ INV i a b c -∗ F x T a b c -∗ ∃ a' b' c', INV (S i) a' b' c' ∗ T a' b' c') -∗
+    ∃ a' b' c', INV (length l) a' b' c' ∗ G a' b' c'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a b c) => /=. { iExists _, _, _. iFrame. }
+    iDestruct ("HF" $! 0%nat with "[//] Hinv Hiter") as (???) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (???????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+  Lemma iterate_elim3_fupd {A B C D} INV (l : list A) F G (a : B) (b : C) (c : D) E :
+    ⊢@{iProp Σ} [{ x, y, z ← iterate: l with a, b, c {{ x T a b c, return F x T a b c }}; return G x y z }] -∗
+    INV 0%nat a b c -∗
+    □ (∀ i x T a b c, ⌜l !! i = Some x⌝ -∗ INV i a b c -∗ F x T a b c ={E}=∗ ∃ a' b' c', INV (S i) a' b' c' ∗ T a' b' c') ={E}=∗
+    ∃ a' b' c', INV (length l) a' b' c' ∗ G a' b' c'.
+  Proof.
+    liFromSyntax.
+    iIntros "Hiter Hinv #HF".
+    iInduction l as [|x l] "IH" forall (INV a b c) => /=. { iModIntro. iExists _, _, _. iFrame. }
+    iMod ("HF" $! 0%nat with "[//] Hinv Hiter") as (???) "[??]".
+    iDestruct ("IH" $! (λ i, INV (S i)) with "[] [$] [$]") as "$".
+    iIntros "!>" (???????) "??". iApply ("HF" $! (S _) with "[//] [$] [$]").
+  Qed.
+End iterate.
 
 Module li_test.
 Section test.

@@ -307,8 +307,8 @@ Section instances.
     iIntros (??) "Ha".
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
     iPoseProof (big_sepL_extend_r (zip rs1 rs2) with "Ha") as "Ha".
-    { rewrite !zip_length !interpret_iml_length. lia. }
-    iApply big_sepL2_from_zip. { rewrite !zip_length !interpret_iml_length. lia. }
+    { rewrite !zip_length !length_interpret_iml. lia. }
+    iApply big_sepL2_from_zip. { rewrite !zip_length !length_interpret_iml. lia. }
     rewrite zip_assoc_l [zip rs1 (zip _ _)]zip_assoc_r [zip rs1 (interpret_iml _ _ _)]zip_flip.
     rewrite !zip_fmap_l !zip_fmap_r. rewrite !zip_assoc_l !zip_fmap_r.
     rewrite zip_assoc_r -!list_fmap_compose big_sepL_fmap.
@@ -332,7 +332,7 @@ Section instances.
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
     iModIntro.
     iApply array_ltype_incl_owned_in; first done.
-    simpl. iIntros (?). rewrite interpret_iml_length.
+    simpl. iIntros (?). rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. lia. }
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
@@ -350,7 +350,7 @@ Section instances.
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
     iApply array_ltype_incl_owned; first done.
-    simpl. rewrite interpret_iml_length.
+    simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
@@ -370,7 +370,7 @@ Section instances.
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
     iModIntro.
     iApply array_ltype_incl_shared_in; first done.
-    simpl. iIntros (?). rewrite interpret_iml_length.
+    simpl. iIntros (?). rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] []"). { iPureIntro. lia. } {iPureIntro. lia. }
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
@@ -388,7 +388,7 @@ Section instances.
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
     iApply array_ltype_incl_shared; first done.
-    simpl. rewrite interpret_iml_length.
+    simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
@@ -405,7 +405,7 @@ Section instances.
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".
     iModIntro.
     iApply array_ltype_incl_uniq; first done.
-    simpl. rewrite interpret_iml_length.
+    simpl. rewrite length_interpret_iml.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
@@ -459,7 +459,7 @@ Section instances.
     (*iMod ("Hf" with "[//] CTX HE HL") as "(Ha & HL & $)".*)
     rewrite /fold_list/=. iDestruct "Hf" as "(Hf & $)".
     simpl. iSpecialize ("Hf" with "[] []").
-    { simpl. rewrite interpret_iml_length. iPureIntro. lia. }
+    { simpl. rewrite length_interpret_iml. iPureIntro. lia. }
     { simpl. done. }
     specialize (full_eqtype_eqltype _ _ _ _ Hsubt) as Hs.
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hb"; first apply Hs.
@@ -500,7 +500,7 @@ Section instances.
     iIntros "(<- & %Hst & Hrel)".
     iPoseProof "Hrel" as "(Hr & $)".
     simpl. iSpecialize  ("Hr" with "[] [//]").
-    { rewrite interpret_iml_length. iPureIntro. lia. }
+    { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL2_Forall2 with "Hr") as "%Ha".
     iPureIntro. eapply array_full_subltype; done.
   Qed.
@@ -529,7 +529,7 @@ Section instances.
     ⊢ mut_subltype E L (ArrayLtype def1 len1 lts1) (◁ ty) T.
   Proof.
     iIntros "(%Heqt & Ha & $)".
-    iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite interpret_iml_length. iPureIntro. lia. }
+    iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL_Forall with "Ha") as "%Ha".
     iPureIntro. eapply full_eqltype_subltype_l.
     etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. apply _. }
@@ -563,7 +563,7 @@ Section instances.
     iIntros "(<- & %Hst & Hrel)".
     iPoseProof "Hrel" as "(Hr & $)".
     simpl. iSpecialize  ("Hr" with "[] [//]").
-    { rewrite interpret_iml_length. iPureIntro. lia. }
+    { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL2_Forall2 with "Hr") as "%Ha".
     iPureIntro. eapply array_full_eqltype; done.
   Qed.
@@ -591,7 +591,7 @@ Section instances.
     ⊢ mut_eqltype E L (ArrayLtype def1 len1 lts1) (◁ ty) T.
   Proof.
     iIntros "(%Heqt & Ha & $)".
-    iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite interpret_iml_length. iPureIntro. lia. }
+    iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL_Forall with "Ha") as "%Ha".
     iPureIntro.
     etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. apply _. }
