@@ -4,6 +4,7 @@
 #![rr::import("refinedrust.extra_proofs.minivec", "minivec")]
 #![rr::include("option")]
 #![rr::include("ptr")]
+#![rr::include("mem")]
 #![rr::include("rr_internal")]
 #![allow(dead_code)]
 
@@ -282,7 +283,7 @@ impl<T> Vec<T> {
     // we do not move ownership out, but return an alias to the ptr
     #[rr::params("l" : "loc", "cap" : "nat", "len" : "Z")]
     #[rr::args(#raw "( *[(l, cap); len])")]
-    #[rr::returns("l" @ "alias_ptr_t")]
+    #[rr::returns("l")]
     fn ptr<'a>(&'a self) -> *mut T {
         self.buf.ptr() as *mut T
     }
