@@ -93,7 +93,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
                     lifetime_names.insert(region_name, next_id);
                 }
             },
-            ty::BoundRegionKind::BrAnon(_) => {
+            ty::BoundRegionKind::BrAnon => {
                 universal_lifetimes.insert(next_id, format!("ulft_{}", next_id.as_usize()));
             },
             _ => (),

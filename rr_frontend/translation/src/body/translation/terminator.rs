@@ -21,7 +21,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return false;
         };
 
-        let mir::ConstantKind::Val(_, ty) = c.literal else {
+        let mir::Const::Val(_, ty) = c.const_ else {
             return false;
         };
 
@@ -210,7 +210,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 description: "implement UnwindTerminate".to_owned(),
             }),
 
-            mir::TerminatorKind::GeneratorDrop
+            mir::TerminatorKind::CoroutineDrop
             | mir::TerminatorKind::InlineAsm { .. }
             | mir::TerminatorKind::Yield { .. } => Err(TranslationError::UnsupportedFeature {
                 description: format!(

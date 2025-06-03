@@ -229,19 +229,6 @@ impl ProcedureLoops {
         }
         debug!("loop_exit_blocks: {:?}", loop_exit_blocks);
 
-        // The nonconditional blocks of a loop are those blocks of the loop body that dominate all
-        // the blocks from which a back-edge starts.
-        let mut nonconditional_loop_blocks = HashMap::new();
-        for (&loop_head, loop_body) in &loop_bodies {
-            nonconditional_loop_blocks.insert(loop_head, loop_body.clone());
-        }
-        for &(back_edge_source, loop_head) in &back_edges {
-            let blocks = nonconditional_loop_blocks.get_mut(&loop_head).unwrap();
-            *blocks =
-                blocks.intersection(&dominators.dominators(back_edge_source).collect()).copied().collect();
-        }
-        debug!("nonconditional_loop_blocks: {:?}", nonconditional_loop_blocks);
-
         Self {
             loop_heads,
             loop_bodies,

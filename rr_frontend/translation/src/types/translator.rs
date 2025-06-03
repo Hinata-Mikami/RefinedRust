@@ -1161,13 +1161,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         })?;
 
                     let evaluated_discr = evaluated_discr.ok_or_else(|| {
-                        TranslationError::FatalError(format!("Failed to const-evaluate discriminant"))
+                        TranslationError::FatalError("Failed to const-evaluate discriminant".to_owned())
                     })?;
 
                     let evaluated_int = evaluated_discr.try_to_scalar_int().unwrap();
                     let evaluated_int =
                         Self::try_scalar_int_to_int128(evaluated_int, signed).ok_or_else(|| {
-                            TranslationError::FatalError(format!("Enum discriminant is too large"))
+                            TranslationError::FatalError("Enum discriminant is too large".to_owned())
                         })?;
 
                     info!("const-evaluated enum discriminant: {:?}", evaluated_int);
@@ -1504,7 +1504,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     };
 
                     let translated_ty = self.translate_type_in_state(ty.expect_ty(), &mut *state)?;
-                    return Ok(radium::Type::BoxType(Box::new(translated_ty)));
+                    return Ok(radium::Type::BoxT(Box::new(translated_ty)));
                 }
 
                 if self.is_struct_definitely_zero_sized(adt.did()) == Some(true) {
@@ -1616,11 +1616,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 
-            ty::TyKind::Generator(_, _, _)
-            | ty::TyKind::GeneratorWitness(_)
-            | ty::TyKind::GeneratorWitnessMIR(_, _) => Err(TranslationError::UnsupportedType {
-                description: "RefinedRust does currently not support generators".to_owned(),
-            }),
+            ty::TyKind::Coroutine(_, _, _) | ty::TyKind::CoroutineWitness(_, _) => {
+                Err(TranslationError::UnsupportedType {
+                    description: "RefinedRust does currently not support generators".to_owned(),
+                })
+            },
 
             ty::TyKind::Infer(_) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support infer types".to_owned(),

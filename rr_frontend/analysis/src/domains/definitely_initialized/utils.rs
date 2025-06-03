@@ -126,8 +126,8 @@ fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
                 }
             }
         },
-        ty::Generator(_, substs, _) => {
-            for (index, subst_ty) in substs.as_generator().upvar_tys().iter().enumerate() {
+        ty::Coroutine(_, substs, _) => {
+            for (index, subst_ty) in substs.as_coroutine().upvar_tys().iter().enumerate() {
                 if Some(index) != without_field {
                     let field_place = tcx.mk_place_field(place.to_mir_place(), index.into(), subst_ty);
                     places.push(P::from_mir_place(field_place));
@@ -201,6 +201,7 @@ fn expand_one_level<'tcx>(
         | mir::ProjectionElem::ConstantIndex { .. }
         | mir::ProjectionElem::Subslice { .. }
         | mir::ProjectionElem::Downcast(..)
+        | mir::ProjectionElem::Subtype(..)
         | mir::ProjectionElem::OpaqueCast(..) => vec![],
     };
     (new_current_place, other_places)

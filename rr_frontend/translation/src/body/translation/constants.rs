@@ -113,12 +113,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a constant value from const evaluation.
     fn translate_constant_value(
         &mut self,
-        v: mir::interpret::ConstValue<'tcx>,
+        v: mir::ConstValue<'tcx>,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match v {
-            mir::interpret::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
-            mir::interpret::ConstValue::ZeroSized => {
+            mir::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
+            mir::ConstValue::ZeroSized => {
                 // TODO are there more special cases we need to handle somehow?
                 match ty.kind() {
                     ty::TyKind::FnDef(_, _) => {
@@ -141,10 +141,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a `mir::Constant` to a `radium::Expr`.
     pub(super) fn translate_constant(
         &mut self,
-        constant: &mir::Constant<'tcx>,
+        constant: &mir::Const<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
-        match constant.literal {
-            mir::ConstantKind::Ty(v) => {
+        match constant {
+            mir::Const::Ty(v) => {
                 let const_ty = v.ty();
 
                 match v.kind() {
@@ -163,19 +163,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            mir::ConstantKind::Val(val, ty) => self.translate_constant_value(val, ty),
-            mir::ConstantKind::Unevaluated(c, ty) => {
+            mir::Const::Val(val, ty) => self.translate_constant_value(*val, *ty),
+            mir::Const::Unevaluated(c, ty) => {
                 // call const evaluation
                 let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(self.proc.get_id());
-                match self.env.tcx().const_eval_resolve(param_env, c, None) {
-                    Ok(res) => self.translate_constant_value(res, ty),
+                match self.env.tcx().const_eval_resolve(param_env, *c, None) {
+                    Ok(res) => self.translate_constant_value(res, *ty),
                     Err(e) => match e {
-                        mir::interpret::ErrorHandled::Reported(_) => {
+                        mir::interpret::ErrorHandled::Reported(_, _) => {
                             Err(TranslationError::UnsupportedFeature {
                                 description: "Cannot interpret constant".to_owned(),
                             })
                         },
-                        mir::interpret::ErrorHandled::TooGeneric => {
+                        mir::interpret::ErrorHandled::TooGeneric(_) => {
                             Err(TranslationError::UnsupportedFeature {
                                 description: "Const use is too generic".to_owned(),
                             })

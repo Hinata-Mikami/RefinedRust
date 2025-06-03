@@ -587,7 +587,7 @@ impl AdditionalFacts {
             //     loan_killed_at(L, P),
             //     cfg_edge(P, Q),
             //     origin_live_on_entry(R, Q).
-            zombie_requires_1.from_join(&requires_lp, &loan_killed_at, |&(l, p), &r, _| (p, (l, r)));
+            zombie_requires_1.from_join(&requires_lp, &loan_killed_at, |&(l, p), &r, ()| (p, (l, r)));
             zombie_requires_2.from_join(&zombie_requires_1, &cfg_edge_p, |&_p, &(l, r), &q| ((r, q), l));
             zombie_requires
                 .from_join(&zombie_requires_2, &origin_live_on_entry, |&(r, q), &l, &()| (r, l, q));

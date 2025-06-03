@@ -7,7 +7,7 @@
 use log::{info, trace};
 use radium::coq;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, index};
+use rr_rustc_interface::{index, target};
 
 use super::TX;
 use crate::base::*;
@@ -18,7 +18,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_aggregate(
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
-        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+        op: &index::IndexVec<target::abi::FieldIdx, mir::Operand<'tcx>>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // translate operands
         let mut translated_ops: Vec<radium::Expr> = Vec::new();
@@ -287,7 +287,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Operand::Constant(constant) => {
                 // TODO: possibly need different handling of the rvalue flag
                 // when this also handles string literals etc.
-                return self.translate_constant(constant.as_ref());
+                return self.translate_constant(&constant.const_);
             },
         }
     }

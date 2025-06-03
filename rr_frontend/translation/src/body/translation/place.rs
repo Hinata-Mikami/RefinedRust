@@ -5,8 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
-use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::target;
 
 use super::TX;
 use crate::base::*;
@@ -48,7 +48,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let name = self.ty_translator.translator.get_field_name_of(
                         *f,
                         cur_ty.ty,
-                        cur_ty.variant_index.map(abi::VariantIdx::as_usize),
+                        cur_ty.variant_index.map(target::abi::VariantIdx::as_usize),
                     )?;
 
                     acc_expr = radium::Expr::FieldOf {
@@ -56,6 +56,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         name,
                         sls: struct_sls.to_string(),
                     };
+                },
+                mir::ProjectionElem::Subtype(_) => {
+                    //TODO
+                    return Err(TranslationError::UnsupportedFeature {
+                        description: "places: implement subtype projection".to_owned(),
+                    });
                 },
                 mir::ProjectionElem::Index(_v) => {
                     //TODO

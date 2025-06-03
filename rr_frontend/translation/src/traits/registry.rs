@@ -546,7 +546,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         let assoc_types_did = self.env.get_trait_assoc_types(trait_did);
                         let mut assoc_types = Vec::new();
                         for did in assoc_types_did {
-                            let alias = self.env.tcx().mk_alias_ty(did, subst_args);
+                            let alias = ty::AliasTy::new(self.env.tcx(), did, subst_args);
                             let tykind = ty::TyKind::Alias(ty::AliasKind::Projection, alias);
                             let ty = self.env.tcx().mk_ty_from_kind(tykind);
                             assoc_types.push(ty);

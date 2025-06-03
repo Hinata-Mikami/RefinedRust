@@ -388,13 +388,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// generics.
     fn call_expr_op_split_inst(
         &self,
-        constant: &mir::Constant<'tcx>,
+        constant: &mir::Const<'tcx>,
     ) -> Result<
         (DefId, ty::PolyFnSig<'tcx>, ty::GenericArgsRef<'tcx>, ty::PolyFnSig<'tcx>),
         TranslationError<'tcx>,
     > {
-        match constant.literal {
-            mir::ConstantKind::Ty(c) => {
+        match constant {
+            mir::Const::Ty(c) => {
                 match c.ty().kind() {
                     ty::TyKind::FnDef(def, args) => {
                         let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
@@ -413,7 +413,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            mir::ConstantKind::Val(_, ty) => {
+            mir::Const::Val(_, ty) => {
                 match ty.kind() {
                     ty::TyKind::FnDef(def, args) => {
                         let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
@@ -433,7 +433,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }),
                 }
             },
-            mir::ConstantKind::Unevaluated(_, _) => Err(TranslationError::Unimplemented {
+            mir::Const::Unevaluated(_, _) => Err(TranslationError::Unimplemented {
                 description: "implement ConstantKind::Unevaluated".to_owned(),
             }),
         }
@@ -463,7 +463,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         // Get the type of the return value from the function
-        let (target_did, sig, generic_args, inst_sig) = self.call_expr_op_split_inst(func_constant)?;
+        let (target_did, sig, generic_args, inst_sig) =
+            self.call_expr_op_split_inst(&func_constant.const_)?;
         info!("calling function {:?}", target_did);
         info!("call substs: {:?} = {:?}, {:?}", func, sig, generic_args);
 

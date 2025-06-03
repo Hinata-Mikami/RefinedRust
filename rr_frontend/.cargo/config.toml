@@ -74,6 +74,7 @@ rustflags = [
     "-Aclippy::unimplemented",
     "-Aclippy::unwrap_used",
     "-Aclippy::use_debug",
+    "-Aclippy::impl_trait_in_params",
 
     # === AVOIDABLE LINTS ===
 
@@ -89,6 +90,7 @@ rustflags = [
     "-Aclippy::many_single_char_names",
     "-Aclippy::match_wildcard_for_single_variants",
     "-Aclippy::too_many_lines",
+    "-Aclippy::struct_field_names",
 
     # clippy::restriction
     "-Aclippy::default_numeric_fallback",

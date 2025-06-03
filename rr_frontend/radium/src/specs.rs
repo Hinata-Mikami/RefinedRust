@@ -469,7 +469,7 @@ pub enum Type<'def> {
     Char,
     MutRef(Box<Type<'def>>, Lft),
     ShrRef(Box<Type<'def>>, Lft),
-    BoxType(Box<Type<'def>>),
+    BoxT(Box<Type<'def>>),
     /// a struct type, potentially instantiated with some type parameters
     /// the boolean indicates
     Struct(AbstractStructUse<'def>),
@@ -498,7 +498,7 @@ impl<'def> Display for Type<'def> {
 
             Self::MutRef(ty, lft) => write!(f, "(mut_ref {} {})", lft, ty),
             Self::ShrRef(ty, lft) => write!(f, "(shr_ref {} {})", lft, ty),
-            Self::BoxType(ty) => write!(f, "(box {})", ty),
+            Self::BoxT(ty) => write!(f, "(box {})", ty),
             Self::RawPtr => write!(f, "alias_ptr_t"),
 
             Self::Struct(su) => write!(f, "{}", su.generate_type_term()),
@@ -527,7 +527,7 @@ impl<'def> From<&Type<'def>> for SynType {
             Type::Char => Self::Char,
             Type::Int(it) => Self::Int(*it),
 
-            Type::MutRef(..) | Type::ShrRef(..) | Type::BoxType(..) | Type::RawPtr => Self::Ptr,
+            Type::MutRef(..) | Type::ShrRef(..) | Type::BoxT(..) | Type::RawPtr => Self::Ptr,
 
             Type::Struct(s) => s.generate_syn_type_term(),
             Type::Enum(s) => s.generate_syn_type_term(),
@@ -549,7 +549,7 @@ impl<'def> Type<'def> {
     pub fn make_raw(&mut self) {
         match self {
             Self::Struct(su) => su.make_raw(),
-            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) | Self::BoxType(box ty) => ty.make_raw(),
+            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) | Self::BoxT(box ty) => ty.make_raw(),
             _ => (),
         }
     }
@@ -566,7 +566,7 @@ impl<'def> Type<'def> {
                 model::Type::Gname.into(),
             ]),
 
-            Self::ShrRef(box ty, _) | Self::BoxType(box ty) => {
+            Self::ShrRef(box ty, _) | Self::BoxT(box ty) => {
                 model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into()
             },
 
@@ -4668,6 +4668,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
 
 /// Coq Names used for the spec of a trait impl.
 #[derive(Constructor, Clone, Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct LiteralTraitImpl {
     /// The name of the record instance for spec information
     pub spec_record: String,

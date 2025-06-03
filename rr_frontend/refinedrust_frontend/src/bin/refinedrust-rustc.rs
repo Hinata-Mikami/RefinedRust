@@ -13,7 +13,7 @@ use std::{env, process};
 
 use log::{debug, info};
 use rr_rustc_interface::hir::def_id::LocalDefId;
-use rr_rustc_interface::middle::{query, ty};
+use rr_rustc_interface::middle::{query, ty, util};
 use rr_rustc_interface::{borrowck, driver, interface, session};
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
@@ -49,14 +49,10 @@ fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_
     original_mir_borrowck(tcx, def_id)
 }
 
-fn override_queries(
-    _session: &session::Session,
-    local: &mut query::Providers,
-    _: &mut query::ExternProviders,
-) {
+fn override_queries(_session: &session::Session, providers: &mut util::Providers) {
     // overriding these queries makes sure that the `mir_storage` gets all the relevant bodies,
     // also for external crates?
-    local.mir_borrowck = mir_borrowck;
+    providers.queries.mir_borrowck = mir_borrowck;
     //external.mir_borrowck = mir_borrowck;
 }
 
@@ -109,7 +105,8 @@ impl driver::Callbacks for RRCompilerCalls {
     fn config(&mut self, config: &mut interface::Config) {
         assert!(config.override_queries.is_none());
         if !rrconfig::no_verify() {
-            config.override_queries = Some(override_queries);
+            let x: fn(&session::Session, &mut util::Providers) = override_queries;
+            config.override_queries = Some(x);
         }
     }
 

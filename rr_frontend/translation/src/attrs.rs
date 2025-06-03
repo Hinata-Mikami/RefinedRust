@@ -60,7 +60,7 @@ pub fn filter_for_tool(attrs: &[ast::ast::Attribute]) -> Vec<&ast::ast::AttrItem
             ast::ast::AttrKind::Normal(na) => {
                 let item = &na.item;
 
-                let seg = item.path.segments.get(0)?;
+                let seg = item.path.segments.first()?;
 
                 (seg.ident.name.as_str() == rrconfig::spec_hotword()).then_some(item)
             },

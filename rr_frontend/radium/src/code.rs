@@ -96,7 +96,7 @@ impl RustType {
                 Self::ShrRef(Box::new(ty), lft.clone())
             },
 
-            Type::BoxType(ty) => {
+            Type::BoxT(ty) => {
                 let ty = Self::of_type(ty);
                 Self::PrimBox(Box::new(ty))
             },

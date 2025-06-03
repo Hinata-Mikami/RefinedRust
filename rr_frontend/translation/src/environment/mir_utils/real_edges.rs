@@ -51,7 +51,7 @@ fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
 
         mir::TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
 
-        mir::TerminatorKind::GeneratorDrop
+        mir::TerminatorKind::CoroutineDrop
         | mir::TerminatorKind::Return
         | mir::TerminatorKind::Unreachable
         | mir::TerminatorKind::UnwindResume
