@@ -594,7 +594,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::RegionKind::RePlaceholder(placeholder) => {
                 // TODO: not sure if any placeholders should remain at this stage.
                 info!("Translating region: Placeholder {:?}", placeholder);
-                Err(TranslationError::PlaceholderRegion())
+                Err(TranslationError::PlaceholderRegion)
             },
 
             ty::RegionKind::ReStatic => Ok("static".to_owned()),
@@ -1616,7 +1616,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 
-            ty::TyKind::Coroutine(_, _, _) | ty::TyKind::CoroutineWitness(_, _) => {
+            ty::TyKind::Coroutine(_, _) | ty::TyKind::CoroutineWitness(_, _) => {
                 Err(TranslationError::UnsupportedType {
                     description: "RefinedRust does currently not support generators".to_owned(),
                 })

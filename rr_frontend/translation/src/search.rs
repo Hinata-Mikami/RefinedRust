@@ -230,9 +230,7 @@ where
                     }
 
                     let did: DefId = item.res.def_id();
-                    // TODO: this is breaking for primitive types because this is the module not
-                    // the type
-                    let impls: &[DefId] = tcx.inherent_impls(did);
+                    let impls: &[DefId] = tcx.inherent_impls(did).ok()?;
                     trace!("trying to find method among impls {:?}", impls);
                     if impls.is_empty() {
                         trace!("children: {:?}", tcx.module_children(item.res.def_id()));
@@ -358,7 +356,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
 
     if let Some((simplified_ty, method_idx)) = simplified_ty {
         if let Some(method) = path.get(method_idx) {
-            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
+            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty).ok()?;
 
             trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
 

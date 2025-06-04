@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::span;
 
 use super::TX;
 use crate::base::*;
@@ -442,7 +443,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(super) fn translate_function_call(
         &mut self,
         func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[span::source_map::Spanned<mir::Operand<'tcx>>],
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
@@ -528,7 +529,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // to_ty is the type the function expects
 
             //let ty = arg.ty(&self.proc.get_mir().local_decls, self.env.tcx());
-            let translated_arg = self.translate_operand(arg, true)?;
+            let translated_arg = self.translate_operand(&arg.node, true)?;
             translated_args.push(translated_arg);
         }
 

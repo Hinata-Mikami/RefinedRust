@@ -155,13 +155,20 @@ impl<'tcx> Environment<'tcx> {
         }
 
         // for closures, propagate from the surrounding function
-        if self.tcx().is_closure(did) {
+        if self.is_closure(did) {
             let parent_did = self.tcx().parent(did);
             let parent_attrs = self.get_attributes_of_function(parent_did, propagate_from_impl);
             filtered_attrs.extend(parent_attrs.into_iter().filter(|x| propagate_from_impl(x)));
         }
 
         filtered_attrs
+    }
+
+    /// Check if `did` is a closure.
+    pub fn is_closure(&self, did: DefId) -> bool {
+        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.tcx.type_of(did);
+        let ty = ty.skip_binder();
+        matches!(ty.kind(), ty::TyKind::Closure(_, _))
     }
 
     /// Get an absolute `def_path`. Note: not preserved across compilations!

@@ -113,9 +113,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     }
 
     fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim> {
-        let Some(meta) = self.procedure_registry.lookup_function(did) else {
-            return None;
-        };
+        let meta = self.procedure_registry.lookup_function(did)?;
         let mode = meta.get_mode();
 
         if mode != procedures::Mode::Prove
@@ -197,9 +195,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 trace!("got trait path: {:?}", trait_path);
 
                 // flatten the self type.
-                let Some(for_type) = shims::flat::convert_ty_to_flat_type(self.env, impl_for) else {
-                    return None;
-                };
+                let for_type = shims::flat::convert_ty_to_flat_type(self.env, impl_for)?;
 
                 trace!("implementation for: {:?}", impl_for);
 

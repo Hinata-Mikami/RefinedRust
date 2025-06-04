@@ -126,7 +126,7 @@ fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
                 }
             }
         },
-        ty::Coroutine(_, substs, _) => {
+        ty::Coroutine(_, substs) => {
             for (index, subst_ty) in substs.as_coroutine().upvar_tys().iter().enumerate() {
                 if Some(index) != without_field {
                     let field_place = tcx.mk_place_field(place.to_mir_place(), index.into(), subst_ty);

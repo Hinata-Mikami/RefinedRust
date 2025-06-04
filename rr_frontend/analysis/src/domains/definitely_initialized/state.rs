@@ -258,7 +258,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                 ..
             } => {
                 for arg in args {
-                    new_state.apply_operand_effect(arg);
+                    new_state.apply_operand_effect(&arg.node);
                 }
                 new_state.apply_operand_effect(func);
                 if let Some(bb) = *target {

@@ -71,7 +71,7 @@ pub enum TranslationError<'tcx> {
     UnknownLateRegion(usize, usize),
 
     #[display("Cannot translate placeholder region")]
-    PlaceholderRegion(),
+    PlaceholderRegion,
 
     #[display("Cannot translate unknown region: {:?}", _0)]
     UnknownRegion(ty::Region<'tcx>),
