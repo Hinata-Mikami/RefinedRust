@@ -1,4 +1,5 @@
-STDLIB = mem ptr alloc rr_internal option result vec btreemap rwlock closures spin iterator boxed clone controlflow stdlib
+STDLIB = mem ptr alloc rr_internal option result vec rwlock closures spin iterator boxed clone controlflow stdlib
+#btreemap 
 
 RUST_TARGET ?= $(shell rustc -vV | sed -n 's|host: ||p')
 RUST_PATH ?=	target/$(RUST_TARGET)/release

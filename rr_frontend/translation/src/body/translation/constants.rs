@@ -70,7 +70,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 mir::interpret::Scalar::Int(_) => unreachable!(),
 
                 mir::interpret::Scalar::Ptr(pointer, _) => {
-                    let glob_alloc = self.env.tcx().global_alloc(pointer.provenance);
+                    let glob_alloc = self.env.tcx().global_alloc(pointer.provenance.alloc_id());
                     match glob_alloc {
                         mir::interpret::GlobalAlloc::Static(did) => {
                             info!(

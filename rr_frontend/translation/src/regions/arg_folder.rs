@@ -135,23 +135,23 @@ pub fn relabel_late_bounds<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> T
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
-    let mut folder = RelabelLateBoundVisitor { tcx };
+    let mut folder = RelabelLateParamVisitor { tcx };
     x.fold_with(&mut folder)
 }
 
 /// Rename `RegionVid`s.
-struct RelabelLateBoundVisitor<'tcx> {
+struct RelabelLateParamVisitor<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
 }
 
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateBoundVisitor<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateParamVisitor<'tcx> {
     fn interner(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(_idx, _) => {
+            ty::ReLateParam(_idx) => {
                 //let idx = v.index();
                 //let new_idx = self.rename_map.get(idx).unwrap();
 
@@ -206,7 +206,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion, args: &[ty::GenericArg<'_>]) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyParamRegion, args: &[ty::GenericArg<'_>]) -> ! {
             panic!(
                 "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
                 data.name, data.index, args,
@@ -215,7 +215,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         #[cold]
         #[inline(never)]
-        fn region_param_invalid(data: ty::EarlyBoundRegion, other: &ty::GenericArgKind<'_>) -> ! {
+        fn region_param_invalid(data: ty::EarlyParamRegion, other: &ty::GenericArgKind<'_>) -> ! {
             panic!(
                 "Unexpected parameter {:?} when substituting in region {} (index={})",
                 other, data.name, data.index
@@ -228,7 +228,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
-            ty::ReEarlyBound(data) => {
+            ty::ReEarlyParam(data) => {
                 let rk = self.args.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(ty::GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
@@ -237,8 +237,8 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
                 }
             },
 
-            ty::ReLateBound(..)
-            | ty::ReFree(_)
+            ty::ReBound(..)
+            | ty::ReLateParam(_)
             | ty::ReStatic
             | ty::RePlaceholder(_)
             | ty::ReErased

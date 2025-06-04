@@ -114,6 +114,7 @@ rustflags = [
     "-Aclippy::std_instead_of_core",
     "-Aclippy::unreachable",
     "-Aclippy::wildcard_enum_match_arm",
+    "-Aclippy::iter_over_hash_type",
 
     # clippy::style
     "-Aclippy::just_underscores_and_digits",

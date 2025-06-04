@@ -184,7 +184,7 @@ impl Buffer {
                     Err(Error::WrongTokenKind(token, tok.kind.clone(), tok.span))
                 }
             },
-            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 
@@ -199,7 +199,7 @@ impl Buffer {
                 },
                 _ => Err(Error::ExpectedIdent(tok.kind.clone(), tok.span)),
             },
-            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 
@@ -214,7 +214,7 @@ impl Buffer {
                 },
                 _ => Err(Error::ExpectedLiteral(tok.kind.clone(), tok.span)),
             },
-            ast::tokenstream::TokenTree::Delimited(span, _, _) => Err(Error::UnexpectedDelim(*span)),
+            ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
     }
 }

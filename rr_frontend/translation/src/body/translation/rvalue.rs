@@ -560,11 +560,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<radium::BorKind, TranslationError<'tcx>> {
         match kind {
             mir::BorrowKind::Shared => Ok(radium::BorKind::Shared),
-            mir::BorrowKind::Shallow => {
+            mir::BorrowKind::Fake => {
                 // TODO: figure out what to do with this
                 // arises in match lowering
                 Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does currently not support shallow borrows".to_owned(),
+                    description: "RefinedRust does currently not support fake borrows".to_owned(),
                 })
             },
             mir::BorrowKind::Mut { .. } => {

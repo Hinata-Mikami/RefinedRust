@@ -265,7 +265,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     /// Lookup an early-bound region.
     fn lookup_early_region(
         &self,
-        region: &ty::EarlyBoundRegion,
+        region: &ty::EarlyParamRegion,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
         match self {
             STInner::InFunction(scope) => {
@@ -581,13 +581,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         region: ty::Region<'tcx>,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
         match *region {
-            ty::RegionKind::ReEarlyBound(early) => {
-                info!("Translating region: EarlyBound {:?}", early);
+            ty::RegionKind::ReEarlyParam(early) => {
+                info!("Translating region: EarlyParam {:?}", early);
                 translation_state.lookup_early_region(&early)
             },
 
-            ty::RegionKind::ReLateBound(idx, r) => {
-                info!("Translating region: LateBound {:?} {:?}", idx, r);
+            ty::RegionKind::ReBound(idx, r) => {
+                info!("Translating region: Bound {:?} {:?}", idx, r);
                 translation_state.lookup_late_region(usize::from(idx), r.var.index())
             },
 

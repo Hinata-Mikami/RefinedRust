@@ -937,7 +937,7 @@ pub struct LateBoundUnifier<'tcx, 'a> {
     tcx: ty::TyCtxt<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
-    early_instantiation: HashMap<ty::EarlyBoundRegion, ty::Region<'tcx>>,
+    early_instantiation: HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
     pub fn new(tcx: ty::TyCtxt<'tcx>, binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
@@ -949,7 +949,7 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
         }
     }
 
-    pub fn get_result(mut self) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyBoundRegion, ty::Region<'tcx>>) {
+    pub fn get_result(mut self) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>) {
         trace!("computed latebound unification map {:?}", self.instantiation);
         let mut res = Vec::new();
         for i in 0..self.binders_to_unify.len() {
@@ -965,7 +965,7 @@ impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        if let ty::RegionKind::ReLateBound(_, b1) = *r1 {
+        if let ty::RegionKind::ReBound(_, b1) = *r1 {
             trace!("trying to unify region {r1:?} with {r2:?}");
             // only unify if this is in the range of binders to unify
             let index1 = b1.var.index();
@@ -976,7 +976,7 @@ impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
                     self.instantiation.insert(index1, r2);
                 }
             }
-        } else if let ty::RegionKind::ReEarlyBound(e1) = *r1 {
+        } else if let ty::RegionKind::ReEarlyParam(e1) = *r1 {
             trace!("trying to unify region {r1:?} with {r2:?}");
             if let Some(r1_l) = self.early_instantiation.get(&e1) {
                 assert!(*r1_l == r2);

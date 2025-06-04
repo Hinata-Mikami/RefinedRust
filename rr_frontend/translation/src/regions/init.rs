@@ -52,7 +52,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
             region_substitution_early.push(Some(next_id));
 
             match *r {
-                ty::RegionKind::ReEarlyBound(r) => {
+                ty::RegionKind::ReEarlyParam(r) => {
                     let name = strip_coq_ident(r.name.as_str());
                     universal_lifetimes.insert(next_id, format!("ulft_{}", name));
                     lifetime_names.insert(name, next_id);
@@ -111,7 +111,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
         next_index += 1;
         ty::Region::new_var(env.tcx(), ty::RegionVid::from_u32(cur_index))
     };
-    let (late_sig, _late_region_map) = env.tcx().replace_late_bound_regions(sig, &mut folder);
+    let (late_sig, _late_region_map) = env.tcx().instantiate_bound_regions(sig, &mut folder);
 
     // replace early bound variables
     let inputs: Vec<_> = late_sig
