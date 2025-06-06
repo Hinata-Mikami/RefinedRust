@@ -403,6 +403,9 @@ Section fixpoint.
   Context `{!typeGS Σ}.
   Context {rt} `{!Inhabited rt} (T : type rt → type rt) {HT: TypeContractive T}.
 
+  (* prevent [simpl] from unfolding it too much here *)
+  Opaque prod_cofe.
+
   Global Instance type_fixpoint_copy :
     (∀ `(!Copyable ty), Copyable (T ty)) → Copyable (type_fixpoint T).
   Proof.
@@ -412,6 +415,7 @@ Section fixpoint.
     { induction n as [ | n IH]; simpl; apply _. }
     constructor.
     - intros. rewrite /ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
+      simpl.
       eapply @limit_preserving_compl.
       { eapply bi.limit_preserving_Persistent.
         intros n [][][Heq1 Heq2].

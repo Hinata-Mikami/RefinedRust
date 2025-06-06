@@ -1,5 +1,5 @@
 From stdpp Require Import coPset.
-From Coq Require Import QArith Qcanon.
+From Stdlib Require Import QArith Qcanon.
 From iris.algebra Require Import big_op gmap frac agree.
 From iris.algebra Require Import csum excl auth cmra_big_op numbers.
 From iris.bi Require Import fractional.

@@ -42,8 +42,8 @@ For mutable reference arguments `x`, you can use the notations `x.cur` and `x.gh
 
 | Keyword   | Purpose                      | Properties | Example                          |
 |-----------|------------------------------|------------|----------------------------------|
-| `params`  | specify Coq-level specification parameters | multiple   | `#[rr:params("n" : "Z", b : "bool")]` |
-| `param`  | specify Coq-level parameters | multiple   | `#[rr:param("n" : "Z")]` |
+| `params`  | specify Rocq-level specification parameters | multiple   | `#[rr:params("n" : "Z", b : "bool")]` |
+| `param`  | specify Rocq-level parameters | multiple   | `#[rr:param("n" : "Z")]` |
 | `args`    | specify argument refinements/types | multiple | `#[rr::args("n" @ "int i32", "b"]` |
 | `returns` | specify return refinement/type | single | `#[rr::returns("42" @ "int i32")]` |
 | `requires` | specify a precondition | multiple | `#[rr:requires("i > 42")]` |
@@ -135,7 +135,7 @@ Each of the enum's variants is annotated with two attributes:
 - a `refinement` attribute for specifying the refinement of the variant's component type, often a tuple type.
   If a variant contains a nested struct, the struct can further be annotated with all the usual struct attributes.
 
-For instance, the `option` type could be specified as follows, being refined by Coq's `option` type.
+For instance, the `option` type could be specified as follows, being refined by Rocq's `option` type.
 ```rust
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 enum option<T> {
@@ -151,8 +151,8 @@ enum option<T> {
 In addition, enums also support the `export_as` attribute (same as structs).
 
 ### Refinement generation
-Instead of refining an enum with an existing Coq type, RefinedRust can also generate a new Coq type corresponding to the Rust enum declaration.
-For this, the `rr::refine_as` attribute can be used used, which takes the desired Coq name of the definition as its argument.
+Instead of refining an enum with an existing Rocq type, RefinedRust can also generate a new Rocq type corresponding to the Rust enum declaration.
+For this, the `rr::refine_as` attribute can be used used, which takes the desired Rocq name of the definition as its argument.
 
 For instance:
 ```
@@ -177,7 +177,7 @@ Traits can have additional "specification attributes" which are instantiated by 
 The generic specification of trait methods can mention these specification attributes in order to be parameterizable over implementations.
 
 To specify an attribute, trait declarations can be annotated with a `rr::exists` attribute:
-- `#[rr::exists("Done" : "{rt_of Self} → Prop")]` indicates that an attribute `Done` of the given Coq type should be declared, using the escape sequences explained below.
+- `#[rr::exists("Done" : "{rt_of Self} → Prop")]` indicates that an attribute `Done` of the given Rocq type should be declared, using the escape sequences explained below.
 
 For further specifications in the trait declaration (e.g. for the specification of the trait's methods), the name `Done` will be in scope, enclosed with braces (e.g. `{Done}`).
 The attribute declarations can depend on each other in the definition order, e.g. it would be valid to specify:
@@ -191,18 +191,18 @@ In the proof of the specifications for the trait's methods, this instantiation i
 
 ## Module attributes
 Inside a module, the following mod-level attributes can be specified:
-- `#![rr::import("A.B.C", "D")]`: imports the file `D` from logical Coq path `A.B.C` in all spec and proof files
+- `#![rr::import("A.B.C", "D")]`: imports the file `D` from logical Rocq path `A.B.C` in all spec and proof files
 - `#![rr::include("vec")]`: imports the RefinedRust library `vec` from the loadpath
 
 ## Crate attributes
 Inside a crate, the following crate-level attributes can be specified:
-- `#![rr::coq_prefix("A.B.C")]`: puts the generated files under the logical Coq path `A.B.C`
-- `#![rr::import("A.B.C", "D")]`: imports the file `D` from logical Coq path `A.B.C` in all spec and proof files
+- `#![rr::coq_prefix("A.B.C")]`: puts the generated files under the logical Rocq path `A.B.C`
+- `#![rr::import("A.B.C", "D")]`: imports the file `D` from logical Rocq path `A.B.C` in all spec and proof files
 - `#![rr::include("vec")]`: imports the RefinedRust library `vec` from the loadpath
 
 ## RefinedRust propositions
 For propositional specifications, as appearing in `#[rr::requires("P")]`, `#[rr::ensures("P")]`, and `#[rr::invariant("P")]`, specific notational shortcuts are supported.
-By default, `P` is interpreted as a (pure) Coq proposition (i.e., it is interpreted to the Iris proposition `⌜P⌝`).
+By default, `P` is interpreted as a (pure) Rocq proposition (i.e., it is interpreted to the Iris proposition `⌜P⌝`).
 
 This can be changed by format specifiers starting with `#` which preceed the string `"P"`:
 
@@ -212,12 +212,12 @@ This can be changed by format specifiers starting with `#` which preceed the str
 - In `rr::invariant` clauses on structs, the `#own` specifier only makes the following Iris proposition available in the invariant for owned types.
 - In `rr::invariant` clauses on structs, the `#shr` specifier only makes the following Iris proposition available in the invariant for shared types.
 
-In the default interpretation as pure Coq propositions, optionally a name can be specified that will be used in Coq's context (if the proposition becomes a hypothesis), by writing (for instance) `#[rr::requires("Hx" : "x < 5")]`.
+In the default interpretation as pure Rocq propositions, optionally a name can be specified that will be used in Rocq's context (if the proposition becomes a hypothesis), by writing (for instance) `#[rr::requires("Hx" : "x < 5")]`.
 This is especially useful for semi-manual proofs.
 
 ## Special syntax
 ### Escape sequences
-As a rule of thumb, all  string literals in specifications are inserted literally into the generated Coq code.
+As a rule of thumb, all  string literals in specifications are inserted literally into the generated Rocq code.
 However, specifications can escape into special syntax inside `{ }` (curly braces) in order to access some Rust-level variables.
 These escape sequences are literally replaced by the frontend.
 

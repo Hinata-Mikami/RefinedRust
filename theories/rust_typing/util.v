@@ -1,4 +1,4 @@
-From Coq Require Import Qcanon.
+From Stdlib Require Import Qcanon.
 From caesium Require Import derived.
 From iris.bi Require Import fractional.
 From iris.proofmode Require Import tactics.

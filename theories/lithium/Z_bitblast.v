@@ -1,5 +1,5 @@
-From Coq Require Import ssreflect.
-From Coq.btauto Require Export Btauto.
+From Stdlib Require Import ssreflect.
+From Stdlib.btauto Require Export Btauto.
 From stdpp Require Export tactics numbers list.
 From stdpp Require Import options.
 

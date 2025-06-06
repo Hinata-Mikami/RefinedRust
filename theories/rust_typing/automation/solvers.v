@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+Require Import Stdlib.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type ltypes hlist.
 From lithium Require Export all.
@@ -2251,17 +2251,6 @@ Ltac destruct_product_hypothesis name H :=
       destruct H as [tmp1 tmp2];
       destruct_product_hypothesis name tmp1;
       destruct_product_hypothesis name tmp2
-  | plist _ ?xs =>
-      let ys := eval simpl in xs in
-      match ys with
-      | _ :: _ =>
-                      let tmp1 := fresh "tmp" in
-                      let tmp2 := fresh "tmp" in
-                      destruct H as [tmp1 tmp2];
-                      destruct_product_hypothesis name tmp1;
-                      destruct_product_hypothesis name tmp2
-      | [] => destruct H
-      end
   | prod_vec _ ?n =>
       let m := eval simpl in n in
       match m with
@@ -2272,6 +2261,17 @@ Ltac destruct_product_hypothesis name H :=
                       destruct_product_hypothesis name tmp1;
                       destruct_product_hypothesis name tmp2
       | 0%nat => destruct H
+      end
+  | plist _ ?xs =>
+      let ys := eval simpl in xs in
+      match ys with
+      | _ :: _ =>
+                      let tmp1 := fresh "tmp" in
+                      let tmp2 := fresh "tmp" in
+                      destruct H as [tmp1 tmp2];
+                      destruct_product_hypothesis name tmp1;
+                      destruct_product_hypothesis name tmp2
+      | [] => destruct H
       end
   |    _ => let id := fresh name in
                       rename H into id

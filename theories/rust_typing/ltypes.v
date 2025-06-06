@@ -2273,7 +2273,7 @@ Section ltype_def.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: clear.
-      all: move: r Heq Heq2.
+      all: revert r Heq Heq2.
       all: generalize (lty_rt lt) => ?.
       all: intros r ? <-.
       all: rewrite (UIP_refl _ _ Heq); simpl.
@@ -2286,7 +2286,7 @@ Section ltype_def.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: clear.
-      all: move: r Heq Heq2.
+      all: revert r Heq Heq2.
       all: generalize (lty_rt lt) => ?.
       all: intros r ? <-.
       all: rewrite (UIP_refl _ _ Heq); simpl.
@@ -2300,7 +2300,7 @@ Section ltype_def.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: clear -Hst.
-      all: move: r Heq Heq2.
+      all: revert r Heq Heq2.
       all: generalize (lty_rt lt) => ?.
       all: intros r ? <-.
       all: rewrite (UIP_refl _ _ Heq); simpl.
@@ -2315,7 +2315,7 @@ Section ltype_def.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
       all: clear -Hst.
-      all: move: r Heq Heq2.
+      all: revert r Heq Heq2.
       all: generalize (lty_rt lt) => ?.
       all: intros r ? <-.
       all: rewrite (UIP_refl _ _ Heq); simpl.

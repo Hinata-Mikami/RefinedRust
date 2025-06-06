@@ -26,7 +26,7 @@ error: experimental Nix feature 'nix-command' is disabled; use ''–extra-experi
 
 All you have to do is enable flakes, see this [NixOS wiki page](https://nixos.wiki/wiki/Flakes) for more details on how to enable flakes permanently.
 
-Note: Make sure that you are not currently in an opam switch with a Coq installation -- this may confuse our build setup.
+Note: Make sure that you are not currently in an opam switch with a Rocq installation -- this may confuse our build setup.
 
 ### Setup using `opam` and `rustup`
 By following the procedure in the `README.md`, you should have the required setup for development.
@@ -127,11 +127,11 @@ To update this set, you can use `nix flake update` and commit the modified `flak
 The `outputs` set describe the project, including how to build some external dependencies.
 
 Those dependencies are described using a couple:
- - `version`/`sha256` for `coq`, such as `stdpp`, `iris` or `lambda-rust`, and;
+ - `version`/`sha256` for `rocq`, such as `stdpp`, `iris` or `lambda-rust`, and;
  - `dir`/`sha256` for specifying the `rust` toolchain.
 
 To update a dependency:
 1. Replace the `sha256` string with the empty string `""`.
-2. For a `coq` dependency, replace the `version` string with the desired `git` commit hash.
+2. For a `rocq` dependency, replace the `version` string with the desired `git` commit hash.
 3. Run `nix build` and wait for the error that throws the hash mismatch.
 4. Replace the `sha256` empty string with the hash from the received error.

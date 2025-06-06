@@ -1,7 +1,7 @@
-From Coq Require Export ssreflect.
+From Stdlib Require Export ssreflect.
 From stdpp Require Export sorting.
 From iris.algebra Require Export big_op.
-From Coq.ZArith Require Import Znumtheory.
+From Stdlib.ZArith Require Import Znumtheory.
 From stdpp Require Import gmap list.
 From iris.program_logic Require Import weakestpre.
 From iris.bi Require Import bi.
@@ -15,7 +15,6 @@ Set Default Proof Using "Type".
 
 #[export] Unset Program Cases.
 #[export] Set Keyed Unification.
-#[export] Unset Automatic Proposition Inductives.
 
 #[export] Set Default Goal Selector "!".
 

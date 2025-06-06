@@ -6,7 +6,7 @@
 This repository contains a public mirror of the RefinedRust development version.
 
 ## Structure
-The Coq implementation of RefinedRust can be found in the `theories` subfolder.
+The Rocq implementation of RefinedRust can be found in the `theories` subfolder.
 The frontend implementation can be found in the `rr_frontend` subfolder.
 Case studies and tests can be found in the `case_studies` subfolder.
 Stdlib interfaces (without proofs) can be found in the `stdlib` subfolder.
@@ -47,7 +47,7 @@ nix --extra-experimental-features 'nix-command flakes' shell "gitlab:lgaeher/ref
 ```
 
 ### Setup using `opam` and `rustup`
-#### Setup instructions for the Coq code:
+#### Setup instructions for the Rocq code:
 We assume that you have `opam` installed on your system. Setup instructions can be found here: https://opam.ocaml.org/doc/Install.html
 
 0. `cd` into the directory containing this README.
@@ -62,10 +62,10 @@ opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
 ```
 2. Install the necessary dependencies:
 ```
-opam pin add coq 8.20.1
+opam pin add rocq-prover 9.0.0
 make builddep
 ```
-3. Build the Coq implementation of the type system
+3. Build the Rocq implementation of the type system
 ```
 make setup-dune
 make typesystem
@@ -104,12 +104,12 @@ The `lib_load_paths` config option influences where the verifier searches for th
 The crate-level `rr::include` directive can be used to import these proof files (see the description in `SPEC_FORMAT.md`).
 
 ## Proof editing
-You can interactively look at the generated Coq code using a Coq plugin like Coqtail, VSCoq, Proof General, or CoqIDE for the editor of your choice.
-To do so, your editor needs to know about the Coq project structure.
-As RefinedRust uses the `dune` build system to compile the Coq files, if your editor/plugin supports `dune`, it will automatically find the dependencies.
+You can interactively look at the generated Rocq code using a Rocq plugin like Rocqtail, VSRocq, Proof General, or RocqIDE for the editor of your choice.
+To do so, your editor needs to know about the Rocq project structure.
+As RefinedRust uses the `dune` build system to compile the Rocq files, if your editor/plugin supports `dune`, it will automatically find the dependencies.
 
 Otherwise, you will need to explicitly tell it how to find the dependencies in `dune`'s build directory.
-You can generate a basic `_CoqProject` file that is read by your editor using `make coqproject`, which includes RefinedRust's core and the set of case studies.
+You can generate a basic `_RocqProject` file that is read by your editor using `make coqproject`, which includes RefinedRust's core and the set of case studies.
 If you add a new verification, you can manually add a line for your verification in this file.
 See the existing includes for inspiration.
 
@@ -132,9 +132,9 @@ These include:
 | `output_dir` | Relative/absolute path | Determines the directory where the generated output files will be placed |
 | `log_dir` | Relative/absolute path | Determines the directory where logs and debug dumps will be placed if enabled |
 | `shims` | Relative/absolute path | Determines the JSON file storing information about shims that RefinedRust uses |
-| `run_check` | Boolean | Automatically call the Coq type checker on the generated files |
+| `run_check` | Boolean | Automatically call the Rocq type checker on the generated files |
 | `verify_deps` | Boolean | Verify dependencies or not |
-| `admit_proofs` | Boolean | Skip Coq's `Qed` check and instead run `Admitted` |
+| `admit_proofs` | Boolean | Skip Rocq's `Qed` check and instead run `Admitted` |
 | `extra_specs` | Relative/absolute path | File whose contents will be inlined at the end of the generated specs file |
 | `post_generation_hook` | Command | Run a command after code generation and before proof checking |
 | `generate_dune_project` | Boolean | Generate a dune-project file (on by default) |
@@ -153,6 +153,6 @@ We currently re-use code from the following projects:
 - Iris: https://gitlab.mpi-sws.org/iris/iris (under the BSD 3-clause license)
 - lambda-rust: https://gitlab.mpi-sws.org/iris/lambda-rust (under the BSD 3-clause license)
 - Prusti: https://github.com/viperproject/prusti-dev (under the MPL 2.0 license)
-- Coq ident-to-string: https://github.com/mit-plv/coqutil/blob/master/src/coqutil/Macros/ident_to_string.v (under the MIT license)
+- Rocq ident-to-string: https://github.com/mit-plv/coqutil/blob/master/src/coqutil/Macros/ident_to_string.v (under the MIT license)
 
 We provide the RefinedRust code under the BSD 3-clause license.

@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+Require Import Stdlib.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type.
 From lithium Require Export all.
@@ -1044,7 +1044,7 @@ Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_s
 Global Arguments ty_has_op_type : simpl never.
 
 (* Simplifying this can lead to problems in some cases when used in specifications. *)
-Global Arguments replicate : simpl never.
+Global Arguments replicate : simpl nomatch.
 (* We don't want this to simplify away the zero case, as that can be a valuable hint. *)
 Global Arguments freeable_nz : simpl never.
 

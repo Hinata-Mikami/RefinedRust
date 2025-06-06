@@ -954,8 +954,8 @@ Section test.
     Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)) := mk_ex_inv_def
       _
       id
-      (λ π inner_rfn '(l, cap) , ⌜inner_rfn = (-[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
-      (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = -[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
+      (λ π inner_rfn '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
+      (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
       ([])
       ([])
       _ _ _
@@ -992,8 +992,8 @@ Section test.
     Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
       (list T_rt)
       (fmap PlaceIn)
-      (λ π inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = -[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
-      (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = -[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ π inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
+      (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       ([] ++ (ty_lfts T_ty))
       ([] ++ (ty_wf_E T_ty))
       _ _ _

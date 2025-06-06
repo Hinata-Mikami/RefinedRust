@@ -1,7 +1,7 @@
 From iris.algebra Require Import ofe.
 From iris.proofmode Require Import tactics.
 From refinedrust Require Import axioms base.
-Require Import Coq.Program.Equality.
+Require Import Stdlib.Program.Equality.
 Local Set Universe Polymorphism.
 
 (** * Heterogeneous lists *)
@@ -1325,7 +1325,7 @@ Section hpzip.
   Lemma length_hpzipl (l : list X) (hl : hlist F l) (pl : plist G l) :
     length (hpzipl l hl pl) = length l.
   Proof. induction hl; naive_solver. Qed.
-  Lemma hpzipl_lookup (l : list X) (hl : hlist F l) (pl : plist G l) i x :
+  Lemma hpzipl_lookup (l : list X) (hl : hlist F l) (pl : plist G l) i (x : X) :
     l !! i = Some x →
     ∃ y z, hpzipl l hl pl !! i = Some (existT x (y, z)).
   Proof.
@@ -1336,7 +1336,7 @@ Section hpzip.
       + injection Hlook as [= ->]. eauto.
       + eapply IH in Hlook as (y' & Hlook). simpl; eauto.
   Qed.
-  Lemma hpzipl_lookup_inv (l : list X) (hl : hlist F l) (pl : plist G l) i x y z :
+  Lemma hpzipl_lookup_inv (l : list X) (hl : hlist F l) (pl : plist G l) i (x : X) y z :
     hpzipl l hl pl !! i = Some (existT x (y, z)) →
     l !! i = Some x.
   Proof.

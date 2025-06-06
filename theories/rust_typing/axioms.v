@@ -1,9 +1,9 @@
-Require Import Coq.Logic.ProofIrrelevance.
-Require Export Coq.Logic.FunctionalExtensionality.
+Require Import Stdlib.Logic.ProofIrrelevance.
+Require Export Stdlib.Logic.FunctionalExtensionality.
 From Equations Require Import Equations.
 From stdpp Require Import base.
 From iris Require Import prelude.
-Require Import Coq.Logic.EqdepFacts.
+Require Import Stdlib.Logic.EqdepFacts.
 From refinedrust Require Import options.
 
 (** We assume proof irrelevance. *)

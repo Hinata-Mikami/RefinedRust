@@ -12,11 +12,14 @@ Lemma RawVec_T_new_proof (π : thread_id) :
 Proof.
   RawVec_T_new_prelude.
 
+  (* Otherwise, in the ZST case, we try to compute a very big list *)
+  Arguments replicate : simpl never.
+
   repeat liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
-  Unshelve. 
+  Unshelve.
   all: try lia.
   all: sidecond_hammer.
   rewrite MaxInt_eq. solve_goal. (* NOTE : manual *)
