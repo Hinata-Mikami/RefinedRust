@@ -847,7 +847,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             (coq.theory\n\
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {generated_module_path})\n\
-             (theories stdpp iris Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust {}))",
+             (theories stdpp iris Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust Stdlib {}))",
             extra_theories.join(" ")
         )
         .unwrap();
@@ -907,7 +907,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {proof_module_path})\n\
              (modules {})\n\
-             (theories stdpp iris Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust {} {}.{}.generated))",
+             (theories stdpp iris Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust Stdlib {} {}.{}.generated))",
              proof_modules.join(" "), extra_theories.join(" "), self.coq_path_prefix, stem).unwrap();
     }
 }

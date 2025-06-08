@@ -26,7 +26,7 @@ SOFTWARE.
 Massachusetts Institute of Technology
  *)
 
-Require Import Coq.Strings.String.
+Require Import Stdlib.Strings.String.
 Require Import Ltac2.Ltac2.
 Require Ltac2.Option.
 
