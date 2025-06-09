@@ -217,7 +217,6 @@
                 --set PATH "${makeSearchPath "bin" buildInputs}" \
                 --set LD_LIBRARY_PATH "${rust.lib}" \
                 --set DYLD_FALLBACK_LIBRARY_PATH "${rust.lib}"
-
             '';
 
             doCheck = false;
