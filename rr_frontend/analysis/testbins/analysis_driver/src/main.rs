@@ -17,10 +17,10 @@ use rr_rustc_interface::errors;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::interface::{interface, Config, Queries};
 use rr_rustc_interface::middle::query::queries::mir_borrowck::ProvidedValue;
-use rr_rustc_interface::middle::query::{ExternProviders, Providers};
-use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::middle::query::Providers;
+use rr_rustc_interface::middle::{ty, util};
 use rr_rustc_interface::polonius_engine::{Algorithm, Output};
-use rr_rustc_interface::session::{self, EarlyErrorHandler, Session};
+use rr_rustc_interface::session::{self, EarlyDiagCtxt, Session};
 
 struct OurCompilerCalls {
     args: Vec<String>,
@@ -28,7 +28,7 @@ struct OurCompilerCalls {
 
 fn get_attributes(tcx: ty::TyCtxt<'_>, def_id: DefId) -> &[ast::Attribute] {
     if let Some(local_def_id) = def_id.as_local() {
-        tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(local_def_id))
+        tcx.hir().attrs(tcx.local_def_id_to_hir_id(local_def_id))
     } else {
         tcx.item_attrs(def_id)
     }
@@ -119,7 +119,7 @@ fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValu
     original_mir_borrowck(tcx, def_id)
 }
 
-fn override_queries(_session: &Session, local: &mut Providers, _external: &mut ExternProviders) {
+fn override_queries(_session: &Session, local: &mut util::Providers) {
     local.mir_borrowck = mir_borrowck;
 }
 
@@ -135,8 +135,8 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
         compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        let session = compiler.session();
-        session.abort_if_errors();
+        //let session = &compiler.sess;
+        //session.abort_if_errors();
 
         let abstract_domain: &str = self
             .args
@@ -148,7 +148,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 
         println!(
             "Analyzing file {} using {}...",
-            compiler.session().io.input.source_name().prefer_local(),
+            compiler.sess.io.input.source_name().prefer_local(),
             abstract_domain
         );
 
@@ -170,7 +170,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 
                 // SAFETY: This is safe because we are feeding in the same `tcx`
                 // that was used to store the data.
-                let mut body_with_facts = unsafe { self::mir_storage::retrieve_mir_body(tcx, local_def_id) };
+                let mut body_with_facts = unsafe { mir_storage::retrieve_mir_body(tcx, local_def_id) };
                 body_with_facts.output_facts = Some(Rc::new(Output::compute(
                     body_with_facts.input_facts.as_ref().unwrap(),
                     Algorithm::Naive,
@@ -206,7 +206,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 /// --analysis=ReachingDefsState or --analysis=DefinitelyInitializedAnalysis
 fn main() {
     env_logger::init();
-    let error_handler = EarlyErrorHandler::new(session::config::ErrorOutputType::HumanReadable(
+    let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable(
         errors::emitter::HumanReadableErrorType::Default(errors::emitter::ColorConfig::Auto),
     ));
     rr_rustc_interface::driver::init_rustc_env_logger(&error_handler);

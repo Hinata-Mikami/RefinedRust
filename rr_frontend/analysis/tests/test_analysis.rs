@@ -17,7 +17,7 @@ fn run_tests(mode: &str, path: &str, custom_args: Vec<String>) {
     build_test_binary_once!(analysis_driver, "testbins");
 
     let mut flags = Vec::new();
-    flags.push("--edition 2018".to_owned());
+    flags.push("--edition 2021".to_owned());
     flags.push(format!("--sysroot {}", find_sysroot()));
     flags.extend(custom_args);
     config.target_rustcflags = Some(flags.join(" "));
