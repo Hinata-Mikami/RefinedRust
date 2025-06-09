@@ -37,7 +37,7 @@ pub struct FunctionState<'tcx, 'def> {
     /// defid of the current function
     pub(crate) did: DefId,
 
-    /// generic mapping: map DeBruijn indices to type parameters
+    /// generic mapping: map De Bruijn indices to type parameters
     pub(crate) generic_scope: scope::Params<'tcx, 'def>,
     /// mapping for regions
     pub(crate) lifetime_scope: EarlyLateRegionMap,
@@ -1616,11 +1616,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 
-            ty::TyKind::Coroutine(_, _) | ty::TyKind::CoroutineWitness(_, _) => {
-                Err(TranslationError::UnsupportedType {
-                    description: "RefinedRust does currently not support generators".to_owned(),
-                })
-            },
+            ty::TyKind::Coroutine(_, _)
+            | ty::TyKind::CoroutineWitness(_, _)
+            | ty::TyKind::CoroutineClosure(_, _) => Err(TranslationError::UnsupportedType {
+                description: "RefinedRust does currently not support coroutines".to_owned(),
+            }),
 
             ty::TyKind::Infer(_) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support infer types".to_owned(),

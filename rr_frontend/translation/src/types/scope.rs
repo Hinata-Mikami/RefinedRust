@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map, HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
@@ -449,10 +449,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                         RustPathElem::AssocItem(self_param.rust_name.clone()),
                         RustPathElem::AssocItem(name.clone()),
                     ];
-                    if self.trait_scope.assoc_ty_names.get(&path).is_some() {
-                        warn!("Associated type path collision on did={did:?} for name={name:?}");
+                    if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
+                        e.insert(ty);
                     } else {
-                        self.trait_scope.assoc_ty_names.insert(path, ty);
+                        warn!("Associated type path collision on did={did:?} for name={name:?}");
                     }
                 }
 
@@ -478,10 +478,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     // add the associated types
                     for (name, ty) in trait_use_ref.get_associated_types(env) {
                         let path = vec![RustPathElem::AssocItem(name.clone())];
-                        if self.trait_scope.assoc_ty_names.get(&path).is_some() {
-                            warn!("Associated type path collision on did={did:?} for name={name:?}");
+                        if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
+                            e.insert(ty);
                         } else {
-                            self.trait_scope.assoc_ty_names.insert(path, ty);
+                            warn!("Associated type path collision on did={did:?} for name={name:?}");
                         }
                     }
 
@@ -517,10 +517,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 let name = env.get_assoc_item_name(*ty_did).unwrap();
                 let path = vec![RustPathElem::AssocItem(name.clone())];
                 let ty = radium::Type::LiteralParam(radium::LiteralTyParam::new(&name, &name));
-                if self.trait_scope.assoc_ty_names.get(&path).is_some() {
-                    warn!("Associated type path collision on did={did:?} for name={name:?}");
+                if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
+                    e.insert(ty);
                 } else {
-                    self.trait_scope.assoc_ty_names.insert(path, ty);
+                    warn!("Associated type path collision on did={did:?} for name={name:?}");
                 }
             }
         }

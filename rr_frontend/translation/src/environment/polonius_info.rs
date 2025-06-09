@@ -506,7 +506,7 @@ fn is_return(mir: &mir::Body<'_>, location: mir::Location) -> bool {
 /// Additional facts derived from the borrow checker facts.
 pub struct AdditionalFacts {
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
-    /// for the loans that were loan_killed_at.
+    /// for the loans that were `loan_killed_at`.
     ///
     /// ```datalog
     /// zombie_borrow_live_at(L, P) :-
@@ -515,7 +515,7 @@ pub struct AdditionalFacts {
     /// ```
     pub(crate) zombie_borrow_live_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
 
-    /// Which loans were loan_killed_at (become zombies) at a given point.
+    /// Which loans were `loan_killed_at` (become zombies) at a given point.
     pub(crate) borrow_become_zombie_at: data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>>,
 }
 

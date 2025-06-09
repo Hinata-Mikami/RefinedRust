@@ -19,7 +19,7 @@ use crate::{attrs, search, Environment};
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PathWithArgs {
     path: Vec<String>,
-    /// An encoding of the GenericArgs for this definition.
+    /// An encoding of the `GenericArgs` for this definition.
     /// This is `Some(ty)` if:
     /// - the argument represents a type (not a constant or region)
     /// - and the arg is not the trivial identity arg (in case of ADTs)

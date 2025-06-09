@@ -262,7 +262,7 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     assert!(sig_args.len() == local_args.len());
 
     // compute the mapping
-    let mut unifier = InitialPoloniusUnifier::new(tcx);
+    let mut unifier = InitialPoloniusUnifier::new();
     for (a1, a2) in local_args.iter().zip(sig_args.iter()) {
         let a1_normalized = resolution::normalize_type(tcx, param_env, *a1).unwrap();
         let a2_normalized = resolution::normalize_type(tcx, param_env, *a2).unwrap();
@@ -293,14 +293,12 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     initial_arg_mapping
 }
 
-pub struct InitialPoloniusUnifier<'tcx> {
-    tcx: ty::TyCtxt<'tcx>,
+pub struct InitialPoloniusUnifier {
     mapping: HashMap<Region, Region>,
 }
-impl<'tcx> InitialPoloniusUnifier<'tcx> {
-    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+impl InitialPoloniusUnifier {
+    pub fn new() -> Self {
         Self {
-            tcx,
             mapping: HashMap::new(),
         }
     }
@@ -309,11 +307,7 @@ impl<'tcx> InitialPoloniusUnifier<'tcx> {
         self.mapping
     }
 }
-impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier<'tcx> {
-    fn tcx(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
-    }
-
+impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReVar(l1) = *r1 {
             if let ty::RegionKind::ReVar(l2) = *r2 {

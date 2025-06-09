@@ -566,7 +566,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         // compute the instantiation of the quantified trait assumption in terms
                         // of the variables introduced by the trait assumption we are proving.
-                        let mut unifier = LateBoundUnifier::new(self.env.tcx(), &trait_use.bound_regions);
+                        let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
                         unifier.map_generic_args(trait_use.trait_ref.args, subst_args);
                         let (inst, _) = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
@@ -772,7 +772,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 /// A using occurrence of a trait in the signature of the function.
 #[derive(Debug, Clone)]
 pub struct GenericTraitUse<'tcx, 'def> {
-    /// the DefId of the trait
+    /// the `DefId` of the trait
     pub did: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     /// the Coq-level trait use
@@ -790,7 +790,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         env: &Environment<'tcx>,
         did: DefId,
     ) -> Result<radium::Type<'def>, Error<'tcx>> {
-        let type_name = env.get_assoc_item_name(did).ok_or(traits::Error::NotAnAssocType(did))?;
+        let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
 
         if self.is_self_use {
             // make a literal
@@ -867,7 +867,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub fn fill_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
-        scope: &types::scope::Params<'tcx, 'def>,
+        scope: &scope::Params<'tcx, 'def>,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
@@ -934,15 +934,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 }
 
 pub struct LateBoundUnifier<'tcx, 'a> {
-    tcx: ty::TyCtxt<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
     early_instantiation: HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub fn new(tcx: ty::TyCtxt<'tcx>, binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
+    pub fn new(binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
         Self {
-            tcx,
             binders_to_unify,
             instantiation: HashMap::new(),
             early_instantiation: HashMap::new(),
@@ -960,10 +958,6 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
     }
 }
 impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
-    fn tcx(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReBound(_, b1) = *r1 {
             trace!("trying to unify region {r1:?} with {r2:?}");

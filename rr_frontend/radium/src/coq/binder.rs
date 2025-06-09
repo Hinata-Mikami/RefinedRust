@@ -12,13 +12,13 @@ use crate::display_list;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Kind {
-    /// `()
+    /// `()`
     Explicit,
 
-    /// `{}
+    /// `{}`
     MaxImplicit,
 
-    /// `[]
+    /// `[]`
     NonMaxImplicit,
 }
 

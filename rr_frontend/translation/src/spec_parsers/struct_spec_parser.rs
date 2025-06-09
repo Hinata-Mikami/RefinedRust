@@ -4,8 +4,6 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::convert::Into;
-
 /// Parsing of `RefinedRust` struct specifications.
 use attribute_parse::{parse, MToken};
 use log::info;
@@ -82,15 +80,15 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
 
 /// Representation of the `IProps` that can appear in an invariant clause.
 enum MetaIProp {
-    /// #[rr::invariant("..")] or #[rr::invariant("H" : "..")]
+    /// `#[rr::invariant("..")]` or `#[rr::invariant("H" : "..")]`
     Pure(String, Option<String>),
-    /// #[rr::invariant(#iris "..")]
+    /// `#[rr::invariant(#iris "..")]`
     Iris(specs::IProp),
-    /// #[rr::invariant(#type "l" : "rfn" @ "ty")]
+    /// `#[rr::invariant(#type "l" : "rfn" @ "ty")]`
     Type(specs::TyOwnSpec),
-    /// #[rr::invariant(#own "...")] (only for the Owned predicate)
+    /// `#[rr::invariant(#own "...")]` (only for the Owned predicate)
     Own(specs::IProp),
-    /// #[rr::invariant(#shr "...")] (only for the Shared predicate)
+    /// `#[rr::invariant(#shr "...")]` (only for the Shared predicate)
     Shared(specs::IProp),
 }
 

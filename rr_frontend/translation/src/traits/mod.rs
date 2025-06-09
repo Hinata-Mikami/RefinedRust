@@ -18,20 +18,20 @@ pub mod resolution;
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {
-    /// This DefId is not a trait
-    #[display("The given DefId {:?} is not a trait", _0)]
+    /// This `DefId` is not a trait
+    #[display("The given `DefId` {:?} is not a trait", _0)]
     NotATrait(DefId),
 
-    /// This DefId is not an impl of a trait
-    #[display("The given DefId {:?} is not a trait implementation", _0)]
+    /// This `DefId` is not an impl of a trait
+    #[display("The given `DefId` {:?} is not a trait implementation", _0)]
     NotATraitImpl(DefId),
 
-    /// This DefId is not a trait method
-    #[display("The given DefId {:?} is not a trait method", _0)]
+    /// This `DefId` is not a trait method
+    #[display("The given `DefId` {:?} is not a trait method", _0)]
     NotATraitMethod(DefId),
 
-    /// This DefId is not an assoc type
-    #[display("The given DefId {:?} is not an associated type", _0)]
+    /// This `DefId` is not an assoc type
+    #[display("The given `DefId` {:?} is not an associated type", _0)]
     NotAnAssocType(DefId),
 
     /// This trait already exists

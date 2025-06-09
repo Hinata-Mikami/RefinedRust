@@ -56,7 +56,7 @@ pub struct TX<'a, 'def, 'tcx> {
     /// syntactic type of the thing to return
     return_synty: radium::SynType,
     /// all the other procedures used by this function, and:
-    /// (code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)
+    /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
     collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
     /// used statics
     collected_statics: HashSet<DefId>,

@@ -58,12 +58,12 @@ where
     // if the first component is "std", try if we can replace it with "alloc" or "core"
     if path[0].as_ref() == "std" {
         let mut components: Vec<_> = path.iter().map(|x| x.as_ref().to_owned()).collect();
-        components[0] = "core".to_owned();
+        "core".clone_into(&mut components[0]);
         if let Some(did) = try_resolve_did_direct(tcx, &components) {
             return Some(did);
         }
         // try "alloc"
-        components[0] = "alloc".to_owned();
+        "alloc".clone_into(&mut components[0]);
         try_resolve_did_direct(tcx, &components)
     } else {
         None
@@ -384,12 +384,12 @@ pub fn try_resolve_method_did(tcx: ty::TyCtxt<'_>, mut path: Vec<String>) -> Opt
 
     // if the first component is "std", try if we can replace it with "alloc" or "core"
     if path[0] == "std" {
-        path[0] = "core".to_owned();
+        "core".clone_into(&mut path[0]);
         if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
             return Some(did);
         }
         // try "alloc"
-        path[0] = "alloc".to_owned();
+        "alloc".clone_into(&mut path[0]);
         if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
             return Some(did);
         }

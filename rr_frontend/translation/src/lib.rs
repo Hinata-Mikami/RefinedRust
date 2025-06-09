@@ -94,7 +94,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     /// extra Coq module dependencies (for generated dune files)
     extra_dependencies: HashSet<coq::module::DirPath>,
 
-    /// RefinedRust modules to export
+    /// `RefinedRust` modules to export
     lib_exports: HashSet<String>,
 
     coq_path_prefix: String,
@@ -414,7 +414,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         for (did, fun) in trait_methods {
             if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
                 // only register this as a separate method if it isn't part of a complete impl
-                if self.trait_impls.get(&impl_did).is_none() {
+                if !self.trait_impls.contains_key(&impl_did) {
                     if let Some(shim) = self.make_shim_trait_method_entry(*did, &fun.spec_name) {
                         trait_method_shims.push(shim);
                     }

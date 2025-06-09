@@ -71,9 +71,6 @@ fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
 
         mir::TerminatorKind::Yield { resume, .. } => vec![*resume],
 
-        mir::TerminatorKind::InlineAsm { destination, .. } => match destination {
-            Some(target) => vec![*target],
-            None => vec![],
-        },
+        mir::TerminatorKind::InlineAsm { targets, .. } => targets.to_owned(),
     }
 }

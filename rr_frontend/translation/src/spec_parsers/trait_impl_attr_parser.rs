@@ -66,10 +66,7 @@ impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAtt
                         .insert(parsed_name.to_string(), radium::coq::term::Term::Literal(parsed_term))
                         .is_some()
                     {
-                        return Err(format!(
-                            "attribute {} has been instantiated multiple times",
-                            parsed_name.to_string()
-                        ));
+                        return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
                     }
                 },
                 "export_as" | "only_spec" | "trust_me" => (),

@@ -152,7 +152,7 @@ pub enum SynType {
     Untyped(Layout),
     Unit,
     Never,
-    /// a Coq term, in case of generics. This Coq term is required to have type "syn_type".
+    /// a Coq term, in case of generics. This Coq term is required to have type `syn_type`.
     Literal(String),
     // no struct or enums - these are specified through literals.
 }
@@ -681,7 +681,7 @@ pub struct InvariantSpec {
     /// additional type ownership
     ty_own_invariants: Vec<TyOwnSpec>,
 
-    /// the specification of the abstracted refinement under a context where rfn_pat is bound
+    /// the specification of the abstracted refinement under a context where `rfn_pat` is bound
     abstracted_refinement: Option<coq::binder::Pattern>,
 
     // TODO add stuff for non-atomic/atomic invariants
@@ -1150,7 +1150,7 @@ pub struct AbstractVariant<'def> {
     name: String,
     /// the Coq def name for the struct's plain tydef alias (without the optional invariant wrapper)
     plain_ty_name: String,
-    /// the Coq def name for the struct's layout spec definition (of type struct_layout_spec)
+    /// the Coq def name for the struct's layout spec definition (of type `struct_layout_spec`)
     sls_def_name: String,
     st_def_name: String,
     /// the Coq def name for the struct's refinement type
@@ -1916,7 +1916,7 @@ pub struct AbstractEnum<'def> {
     /// name of the plain enum type (without additional invariants)
     plain_ty_name: String,
     plain_rt_name: String,
-    /// name of the enum_layout_spec definition
+    /// name of the `enum_layout_spec` definition
     els_def_name: String,
     st_def_name: String,
     /// name of the enum definition
@@ -3311,7 +3311,7 @@ impl<'def> TraitReqInfo for LiteralTraitSpecUseRef<'def> {
         let b = b.as_ref().unwrap();
 
         for x in &b.trait_ref.assoc_tys {
-            if b.assoc_ty_constraints.get(x).is_none() {
+            if !b.assoc_ty_constraints.contains_key(x) {
                 assoc_tys.push(b.make_assoc_type_lit(x));
             }
         }

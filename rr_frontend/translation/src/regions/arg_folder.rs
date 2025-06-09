@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::collections::btree_map;
+
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::visit::TypeVisitableExt;
 use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
@@ -95,10 +97,10 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
                 // looking for the corresponding placeholder region
                 let r2 = regions::init::find_placeholder_region_for(v, self.info).unwrap();
 
-                if self.substitution.region_names.get(&r2).is_none() {
+                if let btree_map::Entry::Vacant(e) = self.substitution.region_names.entry(r2) {
                     let lft = self.info.mk_atomic_region(r2);
                     let name = regions::format_atomic_region_direct(&lft, None);
-                    self.substitution.region_names.insert(r2, name);
+                    e.insert(name);
                 }
 
                 ty::Region::new_var(self.interner(), r2)

@@ -74,7 +74,7 @@ struct ShimTraitImplEntry {
     /// for which type is this implementation?
     for_type: flat::Type,
     // TODO: additional constraints like the required clauses for disambiguation
-    /// a kind: always "trait_impl"
+    /// a kind: always `trait_impl`
     kind: String,
 
     /// map from method names to (base name, specification name, trait incl name)
@@ -104,7 +104,7 @@ struct ShimTraitMethodImplEntry {
     // TODO: additional constraints like the required clauses for disambiguation
     /// The method identifier
     method_ident: String,
-    /// a kind: always "trait_method"
+    /// a kind: always `trait_method`
     kind: String,
     /// the basis name to use for generated Coq names
     name: String,

@@ -6,7 +6,7 @@
 
 //! Utility folders for handling type variables.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeSuperFoldable;
@@ -48,51 +48,6 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
             ty::TyKind::Param(param) => {
                 self.tyvars.insert(*param);
                 t
-            },
-            _ => t.super_fold_with(self),
-        }
-    }
-}
-
-struct TyVarRenameFolder<'tcx> {
-    tcx: ty::TyCtxt<'tcx>,
-    /// the generated substitution to get back the original type
-    new_subst: Vec<ty::ParamTy>,
-    /// maps old names to new names
-    name_map: HashMap<ty::ParamTy, ty::ParamTy>,
-}
-
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarRenameFolder<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    // TODO: handle the case that we pass below binders
-    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
-    where
-        T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
-    {
-        t.super_fold_with(self)
-    }
-
-    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
-        match t.kind() {
-            ty::TyKind::Param(param) => {
-                if let Some(new_param) = self.name_map.get(param) {
-                    return ty::Ty::new_param(self.interner(), new_param.index, new_param.name);
-                }
-
-                // create another type param
-                let new_index = self.new_subst.len() as u32;
-                // reuse the name
-                let name = param.name;
-                let new_ty = ty::Ty::new_param(self.interner(), new_index, name);
-                let new_param = ty::ParamTy::new(new_index, name);
-
-                self.name_map.insert(*param, new_param);
-                self.new_subst.push(*param);
-
-                new_ty
             },
             _ => t.super_fold_with(self),
         }

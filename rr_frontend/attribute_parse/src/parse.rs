@@ -904,8 +904,6 @@ impl<T, P> Punctuated<T, P> {
     }
 }
 
-use std::iter::FromIterator;
-
 impl<T, P> FromIterator<T> for Punctuated<T, P>
 where
     P: Default,

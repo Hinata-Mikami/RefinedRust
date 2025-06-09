@@ -19,18 +19,6 @@ pub type PointIndex = <RustcFacts as FactTypes>::Point;
 pub type AllInput = borrowck::consumers::PoloniusInput;
 pub type AllOutput = borrowck::consumers::PoloniusOutput;
 
-trait LocationTableExt {
-    fn to_mir_location(self, point: PointIndex) -> mir::Location;
-}
-
-impl LocationTableExt for LocationTable {
-    fn to_mir_location(self, point: PointIndex) -> mir::Location {
-        match self.to_location(point) {
-            RichLocation::Start(location) | RichLocation::Mid(location) => location,
-        }
-    }
-}
-
 pub struct Borrowck {
     /// Polonius input facts.
     pub input_facts: RefCell<Option<Box<AllInput>>>,

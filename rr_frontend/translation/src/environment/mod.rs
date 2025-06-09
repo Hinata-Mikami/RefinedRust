@@ -249,7 +249,7 @@ impl<'tcx> Environment<'tcx> {
 
         // SAFETY: This is safe because we are feeding in the same `tcx`
         // that was used to store the data.
-        let body_with_facts = unsafe { self::mir_storage::retrieve_mir_body(self.tcx, def_id) };
+        let body_with_facts = unsafe { mir_storage::retrieve_mir_body(self.tcx, def_id) };
         let body = body_with_facts.body;
         let facts = facts::Borrowck {
             input_facts: RefCell::new(body_with_facts.input_facts),

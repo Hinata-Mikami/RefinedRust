@@ -6,5 +6,4 @@
 
 //! This module provides utility functions for MIR.
 
-pub mod all_places;
 pub mod real_edges;

@@ -218,7 +218,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
             // compute the instantiation of this trait use's params by unifying the args
             // this instantiation will be used as the instantiation hint in the function
-            let mut unifier = traits::registry::LateBoundUnifier::new(env.tcx(), &entry.bound_regions);
+            let mut unifier = traits::registry::LateBoundUnifier::new(&entry.bound_regions);
             unifier.map_generic_args(entry.trait_ref.args, trait_args);
             let (bound_regions_inst, early_regions_inst) = unifier.get_result();
 
@@ -431,13 +431,13 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             scope.add_trait_req_scope(&req.scope);
             let mut deps = HashSet::new();
             let state = types::AdtState::new(&mut deps, &scope, &param_env);
-            let mut state = types::STInner::TranslateAdt(state);
+            let mut state = STInner::TranslateAdt(state);
 
             // TODO: we need to add to lift up the HRTB lifetimes here.
 
             let mut assoc_inst = Vec::new();
             for ty in req.assoc_ty_inst {
-                let ty = types::TX::translate_type_in_state(self.translator, ty, &mut state)?;
+                let ty = TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
             let trait_req =

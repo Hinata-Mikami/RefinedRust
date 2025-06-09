@@ -107,10 +107,7 @@ where
                     );
                     let parsed_type: RRCoqType = buffer.parse(&self.scope).map_err(str_err)?;
                     if trait_attrs.insert(parsed_name.to_string(), parsed_type.ty).is_some() {
-                        return Err(format!(
-                            "attribute {} has been declared multiple times",
-                            parsed_name.to_string()
-                        ));
+                        return Err(format!("attribute {parsed_name} has been declared multiple times"));
                     }
                 },
                 "semantic" => {

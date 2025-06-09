@@ -117,15 +117,15 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
 enum MetaIProp {
-    /// #[rr::requires("..")] or #[rr::requires("Ha" : "..")]
+    /// `#[rr::requires("..")]` or `#[rr::requires("Ha" : "..")]`
     Pure(String, Option<String>),
-    /// #[rr::requires(#iris "..")]
+    /// `#[rr::requires(#iris "..")]`
     Iris(specs::IProp),
-    /// #[rr::requires(#type "l" : "rfn" @ "ty")]
+    /// `#[rr::requires(#type "l" : "rfn" @ "ty")]`
     Type(specs::TyOwnSpec),
-    /// #[rr::ensures(#observe "γ" : "2 * x")]
+    /// `#[rr::ensures(#observe "γ" : "2 * x")]`
     Observe(String, Option<String>, String),
-    /// #[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]
+    /// `#[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]`
     Linktime(String),
 }
 

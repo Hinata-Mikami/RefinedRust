@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::fmt;
+
 /// This provides some general utilities for RefinedRust-specific attribute parsing.
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;
@@ -46,10 +48,10 @@ where
     }
 }
 
-impl ToString for IdentOrTerm {
-    fn to_string(&self) -> String {
+impl fmt::Display for IdentOrTerm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Ident(s) | Self::Term(s) => s.to_string(),
+            Self::Ident(s) | Self::Term(s) => write!(f, "{s}"),
         }
     }
 }
@@ -471,7 +473,7 @@ mod tests {
     impl<'def> ParamLookup<'def> for TestScope {
         fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
             if path.len() == 1 {
-                let super::RustPathElem::AssocItem(it) = &path[0];
+                let RustPathElem::AssocItem(it) = &path[0];
                 if let Some(n) = self.ty_names.get(it) {
                     return Some(radium::Type::LiteralParam(n.to_owned()));
                 }

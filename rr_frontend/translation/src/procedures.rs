@@ -69,7 +69,7 @@ pub struct Meta {
     trait_req_incl_name: String,
     /// mangled name of the function
     name: String,
-    /// what should RefinedRust do with this function?
+    /// what should `RefinedRust` do with this function?
     mode: Mode,
     /// true if this is a default trait impl
     is_default_trait_impl: bool,
@@ -125,11 +125,11 @@ impl Meta {
  * actually translated the function.
  */
 pub struct Scope<'def> {
-    /// maps the defid to (code_name, spec_name, trait_req_incl_name, name)
+    /// maps the defid to `(code_name, spec_name, trait_req_incl_name, name)`
     name_map: BTreeMap<DefId, Meta>,
     /// track the actually translated functions
     translated_functions: BTreeMap<DefId, radium::Function<'def>>,
-    /// track the functions with just a specification (rr::only_spec)
+    /// track the functions with just a specification (`rr::only_spec`)
     specced_functions: BTreeMap<DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
 }
 
@@ -188,8 +188,8 @@ impl<'def> Scope<'def> {
     ) {
         if let Some(names) = self.name_map.get_mut(&did) {
             assert!(names.is_default_trait_impl);
-            names.spec_name = spec_name.to_owned();
-            names.trait_req_incl_name = trait_req_incl_name.to_owned();
+            spec_name.clone_into(&mut names.spec_name);
+            trait_req_incl_name.clone_into(&mut names.trait_req_incl_name);
         }
     }
 
