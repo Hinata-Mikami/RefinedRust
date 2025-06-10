@@ -56,7 +56,7 @@ pub fn compute_call_regions<'tcx>(
     for a in substs {
         if let ty::GenericArgKind::Lifetime(r) = a.unpack() {
             if let ty::RegionKind::ReVar(r) = r.kind() {
-                early_regions.push(r);
+                early_regions.push(r.into());
             }
         }
     }
@@ -71,10 +71,10 @@ pub fn compute_call_regions<'tcx>(
 
     // now find all the regions that appear in type parameters we instantiate.
     // These are regions that the callee doesn't know about.
-    let mut generic_regions = HashSet::new();
+    let mut generic_regions: HashSet<facts::Region> = HashSet::new();
     let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
         ty::RegionKind::ReVar(rv) => {
-            generic_regions.insert(rv);
+            generic_regions.insert(rv.into());
             r
         },
         _ => r,

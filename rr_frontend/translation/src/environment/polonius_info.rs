@@ -208,7 +208,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         // check if this is a place region
         let mut found_region = false;
         let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
-            ty::RegionKind::ReVar(rv) if rv == region => {
+            ty::RegionKind::ReVar(rv) if rv == region.into() => {
                 found_region = true;
                 r
             },

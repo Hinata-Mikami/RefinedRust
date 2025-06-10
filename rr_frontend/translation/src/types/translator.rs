@@ -265,7 +265,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     /// Lookup an early-bound region.
     fn lookup_early_region(
         &self,
-        region: &ty::EarlyParamRegion,
+        region: ty::EarlyParamRegion,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
         match self {
             STInner::InFunction(scope) => {
@@ -273,7 +273,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 let lft = scope
                     .lifetime_scope
                     .lookup_early_region(region.index as usize)
-                    .ok_or(TranslationError::UnknownEarlyRegion(*region))?;
+                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
                 Ok(lft.to_owned())
             },
             STInner::TranslateAdt(_scope) => {
@@ -282,7 +282,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                     let name = region.name.as_str();
                     return Ok(format!("ulft_{}", strip_coq_ident(name)));
                 }
-                return Err(TranslationError::UnknownEarlyRegion(*region));
+                return Err(TranslationError::UnknownEarlyRegion(region));
             },
             STInner::TraitReqs(_scope) => {
                 // TODO: ?
@@ -290,7 +290,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                     let name = region.name.as_str();
                     return Ok(format!("ulft_{}", strip_coq_ident(name)));
                 }
-                return Err(TranslationError::UnknownEarlyRegion(*region));
+                return Err(TranslationError::UnknownEarlyRegion(region));
             },
             STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
         }
@@ -583,7 +583,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         match *region {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
-                translation_state.lookup_early_region(&early)
+                translation_state.lookup_early_region(early)
             },
 
             ty::RegionKind::ReBound(idx, r) => {
@@ -600,7 +600,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::RegionKind::ReStatic => Ok("static".to_owned()),
             ty::RegionKind::ReErased => Ok("erased".to_owned()),
 
-            ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(v),
+            ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(v.into()),
 
             _ => {
                 info!("Translating region: {:?}", region);
@@ -934,7 +934,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let generics: &'tcx ty::Generics = self.env.tcx().generics_of(adt.did());
         let mut deps = HashSet::new();
-        let mut scope = scope::Params::from(generics.params.as_slice());
+        let mut scope = scope::Params::from(generics.own_params.as_slice());
         scope.add_param_env(adt.did(), self.env(), self, self.trait_registry())?;
         let param_env = self.env.tcx().param_env(adt.did());
 
@@ -1276,7 +1276,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let tcx = self.env.tcx();
 
         let generics: &'tcx ty::Generics = self.env.tcx().generics_of(def.did());
-        let mut scope = scope::Params::from(generics.params.as_slice());
+        let mut scope = scope::Params::from(generics.own_params.as_slice());
         scope.add_param_env(def.did(), self.env(), self, self.trait_registry())?;
 
         let mut deps = HashSet::new();
@@ -1576,7 +1576,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
                 // otherwise, we can't normalize the projection
                 match kind {
-                    ty::AliasKind::Projection => {
+                    ty::AliasTyKind::Projection => {
                         info!(
                             "Trying to resolve projection of {:?} for {:?}",
                             alias_ty.def_id, alias_ty.args

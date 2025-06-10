@@ -540,7 +540,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         if let Some(trait_did) = tcx.trait_of_item(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
-            for this_param in &generics.params {
+            for this_param in &generics.own_params {
                 if this_param.name == param.name {
                     return radium::TyParamOrigin::SurroundingTrait;
                 }
@@ -550,7 +550,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         if let Some(impl_did) = tcx.impl_of_method(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
-            for this_param in &generics.params {
+            for this_param in &generics.own_params {
                 if this_param.name == param.name {
                     return radium::TyParamOrigin::SurroundingImpl;
                 }
@@ -566,13 +566,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         if let Some(trait_did) = tcx.trait_of_item(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
-            return generics.params.len();
+            return generics.own_params.len();
         }
         // Check if there is a surrounding trait impl that introduces this parameter
         if let Some(impl_did) = tcx.impl_of_method(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
-            return generics.params.len();
+            return generics.own_params.len();
         }
 
         0

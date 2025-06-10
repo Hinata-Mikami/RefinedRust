@@ -15,7 +15,7 @@ use crate::types;
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
     pub(super) fn translate_place(
-        &mut self,
+        &self,
         pl: &mir::Place<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // Get the type of the underlying local. We will use this to

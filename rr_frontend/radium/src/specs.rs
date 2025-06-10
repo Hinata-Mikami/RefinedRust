@@ -1889,10 +1889,10 @@ pub enum Int128 {
 impl Add<u32> for Int128 {
     type Output = Self;
 
-    fn add(self, other: u32) -> Self {
+    fn add(self, rhs: u32) -> Self {
         match self {
-            Self::Signed(i) => Self::Signed(i + i128::from(other)),
-            Self::Unsigned(i) => Self::Unsigned(i + u128::from(other)),
+            Self::Signed(i) => Self::Signed(i + i128::from(rhs)),
+            Self::Unsigned(i) => Self::Unsigned(i + u128::from(rhs)),
         }
     }
 }

@@ -37,7 +37,7 @@ pub trait FunctionSpecParser<'def> {
     fn parse_function_spec<'a>(
         &'a mut self,
         attrs: &'a [&'a ast::ast::AttrItem],
-        spec: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String>;
 
     /// Parse a set of attributes into a closure spec.
@@ -46,8 +46,8 @@ pub trait FunctionSpecParser<'def> {
     fn parse_closure_spec<'tcx, 'a, 'c, F>(
         &'a mut self,
         attrs: &'a [&'a ast::ast::AttrItem],
-        spec: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
-        meta: ClosureMetaInfo<'c, 'tcx, 'def>,
+        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         make_tuple: F,
     ) -> Result<(), String>
     where
@@ -62,9 +62,9 @@ struct RRArgs {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RRArgs {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
         let args: parse::Punctuated<LiteralTypeWithRef, MToken![,]> =
-            parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
         Ok(Self {
             args: args.into_iter().collect(),
         })
@@ -81,18 +81,18 @@ struct ClosureCaptureSpec {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let name_str: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let name_str: parse::LitStr = stream.parse(meta)?;
         let name = name_str.value();
-        input.parse::<_, MToken![:]>(meta)?;
+        stream.parse::<_, MToken![:]>(meta)?;
 
-        let pre_spec: LiteralTypeWithRef = input.parse(meta)?;
+        let pre_spec: LiteralTypeWithRef = stream.parse(meta)?;
 
-        if parse::RArrow::peek(input) {
-            input.parse::<_, MToken![->]>(meta)?;
-            let current_pos = input.pos().unwrap();
+        if parse::RArrow::peek(stream) {
+            stream.parse::<_, MToken![->]>(meta)?;
+            let current_pos = stream.pos().unwrap();
 
-            let post_spec: LiteralTypeWithRef = input.parse(meta)?;
+            let post_spec: LiteralTypeWithRef = stream.parse(meta)?;
             if post_spec.ty.is_some() {
                 Err(parse::Error::OtherErr(
                     current_pos,
@@ -130,25 +130,25 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        if parse::Pound::peek(input) {
-            input.parse::<_, MToken![#]>(meta)?;
-            let macro_cmd: parse::Ident = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        if parse::Pound::peek(stream) {
+            stream.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
-                    let loc_str: parse::LitStr = input.parse(meta)?;
+                    let loc_str: parse::LitStr = stream.parse(meta)?;
                     let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
 
-                    input.parse::<_, MToken![:]>(meta)?;
+                    stream.parse::<_, MToken![:]>(meta)?;
 
-                    let rfn_str: parse::LitStr = input.parse(meta)?;
+                    let rfn_str: parse::LitStr = stream.parse(meta)?;
                     let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
 
                     annot_meta.join(&annot_meta2);
 
-                    input.parse::<_, MToken![@]>(meta)?;
+                    stream.parse::<_, MToken![@]>(meta)?;
 
-                    let type_str: parse::LitStr = input.parse(meta)?;
+                    let type_str: parse::LitStr = stream.parse(meta)?;
                     let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
                     annot_meta.join(&annot_meta3);
 
@@ -156,37 +156,37 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     Ok(Self::Type(spec))
                 },
                 "iris" => {
-                    let prop: IProp = input.parse(meta)?;
+                    let prop: IProp = stream.parse(meta)?;
                     Ok(Self::Iris(prop.into()))
                 },
                 "observe" => {
-                    let gname: parse::LitStr = input.parse(meta)?;
-                    input.parse::<_, MToken![:]>(meta)?;
+                    let gname: parse::LitStr = stream.parse(meta)?;
+                    stream.parse::<_, MToken![:]>(meta)?;
 
-                    let term: parse::LitStr = input.parse(meta)?;
+                    let term: parse::LitStr = stream.parse(meta)?;
                     let (term, _meta) = meta.process_coq_literal(&term.value());
 
                     Ok(Self::Observe(gname.value(), None, term))
                 },
                 "linktime" => {
-                    let term: parse::LitStr = input.parse(meta)?;
+                    let term: parse::LitStr = stream.parse(meta)?;
                     let (term, _meta) = meta.process_coq_literal(&term.value());
                     Ok(Self::Linktime(term))
                 },
                 _ => Err(parse::Error::OtherErr(
-                    input.pos().unwrap(),
+                    stream.pos().unwrap(),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
         } else {
-            let name_or_prop_str: parse::LitStr = input.parse(meta)?;
-            if parse::Colon::peek(input) {
+            let name_or_prop_str: parse::LitStr = stream.parse(meta)?;
+            if parse::Colon::peek(stream) {
                 // this is a name
                 let name_str = name_or_prop_str.value();
 
-                input.parse::<_, MToken![:]>(meta)?;
+                stream.parse::<_, MToken![:]>(meta)?;
 
-                let pure_prop: parse::LitStr = input.parse(meta)?;
+                let pure_prop: parse::LitStr = stream.parse(meta)?;
                 let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
                 // TODO: should we use annot_meta?
 
@@ -348,7 +348,7 @@ where
     /// full type with refinement and, optionally, a Coq refinement type hint that will be used
     /// for the refinement `r`.
     fn make_type_with_ref(
-        &mut self,
+        &self,
         lit: &LiteralTypeWithRef,
         ty: &specs::Type<'def>,
     ) -> (specs::TypeWithRef<'def>, Option<coq::term::Type>) {
@@ -605,7 +605,7 @@ where
     /// `make_tuple`: closure to make a new Radium tuple type
     /// `builder`: the function builder to push new specification components to
     fn merge_capture_information<'c, 'tcx, H>(
-        &mut self,
+        &self,
         capture_specs: Vec<ClosureCaptureSpec>,
         meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         mut make_tuple: H,

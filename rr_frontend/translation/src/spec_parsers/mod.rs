@@ -19,9 +19,9 @@ pub struct RustPath {
 }
 
 impl<F> Parse<F> for RustPath {
-    fn parse(input: parse::Stream, meta: &F) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &F) -> parse::Result<Self> {
         let x: parse::Punctuated<parse::Ident, MToken![::]> =
-            parse::Punctuated::parse_separated_nonempty(input, meta)?;
+            parse::Punctuated::parse_separated_nonempty(stream, meta)?;
         let path = x.into_iter().map(|x| x.value()).collect();
         Ok(Self { path })
     }
@@ -33,25 +33,25 @@ pub struct ExportAs {
     pub as_method: bool,
 }
 impl<F> Parse<F> for ExportAs {
-    fn parse(input: parse::Stream, meta: &F) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &F) -> parse::Result<Self> {
         let mut as_method = false;
-        if parse::Pound::peek(input) {
-            input.parse::<_, MToken![#]>(meta)?;
-            let macro_cmd: parse::Ident = input.parse(meta)?;
+        if parse::Pound::peek(stream) {
+            stream.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "method" => {
                     as_method = true;
                 },
                 _ => {
                     return Err(parse::Error::OtherErr(
-                        input.pos().unwrap(),
+                        stream.pos().unwrap(),
                         format!("invalid macro command: {:?}", macro_cmd.value()),
                     ));
                 },
             }
         }
 
-        let path: RustPath = input.parse(meta)?;
+        let path: RustPath = stream.parse(meta)?;
 
         let export = Self { path, as_method };
         Ok(export)
@@ -86,10 +86,10 @@ impl<U> Parse<U> for ShimAnnot
 where
     U: ?Sized,
 {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        let pos = input.pos().unwrap();
+    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+        let pos = stream.pos().unwrap();
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
-            parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
         if args.len() != 3 {
             return Err(parse::Error::OtherErr(
@@ -135,10 +135,10 @@ impl<U> Parse<U> for CodeShimAnnot
 where
     U: ?Sized,
 {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        let pos = input.pos().unwrap();
+    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+        let pos = stream.pos().unwrap();
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
-            parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
         if args.len() != 1 {
             return Err(parse::Error::OtherErr(

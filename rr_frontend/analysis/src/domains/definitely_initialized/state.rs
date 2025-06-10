@@ -191,8 +191,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
                     | mir::Rvalue::Use(operand) => {
                         self.apply_operand_effect(operand);
                     },
-                    mir::Rvalue::BinaryOp(_, box (operand1, operand2))
-                    | mir::Rvalue::CheckedBinaryOp(_, box (operand1, operand2)) => {
+                    mir::Rvalue::BinaryOp(_, box (operand1, operand2)) => {
                         self.apply_operand_effect(operand1);
                         self.apply_operand_effect(operand2);
                     },

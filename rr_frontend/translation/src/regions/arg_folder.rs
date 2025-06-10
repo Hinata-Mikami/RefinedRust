@@ -95,7 +95,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
                 // We need to do some hacks here to find the right Polonius region:
                 // `r` is the non-placeholder region that the variable gets, but we are
                 // looking for the corresponding placeholder region
-                let r2 = regions::init::find_placeholder_region_for(v, self.info).unwrap();
+                let r2 = regions::init::find_placeholder_region_for(v.into(), self.info).unwrap();
 
                 if let btree_map::Entry::Vacant(e) = self.substitution.region_names.entry(r2) {
                     let lft = self.info.mk_atomic_region(r2);
@@ -103,7 +103,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
                     e.insert(name);
                 }
 
-                ty::Region::new_var(self.interner(), r2)
+                ty::Region::new_var(self.interner(), r2.into())
             },
             _ => r,
         }

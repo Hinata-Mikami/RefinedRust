@@ -395,26 +395,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         TranslationError<'tcx>,
     > {
         match constant {
-            mir::Const::Ty(c) => {
-                match c.ty().kind() {
-                    ty::TyKind::FnDef(def, args) => {
-                        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
-                        let ty_ident = ty.instantiate_identity();
-                        assert!(ty_ident.is_fn());
-                        let ident_sig = ty_ident.fn_sig(self.env.tcx());
-
-                        let ty_instantiated = ty.instantiate(self.env.tcx(), args.as_slice());
-                        let instantiated_sig = ty_instantiated.fn_sig(self.env.tcx());
-
-                        Ok((*def, ident_sig, args, instantiated_sig))
-                    },
-                    // TODO handle FnPtr, closure
-                    _ => Err(TranslationError::Unimplemented {
-                        description: "implement function pointers".to_owned(),
-                    }),
-                }
-            },
-            mir::Const::Val(_, ty) => {
+            mir::Const::Ty(ty, _) | mir::Const::Val(_, ty) => {
                 match ty.kind() {
                     ty::TyKind::FnDef(def, args) => {
                         let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);

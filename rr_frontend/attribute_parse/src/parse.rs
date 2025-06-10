@@ -232,8 +232,8 @@ impl<U, T: Parse<U>> Parse<U> for Box<T>
 where
     U: ?Sized,
 {
-    fn parse(input: Stream, meta: &U) -> Result<Self> {
-        input.parse(meta).map(Self::new)
+    fn parse(stream: Stream, meta: &U) -> Result<Self> {
+        stream.parse(meta).map(Self::new)
     }
 }
 
@@ -402,8 +402,8 @@ impl<U> Parse<U> for LitStr
 where
     U: ?Sized,
 {
-    fn parse(input: Stream, _: &U) -> Result<Self> {
-        let lit = input.expect_literal()?;
+    fn parse(stream: Stream, _: &U) -> Result<Self> {
+        let lit = stream.expect_literal()?;
         match lit.0.kind {
             ast::token::LitKind::Str => Ok(Self { sym: lit.0.symbol }),
             _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Str, lit.0.kind)),
@@ -419,8 +419,8 @@ impl<U> Parse<U> for Ident
 where
     U: ?Sized,
 {
-    fn parse(input: Stream, _: &U) -> Result<Self> {
-        let sym = input.expect_ident()?;
+    fn parse(stream: Stream, _: &U) -> Result<Self> {
+        let sym = stream.expect_ident()?;
         Ok(Self { sym })
     }
 }
@@ -451,8 +451,8 @@ impl<U> Parse<U> for LitInt
 where
     U: ?Sized,
 {
-    fn parse(input: Stream, _: &U) -> Result<Self> {
-        let (lit, span) = input.expect_literal()?;
+    fn parse(stream: Stream, _: &U) -> Result<Self> {
+        let (lit, span) = stream.expect_literal()?;
         match lit.kind {
             ast::token::LitKind::Integer => {
                 let sym = lit.symbol;
@@ -619,28 +619,28 @@ impl fmt::Display for BigInt {
 }
 
 impl AddAssign<u8> for BigInt {
-    // Assumes increment <16.
-    fn add_assign(&mut self, mut increment: u8) {
+    // Assumes `rhs <16`.
+    fn add_assign(&mut self, mut rhs: u8) {
         self.reserve_two_digits();
 
         let mut i = 0;
-        while increment > 0 {
-            let sum = self.digits[i] + increment;
+        while rhs > 0 {
+            let sum = self.digits[i] + rhs;
             self.digits[i] = sum % 10;
-            increment = sum / 10;
+            rhs = sum / 10;
             i += 1;
         }
     }
 }
 
 impl MulAssign<u8> for BigInt {
-    // Assumes base <=16.
-    fn mul_assign(&mut self, base: u8) {
+    // Assumes `rhs <=16`.
+    fn mul_assign(&mut self, rhs: u8) {
         self.reserve_two_digits();
 
         let mut carry = 0;
         for digit in &mut self.digits {
-            let prod = *digit * base + carry;
+            let prod = *digit * rhs + carry;
             *digit = prod % 10;
             carry = prod / 10;
         }
@@ -908,9 +908,9 @@ impl<T, P> FromIterator<T> for Punctuated<T, P>
 where
     P: Default,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(i: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut ret = Self::new();
-        ret.extend(i);
+        ret.extend(iter);
         ret
     }
 }
@@ -919,30 +919,30 @@ impl<T, P> Extend<T> for Punctuated<T, P>
 where
     P: Default,
 {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, i: I) {
-        for value in i {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for value in iter {
             self.push(value);
         }
     }
 }
 
 impl<T, P> FromIterator<Pair<T, P>> for Punctuated<T, P> {
-    fn from_iter<I: IntoIterator<Item = Pair<T, P>>>(i: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Pair<T, P>>>(iter: I) -> Self {
         let mut ret = Self::new();
-        ret.extend(i);
+        ret.extend(iter);
         ret
     }
 }
 
 impl<T, P> Extend<Pair<T, P>> for Punctuated<T, P> {
-    fn extend<I: IntoIterator<Item = Pair<T, P>>>(&mut self, i: I) {
+    fn extend<I: IntoIterator<Item = Pair<T, P>>>(&mut self, iter: I) {
         assert!(
             self.empty_or_trailing(),
             "Punctuated::extend: Punctuated is not empty or does not have a trailing punctuation",
         );
 
         let mut nomore = false;
-        for pair in i {
+        for pair in iter {
             if nomore {
                 panic!("Punctuated extended with items after a Pair::End");
             }

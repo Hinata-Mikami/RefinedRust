@@ -65,11 +65,11 @@ pub fn get_composite_rvalue_creation_annots<'tcx>(
 }
 
 /// Get the regions appearing in a type.
-fn get_regions_of_ty<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> HashSet<ty::RegionVid> {
+fn get_regions_of_ty<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> HashSet<facts::Region> {
     let mut regions = HashSet::new();
     let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
         ty::RegionKind::ReVar(rv) => {
-            regions.insert(rv);
+            regions.insert(rv.into());
             r
         },
         _ => r,

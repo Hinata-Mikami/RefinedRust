@@ -38,12 +38,12 @@ impl<U> parse::Parse<U> for IdentOrTerm
 where
     U: ?Sized,
 {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        if let Ok(ident) = parse::Ident::parse(input, meta) {
+    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+        if let Ok(ident) = parse::Ident::parse(stream, meta) {
             // it's an identifer
             Ok(Self::Ident(ident.value()))
         } else {
-            parse::LitStr::parse(input, meta).map(|s| Self::Term(s.value()))
+            parse::LitStr::parse(stream, meta).map(|s| Self::Term(s.value()))
         }
     }
 }
@@ -66,13 +66,13 @@ pub struct LiteralTypeWithRef {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
         // check if a #raw annotation is present
-        let loc = input.pos();
+        let loc = stream.pos();
         let mut raw = specs::TypeIsRaw::No;
-        if parse::Pound::peek(input) {
-            input.parse::<_, MToken![#]>(meta)?;
-            let macro_cmd: parse::Ident = input.parse(meta)?;
+        if parse::Pound::peek(stream) {
+            stream.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "raw" => {
                     raw = specs::TypeIsRaw::Yes;
@@ -82,13 +82,13 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
         }
 
         // refinement
-        let rfn: IdentOrTerm = input.parse(meta)?;
+        let rfn: IdentOrTerm = stream.parse(meta)?;
         let rfn = rfn.process(meta);
 
         // optionally, parse a type annotation (otherwise, use the translated Rust type)
-        if parse::At::peek(input) {
-            input.parse::<_, MToken![@]>(meta)?;
-            let ty: parse::LitStr = input.parse(meta)?;
+        if parse::At::peek(stream) {
+            stream.parse::<_, MToken![@]>(meta)?;
+            let ty: parse::LitStr = stream.parse(meta)?;
             let (ty, _) = meta.process_coq_literal(&ty.value());
 
             Ok(Self {
@@ -109,8 +109,8 @@ pub struct LiteralType {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let ty: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let ty: parse::LitStr = stream.parse(meta)?;
         let (ty, _) = meta.process_coq_literal(&ty.value());
 
         Ok(Self { ty })
@@ -127,8 +127,8 @@ impl From<IProp> for specs::IProp {
 
 /// Parse an iProp string, e.g. `"P ∗ Q ∨ R"`
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let lit: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let lit: parse::LitStr = stream.parse(meta)?;
         let (lit, _) = meta.process_coq_literal(&lit.value());
 
         Ok(Self(specs::IProp::Atom(lit)))
@@ -140,8 +140,8 @@ pub struct RRCoqType {
     pub ty: coq::term::Type,
 }
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let ty: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let ty: parse::LitStr = stream.parse(meta)?;
         let (ty, _) = meta.process_coq_literal(&ty.value());
         let ty = coq::term::Type::Literal(ty);
         Ok(Self { ty })
@@ -163,13 +163,13 @@ impl From<RRParam> for coq::binder::Binder {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParam {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let name: IdentOrTerm = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let name: IdentOrTerm = stream.parse(meta)?;
         let name = name.to_string();
 
-        if parse::Colon::peek(input) {
-            input.parse::<_, MToken![:]>(meta)?;
-            let ty: RRCoqType = input.parse(meta)?;
+        if parse::Colon::peek(stream) {
+            stream.parse::<_, MToken![:]>(meta)?;
+            let ty: RRCoqType = stream.parse(meta)?;
             Ok(Self(coq::binder::Binder::new(Some(name), ty.ty)))
         } else {
             Ok(Self(coq::binder::Binder::new(Some(name), coq::term::Type::Infer)))
@@ -184,9 +184,9 @@ pub struct RRParams {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParams {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
         let params: parse::Punctuated<RRParam, MToken![,]> =
-            parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
         Ok(Self {
             params: params.into_iter().collect(),
         })
@@ -203,13 +203,13 @@ impl From<CoqExportModule> for coq::module::Export {
 
 /// Parse a `CoqModule`.
 impl<U> parse::Parse<U> for CoqExportModule {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        let path_or_module: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+        let path_or_module: parse::LitStr = stream.parse(meta)?;
         let path_or_module = path_or_module.value();
 
-        if parse::Comma::peek(input) {
-            input.parse::<_, MToken![,]>(meta)?;
-            let module: parse::LitStr = input.parse(meta)?;
+        if parse::Comma::peek(stream) {
+            stream.parse::<_, MToken![,]>(meta)?;
+            let module: parse::LitStr = stream.parse(meta)?;
             let module = module.value();
 
             Ok(Self(coq::module::Export::new(vec![module]).from(vec![path_or_module])))
@@ -229,8 +229,8 @@ pub struct RRCoqContextItem {
     pub at_end: bool,
 }
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let item: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let item: parse::LitStr = stream.parse(meta)?;
         let (item_str, annot_meta) = meta.process_coq_literal(&item.value());
 
         let at_end = !annot_meta.is_empty();

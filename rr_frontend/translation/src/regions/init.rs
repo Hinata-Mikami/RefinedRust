@@ -35,7 +35,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
     let mut universal_lifetimes = BTreeMap::new();
     let mut lifetime_names = HashMap::new();
 
-    let mut region_substitution_early: Vec<Option<ty::RegionVid>> = Vec::new();
+    let mut region_substitution_early: Vec<Option<facts::Region>> = Vec::new();
 
     // we create a substitution that replaces early bound regions with their Polonius
     // region variables
@@ -44,8 +44,8 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
     for a in params {
         if let ty::GenericArgKind::Lifetime(r) = a.unpack() {
             // skip over 0 = static
-            let next_id = ty::RegionVid::from_u32(num_early_bounds + 1);
-            let revar = ty::Region::new_var(env.tcx(), next_id);
+            let next_id = facts::Region::from_u32(num_early_bounds + 1);
+            let revar = ty::Region::new_var(env.tcx(), next_id.into());
             num_early_bounds += 1;
             subst_early_bounds.push(ty::GenericArg::from(revar));
 
@@ -74,7 +74,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
     let mut num_late_bounds = 0;
     let mut region_substitution_late = Vec::new();
     for b in sig.bound_vars() {
-        let next_id = ty::RegionVid::from_u32(num_early_bounds + num_late_bounds + 1);
+        let next_id = facts::Region::from_u32(num_early_bounds + num_late_bounds + 1);
 
         let ty::BoundVariableKind::Region(r) = b else {
             continue;
@@ -136,7 +136,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 /// At the start of the function, there's a universal (placeholder) region for reference argument.
 /// These get subsequently relabeled.
 /// Given the relabeled region, find the original placeholder region.
-pub fn find_placeholder_region_for(r: ty::RegionVid, info: &PoloniusInfo) -> Option<ty::RegionVid> {
+pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo) -> Option<facts::Region> {
     let root_location = mir::Location {
         block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
@@ -311,10 +311,10 @@ impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReVar(l1) = *r1 {
             if let ty::RegionKind::ReVar(l2) = *r2 {
-                if let Some(l22) = self.mapping.get(&l1) {
-                    assert_eq!(l2, *l22);
+                if let Some(l22) = self.mapping.get(&l1.into()) {
+                    assert_eq!(l2, (*l22).into());
                 } else {
-                    self.mapping.insert(l1, l2);
+                    self.mapping.insert(l1.into(), l2.into());
                 }
             }
         }

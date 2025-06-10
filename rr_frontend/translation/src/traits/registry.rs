@@ -233,7 +233,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut cont = || -> Result<(), TranslationError<'tcx>> {
             // get generics
             let trait_generics: &'tcx ty::Generics = self.env.tcx().generics_of(did.to_def_id());
-            let mut param_scope = scope::Params::from(trait_generics.params.as_slice());
+            let mut param_scope = scope::Params::from(trait_generics.own_params.as_slice());
             param_scope.add_param_env(did.to_def_id(), self.env, self.type_translator(), self)?;
 
             let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(did.to_def_id());
@@ -547,7 +547,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         let mut assoc_types = Vec::new();
                         for did in assoc_types_did {
                             let alias = ty::AliasTy::new(self.env.tcx(), did, subst_args);
-                            let tykind = ty::TyKind::Alias(ty::AliasKind::Projection, alias);
+                            let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
                             let ty = self.env.tcx().mk_ty_from_kind(tykind);
                             assoc_types.push(ty);
                         }
@@ -707,7 +707,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // figure out the parameters this impl gets and make a scope
         let impl_generics: &'tcx ty::Generics = self.env.tcx().generics_of(trait_impl_did);
-        let mut param_scope = scope::Params::from(impl_generics.params.as_slice());
+        let mut param_scope = scope::Params::from(impl_generics.own_params.as_slice());
         param_scope.add_param_env(trait_impl_did, self.env, self.type_translator(), self)?;
 
         // parse specification

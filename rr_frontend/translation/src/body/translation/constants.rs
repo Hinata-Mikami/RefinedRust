@@ -145,15 +145,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         constant: &mir::Const<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match constant {
-            mir::Const::Ty(v) => {
-                let const_ty = v.ty();
-
+            mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {
-                    ty::ConstKind::Value(v) => {
+                    ty::ConstKind::Value(v_ty, v) => {
                         // this doesn't contain the necessary structure anymore. Need to reconstruct using the
                         // type.
                         match v.try_to_scalar() {
-                            Some(sc) => self.translate_scalar(&sc, const_ty),
+                            Some(sc) => self.translate_scalar(&sc, v_ty),
                             _ => Err(TranslationError::UnsupportedFeature {
                                 description: format!("const value not supported: {:?}", v),
                             }),

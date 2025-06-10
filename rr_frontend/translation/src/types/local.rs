@@ -167,7 +167,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     ) -> (ty::GenericArgsRef<'tcx>, ty::GenericArgsRef<'tcx>) {
         // split args
         let trait_generics: &'tcx ty::Generics = env.tcx().generics_of(trait_did);
-        let trait_generic_count = trait_generics.params.len();
+        let trait_generic_count = trait_generics.own_params.len();
 
         let trait_args = &ty_params.as_slice()[..trait_generic_count];
         let method_args = &ty_params.as_slice()[trait_generic_count..];

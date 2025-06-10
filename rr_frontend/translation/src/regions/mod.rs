@@ -29,14 +29,14 @@ use crate::environment::polonius_info;
 #[derive(Constructor, Clone, Debug, Default)]
 pub struct EarlyLateRegionMap {
     // maps indices of early and late regions to Polonius region ids
-    pub early_regions: Vec<Option<ty::RegionVid>>,
-    pub late_regions: Vec<Vec<ty::RegionVid>>,
+    pub early_regions: Vec<Option<facts::Region>>,
+    pub late_regions: Vec<Vec<facts::Region>>,
 
     // maps Polonius region ids to names
-    pub region_names: BTreeMap<ty::RegionVid, radium::Lft>,
+    pub region_names: BTreeMap<facts::Region, radium::Lft>,
 
     // maps source-level universal lifetime names to region ids
-    pub lft_names: HashMap<String, ty::RegionVid>,
+    pub lft_names: HashMap<String, facts::Region>,
 }
 impl EarlyLateRegionMap {
     /// Lookup a Polonius region with a given kind.
@@ -55,7 +55,7 @@ impl EarlyLateRegionMap {
         }
     }
 
-    pub fn lookup_region(&self, region: ty::RegionVid) -> Option<&radium::Lft> {
+    pub fn lookup_region(&self, region: facts::Region) -> Option<&radium::Lft> {
         self.region_names.get(&region)
     }
 
@@ -116,7 +116,7 @@ pub fn format_atomic_region_direct(
 }
 
 pub fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
-    if let ty::RegionKind::ReVar(vid) = r.kind() { vid } else { panic!() }
+    if let ty::RegionKind::ReVar(vid) = r.kind() { vid.into() } else { panic!() }
 }
 
 /// A `TypeFolder` that finds all regions occurring in a type.
@@ -153,7 +153,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::RegionKind::ReVar(r) = r.kind() {
-            self.regions.insert(r);
+            self.regions.insert(r.into());
         }
 
         r

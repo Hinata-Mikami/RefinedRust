@@ -380,7 +380,7 @@ pub fn make_unconstrained_region_annotations<'tcx>(
             // If we do a borrow, probably this is a borrow from below a raw pointer.
             // In this case, ask the user to provide the constraints for this borrow.
             if let mir::Rvalue::Ref(region, _, _) = rhs {
-                if region.as_var() == r {
+                if region.as_var() == r.into() {
                     let lft = ty_translator.translate_region_var(r)?;
                     annotations.push(radium::Annotation::UnconstrainedLft(lft.clone()));
                     unconstrained_hints.push(lft);

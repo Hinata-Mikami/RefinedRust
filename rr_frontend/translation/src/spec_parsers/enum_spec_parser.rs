@@ -37,18 +37,18 @@ pub struct EnumPattern {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
         // parse the pattern
-        let pat: parse::LitStr = input.parse(meta)?;
+        let pat: parse::LitStr = stream.parse(meta)?;
         let (pat, _) = meta.process_coq_literal(&pat.value());
 
-        let args: Vec<String> = if parse::Dollar::peek(input) {
+        let args: Vec<String> = if parse::Dollar::peek(stream) {
             // optionally parse args
-            input.parse::<_, MToken![$]>(meta)?;
+            stream.parse::<_, MToken![$]>(meta)?;
 
             // parse a sequence of args
             let parsed_args: parse::Punctuated<parse::LitStr, MToken![,]> =
-                parse::Punctuated::<_, _>::parse_terminated(input, meta)?;
+                parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
             parsed_args
                 .into_iter()

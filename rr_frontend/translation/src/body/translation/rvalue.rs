@@ -343,65 +343,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::Rvalue::BinaryOp(op, operands) => {
-                let e1 = &operands.as_ref().0;
-                let e2 = &operands.as_ref().1;
-
-                let e1_ty = self.get_type_of_operand(e1);
-                let e2_ty = self.get_type_of_operand(e2);
-                let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
-                let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
-
-                let translated_e1 = self.translate_operand(e1, true)?;
-                let translated_e2 = self.translate_operand(e2, true)?;
-                let translated_op = self.translate_binop(*op, &operands.as_ref().0, &operands.as_ref().1)?;
-
-                Ok(radium::Expr::BinOp {
-                    o: translated_op,
-                    ot1: e1_st.into(),
-                    ot2: e2_st.into(),
-                    e1: Box::new(translated_e1),
-                    e2: Box::new(translated_e2),
-                })
-            },
-
-            mir::Rvalue::CheckedBinaryOp(op, operands) => {
-                let e1 = &operands.as_ref().0;
-                let e2 = &operands.as_ref().1;
-
-                let e1_ty = self.get_type_of_operand(e1);
-                let e2_ty = self.get_type_of_operand(e2);
-                let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
-                let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
-
-                let translated_e1 = self.translate_operand(e1, true)?;
-                let translated_e2 = self.translate_operand(e2, true)?;
-                let translated_op = self.translate_binop(*op, e1, e2)?;
-
-                // result has the same syntype
-                let result_st = e1_st.clone();
-
-                // the actual value
-                let op_term = radium::Expr::BinOp {
-                    o: translated_op.clone(),
-                    ot1: e1_st.clone().into(),
-                    ot2: e2_st.clone().into(),
-                    e1: Box::new(translated_e1.clone()),
-                    e2: Box::new(translated_e2.clone()),
-                };
-                let overflow_check = radium::Expr::CheckBinOp {
-                    o: translated_op,
-                    ot1: e1_st.into(),
-                    ot2: e2_st.into(),
-                    e1: Box::new(translated_e1),
-                    e2: Box::new(translated_e2),
-                };
-
-                let sls = coq::term::App::new_lhs(format!("(tuple2_sls ({result_st}) BoolSynType)"));
-
-                Ok(radium::Expr::StructInitE {
-                    sls,
-                    components: vec![("0".to_owned(), op_term), ("1".to_owned(), overflow_check)],
-                })
+                self.translate_binop(*op, &operands.as_ref().0, &operands.as_ref().1)
             },
 
             mir::Rvalue::UnaryOp(op, operand) => {
@@ -490,36 +432,84 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// We need access to the operands, too, to handle the offset operator and get the right
     /// Caesium layout annotation.
     fn translate_binop(
-        &self,
+        &mut self,
         op: mir::BinOp,
         e1: &mir::Operand<'tcx>,
-        _e2: &mir::Operand<'tcx>,
-    ) -> Result<radium::Binop, TranslationError<'tcx>> {
+        e2: &mir::Operand<'tcx>,
+    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+        let e1_ty = self.get_type_of_operand(e1);
+        let e2_ty = self.get_type_of_operand(e2);
+        let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
+        let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
+
+        let translated_e1 = self.translate_operand(e1, true)?;
+        let translated_e2 = self.translate_operand(e2, true)?;
+
+        let mk_binop = |op| radium::Expr::BinOp {
+            o: op,
+            ot1: e1_st.clone().into(),
+            ot2: e2_st.clone().into(),
+            e1: Box::new(translated_e1.clone()),
+            e2: Box::new(translated_e2.clone()),
+        };
+
+        let mk_checked_binop = |op: radium::Binop| {
+            // result has the same syntype
+            let result_st = e1_st.clone();
+
+            // the actual value
+            let op_term = radium::Expr::BinOp {
+                o: op.clone(),
+                ot1: e1_st.clone().into(),
+                ot2: e2_st.clone().into(),
+                e1: Box::new(translated_e1.clone()),
+                e2: Box::new(translated_e2.clone()),
+            };
+            let overflow_check = radium::Expr::CheckBinOp {
+                o: op,
+                ot1: e1_st.clone().into(),
+                ot2: e2_st.clone().into(),
+                e1: Box::new(translated_e1.clone()),
+                e2: Box::new(translated_e2.clone()),
+            };
+
+            let sls = coq::term::App::new_lhs(format!("(tuple2_sls ({result_st}) BoolSynType)"));
+
+            radium::Expr::StructInitE {
+                sls,
+                components: vec![("0".to_owned(), op_term), ("1".to_owned(), overflow_check)],
+            }
+        };
+
         match op {
-            mir::BinOp::Add => Ok(radium::Binop::Add),
-            mir::BinOp::Sub => Ok(radium::Binop::Sub),
-            mir::BinOp::Mul => Ok(radium::Binop::Mul),
-            mir::BinOp::Div => Ok(radium::Binop::Div),
-            mir::BinOp::Rem => Ok(radium::Binop::Mod),
+            mir::BinOp::Add => Ok(mk_binop(radium::Binop::Add)),
+            mir::BinOp::Sub => Ok(mk_binop(radium::Binop::Sub)),
+            mir::BinOp::Mul => Ok(mk_binop(radium::Binop::Mul)),
+            mir::BinOp::Div => Ok(mk_binop(radium::Binop::Div)),
+            mir::BinOp::Rem => Ok(mk_binop(radium::Binop::Mod)),
 
-            mir::BinOp::BitXor => Ok(radium::Binop::BitXor),
-            mir::BinOp::BitAnd => Ok(radium::Binop::BitAnd),
-            mir::BinOp::BitOr => Ok(radium::Binop::BitOr),
-            mir::BinOp::Shl => Ok(radium::Binop::Shl),
-            mir::BinOp::Shr => Ok(radium::Binop::Shr),
+            mir::BinOp::BitXor => Ok(mk_binop(radium::Binop::BitXor)),
+            mir::BinOp::BitAnd => Ok(mk_binop(radium::Binop::BitAnd)),
+            mir::BinOp::BitOr => Ok(mk_binop(radium::Binop::BitOr)),
+            mir::BinOp::Shl => Ok(mk_binop(radium::Binop::Shl)),
+            mir::BinOp::Shr => Ok(mk_binop(radium::Binop::Shr)),
 
-            mir::BinOp::AddUnchecked => Ok(radium::Binop::AddUnchecked),
-            mir::BinOp::SubUnchecked => Ok(radium::Binop::SubUnchecked),
-            mir::BinOp::MulUnchecked => Ok(radium::Binop::MulUnchecked),
-            mir::BinOp::ShlUnchecked => Ok(radium::Binop::ShlUnchecked),
-            mir::BinOp::ShrUnchecked => Ok(radium::Binop::ShrUnchecked),
+            mir::BinOp::AddUnchecked => Ok(mk_binop(radium::Binop::AddUnchecked)),
+            mir::BinOp::SubUnchecked => Ok(mk_binop(radium::Binop::SubUnchecked)),
+            mir::BinOp::MulUnchecked => Ok(mk_binop(radium::Binop::MulUnchecked)),
+            mir::BinOp::ShlUnchecked => Ok(mk_binop(radium::Binop::ShlUnchecked)),
+            mir::BinOp::ShrUnchecked => Ok(mk_binop(radium::Binop::ShrUnchecked)),
 
-            mir::BinOp::Eq => Ok(radium::Binop::Eq),
-            mir::BinOp::Lt => Ok(radium::Binop::Lt),
-            mir::BinOp::Le => Ok(radium::Binop::Le),
-            mir::BinOp::Ne => Ok(radium::Binop::Ne),
-            mir::BinOp::Ge => Ok(radium::Binop::Ge),
-            mir::BinOp::Gt => Ok(radium::Binop::Gt),
+            mir::BinOp::AddWithOverflow => Ok(mk_checked_binop(radium::Binop::Add)),
+            mir::BinOp::MulWithOverflow => Ok(mk_checked_binop(radium::Binop::Mul)),
+            mir::BinOp::SubWithOverflow => Ok(mk_checked_binop(radium::Binop::Sub)),
+
+            mir::BinOp::Eq => Ok(mk_binop(radium::Binop::Eq)),
+            mir::BinOp::Lt => Ok(mk_binop(radium::Binop::Lt)),
+            mir::BinOp::Le => Ok(mk_binop(radium::Binop::Le)),
+            mir::BinOp::Ne => Ok(mk_binop(radium::Binop::Ne)),
+            mir::BinOp::Ge => Ok(mk_binop(radium::Binop::Ge)),
+            mir::BinOp::Gt => Ok(mk_binop(radium::Binop::Gt)),
 
             mir::BinOp::Cmp => Err(TranslationError::UnsupportedFeature {
                 description: "<=> binop is currently not supported".to_owned(),
@@ -532,7 +522,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let off_ty = TX::get_offset_ty(e1_ty)?;
                 let st = self.ty_translator.translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();
-                Ok(radium::Binop::PtrOffset(ly))
+                Ok(mk_binop(radium::Binop::PtrOffset(ly)))
             },
         }
     }
@@ -557,6 +547,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 )),
             },
             mir::UnOp::Neg => Ok(radium::Unop::Neg),
+            mir::UnOp::PtrMetadata => Err(TranslationError::UnsupportedFeature {
+                description: "PtrMetadata unop not supported".to_owned(),
+            }),
         }
     }
 

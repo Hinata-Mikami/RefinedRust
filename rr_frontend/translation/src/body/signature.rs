@@ -125,7 +125,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Returns the upvar types with normalized regions as well as the optional region for the
     /// capture.
     fn compute_closure_meta(
-        clos_args: ty::ClosureArgs<'tcx>,
+        clos_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         closure_arg: &mir::LocalDecl<'tcx>,
         region_substitution: &mut regions::EarlyLateRegionMap,
         info: &PoloniusInfo<'def, 'tcx>,
@@ -163,7 +163,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut maybe_outer_lifetime = None;
         if let ty::TyKind::Ref(r, _, _) = fixed_closure_arg_ty.kind() {
             if let ty::RegionKind::ReVar(r) = r.kind() {
-                let name = &region_substitution.region_names[&r];
+                let name = &region_substitution.region_names[&r.into()];
                 maybe_outer_lifetime = Some(name.to_owned());
             } else {
                 unreachable!();

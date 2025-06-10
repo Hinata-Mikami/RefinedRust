@@ -32,11 +32,11 @@ impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'e
         self.map
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(hir::Closure {
             def_id: local_def_id,
             ..
-        }) = expr.kind
+        }) = ex.kind
         {
             let _tcx = self.env.tcx();
             let item_def_path = self.env.get_item_def_path(local_def_id.to_def_id());
@@ -44,6 +44,6 @@ impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'e
             self.result.push(*local_def_id);
         }
 
-        hir::intravisit::walk_expr(self, expr);
+        hir::intravisit::walk_expr(self, ex);
     }
 }

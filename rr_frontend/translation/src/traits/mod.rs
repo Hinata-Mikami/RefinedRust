@@ -79,10 +79,11 @@ pub fn get_trait_assoc_constraints<'tcx>(
 
         // only look for trait predicates for now
         if let ty::ClauseKind::Projection(proj) = cl_kind {
-            if trait_ref.def_id == proj.trait_def_id(env.tcx()) && trait_ref.args == proj.projection_ty.args {
+            if trait_ref.def_id == proj.trait_def_id(env.tcx()) && trait_ref.args == proj.projection_term.args
+            {
                 // same trait and same args
                 let name = env.get_assoc_item_name(proj.def_id()).unwrap();
-                let ty = proj.term.ty().unwrap();
+                let ty = proj.term.as_type().unwrap();
                 assoc_ty_map.insert(name, ty);
             }
         }

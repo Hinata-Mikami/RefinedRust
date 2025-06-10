@@ -34,25 +34,25 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        if parse::Pound::peek(input) {
-            input.parse::<_, MToken![#]>(meta)?;
-            let macro_cmd: parse::Ident = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        if parse::Pound::peek(stream) {
+            stream.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
-                    let loc_str: parse::LitStr = input.parse(meta)?;
+                    let loc_str: parse::LitStr = stream.parse(meta)?;
                     let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
 
-                    input.parse::<_, MToken![:]>(meta)?;
+                    stream.parse::<_, MToken![:]>(meta)?;
 
-                    let rfn_str: parse::LitStr = input.parse(meta)?;
+                    let rfn_str: parse::LitStr = stream.parse(meta)?;
                     let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
 
                     annot_meta.join(&annot_meta2);
 
-                    input.parse::<_, MToken![@]>(meta)?;
+                    stream.parse::<_, MToken![@]>(meta)?;
 
-                    let type_str: parse::LitStr = input.parse(meta)?;
+                    let type_str: parse::LitStr = stream.parse(meta)?;
                     let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
                     annot_meta.join(&annot_meta3);
 
@@ -60,23 +60,23 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     Ok(Self::Type(spec))
                 },
                 "iris" => {
-                    let prop: IProp = input.parse(meta)?;
+                    let prop: IProp = stream.parse(meta)?;
                     Ok(Self::Iris(prop.into()))
                 },
                 _ => Err(parse::Error::OtherErr(
-                    input.pos().unwrap(),
+                    stream.pos().unwrap(),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
         } else {
-            let name_or_prop_str: parse::LitStr = input.parse(meta)?;
-            if parse::Colon::peek(input) {
+            let name_or_prop_str: parse::LitStr = stream.parse(meta)?;
+            if parse::Colon::peek(stream) {
                 // this is a name
                 let name_str = name_or_prop_str.value();
 
-                input.parse::<_, MToken![:]>(meta)?;
+                stream.parse::<_, MToken![:]>(meta)?;
 
-                let pure_prop: parse::LitStr = input.parse(meta)?;
+                let pure_prop: parse::LitStr = stream.parse(meta)?;
                 let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
                 // TODO: should we use annot_meta?
 
@@ -113,13 +113,13 @@ struct InvVar {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let local_str: parse::LitStr = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let local_str: parse::LitStr = stream.parse(meta)?;
         let local_str = local_str.value();
 
-        input.parse::<_, MToken![:]>(meta)?;
+        stream.parse::<_, MToken![:]>(meta)?;
 
-        let rfn_str: parse::LitStr = input.parse(meta)?;
+        let rfn_str: parse::LitStr = stream.parse(meta)?;
         let (rfn_str, _) = meta.process_coq_literal(&rfn_str.value());
 
         Ok(Self {

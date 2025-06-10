@@ -44,22 +44,22 @@ struct RfnPattern {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        let pat = parse::LitStr::parse(input, meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        let pat = parse::LitStr::parse(stream, meta)?;
         let (pat, _) = meta.process_coq_literal(pat.value().as_str());
 
         // optionally, parse a type annotation (otherwise, let Coq inference do its thing)
-        if parse::Colon::peek(input) {
-            input.parse::<_, MToken![:]>(meta)?;
-            let ty: parse::LitStr = input.parse(meta)?;
+        if parse::Colon::peek(stream) {
+            stream.parse::<_, MToken![:]>(meta)?;
+            let ty: parse::LitStr = stream.parse(meta)?;
             let (processed_rt, _) = meta.process_coq_literal(ty.value().as_str());
             let (processed_xt, _) = meta.process_coq_literal_xt(ty.value().as_str(), true);
             let mut processed_xt = processed_xt.replace("place_rfn", "");
 
             // optionally, parse an override for the xt
-            if parse::Semi::peek(input) {
-                input.parse::<_, MToken![;]>(meta)?;
-                let ty: parse::LitStr = input.parse(meta)?;
+            if parse::Semi::peek(stream) {
+                stream.parse::<_, MToken![;]>(meta)?;
+                let ty: parse::LitStr = stream.parse(meta)?;
                 (processed_xt, _) = meta.process_coq_literal(ty.value().as_str());
             }
 
@@ -93,40 +93,40 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(input: parse::Stream, meta: &T) -> parse::Result<Self> {
-        if parse::Pound::peek(input) {
-            input.parse::<_, MToken![#]>(meta)?;
-            let macro_cmd: parse::Ident = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+        if parse::Pound::peek(stream) {
+            stream.parse::<_, MToken![#]>(meta)?;
+            let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "iris" => {
-                    let prop: IProp = input.parse(meta)?;
+                    let prop: IProp = stream.parse(meta)?;
                     Ok(Self::Iris(prop.into()))
                 },
 
                 "own" => {
-                    let prop: IProp = input.parse(meta)?;
+                    let prop: IProp = stream.parse(meta)?;
                     Ok(Self::Own(prop.into()))
                 },
 
                 "shr" => {
-                    let prop: IProp = input.parse(meta)?;
+                    let prop: IProp = stream.parse(meta)?;
                     Ok(Self::Shared(prop.into()))
                 },
 
                 "type" => {
-                    let loc_str: parse::LitStr = input.parse(meta)?;
+                    let loc_str: parse::LitStr = stream.parse(meta)?;
                     let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
 
-                    input.parse::<_, MToken![:]>(meta)?;
+                    stream.parse::<_, MToken![:]>(meta)?;
 
-                    let rfn_str: parse::LitStr = input.parse(meta)?;
+                    let rfn_str: parse::LitStr = stream.parse(meta)?;
                     let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
 
                     annot_meta.join(&annot_meta2);
 
-                    input.parse::<_, MToken![@]>(meta)?;
+                    stream.parse::<_, MToken![@]>(meta)?;
 
-                    let type_str: parse::LitStr = input.parse(meta)?;
+                    let type_str: parse::LitStr = stream.parse(meta)?;
                     let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
 
                     annot_meta.join(&annot_meta3);
@@ -136,19 +136,19 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                 },
 
                 _ => Err(parse::Error::OtherErr(
-                    input.pos().unwrap(),
+                    stream.pos().unwrap(),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
         } else {
-            let name_or_prop_str: parse::LitStr = input.parse(meta)?;
-            if parse::Colon::peek(input) {
+            let name_or_prop_str: parse::LitStr = stream.parse(meta)?;
+            if parse::Colon::peek(stream) {
                 // this is a name
                 let name_str = name_or_prop_str.value();
 
-                input.parse::<_, MToken![:]>(meta)?;
+                stream.parse::<_, MToken![:]>(meta)?;
 
-                let pure_prop: parse::LitStr = input.parse(meta)?;
+                let pure_prop: parse::LitStr = stream.parse(meta)?;
                 let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
                 // TODO: should we use annot_meta?
 
@@ -171,15 +171,15 @@ impl From<InvariantSpecFlags> for specs::InvariantSpecFlags {
 }
 
 impl<U> Parse<U> for InvariantSpecFlags {
-    fn parse(input: parse::Stream, meta: &U) -> parse::Result<Self> {
-        let mode: parse::Ident = input.parse(meta)?;
+    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+        let mode: parse::Ident = stream.parse(meta)?;
 
         match mode.value().as_str() {
             "persistent" => Ok(Self(specs::InvariantSpecFlags::Persistent)),
             "plain" => Ok(Self(specs::InvariantSpecFlags::Plain)),
             "na" => Ok(Self(specs::InvariantSpecFlags::NonAtomic)),
             "atomic" => Ok(Self(specs::InvariantSpecFlags::Atomic)),
-            _ => Err(parse::Error::OtherErr(input.pos().unwrap(), "invalid ADT mode".to_owned())),
+            _ => Err(parse::Error::OtherErr(stream.pos().unwrap(), "invalid ADT mode".to_owned())),
         }
     }
 }
