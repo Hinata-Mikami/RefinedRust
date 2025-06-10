@@ -7,7 +7,7 @@
 //! Various helper functions for working with `mir` types.
 //! copied from prusti-interface/utils
 
-use std::{cmp, fmt, ops};
+use std::{fmt, ops};
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::middle::{mir, ty};
@@ -35,18 +35,6 @@ impl<'tcx> From<mir::Local> for Place<'tcx> {
     }
 }
 
-impl<'tcx> PartialOrd for Place<'tcx> {
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<'tcx> Ord for Place<'tcx> {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.0.local.cmp(&other.0.local).then(self.0.projection.cmp(other.0.projection))
-    }
-}
-
 impl<'tcx> fmt::Debug for Place<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
@@ -62,7 +50,7 @@ impl<'tcx> ops::Deref for Place<'tcx> {
 }
 
 impl<'tcx> PlaceImpl<'tcx> for Place<'tcx> {
-    fn from_mir_place(place: mir::Place<'tcx>) -> Place<'tcx> {
+    fn from_mir_place(place: mir::Place<'tcx>) -> Self {
         Place(place)
     }
 
@@ -72,11 +60,11 @@ impl<'tcx> PlaceImpl<'tcx> for Place<'tcx> {
 }
 
 impl<'tcx> PlaceImpl<'tcx> for mir::Place<'tcx> {
-    fn from_mir_place(place: mir::Place<'tcx>) -> mir::Place<'tcx> {
+    fn from_mir_place(place: Self) -> Self {
         place
     }
 
-    fn to_mir_place(self) -> mir::Place<'tcx> {
+    fn to_mir_place(self) -> Self {
         self
     }
 }

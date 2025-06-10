@@ -298,7 +298,7 @@ define_punctuation! {
     "^"           pub struct Caret/1            ast::token::TokenKind::BinOp(ast::token::BinOpToken::Caret),        /// `^`
     "^="          pub struct CaretEq/2          ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Caret),      /// `^=`
     ":"           pub struct Colon/1            ast::token::TokenKind::Colon,                                       /// `:`
-    "::"          pub struct Colon2/2           ast::token::TokenKind::ModSep,                                      /// `::`
+    "::"          pub struct Colon2/2           ast::token::TokenKind::PathSep,                                     /// `::`
     ","           pub struct Comma/1            ast::token::TokenKind::Comma,                                       /// `,`
     "/"           pub struct Div/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Slash),        /// `/`
     "/="          pub struct DivEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Slash),      /// `/=`

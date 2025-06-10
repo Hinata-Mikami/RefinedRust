@@ -6,6 +6,7 @@
 
 #![feature(rustc_private)]
 #![feature(box_patterns)]
+#![feature(iter_order_by)]
 #![allow(clippy::self_named_module_files)]
 
 pub mod abstract_interpretation;

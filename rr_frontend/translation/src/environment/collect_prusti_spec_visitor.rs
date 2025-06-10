@@ -49,7 +49,7 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
 
     pub fn run(&mut self) {
         let it: &middle::hir::ModuleItems = self.tcx.hir_crate_items(());
-        for id in it.items() {
+        for id in it.free_items() {
             self.visit_item(self.tcx.hir().item(id));
         }
         for id in it.impl_items() {

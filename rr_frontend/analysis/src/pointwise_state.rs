@@ -4,16 +4,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::BTreeMap;
 use std::fmt;
 
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::middle::mir;
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
 
 /// Records the state of the analysis at every program point and CFG edge of `mir`.
-pub struct PointwiseState<'mir, 'tcx: 'mir, S: Serialize> {
+pub struct PointwiseState<'mir, 'tcx: 'mir, S> {
     state_before: FxHashMap<mir::Location, S>,
     /// Maps each basic block to a map of its successor blocks to the state on the CFG edge.
     state_after_block: FxHashMap<mir::BasicBlock, FxHashMap<mir::BasicBlock, S>>,
@@ -23,7 +20,7 @@ pub struct PointwiseState<'mir, 'tcx: 'mir, S: Serialize> {
 
 impl<'mir, 'tcx: 'mir, S> fmt::Debug for PointwiseState<'mir, 'tcx, S>
 where
-    S: Serialize + fmt::Debug,
+    S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // ignore tcx
@@ -35,6 +32,7 @@ where
     }
 }
 
+/*
 impl<'mir, 'tcx: 'mir, S: Serialize> Serialize for PointwiseState<'mir, 'tcx, S> {
     /// Serialize `PointwiseState` by translating it to a combination of vectors, tuples and maps,
     /// such that serde can automatically translate it.
@@ -73,8 +71,9 @@ impl<'mir, 'tcx: 'mir, S: Serialize> Serialize for PointwiseState<'mir, 'tcx, S>
         map.end()
     }
 }
+*/
 
-impl<'mir, 'tcx: 'mir, S: Serialize> PointwiseState<'mir, 'tcx, S> {
+impl<'mir, 'tcx: 'mir, S> PointwiseState<'mir, 'tcx, S> {
     pub(crate) fn new(mir: &'mir mir::Body<'tcx>) -> Self {
         Self {
             state_before: FxHashMap::default(),

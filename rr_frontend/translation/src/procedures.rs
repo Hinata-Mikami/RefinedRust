@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{btree_map, BTreeMap};
+use std::collections::{hash_map, HashMap};
 
 use rr_rustc_interface::hir::def_id::DefId;
 
@@ -126,19 +126,19 @@ impl Meta {
  */
 pub struct Scope<'def> {
     /// maps the defid to `(code_name, spec_name, trait_req_incl_name, name)`
-    name_map: BTreeMap<DefId, Meta>,
+    name_map: HashMap<DefId, Meta>,
     /// track the actually translated functions
-    translated_functions: BTreeMap<DefId, radium::Function<'def>>,
+    translated_functions: HashMap<DefId, radium::Function<'def>>,
     /// track the functions with just a specification (`rr::only_spec`)
-    specced_functions: BTreeMap<DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    specced_functions: HashMap<DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
 }
 
 impl<'def> Scope<'def> {
     pub fn new() -> Self {
         Self {
-            name_map: BTreeMap::new(),
-            translated_functions: BTreeMap::new(),
-            specced_functions: BTreeMap::new(),
+            name_map: HashMap::new(),
+            translated_functions: HashMap::new(),
+            specced_functions: HashMap::new(),
         }
     }
 
@@ -212,14 +212,14 @@ impl<'def> Scope<'def> {
     }
 
     /// Iterate over the functions we have generated code for.
-    pub fn iter_code(&self) -> btree_map::Iter<'_, DefId, radium::Function<'def>> {
+    pub fn iter_code(&self) -> hash_map::Iter<'_, DefId, radium::Function<'def>> {
         self.translated_functions.iter()
     }
 
     /// Iterate over the functions we have generated only specs for.
     pub fn iter_only_spec(
         &self,
-    ) -> btree_map::Iter<'_, DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
+    ) -> hash_map::Iter<'_, DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
         self.specced_functions.iter()
     }
 }

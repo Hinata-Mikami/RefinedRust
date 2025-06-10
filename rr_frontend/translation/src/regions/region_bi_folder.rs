@@ -92,13 +92,13 @@ pub trait RegionBiFolder<'tcx> {
                 }
             },
 
-            ty::TyKind::RawPtr(ty1) => {
-                let ty::TyKind::RawPtr(ty2) = ty2.kind() else {
+            ty::TyKind::RawPtr(ty1, mut1) => {
+                let ty::TyKind::RawPtr(ty2, mut2) = ty2.kind() else {
                     unreachable!();
                 };
-                assert_eq!(ty1.mutbl, ty2.mutbl);
+                assert_eq!(mut1, mut2);
 
-                self.map_tys(ty1.ty, ty2.ty);
+                self.map_tys(*ty1, *ty2);
             },
 
             ty::TyKind::Array(ty1, _len1) => {

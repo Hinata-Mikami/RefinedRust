@@ -208,7 +208,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
-                    (ty::TyKind::RawPtr(_), ty::TyKind::RawPtr(_)) => Ok(radium::Expr::UnOp {
+                    (ty::TyKind::RawPtr(..), ty::TyKind::RawPtr(..)) => Ok(radium::Expr::UnOp {
                         o: radium::Unop::Cast(radium::OpType::Ptr),
                         ot: radium::OpType::Ptr,
                         e: Box::new(translated_op),
@@ -237,7 +237,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ),
             }),
 
-            mir::CastKind::PointerExposeAddress => {
+            mir::CastKind::PointerExposeProvenance => {
                 // Cast pointer to integer
                 Ok(radium::Expr::UnOp {
                     o: radium::Unop::Cast(target_ot),
@@ -246,7 +246,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::CastKind::PointerFromExposedAddress => Err(TranslationError::UnsupportedFeature {
+            mir::CastKind::PointerWithExposedProvenance => Err(TranslationError::UnsupportedFeature {
                 description: format!(
                     "RefinedRust does currently not support this kind of cast (got: {kind:?}, {op:?}, {to_ty:?})"
                 ),
@@ -521,6 +521,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::BinOp::Ge => Ok(radium::Binop::Ge),
             mir::BinOp::Gt => Ok(radium::Binop::Gt),
 
+            mir::BinOp::Cmp => Err(TranslationError::UnsupportedFeature {
+                description: "<=> binop is currently not supported".to_owned(),
+            }),
+
             mir::BinOp::Offset => {
                 // we need to get the layout of the thing we're offsetting
                 // try to get the type of e1.
@@ -537,7 +541,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn get_offset_ty(ty: ty::Ty<'tcx>) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
-            ty::TyKind::RawPtr(tm) => Ok(tm.ty),
+            ty::TyKind::RawPtr(ty, _) => Ok(*ty),
             _ => Err(TranslationError::UnknownError(format!("cannot take offset of {}", ty))),
         }
     }
@@ -560,7 +564,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<radium::BorKind, TranslationError<'tcx>> {
         match kind {
             mir::BorrowKind::Shared => Ok(radium::BorKind::Shared),
-            mir::BorrowKind::Fake => {
+            mir::BorrowKind::Fake(_) => {
                 // TODO: figure out what to do with this
                 // arises in match lowering
                 Err(TranslationError::UnsupportedFeature {

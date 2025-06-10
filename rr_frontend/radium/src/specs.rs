@@ -1714,7 +1714,7 @@ impl<'def> VariantBuilder<'def> {
     /// Initialize a struct builder.
     /// `ty_params` are the user-facing type parameter names in the Rust code.
     #[must_use]
-    pub fn new(name: String, repr: StructRepr) -> VariantBuilder<'def> {
+    pub fn new(name: String, repr: StructRepr) -> Self {
         VariantBuilder {
             fields: Vec::new(),
             name,
@@ -2373,13 +2373,8 @@ impl<'def> EnumBuilder<'def> {
     /// Initialize an enum builder.
     /// `ty_params` are the user-facing type parameter names in the Rust code.
     #[must_use]
-    pub fn new(
-        name: String,
-        scope: GenericScope<'def>,
-        discriminant_type: IntType,
-        repr: EnumRepr,
-    ) -> EnumBuilder<'def> {
-        EnumBuilder {
+    pub fn new(name: String, scope: GenericScope<'def>, discriminant_type: IntType, repr: EnumRepr) -> Self {
+        Self {
             variants: Vec::new(),
             name,
             scope,

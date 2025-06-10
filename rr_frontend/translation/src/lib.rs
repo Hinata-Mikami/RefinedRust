@@ -7,6 +7,7 @@
 #![feature(box_patterns)]
 #![feature(fn_traits)]
 #![feature(rustc_private)]
+#![feature(iter_order_by)]
 
 mod attrs;
 mod base;
@@ -64,9 +65,10 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
 
     let mut defn_order = Vec::new();
     while !topo.is_empty() {
-        let mut next = topo.pop_all();
+        let next = topo.pop_all();
         // sort these by lexicographic order
-        next.sort();
+        // TODO: order?
+        //next.sort();
         if next.is_empty() {
             // dependency cycle detected
             // TODO

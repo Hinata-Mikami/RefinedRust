@@ -75,6 +75,7 @@ rustflags = [
     "-Aclippy::unwrap_used",
     "-Aclippy::use_debug",
     "-Aclippy::impl_trait_in_params",
+    "-Aclippy::integer_division_remainder_used",
 
     # === AVOIDABLE LINTS ===
 

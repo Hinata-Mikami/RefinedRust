@@ -14,7 +14,7 @@ use log::{info, trace};
 use radium::{coq, push_str_list};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, target};
+use rr_rustc_interface::{abi, ast, span, target};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -1151,7 +1151,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         .const_eval_global_id_for_typeck(
                             ty::ParamEnv::empty(),
                             self.make_global_id_for_discr(did, &[]),
-                            None,
+                            span::DUMMY_SP,
                         )
                         .map_err(|err| {
                             TranslationError::FatalError(format!(
@@ -1468,7 +1468,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 ty::UintTy::Usize => radium::IntType::USize, // should have same size as pointer types
             })),
 
-            ty::TyKind::RawPtr(_) => Ok(radium::Type::RawPtr),
+            ty::TyKind::RawPtr(_, _) => Ok(radium::Type::RawPtr),
 
             ty::TyKind::Ref(region, ty, mutability) => {
                 // TODO: this will have to change for handling fat ptrs. see the corresponding rustc
@@ -1602,6 +1602,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Str => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support str".to_owned(),
+            }),
+
+            ty::TyKind::Pat(_, _) => Err(TranslationError::Unimplemented {
+                description: "RefinedRust does not support Pat".to_owned(),
             }),
 
             ty::TyKind::FnDef(_, _) => Err(TranslationError::Unimplemented {

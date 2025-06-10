@@ -268,11 +268,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let param_ty = ty::TyKind::Param(param_ty);
         let param_ty = tcx.mk_ty_from_kind(param_ty);
 
-        let ty_and_mut = ty::TypeAndMut {
-            ty: param_ty,
-            mutbl: hir::Mutability::Mut,
-        };
-        let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
+        let mut_ptr_ty = ty::TyKind::RawPtr(param_ty, hir::Mutability::Mut);
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
         Some((
@@ -284,11 +280,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let param_ty = ty::TyKind::Param(param_ty);
         let param_ty = tcx.mk_ty_from_kind(param_ty);
 
-        let ty_and_mut = ty::TypeAndMut {
-            ty: param_ty,
-            mutbl: hir::Mutability::Not,
-        };
-        let mut_ptr_ty = ty::TyKind::RawPtr(ty_and_mut);
+        let mut_ptr_ty = ty::TyKind::RawPtr(param_ty, hir::Mutability::Not);
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
         Some((

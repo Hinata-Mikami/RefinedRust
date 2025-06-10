@@ -6,6 +6,7 @@
 
 use log::info;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::span;
 
 use super::TX;
 use crate::base::*;
@@ -167,7 +168,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Const::Unevaluated(c, ty) => {
                 // call const evaluation
                 let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(self.proc.get_id());
-                match self.env.tcx().const_eval_resolve(param_env, *c, None) {
+                match self.env.tcx().const_eval_resolve(param_env, *c, span::DUMMY_SP) {
                     Ok(res) => self.translate_constant_value(res, *ty),
                     Err(e) => match e {
                         mir::interpret::ErrorHandled::Reported(_, _) => {

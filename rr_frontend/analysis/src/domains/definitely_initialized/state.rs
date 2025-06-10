@@ -4,14 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::BTreeSet;
 use std::{fmt, mem};
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span::def_id::DefId;
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
 
 use super::utils::*;
 use crate::abstract_interpretation::AbstractState;
@@ -69,16 +66,15 @@ impl<'mir, 'tcx: 'mir> PartialEq for DefinitelyInitializedState<'mir, 'tcx> {
 
 impl<'mir, 'tcx: 'mir> Eq for DefinitelyInitializedState<'mir, 'tcx> {}
 
-impl<'mir, 'tcx: 'mir> Serialize for DefinitelyInitializedState<'mir, 'tcx> {
-    fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.def_init_places.len()))?;
-        let ordered_place_set: BTreeSet<_> = self.def_init_places.iter().collect();
-        for place in ordered_place_set {
-            seq.serialize_element(&format!("{place:?}"))?;
-        }
-        seq.end()
-    }
-}
+//impl<'mir, 'tcx: 'mir> Serialize for DefinitelyInitializedState<'mir, 'tcx> {
+//fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
+//let mut seq = serializer.serialize_seq(Some(self.def_init_places.len()))?;
+//let ordered_place_set: BTreeSet<_> = self.def_init_places.iter().collect();
+//for place in ordered_place_set {
+//seq.serialize_element(&format!("{place:?}"))?;
+//}
+//seq.end()
+//}
 
 impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     #[must_use]
