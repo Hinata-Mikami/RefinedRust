@@ -423,7 +423,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Enqueues a basic block for processing, if it has not already been processed,
     /// and marks it as having been processed.
     fn enqueue_basic_block(&mut self, bb: mir::BasicBlock) {
-        if !self.processed_bbs.insert(bb) {
+        if self.processed_bbs.insert(bb) {
             self.bb_queue.push(bb);
         }
     }

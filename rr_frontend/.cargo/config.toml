@@ -118,10 +118,12 @@ rustflags = [
     "-Aclippy::wildcard_enum_match_arm",
     "-Aclippy::iter_over_hash_type",
     "-Aclippy::allow_attributes_without_reason",
+    "-Aclippy::absolute_paths",
 
     # clippy::style
     "-Aclippy::just_underscores_and_digits",
     "-Aclippy::upper-case-acronyms",
+    "-Aclippy::too_long_first_doc_paragraph",
 
     # === SPECIFIC LINTS ===
 

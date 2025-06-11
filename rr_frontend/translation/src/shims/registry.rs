@@ -94,24 +94,6 @@ struct ShimTraitImplEntry {
     spec_subsumption_statement: String,
 }
 
-/// A file entry for a trait method implementation.
-#[derive(Serialize, Deserialize)]
-struct ShimTraitMethodImplEntry {
-    /// The rustc path for the trait
-    trait_path: flat::PathWithArgs,
-    /// for which type is this implementation?
-    for_type: flat::Type,
-    // TODO: additional constraints like the required clauses for disambiguation
-    /// The method identifier
-    method_ident: String,
-    /// a kind: always `trait_method`
-    kind: String,
-    /// the basis name to use for generated Coq names
-    name: String,
-    /// the Coq name of the spec
-    spec: String,
-}
-
 /// A file entry for an adt shim.
 #[derive(Serialize, Deserialize)]
 struct ShimAdtEntry {
@@ -131,7 +113,6 @@ struct ShimAdtEntry {
 pub enum ShimKind {
     Method,
     Function,
-    TraitMethod,
     TraitImpl,
     Adt,
     Trait,
@@ -185,28 +166,6 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
             spec_semantic: shim.spec_semantic,
             spec_subsumption_proof: shim.spec_subsumption_proof,
             spec_subsumption_statement: shim.spec_subsumption_statement,
-        }
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct TraitMethodImplShim {
-    pub trait_path: flat::PathWithArgs,
-    pub method_ident: String,
-    pub for_type: flat::Type,
-    pub name: String,
-    pub spec_name: String,
-}
-
-impl From<TraitMethodImplShim> for ShimTraitMethodImplEntry {
-    fn from(shim: TraitMethodImplShim) -> Self {
-        Self {
-            trait_path: shim.trait_path,
-            method_ident: shim.method_ident,
-            for_type: shim.for_type,
-            kind: "trait_method".to_owned(),
-            name: shim.name,
-            spec: shim.spec_name,
         }
     }
 }
@@ -293,9 +252,6 @@ pub struct SR<'a> {
     /// function/method shims
     function_shims: Vec<FunctionShim<'a>>,
 
-    /// trait method implementation shims
-    trait_method_shims: Vec<TraitMethodImplShim>,
-
     /// adt shims
     adt_shims: Vec<AdtShim<'a>>,
 
@@ -326,7 +282,6 @@ impl<'a> SR<'a> {
             "method" => Ok(ShimKind::Method),
             "adt" => Ok(ShimKind::Adt),
             "trait" => Ok(ShimKind::Trait),
-            "trait_method" => Ok(ShimKind::TraitMethod),
             "trait_impl" => Ok(ShimKind::TraitImpl),
             k => Err(Error::UnknownShimKind(k.to_owned())),
         }
@@ -345,7 +300,6 @@ impl<'a> SR<'a> {
         Self {
             arena,
             function_shims: Vec::new(),
-            trait_method_shims: Vec::new(),
             adt_shims: Vec::new(),
             exports: Vec::new(),
             dependencies: HashSet::new(),
@@ -476,18 +430,6 @@ impl<'a> SR<'a> {
 
                     self.function_shims.push(entry);
                 },
-                ShimKind::TraitMethod => {
-                    let b: ShimTraitMethodImplEntry = serde_json::value::from_value(i)?;
-                    let entry = TraitMethodImplShim {
-                        trait_path: b.trait_path,
-                        method_ident: b.method_ident,
-                        for_type: b.for_type,
-                        name: b.name,
-                        spec_name: b.spec,
-                    };
-
-                    self.trait_method_shims.push(entry);
-                },
                 ShimKind::TraitImpl => {
                     let b: ShimTraitImplEntry = serde_json::value::from_value(i)?;
                     let entry = TraitImplShim {
@@ -532,10 +474,6 @@ impl<'a> SR<'a> {
         &self.function_shims
     }
 
-    pub fn get_trait_method_shims(&self) -> &[TraitMethodImplShim] {
-        &self.trait_method_shims
-    }
-
     pub fn get_adt_shims(&self) -> &[AdtShim] {
         &self.adt_shims
     }
@@ -567,7 +505,6 @@ pub fn write_shims<'a>(
     export_libs: &HashSet<String>,
     adt_shims: Vec<AdtShim<'a>>,
     function_shims: Vec<FunctionShim<'a>>,
-    trait_method_shims: Vec<TraitMethodImplShim>,
     trait_shims: Vec<TraitShim>,
     trait_impl_shims: Vec<TraitImplShim>,
 ) {
@@ -580,10 +517,6 @@ pub fn write_shims<'a>(
     }
     for x in function_shims {
         let x: ShimFunctionEntry = x.into();
-        values.push(serde_json::to_value(x).unwrap());
-    }
-    for x in trait_method_shims {
-        let x: ShimTraitMethodImplEntry = x.into();
         values.push(serde_json::to_value(x).unwrap());
     }
     for x in trait_shims {

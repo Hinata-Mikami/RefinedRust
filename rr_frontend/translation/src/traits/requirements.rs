@@ -250,7 +250,7 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
         TyKind::RawPtr(_, _) => 10,
         TyKind::Ref(_, _, _) => 11,
         TyKind::FnDef(_, _) => 12,
-        TyKind::FnPtr(_) => 13,
+        TyKind::FnPtr(..) => 13,
         TyKind::Dynamic(..) => 14,
         TyKind::Closure(_, _) => 15,
         TyKind::CoroutineClosure(_, _) => 16,
@@ -301,7 +301,7 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             (TyKind::FnDef(a_d, a_s), TyKind::FnDef(b_d, b_s)) => {
                 cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
             },
-            (TyKind::FnPtr(_), TyKind::FnPtr(_)) => {
+            (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {
                 unimplemented!("compare FnPtr");
             },
             (TyKind::Dynamic(..), TyKind::Dynamic(..)) => {

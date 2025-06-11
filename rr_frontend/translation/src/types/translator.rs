@@ -1608,7 +1608,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support FnDef".to_owned(),
             }),
 
-            ty::TyKind::FnPtr(_) => Err(TranslationError::Unimplemented {
+            ty::TyKind::FnPtr(..) => Err(TranslationError::Unimplemented {
                 description: "RefinedRust does not support FnPtr".to_owned(),
             }),
 

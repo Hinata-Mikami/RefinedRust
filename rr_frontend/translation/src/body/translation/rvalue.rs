@@ -332,7 +332,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             },
 
-            mir::Rvalue::AddressOf(mt, pl) => {
+            mir::Rvalue::RawPtr(mt, pl) => {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_mt = TX::translate_mutability(*mt);
 

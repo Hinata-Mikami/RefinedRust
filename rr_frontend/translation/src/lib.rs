@@ -147,86 +147,6 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         })
     }
 
-    // TODO we never read these shims currently. Maybe unnecessary to have this now that we have
-    // complete trait impl support?
-    fn make_shim_trait_method_entry(
-        &self,
-        did: DefId,
-        spec_name: &str,
-    ) -> Option<shim_registry::TraitMethodImplShim> {
-        trace!("enter make_shim_trait_method_entry; did={did:?}");
-
-        let Some(mode) = self.procedure_registry.lookup_function_mode(did) else {
-            trace!("leave make_shim_trait_method_entry (failed)");
-            return None;
-        };
-
-        if mode != procedures::Mode::Prove
-            && mode != procedures::Mode::OnlySpec
-            && mode != procedures::Mode::TrustMe
-        {
-            trace!("leave make_shim_trait_method_entry (failed)");
-            return None;
-        }
-
-        match self.env.tcx().visibility(did) {
-            // only export public items
-            ty::Visibility::Public => {
-                let impl_did = self.env.tcx().impl_of_method(did).unwrap();
-
-                let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> =
-                    self.env.tcx().impl_trait_ref(impl_did);
-
-                let Some(impl_ref) = impl_ref else {
-                    trace!("leave make_shim_trait_method_entry (failed)");
-                    return None;
-                };
-
-                let impl_ref =
-                    normalize_in_function(impl_did, self.env.tcx(), impl_ref.skip_binder()).unwrap();
-
-                let args = impl_ref.args;
-                let trait_did = impl_ref.def_id;
-
-                // the first arg is self, skip that
-                let trait_args = &args.as_slice()[1..];
-                let impl_for = args[0].expect_ty();
-
-                // flatten the trait reference
-                let trait_path = shims::flat::PathWithArgs::from_item(self.env, trait_did, trait_args)?;
-                trace!("got trait path: {:?}", trait_path);
-
-                // flatten the self type.
-                let for_type = shims::flat::convert_ty_to_flat_type(self.env, impl_for)?;
-
-                trace!("implementation for: {:?}", impl_for);
-
-                // get name of this function
-                let Some(ident) = self.env.tcx().opt_item_ident(did) else {
-                    // can not find name of this function
-                    return None;
-                };
-
-                let method_ident = ident.as_str().to_owned();
-                let name = base::strip_coq_ident(&self.env.get_item_name(did));
-
-                trace!("leave make_shim_trait_method_entry (success)");
-                Some(shim_registry::TraitMethodImplShim {
-                    trait_path,
-                    method_ident,
-                    for_type,
-                    name,
-                    spec_name: spec_name.to_owned(),
-                })
-            },
-            ty::Visibility::Restricted(_) => {
-                // don't export
-                trace!("leave make_shim_trait_method_entry (failed)");
-                None
-            },
-        }
-    }
-
     /// Make a shim entry for a trait.
     fn make_trait_impl_shim_entry(
         &self,
@@ -338,7 +258,6 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
     fn generate_module_summary(&self, module_path: &str, module: &str, name: &str, path: &Path) {
         let mut function_shims = Vec::new();
         let mut adt_shims = Vec::new();
-        let mut trait_method_shims = Vec::new();
         let mut trait_shims = Vec::new();
         let mut trait_impl_shims = Vec::new();
 
@@ -380,16 +299,12 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             }
         }
 
-        // trait method implementations are handled differently, so we keep track of them here
-        let mut trait_methods = Vec::new();
-
         // functions and methods
-        for (did, fun) in self.procedure_registry.iter_code() {
+        for (did, _) in self.procedure_registry.iter_code() {
             if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
-                    trait_methods.push((did, fun.spec));
                     continue;
                 }
             }
@@ -398,29 +313,16 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             }
         }
 
-        for (did, fun) in self.procedure_registry.iter_only_spec() {
+        for (did, _) in self.procedure_registry.iter_only_spec() {
             if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
-                    trait_methods.push((did, fun));
                     continue;
                 }
             }
             if let Some(shim) = self.make_shim_function_entry(*did) {
                 function_shims.push(shim);
-            }
-        }
-
-        // trait methods
-        for (did, fun) in trait_methods {
-            if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
-                // only register this as a separate method if it isn't part of a complete impl
-                if !self.trait_impls.contains_key(&impl_did) {
-                    if let Some(shim) = self.make_shim_trait_method_entry(*did, &fun.spec_name) {
-                        trait_method_shims.push(shim);
-                    }
-                }
             }
         }
 
@@ -442,7 +344,6 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             &self.lib_exports,
             adt_shims,
             function_shims,
-            trait_method_shims,
             trait_shims,
             trait_impl_shims,
         );
@@ -868,8 +769,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         // write the dune-project file, if required
         if rrconfig::generate_dune_project() {
-            let mut dune_project_path = rrconfig::absolute_work_dir();
-            dune_project_path.push("dune-project");
+            let dune_project_path = rrconfig::absolute_work_dir().join("dune-project");
 
             if !dune_project_path.exists() {
                 let mut dune_project_file =
