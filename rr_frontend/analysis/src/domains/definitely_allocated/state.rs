@@ -17,7 +17,7 @@ use crate::AnalysisError;
 
 /// A set of MIR locals that are definitely allocated at a program point
 #[derive(Clone)]
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct DefinitelyAllocatedState<'mir, 'tcx: 'mir> {
     pub(super) def_allocated_locals: FxHashSet<mir::Local>,
     pub(super) mir: &'mir mir::Body<'tcx>,
@@ -81,7 +81,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     pub(super) fn apply_terminator_effect(
         &self,
         location: mir::Location,

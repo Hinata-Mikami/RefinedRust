@@ -9,7 +9,9 @@ use rr_rustc_interface::infer::infer::TyCtxtInferExt;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeVisitableExt;
 use rr_rustc_interface::{middle, trait_selection};
+use trait_selection::{infer, solve};
 
+//use trait_selection::traits::{self, normalize::NormalizeExt};
 use crate::regions::arg_folder;
 use crate::regions::region_bi_folder::RegionBiFolder;
 
@@ -22,14 +24,20 @@ pub fn normalize_type<'tcx, T>(
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
-    let infer_ctx = tcx.infer_ctxt().build();
+    // TODO: should we normalize like this also below?
+    let infer_ctx: infer::InferCtxt<'tcx> = tcx.infer_ctxt().with_next_trait_solver(true).build();
 
-    trait_selection::traits::fully_normalize(
-        &infer_ctx,
-        middle::traits::ObligationCause::dummy(),
-        param_env,
-        ty,
-    )
+    let obligation_cause = middle::traits::ObligationCause::dummy();
+    let at = infer_ctx.at(&obligation_cause, param_env);
+
+    solve::deeply_normalize(at, ty)
+
+    //trait_selection::traits::fully_normalize(
+    //&infer_ctx,
+    //middle::traits::ObligationCause::dummy(),
+    //param_env,
+    //ty,
+    //)
 }
 
 /// Resolve an implementation of a trait using codegen candidate selection.
@@ -42,6 +50,7 @@ pub fn resolve_impl_source<'tcx>(
     below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
+    trace!("args before erasing: {substs:?}");
     let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
     //let erased_substs = normalize_type(tcx, param_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
@@ -69,6 +78,7 @@ pub fn resolve_impl_source<'tcx>(
         }
     };
 
+    trace!("selecting codegen candidate for {trait_ref:?}");
     let res = tcx.codegen_select_candidate((param_env, trait_ref)).ok()?;
     Some(recover_lifetimes_for_impl_source(tcx, param_env, substs, res, below_binders))
 }

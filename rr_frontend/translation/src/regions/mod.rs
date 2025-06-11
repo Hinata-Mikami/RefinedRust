@@ -139,7 +139,7 @@ impl<'tcx> TyRegionCollectFolder<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 

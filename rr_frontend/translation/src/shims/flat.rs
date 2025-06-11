@@ -136,8 +136,11 @@ impl Type {
 
                 // substitute
                 info!("substituting {:?} with {:?}", ty, substs);
-                let subst_ty =
-                    if substs.is_empty() { ty.instantiate_identity() } else { ty.instantiate(tcx, &substs) };
+                let subst_ty = if substs.is_empty() {
+                    ty.instantiate_identity()
+                } else {
+                    ty.instantiate(tcx, substs.as_slice())
+                };
 
                 Some(subst_ty)
             },

@@ -65,7 +65,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseEnumSpecParser<'a, T> {
     scope: &'a T,
 }

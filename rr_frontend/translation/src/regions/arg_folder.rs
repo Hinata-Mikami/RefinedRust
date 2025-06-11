@@ -32,7 +32,7 @@ struct RegionRelabelVisitor<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -42,7 +42,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
                 let new_idx = self.new_regions;
                 self.new_regions += 1;
 
-                ty::Region::new_var(self.interner(), ty::RegionVid::from(new_idx))
+                ty::Region::new_var(self.cx(), ty::RegionVid::from(new_idx))
             },
             _ => r,
         }
@@ -85,7 +85,7 @@ struct ClosureCaptureRegionVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'a, 'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -103,7 +103,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
                     e.insert(name);
                 }
 
-                ty::Region::new_var(self.interner(), r2.into())
+                ty::Region::new_var(self.cx(), r2.into())
             },
             _ => r,
         }
@@ -117,7 +117,7 @@ struct RegionRenameVisitor<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -147,18 +147,18 @@ struct RelabelLateParamVisitor<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateParamVisitor<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateParam(_idx) => {
+            ty::ReBound(_idx, _) => {
                 //let idx = v.index();
                 //let new_idx = self.rename_map.get(idx).unwrap();
 
                 //new_idx.to_owned()
-                ty::Region::new_from_kind(self.interner(), ty::ReErased)
+                ty::Region::new_from_kind(self.cx(), ty::ReErased)
             },
             _ => r,
         }
@@ -191,7 +191,7 @@ struct ArgFolder<'a, 'tcx> {
 
 impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     #[inline]
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -382,7 +382,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
             return val;
         }
 
-        ty::fold::shift_vars(ty::TypeFolder::interner(self), val, self.binders_passed)
+        ty::fold::shift_vars(ty::TypeFolder::cx(self), val, self.binders_passed)
     }
 
     fn shift_region_through_binders(&self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {

@@ -240,7 +240,7 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 }
 
 /// The main parser.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
@@ -279,7 +279,7 @@ pub struct OkSpec {
 }
 
 impl OkSpec {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             ok_mode: false,
             ok_exists: Vec::new(),

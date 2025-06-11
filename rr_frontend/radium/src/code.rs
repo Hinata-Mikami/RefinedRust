@@ -411,7 +411,7 @@ pub enum Annotation {
 }
 
 impl Annotation {
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     const fn needs_laters(&self) -> u32 {
         0
     }
@@ -644,7 +644,7 @@ impl StackMap {
 }
 
 /// Representation of a Caesium function's source code
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct FunctionCode {
     name: String,
     code_name: String,
@@ -780,7 +780,7 @@ struct InvariantMap(HashMap<usize, LoopSpec>);
 
 /// A Caesium function bundles up the Caesium code itself as well as the generated specification
 /// for it.
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct Function<'def> {
     pub code: FunctionCode,
     pub spec: &'def FunctionSpec<'def, InnerFunctionSpec<'def>>,
@@ -1193,7 +1193,7 @@ impl<'def> Display for UsedProcedureSpec<'def> {
 
 /// Information about another procedure this function uses
 #[derive(Constructor, Clone, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct UsedProcedure<'def> {
     /// The name to use for the location parameter
     pub loc_name: String,
@@ -1441,7 +1441,7 @@ impl<'def> Display for UsedProcedure<'def> {
 /// A `CaesiumFunctionBuilder` allows to incrementally construct the functions's code and the spec
 /// at the same time. It ensures that both definitions line up in the right way (for instance, by
 /// ensuring that other functions are linked up in a consistent way).
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct FunctionBuilder<'def> {
     pub code: FunctionCodeBuilder,
     code_name: String,

@@ -200,6 +200,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.translate_goto_like(&loc, *real_target)
             },
 
+            mir::TerminatorKind::TailCall { .. } => {
+                Err(TranslationError::Unimplemented {
+                    description: "implement TailCall".to_owned(),
+                })
+            },
+
             mir::TerminatorKind::Unreachable => Ok(radium::Stmt::Stuck),
 
             mir::TerminatorKind::UnwindResume => Err(TranslationError::Unimplemented {

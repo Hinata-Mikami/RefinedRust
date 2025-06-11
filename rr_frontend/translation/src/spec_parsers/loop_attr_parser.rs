@@ -129,7 +129,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseLoopAttrParser<'def, 'a, T> {
     locals: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)>,
     scope: &'a T,

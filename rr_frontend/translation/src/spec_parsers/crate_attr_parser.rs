@@ -29,7 +29,7 @@ pub struct CrateAttrs {
     pub package: Option<String>,
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseCrateAttrParser;
 
 impl VerboseCrateAttrParser {

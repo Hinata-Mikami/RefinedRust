@@ -59,7 +59,7 @@ impl FromRequire {
         Self { from, import, kind }
     }
 
-    #[allow(clippy::same_name_method)]
+    #[expect(clippy::same_name_method)]
     #[must_use]
     pub fn from(self, from: impl Into<DirPath>) -> Self {
         let from = Some(from.into());

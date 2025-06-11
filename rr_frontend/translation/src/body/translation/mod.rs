@@ -389,7 +389,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Registers a drop shim for a particular type for the translation.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     const fn register_drop_shim_for(&self, _ty: ty::Ty<'tcx>) {
         // TODO!
         //let drop_in_place_did: DefId = search::try_resolve_did(self.env.tcx(), &["std", "ptr",
@@ -423,9 +423,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Enqueues a basic block for processing, if it has not already been processed,
     /// and marks it as having been processed.
     fn enqueue_basic_block(&mut self, bb: mir::BasicBlock) {
-        if !self.processed_bbs.contains(&bb) {
+        if !self.processed_bbs.insert(bb) {
             self.bb_queue.push(bb);
-            self.processed_bbs.insert(bb);
         }
     }
 

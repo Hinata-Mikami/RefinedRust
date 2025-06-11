@@ -119,7 +119,7 @@ pub struct Params<'tcx, 'def> {
     trait_scope: Traits<'tcx, 'def>,
 }
 
-#[allow(clippy::fallible_impl_from)]
+#[expect(clippy::fallible_impl_from)]
 impl<'tcx, 'def> From<Params<'tcx, 'def>>
     for radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>
 {

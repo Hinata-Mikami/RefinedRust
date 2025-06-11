@@ -31,7 +31,7 @@ pub struct ModuleAttrs {
     pub export_includes: HashSet<String>,
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseModuleAttrParser;
 
 impl VerboseModuleAttrParser {

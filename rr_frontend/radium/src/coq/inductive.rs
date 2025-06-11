@@ -45,7 +45,7 @@ pub struct Variant {
 
 impl Variant {
     #[must_use]
-    pub fn new(name: String, params: Vec<binder::Binder>) -> Self {
+    pub const fn new(name: String, params: Vec<binder::Binder>) -> Self {
         Self { name, params }
     }
 }

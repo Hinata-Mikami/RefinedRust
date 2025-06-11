@@ -419,10 +419,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .collect();
         trace!(
             "[exit] get_loans_dying_between {:?}, {:?}, {}, dying_loans={:?}",
-            initial_loc,
-            final_loc,
-            zombie,
-            dying_loans
+            initial_loc, final_loc, zombie, dying_loans
         );
         dying_loans
     }

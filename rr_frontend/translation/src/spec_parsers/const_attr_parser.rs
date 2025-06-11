@@ -26,7 +26,7 @@ pub struct ConstAttrs {
     pub name: String,
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseConstAttrParser;
 
 impl VerboseConstAttrParser {

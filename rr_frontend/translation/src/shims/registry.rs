@@ -532,7 +532,6 @@ impl<'a> SR<'a> {
         &self.function_shims
     }
 
-    #[allow(dead_code)] // See lib.rs:make_shim_trait_method_entry
     pub fn get_trait_method_shims(&self) -> &[TraitMethodImplShim] {
         &self.trait_method_shims
     }

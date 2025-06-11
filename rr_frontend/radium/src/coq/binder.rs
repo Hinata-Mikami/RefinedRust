@@ -194,7 +194,7 @@ impl Display for Generalizing {
 /// A Rocq pattern, e.g., "x" or "'(x, y)".
 pub type Pattern = String;
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 #[display("{}", display_list!(_0, " "))]
 pub struct BinderList(pub Vec<Binder>);

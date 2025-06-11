@@ -44,7 +44,7 @@ pub struct InclusionTracker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
-    pub fn new(info: &'a PoloniusInfo<'a, 'tcx>) -> Self {
+    pub const fn new(info: &'a PoloniusInfo<'a, 'tcx>) -> Self {
         InclusionTracker {
             info,
             static_incl_base: Vec::new(),

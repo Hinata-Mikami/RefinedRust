@@ -243,7 +243,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub fn str_err(e: parse::Error) -> String {
     format!("{:?}", e)
 }

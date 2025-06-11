@@ -11,7 +11,7 @@ use derive_more::Display;
 use crate::{coq, display_list};
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Type {
     /// `function_ty` type
     #[display("function_ty")]

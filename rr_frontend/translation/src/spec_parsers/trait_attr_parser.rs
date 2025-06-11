@@ -55,7 +55,7 @@ pub struct TraitAttrs {
     pub attrs: radium::TraitSpecAttrsDecl,
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct VerboseTraitAttrParser<'a, T, F> {
     scope: TraitAttrScope<'a, T>,
     make_record_id: F,

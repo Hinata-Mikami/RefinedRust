@@ -31,7 +31,7 @@ impl<'tcx> TyVarFolder<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -66,7 +66,7 @@ impl<'tcx> TyRegionEraseFolder<'tcx> {
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionEraseFolder<'tcx> {
-    fn interner(&self) -> ty::TyCtxt<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -79,6 +79,6 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionEraseFolder<'tcx> {
     }
 
     fn fold_region(&mut self, _: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        ty::Region::new_from_kind(self.interner(), ty::RegionKind::ReErased)
+        ty::Region::new_from_kind(self.cx(), ty::RegionKind::ReErased)
     }
 }

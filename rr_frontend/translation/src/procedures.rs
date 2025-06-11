@@ -20,7 +20,6 @@ pub enum Mode {
     Ignore,
 }
 
-#[allow(dead_code)]
 impl Mode {
     pub fn is_prove(self) -> bool {
         self == Self::Prove

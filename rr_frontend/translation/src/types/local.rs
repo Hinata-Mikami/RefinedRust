@@ -39,7 +39,7 @@ pub struct AbstractedGenerics<'def> {
 }
 
 /// Type translator bundling the function scope
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct LocalTX<'def, 'tcx> {
     pub translator: &'def TX<'def, 'tcx>,
     pub scope: RefCell<FunctionState<'tcx, 'def>>,
@@ -332,7 +332,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         for region in regions {
             // Use the name the region has inside the function as the binder name, so that the
             // names work out when translating the types below
-            let lft_name = self.translate_region_var(region).unwrap_or(format!("ulft_{next_lft}"));
+            let lft_name = self.translate_region_var(region).unwrap_or_else(|_| format!("ulft_{next_lft}"));
             scope.add_lft_param(lft_name.clone());
 
             next_lft += 1;

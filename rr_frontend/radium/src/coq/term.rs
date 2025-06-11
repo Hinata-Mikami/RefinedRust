@@ -108,7 +108,7 @@ impl Display for Term {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("{}", display_list!(_0, " ", "{}"))]
 pub struct TermList(pub Vec<Term>);
@@ -149,11 +149,11 @@ impl<T: Display, U: Display> Display for App<T, U> {
 }
 
 impl<T, U> App<T, U> {
-    pub fn new(lhs: T, rhs: Vec<U>) -> Self {
+    pub const fn new(lhs: T, rhs: Vec<U>) -> Self {
         Self { lhs, rhs }
     }
 
-    pub fn new_lhs(lhs: T) -> Self {
+    pub const fn new_lhs(lhs: T) -> Self {
         Self {
             lhs,
             rhs: Vec::new(),

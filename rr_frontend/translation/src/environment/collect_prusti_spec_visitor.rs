@@ -24,7 +24,7 @@ pub struct CollectPrustiSpecVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
-    pub fn new(env: &'a Environment<'tcx>) -> Self {
+    pub const fn new(env: &'a Environment<'tcx>) -> Self {
         CollectPrustiSpecVisitor {
             env,
             tcx: env.tcx(),

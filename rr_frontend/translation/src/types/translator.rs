@@ -241,7 +241,6 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     }
 
     /// Lookup a trait parameter in the current state.
-    #[allow(clippy::let_and_return)]
     pub fn lookup_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,
@@ -1120,11 +1119,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn try_scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> Option<radium::Int128> {
+    fn scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> radium::Int128 {
         if signed {
-            s.try_to_int(s.size()).ok().map(radium::Int128::Signed)
+            radium::Int128::Signed(s.to_int(s.size()))
         } else {
-            s.try_to_uint(s.size()).ok().map(radium::Int128::Unsigned)
+            radium::Int128::Unsigned(s.to_uint(s.size()))
         }
     }
 
@@ -1160,15 +1159,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                             ))
                         })?;
 
-                    let evaluated_discr = evaluated_discr.ok_or_else(|| {
+                    let evaluated_discr = evaluated_discr.map_err(|_err| {
                         TranslationError::FatalError("Failed to const-evaluate discriminant".to_owned())
                     })?;
 
                     let evaluated_int = evaluated_discr.try_to_scalar_int().unwrap();
-                    let evaluated_int =
-                        Self::try_scalar_int_to_int128(evaluated_int, signed).ok_or_else(|| {
-                            TranslationError::FatalError("Enum discriminant is too large".to_owned())
-                        })?;
+                    let evaluated_int = Self::scalar_int_to_int128(evaluated_int, signed);
 
                     info!("const-evaluated enum discriminant: {:?}", evaluated_int);
 

@@ -400,7 +400,7 @@ pub enum TyParamOrigin {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct LiteralTyParam {
     /// Rust name
     pub rust_name: String,
@@ -873,7 +873,7 @@ impl InvariantSpec {
 
         match self.flags {
             InvariantSpecFlags::NonAtomic => {
-                #[allow(deprecated)]
+                #[expect(deprecated)]
                 write!(
                     out,
                     "{indent}Program Definition {} : {} (na_ex_inv_def ({}) ({})) := ",
@@ -885,7 +885,7 @@ impl InvariantSpec {
                 .unwrap();
             },
             _ => {
-                #[allow(deprecated)]
+                #[expect(deprecated)]
                 write!(
                     out,
                     "{indent}Program Definition {} : {} (ex_inv_def ({}) ({})) := ",
@@ -984,7 +984,7 @@ impl InvariantSpec {
 
         // generate the definition itself.
         if InvariantSpecFlags::NonAtomic == self.flags {
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             write!(
                 out,
                 "{indent}Definition {} : {} (type ({})) :=\n\
@@ -997,7 +997,7 @@ impl InvariantSpec {
             )
             .unwrap();
         } else {
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             write!(
                 out,
                 "{indent}Definition {} : {} (type ({})) :=\n\
@@ -1605,7 +1605,7 @@ impl<'def> AbstractStruct<'def> {
             )
             .unwrap();
             write!(out, "{indent}{indent}let {type_name}_rt {ty_rt_uses} := {rfn_type} in\n").unwrap();
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             write!(
                 out,
                 "{indent}{indent}ex_plain_t _ _ ({spec_name} {}) ({}).\n",
@@ -1615,7 +1615,7 @@ impl<'def> AbstractStruct<'def> {
             .unwrap();
 
             // write the fixpoint
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             write!(
                 out,
                 "{indent}Definition {type_name} : {} (type ({rfn_type})) := {} type_fixpoint ({type_name}_rec {}).\n",
@@ -1714,7 +1714,7 @@ impl<'def> VariantBuilder<'def> {
     /// Initialize a struct builder.
     /// `ty_params` are the user-facing type parameter names in the Rust code.
     #[must_use]
-    pub fn new(name: String, repr: StructRepr) -> Self {
+    pub const fn new(name: String, repr: StructRepr) -> Self {
         VariantBuilder {
             fields: Vec::new(),
             name,
@@ -1772,7 +1772,7 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Creates a new use of unit.
     #[must_use]
-    pub fn new_unit() -> Self {
+    pub const fn new_unit() -> Self {
         AbstractStructUse {
             def: None,
             scope_inst: GenericScopeInst::empty(),
@@ -2244,7 +2244,7 @@ impl<'def> AbstractEnum<'def> {
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);
 
         // main def
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         write!(
             out,
             "{indent}Program Definition {} : {} (enum ({})) := {} mk_enum\n\
@@ -2280,7 +2280,7 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
 
         // define the actual type
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         write!(
             out,
             "{indent}Definition {} : {} (type _) := {} enum_t ({} {}).\n",
@@ -2373,7 +2373,12 @@ impl<'def> EnumBuilder<'def> {
     /// Initialize an enum builder.
     /// `ty_params` are the user-facing type parameter names in the Rust code.
     #[must_use]
-    pub fn new(name: String, scope: GenericScope<'def>, discriminant_type: IntType, repr: EnumRepr) -> Self {
+    pub const fn new(
+        name: String,
+        scope: GenericScope<'def>,
+        discriminant_type: IntType,
+        repr: EnumRepr,
+    ) -> Self {
         Self {
             variants: Vec::new(),
             name,
@@ -2564,7 +2569,7 @@ pub struct IPropPredicate {
 
 impl IPropPredicate {
     #[must_use]
-    pub fn new(binders: Vec<coq::binder::Binder>, prop: IProp) -> Self {
+    pub const fn new(binders: Vec<coq::binder::Binder>, prop: IProp) -> Self {
         Self { binders, prop }
     }
 }
@@ -2644,7 +2649,7 @@ impl<'def> InnerFunctionSpec<'def> {
 
 /// A Radium function specification.
 #[derive(Clone, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct FunctionSpec<'def, T> {
     /// The name of the spec
     pub spec_name: String,
@@ -2677,7 +2682,7 @@ impl<'def, T> FunctionSpec<'def, T> {
     }
 
     #[must_use]
-    pub(crate) fn empty(
+    pub(crate) const fn empty(
         spec_name: String,
         trait_req_incl_name: String,
         function_name: String,
@@ -3266,7 +3271,7 @@ impl LiteralTraitSpec {
 
 /// A reference to a trait instantiated with its parameters in the verification of a function.
 #[derive(Debug, Constructor, Clone)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct LiteralTraitSpecUse<'def> {
     pub trait_ref: LiteralTraitSpecRef<'def>,
 
@@ -3756,7 +3761,7 @@ pub struct GenericScopeInst<'def> {
 
 impl<'def> GenericScopeInst<'def> {
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             direct_tys: Vec::new(),
             surrounding_tys: Vec::new(),
@@ -3913,7 +3918,7 @@ pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
 impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     /// Create an empty scope.
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             direct_tys: TyParamList::empty(),
             surrounding_tys: TyParamList::empty(),
@@ -4192,7 +4197,6 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
         self.get_trait_req_parameters(true, true, include_self, false)
     }
 
-    #[allow(clippy::fn_params_excessive_bools)]
     fn get_trait_req_parameters(
         &self,
         include_surrounding: bool,
@@ -4394,7 +4398,7 @@ fn make_trait_instance<'def>(
 /// When translating a trait declaration, we should generate this, bundling all the components of
 /// the trait together.
 #[derive(Constructor, Clone, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct TraitSpecDecl<'def> {
     /// A reference to all the Coq definition names we should generate.
     pub lit: LiteralTraitSpecRef<'def>,
@@ -4663,7 +4667,7 @@ impl<'def> Display for TraitSpecDecl<'def> {
 
 /// Coq Names used for the spec of a trait impl.
 #[derive(Constructor, Clone, Debug)]
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 pub struct LiteralTraitImpl {
     /// The name of the record instance for spec information
     pub spec_record: String,
@@ -4681,7 +4685,7 @@ pub type LiteralTraitImplRef<'def> = &'def LiteralTraitImpl;
 /// A full instantiation of a trait spec, e.g. for an impl of a trait,
 /// which may itself be generic in a `GenericScope`.
 #[derive(Constructor, Clone, Debug)]
-#[allow(clippy::partial_pub_fields)]
+#[expect(clippy::partial_pub_fields)]
 pub struct TraitRefInst<'def> {
     /// literals of the trait this implements
     pub of_trait: LiteralTraitSpecRef<'def>,

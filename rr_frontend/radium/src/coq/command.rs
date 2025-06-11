@@ -20,7 +20,7 @@ use crate::BASE_INDENT;
 /// A [command], with optional attributes.
 ///
 /// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CommandAttrs {
     pub command: Command,
@@ -170,7 +170,7 @@ impl From<Command> for CommandAttrs {
 /// A [query command].
 ///
 /// [query command]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
 pub enum QueryCommand {
     #[display("{}", _0)]

@@ -559,9 +559,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         trace!(
                             "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                            trait_use.bound_regions,
-                            trait_use.trait_ref.args,
-                            subst_args
+                            trait_use.bound_regions, trait_use.trait_ref.args, subst_args
                         );
 
                         // compute the instantiation of the quantified trait assumption in terms

@@ -55,7 +55,8 @@ fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
         | mir::TerminatorKind::Return
         | mir::TerminatorKind::Unreachable
         | mir::TerminatorKind::UnwindResume
-        | mir::TerminatorKind::UnwindTerminate(_) => vec![],
+        | mir::TerminatorKind::UnwindTerminate(_)
+        | mir::TerminatorKind::TailCall { .. } => vec![],
 
         mir::TerminatorKind::Drop { target, .. } => vec![*target],
 
@@ -71,6 +72,6 @@ fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
 
         mir::TerminatorKind::Yield { resume, .. } => vec![*resume],
 
-        mir::TerminatorKind::InlineAsm { targets, .. } => targets.to_owned(),
+        mir::TerminatorKind::InlineAsm { targets, .. } => vec![targets[0]],
     }
 }

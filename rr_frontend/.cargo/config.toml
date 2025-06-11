@@ -76,6 +76,7 @@ rustflags = [
     "-Aclippy::use_debug",
     "-Aclippy::impl_trait_in_params",
     "-Aclippy::integer_division_remainder_used",
+    "-Aclippy::field_scoped_visibility_modifiers",
 
     # === AVOIDABLE LINTS ===
 
@@ -116,6 +117,7 @@ rustflags = [
     "-Aclippy::unreachable",
     "-Aclippy::wildcard_enum_match_arm",
     "-Aclippy::iter_over_hash_type",
+    "-Aclippy::allow_attributes_without_reason",
 
     # clippy::style
     "-Aclippy::just_underscores_and_digits",

@@ -12,7 +12,7 @@ use rr_rustc_interface::span::def_id::DefId;
 use crate::abstract_interpretation::{AnalysisResult, FixpointEngine};
 use crate::domains::DefinitelyInitializedState;
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct DefinitelyInitializedAnalysis<'mir, 'tcx: 'mir> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
