@@ -8,6 +8,7 @@
 #![feature(fn_traits)]
 #![feature(rustc_private)]
 #![feature(iter_order_by)]
+#![allow(clippy::needless_lifetimes)]
 
 mod attrs;
 mod base;
@@ -26,7 +27,7 @@ mod unification;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::{fs, io, process};
 
@@ -42,9 +43,9 @@ use typed_arena::Arena;
 use crate::body::signature;
 use crate::environment::Environment;
 use crate::shims::registry as shim_registry;
-use crate::spec_parsers::const_attr_parser::{ConstAttrParser, VerboseConstAttrParser};
-use crate::spec_parsers::crate_attr_parser::{CrateAttrParser, VerboseCrateAttrParser};
-use crate::spec_parsers::module_attr_parser::{ModuleAttrParser, ModuleAttrs, VerboseModuleAttrParser};
+use crate::spec_parsers::const_attr_parser::{ConstAttrParser as _, VerboseConstAttrParser};
+use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateAttrParser};
+use crate::spec_parsers::module_attr_parser::{ModuleAttrParser as _, ModuleAttrs, VerboseModuleAttrParser};
 use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
@@ -360,10 +361,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let mut code_file = io::BufWriter::new(File::create(code_path).unwrap());
 
         {
-            let mut spec_exports = vec![
-                coq::module::Export::new(vec![format!("generated_code_{stem}")])
-                    .from(vec![&self.coq_path_prefix, stem]),
-            ];
+            let mut spec_exports = vec![coq::module::Export::new(vec![format!("generated_code_{stem}")])
+                .from(vec![&self.coq_path_prefix, stem])];
             spec_exports.append(&mut self.extra_exports.iter().map(|(export, _)| export.clone()).collect());
 
             write!(spec_file, "{}", coq::module::ImportList(&common_imports)).unwrap();
@@ -548,13 +547,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             if fun.spec.is_complete() && mode.needs_proof() {
                 let mut imports = common_imports.clone();
 
-                imports.append(&mut vec![
-                    coq::module::Import::new(vec![
-                        &format!("generated_code_{stem}"),
-                        &format!("generated_specs_{stem}"),
-                    ])
-                    .from(vec![&self.coq_path_prefix, stem]),
-                ]);
+                imports.append(&mut vec![coq::module::Import::new(vec![
+                    &format!("generated_code_{stem}"),
+                    &format!("generated_specs_{stem}"),
+                ])
+                .from(vec![&self.coq_path_prefix, stem])]);
 
                 let exports: Vec<_> = self.extra_exports.iter().map(|(export, _)| export.clone()).collect();
 
@@ -631,14 +628,12 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             let mut imports = common_imports.clone();
 
-            imports.append(&mut vec![
-                coq::module::Import::new(vec![
-                    &format!("generated_code_{stem}"),
-                    &format!("generated_specs_{stem}"),
-                    &format!("generated_template_{}", fun.name()),
-                ])
-                .from(vec![&self.coq_path_prefix, stem, "generated"]),
-            ]);
+            imports.append(&mut vec![coq::module::Import::new(vec![
+                &format!("generated_code_{stem}"),
+                &format!("generated_specs_{stem}"),
+                &format!("generated_template_{}", fun.name()),
+            ])
+            .from(vec![&self.coq_path_prefix, stem, "generated"])]);
 
             writeln!(proof_file, "{}", coq::module::ImportList(&imports)).unwrap();
 
@@ -679,13 +674,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             let mut imports = common_imports.clone();
 
-            imports.append(&mut vec![
-                coq::module::Import::new(vec![&format!("generated_specs_{stem}")]).from(vec![
-                    &self.coq_path_prefix,
-                    stem,
-                    "generated",
-                ]),
-            ]);
+            imports.append(&mut vec![coq::module::Import::new(vec![&format!("generated_specs_{stem}")])
+                .from(vec![&self.coq_path_prefix, stem, "generated"])]);
 
             writeln!(proof_file, "{}", coq::module::ImportList(&imports)).unwrap();
 

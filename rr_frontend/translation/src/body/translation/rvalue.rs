@@ -163,7 +163,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let target_ot = target_st.into();
 
         match kind {
-            mir::CastKind::PointerCoercion(x) => match x {
+            mir::CastKind::PointerCoercion(x, _) => match x {
                 ty::adjustment::PointerCoercion::MutToConstPointer => Ok(radium::Expr::UnOp {
                     o: radium::Unop::Cast(radium::OpType::Ptr),
                     ot: radium::OpType::Ptr,
@@ -174,16 +174,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
                 | ty::adjustment::PointerCoercion::ReifyFnPointer
                 | ty::adjustment::PointerCoercion::UnsafeFnPointer
-                | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
+                | ty::adjustment::PointerCoercion::Unsize
+                | ty::adjustment::PointerCoercion::DynStar => Err(TranslationError::UnsupportedFeature {
                     description: format!(
                         "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
                     ),
                 }),
             },
-
-            mir::CastKind::DynStar => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support dyn* cast".to_owned(),
-            }),
 
             mir::CastKind::IntToInt => {
                 // Cast integer to integer
@@ -287,7 +284,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Operand::Constant(constant) => {
                 // TODO: possibly need different handling of the rvalue flag
                 // when this also handles string literals etc.
-                return self.translate_constant(&constant.const_);
+                self.translate_constant(&constant.const_)
             },
         }
     }

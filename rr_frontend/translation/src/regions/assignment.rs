@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 
 use log::{info, trace, warn};
-use rr_rustc_interface::middle::ty::TypeFoldable;
+use rr_rustc_interface::middle::ty::TypeFoldable as _;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;

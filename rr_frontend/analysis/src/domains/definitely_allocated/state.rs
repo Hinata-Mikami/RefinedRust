@@ -9,7 +9,7 @@ use std::fmt;
 
 use rr_rustc_interface::data_structures::fx::FxHashSet;
 use rr_rustc_interface::middle::mir;
-use serde::ser::SerializeSeq;
+use serde::ser::SerializeSeq as _;
 use serde::{Serialize, Serializer};
 
 use crate::abstract_interpretation::AbstractState;

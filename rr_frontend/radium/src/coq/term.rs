@@ -13,7 +13,7 @@ use std::fmt;
 use derive_more::Display;
 use from_variants::FromVariants;
 use indent_write::fmt::IndentWriter;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use crate::coq::binder;
 use crate::{display_list, model, BASE_INDENT};
@@ -60,7 +60,7 @@ pub enum Term {
 
 impl Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
+        use fmt::Write as _;
 
         match self {
             Self::Literal(lit) => {
@@ -171,7 +171,7 @@ pub struct RecordBody {
 
 impl Display for RecordBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
+        use fmt::Write as _;
 
         write!(f, "{{|\n")?;
         let mut f2 = IndentWriter::new(BASE_INDENT, &mut *f);
@@ -191,7 +191,7 @@ pub struct RecordBodyItem {
 
 impl Display for RecordBodyItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
+        use fmt::Write as _;
 
         let mut writer = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
         write!(writer, "{} {} :=\n{};", self.name, self.params, self.term)
@@ -287,7 +287,7 @@ pub struct Record {
 
 impl Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
+        use fmt::Write as _;
 
         let constructor = self.constructor.clone().unwrap_or_default();
         write!(f, "Record {} {} : {} := {constructor} {{\n", self.name, self.params, self.ty)?;

@@ -16,7 +16,7 @@
 //! the set at the same time. For example, having `x.f` and `x.f.g` in
 //! `S` at the same time is illegal.
 
-use analysis::abstract_interpretation::{AbstractState, FixpointEngine};
+use analysis::abstract_interpretation::{AbstractState as _, FixpointEngine as _};
 use analysis::domains::DefinitelyInitializedAnalysis;
 //use prusti_common::Stopwatch;
 use rr_rustc_interface::data_structures::fx::FxHashMap;

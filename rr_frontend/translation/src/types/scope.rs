@@ -12,7 +12,7 @@ use derive_more::{Constructor, Debug};
 use log::{trace, warn};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeFoldable;
+use rr_rustc_interface::middle::ty::TypeFoldable as _;
 
 use crate::base::*;
 use crate::environment::Environment;

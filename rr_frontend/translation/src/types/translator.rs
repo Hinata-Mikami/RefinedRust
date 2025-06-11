@@ -22,9 +22,11 @@ use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
 use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
-use crate::spec_parsers::enum_spec_parser::{parse_enum_refine_as, EnumSpecParser, VerboseEnumSpecParser};
+use crate::spec_parsers::enum_spec_parser::{
+    parse_enum_refine_as, EnumSpecParser as _, VerboseEnumSpecParser,
+};
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
-use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser, StructFieldSpecParser};
+use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, StructFieldSpecParser as _};
 use crate::traits::registry;
 use crate::types::scope;
 use crate::{attrs, search};
@@ -279,17 +281,19 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    return Ok(format!("ulft_{}", strip_coq_ident(name)));
+                    Ok(format!("ulft_{}", strip_coq_ident(name)))
+                } else {
+                    Err(TranslationError::UnknownEarlyRegion(region))
                 }
-                return Err(TranslationError::UnknownEarlyRegion(region));
             },
             STInner::TraitReqs(_scope) => {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    return Ok(format!("ulft_{}", strip_coq_ident(name)));
+                    Ok(format!("ulft_{}", strip_coq_ident(name)))
+                } else {
+                    Err(TranslationError::UnknownEarlyRegion(region))
                 }
-                return Err(TranslationError::UnknownEarlyRegion(region));
             },
             STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
         }
@@ -367,7 +371,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
             },
             STInner::TranslateAdt(_scope) => {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
-                return Err(TranslationError::PoloniusRegionOutsideFunction(v));
+                Err(TranslationError::PoloniusRegionOutsideFunction(v))
             },
             STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
         }

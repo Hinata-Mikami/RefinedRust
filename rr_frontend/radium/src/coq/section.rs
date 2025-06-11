@@ -9,7 +9,7 @@
 //! [Sections]: https://rocq-prover.org/doc/v8.20/refman/language/core/sections.html
 
 use derive_more::Display;
-use indent_write::indentable::Indentable;
+use indent_write::indentable::Indentable as _;
 
 use crate::{coq, BASE_INDENT};
 

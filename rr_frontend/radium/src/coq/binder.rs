@@ -75,6 +75,7 @@ impl Binder {
         }
     }
 
+    #[expect(clippy::ref_option)]
     pub(crate) const fn get_name_ref(&self) -> &Option<String> {
         match self {
             Self::Default(name, _) => name,

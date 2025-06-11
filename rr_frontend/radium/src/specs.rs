@@ -9,13 +9,13 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
-use std::fmt::Write as fmtWrite;
+use std::fmt::Write as _;
 use std::marker::PhantomData;
 use std::ops::Add;
 
 use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use log::trace;
 
 use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
@@ -24,7 +24,7 @@ use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
 /// Encodes a RR type with an accompanying refinement.
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
-impl<'def> Display for TypeWithRef<'def> {
+impl Display for TypeWithRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{} :@: {}", self.1, self.0)
     }
@@ -489,7 +489,7 @@ pub enum Type<'def> {
     RawPtr,
 }
 
-impl<'def> Display for Type<'def> {
+impl Display for Type<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "bool_t"),
@@ -544,7 +544,7 @@ impl<'def> From<&Type<'def>> for SynType {
     }
 }
 
-impl<'def> Type<'def> {
+impl Type<'_> {
     /// Make the first type in the type tree having an invariant not use the invariant.
     pub fn make_raw(&mut self) {
         match self {
@@ -1426,7 +1426,7 @@ pub struct AbstractStruct<'def> {
     is_recursive: bool,
 }
 
-impl<'def> fmt::Debug for AbstractStruct<'def> {
+impl fmt::Debug for AbstractStruct<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "AbstractStruct<name={}>", self.variant_def.name)
     }
@@ -3055,6 +3055,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         }
     }
 
+    #[expect(clippy::ref_option)]
     fn push_coq_name(&mut self, name: &Option<String>) {
         if let Some(name) = &name {
             self.coq_names.insert(name.to_owned());
@@ -3091,6 +3092,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         Err("could not find name".to_owned())
     }
 
+    #[expect(clippy::ref_option)]
     fn ensure_coq_not_bound(&self, name: &Option<String>) -> Result<(), String> {
         if let Some(name) = &name {
             if self.coq_names.contains(name) {
@@ -3302,7 +3304,7 @@ pub struct LiteralTraitSpecUse<'def> {
 pub type LiteralTraitSpecUseCell<'def> = RefCell<Option<LiteralTraitSpecUse<'def>>>;
 pub type LiteralTraitSpecUseRef<'def> = &'def LiteralTraitSpecUseCell<'def>;
 
-impl<'def> TraitReqInfo for LiteralTraitSpecUseRef<'def> {
+impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
     /// Get the associated types we need to quantify over.
     #[must_use]
     fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
@@ -3513,7 +3515,7 @@ impl TraitReqScope {
     }
 }
 
-impl<'def, T: TraitReqInfo> From<TraitReqScope> for GenericScope<'def, T> {
+impl<T: TraitReqInfo> From<TraitReqScope> for GenericScope<'_, T> {
     fn from(scope: TraitReqScope) -> Self {
         let mut generic_scope: GenericScope<'_, T> = GenericScope::empty();
         for lft in scope.quantified_lfts {
@@ -3548,7 +3550,7 @@ pub struct SpecializedTraitImpl<'def> {
     impl_inst: GenericScopeInst<'def>,
 }
 
-impl<'def> SpecializedTraitImpl<'def> {
+impl SpecializedTraitImpl<'_> {
     #[must_use]
     fn get_spec_term(&self) -> String {
         let mut out = String::new();
@@ -3588,7 +3590,7 @@ pub struct QuantifiedTraitImpl<'def> {
     scope_inst: TraitReqScopeInst,
 }
 
-impl<'def> QuantifiedTraitImpl<'def> {
+impl QuantifiedTraitImpl<'_> {
     #[must_use]
     pub(crate) fn get_spec_term(&self) -> String {
         let mut out = String::new();
@@ -3629,7 +3631,7 @@ pub struct TraitReqInst<'def, T> {
     //quantified_assoc_tys: Vec<LiteralTyParam>,
 }
 
-impl<'def, T> TraitReqInst<'def, T> {
+impl<T> TraitReqInst<'_, T> {
     #[must_use]
     const fn get_origin(&self) -> TyParamOrigin {
         self.origin
@@ -3915,7 +3917,7 @@ pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
     _phantom: PhantomData<&'def ()>,
 }
 
-impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
+impl<T: TraitReqInfo> GenericScope<'_, T> {
     /// Create an empty scope.
     #[must_use]
     pub const fn empty() -> Self {
@@ -4126,7 +4128,11 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
         let mut typarams_ty_list = String::with_capacity(100);
         write!(typarams_ty_list, "[")?;
         write_list!(typarams_ty_list, &all_params.params, "; ", |x| {
-            if as_fn { format!("({}, {})", x.refinement_type, x.syn_type) } else { x.refinement_type.clone() }
+            if as_fn {
+                format!("({}, {})", x.refinement_type, x.syn_type)
+            } else {
+                x.refinement_type.clone()
+            }
         })?;
         write!(typarams_ty_list, "]")?;
 
@@ -4152,7 +4158,7 @@ impl<'def, T: TraitReqInfo> GenericScope<'def, T> {
     }
 }
 
-impl<'def, T: TraitReqInfo + Clone> GenericScope<'def, T> {
+impl<T: TraitReqInfo + Clone> GenericScope<'_, T> {
     pub fn append(&mut self, other: &Self) {
         self.direct_tys.merge(other.direct_tys.clone());
         self.surrounding_tys.merge(other.surrounding_tys.clone());
@@ -4165,7 +4171,7 @@ impl<'def, T: TraitReqInfo + Clone> GenericScope<'def, T> {
     }
 }
 
-impl<'def, T: TraitReqInfo> Display for GenericScope<'def, T> {
+impl<T: TraitReqInfo> Display for GenericScope<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.format(f, false, false, &[], &[], &[])
     }
@@ -4416,7 +4422,7 @@ pub struct TraitSpecDecl<'def> {
     attrs: TraitSpecAttrsDecl,
 }
 
-impl<'def> TraitSpecDecl<'def> {
+impl TraitSpecDecl<'_> {
     // Get the ordered parameters that definitions of the trait are parametric over
     fn get_ordered_params(&self) -> TyParamList {
         let mut params = self.generics.get_direct_ty_params().to_owned();
@@ -4597,7 +4603,7 @@ impl<'def> TraitSpecDecl<'def> {
 }
 
 // TODO: Deprecated: Generate a coq::Document instead.
-impl<'def> Display for TraitSpecDecl<'def> {
+impl Display for TraitSpecDecl<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Section {}.\n", self.lit.name)?;
 
@@ -4814,7 +4820,7 @@ pub struct TraitImplSpec<'def> {
     pub methods: TraitInstanceSpec<'def>,
 }
 
-impl<'def> TraitImplSpec<'def> {
+impl TraitImplSpec<'_> {
     /// Generate the definition of the attribute record of this trait impl.
     #[must_use]
     pub fn generate_attr_decl(&self) -> coq::command::Definition {
@@ -4903,15 +4909,13 @@ impl<'def> TraitImplSpec<'def> {
                     coq::ltac::LTac::Literal(format!("unfold {base_name} in *; apply _")).into();
                 doc.push(vernac);
             });
-            let commands = vec![
-                coq::command::Command::Lemma(coq::command::Lemma {
-                    name: def_name.to_owned(),
-                    params,
-                    ty: coq::term::Type::Literal(specialized_semantic),
-                    body,
-                })
-                .into(),
-            ];
+            let commands = vec![coq::command::Command::Lemma(coq::command::Lemma {
+                name: def_name.to_owned(),
+                params,
+                ty: coq::term::Type::Literal(specialized_semantic),
+                body,
+            })
+            .into()];
 
             Some(coq::Document(commands))
         } else {
@@ -4992,7 +4996,7 @@ impl<'def> TraitImplSpec<'def> {
     }
 }
 
-impl<'def> Display for TraitImplSpec<'def> {
+impl Display for TraitImplSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
             section.push(coq::command::Context::refinedrust());

@@ -67,7 +67,7 @@
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
           file = ./rust-toolchain.toml;
-          sha256 = "sha256-GaU9WDiYBYSzYrUH8W+LODUvq1/epehgCmoX2YfnkiM=";
+          sha256 = "sha256-bz3WHxOpv8RFH754gIn2WUpDCDzxA1JHqjsb+C5uJiQ=";
         };
 
         env = (crane.mkLib pkgs).overrideToolchain rust.toolchain;
@@ -149,7 +149,10 @@
                 --set DYLD_FALLBACK_LIBRARY_PATH "${rust.lib}"
 
               wrapProgram $out/bin/${pname} \
-                --set PATH "${makeSearchPath "bin" buildInputs}"
+                --set PATH "${makeSearchPath "bin" buildInputs}" \
+                --set LD_LIBRARY_PATH "${rust.lib}" \
+                --set DYLD_FALLBACK_LIBRARY_PATH "${rust.lib}"
+
             '';
 
             doCheck = false;

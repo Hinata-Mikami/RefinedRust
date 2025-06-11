@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Write as _};
 use std::marker::PhantomData;
 use std::{fs, io};
 

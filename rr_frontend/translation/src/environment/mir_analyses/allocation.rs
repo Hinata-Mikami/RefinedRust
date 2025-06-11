@@ -14,7 +14,7 @@
 //! current statement `x` was allocated with `StorageLive(x)` and was not
 //! deallocated with `StorageDead(x)`.
 
-use analysis::abstract_interpretation::{AbstractState, FixpointEngine};
+use analysis::abstract_interpretation::{AbstractState as _, FixpointEngine as _};
 use analysis::domains::DefinitelyAllocatedAnalysis;
 use rr_rustc_interface::middle::mir;
 

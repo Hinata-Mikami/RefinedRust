@@ -9,7 +9,7 @@
 //! [inductive]: https://rocq-prover.org/doc/v8.20/refman/language/core/inductive.html#inductive-types-and-recursive-functions
 
 use derive_more::{Constructor, Display};
-use indent_write::indentable::Indentable;
+use indent_write::indentable::Indentable as _;
 
 use crate::coq::binder;
 use crate::{display_list, BASE_INDENT};

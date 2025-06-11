@@ -12,13 +12,13 @@ use std::collections::{HashMap, HashSet};
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeFolder;
+use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::target;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::{polonius_info, Environment};
-use crate::regions::region_bi_folder::RegionBiFolder;
+use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::regions::TyRegionCollectFolder;
 use crate::traits;
 use crate::traits::resolution;

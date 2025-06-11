@@ -10,7 +10,7 @@ use std::fmt;
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;
 use log::trace;
-use parse::Peek;
+use parse::Peek as _;
 use radium::{coq, specs};
 use regex::{Captures, Regex};
 

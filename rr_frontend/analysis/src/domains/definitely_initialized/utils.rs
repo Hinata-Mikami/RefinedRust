@@ -29,13 +29,13 @@ impl<'tcx> From<mir::Place<'tcx>> for Place<'tcx> {
     }
 }
 
-impl<'tcx> From<mir::Local> for Place<'tcx> {
+impl From<mir::Local> for Place<'_> {
     fn from(local: mir::Local) -> Self {
         Self(local.into())
     }
 }
 
-impl<'tcx> fmt::Debug for Place<'tcx> {
+impl fmt::Debug for Place<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }

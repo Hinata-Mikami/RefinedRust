@@ -7,7 +7,7 @@
 /// Parsing of `RefinedRust` struct specifications.
 use attribute_parse::{parse, MToken};
 use log::info;
-use parse::{Parse, Peek};
+use parse::{Parse, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::ast;
 

@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{debug, trace};
-use rr_rustc_interface::middle::ty::fold::TypeFolder;
+use rr_rustc_interface::middle::ty::fold::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{data_structures, polonius_engine};
 
@@ -419,7 +419,10 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .collect();
         trace!(
             "[exit] get_loans_dying_between {:?}, {:?}, {}, dying_loans={:?}",
-            initial_loc, final_loc, zombie, dying_loans
+            initial_loc,
+            final_loc,
+            zombie,
+            dying_loans
         );
         dying_loans
     }

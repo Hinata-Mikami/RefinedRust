@@ -9,7 +9,7 @@ use std::mem;
 
 use attribute_parse::{parse, MToken};
 use log::{info, warn};
-use parse::{Parse, Peek};
+use parse::{Parse, Peek as _};
 use radium::{coq, model, push_str_list, specs};
 use rr_rustc_interface::ast;
 use rr_rustc_interface::middle::ty;

@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -116,7 +116,11 @@ pub fn format_atomic_region_direct(
 }
 
 pub fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
-    if let ty::RegionKind::ReVar(vid) = r.kind() { vid.into() } else { panic!() }
+    if let ty::RegionKind::ReVar(vid) = r.kind() {
+        vid.into()
+    } else {
+        panic!()
+    }
 }
 
 /// A `TypeFolder` that finds all regions occurring in a type.

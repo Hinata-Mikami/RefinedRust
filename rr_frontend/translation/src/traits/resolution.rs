@@ -5,9 +5,9 @@ use std::collections::HashMap;
 /// <https://github.com/xldenis/creusot/blob/9d8b1822cd0c43154a6d5d4d05460be56710399c/creusot/src/translation/traits.rs>
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
-use rr_rustc_interface::infer::infer::TyCtxtInferExt;
+use rr_rustc_interface::infer::infer::TyCtxtInferExt as _;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeVisitableExt;
+use rr_rustc_interface::middle::ty::TypeVisitableExt as _;
 use rr_rustc_interface::{middle, trait_selection};
 use trait_selection::{infer, solve};
 

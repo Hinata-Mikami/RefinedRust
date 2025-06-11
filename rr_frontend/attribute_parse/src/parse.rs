@@ -557,7 +557,11 @@ mod value {
     /// past the end of the input buffer.
     pub fn byte<S: AsRef<[u8]> + ?Sized>(s: &S, idx: usize) -> u8 {
         let s = s.as_ref();
-        if idx < s.len() { s[idx] } else { 0 }
+        if idx < s.len() {
+            s[idx]
+        } else {
+            0
+        }
     }
 }
 
@@ -1054,7 +1058,7 @@ struct PrivateIter<'a, T: 'a, P: 'a> {
 }
 
 // No Clone bound on T.
-impl<'a, T> Clone for Iter<'a, T> {
+impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
         Iter {
             inner: self.inner.clone_box(),
@@ -1074,13 +1078,13 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+impl<T> DoubleEndedIterator for Iter<'_, T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
     }
 }
 
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+impl<T> ExactSizeIterator for Iter<'_, T> {
     fn len(&self) -> usize {
         self.inner.len()
     }
@@ -1094,20 +1098,20 @@ impl<'a, T, P> Iterator for PrivateIter<'a, T, P> {
     }
 }
 
-impl<'a, T, P> DoubleEndedIterator for PrivateIter<'a, T, P> {
+impl<T, P> DoubleEndedIterator for PrivateIter<'_, T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.last.next().or_else(|| self.inner.next_back().map(|pair| &pair.0))
     }
 }
 
-impl<'a, T, P> ExactSizeIterator for PrivateIter<'a, T, P> {
+impl<T, P> ExactSizeIterator for PrivateIter<'_, T, P> {
     fn len(&self) -> usize {
         self.inner.len() + self.last.len()
     }
 }
 
 // No Clone bound on T or P.
-impl<'a, T, P> Clone for PrivateIter<'a, T, P> {
+impl<T, P> Clone for PrivateIter<'_, T, P> {
     fn clone(&self) -> Self {
         PrivateIter {
             inner: self.inner.clone(),

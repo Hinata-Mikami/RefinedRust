@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::TypeSuperFoldable;
+use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 
 /// A `TypeFolder` that gathers all the type variables.
 pub struct TyVarFolder<'tcx> {

@@ -17,7 +17,7 @@ use crate::spec_parsers::parse_utils::{self, str_err};
 /// - `rr::import("A.B.C`", "D"), which will import the Coq path "A.B.C.D"
 pub trait CrateAttrParser {
     fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a ast::ast::AttrItem])
-    -> Result<CrateAttrs, String>;
+        -> Result<CrateAttrs, String>;
 }
 
 #[derive(Clone, Debug)]

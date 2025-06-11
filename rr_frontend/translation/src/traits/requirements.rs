@@ -17,6 +17,7 @@ use crate::search;
 
 /// Determine the origin of a trait obligation.
 /// `surrounding_reqs` are the requirements of a surrounding impl or decl.
+#[expect(clippy::ref_option)]
 fn determine_origin_of_trait_requirement<'tcx>(
     did: DefId,
     tcx: ty::TyCtxt<'tcx>,

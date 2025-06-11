@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 
 use derive_more::Debug;
 use log::info;
-use rr_rustc_interface::middle::ty::TypeFolder;
+use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;

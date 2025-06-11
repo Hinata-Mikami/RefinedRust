@@ -19,7 +19,7 @@ use crate::spec_parsers::parse_utils::{
 /// - `rr::exists("x" : "Prop")`, which will declare a specification attribute "x" of the given type "Prop"
 pub trait TraitAttrParser {
     fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a ast::ast::AttrItem])
-    -> Result<TraitAttrs, String>;
+        -> Result<TraitAttrs, String>;
 }
 
 /// Extends an existing scope with additional literals of attributes parsed so far.

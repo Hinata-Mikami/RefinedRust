@@ -10,7 +10,7 @@ use std::{env, mem};
 
 use config::{Config, Environment, File, FileFormat};
 use lazy_static::lazy_static;
-use path_clean::PathClean;
+use path_clean::PathClean as _;
 use serde::Deserialize;
 
 pub mod arg_value;

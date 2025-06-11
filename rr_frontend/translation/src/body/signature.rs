@@ -22,7 +22,7 @@ use crate::environment::procedure::Procedure;
 use crate::environment::{dump_borrowck_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser, VerboseFunctionSpecParser,
+    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
 };
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};

@@ -20,9 +20,9 @@ use crate::environment::Environment;
 use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{
-    get_declared_trait_attrs, TraitAttrParser, VerboseTraitAttrParser,
+    get_declared_trait_attrs, TraitAttrParser as _, VerboseTraitAttrParser,
 };
-use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser, VerboseTraitImplAttrParser};
+use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, procedures, traits, types};
@@ -559,7 +559,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         trace!(
                             "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                            trait_use.bound_regions, trait_use.trait_ref.args, subst_args
+                            trait_use.bound_regions,
+                            trait_use.trait_ref.args,
+                            subst_args
                         );
 
                         // compute the instantiation of the quantified trait assumption in terms

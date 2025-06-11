@@ -7,7 +7,7 @@
 use std::collections::HashSet;
 
 use attribute_parse::{parse, MToken};
-use parse::{Parse, Peek};
+use parse::{Parse, Peek as _};
 use radium::{coq, model, specs};
 use rr_rustc_interface::ast;
 

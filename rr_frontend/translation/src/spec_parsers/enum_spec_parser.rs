@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use attribute_parse::{parse, MToken};
-use parse::Peek;
+use parse::Peek as _;
 use radium::{coq, specs};
 use rr_rustc_interface::ast;
 

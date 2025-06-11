@@ -139,8 +139,11 @@ pub fn try_resolve_trait_impl_did<'tcx>(
         let mut unification_map = HashMap::new();
 
         // this is a non-blanket impl
-        let simplified_type =
-            ty::fast_reject::simplify_type(tcx, for_type, ty::fast_reject::TreatParams::AsCandidateKey)?;
+        let simplified_type = ty::fast_reject::simplify_type(
+            tcx,
+            for_type,
+            ty::fast_reject::TreatParams::InstantiateWithInfer,
+        )?;
         let defs = impls.non_blanket_impls().get(&simplified_type)?;
         info!("found non-blanket implementations: {:?}", defs);
 
@@ -230,7 +233,7 @@ where
                     }
 
                     let did: DefId = item.res.def_id();
-                    let impls: &[DefId] = tcx.inherent_impls(did).ok()?;
+                    let impls: &[DefId] = tcx.inherent_impls(did);
                     trace!("trying to find method among impls {:?}", impls);
                     if impls.is_empty() {
                         trace!("children: {:?}", tcx.module_children(item.res.def_id()));
@@ -272,7 +275,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
         Some((
-            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(),
             3,
         ))
     } else if path[0..3] == ["core", "ptr", "const_ptr"] {
@@ -284,23 +287,17 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         let mut_ptr_ty = tcx.mk_ty_from_kind(mut_ptr_ty);
 
         Some((
-            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+            ty::fast_reject::simplify_type(tcx, mut_ptr_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(),
             3,
         ))
     } else if path[0..2] == ["core", "bool"] {
         let int_ty = ty::TyKind::Bool;
         let int_ty = tcx.mk_ty_from_kind(int_ty);
-        Some((
-            ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
-            2,
-        ))
+        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(), 2))
     } else if path[0..2] == ["core", "char"] {
         let int_ty = ty::TyKind::Char;
         let int_ty = tcx.mk_ty_from_kind(int_ty);
-        Some((
-            ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
-            2,
-        ))
+        Some((ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(), 2))
     } else if path[0..2] == ["core", "num"] {
         let int_ty = match path[2].as_str() {
             "isize" => Some(ty::IntTy::Isize),
@@ -326,7 +323,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
             let int_ty = tcx.mk_ty_from_kind(int_ty);
 
             Some((
-                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(),
                 3,
             ))
         } else if let Some(uint_ty) = uint_ty {
@@ -334,7 +331,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
             let int_ty = tcx.mk_ty_from_kind(int_ty);
 
             Some((
-                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::ForLookup).unwrap(),
+                ty::fast_reject::simplify_type(tcx, int_ty, ty::fast_reject::TreatParams::AsRigid).unwrap(),
                 3,
             ))
         } else {
@@ -348,7 +345,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
 
     if let Some((simplified_ty, method_idx)) = simplified_ty {
         if let Some(method) = path.get(method_idx) {
-            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty).ok()?;
+            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
 
             trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
 

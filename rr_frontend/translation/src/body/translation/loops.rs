@@ -12,7 +12,7 @@ use super::TX;
 use crate::attrs;
 use crate::base::*;
 use crate::environment::mir_analyses::initialization;
-use crate::spec_parsers::loop_attr_parser::{LoopAttrParser, VerboseLoopAttrParser};
+use crate::spec_parsers::loop_attr_parser::{LoopAttrParser as _, VerboseLoopAttrParser};
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Parse the attributes on spec closure `did` as loop annotations and add it as an invariant

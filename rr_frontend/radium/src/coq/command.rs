@@ -12,7 +12,7 @@ use std::fmt;
 
 use derive_more::Display;
 use from_variants::FromVariants;
-use indent_write::indentable::Indentable;
+use indent_write::indentable::Indentable as _;
 
 use crate::coq::{binder, eval, inductive, module, proof, section, syntax, term, Attribute};
 use crate::BASE_INDENT;
@@ -205,7 +205,11 @@ impl Context {
 
 impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.items.0.is_empty() { Ok(()) } else { write!(f, "Context {}.", self.items) }
+        if self.items.0.is_empty() {
+            Ok(())
+        } else {
+            write!(f, "Context {}.", self.items)
+        }
     }
 }
 

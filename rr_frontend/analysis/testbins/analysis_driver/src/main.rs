@@ -5,7 +5,6 @@
 // https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/obtain-borrowck/driver.rs
 
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use analysis::abstract_interpretation::FixpointEngine;
 use analysis::domains::DefinitelyInitializedAnalysis;
@@ -51,6 +50,7 @@ fn get_attribute<'tcx>(
                     },
                 args: ast::AttrArgs::Empty,
                 tokens: _,
+                unsafety: _,
             } => {
                 segments.len() == 2
                     && segments[0].ident.as_str() == segment1
@@ -171,7 +171,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
                 // SAFETY: This is safe because we are feeding in the same `tcx`
                 // that was used to store the data.
                 let mut body_with_facts = unsafe { mir_storage::retrieve_mir_body(tcx, local_def_id) };
-                body_with_facts.output_facts = Some(Rc::new(Output::compute(
+                body_with_facts.output_facts = Some(Box::new(Output::compute(
                     body_with_facts.input_facts.as_ref().unwrap(),
                     Algorithm::Naive,
                     true,
@@ -184,8 +184,8 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         let result = DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
                             .run_fwd_analysis();
                         match result {
-                            Ok(state) => {
-                                println!("{}", serde_json::to_string_pretty(&state).unwrap())
+                            Ok(_state) => {
+                                //println!("{}", serde_json::to_string_pretty(&state).unwrap())
                             },
                             Err(e) => eprintln!("{}", e.to_pretty_str(body)),
                         }
@@ -207,8 +207,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 fn main() {
     env_logger::init();
     let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable(
-        errors::emitter::HumanReadableErrorType::Default(errors::emitter::ColorConfig::Auto),
-    ));
+        errors::emitter::HumanReadableErrorType::Default, errors::emitter::ColorConfig::Auto));
     rr_rustc_interface::driver::init_rustc_env_logger(&error_handler);
     let mut compiler_args = Vec::new();
     let mut callback_args = Vec::new();

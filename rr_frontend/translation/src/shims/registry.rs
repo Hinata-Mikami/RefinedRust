@@ -270,7 +270,7 @@ pub struct SR<'a> {
 
 impl<'a> SR<'a> {
     fn get_shim_kind(v: &serde_json::Value) -> Result<ShimKind, Error> {
-        let obj = v.as_object().ok_or_else(|| Error::NotAnObject)?;
+        let obj = v.as_object().ok_or(Error::NotAnObject)?;
         let vk = obj.get("kind").ok_or_else(|| Error::MissingField("kind".to_owned()))?;
         let kind_str = vk.as_str().ok_or_else(|| Error::Type {
             attribute: "kind".to_owned(),

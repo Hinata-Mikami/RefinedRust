@@ -7,8 +7,8 @@
 use std::collections::btree_map;
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::visit::TypeVisitableExt;
-use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable};
+use rr_rustc_interface::middle::ty::visit::TypeVisitableExt as _;
+use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable as _};
 
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::regions;

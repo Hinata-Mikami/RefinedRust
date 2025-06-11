@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use log::{debug, info};
 use rr_rustc_interface::data_structures::graph::dominators::dominators;
-use rr_rustc_interface::index::{Idx, IndexVec};
+use rr_rustc_interface::index::{Idx as _, IndexVec};
 use rr_rustc_interface::middle::mir;
 
 use crate::environment::mir_utils::real_edges::RealEdges;

@@ -8,7 +8,7 @@
 
 use std::collections::HashSet;
 
-use rr_rustc_interface::middle::ty::TypeFolder;
+use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::environment::borrowck::facts;

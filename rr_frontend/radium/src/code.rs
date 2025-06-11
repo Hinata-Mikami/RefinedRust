@@ -7,12 +7,12 @@
 /// Provides the Coq AST for code and specifications as well as utilities for
 /// constructing them.
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Write as fmtWrite;
-use std::io::Write as ioWrite;
+use std::fmt::Write as _;
+use std::io::Write as _;
 use std::{fmt, io};
 
 use derive_more::{Constructor, Display};
-use indent_write::indentable::Indentable;
+use indent_write::indentable::Indentable as _;
 use indent_write::io::IndentWriter;
 use indoc::{formatdoc, writedoc};
 use log::info;
@@ -21,6 +21,7 @@ use typed_arena::Arena;
 use crate::specs::*;
 use crate::{coq, display_list, make_indent, model, write_list, BASE_INDENT};
 
+#[expect(clippy::ref_option)]
 fn fmt_comment(o: &Option<String>) -> String {
     match o {
         None => String::new(),
@@ -28,6 +29,7 @@ fn fmt_comment(o: &Option<String>) -> String {
     }
 }
 
+#[expect(clippy::ref_option)]
 fn fmt_option<T: Display>(o: &Option<T>) -> String {
     match o {
         None => "None".to_owned(),
@@ -803,7 +805,7 @@ pub struct Function<'def> {
     extra_link_assum: Vec<String>,
 }
 
-impl<'def> Function<'def> {
+impl Function<'_> {
     /// Get the name of the function.
     #[must_use]
     pub fn name(&self) -> &str {
@@ -1170,7 +1172,7 @@ pub enum UsedProcedureSpec<'def> {
     TraitMethod(QuantifiedTraitImpl<'def>, String),
 }
 
-impl<'def> Display for UsedProcedureSpec<'def> {
+impl Display for UsedProcedureSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Literal(lit, _) => {
@@ -1218,7 +1220,7 @@ pub struct UsedProcedure<'def> {
     syntype_of_all_args: Vec<SynType>,
 }
 
-impl<'def> UsedProcedure<'def> {
+impl UsedProcedure<'_> {
     fn get_trait_req_incl_term(&self) -> Result<String, fmt::Error> {
         let mut term = String::new();
         match &self.spec_term {
@@ -1312,7 +1314,7 @@ impl<'def> UsedProcedure<'def> {
     }
 }
 
-impl<'def> Display for UsedProcedure<'def> {
+impl Display for UsedProcedure<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // quantify
         write!(f, "(<tag_type> {} ", self.quantified_scope)?;

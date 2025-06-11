@@ -20,11 +20,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // TODO: Use `TryFrom` instead
-        fn translate_literal<'tcx, T, U>(
-            sc: Result<T, U>,
+        fn translate_literal<'tcx, T>(
+            sc: mir::interpret::InterpResult<'tcx, T>,
             fptr: fn(T) -> radium::Literal,
         ) -> Result<radium::Expr, TranslationError<'tcx>> {
-            sc.map_or(Err(TranslationError::InvalidLayout), |lit| Ok(radium::Expr::Literal(fptr(lit))))
+            sc.discard_err()
+                .map_or(Err(TranslationError::InvalidLayout), |lit| Ok(radium::Expr::Literal(fptr(lit))))
         }
 
         match ty.kind() {
