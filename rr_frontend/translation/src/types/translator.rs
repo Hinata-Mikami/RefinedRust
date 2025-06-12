@@ -112,20 +112,20 @@ pub struct AdtState<'a, 'tcx, 'def> {
     deps: &'a mut HashSet<DefId>,
     /// scope to track parameters
     scope: &'a scope::Params<'tcx, 'def>,
-    /// the current paramenv
-    param_env: &'a ty::ParamEnv<'tcx>,
+    /// the current typingenv
+    typing_env: &'a ty::TypingEnv<'tcx>,
 }
 
 impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
     pub fn new(
         deps: &'a mut HashSet<DefId>,
         scope: &'a scope::Params<'tcx, 'def>,
-        param_env: &'a ty::ParamEnv<'tcx>,
+        typing_env: &'a ty::TypingEnv<'tcx>,
     ) -> Self {
         Self {
             deps,
             scope,
-            param_env,
+            typing_env,
         }
     }
 }
@@ -135,8 +135,8 @@ impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
 pub struct TraitState<'a, 'tcx, 'def> {
     /// scope to track parameters
     scope: scope::Params<'tcx, 'def>,
-    /// the current paramenv
-    param_env: ty::ParamEnv<'tcx>,
+    /// the current typing env
+    typing_env: ty::TypingEnv<'tcx>,
     /// optional Polonius Info for the current function
     #[debug(ignore)]
     polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
@@ -148,7 +148,7 @@ pub struct TraitState<'a, 'tcx, 'def> {
 #[derive(Constructor, Debug)]
 pub struct CalleeState<'a, 'tcx, 'def> {
     /// the env of the caller
-    param_env: &'a ty::ParamEnv<'tcx>,
+    typing_env: &'a ty::TypingEnv<'tcx>,
     /// the generic scope of the caller
     param_scope: &'a scope::Params<'tcx, 'def>,
 }
@@ -215,19 +215,19 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         params: scope::Params<'tcx, 'def>,
     ) -> STInner<'b, 'def, 'tcx> {
-        let param_env = self.get_param_env(tcx);
-        let state = TraitState::new(params, param_env, self.polonius_info(), self.polonius_region_map());
+        let typing_env = self.get_typing_env(tcx);
+        let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
         let state = STInner::TraitReqs(state);
         state
     }
 
     /// Get the `ParamEnv` for the current state.
-    pub fn get_param_env(&self, tcx: ty::TyCtxt<'tcx>) -> ty::ParamEnv<'tcx> {
+    pub fn get_typing_env(&self, tcx: ty::TyCtxt<'tcx>) -> ty::TypingEnv<'tcx> {
         match &self {
-            Self::InFunction(state) => tcx.param_env(state.did),
-            Self::TranslateAdt(state) => *state.param_env,
-            Self::CalleeTranslation(state) => *state.param_env,
-            Self::TraitReqs(state) => state.param_env,
+            Self::InFunction(state) => ty::TypingEnv::post_analysis(tcx, state.did),
+            Self::TranslateAdt(state) => *state.typing_env,
+            Self::CalleeTranslation(state) => *state.typing_env,
+            Self::TraitReqs(state) => state.typing_env,
         }
     }
 
@@ -237,8 +237,8 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         ty: ty::Ty<'tcx>,
     ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
-        let param_env = self.get_param_env(tcx);
-        tcx.try_normalize_erasing_regions(param_env, ty)
+        let typing_env = self.get_typing_env(tcx);
+        tcx.try_normalize_erasing_regions(typing_env, ty)
             .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
     }
 
@@ -515,7 +515,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Returns the Radium enum representation according to the Rust representation options.
-    fn get_enum_representation(repr: &ty::ReprOptions) -> Result<radium::EnumRepr, TranslationError<'tcx>> {
+    fn get_enum_representation(repr: &abi::ReprOptions) -> Result<radium::EnumRepr, TranslationError<'tcx>> {
         if repr.c() {
             return Ok(radium::EnumRepr::ReprC);
         }
@@ -547,7 +547,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Returns the Radium structure representation according to the Rust representation options.
     fn get_struct_representation(
-        repr: &ty::ReprOptions,
+        repr: &abi::ReprOptions,
     ) -> Result<radium::StructRepr, TranslationError<'tcx>> {
         if repr.c() {
             return Ok(radium::StructRepr::ReprC);
@@ -939,13 +939,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut deps = HashSet::new();
         let mut scope = scope::Params::from(generics.own_params.as_slice());
         scope.add_param_env(adt.did(), self.env(), self, self.trait_registry())?;
-        let param_env = self.env.tcx().param_env(adt.did());
+
+        let tcx = self.env.tcx();
+        let typing_env = ty::TypingEnv::post_analysis(tcx, adt.did());
 
         // to account for recursive structs and enable establishing circular references,
         // we first generate a dummy struct (None)
         let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
-        let tcx = self.env.tcx();
         let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
 
         self.variant_registry
@@ -959,7 +960,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &struct_name,
                 ty,
                 adt,
-                &mut AdtState::new(&mut deps, &scope, &param_env),
+                &mut AdtState::new(&mut deps, &scope, &typing_env),
             )?;
 
             let mut struct_def = radium::AbstractStruct::new(variant_def, scope.into());
@@ -1061,7 +1062,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
             let ty = self.translate_type_in_state(
                 f_ty,
-                &mut STInner::TranslateAdt(AdtState::new(adt_deps.deps, adt_deps.scope, adt_deps.param_env)),
+                &mut STInner::TranslateAdt(AdtState::new(adt_deps.deps, adt_deps.scope, adt_deps.typing_env)),
             )?;
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
@@ -1135,6 +1136,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn build_discriminant_map(
         &self,
         def: ty::AdtDef<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         signed: bool,
     ) -> Result<HashMap<String, radium::Int128>, TranslationError<'tcx>> {
         let mut map: HashMap<String, radium::Int128> = HashMap::new();
@@ -1152,7 +1154,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         .env
                         .tcx()
                         .const_eval_global_id_for_typeck(
-                            ty::ParamEnv::empty(),
+                            typing_env,
                             self.make_global_id_for_discr(did, &[]),
                             span::DUMMY_SP,
                         )
@@ -1280,7 +1282,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         scope.add_param_env(def.did(), self.env(), self, self.trait_registry())?;
 
         let mut deps = HashSet::new();
-        let param_env = tcx.param_env(def.did());
+        let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
 
         // pre-register the enum for recursion
         let enum_def_init = self.enum_arena.alloc(RefCell::new(None));
@@ -1308,7 +1310,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     struct_name.as_str(),
                     v,
                     def,
-                    &mut AdtState::new(&mut deps, &scope, &param_env),
+                    &mut AdtState::new(&mut deps, &scope, &typing_env),
                 )?;
 
                 let mut struct_def = radium::AbstractStruct::new(variant_def, scope.clone().into());
@@ -1339,7 +1341,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let translated_it = TX::translate_integer_type(it);
 
             // build the discriminant map
-            let discrs = self.build_discriminant_map(def, it_is_signed)?;
+            let discrs = self.build_discriminant_map(def, typing_env, it_is_signed)?;
 
             // get representation options
             let repr = Self::get_enum_representation(&def.repr())?;
@@ -1748,15 +1750,15 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         self.translate_type_in_state(ty, &mut STInner::InFunction(&mut *scope))
     }
 
-    /// Translate type in an empty scope.
+    /// Translate type in the given scope.
     pub fn translate_type_in_scope(
         &self,
         scope: &scope::Params<'tcx, 'def>,
+        typing_env: ty::TypingEnv<'tcx>,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         let mut deps = HashSet::new();
-        let param_env = ty::ParamEnv::empty();
-        let state = AdtState::new(&mut deps, scope, &param_env);
+        let state = AdtState::new(&mut deps, scope, &typing_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
     }
 

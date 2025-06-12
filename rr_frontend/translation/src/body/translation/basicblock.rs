@@ -169,10 +169,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | mir::StatementKind::ConstEvalCounter
                 // ignore
                 | mir::StatementKind::Nop
-                // just ignore
+                // just ignore 
                 | mir::StatementKind::StorageLive(_)
                 // just ignore
                 | mir::StatementKind::StorageDead(_)
+                // just ignore
+                | mir::StatementKind::BackwardIncompatibleDropHint { .. }
                 // just ignore retags
                 | mir::StatementKind::Retag(_, _) => (),
             }

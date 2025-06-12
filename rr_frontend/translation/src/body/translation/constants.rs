@@ -166,8 +166,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Const::Val(val, ty) => self.translate_constant_value(*val, *ty),
             mir::Const::Unevaluated(c, ty) => {
                 // call const evaluation
-                let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(self.proc.get_id());
-                match self.env.tcx().const_eval_resolve(param_env, *c, span::DUMMY_SP) {
+                let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), self.proc.get_id());
+                match self.env.tcx().const_eval_resolve(typing_env, *c, span::DUMMY_SP) {
                     Ok(res) => self.translate_constant_value(res, *ty),
                     Err(e) => match e {
                         mir::interpret::ErrorHandled::Reported(_, _) => {

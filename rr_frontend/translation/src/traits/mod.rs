@@ -66,13 +66,13 @@ pub type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.
 pub fn get_trait_assoc_constraints<'tcx>(
     env: &Environment<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> HashMap<String, ty::Ty<'tcx>> {
     let mut assoc_ty_map = HashMap::new();
 
     // TODO: check if caller_bounds does the right thing for implied bounds
-    let clauses = param_env.caller_bounds();
+    let clauses = typing_env.param_env.caller_bounds();
     for cl in clauses {
         let cl_kind = cl.kind();
         let cl_kind = cl_kind.skip_binder();

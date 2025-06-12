@@ -18,17 +18,18 @@ use crate::regions::region_bi_folder::RegionBiFolder;
 /// Normalize a type in the given environment.
 pub fn normalize_type<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: T,
 ) -> Result<T, Vec<trait_selection::traits::FulfillmentError<'tcx>>>
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     // TODO: should we normalize like this also below?
-    let infer_ctx: infer::InferCtxt<'tcx> = tcx.infer_ctxt().with_next_trait_solver(true).build();
+    let infer_ctx: infer::InferCtxt<'tcx> =
+        tcx.infer_ctxt().with_next_trait_solver(true).build(typing_env.typing_mode);
 
     let obligation_cause = middle::traits::ObligationCause::dummy();
-    let at = infer_ctx.at(&obligation_cause, param_env);
+    let at = infer_ctx.at(&obligation_cause, typing_env.param_env);
 
     solve::deeply_normalize(at, ty)
 
@@ -44,15 +45,15 @@ where
 /// `did` can be the id of a trait, or the id of an associated item of a trait.
 pub fn resolve_impl_source<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<trait_selection::traits::ImplSource<'tcx, ()>> {
     // we erase regions, because candidate selection cannot deal with open region variables
     trace!("args before erasing: {substs:?}");
-    let erased_substs = tcx.normalize_erasing_regions(param_env, substs);
-    //let erased_substs = normalize_type(tcx, param_env, substs).unwrap();
+    let erased_substs = tcx.normalize_erasing_regions(typing_env, substs);
+    //let erased_substs = normalize_type(tcx, typing_env, substs).unwrap();
     trace!("erased args: {erased_substs:?}");
     let erased_substs = arg_folder::relabel_late_bounds(erased_substs, tcx);
     trace!("erased args: {erased_substs:?}");
@@ -60,11 +61,11 @@ pub fn resolve_impl_source<'tcx>(
     // Check if the `did` is an associated item
     let trait_ref = if let Some(item) = tcx.opt_associated_item(did) {
         match item.container {
-            ty::AssocItemContainer::TraitContainer => {
+            ty::AssocItemContainer::Trait => {
                 // this is part of a trait declaration
                 ty::TraitRef::new(tcx, item.container_id(tcx), erased_substs)
             },
-            ty::AssocItemContainer::ImplContainer => {
+            ty::AssocItemContainer::Impl => {
                 // this is part of an implementation of a trait
                 tcx.impl_trait_ref(item.container_id(tcx))?.instantiate(tcx, erased_substs)
             },
@@ -79,13 +80,13 @@ pub fn resolve_impl_source<'tcx>(
     };
 
     trace!("selecting codegen candidate for {trait_ref:?}");
-    let res = tcx.codegen_select_candidate((param_env, trait_ref)).ok()?;
-    Some(recover_lifetimes_for_impl_source(tcx, param_env, substs, res, below_binders))
+    let res = tcx.codegen_select_candidate(typing_env.as_query_input(trait_ref)).ok()?;
+    Some(recover_lifetimes_for_impl_source(tcx, typing_env, substs, res, below_binders))
 }
 
 fn recover_lifetimes_for_impl_source<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     substs: ty::GenericArgsRef<'tcx>,
     impl_source: &'tcx trait_selection::traits::ImplSource<'tcx, ()>,
     below_binders: ty::Binder<'tcx, ()>,
@@ -119,11 +120,11 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 
             // normalize both args first, taking into account the late bound binders
             let bound_impl_args = below_binders.rebind(impl_args);
-            let impl_args = normalize_type(tcx, param_env, bound_impl_args).unwrap();
+            let impl_args = normalize_type(tcx, typing_env, bound_impl_args).unwrap();
             let impl_args = impl_args.skip_binder();
 
             let bound_required_args = below_binders.rebind(required_args);
-            let required_args = normalize_type(tcx, param_env, bound_required_args).unwrap();
+            let required_args = normalize_type(tcx, typing_env, bound_required_args).unwrap();
             let required_args = required_args.skip_binder();
 
             // find the mapping
@@ -176,7 +177,7 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 }
 
 // Design for type unification:
-// - we get a trait_ref, param_env and the resolved ImplSource.
+// - we get a trait_ref, typing_env and the resolved ImplSource.
 // - the impl args have erased lifetimes.
 // - given the impl args, compute the corresponding trait args
 // - can lifetime args appear in impl args that are not also mentioned in trait args? no, probably not. Maybe
@@ -189,13 +190,13 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 /// `did` should be the id of a trait.
 pub fn resolve_trait<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
 ) -> Option<(DefId, ty::GenericArgsRef<'tcx>, TraitResolutionKind)> {
     if tcx.is_trait(did) {
-        let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders);
+        let impl_source = resolve_impl_source(tcx, typing_env, did, substs, below_binders);
         info!("trait impl_source for {:?}: {:?}", did, impl_source);
         match impl_source? {
             trait_selection::traits::ImplSource::UserDefined(impl_data) => {
@@ -223,7 +224,7 @@ pub enum TraitResolutionKind {
 /// `did` should be the id of a trait item.
 pub fn resolve_assoc_item<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     did: DefId,
     substs: ty::GenericArgsRef<'tcx>,
     below_binders: ty::Binder<'tcx, ()>,
@@ -242,7 +243,7 @@ pub fn resolve_assoc_item<'tcx>(
 
     let trait_ref = ty::TraitRef::from_method(tcx, tcx.trait_of_item(did).unwrap(), substs);
 
-    let impl_source = resolve_impl_source(tcx, param_env, did, substs, below_binders)?;
+    let impl_source = resolve_impl_source(tcx, typing_env, did, substs, below_binders)?;
     info!("trait impl_source for {:?}: {:?}", did, impl_source);
 
     match impl_source {
@@ -265,13 +266,14 @@ pub fn resolve_assoc_item<'tcx>(
             }
 
             // Translate the original substitution into one on the selected impl method
-            let infcx = tcx.infer_ctxt().build();
 
-            let param_env = param_env.with_reveal_all_normalized(tcx);
+            let typing_env = typing_env.with_reveal_all_normalized(tcx);
+            let infcx = tcx.infer_ctxt().build(typing_env.typing_mode);
+
             let substs = substs.rebase_onto(tcx, trait_did, impl_data.args);
             let substs = trait_selection::traits::translate_args(
                 &infcx,
-                param_env,
+                typing_env.param_env,
                 impl_data.impl_def_id,
                 substs,
                 leaf_def.defining_node,

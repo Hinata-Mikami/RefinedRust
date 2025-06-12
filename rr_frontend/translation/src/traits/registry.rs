@@ -438,11 +438,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
 
-        let current_param_env: ty::ParamEnv<'tcx> = state.get_param_env(self.env.tcx());
-        trace!("current param env: {current_param_env:?}");
+        let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
+        trace!("current typing env: {current_typing_env:?}");
 
-        let callee_param_env = self.env.tcx().param_env(did);
-        trace!("callee param env {callee_param_env:?}");
+        let callee_typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), did);
+        trace!("callee typing env {callee_typing_env:?}");
 
         // Get the trait requirements of the callee
         let callee_requirements = requirements::get_trait_requirements_with_origin(self.env, did);
@@ -502,7 +502,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             );
             if let Some((impl_did, impl_args, kind)) = resolution::resolve_trait(
                 self.env.tcx(),
-                current_param_env,
+                current_typing_env,
                 req.trait_ref.def_id,
                 subst_args,
                 req.binders,
@@ -721,8 +721,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
         if let ty::ImplSubject::Trait(trait_ref) = subject {
             // set up scope
-            let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(trait_impl_did);
-            let state = types::TraitState::new(param_scope.clone(), param_env, None, None);
+            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
+            let state = types::TraitState::new(param_scope.clone(), typing_env, None, None);
             let mut state = types::STInner::TraitReqs(state);
 
             let scope_inst =
@@ -746,8 +746,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     if let Some(ty_item) = ty_item {
                         let ty_did = ty_item.def_id;
                         let ty = self.env.tcx().type_of(ty_did);
-                        let translated_ty =
-                            self.type_translator().translate_type_in_scope(&param_scope, ty.skip_binder())?;
+                        let translated_ty = self.type_translator().translate_type_in_scope(
+                            &param_scope,
+                            typing_env,
+                            ty.skip_binder(),
+                        )?;
                         assoc_types_inst.push(translated_ty);
                     } else {
                         unreachable!("trait impl does not have required item");
@@ -868,7 +871,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
         scope: &scope::Params<'tcx, 'def>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
         is_used_in_self_trait: bool,
@@ -879,7 +882,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let mut new_scope = scope.clone();
         let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
-        let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, param_env, None, None));
+        let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, typing_env, None, None));
 
         let scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the

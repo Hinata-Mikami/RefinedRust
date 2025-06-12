@@ -123,7 +123,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             // check if the type is of a spec fn -- in this case, we can skip this temporary
             if let ty::TyKind::Closure(id, _) = ty.kind() {
-                if procedure_registry.lookup_function_mode(*id).map_or(false, procedures::Mode::is_ignore) {
+                if procedure_registry.lookup_function_mode(*id).is_some_and(procedures::Mode::is_ignore) {
                     // this is a spec fn
                     info!("skipping local which has specfn closure type: {:?}", local);
                     continue;
@@ -160,10 +160,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let return_name = opt_return_name?;
 
         // add lifetime parameters to the map
-        let param_env = env.tcx().param_env(proc.get_id());
+        let typing_env = ty::TypingEnv::post_analysis(env.tcx(), proc.get_id());
         let initial_constraints = regions::init::get_initial_universal_arg_constraints(
             env.tcx(),
-            param_env,
+            typing_env,
             info,
             &mut inclusion_tracker,
             inputs,

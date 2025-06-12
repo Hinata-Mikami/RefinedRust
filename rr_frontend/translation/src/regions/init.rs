@@ -83,7 +83,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
         region_substitution_late.push(next_id);
 
         match r {
-            ty::BoundRegionKind::BrNamed(_, sym) => {
+            ty::BoundRegionKind::Named(_, sym) => {
                 let mut region_name = strip_coq_ident(sym.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();
@@ -93,7 +93,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
                     lifetime_names.insert(region_name, next_id);
                 }
             },
-            ty::BoundRegionKind::BrAnon => {
+            ty::BoundRegionKind::Anon => {
                 universal_lifetimes.insert(next_id, format!("ulft_{}", next_id.as_usize()));
             },
             _ => (),
@@ -249,7 +249,7 @@ pub fn get_initial_closure_constraints<'a>(
 /// in the body's `local_args`.
 pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     info: &'a PoloniusInfo<'a, 'tcx>,
     inclusion_tracker: &mut InclusionTracker<'a, 'tcx>,
     sig_args: &[ty::Ty<'tcx>],
@@ -264,8 +264,8 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     // compute the mapping
     let mut unifier = InitialPoloniusUnifier::new();
     for (a1, a2) in local_args.iter().zip(sig_args.iter()) {
-        let a1_normalized = resolution::normalize_type(tcx, param_env, *a1).unwrap();
-        let a2_normalized = resolution::normalize_type(tcx, param_env, *a2).unwrap();
+        let a1_normalized = resolution::normalize_type(tcx, typing_env, *a1).unwrap();
+        let a2_normalized = resolution::normalize_type(tcx, typing_env, *a2).unwrap();
         unifier.map_tys(a1_normalized, a2_normalized);
     }
 

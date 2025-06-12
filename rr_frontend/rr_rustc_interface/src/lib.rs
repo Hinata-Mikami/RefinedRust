@@ -7,7 +7,6 @@
 //! Wrapper around rustc interfaces, preparing for smir.
 #![feature(rustc_private)]
 
-pub extern crate polonius_engine as polonius_engine;
 pub extern crate rustc_abi as abi;
 pub extern crate rustc_ast as ast;
 pub extern crate rustc_attr as attr;
@@ -21,6 +20,7 @@ pub extern crate rustc_index as index;
 pub extern crate rustc_infer as infer;
 pub extern crate rustc_interface as interface;
 pub extern crate rustc_middle as middle;
+pub extern crate polonius_engine as polonius_engine;
 pub extern crate rustc_session as session;
 pub extern crate rustc_span as span;
 pub extern crate rustc_target as target;

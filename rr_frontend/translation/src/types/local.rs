@@ -426,11 +426,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         for req in trait_reqs {
             // translate type in scope with HRTB binders
             let scope = self.scope.borrow();
-            let param_env = self.translator.env().tcx().param_env(scope.did);
+
+            let tcx = self.translator.env().tcx();
+            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
+
             let mut scope = scope.make_params_scope();
             scope.add_trait_req_scope(&req.scope);
             let mut deps = HashSet::new();
-            let state = types::AdtState::new(&mut deps, &scope, &param_env);
+            let state = types::AdtState::new(&mut deps, &scope, &typing_env);
             let mut state = STInner::TranslateAdt(state);
 
             // TODO: we need to add to lift up the HRTB lifetimes here.
@@ -469,9 +472,9 @@ pub fn normalize_in_function<'tcx, T>(
 where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
-    let param_env = tcx.param_env(function_did);
-    info!("Normalizing type {ty:?} in env {param_env:?}");
+    let typing_env = ty::TypingEnv::post_analysis(tcx, function_did);
+    info!("Normalizing type {ty:?} in env {typing_env:?}");
 
-    resolution::normalize_type(tcx, param_env, ty)
+    resolution::normalize_type(tcx, typing_env, ty)
         .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
 }

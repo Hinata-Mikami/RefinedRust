@@ -659,7 +659,7 @@ where
                             //post_patterns.push(processed_post.1);
                         }
                     },
-                    ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow) => {
+                    ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable) => {
                         // shared borrow
                         // if there's a manually specified type, we need to wrap it in the reference
                         if let specs::Type::ShrRef(box auto_type, lft) = ty {
@@ -675,7 +675,7 @@ where
                     },
                     ty::UpvarCapture::ByRef(_) => {
                         // mutable borrow
-                        // we handle ty::BorrowKind::MutBorrow and ty::BorrowKind::UniqImmBorrow
+                        // we handle ty::BorrowKind::Mutable and ty::BorrowKind::UniqueImmutable
                         // the same way, as they are not really different for RefinedRust's type
                         // system
                         if let specs::Type::MutRef(box auto_type, lft) = ty {

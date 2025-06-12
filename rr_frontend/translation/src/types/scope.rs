@@ -332,7 +332,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         trait_registry: &registry::TR<'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("Enter add_param_env for did = {did:?}");
-        let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
+        //let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
+        let typing_env = ty::TypingEnv::post_analysis(env.tcx(), did);
 
         let is_trait = env.tcx().is_trait(did);
         let requirements = traits::requirements::get_trait_requirements_with_origin(env, did);
@@ -375,7 +376,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             trait_registry.fill_trait_use(
                 entry,
                 &*self,
-                param_env,
+                typing_env,
                 req.trait_ref,
                 trait_spec,
                 req.is_used_in_self_trait,
@@ -393,12 +394,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 continue;
             }
 
-            let assoc_constraints = traits::get_trait_assoc_constraints(env, param_env, req.trait_ref);
+            let assoc_constraints = traits::get_trait_assoc_constraints(env, typing_env, req.trait_ref);
 
             let translated_constraints: HashMap<_, _> = assoc_constraints
                 .into_iter()
                 .map(|(name, ty)| {
-                    let translated_ty = type_translator.translate_type_in_scope(self, ty).unwrap();
+                    let translated_ty =
+                        type_translator.translate_type_in_scope(self, typing_env, ty).unwrap();
                     (name, translated_ty)
                 })
                 .collect();
@@ -418,7 +420,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
             // finalize the entry by adding dependencies on other trait parameters
             let mut deps = HashSet::new();
-            let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &param_env));
+            let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &typing_env));
             trait_registry.finalize_trait_use(entry, &mut state, req.trait_ref)?;
         }
 

@@ -5,7 +5,6 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::collections::BTreeSet;
-use std::hash;
 
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::middle::mir;
@@ -55,8 +54,9 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
         // use https://crates.io/crates/linked_hash_set for set preserving insertion order?
         let mut work_set: BTreeSet<mir::BasicBlock> = mir.basic_blocks.indices().collect();
 
+        #[expect(clippy::default_trait_access)]
         let mut counters: FxHashMap<mir::BasicBlock, u32> =
-            FxHashMap::with_capacity_and_hasher(mir.basic_blocks.len(), hash::BuildHasherDefault::default());
+            FxHashMap::with_capacity_and_hasher(mir.basic_blocks.len(), Default::default());
 
         //'block_loop:
         // extract the bb with the minimal index -> hopefully better performance

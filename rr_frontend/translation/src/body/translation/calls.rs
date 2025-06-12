@@ -33,8 +33,8 @@ fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     // Since we do the substitution of the generics above, we should translate generics and
     // traits in the caller's scope.
     let scope = ty_translator.scope.borrow();
-    let param_env: ty::ParamEnv<'tcx> = tcx.param_env(scope.did);
-    let callee_state = types::CalleeState::new(&param_env, &scope.generic_scope);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
+    let callee_state = types::CalleeState::new(&typing_env, &scope.generic_scope);
     let mut dummy_state = types::STInner::CalleeTranslation(callee_state);
 
     let mut syntypes = Vec::new();
@@ -270,7 +270,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Err(TranslationError::UnknownError("not a FnDef type".to_owned()));
         };
 
-        let current_param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(self.proc.get_id());
+        let current_typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), self.proc.get_id());
 
         // Check whether we are calling into a trait method.
         // This works since we did not resolve concrete instances, so this is always an abstract
@@ -299,7 +299,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Resolve the trait instance using trait selection
         let Some((resolved_did, resolved_params, kind)) = resolution::resolve_assoc_item(
             self.env.tcx(),
-            current_param_env,
+            current_typing_env,
             *defid,
             params,
             ty::Binder::dummy(()),

@@ -308,8 +308,8 @@ pub trait ParamLookup<'def> {
         // compile these just once, not for every invocation of the method
         lazy_static! {
             //(::[[:alpha:]]*)?
-            static ref IDENTR: String = format!(r"{IDENTCHARR}[0-9{IDENTCHARR}]*");
-            static ref PATHR: String = format!(r"(({}::)*)({})", *IDENTR, *IDENTR);
+            static ref IDENTR: String = format!("{IDENTCHARR}[0-9{IDENTCHARR}]*");
+            static ref PATHR: String = format!("(({}::)*)({})", *IDENTR, *IDENTR);
             static ref RE_RT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*rt_of\s+{}\s*\}}", *PATHR)).unwrap();
             static ref RE_ST_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*st_of\s+{}\s*\}}", *PATHR)).unwrap();
             static ref RE_LY_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*ly_of\s+{}\s*\}}", *PATHR)).unwrap();

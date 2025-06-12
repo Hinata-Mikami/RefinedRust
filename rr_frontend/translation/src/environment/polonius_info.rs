@@ -307,14 +307,18 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         AtomicRegion::Loan(l, r)
     }
 
-    const fn get_borrow_live_at(
+    fn get_borrow_live_at(
         &self,
         zombie: bool,
-    ) -> &data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
+    ) -> data_structures::fx::FxHashMap<facts::PointIndex, Vec<facts::Loan>> {
         if zombie {
-            &self.additional_facts.zombie_borrow_live_at
+            self.additional_facts.zombie_borrow_live_at.clone()
         } else {
-            &self.borrowck_out_facts.loan_live_at
+            self.borrowck_out_facts
+                .loan_live_at
+                .iter()
+                .map(|(a, b)| (a.to_owned(), b.to_owned()))
+                .collect()
         }
     }
 
@@ -340,7 +344,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
             mid_loans
         } else {
-            assert!(loan_live_at.get(&start_point).is_none());
+            assert!(!loan_live_at.contains_key(&start_point));
             vec![]
         };
         if !zombie {
@@ -381,7 +385,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
                 // check if it is alive in successor
                 let alive_in_successor = successors.iter().any(|successor_location| {
                     let point = self.get_point(*successor_location, facts::PointType::Start);
-                    loan_live_at.get(&point).map_or(false, |successor_loans| successor_loans.contains(loan))
+                    loan_live_at.get(&point).is_some_and(|successor_loans| successor_loans.contains(loan))
                 });
                 // alive in successor or returned
                 !(alive_in_successor || (successors.is_empty() && is_return))
