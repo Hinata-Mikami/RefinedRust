@@ -8,13 +8,13 @@ use std::cell::RefCell;
 
 use analysis::abstract_interpretation::FixpointEngine;
 use analysis::domains::DefinitelyInitializedAnalysis;
-use rr_rustc_interface::ast::ast;
 use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::driver::Compilation;
 use rr_rustc_interface::errors;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::interface::{interface, Config, Queries};
+use rr_rustc_interface::hir;
+use rr_rustc_interface::interface::{interface, Config};
 use rr_rustc_interface::middle::query::queries::mir_borrowck::ProvidedValue;
 use rr_rustc_interface::middle::query::Providers;
 use rr_rustc_interface::middle::{ty, util};
@@ -25,12 +25,8 @@ struct OurCompilerCalls {
     args: Vec<String>,
 }
 
-fn get_attributes(tcx: ty::TyCtxt<'_>, def_id: DefId) -> &[ast::Attribute] {
-    if let Some(local_def_id) = def_id.as_local() {
-        tcx.hir().attrs(tcx.local_def_id_to_hir_id(local_def_id))
-    } else {
-        tcx.item_attrs(def_id)
-    }
+fn get_attributes(tcx: ty::TyCtxt<'_>, def_id: DefId) -> &[hir::Attribute] {
+    tcx.get_attrs_unchecked(def_id)
 }
 
 fn get_attribute<'tcx>(
@@ -38,23 +34,21 @@ fn get_attribute<'tcx>(
     def_id: DefId,
     segment1: &str,
     segment2: &str,
-) -> Option<&'tcx ast::Attribute> {
+) -> Option<&'tcx hir::Attribute> {
     get_attributes(tcx, def_id).iter().find(|attr| match &attr.kind {
-        ast::AttrKind::Normal(normal_attr) => match &normal_attr.item {
-            ast::AttrItem {
+        hir::AttrKind::Normal(normal_attr) => match normal_attr.as_ref() {
+            hir::AttrItem {
                 path:
-                    ast::Path {
+                    hir::AttrPath {
                         span: _,
                         segments,
-                        tokens: _,
                     },
-                args: ast::AttrArgs::Empty,
-                tokens: _,
+                args: hir::AttrArgs::Empty,
                 unsafety: _,
             } => {
                 segments.len() == 2
-                    && segments[0].ident.as_str() == segment1
-                    && segments[1].ident.as_str() == segment2
+                    && segments[0].as_str() == segment1
+                    && segments[1].as_str() == segment2
             },
             _ => false,
         },
@@ -133,7 +127,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
     fn after_analysis<'tcx>(
         &mut self,
         compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Compilation {
         //let session = &compiler.sess;
         //session.abort_if_errors();
@@ -152,48 +146,46 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
             abstract_domain
         );
 
-        queries.global_ctxt().unwrap().enter(|tcx| {
-            // collect all functions with attribute #[analyzer::run]
-            let mut local_def_ids: Vec<_> = tcx
-                .mir_keys(())
-                .iter()
-                .filter(|id| get_attribute(tcx, id.to_def_id(), "analyzer", "run").is_some())
-                .collect();
+        // collect all functions with attribute #[analyzer::run]
+        let mut local_def_ids: Vec<_> = tcx
+            .mir_keys(())
+            .iter()
+            .filter(|id| get_attribute(tcx, id.to_def_id(), "analyzer", "run").is_some())
+            .collect();
 
-            // sort according to argument span to ensure deterministic output
-            local_def_ids.sort_unstable_by_key(|id| {
-                get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span
-            });
-
-            for &local_def_id in local_def_ids {
-                println!("Result for function {}():", tcx.item_name(local_def_id.to_def_id()));
-
-                // SAFETY: This is safe because we are feeding in the same `tcx`
-                // that was used to store the data.
-                let mut body_with_facts = unsafe { mir_storage::retrieve_mir_body(tcx, local_def_id) };
-                body_with_facts.output_facts = Some(Box::new(Output::compute(
-                    body_with_facts.input_facts.as_ref().unwrap(),
-                    Algorithm::Naive,
-                    true,
-                )));
-                assert!(!body_with_facts.input_facts.as_ref().unwrap().cfg_edge.is_empty());
-                let body = &body_with_facts.body;
-
-                match abstract_domain {
-                    "DefinitelyInitializedAnalysis" => {
-                        let result = DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
-                            .run_fwd_analysis();
-                        match result {
-                            Ok(_state) => {
-                                //println!("{}", serde_json::to_string_pretty(&state).unwrap())
-                            },
-                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
-                        }
-                    },
-                    _ => panic!("Unknown domain argument: {abstract_domain}"),
-                }
-            }
+        // sort according to argument span to ensure deterministic output
+        local_def_ids.sort_unstable_by_key(|id| {
+            get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span
         });
+
+        for &local_def_id in local_def_ids {
+            println!("Result for function {}():", tcx.item_name(local_def_id.to_def_id()));
+
+            // SAFETY: This is safe because we are feeding in the same `tcx`
+            // that was used to store the data.
+            let mut body_with_facts = unsafe { mir_storage::retrieve_mir_body(tcx, local_def_id) };
+            body_with_facts.output_facts = Some(Box::new(Output::compute(
+                body_with_facts.input_facts.as_ref().unwrap(),
+                Algorithm::Naive,
+                true,
+            )));
+            assert!(!body_with_facts.input_facts.as_ref().unwrap().cfg_edge.is_empty());
+            let body = &body_with_facts.body;
+
+            match abstract_domain {
+                "DefinitelyInitializedAnalysis" => {
+                    let result = DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
+                        .run_fwd_analysis();
+                    match result {
+                        Ok(_state) => {
+                            //println!("{}", serde_json::to_string_pretty(&state).unwrap())
+                        },
+                        Err(e) => eprintln!("{}", e.to_pretty_str(body)),
+                    }
+                },
+                _ => panic!("Unknown domain argument: {abstract_domain}"),
+            }
+        }
 
         Compilation::Stop
     }
@@ -229,7 +221,8 @@ fn main() {
     };
     // Invoke compiler, and handle return code.
     let exit_code = rr_rustc_interface::driver::catch_with_exit_code(move || {
-        rr_rustc_interface::driver::RunCompiler::new(&compiler_args, &mut callbacks).run()
+        rr_rustc_interface::driver::RunCompiler::new(&compiler_args, &mut callbacks).run();
+        Ok(())
     });
     std::process::exit(exit_code)
 }

@@ -9,18 +9,16 @@ use std::collections::HashSet;
 use attribute_parse::{parse, MToken};
 use parse::{Parse, Peek as _};
 use radium::{coq, model, specs};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{str_err, IProp, ParamLookup, RRParams};
+use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err, IProp, ParamLookup, RRParams};
 
 /// Parse attributes on a const.
 /// Permitted attributes:
 /// TODO
 pub trait LoopAttrParser {
-    fn parse_loop_attrs<'a>(
-        &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
-    ) -> Result<radium::LoopSpec, String>;
+    fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem])
+        -> Result<radium::LoopSpec, String>;
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
@@ -147,7 +145,7 @@ impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
 impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 'a, T> {
     fn parse_loop_attrs<'b>(
         &'b mut self,
-        attrs: &'b [&'b ast::ast::AttrItem],
+        attrs: &'b [&'b hir::AttrItem],
     ) -> Result<radium::LoopSpec, String> {
         let mut invariant: Vec<specs::IProp> = Vec::new();
         let mut inv_vars: Vec<InvVar> = Vec::new();
@@ -162,9 +160,9 @@ impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'d
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.ident.name.as_str() {
+            match seg.name.as_str() {
                 "exists" => {
                     let params = RRParams::parse(&buffer, self.scope).map_err(str_err)?;
                     for param in params.params {

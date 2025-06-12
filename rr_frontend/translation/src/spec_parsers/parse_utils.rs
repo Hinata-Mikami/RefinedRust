@@ -6,13 +6,21 @@
 
 use std::fmt;
 
-/// This provides some general utilities for RefinedRust-specific attribute parsing.
 use attribute_parse::{parse, MToken};
 use lazy_static::lazy_static;
 use log::trace;
 use parse::Peek as _;
 use radium::{coq, specs};
 use regex::{Captures, Regex};
+/// This provides some general utilities for RefinedRust-specific attribute parsing.
+use rr_rustc_interface::{ast, hir};
+
+pub fn attr_args_tokens(x: &hir::AttrArgs) -> ast::tokenstream::TokenStream {
+    match x {
+        hir::AttrArgs::Delimited(args) => args.tokens.clone(),
+        hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => ast::tokenstream::TokenStream::default(),
+    }
+}
 
 /// Parse either a literal string (a term/pattern) or an identifier, e.g.
 /// `x`, `z`, `"w"`, `"(a, b)"`

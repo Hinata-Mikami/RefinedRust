@@ -11,11 +11,12 @@ use attribute_parse::{parse, MToken};
 use log::{info, warn};
 use parse::{Parse, Peek as _};
 use radium::{coq, model, push_str_list, specs};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::ty;
 
 use crate::spec_parsers::parse_utils::{
-    str_err, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem, RRParam, RRParams,
+    attr_args_tokens, str_err, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem,
+    RRParam, RRParams,
 };
 
 pub struct ClosureMetaInfo<'a, 'tcx, 'def> {
@@ -36,7 +37,7 @@ pub trait FunctionSpecParser<'def> {
     /// that it does not need to deal with any other attributes.
     fn parse_function_spec<'a>(
         &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
         builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String>;
 
@@ -45,7 +46,7 @@ pub trait FunctionSpecParser<'def> {
     /// that it does not need to deal with any other attributes.
     fn parse_closure_spec<'tcx, 'a, 'c, F>(
         &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
         builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         make_tuple: F,
@@ -794,7 +795,7 @@ where
 {
     fn parse_closure_spec<'tcx, 'b, 'c, H>(
         &'b mut self,
-        attrs: &'b [&'b ast::ast::AttrItem],
+        attrs: &'b [&'b hir::AttrItem],
         builder: &'b mut radium::LiteralFunctionSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
         make_tuple: H,
@@ -812,9 +813,9 @@ where
             let args = &it.args;
 
             if let Some(seg) = path_segs.get(1) {
-                let buffer = parse::Buffer::new(&args.inner_tokens());
+                let buffer = parse::Buffer::new(&attr_args_tokens(args));
 
-                if seg.ident.name.as_str() == "capture" {
+                if seg.name.as_str() == "capture" {
                     let spec: ClosureCaptureSpec = buffer.parse(self.scope).map_err(str_err)?;
                     capture_specs.push(spec);
                 }
@@ -828,8 +829,8 @@ where
             let args = &it.args;
 
             if let Some(seg) = path_segs.get(1) {
-                let buffer = parse::Buffer::new(&it.args.inner_tokens());
-                let name = seg.ident.name.as_str();
+                let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+                let name = seg.name.as_str();
 
                 match self.handle_common_attributes(name, &buffer, builder, self.scope) {
                     Ok(b) => {
@@ -897,7 +898,7 @@ where
 
     fn parse_function_spec(
         &mut self,
-        attrs: &[&ast::ast::AttrItem],
+        attrs: &[&hir::AttrItem],
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String> {
         for &it in attrs {
@@ -908,8 +909,8 @@ where
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
-            let name = seg.ident.name.as_str();
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let name = seg.name.as_str();
             match self.handle_common_attributes(name, &buffer, builder, self.scope) {
                 Ok(b) => {
                     if !b {

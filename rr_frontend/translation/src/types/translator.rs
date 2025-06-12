@@ -1622,6 +1622,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 
+            ty::TyKind::UnsafeBinder(_) => Err(TranslationError::UnsupportedType {
+                description: "RefinedRust does not support UnsafeBinder".to_owned(),
+            }),
+
             ty::TyKind::Coroutine(_, _)
             | ty::TyKind::CoroutineWitness(_, _)
             | ty::TyKind::CoroutineClosure(_, _) => Err(TranslationError::UnsupportedType {

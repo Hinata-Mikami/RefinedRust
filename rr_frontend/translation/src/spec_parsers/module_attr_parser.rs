@@ -8,10 +8,10 @@ use std::collections::HashSet;
 
 use attribute_parse::parse;
 use radium::coq;
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::LocalDefId;
 
-use crate::spec_parsers::parse_utils::{self, str_err};
+use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
 
 /// Parse attributes on a module.
 /// Permitted attributes:
@@ -20,7 +20,7 @@ pub trait ModuleAttrParser {
     fn parse_module_attrs<'a>(
         &'a mut self,
         did: LocalDefId,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<ModuleAttrs, String>;
 }
 
@@ -44,7 +44,7 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
     fn parse_module_attrs<'a>(
         &'a mut self,
         _did: LocalDefId,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<ModuleAttrs, String> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();
@@ -58,8 +58,8 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
-            match seg.ident.name.as_str() {
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            match seg.name.as_str() {
                 "import" => {
                     let path: parse_utils::CoqExportModule = buffer.parse(&()).map_err(str_err)?;
                     exports.push(path.into());

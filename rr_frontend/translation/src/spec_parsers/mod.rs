@@ -11,7 +11,7 @@ pub mod verbose_function_spec_parser;
 
 use attribute_parse::{parse, MToken};
 use parse::{Parse, Peek as _};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
 /// For parsing of `RustPaths`
 pub struct RustPath {
@@ -58,14 +58,14 @@ impl<F> Parse<F> for ExportAs {
     }
 }
 
-pub fn get_export_as_attr(attrs: &[&ast::ast::AttrItem]) -> Result<ExportAs, String> {
+pub fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
         if let Some(seg) = path_segs.get(1) {
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.ident.name.as_str() == "export_as" {
+            if seg.name.as_str() == "export_as" {
                 let path = ExportAs::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(path);
             }
@@ -109,14 +109,14 @@ where
 }
 
 /// Extract a shim annotation from a list of annotations of a function or method.
-pub fn get_shim_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<ShimAnnot, String> {
+pub fn get_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<ShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
         if let Some(seg) = path_segs.get(1) {
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.ident.name.as_str() == "shim" {
+            if seg.name.as_str() == "shim" {
                 let annot = ShimAnnot::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(annot);
             }
@@ -155,14 +155,14 @@ where
 }
 
 /// Extract a code shim annotation from a list of annotations of a function or method.
-pub fn get_code_shim_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<CodeShimAnnot, String> {
+pub fn get_code_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<CodeShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
         if let Some(seg) = path_segs.get(1) {
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.ident.name.as_str() == "code_shim" {
+            if seg.name.as_str() == "code_shim" {
                 let annot = CodeShimAnnot::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(annot);
             }
@@ -172,9 +172,9 @@ pub fn get_code_shim_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<CodeShimAnno
 }
 
 /// Check whether we should propagate this attribute of a method from a surrounding impl.
-pub fn propagate_method_attr_from_impl(it: &ast::ast::AttrItem) -> bool {
+pub fn propagate_method_attr_from_impl(it: &hir::AttrItem) -> bool {
     if let Some(ident) = it.path.segments.get(1) {
-        matches!(ident.ident.as_str(), "context") || matches!(ident.ident.as_str(), "verify")
+        matches!(ident.as_str(), "context") || matches!(ident.as_str(), "verify")
     } else {
         false
     }

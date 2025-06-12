@@ -67,7 +67,7 @@ impl Interner {
 
     #[must_use]
     pub fn get_point(&self, index: PointIndex) -> Point {
-        match self.location_table.to_location(index) {
+        match self.location_table.to_rich_location(index) {
             RichLocation::Start(location) => Point {
                 location,
                 typ: PointType::Start,

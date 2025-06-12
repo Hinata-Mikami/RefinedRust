@@ -9,10 +9,10 @@ use attribute_parse::{parse, MToken};
 use log::info;
 use parse::{Parse, Peek as _};
 use radium::{coq, specs};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
-    str_err, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams,
+    attr_args_tokens, str_err, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams,
 };
 
 pub trait InvariantSpecParser {
@@ -31,7 +31,7 @@ pub trait InvariantSpecParser {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::InvariantSpec, bool), String>;
 }
 
@@ -198,7 +198,7 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::InvariantSpec, bool), String> {
         if attrs.is_empty() {
             return Err("no invariant specifications given".to_owned());
@@ -227,8 +227,8 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&args.inner_tokens());
-            match seg.ident.name.as_str() {
+            let buffer = parse::Buffer::new(&attr_args_tokens(args));
+            match seg.name.as_str() {
                 "refined_by" => {
                     let pat = RfnPattern::parse(&buffer, self.scope).map_err(str_err)?;
 
@@ -337,7 +337,7 @@ pub trait StructFieldSpecParser<'def> {
     fn parse_field_spec<'a>(
         &'a mut self,
         field_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<StructFieldSpec<'def>, String>;
 }
 
@@ -409,7 +409,7 @@ where
     fn parse_field_spec(
         &mut self,
         field_name: &str,
-        attrs: &[&ast::ast::AttrItem],
+        attrs: &[&hir::AttrItem],
     ) -> Result<StructFieldSpec<'def>, String> {
         info!("parsing attributes of field {:?}: {:?}", field_name, attrs);
 
@@ -424,9 +424,9 @@ where
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&args.inner_tokens());
+            let buffer = parse::Buffer::new(&attr_args_tokens(args));
 
-            if seg.ident.name.as_str() != "field" {
+            if seg.name.as_str() != "field" {
                 return Err(format!("unknown attribute for struct field specification: {:?}", args));
             }
 

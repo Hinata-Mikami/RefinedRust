@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{ast, span};
+use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -41,7 +41,7 @@ pub struct TX<'a, 'def, 'tcx> {
     /// registry of consts
     const_registry: &'a consts::Scope<'def>,
     /// attributes on this function
-    attrs: &'a [&'a ast::ast::AttrItem],
+    attrs: &'a [&'a hir::AttrItem],
     /// polonius info for this function
     info: &'a PoloniusInfo<'a, 'tcx>,
     /// translator for types
@@ -60,7 +60,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         name: &str,
         spec_name: &str,
         trait_req_incl_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
     ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
@@ -178,7 +178,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         env: &'def Environment<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'def>,
@@ -355,7 +355,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         env: &'def Environment<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'def>,
@@ -688,7 +688,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Parse and process attributes of this function.
     fn process_attrs(
-        attrs: &[&ast::ast::AttrItem],
+        attrs: &[&hir::AttrItem],
         ty_translator: &types::LocalTX<'def, 'tcx>,
         translator: &mut radium::FunctionBuilder<'def>,
         arg_names: &[String],

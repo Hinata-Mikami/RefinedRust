@@ -64,7 +64,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let attrs = self.env.get_attributes(did);
             let attrs = attrs::filter_for_tool(attrs);
             info!("attrs for loop {:?}: {:?}", loop_head, attrs);
-            parser.parse_loop_attrs(&attrs).map_err(TranslationError::LoopSpec)
+            parser.parse_loop_attrs(attrs.as_slice()).map_err(TranslationError::LoopSpec)
         } else {
             parser.parse_loop_attrs(&[]).map_err(TranslationError::LoopSpec)
         }

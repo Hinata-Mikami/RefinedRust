@@ -266,6 +266,7 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
         TyKind::Placeholder(_) => 25,
         TyKind::Infer(_) => 26,
         TyKind::Error(_) => 27,
+        TyKind::UnsafeBinder(_) => 28,
     }
 }
 
@@ -338,6 +339,9 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             },
             (TyKind::Error(_), TyKind::Error(_)) => {
                 unimplemented!("compare Error");
+            },
+            (TyKind::UnsafeBinder(_), TyKind::UnsafeBinder(_)) => {
+                unimplemented!("compare UnsafeBinder");
             },
             (TyKind::Bool, TyKind::Bool)
             | (TyKind::Char, TyKind::Char)

@@ -8,18 +8,17 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
-    str_err, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem,
+    attr_args_tokens, str_err, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem,
 };
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::exists("x" : "Prop")`, which will declare a specification attribute "x" of the given type "Prop"
 pub trait TraitAttrParser {
-    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a ast::ast::AttrItem])
-        -> Result<TraitAttrs, String>;
+    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String>;
 }
 
 /// Extends an existing scope with additional literals of attributes parsed so far.
@@ -78,10 +77,7 @@ impl<'b, 'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrPars
 where
     F: Fn(&str) -> String,
 {
-    fn parse_trait_attrs<'a>(
-        &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
-    ) -> Result<TraitAttrs, String> {
+    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
 
         let mut semantic_interp = None;
@@ -94,9 +90,9 @@ where
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.ident.name.as_str() {
+            match seg.name.as_str() {
                 "exists" => {
                     let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
                     buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
@@ -133,7 +129,7 @@ where
 }
 
 /// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
-pub fn get_declared_trait_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<HashSet<String>, String> {
+pub fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<HashSet<String>, String> {
     let mut trait_attrs = HashSet::new();
 
     for &it in attrs {
@@ -143,9 +139,9 @@ pub fn get_declared_trait_attrs(attrs: &[&ast::ast::AttrItem]) -> Result<HashSet
             continue;
         };
 
-        let buffer = parse::Buffer::new(&it.args.inner_tokens());
+        let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-        if "exists" == seg.ident.name.as_str() {
+        if "exists" == seg.name.as_str() {
             let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
             let parsed_name = parsed_name.to_string();
             buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;

@@ -13,6 +13,7 @@ use rr_rustc_interface::{data_structures, polonius_engine};
 
 use crate::environment::borrowck::facts;
 use crate::environment::procedure::Procedure;
+use crate::environment::region_folder::*;
 use crate::environment::Environment;
 
 /// This represents "rich" regions that are directly annotated with their `RegionKind`.
@@ -215,7 +216,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             _ => r,
         };
 
-        let mut folder = ty::fold::RegionFolder::new(self.tcx, &mut clos);
+        let mut folder = RegionFolder::new(self.tcx, &mut clos);
         for local in &self.mir.local_decls {
             folder.fold_ty(local.ty);
         }

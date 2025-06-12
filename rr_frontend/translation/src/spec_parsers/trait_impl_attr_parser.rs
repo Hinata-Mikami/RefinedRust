@@ -7,9 +7,9 @@
 use std::collections::BTreeMap;
 
 use attribute_parse::{parse, MToken};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{str_err, IdentOrTerm, ParamLookup};
+use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err, IdentOrTerm, ParamLookup};
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
@@ -18,7 +18,7 @@ use crate::spec_parsers::parse_utils::{str_err, IdentOrTerm, ParamLookup};
 pub trait TraitImplAttrParser {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<TraitImplAttrs, String>;
 }
 
@@ -41,7 +41,7 @@ impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
 impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<TraitImplAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
 
@@ -53,9 +53,9 @@ impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAtt
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.ident.name.as_str() {
+            match seg.name.as_str() {
                 "instantiate" => {
                     let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
                     buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;

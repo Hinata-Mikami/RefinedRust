@@ -394,7 +394,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Rvalue::Cast(kind, op, to_ty) => self.translate_cast(*kind, op, *to_ty),
 
             mir::Rvalue::CopyForDeref(_)
-            | mir::Rvalue::Len(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {

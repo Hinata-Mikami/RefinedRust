@@ -113,7 +113,7 @@ impl driver::Callbacks for RRCompilerCalls {
     fn after_analysis<'tcx>(
         &mut self,
         _: &interface::interface::Compiler,
-        queries: &'tcx interface::Queries<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> driver::Compilation {
         if rrconfig::no_verify() {
             // TODO: We also need this to properly compile deps.
@@ -122,9 +122,7 @@ impl driver::Callbacks for RRCompilerCalls {
         }
 
         // Analyze the crate and inspect the types under the cursor.
-        queries.global_ctxt().unwrap().enter(|tcx| {
-            analyze(tcx);
-        });
+        analyze(tcx);
 
         driver::Compilation::Stop
     }
@@ -232,7 +230,8 @@ fn main() {
 
         let mut callbacks = RRCompilerCalls {};
 
-        driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+        driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
+        Ok(())
     });
 
     process::exit(exit_code)

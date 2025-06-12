@@ -16,12 +16,13 @@ pub mod mir_storage;
 pub mod mir_utils;
 pub mod polonius_info;
 pub mod procedure;
+pub mod region_folder;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -117,7 +118,7 @@ impl<'tcx> Environment<'tcx> {
 
     /// Find whether the procedure has a particular `[tool]::<name>` attribute; if so, return its
     /// name.
-    pub fn get_tool_attribute<'a>(&'a self, def_id: DefId, name: &str) -> Option<&'a ast::AttrArgs> {
+    pub fn get_tool_attribute<'a>(&'a self, def_id: DefId, name: &str) -> Option<&'a hir::AttrArgs> {
         let tcx = self.tcx();
         // TODO: migrate to get_attrs
         attrs::get_tool_attr(tcx.get_attrs_unchecked(def_id), name)
@@ -131,19 +132,15 @@ impl<'tcx> Environment<'tcx> {
     }
 
     /// Get the attributes of an item (e.g. procedures).
-    pub fn get_attributes(&self, def_id: DefId) -> &[ast::ast::Attribute] {
+    pub fn get_attributes(&self, def_id: DefId) -> &[hir::Attribute] {
         // TODO: migrate to get_attrs
         self.tcx().get_attrs_unchecked(def_id)
     }
 
     /// Get tool attributes of this function, including selected attributes from the surrounding impl.
-    pub fn get_attributes_of_function<F>(
-        &self,
-        did: DefId,
-        propagate_from_impl: &F,
-    ) -> Vec<&ast::ast::AttrItem>
+    pub fn get_attributes_of_function<F>(&self, did: DefId, propagate_from_impl: &F) -> Vec<&hir::AttrItem>
     where
-        F: for<'a> Fn(&'a ast::ast::AttrItem) -> bool,
+        F: for<'a> Fn(&'a hir::AttrItem) -> bool,
     {
         let attrs = self.get_attributes(did);
         let mut filtered_attrs = attrs::filter_for_tool(attrs);

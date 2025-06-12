@@ -267,7 +267,7 @@ pub fn resolve_assoc_item<'tcx>(
 
             // Translate the original substitution into one on the selected impl method
 
-            let typing_env = typing_env.with_reveal_all_normalized(tcx);
+            let typing_env = typing_env.with_post_analysis_normalized(tcx);
             let infcx = tcx.infer_ctxt().build(typing_env.typing_mode);
 
             let substs = substs.rebase_onto(tcx, trait_did, impl_data.args);

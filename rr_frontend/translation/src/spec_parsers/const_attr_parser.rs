@@ -5,10 +5,10 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use attribute_parse::parse;
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::LocalDefId;
 
-use crate::spec_parsers::parse_utils::str_err;
+use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err};
 
 /// Parse attributes on a const.
 /// Permitted attributes:
@@ -17,7 +17,7 @@ pub trait ConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
         did: LocalDefId,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<ConstAttrs, String>;
 }
 
@@ -39,7 +39,7 @@ impl ConstAttrParser for VerboseConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
         _did: LocalDefId,
-        attrs: &'a [&'a ast::ast::AttrItem],
+        attrs: &'a [&'a hir::AttrItem],
     ) -> Result<ConstAttrs, String> {
         let mut name: Option<String> = None;
 
@@ -51,9 +51,9 @@ impl ConstAttrParser for VerboseConstAttrParser {
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.ident.name.as_str() {
+            match seg.name.as_str() {
                 "name" => {
                     let parsed_name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
                     if name.is_some() {

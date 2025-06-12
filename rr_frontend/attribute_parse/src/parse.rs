@@ -120,7 +120,7 @@ impl Buffer {
     #[must_use]
     pub fn new(stream: &ast::tokenstream::TokenStream) -> Self {
         // TODO; maybe avoid the cloning
-        let trees: Vec<ast::tokenstream::TokenTree> = stream.trees().cloned().collect();
+        let trees: Vec<ast::tokenstream::TokenTree> = stream.iter().cloned().collect();
 
         Self {
             trees,

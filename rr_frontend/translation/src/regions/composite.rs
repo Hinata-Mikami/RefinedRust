@@ -12,6 +12,7 @@ use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::environment::borrowck::facts;
+use crate::environment::region_folder::*;
 use crate::environment::Environment;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::types;
@@ -74,7 +75,7 @@ fn get_regions_of_ty<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> HashSet
         },
         _ => r,
     };
-    let mut folder = ty::fold::RegionFolder::new(env.tcx(), &mut clos);
+    let mut folder = RegionFolder::new(env.tcx(), &mut clos);
     folder.fold_ty(ty);
     regions
 }

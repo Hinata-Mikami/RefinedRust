@@ -15,6 +15,7 @@ use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
+use crate::environment::region_folder::*;
 use crate::environment::{polonius_info, Environment};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::types;
@@ -82,7 +83,7 @@ pub fn compute_call_regions<'tcx>(
 
     for a in substs {
         if let ty::GenericArgKind::Type(c) = a.unpack() {
-            let mut folder = ty::fold::RegionFolder::new(env.tcx(), &mut clos);
+            let mut folder = RegionFolder::new(env.tcx(), &mut clos);
             folder.fold_ty(c);
         }
     }

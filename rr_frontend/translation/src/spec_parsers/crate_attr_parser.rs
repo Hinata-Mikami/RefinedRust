@@ -8,16 +8,15 @@ use std::collections::HashSet;
 
 use attribute_parse::parse;
 use radium::coq;
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{self, str_err};
+use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
 
 /// Parse attributes on a crate.
 /// Permitted attributes:
 /// - `rr::import("A.B.C`", "D"), which will import the Coq path "A.B.C.D"
 pub trait CrateAttrParser {
-    fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a ast::ast::AttrItem])
-        -> Result<CrateAttrs, String>;
+    fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<CrateAttrs, String>;
 }
 
 #[derive(Clone, Debug)]
@@ -39,10 +38,7 @@ impl VerboseCrateAttrParser {
 }
 
 impl CrateAttrParser for VerboseCrateAttrParser {
-    fn parse_crate_attrs<'a>(
-        &'a mut self,
-        attrs: &'a [&'a ast::ast::AttrItem],
-    ) -> Result<CrateAttrs, String> {
+    fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<CrateAttrs, String> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();
         let mut export_includes: HashSet<String> = HashSet::new();
@@ -57,8 +53,8 @@ impl CrateAttrParser for VerboseCrateAttrParser {
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
-            match seg.ident.name.as_str() {
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            match seg.name.as_str() {
                 "import" => {
                     let path: parse_utils::CoqExportModule = buffer.parse(&()).map_err(str_err)?;
                     exports.push(path.into());

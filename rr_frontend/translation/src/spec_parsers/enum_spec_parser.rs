@@ -7,9 +7,9 @@
 use attribute_parse::{parse, MToken};
 use parse::Peek as _;
 use radium::{coq, specs};
-use rr_rustc_interface::ast;
+use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{str_err, ParamLookup};
+use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err, ParamLookup};
 
 /// An attribute spec parser handles the parsing of the attributes of the whole enum and relevant
 /// attributes on the variants at once.
@@ -25,8 +25,8 @@ pub trait EnumSpecParser {
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
-        variant_attrs: &[Vec<&'a ast::ast::AttrItem>],
+        attrs: &'a [&'a hir::AttrItem],
+        variant_attrs: &[Vec<&'a hir::AttrItem>],
     ) -> Result<specs::EnumSpec, String>;
 }
 
@@ -80,8 +80,8 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,
-        attrs: &'a [&'a ast::ast::AttrItem],
-        variant_attrs: &[Vec<&'a ast::ast::AttrItem>],
+        attrs: &'a [&'a hir::AttrItem],
+        variant_attrs: &[Vec<&'a hir::AttrItem>],
     ) -> Result<specs::EnumSpec, String> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
@@ -96,8 +96,8 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&it.args.inner_tokens());
-            match seg.ident.name.as_str() {
+            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            match seg.name.as_str() {
                 "refined_by" => {
                     let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                     let (rt_processed, _) = self.scope.process_coq_literal(ty.value().as_str());
@@ -126,8 +126,8 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
                     continue;
                 };
 
-                let buffer = parse::Buffer::new(&it.args.inner_tokens());
-                match seg.ident.name.as_str() {
+                let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+                match seg.name.as_str() {
                     "pattern" => {
                         let pat: EnumPattern = buffer.parse(self.scope).map_err(str_err)?;
                         pattern = Some(pat);
@@ -172,10 +172,10 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
 
 /// Parse the arguments of a `rr::refine_as` annotation.
 /// Returns the optional specified name.
-pub fn parse_enum_refine_as(attrs: &ast::ast::AttrArgs) -> Result<Option<String>, String> {
-    let buffer = parse::Buffer::new(&attrs.inner_tokens());
+pub fn parse_enum_refine_as(attrs: &hir::AttrArgs) -> Result<Option<String>, String> {
+    let buffer = parse::Buffer::new(&attr_args_tokens(attrs));
 
-    if matches!(attrs, ast::ast::AttrArgs::Empty) {
+    if matches!(attrs, hir::AttrArgs::Empty) {
         Ok(None)
     } else {
         let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
