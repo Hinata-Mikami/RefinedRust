@@ -39,7 +39,6 @@ pub struct AbstractedGenerics<'def> {
 }
 
 /// Type translator bundling the function scope
-#[expect(clippy::module_name_repetitions)]
 pub struct LocalTX<'def, 'tcx> {
     pub translator: &'def TX<'def, 'tcx>,
     pub scope: RefCell<FunctionState<'tcx, 'def>>,

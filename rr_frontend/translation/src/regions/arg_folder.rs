@@ -36,7 +36,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReErased => {
                 let new_idx = self.new_regions;
                 self.new_regions += 1;
@@ -89,7 +89,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReVar(v) => {
                 // We need to do some hacks here to find the right Polonius region:
                 // `r` is the non-placeholder region that the variable gets, but we are
@@ -121,7 +121,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReVar(v) => {
                 let idx = v.index();
                 self.rename_map[idx]
@@ -151,7 +151,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateParamVisitor<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(_idx, _) => {
                 //let idx = v.index();
                 //let new_idx = self.rename_map.get(idx).unwrap();
@@ -228,7 +228,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
-        match *r {
+        match r.kind() {
             ty::ReEarlyParam(data) => {
                 let rk = self.args.get(data.index as usize).map(|k| k.unpack());
                 match rk {

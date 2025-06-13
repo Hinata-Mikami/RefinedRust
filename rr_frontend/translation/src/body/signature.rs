@@ -103,7 +103,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // TODO: add universal constraints (ideally in setup_local_scope)
 
         // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc_did);
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc_did);
         let arg_names: Vec<_> = arg_names
             .iter()
             .enumerate()
@@ -347,7 +347,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc.get_id());
         let arg_names: Vec<_> = arg_names
             .iter()
             .enumerate()
@@ -435,7 +435,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
         // get argument names
-        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc.get_id());
         let arg_names: Vec<_> = arg_names
             .iter()
             .enumerate()

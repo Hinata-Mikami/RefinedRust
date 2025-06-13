@@ -34,6 +34,10 @@ pub enum Error<'tcx> {
     #[display("The given `DefId` {:?} is not an associated type", _0)]
     NotAnAssocType(DefId),
 
+    /// We encountered an associated constant
+    #[display("Associated constants are not supported")]
+    AssocConstNotSupported,
+
     /// This trait already exists
     #[display("This trait {:?} already has been registered", _0)]
     TraitAlreadyExists(DefId),

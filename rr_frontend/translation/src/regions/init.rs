@@ -51,7 +51,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 
             region_substitution_early.push(Some(next_id));
 
-            match *r {
+            match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => {
                     let name = strip_coq_ident(r.name.as_str());
                     universal_lifetimes.insert(next_id, format!("ulft_{}", name));
@@ -309,8 +309,8 @@ impl InitialPoloniusUnifier {
 }
 impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        if let ty::RegionKind::ReVar(l1) = *r1 {
-            if let ty::RegionKind::ReVar(l2) = *r2 {
+        if let ty::RegionKind::ReVar(l1) = r1.kind() {
+            if let ty::RegionKind::ReVar(l2) = r2.kind() {
                 if let Some(l22) = self.mapping.get(&l1.into()) {
                     assert_eq!(l2, (*l22).into());
                 } else {

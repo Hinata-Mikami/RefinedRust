@@ -445,7 +445,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    pub fn trait_registry(&self) -> &'def registry::TR<'tcx, 'def> {
+    pub const fn trait_registry(&self) -> &'def registry::TR<'tcx, 'def> {
         self.trait_registry.get().unwrap()
     }
 
@@ -583,7 +583,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         translation_state: ST<'a, 'b, 'def, 'tcx>,
         region: ty::Region<'tcx>,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
-        match *region {
+        match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
                 translation_state.lookup_early_region(early)
@@ -1119,7 +1119,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         env: &'a [ty::GenericArg<'tcx>],
     ) -> mir::interpret::GlobalId<'tcx> {
         mir::interpret::GlobalId {
-            instance: ty::Instance::new(did, self.env.tcx().mk_args(env)),
+            instance: ty::Instance {
+                def: ty::InstanceKind::Item(did),
+                args: self.env.tcx().mk_args(env),
+            },
             promoted: None,
         }
     }

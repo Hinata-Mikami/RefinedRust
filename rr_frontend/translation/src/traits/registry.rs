@@ -52,7 +52,7 @@ pub struct TR<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
-    pub fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
+    pub const fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
         self.type_translator.get().unwrap()
     }
 
@@ -166,7 +166,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let items: &ty::AssocItems = self.env.tcx().associated_items(did);
         for c in items.in_definition_order() {
-            if ty::AssocKind::Fn == c.kind {
+            if let ty::AssocKind::Fn { .. } = c.kind {
                 // get function name
                 let method_name =
                     self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
@@ -253,7 +253,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let mut assoc_types = Vec::new();
             let items: &ty::AssocItems = self.env.tcx().associated_items(did);
             for c in items.in_definition_order() {
-                if ty::AssocKind::Fn == c.kind {
+                if ty::AssocTag::Fn == c.as_tag() {
                     // get attributes
                     let attrs =
                         self.env.get_attributes_of_function(c.def_id, &propagate_method_attr_from_impl);
@@ -285,13 +285,15 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     proc_registry.override_trait_default_impl_names(c.def_id, &spec_name, trait_incl_name);
 
                     methods.insert(method_name, &*spec_ref);
-                } else if ty::AssocKind::Type == c.kind {
+                } else if let ty::AssocKind::Type { .. } = c.kind {
                     // get name
                     let type_name =
-                        self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotATraitMethod(c.def_id))?;
+                        self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotAnAssocType(c.def_id))?;
                     let type_name = strip_coq_ident(&type_name);
                     let lit = radium::LiteralTyParam::new(&type_name, &type_name);
                     assoc_types.push(lit);
+                } else {
+                    return Err(Error::AssocConstNotSupported.into());
                 }
             }
 
@@ -402,7 +404,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // TODO is this definition order guaranteed to be the same as on the trait?
         let assoc_items: &'tcx ty::AssocItems = self.env.tcx().associated_items(impl_did);
         for it in assoc_items.in_definition_order() {
-            if it.kind == ty::AssocKind::Type {
+            if let ty::AssocKind::Type { .. } = it.kind {
                 let item_did = it.def_id;
                 let item_ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(item_did);
                 let subst_ty = item_ty.instantiate(self.env.tcx(), impl_args);
@@ -736,11 +738,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // maybe instead iterate over the assoc items of the trait
 
             for x in trait_assoc_items.in_definition_order() {
-                if x.kind == ty::AssocKind::Type {
-                    let ty_item = assoc_items.find_by_name_and_kind(
+                if let ty::AssocKind::Type { .. } = x.kind {
+                    let ty_item = assoc_items.find_by_ident_and_kind(
                         self.env.tcx(),
                         x.ident(self.env.tcx()),
-                        ty::AssocKind::Type,
+                        ty::AssocTag::Type,
                         trait_impl_did,
                     );
                     if let Some(ty_item) = ty_item {
@@ -962,7 +964,7 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
 }
 impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        if let ty::RegionKind::ReBound(_, b1) = *r1 {
+        if let ty::RegionKind::ReBound(_, b1) = r1.kind() {
             trace!("trying to unify region {r1:?} with {r2:?}");
             // only unify if this is in the range of binders to unify
             let index1 = b1.var.index();
@@ -973,7 +975,7 @@ impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
                     self.instantiation.insert(index1, r2);
                 }
             }
-        } else if let ty::RegionKind::ReEarlyParam(e1) = *r1 {
+        } else if let ty::RegionKind::ReEarlyParam(e1) = r1.kind() {
             trace!("trying to unify region {r1:?} with {r2:?}");
             if let Some(r1_l) = self.early_instantiation.get(&e1) {
                 assert!(*r1_l == r2);

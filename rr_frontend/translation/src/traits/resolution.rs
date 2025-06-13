@@ -168,7 +168,7 @@ impl<'tcx> RegionMapper<'tcx> {
 }
 impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        if let ty::RegionKind::ReVar(v1) = *r1 {
+        if let ty::RegionKind::ReVar(v1) = r1.kind() {
             assert!(!self.map.contains_key(&v1));
 
             self.map.insert(v1, r2);

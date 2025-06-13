@@ -10,7 +10,6 @@ use rr_rustc_interface::middle::mir;
 use crate::abstract_interpretation::{AnalysisResult, FixpointEngine};
 use crate::domains::DefinitelyAllocatedState;
 
-#[expect(clippy::module_name_repetitions)]
 pub struct DefinitelyAllocatedAnalysis<'mir, 'tcx: 'mir> {
     mir: &'mir mir::Body<'tcx>,
 }

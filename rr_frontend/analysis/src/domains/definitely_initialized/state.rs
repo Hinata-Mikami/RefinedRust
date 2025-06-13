@@ -20,7 +20,6 @@ use crate::AnalysisError;
 /// set at the same time. For example, having `x.f` and `x.f.g` in the
 /// set at the same time is illegal.
 #[derive(Clone)]
-#[expect(clippy::module_name_repetitions)]
 pub struct DefinitelyInitializedState<'mir, 'tcx: 'mir> {
     pub(super) def_init_places: FxHashSet<Place<'tcx>>,
     pub(super) def_id: DefId,

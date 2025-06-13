@@ -202,7 +202,7 @@ impl<'tcx> Environment<'tcx> {
 
         let mut assoc_tys = Vec::new();
         for c in assoc_items.in_definition_order() {
-            if ty::AssocKind::Type == c.kind {
+            if ty::AssocTag::Type == c.as_tag() {
                 assoc_tys.push(c.def_id);
             }
         }

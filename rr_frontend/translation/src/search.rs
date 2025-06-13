@@ -248,7 +248,7 @@ where
                         // TODO more robust error handling if there are multiple matches.
                         for item in items.in_definition_order() {
                             //info!("comparing: {:?} with {:?}", item.name.as_str(), find);
-                            if item.name.as_str() == find.as_ref() {
+                            if item.name().as_str() == find.as_ref() {
                                 return Some(item.def_id);
                             }
                         }
@@ -355,7 +355,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
                 // TODO: more robustly handle ambiguous matches
                 for item in items.in_definition_order() {
                     //info!("comparing: {:?} with {:?}", item.name.as_str(), find);
-                    if item.name.as_str() == method.as_str() {
+                    if item.name().as_str() == method.as_str() {
                         return Some(item.def_id);
                     }
                 }

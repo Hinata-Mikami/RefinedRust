@@ -1008,10 +1008,10 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
         let impl_assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
         for (method_name, (name, spec_name, trait_req_incl_name)) in &shim.method_specs {
             // find the right item
-            if let Some(item) = impl_assoc_items.find_by_name_and_kind(
+            if let Some(item) = impl_assoc_items.find_by_ident_and_kind(
                 vcx.env.tcx(),
                 span::symbol::Ident::from_str(method_name),
-                ty::AssocKind::Fn,
+                ty::AssocTag::Fn,
                 trait_did,
             ) {
                 let method_did = item.def_id;
@@ -1408,7 +1408,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
             let mut all_specced = true;
             for x in assoc_items.in_definition_order() {
-                if x.kind == ty::AssocKind::Fn {
+                if x.as_tag() == ty::AssocTag::Fn {
                     // check if all functions have a specification
                     if let Some(mode) = vcx.procedure_registry.lookup_function_mode(x.def_id) {
                         all_specced = all_specced && mode.needs_spec();
@@ -1472,19 +1472,19 @@ fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
             let mut methods = BTreeMap::new();
 
             for x in trait_assoc_items.in_definition_order() {
-                if x.kind == ty::AssocKind::Fn {
-                    let fn_item = assoc_items.find_by_name_and_kind(
+                if x.as_tag() == ty::AssocTag::Fn {
+                    let fn_item = assoc_items.find_by_ident_and_kind(
                         vcx.env.tcx(),
                         x.ident(vcx.env.tcx()),
-                        ty::AssocKind::Fn,
+                        ty::AssocTag::Fn,
                         did,
                     );
 
                     if let Some(fn_item) = fn_item {
                         if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                            methods.insert(x.name.as_str().to_owned(), spec);
+                            methods.insert(x.name().as_str().to_owned(), spec);
                         } else {
-                            warn!("Incomplete specification for {}", fn_item.name);
+                            warn!("Incomplete specification for {}", fn_item.name());
                             return Err(base::TranslationError::IncompleteTraitImplSpec(did));
                         }
                     } else {

@@ -113,7 +113,6 @@ fn order_basic_blocks(
 }
 
 /// Struct that contains information about all loops in the procedure.
-#[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct ProcedureLoops {
     /// A list of basic blocks that are loop heads.

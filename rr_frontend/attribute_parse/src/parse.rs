@@ -158,7 +158,7 @@ impl Buffer {
         Ok(r)
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.index.get() >= self.trees.len()
     }
 
@@ -181,7 +181,7 @@ impl Buffer {
                     self.advance(1);
                     Ok(tok.span)
                 } else {
-                    Err(Error::WrongTokenKind(token, tok.kind.clone(), tok.span))
+                    Err(Error::WrongTokenKind(token, tok.kind, tok.span))
                 }
             },
             ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
@@ -197,7 +197,7 @@ impl Buffer {
                     self.advance(1);
                     Ok(sym)
                 },
-                _ => Err(Error::ExpectedIdent(tok.kind.clone(), tok.span)),
+                _ => Err(Error::ExpectedIdent(tok.kind, tok.span)),
             },
             ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
@@ -212,7 +212,7 @@ impl Buffer {
                     self.advance(1);
                     Ok((lit, tok.span))
                 },
-                _ => Err(Error::ExpectedLiteral(tok.kind.clone(), tok.span)),
+                _ => Err(Error::ExpectedLiteral(tok.kind, tok.span)),
             },
             ast::tokenstream::TokenTree::Delimited(span, _, _, _) => Err(Error::UnexpectedDelim(*span)),
         }
