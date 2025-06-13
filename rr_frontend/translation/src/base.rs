@@ -6,6 +6,7 @@
 
 use derive_more::Display;
 use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::hir::definitions::DefPathHash;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
 
@@ -23,6 +24,47 @@ pub fn strip_coq_ident(s: &str) -> String {
 
 pub type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
 pub type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
+
+/// Ordered `DefId`s, ordered by their `DefPathHash`, which should be stable across compilations.
+#[derive(Debug, Eq, PartialEq)]
+pub struct OrderedDefId {
+    pub def_id: DefId,
+    pub def_path_hash: DefPathHash,
+}
+
+impl OrderedDefId {
+    pub fn new<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> Self {
+        let def_path_hash = tcx.def_path_hash(did);
+        Self {
+            def_id: did,
+            def_path_hash,
+        }
+    }
+}
+
+impl Ord for OrderedDefId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.def_path_hash.cmp(&other.def_path_hash).then_with(|| {
+            self.def_id
+                .krate
+                .cmp(&other.def_id.krate)
+                .then_with(|| self.def_id.index.cmp(&other.def_id.index))
+        })
+    }
+}
+impl PartialOrd<Self> for OrderedDefId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+pub fn sort_def_ids<'tcx>(tcx: ty::TyCtxt<'tcx>, dids: &mut [DefId]) {
+    dids.sort_by(|a, b| {
+        let hash_a = tcx.def_path_hash(*a);
+        let hash_b = tcx.def_path_hash(*b);
+        hash_a.cmp(&hash_b)
+    });
+}
 
 /// Error type used for the MIR to Caesium translation.
 //TODO: add location info based on Span

@@ -17,7 +17,7 @@ use crate::{display_list, write_list};
 /// A [dirpath].
 ///
 /// [dirpath]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-dirpath
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Default, Deref, DerefMut)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Default, Deref, DerefMut, Ord, PartialOrd)]
 #[display("{}", display_list!(_0, "."))]
 pub struct DirPath(pub Vec<String>);
 
@@ -34,7 +34,7 @@ impl From<Vec<String>> for DirPath {
 }
 
 /// Either an Import or an Export flag.
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 pub enum Kind {
     Import,
     Export,
@@ -43,7 +43,7 @@ pub enum Kind {
 /// The [`From ... Require`] command.
 ///
 /// [`From ... Require`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#coq:cmd.From-%E2%80%A6-Require
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 pub struct FromRequire {
     pub from: Option<DirPath>,
     pub import: Vec<String>,
@@ -105,7 +105,7 @@ impl Import {
 }
 
 /// A wrapper over [`FromRequire`] to represent an export list.
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, DerefMut, Into)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, DerefMut, Into, Ord, PartialOrd)]
 pub struct Export(pub FromRequire);
 
 impl Export {

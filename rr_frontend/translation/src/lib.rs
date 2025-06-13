@@ -27,7 +27,7 @@ mod traits;
 mod types;
 mod unification;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -52,7 +52,7 @@ use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
-fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
+fn order_defs_with_deps<'tcx>(tcx: ty::TyCtxt<'tcx>, deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
     let mut topo = TopologicalSort::new();
     let mut defs = HashSet::new();
 
@@ -68,10 +68,10 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
 
     let mut defn_order = Vec::new();
     while !topo.is_empty() {
-        let next = topo.pop_all();
+        let mut next = topo.pop_all();
         // sort these by lexicographic order
-        // TODO: order?
-        //next.sort();
+        base::sort_def_ids(tcx, &mut next);
+
         if next.is_empty() {
             // dependency cycle detected
             // TODO
@@ -86,7 +86,7 @@ fn order_adt_defs(deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
 
 pub struct VerificationCtxt<'tcx, 'rcx> {
     env: &'rcx Environment<'tcx>,
-    procedure_registry: procedures::Scope<'rcx>,
+    procedure_registry: procedures::Scope<'tcx, 'rcx>,
     const_registry: consts::Scope<'rcx>,
     type_translator: &'rcx types::TX<'rcx, 'tcx>,
     trait_registry: &'rcx registry::TR<'tcx, 'rcx>,
@@ -94,20 +94,20 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
 
     /// the second component determines whether to include it in the code file as well
-    extra_exports: HashSet<(coq::module::Export, bool)>,
+    extra_exports: BTreeSet<(coq::module::Export, bool)>,
 
     /// extra Coq module dependencies (for generated dune files)
-    extra_dependencies: HashSet<coq::module::DirPath>,
+    extra_dependencies: BTreeSet<coq::module::DirPath>,
 
     /// `RefinedRust` modules to export
-    lib_exports: HashSet<String>,
+    lib_exports: BTreeSet<String>,
 
     coq_path_prefix: String,
     dune_package: Option<String>,
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: HashMap<DefId, radium::TraitImplSpec<'rcx>>,
+    trait_impls: BTreeMap<base::OrderedDefId, radium::TraitImplSpec<'rcx>>,
 }
 
 impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
@@ -187,7 +187,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         trace!("implementation for: {:?}", impl_for);
 
-        let mut method_specs = HashMap::new();
+        let mut method_specs = BTreeMap::new();
         for (name, spec) in &decl.methods.methods {
             method_specs.insert(
                 name.to_owned(),
@@ -278,7 +278,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         // trait impls
         for (did, decl) in &self.trait_impls {
-            if let Some(entry) = self.make_trait_impl_shim_entry(*did, decl) {
+            if let Some(entry) = self.make_trait_impl_shim_entry(did.def_id, decl) {
                 trait_impl_shims.push(entry);
             } else {
                 info!("Creating trait impl shim entry failed for {did:?}");
@@ -308,32 +308,32 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         // functions and methods
         for (did, _) in self.procedure_registry.iter_code() {
-            if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
+            if let Some(impl_did) = self.env.tcx().impl_of_method(did.def_id) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
                     continue;
                 }
             }
-            if let Some(shim) = self.make_shim_function_entry(*did) {
+            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
                 function_shims.push(shim);
             }
         }
 
         for (did, _) in self.procedure_registry.iter_only_spec() {
-            if let Some(impl_did) = self.env.tcx().impl_of_method(*did) {
+            if let Some(impl_did) = self.env.tcx().impl_of_method(did.def_id) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
                     continue;
                 }
             }
-            if let Some(shim) = self.make_shim_function_entry(*did) {
+            if let Some(shim) = self.make_shim_function_entry(did.def_id) {
                 function_shims.push(shim);
             }
         }
 
-        let mut module_dependencies: HashSet<coq::module::DirPath> =
+        let mut module_dependencies: BTreeSet<coq::module::DirPath> =
             self.extra_exports.iter().filter_map(|(export, _)| export.get_path()).collect();
 
         module_dependencies.extend(self.extra_dependencies.iter().cloned());
@@ -394,7 +394,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             let enum_defs = self.type_translator.get_enum_defs();
             let adt_deps = self.type_translator.get_adt_deps();
 
-            let ordered = order_adt_defs(&adt_deps);
+            let ordered = order_defs_with_deps(self.env.tcx(), &adt_deps);
             info!("ordered ADT defns: {:?}", ordered);
 
             for did in &ordered {
@@ -427,7 +427,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         // write trait specs
         let trait_deps = self.trait_registry.get_registered_trait_deps();
-        let dep_order = order_adt_defs(&trait_deps);
+        let dep_order = order_defs_with_deps(self.env.tcx(), &trait_deps);
         let trait_decls = self.trait_registry.get_trait_decls();
         for did in dep_order {
             let decl = &trait_decls[&did.as_local().unwrap()];
@@ -451,8 +451,9 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             writeln!(code_file, "Open Scope printing_sugar.").unwrap();
             writeln!(code_file).unwrap();
 
+            // TODO: iterate in order
             for (did, fun) in self.procedure_registry.iter_code() {
-                if self.procedure_registry.lookup_function_mode(*did).unwrap().needs_def() {
+                if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_def() {
                     writeln!(code_file, "{}", fun.code).unwrap();
                     writeln!(code_file).unwrap();
                 }
@@ -468,7 +469,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             writeln!(spec_file).unwrap();
 
             for (did, fun) in self.procedure_registry.iter_code() {
-                let meta = self.procedure_registry.lookup_function(*did).unwrap();
+                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
                 if !meta.is_trait_default() {
                     if fun.spec.is_complete() {
                         //if fun.spec.spec.args.len() != fun.code.get_argument_count() {
@@ -489,7 +490,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         // also write only-spec functions specs
         {
             for (did, spec) in self.procedure_registry.iter_only_spec() {
-                let meta = self.procedure_registry.lookup_function(*did).unwrap();
+                let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
                 if !meta.is_trait_default() {
                     if spec.is_complete() {
                         writeln!(spec_file, "{}", spec.generate_trait_req_incl_def()).unwrap();
@@ -547,7 +548,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             let path = file_path(fun.name());
             let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
 
-            let meta = self.procedure_registry.lookup_function(*did).unwrap();
+            let meta = self.procedure_registry.lookup_function(did.def_id).unwrap();
             let mode = meta.get_mode();
 
             if fun.spec.is_complete() && mode.needs_proof() {
@@ -617,7 +618,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             let module_path = file_path(fun.name());
             let path = proof_dir_path.join(format!("{module_path}.v"));
 
-            if !self.check_function_needs_proof(*did, fun) {
+            if !self.check_function_needs_proof(did.def_id, fun) {
                 continue;
             }
 
@@ -812,7 +813,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         // write dune meta file
         let mut dune_file = io::BufWriter::new(File::create(generated_dune_path.as_path()).unwrap());
 
-        let mut extra_theories: HashSet<coq::module::DirPath> =
+        let mut extra_theories: BTreeSet<coq::module::DirPath> =
             self.extra_exports.iter().filter_map(|(export, _)| export.get_path()).collect();
 
         extra_theories.extend(self.extra_dependencies.iter().cloned());
@@ -846,9 +847,9 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             // issue a warning in that case
 
             // build the set of proof files we are going to expect
-            let mut proof_files_to_generate = HashSet::new();
+            let mut proof_files_to_generate = BTreeSet::new();
             for (did, fun) in self.procedure_registry.iter_code() {
-                if self.check_function_needs_proof(*did, fun) {
+                if self.check_function_needs_proof(did.def_id, fun) {
                     proof_files_to_generate.insert(make_proof_file_name(fun.name()));
                 }
             }
@@ -1359,7 +1360,7 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
 
     // order according to dependencies first
     let deps = vcx.trait_registry.get_trait_deps(traits.as_slice());
-    let ordered_traits = order_adt_defs(&deps);
+    let ordered_traits = order_defs_with_deps(vcx.env.tcx(), &deps);
 
     for t in &ordered_traits {
         let t = t.as_local().unwrap();
@@ -1532,7 +1533,8 @@ fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         let spec = process_impl();
         match spec {
             Ok(spec) => {
-                vcx.trait_impls.insert(did, spec);
+                let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), did);
+                vcx.trait_impls.insert(ordered_did, spec);
             },
             Err(base::TranslationError::FatalError(err)) => {
                 exit_with_error(&format!(
@@ -1588,7 +1590,7 @@ where
     let module_attrs = get_module_attributes(env)?;
 
     // process exports
-    let mut exports: HashSet<coq::module::Export> = HashSet::new();
+    let mut exports: BTreeSet<coq::module::Export> = BTreeSet::new();
 
     exports.extend(crate_spec.exports);
 
@@ -1599,7 +1601,7 @@ where
     info!("Exporting extra Coq files: {:?}", exports);
 
     // process includes
-    let mut includes: HashSet<String> = HashSet::new();
+    let mut includes: BTreeSet<String> = BTreeSet::new();
     crate_spec.includes.into_iter().map(|name| includes.insert(name)).count();
     module_attrs
         .values()
@@ -1607,7 +1609,7 @@ where
         .count();
     info!("Including RefinedRust modules: {:?}", includes);
     // process export_includes
-    let mut export_includes: HashSet<String> = HashSet::new();
+    let mut export_includes: BTreeSet<String> = BTreeSet::new();
     crate_spec.export_includes.into_iter().map(|name| export_includes.insert(name)).count();
     module_attrs
         .into_values()
@@ -1631,7 +1633,7 @@ where
     type_translator.provide_trait_registry(&trait_registry);
     trait_registry.provide_type_translator(&type_translator);
 
-    let procedure_registry = procedures::Scope::new();
+    let procedure_registry = procedures::Scope::new(tcx);
     let shim_string_arena = Arena::new();
     let mut shim_registry = shim_registry::SR::empty(&shim_string_arena);
 
@@ -1641,7 +1643,7 @@ where
     let found_libs = shims::scan_loadpaths(&library_load_paths).map_err(|e| e.to_string())?;
     info!("Found the following RefinedRust libraries in the loadpath: {:?}", found_libs);
 
-    let mut included_libs = HashSet::new();
+    let mut included_libs = BTreeSet::new();
     while !includes.is_empty() {
         let incl = includes.iter().next().unwrap().to_owned();
         includes.remove(&incl);
@@ -1661,7 +1663,7 @@ where
         }
     }
 
-    let mut export_included_libs = HashSet::new();
+    let mut export_included_libs = BTreeSet::new();
     while !export_includes.is_empty() {
         let incl = export_includes.iter().next().unwrap().to_owned();
         export_includes.remove(&incl);
@@ -1705,12 +1707,12 @@ where
         procedure_registry,
         lib_exports: export_included_libs,
         extra_exports: exports.into_iter().map(|x| (x, false)).collect(),
-        extra_dependencies: HashSet::new(),
+        extra_dependencies: BTreeSet::new(),
         coq_path_prefix: path_prefix,
         shim_registry,
         dune_package: package,
         const_registry: consts::Scope::empty(),
-        trait_impls: HashMap::new(),
+        trait_impls: BTreeMap::new(),
         fn_arena: &fn_spec_arena,
     };
 

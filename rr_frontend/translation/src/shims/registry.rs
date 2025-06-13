@@ -8,7 +8,7 @@
 //! implementations.
 //! Provides deserialization from a JSON file defining this registry.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
 
@@ -61,9 +61,9 @@ struct ShimTraitEntry {
     /// the Coq def name of spec subsumption relation
     spec_subsumption: String,
     /// allowed attributes on impls of this trait
-    allowed_attrs: HashSet<String>,
+    allowed_attrs: Vec<String>,
     /// definition names for the canonical trait linking assumption for each method
-    method_trait_incl_decls: HashMap<String, String>,
+    method_trait_incl_decls: BTreeMap<String, String>,
 }
 
 /// A file entry for a trait method implementation.
@@ -78,7 +78,7 @@ struct ShimTraitImplEntry {
     kind: String,
 
     /// map from method names to (base name, specification name, trait incl name)
-    method_specs: HashMap<String, (String, String, String)>,
+    method_specs: BTreeMap<String, (String, String, String)>,
 
     /// the Coq def name of the spec record inst
     spec_record: String,
@@ -144,7 +144,7 @@ pub struct TraitImplShim {
     pub trait_path: flat::PathWithArgs,
     pub for_type: flat::Type,
 
-    pub method_specs: HashMap<String, (String, String, String)>,
+    pub method_specs: BTreeMap<String, (String, String, String)>,
 
     pub spec_record: String,
     pub spec_params_record: String,
@@ -181,8 +181,8 @@ pub struct TraitShim<'a> {
     pub base_spec: String,
     pub base_spec_params: String,
     pub spec_subsumption: String,
-    pub allowed_attrs: HashSet<String>,
-    pub method_trait_incl_decls: HashMap<String, String>,
+    pub allowed_attrs: Vec<String>,
+    pub method_trait_incl_decls: BTreeMap<String, String>,
 }
 
 impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
@@ -265,7 +265,7 @@ pub struct SR<'a> {
     trait_impl_shims: Vec<TraitImplShim>,
 
     /// extra module dependencies
-    dependencies: HashSet<coq::module::DirPath>,
+    dependencies: BTreeSet<coq::module::DirPath>,
 }
 
 impl<'a> SR<'a> {
@@ -296,19 +296,19 @@ impl<'a> SR<'a> {
         path
     }
 
-    pub fn empty(arena: &'a Arena<String>) -> Self {
+    pub const fn empty(arena: &'a Arena<String>) -> Self {
         Self {
             arena,
             function_shims: Vec::new(),
             adt_shims: Vec::new(),
             exports: Vec::new(),
-            dependencies: HashSet::new(),
+            dependencies: BTreeSet::new(),
             trait_shims: Vec::new(),
             trait_impl_shims: Vec::new(),
         }
     }
 
-    pub fn add_source(&mut self, f: File) -> Result<Option<HashSet<String>>, Error> {
+    pub fn add_source(&mut self, f: File) -> Result<Option<BTreeSet<String>>, Error> {
         info!("Adding file {f:?}");
         let reader = BufReader::new(f);
         let deser: serde_json::Value = serde_json::from_reader(reader)?;
@@ -362,7 +362,7 @@ impl<'a> SR<'a> {
                     self.dependencies.insert(coq::module::DirPath::from(vec![path]));
                 }
 
-                let mut export_libs = HashSet::new();
+                let mut export_libs = BTreeSet::new();
                 let export_lib_arr = obj
                     .get("export_libs")
                     .ok_or_else(|| Error::MissingAttribute("export_libs".to_owned()))?
@@ -490,7 +490,7 @@ impl<'a> SR<'a> {
         &self.trait_impl_shims
     }
 
-    pub const fn get_extra_dependencies(&self) -> &HashSet<coq::module::DirPath> {
+    pub const fn get_extra_dependencies(&self) -> &BTreeSet<coq::module::DirPath> {
         &self.dependencies
     }
 }
@@ -501,8 +501,8 @@ pub fn write_shims<'a>(
     load_path: &str,
     load_module: &str,
     name: &str,
-    module_dependencies: &HashSet<coq::module::DirPath>,
-    export_libs: &HashSet<String>,
+    module_dependencies: &BTreeSet<coq::module::DirPath>,
+    export_libs: &BTreeSet<String>,
     adt_shims: Vec<AdtShim<'a>>,
     function_shims: Vec<FunctionShim<'a>>,
     trait_shims: Vec<TraitShim>,

@@ -3236,10 +3236,10 @@ pub struct LiteralTraitSpec {
     pub spec_subsumption: String,
 
     /// declared attributes of the trait
-    pub declared_attrs: HashSet<String>,
+    pub declared_attrs: Vec<String>,
 
     /// maps each trait method to its canonical trait inclusion assumption definition
-    pub method_trait_incl_decls: HashMap<String, String>,
+    pub method_trait_incl_decls: BTreeMap<String, String>,
 }
 pub type LiteralTraitSpecRef<'def> = &'def LiteralTraitSpec;
 

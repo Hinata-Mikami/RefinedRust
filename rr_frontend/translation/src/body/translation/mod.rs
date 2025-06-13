@@ -35,7 +35,7 @@ use crate::{consts, procedures, regions, types};
 pub struct TX<'a, 'def, 'tcx> {
     env: &'def Environment<'tcx>,
     /// registry of other procedures
-    procedure_registry: &'a procedures::Scope<'def>,
+    procedure_registry: &'a procedures::Scope<'tcx, 'def>,
     /// scope of used consts
     const_registry: &'a consts::Scope<'def>,
     /// trait registry
@@ -86,7 +86,7 @@ pub struct TX<'a, 'def, 'tcx> {
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub fn new(
         env: &'def Environment<'tcx>,
-        procedure_registry: &'a procedures::Scope<'def>,
+        procedure_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
         ty_translator: types::LocalTX<'def, 'tcx>,

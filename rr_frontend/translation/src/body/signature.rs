@@ -37,7 +37,7 @@ pub struct TX<'a, 'def, 'tcx> {
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
 
     /// registry of other procedures
-    procedure_registry: &'a procedures::Scope<'def>,
+    procedure_registry: &'a procedures::Scope<'tcx, 'def>,
     /// registry of consts
     const_registry: &'a consts::Scope<'def>,
     /// attributes on this function
@@ -187,7 +187,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-        proc_registry: &'a procedures::Scope<'def>,
+        proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(
@@ -368,7 +368,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-        proc_registry: &'a procedures::Scope<'def>,
+        proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(

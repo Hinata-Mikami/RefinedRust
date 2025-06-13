@@ -150,7 +150,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         did: DefId,
         name: String,
-        declared_attrs: HashSet<String>,
+        declared_attrs: Vec<String>,
         has_semantic_interp: bool,
     ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
         let spec_record = format!("{name}_spec");
@@ -162,7 +162,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let spec_semantic = has_semantic_interp.then(|| format!("{name}_semantic_interp"));
 
-        let mut method_trait_incl_decls = HashMap::new();
+        let mut method_trait_incl_decls = BTreeMap::new();
 
         let items: &ty::AssocItems = self.env.tcx().associated_items(did);
         for c in items.in_definition_order() {
@@ -196,7 +196,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub fn register_trait(
         &'def self,
         did: LocalDefId,
-        proc_registry: &mut procedures::Scope<'def>,
+        proc_registry: &mut procedures::Scope<'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("enter TR::register_trait for did={did:?}");
 
@@ -214,7 +214,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let has_semantic_interp = self.env.has_tool_attribute(did.into(), "semantic");
 
         // get the declared attributes that are allowed on impls
-        let valid_attrs: HashSet<String> =
+        let valid_attrs: Vec<String> =
             get_declared_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
 
         // make the literal we are going to use

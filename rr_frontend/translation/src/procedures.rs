@@ -4,9 +4,10 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{hash_map, HashMap};
+use std::collections::{btree_map, BTreeMap};
 
 use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
 
@@ -123,27 +124,34 @@ impl Meta {
  * To account for dependencies between functions, we may register translated names before we have
  * actually translated the function.
  */
-pub struct Scope<'def> {
+pub struct Scope<'tcx, 'def> {
+    tcx: ty::TyCtxt<'tcx>,
     /// maps the defid to `(code_name, spec_name, trait_req_incl_name, name)`
-    name_map: HashMap<DefId, Meta>,
+    name_map: BTreeMap<OrderedDefId, Meta>,
     /// track the actually translated functions
-    translated_functions: HashMap<DefId, radium::Function<'def>>,
+    translated_functions: BTreeMap<OrderedDefId, radium::Function<'def>>,
     /// track the functions with just a specification (`rr::only_spec`)
-    specced_functions: HashMap<DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    specced_functions:
+        BTreeMap<OrderedDefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
 }
 
-impl<'def> Scope<'def> {
-    pub fn new() -> Self {
+impl<'tcx, 'def> Scope<'tcx, 'def> {
+    pub const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         Self {
-            name_map: HashMap::new(),
-            translated_functions: HashMap::new(),
-            specced_functions: HashMap::new(),
+            tcx,
+            name_map: BTreeMap::new(),
+            translated_functions: BTreeMap::new(),
+            specced_functions: BTreeMap::new(),
         }
+    }
+
+    fn get_ordered_did(&self, did: DefId) -> OrderedDefId {
+        OrderedDefId::new(self.tcx, did)
     }
 
     /// Lookup the meta information of a function.
     pub fn lookup_function(&self, did: DefId) -> Option<Meta> {
-        self.name_map.get(&did).cloned()
+        self.name_map.get(&self.get_ordered_did(did)).cloned()
     }
 
     /// Lookup a translated function spec
@@ -151,9 +159,10 @@ impl<'def> Scope<'def> {
         &self,
         did: DefId,
     ) -> Option<&'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
-        if let Some(translated_fn) = self.translated_functions.get(&did) {
+        let ordered_did = self.get_ordered_did(did);
+        if let Some(translated_fn) = self.translated_functions.get(&ordered_did) {
             Some(translated_fn.spec)
-        } else if let Some(translated_spec) = self.specced_functions.get(&did) {
+        } else if let Some(translated_spec) = self.specced_functions.get(&ordered_did) {
             Some(translated_spec)
         } else {
             None
@@ -162,12 +171,12 @@ impl<'def> Scope<'def> {
 
     /// Lookup the mode for a function.
     pub fn lookup_function_mode(&self, did: DefId) -> Option<Mode> {
-        self.name_map.get(&did).map(Meta::get_mode)
+        self.name_map.get(&self.get_ordered_did(did)).map(Meta::get_mode)
     }
 
     /// Register a function.
-    pub fn register_function<'tcx>(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
-        if self.name_map.insert(did, meta).is_some() {
+    pub fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
+        if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {
             Err(TranslationError::ProcedureRegistry(format!(
                 "function for defid {:?} has already been registered",
                 did
@@ -185,7 +194,7 @@ impl<'def> Scope<'def> {
         spec_name: &str,
         trait_req_incl_name: &str,
     ) {
-        if let Some(names) = self.name_map.get_mut(&did) {
+        if let Some(names) = self.name_map.get_mut(&self.get_ordered_did(did)) {
             assert!(names.is_default_trait_impl);
             spec_name.clone_into(&mut names.spec_name);
             trait_req_incl_name.clone_into(&mut names.trait_req_incl_name);
@@ -194,9 +203,10 @@ impl<'def> Scope<'def> {
 
     /// Provide the code for a translated function.
     pub fn provide_translated_function(&mut self, did: DefId, trf: radium::Function<'def>) {
-        let meta = &self.name_map[&did];
+        let ordered_did = self.get_ordered_did(did);
+        let meta = &self.name_map[&ordered_did];
         assert!(meta.get_mode().needs_def() || meta.get_mode().is_code_shim());
-        assert!(self.translated_functions.insert(did, trf).is_none());
+        assert!(self.translated_functions.insert(ordered_did, trf).is_none());
     }
 
     /// Provide the specification for an `only_spec` function.
@@ -205,20 +215,22 @@ impl<'def> Scope<'def> {
         did: DefId,
         spec: &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>,
     ) {
-        let meta = &self.name_map[&did];
+        let ordered_did = self.get_ordered_did(did);
+        let meta = &self.name_map[&ordered_did];
         assert!(meta.get_mode().is_only_spec());
-        assert!(self.specced_functions.insert(did, spec).is_none());
+        assert!(self.specced_functions.insert(ordered_did, spec).is_none());
     }
 
     /// Iterate over the functions we have generated code for.
-    pub fn iter_code(&self) -> hash_map::Iter<'_, DefId, radium::Function<'def>> {
+    pub fn iter_code(&self) -> btree_map::Iter<'_, OrderedDefId, radium::Function<'def>> {
         self.translated_functions.iter()
     }
 
     /// Iterate over the functions we have generated only specs for.
     pub fn iter_only_spec(
         &self,
-    ) -> hash_map::Iter<'_, DefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
+    ) -> btree_map::Iter<'_, OrderedDefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>
+    {
         self.specced_functions.iter()
     }
 }

@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
 use attribute_parse::{parse, MToken};
 use derive_more::Constructor;
@@ -129,8 +129,8 @@ where
 }
 
 /// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
-pub fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<HashSet<String>, String> {
-    let mut trait_attrs = HashSet::new();
+pub fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<String>, String> {
+    let mut trait_attrs = Vec::new();
 
     for &it in attrs {
         let path_segs = &it.path.segments;
@@ -145,7 +145,7 @@ pub fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<HashSet<Stri
             let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
             let parsed_name = parsed_name.to_string();
             buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
-            trait_attrs.insert(parsed_name);
+            trait_attrs.push(parsed_name);
         }
     }
 
