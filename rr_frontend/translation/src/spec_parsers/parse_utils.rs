@@ -5,9 +5,9 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::fmt;
+use std::sync::LazyLock;
 
 use attribute_parse::{parse, MToken};
-use lazy_static::lazy_static;
 use log::trace;
 use parse::Peek as _;
 use radium::{coq, specs};
@@ -295,38 +295,26 @@ pub trait ParamLookup<'def> {
     }
 
     fn process_coq_literal_xt(&self, s: &str, rt_is_xt: bool) -> (String, specs::TypeAnnotMeta) {
-        static IDENTCHARR: &str = "[_[[:alpha:]]]";
-        static PREFIXR: &str = "([^{]|^)";
-
-        let mut annot_meta = specs::TypeAnnotMeta::empty();
-
-        let s = handle_escapes(s);
-
-        /* regexes:
-         * - '{\s*rt_of\s+([[:alpha:]])\s*}' replace by lookup of the refinement type name
-         * - '{\s*st_of\s+([[:alpha:]])\s*}' replace by lookup of the syntype name
-         * - '{\s*ly_of\s+([[:alpha:]])\s*}' replace by "use_layout_alg' st"
-         * - '{\s*ty_of\s+([[:alpha:]])\s*}' replace by the type name
-         * - '{\s*'([[:alpha:]])\s*}' replace by lookup of the lifetime name
-         * - '{{(.*)}}' replace by the contents
-         *
-         * Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
-         */
-
         // compile these just once, not for every invocation of the method
-        lazy_static! {
-            //(::[[:alpha:]]*)?
-            static ref IDENTR: String = format!("{IDENTCHARR}[0-9{IDENTCHARR}]*");
-            static ref PATHR: String = format!("(({}::)*)({})", *IDENTR, *IDENTR);
-            static ref RE_RT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*rt_of\s+{}\s*\}}", *PATHR)).unwrap();
-            static ref RE_ST_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*st_of\s+{}\s*\}}", *PATHR)).unwrap();
-            static ref RE_LY_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*ly_of\s+{}\s*\}}", *PATHR)).unwrap();
-            static ref RE_TY_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*ty_of\s+{}\s*\}}", *PATHR)).unwrap();
-            static ref RE_XT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*xt_of\s+{}\s*\}}", *PATHR)).unwrap();
-            static ref RE_LFT_OF: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*'({})\s*\}}", *IDENTR)).unwrap();
-
-            static ref RE_LIT: Regex = Regex::new(&format!(r"{PREFIXR}\{{\s*{}\s*\}}", *PATHR)).unwrap();
-        }
+        static IDENTCHARR: &str = "[_[[:alpha:]]]";
+        // Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
+        static PREFIXR: &str = "([^{]|^)";
+        static IDENTR: LazyLock<String> = LazyLock::new(|| format!("{IDENTCHARR}[0-9{IDENTCHARR}]*"));
+        static PATHR: LazyLock<String> = LazyLock::new(|| format!("(({}::)*)({})", *IDENTR, *IDENTR));
+        static RE_RT_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*rt_of\s+{}\s*\}}", *PATHR)).unwrap());
+        static RE_ST_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*st_of\s+{}\s*\}}", *PATHR)).unwrap());
+        static RE_LY_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*ly_of\s+{}\s*\}}", *PATHR)).unwrap());
+        static RE_TY_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*ty_of\s+{}\s*\}}", *PATHR)).unwrap());
+        static RE_XT_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*xt_of\s+{}\s*\}}", *PATHR)).unwrap());
+        static RE_LFT_OF: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*'({})\s*\}}", *IDENTR)).unwrap());
+        static RE_LIT: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*{}\s*\}}", *PATHR)).unwrap());
 
         // Parse a path to an item.
         fn parse_path(prefix: Option<regex::Match<'_>>) -> RustPath {
@@ -341,6 +329,10 @@ pub trait ParamLookup<'def> {
             }
             path
         }
+
+        let mut annot_meta = specs::TypeAnnotMeta::empty();
+
+        let s = handle_escapes(s);
 
         let cs = &s;
         let cs = RE_RT_OF.replace_all(cs, |c: &Captures<'_>| {

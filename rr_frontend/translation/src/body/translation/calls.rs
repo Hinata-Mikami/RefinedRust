@@ -592,7 +592,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             let lfts: Vec<_> = rs.iter().map(|r| self.format_region(*r)).collect();
                             stmt_annots.push(radium::Annotation::AliasLftIntersection(lft, lfts));
                         },
-                    };
+                    }
                 },
             }
         }
@@ -633,8 +633,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             );
             let assign_stmt = radium::PrimStmt::Assign {
                 ot,
-                e1: place_expr,
-                e2: annotated_rhs,
+                e1: Box::new(place_expr),
+                e2: Box::new(annotated_rhs),
             };
             prim_stmts.push(assign_stmt);
 
@@ -657,7 +657,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
         } else {
             // expr stmt with call; then stuck (we have not provided a continuation, after all)
-            let exprs = radium::PrimStmt::ExprS(call_expr);
+            let exprs = radium::PrimStmt::ExprS(Box::new(call_expr));
             radium::Stmt::Prim(vec![exprs], Box::new(radium::Stmt::Stuck))
         };
 

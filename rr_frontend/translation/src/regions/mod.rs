@@ -110,7 +110,7 @@ pub fn format_atomic_region_direct(
                 return format!("ulft{}", r.index());
             };
 
-            s.to_string()
+            s.to_owned()
         },
     }
 }

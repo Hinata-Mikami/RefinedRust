@@ -8,7 +8,10 @@
 #![feature(fn_traits)]
 #![feature(rustc_private)]
 #![feature(iter_order_by)]
+#![feature(stmt_expr_attributes)]
+// This is useful to clearly state lifetimes of the global interners.
 #![allow(clippy::needless_lifetimes)]
+#![allow(clippy::elidable_lifetime_names)]
 
 mod attrs;
 mod base;
@@ -502,8 +505,8 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
                 writeln!(
                     spec_file,
-                    "(* Included specifications from configured file {:?} *)",
-                    extra_specs_path
+                    "(* Included specifications from configured file {} *)",
+                    extra_specs_path.display()
                 )
                 .unwrap();
 
@@ -713,7 +716,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         base_dir_path.push(stem);
 
         if fs::read_dir(base_dir_path.as_path()).is_err() {
-            warn!("Output directory {:?} does not exist, creating directory", base_dir_path);
+            warn!("Output directory {:?} does not exist, creating directory", base_dir_path.display());
             fs::create_dir_all(base_dir_path.as_path()).unwrap();
         }
 
@@ -766,7 +769,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                     io::BufWriter::new(File::create(dune_project_path.as_path()).unwrap());
 
                 let (project_name, dune_project_package) = if let Some(dune_package) = &self.dune_package {
-                    (dune_package.to_string(), format!("(package (name {dune_package}))\n"))
+                    (dune_package.to_owned(), format!("(package (name {dune_package}))\n"))
                 } else {
                     (stem.to_owned(), String::new())
                 };
@@ -785,7 +788,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         // write generated (subdirectory "generated")
         info!("outputting generated code to {}", generated_dir_path.to_str().unwrap());
         if fs::read_dir(generated_dir_path).is_err() {
-            warn!("Output directory {:?} does not exist, creating directory", generated_dir_path);
+            warn!("Output directory {} does not exist, creating directory", generated_dir_path.display());
         } else {
             // purge contents
             info!("Removing the contents of the generated directory");
@@ -864,7 +867,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
                 println!("Warning: Proof file {filename} does not have a matching Rust function to verify.");
             }
         } else {
-            warn!("Output directory {:?} does not exist, creating directory", proof_dir_path);
+            warn!("Output directory {} does not exist, creating directory", proof_dir_path.display());
             fs::create_dir_all(proof_dir_path).unwrap();
         }
 
@@ -1565,7 +1568,7 @@ where
     let env: &Environment = &*Box::leak(Box::new(env));
 
     // get crate attributes
-    let crate_attrs = tcx.hir().krate_attrs();
+    let crate_attrs = tcx.hir_krate_attrs();
     let crate_attrs = attrs::filter_for_tool(crate_attrs);
     info!("Found crate attributes: {:?}", crate_attrs);
     // parse crate attributes

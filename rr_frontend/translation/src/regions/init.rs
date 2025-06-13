@@ -200,7 +200,7 @@ pub fn get_relevant_universal_constraints<'a>(
                 if let Some((x, y)) = to_universal() {
                     inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
                     universal_constraints.push((x, y));
-                };
+                }
             }
         }
     }

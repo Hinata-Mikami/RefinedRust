@@ -5,24 +5,24 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{LazyLock, RwLock};
 use std::{env, mem};
 
 use config::{Config, Environment, File, FileFormat};
-use lazy_static::lazy_static;
 use path_clean::PathClean as _;
 use serde::Deserialize;
 
 pub mod arg_value;
 
-lazy_static! {
-    // RwLock due to rustc parallelism
-    static ref SETTINGS: RwLock<Config> = RwLock::new({
+// RwLock due to rustc parallelism
+static SETTINGS: LazyLock<RwLock<Config>> = LazyLock::new(|| {
+    RwLock::new({
         let mk_config = || {
             let mut builder = Config::builder();
 
             // 1. Default values
-            builder = builder.set_default("be_rustc", false)?
+            builder = builder
+                .set_default("be_rustc", false)?
                 .set_default("log_dir", "./log/")?
                 .set_default("check_overflows", true)?
                 .set_default("dump_debug_info", false)?
@@ -42,9 +42,7 @@ lazy_static! {
                 .set_default("work_dir", ".")?;
 
             // 2. Override with the optional TOML file "RefinedRust.toml" (if there is any)
-            builder = builder.add_source(
-                File::new("RefinedRust.toml", FileFormat::Toml).required(false)
-            );
+            builder = builder.add_source(File::new("RefinedRust.toml", FileFormat::Toml).required(false));
 
             // 3. Override with an optional TOML file specified by the `RR_CONFIG` env variable
             if let Ok(file) = env::var("RR_CONFIG") {
@@ -60,16 +58,14 @@ lazy_static! {
             }
 
             // 4. Override with env variables (`RR_QUIET`, ...)
-            let builder = builder.add_source(
-                Environment::with_prefix("RR").ignore_empty(true)
-            );
+            let builder = builder.add_source(Environment::with_prefix("RR").ignore_empty(true));
 
             builder.build()
         };
 
         mk_config().unwrap()
-    });
-}
+    })
+});
 
 /// Generate a dump of the settings
 #[must_use]

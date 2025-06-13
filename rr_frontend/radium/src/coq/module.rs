@@ -82,7 +82,7 @@ impl Display for FromRequire {
         match self.kind {
             Kind::Import => write!(f, "Require Import ")?,
             Kind::Export => write!(f, "Require Export ")?,
-        };
+        }
 
         write_list!(f, &self.import, " ")
     }

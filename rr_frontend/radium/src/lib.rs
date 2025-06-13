@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(stmt_expr_attributes)]
 
 pub mod code;
 pub mod coq;
@@ -28,6 +29,8 @@ macro_rules! display_list {
         $crate::display_list!($collection, $separator, |e| format!($pattern, e))
     };
     ($collection:expr, $separator:expr, $fmt:expr) => {
+        #[allow(clippy::allow_attributes)]
+        #[allow(clippy::string_to_string)]
         $collection.into_iter().map($fmt).collect::<Vec<_>>().join($separator)
     };
 }
@@ -70,7 +73,7 @@ macro_rules! write_list {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Write;
+    use std::fmt::Write as _;
 
     #[test]
     fn display_list_default() {

@@ -109,8 +109,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
                         prim_stmts.push(radium::PrimStmt::Assign {
                             ot: synty.into(),
-                            e1: translated_place,
-                            e2: translated_val,
+                            e1: Box::new(translated_place),
+                            e2: Box::new(translated_val),
                         });
 
                         prim_stmts.push(radium::PrimStmt::Annot{

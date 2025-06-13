@@ -1,6 +1,6 @@
 use rr_rustc_interface::middle::ty::{self, TyCtxt};
 /// From rustc, under the MIT license.
-pub use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use rr_rustc_interface::type_ir::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 
 /// Folds over the substructure of a type, visiting its component
 /// types and all regions that occur *free* within it.
@@ -28,7 +28,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         fold_region_fn: &'a mut dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> RegionFolder<'a, 'tcx> {
+    ) -> Self {
         RegionFolder {
             tcx,
             current_index: ty::INNERMOST,

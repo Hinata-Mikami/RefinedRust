@@ -424,13 +424,17 @@ type BlockLabel = usize;
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum PrimStmt {
     #[display("{} <-{{ {} }} {};\n", e1, ot, e2)]
-    Assign { ot: OpType, e1: Expr, e2: Expr },
+    Assign {
+        ot: OpType,
+        e1: Box<Expr>,
+        e2: Box<Expr>,
+    },
 
     #[display("expr: {};\n", _0)]
-    ExprS(Expr),
+    ExprS(Box<Expr>),
 
     #[display("assert{{ {} }}: {};\n", OpType::Bool, _0)]
-    AssertS(Expr),
+    AssertS(Box<Expr>),
 
     #[display("{}", display_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why))}))]
     Annot {
@@ -1084,7 +1088,7 @@ impl Function<'_> {
 
         // initialize lifetimes
         let mut lfts: Vec<_> =
-            self.spec.generics.get_lfts().iter().map(|n| (n.to_string(), n.to_string())).collect();
+            self.spec.generics.get_lfts().iter().map(|n| (n.to_owned(), n.to_owned())).collect();
         lfts.push(("_flft".to_owned(), "ϝ".to_owned()));
         lfts.push(("static".to_owned(), "static".to_owned()));
         let formatted_lifetimes = make_lft_map_string(&lfts);

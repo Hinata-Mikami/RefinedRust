@@ -177,7 +177,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let stmt = self.translate_goto_like(&loc, *target)?;
 
                 // TODO: should we really have this?
-                endlfts.insert(0, radium::PrimStmt::AssertS(comp));
+                endlfts.insert(0, radium::PrimStmt::AssertS(Box::new(comp)));
                 Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 

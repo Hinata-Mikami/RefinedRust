@@ -455,7 +455,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the type of a place expression.
-    fn get_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::tcx::PlaceTy<'tcx> {
+    fn get_type_of_place(&self, pl: &mir::Place<'tcx>) -> mir::PlaceTy<'tcx> {
         pl.ty(&self.proc.get_mir().local_decls, self.env.tcx())
     }
 

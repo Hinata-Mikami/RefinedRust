@@ -103,8 +103,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // TODO: add universal constraints (ideally in setup_local_scope)
 
         // get argument names
-        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc_did);
-        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc_did);
+        let arg_names: Vec<_> = arg_names
+            .iter()
+            .enumerate()
+            .map(|(i, maybe_name)| {
+                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
+            })
+            .collect();
         info!("arg names: {arg_names:?}");
 
         let spec_builder = Self::process_attrs(
@@ -341,8 +347,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         // get argument names
-        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
-        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: Vec<_> = arg_names
+            .iter()
+            .enumerate()
+            .map(|(i, maybe_name)| {
+                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
+            })
+            .collect();
         info!("arg names: {arg_names:?}");
 
         // process attributes
@@ -423,8 +435,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
         // get argument names
-        let arg_names: &'tcx [span::symbol::Ident] = env.tcx().fn_arg_names(proc.get_id());
-        let arg_names: Vec<_> = arg_names.iter().map(|i| i.as_str().to_owned()).collect();
+        let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_names(proc.get_id());
+        let arg_names: Vec<_> = arg_names
+            .iter()
+            .enumerate()
+            .map(|(i, maybe_name)| {
+                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
+            })
+            .collect();
         info!("arg names: {arg_names:?}");
 
         let mut t = Self {

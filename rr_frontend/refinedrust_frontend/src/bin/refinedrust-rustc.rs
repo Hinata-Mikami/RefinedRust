@@ -71,7 +71,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
         if let Some(parts) = shlex::split(&s) {
             let work_dir = rrconfig::absolute_work_dir();
             let dir_path = PathBuf::from(&work_dir);
-            info!("running post-generation hook in {:?}: {:?}", dir_path, s);
+            info!("running post-generation hook in {}: {:?}", dir_path.display(), s);
 
             let status = Command::new(&parts[0])
                 .args(&parts[1..])
@@ -88,7 +88,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
         } else if let Some(dir_str) = rrconfig::output_dir() {
             let dir_path = PathBuf::from(&dir_str);
 
-            info!("calling type checker in {:?}", dir_path);
+            info!("calling type checker in {}", dir_path.display());
 
             let status = Command::new("dune")
                 .arg("build")
@@ -110,10 +110,10 @@ impl driver::Callbacks for RRCompilerCalls {
         }
     }
 
-    fn after_analysis<'tcx>(
+    fn after_analysis(
         &mut self,
         _: &interface::interface::Compiler,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: ty::TyCtxt<'_>,
     ) -> driver::Compilation {
         if rrconfig::no_verify() {
             // TODO: We also need this to properly compile deps.

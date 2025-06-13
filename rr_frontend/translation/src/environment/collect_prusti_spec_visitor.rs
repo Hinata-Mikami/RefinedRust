@@ -50,13 +50,13 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
     pub fn run(&mut self) {
         let it: &middle::hir::ModuleItems = self.tcx.hir_crate_items(());
         for id in it.free_items() {
-            self.visit_item(self.tcx.hir().item(id));
+            self.visit_item(self.tcx.hir_item(id));
         }
         for id in it.impl_items() {
-            self.visit_impl_item(self.tcx.hir().impl_item(id));
+            self.visit_impl_item(self.tcx.hir_impl_item(id));
         }
         for id in it.trait_items() {
-            self.visit_trait_item(self.tcx.hir().trait_item(id));
+            self.visit_trait_item(self.tcx.hir_trait_item(id));
         }
     }
 }
@@ -69,7 +69,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
             let item_def_path = self.env.get_item_def_path(def_id.to_def_id());
             trace!("Add fn item {} to result", item_def_path);
             self.functions.push(def_id);
-        } else if let hir::ItemKind::Const(_, _, _) = i.kind {
+        } else if let hir::ItemKind::Const(_, _, _, _) = i.kind {
             let def_id = i.hir_id().owner.def_id;
             let item_def_path = self.env.get_item_def_path(def_id.to_def_id());
             trace!("Add const {} to result", item_def_path);

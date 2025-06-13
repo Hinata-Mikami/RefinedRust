@@ -17,8 +17,8 @@ pub fn has_tool_attr(attrs: &[hir::Attribute], name: &str) -> bool {
 
 /// Get the arguments for a tool attribute, if it exists.
 pub fn get_tool_attr<'a>(attrs: &'a [hir::Attribute], name: &str) -> Option<&'a hir::AttrArgs> {
-    attrs.iter().find_map(|attr| match &attr.kind {
-        hir::AttrKind::Normal(na) => {
+    attrs.iter().find_map(|attr| match &attr {
+        hir::Attribute::Unparsed(na) => {
             let segments = &na.path.segments;
             let args = &na.args;
             (segments.len() == 2
@@ -42,8 +42,8 @@ pub fn has_tool_attr_filtered(attrs: &[&hir::AttrItem], name: &str) -> bool {
 
 /// Check if any attribute starting with `<tool>` is among the attributes.
 pub fn has_any_tool_attr(attrs: &[hir::Attribute]) -> bool {
-    attrs.iter().any(|attr| match &attr.kind {
-        hir::AttrKind::Normal(na) => {
+    attrs.iter().any(|attr| match &attr {
+        hir::Attribute::Unparsed(na) => {
             let segments = &na.path.segments;
             segments[0].as_str() == rrconfig::spec_hotword().as_str()
         },
@@ -56,8 +56,8 @@ pub fn has_any_tool_attr(attrs: &[hir::Attribute]) -> bool {
 pub fn filter_for_tool(attrs: &[hir::Attribute]) -> Vec<&hir::AttrItem> {
     attrs
         .iter()
-        .filter_map(|attr| match &attr.kind {
-            hir::AttrKind::Normal(na) => {
+        .filter_map(|attr| match &attr {
+            hir::Attribute::Unparsed(na) => {
                 let seg = na.path.segments.first()?;
 
                 (seg.name.as_str() == rrconfig::spec_hotword()).then_some(na.as_ref())

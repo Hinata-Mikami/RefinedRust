@@ -105,7 +105,7 @@ impl<'tcx> Environment<'tcx> {
     pub fn get_closures(&self) -> Vec<LocalDefId> {
         let tcx = self.tcx;
         let mut cl_visitor = CollectClosureDefsVisitor::new(self);
-        tcx.hir().visit_all_item_likes_in_crate(&mut cl_visitor);
+        tcx.hir_visit_all_item_likes_in_crate(&mut cl_visitor);
         cl_visitor.get_closure_defs()
     }
 

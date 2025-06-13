@@ -430,7 +430,7 @@ impl LiteralTyParam {
         }
     }
 
-    pub fn set_origin(&mut self, origin: TyParamOrigin) {
+    pub const fn set_origin(&mut self, origin: TyParamOrigin) {
         self.origin = origin;
     }
 
@@ -1446,7 +1446,7 @@ impl<'def> AbstractStruct<'def> {
     }
 
     /// Register that this type is recursive.
-    pub fn set_is_recursive(&mut self) {
+    pub const fn set_is_recursive(&mut self) {
         self.is_recursive = true;
     }
 
@@ -1785,7 +1785,7 @@ impl<'def> AbstractStructUse<'def> {
         self.raw == TypeIsRaw::Yes
     }
 
-    fn make_raw(&mut self) {
+    const fn make_raw(&mut self) {
         self.raw = TypeIsRaw::Yes;
     }
 
@@ -3159,7 +3159,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     }
 
     /// Add the information that attributes have been provided for this function.
-    pub fn have_spec(&mut self) {
+    pub const fn have_spec(&mut self) {
         self.has_spec = true;
     }
 
@@ -3306,7 +3306,6 @@ pub type LiteralTraitSpecUseRef<'def> = &'def LiteralTraitSpecUseCell<'def>;
 
 impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
     /// Get the associated types we need to quantify over.
-    #[must_use]
     fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
         let mut assoc_tys = Vec::new();
         let b = self.borrow();
@@ -3320,7 +3319,6 @@ impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
         assoc_tys
     }
 
-    #[must_use]
     fn get_origin(&self) -> TyParamOrigin {
         let b = self.borrow();
         let b = b.as_ref().unwrap();
@@ -3428,7 +3426,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
     fn make_spec_param_precond(&self) -> coq::term::Term {
         // the spec we have to require for this verification
         let (spec_to_require, need_attrs) = if let Some(override_spec) = &self.overridden_spec_def {
-            (override_spec.to_string(), false)
+            (override_spec.to_owned(), false)
         } else {
             (self.trait_ref.base_spec.clone(), true)
         };
@@ -4090,7 +4088,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
     }
 
     #[must_use]
-    pub(crate) fn get_num_lifetimes(&self) -> usize {
+    pub(crate) const fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()
     }
 

@@ -117,7 +117,7 @@ pub struct AdtState<'a, 'tcx, 'def> {
 }
 
 impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
-    pub fn new(
+    pub const fn new(
         deps: &'a mut HashSet<DefId>,
         scope: &'a scope::Params<'tcx, 'def>,
         typing_env: &'a ty::TypingEnv<'tcx>,
@@ -185,7 +185,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         }
     }
 
-    fn param_scope(&self) -> &scope::Params<'tcx, 'def> {
+    const fn param_scope(&self) -> &scope::Params<'tcx, 'def> {
         match &self {
             Self::InFunction(state) => &state.generic_scope,
             Self::TranslateAdt(state) => state.scope,
@@ -194,7 +194,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         }
     }
 
-    pub fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
+    pub const fn polonius_info(&self) -> Option<&'def PoloniusInfo<'def, 'tcx>> {
         match &self {
             Self::InFunction(state) => state.polonius_info,
             Self::TraitReqs(state) => state.polonius_info,
@@ -202,7 +202,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
         }
     }
 
-    pub fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap> {
+    pub const fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,
@@ -1244,7 +1244,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             variants.push(coq::inductive::Variant::new(variant_name.clone(), variant_args));
 
-            variant_patterns.push((variant_name.to_string(), variant_arg_binders, variant_rfn));
+            variant_patterns.push((variant_name.to_owned(), variant_arg_binders, variant_rfn));
         }
 
         // We assume the generated Inductive def is placed in a context where the generic types are in scope.
@@ -1544,7 +1544,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             },
 
             ty::TyKind::Tuple(params) => {
-                if params.len() == 0 {
+                if params.is_empty() {
                     return Ok(radium::Type::Unit);
                 }
 
@@ -1593,7 +1593,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         Ok(assoc_type)
                     },
                     _ => Err(TranslationError::UnsupportedType {
-                        description: "RefinedRust does not support Alias types of kind {kind:?}".to_owned(),
+                        description: format!("RefinedRust does not support Alias types of kind {kind:?}"),
                     }),
                 }
             },

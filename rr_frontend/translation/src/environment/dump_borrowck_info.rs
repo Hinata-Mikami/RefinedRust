@@ -125,14 +125,14 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
         let local_def_id = def_id.expect_local();
 
         // Read Polonius facts.
-        let def_path = self.tcx.hir().def_path(local_def_id);
+        let def_path = self.tcx.hir_def_path(local_def_id);
 
         // write raw dump
         let raw_path = rrconfig::log_dir()
             .join("nll-facts")
             .join(def_path.to_filename_friendly_no_crate())
             .join("polonius_info.txt");
-        debug!("Writing raw polonius info to {:?}", raw_path);
+        debug!("Writing raw polonius info to {}", raw_path.display());
 
         let prefix = raw_path.parent().expect("Unable to determine parent dir");
         fs::create_dir_all(prefix).expect("Unable to create parent dir");

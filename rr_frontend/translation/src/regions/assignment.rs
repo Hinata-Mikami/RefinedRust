@@ -97,7 +97,7 @@ fn get_assignment_weak_update_constraints(
 /// Get all region variables mentioned in a place type.
 fn find_region_variables_of_place_type<'tcx>(
     env: &Environment<'tcx>,
-    ty: mir::tcx::PlaceTy<'tcx>,
+    ty: mir::PlaceTy<'tcx>,
 ) -> HashSet<Region> {
     let mut collector = regions::TyRegionCollectFolder::new(env.tcx());
     if ty.variant_index.is_some() {
@@ -157,7 +157,7 @@ pub fn get_assignment_annots<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     lhs_strongly_writeable: bool,
-    lhs_ty: mir::tcx::PlaceTy<'tcx>,
+    lhs_ty: mir::PlaceTy<'tcx>,
     _rhs_ty: ty::Ty<'tcx>,
 ) -> RegionInfo {
     let info = inclusion_tracker.info();

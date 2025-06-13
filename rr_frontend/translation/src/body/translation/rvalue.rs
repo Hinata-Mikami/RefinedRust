@@ -571,9 +571,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     const fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> radium::Mutability {
         match mt {
-            mir::RawPtrKind::Mut => radium::Mutability::Mut,
+            mir::RawPtrKind::Mut | mir::RawPtrKind::FakeForPtrMetadata => radium::Mutability::Mut,
             mir::RawPtrKind::Const => radium::Mutability::Shared,
-            mir::RawPtrKind::FakeForPtrMetadata => radium::Mutability::Mut,
         }
     }
 }

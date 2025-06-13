@@ -6,15 +6,13 @@ use crate::environment::Environment;
 
 pub struct CollectClosureDefsVisitor<'env, 'tcx: 'env> {
     env: &'env Environment<'tcx>,
-    map: middle::hir::map::Map<'tcx>,
     result: Vec<LocalDefId>,
 }
 
 impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
-    pub fn new(env: &'env Environment<'tcx>) -> Self {
+    pub const fn new(env: &'env Environment<'tcx>) -> Self {
         CollectClosureDefsVisitor {
             env,
-            map: env.tcx().hir(),
             result: Vec::new(),
         }
     }
@@ -25,11 +23,10 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
 }
 
 impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {
-    type Map = middle::hir::map::Map<'tcx>;
     type NestedFilter = middle::hir::nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.env.tcx()
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {

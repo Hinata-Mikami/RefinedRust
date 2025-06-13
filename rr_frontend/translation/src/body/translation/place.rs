@@ -20,14 +20,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
-        let mut cur_ty = self.get_type_of_local(pl.local).map(mir::tcx::PlaceTy::from_ty)?;
+        let mut cur_ty = self.get_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
 
         let local_name = self
             .variable_map
             .get(&pl.local)
             .ok_or_else(|| TranslationError::UnknownVar(format!("{:?}", pl.local)))?;
 
-        let mut acc_expr = radium::Expr::Var(local_name.to_string());
+        let mut acc_expr = radium::Expr::Var(local_name.to_owned());
 
         // iterate in evaluation order
         for it in pl.projection {
@@ -115,7 +115,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         description: "places: implement UnwrapUnsafeBinder".to_owned(),
                     });
                 },
-            };
+            }
             // update cur_ty
             cur_ty = cur_ty.projection_ty(self.env.tcx(), it);
         }

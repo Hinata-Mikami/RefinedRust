@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{debug, trace};
-use rr_rustc_interface::middle::ty::fold::TypeFolder as _;
+use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{data_structures, polonius_engine};
 
@@ -418,7 +418,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .filter(|loan| {
                 self.get_borrow_live_at(zombie)
                     .get(&final_loc_point)
-                    .map_or(true, |successor_loans| !successor_loans.contains(loan))
+                    .is_none_or(|successor_loans| !successor_loans.contains(loan))
             })
             .filter(|loan| !becoming_zombie_loans.contains(loan))
             .collect();

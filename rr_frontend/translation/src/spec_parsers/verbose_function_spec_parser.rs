@@ -360,7 +360,7 @@ where
 
             let lit_ty = specs::LiteralType {
                 rust_name: None,
-                type_term: lit_ty.to_string(),
+                type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
                 syn_type: ty.into(),
             };
@@ -701,6 +701,10 @@ where
                                 post_patterns.push(CapturePostRfn::Mut(processed_ty.1, ghost_var, type_hint));
                             }
                         }
+                    },
+                    ty::UpvarCapture::ByUse => {
+                        // The semantics of this are not really clear yet
+                        return Err("Closure captures ByUse, which is not supported".to_owned());
                     },
                 }
             } else {

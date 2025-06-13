@@ -288,52 +288,52 @@ macro_rules! define_punctuation {
 }
 
 define_punctuation! {
-    "+"           pub struct Add/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Plus),         /// `+`
-    "+="          pub struct AddEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Plus),       /// `+=`
-    "&"           pub struct And/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::And),          /// `&`
-    "&&"          pub struct AndAnd/2           ast::token::TokenKind::AndAnd,                                      /// `&&`
-    "&="          pub struct AndEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::And),        /// `&=`
-    "@"           pub struct At/1               ast::token::TokenKind::At,                                          /// `@`
-    "!"           pub struct Bang/1             ast::token::TokenKind::Not,                                         /// `!`
-    "^"           pub struct Caret/1            ast::token::TokenKind::BinOp(ast::token::BinOpToken::Caret),        /// `^`
-    "^="          pub struct CaretEq/2          ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Caret),      /// `^=`
-    ":"           pub struct Colon/1            ast::token::TokenKind::Colon,                                       /// `:`
-    "::"          pub struct Colon2/2           ast::token::TokenKind::PathSep,                                     /// `::`
-    ","           pub struct Comma/1            ast::token::TokenKind::Comma,                                       /// `,`
-    "/"           pub struct Div/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Slash),        /// `/`
-    "/="          pub struct DivEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Slash),      /// `/=`
-    "$"           pub struct Dollar/1           ast::token::TokenKind::Dollar,                                      /// `$`
-    "."           pub struct Dot/1              ast::token::TokenKind::Dot,                                         /// `.`
-    ".."          pub struct Dot2/2             ast::token::TokenKind::DotDot,                                      /// `..`
-    "..."         pub struct Dot3/3             ast::token::TokenKind::DotDotDot,                                   /// `...`
-    "..="         pub struct DotDotEq/3         ast::token::TokenKind::DotDotEq,                                    /// `..=`
-    "="           pub struct Eq/1               ast::token::TokenKind::Eq,                                          /// `=`
-    "=="          pub struct EqEq/2             ast::token::TokenKind::EqEq,                                        /// `==`
-    ">="          pub struct Ge/2               ast::token::TokenKind::Ge,                                          /// `>=`
-    ">"           pub struct Gt/1               ast::token::TokenKind::Gt,                                          /// `>`
-    "<="          pub struct Le/2               ast::token::TokenKind::Le,                                          /// `<=`
-    "<"           pub struct Lt/1               ast::token::TokenKind::Lt,                                          /// `<`
-    "*="          pub struct MulEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Star),       /// `*=`
-    "!="          pub struct Ne/2               ast::token::TokenKind::Ne,                                          /// `!=`
-    "|"           pub struct Or/1               ast::token::TokenKind::BinOp(ast::token::BinOpToken::Or),           /// `|`
-    "|="          pub struct OrEq/2             ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Or),         /// `|=`
-    "||"          pub struct OrOr/2             ast::token::TokenKind::OrOr,                                        /// `||`
-    "#"           pub struct Pound/1            ast::token::TokenKind::Pound,                                       /// `#`
-    "?"           pub struct Question/1         ast::token::TokenKind::Question,                                    /// `?`
-    "->"          pub struct RArrow/2           ast::token::TokenKind::RArrow,                                      /// `->`
-    "<-"          pub struct LArrow/2           ast::token::TokenKind::LArrow,                                      /// `<-`
-    "%"           pub struct Rem/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Percent),      /// `%`
-    "%="          pub struct RemEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Percent),    /// `%=`
-    "=>"          pub struct FatArrow/2         ast::token::TokenKind::FatArrow,                                    /// `=>`
-    ";"           pub struct Semi/1             ast::token::TokenKind::Semi,                                        /// `;`
-    "<<"          pub struct Shl/2              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Shl),          /// `<<`
-    "<<="         pub struct ShlEq/3            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Shl),        /// `<<=`
-    ">>"          pub struct Shr/2              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Shr),          /// `>>`
-    ">>="         pub struct ShrEq/3            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Shr),        /// `>>=`
-    "*"           pub struct Star/1             ast::token::TokenKind::BinOp(ast::token::BinOpToken::Star),         /// `*`
-    "-"           pub struct Sub/1              ast::token::TokenKind::BinOp(ast::token::BinOpToken::Minus),        /// `-`
-    "-="          pub struct SubEq/2            ast::token::TokenKind::BinOpEq(ast::token::BinOpToken::Minus),      /// `-=`
-    "~"           pub struct Tilde/1            ast::token::TokenKind::Tilde,                                       /// `~`
+    "+"           pub struct Add/1              ast::token::TokenKind::Plus,         /// `+`
+    "+="          pub struct AddEq/2            ast::token::TokenKind::PlusEq,       /// `+=`
+    "&"           pub struct And/1              ast::token::TokenKind::And,          /// `&`
+    "&&"          pub struct AndAnd/2           ast::token::TokenKind::AndAnd,       /// `&&`
+    "&="          pub struct AndEq/2            ast::token::TokenKind::AndEq,        /// `&=`
+    "@"           pub struct At/1               ast::token::TokenKind::At,           /// `@`
+    "!"           pub struct Bang/1             ast::token::TokenKind::Bang,         /// `!`
+    "^"           pub struct Caret/1            ast::token::TokenKind::Caret,        /// `^`
+    "^="          pub struct CaretEq/2          ast::token::TokenKind::CaretEq,      /// `^=`
+    ":"           pub struct Colon/1            ast::token::TokenKind::Colon,        /// `:`
+    "::"          pub struct Colon2/2           ast::token::TokenKind::PathSep,      /// `::`
+    ","           pub struct Comma/1            ast::token::TokenKind::Comma,        /// `,`
+    "/"           pub struct Div/1              ast::token::TokenKind::Slash,        /// `/`
+    "/="          pub struct DivEq/2            ast::token::TokenKind::SlashEq,      /// `/=`
+    "$"           pub struct Dollar/1           ast::token::TokenKind::Dollar,       /// `$`
+    "."           pub struct Dot/1              ast::token::TokenKind::Dot,          /// `.`
+    ".."          pub struct Dot2/2             ast::token::TokenKind::DotDot,       /// `..`
+    "..."         pub struct Dot3/3             ast::token::TokenKind::DotDotDot,    /// `...`
+    "..="         pub struct DotDotEq/3         ast::token::TokenKind::DotDotEq,     /// `..=`
+    "="           pub struct Eq/1               ast::token::TokenKind::Eq,           /// `=`
+    "=="          pub struct EqEq/2             ast::token::TokenKind::EqEq,         /// `==`
+    ">="          pub struct Ge/2               ast::token::TokenKind::Ge,           /// `>=`
+    ">"           pub struct Gt/1               ast::token::TokenKind::Gt,           /// `>`
+    "<="          pub struct Le/2               ast::token::TokenKind::Le,           /// `<=`
+    "<"           pub struct Lt/1               ast::token::TokenKind::Lt,           /// `<`
+    "*="          pub struct MulEq/2            ast::token::TokenKind::StarEq,       /// `*=`
+    "!="          pub struct Ne/2               ast::token::TokenKind::Ne,           /// `!=`
+    "|"           pub struct Or/1               ast::token::TokenKind::Or,           /// `|`
+    "|="          pub struct OrEq/2             ast::token::TokenKind::OrEq,         /// `|=`
+    "||"          pub struct OrOr/2             ast::token::TokenKind::OrOr,         /// `||`
+    "#"           pub struct Pound/1            ast::token::TokenKind::Pound,        /// `#`
+    "?"           pub struct Question/1         ast::token::TokenKind::Question,     /// `?`
+    "->"          pub struct RArrow/2           ast::token::TokenKind::RArrow,       /// `->`
+    "<-"          pub struct LArrow/2           ast::token::TokenKind::LArrow,       /// `<-`
+    "%"           pub struct Rem/1              ast::token::TokenKind::Percent,      /// `%`
+    "%="          pub struct RemEq/2            ast::token::TokenKind::PercentEq,    /// `%=`
+    "=>"          pub struct FatArrow/2         ast::token::TokenKind::FatArrow,     /// `=>`
+    ";"           pub struct Semi/1             ast::token::TokenKind::Semi,         /// `;`
+    "<<"          pub struct Shl/2              ast::token::TokenKind::Shl,          /// `<<`
+    "<<="         pub struct ShlEq/3            ast::token::TokenKind::ShlEq,        /// `<<=`
+    ">>"          pub struct Shr/2              ast::token::TokenKind::Shr,          /// `>>`
+    ">>="         pub struct ShrEq/3            ast::token::TokenKind::ShrEq,        /// `>>=`
+    "*"           pub struct Star/1             ast::token::TokenKind::Star,         /// `*`
+    "-"           pub struct Sub/1              ast::token::TokenKind::Minus,        /// `-`
+    "-="          pub struct SubEq/2            ast::token::TokenKind::MinusEq,      /// `-=`
+    "~"           pub struct Tilde/1            ast::token::TokenKind::Tilde,        /// `~`
 }
 
 #[macro_export]
@@ -669,7 +669,7 @@ impl<T, P> Punctuated<T, P> {
     /// Determines whether this punctuated sequence is empty, meaning it
     /// contains no syntax tree nodes or punctuation.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.inner.len() == 0 && self.last.is_none()
     }
 
@@ -745,7 +745,7 @@ impl<T, P> Punctuated<T, P> {
     /// Determines whether this punctuated sequence ends with a trailing
     /// punctuation.
     #[must_use]
-    pub fn trailing_punct(&self) -> bool {
+    pub const fn trailing_punct(&self) -> bool {
         self.last.is_none() && !self.is_empty()
     }
 

@@ -11,4 +11,3 @@ version.workspace = true
 config.workspace = true
 path-clean.workspace = true
 serde.workspace = true
-lazy_static.workspace = true

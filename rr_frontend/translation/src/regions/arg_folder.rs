@@ -7,8 +7,7 @@
 use std::collections::btree_map;
 
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::middle::ty::visit::TypeVisitableExt as _;
-use rr_rustc_interface::type_ir::fold::{TypeFoldable, TypeSuperFoldable as _};
+use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::regions;
@@ -382,13 +381,13 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
             return val;
         }
 
-        ty::fold::shift_vars(ty::TypeFolder::cx(self), val, self.binders_passed)
+        ty::shift_vars(ty::TypeFolder::cx(self), val, self.binders_passed)
     }
 
     fn shift_region_through_binders(&self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             return region;
         }
-        ty::fold::shift_region(self.tcx, region, self.binders_passed)
+        ty::shift_region(self.tcx, region, self.binders_passed)
     }
 }
