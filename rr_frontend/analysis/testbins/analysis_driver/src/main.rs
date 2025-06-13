@@ -221,8 +221,7 @@ fn main() {
     };
     // Invoke compiler, and handle return code.
     let exit_code = rr_rustc_interface::driver::catch_with_exit_code(move || {
-        rr_rustc_interface::driver::RunCompiler::new(&compiler_args, &mut callbacks).run();
-        Ok(())
+        rr_rustc_interface::driver::run_compiler(&compiler_args, &mut callbacks);
     });
     std::process::exit(exit_code)
 }

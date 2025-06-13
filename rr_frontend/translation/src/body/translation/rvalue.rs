@@ -7,7 +7,7 @@
 use log::{info, trace};
 use radium::coq;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{index, target};
+use rr_rustc_interface::{abi, index};
 
 use super::TX;
 use crate::base::*;
@@ -18,7 +18,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn translate_aggregate(
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
-        op: &index::IndexVec<target::abi::FieldIdx, mir::Operand<'tcx>>,
+        op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         // translate operands
         let mut translated_ops: Vec<radium::Expr> = Vec::new();
@@ -331,7 +331,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::Rvalue::RawPtr(mt, pl) => {
                 let translated_pl = self.translate_place(pl)?;
-                let translated_mt = TX::translate_mutability(*mt);
+                let translated_mt = TX::translate_raw_ptr_kind(*mt);
 
                 Ok(radium::Expr::AddressOf {
                     mt: translated_mt,
@@ -395,6 +395,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Repeat(..)
+            | mir::Rvalue::Len(..)
+            | mir::Rvalue::WrapUnsafeBinder(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {
                 description: format!(
@@ -567,10 +569,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    const fn translate_mutability(mt: mir::Mutability) -> radium::Mutability {
+    const fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> radium::Mutability {
         match mt {
-            mir::Mutability::Mut => radium::Mutability::Mut,
-            mir::Mutability::Not => radium::Mutability::Shared,
+            mir::RawPtrKind::Mut => radium::Mutability::Mut,
+            mir::RawPtrKind::Const => radium::Mutability::Shared,
+            mir::RawPtrKind::FakeForPtrMetadata => radium::Mutability::Mut,
         }
     }
 }

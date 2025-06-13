@@ -1157,7 +1157,7 @@ impl<T, P> Pair<T, P> {
     }
 
     /// Mutably borrows the syntax tree node from this punctuated pair.
-    pub fn value_mut(&mut self) -> &mut T {
+    pub const fn value_mut(&mut self) -> &mut T {
         match self {
             Self::Punctuated(t, _) | Self::End(t) => t,
         }

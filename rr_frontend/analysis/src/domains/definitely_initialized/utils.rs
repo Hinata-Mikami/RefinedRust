@@ -133,10 +133,17 @@ fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + Copy>(
 /// + `is_prefix(x.f.g, x.f) == true`
 /// + `is_prefix(x.f, x.f.g) == false`
 pub fn is_prefix<'tcx>(place: Place<'tcx>, potential_prefix: Place<'tcx>) -> bool {
-    if place.local != potential_prefix.local || place.projection.len() < potential_prefix.projection.len() {
+    if place.0.local != potential_prefix.0.local
+        || place.0.projection.len() < potential_prefix.0.projection.len()
+    {
         false
     } else {
-        place.projection.iter().zip(potential_prefix.projection.iter()).all(|(e1, e2)| e1 == e2)
+        place
+            .0
+            .projection
+            .iter()
+            .zip(potential_prefix.0.projection.iter())
+            .all(|(e1, e2)| e1 == e2)
     }
 }
 
@@ -156,7 +163,7 @@ pub fn expand<'tcx>(
 ) -> Vec<Place<'tcx>> {
     assert!(is_prefix(subtrahend, minuend), "The minuend must be the prefix of the subtrahend.");
     let mut place_set = Vec::new();
-    while minuend.projection.len() < subtrahend.projection.len() {
+    while minuend.0.projection.len() < subtrahend.0.projection.len() {
         let (new_minuend, places) = expand_one_level(mir, tcx, minuend, subtrahend);
         minuend = new_minuend;
         place_set.extend(places);
@@ -173,9 +180,9 @@ fn expand_one_level<'tcx>(
     current_place: Place<'tcx>,
     guide_place: Place<'tcx>,
 ) -> (Place<'tcx>, Vec<Place<'tcx>>) {
-    let index = current_place.projection.len();
-    let new_projection =
-        tcx.mk_place_elems_from_iter(current_place.projection.iter().chain([guide_place.projection[index]]));
+    let index = current_place.0.projection.len();
+    let new_projection = tcx
+        .mk_place_elems_from_iter(current_place.0.projection.iter().chain([guide_place.projection[index]]));
     let new_current_place = Place(mir::Place {
         local: current_place.local,
         projection: new_projection,
@@ -190,6 +197,7 @@ fn expand_one_level<'tcx>(
         | mir::ProjectionElem::Subslice { .. }
         | mir::ProjectionElem::Downcast(..)
         | mir::ProjectionElem::Subtype(..)
+        | mir::ProjectionElem::UnwrapUnsafeBinder(..)
         | mir::ProjectionElem::OpaqueCast(..) => vec![],
     };
     (new_current_place, other_places)

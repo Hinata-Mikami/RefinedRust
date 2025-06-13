@@ -14,7 +14,7 @@ use log::{info, trace};
 use radium::{coq, push_str_list};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
-use rr_rustc_interface::{abi, ast, span, target};
+use rr_rustc_interface::{abi, ast, span};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -690,7 +690,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn generate_structlike_use_internal<'a, 'b>(
         &self,
         ty: ty::Ty<'tcx>,
-        variant: Option<target::abi::VariantIdx>,
+        variant: Option<abi::VariantIdx>,
         adt_deps: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
@@ -819,7 +819,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn generate_enum_variant_use_noshim<'a, 'b>(
         &self,
         adt_id: DefId,
-        variant_idx: target::abi::VariantIdx,
+        variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'a, 'b, 'def, 'tcx>,
     ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
@@ -1680,7 +1680,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Get the name for a field of an ADT or tuple type
     pub fn get_field_name_of(
         &self,
-        f: target::abi::FieldIdx,
+        f: abi::FieldIdx,
         ty: ty::Ty<'tcx>,
         variant: Option<usize>,
     ) -> Result<String, TranslationError<'tcx>> {
@@ -1689,13 +1689,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::TyKind::Adt(def, _) => {
                 info!("getting field name of {:?} at {} (variant {:?})", f, ty, variant);
                 if def.is_struct() {
-                    let i = def.variants().get(target::abi::VariantIdx::from_usize(0)).unwrap();
+                    let i = def.variants().get(abi::VariantIdx::from_usize(0)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
                         TranslationError::UnknownError(format!("could not get field {:?} of {}", f, ty))
                     })
                 } else if def.is_enum() {
                     let variant = variant.unwrap();
-                    let i = def.variants().get(target::abi::VariantIdx::from_usize(variant)).unwrap();
+                    let i = def.variants().get(abi::VariantIdx::from_usize(variant)).unwrap();
                     i.fields.get(f).map(|f| f.ident(tcx).to_string()).ok_or_else(|| {
                         TranslationError::UnknownError(format!("could not get field {:?} of {}", f, ty))
                     })
@@ -1720,7 +1720,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Get the name of a variant of an enum.
     pub fn get_variant_name_of(
         ty: ty::Ty<'tcx>,
-        variant: target::abi::VariantIdx,
+        variant: abi::VariantIdx,
     ) -> Result<String, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(def, _) => {
@@ -1771,7 +1771,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     pub fn generate_structlike_use<'a>(
         &self,
         ty: ty::Ty<'tcx>,
-        variant: Option<target::abi::VariantIdx>,
+        variant: Option<abi::VariantIdx>,
         scope: InFunctionState<'a, 'def, 'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         match ty.kind() {

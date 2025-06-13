@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::fmt;
 
 use rr_rustc_interface::borrowck;
-use rr_rustc_interface::borrowck::consumers::{LocationTable, RichLocation, RustcFacts};
+use rr_rustc_interface::borrowck::consumers::{PoloniusLocationTable, RichLocation, RustcFacts};
 use rr_rustc_interface::middle::mir;
 use rr_rustc_interface::polonius_engine::FactTypes;
 
@@ -23,7 +23,7 @@ pub struct Borrowck {
     /// Polonius input facts.
     pub input_facts: RefCell<Option<Box<AllInput>>>,
     /// The table that maps Polonius points to locations in the table.
-    pub location_table: RefCell<Option<LocationTable>>,
+    pub location_table: RefCell<Option<PoloniusLocationTable>>,
 }
 
 /// The type of the point. Either the start of a statement or in the
@@ -48,12 +48,12 @@ impl fmt::Display for Point {
 }
 
 pub struct Interner {
-    pub(crate) location_table: LocationTable,
+    pub(crate) location_table: PoloniusLocationTable,
 }
 
 impl Interner {
     #[must_use]
-    pub const fn new(location_table: LocationTable) -> Self {
+    pub const fn new(location_table: PoloniusLocationTable) -> Self {
         Self { location_table }
     }
 

@@ -148,11 +148,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         match constant {
             mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {
-                    ty::ConstKind::Value(v_ty, v) => {
+                    ty::ConstKind::Value(v) => {
                         // this doesn't contain the necessary structure anymore. Need to reconstruct using the
                         // type.
-                        match v.try_to_scalar() {
-                            Some(sc) => self.translate_scalar(&sc, v_ty),
+                        match v.valtree.try_to_scalar() {
+                            Some(sc) => self.translate_scalar(&sc, v.ty),
                             _ => Err(TranslationError::UnsupportedFeature {
                                 description: format!("const value not supported: {:?}", v),
                             }),

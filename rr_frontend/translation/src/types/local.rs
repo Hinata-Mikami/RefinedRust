@@ -10,10 +10,10 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
+use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
-use rr_rustc_interface::target;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -89,7 +89,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,
-        variant: Option<target::abi::VariantIdx>,
+        variant: Option<abi::VariantIdx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_structlike_use(ty, variant, &mut scope)

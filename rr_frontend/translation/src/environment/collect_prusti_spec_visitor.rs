@@ -64,7 +64,7 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         //let attrs = self.tcx.get_attrs(i.def_id.to_def_id());
-        if let hir::ItemKind::Fn(..) = i.kind {
+        if let hir::ItemKind::Fn { .. } = i.kind {
             let def_id = i.hir_id().owner.def_id;
             let item_def_path = self.env.get_item_def_path(def_id.to_def_id());
             trace!("Add fn item {} to result", item_def_path);

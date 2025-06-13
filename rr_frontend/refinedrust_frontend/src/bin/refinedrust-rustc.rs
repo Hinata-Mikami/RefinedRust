@@ -230,8 +230,7 @@ fn main() {
 
         let mut callbacks = RRCompilerCalls {};
 
-        driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
-        Ok(())
+        driver::run_compiler(&rustc_args, &mut callbacks);
     });
 
     process::exit(exit_code)
