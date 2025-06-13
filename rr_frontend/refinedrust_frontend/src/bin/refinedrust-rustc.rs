@@ -38,11 +38,13 @@ fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_
         def_id,
         borrowck::consumers::ConsumerOptions::PoloniusOutputFacts,
     );
+
     // SAFETY: This is safe because we are feeding in the same `tcx` that is
     // going to be used as a witness when pulling out the data.
     unsafe {
         translation::store_mir_body(tcx, def_id, body_with_facts);
     }
+
     let mut providers = query::Providers::default();
     borrowck::provide(&mut providers);
     let original_mir_borrowck = providers.mir_borrowck;
@@ -50,10 +52,8 @@ fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_
 }
 
 fn override_queries(_session: &session::Session, providers: &mut util::Providers) {
-    // overriding these queries makes sure that the `mir_storage` gets all the relevant bodies,
-    // also for external crates?
+    // overriding these queries makes sure that the `mir_storage` gets all the relevant bodies
     providers.queries.mir_borrowck = mir_borrowck;
-    //external.mir_borrowck = mir_borrowck;
 }
 
 /// Main entry point to the frontend that is called by the driver.

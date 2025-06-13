@@ -269,8 +269,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //proc.get_type_params();
         info!("Function generic args: {:?}", params);
 
-        // dump graphviz files
-        // color code: red: dying loan, pink: becoming a zombie; green: is zombie
         if rrconfig::dump_borrowck_info() {
             dump_borrowck_info(env, proc.get_id(), info);
         }
@@ -401,8 +399,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
         info!("Function generic args: {:?}", params);
 
-        // dump graphviz files
-        // color code: red: dying loan, pink: becoming a zombie; green: is zombie
         if rrconfig::dump_borrowck_info() {
             dump_borrowck_info(env, proc.get_id(), info);
         }

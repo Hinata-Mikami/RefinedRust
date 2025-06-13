@@ -18,6 +18,7 @@ fn closure_test_arg2<T>(x: T)
 }
 
 
+#[rr::verify]
 fn closure_test7<T, U>(x: T, y: U) 
     where U: FnOnce(T)
 {
