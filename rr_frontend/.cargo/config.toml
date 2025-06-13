@@ -120,6 +120,7 @@ rustflags = [
     "-Aclippy::allow_attributes_without_reason",
     "-Aclippy::absolute_paths",
     "-Aclippy::arbitrary_source_item_ordering",
+    "-Aclippy::return_and_then",
 
     # clippy::style
     "-Aclippy::just_underscores_and_digits",

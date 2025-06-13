@@ -17,7 +17,6 @@ mod attrs;
 mod base;
 mod body;
 mod consts;
-mod data;
 mod environment;
 mod procedures;
 mod regions;
@@ -118,7 +117,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         (interned_path, path.as_method)
     }
 
-    fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim> {
+    fn make_shim_function_entry(&self, did: DefId) -> Option<shims::registry::FunctionShim<'_>> {
         let meta = self.procedure_registry.lookup_function(did)?;
         let mode = meta.get_mode();
 
@@ -216,7 +215,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         &self,
         did: LocalDefId,
         decl: radium::LiteralTraitSpecRef<'rcx>,
-    ) -> Option<shim_registry::TraitShim> {
+    ) -> Option<shim_registry::TraitShim<'_>> {
         info!("making shim entry for {did:?}");
         if ty::Visibility::Public == self.env.tcx().visibility(did.to_def_id()) {
             let (interned_path, _) = self.get_path_for_shim(did.into());
@@ -238,7 +237,11 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         None
     }
 
-    fn make_adt_shim_entry(&self, did: DefId, lit: radium::LiteralType) -> Option<shim_registry::AdtShim> {
+    fn make_adt_shim_entry(
+        &self,
+        did: DefId,
+        lit: radium::LiteralType,
+    ) -> Option<shim_registry::AdtShim<'_>> {
         info!("making shim entry for {did:?}");
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
             // only export public items

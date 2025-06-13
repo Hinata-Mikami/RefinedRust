@@ -11,8 +11,8 @@ pub mod scope;
 mod translator;
 mod tyvars;
 
-pub use local::{normalize_in_function, LocalTX};
 /// We export these parts of the private modules
+pub use local::{normalize_in_function, LocalTX};
 use rr_rustc_interface::middle::ty;
 pub use scope::{generate_args_inst_key, GenericsKey};
 pub use translator::{AdtState, CalleeState, FunctionState, STInner, TraitState, ST, TX};
@@ -34,7 +34,7 @@ pub fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String 
     let mut mangled_base: String = name.to_owned();
 
     for arg in args {
-        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
+        if let ty::GenericArgKind::Type(ty) = arg.kind() {
             mangled_base.push_str(&format!("_{}", strip_coq_ident(&format!("{ty}"))));
         }
     }

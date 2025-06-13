@@ -357,7 +357,7 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
 /// Compare two `GenericArg` deterministically.
 /// Should only be called on equal discriminants.
 fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
-    match (a.unpack(), b.unpack()) {
+    match (a.kind(), b.kind()) {
         (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => cmp_const(tcx, c1, c2),
         (ty::GenericArgKind::Type(ty1), ty::GenericArgKind::Type(ty2)) => {
             // we should make sure that this always orders the Self instance first.

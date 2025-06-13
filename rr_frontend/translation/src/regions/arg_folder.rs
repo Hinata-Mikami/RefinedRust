@@ -230,7 +230,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         // the specialized routine `ty::replace_late_regions()`.
         match r.kind() {
             ty::ReEarlyParam(data) => {
-                let rk = self.args.get(data.index as usize).map(|k| k.unpack());
+                let rk = self.args.get(data.index as usize).map(|k| k.kind());
                 match rk {
                     Some(ty::GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
                     Some(other) => region_param_invalid(data, &other),
@@ -271,7 +271,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         // Look up the type in the args. It really should be in there.
-        let opt_ty = self.args.get(p.index as usize).map(|k| k.unpack());
+        let opt_ty = self.args.get(p.index as usize).map(|k| k.kind());
         let ty = match opt_ty {
             Some(ty::GenericArgKind::Type(ty)) => ty,
             Some(kind) => self.type_param_expected(p, source_ty, &kind),
@@ -301,7 +301,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
 
     fn const_for_param(&self, p: ty::ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         // Look up the const in the args. It really should be in there.
-        let opt_ct = self.args.get(p.index as usize).map(|k| k.unpack());
+        let opt_ct = self.args.get(p.index as usize).map(|k| k.kind());
         let ct = match opt_ct {
             Some(ty::GenericArgKind::Const(ct)) => ct,
             Some(kind) => self.const_param_expected(p, source_ct, &kind),

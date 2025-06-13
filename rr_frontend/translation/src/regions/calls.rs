@@ -55,7 +55,7 @@ pub fn compute_call_regions<'tcx>(
 
     let mut early_regions = Vec::new();
     for a in substs {
-        if let ty::GenericArgKind::Lifetime(r) = a.unpack() {
+        if let ty::GenericArgKind::Lifetime(r) = a.kind() {
             if let ty::RegionKind::ReVar(r) = r.kind() {
                 early_regions.push(r.into());
             }
@@ -82,7 +82,7 @@ pub fn compute_call_regions<'tcx>(
     };
 
     for a in substs {
-        if let ty::GenericArgKind::Type(c) = a.unpack() {
+        if let ty::GenericArgKind::Type(c) = a.kind() {
             let mut folder = RegionFolder::new(env.tcx(), &mut clos);
             folder.fold_ty(c);
         }

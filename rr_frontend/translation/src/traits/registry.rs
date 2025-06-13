@@ -630,7 +630,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // pass the args for this specific impl
         for arg in params_inst {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack() {
+            if let ty::GenericArgKind::Type(ty) = arg.kind() {
                 let ty = self.type_translator().translate_type_in_state(ty, state)?;
                 scope_inst.add_direct_ty_param(ty);
             } else if let Some(lft) = arg.as_region() {
@@ -725,7 +725,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // set up scope
             let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
             let state = types::TraitState::new(param_scope.clone(), typing_env, None, None);
-            let mut state = types::STInner::TraitReqs(state);
+            let mut state = types::STInner::TraitReqs(Box::new(state));
 
             let scope_inst =
                 self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
@@ -884,7 +884,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let mut new_scope = scope.clone();
         let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
-        let mut state = types::STInner::TraitReqs(types::TraitState::new(new_scope, typing_env, None, None));
+        let mut state =
+            types::STInner::TraitReqs(Box::new(types::TraitState::new(new_scope, typing_env, None, None)));
 
         let scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the

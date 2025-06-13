@@ -120,7 +120,7 @@ pub trait RegionBiFolder<'tcx> {
     }
 
     fn map_generic_arg(&mut self, a1: ty::GenericArg<'tcx>, a2: ty::GenericArg<'tcx>) {
-        match a1.unpack() {
+        match a1.kind() {
             ty::GenericArgKind::Lifetime(r1) => {
                 let r2 = a2.expect_region();
                 self.map_regions(r1, r2);

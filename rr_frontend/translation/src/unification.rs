@@ -17,7 +17,7 @@ fn unify_args<'tcx>(
     arg2: ty::GenericArg<'tcx>,
     mapping: UnificationMap<'_, 'tcx>,
 ) -> bool {
-    match arg1.unpack() {
+    match arg1.kind() {
         ty::GenericArgKind::Type(ty1) => {
             let Some(ty2) = arg2.as_type() else {
                 return false;

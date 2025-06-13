@@ -168,7 +168,7 @@ pub enum STInner<'b, 'def: 'b, 'tcx: 'def> {
     /// All regions are erased.
     CalleeTranslation(CalleeState<'b, 'tcx, 'def>),
     /// we are translating trait requirements
-    TraitReqs(TraitState<'b, 'tcx, 'def>),
+    TraitReqs(Box<TraitState<'b, 'tcx, 'def>>),
 }
 pub type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
 pub type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
@@ -217,7 +217,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     ) -> STInner<'b, 'def, 'tcx> {
         let typing_env = self.get_typing_env(tcx);
         let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
-        let state = STInner::TraitReqs(state);
+        let state = STInner::TraitReqs(Box::new(state));
         state
     }
 

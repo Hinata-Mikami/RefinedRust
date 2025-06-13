@@ -122,7 +122,7 @@ impl Type {
                 // build substitution
                 let mut substs = Vec::new();
                 for (ty_arg, flat_arg) in args.iter().zip(flat_args.into_iter()) {
-                    match ty_arg.unpack() {
+                    match ty_arg.kind() {
                         ty::GenericArgKind::Type(_) => {
                             if let Some(flat_arg) = flat_arg {
                                 substs.push(flat_arg);

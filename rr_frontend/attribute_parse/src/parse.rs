@@ -695,7 +695,7 @@ impl<T, P> Punctuated<T, P> {
     }
 
     /// Returns an iterator over borrowed syntax tree nodes of type `&T`.
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             inner: Box::new(PrivateIter {
                 inner: self.inner.iter(),

@@ -42,7 +42,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
     let mut subst_early_bounds: Vec<ty::GenericArg<'tcx>> = Vec::new();
     let mut num_early_bounds = 0;
     for a in params {
-        if let ty::GenericArgKind::Lifetime(r) = a.unpack() {
+        if let ty::GenericArgKind::Lifetime(r) = a.kind() {
             // skip over 0 = static
             let next_id = facts::Region::from_u32(num_early_bounds + 1);
             let revar = ty::Region::new_var(env.tcx(), next_id.into());

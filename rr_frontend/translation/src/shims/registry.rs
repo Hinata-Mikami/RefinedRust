@@ -470,11 +470,11 @@ impl<'a> SR<'a> {
         Ok(export_libs)
     }
 
-    pub fn get_function_shims(&self) -> &[FunctionShim] {
+    pub fn get_function_shims(&self) -> &[FunctionShim<'_>] {
         &self.function_shims
     }
 
-    pub fn get_adt_shims(&self) -> &[AdtShim] {
+    pub fn get_adt_shims(&self) -> &[AdtShim<'_>] {
         &self.adt_shims
     }
 
@@ -482,7 +482,7 @@ impl<'a> SR<'a> {
         &self.exports
     }
 
-    pub fn get_trait_shims(&self) -> &[TraitShim] {
+    pub fn get_trait_shims(&self) -> &[TraitShim<'_>] {
         &self.trait_shims
     }
 

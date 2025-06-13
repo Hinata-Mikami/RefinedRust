@@ -38,7 +38,7 @@ pub fn generate_args_inst_key<'tcx>(
     let mut key = Vec::new();
     let mut region_eraser = TyRegionEraseFolder::new(tcx);
     for p in ty_params {
-        match p.unpack() {
+        match p.kind() {
             ty::GenericArgKind::Lifetime(_) => {
                 // lifetimes are not relevant here
             },

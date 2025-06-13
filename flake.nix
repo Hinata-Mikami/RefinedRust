@@ -67,7 +67,7 @@
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
           file = ./rust-toolchain.toml;
-          sha256 = "sha256-hyih08HY2eMwYRBC4vYXjMhpLMmXhiSd6gTJDPETuq4=";
+          sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
         };
 
         env = (crane.mkLib pkgs).overrideToolchain rust.toolchain;
