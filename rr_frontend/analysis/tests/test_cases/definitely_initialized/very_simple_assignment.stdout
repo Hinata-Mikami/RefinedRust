@@ -39,7 +39,7 @@ Result for function main():
         [
           "_1"
         ],
-        "statement: _3 = _1"
+        "statement: _3 = copy _1"
       ],
       [
         "state:",

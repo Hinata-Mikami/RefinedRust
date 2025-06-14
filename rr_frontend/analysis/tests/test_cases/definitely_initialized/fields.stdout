@@ -213,7 +213,7 @@ Result for function main():
           "_5",
           "_6"
         ],
-        "statement: _8 = _6"
+        "statement: _8 = copy _6"
       ]
     ],
     "state before terminator:",
@@ -301,7 +301,7 @@ Result for function main():
           "_5",
           "_6"
         ],
-        "statement: _10 = _5"
+        "statement: _10 = copy _5"
       ]
     ],
     "state before terminator:",

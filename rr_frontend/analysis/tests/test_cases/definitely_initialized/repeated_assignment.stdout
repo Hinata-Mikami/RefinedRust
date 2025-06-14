@@ -121,7 +121,7 @@ Result for function main():
           "_1",
           "_2"
         ],
-        "statement: _6 = _1"
+        "statement: _6 = copy _1"
       ],
       [
         "state:",

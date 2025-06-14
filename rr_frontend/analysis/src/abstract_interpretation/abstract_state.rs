@@ -4,6 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use serde::Serialize;
+
 /// Trait to be used to define an abstract domain by defining the type of its elements.
 /// These elements can be used in the ``Analyzer`` to represent an abstraction of the concrete
 /// state at program points.
@@ -28,7 +30,7 @@
 /// * The 'abstract transformers' `apply_statement_effect` and `apply_terminator_effect` should abstract the
 ///   concrete semantics as precise as possible.
 // Sized needed for apply_terminator_effect's return type
-pub trait AbstractState: Clone + Eq + Sized {
+pub trait AbstractState: Clone + Eq + Sized + Serialize {
     /// Lattice operation to join `other` into this state, producing the (least) upper bound
     fn join(&mut self, other: &Self);
 }

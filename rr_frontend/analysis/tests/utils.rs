@@ -1,4 +1,3 @@
-#[allow(clippy::option_env_unwrap)]
 #[must_use]
 pub fn find_sysroot() -> String {
     // Taken from https://github.com/Manishearth/rust-clippy/pull/911.

@@ -6,7 +6,7 @@
 
 use std::cell::RefCell;
 
-use analysis::abstract_interpretation::FixpointEngine;
+use analysis::abstract_interpretation::FixpointEngine as _;
 use analysis::domains::DefinitelyInitializedAnalysis;
 use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
 use rr_rustc_interface::data_structures::fx::FxHashMap;
@@ -35,16 +35,16 @@ fn get_attribute<'tcx>(
     segment1: &str,
     segment2: &str,
 ) -> Option<&'tcx hir::Attribute> {
-    get_attributes(tcx, def_id).iter().find(|attr| match &attr.kind {
-        hir::AttrKind::Normal(normal_attr) => match normal_attr.as_ref() {
+    get_attributes(tcx, def_id).iter().find(|attr| match &attr {
+        hir::Attribute::Unparsed(normal_attr) => match normal_attr.as_ref() {
             hir::AttrItem {
                 path:
                     hir::AttrPath {
-                        span: _,
                         segments,
+                        ..
                     },
                 args: hir::AttrArgs::Empty,
-                unsafety: _,
+                ..
             } => {
                 segments.len() == 2
                     && segments[0].as_str() == segment1
@@ -76,7 +76,6 @@ mod mir_storage {
         def_id: LocalDefId,
         body_with_facts: BodyWithBorrowckFacts<'tcx>,
     ) {
-        // SAFETY: See the module level comment.
         let body_with_facts: BodyWithBorrowckFacts<'static> = std::mem::transmute(body_with_facts);
         MIR_BODIES.with(|state| {
             let mut map = state.borrow_mut();
@@ -84,7 +83,7 @@ mod mir_storage {
         });
     }
 
-    #[allow(clippy::needless_lifetimes)] // We want to be very explicit about lifetimes here.
+    #[expect(clippy::elidable_lifetime_names)]
     pub unsafe fn retrieve_mir_body<'tcx>(
         _tcx: ty::TyCtxt<'tcx>,
         def_id: LocalDefId,
@@ -93,12 +92,11 @@ mod mir_storage {
             let mut map = state.borrow_mut();
             map.remove(&def_id).unwrap()
         });
-        // SAFETY: See the module level comment.
         std::mem::transmute(body_with_facts)
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
+#[expect(clippy::elidable_lifetime_names)]
 fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
     let body_with_facts =
         consumers::get_body_with_borrowck_facts(tcx, def_id, consumers::ConsumerOptions::PoloniusOutputFacts);
@@ -124,10 +122,10 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
         config.override_queries = Some(override_queries);
     }
 
-    fn after_analysis<'tcx>(
+    fn after_analysis(
         &mut self,
         compiler: &interface::Compiler,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: ty::TyCtxt<'_>,
     ) -> Compilation {
         //let session = &compiler.sess;
         //session.abort_if_errors();
@@ -155,7 +153,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 
         // sort according to argument span to ensure deterministic output
         local_def_ids.sort_unstable_by_key(|id| {
-            get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span
+            get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span()
         });
 
         for &local_def_id in local_def_ids {
@@ -177,8 +175,8 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
                     let result = DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
                         .run_fwd_analysis();
                     match result {
-                        Ok(_state) => {
-                            //println!("{}", serde_json::to_string_pretty(&state).unwrap())
+                        Ok(state) => {
+                            println!("{}", serde_json::to_string_pretty(&state).unwrap());
                         },
                         Err(e) => eprintln!("{}", e.to_pretty_str(body)),
                     }
@@ -198,8 +196,9 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
 /// --analysis=ReachingDefsState or --analysis=DefinitelyInitializedAnalysis
 fn main() {
     env_logger::init();
-    let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable(
-        errors::emitter::HumanReadableErrorType::Default, errors::emitter::ColorConfig::Auto));
+    let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable {
+        kind: errors::emitter::HumanReadableErrorType::Default,
+        color_config: errors::emitter::ColorConfig::Auto });
     rr_rustc_interface::driver::init_rustc_env_logger(&error_handler);
     let mut compiler_args = Vec::new();
     let mut callback_args = Vec::new();

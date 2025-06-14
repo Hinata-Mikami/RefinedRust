@@ -36,7 +36,7 @@ Result for function abs():
         [
           "_1"
         ],
-        "statement: _6 = _1"
+        "statement: _6 = copy _1"
       ],
       [
         "state:",
@@ -89,7 +89,7 @@ Result for function abs():
         [
           "_1"
         ],
-        "statement: _7 = _1"
+        "statement: _7 = copy _1"
       ],
       [
         "state:",
@@ -155,7 +155,7 @@ Result for function abs():
         [
           "_1"
         ],
-        "statement: _8 = _1"
+        "statement: _8 = copy _1"
       ],
       [
         "state:",
@@ -163,7 +163,7 @@ Result for function abs():
           "_1",
           "_8"
         ],
-        "statement: _9 = Eq(_8, const i32::MIN)"
+        "statement: _9 = Eq(copy _8, const i32::MIN)"
       ]
     ],
     "state before terminator:",
@@ -172,7 +172,7 @@ Result for function abs():
       "_8",
       "_9"
     ],
-    "terminator: assert(!move _9, /"attempt to negate `{}`, which would overflow/", _8) -> [success: bb3, unwind: bb5]",
+    "terminator: assert(!move _9, /"attempt to negate `{}`, which would overflow/", copy _8) -> [success: bb3, unwind: bb5]",
     {
       "bb3": [
         "state:",
@@ -258,7 +258,7 @@ Result for function abs():
           "_1",
           "_3"
         ],
-        "statement: _0 = _3"
+        "statement: _0 = copy _3"
       ],
       [
         "state:",

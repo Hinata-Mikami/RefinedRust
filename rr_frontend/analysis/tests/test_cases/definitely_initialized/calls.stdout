@@ -93,7 +93,7 @@ Result for function main():
           "_1",
           "_2"
         ],
-        "statement: _4 = _1"
+        "statement: _4 = copy _1"
       ],
       [
         "state:",
@@ -111,7 +111,7 @@ Result for function main():
           "_2",
           "_4"
         ],
-        "statement: _5 = _2"
+        "statement: _5 = copy _2"
       ],
       [
         "state:",
@@ -121,7 +121,7 @@ Result for function main():
           "_4",
           "_5"
         ],
-        "statement: _6 = CheckedAdd(_4, _5)"
+        "statement: _6 = AddWithOverflow(copy _4, copy _5)"
       ]
     ],
     "state before terminator:",
@@ -218,7 +218,7 @@ Result for function main():
           "_2",
           "_3"
         ],
-        "statement: _8 = _3"
+        "statement: _8 = copy _3"
       ]
     ],
     "state before terminator:",
