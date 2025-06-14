@@ -451,12 +451,15 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             writeln!(code_file, "Open Scope printing_sugar.").unwrap();
             writeln!(code_file).unwrap();
 
-            // TODO: iterate in order
+            let mut ordered_by_name = BTreeMap::new();
             for (did, fun) in self.procedure_registry.iter_code() {
                 if self.procedure_registry.lookup_function_mode(did.def_id).unwrap().needs_def() {
-                    writeln!(code_file, "{}", fun.code).unwrap();
-                    writeln!(code_file).unwrap();
+                    ordered_by_name.insert(fun.name().to_owned(), fun);
                 }
+            }
+            for fun in ordered_by_name.values() {
+                writeln!(code_file, "{}", fun.code).unwrap();
+                writeln!(code_file).unwrap();
             }
 
             write!(code_file, "End code.").unwrap();

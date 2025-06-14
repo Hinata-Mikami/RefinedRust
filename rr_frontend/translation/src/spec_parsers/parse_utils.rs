@@ -495,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn test_literal1() {
+    fn literal1() {
         let lit = "{rt_of T} * {rt_of T}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
@@ -505,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    fn test_literal2() {
+    fn literal2() {
         let lit = "{ty_of T} * {ty_of T}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn test_literal3() {
+    fn literal3() {
         let lit = "{rt_of Self} * {rt_of Self}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
@@ -525,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn test_literal4() {
+    fn literal4() {
         let lit = "{{rt_of Bla}}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
@@ -535,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn test_assoc_1() {
+    fn assoc_1() {
         let lit = "{rt_of Bla::Blub}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
@@ -549,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_assoc_2() {
+    fn assoc_2() {
         let lit = "{rt_of Bla::Bla::Blub}";
         let mut scope = TestScope::default();
         scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
@@ -567,7 +567,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lit_1() {
+    fn lit_1() {
         let lit = "{Size} 4";
         let mut scope = TestScope::default();
         scope
@@ -579,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lit_2() {
+    fn lit_2() {
         let lit = "{Size_bla} 4";
         let mut scope = TestScope::default();
         scope
