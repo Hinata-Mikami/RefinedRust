@@ -6,7 +6,7 @@
 
 //! Provides functionality for generating lifetime annotations for calls.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
 use log::info;
@@ -25,7 +25,7 @@ use crate::types;
 #[derive(Debug)]
 pub enum CallRegionKind {
     // this is just an intersection of local regions.
-    Intersection(HashSet<Region>),
+    Intersection(BTreeSet<Region>),
     // this is equal to a specific region
     EqR(Region),
 }
@@ -33,7 +33,7 @@ pub enum CallRegionKind {
 pub struct CallRegions {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
-    pub classification: HashMap<Region, CallRegionKind>,
+    pub classification: BTreeMap<Region, CallRegionKind>,
 }
 
 /// Compute instantiations for the lifetime parameters of a function.
@@ -72,7 +72,7 @@ pub fn compute_call_regions<'tcx>(
 
     // now find all the regions that appear in type parameters we instantiate.
     // These are regions that the callee doesn't know about.
-    let mut generic_regions: HashSet<facts::Region> = HashSet::new();
+    let mut generic_regions: BTreeSet<facts::Region> = BTreeSet::new();
     let mut clos = |r: ty::Region<'tcx>, _| match r.kind() {
         ty::RegionKind::ReVar(rv) => {
             generic_regions.insert(rv.into());
@@ -91,7 +91,7 @@ pub fn compute_call_regions<'tcx>(
 
     // go over all region constraints initiated at this location
     let new_constraints = info.get_new_subset_constraints_at_point(midpoint);
-    let mut new_regions = HashSet::new();
+    let mut new_regions = BTreeSet::new();
     let mut relevant_constraints = Vec::new();
     for (r1, r2) in &new_constraints {
         if matches!(info.get_region_kind(*r1), polonius_info::RegionKind::Unknown(_)) {
@@ -127,7 +127,7 @@ pub fn compute_call_regions<'tcx>(
     // - if a call region needs to be equal to a local region, we directly define it in terms of the local
     //   region
     // - otherwise, it will be an intersection of local regions
-    let mut new_regions_classification = HashMap::new();
+    let mut new_regions_classification = BTreeMap::new();
     // compute transitive closure of constraints
     let relevant_constraints = polonius_info::compute_transitive_closure(relevant_constraints);
     for r in &new_regions_sorted {
@@ -164,7 +164,7 @@ pub fn compute_call_regions<'tcx>(
 
             let kind = new_regions_classification
                 .entry(*r)
-                .or_insert(CallRegionKind::Intersection(HashSet::new()));
+                .or_insert(CallRegionKind::Intersection(BTreeSet::new()));
 
             let CallRegionKind::Intersection(s) = kind else {
                 unreachable!();
@@ -191,16 +191,16 @@ pub fn compute_unconstrained_region_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
-    unconstrained_regions: HashSet<facts::Region>,
-    early_region_map: &HashMap<String, usize>,
-) -> Result<(Vec<radium::Annotation>, HashSet<facts::Region>), TranslationError<'tcx>> {
+    unconstrained_regions: BTreeSet<facts::Region>,
+    early_region_map: &BTreeMap<String, usize>,
+) -> Result<(Vec<radium::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {
         location: loc,
         typ: facts::PointType::Mid,
     });
 
-    let mut remaining_regions = HashSet::new();
+    let mut remaining_regions = BTreeSet::new();
 
     let mut unconstrained_annotations = Vec::new();
     for r in unconstrained_regions {

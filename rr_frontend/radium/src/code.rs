@@ -233,7 +233,7 @@ pub enum Expr {
 
     /// A call target, annotated with the type instantiation
     #[display("{}", _0)]
-    CallTarget(String, Vec<RustType>, Vec<Lft>, HashMap<Lft, usize>),
+    CallTarget(String, Vec<RustType>, Vec<Lft>, BTreeMap<Lft, usize>),
 
     #[display("{}", _0)]
     Literal(Literal),

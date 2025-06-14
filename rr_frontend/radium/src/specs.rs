@@ -7,7 +7,7 @@
 //! Provides the Spec AST and utilities for interfacing with it.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::fmt::Write as _;
 use std::marker::PhantomData;
@@ -242,9 +242,9 @@ pub enum TypeIsRaw {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeAnnotMeta {
     /// Used lifetime variables
-    escaped_lfts: HashSet<Lft>,
+    escaped_lfts: BTreeSet<Lft>,
     /// Used type variables
-    escaped_tyvars: HashSet<LiteralTyParam>,
+    escaped_tyvars: BTreeSet<LiteralTyParam>,
 }
 
 impl TypeAnnotMeta {
@@ -254,16 +254,16 @@ impl TypeAnnotMeta {
     }
 
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
-            escaped_lfts: HashSet::new(),
-            escaped_tyvars: HashSet::new(),
+            escaped_lfts: BTreeSet::new(),
+            escaped_tyvars: BTreeSet::new(),
         }
     }
 
     pub fn join(&mut self, s: &Self) {
-        let lfts: HashSet<_> = self.escaped_lfts.union(&s.escaped_lfts).cloned().collect();
-        let tyvars: HashSet<_> = self.escaped_tyvars.union(&s.escaped_tyvars).cloned().collect();
+        let lfts: BTreeSet<_> = self.escaped_lfts.union(&s.escaped_lfts).cloned().collect();
+        let tyvars: BTreeSet<_> = self.escaped_tyvars.union(&s.escaped_tyvars).cloned().collect();
 
         self.escaped_lfts = lfts;
         self.escaped_tyvars = tyvars;
@@ -388,7 +388,7 @@ impl<'def> LiteralTypeUse<'def> {
 }
 
 /// The origin of a type parameter.
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 pub enum TyParamOrigin {
     /// Declared in a surrounding trait declaration.
     SurroundingTrait,
@@ -399,7 +399,7 @@ pub enum TyParamOrigin {
     AssocConstraint,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 #[expect(clippy::partial_pub_fields)]
 pub struct LiteralTyParam {
     /// Rust name

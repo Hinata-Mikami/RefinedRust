@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use log::{info, warn};
 
@@ -221,7 +221,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
     /// Skips mutual inclusions -- we cannot interpret these.
     pub fn generate_dyn_inclusions(
         &mut self,
-        incls: &HashSet<(Region, Region, PointIndex)>,
+        incls: &BTreeSet<(Region, Region, PointIndex)>,
     ) -> Vec<DynamicInclusion> {
         // before executing the assignment, first enforce dynamic inclusions
         info!("Generating dynamic inclusions {:?}", incls);

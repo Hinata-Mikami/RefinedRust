@@ -7,7 +7,7 @@
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use log::{info, trace};
 use rr_rustc_interface::abi;
@@ -189,7 +189,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         (
             String,
             (radium::UsedProcedureSpec<'def>, radium::TraitReqScope, radium::TraitReqScopeInst),
-            HashMap<radium::Lft, usize>,
+            BTreeMap<radium::Lft, usize>,
             ty::GenericArgsRef<'tcx>,
         ),
         TranslationError<'tcx>,
@@ -223,7 +223,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
             // we use the constraints between early regions to restore some information that
             // Polonius doesn't get
-            let mut mapped_early_regions = HashMap::new();
+            let mut mapped_early_regions = BTreeMap::new();
             for (early, polonius) in early_regions_inst {
                 let mut scope = STInner::InFunction(&mut scope);
                 let polonius_lft = TX::translate_region(&mut scope, polonius)?;

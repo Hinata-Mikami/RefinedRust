@@ -14,7 +14,7 @@ pub mod inclusion_tracker;
 pub mod init;
 pub mod region_bi_folder;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use derive_more::{Constructor, Debug};
 use rr_rustc_interface::middle::ty;
@@ -126,18 +126,18 @@ pub fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
 /// A `TypeFolder` that finds all regions occurring in a type.
 pub struct TyRegionCollectFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
-    regions: HashSet<Region>,
+    regions: BTreeSet<Region>,
 }
 
 impl<'tcx> TyRegionCollectFolder<'tcx> {
-    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+    pub const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyRegionCollectFolder {
             tcx,
-            regions: HashSet::new(),
+            regions: BTreeSet::new(),
         }
     }
 
-    pub fn get_regions(self) -> HashSet<Region> {
+    pub fn get_regions(self) -> BTreeSet<Region> {
         self.regions
     }
 }

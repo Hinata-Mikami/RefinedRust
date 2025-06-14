@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
@@ -78,7 +78,7 @@ pub struct ProcedureInst<'def> {
     pub loc_name: String,
     pub type_hint: Vec<radium::Type<'def>>,
     pub lft_hint: Vec<radium::Lft>,
-    pub mapped_early_regions: HashMap<radium::Lft, usize>,
+    pub mapped_early_regions: BTreeMap<radium::Lft, usize>,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -164,7 +164,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             loc_name: res,
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
-            mapped_early_regions: HashMap::new(),
+            mapped_early_regions: BTreeMap::new(),
         };
         Ok(inst)
     }
