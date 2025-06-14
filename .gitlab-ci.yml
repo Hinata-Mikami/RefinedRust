@@ -42,6 +42,7 @@ default:
   artifacts:
     paths: [ "${NIX_STORE_ARTIFACTS_PATH}" ]
     when: always
+    expire_in: 1 week
 
   script:
    - !reference [ .build_to_cache, script ]
