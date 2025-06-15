@@ -7,7 +7,7 @@
 use std::fmt;
 use std::sync::LazyLock;
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use log::trace;
 use parse::Peek as _;
 use radium::{coq, specs};

@@ -343,21 +343,21 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
         None
     };
 
-    if let Some((simplified_ty, method_idx)) = simplified_ty {
-        if let Some(method) = path.get(method_idx) {
-            let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
+    if let Some((simplified_ty, method_idx)) = simplified_ty
+        && let Some(method) = path.get(method_idx)
+    {
+        let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
 
-            trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
+        trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
 
-            for impl_did in incoherent_impls {
-                let items: &ty::AssocItems = tcx.associated_items(*impl_did);
-                trace!("items in {:?}: {:?}", impl_did, items);
-                // TODO: more robustly handle ambiguous matches
-                for item in items.in_definition_order() {
-                    //info!("comparing: {:?} with {:?}", item.name.as_str(), find);
-                    if item.name().as_str() == method.as_str() {
-                        return Some(item.def_id);
-                    }
+        for impl_did in incoherent_impls {
+            let items: &ty::AssocItems = tcx.associated_items(*impl_did);
+            trace!("items in {:?}: {:?}", impl_did, items);
+            // TODO: more robustly handle ambiguous matches
+            for item in items.in_definition_order() {
+                //info!("comparing: {:?} with {:?}", item.name.as_str(), find);
+                if item.name().as_str() == method.as_str() {
+                    return Some(item.def_id);
                 }
             }
         }

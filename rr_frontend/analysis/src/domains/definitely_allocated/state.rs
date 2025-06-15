@@ -12,8 +12,8 @@ use rr_rustc_interface::middle::mir;
 use serde::ser::SerializeSeq as _;
 use serde::{Serialize, Serializer};
 
-use crate::abstract_interpretation::AbstractState;
 use crate::AnalysisError;
+use crate::abstract_interpretation::AbstractState;
 
 /// A set of MIR locals that are definitely allocated at a program point
 #[derive(Clone)]

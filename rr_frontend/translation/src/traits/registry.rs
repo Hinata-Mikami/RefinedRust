@@ -11,7 +11,7 @@ use log::{info, trace};
 use radium::specs;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
-use traits::{resolution, Error, TraitResult};
+use traits::{Error, TraitResult, resolution};
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -20,7 +20,7 @@ use crate::environment::Environment;
 use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{
-    get_declared_trait_attrs, TraitAttrParser as _, VerboseTraitAttrParser,
+    TraitAttrParser as _, VerboseTraitAttrParser, get_declared_trait_attrs,
 };
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
@@ -561,9 +561,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         trace!(
                             "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                            trait_use.bound_regions,
-                            trait_use.trait_ref.args,
-                            subst_args
+                            trait_use.bound_regions, trait_use.trait_ref.args, subst_args
                         );
 
                         // compute the instantiation of the quantified trait assumption in terms

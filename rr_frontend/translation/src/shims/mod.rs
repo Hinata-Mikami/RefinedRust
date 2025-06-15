@@ -20,15 +20,14 @@ fn scan_loadpath(path: &Path, storage: &mut HashMap<String, PathBuf>) -> io::Res
             let path = entry.path();
             if path.is_dir() {
                 scan_loadpath(path.as_path(), storage)?;
-            } else if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    if Some("rrlib") == ext.to_str() {
-                        // try to open this rrlib file
-                        let f = File::open(path.clone())?;
-                        if let Some(name) = registry::is_valid_refinedrust_module(f) {
-                            storage.insert(name, path);
-                        }
-                    }
+            } else if path.is_file()
+                && let Some(ext) = path.extension()
+                && Some("rrlib") == ext.to_str()
+            {
+                // try to open this rrlib file
+                let f = File::open(path.clone())?;
+                if let Some(name) = registry::is_valid_refinedrust_module(f) {
+                    storage.insert(name, path);
                 }
             }
         }

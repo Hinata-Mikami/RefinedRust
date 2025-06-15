@@ -67,19 +67,19 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
         },
     }
 
-    if let Some(s) = rrconfig::post_generation_hook() {
-        if let Some(parts) = shlex::split(&s) {
-            let work_dir = rrconfig::absolute_work_dir();
-            let dir_path = PathBuf::from(&work_dir);
-            info!("running post-generation hook in {}: {:?}", dir_path.display(), s);
+    if let Some(s) = rrconfig::post_generation_hook()
+        && let Some(parts) = shlex::split(&s)
+    {
+        let work_dir = rrconfig::absolute_work_dir();
+        let dir_path = PathBuf::from(&work_dir);
+        info!("running post-generation hook in {}: {:?}", dir_path.display(), s);
 
-            let status = Command::new(&parts[0])
-                .args(&parts[1..])
-                .current_dir(&dir_path)
-                .status()
-                .expect("failed to execute process");
-            println!("Post-generation hook finished with {status}");
-        }
+        let status = Command::new(&parts[0])
+            .args(&parts[1..])
+            .current_dir(&dir_path)
+            .status()
+            .expect("failed to execute process");
+        println!("Post-generation hook finished with {status}");
     }
 
     if rrconfig::check_proofs() {

@@ -272,21 +272,30 @@ mod tests {
 
     #[test]
     fn read_env() {
-        env::set_var("RR_simple_read", "true");
+        // Safety: Test is single-threaded
+        unsafe {
+            env::set_var("RR_simple_read", "true");
+        }
 
         assert!(read_setting::<bool>("simple_read"));
     }
 
     #[test]
     fn read_env_case() {
-        env::set_var("RR_CaSe_ChEcK", "true");
+        // Safety: Test is single-threaded
+        unsafe {
+            env::set_var("RR_CaSe_ChEcK", "true");
+        }
 
         assert!(read_setting::<bool>("case_check"));
     }
 
     #[test]
     fn read_env_value_bool() {
-        env::set_var("RR_CaSe_ChEcK", "1");
+        // Safety: Test is single-threaded
+        unsafe {
+            env::set_var("RR_CaSe_ChEcK", "1");
+        }
 
         assert!(read_setting::<bool>("case_check"));
     }

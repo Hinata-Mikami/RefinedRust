@@ -71,9 +71,5 @@ where
         .status()
         .expect("could not run cargo");
 
-    if exit_status.success() {
-        Ok(())
-    } else {
-        Err(exit_status.code().unwrap_or(-1))
-    }
+    if exit_status.success() { Ok(()) } else { Err(exit_status.code().unwrap_or(-1)) }
 }

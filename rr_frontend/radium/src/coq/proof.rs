@@ -13,7 +13,7 @@ use std::fmt;
 use derive_more::Display;
 use indent_write::indentable::Indentable as _;
 
-use crate::{coq, BASE_INDENT};
+use crate::{BASE_INDENT, coq};
 
 /// The [`Proof`], or [`Proof using`] command.
 ///

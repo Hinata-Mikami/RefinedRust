@@ -23,7 +23,7 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
-use crate::environment::{polonius_info, Environment};
+use crate::environment::{Environment, polonius_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};
@@ -122,12 +122,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let ty: ty::Ty<'tcx> = local_decl.ty;
 
             // check if the type is of a spec fn -- in this case, we can skip this temporary
-            if let ty::TyKind::Closure(id, _) = ty.kind() {
-                if procedure_registry.lookup_function_mode(*id).is_some_and(procedures::Mode::is_ignore) {
-                    // this is a spec fn
-                    info!("skipping local which has specfn closure type: {:?}", local);
-                    continue;
-                }
+            if let ty::TyKind::Closure(id, _) = ty.kind()
+                && procedure_registry.lookup_function_mode(*id).is_some_and(procedures::Mode::is_ignore)
+            {
+                // this is a spec fn
+                info!("skipping local which has specfn closure type: {:?}", local);
+                continue;
             }
 
             // type:
@@ -351,15 +351,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if let mir::VarDebugInfoContents::Place(l) = *val {
                 // make sure that the place projection is empty -- otherwise this might just
                 // refer to the capture of a closure
-                if let Some(this_local) = l.as_local() {
-                    if this_local == local {
-                        // around closures, multiple symbols may be mapped to the same name.
-                        // To prevent this from happening, we check that the name hasn't been
-                        // used already
-                        // TODO: find better solution
-                        if !used_names.contains(name.as_str()) {
-                            return Some(name.as_str().to_owned());
-                        }
+                if let Some(this_local) = l.as_local()
+                    && this_local == local
+                {
+                    // around closures, multiple symbols may be mapped to the same name.
+                    // To prevent this from happening, we check that the name hasn't been
+                    // used already
+                    // TODO: find better solution
+                    if !used_names.contains(name.as_str()) {
+                        return Some(name.as_str().to_owned());
                     }
                 }
             } else {

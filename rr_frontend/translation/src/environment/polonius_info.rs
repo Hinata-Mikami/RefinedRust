@@ -11,10 +11,10 @@ use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{data_structures, polonius_engine};
 
+use crate::environment::Environment;
 use crate::environment::borrowck::facts;
 use crate::environment::procedure::Procedure;
 use crate::environment::region_folder::*;
-use crate::environment::Environment;
 
 /// This represents "rich" regions that are directly annotated with their `RegionKind`.
 ///
@@ -424,10 +424,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             .collect();
         trace!(
             "[exit] get_loans_dying_between {:?}, {:?}, {}, dying_loans={:?}",
-            initial_loc,
-            final_loc,
-            zombie,
-            dying_loans
+            initial_loc, final_loc, zombie, dying_loans
         );
         dying_loans
     }

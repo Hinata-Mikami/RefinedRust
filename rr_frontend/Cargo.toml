@@ -42,6 +42,6 @@ typed-arena = "2"
 unicode-xid = "0.2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 repository = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev"
 version = "0.1.0"

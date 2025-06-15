@@ -11,7 +11,7 @@
 use derive_more::Display;
 use indent_write::indentable::Indentable as _;
 
-use crate::{coq, BASE_INDENT};
+use crate::{BASE_INDENT, coq};
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("Section {}.\n{}End {}.", name, content.to_string().indented(BASE_INDENT), name)]

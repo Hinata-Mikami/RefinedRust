@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{btree_map, BTreeMap};
+use std::collections::{BTreeMap, btree_map};
 
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;

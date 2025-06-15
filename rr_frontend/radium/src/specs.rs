@@ -18,7 +18,7 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools as _;
 use log::trace;
 
-use crate::{coq, display_list, model, push_str_list, write_list, BASE_INDENT};
+use crate::{BASE_INDENT, coq, display_list, model, push_str_list, write_list};
 
 #[derive(Clone, Debug)]
 /// Encodes a RR type with an accompanying refinement.
@@ -3000,11 +3000,11 @@ impl<'def> LiteralFunctionSpec<'def> {
         {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
-            if !trait_use.is_used_in_self_trait {
-                if let Some(spec_precond) = trait_use.make_semantic_spec_term() {
-                    //let spec_precond = trait_use.make_spec_param_precond();
-                    late_pre.push(IProp::Pure(spec_precond));
-                }
+            if !trait_use.is_used_in_self_trait
+                && let Some(spec_precond) = trait_use.make_semantic_spec_term()
+            {
+                //let spec_precond = trait_use.make_spec_param_precond();
+                late_pre.push(IProp::Pure(spec_precond));
             }
         }
         let mut f3 = IndentWriter::new_skip_initial(BASE_INDENT, &mut f2);
@@ -3094,10 +3094,10 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
 
     #[expect(clippy::ref_option)]
     fn ensure_coq_not_bound(&self, name: &Option<String>) -> Result<(), String> {
-        if let Some(name) = &name {
-            if self.coq_names.contains(name) {
-                return Err(format!("Coq name is already bound: {}", name));
-            }
+        if let Some(name) = &name
+            && self.coq_names.contains(name)
+        {
+            return Err(format!("Coq name is already bound: {}", name));
         }
 
         Ok(())
@@ -4126,11 +4126,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
         let mut typarams_ty_list = String::with_capacity(100);
         write!(typarams_ty_list, "[")?;
         write_list!(typarams_ty_list, &all_params.params, "; ", |x| {
-            if as_fn {
-                format!("({}, {})", x.refinement_type, x.syn_type)
-            } else {
-                x.refinement_type.clone()
-            }
+            if as_fn { format!("({}, {})", x.refinement_type, x.syn_type) } else { x.refinement_type.clone() }
         })?;
         write!(typarams_ty_list, "]")?;
 
@@ -4907,13 +4903,15 @@ impl TraitImplSpec<'_> {
                     coq::ltac::LTac::Literal(format!("unfold {base_name} in *; apply _")).into();
                 doc.push(vernac);
             });
-            let commands = vec![coq::command::Command::Lemma(coq::command::Lemma {
-                name: def_name.to_owned(),
-                params,
-                ty: coq::term::Type::Literal(specialized_semantic),
-                body,
-            })
-            .into()];
+            let commands = vec![
+                coq::command::Command::Lemma(coq::command::Lemma {
+                    name: def_name.to_owned(),
+                    params,
+                    ty: coq::term::Type::Literal(specialized_semantic),
+                    body,
+                })
+                .into(),
+            ];
 
             Some(coq::Document(commands))
         } else {

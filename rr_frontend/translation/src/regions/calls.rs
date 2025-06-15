@@ -16,7 +16,7 @@ use rr_rustc_interface::middle::{mir, ty};
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::region_folder::*;
-use crate::environment::{polonius_info, Environment};
+use crate::environment::{Environment, polonius_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::types;
 
@@ -55,10 +55,10 @@ pub fn compute_call_regions<'tcx>(
 
     let mut early_regions = Vec::new();
     for a in substs {
-        if let ty::GenericArgKind::Lifetime(r) = a.kind() {
-            if let ty::RegionKind::ReVar(r) = r.kind() {
-                early_regions.push(r.into());
-            }
+        if let ty::GenericArgKind::Lifetime(r) = a.kind()
+            && let ty::RegionKind::ReVar(r) = r.kind()
+        {
+            early_regions.push(r.into());
         }
     }
     info!("call region instantiations (early): {:?}", early_regions);

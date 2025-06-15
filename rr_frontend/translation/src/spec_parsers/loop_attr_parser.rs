@@ -6,19 +6,19 @@
 
 use std::collections::HashSet;
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use radium::{coq, model, specs};
 use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err, IProp, ParamLookup, RRParams};
+use crate::spec_parsers::parse_utils::{IProp, ParamLookup, RRParams, attr_args_tokens, str_err};
 
 /// Parse attributes on a const.
 /// Permitted attributes:
 /// TODO
 pub trait LoopAttrParser {
     fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem])
-        -> Result<radium::LoopSpec, String>;
+    -> Result<radium::LoopSpec, String>;
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.

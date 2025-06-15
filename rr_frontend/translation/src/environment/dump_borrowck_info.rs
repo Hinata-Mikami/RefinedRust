@@ -13,8 +13,8 @@ use log::{debug, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
-use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::Environment;
+use crate::environment::polonius_info::PoloniusInfo;
 
 pub fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
@@ -107,10 +107,10 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 
         write!(writer, "Origin contains loan at: \n")?;
         let mut sorted_origin_contains: Vec<_> = output_facts.origin_contains_loan_at.iter().collect();
-        sorted_origin_contains.sort_by(|(&l1, _), (&l2, _)| l1.cmp(&l2));
+        sorted_origin_contains.sort_by(|&(&l1, _), &(&l2, _)| l1.cmp(&l2));
 
-        for (&loc, region_map) in &sorted_origin_contains {
-            write!(writer, "\t {:?} -> {:?}\n", interner.get_point(loc), *region_map)?;
+        for &(&loc, region_map) in &sorted_origin_contains {
+            write!(writer, "\t {:?} -> {:?}\n", interner.get_point(loc), region_map)?;
         }
         write!(writer, "\n\n")?;
 

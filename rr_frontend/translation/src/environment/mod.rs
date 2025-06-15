@@ -188,10 +188,10 @@ impl<'tcx> Environment<'tcx> {
     /// Get the name of an item without the path prefix.
     pub fn get_assoc_item_name(&self, trait_method_did: DefId) -> Option<String> {
         let def_path = self.tcx.def_path(trait_method_did);
-        if let Some(last_elem) = def_path.data.last() {
-            if let Some(name) = last_elem.data.get_opt_name() {
-                return Some(name.as_str().to_owned());
-            }
+        if let Some(last_elem) = def_path.data.last()
+            && let Some(name) = last_elem.data.get_opt_name()
+        {
+            return Some(name.as_str().to_owned());
         }
         None
     }

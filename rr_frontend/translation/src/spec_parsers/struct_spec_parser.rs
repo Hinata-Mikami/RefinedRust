@@ -5,14 +5,14 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 /// Parsing of `RefinedRust` struct specifications.
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use log::info;
 use parse::{Parse, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
-    attr_args_tokens, str_err, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams,
+    IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams, attr_args_tokens, str_err,
 };
 
 pub trait InvariantSpecParser {

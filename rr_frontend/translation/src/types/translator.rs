@@ -18,12 +18,12 @@ use rr_rustc_interface::{abi, ast, span};
 use typed_arena::Arena;
 
 use crate::base::*;
+use crate::environment::Environment;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::Environment;
-use crate::regions::{format_atomic_region_direct, EarlyLateRegionMap};
+use crate::regions::{EarlyLateRegionMap, format_atomic_region_direct};
 use crate::spec_parsers::enum_spec_parser::{
-    parse_enum_refine_as, EnumSpecParser as _, VerboseEnumSpecParser,
+    EnumSpecParser as _, VerboseEnumSpecParser, parse_enum_refine_as,
 };
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, StructFieldSpecParser as _};
@@ -217,8 +217,7 @@ impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     ) -> STInner<'b, 'def, 'tcx> {
         let typing_env = self.get_typing_env(tcx);
         let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
-        let state = STInner::TraitReqs(Box::new(state));
-        state
+        STInner::TraitReqs(Box::new(state))
     }
 
     /// Get the `ParamEnv` for the current state.
@@ -1093,17 +1092,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         info!("finished variant def: {:?}", struct_def);
 
         // now add the invariant, if one was annotated
-        if let Some(invariant_spec) = &mut invariant_spec {
-            if expect_refinement {
-                // make a plist out of this
-                let mut rfn = String::with_capacity(100);
+        if let Some(invariant_spec) = &mut invariant_spec
+            && expect_refinement
+        {
+            // make a plist out of this
+            let mut rfn = String::with_capacity(100);
 
-                rfn.push_str("-[");
-                push_str_list!(rfn, &field_refinements, "; ", "#({})");
-                rfn.push(']');
+            rfn.push_str("-[");
+            push_str_list!(rfn, &field_refinements, "; ", "#({})");
+            rfn.push(']');
 
-                invariant_spec.provide_abstracted_refinement(rfn);
-            }
+            invariant_spec.provide_abstracted_refinement(rfn);
         }
 
         // TODO for generating the semtype definition, we will also need to track dependencies
@@ -1192,10 +1191,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     fn does_did_match(&self, did: DefId, path: &[&str]) -> bool {
         let lookup_did = search::try_resolve_did(self.env.tcx(), path);
-        if let Some(lookup_did) = lookup_did {
-            if lookup_did == did {
-                return true;
-            }
+        if let Some(lookup_did) = lookup_did
+            && lookup_did == did
+        {
+            return true;
         }
         false
     }
@@ -1573,11 +1572,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Alias(kind, alias_ty) => {
                 // TODO do we get a problem because we are erasing regions?
-                if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.env.tcx(), ty) {
-                    if !matches!(normalized_ty.kind(), ty::TyKind::Alias(_, _)) {
-                        // if we managed to normalize it, translate the normalized type
-                        return self.translate_type_in_state(normalized_ty, state);
-                    }
+                if let Ok(normalized_ty) = state.normalize_type_erasing_regions(self.env.tcx(), ty)
+                    && !matches!(normalized_ty.kind(), ty::TyKind::Alias(_, _))
+                {
+                    // if we managed to normalize it, translate the normalized type
+                    return self.translate_type_in_state(normalized_ty, state);
                 }
                 // otherwise, we can't normalize the projection
                 match kind {

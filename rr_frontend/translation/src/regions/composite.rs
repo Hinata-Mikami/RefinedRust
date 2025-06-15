@@ -11,9 +11,9 @@ use std::collections::HashSet;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
+use crate::environment::Environment;
 use crate::environment::borrowck::facts;
 use crate::environment::region_folder::*;
-use crate::environment::Environment;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::types;
 

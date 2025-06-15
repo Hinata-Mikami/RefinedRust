@@ -127,9 +127,6 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
         compiler: &interface::Compiler,
         tcx: ty::TyCtxt<'_>,
     ) -> Compilation {
-        //let session = &compiler.sess;
-        //session.abort_if_errors();
-
         let abstract_domain: &str = self
             .args
             .iter()

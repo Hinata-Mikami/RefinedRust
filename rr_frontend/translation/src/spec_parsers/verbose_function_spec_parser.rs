@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::mem;
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use log::{info, warn};
 use parse::{Parse, Peek as _};
 use radium::{coq, model, push_str_list, specs};
@@ -15,8 +15,8 @@ use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::ty;
 
 use crate::spec_parsers::parse_utils::{
-    attr_args_tokens, str_err, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem,
-    RRParam, RRParams,
+    IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem, RRParam, RRParams,
+    attr_args_tokens, str_err,
 };
 
 pub struct ClosureMetaInfo<'a, 'tcx, 'def> {
@@ -851,16 +851,15 @@ where
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
         // IMPORTANT: We do this after `merge_capture_information`, since that adds the first arg
-        if !self.got_args {
-            if let Some(arg_names) = self.arg_names {
-                for (arg, ty) in arg_names.iter().zip(self.arg_types) {
-                    builder
-                        .add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
-                    let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
-                    builder.add_arg(ty_with_ref);
-                }
-                self.got_args = true;
+        if !self.got_args
+            && let Some(arg_names) = self.arg_names
+        {
+            for (arg, ty) in arg_names.iter().zip(self.arg_types) {
+                builder.add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
+                let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
+                builder.add_arg(ty_with_ref);
             }
+            self.got_args = true;
         }
 
         let implicit_ret_name = "ret";
@@ -929,16 +928,15 @@ where
 
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
-        if !self.got_args {
-            if let Some(arg_names) = self.arg_names {
-                for (arg, ty) in arg_names.iter().zip(self.arg_types) {
-                    builder
-                        .add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
-                    let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
-                    builder.add_arg(ty_with_ref);
-                }
-                self.got_args = true;
+        if !self.got_args
+            && let Some(arg_names) = self.arg_names
+        {
+            for (arg, ty) in arg_names.iter().zip(self.arg_types) {
+                builder.add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
+                let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
+                builder.add_arg(ty_with_ref);
             }
+            self.got_args = true;
         }
 
         let implicit_ret_name = "ret";

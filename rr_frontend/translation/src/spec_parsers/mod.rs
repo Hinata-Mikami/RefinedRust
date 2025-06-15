@@ -9,7 +9,7 @@ pub mod trait_attr_parser;
 pub mod trait_impl_attr_parser;
 pub mod verbose_function_spec_parser;
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
 

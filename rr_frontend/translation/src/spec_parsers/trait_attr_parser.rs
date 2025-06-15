@@ -6,12 +6,12 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use derive_more::Constructor;
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
-    attr_args_tokens, str_err, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem,
+    IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
 
 /// Parse attributes on a trait.

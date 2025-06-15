@@ -40,7 +40,10 @@ fn run_tests(mode: &str, path: &str, custom_args: Vec<String>) {
 }
 
 fn test_runner(_tests: &[&()]) {
-    env::set_var("RUST_BACKTRACE", "1");
+    // Safety: Test is single-threaded
+    unsafe {
+        env::set_var("RUST_BACKTRACE", "1");
+    }
 
     run_tests("ui", "tests/test_cases/definitely_initialized", vec![
         "--analysis=DefinitelyInitializedAnalysis".into(),

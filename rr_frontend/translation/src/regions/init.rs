@@ -14,11 +14,11 @@ use rr_rustc_interface::middle::{mir, ty};
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::environment::{polonius_info, Environment};
+use crate::environment::{Environment, polonius_info};
+use crate::regions::EarlyLateRegionMap;
 use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder;
-use crate::regions::EarlyLateRegionMap;
 use crate::traits::resolution;
 
 /// Process the signature of a function by instantiating the region variables with their
@@ -179,28 +179,28 @@ pub fn get_relevant_universal_constraints<'a>(
     let mut universal_constraints = Vec::new();
 
     for (r1, r2) in placeholder_subset {
-        if let polonius_info::RegionKind::Universal(uk1) = info.get_region_kind(*r1) {
-            if let polonius_info::RegionKind::Universal(uk2) = info.get_region_kind(*r2) {
-                // if LHS is static, ignore.
-                if uk1 == polonius_info::UniversalRegionKind::Static {
-                    continue;
-                }
-                // if RHS is the function lifetime, ignore
-                if uk2 == polonius_info::UniversalRegionKind::Function {
-                    continue;
-                }
+        if let polonius_info::RegionKind::Universal(uk1) = info.get_region_kind(*r1)
+            && let polonius_info::RegionKind::Universal(uk2) = info.get_region_kind(*r2)
+        {
+            // if LHS is static, ignore.
+            if uk1 == polonius_info::UniversalRegionKind::Static {
+                continue;
+            }
+            // if RHS is the function lifetime, ignore
+            if uk2 == polonius_info::UniversalRegionKind::Function {
+                continue;
+            }
 
-                let to_universal = || {
-                    let x = lifetime_scope.lookup_region_with_kind(uk1, *r2)?;
-                    let y = lifetime_scope.lookup_region_with_kind(uk2, *r1)?;
-                    Some((x, y))
-                };
-                // else, add this constraint
-                // for the purpose of this analysis, it is fine to treat it as a dynamic inclusion
-                if let Some((x, y)) = to_universal() {
-                    inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
-                    universal_constraints.push((x, y));
-                }
+            let to_universal = || {
+                let x = lifetime_scope.lookup_region_with_kind(uk1, *r2)?;
+                let y = lifetime_scope.lookup_region_with_kind(uk2, *r1)?;
+                Some((x, y))
+            };
+            // else, add this constraint
+            // for the purpose of this analysis, it is fine to treat it as a dynamic inclusion
+            if let Some((x, y)) = to_universal() {
+                inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
+                universal_constraints.push((x, y));
             }
         }
     }
@@ -309,13 +309,13 @@ impl InitialPoloniusUnifier {
 }
 impl<'tcx> RegionBiFolder<'tcx> for InitialPoloniusUnifier {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
-        if let ty::RegionKind::ReVar(l1) = r1.kind() {
-            if let ty::RegionKind::ReVar(l2) = r2.kind() {
-                if let Some(l22) = self.mapping.get(&l1.into()) {
-                    assert_eq!(l2, (*l22).into());
-                } else {
-                    self.mapping.insert(l1.into(), l2.into());
-                }
+        if let ty::RegionKind::ReVar(l1) = r1.kind()
+            && let ty::RegionKind::ReVar(l2) = r2.kind()
+        {
+            if let Some(l22) = self.mapping.get(&l1.into()) {
+                assert_eq!(l2, (*l22).into());
+            } else {
+                self.mapping.insert(l1.into(), l2.into());
             }
         }
     }

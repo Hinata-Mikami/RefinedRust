@@ -130,10 +130,10 @@ impl Binder {
                     ty: term.clone(),
                 });
             },
-            Self::Generalizing(ref mut g) => {
+            Self::Generalizing(g) => {
                 g.kind = kind;
             },
-            Self::Implicit(ref mut i) => {
+            Self::Implicit(i) => {
                 i.kind = kind;
             },
         }

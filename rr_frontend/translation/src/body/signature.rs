@@ -19,7 +19,7 @@ use crate::body::translation;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
-use crate::environment::{dump_borrowck_info, Environment};
+use crate::environment::{Environment, dump_borrowck_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
@@ -74,8 +74,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let sig = match ty.kind() {
             ty::TyKind::FnDef(_def, _args) => {
                 assert!(ty.is_fn());
-                let sig = ty.fn_sig(env.tcx());
-                sig
+                ty.fn_sig(env.tcx())
             },
             _ => panic!("can not handle non-fns"),
         };

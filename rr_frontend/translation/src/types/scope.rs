@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{hash_map, HashMap, HashSet};
+use std::collections::{HashMap, HashSet, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
@@ -151,10 +151,10 @@ impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
         // first lookup if this is a type parameter
         if path.len() == 1 {
             let RustPathElem::AssocItem(it) = &path[0];
-            if let Some(idx) = self.ty_names.get(it) {
-                if let Some(n) = self.lookup_ty_param_idx(*idx) {
-                    return Some(radium::Type::LiteralParam(n.to_owned()));
-                }
+            if let Some(idx) = self.ty_names.get(it)
+                && let Some(n) = self.lookup_ty_param_idx(*idx)
+            {
+                return Some(radium::Type::LiteralParam(n.to_owned()));
             }
         }
         // otherwise interpret this as an associated type path
@@ -499,15 +499,15 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        if let Some(impl_did) = env.tcx().impl_of_method(did) {
-            if env.tcx().trait_id_of_impl(impl_did).is_some() {
-                // we are in a trait impl
-                let impl_ref = trait_registry.get_trait_impl_info(impl_did)?;
-                for attr in &impl_ref.of_trait.declared_attrs {
-                    let term = impl_ref.get_attr_record_item_term(attr);
-                    let path = vec![RustPathElem::AssocItem(attr.to_owned())];
-                    self.trait_scope.attribute_names.insert(path, term.to_string());
-                }
+        if let Some(impl_did) = env.tcx().impl_of_method(did)
+            && env.tcx().trait_id_of_impl(impl_did).is_some()
+        {
+            // we are in a trait impl
+            let impl_ref = trait_registry.get_trait_impl_info(impl_did)?;
+            for attr in &impl_ref.of_trait.declared_attrs {
+                let term = impl_ref.get_attr_record_item_term(attr);
+                let path = vec![RustPathElem::AssocItem(attr.to_owned())];
+                self.trait_scope.attribute_names.insert(path, term.to_string());
             }
         }
 

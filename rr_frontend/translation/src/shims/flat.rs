@@ -12,8 +12,8 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::span;
 use serde::{Deserialize, Serialize};
 
-use crate::spec_parsers::{get_export_as_attr, ExportAs, RustPath};
-use crate::{attrs, search, Environment};
+use crate::spec_parsers::{ExportAs, RustPath, get_export_as_attr};
+use crate::{Environment, attrs, search};
 
 /// An item path that receives generic arguments.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

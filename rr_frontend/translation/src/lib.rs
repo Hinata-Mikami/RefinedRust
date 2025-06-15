@@ -291,18 +291,18 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
         for (did, entry) in &variant_defs {
             let entry = entry.borrow();
-            if let Some(entry) = entry.as_ref() {
-                if let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type()) {
-                    adt_shims.push(shim);
-                }
+            if let Some(entry) = entry.as_ref()
+                && let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type())
+            {
+                adt_shims.push(shim);
             }
         }
         for (did, entry) in &enum_defs {
             let entry = entry.borrow();
-            if let Some(entry) = entry.as_ref() {
-                if let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type()) {
-                    adt_shims.push(shim);
-                }
+            if let Some(entry) = entry.as_ref()
+                && let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type())
+            {
+                adt_shims.push(shim);
             }
         }
 
@@ -367,8 +367,10 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         let mut code_file = io::BufWriter::new(File::create(code_path).unwrap());
 
         {
-            let mut spec_exports = vec![coq::module::Export::new(vec![format!("generated_code_{stem}")])
-                .from(vec![&self.coq_path_prefix, stem])];
+            let mut spec_exports = vec![
+                coq::module::Export::new(vec![format!("generated_code_{stem}")])
+                    .from(vec![&self.coq_path_prefix, stem]),
+            ];
             spec_exports.append(&mut self.extra_exports.iter().map(|(export, _)| export.clone()).collect());
 
             write!(spec_file, "{}", coq::module::ImportList(&common_imports)).unwrap();
@@ -557,11 +559,13 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
             if fun.spec.is_complete() && mode.needs_proof() {
                 let mut imports = common_imports.clone();
 
-                imports.append(&mut vec![coq::module::Import::new(vec![
-                    &format!("generated_code_{stem}"),
-                    &format!("generated_specs_{stem}"),
-                ])
-                .from(vec![&self.coq_path_prefix, stem])]);
+                imports.append(&mut vec![
+                    coq::module::Import::new(vec![
+                        &format!("generated_code_{stem}"),
+                        &format!("generated_specs_{stem}"),
+                    ])
+                    .from(vec![&self.coq_path_prefix, stem]),
+                ]);
 
                 let exports: Vec<_> = self.extra_exports.iter().map(|(export, _)| export.clone()).collect();
 
@@ -638,12 +642,14 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             let mut imports = common_imports.clone();
 
-            imports.append(&mut vec![coq::module::Import::new(vec![
-                &format!("generated_code_{stem}"),
-                &format!("generated_specs_{stem}"),
-                &format!("generated_template_{}", fun.name()),
-            ])
-            .from(vec![&self.coq_path_prefix, stem, "generated"])]);
+            imports.append(&mut vec![
+                coq::module::Import::new(vec![
+                    &format!("generated_code_{stem}"),
+                    &format!("generated_specs_{stem}"),
+                    &format!("generated_template_{}", fun.name()),
+                ])
+                .from(vec![&self.coq_path_prefix, stem, "generated"]),
+            ]);
 
             writeln!(proof_file, "{}", coq::module::ImportList(&imports)).unwrap();
 
@@ -684,8 +690,13 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
 
             let mut imports = common_imports.clone();
 
-            imports.append(&mut vec![coq::module::Import::new(vec![&format!("generated_specs_{stem}")])
-                .from(vec![&self.coq_path_prefix, stem, "generated"])]);
+            imports.append(&mut vec![
+                coq::module::Import::new(vec![&format!("generated_specs_{stem}")]).from(vec![
+                    &self.coq_path_prefix,
+                    stem,
+                    "generated",
+                ]),
+            ]);
 
             writeln!(proof_file, "{}", coq::module::ImportList(&imports)).unwrap();
 
@@ -1143,10 +1154,10 @@ fn register_functions<'tcx>(
             continue;
         }
 
-        if mode == procedures::Mode::Prove {
-            if let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id()) {
-                mode = get_most_restrictive_function_mode(vcx, impl_did);
-            }
+        if mode == procedures::Mode::Prove
+            && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id())
+        {
+            mode = get_most_restrictive_function_mode(vcx, impl_did);
         }
 
         if mode.is_shim() || mode.is_code_shim() {
@@ -1374,13 +1385,13 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
         // check that all children have a specification
         let children = vcx.env.tcx().module_children_local(t);
         for c in children {
-            if let hir::def::Res::Def(def_kind, def_id) = c.res {
-                if def_kind == hir::def::DefKind::AssocFn {
-                    if vcx.env.has_any_tool_attribute(def_id) {
-                        some_has_annot = true;
-                    } else {
-                        all_have_annots = false;
-                    }
+            if let hir::def::Res::Def(def_kind, def_id) = c.res
+                && def_kind == hir::def::DefKind::AssocFn
+            {
+                if vcx.env.has_any_tool_attribute(def_id) {
+                    some_has_annot = true;
+                } else {
+                    all_have_annots = false;
                 }
             }
         }

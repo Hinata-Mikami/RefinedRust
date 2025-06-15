@@ -13,8 +13,8 @@ use serde::ser::SerializeSeq as _;
 use serde::{Serialize, Serializer};
 
 use super::utils::*;
-use crate::abstract_interpretation::AbstractState;
 use crate::AnalysisError;
+use crate::abstract_interpretation::AbstractState;
 
 /// A set of MIR places that are definitely initialized at a program point
 ///

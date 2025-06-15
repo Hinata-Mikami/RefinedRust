@@ -12,7 +12,7 @@ use derive_more::{Constructor, Display};
 use indent_write::indentable::Indentable as _;
 
 use crate::coq::binder;
-use crate::{display_list, BASE_INDENT};
+use crate::{BASE_INDENT, display_list};
 
 /// An [Inductive] type.
 ///

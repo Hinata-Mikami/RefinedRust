@@ -12,10 +12,10 @@ mod translator;
 mod tyvars;
 
 /// We export these parts of the private modules
-pub use local::{normalize_in_function, LocalTX};
+pub use local::{LocalTX, normalize_in_function};
 use rr_rustc_interface::middle::ty;
-pub use scope::{generate_args_inst_key, GenericsKey};
-pub use translator::{AdtState, CalleeState, FunctionState, STInner, TraitState, ST, TX};
+pub use scope::{GenericsKey, generate_args_inst_key};
+pub use translator::{AdtState, CalleeState, FunctionState, ST, STInner, TX, TraitState};
 
 use crate::base::*;
 

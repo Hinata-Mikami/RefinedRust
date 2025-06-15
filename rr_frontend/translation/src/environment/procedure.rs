@@ -11,7 +11,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::environment::mir_utils::real_edges::RealEdges;
-use crate::environment::{loops, Environment};
+use crate::environment::{Environment, loops};
 
 /// Index of a Basic Block
 pub type BasicBlockIndex = mir::BasicBlock;

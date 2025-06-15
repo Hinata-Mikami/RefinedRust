@@ -17,9 +17,9 @@ use rr_rustc_interface::middle::ty::TypeFolder as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::environment::{polonius_info, Environment};
-use crate::regions::region_bi_folder::RegionBiFolder as _;
+use crate::environment::{Environment, polonius_info};
 use crate::regions::TyRegionCollectFolder;
+use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::traits;
 use crate::traits::resolution;
 use crate::types::translator::{FunctionState, STInner, TX};

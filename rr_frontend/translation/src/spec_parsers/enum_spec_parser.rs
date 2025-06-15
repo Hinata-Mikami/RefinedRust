@@ -4,12 +4,12 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use attribute_parse::{parse, MToken};
+use attribute_parse::{MToken, parse};
 use parse::Peek as _;
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err, ParamLookup};
+use crate::spec_parsers::parse_utils::{ParamLookup, attr_args_tokens, str_err};
 
 /// An attribute spec parser handles the parsing of the attributes of the whole enum and relevant
 /// attributes on the variants at once.

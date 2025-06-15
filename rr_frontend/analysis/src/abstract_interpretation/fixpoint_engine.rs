@@ -9,11 +9,11 @@ use std::collections::BTreeSet;
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::middle::mir;
 
+pub use crate::AnalysisError;
+use crate::PointwiseState;
 use crate::abstract_interpretation::AbstractState;
 use crate::analysis_error::AnalysisError::NoStateAfterSuccessor;
 pub use crate::domains::*;
-pub use crate::AnalysisError;
-use crate::PointwiseState;
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
 

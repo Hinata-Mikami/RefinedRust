@@ -86,10 +86,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // check the statements for an assignment
                 let data = basic_blocks.get(*body).unwrap();
                 for stmt in &data.statements {
-                    if let mir::StatementKind::Assign(box (pl, _)) = stmt.kind {
-                        if let Some(did) = self.is_spec_closure_local(pl.local)? {
-                            return Ok(Some(did));
-                        }
+                    if let mir::StatementKind::Assign(box (pl, _)) = stmt.kind
+                        && let Some(did) = self.is_spec_closure_local(pl.local)?
+                    {
+                        return Ok(Some(did));
                     }
                 }
             }
