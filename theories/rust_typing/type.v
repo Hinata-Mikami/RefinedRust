@@ -4,6 +4,7 @@ From caesium Require Export proofmode notation syntypes.
 From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Export base util hlist pinned_borrows lft_contexts gvar_refinement memcasts.
 From caesium Require Import loc.
+From iris.algebra Require Import stepindex_finite.
 From refinedrust Require Import options.
 
 (** * RefinedRust's notion of value types *)
@@ -1051,6 +1052,26 @@ Ltac dist_later_2_intro :=
   refine (dist_later_2_intro _ _ _ _);
   intros ??.
 
+Ltac unfold_sidx :=
+  repeat match goal with
+  | H : (_ < _)%sidx |- _ =>
+      unfold sidx_lt, natSI in H
+  end;
+  try match goal with
+  | |- (_ < _)%sidx =>
+      unfold sidx_lt, natSI
+  end
+.
+
+
+Lemma dist_later_fin_lt {A : Type} `{!Dist A} (n : nat) (x y : A) :
+  dist_later n x y → ∀ m : nat, (m < n)%nat → x ≡{m}≡ y.
+Proof.
+  intros ? m Hlt.
+  eapply dist_later_lt; first done.
+  unfold_sidx. lia.
+Qed.
+
 Class TypeDist `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) : Prop := {
   type_dist_st :
     ty1.(ty_syn_type) = ty2.(ty_syn_type);
@@ -1104,16 +1125,17 @@ Global Instance type_dist_later `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt)
 Proof.
   intros [? ? ? ?].
   constructor; [done.. | | ].
-  - intros. dist_later_intro. eapply dist_le; first done. lia.
-  - intros. dist_later_intro. eapply dist_le; first done. lia.
+  - intros. dist_later_fin_intro. eapply dist_le; first done. lia.
+  - intros. dist_later_fin_intro. eapply dist_le; first done. lia.
 Qed.
 Global Instance type_dist2_dist_later `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
   TCFastDone (TypeDist2 m ty1 ty2) → CanSolve (n ≤ m) → TypeDistLater n ty1 ty2.
 Proof.
   rewrite /TCFastDone/CanSolve.
   intros [? ? ? ?] Hle. constructor; [done.. | | ].
-  - intros. dist_later_intro. eapply dist_later_lt; first done. lia.
-  - intros. dist_later_intro. eapply dist_le; first done. lia.
+  - intros. dist_later_fin_intro. eapply dist_later_lt; first done.
+    unfold_sidx. lia.
+  - intros. dist_later_fin_intro. eapply dist_le; first done. lia.
 Qed.
 Global Instance type_dist_le `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
   TCFastDone (TypeDist n ty1 ty2) → CanSolve (m ≤ n) → TypeDist m ty1 ty2 | 100.
@@ -1127,7 +1149,7 @@ Global Instance type_dist_dist2 `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt)
 Proof.
   intros [? ? ? ?].
   constructor; [done.. | | ].
-  - intros. dist_later_intro. eapply dist_le; first done. lia.
+  - intros. dist_later_fin_intro. eapply dist_le; first done. lia.
   - intros. done.
 Qed.
 Lemma type_dist2_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
@@ -1136,7 +1158,7 @@ Lemma type_dist2_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
   TypeDist m ty1 ty2.
 Proof.
   rewrite /CanSolve. intros [? ? ? ?] Hle. constructor; [done.. | | ].
-  - intros. eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_later_fin_lt; first done. lia.
   - intros. eapply dist_le; first done. lia.
 Qed.
 Global Instance type_dist2_le `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
@@ -1145,8 +1167,8 @@ Global Instance type_dist2_le `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt)
   TypeDist2 m ty1 ty2 | 100.
 Proof.
   rewrite /CanSolve. intros [? ? ? ?] Hle. constructor; [done.. | | ].
-  - intros. dist_later_intro.
-    eapply dist_later_lt; first done. lia.
+  - intros. dist_later_fin_intro.
+    eapply dist_later_fin_lt; first done. lia.
   - intros. eapply dist_le; first done. lia.
 Qed.
 Global Instance type_dist2_later `{!typeGS Σ} {rt} (n : nat) (ty1 ty2 : type rt) :
@@ -1155,8 +1177,8 @@ Proof.
   intros [? ? ? ?].
   constructor; [done.. | | ].
   - intros. dist_later_2_intro.
-    eapply dist_later_lt; first done. lia.
-  - intros. dist_later_intro.
+    eapply dist_later_fin_lt; first done. lia.
+  - intros. dist_later_fin_intro.
     eapply dist_le; first done. lia.
 Qed.
 Global Instance type_dist_later2_dist2 `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
@@ -1166,9 +1188,9 @@ Global Instance type_dist_later2_dist2 `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 :
 Proof.
   unfold CanSolve. intros [? ? ? ?] Hle.
   constructor; [done.. | | ].
-  - intros. dist_later_intro.
+  - intros. dist_later_fin_intro.
     eapply dist_later_2_lt; first done. lia.
-  - intros. eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_later_fin_lt; first done. lia.
 Qed.
 Lemma type_dist_later_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
   TypeDistLater n ty1 ty2 →
@@ -1177,8 +1199,8 @@ Lemma type_dist_later_dist `{!typeGS Σ} {rt} (n m : nat) (ty1 ty2 : type rt) :
 Proof.
   rewrite /CanSolve.
   intros [? ? ? ?] ?. constructor; [done.. | | ].
-  - intros. eapply dist_later_lt; first done. lia.
-  - intros. eapply dist_later_lt; first done. lia.
+  - intros. eapply dist_later_fin_lt; first done. lia.
+  - intros. eapply dist_later_fin_lt; first done. lia.
 Qed.
 
 Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
@@ -1268,7 +1290,7 @@ Section properties.
     - apply Hne; done.
     - intros. apply Hne; done.
     - intros. apply Hne. constructor; [done | done | | done].
-      intros. dist_later_intro. eapply dist_le; first done. lia.
+      intros. dist_later_fin_intro. eapply dist_le; first done. lia.
   Qed.
   Global Instance type_dist2_use_ne {rt1 rt2} (n : nat) (ty1 ty2 : type rt1) (F : type rt1 → type rt2) :
     TypeNonExpansive F → TypeDist2 n ty1 ty2 → TypeDist2 n (F ty1) (F ty2).
@@ -1277,9 +1299,9 @@ Section properties.
     constructor.
     - apply Hne. done.
     - apply Hne; done.
-    - intros. dist_later_intro.
+    - intros. dist_later_fin_intro.
       apply Hne. constructor; [done.. | | ].
-      + intros. eapply dist_later_lt; first done. done.
+      + intros. eapply dist_later_fin_lt; first done. lia.
       + intros. eapply dist_le; first done. lia.
     - intros. apply Hne; done.
   Qed.
@@ -1291,11 +1313,11 @@ Section properties.
     constructor.
     - apply Hne. done.
     - apply Hne; done.
-    - intros. dist_later_intro.
+    - intros. dist_later_fin_intro.
       apply Hne.
       eapply type_dist_later_dist; first done.
       unfold CanSolve; lia.
-    - intros. dist_later_intro.
+    - intros. dist_later_fin_intro.
       apply Hne.
       apply type_dist_dist2.
       eapply type_dist_later_dist; first done.
@@ -1367,7 +1389,7 @@ Section properties.
       eapply Hshr2. constructor.
       + naive_solver.
       + apply Hsc1. apply Hd.
-      + intros. dist_later_intro.
+      + intros. dist_later_fin_intro.
         eapply Hv1.
         eapply type_dist_later2_dist2; first done.
         unfold CanSolve; lia.
@@ -1395,7 +1417,7 @@ Section properties.
         eapply Hv1.
         eapply type_dist2_dist; first eapply (type_dist_later2_dist2 _ (S m)); first done.
         all: unfold CanSolve; lia.
-      + intros. dist_later_intro.
+      + intros. dist_later_fin_intro.
         eapply Hshr1.
         eapply type_dist_later2_dist2; first done. unfold CanSolve; lia.
   Qed.

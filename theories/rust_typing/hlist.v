@@ -601,7 +601,7 @@ Proof.
   - apply _.
   - rewrite /dist /hlist_dist. intros ??.
     eapply HForallTwo_impl; last done. intros ??? Hd.
-    eapply dist_lt; first apply Hd. done.
+    eapply dist_le; first apply Hd. done.
 Qed.
 
 Canonical Structure hlistO := Ofe (hlist F Xl) hlist_ofe_mixin.
@@ -724,7 +724,7 @@ Section plist_ofe.
     - intros. apply _.
     - intros n m x y Ha ?.
       eapply pforall2_impl; last done. intros ??? Hd.
-      eapply dist_lt; first apply Hd. done.
+      eapply dist_le; first apply Hd. done.
   Qed.
 
   Canonical Structure plistO := Ofe (plist F Xl) plist_ofe_mixin.

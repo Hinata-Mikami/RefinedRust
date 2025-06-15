@@ -115,12 +115,12 @@ Section fixpoint_def.
     (∀ κ π r l, (l ◁ₗ{π, κ} r @ (Fn (2+i)))%I ≡{n}≡ (l ◁ₗ{π, κ} r @ (Fn (2+n)))%I).
   Proof using Hcr.
     induction n as [ | n IH] in i |-*; simpl; intros Hle.
-    { split; first (intros; dist_later_intro; lia).
+    { split; first (intros; dist_later_intro; unfold_sidx; lia).
       intros. eapply Hcr. constructor.
       - eapply Hcr.
       - eapply Hcr. erewrite (Fn_syn_type_const i 0); done.
       - intros. dist_later_2_intro; lia.
-      - intros. dist_later_intro; lia.
+      - intros. dist_later_intro. unfold_sidx. lia.
     }
     destruct i; first lia.
     destruct (IH i) as [Hown Hshr]; first lia.
@@ -130,13 +130,16 @@ Section fixpoint_def.
       + eapply Hcr.
       + eapply Hcr. rewrite (Fn_syn_type_const (1+i) (1+n)); done.
       + intros. dist_later_intro.
-        eapply dist_later_lt; [eapply Hown | ]. lia.
-      + intros. eapply dist_le; first apply Hshr. lia.
+        eapply dist_later_fin_lt; [eapply Hown | ].
+        unfold_sidx. lia.
+      + intros. eapply dist_le; first apply Hshr.
+        unfold_sidx.
+        lia.
     - intros. simpl. eapply Hcr. constructor.
       + eapply Hcr.
       + eapply Hcr. rewrite (Fn_syn_type_const (1+i) (1+n)); done.
-      + intros. dist_later_2_intro. eapply dist_later_lt; first done. lia.
-      + intros. dist_later_intro. eapply dist_le; first apply Hshr. lia.
+      + intros. dist_later_2_intro. eapply dist_later_lt; first done. unfold_sidx. lia.
+      + intros. dist_later_intro. eapply dist_le; first apply Hshr. unfold_sidx. lia.
   Qed.
 
   (* [3+] because that's what we need to apply the above lemma proving that the chain is Cauchy *)
@@ -147,7 +150,7 @@ Section fixpoint_def.
     simpl. intros n i Hle.
     destruct (ty_own_shr_cauchy (S i) (S n)) as [Hown Hshr]; first lia.
     constructor; simpl.
-    - intros ???. eapply dist_later_lt; first eapply Hown. lia.
+    - intros ???. eapply dist_later_lt; first eapply Hown. unfold_sidx. lia.
     - intros ????. eapply dist_le; first eapply Hshr. lia.
   Qed.
   Definition F_ty_own_val_ty_shr_fixpoint : ty_own_shrO :=
@@ -170,7 +173,7 @@ Section fixpoint_def.
   |}.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?.
@@ -181,7 +184,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?.
@@ -190,7 +193,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?.
@@ -199,7 +202,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_Persistent.
       intros ? [] [] Heq. eapply Heq.
     - intros ?.
@@ -207,7 +210,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv. eapply Heq.
     - intros ?.
@@ -215,7 +218,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. do 8 f_equiv.
       { do 2 f_equiv. apply Heq. }
@@ -237,7 +240,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. do 2 f_equiv; eapply Heq.
     - intros ?.
@@ -245,7 +248,7 @@ Section fixpoint_def.
   Qed.
   Next Obligation.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
-    eapply @limit_preserving.
+    eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
       intros ? [] [] Heq. f_equiv; first eapply Heq.
       f_equiv. eapply Heq.
@@ -293,8 +296,8 @@ Section fixpoint_def.
     - intros. dist_later_intro.
       rewrite type_fixpoint_own_val_unfold_n.
       eapply dist_later_lt.
-      { eapply (ty_own_shr_cauchy n (S m)). lia. }
-      lia.
+      { eapply (ty_own_shr_cauchy n (S m)). unfold_sidx. lia. }
+      unfold_sidx. lia.
     - intros.
       rewrite type_fixpoint_shr_unfold_n.
       etrans.
@@ -314,11 +317,11 @@ Section fixpoint_def.
       rewrite type_fixpoint_own_val_unfold_n.
       simpl. eapply dist_later_lt.
       { eapply (ty_own_shr_cauchy n). lia. }
-      lia.
+      unfold_sidx. lia.
     - intros. dist_later_intro.
       rewrite type_fixpoint_shr_unfold_n.
       eapply dist_le.
-      { eapply (ty_own_shr_cauchy n (S m) ). lia. }
+      { eapply (ty_own_shr_cauchy n (S m) ). unfold_sidx. lia. }
       lia.
   Qed.
   Lemma type_fixpoint_equiv :
@@ -409,14 +412,14 @@ Section fixpoint.
     { induction n as [ | n IH]; simpl; apply _. }
     constructor.
     - intros. rewrite /ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
-      eapply @limit_preserving.
+      eapply @limit_preserving_compl.
       { eapply bi.limit_preserving_Persistent.
         intros n [][][Heq1 Heq2].
         simpl in *. apply Heq1. }
       apply _.
     - intros ? ? ? ? ? ? ? ? Hst. intros.
       rewrite /ty_shr/ty_own_val/= /F_ty_own_val_ty_shr_fixpoint/=.
-      eapply @limit_preserving.
+      eapply @limit_preserving_compl.
       { eapply bi.limit_preserving_entails; first apply _.
         intros n [][][Heq1 Heq2].
         repeat f_equiv; simpl; [apply Heq2 | apply Heq1]. }

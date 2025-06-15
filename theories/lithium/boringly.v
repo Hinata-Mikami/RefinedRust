@@ -33,7 +33,7 @@ Section boringly.
     rewrite boringly_unfold.
     iIntros (?) "HQ".
     iPoseProof ("HQ" $! Q with "[]") as "#HQ".
-    { iModIntro. eauto. }
+    { iModIntro. iIntros "#Ha". done. }
     done.
   Qed.
 

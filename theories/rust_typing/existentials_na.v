@@ -224,10 +224,12 @@ Section contr.
       f_equiv.
       { f_contractive. do 3 f_equiv.
         - do 4 solve_type_proper_step.
+          unfold_sidx.
           eapply type_dist_later2_dist2; first done.
           unfold CanSolve. lia.
         - apply HP.
           eapply type_dist_later2_dist2; first done.
+          unfold_sidx.
           unfold CanSolve. lia. }
       do 5 f_equiv.
       apply HF.
@@ -269,9 +271,11 @@ Section contr.
       { f_contractive. do 3 f_equiv.
         - do 4 solve_type_proper_step.
           eapply type_dist2_dist; first done.
+          unfold_sidx.
           unfold CanSolve. lia.
         - apply HP.
           eapply type_dist2_dist; first done.
+          unfold_sidx.
           unfold CanSolve. lia. }
       do 5 f_equiv.
       apply HF. apply Hd.

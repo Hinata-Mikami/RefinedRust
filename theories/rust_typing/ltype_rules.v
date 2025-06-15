@@ -739,6 +739,7 @@ Section ne.
     f_contractive.
     do 4 f_equiv.
     apply HT.
+    unfold_sidx.
     eapply type_dist_later_dist; first done.
     unfold CanSolve; lia.
   Qed.
@@ -787,6 +788,7 @@ Section ne.
     all: do 7 f_equiv.
     all: apply HT.
     all: eapply type_dist_later_dist; first done.
+    all: unfold_sidx.
     all: unfold CanSolve; lia.
   Qed.
 End ne.

@@ -49,18 +49,18 @@
         version = coq.pkgs.coq.coq-version;
 
         stdpp = {
-          version = "9b19c60ce8fb8ccc518b5ecdbf025642afab7835";
-          sha256 = "sha256-BJ3nmS//EQFaU4kaJsUTZ9MO5zw3V3aoCPB62I0h/OI=";
+          version = "567f831ef317c62ecc4413d018370b3dcbdf4c39";
+          sha256 = "sha256-jZXhDPVRtkDd+1FXCYqU0r/Mq3JDWOPL1Uk9wJjgrqI=";
         };
 
         iris = {
-          version = "8a8f05fb7de603d25df5797d1ba5a0efb2cbc658";
-          sha256 = "sha256-Ypffk0cnhKRODRQylsP3/kyRQ2dSMOJ1sCkA/v89z34=";
+          version = "710391513c6d74904ae48b17ae681ca1c20fb98e";
+          sha256 = "sha256-EdRLHmejsDX6ggWH0ZLka4/zRcuuaxcvfiScQaoh6/I=";
         };
 
         lambda-rust = {
-          version = "74bdf4e8a67147232f0a80ab6f648c20503a76bb";
-          sha256 = "sha256-cq5eroG13wnfbFGGLuqCm+9425ZmPaboj7CZaPBx35g=";
+          version = "0f4ebd6d9a3a6cf2e0a18dfe794134481b7b4bfc";
+          sha256 = "sha256-8ncIi9HyD1TedNkHFhI8wKvrvyiJfdZv/mbS3zOGvvg=";
         };
       };
 

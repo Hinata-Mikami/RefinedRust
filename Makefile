@@ -101,6 +101,9 @@ builddep/refinedrust-builddep.opam: theories/refinedrust.opam Makefile
 	@echo "$$BUILDDEP_OPAM_BODY" > $@
 	@opam show -f depends: ./theories/refinedrust.opam >> $@
 	@echo "]" >> $@
+	@echo "pin-depends:" >> $@
+	@opam show --normalise -f pin-depends: ./theories/refinedrust.opam >> $@
+
 
 # Install the virtual Opam package to ensure that:
 #  1) dependencies of RefinedRust are installed,
