@@ -159,7 +159,7 @@ pub struct CalleeState<'a, 'tcx, 'def> {
 ///   but need to track dependencies on other ADTs.
 /// - translation of a type when translating the signature of a callee. Regions are always erased.
 #[derive(Debug)]
-pub enum STInner<'b, 'def: 'b, 'tcx: 'def> {
+pub enum STInner<'b, 'def, 'tcx> {
     /// This type is used in a function
     InFunction(&'b mut FunctionState<'tcx, 'def>),
     /// We are generating the definition of an ADT and this type is used in there
@@ -170,6 +170,7 @@ pub enum STInner<'b, 'def: 'b, 'tcx: 'def> {
     /// we are translating trait requirements
     TraitReqs(Box<TraitState<'b, 'tcx, 'def>>),
 }
+
 pub type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
 pub type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
 pub type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
@@ -926,7 +927,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn register_struct(
         &self,
         ty: &'tcx ty::VariantDef,
-        adt: ty::AdtDef,
+        adt: ty::AdtDef<'_>,
     ) -> Result<(), TranslationError<'tcx>> {
         if self.is_adt_variant_already_registered(ty.def_id) {
             // already there, that's fine.
@@ -1018,7 +1019,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         struct_name: &str,
         ty: &'tcx ty::VariantDef,
-        adt: ty::AdtDef,
+        adt: ty::AdtDef<'_>,
         adt_deps: &mut TranslateAdtState<'a, 'tcx, 'def>,
     ) -> Result<(radium::AbstractVariant<'def>, Option<radium::InvariantSpec>), TranslationError<'tcx>> {
         info!("adt variant: {:?}", ty);

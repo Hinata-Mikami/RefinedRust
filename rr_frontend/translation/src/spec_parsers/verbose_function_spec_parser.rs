@@ -63,7 +63,7 @@ struct RRArgs {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RRArgs {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let args: parse::Punctuated<LiteralTypeWithRef, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
         Ok(Self {
@@ -82,7 +82,7 @@ struct ClosureCaptureSpec {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let name_str: parse::LitStr = stream.parse(meta)?;
         let name = name_str.value();
         stream.parse::<_, MToken![:]>(meta)?;
@@ -131,7 +131,7 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(stream) {
             stream.parse::<_, MToken![#]>(meta)?;
             let macro_cmd: parse::Ident = stream.parse(meta)?;
@@ -624,7 +624,7 @@ where
 
         // new ghost vars created for mut-captures
         let mut new_ghost_vars: Vec<String> = Vec::new();
-        let mut pre_types: Vec<specs::TypeWithRef> = Vec::new();
+        let mut pre_types: Vec<specs::TypeWithRef<'_>> = Vec::new();
         // post patterns and optional ghost variable, if this is a by-mut-ref capture
         let mut post_patterns: Vec<CapturePostRfn> = Vec::new();
 

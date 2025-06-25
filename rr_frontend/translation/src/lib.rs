@@ -157,7 +157,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         decl: &radium::TraitImplSpec<'rcx>,
     ) -> Option<shim_registry::TraitImplShim> {
         info!("making shim entry for impl {did:?}");
-        let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = self.env.tcx().impl_trait_ref(did);
+        let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = self.env.tcx().impl_trait_ref(did);
 
         let Some(impl_ref) = impl_ref else {
             trace!("leave make_trait_impl_shim_entry (failed getting impl ref)");
@@ -595,7 +595,7 @@ impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
         }
     }
 
-    fn check_function_needs_proof(&self, did: DefId, fun: &radium::Function) -> bool {
+    fn check_function_needs_proof(&self, did: DefId, fun: &radium::Function<'_>) -> bool {
         let mode = self.procedure_registry.lookup_function_mode(did).unwrap();
         fun.spec.is_complete() && mode.needs_proof()
     }
@@ -1202,7 +1202,7 @@ fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
         info!("\nTranslating function {}", fname);
 
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = vcx.env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(proc.get_id());
         let ty = ty.instantiate_identity();
 
         let translator = match ty.kind() {
@@ -1329,7 +1329,7 @@ pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Re
     let statics = vcx.env.get_statics();
 
     for s in &statics {
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = vcx.env.tcx().type_of(s.to_def_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(s.to_def_id());
 
         let const_attrs = attrs::filter_for_tool(vcx.env.get_attributes(s.to_def_id()));
         if const_attrs.is_empty() {
@@ -1482,7 +1482,7 @@ fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
         let ty::ImplSubject::Trait(_) = subject else { continue };
 
-        let process_impl = || -> Result<radium::TraitImplSpec, base::TranslationError<'tcx>> {
+        let process_impl = || -> Result<radium::TraitImplSpec<'_>, base::TranslationError<'tcx>> {
             let impl_info = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
             let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
@@ -1584,7 +1584,7 @@ where
     F: Fn(VerificationCtxt<'tcx, '_>),
 {
     let env = Environment::new(tcx);
-    let env: &Environment = &*Box::leak(Box::new(env));
+    let env: &Environment<'_> = &*Box::leak(Box::new(env));
 
     // get crate attributes
     let crate_attrs = tcx.hir_krate_attrs();

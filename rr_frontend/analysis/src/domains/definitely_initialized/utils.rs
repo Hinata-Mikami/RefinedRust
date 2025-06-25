@@ -394,7 +394,7 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
     })
 }
 
-const fn generic_arg_kind_variant(a: &ty::GenericArgKind) -> u8 {
+const fn generic_arg_kind_variant(a: &ty::GenericArgKind<'_>) -> u8 {
     match a {
         ty::GenericArgKind::Const(_) => 0,
         ty::GenericArgKind::Type(_) => 1,

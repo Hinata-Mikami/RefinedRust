@@ -2,10 +2,12 @@
 rustflags = [
     # === ENABLE ALL LINTS ===
 
-    # Rust lints
+    # Rust group lints
     "-Dfuture-incompatible",
     "-Dlet-underscore",
     "-Dnonstandard-style",
+    "-Drefining-impl-trait",
+    "-Drust-2018-idioms",
     "-Dunused",
 
     # Rust extra lints

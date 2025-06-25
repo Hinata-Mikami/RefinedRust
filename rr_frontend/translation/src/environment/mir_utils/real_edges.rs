@@ -14,7 +14,7 @@ pub struct RealEdges {
 }
 
 impl RealEdges {
-    pub fn new(body: &mir::Body) -> Self {
+    pub fn new(body: &mir::Body<'_>) -> Self {
         let mut successors: IndexVec<_, Vec<_>> = body.basic_blocks.iter().map(|_| Vec::new()).collect();
         let mut predecessors: IndexVec<_, Vec<_>> = body.basic_blocks.iter().map(|_| Vec::new()).collect();
 
@@ -43,7 +43,7 @@ impl RealEdges {
     }
 }
 
-fn real_targets(terminator: &mir::Terminator) -> Vec<mir::BasicBlock> {
+fn real_targets(terminator: &mir::Terminator<'_>) -> Vec<mir::BasicBlock> {
     match &terminator.kind {
         mir::TerminatorKind::Goto { target } | mir::TerminatorKind::Assert { target, .. } => {
             vec![*target]

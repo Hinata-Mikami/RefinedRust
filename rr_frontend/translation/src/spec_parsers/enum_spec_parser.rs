@@ -37,7 +37,7 @@ pub struct EnumPattern {
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         // parse the pattern
         let pat: parse::LitStr = stream.parse(meta)?;
         let (pat, _) = meta.process_coq_literal(&pat.value());

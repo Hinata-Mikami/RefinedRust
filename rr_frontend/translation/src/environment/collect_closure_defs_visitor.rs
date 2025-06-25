@@ -4,7 +4,7 @@ use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
 
-pub struct CollectClosureDefsVisitor<'env, 'tcx: 'env> {
+pub struct CollectClosureDefsVisitor<'env, 'tcx> {
     env: &'env Environment<'tcx>,
     result: Vec<LocalDefId>,
 }

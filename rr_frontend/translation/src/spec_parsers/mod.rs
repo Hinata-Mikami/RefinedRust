@@ -19,7 +19,7 @@ pub struct RustPath {
 }
 
 impl<F> Parse<F> for RustPath {
-    fn parse(stream: parse::Stream, meta: &F) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &F) -> parse::Result<Self> {
         let x: parse::Punctuated<parse::Ident, MToken![::]> =
             parse::Punctuated::parse_separated_nonempty(stream, meta)?;
         let path = x.into_iter().map(|x| x.value()).collect();
@@ -33,7 +33,7 @@ pub struct ExportAs {
     pub as_method: bool,
 }
 impl<F> Parse<F> for ExportAs {
-    fn parse(stream: parse::Stream, meta: &F) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &F) -> parse::Result<Self> {
         let mut as_method = false;
         if parse::Pound::peek(stream) {
             stream.parse::<_, MToken![#]>(meta)?;
@@ -86,7 +86,7 @@ impl<U> Parse<U> for ShimAnnot
 where
     U: ?Sized,
 {
-    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
         let pos = stream.pos().unwrap();
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
@@ -135,7 +135,7 @@ impl<U> Parse<U> for CodeShimAnnot
 where
     U: ?Sized,
 {
-    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
         let pos = stream.pos().unwrap();
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;

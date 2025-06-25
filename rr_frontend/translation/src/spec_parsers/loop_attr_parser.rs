@@ -32,7 +32,7 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(stream) {
             stream.parse::<_, MToken![#]>(meta)?;
             let macro_cmd: parse::Ident = stream.parse(meta)?;
@@ -111,7 +111,7 @@ struct InvVar {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let local_str: parse::LitStr = stream.parse(meta)?;
         let local_str = local_str.value();
 

@@ -341,7 +341,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // also need to re-bind late bound regions
         let tcx = self.translator.env().tcx();
-        let fn_ty: ty::EarlyBinder<ty::Ty<'_>> = tcx.type_of(callee_did);
+        let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
         let fn_ty = fn_ty.instantiate(tcx, all_params);
         let sig = fn_ty.fn_sig(tcx);
         trace!("computing abstraction for {callee_did:?}, sig: {sig:?}");

@@ -12,7 +12,7 @@ use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
 
-pub struct CollectPrustiSpecVisitor<'a, 'tcx: 'a> {
+pub struct CollectPrustiSpecVisitor<'a, 'tcx> {
     env: &'a Environment<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     functions: Vec<LocalDefId>,
@@ -62,7 +62,7 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
+    fn visit_item(&mut self, i: &hir::Item<'_>) {
         //let attrs = self.tcx.get_attrs(i.def_id.to_def_id());
         if let hir::ItemKind::Fn { .. } = i.kind {
             let def_id = i.hir_id().owner.def_id;
@@ -100,7 +100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
     }
 
     /// Visit trait items which are default impls of methods.
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
         //let attrs = self.tcx.get_attrs(trait_item.def_id.to_def_id());
 
         // Skip associated types and other non-methods items
@@ -118,7 +118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
         self.functions.push(def_id);
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
         //let attrs = self.tcx.get_attrs(ii.def_id.to_def_id());
 
         // Skip associated types and other non-methods items

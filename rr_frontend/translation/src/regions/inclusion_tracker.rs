@@ -21,7 +21,7 @@ pub enum DynamicInclusion {
 /// This is used for the lifetime annotation generation.
 /// Track inclusions between regions that are known to hold at the current point of the translation.
 /// Distinguishes static and dynamic inclusions for the purpose of the translation.
-pub struct InclusionTracker<'a, 'tcx: 'a> {
+pub struct InclusionTracker<'a, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
 
     // base facts about static inclusion

@@ -17,13 +17,13 @@ use crate::abstract_interpretation::AbstractState;
 
 /// A set of MIR locals that are definitely allocated at a program point
 #[derive(Clone)]
-pub struct DefinitelyAllocatedState<'mir, 'tcx: 'mir> {
+pub struct DefinitelyAllocatedState<'mir, 'tcx> {
     pub(super) def_allocated_locals: FxHashSet<mir::Local>,
     pub(super) mir: &'mir mir::Body<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyAllocatedState<'mir, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ignore mir
         f.debug_struct("DefinitelyAllocatedState")
             .field("def_allocated_locals", &self.def_allocated_locals)

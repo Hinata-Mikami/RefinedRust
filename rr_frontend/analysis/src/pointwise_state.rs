@@ -13,7 +13,7 @@ use serde::ser::SerializeMap as _;
 use serde::{Serialize, Serializer};
 
 /// Records the state of the analysis at every program point and CFG edge of `mir`.
-pub struct PointwiseState<'mir, 'tcx: 'mir, S: Serialize> {
+pub struct PointwiseState<'mir, 'tcx, S: Serialize> {
     state_before: FxHashMap<mir::Location, S>,
     /// Maps each basic block to a map of its successor blocks to the state on the CFG edge.
     state_after_block: FxHashMap<mir::BasicBlock, FxHashMap<mir::BasicBlock, S>>,
@@ -25,7 +25,7 @@ impl<'mir, 'tcx: 'mir, S> fmt::Debug for PointwiseState<'mir, 'tcx, S>
 where
     S: Serialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ignore tcx
         f.debug_struct("PointwiseState")
             .field("state_before", &self.state_before)

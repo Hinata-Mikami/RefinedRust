@@ -67,7 +67,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // use a dummy name as we're never going to use the code.
         let mut translated_fn = radium::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc_did);
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc_did);
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
@@ -197,11 +197,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         );
 
         // TODO can we avoid the leak
-        let proc: &'def Procedure = &*Box::leak(Box::new(proc));
+        let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
         let body = proc.get_mir();
         Self::dump_body(body);
 
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
         let ty = ty.instantiate_identity();
         let closure_kind = match ty.kind() {
             ty::TyKind::Closure(_def, closure_args) => {
@@ -258,7 +258,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let info = PoloniusInfo::new(env, proc);
 
         // TODO: avoid leak
-        let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
 
         // For closures, we only handle the parent's args here!
         // TODO: do we need to do something special for the parent's late-bound region
@@ -378,12 +378,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         );
 
         // TODO can we avoid the leak
-        let proc: &'def Procedure = &*Box::leak(Box::new(proc));
+        let proc: &'def Procedure<'_> = &*Box::leak(Box::new(proc));
 
         let body = proc.get_mir();
         Self::dump_body(body);
 
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
@@ -393,7 +393,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let info = PoloniusInfo::new(env, proc);
         // TODO: avoid leak
-        let info: &'def PoloniusInfo = &*Box::leak(Box::new(info));
+        let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
 
         let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
         info!("Function generic args: {:?}", params);
@@ -567,7 +567,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // add generic args to the fn
         let generics = &type_scope.generic_scope;
-        let mut scope: radium::GenericScope<_> = generics.clone().into();
+        let mut scope: radium::GenericScope<'_, _> = generics.clone().into();
         // TODO: hack because we add the lifetime names manually below
         scope.clear_lfts();
         translated_fn.provide_generic_scope(scope);
@@ -775,7 +775,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)))
     }
 
-    fn dump_body(body: &mir::Body) {
+    fn dump_body(body: &mir::Body<'_>) {
         let basic_blocks = &body.basic_blocks;
         for (bb_idx, bb) in basic_blocks.iter_enumerated() {
             Self::dump_basic_block(bb_idx, bb);
@@ -783,7 +783,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Dump a basic block as info debug output.
-    fn dump_basic_block(bb_idx: mir::BasicBlock, bb: &mir::BasicBlockData) {
+    fn dump_basic_block(bb_idx: mir::BasicBlock, bb: &mir::BasicBlockData<'_>) {
         info!("Basic block {:?}:", bb_idx);
         let mut i = 0;
         for s in &bb.statements {

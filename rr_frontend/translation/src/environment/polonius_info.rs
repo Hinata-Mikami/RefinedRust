@@ -105,8 +105,7 @@ pub fn compute_transitive_closure(
 }
 
 // Terminology: zombie loans are loans that are loan_killed_at.
-
-pub struct PoloniusInfo<'a, 'tcx: 'a> {
+pub struct PoloniusInfo<'a, 'tcx> {
     pub(crate) tcx: ty::TyCtxt<'tcx>,
     pub(crate) mir: &'a mir::Body<'tcx>,
     pub(crate) borrowck_in_facts: facts::AllInput,

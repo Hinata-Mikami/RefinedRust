@@ -16,7 +16,7 @@ use crate::search;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Check if a call goes to `std::rt::begin_panic`
-    fn is_call_destination_panic(&self, func: &mir::Operand) -> bool {
+    fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
         let mir::Operand::Constant(box c) = func else {
             return false;
         };

@@ -163,7 +163,7 @@ impl<'tcx> Environment<'tcx> {
 
     /// Check if `did` is a closure.
     pub fn is_closure(&self, did: DefId) -> bool {
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.tcx.type_of(did);
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(did);
         let ty = ty.skip_binder();
         matches!(ty.kind(), ty::TyKind::Closure(_, _))
     }
@@ -216,7 +216,7 @@ impl<'tcx> Environment<'tcx> {
         }
 
         // TODO: find a more robust way to check this. We cannot call `type_of` on all dids.
-        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.tcx.type_of(did);
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(did);
         let ty = ty.skip_binder();
         matches!(ty.kind(), ty::TyKind::FnDef(_, _))
     }

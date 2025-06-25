@@ -44,7 +44,7 @@ struct RfnPattern {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let pat = parse::LitStr::parse(stream, meta)?;
         let (pat, _) = meta.process_coq_literal(pat.value().as_str());
 
@@ -93,7 +93,7 @@ enum MetaIProp {
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
-    fn parse(stream: parse::Stream, meta: &T) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         if parse::Pound::peek(stream) {
             stream.parse::<_, MToken![#]>(meta)?;
             let macro_cmd: parse::Ident = stream.parse(meta)?;
@@ -171,7 +171,7 @@ impl From<InvariantSpecFlags> for specs::InvariantSpecFlags {
 }
 
 impl<U> Parse<U> for InvariantSpecFlags {
-    fn parse(stream: parse::Stream, meta: &U) -> parse::Result<Self> {
+    fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
         let mode: parse::Ident = stream.parse(meta)?;
 
         match mode.value().as_str() {

@@ -25,7 +25,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
     // Get the type of the callee, fully instantiated
-    let full_ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(callee_did);
+    let full_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
 
     // We create a dummy scope in order to make the lifetime lookups succeed, since we only want
@@ -398,7 +398,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Const::Ty(ty, _) | mir::Const::Val(_, ty) => {
                 match ty.kind() {
                     ty::TyKind::FnDef(def, args) => {
-                        let ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(def);
+                        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.env.tcx().type_of(def);
 
                         let ty_ident = ty.instantiate_identity();
                         assert!(ty_ident.is_fn());

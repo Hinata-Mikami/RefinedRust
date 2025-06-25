@@ -135,7 +135,7 @@ impl Buffer {
         T::parse(self, meta)
     }
 
-    pub fn call<T>(&self, function: fn(Stream) -> Result<T>) -> Result<T> {
+    pub fn call<T>(&self, function: fn(Stream<'_>) -> Result<T>) -> Result<T> {
         function(self)
     }
 
@@ -225,20 +225,20 @@ pub trait Parse<U>: Sized
 where
     U: ?Sized,
 {
-    fn parse(stream: Stream, meta: &U) -> Result<Self>;
+    fn parse(stream: Stream<'_>, meta: &U) -> Result<Self>;
 }
 
 impl<U, T: Parse<U>> Parse<U> for Box<T>
 where
     U: ?Sized,
 {
-    fn parse(stream: Stream, meta: &U) -> Result<Self> {
+    fn parse(stream: Stream<'_>, meta: &U) -> Result<Self> {
         stream.parse(meta).map(Self::new)
     }
 }
 
 pub trait Peek {
-    fn peek(stream: Stream) -> bool;
+    fn peek(stream: Stream<'_>) -> bool;
 }
 
 pub trait PToken: Peek {}
@@ -267,7 +267,7 @@ macro_rules! define_punctuation {
             }
 
             impl<U> Parse<U> for $name where U: ?Sized {
-                fn parse(input: Stream, _: &U) -> Result<Self> {
+                fn parse(input: Stream<'_>, _: &U) -> Result<Self> {
                     Ok($name {
                         span: input.expect_token($tk)?,
                     })
@@ -275,7 +275,7 @@ macro_rules! define_punctuation {
             }
 
             impl Peek for $name {
-                fn peek(input: Stream) -> bool {
+                fn peek(input: Stream<'_>) -> bool {
                     input.peek_token(&$tk)
                 }
             }
@@ -402,7 +402,7 @@ impl<U> Parse<U> for LitStr
 where
     U: ?Sized,
 {
-    fn parse(stream: Stream, _: &U) -> Result<Self> {
+    fn parse(stream: Stream<'_>, _: &U) -> Result<Self> {
         let lit = stream.expect_literal()?;
         match lit.0.kind {
             ast::token::LitKind::Str => Ok(Self { sym: lit.0.symbol }),
@@ -419,7 +419,7 @@ impl<U> Parse<U> for Ident
 where
     U: ?Sized,
 {
-    fn parse(stream: Stream, _: &U) -> Result<Self> {
+    fn parse(stream: Stream<'_>, _: &U) -> Result<Self> {
         let sym = stream.expect_ident()?;
         Ok(Self { sym })
     }
@@ -451,7 +451,7 @@ impl<U> Parse<U> for LitInt
 where
     U: ?Sized,
 {
-    fn parse(stream: Stream, _: &U) -> Result<Self> {
+    fn parse(stream: Stream<'_>, _: &U) -> Result<Self> {
         let (lit, span) = stream.expect_literal()?;
         match lit.kind {
             ast::token::LitKind::Integer => {
@@ -802,7 +802,7 @@ impl<T, P> Punctuated<T, P> {
     ///
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
-    pub fn parse_terminated<U>(input: Stream, meta: &U) -> Result<Self>
+    pub fn parse_terminated<U>(input: Stream<'_>, meta: &U) -> Result<Self>
     where
         T: Parse<U>,
         P: Parse<U>,
@@ -823,8 +823,8 @@ impl<T, P> Punctuated<T, P> {
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
     pub fn parse_terminated_with<U>(
-        input: Stream,
-        parser: fn(Stream, &U) -> Result<T>,
+        input: Stream<'_>,
+        parser: fn(Stream<'_>, &U) -> Result<T>,
         meta: &U,
     ) -> Result<Self>
     where
@@ -859,7 +859,7 @@ impl<T, P> Punctuated<T, P> {
     ///
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
-    pub fn parse_separated_nonempty<U>(input: Stream, meta: &U) -> Result<Self>
+    pub fn parse_separated_nonempty<U>(input: Stream<'_>, meta: &U) -> Result<Self>
     where
         T: Parse<U>,
         P: PToken + Parse<U>,
@@ -880,8 +880,8 @@ impl<T, P> Punctuated<T, P> {
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
     pub fn parse_separated_nonempty_with<U>(
-        input: Stream,
-        parser: fn(Stream, &U) -> Result<T>,
+        input: Stream<'_>,
+        parser: fn(Stream<'_>, &U) -> Result<T>,
         meta: &U,
     ) -> Result<Self>
     where
@@ -1036,7 +1036,7 @@ where
 /// Refer to the [module documentation] for details about punctuated sequences.
 ///
 /// [module documentation]: self
-pub struct Iter<'a, T: 'a> {
+pub struct Iter<'a, T> {
     // The `Item = &'a T` needs to be specified to support rustc 1.31 and older.
     // On modern compilers we would be able to write just IterTrait<'a, T> where
     // Item can be inferred unambiguously from the supertrait.
@@ -1048,7 +1048,7 @@ trait IterTrait<'a, T: 'a>: DoubleEndedIterator<Item = &'a T> + ExactSizeIterato
 }
 
 use std::{option, slice};
-struct PrivateIter<'a, T: 'a, P: 'a> {
+struct PrivateIter<'a, T, P> {
     inner: slice::Iter<'a, (T, P)>,
     last: option::IntoIter<&'a T>,
 }

@@ -114,7 +114,7 @@ impl Type {
             Self::Adt(path_with_args) => {
                 let (did, flat_args) = path_with_args.to_item(tcx)?;
 
-                let ty: ty::EarlyBinder<ty::Ty<'tcx>> = tcx.type_of(did);
+                let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(did);
                 let ty::TyKind::Adt(_, args) = ty.skip_binder().kind() else {
                     return None;
                 };
@@ -194,7 +194,7 @@ pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
 }
 
 /// Get the path we should export an item at.
-pub fn get_export_path_for_did(env: &Environment, did: DefId) -> ExportAs {
+pub fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
     let attrs = env.get_attributes(did);
 
     if attrs::has_tool_attr(attrs, "export_as") {

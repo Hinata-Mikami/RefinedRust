@@ -12,7 +12,7 @@ use rr_rustc_interface::span::def_id::DefId;
 use crate::abstract_interpretation::{AnalysisResult, FixpointEngine};
 use crate::domains::DefinitelyInitializedState;
 
-pub struct DefinitelyInitializedAnalysis<'mir, 'tcx: 'mir> {
+pub struct DefinitelyInitializedAnalysis<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     mir: &'mir mir::Body<'tcx>,

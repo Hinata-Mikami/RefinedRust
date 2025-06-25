@@ -14,7 +14,7 @@ pub enum AnalysisError {
 }
 
 impl AnalysisError {
-    pub fn to_pretty_str(&self, mir: &mir::Body) -> String {
+    pub fn to_pretty_str(&self, mir: &mir::Body<'_>) -> String {
         match self {
             Self::UnsupportedStatement(location) => {
                 let stmt = location_to_stmt_str(*location, mir);
@@ -32,7 +32,7 @@ impl AnalysisError {
 }
 
 /// Convert a `location` to a string representing the statement or terminator at that `location`
-fn location_to_stmt_str(location: mir::Location, mir: &mir::Body) -> String {
+fn location_to_stmt_str(location: mir::Location, mir: &mir::Body<'_>) -> String {
     let bb_mir = &mir[location.block];
     if location.statement_index < bb_mir.statements.len() {
         let stmt = &bb_mir.statements[location.statement_index];

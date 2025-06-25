@@ -74,7 +74,7 @@ impl FromRequire {
 }
 
 impl Display for FromRequire {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(from) = &self.from {
             write!(f, "From {} ", from)?;
         }

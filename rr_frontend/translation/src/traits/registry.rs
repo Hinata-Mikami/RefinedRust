@@ -406,7 +406,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         for it in assoc_items.in_definition_order() {
             if let ty::AssocKind::Type { .. } = it.kind {
                 let item_did = it.def_id;
-                let item_ty: ty::EarlyBinder<ty::Ty<'tcx>> = self.env.tcx().type_of(item_did);
+                let item_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.env.tcx().type_of(item_did);
                 let subst_ty = item_ty.instantiate(self.env.tcx(), impl_args);
 
                 assoc_args.push(subst_ty);

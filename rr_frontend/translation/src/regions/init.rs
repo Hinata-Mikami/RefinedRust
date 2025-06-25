@@ -136,7 +136,7 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 /// At the start of the function, there's a universal (placeholder) region for reference argument.
 /// These get subsequently relabeled.
 /// Given the relabeled region, find the original placeholder region.
-pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo) -> Option<facts::Region> {
+pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo<'_, '_>) -> Option<facts::Region> {
     let root_location = mir::Location {
         block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
@@ -161,7 +161,7 @@ pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo) -> Opt
 /// e.g. that they outlive the function lifetime and are outlived by 'static).
 pub fn get_relevant_universal_constraints<'a>(
     lifetime_scope: &EarlyLateRegionMap,
-    inclusion_tracker: &mut InclusionTracker,
+    inclusion_tracker: &mut InclusionTracker<'_, '_>,
     info: &'a PoloniusInfo<'a, '_>,
 ) -> Vec<(radium::UniversalLft, radium::UniversalLft)> {
     let input_facts = &info.borrowck_in_facts;

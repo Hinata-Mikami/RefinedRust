@@ -505,7 +505,7 @@ pub fn write_shims<'a>(
     export_libs: &BTreeSet<String>,
     adt_shims: Vec<AdtShim<'a>>,
     function_shims: Vec<FunctionShim<'a>>,
-    trait_shims: Vec<TraitShim>,
+    trait_shims: Vec<TraitShim<'_>>,
     trait_impl_shims: Vec<TraitImplShim>,
 ) {
     let writer = BufWriter::new(f);

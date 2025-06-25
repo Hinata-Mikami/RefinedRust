@@ -89,7 +89,7 @@ pub fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
+            let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
             // now we need to get the constraints and see if we can unify them
             // TODO: come up with algorithm for that
             // - I guess we need to unify the type variables here.
@@ -154,7 +154,7 @@ pub fn try_resolve_trait_impl_did<'tcx>(
 
             // check if this is an implementation for the right type
             if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
-                let impl_ref: Option<ty::EarlyBinder<ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
+                let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
 
                 if let Some(impl_ref) = impl_ref {
                     let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();

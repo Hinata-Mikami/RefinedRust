@@ -22,7 +22,7 @@ use crate::abstract_interpretation::AbstractState;
 /// set at the same time. For example, having `x.f` and `x.f.g` in the
 /// set at the same time is illegal.
 #[derive(Clone)]
-pub struct DefinitelyInitializedState<'mir, 'tcx: 'mir> {
+pub struct DefinitelyInitializedState<'mir, 'tcx> {
     pub(super) def_init_places: FxHashSet<mir::Place<'tcx>>,
     pub(super) def_id: DefId,
     pub(super) mir: &'mir mir::Body<'tcx>,
@@ -30,7 +30,7 @@ pub struct DefinitelyInitializedState<'mir, 'tcx: 'mir> {
 }
 
 impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyInitializedState<'mir, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ignore tcx & mir
         f.debug_struct("DefinitelyInitializedState")
             .field("def_init_places", &self.def_init_places)

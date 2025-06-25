@@ -10,7 +10,7 @@ use rr_rustc_interface::middle::mir;
 use crate::abstract_interpretation::{AnalysisResult, FixpointEngine};
 use crate::domains::DefinitelyAllocatedState;
 
-pub struct DefinitelyAllocatedAnalysis<'mir, 'tcx: 'mir> {
+pub struct DefinitelyAllocatedAnalysis<'mir, 'tcx> {
     mir: &'mir mir::Body<'tcx>,
 }
 
