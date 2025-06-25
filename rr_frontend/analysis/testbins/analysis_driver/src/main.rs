@@ -11,15 +11,14 @@ use analysis::domains::DefinitelyInitializedAnalysis;
 use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
 use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::driver::Compilation;
-use rr_rustc_interface::errors;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
-use rr_rustc_interface::hir;
-use rr_rustc_interface::interface::{interface, Config};
-use rr_rustc_interface::middle::query::queries::mir_borrowck::ProvidedValue;
+use rr_rustc_interface::interface::{Config, interface};
 use rr_rustc_interface::middle::query::Providers;
+use rr_rustc_interface::middle::query::queries::mir_borrowck::ProvidedValue;
 use rr_rustc_interface::middle::{ty, util};
 use rr_rustc_interface::polonius_engine::{Algorithm, Output};
 use rr_rustc_interface::session::{self, EarlyDiagCtxt, Session};
+use rr_rustc_interface::{errors, hir};
 
 struct OurCompilerCalls {
     args: Vec<String>,
@@ -38,18 +37,10 @@ fn get_attribute<'tcx>(
     get_attributes(tcx, def_id).iter().find(|attr| match &attr {
         hir::Attribute::Unparsed(normal_attr) => match normal_attr.as_ref() {
             hir::AttrItem {
-                path:
-                    hir::AttrPath {
-                        segments,
-                        ..
-                    },
+                path: hir::AttrPath { segments, .. },
                 args: hir::AttrArgs::Empty,
                 ..
-            } => {
-                segments.len() == 2
-                    && segments[0].as_str() == segment1
-                    && segments[1].as_str() == segment2
-            },
+            } => segments.len() == 2 && segments[0].as_str() == segment1 && segments[1].as_str() == segment2,
             _ => false,
         },
         _ => false,
@@ -76,7 +67,8 @@ mod mir_storage {
         def_id: LocalDefId,
         body_with_facts: BodyWithBorrowckFacts<'tcx>,
     ) {
-        let body_with_facts: BodyWithBorrowckFacts<'static> = std::mem::transmute(body_with_facts);
+        let body_with_facts: BodyWithBorrowckFacts<'static> = unsafe { std::mem::transmute(body_with_facts) };
+
         MIR_BODIES.with(|state| {
             let mut map = state.borrow_mut();
             assert!(map.insert(def_id, body_with_facts).is_none());
@@ -92,7 +84,8 @@ mod mir_storage {
             let mut map = state.borrow_mut();
             map.remove(&def_id).unwrap()
         });
-        std::mem::transmute(body_with_facts)
+
+        unsafe { std::mem::transmute(body_with_facts) }
     }
 }
 
@@ -122,11 +115,7 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
         config.override_queries = Some(override_queries);
     }
 
-    fn after_analysis(
-        &mut self,
-        compiler: &interface::Compiler,
-        tcx: ty::TyCtxt<'_>,
-    ) -> Compilation {
+    fn after_analysis(&mut self, compiler: &interface::Compiler, tcx: ty::TyCtxt<'_>) -> Compilation {
         let abstract_domain: &str = self
             .args
             .iter()
@@ -149,9 +138,8 @@ impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
             .collect();
 
         // sort according to argument span to ensure deterministic output
-        local_def_ids.sort_unstable_by_key(|id| {
-            get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span()
-        });
+        local_def_ids
+            .sort_unstable_by_key(|id| get_attribute(tcx, id.to_def_id(), "analyzer", "run").unwrap().span());
 
         for &local_def_id in local_def_ids {
             println!("Result for function {}():", tcx.item_name(local_def_id.to_def_id()));
@@ -195,7 +183,8 @@ fn main() {
     env_logger::init();
     let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable {
         kind: errors::emitter::HumanReadableErrorType::Default,
-        color_config: errors::emitter::ColorConfig::Auto });
+        color_config: errors::emitter::ColorConfig::Auto,
+    });
     rr_rustc_interface::driver::init_rustc_env_logger(&error_handler);
     let mut compiler_args = Vec::new();
     let mut callback_args = Vec::new();

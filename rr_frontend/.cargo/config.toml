@@ -11,14 +11,24 @@ rustflags = [
     "-Dunused",
 
     # Rust extra lints
-    "-Dunused_extern_crates",
+    "-Dambiguous_negative_literals",
+    "-Dclosure_returning_async_block",
+    "-Dderef_into_dyn_supertrait",
+    "-Dffi_unwind_calls",
+    "-Dimpl_trait_redundant_captures",
+    "-Dlinker_messages",
+    "-Dmacro_use_extern_crate",
+    "-Dmeta_variable_misuse",
+    "-Dnon_ascii_idents",
+    "-Dredundant_imports",
+    "-Dredundant_lifetimes",
+    "-Dtrivial_casts",
+    "-Dtrivial_numeric_casts",
+    "-Dunit_bindings",
+    "-Dunsafe_op_in_unsafe_fn",
     "-Dunused_import_braces",
     "-Dunused_lifetimes",
-    "-Dunused_macro_rules",
     "-Dunused_qualifications",
-
-    # `crane` issue
-    "-Wnon_snake_case",
 
     # Clippy lints
     "-Dclippy::complexity",

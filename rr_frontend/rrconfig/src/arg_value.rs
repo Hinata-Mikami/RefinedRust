@@ -38,7 +38,7 @@ mod tests {
     fn arg_value_works() {
         let args = &["--bar=bar", "--foobar", "123", "--foo"];
 
-        assert_eq!(arg_value(&[] as &[&str], "--foobar", |_| true), None);
+        assert_eq!(arg_value::<&str, _>(&[], "--foobar", |_| true), None);
         assert_eq!(arg_value(args, "--bar", |_| false), None);
         assert_eq!(arg_value(args, "--bar", |_| true), Some("bar"));
         assert_eq!(arg_value(args, "--bar", |p| p == "bar"), Some("bar"));
