@@ -15,7 +15,7 @@ use crate::regions;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a single basic block.
-    pub(super) fn translate_basic_block(
+    pub(crate) fn translate_basic_block(
         &mut self,
         bb_idx: mir::BasicBlock,
         bb: &mir::BasicBlockData<'tcx>,

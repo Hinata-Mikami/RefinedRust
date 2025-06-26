@@ -17,7 +17,7 @@ use crate::spec_parsers::loop_attr_parser::{LoopAttrParser as _, VerboseLoopAttr
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Parse the attributes on spec closure `did` as loop annotations and add it as an invariant
     /// to the generated code.
-    pub(super) fn parse_attributes_on_loop_spec_closure(
+    pub(crate) fn parse_attributes_on_loop_spec_closure(
         &self,
         loop_head: mir::BasicBlock,
         did: Option<DefId>,
@@ -71,7 +71,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Find the optional `DefId` of the closure giving the invariant for the loop with head `head_bb`.
-    pub(super) fn find_loop_spec_closure(
+    pub(crate) fn find_loop_spec_closure(
         &self,
         head_bb: mir::BasicBlock,
     ) -> Result<Option<DefId>, TranslationError<'tcx>> {

@@ -15,7 +15,7 @@ use crate::spec_parsers::parse_utils::{IdentOrTerm, ParamLookup, attr_args_token
 /// Permitted attributes:
 /// - `rr::instantiate("x" := "True")`, which will instantiate a specification attribute "x" to a given term
 ///   "True"
-pub trait TraitImplAttrParser {
+pub(crate) trait TraitImplAttrParser {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
@@ -23,17 +23,16 @@ pub trait TraitImplAttrParser {
 }
 
 #[derive(Clone, Debug)]
-pub struct TraitImplAttrs {
+pub(crate) struct TraitImplAttrs {
     pub attrs: radium::TraitSpecAttrsInst,
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseTraitImplAttrParser<'a, T> {
+pub(crate) struct VerboseTraitImplAttrParser<'a, T> {
     scope: &'a T,
 }
 
 impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
-    pub const fn new(scope: &'a T) -> Self {
+    pub(crate) const fn new(scope: &'a T) -> Self {
         Self { scope }
     }
 }

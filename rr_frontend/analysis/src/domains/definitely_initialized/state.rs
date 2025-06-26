@@ -23,10 +23,10 @@ use crate::abstract_interpretation::AbstractState;
 /// set at the same time is illegal.
 #[derive(Clone)]
 pub struct DefinitelyInitializedState<'mir, 'tcx> {
-    pub(super) def_init_places: FxHashSet<mir::Place<'tcx>>,
-    pub(super) def_id: DefId,
-    pub(super) mir: &'mir mir::Body<'tcx>,
-    pub(super) tcx: ty::TyCtxt<'tcx>,
+    pub(crate) def_init_places: FxHashSet<mir::Place<'tcx>>,
+    pub(crate) def_id: DefId,
+    pub(crate) mir: &'mir mir::Body<'tcx>,
+    pub(crate) tcx: ty::TyCtxt<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyInitializedState<'mir, 'tcx> {
@@ -182,7 +182,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     }
 
     /// If the place is a Copy type, uninitialise the place.
-    pub(super) fn apply_statement_effect(&mut self, location: mir::Location) {
+    pub(crate) fn apply_statement_effect(&mut self, location: mir::Location) {
         let statement = &self.mir[location.block].statements[location.statement_index];
 
         match &statement.kind {
@@ -216,7 +216,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     }
 
     /// If the place is a Copy type, uninitialise the place.
-    pub(super) fn apply_terminator_effect(
+    pub(crate) fn apply_terminator_effect(
         &self,
         location: mir::Location,
     ) -> Result<Vec<(mir::BasicBlock, Self)>, AnalysisError> {

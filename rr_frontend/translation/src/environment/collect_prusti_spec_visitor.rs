@@ -12,7 +12,7 @@ use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
 
-pub struct CollectPrustiSpecVisitor<'a, 'tcx> {
+pub(crate) struct CollectPrustiSpecVisitor<'a, 'tcx> {
     env: &'a Environment<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     functions: Vec<LocalDefId>,
@@ -24,7 +24,7 @@ pub struct CollectPrustiSpecVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
-    pub const fn new(env: &'a Environment<'tcx>) -> Self {
+    pub(crate) const fn new(env: &'a Environment<'tcx>) -> Self {
         CollectPrustiSpecVisitor {
             env,
             tcx: env.tcx(),
@@ -37,17 +37,17 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn get_results(
+    pub(crate) fn get_results(
         self,
     ) -> (Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>, Vec<LocalDefId>) {
         (self.functions, self.modules, self.statics, self.consts, self.traits)
     }
 
-    pub fn get_trait_impls(self) -> Vec<LocalDefId> {
+    pub(crate) fn get_trait_impls(self) -> Vec<LocalDefId> {
         self.trait_impls
     }
 
-    pub fn run(&mut self) {
+    pub(crate) fn run(&mut self) {
         let it: &middle::hir::ModuleItems = self.tcx.hir_crate_items(());
         for id in it.free_items() {
             self.visit_item(self.tcx.hir_item(id));

@@ -1,20 +1,20 @@
-pub mod const_attr_parser;
-pub mod crate_attr_parser;
-pub mod enum_spec_parser;
-pub mod loop_attr_parser;
-pub mod module_attr_parser;
-pub mod parse_utils;
-pub mod struct_spec_parser;
-pub mod trait_attr_parser;
-pub mod trait_impl_attr_parser;
-pub mod verbose_function_spec_parser;
+pub(crate) mod const_attr_parser;
+pub(crate) mod crate_attr_parser;
+pub(crate) mod enum_spec_parser;
+pub(crate) mod loop_attr_parser;
+pub(crate) mod module_attr_parser;
+pub(crate) mod parse_utils;
+pub(crate) mod struct_spec_parser;
+pub(crate) mod trait_attr_parser;
+pub(crate) mod trait_impl_attr_parser;
+pub(crate) mod verbose_function_spec_parser;
 
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
 
 /// For parsing of `RustPaths`
-pub struct RustPath {
+pub(crate) struct RustPath {
     pub path: Vec<String>,
 }
 
@@ -28,7 +28,7 @@ impl<F> Parse<F> for RustPath {
 }
 
 /// For parsing of `rr::export_as` annotations
-pub struct ExportAs {
+pub(crate) struct ExportAs {
     pub path: RustPath,
     pub as_method: bool,
 }
@@ -58,7 +58,7 @@ impl<F> Parse<F> for ExportAs {
     }
 }
 
-pub fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, String> {
+pub(crate) fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -76,7 +76,7 @@ pub fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, String> 
 
 /// Parser for getting shim attributes
 #[derive(Debug)]
-pub struct ShimAnnot {
+pub(crate) struct ShimAnnot {
     pub code_name: String,
     pub spec_name: String,
     pub trait_req_incl_name: String,
@@ -109,7 +109,7 @@ where
 }
 
 /// Extract a shim annotation from a list of annotations of a function or method.
-pub fn get_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<ShimAnnot, String> {
+pub(crate) fn get_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<ShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -127,7 +127,7 @@ pub fn get_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<ShimAnnot, String> {
 
 /// Parser for getting code shim attributes
 #[derive(Debug)]
-pub struct CodeShimAnnot {
+pub(crate) struct CodeShimAnnot {
     pub code_name: String,
 }
 
@@ -155,7 +155,7 @@ where
 }
 
 /// Extract a code shim annotation from a list of annotations of a function or method.
-pub fn get_code_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<CodeShimAnnot, String> {
+pub(crate) fn get_code_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<CodeShimAnnot, String> {
     for &it in attrs {
         let path_segs = &it.path.segments;
 
@@ -172,7 +172,7 @@ pub fn get_code_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<CodeShimAnnot, St
 }
 
 /// Check whether we should propagate this attribute of a method from a surrounding impl.
-pub fn propagate_method_attr_from_impl(it: &hir::AttrItem) -> bool {
+pub(crate) fn propagate_method_attr_from_impl(it: &hir::AttrItem) -> bool {
     if let Some(ident) = it.path.segments.get(1) {
         matches!(ident.as_str(), "context") || matches!(ident.as_str(), "verify")
     } else {

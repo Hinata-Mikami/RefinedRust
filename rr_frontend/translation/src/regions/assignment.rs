@@ -141,7 +141,7 @@ fn get_new_unconstrained_regions(
 }
 
 #[derive(Debug)]
-pub struct RegionInfo {
+pub(crate) struct RegionInfo {
     pub expr_annot: Option<radium::Annotation>,
     pub new_dyn_inclusions: Vec<radium::Annotation>,
     pub stmt_annot: Vec<radium::Annotation>,
@@ -151,7 +151,7 @@ pub struct RegionInfo {
 /// Compute the annotations for an assignment: an annotation for the rhs value, and a list of
 /// annotations to prepend to the statement, and a list of annotations to put after the
 /// statement.
-pub fn get_assignment_annots<'tcx>(
+pub(crate) fn get_assignment_annots<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
@@ -275,7 +275,7 @@ fn get_outliving_regions_on_loan(
 }
 
 /// Get the annotations due to borrows appearing on the RHS of an assignment.
-pub fn get_assignment_loan_annots<'tcx>(
+pub(crate) fn get_assignment_loan_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
@@ -322,7 +322,7 @@ pub fn get_assignment_loan_annots<'tcx>(
 }
 
 /// Make annotations for unconstrained regions introduced by the current assignment.
-pub fn make_unconstrained_region_annotations<'tcx>(
+pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     unconstrained_regions: BTreeSet<Region>,

@@ -27,7 +27,7 @@ use crate::spec_parsers::verbose_function_spec_parser::{
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};
 
-pub struct TX<'a, 'def, 'tcx> {
+pub(crate) struct TX<'a, 'def, 'tcx> {
     env: &'def Environment<'tcx>,
     /// this needs to be annotated with the right borrowck things
     proc: &'def Procedure<'tcx>,
@@ -54,7 +54,7 @@ pub struct TX<'a, 'def, 'tcx> {
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
-    pub fn spec_for_trait_method(
+    pub(crate) fn spec_for_trait_method(
         env: &'def Environment<'tcx>,
         proc_did: DefId,
         name: &str,
@@ -179,7 +179,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Create a translation instance for a closure.
-    pub fn new_closure(
+    pub(crate) fn new_closure(
         env: &'def Environment<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
@@ -360,7 +360,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate the body of a function.
-    pub fn new(
+    pub(crate) fn new(
         env: &'def Environment<'tcx>,
         meta: &procedures::Meta,
         proc: Procedure<'tcx>,
@@ -497,7 +497,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate the body of the function.
-    pub fn translate(
+    pub(crate) fn translate(
         self,
         spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
@@ -517,7 +517,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translation that only generates a specification.
-    pub fn generate_spec(
+    pub(crate) fn generate_spec(
         self,
     ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
         self.translated_fn.try_into().map_err(TranslationError::AttributeError)

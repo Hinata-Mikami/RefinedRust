@@ -15,7 +15,7 @@ use regex::{Captures, Regex};
 /// This provides some general utilities for RefinedRust-specific attribute parsing.
 use rr_rustc_interface::{ast, hir};
 
-pub fn attr_args_tokens(x: &hir::AttrArgs) -> ast::tokenstream::TokenStream {
+pub(crate) fn attr_args_tokens(x: &hir::AttrArgs) -> ast::tokenstream::TokenStream {
     match x {
         hir::AttrArgs::Delimited(args) => args.tokens.clone(),
         hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => ast::tokenstream::TokenStream::default(),
@@ -25,7 +25,7 @@ pub fn attr_args_tokens(x: &hir::AttrArgs) -> ast::tokenstream::TokenStream {
 /// Parse either a literal string (a term/pattern) or an identifier, e.g.
 /// `x`, `z`, `"w"`, `"(a, b)"`
 #[derive(Debug)]
-pub enum IdentOrTerm {
+pub(crate) enum IdentOrTerm {
     Ident(String),
     Term(String),
 }
@@ -67,7 +67,7 @@ impl fmt::Display for IdentOrTerm {
 /// Parse a refinement with an optional type annotation, e.g.
 /// `x`, `"y"`, `x @ "int i32"`, `"(a, b)" @ "struct_t ...."`.
 #[derive(Debug)]
-pub struct LiteralTypeWithRef {
+pub(crate) struct LiteralTypeWithRef {
     pub rfn: IdentOrTerm,
     pub ty: Option<String>,
     pub raw: specs::TypeIsRaw,
@@ -112,7 +112,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
 
 /// Parse a type annotation.
 #[derive(Debug)]
-pub struct LiteralType {
+pub(crate) struct LiteralType {
     pub ty: String,
 }
 
@@ -144,7 +144,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
 }
 
 /// Parse a Coq type.
-pub struct RRCoqType {
+pub(crate) struct RRCoqType {
     pub ty: coq::term::Type,
 }
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
@@ -187,7 +187,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParam {
 
 /// Parse a list of comma-separated parameter declarations.
 #[derive(Debug)]
-pub struct RRParams {
+pub(crate) struct RRParams {
     pub(crate) params: Vec<RRParam>,
 }
 
@@ -230,7 +230,7 @@ impl<U> parse::Parse<U> for CoqExportModule {
 /// Parse an assumed Coq context item, e.g.
 /// ``"`{ghost_mapG Σ Z Z}"``.
 #[derive(Debug)]
-pub struct RRCoqContextItem {
+pub(crate) struct RRCoqContextItem {
     pub item: String,
     /// true if this should be put at the end of the dependency list, e.g. if it depends on type
     /// parameters
@@ -252,7 +252,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
 }
 
 #[expect(clippy::needless_pass_by_value)]
-pub fn str_err(e: parse::Error) -> String {
+pub(crate) fn str_err(e: parse::Error) -> String {
     format!("{:?}", e)
 }
 
@@ -266,7 +266,7 @@ pub enum RustPathElem {
     AssocItem(String),
 }
 
-pub type RustPath = Vec<RustPathElem>;
+pub(crate) type RustPath = Vec<RustPathElem>;
 
 /// Lookup of lifetime and type parameters given their Rust source names.
 pub trait ParamLookup<'def> {

@@ -17,7 +17,7 @@ use crate::{Environment, attrs, search};
 
 /// An item path that receives generic arguments.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct PathWithArgs {
+pub(crate) struct PathWithArgs {
     path: Vec<String>,
     /// An encoding of the `GenericArgs` for this definition.
     /// This is `Some(ty)` if:
@@ -27,7 +27,10 @@ pub struct PathWithArgs {
 }
 
 impl PathWithArgs {
-    pub fn to_item<'tcx>(&self, tcx: ty::TyCtxt<'tcx>) -> Option<(DefId, Vec<Option<ty::GenericArg<'tcx>>>)> {
+    pub(crate) fn to_item<'tcx>(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> Option<(DefId, Vec<Option<ty::GenericArg<'tcx>>>)> {
         let did = search::try_resolve_did(tcx, self.path.as_slice())?;
 
         let mut ty_args = Vec::new();
@@ -45,7 +48,7 @@ impl PathWithArgs {
     }
 
     /// `args` should be normalized already.
-    pub fn from_item<'tcx>(
+    pub(crate) fn from_item<'tcx>(
         env: &Environment<'tcx>,
         did: DefId,
         args: &[ty::GenericArg<'tcx>],
@@ -70,7 +73,7 @@ impl PathWithArgs {
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "ty::IntTy")]
-pub enum IntTyDef {
+pub(crate) enum IntTyDef {
     Isize,
     I8,
     I16,
@@ -80,7 +83,7 @@ pub enum IntTyDef {
 }
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "ty::UintTy")]
-pub enum UintTyDef {
+pub(crate) enum UintTyDef {
     Usize,
     U8,
     U16,
@@ -93,7 +96,7 @@ pub enum UintTyDef {
 /// A "flattened" representation of types that should be suitable serialized storage, and should be
 /// stable enough to resolve to the same actual type across compilations.
 /// Currently mostly geared to our trait resolution needs.
-pub enum Type {
+pub(crate) enum Type {
     /// Path + generic args
     /// empty args represents the identity substitution
     Adt(PathWithArgs),
@@ -109,7 +112,7 @@ pub enum Type {
 
 impl Type {
     /// Try to convert a flat type to a type.
-    pub fn to_type<'tcx>(&self, tcx: ty::TyCtxt<'tcx>) -> Option<ty::Ty<'tcx>> {
+    pub(crate) fn to_type<'tcx>(&self, tcx: ty::TyCtxt<'tcx>) -> Option<ty::Ty<'tcx>> {
         match self {
             Self::Adt(path_with_args) => {
                 let (did, flat_args) = path_with_args.to_item(tcx)?;
@@ -160,7 +163,7 @@ impl Type {
 }
 
 /// Try to convert a type to a flat type. Assumes the type has been normalized already.
-pub fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> Option<Type> {
+pub(crate) fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) -> Option<Type> {
     match ty.kind() {
         ty::TyKind::Adt(def, args) => {
             let did = def.did();
@@ -177,7 +180,7 @@ pub fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<'tcx>) 
     }
 }
 
-pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
+pub(crate) fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
     let def_path = tcx.def_path_str(did);
     // we clean this up a bit and segment it
     let mut components = Vec::new();
@@ -194,7 +197,7 @@ pub fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<String> {
 }
 
 /// Get the path we should export an item at.
-pub fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
+pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
     let attrs = env.get_attributes(did);
 
     if attrs::has_tool_attr(attrs, "export_as") {

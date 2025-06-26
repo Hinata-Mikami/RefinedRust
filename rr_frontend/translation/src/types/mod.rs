@@ -7,20 +7,20 @@
 //! Utilities for translating Rust types into `RefinedRust` types.
 
 mod local;
-pub mod scope;
+pub(crate) mod scope;
 mod translator;
 mod tyvars;
 
 /// We export these parts of the private modules
-pub use local::{LocalTX, normalize_in_function};
+pub(crate) use local::{LocalTX, normalize_in_function};
 use rr_rustc_interface::middle::ty;
-pub use scope::{GenericsKey, generate_args_inst_key};
-pub use translator::{AdtState, CalleeState, FunctionState, ST, STInner, TX, TraitState};
+pub(crate) use scope::{GenericsKey, generate_args_inst_key};
+pub(crate) use translator::{AdtState, CalleeState, FunctionState, ST, STInner, TX, TraitState};
 
 use crate::base::*;
 
 /// Mangle a name by appending type parameters to it.
-pub fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
+pub(crate) fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
     // TODO: maybe come up with some better way to generate names
     let mut mangled_name = method_name.to_owned();
     for arg in args {
@@ -30,7 +30,7 @@ pub fn mangle_name_with_tys(method_name: &str, args: &[ty::Ty<'_>]) -> String {
 }
 
 /// Mangle a name by appending generic args to it.
-pub fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String {
+pub(crate) fn mangle_name_with_args(name: &str, args: &[ty::GenericArg<'_>]) -> String {
     let mut mangled_base: String = name.to_owned();
 
     for arg in args {

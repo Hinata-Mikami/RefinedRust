@@ -26,7 +26,7 @@ use crate::traits::resolution;
 /// Returns the argument and return type signature instantiated in this way.
 /// Moreover, returns a `EarlyLateRegionMap` that contains the mapping of indices to Polonius
 /// region variables.
-pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
+pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
     env: &Environment<'tcx>,
     params: &[ty::GenericArg<'tcx>],
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
@@ -136,7 +136,10 @@ pub fn replace_fnsig_args_with_polonius_vars<'tcx>(
 /// At the start of the function, there's a universal (placeholder) region for reference argument.
 /// These get subsequently relabeled.
 /// Given the relabeled region, find the original placeholder region.
-pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo<'_, '_>) -> Option<facts::Region> {
+pub(crate) fn find_placeholder_region_for(
+    r: facts::Region,
+    info: &PoloniusInfo<'_, '_>,
+) -> Option<facts::Region> {
     let root_location = mir::Location {
         block: mir::BasicBlock::from_u32(0),
         statement_index: 0,
@@ -159,7 +162,7 @@ pub fn find_placeholder_region_for(r: facts::Region, info: &PoloniusInfo<'_, '_>
 /// Filter the "interesting" constraints between universal lifetimes that need to hold
 /// (this does not include the constraints that need to hold for all universal lifetimes,
 /// e.g. that they outlive the function lifetime and are outlived by 'static).
-pub fn get_relevant_universal_constraints<'a>(
+pub(crate) fn get_relevant_universal_constraints<'a>(
     lifetime_scope: &EarlyLateRegionMap,
     inclusion_tracker: &mut InclusionTracker<'_, '_>,
     info: &'a PoloniusInfo<'a, '_>,
@@ -209,7 +212,7 @@ pub fn get_relevant_universal_constraints<'a>(
 
 /// Get additional constraints between capture places and value lifetimes that hold at the
 /// beginning of the closure.
-pub fn get_initial_closure_constraints<'a>(
+pub(crate) fn get_initial_closure_constraints<'a>(
     info: &'a PoloniusInfo<'a, '_>,
     inclusion_tracker: &mut InclusionTracker<'a, '_>,
 ) -> Vec<(polonius_info::AtomicRegion, polonius_info::AtomicRegion)> {
@@ -247,7 +250,7 @@ pub fn get_initial_closure_constraints<'a>(
 /// with universals.
 /// We structurally compare the regions in the function signature args `sig_args` with the regions
 /// in the body's `local_args`.
-pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
+pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     info: &'a PoloniusInfo<'a, 'tcx>,
@@ -293,17 +296,17 @@ pub fn get_initial_universal_arg_constraints<'a, 'tcx>(
     initial_arg_mapping
 }
 
-pub struct InitialPoloniusUnifier {
+pub(crate) struct InitialPoloniusUnifier {
     mapping: HashMap<Region, Region>,
 }
 impl InitialPoloniusUnifier {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             mapping: HashMap::new(),
         }
     }
 
-    pub fn get_result(self) -> HashMap<Region, Region> {
+    pub(crate) fn get_result(self) -> HashMap<Region, Region> {
         self.mapping
     }
 }

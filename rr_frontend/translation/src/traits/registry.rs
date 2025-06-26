@@ -937,13 +937,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 }
 
-pub struct LateBoundUnifier<'tcx, 'a> {
+pub(crate) struct LateBoundUnifier<'tcx, 'a> {
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
     early_instantiation: HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub fn new(binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
+    pub(crate) fn new(binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
         Self {
             binders_to_unify,
             instantiation: HashMap::new(),
@@ -951,7 +951,9 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
         }
     }
 
-    pub fn get_result(mut self) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>) {
+    pub(crate) fn get_result(
+        mut self,
+    ) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>) {
         trace!("computed latebound unification map {:?}", self.instantiation);
         let mut res = Vec::new();
         for i in 0..self.binders_to_unify.len() {

@@ -62,7 +62,7 @@ mod mir_storage {
             RefCell::new(FxHashMap::default());
     }
 
-    pub unsafe fn store_mir_body<'tcx>(
+    pub(crate) unsafe fn store_mir_body<'tcx>(
         _tcx: ty::TyCtxt<'tcx>,
         def_id: LocalDefId,
         body_with_facts: BodyWithBorrowckFacts<'tcx>,
@@ -76,7 +76,7 @@ mod mir_storage {
     }
 
     #[expect(clippy::elidable_lifetime_names)]
-    pub unsafe fn retrieve_mir_body<'tcx>(
+    pub(crate) unsafe fn retrieve_mir_body<'tcx>(
         _tcx: ty::TyCtxt<'tcx>,
         def_id: LocalDefId,
     ) -> BodyWithBorrowckFacts<'tcx> {

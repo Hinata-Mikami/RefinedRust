@@ -39,7 +39,7 @@ fn determine_origin_of_trait_requirement<'tcx>(
 
 /// Meta information of a trait requirement.
 #[derive(Debug)]
-pub struct TraitReqMeta<'tcx> {
+pub(crate) struct TraitReqMeta<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub bound_regions: Vec<ty::BoundRegionKind>,
     pub binders: ty::Binder<'tcx, ()>,
@@ -50,7 +50,7 @@ pub struct TraitReqMeta<'tcx> {
 
 /// Get the trait requirements of a [did], also determining their origin relative to the [did].
 /// The requirements are sorted in a way that is stable across compilations.
-pub fn get_trait_requirements_with_origin<'tcx>(
+pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     env: &Environment<'tcx>,
     did: DefId,
 ) -> Vec<TraitReqMeta<'tcx>> {
@@ -124,7 +124,7 @@ pub fn get_trait_requirements_with_origin<'tcx>(
 
 /// Get non-trivial trait requirements of a `ParamEnv`,
 /// ordered deterministically.
-pub fn get_nontrivial<'tcx>(
+pub(crate) fn get_nontrivial<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,

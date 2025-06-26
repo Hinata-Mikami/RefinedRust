@@ -13,7 +13,7 @@ use rr_rustc_interface::middle::mir;
 /// set at the same time. For example, having `x.f` and `x.f.g` in the
 /// set at the same time is illegal.
 #[derive(Clone, Eq, PartialEq, Debug, Default)]
-pub struct LocalSet {
+pub(crate) struct LocalSet {
     locals: FxHashSet<mir::Local>,
 }
 

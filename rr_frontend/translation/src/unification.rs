@@ -51,7 +51,11 @@ fn unify_generic_args<'tcx>(
     true
 }
 
-pub fn unify_types<'tcx>(ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>, mapping: UnificationMap<'_, 'tcx>) -> bool {
+pub(crate) fn unify_types<'tcx>(
+    ty1: ty::Ty<'tcx>,
+    ty2: ty::Ty<'tcx>,
+    mapping: UnificationMap<'_, 'tcx>,
+) -> bool {
     match ty1.kind() {
         ty::TyKind::Adt(adt, args1) => {
             let ty::TyKind::Adt(adt2, args2) = ty2.kind() else {
@@ -89,7 +93,7 @@ pub fn unify_types<'tcx>(ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>, mapping: Unificat
 /// Determine whether the two argument lists match for the type positions (ignoring consts and regions).
 /// The first argument is the authority determining which argument positions are types.
 /// The second argument may contain `None` for non-type positions.
-pub fn args_unify_types<'tcx>(
+pub(crate) fn args_unify_types<'tcx>(
     reference: &[ty::GenericArg<'tcx>],
     compare: &[Option<ty::GenericArg<'tcx>>],
     mapping: UnificationMap<'_, 'tcx>,

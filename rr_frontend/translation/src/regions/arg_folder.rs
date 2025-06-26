@@ -13,7 +13,7 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::regions;
 use crate::regions::EarlyLateRegionMap;
 
-pub fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
+pub(crate) fn relabel_erased_regions<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> (T, usize)
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
@@ -48,7 +48,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
     }
 }
 
-pub fn rename_region_vids<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
+pub(crate) fn rename_region_vids<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
@@ -59,7 +59,7 @@ where
     x.fold_with(&mut folder)
 }
 
-pub fn rename_closure_capture_regions<'tcx, 'a, T>(
+pub(crate) fn rename_closure_capture_regions<'tcx, 'a, T>(
     x: T,
     tcx: ty::TyCtxt<'tcx>,
     substitution: &'a mut EarlyLateRegionMap,
@@ -132,7 +132,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRenameVisitor<'tcx> {
 }
 
 /// Relable late bound regions.
-pub fn relabel_late_bounds<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> T
+pub(crate) fn relabel_late_bounds<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>) -> T
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {
@@ -166,7 +166,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RelabelLateParamVisitor<'tcx> {
 
 /// Instantiate a type with arguments.
 /// The type may contain open region variables `ReVar`.
-pub fn instantiate_open<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, args: &[ty::GenericArg<'tcx>]) -> T
+pub(crate) fn instantiate_open<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, args: &[ty::GenericArg<'tcx>]) -> T
 where
     T: TypeFoldable<ty::TyCtxt<'tcx>>,
 {

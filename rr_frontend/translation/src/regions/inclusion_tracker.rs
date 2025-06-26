@@ -11,7 +11,7 @@ use log::{info, warn};
 use crate::base::*;
 use crate::environment::polonius_info::{self, PoloniusInfo};
 
-pub enum DynamicInclusion {
+pub(crate) enum DynamicInclusion {
     ExtendLft(polonius_info::AtomicRegion),
     IncludeLft(polonius_info::AtomicRegion, polonius_info::AtomicRegion),
 }
@@ -21,7 +21,7 @@ pub enum DynamicInclusion {
 /// This is used for the lifetime annotation generation.
 /// Track inclusions between regions that are known to hold at the current point of the translation.
 /// Distinguishes static and dynamic inclusions for the purpose of the translation.
-pub struct InclusionTracker<'a, 'tcx> {
+pub(crate) struct InclusionTracker<'a, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
 
     // base facts about static inclusion
@@ -44,7 +44,7 @@ pub struct InclusionTracker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
-    pub const fn new(info: &'a PoloniusInfo<'a, 'tcx>) -> Self {
+    pub(crate) const fn new(info: &'a PoloniusInfo<'a, 'tcx>) -> Self {
         InclusionTracker {
             info,
             static_incl_base: Vec::new(),
@@ -57,25 +57,25 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         }
     }
 
-    pub const fn info(&self) -> &'a PoloniusInfo<'a, 'tcx> {
+    pub(crate) const fn info(&self) -> &'a PoloniusInfo<'a, 'tcx> {
         self.info
     }
 
     /// Add a basic static inclusion fact.
-    pub fn add_static_inclusion(&mut self, a: Region, b: Region, p: PointIndex) {
+    pub(crate) fn add_static_inclusion(&mut self, a: Region, b: Region, p: PointIndex) {
         self.static_incl_base.push((a, b, p));
         self.invalidated = true;
     }
 
     /// Add a basic dynamic inclusion fact.
-    pub fn add_dynamic_inclusion(&mut self, a: Region, b: Region, p: PointIndex) {
+    pub(crate) fn add_dynamic_inclusion(&mut self, a: Region, b: Region, p: PointIndex) {
         self.dynamic_incl_base.push((a, b, p));
         self.invalidated = true;
     }
 
     /// Add a barrier for propagation of constraints on r at p.
     /// Use for points where strong writes happen in our type system.
-    pub fn add_barrier(&mut self, r: Region, p: PointIndex) {
+    pub(crate) fn add_barrier(&mut self, r: Region, p: PointIndex) {
         self.barriers.push((r, p));
         self.invalidated = true;
         self.fully_invalidated = true;
@@ -143,7 +143,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
     }
 
     /// Recompute all inclusion constraints.
-    pub fn recompute(&mut self) {
+    pub(crate) fn recompute(&mut self) {
         self.recompute_static_incl();
 
         let mut iteration = datafrog::Iteration::new();
@@ -166,7 +166,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
     }
 
     /// Check if an inclusion (r1, r2, p) holds in the current context.
-    pub fn check_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
+    pub(crate) fn check_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
         if self.invalidated || self.full_incl.is_none() {
             self.recompute();
         }
@@ -174,7 +174,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
     }
 
     /// Check if an inclusion (r1, r2, p) holds via static inclusion in the current context.
-    pub fn check_static_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
+    pub(crate) fn check_static_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
         if self.invalidated || self.static_incl.is_none() {
             self.recompute_static_incl();
         }
@@ -219,7 +219,7 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
     /// Generates dynamic inclusions for the set of inclusions in `incls`.
     /// These inclusions should not hold yet.
     /// Skips mutual inclusions -- we cannot interpret these.
-    pub fn generate_dyn_inclusions(
+    pub(crate) fn generate_dyn_inclusions(
         &mut self,
         incls: &BTreeSet<(Region, Region, PointIndex)>,
     ) -> Vec<DynamicInclusion> {

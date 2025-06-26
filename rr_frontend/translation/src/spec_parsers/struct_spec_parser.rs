@@ -15,7 +15,7 @@ use crate::spec_parsers::parse_utils::{
     IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams, attr_args_tokens, str_err,
 };
 
-pub trait InvariantSpecParser {
+pub(crate) trait InvariantSpecParser {
     /// Parse attributes as an invariant type specification.
     /// `ty_name` is the name of the type to generate.
     /// `params` are the type parameters of the surrounded type.
@@ -185,12 +185,12 @@ impl<U> Parse<U> for InvariantSpecFlags {
     }
 }
 
-pub struct VerboseInvariantSpecParser<'a, T> {
+pub(crate) struct VerboseInvariantSpecParser<'a, T> {
     scope: &'a T,
 }
 
 impl<'a, 'def, T: ParamLookup<'def>> VerboseInvariantSpecParser<'a, T> {
-    pub const fn new(scope: &'a T) -> Self {
+    pub(crate) const fn new(scope: &'a T) -> Self {
         Self { scope }
     }
 }
@@ -323,14 +323,14 @@ impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpe
 }
 
 /// A parsed specification for a field.
-pub struct StructFieldSpec<'def> {
+pub(crate) struct StructFieldSpec<'def> {
     /// the (default or annotated) type of the field
     pub ty: specs::Type<'def>,
     /// optional refinement specified here
     pub rfn: Option<String>,
 }
 
-pub trait StructFieldSpecParser<'def> {
+pub(crate) trait StructFieldSpecParser<'def> {
     /// Parse attributes on a struct field as a type specification.
     /// Supported attributes:
     /// - `rr::field(r)`
@@ -344,7 +344,7 @@ pub trait StructFieldSpecParser<'def> {
 
 /// Parses attributes on a field to a `StructFieldSpec`, using a given default type for the field
 /// in case none is annotated.
-pub struct VerboseStructFieldSpecParser<'a, 'def, T, F>
+pub(crate) struct VerboseStructFieldSpecParser<'a, 'def, T, F>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -366,7 +366,7 @@ impl<'a, 'def, T: ParamLookup<'def>, F> VerboseStructFieldSpecParser<'a, 'def, T
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
-    pub const fn new(
+    pub(crate) const fn new(
         field_type: &'a specs::Type<'def>,
         scope: &'a T,
         expect_rfn: bool,

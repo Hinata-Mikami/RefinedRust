@@ -21,7 +21,7 @@ use crate::spec_parsers::parse_utils::{ParamLookup, attr_args_tokens, str_err};
 /// - `rr::pattern`: specifies the Coq pattern of the refinement type that matches this variant
 /// - `rr::refinement`: specifies the refinement of the struct for this variant in the scope introduced by the
 ///   pattern. Can be omitted if the variant does not have any fields.
-pub trait EnumSpecParser {
+pub(crate) trait EnumSpecParser {
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,
@@ -31,7 +31,7 @@ pub trait EnumSpecParser {
 }
 
 #[derive(Debug)]
-pub struct EnumPattern {
+pub(crate) struct EnumPattern {
     pub pat: String,
     pub args: Vec<String>,
 }
@@ -65,13 +65,12 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for EnumPattern {
     }
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseEnumSpecParser<'a, T> {
+pub(crate) struct VerboseEnumSpecParser<'a, T> {
     scope: &'a T,
 }
 
 impl<'a, 'def, T: ParamLookup<'def>> VerboseEnumSpecParser<'a, T> {
-    pub const fn new(scope: &'a T) -> Self {
+    pub(crate) const fn new(scope: &'a T) -> Self {
         Self { scope }
     }
 }
@@ -172,7 +171,7 @@ impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b
 
 /// Parse the arguments of a `rr::refine_as` annotation.
 /// Returns the optional specified name.
-pub fn parse_enum_refine_as(attrs: &hir::AttrArgs) -> Result<Option<String>, String> {
+pub(crate) fn parse_enum_refine_as(attrs: &hir::AttrArgs) -> Result<Option<String>, String> {
     let buffer = parse::Buffer::new(&attr_args_tokens(attrs));
 
     if matches!(attrs, hir::AttrArgs::Empty) {

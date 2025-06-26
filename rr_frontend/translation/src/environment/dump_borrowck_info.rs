@@ -16,7 +16,7 @@ use rr_rustc_interface::middle::ty;
 use crate::environment::Environment;
 use crate::environment::polonius_info::PoloniusInfo;
 
-pub fn dump_borrowck_info<'a, 'tcx>(
+pub(crate) fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
     procedure: DefId,
     info: &'a PoloniusInfo<'a, 'tcx>,

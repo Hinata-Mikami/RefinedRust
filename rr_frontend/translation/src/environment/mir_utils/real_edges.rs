@@ -8,13 +8,13 @@ use rr_rustc_interface::index::IndexVec;
 use rr_rustc_interface::middle::mir;
 
 /// A data structure to store the non-virtual CFG edges of a MIR body.
-pub struct RealEdges {
+pub(crate) struct RealEdges {
     successors: IndexVec<mir::BasicBlock, Vec<mir::BasicBlock>>,
     predecessors: IndexVec<mir::BasicBlock, Vec<mir::BasicBlock>>,
 }
 
 impl RealEdges {
-    pub fn new(body: &mir::Body<'_>) -> Self {
+    pub(crate) fn new(body: &mir::Body<'_>) -> Self {
         let mut successors: IndexVec<_, Vec<_>> = body.basic_blocks.iter().map(|_| Vec::new()).collect();
         let mut predecessors: IndexVec<_, Vec<_>> = body.basic_blocks.iter().map(|_| Vec::new()).collect();
 
@@ -33,12 +33,12 @@ impl RealEdges {
     }
 
     #[must_use]
-    pub fn successors(&self, bb: mir::BasicBlock) -> &[mir::BasicBlock] {
+    pub(crate) fn successors(&self, bb: mir::BasicBlock) -> &[mir::BasicBlock] {
         &self.successors[bb]
     }
 
     #[must_use]
-    pub fn predecessors(&self, bb: mir::BasicBlock) -> &[mir::BasicBlock] {
+    pub(crate) fn predecessors(&self, bb: mir::BasicBlock) -> &[mir::BasicBlock] {
         &self.predecessors[bb]
     }
 }

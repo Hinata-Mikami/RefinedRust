@@ -23,14 +23,14 @@ use crate::types;
 // solve the constraints for the new_regions
 // we first identify what kinds of constraints these new regions are subject to
 #[derive(Debug)]
-pub enum CallRegionKind {
+pub(crate) enum CallRegionKind {
     // this is just an intersection of local regions.
     Intersection(BTreeSet<Region>),
     // this is equal to a specific region
     EqR(Region),
 }
 
-pub struct CallRegions {
+pub(crate) struct CallRegions {
     pub early_regions: Vec<Region>,
     pub late_regions: Vec<Region>,
     pub classification: BTreeMap<Region, CallRegionKind>,
@@ -40,7 +40,7 @@ pub struct CallRegions {
 /// Each of the lifetimes in the function's signature has one Polonius inference variable at the
 /// call site, and we need to find an instantiation for these.
 /// `substs` are the substitutions for the early-bound regions
-pub fn compute_call_regions<'tcx>(
+pub(crate) fn compute_call_regions<'tcx>(
     env: &Environment<'tcx>,
     incl_tracker: &InclusionTracker<'_, '_>,
     substs: &[ty::GenericArg<'tcx>],
@@ -187,7 +187,7 @@ pub fn compute_call_regions<'tcx>(
 /// Returns:
 /// - the vector of annotations to emit
 /// - the set of remaining unconstrained regions for which we have not figured out a mapping
-pub fn compute_unconstrained_region_annots<'tcx>(
+pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,

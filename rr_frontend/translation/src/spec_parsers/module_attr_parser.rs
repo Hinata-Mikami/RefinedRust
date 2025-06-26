@@ -16,7 +16,7 @@ use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
 /// Parse attributes on a module.
 /// Permitted attributes:
 /// - `rr::import("A.B.C`", "D"), which will import the Coq path "A.B.C.D"
-pub trait ModuleAttrParser {
+pub(crate) trait ModuleAttrParser {
     fn parse_module_attrs<'a>(
         &'a mut self,
         did: LocalDefId,
@@ -25,17 +25,16 @@ pub trait ModuleAttrParser {
 }
 
 #[derive(Clone, Debug)]
-pub struct ModuleAttrs {
+pub(crate) struct ModuleAttrs {
     pub exports: Vec<coq::module::Export>,
     pub includes: HashSet<String>,
     pub export_includes: HashSet<String>,
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseModuleAttrParser;
+pub(crate) struct VerboseModuleAttrParser;
 
 impl VerboseModuleAttrParser {
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {}
     }
 }

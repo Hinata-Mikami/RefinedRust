@@ -12,12 +12,12 @@ use rr_rustc_interface::borrowck::consumers::{PoloniusLocationTable, RichLocatio
 use rr_rustc_interface::middle::mir;
 use rr_rustc_interface::polonius_engine::FactTypes;
 
-pub type Region = <RustcFacts as FactTypes>::Origin;
-pub type Loan = <RustcFacts as FactTypes>::Loan;
-pub type PointIndex = <RustcFacts as FactTypes>::Point;
+pub(crate) type Region = <RustcFacts as FactTypes>::Origin;
+pub(crate) type Loan = <RustcFacts as FactTypes>::Loan;
+pub(crate) type PointIndex = <RustcFacts as FactTypes>::Point;
 
-pub type AllInput = borrowck::consumers::PoloniusInput;
-pub type AllOutput = borrowck::consumers::PoloniusOutput;
+pub(crate) type AllInput = borrowck::consumers::PoloniusInput;
+pub(crate) type AllOutput = borrowck::consumers::PoloniusOutput;
 
 pub struct Borrowck {
     /// Polonius input facts.
@@ -29,14 +29,14 @@ pub struct Borrowck {
 /// The type of the point. Either the start of a statement or in the
 /// middle of it.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum PointType {
+pub(crate) enum PointType {
     Start,
     Mid,
 }
 
 /// A program point used in the borrow checker analysis.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct Point {
+pub(crate) struct Point {
     pub location: mir::Location,
     pub typ: PointType,
 }
@@ -47,18 +47,18 @@ impl fmt::Display for Point {
     }
 }
 
-pub struct Interner {
+pub(crate) struct Interner {
     pub(crate) location_table: PoloniusLocationTable,
 }
 
 impl Interner {
     #[must_use]
-    pub const fn new(location_table: PoloniusLocationTable) -> Self {
+    pub(crate) const fn new(location_table: PoloniusLocationTable) -> Self {
         Self { location_table }
     }
 
     #[must_use]
-    pub fn get_point_index(&self, point: &Point) -> PointIndex {
+    pub(crate) fn get_point_index(&self, point: &Point) -> PointIndex {
         match point.typ {
             PointType::Start => self.location_table.start_index(point.location),
             PointType::Mid => self.location_table.mid_index(point.location),
@@ -66,7 +66,7 @@ impl Interner {
     }
 
     #[must_use]
-    pub fn get_point(&self, index: PointIndex) -> Point {
+    pub(crate) fn get_point(&self, index: PointIndex) -> Point {
         match self.location_table.to_rich_location(index) {
             RichLocation::Start(location) => Point {
                 location,

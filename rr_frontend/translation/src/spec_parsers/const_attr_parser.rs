@@ -13,7 +13,7 @@ use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err};
 /// Parse attributes on a const.
 /// Permitted attributes:
 /// - `rr::name("x`"), which will introduce the name x to refer to the const in other specs
-pub trait ConstAttrParser {
+pub(crate) trait ConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
         did: LocalDefId,
@@ -22,15 +22,14 @@ pub trait ConstAttrParser {
 }
 
 #[derive(Clone, Debug)]
-pub struct ConstAttrs {
+pub(crate) struct ConstAttrs {
     pub name: String,
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseConstAttrParser;
+pub(crate) struct VerboseConstAttrParser;
 
 impl VerboseConstAttrParser {
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {}
     }
 }

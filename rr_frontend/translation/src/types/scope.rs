@@ -27,10 +27,10 @@ use crate::types::tyvars::TyRegionEraseFolder;
 /// Invariant: All regions contained in these types should be erased, as type parameter instantiation is
 /// independent of lifetimes.
 /// TODO: handle early-bound lifetimes?
-pub type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
+pub(crate) type GenericsKey<'tcx> = Vec<ty::Ty<'tcx>>;
 
 /// Generate a key for indexing into structures indexed by `GenericArg`s.
-pub fn generate_args_inst_key<'tcx>(
+pub(crate) fn generate_args_inst_key<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<GenericsKey<'tcx>, TranslationError<'tcx>> {

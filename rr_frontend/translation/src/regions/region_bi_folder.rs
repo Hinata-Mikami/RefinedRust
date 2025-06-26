@@ -2,7 +2,7 @@ use std::mem;
 
 use rr_rustc_interface::middle::ty;
 
-pub trait RegionBiFolder<'tcx> {
+pub(crate) trait RegionBiFolder<'tcx> {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>);
 
     fn map_tys(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) {

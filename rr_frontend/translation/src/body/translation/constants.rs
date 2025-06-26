@@ -141,7 +141,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate a `mir::Constant` to a `radium::Expr`.
-    pub(super) fn translate_constant(
+    pub(crate) fn translate_constant(
         &mut self,
         constant: &mir::Const<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {

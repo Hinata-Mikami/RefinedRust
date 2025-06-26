@@ -75,7 +75,7 @@ fn expand_struct_place<'tcx>(
 /// + `is_prefix(x.f, x.f) == true`
 /// + `is_prefix(x.f.g, x.f) == true`
 /// + `is_prefix(x.f, x.f.g) == false`
-pub fn is_prefix<'tcx>(place: mir::Place<'tcx>, potential_prefix: mir::Place<'tcx>) -> bool {
+pub(crate) fn is_prefix<'tcx>(place: mir::Place<'tcx>, potential_prefix: mir::Place<'tcx>) -> bool {
     if place.local != potential_prefix.local || place.projection.len() < potential_prefix.projection.len() {
         false
     } else {
@@ -91,7 +91,7 @@ pub fn is_prefix<'tcx>(place: mir::Place<'tcx>, potential_prefix: mir::Place<'tc
 /// `{x.g, x.h, x.f.f, x.f.h, x.f.g.f, x.f.g.g, x.f.g.h}` and
 /// subtracting `{x.f.g.h}` from it, which results into `{x.g, x.h,
 /// x.f.f, x.f.h, x.f.g.f, x.f.g.g}`.
-pub fn expand<'tcx>(
+pub(crate) fn expand<'tcx>(
     mir: &mir::Body<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     mut minuend: mir::Place<'tcx>,
@@ -142,7 +142,7 @@ fn expand_one_level<'tcx>(
 /// Try to collapse all places in `places` by following the
 /// `guide_place`. This function is basically the reverse of
 /// `expand_struct_place`.
-pub fn collapse<'tcx>(
+pub(crate) fn collapse<'tcx>(
     mir: &mir::Body<'tcx>,
     tcx: ty::TyCtxt<'tcx>,
     places: &mut FxHashSet<mir::Place<'tcx>>,
@@ -171,7 +171,7 @@ pub fn collapse<'tcx>(
 }
 
 /// Comparison of places, using the `tcx`.
-pub fn cmp_place<'tcx>(tcx: ty::TyCtxt<'tcx>, a: &mir::Place<'tcx>, b: &mir::Place<'tcx>) -> Ordering {
+pub(crate) fn cmp_place<'tcx>(tcx: ty::TyCtxt<'tcx>, a: &mir::Place<'tcx>, b: &mir::Place<'tcx>) -> Ordering {
     a.local
         .cmp(&b.local)
         .then(a.projection.iter().cmp_by(b.projection, |a, b| cmp_place_elem(tcx, a, b)))

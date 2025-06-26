@@ -28,7 +28,7 @@ use crate::types::{self, scope};
 
 /// Information we compute when calling a function from another function.
 /// Determines how to specialize the callee's generics in our spec assumption.
-pub struct AbstractedGenerics<'def> {
+pub(crate) struct AbstractedGenerics<'def> {
     /// the scope with new generics to quantify over for the function's specialized spec
     pub scope: radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>,
     /// instantiations for the specialized spec hint
@@ -39,13 +39,13 @@ pub struct AbstractedGenerics<'def> {
 }
 
 /// Type translator bundling the function scope
-pub struct LocalTX<'def, 'tcx> {
+pub(crate) struct LocalTX<'def, 'tcx> {
     pub translator: &'def TX<'def, 'tcx>,
     pub scope: RefCell<FunctionState<'tcx, 'def>>,
 }
 
 impl<'def, 'tcx> LocalTX<'def, 'tcx> {
-    pub const fn new(translator: &'def TX<'def, 'tcx>, scope: FunctionState<'tcx, 'def>) -> Self {
+    pub(crate) const fn new(translator: &'def TX<'def, 'tcx>, scope: FunctionState<'tcx, 'def>) -> Self {
         Self {
             translator,
             scope: RefCell::new(scope),
@@ -54,7 +54,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
     /// Translate a MIR type to the Radium syntactic type we need when storing an element of the type,
     /// substituting all generics.
-    pub fn translate_type_to_syn_type(
+    pub(crate) fn translate_type_to_syn_type(
         &self,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::SynType, TranslationError<'tcx>> {
@@ -64,28 +64,37 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Translate a region in the scope of the current function.
-    pub fn translate_region(&self, region: ty::Region<'tcx>) -> Result<radium::Lft, TranslationError<'tcx>> {
+    pub(crate) fn translate_region(
+        &self,
+        region: ty::Region<'tcx>,
+    ) -> Result<radium::Lft, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let mut scope = STInner::InFunction(&mut scope);
         TX::translate_region(&mut scope, region)
     }
 
     /// Translate a Polonius region variable in the scope of the current function.
-    pub fn translate_region_var(&self, region: facts::Region) -> Result<radium::Lft, TranslationError<'tcx>> {
+    pub(crate) fn translate_region_var(
+        &self,
+        region: facts::Region,
+    ) -> Result<radium::Lft, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let scope = STInner::InFunction(&mut scope);
         scope.lookup_polonius_var(region)
     }
 
     /// Translate type.
-    pub fn translate_type(&self, ty: ty::Ty<'tcx>) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    pub(crate) fn translate_type(
+        &self,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.translate_type(ty, &mut scope)
     }
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_structlike_use(
+    pub(crate) fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
@@ -96,7 +105,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_enum_use(
+    pub(crate) fn generate_enum_use(
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
@@ -109,7 +118,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Returns None if this should be unit.
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub fn generate_struct_use(
+    pub(crate) fn generate_struct_use(
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
@@ -120,7 +129,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
     /// Generate a struct use.
     /// Returns None if this should be unit.
-    pub fn generate_enum_variant_use(
+    pub(crate) fn generate_enum_variant_use(
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
@@ -132,7 +141,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Make a tuple use.
     /// Hack: This does not take the translation state but rather a direct reference to the tuple
     /// use map so that we can this function when parsing closure specifications.
-    pub fn make_tuple_use(
+    pub(crate) fn make_tuple_use(
         &self,
         translated_tys: Vec<radium::Type<'def>>,
         uses: Option<&mut HashMap<Vec<radium::SynType>, radium::LiteralTypeUse<'def>>>,
@@ -140,7 +149,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         self.translator.make_tuple_use(translated_tys, uses)
     }
 
-    pub fn generate_tuple_use<F>(
+    pub(crate) fn generate_tuple_use<F>(
         &self,
         tys: F,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
@@ -152,14 +161,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Format the Coq representation of an atomic region.
-    pub fn format_atomic_region(&self, r: &polonius_info::AtomicRegion) -> String {
+    pub(crate) fn format_atomic_region(&self, r: &polonius_info::AtomicRegion) -> String {
         let scope = self.scope.borrow();
         scope.lifetime_scope.translate_atomic_region(r)
     }
 
     /// Split the params of a trait method into params of the trait and params of the method
     /// itself.
-    pub fn split_trait_method_args(
+    pub(crate) fn split_trait_method_args(
         env: &Environment<'tcx>,
         trait_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
@@ -180,7 +189,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// - the parameter name for the method loc
     /// - the spec term for the method spec
     /// - the arguments of the method
-    pub fn register_use_trait_procedure(
+    pub(crate) fn register_use_trait_procedure(
         &self,
         env: &Environment<'tcx>,
         trait_method_did: DefId,
@@ -270,7 +279,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// Assumption: `trait_reqs` is appropriately sorted, i.e. surrounding requirements come first.
     /// `with_surrounding_deps` determines whether we should distinguish surrounding and direct
     /// params.
-    pub fn get_generic_abstraction_for_procedure(
+    pub(crate) fn get_generic_abstraction_for_procedure(
         &self,
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
@@ -463,7 +472,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 }
 
 /// Normalize a type in the given function environment.
-pub fn normalize_in_function<'tcx, T>(
+pub(crate) fn normalize_in_function<'tcx, T>(
     function_did: DefId,
     tcx: ty::TyCtxt<'tcx>,
     ty: T,

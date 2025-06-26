@@ -32,7 +32,7 @@ use crate::{consts, procedures, regions, types};
 /// `'a` is the lifetime of the translator and ends after translation has finished.
 /// `'def` is the lifetime of the generated code (the code may refer to struct defs).
 /// `'tcx` is the lifetime of the rustc tctx.
-pub struct TX<'a, 'def, 'tcx> {
+pub(crate) struct TX<'a, 'def, 'tcx> {
     env: &'def Environment<'tcx>,
     /// registry of other procedures
     procedure_registry: &'a procedures::Scope<'tcx, 'def>,
@@ -84,7 +84,7 @@ pub struct TX<'a, 'def, 'tcx> {
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'def Environment<'tcx>,
         procedure_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
@@ -196,7 +196,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Main translation function that actually does the translation and returns a `radium::Function`
     /// if successful.
-    pub fn translate(
+    pub(crate) fn translate(
         mut self,
         spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {

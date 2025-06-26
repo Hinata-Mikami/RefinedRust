@@ -110,7 +110,7 @@ struct ShimAdtEntry {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum ShimKind {
+pub(crate) enum ShimKind {
     Method,
     Function,
     TraitImpl,
@@ -119,7 +119,7 @@ pub enum ShimKind {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct FunctionShim<'a> {
+pub(crate) struct FunctionShim<'a> {
     pub path: Path<'a>,
     pub is_method: bool,
     pub name: String,
@@ -140,7 +140,7 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct TraitImplShim {
+pub(crate) struct TraitImplShim {
     pub trait_path: flat::PathWithArgs,
     pub for_type: flat::Type,
 
@@ -171,7 +171,7 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct TraitShim<'a> {
+pub(crate) struct TraitShim<'a> {
     pub path: Path<'a>,
     pub name: String,
     pub spec_param_record: String,
@@ -205,7 +205,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct AdtShim<'a> {
+pub(crate) struct AdtShim<'a> {
     pub path: Path<'a>,
     pub refinement_type: String,
     pub syn_type: String,
@@ -225,7 +225,7 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
 }
 
 #[derive(Debug, From, Display)]
-pub enum Error {
+pub(crate) enum Error {
     #[from]
     #[display("Deserialization error: {:?}", _0)]
     Deserialize(serde_json::Error),
@@ -246,7 +246,7 @@ pub enum Error {
 
 /// Registry of function shims loaded by the user. Substitutes path to the function/method with a
 /// code definition name and a spec name.
-pub struct SR<'a> {
+pub(crate) struct SR<'a> {
     arena: &'a Arena<String>,
 
     /// function/method shims
@@ -287,7 +287,7 @@ impl<'a> SR<'a> {
         }
     }
 
-    pub fn intern_path(&self, p: Vec<String>) -> Path<'a> {
+    pub(crate) fn intern_path(&self, p: Vec<String>) -> Path<'a> {
         let mut path = Vec::new();
         for pc in p {
             let pc = self.arena.alloc(pc);
@@ -296,7 +296,7 @@ impl<'a> SR<'a> {
         path
     }
 
-    pub const fn empty(arena: &'a Arena<String>) -> Self {
+    pub(crate) const fn empty(arena: &'a Arena<String>) -> Self {
         Self {
             arena,
             function_shims: Vec::new(),
@@ -308,7 +308,7 @@ impl<'a> SR<'a> {
         }
     }
 
-    pub fn add_source(&mut self, f: File) -> Result<Option<BTreeSet<String>>, Error> {
+    pub(crate) fn add_source(&mut self, f: File) -> Result<Option<BTreeSet<String>>, Error> {
         info!("Adding file {f:?}");
         let reader = BufReader::new(f);
         let deser: serde_json::Value = serde_json::from_reader(reader)?;
@@ -470,33 +470,33 @@ impl<'a> SR<'a> {
         Ok(export_libs)
     }
 
-    pub fn get_function_shims(&self) -> &[FunctionShim<'_>] {
+    pub(crate) fn get_function_shims(&self) -> &[FunctionShim<'_>] {
         &self.function_shims
     }
 
-    pub fn get_adt_shims(&self) -> &[AdtShim<'_>] {
+    pub(crate) fn get_adt_shims(&self) -> &[AdtShim<'_>] {
         &self.adt_shims
     }
 
-    pub fn get_extra_exports(&self) -> &[coq::module::Export] {
+    pub(crate) fn get_extra_exports(&self) -> &[coq::module::Export] {
         &self.exports
     }
 
-    pub fn get_trait_shims(&self) -> &[TraitShim<'_>] {
+    pub(crate) fn get_trait_shims(&self) -> &[TraitShim<'_>] {
         &self.trait_shims
     }
 
-    pub fn get_trait_impl_shims(&self) -> &[TraitImplShim] {
+    pub(crate) fn get_trait_impl_shims(&self) -> &[TraitImplShim] {
         &self.trait_impl_shims
     }
 
-    pub const fn get_extra_dependencies(&self) -> &BTreeSet<coq::module::DirPath> {
+    pub(crate) const fn get_extra_dependencies(&self) -> &BTreeSet<coq::module::DirPath> {
         &self.dependencies
     }
 }
 
 /// Write serialized representation of shims to a file.
-pub fn write_shims<'a>(
+pub(crate) fn write_shims<'a>(
     f: File,
     load_path: &str,
     load_module: &str,
@@ -547,7 +547,7 @@ pub fn write_shims<'a>(
 }
 
 /// Check if this file declares a `RefinedRust` module.
-pub fn is_valid_refinedrust_module(f: File) -> Option<String> {
+pub(crate) fn is_valid_refinedrust_module(f: File) -> Option<String> {
     let reader = BufReader::new(f);
     let deser: serde_json::Value = serde_json::from_reader(reader).unwrap();
 

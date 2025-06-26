@@ -6,13 +6,13 @@
 
 //! Utilities for translating region information.
 
-pub mod arg_folder;
-pub mod assignment;
-pub mod calls;
-pub mod composite;
-pub mod inclusion_tracker;
-pub mod init;
-pub mod region_bi_folder;
+pub(crate) mod arg_folder;
+pub(crate) mod assignment;
+pub(crate) mod calls;
+pub(crate) mod composite;
+pub(crate) mod inclusion_tracker;
+pub(crate) mod init;
+pub(crate) mod region_bi_folder;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -77,7 +77,7 @@ impl EarlyLateRegionMap {
 }
 
 /// Format the Coq representation of an atomic region.
-pub fn format_atomic_region_direct(
+pub(crate) fn format_atomic_region_direct(
     r: &polonius_info::AtomicRegion,
     scope: Option<&EarlyLateRegionMap>,
 ) -> String {
@@ -115,25 +115,25 @@ pub fn format_atomic_region_direct(
     }
 }
 
-pub fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
+pub(crate) fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
     if let ty::RegionKind::ReVar(vid) = r.kind() { vid.into() } else { panic!() }
 }
 
 /// A `TypeFolder` that finds all regions occurring in a type.
-pub struct TyRegionCollectFolder<'tcx> {
+pub(crate) struct TyRegionCollectFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     regions: BTreeSet<Region>,
 }
 
 impl<'tcx> TyRegionCollectFolder<'tcx> {
-    pub const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyRegionCollectFolder {
             tcx,
             regions: BTreeSet::new(),
         }
     }
 
-    pub fn get_regions(self) -> BTreeSet<Region> {
+    pub(crate) fn get_regions(self) -> BTreeSet<Region> {
         self.regions
     }
 }

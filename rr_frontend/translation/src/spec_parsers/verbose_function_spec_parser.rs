@@ -19,7 +19,7 @@ use crate::spec_parsers::parse_utils::{
     attr_args_tokens, str_err,
 };
 
-pub struct ClosureMetaInfo<'a, 'tcx, 'def> {
+pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     /// the closure kind
     pub kind: ty::ClosureKind,
     /// capture information
@@ -31,7 +31,7 @@ pub struct ClosureMetaInfo<'a, 'tcx, 'def> {
     pub closure_lifetime: Option<specs::Lft>,
 }
 
-pub trait FunctionSpecParser<'def> {
+pub(crate) trait FunctionSpecParser<'def> {
     /// Parse a set of attributes into a function spec.
     /// The implementation can assume the `attrs` to be prefixed by the tool prefix (e.g. `rr`) and
     /// that it does not need to deal with any other attributes.
@@ -242,7 +242,7 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 
 /// The main parser.
 #[expect(clippy::struct_excessive_bools)]
-pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
+pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
     /// return types with substituted type parameters
@@ -272,7 +272,7 @@ pub struct VerboseFunctionSpecParser<'a, 'def, F, T> {
 }
 
 /// State for assembling fallible specs
-pub struct OkSpec {
+pub(crate) struct OkSpec {
     ok_mode: bool,
     ok_exists: Vec<coq::binder::Binder>,
     ok_requires: Vec<coq::term::Term>,
@@ -292,7 +292,7 @@ impl OkSpec {
 
 /// Extra requirements of a function.
 #[derive(Default)]
-pub struct FunctionRequirements {
+pub(crate) struct FunctionRequirements {
     /// additional late coq parameters
     pub late_coq_params: Vec<coq::binder::Binder>,
     /// additional early coq parameters
@@ -303,7 +303,7 @@ pub struct FunctionRequirements {
 
 /// Proof information that we parse.
 #[derive(Default)]
-pub struct ProofInfo {
+pub(crate) struct ProofInfo {
     /// sidecondition tactics that are annotated
     pub sidecond_tactics: Vec<String>,
     /// linktime assumptions
@@ -321,7 +321,7 @@ where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
     /// Type parameters must already have been substituted in the given types.
-    pub fn new(
+    pub(crate) fn new(
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
         ret_is_option: bool,

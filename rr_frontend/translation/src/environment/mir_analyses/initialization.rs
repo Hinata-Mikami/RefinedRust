@@ -26,7 +26,7 @@ use rr_rustc_interface::middle::ty::TyCtxt;
 
 use crate::environment::mir_sets::place_set::PlaceSet;
 
-pub struct AnalysisResult<T> {
+pub(crate) struct AnalysisResult<T> {
     /// The state before the basic block.
     pub before_block: FxHashMap<mir::BasicBlock, T>,
     /// The state after the statement.
@@ -35,7 +35,7 @@ pub struct AnalysisResult<T> {
 
 impl<T> AnalysisResult<T> {
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             before_block: FxHashMap::default(),
             after_statement: FxHashMap::default(),
@@ -45,7 +45,7 @@ impl<T> AnalysisResult<T> {
     /// Get the initialization set before the first statement of the
     /// basic block.
     #[must_use]
-    pub fn get_before_block(&self, bb: mir::BasicBlock) -> &T {
+    pub(crate) fn get_before_block(&self, bb: mir::BasicBlock) -> &T {
         self.before_block
             .get(&bb)
             .unwrap_or_else(|| panic!("Missing initialization info for block {:?}", bb))
@@ -53,9 +53,9 @@ impl<T> AnalysisResult<T> {
 }
 
 /// The result of the definitely initialized analysis.
-pub type DefinitelyInitializedAnalysisResult<'tcx> = AnalysisResult<PlaceSet<'tcx>>;
+pub(crate) type DefinitelyInitializedAnalysisResult<'tcx> = AnalysisResult<PlaceSet<'tcx>>;
 
-pub fn compute_definitely_initialized<'a, 'tcx: 'a>(
+pub(crate) fn compute_definitely_initialized<'a, 'tcx: 'a>(
     def_id: DefId,
     body: &'a mir::Body<'tcx>,
     tcx: TyCtxt<'tcx>,

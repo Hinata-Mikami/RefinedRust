@@ -12,20 +12,20 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 
 /// A `TypeFolder` that gathers all the type variables.
-pub struct TyVarFolder<'tcx> {
+pub(crate) struct TyVarFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     tyvars: HashSet<ty::ParamTy>,
 }
 
 impl<'tcx> TyVarFolder<'tcx> {
-    pub fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyVarFolder {
             tcx,
             tyvars: HashSet::new(),
         }
     }
 
-    pub fn get_result(self) -> HashSet<ty::ParamTy> {
+    pub(crate) fn get_result(self) -> HashSet<ty::ParamTy> {
         self.tyvars
     }
 }
@@ -55,12 +55,12 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
 }
 
 /// A `TypeFolder` that erases all regions.
-pub struct TyRegionEraseFolder<'tcx> {
+pub(crate) struct TyRegionEraseFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
 }
 
 impl<'tcx> TyRegionEraseFolder<'tcx> {
-    pub const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
         TyRegionEraseFolder { tcx }
     }
 }

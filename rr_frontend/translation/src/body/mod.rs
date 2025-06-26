@@ -4,5 +4,5 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-pub mod signature;
+pub(crate) mod signature;
 mod translation;

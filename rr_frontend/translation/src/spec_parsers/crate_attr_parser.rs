@@ -15,12 +15,12 @@ use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
 /// Parse attributes on a crate.
 /// Permitted attributes:
 /// - `rr::import("A.B.C`", "D"), which will import the Coq path "A.B.C.D"
-pub trait CrateAttrParser {
+pub(crate) trait CrateAttrParser {
     fn parse_crate_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<CrateAttrs, String>;
 }
 
 #[derive(Clone, Debug)]
-pub struct CrateAttrs {
+pub(crate) struct CrateAttrs {
     pub exports: Vec<coq::module::Export>,
     pub prefix: Option<String>,
     pub includes: HashSet<String>,
@@ -28,11 +28,10 @@ pub struct CrateAttrs {
     pub package: Option<String>,
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseCrateAttrParser;
+pub(crate) struct VerboseCrateAttrParser;
 
 impl VerboseCrateAttrParser {
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {}
     }
 }

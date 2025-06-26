@@ -14,7 +14,7 @@ use crate::{types, unification};
 
 /// Gets an instance for a path.
 /// Taken from Miri <https://github.com/rust-lang/miri/blob/31fb32e49f42df19b45baccb6aa80c3d726ed6d5/src/helpers.rs#L48>.
-pub fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub(crate) fn try_resolve_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -47,7 +47,7 @@ where
         })
 }
 
-pub fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub(crate) fn try_resolve_did<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -73,7 +73,7 @@ where
 /// Try to resolve the `DefId` of an implementation of a trait for a particular type.
 /// Note that this does not, in general, find a unique solution, in case there are complex things
 /// with different where clauses going on.
-pub fn try_resolve_trait_impl_did<'tcx>(
+pub(crate) fn try_resolve_trait_impl_did<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     trait_did: DefId,
     trait_args: &[Option<ty::GenericArg<'tcx>>],
@@ -196,7 +196,7 @@ pub fn try_resolve_trait_impl_did<'tcx>(
 /// Try to get a defid of a method at the given path.
 /// This does not handle trait methods.
 /// This also does not handle overlapping method definitions/specialization well.
-pub fn try_resolve_method_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
+pub(crate) fn try_resolve_method_did_direct<T>(tcx: ty::TyCtxt<'_>, path: &[T]) -> Option<DefId>
 where
     T: AsRef<str>,
 {
@@ -265,7 +265,7 @@ where
 }
 
 /// Try to resolve a method from an incoherent impl of one of the built-in primitive types.
-pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -> Option<DefId> {
+pub(crate) fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -> Option<DefId> {
     let simplified_ty = if path[0..3] == ["core", "ptr", "mut_ptr"] {
         let param_ty = ty::ParamTy::new(0, span::Symbol::intern("dummy"));
         let param_ty = ty::TyKind::Param(param_ty);
@@ -366,7 +366,7 @@ pub fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[String]) -
     None
 }
 
-pub fn try_resolve_method_did(tcx: ty::TyCtxt<'_>, mut path: Vec<String>) -> Option<DefId> {
+pub(crate) fn try_resolve_method_did(tcx: ty::TyCtxt<'_>, mut path: Vec<String>) -> Option<DefId> {
     if let Some(did) = try_resolve_method_did_direct(tcx, &path) {
         return Some(did);
     }

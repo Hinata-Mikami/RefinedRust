@@ -14,7 +14,7 @@ use crate::environment::mir_utils::real_edges::RealEdges;
 use crate::environment::{Environment, loops};
 
 /// Index of a Basic Block
-pub type BasicBlockIndex = mir::BasicBlock;
+pub(crate) type BasicBlockIndex = mir::BasicBlock;
 
 /// A facade that provides information about the Rust procedure.
 pub struct Procedure<'tcx> {

@@ -11,25 +11,28 @@ use rr_rustc_interface::hir::def_id::DefId;
 use crate::base::*;
 
 /// Scope of consts that are available
-pub struct Scope<'def> {
+pub(crate) struct Scope<'def> {
     // statics are explicitly declared
     statics: HashMap<DefId, radium::StaticMeta<'def>>,
 }
 
 impl<'def> Scope<'def> {
     /// Create a new const scope.
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             statics: HashMap::new(),
         }
     }
 
     /// Register a static
-    pub fn register_static(&mut self, did: DefId, meta: radium::StaticMeta<'def>) {
+    pub(crate) fn register_static(&mut self, did: DefId, meta: radium::StaticMeta<'def>) {
         self.statics.insert(did, meta);
     }
 
-    pub fn get_static<'tcx>(&self, did: DefId) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {
+    pub(crate) fn get_static<'tcx>(
+        &self,
+        did: DefId,
+    ) -> Result<&radium::StaticMeta<'def>, TranslationError<'tcx>> {
         self.statics.get(&did).ok_or_else(|| {
             TranslationError::UnknownError(format!(
                 "Did not find a registered static for did {did:?}; registered: {:?}",

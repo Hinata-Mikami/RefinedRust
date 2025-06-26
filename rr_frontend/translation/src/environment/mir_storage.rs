@@ -29,7 +29,7 @@ thread_local! {
 /// # Safety
 ///
 /// See the module level comment.
-pub unsafe fn store_mir_body<'tcx>(
+pub(crate) unsafe fn store_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
     def_id: LocalDefId,
     body_with_facts: BodyWithBorrowckFacts<'tcx>,
@@ -45,7 +45,7 @@ pub unsafe fn store_mir_body<'tcx>(
 /// # Safety
 ///
 /// See the module level comment.
-pub(super) unsafe fn retrieve_mir_body<'tcx>(
+pub(crate) unsafe fn retrieve_mir_body<'tcx>(
     _tcx: ty::TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Option<BodyWithBorrowckFacts<'tcx>> {

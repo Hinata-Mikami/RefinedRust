@@ -5,18 +5,18 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 //! This module defines the interface provided to a verifier.
-pub mod borrowck;
+pub(crate) mod borrowck;
 mod collect_closure_defs_visitor;
 mod collect_prusti_spec_visitor;
 mod dump_borrowck_info;
 mod loops;
-pub mod mir_analyses;
-pub mod mir_sets;
-pub mod mir_storage;
-pub mod mir_utils;
-pub mod polonius_info;
-pub mod procedure;
-pub mod region_folder;
+pub(crate) mod mir_analyses;
+pub(crate) mod mir_sets;
+pub(crate) mod mir_storage;
+pub(crate) mod mir_utils;
+pub(crate) mod polonius_info;
+pub(crate) mod procedure;
+pub(crate) mod region_folder;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -276,7 +276,7 @@ impl<'tcx> Environment<'tcx> {
     }
 }
 
-pub fn dump_borrowck_info<'a, 'tcx>(
+pub(crate) fn dump_borrowck_info<'a, 'tcx>(
     env: &'a Environment<'tcx>,
     procedure: DefId,
     info: &'a polonius_info::PoloniusInfo<'a, 'tcx>,

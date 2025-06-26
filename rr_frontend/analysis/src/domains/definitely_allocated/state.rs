@@ -18,8 +18,8 @@ use crate::abstract_interpretation::AbstractState;
 /// A set of MIR locals that are definitely allocated at a program point
 #[derive(Clone)]
 pub struct DefinitelyAllocatedState<'mir, 'tcx> {
-    pub(super) def_allocated_locals: FxHashSet<mir::Local>,
-    pub(super) mir: &'mir mir::Body<'tcx>,
+    pub(crate) def_allocated_locals: FxHashSet<mir::Local>,
+    pub(crate) mir: &'mir mir::Body<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyAllocatedState<'mir, 'tcx> {
@@ -66,7 +66,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
         self.def_allocated_locals.remove(&local);
     }
 
-    pub(super) fn apply_statement_effect(&mut self, location: mir::Location) {
+    pub(crate) fn apply_statement_effect(&mut self, location: mir::Location) {
         let statement = &self.mir[location.block].statements[location.statement_index];
 
         match statement.kind {
@@ -81,7 +81,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
     }
 
     #[expect(clippy::unnecessary_wraps)]
-    pub(super) fn apply_terminator_effect(
+    pub(crate) fn apply_terminator_effect(
         &self,
         location: mir::Location,
     ) -> Result<Vec<(mir::BasicBlock, Self)>, AnalysisError> {

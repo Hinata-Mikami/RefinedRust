@@ -17,7 +17,7 @@ use crate::spec_parsers::parse_utils::{
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::exists("x" : "Prop")`, which will declare a specification attribute "x" of the given type "Prop"
-pub trait TraitAttrParser {
+pub(crate) trait TraitAttrParser {
     fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String>;
 }
 
@@ -50,12 +50,11 @@ impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T>
 }
 
 #[derive(Clone, Debug)]
-pub struct TraitAttrs {
+pub(crate) struct TraitAttrs {
     pub attrs: radium::TraitSpecAttrsDecl,
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseTraitAttrParser<'a, T, F> {
+pub(crate) struct VerboseTraitAttrParser<'a, T, F> {
     scope: TraitAttrScope<'a, T>,
     make_record_id: F,
 }
@@ -64,7 +63,7 @@ impl<'a, 'def, T: ParamLookup<'def>, F> VerboseTraitAttrParser<'a, T, F>
 where
     F: Fn(&str) -> String,
 {
-    pub fn new(scope: &'a T, make_record_id: F) -> Self {
+    pub(crate) fn new(scope: &'a T, make_record_id: F) -> Self {
         let scope = TraitAttrScope::new(scope, HashMap::new());
         Self {
             scope,
@@ -129,7 +128,7 @@ where
 }
 
 /// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
-pub fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<String>, String> {
+pub(crate) fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<String>, String> {
     let mut trait_attrs = Vec::new();
 
     for &it in attrs {

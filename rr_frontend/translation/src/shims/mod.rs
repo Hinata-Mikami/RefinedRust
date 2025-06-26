@@ -4,8 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-pub mod flat;
-pub mod registry;
+pub(crate) mod flat;
+pub(crate) mod registry;
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -37,7 +37,7 @@ fn scan_loadpath(path: &Path, storage: &mut HashMap<String, PathBuf>) -> io::Res
 }
 
 /// Find `RefinedRust` modules in the given loadpaths.
-pub fn scan_loadpaths(paths: &[PathBuf]) -> io::Result<HashMap<String, PathBuf>> {
+pub(crate) fn scan_loadpaths(paths: &[PathBuf]) -> io::Result<HashMap<String, PathBuf>> {
     let mut found_lib_files: HashMap<String, PathBuf> = HashMap::new();
 
     for path in paths {

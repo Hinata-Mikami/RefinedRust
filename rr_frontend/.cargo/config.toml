@@ -26,6 +26,7 @@ rustflags = [
     "-Dtrivial_casts",
     "-Dtrivial_numeric_casts",
     "-Dunit_bindings",
+    "-Dunreachable_pub",
     "-Dunsafe_op_in_unsafe_fn",
     "-Dunused_import_braces",
     "-Dunused_lifetimes",
@@ -99,6 +100,7 @@ rustflags = [
 
     # clippy::nursery
     "-Aclippy::cognitive_complexity",
+    "-Aclippy::redundant_pub_crate",
 
     # clippy::pedantic
     "-Aclippy::implicit_hasher",

@@ -255,7 +255,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// This will either generate an lvalue (in case of Move or Copy) or an rvalue (in most cases
     /// of Constant). How this is used depends on the context. (e.g., Use of an integer constant
     /// does not typecheck, and produces a stuck program).
-    pub(super) fn translate_operand(
+    pub(crate) fn translate_operand(
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
@@ -290,7 +290,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translates an Rvalue.
-    pub(super) fn translate_rvalue(
+    pub(crate) fn translate_rvalue(
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,

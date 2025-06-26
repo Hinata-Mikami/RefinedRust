@@ -19,7 +19,7 @@ use crate::types;
 
 /// On creating a composite value (e.g. a struct or enum), the composite value gets its own
 /// Polonius regions We need to map these regions properly to the respective lifetimes.
-pub fn get_composite_rvalue_creation_annots<'tcx>(
+pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
     env: &Environment<'tcx>,
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,

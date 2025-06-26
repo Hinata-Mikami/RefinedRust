@@ -15,15 +15,15 @@ use crate::traits;
 
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
-pub fn strip_coq_ident(s: &str) -> String {
+pub(crate) fn strip_coq_ident(s: &str) -> String {
     String::from(s)
         .replace('\'', "")
         .replace("::", "_")
         .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "")
 }
 
-pub type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
-pub type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
+pub(crate) type Region = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Origin;
+pub(crate) type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
 
 /// Ordered `DefId`s, ordered by their `DefPathHash`, which should be stable across compilations.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -58,7 +58,7 @@ impl PartialOrd<Self> for OrderedDefId {
     }
 }
 
-pub fn sort_def_ids<'tcx>(tcx: ty::TyCtxt<'tcx>, dids: &mut [DefId]) {
+pub(crate) fn sort_def_ids<'tcx>(tcx: ty::TyCtxt<'tcx>, dids: &mut [DefId]) {
     dids.sort_by(|a, b| {
         let hash_a = tcx.def_path_hash(*a);
         let hash_b = tcx.def_path_hash(*b);

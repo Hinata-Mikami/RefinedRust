@@ -54,7 +54,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a terminator.
     /// We pass the dying loans during this terminator. They need to be added at the right
     /// intermediate point.
-    pub(super) fn translate_terminator(
+    pub(crate) fn translate_terminator(
         &mut self,
         term: &mir::Terminator<'tcx>,
         loc: mir::Location,

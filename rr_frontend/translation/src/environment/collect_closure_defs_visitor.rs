@@ -4,20 +4,20 @@ use rr_rustc_interface::{hir, middle};
 
 use crate::environment::Environment;
 
-pub struct CollectClosureDefsVisitor<'env, 'tcx> {
+pub(crate) struct CollectClosureDefsVisitor<'env, 'tcx> {
     env: &'env Environment<'tcx>,
     result: Vec<LocalDefId>,
 }
 
 impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
-    pub const fn new(env: &'env Environment<'tcx>) -> Self {
+    pub(crate) const fn new(env: &'env Environment<'tcx>) -> Self {
         CollectClosureDefsVisitor {
             env,
             result: Vec::new(),
         }
     }
 
-    pub fn get_closure_defs(self) -> Vec<LocalDefId> {
+    pub(crate) fn get_closure_defs(self) -> Vec<LocalDefId> {
         self.result
     }
 }

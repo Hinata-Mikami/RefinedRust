@@ -171,9 +171,9 @@ pub enum STInner<'b, 'def, 'tcx> {
     TraitReqs(Box<TraitState<'b, 'tcx, 'def>>),
 }
 
-pub type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
-pub type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
-pub type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
+pub(crate) type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
+pub(crate) type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
+pub(crate) type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
 
 impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
     /// Create a copy of the param scope.

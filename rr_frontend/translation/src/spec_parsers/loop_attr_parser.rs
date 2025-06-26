@@ -16,7 +16,7 @@ use crate::spec_parsers::parse_utils::{IProp, ParamLookup, RRParams, attr_args_t
 /// Parse attributes on a const.
 /// Permitted attributes:
 /// TODO
-pub trait LoopAttrParser {
+pub(crate) trait LoopAttrParser {
     fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem])
     -> Result<radium::LoopSpec, String>;
 }
@@ -127,14 +127,13 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     }
 }
 
-#[expect(clippy::module_name_repetitions)]
-pub struct VerboseLoopAttrParser<'def, 'a, T> {
+pub(crate) struct VerboseLoopAttrParser<'def, 'a, T> {
     locals: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)>,
     scope: &'a T,
 }
 
 impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
-    pub const fn new(
+    pub(crate) const fn new(
         locals: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)>,
         scope: &'a T,
     ) -> Self {

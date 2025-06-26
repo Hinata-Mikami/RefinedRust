@@ -16,7 +16,7 @@ use crate::regions::arg_folder;
 use crate::regions::region_bi_folder::RegionBiFolder;
 
 /// Normalize a type in the given environment.
-pub fn normalize_type<'tcx, T>(
+pub(crate) fn normalize_type<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: T,
@@ -43,7 +43,7 @@ where
 
 /// Resolve an implementation of a trait using codegen candidate selection.
 /// `did` can be the id of a trait, or the id of an associated item of a trait.
-pub fn resolve_impl_source<'tcx>(
+pub(crate) fn resolve_impl_source<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     did: DefId,
@@ -188,7 +188,7 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
 
 /// Resolve a reference to a trait using codegen trait selection.
 /// `did` should be the id of a trait.
-pub fn resolve_trait<'tcx>(
+pub(crate) fn resolve_trait<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     did: DefId,
@@ -214,7 +214,7 @@ pub fn resolve_trait<'tcx>(
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TraitResolutionKind {
+pub(crate) enum TraitResolutionKind {
     Param,
     UserDefined,
     Closure,
@@ -222,7 +222,7 @@ pub enum TraitResolutionKind {
 
 /// Resolve a reference to a trait item using codegen trait selection.
 /// `did` should be the id of a trait item.
-pub fn resolve_assoc_item<'tcx>(
+pub(crate) fn resolve_assoc_item<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     did: DefId,

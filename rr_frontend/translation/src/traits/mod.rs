@@ -12,9 +12,9 @@ use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
 
-pub mod registry;
-pub mod requirements;
-pub mod resolution;
+pub(crate) mod registry;
+pub(crate) mod requirements;
+pub(crate) mod resolution;
 
 #[derive(Debug, Clone, Display)]
 pub enum Error<'tcx> {
@@ -65,10 +65,10 @@ pub enum Error<'tcx> {
     TraitImplSpec(DefId, String),
 }
 
-pub type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
+pub(crate) type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;
 
 /// Given a particular reference to a trait, get the associated type constraints for this trait reference.
-pub fn get_trait_assoc_constraints<'tcx>(
+pub(crate) fn get_trait_assoc_constraints<'tcx>(
     env: &Environment<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,

@@ -70,7 +70,7 @@ pub enum UniversalRegionKind {
 }
 
 #[derive(Debug)]
-pub enum RegionKind {
+pub(crate) enum RegionKind {
     /// this region belongs to a loan that is created
     Loan(facts::Loan),
     /// this is a universal region
@@ -86,7 +86,7 @@ pub enum RegionKind {
 
 /// Compute the transitive closure of a vec of constraints between regions.
 #[must_use]
-pub fn compute_transitive_closure(
+pub(crate) fn compute_transitive_closure(
     constraints: Vec<(facts::Region, facts::Region)>,
 ) -> Vec<(facts::Region, facts::Region)> {
     let mut iter = datafrog::Iteration::new();
@@ -505,7 +505,7 @@ fn is_return(mir: &mir::Body<'_>, location: mir::Location) -> bool {
 }
 
 /// Additional facts derived from the borrow checker facts.
-pub struct AdditionalFacts {
+pub(crate) struct AdditionalFacts {
     /// The ``zombie_borrow_live_at`` facts are ``loan_live_at`` facts
     /// for the loans that were `loan_killed_at`.
     ///

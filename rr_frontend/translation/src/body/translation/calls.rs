@@ -74,7 +74,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     Ok(syntypes)
 }
 
-pub struct ProcedureInst<'def> {
+pub(crate) struct ProcedureInst<'def> {
     pub loc_name: String,
     pub type_hint: Vec<radium::Type<'def>>,
     pub lft_hint: Vec<radium::Lft>,
@@ -262,7 +262,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// a particular monomorphization of the used function.
     /// Is guaranteed to return a `radium::Expr::CallTarget` with the parameter instantiation of
     /// this function annotated.
-    pub(super) fn translate_fn_def_use(
+    pub(crate) fn translate_fn_def_use(
         &mut self,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
@@ -421,7 +421,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    pub(super) fn translate_function_call(
+    pub(crate) fn translate_function_call(
         &mut self,
         func: &mir::Operand<'tcx>,
         args: &[span::source_map::Spanned<mir::Operand<'tcx>>],
