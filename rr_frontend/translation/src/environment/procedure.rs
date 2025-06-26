@@ -17,7 +17,7 @@ use crate::environment::{Environment, loops};
 pub(crate) type BasicBlockIndex = mir::BasicBlock;
 
 /// A facade that provides information about the Rust procedure.
-pub struct Procedure<'tcx> {
+pub(crate) struct Procedure<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     proc_def_id: DefId,
     mir: Rc<mir::Body<'tcx>>,
@@ -28,7 +28,7 @@ pub struct Procedure<'tcx> {
 impl<'tcx> Procedure<'tcx> {
     /// Builds an implementation of the Procedure interface, given a typing context and the
     /// identifier of a procedure
-    pub fn new(env: &Environment<'tcx>, proc_def_id: DefId) -> Self {
+    pub(crate) fn new(env: &Environment<'tcx>, proc_def_id: DefId) -> Self {
         trace!("Encoding procedure {:?}", proc_def_id);
         let tcx = env.tcx();
         let mir = env.local_mir(proc_def_id.expect_local());
@@ -45,31 +45,31 @@ impl<'tcx> Procedure<'tcx> {
     }
 
     #[must_use]
-    pub const fn loop_info(&self) -> &loops::ProcedureLoops {
+    pub(crate) const fn loop_info(&self) -> &loops::ProcedureLoops {
         &self.loop_info
     }
 
     /// Get definition ID of the procedure.
     #[must_use]
-    pub const fn get_id(&self) -> DefId {
+    pub(crate) const fn get_id(&self) -> DefId {
         self.proc_def_id
     }
 
     /// Get the MIR of the procedure
     #[must_use]
-    pub fn get_mir(&self) -> &mir::Body<'tcx> {
+    pub(crate) fn get_mir(&self) -> &mir::Body<'tcx> {
         &self.mir
     }
 
     /// Get the typing context.
     #[must_use]
-    pub const fn get_tcx(&self) -> ty::TyCtxt<'tcx> {
+    pub(crate) const fn get_tcx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
 
     /// Get the predecessors of a basic block.
     #[must_use]
-    pub fn predecessors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
+    pub(crate) fn predecessors(&self, bbi: mir::BasicBlock) -> &[mir::BasicBlock] {
         self.real_edges.predecessors(bbi)
     }
 }

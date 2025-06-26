@@ -161,7 +161,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Format the Coq representation of an atomic region.
-    pub(crate) fn format_atomic_region(&self, r: &polonius_info::AtomicRegion) -> String {
+    pub(crate) fn format_atomic_region(&self, r: polonius_info::AtomicRegion) -> String {
         let scope = self.scope.borrow();
         scope.lifetime_scope.translate_atomic_region(r)
     }

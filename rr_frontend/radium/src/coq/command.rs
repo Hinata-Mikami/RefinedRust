@@ -186,7 +186,7 @@ impl From<QueryCommand> for QueryCommandAttrs {
 /// A context declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Context {
-    pub items: binder::BinderList,
+    items: binder::BinderList,
 }
 
 impl Context {

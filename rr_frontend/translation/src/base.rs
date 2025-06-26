@@ -27,13 +27,13 @@ pub(crate) type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine
 
 /// Ordered `DefId`s, ordered by their `DefPathHash`, which should be stable across compilations.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct OrderedDefId {
+pub(crate) struct OrderedDefId {
     pub def_id: DefId,
     pub def_path_hash: DefPathHash,
 }
 
 impl OrderedDefId {
-    pub fn new<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> Self {
+    pub(crate) fn new<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> Self {
         let def_path_hash = tcx.def_path_hash(did);
         Self {
             def_id: did,
@@ -69,7 +69,7 @@ pub(crate) fn sort_def_ids<'tcx>(tcx: ty::TyCtxt<'tcx>, dids: &mut [DefId]) {
 /// Error type used for the MIR to Caesium translation.
 //TODO: add location info based on Span
 #[derive(Clone, Debug, Display)]
-pub enum TranslationError<'tcx> {
+pub(crate) enum TranslationError<'tcx> {
     #[display("Unsupported Feature: {}", description)]
     UnsupportedFeature { description: String },
 

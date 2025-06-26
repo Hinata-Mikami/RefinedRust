@@ -27,7 +27,7 @@ use crate::environment::polonius_info;
 /// Collect all the regions appearing in a type.
 /// Data structure that maps early and late region indices inside functions to Polonius regions.
 #[derive(Constructor, Clone, Debug, Default)]
-pub struct EarlyLateRegionMap {
+pub(crate) struct EarlyLateRegionMap {
     // maps indices of early and late regions to Polonius region ids
     pub early_regions: Vec<Option<facts::Region>>,
     pub late_regions: Vec<Vec<facts::Region>>,
@@ -38,9 +38,10 @@ pub struct EarlyLateRegionMap {
     // maps source-level universal lifetime names to region ids
     pub lft_names: HashMap<String, facts::Region>,
 }
+
 impl EarlyLateRegionMap {
     /// Lookup a Polonius region with a given kind.
-    pub fn lookup_region_with_kind(
+    pub(crate) fn lookup_region_with_kind(
         &self,
         k: polonius_info::UniversalRegionKind,
         r: Region,
@@ -55,43 +56,43 @@ impl EarlyLateRegionMap {
         }
     }
 
-    pub fn lookup_region(&self, region: facts::Region) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_region(&self, region: facts::Region) -> Option<&radium::Lft> {
         self.region_names.get(&region)
     }
 
-    pub fn lookup_early_region(&self, idx: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_early_region(&self, idx: usize) -> Option<&radium::Lft> {
         let ovid = self.early_regions.get(idx)?;
         let vid = ovid.as_ref()?;
         self.lookup_region(*vid)
     }
 
-    pub fn lookup_late_region(&self, idx: usize, var: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_late_region(&self, idx: usize, var: usize) -> Option<&radium::Lft> {
         let binder = self.late_regions.get(idx)?;
         let vid = binder.get(var)?;
         self.lookup_region(*vid)
     }
 
-    pub fn translate_atomic_region(&self, r: &polonius_info::AtomicRegion) -> radium::Lft {
+    pub(crate) fn translate_atomic_region(&self, r: polonius_info::AtomicRegion) -> radium::Lft {
         format_atomic_region_direct(r, Some(self))
     }
 }
 
 /// Format the Coq representation of an atomic region.
 pub(crate) fn format_atomic_region_direct(
-    r: &polonius_info::AtomicRegion,
+    r: polonius_info::AtomicRegion,
     scope: Option<&EarlyLateRegionMap>,
 ) -> String {
     match r {
-        polonius_info::AtomicRegion::Loan(_, r) => format!("llft{}", r.index()),
+        polonius_info::AtomicRegion::Loan(r) => format!("llft{}", r.index()),
         polonius_info::AtomicRegion::PlaceRegion(r, uc) => {
-            if *uc {
+            if uc {
                 format!("puclft{}", r.index())
             } else {
                 format!("plft{}", r.index())
             }
         },
         polonius_info::AtomicRegion::Unknown(r, uc) => {
-            if *uc {
+            if uc {
                 format!("vuclft{}", r.index())
             } else {
                 format!("vlft{}", r.index())
@@ -106,7 +107,7 @@ pub(crate) fn format_atomic_region_direct(
                 return format!("ulft{}", r.index());
             };
 
-            let Some(s) = scope.lookup_region(*r) else {
+            let Some(s) = scope.lookup_region(r) else {
                 return format!("ulft{}", r.index());
             };
 

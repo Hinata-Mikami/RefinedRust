@@ -19,7 +19,7 @@ pub(crate) type PointIndex = <RustcFacts as FactTypes>::Point;
 pub(crate) type AllInput = borrowck::consumers::PoloniusInput;
 pub(crate) type AllOutput = borrowck::consumers::PoloniusOutput;
 
-pub struct Borrowck {
+pub(crate) struct Borrowck {
     /// Polonius input facts.
     pub input_facts: RefCell<Option<Box<AllInput>>>,
     /// The table that maps Polonius points to locations in the table.

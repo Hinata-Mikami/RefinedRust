@@ -114,7 +114,7 @@ fn order_basic_blocks(
 
 /// Struct that contains information about all loops in the procedure.
 #[derive(Clone)]
-pub struct ProcedureLoops {
+pub(crate) struct ProcedureLoops {
     /// A list of basic blocks that are loop heads.
     loop_heads: HashSet<BasicBlockIndex>,
     /// A map from loop heads to the corresponding bodies.
@@ -236,7 +236,7 @@ impl ProcedureLoops {
         }
     }
 
-    pub fn dump_body_head(&self) {
+    pub(crate) fn dump_body_head(&self) {
         info!("loop heads: {:?}", self.loop_heads);
         for (head, bodies) in &self.loop_bodies {
             info!("loop {:?} -> {:?}", head, bodies);
@@ -244,20 +244,20 @@ impl ProcedureLoops {
     }
 
     #[must_use]
-    pub fn is_loop_head(&self, bbi: BasicBlockIndex) -> bool {
+    pub(crate) fn is_loop_head(&self, bbi: BasicBlockIndex) -> bool {
         self.loop_heads.contains(&bbi)
     }
 
     /// Get the loop head, if any
     /// Note: a loop head **is** loop head of itself
     #[must_use]
-    pub fn get_loop_head(&self, bbi: BasicBlockIndex) -> Option<BasicBlockIndex> {
+    pub(crate) fn get_loop_head(&self, bbi: BasicBlockIndex) -> Option<BasicBlockIndex> {
         self.enclosing_loop_heads.get(&bbi).and_then(|heads| heads.last()).copied()
     }
 
     /// Get the (topologically ordered) body of a loop, given a loop head
     #[must_use]
-    pub fn get_loop_body(&self, loop_head: BasicBlockIndex) -> &[BasicBlockIndex] {
+    pub(crate) fn get_loop_body(&self, loop_head: BasicBlockIndex) -> &[BasicBlockIndex] {
         debug_assert!(self.is_loop_head(loop_head));
         &self.ordered_loop_bodies[&loop_head]
     }

@@ -27,7 +27,7 @@ use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, procedures, traits, types};
 
-pub struct TR<'tcx, 'def> {
+pub(crate) struct TR<'tcx, 'def> {
     /// environment
     env: &'def Environment<'tcx>,
     type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
@@ -52,12 +52,12 @@ pub struct TR<'tcx, 'def> {
 }
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
-    pub const fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
+    pub(crate) const fn type_translator(&self) -> &'def types::TX<'def, 'tcx> {
         self.type_translator.get().unwrap()
     }
 
     /// Create an empty trait registry.
-    pub fn new(
+    pub(crate) fn new(
         env: &'def Environment<'tcx>,
         trait_arena: &'def Arena<specs::LiteralTraitSpec>,
         impl_arena: &'def Arena<specs::LiteralTraitImpl>,
@@ -77,18 +77,18 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
-    pub fn provide_type_translator(&self, ty_translator: &'def types::TX<'def, 'tcx>) {
+    pub(crate) fn provide_type_translator(&self, ty_translator: &'def types::TX<'def, 'tcx>) {
         self.type_translator.set(Some(ty_translator));
     }
 
     /// Get registered trait declarations in the local crate.
-    pub fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::TraitSpecDecl<'def>> {
+    pub(crate) fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::TraitSpecDecl<'def>> {
         let decls = self.trait_decls.borrow();
         decls.clone()
     }
 
     /// Get a set of other (different) traits that this trait depends on.
-    pub fn get_deps_of_trait(&self, did: DefId) -> HashSet<DefId> {
+    pub(crate) fn get_deps_of_trait(&self, did: DefId) -> HashSet<DefId> {
         let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(did);
 
         let mut deps = HashSet::new();
@@ -107,7 +107,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Order the given traits according to their dependencies.
-    pub fn get_trait_deps(&self, traits: &[LocalDefId]) -> HashMap<DefId, HashSet<DefId>> {
+    pub(crate) fn get_trait_deps(&self, traits: &[LocalDefId]) -> HashMap<DefId, HashSet<DefId>> {
         let mut dep_map = HashMap::new();
 
         for trait_decl in traits {
@@ -119,7 +119,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get a map of dependencies between traits.
-    pub fn get_registered_trait_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
+    pub(crate) fn get_registered_trait_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
         let mut dep_map = HashMap::new();
 
         let decls = self.trait_decls.borrow();
@@ -132,7 +132,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get the names of associated types of this trait.
-    pub fn get_associated_type_names(&self, did: DefId) -> Vec<String> {
+    pub(crate) fn get_associated_type_names(&self, did: DefId) -> Vec<String> {
         let mut assoc_tys = Vec::new();
 
         // get associated types
@@ -193,7 +193,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Register a new annotated trait in the local crate with the registry.
-    pub fn register_trait(
+    pub(crate) fn register_trait(
         &'def self,
         did: LocalDefId,
         proc_registry: &mut procedures::Scope<'tcx, 'def>,
@@ -328,7 +328,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Errors:
     /// - NotATrait(did) if did is not a trait
     /// - TraitAlreadyExists(did) if this trait has already been registered
-    pub fn register_shim<'a>(
+    pub(crate) fn register_shim<'a>(
         &'a self,
         did: DefId,
         spec: radium::LiteralTraitSpec,
@@ -349,7 +349,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Register a shim for a trait impl.
-    pub fn register_impl_shim<'a>(
+    pub(crate) fn register_impl_shim<'a>(
         &'a self,
         did: DefId,
         spec: radium::LiteralTraitImpl,
@@ -370,21 +370,21 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Lookup a trait.
-    pub fn lookup_trait(&self, trait_did: DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
+    pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
         trait_literals.get(&trait_did).copied()
     }
 
     /// Lookup the spec for an impl.
     /// If None, use the default spec.
-    pub fn lookup_impl(&self, impl_did: DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
+    pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
         impl_literals.get(&impl_did).copied()
     }
 
     /// Get the term for the specification of a trait impl (applied to the given arguments of the trait),
     /// as well as the list of associated types.
-    pub fn get_impl_spec_term(
+    pub(crate) fn get_impl_spec_term(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         impl_did: DefId,
@@ -432,7 +432,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// as the requirements can be different depending on which impl we consider.
     /// The requirements are sorted stably across compilations, and consistently with the
     /// declaration order.
-    pub fn resolve_trait_requirements_in_state(
+    pub(crate) fn resolve_trait_requirements_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
@@ -619,7 +619,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// TODO: handle surrounding params
-    pub fn compute_scope_inst_in_state_without_traits(
+    pub(crate) fn compute_scope_inst_in_state_without_traits(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         params_inst: ty::GenericArgsRef<'tcx>,
@@ -671,7 +671,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Compute the instantiation of the generic scope for a particular instantiation of an object.
-    pub fn compute_scope_inst_in_state(
+    pub(crate) fn compute_scope_inst_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
@@ -687,7 +687,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get information on a trait implementation and create its Radium encoding.
-    pub fn get_trait_impl_info(
+    pub(crate) fn get_trait_impl_info(
         &self,
         trait_impl_did: DefId,
     ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
@@ -774,7 +774,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
 /// A using occurrence of a trait in the signature of the function.
 #[derive(Debug, Clone)]
-pub struct GenericTraitUse<'tcx, 'def> {
+pub(crate) struct GenericTraitUse<'tcx, 'def> {
     /// the `DefId` of the trait
     pub did: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
@@ -788,7 +788,7 @@ pub struct GenericTraitUse<'tcx, 'def> {
 
 impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
-    pub fn get_associated_type_use(
+    pub(crate) fn get_associated_type_use(
         &self,
         env: &Environment<'tcx>,
         did: DefId,
@@ -811,7 +811,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         }
     }
 
-    pub fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, radium::Type<'def>)> {
+    pub(crate) fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, radium::Type<'def>)> {
         let mut assoc_tys = Vec::new();
 
         // get associated types
@@ -829,7 +829,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Allocate an empty trait use reference.
-    pub fn make_empty_trait_use(
+    pub(crate) fn make_empty_trait_use(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
         bound_regions: &[ty::BoundRegionKind],
@@ -849,7 +849,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Make a trait use for the identity trait use in a trait declaration.
-    pub fn make_trait_self_use(&self, trait_ref: ty::TraitRef<'tcx>) -> GenericTraitUse<'tcx, 'def> {
+    pub(crate) fn make_trait_self_use(&self, trait_ref: ty::TraitRef<'tcx>) -> GenericTraitUse<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
 
@@ -867,7 +867,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Fills an existing trait use.
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
-    pub fn fill_trait_use(
+    pub(crate) fn fill_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
         scope: &scope::Params<'tcx, 'def>,
@@ -916,7 +916,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Finalize a trait use by computing the dependencies on other traits.
-    pub fn finalize_trait_use(
+    pub(crate) fn finalize_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
         scope: types::ST<'_, '_, 'def, 'tcx>,

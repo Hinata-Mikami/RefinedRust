@@ -54,8 +54,8 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
                     inclusion_tracker.add_static_inclusion(*s2, *s1, midpoint);
 
                     let annot = radium::Annotation::CopyLftName(
-                        ty_translator.format_atomic_region(&lft1),
-                        ty_translator.format_atomic_region(&lft2),
+                        ty_translator.format_atomic_region(lft1),
+                        ty_translator.format_atomic_region(lft2),
                     );
                     annots.push(annot);
                 }

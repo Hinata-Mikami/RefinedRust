@@ -24,8 +24,8 @@ use crate::environment::region_folder::*;
 /// Loan regions can themselves be intersections of other loan regions and universal regions,
 /// but they contain an "atomic" component (corresponding to an atomic lifetime).
 #[derive(Copy, Clone, Debug)]
-pub enum AtomicRegion {
-    Loan(facts::Loan, facts::Region),
+pub(crate) enum AtomicRegion {
+    Loan(facts::Region),
     Universal(UniversalRegionKind, facts::Region),
     PlaceRegion(facts::Region, bool),
     Unknown(facts::Region, bool),
@@ -33,34 +33,34 @@ pub enum AtomicRegion {
 
 impl AtomicRegion {
     #[must_use]
-    pub(crate) const fn is_place(&self) -> bool {
-        matches!(*self, Self::PlaceRegion(_, _))
+    pub(crate) const fn is_place(self) -> bool {
+        matches!(self, Self::PlaceRegion(_, _))
     }
 
     #[must_use]
-    pub(crate) const fn is_value(&self) -> bool {
-        matches!(*self, Self::Unknown(_, _))
+    pub(crate) const fn is_value(self) -> bool {
+        matches!(self, Self::Unknown(_, _))
     }
 
     #[must_use]
-    pub(crate) const fn is_unconstrained(&self) -> bool {
-        match *self {
+    pub(crate) const fn is_unconstrained(self) -> bool {
+        match self {
             Self::PlaceRegion(_, b) | Self::Unknown(_, b) => b,
             _ => false,
         }
     }
 
     #[must_use]
-    pub(crate) const fn get_region(&self) -> facts::Region {
+    pub(crate) const fn get_region(self) -> facts::Region {
         match self {
-            Self::Loan(_, r) | Self::Universal(_, r) | Self::PlaceRegion(r, _) | Self::Unknown(r, _) => *r,
+            Self::Loan(r) | Self::Universal(_, r) | Self::PlaceRegion(r, _) | Self::Unknown(r, _) => r,
         }
     }
 }
 
 /// for an overview fo universal regions, see also `borrowck/src/universal_regions.rs`
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum UniversalRegionKind {
+pub(crate) enum UniversalRegionKind {
     /// the static region
     Static,
     /// the function-level region
@@ -72,7 +72,7 @@ pub enum UniversalRegionKind {
 #[derive(Debug)]
 pub(crate) enum RegionKind {
     /// this region belongs to a loan that is created
-    Loan(facts::Loan),
+    Loan,
     /// this is a universal region
     Universal(UniversalRegionKind),
     /// inference variable in the type of a local
@@ -105,7 +105,7 @@ pub(crate) fn compute_transitive_closure(
 }
 
 // Terminology: zombie loans are loans that are loan_killed_at.
-pub struct PoloniusInfo<'a, 'tcx> {
+pub(crate) struct PoloniusInfo<'a, 'tcx> {
     pub(crate) tcx: ty::TyCtxt<'tcx>,
     pub(crate) mir: &'a mir::Body<'tcx>,
     pub(crate) borrowck_in_facts: facts::AllInput,
@@ -180,7 +180,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
         if !v.is_empty() {
             if v.len() == 1 {
-                return RegionKind::Loan(v[0]);
+                return RegionKind::Loan;
             }
 
             unreachable!("A region should not be induced by multiple loans");
@@ -231,7 +231,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     pub(crate) fn mk_atomic_region(&self, r: facts::Region) -> AtomicRegion {
         let kind = self.get_region_kind(r);
         match kind {
-            RegionKind::Loan(l) => AtomicRegion::Loan(l, r),
+            RegionKind::Loan => AtomicRegion::Loan(r),
             RegionKind::PlaceRegion(b) => AtomicRegion::PlaceRegion(r, b),
             RegionKind::Universal(uk) => AtomicRegion::Universal(uk, r),
             RegionKind::Unknown(b) => AtomicRegion::Unknown(r, b),
@@ -304,7 +304,7 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
     #[must_use]
     pub(crate) fn atomic_region_of_loan(&self, l: facts::Loan) -> AtomicRegion {
         let r = self.get_loan_issued_at_for_loan(l);
-        AtomicRegion::Loan(l, r)
+        AtomicRegion::Loan(r)
     }
 
     fn get_borrow_live_at(

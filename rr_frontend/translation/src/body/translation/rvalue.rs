@@ -308,7 +308,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
                     let atomic_region = self.info.atomic_region_of_loan(loan);
-                    let lft = self.ty_translator.format_atomic_region(&atomic_region);
+                    let lft = self.ty_translator.format_atomic_region(atomic_region);
                     Ok(radium::Expr::Borrow {
                         lft,
                         bk: translated_bk,

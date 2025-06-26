@@ -196,8 +196,8 @@ pub(crate) fn get_assignment_annots<'tcx>(
             let ar1 = inclusion_tracker.info().mk_atomic_region(*r1);
             let ar2 = inclusion_tracker.info().mk_atomic_region(*r2);
             stmt_annot.push(radium::Annotation::CopyLftName(
-                ty_translator.format_atomic_region(&ar1),
-                ty_translator.format_atomic_region(&ar2),
+                ty_translator.format_atomic_region(ar1),
+                ty_translator.format_atomic_region(ar2),
             ));
         }
 
@@ -240,11 +240,11 @@ fn generate_dyn_inclusion_annots<'tcx>(
         .into_iter()
         .map(|incl| match incl {
             inclusion_tracker::DynamicInclusion::ExtendLft(l) => {
-                radium::Annotation::ExtendLft(ty_translator.format_atomic_region(&l))
+                radium::Annotation::ExtendLft(ty_translator.format_atomic_region(l))
             },
             inclusion_tracker::DynamicInclusion::IncludeLft(l1, l2) => radium::Annotation::DynIncludeLft(
-                ty_translator.format_atomic_region(&l1),
-                ty_translator.format_atomic_region(&l2),
+                ty_translator.format_atomic_region(l1),
+                ty_translator.format_atomic_region(l2),
             ),
         })
         .collect()
@@ -300,7 +300,7 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
 
         let mut outliving_lfts: Vec<_> = outliving
             .iter()
-            .map(|r| ty_translator.format_atomic_region(&info.mk_atomic_region(*r)))
+            .map(|r| ty_translator.format_atomic_region(info.mk_atomic_region(*r)))
             .collect();
         // If there are no constraints, at least constrain the lifetime by the lifetime of the
         // current function
@@ -309,10 +309,8 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
         }
 
         // add statement for issuing the loan
-        stmt_annots.insert(
-            0,
-            radium::Annotation::StartLft(ty_translator.format_atomic_region(&lft), outliving_lfts),
-        );
+        stmt_annots
+            .insert(0, radium::Annotation::StartLft(ty_translator.format_atomic_region(lft), outliving_lfts));
 
         let a = info.get_region_kind(r);
         info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
@@ -359,8 +357,8 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
                 if let Some(r) = included_region {
                     //info!("Found inclusion {:?}⊑  {:?}", r, region);
                     annotations.push(radium::Annotation::CopyLftName(
-                        ty_translator.format_atomic_region(&info.mk_atomic_region(*r)),
-                        ty_translator.format_atomic_region(&info.mk_atomic_region(region)),
+                        ty_translator.format_atomic_region(info.mk_atomic_region(*r)),
+                        ty_translator.format_atomic_region(info.mk_atomic_region(region)),
                     ));
 
                     // also add this to the inclusion checker

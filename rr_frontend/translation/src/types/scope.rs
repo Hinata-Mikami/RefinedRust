@@ -62,13 +62,13 @@ pub(crate) fn generate_args_inst_key<'tcx>(
 /// TODO maybe we should use `SimplifiedType` + `simplify_type` instead of the syntys?
 /// Or types with erased regions?
 #[derive(Eq, PartialEq, Hash, Debug)]
-pub struct AdtUseKey {
-    pub base_did: DefId,
-    pub generics: Vec<radium::SynType>,
+pub(crate) struct AdtUseKey {
+    base_did: DefId,
+    generics: Vec<radium::SynType>,
 }
 
 impl AdtUseKey {
-    pub fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
+    pub(crate) fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
             params.get_all_ty_params_with_assocs().iter().map(radium::SynType::from).collect();
         Self {
@@ -103,7 +103,7 @@ impl Param {
 
 /// Data structure that maps generic parameters for ADT/trait translation
 #[derive(Constructor, Clone, Debug, Default)]
-pub struct Params<'tcx, 'def> {
+pub(crate) struct Params<'tcx, 'def> {
     /// maps generic indices (De Bruijn) to the corresponding Coq names in the current environment
     scope: Vec<Param>,
     /// maps De Bruijn indices for late lifetimes to the lifetime
@@ -171,12 +171,12 @@ impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
     }
 }
 impl<'tcx, 'def> Params<'tcx, 'def> {
-    pub const fn trait_scope(&self) -> &Traits<'tcx, 'def> {
+    pub(crate) const fn trait_scope(&self) -> &Traits<'tcx, 'def> {
         &self.trait_scope
     }
 
     /// Create from generics, optionally annotating the type parameters with their origin.
-    pub fn new_from_generics(
+    pub(crate) fn new_from_generics(
         x: ty::GenericArgsRef<'tcx>,
         with_origin: Option<(ty::TyCtxt<'tcx>, DefId)>,
     ) -> Self {
@@ -227,21 +227,21 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Lookup a type parameter by its De Bruijn index.
     #[must_use]
-    pub fn lookup_ty_param_idx(&self, idx: usize) -> Option<&radium::LiteralTyParam> {
+    pub(crate) fn lookup_ty_param_idx(&self, idx: usize) -> Option<&radium::LiteralTyParam> {
         let ty = self.scope.get(idx)?;
         ty.as_type()
     }
 
     /// Lookup a region parameter by its De Bruijn index.
     #[must_use]
-    pub fn lookup_region_idx(&self, idx: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_region_idx(&self, idx: usize) -> Option<&radium::Lft> {
         let lft = self.scope.get(idx)?;
         lft.as_region()
     }
 
     /// Lookup a late region parameter by its De Bruijn index.
     #[must_use]
-    pub fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&radium::Lft> {
         let binder = self.late_scope.get(binder)?;
         let lft = binder.get(var)?;
         Some(lft)
@@ -249,7 +249,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Get all type parameters in scope.
     #[must_use]
-    pub fn tyvars(&self) -> Vec<radium::LiteralTyParam> {
+    pub(crate) fn tyvars(&self) -> Vec<radium::LiteralTyParam> {
         let mut tyvars = Vec::new();
         for x in &self.scope {
             if let Param::Ty(ty) = x {
@@ -261,7 +261,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Add bound regions when descending under a for<...> binder.
     #[must_use]
-    pub fn translate_bound_regions(
+    pub(crate) fn translate_bound_regions(
         &mut self,
         bound_regions: &[ty::BoundRegionKind],
     ) -> radium::TraitReqScope {
@@ -291,14 +291,14 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 
     /// Add bound regions when descending under a for<...> binder.
-    pub fn add_trait_req_scope(&mut self, scope: &radium::TraitReqScope) {
+    pub(crate) fn add_trait_req_scope(&mut self, scope: &radium::TraitReqScope) {
         self.late_scope.insert(0, scope.quantified_lfts.clone());
     }
 
     /// Update the lifetimes in this scope with the information from a region map for a function.
     /// We use this in order to get a scope that is sufficient for type translation out of a
     /// `FunctionState`.
-    pub fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
+    pub(crate) fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
         // replace the early region names
         for (idx, param) in self.scope.iter_mut().enumerate() {
             let Some(_) = param.as_region() else { continue };
@@ -324,7 +324,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 
     /// Add a `ParamEnv` of a given `DefId` to the scope to process trait obligations.
-    pub fn add_param_env(
+    pub(crate) fn add_param_env(
         &mut self,
         did: DefId,
         env: &Environment<'tcx>,
@@ -563,7 +563,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 
     /// Determine the number of args of a surrounding trait or impl.
-    pub fn determine_number_of_surrounding_params(did: DefId, tcx: ty::TyCtxt<'tcx>) -> usize {
+    pub(crate) fn determine_number_of_surrounding_params(did: DefId, tcx: ty::TyCtxt<'tcx>) -> usize {
         // Check if there is a surrounding trait decl that introduces this parameter
         if let Some(trait_did) = tcx.trait_of_item(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
@@ -624,7 +624,7 @@ impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
 
 /// A scope for translated trait requirements from `where` clauses.
 #[derive(Clone, Debug, Default)]
-pub struct Traits<'tcx, 'def> {
+pub(crate) struct Traits<'tcx, 'def> {
     used_traits: HashMap<(DefId, GenericsKey<'tcx>), GenericTraitUse<'tcx, 'def>>,
     ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
 
@@ -638,7 +638,7 @@ pub struct Traits<'tcx, 'def> {
 impl<'tcx, 'def> Traits<'tcx, 'def> {
     /// Lookup the trait use for a specific trait with given parameters.
     /// (here, args includes the self parameter as the first element)
-    pub fn lookup_trait_use(
+    pub(crate) fn lookup_trait_use(
         &self,
         tcx: ty::TyCtxt<'tcx>,
         trait_did: DefId,
@@ -658,7 +658,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
     }
 
     /// Within a trait declaration, get the Self trait use.
-    pub fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
+    pub(crate) fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
         for trait_use in self.used_traits.values() {
             // check if this is the Self trait use
             {

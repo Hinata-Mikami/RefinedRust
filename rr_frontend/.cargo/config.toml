@@ -26,6 +26,7 @@ rustflags = [
     "-Dtrivial_casts",
     "-Dtrivial_numeric_casts",
     "-Dunit_bindings",
+    "-Dunnameable_types",
     "-Dunreachable_pub",
     "-Dunsafe_op_in_unsafe_fn",
     "-Dunused_import_braces",

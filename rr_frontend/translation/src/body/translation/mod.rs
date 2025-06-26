@@ -221,8 +221,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let mut annots = Vec::new();
                 for (r1, r2) in &closure_constraints {
                     annots.push(radium::Annotation::CopyLftName(
-                        self.ty_translator.format_atomic_region(r1),
-                        self.ty_translator.format_atomic_region(r2),
+                        self.ty_translator.format_atomic_region(*r1),
+                        self.ty_translator.format_atomic_region(*r2),
                     ));
                 }
                 translated_bb = radium::Stmt::Prim(
@@ -238,8 +238,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut annots = Vec::new();
             for (r1, r2) in &self.initial_constraints {
                 annots.push(radium::Annotation::CopyLftName(
-                    self.ty_translator.format_atomic_region(r1),
-                    self.ty_translator.format_atomic_region(r2),
+                    self.ty_translator.format_atomic_region(*r1),
+                    self.ty_translator.format_atomic_region(*r2),
                 ));
             }
             translated_bb = radium::Stmt::Prim(
@@ -372,7 +372,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     fn format_region(&self, r: facts::Region) -> String {
         let lft = self.info.mk_atomic_region(r);
-        self.ty_translator.format_atomic_region(&lft)
+        self.ty_translator.format_atomic_region(lft)
     }
 
     /// Checks whether a place access descends below a reference.
@@ -437,7 +437,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for d in dying {
             let lft = self.info.atomic_region_of_loan(d);
             stmts.push(radium::PrimStmt::Annot {
-                a: vec![radium::Annotation::EndLft(self.ty_translator.format_atomic_region(&lft))],
+                a: vec![radium::Annotation::EndLft(self.ty_translator.format_atomic_region(lft))],
                 why: Some("endlft".to_owned()),
             });
         }

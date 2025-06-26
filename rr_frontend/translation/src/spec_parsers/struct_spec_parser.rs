@@ -163,7 +163,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 }
 
 #[derive(Copy, Clone)]
-pub struct InvariantSpecFlags(specs::InvariantSpecFlags);
+pub(crate) struct InvariantSpecFlags(specs::InvariantSpecFlags);
 
 impl From<InvariantSpecFlags> for specs::InvariantSpecFlags {
     fn from(spec: InvariantSpecFlags) -> Self {

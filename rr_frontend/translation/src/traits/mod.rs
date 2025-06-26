@@ -17,7 +17,7 @@ pub(crate) mod requirements;
 pub(crate) mod resolution;
 
 #[derive(Debug, Clone, Display)]
-pub enum Error<'tcx> {
+pub(crate) enum Error<'tcx> {
     /// This `DefId` is not a trait
     #[display("The given `DefId` {:?} is not a trait", _0)]
     NotATrait(DefId),

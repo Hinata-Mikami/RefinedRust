@@ -125,7 +125,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
     }
 }
 
-pub struct IProp(specs::IProp);
+pub(crate) struct IProp(specs::IProp);
 
 impl From<IProp> for specs::IProp {
     fn from(iprop: IProp) -> Self {
@@ -147,6 +147,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
 pub(crate) struct RRCoqType {
     pub ty: coq::term::Type,
 }
+
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let ty: parse::LitStr = stream.parse(meta)?;
@@ -162,7 +163,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
 /// `z`,
 /// `w : "(Z * Z)%type"`
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct RRParam(coq::binder::Binder);
+pub(crate) struct RRParam(coq::binder::Binder);
 
 impl From<RRParam> for coq::binder::Binder {
     fn from(param: RRParam) -> Self {
@@ -201,7 +202,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParams {
     }
 }
 
-pub struct CoqExportModule(coq::module::Export);
+pub(crate) struct CoqExportModule(coq::module::Export);
 
 impl From<CoqExportModule> for coq::module::Export {
     fn from(path: CoqExportModule) -> Self {
@@ -262,14 +263,14 @@ fn handle_escapes(s: &str) -> String {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum RustPathElem {
+pub(crate) enum RustPathElem {
     AssocItem(String),
 }
 
 pub(crate) type RustPath = Vec<RustPathElem>;
 
 /// Lookup of lifetime and type parameters given their Rust source names.
-pub trait ParamLookup<'def> {
+pub(crate) trait ParamLookup<'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>>;
     fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
     fn lookup_literal(&self, path: &RustPath) -> Option<&str>;
@@ -461,13 +462,14 @@ mod tests {
     #[derive(Default)]
     struct TestScope {
         /// conversely, map the declaration name of a lifetime to an index
-        pub lft_names: HashMap<String, radium::Lft>,
+        lft_names: HashMap<String, radium::Lft>,
+
         /// map types to their index
-        pub ty_names: HashMap<String, radium::LiteralTyParam>,
+        ty_names: HashMap<String, radium::LiteralTyParam>,
 
-        pub assoc_names: HashMap<RustPath, radium::LiteralTyParam>,
+        assoc_names: HashMap<RustPath, radium::LiteralTyParam>,
 
-        pub literals: HashMap<RustPath, String>,
+        literals: HashMap<RustPath, String>,
     }
 
     impl<'def> ParamLookup<'def> for TestScope {

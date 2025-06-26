@@ -98,7 +98,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<
 
                 if let btree_map::Entry::Vacant(e) = self.substitution.region_names.entry(r2) {
                     let lft = self.info.mk_atomic_region(r2);
-                    let name = regions::format_atomic_region_direct(&lft, None);
+                    let name = regions::format_atomic_region_direct(lft, None);
                     e.insert(name);
                 }
 
