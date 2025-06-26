@@ -360,7 +360,7 @@ impl Expr {
 }
 
 /// for unique/shared pointers
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub enum Mutability {
     #[display("Mut")]
     Mut,
@@ -372,7 +372,7 @@ pub enum Mutability {
 /**
  * Borrows allowed in Caesium
  */
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub enum BorKind {
     #[display("Mut")]
     Mutable,
@@ -757,7 +757,7 @@ impl FunctionCodeBuilder {
 
 /// Classifies the kind of a local variable similar to `mir::LocalKind`,
 /// but distinguishes user-specified locals from compiler-generated temporaries.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LocalKind {
     Arg,
     Local,
@@ -766,7 +766,7 @@ pub enum LocalKind {
 
 impl LocalKind {
     #[must_use]
-    pub fn mk_local_name(&self, name: &str) -> String {
+    pub fn mk_local_name(self, name: &str) -> String {
         match self {
             Self::Arg => {
                 format!("arg_{name}")

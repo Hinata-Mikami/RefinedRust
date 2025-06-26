@@ -34,7 +34,7 @@ impl From<Vec<String>> for DirPath {
 }
 
 /// Either an Import or an Export flag.
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 pub enum Kind {
     Import,
     Export,

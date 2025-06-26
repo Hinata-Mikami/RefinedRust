@@ -23,7 +23,7 @@ use crate::environment::region_folder::*;
 ///
 /// Loan regions can themselves be intersections of other loan regions and universal regions,
 /// but they contain an "atomic" component (corresponding to an atomic lifetime).
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum AtomicRegion {
     Loan(facts::Loan, facts::Region),
     Universal(UniversalRegionKind, facts::Region),

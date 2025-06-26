@@ -19,6 +19,7 @@ rustflags = [
     "-Dlinker_messages",
     "-Dmacro_use_extern_crate",
     "-Dmeta_variable_misuse",
+    "-Dmissing_copy_implementations",
     "-Dnon_ascii_idents",
     "-Dredundant_imports",
     "-Dredundant_lifetimes",

@@ -638,7 +638,7 @@ impl TyOwnSpec {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum InvariantSpecFlags {
     /// fully persistent and timeless invariant
     Persistent,
@@ -648,7 +648,7 @@ pub enum InvariantSpecFlags {
     Atomic,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum InvariantMode {
     All,
     OnlyShared,

@@ -22,7 +22,7 @@ impl<F> Parse<F> for RustPath {
     fn parse(stream: parse::Stream<'_>, meta: &F) -> parse::Result<Self> {
         let x: parse::Punctuated<parse::Ident, MToken![::]> =
             parse::Punctuated::parse_separated_nonempty(stream, meta)?;
-        let path = x.into_iter().map(|x| x.value()).collect();
+        let path = x.into_iter().map(parse::Ident::value).collect();
         Ok(Self { path })
     }
 }

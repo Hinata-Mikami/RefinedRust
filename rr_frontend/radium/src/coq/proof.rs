@@ -76,7 +76,7 @@ impl Proof {
 /// A proof terminator, [exiting the proof state].
 ///
 /// [exiting the proof state]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/proof-mode.html#entering-and-exiting-proof-mode
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub enum Terminator {
     /// The [`Admitted`] command.
     ///

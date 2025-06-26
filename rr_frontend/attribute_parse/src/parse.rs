@@ -387,13 +387,14 @@ macro_rules! MToken {
     [_]           => { $crate::parse::Underscore };
 }
 
+#[derive(Copy, Clone)]
 pub struct LitStr {
     sym: span::Symbol,
 }
 
 impl LitStr {
     #[must_use]
-    pub fn value(&self) -> String {
+    pub fn value(self) -> String {
         self.sym.to_string()
     }
 }
@@ -411,6 +412,7 @@ where
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Ident {
     sym: span::Symbol,
 }
@@ -427,7 +429,7 @@ where
 
 impl Ident {
     #[must_use]
-    pub fn value(&self) -> String {
+    pub fn value(self) -> String {
         self.sym.to_string()
     }
 }

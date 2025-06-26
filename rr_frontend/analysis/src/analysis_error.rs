@@ -6,7 +6,7 @@
 
 use rr_rustc_interface::middle::mir;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum AnalysisError {
     UnsupportedStatement(mir::Location),
     /// The state is not defined on the edge between two MIR blocks (source, destination).
@@ -14,14 +14,14 @@ pub enum AnalysisError {
 }
 
 impl AnalysisError {
-    pub fn to_pretty_str(&self, mir: &mir::Body<'_>) -> String {
+    pub fn to_pretty_str(self, mir: &mir::Body<'_>) -> String {
         match self {
             Self::UnsupportedStatement(location) => {
-                let stmt = location_to_stmt_str(*location, mir);
+                let stmt = location_to_stmt_str(location, mir);
                 format!("Unsupported statement at {:?}: {}", location, stmt)
             },
             Self::NoStateAfterSuccessor(bb_src, bb_dst) => {
-                let terminator = &mir[*bb_src].terminator();
+                let terminator = &mir[bb_src].terminator();
                 format!(
                     "There is no state for the block {:?} after the terminator of block {:?} ({:?})",
                     bb_dst, bb_src, terminator.kind
