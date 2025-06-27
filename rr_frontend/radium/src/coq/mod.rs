@@ -346,11 +346,11 @@ pub struct Document(pub Vec<Sentence>);
 
 impl Document {
     #[must_use]
-    pub fn new(sentences: Vec<impl Into<Sentence>>) -> Self {
+    pub fn new<I: Into<Sentence>>(sentences: Vec<I>) -> Self {
         Self(sentences.into_iter().map(Into::into).collect())
     }
 
-    pub fn push(&mut self, sentence: impl Into<Sentence>) {
+    pub fn push<I: Into<Sentence>>(&mut self, sentence: I) {
         self.0.push(sentence.into());
     }
 }
@@ -390,11 +390,11 @@ pub struct ProofDocument(pub Vec<Vernac>);
 
 impl ProofDocument {
     #[must_use]
-    pub fn new(vernacs: Vec<impl Into<Vernac>>) -> Self {
+    pub fn new<I: Into<Vernac>>(vernacs: Vec<I>) -> Self {
         Self(vernacs.into_iter().map(Into::into).collect())
     }
 
-    pub fn push(&mut self, vernac: impl Into<Vernac>) {
+    pub fn push<I: Into<Vernac>>(&mut self, vernac: I) {
         self.0.push(vernac.into());
     }
 }

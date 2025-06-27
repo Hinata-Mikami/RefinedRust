@@ -90,7 +90,6 @@ rustflags = [
     "-Aclippy::unimplemented",
     "-Aclippy::unwrap_used",
     "-Aclippy::use_debug",
-    "-Aclippy::impl_trait_in_params",
     "-Aclippy::integer_division_remainder_used",
     "-Aclippy::field_scoped_visibility_modifiers",
 

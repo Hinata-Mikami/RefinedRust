@@ -40,10 +40,10 @@ impl fmt::Display for Proof {
 }
 
 impl Proof {
-    pub fn new_using(
+    pub fn new_using<F: FnOnce(&mut coq::ProofDocument)>(
         using: String,
         terminator: Terminator,
-        callback: impl FnOnce(&mut coq::ProofDocument),
+        callback: F,
     ) -> Self {
         if using.is_empty() {
             return Self::new(terminator, callback);
@@ -60,7 +60,7 @@ impl Proof {
         }
     }
 
-    pub fn new(terminator: Terminator, callback: impl FnOnce(&mut coq::ProofDocument)) -> Self {
+    pub fn new<F: FnOnce(&mut coq::ProofDocument)>(terminator: Terminator, callback: F) -> Self {
         let mut content = coq::ProofDocument::default();
 
         callback(&mut content);

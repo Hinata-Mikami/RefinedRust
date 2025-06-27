@@ -39,7 +39,7 @@ pub enum Binder {
 
 impl Binder {
     #[must_use]
-    pub fn new(name: Option<String>, ty: impl Into<term::Type>) -> Self {
+    pub fn new<I: Into<term::Type>>(name: Option<String>, ty: I) -> Self {
         Self::Default(name, ty.into())
     }
 

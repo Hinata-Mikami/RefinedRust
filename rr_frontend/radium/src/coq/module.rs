@@ -52,7 +52,7 @@ pub struct FromRequire {
 
 impl FromRequire {
     #[must_use]
-    pub fn new(import: Vec<impl Into<String>>, kind: Kind) -> Self {
+    pub fn new<I: Into<String>>(import: Vec<I>, kind: Kind) -> Self {
         let from = None;
         let import = import.into_iter().map(Into::into).collect();
 
@@ -61,7 +61,7 @@ impl FromRequire {
 
     #[expect(clippy::same_name_method)]
     #[must_use]
-    pub fn from(self, from: impl Into<DirPath>) -> Self {
+    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
         let from = Some(from.into());
 
         Self { from, ..self }
@@ -94,12 +94,12 @@ pub struct Import(pub FromRequire);
 
 impl Import {
     #[must_use]
-    pub fn new(import: Vec<impl Into<String>>) -> Self {
+    pub fn new<I: Into<String>>(import: Vec<I>) -> Self {
         Self(FromRequire::new(import, Kind::Import))
     }
 
     #[must_use]
-    pub fn from(self, from: impl Into<DirPath>) -> Self {
+    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
         Self(self.0.from(from))
     }
 }
@@ -110,12 +110,12 @@ pub struct Export(pub FromRequire);
 
 impl Export {
     #[must_use]
-    pub fn new(import: Vec<impl Into<String>>) -> Self {
+    pub fn new<I: Into<String>>(import: Vec<I>) -> Self {
         Self(FromRequire::new(import, Kind::Export))
     }
 
     #[must_use]
-    pub fn from(self, from: impl Into<DirPath>) -> Self {
+    pub fn from<I: Into<DirPath>>(self, from: I) -> Self {
         Self(self.0.from(from))
     }
 }

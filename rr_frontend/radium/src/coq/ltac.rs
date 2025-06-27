@@ -60,7 +60,7 @@ pub struct LetIn {
 
 impl LetIn {
     #[must_use]
-    pub fn new(name: impl Into<String>, t1: impl Into<term::Term>, t2: impl Into<LTac>) -> Self {
+    pub fn new<I1: Into<String>, I2: Into<term::Term>, I3: Into<LTac>>(name: I1, t1: I2, t2: I3) -> Self {
         Self {
             name: name.into(),
             t1: t1.into(),
@@ -92,7 +92,7 @@ impl From<LTac> for Attrs {
 
 impl Attrs {
     #[must_use]
-    pub fn new(ltac: impl Into<LTac>) -> Self {
+    pub fn new<I: Into<LTac>>(ltac: I) -> Self {
         Self {
             ltac: ltac.into(),
             scope: None,
@@ -100,7 +100,7 @@ impl Attrs {
     }
 
     #[must_use]
-    pub fn scope(self, scope: impl Into<Scope>) -> Self {
+    pub fn scope<I: Into<Scope>>(self, scope: I) -> Self {
         let scope = Some(scope.into());
 
         Self { scope, ..self }
