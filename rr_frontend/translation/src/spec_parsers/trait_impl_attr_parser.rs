@@ -37,7 +37,7 @@ impl<'a, T> VerboseTraitImplAttrParser<'a, T> {
     }
 }
 
-impl<'b, 'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'b, T> {
+impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrParser<'_, T> {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],

@@ -22,7 +22,7 @@ impl<'env, 'tcx> CollectClosureDefsVisitor<'env, 'tcx> {
     }
 }
 
-impl<'env, 'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'env, 'tcx> {
+impl<'tcx> hir::intravisit::Visitor<'tcx> for CollectClosureDefsVisitor<'_, 'tcx> {
     type NestedFilter = middle::hir::nested_filter::OnlyBodies;
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {

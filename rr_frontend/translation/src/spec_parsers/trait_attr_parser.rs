@@ -29,7 +29,7 @@ struct TraitAttrScope<'a, T> {
     literals: HashMap<String, String>,
 }
 
-impl<'a, 'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'a, T> {
+impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         self.inner_scope.lookup_ty_param(path)
     }
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<'b, 'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrParser<'b, T, F>
+impl<'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrParser<'_, T, F>
 where
     F: Fn(&str) -> String,
 {

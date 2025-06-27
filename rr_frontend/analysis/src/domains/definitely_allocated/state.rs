@@ -22,7 +22,7 @@ pub struct DefinitelyAllocatedState<'mir, 'tcx> {
     pub(crate) mir: &'mir mir::Body<'tcx>,
 }
 
-impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyAllocatedState<'mir, 'tcx> {
+impl fmt::Debug for DefinitelyAllocatedState<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ignore mir
         f.debug_struct("DefinitelyAllocatedState")
@@ -31,15 +31,15 @@ impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyAllocatedState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> PartialEq for DefinitelyAllocatedState<'mir, 'tcx> {
+impl PartialEq for DefinitelyAllocatedState<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         self.def_allocated_locals == other.def_allocated_locals
     }
 }
 
-impl<'mir, 'tcx: 'mir> Eq for DefinitelyAllocatedState<'mir, 'tcx> {}
+impl Eq for DefinitelyAllocatedState<'_, '_> {}
 
-impl<'mir, 'tcx: 'mir> Serialize for DefinitelyAllocatedState<'mir, 'tcx> {
+impl Serialize for DefinitelyAllocatedState<'_, '_> {
     fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
         let mut seq = serializer.serialize_seq(Some(self.def_allocated_locals.len()))?;
         let oredered_set: BTreeSet<_> = self.def_allocated_locals.iter().collect();
@@ -50,7 +50,7 @@ impl<'mir, 'tcx: 'mir> Serialize for DefinitelyAllocatedState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
+impl DefinitelyAllocatedState<'_, '_> {
     #[must_use]
     pub const fn get_def_allocated_locals(&self) -> &FxHashSet<mir::Local> {
         &self.def_allocated_locals
@@ -94,7 +94,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyAllocatedState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> AbstractState for DefinitelyAllocatedState<'mir, 'tcx> {
+impl AbstractState for DefinitelyAllocatedState<'_, '_> {
     /// The lattice join intersects the two sets of locals
     fn join(&mut self, other: &Self) {
         self.def_allocated_locals.retain(|local| other.def_allocated_locals.contains(local));

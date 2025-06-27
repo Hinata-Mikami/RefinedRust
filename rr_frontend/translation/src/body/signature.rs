@@ -621,12 +621,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Parse and process attributes of this closure.
-    fn process_closure_attrs<'b>(
+    fn process_closure_attrs(
         &mut self,
         inputs: &[ty::Ty<'tcx>],
         output: ty::Ty<'tcx>,
         arg_names: &[String],
-        meta: ClosureMetaInfo<'b, 'tcx, 'def>,
+        meta: ClosureMetaInfo<'_, 'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("entering process_closure_attrs");
         let v = self.attrs;

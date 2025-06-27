@@ -44,11 +44,11 @@ pub(crate) trait FunctionSpecParser<'def> {
     /// Parse a set of attributes into a closure spec.
     /// The implementation can assume the `attrs` to be prefixed by the tool prefix (e.g. `rr`) and
     /// that it does not need to deal with any other attributes.
-    fn parse_closure_spec<'tcx, 'a, 'c, F>(
+    fn parse_closure_spec<'a, F>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
         builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
-        closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
+        closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: F,
     ) -> Result<(), String>
     where
@@ -382,7 +382,7 @@ where
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -605,10 +605,10 @@ where
     /// `capture_specs`: the parsed capture specification
     /// `make_tuple`: closure to make a new Radium tuple type
     /// `builder`: the function builder to push new specification components to
-    fn merge_capture_information<'c, 'tcx, H>(
+    fn merge_capture_information<H>(
         &self,
         capture_specs: Vec<ClosureCaptureSpec>,
-        meta: ClosureMetaInfo<'c, 'tcx, 'def>,
+        meta: ClosureMetaInfo<'_, '_, 'def>,
         mut make_tuple: H,
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String>
@@ -793,15 +793,15 @@ where
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
-    fn parse_closure_spec<'tcx, 'b, 'c, H>(
-        &'b mut self,
-        attrs: &'b [&'b hir::AttrItem],
-        builder: &'b mut radium::LiteralFunctionSpecBuilder<'def>,
-        closure_meta: ClosureMetaInfo<'c, 'tcx, 'def>,
+    fn parse_closure_spec<'a, H>(
+        &'a mut self,
+        attrs: &'a [&'a hir::AttrItem],
+        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: H,
     ) -> Result<(), String>
     where

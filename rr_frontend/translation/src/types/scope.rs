@@ -146,7 +146,8 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
         scope
     }
 }
-impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
+
+impl<'def> ParamLookup<'def> for Params<'_, 'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         // first lookup if this is a type parameter
         if path.len() == 1 {
@@ -170,6 +171,7 @@ impl<'tcx, 'def> ParamLookup<'def> for Params<'tcx, 'def> {
         self.trait_scope.attribute_names.get(path).map(String::as_str)
     }
 }
+
 impl<'tcx, 'def> Params<'tcx, 'def> {
     pub(crate) const fn trait_scope(&self) -> &Traits<'tcx, 'def> {
         &self.trait_scope
@@ -531,7 +533,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         Ok(())
     }
 }
-impl<'tcx, 'def> Params<'tcx, 'def> {
+
+impl<'tcx> Params<'tcx, '_> {
     /// Determine the declaration origin of a type parameter of a function.
     fn determine_origin_of_param(
         did: DefId,
@@ -581,13 +584,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 }
 
-impl<'tcx, 'def> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, 'def> {
+impl<'tcx> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, '_> {
     fn from(x: ty::GenericArgsRef<'tcx>) -> Self {
         Self::new_from_generics(x, None)
     }
 }
 
-impl<'a, 'tcx, 'def> From<&'a [ty::GenericParamDef]> for Params<'tcx, 'def> {
+impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
     fn from(x: &[ty::GenericParamDef]) -> Self {
         let mut scope = Vec::new();
 

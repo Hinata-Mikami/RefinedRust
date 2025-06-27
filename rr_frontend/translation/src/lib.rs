@@ -52,7 +52,7 @@ use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
-fn order_defs_with_deps<'tcx>(tcx: ty::TyCtxt<'tcx>, deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
+fn order_defs_with_deps(tcx: ty::TyCtxt<'_>, deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
     let mut topo = TopologicalSort::new();
     let mut defs = HashSet::new();
 
@@ -110,7 +110,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     trait_impls: BTreeMap<base::OrderedDefId, radium::TraitImplSpec<'rcx>>,
 }
 
-impl<'tcx, 'rcx> VerificationCtxt<'tcx, 'rcx> {
+impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn get_path_for_shim(&self, did: DefId) -> (Vec<&str>, bool) {
         let path = shims::flat::get_export_path_for_did(self.env, did);
         let interned_path = self.shim_registry.intern_path(path.path.path);
@@ -1182,7 +1182,7 @@ fn register_functions<'tcx>(
 }
 
 /// Translate functions of the crate, assuming they were previously registered.
-fn translate_functions<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
+fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
     for &f in vcx.functions {
         let proc = vcx.env.get_procedure(f.to_def_id());
         let fname = vcx.env.get_item_name(f.to_def_id());
@@ -1325,7 +1325,7 @@ fn get_filtered_functions(env: &Environment<'_>) -> Vec<LocalDefId> {
 }
 
 /// Get constants in the current scope.
-pub fn register_consts<'rcx, 'tcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) -> Result<(), String> {
+pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), String> {
     let statics = vcx.env.get_statics();
 
     for s in &statics {
@@ -1468,7 +1468,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
 }
 
 /// Generate trait instances.
-fn assemble_trait_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
+fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
     let trait_impl_ids = vcx.env.get_trait_impls();
 
     for trait_impl_id in trait_impl_ids {

@@ -83,7 +83,7 @@ struct ClosureCaptureRegionVisitor<'a, 'tcx> {
     info: &'a PoloniusInfo<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'a, 'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 'tcx> {
     fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }
@@ -188,7 +188,7 @@ struct ArgFolder<'a, 'tcx> {
     binders_passed: u32,
 }
 
-impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'_, 'tcx> {
     #[inline]
     fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
@@ -268,7 +268,7 @@ impl<'a, 'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
+impl<'tcx> ArgFolder<'_, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         // Look up the type in the args. It really should be in there.
         let opt_ty = self.args.get(p.index as usize).map(|k| k.kind());

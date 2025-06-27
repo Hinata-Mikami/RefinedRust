@@ -125,7 +125,7 @@ pub(crate) struct ProcedureLoops {
 }
 
 impl ProcedureLoops {
-    pub(crate) fn new<'a, 'tcx: 'a>(mir: &'a mir::Body<'tcx>, real_edges: &RealEdges) -> Self {
+    pub(crate) fn new(mir: &mir::Body<'_>, real_edges: &RealEdges) -> Self {
         let dominators = dominators(&mir.basic_blocks);
 
         let mut back_edges: HashSet<(_, _)> = HashSet::new();

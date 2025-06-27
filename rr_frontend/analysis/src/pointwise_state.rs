@@ -21,7 +21,7 @@ pub struct PointwiseState<'mir, 'tcx, S: Serialize> {
     pub(crate) mir: &'mir mir::Body<'tcx>,
 }
 
-impl<'mir, 'tcx: 'mir, S> fmt::Debug for PointwiseState<'mir, 'tcx, S>
+impl<S> fmt::Debug for PointwiseState<'_, '_, S>
 where
     S: Serialize + fmt::Debug,
 {
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<'mir, 'tcx: 'mir, S: Serialize> Serialize for PointwiseState<'mir, 'tcx, S> {
+impl<S: Serialize> Serialize for PointwiseState<'_, '_, S> {
     /// Serialize `PointwiseState` by translating it to a combination of vectors, tuples and maps,
     /// such that serde can automatically translate it.
     fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {

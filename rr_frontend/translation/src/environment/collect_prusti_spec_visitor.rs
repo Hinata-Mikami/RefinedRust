@@ -61,7 +61,7 @@ impl<'a, 'tcx> CollectPrustiSpecVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CollectPrustiSpecVisitor<'_, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item<'_>) {
         //let attrs = self.tcx.get_attrs(i.def_id.to_def_id());
         if let hir::ItemKind::Fn { .. } = i.kind {

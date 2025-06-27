@@ -25,9 +25,7 @@ use crate::environment::mir_sets::local_set::LocalSet;
 pub(crate) type DefinitelyAllocatedAnalysisResult = AnalysisResult<LocalSet>;
 
 #[expect(dead_code)]
-pub(crate) fn compute_definitely_allocated<'a, 'tcx: 'a>(
-    body: &'a mir::Body<'tcx>,
-) -> DefinitelyAllocatedAnalysisResult {
+pub(crate) fn compute_definitely_allocated(body: &mir::Body<'_>) -> DefinitelyAllocatedAnalysisResult {
     let analysis = DefinitelyAllocatedAnalysis::new(body);
     let pointwise_state = analysis
         .run_fwd_analysis()

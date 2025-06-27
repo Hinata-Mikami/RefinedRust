@@ -18,9 +18,9 @@ use crate::traits::resolution;
 use crate::{regions, types};
 
 /// Get the syntypes of function arguments for a procedure call.
-fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
+fn get_arg_syntypes_for_procedure_call<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
-    ty_translator: &types::LocalTX<'def, 'tcx>,
+    ty_translator: &types::LocalTX<'_, 'tcx>,
     callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
@@ -171,8 +171,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Internally register that we have used a trait method with a particular instantiation of
     /// generics, and return the code parameter name.
-    fn register_use_trait_method<'c>(
-        &'c mut self,
+    fn register_use_trait_method(
+        &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,

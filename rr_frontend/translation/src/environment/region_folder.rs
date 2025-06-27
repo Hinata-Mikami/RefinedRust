@@ -37,7 +37,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'_, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

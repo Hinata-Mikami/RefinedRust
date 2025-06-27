@@ -195,7 +195,7 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseInvariantSpecParser<'a, T> {
     }
 }
 
-impl<'b, 'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecParser<'b, T> {
+impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecParser<'_, T> {
     fn parse_invariant_spec<'a>(
         &'a mut self,
         ty_name: &str,
@@ -402,8 +402,8 @@ where
     }
 }
 
-impl<'a, 'def, T: ParamLookup<'def>, F> StructFieldSpecParser<'def>
-    for VerboseStructFieldSpecParser<'a, 'def, T, F>
+impl<'def, T: ParamLookup<'def>, F> StructFieldSpecParser<'def>
+    for VerboseStructFieldSpecParser<'_, 'def, T, F>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {

@@ -75,7 +75,7 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseEnumSpecParser<'a, T> {
     }
 }
 
-impl<'b, 'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'b, T> {
+impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T> {
     fn parse_enum_spec<'a>(
         &'a mut self,
         ty_name: &str,

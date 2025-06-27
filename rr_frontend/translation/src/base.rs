@@ -33,7 +33,7 @@ pub(crate) struct OrderedDefId {
 }
 
 impl OrderedDefId {
-    pub(crate) fn new<'tcx>(tcx: ty::TyCtxt<'tcx>, did: DefId) -> Self {
+    pub(crate) fn new(tcx: ty::TyCtxt<'_>, did: DefId) -> Self {
         let def_path_hash = tcx.def_path_hash(did);
         Self {
             def_id: did,
@@ -58,7 +58,7 @@ impl PartialOrd<Self> for OrderedDefId {
     }
 }
 
-pub(crate) fn sort_def_ids<'tcx>(tcx: ty::TyCtxt<'tcx>, dids: &mut [DefId]) {
+pub(crate) fn sort_def_ids(tcx: ty::TyCtxt<'_>, dids: &mut [DefId]) {
     dids.sort_by(|a, b| {
         let hash_a = tcx.def_path_hash(*a);
         let hash_b = tcx.def_path_hash(*b);

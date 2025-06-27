@@ -328,8 +328,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Errors:
     /// - NotATrait(did) if did is not a trait
     /// - TraitAlreadyExists(did) if this trait has already been registered
-    pub(crate) fn register_shim<'a>(
-        &'a self,
+    pub(crate) fn register_shim(
+        &self,
         did: DefId,
         spec: radium::LiteralTraitSpec,
     ) -> TraitResult<'tcx, radium::LiteralTraitSpecRef<'def>> {
@@ -349,8 +349,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Register a shim for a trait impl.
-    pub(crate) fn register_impl_shim<'a>(
-        &'a self,
+    pub(crate) fn register_impl_shim(
+        &self,
         did: DefId,
         spec: radium::LiteralTraitImpl,
     ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
@@ -963,7 +963,7 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
         (res, self.early_instantiation)
     }
 }
-impl<'tcx, 'a> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, 'a> {
+impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReBound(_, b1) = r1.kind() {
             trace!("trying to unify region {r1:?} with {r2:?}");

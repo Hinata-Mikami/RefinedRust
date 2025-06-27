@@ -23,6 +23,7 @@ rustflags = [
     "-Dnon_ascii_idents",
     "-Dredundant_imports",
     "-Dredundant_lifetimes",
+    "-Dsingle_use_lifetimes",
     "-Dtrivial_casts",
     "-Dtrivial_numeric_casts",
     "-Dunit_bindings",

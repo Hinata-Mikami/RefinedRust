@@ -141,7 +141,7 @@ impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
     }
 }
 
-impl<'def, 'a, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 'a, T> {
+impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, '_, T> {
     fn parse_loop_attrs<'b>(
         &'b mut self,
         attrs: &'b [&'b hir::AttrItem],

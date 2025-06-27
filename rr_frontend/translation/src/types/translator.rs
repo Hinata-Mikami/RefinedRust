@@ -56,7 +56,7 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
 }
 
-impl<'tcx, 'def> ParamLookup<'def> for FunctionState<'tcx, 'def> {
+impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
         self.generic_scope.lookup_ty_param(path)
     }
@@ -176,7 +176,7 @@ pub(crate) type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
 pub(crate) type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
 pub(crate) type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
 
-impl<'a, 'def, 'tcx> STInner<'a, 'def, 'tcx> {
+impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     /// Create a copy of the param scope.
     pub(crate) fn get_param_scope(&self) -> scope::Params<'tcx, 'def> {
         match &self {
@@ -583,8 +583,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Try to translate a region to a Caesium lifetime.
-    pub(crate) fn translate_region<'a, 'b>(
-        translation_state: ST<'a, 'b, 'def, 'tcx>,
+    pub(crate) fn translate_region(
+        translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
         match region.kind() {
@@ -691,11 +691,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Generate a use of a struct, instantiated with type parameters.
     /// This should only be called on tuples and struct ADTs.
     /// Only for internal references as part of type translation.
-    fn generate_structlike_use_internal<'a, 'b>(
+    fn generate_structlike_use_internal(
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-        adt_deps: ST<'a, 'b, 'def, 'tcx>,
+        adt_deps: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
@@ -747,11 +747,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Generate the use of an enum.
     /// Only for internal references as part of type translation.
-    fn generate_enum_use_noshim<'a, 'b>(
+    fn generate_enum_use_noshim(
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::AbstractEnumUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
@@ -788,11 +788,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Generate the use of a struct.
     /// Only for internal references as part of type translation.
-    fn generate_struct_use_noshim<'a, 'b>(
+    fn generate_struct_use_noshim(
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
@@ -820,12 +820,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Generate the use of an enum variant.
     /// Only for internal references as part of type translation.
-    fn generate_enum_variant_use_noshim<'a, 'b>(
+    fn generate_enum_variant_use_noshim(
         &self,
         adt_id: DefId,
         variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
@@ -851,10 +851,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Generate a tuple use for a tuple with the given types.
-    pub(crate) fn generate_tuple_use<'a, 'b, F>(
+    pub(crate) fn generate_tuple_use<F>(
         &self,
         tys: F,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
@@ -1019,12 +1019,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Make an ADT variant.
     /// This assumes that this variant has already been pre-registered to account for recursive
     /// occurrences.
-    fn make_adt_variant<'a>(
+    fn make_adt_variant(
         &self,
         struct_name: &str,
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
-        adt_deps: &mut TranslateAdtState<'a, 'tcx, 'def>,
+        adt_deps: &mut TranslateAdtState<'_, 'tcx, 'def>,
     ) -> Result<(radium::AbstractVariant<'def>, Option<radium::InvariantSpec>), TranslationError<'tcx>> {
         info!("adt variant: {:?}", ty);
 
@@ -1117,10 +1117,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Make a `GlobalId` for constants (use for discriminants).
-    fn make_global_id_for_discr<'a>(
+    fn make_global_id_for_discr(
         &self,
         did: DefId,
-        env: &'a [ty::GenericArg<'tcx>],
+        env: &'_ [ty::GenericArg<'tcx>],
     ) -> mir::interpret::GlobalId<'tcx> {
         mir::interpret::GlobalId {
             instance: ty::Instance {
@@ -1421,11 +1421,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn generate_adt_shim_use<'a, 'b>(
+    fn generate_adt_shim_use(
         &self,
         adt: ty::AdtDef<'tcx>,
         substs: ty::GenericArgsRef<'tcx>,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
             return Err(TranslationError::UnknownError(format!(
@@ -1450,10 +1450,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Translate types, while placing the `DefIds` of ADTs that this type uses in the `adt_deps`
     /// argument, if provided.
-    pub(crate) fn translate_type_in_state<'a, 'b>(
+    pub(crate) fn translate_type_in_state(
         &self,
         ty: ty::Ty<'tcx>,
-        state: ST<'a, 'b, 'def, 'tcx>,
+        state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Bool => Ok(radium::Type::Bool),
@@ -1775,11 +1775,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
     /// Assumes that the current state of the ADT registry is consistent, i.e. we are not currently
     /// registering a new ADT.
-    pub(crate) fn generate_structlike_use<'a>(
+    pub(crate) fn generate_structlike_use(
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-        scope: InFunctionState<'a, 'def, 'tcx>,
+        scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
@@ -1878,11 +1878,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
     /// Generate a struct use.
     /// Returns None if this should be unit.
-    pub(crate) fn generate_enum_variant_use<'a>(
+    pub(crate) fn generate_enum_variant_use(
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        scope: InFunctionState<'a, 'def, 'tcx>,
+        scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
         info!("generating enum variant use for {:?}", variant_id);
 

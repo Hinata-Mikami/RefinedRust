@@ -29,7 +29,7 @@ pub struct DefinitelyInitializedState<'mir, 'tcx> {
     pub(crate) tcx: ty::TyCtxt<'tcx>,
 }
 
-impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyInitializedState<'mir, 'tcx> {
+impl fmt::Debug for DefinitelyInitializedState<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ignore tcx & mir
         f.debug_struct("DefinitelyInitializedState")
@@ -38,7 +38,7 @@ impl<'mir, 'tcx: 'mir> fmt::Debug for DefinitelyInitializedState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> PartialEq for DefinitelyInitializedState<'mir, 'tcx> {
+impl PartialEq for DefinitelyInitializedState<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         // TODO: This assert is commented out because the stable hasher crashes
         // on MIR that has region ids.
@@ -65,9 +65,9 @@ impl<'mir, 'tcx: 'mir> PartialEq for DefinitelyInitializedState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> Eq for DefinitelyInitializedState<'mir, 'tcx> {}
+impl Eq for DefinitelyInitializedState<'_, '_> {}
 
-impl<'mir, 'tcx: 'mir> Serialize for DefinitelyInitializedState<'mir, 'tcx> {
+impl Serialize for DefinitelyInitializedState<'_, '_> {
     fn serialize<Se: Serializer>(&self, serializer: Se) -> Result<Se::Ok, Se::Error> {
         let mut seq = serializer.serialize_seq(Some(self.def_init_places.len()))?;
 
