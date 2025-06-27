@@ -27,7 +27,7 @@ pub struct CommandAttrs {
     pub attributes: Option<Attribute>,
 }
 
-impl Display for CommandAttrs {
+impl fmt::Display for CommandAttrs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(attributes) = &self.attributes {
             write!(f, "{} ", attributes)?;
@@ -63,7 +63,7 @@ pub struct QueryCommandAttrs {
     pub attributes: Option<Attribute>,
 }
 
-impl Display for QueryCommandAttrs {
+impl fmt::Display for QueryCommandAttrs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(attributes) = &self.attributes {
             write!(f, "{} ", attributes)?;
@@ -203,7 +203,7 @@ impl Context {
     }
 }
 
-impl Display for Context {
+impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.items.0.is_empty() { Ok(()) } else { write!(f, "Context {}.", self.items) }
     }
@@ -218,7 +218,7 @@ pub struct Definition {
     pub body: DefinitionBody,
 }
 
-impl Display for Definition {
+impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ty) = &self.ty {
             write!(f, "Definition {} {} : {ty}", self.name, self.params)?;
@@ -260,7 +260,7 @@ pub struct Lemma {
     pub body: proof::Proof,
 }
 
-impl Display for Lemma {
+impl fmt::Display for Lemma {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Lemma {} {} : {}.", self.name, self.params, self.ty)?;
         write!(f, "{}", self.body)

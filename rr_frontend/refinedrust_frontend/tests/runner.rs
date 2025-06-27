@@ -2,8 +2,6 @@
 
 use std::{env, path, process};
 
-use {env_logger as _, log as _, rr_rustc_interface as _, rrconfig as _, shlex as _, translation as _};
-
 const TARGET_DIR: &str = if cfg!(debug_assertions) { "debug" } else { "release" };
 
 fn build_refinedrust() {

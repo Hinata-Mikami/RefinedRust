@@ -150,7 +150,7 @@ pub struct Implicit {
     ty: Option<term::Type>,
 }
 
-impl Display for Implicit {
+impl fmt::Display for Implicit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inner = match (&self.name, &self.ty) {
             (Some(name), Some(ty)) => format!("{} : {}", name, ty),
@@ -177,7 +177,7 @@ pub struct Generalizing {
     ty: term::Type,
 }
 
-impl Display for Generalizing {
+impl fmt::Display for Generalizing {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inner = match &self.name {
             Some(name) => format!("{} : !{}", name, self.ty),

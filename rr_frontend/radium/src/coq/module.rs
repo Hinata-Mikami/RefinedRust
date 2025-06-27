@@ -10,7 +10,7 @@
 
 use std::fmt;
 
-use derive_more::{Deref, DerefMut, Display, From, Into};
+use derive_more::{Deref, DerefMut, Display, Into};
 
 use crate::{display_list, write_list};
 
@@ -73,7 +73,7 @@ impl FromRequire {
     }
 }
 
-impl Display for FromRequire {
+impl fmt::Display for FromRequire {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(from) = &self.from {
             write!(f, "From {} ", from)?;
@@ -161,7 +161,7 @@ fn fmt_modules(f: &mut fmt::Formatter<'_>, modules: &[&FromRequire], kind: &str)
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct ImportList<'a>(pub &'a Vec<Import>);
 
-impl Display for ImportList<'_> {
+impl fmt::Display for ImportList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let modules: Vec<_> = self.0.iter().map(|x| &x.0).collect();
 
@@ -172,7 +172,7 @@ impl Display for ImportList<'_> {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct ExportList<'a>(pub &'a Vec<Export>);
 
-impl Display for ExportList<'_> {
+impl fmt::Display for ExportList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let modules: Vec<_> = self.0.iter().map(|x| &x.0).collect();
 

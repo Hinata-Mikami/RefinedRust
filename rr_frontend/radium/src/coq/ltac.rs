@@ -75,7 +75,7 @@ pub struct Attrs {
     pub scope: Option<Scope>,
 }
 
-impl Display for Attrs {
+impl fmt::Display for Attrs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(scope) = &self.scope {
             write!(f, "{}: ", scope)?;

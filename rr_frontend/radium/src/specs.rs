@@ -24,7 +24,7 @@ use crate::{BASE_INDENT, coq, display_list, model, push_str_list, write_list};
 /// Encodes a RR type with an accompanying refinement.
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
-impl Display for TypeWithRef<'_> {
+impl fmt::Display for TypeWithRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{} :@: {}", self.1, self.0)
     }
@@ -53,7 +53,7 @@ pub enum UniversalLft {
     External(Lft),
 }
 
-impl Display for UniversalLft {
+impl fmt::Display for UniversalLft {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::Function => write!(f, "ϝ"),
@@ -82,7 +82,7 @@ pub enum IntType {
     USize,
 }
 
-impl Display for IntType {
+impl fmt::Display for IntType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::I8 => write!(f, "I8"),
@@ -116,7 +116,7 @@ pub enum OpType {
     Literal(coq::term::App<String, String>),
 }
 
-impl Display for OpType {
+impl fmt::Display for OpType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "BoolOp"),
@@ -157,7 +157,7 @@ pub enum SynType {
     // no struct or enums - these are specified through literals.
 }
 
-impl Display for SynType {
+impl fmt::Display for SynType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "BoolSynType"),
@@ -489,7 +489,7 @@ pub enum Type<'def> {
     RawPtr,
 }
 
-impl Display for Type<'_> {
+impl fmt::Display for Type<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bool => write!(f, "bool_t"),
@@ -1111,7 +1111,7 @@ pub enum StructRepr {
     ReprTransparent,
 }
 
-impl Display for StructRepr {
+impl fmt::Display for StructRepr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ReprRust => write!(f, "StructReprRust"),
@@ -1129,7 +1129,7 @@ pub enum EnumRepr {
     ReprTransparent,
 }
 
-impl Display for EnumRepr {
+impl fmt::Display for EnumRepr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ReprRust => write!(f, "EnumReprRust"),
@@ -2480,7 +2480,7 @@ pub enum Layout {
     Pad(u32),
 }
 
-impl Display for Layout {
+impl fmt::Display for Layout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Ptr => write!(f, "void*"),
@@ -2516,7 +2516,7 @@ pub enum IProp {
 
 fn fmt_with_op<T>(v: &[T], op: &str, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error>
 where
-    T: Display,
+    T: fmt::Display,
 {
     if v.is_empty() {
         return write!(f, "True");
@@ -2534,7 +2534,7 @@ fn fmt_binders(
     write_list!(f, binders, " ")
 }
 
-impl Display for IProp {
+impl fmt::Display for IProp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::True => write!(f, "True"),
@@ -2574,7 +2574,7 @@ impl IPropPredicate {
     }
 }
 
-impl Display for IPropPredicate {
+impl fmt::Display for IPropPredicate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         fmt_binders(&self.binders, "λ", f)?;
         write!(f, ", ({})%I : iProp Σ", self.prop)
@@ -2590,7 +2590,8 @@ pub struct LoopSpec {
     preserved_locals: Vec<String>,
     uninit_locals: Vec<String>,
 }
-impl Display for LoopSpec {
+
+impl fmt::Display for LoopSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -2834,7 +2835,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 }
 
 // TODO: Deprecated: Generate a coq::Document instead.
-impl<'def> Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
+impl<'def> fmt::Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut doc = coq::Document::default();
 
@@ -3522,7 +3523,7 @@ impl<T: TraitReqInfo> From<TraitReqScope> for GenericScope<'_, T> {
         generic_scope
     }
 }
-impl Display for TraitReqScope {
+impl fmt::Display for TraitReqScope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // just a special case of `GenericScope`
         let scope: GenericScope<'_, LiteralTraitSpecUseRef<'_>> = self.clone().into();
@@ -3536,7 +3537,7 @@ pub struct TraitReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
 
-impl Display for TraitReqScopeInst {
+impl fmt::Display for TraitReqScopeInst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write_list!(f, &self.lft_insts, "", |x| format!(" <LFT> {x}"))
     }
@@ -4165,7 +4166,7 @@ impl<T: TraitReqInfo + Clone> GenericScope<'_, T> {
     }
 }
 
-impl<T: TraitReqInfo> Display for GenericScope<'_, T> {
+impl<T: TraitReqInfo> fmt::Display for GenericScope<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.format(f, false, false, &[], &[], &[])
     }
@@ -4597,7 +4598,7 @@ impl TraitSpecDecl<'_> {
 }
 
 // TODO: Deprecated: Generate a coq::Document instead.
-impl Display for TraitSpecDecl<'_> {
+impl fmt::Display for TraitSpecDecl<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Section {}.\n", self.lit.name)?;
 
@@ -4992,7 +4993,7 @@ impl TraitImplSpec<'_> {
     }
 }
 
-impl Display for TraitImplSpec<'_> {
+impl fmt::Display for TraitImplSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
             section.push(coq::command::Context::refinedrust());

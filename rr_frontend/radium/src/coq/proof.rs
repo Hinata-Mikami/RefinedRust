@@ -26,7 +26,7 @@ pub struct Proof {
     pub terminator: Terminator,
 }
 
-impl Display for Proof {
+impl fmt::Display for Proof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(using) = &self.using {
             writeln!(f, "Proof using {}.", using)?;

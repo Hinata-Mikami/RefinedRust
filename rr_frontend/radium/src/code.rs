@@ -30,7 +30,7 @@ fn fmt_comment(o: &Option<String>) -> String {
 }
 
 #[expect(clippy::ref_option)]
-fn fmt_option<T: Display>(o: &Option<T>) -> String {
+fn fmt_option<T: fmt::Display>(o: &Option<T>) -> String {
     match o {
         None => "None".to_owned(),
         Some(x) => format!("Some ({})", x),
@@ -682,7 +682,7 @@ fn make_lft_map_string(els: &Vec<(String, String)>) -> String {
     out
 }
 
-impl Display for FunctionCode {
+impl fmt::Display for FunctionCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_variable(Variable((name, ty)): &Variable) -> String {
             format!("(\"{}\", {} : layout)", name, Layout::from(ty))
@@ -1176,7 +1176,7 @@ pub enum UsedProcedureSpec<'def> {
     TraitMethod(QuantifiedTraitImpl<'def>, String),
 }
 
-impl Display for UsedProcedureSpec<'_> {
+impl fmt::Display for UsedProcedureSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Literal(lit, _) => {
@@ -1318,7 +1318,7 @@ impl UsedProcedure<'_> {
     }
 }
 
-impl Display for UsedProcedure<'_> {
+impl fmt::Display for UsedProcedure<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // quantify
         write!(f, "(<tag_type> {} ", self.quantified_scope)?;

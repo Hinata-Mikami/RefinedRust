@@ -58,7 +58,7 @@ pub enum Term {
     Prefix(String, Box<Term>),
 }
 
-impl Display for Term {
+impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write as _;
 
@@ -138,7 +138,7 @@ pub struct App<T, U> {
     pub(crate) rhs: Vec<U>,
 }
 
-impl<T: Display, U: Display> Display for App<T, U> {
+impl<T: fmt::Display, U: fmt::Display> fmt::Display for App<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.rhs.is_empty() {
             return write!(f, "{}", self.lhs);
@@ -169,7 +169,7 @@ pub struct RecordBody {
     pub items: Vec<RecordBodyItem>,
 }
 
-impl Display for RecordBody {
+impl fmt::Display for RecordBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write as _;
 
@@ -189,7 +189,7 @@ pub struct RecordBodyItem {
     pub term: Term,
 }
 
-impl Display for RecordBodyItem {
+impl fmt::Display for RecordBodyItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write as _;
 
@@ -203,15 +203,15 @@ impl Display for RecordBodyItem {
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 pub type Type = RocqType<model::Type>;
 
-pub(crate) fn fmt_list<T: Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     format!("[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_hlist<T: Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_hlist<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     format!("+[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_prod<T: Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),
@@ -285,7 +285,7 @@ pub struct Record {
     pub body: Vec<RecordDeclItem>,
 }
 
-impl Display for Record {
+impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write as _;
 
