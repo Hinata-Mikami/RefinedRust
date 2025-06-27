@@ -4,6 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use std::cmp;
+
 use derive_more::Display;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::hir::definitions::DefPathHash;
@@ -43,7 +45,7 @@ impl OrderedDefId {
 }
 
 impl Ord for OrderedDefId {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.def_path_hash.cmp(&other.def_path_hash).then_with(|| {
             self.def_id
                 .krate
@@ -53,7 +55,7 @@ impl Ord for OrderedDefId {
     }
 }
 impl PartialOrd<Self> for OrderedDefId {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }

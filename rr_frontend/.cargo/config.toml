@@ -44,7 +44,7 @@ rustflags = [
     "-Dclippy::style",
     "-Dclippy::suspicious",
 
-    # === REASONABLE LINTS ===
+    # === DESIRABLE LINTS ===
 
     # clippy::correctness
     "-Aclippy::unused_io_amount",
@@ -62,7 +62,7 @@ rustflags = [
     "-Aclippy::new_without_default",
     "-Aclippy::write_with_newline",
 
-    # === REQUIRE DISCUSSION ===
+    # === POTENTIAL LINTS (See: #7) ===
 
     # clippy::pedantic
     "-Aclippy::cast_possible_truncation",
@@ -78,6 +78,7 @@ rustflags = [
     "-Aclippy::clone_on_ref_ptr",
     "-Aclippy::exit",
     "-Aclippy::expect_used",
+    "-Aclippy::field_scoped_visibility_modifiers",
     "-Aclippy::indexing_slicing",
     "-Aclippy::missing_assert_message",
     "-Aclippy::missing_asserts_for_indexing",
@@ -90,10 +91,8 @@ rustflags = [
     "-Aclippy::unimplemented",
     "-Aclippy::unwrap_used",
     "-Aclippy::use_debug",
-    "-Aclippy::integer_division_remainder_used",
-    "-Aclippy::field_scoped_visibility_modifiers",
 
-    # === AVOIDABLE LINTS ===
+    # === UNDESIRABLE LINTS ===
 
     # clippy::complexity
     "-Aclippy::too_many_arguments",
@@ -111,6 +110,8 @@ rustflags = [
     "-Aclippy::struct_field_names",
 
     # clippy::restriction
+    "-Aclippy::allow_attributes_without_reason",
+    "-Aclippy::arbitrary_source_item_ordering",
     "-Aclippy::default_numeric_fallback",
     "-Aclippy::else_if_without_else",
     "-Aclippy::exhaustive_enums",
@@ -118,10 +119,13 @@ rustflags = [
     "-Aclippy::format_push_string",
     "-Aclippy::implicit_return",
     "-Aclippy::integer_division",
+    "-Aclippy::integer_division_remainder_used",
+    "-Aclippy::iter_over_hash_type",
     "-Aclippy::min_ident_chars",
     "-Aclippy::missing_inline_in_public_items",
     "-Aclippy::missing_trait_methods",
     "-Aclippy::question_mark_used",
+    "-Aclippy::return_and_then",
     "-Aclippy::shadow_reuse",
     "-Aclippy::shadow_same",
     "-Aclippy::shadow_unrelated",
@@ -132,11 +136,6 @@ rustflags = [
     "-Aclippy::std_instead_of_core",
     "-Aclippy::unreachable",
     "-Aclippy::wildcard_enum_match_arm",
-    "-Aclippy::iter_over_hash_type",
-    "-Aclippy::allow_attributes_without_reason",
-    "-Aclippy::absolute_paths",
-    "-Aclippy::arbitrary_source_item_ordering",
-    "-Aclippy::return_and_then",
 
     # clippy::style
     "-Aclippy::just_underscores_and_digits",
