@@ -1444,9 +1444,11 @@ impl fmt::Display for UsedProcedure<'_> {
     }
 }
 
-/// A `CaesiumFunctionBuilder` allows to incrementally construct the functions's code and the spec
-/// at the same time. It ensures that both definitions line up in the right way (for instance, by
-/// ensuring that other functions are linked up in a consistent way).
+/// Function's code and specs builder.
+///
+/// It allows to incrementally construct the functions's code and the spec at the same time. It ensures that
+/// both definitions line up in the right way (for instance, by ensuring that other functions are linked up in
+/// a consistent way).
 #[expect(clippy::partial_pub_fields)]
 pub struct FunctionBuilder<'def> {
     pub code: FunctionCodeBuilder,

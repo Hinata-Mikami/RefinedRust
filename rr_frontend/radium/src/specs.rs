@@ -138,6 +138,7 @@ impl fmt::Display for OpType {
 pub(crate) static BOOL_REPR: IntType = IntType::U8;
 
 /// A syntactic `RefinedRust` type.
+///
 /// Every semantic `RefinedRust` type has a corresponding syntactic type that determines its
 /// representation in memory.
 /// A syntactic type does not necessarily specify a concrete layout. A layout is only fixed once

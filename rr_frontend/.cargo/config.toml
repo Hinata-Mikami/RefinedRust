@@ -140,7 +140,6 @@ rustflags = [
     # clippy::style
     "-Aclippy::just_underscores_and_digits",
     "-Aclippy::upper-case-acronyms",
-    "-Aclippy::too_long_first_doc_paragraph",
 
     # === SPECIFIC LINTS ===
 
