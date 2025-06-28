@@ -12,8 +12,6 @@ use config::{Config, Environment, File, FileFormat};
 use path_clean::PathClean as _;
 use serde::Deserialize;
 
-pub mod arg_value;
-
 // RwLock due to rustc parallelism
 static SETTINGS: LazyLock<RwLock<Config>> = LazyLock::new(|| {
     RwLock::new({

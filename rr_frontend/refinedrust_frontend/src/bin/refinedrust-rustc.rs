@@ -147,14 +147,7 @@ fn main() {
     // Is this crate a dependency when user doesn't want to verify dependencies
     let is_no_verify_dep_crate = !is_primary_package && !rrconfig::verify_deps();
 
-    // Would `cargo check` not report errors for this crate? That is, are lints disabled
-    // (i.e. is this a non-local crate)
-    let args = env::args();
-    let args: Vec<_> = args.collect();
-    let are_lints_disabled =
-        rrconfig::arg_value::arg_value(&args, "--cap-lints", |val| val == "allow").is_some();
-
-    if is_no_verify_dep_crate || are_lints_disabled {
+    if is_no_verify_dep_crate {
         rrconfig::set_no_verify(true);
     }
 
