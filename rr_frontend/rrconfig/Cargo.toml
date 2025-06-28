@@ -1,7 +1,7 @@
 [package]
 name = "rrconfig"
-authors = ["ETH Zurich"]
-license = "MPL-2.0"
+authors = ["The RefinedRust Developers and Contributors"]
+license = "BSD-3-Clause"
 
 edition.workspace = true
 repository.workspace = true
