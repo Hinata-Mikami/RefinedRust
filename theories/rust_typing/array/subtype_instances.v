@@ -307,8 +307,8 @@ Section instances.
     iIntros (??) "Ha".
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
     iPoseProof (big_sepL_extend_r (zip rs1 rs2) with "Ha") as "Ha".
-    { rewrite !zip_length !length_interpret_iml. lia. }
-    iApply big_sepL2_from_zip. { rewrite !zip_length !length_interpret_iml. lia. }
+    { rewrite !length_zip !length_interpret_iml. lia. }
+    iApply big_sepL2_from_zip. { rewrite !length_zip !length_interpret_iml. lia. }
     rewrite zip_assoc_l [zip rs1 (zip _ _)]zip_assoc_r [zip rs1 (interpret_iml _ _ _)]zip_flip.
     rewrite !zip_fmap_l !zip_fmap_r. rewrite !zip_assoc_l !zip_fmap_r.
     rewrite zip_assoc_r -!list_fmap_compose big_sepL_fmap.

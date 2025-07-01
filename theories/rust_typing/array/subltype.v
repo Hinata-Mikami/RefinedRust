@@ -626,7 +626,7 @@ Section accessors.
       rewrite !ltype_core_syn_type_eq in Hst1'.
       rewrite -Hst1. eauto with iFrame.
     }
-    rewrite !zip_length !length_interpret_iml//.
+    rewrite !length_zip !length_interpret_iml//.
   Qed.
   Local Lemma array_acc_uniq_elems_core_eq π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) :
     syn_type_has_layout (ty_syn_type def) ly →
@@ -652,7 +652,7 @@ Section accessors.
       rewrite !ltype_core_syn_type_eq in Hst1'.
       rewrite -Hst1. eauto with iFrame.
     }
-    rewrite !zip_length !length_interpret_iml//.
+    rewrite !length_zip !length_interpret_iml//.
   Qed.
 
   Lemma array_ltype_acc_uniq {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l R q κ γ :

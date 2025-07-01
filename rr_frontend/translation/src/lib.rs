@@ -847,7 +847,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             (coq.theory\n\
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {generated_module_path})\n\
-             (theories stdpp iris Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust Stdlib {}))",
+             (theories stdpp iris iris_contrib Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust Stdlib {}))",
             extra_theories.join(" ")
         )
         .unwrap();

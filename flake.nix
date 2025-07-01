@@ -90,6 +90,11 @@
           sha256 = "sha256-EdRLHmejsDX6ggWH0ZLka4/zRcuuaxcvfiScQaoh6/I=";
         };
 
+        iris-contrib = {
+          version = "53c49f2fcae1a4a9c3bfa547b7de10911a72a8c3";
+          sha256 = "sha256-D1NoltpSDBXEDW9QiVl/EYubxkEyByIbUst45qCL0Eg=";
+        };
+
         lambda-rust = {
           version = "0f4ebd6d9a3a6cf2e0a18dfe794134481b7b4bfc";
           sha256 = "sha256-8ncIi9HyD1TedNkHFhI8wKvrvyiJfdZv/mbS3zOGvvg=";
@@ -171,6 +176,12 @@
             propagatedBuildInputs = [stdpp];
           };
 
+          iris-contrib = mkDepRocqDerivation rocq.iris-contrib {
+            pname = "iris-contrib";
+
+            propagatedBuildInputs = [iris];
+          };
+
           lambda-rust = mkDepRocqDerivation rocq.lambda-rust {
             pname = "lambda-rust";
 
@@ -184,7 +195,7 @@
             opam-name = name;
             src = ./theories;
 
-            propagatedBuildInputs = [coq-record-update equations lambda-rust];
+            propagatedBuildInputs = [coq-record-update equations iris-contrib lambda-rust];
 
             preBuild = "dune() { command dune $@ --display=short; }";
             useDune = true;

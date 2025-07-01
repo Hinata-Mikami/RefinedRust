@@ -13,6 +13,9 @@ license: "BSD-3-Clause"
 depends: [
   "rocq-prover" { (= "9.0.0" ) }
   "coq-stdpp-unstable"
+  "coq-iris"
+  "coq-iris-contrib"
+  "coq-lifetime-logic"
   "dune" {>= "3.16.1"}
   "coq-record-update" {= "0.3.4"}
   "coq-equations" {= "1.3.1+9.0"}
@@ -20,6 +23,7 @@ depends: [
 
 pin-depends: [
   ["coq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#710391513c6d74904ae48b17ae681ca1c20fb98e"]
+  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#53c49f2fcae1a4a9c3bfa547b7de10911a72a8c3"]
   ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#0f4ebd6d9a3a6cf2e0a18dfe794134481b7b4bfc"]
 ]
 

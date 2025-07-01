@@ -48,13 +48,13 @@ Section subtype.
     iApply big_sepL2_from_zip. { rewrite -Hleneq//. }
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
     iPoseProof (big_sepL_extend_l rs2 with "Ha") as "Ha".
-    { rewrite -Hleneq zip_length. lia. }
+    { rewrite -Hleneq length_zip. lia. }
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
     iApply (big_sepL2_elim_l rs1).
-    iApply big_sepL2_from_zip. { rewrite zip_length -Hleneq -Hleneq'. lia. }
+    iApply big_sepL2_from_zip. { rewrite length_zip -Hleneq -Hleneq'. lia. }
     rewrite !zip_assoc_r [zip rs2 rs1]zip_flip zip_fmap_l !big_sepL_fmap.
     iPoseProof (big_sepL2_from_zip' with "Ha") as "Ha".
-    { rewrite zip_length. lia. }
+    { rewrite length_zip. lia. }
     iApply big_sepL2_to_zip'.
     iPoseProof (big_sepL2_to_zip with "Hincl") as "Hincl".
     iPoseProof (big_sepL_extend_r with "Hincl") as "Hincl"; first last.
@@ -68,7 +68,7 @@ Section subtype.
       - iDestruct "Hincl" as "(%Heq & %Heq' & Hincl)". subst. injection Heq' as <-.
         iPoseProof (type_incl_use_val with "Hincl Hown") as "?". eauto with iFrame.
     }
-    rewrite zip_length. lia.
+    rewrite length_zip. lia.
   Qed.
   (* the "trivial" (Rust) subtyping that we need for, e.g., lifetimes *)
   Lemma array_t_own_val_mono {rt} π (ty1 ty2 : type rt) len v rs :

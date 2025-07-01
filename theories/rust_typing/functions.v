@@ -782,7 +782,7 @@ Section function_subsume.
     { iFrame. iApply (big_sepL2_impl with "Hargs").
       iModIntro. iIntros (?? [? []] Hlook1 Hlook2).
       rewrite decide_True; first eauto.
-      rewrite zip_length.
+      rewrite length_zip.
       rewrite length_take.
       apply lookup_lt_Some in Hlook1.
       apply lookup_lt_Some in Hlook2.

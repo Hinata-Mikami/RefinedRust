@@ -3,6 +3,7 @@ From caesium Require Import derived.
 From iris.bi Require Import fractional.
 From iris.proofmode Require Import tactics.
 From refinedrust Require Export base.
+From iris_contrib Require Export list.
 From refinedrust Require Import options.
 
 (** * Random collection of lemmas *)
@@ -69,26 +70,6 @@ Proof.
 Qed.
 
 
-Lemma list_max_insert (l : list nat) i n :
-  list_max (<[i := n]> l) ≤ Nat.max n (list_max l).
-Proof.
-  induction l as [ | a l IH] in i |-*; simpl.
-  - lia.
-  - destruct i as [ | i]; simpl; first lia.
-    specialize (IH i). lia.
-Qed.
-
-Lemma list_max_le_lookup l i (m n : nat) :
-  l !! i = Some m →
-  n ≤ m →
-  n ≤ list_max l.
-Proof.
-  induction l as [ | k l IH] in i |-*; simpl; first done.
-  destruct i as [ | i]; simpl.
-  - intros [= ->]. lia.
-  - intros Ha ?. eapply IH in Ha; lia.
-Qed.
-
 Lemma lookup_zip {A B} (xs : list A) (ys : list B) i z :
   zip xs ys !! i = Some z →
   xs !! i = Some z.1 ∧ ys !! i = Some z.2.
@@ -97,27 +78,6 @@ Proof.
   destruct i as [ | i]; simpl.
   - injection 1 as [= <-]. done.
   - apply IH.
-Qed.
-
-Lemma list_lookup_omap_Some {A B} (l : list A) (f : A → option B) x y i :
-  l !! i = Some x →
-  f x = Some y →
-  ∃ j, omap f l !! j = Some y.
-Proof.
-  induction l as [ | h l IH] in i |-*; simpl; first done.
-  destruct i as [ | i]; simpl.
-  - intros [= ->] -> => /=.
-    by exists 0.
-  - intros Hlook Ha. destruct (IH _ Hlook Ha) as (j & Hlook').
-    destruct (f h) as [Hx | ].
-    + exists (S j). naive_solver.
-    + naive_solver.
-Qed.
-
-Lemma elem_of_cons_dec {A} `{!EqDecision A} (l : list A) (x y : A) :
-  x ∈ y :: l ↔ x = y ∨ x ≠ y ∧ x ∈ l.
-Proof.
-  rewrite elem_of_cons. destruct (decide (x = y)) as [<- | ?]; naive_solver.
 Qed.
 
 Lemma aligned_to_2_max_l l n1 n2 :
@@ -134,17 +94,6 @@ Lemma aligned_to_2_max_r l n1 n2 :
   l `aligned_to` 2 ^ (max n1 n2) →
   l `aligned_to` 2 ^ n2.
 Proof. rewrite Nat.max_comm. apply aligned_to_2_max_l. Qed.
-
-
-Lemma list_subseteq_mjoin {A} (l : list (list A)) (x : list A) :
-  x ∈ l → x ⊆ mjoin l.
-Proof.
-  induction l as [ | y l' IH] in x |-*; simpl.
-  - intros []%elem_of_nil.
-  - intros [ -> | Hel]%elem_of_cons.
-    + set_solver.
-    + apply IH in Hel. set_solver.
-Qed.
 
 Lemma reshape_replicate_elem_length {A} (vs : list A) v n m :
   length vs = n * m →
@@ -167,116 +116,10 @@ Proof.
   rewrite take_0 drop_0. f_equiv. apply IH.
 Qed.
 
-Section Forall.
-  (** Recursive version of Forall, to make it computational and eligible for recursive definitions. *)
-  Context {X} (P : X → Prop).
-  Fixpoint Forall_cb (l : list X) :=
-    match l with
-    | [] => True
-    | x :: l => P x ∧ Forall_cb l
-    end.
-  Lemma Forall_Forall_cb l :
-    Forall P l ↔ Forall_cb l.
-  Proof.
-    induction l as [ | x l IH].
-    - naive_solver.
-    - simpl. split; last naive_solver. inversion 1; naive_solver.
-  Qed.
-End Forall.
-
-Lemma Forall_iff_strong {A} (P Q : A → Prop) (l : list A) :
-  (∀ x, x ∈ l → P x ↔ Q x) →
-  Forall P l ↔ Forall Q l.
-Proof.
-  intros Hequiv. induction l as [ | x l IH]; simpl; first done.
-  split; inversion 1; subst; (constructor; [ apply Hequiv; [ apply elem_of_cons | ] | apply IH]); eauto.
-  all: intros; apply Hequiv; apply elem_of_cons; eauto.
-Qed.
-
-Lemma Forall_impl_strong {A} (P Q : A → Prop) (l : list A) :
-  (∀ x, x ∈ l → P x → Q x) →
-  Forall P l → Forall Q l.
-Proof.
-  intros Himpl. induction l as [ | x l IH]; simpl; first done.
-  inversion 1; subst; (constructor; [ apply Himpl; [ apply elem_of_cons | ] | apply IH]); eauto.
-  intros; apply Himpl; [apply elem_of_cons | ]; eauto.
-Qed.
-
-Lemma Forall_elem_of_iff {X} (P : X → Prop) l :
-  Forall P l ↔ ∀ x, x ∈ l → P x.
-Proof.
-  rewrite Forall_lookup.
-  split.
-  - intros ? ? (i & Hel)%elem_of_list_lookup_1. eauto.
-  - intros Hel i x Hlook%elem_of_list_lookup_2. eauto.
-Qed.
-
-Lemma Forall2_eq {A} (l1 l2 : list A) :
-  Forall2 eq l1 l2 → l1 = l2.
-Proof.
-  induction l1 as [ | x1 l1 IH] in l2 |-*; simpl.
-  { intros ->%Forall2_nil_inv_l. done. }
-  intros (y1 & l2' & -> & Hf & ->)%Forall2_cons_inv_l.
-  f_equiv. by apply IH.
-Qed.
-
 Lemma and_proper (A B C : Prop) :
   (A → B ↔ C) →
   (A ∧ B) ↔ (A ∧ C).
 Proof. naive_solver. Qed.
-
-Lemma zip_flip {A B} (l1 : list A) (l2 : list B) :
-  zip l1 l2 = (λ '(x1, x2), (x2, x1)) <$> zip l2 l1.
-Proof.
-  induction l1 as [ | x1 l1 IH] in l2 |-*; simpl.
-  { destruct l2; done. }
-  destruct l2 as [ | x2 l2]; first done.
-  simpl. f_equiv. apply IH.
-Qed.
-Lemma zip_assoc_r {A B C} (l1 : list A) (l2 : list B) (l3 : list C) :
-  zip l1 (zip l2 l3) = (λ '((x, y), z), (x, (y, z))) <$> zip (zip l1 l2) l3.
-Proof.
-  induction l1 as [ | x l1 IH] in l2, l3 |-*; simpl; first done.
-  destruct l2 as [ | y l2]; first done.
-  destruct l3 as [ | z l3]; first done.
-  simpl. f_equiv. apply IH.
-Qed.
-Lemma zip_assoc_l {A B C} (l1 : list A) (l2 : list B) (l3 : list C) :
-  zip (zip l1 l2) l3 = (λ '(x, (y, z)), ((x, y), z)) <$> zip l1 (zip l2 l3).
-Proof.
-  induction l1 as [ | x l1 IH] in l2, l3 |-*; simpl; first done.
-  destruct l2 as [ | y l2]; first done.
-  destruct l3 as [ | z l3]; first done.
-  simpl. f_equiv. apply IH.
-Qed.
-
-Lemma zip_fmap_l {A B C} (l1 : list A) (l2 : list B) (f : A → C) :
-  zip (f <$> l1) l2 = (λ x : A * B, (f x.1, x.2)) <$> (zip l1 l2).
-Proof.
-  induction l1 as [ | a l1 IH] in l2 |-*; destruct l2 as [ | l2]; simpl; [done.. | ].
-  f_equiv. apply IH.
-Qed.
-
-Lemma zip_length {A B} (l1 : list A) (l2 : list B) :
-  length (zip l1 l2) = min (length l1) (length l2).
-Proof.
-  induction l1 as [ | x l1 IH] in l2 |-*; destruct l2 as [ | y l2]; simpl; [done.. | ].
-  rewrite IH. done.
-Qed.
-
-Lemma zip_app {A B} (l1 l2 : list A) (l1' l2' : list B) :
-  length l1 = length l1' →
-  zip (l1 ++ l2) (l1' ++ l2') = zip l1 l1' ++ zip l2 l2'.
-Proof.
-  intros Hlen. induction l1 as [ | h1 l1 IH] in l1', Hlen |-*; simpl.
-  { destruct l1'; done. }
-  destruct l1' as [ | h1' l1']; first done.
-  simpl. f_equiv. apply IH. simpl in *; lia.
-Qed.
-
-Lemma map_fmap {A B} (f : A → B) (l : list A) :
-  f <$> l = map f l.
-Proof. done. Qed.
 
 (** ** big_sepL *)
 Lemma big_sepL2_insert {Σ} {A B} (l1 : list A) (l2 : list B) (i : nat) (x1 : A) (x2 : B) (Φ : nat → A → B → iProp Σ) (m : nat) :
