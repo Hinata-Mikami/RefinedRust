@@ -13,7 +13,9 @@ license: "BSD-3-Clause"
 depends: [
   "rocq-core" { (= "9.1+rc1" ) }
   "rocq-stdlib"
-  "rocq-stdpp-unstable"
+  "coq-stdpp"
+  "coq-stdpp-unstable"
+  "coq-stdpp-bitvector"
   "coq-iris"
   "coq-iris-contrib"
   "coq-lifetime-logic"
@@ -23,6 +25,9 @@ depends: [
 
 pin-depends: [
   ["rocq-equations.dev" "git+https://github.com/mattam82/Coq-Equations.git#ed986dad4a8700eae0dd5d8e5a57e0c287aeaa12"]
+  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
+  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
+  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
   ["coq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#3e83a7affa51b91aa1eaab1fc0d8a68e5a38b221"]
   ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#4e3ace9604b7ec7a1826cd3563b05f1ef9be0dfd"]
   ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#a13bc8df1c0d9824d6fe51f9572f6485c5ce4fab"]

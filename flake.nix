@@ -81,8 +81,8 @@
         version = rocq.pkgs.rocq-core.rocq-version;
 
         stdpp = {
-          version = "8c814126389c9a9939ea81528c07099228d3d18a";
-          sha256 = "sha256-u48cXFCJhhMJD/xoXRn09SaOspCfzCMlfED4ypMEwsE=";
+          version = "2d5412f48adadeb69fb3115da4d83075c9ba15bf";
+          sha256 = "sha256-GXo9G+bF4wIdMrkedj7/yQnf/4n75kOWmj26g3rjgbg";
         };
 
         iris = {
@@ -103,7 +103,7 @@
 
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
-          file = ./rust-toolchain.toml;
+          file = ./rr_frontend/rust-toolchain.toml;
           sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
         };
 

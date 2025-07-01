@@ -114,6 +114,9 @@ builddep: builddep/refinedrust-builddep.opam
 	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep
 
+builddep-opamfiles: builddep/refinedrust-builddep.opam
+	@true
+.PHONY: builddep-opamfiles
 
 ### Generating _CoqProject
 define COQPROJECT_BASE_BODY

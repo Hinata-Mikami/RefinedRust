@@ -1,14 +1,9 @@
 # This file expects two variables: `NIX_CI_CACHE_PUB_KEY` and `NIX_CI_CACHE_PRIV_KEY`
 # Those variables can be generated with: `nix-store --generate-binary-cache-key ci_nix_store priv.pem pub.pem`
 
-stages: [ nix-cache, lint, build, tests ]
+stages: [ nix-cache, lint, build, tests, opam ]
 
-variables:
-  DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
-  NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
-  NIX_STORE_CACHE_PATH: ".ci_nix_cache"
-
-default:
+.nix:
   image: nixos/nix:2.30.0
   interruptible: true
   tags: [ fp ]
@@ -21,14 +16,19 @@ default:
    # Since the cache is not guaranteed to be available, it is preferable to build the dependencies for each job (which is no-op if the cache is available)
    - nix build --print-build-logs ${DEPENDENCIES}
 
+  variables: &nix_variables
+    DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
+    NIX_STORE_CACHE_PATH: ".ci_nix_cache"
+
   cache: &nix_cache
     key:
       files: [ flake.lock, flake.nix ]
     paths: [ "${NIX_STORE_CACHE_PATH}" ]
     policy: pull
 
-
 .build_to_cache:
+  extends: .nix
   cache:
     <<: *nix_cache
     policy: pull-push
@@ -39,6 +39,7 @@ default:
    - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" ${NIX_DERIVATION}
 
 .build_to_artifacts:
+  extends: .nix
   artifacts:
     paths: [ "${NIX_STORE_ARTIFACTS_PATH}" ]
     when: always
@@ -60,10 +61,12 @@ default:
 nix-cache:
   stage: nix-cache
   variables:
+    <<: *nix_variables
     NIX_DERIVATION: ${DEPENDENCIES}
   extends: .build_to_cache
 
 clippy:
+  extends: .nix
   stage: lint
   needs: [ "nix-cache" ]
   script:
@@ -71,6 +74,7 @@ clippy:
    - nix develop -c cargo clippy --all-targets --all-features --no-deps
 
 fmt:
+  extends: .nix
   stage: lint
   needs: [ "nix-cache" ]
   script:
@@ -78,6 +82,7 @@ fmt:
    - nix develop -c cargo fmt --check
 
 deny:
+  extends: .nix
   stage: lint
   needs: [ "nix-cache" ]
   script:
@@ -85,6 +90,7 @@ deny:
    - nix develop -c cargo deny check
 
 machete:
+  extends: .nix
   stage: lint
   needs: [ "nix-cache" ]
   script:
@@ -95,6 +101,7 @@ theories:
   stage: build
   needs: [ "nix-cache" ]
   variables:
+    <<: *nix_variables
     NIX_DERIVATION: .#theories
   extends: .build_to_artifacts
 
@@ -102,6 +109,7 @@ frontend:
   stage: build
   needs: [ "nix-cache" ]
   variables:
+    <<: *nix_variables
     NIX_DERIVATION: .#frontend
   extends: .build_to_artifacts
 
@@ -109,10 +117,12 @@ stdlib:
   stage: build
   needs: [ "theories", "frontend" ]
   variables:
+    <<: *nix_variables
     NIX_DERIVATION: .#stdlib
   extends: .build_to_artifacts
 
 frontend-tests:
+  extends: .nix
   stage: tests
   needs: [ "frontend" ]
   script:
@@ -120,6 +130,7 @@ frontend-tests:
    - nix develop -c cargo test
 
 case_studies:
+  extends: .nix
   stage: tests
   needs: [ "stdlib" ]
   script:
@@ -127,3 +138,46 @@ case_studies:
    - nix shell -c nix run nixpkgs#gnumake -- generate_case_studies
    - cd case_studies
    - nix shell -c dune build --display=short
+
+.opam:
+  image: $CI_REGISTRY/gaeher/rust-ci
+  variables: &opam_vars
+    # dune takes care of parallelization itself and does not like running in parallel
+    CPU_CORES: "1"
+    OCAML: "ocaml-variants.4.14.2+options ocaml-option-flambda"
+  stage: build
+  interruptible: true
+  tags:
+  - fp
+  script:
+  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+  - make setup-dune
+  - source "$HOME/.cargo/env"
+  - ci/buildjob
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+    - _opam/
+    - ~/.opam
+    - ~/.rustup/toolchains
+    - ~/.rustup/update-hashes
+    - ~/.rustup/settings.toml
+  except:
+  - triggers
+  - schedules
+  - api
+
+build-opam-rocq.9.1+rc1:
+  extends: .opam
+  needs: []
+  variables:
+    <<: *opam_vars
+    OPAM_PINS: "rocq-core version 9.1+rc1 dune version 3.19.1"
+    # DENY_WARNINGS: "1"
+    MAKE_TARGET: "all_with_examples"
+  except:
+  - triggers
+  - schedules
+  - api
+
+
