@@ -10,8 +10,7 @@
 
 use std::fmt;
 
-use derive_more::Display;
-use from_variants::FromVariants;
+use derive_more::{Display, From};
 use indent_write::indentable::Indentable as _;
 
 use crate::BASE_INDENT;
@@ -98,7 +97,7 @@ impl QueryCommandAttrs {
 /// A [command].
 ///
 /// [command]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-command
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum Command {
     /// The [`From ... Require`] command.
     ///
@@ -171,7 +170,7 @@ impl From<Command> for CommandAttrs {
 ///
 /// [query command]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-query_command
 #[expect(clippy::module_name_repetitions)]
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum QueryCommand {
     #[display("{}", _0)]
     Compute(eval::Compute),

@@ -10,8 +10,7 @@
 
 use std::fmt;
 
-use derive_more::Display;
-use from_variants::FromVariants;
+use derive_more::{Display, From};
 
 use crate::coq::term;
 use crate::model;
@@ -21,7 +20,7 @@ use crate::model;
 /// [tactic]: https://rocq-prover.org/doc/v8.20/refman/coq-tacindex.html
 pub type LTac = RocqLTac<model::LTac>;
 
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum RocqLTac<T> {
     /// [`Exact`] tactic
     ///
@@ -33,17 +32,17 @@ pub enum RocqLTac<T> {
     ///
     /// [`Let-in`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#let-in-definitions
     #[display("{}", *_0)]
-    #[from_variants(into)]
+    #[from(forward)]
     LetIn(Box<LetIn>),
 
     /// User defined type
     #[display("{}.", _0)]
-    #[from_variants(skip)]
+    #[from(ignore)]
     UserDefined(T),
 
     /// Literal Ltac strings for backwards compatibility
     #[display("{}.", _0)]
-    #[from_variants(skip)]
+    #[from(ignore)]
     Literal(String),
 }
 

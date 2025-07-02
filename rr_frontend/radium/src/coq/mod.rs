@@ -211,7 +211,7 @@
 //! ]);
 //! ```
 //!
-//! Similarly, the `.into()` method can be derived for each enumeration variant using `FromVariant`:
+//! Similarly, the `.into()` method can be derived for each enumeration variant using `From`:
 //! ```
 //! # struct FieldAttrs { field: Field, attributes: Option<String> };
 //! # enum Field { Foo, Bar };
@@ -222,13 +222,12 @@
 //! # impl From<Field> for Entry {
 //! #   fn from(field: Field) -> Self { Self::FieldAttrs(FieldAttrs::new(field)) }
 //! # }
-//! use derive_more::{Deref, DerefMut};
-//! use from_variants::FromVariants;
+//! use derive_more::{Deref, DerefMut, From};
 //!
 //! #[derive(Deref, DerefMut)]
 //! struct Entries(Vec<Entry>);
 //!
-//! #[derive(FromVariants)]
+//! #[derive(From)]
 //! enum Entry {
 //!     FieldAttrs(FieldAttrs),
 //! };
@@ -256,9 +255,9 @@
 //!
 //! Then, the previous example can be written using this syntax:
 //! ```
-//! # use from_variants::FromVariants;
+//! # use derive_more::From;
 //! # struct Entries(Vec<Entry>);
-//! # #[derive(FromVariants)] enum Entry { FieldAttrs(FieldAttrs) };
+//! # #[derive(From)] enum Entry { FieldAttrs(FieldAttrs) };
 //! # struct FieldAttrs { field: Field, attributes: Option<String> };
 //! # impl FieldAttrs {
 //! #   fn new(field: Field) -> Self { Self { field, attributes: None } }
@@ -291,9 +290,9 @@
 //!
 //! However, if there is a homogeneous list, an `impl Into` argument can be used:
 //! ```
-//! # use from_variants::FromVariants;
+//! # use derive_more::From;
 //! # struct Entries(Vec<Entry>);
-//! # #[derive(FromVariants)] enum Entry { FieldAttrs(FieldAttrs) };
+//! # #[derive(From)] enum Entry { FieldAttrs(FieldAttrs) };
 //! # struct FieldAttrs { field: Field, attributes: Option<String> };
 //! # enum Field { Foo, Bar };
 //! # impl FieldAttrs {
@@ -332,7 +331,6 @@ pub mod syntax;
 pub mod term;
 
 use derive_more::{Deref, DerefMut, Display, From};
-use from_variants::FromVariants;
 use transitive::Transitive;
 
 use crate::{display_list, model};
@@ -358,7 +356,7 @@ impl Document {
 /// A [sentence], or a comment.
 ///
 /// [sentence]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-sentence
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, From, Transitive)]
 #[transitive(from(command::Command, command::CommandAttrs))]
 #[transitive(from(command::QueryCommand, command::QueryCommandAttrs))]
 #[transitive(from(command::Context, command::Command))]
@@ -402,7 +400,7 @@ impl ProofDocument {
 /// [Vernacular] language, or a comment.
 ///
 /// [Vernacular]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#grammar-token-ltac_expr
-#[derive(Clone, Eq, PartialEq, Debug, Display, FromVariants, Transitive)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, From, Transitive)]
 #[transitive(from(ltac::LTac, ltac::Attrs))]
 #[transitive(from(ltac::LetIn, ltac::LTac))]
 #[transitive(from(model::LTac, ltac::LTac))]

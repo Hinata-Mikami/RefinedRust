@@ -24,7 +24,6 @@ compiletest_rs = "0.11"
 datafrog = "2"
 derive_more = { version = "2", features = ["constructor", "debug", "deref", "deref_mut", "display", "from", "into"] }
 env_logger = { version = "0.11" }
-from_variants = "1"
 glob = "0.3"
 indent_write = "2"
 indoc = "2"

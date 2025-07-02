@@ -10,8 +10,7 @@
 
 use std::fmt;
 
-use derive_more::Display;
-use from_variants::FromVariants;
+use derive_more::{Display, From};
 use indent_write::fmt::IndentWriter;
 use itertools::Itertools as _;
 
@@ -21,40 +20,40 @@ use crate::{BASE_INDENT, display_list, model};
 /// A [term].
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
-#[derive(Clone, Eq, PartialEq, Hash, Debug, FromVariants)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
 pub enum Term {
     /// A literal
     Literal(String),
 
     /// An application
-    #[from_variants(into)]
+    #[from(forward)]
     App(Box<App<Term, Term>>),
 
     /// A record constructor
     RecordBody(RecordBody),
 
     /// A projection `a.(b)` from a record `a`
-    #[from_variants(skip)]
+    #[from(ignore)]
     RecordProj(Box<Term>, String),
 
     /// A universal quantifier
-    #[from_variants(skip)]
+    #[from(ignore)]
     All(binder::BinderList, Box<Term>),
 
     /// An existential quantifier
-    #[from_variants(skip)]
+    #[from(ignore)]
     Exists(binder::BinderList, Box<Term>),
 
     /// A lambda
-    #[from_variants(skip)]
+    #[from(ignore)]
     Lambda(binder::BinderList, Box<Term>),
 
     /// An infix operator
-    #[from_variants(skip)]
+    #[from(ignore)]
     Infix(String, Vec<Term>),
 
     /// A prefix operator
-    #[from_variants(skip)]
+    #[from(ignore)]
     Prefix(String, Box<Term>),
 }
 
