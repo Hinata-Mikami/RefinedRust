@@ -272,7 +272,7 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = with packages; [frontend theories];
-        packages = with pkgs; [cargo-machete gnumake gnupatch gnused];
+        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused];
 
         shellHook = ''
           export LD_LIBRARY_PATH=''${LD_LIBRARY_PATH}:${rust.lib}
