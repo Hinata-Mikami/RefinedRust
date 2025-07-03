@@ -15,7 +15,6 @@ serde.workspace = true
 [dev-dependencies]
 compiletest_rs.workspace = true
 glob.workspace = true
-test-binary.workspace = true
 
 [package.metadata.rust-analyzer]
 rustc_private = true
