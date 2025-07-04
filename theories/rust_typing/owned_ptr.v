@@ -14,13 +14,13 @@ Section owned_ptr.
     ty_sidecond := True;
     ty_metadata_kind := MetadataNone;
     ty_own_val π '(r, l) m (v : val) :=
-      ∃ (ly : layout), 
+      ∃ (ly : layout),
         ⌜m = MetaNone⌝ ∗
-        ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout (inner.(ty_syn_type) m) ly⌝ ∗ 
+        ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout (inner.(ty_syn_type) m) ly⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
-        £ num_cred ∗ atime 1 ∗
+        £ num_cred ∗ tr 1 ∗
         ∃ (ri : rt), place_rfn_interp_owned r ri ∗
         (* this needs to match up with the corresponding later/fupd in the OfTyLtype to get the unfolding equation *)
         ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri MetaNone v';
@@ -28,7 +28,7 @@ Section owned_ptr.
     ty_syn_type _ := PtrSynType;
 
     ty_shr κ tid '(r, li) m l :=
-      (∃ (ly : layout) (ri : rt), 
+      (∃ (ly : layout) (ri : rt),
         ⌜m = MetaNone⌝ ∗
         place_rfn_interp_shared r ri ∗
         ⌜l `has_layout_loc` void*⌝ ∗
@@ -74,7 +74,7 @@ Section owned_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π [r li] m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π [r li] m q ?) "#(LFT & LLCTX) Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -117,14 +117,15 @@ Section owned_ptr.
 
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
-    iPoseProof (ty_share with "[$LFT $TIME $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
+    iPoseProof (ty_share with "[$LFT $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
 
-    iApply (logical_step_intro_atime with "Hat").
-    iModIntro. iIntros "Hcred' Hat !> [#Hshr Htok]".
-    iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(? & Htok2)".
+    iApply (logical_step_intro_tr with "Hat").
+    iModIntro. iIntros "Hat Hcred' !> [#Hshr Htok]".
+    iMod ("Hcl_cred" with "[$Hcred' Hat]") as "(? & Htok2)".
+    { iNext. iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
     iCombine "Htok2 Htoki2" as "Htok2". rewrite !lft_tok_sep.
     rewrite ty_lfts_unfold.
     iCombine "Htok Htok2" as "$".
@@ -174,7 +175,7 @@ Section owned_ptr.
     iDestruct "Hv" as "(%v' & Hl & Hv)".
     iPoseProof (ty_own_ghost_drop with "Hv") as "Hgdrop"; first done.
     iApply (logical_step_compose with "Hgdrop").
-    iApply (logical_step_intro_atime with "Hat").
+    iApply (logical_step_intro_tr with "Hat").
     iIntros "!> Hcred' Hat !> Hgdrop".
     eauto with iFrame.
   Qed.

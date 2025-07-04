@@ -672,9 +672,9 @@ Qed.
 (* TODO maybe find a better place for this *)
 Lemma maybe_use_credit F F1 P n (wl : bool) :
   F1 ⊆ F →
-  (if wl then £ (S n) ∗ atime 1 else True) -∗
+  (if wl then £ (S n) ∗ tr 1 else True) -∗
   (▷?wl |={F1}=> P) -∗
-  |={F}=> ((if wl then £ n else True) ∗ (if wl then atime 1 else True) ∗ P).
+  |={F}=> ((if wl then £ n else True) ∗ (if wl then tr 1 else True) ∗ P).
 Proof.
   iIntros (?) "Hcred HP".
   destruct wl.

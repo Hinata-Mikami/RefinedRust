@@ -18,17 +18,17 @@ Section stratify.
       end))
     ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned wl) T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
-    iPoseProof (mut_ltype_acc_owned F with "[$LFT $TIME $LLCTX] Hb") as "Hb"; [done.. | ].
+    iIntros "Hs". iIntros (????) "#(LFT &  LLCTX) #HE HL Hb".
+    iPoseProof (mut_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
       iDestruct "Hc" as "(%ty' & %Heq' & HT)".
-      iPoseProof (eqltype_use F with "[$LFT $TIME $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
+      iPoseProof (eqltype_use F with "[$LFT $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
       { apply full_eqltype_alt. apply Heq'. }
-      (*iPoseProof (eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; first done.*)
+      (*iPoseProof (eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; first done.*)
       iModIntro. iExists L', R, _, _, _. iFrame.
       iSplitR. { simp_ltypes. done. }
       iApply logical_step_fupd.
@@ -76,17 +76,17 @@ Section stratify.
           )))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (#(r, γ)) (Uniq κ' γ') T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "Hs" as "(%κs & %L1 & %Hal & Hs)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as "(%q & Htok & Hcl_tok & HL)"; [done.. | ].
     iMod "HF_cl" as "_".
-    iPoseProof (mut_ltype_acc_uniq F with "[$LFT $TIME $LLCTX] Htok Hcl_tok Hb") as "Hb"; [done.. | ].
+    iPoseProof (mut_ltype_acc_uniq F with "[$LFT $LLCTX] Htok Hcl_tok Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
-    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond &  %Hsteq & Hs)"; first done.
+    iMod ("Hc" with "[] [$LFT $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond &  %Hsteq & Hs)"; first done.
     unfold check_llctx_place_update_kind_incl_goal.
     iDestruct "Hs" as "(%b & %Hb & Hs)".
     destruct b.
@@ -101,7 +101,7 @@ Section stratify.
         - iFrame. done.
         - iFrame. done. }
       iDestruct "HT" as "(%lt2 & %Heql & $)".
-      iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
+      iPoseProof (full_eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
       iFrame.
       iSplitR. {
         unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].

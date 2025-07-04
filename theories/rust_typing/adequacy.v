@@ -1,4 +1,4 @@
-From iris.program_logic Require Export adequacy weakestpre.
+From caesium.program_logic Require Export adequacy weakestpre.
 From iris.algebra Require Import csum excl auth cmra_big_op gmap.
 From iris.base_logic.lib Require Import ghost_map.
 From caesium Require Import ghost_state.
@@ -17,7 +17,7 @@ Class typePreG Σ := PreTypeG {
   type_lctxG                     :: lctxGPreS Σ;
   type_ghost_varG                :: ghost_varG Σ gvar_refinement.RT;
   type_pinnedBorG                :: pinnedBorG Σ;
-  type_timeG                     :: timeGpreS Σ;
+  type_trG                       :: trGpreS Σ;
   type_heap_heap_inG             :: inG Σ (authR heapUR);
   type_heap_alloc_meta_map_inG   :: ghost_mapG Σ alloc_id (Z * nat * alloc_kind);
   type_heap_alloc_alive_map_inG  :: ghost_mapG Σ alloc_id bool;
@@ -32,7 +32,7 @@ Definition typeΣ : gFunctors :=
     lctxΣ;
     ghost_varΣ gvar_refinement.RT;
     pinnedBorΣ;
-    timeΣ;
+    trΣ;
     GFunctor (constRF (authR heapUR));
     ghost_mapΣ alloc_id (Z * nat * alloc_kind);
     ghost_mapΣ alloc_id bool;
@@ -64,22 +64,17 @@ Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains :
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
-  move => -> Hwp. apply: wp_strong_adequacy. move => ?.
-(* heap/Caesium stuff *)
+  move => -> Hwp. apply: wp_strong_adequacy. move => ? ?.
+  (* heap/Caesium stuff *)
   set h := to_heapUR ∅.
   iMod (own_alloc (● h ⋅ ◯ h)) as (γh) "[Hh _]" => //.
   { apply auth_both_valid_discrete. split => //. }
-  iMod (ghost_map_alloc fns) as (γf) "[Hf Hfm]".
+  iMod(ghost_map_alloc fns) as (γf) "[Hf Hfm]".
   iMod (ghost_map_alloc_empty (V:=(Z * nat * alloc_kind))) as (γr) "Hr".
   iMod (ghost_map_alloc_empty (V:=bool)) as (γs) "Hs".
   set (HheapG := HeapG _ _ γh _ γr _ γs _ γf).
 
-  (* time credits *)
-  iMod (time_init) as "(%Htime & #TIME & Htime)"; first done.
-  iMod (own_alloc (i:=(@time_nat_inG Σ Htime)) (● 0 ⋅ ◯ 0)) as (γdis) "[Hdis _]" => //.
-  { apply auth_both_valid_discrete. split => //. }
-  set (HrefinedCG := RefinedCG _ _ HheapG Htime γdis).
-  iMod (additive_time_receipt_0) as "Hat".
+  set (HrefinedCG := RefinedCG _ _ HheapG _).
 
   (* lifetime logic stuff *)
   iMod (lft_init _ lft_userE) as "(%Hlft & #LFT)"; [solve_ndisj.. | ].
@@ -96,7 +91,7 @@ Proof.
   iMod (Hwp with "Hfm") as "Hmains".
 
   iModIntro. iExists _, (replicate (length thread_mains) (λ _, True%I)), _, _.
-  iSplitL "Hh Hf Hr Hs Htime Hdis Hat"; last first. 1: iSplitL "Hmains".
+  iSplitL "Hh Hf Hr Hs"; last first. 1: iSplitL "Hmains".
   - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r; [done|]. iApply (big_sepL_impl with "Hmains").
     iIntros "!#" (? main ?) "Hfn".
     iMod (na_alloc) as "(%π & Hna)".

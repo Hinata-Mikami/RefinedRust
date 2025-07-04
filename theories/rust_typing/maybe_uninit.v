@@ -66,7 +66,7 @@ Section type.
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
         - iIntros "(%v & ? & %r' & ? & ?)". eauto with iFrame.
         - iIntros "(%r' & ? & %v & ? & ?)". eauto with iFrame. }
-      iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+      iDestruct "CTX" as "(LFT & LLCTX)".
       iApply fupd_logical_step.
       rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok1 & Htok2)".
       iMod (bor_exists_tok with "LFT Hb Htok1") as "(%r' & Hb & Htok1)"; first done.
@@ -74,7 +74,7 @@ Section type.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
       rewrite ty_lfts_unfold.
-      iPoseProof (ty_share _ E with "[$LFT $TIME $LLCTX] Htok [//] [//] Hlb Hb") as "Hstep"; first done.
+      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Htok [//] [//] Hlb Hb") as "Hstep"; first done.
       iApply (logical_step_wand with "Hstep").
       iIntros "!> (Hl & $)". eauto with iFrame.
     - rewrite -lft_tok_sep. iDestruct "Htok" as "[Htok1 Htok2]".

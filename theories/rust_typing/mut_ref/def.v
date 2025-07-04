@@ -154,10 +154,12 @@ Section mut_ref.
     iPoseProof (ty_share _ E with "[$LFT $TIME] [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
     { rewrite ty_lfts_unfold. rewrite -!lft_tok_sep. iFrame. }
     iModIntro. iApply (logical_step_compose with "Hu").
-    iApply (logical_step_intro_atime with "Hat").
+    iApply (logical_step_intro_tr with "Hat").
     iIntros "Hcred Hat".
     iMod ("Hclos_c" with "[Hcred Hat]") as "(_ & Htok_κ'2)".
-    { iNext. iFrame. }
+    { iNext. iFrame. 
+      iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step; lia. }
 
     iModIntro. iIntros "(#Hshr & Htok)".
     iCombine "Htok_κ2 Htok_κ'2 Htok1" as "Htok2".

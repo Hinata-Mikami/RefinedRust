@@ -261,7 +261,7 @@ Section structs.
   Qed.
   Next Obligation.
     (* sharing *)
-    iIntros (rts sls tys E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Hst %Hly #Hlb Hl".
+    iIntros (rts sls tys E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Hst %Hly #Hlb Hl".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
 
@@ -361,7 +361,7 @@ Section structs.
 
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
       subst κ''. rewrite ty_lfts_unfold.
-      iPoseProof (ty_share with "[$LFT $TIME $LLCTX] Htok [] [] [] Hb") as "Hb"; first done.
+      iPoseProof (ty_share with "[$LFT $LLCTX] Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro. by apply struct_layout_field_aligned.
       - iApply loc_in_bounds_sl_offset; done.
@@ -859,15 +859,15 @@ Section init.
   Qed.
 End init.
 
-Section sized. 
+Section sized.
   Context `{!typeGS Σ}.
 
   Global Instance struct_t_sized {rts} (tys : hlist type rts) sls :
-    TySized (struct_t sls tys). 
+    TySized (struct_t sls tys).
   Proof.
-    econstructor. 
+    econstructor.
     - done.
-    - done. 
+    - done.
   Qed.
 End sized.
 

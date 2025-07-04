@@ -24,7 +24,7 @@ Class typeGS Σ := TypeG {
 }.
 #[export] Hint Mode typeGS - : typeclass_instances.
 
-Definition rrust_ctx `{typeGS Σ} : iProp Σ := lft_ctx ∗ time_ctx ∗ llctx_ctx.
+Definition rrust_ctx `{typeGS Σ} : iProp Σ := lft_ctx ∗ llctx_ctx.
 
 Definition thread_id := na_inv_pool_name.
 
@@ -37,8 +37,8 @@ Proof.
   rewrite /num_cred/num_laters_per_step /=. lia.
 Qed.
 
-Definition maybe_creds `{!typeGS Σ} (wl : bool) := (if wl then £ num_cred ∗ atime 1 else True)%I.
-Definition have_creds `{!typeGS Σ} : iProp Σ := £ num_cred ∗ atime 1.
+Definition maybe_creds `{!typeGS Σ} (wl : bool) := (if wl then £ num_cred ∗ tr 1 else True)%I.
+Definition have_creds `{!typeGS Σ} : iProp Σ := £ num_cred ∗ tr 1.
 
 #[universes(polymorphic)]
 Record RT : Type := mk_RT {
@@ -1341,9 +1341,9 @@ Class TypeNonExpansive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Typ
 }.
 
 Class TypeContractive `{!typeGS Σ} {rt1 rt2} (F : type rt1 → type rt2) : Type := {
-  type_ctr_metadata : 
-    ∀ ty ty', 
-      (* contractive functors should introduce pointer indirections over recursive occurences, 
+  type_ctr_metadata :
+    ∀ ty ty',
+      (* contractive functors should introduce pointer indirections over recursive occurences,
          hence their metadata cannot depend on their own recursive metadata *)
       (F ty).(ty_metadata_kind) = (F ty').(ty_metadata_kind);
 
@@ -1509,7 +1509,7 @@ Section properties.
     pose proof Hne1 as [Hm1 Hst1 Hlft1 Hot1 Hsc1 Hv1 Hshr1].
     pose proof Hc2 as [Hm2 Hst2 Hlft2 Hot2 Hsc2 Hv2 Hshr2].
     constructor; simpl in *.
-    - naive_solver. 
+    - naive_solver.
     - naive_solver.
     - apply _.
     - intros ?? Ha. eapply Hot2.
@@ -2108,8 +2108,7 @@ Section copy.
 
   #[export] Program Instance simple_type_copyable `{typeGS Σ} {rt} (st : simple_type rt) : Copyable st.
   Next Obligation.
-    iIntros (??? st κ π E l r m ? ?) "#(LFT & TIME & LLCTX) (%v & %ly & -> & Hf & #Hown & %Hst' & Hly) Hlft".
-    (*have: (ly' = ly); first by eapply syn_type_has_layout_inj. move => ?; subst ly'.*)
+    iIntros (??? st κ π E l r m ? ?) "#(LFT & LLCTX) (%v & %ly & -> & Hf & #Hown & %Hst' & Hly) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iExists ly.
     iModIntro. iFrame "Hly". iR. iExists _. iDestruct "Hmt" as "[Hmt1 Hmt2]".

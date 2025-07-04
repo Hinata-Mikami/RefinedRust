@@ -82,6 +82,7 @@ Section init.
     iApply (struct_init_fold_elim with "CTX HE HL HT").
     iIntros (vs L3) "HL Ha".
     iDestruct "Ha" as (rts tys rs) "(%Hlen & Hv & HT)".
+    iApply physical_step_intro; iNext.
     iApply ("Hc" with "HL [Hv] HT").
     simpl. by iApply struct_init_val.
   Qed.

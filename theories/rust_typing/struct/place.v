@@ -146,7 +146,7 @@ Section place.
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & TIME & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
     iPoseProof (struct_ltype_acc_owned F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
     iApply fupd_wp.
@@ -157,13 +157,14 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
-    iApply (wp_logical_step with "TIME Hcl"); [done | solve_ndisj.. | ].
+    iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
     { apply val_to_of_loc. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
-    iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
+    iModIntro.
+    iApply physical_step_intro; iNext. iIntros "Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
@@ -172,9 +173,9 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
     { rewrite -Hlto -Hro. done. }
-    iModIntro. iIntros (L' κs l2 bmin b2 rti ltyi ri updcx) "Hli Hcont".
+    iIntros (L' κs l2 bmin b2 rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ bmin with "Hli").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
@@ -253,7 +254,7 @@ Section place.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%Houtl & %Hincl0 & %κs & %L' &  %Hal & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & TIME & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
 
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl0"; first apply Hincl0.
@@ -262,7 +263,7 @@ Section place.
     iMod (lctx_lft_alive_count_tok with "HE HL") as "(%q & Htok & Hcltok & HL)"; [done.. | ].
     iMod "HclF" as "_".
 
-    iPoseProof (struct_ltype_acc_uniq F with "[$LFT $TIME $LLCTX] Htok Hcltok Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
+    iPoseProof (struct_ltype_acc_uniq F with "[$LFT $LLCTX] Htok Hcltok Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
     iApply fupd_wp.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
 
@@ -271,13 +272,14 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
-    iApply (wp_logical_step with "TIME Hcl"); [done | solve_ndisj.. | ].
+    iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
     { apply val_to_of_loc. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
-    iModIntro. iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
+    iModIntro. iModIntro. iApply physical_step_intro; iNext.
+    iIntros "Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
@@ -286,9 +288,9 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
     { rewrite -Hlto -Hro. done. }
-    iModIntro. iIntros (L2 κs' l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
+    iIntros (L2 κs' l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hli").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
@@ -357,7 +359,7 @@ Section place.
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & TIME & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
     iPoseProof (struct_ltype_acc_shared F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
     iApply fupd_wp.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
@@ -368,13 +370,13 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
-    (*iApply (wp_logical_step with "TIME Hcl"); [done | solve_ndisj.. | ].*)
+    (*iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].*)
     iApply (wp_get_member).
     { apply val_to_of_loc. }
     { done. }
     { by eapply field_index_of_to_index_of. }
     { done. }
-    iModIntro. iNext. iIntros "Hcred". iExists _. iR.
+    iModIntro. iApply physical_step_intro; iNext. iExists _. iR.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
     { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
@@ -383,7 +385,7 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
     { rewrite -Hlto -Hro. done. }
     iIntros (L' κs l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" with "Hli").

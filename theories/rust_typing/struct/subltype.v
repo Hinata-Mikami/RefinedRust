@@ -767,7 +767,7 @@ Section accessors.
         l ◁ₗ[π, Uniq κ γ] PlaceIn r' @ OpenedLtype (StructLtype lts' sls) (StructLtype lts sls) (StructLtype lts sls)
             (λ ri ri', ⌜ri = ri'⌝) (λ _ _, R))).
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Hκ HR Hb". rewrite ltype_own_struct_unfold /struct_ltype_own.
+    iIntros (?) "#(LFT & LLCTX) Hκ HR Hb". rewrite ltype_own_struct_unfold /struct_ltype_own.
     iDestruct "Hb" as "(%sl & %Halg & %Hlen & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
     iExists sl. iFrame "#%".
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
@@ -781,8 +781,8 @@ Section accessors.
     iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iModIntro. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat".
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred'".
     iModIntro.
     iSplit.
     - (* close *)
@@ -815,6 +815,7 @@ Section accessors.
       iSplitL.
       { rewrite ltype_own_struct_unfold /struct_ltype_own.
         iExists sl. iFrame. do 4 iR.
+        iSplitL "Hat". { simpl. iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
         iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
         iModIntro. subst V.
         (* need to adapt the pinned part, too *)
@@ -855,6 +856,7 @@ Section accessors.
         rewrite ltype_own_struct_unfold /struct_ltype_own.
         setoid_rewrite ltype_own_core_equiv.
         iModIntro. iExists sl. iFrame "% ∗". iR.
+        iSplitL "Hat". { simpl. iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
         iModIntro.
         setoid_rewrite pad_struct_pull_core.
         setoid_rewrite ltype_core_sigT_ltype_core_idemp.

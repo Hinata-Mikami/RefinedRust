@@ -69,17 +69,17 @@ Section credits.
   Context `{typeGS Σ}.
 
   (* We require at least one credit here so that the majority of clients does not need any sideconditions.
-    We require at least one atime here, as place accesses will use the receipt every step gains for boosting, so we need to have at least one here to regenerate a potential credit we use.
+    We require at least one tr here, as place accesses will use the receipt every step gains for boosting, so we need to have at least one here to regenerate a potential credit we use.
    *)
   Definition credit_store_def (n m : nat) : iProp Σ :=
-    £(S n) ∗ atime (S m).
+    £(S n) ∗ tr (S m).
   Definition credit_store_aux : seal (@credit_store_def). Proof. by eexists. Qed.
   Definition credit_store := unseal credit_store_aux.
   Definition credit_store_eq : @credit_store = @credit_store_def := seal_eq credit_store_aux.
 
   Lemma credit_store_acc (n m : nat) :
     credit_store n m -∗
-    £ (S n) ∗ atime (S m) ∗ (∀ n' m', £ (S n') -∗ atime (S m') -∗ credit_store n' m').
+    £ (S n) ∗ tr (S m) ∗ (∀ n' m', £ (S n') -∗ tr (S m') -∗ credit_store n' m').
   Proof.
     rewrite credit_store_eq /credit_store_def.
     iIntros "($ & $)". eauto with iFrame.
@@ -88,7 +88,7 @@ Section credits.
   (* allows direct access to one credit, and after regenerating some (usually m' = 0 or m' = 1), we get back *)
   Lemma credit_store_get_reg (n m : nat) :
     credit_store n m -∗
-    £ 1 ∗ atime (S m) ∗ (∀ m', £ (1 + m' + m) -∗ atime (1 + m' + m) -∗ credit_store (m' + m + n) (m' + m)).
+    £ 1 ∗ tr (S m) ∗ (∀ m', £ (1 + m' + m) -∗ tr (1 + m' + m) -∗ credit_store (m' + m + n) (m' + m)).
   Proof.
     iIntros "Hst". iPoseProof (credit_store_acc with "Hst") as "(Hcred & $ & Hcl)".
     rewrite lc_succ. iDestruct "Hcred" as "($ & Hcred)".
@@ -100,7 +100,7 @@ Section credits.
   (* the two common instantiations of this *)
   Lemma credit_store_get_reg0 (n m : nat) :
     credit_store n m -∗
-    £ 1 ∗ atime (S m) ∗ (£ (1 + m) -∗ atime (S m) -∗ credit_store (m + n) (m)).
+    £ 1 ∗ tr (S m) ∗ (£ (1 + m) -∗ tr (S m) -∗ credit_store (m + n) (m)).
   Proof.
     iIntros "Hst".
     iPoseProof (credit_store_get_reg with "Hst") as "($ & $ & Hcl)".
@@ -108,7 +108,7 @@ Section credits.
   Qed.
   Lemma credit_store_get_reg1 (n m : nat) :
     credit_store n m -∗
-    £ 1 ∗ atime (S m) ∗ (£ (S (S m)) -∗ atime (S (S m)) -∗ credit_store (1 + m + n) (1 + m)).
+    £ 1 ∗ tr (S m) ∗ (£ (S (S m)) -∗ tr (S (S m)) -∗ credit_store (1 + m + n) (1 + m)).
   Proof.
     iIntros "Hst".
     iPoseProof (credit_store_get_reg with "Hst") as "($ & $ & Hcl)".
@@ -117,32 +117,32 @@ Section credits.
 
   Lemma credit_store_borrow_receipt (n m : nat) :
     credit_store n m -∗
-    atime 1 ∗ (atime 1 -∗ credit_store n m).
+    tr 1 ∗ (tr 1 -∗ credit_store n m).
   Proof.
     iIntros "Hst".
     iPoseProof (credit_store_acc with "Hst") as "(Hcred & Hat & Hcl)".
-    rewrite additive_time_receipt_succ. iDestruct "Hat" as "(Hat1 & Hat)".
+    rewrite tr_succ. iDestruct "Hat" as "(Hat1 & Hat)".
     iFrame. iIntros "Hat1".
     iApply ("Hcl" with "Hcred [Hat1 Hat]").
-    iApply additive_time_receipt_succ. iFrame.
+    iApply tr_succ. iFrame.
   Qed.
 
   Lemma credit_store_borrow (n m : nat) :
     credit_store n m -∗
-    £ 1 ∗ atime 1 ∗ (£ 1 -∗ atime 1 -∗ credit_store n m).
+    £ 1 ∗ tr 1 ∗ (£ 1 -∗ tr 1 -∗ credit_store n m).
   Proof.
     iIntros "Hst".
     iPoseProof (credit_store_acc with "Hst") as "(Hcred & Hat & Hcl)".
-    rewrite additive_time_receipt_succ. iDestruct "Hat" as "(Hat1 & Hat)".
+    rewrite tr_succ. iDestruct "Hat" as "(Hat1 & Hat)".
     rewrite lc_succ. iDestruct "Hcred" as "(Hc1 & Hc)".
     iFrame. iIntros "Hc1 Hat1".
     iApply ("Hcl" with "[Hc Hc1] [Hat1 Hat]").
     { iApply lc_succ. iFrame. }
-    iApply additive_time_receipt_succ. iFrame.
+    iApply tr_succ. iFrame.
   Qed.
 
   (* allows direct access to credits, but without regenerating and instead requires to prove a sidecondition *)
-  Lemma credit_store_scrounge (n m k : nat) :
+  Lemma credit_store_scrounge {n m : nat} (k : nat) :
     n ≥ k →
     credit_store n m -∗
     £ k ∗ credit_store (n - k) m.
@@ -150,6 +150,16 @@ Section credits.
     iIntros (?) "Hst". iPoseProof (credit_store_acc with "Hst") as "(Hcred & Hc & Hcl)".
     replace (S n)%nat with (S (n - k) + k)%nat by lia.
     rewrite lc_split. iDestruct "Hcred" as "(Hcred & $)".
+    iApply ("Hcl" with "Hcred Hc").
+  Qed.
+  Lemma credit_store_scrounge_tr {n m : nat} (k : nat) :
+    m ≥ k →
+    credit_store n m -∗
+    tr k ∗ credit_store n (m - k).
+  Proof.
+    iIntros (?) "Hst". iPoseProof (credit_store_acc with "Hst") as "(Hcred & Hc & Hcl)".
+    replace (S m)%nat with (S (m - k) + k)%nat by lia.
+    rewrite tr_split. iDestruct "Hc" as "(Hc & $)".
     iApply ("Hcl" with "Hcred Hc").
   Qed.
   Lemma credit_store_donate n m k :
@@ -161,13 +171,13 @@ Section credits.
     iApply lc_succ. iDestruct "Hcred" as "($ & ?)".
     rewrite lc_split. iFrame.
   Qed.
-  Lemma credit_store_donate_atime n m k :
-    credit_store n m -∗ atime k -∗ credit_store n (k + m).
+  Lemma credit_store_donate_tr n m k :
+    credit_store n m -∗ tr k -∗ credit_store n (k + m).
   Proof.
     iIntros "Hst Hat0".
     iPoseProof (credit_store_acc with "Hst") as "(Hcred & Hat & Hcl)".
     iApply ("Hcl" with "Hcred [Hat Hat0]").
-    rewrite -Nat.add_succ_r. rewrite additive_time_receipt_sep. iFrame.
+    rewrite -Nat.add_succ_r. rewrite tr_split. iFrame.
   Qed.
 
   Lemma credit_store_mono (n m n' m' : nat) :
@@ -176,7 +186,7 @@ Section credits.
     rewrite credit_store_eq/credit_store_def.
     iIntros (??) "(Ha & Hb)".
     iSplitL "Ha". { iApply lc_weaken; last done. lia. }
-    iApply additive_time_receipt_mono; last done. lia.
+    iApply tr_weaken; last done. lia.
   Qed.
 End credits.
 
@@ -813,21 +823,21 @@ Section judgments.
   Global Instance introduce_with_hooks_credits_inst E L n : IntroduceWithHooks E L (£ n) | 10 :=
     λ T, i2p (introduce_with_hooks_credits E L n T).
 
-  Lemma introduce_with_hooks_atime E L n T :
+  Lemma introduce_with_hooks_tr E L n T :
     find_in_context (FindCreditStore) (λ '(c, a),
       credit_store c (n + a) -∗ T L)
-    ⊢ introduce_with_hooks E L (atime n) T.
+    ⊢ introduce_with_hooks E L (tr n) T.
   Proof.
     rewrite /FindCreditStore. iIntros "Ha".
     iDestruct "Ha" as ([c a]) "(Hstore & HT)". simpl.
     iIntros (??) "#HE HL Hc".
     iPoseProof (credit_store_acc with "Hstore") as "(Hcred & Hat & Hcl)".
     iPoseProof ("Hcl" $! _ (n + a)%nat with "Hcred [Hat Hc]") as "Hstore".
-    { rewrite -Nat.add_succ_r. rewrite additive_time_receipt_sep. iFrame. }
+    { rewrite -Nat.add_succ_r. rewrite tr_split. iFrame. }
     iExists _. iFrame. iApply ("HT" with "Hstore").
   Qed.
-  Global Instance introduce_with_hooks_atime_inst E L n : IntroduceWithHooks E L (atime n) | 10 :=
-    λ T, i2p (introduce_with_hooks_atime E L n T).
+  Global Instance introduce_with_hooks_tr_inst E L n : IntroduceWithHooks E L (tr n) | 10 :=
+    λ T, i2p (introduce_with_hooks_tr E L n T).
 
   (** non-atomic token related instances *)
   Lemma introduce_with_hooks_na_own E L π mask T :
@@ -1925,9 +1935,9 @@ Section judgments.
     iDestruct ("Heq" $! b r) as "[Hi1 Hi2]".
     iApply fupd_place_to_wp.
     iMod (ltype_incl_use with "Hi1 Hl") as "Hl"; first done. iModIntro.
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "(LFT & LLCTX)".
 
-    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hl").
     iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hl2 [Hs] HT HL").
     iIntros (upd) "Hincl' Hl2 %Hst HR Hcond".
@@ -1966,19 +1976,21 @@ Section judgments.
     iIntros (????) "#CTX #HE HL Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (ofty_ltype_acc_owned ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     simpl. iModIntro.
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-    iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
+    iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply wp_fupd.
+    iApply (wp_logical_step with "Hcl"); [done.. | ].
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
     { by rewrite val_to_of_loc. }
-    iNext. iIntros (st) "Hl Hcred Ha".
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hl Ha".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
     iIntros (upd) "#Hincl2 Hl2 %Hst HR Hcond".
@@ -2015,20 +2027,22 @@ Section judgments.
     iPoseProof (ofty_ltype_acc_uniq lftE with "CTX Htok HL_cl2 Hl") as "(%ly & %Halg & %Hly & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iMod "HF_cl" as "_".
     simpl. iModIntro.
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-    iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
+    iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply wp_fupd.
+    iApply (wp_logical_step with "Hcl"); [done.. | ].
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     iApply (wp_deref with "Hl"); [by right | | done | done | ].
     { by rewrite val_to_of_loc. }
-    iNext. iIntros (st) "Hl Hcred [Ha _]".
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hl [Ha _]".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod (fupd_mask_mono with "(Ha Hl Hv)") as "(Hl & HL)"; first done.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
     iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
     iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
@@ -2064,7 +2078,7 @@ Section judgments.
     rewrite simple_type_shr_equiv. iDestruct "Hb" as "(%v & %ly' & _ & % & %Hly' & Hloc & Hv)".
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
 
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "(LFT & LLCTX)".
     iMod (frac_bor_acc with "LFT Hloc Htok") as "(%q0 & >Hloc & Hl_cl)"; first done.
     simpl. iModIntro.
     specialize (ty_op_type_stable Hot) as Halg'.
@@ -2073,13 +2087,14 @@ Section judgments.
     iApply wp_fupd.
     iApply (wp_deref with "Hloc"); [by right | | done | done | ].
     { by rewrite val_to_of_loc. }
-    iNext. iIntros (st) "Hloc Hcred".
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hloc".
     iMod ("HT" with "[] Hv") as "(%l2 & %rt2 & %lt2 & %r2 & %b2 & -> & Hv & Hl2 & HT)"; first done.
     iMod ("Hl_cl" with "Hloc") as "Htok".
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
     iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
     iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL"). simpl.
     iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
@@ -2843,7 +2858,7 @@ Section judgments.
   Proof.
     iIntros "Ha". rewrite /FindCreditStore.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
-    iPoseProof (credit_store_scrounge _ _ n with "Hstore") as "(Hcred & Hstore)"; first lia.
+    iPoseProof (credit_store_scrounge n with "Hstore") as "(Hcred & Hstore)"; first lia.
     iPoseProof ("HT" with "Hstore") as "HT".
     iIntros (????) "CTX HE HL". iModIntro. iExists _, _, _. iFrame.
     iApply maybe_logical_step_intro.
@@ -2853,10 +2868,10 @@ Section judgments.
   Global Instance prove_with_subtype_scrounge_credits_inst E L step pm (n : nat) :
     ProveWithSubtype E L step pm (£ n) | 10 := λ T, i2p (prove_with_subtype_scrounge_credits E L step pm n T).
 
-  Lemma prove_with_subtype_scrounge_atime E L step pm (n : nat) T :
+  Lemma prove_with_subtype_scrounge_tr E L step pm (n : nat) T :
     find_in_context (FindCreditStore) (λ '(c, a),
       ⌜n ≤ a⌝ ∗ (credit_store c (a - n)%nat -∗ T L [] True%I))
-    ⊢ prove_with_subtype E L step pm (atime n) T.
+    ⊢ prove_with_subtype E L step pm (tr n) T.
   Proof.
     iIntros "Ha". rewrite /FindCreditStore.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
@@ -2870,8 +2885,8 @@ Section judgments.
     iSplitL; last done.
     destruct pm; first done. iIntros "_ !>". done.
   Qed.
-  Global Instance prove_with_subtype_scrounge_atime_inst E L step pm (n : nat) :
-    ProveWithSubtype E L step pm (atime n) | 10 := λ T, i2p (prove_with_subtype_scrounge_atime E L step pm n T).
+  Global Instance prove_with_subtype_scrounge_tr_inst E L step pm (n : nat) :
+    ProveWithSubtype E L step pm (tr n) | 10 := λ T, i2p (prove_with_subtype_scrounge_tr E L step pm n T).
 
 
   (* TODO figure out how to nicely key the Rel2. Is there always a canonical order in which we want to have that?
@@ -3093,13 +3108,13 @@ Section judgments.
       (* for any location provided to the client *)
       (∀ (l : loc),
         (* and a time receipt we provide for generating our credits *)
-        atime 1 -∗
+        tr 1 -∗
         (* the client can assume after an update... *)
         logical_step F (
           (* credits to prepay the borrow *)
           £ num_cred -∗
           (* and the returned receipt *)
-          atime 1 ={F}=∗
+          tr 1 ={F}=∗
           ∃ L' (π : thread_id) (rt : RT) (ty : type rt) (r : rt) (γ : gname) (ly : layout),
           (* a new observation *)
           gvar_obs γ r ∗
@@ -3676,7 +3691,6 @@ Section folding.
 
   (* TODO maybe we should just put the locations in the tctx queue, instead of the whole type assignment? We're going to look for them in the context anyways. *)
   Section folder.
-  Arguments delayed_prop : simpl never.
   Context {Acc : Type} (Acc_interp : Acc → iProp Σ).
   (** Initializer for doing a context fold with action [m].
       The automation will use this typing judgment as a hint to gather up the context and
@@ -3772,7 +3786,7 @@ Section folding.
     (introduce_with_hooks E L (Acc_interp acc) T)
     ⊢ typed_context_fold_end E L acc T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hstep".
+    iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hstep".
     iApply logical_step_fupd.
     iApply (logical_step_wand with "Hstep").
     iIntros "Hacc". iMod ("Hs" with "[//] HE HL Hacc") as "(%L3 & HL & HT)".
@@ -4556,7 +4570,7 @@ Section guarded.
     rewrite /guarded/FindCreditStore/=.
     iDestruct "Ha" as ([n m]) "(Hc & % & Ha)".
     simpl.
-    iPoseProof (credit_store_scrounge _ _ 1 with "Hc") as "(Hc1 & Hc)"; first lia.
+    iPoseProof (credit_store_scrounge 1 with "Hc") as "(Hc1 & Hc)"; first lia.
     iMod (lc_fupd_elim_later with "Hc1 HP") as "HP".
     iApply ("Ha" with "Hc [//] HE HL HP").
   Qed.

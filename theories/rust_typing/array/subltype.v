@@ -650,7 +650,7 @@ Section accessors.
         typed_place_cond bmin (ArrayLtype def len lts) (ArrayLtype def' len lts')
         ).
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Htok Htokcl Hb". rewrite ltype_own_array_unfold /array_ltype_own.
+    iIntros (?) "#(LFT & LLCTX) Htok Htokcl Hb". rewrite ltype_own_array_unfold /array_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & % & %Hly & #Hlb & Hcred & Hrfn & Hb)".
     iExists ly. iR. iR. iR. iR.
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
@@ -663,8 +663,8 @@ Section accessors.
     iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
     iMod (fupd_mask_mono with "Hb") as "(%Hlen & Hb)"; first done.
     iModIntro. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat".
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred'".
     iModIntro.
     (* close with updated type *)
     iIntros (def' lts' rs' bmin Hst_eq Hlen_eq) "#Hincl' #Hcond_ty Hb".
@@ -693,6 +693,7 @@ Section accessors.
     iSplitL.
     { rewrite ltype_own_array_unfold /array_ltype_own.
       iExists ly. iFrame. rewrite -Hst_eq. do 4 iR.
+      iSplitL "Hat". { simpl. iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
       iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
       iModIntro. subst V.
       (* need to adapt the pinned part, too *)

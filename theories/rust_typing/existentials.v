@@ -63,7 +63,7 @@ Qed.
 Next Obligation.
   rewrite /TCNoResolve.
   iIntros (????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
-  iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+  iDestruct "CTX" as "(LFT & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
   iApply logical_step_intro. by iFrame.
@@ -174,7 +174,7 @@ Section ex.
     iIntros (ty κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
   Qed.
   Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hb".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly Hlb Hb".
     iApply fupd_logical_step.
     setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
     iDestruct "Htok" as "(Htok & Htok2)".
@@ -185,7 +185,7 @@ Section ex.
     iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
     iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
-    iPoseProof (P.(inv_P_share) E with "[$LFT $TIME $LLCTX] Htok2 HP") as "HP"; first done.
+    iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Htok2 HP") as "HP"; first done.
     iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
     rewrite ty_lfts_unfold.
     iPoseProof (ty_share with "[$] Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
@@ -382,7 +382,9 @@ Section open.
     iModIntro.
     rewrite ltype_own_core_equiv. simp_ltypes.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. simpl. iFrame "#%". by iFrame.
+    iExists ly. simpl. iFrame "#%". iFrame.
+    iSplitL; last done.
+    by iFrame.
   Qed.
 
   (* We open this into a ShadowedLtype for [Shared].
@@ -429,7 +431,7 @@ Section open.
   Proof.
     (* TODO duplicated a lot with opened_ltype_create_uniq_simple, mostly due to the different invariant.
         Can we generalize? *)
-    iIntros (?) "#(LFT & TIME & LLCTX) Htok Hcl_tok Hb".
+    iIntros (?) "#(LFT & LLCTX) Htok Hcl_tok Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
@@ -452,8 +454,8 @@ Section open.
     iExists ly. rewrite Hst. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iSplitR; first done. iSplitR; first done.
     iFrame. clear -Hly Halg.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat". iModIntro.
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred'". iModIntro.
     iIntros (own_lt_cur' κs' r0 r') "HP #Hincl' Hown #Hub".
     rewrite ltype_own_core_equiv. simp_ltypes.
     (* update *)
@@ -489,6 +491,9 @@ Section open.
     rewrite (ltype_own_ofty_unfold _ (Uniq _ _)) /lty_of_ty_own.
     iExists ly. iSplitR; first done. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iFrame.
+    iSplitL "Hat".
+    { iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step. lia. }
     iModIntro.
     iApply (pinned_bor_shorten with "Hincl").
     iApply (pinned_bor_impl with "[] Hb").
@@ -789,7 +794,7 @@ Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
   logical_step F ((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
 Proof.
-  iIntros (?) "#(LFT & TIME & LLCTX) Htok Hl".
+  iIntros (?) "#(LFT & LLCTX) Htok Hl".
   iApply fupd_logical_step.
   iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
   rewrite -lft_tok_sep.
@@ -818,14 +823,16 @@ Proof.
   iDestruct "Hcred" as "(Hcred1 & Hcred)".
   iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Ha" as "(Hl & Htok)".
   iDestruct "Htok2" as "(Htok2 & Htok2')".
-  iPoseProof (ty_share _ F with "[$LFT $TIME $LLCTX] [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
+  iPoseProof (ty_share _ F with "[$LFT $LLCTX] [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
   { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_compose with "Hstep").
-  iApply (logical_step_intro_atime with "Hat").
-  iModIntro. iIntros "Hcred' Hat".
+  iApply (logical_step_intro_tr with "Hat").
+  iModIntro. iIntros "Hat Hcred' ".
   iModIntro. iIntros "(#Hshr & Htok)".
-  iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(Hcred' & Htok1)".
+  iMod ("Hcl_cred" with "[$Hcred' Hat]") as "(Hcred' & Htok1)".
+  { iNext. iApply tr_weaken; last done.
+    simpl. unfold num_laters_per_step. lia. }
   rewrite ty_lfts_unfold.
   iCombine "Htok1 Htok2'" as "Htok1".
   rewrite !lft_tok_sep. iFrame "Htok Htok1".

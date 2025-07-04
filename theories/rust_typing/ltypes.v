@@ -891,7 +891,7 @@ Section ltype_def.
           place_rfn_interp_mut_blocked r γ' ∗
           &pin{κ'} (∃ r' : rt, gvar_auth γ' r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone)) ∗
         (* and the original credits *)
-        £ num_cred ∗ atime 1
+        have_creds
     end)%I.
 
   Definition shr_blocked_lty_own {rt} (ty : type rt) κ k π (r : place_rfn rt) l :=
@@ -915,7 +915,7 @@ Section ltype_def.
           (* this needs to be synced up with [OfTy] *)
           &pin{κ'} (∃ r'': rt, gvar_auth γ' r'' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r'' MetaNone)) ∗
         (* original credits *)
-        £ num_cred ∗ atime 1
+        have_creds
     end)%I.
 
   (** Shows that the recursive struct case is well-formed. Crucially uses the information we obtain from [big_sepL_P]. *)

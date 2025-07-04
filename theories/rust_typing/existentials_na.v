@@ -138,7 +138,7 @@ Qed.
 
   (* ty_share *)
   Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hbor".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly Hlb Hbor".
     iEval (setoid_rewrite bi.sep_exist_l) in "Hbor".
     iEval (setoid_rewrite bi_exist_comm) in "Hbor".
 
@@ -406,7 +406,8 @@ Section na_subtype.
     iModIntro.
     rewrite ltype_own_core_equiv. simp_ltypes.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. simpl. iFrame "#%". by iFrame.
+    iExists ly. simpl. iFrame "#%". iFrame.
+    done.
   Qed.
 
   Lemma typed_place_na_ex_plain_t_owned π E L l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
@@ -546,12 +547,12 @@ Section na_subtype.
     iDestruct 1 as ([π' mask]) "(Hna & <- & % & HT) /=".
 
     rewrite /typed_place /introduce_with_hooks.
-    iIntros (Φ ???) "#(LFT & TIME & LLCTX) #HE HL Hl Hcont".
+    iIntros (Φ ???) "#(LFT & LLCTX) #HE HL Hl Hcont".
 
     rewrite /prove_with_subtype.
     iApply fupd_place_to_wp.
 
-    iMod ("HT" with "[] [] [] [$LFT $TIME $LLCTX] HE HL")
+    iMod ("HT" with "[] [] [] [$LFT $LLCTX] HE HL")
         as "(% & % & % & >(Hcred & HR) & HL & HT)"; [ done.. |].
     iSpecialize ("HT" with "HR").
 
@@ -593,7 +594,7 @@ Section na_subtype.
 
     iDestruct "HT" as (?) "(HL & HT)".
 
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL []").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL []").
     { rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
 
       iSplitL.

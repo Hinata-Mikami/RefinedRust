@@ -42,6 +42,7 @@ Section init.
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
     iPoseProof ("Hincl" with "Hv") as "Hv".
     iDestruct "HT" as "(%Htagr & %Heq & %Htag_rfn & HT)".
+    iApply physical_step_intro; iNext.
     iApply ("Hc" with "HL [Hv] HT").
 
     iEval (rewrite /ty_own_val/=).

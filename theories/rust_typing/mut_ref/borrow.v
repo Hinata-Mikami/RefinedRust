@@ -18,33 +18,37 @@ Section rules.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
     iIntros "HT".
-    iDestruct "HT" as "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".
+    iDestruct "HT" as "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & LLCTX) #HE HL HΦ".
     wp_bind. iSpecialize ("HT" with "Hnamed").
-    iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
+    iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $LLCTX] HE HL").
     iIntros (l) "Hat HT".
     unfold Ref.
     wp_bind.
-    iApply (wp_logical_step with "TIME [HT Hat]"); [solve_ndisj.. | | ].
+    iApply wp_fupd.
+    iApply (wp_logical_step with "[HT Hat]"); [solve_ndisj.. | | ].
     { iApply (logical_step_compose with "HT").
-      iApply (logical_step_intro_atime with "Hat").
-      iIntros "H1 H2 !> H3". iApply ("H3" with "H1 H2"). }
+      iApply (logical_step_intro_tr with "Hat").
+      iIntros "Ha Hcred !> H3".
+      iApply ("H3" with "Hcred [Ha]").
+      iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
     (* also need to generate a new cumulative receipt for the created reference *)
-    iMod (additive_time_receipt_0) as "Hc".
-    iMod (persistent_time_receipt_0) as "Hp".
-    iApply (wp_skip_credits with "TIME Hc Hp"); first done.
-    iIntros "!> Hcred1 Hc HT" => /=.
+    iMod (tr_zero) as "Hc".
+    iApply wp_skip.
+    iApply (physical_step_intro_tr with "Hc").
+    iIntros "!> Hc Hcred1 !> HT" => /=.
     iMod ("HT") as "(%L' & %π & %rt' & %ty & %r & %γ & %ly & Hobs & Hbor & %Hst & %Hly & #Hlb & #Hsc & HL & HT)".
     iModIntro.
     (* generate the credits for the new reference *)
-    iMod (persistent_time_receipt_0) as "Hp".
-    iApply (wp_skip_credits with "TIME Hc Hp"); first done.
-    rewrite (additive_time_receipt_sep 1). iNext. iIntros "[Hcred2 Hcred] [Hat1 Hat]".
-    (* We use [Hcred1] for folding the pinned borrow, and [Hcred] as a deposit in the reference *)
-    iApply ("HΦ" with "HL [Hcred Hcred1 Hat Hat1 Hbor Hobs] HT").
+    iApply wp_skip.
+    iApply (physical_step_intro_tr with "Hc").
+    simpl. unfold num_laters_per_step. simpl.
+    iNext. iIntros "Hat Hcred2".
+    (* We use [Hcred2] for folding the pinned borrow, and [Hcred1] as a deposit in the reference *)
+    iApply ("HΦ" with "HL [Hcred2 Hcred1 Hat Hbor Hobs] HT").
     iExists l, ly. iSplitR; first done. iFrame "# ∗".
     iR. iR. iR.
-    by iApply (pinned_bor_unfold with "LFT Hcred1 Hbor").
+    iSplitL "Hat". { iApply tr_weaken; last done. lia. }
+    iApply (pinned_bor_unfold with "LFT [Hcred2] Hbor"); first done.
+    iApply lc_weaken; last done. lia.
   Qed.
-
-
 End rules.

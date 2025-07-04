@@ -125,7 +125,8 @@ Section comparison.
     { apply val_to_of_loc. }
     { apply val_to_of_loc. }
     { by apply val_of_bool_iff_val_of_Z. }
-    iIntros "!> Hcred". iApply ("HΦ" with "HL") => //.
+    iApply physical_step_intro. iNext.
+    iApply ("HΦ" with "HL") => //.
     rewrite /ty_own_val/=. by destruct b.
   Qed.
 
@@ -160,7 +161,7 @@ Section cast.
     iIntros "HT (_ & -> & %) %Φ #CTX #HE HL HΦ".
     iApply wp_cast_loc.
     { apply val_to_of_loc. }
-    iNext. iIntros "Hcred". iApply ("HΦ" with "HL [] HT").
+    iApply physical_step_intro. iNext. iApply ("HΦ" with "HL [] HT").
     rewrite /ty_own_val/=. iR. done.
   Qed.
   Definition type_cast_ptr_ptr_inst := [instance @type_cast_ptr_ptr].
@@ -176,7 +177,7 @@ Section cast.
     iApply wp_cast_ptr_int.
     { apply val_to_of_loc. }
     { done. }
-    iNext. iIntros "Hcred". iApply ("HΦ" with "HL [] HT") => //.
+    iApply physical_step_intro. iNext. iApply ("HΦ" with "HL [] HT") => //.
     rewrite /ty_own_val/=.
     iR.
     iPureIntro. by apply: val_to_of_Z.

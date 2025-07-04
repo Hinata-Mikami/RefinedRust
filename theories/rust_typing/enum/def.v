@@ -161,7 +161,7 @@ Section union.
       - iIntros "(%v & Hl & %ul & %ly' & ? & ? & ? & ? & ?)"; eauto with iFrame.
       - iIntros "(%ul & %ly' & -> & ? & ? & ? & %v & ? & ? & ?)"; eauto with iFrame. }
     rewrite /bor_contents.
-    iDestruct "CTX" as "#(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "#(LFT & LLCTX)".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok1)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as "(%ul & Hb)"; first done.
@@ -209,13 +209,13 @@ Section union.
     iDestruct "Htok" as "(Htok11 & Htok12)".
     iDestruct "Htok1" as "(Htok21 & Htok22)".
 
-    iPoseProof (ty_share _ E with "[$LFT $TIME $LLCTX] [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
+    iPoseProof (ty_share _ E with "[$LFT $LLCTX] [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     { done. }
     { iPureIntro. by eapply has_layout_loc_layout_of_union_member. }
     { iApply (loc_in_bounds_shorten_suf with "Hlb"). done. }
 
-    iPoseProof (ty_share _ E with "[$LFT $TIME $LLCTX] [Htok12] [] [] [] Hb2") as "Hb2"; first done.
+    iPoseProof (ty_share _ E with "[$LFT $LLCTX] [Htok12] [] [] [] Hb2") as "Hb2"; first done.
     { simpl. rewrite right_id. iFrame. }
     { simpl. iPureIntro. apply syn_type_has_layout_untyped; first done.
       - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
@@ -384,7 +384,7 @@ Section enum.
       - iIntros "(% & % & -> & ? & ? & % & ? & ?)". eauto 8 with iFrame. }
     simpl. iEval (rewrite -lft_tok_sep) in "Htok". iDestruct "Htok" as "(Htok1 & Htok2)".
     iApply fupd_logical_step.
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "(LFT & LLCTX)".
     iMod (bor_exists_tok with "LFT Hb Htok1") as "(%ly' & Hb & Htok1)"; first done.
     iMod (bor_exists_tok with "LFT Hb Htok1") as "(%tag & Hb & Htok1)"; first done.
     iMod (bor_sep with "LFT Hb") as "(Halg & Hb)"; first done.

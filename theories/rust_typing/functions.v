@@ -264,7 +264,7 @@ Section call.
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
-      introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
+      introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
       T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
     ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
@@ -283,7 +283,7 @@ Section call.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iApply fupd_wp. iMod (lctx_lft_alive_tok_noend_list with "HE HL") as "(%q & Htok & HL & HL_cl')";
       [done | apply Hal | ].
-    iDestruct "CTX" as "#(LFT & TIME & LCTX)".
+    iDestruct "CTX" as "#(LFT & LCTX)".
     iMod (llctx_startlft_extra _ _  _ [] with "LFT LCTX Htok") as "(%ϝ & Hϝ & %Hincl & Hkill)"; [set_solver.. | ].
     iPoseProof (Hsat ϝ with "HL []") as "#HE'".
     { iFrame "HE". iApply big_sepL_intro.
@@ -317,21 +317,18 @@ Section call.
     { rewrite -big_sepL2_fupd. iApply (big_sepL2_mono with "Hvl").
       iIntros (?? (rt & (ty & r)) ??) "Hv". eauto with iFrame. }
 
-    iMod (persistent_time_receipt_0) as "Hp".
     (* eliminate the logical step *)
-    iEval (rewrite /logical_step) in "Hstep".
-    iMod "Hstep" as "(%n & Hc & Hstep)".
-    iApply wp_fupd. iModIntro. iModIntro.
-    iApply (wp_call_credits with "TIME Hc Hp He") => //. { by apply val_to_of_loc. }
-    iIntros "!>" (lsa lsv Hlya) "Ha Hv Hcred Hc".
+    iModIntro. iModIntro.
+    iApply (wp_call with "He") => //. { by apply val_to_of_loc. }
+    iApply (physical_step_step_upd with "Hstep").
+    iMod (tr_zero) as "Hc".
+    iApply (physical_step_intro_tr with "Hc").
+    iNext. iIntros "Hc Hcred". iModIntro.
+    iIntros "(HP & HR)".
+    iIntros (lsa lsv Hlya) "Ha Hv".
     iDestruct (big_sepL2_length with "Ha") as %Hlen1.
     iDestruct (big_sepL2_length with "Hv") as %Hlen2.
     iDestruct (big_sepL2_length with "Hvl") as %Hlen3.
-
-    (* use the credits we got to get the precondition (for the logical step) *)
-    iEval (rewrite lc_succ) in "Hcred". iDestruct "Hcred" as "(Hcred & Hcred0)".
-    iEval (rewrite additive_time_receipt_succ) in "Hc". iDestruct "Hc" as "(Hc & Hc0)".
-    rewrite !Nat.add_0_r. iMod ("Hstep" with "Hcred0 Hc0") as "(HP & HR)".
 
     apply list_map_option_alt in Halg. apply list_map_option_alt in Halgl.
     iDestruct ("Hfn" $! aκs stys x ϝ with "[] []") as "Hfn".
@@ -354,12 +351,14 @@ Section call.
         fn_ret_prop π (fp_fr fps) v)%I).
 
     iExists RET_PROP. iSplitR "Hr HR HΦ HL HL_cl HL_cl' Hkill" => /=.
-    - iMod (persistent_time_receipt_0) as "#Htime".
-      iApply wps_fupd.
-      iApply ("Hm" with "[-Hϝ] [$LFT $TIME $LCTX] HE' [$Hϝ//] []").
+    - iApply wps_fupd.
+      iApply ("Hm" with "[-Hϝ] [$LFT $LCTX] HE' [$Hϝ//] []").
       { iFrame.
         (* we use the certificate + other credit to initialize the new functions credit store *)
-        iSplitL "Hcred Hc". { rewrite credit_store_eq /credit_store_def. iFrame. }
+        iSplitL "Hcred Hc". { rewrite credit_store_eq /credit_store_def.
+          iSplitL "Hcred".
+          - iApply lc_weaken; last done. unfold num_laters_per_step; lia.
+          - iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
         move: Hlen1 Hlya. move: (lsa' : list _) => lsa'' Hlen1 Hly. clear RET_PROP lsa' Hall.
         move: Hlen3 Halg. move: (fp_atys fps) => atys Hlen3 Hl.
         move: Hly Hl. move: (f_args fn) => alys Hly Hl.
@@ -424,24 +423,28 @@ Section call.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
     - (* handle the postcondition at return *)
-      iMod (persistent_time_receipt_0) as "Hpt".
-      iIntros "!>" (v). iDestruct 1 as (κs') "(Hϝ & Hstore & Hna & Hls & HPr)".
-      iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
-      iExists 1, 0. iFrame.
+      iIntros (v). iDestruct 1 as (κs') "(Hϝ & Hstore & Hna & Hls & HPr)".
       simpl. rewrite !big_sepL2_alt. iDestruct (big_sepL_app with "Hls") as "[? ?]".
       rewrite !zip_fmap_r !big_sepL_fmap. iFrame.
 
       iSplitR. { iPureIntro. apply Forall2_length in Halg.
         rewrite length_map in Halg. rewrite Hlen1 Hlen3 Halg length_fmap. done. }
       iSplitR; first done.
-      iIntros "Hcred Hat".
+
+      iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
+      iApply (physical_step_intro_tr with "Hat").
+      iNext. iIntros "Hat Hcred".
+
       iPoseProof ("Hkill" with "Hϝ") as "(Htok & Hkill)".
       iMod ("HL_cl'" with "Htok HL") as "HL".
       iPoseProof ("HL_cl" with "HL") as "HL".
        (*we currently don't actually kill the lifetime, as we don't conceptually need that. *)
       iDestruct ("HPr") as (?) "(Hty & HR2 & _)".
       iMod ("Hr" with "[] HE HL [Hat Hcred Hna HR2 Hty HR]") as "(%L3 & HL & Hr)"; first done.
-      { iFrame. }
+      { iFrame. simpl. unfold num_laters_per_step.
+        iSplitL "Hcred".
+        - iApply lc_weaken; last done. unfold num_cred. lia.
+        - iApply tr_weaken; last done. lia. }
       iApply ("HΦ" with "HL").
       by iApply ("Hr").
   Qed.

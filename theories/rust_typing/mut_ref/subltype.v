@@ -318,8 +318,8 @@ Section access.
     iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
     iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
     iModIntro. iExists l'. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat".
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred'".
     iModIntro.
     iSplit.
     - (* close *)
@@ -353,6 +353,7 @@ Section access.
       { rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
         iExists void*. iFrame. do 3 iR.
         iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
+        iSplitL "Hat". { iApply tr_weaken; last done. lia. }
         iModIntro. subst V.
         (* need to adapt the pinned part, too *)
         iApply (pinned_bor_iff with "[] [] Hb").
@@ -383,7 +384,10 @@ Section access.
       { iIntros (?) "Hobs Hat Hcred Hp". simp_ltypes.
         rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
         setoid_rewrite ltype_own_core_equiv. rewrite ltype_core_idemp.
-        iModIntro. eauto 8 with iFrame. }
+        iModIntro.
+        iAssert (have_creds) with "[Hat Hcred']" as "?".
+        { iFrame. iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
+        eauto 8 with iFrame. }
       { rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
         iExists void*. do 4 iR.
         iExists _, r2. iR. iNext. iModIntro. eauto with iFrame. }
@@ -402,7 +406,7 @@ Section access.
       l ◁ₗ[π, Shared κ] #(r', γ) @ MutLtype lt' κ' ∗
       q.[κ]).
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
+    iIntros (?) "#(LFT & CTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & %γ' & %Ha & #Hb)".
     injection Ha as <- <-.
     apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.

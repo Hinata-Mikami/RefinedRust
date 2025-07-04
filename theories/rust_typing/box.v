@@ -17,7 +17,7 @@ Section box.
         inner.(ty_sidecond) ∗
         (* No later here over the freeable. I don't know how to make the unfolding equation work with one. *)
         (freeable_nz l ly.(ly_size) 1 HeapAlloc) ∗
-        £ num_cred ∗ atime 1 ∗
+        £ num_cred ∗ tr 1 ∗
         ∃ (ri : rt), place_rfn_interp_owned r ri ∗
         (* this needs to match up with the corresponding later/fupd in the OfTyLtype to get the unfolding equation *)
         ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri MetaNone v';
@@ -67,7 +67,7 @@ Section box.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -112,14 +112,16 @@ Section box.
 
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
-    iPoseProof (ty_share with "[$LFT $TIME $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
+    iPoseProof (ty_share with "[$LFT $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
 
-    iApply (logical_step_intro_atime with "Hat").
-    iModIntro. iIntros "Hcred' Hat !> [#Hshr Htok]".
-    iMod ("Hcl_cred" with "[$Hcred' $Hat]") as "(? & Htok2)".
+    iApply (logical_step_intro_tr with "Hat").
+    iModIntro. iIntros "Hat Hcred' !> [#Hshr Htok]".
+    iMod ("Hcl_cred" with "[$Hcred' Hat]") as "(? & Htok2)".
+    { iNext. iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step. lia. }
     rewrite ty_lfts_unfold.
     iCombine "Htok2 Htoki2" as "Htok2". rewrite !lft_tok_sep.
     iCombine "Htok Htok2" as "$".
@@ -170,7 +172,7 @@ Section box.
     iDestruct "Hv" as "(%v' & Hl & Hv)".
     iPoseProof (ty_own_ghost_drop with "Hv") as "Hgdrop"; first done.
     iApply (logical_step_compose with "Hgdrop").
-    iApply (logical_step_intro_atime with "Hat").
+    iApply (logical_step_intro_tr with "Hat").
     iIntros "!> Hcred' Hat !> Hgdrop".
     eauto with iFrame.
   Qed.
@@ -728,7 +730,7 @@ Section lemmas.
           (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, R)))
       .
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Hκ HR Hb". rewrite ltype_own_box_unfold /box_ltype_own.
+    iIntros (?) "#(LFT & LLCTX) Hκ HR Hb". rewrite ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hlb & (Hcred & Hat) & Hrfn & Hb)".
     apply syn_type_has_layout_ptr_inv in Halg as ?; subst.
     iFrame "#%".
@@ -743,8 +745,8 @@ Section lemmas.
     iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
     iMod (fupd_mask_mono with "Hb") as "(%l' & %ly' & Hl & %Hst & %Hly' & Hf & Hb)"; first done.
     iModIntro. iExists l'. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat".
+    iApply (logical_step_intro_tr with "Hat").
+    iIntros "Hat Hcred' ".
     iModIntro.
     iSplit.
     - (* close *)
@@ -780,6 +782,8 @@ Section lemmas.
         iExists void*. iFrame.
         iSplitR. { iPureIntro. by apply syn_type_has_layout_ptr. }
         do 2 iR.
+        iSplitL "Hat".
+        { iApply tr_weaken; last done. lia. }
         iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
         iModIntro. subst V.
         (* need to adapt the pinned part, too *)
@@ -813,6 +817,11 @@ Section lemmas.
         rewrite ltype_own_box_unfold /box_ltype_own.
         setoid_rewrite ltype_own_core_equiv. rewrite ltype_core_idemp.
         rewrite ltype_core_syn_type_eq. iModIntro.
+        iAssert (have_creds) with "[Hat Hcred]" as "?".
+        { simpl. unfold have_creds, num_laters_per_step, num_cred. 
+          iSplitL "Hcred".
+          - iApply lc_weaken; last done. lia.
+          - iApply tr_weaken; last done. lia. }
         eauto 8 with iFrame. }
       { rewrite ltype_own_box_unfold /box_ltype_own.
         iExists void*. do 4 iR.
@@ -832,7 +841,7 @@ Section lemmas.
       l ◁ₗ[π, Shared κ] #r' @ BoxLtype lt' ∗
       q.[κ]).
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_box_unfold /box_ltype_own.
+    iIntros (?) "#(LFT & LLCTX) Hκ Hb". rewrite {1}ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
     apply syn_type_has_layout_ptr_inv in Hst as ?. subst ly.
     iR. iR.
@@ -880,16 +889,19 @@ Section rules.
           )))))
     ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
-    iIntros "HR" (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
+    iIntros "HR" (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
     iPoseProof (box_ltype_acc_owned F with "HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iApply fupd_wp. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
-    iModIntro. iApply (wp_logical_step with "TIME Hcl"); [solve_ndisj.. | ].
+    iModIntro. 
+    iApply wp_fupd.
+    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iNext. iIntros (st) "Hl Hcred Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb") => /=.
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
@@ -940,20 +952,22 @@ Section rules.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
     (* get a token *)
     iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
-    iPoseProof (box_ltype_acc_uniq F with "[$LFT $TIME $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
+    iPoseProof (box_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
-    iModIntro. iApply (wp_logical_step with "TIME Hcl"); [solve_ndisj.. | ].
+    iModIntro. 
+    iApply wp_fupd.
+    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iNext.
-    iIntros (st) "Hl Hcred Hcl".
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hl Hcl".
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
     simpl. iIntros (upd) "#Hincl Hl2 %Hst ? Hcond".
@@ -1004,22 +1018,22 @@ Section rules.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
     (* get a token *)
     iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
-    iPoseProof (box_ltype_acc_shared F with "[$LFT $TIME $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
+    iPoseProof (box_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & %q' & Hl & Hb & Hcl)". iMod "Hb".
     iMod "HclF" as "_".
     iModIntro.
     iApply wp_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
-    iNext.
-    iIntros (st) "Hl Hcred".
+    iApply physical_step_intro. iNext.
+    iIntros (st) "Hl".
     iExists l'. iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
@@ -1044,18 +1058,18 @@ Section rules.
         else T L' R _ (BoxLtype lt') (PlaceIn r')))
     ⊢ stratify_ltype π E L mu mdu ma ml l (BoxLtype lt) (PlaceIn r) (Owned wl) T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     iPoseProof (box_ltype_acc_owned F with "Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
       iDestruct "Hc" as "(%ty' & %Heq' & HT)".
       rewrite full_eqltype_alt in Heq'.
-      iPoseProof (eqltype_use F with "[$LFT $TIME $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
+      iPoseProof (eqltype_use F with "[$LFT $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
       { apply Heq'. }
-      iPoseProof (eqltype_acc _ _ (Owned false) r' r' with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; first apply Heq'.
+      iPoseProof (eqltype_acc _ _ (Owned false) r' r' with "[$LFT $LLCTX] HE HL") as "#Heq"; first apply Heq'.
       iPoseProof (ltype_eq_syn_type with "Heq") as "%Hst".
       iModIntro. iExists L', R, _, _, _. iFrame.
       iSplitR. { simp_ltypes. done. }
@@ -1105,17 +1119,17 @@ Section rules.
           )))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (BoxLtype lt) (PlaceIn r) (Uniq κ' γ') T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
+    iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "Hs" as "(%κs & %L1 & %Hal & Hs)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as "(%q & Htok & Hcl_tok & HL)"; [done.. | ].
     iMod "HF_cl" as "_".
-    iPoseProof (box_ltype_acc_uniq F with "[$LFT $TIME $LLCTX] Htok Hcl_tok Hb") as "Hb"; [done.. | ].
+    iPoseProof (box_ltype_acc_uniq F with "[$LFT $LLCTX] Htok Hcl_tok Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
-    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond & %Hsteq & Hs)"; first done.
+    iMod ("Hc" with "[] [$LFT $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond & %Hsteq & Hs)"; first done.
 
     unfold check_llctx_place_update_kind_incl_goal.
     iDestruct "Hs" as "(%b & %Hb & Hs)".
@@ -1131,7 +1145,7 @@ Section rules.
         - iFrame. done.
         - iFrame. done. }
       iDestruct "HT" as "(%lt2 & %Heql & $)".
-      iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
+      iPoseProof (full_eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
       iFrame.
       iSplitR. {
         unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].

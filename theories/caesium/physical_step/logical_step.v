@@ -354,6 +354,17 @@ Module logical_step.
 
     Definition logical_step E P : iProp Σ := |~{E, E}~> P.
 
+    Global Instance logical_step_contractive E :
+      Contractive (logical_step E).
+    Proof.
+      apply step_update_contractive.
+    Qed.
+    Global Instance logical_step_proper E :
+      Proper ((≡) ==> (≡)) (logical_step E).
+    Proof.
+      apply step_update_proper.
+    Qed.
+
     Lemma logical_step_sep E P1 P2 :
       logical_step E P1 -∗
       logical_step E P2 -∗
@@ -383,7 +394,7 @@ Module logical_step.
       by iApply (step_update_intro).
     Qed.
 
-    Lemma logical_step_intro_atime F P n :
+    Lemma logical_step_intro_tr F P n :
       ⧗ n -∗
       (⧗ (tr_f n) -∗ £ (tr_f n) ={F}=∗ P) -∗
       logical_step F P.
@@ -467,6 +478,8 @@ Module logical_step.
       iApply logical_step_fupd.
       by iApply (step_update_intro).
     Qed.
+
+    Global Typeclasses Opaque logical_step.
   End logical_step.
 End logical_step.
 

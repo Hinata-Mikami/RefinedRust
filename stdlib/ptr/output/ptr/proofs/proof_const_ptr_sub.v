@@ -25,10 +25,8 @@ Proof.
   rewrite /size_of_st. simplify_layout_goal.
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
-  iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-  iMod (persistent_time_receipt_0) as "Hp".
-  iApply (wp_ptr_neg_offset_credits with "TIME Hat Hp").
-  { done. }
+  iDestruct "CTX" as "(LFT & LLCTX)".
+  iApply wp_ptr_neg_offset.
   { apply val_to_of_loc. }
   { done. }
   { (* count is positive, so this should work *)
@@ -49,15 +47,17 @@ Proof.
     { clear Hran2. lia. }
     { clear Hran1. lia. }
   }
-  iNext. simpl. iEval (rewrite additive_time_receipt_succ). iIntros "Hcred [Hat Hat']".
-  iPoseProof ("Hatcl" with "Hat'") as "Hstore".
+  iApply (physical_step_intro_tr with "Hat"). iNext. iIntros "[Hat Hat'] Hcred".
+  iPoseProof ("Hatcl" with "[Hat']") as "Hstore".
+  { iApply tr_weaken; last done. lia. }
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
-  iPoseProof (credit_store_donate_atime with "Hstore Hat") as "Hstore".
-  iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ -count) 0 0) as "#Hlb'". 
+  iPoseProof (credit_store_donate_tr with "Hstore Hat") as "Hstore".
+  iModIntro.
+  iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ -count) 0 0) as "#Hlb'".
   { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
   iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "%".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
-  { rewrite /ty_own_val /=. 
+  { rewrite /ty_own_val /=.
     iPureIntro. split; first done. sidecond_hammer. }
 
   repeat liRStep; liShow.

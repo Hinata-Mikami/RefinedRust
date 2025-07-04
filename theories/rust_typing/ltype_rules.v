@@ -387,12 +387,12 @@ Section accessors.
     gvar_obs γ r1 -∗
     gvar_auth γ r2 -∗
     £ 1 -∗
-    atime n -∗
+    tr n -∗
     κ ⊑ κ' -∗
     (q.[κ] ={lftE}=∗ R) -∗
     (∀ K', ▷ (K' -∗ [†κ'] ={lft_userE}=∗ ▷ C) -∗ £ 1 -∗ ▷ K' ={lftE}=∗ &pin{ κ' }[C] K' ∗ q.[κ]) -∗
     (□ ∀ r, gvar_auth γ r -∗ (|={lftE}=> l ◁ₗ[π, Owned false] #r @ ltype_core lt_full) -∗ C) -∗
-    (∀ r, gvar_obs γ r -∗ atime n -∗ £ (num_laters_per_step n) -∗ &pin{κ} [C] C ={lftE}=∗ l ◁ₗ[ π, Uniq κ γ] # r @ ltype_core lt_full) -∗
+    (∀ r, gvar_obs γ r -∗ tr n -∗ £ (num_laters_per_step n) -∗ &pin{κ} [C] C ={lftE}=∗ l ◁ₗ[ π, Uniq κ γ] # r @ ltype_core lt_full) -∗
     l ◁ₗ[π, Owned false] r @ lt_cur -∗
     l ◁ₗ[π, Uniq κ γ] r @ (OpenedLtype lt_cur lt_full lt_full (λ r1 r2, ⌜r1 = r2⌝) (λ r1 r2, R)).
   Proof.
@@ -409,8 +409,9 @@ Section accessors.
     iPoseProof (ltype_own_has_layout with "Hcur") as "(%ly & %Hst & %Hly)".
     iPoseProof (ltype_own_loc_in_bounds with "Hcur") as "#Hlb"; first done.
     iExists ly. do 5 iR. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat". iModIntro.
+    iApply (logical_step_intro_tr with "[Hat]").
+    { done. }
+    iIntros "Hat Hcred'". iModIntro.
     iIntros (Hown κs r0 r0') "Hpre #Hincl' Hown #Hub".
     iMod (gvar_update with "Hauth Hobs") as "(Hauth & $)".
 
@@ -436,7 +437,11 @@ Section accessors.
     iApply (ltype_own_core_equiv).
     iSpecialize ("Hub" with "Hdead").
     iPoseProof (pinned_bor_shorten κ κ' with "[//] Hb") as "Hb".
-    iApply ("Ha" with "Hobs Hat Hcred' [Hb]").
+    iApply ("Ha" with "Hobs [Hat] [Hcred'] [Hb]").
+    { simpl. unfold num_laters_per_step.
+      iApply tr_weaken; last done. lia. }
+    { simpl. unfold num_laters_per_step.
+      iApply lc_weaken; last done. lia. }
     (* bring the pinned bor in the right shape *)
     iApply (pinned_bor_impl with "[] Hb").
     iNext. iModIntro. iSplit; first last. { eauto. }
@@ -471,8 +476,7 @@ Section accessors.
     iIntros "Hcred' !>". iIntros (v2 rt2 ty2 r2) "Hl %Hst_eq Hsc' Hv".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. rewrite -Hst_eq. iExists ly. iFrame "#∗%".
-    iSplitR; first done.
-    iNext. eauto with iFrame.
+    done.
   Qed.
 
   Lemma ofty_ltype_acc_uniq {rt} F π (ty : type rt) (r : rt) κ γ l R q :
@@ -498,7 +502,7 @@ Section accessors.
         ⌜ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone⌝ ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #(r2) @ OpenedLtype (◁ty2) (◁ty) (◁ty) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, R))).
   Proof.
-    iIntros (?) "#(LFT & TIME & LLCTX) Htok HclR Hb". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iIntros (?) "#(LFT & LLCTX) Htok HclR Hb". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & Hobs & Hb)".
     iExists ly. iFrame "%#".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
@@ -511,8 +515,9 @@ Section accessors.
     iMod (fupd_mask_mono lftE with "Hb") as "(%v & Hl & Hv)"; first done.
     iPoseProof (gvar_agree with "Hauth Hobs") as "#->".
     iModIntro. iExists _. iFrame.
-    iApply (logical_step_intro_atime with "Hat").
-    iIntros "Hcred' Hat !>". iSplit.
+    iApply (logical_step_intro_tr with "[Hat]").
+    { done. }
+    iIntros "Hat Hcred' !>". iSplit.
     - iIntros (v2 r2) "Hl Hv".
       iMod (gvar_update r2 with "Hauth Hobs") as "(Hauth & Hobs)".
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -520,7 +525,9 @@ Section accessors.
       { iNext. eauto with iFrame. }
       iMod (fupd_mask_mono with "(HclR Htok)") as "$"; first done.
       iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iFrame "#∗%". iApply pinned_bor_shorten; done.
+      iExists ly. iFrame "#∗%".
+      iSplitL "Hat". { iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
+      iApply pinned_bor_shorten; done.
       (* TODO maybe provide excess credits *)
     - iIntros (v2 rt2 ty2 r2) "Hl #Hsc2 Hv %Hst". iModIntro.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -531,6 +538,9 @@ Section accessors.
         iDestruct "Hc" as ">(%ly' & % & % & _ & _ & _ & %r' & -> & >Hb)". eauto. }
       { iIntros (?) "Hobs Hat Hcred Hp". simp_ltypes.
         iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+        iAssert (have_creds) with "[Hat Hcred']" as "?".
+        { unfold have_creds; simpl. iFrame.
+          iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
         eauto 8 with iFrame. }
       { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         rewrite -Hst. iExists _. do 5 iR. iExists _. iR.
@@ -672,8 +682,11 @@ Section open.
     destruct wl.
     - iDestruct "Hcred" as "([Hcred1 Hcred] & Hat)".
       iMod (lc_fupd_elim_later with "Hcred1 Hb") as "$".
-      iApply (logical_step_intro_atime with "Hat").
-      iModIntro. by iIntros "$ $".
+      iApply (logical_step_intro_tr with "[Hat]").
+      { done. }
+      iModIntro. iIntros "Hat $".
+      iModIntro. iApply tr_weaken; last done.
+      simpl. unfold num_laters_per_step. lia.
     - iFrame. iApply logical_step_intro. done.
   Qed.
 
@@ -690,7 +703,7 @@ Section open.
   Lemma ltype_uniq_openable_ofty {rt} (ty : type rt) :
     ltype_uniq_openable (◁ ty)%I.
   Proof.
-    iIntros (? κ γ π r l q κs ?) "#(LFT & TIME & LLCTX) Htok Hcl_tok Hb".
+    iIntros (? κ γ π r l q κs ?) "#(LFT & LLCTX) Htok Hcl_tok Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & % & % & #? & #? & ((Hcred1 & Hcred) & Hat) & Hrfn & Hb)".
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.

@@ -3,4 +3,4 @@
  (package refinedrust)
  (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)
  (synopsis "Caesium language")
- (theories lithium stdpp iris Ltac2 Stdlib))
+ (theories lithium stdpp iris Ltac2 Stdlib caesium.physical_step caesium.program_logic))

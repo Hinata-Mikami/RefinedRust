@@ -49,6 +49,31 @@ Proof.
   iMod ("H" with "[$]") as "[$ H]". iIntros "!>" (e2 σ2 efs ?) "Hcred !> !>". by iApply "H".
 Qed.
 
+Lemma wp_lift_base_step_physical_step {s E Φ} e1 :
+  to_val e1 = None →
+  (∀ σ1 ns κ κs nt, state_interp σ1 ns (κ ++ κs) nt ={E,∅}=∗
+    ⌜base_reducible e1 σ1⌝ ∗
+    ∀ e2 σ2 efs, ⌜base_step e1 σ1 κ e2 σ2 efs⌝ -∗
+      |={∅}⧗=>
+      (|={∅, E}=>
+      state_interp σ2 (S ns) κs (length efs + nt) ∗
+      WP e2 @ s; E {{ Φ }} ∗
+      [∗ list] ef ∈ efs, WP ef @ s; ⊤ {{ fork_post }}))
+  ⊢ WP e1 @ s; E {{ Φ }}.
+Proof.
+  iIntros (?) "H". iApply wp_lift_step_physical_step=>//.
+  iIntros (σ1 ns κ κs nt) "Hσ".
+  iSpecialize ("H" with "Hσ").
+  iSplit. { iMod "H" as "(%Hred & _)".
+    iModIntro.
+    destruct s; iPureIntro; first apply base_prim_reducible; done. }
+  iIntros (e2 σ2 efs ?).
+  iMod "H" as "(%Hred & H)".
+  iSpecialize ("H" with "[]").
+  { iPureIntro. by eapply base_reducible_prim_step. }
+  done.
+Qed.
+
 Lemma wp_lift_base_stuck E Φ e :
   to_val e = None →
   sub_redexes_are_values e →

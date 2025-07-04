@@ -180,13 +180,9 @@ Proof.
   - (* zero branch *)
     (* TODO maybe use place instance for alias_ptr instead of manually wrapping up the pointsto *)
     iRename select (credit_store _ _) into "Hstore".
-    iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hcl_store)".
-
-    iApply (typed_stmt_annot_credits with "Hat").
-    iIntros "Hat Hcred".
-    rewrite lc_succ. iDestruct "Hcred" as "(Hcred1 & Hcred)".
-    rewrite (additive_time_receipt_succ 1). iDestruct "Hat" as "(Hat1 & Hat)".
-    iPoseProof ("Hcl_store" with "Hat") as "Hstore".
+    iApply typed_stmt_annot_skip.
+    iPoseProof (credit_store_scrounge num_cred with "Hstore") as "(Hcred & Hstore)"; first (unfold num_cred; lia).
+    iPoseProof (credit_store_scrounge_tr 1 with "Hstore") as "(Hat1 & Hstore)"; first lia.
 
     (* make a box type out of the alias_ptr *)
     iSelect (_ ◁ₗ[_, _] _ @ ◁ (uninit UnitSynType))%I (fun H => iRename H into "H_pts").
@@ -229,19 +225,17 @@ Proof.
     { open_cache. sidecond_hook. }
     move: Ha.
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "(LFT & LLCTX)".
     iSelect (credit_store _ _) ltac:(fun H => iRename H into "Hstore").
     iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hstore)".
-    iMod (persistent_time_receipt_0) as "Hp".
-    iApply (wp_alloc_credits with "TIME Hat Hp").
-    { done. }
+    iApply wp_alloc.
     { simplify_layout_goal. rewrite /i2v Hsz /=. by eapply val_to_of_Z. }
     { simplify_layout_goal. rewrite /i2v Halign /=. by eapply val_to_of_Z. }
-    { simplify_layout_assum. lia. }
-    iIntros "!> %l Hl Hfree %Hly [Hcred1 Hcred] Hat".
-    iEval (rewrite (additive_time_receipt_succ 1)) in "Hat".
-    iDestruct "Hat" as "[Hat1 Hat]".
-    iPoseProof ("Hstore" with "Hat1") as "Hstore".
+    { simplify_layout_assum.  case_bool_decide; [lia | lia]. }
+    iApply (physical_step_intro_tr with "Hat"). iIntros "!> [Hat Hat1] Hcred !>".
+    iIntros "%l Hl Hfree %Hly".
+    iPoseProof ("Hstore" with "[Hat1]") as "Hstore".
+    { iApply tr_weaken; last done. lia. }
     iApply ("Hcont" $! _ π _ _ (box (uninit (ty_syn_type T MetaNone))) (# ()) with "HL [Hfree Hl Hcred Hat]").
     { iExists _, _. iSplitR; first done. iSplitR; first done.
       match goal with | H : CACHED (use_layout_alg (ty_syn_type T MetaNone) = Some ?ly) |- _ => rename ly into T_ly; rename H into H_T end.
@@ -249,6 +243,8 @@ Proof.
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
       rewrite length_replicate. iFrame "Hlb". simpl. iSplitR; first done. iFrame.
       iSplitL "Hfree". { by iApply freeable_freeable_nz. }
+      iSplitL "Hcred". { unfold num_cred. iApply lc_weaken; last done. lia. }
+      iSplitL "Hat". { iApply tr_weaken; last done. lia. }
       iExists (). iSplitR; first done. iNext. iModIntro.
       rewrite uninit_own_spec. iR. iExists T_ly.
       iSplitR; first done. rewrite /has_layout_val length_replicate //. }

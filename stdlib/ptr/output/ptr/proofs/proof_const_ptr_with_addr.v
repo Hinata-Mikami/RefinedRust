@@ -23,7 +23,7 @@ Proof.
   iEval (rewrite /ty_own_val/=) in "Hv".
   iDestruct "Hv" as "(_ & %)".
   iApply wp_copy_alloc_id; [done | apply val_to_of_loc | ].
-  iNext. iIntros "_".
+  iApply physical_step_intro; iNext.
   set (l := (x.1, addr) : loc).
   iAssert (l ◁ᵥ{π, MetaNone} (x.1, addr) @ alias_ptr_t)%I as "?".
   { rewrite /ty_own_val/=. do 2 iR.

@@ -19,17 +19,17 @@ Section stratify.
       end))
     ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned wl) T.
   Proof.
-    iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
-    iPoseProof (shr_ltype_acc_owned F with "[$LFT $TIME $LLCTX] Hb") as "Hb"; [done.. | ].
+    iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
+    iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
-    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
+    iPoseProof ("Hs" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
     destruct (decide (ma = StratRefoldFull)) as [Heq | ].
     - subst ma.
       iDestruct "Hc" as "(% & %ty' & %Heq & HT)".
-      iPoseProof (eqltype_use F with "[$LFT $TIME $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
+      iPoseProof (eqltype_use F with "[$LFT $LLCTX] HE HL") as "(Hvs & HL)"; [done | .. ].
       { apply full_eqltype_alt. apply Heq. }
-      (*iPoseProof (eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; first done.*)
+      (*iPoseProof (eqltype_acc with "[$LFT $LLCTX] HE HL") as "#Heq"; first done.*)
       iModIntro. iExists L', R, _, _, _. iFrame.
       iSplitR. { simp_ltypes. done. }
       iApply logical_step_fupd.

@@ -20,16 +20,15 @@ Proof.
   rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
-  iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-  iMod (persistent_time_receipt_0) as "Hp".
-  iApply (wp_ptr_wrapping_offset_credits with "TIME Hat Hp").
-  { done. }
+  iDestruct "CTX" as "(LFT & LLCTX)".
+  iApply wp_ptr_wrapping_offset.
   { apply val_to_of_loc. }
   { done. }
-  iNext. simpl. iEval (rewrite additive_time_receipt_succ). iIntros "Hcred [Hat Hat']".
-  iPoseProof ("Hatcl" with "Hat'") as "Hstore".
+  iApply (physical_step_intro_tr with "Hat"). iIntros "!> [Hat Hat'] Hcred !>".
+  iPoseProof ("Hatcl" with "[Hat']") as "Hstore".
+  { iApply tr_weaken; last done. lia. }
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
-  iPoseProof (credit_store_donate_atime with "Hstore Hat") as "Hstore".
+  iPoseProof (credit_store_donate_tr with "Hstore Hat") as "Hstore".
   assert ((l wrapping_offset{T_st_ly}ₗ count).2 ∈ USize).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
     by apply wrap_unsigned_in_range. }

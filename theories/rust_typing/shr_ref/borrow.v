@@ -16,15 +16,18 @@ Section rule.
     ⊢ typed_val_expr E L (&ref{Shr, ty_annot, κ_name} e)%E T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
-    iIntros "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".
-    wp_bind. iSpecialize ("HT" with "Hnamed"). iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $TIME $LLCTX] HE HL").
+    iIntros "(%M & Hnamed & %κ & _ & HT)". iIntros (Φ) "#(LFT & LLCTX) #HE HL HΦ".
+    wp_bind. iSpecialize ("HT" with "Hnamed").
+    iApply ("HT" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $LLCTX] HE HL").
     iIntros (l) "HT".
     unfold Ref. wp_bind. iApply ewp_fupd.
-    iApply (wp_logical_step with "TIME HT"); [solve_ndisj.. | ].
-    iApply wp_skip. iNext. iIntros "Hcred HT !> !>".
-    iApply (wp_logical_step with "TIME HT"); [solve_ndisj.. | ].
-    iApply wp_skip. iNext. iIntros "Hcred' HT".
-    iMod ("HT" with "Hcred'") as (L' π rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & HT)".
+    iApply (wp_logical_step with "HT"); [solve_ndisj.. | ].
+    iApply wp_skip. iApply physical_step_intro; iNext. iIntros "HT !>".
+    iApply wp_fupd.
+    iApply (wp_logical_step with "HT"); [solve_ndisj.. | ].
+    iApply wp_skip.
+    iApply physical_step_intro_lc. iIntros "(Hcred & Hcred1) !> !> HT".
+    iMod ("HT" with "Hcred1") as (L' π rt ty r r' ly) "(#Hrfn & #Hshr & %Halg & %Hly & #Hlb & #Hsc & HL & HT)".
     iModIntro. iApply ("HΦ" with "HL [Hshr] HT").
     iExists l, ly, r'. iR. iR. iFrame "Hlb Hrfn Hsc %".
     iModIntro. iModIntro. done.

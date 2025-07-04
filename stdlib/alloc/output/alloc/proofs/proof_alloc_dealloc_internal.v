@@ -43,7 +43,7 @@ Proof.
   { iExists _. iFrame. fold ly. done. }
   { rewrite /freeable_nz.
     destruct ((Z.to_nat size)) eqn:Heq; first lia. done. }
-  iIntros "!> Hcred".
+  iApply physical_step_intro; iNext.
 
   to_typed_stmt "CTX HE HL Hcont".
   (* TODO *)

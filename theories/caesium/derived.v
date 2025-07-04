@@ -4,6 +4,19 @@ Set Default Proof Using "Type".
 Section derived.
   Context `{refinedcG Σ} `{ALG : LayoutAlg}.
 
+  Lemma wps_annot A (a : A) Q Ψ s:
+    (|={⊤}⧗=> WPs s {{ Q, Ψ }}) -∗ WPs AnnotStmt 1 a s {{ Q , Ψ }}.
+  Proof using ALG.
+    iIntros "Hs".
+    rewrite /AnnotStmt /SkipES /=.
+    wps_bind. iApply wp_skip.
+    iApply (physical_step_wand with "Hs"). iIntros "Hs".
+    iApply wps_exprs.
+    iApply physical_step_intro.
+    iNext. done.
+  Qed.
+
+  (*
   Lemma wps_annot n A (a : A) Q Ψ s:
     (|={⊤}[∅]▷=>^n £ n -∗ WPs s {{ Q, Ψ }}) -∗ WPs AnnotStmt n a s {{ Q , Ψ }}.
   Proof using ALG.
@@ -15,18 +28,7 @@ Section derived.
     iIntros "Ha Hc2". iApply "IH". iApply (step_fupdN_wand with "Ha"). iIntros "Ha Hc3".
     iApply "Ha". rewrite (lc_succ n). iFrame.
   Qed.
-
-  Lemma wps_annot_credits A (a : A) Q Ψ s n m:
-    time_ctx -∗ atime n -∗ ptime m -∗
-    ▷ (£(1+num_laters_per_step(n+m)) -∗ atime (S n) -∗ WPs s {{ Q, Ψ }}) -∗ WPs annot: a; s {{ Q , Ψ }}.
-  Proof using ALG.
-    iIntros "#CTX Hc Hp Hs".
-    rewrite /AnnotStmt /SkipES /=.
-    wps_bind.
-    iApply (wp_skip_credits with "CTX Hc Hp"); first set_solver.
-    iNext. iIntros "Hcred Hc". iApply wps_exprs.
-    iApply step_fupd_intro; first done. iNext. iIntros "_". iApply ("Hs" with "Hcred Hc").
-  Qed.
+  *)
 
   Lemma step_fupdN_add (Ei Eo : coPset) (n m : nat) (P : iProp Σ) :
     (|={Eo}[Ei]▷=>^(n + m) P)%I ⊣⊢ (|={Eo}[Ei]▷=>^n (|={Eo}[Ei]▷=>^m P))%I.
@@ -140,33 +142,5 @@ Section derived.
     intros m P1 P2 Heq. induction n as [ | n IH].
     - f_equiv. apply Heq.
     - simpl. do 3 f_equiv. apply IH.
-  Qed.
-
-  (** A delayed proposition holds after a step of computation, in the process stripping [n] laters. *)
-  Definition delayed_prop (E : coPset) (n : nat) (P : iProp Σ) : iProp Σ := ptime n ∗ (|={E}=> |={E}▷=>^n P).
-
-  Lemma delayed_prop_accumulate E P Q R n m :
-    (P ∗ Q -∗ R) -∗
-    delayed_prop E n P -∗
-    delayed_prop E m Q -∗
-    delayed_prop E (max n m) R.
-  Proof.
-    iIntros "Hcomb (#TimeP & HP) (#TimeQ & HQ)".
-    iSplitR.
-    { destruct (decide (n ≤ m)) as [ Hle | Hlt].
-      - iApply persistent_time_receipt_mono; last iApply "TimeQ".
-        lia.
-      - iApply persistent_time_receipt_mono; last iApply "TimeP".
-        lia.
-    }
-    iMod "HP". iMod "HQ". iModIntro. iApply (step_fupdN_wand with "[-Hcomb] Hcomb").
-    iApply (step_fupdN_zip with "[HP] [HQ]"); iApply step_fupdN_mono_n; eauto; lia.
-  Qed.
-
-  Lemma delayed_prop_elim_creds E P n :
-    delayed_prop E n P -∗
-    £ n ={E}=∗ P ∗ ptime n.
-  Proof.
-    iIntros "($ & HP) Hc". iMod "HP". iApply (lc_elim_step_fupdN with "Hc HP").
   Qed.
 End derived.

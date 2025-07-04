@@ -25,7 +25,6 @@ Definition lft_userE : coPset := ↑lft_userN.
 
 Definition rrustE : coPset := ↑rrustN.
 Definition lftE : coPset := ↑lftN.
-Definition timeE : coPset := ↑timeN.
 Definition shrE : coPset := ↑shrN.
 
 (* We want unit to be in Type, not in Set *)

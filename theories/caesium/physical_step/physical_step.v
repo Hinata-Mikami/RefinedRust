@@ -473,7 +473,7 @@ Section physical_step.
     unfold IsExcept0. iIntros "HP".
     iApply physical_step_fupd_l.
     by iMod "HP" as "$".
-Qed.
+  Qed.
 
   (* Elimination instance for conjunctions. *)
   Global Instance elim_modal_conj (P P' Q₁ Q₂ Q₁' Q₂' : iProp Σ) :

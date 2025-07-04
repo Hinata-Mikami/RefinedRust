@@ -92,8 +92,8 @@ Section place.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-    iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
+    iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply (wp_logical_step with "Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -103,8 +103,10 @@ Section place.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
-    iModIntro. iNext. iIntros "Hcred Hcl".
-    iModIntro. iExists _. iR.
+    iModIntro.
+    iApply physical_step_intro; iNext.
+    iIntros "Hcl".
+    iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
@@ -115,7 +117,7 @@ Section place.
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with " HE HL") as "#Houtl".
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").
@@ -200,8 +202,8 @@ Section place.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
-    iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
+    iDestruct "CTX" as "(LFT & LLCTX)".
+    iApply (wp_logical_step with "Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -211,8 +213,8 @@ Section place.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
-    iModIntro. iNext. iIntros "Hcred Hcl".
-    iModIntro. iExists _. iR.
+    iModIntro. iApply physical_step_intro; iNext. iIntros "Hcl".
+    iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
     clear i. set (i := Z.to_nat i').
@@ -224,7 +226,7 @@ Section place.
     iPoseProof (lctx_place_update_kind_outlives_use with "HE HL") as "#Houtl"; first apply Houtl.
     iPoseProof (lctx_place_update_kind_incl_use _ _ _ _ Hincl with "HE HL") as "#Houtl2".
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").
@@ -296,7 +298,7 @@ Section place.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
-    iDestruct "CTX" as "(LFT & TIME & LLCTX)".
+    iDestruct "CTX" as "(LFT & LLCTX)".
     iApply wp_fupd.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
@@ -307,7 +309,7 @@ Section place.
       rewrite Z2Nat.id; last done.
       iApply loc_in_bounds_shorten_suf; last done. lia. }
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
-    iModIntro. iNext. iIntros "Hcred".
+    iModIntro. iApply physical_step_intro; iNext.
     iModIntro. iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
@@ -319,7 +321,7 @@ Section place.
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
     iPoseProof (lctx_place_update_kind_outlives_use with "HE HL") as "#Houtl"; first apply Houtl.
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").

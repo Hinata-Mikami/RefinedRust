@@ -19,6 +19,7 @@ Proof.
   rewrite {1}/ty_own_val /=. iDestruct "Hv" as "(_ & %Hv)".
   iApply wp_erase_prov.
   { rewrite /has_layout_val. erewrite (val_to_Z_ot_length _ (IntOp USize)); done. }
+  iApply physical_step_intro; iNext.
   iApply  ("Hcont" $! _ π _ _ (int USize) _ with "HL []").
   { rewrite /ty_own_val/=. iR. iPureIntro. by apply val_to_Z_erase_prov. }
 
@@ -27,7 +28,8 @@ Proof.
   iApply wp_cast_int_ptr_prov_none; [done | done | | | done | ].
   { by rewrite -MaxInt_eq. }
   { apply val_to_byte_prov_erase_prov. }
-  iIntros "!> Hl Hcred".
+  iApply physical_step_intro; iNext.
+  iIntros "Hl".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) _ with "HL").
   { rewrite /ty_own_val /=. iPureIntro.
     split; first done.
