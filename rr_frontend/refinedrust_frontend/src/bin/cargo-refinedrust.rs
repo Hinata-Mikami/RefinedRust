@@ -1,8 +1,8 @@
-// © 2020, ETH Zurich
+// © 2025, The RefinedRust Developers and Contributors
 //
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the BSD-3-clause License.
+// If a copy of the BSD-3-clause license was not distributed with this
+// file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 #![feature(rustc_private)]
 
@@ -10,17 +10,52 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, process};
 
-// Unused dependencies
+static USAGE: &str = "RefinedRust verification framework
+
+Usage: cargo refinedrust [Cargo options] -- [RefinedRust options]
+
+RefinedRust Options:
+  -h, --help               Print help
+      --show-config        Display the detected configuration
+  -V, --version            Print version info";
+
+fn dump_version_info() {
+    println!("RefinedRust version: {}", env!("CARGO_PKG_VERSION"));
+}
+
 fn main() {
-    if let Err(code) = process(env::args().skip(1)) {
+    let args: Vec<String> = env::args().skip(1).skip_while(|arg| arg == "refinedrust").collect();
+    let args_index = args.iter().position(|arg| arg == "--").unwrap_or(args.len());
+
+    let (rr_args, cargo_args): (&[String], &[String]) = args.split_at(args_index);
+    let rr_args: Vec<String> = rr_args.iter().map(ToOwned::to_owned).collect();
+    let cargo_args: Vec<String> = cargo_args.iter().map(ToOwned::to_owned).skip(1).collect();
+
+    if rr_args.iter().any(|arg| arg == "-h" || arg == "--help") {
+        return println!("{}", USAGE);
+    }
+
+    if rr_args.iter().any(|arg| arg == "-V" || arg == "--version") {
+        return dump_version_info();
+    }
+
+    if rr_args.iter().any(|arg| arg == "--show-config") {
+        println!("Current detected configuration:");
+        return print!("{}", rrconfig::dump());
+    }
+
+    if !rr_args.is_empty() {
+        eprintln!("Unexpected arguments: {}", rr_args.join(" "));
+        eprintln!("Use `cargo refinedrust --help` for usage information.");
+        process::exit(1);
+    }
+
+    if let Err(code) = process(cargo_args) {
         process::exit(code);
     }
 }
 
-fn process<I>(args: I) -> Result<(), i32>
-where
-    I: Iterator<Item = String>,
-{
+fn process(cargo_args: Vec<String>) -> Result<(), i32> {
     // can we make this more robust?
     let mut rr_rustc_path = env::current_exe()
         .expect("current executable path invalid")
@@ -29,14 +64,6 @@ where
         rr_rustc_path.set_extension("exe");
     }
 
-    // Remove the "refinedrust" argument when `cargo-refinedrust` is invoked as
-    // `cargo --cflag prusti -- -Pflag` (note the space in `cargo refinedrust` rather than a `-`)
-    let args = args.skip_while(|arg| arg == "refinedrust");
-    // Remove the "-- -Pflag" arguments since these won't apply to `cargo check`.
-    // They have already been loaded (and the Category B flags are used below).
-    let args = args.take_while(|arg| arg != "--");
-
-    // Category B flags (see dev-guide flags table):
     let cargo_path = rrconfig::cargo_path();
     let command = rrconfig::cargo_command();
 
@@ -44,28 +71,16 @@ where
     let cargo_target_path = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
     let cargo_target = PathBuf::from(cargo_target_path.clone());
 
-    let maybe_output_dir = rrconfig::output_dir();
-    let output_dir;
-    if let Some(old_output_dir) = maybe_output_dir {
-        output_dir = old_output_dir;
-    } else {
-        output_dir = [cargo_target_path, "verify".to_owned()].into_iter().collect();
-    }
+    let output_dir = rrconfig::output_dir()
+        .unwrap_or_else(|| [cargo_target_path, "verify".to_owned()].into_iter().collect());
 
     let exit_status = Command::new(cargo_path)
         .arg(&command)
-        //.args(features)
-        .args(args)
+        .args(cargo_args)
         .env("RUSTC", rr_rustc_path)
-        .env("RR_CARGO", "")
         .env("CARGO_TARGET_DIR", &cargo_target)
-        // We override the output dir
+        .env("RR_CARGO", "")
         .env("RR_OUTPUT_DIR", &output_dir)
-        // Category B flags (update the docs if any more are added):
-        .env("RR_BE_RUSTC", rrconfig::be_rustc().to_string())
-        .env("RR_VERIFY_DEPS", rrconfig::verify_deps().to_string())
-        // Category A* flags:
-        .env("DEFAULT_RR_LOG_DIR", cargo_target.join("log"))
         .status()
         .expect("could not run cargo");
 

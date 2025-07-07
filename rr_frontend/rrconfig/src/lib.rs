@@ -9,9 +9,9 @@ use std::path::PathBuf;
 use std::sync::{LazyLock, RwLock, RwLockWriteGuard};
 
 use path_clean::PathClean as _;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 #[expect(clippy::struct_excessive_bools)]
 struct Config {
@@ -83,18 +83,14 @@ static SETTINGS: LazyLock<RwLock<Config>> = LazyLock::new(|| {
             let filepath = path_to_file.parent().unwrap().to_str().unwrap();
 
             builder = builder.set_default("work_dir", filepath).unwrap();
-
-            // Since this file is explicitly specified by the user, it would be
-            // nice to tell them if we cannot open it.
             builder = builder.add_source(config::File::with_name(&file));
         }
 
         // 3. Override with env variables (`RR_QUIET`, ...)
-        let builder = builder.add_source(config::Environment::with_prefix("RR").ignore_empty(true));
+        builder = builder.add_source(config::Environment::with_prefix("RR").ignore_empty(true));
 
-        let config = builder.build().unwrap();
-
-        config.try_deserialize().unwrap()
+        // 4. Fill empty fields with default values
+        builder.build().unwrap().try_deserialize().unwrap()
     })
 });
 
@@ -116,6 +112,12 @@ fn make_path_absolute(path: &str) -> PathBuf {
 
 fn access_config<'a, T, C: FnOnce(RwLockWriteGuard<'a, Config>) -> T>(callback: C) -> T {
     callback(SETTINGS.write().unwrap())
+}
+
+/// Retrieve the TOML configuration
+#[must_use]
+pub fn dump() -> String {
+    access_config(|c| toml::to_string(&*c).unwrap())
 }
 
 /// Should refinedrust-rustc behave like rustc?

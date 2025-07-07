@@ -22,8 +22,8 @@ rr_rustc_interface.workspace = true
 rrconfig.workspace = true
 translation.workspace = true
 
-log.workspace = true
 env_logger.workspace = true
+log.workspace = true
 shlex.workspace = true
 
 [package.metadata.rust-analyzer]
