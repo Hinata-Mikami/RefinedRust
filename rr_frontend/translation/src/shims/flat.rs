@@ -196,14 +196,13 @@ pub(crate) fn get_cleaned_def_path(tcx: ty::TyCtxt<'_>, did: DefId) -> Vec<Strin
     components
 }
 
-/// Get the path we should export an item at.
-pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
+/// Get the optionally annotated "external" path an item should be exported as.
+pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId) -> Option<ExportAs> {
     let attrs = env.get_attributes(did);
-
     if attrs::has_tool_attr(attrs, "export_as") {
         let filtered_attrs = attrs::filter_for_tool(attrs);
 
-        return get_export_as_attr(filtered_attrs.as_slice()).unwrap();
+        return get_export_as_attr(filtered_attrs.as_slice()).ok();
     }
 
     // Check for an annotation on the surrounding impl
@@ -219,8 +218,28 @@ pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> Expo
             let mut this_path = get_cleaned_def_path(env.tcx(), did);
             path_prefix.path.path.push(this_path.pop().unwrap());
 
-            return path_prefix;
+            return Some(path_prefix);
         }
+    }
+
+    None
+}
+
+/// If this item should be exported as a different item, get that item's `DefId`.
+pub(crate) fn get_external_did_for_did(env: &Environment<'_>, did: DefId) -> Option<DefId> {
+    let path = get_external_export_path_for_did(env, did)?;
+
+    if env.is_method_did(did) || path.as_method {
+        search::try_resolve_method_did(env.tcx(), path.path.path)
+    } else {
+        search::try_resolve_did(env.tcx(), &path.path.path)
+    }
+}
+
+/// Get the path we should export an item at.
+pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> ExportAs {
+    if let Some(path) = get_external_export_path_for_did(env, did) {
+        return path;
     }
 
     let mut basic_path = get_cleaned_def_path(env.tcx(), did);

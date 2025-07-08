@@ -13,7 +13,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
-use crate::search;
+use crate::{search, shims};
 
 /// Determine the origin of a trait obligation.
 /// `surrounding_reqs` are the requirements of a surrounding impl or decl.
@@ -68,10 +68,20 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     // determine the origin of this requirement below
     let surrounding_reqs = if let Some(trait_did) = in_trait_decl {
         let trait_param_env = env.tcx().param_env(trait_did);
-        Some(get_nontrivial(env.tcx(), trait_param_env, None).into_iter().map(|(x, _, _)| x).collect())
+        Some(
+            get_nontrivial(env, trait_did, trait_param_env, None)
+                .into_iter()
+                .map(|(x, _, _)| x)
+                .collect(),
+        )
     } else if let Some(impl_did) = in_trait_impl {
         let impl_param_env = env.tcx().param_env(impl_did);
-        Some(get_nontrivial(env.tcx(), impl_param_env, None).into_iter().map(|(x, _, _)| x).collect())
+        Some(
+            get_nontrivial(env, impl_did, impl_param_env, None)
+                .into_iter()
+                .map(|(x, _, _)| x)
+                .collect(),
+        )
     } else {
         None
     };
@@ -80,7 +90,7 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     info!("Caller bounds: {:?}", clauses);
 
     let in_trait_decl = if is_trait { Some(did) } else { in_trait_decl };
-    let requirements = get_nontrivial(env.tcx(), param_env, in_trait_decl);
+    let requirements = get_nontrivial(env, did, param_env, in_trait_decl);
     let mut annotated_requirements = Vec::new();
 
     for (trait_ref, bound_regions, binders) in requirements {
@@ -125,13 +135,14 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
 /// Get non-trivial trait requirements of a `ParamEnv`,
 /// ordered deterministically.
 pub(crate) fn get_nontrivial<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
+    env: &Environment<'tcx>,
+    for_did: DefId,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,
 ) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, ty::Binder<'tcx, ()>)> {
     let mut trait_refs = Vec::new();
     trace!(
-        "Enter get_nontrivial_trait_requirements with param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
+        "Enter get_nontrivial_trait_requirements with for_did={for_did:?}, param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"
     );
 
     let clauses = param_env.caller_bounds();
@@ -164,7 +175,7 @@ pub(crate) fn get_nontrivial<'tcx>(
                 let trait_ref = trait_pred.trait_ref;
 
                 // filter Sized, Copy, Send, Sync?
-                if Some(true) == is_builtin_trait(tcx, trait_ref.def_id) {
+                if Some(true) == is_builtin_trait(env.tcx(), trait_ref.def_id) {
                     continue;
                 }
 
@@ -175,9 +186,9 @@ pub(crate) fn get_nontrivial<'tcx>(
     }
 
     // Make sure the order is stable across compilations
-    trait_refs.sort_by(|(a, _, _), (b, _, _)| cmp_trait_ref(tcx, in_trait_decl, a, b));
+    trait_refs.sort_by(|(a, _, _), (b, _, _)| cmp_trait_ref(env, in_trait_decl, a, b));
 
-    trace!("Leave get_nontrivial_trait_requirements with trait_refs = {trait_refs:?}");
+    trace!("Leave get_nontrivial_trait_requirements with for_did={for_did:?}, trait_refs = {trait_refs:?}");
 
     trait_refs
 }
@@ -231,7 +242,7 @@ fn cmp_region<'tcx>(a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> Ordering {
     })
 }
 
-fn cmp_const<'tcx>(_tcx: ty::TyCtxt<'tcx>, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> Ordering {
+fn cmp_const<'tcx>(_env: &Environment<'tcx>, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> Ordering {
     unimplemented!("compare Const");
 }
 
@@ -270,13 +281,20 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
     }
 }
 
-fn cmp_defid(tcx: ty::TyCtxt<'_>, a: DefId, b: DefId) -> Ordering {
-    let a_hash = tcx.def_path_hash(a);
-    let b_hash = tcx.def_path_hash(b);
+fn cmp_defid(env: &Environment<'_>, a: DefId, b: DefId) -> Ordering {
+    // NOTE: This definition is problematic if we are defining shims.
+    // The relative order of shims to each other may not be the same as the relative order of the
+    // actual objects to each other.
+
+    let a_did = shims::flat::get_external_did_for_did(env, a).unwrap_or(a);
+    let b_did = shims::flat::get_external_did_for_did(env, b).unwrap_or(b);
+
+    let a_hash = env.tcx().def_path_hash(a_did);
+    let b_hash = env.tcx().def_path_hash(b_did);
     a_hash.cmp(&b_hash)
 }
 
-fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {
+fn cmp_ty<'tcx>(env: &Environment<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {
     ty_discriminant(a).cmp(&ty_discriminant(b)).then_with(|| {
         use ty::TyKind;
         match (a.kind(), b.kind()) {
@@ -284,24 +302,24 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
             (TyKind::Uint(a_u), TyKind::Uint(b_u)) => a_u.cmp(b_u),
             (TyKind::Float(a_f), TyKind::Float(b_f)) => a_f.cmp(b_f),
             (TyKind::Adt(a_d, a_s), TyKind::Adt(b_d, b_s)) => {
-                cmp_defid(tcx, a_d.did(), b_d.did()).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, a_d.did(), b_d.did()).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
-            (TyKind::Foreign(a_d), TyKind::Foreign(b_d)) => cmp_defid(tcx, *a_d, *b_d),
+            (TyKind::Foreign(a_d), TyKind::Foreign(b_d)) => cmp_defid(env, *a_d, *b_d),
             (TyKind::Array(a_t, a_c), TyKind::Array(b_t, b_c)) => {
-                cmp_ty(tcx, *a_t, *b_t).then_with(|| cmp_const(tcx, *a_c, *b_c))
+                cmp_ty(env, *a_t, *b_t).then_with(|| cmp_const(env, *a_c, *b_c))
             },
             (TyKind::Pat(..), TyKind::Pat(..)) => {
                 unimplemented!("compare Pat");
             },
-            (TyKind::Slice(a_t), TyKind::Slice(b_t)) => cmp_ty(tcx, *a_t, *b_t),
+            (TyKind::Slice(a_t), TyKind::Slice(b_t)) => cmp_ty(env, *a_t, *b_t),
             (TyKind::RawPtr(a_t, a_m), TyKind::RawPtr(b_t, b_m)) => {
-                cmp_ty(tcx, *a_t, *b_t).then_with(|| a_m.cmp(b_m))
+                cmp_ty(env, *a_t, *b_t).then_with(|| a_m.cmp(b_m))
             },
             (TyKind::Ref(a_r, a_t, a_m), TyKind::Ref(b_r, b_t, b_m)) => {
-                cmp_region(*a_r, *b_r).then_with(|| cmp_ty(tcx, *a_t, *b_t).then_with(|| a_m.cmp(b_m)))
+                cmp_region(*a_r, *b_r).then_with(|| cmp_ty(env, *a_t, *b_t).then_with(|| a_m.cmp(b_m)))
             },
             (TyKind::FnDef(a_d, a_s), TyKind::FnDef(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, *a_d, *b_d).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
             (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {
                 unimplemented!("compare FnPtr");
@@ -310,22 +328,22 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
                 unimplemented!("compare Dynamic");
             },
             (TyKind::Closure(a_d, a_s), TyKind::Closure(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, *a_d, *b_d).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
             (TyKind::CoroutineClosure(a_d, a_s), TyKind::CoroutineClosure(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, *a_d, *b_d).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
             (TyKind::Coroutine(a_d, a_s), TyKind::Coroutine(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, *a_d, *b_d).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
             (TyKind::CoroutineWitness(a_d, a_s), TyKind::CoroutineWitness(b_d, b_s)) => {
-                cmp_defid(tcx, *a_d, *b_d).then_with(|| cmp_arg_refs(tcx, a_s, b_s))
+                cmp_defid(env, *a_d, *b_d).then_with(|| cmp_arg_refs(env, a_s, b_s))
             },
             (TyKind::Tuple(a_t), TyKind::Tuple(b_t)) => {
-                a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(tcx, a, b))
+                a_t.iter().cmp_by(b_t.iter(), |a, b| cmp_ty(env, a, b))
             },
             (TyKind::Alias(a_i, a_p), TyKind::Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| {
-                cmp_defid(tcx, a_p.def_id, b_p.def_id).then_with(|| cmp_arg_refs(tcx, a_p.args, b_p.args))
+                cmp_defid(env, a_p.def_id, b_p.def_id).then_with(|| cmp_arg_refs(env, a_p.args, b_p.args))
             }),
             (TyKind::Param(a_p), TyKind::Param(b_p)) => a_p.cmp(b_p),
             (TyKind::Bound(..), TyKind::Bound(..)) => {
@@ -356,15 +374,15 @@ fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Orde
 
 /// Compare two `GenericArg` deterministically.
 /// Should only be called on equal discriminants.
-fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
+fn cmp_arg_ref<'tcx>(env: &Environment<'tcx>, a: ty::GenericArg<'tcx>, b: ty::GenericArg<'tcx>) -> Ordering {
     match (a.kind(), b.kind()) {
-        (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => cmp_const(tcx, c1, c2),
+        (ty::GenericArgKind::Const(c1), ty::GenericArgKind::Const(c2)) => cmp_const(env, c1, c2),
         (ty::GenericArgKind::Type(ty1), ty::GenericArgKind::Type(ty2)) => {
             // we should make sure that this always orders the Self instance first.
             match (ty1.kind(), ty2.kind()) {
                 (ty::TyKind::Param(p1), ty::TyKind::Param(p2)) => p1.cmp(p2),
                 (ty::TyKind::Param(_), _) => Ordering::Less,
-                (_, _) => cmp_ty(tcx, ty1, ty2),
+                (_, _) => cmp_ty(env, ty1, ty2),
             }
         },
         (ty::GenericArgKind::Lifetime(r1), ty::GenericArgKind::Lifetime(r2)) => cmp_region(r1, r2),
@@ -376,7 +394,7 @@ fn cmp_arg_ref<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::GenericArg<'tcx>, b: ty::Gene
 
 /// Compare two sequences of `GenericArg`s for the same `DefId`, where the discriminants are pairwise equal.
 fn cmp_arg_refs<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
+    env: &Environment<'tcx>,
     a: &[ty::GenericArg<'tcx>],
     b: &[ty::GenericArg<'tcx>],
 ) -> Ordering {
@@ -385,7 +403,7 @@ fn cmp_arg_refs<'tcx>(
             // compare elements
             for (x, y) in a.iter().zip(b.iter()) {
                 // the discriminants are the same as the DefId we are calling into is the same
-                let xy_cmp = cmp_arg_ref(tcx, *x, *y);
+                let xy_cmp = cmp_arg_ref(env, *x, *y);
                 if xy_cmp != Ordering::Equal {
                     return xy_cmp;
                 }
@@ -399,7 +417,7 @@ fn cmp_arg_refs<'tcx>(
 /// Compare two `TraitRef`s deterministically, giving a
 /// consistent order that is stable across compilations.
 fn cmp_trait_ref<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
+    env: &Environment<'tcx>,
     in_trait_decl: Option<DefId>,
     a: &ty::TraitRef<'tcx>,
     b: &ty::TraitRef<'tcx>,
@@ -419,11 +437,11 @@ fn cmp_trait_ref<'tcx>(
     //let path_cmp = path_a.cmp(&path_b);
     //info!("cmp_trait_ref: comparing paths {path_a:?} and {path_b:?}");
 
-    let path_cmp = cmp_defid(tcx, a.def_id, b.def_id);
+    let path_cmp = cmp_defid(env, a.def_id, b.def_id);
 
     path_cmp.then_with(|| {
         let args_a = a.args.as_slice();
         let args_b = b.args.as_slice();
-        cmp_arg_refs(tcx, args_a, args_b)
+        cmp_arg_refs(env, args_a, args_b)
     })
 }

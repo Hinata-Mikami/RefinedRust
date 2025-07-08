@@ -30,6 +30,7 @@ impl<F> Parse<F> for RustPath {
 /// For parsing of `rr::export_as` annotations
 pub(crate) struct ExportAs {
     pub path: RustPath,
+    /// this is a method
     pub as_method: bool,
 }
 impl<F> Parse<F> for ExportAs {

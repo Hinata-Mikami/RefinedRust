@@ -203,9 +203,15 @@ pub(crate) fn resolve_trait<'tcx>(
                 Some((impl_data.impl_def_id, impl_data.args, TraitResolutionKind::UserDefined))
             },
             trait_selection::traits::ImplSource::Param(_) => Some((did, substs, TraitResolutionKind::Param)),
-            trait_selection::traits::ImplSource::Builtin(_, _) => {
-                // TODO: maybe this should be Some if this is a closure?
-                None
+            trait_selection::traits::ImplSource::Builtin(impl_source, _) => {
+                trace!("resolve_trait: found Builtin {impl_source:?}");
+                match *substs[0].as_type().unwrap().kind() {
+                    // try to get the body
+                    ty::Closure(closure_def_id, closure_substs) => {
+                        Some((closure_def_id, closure_substs, TraitResolutionKind::Closure))
+                    },
+                    _ => unimplemented!(),
+                }
             },
         }
     } else {
