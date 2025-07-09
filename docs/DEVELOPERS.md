@@ -108,7 +108,7 @@ Please remember to update this value each time the rust toolchain is updated, by
 ## Updating dependencies
 
 ### Updating the frontend's rustc version
-1. Update the file `rust-toolchain.toml` to the new desired nightly version.
+1. Update the file `rr_frontend/rust-toolchain.toml` to the new desired nightly version.
 2. Make the required changes for `nix` (see below).
 3. Try to get the frontend building again.
 

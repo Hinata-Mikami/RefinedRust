@@ -27,8 +27,6 @@ struct Config {
     run_check: bool,
     verify_deps: bool,
     no_verify: bool,
-    cargo_path: String,
-    cargo_command: String,
     admit_proofs: bool,
     generate_dune_project: bool,
     lib_load_paths: Vec<String>,
@@ -54,8 +52,6 @@ impl Default for Config {
             run_check: false,
             verify_deps: false,
             no_verify: false,
-            cargo_path: "cargo".to_owned(),
-            cargo_command: "check".to_owned(),
             admit_proofs: false,
             generate_dune_project: true,
             lib_load_paths: vec![],
@@ -194,18 +190,6 @@ pub fn no_verify() -> bool {
 
 pub fn set_no_verify(value: bool) {
     access_config(|mut c| c.no_verify = value);
-}
-
-/// Which cargo to use?
-#[must_use]
-pub fn cargo_path() -> String {
-    access_config(|c| c.cargo_path.clone())
-}
-
-/// Which cargo command should cargo-refinedrust hook into?
-#[must_use]
-pub fn cargo_command() -> String {
-    access_config(|c| c.cargo_command.clone())
 }
 
 /// Whether to admit proofs of functions instead of running Qed.

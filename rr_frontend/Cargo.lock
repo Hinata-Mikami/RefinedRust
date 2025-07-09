@@ -506,6 +506,7 @@ dependencies = [
  "rr_rustc_interface",
  "rrconfig",
  "shlex",
+ "toml",
  "translation",
  "which",
 ]

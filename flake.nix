@@ -103,7 +103,7 @@
 
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
-          file = ./rust-toolchain.toml;
+          file = ./rr_frontend/rust-toolchain.toml;
           sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
         };
 

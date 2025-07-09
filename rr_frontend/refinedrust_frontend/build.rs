@@ -4,7 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::env;
+use std::path::Path;
+use std::{env, fs};
 
 use which::which;
 
@@ -14,8 +15,16 @@ fn add_variable(name: &str, value: &str) {
     println!("cargo::rustc-env={}={}", name, value);
 }
 
+fn get_rust_toolchain() -> String {
+    let manifest = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let toolchain_file = Path::new(&manifest).parent().unwrap().join("rust-toolchain.toml");
+    let values = toml::from_str::<toml::Table>(&fs::read_to_string(&toolchain_file).unwrap()).unwrap();
+
+    values["toolchain"]["channel"].as_str().unwrap().to_owned()
+}
+
 fn get_rr_version() -> String {
-    let version = env!("CARGO_PKG_VERSION").to_owned();
+    let version = format!("{} for {}", env!("CARGO_PKG_VERSION").to_owned(), get_rust_toolchain());
 
     let Some(git_version) = get_cmd_output("git", &["rev-parse", "--short", "HEAD"]) else {
         return version;

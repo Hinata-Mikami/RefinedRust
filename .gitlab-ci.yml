@@ -123,6 +123,7 @@ case_studies:
   stage: tests
   needs: [ "stdlib" ]
   script:
+   - nix shell -c cargo refinedrust -V
    - nix shell -c nix run nixpkgs#gnumake -- setup-nix
    - nix shell -c nix run nixpkgs#gnumake -- generate_stdlib
    - nix shell -c nix run nixpkgs#gnumake -- generate_case_studies

@@ -81,9 +81,6 @@ fn process(cargo_args: Vec<String>) -> Result<(), i32> {
         rr_rustc_path.set_extension("exe");
     }
 
-    let cargo_path = rrconfig::cargo_path();
-    let command = rrconfig::cargo_command();
-
     // TODO: If we're using workspaces, we should figure out the right dir for the workspace
     let cargo_target_path = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
     let cargo_target = PathBuf::from(cargo_target_path.clone());
@@ -91,12 +88,11 @@ fn process(cargo_args: Vec<String>) -> Result<(), i32> {
     let output_dir = rrconfig::output_dir()
         .unwrap_or_else(|| [cargo_target_path, "verify".to_owned()].into_iter().collect());
 
-    let exit_status = Command::new(cargo_path)
-        .arg(&command)
+    let exit_status = Command::new(env!("RR_CARGO"))
+        .arg("check")
         .args(cargo_args)
         .env("RUSTC", rr_rustc_path)
         .env("CARGO_TARGET_DIR", &cargo_target)
-        .env("RR_CARGO", "")
         .env("RR_OUTPUT_DIR", &output_dir)
         .status()
         .expect("could not run cargo");
