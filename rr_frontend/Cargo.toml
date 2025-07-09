@@ -38,6 +38,7 @@ topological-sort = "0.2"
 transitive = "1"
 typed-arena = "2"
 unicode-xid = "0.2"
+which = "8"
 
 [workspace.package]
 edition = "2024"

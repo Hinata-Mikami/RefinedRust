@@ -10,6 +10,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, process};
 
+use lib::command;
+
 static USAGE: &str = "RefinedRust verification framework
 
 Usage: cargo refinedrust [Cargo options] -- [RefinedRust options]
@@ -20,16 +22,33 @@ RefinedRust Options:
   -V, --version            Print version info";
 
 fn dump_version_info() {
-    println!("RefinedRust version: {}", env!("CARGO_PKG_VERSION"));
+    println!("RefinedRust {}", env!("RR_VERSION"));
+    println!("{} ({})", env!("RR_RUSTC_VERSION"), env!("RR_RUSTC"));
+    println!("{} ({})", env!("RR_CARGO_VERSION"), env!("RR_CARGO"));
+
+    let Some(dune) = lib::find("dune") else { return println!("dune not found") };
+    println!("dune {} ({})", command::get_cmd_output(&dune, &["--version"]).unwrap(), dune);
+
+    let Some(rocq) = lib::find("rocq") else { return println!("rocq not found") };
+    let rocq_version = command::get_cmd_output(&rocq, &["--print-version"]).unwrap();
+    let rocq_version = rocq_version.split(' ').next().unwrap();
+    println!("rocq {} ({})", rocq_version, rocq);
 }
 
-fn main() {
+/// Returns the arguments for `RefinedRust` and `cargo`.
+fn get_args() -> (Vec<String>, Vec<String>) {
     let args: Vec<String> = env::args().skip(1).skip_while(|arg| arg == "refinedrust").collect();
     let args_index = args.iter().position(|arg| arg == "--").unwrap_or(args.len());
 
     let (rr_args, cargo_args): (&[String], &[String]) = args.split_at(args_index);
     let rr_args: Vec<String> = rr_args.iter().map(ToOwned::to_owned).collect();
     let cargo_args: Vec<String> = cargo_args.iter().map(ToOwned::to_owned).skip(1).collect();
+
+    (rr_args, cargo_args)
+}
+
+fn main() {
+    let (rr_args, cargo_args) = get_args();
 
     if rr_args.iter().any(|arg| arg == "-h" || arg == "--help") {
         return println!("{}", USAGE);
@@ -50,9 +69,7 @@ fn main() {
         process::exit(1);
     }
 
-    if let Err(code) = process(cargo_args) {
-        process::exit(code);
-    }
+    process(cargo_args).unwrap_or_else(|c| process::exit(c));
 }
 
 fn process(cargo_args: Vec<String>) -> Result<(), i32> {
