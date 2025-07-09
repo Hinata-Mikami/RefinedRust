@@ -7,7 +7,7 @@
 //! Provides the Spec AST and utilities for interfacing with it.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
 use std::fmt::Write as _;
 use std::marker::PhantomData;
@@ -3040,7 +3040,7 @@ pub struct LiteralTraitSpecUse<'def> {
     pub is_used_in_self_trait: bool,
 
     /// optional constraints for each associated type
-    assoc_ty_constraints: HashMap<String, Type<'def>>,
+    pub assoc_ty_constraints: Vec<Option<Type<'def>>>,
 
     /// origin of this trait assumption
     origin: TyParamOrigin,
@@ -3058,9 +3058,9 @@ impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
         let b = self.borrow();
         let b = b.as_ref().unwrap();
 
-        for x in &b.trait_ref.assoc_tys {
-            if !b.assoc_ty_constraints.contains_key(x) {
-                assoc_tys.push(b.make_assoc_type_lit(x));
+        for (idx, _) in b.trait_ref.assoc_tys.iter().enumerate() {
+            if b.assoc_ty_constraints[idx].is_none() {
+                assoc_tys.push(b.make_assoc_type_lit(idx));
             }
         }
         assoc_tys
@@ -3100,8 +3100,8 @@ impl<'def> LiteralTraitSpecUse<'def> {
     #[must_use]
     fn get_assoc_ty_inst(&self) -> Vec<Type<'def>> {
         let mut assoc_tys = Vec::new();
-        for x in &self.trait_ref.assoc_tys {
-            let ty = self.make_assoc_type_use(x);
+        for (idx, _) in self.trait_ref.assoc_tys.iter().enumerate() {
+            let ty = self.make_assoc_type_use(idx);
             assoc_tys.push(ty.clone());
         }
         assoc_tys
@@ -3222,27 +3222,23 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Make the names for the Coq-level parameters for an associated type of this instance.
     /// Warning: If you are making a using occurrence, use `make_assoc_type_use` instead.
     #[must_use]
-    fn make_assoc_type_lit(&self, assoc_type: &str) -> LiteralTyParam {
+    fn make_assoc_type_lit(&self, idx: usize) -> LiteralTyParam {
+        let name = &self.trait_ref.assoc_tys[idx];
         let rust_name = if self.is_used_in_self_trait {
-            assoc_type.to_owned()
+            name.to_owned()
         } else {
-            format!("{}_{}", self.mangled_base, assoc_type)
+            format!("{}_{}", self.mangled_base, name)
         };
         LiteralTyParam::new_with_origin(&rust_name, &rust_name, self.origin)
     }
 
-    /// Add a constraint on one of the associated types.
-    pub fn specialize_assoc_type(&mut self, assoc_type: String, ty: Type<'def>) {
-        self.assoc_ty_constraints.insert(assoc_type, ty);
-    }
-
     /// Make a using occurrence of a particular associated type.
     #[must_use]
-    pub fn make_assoc_type_use(&self, assoc_type: &str) -> Type<'def> {
-        if let Some(cstr) = self.assoc_ty_constraints.get(assoc_type) {
+    pub fn make_assoc_type_use(&self, idx: usize) -> Type<'def> {
+        if let Some(cstr) = self.assoc_ty_constraints.get(idx).unwrap_or(&None) {
             cstr.to_owned()
         } else {
-            Type::LiteralParam(self.make_assoc_type_lit(assoc_type))
+            Type::LiteralParam(self.make_assoc_type_lit(idx))
         }
     }
 }

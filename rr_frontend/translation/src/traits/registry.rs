@@ -165,7 +165,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut method_trait_incl_decls = BTreeMap::new();
 
         let items: &ty::AssocItems = self.env.tcx().associated_items(did);
-        for c in items.in_definition_order() {
+        let items = traits::sort_assoc_items(self.env, items);
+        for c in items {
             if let ty::AssocKind::Fn { .. } = c.kind {
                 // get function name
                 let method_name =
@@ -252,7 +253,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let mut methods = BTreeMap::new();
             let mut assoc_types = Vec::new();
             let items: &ty::AssocItems = self.env.tcx().associated_items(did);
-            for c in items.in_definition_order() {
+            let items = traits::sort_assoc_items(self.env, items);
+            for c in items {
                 if ty::AssocTag::Fn == c.as_tag() {
                     // get attributes
                     let attrs =
@@ -402,8 +404,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // get associated types of this impl
         // Since we know the concrete impl, we can directly resolve all of the associated types
         // TODO is this definition order guaranteed to be the same as on the trait?
-        let assoc_items: &'tcx ty::AssocItems = self.env.tcx().associated_items(impl_did);
-        for it in assoc_items.in_definition_order() {
+        let items: &'tcx ty::AssocItems = self.env.tcx().associated_items(impl_did);
+        let items = traits::sort_assoc_items(self.env, items);
+        for it in items {
             if let ty::AssocKind::Type { .. } = it.kind {
                 let item_did = it.def_id;
                 let item_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.env.tcx().type_of(item_did);
@@ -443,12 +446,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
         trace!("current typing env: {current_typing_env:?}");
 
-        let callee_typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), did);
-        trace!("callee typing env {callee_typing_env:?}");
+        let target_typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), did);
+        trace!("target typing env {target_typing_env:?}");
 
-        // Get the trait requirements of the callee
-        let callee_requirements = requirements::get_trait_requirements_with_origin(self.env, did);
-        trace!("non-trivial callee requirements: {callee_requirements:?}");
+        // Get the trait requirements of the target
+        let target_requirements = requirements::get_trait_requirements_with_origin(self.env, did);
+        trace!("non-trivial target requirements: {target_requirements:?}");
         trace!("substituting with args {:?}", params);
 
         // For each trait requirement, resolve to a trait spec that we can provide
@@ -459,12 +462,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut direct_trait_spec_terms = Vec::new();
         let mut indirect_trait_spec_terms = Vec::new();
 
-        for req in &callee_requirements {
+        for req in &target_requirements {
             if req.is_self_in_trait_decl {
                 continue;
             }
 
-            // substitute the args with the arg instantiation of the callee at this call site
+            // substitute the args with the arg instantiation of the target at this call site
             // in order to get the args of this trait instance
             let args = req.trait_ref.args;
             let mut subst_args = Vec::new();
@@ -590,7 +593,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         )
                     },
                     resolution::TraitResolutionKind::Closure => {
-                        // The callee requires a closure trait bound.
+                        // The target requires a closure trait bound.
                         // This happens when we pass a closure as an argument?
                         return Err(TranslationError::UnsupportedFeature {
                             description: "TODO: do not support Closure parameters".to_owned(),
@@ -735,7 +738,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // TODO don't rely on definition order
             // maybe instead iterate over the assoc items of the trait
 
-            for x in trait_assoc_items.in_definition_order() {
+            let items = traits::sort_assoc_items(self.env, trait_assoc_items);
+            for x in items {
                 if let ty::AssocKind::Type { .. } = x.kind {
                     let ty_item = assoc_items.find_by_ident_and_kind(
                         self.env.tcx(),
@@ -795,6 +799,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         did: DefId,
     ) -> Result<radium::Type<'def>, Error<'tcx>> {
         let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
+        let type_idx = env.get_trait_associated_type_index(did).ok_or(Error::NotAnAssocType(did))?;
 
         // this is an associated type of the trait that is currently being declared
         // so make a symbolic reference
@@ -810,7 +815,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
 
-            Ok(trait_use.make_assoc_type_use(&strip_coq_ident(&type_name)))
+            Ok(trait_use.make_assoc_type_use(type_idx))
         }
     }
 
@@ -819,11 +824,11 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
 
         // get associated types
         let assoc_types = env.get_trait_assoc_types(self.did);
-        for ty_did in &assoc_types {
+        for (idx, ty_did) in assoc_types.iter().enumerate() {
             let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
-            let lit = trait_use.make_assoc_type_use(&strip_coq_ident(&ty_name));
+            let lit = trait_use.make_assoc_type_use(idx);
             assoc_tys.push((ty_name.clone(), lit));
         }
         assoc_tys
@@ -878,7 +883,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
         is_used_in_self_trait: bool,
-        assoc_ty_constraints: HashMap<String, radium::Type<'def>>,
+        assoc_ty_constraints: Vec<Option<radium::Type<'def>>>,
         origin: radium::TyParamOrigin,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");

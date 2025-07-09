@@ -386,7 +386,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 req.is_used_in_self_trait,
                 // trait associated types are fully generic for now, we make a second pass
                 // below
-                HashMap::new(),
+                Vec::new(),
                 req.origin,
             )?;
         }
@@ -398,15 +398,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 continue;
             }
 
-            let assoc_constraints = traits::get_trait_assoc_constraints(env, typing_env, req.trait_ref);
-
-            let translated_constraints: HashMap<_, _> = assoc_constraints
-                .into_iter()
-                .map(|(name, ty)| {
-                    let translated_ty =
-                        type_translator.translate_type_in_scope(self, typing_env, ty).unwrap();
-                    (name, translated_ty)
-                })
+            let translated_constraints: Vec<_> = req
+                .assoc_constraints
+                .iter()
+                .map(|ty| ty.map(|ty| type_translator.translate_type_in_scope(self, typing_env, ty).unwrap()))
                 .collect();
 
             // lookup the trait use
@@ -417,9 +412,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 let mut trait_use_ref = entry.trait_use.borrow_mut();
                 let trait_use = trait_use_ref.as_mut().unwrap();
                 // and add the constraints
-                for (name, constr) in translated_constraints {
-                    trait_use.specialize_assoc_type(name, constr);
-                }
+                trait_use.assoc_ty_constraints = translated_constraints;
             }
 
             // finalize the entry by adding dependencies on other trait parameters

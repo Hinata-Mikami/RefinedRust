@@ -27,11 +27,11 @@ use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::{mir, ty};
 
-use crate::attrs;
 use crate::environment::borrowck::facts;
 use crate::environment::collect_closure_defs_visitor::CollectClosureDefsVisitor;
 use crate::environment::collect_prusti_spec_visitor::CollectPrustiSpecVisitor;
 use crate::environment::procedure::Procedure;
+use crate::{attrs, traits};
 
 /// Facade to the Rust compiler.
 pub(crate) struct Environment<'tcx> {
@@ -204,14 +204,27 @@ impl<'tcx> Environment<'tcx> {
     /// Get the associated types of a trait.
     pub(crate) fn get_trait_assoc_types(&self, trait_did: DefId) -> Vec<DefId> {
         let assoc_items: &ty::AssocItems = self.tcx.associated_items(trait_did);
+        let items = traits::sort_assoc_items(self, assoc_items);
 
         let mut assoc_tys = Vec::new();
-        for c in assoc_items.in_definition_order() {
+        for c in items {
             if ty::AssocTag::Type == c.as_tag() {
                 assoc_tys.push(c.def_id);
             }
         }
         assoc_tys
+    }
+
+    /// Get the index in the sorted list of associated types.
+    pub(crate) fn get_trait_associated_type_index(&self, assoc_did: DefId) -> Option<usize> {
+        let trait_did = self.tcx().trait_of_item(assoc_did)?;
+        let sorted_dids = self.get_trait_assoc_types(trait_did);
+        for (idx, did) in sorted_dids.iter().enumerate() {
+            if *did == assoc_did {
+                return Some(idx);
+            }
+        }
+        None
     }
 
     /// Check if this is the `DefId` of a method.

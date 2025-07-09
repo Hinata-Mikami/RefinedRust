@@ -1425,7 +1425,8 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             // make sure all functions have a spec; otherwise, this is not a complete trait impl
             let assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);
             let mut all_specced = true;
-            for x in assoc_items.in_definition_order() {
+            let assoc_items = traits::sort_assoc_items(vcx.env, assoc_items);
+            for x in assoc_items {
                 if x.as_tag() == ty::AssocTag::Fn {
                     // check if all functions have a specification
                     if let Some(mode) = vcx.procedure_registry.lookup_function_mode(x.def_id) {
@@ -1485,11 +1486,13 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
         let process_impl = || -> Result<radium::TraitImplSpec<'_>, base::TranslationError<'tcx>> {
             let impl_info = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
+
             let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
 
             let mut methods = BTreeMap::new();
 
-            for x in trait_assoc_items.in_definition_order() {
+            let trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
+            for x in trait_assoc_items {
                 if x.as_tag() == ty::AssocTag::Fn {
                     let fn_item = assoc_items.find_by_ident_and_kind(
                         vcx.env.tcx(),
