@@ -535,6 +535,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             subst_args.as_slice(),
                         )?;
 
+                        // filter out the associated types which are constrained -- these are
+                        // not required in our encoding
+                        let assoc_tys: Vec<_> = assoc_tys
+                            .into_iter()
+                            .zip(&req.assoc_constraints)
+                            .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
+                            .collect();
+
                         radium::TraitReqInst::new(
                             radium::TraitReqInstSpec::Specialized(spec_term),
                             req.origin,
@@ -550,11 +558,15 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                         let assoc_types_did = self.env.get_trait_assoc_types(trait_did);
                         let mut assoc_types = Vec::new();
-                        for did in assoc_types_did {
-                            let alias = ty::AliasTy::new(self.env.tcx(), did, subst_args);
-                            let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
-                            let ty = self.env.tcx().mk_ty_from_kind(tykind);
-                            assoc_types.push(ty);
+                        for (did, constr) in assoc_types_did.into_iter().zip(&req.assoc_constraints) {
+                            // filter out the associated types which are constrained -- these are
+                            // not required in our encoding
+                            if constr.is_none() {
+                                let alias = ty::AliasTy::new(self.env.tcx(), did, subst_args);
+                                let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
+                                let ty = self.env.tcx().mk_ty_from_kind(tykind);
+                                assoc_types.push(ty);
+                            }
                         }
                         info!("Param associated types: {:?}", assoc_types);
 

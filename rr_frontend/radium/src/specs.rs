@@ -3360,6 +3360,9 @@ pub enum TraitReqInstSpec<'def> {
 pub struct TraitReqInst<'def, T> {
     pub spec: TraitReqInstSpec<'def>,
     pub origin: TyParamOrigin,
+    /// instantiation of associated types, excluding the associated types which are already
+    /// determined by constraints between associated types at the declaration site of this
+    /// requirement
     pub assoc_ty_inst: Vec<T>,
 
     pub of_trait: LiteralTraitSpecRef<'def>,
