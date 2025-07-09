@@ -231,10 +231,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 syntypes,
             );
 
+            trace!("register_use_trait_method: generated proc_use for {callee_did:?}: {proc_use:?}");
+
             res = proc_use.loc_name.clone();
             self.collected_procedures.insert(tup, proc_use);
         }
-        trace!("leave register_use_procedure");
+        trace!("leave register_use_trait_method");
 
         let inst = ProcedureInst {
             loc_name: res,

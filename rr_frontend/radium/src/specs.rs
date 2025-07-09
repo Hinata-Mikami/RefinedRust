@@ -342,7 +342,7 @@ impl<'def> LiteralTypeUse<'def> {
                 .map(|ty| format!("({})", ty.get_rfn_type()))
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation())
+            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation(true))
         } else {
             self.def.type_term.clone()
         }
@@ -358,7 +358,8 @@ pub enum TyParamOrigin {
     SurroundingImpl,
     /// A direct parameter of a method or impl.
     Direct,
-    AssocConstraint,
+    /// An associated type in the trait being declared.
+    AssocInDecl,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -1667,9 +1668,9 @@ impl<'def> AbstractStructUse<'def> {
                 unreachable!();
             };
 
-            format!("({} {rt_inst} {})", inv.type_name, self.scope_inst.instantiation())
+            format!("({} {rt_inst} {})", inv.type_name, self.scope_inst.instantiation(true))
         } else {
-            format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation())
+            format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation(true))
         }
     }
 }
@@ -2317,7 +2318,7 @@ impl<'def> AbstractEnumUse<'def> {
             .map(|ty| format!("({})", ty.get_rfn_type()))
             .collect::<Vec<_>>()
             .join(" ");
-        format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation())
+        format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation(true))
     }
 }
 
@@ -3563,7 +3564,7 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
+    pub fn get_direct_ty_params_with_assocs(&self) -> Vec<Type<'def>> {
         let mut direct = self.get_direct_ty_params().to_vec();
         direct.append(&mut self.get_direct_assoc_ty_params());
         direct
@@ -3587,10 +3588,15 @@ impl<'def> GenericScopeInst<'def> {
 
     /// Generate an instantiation of a term with the identity
     #[must_use]
-    pub(crate) fn instantiation(&self) -> String {
+    pub(crate) fn instantiation(&self, include_surrounding_reqs: bool) -> String {
         let mut out = String::new();
 
-        for ty in self.get_all_ty_params_with_assocs() {
+        if include_surrounding_reqs {
+            for ty in self.get_surrounding_ty_params_with_assocs() {
+                out.push_str(&format!(" <TY> {}", ty));
+            }
+        }
+        for ty in self.get_direct_ty_params_with_assocs() {
             out.push_str(&format!(" <TY> {}", ty));
         }
         for lft in self.get_lfts() {

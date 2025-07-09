@@ -788,6 +788,7 @@ pub(crate) struct GenericTraitUse<'tcx, 'def> {
 
 impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
+    /// This is used in the translation of symbolic `TyKind::Alias`.
     pub(crate) fn get_associated_type_use(
         &self,
         env: &Environment<'tcx>,
@@ -795,12 +796,14 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
     ) -> Result<radium::Type<'def>, Error<'tcx>> {
         let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
 
+        // this is an associated type of the trait that is currently being declared
+        // so make a symbolic reference
         if self.is_self_use {
             // make a literal
             let lit = radium::LiteralTyParam::new_with_origin(
                 &type_name,
                 &type_name,
-                radium::TyParamOrigin::AssocConstraint,
+                radium::TyParamOrigin::AssocInDecl,
             );
             Ok(radium::Type::LiteralParam(lit))
         } else {

@@ -15,7 +15,7 @@ use derive_more::{Constructor, Display};
 use indent_write::indentable::Indentable as _;
 use indent_write::io::IndentWriter;
 use indoc::{formatdoc, writedoc};
-use log::info;
+use log::{info, trace};
 use typed_arena::Arena;
 
 use crate::specs::*;
@@ -1178,6 +1178,16 @@ pub enum UsedProcedureSpec<'def> {
     TraitMethod(QuantifiedTraitImpl<'def>, String),
 }
 
+impl UsedProcedureSpec<'_> {
+    const fn needs_surrounding_trait_reqs(&self) -> bool {
+        match *self {
+            Self::Literal(_, _) => true,
+            // symbolic trait method uses don't need the surrounding trait requirements
+            Self::TraitMethod(_, _) => false,
+        }
+    }
+}
+
 impl fmt::Display for UsedProcedureSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -1257,7 +1267,7 @@ impl UsedProcedure<'_> {
                 }
 
                 // instantiate semantics args
-                write!(term, "{}", self.scope_inst.instantiation())?;
+                write!(term, "{}", self.scope_inst.instantiation(true))?;
             },
 
             UsedProcedureSpec::TraitMethod(_trait_spec, _method_name) => {
@@ -1325,9 +1335,16 @@ impl fmt::Display for UsedProcedure<'_> {
         // quantify
         write!(f, "(<tag_type> {} ", self.quantified_scope)?;
 
+        let spec_needs_surrounding_trait_reqs = self.spec_term.needs_surrounding_trait_reqs();
+
         // instantiate refinement types
         let mut gen_rfn_type_inst = Vec::new();
-        let all_tys = self.scope_inst.get_all_ty_params_with_assocs();
+        let all_tys = if spec_needs_surrounding_trait_reqs {
+            self.scope_inst.get_all_ty_params_with_assocs()
+        } else {
+            self.scope_inst.get_direct_ty_params_with_assocs()
+        };
+
         for p in &all_tys {
             let rfn = p.get_rfn_type();
             gen_rfn_type_inst.push(format!("({})", rfn));
@@ -1337,6 +1354,11 @@ impl fmt::Display for UsedProcedure<'_> {
             let st = lang::SynType::from(p);
             gen_rfn_type_inst.push(format!("({})", st));
         }
+
+        trace!(
+            "using procedure {} with rfn_inst={gen_rfn_type_inst:?} and scope_inst={:?}",
+            self.loc_name, self.scope_inst
+        );
 
         write!(
             f,
@@ -1423,22 +1445,21 @@ impl fmt::Display for UsedProcedure<'_> {
         // TODO Q: Can I do something more specific? I could parameterize over
         // that condition... maybe I'm kicking the can down the road then and will run
         // into the same problem again.
-        //
-        //
 
+        let surrounding_trait_reqs = if spec_needs_surrounding_trait_reqs {
+            self.scope_inst.get_surrounding_trait_requirements()
+        } else {
+            &[]
+        };
+        let direct_trait_reqs = self.scope_inst.get_direct_trait_requirements();
         // apply to trait specs
-        for x in self
-            .scope_inst
-            .get_surrounding_trait_requirements()
-            .iter()
-            .chain(self.scope_inst.get_direct_trait_requirements())
-        {
+        for x in surrounding_trait_reqs.iter().chain(direct_trait_reqs) {
             write!(f, "{} ", x.get_attr_term())?;
             //write!(f, "{} ", x.get_spec_term())?;
         }
 
         // instantiate semantic terms
-        write!(f, "{})", self.scope_inst.instantiation())?;
+        write!(f, "{})", self.scope_inst.instantiation(spec_needs_surrounding_trait_reqs))?;
 
         let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();
