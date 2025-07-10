@@ -3030,8 +3030,8 @@ pub struct LiteralTraitSpecUse<'def> {
     /// the instantiation of the trait's scope
     pub trait_inst: GenericScopeInst<'def>,
 
-    /// optionally, an override for the trait specification we assume
-    overridden_spec_def: Option<String>,
+    /// optionally, an override for the trait attr specification we assume
+    overridden_attrs: Option<String>,
 
     /// the name including the generic args
     mangled_base: String,
@@ -3086,12 +3086,18 @@ impl<'def> LiteralTraitSpecUse<'def> {
         format!("{}_spec_attrs", self.mangled_base)
     }
 
+    /// Get the term for the spec attrs of this use.
+    #[must_use]
+    fn make_spec_attrs_use(&self) -> String {
+        self.overridden_attrs.clone().unwrap_or_else(|| self.make_spec_attrs_param_name())
+    }
+
     /// Get the term for accessing a particular attribute in a context where the attribute record
     /// is quantified.
     #[must_use]
     pub fn make_attr_item_term(&self, attr_name: &str) -> coq::term::Term {
         coq::term::Term::RecordProj(
-            Box::new(coq::term::Term::Literal(self.make_spec_attrs_param_name())),
+            Box::new(coq::term::Term::Literal(self.make_spec_attrs_use())),
             self.trait_ref.make_spec_attr_name(attr_name),
         )
     }
@@ -3172,11 +3178,8 @@ impl<'def> LiteralTraitSpecUse<'def> {
     #[must_use]
     fn make_spec_param_precond(&self) -> coq::term::Term {
         // the spec we have to require for this verification
-        let (spec_to_require, need_attrs) = if let Some(override_spec) = &self.overridden_spec_def {
-            (override_spec.to_owned(), false)
-        } else {
-            (self.trait_ref.base_spec.clone(), true)
-        };
+        let spec_to_require = self.trait_ref.base_spec.clone();
+        let attrs_term = self.make_spec_attrs_use();
 
         let all_args = self.get_ordered_params_inst();
 
@@ -3189,9 +3192,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
         push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", lang::SynType::from(x)) });
 
         // specialize to further args
-        if need_attrs {
-            specialized_spec.push_str(&format!(" {}", self.make_spec_attrs_param_name()));
-        }
+        specialized_spec.push_str(&format!(" {}", attrs_term));
         for req in self.trait_inst.get_direct_trait_requirements() {
             // get attrs + spec term
             specialized_spec.push_str(&format!(" {}", req.get_attr_term()));
@@ -3425,7 +3426,7 @@ impl<T> TraitReqInst<'_, T> {
             TraitReqInstSpec::Quantified(s) => {
                 let s = s.trait_ref.borrow();
                 let s = s.as_ref().unwrap();
-                s.make_spec_attrs_param_name()
+                s.make_spec_attrs_use()
             },
         }
     }

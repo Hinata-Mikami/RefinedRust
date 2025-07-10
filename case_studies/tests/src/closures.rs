@@ -1,46 +1,75 @@
 #![allow(unused)]
 
 /// Using closure arguments
-#[rr::params("x")]
-#[rr::args("x")]
-fn closure_test_arg1<T>(x: T) 
-    where T: FnOnce()
+#[rr::verify]
+// NOTE: the exists needs to be put into the trait_incl assumption!
+//#[rr::exists("c" : "Z")]
+//#[rr::closure_computes("T", "λ _, c")]
+
+//#[rr::params("f" : "() → Z")]
+//#[rr::require(#assume "{T::Post}": "ret = #(f args_0)")]
+//#[rr::require("∃ c, ∀ x, f x = c")]
+
+//#[rr::require(#assume "{T::Pre}": "True")]
+//#[rr::require(#assume "{T::Post}": "∃ c : Z, ret = #c")]
+fn closure_test_arg_fnonce_1<T>(x: T) 
+    where T: FnOnce() -> i32
 {
-    x() 
+    let _ = x();
 }
 
-#[rr::params("x")]
-#[rr::args("x")]
-fn closure_test_arg2<T>(x: T) 
+#[rr::verify]
+fn closure_test_arg_fnonce_2<T>(x: T) 
     where T: FnOnce(i32) -> i32
 {
     let r = x(42);
 }
 
+#[rr::verify]
+fn closure_test_arg_fn_1<T>(x: T)
+    where T: Fn()
+{
+    x()
+}
 
 #[rr::verify]
-fn closure_test7<T, U>(x: T, y: U) 
-    where U: FnOnce(T)
+fn closure_test_arg_fnmut_1<T>(mut x: T)
+    where T: FnMut()
 {
-    let cls = 
-        #[rr::params("a", "m")]
-        #[rr::capture("y": "m")]
-        #[rr::args("a")]
-        |a: T| { y(a) };
-
-    //cls(x);
+    x()
 }
 
-fn closure_test8<T, U>(x: T, y: U) 
-    where U: FnOnce(T)
-{
-    let cls = 
-        #[rr::params("a", "w")]
-        #[rr::args("a", "w")]
-        |a: T, w: U| { w(a) };
+// Calling functions with closures
 
-    //cls(x, y);
+
+#[rr::verify]
+fn closure_test_call_fnonce_0<T>(x: T) 
+    where T: FnOnce() -> i32
+{
+    closure_test_arg_fnonce_1(x);
 }
+
+#[rr::verify]
+fn closure_test_call_fnonce_1() {
+    closure_test_arg_fnonce_1(|| { 42 });
+}
+
+#[rr::verify]
+fn closure_test_call_fnonce_2() {
+    closure_test_arg_fnonce_2(|x| { x + 2});
+}
+
+#[rr::verify]
+fn closure_test_call_fnmut_1() {
+    let mut x = 1;
+    closure_test_arg_fnmut_1(|| { x += 2; });
+}
+
+#[rr::verify]
+fn closure_test_call_fn_1() {
+    closure_test_arg_fn_1(|| { });
+}
+
 
 /// Closures with no captures
 #[rr::returns("()")]
@@ -56,6 +85,20 @@ fn closure_test1() {
 
     // here we call the closure's implementation
     //x(2);
+}
+
+#[rr::verify]
+fn closure_test8<T, U>(x: T, y: U) 
+    where U: FnOnce(T)
+{
+    let cls = 
+        // TODO
+        #[rr::skip]
+        #[rr::params("a", "w")]
+        #[rr::args("a", "w")]
+        |a: T, w: U| { w(a) };
+
+    //cls(x, y);
 }
 
 #[rr::returns("()")]
@@ -185,6 +228,21 @@ fn closure_test4(y: &mut i32) {
         |x: &mut i32, w: &mut i32| { *y *= z; *x *= *w; };
 }
 */
+
+#[rr::verify]
+fn closure_test7<T, U>(x: T, y: U) 
+    where U: FnOnce(T)
+{
+    let cls = 
+        // TODO
+        #[rr::skip]
+        #[rr::params("a", "m")]
+        #[rr::capture("y": "m")]
+        #[rr::args("a")]
+        |a: T| { y(a) };
+
+    //cls(x);
+}
 
 
 mod fncoercion {

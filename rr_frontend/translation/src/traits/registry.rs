@@ -25,7 +25,7 @@ use crate::spec_parsers::trait_attr_parser::{
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
 use crate::types::scope;
-use crate::{attrs, procedures, traits, types};
+use crate::{attrs, procedures, search, traits, types};
 
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
@@ -884,6 +884,26 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
+    /// For a builtin trait, get the default attribute that should be assumed.
+    ///
+    /// Currently, we use this to assume the trivial specification for closure arguments.
+    fn get_builtin_trait_attr_override(&self, did: DefId) -> Option<String> {
+        let fn_did = search::try_resolve_did(self.env.tcx(), &["core", "ops", "Fn"])?;
+        if did == fn_did {
+            return Some("Fn_default_attrs".to_owned());
+        }
+        let fnmut_did = search::try_resolve_did(self.env.tcx(), &["core", "ops", "FnMut"])?;
+        if did == fnmut_did {
+            return Some("FnMut_default_attrs".to_owned());
+        }
+        let fnonce_did = search::try_resolve_did(self.env.tcx(), &["core", "ops", "FnOnce"])?;
+        if did == fnonce_did {
+            return Some("FnOnce_default_attrs".to_owned());
+        }
+
+        None
+    }
+
     /// Fills an existing trait use.
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
@@ -909,8 +929,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the
         // current scope which have not been filled yet
 
-        // TODO: allow to override the assumed specification using attributes
-        let spec_override = None;
+        let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
 
         // create a name for this instance by including the args
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
@@ -918,7 +937,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             spec_ref,
             quantified_regions,
             scope_inst,
-            spec_override,
+            attr_override,
             mangled_base,
             is_used_in_self_trait,
             assoc_ty_constraints,
