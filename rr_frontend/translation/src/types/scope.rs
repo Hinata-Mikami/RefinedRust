@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
@@ -19,6 +19,7 @@ use crate::base::*;
 use crate::environment::Environment;
 use crate::regions;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
+use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry::GenericTraitUse;
 use crate::traits::{self, registry};
 use crate::types::translator::{AdtState, STInner, TX};
@@ -170,6 +171,69 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
 
     fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
         self.trait_scope.attribute_names.get(path).map(String::as_str)
+    }
+}
+
+impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
+    fn determine_trait_requirement_origin(
+        &self,
+        typaram: &str,
+        attr: &str,
+    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+        let typaram_idx = self.ty_names.get(typaram)?;
+
+        for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
+            // check if the Self parameter matches up
+            if ty[0].is_param(*typaram_idx as u32) {
+                let trait_use = trait_use_ref.trait_use.borrow();
+                let trait_use = trait_use.as_ref();
+                let Some(spec_use) = trait_use else {
+                    continue;
+                };
+
+                let trait_ref = &spec_use.trait_ref;
+
+                if !trait_ref.declared_attrs.contains(&attr.to_owned()) {
+                    continue;
+                }
+
+                trace!("determine_trait_requirement_origin: found trait_ref={trait_ref:?}");
+
+                return Some(trait_use_ref.trait_use);
+            }
+        }
+        None
+    }
+
+    fn attach_trait_attr_requirement(
+        &self,
+        name_prefix: &str,
+        trait_use: radium::LiteralTraitSpecUseRef<'def>,
+        reqs: &BTreeMap<String, coq::term::Term>,
+    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
+        let mut trait_ref = trait_use.borrow_mut();
+        let trait_ref = trait_ref.as_mut().unwrap();
+
+        let trait_use = trait_ref.trait_ref;
+        let trait_inst = &trait_ref.trait_inst;
+
+        let assoc_types_inst = trait_ref.get_assoc_ty_inst();
+
+        let attrs = radium::TraitSpecAttrsInst::new(reqs.to_owned());
+        // name for the definition
+        let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
+
+        let specialization = radium::FunctionSpecTraitReqSpecialization::new(
+            trait_use,
+            trait_inst.to_owned(),
+            assoc_types_inst,
+            attrs,
+            name.clone(),
+        );
+
+        trait_ref.overridden_attrs = Some(name);
+
+        Some(specialization)
     }
 }
 
@@ -457,7 +521,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
                 // iterate over all attributes
                 for attr in &trait_use.trait_ref.declared_attrs {
-                    let term = trait_use.make_attr_item_term(attr);
+                    let term = trait_use.make_attr_item_term_in_spec(attr);
                     let path = vec![
                         RustPathElem::AssocItem(self_param.rust_name.clone()),
                         RustPathElem::AssocItem(attr.to_owned()),
@@ -488,7 +552,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     let trait_use = trait_use_ref.as_ref().unwrap();
                     // add the corresponding record entries to the map
                     for attr in &trait_ref.declared_attrs {
-                        let term = trait_use.make_attr_item_term(attr);
+                        let term = trait_use.make_attr_item_term_in_spec(attr);
                         let path = vec![RustPathElem::AssocItem(attr.to_owned())];
                         self.trait_scope.attribute_names.insert(path, term.to_string());
                     }

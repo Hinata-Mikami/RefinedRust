@@ -674,6 +674,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             let scope = ty_translator.scope.borrow();
             let mut parser = VerboseFunctionSpecParser::new(
+                &self.translated_fn.spec.function_name,
                 &translated_arg_types,
                 &translated_ret_type,
                 ret_is_option,
@@ -689,7 +690,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
                 .map_err(TranslationError::AttributeError)?;
 
-            Self::process_function_requirements(&mut self.translated_fn, parser.into());
+            let x = parser.into();
+            Self::process_function_requirements(&mut self.translated_fn, x);
         }
         let mut scope = ty_translator.scope.borrow_mut();
         scope.tuple_uses.extend(tuple_uses);
@@ -730,6 +732,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let scope = ty_translator.scope.borrow();
                     let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
                         VerboseFunctionSpecParser::new(
+                            &translator.spec.function_name,
                             &translated_arg_types,
                             &translated_ret_type,
                             ret_is_option,

@@ -929,6 +929,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // do not compute the assoc dep inst for now, as this may use other trait requirements from the
         // current scope which have not been filled yet
 
+        // compute an override for the attributes assumed here
+        // This does not include user annotations (e.g., on functions), as the attributes for those
+        // are not available here.
         let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
 
         // create a name for this instance by including the args

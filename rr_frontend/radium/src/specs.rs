@@ -2087,12 +2087,14 @@ impl<'def> AbstractEnum<'def> {
                 .push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(rt_name))));
 
             document.push(
-                coq::command::CommandAttrs::new(coq::command::Instance(
-                    coq::term::Type::Literal(format!("Inhabited {}", name)),
-                    coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
+                coq::command::CommandAttrs::new(coq::command::Instance {
+                    name: None,
+                    params: coq::binder::BinderList::empty(),
+                    ty: coq::term::Type::Literal(format!("Inhabited {}", name)),
+                    body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
                         proof.push(model::LTac::SolveInhabited);
                     }),
-                ))
+                })
                 .attributes("global"),
             );
 
@@ -2357,6 +2359,17 @@ pub enum InnerFunctionSpec<'def> {
 }
 
 impl<'def> InnerFunctionSpec<'def> {
+    /// Generate extra definitions needed for the specification.
+    fn generate_extra_definitions(
+        &self,
+        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    ) -> coq::Document {
+        match self {
+            Self::Lit(lit) => lit.generate_extra_definitions(scope),
+            Self::TraitDefault(_) => coq::Document::default(),
+        }
+    }
+
     fn write_spec_term<F>(
         &self,
         f: &mut F,
@@ -2540,7 +2553,10 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
     }
 
     #[must_use]
-    pub fn generate_trait_req_incl_def(&self) -> coq::command::Definition {
+    pub fn generate_trait_req_incl_def(&self) -> coq::Document {
+        // first add the needed extra definitions
+        let mut doc = self.spec.generate_extra_definitions(&self.generics);
+
         let params = self.get_all_trait_req_coq_params();
 
         let mut late_pre = Vec::new();
@@ -2566,12 +2582,14 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         quantified_term.push_str(&format!(" ({term})"));
 
         let name = self.trait_req_incl_name.clone();
-        coq::command::Definition {
+        doc.push(coq::command::Definition {
             name,
             params,
             ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
             body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(quantified_term)),
-        }
+        });
+
+        doc
     }
 }
 
@@ -2603,8 +2621,98 @@ pub struct Elctx {
     extra_constraints: Vec<String>,
 }
 
-// TODO: separate this into defining and using occurrence.
-// extra_link_assum should not be part of a using occurrence.
+/// Holds a specialized trait specification that a function assumes.
+/// This declares an attribute instantiation in the scope of the function.
+// Note: similar to `TraitRefInst`
+#[derive(Clone, Constructor, Debug)]
+pub struct FunctionSpecTraitReqSpecialization<'def> {
+    /// literals of the trait this implements
+    of_trait: LiteralTraitSpecRef<'def>,
+
+    /// instantiation of the trait's scope
+    /// Invariant: no surrounding instantiation
+    trait_inst: GenericScopeInst<'def>,
+
+    /// the implementation of the associated types
+    assoc_types_inst: Vec<Type<'def>>,
+
+    /// the spec attribute instantiation
+    attrs: TraitSpecAttrsInst,
+
+    /// the Rocq definition name for this specialization
+    name: String,
+}
+
+impl<'def> FunctionSpecTraitReqSpecialization<'def> {
+    /// Get the instantiation of the trait's parameters in the same order as the trait's declaration
+    /// (`get_ordered_params`).
+    #[must_use]
+    fn get_ordered_params_inst(&self) -> Vec<Type<'def>> {
+        let mut params: Vec<_> = self
+            .trait_inst
+            .get_direct_ty_params()
+            .iter()
+            .chain(self.assoc_types_inst.iter())
+            .cloned()
+            .collect();
+
+        params.append(&mut self.trait_inst.get_direct_assoc_ty_params());
+
+        params
+    }
+
+    /// Generate the definition of the attribute record.
+    #[must_use]
+    pub fn generate_attr_decl(
+        &self,
+        generics: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    ) -> coq::command::Definition {
+        let attrs = &self.attrs;
+        let of_trait = &self.of_trait;
+
+        // get all type parameters + assoc types
+        let mut def_rts_params = generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
+        def_rts_params.make_implicit(coq::binder::Kind::MaxImplicit);
+        def_rts_params.0.insert(0, coq::binder::Binder::new_rrgs());
+
+        // add other attrs
+        //def_rts_params.append(generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
+
+        // instantiate the type of the spec record
+        let attrs_type_rts: Vec<coq::term::Type> =
+            self.get_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
+        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_rts);
+        let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
+
+        // write the attr record decl
+        let attr_record_term = if attrs.attrs.is_empty() {
+            coq::term::Term::Literal(of_trait.spec_record_attrs_constructor_name())
+        } else {
+            let mut components = Vec::new();
+            for (attr_name, inst) in &attrs.attrs {
+                // create an item for every attr
+                let record_item_name = of_trait.make_spec_attr_name(attr_name);
+
+                let item = coq::term::RecordBodyItem {
+                    name: record_item_name,
+                    params: coq::binder::BinderList::empty(),
+                    term: inst.to_owned(),
+                };
+                components.push(item);
+            }
+            let record_body = coq::term::RecordBody { items: components };
+            coq::term::Term::RecordBody(record_body)
+        };
+
+        coq::command::Definition {
+            name: self.name.clone(),
+            params: def_rts_params,
+            ty: Some(attrs_type),
+            body: coq::command::DefinitionBody::Term(attr_record_term),
+        }
+    }
+}
+
 /// A function specification below generics.
 #[derive(Clone, Debug)]
 pub struct LiteralFunctionSpec<'def> {
@@ -2623,11 +2731,28 @@ pub struct LiteralFunctionSpec<'def> {
     /// postcondition as a separating conjunction
     post: coq::iris::IProp,
 
+    /// specialized attributes of traits
+    specialized_trait_attrs: Vec<FunctionSpecTraitReqSpecialization<'def>>,
+
     // TODO remove
     has_spec: bool,
 }
 
 impl<'def> LiteralFunctionSpec<'def> {
+    /// Generate extra definitions needed for the specification.
+    fn generate_extra_definitions(
+        &self,
+        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    ) -> coq::Document {
+        let mut doc = coq::Document::default();
+        for spec in &self.specialized_trait_attrs {
+            let def = spec.generate_attr_decl(scope);
+            doc.push(coq::Sentence::CommandAttrs(coq::command::CommandAttrs::new(def)));
+        }
+
+        doc
+    }
+
     /// Format the external lifetime contexts, consisting of constraints between lifetimes.
     fn format_elctx(&self, scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>) -> String {
         let mut out = String::with_capacity(100);
@@ -2777,6 +2902,8 @@ pub struct LiteralFunctionSpecBuilder<'def> {
 
     coq_names: HashSet<String>,
 
+    specialized_trait_attrs: Vec<FunctionSpecTraitReqSpecialization<'def>>,
+
     /// true iff there are any annotations
     has_spec: bool,
 }
@@ -2793,6 +2920,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
             ret: None,
             post: coq::iris::IProp::Sep(Vec::new()),
             coq_names: HashSet::new(),
+            specialized_trait_attrs: Vec::new(),
             has_spec: false,
         }
     }
@@ -2843,6 +2971,11 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         }
 
         Ok(())
+    }
+
+    /// Provide specialized specification attributes for trait requirements.
+    pub fn provide_specialized_trait_attrs(&mut self, specs: Vec<FunctionSpecTraitReqSpecialization<'def>>) {
+        self.specialized_trait_attrs = specs;
     }
 
     /// Add a new universal lifetime constraint.
@@ -2921,6 +3054,7 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
             existentials: self.existential,
             ret: self.ret.unwrap_or_else(TypeWithRef::make_unit),
             post: self.post,
+            specialized_trait_attrs: self.specialized_trait_attrs,
             has_spec: self.has_spec,
         }
     }
@@ -3016,6 +3150,11 @@ impl LiteralTraitSpec {
     fn spec_incl_name(&self) -> String {
         self.spec_subsumption.clone()
     }
+
+    #[must_use]
+    fn spec_incl_preorder_name(&self) -> String {
+        format!("{}_preorder", self.spec_incl_name())
+    }
 }
 
 /// A reference to a trait instantiated with its parameters in the verification of a function.
@@ -3031,10 +3170,10 @@ pub struct LiteralTraitSpecUse<'def> {
     pub trait_inst: GenericScopeInst<'def>,
 
     /// optionally, an override for the trait attr specification we assume
-    overridden_attrs: Option<String>,
+    pub overridden_attrs: Option<String>,
 
     /// the name including the generic args
-    mangled_base: String,
+    pub mangled_base: String,
 
     /// whether this is a usage in the scope of a trait decl of the same trait
     pub is_used_in_self_trait: bool,
@@ -3095,16 +3234,18 @@ impl<'def> LiteralTraitSpecUse<'def> {
     /// Get the term for accessing a particular attribute in a context where the attribute record
     /// is quantified.
     #[must_use]
-    pub fn make_attr_item_term(&self, attr_name: &str) -> coq::term::Term {
+    pub fn make_attr_item_term_in_spec(&self, attr_name: &str) -> coq::term::Term {
         coq::term::Term::RecordProj(
-            Box::new(coq::term::Term::Literal(self.make_spec_attrs_use())),
+            // Note: we are not using `make_spec_attrs_use`, as we want to specifically refer to
+            // the quantified parameter.
+            Box::new(coq::term::Term::Literal(self.make_spec_attrs_param_name())),
             self.trait_ref.make_spec_attr_name(attr_name),
         )
     }
 
     /// Get the instantiation of associated types.
     #[must_use]
-    fn get_assoc_ty_inst(&self) -> Vec<Type<'def>> {
+    pub fn get_assoc_ty_inst(&self) -> Vec<Type<'def>> {
         let mut assoc_tys = Vec::new();
         for (idx, _) in self.trait_ref.assoc_tys.iter().enumerate() {
             let ty = self.make_assoc_type_use(idx);
@@ -4293,6 +4434,37 @@ impl TraitSpecDecl<'_> {
         }
     }
 
+    fn make_spec_incl_preorder(&self) -> coq::command::Instance {
+        let name = self.lit.spec_incl_preorder_name();
+
+        let spec_params = self.get_ordered_params();
+        let spec_rt_params = spec_params.get_coq_ty_rt_params();
+        let spec_rt_inst_terms = spec_rt_params.make_implicit_inst_terms();
+
+        // the spec incl relation first takes the rt params
+        let mut spec_incl_params = spec_rt_params;
+        spec_incl_params.make_implicit(coq::binder::Kind::MaxImplicit);
+
+        let ty = format!("PreOrder ({} {})", self.lit.spec_incl_name(), spec_rt_inst_terms);
+
+        let body = coq::proof::Proof::new(coq::proof::Terminator::Qed, |doc| {
+            doc.push(coq::ltac::Attrs::new(coq::ltac::RocqLTac::Split));
+            doc.push(
+                coq::ltac::Attrs::new(coq::ltac::RocqLTac::Apply(coq::term::Term::Type(Box::new(
+                    coq::term::RocqType::Infer,
+                ))))
+                .scope(coq::ltac::Scope::All),
+            );
+        });
+
+        coq::command::Instance {
+            name: Some(name),
+            params: spec_incl_params,
+            ty: coq::term::Type::Literal(ty),
+            body,
+        }
+    }
+
     fn make_spec_incl_decl(&self) -> coq::command::Definition {
         let spec_incl_name = self.lit.spec_incl_name();
         let spec_param_name1 = "spec1".to_owned();
@@ -4404,6 +4576,10 @@ impl fmt::Display for TraitSpecDecl<'_> {
         let spec_incl_def = self.make_spec_incl_decl();
         write!(f, "{spec_incl_def}\n")?;
 
+        // prove that it is a preorder
+        let spec_incl_preorder = self.make_spec_incl_preorder();
+        write!(f, "{spec_incl_preorder}\n")?;
+
         // write the individual function specs
         for item_spec in self.default_spec.methods.values() {
             write!(f, "{item_spec}\n")?;
@@ -4469,7 +4645,6 @@ pub struct TraitRefInst<'def> {
     trait_inst: GenericScopeInst<'def>,
 
     /// the implementation of the associated types
-    /// NOTE: in the same order as in the trait definition
     assoc_types_inst: Vec<Type<'def>>,
 
     /// the spec attribute instantiation

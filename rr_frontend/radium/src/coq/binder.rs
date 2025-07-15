@@ -231,4 +231,15 @@ impl BinderList {
                 .collect(),
         )
     }
+
+    /// Make terms implicit instantiation terms `(a:=a)` for this list of binders
+    #[must_use]
+    pub fn make_implicit_inst_terms(&self) -> term::TermList {
+        term::TermList::new(
+            self.0
+                .iter()
+                .map(|x| term::Term::Literal(format!("({}:={})", x.get_name(), x.get_name())))
+                .collect(),
+        )
+    }
 }

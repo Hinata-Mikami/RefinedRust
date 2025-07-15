@@ -275,9 +275,25 @@ impl fmt::Display for Lemma {
 /// The [`Instance`] command.
 ///
 /// [`Instance`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Instance
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("Instance: {}.\n{}", _0, _1)]
-pub struct Instance(pub term::Type, pub proof::Proof);
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Instance {
+    pub name: Option<String>,
+    pub params: binder::BinderList,
+    pub ty: term::Type,
+    pub body: proof::Proof,
+}
+impl fmt::Display for Instance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(name) = &self.name {
+            writeln!(f, "Instance {} {} : {}.", name, self.params, self.ty)?;
+        } else {
+            let ty =
+                term::Term::All(self.params.clone(), Box::new(term::Term::Type(Box::new(self.ty.clone()))));
+            writeln!(f, "Instance: {ty}.")?;
+        }
+        write!(f, "{}", self.body)
+    }
+}
 
 /// The first variant [`Canonical Structure`] command.
 ///

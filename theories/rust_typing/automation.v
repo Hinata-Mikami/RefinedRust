@@ -1027,6 +1027,12 @@ Ltac sidecond_hook ::=
   sidecond_hook_core
 .
 
+Ltac liSidecond_hook P ::=
+lazymatch P with
+  | shelve_hint _ => split; [ unfold shelve_hint; shelve_sidecond |]
+  | trait_incl_marker _ => split; [shelve_sidecond |]
+end.
+
 (** ** Hints for automation *)
 Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_size : typeclass_instances.
 Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_size : typeclass_instances.

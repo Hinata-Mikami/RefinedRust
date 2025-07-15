@@ -690,6 +690,73 @@ Lemma maybe_later_mono (P : iProp Σ) b : ▷?b P -∗ ▷ P.
 Proof.
   iIntros "P". by iPoseProof (bi.laterN_le _ 1 with "P") as "P"; first (destruct b; simpl; lia).
 Qed.
+
+
+(* transitivity etc *)
+Global Instance transitive_eta {A B} (R1 : relation B) (F : A → B) :
+  Transitive R1 →
+  Transitive (λ a b, R1 (F a) (F b)).
+Proof.
+  intros ?.
+  intros x y z Ha Hb.
+  etrans; done.
+Qed.
+Global Instance transitive_and {A} (R1 R2 : relation A) :
+  Transitive R1 →
+  Transitive R2 →
+  Transitive (λ a b, R1 a b ∧ R2 a b).
+Proof.
+  intros ? ? x y z [] [].
+  split; etrans; done.
+Qed.
+Global Instance reflexive_eta {A B} (R1 : relation B) (F : A → B) :
+  Reflexive R1 →
+  Reflexive (λ a b, R1 (F a) (F b)).
+Proof.
+  intros ?.
+  intros x.
+  done.
+Qed.
+Global Instance reflexive_and {A} (R1 R2 : relation A) :
+  Reflexive R1 →
+  Reflexive R2 →
+  Reflexive (λ a b, R1 a b ∧ R2 a b).
+Proof.
+  intros ? ? x.
+  split; done.
+Qed.
+
+Global Instance reflexive_trivial {A} (P : Prop):
+  TCFastDone P →
+  Reflexive (λ _ _ : A, P).
+Proof.
+  intros ? _.
+  done.
+Qed.
+Global Instance transitive_trivial {A} (P : Prop):
+  Transitive (λ _ _ : A, P).
+Proof.
+  intros ??? ? ?.
+  done.
+Qed.
+
+Global Instance reflexive_all {A X} (P : X → relation A) :
+  (∀ x : X, Reflexive (λ a b, P x a b)) →
+  Reflexive (λ a b, ∀ x : X, P x a b).
+Proof.
+  intros Ha.
+  intros a x. apply Ha.
+Qed.
+Global Instance transitive_all {A X} (P : X → relation A) :
+  (∀ x : X, Transitive (λ a b, P x a b)) →
+  Transitive (λ a b, ∀ x : X, P x a b).
+Proof.
+  intros Ha.
+  intros a b c Hb Hc x.
+  specialize (Ha x).
+  etrans; done.
+Qed.
+
 End util.
 
 

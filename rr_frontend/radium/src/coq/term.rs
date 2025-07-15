@@ -85,6 +85,9 @@ pub enum RocqTerm<T, U> {
 
     /// User defined type
     UserDefined(T),
+
+    /// A Rocq type
+    Type(Box<Type>),
 }
 
 impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
@@ -133,6 +136,9 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             },
             Self::UserDefined(user_type) => {
                 write!(f, "{}", user_type)
+            },
+            Self::Type(ty) => {
+                write!(f, "{ty}")
             },
         }
     }

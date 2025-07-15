@@ -1,6 +1,5 @@
 From refinedrust Require Import typing.
 From rrstd.iterator.theories Require Import iterator.
-From rrstd.closures.theories Require Import closures.
 
 (* 
 

@@ -270,11 +270,9 @@ Ltac liSideCond :=
   end;
   lazymatch goal with
   | |- ?P ∧ ?Q =>
-    lazymatch P with
-    | shelve_hint _ => split; [ unfold shelve_hint; shelve_sidecond |]
-    | _ =>
-      first [
-        lazymatch P with
+    first [
+        liSidecond_hook P
+      | lazymatch P with
         | context [protected _] => fail
         | _ => split; [splitting_fast_done|]
         end
@@ -291,7 +289,6 @@ Ltac liSideCond :=
         | _ => split; [ first [ done | shelve_sidecond ] | ]
         end
       ]
-    end
   | _ => fail "liSideCond: unknown goal"
   end.
 

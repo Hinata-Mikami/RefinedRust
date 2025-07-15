@@ -2499,25 +2499,25 @@ Ltac solve_trait_incl_prepare :=
   end.
 Ltac solve_trait_incl_core :=
   lazymatch goal with
-    | |- ?incl ?spec1 ?spec2 =>
-      first [
-          decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
-          (* look for an assumption we can specialize *)
-          is_var spec1;
-          prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
-            (* TODO: ideally, we should use transitivity instead and then go on *)
-            apply H2
-          ))
-        | (* directly solve the inclusion *)
-          (* first unfold the inclusion *)
-          strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
-            unfold a;
-            intros;
-            split_and?;
-            intros
-          )
-        ]
-    end.
+  | |- ?incl ?spec1 ?spec2 =>
+      try (decompose_instantiated_spec constr:(spec1) ltac:(fun spec1 spec1_tys spec1_lfts =>
+        (* look for an assumption we can specialize *)
+        is_var spec1;
+        prove_trait_incl_for spec1 spec1_tys spec1_lfts ltac:(fun t1 t2 H2 =>
+          etrans; first apply H2; clear H2
+        )));
+      first [reflexivity |
+      (* directly solve the inclusion *)
+      (* first unfold the inclusion *)
+      strip_all_applied_params incl (hnil id) ltac:(fun a _ =>
+        unfold a;
+        intros;
+        split_and?;
+        intros
+        (* leave the individual function inclusions *)
+      )]
+  end
+.
 Ltac solve_trait_incl_fn :=
   first [solve_function_subtype | done ].
 

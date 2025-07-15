@@ -1478,7 +1478,7 @@ pub struct FunctionBuilder<'def> {
     code_name: String,
 
     /// optionally, a specification, if one has been created
-    spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
+    pub spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
 
     /// a sequence of other functions used by this function
     /// (Note that there may be multiple assumptions here with the same spec, if they are

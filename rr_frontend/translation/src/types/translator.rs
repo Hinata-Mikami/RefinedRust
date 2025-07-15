@@ -7,7 +7,7 @@
 //! The main translator for translating types within certain environments.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace};
@@ -27,6 +27,7 @@ use crate::spec_parsers::enum_spec_parser::{
 };
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
 use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, StructFieldSpecParser as _};
+use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry;
 use crate::types::scope;
 use crate::{attrs, search};
@@ -68,6 +69,26 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
 
     fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
         self.generic_scope.lookup_literal(path)
+    }
+}
+
+impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
+    fn determine_trait_requirement_origin(
+        &self,
+        typaram: &str,
+        attr: &str,
+    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+        trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
+        self.generic_scope.determine_trait_requirement_origin(typaram, attr)
+    }
+
+    fn attach_trait_attr_requirement(
+        &self,
+        name_prefix: &str,
+        trait_use: radium::LiteralTraitSpecUseRef<'def>,
+        reqs: &BTreeMap<String, coq::term::Term>,
+    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
+        self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }
 }
 

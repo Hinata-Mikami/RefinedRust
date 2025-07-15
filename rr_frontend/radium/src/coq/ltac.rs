@@ -28,6 +28,18 @@ pub enum RocqLTac<T> {
     #[display("exact {}.", _0)]
     Exact(term::Term),
 
+    /// [`Split`] tactic
+    ///
+    /// [`Split`]: https://rocq-prover.org/doc/v8.20/refman/proofs/writing-proofs/reasoning-inductives.html#coq:tacn.split
+    #[display("split.")]
+    Split,
+
+    /// [`Apply`] tactic
+    ///
+    /// [`Apply`]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/tactics.html#coq:tacn.apply
+    #[display("apply {}.", _0)]
+    Apply(term::Term),
+
     /// [`Let-in`] syntax
     ///
     /// [`Let-in`]: https://rocq-prover.org/doc/v8.20/refman/language/core/definitions.html#let-in-definitions

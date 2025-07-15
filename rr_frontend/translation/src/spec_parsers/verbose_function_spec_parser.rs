@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::mem;
 
 use attribute_parse::{MToken, parse};
@@ -29,6 +29,23 @@ pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     pub capture_tys: &'a [specs::Type<'def>],
     /// the lifetime of the closure, if kind is `Fn` or `FnMut`
     pub closure_lifetime: Option<specs::Lft>,
+}
+
+/// Specifies that a trait attribute requirement on a function can be attached to a scope.
+pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
+    /// Determine the trait requirement for `typaram` and `attr`.
+    fn determine_trait_requirement_origin(
+        &self,
+        typaram: &str,
+        attr: &str,
+    ) -> Option<radium::LiteralTraitSpecUseRef<'def>>;
+
+    fn attach_trait_attr_requirement(
+        &self,
+        name_prefix: &str,
+        trait_use: radium::LiteralTraitSpecUseRef<'def>,
+        reqs: &BTreeMap<String, coq::term::Term>,
+    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>>;
 }
 
 pub(crate) trait FunctionSpecParser<'def> {
@@ -117,6 +134,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
+#[derive(Debug)]
 enum MetaIProp {
     /// `#[rr::requires("..")]` or `#[rr::requires("Ha" : "..")]`
     Pure(String, Option<String>),
@@ -128,6 +146,8 @@ enum MetaIProp {
     Observe(String, Option<String>, String),
     /// `#[rr::requires(#linktime "st_size {st_of T} < MaxInt isize")]`
     Linktime(String),
+    /// `#[rr::requires(#trait T::Pre := "...")]`
+    Trait(String, String, String),
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
@@ -173,6 +193,19 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     let term: parse::LitStr = stream.parse(meta)?;
                     let (term, _meta) = meta.process_coq_literal(&term.value());
                     Ok(Self::Linktime(term))
+                },
+                "trait" => {
+                    let type_param: parse::Ident = stream.parse(meta)?;
+                    stream.parse::<_, MToken![::]>(meta)?;
+                    let attr: parse::Ident = stream.parse(meta)?;
+
+                    stream.parse::<_, MToken![:]>(meta)?;
+                    stream.parse::<_, MToken![=]>(meta)?;
+
+                    let term: parse::LitStr = stream.parse(meta)?;
+                    let (term, _meta) = meta.process_coq_literal(&term.value());
+
+                    Ok(Self::Trait(type_param.value(), attr.value(), term))
                 },
                 _ => Err(parse::Error::OtherErr(
                     stream.pos().unwrap(),
@@ -220,7 +253,7 @@ impl From<MetaIProp> for coq::iris::IProp {
                     Self::Atom(format!("gvar_pobs {name} ({term})"))
                 }
             },
-            MetaIProp::Linktime(_) => Self::True,
+            MetaIProp::Linktime(_) | MetaIProp::Trait(..) => Self::True,
         }
     }
 }
@@ -243,6 +276,9 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 /// The main parser.
 #[expect(clippy::struct_excessive_bools)]
 pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
+    /// name prefix for this function
+    name_prefix: &'a str,
+
     /// argument types with substituted type parameters
     arg_types: &'a [specs::Type<'def>],
     /// return types with substituted type parameters
@@ -263,6 +299,14 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     make_literal: F,
 
     fn_requirements: FunctionRequirements,
+
+    /// specializations of trait assumptions we assume
+    //trait_specializations: Vec<radium::FunctionSpecTraitReqSpecialization<'def>>,
+
+    // specialized trait specs we assume.
+    // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
+    trait_specs:
+        BTreeMap<*const u8, (radium::LiteralTraitSpecUseRef<'def>, BTreeMap<String, coq::term::Term>)>,
 
     /// track whether we got argument and returns specifications
     got_args: bool,
@@ -316,12 +360,13 @@ impl<'a, 'def, F, T> From<VerboseFunctionSpecParser<'a, 'def, F, T>> for Functio
     }
 }
 
-impl<'a, 'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
+impl<'a, 'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
     /// Type parameters must already have been substituted in the given types.
     pub(crate) fn new(
+        name_prefix: &'a str,
         arg_types: &'a [specs::Type<'def>],
         ret_type: &'a specs::Type<'def>,
         ret_is_option: bool,
@@ -331,6 +376,7 @@ where
         make_literal: F,
     ) -> Self {
         VerboseFunctionSpecParser {
+            name_prefix,
             arg_types,
             ret_type,
             ret_is_option,
@@ -339,6 +385,7 @@ where
             make_literal,
             scope,
             fn_requirements: FunctionRequirements::default(),
+            trait_specs: BTreeMap::new(),
             got_args: arg_types.is_empty(),
             got_ret: matches!(ret_type, specs::Type::Unit),
             ok_spec: OkSpec::new(),
@@ -382,7 +429,7 @@ where
     }
 }
 
-impl<'def, F, T: ParamLookup<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -393,11 +440,8 @@ where
         buffer: &parse::Buffer,
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
         scope: &T,
+        in_closure: bool,
     ) -> Result<bool, String> {
-        // true if we have encountered an rr::ok annotation.
-        // The assertions afterwards are interpreted as pre-/postconditions purely for functional
-        // correctness
-
         match name {
             "ok" => {
                 self.ok_spec.ok_mode = true;
@@ -435,8 +479,31 @@ where
             },
             "requires" => {
                 let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
+                info!("parsed iprop: {iprop:?}");
                 if let MetaIProp::Linktime(assum) = iprop {
+                    if in_closure {
+                        return Err("linktime assumptions are not allowed on closures".to_owned());
+                    }
                     self.fn_requirements.proof_info.linktime_assumptions.push(assum);
+                } else if let MetaIProp::Trait(for_ty, attr, term) = iprop {
+                    if in_closure {
+                        return Err("assumptions on trait attributes are not allowed on closures".to_owned());
+                    }
+
+                    if let Some(req) = scope.determine_trait_requirement_origin(&for_ty, &attr) {
+                        let (_, entries) = self
+                            .trait_specs
+                            .entry((&raw const *req).cast())
+                            .or_insert_with(|| (req, BTreeMap::new()));
+
+                        if entries.insert(attr.clone(), coq::term::Term::Literal(term)).is_some() {
+                            return Err(format!("multiple specializations for {attr} were specified"));
+                        }
+                    } else {
+                        return Err(
+                            "could not find trait requirement to attach trait specialization to".to_owned()
+                        );
+                    }
                 } else if self.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
@@ -798,7 +865,7 @@ where
     }
 }
 
-impl<'def, F, T: ParamLookup<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
+impl<'def, F, T: TraitReqHandler<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
@@ -838,13 +905,18 @@ where
             let args = &it.args;
 
             if let Some(seg) = path_segs.get(1) {
-                let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+                let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.name.as_str();
 
-                match self.handle_common_attributes(name, &buffer, builder, self.scope) {
+                match self.handle_common_attributes(name, &buffer, builder, self.scope, true) {
                     Ok(b) => {
-                        if !b && name != "capture" {
-                            info!("ignoring function attribute: {:?}", args);
+                        if !b
+                            && name != "capture"
+                            && name != "only_spec"
+                            && name != "verify"
+                            && name != "trust_me"
+                        {
+                            return Err(format!("unknown closure attribute: {name}"));
                         }
                     },
 
@@ -917,12 +989,18 @@ where
                 continue;
             };
 
-            let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let buffer = parse::Buffer::new(&attr_args_tokens(args));
             let name = seg.name.as_str();
-            match self.handle_common_attributes(name, &buffer, builder, self.scope) {
+            match self.handle_common_attributes(name, &buffer, builder, self.scope, false) {
                 Ok(b) => {
-                    if !b {
-                        info!("ignoring function attribute: {:?}", args);
+                    if !b
+                        && name != "code_shim"
+                        && name != "export_as"
+                        && name != "only_spec"
+                        && name != "verify"
+                        && name != "trust_me"
+                    {
+                        return Err(format!("unknown function attribute: {name}"));
                     }
                 },
                 Err(e) => {
@@ -930,6 +1008,18 @@ where
                 },
             }
         }
+
+        // process trait specializations
+        let mut defs = Vec::new();
+        for (spec_use, terms) in self.trait_specs.values() {
+            if let Some(def) = self.scope.attach_trait_attr_requirement(self.name_prefix, spec_use, terms) {
+                defs.push(def);
+            } else {
+                return Err("unable to attach trait attr requirement".to_owned());
+            }
+        }
+
+        builder.provide_specialized_trait_attrs(defs);
 
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names

@@ -123,7 +123,8 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 };
 
                 let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
-                match seg.name.as_str() {
+                let name = seg.name.as_str();
+                match name {
                     "pattern" => {
                         let pat: EnumPattern = buffer.parse(self.scope).map_err(str_err)?;
                         pattern = Some(pat);
@@ -134,7 +135,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                         refinement = Some(rfn_processed);
                     },
                     _ => {
-                        // skip and ignore other attributes
+                        // skip and ignore other attributes, they may be part of struct specs
                     },
                 }
             }

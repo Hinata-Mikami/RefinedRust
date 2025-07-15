@@ -2,16 +2,18 @@
 
 /// Using closure arguments
 #[rr::verify]
-// NOTE: the exists needs to be put into the trait_incl assumption!
-//#[rr::exists("c" : "Z")]
+// NOTE: the params needs to be put into the trait_incl assumption!
+//#[rr::params("c" : "Z")]
+// For the general form, we don't have syntactic sugar. 
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, (∃ c : Z, ⌜ret = c⌝)%I")]
+//#[rr::require(#closure "T" : "True" -> "∃ c : Z, ret = c")]
 //#[rr::closure_computes("T", "λ _, c")]
-
 //#[rr::params("f" : "() → Z")]
 //#[rr::require(#assume "{T::Post}": "ret = #(f args_0)")]
 //#[rr::require("∃ c, ∀ x, f x = c")]
-
-//#[rr::require(#assume "{T::Pre}": "True")]
-//#[rr::require(#assume "{T::Post}": "∃ c : Z, ret = #c")]
+// TODO: this should make the spec non-trivial
+//#[rr::requires(#iris "{T::Pre} ($# x) ()")]
 fn closure_test_arg_fnonce_1<T>(x: T) 
     where T: FnOnce() -> i32
 {
@@ -26,12 +28,18 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 }
 
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
+#[rr::requires(#trait T::PostMut := "λ _ _ _ _, True%I")]
 fn closure_test_arg_fn_1<T>(x: T)
     where T: Fn()
 {
     x()
 }
 
+// Do I ever want to require how the state changes?
+// I guess not, because I don't even know what the state is.
+// I mean, I could require that there exists some projection, etc.. but...
 #[rr::verify]
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
@@ -262,3 +270,4 @@ mod fncoercion {
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation
+

@@ -1020,22 +1020,19 @@ Section function_subsume.
     Unshelve. all: done.
   Qed.
 
-  Lemma function_subtype_refl {lfts : nat} {rts : list RT} (a : spec_with lfts rts fn_spec) :
-    function_subtype a a.
+  Global Instance function_subtype_refl {lfts : nat} {rts : list RT} :
+    Reflexive (function_subtype (lfts:=lfts) (rts:=rts)).
   Proof.
+    intros S1.
     iIntros (π fn local_sts eqp1 eqp2 κs tys).
     rewrite (UIP_refl _ _ eqp1).
     rewrite (UIP_refl _ _ eqp2).
     iIntros "Ha". iFrame.
   Qed.
-  Lemma function_subtype_trans {lfts : nat} {rts : list RT}
-    (S1 : spec_with lfts rts fn_spec)
-    (S2 : spec_with lfts rts fn_spec)
-    (S3 : spec_with lfts rts fn_spec) :
-    function_subtype S1 S2 →
-    function_subtype S2 S3 →
-    function_subtype S1 S3.
+  Global Instance function_subtype_trans {lfts : nat} {rts : list RT} :
+    Transitive (function_subtype (lfts:=lfts) (rts:=rts)).
   Proof.
+    intros S1 S2 S3.
     rewrite /function_subtype.
     intros Hs1 Hs2.
     iIntros (π fn local_sts ? ? κs tys).

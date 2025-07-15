@@ -52,6 +52,9 @@ Ltac before_revert_hook H := idtac.
 (** [shelve_sidecond_hook] is executed before shelving a sidecondition *)
 Ltac shelve_sidecond_hook := idtac.
 
+(** [liSidecond_hook] is executed before examining a pure Coq sidecondition [P] *)
+Ltac liSidecond_hook P := idtac.
+
 (** [generate_i2p_instance_to_tc_hook] is used to infer the
 typeclasses from the lemmas for the [instance] notation for declaring
 typeclass instances. *)
