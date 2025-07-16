@@ -10,6 +10,9 @@ use derive_more::Display;
 
 use crate::{coq, display_list};
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
+pub enum Term {}
+
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 #[expect(clippy::enum_variant_names)]
 pub enum Type {

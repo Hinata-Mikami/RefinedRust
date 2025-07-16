@@ -17,11 +17,17 @@ use itertools::Itertools as _;
 use crate::coq::binder;
 use crate::{BASE_INDENT, display_list, model};
 
-/// A [term].
+/// A [term], extended with user defined terms.
+///
+/// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
+pub type Term = RocqTerm<model::Term>;
+
+/// A Rocq [term], limited to Rocq defined terms.
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
-pub enum Term {
+#[expect(clippy::module_name_repetitions)]
+pub enum RocqTerm<T> {
     /// A literal
     Literal(String),
 
@@ -55,6 +61,9 @@ pub enum Term {
     /// A prefix operator
     #[from(ignore)]
     Prefix(String, Box<Term>),
+
+    /// User defined type
+    UserDefined(T),
 }
 
 impl fmt::Display for Term {
@@ -102,6 +111,9 @@ impl fmt::Display for Term {
             },
             Self::Prefix(op, term) => {
                 write!(f, "{op} ({term})")
+            },
+            Self::UserDefined(user_type) => {
+                write!(f, "{}", user_type)
             },
         }
     }
@@ -202,15 +214,15 @@ impl fmt::Display for RecordBodyItem {
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 pub type Type = RocqType<model::Type>;
 
-pub(crate) fn fmt_list<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_list(v: &Vec<Type>) -> String {
     format!("[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_hlist<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_hlist(v: &Vec<Type>) -> String {
     format!("+[{}]", display_list!(v, "; "))
 }
 
-pub(crate) fn fmt_prod<T: fmt::Display>(v: &Vec<RocqType<T>>) -> String {
+pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),
@@ -230,7 +242,7 @@ pub enum RocqType<T> {
     ///
     /// The argument vector should be non-empty.
     #[display("{} → {}", display_list!(_0, " → ", "({})"), *_1)]
-    Function(Vec<Box<RocqType<T>>>, Box<RocqType<T>>),
+    Function(Vec<Type>, Box<Type>),
 
     /// Placeholder
     #[display("_")]
@@ -258,7 +270,7 @@ pub enum RocqType<T> {
 
     /// Product type
     #[display("{}", fmt_prod(_0))]
-    Prod(Vec<RocqType<T>>),
+    Prod(Vec<Type>),
 
     /// User defined type
     #[display("{}", _0)]
