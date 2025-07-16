@@ -8,7 +8,7 @@
 
 use derive_more::Display;
 
-use crate::{coq, display_list};
+use crate::{coq, fmt_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum Term {}
@@ -43,7 +43,7 @@ pub enum Type {
     /// `(plist _ _)` type
     ///
     /// A plist with a given type constructor over a list of types
-    #[display("(plist {} [{}])", _0, display_list!(_1, "; ", "{} : Type"))]
+    #[display("(plist {} [{}])", _0, fmt_list!(_1, "; ", "{} : Type"))]
     PList(String, Vec<coq::term::Type>),
 
     /// `rtype` type

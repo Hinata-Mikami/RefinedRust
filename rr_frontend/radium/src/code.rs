@@ -19,7 +19,7 @@ use log::info;
 use typed_arena::Arena;
 
 use crate::specs::*;
-use crate::{BASE_INDENT, coq, display_list, make_indent, model, write_list};
+use crate::{BASE_INDENT, coq, fmt_list, make_indent, model, write_list};
 
 #[expect(clippy::ref_option)]
 fn fmt_comment(o: &Option<String>) -> String {
@@ -42,7 +42,7 @@ fn fmt_option<T: fmt::Display>(o: &Option<T>) -> String {
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 // TODO: handle lifetime parameters in this representation
 pub enum RustType {
-    #[display("RSTLitType [{}] [{}]", display_list!(_0, "; ", "\"{}\""), display_list!(_1, "; "))]
+    #[display("RSTLitType [{}] [{}]", fmt_list!(_0, "; ", "\"{}\""), fmt_list!(_1, "; "))]
     Lit(Vec<String>, Vec<RustType>),
 
     #[display("RSTTyVar \"{}\"", _0)]
@@ -72,7 +72,7 @@ pub enum RustType {
     #[display("RSTBox ({})", &_0)]
     PrimBox(Box<RustType>),
 
-    #[display("RSTStruct ({}) [{}]", _0, display_list!(_1, "; "))]
+    #[display("RSTStruct ({}) [{}]", _0, fmt_list!(_1, "; "))]
     Struct(String, Vec<RustType>),
 
     #[display("RSTArray {} ({})", _0, &_1)]
@@ -280,7 +280,7 @@ pub enum Expr {
     #[display("&raw{{ {} }} ({})", mt, &e)]
     AddressOf { mt: Mutability, e: Box<Expr> },
 
-    #[display("CallE {} [{}] [{}] [@{{expr}} {}]", &f, display_list!(lfts, "; ", "\"{}\""), display_list!(tys, "; ", "{}"), display_list!(args, "; "))]
+    #[display("CallE {} [{}] [{}] [@{{expr}} {}]", &f, fmt_list!(lfts, "; ", "\"{}\""), fmt_list!(tys, "; ", "{}"), fmt_list!(args, "; "))]
     Call {
         f: Box<Expr>,
         lfts: Vec<Lft>,
@@ -311,7 +311,7 @@ pub enum Expr {
         e: Box<Expr>,
     },
 
-    #[display("StructInit {} [{}]", sls, display_list!(components, "; ", |(name, e)| format!("(\"{name}\", {e} : expr)")))]
+    #[display("StructInit {} [{}]", sls, fmt_list!(components, "; ", |(name, e)| format!("(\"{name}\", {e} : expr)")))]
     StructInitE {
         sls: coq::term::App<String, String>,
         components: Vec<(String, Expr)>,
@@ -384,7 +384,7 @@ pub enum BorKind {
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Annotation {
     /// Start a lifetime as a sublifetime of the intersection of a few other lifetimes
-    #[display("StartLftAnnot \"{}\" [{}]", _0, display_list!(_1, "; ", "\"{}\""))]
+    #[display("StartLftAnnot \"{}\" [{}]", _0, fmt_list!(_1, "; ", "\"{}\""))]
     StartLft(Lft, Vec<Lft>),
 
     /// End this lifetime
@@ -408,7 +408,7 @@ pub enum Annotation {
     UnconstrainedLft(Lft),
 
     /// Create an alias for an intersection of lifetimes
-    #[display("AliasLftAnnot \"{}\" [{}]", _0, display_list!(_1, "; ", "\"{}\""))]
+    #[display("AliasLftAnnot \"{}\" [{}]", _0, fmt_list!(_1, "; ", "\"{}\""))]
     AliasLftIntersection(Lft, Vec<Lft>),
 }
 
@@ -436,7 +436,7 @@ pub enum PrimStmt {
     #[display("assert{{ {} }}: {};\n", OpType::Bool, _0)]
     AssertS(Box<Expr>),
 
-    #[display("{}", display_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why))}))]
+    #[display("{}", fmt_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why))}))]
     Annot {
         a: Vec<Annotation>,
         why: Option<String>,
@@ -469,8 +469,8 @@ pub enum Stmt {
         "Switch ({}: int_type) ({}) ({}∅) ([{}]) ({})",
         it,
         e,
-        display_list!(index_map, "", |(k, v)| format!("<[ {k}%Z := {v}%nat ]> $ ")),
-        display_list!(bs, "; "),
+        fmt_list!(index_map, "", |(k, v)| format!("<[ {k}%Z := {v}%nat ]> $ ")),
+        fmt_list!(bs, "; "),
         &def
     )]
     Switch {
@@ -482,7 +482,7 @@ pub enum Stmt {
         def: Box<Stmt>,
     },
 
-    #[display("{}{}", display_list!(_0, ""), *_1)]
+    #[display("{}{}", fmt_list!(_0, ""), *_1)]
     Prim(Vec<PrimStmt>, Box<Stmt>),
 
     #[display("StuckS")]
@@ -699,9 +699,9 @@ impl fmt::Display for FunctionCode {
             )
         }
 
-        let args = display_list!(&self.stack_layout.args, ";\n", fmt_variable);
-        let locals = display_list!(&self.stack_layout.locals, ";\n", fmt_variable);
-        let blocks = display_list!(&self.basic_blocks, "\n", fmt_blocks);
+        let args = fmt_list!(&self.stack_layout.args, ";\n", fmt_variable);
+        let locals = fmt_list!(&self.stack_layout.locals, ";\n", fmt_variable);
+        let blocks = fmt_list!(&self.basic_blocks, "\n", fmt_blocks);
 
         writedoc!(
             f,
@@ -779,7 +779,7 @@ impl LocalKind {
 }
 
 #[derive(Clone, Debug, Display)]
-#[display("({}PolyNil)", display_list!(_0, "",
+#[display("({}PolyNil)", fmt_list!(_0, "",
     |(bb, spec)| format!("PolyCons (\"_bb{}\", {}) $ ", bb, spec))
 )]
 struct InvariantMap(HashMap<usize, LoopSpec>);

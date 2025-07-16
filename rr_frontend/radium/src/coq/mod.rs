@@ -334,13 +334,13 @@ pub mod term;
 use derive_more::{Deref, DerefMut, Display, From};
 use transitive::Transitive;
 
-use crate::{display_list, model};
+use crate::{fmt_list, model};
 
 /// A [document], composed of commands.
 ///
 /// [document]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-document
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
-#[display("{}\n", display_list!(_0, "\n"))]
+#[display("{}\n", fmt_list!(_0, "\n"))]
 pub struct Document(pub Vec<Sentence>);
 
 impl Document {
@@ -384,7 +384,7 @@ pub enum Sentence {
 ///
 /// [proof document]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/ltac.html#ltac
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default, Deref, DerefMut)]
-#[display("{}\n", display_list!(_0, "\n"))]
+#[display("{}\n", fmt_list!(_0, "\n"))]
 pub struct ProofDocument(pub Vec<Vernac>);
 
 impl ProofDocument {

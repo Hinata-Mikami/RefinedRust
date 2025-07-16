@@ -21,12 +21,12 @@ fn make_indent(i: usize) -> String {
 /// This third argument can also be a closure that takes an element from the collection and returns the
 /// formatted string.
 #[macro_export]
-macro_rules! display_list {
+macro_rules! fmt_list {
     ($collection:expr, $separator:expr) => {
-        $crate::display_list!($collection, $separator, "{}")
+        $crate::fmt_list!($collection, $separator, "{}")
     };
     ($collection:expr, $separator:expr, $pattern:literal) => {
-        $crate::display_list!($collection, $separator, |e| format!($pattern, e))
+        $crate::fmt_list!($collection, $separator, |e| format!($pattern, e))
     };
     ($collection:expr, $separator:expr, $fmt:expr) => {
         #[allow(clippy::allow_attributes)]
@@ -49,7 +49,7 @@ macro_rules! push_str_list {
         $crate::push_str_list!($s, $collection, $separator, |e| format!($pattern, e))
     };
     ($s:ident, $collection:expr, $separator:expr, $fmt:expr) => {
-        $s.push_str(&$crate::display_list!($collection, $separator, $fmt))
+        $s.push_str(&$crate::fmt_list!($collection, $separator, $fmt))
     };
 }
 
@@ -67,7 +67,7 @@ macro_rules! write_list {
         $crate::write_list!($f, $collection, $separator, |e| format!($pattern, e))
     };
     ($f:ident, $collection:expr, $separator:expr, $fmt:expr) => {
-        write!($f, "{}", $crate::display_list!($collection, $separator, $fmt))
+        write!($f, "{}", $crate::fmt_list!($collection, $separator, $fmt))
     };
 }
 
@@ -76,20 +76,20 @@ mod tests {
     use std::fmt::Write as _;
 
     #[test]
-    fn display_list_default() {
-        let out = display_list!(vec!["10", "20"], "; ");
+    fn fmt_list_default() {
+        let out = fmt_list!(vec!["10", "20"], "; ");
         assert_eq!(out, "10; 20");
     }
 
     #[test]
-    fn display_list_pattern() {
-        let out = display_list!(vec!["10", "20"], "; ", "'{}'");
+    fn fmt_list_pattern() {
+        let out = fmt_list!(vec!["10", "20"], "; ", "'{}'");
         assert_eq!(out, "'10'; '20'");
     }
 
     #[test]
-    fn display_list_format() {
-        let out = display_list!(vec![("x", "10"), ("y", "20")], "; ", |(l, v)| format!("{l}: {v}"));
+    fn fmt_list_format() {
+        let out = fmt_list!(vec![("x", "10"), ("y", "20")], "; ", |(l, v)| format!("{l}: {v}"));
         assert_eq!(out, "x: 10; y: 20");
     }
 

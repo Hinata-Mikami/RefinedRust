@@ -15,12 +15,24 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools as _;
 
 use crate::coq::binder;
-use crate::{BASE_INDENT, display_list, model};
+use crate::{BASE_INDENT, fmt_list, model};
 
 /// A [term], extended with user defined terms.
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 pub type Term = RocqTerm<model::Term>;
+
+pub(crate) fn fmt_binders(op: &str, binders: &binder::BinderList) -> String {
+    fmt_binders_empty(op, binders, "")
+}
+
+pub(crate) fn fmt_binders_empty(op: &str, binders: &binder::BinderList, empty: &str) -> String {
+    if binders.0.is_empty() {
+        return empty.to_owned();
+    }
+
+    format!("{} {}, ", op, binders)
+}
 
 /// A Rocq [term], limited to Rocq defined terms.
 ///
@@ -83,24 +95,13 @@ impl fmt::Display for Term {
             },
             Self::App(box a) => write!(f, "{a}"),
             Self::All(binders, box body) => {
-                if !binders.0.is_empty() {
-                    write!(f, "∀ {binders}, ")?;
-                }
-                write!(f, "{body}")
+                write!(f, "{}{}", fmt_binders("∀", binders), body)
             },
             Self::Exists(binders, box body) => {
-                if !binders.0.is_empty() {
-                    write!(f, "∃ {binders}, ")?;
-                }
-                write!(f, "{body}")
+                write!(f, "{}{}", fmt_binders("∃", binders), body)
             },
             Self::Lambda(binders, box body) => {
-                if binders.0.is_empty() {
-                    write!(f, "λ '(), ")?;
-                } else {
-                    write!(f, "λ {binders}, ")?;
-                }
-                write!(f, "{body}")
+                write!(f, "{}{}", fmt_binders_empty("λ", binders, "λ '(), "), body)
             },
             Self::Infix(op, terms) => {
                 if terms.is_empty() {
@@ -121,7 +122,7 @@ impl fmt::Display for Term {
 
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("{}", display_list!(_0, " ", "{}"))]
+#[display("{}", fmt_list!(_0, " ", "{}"))]
 pub struct TermList(pub Vec<Term>);
 
 impl TermList {
@@ -155,7 +156,7 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for App<T, U> {
             return write!(f, "{}", self.lhs);
         }
 
-        write!(f, "({} {})", self.lhs, display_list!(&self.rhs, " ", "({})"))
+        write!(f, "({} {})", self.lhs, fmt_list!(&self.rhs, " ", "({})"))
     }
 }
 
@@ -215,18 +216,18 @@ impl fmt::Display for RecordBodyItem {
 pub type Type = RocqType<model::Type>;
 
 pub(crate) fn fmt_list(v: &Vec<Type>) -> String {
-    format!("[{}]", display_list!(v, "; "))
+    format!("[{}]", fmt_list!(v, "; "))
 }
 
 pub(crate) fn fmt_hlist(v: &Vec<Type>) -> String {
-    format!("+[{}]", display_list!(v, "; "))
+    format!("+[{}]", fmt_list!(v, "; "))
 }
 
 pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
     match v.as_slice() {
         [] => "unit".to_owned(),
         [t] => t.to_string(),
-        _ => format!("({})%type", display_list!(v, " * ")),
+        _ => format!("({})%type", fmt_list!(v, " * ")),
     }
 }
 
@@ -241,7 +242,7 @@ pub enum RocqType<T> {
     /// Function type
     ///
     /// The argument vector should be non-empty.
-    #[display("{} → {}", display_list!(_0, " → ", "({})"), *_1)]
+    #[display("{} → {}", fmt_list!(_0, " → ", "({})"), *_1)]
     Function(Vec<Type>, Box<Type>),
 
     /// Placeholder

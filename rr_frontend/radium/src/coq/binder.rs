@@ -8,7 +8,7 @@ use std::fmt;
 use derive_more::Display;
 
 use crate::coq::term;
-use crate::display_list;
+use crate::fmt_list;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum Kind {
@@ -197,7 +197,7 @@ pub type Pattern = String;
 
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-#[display("{}", display_list!(_0, " "))]
+#[display("{}", fmt_list!(_0, " "))]
 pub struct BinderList(pub Vec<Binder>);
 
 impl BinderList {

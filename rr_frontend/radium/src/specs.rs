@@ -18,7 +18,7 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools as _;
 use log::trace;
 
-use crate::{BASE_INDENT, coq, display_list, model, push_str_list, write_list};
+use crate::{BASE_INDENT, coq, fmt_list, model, push_str_list, write_list};
 
 #[derive(Clone, Debug)]
 /// Encodes a RR type with an accompanying refinement.
@@ -739,7 +739,7 @@ impl InvariantSpec {
             return String::new();
         }
 
-        format!("∃ {}, ", display_list!(&self.existentials, " "))
+        format!("∃ {}, ", fmt_list!(&self.existentials, " "))
     }
 
     /// Assemble the owned invariant predicate for the plain mode.

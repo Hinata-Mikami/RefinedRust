@@ -15,23 +15,15 @@
 
 use derive_more::Display;
 
-use crate::coq::binder;
-use crate::display_list;
+use crate::coq::{binder, term};
+use crate::fmt_list;
 
 fn fmt_with_op(op: &str, v: &[IProp]) -> String {
     if v.is_empty() {
         return "True".to_owned();
     }
 
-    display_list!(v, &format!("\n{op} "), "({})")
-}
-
-fn fmt_binders(op: &str, binders: &[binder::Binder]) -> String {
-    if binders.is_empty() {
-        return String::new();
-    }
-
-    format!("{} {}, ", op, display_list!(binders, " "))
+    fmt_list!(v, &format!("\n{op} "), "({})")
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
@@ -57,11 +49,11 @@ pub enum IProp {
     #[display("{} -∗ {}", _0, _1)]
     Wand(Box<IProp>, Box<IProp>),
 
-    #[display("{}{}", fmt_binders("∃", _0), _1)]
-    Exists(Vec<binder::Binder>, Box<IProp>),
+    #[display("{}{}", term::fmt_binders("∃", _0), _1)]
+    Exists(binder::BinderList, Box<IProp>),
 
-    #[display("{}{}", fmt_binders("∀", _0), _1)]
-    All(Vec<binder::Binder>, Box<IProp>),
+    #[display("{}{}", term::fmt_binders("∀", _0), _1)]
+    All(binder::BinderList, Box<IProp>),
 
     // prop, name
     #[display("⌜name_hint \"{}\" ({})⌝", _1, _0)]
@@ -70,15 +62,15 @@ pub enum IProp {
 
 /// Representation of an Iris predicate
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("{} ({})%I : iProp Σ", fmt_binders("λ", binders), prop)]
+#[display("{} ({})%I : iProp Σ", term::fmt_binders("λ", binders), prop)]
 pub struct IPropPredicate {
-    binders: Vec<binder::Binder>,
+    binders: binder::BinderList,
     prop: IProp,
 }
 
 impl IPropPredicate {
     #[must_use]
-    pub const fn new(binders: Vec<binder::Binder>, prop: IProp) -> Self {
+    pub const fn new(binders: binder::BinderList, prop: IProp) -> Self {
         Self { binders, prop }
     }
 }

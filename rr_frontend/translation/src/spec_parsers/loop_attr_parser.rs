@@ -240,9 +240,10 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         var_invariants.extend(uninit_locals_prop);
 
         let prop_body = coq::iris::IProp::Sep(var_invariants);
-        let prop_body = coq::iris::IProp::Exists(existentials, Box::new(prop_body));
+        let prop_body =
+            coq::iris::IProp::Exists(coq::binder::BinderList::new(existentials), Box::new(prop_body));
 
-        let pred = coq::iris::IPropPredicate::new(rfn_binders, prop_body);
+        let pred = coq::iris::IPropPredicate::new(coq::binder::BinderList::new(rfn_binders), prop_body);
         Ok(radium::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals))
     }
 }

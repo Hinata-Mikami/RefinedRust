@@ -12,7 +12,7 @@ use derive_more::{Constructor, Display};
 use indent_write::indentable::Indentable as _;
 
 use crate::coq::binder;
-use crate::{BASE_INDENT, display_list};
+use crate::{BASE_INDENT, fmt_list};
 
 /// An [Inductive] type.
 ///
@@ -21,7 +21,7 @@ use crate::{BASE_INDENT, display_list};
 #[display("Inductive {} {} :=\n{}.\n",
     name,
     parameters,
-    display_list!(variants, "\n| ").indented(BASE_INDENT)
+    fmt_list!(variants, "\n| ").indented(BASE_INDENT)
 )]
 pub struct Inductive {
     name: String,
@@ -37,7 +37,7 @@ impl Inductive {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("{} {}", name, display_list!(params, " "))]
+#[display("{} {}", name, fmt_list!(params, " "))]
 pub struct Variant {
     name: String,
     params: Vec<binder::Binder>,

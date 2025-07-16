@@ -12,13 +12,13 @@ use std::fmt;
 
 use derive_more::{Deref, DerefMut, Display, Into};
 
-use crate::{display_list, write_list};
+use crate::{fmt_list, write_list};
 
 /// A [dirpath].
 ///
 /// [dirpath]: https://rocq-prover.org/doc/v8.20/refman/proof-engine/vernacular-commands.html#grammar-token-dirpath
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Default, Deref, DerefMut, Ord, PartialOrd)]
-#[display("{}", display_list!(_0, "."))]
+#[display("{}", fmt_list!(_0, "."))]
 pub struct DirPath(pub Vec<String>);
 
 impl From<Vec<&str>> for DirPath {
