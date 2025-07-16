@@ -121,7 +121,7 @@ enum MetaIProp {
     /// `#[rr::requires("..")]` or `#[rr::requires("Ha" : "..")]`
     Pure(String, Option<String>),
     /// `#[rr::requires(#iris "..")]`
-    Iris(specs::IProp),
+    Iris(coq::iris::IProp),
     /// `#[rr::requires(#type "l" : "rfn" @ "ty")]`
     Type(specs::TyOwnSpec),
     /// `#[rr::ensures(#observe "γ" : "2 * x")]`
@@ -201,7 +201,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
     }
 }
 
-impl From<MetaIProp> for specs::IProp {
+impl From<MetaIProp> for coq::iris::IProp {
     fn from(meta: MetaIProp) -> Self {
         match meta {
             MetaIProp::Pure(p, name) => match name {
@@ -571,7 +571,7 @@ where
                     vec![ok_condition],
                 )));
 
-                builder.add_postcondition(specs::IProp::Pure(ok_condition.to_string()));
+                builder.add_postcondition(coq::iris::IProp::Pure(ok_condition.to_string()));
 
                 let err_condition = coq::term::Term::Lambda(lambda_binders, Box::new(err_condition));
                 let err_condition = coq::term::Term::App(Box::new(coq::term::App::new(
@@ -579,14 +579,14 @@ where
                     vec![err_condition],
                 )));
 
-                builder.add_postcondition(specs::IProp::Pure(err_condition.to_string()));
+                builder.add_postcondition(coq::iris::IProp::Pure(err_condition.to_string()));
             } else if self.ret_is_option {
                 let some_condition = coq::term::Term::App(Box::new(coq::term::App::new(
                     coq::term::Term::Literal(format!("if_Some {ret_name}")),
                     vec![ok_condition],
                 )));
 
-                builder.add_postcondition(specs::IProp::Pure(some_condition.to_string()));
+                builder.add_postcondition(coq::iris::IProp::Pure(some_condition.to_string()));
 
                 let none_condition = err_condition;
                 let none_condition = coq::term::Term::App(Box::new(coq::term::App::new(
@@ -594,7 +594,7 @@ where
                     vec![none_condition],
                 )));
 
-                builder.add_postcondition(specs::IProp::Pure(none_condition.to_string()));
+                builder.add_postcondition(coq::iris::IProp::Pure(none_condition.to_string()));
             }
         }
 

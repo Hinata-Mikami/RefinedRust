@@ -26,7 +26,7 @@ enum MetaIProp {
     /// `#[rr::requires("..")]` or `#[rr::requires("Ha" : "..")]`
     Pure(String, Option<String>),
     /// `#[rr::requires(#iris "..")]`
-    Iris(specs::IProp),
+    Iris(coq::iris::IProp),
     /// `#[rr::requires(#type "l" : "rfn" @ "ty")]`
     Type(specs::TyOwnSpec),
 }
@@ -88,7 +88,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
     }
 }
 
-impl From<MetaIProp> for specs::IProp {
+impl From<MetaIProp> for coq::iris::IProp {
     fn from(meta: MetaIProp) -> Self {
         match meta {
             MetaIProp::Pure(p, name) => match name {
@@ -146,7 +146,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         &'b mut self,
         attrs: &'b [&'b hir::AttrItem],
     ) -> Result<radium::LoopSpec, String> {
-        let mut invariant: Vec<specs::IProp> = Vec::new();
+        let mut invariant: Vec<coq::iris::IProp> = Vec::new();
         let mut inv_vars: Vec<InvVar> = Vec::new();
         let mut inv_var_set: HashSet<String> = HashSet::new();
         let mut existentials: Vec<coq::binder::Binder> = Vec::new();
@@ -199,7 +199,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut rfn_binders = Vec::new();
 
         // proposition for unknown locals
-        let mut uninit_locals_prop: Vec<specs::IProp> = Vec::new();
+        let mut uninit_locals_prop: Vec<coq::iris::IProp> = Vec::new();
 
         // track locals
         let mut inv_locals: Vec<String> = Vec::new();
@@ -218,7 +218,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
 
             if *kind == radium::LocalKind::CompilerTemp {
                 let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
-                uninit_locals_prop.push(specs::IProp::Atom(pred));
+                uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
 
                 uninit_locals.push(local_name);
             } else if *initialized && inv_var_set.contains(name) {
@@ -233,16 +233,16 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         // add constraints on refinements
         let mut var_invariants = Vec::new();
         for inv_var in inv_vars {
-            var_invariants.push(specs::IProp::Pure(format!("{} = {}", inv_var.local, inv_var.rfn)));
+            var_invariants.push(coq::iris::IProp::Pure(format!("{} = {}", inv_var.local, inv_var.rfn)));
         }
 
         var_invariants.extend(invariant);
         var_invariants.extend(uninit_locals_prop);
 
-        let prop_body = specs::IProp::Sep(var_invariants);
-        let prop_body = specs::IProp::Exists(existentials, Box::new(prop_body));
+        let prop_body = coq::iris::IProp::Sep(var_invariants);
+        let prop_body = coq::iris::IProp::Exists(existentials, Box::new(prop_body));
 
-        let pred = radium::IPropPredicate::new(rfn_binders, prop_body);
+        let pred = coq::iris::IPropPredicate::new(rfn_binders, prop_body);
         Ok(radium::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals))
     }
 }

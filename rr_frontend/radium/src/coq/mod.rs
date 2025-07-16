@@ -323,6 +323,7 @@ pub mod binder;
 pub mod command;
 pub mod eval;
 pub mod inductive;
+pub mod iris;
 pub mod ltac;
 pub mod module;
 pub mod proof;

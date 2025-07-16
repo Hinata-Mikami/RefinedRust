@@ -83,13 +83,13 @@ enum MetaIProp {
     /// `#[rr::invariant("..")]` or `#[rr::invariant("H" : "..")]`
     Pure(String, Option<String>),
     /// `#[rr::invariant(#iris "..")]`
-    Iris(specs::IProp),
+    Iris(coq::iris::IProp),
     /// `#[rr::invariant(#type "l" : "rfn" @ "ty")]`
     Type(specs::TyOwnSpec),
     /// `#[rr::invariant(#own "...")]` (only for the Owned predicate)
-    Own(specs::IProp),
+    Own(coq::iris::IProp),
     /// `#[rr::invariant(#shr "...")]` (only for the Shared predicate)
-    Shared(specs::IProp),
+    Shared(coq::iris::IProp),
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
@@ -205,7 +205,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             return Err("no invariant specifications given".to_owned());
         }
 
-        let mut invariants: Vec<(specs::IProp, specs::InvariantMode)> = Vec::new();
+        let mut invariants: Vec<(coq::iris::IProp, specs::InvariantMode)> = Vec::new();
         let mut type_invariants: Vec<specs::TyOwnSpec> = Vec::new();
         let mut abstracted_refinement = None;
 
@@ -259,10 +259,10 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                             type_invariants.push(ty);
                         },
                         MetaIProp::Pure(p, name) => match name {
-                            None => invariants.push((specs::IProp::Pure(p), specs::InvariantMode::All)),
+                            None => invariants.push((coq::iris::IProp::Pure(p), specs::InvariantMode::All)),
                             Some(n) => {
                                 invariants
-                                    .push((specs::IProp::PureWithName(p, n), specs::InvariantMode::All));
+                                    .push((coq::iris::IProp::PureWithName(p, n), specs::InvariantMode::All));
                             },
                         },
                     }

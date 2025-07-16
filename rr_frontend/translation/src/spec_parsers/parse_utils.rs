@@ -125,9 +125,9 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
     }
 }
 
-pub(crate) struct IProp(specs::IProp);
+pub(crate) struct IProp(coq::iris::IProp);
 
-impl From<IProp> for specs::IProp {
+impl From<IProp> for coq::iris::IProp {
     fn from(iprop: IProp) -> Self {
         iprop.0
     }
@@ -139,7 +139,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
         let lit: parse::LitStr = stream.parse(meta)?;
         let (lit, _) = meta.process_coq_literal(&lit.value());
 
-        Ok(Self(specs::IProp::Atom(lit)))
+        Ok(Self(coq::iris::IProp::Atom(lit)))
     }
 }
 

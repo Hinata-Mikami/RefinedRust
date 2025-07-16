@@ -678,7 +678,7 @@ pub struct InvariantSpec {
     existentials: Vec<coq::binder::Binder>,
 
     /// an optional invariant as a separating conjunction,
-    invariants: Vec<(IProp, InvariantMode)>,
+    invariants: Vec<(coq::iris::IProp, InvariantMode)>,
     /// additional type ownership
     ty_own_invariants: Vec<TyOwnSpec>,
 
@@ -701,7 +701,7 @@ impl InvariantSpec {
         xt_injection: String,
         rfn_pat: coq::binder::Pattern,
         existentials: Vec<coq::binder::Binder>,
-        invariants: Vec<(IProp, InvariantMode)>,
+        invariants: Vec<(coq::iris::IProp, InvariantMode)>,
         ty_own_invariants: Vec<TyOwnSpec>,
         abstracted_refinement: Option<coq::binder::Pattern>,
         coq_params: Vec<coq::binder::Binder>,
@@ -757,7 +757,7 @@ impl InvariantSpec {
         .unwrap();
 
         for own in &self.ty_own_invariants {
-            write!(out, "{} ∗ ", IProp::Atom(own.fmt_owned("π"))).unwrap();
+            write!(out, "{} ∗ ", coq::iris::IProp::Atom(own.fmt_owned("π"))).unwrap();
         }
 
         for (inv, mode) in &self.invariants {
@@ -788,7 +788,7 @@ impl InvariantSpec {
         )
         .unwrap();
         for own in &self.ty_own_invariants {
-            write!(out, "{} ∗ ", IProp::Atom(own.fmt_shared("π", &self.shr_lft_binder))).unwrap();
+            write!(out, "{} ∗ ", coq::iris::IProp::Atom(own.fmt_shared("π", &self.shr_lft_binder))).unwrap();
         }
         for (inv, mode) in &self.invariants {
             match mode {
@@ -2457,136 +2457,42 @@ impl<'def> AbstractEnumUse<'def> {
 }
 
 /// A representation of Caesium layouts we are interested in.
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum Layout {
-    // in the case of  32bits
+    // in the case of 32bits
+    #[display("void*")]
     Ptr,
 
     // layout specified by the int type
+    #[display("(it_layout {})", _0)]
     Int(IntType),
 
     // size 1, similar to u8/i8
+    #[display("bool_layout")]
     Bool,
 
     // size 4, similar to u32
+    #[display("char_layout")]
     Char,
 
     // guaranteed to have size 0 and alignment 1.
+    #[display("(layout_of unit_sl)")]
     Unit,
 
     /// used for variable layout terms, e.g. for struct layouts or generics
+    #[display("{}", _0)]
     Literal(coq::term::App<String, String>),
 
     /// padding of a given number of bytes
+    #[display("(Layout {}%nat 0%nat)", _0)]
     Pad(u32),
-}
-
-impl fmt::Display for Layout {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Ptr => write!(f, "void*"),
-            Self::Int(it) => write!(f, "(it_layout {})", it),
-            Self::Bool => write!(f, "bool_layout"),
-            Self::Char => write!(f, "char_layout"),
-            Self::Unit => write!(f, "(layout_of unit_sl)"),
-            Self::Literal(n) => write!(f, "{}", n),
-            Self::Pad(s) => write!(f, "(Layout {}%nat 0%nat)", s),
-        }
-    }
-}
-
-// better representation of Iprops?
-// - in particular for building the existential abstraction, direct support for existentials would be good.
-// - DeBruijn probably not worth it, I don't need subst or anything like that. just try to keep variables
-//   apart when generating them.
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum IProp {
-    True,
-    Atom(String),
-    Pure(String),
-    // prop, name
-    PureWithName(String, String),
-    Sep(Vec<IProp>),
-    Disj(Vec<IProp>),
-    Conj(Vec<IProp>),
-    Wand(Box<IProp>, Box<IProp>),
-    Exists(Vec<coq::binder::Binder>, Box<IProp>),
-    All(Vec<coq::binder::Binder>, Box<IProp>),
-}
-
-fn fmt_with_op<T>(v: &[T], op: &str, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error>
-where
-    T: fmt::Display,
-{
-    if v.is_empty() {
-        return write!(f, "True");
-    }
-
-    write_list!(f, v, &format!("\n{op} "), "({})")
-}
-
-fn fmt_binders(
-    binders: &[coq::binder::Binder],
-    op: &str,
-    f: &mut fmt::Formatter<'_>,
-) -> Result<(), fmt::Error> {
-    write!(f, "{} ", op)?;
-    write_list!(f, binders, " ")
-}
-
-impl fmt::Display for IProp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Self::True => write!(f, "True"),
-            Self::Atom(a) => write!(f, "{a}"),
-            Self::Pure(a) => write!(f, "⌜{a}⌝"),
-            Self::PureWithName(p, name) => write!(f, "⌜name_hint \"{name}\" ({p})⌝"),
-            Self::Sep(v) => fmt_with_op(v, "∗", f),
-            Self::Disj(v) => fmt_with_op(v, "∨", f),
-            Self::Conj(v) => fmt_with_op(v, "∧", f),
-            Self::Wand(l, r) => write!(f, "({l}) -∗ {r}"),
-            Self::Exists(b, p) => {
-                if !b.is_empty() {
-                    fmt_binders(b, "∃", f)?;
-                    write!(f, ", ")?;
-                }
-                write!(f, "{p}")
-            },
-            Self::All(b, p) => {
-                fmt_binders(b, "∀", f)?;
-                write!(f, ", {p}")
-            },
-        }
-    }
-}
-
-/// Representation of an Iris predicate
-#[derive(Clone, Debug)]
-pub struct IPropPredicate {
-    binders: Vec<coq::binder::Binder>,
-    prop: IProp,
-}
-
-impl IPropPredicate {
-    #[must_use]
-    pub const fn new(binders: Vec<coq::binder::Binder>, prop: IProp) -> Self {
-        Self { binders, prop }
-    }
-}
-
-impl fmt::Display for IPropPredicate {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        fmt_binders(&self.binders, "λ", f)?;
-        write!(f, ", ({})%I : iProp Σ", self.prop)
-    }
 }
 
 /// Representation of a loop invariant
 #[derive(Clone, Constructor, Debug)]
 pub struct LoopSpec {
     /// the functional invariant as a predicate on the refinement of local variables.
-    func_predicate: IPropPredicate,
+    func_predicate: coq::iris::IPropPredicate,
     inv_locals: Vec<String>,
     preserved_locals: Vec<String>,
     uninit_locals: Vec<String>,
@@ -2873,7 +2779,7 @@ pub struct LiteralFunctionSpec<'def> {
     /// external lifetime context
     elctx: Elctx,
     /// precondition as a separating conjunction
-    pre: IProp,
+    pre: coq::iris::IProp,
     /// argument types including refinements
     args: Vec<TypeWithRef<'def>>,
     /// existential quantifiers for the postcondition
@@ -2881,7 +2787,7 @@ pub struct LiteralFunctionSpec<'def> {
     /// return type
     ret: TypeWithRef<'def>,
     /// postcondition as a separating conjunction
-    post: IProp,
+    post: coq::iris::IProp,
 
     // TODO remove
     has_spec: bool,
@@ -3006,11 +2912,11 @@ impl<'def> LiteralFunctionSpec<'def> {
                 && let Some(spec_precond) = trait_use.make_semantic_spec_term()
             {
                 //let spec_precond = trait_use.make_spec_param_precond();
-                late_pre.push(IProp::Pure(spec_precond));
+                late_pre.push(coq::iris::IProp::Pure(spec_precond));
             }
         }
         let mut f3 = IndentWriter::new_skip_initial(BASE_INDENT, &mut f2);
-        write!(f3, "(* trait reqs... *) (λ π : thread_id, {})) →\n", IProp::Sep(late_pre))?;
+        write!(f3, "(* trait reqs... *) (λ π : thread_id, {})) →\n", coq::iris::IProp::Sep(late_pre))?;
 
         // existential + post
         let existential = Self::uncurry_typed_binders(&self.existentials);
@@ -3029,11 +2935,11 @@ impl<'def> LiteralFunctionSpec<'def> {
 pub struct LiteralFunctionSpecBuilder<'def> {
     params: Vec<coq::binder::Binder>,
     elctx: Elctx,
-    pre: IProp,
+    pre: coq::iris::IProp,
     args: Vec<TypeWithRef<'def>>,
     existential: Vec<coq::binder::Binder>,
     ret: Option<TypeWithRef<'def>>,
-    post: IProp,
+    post: coq::iris::IProp,
 
     coq_names: HashSet<String>,
 
@@ -3047,11 +2953,11 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         Self {
             params: Vec::new(),
             elctx: Elctx::default(),
-            pre: IProp::Sep(Vec::new()),
+            pre: coq::iris::IProp::Sep(Vec::new()),
             args: Vec::new(),
             existential: Vec::new(),
             ret: None,
-            post: IProp::Sep(Vec::new()),
+            post: coq::iris::IProp::Sep(Vec::new()),
             coq_names: HashSet::new(),
             has_spec: false,
         }
@@ -3121,10 +3027,10 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     }
 
     /// Add a new (separating) conjunct to the function's precondition.
-    pub fn add_precondition(&mut self, pre: IProp) {
-        assert!(matches!(self.pre, IProp::Sep(_)));
+    pub fn add_precondition(&mut self, pre: coq::iris::IProp) {
+        assert!(matches!(self.pre, coq::iris::IProp::Sep(_)));
 
-        let IProp::Sep(v) = &mut self.pre else {
+        let coq::iris::IProp::Sep(v) = &mut self.pre else {
             unreachable!("An incorrect parameter has been given");
         };
 
@@ -3132,10 +3038,10 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
     }
 
     /// Add a new (separating) conjunct to the function's postcondition.
-    pub fn add_postcondition(&mut self, post: IProp) {
-        assert!(matches!(self.post, IProp::Sep(_)));
+    pub fn add_postcondition(&mut self, post: coq::iris::IProp) {
+        assert!(matches!(self.post, coq::iris::IProp::Sep(_)));
 
-        let IProp::Sep(v) = &mut self.post else {
+        let coq::iris::IProp::Sep(v) = &mut self.post else {
             unreachable!("An incorrect parameter has been given");
         };
 
@@ -3933,18 +3839,18 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get the validity term for a generic on a function.
     #[must_use]
-    pub(crate) fn generate_validity_term_for_generics(&self) -> IProp {
+    pub(crate) fn generate_validity_term_for_generics(&self) -> coq::iris::IProp {
         let mut props = Vec::new();
         for ty in self.get_all_ty_params_with_assocs().params {
             props.push(Self::generate_validity_term_for_typaram(&ty));
         }
-        IProp::Sep(props)
+        coq::iris::IProp::Sep(props)
     }
 
     #[must_use]
-    fn generate_validity_term_for_typaram(ty: &LiteralTyParam) -> IProp {
+    fn generate_validity_term_for_typaram(ty: &LiteralTyParam) -> coq::iris::IProp {
         let prop = format!("typaram_wf {} {} {}", ty.refinement_type, ty.syn_type, ty.type_term);
-        IProp::Atom(prop)
+        coq::iris::IProp::Atom(prop)
     }
 
     // TODO hack
