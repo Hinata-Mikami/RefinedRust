@@ -12,6 +12,5 @@ derive_more.workspace = true
 indent_write.workspace = true
 indoc.workspace = true
 log.workspace = true
-itertools.workspace = true
 transitive.workspace = true
 typed-arena.workspace = true

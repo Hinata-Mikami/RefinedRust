@@ -15,7 +15,6 @@ use std::ops::Add;
 
 use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
-use itertools::Itertools as _;
 use log::trace;
 
 use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
@@ -341,6 +340,7 @@ impl<'def> LiteralTypeUse<'def> {
                 .get_all_ty_params_with_assocs()
                 .iter()
                 .map(|ty| format!("({})", ty.get_rfn_type()))
+                .collect::<Vec<_>>()
                 .join(" ");
             format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation())
         } else {
@@ -1673,6 +1673,7 @@ impl<'def> AbstractStructUse<'def> {
             .get_all_ty_params_with_assocs()
             .iter()
             .map(|ty| format!("({})", ty.get_rfn_type()))
+            .collect::<Vec<_>>()
             .join(" ");
 
         let def = def.borrow();
@@ -2279,6 +2280,7 @@ impl<'def> AbstractEnumUse<'def> {
             .get_all_ty_params_with_assocs()
             .iter()
             .map(|ty| format!("({})", ty.get_rfn_type()))
+            .collect::<Vec<_>>()
             .join(" ");
         format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation())
     }
@@ -3508,19 +3510,16 @@ impl<'def> GenericScopeInst<'def> {
 
     #[must_use]
     fn get_direct_assoc_ty_params(&self) -> Vec<Type<'def>> {
-        let ty_params: Vec<_> =
-            self.direct_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec()).concat();
-        ty_params
+        let ty_params = self.direct_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec());
+
+        ty_params.flatten().collect()
     }
 
     #[must_use]
     fn get_surrounding_assoc_ty_params(&self) -> Vec<Type<'def>> {
-        let ty_params: Vec<_> = self
-            .surrounding_trait_requirements
-            .iter()
-            .map(|x| x.get_assoc_ty_inst().to_vec())
-            .concat();
-        ty_params
+        let ty_params = self.surrounding_trait_requirements.iter().map(|x| x.get_assoc_ty_inst().to_vec());
+
+        ty_params.flatten().collect()
     }
 
     #[must_use]
@@ -3669,17 +3668,17 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
     /// Get associated type parameters of trait requirements on this object.
     #[must_use]
     fn get_direct_assoc_ty_params(&self) -> TyParamList {
-        let ty_params: Vec<_> =
-            self.direct_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params).concat();
-        TyParamList::new(ty_params)
+        let ty_params = self.direct_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params);
+
+        TyParamList::new(ty_params.flatten().collect())
     }
 
     /// Get associated type parameters of trait requirements quantified by a surrounding scope.
     #[must_use]
     fn get_surrounding_assoc_ty_params(&self) -> TyParamList {
-        let ty_params: Vec<_> =
-            self.surrounding_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params).concat();
-        TyParamList::new(ty_params)
+        let ty_params = self.surrounding_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params);
+
+        TyParamList::new(ty_params.flatten().collect())
     }
 
     /// Get direct type parameters and associated type parameters.

@@ -12,7 +12,6 @@ use std::fmt;
 
 use derive_more::{Display, From};
 use indent_write::fmt::IndentWriter;
-use itertools::Itertools as _;
 
 use crate::coq::binder;
 use crate::{BASE_INDENT, fmt_list, model};
@@ -107,7 +106,7 @@ impl fmt::Display for Term {
                 if terms.is_empty() {
                     write!(f, "True")
                 } else {
-                    write!(f, "{}", terms.iter().format(&format!(" {op} ")))
+                    write!(f, "{}", fmt_list!(terms, &format!(" {op} ")))
                 }
             },
             Self::Prefix(op, term) => {
