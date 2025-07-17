@@ -2524,7 +2524,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
         // quantify over the generic scope
         let mut quantified_term = String::new();
-        self.generics.format(&mut quantified_term, false, false, &[], &[], &[]).unwrap();
+        self.generics.format(&mut quantified_term, false, &[]).unwrap();
         quantified_term.push_str(&format!(" ({term})"));
 
         let name = self.trait_req_incl_name.clone();
@@ -2676,7 +2676,7 @@ impl<'def> LiteralFunctionSpec<'def> {
 
         // introduce generics
         write!(f2, "fn(∀ ")?;
-        scope.format(&mut f2, true, true, &[], &[], &[])?;
+        scope.format(&mut f2, true, &[])?;
         write!(f2, " | \n")?;
 
         // introduce parameters
@@ -3800,22 +3800,18 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
     pub(crate) fn format<F>(
         &self,
         f: &mut F,
-        only_core: bool,
-        as_fn: bool,
-        surrounding_extra_tys: &[LiteralTyParam],
+        only_core_as_fn: bool,
         direct_extra_tys: &[LiteralTyParam],
-        extra_lfts: &[Lft],
     ) -> fmt::Result
     where
         F: fmt::Write,
     {
         let mut lft_pattern = String::with_capacity(100);
         write!(lft_pattern, "( *[")?;
-        write_list!(lft_pattern, self.lfts.iter().chain(extra_lfts), "; ", String::to_string)?;
+        write_list!(lft_pattern, &self.lfts, "; ")?;
         write!(lft_pattern, "])")?;
 
         let mut all_params = self.get_surrounding_ty_params().clone();
-        all_params.append(surrounding_extra_tys.to_vec());
         all_params.merge(self.get_surrounding_assoc_ty_params());
         all_params.merge(self.get_direct_ty_params().clone());
         all_params.append(direct_extra_tys.to_vec());
@@ -3830,27 +3826,25 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
         let mut typarams_ty_list = String::with_capacity(100);
         write!(typarams_ty_list, "[")?;
         write_list!(typarams_ty_list, &all_params.params, "; ", |x| {
-            if as_fn { format!("({}, {})", x.refinement_type, x.syn_type) } else { x.refinement_type.clone() }
+            if only_core_as_fn {
+                format!("({}, {})", x.refinement_type, x.syn_type)
+            } else {
+                x.refinement_type.clone()
+            }
         })?;
         write!(typarams_ty_list, "]")?;
 
-        if only_core {
+        if only_core_as_fn {
             write!(
                 f,
                 "{lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list (Type * syn_type)%type)",
-                self.lfts.len() + extra_lfts.len()
-            )
-        } else if as_fn {
-            write!(
-                f,
-                "fnspec! {lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list Type),",
-                self.lfts.len() + extra_lfts.len()
+                self.lfts.len()
             )
         } else {
             write!(
                 f,
                 "spec! {lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list Type),",
-                self.lfts.len() + extra_lfts.len()
+                self.lfts.len()
             )
         }
     }
@@ -3871,7 +3865,7 @@ impl<T: TraitReqInfo + Clone> GenericScope<'_, T> {
 
 impl<T: TraitReqInfo> fmt::Display for GenericScope<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format(f, false, false, &[], &[], &[])
+        self.format(f, false, &[])
     }
 }
 
@@ -3913,11 +3907,13 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
         // add trait reqs
         let trait_reqs =
             if include_surrounding { self.get_surrounding_trait_requirements().iter() } else { [].iter() };
+
         let trait_reqs = if include_direct {
             trait_reqs.chain(self.get_direct_trait_requirements().iter())
         } else {
             trait_reqs.chain(&[])
         };
+
         for trait_use in trait_reqs {
             let trait_use = trait_use.borrow();
             let trait_use = trait_use.as_ref().unwrap();
@@ -4082,7 +4078,7 @@ fn make_trait_instance<'def>(
     };
     // add the surrounding quantifiers over the semantic types
     let mut term_with_specs = String::with_capacity(100);
-    scope.format(&mut term_with_specs, false, false, &[], assoc_types, &[])?;
+    scope.format(&mut term_with_specs, false, assoc_types)?;
     write!(term_with_specs, " {body_term}")?;
 
     let mut ty_annot = String::with_capacity(100);
@@ -4643,9 +4639,9 @@ impl TraitImplSpec<'_> {
 
         let scope = &self.trait_ref.generics;
         let mut ty_term = format!("trait_incl_marker (lift_trait_incl {incl_name} (");
-        scope.format(&mut ty_term, false, false, &[], &[], &[]).unwrap();
+        scope.format(&mut ty_term, false, &[]).unwrap();
         ty_term.push_str(&format!(" {own_spec}) ("));
-        scope.format(&mut ty_term, false, false, &[], &[], &[]).unwrap();
+        scope.format(&mut ty_term, false, &[]).unwrap();
         ty_term.push_str(&format!(" {base_spec}))"));
 
         let lem = coq::command::Definition {
@@ -4754,7 +4750,7 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
         // (this excludes the function's own direct scope, as that is already quantified in the
         // base spec we are going to instantiate)
         //write!(f, "spec!")?;
-        self.trait_ref.generics.format(f, false, false, &[], &[], &[])?;
+        self.trait_ref.generics.format(f, false, &[])?;
         //write!(f, ",\n ")?;
 
         let all_ty_params = self.trait_ref.get_ordered_params_inst();

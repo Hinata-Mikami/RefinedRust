@@ -921,7 +921,7 @@ impl Function<'_> {
 
         // write the specification term
         let mut scope_str = String::new();
-        self.spec.generics.format(&mut scope_str, false, false, &[], &[], &[]).unwrap();
+        self.spec.generics.format(&mut scope_str, false, &[]).unwrap();
 
         write!(f, "{scope_str} fn_spec_add_late_pre ({} ", self.spec.get_spec_name())?;
 
