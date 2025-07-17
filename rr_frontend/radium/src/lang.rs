@@ -1,6 +1,6 @@
 use derive_more::Display;
 
-use crate::{coq, fmt_list};
+use crate::coq;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum IntType {
@@ -101,14 +101,14 @@ pub enum OpType {
     Ptr,
 
     // a term for the struct_layout, and optypes for the individual fields
-    #[display("StructOp {} [{}]", _0, fmt_list!(_1, "; "))]
-    Struct(coq::term::App<String, String>, Vec<OpType>),
+    #[display("StructOp unit_sl []")]
+    Struct,
 
     #[display("UntypedOp ({})", _0)]
     Untyped(Layout),
 
-    #[display("{}", _0)]
-    Literal(coq::term::App<String, String>),
+    #[display("(use_op_alg' {})", _0)]
+    UseOpAlg(coq::term::Term),
 }
 
 /// A representation of Caesium layouts we are interested in.
@@ -135,8 +135,8 @@ pub enum Layout {
     Unit,
 
     /// used for variable layout terms, e.g. for struct layouts or generics
-    #[display("{}", _0)]
-    Literal(coq::term::App<String, String>),
+    #[display("(use_layout_alg' {})", _0)]
+    UseLayoutAlg(coq::term::Term),
 
     /// padding of a given number of bytes
     #[display("(Layout {}%nat 0%nat)", _0)]
@@ -163,10 +163,7 @@ impl From<&SynType> for Layout {
             SynType::Untyped(ly) => ly.clone(),
             SynType::Unit | SynType::Never => Self::Unit,
 
-            SynType::Literal(ca) => {
-                let rhs = ca.to_owned();
-                Self::Literal(coq::term::App::new("use_layout_alg'".to_owned(), vec![rhs]))
-            },
+            SynType::Literal(rhs) => Self::UseLayoutAlg(coq::term::Term::Literal(rhs.clone())),
         }
     }
 }
@@ -190,13 +187,10 @@ impl From<&SynType> for OpType {
             SynType::Ptr | SynType::FnPtr => Self::Ptr,
 
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
-            SynType::Unit => Self::Struct(coq::term::App::new_lhs("unit_sl".to_owned()), Vec::new()),
+            SynType::Unit => Self::Struct,
             SynType::Never => Self::Untyped(Layout::Unit),
 
-            SynType::Literal(ca) => {
-                let rhs = ca.to_owned();
-                Self::Literal(coq::term::App::new("use_op_alg'".to_owned(), vec![rhs]))
-            },
+            SynType::Literal(rhs) => Self::UseOpAlg(coq::term::Term::Literal(rhs.clone())),
         }
     }
 }
