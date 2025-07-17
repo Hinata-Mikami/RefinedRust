@@ -19,18 +19,16 @@ use log::info;
 use typed_arena::Arena;
 
 use crate::specs::*;
-use crate::{BASE_INDENT, coq, fmt_list, make_indent, model, write_list};
+use crate::{BASE_INDENT, coq, fmt_list, lang, make_indent, model, write_list};
 
-#[expect(clippy::ref_option)]
-fn fmt_comment(o: &Option<String>) -> String {
+fn fmt_comment(o: Option<&String>) -> String {
     match o {
         None => String::new(),
         Some(comment) => format!(" (* {} *)", comment),
     }
 }
 
-#[expect(clippy::ref_option)]
-fn fmt_option<T: fmt::Display>(o: &Option<T>) -> String {
+fn fmt_option<T: fmt::Display>(o: Option<&T>) -> String {
     match o {
         None => "None".to_owned(),
         Some(x) => format!("Some ({})", x),
@@ -49,7 +47,7 @@ pub enum RustType {
     TyVar(String),
 
     #[display("RSTInt {}", _0)]
-    Int(IntType),
+    Int(lang::IntType),
 
     #[display("RSTBool")]
     Bool,
@@ -168,40 +166,40 @@ impl RustType {
  */
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Literal {
-    #[display("i2v ({}) {}", _0, IntType::I8)]
+    #[display("i2v ({}) {}", _0, lang::IntType::I8)]
     I8(i8),
 
-    #[display("i2v ({}) {}", _0, IntType::I16)]
+    #[display("i2v ({}) {}", _0, lang::IntType::I16)]
     I16(i16),
 
-    #[display("i2v ({}) {}", _0, IntType::I32)]
+    #[display("i2v ({}) {}", _0, lang::IntType::I32)]
     I32(i32),
 
-    #[display("i2v ({}) {}", _0, IntType::I64)]
+    #[display("i2v ({}) {}", _0, lang::IntType::I64)]
     I64(i64),
 
-    #[display("i2v ({}) {}", _0, IntType::I128)]
+    #[display("i2v ({}) {}", _0, lang::IntType::I128)]
     I128(i128),
 
-    #[display("i2v ({}) {}", _0, IntType::ISize)]
+    #[display("i2v ({}) {}", _0, lang::IntType::ISize)]
     ISize(i64),
 
-    #[display("i2v ({}) {}", _0, IntType::U8)]
+    #[display("i2v ({}) {}", _0, lang::IntType::U8)]
     U8(u8),
 
-    #[display("i2v ({}) {}", _0, IntType::U16)]
+    #[display("i2v ({}) {}", _0, lang::IntType::U16)]
     U16(u16),
 
-    #[display("i2v ({}) {}", _0, IntType::U32)]
+    #[display("i2v ({}) {}", _0, lang::IntType::U32)]
     U32(u32),
 
-    #[display("i2v ({}) {}", _0, IntType::U64)]
+    #[display("i2v ({}) {}", _0, lang::IntType::U64)]
     U64(u64),
 
-    #[display("i2v ({}) {}", _0, IntType::U128)]
+    #[display("i2v ({}) {}", _0, lang::IntType::U128)]
     U128(u128),
 
-    #[display("i2v ({}) {}", _0, IntType::USize)]
+    #[display("i2v ({}) {}", _0, lang::IntType::USize)]
     USize(u64),
 
     #[display("val_of_bool {}", _0)]
@@ -239,13 +237,17 @@ pub enum Expr {
     Literal(Literal),
 
     #[display("UnOp ({}) ({}) ({})", o, ot, &e)]
-    UnOp { o: Unop, ot: OpType, e: Box<Expr> },
+    UnOp {
+        o: Unop,
+        ot: lang::OpType,
+        e: Box<Expr>,
+    },
 
     #[display("({}) {} ({})", &e1, o.caesium_fmt(ot1, ot2), &e2)]
     BinOp {
         o: Binop,
-        ot1: OpType,
-        ot2: OpType,
+        ot1: lang::OpType,
+        ot2: lang::OpType,
         e1: Box<Expr>,
         e2: Box<Expr>,
     },
@@ -253,22 +255,22 @@ pub enum Expr {
     #[display("({}) {} ({})", &e1, o.caesium_checked_fmt(ot1, ot2), &e2)]
     CheckBinOp {
         o: Binop,
-        ot1: OpType,
-        ot2: OpType,
+        ot1: lang::OpType,
+        ot2: lang::OpType,
         e1: Box<Expr>,
         e2: Box<Expr>,
     },
 
     /// dereference an lvalue
     #[display("!{{ {} }} ( {} )", ot, &e)]
-    Deref { ot: OpType, e: Box<Expr> },
+    Deref { ot: lang::OpType, e: Box<Expr> },
 
     /// lvalue to rvalue conversion
     #[display("use{{ {} }} ({})", ot, &e)]
-    Use { ot: OpType, e: Box<Expr> },
+    Use { ot: lang::OpType, e: Box<Expr> },
 
     /// the borrow-operator to get a reference
-    #[display("&ref{{ {}, {}, \"{}\" }} ({})", bk, fmt_option(ty), lft, &e)]
+    #[display("&ref{{ {}, {}, \"{}\" }} ({})", bk, fmt_option(ty.as_ref()), lft, &e)]
     Borrow {
         lft: Lft,
         bk: BorKind,
@@ -290,7 +292,7 @@ pub enum Expr {
 
     #[display("IfE ({}) ({}) ({}) ({})", ot, &e1, &e2, &e3)]
     If {
-        ot: OpType,
+        ot: lang::OpType,
         e1: Box<Expr>,
         e2: Box<Expr>,
         e3: Box<Expr>,
@@ -304,7 +306,7 @@ pub enum Expr {
     },
 
     /// an annotated expression
-    #[display("AnnotExpr{} {} ({}) ({})", fmt_comment(why), a.needs_laters(), a, &e)]
+    #[display("AnnotExpr{} {} ({}) ({})", fmt_comment(why.as_ref()), a.needs_laters(), a, &e)]
     Annot {
         a: Annotation,
         why: Option<String>,
@@ -330,7 +332,7 @@ pub enum Expr {
 
     /// a box expression for creating a box of a particular type
     #[display("box{{{}}}", &_0)]
-    BoxE(SynType),
+    BoxE(lang::SynType),
 
     /// access the discriminant of an enum
     #[display("EnumDiscriminant ({}) ({})", els, &e)]
@@ -425,7 +427,7 @@ type BlockLabel = usize;
 pub enum PrimStmt {
     #[display("{} <-{{ {} }} {};\n", e1, ot, e2)]
     Assign {
-        ot: OpType,
+        ot: lang::OpType,
         e1: Box<Expr>,
         e2: Box<Expr>,
     },
@@ -433,10 +435,10 @@ pub enum PrimStmt {
     #[display("expr: {};\n", _0)]
     ExprS(Box<Expr>),
 
-    #[display("assert{{ {} }}: {};\n", OpType::Bool, _0)]
+    #[display("assert{{ {} }}: {};\n", lang::OpType::Bool, _0)]
     AssertS(Box<Expr>),
 
-    #[display("{}", fmt_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why))}))]
+    #[display("{}", fmt_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why.as_ref()))}))]
     Annot {
         a: Vec<Annotation>,
         why: Option<String>,
@@ -459,7 +461,7 @@ pub enum Stmt {
         &s2.indented(&make_indent(1))
     )]
     If {
-        ot: OpType,
+        ot: lang::OpType,
         e: Expr,
         s1: Box<Stmt>,
         s2: Box<Stmt>,
@@ -476,7 +478,7 @@ pub enum Stmt {
     Switch {
         // e needs to evaluate to an integer/variant index used as index to bs
         e: Expr,
-        it: IntType,
+        it: lang::IntType,
         index_map: HashMap<u128, usize>,
         bs: Vec<Stmt>,
         def: Box<Stmt>,
@@ -501,7 +503,7 @@ pub enum Unop {
     NotInt,
 
     #[display("CastOp ({})", _0)]
-    Cast(OpType),
+    Cast(lang::OpType),
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -540,15 +542,15 @@ pub enum Binop {
     Ge,
 
     // pointer operations
-    PtrOffset(Layout),
-    PtrNegOffset(Layout),
-    PtrDiff(Layout),
+    PtrOffset(lang::Layout),
+    PtrNegOffset(lang::Layout),
+    PtrDiff(lang::Layout),
 }
 
 impl Binop {
-    fn caesium_fmt(&self, ot1: &OpType, ot2: &OpType) -> String {
+    fn caesium_fmt(&self, ot1: &lang::OpType, ot2: &lang::OpType) -> String {
         let format_prim = |st: &str| format!("{} {} , {} }}", st, ot1, ot2);
-        let format_bool = |st: &str| format!("{} {} , {} , {} }}", st, ot1, ot2, BOOL_REPR);
+        let format_bool = |st: &str| format!("{} {} , {} , {} }}", st, ot1, ot2, lang::BOOL_REPR);
 
         match self {
             Self::Add => format_prim("+{"),
@@ -582,7 +584,7 @@ impl Binop {
         }
     }
 
-    fn caesium_checked_fmt(&self, ot1: &OpType, ot2: &OpType) -> String {
+    fn caesium_checked_fmt(&self, ot1: &lang::OpType, ot2: &lang::OpType) -> String {
         let format_prim = |st: &str| format!("{} {} , {} }}", st, ot1, ot2);
 
         match self {
@@ -602,11 +604,11 @@ impl Binop {
  * A variable in the Caesium code, composed of a name and a type.
  */
 #[derive(Clone, Eq, PartialEq, Debug)]
-struct Variable((String, SynType));
+struct Variable((String, lang::SynType));
 
 impl Variable {
     #[must_use]
-    const fn new(name: String, st: SynType) -> Self {
+    const fn new(name: String, st: lang::SynType) -> Self {
         Self((name, st))
     }
 }
@@ -630,7 +632,7 @@ impl StackMap {
         }
     }
 
-    fn insert_local(&mut self, name: String, st: SynType) -> bool {
+    fn insert_local(&mut self, name: String, st: lang::SynType) -> bool {
         if self.used_names.contains(&name) {
             return false;
         }
@@ -639,7 +641,7 @@ impl StackMap {
         true
     }
 
-    fn insert_arg(&mut self, name: String, st: SynType) -> bool {
+    fn insert_arg(&mut self, name: String, st: lang::SynType) -> bool {
         if self.used_names.contains(&name) {
             return false;
         }
@@ -685,7 +687,7 @@ fn make_lft_map_string(els: &Vec<(String, String)>) -> String {
 impl fmt::Display for FunctionCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_variable(Variable((name, ty)): &Variable) -> String {
-            format!("(\"{}\", {} : layout)", name, Layout::from(ty))
+            format!("(\"{}\", {} : layout)", name, lang::Layout::from(ty))
         }
 
         fn fmt_blocks((name, bb): (&usize, &Stmt)) -> String {
@@ -742,11 +744,11 @@ impl FunctionCodeBuilder {
         }
     }
 
-    pub fn add_argument(&mut self, name: &str, st: SynType) {
+    pub fn add_argument(&mut self, name: &str, st: lang::SynType) {
         self.stack_layout.insert_arg(name.to_owned(), st);
     }
 
-    pub fn add_local(&mut self, name: &str, st: SynType) {
+    pub fn add_local(&mut self, name: &str, st: lang::SynType) {
         self.stack_layout.insert_local(name.to_owned(), st);
     }
 
@@ -794,7 +796,7 @@ pub struct Function<'def> {
     /// Other functions that are used by this one.
     other_functions: Vec<UsedProcedure<'def>>,
     /// Syntypes that we assume to be layoutable in the typing proof
-    layoutable_syntys: Vec<SynType>,
+    layoutable_syntys: Vec<lang::SynType>,
     /// Custom tactics for the generated proof
     manual_tactics: Vec<String>,
     /// used statics
@@ -1221,7 +1223,7 @@ pub struct UsedProcedure<'def> {
     scope_inst: GenericScopeInst<'def>,
 
     /// The syntactic types of all arguments
-    syntype_of_all_args: Vec<SynType>,
+    syntype_of_all_args: Vec<lang::SynType>,
 }
 
 impl UsedProcedure<'_> {
@@ -1239,7 +1241,7 @@ impl UsedProcedure<'_> {
                 }
                 // instantiate syntypes
                 for p in &all_tys {
-                    let st = SynType::from(p);
+                    let st = lang::SynType::from(p);
                     gen_rfn_type_inst.push(format!("({})", st));
                 }
                 write!(term, "{} ", gen_rfn_type_inst.join(" "))?;
@@ -1284,7 +1286,7 @@ impl UsedProcedure<'_> {
                 }
                 // instantiate syntypes
                 for p in trait_tys.iter().chain(direct_tys.iter()) {
-                    let st = SynType::from(p);
+                    let st = lang::SynType::from(p);
                     gen_rfn_type_inst.push(format!("({})", st));
                 }
                 write!(term, "{} ", gen_rfn_type_inst.join(" "))?;
@@ -1332,7 +1334,7 @@ impl fmt::Display for UsedProcedure<'_> {
         }
         // instantiate syntypes
         for p in &all_tys {
-            let st = SynType::from(p);
+            let st = lang::SynType::from(p);
             gen_rfn_type_inst.push(format!("({})", st));
         }
 
@@ -1463,7 +1465,7 @@ pub struct FunctionBuilder<'def> {
     other_functions: Vec<UsedProcedure<'def>>,
 
     /// Syntypes we assume to be layoutable in the typing proof
-    layoutable_syntys: Vec<SynType>,
+    layoutable_syntys: Vec<lang::SynType>,
     /// used statics
     used_statics: Vec<StaticMeta<'def>>,
 
@@ -1537,7 +1539,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 
     /// Add the assumption that a particular syntype is layoutable to the typing proof.
-    pub fn assume_synty_layoutable(&mut self, st: SynType) {
+    pub fn assume_synty_layoutable(&mut self, st: lang::SynType) {
         self.layoutable_syntys.push(st);
     }
 

@@ -165,8 +165,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         match kind {
             mir::CastKind::PointerCoercion(x, _) => match x {
                 ty::adjustment::PointerCoercion::MutToConstPointer => Ok(radium::Expr::UnOp {
-                    o: radium::Unop::Cast(radium::OpType::Ptr),
-                    ot: radium::OpType::Ptr,
+                    o: radium::Unop::Cast(radium::lang::OpType::Ptr),
+                    ot: radium::lang::OpType::Ptr,
                     e: Box::new(translated_op),
                 }),
 
@@ -206,8 +206,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
                     (ty::TyKind::RawPtr(..), ty::TyKind::RawPtr(..)) => Ok(radium::Expr::UnOp {
-                        o: radium::Unop::Cast(radium::OpType::Ptr),
-                        ot: radium::OpType::Ptr,
+                        o: radium::Unop::Cast(radium::lang::OpType::Ptr),
+                        ot: radium::lang::OpType::Ptr,
                         e: Box::new(translated_op),
                     }),
 
@@ -238,7 +238,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // Cast pointer to integer
                 Ok(radium::Expr::UnOp {
                     o: radium::Unop::Cast(target_ot),
-                    ot: radium::OpType::Ptr,
+                    ot: radium::lang::OpType::Ptr,
                     e: Box::new(translated_op),
                 })
             },

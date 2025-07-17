@@ -64,13 +64,13 @@ pub(crate) fn generate_args_inst_key<'tcx>(
 #[derive(Eq, PartialEq, Hash, Debug)]
 pub(crate) struct AdtUseKey {
     base_did: DefId,
-    generics: Vec<radium::SynType>,
+    generics: Vec<radium::lang::SynType>,
 }
 
 impl AdtUseKey {
     pub(crate) fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
-            params.get_all_ty_params_with_assocs().iter().map(radium::SynType::from).collect();
+            params.get_all_ty_params_with_assocs().iter().map(radium::lang::SynType::from).collect();
         Self {
             base_did: defid,
             generics: generic_syntys,

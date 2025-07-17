@@ -115,7 +115,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     let stmt = radium::Stmt::If {
                         e: operand,
-                        ot: radium::OpType::Bool,
+                        ot: radium::lang::OpType::Bool,
                         s1: Box::new(true_branch),
                         s2: Box::new(false_branch),
                     };
@@ -168,8 +168,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let cond_translated = self.translate_operand(cond, true)?;
                 let comp = radium::Expr::BinOp {
                     o: radium::Binop::Eq,
-                    ot1: radium::OpType::Bool,
-                    ot2: radium::OpType::Bool,
+                    ot1: radium::lang::OpType::Bool,
+                    ot2: radium::lang::OpType::Bool,
                     e1: Box::new(cond_translated),
                     e2: Box::new(radium::Expr::Literal(radium::Literal::Bool(*expected))),
                 };

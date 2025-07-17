@@ -3,6 +3,7 @@
 
 pub mod code;
 pub mod coq;
+pub mod lang;
 pub mod model;
 pub mod specs;
 

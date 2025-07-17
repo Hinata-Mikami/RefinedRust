@@ -23,7 +23,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
-) -> Result<Vec<radium::SynType>, TranslationError<'tcx>> {
+) -> Result<Vec<radium::lang::SynType>, TranslationError<'tcx>> {
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
@@ -55,7 +55,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx>(
             let tuple_ty = clos_args.tupled_upvars_ty();
             match clos_args.kind() {
                 ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
-                    syntypes.push(radium::SynType::Ptr);
+                    syntypes.push(radium::lang::SynType::Ptr);
                 },
                 ty::ClosureKind::FnOnce => {
                     let st =

@@ -18,509 +18,71 @@ use indent_write::fmt::IndentWriter;
 use itertools::Itertools as _;
 use log::trace;
 
-use crate::{BASE_INDENT, coq, fmt_list, model, push_str_list, write_list};
-
-#[derive(Clone, Debug)]
-/// Encodes a RR type with an accompanying refinement.
-pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
-
-impl fmt::Display for TypeWithRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{} :@: {}", self.1, self.0)
-    }
-}
-
-impl<'def> TypeWithRef<'def> {
-    #[must_use]
-    pub const fn new(ty: Type<'def>, rfn: String) -> Self {
-        TypeWithRef(ty, rfn)
-    }
-
-    #[must_use]
-    fn make_unit() -> Self {
-        TypeWithRef(Type::Unit, "()".to_owned())
-    }
-}
-
-pub type Lft = String;
-
-/// A universal lifetime that is not locally owned.
-#[derive(Clone, Debug)]
-pub enum UniversalLft {
-    Function,
-    Static,
-    Local(Lft),
-    External(Lft),
-}
-
-impl fmt::Display for UniversalLft {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Self::Function => write!(f, "ϝ"),
-            Self::Static => write!(f, "static"),
-            Self::Local(lft) | Self::External(lft) => write!(f, "{}", lft),
-        }
-    }
-}
-
-/// A lifetime constraint enforces a relation between two external lifetimes.
-type ExtLftConstr = (UniversalLft, UniversalLft);
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum IntType {
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-    ISize,
-    USize,
-}
-
-impl fmt::Display for IntType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::I8 => write!(f, "I8"),
-            Self::I16 => write!(f, "I16"),
-            Self::I32 => write!(f, "I32"),
-            Self::I64 => write!(f, "I64"),
-            Self::I128 => write!(f, "I128"),
-
-            Self::U8 => write!(f, "U8"),
-            Self::U16 => write!(f, "U16"),
-            Self::U32 => write!(f, "U32"),
-            Self::U64 => write!(f, "U64"),
-            Self::U128 => write!(f, "U128"),
-
-            Self::ISize => write!(f, "ISize"),
-            Self::USize => write!(f, "USize"),
-        }
-    }
-}
-
-/// Representation of Caesium's optypes.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub enum OpType {
-    Int(IntType),
-    Bool,
-    Char,
-    Ptr,
-    // a term for the struct_layout, and optypes for the individual fields
-    Struct(coq::term::App<String, String>, Vec<OpType>),
-    Untyped(Layout),
-    Literal(coq::term::App<String, String>),
-}
-
-impl fmt::Display for OpType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Bool => write!(f, "BoolOp"),
-            Self::Char => write!(f, "CharOp"),
-            Self::Int(it) => write!(f, "IntOp {}", it),
-            Self::Ptr => write!(f, "PtrOp"),
-            Self::Struct(sl, ops) => {
-                write!(f, "StructOp {} [", sl)?;
-                write_list!(f, ops, "; ")?;
-                write!(f, "]")
-            },
-            Self::Untyped(ly) => write!(f, "UntypedOp ({})", ly),
-            Self::Literal(ca) => write!(f, "{}", ca),
-        }
-    }
-}
-
-// NOTE: see ty::layout::layout_of_uncached for the rustc description of this.
-pub(crate) static BOOL_REPR: IntType = IntType::U8;
-
-/// A syntactic `RefinedRust` type.
-///
-/// Every semantic `RefinedRust` type has a corresponding syntactic type that determines its
-/// representation in memory.
-/// A syntactic type does not necessarily specify a concrete layout. A layout is only fixed once
-/// a specific layout algorithm that resolves the non-deterministic choice of the compiler.
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub enum SynType {
-    Int(IntType),
-    Bool,
-    Char,
-    Ptr,
-    FnPtr,
-    Untyped(Layout),
-    Unit,
-    Never,
-    /// a Coq term, in case of generics. This Coq term is required to have type `syn_type`.
-    Literal(String),
-    // no struct or enums - these are specified through literals.
-}
-
-impl fmt::Display for SynType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Bool => write!(f, "BoolSynType"),
-            Self::Char => write!(f, "CharSynType"),
-            Self::Int(it) => write!(f, "(IntSynType {})", it),
-
-            Self::Ptr => write!(f, "PtrSynType"),
-            Self::FnPtr => write!(f, "FnPtrSynType"),
-
-            Self::Untyped(ly) => write!(f, "(UntypedSynType {})", ly),
-            Self::Unit | Self::Never => write!(f, "UnitSynType"),
-
-            Self::Literal(ca) => write!(f, "{}", ca),
-        }
-    }
-}
-
-impl From<SynType> for Layout {
-    fn from(x: SynType) -> Self {
-        Self::from(&x)
-    }
-}
-
-impl From<&SynType> for Layout {
-    /// Get a Coq term for the layout of this syntactic type.
-    /// This may call the Coq-level layout algorithm that we assume.
-    fn from(x: &SynType) -> Self {
-        match x {
-            SynType::Bool => Self::Bool,
-            SynType::Char => Self::Char,
-            SynType::Int(it) => Self::Int(*it),
-
-            SynType::Ptr | SynType::FnPtr => Self::Ptr,
-
-            SynType::Untyped(ly) => ly.clone(),
-            SynType::Unit | SynType::Never => Self::Unit,
-
-            SynType::Literal(ca) => {
-                let rhs = ca.to_owned();
-                Self::Literal(coq::term::App::new("use_layout_alg'".to_owned(), vec![rhs]))
-            },
-        }
-    }
-}
-
-impl From<SynType> for OpType {
-    fn from(x: SynType) -> Self {
-        Self::from(&x)
-    }
-}
-impl From<&SynType> for OpType {
-    /// Determine the optype used to access a value of this syntactic type.
-    /// Note that we may also always use `UntypedOp`, but this here computes the more specific
-    /// `op_type` that triggers more UB on invalid values.
-    fn from(x: &SynType) -> Self {
-        match x {
-            SynType::Bool => Self::Bool,
-            SynType::Char => Self::Char,
-            SynType::Int(it) => Self::Int(*it),
-
-            SynType::Ptr | SynType::FnPtr => Self::Ptr,
-
-            SynType::Untyped(ly) => Self::Untyped(ly.clone()),
-            SynType::Unit => Self::Struct(coq::term::App::new_lhs("unit_sl".to_owned()), Vec::new()),
-            SynType::Never => Self::Untyped(Layout::Unit),
-
-            SynType::Literal(ca) => {
-                let rhs = ca.to_owned();
-                Self::Literal(coq::term::App::new("use_op_alg'".to_owned(), vec![rhs]))
-            },
-        }
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TypeIsRaw {
-    Yes,
-    No,
-}
-
-/// Meta information from parsing type annotations
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct TypeAnnotMeta {
-    /// Used lifetime variables
-    escaped_lfts: BTreeSet<Lft>,
-    /// Used type variables
-    escaped_tyvars: BTreeSet<LiteralTyParam>,
-}
-
-impl TypeAnnotMeta {
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.escaped_lfts.is_empty() && self.escaped_tyvars.is_empty()
-    }
-
-    #[must_use]
-    pub const fn empty() -> Self {
-        Self {
-            escaped_lfts: BTreeSet::new(),
-            escaped_tyvars: BTreeSet::new(),
-        }
-    }
-
-    pub fn join(&mut self, s: &Self) {
-        let lfts: BTreeSet<_> = self.escaped_lfts.union(&s.escaped_lfts).cloned().collect();
-        let tyvars: BTreeSet<_> = self.escaped_tyvars.union(&s.escaped_tyvars).cloned().collect();
-
-        self.escaped_lfts = lfts;
-        self.escaped_tyvars = tyvars;
-    }
-
-    pub fn add_lft(&mut self, lft: &Lft) {
-        self.escaped_lfts.insert(lft.to_owned());
-    }
-
-    pub fn add_type(&mut self, ty: &Type<'_>) {
-        if let Type::LiteralParam(lit) = ty {
-            self.escaped_tyvars.insert(lit.to_owned());
-        }
-        // TODO: handle the case that it is unknown
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct LiteralType {
-    /// Rust name
-    pub rust_name: Option<String>,
-
-    /// Rocq name of the type
-    pub type_term: String,
-
-    /// the refinement type
-    pub refinement_type: coq::term::Type,
-
-    /// the syntactic type
-    pub syn_type: SynType,
-}
-
-pub type LiteralTypeRef<'def> = &'def LiteralType;
-
-#[derive(Clone, Debug)]
-pub struct LiteralTypeUse<'def> {
-    /// definition
-    pub(crate) def: LiteralTypeRef<'def>,
-
-    /// parameters
-    pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
-}
-
-impl<'def> LiteralTypeUse<'def> {
-    #[must_use]
-    pub const fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
-        LiteralTypeUse {
-            def: s,
-            scope_inst: Some(scope_inst),
-        }
-    }
-
-    #[must_use]
-    pub const fn new_with_annot(s: LiteralTypeRef<'def>) -> Self {
-        LiteralTypeUse {
-            def: s,
-            scope_inst: None,
-        }
-    }
-
-    /// Get the refinement type of a struct usage.
-    /// This requires that all type parameters of the struct have been instantiated.
-    #[must_use]
-    fn get_rfn_type(&self) -> String {
-        let ty_inst: Vec<_> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(|ty| ty.get_rfn_type())
-            .collect();
-
-        let rfn_type = self.def.refinement_type.to_string();
-        let applied = coq::term::App::new(rfn_type, ty_inst);
-        applied.to_string()
-    }
-
-    /// Get the `syn_type` term for this struct use.
-    #[must_use]
-    pub fn generate_raw_syn_type_term(&self) -> SynType {
-        let ty_inst: Vec<SynType> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
-        SynType::Literal(specialized_spec.to_string())
-    }
-
-    #[must_use]
-    pub fn generate_syn_type_term(&self) -> SynType {
-        let ty_inst: Vec<SynType> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
-        SynType::Literal(format!("({specialized_spec} : syn_type)"))
-    }
-
-    /// Generate a string representation of this struct use.
-    #[must_use]
-    fn generate_type_term(&self) -> String {
-        if let Some(scope_inst) = self.scope_inst.as_ref() {
-            let rt_inst = scope_inst
-                .get_all_ty_params_with_assocs()
-                .iter()
-                .map(|ty| format!("({})", ty.get_rfn_type()))
-                .join(" ");
-            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation())
-        } else {
-            self.def.type_term.clone()
-        }
-    }
-}
-
-/// The origin of a type parameter.
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
-pub enum TyParamOrigin {
-    /// Declared in a surrounding trait declaration.
-    SurroundingTrait,
-    /// Declared in a surrounding trait impl
-    SurroundingImpl,
-    /// A direct parameter of a method or impl.
-    Direct,
-    AssocConstraint,
-}
-
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
-#[expect(clippy::partial_pub_fields)]
-pub struct LiteralTyParam {
-    /// Rust name
-    pub rust_name: String,
-
-    /// Coq name of the type
-    pub(crate) type_term: String,
-
-    /// the refinement type
-    refinement_type: String,
-
-    /// the syntactic type
-    pub syn_type: String,
-
-    /// the declaration site of this type parameter
-    origin: TyParamOrigin,
-}
-
-impl LiteralTyParam {
-    #[must_use]
-    pub fn new(rust_name: &str, base: &str) -> Self {
-        Self {
-            rust_name: rust_name.to_owned(),
-            type_term: format!("{base}_ty"),
-            refinement_type: format!("{base}_rt"),
-            syn_type: format!("{base}_st"),
-            origin: TyParamOrigin::Direct,
-        }
-    }
-
-    pub const fn set_origin(&mut self, origin: TyParamOrigin) {
-        self.origin = origin;
-    }
-
-    #[must_use]
-    pub fn new_with_origin(rust_name: &str, base: &str, origin: TyParamOrigin) -> Self {
-        let mut x = Self::new(rust_name, base);
-        x.origin = origin;
-        x
-    }
-
-    #[must_use]
-    fn make_refinement_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::Type)
-    }
-
-    #[must_use]
-    fn make_syntype_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.syn_type.clone()), model::Type::SynType)
-    }
-
-    #[must_use]
-    fn make_semantic_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(
-            Some(self.type_term.clone()),
-            model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
-        )
-    }
-}
+use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
 
 /// Representation of (semantic) `RefinedRust` types.
 /// 'def is the lifetime of the frontend for referencing struct definitions.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Type<'def> {
-    Int(IntType),
+    #[display("bool_t")]
     Bool,
+
+    #[display("char_t")]
     Char,
+
+    #[display("(int {})", _0)]
+    Int(lang::IntType),
+
+    #[display("(mut_ref {} {})", _1, _0)]
     MutRef(Box<Type<'def>>, Lft),
+
+    #[display("(shr_ref {} {})", _1, _0)]
     ShrRef(Box<Type<'def>>, Lft),
+
+    #[display("(box {})", _0)]
     BoxT(Box<Type<'def>>),
+
     /// a struct type, potentially instantiated with some type parameters
     /// the boolean indicates
+    #[display("{}", _0.generate_type_term())]
     Struct(AbstractStructUse<'def>),
+
     /// an enum type, potentially instantiated with some type parameters
+    #[display("{}", _0.generate_type_term())]
     Enum(AbstractEnumUse<'def>),
+
     /// literal types embedded as strings
+    #[display("{}", _0.generate_type_term())]
     Literal(LiteralTypeUse<'def>),
+
     /// literal type parameters
+    #[display("{}", _0.type_term)]
     LiteralParam(LiteralTyParam),
+
     /// the uninit type given to uninitialized values
-    Uninit(SynType),
+    #[display("(uninit ({}))", _0)]
+    Uninit(lang::SynType),
+
     /// the unit type
+    #[display("unit_t")]
     Unit,
+
     /// the Never type
+    #[display("never_t")]
     Never,
+
     /// dummy type that should be overridden by an annotation
+    #[display("alias_ptr_t")]
     RawPtr,
 }
 
-impl fmt::Display for Type<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Bool => write!(f, "bool_t"),
-            Self::Char => write!(f, "char_t"),
-            Self::Int(it) => write!(f, "(int {})", it),
-
-            Self::MutRef(ty, lft) => write!(f, "(mut_ref {} {})", lft, ty),
-            Self::ShrRef(ty, lft) => write!(f, "(shr_ref {} {})", lft, ty),
-            Self::BoxT(ty) => write!(f, "(box {})", ty),
-            Self::RawPtr => write!(f, "alias_ptr_t"),
-
-            Self::Struct(su) => write!(f, "{}", su.generate_type_term()),
-            Self::Enum(su) => write!(f, "{}", su.generate_type_term()),
-
-            Self::Literal(lit) => write!(f, "{}", lit.generate_type_term()),
-            Self::LiteralParam(p) => write!(f, "{}", p.type_term),
-
-            Self::Uninit(ly) => write!(f, "(uninit ({}))", ly),
-            Self::Unit => write!(f, "unit_t"),
-            Self::Never => write!(f, "never_t"),
-        }
-    }
-}
-
-impl<'def> From<Type<'def>> for SynType {
+impl<'def> From<Type<'def>> for lang::SynType {
     fn from(x: Type<'def>) -> Self {
         Self::from(&x)
     }
 }
-impl<'def> From<&Type<'def>> for SynType {
+
+impl<'def> From<&Type<'def>> for lang::SynType {
     /// Get the layout of a type.
     fn from(x: &Type<'def>) -> Self {
         match x {
@@ -591,6 +153,272 @@ impl Type<'_> {
                 coq::term::Type::Unit
             },
         }
+    }
+}
+
+/// Encodes a RR type with an accompanying refinement.
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("{} :@: {}", _1, _0)]
+pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
+
+impl<'def> TypeWithRef<'def> {
+    #[must_use]
+    pub const fn new(ty: Type<'def>, rfn: String) -> Self {
+        TypeWithRef(ty, rfn)
+    }
+
+    #[must_use]
+    fn make_unit() -> Self {
+        TypeWithRef(Type::Unit, "()".to_owned())
+    }
+}
+
+pub type Lft = String;
+
+/// A universal lifetime that is not locally owned.
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+pub enum UniversalLft {
+    #[display("ϝ")]
+    Function,
+
+    #[display("static")]
+    Static,
+
+    #[display("{}", _0)]
+    Local(Lft),
+
+    #[display("{}", _0)]
+    External(Lft),
+}
+
+/// A lifetime constraint enforces a relation between two external lifetimes.
+type ExtLftConstr = (UniversalLft, UniversalLft);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum TypeIsRaw {
+    Yes,
+    No,
+}
+
+/// Meta information from parsing type annotations
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TypeAnnotMeta {
+    /// Used lifetime variables
+    escaped_lfts: BTreeSet<Lft>,
+    /// Used type variables
+    escaped_tyvars: BTreeSet<LiteralTyParam>,
+}
+
+impl TypeAnnotMeta {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.escaped_lfts.is_empty() && self.escaped_tyvars.is_empty()
+    }
+
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            escaped_lfts: BTreeSet::new(),
+            escaped_tyvars: BTreeSet::new(),
+        }
+    }
+
+    pub fn join(&mut self, s: &Self) {
+        let lfts: BTreeSet<_> = self.escaped_lfts.union(&s.escaped_lfts).cloned().collect();
+        let tyvars: BTreeSet<_> = self.escaped_tyvars.union(&s.escaped_tyvars).cloned().collect();
+
+        self.escaped_lfts = lfts;
+        self.escaped_tyvars = tyvars;
+    }
+
+    pub fn add_lft(&mut self, lft: &Lft) {
+        self.escaped_lfts.insert(lft.to_owned());
+    }
+
+    pub fn add_type(&mut self, ty: &Type<'_>) {
+        if let Type::LiteralParam(lit) = ty {
+            self.escaped_tyvars.insert(lit.to_owned());
+        }
+        // TODO: handle the case that it is unknown
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct LiteralType {
+    /// Rust name
+    pub rust_name: Option<String>,
+
+    /// Rocq name of the type
+    pub type_term: String,
+
+    /// the refinement type
+    pub refinement_type: coq::term::Type,
+
+    /// the syntactic type
+    pub syn_type: lang::SynType,
+}
+
+pub type LiteralTypeRef<'def> = &'def LiteralType;
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct LiteralTypeUse<'def> {
+    /// definition
+    pub(crate) def: LiteralTypeRef<'def>,
+
+    /// parameters
+    pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
+}
+
+impl<'def> LiteralTypeUse<'def> {
+    #[must_use]
+    pub const fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
+        LiteralTypeUse {
+            def: s,
+            scope_inst: Some(scope_inst),
+        }
+    }
+
+    #[must_use]
+    pub const fn new_with_annot(s: LiteralTypeRef<'def>) -> Self {
+        LiteralTypeUse {
+            def: s,
+            scope_inst: None,
+        }
+    }
+
+    /// Get the refinement type of a struct usage.
+    /// This requires that all type parameters of the struct have been instantiated.
+    #[must_use]
+    fn get_rfn_type(&self) -> String {
+        let ty_inst: Vec<_> = self
+            .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(|ty| ty.get_rfn_type())
+            .collect();
+
+        let rfn_type = self.def.refinement_type.to_string();
+        let applied = coq::term::App::new(rfn_type, ty_inst);
+        applied.to_string()
+    }
+
+    /// Get the `syn_type` term for this struct use.
+    #[must_use]
+    pub fn generate_raw_syn_type_term(&self) -> lang::SynType {
+        let ty_inst: Vec<lang::SynType> = self
+            .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
+        lang::SynType::Literal(specialized_spec.to_string())
+    }
+
+    #[must_use]
+    pub fn generate_syn_type_term(&self) -> lang::SynType {
+        let ty_inst: Vec<lang::SynType> = self
+            .scope_inst
+            .as_ref()
+            .unwrap_or(&GenericScopeInst::empty())
+            .get_direct_ty_params_with_assocs()
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
+        lang::SynType::Literal(format!("({specialized_spec} : syn_type)"))
+    }
+
+    /// Generate a string representation of this struct use.
+    #[must_use]
+    fn generate_type_term(&self) -> String {
+        if let Some(scope_inst) = self.scope_inst.as_ref() {
+            let rt_inst = scope_inst
+                .get_all_ty_params_with_assocs()
+                .iter()
+                .map(|ty| format!("({})", ty.get_rfn_type()))
+                .join(" ");
+            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation())
+        } else {
+            self.def.type_term.clone()
+        }
+    }
+}
+
+/// The origin of a type parameter.
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub enum TyParamOrigin {
+    /// Declared in a surrounding trait declaration.
+    SurroundingTrait,
+    /// Declared in a surrounding trait impl
+    SurroundingImpl,
+    /// A direct parameter of a method or impl.
+    Direct,
+    AssocConstraint,
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+#[expect(clippy::partial_pub_fields)]
+pub struct LiteralTyParam {
+    /// Rust name
+    pub rust_name: String,
+
+    /// Coq name of the type
+    pub(crate) type_term: String,
+
+    /// the refinement type
+    refinement_type: String,
+
+    /// the syntactic type
+    pub syn_type: String,
+
+    /// the declaration site of this type parameter
+    origin: TyParamOrigin,
+}
+
+impl LiteralTyParam {
+    #[must_use]
+    pub fn new(rust_name: &str, base: &str) -> Self {
+        Self {
+            rust_name: rust_name.to_owned(),
+            type_term: format!("{base}_ty"),
+            refinement_type: format!("{base}_rt"),
+            syn_type: format!("{base}_st"),
+            origin: TyParamOrigin::Direct,
+        }
+    }
+
+    pub const fn set_origin(&mut self, origin: TyParamOrigin) {
+        self.origin = origin;
+    }
+
+    #[must_use]
+    pub fn new_with_origin(rust_name: &str, base: &str, origin: TyParamOrigin) -> Self {
+        let mut x = Self::new(rust_name, base);
+        x.origin = origin;
+        x
+    }
+
+    #[must_use]
+    fn make_refinement_param(&self) -> coq::binder::Binder {
+        coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::Type)
+    }
+
+    #[must_use]
+    fn make_syntype_param(&self) -> coq::binder::Binder {
+        coq::binder::Binder::new(Some(self.syn_type.clone()), model::Type::SynType)
+    }
+
+    #[must_use]
+    fn make_semantic_param(&self) -> coq::binder::Binder {
+        coq::binder::Binder::new(
+            Some(self.type_term.clone()),
+            model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
+        )
     }
 }
 
@@ -1141,7 +969,7 @@ impl fmt::Display for EnumRepr {
 }
 
 /// Description of a variant of a struct or enum.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AbstractVariant<'def> {
     /// the fields, closed under a surrounding scope
     fields: Vec<(String, Type<'def>)>,
@@ -1188,7 +1016,7 @@ impl<'def> AbstractVariant<'def> {
         write!(out, "{indent}{indent}mk_sls \"{}\" [", self.name).unwrap();
 
         push_str_list!(out, &self.fields, ";", |(name, ty)| {
-            let synty: SynType = ty.into();
+            let synty: lang::SynType = ty.into();
 
             format!("\n{indent}{indent}(\"{name}\", {synty})")
         });
@@ -1412,7 +1240,7 @@ where
 
 /// Description of a struct type.
 // TODO: mechanisms for resolving mutually recursive types.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct AbstractStruct<'def> {
     /// an optional invariant/ existential abstraction for this struct
     invariant: Option<InvariantSpec>,
@@ -1666,7 +1494,7 @@ impl<'def> AbstractStruct<'def> {
             rust_name: Some(self.name().to_owned()),
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name()),
-            syn_type: SynType::Literal(self.sls_def_name().to_owned()),
+            syn_type: lang::SynType::Literal(self.sls_def_name().to_owned()),
         }
     }
 }
@@ -1749,7 +1577,7 @@ pub fn make_tuple_struct_repr<'def>(num_fields: usize) -> AbstractStruct<'def> {
 }
 
 /// A usage of an `AbstractStruct` that instantiates its type parameters.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AbstractStructUse<'def> {
     /// reference to the struct's definition, or None if unit
     pub(crate) def: Option<AbstractStructRef<'def>>,
@@ -1818,19 +1646,19 @@ impl<'def> AbstractStructUse<'def> {
 
     /// Get the `syn_type` term for this struct use.
     #[must_use]
-    fn generate_syn_type_term(&self) -> SynType {
+    fn generate_syn_type_term(&self) -> lang::SynType {
         let Some(def) = self.def.as_ref() else {
-            return SynType::Unit;
+            return lang::SynType::Unit;
         };
 
         // first get the syntys for the type params
-        let param_sts: Vec<SynType> =
+        let param_sts: Vec<lang::SynType> =
             self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = def.borrow();
         let def = def.as_ref().unwrap();
         let specialized_spec = coq::term::App::new(def.st_def_name().to_owned(), param_sts);
-        SynType::Literal(specialized_spec.to_string())
+        lang::SynType::Literal(specialized_spec.to_string())
     }
 
     /// Generate a string representation of this struct use.
@@ -1898,7 +1726,7 @@ impl Add<u32> for Int128 {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AbstractEnum<'def> {
     /// variants of this enum: name, variant, a mask describing which of the type parameters it uses, and the
     /// discriminant
@@ -1924,7 +1752,7 @@ pub struct AbstractEnum<'def> {
     enum_def_name: String,
 
     /// type of the integer discriminant
-    discriminant_type: IntType,
+    discriminant_type: lang::IntType,
 
     /// these should be the same also across all the variants
     scope: GenericScope<'def>,
@@ -2322,7 +2150,7 @@ impl<'def> AbstractEnum<'def> {
             rust_name: Some(self.name().to_owned()),
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
-            syn_type: SynType::Literal(self.els_def_name().to_owned()),
+            syn_type: lang::SynType::Literal(self.els_def_name().to_owned()),
         }
     }
 }
@@ -2336,7 +2164,7 @@ pub struct EnumBuilder<'def> {
     /// names for the type parameters (for the Coq definitions)
     scope: GenericScope<'def>,
     /// type of the integer discriminant
-    discriminant_type: IntType,
+    discriminant_type: lang::IntType,
     /// representation options for the enum
     repr: EnumRepr,
 }
@@ -2377,7 +2205,7 @@ impl<'def> EnumBuilder<'def> {
     pub const fn new(
         name: String,
         scope: GenericScope<'def>,
-        discriminant_type: IntType,
+        discriminant_type: lang::IntType,
         repr: EnumRepr,
     ) -> Self {
         Self {
@@ -2398,7 +2226,7 @@ impl<'def> EnumBuilder<'def> {
 }
 
 /// A usage of an `AbstractEnum` that instantiates its type parameters.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AbstractEnumUse<'def> {
     /// reference to the enum's definition
     pub(crate) def: AbstractEnumRef<'def>,
@@ -2429,15 +2257,15 @@ impl<'def> AbstractEnumUse<'def> {
 
     /// Get the `syn_type` term for this enum use.
     #[must_use]
-    fn generate_syn_type_term(&self) -> SynType {
-        let param_sts: Vec<SynType> =
+    fn generate_syn_type_term(&self) -> lang::SynType {
+        let param_sts: Vec<lang::SynType> =
             self.scope_inst.get_all_ty_params_with_assocs().iter().map(Into::into).collect();
 
         let def = self.def.borrow();
         let def = def.as_ref().unwrap();
         // [my_spec] [params]
         let specialized_spec = coq::term::App::new(def.st_def_name.clone(), param_sts);
-        SynType::Literal(specialized_spec.to_string())
+        lang::SynType::Literal(specialized_spec.to_string())
     }
 
     /// Generate a string representation of this enum use.
@@ -2454,38 +2282,6 @@ impl<'def> AbstractEnumUse<'def> {
             .join(" ");
         format!("({} {} {})", def.plain_ty_name, rt_inst, self.scope_inst.instantiation())
     }
-}
-
-/// A representation of Caesium layouts we are interested in.
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-pub enum Layout {
-    // in the case of 32bits
-    #[display("void*")]
-    Ptr,
-
-    // layout specified by the int type
-    #[display("(it_layout {})", _0)]
-    Int(IntType),
-
-    // size 1, similar to u8/i8
-    #[display("bool_layout")]
-    Bool,
-
-    // size 4, similar to u32
-    #[display("char_layout")]
-    Char,
-
-    // guaranteed to have size 0 and alignment 1.
-    #[display("(layout_of unit_sl)")]
-    Unit,
-
-    /// used for variable layout terms, e.g. for struct layouts or generics
-    #[display("{}", _0)]
-    Literal(coq::term::App<String, String>),
-
-    /// padding of a given number of bytes
-    #[display("(Layout {}%nat 0%nat)", _0)]
-    Pad(u32),
 }
 
 /// Representation of a loop invariant
@@ -3116,7 +2912,7 @@ pub struct TraitSpecAttrsInst {
 }
 
 /// A using occurrence of a trait spec.
-#[derive(Debug, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct LiteralTraitSpec {
     /// Name of the trait
     pub name: String,
@@ -3180,7 +2976,7 @@ impl LiteralTraitSpec {
 }
 
 /// A reference to a trait instantiated with its parameters in the verification of a function.
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 #[expect(clippy::partial_pub_fields)]
 pub struct LiteralTraitSpecUse<'def> {
     pub trait_ref: LiteralTraitSpecRef<'def>,
@@ -3347,7 +3143,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
         push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", x.get_rfn_type()) });
         // specialize to sts
         specialized_spec.push(' ');
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", SynType::from(x)) });
+        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", lang::SynType::from(x)) });
 
         // specialize to further args
         if need_attrs {
@@ -3409,7 +3205,7 @@ impl<'def> LiteralTraitSpecUse<'def> {
 }
 
 /// A scope of quantifiers for HRTBs on trait requirements.
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct TraitReqScope {
     pub quantified_lfts: Vec<Lft>,
 }
@@ -3439,7 +3235,7 @@ impl fmt::Display for TraitReqScope {
 }
 
 /// An instantiation for a `TraitReqScope`.
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct TraitReqScopeInst {
     pub lft_insts: Vec<Lft>,
 }
@@ -3450,7 +3246,7 @@ impl fmt::Display for TraitReqScopeInst {
     }
 }
 
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct SpecializedTraitImpl<'def> {
     impl_ref: LiteralTraitImplRef<'def>,
     impl_inst: GenericScopeInst<'def>,
@@ -3469,7 +3265,7 @@ impl SpecializedTraitImpl<'_> {
         // specialize to sts
         out.push(' ');
         push_str_list!(out, self.impl_inst.get_direct_ty_params(), " ", |x| {
-            format!("{}", SynType::from(x))
+            format!("{}", lang::SynType::from(x))
         });
 
         // add trait requirements
@@ -3488,7 +3284,7 @@ impl SpecializedTraitImpl<'_> {
     }
 }
 
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct QuantifiedTraitImpl<'def> {
     pub(crate) trait_ref: LiteralTraitSpecUseRef<'def>,
 
@@ -3511,7 +3307,7 @@ impl QuantifiedTraitImpl<'_> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum TraitReqInstSpec<'def> {
     /// A specialized trait impl (i.e., an instantiated declaration)
     Specialized(SpecializedTraitImpl<'def>),
@@ -3521,7 +3317,7 @@ pub enum TraitReqInstSpec<'def> {
 
 /// Instantiation of a trait requirement.
 /// The representation of the associated type instantiation is generic.
-#[derive(Debug, Constructor, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct TraitReqInst<'def, T> {
     pub spec: TraitReqInstSpec<'def>,
     pub origin: TyParamOrigin,
@@ -3598,7 +3394,7 @@ pub trait TraitReqInfo {
     fn get_origin(&self) -> TyParamOrigin;
 }
 
-#[derive(Clone, Constructor, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub(crate) struct TyParamList {
     pub(crate) params: Vec<LiteralTyParam>,
 }
@@ -3655,7 +3451,7 @@ impl TyParamList {
 }
 
 /// An instantiation of a scope of generics `GenericScope`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct GenericScopeInst<'def> {
     direct_tys: Vec<Type<'def>>,
     surrounding_tys: Vec<Type<'def>>,
@@ -3805,7 +3601,7 @@ impl IncludeSelfReq {
 }
 
 /// A scope of generics.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
     /// generics quantified on this object.
     direct_tys: TyParamList,
@@ -4574,7 +4370,7 @@ impl fmt::Display for TraitSpecDecl<'_> {
 }
 
 /// Coq Names used for the spec of a trait impl.
-#[derive(Constructor, Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 #[expect(clippy::struct_field_names)]
 pub struct LiteralTraitImpl {
     /// The name of the record instance for spec information
@@ -4683,7 +4479,7 @@ impl<'def> TraitRefInst<'def> {
         push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", x.get_rfn_type()) });
         // specialize to sts
         specialized_spec.push(' ');
-        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", SynType::from(x)) });
+        push_str_list!(specialized_spec, &all_args, " ", |x| { format!("{}", lang::SynType::from(x)) });
 
         // specialize to further args: first the attrs of this impl
         specialized_spec.push_str(&format!(" {}", self.get_attr_record_term()));
@@ -4972,7 +4768,7 @@ impl<'def> InstantiatedTraitFunctionSpec<'def> {
 
         // add syntype params
         for ty in &all_ty_params {
-            params.push(format!("{}", SynType::from(ty)));
+            params.push(format!("{}", lang::SynType::from(ty)));
         }
 
         // also instantiate with the attrs that are quantified on the outside

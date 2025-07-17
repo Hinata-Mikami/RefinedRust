@@ -54,7 +54,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// name of the return variable
     return_name: String,
     /// syntactic type of the thing to return
-    return_synty: radium::SynType,
+    return_synty: radium::lang::SynType,
     /// all the other procedures used by this function, and:
     /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
     collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
@@ -109,7 +109,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let debug_info = &body.var_debug_info;
         info!("using debug info: {:?}", debug_info);
 
-        let mut return_synty = radium::SynType::Unit; // default
+        let mut return_synty = radium::lang::SynType::Unit; // default
         let mut fn_locals = Vec::new();
         let mut opt_return_name =
             Err(TranslationError::UnknownError("could not find local for return value".to_owned()));
@@ -265,7 +265,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             let scope = self.ty_translator.scope.borrow();
             for ty in scope.generic_scope.tyvars() {
-                self.translated_fn.assume_synty_layoutable(radium::SynType::Literal(ty.syn_type));
+                self.translated_fn.assume_synty_layoutable(radium::lang::SynType::Literal(ty.syn_type));
             }
         }
         // assume that all used literals are layoutable

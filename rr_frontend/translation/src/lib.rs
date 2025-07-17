@@ -950,7 +950,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
         let lit = radium::LiteralType {
             rust_name: None,
             type_term: shim.sem_type.clone(),
-            syn_type: radium::SynType::Literal(shim.syn_type.clone()),
+            syn_type: radium::lang::SynType::Literal(shim.syn_type.clone()),
             refinement_type: coq::term::Type::Literal(shim.refinement_type.clone()),
         };
 

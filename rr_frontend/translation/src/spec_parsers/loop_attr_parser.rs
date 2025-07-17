@@ -210,7 +210,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         for (name, kind, initialized, ty) in &self.locals {
             // get the refinement type
             let mut rfn_ty = ty.get_rfn_type();
-            let ty_st: specs::SynType = ty.into();
+            let ty_st: radium::lang::SynType = ty.into();
             // wrap it in place_rfn, since we reason about places
             rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 

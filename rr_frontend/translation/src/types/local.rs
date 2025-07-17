@@ -57,7 +57,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_type_to_syn_type(
         &self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::SynType, TranslationError<'tcx>> {
+    ) -> Result<radium::lang::SynType, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         self.translator.translate_type_to_syn_type(ty, &mut state)
@@ -144,7 +144,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn make_tuple_use(
         &self,
         translated_tys: Vec<radium::Type<'def>>,
-        uses: Option<&mut HashMap<Vec<radium::SynType>, radium::LiteralTypeUse<'def>>>,
+        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::LiteralTypeUse<'def>>>,
     ) -> radium::Type<'def> {
         self.translator.make_tuple_use(translated_tys, uses)
     }

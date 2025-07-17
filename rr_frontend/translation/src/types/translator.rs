@@ -46,7 +46,7 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     pub lifetime_scope: EarlyLateRegionMap,
 
     /// collection of tuple types that we use
-    pub tuple_uses: HashMap<Vec<radium::SynType>, radium::LiteralTypeUse<'def>>,
+    pub tuple_uses: HashMap<Vec<radium::lang::SynType>, radium::LiteralTypeUse<'def>>,
 
     /// Shim uses for the current function
     pub shim_uses: HashMap<scope::AdtUseKey, radium::LiteralTypeUse<'def>>,
@@ -866,7 +866,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let num_components = params.get_direct_ty_params().len();
         let (_, lit) = self.get_tuple_struct_ref(num_components);
 
-        let key: Vec<_> = params.get_direct_ty_params().iter().map(radium::SynType::from).collect();
+        let key: Vec<_> = params.get_direct_ty_params().iter().map(radium::lang::SynType::from).collect();
         let struct_use = radium::LiteralTypeUse::new(lit, params);
         if let STInner::InFunction(ref mut scope) = *state {
             let tuple_uses = &mut scope.tuple_uses;
@@ -1460,21 +1460,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::TyKind::Char => Ok(radium::Type::Char),
 
             ty::TyKind::Int(it) => Ok(radium::Type::Int(match it {
-                ty::IntTy::I8 => radium::IntType::I8,
-                ty::IntTy::I16 => radium::IntType::I16,
-                ty::IntTy::I32 => radium::IntType::I32,
-                ty::IntTy::I64 => radium::IntType::I64,
-                ty::IntTy::I128 => radium::IntType::I128,
-                ty::IntTy::Isize => radium::IntType::ISize, // should have same size as pointer types
+                ty::IntTy::I8 => radium::lang::IntType::I8,
+                ty::IntTy::I16 => radium::lang::IntType::I16,
+                ty::IntTy::I32 => radium::lang::IntType::I32,
+                ty::IntTy::I64 => radium::lang::IntType::I64,
+                ty::IntTy::I128 => radium::lang::IntType::I128,
+                ty::IntTy::Isize => radium::lang::IntType::ISize, // should have same size as pointer types
             })),
 
             ty::TyKind::Uint(it) => Ok(radium::Type::Int(match it {
-                ty::UintTy::U8 => radium::IntType::U8,
-                ty::UintTy::U16 => radium::IntType::U16,
-                ty::UintTy::U32 => radium::IntType::U32,
-                ty::UintTy::U64 => radium::IntType::U64,
-                ty::UintTy::U128 => radium::IntType::U128,
-                ty::UintTy::Usize => radium::IntType::USize, // should have same size as pointer types
+                ty::UintTy::U8 => radium::lang::IntType::U8,
+                ty::UintTy::U16 => radium::lang::IntType::U16,
+                ty::UintTy::U32 => radium::lang::IntType::U32,
+                ty::UintTy::U64 => radium::lang::IntType::U64,
+                ty::UintTy::U128 => radium::lang::IntType::U128,
+                ty::UintTy::Usize => radium::lang::IntType::USize, // should have same size as pointer types
             })),
 
             ty::TyKind::RawPtr(_, _) => Ok(radium::Type::RawPtr),
@@ -1653,32 +1653,32 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Translate a `attr::IntType` (this is different from the `ty`
     /// `IntType`).
-    const fn translate_integer_type(it: abi::IntegerType) -> radium::IntType {
+    const fn translate_integer_type(it: abi::IntegerType) -> radium::lang::IntType {
         match it {
             abi::IntegerType::Fixed(size, sign) => {
                 if sign {
                     match size {
-                        abi::Integer::I8 => radium::IntType::I8,
-                        abi::Integer::I16 => radium::IntType::I16,
-                        abi::Integer::I32 => radium::IntType::I32,
-                        abi::Integer::I64 => radium::IntType::I64,
-                        abi::Integer::I128 => radium::IntType::I128,
+                        abi::Integer::I8 => radium::lang::IntType::I8,
+                        abi::Integer::I16 => radium::lang::IntType::I16,
+                        abi::Integer::I32 => radium::lang::IntType::I32,
+                        abi::Integer::I64 => radium::lang::IntType::I64,
+                        abi::Integer::I128 => radium::lang::IntType::I128,
                     }
                 } else {
                     match size {
-                        abi::Integer::I8 => radium::IntType::U8,
-                        abi::Integer::I16 => radium::IntType::U16,
-                        abi::Integer::I32 => radium::IntType::U32,
-                        abi::Integer::I64 => radium::IntType::U64,
-                        abi::Integer::I128 => radium::IntType::U128,
+                        abi::Integer::I8 => radium::lang::IntType::U8,
+                        abi::Integer::I16 => radium::lang::IntType::U16,
+                        abi::Integer::I32 => radium::lang::IntType::U32,
+                        abi::Integer::I64 => radium::lang::IntType::U64,
+                        abi::Integer::I128 => radium::lang::IntType::U128,
                     }
                 }
             },
             abi::IntegerType::Pointer(sign) => {
                 if sign {
-                    radium::IntType::ISize
+                    radium::lang::IntType::ISize
                 } else {
-                    radium::IntType::USize
+                    radium::lang::IntType::USize
                 }
             },
         }
@@ -1748,8 +1748,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::SynType, TranslationError<'tcx>> {
-        self.translate_type_in_state(ty, scope).map(radium::SynType::from)
+    ) -> Result<radium::lang::SynType, TranslationError<'tcx>> {
+        self.translate_type_in_state(ty, scope).map(radium::lang::SynType::from)
     }
 
     /// Translate type in the scope of a function.
@@ -1912,7 +1912,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     pub(crate) fn make_tuple_use(
         &self,
         translated_tys: Vec<radium::Type<'def>>,
-        uses: Option<&mut HashMap<Vec<radium::SynType>, radium::LiteralTypeUse<'def>>>,
+        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::LiteralTypeUse<'def>>>,
     ) -> radium::Type<'def> {
         let num_components = translated_tys.len();
         if num_components == 0 {
@@ -1920,7 +1920,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         }
 
         let (_, lit) = self.get_tuple_struct_ref(num_components);
-        let key: Vec<_> = translated_tys.iter().map(radium::SynType::from).collect();
+        let key: Vec<_> = translated_tys.iter().map(radium::lang::SynType::from).collect();
         let mut scope_inst = radium::GenericScopeInst::empty();
         for ty in translated_tys {
             scope_inst.add_direct_ty_param(ty);
