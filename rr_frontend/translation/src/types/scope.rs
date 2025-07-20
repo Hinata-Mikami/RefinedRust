@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
+use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
@@ -193,9 +194,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             if let Some(r) = p.as_region() {
                 if let Some(name) = r.get_name() {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(strip_coq_ident(name.as_str())));
+                    scope.push(Param::Region(coq::Ident::new(name.as_str())));
                 } else {
-                    let name = format!("ulft_{region_count}");
+                    let name = coq::Ident::new(format!("ulft_{}", region_count));
                     region_count += 1;
                     scope.push(Param::Region(name));
                 }
@@ -270,19 +271,19 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // We add these lifetimes to a special late scope, as the de bruijn indices are different
         // from the early-bound binders
         let mut regions_to_quantify = Vec::new();
-
         let mut new_binder = Vec::new();
+
         // the last element should be the one with the lowest index
         for (idx, region) in bound_regions.iter().rev().enumerate().rev() {
             // TODO smarter way to autogenerate anonymous names?
             let name = region.get_name().map_or_else(
-                || format!("_lft_for_{idx}"),
-                |x| format!("lft_{}", strip_coq_ident(x.as_str())),
+                || coq::Ident::new(format!("_lft_for_{}", idx)),
+                |x| coq::Ident::new(format!("lft_{}", x.as_str())),
             );
 
             new_binder.push(name.clone());
             if region.get_name().is_some() {
-                self.lft_names.insert(name.clone(), idx);
+                self.lft_names.insert(format!("{}", name), idx);
             }
 
             regions_to_quantify.push(name);
@@ -317,7 +318,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             let mut new_binder = Vec::new();
             for late_vid in binder {
                 let name = map.region_names.get(late_vid);
-                let name = name.map_or_else(|| format!("_lft_for_fn_{idx}"), ToOwned::to_owned);
+                let name =
+                    name.map_or_else(|| coq::Ident::new(format!("_lft_for_fn_{}", idx)), ToOwned::to_owned);
                 new_binder.push(name);
                 idx += 1;
             }
@@ -609,9 +611,8 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
                     scope.push(Param::Ty(lit));
                 },
                 ty::GenericParamDefKind::Lifetime => {
-                    let name = format!("ulft_{name}");
                     lft_names.insert(p.name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(name));
+                    scope.push(Param::Region(coq::Ident::new(format!("ulft_{}", name))));
                 },
             }
         }

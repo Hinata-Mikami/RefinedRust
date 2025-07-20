@@ -9,6 +9,7 @@
 use std::collections::BTreeSet;
 
 use log::{info, trace, warn};
+use radium::coq;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -305,7 +306,7 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
         // If there are no constraints, at least constrain the lifetime by the lifetime of the
         // current function
         if outliving_lfts.is_empty() {
-            outliving_lfts.push("_flft".to_owned());
+            outliving_lfts.push(coq::Ident::new("_flft"));
         }
 
         // add statement for issuing the loan
@@ -371,7 +372,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
             if let mir::Rvalue::Use(mir::Operand::Constant(_)) = rhs {
                 // we are probably using a static variable here
                 let lft = ty_translator.translate_region_var(r)?;
-                annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
+                annotations.push(radium::Annotation::CopyLftName(coq::Ident::new("static"), lft));
                 continue;
             }
 
@@ -391,7 +392,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
 
             // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
             let lft = ty_translator.translate_region_var(r)?;
-            annotations.push(radium::Annotation::CopyLftName("static".to_owned(), lft));
+            annotations.push(radium::Annotation::CopyLftName(coq::Ident::new("static"), lft));
         }
     }
 

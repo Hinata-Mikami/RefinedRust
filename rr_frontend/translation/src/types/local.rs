@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use log::{info, trace};
+use radium::coq;
 use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
@@ -161,7 +162,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     }
 
     /// Format the Coq representation of an atomic region.
-    pub(crate) fn format_atomic_region(&self, r: polonius_info::AtomicRegion) -> String {
+    pub(crate) fn format_atomic_region(&self, r: polonius_info::AtomicRegion) -> coq::Ident {
         let scope = self.scope.borrow();
         scope.lifetime_scope.translate_atomic_region(r)
     }
@@ -330,7 +331,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // re-bind the function's lifetime parameters
         for i in 0..num_param_regions {
-            let lft_name = format!("ulft_{i}");
+            let lft_name = coq::Ident::new(format!("ulft_{}", i));
             scope.add_lft_param(lft_name.clone());
             fn_inst.add_lft_param(lft_name);
         }
@@ -340,7 +341,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         for region in regions {
             // Use the name the region has inside the function as the binder name, so that the
             // names work out when translating the types below
-            let lft_name = self.translate_region_var(region).unwrap_or_else(|_| format!("ulft_{next_lft}"));
+            let lft_name = self
+                .translate_region_var(region)
+                .unwrap_or_else(|_| coq::Ident::new(format!("ulft_{}", next_lft)));
             scope.add_lft_param(lft_name.clone());
 
             next_lft += 1;
@@ -359,8 +362,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
                     let name = r.get_name().map_or_else(
-                        || format!("late_lft_{late_bound_idx}"),
-                        |x| strip_coq_ident(x.as_str()),
+                        || coq::Ident::new(format!("late_lft_{}", late_bound_idx)),
+                        |x| coq::Ident::new(x.as_str()),
                     );
 
                     // push this to the context.

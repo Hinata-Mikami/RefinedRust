@@ -336,6 +336,30 @@ use transitive::Transitive;
 
 use crate::{fmt_list, model};
 
+/// An [identifier].
+///
+/// [identifier]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-ident
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+#[display("{}", _0)]
+pub struct Ident(String);
+
+impl Ident {
+    /// Create a new [identifier].
+    ///
+    /// The identifier must start with a letter or underscore, followed by any non-whitespace characters.
+    /// Furthermore, incompatible symbols (like `'` or `::`) are strip from the identifier to be compatible
+    #[must_use]
+    pub fn new<I: Into<String>>(ident: I) -> Self {
+        let s = ident
+            .into()
+            .replace('\'', "")
+            .replace("::", "_")
+            .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "");
+
+        Self(s)
+    }
+}
+
 /// A [document], composed of commands.
 ///
 /// [document]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-document

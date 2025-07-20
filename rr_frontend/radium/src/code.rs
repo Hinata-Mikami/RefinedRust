@@ -675,7 +675,7 @@ fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
     out
 }
 
-fn make_lft_map_string(els: &Vec<(String, String)>) -> String {
+fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
     let mut out = String::with_capacity(100);
     for (key, value) in els {
         out.push_str(format!("named_lft_update \"{}\" {} $ ", key, value).as_str());
@@ -1091,8 +1091,8 @@ impl Function<'_> {
         // initialize lifetimes
         let mut lfts: Vec<_> =
             self.spec.generics.get_lfts().iter().map(|n| (n.to_owned(), n.to_owned())).collect();
-        lfts.push(("_flft".to_owned(), "ϝ".to_owned()));
-        lfts.push(("static".to_owned(), "static".to_owned()));
+        lfts.push((coq::Ident::new("_flft"), coq::Ident::new("ϝ")));
+        lfts.push((coq::Ident::new("static"), coq::Ident::new("static")));
         let formatted_lifetimes = make_lft_map_string(&lfts);
         write!(f, "init_lfts ({} );\n", formatted_lifetimes.as_str())?;
 

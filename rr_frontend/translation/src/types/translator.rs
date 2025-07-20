@@ -282,7 +282,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    Ok(format!("ulft_{}", strip_coq_ident(name)))
+                    Ok(coq::Ident::new(format!("ulft_{}", name)))
                 } else {
                     Err(TranslationError::UnknownEarlyRegion(region))
                 }
@@ -291,12 +291,12 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
-                    Ok(format!("ulft_{}", strip_coq_ident(name)))
+                    Ok(coq::Ident::new(format!("ulft_{}", name)))
                 } else {
                     Err(TranslationError::UnknownEarlyRegion(region))
                 }
             },
-            STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
+            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
     }
 
@@ -325,7 +325,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
                 Ok(lft.to_owned())
             },
-            STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
+            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
     }
 
@@ -377,7 +377,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 info!("Translating region: ReVar {:?} as None (outside of function)", v);
                 Err(TranslationError::PoloniusRegionOutsideFunction(v))
             },
-            STInner::CalleeTranslation(_) => Ok("DUMMY".to_owned()),
+            STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
     }
 }
@@ -604,8 +604,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 Err(TranslationError::PlaceholderRegion)
             },
 
-            ty::RegionKind::ReStatic => Ok("static".to_owned()),
-            ty::RegionKind::ReErased => Ok("erased".to_owned()),
+            ty::RegionKind::ReStatic => Ok(coq::Ident::new("static")),
+            ty::RegionKind::ReErased => Ok(coq::Ident::new("erased")),
 
             ty::RegionKind::ReVar(v) => translation_state.lookup_polonius_var(v.into()),
 

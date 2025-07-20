@@ -15,6 +15,7 @@ mod terminator;
 use std::collections::{HashMap, HashSet};
 
 use log::{info, trace};
+use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use typed_arena::Arena;
@@ -370,7 +371,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         None
     }
 
-    fn format_region(&self, r: facts::Region) -> String {
+    fn format_region(&self, r: facts::Region) -> coq::Ident {
         let lft = self.info.mk_atomic_region(r);
         self.ty_translator.format_atomic_region(lft)
     }

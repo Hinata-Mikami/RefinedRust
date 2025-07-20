@@ -172,7 +172,7 @@ impl<'def> TypeWithRef<'def> {
     }
 }
 
-pub type Lft = String;
+pub type Lft = coq::Ident;
 
 /// A universal lifetime that is not locally owned.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]

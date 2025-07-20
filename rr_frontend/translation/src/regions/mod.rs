@@ -17,6 +17,7 @@ pub(crate) mod region_bi_folder;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use derive_more::{Constructor, Debug};
+use radium::coq;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 
@@ -81,39 +82,27 @@ impl EarlyLateRegionMap {
 pub(crate) fn format_atomic_region_direct(
     r: polonius_info::AtomicRegion,
     scope: Option<&EarlyLateRegionMap>,
-) -> String {
-    match r {
-        polonius_info::AtomicRegion::Loan(r) => format!("llft{}", r.index()),
-        polonius_info::AtomicRegion::PlaceRegion(r, uc) => {
-            if uc {
-                format!("puclft{}", r.index())
-            } else {
-                format!("plft{}", r.index())
-            }
-        },
-        polonius_info::AtomicRegion::Unknown(r, uc) => {
-            if uc {
-                format!("vuclft{}", r.index())
-            } else {
-                format!("vlft{}", r.index())
-            }
-        },
+) -> radium::Lft {
+    let (prefix, index) = match r {
+        polonius_info::AtomicRegion::Loan(r) => ("l", r.index()),
+        polonius_info::AtomicRegion::PlaceRegion(r, uc) => (if uc { "puc" } else { "p" }, r.index()),
+        polonius_info::AtomicRegion::Unknown(r, uc) => (if uc { "vuc" } else { "v" }, r.index()),
         polonius_info::AtomicRegion::Universal(k, r) => {
             if matches!(k, polonius_info::UniversalRegionKind::Static) {
-                return "static".to_owned();
+                return coq::Ident::new("static");
             }
 
-            let Some(scope) = scope else {
-                return format!("ulft{}", r.index());
-            };
+            if let Some(scope) = scope
+                && let Some(s) = scope.lookup_region(r)
+            {
+                return s.clone();
+            }
 
-            let Some(s) = scope.lookup_region(r) else {
-                return format!("ulft{}", r.index());
-            };
-
-            s.to_owned()
+            ("u", r.index())
         },
-    }
+    };
+
+    coq::Ident::new(format!("{}lft{}", prefix, index))
 }
 
 pub(crate) fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {

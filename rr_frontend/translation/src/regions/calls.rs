@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
 use log::info;
+use radium::coq;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -192,7 +193,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     unconstrained_regions: BTreeSet<facts::Region>,
-    early_region_map: &BTreeMap<String, usize>,
+    early_region_map: &BTreeMap<coq::Ident, usize>,
 ) -> Result<(Vec<radium::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {

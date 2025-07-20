@@ -9,6 +9,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use log::info;
+use radium::coq;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
@@ -54,11 +55,12 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
             match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => {
                     let name = strip_coq_ident(r.name.as_str());
-                    universal_lifetimes.insert(next_id, format!("ulft_{}", name));
+                    universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", name)));
                     lifetime_names.insert(name, next_id);
                 },
                 _ => {
-                    universal_lifetimes.insert(next_id, format!("ulft_{}", num_early_bounds));
+                    universal_lifetimes
+                        .insert(next_id, coq::Ident::new(format!("ulft_{}", num_early_bounds)));
                 },
             }
         } else {
@@ -87,14 +89,14 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
                 let mut region_name = strip_coq_ident(sym.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();
-                    universal_lifetimes.insert(next_id, format!("ulft_{}", region_name));
+                    universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", region_name)));
                 } else {
-                    universal_lifetimes.insert(next_id, format!("ulft_{}", region_name));
+                    universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", region_name)));
                     lifetime_names.insert(region_name, next_id);
                 }
             },
             ty::BoundRegionKind::Anon => {
-                universal_lifetimes.insert(next_id, format!("ulft_{}", next_id.as_usize()));
+                universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", next_id.as_usize())));
             },
             _ => (),
         }
