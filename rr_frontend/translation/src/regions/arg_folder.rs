@@ -4,8 +4,6 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::btree_map;
-
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
@@ -48,17 +46,6 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
     }
 }
 
-pub(crate) fn rename_region_vids<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
-where
-    T: TypeFoldable<ty::TyCtxt<'tcx>>,
-{
-    let mut folder = RegionRenameVisitor {
-        tcx,
-        rename_map: map,
-    };
-    x.fold_with(&mut folder)
-}
-
 pub(crate) fn rename_closure_capture_regions<'tcx, 'a, T>(
     x: T,
     tcx: ty::TyCtxt<'tcx>,
@@ -96,11 +83,8 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
                 // looking for the corresponding placeholder region
                 let r2 = regions::init::find_placeholder_region_for(v.into(), self.info).unwrap();
 
-                if let btree_map::Entry::Vacant(e) = self.substitution.region_names.entry(r2) {
-                    let lft = self.info.mk_atomic_region(r2);
-                    let name = regions::format_atomic_region_direct(lft, None);
-                    e.insert(name);
-                }
+                let lft = self.info.mk_atomic_region(r2);
+                self.substitution.ensure_closure_region(lft);
 
                 ty::Region::new_var(self.cx(), r2.into())
             },
@@ -109,6 +93,45 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
     }
 }
 
+/// Find the regions mentioned in the captures of a closure
+pub(crate) struct ClosureCaptureRegionCollector<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    regions: Vec<ty::Region<'tcx>>,
+}
+impl<'tcx> ClosureCaptureRegionCollector<'tcx> {
+    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            regions: vec![],
+        }
+    }
+
+    pub(crate) fn result(self) -> Vec<ty::Region<'tcx>> {
+        self.regions
+    }
+}
+
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionCollector<'tcx> {
+    fn cx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        self.regions.push(r);
+        r
+    }
+}
+
+pub(crate) fn rename_region_vids<'tcx, T>(x: T, tcx: ty::TyCtxt<'tcx>, map: Vec<ty::Region<'tcx>>) -> T
+where
+    T: TypeFoldable<ty::TyCtxt<'tcx>>,
+{
+    let mut folder = RegionRenameVisitor {
+        tcx,
+        rename_map: map,
+    };
+    x.fold_with(&mut folder)
+}
 /// Rename `RegionVid`s.
 struct RegionRenameVisitor<'tcx> {
     tcx: ty::TyCtxt<'tcx>,

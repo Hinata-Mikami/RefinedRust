@@ -14,7 +14,7 @@ pub(crate) mod inclusion_tracker;
 pub(crate) mod init;
 pub(crate) mod region_bi_folder;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
 use derive_more::{Constructor, Debug};
 use radium::coq;
@@ -29,14 +29,20 @@ use crate::environment::polonius_info;
 /// Data structure that maps early and late region indices inside functions to Polonius regions.
 #[derive(Constructor, Clone, Debug, Default)]
 pub(crate) struct EarlyLateRegionMap {
-    // maps indices of early and late regions to Polonius region ids
+    // Maps indices of early and late regions to Polonius region ids.
+    // For closures, this does not include the lifetimes for the captures.
     pub early_regions: Vec<Option<facts::Region>>,
     pub late_regions: Vec<Vec<facts::Region>>,
 
-    // maps Polonius region ids to names
+    pub closure_regions: Vec<facts::Region>,
+
+    // Maps Polonius region ids to names.
+    // This map is the ground truth of what eventually gets added to the generated Rocq
+    // representation.
+    // In particular, it contains the mapping of closure capture lifetimes.
     pub region_names: BTreeMap<facts::Region, radium::Lft>,
 
-    // maps source-level universal lifetime names to region ids
+    // Maps source-level universal lifetime names to region ids.
     pub lft_names: HashMap<String, facts::Region>,
 }
 
@@ -75,6 +81,16 @@ impl EarlyLateRegionMap {
 
     pub(crate) fn translate_atomic_region(&self, r: polonius_info::AtomicRegion) -> radium::Lft {
         format_atomic_region_direct(r, Some(self))
+    }
+
+    /// Make sure that a region for a closure capture is registered.
+    pub(crate) fn ensure_closure_region(&mut self, r: polonius_info::AtomicRegion) {
+        if let btree_map::Entry::Vacant(e) = self.region_names.entry(r.get_region()) {
+            let name = format_atomic_region_direct(r, None);
+            e.insert(name);
+
+            self.closure_regions.push(r.get_region());
+        }
     }
 }
 

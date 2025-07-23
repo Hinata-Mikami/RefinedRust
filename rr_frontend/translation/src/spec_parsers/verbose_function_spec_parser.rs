@@ -48,6 +48,14 @@ pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
     ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>>;
 }
 
+pub(crate) struct ClosureSpecInfo {
+    // the encoded pre and postconditions
+    pub pre_encoded: coq::term::Term,
+    pub post_encoded: coq::term::Term,
+    // only if this closure is FnMut or Fn
+    pub post_mut_encoded: Option<coq::term::Term>,
+}
+
 pub(crate) trait FunctionSpecParser<'def> {
     /// Parse a set of attributes into a function spec.
     /// The implementation can assume the `attrs` to be prefixed by the tool prefix (e.g. `rr`) and
@@ -67,7 +75,7 @@ pub(crate) trait FunctionSpecParser<'def> {
         builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: F,
-    ) -> Result<(), String>
+    ) -> Result<ClosureSpecInfo, String>
     where
         F: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>;
 }
@@ -708,6 +716,7 @@ where
                 // TODO: could handle this by parsing capture strings in specs
                 //unimplemented!("only support specifying closure captures without projections");
             }
+
             let base = capture.var_ident.name.as_str();
             if let Some((_, (pre, post))) = capture_spec_map.remove_entry(base) {
                 // we kinda want to specify the thing independently of how it is captured
@@ -723,8 +732,6 @@ where
                                 "Did not expect postcondition {:?} for by-value capture",
                                 post
                             ));
-                            //let (processed_post, _) = self.make_type_with_ref(&post, ty);
-                            //post_patterns.push(processed_post.1);
                         }
                     },
                     ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable) => {
@@ -875,7 +882,7 @@ where
         builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: H,
-    ) -> Result<(), String>
+    ) -> Result<ClosureSpecInfo, String>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
@@ -973,7 +980,50 @@ where
             builder.have_spec();
         }
 
-        Ok(())
+        // How do I assemble this?
+        // - for the closure state, I do not get the ghost var or so (in case of mutref)
+        // - instead, I always get Self. 
+        // - Thus, we cannot just literally take the generated spec pattern
+        //
+        // - For the args, I will need to detuple them.
+        //
+        // Should I rethink the capture specification format at this point?
+        // - e.g., for each capture, I could introduce a binding
+        // - difficulty: what bindings to introduce for captured subplaces?
+        //   + I cannot easily have x.bla syntax. 
+        //   + I could enable that via {x.bla}, conceivably. That would be consistent, as we are escaping Rust expressions there.
+        //
+        // Is there a reason to keep the captures format?
+        //
+        // I can keep this for now. I think the format without captures can be fitted into this, by
+        // generating the capture map myself and introducing some params
+        //
+        //
+        // Pre self args := 
+        //  ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond 
+        //
+        // Post self args ret :=
+        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ 
+        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
+        //      (observes for the mutable captures?)
+        //
+        // 
+        // PostMut self args ret self' :=
+        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ 
+        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
+        //    self' = post_pattern 
+        //
+
+        //
+        // Note: make sure to mangle the arg names of the generated lambdas, so we don't collide
+        // with names in the specification (e.g. ret)
+        let spec_info = ClosureSpecInfo {
+            pre_encoded: coq::term::Term::Literal("λ _ _, True%I".to_owned()),
+            post_encoded: coq::term::Term::Literal("λ _ _ _, True%I".to_owned()),
+            post_mut_encoded: Some(coq::term::Term::Literal("λ _ _ _ _, True%I".to_owned())),
+        };
+
+        Ok(spec_info)
     }
 
     fn parse_function_spec(

@@ -14,6 +14,7 @@ mod terminator;
 
 use std::collections::{HashMap, HashSet};
 
+pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
 use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;

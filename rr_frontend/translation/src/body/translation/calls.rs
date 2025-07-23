@@ -18,9 +18,11 @@ use crate::traits::resolution;
 use crate::{regions, types};
 
 /// Get the syntypes of function arguments for a procedure call.
-fn get_arg_syntypes_for_procedure_call<'tcx>(
+pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     tcx: ty::TyCtxt<'tcx>,
-    ty_translator: &types::LocalTX<'_, 'tcx>,
+    ty_translator: &types::TX<'def, 'tcx>,
+    caller_env: &types::scope::Params<'tcx, 'def>,
+    typing_env: &ty::TypingEnv<'tcx>,
     callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
 ) -> Result<Vec<radium::lang::SynType>, TranslationError<'tcx>> {
@@ -32,9 +34,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx>(
     // syntactic types here.
     // Since we do the substitution of the generics above, we should translate generics and
     // traits in the caller's scope.
-    let scope = ty_translator.scope.borrow();
-    let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
-    let callee_state = types::CalleeState::new(&typing_env, &scope.generic_scope);
+    let callee_state = types::CalleeState::new(typing_env, caller_env);
     let mut dummy_state = types::STInner::CalleeTranslation(callee_state);
 
     let mut syntypes = Vec::new();
@@ -42,7 +42,7 @@ fn get_arg_syntypes_for_procedure_call<'tcx>(
         ty::TyKind::FnDef(_, _) => {
             let sig = full_ty.fn_sig(tcx);
             for ty in sig.inputs().skip_binder() {
-                let st = ty_translator.translator.translate_type_to_syn_type(*ty, &mut dummy_state)?;
+                let st = ty_translator.translate_type_to_syn_type(*ty, &mut dummy_state)?;
                 syntypes.push(st);
             }
         },
@@ -58,14 +58,22 @@ fn get_arg_syntypes_for_procedure_call<'tcx>(
                     syntypes.push(radium::lang::SynType::Ptr);
                 },
                 ty::ClosureKind::FnOnce => {
-                    let st =
-                        ty_translator.translator.translate_type_to_syn_type(tuple_ty, &mut dummy_state)?;
+                    let st = ty_translator.translate_type_to_syn_type(tuple_ty, &mut dummy_state)?;
                     syntypes.push(st);
                 },
             }
-            for ty in pre_sig.inputs() {
-                let st = ty_translator.translator.translate_type_to_syn_type(*ty, &mut dummy_state)?;
-                syntypes.push(st);
+
+            trace!("assembling arg syntypes for closure call: sig inputs={:?}", pre_sig.inputs());
+            let tupled_inputs = pre_sig.inputs();
+            assert!(tupled_inputs.len() == 1);
+            let input_tuple_ty = tupled_inputs[0];
+            if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
+                for ty in *args {
+                    let st = ty_translator.translate_type_to_syn_type(ty, &mut dummy_state)?;
+                    syntypes.push(st);
+                }
+            } else {
+                unreachable!();
             }
         },
         _ => unimplemented!(),
@@ -87,14 +95,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Arguments:
     /// - `callee_did`: the `DefId` of the callee
     /// - `ty_params`: the instantiation for the callee's type parameters
-    /// - `trait_spec_terms`: if the callee has any trait assumptions, these are specification parameter terms
-    ///   for these traits
-    /// - `trait_assoc_tys`: if the callee has any trait assumptions, these are the instantiations for all
-    ///   associated types
+    /// - `trait_specs`: if the callee has any trait assumptions, these are specification parameter terms for
+    ///   these traits
     fn register_use_procedure(
         &mut self,
         callee_did: DefId,
-        extra_spec_args: Vec<String>,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
@@ -133,9 +138,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let code_name = meta.get_name();
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
 
+            let scope = self.ty_translator.scope.borrow();
+            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), scope.did);
             let syntypes = get_arg_syntypes_for_procedure_call(
                 self.env.tcx(),
-                &self.ty_translator,
+                self.ty_translator.translator,
+                // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
+                &scope.generic_scope,
+                &typing_env,
                 callee_did,
                 ty_params.as_slice(),
             )?;
@@ -147,14 +157,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 loc_name, callee_did, fn_inst, syntypes
             );
 
-            let proc_use = radium::UsedProcedure::new(
-                loc_name,
-                spec_term,
-                extra_spec_args,
-                quantified_args.scope,
-                fn_inst,
-                syntypes,
-            );
+            let proc_use =
+                radium::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
 
             res = proc_use.loc_name.clone();
             self.collected_procedures.insert(tup, proc_use);
@@ -207,10 +211,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
+            let scope = self.ty_translator.scope.borrow();
+
             // TODO: should we use ty_params or method_params?
+            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), scope.did);
             let syntypes = get_arg_syntypes_for_procedure_call(
                 self.env.tcx(),
-                &self.ty_translator,
+                self.ty_translator.translator,
+                &scope.generic_scope,
+                &typing_env,
                 callee_did,
                 ty_params.as_slice(),
             )?;
@@ -225,7 +234,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let proc_use = radium::UsedProcedure::new(
                 method_loc_name,
                 method_spec_term,
-                vec![],
                 function_spec_scope,
                 fn_inst,
                 syntypes,
@@ -285,7 +293,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
             // track that we are using this function and generate the Coq location name
-            let code_inst = self.register_use_procedure(*defid, vec![], params, trait_spec_terms)?;
+            let code_inst = self.register_use_procedure(*defid, params, trait_spec_terms)?;
 
             let ty_hint = code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
@@ -324,7 +332,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     self.resolve_trait_requirements_of_call(resolved_did, resolved_params)?;
 
                 let code_inst =
-                    self.register_use_procedure(resolved_did, vec![], resolved_params, trait_spec_terms)?;
+                    self.register_use_procedure(resolved_did, resolved_params, trait_spec_terms)?;
                 let ty_hint =
                     code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 
@@ -373,7 +381,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
                 let code_inst =
-                    self.register_use_procedure(resolved_did, vec![], ty::List::empty(), trait_spec_terms)?;
+                    self.register_use_procedure(resolved_did, ty::List::empty(), trait_spec_terms)?;
                 let ty_hint =
                     code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
 

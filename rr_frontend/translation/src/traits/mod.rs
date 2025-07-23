@@ -28,6 +28,18 @@ pub(crate) enum Error<'tcx> {
     #[display("The given `DefId` {:?} is not a trait implementation", _0)]
     NotATraitImpl(DefId),
 
+    /// This closure does not implement the closure trait
+    #[display("Did not find trait impl of {:?} for closure {:?}", _1, _0)]
+    NotAClosureTraitImpl(DefId, ty::ClosureKind),
+
+    /// This `DefId` does not represent a closure trait, when it was expected to.
+    #[display("This DefId does not represent a closure trait {:?}", _0)]
+    NotAClosureTrait(DefId),
+
+    /// The trait for this closure kind could not be found
+    #[display("Could not find the trait for closure kind {:?}", _0)]
+    CouldNotFindClosureTrait(ty::ClosureKind),
+
     /// This `DefId` is not a trait method
     #[display("The given `DefId` {:?} is not a trait method", _0)]
     NotATraitMethod(DefId),
@@ -47,6 +59,10 @@ pub(crate) enum Error<'tcx> {
     /// This trait impl already exists
     #[display("This trait impl {:?} already has been registered", _0)]
     ImplAlreadyExists(DefId),
+
+    /// This closure trait impl already exists
+    #[display("This closure ({:?}, {:?}) already has been registered", _0, _1)]
+    ClosureImplAlreadyExists(DefId, ty::ClosureKind),
 
     /// Trait hasn't been registered yet but is used
     #[display("This trait {:?} has not been registered yet", _0)]

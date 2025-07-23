@@ -805,7 +805,7 @@ impl InvariantSpec {
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
-                scope.identity_instantiation(),
+                scope.identity_instantiation_term(),
                 base_type
             )
             .unwrap();
@@ -818,7 +818,7 @@ impl InvariantSpec {
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
-                scope.identity_instantiation(),
+                scope.identity_instantiation_term(),
                 base_type
             )
             .unwrap();
@@ -874,7 +874,7 @@ impl InvariantSpec {
 
         // get the applied base type
         let applied_base_type = coq::term::App::new(base_type_name, rt_instantiations.0.clone());
-        let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation());
+        let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation_term());
 
         write!(
             out,
@@ -1423,7 +1423,7 @@ impl<'def> AbstractStruct<'def> {
             write!(
                 out,
                 "{indent}{indent}ex_plain_t _ _ ({spec_name} {}) ({}).\n",
-                self.scope.identity_instantiation(),
+                self.scope.identity_instantiation_term(),
                 self.variant_def.generate_coq_type_term(sls_app)
             )
             .unwrap();
@@ -1904,7 +1904,7 @@ impl<'def> AbstractEnum<'def> {
                 out,
                 "| {} => {ty} {}",
                 coq::term::App::new(pat, apps.clone()),
-                v.scope.identity_instantiation()
+                v.scope.identity_instantiation_term()
             )
             .unwrap();
         }
@@ -1971,7 +1971,7 @@ impl<'def> AbstractEnum<'def> {
 
                 format!(
                     "if (decide (variant = \"{name}\")) then Some $ mk_enum_tag_sem _ ({ty} {}) {inj}",
-                    v.scope.identity_instantiation()
+                    v.scope.identity_instantiation_term()
                 )
             })
             .collect();
@@ -2045,7 +2045,7 @@ impl<'def> AbstractEnum<'def> {
                 let base_type = format!(
                     "({} {})",
                     v.variant_def.plain_ty_name.as_str(),
-                    v.scope.identity_instantiation(),
+                    v.scope.identity_instantiation_term(),
                 );
                 let inv_def = inv.generate_coq_type_def_core(
                     &base_type,
@@ -2156,7 +2156,7 @@ impl<'def> AbstractEnum<'def> {
             self.scope.get_all_type_term(),
             self.scope,
             self.enum_def_name,
-            self.scope.identity_instantiation(),
+            self.scope.identity_instantiation_term(),
         )
         .unwrap();
 
@@ -2405,7 +2405,7 @@ impl<'def> InnerFunctionSpec<'def> {
 /// A Radium function specification.
 #[derive(Clone, Debug)]
 #[expect(clippy::partial_pub_fields)]
-pub struct FunctionSpec<'def, T> {
+pub struct FunctionSpec<'def, T = InnerFunctionSpec<'def>> {
     /// The name of the spec
     pub spec_name: String,
     pub function_name: String,
@@ -2452,6 +2452,11 @@ impl<'def, T> FunctionSpec<'def, T> {
             late_coq_params: coq::binder::BinderList::empty(),
             spec,
         }
+    }
+
+    /// Get the spec's `GenericScope`.
+    pub const fn get_generics(&self) -> &GenericScope<'def> {
+        &self.generics
     }
 
     #[must_use]
@@ -3193,16 +3198,9 @@ pub type LiteralTraitSpecUseRef<'def> = &'def LiteralTraitSpecUseCell<'def>;
 impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
     /// Get the associated types we need to quantify over.
     fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
-        let mut assoc_tys = Vec::new();
         let b = self.borrow();
         let b = b.as_ref().unwrap();
-
-        for (idx, _) in b.trait_ref.assoc_tys.iter().enumerate() {
-            if b.assoc_ty_constraints[idx].is_none() {
-                assoc_tys.push(b.make_assoc_type_lit(idx));
-            }
-        }
-        assoc_tys
+        b.get_assoc_ty_params()
     }
 
     fn get_origin(&self) -> TyParamOrigin {
@@ -3210,9 +3208,26 @@ impl TraitReqInfo for LiteralTraitSpecUseRef<'_> {
         let b = b.as_ref().unwrap();
         b.origin
     }
+
+    fn set_origin(&mut self, origin: TyParamOrigin) {
+        let mut b = self.borrow_mut();
+        let b = b.as_mut().unwrap();
+        b.origin = origin;
+    }
 }
 
 impl<'def> LiteralTraitSpecUse<'def> {
+    fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam> {
+        let mut assoc_tys = Vec::new();
+
+        for (idx, _) in self.trait_ref.assoc_tys.iter().enumerate() {
+            if self.assoc_ty_constraints[idx].is_none() {
+                assoc_tys.push(self.make_assoc_type_lit(idx));
+            }
+        }
+        assoc_tys
+    }
+
     /// Get the name for a spec parameter for this trait instance.
     #[must_use]
     fn make_spec_param_name(&self) -> String {
@@ -3573,14 +3588,35 @@ impl<T> TraitReqInst<'_, T> {
     }
 }
 
+impl<'def> TraitReqInst<'def, Type<'def>> {
+    fn new_as_identity(req: LiteralTraitSpecUseRef<'def>) -> Self {
+        let trait_use = req.borrow();
+        let trait_use = trait_use.as_ref().unwrap();
+
+        // We will just re-quantify over the HRTBs, i.e., the instantiation is still generic in them.
+        let hrtb_scope = &trait_use.scope;
+        let hrtb_scope_inst = hrtb_scope.identity_instantiation();
+
+        let spec = TraitReqInstSpec::Quantified(QuantifiedTraitImpl {
+            trait_ref: req,
+            scope_inst: hrtb_scope_inst,
+        });
+
+        let assoc_ty_inst = trait_use.get_assoc_ty_params().into_iter().map(Type::LiteralParam).collect();
+
+        Self::new(spec, trait_use.origin, assoc_ty_inst, trait_use.trait_ref, hrtb_scope.to_owned())
+    }
+}
+
 pub trait TraitReqInfo {
     fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam>;
     fn get_origin(&self) -> TyParamOrigin;
+    fn set_origin(&mut self, origin: TyParamOrigin);
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
-pub(crate) struct TyParamList {
-    pub(crate) params: Vec<LiteralTyParam>,
+pub struct TyParamList {
+    pub params: Vec<LiteralTyParam>,
 }
 
 impl TyParamList {
@@ -3799,7 +3835,7 @@ pub struct GenericScope<'def, T = LiteralTraitSpecUseRef<'def>> {
     /// trait requirements quantified by a surrounding scope.
     surrounding_trait_requirements: Vec<T>,
 
-    /// TODO: also separate into direct and surrounding?
+    /// TODO: also separate into direct and surrounding
     lfts: Vec<Lft>,
 
     _phantom: PhantomData<&'def ()>,
@@ -3835,11 +3871,6 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
         coq::iris::IProp::Atom(prop)
     }
 
-    // TODO hack
-    pub fn clear_lfts(&mut self) {
-        self.lfts = Vec::new();
-    }
-
     /// Get type parameters quantified by a surrounding scope.
     #[must_use]
     const fn get_surrounding_ty_params(&self) -> &TyParamList {
@@ -3848,13 +3879,13 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get type parameters quantified on this object.
     #[must_use]
-    const fn get_direct_ty_params(&self) -> &TyParamList {
+    pub const fn get_direct_ty_params(&self) -> &TyParamList {
         &self.direct_tys
     }
 
     /// Get associated type parameters of trait requirements on this object.
     #[must_use]
-    fn get_direct_assoc_ty_params(&self) -> TyParamList {
+    pub fn get_direct_assoc_ty_params(&self) -> TyParamList {
         let ty_params = self.direct_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params);
 
         TyParamList::new(ty_params.flatten().collect())
@@ -3862,7 +3893,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get associated type parameters of trait requirements quantified by a surrounding scope.
     #[must_use]
-    fn get_surrounding_assoc_ty_params(&self) -> TyParamList {
+    pub fn get_surrounding_assoc_ty_params(&self) -> TyParamList {
         let ty_params = self.surrounding_trait_requirements.iter().map(TraitReqInfo::get_assoc_ty_params);
 
         TyParamList::new(ty_params.flatten().collect())
@@ -3870,7 +3901,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get direct type parameters and associated type parameters.
     #[must_use]
-    fn get_direct_ty_params_with_assocs(&self) -> TyParamList {
+    pub fn get_direct_ty_params_with_assocs(&self) -> TyParamList {
         let mut direct = self.get_direct_ty_params().clone();
         direct.merge(self.get_direct_assoc_ty_params());
         direct
@@ -3878,7 +3909,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get type parameters and associated type parameters quantified by a surrounding scope.
     #[must_use]
-    fn get_surrounding_ty_params_with_assocs(&self) -> TyParamList {
+    pub fn get_surrounding_ty_params_with_assocs(&self) -> TyParamList {
         let mut surrounding = self.get_surrounding_ty_params().clone();
         surrounding.merge(self.get_surrounding_assoc_ty_params());
         surrounding
@@ -3886,7 +3917,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Get all type parameters and associated type parameters.
     #[must_use]
-    pub(crate) fn get_all_ty_params_with_assocs(&self) -> TyParamList {
+    pub fn get_all_ty_params_with_assocs(&self) -> TyParamList {
         let mut params = self.get_surrounding_ty_params_with_assocs();
         let direct = self.get_direct_ty_params_with_assocs();
         params.merge(direct);
@@ -3896,7 +3927,7 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     /// Generate an instantiation of a term with the identity
     #[must_use]
-    pub(crate) fn identity_instantiation(&self) -> String {
+    pub(crate) fn identity_instantiation_term(&self) -> String {
         let mut out = String::new();
 
         for ty in self.get_all_ty_params_with_assocs().params {
@@ -3940,19 +3971,19 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
     }
 
     #[must_use]
-    pub(crate) fn get_lfts(&self) -> &[Lft] {
+    pub fn get_lfts(&self) -> &[Lft] {
         &self.lfts
     }
 
     /// Get trait requirements declared on the object.
     #[must_use]
-    fn get_direct_trait_requirements(&self) -> &[T] {
+    pub fn get_direct_trait_requirements(&self) -> &[T] {
         &self.direct_trait_requirements
     }
 
     /// Get trait requirements surrounding the object.
     #[must_use]
-    fn get_surrounding_trait_requirements(&self) -> &[T] {
+    pub fn get_surrounding_trait_requirements(&self) -> &[T] {
         &self.surrounding_trait_requirements
     }
 
@@ -3966,6 +3997,12 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
 
     pub fn add_lft_param(&mut self, lft: Lft) {
         self.lfts.push(lft);
+    }
+
+    pub fn remove_lft_param(&mut self, lft: &Lft) {
+        if let Some(p) = self.lfts.iter().position(|x| x == lft) {
+            self.lfts.remove(p);
+        }
     }
 
     /// Add a trait requirement.
@@ -4115,6 +4152,30 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
         }
 
         coq::binder::BinderList::new(params)
+    }
+
+    #[must_use]
+    pub fn identity_instantiation(&self) -> GenericScopeInst<'def> {
+        let direct_tys: Vec<_> =
+            self.direct_tys.params.iter().map(|x| Type::LiteralParam(x.to_owned())).collect();
+        let surrounding_tys: Vec<_> =
+            self.surrounding_tys.params.iter().map(|x| Type::LiteralParam(x.to_owned())).collect();
+
+        let direct_trait_requirements =
+            self.direct_trait_requirements.iter().map(|x| TraitReqInst::new_as_identity(x)).collect();
+        let surrounding_trait_requirements = self
+            .surrounding_trait_requirements
+            .iter()
+            .map(|x| TraitReqInst::new_as_identity(x))
+            .collect();
+
+        GenericScopeInst {
+            direct_tys,
+            surrounding_tys,
+            direct_trait_requirements,
+            surrounding_trait_requirements,
+            lfts: self.lfts.clone(),
+        }
     }
 }
 
@@ -4700,7 +4761,7 @@ impl<'def> TraitRefInst<'def> {
         let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args.0).to_string();
 
         // specialize to semtys
-        specialized_spec.push_str(&self.generics.identity_instantiation());
+        specialized_spec.push_str(&self.generics.identity_instantiation_term());
 
         coq::term::Term::Literal(specialized_spec)
         //coq::term::Term::App(Box::new(coq::term::App::new(coq::term::Term::Literal(spec_record.

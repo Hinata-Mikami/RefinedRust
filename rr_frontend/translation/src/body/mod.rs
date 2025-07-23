@@ -6,3 +6,5 @@
 
 pub(crate) mod signature;
 mod translation;
+
+pub(crate) use translation::get_arg_syntypes_for_procedure_call;

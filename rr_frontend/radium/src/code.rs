@@ -12,6 +12,7 @@ use std::io::Write as _;
 use std::{fmt, io};
 
 use derive_more::{Constructor, Display};
+use indent_write::fmt::IndentWriter as FmtIndentWriter;
 use indent_write::indentable::Indentable as _;
 use indent_write::io::IndentWriter;
 use indoc::{formatdoc, writedoc};
@@ -33,6 +34,27 @@ fn fmt_option<T: fmt::Display>(o: Option<&T>) -> String {
         None => "None".to_owned(),
         Some(x) => format!("Some ({})", x),
     }
+}
+
+fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
+    let mut out = String::with_capacity(100);
+    for (key, value) in els {
+        out.push_str(sep);
+
+        out.push_str(format!("<[\n    \"{key}\" :=\n{value}\n    ]>%E $").as_str());
+    }
+    out.push_str(sep);
+    out.push('∅');
+    out
+}
+
+fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
+    let mut out = String::with_capacity(100);
+    for (key, value) in els {
+        out.push_str(format!("named_lft_update \"{}\" {} $ ", key, value).as_str());
+    }
+    out.push('∅');
+    out
 }
 
 /// A representation of syntactic Rust types that we can use in annotations for the `RefinedRust`
@@ -656,35 +678,94 @@ impl StackMap {
 pub struct FunctionCode {
     name: String,
     code_name: String,
-    stack_layout: StackMap,
-    basic_blocks: BTreeMap<usize, Stmt>,
+
+    def: FunctionCodeDef,
 
     /// Coq parameters that the function is parameterized over
     required_parameters: coq::binder::BinderList,
 }
 
-fn make_map_string(sep: &str, els: &Vec<(String, String)>) -> String {
-    let mut out = String::with_capacity(100);
-    for (key, value) in els {
-        out.push_str(sep);
+impl FunctionCode {
+    fn new(
+        code_name: &str,
+        function_name: &str,
+        def: FunctionCodeDef,
+        typarams: &TyParamList,
+        used_functions: &[UsedProcedure<'_>],
+        used_statics: &[StaticMeta<'_>],
+    ) -> Self {
+        // generate location parameters for other functions used by this one, as well as syntypes
+        // These are parameters that the code gets
+        let mut parameters: Vec<coq::binder::Binder> = used_functions
+            .iter()
+            .map(|f_inst| coq::binder::Binder::new(Some(f_inst.loc_name.clone()), model::Type::Loc))
+            .collect();
 
-        out.push_str(format!("<[\n    \"{key}\" :=\n{value}\n    ]>%E $").as_str());
-    }
-    out.push_str(sep);
-    out.push('∅');
-    out
-}
+        // generate location parameters for statics used by this function
+        for s in used_statics {
+            parameters.push(coq::binder::Binder::new(Some(s.loc_name.clone()), model::Type::Loc));
+        }
 
-fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
-    let mut out = String::with_capacity(100);
-    for (key, value) in els {
-        out.push_str(format!("named_lft_update \"{}\" {} $ ", key, value).as_str());
+        // add generic syntype parameters for generics that this function uses.
+        let mut gen_st_parameters = typarams.get_coq_ty_st_params();
+        parameters.append(&mut gen_st_parameters.0);
+
+        Self {
+            code_name: code_name.to_owned(),
+            name: function_name.to_owned(),
+            def,
+            required_parameters: coq::binder::BinderList::new(parameters),
+        }
     }
-    out.push('∅');
-    out
+
+    fn get_locals(&self) -> &[Variable] {
+        &self.def.stack_layout.locals
+    }
+
+    fn get_args(&self) -> &[Variable] {
+        &self.def.stack_layout.args
+    }
 }
 
 impl fmt::Display for FunctionCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Definition {} {} : function := \n", self.code_name, self.required_parameters,)?;
+        let mut f_indent = FmtIndentWriter::new(BASE_INDENT, f);
+        write!(&mut f_indent, "{}", self.def)?;
+        write!(&mut f_indent, ".")?;
+
+        Ok(())
+    }
+}
+
+pub struct FunctionCodeDef {
+    stack_layout: StackMap,
+    basic_blocks: BTreeMap<usize, Stmt>,
+}
+
+impl FunctionCodeDef {
+    #[must_use]
+    fn new() -> Self {
+        Self {
+            stack_layout: StackMap::new(),
+            basic_blocks: BTreeMap::new(),
+        }
+    }
+
+    pub fn add_argument(&mut self, name: &str, st: lang::SynType) {
+        self.stack_layout.insert_arg(name.to_owned(), st);
+    }
+
+    pub fn add_local(&mut self, name: &str, st: lang::SynType) {
+        self.stack_layout.insert_local(name.to_owned(), st);
+    }
+
+    pub fn add_basic_block(&mut self, index: usize, bb: Stmt) {
+        self.basic_blocks.insert(index, bb);
+    }
+}
+
+impl fmt::Display for FunctionCodeDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_variable(Variable((name, ty)): &Variable) -> String {
             format!("(\"{}\", {} : layout)", name, lang::Layout::from(ty))
@@ -707,7 +788,7 @@ impl fmt::Display for FunctionCode {
 
         writedoc!(
             f,
-            r#"Definition {} {} : function := {{|
+            r#"{{|
                 f_args := [
                  {}
                 ];
@@ -718,42 +799,12 @@ impl fmt::Display for FunctionCode {
                  {}
                  ∅;
                 f_init := "_bb0";
-               |}}."#,
-            self.code_name,
-            self.required_parameters,
-            args.indented_skip_initial(&make_indent(2)),
-            locals.indented_skip_initial(&make_indent(2)),
-            blocks.indented_skip_initial(&make_indent(2))
+               |}}"#,
+            args.indented_skip_initial(&make_indent(1)),
+            locals.indented_skip_initial(&make_indent(1)),
+            blocks.indented_skip_initial(&make_indent(1))
         )?;
         Ok(())
-    }
-}
-
-/// Builder for a `FunctionCode`.
-pub struct FunctionCodeBuilder {
-    stack_layout: StackMap,
-    basic_blocks: BTreeMap<usize, Stmt>,
-}
-
-impl FunctionCodeBuilder {
-    #[must_use]
-    fn new() -> Self {
-        Self {
-            stack_layout: StackMap::new(),
-            basic_blocks: BTreeMap::new(),
-        }
-    }
-
-    pub fn add_argument(&mut self, name: &str, st: lang::SynType) {
-        self.stack_layout.insert_arg(name.to_owned(), st);
-    }
-
-    pub fn add_local(&mut self, name: &str, st: lang::SynType) {
-        self.stack_layout.insert_local(name.to_owned(), st);
-    }
-
-    pub fn add_basic_block(&mut self, index: usize, bb: Stmt) {
-        self.basic_blocks.insert(index, bb);
     }
 }
 
@@ -916,7 +967,7 @@ impl Function<'_> {
 
         // write local syntypes
         write!(f, ") [")?;
-        write_list!(f, &self.code.stack_layout.locals, "; ", |Variable((_, st))| st.to_string())?;
+        write_list!(f, &self.code.get_locals(), "; ", |Variable((_, st))| st.to_string())?;
         write!(f, "] (<tag_type> ")?;
 
         // write the specification term
@@ -934,7 +985,7 @@ impl Function<'_> {
         }
 
         // instantiate semantic args
-        write!(f, "{}", self.spec.generics.identity_instantiation())?;
+        write!(f, "{}", self.spec.generics.identity_instantiation_term())?;
 
         // I know which generics i'm quantifying over here. I should add the validity requirements
         // for all of them.
@@ -946,7 +997,7 @@ impl Function<'_> {
 
             let mut term = term.to_string();
             // instantiate semantic args
-            write!(term, "{}", self.spec.generics.identity_instantiation()).unwrap();
+            write!(term, "{}", self.spec.generics.identity_instantiation_term()).unwrap();
 
             term
         };
@@ -1074,11 +1125,11 @@ impl Function<'_> {
         // intro stack locations
         write!(f, "intros")?;
 
-        for Variable((arg, _)) in &self.code.stack_layout.args {
+        for Variable((arg, _)) in self.code.get_args() {
             write!(f, " {}", LocalKind::Arg.mk_local_name(arg))?;
         }
 
-        for Variable((local, _)) in &self.code.stack_layout.locals {
+        for Variable((local, _)) in self.code.get_locals() {
             write!(f, " {}", LocalKind::Local.mk_local_name(local))?;
         }
         write!(f, ";\n")?;
@@ -1217,9 +1268,6 @@ pub struct UsedProcedure<'def> {
     pub loc_name: String,
     /// The term for the specification definition
     spec_term: UsedProcedureSpec<'def>,
-
-    /// extra arguments to pass to the spec
-    extra_spec_args: Vec<String>,
 
     /// Type parameters to quantify over
     /// This includes:
@@ -1360,13 +1408,7 @@ impl fmt::Display for UsedProcedure<'_> {
             self.loc_name, self.scope_inst
         );
 
-        write!(
-            f,
-            "fn_spec_add_late_pre ({} {} {} ",
-            self.spec_term,
-            gen_rfn_type_inst.join(" "),
-            self.extra_spec_args.join(" ")
-        )?;
+        write!(f, "fn_spec_add_late_pre ({} {} ", self.spec_term, gen_rfn_type_inst.join(" "))?;
 
         // TODO: add the trait incls this can assume.
         // well, but I don't even know which trait spec this assumes....
@@ -1474,7 +1516,7 @@ impl fmt::Display for UsedProcedure<'_> {
 /// a consistent way).
 #[expect(clippy::partial_pub_fields)]
 pub struct FunctionBuilder<'def> {
-    pub code: FunctionCodeBuilder,
+    pub code: FunctionCodeDef,
     code_name: String,
 
     /// optionally, a specification, if one has been created
@@ -1509,7 +1551,7 @@ pub struct FunctionBuilder<'def> {
 impl<'def> FunctionBuilder<'def> {
     #[must_use]
     pub fn new(name: &str, code_name: &str, spec_name: &str, trait_req_incl_name: &str) -> Self {
-        let code_builder = FunctionCodeBuilder::new();
+        let code_builder = FunctionCodeDef::new();
         let spec =
             FunctionSpec::empty(spec_name.to_owned(), trait_req_incl_name.to_owned(), name.to_owned(), None);
         FunctionBuilder {
@@ -1619,31 +1661,15 @@ impl<'def> FunctionBuilder<'def> {
         self.other_functions.sort_by(|a, b| a.loc_name.cmp(&b.loc_name));
         self.used_statics.sort_by(|a, b| a.ident.cmp(&b.ident));
 
-        // generate location parameters for other functions used by this one, as well as syntypes
-        // These are parameters that the code gets
-        let mut parameters: Vec<coq::binder::Binder> = self
-            .other_functions
-            .iter()
-            .map(|f_inst| coq::binder::Binder::new(Some(f_inst.loc_name.clone()), model::Type::Loc))
-            .collect();
-
-        // generate location parameters for statics used by this function
-        self.used_statics.iter().for_each(|s| {
-            parameters.push(coq::binder::Binder::new(Some(s.loc_name.clone()), model::Type::Loc));
-        });
-
-        // add generic syntype parameters for generics that this function uses.
         let typarams = self.spec.generics.get_all_ty_params_with_assocs();
-        let mut gen_st_parameters = typarams.get_coq_ty_st_params();
-        parameters.append(&mut gen_st_parameters.0);
-
-        let code = FunctionCode {
-            stack_layout: self.code.stack_layout,
-            code_name: self.code_name,
-            name: self.spec.function_name.clone(),
-            basic_blocks: self.code.basic_blocks,
-            required_parameters: coq::binder::BinderList::new(parameters),
-        };
+        let code = FunctionCode::new(
+            &self.code_name,
+            &self.spec.function_name,
+            self.code,
+            &typarams,
+            &self.other_functions,
+            &self.used_statics,
+        );
 
         // assemble the spec
         let lit_spec = self.spec.spec.take().unwrap();

@@ -58,6 +58,65 @@ impl<'tcx> Environment<'tcx> {
         self.tcx
     }
 
+    pub(crate) fn get_closure_self_ty_from_var_ty(
+        var_ty: ty::Ty<'tcx>,
+        kind: ty::ClosureKind,
+    ) -> ty::Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn => {
+                if let ty::TyKind::Ref(_, ty, _) = var_ty.kind() {
+                    *ty
+                } else {
+                    unreachable!();
+                }
+            },
+            ty::ClosureKind::FnMut => {
+                if let ty::TyKind::Ref(_, ty, _) = var_ty.kind() {
+                    *ty
+                } else {
+                    unreachable!("unexpected type {:?}", var_ty);
+                }
+            },
+            ty::ClosureKind::FnOnce => var_ty,
+        }
+    }
+
+    /// Get the meta info for a closure, with the Polonius regions.
+    pub(crate) fn get_closure_args(&self, did: DefId) -> ty::ClosureArgs<ty::TyCtxt<'tcx>> {
+        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx().type_of(did);
+        let ty = ty.instantiate_identity();
+        let closure_kind = match ty.kind() {
+            ty::TyKind::Closure(_def, closure_args) => {
+                assert!(ty.is_closure());
+                let clos = closure_args.as_closure();
+                clos.kind()
+            },
+            _ => panic!("can not handle non-closures"),
+        };
+
+        // Now, we get the type of the closure local in the MIR, in order to get the Polonius regions.
+        let proc = self.get_procedure(did);
+        let body = proc.get_mir();
+        let local_decls = &body.local_decls;
+        let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
+        let closure_ty = Self::get_closure_self_ty_from_var_ty(closure_arg.ty, closure_kind);
+
+        let ty::TyKind::Closure(_, closure_args) = closure_ty.kind() else {
+            unreachable!();
+        };
+
+        closure_args.as_closure()
+    }
+
+    // Make the default instantiation for generics from param definitions.
+    //pub(crate) fn mk_args_from_params(&self, x: &[ty::GenericParamDef]) -> ty::GenericArgsRef<'tcx> {
+    //let mut args = Vec::new();
+    //for param in x {
+    //args.push(self.tcx().mk_param_from_def(param));
+    //}
+    //self.tcx().mk_args(&args)
+    //}
+
     /// Get ids of Rust procedures.
     pub(crate) fn get_procedures(&self) -> Vec<LocalDefId> {
         let mut visitor = CollectPrustiSpecVisitor::new(self);

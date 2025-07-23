@@ -111,6 +111,9 @@ pub(crate) struct Params<'tcx, 'def> {
     /// maps De Bruijn indices for late lifetimes to the lifetime
     /// since rustc groups De Bruijn indices by (binder, var in the binder), this is a nested vec.
     late_scope: Vec<Vec<radium::Lft>>,
+    /// extra lifetimes, mainly used for regions in closure captures which have no formal Rust
+    /// parameters
+    extra_scope: Vec<radium::Lft>,
 
     /// conversely, map the declaration name of a lifetime to an index
     lft_names: HashMap<String, usize>,
@@ -137,6 +140,14 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
                 },
                 Param::Const => (),
             }
+        }
+        for x in x.late_scope {
+            for lft in x {
+                scope.add_lft_param(lft);
+            }
+        }
+        for lft in x.extra_scope {
+            scope.add_lft_param(lft);
         }
         for key in x.trait_scope.ordered_assumptions {
             let trait_use = x.trait_scope.used_traits.remove(&key).unwrap();
@@ -286,6 +297,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         Self {
             scope,
             late_scope: Vec::new(),
+            extra_scope: Vec::new(),
             lft_names,
             ty_names,
             trait_scope: Traits::default(),
@@ -365,6 +377,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Update the lifetimes in this scope with the information from a region map for a function.
     /// We use this in order to get a scope that is sufficient for type translation out of a
     /// `FunctionState`.
+    /// Note that, in the case of closures, this excludes the lifetimes that only appear in the
+    /// captures and which have no formal designation as a Rust early/late parameter.
     pub(crate) fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
         // replace the early region names
         for (idx, param) in self.scope.iter_mut().enumerate() {
@@ -388,6 +402,12 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 idx += 1;
             }
             self.late_scope.push(new_binder);
+        }
+
+        // add extra closure regions
+        for vid in &map.closure_regions {
+            let name = &map.region_names[vid];
+            self.extra_scope.push(name.to_owned());
         }
     }
 
@@ -676,6 +696,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
         Self {
             scope,
             late_scope: Vec::new(),
+            extra_scope: Vec::new(),
             lft_names,
             ty_names,
             trait_scope: Traits::default(),

@@ -22,7 +22,7 @@ use crate::environment::procedure::Procedure;
 use crate::environment::{Environment, dump_borrowck_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
+    ClosureMetaInfo, FunctionRequirements, ClosureSpecInfo, FunctionSpecParser as _, VerboseFunctionSpecParser,
 };
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};
@@ -136,18 +136,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
     ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<radium::Lft>) {
-        // Add missing universals for the captures to the scope
-        /*
-        for v in &info.borrowck_in_facts.universal_region {
-            if region_substitution.region_names.get(v).is_none() {
-                let lft = info.mk_atomic_region(*v);
-                let name = regions::format_atomic_region_direct(&lft, None);
-                region_substitution.region_names.insert(*v, name);
-            }
-        }
-        */
-
         // Process the lifetime parameters that come from the captures
+        // Sideeffect: adds the regions that come from the captures (which may be local to the
+        // surrounding function) to the region map, so that they appear as region parameters of the
+        // function.
         let upvars_tys = clos_args.upvar_tys();
         let mut fixed_upvars_tys = Vec::new();
         for ty in upvars_tys {
@@ -188,7 +180,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<Self, TranslationError<'tcx>> {
+    ) -> Result<(Self, registry::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -201,59 +193,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let body = proc.get_mir();
         Self::dump_body(body);
 
-        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
-        let ty = ty.instantiate_identity();
-        let closure_kind = match ty.kind() {
-            ty::TyKind::Closure(_def, closure_args) => {
-                assert!(ty.is_closure());
-                let clos = closure_args.as_closure();
-                clos.kind()
-            },
-            _ => panic!("can not handle non-closures"),
-        };
-
-        let local_decls = &body.local_decls;
-        let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
-        let closure_ty;
-
-        match closure_kind {
-            ty::ClosureKind::Fn => {
-                if let ty::TyKind::Ref(_, ty, _) = closure_arg.ty.kind() {
-                    closure_ty = ty;
-                } else {
-                    unreachable!();
-                }
-            },
-            ty::ClosureKind::FnMut => {
-                if let ty::TyKind::Ref(_, ty, _) = closure_arg.ty.kind() {
-                    closure_ty = ty;
-                } else {
-                    unreachable!("unexpected type {:?}", closure_arg.ty);
-                }
-            },
-            ty::ClosureKind::FnOnce => {
-                closure_ty = &closure_arg.ty;
-            },
-        }
-
-        let ty::TyKind::Closure(did, closure_args) = closure_ty.kind() else {
-            unreachable!();
-        };
-
-        let clos_args = closure_args.as_closure();
-
+        let clos_args = env.get_closure_args(proc.get_id());
+        let closure_kind = clos_args.kind();
         let tupled_upvars_tys = clos_args.tupled_upvars_ty();
         let parent_args = clos_args.parent_args();
         let unnormalized_sig = clos_args.sig();
         let sig = unnormalized_sig;
+        // Note: `captures` contains the late bounds of this closure, i.e., lifetimes that just this
+        // closure is generic over.
+        let captures = env.tcx().closure_captures(proc.get_id().as_local().unwrap());
         info!("closure sig: {:?}", sig);
-
-        let captures = env.tcx().closure_captures(did.as_local().unwrap());
         info!("Closure has captures: {:?}", captures);
-
         info!("Closure arg upvar_tys: {:?}", tupled_upvars_tys);
         info!("Function signature: {:?}", sig);
         info!("Closure generic args: {:?}", parent_args);
+
+        let local_decls = &body.local_decls;
+        // the closure arg, containing the captures
+        let closure_arg = local_decls.get(mir::Local::from_usize(1)).unwrap();
 
         let info = PoloniusInfo::new(env, proc);
 
@@ -261,17 +218,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
 
         // For closures, we only handle the parent's args here!
-        // TODO: do we need to do something special for the parent's late-bound region
-        // parameters?
-        // TODO: should we always take the lifetime parameters?
+        // We add the lifetime parameters arising from the captures of the closure (which may be
+        // local to the parent) below in `Self::compute_closure_meta`.
         let params = parent_args;
-        //proc.get_type_params();
         info!("Function generic args: {:?}", params);
 
         if rrconfig::dump_borrowck_info() {
             dump_borrowck_info(env, proc.get_id(), info);
         }
 
+        // Note: this only treats the formal arguments of the closure, but not the closure captures
         let (tupled_inputs, output, mut region_substitution) =
             regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
 
@@ -286,8 +242,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
 
+        // fix the regions in the closure args (esp the captures) and add the regions for the
+        // captures to the region map.
         let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) =
             Self::compute_closure_meta(clos_args, closure_arg, &mut region_substitution, info, env);
+
+        trace!("fixed_closure_arg_ty={fixed_closure_arg_ty:?}");
 
         let mut inclusion_tracker = InclusionTracker::new(info);
         // add placeholder subsets
@@ -306,7 +266,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             proc.get_id(),
             params,
             &mut translated_fn,
-            region_substitution,
+            region_substitution.clone(),
             Some(info),
         )?;
 
@@ -340,7 +300,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             kind: closure_kind,
             captures,
             capture_tys: &translated_upvars_types,
-            closure_lifetime: maybe_outer_lifetime,
+            closure_lifetime: maybe_outer_lifetime.clone(),
         };
 
         // get argument names
@@ -355,8 +315,42 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("arg names: {arg_names:?}");
 
         // process attributes
-        t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
-        Ok(t)
+        let spec_info = t.process_closure_attrs(&inputs, output, &arg_names, meta)?;
+
+        // compute the info needed to assemble the trait impls for this closure
+        let self_var_ty = t.ty_translator.translate_type(fixed_closure_arg_ty)?;
+        let self_ty = Environment::get_closure_self_ty_from_var_ty(fixed_closure_arg_ty, closure_kind);
+        let args_ty = t.ty_translator.translate_type(input_tuple_ty)?;
+        let output_ty = t.ty_translator.translate_type(output)?;
+        let mut args_tys: Vec<radium::Type<'def>> = Vec::new();
+        for arg in inputs {
+            let translated: radium::Type<'def> = t.ty_translator.translate_type(arg)?;
+            args_tys.push(translated);
+        }
+
+        let mut generics = t.translated_fn.spec.get_generics().to_owned();
+        // remove the direct lifetime param
+        if let Some(lft) = &maybe_outer_lifetime {
+            generics.remove_lft_param(lft);
+        }
+
+        let info = registry::ClosureImplInfo::new(
+            closure_kind,
+            generics,
+            maybe_outer_lifetime,
+            region_substitution,
+            self_ty,
+            input_tuple_ty,
+            self_var_ty,
+            args_ty,
+            args_tys,
+            output_ty,
+            spec_info.pre_encoded,
+            spec_info.post_encoded,
+            spec_info.post_mut_encoded
+        );
+
+        Ok((t, info))
     }
 
     /// Translate the body of a function.
@@ -455,6 +449,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         };
 
         if env.has_tool_attribute(proc.get_id(), "default_spec") {
+            // Use the default spec annotated on the trait
             let spec = t.make_trait_instance_spec()?;
             if let Some(spec) = spec {
                 t.translated_fn.add_trait_function_spec(spec);
@@ -530,14 +525,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ty = tcx.type_of(did).instantiate_identity();
         match ty.kind() {
             ty::TyKind::FnDef(_, params) => params,
-            ty::TyKind::Closure(_, closure_args) => {
-                assert!(ty.is_closure());
-                let clos = closure_args.as_closure();
-                let parent_args = clos.parent_args();
-
-                // TODO: this doesn't include lifetime parameters specific to this closure...
-                tcx.mk_args(parent_args)
-            },
             _ => panic!("Procedure::new called on a procedure whose type is not TyKind::FnDef!"),
         }
     }
@@ -559,24 +546,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             proc_did,
             env,
             env.tcx().mk_args(params),
-            region_substitution.clone(),
+            region_substitution,
             ty_translator,
             trait_registry,
             info,
         )?;
 
         // add generic args to the fn
-        let generics = &type_scope.generic_scope;
-        let mut scope: radium::GenericScope<'_, _> = generics.clone().into();
-        // TODO: hack because we add the lifetime names manually below
-        scope.clear_lfts();
-        translated_fn.provide_generic_scope(scope);
-
-        // add universals to the function (these are not included in the generic scope)
-        // important: these need to be in the right order!
-        for (_, name) in region_substitution.region_names {
-            translated_fn.add_universal_lifetime(name);
-        }
+        let generics = type_scope.make_params_scope();
+        translated_fn.provide_generic_scope(generics.into());
 
         // TODO: can we also setup the lifetime constraints here?
         // TODO: understand better how these clauses relate to Polonius
@@ -627,7 +605,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         output: ty::Ty<'tcx>,
         arg_names: &[String],
         meta: ClosureMetaInfo<'_, 'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) -> Result<ClosureSpecInfo, TranslationError<'tcx>> {
         trace!("entering process_closure_attrs");
         let v = self.attrs;
 
@@ -671,7 +649,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Hack: create indirection by tracking the tuple uses we create in here.
         // (We need a read reference to the scope, so we can't write to it at the same time)
         let mut tuple_uses = HashMap::new();
-        {
+        let spec_info = {
             let scope = ty_translator.scope.borrow();
             let mut parser = VerboseFunctionSpecParser::new(
                 &self.translated_fn.spec.function_name,
@@ -684,7 +662,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 |lit| ty_translator.translator.intern_literal(lit),
             );
 
-            parser
+            let spec_info = parser
                 .parse_closure_spec(v, &mut spec_builder, meta, |x| {
                     ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
                 })
@@ -692,13 +670,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let x = parser.into();
             Self::process_function_requirements(&mut self.translated_fn, x);
-        }
+            spec_info
+        };
         let mut scope = ty_translator.scope.borrow_mut();
         scope.tuple_uses.extend(tuple_uses);
         self.translated_fn.add_function_spec_from_builder(spec_builder);
 
         trace!("leaving process_closure_attrs");
-        Ok(())
+        Ok(spec_info)
     }
 
     /// Parse and process attributes of this function.
@@ -754,7 +733,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Make a specification for a method of a trait instance derived from the trait's default spec.
+    /// Make a specification for a method of a trait impl derived from the trait's default spec.
     fn make_trait_instance_spec(
         &self,
     ) -> Result<Option<radium::InstantiatedTraitFunctionSpec<'def>>, TranslationError<'tcx>> {

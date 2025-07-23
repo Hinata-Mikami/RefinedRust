@@ -28,6 +28,13 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 }
 
 #[rr::verify]
+fn closure_test_arg_fnonce_3<T, W>(x: T) 
+    where T: FnOnce() -> W
+{
+    let _ = x();
+}
+
+#[rr::verify]
 #[rr::requires(#trait T::Pre := "λ _ _, True%I")]
 #[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 #[rr::requires(#trait T::PostMut := "λ _ _ _ _, True%I")]
@@ -48,8 +55,6 @@ fn closure_test_arg_fnmut_1<T>(mut x: T)
 }
 
 // Calling functions with closures
-
-
 #[rr::verify]
 fn closure_test_call_fnonce_0<T>(x: T) 
     where T: FnOnce() -> i32
@@ -58,24 +63,94 @@ fn closure_test_call_fnonce_0<T>(x: T)
 }
 
 #[rr::verify]
+fn closure_test_call_fnonce_1_0<T>(x: T) {
+    let clos = 
+        #[rr::verify]
+        #[rr::params("x")]
+        // TODO: we should use implicit capture binding
+        #[rr::capture("x": "x")]
+        || { x; 42 };
+    closure_test_arg_fnonce_1(clos);
+}
+
+
+#[rr::verify]
+fn closure_test_call_fnonce_3_0<T>(x: T) {
+    let clos = 
+        #[rr::verify]
+        #[rr::params("x")]
+        #[rr::capture("x": "x")]
+        || { x; 42 };
+    closure_test_arg_fnonce_3(clos);
+}
+
+#[rr::verify]
+fn closure_test_call_fnonce_3_1<T, W>(x: T, y: W) {
+    let clos = 
+        #[rr::verify]
+        #[rr::params("x", "y")]
+        #[rr::capture("x": "x")]
+        #[rr::capture("y": "y")]
+        || { x; y };
+    closure_test_arg_fnonce_3(clos);
+}
+
+#[rr::verify]
+fn closure_test_call_fnonce_1_1<T>(x: T) {
+    // Point: we're doing a shared capture of y
+    let y = 42;
+    let clos = 
+        #[rr::verify]
+        #[rr::params("x", "y")]
+        #[rr::capture("x": "x")]
+        #[rr::capture("y": "y")]
+        || { x; y };
+    closure_test_arg_fnonce_1(clos);
+}
+
+#[rr::verify]
 fn closure_test_call_fnonce_1() {
-    closure_test_arg_fnonce_1(|| { 42 });
+    let a = #[rr::verify] || { 42 };
+    closure_test_arg_fnonce_1(a);
 }
 
 #[rr::verify]
 fn closure_test_call_fnonce_2() {
-    closure_test_arg_fnonce_2(|x| { x + 2});
+    closure_test_arg_fnonce_2(#[rr::verify] |x| { if x < 10 { x + 2 } else { x}  });
 }
 
+/* TODO
+#[rr::verify]
+fn closure_test_call_fnmut_1_0() {
+    let mut y = 2;
+    let clos = 
+        #[rr::verify]
+        #[rr::params("x")]
+        #[rr::capture("y": "x" -> "1")]
+        || { y = 1; 42 };
+    // one lifetime for the capture of y (in the upvars)
+    // one lifetime on the call_mut method
+    closure_test_arg_fnonce_1(clos);
+}
+*/
+
+
+/* TODO
 #[rr::verify]
 fn closure_test_call_fnmut_1() {
     let mut x = 1;
-    closure_test_arg_fnmut_1(|| { x += 2; });
+    closure_test_arg_fnmut_1(
+        #[rr::verify]
+        #[rr::params("x")]
+        #[rr::requires("x < 10")]
+        #[rr::capture("x": "x" -> "x + 2")]
+        || { x += 2; });
 }
+*/
 
 #[rr::verify]
 fn closure_test_call_fn_1() {
-    closure_test_arg_fn_1(|| { });
+    closure_test_arg_fn_1(#[rr::verify] || { });
 }
 
 
@@ -193,7 +268,7 @@ fn closure_test2() {
     //x();
 
     // here, we deinitialize the closure
-    y = y + 1;
+    y += 1;
 }
 
 #[rr::params("a", "γ")]
@@ -253,6 +328,24 @@ fn closure_test7<T, U>(x: T, y: U)
 }
 
 
+// HRTB
+/*
+#[rr::verify]
+fn closure_test_hrtb_1() {
+    let x = 
+        #[rr::returns("y + 2")]
+        |y: &i32| {
+            *y + 2
+        };
+
+    let a = 4;
+    let b = 6;
+    x(&a);
+    x(&b);
+}
+
+*/
+
 mod fncoercion {
     fn bla(b: bool) {
         let x = |x: i32| {x };
@@ -267,6 +360,7 @@ mod fncoercion {
         x(43);
     }
 }
+
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation

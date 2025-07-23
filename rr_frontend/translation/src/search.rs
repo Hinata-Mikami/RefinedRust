@@ -387,3 +387,29 @@ pub(crate) fn try_resolve_method_did(tcx: ty::TyCtxt<'_>, mut path: Vec<String>)
     // otherwise, try if this is in an incoherent impl
     try_resolve_method_did_incoherent(tcx, &path)
 }
+
+/// Get the `Defid` of a closure trait.
+pub(crate) fn get_closure_trait_did(tcx: ty::TyCtxt<'_>, kind: ty::ClosureKind) -> Option<DefId> {
+    match kind {
+        ty::ClosureKind::Fn => try_resolve_did(tcx, &["core", "ops", "Fn"]),
+        ty::ClosureKind::FnMut => try_resolve_did(tcx, &["core", "ops", "FnMut"]),
+        ty::ClosureKind::FnOnce => try_resolve_did(tcx, &["core", "ops", "FnOnce"]),
+    }
+}
+
+/// Given the `DefId` of a trait, determine which (if any) of the closure traits this `DefId` refers to.
+pub(crate) fn get_closure_kind_of_trait_did(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<ty::ClosureKind> {
+    let fnmut_did = get_closure_trait_did(tcx, ty::ClosureKind::FnMut)?;
+    let fn_did = get_closure_trait_did(tcx, ty::ClosureKind::Fn)?;
+    let fnonce_did = get_closure_trait_did(tcx, ty::ClosureKind::FnOnce)?;
+
+    if did == fnmut_did {
+        Some(ty::ClosureKind::FnMut)
+    } else if did == fn_did {
+        Some(ty::ClosureKind::Fn)
+    } else if did == fnonce_did {
+        Some(ty::ClosureKind::FnOnce)
+    } else {
+        None
+    }
+}

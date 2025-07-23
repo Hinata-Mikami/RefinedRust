@@ -7,10 +7,12 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use derive_more::Constructor;
 use log::{info, trace};
-use radium::specs;
+use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::type_ir::TypeFoldable as _;
 use traits::{Error, TraitResult, resolution};
 use typed_arena::Arena;
 
@@ -25,7 +27,38 @@ use crate::spec_parsers::trait_attr_parser::{
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
 use crate::types::scope;
-use crate::{attrs, procedures, search, traits, types};
+use crate::{attrs, procedures, regions, search, traits, types};
+
+/// Extra info required to create a closure impl.
+#[derive(Debug, Clone, Constructor)]
+pub(crate) struct ClosureImplInfo<'tcx, 'def> {
+    // the most general closure kind this implements
+    _closure_kind: ty::ClosureKind,
+
+    // the generic scope of this impl
+    pub(crate) scope: radium::GenericScope<'def>,
+    /// if this is a Fn/FnMut closure, the lifetime of the closure self arg inside `scope`
+    pub(crate) _closure_lifetime: Option<radium::Lft>,
+
+    region_map: regions::EarlyLateRegionMap,
+
+    // types of the closure trait
+    // this is the type of the self variable in the closure, i.e. wrapped in references for
+    // Fn/FnMut
+    pub(crate) self_ty: ty::Ty<'tcx>,
+    pub(crate) args_ty: ty::Ty<'tcx>,
+
+    pub(crate) tl_self_var_ty: radium::Type<'def>,
+    pub(crate) tl_args_ty: radium::Type<'def>,
+    pub(crate) tl_args_tys: Vec<radium::Type<'def>>,
+    pub(crate) tl_output_ty: radium::Type<'def>,
+
+    // the encoded pre and postconditions
+    pre_encoded: coq::term::Term,
+    post_encoded: coq::term::Term,
+    // only if this closure is FnMut or Fn
+    post_mut_encoded: Option<coq::term::Term>,
+}
 
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
@@ -40,6 +73,10 @@ pub(crate) struct TR<'tcx, 'def> {
     /// for the trait instances in scope, the names for their Coq definitions
     /// (to enable references to them when translating functions)
     impl_literals: RefCell<HashMap<DefId, specs::LiteralTraitImplRef<'def>>>,
+
+    /// for all closures we process and all the closure traits they will implement, the names for
+    /// the Coq definitions
+    closure_impls: RefCell<HashMap<(DefId, ty::ClosureKind), specs::LiteralTraitImplRef<'def>>>,
 
     /// arena for allocating trait literals
     trait_arena: &'def Arena<specs::LiteralTraitSpec>,
@@ -74,6 +111,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_decls: RefCell::new(HashMap::new()),
             trait_literals: RefCell::new(HashMap::new()),
             impl_literals: RefCell::new(HashMap::new()),
+            closure_impls: RefCell::new(HashMap::new()),
         }
     }
 
@@ -371,6 +409,25 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(spec)
     }
 
+    /// Register a shim for a closure impl.
+    pub(crate) fn register_closure_impl(
+        &self,
+        closure_did: DefId,
+        closure_kind: ty::ClosureKind,
+        spec: radium::LiteralTraitImpl,
+    ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
+        let spec = self.impl_arena.alloc(spec);
+
+        let mut impl_literals = self.closure_impls.borrow_mut();
+        if impl_literals.get(&(closure_did, closure_kind)).is_some() {
+            return Err(Error::ClosureImplAlreadyExists(closure_did, closure_kind));
+        }
+
+        impl_literals.insert((closure_did, closure_kind), &*spec);
+
+        Ok(spec)
+    }
+
     /// Lookup a trait.
     pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
@@ -378,10 +435,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Lookup the spec for an impl.
-    /// If None, use the default spec.
     pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
         impl_literals.get(&impl_did).copied()
+    }
+
+    /// Lookup the spec for a closure impl.
+    pub(crate) fn lookup_closure_impl(
+        &self,
+        closure_did: DefId,
+        kind: ty::ClosureKind,
+    ) -> Option<radium::LiteralTraitImplRef<'def>> {
+        let impl_literals = self.closure_impls.borrow();
+        impl_literals.get(&(closure_did, kind)).copied()
     }
 
     /// Get the term for the specification of a trait impl (applied to the given arguments of the trait),
@@ -403,7 +469,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut assoc_args = Vec::new();
         // get associated types of this impl
         // Since we know the concrete impl, we can directly resolve all of the associated types
-        // TODO is this definition order guaranteed to be the same as on the trait?
         let items: &'tcx ty::AssocItems = self.env.tcx().associated_items(impl_did);
         let items = traits::sort_assoc_items(self.env, items);
         for it in items {
@@ -427,6 +492,73 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         };
 
         trace!("leave TR::get_impl_spec_term");
+        Ok((term, assoc_args))
+    }
+
+    pub(crate) fn get_closure_impl_spec_term(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        closure_did: DefId,
+        trait_did: DefId,
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        _trait_args: &[ty::GenericArg<'tcx>],
+    ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+        let closure_kind = search::get_closure_kind_of_trait_did(self.env.tcx(), trait_did)
+            .ok_or(Error::NotAClosureTrait(trait_did))?;
+
+        let closure_impl = self
+            .lookup_closure_impl(closure_did, closure_kind)
+            .ok_or(Error::NotAClosureTraitImpl(closure_did, closure_kind))?;
+
+        // compute associated type instantiation
+        let mut assoc_args = Vec::new();
+        if closure_kind == ty::ClosureKind::FnOnce {
+            // compute the instantiation of the associated type
+
+            let sig = closure_args.sig();
+            let output = sig.output();
+
+            // TODO: instantiate first?
+            assoc_args.push(output.skip_binder());
+        }
+
+        // compute scope instantiation
+        // NOTE: I guess this is missing lifetime parameters for the captures, which are not
+        // explicitly instantiated. We will probably need to compute them by unifying late bounds.
+        //
+        // Also for the args, we need to compute HRTBs.
+        // Do we need HRTBs for the lifetimes in captures? no, these lifetimes should be constant.
+
+        // Why do we need to do this separately? because the lifetimes are not formal parameters,
+        // we have to handle them differently.
+        // Let's walk over the capture type etc I guess. Check where we get the lifetime inst from.
+
+        // At the defining point I have a new parameter for every appearing region.
+        // So here I can simply linearly walk over the type.
+        // Question: the order in which I add the parameters finally is by ascending Polonius region ID.
+        // Is that ordering the same, because of how Polonius enumerates regions? Not necessarily,
+        // I think.
+
+        let args = closure_args.parent_args();
+        let sig = closure_args.sig();
+        trace!(
+            "get_closure_impl_spec_term: trying to find instantiation with args={args:?}, closure_args={closure_args:?}, sig={sig:?}"
+        );
+
+        let upvars_tys = closure_args.upvar_tys();
+        let mut folder = regions::arg_folder::ClosureCaptureRegionCollector::new(self.env.tcx());
+        for ty in upvars_tys {
+            ty.fold_with(&mut folder);
+        }
+        let mut scope_inst =
+            self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args))?;
+        for r in folder.result() {
+            let lft = types::TX::translate_region(state, r)?;
+            scope_inst.add_lft_param(lft);
+        }
+
+        let term = radium::SpecializedTraitImpl::new(closure_impl, scope_inst);
+
         Ok((term, assoc_args))
     }
 
@@ -498,18 +630,18 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
 
             // build the new args
-            let subst_args = self.env.tcx().mk_args(subst_args.as_slice());
+            let trait_args = self.env.tcx().mk_args(subst_args.as_slice());
 
             // try to infer an instance for this
             trace!(
-                "Trying to resolve requirement def_id={:?} with args = {subst_args:?}",
+                "Trying to resolve requirement def_id={:?} with args = {trait_args:?}",
                 req.trait_ref.def_id
             );
             if let Some((impl_did, impl_args, kind)) = resolution::resolve_trait(
                 self.env.tcx(),
                 current_typing_env,
                 req.trait_ref.def_id,
-                subst_args,
+                trait_args,
                 req.binders,
             ) {
                 info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
@@ -532,7 +664,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             &mut state,
                             impl_did,
                             impl_args.as_slice(),
-                            subst_args.as_slice(),
+                            trait_args.as_slice(),
                         )?;
 
                         // filter out the associated types which are constrained -- these are
@@ -562,7 +694,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             // filter out the associated types which are constrained -- these are
                             // not required in our encoding
                             if constr.is_none() {
-                                let alias = ty::AliasTy::new(self.env.tcx(), did, subst_args);
+                                let alias = ty::AliasTy::new(self.env.tcx(), did, trait_args);
                                 let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
                                 let ty = self.env.tcx().mk_ty_from_kind(tykind);
                                 assoc_types.push(ty);
@@ -571,18 +703,18 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         info!("Param associated types: {:?}", assoc_types);
 
                         let trait_use =
-                            state.lookup_trait_use(self.env.tcx(), trait_did, subst_args.as_slice())?;
+                            state.lookup_trait_use(self.env.tcx(), trait_did, trait_args.as_slice())?;
                         let trait_use_ref = trait_use.trait_use;
 
                         trace!(
                             "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                            trait_use.bound_regions, trait_use.trait_ref.args, subst_args
+                            trait_use.bound_regions, trait_use.trait_ref.args, trait_args
                         );
 
                         // compute the instantiation of the quantified trait assumption in terms
                         // of the variables introduced by the trait assumption we are proving.
                         let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
-                        unifier.map_generic_args(trait_use.trait_ref.args, subst_args);
+                        unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
                         let (inst, _) = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
 
@@ -605,11 +737,32 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         )
                     },
                     resolution::TraitResolutionKind::Closure => {
-                        // The target requires a closure trait bound.
-                        // This happens when we pass a closure as an argument?
-                        return Err(TranslationError::UnsupportedFeature {
-                            description: "TODO: do not support Closure parameters".to_owned(),
-                        });
+                        let closure_did = impl_did;
+                        let closure_args = impl_args.as_closure();
+
+                        let (spec_term, assoc_tys) = self.get_closure_impl_spec_term(
+                            &mut state,
+                            closure_did,
+                            req.trait_ref.def_id,
+                            closure_args,
+                            trait_args,
+                        )?;
+
+                        // filter out the associated types which are constrained -- these are
+                        // not required in our encoding
+                        let assoc_tys: Vec<_> = assoc_tys
+                            .into_iter()
+                            .zip(&req.assoc_constraints)
+                            .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
+                            .collect();
+
+                        radium::TraitReqInst::new(
+                            radium::TraitReqInstSpec::Specialized(spec_term),
+                            req.origin,
+                            assoc_tys,
+                            trait_spec,
+                            binders,
+                        )
                     },
                 };
 
@@ -699,6 +852,111 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
 
         Ok(scope_inst)
+    }
+
+    /// Get information on the trait impl for closure kind `kind` for a given closure
+    /// `closure_did`.
+    pub(crate) fn get_closure_trait_impl_info(
+        &self,
+        closure_did: DefId,
+        kind: ty::ClosureKind,
+        info: &ClosureImplInfo<'tcx, 'def>,
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+    ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
+        trace!(
+            "enter get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?} with info={info:?}"
+        );
+        let trait_did = search::get_closure_trait_did(self.env.tcx(), kind)
+            .ok_or(Error::CouldNotFindClosureTrait(kind))?;
+
+        let self_ty = info.self_ty;
+        //self.env.tcx().mk_ty_from_kind(ty::TyKind::Closure(closure_did, closure_args.args));
+        let args_ty = info.args_ty;
+        //closure_args.tupled_upvars_ty();
+        let trait_args: Vec<ty::GenericArg<'_>> = vec![self_ty.into(), args_ty.into()];
+        let trait_args = self.env.tcx().mk_args(&trait_args);
+
+        //let trait_args =
+        //ty::TyKind::Closure((), ())
+        //closure_args.capture()
+        // if I want the trait args, I would first need the Self type.
+        //let trait_args
+
+        // check if we registered this impl previously
+        let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+        let impl_ref = self
+            .lookup_closure_impl(closure_did, kind)
+            .ok_or(Error::NotAClosureTraitImpl(closure_did, kind))?;
+
+        // This should be computable directly from the closure's scope
+        // - includes the generics of the parent
+        // - includes the lifetimes introduced for captures
+        // - includes the lifetimes for HRTBs
+        // All of these are already computed by the closure body generation.
+        // Let's take the same generic scope for the instance here.
+        // Minus: the outer parameter!
+        let generics = info.scope.clone();
+        //tl.closure_lifetime
+
+        // this should be computable from the info
+        // - Self
+        // - Args
+        //
+        // Problem: we also need to insert dep instantiation on the traits this trait depends on:
+        // FnMut : FnOnce
+        // Fn : FnMut
+        // This should be computable by looking up the respective impls.
+        // i.e. similar to the closure requirement resolution
+        //
+        /*
+        let mut trait_inst = radium::GenericScopeInst::empty();
+        trait_inst.add_direct_ty_param(info.self_ty.clone());
+        trait_inst.add_direct_ty_param(info.args_ty.clone());
+        if kind == ty::ClosureKind::FnMut {
+            // resolve the `FnOnce` assumption
+
+        } else if kind == ty::ClosureKind::Fn {
+            // resolve the `FnMut` and `FnOnce` assumption
+            // TODO: what is the order of the two requirements? this may be system-dependent...
+        }
+        */
+
+        // NOTE: of course, this doesn't have bindings for the closure lifetimes.
+        let parent_args = closure_args.parent_args();
+        let mut param_scope = scope::Params::new_from_generics(self.env.tcx().mk_args(parent_args), None);
+        param_scope.add_param_env(closure_did, self.env, self.type_translator(), self)?;
+
+        let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), closure_did);
+        let state = types::TraitState::new(param_scope.clone(), typing_env, None, Some(&info.region_map));
+        let mut state = types::STInner::TraitReqs(Box::new(state));
+        let trait_inst = self.compute_scope_inst_in_state(&mut state, trait_did, trait_args)?;
+
+        // only if we're implementing FnOnce
+        // - Output
+        let mut assoc_types_inst = Vec::new();
+        if kind == ty::ClosureKind::FnOnce {
+            assoc_types_inst.push(info.tl_output_ty.clone());
+        }
+
+        // get this from Info
+        let mut attrs = BTreeMap::new();
+        if kind == ty::ClosureKind::FnOnce {
+            attrs.insert("Pre".to_owned(), info.pre_encoded.clone());
+            attrs.insert("Post".to_owned(), info.post_encoded.clone());
+        } else if kind == ty::ClosureKind::FnMut {
+            attrs.insert("PostMut".to_owned(), info.post_mut_encoded.clone().unwrap());
+        }
+
+        trace!("leave get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?}");
+
+        Ok(radium::TraitRefInst::new(
+            trait_spec_ref,
+            impl_ref,
+            generics,
+            trait_inst,
+            assoc_types_inst,
+            radium::TraitSpecAttrsInst::new(attrs),
+        ))
     }
 
     /// Get information on a trait implementation and create its Radium encoding.

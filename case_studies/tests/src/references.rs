@@ -75,11 +75,22 @@ fn call_shr_ref_id1() {
 }
 
 // TODO: does not work currently
-#[rr::returns("()")]
 #[rr::skip]
 fn call_shr_ref_id2() {
     let x = Some(5);
     let y = shr_ref_id(&x);
 
     let _ = y.unwrap();
+}
+
+#[rr::verify]
+fn call_shr_ref_id3(x: &mut i32) {
+    shr_ref_id(&*x);
+}
+
+
+// TODO
+#[rr::skip]
+fn call_shr_ref_id4(x: &mut i32) {
+    shr_ref_id::<'_, i32>(&*x);
 }

@@ -129,6 +129,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
     let region_map = EarlyLateRegionMap::new(
         region_substitution_early,
         vec![region_substitution_late],
+        vec![],
         universal_lifetimes,
         lifetime_names,
     );
