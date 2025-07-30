@@ -14,7 +14,7 @@ use lib::command;
 
 static USAGE: &str = "RefinedRust verification framework
 
-Usage: cargo refinedrust [Cargo options] -- [RefinedRust options]
+Usage: cargo refinedrust [<RefinedRust options>] -- [<cargo options>]
 
 RefinedRust Options:
   -h, --help               Print help
