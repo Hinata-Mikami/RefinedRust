@@ -129,6 +129,7 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 
         // write raw dump
         let raw_path = rrconfig::log_dir()
+            .unwrap()
             .join("nll-facts")
             .join(def_path.to_filename_friendly_no_crate())
             .join("polonius_info.txt");

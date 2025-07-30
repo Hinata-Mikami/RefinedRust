@@ -4,11 +4,12 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::env;
-use std::path::PathBuf;
-use std::sync::{LazyLock, RwLock, RwLockWriteGuard};
+#![feature(normalize_lexically)]
 
-use path_clean::PathClean as _;
+use std::path::{NormalizeError, PathBuf};
+use std::sync::{LazyLock, RwLock, RwLockWriteGuard};
+use std::{env, path};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -91,19 +92,18 @@ static SETTINGS: LazyLock<RwLock<Config>> = LazyLock::new(|| {
 });
 
 /// Makes the path absolute with respect to the `work_dir`.
-fn make_path_absolute(path: &str) -> PathBuf {
+fn make_path_absolute(path: String) -> Result<PathBuf, NormalizeError> {
     let path_buf = PathBuf::from(path);
     if path_buf.is_absolute() {
-        return path_buf;
+        return path_buf.normalize_lexically();
     }
 
-    // read the base path we set
-    let base_path_buf = PathBuf::from(work_dir());
-    if base_path_buf.is_absolute() {
-        base_path_buf.join(path_buf).clean()
-    } else {
-        env::current_dir().unwrap().join(base_path_buf).join(path_buf).clean()
+    let work_dir_buf = PathBuf::from(work_dir());
+    if work_dir_buf.is_absolute() {
+        return work_dir_buf.join(path_buf).normalize_lexically();
     }
+
+    path::absolute(work_dir_buf.join(path_buf)).unwrap().normalize_lexically()
 }
 
 fn access_config<'a, T, C: FnOnce(RwLockWriteGuard<'a, Config>) -> T>(callback: C) -> T {
@@ -123,9 +123,8 @@ pub fn be_rustc() -> bool {
 }
 
 /// In which folder should we store log/dumps?
-#[must_use]
-pub fn log_dir() -> PathBuf {
-    make_path_absolute(&access_config(|c| c.log_dir.clone()))
+pub fn log_dir() -> Result<PathBuf, NormalizeError> {
+    make_path_absolute(access_config(|c| c.log_dir.clone()))
 }
 
 /// Should we check for overflows?
@@ -207,28 +206,26 @@ pub fn generate_dune_project() -> bool {
 /// Get the paths in which to search for `RefinedRust` library declarations.
 #[must_use]
 pub fn lib_load_paths() -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    let s = access_config(|c| c.lib_load_paths.clone());
-    for p in s {
-        paths.push(make_path_absolute(&p));
-    }
-    paths
+    access_config(|c| c.lib_load_paths.clone())
+        .into_iter()
+        .map(make_path_absolute)
+        .filter_map(Result::ok)
+        .collect()
 }
 
 #[must_use]
-pub fn work_dir() -> String {
+fn work_dir() -> String {
     access_config(|c| c.work_dir.clone())
 }
 
-#[must_use]
-pub fn absolute_work_dir() -> PathBuf {
-    make_path_absolute(&work_dir())
+pub fn absolute_work_dir() -> Result<PathBuf, NormalizeError> {
+    make_path_absolute(work_dir())
 }
 
 /// Which directory to write the generated Coq files to?
 #[must_use]
 pub fn output_dir() -> Option<PathBuf> {
-    access_config(|c| c.output_dir.clone()).map(|s: String| make_path_absolute(&s))
+    access_config(|c| c.output_dir.clone()).map(make_path_absolute).and_then(Result::ok)
 }
 
 /// Post-generation hook
@@ -240,13 +237,13 @@ pub fn post_generation_hook() -> Option<String> {
 /// Which file to read shims from?
 #[must_use]
 pub fn shim_file() -> Option<PathBuf> {
-    access_config(|c| c.shims.clone()).map(|s: String| make_path_absolute(&s))
+    access_config(|c| c.shims.clone()).map(make_path_absolute).and_then(Result::ok)
 }
 
 /// Which file should we read extra specs from?
 #[must_use]
 pub fn extra_specs_file() -> Option<PathBuf> {
-    access_config(|c| c.extra_specs.clone()).map(|s: String| make_path_absolute(&s))
+    access_config(|c| c.extra_specs.clone()).map(make_path_absolute).and_then(Result::ok)
 }
 
 #[cfg(test)]

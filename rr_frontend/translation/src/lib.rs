@@ -780,7 +780,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write the dune-project file, if required
         if rrconfig::generate_dune_project() {
-            let dune_project_path = rrconfig::absolute_work_dir().join("dune-project");
+            let dune_project_path = rrconfig::absolute_work_dir().unwrap().join("dune-project");
 
             if !dune_project_path.exists() {
                 let mut dune_project_file =

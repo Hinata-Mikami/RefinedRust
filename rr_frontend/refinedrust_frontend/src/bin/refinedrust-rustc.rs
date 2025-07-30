@@ -60,7 +60,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
     if let Some(s) = rrconfig::post_generation_hook()
         && let Some(parts) = shlex::split(&s)
     {
-        let work_dir = rrconfig::absolute_work_dir();
+        let work_dir = rrconfig::absolute_work_dir().unwrap();
         let dir_path = PathBuf::from(&work_dir);
         info!("running post-generation hook in {}: {:?}", dir_path.display(), s);
 
@@ -193,7 +193,11 @@ fn main() {
             if rrconfig::dump_debug_info() {
                 rustc_args.push(format!(
                     "-Zdump-mir-dir={}",
-                    rrconfig::log_dir().join("mir").to_str().expect("failed to configure dump-mir-dir")
+                    rrconfig::log_dir()
+                        .unwrap()
+                        .join("mir")
+                        .to_str()
+                        .expect("failed to configure dump-mir-dir")
                 ));
                 rustc_args.push("-Zdump-mir=all".to_owned());
                 rustc_args.push("-Zdump-mir-graphviz".to_owned());
@@ -204,6 +208,7 @@ fn main() {
                 rustc_args.push(format!(
                     "-Znll-facts-dir={}",
                     rrconfig::log_dir()
+                        .unwrap()
                         .join("nll-facts")
                         .to_str()
                         .expect("failed to configure nll-facts-dir")
