@@ -23,16 +23,28 @@ RefinedRust Options:
 
 fn dump_version_info() {
     println!("RefinedRust {}", env!("RR_VERSION"));
-    println!("{} ({})", env!("RR_RUSTC_VERSION"), env!("RR_RUSTC"));
-    println!("{} ({})", env!("RR_CARGO_VERSION"), env!("RR_CARGO"));
 
-    let Some(dune) = lib::find("dune") else { return println!("dune not found") };
-    println!("dune {} ({})", command::get_cmd_output(&dune, &["--version"]).unwrap(), dune);
+    println!();
+    println!("RefinedRust library paths:");
+    for lib in rrconfig::lib_load_paths() {
+        println!(" - {}", lib.display());
+    }
 
-    let Some(rocq) = lib::find("rocq") else { return println!("rocq not found") };
+    println!();
+    println!("Rust toolchain:");
+    println!(" - {} ({})", env!("RR_RUSTC_VERSION"), env!("RR_RUSTC"));
+    println!(" - {} ({})", env!("RR_CARGO_VERSION"), env!("RR_CARGO"));
+
+    println!();
+    println!("Rocq toolchain:");
+
+    let Some(dune) = lib::find("dune") else { return println!(" - dune not found") };
+    let Some(rocq) = lib::find("rocq") else { return println!(" - rocq not found") };
     let rocq_version = command::get_cmd_output(&rocq, &["--print-version"]).unwrap();
     let rocq_version = rocq_version.split(' ').next().unwrap();
-    println!("rocq {} ({})", rocq_version, rocq);
+
+    println!(" - dune {} ({})", command::get_cmd_output(&dune, &["--version"]).unwrap(), dune);
+    println!(" - rocq {} ({})", rocq_version, rocq);
 }
 
 /// Returns the arguments for `RefinedRust` and `cargo`.
