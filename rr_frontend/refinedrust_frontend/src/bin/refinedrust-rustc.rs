@@ -174,12 +174,6 @@ fn main() {
             println!("RefinedRust {}", env!("RR_VERSION"));
         }
 
-        // TODO figure out how we can do this such that also normal builds work
-        //rustc_args.push("-Zcrate-attr=feature(stmt_expr_attributes)".to_owned());
-        //rustc_args.push("-Zcrate-attr=feature(custom_inner_attributes)".to_owned());
-        //rustc_args.push("-Zcrate-attr=feature(register_tool)".to_owned());
-        //rustc_args.push("-Zcrate-attr=register_tool(rr)".to_owned());
-
         if !rrconfig::no_verify() {
             rustc_args.push("-Zalways-encode-mir".to_owned());
             rustc_args.push("-Zpolonius".to_owned());
