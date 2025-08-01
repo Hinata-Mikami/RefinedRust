@@ -266,6 +266,9 @@
               wrapProgram $out/bin/dune \
                 --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
                 --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+
+              wrapProgram $out/bin/cargo-refinedrust \
+                --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
             '';
         };
       };

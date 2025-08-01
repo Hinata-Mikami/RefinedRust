@@ -39,11 +39,18 @@ fn dump_version_info() {
     println!("Rocq toolchain:");
 
     let Some(dune) = lib::find("dune") else { return println!(" - dune not found") };
-    let Some(rocq) = lib::find("rocq") else { return println!(" - rocq not found") };
-    let rocq_version = command::get_cmd_output(&rocq, &["--print-version"]).unwrap();
-    let rocq_version = rocq_version.split(' ').next().unwrap();
+    let Some(dune_version) = command::get_cmd_output(&dune, &["--version"]) else {
+        return println!(" - unexpected dune output");
+    };
 
-    println!(" - dune {} ({})", command::get_cmd_output(&dune, &["--version"]).unwrap(), dune);
+    let Some(rocq) = lib::find("rocq") else { return println!(" - rocq not found") };
+    let Some(rocq_version) = command::get_cmd_output(&rocq, &["--print-version"])
+        .and_then(|output| output.split(' ').next().map(ToOwned::to_owned))
+    else {
+        return println!(" - unexpected rocq output");
+    };
+
+    println!(" - dune {} ({})", dune_version, dune);
     println!(" - rocq {} ({})", rocq_version, rocq);
 }
 

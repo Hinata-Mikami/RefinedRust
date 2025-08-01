@@ -124,8 +124,6 @@ case_studies:
   needs: [ "stdlib" ]
   script:
    - nix shell -c cargo refinedrust -V
-   - nix shell -c nix run nixpkgs#gnumake -- setup-nix
-   - nix shell -c nix run nixpkgs#gnumake -- generate_stdlib
    - nix shell -c nix run nixpkgs#gnumake -- generate_case_studies
    - cd case_studies
    - nix shell -c dune build --display=short
