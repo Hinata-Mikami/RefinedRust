@@ -7,6 +7,7 @@
 #![feature(normalize_lexically)]
 
 use std::path::{NormalizeError, PathBuf};
+use std::process::Command;
 use std::sync::{LazyLock, RwLock, RwLockWriteGuard};
 use std::{env, path};
 
@@ -87,7 +88,12 @@ static SETTINGS: LazyLock<RwLock<Config>> = LazyLock::new(|| {
         builder = builder.add_source(config::Environment::with_prefix("RR").ignore_empty(true));
 
         // 4. Fill empty fields with default values
-        builder.build().unwrap().try_deserialize().unwrap()
+        let mut config: Config = builder.build().unwrap().try_deserialize().unwrap();
+
+        // 5. Add standard library paths
+        config.lib_load_paths.extend(find_stdlib_paths());
+
+        config
     })
 });
 
@@ -104,6 +110,32 @@ fn make_path_absolute(path: String) -> Result<PathBuf, NormalizeError> {
     }
 
     path::absolute(work_dir_buf.join(path_buf)).unwrap().normalize_lexically()
+}
+
+/// Retrieve paths of `RefinedRust`'s stdlib, using Nix (`RR_NIX_STDLIB`) or opam (`refinedrust-stdlib`)
+fn find_stdlib_paths() -> Vec<String> {
+    if let Ok(nix_path) = env::var("RR_NIX_STDLIB") {
+        return vec![nix_path];
+    }
+
+    let Ok(output) = Command::new("opam").args(["config", "list", "refinedrust-stdlib"]).output() else {
+        return vec![];
+    };
+
+    if !output.status.success() {
+        return vec![];
+    }
+
+    let Some(ocaml_path) = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .find(|line| line.starts_with("refinedrust-stdlib:share"))
+        .and_then(|line| line.split_whitespace().nth(1))
+        .map(String::from)
+    else {
+        return vec![];
+    };
+
+    vec![ocaml_path]
 }
 
 fn access_config<'a, T, C: FnOnce(RwLockWriteGuard<'a, Config>) -> T>(callback: C) -> T {
