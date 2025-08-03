@@ -79,7 +79,7 @@ Section union.
   Lemma has_layout_loc_active_union_rest_ly ul ly l :
     l `has_layout_loc` (active_union_rest_ly ul ly).
   Proof.
-    rewrite /has_layout_loc /aligned_to. destruct caesium_config.enforce_alignment; last done.
+    rewrite /has_layout_loc /aligned_to.
     rewrite /active_union_rest_ly /ly_align /=.
     apply Z.divide_1_l.
   Qed.

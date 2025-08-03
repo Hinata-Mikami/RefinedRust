@@ -104,8 +104,8 @@ Proof.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
-  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. destruct caesium_config.enforce_alignment; last done. apply Z.divide_1_l. }
+  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. apply Z.divide_1_l. }
+  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. apply Z.divide_1_l. }
   { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
   { rewrite /ly_align_in_bounds.
     rewrite ly_align_mk_array_layout.

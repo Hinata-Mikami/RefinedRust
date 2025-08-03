@@ -478,7 +478,7 @@ Section ofty_lemmas.
     iApply (ofty_value_untyped_reduce_alignment with "Hl").
     - rewrite /mk_array_layout{2}/ly_size/=. lia.
     - rewrite /has_layout_loc/ly_align/mk_array_layout/=.
-      rewrite /aligned_to. destruct caesium_config.enforce_alignment; last done.
+      rewrite /aligned_to.
       apply Z.divide_1_l.
     - rewrite /layout_wf/ly_align/=. apply Z.divide_1_l.
     - done.

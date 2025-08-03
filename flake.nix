@@ -134,21 +134,6 @@
       in {
         theories = let
           # NOTE: Remove `coq-record-update` and `equations` when available in Nix's `RocqPackages`
-          coq-record-update = rocq.pkgs.mkRocqDerivation {
-            pname = "coq-record-update";
-            owner = "tchajed";
-
-            version = "0247521c76dd3f54a7ef1a8ba531ef4b81c13570";
-            release = {
-              "0247521c76dd3f54a7ef1a8ba531ef4b81c13570".sha256 = "sha256-AhEcugUiVIsgbq884Lur/bQIuGw8prk+3AlNkP1omcw=";
-            };
-
-            buildFlags = ["NO_TEST=1"];
-            preBuild = ''
-              sed -i -e 's/"$(COQBIN)coq_makefile"/"$(COQBIN)rocq" makefile/g' Makefile
-            '';
-          };
-
           equations = rocq.pkgs.mkRocqDerivation {
             pname = "equations";
             owner = "mattam82";
@@ -195,7 +180,7 @@
             opam-name = name;
             src = ./theories;
 
-            propagatedBuildInputs = [coq-record-update equations iris-contrib lambda-rust];
+            propagatedBuildInputs = [equations iris-contrib lambda-rust];
 
             preBuild = "dune() { command dune $@ --display=short; }";
             useDune = true;

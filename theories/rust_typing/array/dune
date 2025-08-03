@@ -3,4 +3,4 @@
  (package refinedrust)
  (flags -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "RefinedRust arrays")
- (theories stdpp iris RecordUpdate Ltac2 caesium refinedrust lithium))
+ (theories stdpp iris Ltac2 caesium refinedrust lithium))

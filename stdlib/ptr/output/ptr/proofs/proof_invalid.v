@@ -41,7 +41,6 @@ Proof.
     iExists _. simpl.
     iSplitR. { iPureIntro. by apply syn_type_has_layout_unit. }
     iSplitR. { iPureIntro. rewrite /has_layout_loc/aligned_to.
-      destruct caesium_config.enforce_alignment; last done.
       eapply Z.divide_1_l. }
     iSplitR; first done.
     iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".

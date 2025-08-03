@@ -2,4 +2,4 @@
 (flags -w -notation-overridden -w -redundant-canonical-projection)
 (package refinedrust-stdlib)
 (name rrstd.result.theories)
-(theories stdpp iris iris_contrib Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust Stdlib))
+(theories stdpp iris iris_contrib Ltac2 Equations lrust caesium lithium refinedrust Stdlib))

@@ -8,8 +8,6 @@ From iris.bi Require Import bi.
 From iris.proofmode Require Import proofmode.
 From stdpp Require Import natmap.
 From stdpp.unstable Require Import bitblast.
-From RecordUpdate Require Export RecordSet.
-Export RecordSetNotations.
 
 Set Default Proof Using "Type".
 
@@ -17,9 +15,6 @@ Set Default Proof Using "Type".
 #[export] Set Keyed Unification.
 
 #[export] Set Default Goal Selector "!".
-
-(* ensure that set from RecordUpdate simplifies when it is applied to a concrete value *)
-Global Arguments set _ _ _ _ _ !_ /.
 
 Global Typeclasses Opaque is_Some.
 (* This is necessary since otherwise keyed unification unfolds these definitions *)
