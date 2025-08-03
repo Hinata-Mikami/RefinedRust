@@ -18,7 +18,7 @@ Section typing.
     iDestruct "Hv" as "%Hit".
     specialize (val_to_Z_in_range _ _ _ Hit) as [Hran ?].
     iModIntro. iPureIntro. split_and!; [done.. | | ].
-    { specialize (MinInt_unsigned_0 it). lia. }
+    { opose proof (MinInt_unsigned_0 it _); first done. lia. }
     { done. }
   Qed.
   Global Program Instance learn_from_hyp_val_int_signed it z `{Hs : TCDone (it_signed it = true)} :
