@@ -18,10 +18,10 @@ Section union.
     rewrite /layout_of_union_member.
     intros (i & Hidx & Ha)%bind_Some.
     eapply max_list_elem_of_le.
-    apply elem_of_list_fmap.
+    apply list_elem_of_fmap.
     exists ly. split; first done.
     rewrite -list_lookup_fmap in Ha.
-    by eapply elem_of_list_lookup_2.
+    by eapply list_elem_of_lookup_2.
   Qed.
 
   Lemma max_list_pow (n : nat) l :
@@ -69,10 +69,10 @@ Section union.
     rewrite /has_layout_loc /ly_align.
     rewrite ly_align_log_union_layout.
     apply aligned_to_max_list.
-    apply elem_of_list_fmap.
+    apply list_elem_of_fmap.
     exists ly. split; first done.
     rewrite -list_lookup_fmap in Ha.
-    by eapply elem_of_list_lookup_2.
+    by eapply list_elem_of_lookup_2.
   Qed.
 
   Definition active_union_rest_ly (ul : union_layout) (ly : layout) := Layout (ly_size ul - ly.(ly_size)) 0.

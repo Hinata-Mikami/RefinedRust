@@ -48,7 +48,7 @@ Proof.
   {
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length self)).
-    - rewrite take_insert/=; [|lia]. 
+    - rewrite take_insert_ge/=; [|lia]. 
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take project_vec_els_take_r.
@@ -56,7 +56,7 @@ Proof.
       rewrite take_ge; [|lia].
       rewrite Nat.min_l; last lia.
       rewrite -Hxs list_fmap_compose//.
-    - rewrite drop_insert_le/=; [|lia].
+    - rewrite drop_insert_ge/=; [|lia].
       rewrite !fmap_app.
       rewrite drop_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_drop. apply list_eq_singleton. 
@@ -96,11 +96,11 @@ Proof.
       lia. }
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length self)).
-    - rewrite take_insert/=; [|lia]. 
+    - rewrite take_insert_ge/=; [|lia]. 
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take. rewrite Hxs. f_equal. lia.
-    - rewrite drop_insert_le/=; [|lia]. rewrite !fmap_app drop_app_length' ?project_vec_els_length; [|solve_goal].
+    - rewrite drop_insert_ge/=; [|lia]. rewrite !fmap_app drop_app_length' ?project_vec_els_length; [|solve_goal].
       rewrite project_vec_els_drop.
       apply list_eq_singleton. split; first solve_goal.
       normalize_and_simpl_goal. solve_goal.

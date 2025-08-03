@@ -290,12 +290,12 @@ Section call.
     iPoseProof (Hsat ϝ with "HL []") as "#HE'".
     { iFrame "HE". iApply big_sepL_intro.
       iIntros "!>" (k [κe1 κe2] Hlook).
-      apply elem_of_list_lookup_2 in Hlook. simpl.
-      apply elem_of_list_fmap in Hlook as (((i & ?) & κs1) & [= <- <-] & ?).
+      apply list_elem_of_lookup_2 in Hlook. simpl.
+      apply list_elem_of_fmap in Hlook as (((i & ?) & κs1) & [= <- <-] & ?).
       iApply lft_incl_trans. { iApply lft_incl_syn_sem. done. }
       iApply lft_intersect_list_elem_of_incl.
-      rewrite elem_of_list_fmap. exists (i, κe2). split; first done.
-      rewrite elem_of_list_fmap. eexists; split; last done. done.
+      rewrite list_elem_of_fmap. exists (i, κe2). split; first done.
+      rewrite list_elem_of_fmap. eexists; split; last done. done.
     }
 
     simpl.

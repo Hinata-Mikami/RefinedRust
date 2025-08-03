@@ -395,7 +395,7 @@ Section switch.
     { iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
       rewrite map_to_list_empty. set_solver. }
     rewrite big_andM_insert //. destruct (decide (n = i)); subst.
-    - rewrite lookup_insert. iDestruct "HT" as "[[HT _] _]". by iApply "HT".
+    - rewrite lookup_insert_eq. iDestruct "HT" as "[[HT _] _]". by iApply "HT".
     - rewrite lookup_insert_ne//. iApply "IH". iSplit; first by iDestruct "HT" as "[[_ HT] _]".
       iIntros (Hn). iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
       rewrite map_to_list_insert //. set_solver.

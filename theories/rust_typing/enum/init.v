@@ -58,7 +58,7 @@ Section init.
     assert (∃ tag : Z, list_to_map (M := gmap _ _) (els_tag_int (enum_els en)) !! variant = Some tag) as (tag & Htag_lookup).
     { apply list_to_map_lookup_fst.
       - rewrite els_tag_int_agree.
-        apply elem_of_list_fmap. exists (variant, ty_syn_type (enum_tag_sem_ty sem)).
+        apply list_elem_of_fmap. exists (variant, ty_syn_type (enum_tag_sem_ty sem)).
         split; first done. apply elem_of_list_to_map; last done.
         apply els_variants_nodup.
       - rewrite els_tag_int_agree. apply els_variants_nodup. }
@@ -89,7 +89,7 @@ Section init.
     iEval (rewrite /ty_own_val) => /=.
     iExists ul.
     specialize (elem_of_list_to_map_2 _ _ _ Hlook_st) as Hel.
-    apply elem_of_list_lookup_1 in Hel as (i & Hlook).
+    apply list_elem_of_lookup_1 in Hel as (i & Hlook).
     specialize (Forall2_lookup_l _ _ _ _ _ Hf Hlook) as ([name2 ly] & Hlook_ly & <- & Halg).
     iExists ly. iR.
     iSplitR. { iPureIntro.
@@ -130,7 +130,7 @@ Section init.
       iPureIntro. rewrite /has_layout_val.
       rewrite length_replicate. rewrite /use_layout_alg'.
       erewrite elem_of_list_to_map_1; first last.
-      { eapply elem_of_list_lookup_2. done. }
+      { eapply list_elem_of_lookup_2. done. }
       { apply els_variants_nodup. }
       simpl. rewrite Halg. simpl.
       rewrite /use_union_layout_alg' Hul'/=.

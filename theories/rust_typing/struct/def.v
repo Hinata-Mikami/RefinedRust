@@ -101,7 +101,7 @@ Section structs.
       apply Forall2_same_length_lookup.
       split. { rewrite Hlen_eq /vs length_fmap//. }
       intros i v' [n ly'] Hlook1 Hlook2.
-      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->) .
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1) .
       simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
       rewrite Hlook2 /= => [= ->]. apply (Hlyv _ _ Hlook1). }
 
@@ -111,9 +111,9 @@ Section structs.
       apply Forall2_same_length_lookup.
       split. { rewrite !length_fmap//. }
       intros i v' sz Hlook1 Hlook2.
-      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->) .
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1) .
       simpl. specialize (Hsl _ _ Hlook1). move: Hsl.
-      apply list_lookup_fmap_Some in Hlook2 as (ly' & Hlook & ->).
+      apply list_lookup_fmap_Some in Hlook2 as (ly' & -> & Hlook).
       rewrite list_lookup_fmap in Hlook. rewrite Hlook => [=->].
       apply (Hlyv _ _ Hlook1). }
 
@@ -129,10 +129,10 @@ Section structs.
     rewrite reshape_join; first last.
     { apply Forall2_same_length_lookup. rewrite !length_fmap Hlen_eq. split; first done.
       intros ??? Hlook1 Hlook2.
-      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & Hlook1 & ->).
+      apply list_lookup_fmap_Some in Hlook1 as ([v1 ly1] & -> & Hlook1).
       specialize (Hlyv _ _ Hlook1). rewrite Hlyv.
       specialize (Hsl _ _ Hlook1). simpl in *.
-      apply list_lookup_fmap_Some in Hlook2 as (ly2 & Hlook2 & ->).
+      apply list_lookup_fmap_Some in Hlook2 as (ly2 & -> & Hlook2).
       rewrite list_lookup_fmap in Hlook2. f_equiv.
       rewrite Hsl in Hlook2. injection Hlook2 as [= ->]; done. }
     iApply (big_sepL2_wand with "Hb").
@@ -354,9 +354,9 @@ Section structs.
         { rewrite length_hpzipl Hlen. erewrite struct_layout_spec_has_layout_fields_length; done. }
         destruct Hlook1 as (n & ly & ? & [ (? & Hlook) | (-> & Heq)]).
         - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
-          apply list_subseteq_mjoin. apply elem_of_list_fmap.
+          apply list_subseteq_mjoin. apply list_elem_of_fmap.
           exists (existT _ ty). split; first done.
-          apply elem_of_list_lookup_2 in Hlook. done.
+          apply list_elem_of_lookup_2 in Hlook. done.
         - injection Heq => Heq1 Heq2 ?. subst.
           apply existT_inj in Heq1 as ->.
           apply existT_inj in Heq2 as ->.

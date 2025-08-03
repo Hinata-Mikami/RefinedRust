@@ -81,29 +81,29 @@
         version = rocq.pkgs.rocq-core.rocq-version;
 
         stdpp = {
-          version = "567f831ef317c62ecc4413d018370b3dcbdf4c39";
-          sha256 = "sha256-jZXhDPVRtkDd+1FXCYqU0r/Mq3JDWOPL1Uk9wJjgrqI=";
+          version = "8c814126389c9a9939ea81528c07099228d3d18a";
+          sha256 = "sha256-u48cXFCJhhMJD/xoXRn09SaOspCfzCMlfED4ypMEwsE=";
         };
 
         iris = {
-          version = "710391513c6d74904ae48b17ae681ca1c20fb98e";
-          sha256 = "sha256-EdRLHmejsDX6ggWH0ZLka4/zRcuuaxcvfiScQaoh6/I=";
+          version = "3e83a7affa51b91aa1eaab1fc0d8a68e5a38b221";
+          sha256 = "sha256-wL95wD0sESzzU7dCZCPw9pMzfJgz06MV/mWbYWjs+k8=";
         };
 
         iris-contrib = {
-          version = "53c49f2fcae1a4a9c3bfa547b7de10911a72a8c3";
-          sha256 = "sha256-D1NoltpSDBXEDW9QiVl/EYubxkEyByIbUst45qCL0Eg=";
+          version = "4e3ace9604b7ec7a1826cd3563b05f1ef9be0dfd";
+          sha256 = "sha256-+7MR4MGzHMNgio8GN4bEwnIpJO96MUzW2kbEedPf+Xk=";
         };
 
         lambda-rust = {
-          version = "0f4ebd6d9a3a6cf2e0a18dfe794134481b7b4bfc";
-          sha256 = "sha256-8ncIi9HyD1TedNkHFhI8wKvrvyiJfdZv/mbS3zOGvvg=";
+          version = "a13bc8df1c0d9824d6fe51f9572f6485c5ce4fab";
+          sha256 = "sha256-d7gbHIDfS5KWeMIEpEFIaiGWm+h2ZsS+J17uC5x1OMk=";
         };
       };
 
       rust = {
         toolchain = pkgs.fenix.fromToolchainFile {
-          file = ./rr_frontend/rust-toolchain.toml;
+          file = ./rust-toolchain.toml;
           sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
         };
 

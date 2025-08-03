@@ -18,7 +18,7 @@ Global Instance simpl_lookup_total_insert_eq {A} `{!Inhabited A} (l : list A) i 
   SimplBothRel (=) (<[i := x']> l !!! j) (x) (x = x').
 Proof.
   unfold SimplBothRel, CanSolve in *; subst.
-  rewrite list_lookup_total_insert; naive_solver.
+  rewrite list_lookup_total_insert_eq; naive_solver.
 Qed.
 
 #[universes(polymorphic)]
@@ -47,7 +47,7 @@ Section project_vec_els.
   Lemma project_vec_els_insert_ge (len : nat) (i : nat) x els:
     (len ≤ i)%nat →
     project_vec_els len (<[i:=x]> els) = project_vec_els len els.
-  Proof. rewrite {1}/project_vec_els => ?. by rewrite take_insert. Qed.
+  Proof. rewrite {1}/project_vec_els => ?. by rewrite take_insert_ge. Qed.
 
   Lemma project_vec_els_lookup_mono (len : nat) (i : nat) els len' els':
     (i < len `min` len')%nat →
@@ -55,7 +55,7 @@ Section project_vec_els.
     project_vec_els len els !! i = project_vec_els len' els' !! i.
   Proof.
     move => ? Hels. rewrite /project_vec_els !list_lookup_fmap. f_equal.
-    rewrite !lookup_take //; lia.
+    rewrite !lookup_take_lt //; lia.
   Qed.
 
   Lemma project_vec_els_take len els len':
@@ -76,7 +76,7 @@ Section project_vec_els.
     intros Hi Hlook. rewrite /project_vec_els.
     simpl.
     rewrite list_lookup_fmap.
-    rewrite lookup_take; last lia.
+    rewrite lookup_take_lt; last lia.
     rewrite Hlook. done.
   Qed.
 

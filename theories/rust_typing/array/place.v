@@ -22,7 +22,7 @@ Section place.
     assert (lt1' = lt2') as -> by congruence.
     apply lookup_interpret_iml_Some_inv in Hlook' as (? & [-> | Hel]).
     { iApply typed_place_cond_ty_refl_ofty. }
-    apply elem_of_list_lookup_1 in Hel as (k' & Hlook2).
+    apply list_elem_of_lookup_1 in Hel as (k' & Hlook2).
     iApply typed_place_cond_ty_refl.
     iPoseProof (big_sepL_concat_lookup _ _ k' with "Houtl") as "Ha".
     { rewrite list_lookup_fmap Hlook2. done. }
@@ -323,7 +323,7 @@ Section place.
     assert (lt1 = lt2) as -> by congruence.
     apply lookup_interpret_iml_Some_inv in Hlook as (? & [-> | Hel]).
     { iApply typed_place_cond_ty_refl_ofty. }
-    apply elem_of_list_lookup_1 in Hel as (k' & Hlook).
+    apply list_elem_of_lookup_1 in Hel as (k' & Hlook).
     iApply typed_place_cond_ty_refl.
     iPoseProof (big_sepL_concat_lookup _ _ k' with "Houtl") as "Ha".
     { rewrite list_lookup_fmap Hlook. done. }

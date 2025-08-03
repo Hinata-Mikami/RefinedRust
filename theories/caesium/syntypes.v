@@ -924,12 +924,12 @@ Lemma struct_layout_spec_has_layout_members `{!LayoutAlg} (sls : struct_layout_s
   ∃ ly, (Some x, ly) ∈ sl.(sl_members) ∧ syn_type_has_layout st ly.
 Proof.
   intros Ha%struct_layout_spec_has_layout_alt_2.
-  intros (i & Hlook)%elem_of_list_lookup_1.
+  intros (i & Hlook)%list_elem_of_lookup_1.
   eapply Forall2_lookup_l in Ha; last done.
   destruct Ha as ([name ly] & Hlook2 & [Halg ->]).
   exists ly. split; last done.
   eapply elem_of_named_fields.
-  by eapply elem_of_list_lookup_2.
+  by eapply list_elem_of_lookup_2.
 Qed.
 
 

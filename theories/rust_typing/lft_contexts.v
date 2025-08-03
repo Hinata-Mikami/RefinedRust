@@ -620,7 +620,7 @@ Section lft_contexts.
   Lemma lctx_lft_alive_local_owned κ c κs:
     κ ⊑ₗ{c} κs ∈ L → Forall lctx_lft_alive κs → lctx_lft_alive κ.
   Proof.
-    iIntros ([i HL]%elem_of_list_lookup_1 Hκs F qL ? ) "#HE HL".
+    iIntros ([i HL]%list_elem_of_lookup_1 Hκs F qL ? ) "#HE HL".
     iDestruct "HL" as "[HL1 HL2]". rewrite {2}/llctx_interp_noend /llctx_elt_interp.
     iDestruct (big_sepL_lookup_acc with "HL2") as "[Hκ Hclose]"; first done.
     iDestruct "Hκ" as (γ) "(#Hname & Hauth & #Hshape)".
@@ -735,7 +735,7 @@ Section lft_contexts.
   Lemma lctx_lft_alive_local_alias E L κ κs:
     κ ≡ₗ κs ∈ L → Forall (lctx_lft_alive E L) κs → (lctx_lft_alive E L) κ.
   Proof.
-    iIntros ([i HL]%elem_of_list_lookup_1 Hκs).
+    iIntros ([i HL]%list_elem_of_lookup_1 Hκs).
     eapply (lctx_lft_alive_incl (lft_intersect_list κs)); first by apply lctx_lft_alive_intersect_list.
     iIntros (?) "HL".
     iDestruct (big_sepL_lookup_acc with "HL") as "[Hκ Hclose]"; first done.
@@ -904,7 +904,7 @@ Section lft_contexts.
   Lemma lctx_lft_alive_count_local_alias E L L' κ κs κs' :
     κ ≡ₗ κs ∈ L → lctx_lft_alive_count_iter E L κs κs' L' → lctx_lft_alive_count E L κ κs' L'.
   Proof.
-    iIntros ([i HL]%elem_of_list_lookup_1 Hκs).
+    iIntros ([i HL]%list_elem_of_lookup_1 Hκs).
     iIntros (F ?) "#HE HL".
     iDestruct (big_sepL_lookup_acc with "HL") as "[Hκ Hclose]"; first done.
     rewrite {1}/llctx_elt_interp /=. iDestruct "Hκ" as "#Hκ".

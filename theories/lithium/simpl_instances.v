@@ -460,13 +460,13 @@ Global Instance simpl_fmap_lookup_and {A B} (l : list A) i (f : A → B) x:
 Proof.
   split.
   - move => [y [-> [Hl ?]]]. rewrite list_lookup_fmap Hl. naive_solver.
-  - move => [Hf ?]. have := list_lookup_fmap_inv _ _ _ _ Hf. naive_solver.
+  - move => [Hf ?]. have := list_lookup_fmap_Some_1 _ _ _ _ Hf. naive_solver.
 Qed.
 Global Instance simpl_fmap_lookup_impl {A B} (l : list A) i (f : A → B) x:
   SimplImplRel (=) true ((f <$> l) !! i) (Some x) (λ T, ∀ y : A, x = f y → l !! i = Some y → T).
 Proof.
   split.
-  - move => Hf /(list_lookup_fmap_inv _ _ _ _)?. naive_solver.
+  - move => Hf /(list_lookup_fmap_Some_1 _ _ _ _)?. naive_solver.
   - move => HT y ? Hl; subst. apply HT. by rewrite list_lookup_fmap Hl.
 Qed.
 Global Instance simpl_lookup_insert_eq {A} (l : list A) i j x x' `{!CanSolve (i = j)}:

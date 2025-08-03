@@ -282,7 +282,7 @@ Section incl_tac.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
-    intros HL%elem_of_list_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).
+    intros HL%list_elem_of_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
@@ -298,7 +298,7 @@ Section incl_tac.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
-    intros HL%elem_of_list_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).
+    intros HL%list_elem_of_lookup_2 H1. rewrite -{3}(take_drop_middle κs1 _ _ H1).
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
@@ -315,7 +315,7 @@ Section incl_tac.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
-    intros HL%elem_of_list_lookup_2 H1. rewrite -{3}(take_drop_middle κs2 _ _ H1).
+    intros HL%list_elem_of_lookup_2 H1. rewrite -{3}(take_drop_middle κs2 _ _ H1).
     rewrite !lft_intersect_list_app. simpl. intros Ha.
     rewrite lft_intersect_assoc. rewrite [lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -lft_intersect_assoc.
@@ -742,7 +742,7 @@ Section alive_tac.
     lctx_lft_alive_list E L (κs' ++ κs) ∨ P →
     lctx_lft_alive_list E L (κ :: κs) ∨ P.
   Proof.
-    intros ?%elem_of_list_lookup_2.
+    intros ?%list_elem_of_lookup_2.
     rewrite /lctx_lft_alive_list/=.
     rewrite lft_intersect_list_app.
     intros [Ha | ?]; last by eauto. left.
@@ -757,7 +757,7 @@ Section alive_tac.
     lctx_lft_alive_list E L (κs' ++ κs) ∨ P →
     lctx_lft_alive_list E L (κ :: κs) ∨ P.
   Proof.
-    intros ?%elem_of_list_lookup_2.
+    intros ?%list_elem_of_lookup_2.
     rewrite /lctx_lft_alive_list/=.
     rewrite lft_intersect_list_app.
     intros [Ha | ?]; last by eauto. left.
@@ -788,9 +788,9 @@ Section alive_tac.
     apply Forall_forall.
     intros κ Hκ.
     eapply (lctx_lft_alive_external _ _ κ1).
-    { eapply Hel. apply elem_of_list_fmap. eauto. }
+    { eapply Hel. apply list_elem_of_fmap. eauto. }
     eapply lctx_lft_alive_local_owned.
-    { by eapply elem_of_list_lookup_2. }
+    { by eapply list_elem_of_lookup_2. }
     by apply Forall_nil.
   Qed.
 
@@ -805,7 +805,7 @@ Section alive_tac.
     lctx_lft_alive (delete i E) L κ' →
     lctx_lft_alive E L κ.
   Proof.
-    intros ?%elem_of_list_lookup_2 H'.
+    intros ?%list_elem_of_lookup_2 H'.
     eapply lctx_lft_alive_external; first done.
     iIntros (F ??) "#HE HL".
     iApply H'; [ done | | done].
@@ -1313,7 +1313,7 @@ Section elctx_sat.
     elctx_sat E L (E') →
     elctx_sat E L ((κ ⊑ₑ κ') :: E').
   Proof.
-    intros ?%elem_of_list_lookup_2 Hr.
+    intros ?%list_elem_of_lookup_2 Hr.
     eapply (elctx_sat_app _ _ [_]); last done.
     eapply elctx_sat_submseteq.
     by apply singleton_submseteq_l.
@@ -1730,7 +1730,7 @@ Section alive_tac.
     lctx_lft_alive_count E L κ κs' L'.
   Proof.
     intros ? ?. eapply lctx_lft_alive_count_local_alias; last done.
-    by eapply elem_of_list_lookup_2.
+    by eapply list_elem_of_lookup_2.
   Qed.
 
   Lemma tac_lctx_lft_alive_count_iter_cons E L κ κs κs1 κs2 κs3 L1 L2 :
@@ -1762,7 +1762,7 @@ Section alive_tac.
     lctx_lft_alive_count (delete i E) L κ' κs L' →
     lctx_lft_alive_count E L κ κs L'.
   Proof.
-    intros ?%elem_of_list_lookup_2 H'.
+    intros ?%list_elem_of_lookup_2 H'.
     eapply lctx_lft_alive_count_external; first done.
     iIntros (F ?) "#HE HL".
     iApply H'; [ done | | done].

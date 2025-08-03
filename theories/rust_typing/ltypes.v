@@ -380,9 +380,9 @@ Section array.
       rewrite -lookup_iml_Some_iff. split.
       - intros (a & Hlook & Hb).
         apply elem_of_list_to_map_1; first done.
-        by eapply elem_of_list_lookup_2.
+        by eapply list_elem_of_lookup_2.
       - intros Ha%elem_of_list_to_map_2.
-        apply elem_of_list_lookup_1 in Ha as (i & Hlook).
+        apply list_elem_of_lookup_1 in Ha as (i & Hlook).
         exists i. split; first done.
         intros i' ?? ? Hlook'.
         intros ->.
@@ -421,7 +421,7 @@ Section array.
     move: Ha. simpl in *.
     rewrite length_insert in Hlen.
     destruct (decide (i = j)) as [ <- | Hneq].
-    - rewrite list_lookup_insert; last done.
+    - rewrite list_lookup_insert_eq; last done.
       intros [= ->]. left. apply elem_of_cons. by left.
     - rewrite list_lookup_insert_ne; last done.
       intros Ha%IH; last done.
@@ -456,7 +456,7 @@ Section array.
   Proof.
     induction iml as [ | [j y] iml IH]; simpl; first done.
     intros Hlen Ha. destruct (decide (i = j)) as [<- | Hneq].
-    - injection Ha as ->. rewrite list_lookup_insert; first done.
+    - injection Ha as ->. rewrite list_lookup_insert_eq; first done.
       rewrite length_interpret_inserts //.
     - rewrite list_lookup_insert_ne; last done. by eapply IH.
   Qed.
@@ -484,7 +484,7 @@ Section array.
   Proof.
     intros Ha Hlen. induction iml as [ | [j y] iml IH]; simpl; first done.
     simpl in *. destruct (decide (i = j)) as [<- | Hneq].
-    - injection Ha as ->. rewrite list_lookup_insert; first done.
+    - injection Ha as ->. rewrite list_lookup_insert_eq; first done.
       rewrite length_interpret_iml//.
     - rewrite list_lookup_insert_ne; last done. by apply IH.
   Qed.
@@ -492,7 +492,7 @@ Section array.
   Lemma elem_of_interpret_iml_inv {X} (def : X) iml len x :
     x ∈ interpret_iml def len iml → x = def ∨ ∃ i, (i, x) ∈ iml.
   Proof.
-    intros (i & Hel)%elem_of_list_lookup_1.
+    intros (i & Hel)%list_elem_of_lookup_1.
     apply lookup_interpret_iml_Some_inv in Hel as (? & [? | ?]); eauto.
   Qed.
 
@@ -1318,7 +1318,7 @@ Section ltype_def.
   Proof.
     intros HP.
     destruct ty as (lt & rlt).
-    apply elem_of_list_lookup_1 in HP as (j & HP).
+    apply list_elem_of_lookup_1 in HP as (j & HP).
     apply pad_struct_lookup_Some_1 in HP as (n & ly & Hlook1 & Hlook2).
     destruct Hlook2 as [ Hlook2 | [_ [= -> ->]]]; first last.
     { unfold lty_size_rel, ltof. simpl. lia. }
@@ -1335,14 +1335,14 @@ Section ltype_def.
     lt ∈ (zip (interpret_iml (OfTyLty def) len lts) r) → lty_size_rel (lt.1) (ArrayLty def len lts).
   Proof.
     intros HP.
-    apply elem_of_list_lookup_1 in HP as (j & HP).
+    apply list_elem_of_lookup_1 in HP as (j & HP).
     unfold lty_size_rel, ltof; simpl.
     apply lookup_zip in HP as [Hlook1 Hlook2].
     apply lookup_interpret_iml_Some_inv in Hlook1 as (Hlen & Hlook1).
     destruct lt as [lt a].
     destruct Hlook1 as [-> | Hlook1]; simpl; first lia.
     assert (lty_size lt ≤ list_max ((λ '(_, lt), lty_size lt) <$> lts)) as ?; last lia.
-    apply elem_of_list_lookup_1 in Hlook1 as (k & Hlook).
+    apply list_elem_of_lookup_1 in Hlook1 as (k & Hlook).
     eapply (list_max_le_lookup _ k).
     { rewrite list_lookup_fmap. rewrite Hlook. done. }
     done.
@@ -2003,7 +2003,7 @@ Section ltype_def.
     + eapply pzipl_lookup_inv in Hlook.
       f_equiv => Hly. f_equiv. f_equiv.
       { simpl. f_equiv. f_equiv. rewrite lty_core_syn_type_eq. done. }
-      unshelve rewrite IH; first last. { by eapply elem_of_list_lookup_2. }
+      unshelve rewrite IH; first last. { by eapply list_elem_of_lookup_2. }
       2: apply Heq2.
       iApply lty_own_pre_rfn_eq'.
       clear. simpl.
@@ -2032,14 +2032,14 @@ Section ltype_def.
     simpl in *. iSplit.
     - iIntros "(%Heq & %Hst & Hb)". assert (Heq2 : lty_rt lt = rt). { rewrite -lty_core_rt_eq. done. }
       iExists Heq2. rewrite lty_core_syn_type_eq in Hst. iSplitR; first done.
-      apply elem_of_list_lookup_2 in Hlook1.
+      apply list_elem_of_lookup_2 in Hlook1.
       unshelve rewrite IH; [done | | done].
       clear. subst rt. cbn.
       move: Heq2 Heq3 r. intros <-. intros Heq. rewrite (UIP_refl _ _ Heq). eauto.
     - iIntros "(%Heq & %Hst & Hb)". assert (Heq2 : lty_rt (lty_core lt) = rt).
       { rewrite lty_core_rt_eq. done. }
       iExists Heq2. rewrite lty_core_syn_type_eq. iSplitR; first done.
-      apply elem_of_list_lookup_2 in Hlook1. unshelve rewrite IH; [done | | done].
+      apply list_elem_of_lookup_2 in Hlook1. unshelve rewrite IH; [done | | done].
       clear. subst rt. cbn.
       move: Heq2 Heq3 r. intros ->. intros Heq. rewrite (UIP_refl _ _ Heq). eauto.
   Qed.
@@ -2215,10 +2215,10 @@ Section ltype_def.
     apply pad_struct_lookup_Some_1 in Hlook as (n & ly & ? & [[_ Hlook] | [_ Huninit]]).
     + eapply pzipl_lookup_inv in Hlook.
       f_equiv => ly'. f_equiv. f_equiv. { simpl. f_equiv. f_equiv. rewrite lty_core_syn_type_eq //. }
-      unshelve rewrite IH; first last. { by eapply elem_of_list_lookup_2. }
+      unshelve rewrite IH; first last. { by eapply list_elem_of_lookup_2. }
       2: { simpl. apply (eq_sym Heq2). }
       simpl.
-      apply elem_of_list_lookup_2 in Hlook.
+      apply list_elem_of_lookup_2 in Hlook.
       rewrite -!IH; done.
     + injection Huninit as -> ->.
       simpl. clear.
@@ -2244,14 +2244,14 @@ Section ltype_def.
     simpl in *. iSplit.
     - iIntros "(%Heq & %Hst & Hb)". assert (Heq2 : lty_rt lt = rt). { rewrite -lty_core_rt_eq. done. }
       iExists Heq2. rewrite lty_core_syn_type_eq in Hst. iSplitR; first done.
-      apply elem_of_list_lookup_2 in Hlook1.
+      apply list_elem_of_lookup_2 in Hlook1.
       unshelve rewrite IH; [ done | | done].
       clear. subst rt. cbn.
       move: Heq2 Heq3 r. intros ->. intros Heq. rewrite (UIP_refl _ _ Heq). eauto.
     - iIntros "(%Heq & %Hst & Hb)". assert (Heq2 : lty_rt (lty_core lt) = rt).
       { rewrite lty_core_rt_eq. done. }
       iExists Heq2. rewrite lty_core_syn_type_eq. iSplitR; first done.
-      apply elem_of_list_lookup_2 in Hlook1. unshelve rewrite IH; [done | | done].
+      apply list_elem_of_lookup_2 in Hlook1. unshelve rewrite IH; [done | | done].
       clear. subst rt. cbn.
       move: Heq2 Heq3 r. intros <-. intros Heq. rewrite (UIP_refl _ _ Heq). eauto.
   Qed.
@@ -2490,7 +2490,7 @@ Section ltype_def.
         erewrite struct_layout_spec_has_layout_fields_length; done. }
       destruct Hlook as (n & ly' & Hlook & [(? & Hlook2) | (-> & Hlook2)]).
       + apply pzipl_lookup_inv in Hlook2.
-        iApply (IH with "Ha"). by eapply elem_of_list_lookup_2.
+        iApply (IH with "Ha"). by eapply list_elem_of_lookup_2.
       + injection Hlook2. intros _ ->.
         apply existT_inj in Hlook2 as ->.
         simpl. rewrite rew_UIP'. done.
@@ -5638,7 +5638,7 @@ Section blocked.
       iApply (struct_ltype_imp_unblockable _ lts sls).
       iApply big_sepL_intro. iModIntro. iIntros (k [rt lt] Hlook).
       iApply imp_unblockable_shorten; first last.
-      { iApply IH. by eapply elem_of_list_lookup_2. }
+      { iApply IH. by eapply list_elem_of_lookup_2. }
       simpl. clear -Hlook.
       unfold ltype_blocked_lfts. simpl.
       iModIntro. rewrite /lft_dead_list.

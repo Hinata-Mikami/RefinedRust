@@ -87,7 +87,7 @@ Proof.
   induction l as [ | [k1 v1] l IH]; simpl.
   { intros []%elem_of_nil. }
   intros [-> | Ha]%elem_of_cons Hnodup.
-  { exists v1. apply lookup_insert. }
+  { exists v1. apply lookup_insert_eq. }
   inversion Hnodup as [ | ? ? Hnel Hnodup']; subst.
   opose proof* IH as Hb; [done | done | ].
   destruct Hb as (v & Hlook). exists v.

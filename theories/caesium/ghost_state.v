@@ -1030,13 +1030,13 @@ Section heap.
 
     apply local_update_total_valid=> _ Hvalid _.
     have ? : (([^op list] k↦y ∈ bl, {[a + (1 + k) := (1%Qp, to_lock_stateR (RSt 0%nat), to_agree (aid, y))]} : heapUR) !! a = None). {
-      move: (Hvalid a). rewrite lookup_op lookup_singleton.
+      move: (Hvalid a). rewrite lookup_op lookup_singleton_eq.
       by move=> /(cmra_discrete_valid_iff 0%nat) /exclusiveN_Some_l.
     }
     rewrite -insert_singleton_op //. etrans.
     { apply (delete_local_update _ _ a (1%Qp, to_lock_stateR (RSt 0%nat), to_agree (aid, b))).
-      by rewrite lookup_insert. }
-    rewrite delete_insert // -to_heapUR_delete (heap_free_delete _ a).
+      by rewrite lookup_insert_eq. }
+    rewrite delete_insert_id // -to_heapUR_delete (heap_free_delete _ a).
     setoid_rewrite Z.add_assoc. by apply IH.
   Qed.
 

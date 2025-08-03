@@ -69,16 +69,16 @@ Proof.
   - case_bool_decide as Hb => //. have [_ /= Heq]:= Hequiv 0. by  move: (Heq Hb) => [->].
   - iDestruct ("IH" $! (f ∘ S) (pred <$> (filter (λ x, x ≠ 0%nat) ig)) l2 with "[//] [%] [Hl]") as "Hl". {
       move => i. split => // Hin. move: (Hequiv (S i)) => [_ /= {}Hequiv]. apply: Hequiv.
-      contradict Hin. apply elem_of_list_fmap. eexists (S i). split => //.
-        by apply elem_of_list_filter.
+      contradict Hin. apply list_elem_of_fmap. eexists (S i). split => //.
+        by apply list_elem_of_filter.
     }
     + iApply (big_sepL_impl with "Hl"). iIntros "!>" (k ??) "Hl".
       case_bool_decide as Hb1; case_bool_decide as Hb2 => //.
-      contradict Hb2. apply elem_of_list_fmap. eexists (S k). split => //.
-        by apply elem_of_list_filter.
+      contradict Hb2. apply list_elem_of_fmap. eexists (S k). split => //.
+        by apply list_elem_of_filter.
     + iApply (big_sepL_impl with "Hl"). iIntros "!>" (k ??) "Hl".
       case_bool_decide as Hb1; case_bool_decide as Hb2 => //.
-      contradict Hb2. move: Hb1 => /elem_of_list_fmap[[|?][? /elem_of_list_filter [??]]] //.
+      contradict Hb2. move: Hb1 => /list_elem_of_fmap[[|?][? /list_elem_of_filter [??]]] //.
       by simplify_eq/=.
 Qed.
 Definition subsume_list_eq_inst := [instance @subsume_list_eq].
@@ -91,10 +91,10 @@ Proof.
   unfold CanSolve => ?. iIntros "Hsub Hl".
   rewrite length_insert. iApply "Hsub".
   destruct (decide (i < length l1)%nat). 2: { by rewrite list_insert_ge; [|lia]. }
-  iDestruct (big_sepL_insert_acc with "Hl") as "[_ Hl]". { by apply: list_lookup_insert. }
+  iDestruct (big_sepL_insert_acc with "Hl") as "[_ Hl]". { by apply: list_lookup_insert_eq. }
   have [//|y ?]:= lookup_lt_is_Some_2 l1 i.
   iDestruct ("Hl" $! y with "[]") as "Hl". { by case_decide. }
-  by rewrite list_insert_insert list_insert_id.
+  by rewrite list_insert_insert_eq list_insert_id.
 Qed.
 Definition subsume_list_insert_in_ig_inst := [instance @subsume_list_insert_in_ig].
 Global Existing Instance subsume_list_insert_in_ig_inst.
@@ -144,7 +144,7 @@ Proof.
   all: iApply (big_sepL_impl with "H"); iIntros "!#" (???) "?".
   all: case_bool_decide as Hx1 => //; case_bool_decide as Hx2 => //; contradict Hx2.
   - set_unfold. eexists _. split; [|done]. done.
-  - by move: Hx1 => /(elem_of_list_fmap_2 _ _ _)[[|?]//=[->?]].
+  - by move: Hx1 => /(list_elem_of_fmap_1 _ _ _)[[|?]//=[->?]].
 Qed.
 Definition subsume_list_cons_l_inst := [instance @subsume_list_cons_l].
 Global Existing Instance subsume_list_cons_l_inst | 40.

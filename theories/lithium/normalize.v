@@ -35,7 +35,7 @@ Ltac normalize_autorewrite :=
 #[export] Hint Rewrite @length_insert @length_app @length_fmap @length_rotate @length_replicate @length_drop : lithium_rewrite.
 #[export] Hint Rewrite <- @fmap_take @fmap_drop : lithium_rewrite.
 #[export] Hint Rewrite @list_insert_fold : lithium_rewrite.
-#[export] Hint Rewrite @list_insert_insert : lithium_rewrite.
+#[export] Hint Rewrite @list_insert_insert_eq : lithium_rewrite.
 #[export] Hint Rewrite @drop_drop : lithium_rewrite.
 #[export] Hint Rewrite @tail_replicate @take_replicate @drop_replicate : lithium_rewrite.
 #[export] Hint Rewrite <- @app_assoc @cons_middle : lithium_rewrite.
@@ -56,7 +56,7 @@ Ltac normalize_autorewrite :=
 #[export] Hint Rewrite @decide_True using can_solve : lithium_rewrite.
 #[export] Hint Rewrite @decide_False using can_solve : lithium_rewrite.
 
-Local Definition lookup_insert_gmap A K `{Countable K} := lookup_insert (M := gmap K) (A := A).
+Local Definition lookup_insert_gmap A K `{Countable K} := lookup_insert_eq (M := gmap K) (A := A).
 #[export] Hint Rewrite lookup_insert_gmap : lithium_rewrite.
 
 (** * Second version of normalization based on typeclasses *)

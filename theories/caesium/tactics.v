@@ -750,10 +750,10 @@ Proof.
     destruct f as [ n | ]; simpl; first last.
     { f_equiv. apply IH. }
     destruct (decide (n = "discriminant")) as [-> | ?].
-    { rewrite !lookup_insert. simpl. f_equiv. apply IH. }
+    { rewrite !lookup_insert_eq. simpl. f_equiv. apply IH. }
     rewrite !(lookup_insert_ne _ "discriminant"); [ | done..].
     destruct (decide (n = "data")) as [-> | ?].
-    { rewrite !lookup_insert. simpl. f_equiv; last apply IH.
+    { rewrite !lookup_insert_eq. simpl. f_equiv; last apply IH.
       f_equiv. f_equiv. done. }
     rewrite !lookup_insert_ne; [ | done..]. f_equiv; last apply IH.
     rewrite lookup_empty//.

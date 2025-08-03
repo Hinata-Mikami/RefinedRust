@@ -1985,11 +1985,11 @@ Proof.
   { by apply use_enum_layout_alg_inv'. }
   simpl. iIntros (ly' Hit).
   apply syn_type_has_layout_int_inv in Hit as ->.
-  rewrite lookup_insert/=.
+  rewrite lookup_insert_eq/=.
   iApply wp_value.
   iIntros (ly'' Hunion).
   apply (syn_type_has_layout_union_inv) in Hunion as (variant_lys & ul & -> & Hul & Hvariants).
-  rewrite lookup_insert_ne//. rewrite lookup_insert/=.
+  rewrite lookup_insert_ne//. rewrite lookup_insert_eq/=.
   iApply wp_concat_bind. simpl.
   iApply (wp_wand with "HT").
   iIntros (v) "HP".
@@ -2063,9 +2063,9 @@ Proof.
     (* uses duplicate-freedom *)
     assert (j = 0%nat) as ->.
     { destruct j; first done. simpl in *.
-      apply elem_of_list_lookup_2 in Hf.
+      apply list_elem_of_lookup_2 in Hf.
       contradict Hnel. rewrite /field_names.
-      apply elem_of_list_omap. eexists _. split; done. }
+      apply list_elem_of_omap. eexists _. split; done. }
     simpl in *. iFrame.
     iEval (setoid_rewrite <-Nat.add_succ_r).
     iApply ("IH" $! els with "[] [] [Hb]").
@@ -2076,7 +2076,7 @@ Proof.
       destruct j'.
       { (* contrasdictory due to no-dup *)
         simpl in Hlook1. injection Hlook1 as <- <-.
-        apply elem_of_list_lookup_2 in Hlook2.
+        apply list_elem_of_lookup_2 in Hlook2.
         contradict Hnel. eapply elem_of_named_fields_field_names. done. }
       iExists j'. rewrite Nat.add_succ_r.
       eauto with iFrame. }

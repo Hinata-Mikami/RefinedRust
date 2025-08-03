@@ -164,7 +164,7 @@ Context `{!typeGS Σ}.
       { rewrite length_fmap length_hpzipl Hlen//. }
       iApply big_sepL2_intro. { rewrite length_fmap length_hpzipl Hlen//. }
       iIntros "!>" (? [? []] ? Hlook1 Hlook2).
-      apply list_lookup_fmap_Some in Hlook2 as ([name st'] & Hlook2 & ->).
+      apply list_lookup_fmap_Some in Hlook2 as ([name st'] & -> & Hlook2).
       rewrite decide_True; first last. { rewrite length_zip length_hpzipl Hlen.
         apply hpzipl_lookup_inv in Hlook1. apply lookup_lt_Some in Hlook1. lia. }
       iIntros "(% & % & %Hlook3 & <- & _)".
@@ -206,7 +206,7 @@ Context `{!typeGS Σ}.
 
       iIntros "(%name & %st'' & %Hlook_fields & <- & Ha)".
       iExists name, _. iR.
-      apply list_lookup_fmap_Some in Hlook1_1 as ([name' st''] & Hlook1_1 & ->).
+      apply list_lookup_fmap_Some in Hlook1_1 as ([name' st''] & -> & Hlook1_1).
       simplify_eq. done. }
     iApply (ltype_deinit_struct _ _ sls (rs'') _ _ false); first done.
     { done. }

@@ -128,7 +128,7 @@ Proof.
       iIntros "(%ly0 & ? & ? & Hb)".
       iExists ly0. iFrame. iApply (IH with "[] Hb"); last done.
       eapply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
-      by eapply elem_of_list_lookup_2.
+      by eapply list_elem_of_lookup_2.
     * injection Heq as -> Heq1 Heq2. simpl.
       apply existT_inj in Heq1 as ->. apply existT_inj in Heq2 as ->.
       iIntros "(%ly0 & ? & ? & Hb)". iExists ly0. iFrame.
@@ -154,7 +154,7 @@ Proof.
     iApply (big_sepL2_wand with "Hb").
     iApply big_sepL2_intro. { rewrite length_interpret_iml //. }
     iIntros "!>" (?????) "($ & Hb)". iApply IH; last done; [ | done].
-    by eapply elem_of_list_lookup_2.
+    by eapply list_elem_of_lookup_2.
   + rewrite !ltype_own_array_unfold /array_ltype_own.
     iDestruct "Hincl" as "(Hincl & ->)".
     iIntros "(%ly &  ? & ? & ? & ? & ? & ? & Hb)".
@@ -234,10 +234,10 @@ Proof.
       iIntros (????? Hel) "Hincl". by iDestruct (IH with "Hincl") as "($ & _)".
     + iApply (struct_ltype_mono (@ltype_core _ _ +<$> lts)); last done.
       iIntros (????? Hel) "Hincl".
-      apply elem_of_list_lookup_1 in Hel as (i & Hel).
+      apply list_elem_of_lookup_1 in Hel as (i & Hel).
       destruct lt as [rt lt].
       eapply hzipl_hmap_lookup_inv in Hel as (y & Hlook & ->).
-      apply elem_of_list_lookup_2 in Hlook.
+      apply list_elem_of_lookup_2 in Hlook.
       eapply IH in Hlook.
       iDestruct (Hlook with "Hincl") as "(_ & Ha)".
       iApply "Ha".
@@ -250,7 +250,7 @@ Proof.
     + iIntros (????? Hel) "Hincl".
       rewrite -ltype_core_ofty in Hel.
       rewrite interpret_iml_fmap in Hel.
-      apply elem_of_list_fmap in Hel as (lt' & -> & Hel).
+      apply list_elem_of_fmap in Hel as (lt' & -> & Hel).
       apply elem_of_interpret_iml_inv in Hel as [ -> | []].
       { simp_ltypes. rewrite !ltype_own_ofty_unfold. by iApply lty_of_ty_mono. }
       by iDestruct (IH with "Hincl") as "(_ & $)".

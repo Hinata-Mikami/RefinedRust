@@ -39,7 +39,7 @@ Create HintDb refinedc_typing.
 Ltac solve_typing :=
   (typeclasses eauto with refinedc_typing typeclass_instances core).
 
-Global Hint Constructors Forall Forall2 elem_of_list : refinedc_typing.
+Global Hint Constructors Forall Forall2 list_elem_of : refinedc_typing.
 Global Hint Resolve submseteq_cons submseteq_inserts_l submseteq_inserts_r
   : refinedc_typing.
 

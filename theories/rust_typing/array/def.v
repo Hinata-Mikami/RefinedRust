@@ -79,7 +79,7 @@ Section array.
     iExists (mjoin vs). rewrite big_sepL2_sep. iDestruct "Hl" as "(Hl & Hv)".
     iPoseProof (big_sepL2_length with "Hv") as "%Hlen'".
     iAssert (∀ v, ⌜v ∈ vs⌝ -∗ ⌜v `has_layout_val` ly⌝)%I with "[Hv]" as "%Ha".
-    { iIntros (v (i & Hlook)%elem_of_list_lookup_1).
+    { iIntros (v (i & Hlook)%list_elem_of_lookup_1).
       assert (∃ r, rs !! i = Some r) as (r & Hlook').
       { destruct (rs !! i) eqn:Heq; first by eauto. exfalso.
         apply lookup_lt_Some in Hlook. apply lookup_ge_None_1 in Heq. lia. }
@@ -104,7 +104,7 @@ Section array.
       apply lookup_ge_None in Heq1. lia. }
     rewrite lookup_replicate_2; first last.
     { apply lookup_lt_Some in Heq1. lia. }
-    rewrite Heq1. constructor. rewrite Ha; first last. { eapply elem_of_list_lookup_2. eauto. }
+    rewrite Heq1. constructor. rewrite Ha; first last. { eapply list_elem_of_lookup_2. eauto. }
     done.
   Qed.
   Lemma array_own_val_extract_pointsto_fupd F π q ly ty rs l len :
@@ -346,7 +346,7 @@ Section lemmas.
     rewrite uninit_own_spec.
     iExists _. iR.
     iPureIntro. rewrite /has_layout_val.
-    apply elem_of_list_lookup_2 in Hlook2.
+    apply list_elem_of_lookup_2 in Hlook2.
     apply reshape_replicate_elem_length in Hlook2; first done.
     rewrite Hlyv0. lia.
   Qed.

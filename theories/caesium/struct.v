@@ -149,9 +149,9 @@ Proof.
     { simpl. intros [= [= ->] ->]. destruct j; lia. }
     simpl. destruct j as [ | j]; simpl.
     { intros Ha [= [= ->] ->].
-      apply Hnel. apply elem_of_list_omap.
+      apply Hnel. apply list_elem_of_omap.
       eexists (_, _); split; last done.
-      by eapply elem_of_list_lookup_2. }
+      by eapply list_elem_of_lookup_2. }
     { eapply IH; last done. lia. }
   - intros Hnd.
     destruct i as [ | i]; first done.
@@ -346,7 +346,7 @@ Lemma offset_of_cons n n' ly s:
   n' = Some n ∨ n ∈ field_names s →
   default 0%nat (offset_of ((n', ly)::s) n) = (if decide (n' = Some n) then 0 else ly_size ly + (default 0%nat (offset_of s n)))%nat.
 Proof.
-  rewrite /offset_of/= index_of_cons. case_decide => //= -[|/elem_of_list_omap[x Hin]]//.
+  rewrite /offset_of/= index_of_cons. case_decide => //= -[|/list_elem_of_omap[x Hin]]//.
   destruct (index_of s n) eqn: Hfind => //=.
   move: Hfind => /fmap_None/list_find_None /Forall_forall Hfind. set_solver.
 Qed.
@@ -490,7 +490,7 @@ Proof.
     + injection Heq as [= <-].
       inversion Hnd; subst.
       destruct i as [ | i]; first done.
-      simpl. intros Hel%elem_of_list_lookup_2.
+      simpl. intros Hel%list_elem_of_lookup_2.
       exfalso.
       apply elem_of_named_fields_field_names in Hel. done.
     + destruct i as [ | i]. { intros [= <- <-]. done. }
@@ -548,7 +548,7 @@ Lemma layout_of_union_member_in_ul n ul ly:
   ly ∈ ul.(ul_members).*2.
 Proof.
   rewrite /layout_of_union_member. destruct (index_of_union n ul) => //= Hin.
-  apply: elem_of_list_lookup_2. by rewrite list_lookup_fmap.
+  apply: list_elem_of_lookup_2. by rewrite list_lookup_fmap.
 Qed.
 
 Lemma index_of_union_lookup ul i n ly:
