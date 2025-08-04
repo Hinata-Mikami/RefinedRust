@@ -1,7 +1,7 @@
 # This file expects two variables: `NIX_CI_CACHE_PUB_KEY` and `NIX_CI_CACHE_PRIV_KEY`
 # Those variables can be generated with: `nix-store --generate-binary-cache-key ci_nix_store priv.pem pub.pem`
 
-stages: [ nix-cache, lint, build, tests, opam ]
+stages: [ nix-cache, lint, build, tests]
 
 .nix:
   image: nixos/nix:2.30.0

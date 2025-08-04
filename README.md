@@ -90,11 +90,11 @@ opam switch refinedrust
 
 2. Run the following commands:
 ```
-REFINEDRUST_ROOT=. scripts/setup-rust.sh
-REFINEDRUST_ROOT=. scripts/install-frontend.sh
-REFINEDRUST_ROOT=. scripts/setup-coq.sh
-REFINEDRUST_ROOT=. scripts/install-typesystem.sh
-REFINEDRUST_ROOT=. scripts/install-stdlib.sh
+REFINEDRUST_ROOT=. ./scripts/setup-rust.sh
+REFINEDRUST_ROOT=. ./scripts/install-frontend.sh
+REFINEDRUST_ROOT=. ./scripts/setup-coq.sh
+REFINEDRUST_ROOT=. ./scripts/install-typesystem.sh
+REFINEDRUST_ROOT=. ./scripts/install-stdlib.sh
 ```
 
 This will install the RefinedRust frontend, as well as the Rocq type system and the specifications and proofs for the Rust standard library components that RefinedRust comes with.
