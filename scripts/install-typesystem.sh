@@ -7,3 +7,4 @@
 opam pin remove refinedrust -y
 opam remove refinedrust -y
 opam pin add refinedrust.dev $REFINEDRUST_ROOT/theories -y
+opam install refinedrust

@@ -47,35 +47,58 @@ nix --extra-experimental-features 'nix-command flakes' shell "gitlab:lgaeher/ref
 ```
 
 ### Setup using `opam` and `rustup`
-#### Setup instructions for the Rocq code:
 We assume that you have `opam` installed on your system. Setup instructions can be found here: https://opam.ocaml.org/doc/Install.html
+Make sure that you have a working `rustup`/Rust install. Instructions for setting up Rust can be found on https://rustup.rs/.
 
+You can either setup the necessary dependencies for working on the RefinedRust code and its case studies itself, within a checkout of the RefinedRust repository, or install it on your system to verify Rust code elsewhere.
+Note that, if you choose the latter option, you will potentially run into issues when trying to use the same opam switch to modify the contents of the RefinedRust repository.
+
+#### Setup instructions for working on RefinedRust or on its case studies:
 0. `cd` into the directory containing this README.
-
 1. Create a new opam switch for RefinedRust:
 ```
 opam switch create refinedrust --packages=ocaml-variants.4.14.0+options,ocaml-option-flambda
 opam switch link refinedrust .
 opam switch refinedrust
-opam repo add coq-released https://rocq-prover.org/opam/released
+opam repo add rocq-released https://rocq-prover.org/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
+opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
 ```
 2. Install the necessary dependencies:
 ```
-opam pin add rocq-prover 9.0.0
+opam pin add rocq-prover 9.1+rc1
 make builddep
 ```
-3. Build the Rocq implementation of the type system
+3. Build the Rocq implementation of the type system:
 ```
 make setup-dune
 make typesystem
 ```
+4. Run `./refinedrust build` in `rr_frontend` to build the frontend.
+5. Run `./refinedrust install` in `rr_frontend` to install the frontend into your Rust path.
 
-#### Setup instructions for the frontend:
-1. Make sure that you have a working `rustup`/Rust install. Instructions for setting up Rust can be found on https://rustup.rs/.
-2. Run `./refinedrust build` in `rr_frontend` to build the frontend.
+#### Setup instructions for installing RefinedRust on your system
+We provide scripts to install RefinedRust.
 
-Optionally, you can install the frontend into your Rust path by also running `./refinedrust install` in `rr_frontend`.
+0. `cd` into the directory containing this README.
+1. First, set up a new opam switch.
+```
+opam switch create refinedrust --packages=ocaml-variants.4.14.0+options,ocaml-option-flambda
+opam switch link refinedrust .
+opam switch refinedrust
+```
+
+2. Run the following commands:
+```
+REFINEDRUST_ROOT=. scripts/setup-rust.sh
+REFINEDRUST_ROOT=. scripts/install-frontend.sh
+REFINEDRUST_ROOT=. scripts/setup-coq.sh
+REFINEDRUST_ROOT=. scripts/install-typesystem.sh
+REFINEDRUST_ROOT=. scripts/install-stdlib.sh
+```
+
+This will install the RefinedRust frontend, as well as the Rocq type system and the specifications and proofs for the Rust standard library components that RefinedRust comes with.
+
 
 ## Frontend usage
 After installing RefinedRust, it can be invoked through `cargo`, Rust's build system and package manager, by running `cargo refinedrust`.

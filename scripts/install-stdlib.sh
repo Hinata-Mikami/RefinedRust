@@ -7,3 +7,4 @@
 opam pin remove refinedrust-stdlib -y
 opam remove refinedrust-stdlib -y
 opam pin add refinedrust-stdlib.dev $REFINEDRUST_ROOT/stdlib -y
+opam install refinedrust-stdlib
