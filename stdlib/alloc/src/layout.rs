@@ -1,6 +1,6 @@
 #![rr::include("ptr")]
 #![rr::include("result")]
-#![rr::import("stdlib.alloc.theories", "layout")]
+#![rr::import("rrstd.alloc.theories", "layout")]
 use std::ptr::Alignment;
 
 

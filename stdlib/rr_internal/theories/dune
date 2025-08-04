@@ -1,5 +1,5 @@
 (coq.theory
 (flags -w -notation-overridden -w -redundant-canonical-projection)
 (package refinedrust-stdlib)
-(name stdlib.rr_internal.theories)
-(theories stdpp iris iris_contrib Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust stdlib.alloc.alloc.generated stdlib.ptr.ptr.generated stdlib.ptr.theories))
+(name rrstd.rr_internal.theories)
+(theories stdpp iris iris_contrib Ltac2 Equations RecordUpdate lrust caesium lithium refinedrust rrstd.alloc.alloc.generated rrstd.ptr.ptr.generated rrstd.ptr.theories))

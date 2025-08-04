@@ -1,6 +1,6 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From stdlib.alloc.alloc.generated Require Import generated_code_alloc generated_specs_alloc generated_template_alloc_dealloc_internal.
+From rrstd.alloc.alloc.generated Require Import generated_code_alloc generated_specs_alloc generated_template_alloc_dealloc_internal.
 
 Set Default Proof Using "Type".
 

@@ -4,8 +4,8 @@
 
 #![feature(allocator_api)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.mem")]
-#![rr::import("stdlib.mem.theories", "shims")]
+#![rr::coq_prefix("rrstd.mem")]
+#![rr::import("rrstd.mem.theories", "shims")]
 #![allow(unused)]
 
 #[rr::export_as(core::mem::size_of)]

@@ -5,9 +5,9 @@
 #![feature(allocator_api)]
 #![feature(ptr_alignment_type)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.alloc")]
+#![rr::coq_prefix("rrstd.alloc")]
 #![allow(unused)]
-#![rr::import("stdlib.alloc.theories", "shims")]
+#![rr::import("rrstd.alloc.theories", "shims")]
 
 
 mod layout;

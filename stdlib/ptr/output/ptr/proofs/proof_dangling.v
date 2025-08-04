@@ -1,6 +1,6 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From stdlib.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_dangling.
+From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_dangling.
 
 Set Default Proof Using "Type".
 

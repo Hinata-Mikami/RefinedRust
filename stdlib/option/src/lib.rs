@@ -2,7 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.option")]
+#![rr::coq_prefix("rrstd.option")]
 #![allow(unused)]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]

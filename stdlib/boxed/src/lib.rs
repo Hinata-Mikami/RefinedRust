@@ -4,8 +4,8 @@
 
 #![feature(allocator_api)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.boxed")]
-#![rr::import("stdlib.boxed.theories", "shims")]
+#![rr::coq_prefix("rrstd.boxed")]
+#![rr::import("rrstd.boxed.theories", "shims")]
 #![rr::include("option")]
 #![rr::include("alloc")]
 #![rr::include("rr_internal")]

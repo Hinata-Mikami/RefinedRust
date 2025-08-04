@@ -1,4 +1,4 @@
-#![rr::import("stdlib.iterator.theories", "step")]
+#![rr::import("rrstd.iterator.theories", "step")]
 
 #[rr::export_as(core::iter::Step)]
 #[rr::context("Steppable {rt_of Self}")]

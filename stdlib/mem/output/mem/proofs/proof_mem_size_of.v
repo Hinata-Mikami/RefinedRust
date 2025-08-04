@@ -1,6 +1,6 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From stdlib.mem.mem.generated Require Import generated_code_mem generated_specs_mem generated_template_mem_size_of.
+From rrstd.mem.mem.generated Require Import generated_code_mem generated_specs_mem generated_template_mem_size_of.
 
 Set Default Proof Using "Type".
 

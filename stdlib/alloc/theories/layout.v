@@ -1,5 +1,5 @@
 From refinedrust Require Import typing.
-From stdlib.ptr.ptr.generated Require Import generated_specs_ptr.
+From rrstd.ptr.ptr.generated Require Import generated_specs_ptr.
 
 Record rust_layout := mk_rust_layout {
   layout_sz : nat;

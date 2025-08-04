@@ -5,7 +5,7 @@
 
 #![feature(try_trait_v2)]
 
-#![rr::coq_prefix("stdlib.iterator")]
+#![rr::coq_prefix("rrstd.iterator")]
 #![rr::package("refinedrust-stdlib")]
 #![rr::include("closures")]
 #![rr::include("option")]

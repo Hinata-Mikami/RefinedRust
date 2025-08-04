@@ -4,8 +4,8 @@
 
 #![feature(allocator_api)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.rr_internal")]
-#![rr::import("stdlib.rr_internal.theories", "shims")]
+#![rr::coq_prefix("rrstd.rr_internal")]
+#![rr::import("rrstd.rr_internal.theories", "shims")]
 
 #![rr::include("ptr")]
 #![rr::include("alloc")]

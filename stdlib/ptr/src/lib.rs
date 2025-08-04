@@ -4,10 +4,10 @@
 
 #![feature(allocator_api)]
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.ptr")]
+#![rr::coq_prefix("rrstd.ptr")]
 #![rr::include("mem")]
-#![rr::import("stdlib.ptr.theories", "shims")]
-#![rr::import("stdlib.ptr.theories", "specs")]
+#![rr::import("rrstd.ptr.theories", "shims")]
+#![rr::import("rrstd.ptr.theories", "specs")]
 #![allow(unused)]
 
 mod alignment;

@@ -1,8 +1,8 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
 
-From stdlib.ptr.ptr.generated Require Export generated_specs_ptr.
-From stdlib.alloc.alloc.generated Require Export generated_specs_alloc.
+From rrstd.ptr.ptr.generated Require Export generated_specs_ptr.
+From rrstd.alloc.alloc.generated Require Export generated_specs_alloc.
 
 
 (** Allocator API *)

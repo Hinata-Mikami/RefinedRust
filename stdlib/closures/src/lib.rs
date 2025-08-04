@@ -3,8 +3,8 @@
 #![feature(custom_inner_attributes)]
 
 #![rr::package("refinedrust-stdlib")]
-#![rr::import("stdlib.closures.theories", "closures")]
-#![rr::coq_prefix("stdlib.closures")]
+#![rr::import("rrstd.closures.theories", "closures")]
+#![rr::coq_prefix("rrstd.closures")]
 
 #[rr::export_as(core::marker::Tuple)]
 pub trait Tuple { }

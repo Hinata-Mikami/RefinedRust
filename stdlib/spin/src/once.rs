@@ -1,4 +1,4 @@
-#![rr::import("stdlib.spin.theories.once", "once_ghost_state")]
+#![rr::import("rrstd.spin.theories.once", "once_ghost_state")]
 #![rr::include("option")]
 
 use crate::relax::*;

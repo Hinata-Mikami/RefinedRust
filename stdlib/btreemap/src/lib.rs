@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.btreemap")]
+#![rr::coq_prefix("rrstd.btreemap")]
 #![rr::include("option")]
 #![rr::include("alloc")]
 #![allow(unused)]

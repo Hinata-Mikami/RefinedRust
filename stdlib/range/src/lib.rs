@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 
 #![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("stdlib.range")]
+#![rr::coq_prefix("rrstd.range")]
 #![rr::include("option")]
 #![rr::include("iterator")]
 
