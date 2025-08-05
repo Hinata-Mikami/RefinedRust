@@ -102,14 +102,33 @@
       };
 
       rust = {
-        toolchain = pkgs.fenix.fromToolchainFile {
-          file = ./rr_frontend/rust-toolchain.toml;
-          sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
+        channel = rec {
+          name = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain.channel;
+          toolchain = pkgs.fenix.fromToolchainName {
+            name = name;
+            sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
+          };
+
+          build = toolchain.withComponents [
+            "cargo"
+            "llvm-tools-preview"
+            "rustc"
+            "rustc-dev"
+          ];
+
+          dev = toolchain.withComponents [
+            "clippy"
+            "rust-analyzer"
+            "rust-src"
+            "rustfmt"
+          ];
         };
 
-        env = (crane.mkLib pkgs).overrideToolchain rust.toolchain;
-        lib = "${rust.toolchain}/lib/rustlib/$(rustc -Vv | grep '^host:' | cut -d' ' -f2)/lib";
-        src = "${rust.toolchain}/lib/rustlib/rustc-src/rust/compiler";
+        env = (crane.mkLib pkgs).overrideToolchain rust.channel.build;
+        devEnv = (crane.mkLib pkgs).overrideToolchain (pkgs.fenix.combine [rust.channel.build rust.channel.dev]);
+
+        lib = "${rust.channel.build}/lib";
+        src = "${rust.channel.dev}/lib/rustlib/rustc-src/rust/compiler";
       };
     in rec {
       packages = let
@@ -197,7 +216,7 @@
           rust.env.buildPackage rec {
             inherit cargoArtifacts meta pname src version;
 
-            buildInputs = [rust.toolchain pkgs.gnupatch];
+            buildInputs = [rust.channel.build pkgs.gnupatch];
             nativeBuildInputs = with pkgs;
               [makeWrapper]
               ++ lib.optionals stdenv.isDarwin [libiconv libzip];
@@ -225,7 +244,7 @@
           opam-name = "refinedrust-stdlib";
           src = ./stdlib;
 
-          buildInputs = [packages.frontend rust.toolchain];
+          buildInputs = [packages.frontend rust.channel.build];
           propagatedBuildInputs = [packages.theories];
 
           preBuild = ''
@@ -239,7 +258,7 @@
           inherit meta;
 
           name = "cargo-${name}";
-          paths = rocq.toolchain ++ [packages.frontend rust.toolchain];
+          paths = rocq.toolchain ++ [packages.frontend rust.channel.build];
 
           pathsToLink = ["/bin"];
           nativeBuildInputs = [pkgs.makeWrapper];
@@ -260,7 +279,7 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = with packages; [frontend theories];
-        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused];
+        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.channel.dev];
 
         shellHook = ''
           export LD_LIBRARY_PATH=''${LD_LIBRARY_PATH}:${rust.lib}
