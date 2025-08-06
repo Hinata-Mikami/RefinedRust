@@ -5,8 +5,8 @@
 
     crane.url = "github:ipetkov/crane";
 
-    fenix = {
-      url = "github:nix-community/fenix";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -14,9 +14,9 @@
   outputs = {
     self,
     crane,
-    fenix,
     flake-utils,
     nixpkgs,
+    rust-overlay,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       ocamlFlambda = _: prev: rec {
@@ -32,7 +32,7 @@
           dune_3 = prev.dune_3.overrideAttrs (prev: {
             nativeBuildInputs = prev.nativeBuildInputs ++ [pkgs.makeWrapper];
 
-            postInstall = let
+            postFixup = let
               coqSubcommand = newCmd: oldCmd:
                 pkgs.writeScriptBin oldCmd ''
                   #!/bin/sh
@@ -58,7 +58,7 @@
           };
         });
       };
-      overlays = [fenix.overlays.default ocamlFlambda];
+      overlays = [ocamlFlambda rust-overlay.overlays.default];
       pkgs = import nixpkgs {inherit overlays system;};
 
       name = "refinedrust";
@@ -102,27 +102,17 @@
       };
 
       rust = {
-        channel = rec {
-          file = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
-          toolchain = pkgs.fenix.fromToolchainName {
-            name = file.channel;
-            sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
+        toolchain = let
+          inputs = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
+        in {
+          build = pkgs.rust-bin.fromRustupToolchain inputs;
+          dev = rust.toolchain.build.override {
+            extensions = inputs.components ++ ["clippy" "rust-analyzer" "rustfmt"];
           };
-
-          build = toolchain.withComponents file.components;
-          dev = toolchain.withComponents [
-            "clippy"
-            "rust-analyzer"
-            "rust-src"
-            "rustfmt"
-          ];
         };
 
-        env = (crane.mkLib pkgs).overrideToolchain rust.channel.build;
-        devEnv = (crane.mkLib pkgs).overrideToolchain (pkgs.fenix.combine [rust.channel.build rust.channel.dev]);
-
-        lib = "${rust.channel.build}/lib";
-        src = "${rust.channel.dev}/lib/rustlib/rustc-src/rust/compiler";
+        env = (crane.mkLib pkgs).overrideToolchain rust.toolchain.build;
+        lib = toolchain: pkgs.lib.strings.makeLibraryPath [toolchain];
       };
     in rec {
       packages = let
@@ -207,29 +197,29 @@
             inherit meta pname src version;
           };
         in
-          rust.env.buildPackage rec {
-            inherit cargoArtifacts meta pname src version;
+          with pkgs;
+            rust.env.buildPackage rec {
+              inherit cargoArtifacts meta pname src version;
 
-            buildInputs = [rust.channel.build pkgs.gnupatch];
-            nativeBuildInputs = with pkgs;
-              [makeWrapper]
-              ++ lib.optionals stdenv.isDarwin [libiconv libzip];
+              buildInputs = [rust.toolchain.build pkgs.gnupatch];
+              nativeBuildInputs = with pkgs;
+                [makeWrapper]
+                ++ lib.optionals stdenv.isDarwin [bintools libiconv libzip];
 
-            doNotRemoveReferencesToRustToolchain = true;
+              doNotRemoveReferencesToRustToolchain = true;
 
-            postInstall = with pkgs.lib.strings; ''
-              wrapProgram $out/bin/refinedrust-rustc \
-                --set LD_LIBRARY_PATH "${rust.lib}" \
-                --set DYLD_FALLBACK_LIBRARY_PATH "${rust.lib}"
+              postFixup = with pkgs.lib.strings;
+                ''
+                  wrapProgram $out/bin/${pname} \
+                    --set PATH "${makeBinPath buildInputs}" \
+                    --set LD_LIBRARY_PATH "${rust.lib rust.toolchain.build}"
+                ''
+                + (lib.optionalString stdenv.isDarwin ''
+                  install_name_tool -add_rpath "${rust.lib rust.toolchain.build}/lib" "$out/bin/refinedrust-rustc"
+                '');
 
-              wrapProgram $out/bin/${pname} \
-                --set PATH "${makeSearchPath "bin" buildInputs}" \
-                --set LD_LIBRARY_PATH "${rust.lib}" \
-                --set DYLD_FALLBACK_LIBRARY_PATH "${rust.lib}"
-            '';
-
-            doCheck = false;
-          };
+              doCheck = false;
+            };
 
         stdlib = rocq.pkgs.mkRocqDerivation {
           inherit meta version;
@@ -238,7 +228,7 @@
           opam-name = "refinedrust-stdlib";
           src = ./stdlib;
 
-          buildInputs = [packages.frontend rust.channel.build];
+          buildInputs = [packages.frontend rust.toolchain.build];
           propagatedBuildInputs = [packages.theories];
 
           preBuild = ''
@@ -252,7 +242,7 @@
           inherit meta;
 
           name = "cargo-${name}";
-          paths = rocq.toolchain ++ [packages.frontend rust.channel.build];
+          paths = rocq.toolchain ++ [packages.frontend rust.toolchain.build];
 
           pathsToLink = ["/bin"];
           nativeBuildInputs = [pkgs.makeWrapper];
@@ -273,12 +263,11 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = with packages; [frontend theories];
-        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.channel.dev];
+        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.toolchain.dev];
 
         shellHook = ''
-          export LD_LIBRARY_PATH=''${LD_LIBRARY_PATH}:${rust.lib}
-          export DYLD_FALLBACK_LIBRARY_PATH=''${DYLD_FALLBACK_LIBRARY_PATH}:${rust.lib}
-          export RUST_SRC_PATH=${rust.src}/rustc_driver/Cargo.toml
+          export LD_LIBRARY_PATH=''${LD_LIBRARY_PATH}:${rust.lib rust.toolchain.dev}
+          export DYLD_FALLBACK_LIBRARY_PATH=''${DYLD_FALLBACK_LIBRARY_PATH}:${rust.lib rust.toolchain.dev}
         '';
       };
 
