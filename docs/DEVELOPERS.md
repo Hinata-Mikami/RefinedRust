@@ -31,6 +31,11 @@ Note: Make sure that you are not currently in an opam switch with a Rocq install
 ### Setup using `opam` and `rustup`
 By following the procedure in the `README.md`, you should have the required setup for development.
 
+However, it is recommended to download some tools for development:
+```
+rustup component add clippy rust-analyzer rust-src rustfmt
+```
+
 ## Editor configuration for working on the frontend
 To work comfortably on the frontend, it is recommended to use `rust-analyzer`, which provides nice features to your editor like code completion.
 
