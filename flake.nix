@@ -103,19 +103,13 @@
 
       rust = {
         channel = rec {
-          name = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain.channel;
+          file = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
           toolchain = pkgs.fenix.fromToolchainName {
-            name = name;
+            name = file.channel;
             sha256 = "sha256-AXPEAqDScBO5JmUk086vVIZqHxkWcwpT7R5SUo6DSCY=";
           };
 
-          build = toolchain.withComponents [
-            "cargo"
-            "llvm-tools-preview"
-            "rustc"
-            "rustc-dev"
-          ];
-
+          build = toolchain.withComponents file.components;
           dev = toolchain.withComponents [
             "clippy"
             "rust-analyzer"
