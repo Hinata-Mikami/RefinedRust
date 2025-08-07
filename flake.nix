@@ -5,6 +5,11 @@
 
     crane.url = "github:ipetkov/crane";
 
+    rust-targets = {
+      url = "file+https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix";
+      flake = false;
+    };
+
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,6 +22,7 @@
     flake-utils,
     nixpkgs,
     rust-overlay,
+    rust-targets,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       ocamlFlambda = _: prev: rec {
@@ -58,6 +64,7 @@
           };
         });
       };
+
       overlays = [ocamlFlambda rust-overlay.overlays.default];
       pkgs = import nixpkgs {inherit overlays system;};
 
@@ -112,7 +119,18 @@
         };
 
         env = (crane.mkLib pkgs).overrideToolchain rust.toolchain.build;
-        lib = toolchain: pkgs.lib.strings.makeLibraryPath [toolchain];
+        hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
+
+        mkLibPath = toolchain: pkgs.lib.strings.makeLibraryPath [toolchain];
+        mkToolchains = with pkgs.lib;
+          toolchain: f: let
+            targets = attrsets.attrValues (import rust-targets.outPath);
+            mkSet = f: target: {
+              name = target;
+              value = f (toolchain.override {targets = [target];});
+            };
+          in
+            listToAttrs (map (mkSet f) targets);
       };
     in rec {
       packages = let
@@ -201,24 +219,18 @@
             rust.env.buildPackage rec {
               inherit cargoArtifacts meta pname src version;
 
-              buildInputs = [rust.toolchain.build pkgs.gnupatch];
+              buildInputs = [pkgs.gnupatch];
               nativeBuildInputs = with pkgs;
                 [makeWrapper]
-                ++ lib.optionals stdenv.isDarwin [bintools libiconv libzip];
+                ++ lib.optionals stdenv.isDarwin [libiconv libzip];
 
-              doNotRemoveReferencesToRustToolchain = true;
-
-              postFixup = with pkgs.lib.strings;
-                ''
-                  wrapProgram $out/bin/${pname} \
-                    --set PATH "${makeBinPath buildInputs}" \
-                    --set LD_LIBRARY_PATH "${rust.lib rust.toolchain.build}"
-                ''
-                + (lib.optionalString stdenv.isDarwin ''
-                  install_name_tool -add_rpath "${rust.lib rust.toolchain.build}/lib" "$out/bin/refinedrust-rustc"
-                '');
+              postFixup = with pkgs.lib.strings; ''
+                wrapProgram $out/bin/${pname} \
+                  --set PATH "${makeBinPath buildInputs}" \
+              '';
 
               doCheck = false;
+              doNotRemoveReferencesToRustToolchain = true;
             };
 
         stdlib = rocq.pkgs.mkRocqDerivation {
@@ -238,37 +250,47 @@
           useDune = true;
         };
 
-        default = pkgs.buildEnv {
-          inherit meta;
+        target = rust.mkToolchains rust.toolchain.build (toolchain:
+          pkgs.buildEnv {
+            inherit meta;
 
-          name = "cargo-${name}";
-          paths = rocq.toolchain ++ [packages.frontend rust.toolchain.build];
+            name = "cargo-${name}";
+            paths = rocq.toolchain ++ [packages.frontend toolchain];
 
-          pathsToLink = ["/bin"];
-          nativeBuildInputs = [pkgs.makeWrapper];
-          postBuild = let
-            fetchRocqDeps = with pkgs.lib;
-              drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
-          in
-            with pkgs.lib.strings; ''
-              wrapProgram $out/bin/dune \
-                --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
-                --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+            pathsToLink = ["/bin"];
+            nativeBuildInputs = [pkgs.makeWrapper];
 
-              wrapProgram $out/bin/cargo-refinedrust \
-                --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
-            '';
-        };
+            postBuild = let
+              fetchRocqDeps = with pkgs.lib;
+                drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
+            in
+              with pkgs.lib.strings; ''
+                wrapProgram $out/bin/dune \
+                  --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
+                  --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+
+                wrapProgram $out/bin/cargo-refinedrust \
+                  --set LD_LIBRARY_PATH "${rust.mkLibPath toolchain}" \
+                  --set DYLD_FALLBACK_LIBRARY_PATH "${rust.mkLibPath toolchain}" \
+                  --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
+              '';
+          });
+
+        default = packages.target."${rust.hostPlatform}";
       };
 
-      devShells.default = pkgs.mkShell {
-        inputsFrom = with packages; [frontend theories];
-        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.toolchain.dev];
+      devShells = {
+        target = rust.mkToolchains rust.toolchain.dev (toolchain:
+          pkgs.mkShell {
+            inputsFrom = with packages; [frontend theories];
+            packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain];
 
-        shellHook = ''
-          export LD_LIBRARY_PATH=''${LD_LIBRARY_PATH}:${rust.lib rust.toolchain.dev}
-          export DYLD_FALLBACK_LIBRARY_PATH=''${DYLD_FALLBACK_LIBRARY_PATH}:${rust.lib rust.toolchain.dev}
-        '';
+            LD_LIBRARY_PATH = rust.mkLibPath toolchain;
+            DYLD_FALLBACK_LIBRARY_PATH = rust.mkLibPath toolchain;
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          });
+
+        default = devShells.target."${rust.hostPlatform}";
       };
 
       formatter = pkgs.alejandra;

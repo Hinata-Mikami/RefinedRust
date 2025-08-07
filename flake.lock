@@ -53,7 +53,8 @@
         "crane": "crane",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
-        "rust-overlay": "rust-overlay"
+        "rust-overlay": "rust-overlay",
+        "rust-targets": "rust-targets"
       }
     },
     "rust-overlay": {
@@ -74,6 +75,18 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "type": "github"
+      }
+    },
+    "rust-targets": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-/yoZ/VCdNKITAbEKaT8miWSiF0/Cq7ii53DJ0ZcRRZM=",
+        "type": "file",
+        "url": "https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix"
       }
     },
     "systems": {
