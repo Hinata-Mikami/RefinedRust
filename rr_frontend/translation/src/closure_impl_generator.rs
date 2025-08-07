@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::{info, trace};
+use radium::{TraitReqInfo as _, coq, lang};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use typed_arena::Arena;
@@ -12,9 +13,6 @@ use typed_arena::Arena;
 use crate::traits::registry::{self, TR};
 use crate::types::{TX, scope};
 use crate::{Environment, base, body, procedures, search};
-use radium::TraitReqInfo as _;
-use radium::lang as lang;
-use radium::coq as coq;
 
 pub(crate) struct ClosureImplGenerator<'tcx, 'def> {
     env: &'def Environment<'tcx>,
@@ -188,7 +186,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             },
             ShimRefSelf::RefMut => {
                 // start lft
-                let annot = radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
+                let annot =
+                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
                 statements.push(radium::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,
@@ -205,7 +204,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                 });
             },
             ShimRefSelf::RefShr => {
-                let annot = radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
+                let annot =
+                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
                 statements.push(radium::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,
@@ -229,7 +229,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                 // Q: should the spec for this impl add that the state is unchanged?
                 // - yeah, but that should happen in the spec encoder instead.
                 // - i.e., PostMut should state this.
-                let annot = radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_ref_lft")]);
+                let annot =
+                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_ref_lft")]);
                 statements.push(radium::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,

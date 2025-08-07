@@ -2945,28 +2945,6 @@ impl<'def> LiteralFunctionSpecBuilder<'def> {
         Ok(())
     }
 
-    /// Add a Coq type annotation for a parameter when no type is currently known.
-    /// This can e.g. be used to later on add knowledge about the type of a refinement.
-    pub fn add_param_type_annot(&mut self, name: &String, ty: coq::term::Type) -> Result<(), String> {
-        for param in &mut self.params {
-            let Some(param_name) = param.get_name_ref() else {
-                continue;
-            };
-
-            if param_name == name {
-                let Some(param_ty) = param.get_type() else {
-                    unreachable!("Binder is typed");
-                };
-
-                if *param_ty == coq::term::Type::Infer {
-                    *param = coq::binder::Binder::new(Some(name.clone()), ty);
-                }
-                return Ok(());
-            }
-        }
-        Err("could not find name".to_owned())
-    }
-
     #[expect(clippy::ref_option)]
     fn ensure_coq_not_bound(&self, name: &Option<String>) -> Result<(), String> {
         if let Some(name) = &name

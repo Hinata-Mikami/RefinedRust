@@ -22,7 +22,8 @@ use crate::environment::procedure::Procedure;
 use crate::environment::{Environment, dump_borrowck_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, FunctionRequirements, ClosureSpecInfo, FunctionSpecParser as _, VerboseFunctionSpecParser,
+    ClosureMetaInfo, ClosureSpecInfo, FunctionRequirements, FunctionSpecParser as _,
+    VerboseFunctionSpecParser,
 };
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};
@@ -347,7 +348,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             output_ty,
             spec_info.pre_encoded,
             spec_info.post_encoded,
-            spec_info.post_mut_encoded
+            spec_info.post_mut_encoded,
         );
 
         Ok((t, info))

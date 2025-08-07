@@ -75,8 +75,9 @@ impl Binder {
         }
     }
 
+    #[must_use]
     #[expect(clippy::ref_option)]
-    pub(crate) const fn get_name_ref(&self) -> &Option<String> {
+    pub const fn get_name_ref(&self) -> &Option<String> {
         match self {
             Self::Default(name, _) => name,
             Self::Implicit(i) => &i.name,
@@ -84,7 +85,8 @@ impl Binder {
         }
     }
 
-    pub(crate) const fn get_type(&self) -> Option<&term::Type> {
+    #[must_use]
+    pub const fn get_type(&self) -> Option<&term::Type> {
         match self {
             Self::Default(_, ty) => Some(ty),
             Self::Implicit(i) => i.ty.as_ref(),

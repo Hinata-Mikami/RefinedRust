@@ -55,6 +55,57 @@ pub(crate) struct ClosureSpecInfo {
     // only if this closure is FnMut or Fn
     pub post_mut_encoded: Option<coq::term::Term>,
 }
+impl ClosureSpecInfo {
+    fn new_from_parsed_spec<'def>(
+        parsed_spec: &ParsedSpecInfo<'def>,
+        parsed_captures: &ParsedClosureSpecInfo<'def>,
+    ) -> Self {
+        // How do I assemble this?
+        // - for the closure state, I do not get the ghost var or so (in case of mutref)
+        // - instead, I always get Self.
+        // - Thus, we cannot just literally take the generated spec pattern
+        //
+        // - For the args, I will need to detuple them.
+        //
+        // Should I rethink the capture specification format at this point?
+        // - e.g., for each capture, I could introduce a binding
+        // - difficulty: what bindings to introduce for captured subplaces?
+        //   + I cannot easily have x.bla syntax.
+        //   + I could enable that via {x.bla}, conceivably. That would be consistent, as we are escaping Rust
+        //     expressions there.
+        //
+        // Is there a reason to keep the captures format?
+        //
+        // I can keep this for now. I think the format without captures can be fitted into this, by
+        // generating the capture map myself and introducing some params
+        //
+        //
+        // Pre self args :=
+        //  ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond
+        //
+        // Post self args ret :=
+        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
+        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
+        //      (observes for the mutable captures?)
+        //
+        //
+        // PostMut self args ret self' :=
+        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
+        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
+        //    self' = post_pattern
+        //
+
+        // Let's factor this into a separate function.
+
+        // Note: make sure to mangle the arg names of the generated lambdas, so we don't collide
+        // with names in the specification (e.g. ret)
+        Self {
+            pre_encoded: coq::term::Term::Literal("λ _ _, True%I".to_owned()),
+            post_encoded: coq::term::Term::Literal("λ _ _ _, True%I".to_owned()),
+            post_mut_encoded: Some(coq::term::Term::Literal("λ _ _ _ _, True%I".to_owned())),
+        }
+    }
+}
 
 pub(crate) trait FunctionSpecParser<'def> {
     /// Parse a set of attributes into a function spec.
@@ -142,7 +193,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum MetaIProp {
     /// `#[rr::requires("..")]` or `#[rr::requires("Ha" : "..")]`
     Pure(String, Option<String>),
@@ -282,7 +333,6 @@ impl TryFrom<MetaIProp> for coq::term::Term {
 }
 
 /// The main parser.
-#[expect(clippy::struct_excessive_bools)]
 pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     /// name prefix for this function
     name_prefix: &'a str,
@@ -315,12 +365,6 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
     trait_specs:
         BTreeMap<*const u8, (radium::LiteralTraitSpecUseRef<'def>, BTreeMap<String, coq::term::Term>)>,
-
-    /// track whether we got argument and returns specifications
-    got_args: bool,
-    got_ret: bool,
-
-    ok_spec: OkSpec,
 }
 
 /// State for assembling fallible specs
@@ -394,9 +438,6 @@ where
             scope,
             fn_requirements: FunctionRequirements::default(),
             trait_specs: BTreeMap::new(),
-            got_args: arg_types.is_empty(),
-            got_ret: matches!(ret_type, specs::Type::Unit),
-            ok_spec: OkSpec::new(),
         }
     }
 
@@ -437,6 +478,193 @@ where
     }
 }
 
+struct ParsedSpecInfo<'def> {
+    params: Vec<RRParam>,
+    args: Vec<radium::TypeWithRef<'def>>,
+    preconditions: Vec<MetaIProp>,
+    postconditions: Vec<MetaIProp>,
+    existentials: Vec<RRParam>,
+    ret: Option<radium::TypeWithRef<'def>>,
+    unsafe_lifetime_constraints: Vec<String>,
+
+    ok_spec: OkSpec,
+
+    got_args: bool,
+}
+
+impl<'def> ParsedSpecInfo<'def> {
+    const fn new() -> Self {
+        Self {
+            params: Vec::new(),
+            args: Vec::new(),
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
+            existentials: Vec::new(),
+            ret: None,
+            unsafe_lifetime_constraints: Vec::new(),
+            ok_spec: OkSpec::new(),
+            got_args: false,
+        }
+    }
+
+    fn push_to_builder(&self, builder: &mut radium::LiteralFunctionSpecBuilder<'def>) -> Result<(), String> {
+        for param in &self.params {
+            builder.add_param(param.clone().into())?;
+        }
+
+        for arg in &self.args {
+            builder.add_arg(arg.to_owned());
+        }
+
+        for pre in &self.preconditions {
+            let pre: MetaIProp = pre.to_owned();
+            builder.add_precondition(pre.into());
+        }
+
+        for post in &self.postconditions {
+            let post = post.to_owned();
+            builder.add_postcondition(post.into());
+        }
+
+        for ex in &self.existentials {
+            let ex = ex.to_owned();
+            builder.add_existential(ex.into())?;
+        }
+
+        if let Some(ret) = &self.ret {
+            builder.set_ret_type(ret.to_owned())?;
+        }
+
+        for cstr in &self.unsafe_lifetime_constraints {
+            builder.add_literal_lifetime_constraint(cstr.to_owned());
+        }
+
+        if self.ret.is_some() && self.got_args {
+            builder.have_spec();
+        }
+
+        Ok(())
+    }
+
+    /// add a coq type annotation for a parameter when no type is currently known.
+    /// this can e.g. be used to later on add knowledge about the type of a refinement.
+    fn add_param_type_annot(&mut self, name: &String, ty: coq::term::Type) -> Result<(), String> {
+        for param in &mut self.params {
+            let Some(param_name) = param.0.get_name_ref() else {
+                continue;
+            };
+
+            if param_name == name {
+                let Some(param_ty) = param.0.get_type() else {
+                    unreachable!("Binder is typed");
+                };
+
+                if *param_ty == coq::term::Type::Infer {
+                    param.0 = coq::binder::Binder::new(Some(name.clone()), ty);
+                }
+                return Ok(());
+            }
+        }
+        Err("could not find name".to_owned())
+    }
+
+    /// Assemble a fallible specification.
+    fn assemble_fallible_spec(
+        &mut self,
+        ret_name: &str,
+        ret_is_option: bool,
+        ret_is_result: bool,
+    ) -> Result<(), String> {
+        let ok_spec = mem::replace(&mut self.ok_spec, OkSpec::new());
+
+        // now assemble the ok-specification
+        if ok_spec.ok_mode {
+            if !(ret_is_option || ret_is_result) {
+                return Err(
+                    "specified rr::ok but the return type is neither an Option nor a Result".to_owned()
+                );
+            }
+
+            let conjoined_postconds = coq::term::Term::Exists(
+                coq::binder::BinderList::new(ok_spec.ok_exists),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_ensures)),
+            );
+
+            // The encoding assumes that the preconditions are precise to distinguish the success
+            // and failure cases.
+            let mut ok_case_conjuncts = ok_spec.ok_requires.clone();
+            ok_case_conjuncts.push(conjoined_postconds);
+            let ok_condition = coq::term::Term::Infix("∧".to_owned(), ok_case_conjuncts);
+
+            let lambda_binders = coq::binder::BinderList::new(vec![coq::binder::Binder::new(
+                Some(ret_name.to_owned()),
+                coq::term::Type::Infer,
+            )]);
+            let ok_condition = coq::term::Term::Lambda(lambda_binders.clone(), Box::new(ok_condition));
+
+            let err_condition = coq::term::Term::Prefix(
+                "¬".to_owned(),
+                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_requires)),
+            );
+
+            if ret_is_result {
+                let ok_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Ok {ret_name}")),
+                    vec![ok_condition],
+                )));
+
+                self.postconditions.push(MetaIProp::Pure(ok_condition.to_string(), None));
+
+                let err_condition = coq::term::Term::Lambda(lambda_binders, Box::new(err_condition));
+                let err_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Err {ret_name}")),
+                    vec![err_condition],
+                )));
+
+                self.postconditions.push(MetaIProp::Pure(err_condition.to_string(), None));
+            } else if ret_is_option {
+                let some_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_Some {ret_name}")),
+                    vec![ok_condition],
+                )));
+
+                self.postconditions.push(MetaIProp::Pure(some_condition.to_string(), None));
+
+                let none_condition = err_condition;
+                let none_condition = coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::Literal(format!("if_None {ret_name}")),
+                    vec![none_condition],
+                )));
+
+                self.postconditions.push(MetaIProp::Pure(none_condition.to_string(), None));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Specification parts related to the captures of a closure.
+struct ParsedClosureSpecInfo<'def> {
+    params: Vec<coq::binder::Binder>,
+    postconditions: Vec<MetaIProp>,
+    closure_arg: radium::TypeWithRef<'def>,
+}
+
+impl<'def> ParsedClosureSpecInfo<'def> {
+    fn push_to_builder(&self, builder: &mut radium::LiteralFunctionSpecBuilder<'def>) -> Result<(), String> {
+        for param in &self.params {
+            builder.add_param(param.to_owned())?;
+        }
+        for post in &self.postconditions {
+            builder.add_postcondition(post.to_owned().into());
+        }
+        builder.add_arg(self.closure_arg.clone());
+
+        Ok(())
+    }
+}
+
 impl<'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
@@ -446,23 +674,23 @@ where
         &mut self,
         name: &str,
         buffer: &parse::Buffer,
-        builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &mut ParsedSpecInfo<'def>,
         scope: &T,
         in_closure: bool,
     ) -> Result<bool, String> {
         match name {
             "ok" => {
-                self.ok_spec.ok_mode = true;
+                builder.ok_spec.ok_mode = true;
             },
             "params" => {
                 let params = RRParams::parse(buffer, scope).map_err(str_err)?;
                 for param in params.params {
-                    builder.add_param(param.into())?;
+                    builder.params.push(param);
                 }
             },
             "param" => {
                 let param = RRParam::parse(buffer, scope).map_err(str_err)?;
-                builder.add_param(param.into())?;
+                builder.params.push(param);
             },
             "args" => {
                 let args = RRArgs::parse(buffer, scope).map_err(str_err)?;
@@ -472,10 +700,10 @@ where
                         self.arg_types.len()
                     ));
                 }
-                self.got_args = true;
+                builder.got_args = true;
                 for (arg, ty) in args.args.into_iter().zip(self.arg_types) {
                     let (ty, hint) = self.make_type_with_ref(&arg, ty);
-                    builder.add_arg(ty);
+                    builder.args.push(ty);
                     if let Some(cty) = hint {
                         // potentially add a typing hint to the refinement
                         if let IdentOrTerm::Ident(i) = arg.rfn {
@@ -512,28 +740,28 @@ where
                             "could not find trait requirement to attach trait specialization to".to_owned()
                         );
                     }
-                } else if self.ok_spec.ok_mode {
+                } else if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
                         return Err("non-pure requires clause after rr::ok".to_owned());
                     }
                     let term = iprop.try_into().unwrap();
-                    self.ok_spec.ok_requires.push(term);
+                    builder.ok_spec.ok_requires.push(term);
                 } else {
-                    builder.add_precondition(iprop.into());
+                    builder.preconditions.push(iprop);
                 }
             },
             "ensures" => {
                 let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
 
-                if self.ok_spec.ok_mode {
+                if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
                         return Err("non-pure ensures clause after rr::ok".to_owned());
                     }
-                    self.ok_spec.ok_ensures.push(iprop.try_into().unwrap());
+                    builder.ok_spec.ok_ensures.push(iprop.try_into().unwrap());
                 } else {
-                    builder.add_postcondition(iprop.into());
+                    builder.postconditions.push(iprop);
                 }
             },
             "observe" => {
@@ -546,25 +774,24 @@ where
                     Ok(MetaIProp::Observe(gname.value(), None, term))
                 };
                 let m = m().map_err(str_err)?;
-                builder.add_postcondition(m.into());
+                builder.postconditions.push(m);
             },
             "returns" => {
                 let tr = LiteralTypeWithRef::parse(buffer, scope).map_err(str_err)?;
                 // convert to type
                 let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
-                builder.set_ret_type(ty)?;
-                self.got_ret = true;
+                builder.ret = Some(ty);
             },
             "exists" => {
                 let params = RRParams::parse(buffer, scope).map_err(str_err)?;
 
-                if self.ok_spec.ok_mode {
+                if builder.ok_spec.ok_mode {
                     for param in params.params {
-                        self.ok_spec.ok_exists.push(param.into());
+                        builder.ok_spec.ok_exists.push(param.into());
                     }
                 } else {
                     for param in params.params {
-                        builder.add_existential(param.into())?;
+                        builder.existentials.push(param);
                     }
                 }
             },
@@ -574,11 +801,13 @@ where
                 self.fn_requirements.proof_info.sidecond_tactics.push(tacs);
             },
             "unsafe_elctx" => {
+                // TODO: do not allow this on closures.
                 let term = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
                 let (term, _) = scope.process_coq_literal(&term.value());
-                builder.add_literal_lifetime_constraint(term);
+                builder.unsafe_lifetime_constraints.push(term);
             },
             "context" => {
+                // TODO: do not allow this on closures
                 let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
                 let param = coq::binder::Binder::new_generalized(
                     coq::binder::Kind::MaxImplicit,
@@ -602,80 +831,6 @@ where
         Ok(true)
     }
 
-    /// Assemble a fallible specification.
-    fn assemble_fallible_spec(
-        &mut self,
-        ret_name: &str,
-        builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
-    ) -> Result<(), String> {
-        let ok_spec = mem::replace(&mut self.ok_spec, OkSpec::new());
-
-        // now assemble the ok-specification
-        if ok_spec.ok_mode {
-            if !(self.ret_is_option || self.ret_is_result) {
-                return Err(
-                    "specified rr::ok but the return type is neither an Option nor a Result".to_owned()
-                );
-            }
-
-            let conjoined_postconds = coq::term::Term::Exists(
-                coq::binder::BinderList::new(ok_spec.ok_exists),
-                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_ensures)),
-            );
-
-            // The encoding assumes that the preconditions are precise to distinguish the success
-            // and failure cases.
-            let mut ok_case_conjuncts = ok_spec.ok_requires.clone();
-            ok_case_conjuncts.push(conjoined_postconds);
-            let ok_condition = coq::term::Term::Infix("∧".to_owned(), ok_case_conjuncts);
-
-            let lambda_binders = coq::binder::BinderList::new(vec![coq::binder::Binder::new(
-                Some(ret_name.to_owned()),
-                coq::term::Type::Infer,
-            )]);
-            let ok_condition = coq::term::Term::Lambda(lambda_binders.clone(), Box::new(ok_condition));
-
-            let err_condition = coq::term::Term::Prefix(
-                "¬".to_owned(),
-                Box::new(coq::term::Term::Infix("∧".to_owned(), ok_spec.ok_requires)),
-            );
-
-            if self.ret_is_result {
-                let ok_condition = coq::term::Term::App(Box::new(coq::term::App::new(
-                    coq::term::Term::Literal(format!("if_Ok {ret_name}")),
-                    vec![ok_condition],
-                )));
-
-                builder.add_postcondition(coq::iris::IProp::Pure(ok_condition.to_string()));
-
-                let err_condition = coq::term::Term::Lambda(lambda_binders, Box::new(err_condition));
-                let err_condition = coq::term::Term::App(Box::new(coq::term::App::new(
-                    coq::term::Term::Literal(format!("if_Err {ret_name}")),
-                    vec![err_condition],
-                )));
-
-                builder.add_postcondition(coq::iris::IProp::Pure(err_condition.to_string()));
-            } else if self.ret_is_option {
-                let some_condition = coq::term::Term::App(Box::new(coq::term::App::new(
-                    coq::term::Term::Literal(format!("if_Some {ret_name}")),
-                    vec![ok_condition],
-                )));
-
-                builder.add_postcondition(coq::iris::IProp::Pure(some_condition.to_string()));
-
-                let none_condition = err_condition;
-                let none_condition = coq::term::Term::App(Box::new(coq::term::App::new(
-                    coq::term::Term::Literal(format!("if_None {ret_name}")),
-                    vec![none_condition],
-                )));
-
-                builder.add_postcondition(coq::iris::IProp::Pure(none_condition.to_string()));
-            }
-        }
-
-        Ok(())
-    }
-
     /// Merges information on captured variables with specifications on captures.
     /// `capture_specs`: the parsed capture specification
     /// `make_tuple`: closure to make a new Radium tuple type
@@ -685,8 +840,7 @@ where
         capture_specs: Vec<ClosureCaptureSpec>,
         meta: ClosureMetaInfo<'_, '_, 'def>,
         mut make_tuple: H,
-        builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
-    ) -> Result<(), String>
+    ) -> Result<ParsedClosureSpecInfo<'def>, String>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
@@ -786,9 +940,13 @@ where
             }
         }
 
+        let mut params = Vec::new();
+        let closure_arg;
+        let mut postconditions = Vec::new();
+
         // push everything to the builder
         for x in new_ghost_vars {
-            builder.add_param(coq::binder::Binder::new(Some(x), model::Type::Gname)).unwrap();
+            params.push(coq::binder::Binder::new(Some(x), model::Type::Gname));
         }
 
         // assemble a string for the closure arg
@@ -808,7 +966,7 @@ where
 
         match meta.kind {
             ty::ClosureKind::FnOnce => {
-                builder.add_arg(specs::TypeWithRef::new(tuple, pre_rfn));
+                closure_arg = specs::TypeWithRef::new(tuple, pre_rfn);
 
                 // generate observations on all the mut-ref captures
                 for p in post_patterns {
@@ -818,7 +976,7 @@ where
                         },
                         CapturePostRfn::Mut(pat, gvar, type_hint) => {
                             // add an observation on `gvar`
-                            builder.add_postcondition(MetaIProp::Observe(gvar, Some(type_hint), pat).into());
+                            postconditions.push(MetaIProp::Observe(gvar, Some(type_hint), pat));
                         },
                     }
                 }
@@ -831,20 +989,18 @@ where
                 let ref_ty = specs::Type::ShrRef(Box::new(tuple), lft);
                 let ref_rfn = pre_rfn.clone();
 
-                builder.add_arg(specs::TypeWithRef::new(ref_ty, ref_rfn));
+                closure_arg = specs::TypeWithRef::new(ref_ty, ref_rfn);
             },
             ty::ClosureKind::FnMut => {
                 // wrap the argument in a mutable reference
                 let post_name = "__γclos";
-                builder
-                    .add_param(coq::binder::Binder::new(Some(post_name.to_owned()), model::Type::Gname))
-                    .unwrap();
+                params.push(coq::binder::Binder::new(Some(post_name.to_owned()), model::Type::Gname));
 
                 let lft = meta.closure_lifetime.unwrap();
                 let ref_ty = specs::Type::MutRef(Box::new(tuple.clone()), lft);
                 let ref_rfn = format!("(({}), {})", pre_rfn, post_name);
 
-                builder.add_arg(specs::TypeWithRef::new(ref_ty, ref_rfn));
+                closure_arg = specs::TypeWithRef::new(ref_ty, ref_rfn);
 
                 // assemble a postcondition on the closure
                 // we observe on the outer mutable reference for the capture, not on the individual
@@ -858,15 +1014,66 @@ where
                 });
                 post_term.push(']');
 
-                builder.add_postcondition(
-                    MetaIProp::Observe(
-                        post_name.to_owned(),
-                        Some(tuple.get_rfn_type().to_string()),
-                        post_term,
-                    )
-                    .into(),
-                );
+                postconditions.push(MetaIProp::Observe(
+                    post_name.to_owned(),
+                    Some(tuple.get_rfn_type().to_string()),
+                    post_term,
+                ));
             },
+        }
+
+        let spec = ParsedClosureSpecInfo {
+            params,
+            postconditions,
+            closure_arg,
+        };
+
+        Ok(spec)
+    }
+
+    /// In case we didn't get a specification of argument and return types, add the default types,
+    /// and add binders to refer to them by their Rust name
+    fn add_default_spec(&self, spec: &mut ParsedSpecInfo<'def>) -> Result<(), String> {
+        if !spec.got_args
+            && let Some(arg_names) = self.arg_names
+        {
+            for (arg, ty) in arg_names.iter().zip(self.arg_types) {
+                spec.params
+                    .push(RRParam(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer)));
+                let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
+                spec.args.push(ty_with_ref);
+            }
+            spec.got_args = true;
+        }
+        // TODO: if we don't have arg names, use _0 ... etc
+
+        let implicit_ret_name = "ret";
+        let is_implicit_ret = if spec.ret.is_some() {
+            false
+        } else {
+            // create a new ret val that is existentially quantified
+            spec.existentials.push(RRParam(coq::binder::Binder::new(
+                Some(implicit_ret_name.to_owned()),
+                coq::term::Type::Infer,
+            )));
+
+            let tr = LiteralTypeWithRef {
+                rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
+                ty: None,
+                raw: specs::TypeIsRaw::No,
+            };
+            let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
+
+            spec.ret = Some(ty);
+
+            true
+        };
+
+        if spec.ok_spec.ok_mode {
+            if !is_implicit_ret {
+                return Err("specified rr::returns and rr::ok at the same time".to_owned());
+            }
+            spec.assemble_fallible_spec(implicit_ret_name, self.ret_is_option, self.ret_is_result)?;
         }
         Ok(())
     }
@@ -886,7 +1093,8 @@ where
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
-        // TODO: handle args in the common function differently
+        let mut spec = ParsedSpecInfo::new();
+
         let mut capture_specs = Vec::new();
 
         // parse captures -- we need to handle it before the other annotations because we will have
@@ -905,7 +1113,8 @@ where
             }
         }
 
-        self.merge_capture_information(capture_specs, closure_meta, make_tuple, &mut *builder)?;
+        let capture_spec = self.merge_capture_information(capture_specs, closure_meta, make_tuple)?;
+        capture_spec.push_to_builder(builder)?;
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -915,7 +1124,7 @@ where
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.name.as_str();
 
-                match self.handle_common_attributes(name, &buffer, builder, self.scope, true) {
+                match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, true) {
                     Ok(b) => {
                         if !b
                             && name != "capture"
@@ -934,94 +1143,11 @@ where
 
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
-        // IMPORTANT: We do this after `merge_capture_information`, since that adds the first arg
-        if !self.got_args
-            && let Some(arg_names) = self.arg_names
-        {
-            for (arg, ty) in arg_names.iter().zip(self.arg_types) {
-                builder.add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
-                let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
-                builder.add_arg(ty_with_ref);
-            }
-            self.got_args = true;
-        }
+        // IMPORTANT: We do this after pushing the `capture_spec`
+        self.add_default_spec(&mut spec)?;
+        spec.push_to_builder(builder)?;
 
-        let implicit_ret_name = "ret";
-        let is_implicit_ret = if self.got_ret {
-            false
-        } else {
-            // create a new ret val that is existentially quantified
-            builder.add_existential(coq::binder::Binder::new(
-                Some(implicit_ret_name.to_owned()),
-                coq::term::Type::Infer,
-            ))?;
-
-            let tr = LiteralTypeWithRef {
-                rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
-                ty: None,
-                raw: specs::TypeIsRaw::No,
-            };
-            let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
-
-            builder.set_ret_type(ty)?;
-            self.got_ret = true;
-
-            true
-        };
-
-        if self.ok_spec.ok_mode {
-            if !is_implicit_ret {
-                return Err("specified rr::returns and rr::ok at the same time".to_owned());
-            }
-            self.assemble_fallible_spec(implicit_ret_name, builder)?;
-        }
-
-        if self.got_ret && self.got_args {
-            builder.have_spec();
-        }
-
-        // How do I assemble this?
-        // - for the closure state, I do not get the ghost var or so (in case of mutref)
-        // - instead, I always get Self. 
-        // - Thus, we cannot just literally take the generated spec pattern
-        //
-        // - For the args, I will need to detuple them.
-        //
-        // Should I rethink the capture specification format at this point?
-        // - e.g., for each capture, I could introduce a binding
-        // - difficulty: what bindings to introduce for captured subplaces?
-        //   + I cannot easily have x.bla syntax. 
-        //   + I could enable that via {x.bla}, conceivably. That would be consistent, as we are escaping Rust expressions there.
-        //
-        // Is there a reason to keep the captures format?
-        //
-        // I can keep this for now. I think the format without captures can be fitted into this, by
-        // generating the capture map myself and introducing some params
-        //
-        //
-        // Pre self args := 
-        //  ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond 
-        //
-        // Post self args ret :=
-        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ 
-        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
-        //      (observes for the mutable captures?)
-        //
-        // 
-        // PostMut self args ret self' :=
-        // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ 
-        //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
-        //    self' = post_pattern 
-        //
-
-        //
-        // Note: make sure to mangle the arg names of the generated lambdas, so we don't collide
-        // with names in the specification (e.g. ret)
-        let spec_info = ClosureSpecInfo {
-            pre_encoded: coq::term::Term::Literal("λ _ _, True%I".to_owned()),
-            post_encoded: coq::term::Term::Literal("λ _ _ _, True%I".to_owned()),
-            post_mut_encoded: Some(coq::term::Term::Literal("λ _ _ _ _, True%I".to_owned())),
-        };
+        let spec_info = ClosureSpecInfo::new_from_parsed_spec(&spec, &capture_spec);
 
         Ok(spec_info)
     }
@@ -1031,6 +1157,8 @@ where
         attrs: &[&hir::AttrItem],
         builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
     ) -> Result<(), String> {
+        let mut spec = ParsedSpecInfo::new();
+
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
@@ -1041,7 +1169,7 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             let name = seg.name.as_str();
-            match self.handle_common_attributes(name, &buffer, builder, self.scope, false) {
+            match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, false) {
                 Ok(b) => {
                     if !b
                         && name != "code_shim"
@@ -1059,6 +1187,12 @@ where
             }
         }
 
+        // in case we didn't get an args annotation,
+        // implicitly add argument parameters matching their Rust names
+        self.add_default_spec(&mut spec)?;
+
+        spec.push_to_builder(builder)?;
+
         // process trait specializations
         let mut defs = Vec::new();
         for (spec_use, terms) in self.trait_specs.values() {
@@ -1070,53 +1204,6 @@ where
         }
 
         builder.provide_specialized_trait_attrs(defs);
-
-        // in case we didn't get an args annotation,
-        // implicitly add argument parameters matching their Rust names
-        if !self.got_args
-            && let Some(arg_names) = self.arg_names
-        {
-            for (arg, ty) in arg_names.iter().zip(self.arg_types) {
-                builder.add_param(coq::binder::Binder::new(Some(arg.to_owned()), coq::term::Type::Infer))?;
-                let ty_with_ref = specs::TypeWithRef::new(ty.to_owned(), arg.to_owned());
-                builder.add_arg(ty_with_ref);
-            }
-            self.got_args = true;
-        }
-
-        let implicit_ret_name = "ret";
-        let is_implicit_ret = if self.got_ret {
-            false
-        } else {
-            // create a new ret val that is existentially quantified
-            builder.add_existential(coq::binder::Binder::new(
-                Some(implicit_ret_name.to_owned()),
-                coq::term::Type::Infer,
-            ))?;
-
-            let tr = LiteralTypeWithRef {
-                rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
-                ty: None,
-                raw: specs::TypeIsRaw::No,
-            };
-            let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
-
-            builder.set_ret_type(ty)?;
-            self.got_ret = true;
-
-            true
-        };
-
-        if self.ok_spec.ok_mode {
-            if !is_implicit_ret {
-                return Err("specified rr::returns and rr::ok at the same time".to_owned());
-            }
-            self.assemble_fallible_spec(implicit_ret_name, builder)?;
-        }
-
-        if self.got_ret && self.got_args {
-            builder.have_spec();
-        }
 
         Ok(())
     }

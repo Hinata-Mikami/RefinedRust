@@ -163,7 +163,7 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
 /// `z`,
 /// `w : "(Z * Z)%type"`
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub(crate) struct RRParam(coq::binder::Binder);
+pub(crate) struct RRParam(pub(crate) coq::binder::Binder);
 
 impl From<RRParam> for coq::binder::Binder {
     fn from(param: RRParam) -> Self {
