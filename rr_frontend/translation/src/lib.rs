@@ -1569,8 +1569,8 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
     Ok(())
 }
 
-/// Register all closure impls.
-fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+/// Check if the `RefinedRust` closure library is available
+fn are_closures_available(vcx: &VerificationCtxt<'_, '_>) -> bool {
     // let's check first if the closure library has been imported
     let check_clos = || -> Option<()> {
         let fnmut_did = search::get_closure_trait_did(vcx.env.tcx(), ty::ClosureKind::FnMut)?;
@@ -1583,10 +1583,15 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
 
         Some(())
     };
-    let Some(()) = check_clos() else {
+    check_clos().is_some()
+}
+
+/// Register all closure impls.
+fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
+    if !are_closures_available(vcx) {
         warn!("The RefinedRust closure library has not been imported, you will not be able to use closures.");
         return Ok(());
-    };
+    }
 
     for closure_did in vcx.closures {
         let did = closure_did.to_def_id();
@@ -1649,6 +1654,10 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
 
 /// Generate closure trait instances.
 fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
+    if !are_closures_available(vcx) {
+        return;
+    }
+
     let generator =
         ClosureImplGenerator::new(vcx.env, vcx.trait_registry, vcx.type_translator, vcx.fn_arena).unwrap();
 
