@@ -46,6 +46,12 @@ All you have to do is activate flakes temporarily by using `--extra-experimental
 nix --extra-experimental-features 'nix-command flakes' shell "gitlab:lgaeher/refinedrust-dev?host=gitlab.mpi-sws.org"
 ```
 
+If you also need a specific toolchain to build RefinedRust against, you can append `.#target.<toolchain>`, as follows:
+```bash
+nix shell "gitlab:lgaeher/refinedrust-dev?host=gitlab.mpi-sws.org".#target.riscv64gc-unknown-none-elf
+```
+
+
 ### Setup using `opam` and `rustup`
 We assume that you have `opam` installed on your system. Setup instructions can be found here: https://opam.ocaml.org/doc/Install.html
 Make sure that you have a working `rustup`/Rust install. Instructions for setting up Rust can be found on https://rustup.rs/.
