@@ -39,26 +39,16 @@ rustup component add clippy rust-analyzer rust-src rustfmt
 ## Editor configuration for working on the frontend
 To work comfortably on the frontend, it is recommended to use `rust-analyzer`, which provides nice features to your editor like code completion.
 
-If you are using `nix develop`, the following command must be run each time the toolchain is updated due [to a bug inside `cargo`](https://github.com/rust-lang/cargo/issues/10096):
-```bash
-sudo unshare -m bash -c "mount -o remount,rw /nix/store; cargo metadata --format-version 1 --manifest-path ${RUST_SRC_PATH}"
-```
-
-Furthermore, it is required that `rust-analyzer.rustc.source` points to the value of `${RUST_SRC_PATH}`:
-```bash
-echo ${RUST_SRC_PATH}  # Keep this path, you will need it.
-```
-
 The remaining configuration depends on your editor.
 
 ### Emacs
-For Emacs, you need to install the [LSP Mode plugin](https://emacs-lsp.github.io/lsp-mode/page/installation/).
+For Emacs, you need to install [eglot](https://joaotavora.github.io/eglot/) or the [LSP Mode plugin](https://emacs-lsp.github.io/lsp-mode/page/installation/).
 
-After installation, you need to configure the property `rust-analyzer.rust.source` to point out the location of the source of `rust-analyzer` (`RUST_SRC_PATH`).
+After installation, you need to configure the property `rust-analyzer.rust.source` to be `discover`.
 
-This property has to be set in your configuration, and can be temporarily set by using:
+This property has to be set in your configuration, and can be temporarily set by using (`LSP Mode` only):
 ```
-<M-x> set-variable, choose `lsp-rust-analyzer-rustc-source` and replace by "<the path given by ${RUST_SRC_PATH}>"
+<M-x> set-variable, choose `lsp-rust-analyzer-rustc-source` and replace by "discover"
 <M-x> lsp-restart-workspace
 ```
 
@@ -99,14 +89,7 @@ def Settings(**kwargs):
 ### Visual Studio Code
 For Visual Studio Code, you need to install the [rust-analyzer extension](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
 
-After installation, you need to configure the property `rust-analyzer.rust.source` to point out the location of the source of `rust-analyzer` (`RUST_SRC_PATH`).
-
-This property has to be set inside the `settings.json` file of your user (not the workspace):
-```json
-{
-    "rust-analyzer.rustc.source": "<the path given by ${RUST_SRC_PATH}>"
-}
-```
+After installation, you need to configure the property `rust-analyzer.rust.source` to be `discover`.
 
 Please remember to update this value each time the rust toolchain is updated, by repeating the same steps.
 

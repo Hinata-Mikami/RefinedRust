@@ -114,7 +114,7 @@
         in {
           build = pkgs.rust-bin.fromRustupToolchain inputs;
           dev = rust.toolchain.build.override {
-            extensions = inputs.components ++ ["clippy" "rust-analyzer" "rustfmt"];
+            extensions = inputs.components ++ ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
           };
         };
 
