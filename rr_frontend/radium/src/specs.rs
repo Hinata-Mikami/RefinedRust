@@ -2135,7 +2135,7 @@ impl<'def> AbstractEnum<'def> {
             self.generate_enum_tag(),
             self.enum_rt_def_name(),
             self.enum_ty_def_name(),
-            self.scope.identity_instantiation(),
+            self.scope.identity_instantiation_term(),
             self.generate_enum_rfn(),
             self.generate_enum_match(),
             self.generate_lfts(),

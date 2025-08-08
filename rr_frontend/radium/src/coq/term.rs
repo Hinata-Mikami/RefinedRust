@@ -80,14 +80,11 @@ pub enum RocqTerm<T, U> {
     #[from(ignore)]
     AsType(Box<RocqTerm<T, U>>, Box<RocqType<U, T>>),
 
-    /// A type
+    /// A Rocq type
     Type(Box<RocqType<U, T>>),
 
     /// User defined type
     UserDefined(T),
-
-    /// A Rocq type
-    Type(Box<Type>),
 }
 
 impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
@@ -136,9 +133,6 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             },
             Self::UserDefined(user_type) => {
                 write!(f, "{}", user_type)
-            },
-            Self::Type(ty) => {
-                write!(f, "{ty}")
             },
         }
     }

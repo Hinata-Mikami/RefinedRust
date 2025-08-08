@@ -4,7 +4,7 @@
 #[rr::verify]
 // NOTE: the params needs to be put into the trait_incl assumption!
 //#[rr::params("c" : "Z")]
-// For the general form, we don't have syntactic sugar. 
+// For the general form, we don't have syntactic sugar.
 #[rr::requires(#trait T::Pre := "λ _ _, True%I")]
 #[rr::requires(#trait T::Post := "λ _ _ ret, (∃ c : Z, ⌜ret = c⌝)%I")]
 //#[rr::require(#closure "T" : "True" -> "∃ c : Z, ret = c")]
@@ -14,21 +14,34 @@
 //#[rr::require("∃ c, ∀ x, f x = c")]
 // TODO: this should make the spec non-trivial
 //#[rr::requires(#iris "{T::Pre} ($# x) ()")]
-fn closure_test_arg_fnonce_1<T>(x: T) 
+fn closure_test_arg_fnonce_1<T>(x: T)
     where T: FnOnce() -> i32
 {
     let _ = x();
 }
 
 #[rr::verify]
-fn closure_test_arg_fnonce_2<T>(x: T) 
+#[rr::requires(#trait T::Pre := "λ _ x, ⌜x = -[42]⌝%I")]
+// TODO: allow to omit post
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
+fn closure_test_arg_fnonce_2<T>(x: T)
     where T: FnOnce(i32) -> i32
 {
     let r = x(42);
 }
 
+// Problem: this will assume by default that the spec is trivial, right?
+// Point: I want the pre to remain trivial, but accept an arbitrary post. 
+// I cannot really specify that well, currently.
 #[rr::verify]
-fn closure_test_arg_fnonce_3<T, W>(x: T) 
+// TODO: allow this
+//#[rr::params("P")]
+//#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+//#[rr::requires(#trait T::Post := "P")]
+// TODO: allow this
+//#[rr::exists("r")]
+//#[rr::ensures(#iris "{T::Post} x () r")]
+fn closure_test_arg_fnonce_3<T, W>(x: T)
     where T: FnOnce() -> W
 {
     let _ = x();
@@ -43,10 +56,17 @@ fn closure_test_arg_fn_1<T>(x: T)
 {
     x()
 }
-
-// Do I ever want to require how the state changes?
+// Note: Do I ever want to require how the state changes?
 // I guess not, because I don't even know what the state is.
-// I mean, I could require that there exists some projection, etc.. but...
+// I mean, I could require that there exists some projection, etc.. but that does not seem worth it.
+
+#[rr::verify]
+fn closure_test_arg_fn_2<T>(x: T)
+    where T: Fn() -> i32
+{
+    x();
+}
+
 #[rr::verify]
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
@@ -56,7 +76,7 @@ fn closure_test_arg_fnmut_1<T>(mut x: T)
 
 // Calling functions with closures
 #[rr::verify]
-fn closure_test_call_fnonce_0<T>(x: T) 
+fn closure_test_call_fnonce_0<T>(x: T)
     where T: FnOnce() -> i32
 {
     closure_test_arg_fnonce_1(x);
@@ -64,7 +84,7 @@ fn closure_test_call_fnonce_0<T>(x: T)
 
 #[rr::verify]
 fn closure_test_call_fnonce_1_0<T>(x: T) {
-    let clos = 
+    let clos =
         #[rr::verify]
         #[rr::params("x")]
         // TODO: we should use implicit capture binding
@@ -76,7 +96,7 @@ fn closure_test_call_fnonce_1_0<T>(x: T) {
 
 #[rr::verify]
 fn closure_test_call_fnonce_3_0<T>(x: T) {
-    let clos = 
+    let clos =
         #[rr::verify]
         #[rr::params("x")]
         #[rr::capture("x": "x")]
@@ -86,7 +106,7 @@ fn closure_test_call_fnonce_3_0<T>(x: T) {
 
 #[rr::verify]
 fn closure_test_call_fnonce_3_1<T, W>(x: T, y: W) {
-    let clos = 
+    let clos =
         #[rr::verify]
         #[rr::params("x", "y")]
         #[rr::capture("x": "x")]
@@ -99,7 +119,7 @@ fn closure_test_call_fnonce_3_1<T, W>(x: T, y: W) {
 fn closure_test_call_fnonce_1_1<T>(x: T) {
     // Point: we're doing a shared capture of y
     let y = 42;
-    let clos = 
+    let clos =
         #[rr::verify]
         #[rr::params("x", "y")]
         #[rr::capture("x": "x")]
@@ -110,32 +130,67 @@ fn closure_test_call_fnonce_1_1<T>(x: T) {
 
 #[rr::verify]
 fn closure_test_call_fnonce_1() {
-    let a = #[rr::verify] || { 42 };
+    let a =
+        #[rr::verify] || { 42 };
     closure_test_arg_fnonce_1(a);
 }
 
 #[rr::verify]
 fn closure_test_call_fnonce_2() {
-    closure_test_arg_fnonce_2(#[rr::verify] |x| { if x < 10 { x + 2 } else { x}  });
+    closure_test_arg_fnonce_2(#[rr::verify]
+        |x| { if x < 10 { x + 2 } else { x }  });
 }
 
-/* TODO
+#[rr::verify]
+fn closure_test_call_fnonce_2_2() {
+    let clos = #[rr::verify]
+        #[rr::requires("x < 50")]
+        |x: i32| { x + 2 };
+    closure_test_arg_fnonce_2(clos);
+}
+
+#[rr::skip]
 #[rr::verify]
 fn closure_test_call_fnmut_1_0() {
     let mut y = 2;
-    let clos = 
+    let clos =
         #[rr::verify]
         #[rr::params("x")]
         #[rr::capture("y": "x" -> "1")]
         || { y = 1; 42 };
-    // one lifetime for the capture of y (in the upvars)
-    // one lifetime on the call_mut method
-    closure_test_arg_fnonce_1(clos);
+    
+    closure_test_arg_fnonce_3(clos);
+
+    // Point: I want to pass down all the observations.
+    // But that is hard to specify and thread through automatically.
+    // And I don't even know that the function I'm calling will actually call the closure!
+    assert!(y == 1);
 }
-*/
+
+#[rr::skip]
+#[rr::verify]
+fn closure_test_call_fn_2_0() {
+    let mut y = 2;
+    let clos =
+        #[rr::verify]
+        #[rr::params("x")]
+        #[rr::capture("y": "x")]
+        // TODO: this should be statically dispatched. It should be an invariant of the closure
+        // that the callee of the closure does not need to worry about.
+        #[rr::requires("x < 10")]
+        #[rr::returns("(x + 42)%Z")]
+        || { y + 42 };
+    
+    closure_test_arg_fn_2(clos);
+
+    // Point: I want to pass down all the observations.
+    // But that is hard to specify and thread through automatically.
+    // And I don't even know that the function I'm calling will actually call the closure!
+    assert!(y == 1);
+}
 
 
-/* TODO
+#[rr::skip]
 #[rr::verify]
 fn closure_test_call_fnmut_1() {
     let mut x = 1;
@@ -143,10 +198,9 @@ fn closure_test_call_fnmut_1() {
         #[rr::verify]
         #[rr::params("x")]
         #[rr::requires("x < 10")]
-        #[rr::capture("x": "x" -> "x + 2")]
+        #[rr::capture("x": "x" -> "(x + 2)%Z")]
         || { x += 2; });
 }
-*/
 
 #[rr::verify]
 fn closure_test_call_fn_1() {
@@ -171,14 +225,11 @@ fn closure_test1() {
 }
 
 #[rr::verify]
-fn closure_test8<T, U>(x: T, y: U) 
+fn closure_test8<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
-    let cls = 
-        // TODO
-        #[rr::skip]
-        #[rr::params("a", "w")]
-        #[rr::args("a", "w")]
+    let cls =
+        #[rr::verify]
         |a: T, w: U| { w(a) };
 
     //cls(x, y);
@@ -200,9 +251,7 @@ fn closure_test12() {
 }
 
 fn closure_test6<T>(x: T) {
-    let cls = 
-        #[rr::params("a")]
-        #[rr::args("a")]
+    let cls =
         #[rr::returns("a")]
         |a: T| { a };
 
@@ -260,8 +309,8 @@ fn closure_test2() {
         // Note: the closure code has a doubly-nested mutable references, since it gets a mutref to
         // the capture also.
         #[rr::params("i")]
-        #[rr::capture("y": "i" -> "(2*i)%Z")]
-        #[rr::requires("(2 * i)%Z ∈ i32")]
+        #[rr::capture("y": "i" -> "(2*i)")]
+        #[rr::requires("(2 * i) ∈ i32")]
         || { y *= 2; };
 
     //x();
@@ -273,7 +322,7 @@ fn closure_test2() {
 
 #[rr::params("a", "γ")]
 #[rr::args("(a, γ)")]
-#[rr::requires("(4*a)%Z ∈ i32")]
+#[rr::requires("(4*a) ∈ i32")]
 //#[rr::observe("γ" : "(4 * a)%Z")]
 #[rr::observe("γ" : "a")]
 #[rr::returns("()")]
@@ -286,10 +335,10 @@ fn closure_test3(y: &mut i32) {
         // this effectively takes a mutable reference for initialization
         #[rr::params("i", "j")]
         // TODO: we should specify the projection here.
-        #[rr::capture("y" : "i" -> "2*i")]
-        #[rr::capture("z" : "j" -> "5*j")]
-        #[rr::requires("(2 * i)%Z ∈ i32")]
-        #[rr::requires("(5 * j)%Z ∈ i32")]
+        #[rr::capture("y" : "i" -> "(2*i)")]
+        #[rr::capture("z" : "j" -> "(5*j)")]
+        #[rr::requires("(2 * i) ∈ i32")]
+        #[rr::requires("(5 * j) ∈ i32")]
         || { *y *= 2; z *= 5; };
 
     //x();
@@ -302,7 +351,6 @@ fn closure_test4(y: &mut i32) {
     let mut z = 5;
 
     let mut x =
-        // this effectively takes a mutable reference for initialization
         #[rr::params("i", "γ", "j", "γj")]
         #[rr::capture_pre("y" : "(i, γ)")]
         #[rr::capture_pre("z" : "(j, γj)")]
@@ -313,15 +361,12 @@ fn closure_test4(y: &mut i32) {
 */
 
 #[rr::verify]
-fn closure_test7<T, U>(x: T, y: U) 
+fn closure_test7<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
-    let cls = 
-        // TODO
-        #[rr::skip]
-        #[rr::params("a", "m")]
+    let cls =
+        #[rr::params("m")]
         #[rr::capture("y": "m")]
-        #[rr::args("a")]
         |a: T| { y(a) };
 
     //cls(x);
@@ -329,10 +374,19 @@ fn closure_test7<T, U>(x: T, y: U)
 
 
 // HRTB
-/*
+#[rr::skip]
+#[rr::verify]
+fn closure_test_call_hrtb_1<T>(x: T) 
+    where T: Fn(&i32) -> i32
+{
+    let a = 2;
+    x(&a);
+}
+
 #[rr::verify]
 fn closure_test_hrtb_1() {
-    let x = 
+    let x =
+        #[rr::requires("(y + 2) ∈ i32")]
         #[rr::returns("y + 2")]
         |y: &i32| {
             *y + 2
@@ -340,11 +394,12 @@ fn closure_test_hrtb_1() {
 
     let a = 4;
     let b = 6;
-    x(&a);
-    x(&b);
+
+    //closure_test_call_hrtb_1(x);
+    //x(&a);
+    //x(&b);
 }
 
-*/
 
 mod fncoercion {
     fn bla(b: bool) {
@@ -360,7 +415,6 @@ mod fncoercion {
         x(43);
     }
 }
-
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation

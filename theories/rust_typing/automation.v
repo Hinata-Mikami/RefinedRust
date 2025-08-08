@@ -971,7 +971,7 @@ Ltac sidecond_hook_init :=
   open_cache;
   intros;
   prepare_initial_coq_context;
-  try match goal with
+  repeat match goal with
   | |- _ ∧ _ => split
   | |- Forall ?P ?l =>
     notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first

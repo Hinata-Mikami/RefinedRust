@@ -2466,13 +2466,12 @@ Canonical Structure locRT := directRT (loc : Type).
 Canonical Structure valRT := directRT (val : Type).
 
 Definition prodRT (rt1 rt2 : RT) : RT :=
-  mk_RT (RT_rt rt1 * RT_rt rt2)%type (RT_xt rt1 * RT_xt rt2)%type (λ '(a, b), (RT_xrt rt1 a, RT_xrt rt2 b)).
+  mk_RT (RT_rt rt1 * RT_rt rt2)%type (RT_xt rt1 * RT_xt rt2)%type (λ p, (RT_xrt rt1 p.1, RT_xrt rt2 p.2)).
 Canonical Structure prodRT.
 
 Definition listRT (A : RT) : RT :=
   mk_RT (list (RT_rt A)) (list (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure listRT.
-
 
 Definition resultRT (A1 A2 : RT) : RT :=
   mk_RT (result (RT_rt A1) (RT_rt A2)) (result (RT_xt A1) (RT_xt A2))
@@ -2481,6 +2480,7 @@ Definition resultRT (A1 A2 : RT) : RT :=
     | inl x => inl (RT_xrt A1 x)
     | inr x => inr (RT_xrt A2 x)
     end).
+#[warning="-projection-no-head-constant"]
 Canonical Structure resultRT.
 
 Definition optionRT (A : RT) : RT :=
@@ -2493,7 +2493,7 @@ Canonical Structure place_rfnRT.
 
 Definition plistRT (l : list RT) : RT :=
   mk_RT (plist (RT_rt ∘ place_rfnRT) l) (plist (RT_xt ∘ place_rfnRT) l)
-    (pmap (F:=(RT_xt ∘ place_rfnRT))(G:= (RT_rt ∘ place_rfnRT)) 
+    (pmap (F:=(RT_xt ∘ place_rfnRT))(G:= (RT_rt ∘ place_rfnRT))
       (λ (X : RT) (a : RT_xt (place_rfnRT X)), RT_xrt (place_rfnRT X) a))
 .
 Canonical Structure plistRT.

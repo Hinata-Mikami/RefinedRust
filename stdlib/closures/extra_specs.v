@@ -1,10 +1,10 @@
 
-Definition FnOnce_default_attrs {Self_rt Args_rt Output_rt : Type} : FnOnce_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
+Definition FnOnce_default_attrs {Self_rt Args_rt Output_rt : RT} : FnOnce_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
   mk_FnOnce_spec_attrs (λ _ _ _, True%I) (λ _ _, True%I).
-Definition FnMut_default_attrs {Self_rt Args_rt Output_rt : Type} :
+Definition FnMut_default_attrs {Self_rt Args_rt Output_rt : RT} :
   FnMut_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
   mk_FnMut_spec_attrs (λ _ _ _ _, True%I). 
-Definition Fn_default_attrs {Self_rt Args_rt Output_rt : Type} :
+Definition Fn_default_attrs {Self_rt Args_rt Output_rt : RT} :
   Fn_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
   mk_Fn_spec_attrs.
 

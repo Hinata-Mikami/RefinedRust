@@ -10,8 +10,12 @@ use derive_more::Display;
 
 use crate::{coq, fmt_list};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
-pub enum Term {}
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+pub enum Term {
+    /// An Iris Term
+    #[display("({})%I", _0)]
+    IProp(coq::iris::IProp),
+}
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 #[expect(clippy::enum_variant_names)]

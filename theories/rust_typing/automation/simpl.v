@@ -19,6 +19,13 @@ Proof.
   - intros (-> & -> & HT). done.
   - intros (Heq & HT). injection Heq. done.
 Qed.
+Global Instance simpl_eq_plist_cons' A B (x : A) (y : A) (xs ys : B) :
+  SimplAnd ((x *:: xs) = (y *:: ys)) (λ T, x = y ∧ xs = ys ∧ T).
+Proof.
+  split.
+  - intros (-> & -> & HT). done.
+  - intros (Heq & HT). injection Heq. done.
+Qed.
 
 Global Instance simpl_eq_phd {A} {F : A → Type} (Xs : list A) (X : A) (xs : plist F (X :: Xs)) (x : F X)   :
   SimplBothRel (eq) (x) (phd xs) (∃ c : plist F Xs, xs = pcons x c).

@@ -10,7 +10,7 @@ use std::mem;
 use attribute_parse::{MToken, parse};
 use log::{info, warn};
 use parse::{Parse, Peek as _};
-use radium::{coq, model, push_str_list, specs};
+use radium::{coq, fmt_list, model, push_str_list, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::ty;
 
@@ -60,6 +60,10 @@ impl ClosureSpecInfo {
         parsed_spec: &ParsedSpecInfo<'def>,
         parsed_captures: &ParsedClosureSpecInfo<'def>,
     ) -> Self {
+        // TODO for the closure spec parser:
+        // - disallow attributes that we cannot fit into this
+        // - disallow overriding types
+
         // How do I assemble this?
         // - for the closure state, I do not get the ghost var or so (in case of mutref)
         // - instead, I always get Self.
@@ -95,14 +99,103 @@ impl ClosureSpecInfo {
         //    self' = post_pattern
         //
 
-        // Let's factor this into a separate function.
+        let self_var = "_self";
+        let self_binder = coq::binder::Binder::new(Some(self_var.to_owned()), coq::term::RocqType::Infer);
+        let args_var = "_args";
+        let args_binder = coq::binder::Binder::new(Some(args_var.to_owned()), coq::term::RocqType::Infer);
+        let ret_var = "_ret";
+        let ret_binder = coq::binder::Binder::new(Some(ret_var.to_owned()), coq::term::RocqType::Infer);
+        let self_post_var = "_self_post";
+        let self_post_binder =
+            coq::binder::Binder::new(Some(self_post_var.to_owned()), coq::term::RocqType::Infer);
+
+        // params for the captures and the main spec
+        let all_params = coq::binder::BinderList::new(
+            parsed_spec
+                .params
+                .iter()
+                .map(|x| x.0.clone())
+                .chain(parsed_captures.params.iter().cloned())
+                .collect(),
+        );
+        let pre_self_rfn_clause = format!("{self_var} = ({})", parsed_captures.closure_self_rfn);
+        let pre_args_rfn_clause = if parsed_spec.args.is_empty() {
+            format!("{args_var} = tt")
+        } else {
+            format!("{args_var} = *[ {} ]", fmt_list!(&parsed_spec.args, "; ", |x| { x.1.to_string() }))
+        };
+
+        let all_existentials =
+            coq::binder::BinderList::new(parsed_spec.existentials.iter().map(|x| x.0.clone()).collect());
+
+        let ret_term = if let Some(ret) = &parsed_spec.ret { &ret.1 } else { "tt" };
+        let post_ret_rfn_clause = format!("{ret_var} = ({ret_term})");
+
+        // one variant for the PostMut predicate
+        let mut post_ex_clauses_mut: Vec<coq::iris::IProp> =
+            parsed_spec.postconditions.iter().map(|x| x.clone().into()).collect();
+        post_ex_clauses_mut.insert(0, coq::iris::IProp::Pure(post_ret_rfn_clause.clone()));
+        // one for the Post predicate, which also contains the individual observations on FnOnce captures
+        let mut post_ex_clauses: Vec<coq::iris::IProp> = parsed_spec
+            .postconditions
+            .iter()
+            .map(|x| x.clone().into())
+            .chain(parsed_captures.postconditions.iter().map(|x| x.clone().into()))
+            .collect();
+        post_ex_clauses.insert(0, coq::iris::IProp::Pure(post_ret_rfn_clause));
+
+        let post_self_rfn_clause = format!("{self_post_var} = ({})", parsed_captures.closure_self_post_rfn);
+        post_ex_clauses_mut.push(coq::iris::IProp::Pure(post_self_rfn_clause));
+
+        // assemble precondition
+        let mut pre_clauses: Vec<coq::iris::IProp> =
+            parsed_spec.preconditions.iter().map(|x| x.clone().into()).collect();
+        pre_clauses.insert(0, coq::iris::IProp::Pure(pre_self_rfn_clause.clone()));
+        pre_clauses.insert(0, coq::iris::IProp::Pure(pre_args_rfn_clause.clone()));
+        let pre = coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(pre_clauses)));
+        let pre_encoded = coq::term::Term::Lambda(
+            coq::binder::BinderList::new(vec![self_binder.clone(), args_binder.clone()]),
+            Box::new(coq::term::Term::UserDefined(model::Term::IProp(pre))),
+        );
+
+        // assemble postcondition
+        let post_ex_clause = coq::iris::IProp::Exists(
+            all_existentials.clone(),
+            Box::new(coq::iris::IProp::Sep(post_ex_clauses)),
+        );
+        let post_clauses = vec![
+            coq::iris::IProp::Pure(pre_self_rfn_clause.clone()),
+            coq::iris::IProp::Pure(pre_args_rfn_clause.clone()),
+            post_ex_clause,
+        ];
+        let post =
+            coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(post_clauses)));
+        let post_encoded = coq::term::Term::Lambda(
+            coq::binder::BinderList::new(vec![self_binder.clone(), args_binder.clone(), ret_binder.clone()]),
+            Box::new(coq::term::Term::UserDefined(model::Term::IProp(post))),
+        );
+
+        // assemble postmut
+        let post_mut_ex_clause =
+            coq::iris::IProp::Exists(all_existentials, Box::new(coq::iris::IProp::Sep(post_ex_clauses_mut)));
+        let post_mut_clauses = vec![
+            coq::iris::IProp::Pure(pre_self_rfn_clause),
+            coq::iris::IProp::Pure(pre_args_rfn_clause),
+            post_mut_ex_clause,
+        ];
+        let post_mut =
+            coq::iris::IProp::Exists(all_params, Box::new(coq::iris::IProp::Sep(post_mut_clauses)));
+        let post_mut_encoded = coq::term::Term::Lambda(
+            coq::binder::BinderList::new(vec![self_binder, args_binder, self_post_binder, ret_binder]),
+            Box::new(coq::term::Term::UserDefined(model::Term::IProp(post_mut))),
+        );
 
         // Note: make sure to mangle the arg names of the generated lambdas, so we don't collide
         // with names in the specification (e.g. ret)
         Self {
-            pre_encoded: coq::term::Term::Literal("λ _ _, True%I".to_owned()),
-            post_encoded: coq::term::Term::Literal("λ _ _ _, True%I".to_owned()),
-            post_mut_encoded: Some(coq::term::Term::Literal("λ _ _ _ _, True%I".to_owned())),
+            pre_encoded,
+            post_encoded,
+            post_mut_encoded: Some(post_mut_encoded),
         }
     }
 }
@@ -648,7 +741,10 @@ impl<'def> ParsedSpecInfo<'def> {
 struct ParsedClosureSpecInfo<'def> {
     params: Vec<coq::binder::Binder>,
     postconditions: Vec<MetaIProp>,
+    fnmut_observes: Option<MetaIProp>,
     closure_arg: radium::TypeWithRef<'def>,
+    closure_self_rfn: String,
+    closure_self_post_rfn: String,
 }
 
 impl<'def> ParsedClosureSpecInfo<'def> {
@@ -656,9 +752,17 @@ impl<'def> ParsedClosureSpecInfo<'def> {
         for param in &self.params {
             builder.add_param(param.to_owned())?;
         }
-        for post in &self.postconditions {
-            builder.add_postcondition(post.to_owned().into());
+
+        // we have one big observation for self
+        if let Some(fnmut_observes) = &self.fnmut_observes {
+            builder.add_postcondition(fnmut_observes.to_owned().into());
+        } else {
+            // otherwise, add the smaller postconditions on individual mutable captures
+            for post in &self.postconditions {
+                builder.add_postcondition(post.to_owned().into());
+            }
         }
+
         builder.add_arg(self.closure_arg.clone());
 
         Ok(())
@@ -950,44 +1054,73 @@ where
         }
 
         // assemble a string for the closure arg
-        let mut pre_rfn = String::new();
+        let mut pre_rfn_pat = String::new();
         let mut pre_tys = Vec::new();
+        let mut pre_rfn_term = String::new();
 
         if pre_types.is_empty() {
-            pre_rfn.push_str("()");
+            pre_rfn_pat.push_str("()");
+            pre_rfn_term.push_str("tt");
         } else {
-            pre_rfn.push_str(" *[");
-            push_str_list!(pre_rfn, pre_types.clone(), "; ", |x| format!("({})", x.1));
-            pre_rfn.push(']');
+            pre_rfn_pat.push_str(" *[");
+            push_str_list!(pre_rfn_pat, pre_types.clone(), "; ", |x| format!("({})", x.1));
+            pre_rfn_pat.push(']');
+
+            pre_rfn_term.push_str(" *[");
+            push_str_list!(pre_rfn_term, pre_types.clone(), "; ", |x| format!("({})", x.1));
+            pre_rfn_term.push(']');
 
             pre_tys = pre_types.iter().map(|x| x.0.clone()).collect();
         }
-        let tuple = make_tuple(pre_tys);
+        let capture_tuple = make_tuple(pre_tys);
+
+        // the term describing the refinement of the closure after the closure returns
+        let mut post_rfn_pat = String::new();
+        let mut post_rfn_term = String::new();
+        if post_patterns.is_empty() {
+            post_rfn_pat.push_str("()");
+            post_rfn_term.push_str("tt");
+        } else {
+            post_rfn_pat.push_str(" *[");
+            push_str_list!(post_rfn_pat, &post_patterns, "; ", |p| match p {
+                CapturePostRfn::ImmutOrConsume(pat) => format!("({pat})"),
+                CapturePostRfn::Mut(pat, gvar, _) => format!("(({pat}), {gvar})"),
+            });
+            post_rfn_pat.push(']');
+
+            post_rfn_term.push_str(" *[");
+            push_str_list!(post_rfn_term, &post_patterns, "; ", |p| match p {
+                CapturePostRfn::ImmutOrConsume(pat) => format!("({pat})"),
+                CapturePostRfn::Mut(pat, gvar, _) => format!("(({pat}), {gvar})"),
+            });
+            post_rfn_term.push(']');
+        }
+        let mut fnmut_observes = None;
+
+        // generate observations on all the mut-ref captures
+        for p in post_patterns {
+            match p {
+                CapturePostRfn::ImmutOrConsume(_) => {
+                    // nothing mutated
+                },
+                CapturePostRfn::Mut(pat, gvar, type_hint) => {
+                    // add an observation on `gvar`
+                    postconditions.push(MetaIProp::Observe(gvar, Some(type_hint), pat));
+                },
+            }
+        }
 
         match meta.kind {
             ty::ClosureKind::FnOnce => {
-                closure_arg = specs::TypeWithRef::new(tuple, pre_rfn);
-
-                // generate observations on all the mut-ref captures
-                for p in post_patterns {
-                    match p {
-                        CapturePostRfn::ImmutOrConsume(_) => {
-                            // nothing mutated
-                        },
-                        CapturePostRfn::Mut(pat, gvar, type_hint) => {
-                            // add an observation on `gvar`
-                            postconditions.push(MetaIProp::Observe(gvar, Some(type_hint), pat));
-                        },
-                    }
-                }
+                closure_arg = specs::TypeWithRef::new(capture_tuple, pre_rfn_pat);
             },
             ty::ClosureKind::Fn => {
                 // wrap the argument in a shared reference
                 // all the captures are by shared ref
 
                 let lft = meta.closure_lifetime.unwrap();
-                let ref_ty = specs::Type::ShrRef(Box::new(tuple), lft);
-                let ref_rfn = pre_rfn.clone();
+                let ref_ty = specs::Type::ShrRef(Box::new(capture_tuple), lft);
+                let ref_rfn = pre_rfn_pat;
 
                 closure_arg = specs::TypeWithRef::new(ref_ty, ref_rfn);
             },
@@ -997,27 +1130,18 @@ where
                 params.push(coq::binder::Binder::new(Some(post_name.to_owned()), model::Type::Gname));
 
                 let lft = meta.closure_lifetime.unwrap();
-                let ref_ty = specs::Type::MutRef(Box::new(tuple.clone()), lft);
-                let ref_rfn = format!("(({}), {})", pre_rfn, post_name);
+                let ref_ty = specs::Type::MutRef(Box::new(capture_tuple.clone()), lft);
+                let ref_rfn = format!("(({}), {})", pre_rfn_pat, post_name);
 
                 closure_arg = specs::TypeWithRef::new(ref_ty, ref_rfn);
 
                 // assemble a postcondition on the closure
                 // we observe on the outer mutable reference for the capture, not on the individual
                 // references
-                let mut post_term = String::new();
-
-                post_term.push_str(" *[");
-                push_str_list!(post_term, post_patterns, "; ", |p| match p {
-                    CapturePostRfn::ImmutOrConsume(pat) => format!("({pat})"),
-                    CapturePostRfn::Mut(pat, gvar, _) => format!("(({pat}), {gvar})"),
-                });
-                post_term.push(']');
-
-                postconditions.push(MetaIProp::Observe(
+                fnmut_observes = Some(MetaIProp::Observe(
                     post_name.to_owned(),
-                    Some(tuple.get_rfn_type().to_string()),
-                    post_term,
+                    Some(capture_tuple.get_rfn_type().to_string()),
+                    post_rfn_pat,
                 ));
             },
         }
@@ -1025,7 +1149,10 @@ where
         let spec = ParsedClosureSpecInfo {
             params,
             postconditions,
+            fnmut_observes,
             closure_arg,
+            closure_self_rfn: pre_rfn_term,
+            closure_self_post_rfn: post_rfn_term,
         };
 
         Ok(spec)

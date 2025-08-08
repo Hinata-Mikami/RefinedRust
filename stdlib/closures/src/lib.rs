@@ -39,34 +39,34 @@ pub trait FnOnce<Args> {
 */
 
 #[rr::export_as(core::ops::FnOnce)]
-#[rr::exists("Pre" : "{rt_of Self} → {rt_of Args} → iProp Σ")]
-#[rr::exists("Post" : "{rt_of Self} → {rt_of Args} → {rt_of Output} → iProp Σ")]
+#[rr::exists("Pre" : "{xt_of Self} → {xt_of Args} → iProp Σ")]
+#[rr::exists("Post" : "{xt_of Self} → {xt_of Args} → {xt_of Output} → iProp Σ")]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     type Output;
 
     /// Performs the call operation.
-    #[rr::requires(#iris "{Pre} ($# self) ($# args)")]
-    #[rr::ensures(#iris "{Post} ($# self) ($# args) ($# ret)")]
+    #[rr::requires(#iris "{Pre} self args")]
+    #[rr::ensures(#iris "{Post} self args ret")]
     fn call_once(self, args: Args) -> Self::Output;
 }
 
 #[rr::export_as(core::ops::FnMut)]
 // Note: the relation gets both the current and the next state
-#[rr::exists("PostMut" : "{rt_of Self} → {rt_of Args} → {rt_of Self} → {rt_of Self::Output} → iProp Σ")]
+#[rr::exists("PostMut" : "{xt_of Self} → {xt_of Args} → {xt_of Self} → {xt_of Self::Output} → iProp Σ")]
 pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
-    #[rr::requires(#iris "{Self::Pre} ($# self.cur) ($# args)")]
+    #[rr::requires(#iris "{Self::Pre} self.cur args")]
     #[rr::exists("m'")]
-    #[rr::ensures(#iris "{PostMut} ($# self.cur) ($# args) m' ($# ret)")]
-    #[rr::observe("self.ghost": "m'")]
+    #[rr::ensures(#iris "{PostMut} self.cur args m' ret")]
+    #[rr::observe("self.ghost": "$# m'")]
     fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[rr::export_as(core::ops::Fn)]
 pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
-    #[rr::requires(#iris "{Self::Pre} ($#@{{ {Self} }} self) ($# args)")]
-    #[rr::ensures(#iris "{Self::Post} ($#@{{ {Self} }} self) ($# args) ($# ret)")]
+    #[rr::requires(#iris "{Self::Pre} self args")]
+    #[rr::ensures(#iris "{Self::Post} self args ret")]
     fn call(&self, args: Args) -> Self::Output;
 }

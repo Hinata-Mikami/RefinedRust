@@ -26,7 +26,7 @@ fn fmt_with_op(op: &str, v: &[IProp]) -> String {
     fmt_list!(v, &format!("\n{op} "), "({})")
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum IProp {
     #[display("True")]
     True,
@@ -34,7 +34,7 @@ pub enum IProp {
     #[display("{}", _0)]
     Atom(String),
 
-    #[display("⌜{}⌝", _0)]
+    #[display("⌜({})%Z⌝", _0)]
     Pure(String),
 
     #[display("{}", fmt_with_op("∗", _0))]
@@ -56,7 +56,7 @@ pub enum IProp {
     All(binder::BinderList, Box<IProp>),
 
     // prop, name
-    #[display("⌜name_hint \"{}\" ({})⌝", _1, _0)]
+    #[display("⌜name_hint \"{}\" ({})%Z⌝", _1, _0)]
     PureWithName(String, String),
 }
 
