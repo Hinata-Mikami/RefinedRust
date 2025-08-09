@@ -29,6 +29,7 @@ struct Config {
     run_check: bool,
     verify_deps: bool,
     no_verify: bool,
+    no_assumption: bool,
     admit_proofs: bool,
     generate_dune_project: bool,
     lib_load_paths: Vec<String>,
@@ -54,6 +55,7 @@ impl Default for Config {
             run_check: false,
             verify_deps: false,
             no_verify: false,
+            no_assumption: false,
             admit_proofs: false,
             generate_dune_project: true,
             lib_load_paths: vec![],
@@ -225,8 +227,8 @@ pub fn set_no_verify(value: bool) {
 
 /// Whether to allow specification to be assumed
 #[must_use]
-pub const fn no_assumption() -> bool {
-    true
+pub fn no_assumption() -> bool {
+    access_config(|c| c.no_assumption)
 }
 
 /// Whether to admit proofs of functions instead of running Qed.

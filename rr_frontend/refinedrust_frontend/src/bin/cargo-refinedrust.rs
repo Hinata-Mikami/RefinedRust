@@ -6,6 +6,7 @@
 
 #![feature(rustc_private)]
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, process};
@@ -18,6 +19,7 @@ Usage: cargo refinedrust [<RefinedRust options>] -- [<cargo options>]
 
 RefinedRust Options:
   -h, --help               Print help
+      --no-assumption      Require specifications to not be assumed
       --show-config        Display the detected configuration
   -V, --version            Print version info";
 
@@ -67,7 +69,8 @@ fn get_args() -> (Vec<String>, Vec<String>) {
 }
 
 fn main() {
-    let (rr_args, cargo_args) = get_args();
+    let mut rr_env: HashMap<&str, &str> = HashMap::new();
+    let (mut rr_args, cargo_args) = get_args();
 
     if rr_args.iter().any(|arg| arg == "-h" || arg == "--help") {
         return println!("{}", USAGE);
@@ -75,6 +78,11 @@ fn main() {
 
     if rr_args.iter().any(|arg| arg == "-V" || arg == "--version") {
         return dump_version_info();
+    }
+
+    if let Some(index) = rr_args.iter().position(|arg| arg == "--no-assumption") {
+        rr_env.insert("RR_NO_ASSUMPTION", "true");
+        rr_args.swap_remove(index);
     }
 
     if rr_args.iter().any(|arg| arg == "--show-config") {
@@ -88,10 +96,10 @@ fn main() {
         process::exit(1);
     }
 
-    process(cargo_args).unwrap_or_else(|c| process::exit(c));
+    process(cargo_args, &rr_env).unwrap_or_else(|c| process::exit(c));
 }
 
-fn process(cargo_args: Vec<String>) -> Result<(), i32> {
+fn process(cargo_args: Vec<String>, rr_env: &HashMap<&str, &str>) -> Result<(), i32> {
     // can we make this more robust?
     let mut rr_rustc_path = env::current_exe()
         .expect("current executable path invalid")
@@ -113,6 +121,7 @@ fn process(cargo_args: Vec<String>) -> Result<(), i32> {
         .env("RUSTC", rr_rustc_path)
         .env("CARGO_TARGET_DIR", &cargo_target)
         .env("RR_OUTPUT_DIR", &output_dir)
+        .envs(rr_env)
         .status()
         .expect("could not run cargo");
 
