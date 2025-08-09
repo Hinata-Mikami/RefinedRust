@@ -6,7 +6,7 @@
 
 use std::collections::{BTreeMap, btree_map};
 
-use derive_more::Constructor;
+use derive_more::{Constructor, Display};
 use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
@@ -14,13 +14,24 @@ use rr_rustc_interface::middle::ty;
 use crate::base::*;
 use crate::regions;
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Mode {
+    #[display("prove")]
     Prove,
+
+    #[display("only_spec")]
     OnlySpec,
+
+    #[display("trust_me")]
     TrustMe,
+
+    #[display("shim")]
     Shim,
+
+    #[display("code_shim")]
     CodeShim,
+
+    #[display("ignore")]
     Ignore,
 }
 
@@ -48,6 +59,10 @@ impl Mode {
 
     pub(crate) fn is_ignore(self) -> bool {
         self == Self::Ignore
+    }
+
+    pub(crate) fn is_assumed(self) -> bool {
+        self == Self::OnlySpec || self == Self::TrustMe
     }
 
     pub(crate) fn needs_proof(self) -> bool {
@@ -227,6 +242,10 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
 
     /// Register a function.
     pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
+        if rrconfig::no_assumption() && meta.mode.is_assumed() {
+            return Err(TranslationError::NoAssumptionAllowed(did, meta.mode));
+        }
+
         if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {
             Err(TranslationError::ProcedureRegistry(format!(
                 "function for defid {:?} has already been registered",

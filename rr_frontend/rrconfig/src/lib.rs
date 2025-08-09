@@ -223,6 +223,12 @@ pub fn set_no_verify(value: bool) {
     access_config(|mut c| c.no_verify = value);
 }
 
+/// Whether to allow specification to be assumed
+#[must_use]
+pub const fn no_assumption() -> bool {
+    true
+}
+
 /// Whether to admit proofs of functions instead of running Qed.
 #[must_use]
 pub fn admit_proofs() -> bool {
