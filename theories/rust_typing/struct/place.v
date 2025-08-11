@@ -40,7 +40,7 @@ Section place.
     { eapply hcmap_lookup_hzipl. done. }
     simpl. done.
   Qed.
-  Local Lemma struct_lift_place_cond_rfn_homo {rts} (rs : plist place_rfn rts) i (ro ro' : place_rfn (lnth (unit : RT) rts i)) bmin0 :
+  Local Lemma struct_lift_place_cond_rfn_homo {rts : list RT} (rs : plist place_rfnRT rts) i (ro ro' : place_rfn (lnth (unit : RT) rts i)) bmin0 :
     pnth (#tt) rs i = ro →
     i < length rts →
     ⊢@{iProp Σ} typed_place_cond_rfn bmin0 ro ro' -∗
@@ -65,8 +65,8 @@ Section place.
     (*iApply typed_place_cond_rfn_refl.*)
   Qed.
 
-  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) π E L (r : plist place_rfn rts) sls f wl bmin0 P l
-    (T : place_cont_t (plist place_rfn rts)) :
+  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) π E L (r : plist place_rfnRT rts) sls f wl bmin0 P l
+    (T : place_cont_t (plist place_rfnRT rts)) :
     ((* sidecondition for other components *)
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)
@@ -78,7 +78,7 @@ Section place.
         (λ L' κs l1 b2 bmin rti ltyi ri mstrong,
           T L' κs l1 b2 bmin rti ltyi ri
           (mk_mstrong (fmap (λ strong, mk_strong
-            (λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))
+            (λ rt', plist place_rfnRT (<[i := strong.(strong_rt) rt']> rts))
             (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
             (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
             strong.(strong_R)) mstrong.(mstrong_strong))
@@ -110,7 +110,7 @@ Section place.
     iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
@@ -155,8 +155,8 @@ Section place.
   Definition typed_place_struct_owned_inst := [instance @typed_place_struct_owned].
   Global Existing Instance typed_place_struct_owned_inst | 30.
 
-  Lemma typed_place_struct_uniq {rts} (lts : hlist ltype rts) π E L (r : plist place_rfn rts) sls f κ γ bmin0 P l
-    (T : place_cont_t (plist place_rfn rts)) :
+  Lemma typed_place_struct_uniq {rts} (lts : hlist ltype rts) π E L (r : plist place_rfnRT rts) sls f κ γ bmin0 P l
+    (T : place_cont_t (plist place_rfnRT rts)) :
     ((* sidecondition for other components *)
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* get lifetime token *)
@@ -214,7 +214,7 @@ Section place.
     iModIntro. iModIntro. iNext. iIntros "Hcred Hcl". iExists _. iSplitR; first done.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
@@ -252,8 +252,8 @@ Section place.
   Definition typed_place_struct_uniq_inst := [instance @typed_place_struct_uniq].
   Global Existing Instance typed_place_struct_uniq_inst | 30.
 
-  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) π E L (r : plist place_rfn rts) sls f κ bmin0 P l
-    (T : place_cont_t (plist place_rfn rts)) :
+  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) π E L (r : plistRT place_rfnRT rts) sls f κ bmin0 P l
+    (T : place_cont_t (plistRT place_rfnRT rts)) :
     ((* sidecondition for other components *)
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)
@@ -299,7 +299,7 @@ Section place.
     iModIntro. iNext. iIntros "Hcred". iExists _. iR.
     iPoseProof (focus_struct_component with "Hb") as "(%Heq & %ly' & %Hst & Hb & Hc_close)".
     { done. }
-    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ())); [ | done..].
+    { eapply (hnth_pnth_hpzipl_lookup _ (unit : RT) (UninitLtype UnitSynType) (PlaceIn ()) _ r); [ | done..].
       eapply field_index_of_leq in Hfield'.
       erewrite struct_layout_spec_has_layout_fields_length in Hfield'; last done. lia. }
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
@@ -340,5 +340,3 @@ End place.
 
 (* Need this for unification to figure out how to apply typed_place lemmas -- if the plist simplifies, unification will be stuck *)
 Global Arguments plist : simpl never.
-
-

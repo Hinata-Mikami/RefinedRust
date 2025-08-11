@@ -91,7 +91,7 @@ impl EvenInt {
     #[rr::params("i", "γ")]
     #[rr::args(#raw "((-[i]), γ)")]
     #[rr::requires("(i+1 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "-[ #(i+1)] : plist (λ X, place_rfn X) [_]")]
+    #[rr::observe("γ": "-[ #(i+1)] : plistRT place_rfnRT [_]")]
     unsafe fn add(&mut self) {
         self.num += 1;
     }

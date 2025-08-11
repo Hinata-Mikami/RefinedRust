@@ -349,7 +349,7 @@ pub(crate) trait ParamLookup<'def> {
 
             annot_meta.add_type(&param);
             if rt_is_xt {
-                format!("{}(ty_xt {})", &c[1], param)
+                format!("{}(RT_xt {})", &c[1], &param.get_rfn_type())
             } else {
                 format!("{}{}", &c[1], &param.get_rfn_type())
             }
@@ -367,7 +367,7 @@ pub(crate) trait ParamLookup<'def> {
             };
 
             annot_meta.add_type(&param);
-            format!("{}(ty_xt {})", &c[1], param)
+            format!("{}(RT_xt {})", &c[1], &param.get_rfn_type())
         });
 
         let cs = RE_ST_OF.replace_all(&cs, |c: &Captures<'_>| {

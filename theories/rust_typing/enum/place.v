@@ -212,7 +212,7 @@ Section rules.
       ∃ (Heq : enum_tag en r = Some tag),
       (* the variant is in sync with the tag
         (we could also assume this from the interpretation, but we want that this is eq_refl) *)
-      ∃ (Heq2 : enum_rt en r = plist place_rfn rts),
+      ∃ (Heq2 : enum_rt en r = plist place_rfnRT rts),
       inhale (⌜rs = rew [RT_rt] Heq2 in (enum_r en r)⌝);
       (* access the struct field *)
       ∃ (i : nat),

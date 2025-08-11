@@ -6,6 +6,7 @@ From refinedrust Require Import options.
 
 Section lemmas.
   Context `{!typeGS Σ}.
+  Implicit Types (rt : RT).
 
   (* TODO move *)
   Lemma ofty_owned_subtype_aligned π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
@@ -225,7 +226,7 @@ Section deinit_fallback.
   Global Existing Instance uninit_mono_inst | 40.
 
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
-  Lemma weak_subltype_deinit E L {rt1} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
+  Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
     weak_subltype E L (Owned false) r1 #r2 (◁ ty) (◁ uninit st) T :-
     exhale (⌜ty_syn_type ty = st⌝);
     return T.

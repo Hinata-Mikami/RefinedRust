@@ -40,7 +40,6 @@ pub(crate) trait InvariantSpecParser {
 struct RfnPattern {
     rfn_pat: coq::binder::Pattern,
     rfn_type: Option<coq::term::Type>,
-    xt_type: Option<coq::term::Type>,
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
@@ -53,26 +52,15 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
             stream.parse::<_, MToken![:]>(meta)?;
             let ty: parse::LitStr = stream.parse(meta)?;
             let (processed_rt, _) = meta.process_coq_literal(ty.value().as_str());
-            let (processed_xt, _) = meta.process_coq_literal_xt(ty.value().as_str(), true);
-            let mut processed_xt = processed_xt.replace("place_rfn", "");
-
-            // optionally, parse an override for the xt
-            if parse::Semi::peek(stream) {
-                stream.parse::<_, MToken![;]>(meta)?;
-                let ty: parse::LitStr = stream.parse(meta)?;
-                (processed_xt, _) = meta.process_coq_literal(ty.value().as_str());
-            }
 
             Ok(Self {
                 rfn_pat: pat,
                 rfn_type: Some(coq::term::Type::Literal(processed_rt)),
-                xt_type: Some(coq::term::Type::Literal(processed_xt)),
             })
         } else {
             Ok(Self {
                 rfn_pat: pat,
                 rfn_type: None,
-                xt_type: None,
             })
         }
     }
@@ -211,7 +199,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         let mut rfn_pat = "placeholder_pat".to_owned();
         let mut rfn_type = coq::term::Type::Infer;
-        let mut xt_type = coq::term::Type::Infer;
+        //let mut xt_type = coq::term::Type::Infer;
 
         let mut existentials: Vec<coq::binder::Binder> = Vec::new();
 
@@ -238,9 +226,9 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     if let Some(ty) = pat.rfn_type {
                         rfn_type = ty;
                     }
-                    if let Some(ty) = pat.xt_type {
-                        xt_type = ty;
-                    }
+                    //if let Some(ty) = pat.xt_type {
+                    //xt_type = ty;
+                    //}
                 },
                 "invariant" => {
                     let prop = MetaIProp::parse(&buffer, self.scope).map_err(str_err)?;
@@ -301,15 +289,15 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         let refinement_included = abstracted_refinement.is_some();
 
-        let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
+        //let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
         let spec = specs::InvariantSpec::new(
             ty_name.to_owned(),
             inv_flags,
             "κ".to_owned(),
             rfn_type,
-            xt_type,
-            xt_injection,
+            //xt_type,
+            //xt_injection,
             rfn_pat,
             existentials,
             invariants,

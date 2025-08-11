@@ -14,7 +14,7 @@ use derive_more::{Display, From};
 use indent_write::indentable::Indentable as _;
 
 use crate::BASE_INDENT;
-use crate::coq::{Attribute, binder, eval, inductive, module, proof, section, syntax, term};
+use crate::coq::{Attribute, Ident, binder, eval, inductive, module, proof, section, syntax, term};
 
 /// A [command], with optional attributes.
 ///
@@ -110,6 +110,12 @@ pub enum Command {
     /// [`Inductive`]: https://rocq-prover.org/doc/v8.20/refman/language/core/inductive.html#inductive-types
     #[display("{}", _0)]
     Inductive(inductive::Inductive),
+
+    /// The first variant of the [`Canonical Structure`] command.
+    ///
+    /// [`Canonical Structure`]: https://rocq-prover.org/doc/v8.20/refman/language/extensions/canonical.html#declaration-of-canonical-structures
+    #[display("{}", _0)]
+    CanonicalDecl(CanonicalDecl),
 
     /// The [`Instance`] command.
     ///
@@ -272,3 +278,10 @@ impl fmt::Display for Lemma {
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("Instance: {}.\n{}", _0, _1)]
 pub struct Instance(pub term::Type, pub proof::Proof);
+
+/// The first variant [`Canonical Structure`] command.
+///
+/// [`Canonical Structure`]: https://rocq-prover.org/doc/v8.20/refman/language/extensions/canonical.html#declaration-of-canonical-structures
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("Canonical Structure {}.\n", _0)]
+pub struct CanonicalDecl(pub Ident);

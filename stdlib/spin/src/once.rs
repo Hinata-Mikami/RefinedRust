@@ -69,7 +69,7 @@ impl<T, R> Once<T, R> {
     #[rr::requires("if_Some o (ty_is_xrfn {T})")]
     #[rr::ensures(#iris "once_status_tok η o")]
     #[rr::exists("o'" : "option {xt_of T}")]
-    #[rr::ensures("o = fmap (ty_xrt {T}) o'")]
+    #[rr::ensures("o = fmap (RT_xrt {rt_of T}) o'")]
     #[rr::returns("o'")]
     pub fn get(&self) -> Option<&T> {
         unimplemented!();

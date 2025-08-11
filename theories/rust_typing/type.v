@@ -39,7 +39,9 @@ Qed.
 
 #[universes(polymorphic)]
 Record RT : Type := mk_RT {
-  RT_rt :> Type
+  RT_rt :> Type;
+  RT_xt : Type;
+  RT_xrt : RT_xt → RT_rt;
 }.
 
 Implicit Type (rt : RT).
@@ -48,10 +50,8 @@ Implicit Type (rt : RT).
     Types are indexed by their refinement type [rt].
 *)
 Record type `{!typeGS Σ} (rt : RT) := {
-  ty_xt : Type;
-  ty_xrt : ty_xt → RT_rt rt;
   (* The xt type should be inhabited *)
-  ty_xt_inhabited : Inhabited ty_xt;
+  ty_xt_inhabited : Inhabited (RT_xt rt);
 
   (** Ownership of values *)
   ty_own_val : thread_id → RT_rt rt → val → iProp Σ;
@@ -145,10 +145,8 @@ Arguments ty_shr : simpl never.
 #[export] Existing Instance ty_sidecond_persistent.
 #[export] Existing Instance ty_xt_inhabited.
 Global Instance ty_rt_inhabited `{!typeGS Σ} {rt} (ty : type rt) : Inhabited rt :=
-  populate (ty_xrt _ ty inhabitant).
+  populate (RT_xrt rt (@inhabitant _ (ty_xt_inhabited _ ty))).
 
-Arguments ty_xt {_ _ _}.
-Arguments ty_xrt {_ _ _}.
 Arguments ty_xt_inhabited {_ _ _}.
 Arguments ty_own_val {_ _ _}.
 Arguments ty_sidecond {_ _ _}.
@@ -196,11 +194,12 @@ Global Arguments ty_lfts {_ _ _} _.
 
 Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply H end : typeclass_instances.
 
+Definition RT_of `{!typeGS Σ} {rt} (ty : type rt) : RT := rt.
 Definition rt_of `{!typeGS Σ} {rt} (ty : type rt) : Type := rt.
 Notation st_of ty := (ty_syn_type ty).
 
 Definition ty_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) (r : rt) :=
-  ∃ xr, r = ty.(ty_xrt) xr.
+  ∃ xr, r = RT_xrt _ xr.
 Arguments ty_is_xrfn : simpl never.
 Global Typeclasses Opaque ty_is_xrfn.
 
@@ -307,8 +306,8 @@ End memcast.
 
 (** simple types *)
 (* Simple types are copy, have a simple sharing predicate, and do not nest. *)
-Record simple_type `{!typeGS Σ} rt :=
-  { st_rt_inhabited : Inhabited rt;
+Record simple_type `{!typeGS Σ} (rt : RT) :=
+  { st_xt_inhabited : Inhabited (RT_xt rt);
     st_own : thread_id → rt → val → iProp Σ;
     st_syn_type : syn_type;
     st_has_op_type : op_type → memcast_compat_type → Prop;
@@ -336,7 +335,7 @@ Record simple_type `{!typeGS Σ} rt :=
       (*st_has_op_type ot mt;*)
   }.
 #[export] Existing Instance st_own_persistent.
-#[export] Existing Instance st_rt_inhabited.
+#[export] Existing Instance st_xt_inhabited.
 #[export] Instance: Params (@st_own) 4 := {}.
 Arguments st_own {_ _ _}.
 Arguments st_has_op_type {_ _ _}.
@@ -353,9 +352,7 @@ Qed.
 
 
 Program Definition ty_of_st `{!typeGS Σ} rt (st : simple_type rt) : type rt :=
-  {| ty_xt_inhabited := st.(st_rt_inhabited _);
-    ty_xt := rt;
-    ty_xrt := λ x, x;
+  {| ty_xt_inhabited := st.(st_xt_inhabited _);
     ty_own_val tid r v := (st.(st_own) tid r v)%I;
     _ty_has_op_type := st.(st_has_op_type);
     ty_syn_type := st.(st_syn_type);
@@ -432,18 +429,18 @@ Notation "v ◁ᵥ{ π }  r @ ty" := (ty_own_val ty π r v) (at level 15) : bi_s
 Notation "l ◁ₗ{ π , κ } .@ ty" := (ty_shr ty κ π () l) (at level 15, format "l  ◁ₗ{ π , κ }  .@ ty") : bi_scope.
 Notation "v ◁ᵥ{ π }  .@ ty" := (ty_own_val ty π () v) (at level 15) : bi_scope.
 
-Notation "'$#' x" := (ty_xrt _ x) (at level 9).
-Notation "'$#@{' A '}' x" := (ty_xrt A x) (at level 9).
-Notation "'<$#>' x" := (fmap (M := list) (ty_xrt _) x) (at level 30).
-Notation "'<$#@{' A '}>' x" := (fmap (M := list) (ty_xrt A) x) (at level 30).
-Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (ty_xrt A) x) (at level 30).
-Notation "'<$#>@{' B '}' x" := (fmap (M := B) (ty_xrt _) x) (at level 30).
+Notation "'$#' x" := (RT_xrt _ x) (at level 9).
+Notation "'$#@{' A '}' x" := (RT_xrt A x) (at level 9).
+Notation "'<$#>' x" := (fmap (M := list) (RT_xrt _) x) (at level 30).
+Notation "'<$#@{' A '}>' x" := (fmap (M := list) (RT_xrt A) x) (at level 30).
+Notation "'<$#@{' A '}>@{' B '}' x" := (fmap (M := B) (RT_xrt A) x) (at level 30).
+Notation "'<$#>@{' B '}' x" := (fmap (M := B) (RT_xrt _) x) (at level 30).
 
 
 Record xtype `{!typeGS Σ} := mk_xtype {
   xtype_rt : RT;
   xtype_ty : type xtype_rt;
-  xtype_rfn : ty_xt xtype_ty;
+  xtype_rfn : RT_xt xtype_rt;
 }.
 Global Arguments mk_xtype {_ _ _}.
 
@@ -2096,22 +2093,39 @@ End lft_mor.
 
 (* Common RTs *)
 Definition directRT (ty : Type) : RT :=
-  mk_RT ty.
-Canonical Structure unitRT := directRT unit.
-Canonical Structure ZRT := directRT Z.
-Canonical Structure boolRT := directRT bool.
+  mk_RT ty ty (@id ty).
+Canonical Structure unitRT := directRT (unit : Type).
+Canonical Structure ZRT := directRT (Z : Type).
+Canonical Structure natRT := directRT (nat : Type).
+Canonical Structure boolRT := directRT (bool : Type).
 
-Canonical Structure gnameRT := directRT gname.
-Canonical Structure locRT := directRT loc.
+Canonical Structure gnameRT := directRT (gname : Type).
+Canonical Structure locRT := directRT (loc : Type).
+Canonical Structure valRT := directRT (val : Type).
 
 Definition prodRT (rt1 rt2 : RT) : RT :=
-  mk_RT (rt1 * rt2)%type.
+  mk_RT (RT_rt rt1 * RT_rt rt2)%type (RT_xt rt1 * RT_xt rt2)%type (λ '(a, b), (RT_xrt rt1 a, RT_xrt rt2 b)).
 Canonical Structure prodRT.
 
 Definition listRT (A : RT) : RT :=
-  mk_RT (list A).
+  mk_RT (list (RT_rt A)) (list (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure listRT.
 
 Definition plistRT {A} (F : A → RT) (l : list A) : RT :=
-  mk_RT (plist F l).
+  mk_RT (plist (RT_rt ∘ F) l) (plist (RT_xt ∘ F) l)
+    (pmap (F:=(RT_xt ∘ F))(G:= (RT_rt ∘ F)) (λ X a, RT_xrt (F X) a))
+.
 Canonical Structure plistRT.
+
+Definition resultRT (A1 A2 : RT) : RT :=
+  mk_RT (result (RT_rt A1) (RT_rt A2)) (result (RT_xt A1) (RT_xt A2))
+  (λ x,
+    match x with
+    | inl x => inl (RT_xrt A1 x)
+    | inr x => inr (RT_xrt A2 x)
+    end).
+Canonical Structure resultRT.
+
+Definition optionRT (A : RT) : RT :=
+  mk_RT (option (RT_rt A)) (option (RT_xt A)) (fmap (RT_xrt A)).
+Canonical Structure optionRT.

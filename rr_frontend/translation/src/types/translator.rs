@@ -1262,9 +1262,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         );
 
         let enum_spec = radium::EnumSpec {
-            rfn_type: coq::term::Type::Literal(inductive_name.clone()),
-            xt_type: coq::term::Type::Literal(inductive_name),
-            xt_injection: "id".to_owned(),
+            rfn_type: coq::term::Type::Literal(inductive_name),
             variant_patterns,
             is_partial: false,
         };

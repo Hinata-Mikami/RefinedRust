@@ -166,7 +166,7 @@ Context `{!typeGS Σ}.
       iIntros "!>" (? [? []] ? Hlook1 Hlook2).
       apply list_lookup_fmap_Some in Hlook2 as ([name st'] & -> & Hlook2).
       rewrite decide_True; first last. { rewrite length_zip length_hpzipl Hlen.
-        apply hpzipl_lookup_inv in Hlook1. apply lookup_lt_Some in Hlook1. lia. }
+        apply (hpzipl_lookup_inv _ _ rs') in Hlook1. apply lookup_lt_Some in Hlook1. lia. }
       iIntros "(% & % & %Hlook3 & <- & _)".
       simplify_eq. done. }
 
@@ -188,12 +188,12 @@ Context `{!typeGS Σ}.
       { rewrite !length_hpzipl length_replicate length_fmap -Hlen//. }
       iModIntro. iIntros (k [rt1 [lt1 rs1]] [rt2 [lt2 rs2]] Hlook1 Hlook2).
 
-      apply hpzipl_lookup_inv in Hlook1 as Hlook1'.
+      apply (hpzipl_lookup_inv _ _ rs'') in Hlook1 as Hlook1'.
       apply lookup_replicate_1 in Hlook1' as (-> & Hk).
       rewrite length_fmap in Hk.
       rewrite decide_True; first last. { rewrite length_zip length_hpzipl. lia. }
 
-      apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1_1 & Hlook1_2).
+      apply (hpzipl_lookup_inv_hzipl_pzipl _ _ rs'') in Hlook1 as (Hlook1_1 & Hlook1_2).
       subst lts'.
       eapply hzipl_hmap_lookup_inv in Hlook1_1 as (ty & Hlook1_1 & ->).
       apply uninit_tys_lookup_inv in Hlook1_1 as (st' & Hlook1_1 & Heq).

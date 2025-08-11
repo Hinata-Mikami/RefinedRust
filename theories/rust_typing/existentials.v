@@ -8,13 +8,11 @@ From refinedrust Require Import options.
 (* Note: this does not allow for, e.g., Cell or Mutex -- we will need a different version using non-atomic/atomic invariants for those *)
 (*
   [X] is the inner refinement type,
-  [Y] is the type it is being abstracted to,
-  [YR] is the refinement type constructor (Y without place_rfn).
+  [Y] is the type it is being abstracted to.
 *)
 Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
-  inv_xr : Type;
-  inv_xr_inh : Inhabited inv_xr;
-  inv_xrt : inv_xr → Y;
+  inv_xr_inh : Inhabited (RT_xt Y);
+
   inv_P : thread_id → X → Y → iProp Σ;
   inv_P_shr : thread_id → lft → X → Y → iProp Σ;
 
@@ -34,17 +32,14 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
     logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
 }.
 (* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
-Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} (YR : Type) `{!Inhabited YR}
-  (inv_xrt : YR → Y)
+Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P : thread_id → X → Y → iProp Σ)
   (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
   inv_P_lfts
   (inv_P_wf_E : elctx)
   (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
   inv_P_shr_mono
-  inv_P_share := mk_ex_inv_def' _ _ _ _ _ _ inv_xrt inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
-Global Arguments inv_xr {_ _ _ _ _}.
-Global Arguments inv_xrt {_ _ _ _ _}.
+  inv_P_share := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
 Global Arguments inv_P {_ _ _ _ _}.
 Global Arguments inv_P_shr {_ _ _ _ _}.
 Global Arguments inv_P_lfts {_ _ _ _ _}.
@@ -55,9 +50,9 @@ Global Arguments inv_P_shr_pers {_ _ _ _ _}.
 Global Existing Instance inv_P_shr_pers.
 
 (** Smart constructor for persistent and timeless [P] *)
-Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} (YR : Type) `{!Inhabited YR} (xtr : YR → Y) (P : X → Y → iProp Σ)
+Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
   (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
-  mk_ex_inv_def YR xtr (λ _, P) (λ _ _, P) [] [] _ _ _.
+  mk_ex_inv_def (λ _, P) (λ _ _, P) [] [] _ _ _.
 Next Obligation.
   rewrite /TCNoResolve.
   eauto with iFrame.
@@ -67,7 +62,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   rewrite /TCNoResolve.
-  iIntros (??????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
+  iIntros (????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
   iDestruct "CTX" as "(LFT & TIME & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
@@ -146,8 +141,6 @@ Section ex.
      [R] determines a relation between the inner and outer refinement. *)
   Program Definition ex_plain_t (ty : type X) : type Y := {|
     ty_xt_inhabited := _;
-    ty_xt := P.(inv_xr);
-    ty_xrt := P.(inv_xrt);
     ty_own_val π r v :=
       (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x v)%I;
     ty_shr κ π r l :=

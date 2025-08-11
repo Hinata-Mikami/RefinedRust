@@ -88,3 +88,6 @@ Section eq.
   Proof. rewrite (UIP_refl _ _ Heq). done. Qed.
 
 End eq.
+
+(** We also assume FunctionalExtensionality *)
+(*Check functional_extensionality.*)

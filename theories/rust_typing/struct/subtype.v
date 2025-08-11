@@ -8,11 +8,11 @@ Section subtype.
   Context `{!typeGS Σ}.
 
   Import EqNotations.
-  Definition struct_t_incl_precond {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 :=
+  Definition struct_t_incl_precond {rts1 rts2 : list RT} (tys1 : hlist type rts1) (tys2 : hlist type rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) :=
     ([∗ list] t1; t2 ∈ hpzipl _ tys1 rs1; hpzipl _ tys2 rs2,
       match (projT2 t1).2, (projT2 t2).2 with
       | #r1, #r2 => type_incl r1 r2 (projT2 t1).1 (projT2 t2).1
-      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <-Heq in (projT2 t2).2⌝ ∗ ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
+      | _, _ => ∃ (Heq : projT1 t1 = projT1 t2), ⌜(projT2 t1).2 = rew <- [place_rfnRT] Heq in (projT2 t2).2⌝ ∗ ∀ (r : (projT1 t1 : RT)), type_incl r (rew [RT_rt] Heq in r) (projT2 t1).1 (projT2 t2).1
       end)%I.
   Global Instance struct_t_incl_precond_pers {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 :
     Persistent (struct_t_incl_precond tys1 tys2 rs1 rs2).
@@ -135,8 +135,8 @@ Section subtype.
     specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook1) as Hlook1'.
     specialize (hpzipl_lookup_inv _ _ _ _ _ _ _ Hlook2) as Hlook2'.
     rewrite Hlook2' in Hlook1'. injection Hlook1' as ->.
-    apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook11 & Hlook12).
-    apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook21 & Hlook22).
+    apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook1 as (Hlook11 & Hlook12).
+    apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook2 as (Hlook21 & Hlook22).
     rewrite Hlook22 in Hlook12. injection Hlook12 as [= <-%existT_inj].
     opose proof* (hzipl_hzipl2_lookup _ tys1 tys2) as Hlook; [done.. | ].
     specialize (Forall_lookup_1 _ _ _ _ Hsubt Hlook) as Hx.

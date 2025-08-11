@@ -405,7 +405,7 @@ impl LiteralTyParam {
 
     #[must_use]
     fn make_refinement_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::Type)
+        coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::RT)
     }
 
     #[must_use]
@@ -495,10 +495,6 @@ pub struct InvariantSpec {
 
     /// the refinement type of this struct
     rfn_type: coq::term::Type,
-    /// the xt type
-    xt_type: coq::term::Type,
-    /// the injection from xt to rfn
-    xt_injection: String,
     /// the binding pattern for the refinement of this type
     rfn_pat: coq::binder::Pattern,
 
@@ -525,8 +521,6 @@ impl InvariantSpec {
         flags: InvariantSpecFlags,
         shr_lft_binder: String,
         rfn_type: coq::term::Type,
-        xt_type: coq::term::Type,
-        xt_injection: String,
         rfn_pat: coq::binder::Pattern,
         existentials: Vec<coq::binder::Binder>,
         invariants: Vec<(coq::iris::IProp, InvariantMode)>,
@@ -543,8 +537,6 @@ impl InvariantSpec {
             flags,
             shr_lft_binder,
             rfn_type,
-            xt_type,
-            xt_injection,
             rfn_pat,
             existentials,
             invariants,
@@ -705,7 +697,7 @@ impl InvariantSpec {
                 #[expect(deprecated)]
                 write!(
                     out,
-                    "{indent}Program Definition {} : {} (na_ex_inv_def ({}) ({})) := ",
+                    "{indent}Program Definition {} : {} (na_ex_inv_def ({})%type ({})%type) := ",
                     spec_name,
                     scope.get_all_type_term(),
                     base_rfn_type,
@@ -717,7 +709,7 @@ impl InvariantSpec {
                 #[expect(deprecated)]
                 write!(
                     out,
-                    "{indent}Program Definition {} : {} (ex_inv_def ({}) ({})) := ",
+                    "{indent}Program Definition {} : {} (ex_inv_def ({})%type ({})%type) := ",
                     spec_name,
                     scope.get_all_type_term(),
                     base_rfn_type,
@@ -733,11 +725,8 @@ impl InvariantSpec {
                 write!(
                     out,
                     "{scope} mk_pers_ex_inv_def\n\
-                       {indent}{indent}({})%type\n\
-                       {indent}{indent}({})\n\
                        {indent}{indent}({inv})%I _ _\n\
                        {indent}.\n",
-                    self.xt_type, self.xt_injection,
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -752,15 +741,12 @@ impl InvariantSpec {
                 write!(
                     out,
                     "{scope} mk_ex_inv_def\n\
-                    {indent}{indent}({})%type\n\
-                    {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
                     {indent}{indent}({shr_inv})%I\n\
                     {indent}{indent}({lft_outlives})\n\
                     {indent}{indent}({lft_wf_elctx})\n\
                     {indent}{indent}_ _ _\n\
                     {indent}.\n",
-                    self.xt_type, self.xt_injection
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
@@ -775,13 +761,10 @@ impl InvariantSpec {
                 write!(
                     out,
                     "{scope} na_mk_ex_inv_def\n\
-                    {indent}{indent}({})%type\n\
-                    {indent}{indent}({})\n\
                     {indent}{indent}({own_inv})%I\n\
                     {indent}{indent}({lft_outlives})\n\
                     {indent}{indent}({lft_wf_elctx})\n\
                     {indent}.\n",
-                    self.xt_type, self.xt_injection
                 )
                 .unwrap();
             },
@@ -816,7 +799,7 @@ impl InvariantSpec {
             #[expect(deprecated)]
             write!(
                 out,
-                "{indent}Definition {} : {} (type ({})) :=\n\
+                "{indent}Definition {} : {} (type ({})%type) :=\n\
                 {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
@@ -829,7 +812,7 @@ impl InvariantSpec {
             #[expect(deprecated)]
             write!(
                 out,
-                "{indent}Definition {} : {} (type ({})) :=\n\
+                "{indent}Definition {} : {} (type ({})%type) :=\n\
                 {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
@@ -840,7 +823,7 @@ impl InvariantSpec {
             .unwrap();
         }
         write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name).unwrap();
-        write!(out, "{indent}Definition {}_rt : Type.\n", self.type_name).unwrap();
+        write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name).unwrap();
         write!(
             out,
             "{indent}Proof using {generics_rts} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
@@ -877,7 +860,7 @@ impl InvariantSpec {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " ({} : Type)", names.refinement_type).unwrap();
+                write!(out, " ({} : RT)", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
@@ -996,8 +979,9 @@ impl<'def> AbstractVariant<'def> {
 
     fn rfn_type(&self) -> coq::term::Type {
         model::Type::PList(
-            "place_rfn".to_owned(),
+            "place_rfnRT".to_owned(),
             self.fields.iter().map(|(_, t)| t.get_rfn_type()).collect(),
+            "RT".to_owned(),
         )
         .into()
     }
@@ -1127,7 +1111,7 @@ impl<'def> AbstractVariant<'def> {
         document.push(coq::command::Definition {
             name: self.plain_rt_def_name.clone(),
             params: coq::binder::BinderList::empty(),
-            ty: Some(coq::term::Type::Type),
+            ty: Some(coq::term::Type::RT),
             body: coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
                 using,
                 coq::proof::Terminator::Defined,
@@ -1176,7 +1160,7 @@ impl<'def> AbstractVariant<'def> {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " ({} : Type)", names.refinement_type).unwrap();
+                write!(out, " ({} : RT)", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
@@ -1386,7 +1370,7 @@ impl<'def> AbstractStruct<'def> {
                 // first push the (implicit) refinement type parameters
                 write!(out, "{}Context", indent).unwrap();
                 for names in &all_ty_params.params {
-                    write!(out, " ({} : Type)", names.refinement_type).unwrap();
+                    write!(out, " ({} : RT)", names.refinement_type).unwrap();
                 }
                 out.push_str(".\n");
             }
@@ -1403,7 +1387,7 @@ impl<'def> AbstractStruct<'def> {
 
             // generate the raw rt def
             // we introduce a let binding for the recursive rt type
-            write!(out, "{indent}Definition {} : Type :=\n", self.variant_def.plain_rt_def_name).unwrap();
+            write!(out, "{indent}Definition {} : RT :=\n", self.variant_def.plain_rt_def_name).unwrap();
             let ty_rt_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
             write!(out, "{indent}{indent}let {} {ty_rt_uses}", inv.rt_def_name()).unwrap();
             write!(out, " := {} in\n", inv.rfn_type).unwrap();
@@ -1455,7 +1439,7 @@ impl<'def> AbstractStruct<'def> {
             .unwrap();
 
             write!(out, "{indent}Global Typeclasses Transparent {}.\n", type_name).unwrap();
-            write!(out, "{indent}Definition {}_rt : Type.\n", type_name).unwrap();
+            write!(out, "{indent}Definition {}_rt : RT.\n", type_name).unwrap();
             write!(
                 out,
                 "{indent}Proof using {ty_rt_uses} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
@@ -1695,10 +1679,6 @@ impl<'def> AbstractStructUse<'def> {
 pub struct EnumSpec {
     /// the refinement type of the enum
     pub rfn_type: coq::term::Type,
-    /// the surface refinement type of the enum
-    pub xt_type: coq::term::Type,
-    /// the injection from from xt to rfn
-    pub xt_injection: String,
     /// the refinement patterns for each of the variants
     /// eg. for options:
     /// - `(None, [], -[])`
@@ -1870,31 +1850,48 @@ impl<'def> AbstractEnum<'def> {
         out
     }
 
+    fn enum_rt_def_name(&self) -> String {
+        format!("{}_rt", self.enum_def_name)
+    }
+
+    fn enum_ty_def_name(&self) -> String {
+        format!("{}_ty", self.enum_def_name)
+    }
+
     /// Generate a function that maps the refinement to the refinement type.
     /// Assumes that the generated code is placed in an environment where all the type parameters
     /// are available and the variant types have been instantiated already.
-    fn generate_enum_rt(&self) -> String {
+    fn generate_enum_rt(&self) -> coq::command::Definition {
         let mut out = String::with_capacity(200);
         let spec = &self.spec;
 
-        write!(out, "λ rfn, match rfn with ").unwrap();
-        for ((_, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
-            write!(out, "| {} => _", coq::term::App::new(pat, apps.clone())).unwrap();
+        write!(out, "λ rfn : {}, match rfn with ", spec.rfn_type).unwrap();
+        for ((_, var, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+            let v = var.borrow();
+            let v = v.as_ref().unwrap();
+
+            write!(out, "| {} => {}", coq::term::App::new(pat, apps.clone()), v.plain_rt_def_name()).unwrap();
         }
         if spec.is_partial {
-            write!(out, "| _ => unit%type ").unwrap();
+            write!(out, "| _ => unitRT ").unwrap();
         }
         write!(out, " end").unwrap();
 
-        out
+        coq::command::Definition {
+            name: self.enum_rt_def_name(),
+            params: coq::binder::BinderList::empty(),
+            ty: None,
+            body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::Literal(out)),
+        }
     }
 
     /// Generate a function that maps the refinement to the semantic type.
-    fn generate_enum_ty(&self) -> String {
+    fn generate_enum_ty(&self) -> coq::command::Definition {
         let mut out = String::with_capacity(200);
         let spec = &self.spec;
 
-        write!(out, "λ rfn, match rfn with ").unwrap();
+        write!(out, "{} λ rfn, match rfn as x return type ({} x) with ", self.scope, self.enum_rt_def_name())
+            .unwrap();
         for ((_, var, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
             let v = var.borrow();
             let v = v.as_ref().unwrap();
@@ -1915,7 +1912,29 @@ impl<'def> AbstractEnum<'def> {
         }
         write!(out, " end").unwrap();
 
-        out
+        //∀ x, type ([enum_rt_def_name] x)
+        let ty: coq::term::Type = coq::term::RocqType::Term(Box::new(coq::term::RocqTerm::All(
+            coq::binder::BinderList::new(vec![coq::binder::Binder::Default(
+                Some("x".to_owned()),
+                coq::term::Type::Infer,
+            )]),
+            Box::new(coq::term::RocqTerm::Type(Box::new(coq::term::RocqType::UserDefined(
+                model::Type::Ttype(Box::new(coq::term::RocqType::Term(Box::new(coq::term::RocqTerm::App(
+                    Box::new(coq::term::App::new(
+                        coq::term::RocqTerm::Ident(coq::Ident::new(self.enum_rt_def_name())),
+                        vec![coq::term::RocqTerm::Ident(coq::Ident::new("x"))],
+                    )),
+                ))))),
+            )))),
+        )));
+        let ty = self.scope.get_spec_all_type_term(Box::new(ty));
+
+        coq::command::Definition {
+            name: self.enum_ty_def_name(),
+            params: coq::binder::BinderList::empty(),
+            ty: Some(ty),
+            body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::Literal(out)),
+        }
     }
 
     /// Generate a function that maps the refinement to the refinement.
@@ -2005,7 +2024,7 @@ impl<'def> AbstractEnum<'def> {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " {{{} : Type}}", names.refinement_type).unwrap();
+                write!(out, " {{{} : RT}}", names.refinement_type).unwrap();
             }
             out.push_str(".\n");
         }
@@ -2050,6 +2069,21 @@ impl<'def> AbstractEnum<'def> {
             let comment = format!("Auto-generated representation of {}", name);
             document.push(coq::Sentence::Comment(comment));
             document.push(coq::command::Command::Inductive(ind.clone()));
+            // add the canonical structure declaration for the corresponding RT
+            let rt_name = format!("{name}RT");
+            let defn = coq::command::Definition {
+                name: rt_name.clone(),
+                params: coq::binder::BinderList::empty(),
+                ty: Some(coq::term::Type::RT),
+                body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::App(Box::new(
+                    coq::term::App::new(coq::term::Term::Ident(coq::Ident::new("directRT")), vec![
+                        coq::term::Term::Ident(coq::Ident::new(name)),
+                    ]),
+                ))),
+            };
+            document.push(coq::command::CommandAttrs::new(defn));
+            document
+                .push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(rt_name))));
 
             document.push(
                 coq::command::CommandAttrs::new(coq::command::Instance(
@@ -2073,18 +2107,19 @@ impl<'def> AbstractEnum<'def> {
         }
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);
 
+        write!(out, "{indent}{}\n", self.generate_enum_rt()).unwrap();
+        write!(out, "{indent}{}\n", self.generate_enum_ty()).unwrap();
+
         // main def
         #[expect(deprecated)]
         write!(
             out,
             "{indent}Program Definition {} : {} (enum ({})) := {} mk_enum\n\
-               {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
                {indent}{indent}_\n\
                {indent}{indent}({els_app_term})\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
-               {indent}{indent}({})\n\
+               {indent}{indent}({} {})\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
@@ -2094,17 +2129,17 @@ impl<'def> AbstractEnum<'def> {
             self.scope.get_all_type_term(),
             self.spec.rfn_type,
             self.scope,
-            self.spec.xt_type,
-            self.spec.xt_injection,
             self.generate_enum_tag(),
-            self.generate_enum_rt(),
-            self.generate_enum_ty(),
+            self.enum_rt_def_name(),
+            self.enum_ty_def_name(),
+            self.scope.identity_instantiation(),
             self.generate_enum_rfn(),
             self.generate_enum_match(),
             self.generate_lfts(),
             self.generate_wf_elctx(),
         )
         .unwrap();
+        write!(out, "{indent}Next Obligation. solve_inhabited. Defined.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
@@ -2123,7 +2158,7 @@ impl<'def> AbstractEnum<'def> {
         .unwrap();
 
         // generate the refinement type definition
-        write!(out, "{indent}Definition {} : Type.\n", self.plain_rt_name).unwrap();
+        write!(out, "{indent}Definition {} : RT.\n", self.plain_rt_name).unwrap();
         write!(
             out,
             "{indent}Proof using {rt_param_uses}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
@@ -2959,6 +2994,11 @@ impl LiteralTraitSpec {
     #[must_use]
     fn make_spec_attr_name(&self, attr: &str) -> String {
         format!("{}_{attr}", self.name)
+    }
+
+    #[must_use]
+    fn make_spec_attr_sig_name(&self, attr: &str) -> String {
+        format!("{}_{attr}_sig", self.name)
     }
 
     #[must_use]
@@ -3836,13 +3876,13 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
         if only_core_as_fn {
             write!(
                 f,
-                "{lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list (Type * syn_type)%type)",
+                "{lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list (RT * syn_type)%type)",
                 self.lfts.len()
             )
         } else {
             write!(
                 f,
-                "spec! {lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list Type),",
+                "spec! {lft_pattern} : {} | {typarams_pattern} : ({typarams_ty_list} : list RT),",
                 self.lfts.len()
             )
         }
@@ -3964,7 +4004,7 @@ fn make_trait_instance<'def>(
     let mut def_params = Vec::new();
     // all rts
     for param in ty_params.params.iter().chain(assoc_types).chain(assoc_params.params.iter()) {
-        let rt_param = coq::binder::Binder::new(Some(param.refinement_type.clone()), coq::term::Type::Type);
+        let rt_param = coq::binder::Binder::new(Some(param.refinement_type.clone()), coq::term::Type::RT);
         def_params.push(rt_param);
     }
     // all sts
@@ -4124,32 +4164,56 @@ impl TraitSpecDecl<'_> {
         params
     }
 
-    fn make_attr_record_decl(&self) -> coq::term::Record {
+    fn make_attr_record_decl(&self) -> coq::Document {
+        // this is parametric in the params and associated types
+        let ordered_params = self.get_ordered_params();
+        let mut params = ordered_params.get_coq_ty_rt_params();
+        params.0.insert(0, coq::binder::Binder::new_rrgs());
+
+        // we first generate definitions for the type signature of each attribute
+        let mut sig_decls: Vec<coq::Sentence> = Vec::new();
+
         // write attr record
         let mut record_items = Vec::new();
         for (item_name, item_ty) in &self.attrs.attrs {
             let record_item_name = self.lit.make_spec_attr_name(item_name);
+            let record_item_sig_name = self.lit.make_spec_attr_sig_name(item_name);
+
+            let sig_defn = coq::command::Definition {
+                name: record_item_sig_name.clone(),
+                params: params.clone(),
+                ty: None,
+                body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::Type(Box::new(
+                    item_ty.to_owned(),
+                ))),
+            };
+            sig_decls.push(sig_defn.into());
+
+            let record_item_ty = coq::term::App::new(
+                coq::term::Term::Ident(coq::Ident::new(record_item_sig_name)),
+                params.make_using_terms().0,
+            );
 
             let item = coq::term::RecordDeclItem {
                 name: record_item_name,
                 params: coq::binder::BinderList::empty(),
-                ty: item_ty.to_owned(),
+                ty: coq::term::RocqType::Term(Box::new(coq::term::Term::App(Box::new(record_item_ty)))),
             };
             record_items.push(item);
         }
-        // this is parametric in the params and associated types
-        let ordered_params = self.get_ordered_params();
-        let mut params = ordered_params.get_coq_ty_rt_params();
-        params.make_implicit(coq::binder::Kind::MaxImplicit);
-        params.0.insert(0, coq::binder::Binder::new_rrgs());
 
-        coq::term::Record {
+        params.make_implicit(coq::binder::Kind::MaxImplicit);
+
+        let record_decl = coq::term::Record {
             name: self.lit.spec_attrs_record.clone(),
             params,
             ty: coq::term::Type::Type,
             constructor: Some(self.lit.spec_record_attrs_constructor_name()),
             body: record_items,
-        }
+        };
+        sig_decls.push(record_decl.into());
+
+        coq::Document::new(sig_decls)
     }
 
     /// Make the definition for the semantic declaration.
@@ -4532,6 +4596,8 @@ impl TraitImplSpec<'_> {
         // instantiate the type of the spec record
         let attrs_type_rts: Vec<coq::term::Type> =
             self.trait_ref.get_ordered_params_inst().iter().map(Type::get_rfn_type).collect();
+        let attrs_type_terms: Vec<_> =
+            attrs_type_rts.iter().map(|x| coq::term::Term::Type(Box::new(x.to_owned()))).collect();
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_rts);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
 
@@ -4544,10 +4610,20 @@ impl TraitImplSpec<'_> {
                 // create an item for every attr
                 let record_item_name = of_trait.make_spec_attr_name(attr_name);
 
+                let item_ty = coq::term::App::new(
+                    coq::term::Term::Ident(coq::Ident::new(of_trait.make_spec_attr_sig_name(attr_name))),
+                    attrs_type_terms.clone(),
+                );
+
+                let annot_term = coq::term::Term::AsType(
+                    Box::new(inst.to_owned()),
+                    Box::new(coq::term::Type::Term(Box::new(coq::term::Term::App(Box::new(item_ty))))),
+                );
+
                 let item = coq::term::RecordBodyItem {
                     name: record_item_name,
                     params: coq::binder::BinderList::empty(),
-                    term: inst.to_owned(),
+                    term: annot_term,
                 };
                 components.push(item);
             }

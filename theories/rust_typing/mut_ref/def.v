@@ -8,9 +8,6 @@ Section mut_ref.
   Implicit Types (κ : lft) (γ : gname).
 
   Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
-    ty_xt := (inner.(ty_xt) * gname);
-    ty_xrt := λ '(x, y), (#(inner.(ty_xrt) x), y);
-
     ty_sidecond := True;
     ty_own_val π '(r, γ) v :=
       (∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗
@@ -44,6 +41,9 @@ Section mut_ref.
     _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
+  Next Obligation.
+    simpl. apply _.
+  Qed.
   Next Obligation.
     iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.

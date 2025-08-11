@@ -3383,14 +3383,15 @@ Section typing.
         li_tactic (llctx_find_llft_goal L1 κ LlctxFindLftFull) (λ '(_, L2),
         (* simplify the name map *)
         li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
-        (named_lfts M' -∗ (□ [† κ]) -∗
+        named_lfts M' -∗
+        (□ [† κ]) -∗
         (* extract observations from now-dead mutable references *)
         typed_pre_context_fold E L2 (CtxFoldExtractAllInit κ) (λ L3,
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £1 ∗ atime 1) (λ L4,
         (* run endlft triggers *)
         typed_on_endlft_pre E L4 κ (λ L5,
-        typed_stmt E L5 s fn R ϝ)))))))
+        typed_stmt E L5 s fn R ϝ))))))
       | None => named_lfts M -∗ typed_stmt E L s fn R ϝ
       end))
     ⊢ typed_stmt E L (annot: (EndLftAnnot n); s) fn R ϝ.

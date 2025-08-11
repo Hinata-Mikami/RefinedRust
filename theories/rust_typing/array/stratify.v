@@ -80,7 +80,7 @@ Section stratify.
           end
         else
             ∃ (Heq : rt = rt3),
-            T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <- Heq in r3]> rs2)
+            T L3 (R3 ∗ R2) ((j, rew <- [ltype] Heq in lty3) :: iml2) (<[j := rew <-[place_rfnRT] Heq in r3]> rs2)
       )))
     ⊢ stratify_ltype_array_iter π E L mu mdu ma m l ig def len ((j, lt) :: iml) rs k T.
   Proof.

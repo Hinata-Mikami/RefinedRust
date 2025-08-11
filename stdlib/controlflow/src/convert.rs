@@ -2,19 +2,17 @@
 
 
 #[rr::export_as(core::convert::AsRef)]
-#[rr::exists("AsRefFn" : "{rt_of Self} → {rt_of T}")]
+#[rr::exists("AsRefFn" : "{xt_of Self} → {xt_of T}")]
 pub trait AsRef<T: ?Sized> {
     /// Converts this type into a shared reference of the (usually inferred) input type.
-    #[rr::exists("y")]
-    #[rr::ensures("$#@{{ {T} }} y = {AsRefFn} ($#@{{ {Self} }} self)")]
-    #[rr::returns("y")]
+    #[rr::returns("{AsRefFn} self")]
     fn as_ref(&self) -> &T;
 }
 
 #[rr::export_as(core::convert::AsMut)]
 // TODO: look at some example clients to figure out what kind of spec would be sensible
-#[rr::exists("AsMutFn" : "{rt_of Self} → {rt_of T}")]
-#[rr::exists("AsMutBackFn" : "{rt_of T} → {rt_of Self}")]
+#[rr::exists("AsMutFn" : "{xt_of Self} → {xt_of T}")]
+#[rr::exists("AsMutBackFn" : "{xt_of T} → {xt_of Self}")]
 pub trait AsMut<T: ?Sized> {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[rr::exists("γ", "y")]
@@ -24,21 +22,17 @@ pub trait AsMut<T: ?Sized> {
 }
 
 #[rr::export_as(core::convert::Into)]
-#[rr::exists("IntoFn" : "{rt_of Self} → {rt_of T}")]
+#[rr::exists("IntoFn" : "{xt_of Self} → {xt_of T}")]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
-    #[rr::exists("y")]
-    #[rr::ensures("$#@{{ {T} }} y = {IntoFn} ($#@{{ {Self} }} self)")]
-    #[rr::returns("y")]
+    #[rr::returns("{IntoFn} self")]
     fn into(self) -> T;
 }
 
 #[rr::export_as(core::convert::From)]
-#[rr::exists("FromFn" : "{rt_of T} → {rt_of Self}")]
+#[rr::exists("FromFn" : "{xt_of T} → {xt_of Self}")]
 pub trait From<T>: Sized {
-    #[rr::exists("y")]
-    #[rr::ensures("$#@{{ {Self} } y = {FromFn} ($#@{{ {T} }} value)")]
-    #[rr::returns("y")]
+    #[rr::returns("{FromFn} value")]
     fn from(value: T) -> Self;
 }
 
@@ -182,7 +176,7 @@ impl AsMut<str> for str {
 */
 
 #[rr::export_as(core::convert::Infallible)]
-#[rr::refined_by("()")]
+#[rr::refined_by("unit")]
 #[rr::partial]
 pub enum Infallible {
 }

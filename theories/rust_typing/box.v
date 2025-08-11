@@ -5,12 +5,10 @@ From refinedrust Require Import options.
 (** * Box *)
 
 Section box.
-  Context `{typeGS Σ} {rt : RT} `{Inhabited rt} (inner : type rt).
+  Context `{typeGS Σ} {rt : RT} (inner : type rt).
 
   Program Definition box : type (place_rfn rt) := {|
     ty_sidecond := True;
-    ty_xt := inner.(ty_xt);
-    ty_xrt := λ x, #(inner.(ty_xrt) x);
     ty_own_val π r v :=
       ∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
@@ -40,6 +38,9 @@ Section box.
     _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
   |}%I.
+  Next Obligation.
+    simpl. apply _.
+  Qed.
   Next Obligation.
     iIntros (π v r) "(%l & %ly & -> & % & % & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.

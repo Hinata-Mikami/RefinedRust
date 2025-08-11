@@ -22,7 +22,7 @@ Proof.
   apply_update (updateable_merge_value local___5).
   rep <-! liRStep.
   apply_update (updateable_subsume_to (x1 offsetst{st_of T_ty}ₗ (length xs - 1)) (◁ uninit (st_of T_ty))%I (# ())).
-  rep liRStep. 
+  repeat liRStep.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
@@ -31,7 +31,7 @@ Proof.
   all: prepare_sideconditions; normalize_and_simpl_goal; try solve_goal with (nia).
 
   all: revert select (<#> (<$#@{_}> _) = _) => Hxs;
-    specialize (project_vec_els_length' _ _ _ _ Hxs) as ?.
+    specialize (project_vec_els_length' _ _ _ Hxs) as ?.
   {
     rewrite Hxs project_vec_els_insert_ge; [|lia].
     erewrite project_vec_els_lookup_mono; [solve_goal|lia|done].

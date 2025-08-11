@@ -15,8 +15,8 @@ Global Instance xmap_id {A : Type} : XMap A A := id.
 Global Instance xmap_place_rfn {A B : RT} (X : XMap A B) :
   XMap A (place_rfn B) := PlaceIn ∘ X.
 
-Global Instance xt_inj_xmap `{!typeGS Σ} {rt} (ty : type rt) : XMap (ty_xt ty) rt :=
-  ty_xrt ty.
+Global Instance xt_inj_xmap `{!typeGS Σ} {rt : RT}  : XMap (RT_xt rt) rt :=
+  RT_xrt rt.
 
 Global Instance result_xmap {A1 A2 B1 B2} (X1 : XMap A1 A2) (X2 : XMap B1 B2) :
   XMap (result A1 B1) (result A2 B2) :=

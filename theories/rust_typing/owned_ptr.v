@@ -11,9 +11,6 @@ Section owned_ptr.
   Context `{typeGS Σ} {rt} (inner : type rt).
 
   Program Definition owned_ptr : type (place_rfn rt * loc)%type := {|
-    ty_xt := (rt * loc)%type;
-    ty_xrt := λ x, (#x.1, x.2);
-
     ty_sidecond := True;
     ty_own_val π '(r, l) (v : val) :=
       ∃ (ly : layout), ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
@@ -42,6 +39,10 @@ Section owned_ptr.
     _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
   |}%I.
+  Next Obligation.
+    apply populate. simpl. refine (_, inhabitant).
+    by apply ty_xt_inhabited.
+  Qed.
   Next Obligation.
     iIntros (π [r l] v) "(%ly & -> & % & % & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.

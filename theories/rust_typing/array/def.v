@@ -121,9 +121,6 @@ Section array.
   Qed.
 
   Program Definition array_t (len : nat) (ty : type rt) : type (list (place_rfn rt)) := {|
-    ty_xt := list (ty.(ty_xt));
-    ty_xrt := λ xs, map (λ x, #(ty.(ty_xrt) x)) xs;
-
     ty_own_val π r v :=
       ∃ ly,
         ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗

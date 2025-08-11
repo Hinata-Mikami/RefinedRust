@@ -37,21 +37,21 @@ pub enum Type {
     Loc,
 
     /// `(place_rfn _)` type
-    #[display("(place_rfn {})", &_0)]
+    #[display("(place_rfnRT {})", &_0)]
     PlaceRfn(Box<coq::term::Type>),
 
     /// `(plist _ _)` type
     ///
     /// A plist with a given type constructor over a list of types
-    #[display("(plist {} [{}])", _0, fmt_list!(_1, "; ", "{} : Type"))]
-    PList(String, Vec<coq::term::Type>),
+    #[display("(plist {} [{}])", _0, fmt_list!(_1, "; ", |x| { format!("{x} : {}", _2) }))]
+    PList(String, Vec<coq::term::Type>, String),
 
     /// `rtype` type
     #[display("rtype")]
     Rtype,
 
     /// `spec_with (lfts: nat) (rts: list Type) (SPEC: Type)` type
-    #[display("(spec_with {} {} {})", _0, coq::term::fmt_list(_1), &_2)]
+    #[display("(spec_with {} {} ({}))", _0, coq::term::fmt_list(_1), &_2)]
     SpecWith(usize, Vec<coq::term::Type>, Box<coq::term::Type>),
 
     /// `struct_layout` type
@@ -66,7 +66,7 @@ pub enum Type {
     #[display("syn_type")]
     SynType,
 
-    /// `type (rt: Type)` type
+    /// `type (rt: RT)` type
     #[display("(type {})", &_0)]
     Ttype(Box<coq::term::Type>),
 }

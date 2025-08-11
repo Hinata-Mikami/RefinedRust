@@ -1169,7 +1169,7 @@ Section judgments.
   Lemma place_access_rt_rel_refl bmin rt : place_access_rt_rel bmin rt rt.
   Proof. by destruct bmin. Qed.
 
-  Lemma typed_place_cond_rfn_lift b {rt rto} (r1 : place_rfn rt) (r2 : place_rfn rt) (f : place_rfn rt → place_rfn rto):
+  Lemma typed_place_cond_rfn_lift b {rt rto} (r1 : place_rfn rt) (r2 : place_rfnRT rt) (f : place_rfnRT rt → place_rfnRT rto):
     typed_place_cond_rfn b r1 r2 -∗
     typed_place_cond_rfn b (f r1) (f r2).
   Proof.
@@ -1333,8 +1333,8 @@ Section judgments.
 
   Record strong_ctx (rti : RT) : Type := mk_strong {
     strong_rt : RT → RT;
-    strong_lt : (∀ rti2, ltype rti2 → place_rfn rti2 → ltype (strong_rt rti2));
-    strong_rfn : (∀ rti2, place_rfn rti2 → place_rfn (strong_rt rti2));
+    strong_lt : (∀ rti2 : RT, ltype rti2 → place_rfn rti2 → ltype (strong_rt rti2));
+    strong_rfn : (∀ rti2 : RT, place_rfn rti2 → place_rfn (strong_rt rti2));
     strong_R : (∀ rti2, ltype rti2 → place_rfn rti2 → iProp Σ)
   }.
   Global Arguments strong_rt {_}.
@@ -1395,7 +1395,7 @@ Section judgments.
       In particular, [OpenedLtype] can not guarantee that an update will uphold the contract of the place it is nested under, so it cannot support [weak] updates.
    *)
   Definition place_cont_t rto : Type := llctx → list lft → loc → bor_kind → bor_kind → ∀ rti, ltype rti → place_rfn rti → mstrong_ctx rto rti → iProp Σ.
-  Definition typed_place π (E : elctx) (L : llctx) (l1 : loc) {rto} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : bor_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto) : iProp Σ :=
+  Definition typed_place π (E : elctx) (L : llctx) (l1 : loc) {rto : RT} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : bor_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       (* [bmin0] is the intersection of all bor_kinds to this place, including [b1] *)
@@ -2616,7 +2616,7 @@ Section judgments.
     destruct upd, strong', weak; simpl; intros ?; simplify_eq; try naive_solver.
   Qed.
 
-  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2}
+  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2 : RT}
     (mstrong : mstrong_ctx rto rti)
     (upd : access_result rti rti2)
     (R : iProp Σ) (R_weak : iProp Σ)
@@ -2627,8 +2627,8 @@ Section judgments.
     (T : llctx → iProp Σ) : iProp Σ :=
     match access_result_meet_mstrong_ctx mstrong upd with
     | Some (ARweak Heq weak) =>
-        l ◁ₗ[π, b] (weak.(weak_rfn) (rew <- Heq in r2)) @ (weak.(weak_lt) (rew <- Heq in lt2) (rew <- Heq in r2)) -∗
-        weak.(weak_R) (rew <- Heq in lt2) (rew <- Heq in r2) -∗
+        l ◁ₗ[π, b] (weak.(weak_rfn) (rew <- [place_rfnRT] Heq in r2)) @ (weak.(weak_lt) (rew <- [ltype] Heq in lt2) (rew <- [place_rfnRT] Heq in r2)) -∗
+        weak.(weak_R) (rew <- [ltype] Heq in lt2) (rew <- [place_rfnRT] Heq in r2) -∗
         introduce_with_hooks E L (R_weak ∗ R) T
     | Some (ARstrong strong) =>
         l ◁ₗ[π, b] (strong.(strong_rfn) rti2 r2) @ (strong.(strong_lt) rti2 lt2 r2) -∗

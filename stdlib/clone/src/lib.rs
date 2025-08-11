@@ -12,7 +12,7 @@ pub trait Clone: Sized {
     #[rr::returns("self")]
     fn clone(&self) -> Self;
 
-    #[rr::observe("self.ghost": "($#@{{ {Self} }} source)")]
+    #[rr::observe("self.ghost": "($#@{{ {rt_of Self} }} source)")]
     fn clone_from(&mut self, source: &Self) 
     {
         *self = source.clone();

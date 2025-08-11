@@ -170,7 +170,7 @@ Section instances.
   (** ** subltype *)
 
   (* we use the [relate_list] mechanism *)
-  Program Definition weak_subltype_list_interp {rt1 rt2} (k : bor_kind) (rs1 : list (place_rfn rt1)) (rs2 : list (place_rfn rt2)) : FoldableRelation :=
+  Program Definition weak_subltype_list_interp {rt1 rt2 : RT} (k : bor_kind) (rs1 : list (place_rfn rt1)) (rs2 : list (place_rfn rt2)) : FoldableRelation :=
     {|
       fr_rel (E : elctx) (L : llctx) (i : nat) (lt1 : (ltype rt1)) (lt2 : (ltype rt2)) (T : iProp Σ) :=
         (∃ r1 r2,  ⌜rs1 !! i = Some r1⌝ ∗ ⌜rs2 !! i = Some r2⌝ ∗ weak_subltype E L k r1 r2 lt1 lt2 T)%I;

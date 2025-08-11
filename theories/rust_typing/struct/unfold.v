@@ -83,9 +83,9 @@ Section unfold.
     l `has_layout_loc` sl →
     length rts = length (sls_fields sls) →
     ⊢ loc_in_bounds l 0 (ly_size sl) -∗
-      (∃ r' : plist place_rfn rts, gvar_auth γ r' ∗
+      (∃ r' : plist place_rfnRT rts, gvar_auth γ r' ∗
         (|={lftE}=> ∃ v : val, l ↦ v ∗ v ◁ᵥ{ π} r' @ struct_t sls tys)) ↔
-      (∃ r' : plist place_rfn rts, gvar_auth γ r' ∗ (|={lftE}=>
+      (∃ r' : plist place_rfnRT rts, gvar_auth γ r' ∗ (|={lftE}=>
         [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts ((λ X : RT, OfTy) +<$> tys) r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
             ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
@@ -491,7 +491,7 @@ Section place.
   Context `{!typeGS Σ}.
 
   (* needs to have lower priority than the id instance *)
-  Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls bmin0 b P T :
+  Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfnRT (plistRT place_rfnRT rts)) sls bmin0 b P T :
     typed_place π E L l (StructLtype (hmap (λ _, OfTy) tys) sls) r bmin0 b P T
     ⊢ typed_place π E L l (◁ (struct_t sls tys)) r bmin0 b P T.
   Proof.
@@ -499,15 +499,14 @@ Section place.
     iIntros (?) "HL CTX HE".
     iIntros (??). iApply struct_t_unfold.
   Qed.
-  Global Instance typed_place_ofty_struct_inst {rts} π E L l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls bmin0 b P :
-    TypedPlace E L π l (◁ (struct_t sls tys))%I r bmin0 b P | 30 :=
-        λ T, i2p (typed_place_ofty_struct π E L l tys r sls bmin0 b P T).
+  Definition typed_place_ofty_struct_inst := [instance @typed_place_ofty_struct].
+  Global Existing Instance typed_place_ofty_struct_inst | 30.
 End place.
 
 Section stratify.
   Context `{!typeGS Σ}.
 
-  Lemma stratify_ltype_ofty_struct {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls b T :
+  Lemma stratify_ltype_ofty_struct {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfnRT rts)) sls b T :
     stratify_ltype π E L mu StratDoUnfold ma ml l (StructLtype (hmap (λ _, OfTy) tys) sls) r b T
     ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (struct_t sls tys)) r b T.
   Proof.
@@ -515,7 +514,7 @@ Section stratify.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply struct_t_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_prod_inst {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfn rts)) sls b :
+  Global Instance stratify_ltype_ofty_struct_inst {rts} π E L mu ma {M} (ml : M) l (tys : hlist type rts) (r : place_rfn (plist place_rfnRT rts)) sls b :
     StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (struct_t sls tys))%I r b | 30 :=
         λ T, i2p (stratify_ltype_ofty_struct π E L mu ma ml l tys r sls b T).
 End stratify.
@@ -553,8 +552,9 @@ Section cast.
     (*Search "struct" "eq".*)
     iPoseProof (cast_ltype_to_type_iter_elim with "HT") as "(%tys & HT & %Heqts)".
     iExists _. iFrame. iPureIntro.
-    etrans; last apply struct_t_unfold_full_eqltype.
-    eapply (struct_full_eqltype _ _ lts).
+    etrans; first last.
+    { refine (struct_t_unfold_full_eqltype _ _ _ _). }
+    refine (struct_full_eqltype _ _ lts _ _ _).
     eapply Forall_impl; first apply Heqts. intros [? []]; done.
   Qed.
   Global Instance cast_ltype_to_type_struct_inst E L {rts} (lts : hlist ltype rts) sls  :

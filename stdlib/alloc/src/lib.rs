@@ -89,7 +89,7 @@ pub fn alloc_dealloc(ptr: *mut u8, ly: Layout) {
 #[rr::exists("ptr_new", "v'")]
 #[rr::returns("ptr_new")]
 #[rr::ensures(#iris "freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc")]
-#[rr::ensures(#type "ptr_new" : "v ++ v'" @ "value_t (UntypedSynType (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))")]
+#[rr::ensures(#type "ptr_new" : "v ++ v' : val" @ "value_t (UntypedSynType (Layout (Z.to_nat new_size) (layout_alignment_log2_nat ly)))")]
 #[rr::ensures("v' `has_layout_val` (Layout (Z.to_nat new_size - ly.(layout_sz)) (layout_alignment_log2_nat ly))")]
 pub fn realloc(ptr: *mut u8, ly: Layout, new_size: usize) -> *mut u8 {
     // TODO: verify against realloc_internal
@@ -134,7 +134,7 @@ fn alloc_dealloc_internal(size: usize, align_log2: usize, ptr: *mut u8) {
 #[rr::exists("ptr_new", "v'")]
 #[rr::returns("ptr_new")]
 #[rr::ensures(#iris "freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc")]
-#[rr::ensures(#type "ptr_new" : "v ++ v'" @ "value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))")]
+#[rr::ensures(#type "ptr_new" : "v ++ v' : val" @ "value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))")]
 #[rr::ensures("v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))")]
 fn alloc_realloc_internal(old_size: usize, align_log2: usize, new_size: usize, ptr_old: *mut u8) -> *mut u8 {
     let new_ptr = alloc_alloc_internal(new_size, align_log2);

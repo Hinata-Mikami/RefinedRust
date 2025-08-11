@@ -31,6 +31,8 @@ Global Open Scope Z_scope.
 
 Notation Obs := gvar_pobs.
 
+Hint Extern 10 (Inhabited (RT_xt _)) => simpl; apply ty_xt_inhabited; done : typeclass_instances.
+
 (** Bundle for all ghost state we need *)
 Class refinedrustGS Σ := {
   refinedrust_typeGS :: typeGS Σ;

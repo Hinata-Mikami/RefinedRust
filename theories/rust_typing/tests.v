@@ -938,7 +938,7 @@ Section test.
     Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition RawVec_ty : type (plist place_rfn [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty)) +[
+    Definition RawVec_ty : type (plist place_rfnRT [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty)) +[
       alias_ptr_t;
       (int USize);
       unit_t].
@@ -954,8 +954,6 @@ Section test.
     Canonical Structure natRT := directRT nat.
 
     Program Definition RawVec_inv_t_inv_spec : ex_inv_def ((RawVec_rt)) ((loc * nat)%type) := mk_ex_inv_def
-      _
-      id
       (λ π (inner_rfn : RawVec_rt) '(l, cap) , ⌜inner_rfn = ( *[#(l); #(Z.of_nat cap); #(tt)])⌝ ∗ True)%I
       (λ π κ inner_rfn '(l, cap), ⌜inner_rfn = *[#(l); #(Z.of_nat cap); #(tt)]⌝ ∗ True)%I
       ([])
@@ -979,7 +977,7 @@ Section test.
     Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition Vec_ty : type (plist place_rfn [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty)) +[
+    Definition Vec_ty : type (plist place_rfnRT [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty)) +[
       (RawVec_inv_t (T_ty));
       (int USize)].
     Definition Vec_rt : RT := Eval hnf in rt_of Vec_ty.
@@ -992,8 +990,6 @@ Section test.
     Context (T_ty : type (T_rt)).
 
     Program Definition Vec_inv_t_inv_spec : ex_inv_def ((Vec_rt)) (list (place_rfn T_rt)) := mk_ex_inv_def
-      (list T_rt)
-      (fmap PlaceIn)
       (λ π (inner_rfn : Vec_rt) 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       (λ π κ inner_rfn 'xs, ∃ (cap : nat) (l : loc), ⌜inner_rfn = *[#((l, cap)); #(Z.of_nat $ length xs)]⌝ ∗ ⌜length xs ≤ cap⌝ ∗ True)%I
       ([] ++ (ty_lfts T_ty))

@@ -128,7 +128,7 @@ Proof.
       iIntros "(%ly0 & ? & ? & Hb)".
       iExists ly0. iFrame. iApply (IH with "[] Hb"); last done.
       simpl in Hlook.
-      eapply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
+      eapply (hpzipl_lookup_inv_hzipl_pzipl _ _ r') in Hlook as (Hlook & _).
       by eapply list_elem_of_lookup_2.
     * injection Heq as -> Heq1 Heq2. simpl.
       apply existT_inj in Heq1 as ->. apply existT_inj in Heq2 as ->.

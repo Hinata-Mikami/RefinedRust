@@ -4,9 +4,7 @@ From lrust.lifetime Require Import na_borrow.
 From refinedrust Require Import options.
 
 Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def' {
-  na_inv_xr : Type;
-  na_inv_xr_inh : Inhabited na_inv_xr;
-  na_inv_xrt : na_inv_xr → Y;
+  na_inv_xr_inh : Inhabited (RT_xt Y);
 
   (* NOTE: Make persistent part (Timeless) + non-persistent part inside &na *)
   na_inv_P : thread_id → X → Y → iProp Σ;
@@ -16,19 +14,15 @@ Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def'
 }.
 
 (* Stop Typeclass resolution for the [inv_P_pers] argument, to make it more deterministic. *)
-Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : RT} (YR : Type) `{!Inhabited YR}
-  (inv_xrt : YR → Y)
-
+Definition na_mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
   (inv_P : thread_id → X → Y → iProp Σ)
 
   inv_P_lfts
   (inv_P_wf_E : elctx)
 
-  := na_mk_ex_inv_def' _ _ _ _ _ _
-       inv_xrt inv_P inv_P_lfts inv_P_wf_E.
+  := na_mk_ex_inv_def' _ _ _ _ _
+       inv_P inv_P_lfts inv_P_wf_E.
 
-Global Arguments na_inv_xr {_ _ _ _ _}.
-Global Arguments na_inv_xrt {_ _ _ _ _}.
 Global Arguments na_inv_P {_ _ _ _}.
 Global Arguments na_inv_P_lfts {_ _ _ _}.
 Global Arguments na_inv_P_wf_E {_ _ _ _}.
@@ -36,9 +30,9 @@ Global Arguments na_inv_P_wf_E {_ _ _ _}.
 (** Smart constructor for persistent and timeless [P] *)
 Program Definition na_mk_pers_ex_inv_def
   `{!typeGS Σ} {X : RT} {Y : RT}
-  (YR : Type) `{!Inhabited YR} (xtr : YR → Y)
+  `{!Inhabited (RT_xt Y)}
   (P : X → Y → iProp Σ) :=
-    na_mk_ex_inv_def YR xtr (λ _, P) [] [] (* _ *).
+    na_mk_ex_inv_def (λ _, P) [] [] (* _ *).
 
 Class NaExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → na_ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(na_inv_P_lfts)) (λ ty, (F ty).(na_inv_P_wf_E));
@@ -88,9 +82,6 @@ Section na_ex.
   Context (X Y : RT) (P : na_ex_inv_def X Y).
 
   Program Definition na_ex_plain_t (ty : type X) : type Y := {|
-    ty_xt := P.(na_inv_xr);
-    ty_xrt := P.(na_inv_xrt);
-
     ty_own_val π r v := ∃ x : X, P.(na_inv_P) π x r ∗ ty.(ty_own_val) π x v;
     ty_shr κ π r l :=
       (* TODO: Add persistant part that cannot depends on the refined value *)
@@ -612,7 +603,7 @@ Section na_subtype.
     TypedPlace E L π l (◁ (∃na; P, ty))%I #x bmin (Shared κ) K | 15 :=
     λ T, i2p (typed_place_na_ex_plain_t_shared π E L l ty x κ bmin K T).
 
-  Lemma typed_place_alias_shared π E L l l2 rt''' (r : place_rfn rt''') st bmin0 κ P''' T :
+  Lemma typed_place_alias_shared π E L l l2 (rt''' : RT) (r : place_rfn rt''') st bmin0 κ P''' T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π = π2⌝ ∗
       typed_place π E L l2 lt2 r2 b2 b2 P''' (λ L' κs li b3 bmin rti ltyi ri mstrong,

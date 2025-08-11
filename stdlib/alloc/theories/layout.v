@@ -8,6 +8,8 @@ Record rust_layout := mk_rust_layout {
 Global Instance rust_layout_inh : Inhabited rust_layout.
 Proof. exact (populate (mk_rust_layout inhabitant inhabitant)). Qed.
 
+Canonical Structure rust_layoutRT := directRT rust_layout.
+
 Definition alignment_enum_align_log2 (a : alignment_enum) : nat :=
   match a with
   | alignment_AlignmentEnum__Align1Shl0 => 0

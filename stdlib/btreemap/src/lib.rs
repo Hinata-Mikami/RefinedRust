@@ -16,10 +16,9 @@ use std::borrow::Borrow;
 use std::cmp::Ord;
 
 #[rr::export_as(alloc::collections::BTreeMap)]
-#[rr::context("EqDecision {rt_of K}")]
-#[rr::context("Countable {rt_of K}")]
-// TODO: ideally, we'd use xt instead of rt
-#[rr::refined_by("M" : "gmap {rt_of K} (place_rfn {rt_of V})" ; "gmap {rt_of K} ({xt_of V})")]
+#[rr::context("EqDecision {xt_of K}")]
+#[rr::context("Countable {xt_of K}")]
+#[rr::refined_by("M" : "gmap {xt_of K} (place_rfn {xt_of V})")]
 #[rr::exists("k", "v", "a")]
 pub struct BTreeMap<
     K,
@@ -35,8 +34,8 @@ pub struct BTreeMap<
 }
 
 #[rr::export_as(alloc::collections::BTreeMap)]
-#[rr::context("EqDecision {rt_of K}")]
-#[rr::context("Countable {rt_of K}")]
+#[rr::context("EqDecision {xt_of K}")]
+#[rr::context("Countable {xt_of K}")]
 #[rr::only_spec]
 impl<K, V> BTreeMap<K, V> {
     
@@ -48,8 +47,8 @@ impl<K, V> BTreeMap<K, V> {
 
 }
 
-#[rr::context("EqDecision {rt_of K}")]
-#[rr::context("Countable {rt_of K}")]
+#[rr::context("EqDecision {xt_of K}")]
+#[rr::context("Countable {xt_of K}")]
 #[rr::export_as(alloc::collections::BTreeMap)]
 impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 

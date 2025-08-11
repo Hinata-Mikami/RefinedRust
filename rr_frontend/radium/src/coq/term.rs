@@ -13,13 +13,13 @@ use std::fmt;
 use derive_more::{Display, From};
 use indent_write::fmt::IndentWriter;
 
-use crate::coq::binder;
+use crate::coq::{Ident, binder};
 use crate::{BASE_INDENT, fmt_list, model};
 
 /// A [term], extended with user defined terms.
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
-pub type Term = RocqTerm<model::Term>;
+pub type Term = RocqTerm<model::Term, model::Type>;
 
 pub(crate) fn fmt_binders(op: &str, binders: &binder::BinderList) -> String {
     fmt_binders_empty(op, binders, "")
@@ -38,9 +38,12 @@ pub(crate) fn fmt_binders_empty(op: &str, binders: &binder::BinderList, empty: &
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
 #[expect(clippy::module_name_repetitions)]
-pub enum RocqTerm<T> {
+pub enum RocqTerm<T, U> {
     /// A literal
     Literal(String),
+
+    /// A reference to an identifier
+    Ident(Ident),
 
     /// An application
     #[from(forward)]
@@ -73,11 +76,18 @@ pub enum RocqTerm<T> {
     #[from(ignore)]
     Prefix(String, Box<Term>),
 
+    /// A term with a type annotation.
+    #[from(ignore)]
+    AsType(Box<RocqTerm<T, U>>, Box<RocqType<U, T>>),
+
+    /// A type
+    Type(Box<RocqType<U, T>>),
+
     /// User defined type
     UserDefined(T),
 }
 
-impl fmt::Display for Term {
+impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write as _;
 
@@ -85,6 +95,9 @@ impl fmt::Display for Term {
             Self::Literal(lit) => {
                 let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
                 write!(f2, "{lit}")
+            },
+            Self::Ident(ident) => {
+                write!(f, "{ident}")
             },
             Self::RecordBody(b) => {
                 write!(f, "{b}")
@@ -111,6 +124,12 @@ impl fmt::Display for Term {
             },
             Self::Prefix(op, term) => {
                 write!(f, "{op} ({term})")
+            },
+            Self::Type(t) => {
+                write!(f, "{t}")
+            },
+            Self::AsType(t, ty) => {
+                write!(f, "({t}) : ({ty})")
             },
             Self::UserDefined(user_type) => {
                 write!(f, "{}", user_type)
@@ -212,7 +231,7 @@ impl fmt::Display for RecordBodyItem {
 /// A [type], extended with user defined types.
 ///
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
-pub type Type = RocqType<model::Type>;
+pub type Type = RocqType<model::Type, model::Term>;
 
 pub(crate) fn fmt_list(v: &Vec<Type>) -> String {
     format!("[{}]", fmt_list!(v, "; "))
@@ -234,7 +253,7 @@ pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
 ///
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-pub enum RocqType<T> {
+pub enum RocqType<T, U> {
     /// Literals
     Literal(String),
 
@@ -256,6 +275,10 @@ pub enum RocqType<T> {
     #[display("Type")]
     Type,
 
+    /// The `RT` type
+    #[display("RT")]
+    RT,
+
     /// `Unit` type
     #[display("unit")]
     Unit,
@@ -271,6 +294,10 @@ pub enum RocqType<T> {
     /// Product type
     #[display("{}", fmt_prod(_0))]
     Prod(Vec<Type>),
+
+    /// An arbitrary term.
+    #[display("{}", _0)]
+    Term(Box<RocqTerm<U, T>>),
 
     /// User defined type
     #[display("{}", _0)]

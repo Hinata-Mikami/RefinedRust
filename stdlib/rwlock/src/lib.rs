@@ -11,7 +11,7 @@ use std::ops::{Deref, DerefMut};
 pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 
 #[rr::export_as(std::sync::poison::PoisonError)]
-#[rr::refined_by("()" : "()")]
+#[rr::refined_by("()" : "unit")]
 #[rr::exists("x")]
 pub struct PoisonError<T> {
     #[rr::field("x")]
@@ -19,7 +19,7 @@ pub struct PoisonError<T> {
 }
 
 #[rr::export_as(std::sync::rwlock::RwLock)]
-#[rr::refined_by("()" : "()")]
+#[rr::refined_by("()" : "unit")]
 #[rr::exists("x")]
 pub struct RwLock<T> {
     #[rr::field("x")]

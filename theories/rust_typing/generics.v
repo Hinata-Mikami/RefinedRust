@@ -38,8 +38,10 @@ Definition plist_replace_here {X : Type} `{!Inhabited X} {F : X → Type} (Xl : 
   (pl : plist F (delete i Xl)) (fx : F (Xl !!! i)) : plist F Xl :=
   rew (list_insert_lookup_total _ _) in plist_replace Xl i Hi pl _ fx.
 
-Local Instance inh_Type : Inhabited RT.
-Proof. refine (populate _). refine (mk_RT _). exact (nat : Type). Qed.
+Local Instance inh_RT : Inhabited RT.
+Proof.
+  refine (populate _). refine (mk_RT (nat : Type) (nat : Type) id).
+Qed.
 
 (** Instantiate a given type parameter *)
 Definition spec_instantiate_typaram `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)

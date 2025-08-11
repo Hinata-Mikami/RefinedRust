@@ -28,7 +28,7 @@ Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
       l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type)))))
     → ∃ () : unit, () @ unit_t; λ π,
-        l ◁ₗ[π, Owned false] #$# r @ ◁ T_ty.
+        l ◁ₗ[π, Owned false] (#$# r) @ ◁ T_ty.
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
@@ -63,7 +63,7 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) 
   (* First add a new type parameter and a new lifetime *)
   spec! ( *[κ]) : 1 | ( *[U_ty]) : [U_rt],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
-    fn_spec_add_late_pre ((type_of_ptr_write (place_rfn U_rt) (PtrSynType) <TY> shr_ref κ U_ty) <INST!>)
+    fn_spec_add_late_pre ((type_of_ptr_write (place_rfnRT U_rt) (PtrSynType) <TY> shr_ref κ U_ty) <INST!>)
     (λ π, typaram_wf U_rt U_st U_ty)
 .
 
@@ -102,23 +102,23 @@ Section std_option_Option_ty.
   Context {T_rt : RT}.
   Context (T_ty : type (T_rt)).
 
-  Definition std_option_Option_None_ty : type (plist place_rfn [] : RT) := struct_t std_option_Option_None_sls +[].
+  Definition std_option_Option_None_ty : type (plist place_rfnRT [] : RT) := struct_t std_option_Option_None_sls +[].
   Definition std_option_Option_None_rt : RT := rt_of std_option_Option_None_ty.
   Global Typeclasses Transparent std_option_Option_None_ty.
 
-  Definition std_option_Option_Some_ty : type (plist place_rfn [T_rt : RT]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
+  Definition std_option_Option_Some_ty : type (plist place_rfnRT [T_rt : RT]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
     T_ty].
   Definition std_option_Option_Some_rt : RT := rt_of std_option_Option_Some_ty.
   Global Typeclasses Transparent std_option_Option_Some_ty.
 
-  Program Definition std_option_Option_enum : enum (option (place_rfn T_rt)) := mk_enum
-    (option (ty_xt T_ty))
-    (λ x, fmap (M := option) (PlaceIn ∘ ty_xrt T_ty) x)
+  Definition std_option_Option_enum_rt := (λ rfn : (option (place_rfnRT T_rt)), match rfn with | None => std_option_Option_None_rt | Some x => std_option_Option_Some_rt end).
+  Definition std_option_Option_enum_ty : ∀ x, type (std_option_Option_enum_rt x) := (λ rfn, match rfn with | None => std_option_Option_None_ty | Some x => std_option_Option_Some_ty end).
+  Program Definition std_option_Option_enum : enum (option (place_rfnRT T_rt)) := mk_enum
     _
     ((std_option_Option_els (ty_syn_type T_ty)))
     (λ rfn, match rfn with | None => Some "None" | Some x => Some "Some" end)
-    (λ rfn, match rfn with | None => std_option_Option_None_rt | Some x => std_option_Option_Some_rt end)
-    (λ rfn, match rfn with | None => std_option_Option_None_ty | Some x => std_option_Option_Some_ty end)
+    std_option_Option_enum_rt
+    std_option_Option_enum_ty
     (λ rfn, match rfn with | None => -[] | Some x => -[x] end)
     (λ variant, if (decide (variant = "None")) then Some $ mk_enum_tag_sem _ std_option_Option_None_ty (λ _, None) else if decide (variant = "Some") then Some $ mk_enum_tag_sem _ std_option_Option_Some_ty (λ '( *[x]), Some x) else None)
     (ty_lfts T_ty)
@@ -126,10 +126,7 @@ Section std_option_Option_ty.
     _ _ _
   .
   Next Obligation.
-    done.
-  Defined.
-  Next Obligation.
-    done.
+    solve_inhabited.
   Defined.
   Next Obligation.
     solve_mk_enum_ty_lfts_incl.
@@ -152,7 +149,7 @@ Section test_struct.
 
   Definition test_rt : list RT := [Z: RT; Z : RT].
   Definition test_lts : hlist ltype test_rt := (◁ int I32)%I +:: (◁ int I32)%I +:: +[].
-  Definition test_rfn : plist place_rfn test_rt := #32 -:: #22 -:: -[].
+  Definition test_rfn : plist place_rfnRT test_rt := #32 -:: #22 -:: -[].
 
   Lemma bla : hnth (UninitLtype UnitSynType) test_lts 1 = (◁ int I32)%I.
   Proof. simpl. done. Abort.

@@ -158,7 +158,9 @@ Ltac ex_plain_t_solve_shr_solve_hook :=
 
 Ltac ex_plain_t_solve_shr :=
   intro_adt_params;
-  iIntros (???????); prepare_initial_coq_context;
+  iIntros (???????); 
+  simpl in *;
+  prepare_initial_coq_context;
   iIntros "#(LFT & TIME & LLCTX) Htok Hb";
   iEval (rewrite -lft_tok_sep) in "Htok";
   iDestruct "Htok" as "(Htok1 & Htok)";

@@ -313,7 +313,7 @@ impl<T> Vec<T> {
 
     #[rr::requires("Hlen_cap": "(length self.cur < MaxInt USize)%Z")]
     #[rr::requires("Hsz": "(size_of_array_in_bytes {st_of T} (2 * length self.cur) ≤ MaxInt ISize)%Z")]
-    #[rr::observe("self.ghost": "<#> <$#> (self.cur ++ [elem])")]
+    #[rr::observe("self.ghost": "<$#> (self.cur ++ [elem])")]
     pub fn push(&mut self, elem: T) {
         if self.len == self.cap() {
             self.buf.grow();
@@ -331,7 +331,7 @@ impl<T> Vec<T> {
     #[rr::params("xs", "γ")]
     #[rr::args("(xs, γ)")]
     #[rr::returns("last xs")]
-    #[rr::observe("γ": "(take (length xs - 1) (<#> <$#> xs))")]
+    #[rr::observe("γ": "(take (length xs - 1) (<$#> xs))")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -348,7 +348,7 @@ impl<T> Vec<T> {
     #[rr::requires("i ≤ length xs")]
     #[rr::requires("(length xs < MaxInt USize)%Z")]
     #[rr::requires("(size_of_array_in_bytes {st_of T} (2 * length xs) ≤ MaxInt ISize)%Z")]
-    #[rr::observe("γ": "<#> <$#> ((take i xs) ++ [ x] ++ (drop i xs))")]
+    #[rr::observe("γ": "<$#> ((take i xs) ++ [ x] ++ (drop i xs))")]
     pub fn insert(&mut self, index: usize, elem: T) {
         // index out of bounds?
         assert!(index <= self.len);
@@ -374,7 +374,7 @@ impl<T> Vec<T> {
     #[rr::params("xs", "γ", "i" : "nat")]
     #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::requires("i < length xs")]
-    #[rr::observe("γ": "delete i (<#> <$#> xs)")]
+    #[rr::observe("γ": "delete i (<$#> xs)")]
     #[rr::returns("xs !!! i")]
     pub fn remove(&mut self, index: usize) -> T {
         // index out of bounds?
@@ -394,7 +394,7 @@ impl<T> Vec<T> {
 
     #[rr::requires("Hi": "0 ≤ index < length self.cur")]
     #[rr::ensures("ret.cur = self.cur !!! Z.to_nat index")]
-    #[rr::observe("self.ghost": "<[Z.to_nat index := PlaceGhost ret.ghost]> (<#> <$#> self.cur)")]
+    #[rr::observe("self.ghost": "<[Z.to_nat index := PlaceGhost ret.ghost]> (<$#> self.cur)")]
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         self.len;
         unsafe {
@@ -407,7 +407,7 @@ impl<T> Vec<T> {
     #[rr::params("xs", "γ", "i" : "nat")]
     #[rr::args("(xs, γ)", "Z.of_nat i")]
     #[rr::exists("γi", "γ1", "γ2")]
-    #[rr::observe("γ2": "if decide (i < length xs) then <[i := PlaceGhost γ1]> (<#> <$#> xs) else <#> <$#> xs")]
+    #[rr::observe("γ2": "if decide (i < length xs) then <[i := PlaceGhost γ1]> (<$#> xs) else <$#> xs")]
     #[rr::returns("if decide (i < length xs) then Some (xs !!! i, γi) else None")]
     // NOTE: currently, we need a slightly more complicated specification that explicitly closes
     // under ghost variable equivalence: the "Inherit" part states that, after 'a has ended, the

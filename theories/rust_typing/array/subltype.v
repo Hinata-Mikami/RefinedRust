@@ -482,7 +482,7 @@ End to_default.
 Section accessors.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_cond_rfn_lift_array {rt} (rs rs' : list (place_rfn rt)) k :
+  Lemma typed_place_cond_rfn_lift_array {rt : RT} (rs rs' : list (place_rfn rt)) k :
     ([∗ list] ty1;ty2 ∈ rs; rs', typed_place_cond_rfn k ty1 ty2) ⊢@{iProp Σ} typed_place_cond_rfn k (#rs) (#rs').
   Proof. iIntros "Ha". destruct k; done. Qed.
 

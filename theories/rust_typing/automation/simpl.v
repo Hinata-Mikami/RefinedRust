@@ -192,7 +192,7 @@ Proof.
 Qed.
 
 Global Instance simplify_all_xtype `{!typeGS Σ} Q :
-  SimplForall xtype 3 Q (∀ (rt : RT) (ty : type rt) (r : ty_xt ty), Q (mk_xtype (xtype_rt:=rt) ty r)).
+  SimplForall xtype 3 Q (∀ (rt : RT) (ty : type rt) (r : RT_xt rt), Q (mk_xtype (xtype_rt:=rt) ty r)).
 Proof.
   intros ? []. done.
 Qed.

@@ -47,8 +47,8 @@ Proof.
     local_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int USize) ∗
     arg_src ◁ₗ[π, Owned false] #src @ (◁ alias_ptr_t) ∗
     arg_dst ◁ₗ[π, Owned false] #dst @ (◁ alias_ptr_t) ∗
-    src ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
-    dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
+    src ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
+    dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
   iApply (typed_goto_acc _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   liRStep; liShow. iExists 0%nat.
@@ -57,7 +57,7 @@ Proof.
   iDestruct "Hinv" as "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
   repeat liRStep; liShow.
    (*return: go back to values *)
-  assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t))) as ->.
+  assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t) : list val)) as ->.
   { shelve. }
   iPoseProof (ofty_value_untyped_from_array with "Hs") as "Hs".
   { rewrite Hlen_s ly_size_mk_array_layout. lia. }
@@ -78,7 +78,7 @@ Proof.
     rewrite Nat.min_l; first last. { rewrite length_replicate. lia. }
     rewrite Nat.sub_diag.
     f_equiv.
-    rename select (reshape _ vs !! i = Some _) into Hlook.
+    rename select ((reshape _ vs : list val) !! i = Some _) into Hlook.
     rename select (i < (Z.to_nat size))%nat into Hi.
     clear -Hlook Hi.
     rewrite Nat.add_1_r.

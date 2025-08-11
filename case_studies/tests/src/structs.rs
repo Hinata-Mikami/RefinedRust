@@ -35,7 +35,7 @@ impl EvenInt {
     #[rr::params("x", "γ")]
     #[rr::args(#raw "((-[x]), γ)")]
     #[rr::requires("(x + 1 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "(-[#(x+1)%Z] : plist place_rfn _)")]
+    #[rr::observe("γ": "(-[#(x+1)%Z] : plistRT place_rfnRT _)")]
     fn add(&mut self) {
         self.num += 1;
     }

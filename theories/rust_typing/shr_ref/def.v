@@ -12,9 +12,6 @@ Section shr_ref.
     a location not under a later (to prove the agreement with the ltype unfolding),
      so the simple_type interface doesn't suffice *)
   Program Definition shr_ref {rt : RT} κ (inner : type rt) : type (place_rfn rt) := {|
-    ty_xt := inner.(ty_xt);
-    ty_xrt := λ x, #(inner.(ty_xrt) x);
-
     ty_sidecond := True;
     ty_own_val π r v :=
       (∃ (l : loc) (ly : layout) (r' : rt),
@@ -41,6 +38,9 @@ Section shr_ref.
     _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
+  Next Obligation.
+    intros. simpl. apply _.
+  Qed.
   Next Obligation.
     iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.

@@ -9,7 +9,7 @@ Section int.
   Context `{!typeGS Σ}.
 
   (* Separate definition such that we can make it typeclasses opaque later. *)
-  Program Definition int (it : int_type) : type Z := {|
+  Program Definition int (it : int_type) : type ZRT := {|
     st_own tid z v := ⌜val_to_Z v it = Some z⌝;
     st_has_op_type ot mt := is_int_ot ot it;
     st_syn_type := IntSynType it;
@@ -64,7 +64,7 @@ Section boolean.
   Context `{!typeGS Σ}.
 
   (* Separate definition such that we can make it typeclasses opaque later. *)
-  Program Definition bool_t : type bool := {|
+  Program Definition bool_t : type boolRT := {|
     st_own tid b v := ⌜val_to_bool v = Some b⌝;
     st_syn_type := BoolSynType;
     st_has_op_type ot mt := is_bool_ot ot;
@@ -112,7 +112,7 @@ Section char.
   Context `{!typeGS Σ}.
 
   (* Separate definition such that we can make it typeclasses opaque later. *)
-  Program Definition char_t : type Z := {|
+  Program Definition char_t : type ZRT := {|
     st_own tid z v := ⌜val_to_char v = Some z⌝;
     st_syn_type := CharSynType;
     st_has_op_type ot mt := is_char_ot ot;

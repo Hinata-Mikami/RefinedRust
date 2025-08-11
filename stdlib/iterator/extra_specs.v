@@ -1,6 +1,6 @@
 Section trans.
   
-  Fixpoint IteratorNextFusedTrans {Self_rt Item_rt : Type} 
+  Fixpoint IteratorNextFusedTrans {Self_rt Item_rt : RT} 
     (attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
     (s1 : Self_rt) (els : list (Item_rt)) (s2 : Self_rt) : iProp Σ
     :=

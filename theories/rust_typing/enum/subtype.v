@@ -36,8 +36,11 @@ Section subtype.
     iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
     iExists ly, tag.
     rewrite -Hels. iR. rewrite -Htag. iR.
-    iApply (struct_t_own_val_mono with "[] Hv").
+    simpl.
+    (* TODO: somehow specializing with Hv doesn't work *)
+    iApply (struct_t_own_val_mono with "[]"); last done.
     rewrite /struct_t_incl_precond. simpl.
+    iFrame.
     iSplit. { rewrite Hels. iApply type_incl_refl. }
     iSplit; last done.
     simpl. iApply active_union_type_incl; first done.

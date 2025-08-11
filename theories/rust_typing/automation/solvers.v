@@ -2220,6 +2220,7 @@ Ltac init_cache :=
 (** Solve [Inhabited] instances for inductives, used for enum declarations.
    We assume that arguments of inductive constructors have already been proved inhabited. *)
 Ltac solve_inhabited :=
+  simpl; intros; try unfold TCNoResolve;
   repeat match goal with
   | |- Inhabited ?X =>
       first [apply _ | refine (populate _); econstructor; eapply inhabitant]
@@ -2282,8 +2283,11 @@ Ltac destruct_product_hypothesis name H :=
 Local Ltac strip_applied_params a acc cont :=
   match a with
   | ?a1 ?a2 =>
+      let a2 := eval unfold reverse_coercion in a2 in
       lazymatch type of a2 with
       | syn_type =>
+          strip_applied_params a1 uconstr:(a2 +:: acc) cont
+      | RT =>
           strip_applied_params a1 uconstr:(a2 +:: acc) cont
       | Type =>
           strip_applied_params a1 uconstr:(a2 +:: acc) cont

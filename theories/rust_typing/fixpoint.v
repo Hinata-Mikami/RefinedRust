@@ -5,7 +5,7 @@ Section type_inh.
   Context `{!typeGS Σ}.
 
   (* We need [Inhabited T_rt] because of [ty_xt_inhabited]. *)
-  Context {T_rt : RT} `{!Inhabited T_rt}.
+  Context {T_rt : RT} `{!Inhabited (RT_xt T_rt)}.
 
   Global Program Instance simple_type_inhabited : Inhabited (simple_type T_rt) := populate {|
       st_own π r v := ⌜v = []⌝%I;
@@ -44,7 +44,7 @@ Section fixpoint_def.
   (* We assume a contractive functor *)
   Context {rt : RT} (F : type rt → type rt) `{Hcr : !TypeContractive F}.
   (* [rt] needs to be inhabited *)
-  Context `{!Inhabited rt}.
+  Context `{!Inhabited (RT_xt rt)}.
 
   (* Iterate the functor [S n] times, starting with the inhabitant.
      We use at least one iteration, so that the [ty_syn_type] is always constant.
@@ -160,9 +160,7 @@ Section fixpoint_def.
   (* For the ownership and sharing predicate, we take the fixpoint found above. *)
   (* For the other components, we use the 0 base case (where the functor is applied at least once) in order to be able to show the unfolding equation later. *)
   Program Definition type_fixpoint : type rt := {|
-    ty_xt := (Fn 0).(ty_xt);
     ty_xt_inhabited := (Fn 0).(ty_xt_inhabited);
-    ty_xrt := (Fn 0).(ty_xrt);
     ty_syn_type := (Fn 0).(ty_syn_type);
     _ty_has_op_type := (Fn 0).(_ty_has_op_type _);
     ty_own_val := F_ty_own_val_ty_shr_fixpoint.1;
@@ -349,7 +347,7 @@ Section fixpoint_def.
 End fixpoint_def.
 
 
-Lemma type_fixpoint_ne `{!typeGS Σ} {rt : RT} `{!Inhabited rt} (T1 T2 : type rt → type rt)
+Lemma type_fixpoint_ne `{!typeGS Σ} {rt : RT} `{!Inhabited (RT_xt rt)} (T1 T2 : type rt → type rt)
     `{!TypeContractive T1, !TypeContractive T2, !NonExpansive T2} n :
   (∀ t, T1 t ≡{n}≡ T2 t) → type_fixpoint T1 ≡{n}≡ type_fixpoint T2.
 Proof.
@@ -401,7 +399,7 @@ Qed.
 
 Section fixpoint.
   Context `{!typeGS Σ}.
-  Context {rt : RT} `{!Inhabited rt} (T : type rt → type rt) {HT: TypeContractive T}.
+  Context {rt : RT} `{!Inhabited (RT_xt rt)} (T : type rt → type rt) {HT: TypeContractive T}.
 
   (* prevent [simpl] from unfolding it too much here *)
   Opaque prod_cofe.
@@ -495,7 +493,7 @@ End fixpoint.
 
 Section rules.
   Context `{!typeGS Σ}.
-  Context {rt : RT} `{!Inhabited rt}.
+  Context {rt : RT} `{!Inhabited (RT_xt rt)}.
   Context (F : type rt → type rt) `{!TypeContractive F}.
 
   (* on place access, unfold *)
@@ -504,7 +502,8 @@ Section rules.
     return (typed_place π E L l (◁ (F (type_fixpoint F))) r k1 k2 P T).
   Proof.
     iApply typed_place_eqltype.
-    apply full_eqtype_eqltype; first apply _.
+    apply full_eqtype_eqltype.
+    { apply populate. apply RT_xrt. apply inhabitant. }
     intros ?.
     apply type_fixpoint_unfold_eqtype.
   Qed.

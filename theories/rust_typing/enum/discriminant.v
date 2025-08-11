@@ -15,7 +15,7 @@ Section discriminant.
     st_syn_type := IntSynType en.(enum_els).(els_tag_it);
   |}%I.
   Next Obligation.
-    intros. apply populate. eapply enum_xrt. apply (enum_xt_inhabited en).
+    intros. apply populate. apply (enum_xt_inhabited en).
   Qed.
   Next Obligation.
     simpl. intros.

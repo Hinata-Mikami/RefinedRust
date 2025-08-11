@@ -22,10 +22,10 @@ Proof.
 Qed.
 
 #[universes(polymorphic)]
-Definition extract_val {rt} (r : place_rfn rt) := if r is #r then Some r else None.
+Definition extract_val {rt : RT} (r : place_rfn rt) := if r is #r then Some r else None.
 
 Section project_vec_els.
-  Context {rt : Type}.
+  Context {rt : RT}.
   Set Universe Polymorphism.
 
   Definition project_vec_els (len : nat) (els : list (place_rfn (option (place_rfn rt))))
@@ -80,8 +80,8 @@ Section project_vec_els.
     rewrite Hlook. done.
   Qed.
 
-  Lemma project_vec_els_length' `{!typeGS Σ} (T : type rt) xs x2 len :
-    <#> (<$#@{T}> xs) = project_vec_els len x2 → length xs ≤ min len (length x2).
+  Lemma project_vec_els_length' xs x2 len :
+    <#> (<$#@{rt}> xs) = project_vec_els len x2 → length xs ≤ min len (length x2).
   Proof.
     intros Ha.
     assert (length (<#> <$#> xs) = length (project_vec_els len x2)) as Hlen.

@@ -84,7 +84,6 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
     ) -> Result<specs::EnumSpec, String> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
-        let mut xt_type = None;
         let mut is_partial = false;
 
         for &it in attrs {
@@ -100,9 +99,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 "refined_by" => {
                     let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                     let (rt_processed, _) = self.scope.process_coq_literal(ty.value().as_str());
-                    let (xt_processed, _) = self.scope.process_coq_literal_xt(ty.value().as_str(), true);
                     rfn_type = Some(rt_processed);
-                    xt_type = Some(xt_processed.replace("place_rfn", ""));
                 },
                 "partial" => {
                     is_partial = true;
@@ -151,18 +148,11 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
         let Some(rfn_type) = rfn_type else {
             return Err(format!("No refined_by clause provided for enum {:?}", ty_name));
         };
-        let Some(xt_type) = xt_type else {
-            return Err(format!("No refined_by clause provided for enum {:?}", ty_name));
-        };
 
-        let xt_type = coq::term::Type::Literal(xt_type);
         let rfn_type = coq::term::Type::Literal(rfn_type);
-        let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
         Ok(specs::EnumSpec {
             rfn_type,
-            xt_type,
-            xt_injection,
             variant_patterns,
             is_partial,
         })

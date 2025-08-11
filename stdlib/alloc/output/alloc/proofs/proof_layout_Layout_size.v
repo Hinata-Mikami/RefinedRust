@@ -18,7 +18,5 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   Unshelve. all: print_remaining_sidecond.
-  (* TODO: debug slow qed *)
-(*Qed.*)
-Admitted.
+Qed.
 End proof.

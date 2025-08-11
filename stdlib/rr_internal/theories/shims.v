@@ -59,11 +59,11 @@ Definition type_of_alloc_realloc `{RRGS : !refinedrustGS Σ} :=
     freeable_nz ptr_old (Z.to_nat old_size) 1 HeapAlloc) →
   ∃ (ptr_new, v') : (loc * val), ptr_new @ alias_ptr_t; λ π,
     freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc ∗
-    ptr_new ◁ₗ[π, Owned false] #(v ++ v') @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
+    ptr_new ◁ₗ[π, Owned false] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
     ⌜v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))⌝
 .
 #[global] Typeclasses Opaque Z.divide.
-Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc :
+Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π (alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc : loc) :
   alloc_alloc_loc ◁ᵥ{π} alloc_alloc_loc @ function_ptr [IntSynType USize; IntSynType USize] (<tag_type> type_of_alloc_alloc_internal) -∗
   copy_nonoverlapping_loc ◁ᵥ{π} copy_nonoverlapping_loc @ function_ptr [PtrSynType; PtrSynType; IntSynType USize] (<tag_type> type_of_copy_nonoverlapping Z (IntSynType U8)) -∗
   alloc_dealloc_loc ◁ᵥ{π} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
@@ -153,7 +153,7 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
 Definition type_of_box_new `{RRGS : !refinedrustGS Σ} T_rt T_st :=
   fn(∀ ( *[]) : 0 | ( *[T]) : [(T_rt, T_st)] | (x) : _, (λ ϝ, []); x :@: T; λ π, True)
     → ∃ () : (), x @ box T; λ π, True.
-Lemma box_new_typed `{RRGS : !refinedrustGS Σ} π T_st (T_rt : Type) (mem_size_of_T_loc ptr_dangling_T_loc : loc) :
+Lemma box_new_typed `{RRGS : !refinedrustGS Σ} π T_st (T_rt : RT) (mem_size_of_T_loc ptr_dangling_T_loc : loc) :
   syn_type_is_layoutable T_st →
   mem_size_of_T_loc ◁ᵥ{π} mem_size_of_T_loc @ function_ptr [] (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
@@ -360,9 +360,9 @@ Definition alloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_siz
  |}.
 
 
-Definition trait_incl_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt: Type) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list Type), (True).
-Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
+Definition trait_incl_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size) : (Z), (λ ϝ, []); size :@: int USize; λ π,
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat size)) ∈ ISize⌝ ∗
     ⌜(size > 0)%Z⌝ ∗
@@ -446,10 +446,10 @@ Definition realloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_s
  |}.
 
 
-Definition trait_incl_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt: Type) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list Type), (True).
+Definition trait_incl_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
 (* Spec is using UntypedSynType (instead of ArraySynType) because this is using untyped copies *)
-Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
+Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (old_size, new_size, l, v) : (Z * Z * loc * val), (λ ϝ, []);
     old_size :@: int USize, l :@: alias_ptr_t, new_size :@: int USize; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat old_size)) 1 HeapAlloc ∗
@@ -459,7 +459,7 @@ Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st
     ⌜(old_size > 0)%Z⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →
   ∃ (l', v') : (loc * val), l' @ alias_ptr_t; λ π,
-    l' ◁ₗ[π, Owned false] #(v ++ v') @ (◁ (value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat new_size))))) ∗
+    l' ◁ₗ[π, Owned false] #(v ++ v' : val) @ (◁ (value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat new_size))))) ∗
     v' ◁ᵥ{π} .@ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat (new_size - old_size)))) ∗
       freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc.
 
@@ -535,9 +535,9 @@ Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc
  |}.
 
 
-Definition trait_incl_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt: Type) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list Type), (True).
-Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
+Definition trait_incl_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size, l) : (Z * loc), (λ ϝ, []);
     size :@: int USize, l :@: alias_ptr_t; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat size)) 1 HeapAlloc ∗
@@ -613,9 +613,9 @@ Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_align_log
  |}.
 
 
-Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt: Type) (T_st: syn_type) : spec_with _ _ Prop :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list Type), (True).
-Definition type_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt : Type) (T_st : syn_type) :=
+Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : ([T_rt] : list RT), (True).
+Definition type_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size) : (Z), (λ ϝ, []); size :@: int USize; λ π, True) →
   ∃ () : unit, (bool_decide (size_of_array_in_bytes T_st (Z.to_nat size) ≤ MaxInt ISize)%Z) @ bool_t; λ π, True.
 

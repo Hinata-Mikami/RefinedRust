@@ -41,6 +41,8 @@ Proof. move => ? ?. destruct ot => //; naive_solver. Qed.
 Section structs.
   Context `{!typeGS Σ}.
 
+  Implicit Types (rt : RT).
+
   Polymorphic Definition zip_to_rtype (rt : list RT) (tys : hlist type rt) :=
     (fmap (λ x, mk_rtype (projT2 x)) (hzipl rt tys)).
 
@@ -192,49 +194,11 @@ Section structs.
     iFrame. done.
   Qed.
 
-  (* Conversion of the xt refinement to the rt refinement *)
-  Definition struct_xt {rts : list RT} (tys : hlist type rts) : Type :=
-    plist (λ '(existT _ ty), ty.(ty_xt)) (hzipl _ tys).
-  Definition struct_xrtm {rts : list RT} (tys : hlist type rts)
-    : ∀ (xl : list (sigT type)), _
-    :=
-    @pmap (sigT type) (λ '(existT _ ty), ty.(ty_xt)) (λ '(existT rt _), place_rfn rt)
-      (λ '(existT _ ty) x, #(ty.(ty_xrt) x)).
-  Definition struct_xrt' {rts : list RT} (tys : hlist type rts) (xs : struct_xt tys) :=
-    struct_xrtm tys (hzipl _ tys) xs.
-  Fixpoint convert_struct_xrt {Xs : list RT} {Ty : RT → Type} (F : RT → RT) (tys : hlist Ty Xs) :
-    plist (λ '(existT rt _), F rt) (hzipl Xs tys) →
-    plist F Xs :=
-    match tys with
-    | +[] => λ _, -[]
-    | _ +:: tys' => λ pl,
-        match pl with
-        | pl1 *:: pl =>
-            pl1 *:: convert_struct_xrt F tys' pl
-        end
-    end.
-  Definition struct_xrt {rts : list RT} (tys : hlist type rts) (xs : struct_xt tys) :=
-    convert_struct_xrt _ tys (struct_xrt' tys xs).
-  Fixpoint struct_xt_inhabitant {rts : list RT} (tys : hlist type rts) :
-    Inhabited (struct_xt tys).
-  Proof.
-    refine (populate _).
-    unfold struct_xt.
-    destruct tys as [ | ?? ty]; simpl.
-    - exact nil_tt.
-    - refine (cons_pair ty.(ty_xt_inhabited).(inhabitant) _).
-      apply struct_xt_inhabitant.
-  Defined.
-
-
   (** We use a [hlist] for the list of types and a [plist] for the refinement, to work around universe problems.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
-  Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plist place_rfn rts) := {|
-
-    ty_xt := struct_xt tys;
-    ty_xrt := struct_xrt tys;
-
+  #[universes(polymorphic)]
+  Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT place_rfnRT rts) := {|
     ty_own_val π r v :=
       (∃ sl,
         ⌜use_struct_layout_alg sls = Some sl⌝ ∗
@@ -259,7 +223,12 @@ Section structs.
     _ty_wf_E := mjoin (fmap (λ ty, ty_wf_E (projT2 ty)) (hzipl rts tys));
   |}.
   Next Obligation.
-    intros. eapply struct_xt_inhabitant.
+    intros. induction tys as [ | ?? ty tys IH]; simpl.
+    - refine (populate nil_tt).
+    - refine (populate (cons_pair _ _)).
+      { refine inhabitant. }
+      apply IH.
+  (*Qed.*)
   Defined.
   Next Obligation.
     iIntros (rts sls tys π r v) "(%sl & %Halg & %Hlen & %Hly & ?)".
@@ -353,7 +322,8 @@ Section structs.
         apply pad_struct_lookup_Some in Hlook1; first last.
         { rewrite length_hpzipl Hlen. erewrite struct_layout_spec_has_layout_fields_length; done. }
         destruct Hlook1 as (n & ly & ? & [ (? & Hlook) | (-> & Heq)]).
-        - simpl in Hlook. apply hpzipl_lookup_inv_hzipl_pzipl in Hlook as (Hlook & _).
+        - simpl in Hlook.
+          apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook as (Hlook & _).
           apply list_subseteq_mjoin. apply list_elem_of_fmap.
           exists (existT _ ty). split; first done.
           apply list_elem_of_lookup_2 in Hlook. done.
@@ -887,7 +857,8 @@ Section copy.
       apply pad_struct_lookup_Some in Hlook2 as (n & ly & ? & Hlook2); first last.
       { rewrite length_hpzipl. erewrite struct_layout_spec_has_layout_fields_length; done. }
       destruct Hlook2 as [[? Hlook2] | [-> Hlook2]].
-      + simpl in Hlook2. apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as [Hlook21 Hlook22].
+      + simpl in Hlook2.
+        apply (hpzipl_lookup_inv_hzipl_pzipl _ _ r) in Hlook2 as [Hlook21 Hlook22].
         eapply TCHForall_nth_hzipl in Hcopy; last apply Hlook21.
         eapply bi.exist_persistent => r0.
         eapply bi.exist_persistent => ly'.

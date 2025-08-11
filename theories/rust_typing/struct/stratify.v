@@ -8,8 +8,8 @@ From refinedrust Require Import options.
 Section stratify.
   Context `{!typeGS Σ}.
 
-  Definition stratify_ltype_struct_iter_cont_t := llctx → iProp Σ → ∀ rts' : list RT, hlist ltype rts' → plist place_rfn rts' → iProp Σ.
-  Definition stratify_ltype_struct_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (i0 : nat) (sls : struct_layout_spec) {rts} (ltys : hlist ltype rts) (rfns : plist place_rfn rts) (k : bor_kind) (T : stratify_ltype_struct_iter_cont_t) : iProp Σ :=
+  Definition stratify_ltype_struct_iter_cont_t := llctx → iProp Σ → ∀ rts' : list RT, hlist ltype rts' → plist place_rfnRT rts' → iProp Σ.
+  Definition stratify_ltype_struct_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (i0 : nat) (sls : struct_layout_spec) {rts} (ltys : hlist ltype rts) (rfns : plist place_rfnRT rts) (k : bor_kind) (T : stratify_ltype_struct_iter_cont_t) : iProp Σ :=
     ∀ F sl, ⌜lftE ⊆ F⌝ -∗
     ⌜lft_userE ⊆ F⌝ -∗
     ⌜shrE ⊆ F⌝ -∗
@@ -22,7 +22,7 @@ Section stratify.
     ([∗ list] i ↦ p ∈ hpzipl rts ltys rfns, let '(existT rt (lt, r)) := p in
       ∃ name st, ⌜sls.(sls_fields) !! (i + i0)%nat = Some (name, st)⌝ ∗
       (l atst{sls}ₗ name) ◁ₗ[π, k] r @ lt) ={F}=∗
-    ∃ (L' : llctx) (R' : iProp Σ) (rts' : list RT) (ltys' : hlist ltype rts') (rfns' : plist place_rfn rts'),
+    ∃ (L' : llctx) (R' : iProp Σ) (rts' : list RT) (ltys' : hlist ltype rts') (rfns' : plist place_rfnRT rts'),
       ⌜length rts = length rts'⌝ ∗
       ([∗ list] i ↦ p; p2 ∈ hpzipl rts ltys rfns; hpzipl rts' ltys' rfns',
           let '(existT rt (lt, r)) := p in
@@ -44,7 +44,7 @@ Section stratify.
     iR. iFrame. simpl. iR. iApply logical_step_intro; eauto.
   Qed.
 
-  Lemma stratify_ltype_struct_iter_cons π E L mu mdu ma {M} (m : M) (l : loc) sls i0 {rts rt} (ltys : hlist ltype rts) (rfns : plist place_rfn (rt :: rts)) (lty : ltype rt) k T :
+  Lemma stratify_ltype_struct_iter_cons π E L mu mdu ma {M} (m : M) (l : loc) sls i0 {rts rt} (ltys : hlist ltype rts) (rfns : plist place_rfnRT (rt :: rts)) (lty : ltype rt) k T :
     (∃ r rfns0, ⌜rfns = r -:: rfns0⌝ ∗
     stratify_ltype_struct_iter π E L mu mdu ma m l (S i0) sls ltys rfns0 k (λ L2 R2 rts2 ltys2 rs2,
       (∀ name st, ⌜sls.(sls_fields) !! i0 = Some (name, st)⌝ -∗
@@ -118,9 +118,9 @@ Section stratify.
   (* TODO: stratification instance for StructLtype with optional refolding *)
 
 
-  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfn rts) sls wl (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls wl (T : stratify_ltype_cont_t) :
     stratify_ltype_struct_iter π E L mu mdu ma m l 0 sls lts rs (Owned false) (λ L2 R2 rts' lts' rs',
-      T L2 R2 (plist place_rfn rts') (StructLtype lts' sls) (#rs'))
+      T L2 R2 (plist place_rfnRT rts') (StructLtype lts' sls) (#rs'))
     ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
@@ -147,7 +147,7 @@ Section stratify.
     iSplitR. { by rewrite -Hleneq. }
     done.
   Qed.
-  Global Instance stratify_ltype_struct_owned_inst {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfn rts) sls wl :
+  Global Instance stratify_ltype_struct_owned_inst {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls wl :
     StratifyLtype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) :=
     λ T, i2p (stratify_ltype_struct_owned π E L mu mdu ma m l lts rs sls wl T).
 

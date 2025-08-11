@@ -13,7 +13,7 @@ Section subtype.
   Local Definition array_t_incl_precond_elem {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 :=
     (match r1, r2 with
       | #r1, #r2 => type_incl r1 r2 ty1 ty2
-      | _, _ => ∃ (Heq : rt1 = rt2), ⌜r1 = rew <- [place_rfn] Heq in r2⌝ ∗ ∀ (r : rt1), type_incl r (rew Heq in r) ty1 ty2
+      | _, _ => ∃ (Heq : rt1 = rt2), ⌜r1 = rew <- [place_rfnRT] Heq in r2⌝ ∗ ∀ (r : rt1), type_incl r (rew Heq in r) ty1 ty2
       end)%I.
   Local Definition array_t_incl_precond {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 :=
     ([∗ list] r1; r2 ∈ rs1; rs2, array_t_incl_precond_elem ty1 ty2 r1 r2)%I.

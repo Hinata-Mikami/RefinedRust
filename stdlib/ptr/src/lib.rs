@@ -170,7 +170,7 @@ pub const fn copy_nonoverlapping<T>(
 #[rr::requires("0 ≤ off_dst")]
 #[rr::requires("(off_src + count < len)%Z")]
 #[rr::requires("(off_dst + count < len)%Z")]
-#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
+#[rr::ensures(#type "l" : "ptr_copy_result off_src off_dst (Z.to_nat count) vs : val" @ "value_t (UntypedSynType (mk_array_layout {ly_of T} (Z.to_nat len)))")]
 pub const fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unimplemented!();
 }

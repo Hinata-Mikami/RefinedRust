@@ -28,7 +28,7 @@ Section place.
     { rewrite list_lookup_fmap Hlook2. done. }
     done.
   Qed.
-  Local Lemma typed_place_cond_rfn_array_lift {rt} (rs : list (place_rfn rt)) ri1 ri2 i bmin :
+  Local Lemma typed_place_cond_rfn_array_lift {rt} (rs : list (place_rfnRT rt)) ri1 ri2 i bmin :
     rs !! i = Some ri1 → ⊢@{iProp Σ}
     typed_place_cond_rfn bmin ri1 ri2 -∗
     [∗ list] r1;r2 ∈ rs;<[i:=ri2]> rs, typed_place_cond_rfn bmin r1 r2.

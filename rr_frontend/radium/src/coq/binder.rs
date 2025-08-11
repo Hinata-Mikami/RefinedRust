@@ -224,6 +224,11 @@ impl BinderList {
     /// Make using terms for this list of binders
     #[must_use]
     pub fn make_using_terms(&self) -> term::TermList {
-        term::TermList::new(self.0.iter().map(|x| term::Term::Literal(x.get_name())).collect())
+        term::TermList::new(
+            self.0
+                .iter()
+                .filter_map(|x| if x.is_implicit() { None } else { Some(term::Term::Literal(x.get_name())) })
+                .collect(),
+        )
     }
 }

@@ -60,12 +60,19 @@ Ltac rep_check_backtrack_point_hook ::=
   end.
 
 Ltac liForall_hook ::=
-  (* simpl ty_xt *)
+  (* simpl RT_xt *)
   lazymatch goal with
   | |- forall e : ?A, @?P e =>
       match A with
-      | ty_xt ?ty =>
-          assert_fails (is_var ty);
+      | RT_xt ?rt =>
+          assert_fails (is_var rt);
+          lazymatch rt with 
+          | RT_of ?ty =>
+              assert_fails (is_var ty)
+              (* TODO: maybe unfold the RT_of? *)
+          | _ => idtac
+          end;
+
           simpl
       end
   end.
@@ -120,12 +127,12 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedAnnotExpr E L n a v P) T))
   | prove_with_subtype ?E ?L ?step ?pm ?P ?T =>
       cont uconstr:(((_ : ProveWithSubtype E L step pm P) T))
-  | owned_subtype ?π ?E ?L ?pers ?r1 ?r2 ?ty1 ?ty2 ?T =>
-      cont uconstr:((_ : OwnedSubtype π E L pers r1 r2 ty1 ty2) T)
+  | @owned_subtype _ _ ?π ?E ?L ?pers ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
+      cont uconstr:((_ : @OwnedSubtype _ _ π E L pers rt1 rt2 r1 r2 ty1 ty2) T)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : OwnedSubltypeStep π E L l r1 r2 lt1 lt2) T)
-  | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 ?T =>
-      cont uconstr:((_ : Subtype E L r1 r2 ty1 ty2) T)
+  | @weak_subtype _ _ ?E ?L ?rt1 ?rt2 ?r1 ?r2 ?ty1 ?ty2 ?T =>
+      cont uconstr:((_ : @Subtype _ _ E L rt1 rt2 r1 r2 ty1 ty2) T)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : SubLtype E L k r1 r2 lt1 lt2) T)
   | mut_subtype ?E ?L ?ty1 ?ty2 ?T =>
@@ -718,6 +725,31 @@ Ltac liRJudgement :=
         end
   end.
 
+Ltac liWorkAround :=
+  lazymatch goal with
+  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (◁ _)%I ?r ?b1 ?b2 (GetMemberPCtx _ _ :: _) ?T) =>
+      first [
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_struct π E L l (hcons _ _ _) r _ b1 b2 _ T) _) |
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_struct π E L l (hnil _) r _ b1 b2 _ T) _)
+        ] 
+  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (EnumLtype _ _ (◁ ?ty) _)%I ?r ?b1 (Shared _) (_) ?T) =>
+      first [
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_shared π E L l _ _ (hcons _ _ _) _ _ _ _ _ _ T) _) | 
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_shared π E L l _ _ (hnil _) _ _ _ _ _ _ T) _)
+        ]
+  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (EnumLtype _ _ (◁ ?ty) _)%I ?r ?b1 (Owned _) (_) ?T) =>
+      first [
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_owned π E L l _ _ (hcons _ _ _) _ _ _ _ _ _ T) _) | 
+        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_owned π E L l _ _ (hnil _) _ _ _ _ _ _ T) _)
+        ]
+  | |- environments.envs_entails _ (weak_subtype ?E ?L ?r1 ?r2 (struct_t _ +[]) (_) ?T) =>
+      notypeclasses refine (tac_fast_apply (weak_subtype_struct E L (hnil _) (_) _ _ _ _ T) _)
+  | |- environments.envs_entails _ (weak_subtype ?E ?L ?r1 ?r2 (struct_t _ (_ +:: _)) (_) ?T) =>
+        notypeclasses refine (tac_fast_apply (weak_subtype_struct E L (hcons _ _ _) (hcons _ _ _) _ _ _ _ T) _)
+  end
+.
+
+
 (* TODO Maybe this should rather be a part of Lithium? *)
 Ltac unfold_introduce_direct :=
   lazymatch goal with
@@ -738,25 +770,8 @@ Ltac simp_ltypes_in_goal_step :=
 Ltac simp_ltypes_in_goal :=
   repeat simp_ltypes_in_goal_step.
 
-(* This does everything *)
-(*
-Ltac liRStep :=
- liEnsureInvariant;
- try liRIntroduceLetInGoal;
- simp_ltypes_in_goal;
- first [
-   liRInstantiateEvars (* must be before do_side_cond and do_extensible_judgement *)
- | liRStmt
- | liRIntroduceTypedStmt
- | liRExpr
- | liRJudgement
- | liStep
- | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
-];
-(*try unfold_introduce_direct; *)
-liSimpl.
- *)
 
+(* Variant of [liStep] that calls [liSimpl] when necessary, but does not require the surrounding wrapper to every call [liSimpl] itself. *)
 Ltac liFastStep :=
   first
   [ liExtensible
@@ -778,6 +793,7 @@ Ltac liFastStep :=
   | liAccu
   | liUnfoldLetGoal ].
 
+(* This does everything *)
 Ltac liRStep :=
   liEnsureInvariant;
   try liRIntroduceLetInGoal;
@@ -788,6 +804,7 @@ Ltac liRStep :=
   | liRIntroduceTypedStmt
   | liRExpr
   | liRJudgement
+  | liWorkAround
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
   | progress simpl
@@ -823,7 +840,7 @@ Ltac prepare_initial_coq_context :=
   (* The automation assumes that all products in the context are destructed, see liForall *)
   repeat match goal with
   | H : fn_A _ |- _ => simpl in H
-  | H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H
+  (*| H : struct_xt _ |- _ => unfold struct_xt in H; simpl in H*)
   | H : plist _ _ |- _ => destruct_product_hypothesis H H
   | H : (_ * _)%type |- _ => destruct_product_hypothesis H H
   (*| H : named_binder ?n |- _ =>*)
@@ -831,7 +848,7 @@ Ltac prepare_initial_coq_context :=
                       (*destruct H as [tmp];*)
                       (*rename_by_string tmp n*)
   | H : unit |- _ => destruct H
-  | H : ty_xt _ |- _ => progress (simpl in H)
+  | H : RT_xt _ |- _ => progress (simpl in H)
   end.
 
 
@@ -1186,7 +1203,6 @@ Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   (*intros []; naive_solver.*)
   intros [] ? [=<-]; eexists _; done.
-
 
 (** User facing tactic calls *)
 Ltac sidecond_hammer_it :=

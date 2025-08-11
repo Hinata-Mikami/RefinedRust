@@ -3,7 +3,7 @@ use crate::relax::*;
 
 
 #[rr::export_as(spin::rwlock::RwLock)]
-#[rr::refined_by("()" : "()")]
+#[rr::refined_by("()" : "unit")]
 #[rr::exists("x", "y")]
 pub struct RwLock<T, R = Spin> {
     #[rr::field("x")]

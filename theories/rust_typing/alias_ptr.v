@@ -9,7 +9,7 @@ From refinedrust Require Import options.
   Disadvantage: this does not have any useful interaction laws with the AliasLtype, and we need to duplicate the place typing lemma for both of these. *)
 Section alias.
   Context `{!typeGS Σ}.
-  Program Definition alias_ptr_t : type loc := {|
+  Program Definition alias_ptr_t : type locRT := {|
     st_own π (l : loc) v :=
       (⌜v = l⌝%I ∗
       ⌜l.2 ∈ USize⌝)%I;
@@ -271,8 +271,9 @@ End place.
 (** Rules for AliasLtype *)
 Section alias_ltype.
   Context `{!typeGS Σ}.
+  Implicit Types (rt : RT).
 
-  Lemma alias_ltype_owned_simplify_hyp π rt st wl (l l2 : loc) (r : place_rfn rt) T :
+  Lemma alias_ltype_owned_simplify_hyp π (rt : RT) st wl (l l2 : loc) (r : place_rfn rt) T :
     (⌜l = l2⌝ -∗ T)
     ⊢ simplify_hyp (l ◁ₗ[π, Owned wl] r @ AliasLtype rt st l2) T.
   Proof.

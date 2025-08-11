@@ -47,10 +47,8 @@ Qed.
 Section value.
   Context `{!typeGS Σ}.
 
-  Canonical Structure valRT := directRT val.
-
   (* Intuitively: want to say that the value is v _up to memcasts_ at st.  *)
-  Program Definition value_t (st : syn_type) : type val := {|
+  Program Definition value_t (st : syn_type) : type valRT := {|
     st_own π vs v :=
       (∃ ot,
         ⌜use_op_alg st = Some ot⌝ ∗

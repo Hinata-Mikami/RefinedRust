@@ -689,7 +689,7 @@ where
                             let altered_rfn = format!("(({}), {ghost_var})", processed_ty.1);
                             pre_types.push(specs::TypeWithRef::new(altered_ty, altered_rfn));
 
-                            let type_hint = auto_type.to_string();
+                            let type_hint = auto_type.get_rfn_type().to_string();
                             if let Some(post) = post {
                                 post_patterns.push(CapturePostRfn::Mut(
                                     post.rfn.to_string(),
@@ -785,7 +785,12 @@ where
                 post_term.push(']');
 
                 builder.add_postcondition(
-                    MetaIProp::Observe(post_name.to_owned(), Some(tuple.to_string()), post_term).into(),
+                    MetaIProp::Observe(
+                        post_name.to_owned(),
+                        Some(tuple.get_rfn_type().to_string()),
+                        post_term,
+                    )
+                    .into(),
                 );
             },
         }

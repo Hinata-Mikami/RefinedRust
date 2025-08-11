@@ -6,7 +6,7 @@ From refinedrust Require Import options.
 
 Section subltype.
   Context `{!typeGS Σ}.
-  Local Lemma pad_struct_hpzipl_2_inv {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) (rs1 : plist place_rfn rts1) (rs2 : plist place_rfn rts2) sl f k lt1 lt2 :
+  Local Lemma pad_struct_hpzipl_2_inv {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) (rs1 : plist place_rfnRT rts1) (rs2 : plist place_rfnRT rts2) sl f k lt1 lt2 :
     length rts1 = length rts2 →
     pad_struct (sl_members sl) (hpzipl rts1 lts1 rs1) f !! k = Some lt1 →
     pad_struct (sl_members sl) (hpzipl rts2 lts2 rs2) f !! k = Some lt2 →
@@ -35,7 +35,7 @@ Section subltype.
       { move : Hnone. rewrite !length_hpzipl Hlen. done. }
       injection Hlook2 as [= <-]. eauto.
   Qed.
-  Local Lemma pad_struct_hpzipl_2_inv' {rts} (lts1 lts2 : hlist ltype rts) (rs : plist place_rfn rts) sl f k lt1 lt2 :
+  Local Lemma pad_struct_hpzipl_2_inv' {rts} (lts1 lts2 : hlist ltype rts) (rs : plist place_rfnRT rts) sl f k lt1 lt2 :
     pad_struct (sl_members sl) (hpzipl rts lts1 rs) f !! k = Some lt1 →
     pad_struct (sl_members sl) (hpzipl rts lts2 rs) f !! k = Some lt2 →
     (∃ rt lt1' lt2' r,
@@ -354,7 +354,7 @@ Section subltype.
     full_eqltype E L (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     intros Hsub.
-    apply full_subltype_eqltype. { by apply (struct_full_subltype _ _ lts1 lts2). }
+    apply full_subltype_eqltype. { refine (struct_full_subltype _ _ lts1 lts2 _ _). done. }
     apply (struct_full_subltype _ _ lts2 lts1).
     rewrite hzipl2_swap. rewrite Forall_fmap.
     eapply Forall_impl; first done.
@@ -367,7 +367,7 @@ Section lemmas.
   Context `{!typeGS Σ}.
 
   (** Focusing lemmas for pad_struct big_seps *)
-  Lemma focus_struct_component {rts} (lts : hlist ltype rts) (r : plist place_rfn rts) sl π k l i x rto lto ro :
+  Lemma focus_struct_component {rts} (lts : hlist ltype rts) (r : plist place_rfnRT rts) sl π k l i x rto lto ro :
     field_index_of (sl_members sl) x = Some i →
     hpzipl rts lts r !! i = Some (existT rto (lto, ro)) →
     (* assume the big sep of components *)
@@ -423,7 +423,7 @@ Section lemmas.
   Qed.
 
   (** Focus the initialized fields of a struct, disregarding the padding fields *)
-  Lemma struct_ltype_focus_components π {rts : list RT} (lts : hlist ltype rts) (rs : plist place_rfn rts) sls sl k l :
+  Lemma struct_ltype_focus_components π {rts : list RT} (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls sl k l :
     length rts = length (sls_fields sls) →
     struct_layout_spec_has_layout sls sl →
     ([∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts lts rs) struct_make_uninit_ltype,
@@ -555,7 +555,7 @@ Section accessors.
     iIntros "_". done.
   Qed.
 
-  Lemma typed_place_cond_rfn_lift_struct {rts} (rs rs' : plist place_rfn rts) k :
+  Lemma typed_place_cond_rfn_lift_struct {rts} (rs rs' : plist place_rfnRT rts) k :
     ([∗ list] ty1;ty2 ∈ pzipl rts rs;pzipl rts rs', typed_place_cond_rfn k (projT2 ty1) (projT2 ty2)) ⊢@{iProp Σ} typed_place_cond_rfn k (#rs) (#rs').
   Proof.
     iIntros "Ha". destruct k; done.
@@ -593,7 +593,7 @@ Section accessors.
     done.
   Qed.
 
-  Lemma struct_ltype_acc_owned {rts} F π (lts : hlist ltype rts) (r : plist place_rfn rts) l sls wl :
+  Lemma struct_ltype_acc_owned {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls wl :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] #r @ StructLtype lts sls -∗
     ∃ sl, ⌜use_struct_layout_alg sls = Some sl⌝ ∗
@@ -603,7 +603,7 @@ Section accessors.
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
             (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) ∗
       logical_step F
-      (∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfn rts'),
+      (∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfnRT rts'),
         (* the number of fields should remain equal *)
         ⌜length rts' = length rts⌝ -∗
         (* new ownership *)
@@ -624,7 +624,7 @@ Section accessors.
   Qed.
 
   Definition sigT_ltype_core : (sigT (λ rt, ltype rt * place_rfn rt)%type) → (sigT (λ rt, ltype rt * place_rfn rt)%type) := λ '(existT _ (lt, r)), existT _ (ltype_core lt, r).
-  Local Lemma pad_struct_pull_core {rts} (lts : hlist ltype rts) (rs : plist place_rfn rts) fields (Φ : nat → (sigT (λ rt, ltype rt * place_rfn rt)%type) → iProp Σ) :
+  Local Lemma pad_struct_pull_core {rts} (lts : hlist ltype rts) (rs : plist place_rfnRT rts) fields (Φ : nat → (sigT (λ rt, ltype rt * place_rfn rt)%type) → iProp Σ) :
     ([∗ list] i↦ty ∈ pad_struct fields (hpzipl rts (@ltype_core Σ typeGS0 +<$> lts) rs) struct_make_uninit_ltype, Φ i ty)%I ⊣⊢
     ([∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype, Φ i (sigT_ltype_core ty))%I.
   Proof.
@@ -667,7 +667,7 @@ Section accessors.
     iApply typed_place_cond_ty_uniq_unblockable.
   Qed.
 
-  Local Lemma struct_acc_uniq_elems_core π l {rts} (lts lts' : hlist ltype rts) (rs : plist place_rfn rts) fields :
+  Local Lemma struct_acc_uniq_elems_core π l {rts} (lts lts' : hlist ltype rts) (rs : plist place_rfnRT rts) fields :
     length (field_names fields) = length rts →
     ([∗ list] ty ∈ hzipl2 rts lts lts', ∀ b' r, ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype,
@@ -684,12 +684,12 @@ Section accessors.
       apply pad_struct_lookup_Some in Hlook1 as (n & ly1 & Hlook & Hlook1); first last.
       { rewrite length_hpzipl Ha. lia. }
       destruct Hlook1 as [(? & Hlook1) | (-> & Hlook1)].
-      - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & Hlook1').
+      - apply (hpzipl_lookup_inv_hzipl_pzipl _ _ rs) in Hlook1 as (Hlook1 & Hlook1').
         destruct n; last done.
         eapply pad_struct_lookup_Some_Some in Hlook2; cycle -2.
         { rewrite length_hpzipl Ha. lia. }
         { done. }
-        apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook2 & Hlook2').
+        apply (hpzipl_lookup_inv_hzipl_pzipl _ _ rs) in Hlook2 as (Hlook2 & Hlook2').
         rewrite Hlook1' in Hlook2'. injection Hlook2' => Heq1 ?. subst.
         apply existT_inj in Heq1 as ->.
         iPoseProof (big_sepL_lookup with "Hcond")as "Heq".
@@ -712,7 +712,7 @@ Section accessors.
     rewrite !pad_struct_length //.
   Qed.
 
-  Local Lemma struct_acc_uniq_elems_unblock π l {rts} (lts lts' : hlist ltype rts) (rs : plist place_rfn rts) fields κ γ :
+  Local Lemma struct_acc_uniq_elems_unblock π l {rts} (lts lts' : hlist ltype rts) (rs : plist place_rfnRT rts) fields κ γ :
     length (field_names fields) = length rts →
     ([∗ list] ty1;ty2 ∈ hzipl rts lts;hzipl rts lts', typed_place_cond_ty (Uniq κ γ) (projT2 ty1) (projT2 ty2)) -∗
     [† κ] -∗
@@ -730,12 +730,12 @@ Section accessors.
       apply pad_struct_lookup_Some in Hlook1 as (n & ly1 & Hlook & Hlook1); first last.
       { rewrite length_hpzipl Ha. lia. }
       destruct Hlook1 as [(? & Hlook1) | (-> & Hlook1)].
-      - apply hpzipl_lookup_inv_hzipl_pzipl in Hlook1 as (Hlook1 & Hlook1').
+      - apply (hpzipl_lookup_inv_hzipl_pzipl _ _ rs) in Hlook1 as (Hlook1 & Hlook1').
         destruct n; last done.
         eapply pad_struct_lookup_Some_Some in Hlook2; cycle -2.
         { rewrite length_hpzipl Ha. lia. }
         { done. }
-        apply hpzipl_lookup_inv_hzipl_pzipl in Hlook2 as (Hlook2 & Hlook2').
+        apply (hpzipl_lookup_inv_hzipl_pzipl _ _ rs) in Hlook2 as (Hlook2 & Hlook2').
         rewrite Hlook1' in Hlook2'. injection Hlook2' => Heq1 ?. subst.
         apply existT_inj in Heq1 as ->.
         iPoseProof (typed_place_cond_ty_uniq_core_eq_struct _ _ κ γ with "Hcond") as "Heq".
@@ -765,7 +765,7 @@ Section accessors.
     rewrite !pad_struct_length //.
   Qed.
 
-  Lemma struct_ltype_acc_uniq {rts} F π (lts : hlist ltype rts) (r : plist place_rfn rts) l sls κ γ q R :
+  Lemma struct_ltype_acc_uniq {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls κ γ q R :
     lftE ⊆ F →
     rrust_ctx -∗
     q.[κ] -∗
@@ -779,7 +779,7 @@ Section accessors.
         (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) ∗
       logical_step F
       (((* weak access *)
-        ∀ bmin (lts' : hlist ltype rts) (r' : plist place_rfn rts),
+        ∀ bmin (lts' : hlist ltype rts) (r' : plist place_rfnRT rts),
         bmin ⊑ₖ Uniq κ γ -∗
         (* new ownership *)
         ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts' r') struct_make_uninit_ltype,
@@ -791,7 +791,7 @@ Section accessors.
         R ∗
         typed_place_cond (Uniq κ γ ⊓ₖ bmin) (StructLtype lts sls) (StructLtype lts' sls) (PlaceIn r) (PlaceIn r')) ∧
       ((* strong access, go to OpenedLtype *)
-        ∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfn rts'),
+        ∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfnRT rts'),
         (* same number of fields *)
         ⌜length rts' = length rts⌝ -∗
         (* new ownership *)
@@ -911,7 +911,7 @@ Section accessors.
         iExists sl. iFrame "% ∗". rewrite Hlen'. by do 3 iR. }
   Qed.
 
-  Lemma struct_ltype_acc_shared {rts} F π (lts : hlist ltype rts) (r : plist place_rfn rts) l sls κ :
+  Lemma struct_ltype_acc_shared {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls κ :
     lftE ⊆ F →
     l ◁ₗ[π, Shared κ] #r @ StructLtype lts sls -∗
     ∃ sl, ⌜use_struct_layout_alg sls = Some sl⌝ ∗
@@ -920,7 +920,7 @@ Section accessors.
       ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
             (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Shared κ] (projT2 ty).2 @ (projT2 ty).1) ∗
-      (∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfn rts'),
+      (∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfnRT rts'),
         (* the number of fields should remain equal *)
         ⌜length rts' = length rts⌝ -∗
         (* new ownership *)

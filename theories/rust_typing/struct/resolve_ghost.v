@@ -10,7 +10,7 @@ Section resolve_ghost.
 
   (** resolve_ghost instances *)
   Lemma resolve_ghost_struct_Owned {rts} π E L l (lts : hlist ltype rts) sls γ wl rm lb T :
-    find_observation ((plist place_rfn rts)) γ FindObsModeDirect (λ or,
+    find_observation ((plist place_rfnRT rts)) γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L (PlaceIn $ r) True true
@@ -31,7 +31,7 @@ Section resolve_ghost.
   Global Existing Instance resolve_ghost_struct_Owned_inst.
 
   Lemma resolve_ghost_struct_Uniq {rts} π E L l (lts : hlist ltype rts) sls γ rm lb κ γ' T :
-    find_observation ((plist place_rfn rts)) γ FindObsModeDirect (λ or,
+    find_observation ((plist place_rfnRT rts)) γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L (PlaceIn $ r) True true
@@ -53,7 +53,7 @@ Section resolve_ghost.
   Global Existing Instance resolve_ghost_struct_Uniq_inst.
 
   Lemma resolve_ghost_struct_Shared {rts} π E L l (lts : hlist ltype rts) sls γ rm lb κ T :
-    find_observation (plist place_rfn rts) γ FindObsModeDirect (λ or,
+    find_observation (plist place_rfnRT rts) γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L (#r) True true

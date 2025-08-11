@@ -477,7 +477,7 @@ Local Set Warnings "-inconsistent-scopes".
 (* Hack: in order to make this compatible with Coq argument parsing, we declare a small helper notation for arguments *)
 Declare Scope fnarg_scope.
 Delimit Scope fnarg_scope with F.
-Notation "x ':@:' ty" := (existT _ (ty, ty.(ty_xrt) x)) (at level 90) : fnarg_scope.
+Notation "x ':@:' ty" := (existT _ (ty, (RT_xrt (RT_of ty) x))) (at level 90) : fnarg_scope.
 Notation "x ':$@:' ty" := (existT _ (ty, x)) (at level 90) : fnarg_scope.
 Close Scope fnarg_scope.
 
@@ -494,7 +494,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa ')' '→' 
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys*) True)%I
     B _
-    rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 
@@ -507,7 +507,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys *) True)%I
     B _
-    rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params)))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params)))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 (** With a late precondition Pb *)
@@ -520,7 +520,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' Pa '|' Pb ')'
     Pa%I
     (λ π, (*typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, tys pattern, κs pattern, x pattern, y pattern) : stdpp_scope.
 Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ',' xn ';' Pa '|' Pb ')' '→' '∃' y ':' B ',' r '@' rty ';' Pr" :=
@@ -532,7 +532,7 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
     Pa%I
     (λ π, (* typarams_wf (fmap (A := Type * syn_type) fst rts) (fmap (A := Type * syn_type) snd rts) tys ∗ *) Pb%I π)%I
     B _
-    rty (λ y, ty_xrt rty r%I) (λ y, Pr%I)) : A → fn_params))
+    rty (λ y, RT_xrt (RT_of rty) r%I) (λ y, Pr%I)) : A → fn_params))
     : spec_with n (fmap (A := RT * syn_type) fst rts) fn_spec)
   (at level 99, Pr at level 200, κs pattern, tys pattern, x pattern, y pattern) : stdpp_scope.
 
