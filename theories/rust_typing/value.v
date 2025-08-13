@@ -65,6 +65,7 @@ Section value.
     simpl. intros st ot' mt (ot & Halg & Hot & Hst).
     rewrite (is_value_ot_core_layout _ _ _ Hot). done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     (* mem-cast *)
     intros st ot' mt ? π vs v (ot & Halg & Hot & Hst).

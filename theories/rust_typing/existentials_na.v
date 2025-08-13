@@ -125,6 +125,9 @@ Section na_ex.
     iIntros (?????) "($ & _ & _)".
   Qed.
 
+  (* ty_shr_persistent *)
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
+
   (* ty_shr_aligned *)
   Next Obligation.
     iIntros (?????) "(_ & _ & $)".

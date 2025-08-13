@@ -32,6 +32,7 @@ Section uninit.
     intros st ot mt (ly & Hst & ?).
     destruct mt; subst; done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (st ot mt ? π ? v (ly & ? & Heq)) "(%ly' & % & %)".
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }

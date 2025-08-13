@@ -249,6 +249,7 @@ Section structs.
   Next Obligation.
     iIntros (rts sls tys ? π r v) "(%sl & ? & $ & _)".
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (rts sls tys κ π l r) "(%sl & %Halg & %Hly & % & Hmem)".
     iExists sl. iSplitR; first done. iPureIntro.

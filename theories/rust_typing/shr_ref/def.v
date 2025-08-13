@@ -54,6 +54,7 @@ Section shr_ref.
   Qed.
   Next Obligation. iIntros (??????) "_". done. Qed.
   Next Obligation. iIntros (???????) "_". done. Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (???????). simpl. iIntros "(%l' & %ly & %r' & % & ? & ? & _)".
     iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.

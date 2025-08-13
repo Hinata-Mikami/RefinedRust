@@ -56,6 +56,7 @@ Section box.
   Next Obligation.
     iIntros (????) "_". done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (κ π l r) "(%li & %ly & %ri & Hr & % & % & %  & _)".
     iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.

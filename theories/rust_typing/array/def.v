@@ -164,6 +164,7 @@ Section array.
   Next Obligation.
     iIntros (len ty ? π r v) "_". done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (len ty κ π l r) "(%ly & %Hst & %Hsz & %Hlen & %Hly & Hv)".
     iExists (mk_array_layout ly len). iSplitR; first done.

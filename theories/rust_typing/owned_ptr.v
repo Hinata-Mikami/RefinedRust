@@ -59,6 +59,7 @@ Section owned_ptr.
     iIntros (??[] ?) "_". done.
   Qed.
   Next Obligation.
+    unfold TCNoResolve.
     intros ??? []. apply _.
   Qed.
   Next Obligation.

@@ -24,6 +24,7 @@ Section type_inh.
     simpl. intros ? ? ->.
     by apply syn_type_has_layout_unit.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. intros ??? ??? ->.
     iIntros "->".
@@ -199,6 +200,7 @@ Section fixpoint_def.
       lia.
   Qed.
   Next Obligation.
+    unfold TCNoResolve.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_Persistent.

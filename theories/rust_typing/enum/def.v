@@ -137,6 +137,7 @@ Section union.
   Next Obligation.
     eauto.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (????????) "(%ul & %ly & % & % & % & _)". iExists ul.
     iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
@@ -353,6 +354,7 @@ Section enum.
   Next Obligation.
     eauto.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (rt e κ π l r) "(%ly & %tag & %Halg & %Htag & Hl)".
     iPoseProof (ty_shr_aligned with "Hl") as "(%ly' & %Hly & %Halg')". simpl in *.

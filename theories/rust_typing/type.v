@@ -88,7 +88,8 @@ Record type `{!typeGS Σ} (rt : RT) := {
   ty_shr_sidecond κ π r l : ty_shr κ π r l -∗ ty_sidecond;
 
   (** The sharing predicate is persistent *)
-  ty_shr_persistent κ π l r : Persistent (ty_shr κ π r l);
+  (* Disabling TC resolution in order to make the proof opaque for type declarations *)
+  _ty_shr_persistent κ π l r : TCNoResolve (Persistent (ty_shr κ π r l));
   (** The address at which a shared type is stored must be correctly aligned *)
   ty_shr_aligned κ π l r :
     ty_shr κ π r l -∗ ∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout ty_syn_type ly⌝;
@@ -140,7 +141,6 @@ Record type `{!typeGS Σ} (rt : RT) := {
 }.
 Arguments ty_own_val : simpl never.
 Arguments ty_shr : simpl never.
-#[export] Existing Instance ty_shr_persistent.
 #[export] Existing Instance ty_sidecond_timeless.
 #[export] Existing Instance ty_sidecond_persistent.
 #[export] Existing Instance ty_xt_inhabited.
@@ -153,6 +153,11 @@ Arguments ty_sidecond {_ _ _}.
 Arguments ty_syn_type {_ _ _}.
 Arguments ty_shr {_ _ _}.
 Arguments ty_share {_ _ _}.
+
+#[export] Instance ty_shr_persistent `{!typeGS Σ} {rt : RT} (ty : type rt) κ π l r : Persistent (ty_shr ty κ π r l).
+Proof.
+  apply _ty_shr_persistent.
+Qed.
 
 (** We seal [ty_has_op_type] in order to avoid performance issues with automation accidentally unfolding it. *)
 Definition ty_has_op_type_aux `{!typeGS Σ} : seal (@_ty_has_op_type _ _). Proof. by eexists. Qed.
@@ -314,7 +319,8 @@ Record simple_type `{!typeGS Σ} (rt : RT) :=
     st_has_layout π r v :
       st_own π r v -∗ ∃ ly, ⌜syn_type_has_layout st_syn_type ly⌝ ∗ ⌜v `has_layout_val` ly⌝;
     st_op_type_stable ot mt : st_has_op_type ot mt → syn_type_has_layout st_syn_type (ot_layout ot);
-    st_own_persistent π r v : Persistent (st_own π r v);
+    (* TCNoResolve so we can make the proof opaque *)
+    _st_own_persistent π r v : TCNoResolve (Persistent (st_own π r v));
 
     st_memcast_compat ot mt st π r v :
       st_has_op_type ot mt →
@@ -334,12 +340,15 @@ Record simple_type `{!typeGS Σ} (rt : RT) :=
       (*mt ≠ MCId →*)
       (*st_has_op_type ot mt;*)
   }.
-#[export] Existing Instance st_own_persistent.
 #[export] Existing Instance st_xt_inhabited.
 #[export] Instance: Params (@st_own) 4 := {}.
 Arguments st_own {_ _ _}.
 Arguments st_has_op_type {_ _ _}.
 Arguments st_syn_type {_ _ _}.
+
+#[export] Instance st_own_persistent `{!typeGS Σ} {rt} (ty : simple_type rt) π r v :
+  (Persistent (st_own ty π r v)).
+Proof. apply _st_own_persistent. Qed.
 
 Lemma st_own_has_layout `{!typeGS Σ} {rt} (ty : simple_type rt) ly π r v :
   syn_type_has_layout ty.(st_syn_type) ly →
@@ -378,6 +387,9 @@ Next Obligation.
 Qed.
 Next Obligation.
   iIntros (????????) "Hown". done.
+Qed.
+Next Obligation.
+  unfold TCNoResolve. apply _.
 Qed.
 Next Obligation.
   iIntros (??? st κ π l r). simpl.

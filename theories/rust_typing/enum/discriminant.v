@@ -26,6 +26,7 @@ Section discriminant.
     simpl. intros. eapply (@ty_op_type_stable _ _ _ (int _) _ mt).
     rewrite ty_has_op_type_unfold. done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. intros ???????? Hv. iIntros "(%tag & %Htag & Hv)".
     iPoseProof (ty_memcast_compat _ _ _ mt with "Hv") as "Ha".

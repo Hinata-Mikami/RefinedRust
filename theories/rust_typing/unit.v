@@ -21,6 +21,7 @@ Section unit.
     intros ot mt ->%is_unit_ot_layout.
     by apply syn_type_has_layout_unit.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (ot ?? _ _  v Hot ->).
     destruct mt.

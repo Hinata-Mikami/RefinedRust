@@ -61,6 +61,7 @@ Section mut_ref.
     iIntros (? κ ? ? π r v) "_". done.
   Qed.
   Next Obligation.
+    unfold TCNoResolve.
     iIntros (? κ ? κ' π l [r γ]). apply _.
   Qed.
   Next Obligation.

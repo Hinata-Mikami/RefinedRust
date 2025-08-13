@@ -50,6 +50,7 @@ Section type.
   Next Obligation.
     iIntros (rt T ? π r v) "_". done.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (rt T κ π l r) "Hl". destruct r as [r | ].
     - iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iApply (ty_shr_aligned with "Hl").

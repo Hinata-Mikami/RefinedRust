@@ -199,6 +199,7 @@ Section function.
     intros ??? ? ot mt Hot. apply is_ptr_ot_layout in Hot. rewrite Hot.
     by apply syn_type_has_layout_fnptr.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (lfts rts lya fp ot mt st π r v Hot).
     destruct mt.

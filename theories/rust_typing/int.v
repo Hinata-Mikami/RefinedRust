@@ -24,6 +24,7 @@ Section int.
     destruct ot; try done.
     all: by eapply syn_type_has_layout_int.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (it ot mt st π r v Hot).
     destruct mt.
@@ -77,6 +78,7 @@ Section boolean.
   Next Obligation.
     intros ot mt Hot. simpl in *. rewrite (is_bool_ot_layout _ Hot). by apply syn_type_has_layout_bool.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (ot mt st π r v Hot).
     destruct mt.
@@ -125,6 +127,7 @@ Section char.
   Next Obligation.
     intros ot mt Hot. simpl in *. rewrite (is_char_ot_layout _ Hot). by apply syn_type_has_layout_char.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     simpl. iIntros (ot mt st π r v Hot).
     destruct mt.

@@ -28,6 +28,7 @@ Section alias.
     - by apply syn_type_has_layout_ptr.
     - subst. by apply syn_type_has_layout_ptr.
   Qed.
+  Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
     iIntros (ot mt st π l v Hot) "Hv".
     simpl in Hot.
