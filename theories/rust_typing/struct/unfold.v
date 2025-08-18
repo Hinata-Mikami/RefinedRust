@@ -491,7 +491,7 @@ Section place.
   Context `{!typeGS Σ}.
 
   (* needs to have lower priority than the id instance *)
-  Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfnRT (plistRT place_rfnRT rts)) sls bmin0 b P T :
+  Lemma typed_place_ofty_struct {rts} π E L l (tys : hlist type rts) (r : place_rfnRT (plistRT rts)) sls bmin0 b P T :
     typed_place π E L l (StructLtype (hmap (λ _, OfTy) tys) sls) r bmin0 b P T
     ⊢ typed_place π E L l (◁ (struct_t sls tys)) r bmin0 b P T.
   Proof.

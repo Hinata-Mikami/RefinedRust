@@ -12,19 +12,6 @@ From refinedrust Require Import options.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
-(** extend [solve_type_proper] *)
-Ltac solve_type_proper_hook ::=
-  match goal with
-    | |- ltype_own (OfTy _) ?bk _ _ _ ≡{_}≡ ltype_own (OfTy _) ?bk _ _ _ =>
-      match bk with
-      | Shared _ => apply ofty_own_ne_shared; try apply _
-      | Uniq _ _ => apply ofty_own_contr_uniq; try apply _
-      | Owned true => apply ofty_own_contr_owned; try apply _
-      | Owned false => apply ofty_own_ne_owned; try apply _
-      end
-    | |- guarded _ ≡{_}≡ guarded _ =>
-      apply guarded_dist; intros
-  end.
 
 Global Hint Transparent ly_size : solve_protected_eq_db.
 Ltac solve_protected_eq_hook ::=

@@ -252,8 +252,8 @@ Section place.
   Definition typed_place_struct_uniq_inst := [instance @typed_place_struct_uniq].
   Global Existing Instance typed_place_struct_uniq_inst | 30.
 
-  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) π E L (r : plistRT place_rfnRT rts) sls f κ bmin0 P l
-    (T : place_cont_t (plistRT place_rfnRT rts)) :
+  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) π E L (r : plistRT rts) sls f κ bmin0 P l
+    (T : place_cont_t (plistRT rts)) :
     ((* sidecondition for other components *)
     ⌜Forall (lctx_bor_kind_outlives E L bmin0) (concat ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
     (* recursively check place *)

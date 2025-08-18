@@ -2473,11 +2473,6 @@ Definition listRT (A : RT) : RT :=
   mk_RT (list (RT_rt A)) (list (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure listRT.
 
-Definition plistRT {A} (F : A → RT) (l : list A) : RT :=
-  mk_RT (plist (RT_rt ∘ F) l) (plist (RT_xt ∘ F) l)
-    (pmap (F:=(RT_xt ∘ F))(G:= (RT_rt ∘ F)) (λ X a, RT_xrt (F X) a))
-.
-Canonical Structure plistRT.
 
 Definition resultRT (A1 A2 : RT) : RT :=
   mk_RT (result (RT_rt A1) (RT_rt A2)) (result (RT_xt A1) (RT_xt A2))
@@ -2495,3 +2490,10 @@ Canonical Structure optionRT.
 Definition place_rfnRT (rt : RT) : RT :=
   mk_RT (place_rfn (RT_rt rt))%type (RT_xt rt) (PlaceIn ∘ RT_xrt rt).
 Canonical Structure place_rfnRT.
+
+Definition plistRT (l : list RT) : RT :=
+  mk_RT (plist (RT_rt ∘ place_rfnRT) l) (plist (RT_xt ∘ place_rfnRT) l)
+    (pmap (F:=(RT_xt ∘ place_rfnRT))(G:= (RT_rt ∘ place_rfnRT)) 
+      (λ (X : RT) (a : RT_xt (place_rfnRT X)), RT_xrt (place_rfnRT X) a))
+.
+Canonical Structure plistRT.

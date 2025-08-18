@@ -523,6 +523,7 @@ Section ltype_def.
           - for blocked this is quite clear, we want to link up the outer reference with the inner reference.
           - for other places, this controls the presence of the gvar_obs fragment/what we know about the inner refinement
    *)
+
   Fixpoint lty_rt (lt : lty) {struct lt} : RT :=
     match lt with
     | @BlockedLty rt _ _ => rt
@@ -534,7 +535,14 @@ Section ltype_def.
     | OwnedPtrLty lt ls => (place_rfnRT (lty_rt lt) * loc)%type
     | ShrLty lt _ => place_rfnRT (lty_rt lt)
     | StructLty lts _ =>
-        plist (λ lt, place_rfnRT (lty_rt lt)) lts
+        plistRT (fmap lty_rt lts)
+        (*mk_RT (plist (RT_rt ∘ place_rfnRT ∘ lty_rt) lts) (plist (RT_xt ∘ place_rfnRT ∘ lty_rt) lts)*)
+        (*(@pmap _ ((RT_xt ∘ place_rfnRT ∘ lty_rt))*)
+              (*((RT_rt ∘ place_rfnRT ∘ lty_rt)) *)
+              (*(λ (X : lty) (a : RT_xt (place_rfnRT (lty_rt (X)))), *)
+                  (*RT_xrt (place_rfnRT (lty_rt X)) a)*)
+              (*(lts)*)
+        (*)*)
     | @ArrayLty rt def len lts => list (place_rfnRT rt)
     | @EnumLty rt rte en variant lte re => rt
     | OpenedLty lt_cur lt_inner lt_full Cpre Cpost =>
@@ -1064,6 +1072,13 @@ Section ltype_def.
     done.
   Qed.
 
+  Lemma struct_rfn_eq (lts : list lty) : 
+    plist (place_rfn ∘ lty_rt) lts = plist (RT_rt ∘ place_rfnRT) (lty_rt <$> lts).
+  Proof.
+    rewrite -plist_fmap_shift. simpl. done.
+  Qed.
+
+
   Import EqNotations.
   Equations lty_own_pre (core : bool) (ltp : lty) (k : bor_kind) (π : thread_id) (r : place_rfn (lty_rt ltp)) (l : loc) : iProp Σ by wf ltp lty_size_rel :=
     lty_own_pre core (OfTyLty ty) k π r l :=
@@ -1247,7 +1262,8 @@ Section ltype_def.
       | Owned wl =>
           (* We change the interpretation to Owned false and interpret the later here, because we cannot push down/split up the credits for each of the components *)
           maybe_creds wl ∗
-          ∃ r' : plist (λ lt, place_rfn (lty_rt lt)) lts, place_rfn_interp_owned r r' ∗
+          ∃ r' : plist (place_rfn ∘ lty_rt) lts, 
+          place_rfn_interp_owned r (rew [id] (struct_rfn_eq lts) in r') ∗
           ▷?wl |={lftE}=>
           big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
             (λ i ty HP,
@@ -1275,7 +1291,8 @@ Section ltype_def.
                 lty_own_pre core (projT1 ty) (Owned false) π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
           )
       | Shared κ =>
-          (∃ r', place_rfn_interp_shared r r' ∗
+          (∃ r' : plist (place_rfn ∘ lty_rt) lts, 
+            place_rfn_interp_shared r (rew [id] (struct_rfn_eq lts) in r') ∗
             (* update needed to make the unfolding equation work *)
             □ |={lftE}=>
               big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
@@ -2196,11 +2213,11 @@ Section ltype_def.
       (*set (Heq' := lty_core_rt_eq ).*)
       simpl in r'.
       simpl.
-      iExists (rew [RT_rt]Heq in r').
-      iSplitL "Ha".
-      { by iApply place_rfn_interp_shared_transport_eq. }
-      iModIntro. iMod "Hl". iModIntro.
-      rewrite big_sepL_P_eq.
+      (*iExists (rew [RT_rt]Heq in r').*)
+      (*iSplitL "Ha".*)
+      (*{ by iApply place_rfn_interp_shared_transport_eq. }*)
+      (*iModIntro. iMod "Hl". iModIntro.*)
+      (*rewrite big_sepL_P_eq.*)
       (*
       rewrite pzipl_core_map_eq; first done; intros ?.
       rewrite rew_compose rew_UIP.
@@ -2366,22 +2383,18 @@ Section ltype_def.
   Global Typeclasses Opaque ShrLtype.
 
   #[universes(polymorphic)]
-  Program Definition StructLtype {rts : list RT} (lts : hlist ltype rts) (sls : struct_layout_spec) : ltype (plistRT place_rfnRT rts) := {|
+  Program Definition StructLtype {rts : list RT} (lts : hlist ltype rts) (sls : struct_layout_spec) : ltype (plistRT rts) := {|
     ltype_lty := StructLty (hcmap (@ltype_lty) lts) sls;
   |}.
   Next Obligation.
-    intros rts lts sls.
+    intros rts lts sls. simpl.
+    f_equiv.
     induction rts as [ | rt rts IH]; simpl.
     - inv_hlist lts. done.
     - inv_hlist lts. intros [lt <-] lts'.
-      (*rewrite RT_eq_iff.*)
-      (*simpl. *)
-      (*f_equiv.*)
-      (*specialize (IH lts').*)
-      (*rewrite RT_eq_iff in IH.*)
-      (*apply IH.*)
-  Admitted.
-  (*Qed.*)
+      simpl. 
+      f_equiv. apply IH.
+  Qed.
   Next Obligation.
     intros rts lts sls. simpl.
     induction rts as [ | rt rts IH]; inv_hlist lts; simpl; first done.
@@ -3272,9 +3285,9 @@ Section ltype_def.
     rewrite /struct_ltype_own ?ltype_own_core_unseal /ltype_own_core_def ?ltype_own_unseal /ltype_own_def /ltype_own_pre.
     simp lty_own_pre. fold (lty_rt).
     generalize (ltype_rt_agree (StructLtype lts sls)) as Heq => Heq.
-    assert (Heq2 : plist (λ lt, place_rfnRT (lty_rt lt)) (hcmap (@ltype_lty) lts) = (plist place_rfnRT rts : RT)).
-    { rewrite -Heq. done. }
-    repeat f_equiv.
+    (*assert (Heq2 : plist (λ lt, place_rfnRT (lty_rt lt)) (hcmap (@ltype_lty) lts) = (plist place_rfnRT rts : RT)).*)
+    (*{ rewrite -Heq. done. }*)
+    (*repeat f_equiv.*)
     (*
     { rewrite length_hcmap. done. }
     (*{ rewrite fmap_hcmap. done. }*)

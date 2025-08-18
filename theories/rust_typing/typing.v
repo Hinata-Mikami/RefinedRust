@@ -33,6 +33,20 @@ Notation Obs := gvar_pobs.
 
 Hint Extern 10 (Inhabited (RT_xt _)) => simpl; apply ty_xt_inhabited; done : typeclass_instances.
 
+(** extend [solve_type_proper] *)
+Ltac solve_type_proper_hook ::=
+  match goal with
+    | |- ltype_own (OfTy _) ?bk _ _ _ ≡{_}≡ ltype_own (OfTy _) ?bk _ _ _ =>
+      match bk with
+      | Shared _ => apply ofty_own_ne_shared; try apply _
+      | Uniq _ _ => apply ofty_own_contr_uniq; try apply _
+      | Owned true => apply ofty_own_contr_owned; try apply _
+      | Owned false => apply ofty_own_ne_owned; try apply _
+      end
+    | |- guarded _ ≡{_}≡ guarded _ =>
+      apply guarded_dist; intros
+  end.
+
 (** Bundle for all ghost state we need *)
 Class refinedrustGS Σ := {
   refinedrust_typeGS :: typeGS Σ;

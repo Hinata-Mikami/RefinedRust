@@ -196,7 +196,7 @@ Section structs.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
   (*#[universes(polymorphic)]*)
-  Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT place_rfnRT rts) := {|
+  Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT rts) := {|
     ty_own_val π r v :=
       (∃ sl,
         ⌜use_struct_layout_alg sls = Some sl⌝ ∗
