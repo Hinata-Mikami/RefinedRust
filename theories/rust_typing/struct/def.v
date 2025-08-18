@@ -1,6 +1,6 @@
-From refinedrust Require Export type ltypes.
+From refinedrust Require Export type.
 From refinedrust Require Import util hlist axioms.
-From refinedrust Require Import ltype_rules uninit_def.
+From refinedrust Require Import uninit_def.
 From refinedrust Require Import options.
 
 (** * Struct types *)

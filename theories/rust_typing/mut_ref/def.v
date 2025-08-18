@@ -1,5 +1,4 @@
-From refinedrust Require Export base type ltypes.
-From refinedrust Require Import ltype_rules.
+From refinedrust Require Export base type.
 From refinedrust Require Import options.
 
 (** * Mutable references *)
@@ -234,23 +233,5 @@ Section mut_ref.
   Global Instance mut_ref_type_ne {rt : RT} κ : TypeNonExpansive (mut_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
 End mut_ref.
-
-Section ofty.
-  Context `{!typeGS Σ}.
-
-  (** A very fundamental equivalence that should hold. *)
-  Lemma mut_ref_ofty_uniq_equiv {rt} (ty : type rt) π κ l r γ :
-    l ◁ₗ[π, Uniq κ γ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} (#r, γ) @ mut_ref κ ty.
-  Proof.
-    rewrite ltype_own_ofty_unfold/lty_of_ty_own {3}/ty_own_val/=.
-    iSplit.
-    - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & Hc & Hobs & Hb)".
-      iExists _, _. iR. iR. iR. iFrame "# ∗".
-    -iIntros "(%l' & %ly & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
-      apply val_of_loc_inj in Hl. subst.
-      iExists _. iR. iR. iFrame "# ∗".
-  Qed.
-End ofty.
-
 Notation "&mut< κ , τ >" := (mut_ref κ τ) (only printing, format "'&mut<' κ , τ '>'") : stdpp_scope.
 

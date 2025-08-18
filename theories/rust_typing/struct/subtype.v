@@ -1,4 +1,4 @@
-From refinedrust Require Export type ltypes.
+From refinedrust Require Export type.
 From refinedrust.struct Require Import def.
 From refinedrust Require Import options.
 

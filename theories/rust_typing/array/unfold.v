@@ -5,6 +5,28 @@ From refinedrust.array Require Import def.
 From refinedrust Require Import options.
 
 (** ** Unfolding [array_t] into [ArrayLtype]. *)
+Section lemmas.
+  Context `{!typeGS Σ}.
+
+  Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v :
+    v ◁ᵥ{π} r @ array_t len ty -∗ ⌜length r = len⌝.
+  Proof.
+    rewrite /ty_own_val/=. iIntros "(%ly & %Hst & % & $ & _)".
+  Qed.
+
+  (** Learnable *)
+  Global Program Instance learn_from_hyp_val_array {rt} (ty : type rt) xs len :
+    LearnFromHypVal (array_t len ty) xs :=
+    {| learn_from_hyp_val_Q := ⌜length xs = len⌝ |}.
+  Next Obligation.
+    iIntros (????????) "Hv".
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    by iFrame.
+  Qed.
+
+  (* TODO: possibly also prove these lemmas for location ownership? *)
+
+End lemmas.
 
 Section unfold.
   Context `{!typeGS Σ}.

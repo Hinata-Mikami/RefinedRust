@@ -1,5 +1,5 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import uninit int int_rules.
+From refinedrust Require Export type.
+From refinedrust Require Import uninit_def int.
 From refinedrust Require Import struct.def struct.subtype.
 From refinedrust Require Import options.
 

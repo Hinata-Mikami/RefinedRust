@@ -793,20 +793,6 @@ Section ne.
     all: unfold CanSolve; lia.
   Qed.
 End ne.
-(*Ltac solve_type_proper_step :=*)
-  (*first [*)
-    (*match goal with*)
-    (*| H : TypeNonExpansive _ |- _ => apply H*)
-    (*| H : TypeContractive _ |- _ => apply H*)
-    (*end*)
-  (*| match goal with*)
-    (*| H : ?a ≡ ?b |- ?a ≡{_}≡ ?b => apply equiv_dist; apply H*)
-    (*end*)
-  (*| done*)
-  (*| eapply dist_later_lt; [done | lia]*)
-  (*| eapply dist_later_2_lt; [done | lia]*)
-  (*| f_contractive | f_equiv ].*)
-
 
 Section guarded.
   Context `{!typeGS Σ}.
@@ -847,21 +833,9 @@ Section guarded.
   Qed.
 End guarded.
 
-Ltac solve_type_proper_step :=
-  first [
-    match goal with
-    | H : TypeNonExpansive _ |- _ => apply H
-    | H : TypeContractive _ |- _ => apply H
-    | H : TypeDist _ _ _ |- _ => apply H
-    | H : TypeDist2 _ _ _ |- _ => apply H
-    | H : TypeDistLater _ _ _ |- _ => apply H
-    | H : TypeDistLater2 _ _ _ |- _ => apply H
-    end
-  | match goal with
-    | |- ty_sidecond _ ≡{_}≡ ty_sidecond _ => apply equiv_dist
-    end
-
-  | match goal with
+(** extend [solve_type_proper] *)
+Ltac solve_type_proper_hook ::=
+  match goal with
     | |- ltype_own (OfTy _) ?bk _ _ _ ≡{_}≡ ltype_own (OfTy _) ?bk _ _ _ =>
       match bk with
       | Shared _ => apply ofty_own_ne_shared; try apply _
@@ -870,13 +844,5 @@ Ltac solve_type_proper_step :=
       | Owned false => apply ofty_own_ne_owned; try apply _
       end
     | |- guarded _ ≡{_}≡ guarded _ =>
-      apply guarded_dist; intros
-    end
-  (*| done*)
-  (*| eapply dist_later_lt; [done | lia]*)
-  (*| eapply dist_later_2_lt; [done | lia]*)
-  | f_contractive | f_equiv
-      ].
-Ltac solve_proper_step := first [eassumption | solve_type_proper_step].
-Ltac solve_type_proper :=
-  solve_proper_core ltac:(fun _ => solve_type_proper_step).
+      apply guarded_dist; iIntros
+  end.

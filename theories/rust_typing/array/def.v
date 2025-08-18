@@ -1,6 +1,6 @@
-From refinedrust Require Export type ltypes.
+From refinedrust Require Export type.
 From refinedrust Require Import uninit_def int.
-From refinedrust Require Import programs.
+(*From refinedrust Require Import programs.*)
 From refinedrust Require Import options.
 
 (** * Array types *)
@@ -323,7 +323,7 @@ Section lemmas.
   Lemma array_val_from_uninit π v st1 st2 ly1 ly2 len :
     syn_type_has_layout st1 ly1 →
     syn_type_has_layout st2 ly2 →
-    ly_size ly1 = ly_size ly2 * len →
+    ly_size ly1 = (ly_size ly2 * len)%nat →
     v ◁ᵥ{ π} .@ uninit st1 -∗
     v ◁ᵥ{ π} replicate len (# ()) @ array_t len (uninit st2).
   Proof.
@@ -352,8 +352,8 @@ Section lemmas.
   Lemma array_t_own_val_split {rt} (ty : type rt) π n1 n2 v1 v2 rs1 rs2 :
     length rs1 = n1 →
     length rs2 = n2 →
-    length v1 = n1 * size_of_st ty.(ty_syn_type) →
-    length v2 = n2 * size_of_st ty.(ty_syn_type) →
+    length v1 = (n1 * size_of_st ty.(ty_syn_type))%nat →
+    length v2 = (n2 * size_of_st ty.(ty_syn_type))%nat →
     (v1 ++ v2) ◁ᵥ{π} (rs1 ++ rs2) @ array_t (n1 + n2) ty -∗
     v1 ◁ᵥ{π} rs1 @ array_t n1 ty ∗ v2 ◁ᵥ{π} rs2 @ array_t n2 ty.
   Proof.
@@ -441,28 +441,3 @@ Section lemmas.
   Qed.
 
 End lemmas.
-
-Section lemmas.
-  Context `{!typeGS Σ}.
-
-  Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v :
-    v ◁ᵥ{π} r @ array_t len ty -∗ ⌜length r = len⌝.
-  Proof.
-    rewrite /ty_own_val/=. iIntros "(%ly & %Hst & % & $ & _)".
-  Qed.
-
-  (** Learnable *)
-  Global Program Instance learn_from_hyp_val_array {rt} (ty : type rt) xs len :
-    LearnFromHypVal (array_t len ty) xs :=
-    {| learn_from_hyp_val_Q := ⌜length xs = len⌝ |}.
-  Next Obligation.
-    iIntros (????????) "Hv".
-    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
-    by iFrame.
-  Qed.
-
-  (* TODO: possibly also prove these lemmas for location ownership? *)
-
-End lemmas.
-
-

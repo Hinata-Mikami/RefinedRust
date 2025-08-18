@@ -1,5 +1,4 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
+From refinedrust Require Export type.
 From refinedrust Require Import options.
 
 (** * Shared references *)
@@ -146,23 +145,6 @@ Qed.
   Global Instance shr_ref_type_ne {rt : RT} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.
 End shr_ref.
-
-Section ofty.
-  Context `{!typeGS Σ}.
-
-  (** A very fundamental equivalence that should hold *)
-  Lemma shr_ref_ofty_shared_equiv {rt} (ty : type rt) π κ l r :
-    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} #r @ shr_ref κ ty.
-  Proof.
-    rewrite ltype_own_ofty_unfold/lty_of_ty_own /ty_own_val/=.
-    iSplit.
-    - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & %r' & <- & #Ha)".
-      iExists _, _, _. iR. iR. iR. iFrame "#". done.
-    -iIntros "(%l' & %ly & %r' & %Hl & % & % & #Hsc & #Hlb & <- & #Ha)".
-      apply val_of_loc_inj in Hl. subst.
-      iExists _. iR. iR. iFrame "#". done.
-  Qed.
-End ofty.
 
 
 Notation "&shr< κ , τ >" := (shr_ref τ κ) (only printing, format "'&shr<' κ , τ '>'") : stdpp_scope.

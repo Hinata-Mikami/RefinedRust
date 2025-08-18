@@ -4,6 +4,23 @@ From refinedrust.mut_ref Require Import def subltype.
 From refinedrust Require Import options.
 
 (** ** Unfolding mutable references into [MutLtype] *)
+Section ofty.
+  Context `{!typeGS Σ}.
+
+  (** A very fundamental equivalence that should hold. *)
+  Lemma mut_ref_ofty_uniq_equiv {rt} (ty : type rt) π κ l r γ :
+    l ◁ₗ[π, Uniq κ γ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} (#r, γ) @ mut_ref κ ty.
+  Proof.
+    rewrite ltype_own_ofty_unfold/lty_of_ty_own {3}/ty_own_val/=.
+    iSplit.
+    - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & Hc & Hobs & Hb)".
+      iExists _, _. iR. iR. iR. iFrame "# ∗".
+    -iIntros "(%l' & %ly & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
+      apply val_of_loc_inj in Hl. subst.
+      iExists _. iR. iR. iFrame "# ∗".
+  Qed.
+End ofty.
+
 
 Section ltype_agree.
   Context `{typeGS Σ}
