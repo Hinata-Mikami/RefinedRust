@@ -11,20 +11,21 @@ From refinedrust Require Import options.
 
 (** We define [is_struct_ot] not just on the syntactic type, but also directly involve the component types [tys],
   because this stratifies the recursion going on and we anyways need to define a relation involving the [mt] for the semantic types. *)
-Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec) (tys : list rtype) (ot : op_type) (mt : memcast_compat_type) :=
+Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec)
+    {rts : list RT} (tys : hlist type rts) (ot : op_type) (mt : memcast_compat_type) :=
   match ot with
   | StructOp sl ots =>
-      length (sls.(sls_fields)) = length tys ∧
+      length (sls.(sls_fields)) = length rts ∧
       (* padding bits will be garbled, so we cannot fulfill MCId *)
       mt ≠ MCId ∧
       (* sl is a valid layout for this sls *)
       use_struct_layout_alg sls = Some sl ∧
-      length ots = length tys ∧
+      length ots = length rts ∧
       (* pointwise, the members have the right op_type and a layout matching the optype *)
       foldr (λ ty, and (let '(ty, ot) := ty in
-     ty_has_op_type (ty.(rt_ty) : type _) ot mt ∧
-          syn_type_has_layout (ty.(rt_ty).(ty_syn_type)) (ot_layout ot)))
-        True (zip tys ots)
+     ty_has_op_type (projT2 ty : type _) ot mt ∧
+          syn_type_has_layout ((projT2 ty).(ty_syn_type)) (ot_layout ot)))
+        True (zip (hzipl _ tys) ots)
   | UntypedOp ly =>
       (* ly is a valid layout for this sls *)
       ∃ sl, use_struct_layout_alg sls = Some sl ∧ ly = sl
@@ -32,7 +33,7 @@ Definition is_struct_ot `{typeGS Σ} (sls : struct_layout_spec) (tys : list rtyp
   end.
 Global Typeclasses Opaque is_struct_ot.
 
-Lemma is_struct_ot_layout `{typeGS Σ} sls sl tys ot mt :
+Lemma is_struct_ot_layout `{typeGS Σ} sls sl {rts} (tys : hlist type rts) ot mt :
   use_struct_layout_alg sls = Some sl →
   is_struct_ot sls tys ot mt → ot_layout ot = sl.
 Proof. move => ? ?. destruct ot => //; naive_solver. Qed.
@@ -42,9 +43,6 @@ Section structs.
   Context `{!typeGS Σ}.
 
   Implicit Types (rt : RT).
-
-  Polymorphic Definition zip_to_rtype (rt : list RT) (tys : hlist type rt) :=
-    (fmap (λ x, mk_rtype (projT2 x)) (hzipl rt tys)).
 
   Definition struct_own_el_val (π : thread_id) (i : nat) (fields : field_list) (v : val) {rt} (r : place_rfn rt) (ty : type rt) : iProp Σ :=
     ∃ (r' : rt) (ly0 : layout), place_rfn_interp_owned r r' ∗
@@ -197,7 +195,7 @@ Section structs.
   (** We use a [hlist] for the list of types and a [plist] for the refinement, to work around universe problems.
      See also the [ltype] definition. Using just [hlist] will cause universe problems, while using [plist] in the [lty]
      inductive will cause strict positivity problems. *)
-  #[universes(polymorphic)]
+  (*#[universes(polymorphic)]*)
   Program Definition struct_t {rts : list RT} (sls : struct_layout_spec) (tys : hlist type rts) : type (plistRT place_rfnRT rts) := {|
     ty_own_val π r v :=
       (∃ sl,
@@ -209,7 +207,8 @@ Section structs.
           struct_own_el_val π i sl.(sl_members) v' (projT2 ty).2 (projT2 ty).1
           )%I;
     ty_sidecond := ⌜length rts = length (sls_fields sls)⌝;
-    _ty_has_op_type ot mt := is_struct_ot sls (zip_to_rtype rts tys) ot mt;
+    _ty_has_op_type ot mt :=
+      is_struct_ot sls tys ot mt;
     ty_syn_type := sls : syn_type;
     ty_shr κ π r l :=
       (∃ sl,
@@ -228,7 +227,6 @@ Section structs.
     - refine (populate (cons_pair _ _)).
       { refine inhabitant. }
       apply IH.
-  (*Qed.*)
   Defined.
   Next Obligation.
     iIntros (rts sls tys π r v) "(%sl & %Halg & %Hlen & %Hly & ?)".
@@ -237,7 +235,9 @@ Section structs.
   Qed.
   Next Obligation.
     iIntros (rts sls tys ot mt Hot).
-    destruct ot; try done.
+    destruct ot.
+    all: simpl in *.
+    all: try done.
     - destruct Hot as (Hlen & Halg & Hlen' & Hmem).
       simpl. by apply use_struct_layout_alg_Some_inv.
     - destruct Hot as (sl & Halg & ->).
@@ -433,13 +433,13 @@ Section structs.
         (* lookup layout in sl *)
         (*have [|p ?]:= lookup_lt_is_Some_2 (field_members (sl_members sl)) (field_idx_of_idx (sl_members sl) k).*)
         (*{ have := field_idx_of_idx_bound sl k _ _ ltac:(done). rewrite field_members_length. lia. }*)
-        move: Hot => /(Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) k) (mk_rtype ty1, ot)).
+        simpl in *.
+        move: Hot => /(Forall_lookup_1 _ _ (field_idx_of_idx (sl_members sl) k) (existT _ ty1, ot)).
         (*destruct p as [p ?].*)
         move => [|??]; last done.
         apply/lookup_zip_with_Some. eexists _, _. split_and!; [done| |done].
         (*apply/lookup_zip_with_Some. eexists _, _.*)
         (*split; first done. split; last done.*)
-        rewrite list_lookup_fmap.
         match goal with
         | H : hpzipl rts _ _ !! _ = Some _ |- _ => eapply (hpzipl_lookup_inv_hzipl_pzipl rts tys r) in H as [-> _]
         end. done.
@@ -569,7 +569,6 @@ Section structs.
           apply Hne1. }
         by apply IH.
     - move => ty ty' Hst Hot ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !length_fmap !length_hzipl.
       rewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.
@@ -653,7 +652,6 @@ Section structs.
         eapply ty_lft_morphism_to_direct.
         apply Hne1.
     - move => ty ty' ot mt /=. rewrite ty_has_op_type_unfold/= /is_struct_ot.
-      rewrite !length_fmap !length_hzipl.
       erewrite Hst.
       destruct HT as [Ts' Hne ->].
       destruct ot as [ | | | sl ots | ly | ] => //=.

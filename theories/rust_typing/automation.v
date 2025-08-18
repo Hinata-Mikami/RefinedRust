@@ -9,9 +9,22 @@ From refinedrust Require Import int programs program_rules functions mut_ref.mut
 From refinedrust.automation Require Export existentials simpl solvers proof_state.
 From refinedrust Require Import options.
 
-
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
+
+(** extend [solve_type_proper] *)
+Ltac solve_type_proper_hook ::=
+  match goal with
+    | |- ltype_own (OfTy _) ?bk _ _ _ ≡{_}≡ ltype_own (OfTy _) ?bk _ _ _ =>
+      match bk with
+      | Shared _ => apply ofty_own_ne_shared; try apply _
+      | Uniq _ _ => apply ofty_own_contr_uniq; try apply _
+      | Owned true => apply ofty_own_contr_owned; try apply _
+      | Owned false => apply ofty_own_ne_owned; try apply _
+      end
+    | |- guarded _ ≡{_}≡ guarded _ =>
+      apply guarded_dist; intros
+  end.
 
 Global Hint Transparent ly_size : solve_protected_eq_db.
 Ltac solve_protected_eq_hook ::=
@@ -725,31 +738,6 @@ Ltac liRJudgement :=
         end
   end.
 
-Ltac liWorkAround :=
-  lazymatch goal with
-  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (◁ _)%I ?r ?b1 ?b2 (GetMemberPCtx _ _ :: _) ?T) =>
-      first [
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_struct π E L l (hcons _ _ _) r _ b1 b2 _ T) _) |
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_struct π E L l (hnil _) r _ b1 b2 _ T) _)
-        ] 
-  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (EnumLtype _ _ (◁ ?ty) _)%I ?r ?b1 (Shared _) (_) ?T) =>
-      first [
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_shared π E L l _ _ (hcons _ _ _) _ _ _ _ _ _ T) _) | 
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_shared π E L l _ _ (hnil _) _ _ _ _ _ _ T) _)
-        ]
-  | |- environments.envs_entails _ (typed_place ?π ?E ?L ?l (EnumLtype _ _ (◁ ?ty) _)%I ?r ?b1 (Owned _) (_) ?T) =>
-      first [
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_owned π E L l _ _ (hcons _ _ _) _ _ _ _ _ _ T) _) | 
-        notypeclasses refine (tac_fast_apply (typed_place_ofty_enum_struct_owned π E L l _ _ (hnil _) _ _ _ _ _ _ T) _)
-        ]
-  | |- environments.envs_entails _ (weak_subtype ?E ?L ?r1 ?r2 (struct_t _ +[]) (_) ?T) =>
-      notypeclasses refine (tac_fast_apply (weak_subtype_struct E L (hnil _) (_) _ _ _ _ T) _)
-  | |- environments.envs_entails _ (weak_subtype ?E ?L ?r1 ?r2 (struct_t _ (_ +:: _)) (_) ?T) =>
-        notypeclasses refine (tac_fast_apply (weak_subtype_struct E L (hcons _ _ _) (hcons _ _ _) _ _ _ _ T) _)
-  end
-.
-
-
 (* TODO Maybe this should rather be a part of Lithium? *)
 Ltac unfold_introduce_direct :=
   lazymatch goal with
@@ -804,7 +792,6 @@ Ltac liRStep :=
   | liRIntroduceTypedStmt
   | liRExpr
   | liRJudgement
-  | liWorkAround
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
   | progress simpl

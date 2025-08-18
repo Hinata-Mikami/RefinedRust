@@ -234,6 +234,7 @@ Definition ty_allows_writes `{!typeGS Σ} {rt} (ty : type rt) :=
 Definition ty_allows_reads `{!typeGS Σ} {rt} (ty : type rt) :=
   ty_has_op_type ty (use_op_alg' ty.(ty_syn_type)) MCCopy.
 
+#[universes(polymorphic)]
 Record rtype `{!typeGS Σ} `{!LayoutAlg} := mk_rtype {
   rt_rty : RT;
   rt_ty : type rt_rty;
@@ -278,21 +279,21 @@ Definition ty_outlives_E `{!typeGS Σ} {rt} (ty : type rt) (κ : lft) : elctx :=
   lfts_outlives_E (ty_lfts ty) κ.
 
 (* TODO this can probably not uphold the invariant that our elctx should be keyed by the LHS of ⊑ₑ *)
-Fixpoint tyl_lfts `{!typeGS Σ} tyl : list lft :=
+Fixpoint tyl_lfts `{!typeGS Σ} (tyl : list rtype) : list lft :=
   match tyl with
   | [] => []
   | [ty] => ty_lfts ty.(rt_ty)
   | ty :: tyl => (ty_lfts ty.(rt_ty)) ++ tyl.(tyl_lfts)
   end.
 
-Fixpoint tyl_wf_E `{!typeGS Σ} tyl : elctx :=
+Fixpoint tyl_wf_E `{!typeGS Σ} (tyl : list rtype) : elctx :=
   match tyl with
   | [] => []
   | [ty] => ty_wf_E ty.(rt_ty)
   | ty :: tyl => ty_wf_E ty.(rt_ty) ++ tyl.(tyl_wf_E)
   end.
 
-Fixpoint tyl_outlives_E `{!typeGS Σ} tyl (κ : lft) : elctx :=
+Fixpoint tyl_outlives_E `{!typeGS Σ} (tyl : list rtype) (κ : lft) : elctx :=
   match tyl with
   | [] => []
   | [ty] => ty_outlives_E ty.(rt_ty) κ
