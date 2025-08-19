@@ -47,8 +47,6 @@ Record RT : Type := mk_RT {
   RT_xrt : RT_xt → RT_rt;
 }.
 
-Implicit Type (rt : RT).
-
 (** Types are defined semantically by what it means for a value to have a particular type.
     Types are indexed by their refinement type [rt].
 *)
@@ -1566,7 +1564,7 @@ End ne.
 
 
 (** ** Subtyping etc. *)
-Definition type_incl `{!typeGS Σ} {rt1 rt2}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
+Definition type_incl `{!typeGS Σ} {rt1 rt2 : RT}  (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
   (* Require equality of the syntypes.
      This also ensures that the alignment requirements are the same, so that we can use [type_incl] below pointers. *)
   (* TODO: can we just require the layout to be the same? *)
@@ -1577,26 +1575,28 @@ Definition type_incl `{!typeGS Σ} {rt1 rt2}  (r1 : rt1) (r2 : rt2) (ty1 : type 
 #[export] Instance: Params (@type_incl) 4 := {}.
 
 (* Heterogeneous subtyping *)
-Definition subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
+Definition subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
   ∀ qL, llctx_interp_noend L qL  -∗ (elctx_interp E -∗ type_incl r1 r2 ty1 ty2).
 #[export] Instance: Params (@subtype) 6 := {}.
 
 (* Homogeneous subtyping independently of the refinement *)
-Definition full_subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Prop :=
+Definition full_subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt : RT} (ty1 ty2 : type rt) : Prop :=
   ∀ r, subtype E L r r ty1 ty2.
 #[export] Instance: Params (@full_subtype) 5 := {}.
 
 (* Heterogeneous type equality *)
-Definition eqtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1} {rt2} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
+Definition eqtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
   subtype E L r1 r2 ty1 ty2 ∧ subtype E L r2 r1 ty2 ty1.
 #[export] Instance: Params (@eqtype) 6 := {}.
 
-Definition full_eqtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt} (ty1 ty2 : type rt) : Prop :=
+Definition full_eqtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt : RT} (ty1 ty2 : type rt) : Prop :=
   ∀ r, eqtype E L r r ty1 ty2.
 #[export] Instance: Params (@full_eqtype) 5 := {}.
 
 Section subtyping.
   Context `{!typeGS Σ}.
+
+  Implicit Type rt : RT.
 
   (** *** [type_incl] *)
   Global Instance type_incl_ne {rt1 rt2} r1 r2 : NonExpansive2 (type_incl (rt1 := rt1) (rt2 := rt2) r1 r2).
@@ -2137,7 +2137,7 @@ Section place_rfn.
 
   (**
     [PlaceIn]: the current inner refinement is accurate (no blocking of the inner refinement).
-[PlaceGhost]: the current inner refinement is determined by a ghost variable, either because it is currently blocked or was implicitly unblocked.
+    [PlaceGhost]: the current inner refinement is determined by a ghost variable, either because it is currently blocked or was implicitly unblocked.
   *)
   Inductive place_rfn_mode := PlaceModeIn | PlaceModeGhost.
   (* concrete refinements *)
