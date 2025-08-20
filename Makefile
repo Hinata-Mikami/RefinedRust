@@ -14,7 +14,8 @@ clean: clean_case_studies clean_stdlib
 	@dune clean
 .PHONY: clean
 
-all_with_examples: all case_studies.proof
+# Make sure to call dune build only once, as subsequent calls delete the .perf files we create in timing CI
+all_with_examples: frontend generate_stdlib generate_case_studies
 	dune build --display short
 .PHONY: all_with_examples
 
@@ -24,8 +25,22 @@ setup-nix:
 .PHONY: setup-nix
 
 setup-dune:
-	echo "(lang dune 3.8)" > dune-project
+	@echo "(lang dune 3.8)" > dune-project
 .PHONY: setup-dune
+
+# setup a dune workspace where coqc is wrapped in the script necessary for the timing CI
+define DUNE_WORKSPACE_BODY
+(lang dune 3.8)
+
+(env
+ (_
+  (binaries (scripts/coqc-timing.sh as coqc))))
+endef
+export DUNE_WORKSPACE_BODY
+
+setup-dune-workspace: setup-dune
+	@echo "$$DUNE_WORKSPACE_BODY" > dune-workspace
+.PHONY: setup-dune-workspace
 
 ### core components
 typesystem:

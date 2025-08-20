@@ -17,3 +17,5 @@ _opam
 **/case_studies/*/Cargo.lock
 **/rustc-ice-*
 _CoqProject
+dune-workspace
+dune-project

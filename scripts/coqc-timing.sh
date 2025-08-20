@@ -9,7 +9,7 @@ set -e
 # we need to use opam exec -- coqc to get the coqc installed by opam, not this script
 # If PROFILE is set, generate a profile in the $PROFILE file (relative to the root of the repo).
 
-# This file is in "_build/default/tools"
+# This file is in "_build/default/scripts"
 REPO_DIR="$(dirname $(readlink -f $0))/../../../"
 
 PROFILE_ARG=()
