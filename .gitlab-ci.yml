@@ -1,61 +1,17 @@
-# This file expects two variables: `NIX_CI_CACHE_PUB_KEY` and `NIX_CI_CACHE_PRIV_KEY`
-# Those variables can be generated with: `nix-store --generate-binary-cache-key ci_nix_store priv.pem pub.pem`
-
-stages: [ nix-cache, lint, build, tests]
-
-.forks_only: &forks_only
-  rules:
-    # allow only on forks
-    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev"'
-      when: never
-    # don't run on "noci" branches
-    - if: '$CI_COMMIT_BRANCH =~ /^noci/'
-      when: never
-    # block schedules
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    # block triggers
-    - if: '$CI_PIPELINE_SOURCE == "trigger"'
-      when: never
-    # block API pipelines
-    - if: '$CI_PIPELINE_SOURCE == "api"'
-      when: never
-    # default = always
-    - when: always
+stages: [ nix-cache, lint, build, tests ]
 
 .upstream_only: &upstream_only
   rules:
-    # allow only on main repo
-    - if: '$CI_PROJECT_PATH != "lgaeher/refinedrust-dev"'
-      when: never
-    # don't run on "noci" branches
-    - if: '$CI_COMMIT_BRANCH =~ /^noci/'
-      when: never
-    # default = always
-    - when: always
+    - if: $CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && $CI_PIPELINE_SOURCE != "merge_request_event"
 
-.upstream_branches_only: &upstream_branches_only
+.forks_only: &forks_only
   rules:
-    # allow only on main repo
-    - if: '$CI_PROJECT_PATH != "lgaeher/refinedrust-dev"'
-      when: never
-    # don't run on "noci" branches
-    - if: '$CI_COMMIT_BRANCH =~ /^noci/'
-      when: never
-    # block schedules
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    # block triggers
-    - if: '$CI_PIPELINE_SOURCE == "trigger"'
-      when: never
-    # block API pipelines
-    - if: '$CI_PIPELINE_SOURCE == "api"'
-      when: never
-    # default = always
-    - when: always
+    - if: $CI_PROJECT_PATH != "lgaeher/refinedrust-dev"
 
+
+# Nix jobs expects two variables: `NIX_CI_CACHE_PUB_KEY` and `NIX_CI_CACHE_PRIV_KEY` (only available on upstream)
+# Those variables can be generated with: `nix-store --generate-binary-cache-key ci_nix_store priv.pem pub.pem`
 .nix:
-  # only on upstream because we need the NIX_CI_CACHE secrets
   <<: *upstream_only
   image: nixos/nix:2.30.0
   interruptible: true
@@ -69,7 +25,7 @@ stages: [ nix-cache, lint, build, tests]
    # Since the cache is not guaranteed to be available, it is preferable to build the dependencies for each job (which is no-op if the cache is available)
    - nix build --print-build-logs ${DEPENDENCIES}
 
-  variables: &nix_variables
+  variables:
     DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
     NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
     NIX_STORE_CACHE_PATH: ".ci_nix_cache"
@@ -80,8 +36,7 @@ stages: [ nix-cache, lint, build, tests]
     paths: [ "${NIX_STORE_CACHE_PATH}" ]
     policy: pull
 
-.build_to_cache:
-  extends: .nix
+.build_to_nix_cache:
   cache:
     <<: *nix_cache
     policy: pull-push
@@ -91,37 +46,32 @@ stages: [ nix-cache, lint, build, tests]
    - nix store sign --key-file <(echo "${NIX_CI_CACHE_PRIV_KEY}") --recursive ${NIX_DERIVATION}
    - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" ${NIX_DERIVATION}
 
-.build_to_artifacts:
-  extends: .nix
+.build_to_nix_artifacts:
   artifacts:
     paths: [ "${NIX_STORE_ARTIFACTS_PATH}" ]
     when: always
     expire_in: 1 week
 
   script:
-   - !reference [ .build_to_cache, script ]
+   - !reference [ .build_to_nix_cache, script ]
 
    # To avoid generating large `artifacts` without cluttering the `cache`, an overlay on top of the nix store must be used.
    # So, one of the following solutions can be used:
-   #  1. Using the `local-overlay` feature, but still in RFC (https://github.com/NixOS/rfcs/pull/152)
-   #  2. Using OverlayFS, but SYS_ADMIN capability is required
-   #  3. Moving files around, which is not the best way to do
+   #  1. Using OverlayFS (with `local-overlay` feature), but SYS_ADMIN capability is required
+   #  2. Moving files around, which is not the best way to do
    - mkdir -p "${NIX_STORE_ARTIFACTS_PATH}/nar"
    - nix path-info ${NIX_DERIVATION} | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
    - find "${NIX_STORE_ARTIFACTS_PATH}" -name "*.narinfo" -type f -print0 | xargs -r0 grep -oPh "(?<=URL:\ ).*" | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s\0" | xargs -r0 mv -v -t ${NIX_STORE_ARTIFACTS_PATH}/nar || true
 
-
 nix-cache:
+  extends: [ .nix, .build_to_nix_cache ]
   stage: nix-cache
   variables:
-    <<: *nix_variables
     NIX_DERIVATION: ${DEPENDENCIES}
-  extends: .build_to_cache
 
 clippy:
   extends: .nix
   stage: lint
-  needs: [ "nix-cache" ]
   script:
    - cd rr_frontend
    - nix develop -c cargo clippy --all-targets --all-features --no-deps
@@ -129,7 +79,6 @@ clippy:
 fmt:
   extends: .nix
   stage: lint
-  needs: [ "nix-cache" ]
   script:
    - cd rr_frontend
    - nix develop -c cargo fmt --check
@@ -137,7 +86,6 @@ fmt:
 deny:
   extends: .nix
   stage: lint
-  needs: [ "nix-cache" ]
   script:
    - cd rr_frontend
    - nix develop -c cargo deny check
@@ -145,39 +93,35 @@ deny:
 machete:
   extends: .nix
   stage: lint
-  needs: [ "nix-cache" ]
   script:
    - cd rr_frontend
    - nix develop -c cargo machete
 
 theories:
+  extends: [ .nix, .build_to_nix_artifacts ]
   stage: build
-  needs: [ "nix-cache" ]
+  needs: [ nix-cache ]
   variables:
-    <<: *nix_variables
     NIX_DERIVATION: .#theories
-  extends: .build_to_artifacts
 
 frontend:
+  extends: [ .nix, .build_to_nix_artifacts ]
   stage: build
-  needs: [ "nix-cache" ]
+  needs: [ nix-cache ]
   variables:
-    <<: *nix_variables
     NIX_DERIVATION: .#frontend
-  extends: .build_to_artifacts
 
 stdlib:
+  extends: [ .nix, .build_to_nix_artifacts ]
   stage: build
-  needs: [ "theories", "frontend" ]
+  needs: [ theories, frontend ]
   variables:
-    <<: *nix_variables
     NIX_DERIVATION: .#stdlib
-  extends: .build_to_artifacts
 
 frontend-tests:
   extends: .nix
   stage: tests
-  needs: [ "frontend" ]
+  needs: [ frontend ]
   script:
    - cd rr_frontend
    - nix develop -c cargo test
@@ -185,62 +129,48 @@ frontend-tests:
 case_studies:
   extends: .nix
   stage: tests
-  needs: [ "stdlib" ]
+  needs: [ stdlib ]
   script:
    - nix shell -c cargo refinedrust -V
    - nix shell -c nix run nixpkgs#gnumake -- generate_case_studies
    - cd case_studies
    - nix shell -c dune build --display=short
 
+
 .opam:
   image: $CI_REGISTRY/gaeher/rust-ci
-  variables: &opam_vars
+  interruptible: true
+  stage: build
+  needs: []
+
+  variables:
     # dune takes care of parallelization itself and does not like running in parallel
     CPU_CORES: "1"
+    # DENY_WARNINGS: "1"
     OCAML: "ocaml-variants.4.14.2+options ocaml-option-flambda"
-  stage: build
-  interruptible: true
-  tags:
-  - fp
+
   script:
-  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
-  - make setup-dune-workspace
-  - source "$HOME/.cargo/env"
-  - ci/buildjob
+   - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+   - make setup-dune-workspace
+   - source "$HOME/.cargo/env"
+   - ci/buildjob
+
   cache:
     key: "$CI_JOB_NAME"
-    paths:
-    - _opam/
-    #- ~/.opam
-    #- ~/.rustup/toolchains
-    #- ~/.rustup/update-hashes
-    #- ~/.rustup/settings.toml
+    paths: [ "_opam/" ]
 
 build-opam-rocq.9.1+rc1:
   <<: *forks_only
   extends: .opam
-  needs: []
+  tags: [ fp ]
   variables:
-    <<: *opam_vars
     OPAM_PINS: "rocq-core version 9.1+rc1 dune version 3.19.1"
-    # DENY_WARNINGS: "1"
     MAKE_TARGET: "all_with_examples"
-
 
 build-opam-rocq.9.1+rc1-timing:
-  <<: *upstream_branches_only
+  <<: *upstream_only
   extends: .opam
-  tags:
-  - fp-timing
-  needs: []
+  tags: [ fp-timing ]
   variables:
-    <<: *opam_vars
     OPAM_PINS: "rocq-core version 9.1+rc1 dune version 3.19.1"
-    # DENY_WARNINGS: "1"
     MAKE_TARGET: "all_with_examples"
-  script:
-  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
-  - make setup-dune-workspace
-  - source "$HOME/.cargo/env"
-  - ci/buildjob
-
