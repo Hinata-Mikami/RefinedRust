@@ -149,6 +149,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : StratifyLtype π E L _ _ _ StratifyUnblockOp l lt r b) T))
   | stratify_ltype_extract ?π ?E ?L ?Ma ?l ?lt ?r ?b ?κ ?T =>
       cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyExtractOp κ) l lt r b) T))
+  | stratify_ltype_resolve ?π ?E ?L ?Ma ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyResolveOp) l lt r b) T))
   | stratify_ltype_post_hook ?π ?E ?L ?ml ?l ?lt ?r ?b ?T =>
       cont uconstr:(((_ : StratifyLtypePostHook π E L ml l lt r b) T))
   | resolve_ghost ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>
@@ -651,6 +653,19 @@ Ltac liRContextExtractInit :=
       | _ => fail 1000 "gather_tctx: cannot determine Iris context"
       end
   end.
+Ltac liRContextResolveInit :=
+  lazymatch goal with
+  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldResolveAllInit) ?T) =>
+      let envs := eval hnf in envs in
+      match envs with
+      | Envs _ ?spatial _ =>
+          let tctx := gather_location_list spatial in
+          notypeclasses refine (tac_fast_apply (typed_context_fold_resolve_init tctx _ E L T) _)
+      | _ => fail 1000 "gather_tctx: cannot determine Iris context"
+      end
+  end.
+
+
 
 (** Endlft trigger automation for [Inherit] context items *)
 Ltac gather_on_endlft_worklist κ env :=
@@ -706,6 +721,9 @@ Ltac liRJudgement :=
     (* initialize context folding *)
     | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
         liRContextExtractInit
+    (* initialize context folding *)
+    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldResolveAllInit) ?T) =>
+        liRContextResolveInit
     (* initialize OnEndlft triggers *)
     | |- envs_entails _ (typed_on_endlft_pre ?E ?L ?κ ?T) =>
         liROnEndlftTriggerInit

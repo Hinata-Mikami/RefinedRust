@@ -1867,6 +1867,13 @@ Section judgments.
   Definition stratify_ltype_extract {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (κ : lft) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
     stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyExtractOp κ) l lt r b T.
 
+  (** Operation for resolving observations. *)
+  Inductive StratifyResolve :=
+    | StratifyResolveOp.
+  Definition stratify_ltype_resolve {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
+    stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyResolveOp) l lt r b T.
+
+
 
 
   (* TODO: even shared borrows and reads should not always refold, in order to handle ShrBlocked.
@@ -3068,6 +3075,32 @@ Next Obligation.
   iIntros (?? L κ key κs L' Hsplit T) "HL'". iExists L', κs. eauto.
 Qed.
 
+Global Typeclasses Opaque llctx_find_llft_goal.
+Ltac solve_llctx_find_llft := fail "implement llctx_find_llft_solve".
+Global Hint Extern 10 (LiTactic (llctx_find_llft_goal _ _ _)) =>
+    eapply llctx_find_llft_hint; solve_llctx_find_llft : typeclass_instances.
+
+(** Tactic hint to remove dead local lifetime aliases after a local lifetime has been ended *)
+Definition llctx_remove_dead_aliases_goal `{!typeGS Σ} (L : llctx) (κ : lft) (T : llctx → iProp Σ) : iProp Σ :=
+    ∃ L', ⌜sublist L' L⌝ ∗ T L'.
+#[global] Typeclasses Opaque llctx_remove_dead_aliases_goal.
+Definition llctx_remove_dead_aliases (L1 L2 : llctx) (κ : lft) :=
+  sublist L2 L1.
+Program Definition llctx_remove_dead_aliases_hint `{!typeGS Σ} (L : llctx) (κ : lft) (L' : llctx) :
+  llctx_remove_dead_aliases L L' κ →
+  LiTactic (llctx_remove_dead_aliases_goal L κ) := λ H, {|
+    li_tactic_P T := T L';
+|}.
+Next Obligation.
+  iIntros (?? L κ L' Ha T) "HL'". iExists L'. eauto.
+Qed.
+
+Global Typeclasses Opaque llctx_remove_dead_aliases_goal.
+Ltac solve_llctx_remove_dead_aliases := fail "implement llctx_remove_dead_aliases".
+Global Hint Extern 10 (LiTactic (llctx_remove_dead_aliases_goal _ _)) =>
+    eapply llctx_remove_dead_aliases_hint; solve_llctx_remove_dead_aliases : typeclass_instances.
+
+
 (** Tactic hint to compute a layout for a syn_type *)
 Definition compute_layout_goal `{!typeGS Σ} (st : syn_type) (T : layout → iProp Σ) : iProp Σ :=
   ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ T ly.
@@ -3175,10 +3208,6 @@ Next Obligation.
   iIntros (???? evar hint _ T). done.
 Qed.
 
-Global Typeclasses Opaque llctx_find_llft_goal.
-Ltac solve_llctx_find_llft := fail "implement llctx_find_llft_solve".
-Global Hint Extern 10 (LiTactic (llctx_find_llft_goal _ _ _)) =>
-    eapply llctx_find_llft_hint; solve_llctx_find_llft : typeclass_instances.
 
 Global Typeclasses Opaque lctx_lft_alive_count_goal.
 Ltac solve_lft_alive_count := fail "implement solve_lft_alive_count".
@@ -3239,6 +3268,7 @@ Global Typeclasses Opaque ensure_evar_instantiated_goal.
 Ltac solve_ensure_evar_instantiated := fail "implement solve_ensure_evar_instantiated".
 #[global] Hint Extern 1 (LiTactic (ensure_evar_instantiated_goal _ _)) =>
     refine (ensure_evar_instantiated_hint _ _ _); solve_ensure_evar_instantiated : typeclass_instances.
+
 Global Typeclasses Opaque ensure_evars_instantiated_goal.
 Ltac solve_ensure_evars_instantiated := fail "implement solve_ensure_evars_instantiated".
 #[global] Hint Extern 1 (LiTactic (ensure_evars_instantiated_goal _ _)) =>

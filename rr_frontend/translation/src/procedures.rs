@@ -6,10 +6,13 @@
 
 use std::collections::{BTreeMap, btree_map};
 
+use derive_more::Constructor;
+use radium::coq;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
+use crate::regions;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub(crate) enum Mode {
@@ -120,6 +123,45 @@ impl Meta {
     }
 }
 
+/// Extra info required to create a closure impl.
+/// This is created by the translation for the closure body.
+#[derive(Debug, Clone, Constructor)]
+pub(crate) struct ClosureImplInfo<'tcx, 'def> {
+    // the most general closure kind this implements
+    _closure_kind: ty::ClosureKind,
+
+    // the generic scope of this impl
+    pub(crate) scope: radium::GenericScope<'def>,
+    /// if this is a Fn/FnMut closure, the lifetime of the closure self arg inside `scope`
+    pub(crate) _closure_lifetime: Option<radium::Lft>,
+
+    pub(crate) region_map: regions::EarlyLateRegionMap,
+
+    // types of the closure trait
+    // this is the type of the self variable in the closure, i.e. wrapped in references for
+    // Fn/FnMut
+    pub(crate) self_ty: ty::Ty<'tcx>,
+    pub(crate) args_ty: ty::Ty<'tcx>,
+
+    pub(crate) tl_self_var_ty: radium::Type<'def>,
+    pub(crate) tl_args_ty: radium::Type<'def>,
+    pub(crate) tl_args_tys: Vec<radium::Type<'def>>,
+    pub(crate) tl_output_ty: radium::Type<'def>,
+
+    // the encoded pre and postconditions
+    pub(crate) pre_encoded: coq::term::Term,
+    pub(crate) post_encoded: coq::term::Term,
+    // only if this closure is FnMut or Fn
+    pub(crate) post_mut_encoded: Option<coq::term::Term>,
+}
+
+pub(crate) struct ClosureInfo<'tcx, 'rcx> {
+    pub(crate) info: ClosureImplInfo<'tcx, 'rcx>,
+
+    pub(crate) generated_functions: Vec<radium::Function<'rcx>>,
+    pub(crate) generated_impls: Vec<radium::TraitImplSpec<'rcx>>,
+}
+
 /**
  * Tracks the functions we translated and the Coq names they are available under.
  * To account for dependencies between functions, we may register translated names before we have
@@ -134,6 +176,9 @@ pub(crate) struct Scope<'tcx, 'def> {
     /// track the functions with just a specification (`rr::only_spec`)
     specced_functions:
         BTreeMap<OrderedDefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+
+    /// store info of closures we translated to emit closure trait impls
+    pub(crate) closure_info: BTreeMap<OrderedDefId, ClosureInfo<'tcx, 'def>>,
 }
 
 impl<'tcx, 'def> Scope<'tcx, 'def> {
@@ -143,11 +188,16 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
             name_map: BTreeMap::new(),
             translated_functions: BTreeMap::new(),
             specced_functions: BTreeMap::new(),
+            closure_info: BTreeMap::new(),
         }
     }
 
     fn get_ordered_did(&self, did: DefId) -> OrderedDefId {
         OrderedDefId::new(self.tcx, did)
+    }
+
+    pub(crate) fn lookup_closure_info(&self, did: DefId) -> Option<&ClosureImplInfo<'tcx, 'def>> {
+        self.closure_info.get(&self.get_ordered_did(did)).map(|x| &x.info)
     }
 
     /// Lookup the meta information of a function.
@@ -157,7 +207,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
 
     /// Lookup a translated function spec
     pub(crate) fn lookup_function_spec(
-        &self,
+        &'_ self,
         did: DefId,
     ) -> Option<&'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
         let ordered_did = self.get_ordered_did(did);

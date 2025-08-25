@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use log::info;
 use rr_rustc_interface::middle::mir;
@@ -32,7 +32,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // We loop over all predecessor locations, since some loans may end at the start of a
             // basic block (in particular related to NLL stuff)
             let pred = self.get_loc_predecessors(loc);
-            let mut dying_loans = HashSet::new();
+            let mut dying_loans = BTreeSet::new();
             for p in pred {
                 let dying_between = self.info.get_loans_dying_between(p, loc, false);
                 for l in &dying_between {
@@ -45,7 +45,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
             }
             // we prepend them before the current statement
-            prim_stmts.extend(self.generate_endlfts(dying_loans.into_iter()));
+            prim_stmts.extend(self.generate_endlfts(dying_loans.into_iter().rev()));
 
             match &stmt.kind {
                 mir::StatementKind::Assign(b) => {
@@ -188,7 +188,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let dying = self.info.get_dying_loans(loc);
         // TODO zombie?
         let _dying_zombie = self.info.get_dying_zombie_loans(loc);
-        let cont_stmt: radium::Stmt = self.translate_terminator(bb.terminator(), loc, dying)?;
+        let all_dying_loans: BTreeSet<_> = dying.into_iter().collect();
+        let cont_stmt: radium::Stmt =
+            self.translate_terminator(bb.terminator(), loc, all_dying_loans.into_iter().rev().collect())?;
 
         let cont_stmt = radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 

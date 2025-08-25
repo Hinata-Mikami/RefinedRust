@@ -7,9 +7,8 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use derive_more::Constructor;
 use log::{info, trace};
-use radium::{coq, specs};
+use radium::specs;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::type_ir::TypeFoldable as _;
@@ -29,37 +28,6 @@ use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, procedures, regions, search, traits, types};
 
-/// Extra info required to create a closure impl.
-#[derive(Debug, Clone, Constructor)]
-pub(crate) struct ClosureImplInfo<'tcx, 'def> {
-    // the most general closure kind this implements
-    _closure_kind: ty::ClosureKind,
-
-    // the generic scope of this impl
-    pub(crate) scope: radium::GenericScope<'def>,
-    /// if this is a Fn/FnMut closure, the lifetime of the closure self arg inside `scope`
-    pub(crate) _closure_lifetime: Option<radium::Lft>,
-
-    region_map: regions::EarlyLateRegionMap,
-
-    // types of the closure trait
-    // this is the type of the self variable in the closure, i.e. wrapped in references for
-    // Fn/FnMut
-    pub(crate) self_ty: ty::Ty<'tcx>,
-    pub(crate) args_ty: ty::Ty<'tcx>,
-
-    pub(crate) tl_self_var_ty: radium::Type<'def>,
-    pub(crate) tl_args_ty: radium::Type<'def>,
-    pub(crate) tl_args_tys: Vec<radium::Type<'def>>,
-    pub(crate) tl_output_ty: radium::Type<'def>,
-
-    // the encoded pre and postconditions
-    pre_encoded: coq::term::Term,
-    post_encoded: coq::term::Term,
-    // only if this closure is FnMut or Fn
-    post_mut_encoded: Option<coq::term::Term>,
-}
-
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
     env: &'def Environment<'tcx>,
@@ -75,8 +43,9 @@ pub(crate) struct TR<'tcx, 'def> {
     impl_literals: RefCell<HashMap<DefId, specs::LiteralTraitImplRef<'def>>>,
 
     /// for all closures we process and all the closure traits they will implement, the names for
-    /// the Coq definitions
-    closure_impls: RefCell<HashMap<(DefId, ty::ClosureKind), specs::LiteralTraitImplRef<'def>>>,
+    /// the Coq definitions, as well as the meta information for the impl method
+    closure_impls:
+        RefCell<HashMap<(DefId, ty::ClosureKind), (specs::LiteralTraitImplRef<'def>, procedures::Meta)>>,
 
     /// arena for allocating trait literals
     trait_arena: &'def Arena<specs::LiteralTraitSpec>,
@@ -415,6 +384,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         closure_did: DefId,
         closure_kind: ty::ClosureKind,
         spec: radium::LiteralTraitImpl,
+        fn_lit: procedures::Meta,
     ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
         let spec = self.impl_arena.alloc(spec);
 
@@ -423,7 +393,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             return Err(Error::ClosureImplAlreadyExists(closure_did, closure_kind));
         }
 
-        impl_literals.insert((closure_did, closure_kind), &*spec);
+        impl_literals.insert((closure_did, closure_kind), (&*spec, fn_lit));
 
         Ok(spec)
     }
@@ -445,9 +415,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         closure_did: DefId,
         kind: ty::ClosureKind,
-    ) -> Option<radium::LiteralTraitImplRef<'def>> {
+    ) -> Option<(radium::LiteralTraitImplRef<'def>, procedures::Meta)> {
         let impl_literals = self.closure_impls.borrow();
-        impl_literals.get(&(closure_did, kind)).copied()
+        impl_literals.get(&(closure_did, kind)).cloned()
     }
 
     /// Get the term for the specification of a trait impl (applied to the given arguments of the trait),
@@ -495,18 +465,19 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok((term, assoc_args))
     }
 
+    /// Get the term for the specification of a trait impl of `trait_did` for closure `closure_did` (applied
+    /// to `closure_args`), as well as the list of associated types.
     pub(crate) fn get_closure_impl_spec_term(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         closure_did: DefId,
         trait_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
-        _trait_args: &[ty::GenericArg<'tcx>],
     ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.env.tcx(), trait_did)
             .ok_or(Error::NotAClosureTrait(trait_did))?;
 
-        let closure_impl = self
+        let (closure_impl, _) = self
             .lookup_closure_impl(closure_did, closure_kind)
             .ok_or(Error::NotAClosureTraitImpl(closure_did, closure_kind))?;
 
@@ -745,7 +716,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                             closure_did,
                             req.trait_ref.def_id,
                             closure_args,
-                            trait_args,
                         )?;
 
                         // filter out the associated types which are constrained -- these are
@@ -860,7 +830,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         closure_did: DefId,
         kind: ty::ClosureKind,
-        info: &ClosureImplInfo<'tcx, 'def>,
+        info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
     ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
         trace!(
@@ -884,7 +854,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // check if we registered this impl previously
         let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
-        let impl_ref = self
+        let (impl_ref, _) = self
             .lookup_closure_impl(closure_did, kind)
             .ok_or(Error::NotAClosureTraitImpl(closure_did, kind))?;
 

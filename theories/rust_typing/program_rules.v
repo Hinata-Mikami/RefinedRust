@@ -1461,6 +1461,14 @@ Section typing.
   Global Instance stratify_ltype_extract_coreable_inst {rt} π E L mu mdu ma l (lt : ltype rt) b r κs κ' :
     StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt κs r b T).
 
+  (** Resolve stratification: we also want to Unblock here *)
+  Global Instance stratify_ltype_resolve_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ  :
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+  Global Instance stratify_ltype_resolve_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+  Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt : ltype rt) b r κs :
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt κs r b T).
+
   (** ** place typing *)
 
   (** *** Instances for unblocking & updating refinements *)
@@ -3371,6 +3379,11 @@ Section typing.
   Inductive CtxFoldExtract : Type :=
     | CtxFoldExtractAllInit (κ : lft)
     | CtxFoldExtractAll (κ : lft).
+
+  Inductive CtxFoldResolve : Type :=
+    | CtxFoldResolveAllInit
+    | CtxFoldResolveAll.
+
   Lemma type_endlft E L (n : string) s fn R ϝ :
     (∃ M, named_lfts M ∗
       (* if this lifetime does not exist anymore, this is a nop *)
@@ -3380,18 +3393,20 @@ Section typing.
         (* find some credits *)
         prove_with_subtype E L false ProveDirect (£1) (λ L1 _ R2,
         (* find the new llft context *)
-        li_tactic (llctx_find_llft_goal L1 κ LlctxFindLftFull) (λ '(_, L2),
+        li_tactic (llctx_find_llft_goal L1 κ LlctxFindLftFull) (λ '(_, L1'),
+        li_tactic (llctx_remove_dead_aliases_goal L1' κ) (λ L2,
         (* simplify the name map *)
         li_tactic (simplify_lft_map_goal (named_lft_delete n M)) (λ M',
         named_lfts M' -∗
         (□ [† κ]) -∗
         (* extract observations from now-dead mutable references *)
         typed_pre_context_fold E L2 (CtxFoldExtractAllInit κ) (λ L3,
+        (*typed_pre_context_fold E L3 (CtxFoldResolveAllInit) (λ L3',*)
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £1 ∗ atime 1) (λ L4,
         (* run endlft triggers *)
         typed_on_endlft_pre E L4 κ (λ L5,
-        typed_stmt E L5 s fn R ϝ))))))
+        typed_stmt E L5 s fn R ϝ)))))))
       | None => named_lfts M -∗ typed_stmt E L s fn R ϝ
       end))
     ⊢ typed_stmt E L (annot: (EndLftAnnot n); s) fn R ϝ.
@@ -3403,14 +3418,17 @@ Section typing.
     { iIntros (?) "#CTX #HE HL Hcont". iApply wps_annot.
       iApply step_fupdN_intro; first done.
       iIntros "!> _". by iApply ("HT" with "Hnamed CTX HE HL"). }
-    unfold llctx_find_llft_goal, li_tactic.
+    unfold llctx_find_llft_goal, llctx_remove_dead_aliases_goal, li_tactic.
     iIntros (?) "#CTX #HE HL Hcont".
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R2 & >(Hc & HR2) & HL & HT)"; [done.. | ].
     iDestruct "HT" as "(%L' & % & %Hkill & Hs)".
-    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%M' & _ & Hs)".
+    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%L'' & %Hsub & Hs)". 
+    iDestruct "Hs" as "(%M' & _ & Hs)".
     iPoseProof (llctx_end_llft ⊤ with "HL") as "Ha"; [done | done | apply Hkill | ].
     iApply fupd_wps.
     iMod ("Ha"). iApply (lc_fupd_add_later with "Hc"). iNext. iMod ("Ha") as "(#Hdead & HL)".
+    iPoseProof (llctx_interp_sublist with "HL") as "HL".
+    { apply Hsub. }
 
     iPoseProof ("Hs" with "[Hnamed] Hdead") as "HT".
     { by iApply named_lfts_update. }
@@ -3579,6 +3597,35 @@ Section typing.
   Proof.
     iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) _ _ (CtxFoldExtractAll κ)). iFrame.
     rewrite /typed_context_fold_stratify_interp/type_ctx_interp; simpl; done.
+  Qed.
+
+  (** We instantiate the context folding mechanism for resolution of observations. *)
+  Definition typed_context_fold_resolve_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
+  Lemma typed_context_fold_step_resolve π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
+    stratify_ltype_resolve π E L StratNoRefold l lt r (Owned false)
+      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_resolve_interp π) E L' (CtxFoldResolveAll) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
+    ⊢ typed_context_fold_step (typed_context_fold_resolve_interp π) π E L (CtxFoldResolveAll) l lt r tctx (acc, R) T.
+  Proof.
+    iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
+    iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
+    iDestruct "Hc" as "(%L' & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & Hcont)".
+    iApply ("Hcont" $! F with "[//] [//] [//] CTX HE HL [Hstep Hdel]").
+    iApply (logical_step_compose with "Hstep").
+    iApply (logical_step_compose with "Hdel").
+    iApply logical_step_intro.
+    iIntros "(Hctx & HR) (Hl & HR')".
+    iFrame.
+  Qed.
+  Definition typed_context_fold_step_resolve_inst := [instance typed_context_fold_step_resolve].
+  Global Existing Instance typed_context_fold_step_resolve_inst.
+
+  Lemma typed_context_fold_resolve_init tctx π E L T :
+    typed_context_fold (typed_context_fold_resolve_interp π) E L (CtxFoldResolveAll) tctx ([], True%I) (λ L' m' acc, True ∗
+      typed_context_fold_end (typed_context_fold_resolve_interp π) E L' acc T)
+    ⊢ typed_pre_context_fold E L (CtxFoldResolveAllInit) T.
+  Proof.
+    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_resolve_interp π) ([], True%I) _ _ (CtxFoldResolveAll)). iFrame.
+    rewrite /typed_context_fold_resolve_interp/type_ctx_interp; simpl; done.
   Qed.
 
   (* Typing rule for [Return] *)

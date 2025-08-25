@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::mem;
 
-use log::{info, trace};
+use log::trace;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{metadata, ty};
 use rr_rustc_interface::{hir, span};
@@ -81,11 +81,12 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 ) -> Option<DefId> {
     // get all impls of this trait
     let impls: &ty::trait_def::TraitImpls = tcx.trait_impls_of(trait_did);
+    trace!("resolving trait impl for {trait_did:?} with args {trait_args:?} for {for_type:?}");
 
     if let ty::TyKind::Param(_) = for_type.kind() {
         // this is a blanket impl
         let defs = impls.blanket_impls();
-        info!("found blanket implementations: {:?}", defs);
+        trace!("found blanket implementations: {:?}", defs);
 
         let mut solution = None;
         for did in defs {
@@ -104,7 +105,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
                 let this_impl_args = impl_ref.args;
                 // filter by the generic instantiation for the trait
-                info!("found impl with args {:?}", this_impl_args);
+                trace!("found impl with args {:?}", this_impl_args);
                 // args has self at position 0 and generics of the trait at position 1..
 
                 // check if the generic argument types match up
@@ -114,12 +115,13 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
                     trait_args,
                     &mut unification_map,
                 ) {
+                    trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
                     continue;
                 }
 
                 // TODO check if the where clauses match up
 
-                info!("found impl {:?}", impl_ref);
+                trace!("found impl {:?}", impl_ref);
                 if solution.is_some() {
                     println!(
                         "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
@@ -145,13 +147,14 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
             ty::fast_reject::TreatParams::InstantiateWithInfer,
         )?;
         let defs = impls.non_blanket_impls().get(&simplified_type)?;
-        info!("found non-blanket implementations: {:?}", defs);
+        trace!("found non-blanket implementations: {:?}", defs);
 
         let mut solution = None;
         for did in defs {
             let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
             let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
+            trace!("trying to unify types: {for_type:?} and {impl_self_ty:?}");
             // check if this is an implementation for the right type
             if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
                 let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
@@ -161,7 +164,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
                     let this_impl_args = impl_ref.args;
                     // filter by the generic instantiation for the trait
-                    info!("found impl with args {:?}", this_impl_args);
+                    trace!("found impl with args {:?}", this_impl_args);
                     // args has self at position 0 and generics of the trait at position 1..
 
                     // check if the generic argument types match up
@@ -171,10 +174,11 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
                         trait_args,
                         &mut unification_map,
                     ) {
+                        trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
                         continue;
                     }
 
-                    info!("found impl {:?}", impl_ref);
+                    trace!("found impl {:?}", impl_ref);
                     if solution.is_some() {
                         println!(
                             "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
@@ -213,7 +217,7 @@ where
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
-                trace!("following segment {:?}; items to look at: {:?}", segment.as_ref(), items);
+                //trace!("following segment {:?}; items to look at: {:?}", segment.as_ref(), items);
                 for item in mem::take(&mut items) {
                     let item: &metadata::ModChild = item;
 
@@ -234,9 +238,9 @@ where
 
                     let did: DefId = item.res.def_id();
                     let impls: &[DefId] = tcx.inherent_impls(did);
-                    trace!("trying to find method among impls {:?}", impls);
+                    //trace!("trying to find method among impls {:?}", impls);
                     if impls.is_empty() {
-                        trace!("children: {:?}", tcx.module_children(item.res.def_id()));
+                        //trace!("children: {:?}", tcx.module_children(item.res.def_id()));
                     }
 
                     let find = path_it.next().unwrap();
@@ -348,11 +352,11 @@ pub(crate) fn try_resolve_method_did_incoherent(tcx: ty::TyCtxt<'_>, path: &[Str
     {
         let incoherent_impls: &[DefId] = tcx.incoherent_impls(simplified_ty);
 
-        trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
+        //trace!("incoherent impls for {:?}: {:?}", simplified_ty, incoherent_impls);
 
         for impl_did in incoherent_impls {
             let items: &ty::AssocItems = tcx.associated_items(*impl_did);
-            trace!("items in {:?}: {:?}", impl_did, items);
+            //trace!("items in {:?}: {:?}", impl_did, items);
             // TODO: more robustly handle ambiguous matches
             for item in items.in_definition_order() {
                 //info!("comparing: {:?} with {:?}", item.name.as_str(), find);

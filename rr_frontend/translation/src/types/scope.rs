@@ -267,9 +267,12 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         for p in x {
             if let Some(r) = p.as_region() {
-                if let Some(name) = r.get_name() {
+                if let Some(name) = r.get_name()
+                    && name.as_str() != "'_"
+                {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(coq::Ident::new(name.as_str())));
+                    let name = format!("ulft_{}", name);
+                    scope.push(Param::Region(coq::Ident::new(name)));
                 } else {
                     let name = coq::Ident::new(format!("ulft_{}", region_count));
                     region_count += 1;
@@ -676,8 +679,11 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
         let mut ty_names = HashMap::new();
         let mut lft_names = HashMap::new();
 
-        for p in x {
-            let name = strip_coq_ident(p.name.as_str());
+        for (num, p) in x.iter().enumerate() {
+            let mut name = strip_coq_ident(p.name.as_str());
+            if name == "_" {
+                name = format!("p{num}");
+            }
             match p.kind {
                 ty::GenericParamDefKind::Const { .. } => {
                     scope.push(Param::Const);

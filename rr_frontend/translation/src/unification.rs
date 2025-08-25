@@ -28,9 +28,11 @@ fn unify_args<'tcx>(
             // TODO
             false
         },
-        ty::GenericArgKind::Lifetime(_l) => {
-            // TODO
-            false
+        ty::GenericArgKind::Lifetime(r1) => {
+            let Some(r2) = arg2.as_region() else {
+                return false;
+            };
+            unify_regions(r1, r2, mapping)
         },
     }
 }
@@ -51,6 +53,20 @@ fn unify_generic_args<'tcx>(
     true
 }
 
+pub(crate) fn unify_regions<'tcx>(
+    r1: ty::Region<'tcx>,
+    r2: ty::Region<'tcx>,
+    _mapping: UnificationMap<'_, 'tcx>,
+) -> bool {
+    if let ty::RegionKind::ReEarlyParam(e1) = r1.kind()
+        && let ty::RegionKind::ReEarlyParam(e2) = r2.kind()
+    {
+        return e1.index == e2.index;
+    }
+
+    false
+}
+
 pub(crate) fn unify_types<'tcx>(
     ty1: ty::Ty<'tcx>,
     ty2: ty::Ty<'tcx>,
@@ -66,6 +82,19 @@ pub(crate) fn unify_types<'tcx>(
             }
 
             unify_generic_args(args1, args2, mapping)
+        },
+        ty::TyKind::Ref(r1, ty1, m1) => {
+            let ty::TyKind::Ref(r2, ty2, m2) = ty2.kind() else {
+                return false;
+            };
+
+            if m1 != m2 {
+                return false;
+            }
+            if !unify_regions(*r1, *r2, mapping) {
+                return false;
+            }
+            unify_types(*ty1, *ty2, mapping)
         },
         ty::TyKind::Param(p1) => {
             let ty::TyKind::Param(p2) = ty2.kind() else {

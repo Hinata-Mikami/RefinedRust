@@ -59,6 +59,14 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                     let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
                     buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
                     buffer.parse::<_, MToken![=]>(&()).map_err(str_err)?;
+
+                    // if this is delimited, just enter the delimiter
+                    let buffer = if let Some(stream) = buffer.peek_delimited() {
+                        parse::Buffer::new(stream)
+                    } else {
+                        buffer
+                    };
+
                     let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                     let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
                     if trait_attrs

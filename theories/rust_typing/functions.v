@@ -226,11 +226,6 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  (* probably it's better to extract this into a tactic hint. *)
-
-  (*Fixpoint instantiate_all_typaram_evars {rts} (evars : plist type rts ) (hint : list {x : Type & type x})*)
-
-
   Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp (fp : prod_vec lft lfts → plist type rts → fn_spec) sta T :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn) (λ '(π', mask),
@@ -258,10 +253,9 @@ Section call.
           but even the logical step thing is problematic.
         *)
       prove_with_subtype E L1 true ProveDirect (fps.(fp_Pa) π) (λ L2 _ R3,
-
       (* finally, prove the sidecondition *)
       fps.(fp_Sc) π ∗
-      ⌜Forall (lctx_lft_alive E L2) (L2.*1.*2)⌝ ∗
+      ⌜Forall (lctx_lft_alive E L2) L2.*1.*2⌝ ∗
       ⌜∀ ϝ, elctx_sat (((λ '(_, κ, _), ϝ ⊑ₑ κ) <$> L2) ++ E) L2 (fps.(fp_elctx) ϝ)⌝ ∗
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
@@ -282,7 +276,6 @@ Section call.
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(Hsc & %Hal & %Hsat & Hr)".
     (* initialize the function's lifetime *)
-    set (ϝ' := lft_intersect_list (L2.*1.*2)).
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iApply fupd_wp. iMod (lctx_lft_alive_tok_noend_list with "HE HL") as "(%q & Htok & HL & HL_cl')";
       [done | apply Hal | ].

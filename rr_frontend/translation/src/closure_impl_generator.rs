@@ -1,4 +1,4 @@
-// © 2023, The RefinedRust Develcpers and Contributors
+// © 2025, The RefinedRust Develcpers and Contributors
 //
 // This Source Code Form is subject to the terms of the BSD-3-clause License.
 // If a copy of the BSD-3-clause license was not distributed with this
@@ -10,7 +10,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use typed_arena::Arena;
 
-use crate::traits::registry::{self, TR};
+use crate::traits::registry::TR;
 use crate::types::{TX, scope};
 use crate::{Environment, base, body, procedures, search};
 
@@ -66,45 +66,14 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         })
     }
 
-    // What does this need:
-    // - the type of the argument tuple
-    // - the call destination, to generate the UsedProcedure
-    //   + this is fairly complicated for abstracting correctly and quantifying.
-    //   + I should re-use the existing facilities for generating this.
-    // -
-    //
-    //
-    // Q: What if the closure depends on some trait impls?
-    // - e.g., the surrounding function has some trait args and we're calling that in the closure.
-    //
-    // Then the impl of the closure trait also depends on that.
-    // but if I pass that on now, I need to dispatch these assumptions.
-    //  - this is also appearing for other traits of course, and not specific to closures.
-    //  - that works
-    //
-    // To what extent do we need to deal with that when generating the shim?
-    // Maybe a better alternative is to try to generate a Rust code shim using rustc's existing
-    // infrastructure. That might be easier. Then we don't need to duplicate all that handling...
-    // - this doesn't really work.
-    // - we will be lacking the borrowck facts, so the whole translation will need to be changed to
-    // handle that case
-    // - we will need to specify a source, and we don't really have one we can assign here
-    //
-    // So let's go back to directly generating radium code
-    // - generic scope of the impl is the same as the scope of the closure itself.
-    // - we need to generate the args inst etc of course.
-    // - all the trait requirements are the same.
-    // - we need to generate the arg syntypes
-    // -
-    //
-    //
+    /// Generate the `call_...` function shim, pushing it to the given `builder`.
     fn generate_call_shim(
         &self,
         builder: &mut radium::FunctionBuilder<'def>,
-        info: &registry::ClosureImplInfo<'tcx, 'def>,
+        info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &'def radium::FunctionSpec<'def>,
+        closure_spec: &radium::FunctionSpec<'def>,
         ref_self: &ShimRefSelf,
     ) -> Result<(), base::TranslationError<'tcx>> {
         let (tupled_upvars_ty, self_is_ref) = match &info.tl_self_var_ty {
@@ -330,11 +299,12 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         Ok(())
     }
 
+    /// Make a procedure use for the closure's body.
     fn generate_closure_procedure_use(
         &self,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &'def radium::FunctionSpec<'def>,
+        closure_spec: &radium::FunctionSpec<'def>,
     ) -> Result<radium::UsedProcedure<'def>, base::TranslationError<'tcx>> {
         // explicit instantiation is needed sometimes
         let spec_term = radium::UsedProcedureSpec::Literal(
@@ -397,8 +367,9 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         }
     }
 
+    /// Create the scope for the `call_...` function of the impl.
     fn create_impl_fn_scope(
-        info: &registry::ClosureImplInfo<'tcx, 'def>,
+        info: &procedures::ClosureImplInfo<'tcx, 'def>,
         kind: ty::ClosureKind,
     ) -> radium::GenericScope<'def> {
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
@@ -437,11 +408,12 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         &self,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
+        fn_meta: &procedures::Meta,
         kind: ty::ClosureKind,
         to_impl: ty::ClosureKind,
-        closure_spec: &'def radium::FunctionSpec<'def>,
+        closure_spec: &radium::FunctionSpec<'def>,
         impl_info: &radium::TraitRefInst<'def>,
-        info: &registry::ClosureImplInfo<'tcx, 'def>,
+        info: &procedures::ClosureImplInfo<'tcx, 'def>,
     ) -> Result<radium::Function<'def>, base::TranslationError<'tcx>> {
         // Assemble the inner spec, using the default spec of the closure traits and the impl info
         // we have already assembled before
@@ -450,15 +422,13 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             ty::ClosureKind::Fn => "call".to_owned(),
             ty::ClosureKind::FnOnce => "call_once".to_owned(),
         };
-        // Assemble the main spec
-        let fn_name = format!("{}_{method_name}", closure_spec.function_name);
-        let spec_name = format!("{fn_name}_spec");
-        let code_name = format!("{fn_name}_code");
-        let trait_req_incl_name = format!("{fn_name}_trait_req_incl");
-        // TODO: do we want to generate a trait req incl?
 
-        let mut builder =
-            radium::FunctionBuilder::new(&fn_name, &code_name, &spec_name, &trait_req_incl_name);
+        let mut builder = radium::FunctionBuilder::new(
+            fn_meta.get_name(),
+            fn_meta.get_code_name(),
+            fn_meta.get_spec_name(),
+            fn_meta.get_trait_req_incl_name(),
+        );
 
         // Provide the generic scope of the closure itself
         let fn_generics = Self::create_impl_fn_scope(info, to_impl);

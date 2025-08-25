@@ -29,6 +29,7 @@ use std::cell::Cell;
 use std::str::FromStr;
 use std::{fmt, result, vec};
 
+use ast::tokenstream::TokenStream;
 use rr_rustc_interface::{ast, span};
 use unicode_xid::UnicodeXID;
 
@@ -118,7 +119,7 @@ pub struct Buffer {
 
 impl Buffer {
     #[must_use]
-    pub fn new(stream: &ast::tokenstream::TokenStream) -> Self {
+    pub fn new(stream: &TokenStream) -> Self {
         // TODO; maybe avoid the cloning
         let trees: Vec<ast::tokenstream::TokenTree> = stream.iter().cloned().collect();
 
@@ -169,6 +170,15 @@ impl Buffer {
         match tok {
             Ok(ast::tokenstream::TokenTree::Token(tok, _)) => tok.kind == *token,
             _ => false,
+        }
+    }
+
+    pub fn peek_delimited(&self) -> Option<&TokenStream> {
+        let tok = self.peek(0);
+
+        match tok {
+            Ok(ast::tokenstream::TokenTree::Delimited(_, _, _, stream)) => Some(stream),
+            _ => None,
         }
     }
 

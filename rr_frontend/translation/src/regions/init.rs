@@ -47,14 +47,16 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
             // skip over 0 = static
             let next_id = facts::Region::from_u32(num_early_bounds + 1);
             let revar = ty::Region::new_var(env.tcx(), next_id.into());
-            num_early_bounds += 1;
             subst_early_bounds.push(ty::GenericArg::from(revar));
 
             region_substitution_early.push(Some(next_id));
 
             match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => {
-                    let name = strip_coq_ident(r.name.as_str());
+                    let mut name = strip_coq_ident(r.name.as_str());
+                    if name == "_" {
+                        name = format!("{num_early_bounds}");
+                    }
                     universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", name)));
                     lifetime_names.insert(name, next_id);
                 },
@@ -63,6 +65,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
                         .insert(next_id, coq::Ident::new(format!("ulft_{}", num_early_bounds)));
                 },
             }
+            num_early_bounds += 1;
         } else {
             subst_early_bounds.push(*a);
             region_substitution_early.push(None);

@@ -3737,7 +3737,6 @@ impl<'def> GenericScopeInst<'def> {
         let mut params = self.get_surrounding_ty_params_with_assocs();
         let mut direct = self.get_direct_ty_params_with_assocs();
         params.append(&mut direct);
-        trace!("all params: {params:?}");
         params
     }
 
@@ -3763,7 +3762,7 @@ impl<'def> GenericScopeInst<'def> {
     }
 
     #[must_use]
-    fn get_lfts(&self) -> &[Lft] {
+    pub fn get_lfts(&self) -> &[Lft] {
         &self.lfts
     }
 
@@ -3899,7 +3898,6 @@ impl<T: TraitReqInfo> GenericScope<'_, T> {
         let mut params = self.get_surrounding_ty_params_with_assocs();
         let direct = self.get_direct_ty_params_with_assocs();
         params.merge(direct);
-        trace!("all params: {params:?}");
         params
     }
 
@@ -4277,6 +4275,7 @@ fn make_trait_instance<'def>(
             // we leave the direct type parameters and associated types of the function uninstantiated
 
             // provide type annotation
+            trace!("trait impl -- counting fn lifetimes with spec={:?} and scope={scope:?}", spec.generics);
             let num_lifetimes = spec.generics.get_num_lifetimes() - scope.get_num_lifetimes();
             write!(body, " : (spec_with {num_lifetimes} [")?;
             let direct_tys = spec.generics.get_direct_ty_params_with_assocs();

@@ -1895,6 +1895,26 @@ Ltac solve_llctx_find_llft ::=
       refine (tac_llctx_find_llft_solve_step_skip L _ κ κ' κs κs' oc key _)
   end.
 
+(** llctx_remove_dead_aliases *)
+Ltac solve_llctx_remove_dead_aliases_step κ :=
+  lazymatch goal with
+  | |- sublist _ ((?κ' ≡ₗ ?κs) :: ?L) =>
+      first [
+        (* discard *)
+        list_find_tac_noindex ltac:(fun κ2 => unify κ κ2) κs;
+        notypeclasses refine (sublist_cons _ _ _ _)
+      | notypeclasses refine (sublist_skip _ _ _ _) ]
+  | |- sublist _ (_ :: ?L) =>
+      notypeclasses refine (sublist_skip _ _ _ _)
+  | |- sublist _ [] =>
+      notypeclasses refine (sublist_nil)
+  end.
+Ltac solve_llctx_remove_dead_aliases ::=
+  lazymatch goal with
+  | |- llctx_remove_dead_aliases ?L1 ?L2 ?κ =>
+    unfold llctx_remove_dead_aliases;
+    repeat solve_llctx_remove_dead_aliases_step κ
+  end.
 
 (** solve_map_lookup *)
 (* this extends the Lithium solver with support for goals where the lookup is None *)

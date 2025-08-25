@@ -181,7 +181,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
-    ) -> Result<(Self, registry::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
+    ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
         let mut translated_fn = radium::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
@@ -335,7 +335,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             generics.remove_lft_param(lft);
         }
 
-        let info = registry::ClosureImplInfo::new(
+        let info = procedures::ClosureImplInfo::new(
             closure_kind,
             generics,
             maybe_outer_lifetime,

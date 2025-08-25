@@ -86,13 +86,6 @@ fn order_defs_with_deps(tcx: ty::TyCtxt<'_>, deps: &HashMap<DefId, HashSet<DefId
     defn_order
 }
 
-struct ClosureInfo<'tcx, 'rcx> {
-    info: registry::ClosureImplInfo<'tcx, 'rcx>,
-
-    generated_functions: Vec<radium::Function<'rcx>>,
-    generated_impls: Vec<radium::TraitImplSpec<'rcx>>,
-}
-
 pub struct VerificationCtxt<'tcx, 'rcx> {
     env: &'rcx Environment<'tcx>,
     procedure_registry: procedures::Scope<'tcx, 'rcx>,
@@ -120,9 +113,6 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
 
     /// trait implementations we generated
     trait_impls: BTreeMap<base::OrderedDefId, radium::TraitImplSpec<'rcx>>,
-
-    /// store info of closures we translated to emit closure trait impls
-    closure_info: BTreeMap<base::OrderedDefId, ClosureInfo<'tcx, 'rcx>>,
 }
 
 impl<'rcx> VerificationCtxt<'_, 'rcx> {
@@ -464,7 +454,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         {
             writeln!(spec_file, "Section closure_attrs.").unwrap();
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-            for info in self.closure_info.values() {
+            for info in self.procedure_registry.closure_info.values() {
                 for spec in &info.generated_impls {
                     writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
                 }
@@ -492,7 +482,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             // generate the code for closure trait shims
             writeln!(code_file, "(* closure shims *)").unwrap();
-            for info in self.closure_info.values() {
+            for info in self.procedure_registry.closure_info.values() {
                 for def in &info.generated_functions {
                     writeln!(code_file, "{}", def.code).unwrap();
                     writeln!(code_file).unwrap();
@@ -545,7 +535,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write specs for closure trait impls
         {
-            for info in self.closure_info.values() {
+            for info in self.procedure_registry.closure_info.values() {
                 for def in &info.generated_functions {
                     writeln!(spec_file, "{}", def.spec.generate_trait_req_incl_def()).unwrap();
                     writeln!(spec_file, "{}", def.spec).unwrap();
@@ -583,7 +573,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write closure trait impls
         {
-            for info in self.closure_info.values() {
+            for info in self.procedure_registry.closure_info.values() {
                 for spec in &info.generated_impls {
                     writeln!(spec_file, "{spec}").unwrap();
                 }
@@ -656,7 +646,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // also write templates for the closure shim proofs
         {
-            for info in self.closure_info.values() {
+            for info in self.procedure_registry.closure_info.values() {
                 for fun in &info.generated_functions {
                     let path = file_path(fun.name());
                     let mut template_file = io::BufWriter::new(File::create(path.as_path()).unwrap());
@@ -744,7 +734,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         // also write proofs for closure shims
-        for info in self.closure_info.values() {
+        for info in self.procedure_registry.closure_info.values() {
             for fun in &info.generated_functions {
                 write_proof(fun);
             }
@@ -800,7 +790,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         // also for closure shims
-        for info in self.closure_info.values() {
+        for info in self.procedure_registry.closure_info.values() {
             for spec in &info.generated_impls {
                 write_trait_incl(spec);
             }
@@ -1273,7 +1263,9 @@ fn register_functions<'tcx>(
 
 /// Translate functions of the crate, assuming they were previously registered.
 fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
-    for &f in vcx.functions.iter().chain(vcx.closures.iter()) {
+    // First translate closures, then functions: the function translation assumes that closures
+    // they contain have been translated already.
+    for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
         let proc = vcx.env.get_procedure(f.to_def_id());
         let fname = vcx.env.get_item_name(f.to_def_id());
         let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
@@ -1305,7 +1297,8 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                 vcx.trait_registry,
                 &vcx.procedure_registry,
                 &vcx.const_registry,
-            ),
+            )
+            .map(|x| (x, None)),
             ty::TyKind::Closure(_, _) => {
                 let translator = signature::TX::new_closure(
                     vcx.env,
@@ -1320,14 +1313,12 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                 match translator {
                     Ok((translator, info)) => {
                         // store the info to generate the trait impl later
-                        let stored_info = ClosureInfo {
+                        let stored_info = procedures::ClosureInfo {
                             info,
                             generated_functions: Vec::new(),
                             generated_impls: Vec::new(),
                         };
-                        let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
-                        vcx.closure_info.insert(ordered_did, stored_info);
-                        Ok(translator)
+                        Ok((translator, Some(stored_info)))
                     },
                     Err(err) => Err(err),
                 }
@@ -1337,11 +1328,16 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
         if mode.is_only_spec() {
             // Only generate a spec
-            match translator.and_then(signature::TX::generate_spec) {
-                Ok(spec) => {
+            match translator.and_then(|(tx, info)| tx.generate_spec().map(|x| (x, info))) {
+                Ok((spec, info)) => {
                     println!("Successfully generated spec for {}", fname);
                     let spec_ref = vcx.fn_arena.alloc(spec);
                     vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
+
+                    if let Some(info) = info {
+                        let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                        vcx.procedure_registry.closure_info.insert(ordered_did, info);
+                    }
                 },
                 Err(base::TranslationError::FatalError(err)) => {
                     println!("Encountered fatal cross-function error in translation: {:?}", err);
@@ -1361,10 +1357,15 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             }
         } else {
             // Fully translate the function
-            match translator.and_then(|x| x.translate(vcx.fn_arena)) {
-                Ok(fun) => {
+            match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
+                Ok((fun, info)) => {
                     println!("Successfully translated {}", fname);
                     vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
+
+                    if let Some(info) = info {
+                        let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                        vcx.procedure_registry.closure_info.insert(ordered_did, info);
+                    }
                 },
                 Err(base::TranslationError::FatalError(err)) => {
                     println!("Encountered fatal cross-function error in translation: {:?}", err);
@@ -1597,7 +1598,8 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
         let did = closure_did.to_def_id();
 
         // check if this closure is registered and will be verified
-        let mode = vcx.procedure_registry.lookup_function_mode(did).unwrap();
+        let meta = vcx.procedure_registry.lookup_function(did).unwrap();
+        let mode = meta.get_mode();
 
         if !mode.needs_spec() {
             continue;
@@ -1615,7 +1617,6 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
             let spec_attrs_name = format!("{base_name}_spec_attrs");
             let proof_name = format!("{base_name}_spec_subsumption_correct");
             let proof_statement = format!("{base_name}_spec_subsumption");
-
             // the closure traits don't have a semantic component
             let spec_semantic = None;
 
@@ -1627,8 +1628,28 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
                 spec_subsumption_proof: proof_name,
                 spec_subsumption_statement: proof_statement,
             };
+
+            // create function meta
+            let method_name = match kind {
+                ty::ClosureKind::FnMut => "call_mut".to_owned(),
+                ty::ClosureKind::Fn => "call".to_owned(),
+                ty::ClosureKind::FnOnce => "call_once".to_owned(),
+            };
+            let fn_name = format!("{}_{method_name}", meta.get_name());
+            let spec_name = format!("{fn_name}_spec");
+            let code_name = format!("{fn_name}_code");
+            let trait_req_incl_name = format!("{fn_name}_trait_req_incl");
+            let fn_lit = procedures::Meta::new(
+                spec_name,
+                code_name,
+                trait_req_incl_name,
+                fn_name,
+                procedures::Mode::Prove,
+                true,
+            );
+
             vcx.trait_registry
-                .register_closure_impl(did, kind, impl_lit)
+                .register_closure_impl(did, kind, impl_lit, fn_lit)
                 .map_err(|x| ToString::to_string(&x))?;
             Ok(())
         };
@@ -1673,7 +1694,10 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
             continue;
         };
 
-        let process_impl = |to_impl: ty::ClosureKind, info: &registry::ClosureImplInfo<'tcx, 'rcx>| {
+        let body_spec = vcx.procedure_registry.lookup_function_spec(closure_did.to_def_id()).unwrap();
+        let meta = vcx.procedure_registry.lookup_function(closure_did.to_def_id()).unwrap();
+
+        let process_impl = |to_impl: ty::ClosureKind, info: &procedures::ClosureImplInfo<'tcx, 'rcx>| {
             // get the stored info
             let impl_info = vcx.trait_registry.get_closure_trait_impl_info(
                 closure_did.to_def_id(),
@@ -1682,13 +1706,13 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
                 closure_args,
             )?;
 
-            let body_spec = vcx.procedure_registry.lookup_function_spec(closure_did.to_def_id()).unwrap();
-
-            let meta = vcx.procedure_registry.lookup_function(closure_did.to_def_id()).unwrap();
+            let (_, fn_meta) =
+                vcx.trait_registry.lookup_closure_impl(closure_did.to_def_id(), to_impl).unwrap();
 
             let call_fn_def = generator.generate_call_function_for(
                 closure_did.to_def_id(),
                 &meta,
+                &fn_meta,
                 kind,
                 to_impl,
                 body_spec,
@@ -1710,7 +1734,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
         let mut register_impl = |to_impl| {
             let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), closure_did.to_def_id());
-            let info = vcx.closure_info.get_mut(&ordered_did).unwrap();
+            let info = vcx.procedure_registry.closure_info.get_mut(&ordered_did).unwrap();
             let spec = process_impl(to_impl, &info.info);
             match spec {
                 Ok((spec, fn_def)) => {
@@ -2016,7 +2040,6 @@ where
         const_registry: consts::Scope::empty(),
         trait_impls: BTreeMap::new(),
         fn_arena: &fn_spec_arena,
-        closure_info: BTreeMap::new(),
     };
 
     // this needs to be first, in order to ensure consistent ADT use

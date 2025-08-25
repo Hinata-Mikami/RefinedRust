@@ -357,6 +357,18 @@ Section lft_contexts.
   Proof. iIntros "HL". by iApply llctx_elt_interp_acc_noend_big. Qed.
 
 
+  Lemma llctx_interp_sublist L L' :
+    sublist L' L →
+    llctx_interp L -∗
+    llctx_interp L'.
+  Proof.
+    unfold llctx_interp.
+    induction 1 as [ | ?? ?? IH| ?? ?? IH]; simpl.
+    - eauto.
+    - iIntros "($ & Ha)". iApply (IH with "Ha").
+    - iIntros "(_ & Ha)". iApply (IH with "Ha").
+  Qed.
+
   (** Lifetime inclusion without id/count tracking *)
   Section fix_EL.
   Context (E : elctx) (L : llctx).

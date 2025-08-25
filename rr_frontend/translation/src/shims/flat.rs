@@ -9,8 +9,9 @@
 use log::info;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::span;
+use rr_rustc_interface::{ast, span};
 use serde::{Deserialize, Serialize};
+use span::symbol::Symbol;
 
 use crate::spec_parsers::{ExportAs, RustPath, get_export_as_attr};
 use crate::{Environment, attrs, search};
@@ -92,6 +93,13 @@ pub(crate) enum UintTyDef {
     U128,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "ast::Mutability")]
+pub(crate) enum MutabilityDef {
+    Not,
+    Mut,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 /// A "flattened" representation of types that should be suitable serialized storage, and should be
 /// stable enough to resolve to the same actual type across compilations.
@@ -107,6 +115,7 @@ pub(crate) enum Type {
     Char,
     Bool,
     Param(u32),
+    Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Type>),
     // TODO: more cases
 }
 
@@ -154,8 +163,18 @@ impl Type {
             Self::Param(idx) => {
                 // use a dummy. For matching with the procedures from `unification.rs`, we only
                 // need the indices to be consistent.
-                let param = ty::ParamTy::new(*idx, span::Symbol::intern("dummy"));
+                let param = ty::ParamTy::new(*idx, Symbol::intern("dummy"));
                 let kind = ty::TyKind::Param(param);
+                Some(tcx.mk_ty_from_kind(kind))
+            },
+            Self::Ref(idx, m, ty) => {
+                let translated_ty = ty.to_type(tcx)?;
+                let early = ty::EarlyParamRegion {
+                    index: *idx,
+                    name: Symbol::intern("dummy"),
+                };
+                let region = ty::Region::new_early_param(tcx, early);
+                let kind = ty::TyKind::Ref(region, translated_ty, *m);
                 Some(tcx.mk_ty_from_kind(kind))
             },
         }
@@ -176,6 +195,17 @@ pub(crate) fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
         ty::TyKind::Param(p) => Some(Type::Param(p.index)),
+        ty::TyKind::Ref(r, ty, m) => {
+            let converted_ty = convert_ty_to_flat_type(env, *ty)?;
+
+            let idx = match r.kind() {
+                ty::RegionKind::ReEarlyParam(r) => r.index,
+                _ => {
+                    unimplemented!("convert_ty_to_flat_type: unhandled region case");
+                },
+            };
+            Some(Type::Ref(idx, *m, Box::new(converted_ty)))
+        },
         _ => None,
     }
 }

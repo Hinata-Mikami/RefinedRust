@@ -29,6 +29,7 @@ use crate::types::{self, scope};
 
 /// Information we compute when calling a function from another function.
 /// Determines how to specialize the callee's generics in our spec assumption.
+#[derive(Debug)]
 pub(crate) struct AbstractedGenerics<'def> {
     /// the scope with new generics to quantify over for the function's specialized spec
     pub scope: radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>,
@@ -284,7 +285,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
-        all_params: ty::GenericArgsRef<'tcx>,
+        fnsig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
         trait_reqs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
@@ -292,11 +293,11 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             "enter get_generic_abstraction_for_procedure with callee_did={callee_did:?} and method_params={method_params:?}"
         );
 
-        // get all the regions and type variables appearing that generics are instantiated with
+        // STEP 1: get all the regions and type variables appearing in the instantiation of generics
         let mut tyvar_folder = TyVarFolder::new(self.translator.env().tcx());
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.env().tcx());
 
-        // also count the number of regions of the function itself
+        // also count the number of (early) regions of the function itself
         let mut num_param_regions = 0;
 
         let mut callee_lft_param_inst: Vec<radium::Lft> = Vec::new();
@@ -324,19 +325,23 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let tyvars = tyvar_folder.get_result();
         let regions = lft_folder.get_regions();
 
+        // the new scope that we quantify over in the assumed spec
         let mut scope = radium::GenericScope::empty();
-
-        // instantiations for the function spec's parameters
+        // instantiations for the function spec's parameters, using variables quantified in `scope`
         let mut fn_inst = radium::GenericScopeInst::empty();
 
-        // re-bind the function's lifetime parameters
+        // STEP 2: Bind & instantiate lifetimes
+
+        // Re-bind the function's (early) lifetime parameters
         for i in 0..num_param_regions {
             let lft_name = coq::Ident::new(format!("ulft_{}", i));
             scope.add_lft_param(lft_name.clone());
             fn_inst.add_lft_param(lft_name);
         }
 
-        // bind the additional lifetime parameters
+        // Bind the additional lifetime parameters which are mentioned as part of the instantiation
+        // of type parameters and associated types.
+        // All of these are turned into quantified lifetimes.
         let mut next_lft = num_param_regions;
         for region in regions {
             // Use the name the region has inside the function as the binder name, so that the
@@ -346,19 +351,15 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 .unwrap_or_else(|_| coq::Ident::new(format!("ulft_{}", next_lft)));
             scope.add_lft_param(lft_name.clone());
 
-            next_lft += 1;
+            // Note: since these are not formal parameters of the function, we do not add them to
+            // `fn_inst`.
 
+            next_lft += 1;
             callee_lft_param_inst.push(lft_name);
         }
 
-        // also need to re-bind late bound regions
-        let tcx = self.translator.env().tcx();
-        let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
-        let fn_ty = fn_ty.instantiate(tcx, all_params);
-        let sig = fn_ty.fn_sig(tcx);
-        trace!("computing abstraction for {callee_did:?}, sig: {sig:?}");
-
-        for (late_bound_idx, late_bound) in sig.bound_vars().into_iter().enumerate() {
+        // Also need to re-bind late bound regions of the function, by looking at the function signature.
+        for (late_bound_idx, late_bound) in fnsig.bound_vars().into_iter().enumerate() {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
                     let name = r.get_name().map_or_else(
@@ -377,14 +378,16 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
 
-        // bind the generics we use
+        // STEP 3: Bind type parameters
+
+        // Bind the generics we use.
         for param in &tyvars {
             // NOTE: this should have the same name as the using occurrences
             let lit = radium::LiteralTyParam::new(param.name.as_str(), param.name.as_str());
             callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
             scope.add_ty_param(lit);
         }
-        // also bind associated types which we translate as generics
+        // Also bind associated types (they are translated as generics)
         for req in &trait_reqs {
             for ty in &req.assoc_ty_inst {
                 // we should check if it there is a parameter in the current scope for it
@@ -398,10 +401,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
 
+        // STEP 4: Instantiate type parameters
+
         // NOTE: we need to be careful with the order here.
         // - the method_params are all the generics the function has.
-        // - the trait_reqs are also all the associated types the function has
-        // We need to distinguish these between direct and surrounding.
+        // - the trait_reqs are also all the trait requirements the function has
+        // We need to distinguish these between direct and surrounding, as our encoding does that.
+        //
+        // TODO: probably we should make the same distinction also for lifetimes?
         let num_surrounding_params =
             scope::Params::determine_number_of_surrounding_params(callee_did, self.translator.env().tcx());
         info!("num_surrounding_params={num_surrounding_params:?}, method_params={method_params:?}");
@@ -424,7 +431,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 }
             }
         } else {
-            // now the direct parameters
+            // just instantiate all the params
             for v in method_params {
                 if let Some(ty) = v.as_type() {
                     let translated_ty = self.translate_type(ty)?;
@@ -433,7 +440,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
 
-        // add trait requirements
+        // STEP 5: add trait requirements
         for req in trait_reqs {
             // translate type in scope with HRTB binders
             let scope = self.scope.borrow();
@@ -447,7 +454,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let state = types::AdtState::new(&mut deps, &scope, &typing_env);
             let mut state = STInner::TranslateAdt(state);
 
-            // TODO: we need to add to lift up the HRTB lifetimes here.
+            // TODO: we need to lift up the HRTB lifetimes here.
 
             let mut assoc_inst = Vec::new();
             for ty in req.assoc_ty_inst {

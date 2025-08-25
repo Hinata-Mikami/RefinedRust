@@ -149,6 +149,7 @@ fn closure_test_call_fnonce_2_2() {
     closure_test_arg_fnonce_2(clos);
 }
 
+// TODO
 #[rr::skip]
 #[rr::verify]
 fn closure_test_call_fnmut_1_0() {
@@ -167,6 +168,7 @@ fn closure_test_call_fnmut_1_0() {
     assert!(y == 1);
 }
 
+// TODO
 #[rr::skip]
 #[rr::verify]
 fn closure_test_call_fn_2_0() {
@@ -190,6 +192,7 @@ fn closure_test_call_fn_2_0() {
 }
 
 
+// TODO
 #[rr::skip]
 #[rr::verify]
 fn closure_test_call_fnmut_1() {
@@ -221,7 +224,8 @@ fn closure_test1() {
         };
 
     // here we call the closure's implementation
-    //x(2);
+    let y = x(2);
+    assert!(y == 4);
 }
 
 #[rr::verify]
@@ -232,7 +236,7 @@ fn closure_test8<T, U>(x: T, y: U)
         #[rr::verify]
         |a: T, w: U| { w(a) };
 
-    //cls(x, y);
+    cls(x, y);
 }
 
 #[rr::returns("()")]
@@ -247,15 +251,16 @@ fn closure_test12() {
         };
 
     // here we call the closure's implementation
-    //x(2, 2);
+    assert!(x(2, 2) == 4);
 }
 
+#[rr::verify]
 fn closure_test6<T>(x: T) {
     let cls =
         #[rr::returns("a")]
         |a: T| { a };
 
-    //cls(x);
+    cls(x);
 }
 
 /// Closures with shared captures
@@ -263,7 +268,7 @@ fn closure_test6<T>(x: T) {
 fn closure_test5() {
     let x = 5;
 
-    // Fn-closure
+    // Fn-closure with a shared capture
     let x =
         #[rr::params("i")]
         #[rr::capture("x": "i")]
@@ -274,28 +279,30 @@ fn closure_test5() {
         };
 
     // here we call the closure's implementation
-    //x(2);
+    assert!(x() == 10);
 }
 
-#[rr::returns("()")]
-fn closure_test9(z: &i32) {
+// TODO: we're having some weird anomaly with the mul method in the closure here.
+// Somehow the impl lifetime parameter is duplicated to a late-bound of the method itself.
+#[rr::skip]
+#[rr::requires("z < 10")]
+fn closure_test9(z: &u32) {
     let x = 5;
 
     // Fn-closure
     let x =
+        #[rr::skip]
         #[rr::params("i", "j")]
         #[rr::capture("x": "i")]
         #[rr::capture("z": "j")]
-        #[rr::requires("(j * i)%Z ∈ i32")]
-        //#[rr::returns("(j * i)%Z")]
+        #[rr::requires("(j * i)%Z ∈ u32")]
+        #[rr::returns("(j * i)%Z")]
         || {
-            x;
-            z;
-            //x * z
+            x * z 
         };
 
     // here we call the closure's implementation
-    //x(2);
+    assert!(x() == z * 5);
 }
 
 /// Closures with mutable captures
@@ -313,19 +320,15 @@ fn closure_test2() {
         #[rr::requires("(2 * i) ∈ i32")]
         || { y *= 2; };
 
-    //x();
-    //x();
+    x();
+    x();
 
     // here, we deinitialize the closure
-    y += 1;
+    assert!(y == 8);
 }
 
-#[rr::params("a", "γ")]
-#[rr::args("(a, γ)")]
-#[rr::requires("(4*a) ∈ i32")]
-//#[rr::observe("γ" : "(4 * a)%Z")]
-#[rr::observe("γ" : "a")]
-#[rr::returns("()")]
+#[rr::requires("(4* y.cur) ∈ i32")]
+#[rr::observe("y.ghost" : "y.cur * 4")]
 #[rr::tactics("unsafe_unfold_common_caesium_defs; solve_goal.")]
 fn closure_test3(y: &mut i32) {
     let mut z = 5;
@@ -341,24 +344,11 @@ fn closure_test3(y: &mut i32) {
         #[rr::requires("(5 * j) ∈ i32")]
         || { *y *= 2; z *= 5; };
 
-    //x();
-    //x();
-}
+    x();
+    x();
 
-/*
-#[rr::returns("()")]
-fn closure_test4(y: &mut i32) {
-    let mut z = 5;
-
-    let mut x =
-        #[rr::params("i", "γ", "j", "γj")]
-        #[rr::capture_pre("y" : "(i, γ)")]
-        #[rr::capture_pre("z" : "(j, γj)")]
-        #[rr::capture_post("y" : "(2*i, γ)")]
-        #[rr::capture_post("z" : "(5*i, γj)")]
-        |x: &mut i32, w: &mut i32| { *y *= z; *x *= *w; };
+    assert!(z == 5*5*5);
 }
-*/
 
 #[rr::verify]
 fn closure_test7<T, U>(x: T, y: U)
@@ -369,9 +359,10 @@ fn closure_test7<T, U>(x: T, y: U)
         #[rr::capture("y": "m")]
         |a: T| { y(a) };
 
-    //cls(x);
+    cls(x);
 }
 
+/*
 
 // HRTB
 #[rr::skip]
@@ -419,3 +410,4 @@ mod fncoercion {
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation
 
+*/

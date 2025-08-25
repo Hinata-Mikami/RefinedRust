@@ -290,6 +290,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         &self,
         region: ty::EarlyParamRegion,
     ) -> Result<radium::Lft, TranslationError<'tcx>> {
+        trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up lifetime {region:?} in scope {:?}", scope.lifetime_scope);
@@ -308,7 +309,14 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     Err(TranslationError::UnknownEarlyRegion(region))
                 }
             },
-            STInner::TraitReqs(_scope) => {
+            STInner::TraitReqs(scope) => {
+                let lft = scope
+                    .scope
+                    .lookup_region_idx(region.index as usize)
+                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
+                Ok(lft.to_owned())
+
+                /*
                 // TODO: ?
                 if region.has_name() {
                     let name = region.name.as_str();
@@ -316,6 +324,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 } else {
                     Err(TranslationError::UnknownEarlyRegion(region))
                 }
+                    */
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }

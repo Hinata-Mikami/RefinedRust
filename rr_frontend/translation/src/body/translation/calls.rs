@@ -7,15 +7,17 @@
 use std::collections::BTreeMap;
 
 use log::{info, trace};
+use radium::{TraitReqInfo as _, coq};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
+use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::traits::resolution;
-use crate::{regions, types};
+use crate::traits::{self, resolution};
+use crate::{procedures, regions, search, types};
 
 /// Get the syntypes of function arguments for a procedure call.
 pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
@@ -88,6 +90,13 @@ pub(crate) struct ProcedureInst<'def> {
     pub lft_hint: Vec<radium::Lft>,
     pub mapped_early_regions: BTreeMap<radium::Lft, usize>,
 }
+impl From<ProcedureInst<'_>> for radium::Expr {
+    fn from(x: ProcedureInst<'_>) -> Self {
+        let ty_hint = x.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+
+        Self::CallTarget(x.loc_name, ty_hint, x.lft_hint, x.mapped_early_regions)
+    }
+}
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Internally register that we have used a procedure with a particular instantiation of generics, and
@@ -111,11 +120,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // instantiations.
         let key = types::generate_args_inst_key(self.env.tcx(), ty_params)?;
 
+        let tcx = self.env.tcx();
+        let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
+        let fn_ty = fn_ty.instantiate(tcx, ty_params);
+        let fnsig = fn_ty.fn_sig(tcx);
+
         // re-quantify
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             ty_params,
-            ty_params,
+            fnsig,
             trait_specs,
             true,
         )?;
@@ -189,11 +203,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (method_loc_name, (method_spec_term, spec_scope, spec_inst), mapped_early_regions, method_params) =
             self.ty_translator.register_use_trait_procedure(self.env, callee_did, ty_params)?;
 
+        let tcx = self.env.tcx();
+        let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
+        let fn_ty = fn_ty.instantiate(tcx, ty_params);
+        let fnsig = fn_ty.fn_sig(tcx);
+
         // re-quantify
         let mut quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             method_params,
-            ty_params,
+            fnsig,
             trait_specs,
             false,
         )?;
@@ -255,6 +274,189 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(inst)
     }
 
+    fn create_closure_impl_abstraction(
+        &self,
+        info: &procedures::ClosureImplInfo<'tcx, 'def>,
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        kind: ty::ClosureKind,
+    ) -> Result<types::AbstractedGenerics<'def>, TranslationError<'tcx>> {
+        trace!("enter create_closure_impl_abstraction");
+
+        // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
+        let mut new_scope = radium::GenericScope::empty();
+
+        assert!(info.scope.get_surrounding_ty_params_with_assocs().params.is_empty());
+        assert!(info.scope.get_surrounding_trait_requirements().is_empty());
+
+        for ty in &info.scope.get_direct_ty_params().params {
+            let mut ty = ty.clone();
+            ty.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            new_scope.add_ty_param(ty);
+        }
+        for req in info.scope.get_direct_trait_requirements() {
+            let mut req = *req;
+            req.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            new_scope.add_trait_requirement(req);
+        }
+        for lft in info.scope.get_lfts() {
+            new_scope.add_lft_param(lft.to_owned());
+        }
+
+        // for the instantiation hints, we proceed as follows:
+        // - the type parameters are the same as on the surrounding function
+        // - similarly, the lifetime parameters carry over
+        // - but in addition, we have to add the capture lifetimes
+        // - as well as the lifetime of the closure arg (for Fn/FnMut)
+
+        trace!("new_scope={new_scope:?}");
+
+        let inst: radium::GenericScopeInst<'def> = new_scope.identity_instantiation();
+
+        // instantiate the type parameters directly with the parameters of the surrounding function
+        // (identity, the type parameters are the same)
+        let ty_param_inst_hint: Vec<radium::Type<'def>> = inst.get_all_ty_params_with_assocs();
+
+        // for the lifetimes, we also want to take the surrounding lifetime parameters (which are
+        // also included in this scope), but have to manually compute the instantiation for the
+        // closure capture lifetimes, which are local to the function
+        let upvars_tys = closure_args.upvar_tys();
+        trace!("upvars_tys: {upvars_tys:?}");
+        let mut folder = regions::arg_folder::ClosureCaptureRegionCollector::new(self.env.tcx());
+        for ty in upvars_tys {
+            ty.fold_with(&mut folder);
+        }
+        let capture_regions_inst = folder.result();
+
+        let mut lft_param_inst_hint: Vec<radium::Lft> = Vec::new();
+
+        // the lifetime scope also contains the capture regions, which are not part of the
+        // surrounding function scope.
+        // We have to filter these.
+        let closure_region_count = inst.get_lfts().len();
+        let surrounding_region_count = closure_region_count - capture_regions_inst.len();
+        for x in &inst.get_lfts()[..surrounding_region_count] {
+            lft_param_inst_hint.push(x.to_owned());
+        }
+
+        for r in capture_regions_inst {
+            let lft = self.ty_translator.translate_region(r)?;
+            lft_param_inst_hint.push(lft);
+        }
+
+        // TODO: _ref_lft instantiation?
+
+        // also add the lifetime for the call function itself as a dummy
+        if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
+            new_scope.add_lft_param(coq::Ident::new("_ref_lft"));
+        }
+
+        // we just requantify all the generics and directly instantiate
+        let fn_scope_inst: radium::GenericScopeInst<'def> = new_scope.identity_instantiation();
+
+        let res = types::AbstractedGenerics {
+            scope: new_scope,
+            fn_scope_inst,
+            callee_lft_param_inst: lft_param_inst_hint,
+            callee_ty_param_inst: ty_param_inst_hint,
+        };
+        trace!("leave create_closure_impl_abstraction with res={res:?}");
+        Ok(res)
+    }
+
+    /// Internally register that we have used a closure impl with a particular instantiation of generics, and
+    /// return the code parameter name.
+    /// Arguments:
+    /// - `callee_did`: the `DefId` of the callee
+    /// - `ty_params`: the instantiation for the callee's type parameters
+    /// - `trait_specs`: if the callee has any trait assumptions, these are specification parameter terms for
+    ///   these traits
+    fn register_use_closure(
+        &mut self,
+        closure_did: DefId,
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        call_fn_did: DefId,
+        ty_params: ty::GenericArgsRef<'tcx>,
+        _trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
+    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
+        trace!(
+            "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
+        );
+
+        let trait_did = self.env.tcx().parent(call_fn_did);
+        let closure_kind = search::get_closure_kind_of_trait_did(self.env.tcx(), trait_did)
+            .ok_or(traits::Error::NotAClosureTrait(trait_did))?;
+
+        trace!("determined closure kind: {closure_kind:?}");
+
+        // The key does not include the associated types, as the resolution of the associated types
+        // should always be unique for one combination of type parameters, as long as we remain in
+        // the same environment (which is the case within this procedure).
+        // Therefore, already the type parameters are sufficient to distinguish different
+        // instantiations.
+        let key = types::generate_args_inst_key(self.env.tcx(), ty_params)?;
+
+        let info = self.procedure_registry.lookup_closure_info(closure_did).unwrap();
+
+        let quantified_scope = self.create_closure_impl_abstraction(info, closure_args, closure_kind)?;
+
+        let tup = (call_fn_did, key);
+        let res;
+        if let Some(proc_use) = self.collected_procedures.get(&tup) {
+            res = proc_use.loc_name.clone();
+        } else {
+            let (_, meta) = self
+                .trait_registry
+                .lookup_closure_impl(closure_did, closure_kind)
+                .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", call_fn_did)))?;
+
+            // explicit instantiation is needed sometimes
+            let spec_term = radium::UsedProcedureSpec::Literal(
+                meta.get_spec_name().to_owned(),
+                meta.get_trait_req_incl_name().to_owned(),
+            );
+
+            let code_name = meta.get_name();
+            let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
+
+            let scope = self.ty_translator.scope.borrow();
+            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), scope.did);
+
+            let syntypes = get_arg_syntypes_for_procedure_call(
+                self.env.tcx(),
+                self.ty_translator.translator,
+                // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
+                &scope.generic_scope,
+                &typing_env,
+                call_fn_did,
+                ty_params.as_slice(),
+            )?;
+
+            info!(
+                "Registered procedure instance of closure impl {loc_name} of ({closure_did:?}, {closure_kind:?}) with {:?} and layouts {:?}",
+                quantified_scope.fn_scope_inst, syntypes
+            );
+
+            let proc_use = radium::UsedProcedure::new(
+                loc_name,
+                spec_term,
+                quantified_scope.scope,
+                quantified_scope.fn_scope_inst,
+                syntypes,
+            );
+
+            res = proc_use.loc_name.clone();
+            self.collected_procedures.insert(tup, proc_use);
+        }
+        trace!("leave register_use_closure");
+        let inst = ProcedureInst {
+            loc_name: res,
+            type_hint: quantified_scope.callee_ty_param_inst,
+            lft_hint: quantified_scope.callee_lft_param_inst,
+            mapped_early_regions: BTreeMap::new(),
+        };
+        Ok(inst)
+    }
+
     /// Resolve the trait requirements of a function call.
     /// The target of the call, [did], should have been resolved as much as possible,
     /// as the requirements of a call can be different depending on which impl we consider.
@@ -295,14 +497,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // track that we are using this function and generate the Coq location name
             let code_inst = self.register_use_procedure(*defid, params, trait_spec_terms)?;
 
-            let ty_hint = code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
-
-            return Ok(radium::Expr::CallTarget(
-                code_inst.loc_name,
-                ty_hint,
-                code_inst.lft_hint,
-                code_inst.mapped_early_regions,
-            ));
+            return Ok(code_inst.into());
         };
 
         // Otherwise, we are calling a trait method
@@ -333,15 +528,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let code_inst =
                     self.register_use_procedure(resolved_did, resolved_params, trait_spec_terms)?;
-                let ty_hint =
-                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
-
-                Ok(radium::Expr::CallTarget(
-                    code_inst.loc_name,
-                    ty_hint,
-                    code_inst.lft_hint,
-                    code_inst.mapped_early_regions,
-                ))
+                Ok(code_inst.into())
             },
 
             resolution::TraitResolutionKind::Param => {
@@ -352,45 +539,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let code_inst =
                     self.register_use_trait_method(resolved_did, resolved_params, trait_spec_terms)?;
-                let ty_hint =
-                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
-
-                Ok(radium::Expr::CallTarget(
-                    code_inst.loc_name,
-                    ty_hint,
-                    code_inst.lft_hint,
-                    code_inst.mapped_early_regions,
-                ))
+                Ok(code_inst.into())
             },
 
             resolution::TraitResolutionKind::Closure => {
-                // TODO: here, we should first generate an instance of the trait
-                //let body = self.env.tcx().instance_mir(middle::ty::InstanceDef::Item(resolved_did));
-                //let body = self.env.tcx().instance_mir(middle::ty::InstanceDef::FnPtrShim(*defid, ty));
-                //info!("closure body: {:?}", body);
-
-                //FunctionTranslator::dump_body(body);
-
-                //let res_result = ty::Instance::resolve(self.env.tcx(), callee_param_env, *defid, params);
-                //info!("Resolution {:?}", res_result);
+                // Here, we are calling a concretely known and defined closure.
+                // We are calling one of the impl shims that we generate!
 
                 // the args are just the closure args. We can ignore them.
-                let _clos_args = resolved_params.as_closure();
+                let clos_args = resolved_params.as_closure();
 
-                // resolve the trait requirements
+                // resolve the trait requirements, which are also the trait requirements of the
+                // auto-generated impl
                 let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
 
                 let code_inst =
-                    self.register_use_procedure(resolved_did, ty::List::empty(), trait_spec_terms)?;
-                let ty_hint =
-                    code_inst.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+                    self.register_use_closure(resolved_did, clos_args, *defid, params, trait_spec_terms)?;
 
-                Ok(radium::Expr::CallTarget(
-                    code_inst.loc_name,
-                    ty_hint,
-                    code_inst.lft_hint,
-                    code_inst.mapped_early_regions,
-                ))
+                Ok(code_inst.into())
             },
         }
     }
