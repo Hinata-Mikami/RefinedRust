@@ -274,13 +274,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(inst)
     }
 
+    // TODO: can I unify this with TraitRegistry::get_closure_impl_spec_term?
     fn create_closure_impl_abstraction(
         &self,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         kind: ty::ClosureKind,
+        params: ty::GenericArgsRef<'tcx>,
     ) -> Result<types::AbstractedGenerics<'def>, TranslationError<'tcx>> {
-        trace!("enter create_closure_impl_abstraction");
+        trace!("enter create_closure_impl_abstraction with closure_args={closure_args:?}, params={params:?}");
 
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
         let mut new_scope = radium::GenericScope::empty();
@@ -327,15 +329,22 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         let capture_regions_inst = folder.result();
 
+        // compute the instantiation of late bounds
+        let late_inst = traits::registry::TR::compute_closure_late_bound_inst(closure_args, params);
+
         let mut lft_param_inst_hint: Vec<radium::Lft> = Vec::new();
 
-        // the lifetime scope also contains the capture regions, which are not part of the
+        // The lifetime scope also contains the capture regions and late regions, which are not part of the
         // surrounding function scope.
         // We have to filter these.
         let closure_region_count = inst.get_lfts().len();
-        let surrounding_region_count = closure_region_count - capture_regions_inst.len();
+        let surrounding_region_count = closure_region_count - late_inst.len() - capture_regions_inst.len();
         for x in &inst.get_lfts()[..surrounding_region_count] {
             lft_param_inst_hint.push(x.to_owned());
+        }
+        for region in late_inst {
+            let translated_region = self.ty_translator.translate_region(region)?;
+            lft_param_inst_hint.push(translated_region);
         }
 
         for r in capture_regions_inst {
@@ -397,7 +406,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let info = self.procedure_registry.lookup_closure_info(closure_did).unwrap();
 
-        let quantified_scope = self.create_closure_impl_abstraction(info, closure_args, closure_kind)?;
+        let quantified_scope =
+            self.create_closure_impl_abstraction(info, closure_args, closure_kind, ty_params)?;
 
         let tup = (call_fn_did, key);
         let res;

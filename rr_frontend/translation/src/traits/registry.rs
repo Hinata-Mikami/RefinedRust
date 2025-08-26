@@ -465,6 +465,35 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok((term, assoc_args))
     }
 
+    pub(crate) fn compute_closure_late_bound_inst(
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Vec<ty::Region<'tcx>> {
+        let sig = closure_args.sig();
+        let late_bounds_to_unify = sig.bound_vars();
+        let mut late_regions = Vec::new();
+        for k in late_bounds_to_unify {
+            let r = k.expect_region();
+            late_regions.push(r);
+        }
+
+        let inputs = sig.inputs();
+        let inputs = inputs.skip_binder();
+        // only argument is a tuple
+        assert!(inputs.len() == 1);
+        let input = inputs[0];
+
+        let args_tuple = args[1];
+        let args_tuple = args_tuple.as_type().unwrap();
+        trace!("get_closure_impl_spec_term: trying to unify input={input:?} with args_tuple={args_tuple:?}");
+
+        let mut unifier = LateBoundUnifier::new(late_regions.as_slice());
+        unifier.map_tys(input, args_tuple);
+        let (inst, _) = unifier.get_result();
+
+        inst
+    }
+
     /// Get the term for the specification of a trait impl of `trait_did` for closure `closure_did` (applied
     /// to `closure_args`), as well as the list of associated types.
     pub(crate) fn get_closure_impl_spec_term(
@@ -473,6 +502,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         closure_did: DefId,
         trait_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+        trait_args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.env.tcx(), trait_did)
             .ok_or(Error::NotAClosureTrait(trait_did))?;
@@ -493,40 +523,35 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             assoc_args.push(output.skip_binder());
         }
 
-        // compute scope instantiation
-        // NOTE: I guess this is missing lifetime parameters for the captures, which are not
-        // explicitly instantiated. We will probably need to compute them by unifying late bounds.
-        //
-        // Also for the args, we need to compute HRTBs.
-        // Do we need HRTBs for the lifetimes in captures? no, these lifetimes should be constant.
-
-        // Why do we need to do this separately? because the lifetimes are not formal parameters,
-        // we have to handle them differently.
-        // Let's walk over the capture type etc I guess. Check where we get the lifetime inst from.
-
-        // At the defining point I have a new parameter for every appearing region.
-        // So here I can simply linearly walk over the type.
-        // Question: the order in which I add the parameters finally is by ascending Polonius region ID.
-        // Is that ordering the same, because of how Polonius enumerates regions? Not necessarily,
-        // I think.
-
         let args = closure_args.parent_args();
-        let sig = closure_args.sig();
         trace!(
-            "get_closure_impl_spec_term: trying to find instantiation with args={args:?}, closure_args={closure_args:?}, sig={sig:?}"
+            "get_closure_impl_spec_term: trying to find instantiation with trait_args={trait_args:?}, args={args:?}, closure_args={closure_args:?}"
         );
+        let mut scope_inst =
+            self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args))?;
 
+        // Also instantiate late-bound arguments of the closure by comparing the closure argument
+        // tuple type
+        let inst = Self::compute_closure_late_bound_inst(closure_args, trait_args);
+        trace!("get_closure_impl_spec_term: found unification {inst:?}");
+
+        for region in inst {
+            let translated_region = types::TX::translate_region(state, region)?;
+            scope_inst.add_lft_param(translated_region);
+        }
+
+        // Also instantiate the regions for the upvars
         let upvars_tys = closure_args.upvar_tys();
         let mut folder = regions::arg_folder::ClosureCaptureRegionCollector::new(self.env.tcx());
         for ty in upvars_tys {
             ty.fold_with(&mut folder);
         }
-        let mut scope_inst =
-            self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args))?;
         for r in folder.result() {
             let lft = types::TX::translate_region(state, r)?;
             scope_inst.add_lft_param(lft);
         }
+
+        trace!("get_closure_impl_spec_term: computed scope_inst={scope_inst:?}");
 
         let term = radium::SpecializedTraitImpl::new(closure_impl, scope_inst);
 
@@ -617,10 +642,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             ) {
                 info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
 
-                // compute the new scope including the bound regions for HRTBs
+                // compute the new scope including the bound regions for HRTBs introduced by this requirement
+                // We are resolving the trait requirement itself under these binders
                 let mut scope = state.get_param_scope();
                 let binders = scope.translate_bound_regions(req.bound_regions.as_slice());
-                let mut state = state.setup_trait_state(self.env.tcx(), scope);
+                let mut quantified_state = state.setup_trait_state(self.env.tcx(), scope);
 
                 let req_inst = match kind {
                     resolution::TraitResolutionKind::UserDefined => {
@@ -632,7 +658,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         // the trait reference in codegen
 
                         let (spec_term, assoc_tys) = self.get_impl_spec_term(
-                            &mut state,
+                            &mut quantified_state,
                             impl_did,
                             impl_args.as_slice(),
                             trait_args.as_slice(),
@@ -673,8 +699,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         }
                         info!("Param associated types: {:?}", assoc_types);
 
-                        let trait_use =
-                            state.lookup_trait_use(self.env.tcx(), trait_did, trait_args.as_slice())?;
+                        let trait_use = quantified_state.lookup_trait_use(
+                            self.env.tcx(),
+                            trait_did,
+                            trait_args.as_slice(),
+                        )?;
                         let trait_use_ref = trait_use.trait_use;
 
                         trace!(
@@ -688,11 +717,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
                         let (inst, _) = unifier.get_result();
                         trace!("computed instantiation: {inst:?}");
+                        trace!("mapping instantiation now in state={quantified_state:?}");
 
                         // lookup the instances in the `binders` scope for the new trait assumption
                         let mut mapped_inst = Vec::new();
                         for region in inst {
-                            let translated_region = types::TX::translate_region(&mut state, region)?;
+                            let translated_region =
+                                types::TX::translate_region(&mut quantified_state, region)?;
                             mapped_inst.push(translated_region);
                         }
                         let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
@@ -712,10 +743,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         let closure_args = impl_args.as_closure();
 
                         let (spec_term, assoc_tys) = self.get_closure_impl_spec_term(
-                            &mut state,
+                            &mut quantified_state,
                             closure_did,
                             req.trait_ref.def_id,
                             closure_args,
+                            trait_args,
                         )?;
 
                         // filter out the associated types which are constrained -- these are
@@ -774,6 +806,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 scope_inst.add_lft_param(lft);
             }
         }
+
         Ok(scope_inst)
     }
 
@@ -809,6 +842,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Compute the instantiation of the generic scope for a particular instantiation of an object.
+    /// This assumes the object to instantiate does not have late bounds.
+    /// If it has late bounds, their instantiation will have to be computed separately.
     pub(crate) fn compute_scope_inst_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
@@ -1189,19 +1224,29 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn finalize_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
-        scope: types::ST<'_, '_, 'def, 'tcx>,
+        state: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
+        trace!("enter finalize_trait_use for {:?}", trait_use.did);
+        trace!("current scope={state:?}");
+
+        let mut scope = state.get_param_scope();
+        let _binders = scope.translate_bound_regions(trait_use.bound_regions.as_slice());
+        trace!("new trait scope={scope:?}");
+        let mut state = state.setup_trait_state(self.env.tcx(), scope);
+
         let trait_reqs =
-            self.resolve_radium_trait_requirements_in_state(scope, trait_ref.def_id, trait_ref.args)?;
+            self.resolve_radium_trait_requirements_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
 
         let mut trait_use_ref = trait_use.trait_use.borrow_mut();
-        let trait_use = trait_use_ref.as_mut().unwrap();
+        let lit_trait_use = trait_use_ref.as_mut().unwrap();
 
         for trait_req in trait_reqs {
-            trait_use.trait_inst.add_trait_requirement(trait_req);
+            lit_trait_use.trait_inst.add_trait_requirement(trait_req);
         }
+
+        trace!("enter finalize_trait_use for {:?}", trait_use.did);
 
         Ok(())
     }

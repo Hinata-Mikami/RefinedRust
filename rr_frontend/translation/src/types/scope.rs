@@ -367,7 +367,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
             regions_to_quantify.push(name);
         }
-        self.late_scope.insert(0, new_binder);
+        // NB only push a binder if there were any regions bound here.
+        if !new_binder.is_empty() {
+            self.late_scope.insert(0, new_binder);
+        }
 
         radium::TraitReqScope::new(regions_to_quantify)
     }

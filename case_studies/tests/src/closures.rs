@@ -362,20 +362,30 @@ fn closure_test7<T, U>(x: T, y: U)
     cls(x);
 }
 
-/*
-
 // HRTB
-#[rr::skip]
 #[rr::verify]
 fn closure_test_call_hrtb_1<T>(x: T) 
-    where T: Fn(&i32) -> i32
+    where T: for<'a> Fn(&'a i32) -> i32
 {
     let a = 2;
     x(&a);
 }
-
 #[rr::verify]
 fn closure_test_hrtb_1() {
+    let x =
+        #[rr::returns("y")]
+        |y: &i32| {
+            *y
+        };
+
+    let a = 4;
+    let b = 6;
+
+    closure_test_call_hrtb_1(x);
+}
+
+#[rr::verify]
+fn closure_test_hrtb_2() {
     let x =
         #[rr::requires("(y + 2) ∈ i32")]
         #[rr::returns("y + 2")]
@@ -386,9 +396,8 @@ fn closure_test_hrtb_1() {
     let a = 4;
     let b = 6;
 
-    //closure_test_call_hrtb_1(x);
-    //x(&a);
-    //x(&b);
+    assert!(x(&a) == 6);
+    assert!(x(&b) == 8);
 }
 
 
@@ -409,5 +418,3 @@ mod fncoercion {
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation
-
-*/

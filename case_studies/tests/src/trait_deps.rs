@@ -131,13 +131,6 @@ mod dep5 {
 
         x.foo(&y_ref);
     }
-
-
-    // TODO check how we get the anonymous lifetime names for closures.
-    //#[rr::verify]
-    //fn bla2<T>(x : T) where for<'a> T: Foo<&'_ i32> {
-
-    //}
 }
 
 
