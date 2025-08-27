@@ -303,6 +303,18 @@ Section open.
   Context `{!typeGS Σ}.
   Context {rt X : RT} (P : ex_inv_def rt X).
 
+  Global Program Instance learn_from_hyp_val_ex_plain_t ty r :
+    LearnFromHypVal (∃; P, ty) r :=
+    {| learn_from_hyp_val_Q := ∃ π, boringly (∃ x : rt, P.(inv_P) π x r) |}.
+  Next Obligation.
+    rewrite /ty_own_val/=.
+    iIntros (? r ?? v ?) "(%x & Hinv & Hv)".
+    iPoseProof (boringly_intro with "Hinv") as "#Hinv'".
+    iModIntro. iSplitL; first by eauto with iFrame.
+    iExists π.
+    iApply boringly_exists. eauto.
+  Qed.
+
   Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] PlaceIn x @ (◁ (∃; P, ty)) ={F}=∗

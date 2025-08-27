@@ -180,8 +180,8 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
         self.lookup_region_idx(*idx)
     }
 
-    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
-        self.trait_scope.attribute_names.get(path).map(String::as_str)
+    fn lookup_literal(&self, path: &RustPath) -> Option<String> {
+        self.trait_scope.attribute_names.get(path).cloned()
     }
 }
 

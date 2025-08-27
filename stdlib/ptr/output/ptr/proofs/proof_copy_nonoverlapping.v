@@ -52,9 +52,10 @@ Proof.
   iApply (typed_goto_acc _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   liRStep; liShow. iExists 0%nat.
-  repeat liRStep; liShow.
-  iRename select (loop_inv _ _) into "Hinv".
-  iDestruct "Hinv" as "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
+  liRStepUntil (introduce_with_hooks).
+  liRStep; liShow.
+  iApply introduce_with_hooks_base.
+  iIntros  "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
   repeat liRStep; liShow.
    (*return: go back to values *)
   assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t) : list val)) as ->.

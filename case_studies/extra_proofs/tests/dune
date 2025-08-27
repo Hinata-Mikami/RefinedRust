@@ -1,4 +1,4 @@
 (coq.theory
 (flags -w -notation-overridden -w -redundant-canonical-projection)
-(name refinedrust.extra_proofs.tests.enums)
+(name refinedrust.extra_proofs.tests)
 (theories stdpp iris iris_contrib Ltac2 Equations lrust caesium lithium refinedrust Stdlib))

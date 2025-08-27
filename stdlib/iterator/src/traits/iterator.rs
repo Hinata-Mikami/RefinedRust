@@ -3,28 +3,23 @@
 //use std::ops::Try;
 
 
-#[rr::export_as(core::iter::traits::Iterator)]
 
 // example for state changes on None:
 // - fusing iterator (make any iterator Fused)
 
 /// Spec: A relation
 #[rr::export_as(core::iter::Iterator)]
-#[rr::exists("Next" : "{rt_of Self} → option {rt_of Item} → {rt_of Self} → iProp Σ")]
+#[rr::exists("Next" : "{xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
 pub trait Iterator {
     type Item;
 
-    #[rr::params("it_state" : "{xt_of Self}", "γ")]
-    #[rr::args("(it_state, γ)")]
     /// Postcondition: There exists an optional next item and the successor state of the iterator.
-    #[rr::exists("x" : "option {xt_of Item}", "new_it_state" : "{xt_of Self}")]
+    #[rr::exists("new_it_state" : "{xt_of Self}")]
     /// Postcondition: The state of the iterator has been updated.
-    #[rr::observe("γ": "($# new_it_state)")]
+    #[rr::observe("self.ghost": "($# new_it_state)")]
     /// Postcondition: If there is a next item, it obeys the iterator's relation, and similarly the
     /// successor state is determined.
-    #[rr::ensures(#iris "{Next} ($# it_state) (<$#>@{{option}} x) ($# new_it_state)")]
-    /// Postcondition: We return the optional next element.
-    #[rr::returns("x")]
+    #[rr::ensures(#iris "{Next} self.cur ret new_it_state")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /*
@@ -78,12 +73,10 @@ pub trait Iterator {
 
 
     // TODO: more methods
-    // Basically, we should have a common interface for types implementing the Iterator trait, and
-    // when we generate a specific instantiation, we want to instantiate that interface.
 }
 
 #[rr::export_as(core::iter::IntoIterator)]
-#[rr::exists("into_iter" : "{rt_of Self} → {rt_of IntoIter}")]
+#[rr::exists("IntoIter" : "{xt_of Self} → {xt_of IntoIter}")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
     type Item;
@@ -91,13 +84,11 @@ pub trait IntoIterator {
     /// Which kind of iterator are we turning this into?
     type IntoIter: Iterator<Item = Self::Item>;
 
-    #[rr::exists("res")]
-    #[rr::ensures("$# res = {into_iter} ($# self)")]
-    #[rr::returns("res")]
+    #[rr::returns("{IntoIter} self")]
     fn into_iter(self) -> Self::IntoIter;
 }
 
-#[rr::instantiate("into_iter" := "id")]
+#[rr::instantiate("IntoIter" := "id")]
 impl<I> IntoIterator for I where I: Iterator {
     type Item = <I as Iterator>::Item;
     type IntoIter = I;
@@ -107,3 +98,15 @@ impl<I> IntoIterator for I where I: Iterator {
         self
     }
 }
+
+
+//#[rr::export_as(core::iter::FromIterator)]
+//#[rr::exists("FromSequence" : "list ({xt_of A}) → {xt_of Self}")]
+//pub trait FromIterator<A> {
+    //#[rr::exists("seq", "s2", "s2'")]
+    //#[rr::ensures("IteratorNextFusedTrans _ ({T::IntoIter} iter) seq s2")]
+    //#[rr::ensures("{T::Next} s2 None s2'")]
+    //#[rr::returns("{FromSequence} seq")]
+    //fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+//}
+

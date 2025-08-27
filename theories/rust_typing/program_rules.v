@@ -147,11 +147,18 @@ Section typing.
     λ T, i2p (own_shr_subsume_id v π r1 r2 κ1 κ2 ty T).
 
   (** NamedLfts *)
-  Lemma subsume_named_lfts M M' T :
+  Lemma subsume_named_lfts M M' `{!ContainsProtected M'} T:
     ⌜M = M'⌝ ∗ T ⊢ subsume (Σ := Σ) (named_lfts M) (named_lfts M') T.
   Proof. iIntros "(-> & $) $". Qed.
-  Global Instance subsume_named_lfts_inst M M' : Subsume (named_lfts M) (named_lfts M') :=
-    λ T, i2p (subsume_named_lfts M M' T).
+  Definition subsume_named_lfts_inst := [instance subsume_named_lfts].
+  Global Existing Instance subsume_named_lfts_inst.
+
+  (* Low priority instance for strong updates, in particular when doing loop proofs *)
+  Lemma subsume_named_lfts_trivial M M' T:
+    T ⊢ subsume (Σ := Σ) (named_lfts M) (named_lfts M') T.
+  Proof. iIntros "$ Hb". iApply "Hb". Qed.
+  Definition subsume_named_lfts_trivial_inst := [instance subsume_named_lfts_trivial].
+  Global Existing Instance subsume_named_lfts_trivial_inst | 100.
 
   Lemma find_in_context_named_lfts T:
     (∃ M, named_lfts M ∗ T M) ⊢
@@ -3075,6 +3082,18 @@ Section typing.
     λ T, i2p (type_borrow_shr_end_shared E L π κ l ty r κ' bmin T).
 
   (** statements *)
+  Inductive CtxFoldExtract : Type :=
+    | CtxFoldExtractAllInit (κ : lft)
+    | CtxFoldExtractAll (κ : lft).
+
+  Inductive CtxFoldResolve : Type :=
+    | CtxFoldResolveAllInit
+    | CtxFoldResolveAll.
+
+  Inductive CtxFoldStratify : Type :=
+    | CtxFoldStratifyAllInit
+    | CtxFoldStratifyAll.
+
   Lemma type_goto E L b fn R s ϝ :
     fn.(rf_fn).(f_code) !! b = Some s →
     introduce_with_hooks E L (£ 1) (λ L2,
@@ -3090,10 +3109,13 @@ Section typing.
 
   (** Goto a block if we have already proved it with a particular precondition [P]. *)
   (* This is not in Lithium goal shape, but that's fine since it is only manually applied by automation. *)
+  (* We might also want to stratify here -- but this is difficult, because we'd need a second logical step.
+     Instead, we currently insert an annotation for that in the frontend. *)
   Lemma type_goto_precond E L P b fn R ϝ :
-    (* TODO maybe we should also stratify? *)
-    typed_block P b fn R ϝ ∗ prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R,
-      ⌜L = L'⌝ ∗ True (* TODO maybe relax *))
+    typed_block P b fn R ϝ ∗
+    (* [true] so that we can deinitialize with [owned_subltype_step] *)
+    prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R,
+      ⌜L = L'⌝ ∗ True (* TODO maybe relax and require inclusion of contexts or so. *))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros "(Hblock & Hsubt)". iIntros (?) "#CTX #HE HL Hcont".
@@ -3107,7 +3129,9 @@ Section typing.
 
   Lemma typed_block_rec fn R P b ϝ s :
     fn.(rf_fn).(f_code) !! b = Some s →
-    (□ (∀ E L, (□ typed_block P b fn R ϝ) -∗ P E L -∗ typed_stmt E L s fn R ϝ))
+    (□ (∀ E L, (□ typed_block P b fn R ϝ) -∗ 
+      introduce_with_hooks E L (P E L) (λ L2,
+        typed_stmt E L2 s fn R ϝ)))
     ⊢ typed_block P b fn R ϝ.
   Proof.
     iIntros (Hs) "#Hb". iLöb as "IH".
@@ -3123,7 +3147,8 @@ Section typing.
     iModIntro.  iModIntro. iMod "Hcl" as "_". iModIntro.
     iIntros "(Hcred1 & Hcred) (_ & Hat)".
     iMod ("HP" with "Hcred Hat") as "HP".
-    by iApply ("Hb" with "IH HP CTX HE HL").
+    iMod ("Hb" with "IH [] HE HL HP") as "(%L2 & HL & Hs)"; first done.
+    by iApply ("Hs" with "CTX HE HL").
   Qed.
 
   (** current goal: Goto.
@@ -3138,8 +3163,8 @@ Section typing.
       (* gather up the remaining ownership *)
       accu (λ Q,
       (∀ E L, (□ typed_block (λ E L, P E L ∗ Q) b fn R ϝ) -∗
-          P E L ∗ Q -∗
-          typed_stmt E L s fn R ϝ)))
+          introduce_with_hooks E L (P E L ∗ Q) (λ L2,
+          typed_stmt E L2 s fn R ϝ))))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
@@ -3376,13 +3401,7 @@ Section typing.
 
   (** EndLft *)
   (* TODO: also make endlft apply to local aliases, endlft should just remove them, without triggering anything. *)
-  Inductive CtxFoldExtract : Type :=
-    | CtxFoldExtractAllInit (κ : lft)
-    | CtxFoldExtractAll (κ : lft).
 
-  Inductive CtxFoldResolve : Type :=
-    | CtxFoldResolveAllInit
-    | CtxFoldResolveAll.
 
   Lemma type_endlft E L (n : string) s fn R ϝ :
     (∃ M, named_lfts M ∗
@@ -3422,7 +3441,7 @@ Section typing.
     iIntros (?) "#CTX #HE HL Hcont".
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R2 & >(Hc & HR2) & HL & HT)"; [done.. | ].
     iDestruct "HT" as "(%L' & % & %Hkill & Hs)".
-    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%L'' & %Hsub & Hs)". 
+    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%L'' & %Hsub & Hs)".
     iDestruct "Hs" as "(%M' & _ & Hs)".
     iPoseProof (llctx_end_llft ⊤ with "HL") as "Ha"; [done | done | apply Hkill | ].
     iApply fupd_wps.
@@ -3515,10 +3534,6 @@ Section typing.
   Qed.
 
   (** We instantiate the context folding mechanism for unblocking. *)
-  Inductive CtxFoldStratify : Type :=
-    | CtxFoldStratifyAllInit
-    | CtxFoldStratifyAll.
-
   Definition typed_context_fold_stratify_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
   Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
     (* TODO: this needs a different stratification strategy *)

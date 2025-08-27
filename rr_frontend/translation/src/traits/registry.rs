@@ -558,6 +558,161 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok((term, assoc_args))
     }
 
+    /// Resolve a single trait requirement.
+    pub(crate) fn resolve_trait_requirement_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        trait_did: DefId,
+        trait_args: ty::GenericArgsRef<'tcx>,
+        below_binders: ty::Binder<'tcx, ()>,
+        bound_regions: &[ty::BoundRegionKind],
+        origin: radium::TyParamOrigin,
+        assoc_constraints: &[Option<ty::Ty<'tcx>>],
+    ) -> Result<radium::TraitReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
+        let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
+
+        let trait_spec = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
+
+        if let Some((impl_did, impl_args, kind)) = resolution::resolve_trait(
+            self.env.tcx(),
+            current_typing_env,
+            trait_did,
+            trait_args,
+            below_binders,
+        ) {
+            trace!("resolved trait impl as {impl_did:?} with {trait_args:?} {kind:?}");
+
+            // compute the new scope including the bound regions for HRTBs introduced by this requirement
+            // We are resolving the trait requirement itself under these binders
+            let mut scope = state.get_param_scope();
+            let binders = scope.translate_bound_regions(self.env.tcx(), bound_regions);
+            let mut quantified_state = state.setup_trait_state(self.env.tcx(), scope);
+
+            let req_inst = match kind {
+                resolution::TraitResolutionKind::UserDefined => {
+                    // we can resolve it to a concrete implementation of the trait that the
+                    // call links up against
+                    // therefore, we specialize it to the specification for this implementation
+                    //
+                    // This is sound, as the compiler will make the same choice when resolving
+                    // the trait reference in codegen
+
+                    let (spec_term, assoc_tys) = self.get_impl_spec_term(
+                        &mut quantified_state,
+                        impl_did,
+                        impl_args.as_slice(),
+                        trait_args.as_slice(),
+                    )?;
+
+                    // filter out the associated types which are constrained -- these are
+                    // not required in our encoding
+                    let assoc_tys: Vec<_> = assoc_tys
+                        .into_iter()
+                        .zip(assoc_constraints)
+                        .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
+                        .collect();
+
+                    radium::TraitReqInst::new(
+                        radium::TraitReqInstSpec::Specialized(spec_term),
+                        origin,
+                        assoc_tys,
+                        trait_spec,
+                        binders,
+                    )
+                },
+                resolution::TraitResolutionKind::Param => {
+                    // Lookup in our current parameter environment to satisfy this trait
+                    // assumption
+                    let assoc_types_did = self.env.get_trait_assoc_types(trait_did);
+                    let mut assoc_types = Vec::new();
+                    for (did, constr) in assoc_types_did.into_iter().zip(assoc_constraints) {
+                        // filter out the associated types which are constrained -- these are
+                        // not required in our encoding
+                        if constr.is_none() {
+                            let alias = ty::AliasTy::new(self.env.tcx(), did, trait_args);
+                            let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
+                            let ty = self.env.tcx().mk_ty_from_kind(tykind);
+                            assoc_types.push(ty);
+                        }
+                    }
+                    info!("Param associated types: {:?}", assoc_types);
+
+                    let trait_use = quantified_state.lookup_trait_use(
+                        self.env.tcx(),
+                        trait_did,
+                        trait_args.as_slice(),
+                    )?;
+                    let trait_use_ref = trait_use.trait_use;
+
+                    trace!(
+                        "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
+                        trait_use.bound_regions, trait_use.trait_ref.args, trait_args
+                    );
+
+                    // compute the instantiation of the quantified trait assumption in terms
+                    // of the variables introduced by the trait assumption we are proving.
+                    let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
+                    unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
+                    let (inst, _) = unifier.get_result();
+                    trace!("computed instantiation: {inst:?}");
+                    trace!("mapping instantiation now in state={quantified_state:?}");
+
+                    // lookup the instances in the `binders` scope for the new trait assumption
+                    let mut mapped_inst = Vec::new();
+                    for region in inst {
+                        let translated_region = types::TX::translate_region(&mut quantified_state, region)?;
+                        mapped_inst.push(translated_region);
+                    }
+                    let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
+                    trace!("mapped instantiation: {mapped_inst:?}");
+
+                    let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref, mapped_inst);
+                    radium::TraitReqInst::new(
+                        radium::TraitReqInstSpec::Quantified(trait_impl),
+                        origin,
+                        assoc_types,
+                        trait_spec,
+                        binders,
+                    )
+                },
+                resolution::TraitResolutionKind::Closure => {
+                    let closure_did = impl_did;
+                    let closure_args = impl_args.as_closure();
+
+                    let (spec_term, assoc_tys) = self.get_closure_impl_spec_term(
+                        &mut quantified_state,
+                        closure_did,
+                        trait_did,
+                        closure_args,
+                        trait_args,
+                    )?;
+
+                    // filter out the associated types which are constrained -- these are
+                    // not required in our encoding
+                    let assoc_tys: Vec<_> = assoc_tys
+                        .into_iter()
+                        .zip(assoc_constraints)
+                        .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
+                        .collect();
+
+                    radium::TraitReqInst::new(
+                        radium::TraitReqInstSpec::Specialized(spec_term),
+                        origin,
+                        assoc_tys,
+                        trait_spec,
+                        binders,
+                    )
+                },
+            };
+
+            Ok(req_inst)
+        } else {
+            Err(TranslationError::TraitResolution(
+                "could not resolve trait required for method call".to_owned(),
+            ))
+        }
+    }
+
     /// Resolve the trait requirements of a [did] substituted with [params].
     /// [did] should have been resolved as much as possible,
     /// as the requirements can be different depending on which impl we consider.
@@ -605,9 +760,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 subst_args.push(bound);
             }
 
-            let trait_spec =
-                self.lookup_trait(req.trait_ref.def_id).ok_or(Error::NotATrait(req.trait_ref.def_id))?;
-
             // Check if the target is a method of the same trait with the same args
             // Since this happens in the same ParamEnv, this is the assumption of the trait method
             // for its own trait, so we skip it.
@@ -633,150 +785,20 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 "Trying to resolve requirement def_id={:?} with args = {trait_args:?}",
                 req.trait_ref.def_id
             );
-            if let Some((impl_did, impl_args, kind)) = resolution::resolve_trait(
-                self.env.tcx(),
-                current_typing_env,
+            let req_inst = self.resolve_trait_requirement_in_state(
+                state,
                 req.trait_ref.def_id,
                 trait_args,
                 req.binders,
-            ) {
-                info!("resolved trait impl as {impl_did:?} with {args:?} {kind:?}");
+                req.bound_regions.as_slice(),
+                req.origin,
+                req.assoc_constraints.as_slice(),
+            )?;
 
-                // compute the new scope including the bound regions for HRTBs introduced by this requirement
-                // We are resolving the trait requirement itself under these binders
-                let mut scope = state.get_param_scope();
-                let binders = scope.translate_bound_regions(self.env.tcx(), req.bound_regions.as_slice());
-                let mut quantified_state = state.setup_trait_state(self.env.tcx(), scope);
-
-                let req_inst = match kind {
-                    resolution::TraitResolutionKind::UserDefined => {
-                        // we can resolve it to a concrete implementation of the trait that the
-                        // call links up against
-                        // therefore, we specialize it to the specification for this implementation
-                        //
-                        // This is sound, as the compiler will make the same choice when resolving
-                        // the trait reference in codegen
-
-                        let (spec_term, assoc_tys) = self.get_impl_spec_term(
-                            &mut quantified_state,
-                            impl_did,
-                            impl_args.as_slice(),
-                            trait_args.as_slice(),
-                        )?;
-
-                        // filter out the associated types which are constrained -- these are
-                        // not required in our encoding
-                        let assoc_tys: Vec<_> = assoc_tys
-                            .into_iter()
-                            .zip(&req.assoc_constraints)
-                            .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
-                            .collect();
-
-                        radium::TraitReqInst::new(
-                            radium::TraitReqInstSpec::Specialized(spec_term),
-                            req.origin,
-                            assoc_tys,
-                            trait_spec,
-                            binders,
-                        )
-                    },
-                    resolution::TraitResolutionKind::Param => {
-                        // Lookup in our current parameter environment to satisfy this trait
-                        // assumption
-                        let trait_did = req.trait_ref.def_id;
-
-                        let assoc_types_did = self.env.get_trait_assoc_types(trait_did);
-                        let mut assoc_types = Vec::new();
-                        for (did, constr) in assoc_types_did.into_iter().zip(&req.assoc_constraints) {
-                            // filter out the associated types which are constrained -- these are
-                            // not required in our encoding
-                            if constr.is_none() {
-                                let alias = ty::AliasTy::new(self.env.tcx(), did, trait_args);
-                                let tykind = ty::TyKind::Alias(ty::AliasTyKind::Projection, alias);
-                                let ty = self.env.tcx().mk_ty_from_kind(tykind);
-                                assoc_types.push(ty);
-                            }
-                        }
-                        info!("Param associated types: {:?}", assoc_types);
-
-                        let trait_use = quantified_state.lookup_trait_use(
-                            self.env.tcx(),
-                            trait_did,
-                            trait_args.as_slice(),
-                        )?;
-                        let trait_use_ref = trait_use.trait_use;
-
-                        trace!(
-                            "need to compute HRTB instantiation for {:?}, by unifying {:?} to {:?}",
-                            trait_use.bound_regions, trait_use.trait_ref.args, trait_args
-                        );
-
-                        // compute the instantiation of the quantified trait assumption in terms
-                        // of the variables introduced by the trait assumption we are proving.
-                        let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
-                        unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
-                        let (inst, _) = unifier.get_result();
-                        trace!("computed instantiation: {inst:?}");
-                        trace!("mapping instantiation now in state={quantified_state:?}");
-
-                        // lookup the instances in the `binders` scope for the new trait assumption
-                        let mut mapped_inst = Vec::new();
-                        for region in inst {
-                            let translated_region =
-                                types::TX::translate_region(&mut quantified_state, region)?;
-                            mapped_inst.push(translated_region);
-                        }
-                        let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
-                        trace!("mapped instantiation: {mapped_inst:?}");
-
-                        let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref, mapped_inst);
-                        radium::TraitReqInst::new(
-                            radium::TraitReqInstSpec::Quantified(trait_impl),
-                            req.origin,
-                            assoc_types,
-                            trait_spec,
-                            binders,
-                        )
-                    },
-                    resolution::TraitResolutionKind::Closure => {
-                        let closure_did = impl_did;
-                        let closure_args = impl_args.as_closure();
-
-                        let (spec_term, assoc_tys) = self.get_closure_impl_spec_term(
-                            &mut quantified_state,
-                            closure_did,
-                            req.trait_ref.def_id,
-                            closure_args,
-                            trait_args,
-                        )?;
-
-                        // filter out the associated types which are constrained -- these are
-                        // not required in our encoding
-                        let assoc_tys: Vec<_> = assoc_tys
-                            .into_iter()
-                            .zip(&req.assoc_constraints)
-                            .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
-                            .collect();
-
-                        radium::TraitReqInst::new(
-                            radium::TraitReqInstSpec::Specialized(spec_term),
-                            req.origin,
-                            assoc_tys,
-                            trait_spec,
-                            binders,
-                        )
-                    },
-                };
-
-                if req_inst.origin == radium::TyParamOrigin::Direct {
-                    direct_trait_spec_terms.push(req_inst);
-                } else {
-                    indirect_trait_spec_terms.push(req_inst);
-                }
+            if req_inst.origin == radium::TyParamOrigin::Direct {
+                direct_trait_spec_terms.push(req_inst);
             } else {
-                return Err(TranslationError::TraitResolution(
-                    "could not resolve trait required for method call".to_owned(),
-                ));
+                indirect_trait_spec_terms.push(req_inst);
             }
         }
         indirect_trait_spec_terms.extend(direct_trait_spec_terms);
@@ -810,6 +832,25 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(scope_inst)
     }
 
+    pub(crate) fn translate_trait_req_inst_in_state(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        trait_req: radium::TraitReqInst<'def, ty::Ty<'tcx>>,
+    ) -> Result<radium::TraitReqInst<'def>, TranslationError<'tcx>> {
+        let mut assoc_inst = Vec::new();
+        for ty in trait_req.assoc_ty_inst {
+            let ty = self.type_translator().translate_type_in_state(ty, state)?;
+            assoc_inst.push(ty);
+        }
+        Ok(radium::TraitReqInst::new(
+            trait_req.spec,
+            trait_req.origin,
+            assoc_inst,
+            trait_req.of_trait,
+            trait_req.scope,
+        ))
+    }
+
     fn resolve_radium_trait_requirements_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
@@ -823,19 +864,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             scope.add_trait_req_scope(&trait_req.scope);
             let mut state = state.setup_trait_state(self.env.tcx(), scope);
 
-            let mut assoc_inst = Vec::new();
-            for ty in trait_req.assoc_ty_inst {
-                let ty = self.type_translator().translate_type_in_state(ty, &mut state)?;
-                assoc_inst.push(ty);
-            }
-            let trait_req = radium::TraitReqInst::new(
-                trait_req.spec,
-                trait_req.origin,
-                assoc_inst,
-                trait_req.of_trait,
-                trait_req.scope,
-            );
-
+            let trait_req = self.translate_trait_req_inst_in_state(&mut state, trait_req)?;
             trait_reqs.push(trait_req);
         }
         Ok(trait_reqs)

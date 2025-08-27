@@ -4,14 +4,17 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use radium::{coq, model, specs};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::middle::mir;
 
-use crate::spec_parsers::parse_utils::{IProp, ParamLookup, RRParams, attr_args_tokens, str_err};
+use crate::spec_parsers::parse_utils::{
+    IProp, ParamLookup, RRParams, RustPath, RustPathElem, attr_args_tokens, str_err,
+};
 
 /// Parse attributes on a const.
 /// Permitted attributes:
@@ -105,9 +108,10 @@ impl From<MetaIProp> for coq::iris::IProp {
 }
 
 /// Invariant variable refinement declaration
+#[derive(Debug)]
 struct InvVar {
     local: String,
-    rfn: String,
+    rfn: Option<String>,
 }
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
@@ -115,10 +119,15 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
         let local_str: parse::LitStr = stream.parse(meta)?;
         let local_str = local_str.value();
 
-        stream.parse::<_, MToken![:]>(meta)?;
+        let rfn_str = if parse::Colon::peek(stream) {
+            stream.parse::<_, MToken![:]>(meta)?;
 
-        let rfn_str: parse::LitStr = stream.parse(meta)?;
-        let (rfn_str, _) = meta.process_coq_literal(&rfn_str.value());
+            let rfn_str: parse::LitStr = stream.parse(meta)?;
+            let (rfn_str, _) = meta.process_coq_literal(&rfn_str.value());
+            Some(rfn_str)
+        } else {
+            None
+        };
 
         Ok(Self {
             local: local_str,
@@ -127,17 +136,71 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     }
 }
 
-pub(crate) struct VerboseLoopAttrParser<'def, 'a, T> {
-    locals: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)>,
+/// Info about the iterator we are iterating over, in case of `for` loops.
+pub(crate) struct LoopIteratorInfo<'def> {
+    pub(crate) iterator_variable: mir::Local,
+    pub(crate) binder_name: String,
+    pub(crate) iter_spec: radium::TraitReqInst<'def>,
+}
+
+struct LoopMetaInfo<'def, 'a, T> {
     scope: &'a T,
+    iterator_info: Option<LoopIteratorInfo<'def>>,
+}
+
+impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
+        self.scope.lookup_ty_param(path)
+    }
+
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+        self.scope.lookup_lft(lft)
+    }
+
+    fn lookup_literal(&self, path: &RustPath) -> Option<String> {
+        #[expect(clippy::collapsible_if)]
+        if let Some(info) = &self.iterator_info {
+            if path.len() == 1 {
+                let RustPathElem::AssocItem(it) = &path[0];
+                match it.as_str() {
+                    "Iter" => {
+                        return Some(info.binder_name.clone());
+                    },
+                    "IterAttrs" => {
+                        let attr_term = info.iter_spec.get_attr_term();
+                        let term = format!("({attr_term})");
+                        return Some(term);
+                    },
+                    "IterNext" => {
+                        let attr_term = info.iter_spec.get_attr_term();
+                        let next_name = info.iter_spec.of_trait.make_spec_attr_name("Next");
+                        let term = format!("({attr_term}).({next_name})");
+                        return Some(term);
+                    },
+                    _ => (),
+                }
+            }
+        }
+        self.scope.lookup_literal(path)
+    }
+}
+
+pub(crate) struct VerboseLoopAttrParser<'def, 'a, T> {
+    locals: Vec<(mir::Local, String, radium::LocalKind, bool, radium::Type<'def>)>,
+    info: LoopMetaInfo<'def, 'a, T>,
 }
 
 impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
     pub(crate) const fn new(
-        locals: Vec<(String, radium::LocalKind, bool, radium::Type<'def>)>,
+        locals: Vec<(mir::Local, String, radium::LocalKind, bool, radium::Type<'def>)>,
         scope: &'a T,
+        iterator_info: Option<LoopIteratorInfo<'def>>,
     ) -> Self {
-        Self { locals, scope }
+        let info = LoopMetaInfo {
+            scope,
+            iterator_info,
+        };
+        Self { locals, info }
     }
 }
 
@@ -163,19 +226,27 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
 
             match seg.name.as_str() {
                 "exists" => {
-                    let params = RRParams::parse(&buffer, self.scope).map_err(str_err)?;
+                    let params = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
                     for param in params.params {
                         existentials.push(param.into());
                     }
                 },
                 "inv" => {
-                    let parsed_iprop: MetaIProp = buffer.parse(self.scope).map_err(str_err)?;
+                    let parsed_iprop: MetaIProp = buffer.parse(&self.info).map_err(str_err)?;
                     invariant.push(parsed_iprop.into());
                 },
                 "inv_var" => {
-                    let parsed_inv_var: InvVar = buffer.parse(self.scope).map_err(str_err)?;
+                    let parsed_inv_var: InvVar = buffer.parse(&self.info).map_err(str_err)?;
                     inv_var_set.insert(parsed_inv_var.local.clone());
                     inv_vars.push(parsed_inv_var);
+                },
+                "inv_vars" => {
+                    let params: parse::Punctuated<InvVar, MToken![,]> =
+                        parse::Punctuated::<_, _>::parse_terminated(&buffer, &self.info).map_err(str_err)?;
+                    for x in params {
+                        inv_var_set.insert(x.local.clone());
+                        inv_vars.push(x);
+                    }
                 },
                 "ignore" => {
                     // ignore, this is the spec closure annotation
@@ -196,6 +267,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         //   equalities)
 
         // binders that the invariant is parametric in
+        let mut rfn_binder_names = BTreeMap::new();
         let mut rfn_binders = Vec::new();
 
         // proposition for unknown locals
@@ -206,34 +278,78 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut uninit_locals: Vec<String> = Vec::new();
         let mut preserved_locals: Vec<String> = Vec::new();
 
+        let mut declare_iterator_var = None;
+
         // get locals
-        for (name, kind, initialized, ty) in &self.locals {
+        for (local, name, kind, initialized, ty) in &self.locals {
             // get the refinement type
             let mut rfn_ty = ty.get_rfn_type();
             let ty_st: radium::lang::SynType = ty.into();
             // wrap it in place_rfn, since we reason about places
             rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 
+            let has_iterator_var = if let Some(iterator_info) = &self.info.iterator_info
+                && iterator_info.iterator_variable == *local
+            {
+                true
+            } else {
+                false
+            };
+
             let local_name = kind.mk_local_name(name);
 
-            if *kind == radium::LocalKind::CompilerTemp {
+            if *kind == radium::LocalKind::CompilerTemp && !initialized {
                 let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
                 uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
 
                 uninit_locals.push(local_name);
             } else if *initialized && inv_var_set.contains(name) {
-                inv_locals.push(local_name);
+                inv_locals.push(local_name.clone());
 
-                rfn_binders.push(coq::binder::Binder::new(Some(name.to_owned()), rfn_ty));
+                let binder_name = format!("_var_{name}");
+                rfn_binder_names.insert(name, binder_name.clone());
+                rfn_binders.push(coq::binder::Binder::new(Some(binder_name), rfn_ty));
+            } else if *initialized && has_iterator_var {
+                inv_locals.push(local_name.clone());
+                declare_iterator_var = Some(name.clone());
+
+                let binder_name = format!("_var_{name}");
+                rfn_binder_names.insert(name, binder_name.clone());
+                rfn_binders.push(coq::binder::Binder::new(Some(binder_name), rfn_ty));
             } else {
                 preserved_locals.push(local_name);
             }
         }
+        // Important: order in `inv_locals` and `rfn_binders` needs to be the same!
 
         // add constraints on refinements
         let mut var_invariants = Vec::new();
         for inv_var in inv_vars {
-            var_invariants.push(coq::iris::IProp::Pure(format!("{} = {}", inv_var.local, inv_var.rfn)));
+            if let Some(binder_name) = rfn_binder_names.get(&inv_var.local) {
+                if let Some(rfn) = &inv_var.rfn {
+                    var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = {rfn}")));
+                } else {
+                    // introduce an implicit quantifier and use xt
+                    let ex_name = inv_var.local.clone();
+                    existentials
+                        .push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
+                    var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = ($# {ex_name})")));
+                }
+            } else {
+                return Err(format!(
+                    "Cannot specify loop invariant on potentially uninitialized variable {}",
+                    inv_var.local
+                ));
+            }
+        }
+        // also add a constraint on the iterator variable
+        if let Some(iterator_info) = &self.info.iterator_info
+            && let Some(name) = declare_iterator_var
+            && let Some(binder_name) = rfn_binder_names.get(&name)
+        {
+            let ex_name = iterator_info.binder_name.clone();
+            existentials.push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
+            var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = ($# {ex_name})")));
         }
 
         var_invariants.extend(invariant);

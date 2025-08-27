@@ -53,7 +53,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             ty::TyKind::Char => translate_literal(sc.to_char(), radium::Literal::Char),
 
-            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
+            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty).map(Into::into),
 
             ty::TyKind::Tuple(tys) => {
                 if tys.is_empty() {
@@ -112,6 +112,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
+    //enum ConstantKind {
+    //Scalar(mir::interpret::Scalar, ty::Ty<'tcx>),
+    //Fn(ty::Ty<'tcx>),
+    //}
+
     /// Translate a constant value from const evaluation.
     fn translate_constant_value(
         &mut self,
@@ -125,7 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 match ty.kind() {
                     ty::TyKind::FnDef(_, _) => {
                         info!("Translating ZST val for function call target: {:?}", ty);
-                        self.translate_fn_def_use(ty)
+                        self.translate_fn_def_use(ty).map(Into::into)
                     },
                     _ => Ok(radium::Expr::Literal(radium::Literal::ZST)),
                 }

@@ -38,11 +38,11 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
         self.inner_scope.lookup_lft(lft)
     }
 
-    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
+    fn lookup_literal(&self, path: &RustPath) -> Option<String> {
         if path.len() == 1 {
             let RustPathElem::AssocItem(it) = &path[0];
             if let Some(lit) = self.literals.get(it) {
-                return Some(lit);
+                return Some(lit.to_owned());
             }
         }
         self.inner_scope.lookup_literal(path)

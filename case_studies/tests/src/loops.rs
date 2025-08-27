@@ -1,3 +1,4 @@
+#![rr::import("refinedrust.extra_proofs.tests", "loops")]
 
 #[rr::verify]
 fn loop1() {
@@ -26,7 +27,8 @@ fn loop2() {
 
     loop {
         let _ =
-        #[rr::inv_var("x": "#0%Z")]
+        #[rr::inv_vars("x")]
+        #[rr::inv("x = 0%Z")]
         #[rr::ignore] ||{};
 
         x = x;
@@ -44,9 +46,9 @@ fn loop3() {
     let mut x = 0;
 
     while x < 5 {
-        let _ = #[rr::exists("i")]
-        #[rr::inv_var("x": "#i")]
-        #[rr::inv("(0 ≤ i ≤ 5)%Z")]
+        let _ = 
+        #[rr::inv_var("x")]
+        #[rr::inv("(0 ≤ x ≤ 5)%Z")]
         #[rr::ignore] ||{};
 
         let y = 0;
@@ -71,7 +73,7 @@ struct MyRange {
 
 #[rr::instantiate("Next" := "λ s1 e s2, ⌜s1.2 = s2.2 ∧ 
     if_None e (s1 = s2 ∧ s1.1 = s1.2) ∧ 
-    if_Some e (λ e, s1.1 = e ∧ s2.1 = (s1.1 + 1)%Z ∧ s1.1 < s1.2)⌝%I")]
+    if_Some e (λ e, s1.1 = e ∧ s2.1 = (1 + s1.1)%Z ∧ s1.1 < s1.2)⌝%I")]
 impl Iterator for MyRange {
     type Item = usize; 
 
@@ -88,16 +90,7 @@ impl Iterator for MyRange {
     }
 }
 
-//impl IntoIterator for MyRange {
-    //type Item = usize;
-    //type IntoIter = MyRange;
-
-    //fn into_iterator(self) -> Self::IntoIter {
-        //self
-    //}
-//}
-
-#[rr::trust_me]
+#[rr::verify]
 fn loop4_myrange() {
     let mut x = 0;
     
@@ -106,23 +99,66 @@ fn loop4_myrange() {
         end: 10,
     };
     for i in r {
-
         // let's use Iter to refer to the current iterator state.
-        let _ = #[rr::exists("i")]
-        #[rr::inv_var("{Iter}": "#i")]
-        #[rr::inv("x = sum_list (seq 0 i.(start))")]
-        #[rr::ignore] ||{};
-        // This version should go through directly.
-    
-        // alternative: let's use history
         let _ =
-        #[rr::inv("x = sum_list {Hist}")]
+        #[rr::inv_vars("x")]
+        #[rr::inv("({Iter}.2 = 10 ∧ 0 ≤ {Iter}.1)%Z")]
+        #[rr::inv("x = sum_list_Z (seqZ 0 {Iter}.1)")]
         #[rr::ignore] ||{};
-        // for this version, I'll need an inductive proof about Next in the end, I think.
+        // This version should go through directly
+        // ... modulo hard reasoning about sequences.
 
         x += i;
     }
 }
+
+#[rr::verify]
+fn loop4_myrange_2() {
+    let mut x = 0;
+    
+    let r = MyRange {
+        start: 0,
+        end: 10,
+    };
+    for i in r {
+        let _ =
+        #[rr::exists("Hist")]
+        #[rr::inv_vars("x")]
+        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} (0, 10) Hist {Iter}")]
+        #[rr::inv("x = sum_list_Z Hist")]
+        #[rr::ignore] ||{};
+        // We'll need an inductive proof here: mainly, that FusedNext a hist b implies something
+        // about the relationship of a and b.
+
+        // Special support for this:
+        // let's add an annotation for snapshotting a variable.
+        // inputs: a name of a local 
+        // - this should create a let binding in the Rocq context that we can refer to afterwards.
+        // - the invariant needs to be able to refer to it symbolically (we don't know yet which
+        // name we'll get when defining the invariatnt)
+        // - probably we can have a Rocq context mapping for that. Alternatively, that mapping
+        // could also directly give the term.
+        // - we want an operation to look up the mapping.
+        //
+        //
+        // More generally, what would snapshot variables be useful for?
+        //
+        // I would like to do something like snapshot!(x, "my_name")
+        //
+        // But I won't easily be able to refer to it in loop invariants.
+        // This would just be something useful for manual proofs I suppose.
+
+        // Steps:
+        // 2. Add the annotation for posing a term.
+        // 3. Loop invariant gets list of posed terms to also pass to the invariant (this gets
+        //    resolved once when assembling the invariant)
+
+        x += i;
+    }
+}
+ 
+// impl: when I deal with a for loop, I should be able to extract the iteration variable.
+// Note that this will be the result of a into_iter call, and we always have one variable for that.
 
 
 //#[rr::verify]
@@ -132,9 +168,8 @@ fn loop4() {
     for i in 0..10 {
 
         // let's use Iter to refer to the current iterator state.
-        let _ = #[rr::exists("i")]
-        #[rr::inv_var("{Iter}": "#i")]
-        #[rr::inv("x = sum_list (seq 0 i.(start))")]
+        let _ =
+        #[rr::inv("x = sum_list (seq 0 {Iter}.(start))")]
         #[rr::ignore] ||{};
         // This version should go through directly.
     

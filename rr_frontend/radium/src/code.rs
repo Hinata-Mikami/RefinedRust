@@ -434,6 +434,10 @@ pub enum Annotation {
     /// Create an alias for an intersection of lifetimes
     #[display("AliasLftAnnot \"{}\" [{}]", _0, fmt_list!(_1, "; ", "\"{}\""))]
     AliasLftIntersection(Lft, Vec<Lft>),
+
+    /// Stratify the context
+    #[display("StratifyContextAnnot")]
+    StratifyContext,
 }
 
 impl Annotation {

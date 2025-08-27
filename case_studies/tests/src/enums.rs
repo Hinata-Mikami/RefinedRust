@@ -1,4 +1,4 @@
-#![rr::import("refinedrust.extra_proofs.tests.enums", "enums")]
+#![rr::import("refinedrust.extra_proofs.tests", "enums")]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 enum Option<T> {

@@ -273,7 +273,7 @@ pub(crate) type RustPath = Vec<RustPathElem>;
 pub(crate) trait ParamLookup<'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>>;
     fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
-    fn lookup_literal(&self, path: &RustPath) -> Option<&str>;
+    fn lookup_literal(&self, path: &RustPath) -> Option<String>;
 
     /// Processes a literal Coq term annotated via an attribute.
     /// In particular, processes escapes `{...}` and replaces them via their interpretation, see
@@ -491,8 +491,8 @@ mod tests {
             self.lft_names.get(lft)
         }
 
-        fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
-            self.literals.get(path).map(String::as_str)
+        fn lookup_literal(&self, path: &RustPath) -> Option<String> {
+            self.literals.get(path).cloned()
         }
     }
 

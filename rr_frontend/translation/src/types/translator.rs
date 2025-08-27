@@ -67,7 +67,7 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
         self.lifetime_scope.region_names.get(vid)
     }
 
-    fn lookup_literal(&self, path: &RustPath) -> Option<&str> {
+    fn lookup_literal(&self, path: &RustPath) -> Option<String> {
         self.generic_scope.lookup_literal(path)
     }
 }

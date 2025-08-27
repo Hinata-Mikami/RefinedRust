@@ -411,12 +411,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         target: mir::BasicBlock,
     ) -> Result<radium::Stmt, TranslationError<'tcx>> {
         self.enqueue_basic_block(target);
-        let res_stmt = radium::Stmt::GotoBlock(target.as_usize());
+        let mut res_stmt = radium::Stmt::GotoBlock(target.as_usize());
 
         let loop_info = self.proc.loop_info();
         if loop_info.is_loop_head(target) && !self.loop_specs.contains_key(&target) {
             let spec_defid = self.find_loop_spec_closure(target)?;
             self.loop_specs.insert(target, spec_defid);
+        }
+
+        if loop_info.is_loop_head(target) {
+            let annot_stmt = radium::PrimStmt::Annot {
+                a: vec![radium::Annotation::StratifyContext],
+                why: Some("goto to loop head".to_owned()),
+            };
+            res_stmt = radium::Stmt::Prim(vec![annot_stmt], Box::new(res_stmt));
         }
 
         Ok(res_stmt)

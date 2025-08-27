@@ -611,7 +611,7 @@ Ltac liRContextStratifyInit :=
       match envs with
       | Envs _ ?spatial _ =>
           let tctx := gather_location_list spatial in
-          notypeclasses refine (tac_fast_apply (typed_context_fold_stratify_init tctx E L T) _)
+          notypeclasses refine (tac_fast_apply (typed_context_fold_stratify_init tctx _ E L T) _)
       | _ => fail 1000 "gather_tctx: cannot determine Iris context"
       end
   end.

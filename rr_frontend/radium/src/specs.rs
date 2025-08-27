@@ -3110,7 +3110,7 @@ impl LiteralTraitSpec {
     }
 
     #[must_use]
-    fn make_spec_attr_name(&self, attr: &str) -> String {
+    pub fn make_spec_attr_name(&self, attr: &str) -> String {
         format!("{}_{attr}", self.name)
     }
 
@@ -3492,7 +3492,7 @@ pub enum TraitReqInstSpec<'def> {
 /// Instantiation of a trait requirement.
 /// The representation of the associated type instantiation is generic.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
-pub struct TraitReqInst<'def, T> {
+pub struct TraitReqInst<'def, T = Type<'def>> {
     pub spec: TraitReqInstSpec<'def>,
     pub origin: TyParamOrigin,
     /// instantiation of associated types, excluding the associated types which are already
@@ -3540,7 +3540,7 @@ impl<T> TraitReqInst<'_, T> {
     }
 
     #[must_use]
-    pub(crate) fn get_attr_term(&self) -> String {
+    pub fn get_attr_term(&self) -> String {
         match &self.spec {
             TraitReqInstSpec::Specialized(s) => {
                 // instantiate the attrs suitably
