@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{info, trace};
 use radium::specs;
@@ -27,6 +27,8 @@ use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, Verb
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, procedures, regions, search, traits, types};
+
+type ImplDeps<'a> = Option<&'a mut BTreeSet<OrderedDefId>>;
 
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
@@ -95,17 +97,17 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get a set of other (different) traits that this trait depends on.
-    pub(crate) fn get_deps_of_trait(&self, did: DefId) -> HashSet<DefId> {
+    pub(crate) fn get_deps_of_trait(&self, did: DefId) -> BTreeSet<OrderedDefId> {
         let param_env: ty::ParamEnv<'tcx> = self.env.tcx().param_env(did);
 
-        let mut deps = HashSet::new();
+        let mut deps = BTreeSet::new();
         for clause in param_env.caller_bounds() {
             let kind = clause.kind().skip_binder();
             if let ty::ClauseKind::Trait(pred) = kind {
                 let other_did = pred.trait_ref.def_id;
 
                 if other_did != did {
-                    deps.insert(other_did);
+                    deps.insert(OrderedDefId::new(self.env.tcx(), other_did));
                 }
             }
         }
@@ -114,25 +116,28 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Order the given traits according to their dependencies.
-    pub(crate) fn get_trait_deps(&self, traits: &[LocalDefId]) -> HashMap<DefId, HashSet<DefId>> {
-        let mut dep_map = HashMap::new();
+    pub(crate) fn get_trait_deps(
+        &self,
+        traits: &[LocalDefId],
+    ) -> BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>> {
+        let mut dep_map = BTreeMap::new();
 
         for trait_decl in traits {
             let deps = self.get_deps_of_trait(trait_decl.to_def_id());
-            dep_map.insert(trait_decl.to_def_id(), deps);
+            dep_map.insert(OrderedDefId::new(self.env.tcx(), trait_decl.to_def_id()), deps);
         }
 
         dep_map
     }
 
     /// Get a map of dependencies between traits.
-    pub(crate) fn get_registered_trait_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
-        let mut dep_map = HashMap::new();
+    pub(crate) fn get_registered_trait_deps(&self) -> BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>> {
+        let mut dep_map = BTreeMap::new();
 
         let decls = self.trait_decls.borrow();
         for trait_decl in decls.keys() {
             let deps = self.get_deps_of_trait(trait_decl.to_def_id());
-            dep_map.insert(trait_decl.to_def_id(), deps);
+            dep_map.insert(OrderedDefId::new(self.env.tcx(), trait_decl.to_def_id()), deps);
         }
 
         dep_map
@@ -159,6 +164,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         name: String,
         declared_attrs: Vec<String>,
         has_semantic_interp: bool,
+        attrs_dependent: bool,
     ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
         let spec_record = format!("{name}_spec");
         let spec_params_record = format!("{name}_spec_params");
@@ -192,6 +198,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             spec_params_record,
             spec_attrs_record,
             spec_semantic,
+            attrs_dependent,
             base_spec,
             base_spec_params,
             spec_subsumption,
@@ -220,6 +227,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_attrs = attrs::filter_for_tool(self.env.get_attributes(did.into()));
 
         let has_semantic_interp = self.env.has_tool_attribute(did.into(), "semantic");
+        let attrs_dependent = !self.env.has_tool_attribute(did.into(), "nondependent");
 
         // get the declared attributes that are allowed on impls
         let valid_attrs: Vec<String> =
@@ -231,6 +239,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             trait_name.clone(),
             valid_attrs,
             has_semantic_interp,
+            attrs_dependent,
         )?;
         // already register it for use
         // In particular, this is also needed to be able to register the methods of this trait
@@ -454,7 +463,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // check if there's a more specific impl spec
         let term = if let Some(impl_spec) = self.lookup_impl(impl_did) {
             let scope_inst =
-                self.compute_scope_inst_in_state(state, impl_did, self.env.tcx().mk_args(impl_args))?;
+                self.compute_scope_inst_in_state(state, impl_did, self.env.tcx().mk_args(impl_args), None)?;
 
             radium::SpecializedTraitImpl::new(impl_spec, scope_inst)
         } else {
@@ -528,7 +537,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             "get_closure_impl_spec_term: trying to find instantiation with trait_args={trait_args:?}, args={args:?}, closure_args={closure_args:?}"
         );
         let mut scope_inst =
-            self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args))?;
+            self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args), None)?;
 
         // Also instantiate late-bound arguments of the closure by comparing the closure argument
         // tuple type
@@ -568,6 +577,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         bound_regions: &[ty::BoundRegionKind],
         origin: radium::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
+        impl_deps: ImplDeps<'_>,
     ) -> Result<radium::TraitReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
 
@@ -581,6 +591,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             below_binders,
         ) {
             trace!("resolved trait impl as {impl_did:?} with {trait_args:?} {kind:?}");
+
+            if let Some(deps) = impl_deps {
+                deps.insert(OrderedDefId::new(self.env.tcx(), impl_did));
+            }
 
             // compute the new scope including the bound regions for HRTBs introduced by this requirement
             // We are resolving the trait requirement itself under these binders
@@ -723,6 +737,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
+        mut impl_deps: ImplDeps<'_>,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
 
@@ -785,6 +800,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 "Trying to resolve requirement def_id={:?} with args = {trait_args:?}",
                 req.trait_ref.def_id
             );
+            let impl_deps = impl_deps.as_deref_mut();
             let req_inst = self.resolve_trait_requirement_in_state(
                 state,
                 req.trait_ref.def_id,
@@ -793,6 +809,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 req.bound_regions.as_slice(),
                 req.origin,
                 req.assoc_constraints.as_slice(),
+                impl_deps,
             )?;
 
             if req_inst.origin == radium::TyParamOrigin::Direct {
@@ -856,9 +873,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
+        impl_deps: ImplDeps<'_>,
     ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
-        for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst)? {
+        for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst, impl_deps)? {
             // compute the new scope including the bound regions.
             let mut scope = state.get_param_scope();
             scope.add_trait_req_scope(&trait_req.scope);
@@ -878,10 +896,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         state: types::ST<'_, '_, 'def, 'tcx>,
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
+        impl_deps: ImplDeps<'_>,
     ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
-        for trait_req in self.resolve_radium_trait_requirements_in_state(state, did, params_inst)? {
+        for trait_req in
+            self.resolve_radium_trait_requirements_in_state(state, did, params_inst, impl_deps)?
+        {
             scope_inst.add_trait_requirement(trait_req);
         }
 
@@ -964,7 +985,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), closure_did);
         let state = types::TraitState::new(param_scope.clone(), typing_env, None, Some(&info.region_map));
         let mut state = types::STInner::TraitReqs(Box::new(state));
-        let trait_inst = self.compute_scope_inst_in_state(&mut state, trait_did, trait_args)?;
+        let trait_inst = self.compute_scope_inst_in_state(&mut state, trait_did, trait_args, None)?;
 
         // only if we're implementing FnOnce
         // - Output
@@ -995,10 +1016,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get information on a trait implementation and create its Radium encoding.
+    /// Also return the trait impls this impl depends on.
     pub(crate) fn get_trait_impl_info(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<(radium::TraitRefInst<'def>, BTreeSet<OrderedDefId>), TranslationError<'tcx>> {
         let trait_did = self
             .env
             .tcx()
@@ -1030,18 +1052,21 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         if let ty::ImplSubject::Trait(trait_ref) = subject {
             // set up scope
             let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
+            let mut deps = BTreeSet::new();
             let state = types::TraitState::new(param_scope.clone(), typing_env, None, None);
             let mut state = types::STInner::TraitReqs(Box::new(state));
 
-            let scope_inst =
-                self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+            let scope_inst = self.compute_scope_inst_in_state(
+                &mut state,
+                trait_ref.def_id,
+                trait_ref.args,
+                Some(&mut deps),
+            )?;
             //trace!("Determined trait requirements in impl: {trait_reqs:?}");
+            //trace!("get_trait_impl_info: have deps={deps:?}");
 
             // get instantiation for the associated types
             let mut assoc_types_inst = Vec::new();
-
-            // TODO don't rely on definition order
-            // maybe instead iterate over the assoc items of the trait
 
             let items = traits::sort_assoc_items(self.env, trait_assoc_items);
             for x in items {
@@ -1067,13 +1092,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 }
             }
 
-            Ok(radium::TraitRefInst::new(
-                trait_spec_ref,
-                impl_ref,
-                param_scope.into(),
-                scope_inst,
-                assoc_types_inst,
-                impl_spec.attrs,
+            Ok((
+                radium::TraitRefInst::new(
+                    trait_spec_ref,
+                    impl_ref,
+                    param_scope.into(),
+                    scope_inst,
+                    assoc_types_inst,
+                    impl_spec.attrs,
+                ),
+                deps,
             ))
         } else {
             unreachable!("Expected trait impl");
@@ -1226,6 +1254,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // This does not include user annotations (e.g., on functions), as the attributes for those
         // are not available here.
         let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
+        //let attr_override = None;
 
         // create a name for this instance by including the args
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
@@ -1265,8 +1294,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("new trait scope={scope:?}");
         let mut state = state.setup_trait_state(self.env.tcx(), scope);
 
-        let trait_reqs =
-            self.resolve_radium_trait_requirements_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+        let trait_reqs = self.resolve_radium_trait_requirements_in_state(
+            &mut state,
+            trait_ref.def_id,
+            trait_ref.args,
+            None,
+        )?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
 
         let mut trait_use_ref = trait_use.trait_use.borrow_mut();

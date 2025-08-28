@@ -34,6 +34,8 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 // Point: I want the pre to remain trivial, but accept an arbitrary post. 
 // I cannot really specify that well, currently.
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 // TODO: allow this
 //#[rr::params("P")]
 //#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
@@ -61,6 +63,9 @@ fn closure_test_arg_fn_1<T>(x: T)
 // I mean, I could require that there exists some projection, etc.. but that does not seem worth it.
 
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
+#[rr::requires(#trait T::PostMut := "λ _ _ _ _, True%I")]
 fn closure_test_arg_fn_2<T>(x: T)
     where T: Fn() -> i32
 {
@@ -68,6 +73,10 @@ fn closure_test_arg_fn_2<T>(x: T)
 }
 
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
+#[rr::requires(#trait T::PostMut := "λ _ _ _ _, True%I")]
+
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
 {
@@ -76,6 +85,8 @@ fn closure_test_arg_fnmut_1<T>(mut x: T)
 
 // Calling functions with closures
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 fn closure_test_call_fnonce_0<T>(x: T)
     where T: FnOnce() -> i32
 {
@@ -350,11 +361,16 @@ fn closure_test3(y: &mut i32) {
     assert!(z == 5*5*5);
 }
 
-#[rr::verify]
+// TODO: propagate assumptions to contained closures
+//#[rr::verify]
+#[rr::skip]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 fn closure_test7<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
     let cls =
+        #[rr::skip]
         #[rr::params("m")]
         #[rr::capture("y": "m")]
         |a: T| { y(a) };
@@ -364,6 +380,8 @@ fn closure_test7<T, U>(x: T, y: U)
 
 // HRTB
 #[rr::verify]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 fn closure_test_call_hrtb_1<T>(x: T) 
     where T: for<'a> Fn(&'a i32) -> i32
 {

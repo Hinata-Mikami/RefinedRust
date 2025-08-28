@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{BTreeMap, HashMap, HashSet, hash_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
@@ -449,7 +449,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             self.trait_scope.ordered_assumptions.push(key);
         }
 
-        for req in &requirements {
+        for req in requirements.iter().rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
@@ -485,7 +485,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // make a second pass to specify constraints on associated types
         // We do this in a second pass so that we can refer to the other associated types
-        for req in &requirements {
+        for req in requirements.iter().rev() {
             if req.is_self_in_trait_decl {
                 continue;
             }
@@ -508,7 +508,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
 
             // finalize the entry by adding dependencies on other trait parameters
-            let mut deps = HashSet::new();
+            let mut deps = BTreeSet::new();
             let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &typing_env));
             trait_registry.finalize_trait_use(entry, &mut state, req.trait_ref)?;
         }
@@ -592,7 +592,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             && env.tcx().trait_id_of_impl(impl_did).is_some()
         {
             // we are in a trait impl
-            let impl_ref = trait_registry.get_trait_impl_info(impl_did)?;
+            let (impl_ref, _) = trait_registry.get_trait_impl_info(impl_did)?;
             for attr in &impl_ref.of_trait.declared_attrs {
                 let term = impl_ref.get_attr_record_item_term(attr);
                 let path = vec![RustPathElem::AssocItem(attr.to_owned())];

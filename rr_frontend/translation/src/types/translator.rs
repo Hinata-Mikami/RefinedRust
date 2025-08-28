@@ -7,7 +7,7 @@
 //! The main translator for translating types within certain environments.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace};
@@ -131,7 +131,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 #[derive(Debug)]
 pub(crate) struct AdtState<'a, 'tcx, 'def> {
     /// track dependencies on other ADTs
-    deps: &'a mut HashSet<DefId>,
+    deps: &'a mut BTreeSet<OrderedDefId>,
     /// scope to track parameters
     scope: &'a scope::Params<'tcx, 'def>,
     /// the current typingenv
@@ -140,7 +140,7 @@ pub(crate) struct AdtState<'a, 'tcx, 'def> {
 
 impl<'a, 'tcx, 'def> AdtState<'a, 'tcx, 'def> {
     pub(crate) const fn new(
-        deps: &'a mut HashSet<DefId>,
+        deps: &'a mut BTreeSet<OrderedDefId>,
         scope: &'a scope::Params<'tcx, 'def>,
         typing_env: &'a ty::TypingEnv<'tcx>,
     ) -> Self {
@@ -452,7 +452,7 @@ pub(crate) struct TX<'def, 'tcx> {
     tuple_registry: RefCell<HashMap<usize, (radium::AbstractStructRef<'def>, radium::LiteralTypeRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
-    adt_deps: RefCell<HashMap<DefId, HashSet<DefId>>>,
+    adt_deps: RefCell<BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>>,
 
     /// shims for ADTs
     adt_shims: RefCell<HashMap<DefId, radium::LiteralTypeRef<'def>>>,
@@ -468,7 +468,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         TX {
             env,
             trait_registry: Cell::new(None),
-            adt_deps: RefCell::new(HashMap::new()),
+            adt_deps: RefCell::new(BTreeMap::new()),
             adt_shims: RefCell::new(HashMap::new()),
             struct_arena,
             enum_arena,
@@ -543,7 +543,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get the dependency map between ADTs.
-    pub(crate) fn get_adt_deps(&self) -> HashMap<DefId, HashSet<DefId>> {
+    pub(crate) fn get_adt_deps(&self) -> BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>> {
         let deps = self.adt_deps.borrow();
         deps.clone()
     }
@@ -787,7 +787,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args, None)?;
         let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
 
         // track this enum use for the current function
@@ -832,7 +832,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args, None)?;
         info!("struct use has params: {params:?}");
 
         if let STInner::InFunction(scope) = state {
@@ -868,7 +868,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let struct_ref: radium::AbstractStructRef<'def> = *struct_ref;
 
         // apply the generic parameters according to the mask
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args, None)?;
 
         let struct_use = radium::AbstractStructUse::new(struct_ref, params, radium::TypeIsRaw::No);
 
@@ -970,7 +970,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         info!("registering struct {:?}", ty);
 
         let generics: &'tcx ty::Generics = self.env.tcx().generics_of(adt.did());
-        let mut deps = HashSet::new();
+        let mut deps = BTreeSet::new();
         let mut scope = scope::Params::from(generics.own_params.as_slice());
         scope.add_param_env(adt.did(), self.env(), self, self.trait_registry())?;
 
@@ -1009,7 +1009,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let lit = self.intern_literal(struct_def.make_literal_type());
 
                 // check the deps
-                let is_rec_type = deps.contains(&adt.did());
+                let is_rec_type = deps.contains(&OrderedDefId::new(self.env.tcx(), adt.did()));
                 if is_rec_type {
                     if !struct_def.has_invariant() {
                         // this is an error, we need an invariant on recursive types
@@ -1018,7 +1018,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     }
 
                     // remove it
-                    deps.remove(&adt.did());
+                    deps.remove(&OrderedDefId::new(self.env.tcx(), adt.did()));
                     struct_def.set_is_recursive();
                 }
 
@@ -1029,7 +1029,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 *struct_def_ref = Some(struct_def);
 
                 let mut deps_ref = self.adt_deps.borrow_mut();
-                deps_ref.insert(adt.did(), deps);
+                deps_ref.insert(OrderedDefId::new(self.env.tcx(), adt.did()), deps);
 
                 // also add the entry for the literal
                 let mut reg = self.variant_registry.borrow_mut();
@@ -1316,7 +1316,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut scope = scope::Params::from(generics.own_params.as_slice());
         scope.add_param_env(def.did(), self.env(), self, self.trait_registry())?;
 
-        let mut deps = HashSet::new();
+        let mut deps = BTreeSet::new();
         let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
 
         // pre-register the enum for recursion
@@ -1438,7 +1438,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 aref.3 = Some(lit);
 
                 let mut deps_ref = self.adt_deps.borrow_mut();
-                deps_ref.insert(def.did(), deps);
+                deps_ref.insert(OrderedDefId::new(self.env.tcx(), def.did()), deps);
                 Ok(())
             },
             Err(err) => {
@@ -1462,7 +1462,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             )));
         };
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs, None)?;
 
         if let STInner::InFunction(scope) = state {
             let key = scope::AdtUseKey::new_from_inst(adt.did(), &params);
@@ -1550,7 +1550,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
 
                 if let STInner::TranslateAdt(state) = state {
-                    state.deps.insert(adt.did());
+                    state.deps.insert(OrderedDefId::new(self.env.tcx(), adt.did()));
                 }
 
                 if self.lookup_adt_shim(adt.did()).is_some() {
@@ -1796,7 +1796,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
-        let mut deps = HashSet::new();
+        let mut deps = BTreeSet::new();
         let state = AdtState::new(&mut deps, scope, &typing_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
     }
@@ -1861,6 +1861,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(&mut *state),
             adt_def.did(),
             args,
+            None,
         )?;
         let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
         let enum_use = radium::LiteralTypeUse::new(enum_ref, params);
@@ -1893,6 +1894,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(&mut *scope),
             variant_id,
             args,
+            None,
         )?;
         let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
@@ -1918,6 +1920,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(&mut *scope),
             variant_id,
             args,
+            None,
         )?;
         let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 

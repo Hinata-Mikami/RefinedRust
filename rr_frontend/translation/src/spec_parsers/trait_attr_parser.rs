@@ -114,7 +114,7 @@ where
                     }
                     semantic_interp = Some(lit);
                 },
-                "export_as" => (),
+                "nondependent" | "export_as" => (),
                 _ => {
                     return Err(format!("unknown attribute for trait specification: {:?}", args));
                 },

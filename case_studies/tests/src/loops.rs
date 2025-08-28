@@ -174,9 +174,9 @@ fn loop4() {
         // This version should go through directly.
     
         // alternative: let's use history
-        let _ =
-        #[rr::inv("x = sum_list {Hist}")]
-        #[rr::ignore] ||{};
+        //let _ =
+        //#[rr::inv("x = sum_list {Hist}")]
+        //#[rr::ignore] ||{};
         // for this version, I'll need an inductive proof about Next in the end, I think.
 
         x += i;

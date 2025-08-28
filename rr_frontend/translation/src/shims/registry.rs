@@ -54,6 +54,8 @@ struct ShimTraitEntry {
     spec_record: String,
     /// the optional Coq def name of the spec semantic interpretation
     spec_semantic: Option<String>,
+    /// whether the attrs record is dependent
+    attrs_dependent: bool,
     /// the Coq def name of the base spec
     base_spec: String,
     /// the Coq def name of the base spec params
@@ -178,6 +180,7 @@ pub(crate) struct TraitShim<'a> {
     pub spec_attrs_record: String,
     pub spec_record: String,
     pub spec_semantic: Option<String>,
+    pub attrs_dependent: bool,
     pub base_spec: String,
     pub base_spec_params: String,
     pub spec_subsumption: String,
@@ -195,6 +198,7 @@ impl<'a> From<TraitShim<'a>> for ShimTraitEntry {
             spec_attrs_record: shim.spec_attrs_record,
             spec_record: shim.spec_record,
             spec_semantic: shim.spec_semantic,
+            attrs_dependent: shim.attrs_dependent,
             base_spec: shim.base_spec,
             base_spec_params: shim.base_spec_params,
             spec_subsumption: shim.spec_subsumption,
@@ -455,6 +459,7 @@ impl<'a> SR<'a> {
                         spec_attrs_record: b.spec_attrs_record,
                         spec_record: b.spec_record,
                         spec_semantic: b.spec_semantic,
+                        attrs_dependent: b.attrs_dependent,
                         base_spec: b.base_spec,
                         base_spec_params: b.base_spec_params,
                         spec_subsumption: b.spec_subsumption,

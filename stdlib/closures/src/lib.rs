@@ -41,6 +41,7 @@ pub trait FnOnce<Args> {
 #[rr::export_as(core::ops::FnOnce)]
 #[rr::exists("Pre" : "{xt_of Self} → {xt_of Args} → iProp Σ")]
 #[rr::exists("Post" : "{xt_of Self} → {xt_of Args} → {xt_of Output} → iProp Σ")]
+#[rr::nondependent]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     type Output;
@@ -54,6 +55,7 @@ pub trait FnOnce<Args> {
 #[rr::export_as(core::ops::FnMut)]
 // Note: the relation gets both the current and the next state
 #[rr::exists("PostMut" : "{xt_of Self} → {xt_of Args} → {xt_of Self} → {xt_of Self::Output} → iProp Σ")]
+#[rr::nondependent]
 pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
     #[rr::requires(#iris "{Self::Pre} self.cur args")]
@@ -64,6 +66,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 }
 
 #[rr::export_as(core::ops::Fn)]
+#[rr::nondependent]
 pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
     #[rr::requires(#iris "{Self::Pre} self args")]

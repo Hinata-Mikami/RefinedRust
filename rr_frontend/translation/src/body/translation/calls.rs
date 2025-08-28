@@ -470,14 +470,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Resolve the trait requirements of a function call.
     /// The target of the call, [did], should have been resolved as much as possible,
     /// as the requirements of a call can be different depending on which impl we consider.
-    pub(crate) fn resolve_trait_requirements_of_call(
+    fn resolve_trait_requirements_of_call(
         &self,
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = types::STInner::InFunction(&mut scope);
-        self.trait_registry.resolve_trait_requirements_in_state(&mut state, did, params)
+        self.trait_registry.resolve_trait_requirements_in_state(&mut state, did, params, None)
     }
 
     /// Translate the use of an `FnDef`, registering that the current function needs to link against

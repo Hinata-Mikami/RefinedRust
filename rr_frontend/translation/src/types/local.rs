@@ -7,7 +7,7 @@
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{info, trace};
 use radium::coq;
@@ -450,7 +450,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
             let mut scope = scope.make_params_scope();
             scope.add_trait_req_scope(&req.scope);
-            let mut deps = HashSet::new();
+            let mut deps = BTreeSet::new();
             let state = types::AdtState::new(&mut deps, &scope, &typing_env);
             let mut state = STInner::TranslateAdt(state);
 

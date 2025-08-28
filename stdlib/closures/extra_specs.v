@@ -8,6 +8,3 @@ Definition Fn_default_attrs {Self_rt Args_rt Output_rt : RT} :
   Fn_spec_attrs (RRGS:=RRGS) Self_rt Args_rt Output_rt :=
   mk_Fn_spec_attrs.
 
-
-
-

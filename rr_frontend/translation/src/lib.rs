@@ -30,7 +30,7 @@ mod traits;
 mod types;
 mod unification;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -45,6 +45,7 @@ use rr_rustc_interface::{hir, span};
 use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
+use crate::base::OrderedDefId;
 use crate::body::signature;
 use crate::closure_impl_generator::ClosureImplGenerator;
 use crate::environment::Environment;
@@ -56,17 +57,20 @@ use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
 
 /// Order ADT definitions topologically.
-fn order_defs_with_deps(tcx: ty::TyCtxt<'_>, deps: &HashMap<DefId, HashSet<DefId>>) -> Vec<DefId> {
+fn order_defs_with_deps(
+    tcx: ty::TyCtxt<'_>,
+    deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+) -> Vec<DefId> {
     let mut topo = TopologicalSort::new();
-    let mut defs = HashSet::new();
+    let mut defs = BTreeSet::new();
 
     info!("Ordering ADT defs: {deps:?}");
 
     for (did, referenced_dids) in deps {
         defs.insert(did);
-        topo.insert(*did);
+        topo.insert(did.def_id);
         for did2 in referenced_dids {
-            topo.add_dependency(*did2, *did);
+            topo.add_dependency(did2.def_id, did.def_id);
         }
     }
 
@@ -82,7 +86,7 @@ fn order_defs_with_deps(tcx: ty::TyCtxt<'_>, deps: &HashMap<DefId, HashSet<DefId
             panic!("RefinedRust does not currently support mutually recursive types");
         }
         // only track actual definitions
-        defn_order.extend(next.into_iter().filter(|x| defs.contains(&x)));
+        defn_order.extend(next.into_iter().filter(|x| defs.contains(&OrderedDefId::new(tcx, *x))));
     }
 
     defn_order
@@ -114,7 +118,8 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: BTreeMap<base::OrderedDefId, radium::TraitImplSpec<'rcx>>,
+    trait_impls: BTreeMap<OrderedDefId, radium::TraitImplSpec<'rcx>>,
+    trait_impl_deps: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
 }
 
 impl<'rcx> VerificationCtxt<'_, 'rcx> {
@@ -233,6 +238,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 spec_attrs_record: decl.spec_attrs_record.clone(),
                 spec_record: decl.spec_record.clone(),
                 spec_semantic: decl.spec_semantic.clone(),
+                attrs_dependent: decl.attrs_dependent,
                 base_spec: decl.base_spec.clone(),
                 base_spec_params: decl.base_spec_params.clone(),
                 spec_subsumption: decl.spec_subsumption.clone(),
@@ -447,7 +453,10 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         {
             writeln!(spec_file, "Section attrs.").unwrap();
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-            for spec in self.trait_impls.values() {
+            // sort according to dependency order
+            let order = order_defs_with_deps(self.env.tcx(), &self.trait_impl_deps);
+            for did in order {
+                let spec = &self.trait_impls[&OrderedDefId::new(self.env.tcx(), did)];
                 writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
             }
             writeln!(spec_file, "End attrs.\n").unwrap();
@@ -1053,6 +1062,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                 spec_params_record: shim.spec_param_record.clone(),
                 spec_record: shim.spec_record.clone(),
                 spec_semantic: shim.spec_semantic.clone(),
+                attrs_dependent: shim.attrs_dependent,
                 base_spec: shim.base_spec.clone(),
                 base_spec_params: shim.base_spec_params.clone(),
                 spec_subsumption: shim.spec_subsumption.clone(),
@@ -1337,7 +1347,7 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                     vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
 
                     if let Some(info) = info {
-                        let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                        let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
                         vcx.procedure_registry.closure_info.insert(ordered_did, info);
                     }
                 },
@@ -1365,7 +1375,7 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                     vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
 
                     if let Some(info) = info {
-                        let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                        let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
                         vcx.procedure_registry.closure_info.insert(ordered_did, info);
                     }
                 },
@@ -1735,7 +1745,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         };
 
         let mut register_impl = |to_impl| {
-            let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), closure_did.to_def_id());
+            let ordered_did = OrderedDefId::new(vcx.env.tcx(), closure_did.to_def_id());
             let info = vcx.procedure_registry.closure_info.get_mut(&ordered_did).unwrap();
             let spec = process_impl(to_impl, &info.info);
             match spec {
@@ -1790,8 +1800,8 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
         let ty::ImplSubject::Trait(_) = subject else { continue };
 
-        let process_impl = || -> Result<radium::TraitImplSpec<'_>, base::TranslationError<'tcx>> {
-            let impl_info = vcx.trait_registry.get_trait_impl_info(did)?;
+        let process_impl = || -> Result<(radium::TraitImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
+            let (impl_info, deps) = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
 
             let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
@@ -1851,14 +1861,15 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
             // assemble the spec and register it
             let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
-            Ok(spec)
+            Ok((spec, deps))
         };
 
         let spec = process_impl();
         match spec {
-            Ok(spec) => {
-                let ordered_did = base::OrderedDefId::new(vcx.env.tcx(), did);
+            Ok((spec, deps)) => {
+                let ordered_did = OrderedDefId::new(vcx.env.tcx(), did);
                 vcx.trait_impls.insert(ordered_did, spec);
+                vcx.trait_impl_deps.insert(ordered_did, deps);
             },
             Err(base::TranslationError::FatalError(err)) => {
                 exit_with_error(&format!(
@@ -2041,6 +2052,7 @@ where
         dune_package: package,
         const_registry: consts::Scope::empty(),
         trait_impls: BTreeMap::new(),
+        trait_impl_deps: BTreeMap::new(),
         fn_arena: &fn_spec_arena,
     };
 

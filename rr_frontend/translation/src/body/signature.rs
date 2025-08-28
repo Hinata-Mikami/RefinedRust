@@ -754,7 +754,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
-        let trait_info = self.trait_registry.get_trait_impl_info(impl_did)?;
+        let (trait_info, _) = self.trait_registry.get_trait_impl_info(impl_did)?;
         Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)))
     }
 
