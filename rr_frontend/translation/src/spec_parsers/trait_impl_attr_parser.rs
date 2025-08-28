@@ -6,7 +6,8 @@
 
 use std::collections::BTreeMap;
 
-use attribute_parse::{MToken, parse};
+use attribute_parse::MToken;
+use attribute_parse::parse::{self, Peek as _};
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{IdentOrTerm, ParamLookup, attr_args_tokens, str_err};
@@ -56,23 +57,39 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
             match seg.name.as_str() {
                 "instantiate" => {
-                    let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
-                    buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
-                    buffer.parse::<_, MToken![=]>(&()).map_err(str_err)?;
+                    let parsed_name: IdentOrTerm = buffer.parse(&self.scope).map_err(str_err)?;
+                    buffer.parse::<_, MToken![:]>(&self.scope).map_err(str_err)?;
+                    buffer.parse::<_, MToken![=]>(&self.scope).map_err(str_err)?;
 
-                    // if this is delimited, just enter the delimiter
-                    let buffer = if let Some(stream) = buffer.peek_delimited() {
-                        parse::Buffer::new(stream)
+                    let inst = if parse::Pound::peek(&buffer) {
+                        buffer.parse::<_, MToken![#]>(&()).map_err(str_err)?;
+                        let macro_cmd: parse::Ident = buffer.parse(&()).map_err(str_err)?;
+                        if &macro_cmd.value() != "proof" {
+                            return Err(format!(
+                                "unknown macro {} in trait attribute instantiation",
+                                macro_cmd.value()
+                            ));
+                        }
+
+                        let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
+                        let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
+
+                        radium::TraitSpecAttrInst::Proof(parsed_term)
                     } else {
-                        buffer
-                    };
+                        // if this is delimited, just enter the delimiter
+                        let buffer = if let Some(stream) = buffer.peek_delimited() {
+                            parse::Buffer::new(stream)
+                        } else {
+                            buffer
+                        };
 
-                    let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
-                    let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
-                    if trait_attrs
-                        .insert(parsed_name.to_string(), radium::coq::term::Term::Literal(parsed_term))
-                        .is_some()
-                    {
+                        let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
+                        let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
+                        let term = radium::coq::term::Term::Literal(parsed_term);
+
+                        radium::TraitSpecAttrInst::Term(term)
+                    };
+                    if trait_attrs.insert(parsed_name.to_string(), inst).is_some() {
                         return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
                     }
                 },

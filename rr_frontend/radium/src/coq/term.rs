@@ -42,6 +42,9 @@ pub enum RocqTerm<T, U> {
     /// A literal
     Literal(String),
 
+    /// A hole
+    Infer,
+
     /// A reference to an identifier
     Ident(Ident),
 
@@ -95,6 +98,9 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             Self::Literal(lit) => {
                 let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
                 write!(f2, "{lit}")
+            },
+            Self::Infer => {
+                write!(f, "_")
             },
             Self::Ident(ident) => {
                 write!(f, "{ident}")

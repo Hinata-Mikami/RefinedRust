@@ -1086,6 +1086,7 @@ impl<'def> AbstractVariant<'def> {
 
         // Intro to main def
         document.push(coq::command::Definition {
+            program_mode: false,
             name: self.plain_ty_name.clone(),
             params: coq::binder::BinderList::empty(),
             ty: Some(
@@ -1110,6 +1111,7 @@ impl<'def> AbstractVariant<'def> {
         let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
 
         document.push(coq::command::Definition {
+            program_mode: false,
             name: self.plain_rt_def_name.clone(),
             params: coq::binder::BinderList::empty(),
             ty: Some(coq::term::Type::RT),
@@ -1879,6 +1881,7 @@ impl<'def> AbstractEnum<'def> {
         write!(out, " end").unwrap();
 
         coq::command::Definition {
+            program_mode: false,
             name: self.enum_rt_def_name(),
             params: coq::binder::BinderList::empty(),
             ty: None,
@@ -1931,6 +1934,7 @@ impl<'def> AbstractEnum<'def> {
         let ty = self.scope.get_spec_all_type_term(Box::new(ty));
 
         coq::command::Definition {
+            program_mode: false,
             name: self.enum_ty_def_name(),
             params: coq::binder::BinderList::empty(),
             ty: Some(ty),
@@ -2073,6 +2077,7 @@ impl<'def> AbstractEnum<'def> {
             // add the canonical structure declaration for the corresponding RT
             let rt_name = format!("{name}RT");
             let defn = coq::command::Definition {
+                program_mode: false,
                 name: rt_name.clone(),
                 params: coq::binder::BinderList::empty(),
                 ty: Some(coq::term::Type::RT),
@@ -2588,6 +2593,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
 
         let name = self.trait_req_incl_name.clone();
         doc.push(coq::command::Definition {
+            program_mode: false,
             name,
             params,
             ty: Some(coq::term::Type::Literal("spec_with _ _ Prop".to_owned())),
@@ -2609,6 +2615,7 @@ impl<'def> fmt::Display for FunctionSpec<'def, InnerFunctionSpec<'def>> {
         self.spec.write_spec_term(&mut term, &self.generics)?;
 
         let coq_def = coq::command::Definition {
+            program_mode: false,
             name: self.spec_name.clone(),
             params,
             ty: None,
@@ -2709,10 +2716,14 @@ impl<'def> FunctionSpecTraitReqSpecialization<'def> {
                 // create an item for every attr
                 let record_item_name = of_trait.make_spec_attr_name(attr_name);
 
+                let TraitSpecAttrInst::Term(term) = inst else {
+                    unimplemented!("trait req specialization should not assume proofs");
+                };
+
                 let item = coq::term::RecordBodyItem {
                     name: record_item_name,
                     params: coq::binder::BinderList::empty(),
-                    term: inst.to_owned(),
+                    term: term.to_owned(),
                 };
                 components.push(item);
             }
@@ -2725,6 +2736,7 @@ impl<'def> FunctionSpecTraitReqSpecialization<'def> {
             params: def_rts_params,
             ty: Some(attrs_type),
             body: coq::command::DefinitionBody::Term(attr_record_term),
+            program_mode: false,
         }
     }
 }
@@ -3069,12 +3081,17 @@ pub struct TraitSpecAttrsDecl {
     semantic_interp: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub enum TraitSpecAttrInst {
+    Term(coq::term::Term),
+    Proof(String),
+}
+
 /// Implementation of the attributes of a trait
 #[derive(Constructor, Clone, Debug)]
 pub struct TraitSpecAttrsInst {
     /// a map of attributes and their implementation
-    attrs: BTreeMap<String, coq::term::Term>,
-    //pub semantic_interp: Option<String>,
+    attrs: BTreeMap<String, TraitSpecAttrInst>,
 }
 
 /// A using occurrence of a trait spec.
@@ -4344,6 +4361,7 @@ fn make_trait_instance<'def>(
     write!(ty_annot, "spec_with _ _ {}", spec_record_type)?;
 
     document.push(coq::command::Definition {
+        program_mode: false,
         name: spec_record_name.to_owned(),
         params: def_params,
         ty: Some(coq::term::Type::Literal(ty_annot)),
@@ -4405,6 +4423,7 @@ impl TraitSpecDecl<'_> {
             let record_item_sig_name = self.lit.make_spec_attr_sig_name(item_name);
 
             let sig_defn = coq::command::Definition {
+                program_mode: false,
                 name: record_item_sig_name.clone(),
                 params: params.clone(),
                 ty: None,
@@ -4454,6 +4473,7 @@ impl TraitSpecDecl<'_> {
             let body = semantic_interp.to_owned();
 
             Some(coq::command::Command::Definition(coq::command::Definition {
+                program_mode: false,
                 name: def_name.to_owned(),
                 params,
                 ty: Some(coq::term::Type::Prop),
@@ -4607,6 +4627,7 @@ impl TraitSpecDecl<'_> {
         let body = coq::term::Term::Infix("∧".to_owned(), incls);
 
         coq::command::Definition {
+            program_mode: false,
             name: spec_incl_name,
             params: spec_incl_params,
             ty: Some(coq::term::Type::Prop),
@@ -4846,7 +4867,7 @@ pub struct TraitImplSpec<'def> {
 impl TraitImplSpec<'_> {
     /// Generate the definition of the attribute record of this trait impl.
     #[must_use]
-    pub fn generate_attr_decl(&self) -> coq::command::Definition {
+    pub fn generate_attr_decl(&self) -> coq::Document {
         let attrs = &self.trait_ref.attrs;
         let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record;
         let of_trait = &self.trait_ref.of_trait;
@@ -4875,6 +4896,8 @@ impl TraitImplSpec<'_> {
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_terms.clone());
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
 
+        let mut obligation_terms = Vec::new();
+
         // write the attr record decl
         let attr_record_term = if attrs.attrs.is_empty() {
             coq::term::Term::Literal(of_trait.spec_record_attrs_constructor_name())
@@ -4889,8 +4912,23 @@ impl TraitImplSpec<'_> {
                     attrs_type_terms.clone(),
                 );
 
+                let inst_term = match inst {
+                    TraitSpecAttrInst::Term(term) => term.to_owned(),
+                    TraitSpecAttrInst::Proof(proof) => {
+                        let lit = coq::ltac::RocqLTac::Literal(proof.to_owned());
+                        let proof = coq::ProofDocument::new(vec![lit]);
+                        obligation_terms.push(coq::command::Command::NextObligation(
+                            coq::command::ObligationProof {
+                                content: proof,
+                                terminator: coq::proof::Terminator::Qed,
+                            },
+                        ));
+                        coq::term::Term::Infer
+                    },
+                };
+
                 let annot_term = coq::term::Term::AsType(
-                    Box::new(inst.to_owned()),
+                    Box::new(inst_term),
                     Box::new(coq::term::Type::Term(Box::new(coq::term::Term::App(Box::new(item_ty))))),
                 );
 
@@ -4905,12 +4943,15 @@ impl TraitImplSpec<'_> {
             coq::term::Term::RecordBody(record_body)
         };
 
-        coq::command::Definition {
+        let def = coq::command::Definition {
+            program_mode: true,
             name: attrs_name.to_owned(),
             params: def_rts_params,
             ty: Some(attrs_type),
             body: coq::command::DefinitionBody::Term(attr_record_term),
-        }
+        };
+        obligation_terms.insert(0, coq::command::Command::Definition(def));
+        coq::Document::new(obligation_terms)
     }
 
     /// Make the definition for the semantic declaration.
@@ -4994,6 +5035,7 @@ impl TraitImplSpec<'_> {
         ty_term.push_str(&format!(" {base_spec}))"));
 
         let lem = coq::command::Definition {
+            program_mode: false,
             name: spec_name.to_owned(),
             params,
             ty: None,

@@ -997,10 +997,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // get this from Info
         let mut attrs = BTreeMap::new();
         if kind == ty::ClosureKind::FnOnce {
-            attrs.insert("Pre".to_owned(), info.pre_encoded.clone());
-            attrs.insert("Post".to_owned(), info.post_encoded.clone());
+            attrs.insert("Pre".to_owned(), radium::TraitSpecAttrInst::Term(info.pre_encoded.clone()));
+            attrs.insert("Post".to_owned(), radium::TraitSpecAttrInst::Term(info.post_encoded.clone()));
         } else if kind == ty::ClosureKind::FnMut {
-            attrs.insert("PostMut".to_owned(), info.post_mut_encoded.clone().unwrap());
+            attrs.insert(
+                "PostMut".to_owned(),
+                radium::TraitSpecAttrInst::Term(info.post_mut_encoded.clone().unwrap()),
+            );
         }
 
         trace!("leave get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?}");
@@ -1208,6 +1211,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// For a builtin trait, get the default attribute that should be assumed.
     ///
     /// Currently, we use this to assume the trivial specification for closure arguments.
+    #[expect(dead_code)]
     fn get_builtin_trait_attr_override(&self, did: DefId) -> Option<String> {
         let fn_did = search::try_resolve_did(self.env.tcx(), &["core", "ops", "Fn"])?;
         if did == fn_did {
@@ -1253,8 +1257,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // compute an override for the attributes assumed here
         // This does not include user annotations (e.g., on functions), as the attributes for those
         // are not available here.
-        let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
-        //let attr_override = None;
+        //let attr_override = self.get_builtin_trait_attr_override(trait_ref.def_id);
+        let attr_override = None;
 
         // create a name for this instance by including the args
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());

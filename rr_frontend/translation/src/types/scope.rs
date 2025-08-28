@@ -220,7 +220,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
         &self,
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, coq::term::Term>,
+        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
     ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
         let mut trait_ref = trait_use.borrow_mut();
         let trait_ref = trait_ref.as_mut().unwrap();

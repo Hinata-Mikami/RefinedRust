@@ -86,7 +86,7 @@ impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
         &self,
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, coq::term::Term>,
+        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
     ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
         self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }

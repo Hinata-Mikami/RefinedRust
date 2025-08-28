@@ -44,7 +44,7 @@ pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
         &self,
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, coq::term::Term>,
+        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
     ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>>;
 }
 
@@ -456,8 +456,10 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
 
     // specialized trait specs we assume.
     // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
-    trait_specs:
-        BTreeMap<*const u8, (radium::LiteralTraitSpecUseRef<'def>, BTreeMap<String, coq::term::Term>)>,
+    trait_specs: BTreeMap<
+        *const u8,
+        (radium::LiteralTraitSpecUseRef<'def>, BTreeMap<String, radium::TraitSpecAttrInst>),
+    >,
 }
 
 /// State for assembling fallible specs
@@ -836,7 +838,13 @@ where
                             .entry((&raw const *req).cast())
                             .or_insert_with(|| (req, BTreeMap::new()));
 
-                        if entries.insert(attr.clone(), coq::term::Term::Literal(term)).is_some() {
+                        if entries
+                            .insert(
+                                attr.clone(),
+                                radium::TraitSpecAttrInst::Term(coq::term::Term::Literal(term)),
+                            )
+                            .is_some()
+                        {
                             return Err(format!("multiple specializations for {attr} were specified"));
                         }
                     } else {

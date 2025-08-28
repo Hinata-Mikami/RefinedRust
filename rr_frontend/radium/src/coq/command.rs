@@ -14,7 +14,7 @@ use derive_more::{Display, From};
 use indent_write::indentable::Indentable as _;
 
 use crate::BASE_INDENT;
-use crate::coq::{Attribute, Ident, binder, eval, inductive, module, proof, section, syntax, term};
+use crate::coq::{self, Attribute, Ident, binder, eval, inductive, module, proof, section, syntax, term};
 
 /// A [command], with optional attributes.
 ///
@@ -153,6 +153,11 @@ pub enum Command {
     #[display("{}", _0)]
     Lemma(Lemma),
 
+    /// The [`Next Obligation`] command.
+    ///
+    /// [`Next Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html?highlight=next%20obligation#coq:cmd.Next-Obligation
+    NextObligation(ObligationProof),
+
     /// The [`Section`] command.
     ///
     /// [`Section`]: https://rocq-prover.org/doc/v8.20/refman/language/core/sections.html#using-sections
@@ -221,14 +226,16 @@ pub struct Definition {
     pub params: binder::BinderList,
     pub ty: Option<term::Type>,
     pub body: DefinitionBody,
+    pub program_mode: bool,
 }
 
 impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pref = if self.program_mode { "Program " } else { "" };
         if let Some(ty) = &self.ty {
-            write!(f, "Definition {} {} : {ty}", self.name, self.params)?;
+            write!(f, "{pref}Definition {} {} : {ty}", self.name, self.params)?;
         } else {
-            write!(f, "Definition {} {}", self.name, self.params)?;
+            write!(f, "{pref}Definition {} {}", self.name, self.params)?;
         }
 
         match &self.body {
@@ -269,6 +276,21 @@ impl fmt::Display for Lemma {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Lemma {} {} : {}.", self.name, self.params, self.ty)?;
         write!(f, "{}", self.body)
+    }
+}
+
+/// An obligation proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObligationProof {
+    pub content: coq::ProofDocument,
+    pub terminator: proof::Terminator,
+}
+
+impl fmt::Display for ObligationProof {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Next Obligation.")?;
+        write!(f, "{}", (&self.content).indented(BASE_INDENT))?;
+        writeln!(f, "{}.", self.terminator)
     }
 }
 
