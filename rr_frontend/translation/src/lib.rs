@@ -201,10 +201,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         let mut method_specs = BTreeMap::new();
         for (name, spec) in &decl.methods.methods {
-            method_specs.insert(
-                name.to_owned(),
-                (spec.function_name.clone(), spec.spec_name.clone(), spec.trait_req_incl_name.clone()),
-            );
+            if let radium::TraitInstanceMethodSpec::Defined(spec) = spec {
+                method_specs.insert(
+                    name.to_owned(),
+                    (spec.function_name.clone(), spec.spec_name.clone(), spec.trait_req_incl_name.clone()),
+                );
+            }
+            // otherwise (for default specs), we don't have to store anything, as this function
+            // does not exist for Rust either
         }
 
         let a = shim_registry::TraitImplShim {
@@ -1735,7 +1739,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
             let mut methods = BTreeMap::new();
             let spec = call_fn_def.spec;
-            methods.insert(name, spec);
+            methods.insert(name, radium::TraitInstanceMethodSpec::Defined(spec));
 
             let instance_spec = radium::TraitInstanceSpec::new(methods);
 
@@ -1800,60 +1804,67 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
         let ty::ImplSubject::Trait(_) = subject else { continue };
 
+        let tcx = vcx.env.tcx();
+
         let process_impl = || -> Result<(radium::TraitImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
             let (impl_info, deps) = vcx.trait_registry.get_trait_impl_info(did)?;
-            let assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(did);
+            let assoc_items: &'tcx ty::AssocItems = tcx.associated_items(did);
 
-            let trait_assoc_items: &'tcx ty::AssocItems = vcx.env.tcx().associated_items(trait_did);
+            let trait_assoc_items: &'tcx ty::AssocItems = tcx.associated_items(trait_did);
 
             let mut methods = BTreeMap::new();
 
-            let trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
-            for x in trait_assoc_items {
+            let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
+            for x in sorted_trait_assoc_items {
                 if x.as_tag() == ty::AssocTag::Fn {
                     let fn_item = assoc_items.find_by_ident_and_kind(
-                        vcx.env.tcx(),
-                        x.ident(vcx.env.tcx()),
+                        tcx,
+                        x.ident(tcx),
                         ty::AssocTag::Fn,
                         did,
                     );
 
                     if let Some(fn_item) = fn_item {
                         if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                            methods.insert(x.name().as_str().to_owned(), spec);
+                            methods.insert(x.name().as_str().to_owned(), radium::TraitInstanceMethodSpec::Defined(spec));
                         } else {
                             warn!("Incomplete specification for {}", fn_item.name());
                             return Err(base::TranslationError::IncompleteTraitImplSpec(did));
                         }
                     } else {
-                        // this is possible for functions with a default impl.
+                        // this uses a default impl
+                        let fn_name = base::strip_coq_ident(tcx.item_name(x.def_id).as_str());
+                        let spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
 
-                        // TODO
-                        // we need the spec name / term and the direct generic scope of the function.
+                        let assoc_item = trait_assoc_items.find_by_ident_and_kind(tcx, x.ident(tcx), ty::AssocTag::Fn, trait_did).unwrap();
 
-                        // for the spec name and term:
-                        // - we should change the radium representation to not have a full spec
-                        // but just the term + generic scope it quantifies over.
-                        // -
+                        //trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
+                        if let Some(default_meta) = vcx.procedure_registry.lookup_function(assoc_item.def_id) {
+                            // now build the generic scope for this item.
+                            let ty = tcx.type_of(assoc_item.def_id).instantiate_identity();
+                            let ty::TyKind::FnDef(_, params) = ty.kind() else {
+                                unimplemented!();
+                            };
+                            let mut generics = scope::Params::new_from_generics(params, Some((tcx, assoc_item.def_id)));
+                            generics.add_param_env(assoc_item.def_id, vcx.env, vcx.type_translator, vcx.trait_registry)?;
 
-                        // for the generic scope:
-                        // - we are already quantifying the impl args.
-                        // - we need to instantiate the trait's args.
-                        // Plan:
-                        // - take the generic scope of the trait default function.
-                        // - instantiate the first n args with the ones from the trait_ref.
-                        // - then make that into a genericscope.
-                        //
-                        // we probably also need to instantiate the paramenv, right?
-                        // - i.e., some trait assumptions of that function might be dispatched
-                        // by impl args??
-                        // - No. Only assumptions of the trait itself.
+                            // add late bounds
+                            let sig = ty.fn_sig(vcx.env.tcx());
+                            let bound_vars = sig.bound_vars();
+                            let mut bound_regions = Vec::new();
+                            for x in bound_vars {
+                                bound_regions.push(x.expect_region());
+                            }
+                            drop(generics.translate_bound_regions(&bound_regions));
 
-                        let fn_name = base::strip_coq_ident(vcx.env.tcx().item_name(x.def_id).as_str());
-                        let _spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
+                            let scope: radium::GenericScope<'_> = generics.into();
 
-                        // TODO
-                        //unimplemented!();
+                            methods.insert(x.name().as_str().to_owned(), radium::TraitInstanceMethodSpec::DefaultSpec(Box::new(spec), scope, default_meta.get_spec_name().to_owned()));
+                        }
+                        else {
+                            // this can happen for incompletely specified traits from stdlib, let's
+                            // ignore this
+                        }
                     }
                 }
             }

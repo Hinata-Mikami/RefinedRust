@@ -431,6 +431,40 @@ mod iter {
 }
 
 
+mod default_fn {
+
+    trait Foo {
+        #[rr::verify]
+        fn foo1(&self) -> i32;
+
+        #[rr::verify]
+        fn foo2(&self) -> i32 {
+            self.foo1()
+        }
+    }
+
+    impl Foo for i32 {
+        #[rr::default_spec]
+        fn foo1(&self) -> i32 {
+            42
+        }
+    }
+
+    impl Foo for u32 {
+        #[rr::default_spec]
+        fn foo1(&self) -> i32 {
+            42
+        }
+
+        #[rr::default_spec]
+        fn foo2(&self) -> i32 {
+            40
+        }
+    }
+
+}
+
+
 mod rec {
     // What if we have an impl of a trait which is mutually recursive with another function (also
     // as part of a trait impl)?

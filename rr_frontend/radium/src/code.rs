@@ -1319,7 +1319,7 @@ impl UsedProcedure<'_> {
                 }
 
                 // instantiate semantics args
-                write!(term, "{}", self.scope_inst.instantiation(true))?;
+                write!(term, "{}", self.scope_inst.instantiation(true, true))?;
             },
 
             UsedProcedureSpec::TraitMethod(_trait_spec, _method_name) => {
@@ -1505,7 +1505,7 @@ impl fmt::Display for UsedProcedure<'_> {
         }
 
         // instantiate semantic terms
-        write!(f, "{})", self.scope_inst.instantiation(spec_needs_surrounding_trait_reqs))?;
+        write!(f, "{})", self.scope_inst.instantiation(spec_needs_surrounding_trait_reqs, true))?;
 
         let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();

@@ -302,7 +302,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     // override the names in the procedure registry
                     proc_registry.override_trait_default_impl_names(c.def_id, &spec_name, trait_incl_name);
 
-                    methods.insert(method_name, &*spec_ref);
+                    methods.insert(method_name, specs::TraitInstanceMethodSpec::Defined(&*spec_ref));
                 } else if let ty::AssocKind::Type { .. } = c.kind {
                     // get name
                     let type_name =

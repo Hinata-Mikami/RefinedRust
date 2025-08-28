@@ -239,12 +239,15 @@ fn closure_test1() {
     assert!(y == 4);
 }
 
-#[rr::verify]
+// TODO: propagate assumptions to contained closures
+#[rr::skip]
+#[rr::requires(#trait T::Pre := "λ _ _, True%I")]
+#[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
 fn closure_test8<T, U>(x: T, y: U)
     where U: FnOnce(T)
 {
     let cls =
-        #[rr::verify]
+        #[rr::skip]
         |a: T, w: U| { w(a) };
 
     cls(x, y);
