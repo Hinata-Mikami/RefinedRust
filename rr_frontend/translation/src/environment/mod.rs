@@ -288,6 +288,11 @@ impl<'tcx> Environment<'tcx> {
             return false;
         }
 
+        if self.tcx.trait_of_item(did).is_some() {
+            let it = self.tcx.associated_item(did);
+            return matches!(it.kind, ty::AssocKind::Fn { .. });
+        }
+
         // TODO: find a more robust way to check this. We cannot call `type_of` on all dids.
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.tcx.type_of(did);
         let ty = ty.skip_binder();

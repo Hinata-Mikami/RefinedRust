@@ -235,9 +235,19 @@ pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId
         return get_export_as_attr(filtered_attrs.as_slice()).ok();
     }
 
-    // Check for an annotation on the surrounding impl
-    if let Some(impl_did) = env.tcx().impl_of_assoc(did) {
-        let attrs = env.get_attributes(impl_did);
+    let surrounding_did = if let Some(impl_did) = env.tcx().impl_of_assoc(did) {
+        // Check for an annotation on the surrounding impl
+        Some(impl_did)
+    } else if let Some(trait_did) = env.tcx().trait_of_assoc(did) {
+        // Check for an annotation on the surrounding trait
+        Some(trait_did)
+    } else {
+        // ADT variants
+        env.tcx().opt_parent(did)
+    };
+
+    if let Some(surrounding_did) = surrounding_did {
+        let attrs = env.get_attributes(surrounding_did);
 
         if attrs::has_tool_attr(attrs, "export_as") {
             let filtered_attrs = attrs::filter_for_tool(attrs);
