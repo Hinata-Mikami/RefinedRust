@@ -5,12 +5,14 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cmp;
+use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Display;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::hir::definitions::DefPathHash;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
+use topological_sort::TopologicalSort;
 
 use crate::environment::borrowck::facts;
 use crate::traits;
@@ -67,6 +69,42 @@ pub(crate) fn sort_def_ids(tcx: ty::TyCtxt<'_>, dids: &mut [DefId]) {
         let hash_b = tcx.def_path_hash(*b);
         hash_a.cmp(&hash_b)
     });
+}
+
+/// Order ADT definitions topologically.
+pub(crate) fn order_defs_with_deps(
+    tcx: ty::TyCtxt<'_>,
+    deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
+) -> Vec<DefId> {
+    let mut topo = TopologicalSort::new();
+    let mut defs = BTreeSet::new();
+
+    //info!("Ordering ADT defs: {deps:?}");
+
+    for (did, referenced_dids) in deps {
+        defs.insert(did);
+        topo.insert(did.def_id);
+        for did2 in referenced_dids {
+            topo.add_dependency(did2.def_id, did.def_id);
+        }
+    }
+
+    let mut defn_order = Vec::new();
+    while !topo.is_empty() {
+        let mut next = topo.pop_all();
+        // sort these by lexicographic order
+        sort_def_ids(tcx, &mut next);
+
+        if next.is_empty() {
+            // dependency cycle detected
+            // TODO
+            panic!("RefinedRust does not currently support mutually recursive types");
+        }
+        // only track actual definitions
+        defn_order.extend(next.into_iter().filter(|x| defs.contains(&OrderedDefId::new(tcx, *x))));
+    }
+
+    defn_order
 }
 
 /// Error type used for the MIR to Caesium translation.

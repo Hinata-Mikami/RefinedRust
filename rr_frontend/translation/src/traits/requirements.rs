@@ -9,6 +9,7 @@
 use log::{info, trace};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
+use topological_sort::TopologicalSort;
 
 use crate::environment::Environment;
 use crate::{search, traits};
@@ -189,11 +190,64 @@ pub(crate) fn get_nontrivial<'tcx>(
     }
 
     // Make sure the order is stable across compilations
-    trait_refs.sort_by(|(a, _, _), (b, _, _)| traits::cmp_trait_ref(env, in_trait_decl, a, b));
+    trace!("get_nontrivial_trait_requirements: ordering requirements of {for_did:?}");
 
-    trace!("Leave get_nontrivial_trait_requirements with for_did={for_did:?}, trait_refs = {trait_refs:?}");
+    // first sort by dependencies using topological sort
+    let mut topo: TopologicalSort<usize> = TopologicalSort::new();
 
-    trait_refs
+    for (idx, a) in trait_refs.iter().enumerate() {
+        topo.insert(idx);
+        let deps = trait_get_deps(env, a.0.def_id);
+        for did in deps {
+            for (idxb, b) in trait_refs.iter().enumerate() {
+                if b.0.def_id == did {
+                    topo.add_dependency(idxb, idx);
+                }
+            }
+        }
+    }
+
+    let mut defn_order = Vec::new();
+    while !topo.is_empty() {
+        let next = topo.pop_all();
+
+        let mut next_refs = Vec::new();
+        for x in next {
+            next_refs.push(trait_refs[x].clone());
+        }
+
+        next_refs.sort_by(|(a, _, _), (b, _, _)| traits::cmp_trait_ref(env, in_trait_decl, a, b));
+
+        defn_order.append(&mut next_refs);
+    }
+
+    trace!("Leave get_nontrivial_trait_requirements with for_did={for_did:?}, trait_refs = {defn_order:?}");
+
+    defn_order
+}
+
+fn trait_get_deps(env: &Environment<'_>, trait_did: DefId) -> Vec<DefId> {
+    let param_env = env.tcx().param_env(trait_did);
+    let clauses = param_env.caller_bounds();
+
+    let mut deps = Vec::new();
+    for cl in clauses {
+        let cl_kind = cl.kind();
+        let cl_kind = cl_kind.skip_binder();
+
+        // only look for trait predicates for now
+        if let ty::ClauseKind::Trait(trait_pred) = cl_kind {
+            // We ignore negative polarities for now
+            if trait_pred.polarity == ty::PredicatePolarity::Positive {
+                let trait_ref = trait_pred.trait_ref;
+                if trait_ref.def_id != trait_did {
+                    deps.push(trait_ref.def_id);
+                }
+            }
+        }
+    }
+
+    deps
 }
 
 /// Check if this is a built-in trait

@@ -13,7 +13,6 @@ use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
 use crate::shims;
-use crate::traits::requirements::get_trait_requirements_with_origin;
 
 pub(crate) mod registry;
 pub(crate) mod requirements;
@@ -359,16 +358,6 @@ fn cmp_trait_ref<'tcx>(
         if b.def_id == trait_did && b.args[0].expect_ty().is_param(0) {
             return Ordering::Less;
         }
-    }
-
-    let req_a = get_trait_requirements_with_origin(env, a.def_id);
-    let req_b = get_trait_requirements_with_origin(env, b.def_id);
-    if req_a.iter().any(|x| x.trait_ref.def_id == b.def_id) {
-        // trait a depends on b
-        return Ordering::Greater;
-    } else if req_b.iter().any(|x| x.trait_ref.def_id == a.def_id) {
-        // trait b depends on a
-        return Ordering::Less;
     }
 
     //let path_a = shims::flat::get_cleaned_def_path(tcx, a.def_id);

@@ -42,7 +42,6 @@ use rr_rustc_interface::borrowck::consumers::BodyWithBorrowckFacts;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{hir, span};
-use topological_sort::TopologicalSort;
 use typed_arena::Arena;
 
 use crate::base::OrderedDefId;
@@ -55,42 +54,6 @@ use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateA
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser as _, ModuleAttrs, VerboseModuleAttrParser};
 use crate::traits::registry;
 use crate::types::{normalize_in_function, scope};
-
-/// Order ADT definitions topologically.
-fn order_defs_with_deps(
-    tcx: ty::TyCtxt<'_>,
-    deps: &BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
-) -> Vec<DefId> {
-    let mut topo = TopologicalSort::new();
-    let mut defs = BTreeSet::new();
-
-    info!("Ordering ADT defs: {deps:?}");
-
-    for (did, referenced_dids) in deps {
-        defs.insert(did);
-        topo.insert(did.def_id);
-        for did2 in referenced_dids {
-            topo.add_dependency(did2.def_id, did.def_id);
-        }
-    }
-
-    let mut defn_order = Vec::new();
-    while !topo.is_empty() {
-        let mut next = topo.pop_all();
-        // sort these by lexicographic order
-        base::sort_def_ids(tcx, &mut next);
-
-        if next.is_empty() {
-            // dependency cycle detected
-            // TODO
-            panic!("RefinedRust does not currently support mutually recursive types");
-        }
-        // only track actual definitions
-        defn_order.extend(next.into_iter().filter(|x| defs.contains(&OrderedDefId::new(tcx, *x))));
-    }
-
-    defn_order
-}
 
 pub struct VerificationCtxt<'tcx, 'rcx> {
     env: &'rcx Environment<'tcx>,
@@ -413,7 +376,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             let enum_defs = self.type_translator.get_enum_defs();
             let adt_deps = self.type_translator.get_adt_deps();
 
-            let ordered = order_defs_with_deps(self.env.tcx(), &adt_deps);
+            let ordered = base::order_defs_with_deps(self.env.tcx(), &adt_deps);
             info!("ordered ADT defns: {:?}", ordered);
 
             for did in &ordered {
@@ -446,7 +409,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write trait specs
         let trait_deps = self.trait_registry.get_registered_trait_deps();
-        let dep_order = order_defs_with_deps(self.env.tcx(), &trait_deps);
+        let dep_order = base::order_defs_with_deps(self.env.tcx(), &trait_deps);
         let trait_decls = self.trait_registry.get_trait_decls();
         for did in dep_order {
             let decl = &trait_decls[&did.as_local().unwrap()];
@@ -458,7 +421,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             writeln!(spec_file, "Section attrs.").unwrap();
             writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
             // sort according to dependency order
-            let order = order_defs_with_deps(self.env.tcx(), &self.trait_impl_deps);
+            let order = base::order_defs_with_deps(self.env.tcx(), &self.trait_impl_deps);
             for did in order {
                 let spec = &self.trait_impls[&OrderedDefId::new(self.env.tcx(), did)];
                 writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
@@ -1492,7 +1455,7 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
 
     // order according to dependencies first
     let deps = vcx.trait_registry.get_trait_deps(traits.as_slice());
-    let ordered_traits = order_defs_with_deps(vcx.env.tcx(), &deps);
+    let ordered_traits = base::order_defs_with_deps(vcx.env.tcx(), &deps);
 
     for t in &ordered_traits {
         let t = t.as_local().unwrap();
