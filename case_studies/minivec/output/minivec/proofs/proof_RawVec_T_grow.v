@@ -32,7 +32,7 @@ Proof.
     move: _Hsz Hnot_sz.
     match goal with H : 2 * MaxInt ISize < MaxInt USize |- _ => move: H end.
     rewrite ly_size_mk_array_layout.
-    clear. solve_goal with nia.
+    solve_goal with nia.
   }
 
   Unshelve. all: print_remaining_sidecond.

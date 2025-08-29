@@ -241,3 +241,72 @@ Qed.
 Global Hint Resolve difference_union_subseteq' | 30 : ndisj.
 Global Hint Resolve difference_union_subseteq | 50 : ndisj.
 Global Hint Resolve difference_union_comm | 80 : ndisj.
+
+
+(* TODO move *)
+Lemma eqdec_bool_eqb b1 b2 :
+  bool_decide (b1 = b2) = eqb b1 b2.
+Proof.
+  destruct b1, b2; done.
+Qed.
+Hint Rewrite -> eqdec_bool_eqb : lithium_rewrite.
+
+(* TODO move *)
+Global Instance simpl_both_iff P1 P1' P2 :
+  SimplBoth P1 P1' →
+  SimplBothRel (iff) P1 P2 (P1' ↔ P2).
+Proof.
+  unfold SimplBoth, SimplBothRel.
+  intros ->. done.
+Qed.
+
+Global Instance simpl_both_bool_decide_eq P `{Decision P} b :
+  SimplBothRel (=) (bool_decide P) b (P ↔ b = true).
+Proof.
+  unfold SimplBothRel.
+  case_bool_decide; destruct b; naive_solver.
+Qed.
+
+Global Instance simpl_both_orb_eq_true b1 b2 :
+  SimplBothRel (=) (orb b1 b2) true (b1 = true ∨ b2 = true).
+Proof.
+  unfold SimplBothRel.
+  destruct b1, b2; simpl; naive_solver.
+Qed.
+
+Global Instance simpl_both_or_l P1 P1' P2 :
+  SimplBoth P1 P1' →
+  SimplBoth (P1 ∨ P2) (P1' ∨ P2).
+Proof.
+  unfold SimplBoth. naive_solver.
+Qed.
+Global Instance simpl_both_or_r P1 P2 P2' :
+  SimplBoth P2 P2' →
+  SimplBoth (P1 ∨ P2) (P1 ∨ P2').
+Proof.
+  unfold SimplBoth. naive_solver.
+Qed.
+
+Global Instance simpl_both_and_l P1 P1' P2 :
+  SimplBoth P1 P1' →
+  SimplBoth (P1 ∧ P2) (P1' ∧ P2).
+Proof.
+  unfold SimplBoth. naive_solver.
+Qed.
+Global Instance simpl_both_and_r P1 P2 P2' :
+  SimplBoth P2 P2' →
+  SimplBoth (P1 ∧ P2) (P1 ∧ P2').
+Proof.
+  unfold SimplBoth. naive_solver.
+Qed.
+
+Global Instance simpl_both_eqrefl {A} (a : A) :
+  SimplBothRel (=) a a True.
+Proof.
+  unfold SimplBothRel. naive_solver.
+Qed.
+Global Instance simpl_both_iff_true (P : Prop) :
+  SimplBothRel (iff) True P P.
+Proof.
+  unfold SimplBothRel. naive_solver.
+Qed.
