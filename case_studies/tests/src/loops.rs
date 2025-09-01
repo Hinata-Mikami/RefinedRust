@@ -156,12 +156,9 @@ fn loop4_myrange_2() {
         x += i;
     }
 }
- 
-// impl: when I deal with a for loop, I should be able to extract the iteration variable.
-// Note that this will be the result of a into_iter call, and we always have one variable for that.
 
 
-//#[rr::verify]
+#[rr::verify]
 fn loop4() {
     let mut x = 0;
     
@@ -169,15 +166,11 @@ fn loop4() {
 
         // let's use Iter to refer to the current iterator state.
         let _ =
-        #[rr::inv("x = sum_list (seq 0 {Iter}.(start))")]
+        #[rr::exists("Hist")]
+        #[rr::inv_vars("x")]
+        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} (0, 10) Hist {Iter}")]
+        #[rr::inv("x = sum_list_Z Hist")]
         #[rr::ignore] ||{};
-        // This version should go through directly.
-    
-        // alternative: let's use history
-        //let _ =
-        //#[rr::inv("x = sum_list {Hist}")]
-        //#[rr::ignore] ||{};
-        // for this version, I'll need an inductive proof about Next in the end, I think.
 
         x += i;
     }

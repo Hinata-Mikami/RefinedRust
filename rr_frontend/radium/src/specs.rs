@@ -371,7 +371,7 @@ pub struct LiteralTyParam {
     pub(crate) type_term: String,
 
     /// the refinement type
-    refinement_type: String,
+    pub(crate) refinement_type: String,
 
     /// the syntactic type
     pub syn_type: String,
@@ -3099,6 +3099,23 @@ impl<'def> TraitInstanceMethodSpec<'def> {
         }
     }
 
+    fn self_assoc_types_inst(&self, assoc_quantifiers: &[LiteralTyParam]) -> Vec<Type<'def>> {
+        let mut tys = Vec::new();
+        match self {
+            Self::Defined(_) => {
+                for x in assoc_quantifiers {
+                    tys.push(Type::LiteralParam(x.to_owned()));
+                }
+            },
+            Self::DefaultSpec(spec, _, _) => {
+                for x in &spec.trait_ref.assoc_types_inst {
+                    tys.push(x.to_owned());
+                }
+            },
+        }
+        tys
+    }
+
     fn self_trait_attr_inst(&self) -> Option<coq::term::Term> {
         if let Self::DefaultSpec(spec, _, _) = self {
             Some(coq::term::Term::App(Box::new(spec.trait_ref.get_attr_record_term())))
@@ -3467,6 +3484,13 @@ pub struct TraitReqScope {
 }
 
 impl TraitReqScope {
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            quantified_lfts: vec![],
+        }
+    }
+
     #[must_use]
     pub fn identity_instantiation(&self) -> TraitReqScopeInst {
         TraitReqScopeInst::new(self.quantified_lfts.clone())
@@ -4332,10 +4356,12 @@ fn make_trait_instance<'def>(
             // maybe compute a "surrounding_scope_inst" of the fn spec term
             let surrounding_inst = spec.surrounding_scope_instantiation(scope);
 
+            let self_assoc_inst = spec.self_assoc_types_inst(assoc_types);
+
             // get the param uses for rt + st for all params, including the params of the impl/trait
             //let mut params = scope.get_direct_ty_params_with_assocs();
             let mut params = surrounding_inst.get_direct_ty_params_with_assocs();
-            params.append(&mut assoc_types.iter().map(|x| Type::LiteralParam(x.to_owned())).collect());
+            params.append(&mut self_assoc_inst.clone());
             params
                 .append(&mut direct_params.params.iter().map(|x| Type::LiteralParam(x.to_owned())).collect());
 
@@ -4376,8 +4402,8 @@ fn make_trait_instance<'def>(
             // instantiate with the scope's types
             write!(body, "{}", surrounding_inst.instantiation(false, false))?;
             // The associated types of this trait always come last.
-            for x in assoc_types {
-                write!(body, " <TY> {}", x.type_term)?;
+            for x in &self_assoc_inst {
+                write!(body, " <TY> {}", x)?;
             }
             // we leave the direct type parameters and associated types of the function uninstantiated
 
@@ -4404,7 +4430,21 @@ fn make_trait_instance<'def>(
             components.push(item);
         }
         let record_body = coq::term::RecordBody { items: components };
-        coq::term::Term::RecordBody(record_body)
+        let mut term = coq::term::Term::RecordBody(record_body);
+
+        // NOTE: hack because we don't compute the correct direct scope for default fns for now:
+        // dependencies on other surrounding params/assocs are not instantiated correctly.
+        // Hence we manually introduce the binders necessary here.
+        let self_assoc_inst = spec.methods.iter().next().unwrap().1.self_assoc_types_inst(assoc_types);
+        for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
+            let assoc_param = LiteralTyParam::new(name, name);
+            term = coq::term::Term::LetIn(
+                coq::Ident::new(assoc_param.refinement_type),
+                Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),
+                Box::new(term),
+            );
+        }
+        term
     };
     // add the surrounding quantifiers over the semantic types
     let mut term_with_specs = String::with_capacity(100);
@@ -4456,7 +4496,8 @@ impl TraitSpecDecl<'_> {
         params
     }
 
-    fn make_attr_record_decl(&self) -> coq::Document {
+    #[must_use]
+    pub fn make_attr_record_decl(&self) -> coq::Document {
         // this is parametric in the params and associated types
         let ordered_params = self.get_ordered_params();
         let mut params = ordered_params.get_coq_ty_rt_params();
@@ -4512,11 +4553,50 @@ impl TraitSpecDecl<'_> {
         };
         sig_decls.push(record_decl.into());
 
+        sig_decls.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.lit.spec_attrs_record.clone(),
+                arguments_string: ": clear implicits".to_owned(),
+            })
+            .attributes("global")
+            .into(),
+        );
+        sig_decls.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.lit.spec_attrs_record.clone(),
+                arguments_string: "{_ _}".to_owned(),
+            })
+            .attributes("global")
+            .into(),
+        );
+
+        let mut attrs_string = String::new();
+        // first two are for refinedrustGS, then all the RT + st parameters, then attrs for trait deps
+        let attr_param_count = 2
+            + self.get_ordered_params().params.len()
+            + (if self.lit.attrs_dependent {
+                self.generics.get_direct_trait_requirements().len()
+            } else {
+                0
+            });
+        for _ in 0..attr_param_count {
+            write!(attrs_string, " {{_}}").unwrap();
+        }
+        sig_decls.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.lit.spec_record_attrs_constructor_name(),
+                arguments_string: attrs_string,
+            })
+            .attributes("global")
+            .into(),
+        );
+
         coq::Document::new(sig_decls)
     }
 
     /// Make the definition for the semantic declaration.
-    fn make_semantic_decl(&self) -> Option<coq::command::Command> {
+    #[must_use]
+    pub fn make_semantic_decl(&self) -> Option<coq::command::Command> {
         if let Some(semantic_interp) = &self.attrs.semantic_interp {
             let def_name = self.lit.spec_semantic.as_ref().unwrap();
 
@@ -4540,7 +4620,8 @@ impl TraitSpecDecl<'_> {
     }
 
     /// Make the spec record declaration.
-    fn make_spec_record_decl(&self) -> coq::term::Record {
+    #[must_use]
+    pub fn make_spec_record_decl(&self) -> coq::Document {
         let mut record_items = Vec::new();
         for (item_name, item_spec) in &self.default_spec.methods {
             let record_item_name = self.lit.make_spec_method_name(item_name);
@@ -4577,13 +4658,36 @@ impl TraitSpecDecl<'_> {
         params.make_implicit(coq::binder::Kind::MaxImplicit);
         params.0.insert(0, coq::binder::Binder::new_rrgs());
 
-        coq::term::Record {
+        let record = coq::term::Record {
             name: self.lit.spec_record.clone(),
             params,
             ty: coq::term::Type::Type,
             constructor: Some(self.lit.spec_record_constructor_name()),
             body: record_items,
-        }
+        };
+        let mut decls: Vec<coq::Sentence> = vec![record.into()];
+
+        // clear the implicit argument
+        decls.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.lit.spec_record.clone(),
+                arguments_string: ": clear implicits".to_owned(),
+            })
+            .attributes("global")
+            .into(),
+        );
+
+        // make rrgs implicit again
+        decls.push(
+            coq::command::CommandAttrs::new(coq::command::Arguments {
+                name: self.lit.spec_record.clone(),
+                arguments_string: "{_ _}".to_owned(),
+            })
+            .attributes("global")
+            .into(),
+        );
+
+        coq::Document::new(decls)
     }
 
     fn make_spec_incl_preorder(&self) -> coq::command::Instance {
@@ -4689,46 +4793,33 @@ impl TraitSpecDecl<'_> {
             body: coq::command::DefinitionBody::Term(body),
         }
     }
+
+    #[must_use]
+    pub fn make_trait_req_incls(&self) -> coq::Document {
+        let mut decls: Vec<coq::Sentence> = Vec::new();
+
+        // write the trait_req_incls for the functions
+        for item_spec in self.default_spec.methods.values() {
+            if let TraitInstanceMethodSpec::Defined(spec) = item_spec {
+                decls.append(&mut spec.generate_trait_req_incl_def().0);
+            } else {
+                unreachable!();
+            }
+        }
+
+        let sec = coq::section::Section::new(format!("{}_trait_req_incls", self.lit.name), |pdoc| {
+            pdoc.push(coq::command::Context::refinedrust());
+            pdoc.append(&mut decls);
+        });
+
+        coq::Document::new(vec![coq::command::Command::Section(sec)])
+    }
 }
 
 // TODO: Deprecated: Generate a coq::Document instead.
 impl fmt::Display for TraitSpecDecl<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Section {}.\n", self.lit.name)?;
-
-        let spec_attrs_record_constructor = self.lit.spec_record_attrs_constructor_name();
-
-        // write attr record
-        let spec_attr_record = self.make_attr_record_decl();
-        write!(f, "{spec_attr_record}\n")?;
-        write!(f, "Global Arguments {} : clear implicits.\n", self.lit.spec_attrs_record)?;
-        write!(f, "Global Arguments {} {{_ _}}.\n", self.lit.spec_attrs_record)?;
-        write!(f, "Global Arguments {} ", spec_attrs_record_constructor)?;
-        // first two are for refinedrustGS, then all the RT + st parameters, then attrs for trait deps
-        let attr_param_count = 2
-            + self.get_ordered_params().params.len()
-            + (if self.lit.attrs_dependent {
-                self.generics.get_direct_trait_requirements().len()
-            } else {
-                0
-            });
-        for _ in 0..attr_param_count {
-            write!(f, " {{_}}")?;
-        }
-        write!(f, ".\n")?;
-
-        // write spec record
-        let spec_record = self.make_spec_record_decl();
-        write!(f, "{spec_record}\n")?;
-
-        // clear the implicit argument
-        write!(f, "Global Arguments {} : clear implicits.\n", self.lit.spec_record)?;
-        // make rrgs implicit again
-        write!(f, "Global Arguments {} {{_ _}}.\n", self.lit.spec_record)?;
-
-        if let Some(decl) = self.make_semantic_decl() {
-            write!(f, "{decl}\n")?;
-        }
 
         write!(f, "Context `{{RRGS : !refinedrustGS Σ}}.\n")?;
 
@@ -4764,15 +4855,6 @@ impl fmt::Display for TraitSpecDecl<'_> {
             &self.lit.base_spec,
         )?;
         write!(f, "{base_decls}\n")?;
-
-        // write the trait_req_incls for the functions
-        for item_spec in self.default_spec.methods.values() {
-            if let TraitInstanceMethodSpec::Defined(spec) = item_spec {
-                write!(f, "{}\n", spec.generate_trait_req_incl_def())?;
-            } else {
-                unreachable!();
-            }
-        }
 
         write!(f, "End {}.\n", self.lit.name)
     }

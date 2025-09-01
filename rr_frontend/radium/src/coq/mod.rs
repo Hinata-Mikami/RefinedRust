@@ -376,6 +376,10 @@ impl Document {
     pub fn push<I: Into<Sentence>>(&mut self, sentence: I) {
         self.0.push(sentence.into());
     }
+
+    //pub fn append(&mut self, mut other: Document) {
+    //self.0.append(&mut other.0);
+    //}
 }
 
 /// A [sentence], or a comment.

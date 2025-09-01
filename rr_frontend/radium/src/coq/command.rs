@@ -164,6 +164,9 @@ pub enum Command {
     #[display("{}", _0)]
     Section(section::Section),
 
+    #[display("{}", _0)]
+    Arguments(Arguments),
+
     /// The [`Typeclasses Transparent`] command.
     ///
     /// [`Typeclasses Transparent`]: https://rocq-prover.org/doc/v8.20/refman/addendum/type-classes.html#coq:cmd.Typeclasses-Transparent
@@ -323,3 +326,10 @@ impl fmt::Display for Instance {
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 #[display("Canonical Structure {}.\n", _0)]
 pub struct CanonicalDecl(pub Ident);
+
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("Arguments {} {}.\n", name, arguments_string)]
+pub struct Arguments {
+    pub name: String,
+    pub arguments_string: String,
+}

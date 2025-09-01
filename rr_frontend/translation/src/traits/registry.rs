@@ -207,14 +207,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         })
     }
 
-    /// Register a new annotated trait in the local crate with the registry.
-    pub(crate) fn register_trait(
-        &'def self,
-        did: LocalDefId,
-        proc_registry: &mut procedures::Scope<'tcx, 'def>,
-    ) -> Result<(), TranslationError<'tcx>> {
-        trace!("enter TR::register_trait for did={did:?}");
-
+    /// Pre-register trait to account for mutually recursive traits.
+    pub(crate) fn preregister_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
         {
             let scope = self.trait_decls.borrow();
             if scope.get(&did).is_some() {
@@ -236,7 +230,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // make the literal we are going to use
         let lit_trait_spec = self.make_literal_trait_spec(
             did.to_def_id(),
-            trait_name.clone(),
+            trait_name,
             valid_attrs,
             has_semantic_interp,
             attrs_dependent,
@@ -245,7 +239,31 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // In particular, this is also needed to be able to register the methods of this trait
         // below, as they need to be able to access the associated types of this trait already.
         // (in fact, their environment contains their self instance)
-        let lit_trait_spec_ref = self.register_shim(did.to_def_id(), lit_trait_spec)?;
+        self.register_shim(did.to_def_id(), lit_trait_spec)?;
+        Ok(())
+    }
+
+    /// Register a new annotated trait in the local crate with the registry.
+    pub(crate) fn register_trait(
+        &'def self,
+        did: LocalDefId,
+        proc_registry: &mut procedures::Scope<'tcx, 'def>,
+    ) -> Result<(), TranslationError<'tcx>> {
+        trace!("enter TR::register_trait for did={did:?}");
+
+        {
+            let scope = self.trait_decls.borrow();
+            if scope.get(&did).is_some() {
+                return Ok(());
+            }
+        }
+
+        // lookup the pre-registered literal
+        let lit_trait_spec_ref =
+            self.lookup_trait(did.to_def_id()).ok_or_else(|| Error::NotATrait(did.to_def_id()))?;
+
+        let trait_name = strip_coq_ident(&self.env.get_absolute_item_name(did.to_def_id()));
+        let trait_attrs = attrs::filter_for_tool(self.env.get_attributes(did.into()));
 
         let mut cont = || -> Result<(), TranslationError<'tcx>> {
             // get generics
@@ -1233,26 +1251,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Does not compute the dependencies on other traits yet,
     /// these have to be filled later.
     pub(crate) fn fill_trait_use(
-        &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
-        scope: &scope::Params<'tcx, 'def>,
-        typing_env: ty::TypingEnv<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: radium::LiteralTraitSpecRef<'def>,
         is_used_in_self_trait: bool,
         assoc_ty_constraints: Vec<Option<radium::Type<'def>>>,
         origin: radium::TyParamOrigin,
-    ) -> Result<(), TranslationError<'tcx>> {
+    ) {
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
-
-        let mut new_scope = scope.clone();
-        let quantified_regions = new_scope.translate_bound_regions(self.env.tcx(), &trait_use.bound_regions);
-        let mut state =
-            types::STInner::TraitReqs(Box::new(types::TraitState::new(new_scope, typing_env, None, None)));
-
-        let scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
-        // do not compute the assoc dep inst for now, as this may use other trait requirements from the
-        // current scope which have not been filled yet
 
         // compute an override for the attributes assumed here
         // This does not include user annotations (e.g., on functions), as the attributes for those
@@ -1264,8 +1270,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
         let spec_use = radium::LiteralTraitSpecUse::new(
             spec_ref,
-            quantified_regions,
-            scope_inst,
+            // dummy for now
+            radium::TraitReqScope::empty(),
+            // dummy for now
+            radium::GenericScopeInst::empty(),
             attr_override,
             mangled_base,
             is_used_in_self_trait,
@@ -1279,24 +1287,28 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!(
             "Leave fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?} with trait_use = {trait_use:?}"
         );
-
-        Ok(())
     }
 
     /// Finalize a trait use by computing the dependencies on other traits.
     pub(crate) fn finalize_trait_use(
         &self,
         trait_use: &GenericTraitUse<'tcx, 'def>,
-        state: types::ST<'_, '_, 'def, 'tcx>,
+        scope: &scope::Params<'tcx, 'def>,
+        typing_env: ty::TypingEnv<'tcx>,
+        //state: types::ST<'_, '_, 'def, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("enter finalize_trait_use for {:?}", trait_use.did);
-        trace!("current scope={state:?}");
+        trace!("current scope={scope:?}");
 
-        let mut scope = state.get_param_scope();
-        let _binders = scope.translate_bound_regions(self.env.tcx(), trait_use.bound_regions.as_slice());
+        let mut scope = scope.clone();
+        let quantified_regions = scope.translate_bound_regions(self.env.tcx(), &trait_use.bound_regions);
         trace!("new trait scope={scope:?}");
-        let mut state = state.setup_trait_state(self.env.tcx(), scope);
+        //let mut state = state.setup_trait_state(self.env.tcx(), scope);
+        let mut state =
+            types::STInner::TraitReqs(Box::new(types::TraitState::new(scope, typing_env, None, None)));
+
+        let mut scope_inst = self.compute_scope_inst_in_state_without_traits(&mut state, trait_ref.args)?;
 
         let trait_reqs = self.resolve_radium_trait_requirements_in_state(
             &mut state,
@@ -1306,12 +1318,15 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         )?;
         trace!("finalize_trait_use for {:?}: determined trait requirements: {trait_reqs:?}", trait_use.did);
 
+        for trait_req in trait_reqs {
+            scope_inst.add_trait_requirement(trait_req);
+        }
+
         let mut trait_use_ref = trait_use.trait_use.borrow_mut();
         let lit_trait_use = trait_use_ref.as_mut().unwrap();
 
-        for trait_req in trait_reqs {
-            lit_trait_use.trait_inst.add_trait_requirement(trait_req);
-        }
+        lit_trait_use.trait_inst = scope_inst;
+        lit_trait_use.scope = quantified_regions;
 
         trace!("enter finalize_trait_use for {:?}", trait_use.did);
 

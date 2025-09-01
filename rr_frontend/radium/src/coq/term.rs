@@ -52,6 +52,9 @@ pub enum RocqTerm<T, U> {
     #[from(forward)]
     App(Box<App<Term, Term>>),
 
+    /// A let declaration
+    LetIn(Ident, Box<RocqTerm<T, U>>, Box<RocqTerm<T, U>>),
+
     /// A record constructor
     RecordBody(RecordBody),
 
@@ -112,6 +115,9 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
                 write!(f, "{rec}.({component})")
             },
             Self::App(box a) => write!(f, "{a}"),
+            Self::LetIn(ident, term, term2) => {
+                write!(f, "let {ident} := {term} in {term2}")
+            },
             Self::All(binders, box body) => {
                 write!(f, "{}{}", fmt_binders("∀", binders), body)
             },
@@ -261,6 +267,7 @@ pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum RocqType<T, U> {
     /// Literals
+    #[display("({_0})")]
     Literal(String),
 
     /// Function type

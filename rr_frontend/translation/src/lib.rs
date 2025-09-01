@@ -369,6 +369,24 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             write!(code_file, "{}", coq::module::ExportList(&code_exports)).unwrap();
         }
 
+        // write trait attrs
+        let trait_deps = self.trait_registry.get_registered_trait_deps();
+        let dep_order = base::order_defs_with_deps(self.env.tcx(), &trait_deps);
+        let trait_decls = self.trait_registry.get_trait_decls();
+
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{}\n", decl.make_attr_record_decl()).unwrap();
+        }
+
+        // write semantic interps
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            if let Some(decl) = decl.make_semantic_decl() {
+                write!(spec_file, "{decl}\n").unwrap();
+            }
+        }
+
         // write structs and enums
         // we need to do a bit of work to order them right
         {
@@ -407,13 +425,44 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write tuples up to the necessary size
         // TODO
 
+        // Include extra specs
+        {
+            if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
+                writeln!(spec_file, "Section extra_specs.").unwrap();
+                writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+                writeln!(spec_file).unwrap();
+                writeln!(
+                    spec_file,
+                    "(* Included specifications from configured file {} *)",
+                    extra_specs_path.display()
+                )
+                .unwrap();
+
+                let mut extra_specs_file = io::BufReader::new(File::open(extra_specs_path).unwrap());
+                let mut extra_specs_string = String::new();
+                extra_specs_file.read_to_string(&mut extra_specs_string).unwrap();
+
+                write!(spec_file, "{}", extra_specs_string).unwrap();
+                writeln!(spec_file, "End extra_specs.").unwrap();
+            }
+        }
+
         // write trait specs
-        let trait_deps = self.trait_registry.get_registered_trait_deps();
-        let dep_order = base::order_defs_with_deps(self.env.tcx(), &trait_deps);
-        let trait_decls = self.trait_registry.get_trait_decls();
-        for did in dep_order {
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{}\n", decl.make_spec_record_decl()).unwrap();
+        }
+
+        // write remaining trait things
+        for did in &dep_order {
             let decl = &trait_decls[&did.as_local().unwrap()];
             write!(spec_file, "{decl}\n").unwrap();
+        }
+
+        // write trait req incls
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{}\n", decl.make_trait_req_incls()).unwrap();
         }
 
         // write the attribute spec declarations of trait impls
@@ -520,24 +569,6 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 }
             }
             writeln!(spec_file).unwrap();
-        }
-
-        // Include extra specs
-        {
-            if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
-                writeln!(
-                    spec_file,
-                    "(* Included specifications from configured file {} *)",
-                    extra_specs_path.display()
-                )
-                .unwrap();
-
-                let mut extra_specs_file = io::BufReader::new(File::open(extra_specs_path).unwrap());
-                let mut extra_specs_string = String::new();
-                extra_specs_file.read_to_string(&mut extra_specs_string).unwrap();
-
-                write!(spec_file, "{}", extra_specs_string).unwrap();
-            }
         }
 
         writeln!(spec_file, "End specs.").unwrap();
@@ -1457,6 +1488,8 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
     let deps = vcx.trait_registry.get_trait_deps(traits.as_slice());
     let ordered_traits = base::order_defs_with_deps(vcx.env.tcx(), &deps);
 
+    let mut registered_traits = Vec::new();
+    // first pre-register them to enable mutually recursive traits
     for t in &ordered_traits {
         let t = t.as_local().unwrap();
 
@@ -1483,6 +1516,15 @@ fn register_traits(vcx: &mut VerificationCtxt<'_, '_>) -> Result<(), String> {
             continue;
         }
 
+        registered_traits.push(t);
+
+        vcx.trait_registry
+            .preregister_trait(t)
+            .map_err(|x| format!("{x:?}"))
+            .map_err(|e| format!("{e:?}"))?;
+    }
+    // then properly translate them
+    for t in registered_traits {
         vcx.trait_registry
             .register_trait(t, &mut vcx.procedure_registry)
             .map_err(|x| format!("{x:?}"))
@@ -1801,7 +1843,8 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
                         let assoc_item = trait_assoc_items.find_by_ident_and_kind(tcx, x.ident(tcx), ty::AssocTag::Fn, trait_did).unwrap();
 
-                        //trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
+                        trace!("assemble_trait_impls: trait_assoc_item = {:?}", assoc_item.def_id);
+                        trace!("assemble_trait_impls: default spec: {spec:?}");
                         if let Some(default_meta) = vcx.procedure_registry.lookup_function(assoc_item.def_id) {
                             // now build the generic scope for this item.
                             let ty = tcx.type_of(assoc_item.def_id).instantiate_identity();
@@ -1810,6 +1853,14 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                             };
                             let mut generics = scope::Params::new_from_generics(params, Some((tcx, assoc_item.def_id)));
                             generics.add_param_env(assoc_item.def_id, vcx.env, vcx.type_translator, vcx.trait_registry)?;
+                            // TODO: We don't respect dependencies of the direct scope on the
+                            // surrounding scope here. For instance for assoc type constraints. 
+                            // 
+                            // Dirty fix: I introduce let bindings in the translation for the inst
+                            // => let's just do this for now.
+                            //
+                            // Better: we should already substitute suitably in Rust.
+                            // But how do I do that? This seems a bit difficult. 
 
                             // add late bounds
                             let sig = ty.fn_sig(vcx.env.tcx());

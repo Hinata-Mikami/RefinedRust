@@ -6,7 +6,7 @@
 
 //! Defines scopes for maintaining generics and trait requirements.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, hash_map};
+use std::collections::{BTreeMap, HashMap, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
@@ -22,7 +22,7 @@ use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry::GenericTraitUse;
 use crate::traits::{self, registry};
-use crate::types::translator::{AdtState, STInner, TX};
+use crate::types::translator::TX;
 use crate::types::tyvars::TyRegionEraseFolder;
 
 /// Key used for resolving early-bound parameters for function calls.
@@ -463,16 +463,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
             let entry = &self.trait_scope.used_traits[&key];
 
-            // the scope to translate the arguments in
-            // TODO add bound regions
-            // for that, have a wrapping scope that shadows stuff, I guess.
-            // - I need to push up the existing indices, I think.
-            // - clone and add the requirements?
-
-            trait_registry.fill_trait_use(
+            registry::TR::fill_trait_use(
                 entry,
-                &*self,
-                typing_env,
                 req.trait_ref,
                 trait_spec,
                 req.is_used_in_self_trait,
@@ -480,7 +472,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 // below
                 Vec::new(),
                 req.origin,
-            )?;
+            );
         }
 
         // make a second pass to specify constraints on associated types
@@ -490,6 +482,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 continue;
             }
 
+            // TODO: does that always work? Or do we get potentially cyclic problems because we
+            // don't process requirements according to some dependency ordering?
             let translated_constraints: Vec<_> = req
                 .assoc_constraints
                 .iter()
@@ -506,11 +500,20 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 // and add the constraints
                 trait_use.assoc_ty_constraints = translated_constraints;
             }
+        }
+
+        // we make a third pass to finally resolve the scope of the trait, i.e. translate its args
+        // and trait requirements
+        for req in requirements.iter().rev() {
+            if req.is_self_in_trait_decl {
+                continue;
+            }
+
+            let key = (req.trait_ref.def_id, generate_args_inst_key(env.tcx(), req.trait_ref.args).unwrap());
+            let entry = &self.trait_scope.used_traits[&key];
 
             // finalize the entry by adding dependencies on other trait parameters
-            let mut deps = BTreeSet::new();
-            let mut state = STInner::TranslateAdt(AdtState::new(&mut deps, &*self, &typing_env));
-            trait_registry.finalize_trait_use(entry, &mut state, req.trait_ref)?;
+            trait_registry.finalize_trait_use(entry, &*self, typing_env, req.trait_ref)?;
         }
 
         // make a final pass to precompute the paths to associated types and attributes
