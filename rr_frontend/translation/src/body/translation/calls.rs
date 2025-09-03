@@ -474,10 +474,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
+        include_self: bool,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = types::STInner::InFunction(&mut scope);
-        self.trait_registry.resolve_trait_requirements_in_state(&mut state, did, params, None)
+        // NB: include the `Self` requirement to handle trait default fns
+        self.trait_registry
+            .resolve_trait_requirements_in_state(&mut state, did, params, None, include_self)
     }
 
     /// Translate the use of an `FnDef`, registering that the current function needs to link against
@@ -500,7 +503,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Check whether we are calling a plain function or a trait method
         let Some(_) = calling_trait else {
             // resolve the trait requirements
-            let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
+            let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params, true)?;
 
             // track that we are using this function and generate the Coq location name
             return self.register_use_procedure(*defid, params, trait_spec_terms);
@@ -530,7 +533,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 // resolve the trait requirements
                 let trait_spec_terms =
-                    self.resolve_trait_requirements_of_call(resolved_did, resolved_params)?;
+                    self.resolve_trait_requirements_of_call(resolved_did, resolved_params, true)?;
 
                 self.register_use_procedure(resolved_did, resolved_params, trait_spec_terms)
             },
@@ -539,7 +542,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // In this case, we have already applied it to the spec attribute
 
                 // resolve the trait requirements
-                let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
+                let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params, false)?;
 
                 self.register_use_trait_method(resolved_did, resolved_params, trait_spec_terms)
             },
@@ -553,7 +556,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 // resolve the trait requirements, which are also the trait requirements of the
                 // auto-generated impl
-                let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params)?;
+                let trait_spec_terms = self.resolve_trait_requirements_of_call(*defid, params, true)?;
 
                 self.register_use_closure(resolved_did, clos_args, *defid, params, trait_spec_terms)
             },

@@ -15,6 +15,7 @@ use std::ops::Add;
 
 use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
+use log::trace;
 
 use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
 
@@ -242,6 +243,22 @@ impl TypeAnnotMeta {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
+pub struct AdtShimInfo {
+    pub enum_name: Option<String>,
+
+    pub needs_trait_attrs: bool,
+}
+impl AdtShimInfo {
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            enum_name: None,
+            needs_trait_attrs: false,
+        }
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct LiteralType {
     /// Rust name
     pub rust_name: Option<String>,
@@ -254,6 +271,8 @@ pub struct LiteralType {
 
     /// the syntactic type
     pub syn_type: lang::SynType,
+
+    pub info: AdtShimInfo,
 }
 
 pub type LiteralTypeRef<'def> = &'def LiteralType;
@@ -302,7 +321,7 @@ impl<'def> LiteralTypeUse<'def> {
         applied.to_string()
     }
 
-    /// Get the `syn_type` term for this struct use.
+    /// Get the `syn_type` term for this type use.
     #[must_use]
     pub fn generate_raw_syn_type_term(&self) -> lang::SynType {
         let ty_inst: Vec<lang::SynType> = self
@@ -331,7 +350,7 @@ impl<'def> LiteralTypeUse<'def> {
         lang::SynType::Literal(format!("({specialized_spec} : syn_type)"))
     }
 
-    /// Generate a string representation of this struct use.
+    /// Generate a string representation of this type use.
     #[must_use]
     fn generate_type_term(&self) -> String {
         if let Some(scope_inst) = self.scope_inst.as_ref() {
@@ -339,6 +358,15 @@ impl<'def> LiteralTypeUse<'def> {
                 .get_all_ty_params_with_assocs()
                 .iter()
                 .map(|ty| format!("({})", ty.get_rfn_type()))
+                .chain(
+                    (if self.def.info.needs_trait_attrs {
+                        scope_inst.get_direct_trait_requirements()
+                    } else {
+                        &[]
+                    })
+                    .iter()
+                    .map(TraitReqInst::get_attr_term),
+                )
                 .collect::<Vec<_>>()
                 .join(" ");
             format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation(true, true))
@@ -569,7 +597,9 @@ impl InvariantSpec {
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π inner_rfn '{}, {}⌜inner_rfn = {}⌝ ∗ ",
+            "λ π inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
+            let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
+            self.rfn_type,
             self.rfn_pat,
             ex,
             self.abstracted_refinement.as_ref().unwrap()
@@ -600,8 +630,10 @@ impl InvariantSpec {
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π {} inner_rfn '{}, {}⌜inner_rfn = {}⌝ ∗ ",
+            "λ π {} inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
+            let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             &self.shr_lft_binder,
+            self.rfn_type,
             self.rfn_pat,
             ex,
             self.abstracted_refinement.as_ref().unwrap()
@@ -666,7 +698,9 @@ impl InvariantSpec {
         // persistence/timeless inference go nuts.
         write!(
             out,
-            "λ inner_rfn '{}, {}⌜inner_rfn = {}⌝ ∗ ",
+            "λ inner_rfn (_rfn_binder : RT_rt ({}%type : RT)), 
+            let '{} := _rfn_binder in {}⌜inner_rfn = {}⌝ ∗ ",
+            self.rfn_type,
             self.rfn_pat,
             ex,
             self.abstracted_refinement.as_ref().unwrap()
@@ -692,13 +726,16 @@ impl InvariantSpec {
         // generate the spec definition
         let spec_name = self.spec_name();
 
+        let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+
         match self.flags {
             InvariantSpecFlags::NonAtomic => {
                 #[expect(deprecated)]
                 write!(
                     out,
-                    "{indent}Program Definition {} : {} (na_ex_inv_def ({})%type ({})%type) := ",
+                    "{indent}Program Definition {} {} : {} (na_ex_inv_def ({})%type ({})%type) := ",
                     spec_name,
+                    attr_binders,
                     scope.get_all_type_term(),
                     base_rfn_type,
                     self.rfn_type,
@@ -709,8 +746,9 @@ impl InvariantSpec {
                 #[expect(deprecated)]
                 write!(
                     out,
-                    "{indent}Program Definition {} : {} (ex_inv_def ({})%type ({})%type) := ",
+                    "{indent}Program Definition {} {} : {} (ex_inv_def ({})%type ({})%type) := ",
                     spec_name,
+                    attr_binders,
                     scope.get_all_type_term(),
                     base_rfn_type,
                     self.rfn_type,
@@ -738,6 +776,12 @@ impl InvariantSpec {
                 let lft_outlives = self.assemble_ty_lfts();
                 let lft_wf_elctx = self.assemble_ty_wf_elctx();
 
+                let attr_intro = if attr_binders.0.is_empty() {
+                    String::new()
+                } else {
+                    format!("intros{}; ", " ?".repeat(attr_binders.0.len()))
+                };
+
                 write!(
                     out,
                     "{scope} mk_ex_inv_def\n\
@@ -750,8 +794,9 @@ impl InvariantSpec {
                 )
                 .unwrap();
                 write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_mono. Qed.\n").unwrap();
-                write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr. Qed.\n").unwrap();
+                write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                    .unwrap();
+                write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n").unwrap();
             },
             InvariantSpecFlags::NonAtomic => {
                 let own_inv = self.assemble_plain_owned_invariant();
@@ -794,13 +839,16 @@ impl InvariantSpec {
 
         write!(out, "{}", self.generate_coq_invariant_def(scope, base_rfn_type)).unwrap();
 
+        let attr_binders = scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont);
+        let attr_binders_uses = attr_binders.make_using_terms();
+
         // generate the definition itself.
         if InvariantSpecFlags::NonAtomic == self.flags {
             #[expect(deprecated)]
             write!(
                 out,
-                "{indent}Definition {} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {}) {}.\n",
+                "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
+                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {attr_binders_uses} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
@@ -812,8 +860,8 @@ impl InvariantSpec {
             #[expect(deprecated)]
             write!(
                 out,
-                "{indent}Definition {} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {}) {}.\n",
+                "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
+                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {attr_binders_uses} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
@@ -1065,7 +1113,8 @@ impl<'def> AbstractVariant<'def> {
     fn generate_coq_type_def_core(
         &self,
         ty_params: &GenericScope<'def>,
-        context_names: &[String],
+        ty_context_names: &[String],
+        rt_context_names: &[String],
     ) -> coq::Document {
         let mut document = coq::Document::default();
 
@@ -1093,7 +1142,7 @@ impl<'def> AbstractVariant<'def> {
                     .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(self.rfn_type()))).into()),
             ),
             body: coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
-                context_names.join("{}"),
+                ty_context_names.join("{}"),
                 coq::proof::Terminator::Defined,
                 |proof| {
                     proof.push(coq::ltac::LTac::Exact(coq::term::Term::App(Box::new(coq::term::App::new(
@@ -1107,7 +1156,7 @@ impl<'def> AbstractVariant<'def> {
 
         // Generate the refinement type definition
         let rt_params = all_ty_params.get_coq_ty_rt_params();
-        let using = format!("{} {}", rt_params.make_using_terms(), context_names.join(" "));
+        let using = format!("{} {}", rt_params.make_using_terms(), rt_context_names.join(" "));
 
         document.push(coq::command::Definition {
             program_mode: false,
@@ -1171,7 +1220,7 @@ impl<'def> AbstractVariant<'def> {
         // write coq parameters
         let (context_names, dep_sigma) = format_extra_context_items(extra_context, &mut out).unwrap();
 
-        write!(out, "{}", self.generate_coq_type_def_core(scope, &context_names)).unwrap();
+        write!(out, "{}", self.generate_coq_type_def_core(scope, &context_names, &context_names)).unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_def_name).unwrap();
@@ -1476,11 +1525,17 @@ impl<'def> AbstractStruct<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> LiteralType {
+        let info = AdtShimInfo {
+            enum_name: None,
+            needs_trait_attrs: self.has_invariant(),
+        };
+
         LiteralType {
             rust_name: Some(self.name().to_owned()),
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name()),
             syn_type: lang::SynType::Literal(self.sls_def_name().to_owned()),
+            info,
         }
     }
 }
@@ -1669,7 +1724,12 @@ impl<'def> AbstractStructUse<'def> {
                 unreachable!();
             };
 
-            format!("({} {rt_inst} {})", inv.type_name, self.scope_inst.instantiation(true, true))
+            let attrs = fmt_list!(
+                self.scope_inst.get_direct_trait_requirements().iter().map(TraitReqInst::get_attr_term),
+                " "
+            );
+
+            format!("({} {rt_inst} {attrs} {})", inv.type_name, self.scope_inst.instantiation(true, true))
         } else {
             format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation(true, true))
         }
@@ -1731,11 +1791,15 @@ pub struct AbstractEnum<'def> {
     /// name of the `enum_layout_spec` definition
     els_def_name: String,
     st_def_name: String,
+
     /// name of the enum definition
     enum_def_name: String,
 
     /// type of the integer discriminant
     discriminant_type: lang::IntType,
+
+    /// whether this is a recursive type
+    is_recursive: bool,
 
     /// these should be the same also across all the variants
     scope: GenericScope<'def>,
@@ -1872,7 +1936,8 @@ impl<'def> AbstractEnum<'def> {
             let v = var.borrow();
             let v = v.as_ref().unwrap();
 
-            write!(out, "| {} => {}", coq::term::App::new(pat, apps.clone()), v.plain_rt_def_name()).unwrap();
+            write!(out, "| {} => {}", coq::term::App::new(pat, apps.clone()), v.public_rt_def_name())
+                .unwrap();
         }
         if spec.is_partial {
             write!(out, "| _ => unitRT ").unwrap();
@@ -1995,6 +2060,17 @@ impl<'def> AbstractEnum<'def> {
             .iter()
             .map(|p| format!("(ty_lfts {})", p.type_term))
             .collect();
+
+        if self.is_recursive {
+            let rec_ty = format!(
+                "ty_lfts ({} {} {})",
+                self.plain_ty_name,
+                self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                self.scope.identity_instantiation().instantiation(true, true),
+            );
+            v.push(rec_ty);
+        }
+
         v.push("[]".to_owned());
         v.join(" ++ ")
     }
@@ -2008,8 +2084,37 @@ impl<'def> AbstractEnum<'def> {
             .iter()
             .map(|p| format!("(ty_wf_E {})", p.type_term))
             .collect();
+
+        if self.is_recursive {
+            let rec_ty = format!(
+                "ty_wf_E ({} {} {})",
+                self.plain_ty_name,
+                self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                self.scope.identity_instantiation().instantiation(true, true),
+            );
+            v.push(rec_ty);
+        }
+
         v.push("[]".to_owned());
         v.join(" ++ ")
+    }
+
+    #[must_use]
+    pub fn generate_contractive_instance(&self, def_name: &str) -> String {
+        let mut out = String::with_capacity(200);
+
+        let ty_name = &self.plain_ty_name;
+        let sem_binders = self.scope.get_all_ty_params_with_assocs().get_semantic_ty_params();
+
+        writeln!(out, "{BASE_INDENT}Program Instance {ty_name}_contractive {sem_binders} : EnumContractive (λ {ty_name}, {def_name} {ty_name} {}).", self.scope.identity_instantiation().instantiation(true, true)).unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. done. Defined.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
+
+        out
     }
 
     #[must_use]
@@ -2036,13 +2141,41 @@ impl<'def> AbstractEnum<'def> {
 
         let rt_param_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
 
+        writeln!(out, "{indent}Section components.").unwrap();
+
+        let ty_context_names = if self.is_recursive {
+            // generate the recursive type prelude for wiring up the component type definitions
+            // correctly
+
+            write!(out, "{indent}Let {}", self.plain_rt_name).unwrap();
+            // add dummy binders
+            for names in &all_ty_params.params {
+                write!(out, " (_{} : RT)", names.refinement_type).unwrap();
+            }
+            writeln!(out, " := {}.", self.spec.rfn_type).unwrap();
+
+            let dummy_ty_name = format!("_{}", self.plain_ty_name);
+            writeln!(out, "{indent}Context ({dummy_ty_name} : type {}).", self.spec.rfn_type).unwrap();
+
+            write!(out, "{indent}Let {}", self.plain_ty_name).unwrap();
+            // add dummy binders
+            for names in &all_ty_params.params {
+                write!(out, " ({} : RT)", names.refinement_type).unwrap();
+            }
+            writeln!(out, " := {} {dummy_ty_name}.", self.scope).unwrap();
+
+            vec![dummy_ty_name]
+        } else {
+            vec![]
+        };
+
         // define types and type abstractions for all the component types.
-        // TODO: we should actually use the abstracted types here.
         for (_name, variant, _) in &self.variants {
             let v = variant.borrow();
             let v = v.as_ref().unwrap();
             // TODO: might also need to handle extra context items
-            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &[])).unwrap();
+            write!(out, "{}\n", v.variant_def.generate_coq_type_def_core(&v.scope, &ty_context_names, &[]))
+                .unwrap();
 
             if let Some(inv) = &v.invariant {
                 let base_type = format!(
@@ -2117,11 +2250,15 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}{}\n", self.generate_enum_rt()).unwrap();
         write!(out, "{indent}{}\n", self.generate_enum_ty()).unwrap();
 
+        let pre_enum_def_name = format!("{}_pre", self.enum_def_name);
+
+        let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
+
         // main def
         #[expect(deprecated)]
         write!(
             out,
-            "{indent}Program Definition {} : {} (enum ({})) := {} mk_enum\n\
+            "{indent}Program Definition {pre_enum_def_name} : {} (enum ({})) := {} mk_enum\n\
                {indent}{indent}_\n\
                {indent}{indent}({els_app_term})\n\
                {indent}{indent}({})\n\
@@ -2132,14 +2269,13 @@ impl<'def> AbstractEnum<'def> {
                {indent}{indent}({})\n\
                {indent}{indent}({})\n\
                {indent}{indent}_ _ _.\n",
-            self.enum_def_name,
             self.scope.get_all_type_term(),
             self.spec.rfn_type,
             self.scope,
             self.generate_enum_tag(),
             self.enum_rt_def_name(),
             self.enum_ty_def_name(),
-            self.scope.identity_instantiation_term(),
+            scope_inst,
             self.generate_enum_rfn(),
             self.generate_enum_match(),
             self.generate_lfts(),
@@ -2151,18 +2287,37 @@ impl<'def> AbstractEnum<'def> {
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
 
+        write!(out, "{indent}End components.\n").unwrap();
+
+        if self.is_recursive {
+            writeln!(out, "{}", self.generate_contractive_instance(&pre_enum_def_name)).unwrap();
+        }
+
         // define the actual type
-        #[expect(deprecated)]
-        write!(
-            out,
-            "{indent}Definition {} : {} (type _) := {} enum_t ({} {}).\n",
-            self.plain_ty_name,
-            self.scope.get_all_type_term(),
-            self.scope,
-            self.enum_def_name,
-            self.scope.identity_instantiation_term(),
-        )
-        .unwrap();
+        if self.is_recursive {
+            let rec_ty_name = &self.plain_ty_name;
+            #[expect(deprecated)]
+            write!(
+                out,
+                "{indent}Definition {} : {} (type _) := {} type_fixpoint (λ {rec_ty_name}, enum_t ({pre_enum_def_name} {rec_ty_name} {})).\n",
+                self.plain_ty_name,
+                self.scope.get_all_type_term(),
+                self.scope,
+                scope_inst,
+            )
+            .unwrap();
+        } else {
+            #[expect(deprecated)]
+            write!(
+                out,
+                "{indent}Definition {} : {} (type _) := {} enum_t ({pre_enum_def_name} {}).\n",
+                self.plain_ty_name,
+                self.scope.get_all_type_term(),
+                self.scope,
+                scope_inst,
+            )
+            .unwrap();
+        }
 
         // generate the refinement type definition
         write!(out, "{indent}Definition {} : RT.\n", self.plain_rt_name).unwrap();
@@ -2173,11 +2328,34 @@ impl<'def> AbstractEnum<'def> {
         )
         .unwrap();
 
+        // generate the enum definition with recursive knots tied
+        if self.is_recursive {
+            #[expect(deprecated)]
+            writeln!(out, "{indent}Definition {} : {} (enum ({})) := {} {pre_enum_def_name} ({} {scope_inst}) {scope_inst}.",
+                self.enum_def_name,
+                self.scope.get_all_type_term(),
+                self.spec.rfn_type,
+                self.scope,
+                self.plain_ty_name,
+                ).unwrap();
+        } else {
+            #[expect(deprecated)]
+            writeln!(
+                out,
+                "{indent}Definition {} : {} (enum ({})) := {pre_enum_def_name}.",
+                self.enum_def_name,
+                self.scope.get_all_type_term(),
+                self.spec.rfn_type,
+            )
+            .unwrap();
+        }
+
         // make it Typeclasses Transparent
         write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.plain_ty_name).unwrap();
         write!(out, "{indent}Global Typeclasses Transparent {}.\n\n", self.plain_rt_name).unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
+        write!(out, "Global Arguments {} : simpl never.\n", self.enum_def_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} {{_ _}}.\n", self.plain_ty_name).unwrap();
@@ -2189,11 +2367,17 @@ impl<'def> AbstractEnum<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> LiteralType {
+        let info = AdtShimInfo {
+            enum_name: Some(self.enum_def_name.clone()),
+            needs_trait_attrs: false,
+        };
+
         LiteralType {
             rust_name: Some(self.name().to_owned()),
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name().to_owned()),
             syn_type: lang::SynType::Literal(self.els_def_name().to_owned()),
+            info,
         }
     }
 }
@@ -2210,6 +2394,8 @@ pub struct EnumBuilder<'def> {
     discriminant_type: lang::IntType,
     /// representation options for the enum
     repr: EnumRepr,
+    /// whether this is a recursive type
+    is_recursive: bool,
 }
 
 impl<'def> EnumBuilder<'def> {
@@ -2239,6 +2425,7 @@ impl<'def> EnumBuilder<'def> {
             scope: self.scope,
             discriminant_type: self.discriminant_type,
             repr: self.repr,
+            is_recursive: self.is_recursive,
         }
     }
 
@@ -2250,6 +2437,7 @@ impl<'def> EnumBuilder<'def> {
         scope: GenericScope<'def>,
         discriminant_type: lang::IntType,
         repr: EnumRepr,
+        is_recursive: bool,
     ) -> Self {
         Self {
             variants: Vec::new(),
@@ -2257,6 +2445,7 @@ impl<'def> EnumBuilder<'def> {
             scope,
             discriminant_type,
             repr,
+            is_recursive,
         }
     }
 
@@ -2395,15 +2584,6 @@ impl<'def> InnerFunctionSpec<'def> {
             Self::TraitDefault(_) => None,
         }
     }
-
-    /// Determines whether this spec needs trait requirements quantified.
-    #[must_use]
-    const fn needs_trait_req_params(&self) -> bool {
-        match self {
-            Self::Lit(_) => true,
-            Self::TraitDefault(_) => false,
-        }
-    }
 }
 
 /// A Radium function specification.
@@ -2494,11 +2674,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         params.append(self.late_coq_params.0.clone());
 
         // finally, the trait spec parameters
-        let trait_params = if self.spec.needs_trait_req_params() {
-            self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Attrs)
-        } else {
-            self.generics.get_surrounding_attr_trait_parameters(IncludeSelfReq::Attrs)
-        };
+        let trait_params = self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Attrs);
 
         params.append(trait_params.0);
 
@@ -2512,13 +2688,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         let mut params = typarams.get_coq_ty_params();
 
         // finally, the trait spec parameters
-        let trait_params = if self.spec.needs_trait_req_params() {
-            // TODO?
-            self.generics.get_all_trait_parameters(IncludeSelfReq::AttrsSpec)
-        } else {
-            // TODO?
-            self.generics.get_surrounding_trait_parameters(IncludeSelfReq::AttrsSpec)
-        };
+        let trait_params = self.generics.get_all_trait_parameters(IncludeSelfReq::AttrsSpec);
 
         params.append(trait_params.0);
 
@@ -2539,11 +2709,7 @@ impl<'def> FunctionSpec<'def, InnerFunctionSpec<'def>> {
         params.append(self.late_coq_params.0.clone());
 
         // finally, the trait spec parameters
-        let trait_params = if self.spec.needs_trait_req_params() {
-            self.generics.get_all_trait_parameters(self_req)
-        } else {
-            self.generics.get_surrounding_trait_parameters(self_req)
-        };
+        let trait_params = self.generics.get_all_trait_parameters(self_req);
 
         params.append(trait_params.0);
 
@@ -3539,12 +3705,12 @@ impl SpecializedTraitImpl<'_> {
         out.push_str(&format!("{} ", self.impl_ref.spec_record));
 
         // specialize to rts
-        push_str_list!(out, self.impl_inst.get_direct_ty_params(), " ", |x| {
+        push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
             format!("{}", x.get_rfn_type())
         });
         // specialize to sts
         out.push(' ');
-        push_str_list!(out, self.impl_inst.get_direct_ty_params(), " ", |x| {
+        push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
             format!("{}", lang::SynType::from(x))
         });
 
@@ -3555,7 +3721,9 @@ impl SpecializedTraitImpl<'_> {
         }
 
         // specialize to semtys
-        push_str_list!(out, self.impl_inst.get_direct_ty_params(), " ", |x| { format!("<TY> {}", x) });
+        push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
+            format!("<TY> {}", x)
+        });
         // specialize to lfts
         push_str_list!(out, self.impl_inst.get_lfts(), " ", |x| { format!("<LFT> {}", x) });
         out.push_str(" <INST!>");
@@ -4183,16 +4351,6 @@ impl<'def> GenericScope<'def, LiteralTraitSpecUseRef<'def>> {
     }
 
     #[must_use]
-    fn get_surrounding_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, false, include_self, true)
-    }
-
-    #[must_use]
-    fn get_surrounding_attr_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
-        self.get_trait_req_parameters(true, false, include_self, false)
-    }
-
-    #[must_use]
     fn get_all_trait_parameters(&self, include_self: IncludeSelfReq) -> coq::binder::BinderList {
         self.get_trait_req_parameters(true, true, include_self, true)
     }
@@ -4410,7 +4568,12 @@ fn make_trait_instance<'def>(
             // provide type annotation
             // counting lifetimes: workaround because we currently don't distinguish direct and surrounding
             // lifetimes
-            let num_direct_lifetimes = num_all_lifetimes - scope.get_num_lifetimes();
+            trace!("computing local lifetimes for {record_item_name}: {direct_scope:?} - {scope:?}");
+            let num_direct_lifetimes = if scope.get_num_lifetimes() < num_all_lifetimes {
+                num_all_lifetimes - scope.get_num_lifetimes()
+            } else {
+                0
+            };
             write!(body, " : (spec_with {num_direct_lifetimes} [")?;
             write_list!(body, &direct_params.params, "; ", |x| x.refinement_type.clone())?;
 
@@ -4509,6 +4672,9 @@ impl TraitSpecDecl<'_> {
 
         params.0.insert(0, coq::binder::Binder::new_rrgs());
 
+        // the individual fields depend on each other, progressively
+        let mut field_params = params.clone();
+
         // we first generate definitions for the type signature of each attribute
         let mut sig_decls: Vec<coq::Sentence> = Vec::new();
 
@@ -4521,7 +4687,7 @@ impl TraitSpecDecl<'_> {
             let sig_defn = coq::command::Definition {
                 program_mode: false,
                 name: record_item_sig_name.clone(),
-                params: params.clone(),
+                params: field_params.clone(),
                 ty: None,
                 body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::Type(Box::new(
                     item_ty.to_owned(),
@@ -4531,13 +4697,18 @@ impl TraitSpecDecl<'_> {
 
             let record_item_ty = coq::term::App::new(
                 coq::term::Term::Ident(coq::Ident::new(record_item_sig_name)),
-                params.make_using_terms().0,
+                field_params.make_using_terms().0,
             );
+            let ty = coq::term::RocqType::Term(Box::new(coq::term::Term::App(Box::new(record_item_ty))));
+
+            // add a new field binder for the next fields
+            let field_binder = coq::binder::Binder::new(Some(record_item_name.clone()), ty.clone());
+            field_params.0.push(field_binder);
 
             let item = coq::term::RecordDeclItem {
                 name: record_item_name,
                 params: coq::binder::BinderList::empty(),
-                ty: coq::term::RocqType::Term(Box::new(coq::term::Term::App(Box::new(record_item_ty)))),
+                ty,
             };
             record_items.push(item);
         }
@@ -5037,11 +5208,10 @@ impl TraitImplSpec<'_> {
                 attrs_type_terms.push(coq::term::Term::Literal(x.get_attr_term()));
             }
         }
+        let mut obligation_terms = Vec::new();
 
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_terms.clone());
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
-
-        let mut obligation_terms = Vec::new();
 
         // write the attr record decl
         let attr_record_term = if attrs.attrs.is_empty() {
@@ -5056,6 +5226,9 @@ impl TraitImplSpec<'_> {
                     coq::term::Term::Ident(coq::Ident::new(of_trait.make_spec_attr_sig_name(attr_name))),
                     attrs_type_terms.clone(),
                 );
+
+                // add a placeholder for the dependency of the next attrs
+                attrs_type_terms.push(coq::term::RocqTerm::Infer);
 
                 let inst_term = match inst {
                     TraitSpecAttrInst::Term(term) => term.to_owned(),

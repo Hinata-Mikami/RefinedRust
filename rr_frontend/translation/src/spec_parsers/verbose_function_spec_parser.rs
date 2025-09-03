@@ -4,19 +4,20 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::mem;
 
 use attribute_parse::{MToken, parse};
-use log::{info, warn};
+use log::info;
 use parse::{Parse, Peek as _};
 use radium::{coq, fmt_list, model, push_str_list, specs};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::middle::hir::place;
 use rr_rustc_interface::middle::ty;
 
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, RRCoqContextItem, RRParam, RRParams,
-    attr_args_tokens, str_err,
+    IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections, RRCoqContextItem, RRParam,
+    RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
 };
 
 pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
@@ -59,30 +60,12 @@ impl ClosureSpecInfo {
     fn new_from_parsed_spec<'def>(
         parsed_spec: &ParsedSpecInfo<'def>,
         parsed_captures: &ParsedClosureSpecInfo<'def>,
+        extra_params: Vec<coq::binder::Binder>,
+        extra_existentials: Vec<coq::binder::Binder>,
     ) -> Self {
         // TODO for the closure spec parser:
         // - disallow attributes that we cannot fit into this
         // - disallow overriding types
-
-        // How do I assemble this?
-        // - for the closure state, I do not get the ghost var or so (in case of mutref)
-        // - instead, I always get Self.
-        // - Thus, we cannot just literally take the generated spec pattern
-        //
-        // - For the args, I will need to detuple them.
-        //
-        // Should I rethink the capture specification format at this point?
-        // - e.g., for each capture, I could introduce a binding
-        // - difficulty: what bindings to introduce for captured subplaces?
-        //   + I cannot easily have x.bla syntax.
-        //   + I could enable that via {x.bla}, conceivably. That would be consistent, as we are escaping Rust
-        //     expressions there.
-        //
-        // Is there a reason to keep the captures format?
-        //
-        // I can keep this for now. I think the format without captures can be fitted into this, by
-        // generating the capture map myself and introducing some params
-        //
         //
         // Pre self args :=
         //  ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧ precond
@@ -91,7 +74,6 @@ impl ClosureSpecInfo {
         // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
         //  ∃ ex, ret = $# ret_pattern ∧ postcond ∧
         //      (observes for the mutable captures?)
-        //
         //
         // PostMut self args ret self' :=
         // ∃ params, self = # (pre_rfn) ∧ args = *[ $# args_patterns ] ∧
@@ -116,6 +98,7 @@ impl ClosureSpecInfo {
                 .iter()
                 .map(|x| x.0.clone())
                 .chain(parsed_captures.params.iter().cloned())
+                .chain(extra_params)
                 .collect(),
         );
         let pre_self_rfn_clause = format!("{self_var} = ({})", parsed_captures.closure_self_rfn);
@@ -125,8 +108,9 @@ impl ClosureSpecInfo {
             format!("{args_var} = *[ {} ]", fmt_list!(&parsed_spec.args, "; ", |x| { x.1.clone() }))
         };
 
-        let all_existentials =
-            coq::binder::BinderList::new(parsed_spec.existentials.iter().map(|x| x.0.clone()).collect());
+        let all_existentials = coq::binder::BinderList::new(
+            parsed_spec.existentials.iter().map(|x| x.0.clone()).chain(extra_existentials).collect(),
+        );
 
         let ret_term = if let Some(ret) = &parsed_spec.ret { &ret.1 } else { "tt" };
         let post_ret_rfn_clause = format!("{ret_var} = ({ret_term})");
@@ -241,49 +225,35 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for RRArgs {
     }
 }
 
-/// Representation of the spec for a single closure capture.
-/// e.g. `"x" : "#42"` (for by shr-ref capture)
-/// or `"y" : "(#42, γ)" -> "(#43, γ)"` (for by mut-ref capture)
-struct ClosureCaptureSpec {
-    variable: String,
-    pre: LiteralTypeWithRef,
-    post: Option<LiteralTypeWithRef>,
-}
-
-impl<'def, T: ParamLookup<'def>> Parse<T> for ClosureCaptureSpec {
-    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
-        let name_str: parse::LitStr = stream.parse(meta)?;
-        let name = name_str.value();
-        stream.parse::<_, MToken![:]>(meta)?;
-
-        let pre_spec: LiteralTypeWithRef = stream.parse(meta)?;
-
-        if parse::RArrow::peek(stream) {
-            stream.parse::<_, MToken![->]>(meta)?;
-            let current_pos = stream.pos().unwrap();
-
-            let post_spec: LiteralTypeWithRef = stream.parse(meta)?;
-            if post_spec.ty.is_some() {
-                Err(parse::Error::OtherErr(
-                    current_pos,
-                    "Did not expect type specification for capture postcondition".to_owned(),
-                ))
-            } else {
-                Ok(Self {
-                    variable: name,
-                    pre: pre_spec,
-                    post: Some(post_spec),
-                })
-            }
-        } else {
-            Ok(Self {
-                variable: name,
-                pre: pre_spec,
-                post: None,
-            })
+fn compute_projection(proj: &place::Place<'_>) -> Projections {
+    let mut projections = Vec::new();
+    let mut cur_ty = proj.base_ty;
+    for x in &proj.projections {
+        match x.kind {
+            place::ProjectionKind::Deref => {
+                projections.push(Projection::Deref);
+            },
+            place::ProjectionKind::Field(field, variant) => {
+                if let ty::TyKind::Adt(def, _) = cur_ty.kind() {
+                    let variant_def = def.variant(variant);
+                    let field_def = variant_def.fields.get(field).unwrap();
+                    let field_name = field_def.name.as_str();
+                    projections.push(Projection::Field(field_name.to_owned()));
+                } else {
+                    unimplemented!("closure capture of Field, but this is not an ADT");
+                }
+            },
+            _ => {
+                unimplemented!("unsupported capture via projection {:?}", x.kind);
+            },
         }
+        cur_ty = x.ty;
     }
+
+    Projections(projections)
 }
+
+type CaptureSpecMap = BTreeMap<RustPlace, (LiteralTypeWithRef, Option<LiteralTypeWithRef>)>;
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
 #[derive(Clone, Debug)]
@@ -554,6 +524,7 @@ where
                 type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
                 syn_type: ty.into(),
+                info: specs::AdtShimInfo::empty(),
             };
             let lit_ref = (self.make_literal)(lit_ty);
             let lit_ty_use = specs::LiteralTypeUse::new_with_annot(lit_ref);
@@ -776,12 +747,12 @@ where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
 {
     /// Handles attributes common among functions/methods and closures.
-    fn handle_common_attributes(
+    fn handle_common_attributes<X: TraitReqHandler<'def>>(
         &mut self,
         name: &str,
         buffer: &parse::Buffer,
         builder: &mut ParsedSpecInfo<'def>,
-        scope: &T,
+        scope: &X,
         in_closure: bool,
     ) -> Result<bool, String> {
         match name {
@@ -949,7 +920,7 @@ where
     /// `builder`: the function builder to push new specification components to
     fn merge_capture_information<H>(
         &self,
-        capture_specs: Vec<ClosureCaptureSpec>,
+        capture_specs: &CaptureSpecMap,
         meta: ClosureMetaInfo<'_, '_, 'def>,
         mut make_tuple: H,
     ) -> Result<ParsedClosureSpecInfo<'def>, String>
@@ -969,27 +940,34 @@ where
         // post patterns and optional ghost variable, if this is a by-mut-ref capture
         let mut post_patterns: Vec<CapturePostRfn> = Vec::new();
 
-        let mut capture_spec_map = HashMap::new();
-        for x in capture_specs {
-            capture_spec_map.insert(x.variable, (x.pre, x.post));
-        }
+        // Plan:
+        // First phase:
+        // - implicit binding of captures
+        // - for that, generate the map from the captures. add bindes to params.
+        // - for post binders: maybe introduce a new name/notation for referring to that and then
+        // just allow to specify equality constraints. e.g., x.new?
+        //
+        // Second phase:
+        // - allow captures of projections
+        //
+        //
+        // First, let's add the infrastructure for projections, even if rr::captures can't specify
+        // them now
 
         // assemble the pre types
         for (capture, ty) in meta.captures.iter().zip(meta.capture_tys.iter()) {
-            if !capture.place.projections.is_empty() {
-                info!("processing capture {:?}", capture);
-                warn!("ignoring place projection in translation of capture: {:?}", capture);
-                // TODO: could handle this by parsing capture strings in specs
-                //unimplemented!("only support specifying closure captures without projections");
-            }
-
+            let projections = compute_projection(&capture.place);
             let base = capture.var_ident.name.as_str();
-            if let Some((_, (pre, post))) = capture_spec_map.remove_entry(base) {
+            let place = RustPlace {
+                base: base.to_owned(),
+                proj: projections,
+            };
+            if let Some((pre, post)) = capture_specs.get(&place) {
                 // we kinda want to specify the thing independently of how it is captured
                 match capture.info.capture_kind {
                     ty::UpvarCapture::ByValue => {
                         // full ownership
-                        let (processed_ty, _) = self.make_type_with_ref(&pre, ty);
+                        let (processed_ty, _) = self.make_type_with_ref(pre, ty);
                         pre_types.push(processed_ty);
 
                         if let Some(post) = post {
@@ -1004,7 +982,7 @@ where
                         // shared borrow
                         // if there's a manually specified type, we need to wrap it in the reference
                         if let specs::Type::ShrRef(box auto_type, lft) = ty {
-                            let (processed_ty, _) = self.make_type_with_ref(&pre, auto_type);
+                            let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a shared reference again
                             let altered_ty = specs::Type::ShrRef(Box::new(processed_ty.0), lft.clone());
                             let altered_rfn = format!("({})", processed_ty.1);
@@ -1020,7 +998,7 @@ where
                         // the same way, as they are not really different for RefinedRust's type
                         // system
                         if let specs::Type::MutRef(box auto_type, lft) = ty {
-                            let (processed_ty, _) = self.make_type_with_ref(&pre, auto_type);
+                            let (processed_ty, _) = self.make_type_with_ref(pre, auto_type);
                             // now wrap it in a mutable reference again
                             // we create a ghost variable
                             let ghost_var = format!("_γ{base}");
@@ -1214,6 +1192,63 @@ where
     }
 }
 
+struct ClosureCaptureScope<'a, T> {
+    scope: &'a T,
+    map: &'a CaptureSpecMap,
+}
+impl<'def, T> ParamLookup<'def> for ClosureCaptureScope<'_, T>
+where
+    T: ParamLookup<'def>,
+{
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
+        self.scope.lookup_ty_param(path)
+    }
+
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+        self.scope.lookup_lft(lft)
+    }
+
+    fn lookup_literal(&self, path: &RustPath) -> Option<String> {
+        self.scope.lookup_literal(path)
+    }
+
+    fn lookup_place(&self, place: &RustPlace, modifier: Option<String>) -> Option<String> {
+        let x = self.map.get(place)?;
+        if let Some(modifier) = modifier {
+            if modifier == "new"
+                && let Some(y) = &x.1
+            {
+                Some(y.rfn.to_string())
+            } else {
+                None
+            }
+        } else {
+            Some(x.0.rfn.to_string())
+        }
+    }
+}
+impl<'def, T> TraitReqHandler<'def> for ClosureCaptureScope<'_, T>
+where
+    T: TraitReqHandler<'def>,
+{
+    fn determine_trait_requirement_origin(
+        &self,
+        typaram: &str,
+        attr: &str,
+    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+        self.scope.determine_trait_requirement_origin(typaram, attr)
+    }
+
+    fn attach_trait_attr_requirement(
+        &self,
+        name_prefix: &str,
+        trait_use: radium::LiteralTraitSpecUseRef<'def>,
+        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
+    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
+        self.scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
+    }
+}
+
 impl<'def, F, T: TraitReqHandler<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
     F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
@@ -1230,25 +1265,74 @@ where
     {
         let mut spec = ParsedSpecInfo::new();
 
-        let mut capture_specs = Vec::new();
+        let mut capture_spec_map: CaptureSpecMap = BTreeMap::new();
+        let mut param_binders = Vec::new();
+        let mut ex_binders = Vec::new();
+        for (capture, ty) in closure_meta.captures.iter().zip(closure_meta.capture_tys) {
+            let projection = compute_projection(&capture.place);
+            let base = capture.var_ident.name.as_str();
+            let kind = capture.info.capture_kind;
+            let capture_is_mut = matches!(kind, ty::UpvarCapture::ByRef(ty::BorrowKind::Mutable));
+            let capture_name = format!("capture_{base}_{projection}");
+            let capture_post_name = format!("capture_{base}_{projection}_new");
 
-        // parse captures -- we need to handle it before the other annotations because we will have
-        // to add the first arg for the capture
-        for &it in attrs {
-            let path_segs = &it.path.segments;
-            let args = &it.args;
-
-            if let Some(seg) = path_segs.get(1) {
-                let buffer = parse::Buffer::new(&attr_args_tokens(args));
-
-                if seg.name.as_str() == "capture" {
-                    let spec: ClosureCaptureSpec = buffer.parse(self.scope).map_err(str_err)?;
-                    capture_specs.push(spec);
+            let capture_ty = if matches!(kind, ty::UpvarCapture::ByRef(_)) {
+                if let radium::Type::MutRef(ty, _) = ty {
+                    ty.get_rfn_type()
+                } else if let radium::Type::ShrRef(ty, _) = ty {
+                    ty.get_rfn_type()
+                } else {
+                    unreachable!();
                 }
+            } else {
+                ty.get_rfn_type()
+            };
+
+            let capture_binder = coq::binder::Binder::new(
+                Some(capture_name),
+                coq::term::Type::UserDefined(model::Type::RTXT(Box::new(capture_ty.clone()))),
+            );
+            let pre_ty = LiteralTypeWithRef {
+                rfn: IdentOrTerm::Term(capture_binder.get_name_ref().as_ref().unwrap().to_owned()),
+                ty: None,
+                raw: specs::TypeIsRaw::No,
+            };
+            let capture_post = capture_is_mut.then(|| {
+                let binder = coq::binder::Binder::new(Some(capture_post_name.clone()), capture_ty);
+                let post_ty = LiteralTypeWithRef {
+                    rfn: IdentOrTerm::Term(capture_post_name),
+                    ty: None,
+                    raw: specs::TypeIsRaw::No,
+                };
+                (binder, post_ty)
+            });
+
+            param_binders.push(capture_binder);
+            if let Some((binder, _)) = &capture_post {
+                ex_binders.push(binder.to_owned());
             }
+
+            let place = RustPlace {
+                base: base.to_owned(),
+                proj: projection,
+            };
+
+            capture_spec_map.insert(place, (pre_ty, capture_post.map(|x| x.1)));
         }
 
-        let capture_spec = self.merge_capture_information(capture_specs, closure_meta, make_tuple)?;
+        for param in &param_binders {
+            builder.add_param(param.to_owned())?;
+        }
+        for param in &ex_binders {
+            builder.add_existential(param.to_owned())?;
+        }
+
+        let scope = ClosureCaptureScope {
+            scope: self.scope,
+            map: &capture_spec_map,
+        };
+
+        let capture_spec = self.merge_capture_information(&capture_spec_map, closure_meta, make_tuple)?;
         capture_spec.push_to_builder(builder)?;
 
         for &it in attrs {
@@ -1259,7 +1343,7 @@ where
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.name.as_str();
 
-                match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, true) {
+                match self.handle_common_attributes(name, &buffer, &mut spec, &scope, true) {
                     Ok(b) => {
                         if !b
                             && name != "capture"
@@ -1282,7 +1366,8 @@ where
         self.add_default_spec(&mut spec)?;
         spec.push_to_builder(builder)?;
 
-        let spec_info = ClosureSpecInfo::new_from_parsed_spec(&spec, &capture_spec);
+        let spec_info =
+            ClosureSpecInfo::new_from_parsed_spec(&spec, &capture_spec, param_binders, ex_binders);
 
         Ok(spec_info)
     }

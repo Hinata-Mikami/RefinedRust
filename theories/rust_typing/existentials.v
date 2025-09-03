@@ -534,6 +534,31 @@ Section stratify.
     OwnedSubtype π E L false r r' ty (∃; P, ty) :=
     λ T, i2p (owned_subtype_ex_plain_t π E L ty r r' T).
 
+  Lemma owned_subtype_ex_plain_t_strong {rt0 : RT} π E L (ty : type rt0) (ty2 : type rt) (r : rt0) (r' : X) T :
+    (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2, 
+    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') (λ L1 _ R, 
+    R -∗ T L1))))
+    ⊢ owned_subtype π E L false r r' ty (∃; P, ty2) T.
+  Proof.
+    iIntros "HT".
+    unfold owned_subtype, prove_with_subtype.
+    iIntros (????) "#CTX #HE HL".
+    iDestruct "HT" as "(%r1 & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L0 & Hincl & HL & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
+    iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
+    iDestruct "Hincl" as "(%Hst_eq & Hsc & Hv)".
+    iSplitR; last iSplitL "Hsc".
+    - simpl. iPureIntro. done.
+    - simpl. eauto.
+    - iIntros (v) "Hv0".
+      iEval (rewrite /ty_own_val/=).
+      iPoseProof ("Hv" with "Hv0") as "Hv".
+      eauto with iFrame.
+  Qed.
+  Definition owned_subtype_ex_plain_t_strong_inst := [instance @owned_subtype_ex_plain_t_strong].
+  Global Existing Instance owned_subtype_ex_plain_t_strong_inst.
+
   (*
   Lemma owned_subtype_unfold_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :
     (∀ r2 : rt, introduce_with_hooks E L (P.(inv_P) π r2 r') (λ L1,

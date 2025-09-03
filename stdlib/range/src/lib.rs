@@ -5,80 +5,38 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.range")]
 #![rr::include("option")]
-#![rr::include("iterator")]
+#![rr::include("cmp")]
 
 #![feature(step_trait)]
-use std::iter::Step;
 
-#[rr::refined_by("start" : "{rt_of Idx}", "end" : "{rt_of Idx}")]
 #[rr::export_as(core::ops::Range)]
+#[rr::refined_by("(rstart, rend)" : "{rt_of Idx} * {rt_of Idx}")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
-    #[rr::field("start")]
+    #[rr::field("rstart")]
     pub start: Idx,
     /// The upper bound of the range (exclusive).
-    #[rr::field("end")]
+    #[rr::field("rend")]
     pub end: Idx,
 }
 
-
-//#[rr::context()]
-impl<A: Step> Iterator for Range<A> {
-    type Item = A;
-
-    fn next(&mut self) -> Option<A> {
-        unimplemented!();
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        unimplemented!();
-    }
-
-    fn count(self) -> usize {
-        unimplemented!();
-    }
-
-    fn nth(&mut self, n: usize) -> Option<A> {
-        unimplemented!();
-    }
-
-    fn last(mut self) -> Option<A> {
-        unimplemented!();
-    }
-
-    fn min(mut self) -> Option<A> where A: Ord {
-        unimplemented!();
-    }
-
-    //#[rr::args("(start, end)")]
-    //#[rr::returns("")]
-    fn max(mut self) -> Option<A> where A: Ord {
-        unimplemented!();
-    }
-
-    //#[inline]
-    //fn is_sorted(self) -> bool {
-        //true
-    //}
-
-    //#[inline]
-    //fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
-        //self.spec_advance_by(n)
-    //}
-
-    /*
-    #[inline]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+#[rr::export_as(core::ops::Range)]
+impl<Idx: PartialOrd<Idx>> Range<Idx> {
+    // TODO: Spec doesn't work currently because spec language doesn't distinguish the two required
+    // impls
+    #[rr::skip]
+    //#[rr::returns("bool_decide (({Idx::POrd} self.1 item = Some Less ∨ {Idx::POrd} self.1 item = Some Equal) ∧ {Idx::POrd} item self.2 = Some Less)")]
+    pub fn contains<U>(&self, item: &U) -> bool
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
     {
-        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
-        // that is in bounds.
-        // Additionally Self: TrustedRandomAccess is only implemented for Copy types
-        // which means even repeated reads of the same index would be safe.
-        unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+        unimplemented!();
+        //<Self as RangeBounds<Idx>>::contains(self, item)
     }
-    */
+
+    #[rr::returns("bool_decide (¬ {Idx::POrd} self.1 self.2 = Some Less)")]
+    pub fn is_empty(&self) -> bool {
+        !(self.start < self.end)
+    }
 }
-
-

@@ -461,7 +461,42 @@ mod default_fn {
             40
         }
     }
+}
 
+mod default_fn2 {
+    trait Foo {
+        type Output;
+
+        #[rr::verify]
+        fn foo1(&self) -> i32;
+
+        #[rr::verify]
+        fn foo2(&self) -> i32 {
+            self.foo1()
+        }
+    }
+
+    impl Foo for i32 {
+        type Output = i32;
+        #[rr::default_spec]
+        fn foo1(&self) -> i32 {
+            42
+        }
+    }
+
+    /*
+    impl Foo for u32 {
+        #[rr::default_spec]
+        fn foo1(&self) -> i32 {
+            42
+        }
+
+        #[rr::default_spec]
+        fn foo2(&self) -> i32 {
+            40
+        }
+    }
+    */
 }
 
 

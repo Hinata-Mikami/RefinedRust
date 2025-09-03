@@ -8,6 +8,7 @@ use std::fmt;
 use std::sync::LazyLock;
 
 use attribute_parse::{MToken, parse};
+use derive_more::Display;
 use log::trace;
 use parse::Peek as _;
 use radium::{coq, specs};
@@ -269,11 +270,45 @@ pub(crate) enum RustPathElem {
 
 pub(crate) type RustPath = Vec<RustPathElem>;
 
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Display)]
+pub(crate) enum Projection {
+    #[display("deref")]
+    Deref,
+    #[display("{}", _0)]
+    Field(String),
+}
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Projections(pub(crate) Vec<Projection>);
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct RustPlace {
+    pub(crate) base: String,
+    pub(crate) proj: Projections,
+}
+
+impl fmt::Display for Projections {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut needs_sep = false;
+        for x in &self.0 {
+            if needs_sep {
+                write!(f, "_")?;
+            }
+            needs_sep = true;
+            write!(f, "{x}")?;
+        }
+
+        Ok(())
+    }
+}
+
 /// Lookup of lifetime and type parameters given their Rust source names.
 pub(crate) trait ParamLookup<'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>>;
     fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
     fn lookup_literal(&self, path: &RustPath) -> Option<String>;
+
+    fn lookup_place(&self, _place: &RustPlace, _modifier: Option<String>) -> Option<String> {
+        None
+    }
 
     /// Processes a literal Coq term annotated via an attribute.
     /// In particular, processes escapes `{...}` and replaces them via their interpretation, see
@@ -301,6 +336,7 @@ pub(crate) trait ParamLookup<'def> {
         // Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
         static PREFIXR: &str = "([^{]|^)";
         static IDENTR: LazyLock<String> = LazyLock::new(|| format!("{IDENTCHARR}[0-9{IDENTCHARR}]*"));
+        static PLACER: LazyLock<String> = LazyLock::new(|| format!("[0-9{IDENTCHARR}.\\*()]"));
         static PATHR: LazyLock<String> = LazyLock::new(|| format!("(({}::)*)({})", *IDENTR, *IDENTR));
         static RE_RT_OF: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*rt_of\s+{}\s*\}}", *PATHR)).unwrap());
@@ -316,6 +352,8 @@ pub(crate) trait ParamLookup<'def> {
             LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*'({})\s*\}}", *IDENTR)).unwrap());
         static RE_LIT: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*{}\s*\}}", *PATHR)).unwrap());
+        static RE_PLACE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(&format!(r"{PREFIXR}\{{\s*({}*)\s*\}}", *PLACER)).unwrap());
 
         // Parse a path to an item.
         fn parse_path(prefix: Option<regex::Match<'_>>) -> RustPath {
@@ -438,12 +476,33 @@ pub(crate) trait ParamLookup<'def> {
             // else interpret it as ty_of
             let ty = self.lookup_ty_param(&path);
 
-            let Some(ty) = ty else {
-                return "ERR".to_owned();
-            };
+            if let Some(ty) = ty {
+                annot_meta.add_type(&ty);
+                return format!("{}{}", &c[1], ty);
+            }
 
-            annot_meta.add_type(&ty);
-            format!("{}{}", &c[1], ty)
+            // let's try to parse this as a place
+            let content = c[4].to_string();
+            if path.len() == 1
+                && let Ok((_rest, (place, modifier))) = place_parser::parse_rust_place(&content)
+                && let Some(res) = self.lookup_place(&place, modifier)
+            {
+                return format!("{}{}", &c[1], res);
+            }
+
+            "ERR".to_owned()
+        });
+
+        let cs = RE_PLACE.replace_all(&cs, |c: &Captures<'_>| {
+            // let's try to parse this as a place
+            let content = c[2].to_string();
+            if let Ok((_rest, (place, modifier))) = place_parser::parse_rust_place(&content)
+                && let Some(res) = self.lookup_place(&place, modifier)
+            {
+                return format!("{}{res}", &c[1]);
+            }
+
+            "ERR".to_owned()
         });
 
         let cs = cs.replace("{{", "{");
@@ -453,11 +512,65 @@ pub(crate) trait ParamLookup<'def> {
     }
 }
 
+mod place_parser {
+    use nom::branch::alt;
+    use nom::bytes::complete::take_while1;
+    use nom::character::complete::{char, multispace0};
+    use nom::combinator::{map, opt};
+    use nom::multi::many0;
+    use nom::sequence::{delimited, preceded};
+    use nom::{IResult, Parser as _};
+
+    use super::{Projection, Projections, RustPlace};
+
+    fn identifier(input: &str) -> IResult<&str, String> {
+        map(take_while1(|c: char| c.is_alphanumeric() || c == '_'), |s: &str| s.to_owned()).parse(input)
+    }
+
+    pub(crate) fn parse_rust_place(input: &str) -> IResult<&str, (RustPlace, Option<String>)> {
+        let (input, mut place) = proj_place(input)?;
+
+        // Now parse any trailing `.field` chains, no matter what came before
+        let (input, fields) = many0(preceded(char('.'), identifier)).parse(input)?;
+        place.proj.0.extend(fields.into_iter().map(Projection::Field));
+
+        let (input, modifier) = opt(preceded(char('.'), preceded(char('*'), identifier))).parse(input)?;
+
+        Ok((input, (place, modifier)))
+    }
+
+    // proj_place = simple_with_fields | *proj_place | (proj_place)
+    fn proj_place(input: &str) -> IResult<&str, RustPlace> {
+        alt((deref_place, paren_place, simple_with_fields)).parse(input)
+    }
+
+    fn deref_place(input: &str) -> IResult<&str, RustPlace> {
+        let (input, _) = preceded(multispace0, char('*')).parse(input)?;
+        let (input, mut inner) = proj_place(input)?;
+        inner.proj.0.push(Projection::Deref);
+        Ok((input, inner))
+    }
+
+    fn simple_with_fields(input: &str) -> IResult<&str, RustPlace> {
+        let (input, base) = identifier(input)?;
+        let (input, fields) = many0(preceded(char('.'), identifier)).parse(input)?;
+        let proj = fields.into_iter().map(Projection::Field).collect();
+        Ok((input, RustPlace {
+            base,
+            proj: Projections(proj),
+        }))
+    }
+
+    fn paren_place(input: &str) -> IResult<&str, RustPlace> {
+        delimited(preceded(multispace0, char('(')), proj_place, preceded(multispace0, char(')'))).parse(input)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
 
-    use super::{ParamLookup, RustPath, RustPathElem};
+    use super::{ParamLookup, Projection, Projections, RustPath, RustPathElem, RustPlace};
 
     #[derive(Default)]
     struct TestScope {
@@ -470,6 +583,8 @@ mod tests {
         assoc_names: HashMap<RustPath, radium::LiteralTyParam>,
 
         literals: HashMap<RustPath, String>,
+
+        places: BTreeMap<RustPlace, String>,
     }
 
     impl<'def> ParamLookup<'def> for TestScope {
@@ -494,6 +609,11 @@ mod tests {
         fn lookup_literal(&self, path: &RustPath) -> Option<String> {
             self.literals.get(path).cloned()
         }
+
+        fn lookup_place(&self, place: &RustPlace, _modifier: Option<String>) -> Option<String> {
+            //println!("looking up place {place:?} with modifier {modifier:?}");
+            self.places.get(place).cloned()
+        }
     }
 
     #[test]
@@ -503,7 +623,7 @@ mod tests {
         scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
 
         let (res, _) = scope.process_coq_literal(lit);
-        assert_eq!(res, "T_rt * T_rt");
+        assert_eq!(res, "(T_rt) * (T_rt)");
     }
 
     #[test]
@@ -523,7 +643,7 @@ mod tests {
         scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
 
         let (res, _) = scope.process_coq_literal(lit);
-        assert_eq!(res, "Self_rt * Self_rt");
+        assert_eq!(res, "(Self_rt) * (Self_rt)");
     }
 
     #[test]
@@ -547,7 +667,7 @@ mod tests {
         );
 
         let (res, _) = scope.process_coq_literal(lit);
-        assert_eq!(res, "Bla_Blub_rt");
+        assert_eq!(res, "(Bla_Blub_rt)");
     }
 
     #[test]
@@ -565,7 +685,7 @@ mod tests {
         );
 
         let (res, _) = scope.process_coq_literal(lit);
-        assert_eq!(res, "Bla_Blub_rt");
+        assert_eq!(res, "(Bla_Blub_rt)");
     }
 
     #[test]
@@ -590,5 +710,105 @@ mod tests {
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(trait_attrs).(size) 4");
+    }
+
+    #[test]
+    fn place_0() {
+        let lit = "{a}";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "bla");
+    }
+
+    #[test]
+    fn place_1() {
+        let lit = "{a.b}";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![Projection::Field("b".to_owned())]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "bla");
+    }
+
+    #[test]
+    fn place_2() {
+        let lit = "{(*a).b.c}";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![
+                Projection::Deref,
+                Projection::Field("b".to_owned()),
+                Projection::Field("c".to_owned()),
+            ]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "bla");
+    }
+
+    #[test]
+    fn place_3() {
+        let lit = "{*a.b.c}";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![
+                Projection::Field("b".to_owned()),
+                Projection::Field("c".to_owned()),
+                Projection::Deref,
+            ]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "bla");
+    }
+
+    #[test]
+    fn place_4() {
+        let lit = "{*a.b.c.*new}";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![
+                Projection::Field("b".to_owned()),
+                Projection::Field("c".to_owned()),
+                Projection::Deref,
+            ]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "bla");
+    }
+
+    #[test]
+    fn place_5() {
+        let lit = "blub ({*a.b.c.*new})";
+        let mut scope = TestScope::default();
+        let exp = RustPlace {
+            base: "a".to_owned(),
+            proj: Projections(vec![
+                Projection::Field("b".to_owned()),
+                Projection::Field("c".to_owned()),
+                Projection::Deref,
+            ]),
+        };
+        scope.places.insert(exp, "bla".to_owned());
+
+        let (res, _) = scope.process_coq_literal(lit);
+        assert_eq!(res, "blub (bla)");
     }
 }

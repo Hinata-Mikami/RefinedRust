@@ -15,6 +15,7 @@ use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 pub(crate) struct TyVarFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     tyvars: HashSet<ty::ParamTy>,
+    projections: HashSet<ty::AliasTy<'tcx>>,
 }
 
 impl<'tcx> TyVarFolder<'tcx> {
@@ -22,11 +23,12 @@ impl<'tcx> TyVarFolder<'tcx> {
         TyVarFolder {
             tcx,
             tyvars: HashSet::new(),
+            projections: HashSet::new(),
         }
     }
 
-    pub(crate) fn get_result(self) -> HashSet<ty::ParamTy> {
-        self.tyvars
+    pub(crate) fn get_result(self) -> (HashSet<ty::ParamTy>, HashSet<ty::AliasTy<'tcx>>) {
+        (self.tyvars, self.projections)
     }
 }
 
@@ -47,6 +49,13 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
         match t.kind() {
             ty::TyKind::Param(param) => {
                 self.tyvars.insert(*param);
+                t
+            },
+            ty::TyKind::Alias(kind, ty) => {
+                if *kind == ty::AliasTyKind::Projection {
+                    self.projections.insert(*ty);
+                }
+
                 t
             },
             _ => t.super_fold_with(self),

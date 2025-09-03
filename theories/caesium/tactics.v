@@ -38,7 +38,7 @@ Inductive expr :=
 | AnnotExpr (n : nat) {A} (a : A) (e : expr)
 | LocInfoE (a : location_info) (e : expr)
 | StructInit (sls : struct_layout_spec) (fs : list (string * expr))
-| EnumInit (els : enum_layout_spec) (variant : var_name) (ty : rust_type) (e : expr)
+| EnumInit (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr)
 | MacroE (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m)
 | Borrow (m : mutability) (κn : string) (ty : option rust_type) (e : expr)
 | Box (st : syn_type)
@@ -78,7 +78,7 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (n : nat) (A : Type) (a : A) (e : expr), P e → P (AnnotExpr n a e)) →
   (∀ (a : location_info) (e : expr), P e → P (LocInfoE a e)) →
   (∀ (ly : struct_layout_spec) (fs : list (string * expr)), Forall P fs.*2 → P (StructInit ly fs)) →
-  (∀ (els : enum_layout_spec) (variant : var_name) (ty : rust_type) (e : expr), P e → P (EnumInit els variant ty e)) →
+  (∀ (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr), P e → P (EnumInit els variant ty e)) →
   (∀ (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m), Forall P es → P (MacroE m es well_founded)) →
   (∀ (m : mutability) (ty : option rust_type) (κn : string) (e : expr), P e → P (Borrow m κn ty e)) →
   (∀ (st : syn_type), P (Box st)) →

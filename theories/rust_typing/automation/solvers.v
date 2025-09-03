@@ -67,9 +67,9 @@ Ltac apply_term_het term apps :=
   | ?app +:: ?apps =>
       apply_term_het uconstr:(term app) apps
   end.
-Ltac apply_term_het_evar term apps :=
+Ltac apply_term_het_evar term lfts tys :=
   let term := instantiate_universals term in
-  let term := constr:(term *[] (hlist_to_plist apps)) in
+  let term := constr:(term (list_to_plist (F:=id) lft lfts) (hlist_to_plist tys)) in
   let term := eval simpl in term in
   constr:(term)
 .
@@ -86,6 +86,40 @@ Ltac interpret_rust_type_list lfts env tys :=
       [ interpret_rust_type_core lfts env ty
       | interpret_rust_type_list lfts env tys ]
   end.
+Ltac interpret_rust_lft lfts env lft :=
+  (* TODO not great *)
+  let κ := eval vm_compute in (lfts !! lft) in
+  match κ with
+  | Some ?κ =>
+    refine κ   
+  | None =>
+      fail 3 "did not find lifetime"
+  end.
+Ltac interpret_rust_lfts lfts env ls :=
+  match ls with
+  | [] => exact []
+  | ?κ :: ?κs =>
+      refine (_ :: _);
+      [ interpret_rust_lft lfts env κ
+      | interpret_rust_lfts lfts env κs ]
+  end.
+
+Ltac apply_rust_inst lfts env inst term :=
+  (* interpret the arguments *)
+  match inst with
+  | RSTScopeInst ?ls ?tys =>
+    let Ha := fresh in
+    let Hb := fresh in
+    refine (let Ha : hlist type _ := ltac:(interpret_rust_type_list lfts env tys) in _);
+    let Ha := eval hnf in Ha in
+    refine (let Hb : list lft := ltac:(interpret_rust_lfts lfts env ls) in _);
+    let Hb := eval hnf in Hb in
+
+    let applied_term := apply_term_het_evar term Hb Ha in
+    exact applied_term
+  end.
+
+
 Ltac interpret_rust_type_core lfts env ty ::=
   lazymatch ty with
   | RSTTyVar ?name =>
@@ -96,17 +130,11 @@ Ltac interpret_rust_type_core lfts env ty ::=
       | None =>
           fail 3 "Failed to find type variable " name " in the context"
       end
-  | RSTLitType ?name ?apps =>
-      (* interpret the arguments *)
-      let Ha := fresh in
-      refine (let Ha : hlist type _ := ltac:(interpret_rust_type_list lfts env apps) in _);
-      let Hb := eval hnf in Ha in
-
+  | RSTLitType ?name ?inst =>
       (* CAVEAT: This only works if a unique identifier can be found! *)
       lookup_definition
         ltac:(fun term =>
-          let applied_term := apply_term_het_evar term Hb in
-          exact applied_term
+          apply_rust_inst lfts env inst term
         )
         name || fail 1000 "definition lookup for " name " failed"
   | RSTInt ?it =>
@@ -122,19 +150,13 @@ Ltac interpret_rust_type_core lfts env ty ::=
   | RSTArray ?len ?ty =>
       refine (array_t len _); interpret_rust_type_core lfts env ty
   | RSTRef ?mut ?κ ?ty =>
-      (* TODO not great *)
-      let κ := eval vm_compute in (lfts !! κ) in
-      match κ with
-      | Some ?κ =>
-        match mut with
-        | Mut =>
-            refine (mut_ref κ _); interpret_rust_type_core lfts env ty
-        | Shr =>
-            refine (shr_ref κ _); interpret_rust_type_core lfts env ty
-        end
-      | None =>
-          fail 3 "did not find lifetime"
-      end
+      match mut with
+      | Mut =>
+          refine (mut_ref _ _)
+      | Shr =>
+          refine (shr_ref _ _)
+      end;
+      [ interpret_rust_lft lfts env κ | interpret_rust_type_core lfts env ty ]
   end.
 Tactic Notation "interpret_rust_type" constr(lfts) constr(env) constr(ty) :=
   interpret_rust_type_core lfts env ty .
@@ -147,6 +169,31 @@ Ltac solve_interpret_rust_type ::=
           let Hc := fresh in
           refine (let Hc := ltac:(interpret_rust_type lfts M st) in _);
           assert (ty = Hc) by reflexivity;
+          exact I
+      end
+  end.
+
+Ltac interpret_rust_enum_def_core lfts env ty :=
+  lazymatch ty with
+  | RSTEnumDef ?name ?inst =>
+      (* CAVEAT: This only works if a unique identifier can be found! *)
+      lookup_definition
+        ltac:(fun term =>
+          apply_rust_inst lfts env inst term
+        )
+        name || fail 1000 "definition lookup for " name " failed"
+  end.
+
+Tactic Notation "interpret_rust_enum_def" constr(lfts) constr(env) constr(ty) :=
+  interpret_rust_enum_def_core lfts env ty .
+Ltac solve_interpret_rust_enum_def ::=
+  match goal with
+  | |- interpret_rust_enum_def_pure_goal ?lfts ?st ?en =>
+      match goal with
+      | H : TYVAR_MAP ?M |- _ =>
+          let Hc := fresh in
+          refine (let Hc := ltac:(interpret_rust_enum_def lfts M st) in _);
+          assert (en = Hc) by reflexivity;
           exact I
       end
   end.

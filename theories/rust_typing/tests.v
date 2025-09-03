@@ -674,7 +674,7 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] [RSTInt I32]) ty ∧ ty = testX _ _ *[] *[(int I32)].
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32])) ty ∧ ty = testX _ _ *[] *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -721,6 +721,18 @@ Section test.
     init_tyvars (∅).
     solve_interpret_rust_type; solve[fail].
   Abort.
+
+  Context (testY : ∀ `{!typeGS Σ} {rt}, spec_with 1 [rt] (type rt)).
+
+  (* TODO: better error handling in the tactic above.
+      Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
+  Lemma interpret_rust_type_test6 {rt} (T_ty : type rt) κ :
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> ∅).
+    eexists _; split; [ solve_interpret_rust_type | ]. done.
+  Abort.
+
 
   (*
   Import enum_test.

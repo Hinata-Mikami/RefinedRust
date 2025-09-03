@@ -179,6 +179,10 @@ pub(crate) fn get_assignment_annots<'tcx>(
         let regions = find_region_variables_of_place_type(env, lhs_ty);
 
         // put up a barrier at the Mid point
+        let pre_barrier_point_index = info.interner.get_point_index(&facts::Point {
+            location: loc,
+            typ: facts::PointType::Start,
+        });
         let barrier_point_index = info.interner.get_point_index(&facts::Point {
             location: loc,
             typ: facts::PointType::Mid,
@@ -191,11 +195,21 @@ pub(crate) fn get_assignment_annots<'tcx>(
         let new_constraints = get_assignment_strong_update_constraints(inclusion_tracker, loc);
         trace!("new strong update constraints: {new_constraints:?}");
         for (r1, r2, p) in &new_constraints {
+            let ar1 = inclusion_tracker.info().mk_atomic_region(*r1);
+            let ar2 = inclusion_tracker.info().mk_atomic_region(*r2);
+
+            // Don't make an assignment if the region we are copying is not known.
+            // This does not hold true for loans or unconstrained regions, which are being made
+            // known not by constraints but by introduction.
+            if !inclusion_tracker.is_region_known(*r1, pre_barrier_point_index)
+                && !ar1.is_loan()
+                && !ar1.is_unconstrained()
+            {
+                continue;
+            }
             inclusion_tracker.add_static_inclusion(*r1, *r2, *p);
             inclusion_tracker.add_static_inclusion(*r2, *r1, *p);
 
-            let ar1 = inclusion_tracker.info().mk_atomic_region(*r1);
-            let ar2 = inclusion_tracker.info().mk_atomic_region(*r2);
             stmt_annot.push(radium::Annotation::CopyLftName(
                 ty_translator.format_atomic_region(ar1),
                 ty_translator.format_atomic_region(ar2),

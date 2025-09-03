@@ -88,10 +88,13 @@ Ltac ex_t_destruct_bor :=
           iModStrict (bor_persistent with ("LFT __H0 Htok1")) as ("(>% & Htok1)");
           [done | ]
       | (?l ◁ₗ[?π, Owned true] ?r @ (◁ ?ty))%I =>
-          iApply (ltype_own_ofty_share_tac with "[$] Htok1 Htok __H0");
+          iApply (ltype_own_ofty_share_tac with "[$] [Htok1] [Htok] __H0");
           [ done
-          | repeat rewrite ty_lfts_unfold/=; set_solver
+          | 
+          | iFrame
+          | iFrame
           | ];
+          [repeat rewrite ty_lfts_unfold/=; set_solver | ];
           iIntros "!> Htok1 Htok";
           iApply fupd_logical_step
       | (?l ◁ₗ[?π, Owned false] ?r @ (◁ ?ty))%I =>
@@ -149,14 +152,16 @@ Ltac ex_t_merge_lft_tokens tokty ident :=
 
 (** Hook for proving the shared predicate after having shared all the assumptions *)
 Ltac ex_plain_t_solve_shr_solve_hook :=
-  repeat iExists _;
+  unshelve (repeat iExists _;
   iFrame "%∗";
   try done;
   rewrite -!guarded_intro;
-  iFrame
+  iFrame);
+  try apply inhabitant
 . (* TODO generalize *)
 
 Ltac ex_plain_t_solve_shr :=
+  simpl;
   intro_adt_params;
   iIntros (???????); 
   simpl in *;
@@ -172,6 +177,7 @@ Ltac ex_plain_t_solve_shr :=
   iApply logical_step_intro;
   iIntros "!>";
   ex_t_intros_after_logstep;
+  simpl;
   ex_t_merge_lft_tokens ty_of_Htok1 "Htok1";
   ex_t_merge_lft_tokens ty_of_Htok "Htok";
   iSplitR "Htok1 Htok";
@@ -210,6 +216,7 @@ Ltac prove_assumption_monotonicity iH :=
   end.
 
 Ltac ex_plain_t_solve_shr_mono :=
+  simpl;
   intro_adt_params;
   iIntros (?????); prepare_initial_coq_context;
   iIntros "#Hincl"; iIntros "Ha";

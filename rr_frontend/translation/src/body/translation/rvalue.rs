@@ -97,7 +97,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let els = enum_use.generate_raw_syn_type_term();
 
                     info!("generating enum annotation for type {:?}", enum_use);
-                    let ty = radium::RustType::of_type(&radium::Type::Literal(enum_use));
+                    let ty: radium::RustEnumDef = enum_use.clone().try_into().unwrap();
                     let variant_name = variant_def.name.to_string();
 
                     return Ok(radium::Expr::EnumInitE {

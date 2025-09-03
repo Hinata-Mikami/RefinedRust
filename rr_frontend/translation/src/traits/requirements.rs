@@ -254,6 +254,7 @@ fn trait_get_deps(env: &Environment<'_>, trait_did: DefId) -> Vec<DefId> {
 fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let sized_did = search::try_resolve_did(tcx, &["core", "marker", "Sized"])?;
     let meta_sized_did = search::try_resolve_did(tcx, &["core", "marker", "MetaSized"])?;
+    //let pointee_sized_did = search::try_resolve_did(tcx, &["core", "marker", "PointeeSized"])?;
 
     // used for closures
     let tuple_did = search::try_resolve_did(tcx, &["core", "marker", "Tuple"])?;

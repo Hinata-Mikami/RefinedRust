@@ -28,20 +28,39 @@ pub trait Clone: Sized {
 pub trait Copy: Clone {
 }
 
-/*
-// TODO: before advancing this further, handle default impls.
-impl Clone for i32 { 
-    #[rr::default_spec]
-    fn clone(&self) -> Self {
-        *self
+macro_rules! impl_clone {
+    ($($t:ty)*) => {
+        $(
+            impl Clone for $t {
+                #[rr::default_spec]
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+        )*
     }
-    //#[rr::default_spec]
-    //fn clone_from(&mut self, source: &Self) {
-        // *self = *source;
-    //}
 }
 
+impl_clone! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+    //f16 f32 f64 f128
+    bool 
+    char
+}
+
+
+impl Copy for usize { }
+impl Copy for u8 { }
+impl Copy for u16 { }
+impl Copy for u32 { }
+impl Copy for u64 { }
+impl Copy for u128 { }
+impl Copy for isize { }
+impl Copy for i8 { }
+impl Copy for i16 { }
 impl Copy for i32 { }
-
-*/
-
+impl Copy for i64 { }
+impl Copy for i128 { }
+impl Copy for bool { }
+impl Copy for char { }

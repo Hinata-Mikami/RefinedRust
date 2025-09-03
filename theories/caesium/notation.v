@@ -145,10 +145,11 @@ Global Typeclasses Opaque AddrOf.
 Inductive mutability := | Mut | Shr.
 Inductive ptr_kind := | PRaw | PRef.
 
+
 (** A syntactic representation of Rust types we support in type annotations. *)
 Inductive rust_type : Type :=
   | RSTTyVar (name : string)
-  | RSTLitType (ty : list string) (app : list rust_type)
+  | RSTLitType (ty : list string) (inst : scope_inst)
   | RSTInt (it : int_type)
   | RSTBool
   | RSTAliasPtr
@@ -156,6 +157,12 @@ Inductive rust_type : Type :=
   | RSTStruct (sls : struct_layout_spec) (components : list rust_type)
   | RSTArray (len : nat) (el : rust_type)
   | RSTRef (m : mutability) (lft : string) (ty : rust_type)
+with scope_inst :=
+  | RSTScopeInst (lfts : list string) (app : list rust_type)
+.
+
+Inductive rust_enum_def : Type :=
+  | RSTEnumDef (path : list string) (inst : scope_inst)
 .
 
 (* We need two skips:
@@ -278,7 +285,7 @@ Global Typeclasses Opaque StructInit.
 Arguments StructInit : simpl never.
 
 
-Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (ty : rust_type) (e : expr) : expr :=
+Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (ty : rust_enum_def) (e : expr) : expr :=
   let sts : gmap string syn_type := list_to_map els.(els_variants) in
   let variant_st := default UnitSynType (sts !! variant) in
   let ul := use_union_layout_alg' (uls_of_els els) in

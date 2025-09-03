@@ -341,7 +341,7 @@ use crate::{fmt_list, model};
 /// [identifier]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-ident
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 #[display("{}", _0)]
-pub struct Ident(String);
+pub struct Ident(pub(crate) String);
 
 impl Ident {
     /// Create a new [identifier].

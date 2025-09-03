@@ -131,7 +131,7 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
                 if terms.is_empty() {
                     write!(f, "True")
                 } else {
-                    write!(f, "{}", fmt_list!(terms, &format!(" {op} ")))
+                    write!(f, "{}", fmt_list!(terms, &format!(" {op} "), "({})"))
                 }
             },
             Self::Prefix(op, term) => {

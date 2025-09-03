@@ -73,6 +73,9 @@ pub enum Type {
     /// `type (rt: RT)` type
     #[display("(type {})", &_0)]
     Ttype(Box<coq::term::Type>),
+
+    #[display("(RT_xt {})", _0)]
+    RTXT(Box<coq::term::Type>),
 }
 
 impl From<Type> for coq::term::Type {

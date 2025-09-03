@@ -1,4 +1,4 @@
-STDLIB = arithops mem ptr result option clone controlflow alloc rr_internal boxed closures cmp iterator vec rwlock spin stdlib btreemap 
+STDLIB = closures arithops mem ptr result option clone controlflow alloc rr_internal boxed cmp range iterator vec rwlock spin stdlib btreemap 
 
 RUST_TARGET ?= $(shell rustc -vV | sed -n 's|host: ||p')
 RUST_PATH ?=	target/$(RUST_TARGET)/release

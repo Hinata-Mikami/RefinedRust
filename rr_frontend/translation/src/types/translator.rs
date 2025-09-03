@@ -1412,7 +1412,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 inductive_decl = Some(decl);
             }
 
-            let mut enum_builder = radium::EnumBuilder::new(enum_name, scope.into(), translated_it, repr);
+            // check the deps
+            let is_rec_type = deps.contains(&OrderedDefId::new(self.env.tcx(), def.did()));
+            if is_rec_type {
+                // remove it
+                deps.remove(&OrderedDefId::new(self.env.tcx(), def.did()));
+            }
+
+            let mut enum_builder =
+                radium::EnumBuilder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
 
             // now build the enum itself
             for v in def.variants() {

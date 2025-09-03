@@ -40,7 +40,7 @@ fn loop2() {
 
 // Demonstrates that we need definitely-initialized analysis.
 // (interestingly, this still partially works without, because we just do one loop unfolding
-// without an invariant if it's not initialized yet...)
+// without an invariant if y is not initialized yet...)
 #[rr::verify]
 fn loop3() {
     let mut x = 0;

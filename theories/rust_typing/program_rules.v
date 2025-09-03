@@ -674,7 +674,7 @@ Section typing.
     iIntros "$". iPureIntro. reflexivity.
   Qed.
   Global Instance mut_subtype_refl_inst E L {rt} (ty : type rt) :
-    MutSubtype E L ty ty := λ T, i2p (mut_subtype_id E L ty T).
+    MutSubtype E L ty ty | 1 := λ T, i2p (mut_subtype_id E L ty T).
 
   Lemma mut_subtype_evar E L {rt} (ty ty2 : type rt) T :
     ⌜ty = ty2⌝ ∗ T ⊢ mut_subtype E L ty ty2 T.

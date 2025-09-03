@@ -1475,6 +1475,42 @@ Section properties.
     - eauto.
     - eauto.
   Qed.
+
+  Global Instance type_contractive_dist (rt1 rt2 : RT) (F : type rt1 → type rt2) :
+    TypeContractive F →
+    ∀ n ty ty', TypeDist2 n ty ty' →
+    TypeDist n (F ty) (F ty').
+  Proof.
+    intros Hcontr n ty ty' Hd.
+    constructor.
+    - apply Hcontr.
+    - apply Hcontr.
+      apply Hd.
+    - apply Hcontr. done.
+    - apply Hcontr.
+      apply type_dist2_later.
+      eapply type_dist2_le; first done.
+      unfold CanSolve. lia.
+  Qed.
+
+  Global Instance type_contractive_dist2 (rt1 rt2 : RT) (F : type rt1 → type rt2) :
+    TypeContractive F →
+    ∀ n ty ty', TypeDistLater2 n ty ty' →
+    TypeDist2 n (F ty) (F ty').
+  Proof.
+    intros Hcontr n ty ty' Hd.
+    constructor.
+    - apply Hcontr.
+    - apply Hcontr.
+      apply Hd.
+    - intros.
+      constructor. simpl.
+      intros m Hlt.
+      apply Hcontr.
+      eapply type_dist_later2_dist2; first done.
+      unfold CanSolve. lia.
+    - intros. apply Hcontr. done.
+  Qed.
 End properties.
 
 (** Tactics  to solve non-expansiveness *)

@@ -24,6 +24,7 @@ pub(crate) fn strip_coq_ident(s: &str) -> String {
         .replace('\'', "")
         .replace("::", "_")
         .replace('&', "REF")
+        .replace("()", "unit")
         .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "")
 }
 

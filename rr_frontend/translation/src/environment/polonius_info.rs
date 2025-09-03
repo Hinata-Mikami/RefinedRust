@@ -43,6 +43,11 @@ impl AtomicRegion {
     }
 
     #[must_use]
+    pub(crate) const fn is_loan(self) -> bool {
+        matches!(self, Self::Loan(_))
+    }
+
+    #[must_use]
     pub(crate) const fn is_unconstrained(self) -> bool {
         match self {
             Self::PlaceRegion(_, b) | Self::Unknown(_, b) => b,

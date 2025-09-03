@@ -533,4 +533,17 @@ Section rules.
   Qed.
   Definition weak_subtype_fixpoint_r_inst := [instance @weak_subtype_fixpoint_r].
   Global Existing Instance weak_subtype_fixpoint_r_inst.
+
+  Lemma mut_subtype_fixpoint_r (ty1 : type rt) E L  T :
+    mut_subtype E L ty1 (type_fixpoint F) T :-
+    return (mut_subtype E L ty1 (F (type_fixpoint F)) T).
+  Proof.
+    unfold mut_subtype.
+    iIntros "(%Ha & $)". iPureIntro. 
+    intros r.
+    eapply subtype_trans; first apply Ha.
+    apply type_fixpoint_subtype_2.
+  Qed.
+  Definition mut_subtype_fixpoint_r_inst := [instance @mut_subtype_fixpoint_r].
+  Global Existing Instance mut_subtype_fixpoint_r_inst | 5.
 End rules.

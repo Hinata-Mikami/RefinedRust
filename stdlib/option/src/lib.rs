@@ -3,6 +3,8 @@
 #![feature(custom_inner_attributes)]
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.option")]
+
+#![rr::include("closures")]
 #![allow(unused)]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
@@ -16,6 +18,7 @@ pub enum Option<T> {
     #[rr::export_as(core::option::Option::Some)]
     Some(T)
 }
+use crate::Option::*;
 
 #[rr::export_as(core::option::Option)]
 #[rr::only_spec]
@@ -40,5 +43,30 @@ impl<T> Option<T> {
     #[rr::returns("x")]
     pub fn unwrap(self) -> T {
         unimplemented!();
+    }
+
+    #[rr::returns("if self is Some x then x else default")]
+    pub fn unwrap_or(self, default: T) -> T {
+        match self {
+            Some(x) => x,
+            None => default,
+        }
+    }
+
+}
+
+#[rr::export_as(core::option::Option)]
+impl<T> Option<T> {
+    #[rr::ensures("if_None self (ret = None)")]
+    #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} f *[self])")]
+    #[rr::ensures(#iris "if_iSome self (λ self, ∃ x, ⌜ret = Some x⌝ ∗ {F::Post} f *[self] x)")]
+    pub fn map<U, F>(self, f: F) -> Option<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            Some(x) => Some(f(x)),
+            None => None,
+        }
     }
 }

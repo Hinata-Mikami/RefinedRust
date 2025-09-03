@@ -1,9 +1,12 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+
 #![rr::include("option")]
 #![rr::include("alloc")]
 #![rr::include("rr_internal")]
+#![rr::include("iterator")]
+
 #![rr::package("refinedrust-stdlib")]
 #![feature(allocator_api)]
 #![rr::coq_prefix("rrstd.alloc")]
@@ -120,5 +123,15 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rr::returns("if decide (i < length xs) then Some (xs !!! i) else None")]
     pub fn get(&self, index: usize) -> Option<&T> {
         unreachable!();
+    }
+}
+
+#[rr::instantiate("FromSequence" := "λ x, x")]
+impl<T> FromIterator<T> for Vec<T> {
+    #[rr::only_spec]
+    #[rr::default_spec]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
+        unimplemented!();
+        //<Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }

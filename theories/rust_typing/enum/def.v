@@ -520,6 +520,48 @@ Section ne.
     - done.
   Qed.
 
+  Class EnumContractive {rt1 rt2} (F : type rt1 → enum rt2) := {
+    enum_contr_els :
+      ∀ ty ty' : type rt1, enum_els (F ty) = enum_els (F ty');
+    enum_contr_lft_mor :
+      DirectLftMorphism (λ ty, (F ty).(enum_lfts)) (λ ty, (F ty).(enum_wf_E));
+    (* the tag of the variant should not depend on the ty *)
+    enum_contr_tag_consistent :
+      ∀ ty ty', (F ty).(enum_tag) = (F ty').(enum_tag);
+    (* the rt of the variant should not depend on the ty *)
+    enum_contr_rt_consistent :
+      ∀ ty ty' r, (F ty).(enum_rt) r = (F ty').(enum_rt) r;
+    (* the refinement of the variant should not depend on the ty *)
+    enum_contr_r_consistent :
+      ∀ ty ty' r, rew [RT_rt] (enum_contr_rt_consistent ty ty' r) in (F ty).(enum_r) r = (F ty').(enum_r) r;
+
+    enum_contr_ty_dist :
+      ∀ r n ty ty',
+      TypeDist2 n ty ty' →
+      TypeDist
+        n
+        (rew [λ x, type x] (enum_contr_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
+        ((F ty').(enum_ty) r);
+    (* same for Dist2, for the sharing predicate *)
+    (* [enum_contr_ty_dist] and [enum_contr_ty_dist2] are incomparable in strength *)
+    enum_contr_ty_dist2 :
+      ∀ r n ty ty',
+      TypeDistLater2 n ty ty' →
+      TypeDist2
+        n
+        (rew [λ x, type x] (enum_contr_rt_consistent ty ty' r) in ((F ty).(enum_ty) r : type (enum_rt (F ty) r)))
+        ((F ty').(enum_ty) r);
+  }.
+  Lemma enum_contractive_lookup_tag_consistent {rt1 rt2} (F : type rt1 → enum rt2) ty ty' r :
+    EnumContractive F →
+    enum_lookup_tag (F ty) r = enum_lookup_tag (F ty') r.
+  Proof.
+    intros Hne.
+    unfold enum_lookup_tag.
+    erewrite enum_contr_els.
+    erewrite enum_contr_tag_consistent; done.
+  Qed.
+
   Local Lemma enum_el_val_unfold {rt} (ty : type rt) π i fields v r tag uls :
     struct_own_el_val π i fields v r (active_union_t ty tag uls) ≡
       (∃ (ly0 : layout), ⌜snd <$> fields !! i = Some ly0⌝ ∗ ⌜syn_type_has_layout uls ly0⌝ ∗
@@ -644,4 +686,90 @@ Section ne.
       destruct Heq.
       done.
   Qed.
+
+  Global Instance enum_t_contr {rt1 rt2} (F : type rt1 → enum rt2) :
+    EnumContractive F →
+    TypeContractive (λ ty : type rt1, enum_t (F ty)).
+  Proof.
+    intros Hen. constructor.
+    - simpl. intros. erewrite enum_contr_els; done.
+    - apply ty_lft_morphism_of_direct.
+      rewrite /=ty_lfts_unfold/=.
+      rewrite /=ty_wf_E_unfold.
+      apply enum_contr_lft_mor.
+    - rewrite !ty_has_op_type_unfold.
+      intros ty ty' ot mt. simpl.
+      unfold is_enum_ot.
+      destruct ot as [ | | | | ly | ]; try done.
+      do 3 f_equiv.
+      erewrite enum_contr_els; last done.
+    - simpl. eauto.
+    - intros n ty ty' Hd.
+      iIntros (π r v). rewrite /ty_own_val/=.
+      do 5 f_equiv.
+      { erewrite enum_contr_els; first done. }
+      erewrite (enum_contr_els _ ty').
+
+      erewrite enum_contr_tag_consistent. f_equiv; first done.
+      eapply struct_t_own_val_dist. simpl.
+      constructor; last constructor; last constructor; first done.
+      intros ???.
+      rewrite !enum_el_val_unfold.
+      do 7 f_equiv.
+      intros ly.
+      do 3 f_equiv.
+      { simpl.
+        f_equiv.
+        eapply (enum_contr_ty_dist r) in Hd.
+        destruct Hd as [Hst _ _ _].
+        rewrite -Hst.
+        generalize (enum_contr_rt_consistent ty ty' r) as Heq.
+        destruct Heq. done. }
+      f_equiv. simpl.
+      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ take (ly_size ly) v0 ◁ᵥ{ π} r' @ enum_ty (F ty) r)%I
+        ≡ (take (ly_size ly) v0 ◁ᵥ{ π} enum_r (F ty) r @ enum_ty (F ty) r)%I) as Heq.
+      { iIntros (?). iSplit.
+        - iIntros "(% & <- & $)".
+        - iIntros "Ha". iExists _. iFrame. done. }
+      rewrite !Heq.
+      clear -Hen Hd.
+      eapply (enum_contr_ty_dist r) in Hd.
+      destruct Hd as [_ _ Hv _].
+      rewrite -Hv.
+      clear.
+      rewrite -(enum_contr_r_consistent ty ty' r).
+      generalize (enum_contr_rt_consistent ty ty' r); intros Heq.
+      destruct Heq.
+      done.
+    - intros n ty ty' Hd.
+      iIntros (κ π r l). rewrite /ty_shr/=.
+      do 5 f_equiv.
+      { erewrite enum_contr_els; first done. }
+      erewrite (enum_contr_els _ ty').
+
+      f_equiv. { erewrite enum_contr_tag_consistent. done. }
+      eapply struct_t_shr_dist. simpl.
+      constructor; last constructor; last constructor; first done.
+      intros ???.
+
+      rewrite !enum_el_shr_unfold.
+      do 12 f_equiv.
+      assert (∀ ty, (∃ r' : enum_rt (F ty) r, ⌜enum_r (F ty) r = r'⌝ ∗ (l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} r'@enum_ty (F ty) r)%I
+        ≡ ((l0 +ₗ offset_of_idx fields i) ◁ₗ{π,κ} enum_r (F ty) r @enum_ty (F ty) r)%I) as Heq.
+      { iIntros (?). iSplit.
+        - iIntros "(% & <- & $)".
+        - iIntros "Ha". iExists _. iFrame. done. }
+      rewrite !Heq.
+      clear -Hen Hd.
+
+      eapply (enum_contr_ty_dist2 r) in Hd.
+      destruct Hd as [_ _ _ Hshr].
+      rewrite -Hshr.
+      clear.
+      rewrite -(enum_contr_r_consistent ty ty' r).
+      generalize (enum_contr_rt_consistent ty ty' r); intros Heq.
+      destruct Heq.
+      done.
+  Qed.
+
 End ne.

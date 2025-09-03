@@ -31,7 +31,7 @@ fn closure_test_arg_fnonce_2<T>(x: T)
 }
 
 // Problem: this will assume by default that the spec is trivial, right?
-// Point: I want the pre to remain trivial, but accept an arbitrary post. 
+// Point: I want the pre to remain trivial, but accept an arbitrary post.
 // I cannot really specify that well, currently.
 #[rr::verify]
 #[rr::requires(#trait T::Pre := "λ _ _, True%I")]
@@ -97,9 +97,6 @@ fn closure_test_call_fnonce_0<T>(x: T)
 fn closure_test_call_fnonce_1_0<T>(x: T) {
     let clos =
         #[rr::verify]
-        #[rr::params("x")]
-        // TODO: we should use implicit capture binding
-        #[rr::capture("x": "x")]
         || { x; 42 };
     closure_test_arg_fnonce_1(clos);
 }
@@ -109,8 +106,6 @@ fn closure_test_call_fnonce_1_0<T>(x: T) {
 fn closure_test_call_fnonce_3_0<T>(x: T) {
     let clos =
         #[rr::verify]
-        #[rr::params("x")]
-        #[rr::capture("x": "x")]
         || { x; 42 };
     closure_test_arg_fnonce_3(clos);
 }
@@ -119,9 +114,6 @@ fn closure_test_call_fnonce_3_0<T>(x: T) {
 fn closure_test_call_fnonce_3_1<T, W>(x: T, y: W) {
     let clos =
         #[rr::verify]
-        #[rr::params("x", "y")]
-        #[rr::capture("x": "x")]
-        #[rr::capture("y": "y")]
         || { x; y };
     closure_test_arg_fnonce_3(clos);
 }
@@ -132,9 +124,6 @@ fn closure_test_call_fnonce_1_1<T>(x: T) {
     let y = 42;
     let clos =
         #[rr::verify]
-        #[rr::params("x", "y")]
-        #[rr::capture("x": "x")]
-        #[rr::capture("y": "y")]
         || { x; y };
     closure_test_arg_fnonce_1(clos);
 }
@@ -167,10 +156,9 @@ fn closure_test_call_fnmut_1_0() {
     let mut y = 2;
     let clos =
         #[rr::verify]
-        #[rr::params("x")]
-        #[rr::capture("y": "x" -> "1")]
+        #[rr::ensures("{y.*new} = 1")]
         || { y = 1; 42 };
-    
+
     closure_test_arg_fnonce_3(clos);
 
     // Point: I want to pass down all the observations.
@@ -186,14 +174,12 @@ fn closure_test_call_fn_2_0() {
     let mut y = 2;
     let clos =
         #[rr::verify]
-        #[rr::params("x")]
-        #[rr::capture("y": "x")]
         // TODO: this should be statically dispatched. It should be an invariant of the closure
         // that the callee of the closure does not need to worry about.
-        #[rr::requires("x < 10")]
-        #[rr::returns("(x + 42)%Z")]
+        #[rr::requires("{y} < 10")]
+        #[rr::returns("({y} + 42)%Z")]
         || { y + 42 };
-    
+
     closure_test_arg_fn_2(clos);
 
     // Point: I want to pass down all the observations.
@@ -210,9 +196,8 @@ fn closure_test_call_fnmut_1() {
     let mut x = 1;
     closure_test_arg_fnmut_1(
         #[rr::verify]
-        #[rr::params("x")]
-        #[rr::requires("x < 10")]
-        #[rr::capture("x": "x" -> "(x + 2)%Z")]
+        #[rr::requires("{x} < 10")]
+        #[rr::ensures("{x.*new} = {x} + 2")]
         || { x += 2; });
 }
 
@@ -284,10 +269,8 @@ fn closure_test5() {
 
     // Fn-closure with a shared capture
     let x =
-        #[rr::params("i")]
-        #[rr::capture("x": "i")]
-        #[rr::requires("(2 * i)%Z ∈ i32")]
-        #[rr::returns("(2 * i)%Z")]
+        #[rr::requires("(2 * {x})%Z ∈ i32")]
+        #[rr::returns("(2 * {x})%Z")]
         || {
             x * 2
         };
@@ -306,13 +289,10 @@ fn closure_test9(z: &u32) {
     // Fn-closure
     let x =
         #[rr::skip]
-        #[rr::params("i", "j")]
-        #[rr::capture("x": "i")]
-        #[rr::capture("z": "j")]
-        #[rr::requires("(j * i)%Z ∈ u32")]
-        #[rr::returns("(j * i)%Z")]
+        #[rr::requires("({*z} * {x})%Z ∈ u32")]
+        #[rr::returns("({*z} * {x})%Z")]
         || {
-            x * z 
+            x * z
         };
 
     // here we call the closure's implementation
@@ -329,9 +309,8 @@ fn closure_test2() {
     let mut x =
         // Note: the closure code has a doubly-nested mutable references, since it gets a mutref to
         // the capture also.
-        #[rr::params("i")]
-        #[rr::capture("y": "i" -> "(2*i)")]
-        #[rr::requires("(2 * i) ∈ i32")]
+        #[rr::requires("(2 * {y}) ∈ i32")]
+        #[rr::ensures("{y.*new} = 2 * {y}")]
         || { y *= 2; };
 
     x();
@@ -350,12 +329,11 @@ fn closure_test3(y: &mut i32) {
 
     let mut x =
         // this effectively takes a mutable reference for initialization
-        #[rr::params("i", "j")]
         // TODO: we should specify the projection here.
-        #[rr::capture("y" : "i" -> "(2*i)")]
-        #[rr::capture("z" : "j" -> "(5*j)")]
-        #[rr::requires("(2 * i) ∈ i32")]
-        #[rr::requires("(5 * j) ∈ i32")]
+        #[rr::requires("(2 * {*y}) ∈ i32")]
+        #[rr::requires("(5 * {z}) ∈ i32")]
+        #[rr::ensures("{(*y).*new} = 2 * {*y}")]
+        #[rr::ensures("{z.*new} = 5 * {z}")]
         || { *y *= 2; z *= 5; };
 
     x();
@@ -374,8 +352,6 @@ fn closure_test7<T, U>(x: T, y: U)
 {
     let cls =
         #[rr::skip]
-        #[rr::params("m")]
-        #[rr::capture("y": "m")]
         |a: T| { y(a) };
 
     cls(x);
@@ -385,7 +361,7 @@ fn closure_test7<T, U>(x: T, y: U)
 #[rr::verify]
 #[rr::requires(#trait T::Pre := "λ _ _, True%I")]
 #[rr::requires(#trait T::Post := "λ _ _ ret, True%I")]
-fn closure_test_call_hrtb_1<T>(x: T) 
+fn closure_test_call_hrtb_1<T>(x: T)
     where T: for<'a> Fn(&'a i32) -> i32
 {
     let a = 2;

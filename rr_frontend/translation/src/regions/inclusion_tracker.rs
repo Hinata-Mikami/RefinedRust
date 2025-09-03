@@ -173,6 +173,11 @@ impl<'a, 'tcx: 'a> InclusionTracker<'a, 'tcx> {
         self.full_incl.as_ref().unwrap().contains(&(r1, r2, p)) || r1 == r2
     }
 
+    /// Check if there is a constraint on a given region known.
+    pub(crate) fn is_region_known(&self, r1: Region, _p: PointIndex) -> bool {
+        self.static_incl_base.iter().any(|(rx, ry, _)| *rx == r1 || *ry == r1)
+    }
+
     /// Check if an inclusion (r1, r2, p) holds via static inclusion in the current context.
     pub(crate) fn check_static_inclusion(&mut self, r1: Region, r2: Region, p: PointIndex) -> bool {
         if self.invalidated || self.static_incl.is_none() {

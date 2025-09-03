@@ -1,8 +1,10 @@
 
+#![rr::import("rrstd.iterator.theories", "iterator")]
+
 //use crate::adapters::map::Map;
 //use std::ops::Try;
 
-
+use crate::adapters::map::Map;
 
 // example for state changes on None:
 // - fusing iterator (make any iterator Fused)
@@ -22,35 +24,32 @@ pub trait Iterator {
     #[rr::ensures(#iris "{Next} self.cur ret new_it_state")]
     fn next(&mut self) -> Option<Self::Item>;
 
-    /*
     /// We pick an invariant Inv
     /// TODO: maybe release Inv when we drop the Map iterator
-    #[rr::params("it_state" : "{rt_of Self}", "clos_state" : "{rt_of F}", "Inv" : "{rt_of I} → {rt_of F} → iProp Σ")]
-    #[rr::args("it_state", "clos_state")]
+    #[rr::trust_me]
+    #[rr::params("Inv" : "{xt_of Self} → {xt_of F} → iProp Σ")]
     /// Precondition: The picked invariant should hold initially.
-    #[rr::requires(#iris "Inv it_state clos_state")]
+    #[rr::requires(#iris "Inv self f")]
     /// Precondition: persistently, each iteration preserves the invariant.
     /// If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self.Next} it_state (Some e) it_state' -∗
+        {Self::Next} it_state (Some e) it_state' -∗
         Inv it_state clos_state -∗
-        {F.Pre} clos_state e ∗
-        (∀ e' clos_state', {F.Post} clos_state e clos_state' e' -∗ Inv it_state' clos_state'))")]
+        {F::Pre} clos_state *[e] ∗
+        (∀ e' clos_state', {F::PostMut} clos_state *[e] clos_state' e' -∗ Inv it_state' clos_state'))")]
     /// Precondition: If no element is emitted, the invariant is also upheld.
-    #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self.Next} it_state None it_state' -∗
+    #[rr::requires(#iris "□ (∀ it_state it_state' clos_state,
+        {Self::Next} it_state None it_state' -∗
         Inv it_state clos_state -∗
         Inv it_state' clos_state)")]
-    #[rr::returns("mk_map [] it_state")]
-    fn map<B, F>(self,
-        f: F) -> Map<Self, F>
+    #[rr::returns("mk_map_x self f")]
+    fn map<B, F>(self, f: F) -> Map<B, Self, F>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> B,
     {
         Map::new(self, f)
     }
-    */
 
     /*
     /// Specification: we iterate until we fail. 
@@ -70,6 +69,28 @@ pub trait Iterator {
         //self.try_fold((), call(f))
     }
     */
+
+    #[rr::trust_me]
+    #[rr::exists("seq", "s2", "s2'")]
+    // TODO: have an escape to refer to the attrs record instead
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs self seq s2")]
+    #[rr::ensures(#iris "{Next} s2 None s2'")]
+    #[rr::returns("{B::FromSequence} seq")]
+    fn collect<B: FromIterator<Self::Item>>(self) -> B
+    where
+        Self: Sized,
+    {
+        // This is too aggressive to turn on for everything all the time, but PR#137908
+        // accidentally noticed that some rustc iterators had malformed `size_hint`s,
+        // so this will help catch such things in debug-assertions-std runners,
+        // even if users won't actually ever see it.
+        //if cfg!(debug_assertions) {
+            //let hint = self.size_hint();
+            //assert!(hint.1.is_none_or(|high| high >= hint.0), "Malformed size_hint {hint:?}");
+        //}
+
+        FromIterator::from_iter(self)
+    }
 
 
     // TODO: more methods
@@ -100,13 +121,15 @@ impl<I> IntoIterator for I where I: Iterator {
 }
 
 
-//#[rr::export_as(core::iter::FromIterator)]
-//#[rr::exists("FromSequence" : "list ({xt_of A}) → {xt_of Self}")]
-//pub trait FromIterator<A> {
+#[rr::export_as(core::iter::FromIterator)]
+#[rr::exists("FromSequence" : "list ({xt_of A}) → {xt_of Self}")]
+pub trait FromIterator<A> {
+    #[rr::verify]
     //#[rr::exists("seq", "s2", "s2'")]
-    //#[rr::ensures("IteratorNextFusedTrans _ ({T::IntoIter} iter) seq s2")]
-    //#[rr::ensures("{T::Next} s2 None s2'")]
+    // Problem: RefinedRust currently does not translate the Iterator requirement on T::IntoIter. 
+    // Maybe let's do a hacky wrapper solution for that for now. 
+    //#[rr::ensures(#iris "IteratorNextFusedTrans {attrs_of T::IntoIter} ({T::IntoIter} iter) seq s2")]
+    //#[rr::ensures(#iris "{T::Next} s2 None s2'")]
     //#[rr::returns("{FromSequence} seq")]
-    //fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
-//}
-
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+}

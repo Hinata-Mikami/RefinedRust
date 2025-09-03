@@ -1,3 +1,6 @@
+Section extra_specs.
+Context `{RRGS : !refinedrustGS Σ}.
+
 Section resolve_ghost.
   Context {T_rt : RT}.
   Context (T_ty : type (T_rt)).
@@ -69,3 +72,5 @@ Section Vec_inv_t_ne.
     TypeNonExpansive (λ ty, Vec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
 End Vec_inv_t_ne. 
+
+End extra_specs.

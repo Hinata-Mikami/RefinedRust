@@ -756,6 +756,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         mut impl_deps: ImplDeps<'_>,
+        include_self: bool,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
 
@@ -779,7 +780,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut indirect_trait_spec_terms = Vec::new();
 
         for req in &target_requirements {
-            if req.is_self_in_trait_decl {
+            if req.is_self_in_trait_decl && !include_self {
                 continue;
             }
 
@@ -795,13 +796,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             // Check if the target is a method of the same trait with the same args
             // Since this happens in the same ParamEnv, this is the assumption of the trait method
-            // for its own trait, so we skip it.
+            // for its own trait, so we skip it, except if instructed otherwise (by `include_self`)
             if self.env.is_method_did(did) {
                 if let Some(trait_did) = self.env.tcx().trait_of_assoc(did) {
                     // Get the params of the trait we're calling
                     let calling_trait_params =
                         types::LocalTX::split_trait_method_args(self.env, trait_did, params).0;
-                    if req.trait_ref.def_id == trait_did && subst_args == calling_trait_params.as_slice() {
+                    if !include_self
+                        && req.trait_ref.def_id == trait_did
+                        && subst_args == calling_trait_params.as_slice()
+                    {
                         // if they match, this is the Self assumption, so skip
                         continue;
                     }
@@ -894,7 +898,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         impl_deps: ImplDeps<'_>,
     ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
-        for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst, impl_deps)? {
+        for trait_req in
+            self.resolve_trait_requirements_in_state(state, did, params_inst, impl_deps, false)?
+        {
             // compute the new scope including the bound regions.
             let mut scope = state.get_param_scope();
             scope.add_trait_req_scope(&trait_req.scope);

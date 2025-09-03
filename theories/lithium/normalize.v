@@ -56,6 +56,11 @@ Ltac normalize_autorewrite :=
 #[export] Hint Rewrite @decide_True using can_solve : lithium_rewrite.
 #[export] Hint Rewrite @decide_False using can_solve : lithium_rewrite.
 
+#[export] Hint Rewrite -> Z2Nat.inj_0 : lithium_rewrite.
+#[export] Hint Rewrite -> Z.sub_0_r Z.add_0_r Z.sub_0_l Z.add_0_l : lithium_rewrite.
+
+
+
 Local Definition lookup_insert_gmap A K `{Countable K} := lookup_insert_eq (M := gmap K) (A := A).
 #[export] Hint Rewrite lookup_insert_gmap : lithium_rewrite.
 

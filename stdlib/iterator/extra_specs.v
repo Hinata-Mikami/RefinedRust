@@ -1,5 +1,9 @@
+Section extra_specs.
+Context `{RRGS : !refinedrustGS Σ}.
+
 Section trans.
   
+  (* Note: Depends on the whole attrs instead of the Next projection so that the projection doesn't simplify away, which is a problem for [LearnFromHyp] rules. *)
   Fixpoint IteratorNextFusedTrans {Self_rt Item_rt : RT} 
     (attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
     (s1 : RT_xt Self_rt) (els : list (RT_xt Item_rt)) (s2 : RT_xt Self_rt) : iProp Σ
@@ -53,3 +57,5 @@ Section trans.
 
 
 End trans.
+
+End extra_specs.

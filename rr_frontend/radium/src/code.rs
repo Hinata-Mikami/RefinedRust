@@ -57,13 +57,55 @@ fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
     out
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Display, Default)]
+#[display("RSTScopeInst [{}] [{}]", fmt_list!(lfts, "; ", |x| format!("\"{x}\"")), fmt_list!(apps, "; "))]
+pub struct RustScopeInst {
+    apps: Vec<RustType>,
+    lfts: Vec<Lft>,
+}
+impl From<&GenericScopeInst<'_>> for RustScopeInst {
+    fn from(scope_inst: &GenericScopeInst<'_>) -> Self {
+        let typarams: Vec<_> = scope_inst
+            .get_all_ty_params_with_assocs()
+            .iter()
+            .map(|ty| RustType::of_type(ty))
+            .collect();
+        let lfts = scope_inst.get_lfts().to_owned();
+        Self {
+            apps: typarams,
+            lfts,
+        }
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[display("RSTEnumDef [{}] ({})", fmt_list!(path, "; ", "\"{}\""), inst)]
+pub struct RustEnumDef {
+    path: Vec<String>,
+    inst: RustScopeInst,
+}
+impl TryFrom<LiteralTypeUse<'_>> for RustEnumDef {
+    type Error = ();
+
+    fn try_from(other: LiteralTypeUse<'_>) -> Result<Self, ()> {
+        let scope_inst = &other.scope_inst.ok_or(())?;
+        let enum_name = other.def.info.enum_name.as_ref().ok_or(())?;
+
+        let inst: RustScopeInst = scope_inst.into();
+        Ok(Self {
+            path: vec![enum_name.clone()],
+            inst,
+        })
+    }
+}
+
 /// A representation of syntactic Rust types that we can use in annotations for the `RefinedRust`
 /// type system.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 // TODO: handle lifetime parameters in this representation
 pub enum RustType {
-    #[display("RSTLitType [{}] [{}]", fmt_list!(_0, "; ", "\"{}\""), fmt_list!(_1, "; "))]
-    Lit(Vec<String>, Vec<RustType>),
+    #[display("RSTLitType [{}] ({})", fmt_list!(_0, "; ", "\"{}\""), _1)]
+    Lit(Vec<String>, RustScopeInst),
 
     #[display("RSTTyVar \"{}\"", _0)]
     TyVar(String),
@@ -134,34 +176,28 @@ impl RustType {
                 let def = def.as_ref().unwrap();
 
                 // translate type parameter instantiations
-                let typarams: Vec<_> =
-                    as_use.scope_inst.get_all_ty_params_with_assocs().iter().map(Self::of_type).collect();
+                let inst: RustScopeInst = (&as_use.scope_inst).into();
                 let ty_name = if is_raw { def.plain_ty_name() } else { def.public_type_name() };
 
-                Self::Lit(vec![ty_name.to_owned()], typarams)
+                Self::Lit(vec![ty_name.to_owned()], inst)
             },
 
             Type::Enum(ae_use) => {
-                let typarams: Vec<_> =
-                    ae_use.scope_inst.get_all_ty_params_with_assocs().iter().map(Self::of_type).collect();
+                let inst: RustScopeInst = (&ae_use.scope_inst).into();
 
                 let def = ae_use.def.borrow();
                 let def = def.as_ref().unwrap();
-                Self::Lit(vec![def.public_type_name().to_owned()], typarams)
+                Self::Lit(vec![def.public_type_name().to_owned()], inst)
             },
 
             Type::LiteralParam(lit) => Self::TyVar(lit.rust_name.clone()),
 
             Type::Literal(lit) => {
                 if let Some(scope_inst) = lit.scope_inst.as_ref() {
-                    let typarams: Vec<_> = scope_inst
-                        .get_all_ty_params_with_assocs()
-                        .iter()
-                        .map(|ty| Self::of_type(ty))
-                        .collect();
-                    Self::Lit(vec![lit.def.type_term.clone()], typarams)
+                    let inst: RustScopeInst = scope_inst.into();
+                    Self::Lit(vec![lit.def.type_term.clone()], inst)
                 } else {
-                    Self::Lit(vec![lit.def.type_term.clone()], vec![])
+                    Self::Lit(vec![lit.def.type_term.clone()], RustScopeInst::default())
                 }
             },
 
@@ -345,7 +381,7 @@ pub enum Expr {
     EnumInitE {
         els: coq::term::App<String, String>,
         variant: String,
-        ty: RustType,
+        ty: RustEnumDef,
         initializer: Box<Expr>,
     },
 
@@ -1141,7 +1177,7 @@ impl Function<'_> {
         write!(f, "let π := get_π in\n")?;
         write!(f, "let Σ := get_Σ in\n")?;
 
-        write!(f, "set (loop_map := BB_INV_MAP {});\n", self.loop_invariants)?;
+        write!(f, "specialize (pose_bb_inv {}) as loop_map;\n", self.loop_invariants)?;
 
         // initialize lifetimes
         let mut lfts: Vec<_> =

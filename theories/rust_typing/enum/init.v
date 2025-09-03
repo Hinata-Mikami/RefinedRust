@@ -9,13 +9,13 @@ Section init.
 
   Import EqNotations.
 
-  Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsty : rust_type) (e : expr) (T : typed_val_expr_cont_t) :
+  Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsen : rust_enum_def) (e : expr) (T : typed_val_expr_cont_t) :
     li_tactic (compute_enum_layout_goal els) (λ _,
     typed_val_expr E L e (λ L2 π v rti tyi ri,
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
-      li_tactic (interpret_rust_type_goal M rsty) (λ '(existT rto tyo),
-        ∃ (e : enum rto), ⌜tyo = enum_t e⌝ ∗ ⌜e.(enum_els) = els⌝ ∗
+      li_tactic (interpret_rust_enum_def_goal M rsen) (λ '(existT rto e),
+        ⌜e.(enum_els) = els⌝ ∗
         ∃ sem, ⌜e.(enum_tag_ty_inj) variant = Some sem⌝ ∗
         ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty))⌝ ∗
           ∃ ri', owned_subtype π E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
@@ -24,7 +24,7 @@ Section init.
             ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
             ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [RT_rt] Heq in ri')⌝ ∗
               ∀ v', T L3 π v' _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
-    ⊢ typed_val_expr E L (EnumInit els variant rsty e) T.
+    ⊢ typed_val_expr E L (EnumInit els variant rsen e) T.
   Proof.
     rewrite /compute_enum_layout_goal.
     iIntros "(%el & %Hly & HT)".
@@ -35,8 +35,8 @@ Section init.
     iIntros (L2 π v rt ty r) "HL Hv HT".
     iDestruct "HT" as "(%M & Hlfts & HT)".
     iPoseProof ("HT" with "Hlfts") as "HT".
-    rewrite /interpret_rust_type_goal.
-    iDestruct "HT" as "(%rto &  %tyo & %en & -> & <- & %sem & %Hinj & %Hlook_st & %ri' & Hsubt)".
+    rewrite /interpret_rust_enum_def_goal.
+    iDestruct "HT" as "(%rto &  %en & <- & %sem & %Hinj & %Hlook_st & %ri' & Hsubt)".
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L3 & Hincl & HL & HT)"; [done.. | ].
     iDestruct "Hincl" as "(%Hst_eq & Hsc & Hincl)".
     iPoseProof ("Hincl" with "Hv") as "Hv".

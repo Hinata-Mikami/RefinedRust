@@ -405,11 +405,13 @@ Section coq_tactics.
   Proof. apply tac_fast_apply. iIntros "[#[$ _] $]". Qed.
 
   Lemma tac_do_intro_boringly_sep Δ (P Q : iProp Σ) :
-    envs_entails Δ (☒ (P ∗ True) ∧ Q) → envs_entails Δ (☒ P ∗ Q).
+    envs_entails Δ ((☒ (P)) ∧ Q) → envs_entails Δ (☒ P ∗ Q).
   Proof.
     apply tac_fast_apply.
     iIntros "[#Ha $]".
-    iPoseProof (boringly_sep with "Ha") as "($ & _)".
+    done.
+    (*iDestruct "Ha" as "($ & _)".*)
+    (*iPoseProof (boringly_sep with "Ha") as "($ & _)".*)
   Qed.
 
   Lemma tac_do_simplify_goal Δ (n : N) (P : iProp Σ) T {SG : SimplifyGoal P (Some n)} :
@@ -643,17 +645,42 @@ Ltac liPersistent :=
 Section coq_tactics.
   Context {Σ : gFunctors}.
 
-  Lemma tac_boringly Δ (P : iProp Σ) :
-    envs_entails Δ P → envs_entails Δ (☒ P).
+  Lemma tac_boringly_intro Δ (P : iProp Σ) :
+    envs_entails Δ (P ∗ True) → envs_entails Δ (☒ P).
   Proof.
-    apply tac_fast_apply. apply boringly_intro.
+    apply tac_fast_apply.
+    rewrite -boringly_intro.
+    by rewrite right_id.
+  Qed.
+
+  Lemma tac_boringly_find Δ i p (P : iProp Σ) :
+    envs_lookup i Δ = Some (p, (☒ P)%I) →
+    envs_entails (envs_delete false i p Δ) True → envs_entails Δ (☒ P).
+  Proof.
+    rewrite envs_entails_unseal. intros ? HQ.
+    rewrite (envs_lookup_sound' _ false) // bi.intuitionistically_if_elim.
+    iIntros "($ & _)".
   Qed.
 End coq_tactics.
 
 Ltac liBoringly :=
+  let rec go P Hs :=
+    lazymatch Hs with
+    | Esnoc ?Hs2 ?id ?Q => first [
+      unify Q P;
+      notypeclasses refine (tac_boringly_find _ id _ _ _ _); [li_pm_reflexivity | li_pm_reduce]
+      | go P Hs2 ]
+    end in
   lazymatch goal with
   | |- envs_entails ?Δ (boringly ?P) =>
-      notypeclasses refine (tac_boringly _ _ _)
+      let P := li_pm_reduce_val constr:(boringly P) in
+      let run_go P Hs Hi := first [go P Hs | go P Hi] in
+      first [
+        lazymatch goal with
+        | |- envs_entails (Envs ?Hi ?Hs _) _ => run_go P Hs Hi
+        | H := (Envs ?Hi ?Hs _) |- _ => run_go P Hs Hi
+        end
+      | notypeclasses refine (tac_boringly_intro _ _ _) ]
   end.
 
 (** ** [liCase] *)

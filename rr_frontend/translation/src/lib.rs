@@ -235,6 +235,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 refinement_type: lit.refinement_type.to_string(),
                 syn_type: lit.syn_type.to_string(),
                 sem_type: lit.type_term,
+                info: lit.info,
             };
             return Some(a);
         }
@@ -369,6 +370,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             write!(code_file, "{}", coq::module::ExportList(&code_exports)).unwrap();
         }
 
+        writeln!(spec_file).unwrap();
+
         // write trait attrs
         let trait_deps = self.trait_registry.get_registered_trait_deps();
         let dep_order = base::order_defs_with_deps(self.env.tcx(), &trait_deps);
@@ -425,46 +428,6 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write tuples up to the necessary size
         // TODO
 
-        // Include extra specs
-        {
-            if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
-                writeln!(spec_file, "Section extra_specs.").unwrap();
-                writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-                writeln!(spec_file).unwrap();
-                writeln!(
-                    spec_file,
-                    "(* Included specifications from configured file {} *)",
-                    extra_specs_path.display()
-                )
-                .unwrap();
-
-                let mut extra_specs_file = io::BufReader::new(File::open(extra_specs_path).unwrap());
-                let mut extra_specs_string = String::new();
-                extra_specs_file.read_to_string(&mut extra_specs_string).unwrap();
-
-                write!(spec_file, "{}", extra_specs_string).unwrap();
-                writeln!(spec_file, "End extra_specs.").unwrap();
-            }
-        }
-
-        // write trait specs
-        for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
-            write!(spec_file, "{}\n", decl.make_spec_record_decl()).unwrap();
-        }
-
-        // write remaining trait things
-        for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
-            write!(spec_file, "{decl}\n").unwrap();
-        }
-
-        // write trait req incls
-        for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
-            write!(spec_file, "{}\n", decl.make_trait_req_incls()).unwrap();
-        }
-
         // write the attribute spec declarations of trait impls
         {
             writeln!(spec_file, "Section attrs.").unwrap();
@@ -487,6 +450,46 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 }
             }
             writeln!(spec_file, "End closure_attrs.\n").unwrap();
+        }
+
+        // Include extra specs
+        {
+            if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
+                //writeln!(spec_file, "Section extra_specs.").unwrap();
+                //writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+                //writeln!(spec_file).unwrap();
+                writeln!(
+                    spec_file,
+                    "(* Included specifications from configured file {} *)",
+                    extra_specs_path.display()
+                )
+                .unwrap();
+
+                let mut extra_specs_file = io::BufReader::new(File::open(extra_specs_path).unwrap());
+                let mut extra_specs_string = String::new();
+                extra_specs_file.read_to_string(&mut extra_specs_string).unwrap();
+
+                write!(spec_file, "{}", extra_specs_string).unwrap();
+                //writeln!(spec_file, "End extra_specs.").unwrap();
+            }
+        }
+
+        // write trait specs
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{}\n", decl.make_spec_record_decl()).unwrap();
+        }
+
+        // write remaining trait things
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{decl}\n").unwrap();
+        }
+
+        // write trait req incls
+        for did in &dep_order {
+            let decl = &trait_decls[&did.as_local().unwrap()];
+            write!(spec_file, "{}\n", decl.make_trait_req_incls()).unwrap();
         }
 
         {
@@ -1041,6 +1044,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             type_term: shim.sem_type.clone(),
             syn_type: radium::lang::SynType::Literal(shim.syn_type.clone()),
             refinement_type: coq::term::Type::Literal(shim.refinement_type.clone()),
+            info: shim.info.clone(),
         };
 
         if let Err(e) = vcx.type_translator.register_adt_shim(did, &lit) {

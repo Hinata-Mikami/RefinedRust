@@ -322,7 +322,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
 
-        let tyvars = tyvar_folder.get_result();
+        // TODO: sort tyvars and projections canonically
+        let (tyvars, projections) = tyvar_folder.get_result();
         let regions = lft_folder.get_regions();
 
         // the new scope that we quantify over in the assumed spec
@@ -387,17 +388,32 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
             scope.add_ty_param(lit);
         }
-        // Also bind associated types (they are translated as generics)
+        // Also bind associated types of the trait requirements of the function (they are translated as
+        // generics)
         for req in &trait_reqs {
             for ty in &req.assoc_ty_inst {
                 // we should check if it there is a parameter in the current scope for it
                 let translated_ty = self.translate_type(*ty)?;
                 if let radium::Type::LiteralParam(mut lit) = translated_ty {
-                    lit.set_origin(req.origin);
+                    lit.set_origin(radium::TyParamOrigin::Direct);
+                    //lit.set_origin(req.origin);
 
                     scope.add_ty_param(lit.clone());
                     callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
                 }
+            }
+        }
+        // Also bind surroudning associated types we use
+        for alias_ty in projections {
+            let env = self.translator.env();
+            let trait_did = env.tcx().parent(alias_ty.def_id);
+            let param_scope = self.scope.borrow().make_params_scope();
+            let entry = param_scope.trait_scope().lookup_trait_use(env.tcx(), trait_did, alias_ty.args)?;
+            let assoc_type = entry.get_associated_type_use(env, alias_ty.def_id)?;
+            if let radium::Type::LiteralParam(mut lit) = assoc_type {
+                lit.set_origin(radium::TyParamOrigin::Direct);
+                scope.add_ty_param(lit.clone());
+                callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
             }
         }
 

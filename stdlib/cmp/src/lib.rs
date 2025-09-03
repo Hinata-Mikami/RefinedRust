@@ -55,7 +55,7 @@ pub trait Eq: PartialEq<Self> {
 
 #[rr::export_as(core::cmp::PartialOrd)]
 #[rr::exists("POrd" : "{xt_of Self} → {xt_of Rhs} → option ordering")]
-//#[rr::exists("POrd_eq_cons" : "∀ a b, {Self::PEq} a b ↔ {POrd} a b = Some Equal")]
+#[rr::exists("POrd_eq_cons" : "∀ a b, {Self::PEq} a b ↔ {POrd} a b = Some Equal")]
 // NOTE: further consistency properties cannot be specified locally
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[rr::returns("{POrd} self other")]
@@ -87,8 +87,14 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
 #[rr::export_as(core::cmp::Ord)]
 #[rr::exists("Ord" : "{xt_of Self} → {xt_of Self} → ordering")]
-//#[rr::exists("Ord_POrd" : "∀ a b, {Self::POrd} a b = Some ({Ord} a b)")]
-// NOTE: Transitivity cannot be specified locally here.
+#[rr::exists("Ord_POrd" : "∀ a b, {Self::POrd} a b = Some ({Ord} a b)")]
+#[rr::exists("Ord_lt_trans" : "∀ a b c, a<o{{ {Ord} }} b → b <o{{ {Ord} }} c → a <o{{ {Ord} }} c")]
+#[rr::exists("Ord_eq_trans" : "∀ a b c, a=o{{ {Ord} }} b → b =o{{ {Ord} }} c → a =o{{ {Ord} }} c")]
+#[rr::exists("Ord_gt_trans" : "∀ a b c, a>o{{ {Ord} }} b → b >o{{ {Ord} }} c → a >o{{ {Ord} }} c")]
+#[rr::exists("Ord_antisym" : "∀ a b, a <o{{ {Ord} }} b ↔ b >o{{ {Ord} }} a")]
+/// This is a strong requirement. We should relax this in the future, once we have better setoid
+/// automation support in Rocq.
+#[rr::exists("Ord_leibniz" : "∀ a b, a =o{{ {Ord} }} b ↔ a = b")]
 pub trait Ord: Eq + PartialOrd<Self> {
 
     #[rr::returns("{Ord} self other")]
@@ -128,14 +134,14 @@ pub trait Ord: Eq + PartialOrd<Self> {
     }
 }
 
-#[rr::export_as(core::cmp::min)]
+#[rr::export_as(core::cmp::max)]
 #[rr::returns("if bool_decide ({T::Ord} v1 v2 = Less) then v2 else v1")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     v1.max(v2)
 }
 
 #[rr::export_as(core::cmp::max_by)]
-#[rr::trust_me]
+#[rr::only_spec]
 #[rr::requires(#iris "{F::Pre} compare *[v2; v1]")]
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} compare *[v2; v1] ord")]
@@ -152,7 +158,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 }
 
 #[rr::export_as(core::cmp::min_by)]
-#[rr::trust_me]
+#[rr::only_spec]
 #[rr::requires(#iris "{F::Pre} compare *[v2; v1]")]
 #[rr::exists("ord")]
 #[rr::ensures(#iris "{F::Post} compare *[v2; v1] ord")]
@@ -206,6 +212,7 @@ eq_impl! {
 }
 
 #[rr::instantiate("POrd" := "λ a b, Some Equal")]
+#[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
 impl PartialOrd for () {
     #[rr::default_spec]
     fn partial_cmp(&self, _: &()) -> Option<Ordering> {
@@ -214,6 +221,12 @@ impl PartialOrd for () {
 }
 
 #[rr::instantiate("Ord" := "λ a b, Equal")]
+#[rr::instantiate("Ord_POrd" := #proof "intros ???; solve_goal")]
+#[rr::instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
+#[rr::instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]
+#[rr::instantiate("Ord_gt_trans" := #proof "intros ????; solve_goal")]
+#[rr::instantiate("Ord_leibniz" := #proof "intros ? [] []; solve_goal")]
+#[rr::instantiate("Ord_antisym" := #proof "intros ? [] []; unfold ord_lt, ord_gt; naive_solver")]
 impl Ord for () {
     #[rr::default_spec]
     fn cmp(&self, _other: &()) -> Ordering {
@@ -238,6 +251,7 @@ macro_rules! partial_ord_methods_primitive_impl {
 macro_rules! ord_impl {
     ($($t:ty)*) => ($(
         #[rr::instantiate("POrd" := "λ a b, Some(Z.cmp a b)")]
+        #[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
         impl PartialOrd for $t {
             #[rr::default_spec]
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -248,6 +262,12 @@ macro_rules! ord_impl {
         }
 
         #[rr::instantiate("Ord" := "Z.cmp")]
+        #[rr::instantiate("Ord_POrd" := #proof "intros ???; solve_goal")]
+        #[rr::instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
+        #[rr::instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]
+        #[rr::instantiate("Ord_gt_trans" := #proof "intros ????; solve_goal")]
+        #[rr::instantiate("Ord_leibniz" := #proof "intros ???; solve_goal")]
+        #[rr::instantiate("Ord_antisym" := #proof "intros ???; solve_goal")]
         impl Ord for $t {
             #[rr::default_spec]
             fn cmp(&self, other: &Self) -> Ordering {
@@ -272,7 +292,6 @@ ord_impl! {
 
 macro_rules! partial_ord_impl {
     ($($t:ty)*) => ($(
-        #[rr::instantiate("POrd" : "λ a b, Some Equal")]
         impl PartialOrd for $t {
             #[rr::default_spec]
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -331,18 +350,3 @@ impl PartialOrd for bool {
     partial_ord_methods_primitive_impl!();
 }
 */
-
-
-//#[rr::instantiate("Ord" := "λ x y, if decide (x < y) then Less else if decide (x = y) then Equal else Greater")]
-//impl Ord for i32 {
-    //fn cmp(&self, other: &Self) -> Ordering {
-        //if *self < *other {
-            //Ordering::Less
-        //}
-        //else if *self = *other {
-            //Ordering::Equal
-        //} else {
-            //Ordering::Greater
-        //}
-    //}
-//}

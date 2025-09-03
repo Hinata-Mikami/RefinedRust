@@ -22,6 +22,7 @@ serde.workspace = true
 serde_json.workspace = true
 topological-sort.workspace = true
 typed-arena.workspace = true
+nom.workspace = true
 
 [package.metadata.rust-analyzer]
 rustc_private = true

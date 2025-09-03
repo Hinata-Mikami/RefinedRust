@@ -60,6 +60,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             &mut self.inclusion_tracker, &self.ty_translator,
                             loc, val);
 
+
+                        // TODO; maybe move this to rvalue
+                        let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
+                            self.env, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
+
                         let plc_ty = self.get_type_of_place(plc);
                         let plc_strongly_writeable = !self.check_place_below_reference(plc);
                         let assignment_annots =
@@ -67,9 +72,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 self.env, &mut self.inclusion_tracker, &self.ty_translator,
                                 loc, plc_strongly_writeable, plc_ty, rhs_ty);
 
-                        // TODO; maybe move this to rvalue
-                        let composite_annots = regions::composite::get_composite_rvalue_creation_annots(
-                            self.env, &mut self.inclusion_tracker, &self.ty_translator, loc, rhs_ty);
 
                         let (unconstrained_annots, unconstrained_hints) = regions::assignment::make_unconstrained_region_annotations(
                             &mut self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions, loc,

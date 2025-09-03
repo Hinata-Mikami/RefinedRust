@@ -3157,6 +3157,34 @@ Next Obligation.
   iExists _, _. done.
 Qed.
 
+Global Typeclasses Opaque interpret_rust_type_goal.
+Ltac solve_interpret_rust_type := fail "implement solve_interpret_rust_type".
+#[global] Hint Extern 1 (LiTactic (interpret_rust_type_goal _ _)) =>
+    refine (interpret_rust_type_hint _ _ _ _); solve_interpret_rust_type : typeclass_instances.
+
+(** Tactic hint to compute an [enum] for a given path *)
+Definition interpret_rust_enum_def_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) (T : sigT enum → iProp Σ) : iProp Σ :=
+  ∃ (rt : RT) (en : enum rt), T (existT _ en).
+#[global] Typeclasses Opaque interpret_rust_enum_def_goal.
+Definition interpret_rust_enum_def_pure_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) {rt} (en : enum rt) := True.
+Global Typeclasses Opaque interpret_rust_enum_def_pure_goal.
+Arguments interpret_rust_enum_def_pure_goal : simpl never.
+Program Definition interpret_rust_enum_def_hint `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_enum_def) {rt} (en : enum rt) :
+  interpret_rust_enum_def_pure_goal lfts sty en →
+  LiTactic (interpret_rust_enum_def_goal lfts sty) := λ a, {|
+    li_tactic_P T := T (existT _ en);
+  |}.
+Next Obligation.
+  iIntros (??? sty rt en _ T) "Ha". simpl.
+  iExists _, _. done.
+Qed.
+
+Global Typeclasses Opaque interpret_rust_enum_def_goal.
+Ltac solve_interpret_rust_enum_def := fail "implement solve_interpret_rust_enum_def".
+#[global] Hint Extern 1 (LiTactic (interpret_rust_enum_def_goal _ _)) =>
+    refine (interpret_rust_enum_def_hint _ _ _ _); solve_interpret_rust_enum_def : typeclass_instances.
+
+
 (* The same, but lifted to lists *)
 (*
 Definition interpret_rust_types_goal `{!typeGS Σ} (lfts : gmap string lft) (stys : list rust_type) (T : list (sigT type) → iProp Σ) : iProp Σ :=
@@ -3258,11 +3286,6 @@ Global Typeclasses Opaque compute_enum_layout_goal.
 Ltac solve_compute_enum_layout := fail "implement solve_compute_enum_layout".
 #[global] Hint Extern 1 (LiTactic (compute_enum_layout_goal _)) =>
     refine (compute_enum_layout_hint _ _ _); solve_compute_enum_layout : typeclass_instances.
-
-Global Typeclasses Opaque interpret_rust_type_goal.
-Ltac solve_interpret_rust_type := fail "implement solve_interpret_rust_type".
-#[global] Hint Extern 1 (LiTactic (interpret_rust_type_goal _ _)) =>
-    refine (interpret_rust_type_hint _ _ _ _); solve_interpret_rust_type : typeclass_instances.
 
 Global Typeclasses Opaque ensure_evar_instantiated_goal.
 Ltac solve_ensure_evar_instantiated := fail "implement solve_ensure_evar_instantiated".
