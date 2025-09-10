@@ -381,7 +381,7 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
 }
 */
 
-#[rr::instantiate("Next" := "λ s1 e s2, ⌜s1.2 = s2.2 ∧ 
+#[rr::instantiate("Next" := "λ π s1 e s2, ⌜s1.2 = s2.2 ∧ 
     if_None e (s1 = s2 ∧ s1.1 = s1.2) ∧ 
     if_Some e (λ e, s1.1 = e ∧ Some s2.1 = ({A::Forward} s1.1 1)%nat ∧ {A::POrd} s1.1 s1.2 = Some Less)⌝%I")]
 impl<A: Step> Iterator for std::ops::Range<A> {

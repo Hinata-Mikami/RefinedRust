@@ -28,6 +28,10 @@ pub enum Type {
     #[display("gname")]
     Gname,
 
+    /// `thread_id` type
+    #[display("thread_id")]
+    ThreadId,
+
     /// `layout` type
     #[display("layout")]
     Layout,

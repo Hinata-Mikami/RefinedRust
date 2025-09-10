@@ -11,11 +11,11 @@ Context `{RRGS : !refinedrustGS Σ}.
 
 
 (* TODO: we should have this for all the iterators for ranges on integers *)
-Program Instance learn_from_hyp_range_i32_it s1 hist s2 :
-  LearnFromHyp (IteratorNextFusedTrans ((step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs (Z) (i32asClone_spec_attrs) (i32asPartialEq_spec_attrs) (i32asPartialOrd_spec_attrs) (i32asstep_Step_spec_attrs))) s1 hist s2) :=
+Program Instance learn_from_hyp_range_i32_it π s1 hist s2 :
+  LearnFromHyp (IteratorNextFusedTrans ((step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs (Z) (i32asClone_spec_attrs) (i32asPartialEq_spec_attrs) (i32asPartialOrd_spec_attrs) (i32asstep_Step_spec_attrs))) π s1 hist s2) :=
   {| learn_from_hyp_Q := ⌜s1.2 = s2.2 ∧ s1.1 ≤ s2.1 ∧ (* s2.1 ≤ s2.2 ∧ *) hist = seqZ s1.1 (s2.1 - s1.1)⌝%I |}.
 Next Obligation.
-  iIntros (?????) "Hx".
+  iIntros (??????) "Hx".
   iModIntro.
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "%". subst. iPureIntro.

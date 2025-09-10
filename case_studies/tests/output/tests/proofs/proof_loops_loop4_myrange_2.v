@@ -8,11 +8,11 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
 
-Program Instance learn_from_hyp_range_it s1 hist s2 :
-  LearnFromHyp (IteratorNextFusedTrans loops_MyRangeasstd_iter_Iterator_spec_attrs s1 hist s2) :=
+Program Instance learn_from_hyp_range_it π s1 hist s2 :
+  LearnFromHyp (IteratorNextFusedTrans loops_MyRangeasstd_iter_Iterator_spec_attrs π s1 hist s2) :=
   {| learn_from_hyp_Q := ⌜s1.2 = s2.2 ∧ s1.1 ≤ s2.1 ∧ (* s2.1 ≤ s2.2 ∧ *) hist = seqZ s1.1 (s2.1 - s1.1)⌝%I |}.
 Next Obligation.
-  iIntros (?????) "Hx".
+  iIntros (??????) "Hx".
   iModIntro.
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "%". subst. iPureIntro.

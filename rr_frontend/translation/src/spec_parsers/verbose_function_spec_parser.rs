@@ -131,6 +131,11 @@ impl ClosureSpecInfo {
         let post_self_rfn_clause = format!("{self_post_var} = ({})", parsed_captures.closure_self_post_rfn);
         post_ex_clauses_mut.push(coq::iris::IProp::Pure(post_self_rfn_clause));
 
+        let tid_binder = coq::binder::Binder::new(
+            Some("π".to_owned()),
+            coq::term::RocqType::UserDefined(model::Type::ThreadId),
+        );
+
         // assemble precondition
         let mut pre_clauses: Vec<coq::iris::IProp> =
             parsed_spec.preconditions.iter().map(|x| x.clone().into()).collect();
@@ -138,7 +143,7 @@ impl ClosureSpecInfo {
         pre_clauses.insert(0, coq::iris::IProp::Pure(pre_args_rfn_clause.clone()));
         let pre = coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(pre_clauses)));
         let pre_encoded = coq::term::Term::Lambda(
-            coq::binder::BinderList::new(vec![self_binder.clone(), args_binder.clone()]),
+            coq::binder::BinderList::new(vec![tid_binder.clone(), self_binder.clone(), args_binder.clone()]),
             Box::new(coq::term::Term::UserDefined(model::Term::IProp(pre))),
         );
 
@@ -155,7 +160,12 @@ impl ClosureSpecInfo {
         let post =
             coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(post_clauses)));
         let post_encoded = coq::term::Term::Lambda(
-            coq::binder::BinderList::new(vec![self_binder.clone(), args_binder.clone(), ret_binder.clone()]),
+            coq::binder::BinderList::new(vec![
+                tid_binder.clone(),
+                self_binder.clone(),
+                args_binder.clone(),
+                ret_binder.clone(),
+            ]),
             Box::new(coq::term::Term::UserDefined(model::Term::IProp(post))),
         );
 
@@ -170,7 +180,13 @@ impl ClosureSpecInfo {
         let post_mut =
             coq::iris::IProp::Exists(all_params, Box::new(coq::iris::IProp::Sep(post_mut_clauses)));
         let post_mut_encoded = coq::term::Term::Lambda(
-            coq::binder::BinderList::new(vec![self_binder, args_binder, self_post_binder, ret_binder]),
+            coq::binder::BinderList::new(vec![
+                tid_binder,
+                self_binder,
+                args_binder,
+                self_post_binder,
+                ret_binder,
+            ]),
             Box::new(coq::term::Term::UserDefined(model::Term::IProp(post_mut))),
         );
 

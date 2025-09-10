@@ -58,8 +58,8 @@ impl<T> Option<T> {
 #[rr::export_as(core::option::Option)]
 impl<T> Option<T> {
     #[rr::ensures("if_None self (ret = None)")]
-    #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} f *[self])")]
-    #[rr::ensures(#iris "if_iSome self (λ self, ∃ x, ⌜ret = Some x⌝ ∗ {F::Post} f *[self] x)")]
+    #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} π f *[self])")]
+    #[rr::ensures(#iris "if_iSome self (λ self, ∃ x, ⌜ret = Some x⌝ ∗ {F::Post} π f *[self] x)")]
     pub fn map<U, F>(self, f: F) -> Option<U>
     where
         F: FnOnce(T) -> U,

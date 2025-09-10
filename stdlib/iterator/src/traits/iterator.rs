@@ -11,7 +11,7 @@ use crate::adapters::map::Map;
 
 /// Spec: A relation
 #[rr::export_as(core::iter::Iterator)]
-#[rr::exists("Next" : "{xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
+#[rr::exists("Next" : "thread_id → {xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
 pub trait Iterator {
     type Item;
 
@@ -21,27 +21,27 @@ pub trait Iterator {
     #[rr::observe("self.ghost": "($# new_it_state)")]
     /// Postcondition: If there is a next item, it obeys the iterator's relation, and similarly the
     /// successor state is determined.
-    #[rr::ensures(#iris "{Next} self.cur ret new_it_state")]
+    #[rr::ensures(#iris "{Next} π self.cur ret new_it_state")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /// We pick an invariant Inv
     /// TODO: maybe release Inv when we drop the Map iterator
     #[rr::trust_me]
-    #[rr::params("Inv" : "{xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::params("Inv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
     /// Precondition: The picked invariant should hold initially.
-    #[rr::requires(#iris "Inv self f")]
+    #[rr::requires(#iris "Inv π self f")]
     /// Precondition: persistently, each iteration preserves the invariant.
     /// If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self::Next} it_state (Some e) it_state' -∗
-        Inv it_state clos_state -∗
-        {F::Pre} clos_state *[e] ∗
-        (∀ e' clos_state', {F::PostMut} clos_state *[e] clos_state' e' -∗ Inv it_state' clos_state'))")]
+        {Self::Next} π it_state (Some e) it_state' -∗
+        Inv π it_state clos_state -∗
+        {F::Pre} π clos_state *[e] ∗
+        (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state'))")]
     /// Precondition: If no element is emitted, the invariant is also upheld.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state,
-        {Self::Next} it_state None it_state' -∗
-        Inv it_state clos_state -∗
-        Inv it_state' clos_state)")]
+        {Self::Next} π it_state None it_state' -∗
+        Inv π it_state clos_state -∗
+        Inv π it_state' clos_state)")]
     #[rr::returns("mk_map_x self f")]
     fn map<B, F>(self, f: F) -> Map<B, Self, F>
     where
@@ -73,8 +73,8 @@ pub trait Iterator {
     #[rr::trust_me]
     #[rr::exists("seq", "s2", "s2'")]
     // TODO: have an escape to refer to the attrs record instead
-    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs self seq s2")]
-    #[rr::ensures(#iris "{Next} s2 None s2'")]
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     #[rr::returns("{B::FromSequence} seq")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where

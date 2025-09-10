@@ -71,7 +71,7 @@ struct MyRange {
 }
 
 
-#[rr::instantiate("Next" := "λ s1 e s2, ⌜s1.2 = s2.2 ∧ 
+#[rr::instantiate("Next" := "λ _ s1 e s2, ⌜s1.2 = s2.2 ∧ 
     if_None e (s1 = s2 ∧ s1.1 = s1.2) ∧ 
     if_Some e (λ e, s1.1 = e ∧ s2.1 = (1 + s1.1)%Z ∧ s1.1 < s1.2)⌝%I")]
 impl Iterator for MyRange {
@@ -124,7 +124,7 @@ fn loop4_myrange_2() {
         let _ =
         #[rr::exists("Hist")]
         #[rr::inv_vars("x")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} (0, 10) Hist {Iter}")]
+        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π (0, 10) Hist {Iter}")]
         #[rr::inv("x = sum_list_Z Hist")]
         #[rr::ignore] ||{};
         // We'll need an inductive proof here: mainly, that FusedNext a hist b implies something
@@ -168,7 +168,7 @@ fn loop4() {
         let _ =
         #[rr::exists("Hist")]
         #[rr::inv_vars("x")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} (0, 10) Hist {Iter}")]
+        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π (0, 10) Hist {Iter}")]
         #[rr::inv("x = sum_list_Z Hist")]
         #[rr::ignore] ||{};
 
