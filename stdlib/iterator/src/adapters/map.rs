@@ -3,8 +3,6 @@
 use crate::traits::iterator::Iterator;
 
 #[rr::export_as(core::iter::adapters::Map)]
-// TODO: problematic for this specification: The trait bounds for I, F are not in scope here.
-// TODO: should we expose the closure state?
 #[rr::refined_by("x" : "MapXRT {rt_of I} {rt_of F}")]
 #[rr::exists("Inv" : "thread_id → {xt_of I} → {xt_of F} → iProp Σ")]
 /// The map invariant holds.
@@ -29,14 +27,10 @@ where I: Iterator, F: FnMut(I::Item) -> B
     f: F,
 }
 
-// If I make this depend on Iterator, then it will be a bit tricky to make the Rocq declaration go
-// through. 
-
 #[rr::export_as(core::iter::adapters::Map)]
 impl<B, I, F> Map<B, I, F> 
 where I: Iterator, F: FnMut(I::Item) -> B
 {
-
     #[rr::params("Inv" : "thread_id → {xt_of I} → {xt_of F} → iProp Σ")]
     /// Precondition: The picked invariant should hold initially.
     #[rr::requires(#iris "Inv π iter f")]
@@ -64,7 +58,7 @@ where I: Iterator, F: FnMut(I::Item) -> B
 
 /// Spec: We have the pure parts of the inner Next and the pre- and postconditions.
 #[rr::instantiate("Next" := "(λ π s1 e s2, 
-        if_iNone e ({MI::Next} π s1.(map_it) None s2.(map_it)) ∗
+        if_iNone e (boringly ({MI::Next} π s1.(map_it) None s2.(map_it))) ∗
         if_iSome e (λ e, ∃ e_inner,
             boringly ({MI::Next} π s1.(map_it) (Some e_inner) s2.(map_it)) ∗
             boringly ({MF::Pre} π s1.(map_clos) *[e_inner]) ∗
@@ -76,8 +70,8 @@ where
 {
     type Item = MB;
 
-    #[rr::trust_me]
     #[rr::default_spec]
+    #[rr::trust_me]
     fn next(&mut self) -> Option<MB> {
         self.iter
             // Calling next is possible without preconditions.

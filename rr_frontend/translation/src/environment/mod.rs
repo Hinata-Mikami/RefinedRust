@@ -288,7 +288,7 @@ impl<'tcx> Environment<'tcx> {
             return false;
         }
 
-        if self.tcx.trait_of_item(did).is_some() {
+        if self.tcx.trait_of_assoc(did).is_some() {
             let it = self.tcx.associated_item(did);
             return matches!(it.kind, ty::AssocKind::Fn { .. });
         }

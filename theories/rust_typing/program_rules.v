@@ -3056,7 +3056,7 @@ Section typing.
     λ T, i2p (type_borrow_shr_end_uniq E L π κ l ty r bmin κ' γ T).
 
   Lemma type_borrow_shr_end_shared E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) κ' bmin T:
-    ⌜lctx_bor_kind_incl E L (Shared κ) bmin⌝ ∗
+    ⌜lctx_bor_kind_incl E L (Shared κ) (Shared κ')⌝ ∗
     (T (◁ ty) r)
     ⊢ typed_borrow_shr_end π E L κ l ty r (Shared κ') bmin T.
   Proof.
@@ -3069,7 +3069,7 @@ Section typing.
     iDestruct "Hl" as "-#Hl". iMod (fupd_mask_mono with "Hl") as "#Hl"; first done.
     iExists ly, (◁ ty)%I, _.
     iAssert (κ ⊑ κ')%I as "Hinclκ".
-    { iApply (bor_kind_incl_trans with "Hincl Hincl0"). }
+    { done. }
     iPoseProof (ty_shr_mono with "Hinclκ Hl") as "$".
     iR. iFrame "Hlb Hsc". iModIntro. iR.
     iSplitR. { rewrite ltype_own_ofty_unfold /lty_of_ty_own.

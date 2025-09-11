@@ -146,6 +146,16 @@ End updateable.
 Section updateable_rules.
   Context `{!typeGS Σ} {P} `{!Updateable P}.
 
+  Lemma updateable_add_fupd :
+    (|={⊤}=> updateable_core updateable_E updateable_L)
+    ⊢ P.
+  Proof.
+    iIntros "HT".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "CTX HE HL".
+    iMod "HT" as "$". by iFrame.
+  Qed.
+
   Lemma updateable_typed_array_access l off st :
     find_in_context (FindLoc l) (λ '(existT _ (lt, r, k, π)),
       typed_array_access π updateable_E updateable_L l off st lt r k (λ L2 rt2 ty2 len2 iml2 rs2 k2 rte lte re,
@@ -276,6 +286,54 @@ Section updateable_rules.
   Qed.
 
   (* TODO: add lemma for unfolding / subtyping? *)
+
+
+  Lemma updateable_copy_lft n1 n2 :
+    (∃ M, named_lfts M ∗
+      li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
+      li_tactic (simplify_lft_map_goal (named_lft_update n1 κ2 (named_lft_delete n1 M))) (λ M',
+        named_lfts M' -∗ updateable_core updateable_E updateable_L)))
+    ⊢ P.
+  Proof.
+    rewrite /compute_map_lookup_nofail_goal.
+    iIntros "(%M & Hnamed & %κ2 & _ & Hs)".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    unfold simplify_lft_map_goal. iDestruct "Hs" as "(%M' & _ & Hs)".
+    iModIntro. iExists updateable_L.
+    iFrame. iApply ("Hs" with "Hnamed").
+  Qed.
+
+  Lemma updateable_ltype_strip_later l  :
+    (find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ⌜bk = Owned true⌝ ∗ ⌜match ltype_lty _ lt with
+       | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
+       | _ => True
+       end⌝ ∗
+      (l ◁ₗ[π, Owned false] r @ lt -∗ updateable_core updateable_E updateable_L)))
+    ⊢ P.
+  Proof.
+    unfold find_in_context,FindLoc. simpl.
+    iIntros "(%x & Ha)".
+    destruct x as [rt (((lt & r) & bk) & π)].
+    iDestruct "Ha" as "(Hl & -> & % & HT)".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "CTX HE HL".
+    iPoseProof (ltype_own_Owned_true_false with "Hl") as "(Hcred & Hl)"; first done.
+    iDestruct "Hcred" as "((Hcred1 & Hcred) & _)".
+    iApply (lc_fupd_add_later with "Hcred1").
+    iNext. iModIntro. iExists updateable_L. iFrame.
+    by iApply "HT".
+  Qed.
+
+  Lemma opened_owned_discard (rt_cur rt_inner rt_full : RT) (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Pre Post π l r :
+    l ◁ₗ[π, Owned false] r @ OpenedLtype lt_cur lt_inner lt_full Pre Post -∗
+    l ◁ₗ[π, Owned false] r @ lt_cur.
+  Proof.
+    rewrite ltype_own_opened_unfold.
+    iIntros "(%ly & % & % & ? & % & % & Hcur & _)".
+    done.
+  Qed.
 End updateable_rules.
 
 Ltac add_updateable :=

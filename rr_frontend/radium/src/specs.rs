@@ -5204,10 +5204,12 @@ impl TraitImplSpec<'_> {
         let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record;
         let of_trait = &self.trait_ref.of_trait;
 
-        // get all type parameters + assoc types
-        let mut def_rts_params =
-            self.trait_ref.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
+        let mut def_rts_params = self.extra_context_items.clone();
         def_rts_params.0.insert(0, coq::binder::Binder::new_rrgs());
+
+        // get all type parameters + assoc types
+        def_rts_params
+            .append(self.trait_ref.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params().0);
 
         // add other attrs
         def_rts_params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);

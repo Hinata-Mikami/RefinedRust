@@ -439,5 +439,5 @@ Section lemmas.
     rewrite /array_own_el_shr. setoid_rewrite offset_loc_offset_loc. rewrite -Hlen1.
     setoid_rewrite Nat2Z.inj_add. done.
   Qed.
-
+  (* Lemmas about ◁ₗ splitting in unfold.v *)
 End lemmas.

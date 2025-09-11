@@ -17,6 +17,7 @@ use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::traits::{self, resolution};
+use crate::types::STInner;
 use crate::{procedures, regions, search, types};
 
 /// Get the syntypes of function arguments for a procedure call.
@@ -37,7 +38,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     // Since we do the substitution of the generics above, we should translate generics and
     // traits in the caller's scope.
     let callee_state = types::CalleeState::new(typing_env, caller_env);
-    let mut dummy_state = types::STInner::CalleeTranslation(callee_state);
+    let mut dummy_state = STInner::CalleeTranslation(callee_state);
 
     let mut syntypes = Vec::new();
     match full_ty.kind() {
@@ -330,7 +331,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let capture_regions_inst = folder.result();
 
         // compute the instantiation of late bounds
-        let late_inst = traits::registry::TR::compute_closure_late_bound_inst(closure_args, params);
+        let late_inst = {
+            let mut scope = self.ty_translator.scope.borrow_mut();
+            let mut state = STInner::InFunction(&mut scope);
+            self.trait_registry.compute_closure_late_bound_inst(&mut state, closure_args, params)
+        };
 
         let mut lft_param_inst_hint: Vec<radium::Lft> = Vec::new();
 
@@ -477,7 +482,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         include_self: bool,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
-        let mut state = types::STInner::InFunction(&mut scope);
+        let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns
         self.trait_registry
             .resolve_trait_requirements_in_state(&mut state, did, params, None, include_self)

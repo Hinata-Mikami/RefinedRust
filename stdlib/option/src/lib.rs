@@ -45,11 +45,11 @@ impl<T> Option<T> {
         unimplemented!();
     }
 
-    #[rr::returns("if self is Some x then x else default")]
-    pub fn unwrap_or(self, default: T) -> T {
+    #[rr::returns("default def self")]
+    pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
-            None => default,
+            None => def,
         }
     }
 
@@ -57,7 +57,8 @@ impl<T> Option<T> {
 
 #[rr::export_as(core::option::Option)]
 impl<T> Option<T> {
-    #[rr::ensures("if_None self (ret = None)")]
+    #[rr::params("Hx" : "TyGhostDrop {F}")]
+    #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop_for {F} Hx π ($# f))")]
     #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} π f *[self])")]
     #[rr::ensures(#iris "if_iSome self (λ self, ∃ x, ⌜ret = Some x⌝ ∗ {F::Post} π f *[self] x)")]
     pub fn map<U, F>(self, f: F) -> Option<U>

@@ -25,8 +25,116 @@ Section lemmas.
   Qed.
 
   (* TODO: possibly also prove these lemmas for location ownership? *)
-
 End lemmas.
+
+Section split.
+  Context `{!typeGS Σ}.
+
+  Lemma array_t_own_val_split_reshape {rt} (ty : type rt) π (n : nat) v rs (num size : nat) ly :
+    n = (num * size)%nat →
+    syn_type_has_layout (st_of ty) ly →
+    v ◁ᵥ{π} rs @ array_t n ty -∗
+    ⌜mjoin (reshape (replicate num (ly_size ly * size)%nat) v) = v⌝ ∗
+    [∗ list] v'; r' ∈ reshape (replicate num (ly_size ly * size)%nat) v; reshape (replicate num size) rs,
+      v' ◁ᵥ{π} r' @ array_t size ty.
+  Proof.
+    iIntros (-> Hst) "Hv".
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hlyv)".
+    apply syn_type_has_layout_array_inv in Hst' as (ly'' & Hst'' & -> & Hsz).
+    assert (ly'' = ly) as -> by by eapply syn_type_has_layout_inj.
+    opose proof (join_reshape (replicate num (ly_size ly * size)) v _) as Hv_eq.
+    { rewrite sum_list_replicate. rewrite Hlyv {2}/ly_size/=. lia. }
+    opose proof (join_reshape (replicate num size) rs _) as Hrs_eq.
+    { rewrite sum_list_replicate Hlen//. }
+    rewrite -{1}Hv_eq -{1}Hrs_eq.
+    iSplitR; first done.
+    iInduction num as [ | num] "IH" forall (v rs Hlyv Hv_eq Hrs_eq Hlen); simpl; first done.
+    iPoseProof (array_t_own_val_split with "Hv") as "($ & Hv2)".
+    { rewrite length_take. lia. }
+    { rewrite length_join.
+      rewrite fmap_length_reshape; rewrite sum_list_replicate; first done.
+      rewrite length_drop. lia. }
+    { rewrite length_take /size_of_st.
+      rewrite /use_layout_alg' Hst/=.
+      rewrite Hlyv. rewrite ly_size_mk_array_layout. lia. }
+    { rewrite length_join. rewrite fmap_length_reshape.
+      { rewrite sum_list_replicate. rewrite /size_of_st /use_layout_alg' Hst/=. lia. }
+      rewrite sum_list_replicate.
+      rewrite length_drop.
+      rewrite Hlyv ly_size_mk_array_layout. lia. }
+    iApply "IH"; last done; iPureIntro.
+    { rewrite ly_size_mk_array_layout. rewrite ly_size_mk_array_layout in Hsz. lia. }
+    { rewrite /has_layout_val length_drop Hlyv !ly_size_mk_array_layout. lia. }
+    { rewrite join_reshape; first done.
+      rewrite sum_list_replicate length_drop.
+      rewrite Hlyv ly_size_mk_array_layout. lia. }
+    { rewrite join_reshape; first done. rewrite sum_list_replicate length_drop Hlen. lia. }
+    { rewrite length_drop Hlen. lia. }
+  Qed.
+  (* TODO: corresponding merge lemma *)
+
+
+
+  Lemma array_t_ofty_split_reshape {rt} (ty : type rt) F π n num size l rs :
+    lftE ⊆ F →
+    n = num * size →
+    (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) ={F}=∗
+    [∗ list] i ↦ v ∈ (reshape (replicate num size) rs),
+    (l offsetst{st_of ty}ₗ (i * size)) ◁ₗ[π, Owned false] #v @ (◁ array_t size ty).
+  Proof.
+    intros ? ->.
+    rewrite !ltype_own_ofty_unfold; simpl.
+    iIntros "(%ly & %Hst & %Hly & _ & #Hlb & _ & %r' & <- & Hx)".
+    simpl in *.
+    iMod (fupd_mask_mono with "Hx") as "Hx"; first done.
+    iDestruct "Hx" as "(%v & Hl & Hv)".
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
+    iPoseProof (array_t_own_val_split_reshape _ _ _ _ _ num size with "Hv") as "(%Heq & Hv)"; [done.. | ].
+    rewrite -{1}Heq.
+    iPoseProof (heap_pointsto_mjoin_uniform _ _ (ly_size ly' * size) with "Hl") as "(Hlb' & Hl)".
+    { intros v'. intros Hlen'%reshape_replicate_elem_length; first done.
+      rewrite Hlyv. rewrite ly_size_mk_array_layout. lia. }
+    iPoseProof (big_sepL2_length with "Hv") as "%Hlen_eq".
+    iPoseProof (big_sepL_extend_r with "Hl") as "Hl"; first done.
+    iPoseProof (big_sepL2_sep with "[$Hv $Hl]") as "Ha".
+    iApply big_sepL2_elim_l.
+    iApply (big_sepL2_wand with "Ha"). iApply big_sepL2_intro. { done. }
+    iModIntro. iModIntro.
+    iIntros (? ? ? Hlook1 Hlook2) "(Hv & Hl)".
+    rewrite !ltype_own_ofty_unfold; simpl.
+    iExists (mk_array_layout ly' size).
+    assert (num > 0).
+    { destruct num; last lia. simpl in *. naive_solver. }
+    iSplitR. { iPureIntro. eapply syn_type_has_layout_array; [done.. | ].
+      move: Hsz. rewrite ly_size_mk_array_layout. nia. }
+    simpl.
+    iSplitR. { iPureIntro.
+      rewrite /has_layout_loc ly_align_mk_array_layout.
+      rewrite /has_layout_loc ly_align_mk_array_layout in Hly.
+      eapply has_layout_loc_offset_loc'.
+      - rewrite /use_layout_alg' Hst//.
+      - rewrite /use_layout_alg' Hst//. by eapply use_layout_alg_wf.
+      - rewrite /use_layout_alg' Hst//. }
+    iR. iSplitR.
+    { iApply (loc_in_bounds_offset with "Hlb").
+      - done.
+      - simpl. lia.
+      - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst/=.
+        rewrite !ly_size_mk_array_layout.
+        apply lookup_lt_Some in Hlook2.
+        move: Hlook2. rewrite length_reshape length_replicate.
+        nia. }
+    iR. iExists _. iR. iModIntro.
+    iExists _. iFrame.
+    rewrite /OffsetLocSt /use_layout_alg' Hst/=.
+    rewrite /offset_loc.
+    assert ((ly_size ly' * (k * size))%Z = ((ly_size ly' * size)%nat * k)%Z) as -> by lia.
+    done.
+  Qed.
+End split.
 
 Section unfold.
   Context `{!typeGS Σ}.

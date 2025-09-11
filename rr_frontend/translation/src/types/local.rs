@@ -226,9 +226,12 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             )?;
             let trait_use_ref = entry.trait_use;
 
+            let typing_env = ty::TypingEnv::post_analysis(env.tcx(), scope.did);
+
             // compute the instantiation of this trait use's params by unifying the args
             // this instantiation will be used as the instantiation hint in the function
-            let mut unifier = traits::registry::LateBoundUnifier::new(&entry.bound_regions);
+            let mut unifier =
+                traits::registry::LateBoundUnifier::new(env.tcx(), typing_env, &entry.bound_regions);
             unifier.map_generic_args(entry.trait_ref.args, trait_args);
             let (bound_regions_inst, early_regions_inst) = unifier.get_result();
 

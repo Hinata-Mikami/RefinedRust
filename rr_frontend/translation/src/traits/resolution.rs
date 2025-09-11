@@ -25,8 +25,11 @@ where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
 {
     // TODO: should we normalize like this also below?
-    let infer_ctx: infer::InferCtxt<'tcx> =
-        tcx.infer_ctxt().with_next_trait_solver(true).build(typing_env.typing_mode);
+    let infer_ctx: infer::InferCtxt<'tcx> = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .ignoring_regions()
+        .build(typing_env.typing_mode);
 
     let obligation_cause = middle::traits::ObligationCause::dummy();
     let at = infer_ctx.at(&obligation_cause, typing_env.param_env);
@@ -98,14 +101,17 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 
             trace!("resolved to impl {impl_did:?} with args {impl_args:?}");
 
-            // enumerate regions in args
+            // enumerate regions in args since they were erased before
             let (enumerated_impl_args, num_regions) = arg_folder::relabel_erased_regions(impl_args, tcx);
 
             trace!("re-enumerated impl args: {enumerated_impl_args:?}");
 
-            // translate to trait args
+            if num_regions == 0 {
+                return impl_source.to_owned();
+            }
+
+            // instantiate the trait with the impl args; the subject is the trait below the impl's binders
             let subject = tcx.impl_subject(impl_did);
-            //let subject = subject.instantiate(tcx, enumerated_impl_args.as_slice());
             let subject = subject.skip_binder();
             let subject = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
 
@@ -113,29 +119,43 @@ fn recover_lifetimes_for_impl_source<'tcx>(
                 unreachable!();
             };
 
+            // impl_args are the args of the trait, instantiated with the re-enumerated args of the resolved
+            // impl required_args are the args of the trait that we were expecting, still
+            // containing the right regions Find an instantiation of `impl_args`'s regions by
+            // comparing them.
             let impl_args = subject_ref.args;
             let required_args = substs;
             trace!("implementing trait {:?} for args {:?}", subject_ref.def_id, impl_args);
             trace!("mapping regions from {required_args:?} to {impl_args:?}");
 
             // normalize both args first, taking into account the late bound binders
+            // TODO: actually, this seems to have problem if we have to normalize an alias
+            // involving region variables.
+            // Is there some way to teach the resolution about region variables in scope?
             let bound_impl_args = below_binders.rebind(impl_args);
             let impl_args = normalize_type(tcx, typing_env, bound_impl_args).unwrap();
             let impl_args = impl_args.skip_binder();
+
+            trace!("normalized impl_args = {impl_args:?}");
 
             let bound_required_args = below_binders.rebind(required_args);
             let required_args = normalize_type(tcx, typing_env, bound_required_args).unwrap();
             let required_args = required_args.skip_binder();
 
+            trace!("normalized required = {required_args:?}");
+
             // find the mapping
             let mut mapper = RegionMapper {
+                tcx,
+                typing_env,
                 map: HashMap::new(),
             };
             mapper.map_generic_args(impl_args, required_args);
             let region_map = mapper.get_result(num_regions);
             trace!("recovered region map: {region_map:?}");
 
-            // then instantiate the enumerated_impl_args with the mapping
+            // then instantiate the enumerated_impl_args with the mapping, recovering the
+            // propertly-instantiated args for the resolved `impl`
             let renamed_impl_args = arg_folder::rename_region_vids(enumerated_impl_args, tcx, region_map);
 
             let new_data = trait_selection::traits::ImplSourceUserDefinedData {
@@ -154,6 +174,8 @@ fn recover_lifetimes_for_impl_source<'tcx>(
 }
 
 struct RegionMapper<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     map: HashMap<ty::RegionVid, ty::Region<'tcx>>,
 }
 impl<'tcx> RegionMapper<'tcx> {
@@ -167,6 +189,14 @@ impl<'tcx> RegionMapper<'tcx> {
     }
 }
 impl<'tcx> RegionBiFolder<'tcx> for RegionMapper<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
+        &self.typing_env
+    }
+
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReVar(v1) = r1.kind() {
             assert!(!self.map.contains_key(&v1));

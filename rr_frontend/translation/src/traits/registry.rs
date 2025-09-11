@@ -493,6 +493,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     pub(crate) fn compute_closure_late_bound_inst(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
@@ -512,9 +514,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let args_tuple = args[1];
         let args_tuple = args_tuple.as_type().unwrap();
-        trace!("get_closure_impl_spec_term: trying to unify input={input:?} with args_tuple={args_tuple:?}");
+        trace!(
+            "compute_closure_late_bound_inst: trying to unify input={input:?} with args_tuple={args_tuple:?}"
+        );
 
-        let mut unifier = LateBoundUnifier::new(late_regions.as_slice());
+        let typing_env = state.get_typing_env(self.env.tcx());
+        let mut unifier = LateBoundUnifier::new(self.env.tcx(), typing_env, late_regions.as_slice());
         unifier.map_tys(input, args_tuple);
         let (inst, _) = unifier.get_result();
 
@@ -559,7 +564,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // Also instantiate late-bound arguments of the closure by comparing the closure argument
         // tuple type
-        let inst = Self::compute_closure_late_bound_inst(closure_args, trait_args);
+        let inst = self.compute_closure_late_bound_inst(state, closure_args, trait_args);
         trace!("get_closure_impl_spec_term: found unification {inst:?}");
 
         for region in inst {
@@ -573,7 +578,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         for ty in upvars_tys {
             ty.fold_with(&mut folder);
         }
-        for r in folder.result() {
+        let upvar_regions = folder.result();
+        trace!(
+            "get_closure_impl_spec_term: collected upvar regions {upvar_regions:?}, translating in state={state:?}"
+        );
+        for r in upvar_regions {
             let lft = types::TX::translate_region(state, r)?;
             scope_inst.add_lft_param(lft);
         }
@@ -683,7 +692,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
                     // compute the instantiation of the quantified trait assumption in terms
                     // of the variables introduced by the trait assumption we are proving.
-                    let mut unifier = LateBoundUnifier::new(&trait_use.bound_regions);
+                    let mut unifier =
+                        LateBoundUnifier::new(self.env.tcx(), current_typing_env, &trait_use.bound_regions);
                     unifier.map_generic_args(trait_use.trait_ref.args, trait_args);
                     let (inst, _) = unifier.get_result();
                     trace!("computed instantiation: {inst:?}");
@@ -758,7 +768,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         mut impl_deps: ImplDeps<'_>,
         include_self: bool,
     ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
-        trace!("Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}");
+        trace!(
+            "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
+        );
 
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
         trace!("current typing env: {current_typing_env:?}");
@@ -1341,13 +1353,21 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 }
 
 pub(crate) struct LateBoundUnifier<'tcx, 'a> {
+    tcx: ty::TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
     instantiation: HashMap<usize, ty::Region<'tcx>>,
     early_instantiation: HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub(crate) fn new(binders_to_unify: &'a [ty::BoundRegionKind]) -> Self {
+    pub(crate) fn new(
+        tcx: ty::TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        binders_to_unify: &'a [ty::BoundRegionKind],
+    ) -> Self {
         Self {
+            tcx,
+            typing_env,
             binders_to_unify,
             instantiation: HashMap::new(),
             early_instantiation: HashMap::new(),
@@ -1367,6 +1387,14 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
     }
 }
 impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
+        &self.typing_env
+    }
+
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
         if let ty::RegionKind::ReBound(_, b1) = r1.kind() {
             trace!("trying to unify region {r1:?} with {r2:?}");

@@ -209,16 +209,20 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
 }
 
 fn cmp_defid(env: &Environment<'_>, a: DefId, b: DefId) -> Ordering {
-    // NOTE: This definition is problematic if we are defining shims.
-    // The relative order of shims to each other may not be the same as the relative order of the
-    // actual objects to each other.
-
+    // NOTE: The relative order of shims to each other may not be the same as the relative order of the
+    // actual objects to each other. Therefore, use the export order.
     let a_did = shims::flat::get_external_did_for_did(env, a).unwrap_or(a);
     let b_did = shims::flat::get_external_did_for_did(env, b).unwrap_or(b);
 
-    let a_hash = env.tcx().def_path_hash(a_did);
-    let b_hash = env.tcx().def_path_hash(b_did);
-    a_hash.cmp(&b_hash)
+    //let a_path = env.tcx().def_path(a_did);
+    let a_str = env.tcx().def_path_str(a_did);
+    let b_str = env.tcx().def_path_str(b_did);
+
+    a_str.cmp(&b_str)
+
+    //let a_hash = env.tcx().def_path_hash(a_did);
+    //let b_hash = env.tcx().def_path_hash(b_did);
+    //a_hash.cmp(&b_hash)
 }
 
 fn cmp_ty<'tcx>(env: &Environment<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {

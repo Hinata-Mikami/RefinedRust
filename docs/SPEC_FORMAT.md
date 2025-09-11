@@ -63,41 +63,13 @@ There are further attributes that influence the proof-checking behaviour:
 | `export_as` | influence the exported path in the generated RefinedRust library interface for import in other proofs | a Rust path | `#[rr::export_as(std::vec::Vec::push)]` |
 
 ## Closure attributes
-RefinedRust has experimental support for closures.
-The same attributes as for functions apply, but in addition, you can specify assumptions and modifications on the captures of the closure using the `rr::capture` attribute.
+RefinedRust has support for closures.
+The same attributes as for functions apply, but in addition, you can specify assumptions and modifications on the captures of the closure.
+For this, you can use escape sequences (see [Escape sequences](#escape-sequences) below) to refer to the captures of the closure by their Rust names.
+For instance, if the closure captures variable `x`, you can use `{x}` to refer to its mathematical value.
+If the closure captures `x` *mutably*, you can additionally use `{x.*new}` to refer to its *new* value in the postcondition.
 
-It semantics are best understood using some examples:
-```
-let x = 5;
-
-let clos =
-    #[rr::params("i")]
-    #[rr::capture("x": "i")]
-    #[rr::requires("(2 * i)%Z ∈ i32")]
-    #[rr::returns("(2 * i)%Z")]
-    || {
-        x * 2
-    };
-```
-In this example, the variable `x` is captured as a shared reference.
-Hence, the `rr::capture` attribute specifies that we assume the captured value of `x` to have refinement `i`.
-
-The same applies for move-captured variables.
-
-For mutably captured variables, we can also specify the new value after the closure returns (separated by `->`), as in the following example:
-```
-let mut y = 2;
-
-let mut clos =
-    #[rr::params("i")]
-    #[rr::capture("y": "i" -> "(2*i)%Z")]
-    #[rr::requires("(2 * i)%Z ∈ i32")]
-    || { y *= 2; };
-```
-Currently, RefinedRust does not support the case that only a subplace of a variable is captured very well.
-For references of which a subplace is captured, the capture specification implicitly applies to the actually captured subplace, while other cases are not supported.
-In the future, the specification language will be extended to handle these cases better.
-
+If capturing a place which is not a variable, this syntax also works for place projections which are captured; for instance, you may use `{x.a.b}` or `{(*x).a.b.*new}`.
 
 ## Impl attributes
 The following attributes are also available on impls and then influence all functions contained in them:
@@ -220,18 +192,34 @@ This is especially useful for semi-manual proofs.
 As a rule of thumb, all  string literals in specifications are inserted literally into the generated Rocq code.
 However, specifications can escape into special syntax inside `{ }` (curly braces) in order to access some Rust-level variables.
 These escape sequences are literally replaced by the frontend.
+To prevent an expression wrapped in curly braces to be transformed, write two curly braces: `{{ ... }}`.
+This will be replaced by `{ ... }`.
 
-In particular, we support the following escape sequences:
+#### Types and lifetimes
+In particular, we support the following escape sequences to refer to components of types and lifetimes:
+
 | Example | Purpose |
 |---------|---------|
 | `{ty_of T}`   | Gets substituted by the RefinedRust type corresponding to the Rust type variable `T` |
 | `{st_of T}` | Gets substituted by the syntactic type (providing layout information) of the type parameter `T` |
 | `{ly_of T}` | Gets substituted by a term giving the layout of the type parameter `T`'s syntactic type |
+| `{xt_of T}` | Gets substituted by the surface type (mathematical model) of the type parameter `T` |
 | `{rt_of T}` | Gets substituted by the refinement type (mathematical model) of the type parameter `T` |
 | `{'a}` | Gets replaced by a term describing the lifetime of lifetime parameter 'a |
 
-To prevent an expression wrapped in curly braces to be transformed, write two curly braces: `{{ ... }}`.
-This will be replaced by `{ ... }`.
+Note that here, `T` can also refer to an associated type (of a trait requirement) of the form `T::Output` (where `Output` is an associated type on a trait requirement of `T`).
+We currently do not support specifying as *which* trait this should be intepreted (`<T as Iterator>::Output`), so in some cases there may be name collisions.
+
+#### Trait attributes
+We can refer to declared specification attributes of traits in the same way as we refer to associated types.
+For instance, if `T : Iterator`, then `{T::Next}` will refer to its `Next` relation.
+
+#### Closure captures
+In pre- and postconditions on closures, escape sequences can be used to refer to the captures of the closure by their Rust names.
+For instance, if the closure captures variable `x`, you can use `{x}` to refer to its mathematical value.
+If the closure captures `x` *mutably*, you can additionally use `{x.*new}` to refer to its *new* value in the postcondition.
+
+If capturing a place which is not a variable, this syntax also works for place projections which are captured; for instance, you may use `{x.a.b}` or `{(*x).a.b.*new}`.
 
 ## On export behavior
 
@@ -244,18 +232,11 @@ Examples of this are provided in the `stdlib` folder, which provides axiomatized
 
 Currently, the following objects are exported:
 - functions
-- methods in inherent impls (i.e., impls without a trait)
+- methods in impls
 - ADTs (structs and enums)
-- methods in trait impls (restrictions apply)
+- trait impls 
 
-For methods in trait implementations, what is exported are specifications for the particular implementation of this trait (which may be stronger than the generic specification one would give to all implementors of the trait).
-These specifications are used by RefinedRust in places where the trait implementation can be statically resolved.
-Some restrictions apply to exporting these kinds of specifications, as it is hard to uniquely identify specific trait implementations in Rust:
-- we can not export specifications for blanket implementations,
-- we can only export specifications for trait implementations where `self` is an ADT,
-- we currently do not disambiguate implementations depending on the set of predicates (enforced by `where` clauses).
-
-On importing a specification for a trait method, if there are multiple candidate implementations this specification could attach to, a warning is issued.
+On importing a specification for a trait impl, if there are multiple candidate implementations this specification could attach to, a warning is issued.
 This case should be avoided, as it is fragile; if you encounter such a case, file an issue, so that the disambiguation criteria can be improved.
 
 ## Types

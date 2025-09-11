@@ -459,6 +459,8 @@ Section enum.
   Qed.
 End enum.
 
+Global Hint Extern 10 (Copyable _) => (refine (enum_t_copyable _ _); intros []; apply _) : typeclass_instances.
+
 Section ne.
   Context `{!typeGS Σ}.
 

@@ -262,6 +262,14 @@ Proof.
   move => Hwf Hl. apply Z.divide_add_r; [done|]. etrans; [by apply: Hwf|].
   apply: Z.divide_factor_l.
 Qed.
+Lemma has_layout_loc_offset_loc' l i ly ly':
+  ly = ly' →
+  layout_wf ly →
+  l `has_layout_loc` ly →
+  (l offset{ly}ₗ i) `has_layout_loc` ly'.
+Proof.
+  intros <-. apply has_layout_loc_offset_loc.
+Qed.
 
 Lemma aligned_to_offset l n off :
   l `aligned_to` n → (n | off) → (l +ₗ off) `aligned_to` n.

@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use log::info;
+use log::{info, trace};
 use rr_rustc_interface::middle::mir;
 
 use super::TX;
@@ -72,6 +72,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 self.env, &mut self.inclusion_tracker, &self.ty_translator,
                                 loc, plc_strongly_writeable, plc_ty, rhs_ty);
 
+                        trace!("assignment at point {loc:?}: got assignment_annots={assignment_annots:?}");
 
                         let (unconstrained_annots, unconstrained_hints) = regions::assignment::make_unconstrained_region_annotations(
                             &mut self.inclusion_tracker, &self.ty_translator, assignment_annots.unconstrained_regions, loc,

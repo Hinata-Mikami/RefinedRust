@@ -759,6 +759,16 @@ Qed.
 
 End util.
 
+Lemma fmap_length_reshape {A} szs (l : list A) :
+  sum_list szs = length l → length <$> reshape szs l = szs.
+Proof.
+  unfold fmap.
+  induction szs as [ | sz szs IH] in l |-*; simpl; first done.
+  intros Heq.
+  rewrite length_take. f_equiv. { lia. }
+  apply IH. rewrite length_drop. lia.
+Qed.
+
 
 (* TODO upstream *)
 Local Open Scope Z_scope.

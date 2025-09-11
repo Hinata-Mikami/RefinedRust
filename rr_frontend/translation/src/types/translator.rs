@@ -167,7 +167,7 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
 
 /// Translation state for translating the interface of a called function.
 /// Lifetimes are completely erased since we only need these types for syntactic types.
-#[derive(Constructor, Debug)]
+#[derive(Constructor, Clone, Copy, Debug)]
 pub(crate) struct CalleeState<'a, 'tcx, 'def> {
     /// the env of the caller
     typing_env: &'a ty::TypingEnv<'tcx>,
@@ -238,9 +238,14 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         tcx: ty::TyCtxt<'tcx>,
         params: scope::Params<'tcx, 'def>,
     ) -> STInner<'b, 'def, 'tcx> {
-        let typing_env = self.get_typing_env(tcx);
-        let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
-        STInner::TraitReqs(Box::new(state))
+        if let STInner::CalleeTranslation(s) = self {
+            // make sure to keep the callee state, which translates regions to dummys
+            STInner::CalleeTranslation(*s)
+        } else {
+            let typing_env = self.get_typing_env(tcx);
+            let state = TraitState::new(params, typing_env, self.polonius_info(), self.polonius_region_map());
+            STInner::TraitReqs(Box::new(state))
+        }
     }
 
     /// Get the `ParamEnv` for the current state.

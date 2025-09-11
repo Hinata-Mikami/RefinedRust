@@ -28,6 +28,14 @@ Proof.
   intros Ha (i & f). apply Ha.
 Qed.
 
+Global Instance simpl_both_mapX {I F} (m1 m2 : MapX I F) :
+  SimplBothRel (=) m1 m2 (m1.(map_it) = m2.(map_it) ∧ (m1.(map_clos) = m2.(map_clos))).
+Proof.
+  unfold SimplBothRel.
+  destruct m1, m2; naive_solver.
+Qed.
+
+
 (* TODO move *)
 Definition li_sealed `{!refinedrustGS Σ} (P : iProp Σ) : iProp Σ :=
   P.

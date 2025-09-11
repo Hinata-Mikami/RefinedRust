@@ -1856,7 +1856,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                             let ty::TyKind::FnDef(_, params) = ty.kind() else {
                                 unimplemented!();
                             };
-                            let mut generics = scope::Params::new_from_generics(params, Some((tcx, assoc_item.def_id)));
+                            let mut generics = scope::Params::new_from_generics(tcx, params, Some(assoc_item.def_id));
                             generics.add_param_env(assoc_item.def_id, vcx.env, vcx.type_translator, vcx.trait_registry)?;
                             // TODO: We don't respect dependencies of the direct scope on the
                             // surrounding scope here. For instance for assoc type constraints. 
@@ -1874,7 +1874,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                             for x in bound_vars {
                                 bound_regions.push(x.expect_region());
                             }
-                            drop(generics.translate_bound_regions(&bound_regions));
+                            drop(generics.translate_bound_regions(tcx, &bound_regions));
 
                             let scope: radium::GenericScope<'_> = generics.into();
 

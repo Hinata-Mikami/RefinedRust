@@ -3,9 +3,13 @@ use std::mem;
 use rr_rustc_interface::middle::ty;
 
 pub(crate) trait RegionBiFolder<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx>;
+
+    fn typing_env(&self) -> &ty::TypingEnv<'tcx>;
+
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>);
 
-    fn map_tys(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) {
+    fn map_tys(&mut self, ty1: ty::Ty<'tcx>, mut ty2: ty::Ty<'tcx>) {
         // normalize
         // Probably we should normalize the original thing before folding instead.
         // But problem: the normalization can also not deal with Polonius variables, which I will
@@ -19,6 +23,10 @@ pub(crate) trait RegionBiFolder<'tcx> {
         // We could normalize erasing regions below, resolve, and then recursively restore the
         // regions?
 
+        if mem::discriminant(ty1.kind()) != mem::discriminant(ty2.kind()) {
+            // Hack right now. Figure out how to do this properly...
+            ty2 = self.tcx().try_normalize_erasing_regions(*self.typing_env(), ty2).unwrap();
+        }
         assert_eq!(mem::discriminant(ty1.kind()), mem::discriminant(ty2.kind()));
 
         match ty1.kind() {
