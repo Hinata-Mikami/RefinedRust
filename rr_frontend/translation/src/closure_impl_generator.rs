@@ -438,6 +438,14 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let inner_spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.to_owned(), method_name);
         builder.add_trait_function_spec(inner_spec);
 
+        // replicate the Coq params for extra context items
+        for x in &closure_spec.early_coq_params.0 {
+            builder.add_early_coq_param(x.to_owned());
+        }
+        for x in &closure_spec.late_coq_params.0 {
+            builder.add_late_coq_param(x.to_owned());
+        }
+
         match (kind, to_impl) {
             (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // impl FnOnce for a FnMut closure

@@ -906,7 +906,7 @@ where
                 builder.unsafe_lifetime_constraints.push(term);
             },
             "context" => {
-                // TODO: do not allow this on closures
+                // TODO: do not allow this on closures?
                 let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
                 let param = coq::binder::Binder::new_generalized(
                     coq::binder::Kind::MaxImplicit,

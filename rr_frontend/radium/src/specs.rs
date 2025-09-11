@@ -913,7 +913,8 @@ impl InvariantSpec {
             out.push_str(".\n");
         }
 
-        let (context_names, dep_sigma) = format_extra_context_items(&self.coq_params, &mut out).unwrap();
+        let (_context_names, context_names_without_sigma) =
+            format_extra_context_items(&self.coq_params, &mut out).unwrap();
 
         // get the applied base_rfn_type
         let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
@@ -931,7 +932,7 @@ impl InvariantSpec {
                 applied_base_rt.to_string().as_str(),
                 &rt_instantiations,
                 scope,
-                &context_names
+                &context_names_without_sigma,
             )
         )
         .unwrap();
@@ -939,8 +940,9 @@ impl InvariantSpec {
         // finish
         write!(out, "End {}.\n", self.type_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.rt_def_name()).unwrap();
-        if !context_names.is_empty() {
-            let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+        if !context_names_without_sigma.is_empty() {
+            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+            let dep_sigma_str = "";
 
             write!(
                 out,
@@ -948,7 +950,7 @@ impl InvariantSpec {
                 self.rt_def_name(),
                 dep_sigma_str,
                 "_ ".repeat(all_ty_params.params.len()),
-                "_ ".repeat(context_names.len())
+                "_ ".repeat(context_names_without_sigma.len())
             )
             .unwrap();
         }
@@ -1218,14 +1220,21 @@ impl<'def> AbstractVariant<'def> {
         out.push('\n');
 
         // write coq parameters
-        let (context_names, dep_sigma) = format_extra_context_items(extra_context, &mut out).unwrap();
+        let (context_names, context_names_without_sigma) =
+            format_extra_context_items(extra_context, &mut out).unwrap();
 
-        write!(out, "{}", self.generate_coq_type_def_core(scope, &context_names, &context_names)).unwrap();
+        write!(
+            out,
+            "{}",
+            self.generate_coq_type_def_core(scope, &context_names, &context_names_without_sigma)
+        )
+        .unwrap();
 
         write!(out, "End {}.\n", self.plain_ty_name).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.plain_rt_def_name).unwrap();
-        if !context_names.is_empty() {
-            let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+        if !context_names_without_sigma.is_empty() {
+            //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+            let dep_sigma_str = "";
 
             write!(
                 out,
@@ -1233,7 +1242,7 @@ impl<'def> AbstractVariant<'def> {
                 self.plain_rt_def_name,
                 dep_sigma_str,
                 "_ ".repeat(all_ty_params.params.len()),
-                "_ ".repeat(extra_context.len())
+                "_ ".repeat(context_names_without_sigma.len())
             )
             .unwrap();
         }
@@ -1244,14 +1253,13 @@ impl<'def> AbstractVariant<'def> {
 fn format_extra_context_items<F>(
     items: &[coq::binder::Binder],
     f: &mut F,
-) -> Result<(Vec<String>, bool), fmt::Error>
+) -> Result<(Vec<String>, Vec<String>), fmt::Error>
 where
     F: fmt::Write,
 {
     let mut context_names = Vec::new();
+    let mut context_names_without_sigma = Vec::new();
     let mut counter = 0;
-
-    let mut depends_on_sigma = false;
 
     // write coq parameters
     if !items.is_empty() {
@@ -1263,14 +1271,17 @@ where
             counter += 1;
 
             write!(f, "{}", it.clone().set_name(name.clone()))?;
+
+            if !it.is_dependent_on_sigma() {
+                context_names_without_sigma.push(name.clone());
+            }
             context_names.push(name);
-            depends_on_sigma = depends_on_sigma || it.is_dependent_on_sigma();
         }
         write!(f, ".\n")?;
     }
     write!(f, "\n")?;
 
-    Ok((context_names, depends_on_sigma))
+    Ok((context_names, context_names_without_sigma))
 }
 
 /// Description of a struct type.
@@ -1426,7 +1437,8 @@ impl<'def> AbstractStruct<'def> {
                 out.push_str(".\n");
             }
 
-            let (context_names, dep_sigma) = format_extra_context_items(&inv.coq_params, &mut out).unwrap();
+            let (_context_names, context_names_without_sigma) =
+                format_extra_context_items(&inv.coq_params, &mut out).unwrap();
 
             // generate terms to apply the sls app to
             let mut sls_app = Vec::new();
@@ -1494,7 +1506,7 @@ impl<'def> AbstractStruct<'def> {
             write!(
                 out,
                 "{indent}Proof using {ty_rt_uses} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
-                context_names.join(" "),
+                context_names_without_sigma.join(" "),
                 type_name
             )
             .unwrap();
@@ -1503,8 +1515,9 @@ impl<'def> AbstractStruct<'def> {
             // finish
             write!(out, "End {}.\n", inv.type_name).unwrap();
             write!(out, "Global Arguments {} : clear implicits.\n", inv.rt_def_name()).unwrap();
-            if !context_names.is_empty() {
-                let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+            if !context_names_without_sigma.is_empty() {
+                //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
+                let dep_sigma_str = "";
 
                 write!(
                     out,
@@ -1512,7 +1525,7 @@ impl<'def> AbstractStruct<'def> {
                     inv.rt_def_name(),
                     dep_sigma_str,
                     "_ ".repeat(all_ty_params.params.len()),
-                    "_ ".repeat(context_names.len())
+                    "_ ".repeat(context_names_without_sigma.len())
                 )
                 .unwrap();
             }
@@ -2601,8 +2614,8 @@ pub struct FunctionSpec<'def, T = InnerFunctionSpec<'def>> {
     pub(crate) generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
 
     /// Coq-level parameters the typing statement needs
-    early_coq_params: coq::binder::BinderList,
-    late_coq_params: coq::binder::BinderList,
+    pub early_coq_params: coq::binder::BinderList,
+    pub late_coq_params: coq::binder::BinderList,
 
     pub(crate) spec: T,
 }
@@ -5178,6 +5191,9 @@ pub struct TraitImplSpec<'def> {
 
     /// the name of the Coq def of the method definitions and all type parameters they need
     pub methods: TraitInstanceSpec<'def>,
+
+    /// extra coq binders
+    pub extra_context_items: coq::binder::BinderList,
 }
 
 impl TraitImplSpec<'_> {
@@ -5337,7 +5353,8 @@ impl TraitImplSpec<'_> {
         // get parameters
         // this is parametric in the rts, sts, semtys, attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
-        let mut params = ty_params.get_coq_ty_params();
+        let mut params = self.extra_context_items.clone();
+        params.append(ty_params.get_coq_ty_params().0);
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         // instantiation of the trait
@@ -5374,7 +5391,8 @@ impl TraitImplSpec<'_> {
         // get parameters
         // this is parametric in the rts, sts, semtys attrs of all trait deps.
         let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
-        let mut params = ty_params.get_coq_ty_params();
+        let mut params = self.extra_context_items.clone();
+        params.append(ty_params.get_coq_ty_params().0);
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
         let ty_term =
@@ -5405,6 +5423,8 @@ impl fmt::Display for TraitImplSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
             section.push(coq::command::Context::refinedrust());
+
+            section.push(coq::command::Context::new(self.extra_context_items.clone()));
 
             // Instantiate with the parameter and associated types
             let params_inst = self.trait_ref.get_ordered_params_inst();

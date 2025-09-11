@@ -1752,8 +1752,9 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
             let instance_spec = radium::TraitInstanceSpec::new(methods);
 
+            let extra_context_items = body_spec.early_coq_params.clone();
             // assemble the spec and register it
-            let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
+            let spec = radium::TraitImplSpec::new(impl_info, instance_spec, extra_context_items);
             Ok((spec, call_fn_def))
         };
 
@@ -1889,7 +1890,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             let instance_spec = radium::TraitInstanceSpec::new(methods);
 
             // assemble the spec and register it
-            let spec = radium::TraitImplSpec::new(impl_info, instance_spec);
+            let spec = radium::TraitImplSpec::new(impl_info, instance_spec, coq::binder::BinderList::empty());
             Ok((spec, deps))
         };
 
