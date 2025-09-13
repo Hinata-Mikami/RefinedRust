@@ -133,6 +133,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(Some(LoopIteratorInfo {
             iterator_variable: iter_variable,
             binder_name: format!("_iter_{}", iter_variable.index()),
+            history_name: format!("_iter_hist_{}", iter_variable.index()),
             iter_spec: trait_spec_term,
         }))
     }

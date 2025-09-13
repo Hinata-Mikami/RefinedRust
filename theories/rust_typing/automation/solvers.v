@@ -2517,7 +2517,7 @@ Ltac prove_trait_incl_for trait_spec trait_ty_inst trait_lft_inst cont :=
 
       assert (incl t1 t2) as H2;
       [ rewrite trait_incl_marker_unfold in H;
-        apply H
+        notypeclasses refine (H _ _)
       | cont t1 t2 H2 ]
   end.
 (** Given a quantified [trait_spec], find the spec inclusion assumption for this [trait_spec] and generate an instance of it for the instantiation [trait_ty_inst] and [trait_lft_inst].

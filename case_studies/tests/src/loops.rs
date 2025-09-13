@@ -122,37 +122,9 @@ fn loop4_myrange_2() {
     };
     for i in r {
         let _ =
-        #[rr::exists("Hist")]
         #[rr::inv_vars("x")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π (0, 10) Hist {Iter}")]
-        #[rr::inv("x = sum_list_Z Hist")]
+        #[rr::inv("x = sum_list_Z {Hist}")]
         #[rr::ignore] ||{};
-        // We'll need an inductive proof here: mainly, that FusedNext a hist b implies something
-        // about the relationship of a and b.
-
-        // Special support for this:
-        // let's add an annotation for snapshotting a variable.
-        // inputs: a name of a local 
-        // - this should create a let binding in the Rocq context that we can refer to afterwards.
-        // - the invariant needs to be able to refer to it symbolically (we don't know yet which
-        // name we'll get when defining the invariatnt)
-        // - probably we can have a Rocq context mapping for that. Alternatively, that mapping
-        // could also directly give the term.
-        // - we want an operation to look up the mapping.
-        //
-        //
-        // More generally, what would snapshot variables be useful for?
-        //
-        // I would like to do something like snapshot!(x, "my_name")
-        //
-        // But I won't easily be able to refer to it in loop invariants.
-        // This would just be something useful for manual proofs I suppose.
-
-        // Steps:
-        // 2. Add the annotation for posing a term.
-        // 3. Loop invariant gets list of posed terms to also pass to the invariant (this gets
-        //    resolved once when assembling the invariant)
-
         x += i;
     }
 }
@@ -166,10 +138,8 @@ fn loop4() {
 
         // let's use Iter to refer to the current iterator state.
         let _ =
-        #[rr::exists("Hist")]
         #[rr::inv_vars("x")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π (0, 10) Hist {Iter}")]
-        #[rr::inv("x = sum_list_Z Hist")]
+        #[rr::inv("x = sum_list_Z {Hist}")]
         #[rr::ignore] ||{};
 
         x += i;

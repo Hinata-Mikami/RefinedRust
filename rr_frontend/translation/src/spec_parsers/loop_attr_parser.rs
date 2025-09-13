@@ -139,6 +139,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
 pub(crate) struct LoopIteratorInfo<'def> {
     pub(crate) iterator_variable: mir::Local,
     pub(crate) binder_name: String,
+    pub(crate) history_name: String,
     pub(crate) iter_spec: specs::traits::ReqInst<'def>,
 }
 
@@ -164,6 +165,9 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T>
                 match it.as_str() {
                     "Iter" => {
                         return Some(info.binder_name.clone());
+                    },
+                    "Hist" => {
+                        return Some(info.history_name.clone());
                     },
                     "IterAttrs" => {
                         let attr_term = info.iter_spec.get_attr_term();
@@ -284,6 +288,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             // wrap it in place_rfn, since we reason about places
             rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 
+            // check if this the iterator variable
             let has_iterator_var = if let Some(iterator_info) = &self.info.iterator_info
                 && iterator_info.iterator_variable == *local
             {
@@ -307,7 +312,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                 rfn_binders.push(coq::binder::Binder::new(Some(binder_name), rfn_ty));
             } else if *initialized && has_iterator_var {
                 inv_locals.push(local_name.clone());
-                declare_iterator_var = Some(name.clone());
+                declare_iterator_var = Some((name.clone(), local_name, rfn_ty.clone()));
 
                 let binder_name = format!("_var_{name}");
                 rfn_binder_names.insert(name, binder_name.clone());
@@ -338,14 +343,34 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                 ));
             }
         }
+
+        let mut iterator_init_var = None;
         // also add a constraint on the iterator variable
         if let Some(iterator_info) = &self.info.iterator_info
-            && let Some(name) = declare_iterator_var
+            && let Some((name, local_name, rfn_ty)) = declare_iterator_var
             && let Some(binder_name) = rfn_binder_names.get(&name)
         {
             let ex_name = iterator_info.binder_name.clone();
             existentials.push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
             var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = ($# {ex_name})")));
+
+            let init_value_binder = format!("_init_{name}");
+            let init_value_ty = coq::term::RocqType::UserDefined(model::Type::RTXT(Box::new(rfn_ty)));
+
+            rfn_binders.insert(0, coq::binder::Binder::new(Some(init_value_binder.clone()), init_value_ty));
+            iterator_init_var = Some(local_name);
+
+            // history
+            existentials.push(coq::binder::Binder::new(
+                Some(iterator_info.history_name.clone()),
+                coq::term::RocqType::Infer,
+            ));
+            var_invariants.push(coq::iris::IProp::Atom(format!(
+                "IteratorNextFusedTrans ({}) π {init_value_binder} {} {}",
+                iterator_info.iter_spec.get_attr_term(),
+                iterator_info.history_name,
+                iterator_info.binder_name
+            )));
         }
 
         var_invariants.extend(invariant);
@@ -356,6 +381,6 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             coq::iris::IProp::Exists(coq::binder::BinderList::new(existentials), Box::new(prop_body));
 
         let pred = coq::iris::IPropPredicate::new(coq::binder::BinderList::new(rfn_binders), prop_body);
-        Ok(specs::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals))
+        Ok(specs::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals, iterator_init_var))
     }
 }

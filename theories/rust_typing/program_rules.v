@@ -1218,7 +1218,7 @@ Section typing.
               (* either fold to coreable, or to the core of lt_full *)
               match ltype_blocked_lfts lt_cur', κs with
               | [], [] =>
-                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full', 
+                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full',
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full lt_full' (#rf)))
               | κs', _ =>
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs' ++ κs) lt_full) (#rf))
@@ -1328,7 +1328,7 @@ Section typing.
               (* either fold to coreable, or to the core of lt_full *)
               match κs, ltype_blocked_lfts lt_cur' with
               | [], [] =>
-                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full', 
+                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full',
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full lt_full' (#rf)))
               | _, κs' =>
                     (* inclusion sidecondition: require that all the blocked stuff ends before κ *)
@@ -3137,7 +3137,7 @@ Section typing.
 
   Lemma typed_block_rec fn R P b ϝ s :
     fn.(rf_fn).(f_code) !! b = Some s →
-    (□ (∀ E L, (□ typed_block P b fn R ϝ) -∗ 
+    (□ (∀ E L, (□ typed_block P b fn R ϝ) -∗
       introduce_with_hooks E L (P E L) (λ L2,
         typed_stmt E L2 s fn R ϝ)))
     ⊢ typed_block P b fn R ϝ.
@@ -3176,6 +3176,37 @@ Section typing.
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
     iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
+    iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
+    iDestruct ("HT") as "(-> & Hrec)".
+    rewrite /accu.
+    iDestruct "Hrec" as "(%Q & HQ & #Hrec)".
+    iApply (typed_block_rec with "Hrec CTX HE HL [Hinv HQ]").
+    - done.
+    - iApply (logical_step_wand with "Hinv"). iIntros "(? & ?)". iFrame.
+    - done.
+  Qed.
+
+  (* A variant where [P] is first instantiated with the refinement of some local variable *)
+  Lemma typed_goto_acc' E L fn R b ϝ s {rt : RT} (l : loc) (P : RT_xt rt → elctx → llctx → iProp Σ) :
+    fn.(rf_fn).(f_code) !! b = Some s →
+    find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
+    l ◁ₗ[π, bk] r @ lt -∗
+    ∃ (Heq : rt = rt') (r' : RT_xt rt), ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
+    (* TODO maybe also stratify? *)
+    prove_with_subtype E L true ProveDirect (P r' E L) (λ L' _ R2,
+      ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
+      (* gather up the remaining ownership *)
+      accu (λ Q,
+      (∀ E L, (□ typed_block (λ E L, P r' E L ∗ Q) b fn R ϝ) -∗
+          introduce_with_hooks E L (P r' E L ∗ Q) (λ L2,
+          typed_stmt E L2 s fn R ϝ)))))
+    ⊢ typed_stmt E L (Goto b) fn R ϝ.
+  Proof.
+    iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
+    unfold FindLoc.
+    iDestruct "Hsubt" as "(%x & Hlt & HT)". simpl in *.
+    destruct x as [rt' (((lt & r) & ?) & ?)].
+    iDestruct ("HT" with "Hlt") as "(%Heq & %r' & -> & Hsubt)".
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.

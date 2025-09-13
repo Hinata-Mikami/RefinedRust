@@ -65,10 +65,8 @@ fn max_list_i32(v: &List<i32>) -> i32 {
     let mut m = i32::MIN;
 
     for x in v {
-        #[rr::exists("Hist")]
         #[rr::inv_vars("m")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π v Hist {Iter}")]
-        #[rr::inv("m = max_list_Z (min_int i32) Hist")]
+        #[rr::inv("m = max_list_Z (min_int i32) {Hist}")]
         #[rr::ignore] ||{};
 
         m = m.max(*x);
@@ -91,10 +89,8 @@ fn max_list<T>(v: &List<T>) -> T
     let mut m = T::minimum();
 
     for x in v {
-        #[rr::exists("Hist")]
         #[rr::inv_vars("m")]
-        #[rr::inv(#iris "IteratorNextFusedTrans {IterAttrs} π v Hist {Iter}")]
-        #[rr::inv("m = max_list_cmp {T::Ord} {T::MIN} Hist")]
+        #[rr::inv("m = max_list_cmp {T::Ord} {T::MIN} {Hist}")]
         #[rr::ignore] ||{};
 
         m = m.max(*x);

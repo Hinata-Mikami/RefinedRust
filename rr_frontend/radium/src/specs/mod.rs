@@ -384,18 +384,21 @@ pub struct LoopSpec {
     inv_locals: Vec<String>,
     preserved_locals: Vec<String>,
     uninit_locals: Vec<String>,
+    iterator_local: Option<String>,
 }
 
 impl fmt::Display for LoopSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "([{}], [{}], [{}], wrap_inv ({}), wrap_inv (λ (L : llctx), True%I : iProp Σ))",
+            "([{}], [{}], [{}], wrap_inv ({}), wrap_inv (λ (L : llctx), True%I : iProp Σ), {})",
             self.inv_locals.join("; "),
             self.preserved_locals.join("; "),
             self.uninit_locals.join("; "),
-            self.func_predicate
+            self.func_predicate,
+            if let Some(loc) = &self.iterator_local { format!("Some {loc}") } else { "None".to_owned() },
         )?;
+
 
         Ok(())
     }

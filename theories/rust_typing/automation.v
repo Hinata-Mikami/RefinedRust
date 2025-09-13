@@ -6,7 +6,7 @@ From lithium Require Import hooks.
 From refinedrust.automation Require Import ident_to_string lookup_definition.
 From refinedrust Require Import int programs program_rules functions mut_ref.mut_ref shr_ref struct.struct array.array enum xmap.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
-From refinedrust.automation Require Export existentials simpl solvers proof_state.
+From refinedrust.automation Require Export loops existentials simpl solvers proof_state.
 From refinedrust Require Import options.
 
 (** More automation for modular arithmetics. *)
@@ -191,230 +191,6 @@ lazymatch goal with
   end; unfold i2p_P
 end.
 
-(** * Loopy stuff *)
-(* using our own list type here in order to be able to put iProp's in it (universe troubles) *)
-#[universes(polymorphic)]
-Inductive poly_list (T : Type) : Type :=
-  | PolyNil
-  | PolyCons (x : T) (l : poly_list T).
-Arguments PolyNil {_}.
-Arguments PolyCons {_}.
-
-#[universes(polymorphic)]
-Inductive poly_option (T : Type) : Type :=
-  | PolyNone
-  | PolySome (x : T).
-Arguments PolyNone {_}.
-Arguments PolySome {_}.
-
-(* Wrapper to store predicates of arbitrary arity. *)
-Definition wrap_inv {T} (x : T) := existT (P := id) _ x.
-(* Type of loop invariants:
-   - list of variables the invariant is over
-   - list of variables whose type is preserved
-   - list of uninit variables
-   - a predicate on the refinements,
-   - and a predicate on the lifetime contexts *)
-Definition bb_inv_t := (list loc * list loc * list loc * sigT (@id Type) * sigT (@id Type))%type.
-(* Type of the loop invariant map we keep in the context *)
-Definition bb_inv_map_t := poly_list (var_name * bb_inv_t)%type.
-
-(* In [Prop] and sealed so it does not get discarded as a trivial assertion by Lithium when introducing *)
-Definition bb_inv_map_marker_def (M : bb_inv_map_t) := True.
-Definition bb_inv_map_marker_aux M : seal (bb_inv_map_marker_def M). Proof. by eexists. Qed.
-Definition bb_inv_map_marker M := (bb_inv_map_marker_aux M).(unseal).
-Definition bb_inv_map_marker_unfold M : bb_inv_map_marker M = bb_inv_map_marker_def M := (bb_inv_map_marker_aux M).(seal_eq).
-
-Lemma pose_bb_inv (M : bb_inv_map_t) :
-  bb_inv_map_marker M.
-Proof.
-  rewrite bb_inv_map_marker_unfold. done.
-Qed.
-
-(** Given a [runtime_function] [rfn], get the list of stack locations as a [constr]. *)
-Ltac gather_locals rfn :=
-  match rfn with
-  | Build_runtime_function ?fn ?l =>
-    eval simpl in (map fst l)
-  end.
-
-(** Find the invariant for basic block [loop_bb] in the invariant map [loop_inv_map].
-  Returns a uconstr option with the result. *)
-Ltac find_bb_inv loop_inv_map loop_bb :=
-  match loop_inv_map with
-  | PolyCons (loop_bb, ?inv) _ =>
-    constr:(PolySome inv)
-  | PolyCons (_, _) ?loop_inv_map2 =>
-    find_bb_inv loop_inv_map2 loop_bb
-  | PolyNil =>
-    constr:(@PolyNone bb_inv_t)
-  end.
-
-(** Find the type assignment for the location [loc] in the [env : env], and return it as a [constr]. *)
-Ltac find_type_assign_in_env loc env :=
-  lazymatch env with
-  | Enil => fail 10 "find_type_assign_in_env: no " loc " in env"
-  | Esnoc ?env2 _ (loc ◁ₗ[?π, ?b] ?r @ ?lt)%I =>
-      constr:((loc ◁ₗ[π, b] r @ lt)%I)
-  | Esnoc ?env2 _ _ => find_type_assign_in_env loc env2
-  end.
-
-(** Making strings from numbers *)
-Definition digit_to_ascii (n : nat) : ascii :=
-  match n with
-  | 0 => Ascii false false false false true true false false
-  | 1 => Ascii true false false false true true false false
-  | 2 => Ascii false true false false true true false false
-  | 3 => Ascii true true false false true true false false
-  | 4 => Ascii false false true false true true false false
-  | 5 => Ascii true false true false true true false false
-  | 6 => Ascii false true true false true true false false
-  | 7 => Ascii true true true false true true false false
-  | 8 => Ascii false false false true true true false false
-  | 9 => Ascii true false false true true true false false
-  | _ => Ascii false false false false true true false false
-  end.
-Definition nat_to_string (n : nat) : string.
-Proof.
-  refine (String.rev _).
-  refine (lt_wf_rec n (λ _, string) _).
-  intros m rec.
-  refine (match m as m' return m = m' → _ with
-          | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9  => λ _, String (digit_to_ascii m) EmptyString
-          | _ => λ Heq, _
-          end eq_refl).
-  refine (String (digit_to_ascii (m `mod` 10)) (rec (m `div` 10) _)).
-  abstract(apply Nat.div_lt; lia).
-Defined.
-
-(** Generates [count] successive fresh identifiers as Coq strings with prefix [prefix].
-  Poses the result as a hypothesis [out]. *)
-(* TODO: potentially take a list of suffix strings, so that we can we also get the variable names for the refinements, e.g. x, y? *)
-Ltac get_idents_rec' prefix count acc out :=
-  match count with
-  | 0%nat =>
-      set (out := acc)
-  | (S ?n)%nat =>
-      (* need to prefix with some symbol because just a number is not a valid ident *)
-      let count_str := eval cbv in (append "_" (nat_to_string n)) in
-      string_to_ident_cps count_str ltac:(fun count_ident =>
-      (* make a fresh identifier *)
-      let Hident := fresh prefix count_ident in
-      (* convert to string so we can store it *)
-      let Hident_str := constr:(ident_to_string! Hident) in
-      let acc := constr:(Hident_str :: acc) in
-      get_idents_rec' prefix constr:(n) constr:(acc) out)
-  end.
-Ltac get_idents_rec prefix count res :=
-  get_idents_rec' ident:(prefix) constr:(count) constr:(@nil string) ident:(res)
-.
-
-(** Finds the type assignments for the locations [local_locs] in the spatial context [spatial_env],
-  and abstracts their refinements to existentials [x_1, ..., x_n] whose names get picked from the list [ex_names : list string].
-  It needs to hold that [length ex_names ≥ length local_locs = n].
-  [base_app] is the name of a context item which will be specialized with the existentially abstracted refinements, to result in a fully applied term [base_app_specialized = base_app x_1 ... x_n] of type [iProp].
-  [base] is a term of type [iProp].
-
-  The tactic instantiates the current goal with the proposition claiming ownership of the locals, [base_app_specialized], and [base], with the existentials quantified in the term.
-
-  The implementation of this is currently quite hacky, mainly to work around Ltac's bad support for working with open terms. *)
-Ltac build_local_sepconj local_locs spatial_env ex_names base base_app :=
-  lazymatch local_locs with
-  | nil =>
-      exact ((base ∗ base_app)%I)
-  | cons ?local ?local_locs2 =>
-      let own_prop := find_type_assign_in_env local spatial_env in
-
-      (* get the name for this *)
-      lazymatch ex_names with
-      | nil => fail 10 "not enough names provided"
-      | ?name :: ?ex_names2 =>
-        string_to_ident_cps name ltac:(fun ident =>
-
-        (* create the type with existentially abstracted refinement *)
-        let abstracted_prop :=
-          lazymatch own_prop with
-          | (?loc ◁ₗ[?π, ?b] ?r @ ?lt)%I =>
-              (* crucial: we specialize a hypothesis _below_ the binder here in order to work around Ltac's restrictions for working with open terms *)
-              constr:((∃ ident, loc ◁ₗ[π, b] ident @ lt ∗
-                ltac:(specialize (base_app ident); build_local_sepconj local_locs2 spatial_env ex_names2 base base_app))%I)
-          end
-        in
-        exact (abstracted_prop))
-    end
-  end.
-
-Ltac get_Σ :=
-  let tgs := constr:(_ : typeGS _) in
-  match type of tgs with
-  | typeGS ?Σ => Σ
-  end.
-Ltac get_π :=
-  match goal with
-  | π : thread_id |- _ => π
-  end.
-
-(** Composes the loop invariant from the invariant [Inv : bb_inv_t] (a constr),
-  the runtime function [FN : runtime_function], the current Iris environment [env : env],
-  and the current contexts [current_E : elctx], [current_L : llctx],
-  and poses it with the identifier [Hinv]. *)
-Ltac pose_loop_invariant Hinv FN Inv envs current_E current_L :=
-  (* find Σ *)
-  let Σ := get_Σ in
-  (* get spatial env *)
-  let envs := eval hnf in envs in
-  let spatial_env :=
-    match envs with
-    | Envs _ ?spatial _ => spatial
-    | _ => fail 10 "infer_loop_invariant: could not determine spatial env"
-    end
-  in
-
-  (* extract the invariants *)
-  let inv_locals :=
-    match Inv with
-    | (?inv_locals, _, _, _, _) => constr:(inv_locals)
-    end in
-  let preserved_locals :=
-    match Inv with
-    | (_, ?pres_locals, _, _, _) => constr:(pres_locals)
-    end in
-  let functional_inv := match Inv with
-                       | (_, _, _, wrap_inv ?inv, _) => uconstr:(inv)
-                       end
-  in
-  let llctx_inv := match Inv with
-                   | (_, _, _, _, wrap_inv ?inv) => uconstr:(inv)
-                   end
-  in
-
-  (* generate names for the existentially abstracted refinements *)
-  let num_locs := eval cbv in (length inv_locals) in
-  let names_ident := fresh "tmp" in
-  get_idents_rec ident:(r) constr:(num_locs) ident:(names_ident);
-  let names := eval cbv in names_ident in
-  clear names_ident;
-
-  pose (Hinv :=
-    λ (E : elctx) (L : llctx),
-    ltac:(
-      (* specialize the lifetime ctx invariant *)
-      let HEL := fresh "Hel" in
-
-      (*pose (HEL := llctx_inv);*)
-      (*specialize (HEL E L);*)
-
-      pose (HEL := (E = current_E ∧ L = current_L));
-
-      (* pose the loop invariant as a local hypothesis so we can specialize it while building the term *)
-      let Ha := fresh "Hinv" in
-      pose (Ha := functional_inv);
-
-      build_local_sepconj inv_locals spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
-  ));
-  (* get rid of all the lets we introduced *)
-  simpl in Hinv.
-
 
 (** * Main automation tactics *)
 Section automation.
@@ -510,13 +286,16 @@ Ltac liRGoto goto_bb :=
                 fail 1 "infer_loop_invariant: no loop invariant found"
             end in
             (* pose the composed loop invariant *)
-            string_to_ident_cps goto_bb ltac:(fun bb_ident =>
-            let Hinv := fresh "Hinv_" bb_ident in
-            pose_loop_invariant Hinv fn Inv Δ E L;
-            (* finally initiate Löb *)
-            notypeclasses refine (tac_fast_apply (typed_goto_acc E L fn R Hinv goto_bb ϝ _ _) _);
-              [unfold_code_marker_and_compute_map_lookup| unfold Hinv; clear Hinv ]
-            )
+            compute_loop_invariant fn Inv Δ E L ltac:(fun Inv IterVar =>
+              (* finally initiate Löb *)
+              match IterVar with
+              | None =>
+                notypeclasses refine (tac_fast_apply (typed_goto_acc E L fn R Inv goto_bb ϝ _ _) _);
+                  [unfold_code_marker_and_compute_map_lookup|  ]
+              | Some ?var => 
+                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L fn R goto_bb ϝ _ var Inv _) _);
+                  [unfold_code_marker_and_compute_map_lookup|  ]
+              end)
         end
       | (* do a direct jump *)
         notypeclasses refine (tac_fast_apply (type_goto E L _ fn R _ ϝ _) _);
@@ -626,32 +405,6 @@ Ltac liRContextStratifyInit :=
       end
   end.
 
-(*
-lty
-Ltac ltype_is_extractable lt :=
-  match lt with
-  | BlockedLtype _ _ => false
-  | ShrBlockedLtype _ _ => false
-  | OfTyLty ?ty => true
-  | AliasLty _ _ _ => false
-  | MutLty _ _ => true
-  | ShrLty _ _ => false
-  | BoxLty ?lt => ltype_is_extractable lt
-  | StructLty ?lts _ =>
-      ltypes_are_extractable
-
-Ltac gather_extract_location_list env :=
-  match env with
-  | Enil => uconstr:([])
-  | Esnoc ?env' _ ?p =>
-      let rs := gather_extract_location_list env' in
-      lazymatch p with
-      | (?l ◁ₗ[?π, Owned false] ?r @ ?lty)%I =>
-          uconstr:(l :: rs)
-      | _ => uconstr:(rs)
-      end
-  end.
-*)
 Ltac liRContextExtractInit :=
   lazymatch goal with
   | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
@@ -842,31 +595,6 @@ Ltac prepare_initial_coq_context :=
   | H : RT_xt _ |- _ => progress (simpl in H)
   end.
 
-
-Ltac inv_arg_ly_rec Harg_ly :=
-  match type of Harg_ly with
-  | Forall2 _ (?x:: ?L1) (?y :: ?L2) =>
-      let H1 := fresh in let H2 := fresh in
-      apply Forall2_cons_inv in Harg_ly as [H1 Harg_ly];
-      inv_arg_ly_rec Harg_ly
-  | Forall2 _ [] [] =>
-      clear Harg_ly
-  end.
-Ltac inv_arg_ly Harg_ly :=
-  simpl in Harg_ly; unfold fn_arg_layout_assumptions in Harg_ly; inv_arg_ly_rec Harg_ly; simplify_eq.
-
-Ltac inv_local_ly_rec Harg_ly :=
-  match type of Harg_ly with
-  | Forall2 _ (?x:: ?L1) (?y :: ?L2) =>
-      let H1 := fresh in let H2 := fresh in
-      apply Forall2_cons_inv in Harg_ly as [H1 Harg_ly];
-      inv_local_ly_rec Harg_ly
-  | Forall2 _ [] [] =>
-      clear Harg_ly
-  end.
-Ltac inv_local_ly Harg_ly :=
-  simpl in Harg_ly; unfold fn_local_layout_assumptions in Harg_ly; inv_local_ly_rec Harg_ly; simplify_eq.
-
 Section tac.
   Context `{!typeGS Σ}.
 
@@ -975,19 +703,6 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     init_cache
   end
 .
-
-Ltac liRSplitBlocksIntro :=
-  repeat (
-      liEnsureInvariant;
-      first [
-          liSep
-        | liWand
-        | liImpl
-        | liForall
-        | liExist true
-        | liUnfoldLetGoal]; liSimpl);
-  liShow.
-
 
 (* TODO : more sideconditions *)
 Ltac sidecond_hook_init :=
