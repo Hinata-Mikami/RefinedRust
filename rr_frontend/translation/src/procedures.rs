@@ -12,7 +12,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
-use crate::regions;
+use crate::{error, regions};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Mode {
@@ -243,7 +243,9 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     /// Register a function.
     pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
         if rrconfig::no_assumption() && meta.mode.is_assumed() {
-            return Err(TranslationError::NoAssumptionAllowed(did, meta.mode));
+            self.tcx
+                .dcx()
+                .span_err(self.tcx.def_span(did), error::Message::NoAssumptionAllowed(meta.mode));
         }
 
         if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {

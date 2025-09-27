@@ -20,6 +20,7 @@ mod body;
 mod closure_impl_generator;
 mod consts;
 mod environment;
+mod error;
 mod procedures;
 mod regions;
 mod search;

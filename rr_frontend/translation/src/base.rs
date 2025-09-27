@@ -13,7 +13,7 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::{borrowck, polonius_engine};
 
 use crate::environment::borrowck::facts;
-use crate::{procedures, traits};
+use crate::traits;
 
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
@@ -141,9 +141,6 @@ pub(crate) enum TranslationError<'tcx> {
 
     #[display("Incomplete specification for trait impl {:?}", _0)]
     IncompleteTraitImplSpec(DefId),
-
-    #[display("No assumption is allowed, but {:?} is annotated with `#[rr::{}]`", _0, _1)]
-    NoAssumptionAllowed(DefId, procedures::Mode),
 }
 
 impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {
