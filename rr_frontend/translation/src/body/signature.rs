@@ -740,7 +740,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<Option<radium::InstantiatedTraitFunctionSpec<'def>>, TranslationError<'tcx>> {
         let did = self.proc.get_id();
 
-        let Some(impl_did) = self.env.tcx().impl_of_method(did) else {
+        let Some(impl_did) = self.env.tcx().impl_of_assoc(did) else {
             return Ok(None);
         };
 

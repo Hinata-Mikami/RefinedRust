@@ -105,7 +105,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<Self, TranslationError<'tcx>> {
         info!("Entering procedure with ty_params {:?} and lifetimes {:?}", ty_params, lifetimes);
-        let mut generics = scope::Params::new_from_generics(ty_params, Some((env.tcx(), did)));
+        let mut generics = scope::Params::new_from_generics(env.tcx(), ty_params, Some(did));
 
         generics.add_param_env(did, env, type_translator, trait_registry)?;
 
@@ -302,7 +302,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             },
             STInner::TranslateAdt(_scope) => {
                 // TODO: ?
-                if region.has_name() {
+                if region.is_named() {
                     let name = region.name.as_str();
                     Ok(coq::Ident::new(format!("ulft_{}", name)))
                 } else {

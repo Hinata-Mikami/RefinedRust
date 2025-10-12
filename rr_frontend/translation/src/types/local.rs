@@ -207,7 +207,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     > {
         let trait_did = env
             .tcx()
-            .trait_of_item(trait_method_did)
+            .trait_of_assoc(trait_method_did)
             .ok_or(traits::Error::NotATrait(trait_method_did))?;
 
         // get name of the method
@@ -362,7 +362,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         for (late_bound_idx, late_bound) in fnsig.bound_vars().into_iter().enumerate() {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
-                    let name = r.get_name().map_or_else(
+                    let name = r.get_name(self.translator.env().tcx()).map_or_else(
                         || coq::Ident::new(format!("late_lft_{}", late_bound_idx)),
                         |x| coq::Ident::new(x.as_str()),
                     );

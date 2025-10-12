@@ -23,7 +23,7 @@ fn determine_origin_of_trait_requirement<'tcx>(
     req: ty::TraitRef<'tcx>,
 ) -> radium::TyParamOrigin {
     if let Some(surrounding_reqs) = surrounding_reqs {
-        let in_trait_decl = tcx.trait_of_item(did);
+        let in_trait_decl = tcx.trait_of_assoc(did);
 
         if surrounding_reqs.contains(&req) {
             if in_trait_decl.is_some() {
@@ -61,7 +61,7 @@ pub(crate) fn get_trait_requirements_with_origin<'tcx>(
     let is_trait = env.tcx().is_trait(did);
 
     // Determine whether we are declaring the scope of a trait method or trait impl method
-    let in_trait_decl = env.tcx().trait_of_item(did);
+    let in_trait_decl = env.tcx().trait_of_assoc(did);
     let in_trait_impl = env.trait_impl_of_method(did);
 
     // if this has a surrounding scope, get the requirements declared on that, so that we can
@@ -199,9 +199,10 @@ pub(crate) fn get_nontrivial<'tcx>(
 /// Check if this is a built-in trait
 fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let sized_did = search::try_resolve_did(tcx, &["core", "marker", "Sized"])?;
+    let meta_sized_did = search::try_resolve_did(tcx, &["core", "marker", "MetaSized"])?;
 
     // used for closures
     let tuple_did = search::try_resolve_did(tcx, &["core", "marker", "Tuple"])?;
 
-    Some(trait_did == sized_did || trait_did == tuple_did)
+    Some(trait_did == sized_did || trait_did == tuple_did || trait_did == meta_sized_did)
 }

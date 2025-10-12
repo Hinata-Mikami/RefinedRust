@@ -247,7 +247,7 @@ pub(crate) fn resolve_assoc_item<'tcx>(
     }
     */
 
-    let trait_ref = ty::TraitRef::from_method(tcx, tcx.trait_of_item(did).unwrap(), substs);
+    let trait_ref = ty::TraitRef::from_assoc(tcx, tcx.trait_of_assoc(did).unwrap(), substs);
 
     let impl_source = resolve_impl_source(tcx, typing_env, did, substs, below_binders)?;
     info!("trait impl_source for {:?}: {:?}", did, impl_source);

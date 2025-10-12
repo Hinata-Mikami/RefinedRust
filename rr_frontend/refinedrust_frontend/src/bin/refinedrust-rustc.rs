@@ -23,16 +23,18 @@ struct RRCompilerCalls;
 
 // From Prusti.
 fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_borrowck::ProvidedValue<'_> {
-    let body_with_facts = borrowck::consumers::get_body_with_borrowck_facts(
+    let bodies_with_facts = borrowck::consumers::get_bodies_with_borrowck_facts(
         tcx,
         def_id,
         borrowck::consumers::ConsumerOptions::PoloniusOutputFacts,
     );
 
-    // SAFETY: This is safe because we are feeding in the same `tcx` that is
-    // going to be used as a witness when pulling out the data.
-    unsafe {
-        translation::store_mir_body(tcx, def_id, body_with_facts);
+    for (did, body) in bodies_with_facts {
+        // SAFETY: This is safe because we are feeding in the same `tcx` that is
+        // going to be used as a witness when pulling out the data.
+        unsafe {
+            translation::store_mir_body(tcx, did, body);
+        }
     }
 
     let mut providers = query::Providers::default();

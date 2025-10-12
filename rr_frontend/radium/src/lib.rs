@@ -31,7 +31,6 @@ macro_rules! fmt_list {
     };
     ($collection:expr, $separator:expr, $fmt:expr) => {
         #[allow(clippy::allow_attributes)]
-        #[allow(clippy::string_to_string)]
         $collection.into_iter().map($fmt).collect::<Vec<_>>().join($separator)
     };
 }

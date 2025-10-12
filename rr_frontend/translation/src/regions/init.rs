@@ -88,8 +88,20 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
         region_substitution_late.push(next_id);
 
         match r {
-            ty::BoundRegionKind::Named(_, sym) => {
-                let mut region_name = strip_coq_ident(sym.as_str());
+            ty::BoundRegionKind::Named(did) => {
+                if let Some(name) = env.tcx().opt_item_name(did) {
+                    let mut region_name = strip_coq_ident(name.as_str());
+                    if region_name == "_" {
+                        region_name = next_id.as_usize().to_string();
+                        universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", region_name)));
+                    } else {
+                        universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", region_name)));
+                        lifetime_names.insert(region_name, next_id);
+                    }
+                }
+            },
+            ty::BoundRegionKind::NamedAnon(name) => {
+                let mut region_name = strip_coq_ident(name.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();
                     universal_lifetimes.insert(next_id, coq::Ident::new(format!("ulft_{}", region_name)));

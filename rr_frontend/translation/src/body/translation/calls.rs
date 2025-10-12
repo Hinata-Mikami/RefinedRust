@@ -497,7 +497,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Check whether we are calling into a trait method.
         // This works since we did not resolve concrete instances, so this is always an abstract
         // reference to the trait.
-        let calling_trait = self.env.tcx().trait_of_item(*defid);
+        let calling_trait = self.env.tcx().trait_of_assoc(*defid);
 
         // Check whether we are calling a plain function or a trait method
         let Some(_) = calling_trait else {

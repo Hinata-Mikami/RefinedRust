@@ -255,8 +255,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Create from generics, optionally annotating the type parameters with their origin.
     pub(crate) fn new_from_generics(
+        tcx: ty::TyCtxt<'tcx>,
         x: ty::GenericArgsRef<'tcx>,
-        with_origin: Option<(ty::TyCtxt<'tcx>, DefId)>,
+        with_origin: Option<DefId>,
     ) -> Self {
         let mut scope = Vec::new();
 
@@ -267,7 +268,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         for p in x {
             if let Some(r) = p.as_region() {
-                if let Some(name) = r.get_name()
+                if let Some(name) = r.get_name(tcx)
                     && name.as_str() != "'_"
                 {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
@@ -283,7 +284,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     ty_names.insert(x.name.as_str().to_owned(), scope.len());
                     let name = strip_coq_ident(x.name.as_str());
 
-                    let lit = if let Some((tcx, of_did)) = with_origin {
+                    let lit = if let Some(of_did) = with_origin {
                         let origin = Self::determine_origin_of_param(of_did, tcx, *x);
                         radium::LiteralTyParam::new_with_origin(&name, &name, origin)
                     } else {
@@ -345,6 +346,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     #[must_use]
     pub(crate) fn translate_bound_regions(
         &mut self,
+        tcx: ty::TyCtxt<'tcx>,
         bound_regions: &[ty::BoundRegionKind],
     ) -> radium::TraitReqScope {
         // We add these lifetimes to a special late scope, as the de bruijn indices are different
@@ -355,13 +357,13 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         // the last element should be the one with the lowest index
         for (idx, region) in bound_regions.iter().rev().enumerate().rev() {
             // TODO smarter way to autogenerate anonymous names?
-            let name = region.get_name().map_or_else(
+            let name = region.get_name(tcx).map_or_else(
                 || coq::Ident::new(format!("_lft_for_{}", idx)),
                 |x| coq::Ident::new(format!("lft_{}", x.as_str())),
             );
 
             new_binder.push(name.clone());
-            if region.get_name().is_some() {
+            if region.get_name(tcx).is_some() {
                 self.lft_names.insert(format!("{}", name), idx);
             }
 
@@ -559,7 +561,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
         // finally, if we are in a trait declaration or impl declaration, add notation shorthands
         // to the scope
-        if let Some(trait_did) = env.tcx().trait_of_item(did) {
+        if let Some(trait_did) = env.tcx().trait_of_assoc(did) {
             // we are in a trait declaration
             if let Some(trait_ref) = trait_registry.lookup_trait(trait_did) {
                 // make the parameter for the attrs that the function is parametric over
@@ -586,7 +588,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             }
         }
 
-        if let Some(impl_did) = env.tcx().impl_of_method(did)
+        if let Some(impl_did) = env.tcx().impl_of_assoc(did)
             && env.tcx().trait_id_of_impl(impl_did).is_some()
         {
             // we are in a trait impl
@@ -627,7 +629,7 @@ impl<'tcx> Params<'tcx, '_> {
         param: ty::ParamTy,
     ) -> radium::TyParamOrigin {
         // Check if there is a surrounding trait decl that introduces this parameter
-        if let Some(trait_did) = tcx.trait_of_item(did) {
+        if let Some(trait_did) = tcx.trait_of_assoc(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
             for this_param in &generics.own_params {
@@ -637,7 +639,7 @@ impl<'tcx> Params<'tcx, '_> {
             }
         }
         // Check if there is a surrounding trait impl that introduces this parameter
-        if let Some(impl_did) = tcx.impl_of_method(did) {
+        if let Some(impl_did) = tcx.impl_of_assoc(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
             for this_param in &generics.own_params {
@@ -653,25 +655,19 @@ impl<'tcx> Params<'tcx, '_> {
     /// Determine the number of args of a surrounding trait or impl.
     pub(crate) fn determine_number_of_surrounding_params(did: DefId, tcx: ty::TyCtxt<'tcx>) -> usize {
         // Check if there is a surrounding trait decl that introduces this parameter
-        if let Some(trait_did) = tcx.trait_of_item(did) {
+        if let Some(trait_did) = tcx.trait_of_assoc(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
             return generics.own_params.len();
         }
         // Check if there is a surrounding trait impl that introduces this parameter
-        if let Some(impl_did) = tcx.impl_of_method(did) {
+        if let Some(impl_did) = tcx.impl_of_assoc(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
 
             return generics.own_params.len();
         }
 
         0
-    }
-}
-
-impl<'tcx> From<ty::GenericArgsRef<'tcx>> for Params<'tcx, '_> {
-    fn from(x: ty::GenericArgsRef<'tcx>) -> Self {
-        Self::new_from_generics(x, None)
     }
 }
 

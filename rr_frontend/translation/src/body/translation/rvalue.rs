@@ -174,8 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
                 | ty::adjustment::PointerCoercion::ReifyFnPointer
                 | ty::adjustment::PointerCoercion::UnsafeFnPointer
-                | ty::adjustment::PointerCoercion::Unsize
-                | ty::adjustment::PointerCoercion::DynStar => Err(TranslationError::UnsupportedFeature {
+                | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
                     description: format!(
                         "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
                     ),

@@ -612,7 +612,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // Since this happens in the same ParamEnv, this is the assumption of the trait method
             // for its own trait, so we skip it.
             if self.env.is_method_did(did) {
-                if let Some(trait_did) = self.env.tcx().trait_of_item(did) {
+                if let Some(trait_did) = self.env.tcx().trait_of_assoc(did) {
                     // Get the params of the trait we're calling
                     let calling_trait_params =
                         types::LocalTX::split_trait_method_args(self.env, trait_did, params).0;
@@ -645,7 +645,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 // compute the new scope including the bound regions for HRTBs introduced by this requirement
                 // We are resolving the trait requirement itself under these binders
                 let mut scope = state.get_param_scope();
-                let binders = scope.translate_bound_regions(req.bound_regions.as_slice());
+                let binders = scope.translate_bound_regions(self.env.tcx(), req.bound_regions.as_slice());
                 let mut quantified_state = state.setup_trait_state(self.env.tcx(), scope);
 
                 let req_inst = match kind {
@@ -928,7 +928,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // NOTE: of course, this doesn't have bindings for the closure lifetimes.
         let parent_args = closure_args.parent_args();
-        let mut param_scope = scope::Params::new_from_generics(self.env.tcx().mk_args(parent_args), None);
+        let mut param_scope =
+            scope::Params::new_from_generics(self.env.tcx(), self.env.tcx().mk_args(parent_args), None);
         param_scope.add_param_env(closure_did, self.env, self.type_translator(), self)?;
 
         let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), closure_did);
@@ -1184,7 +1185,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
 
         let mut new_scope = scope.clone();
-        let quantified_regions = new_scope.translate_bound_regions(&trait_use.bound_regions);
+        let quantified_regions = new_scope.translate_bound_regions(self.env.tcx(), &trait_use.bound_regions);
         let mut state =
             types::STInner::TraitReqs(Box::new(types::TraitState::new(new_scope, typing_env, None, None)));
 
@@ -1231,7 +1232,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!("current scope={state:?}");
 
         let mut scope = state.get_param_scope();
-        let _binders = scope.translate_bound_regions(trait_use.bound_regions.as_slice());
+        let _binders = scope.translate_bound_regions(self.env.tcx(), trait_use.bound_regions.as_slice());
         trace!("new trait scope={scope:?}");
         let mut state = state.setup_trait_state(self.env.tcx(), scope);
 

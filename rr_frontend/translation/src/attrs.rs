@@ -11,13 +11,16 @@ use rr_rustc_interface::hir;
 /// Check if `<tool>::<name>` is among the attributes, where `tool` is determined by the
 /// `spec_hotword` config.
 /// Any arguments of the attribute are ignored.
-pub(crate) fn has_tool_attr(attrs: &[hir::Attribute], name: &str) -> bool {
+pub(crate) fn has_tool_attr(attrs: impl IntoIterator<Item = &hir::Attribute>, name: &str) -> bool {
     get_tool_attr(attrs, name).is_some()
 }
 
 /// Get the arguments for a tool attribute, if it exists.
-pub(crate) fn get_tool_attr<'a>(attrs: &'a [hir::Attribute], name: &str) -> Option<&'a hir::AttrArgs> {
-    attrs.iter().find_map(|attr| match &attr {
+pub(crate) fn get_tool_attr<'a>(
+    attrs: impl IntoIterator<Item = &'a hir::Attribute>,
+    name: &str,
+) -> Option<&'a hir::AttrArgs> {
+    attrs.into_iter().find_map(|attr| match &attr {
         hir::Attribute::Unparsed(na) => {
             let segments = &na.path.segments;
             let args = &na.args;
@@ -41,8 +44,8 @@ pub(crate) fn has_tool_attr_filtered(attrs: &[&hir::AttrItem], name: &str) -> bo
 }
 
 /// Check if any attribute starting with `<tool>` is among the attributes.
-pub(crate) fn has_any_tool_attr(attrs: &[hir::Attribute]) -> bool {
-    attrs.iter().any(|attr| match &attr {
+pub(crate) fn has_any_tool_attr(attrs: impl IntoIterator<Item = &hir::Attribute>) -> bool {
+    attrs.into_iter().any(|attr| match &attr {
         hir::Attribute::Unparsed(na) => {
             let segments = &na.path.segments;
             segments[0].as_str() == rrconfig::spec_hotword().as_str()
@@ -53,9 +56,11 @@ pub(crate) fn has_any_tool_attr(attrs: &[hir::Attribute]) -> bool {
 
 /// Get all tool attributes, i.e. attributes of the shape `<tool>::attr`, where `tool` is
 /// determined by the `spec_hotword` config.
-pub(crate) fn filter_for_tool(attrs: &[hir::Attribute]) -> Vec<&hir::AttrItem> {
+pub(crate) fn filter_for_tool<'a>(
+    attrs: impl IntoIterator<Item = &'a hir::Attribute>,
+) -> Vec<&'a hir::AttrItem> {
     attrs
-        .iter()
+        .into_iter()
         .filter_map(|attr| match &attr {
             hir::Attribute::Unparsed(na) => {
                 let seg = na.path.segments.first()?;

@@ -321,7 +321,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         // Note: this does not include all lifetimes
         let clos_args = self.env.get_closure_args(closure_did);
         let parent_args = clos_args.parent_args();
-        let mut param_scope = scope::Params::new_from_generics(self.env.tcx().mk_args(parent_args), None);
+        let mut param_scope =
+            scope::Params::new_from_generics(self.env.tcx(), self.env.tcx().mk_args(parent_args), None);
         param_scope.add_param_env(closure_did, self.env, self.ty_translator, self.trait_registry)?;
 
         trace!("closure assumption generation: param_scope={param_scope:?}");
@@ -438,16 +439,6 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         builder.add_trait_function_spec(inner_spec);
 
         match (kind, to_impl) {
-            (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
-                self.generate_call_shim(
-                    &mut builder,
-                    info,
-                    closure_did,
-                    closure_meta,
-                    closure_spec,
-                    &ShimRefSelf::NoRef,
-                )?;
-            },
             (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // impl FnOnce for a FnMut closure
                 self.generate_call_shim(
@@ -470,7 +461,9 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                     &ShimRefSelf::RefShr,
                 )?;
             },
-            (ty::ClosureKind::Fn, ty::ClosureKind::Fn) | (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) => {
+            (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce)
+            | (ty::ClosureKind::Fn, ty::ClosureKind::Fn)
+            | (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) => {
                 self.generate_call_shim(
                     &mut builder,
                     info,

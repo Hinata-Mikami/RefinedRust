@@ -5,12 +5,14 @@
 // https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/obtain-borrowck/driver.rs
 
 use std::cell::RefCell;
+use std::mem;
+use std::env;
+use std::process;
 
 use analysis::abstract_interpretation::FixpointEngine as _;
 use analysis::domains::DefinitelyInitializedAnalysis;
 use rr_rustc_interface::borrowck::consumers::{self, BodyWithBorrowckFacts};
 use rr_rustc_interface::data_structures::fx::FxHashMap;
-use rr_rustc_interface::driver::Compilation;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::interface::{Config, interface};
 use rr_rustc_interface::middle::query::Providers;
@@ -20,12 +22,15 @@ use rr_rustc_interface::polonius_engine::{Algorithm, Output};
 use rr_rustc_interface::session::{self, EarlyDiagCtxt, Session};
 use rr_rustc_interface::{errors, hir};
 
+use rr_rustc_interface::driver::*;
+use rr_rustc_interface::borrowck::provide;
+
 struct OurCompilerCalls {
     args: Vec<String>,
 }
 
 fn get_attributes(tcx: ty::TyCtxt<'_>, def_id: DefId) -> &[hir::Attribute] {
-    tcx.get_attrs_unchecked(def_id)
+    tcx.get_all_attrs(def_id)
 }
 
 fn get_attribute<'tcx>(
@@ -67,7 +72,8 @@ mod mir_storage {
         def_id: LocalDefId,
         body_with_facts: BodyWithBorrowckFacts<'tcx>,
     ) {
-        let body_with_facts: BodyWithBorrowckFacts<'static> = unsafe { std::mem::transmute(body_with_facts) };
+        // Safety: required to be the same tcx
+        let body_with_facts: BodyWithBorrowckFacts<'static> = unsafe { mem::transmute(body_with_facts) };
 
         MIR_BODIES.with(|state| {
             let mut map = state.borrow_mut();
@@ -85,21 +91,25 @@ mod mir_storage {
             map.remove(&def_id).unwrap()
         });
 
-        unsafe { std::mem::transmute(body_with_facts) }
+        // Safety: this is the same tcx
+        unsafe { mem::transmute(body_with_facts) }
     }
 }
 
 #[expect(clippy::elidable_lifetime_names)]
 fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
-    let body_with_facts =
-        consumers::get_body_with_borrowck_facts(tcx, def_id, consumers::ConsumerOptions::PoloniusOutputFacts);
-    // SAFETY: This is safe because we are feeding in the same `tcx` that is
-    // going to be used as a witness when pulling out the data.
-    unsafe {
-        mir_storage::store_mir_body(tcx, def_id, body_with_facts);
+    let bodies_with_facts =
+        consumers::get_bodies_with_borrowck_facts(tcx, def_id, consumers::ConsumerOptions::PoloniusOutputFacts);
+
+    for (did, body) in bodies_with_facts {
+        // SAFETY: This is safe because we are feeding in the same `tcx` that is
+        // going to be used as a witness when pulling out the data.
+        unsafe {
+            mir_storage::store_mir_body(tcx, did, body);
+        }
     }
     let mut providers = Providers::default();
-    rr_rustc_interface::borrowck::provide(&mut providers);
+    provide(&mut providers);
     let original_mir_borrowck = providers.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }
@@ -108,7 +118,7 @@ fn override_queries(_session: &Session, local: &mut util::Providers) {
     local.mir_borrowck = mir_borrowck;
 }
 
-impl rr_rustc_interface::driver::Callbacks for OurCompilerCalls {
+impl Callbacks for OurCompilerCalls {
     // In this callback we override the mir_borrowck query.
     fn config(&mut self, config: &mut Config) {
         assert!(config.override_queries.is_none());
@@ -185,10 +195,10 @@ fn main() {
         kind: errors::emitter::HumanReadableErrorType::Default,
         color_config: errors::emitter::ColorConfig::Auto,
     });
-    rr_rustc_interface::driver::init_rustc_env_logger(&error_handler);
+    init_rustc_env_logger(&error_handler);
     let mut compiler_args = Vec::new();
     let mut callback_args = Vec::new();
-    for arg in std::env::args() {
+    for arg in env::args() {
         if arg.starts_with("--analysis") {
             callback_args.push(arg);
         } else {
@@ -205,8 +215,8 @@ fn main() {
         args: callback_args,
     };
     // Invoke compiler, and handle return code.
-    let exit_code = rr_rustc_interface::driver::catch_with_exit_code(move || {
-        rr_rustc_interface::driver::run_compiler(&compiler_args, &mut callbacks);
+    let exit_code = catch_with_exit_code(move || {
+        run_compiler(&compiler_args, &mut callbacks);
     });
-    std::process::exit(exit_code)
+    process::exit(exit_code)
 }

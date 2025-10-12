@@ -122,7 +122,7 @@ impl ClosureSpecInfo {
         let pre_args_rfn_clause = if parsed_spec.args.is_empty() {
             format!("{args_var} = tt")
         } else {
-            format!("{args_var} = *[ {} ]", fmt_list!(&parsed_spec.args, "; ", |x| { x.1.to_string() }))
+            format!("{args_var} = *[ {} ]", fmt_list!(&parsed_spec.args, "; ", |x| { x.1.clone() }))
         };
 
         let all_existentials =

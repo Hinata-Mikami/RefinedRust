@@ -115,7 +115,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a constant value from const evaluation.
     fn translate_constant_value(
         &mut self,
-        v: mir::ConstValue<'tcx>,
+        v: mir::ConstValue,
         ty: ty::Ty<'tcx>,
     ) -> Result<radium::Expr, TranslationError<'tcx>> {
         match v {

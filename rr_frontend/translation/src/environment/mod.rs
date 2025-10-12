@@ -172,29 +172,25 @@ impl<'tcx> Environment<'tcx> {
     /// Find whether the procedure has a particular `[tool]::<name>` attribute.
     pub(crate) fn has_tool_attribute(&self, def_id: DefId, name: &str) -> bool {
         let tcx = self.tcx();
-        // TODO: migrate to get_attrs
-        attrs::has_tool_attr(tcx.get_attrs_unchecked(def_id), name)
+        attrs::has_tool_attr(tcx.get_all_attrs(def_id), name)
     }
 
     /// Find whether the procedure has a particular `[tool]::<name>` attribute; if so, return its
     /// name.
     pub(crate) fn get_tool_attribute<'a>(&'a self, def_id: DefId, name: &str) -> Option<&'a hir::AttrArgs> {
         let tcx = self.tcx();
-        // TODO: migrate to get_attrs
-        attrs::get_tool_attr(tcx.get_attrs_unchecked(def_id), name)
+        attrs::get_tool_attr(tcx.get_all_attrs(def_id), name)
     }
 
     /// Check whether the procedure has any `[tool]` attribute.
     pub(crate) fn has_any_tool_attribute(&self, def_id: DefId) -> bool {
         let tcx = self.tcx();
-        // TODO: migrate to get_attrs
-        attrs::has_any_tool_attr(tcx.get_attrs_unchecked(def_id))
+        attrs::has_any_tool_attr(tcx.get_all_attrs(def_id))
     }
 
     /// Get the attributes of an item (e.g. procedures).
     pub(crate) fn get_attributes(&self, def_id: DefId) -> &[hir::Attribute] {
-        // TODO: migrate to get_attrs
-        self.tcx().get_attrs_unchecked(def_id)
+        self.tcx().get_all_attrs(def_id)
     }
 
     /// Get tool attributes of this function, including selected attributes from the surrounding impl.
@@ -209,7 +205,7 @@ impl<'tcx> Environment<'tcx> {
         let attrs = self.get_attributes(did);
         let mut filtered_attrs = attrs::filter_for_tool(attrs);
         // also add selected attributes from the surrounding impl
-        if let Some(impl_did) = self.tcx().impl_of_method(did) {
+        if let Some(impl_did) = self.tcx().impl_of_assoc(did) {
             let impl_attrs = self.get_attributes(impl_did);
             let filtered_impl_attrs = attrs::filter_for_tool(impl_attrs);
             filtered_attrs.extend(filtered_impl_attrs.into_iter().filter(|x| propagate_from_impl(x)));
@@ -276,7 +272,7 @@ impl<'tcx> Environment<'tcx> {
 
     /// Get the index in the sorted list of associated types.
     pub(crate) fn get_trait_associated_type_index(&self, assoc_did: DefId) -> Option<usize> {
-        let trait_did = self.tcx().trait_of_item(assoc_did)?;
+        let trait_did = self.tcx().trait_of_assoc(assoc_did)?;
         let sorted_dids = self.get_trait_assoc_types(trait_did);
         for (idx, did) in sorted_dids.iter().enumerate() {
             if *did == assoc_did {
@@ -301,7 +297,7 @@ impl<'tcx> Environment<'tcx> {
     /// Get the id of a trait impl surrounding a method.
     #[must_use]
     pub(crate) fn trait_impl_of_method(&self, method_did: DefId) -> Option<DefId> {
-        if let Some(impl_did) = self.tcx().impl_of_method(method_did) {
+        if let Some(impl_did) = self.tcx().impl_of_assoc(method_did) {
             self.tcx().trait_id_of_impl(impl_did).is_some().then_some(impl_did)
         } else {
             None
@@ -325,11 +321,12 @@ impl<'tcx> Environment<'tcx> {
         // that was used to store the data.
         let body_with_facts = unsafe { mir_storage::retrieve_mir_body(self.tcx, def_id) };
         let body_with_facts = body_with_facts.unwrap_or_else(|| {
-            consumers::get_body_with_borrowck_facts(
+            let mut bodies = consumers::get_bodies_with_borrowck_facts(
                 self.tcx,
                 def_id,
                 consumers::ConsumerOptions::PoloniusOutputFacts,
-            )
+            );
+            bodies.remove(&def_id).unwrap()
         });
 
         let body = body_with_facts.body;

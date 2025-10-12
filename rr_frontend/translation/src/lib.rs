@@ -9,6 +9,7 @@
 #![feature(rustc_private)]
 #![feature(iter_order_by)]
 #![feature(stmt_expr_attributes)]
+#![feature(anonymous_lifetime_in_impl_trait)]
 // This is useful to clearly state lifetimes of the global interners.
 #![allow(clippy::needless_lifetimes)]
 #![allow(clippy::elidable_lifetime_names)]
@@ -141,7 +142,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // only export public items
         let (interned_path, as_method) = self.get_path_for_shim(did);
-        let is_method = self.env.tcx().impl_of_method(did).is_some() || as_method;
+        let is_method = self.env.tcx().impl_of_assoc(did).is_some() || as_method;
 
         let name = base::strip_coq_ident(&self.env.get_item_name(did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
@@ -313,7 +314,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // functions and methods
         for (did, _) in self.procedure_registry.iter_code() {
-            if let Some(impl_did) = self.env.tcx().impl_of_method(did.def_id) {
+            if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
@@ -326,7 +327,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         for (did, _) in self.procedure_registry.iter_only_spec() {
-            if let Some(impl_did) = self.env.tcx().impl_of_method(did.def_id) {
+            if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
                 info!("found impl method: {:?}", did);
                 if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
                     info!("found trait method: {:?}", did);
@@ -1184,7 +1185,7 @@ fn register_functions<'tcx>(
         let trait_req_incl_name = format!("trait_incl_of_{}", fname);
 
         // check whether this is part of a trait decl
-        let is_default_trait_impl = vcx.env.tcx().trait_of_item(f.to_def_id()).is_some();
+        let is_default_trait_impl = vcx.env.tcx().trait_of_assoc(f.to_def_id()).is_some();
 
         if mode == procedures::Mode::Shim && is_default_trait_impl {
             warn!("ignoring rr::shim attribute on default trait impl");
@@ -1235,7 +1236,7 @@ fn register_functions<'tcx>(
         }
 
         if mode == procedures::Mode::Prove
-            && let Some(impl_did) = vcx.env.tcx().impl_of_method(f.to_def_id())
+            && let Some(impl_did) = vcx.env.tcx().impl_of_assoc(f.to_def_id())
         {
             mode = get_most_restrictive_function_mode(vcx, impl_did);
         }
@@ -1407,7 +1408,7 @@ fn get_filtered_functions(env: &Environment<'_>, functions: Vec<LocalDefId>) -> 
                 return false;
             }
 
-            let Some(impl_did) = env.tcx().impl_of_method(id.to_def_id()) else {
+            let Some(impl_did) = env.tcx().impl_of_assoc(id.to_def_id()) else {
                 return true;
             };
 

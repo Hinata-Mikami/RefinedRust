@@ -16,7 +16,7 @@ rustflags = [
     "-Dderef_into_dyn_supertrait",
     "-Dffi_unwind_calls",
     "-Dimpl_trait_redundant_captures",
-    "-Dlinker_messages",
+    #"-Dlinker_messages",
     "-Dmacro_use_extern_crate",
     "-Dmeta_variable_misuse",
     "-Dmissing_copy_implementations",
@@ -140,6 +140,9 @@ rustflags = [
     # clippy::style
     "-Aclippy::just_underscores_and_digits",
     "-Aclippy::upper-case-acronyms",
+
+    # clippy::suspicious
+    "-Aclippy::duplicated_attributes",
 
     # === SPECIFIC LINTS ===
 

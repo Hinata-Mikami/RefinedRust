@@ -236,7 +236,7 @@ pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId
     }
 
     // Check for an annotation on the surrounding impl
-    if let Some(impl_did) = env.tcx().impl_of_method(did) {
+    if let Some(impl_did) = env.tcx().impl_of_assoc(did) {
         let attrs = env.get_attributes(impl_did);
 
         if attrs::has_tool_attr(attrs, "export_as") {
