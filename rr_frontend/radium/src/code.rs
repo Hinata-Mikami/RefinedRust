@@ -923,7 +923,10 @@ impl Function<'_> {
             if is_default_trait_impl { IncludeSelfReq::AttrsSpec } else { IncludeSelfReq::Attrs };
 
         // write coq parameters
-        let params = self.spec.get_all_lemma_coq_params(include_self_req);
+        let mut params = self.spec.get_all_lemma_coq_params(include_self_req);
+        // don't want implicit generalizing binders here
+        params.make_implicit(coq::binder::Kind::Explicit);
+
         let has_params =
             !params.0.is_empty() || !self.other_functions.is_empty() || !self.used_statics.is_empty();
         if has_params {
