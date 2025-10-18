@@ -1344,7 +1344,10 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             // Only generate a spec
             match translator.and_then(|(tx, info)| tx.generate_spec().map(|x| (x, info))) {
                 Ok((spec, info)) => {
-                    println!("Successfully generated spec for {}", fname);
+                    if vcx.env.tcx().dcx().has_errors().is_some() {
+                        return;
+                    }
+
                     let spec_ref = vcx.fn_arena.alloc(spec);
                     vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
 
@@ -1373,6 +1376,10 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             // Fully translate the function
             match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
                 Ok((fun, info)) => {
+                    if vcx.env.tcx().dcx().has_errors().is_some() {
+                        return;
+                    }
+
                     println!("Successfully translated {}", fname);
                     vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
 
