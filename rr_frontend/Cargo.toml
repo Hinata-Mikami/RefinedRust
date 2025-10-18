@@ -20,8 +20,8 @@ rr_rustc_interface.path = "rr_rustc_interface"
 rrconfig.path = "rrconfig"
 translation.path = "translation"
 
-config = { version = "0.15", default-features = false, features = ["toml"] }
 compiletest_rs = "0.11"
+config = { version = "0.15", default-features = false, features = ["toml"] }
 ctrlc = "3"
 datafrog = "2"
 derive_more = { version = "2", features = ["constructor", "debug", "deref", "deref_mut", "display", "from", "into"] }
@@ -30,18 +30,18 @@ glob = "0.3"
 indent_write = "2"
 indoc = "2"
 log = "0.4"
+nom = "8"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 shlex = "1"
-toml = "0.8"
+toml = "0.9"
 topological-sort = "0.2"
 transitive = "1"
 typed-arena = "2"
 ui_test = "0.30"
 unicode-xid = "0.2"
 which = "8"
-nom = "8.0.0"
 
 [workspace.package]
 edition = "2024"
