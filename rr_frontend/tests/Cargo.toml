@@ -1,0 +1,16 @@
+[package]
+name = "tests"
+authors = ["The RefinedRust Developers and Contributors"]
+license = "BSD-3-Clause"
+
+edition.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dev-dependencies]
+ctrlc.workspace = true
+ui_test.workspace = true
+
+[[test]]
+name = "ui"
+harness = false

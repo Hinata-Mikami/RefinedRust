@@ -7,7 +7,8 @@ members = [
     "refinedrust_frontend",
     "rr_rustc_interface",
     "rrconfig",
-    "translation"
+    "translation",
+    "tests"
 ]
 resolver = "2"
 
@@ -21,6 +22,7 @@ translation.path = "translation"
 
 config = { version = "0.15", default-features = false, features = ["toml"] }
 compiletest_rs = "0.11"
+ctrlc = "3"
 datafrog = "2"
 derive_more = { version = "2", features = ["constructor", "debug", "deref", "deref_mut", "display", "from", "into"] }
 env_logger = { version = "0.11" }
@@ -36,6 +38,7 @@ toml = "0.8"
 topological-sort = "0.2"
 transitive = "1"
 typed-arena = "2"
+ui_test = "0.30"
 unicode-xid = "0.2"
 which = "8"
 nom = "8.0.0"

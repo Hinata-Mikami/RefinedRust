@@ -1,0 +1,8 @@
+error: [RefinedRust] No assumption is allowed, but this function is annotated with `#[rr::only_spec]`
+ --> fail/no-assume-but-only-spec.rs:8:1
+  |
+8 | fn main() {
+  | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
