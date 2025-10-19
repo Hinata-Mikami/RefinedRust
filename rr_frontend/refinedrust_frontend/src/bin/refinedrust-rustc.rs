@@ -21,6 +21,102 @@ const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev
 /// Callbacks for the `RefinedRust` frontend.
 struct RRCompilerCalls;
 
+fn main() {
+    if env::args().nth(1) == Some("-vV".to_owned()) {
+        process::exit(driver::catch_with_exit_code(move || {
+            println!("RefinedRust {}", env!("RR_VERSION"));
+            driver::run_compiler(&env::args().collect::<Vec<_>>(), &mut RRCompilerCalls {});
+        }));
+    }
+
+    if env::args().any(|s| s == "--show-config") {
+        println!("Current detected configuration:");
+        return print!("{}", rrconfig::dump());
+    }
+
+    driver::install_ice_hook(BUG_REPORT_URL, |_handler| ());
+
+    // If we should act like rustc, just run the main function of the driver
+    if rrconfig::be_rustc() {
+        driver::main();
+    }
+
+    // otherwise, initialize our loggers
+    env_logger::init();
+
+    info!("Getting output dir: {:?}", env::var("RR_OUTPUT_DIR"));
+
+    // This environment variable will not be set when building dependencies.
+    let is_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
+    info!("is_primary_package: {}", is_primary_package);
+    // Is this crate a dependency when user doesn't want to verify dependencies
+    let is_no_verify_dep_crate = !is_primary_package && !rrconfig::verify_deps();
+
+    if is_no_verify_dep_crate {
+        rrconfig::set_no_verify(true);
+    }
+
+    let mut rustc_args = vec![];
+    let mut is_codegen = false;
+    for arg in env::args() {
+        // Disable incremental compilation because it causes mir_borrowck not to be called.
+        if arg == "--codegen" || arg == "-C" {
+            is_codegen = true;
+        } else if is_codegen && arg.starts_with("incremental=") {
+            // Just drop the argument.
+            is_codegen = false;
+        } else {
+            if is_codegen {
+                rustc_args.push("-C".to_owned());
+                is_codegen = false;
+            }
+            rustc_args.push(arg);
+        }
+    }
+
+    if !rrconfig::no_verify() {
+        rustc_args.push("-Zalways-encode-mir".to_owned());
+        rustc_args.push("-Zpolonius".to_owned());
+
+        if rrconfig::check_overflows() {
+            // Some crates might have a `overflow-checks = false` in their `Cargo.toml` to
+            // disable integer overflow checks, but we want to override that.
+            rustc_args.push("-Coverflow-checks=on".to_owned());
+        }
+
+        if rrconfig::dump_debug_info() {
+            rustc_args.push(format!(
+                "-Zdump-mir-dir={}",
+                rrconfig::log_dir()
+                    .unwrap()
+                    .join("mir")
+                    .to_str()
+                    .expect("failed to configure dump-mir-dir")
+            ));
+            rustc_args.push("-Zdump-mir=all".to_owned());
+            rustc_args.push("-Zdump-mir-graphviz".to_owned());
+            rustc_args.push("-Zidentify-regions=yes".to_owned());
+        }
+        if rrconfig::dump_borrowck_info() {
+            rustc_args.push("-Znll-facts=yes".to_owned());
+            rustc_args.push(format!(
+                "-Znll-facts-dir={}",
+                rrconfig::log_dir()
+                    .unwrap()
+                    .join("nll-facts")
+                    .to_str()
+                    .expect("failed to configure nll-facts-dir")
+            ));
+        }
+    }
+
+    debug!("rustc arguments: {:?}", rustc_args);
+
+    process::exit(driver::catch_with_exit_code(move || {
+        driver::run_compiler(&rustc_args, &mut RRCompilerCalls {});
+    }));
+}
+
 // From Prusti.
 fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_borrowck::ProvidedValue<'_> {
     let bodies_with_facts = borrowck::consumers::get_bodies_with_borrowck_facts(
@@ -118,104 +214,4 @@ impl driver::Callbacks for RRCompilerCalls {
 
         driver::Compilation::Stop
     }
-}
-
-fn main() {
-    driver::install_ice_hook(BUG_REPORT_URL, |_handler| ());
-
-    // If we should act like rustc, just run the main function of the driver
-    if rrconfig::be_rustc() {
-        driver::main();
-    }
-
-    // otherwise, initialize our loggers
-    env_logger::init();
-
-    info!("Getting output dir: {:?}", env::var("RR_OUTPUT_DIR"));
-
-    // This environment variable will not be set when building dependencies.
-    let is_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
-    info!("is_primary_package: {}", is_primary_package);
-    // Is this crate a dependency when user doesn't want to verify dependencies
-    let is_no_verify_dep_crate = !is_primary_package && !rrconfig::verify_deps();
-
-    if is_no_verify_dep_crate {
-        rrconfig::set_no_verify(true);
-    }
-
-    let mut rustc_args = vec![];
-    let mut is_codegen = false;
-    for arg in env::args() {
-        if rustc_args.is_empty() {
-            // Very first arg: binary name.
-            rustc_args.push(arg);
-        } else {
-            // Disable incremental compilation because it causes mir_borrowck not to be called.
-            if arg == "--codegen" || arg == "-C" {
-                is_codegen = true;
-            } else if is_codegen && arg.starts_with("incremental=") {
-                // Just drop the argument.
-                is_codegen = false;
-            } else {
-                if is_codegen {
-                    rustc_args.push("-C".to_owned());
-                    is_codegen = false;
-                }
-                rustc_args.push(arg);
-            }
-        }
-    }
-    debug!("rustc arguments: {:?}", rustc_args);
-
-    let exit_code = driver::catch_with_exit_code(move || {
-        if rustc_args.get(1) == Some(&"-vV".to_owned()) {
-            // When cargo queries the verbose rustc version,
-            // also print the RR version to stdout.
-            // This ensures that the cargo build cache is
-            // invalidated when the RR version changes.
-            println!("RefinedRust {}", env!("RR_VERSION"));
-        }
-
-        if !rrconfig::no_verify() {
-            rustc_args.push("-Zalways-encode-mir".to_owned());
-            rustc_args.push("-Zpolonius".to_owned());
-
-            if rrconfig::check_overflows() {
-                // Some crates might have a `overflow-checks = false` in their `Cargo.toml` to
-                // disable integer overflow checks, but we want to override that.
-                rustc_args.push("-Coverflow-checks=on".to_owned());
-            }
-
-            if rrconfig::dump_debug_info() {
-                rustc_args.push(format!(
-                    "-Zdump-mir-dir={}",
-                    rrconfig::log_dir()
-                        .unwrap()
-                        .join("mir")
-                        .to_str()
-                        .expect("failed to configure dump-mir-dir")
-                ));
-                rustc_args.push("-Zdump-mir=all".to_owned());
-                rustc_args.push("-Zdump-mir-graphviz".to_owned());
-                rustc_args.push("-Zidentify-regions=yes".to_owned());
-            }
-            if rrconfig::dump_borrowck_info() {
-                rustc_args.push("-Znll-facts=yes".to_owned());
-                rustc_args.push(format!(
-                    "-Znll-facts-dir={}",
-                    rrconfig::log_dir()
-                        .unwrap()
-                        .join("nll-facts")
-                        .to_str()
-                        .expect("failed to configure nll-facts-dir")
-                ));
-            }
-        }
-
-        let mut callbacks = RRCompilerCalls {};
-
-        driver::run_compiler(&rustc_args, &mut callbacks);
-    });
-
-    process::exit(exit_code)
 }

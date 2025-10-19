@@ -18,10 +18,65 @@ static USAGE: &str = "RefinedRust verification framework
 Usage: cargo refinedrust [<RefinedRust options>] -- [<cargo options>]
 
 RefinedRust Options:
-  -h, --help               Print help
       --no-assumption      Require specifications to not be assumed
       --show-config        Display the detected configuration
+  -h, --help               Print help
   -V, --version            Print version info";
+
+fn main() {
+    let rr_rustc_path = get_rustc_path();
+    let cargo_target = get_cargo_target_path();
+
+    let mut rr_env: HashMap<&str, &str> = HashMap::new();
+    let (rr_args, cargo_args) = get_args();
+
+    for arg in &rr_args {
+        match arg.as_str() {
+            "-h" | "--help" => return println!("{}", USAGE),
+            "-V" | "--version" => return dump_version_info(),
+
+            "--no-assumption" => {
+                rr_env.insert("RR_NO_ASSUMPTION", "true");
+            },
+
+            "--show-config" => {
+                run(Command::new(&rr_rustc_path).arg("--show-config"), rr_env);
+            },
+
+            _ => {
+                eprintln!("Unexpected argument: {}", arg);
+                eprintln!("Use `cargo refinedrust --help` for usage information.");
+                process::exit(1);
+            },
+        }
+    }
+
+    run(
+        Command::new(env!("RR_CARGO"))
+            .arg("check")
+            .args(cargo_args)
+            .env("RUSTC", rr_rustc_path)
+            .env("CARGO_TARGET_DIR", &cargo_target),
+        rr_env,
+    );
+}
+
+fn run(cmd: &mut Command, rr_env: HashMap<&str, &str>) -> ! {
+    let output_dir = rrconfig::output_dir()
+        .unwrap_or_else(|| [get_cargo_target_path(), "verify".to_owned()].into_iter().collect());
+
+    let cmd = cmd.env("RR_OUTPUT_DIR", &output_dir).envs(rr_env);
+
+    let exit_status = cmd
+        .status()
+        .unwrap_or_else(|_| panic!("could not run {}", cmd.get_program().to_str().unwrap()));
+
+    if exit_status.success() {
+        process::exit(0);
+    } else {
+        process::exit(exit_status.code().unwrap_or(-1))
+    }
+}
 
 fn dump_version_info() {
     println!("RefinedRust {}", env!("RR_VERSION"));
@@ -56,6 +111,23 @@ fn dump_version_info() {
     println!(" - rocq {} ({})", rocq_version, rocq);
 }
 
+fn get_rustc_path() -> PathBuf {
+    let mut rr_rustc_path = env::current_exe()
+        .expect("current executable path invalid")
+        .with_file_name("refinedrust-rustc");
+
+    if cfg!(windows) {
+        rr_rustc_path.set_extension("exe");
+    }
+
+    rr_rustc_path
+}
+
+fn get_cargo_target_path() -> String {
+    // TODO: If we're using workspaces, we should figure out the right dir for the workspace
+    env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned())
+}
+
 /// Returns the arguments for `RefinedRust` and `cargo`.
 fn get_args() -> (Vec<String>, Vec<String>) {
     let args: Vec<String> = env::args().skip(1).skip_while(|arg| arg == "refinedrust").collect();
@@ -66,64 +138,4 @@ fn get_args() -> (Vec<String>, Vec<String>) {
     let cargo_args: Vec<String> = cargo_args.iter().map(ToOwned::to_owned).skip(1).collect();
 
     (rr_args, cargo_args)
-}
-
-fn main() {
-    let mut rr_env: HashMap<&str, &str> = HashMap::new();
-    let (mut rr_args, cargo_args) = get_args();
-
-    if rr_args.iter().any(|arg| arg == "-h" || arg == "--help") {
-        return println!("{}", USAGE);
-    }
-
-    if rr_args.iter().any(|arg| arg == "-V" || arg == "--version") {
-        return dump_version_info();
-    }
-
-    if let Some(index) = rr_args.iter().position(|arg| arg == "--no-assumption") {
-        rr_env.insert("RR_NO_ASSUMPTION", "true");
-        rr_args.swap_remove(index);
-    }
-
-    if rr_args.iter().any(|arg| arg == "--show-config") {
-        println!("Current detected configuration:");
-        return print!("{}", rrconfig::dump());
-    }
-
-    if !rr_args.is_empty() {
-        eprintln!("Unexpected arguments: {}", rr_args.join(" "));
-        eprintln!("Use `cargo refinedrust --help` for usage information.");
-        process::exit(1);
-    }
-
-    process(cargo_args, &rr_env).unwrap_or_else(|c| process::exit(c));
-}
-
-fn process(cargo_args: Vec<String>, rr_env: &HashMap<&str, &str>) -> Result<(), i32> {
-    // can we make this more robust?
-    let mut rr_rustc_path = env::current_exe()
-        .expect("current executable path invalid")
-        .with_file_name("refinedrust-rustc");
-    if cfg!(windows) {
-        rr_rustc_path.set_extension("exe");
-    }
-
-    // TODO: If we're using workspaces, we should figure out the right dir for the workspace
-    let cargo_target_path = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
-    let cargo_target = PathBuf::from(cargo_target_path.clone());
-
-    let output_dir = rrconfig::output_dir()
-        .unwrap_or_else(|| [cargo_target_path, "verify".to_owned()].into_iter().collect());
-
-    let exit_status = Command::new(env!("RR_CARGO"))
-        .arg("check")
-        .args(cargo_args)
-        .env("RUSTC", rr_rustc_path)
-        .env("CARGO_TARGET_DIR", &cargo_target)
-        .env("RR_OUTPUT_DIR", &output_dir)
-        .envs(rr_env)
-        .status()
-        .expect("could not run cargo");
-
-    if exit_status.success() { Ok(()) } else { Err(exit_status.code().unwrap_or(-1)) }
 }
