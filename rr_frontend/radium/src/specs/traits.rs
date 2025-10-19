@@ -16,7 +16,7 @@ use crate::specs::{
     GenericScope, GenericScopeInst, IncludeSelfReq, Lft, LiteralTyParam, TyParamList, TyParamOrigin, Type,
     functions,
 };
-use crate::{coq, lang, model, push_str_list, write_list};
+use crate::{coq, fmt_list, lang, model, push_str_list, write_list};
 
 /// A specification for a method of a trait impl.
 #[derive(Clone, Debug)]
@@ -719,7 +719,7 @@ fn make_trait_instance<'def>(
 
         if of_trait.attrs_dependent {
             attrs_params
-                .append(&mut scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms().0);
+                .append(&mut scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
         }
         let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_params);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
@@ -792,7 +792,7 @@ fn make_trait_instance<'def>(
             }
 
             let trait_params = direct_trait_params.make_using_terms();
-            write!(body, " {trait_params}")?;
+            write!(body, " {}", fmt_list!(trait_params, " "))?;
 
             write!(body, "\n")?;
 
@@ -935,7 +935,7 @@ impl SpecDecl<'_> {
 
             let record_item_ty = coq::term::App::new(
                 coq::term::Term::Ident(coq::Ident::new(record_item_sig_name)),
-                field_params.make_using_terms().0,
+                field_params.make_using_terms(),
             );
             let ty = coq::term::RocqType::Term(Box::new(coq::term::Term::App(Box::new(record_item_ty))));
 
@@ -1044,7 +1044,7 @@ impl SpecDecl<'_> {
                 direct_scope.get_direct_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms();
             let mut ty_term = String::with_capacity(100);
             ty_term.push_str(&format!("spec_with {num_lifetimes} ["));
-            push_str_list!(ty_term, &rt_param_uses.0, "; ");
+            push_str_list!(ty_term, &rt_param_uses, "; ");
             ty_term.push_str("] fn_spec");
 
             // params are the rt and st of the direct type parameters
@@ -1110,7 +1110,7 @@ impl SpecDecl<'_> {
         let mut spec_incl_params = spec_rt_params;
         spec_incl_params.make_implicit(coq::binder::Kind::MaxImplicit);
 
-        let ty = format!("PreOrder ({} {})", self.lit.spec_incl_name(), spec_rt_inst_terms);
+        let ty = format!("PreOrder ({} {})", self.lit.spec_incl_name(), fmt_list!(spec_rt_inst_terms, " "));
 
         let body = coq::proof::Proof::new(coq::proof::Terminator::Qed, |doc| {
             doc.push(coq::ltac::Attrs::new(coq::ltac::RocqLTac::Split));
@@ -1145,7 +1145,7 @@ impl SpecDecl<'_> {
 
         // compute the type of the two spec params
         let spec_param_type =
-            coq::term::App::new(self.lit.spec_record.clone(), spec_rt_using_terms.0).to_string();
+            coq::term::App::new(self.lit.spec_record.clone(), spec_rt_using_terms).to_string();
 
         // add the two spec params
         spec_incl_params.0.push(coq::binder::Binder::new(
@@ -1178,14 +1178,14 @@ impl SpecDecl<'_> {
                                 Box::new(coq::term::Term::Literal(spec_param_name1.clone())),
                                 record_item_name.clone(),
                             ),
-                            param_uses.0.clone(),
+                            param_uses.clone(),
                         ))),
                         coq::term::Term::App(Box::new(coq::term::App::new(
                             coq::term::Term::RecordProj(
                                 Box::new(coq::term::Term::Literal(spec_param_name2.clone())),
                                 record_item_name.clone(),
                             ),
-                            param_uses.0.clone(),
+                            param_uses.clone(),
                         ))),
                     ],
                 )))),
@@ -1340,7 +1340,7 @@ impl<'def> RefInst<'def> {
         binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
-        coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args.0)
+        coq::term::App::new(coq::term::Term::Literal(attr_record.to_owned()), args)
     }
 
     /// Get the term for referring to the spec record of this impl
@@ -1356,7 +1356,7 @@ impl<'def> RefInst<'def> {
         binders.append(self.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
         let args = binders.make_using_terms();
 
-        let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args.0).to_string();
+        let mut specialized_spec = coq::term::App::new(spec_record.to_owned(), args).to_string();
 
         // specialize to semtys
         specialized_spec.push_str(&self.generics.identity_instantiation_term());
@@ -1621,8 +1621,11 @@ impl ImplSpec<'_> {
         params.append(ty_params.get_coq_ty_params().0);
         params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
 
-        let ty_term =
-            format!("{} {}", self.trait_ref.impl_ref.spec_subsumption_statement, params.make_using_terms());
+        let ty_term = format!(
+            "{} {}",
+            self.trait_ref.impl_ref.spec_subsumption_statement,
+            fmt_list!(params.make_using_terms(), " ")
+        );
 
         doc.push(coq::command::Lemma {
             name: lemma_name.to_owned(),
@@ -1759,8 +1762,10 @@ impl<'def> InstantiatedFunctionSpec<'def> {
 
         write!(
             f,
-            "({applied_base_spec}).({}) {spec_params} {trait_params_inst} <MERGE!>",
-            self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name)
+            "({applied_base_spec}).({}) {} {} <MERGE!>",
+            self.trait_ref.of_trait.make_spec_method_name(&self.trait_method_name),
+            fmt_list!(spec_params, " "),
+            fmt_list!(trait_params_inst, " ")
         )?;
 
         Ok(())

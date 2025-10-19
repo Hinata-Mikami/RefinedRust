@@ -102,7 +102,7 @@ impl<'def> AbstractVariant<'def> {
             "{indent}Definition {} {typarams} : syn_type := {} {}.\n",
             self.st_def_name,
             self.sls_def_name.clone(),
-            typarams.make_using_terms(),
+            fmt_list!(typarams.make_using_terms(), " "),
         )
         .unwrap();
 
@@ -197,7 +197,8 @@ impl<'def> AbstractVariant<'def> {
 
         // Generate the refinement type definition
         let rt_params = all_ty_params.get_coq_ty_rt_params();
-        let using = format!("{} {}", rt_params.make_using_terms(), rt_context_names.join(" "));
+        let using =
+            format!("{} {}", fmt_list!(rt_params.make_using_terms(), " "), rt_context_names.join(" "));
 
         document.push(coq::command::Definition {
             program_mode: false,
@@ -475,8 +476,8 @@ impl<'def> Abstract<'def> {
             // generate the raw rt def
             // we introduce a let binding for the recursive rt type
             write!(out, "{indent}Definition {} : RT :=\n", self.variant_def.plain_rt_def_name).unwrap();
-            let ty_rt_uses = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-            write!(out, "{indent}{indent}let {} {ty_rt_uses}", inv.rt_def_name()).unwrap();
+            let ty_rt_uses = fmt_list!(all_ty_params.get_coq_ty_rt_params().make_using_terms(), " ");
+            write!(out, "{indent}{indent}let {} {}", inv.rt_def_name(), ty_rt_uses).unwrap();
             write!(out, " := {} in\n", inv.rfn_type).unwrap();
             write!(out, "{indent}{indent}{}.\n", self.variant_def.rfn_type()).unwrap();
 
@@ -521,7 +522,7 @@ impl<'def> Abstract<'def> {
                 "{indent}Definition {type_name} : {} (type ({rfn_type})) := {} type_fixpoint ({type_name}_rec {}).\n",
                 self.scope.get_all_type_term(),
                 self.scope,
-                all_ty_params.get_semantic_ty_params().make_using_terms(),
+                fmt_list!(all_ty_params.get_semantic_ty_params().make_using_terms(), " "),
             )
             .unwrap();
 

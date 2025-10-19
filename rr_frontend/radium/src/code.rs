@@ -998,7 +998,7 @@ impl Function<'_> {
             self.other_functions.iter().map(|proc_use| proc_use.loc_name.clone()).collect();
 
         let ty_params = self.spec.generics.get_all_ty_params_with_assocs();
-        for names in ty_params.get_coq_ty_st_params().make_using_terms().0 {
+        for names in ty_params.get_coq_ty_st_params().make_using_terms() {
             code_params.push(format!("{names}"));
         }
         for s in &self.used_statics {
@@ -1036,7 +1036,7 @@ impl Function<'_> {
         let trait_late_pre = {
             let trait_req_incl_name = &self.spec.trait_req_incl_name;
             let args = self.spec.get_all_trait_req_coq_params().make_using_terms();
-            let term = coq::term::App::new(trait_req_incl_name.to_owned(), args.0);
+            let term = coq::term::App::new(trait_req_incl_name.to_owned(), args);
 
             let mut term = term.to_string();
             // instantiate semantic args

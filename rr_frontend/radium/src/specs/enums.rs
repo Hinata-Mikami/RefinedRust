@@ -13,7 +13,7 @@ use derive_more::Display;
 use indent_write::fmt::IndentWriter;
 
 use crate::specs::{GenericScope, GenericScopeInst, Type, structs, types};
-use crate::{BASE_INDENT, coq, lang, model, push_str_list};
+use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 /// Enum representation options supported by Radium
@@ -190,8 +190,10 @@ impl<'def> Abstract<'def> {
 
         // also write an st definition
         out.push_str(&format!(
-            "{indent}Definition {} {all_ty_st_params} : syn_type := {} {all_ty_st_params_uses}.\n",
-            self.st_def_name, self.els_def_name,
+            "{indent}Definition {} {all_ty_st_params} : syn_type := {} {}.\n",
+            self.st_def_name,
+            self.els_def_name,
+            fmt_list!(all_ty_st_params_uses, " ")
         ));
 
         // finish
@@ -366,7 +368,10 @@ impl<'def> Abstract<'def> {
             let rec_ty = format!(
                 "ty_lfts ({} {} {})",
                 self.plain_ty_name,
-                self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                fmt_list!(
+                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                    " "
+                ),
                 self.scope.identity_instantiation().instantiation(true, true),
             );
             v.push(rec_ty);
@@ -390,7 +395,10 @@ impl<'def> Abstract<'def> {
             let rec_ty = format!(
                 "ty_wf_E ({} {} {})",
                 self.plain_ty_name,
-                self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                fmt_list!(
+                    self.scope.get_all_ty_params_with_assocs().get_coq_ty_rt_params().make_using_terms(),
+                    " "
+                ),
                 self.scope.identity_instantiation().instantiation(true, true),
             );
             v.push(rec_ty);
@@ -624,7 +632,8 @@ impl<'def> Abstract<'def> {
         write!(out, "{indent}Definition {} : RT.\n", self.plain_rt_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {rt_param_uses}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
+            "{indent}Proof using {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
+            fmt_list!(rt_param_uses, " "),
             self.plain_ty_name
         )
         .unwrap();

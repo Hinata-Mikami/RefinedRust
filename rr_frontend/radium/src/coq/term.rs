@@ -39,6 +39,9 @@ pub(crate) fn fmt_binders_empty(op: &str, binders: &binder::BinderList, empty: &
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
 #[expect(clippy::module_name_repetitions)]
 pub enum RocqTerm<T, U> {
+    /// A Rocq type
+    Type(Box<RocqType<U, T>>),
+
     /// A literal
     Literal(String),
 
@@ -86,9 +89,6 @@ pub enum RocqTerm<T, U> {
     #[from(ignore)]
     AsType(Box<RocqTerm<T, U>>, Box<RocqType<U, T>>),
 
-    /// A Rocq type
-    Type(Box<RocqType<U, T>>),
-
     /// User defined type
     UserDefined(T),
 }
@@ -98,6 +98,9 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
         use fmt::Write as _;
 
         match self {
+            Self::Type(t) => {
+                write!(f, "{t}")
+            },
             Self::Literal(lit) => {
                 let mut f2 = IndentWriter::new_skip_initial(BASE_INDENT, &mut *f);
                 write!(f2, "{lit}")
@@ -137,9 +140,6 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
             Self::Prefix(op, term) => {
                 write!(f, "{op} ({term})")
             },
-            Self::Type(t) => {
-                write!(f, "{t}")
-            },
             Self::AsType(t, ty) => {
                 write!(f, "({t}) : ({ty})")
             },
@@ -147,27 +147,6 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
                 write!(f, "{}", user_type)
             },
         }
-    }
-}
-
-#[expect(clippy::module_name_repetitions)]
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("{}", fmt_list!(_0, " ", "{}"))]
-pub struct TermList(pub Vec<Term>);
-
-impl TermList {
-    #[must_use]
-    pub const fn new(params: Vec<Term>) -> Self {
-        Self(params)
-    }
-
-    #[must_use]
-    pub const fn empty() -> Self {
-        Self(vec![])
-    }
-
-    pub fn append(&mut self, params: Vec<Term>) {
-        self.0.extend(params);
     }
 }
 
@@ -266,6 +245,10 @@ pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum RocqType<T, U> {
+    /// An arbitrary term.
+    #[display("{}", _0)]
+    Term(Box<RocqTerm<U, T>>),
+
     /// Literals
     #[display("({_0})")]
     Literal(String),
@@ -307,10 +290,6 @@ pub enum RocqType<T, U> {
     /// Product type
     #[display("{}", fmt_prod(_0))]
     Prod(Vec<Type>),
-
-    /// An arbitrary term.
-    #[display("{}", _0)]
-    Term(Box<RocqTerm<U, T>>),
 
     /// User defined type
     #[display("{}", _0)]

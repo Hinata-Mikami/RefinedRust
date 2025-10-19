@@ -346,7 +346,7 @@ impl Spec {
         &self,
         base_type: &str,
         base_rfn_type: &str,
-        generics_rts: &coq::term::TermList,
+        generics_rts: &Vec<coq::term::Term>,
         scope: &GenericScope<'_>,
         context_names: &[String],
     ) -> String {
@@ -367,10 +367,11 @@ impl Spec {
             write!(
                 out,
                 "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {attr_binders_uses} {}) {}.\n",
+                {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
+                fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
                 base_type
             )
@@ -380,10 +381,11 @@ impl Spec {
             write!(
                 out,
                 "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
-                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {attr_binders_uses} {}) {}.\n",
+                {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
                 self.type_name,
                 scope.get_all_type_term(),
                 self.rfn_type,
+                fmt_list!(attr_binders_uses, " "),
                 scope.identity_instantiation_term(),
                 base_type
             )
@@ -393,7 +395,8 @@ impl Spec {
         write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name).unwrap();
         write!(
             out,
-            "{indent}Proof using {generics_rts} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
+            "{indent}Proof using {} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
+            fmt_list!(generics_rts, " "),
             context_names.join(" "),
             self.type_name
         )
@@ -437,10 +440,10 @@ impl Spec {
 
         // get the applied base_rfn_type
         let rt_instantiations = all_ty_params.get_coq_ty_rt_params().make_using_terms();
-        let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.0.clone());
+        let applied_base_rt = coq::term::App::new(base_rfn_type, rt_instantiations.clone());
 
         // get the applied base type
-        let applied_base_type = coq::term::App::new(base_type_name, rt_instantiations.0.clone());
+        let applied_base_type = coq::term::App::new(base_type_name, rt_instantiations.clone());
         let applied_base_type = format!("({applied_base_type} {})", scope.identity_instantiation_term());
 
         write!(
