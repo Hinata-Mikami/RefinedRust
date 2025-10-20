@@ -469,14 +469,20 @@ Proof.
   - move => Hf /(list_lookup_fmap_Some_1 _ _ _ _)?. naive_solver.
   - move => HT y ? Hl; subst. apply HT. by rewrite list_lookup_fmap Hl.
 Qed.
+Global Instance simpl_lookup_insert_eq_fast {A} (l : list A) i x x' :
+  SimplBothRel (=) (<[i := x']> l !! i) (Some x) (x = x' ∧ (i < length l)%nat) | 1.
+Proof.
+  unfold SimplBothRel in *.
+  rewrite list_lookup_insert_Some. naive_solver.
+Qed.
 Global Instance simpl_lookup_insert_eq {A} (l : list A) i j x x' `{!CanSolve (i = j)}:
-  SimplBothRel (=) (<[i := x']> l !! j) (Some x) (x = x' ∧ (j < length l)%nat).
+  SimplBothRel (=) (<[i := x']> l !! j) (Some x) (x = x' ∧ (j < length l)%nat) | 5.
 Proof.
   unfold SimplBothRel, CanSolve in *; subst.
   rewrite list_lookup_insert_Some. naive_solver.
 Qed.
 Global Instance simpl_lookup_insert_neq {A} (l : list A) i j x x' `{!CanSolve (i ≠ j)}:
-  SimplBothRel (=) (<[i := x']> l !! j) (Some x) (l !! j = Some x).
+  SimplBothRel (=) (<[i := x']> l !! j) (Some x) (l !! j = Some x) | 5.
 Proof.
   unfold SimplBothRel, CanSolve in *; subst.
   rewrite list_lookup_insert_Some. naive_solver.
@@ -505,10 +511,10 @@ Global Instance simpl_is_Some_unfold {A} (o : option A):
 Proof. split; naive_solver. Qed.
 
 Global Instance simpl_Some {A} o (x x' : A) `{!TCFastDone (o = Some x)}:
-  SimplBothRel (=) (o) (Some x') (x = x') | 1.
+  SimplBothRel (=) (o) (Some x') (x = x') | 2.
 Proof. unfold TCFastDone in *; subst. split; naive_solver. Qed.
 
-Global Instance simpl_both_fmap_Some A B f (o : option A) (x : B): SimplBothRel (=) (f <$> o) (Some x) (∃ x', o = Some  x' ∧ x = f x').
+Global Instance simpl_both_fmap_Some A B f (o : option A) (x : B): SimplBothRel (=) (f <$> o) (Some x) (∃ x', o = Some  x' ∧ x = f x') | 3.
 Proof. unfold SimplBothRel. rewrite fmap_Some. naive_solver. Qed.
 
 Global Instance simpl_both_option_fmap_None {A B} (f : A → B) (x : option A) :

@@ -76,7 +76,9 @@ Section stratify.
               (*∃ (Heq : rt3 = rt), T L3 (R3 ∗ R2) ((j, rew Heq in lty3) :: iml2) (<[j := rew Heq in r3]> rs2)*)
               ⌜if k is Owned _ then True else False⌝ ∗
               (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
-              ∃ r4, weak_subltype E L3 k r3 r4 (ltype_core lty3) (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2))
+              trigger_tc (SimpLtype (ltype_core lty3)) (λ lty3',
+              ∃ r4, 
+              weak_subltype E L3 k r3 r4 lty3' (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2)))
           end
         else
             ∃ (Heq : rt = rt3),
@@ -155,7 +157,8 @@ Section stratify.
       simpl. destruct (decide (k0 ∉ ig)); last done.
       rewrite decide_True; last set_solver. done.
     - (* *)
-      iDestruct "HT" as "(%Hown & %r4 & HT)".
+      iDestruct "HT" as "(%Hown & % & %Heq & %r4 & HT)".
+      destruct Heq as [<-].
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
       iDestruct "Hincl" as "(%Hsteq & Hincl & _)".
       iExists _, _, _, _. iFrame.

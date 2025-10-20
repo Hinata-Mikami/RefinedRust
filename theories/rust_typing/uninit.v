@@ -249,10 +249,10 @@ Section deinit_fallback.
     owned_subtype π E L pers r () (ty1) (uninit st2) T :-
     ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
     (* augment context *)
-    inhale (⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1) ly1)⌝);
     ly2 ← tactic (compute_layout_goal st2);
     (* augment context *)
-    inhale (⌜syn_type_has_layout st2 ly2⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout st2 ly2)⌝);
     exhale (⌜ly_size ly1 = ly_size ly2⌝);
     return T L.
   Proof.
@@ -320,10 +320,10 @@ Section init.
       (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2) T :-
     ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
       (* augment context *)
-    inhale (⌜syn_type_has_layout (ty_syn_type ty1) ly1⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1) ly1)⌝);
     ly2 ← tactic (compute_layout_goal (ty_syn_type ty2));
     (* augment context *)
-    inhale (⌜syn_type_has_layout (ty_syn_type ty2) ly2⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty2) ly2)⌝);
     inhale (⌜l `has_layout_loc` ly1⌝);
     exhale (⌜l `has_layout_loc` ly2⌝);
     return (owned_subtype π E L false r1 r2 ty1 ty2 (λ L', (T L' True%I))).

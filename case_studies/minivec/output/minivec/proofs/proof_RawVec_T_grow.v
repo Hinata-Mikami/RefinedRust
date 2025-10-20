@@ -23,13 +23,15 @@ Proof.
   Unshelve. all: sidecond_hammer.
   { unfold size_of_array_in_bytes in *. simplify_layout_assum. nia. }
   {
-    move: _Hsz Hnot_sz.
+    revert select (ly_size (mk_array_layout _ _) ≤ _).
+    move: Hnot_sz.
     match goal with H : 2 * MaxInt ISize < MaxInt USize |- _ => move: H end.
     rewrite ly_size_mk_array_layout.
     clear. solve_goal with nia.
   }
   {
-    move: _Hsz Hnot_sz.
+    revert select (ly_size (mk_array_layout _ _) ≤ _).
+    move: Hnot_sz.
     match goal with H : 2 * MaxInt ISize < MaxInt USize |- _ => move: H end.
     rewrite ly_size_mk_array_layout.
     solve_goal with nia.

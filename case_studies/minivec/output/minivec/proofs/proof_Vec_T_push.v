@@ -62,10 +62,12 @@ Proof.
       rewrite project_vec_els_drop. apply list_eq_singleton. 
       split; solve_goal.
   }
-  { move: Hcap _Hsz. 
+  { revert select (ly_size (mk_array_layout _ _) ≤ _).
+    move: Hcap. 
     rewrite ly_size_mk_array_layout.
     clear. nia. }
-  { move: Hcap _Hsz. 
+  { revert select (ly_size (mk_array_layout _ _) ≤ _).
+    move: Hcap. 
     rewrite ly_size_mk_array_layout.
     clear. nia. }
   {

@@ -2253,6 +2253,7 @@ Proof.
 Qed.
 
 Ltac init_cache :=
+  ensure_jcache;
   (*specialize (bytes_per_addr_eq) as ?;*)
   specialize_cache (MaxInt_2_ISize_USize);
   specialize_cache (MaxInt_ge_127 I8);

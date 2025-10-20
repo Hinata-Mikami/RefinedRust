@@ -244,6 +244,140 @@ Section option_map.
 End option_map.
 Global Hint Mode TypedOptionMap + + + ! - - : typeclass_instances.
 
+Section simp_ltype.
+  Context `{!typeGS Σ}.
+
+  Class SimpLtype {rt} (lt1 lt2 : ltype rt) := mkSL {
+    sl_proof : lt1 = lt2;
+  }.
+  Class SimpLtypes {rts} (lts1 lts2 : hlist ltype rts) := mkSLs {
+    sls_proof : lts1 = lts2;
+  }.
+  Class SimpLtypeIds {rt} (lts1 lts2 : list (nat * ltype rt)) := mkSLIs {
+    slis_proof : lts1 = lts2;
+  }.
+
+  Global Instance simp_ltypes_nil :
+    SimpLtypes +[] +[].
+  Proof. by econstructor. Qed.
+  Global Instance simp_ltypes_cons {rt rts} (lt1 lt2 : ltype rt) (lts1 lts2 : hlist ltype rts)  :
+    SimpLtype lt1 lt2 →
+    SimpLtypes lts1 lts2 →
+    SimpLtypes (lt1 +:: lts1) (lt2 +:: lts2).
+  Proof.
+    intros [<-] [<-].
+    done.
+  Qed.
+
+  Global Instance simp_ltype_ids_nil rt :
+    SimpLtypeIds (rt:=rt) [] [].
+  Proof. by econstructor. Qed.
+  Global Instance simp_ltype_ids_cons {rt} (lt1 lt2 : ltype rt) i lts1 lts2  :
+    SimpLtype lt1 lt2 →
+    SimpLtypeIds lts1 lts2 →
+    SimpLtypeIds ((i, lt1) :: lts1) ((i, lt2) :: lts2).
+  Proof.
+    intros [<-] [<-].
+    done.
+  Qed.
+
+  Global Instance simp_ltype_ofty {rt} (ty : type rt) :
+    SimpLtype (ltype_core (◁ ty))%I (◁ ty)%I.
+  Proof.
+    econstructor. by rewrite ltype_core_ofty.
+  Qed.
+  Global Instance simp_ltype_core {rt} (lt : ltype rt) lt' :
+    SimpLtype (ltype_core lt) lt' →
+    SimpLtype (ltype_core (ltype_core lt)) lt'.
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_idemp.
+  Qed.
+  Global Instance simp_ltype_alias {rt} st p :
+    SimpLtype (ltype_core (AliasLtype rt st p)) (AliasLtype rt st p).
+  Proof.
+    econstructor. by rewrite ltype_core_alias.
+  Qed.
+  Global Instance simp_ltype_blocked {rt} (ty : type rt) κ :
+    SimpLtype (ltype_core (BlockedLtype ty κ)) (◁ ty)%I.
+  Proof.
+    econstructor. by rewrite ltype_core_blocked.
+  Qed.
+  Global Instance simp_ltype_shrblocked {rt} (ty : type rt) κ :
+    SimpLtype (ltype_core (ShrBlockedLtype ty κ)) (◁ ty)%I.
+  Proof.
+    econstructor. by rewrite ltype_core_shrblocked.
+  Qed.
+  Global Instance simp_ltype_box {rt} (lt lt' : ltype rt) :
+    SimpLtype (ltype_core lt) lt' →
+    SimpLtype (ltype_core (BoxLtype lt)) (BoxLtype lt').
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_box.
+  Qed.
+  Global Instance simp_ltype_ownedptr {rt} (lt lt' : ltype rt) b :
+    SimpLtype (ltype_core lt) lt' →
+    SimpLtype (ltype_core (OwnedPtrLtype lt b)) (OwnedPtrLtype lt' b).
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_owned_ptr.
+  Qed.
+  Global Instance simp_ltype_mut {rt} (lt lt' : ltype rt) κ :
+    SimpLtype (ltype_core lt) lt' →
+    SimpLtype (ltype_core (MutLtype lt κ)) (MutLtype lt' κ).
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_mut_ref.
+  Qed.
+  Global Instance simp_ltype_shr {rt} (lt lt' : ltype rt) κ :
+    SimpLtype (ltype_core lt) lt' →
+    SimpLtype (ltype_core (ShrLtype lt κ)) (ShrLtype lt' κ).
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_shr_ref.
+  Qed.
+  Global Instance simp_ltype_struct {rts} (lts lts' : hlist ltype rts) sls :
+    SimpLtypes (@ltype_core _ _ +<$> lts) lts' →
+    SimpLtype (ltype_core (StructLtype lts sls)) (StructLtype lts' sls).
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_struct.
+  Qed.
+  Global Instance simp_ltype_array {rt} (ty : type rt) n es es' :
+    SimpLtypeIds ((λ '(i, lt), (i, ltype_core lt)) <$> es) es' →
+    SimpLtype (ltype_core (ArrayLtype ty n es)) (ArrayLtype ty n es').
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_array.
+  Qed.
+  Global Instance simp_ltype_enum {rt rte} (en : enum rt) tag (lte lte' : ltype rte) re :
+    SimpLtype (ltype_core lte) lte' →
+    SimpLtype (ltype_core (EnumLtype en tag lte re)) (EnumLtype en tag lte' re).
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_enum.
+  Qed.
+  Global Instance simp_ltype_opened {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost :
+    SimpLtype (ltype_core (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost)) (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost).
+  Proof.
+    by rewrite ltype_core_opened.
+  Qed.
+  Global Instance simp_ltype_coreable {rt_full} (lt_full lt_full' : ltype rt_full) κs :
+    SimpLtype (ltype_core lt_full) lt_full' →
+    SimpLtype (ltype_core (CoreableLtype κs lt_full)) lt_full'.
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_coreable.
+  Qed.
+  Global Instance ltype_core_shadowed {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full lt_full' : ltype rt_full) r_cur :
+    SimpLtype (ltype_core lt_full) lt_full' →
+    SimpLtype (ltype_core (ShadowedLtype lt_cur r_cur lt_full)) lt_full'.
+  Proof.
+    intros [<-]. econstructor. by rewrite ltype_core_shadowed.
+  Qed.
+  Global Instance simp_ltype_openedna {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost :
+    SimpLtype (ltype_core (OpenedNaLtype lt_cur lt_inner Cpre Cpost)) (OpenedNaLtype lt_cur lt_inner Cpre Cpost).
+  Proof.
+    by rewrite ltype_core_opened_na.
+  Qed.
+End simp_ltype.
+Global Hint Mode SimpLtypes + + + + - : typeclass_instances.
+Global Hint Mode SimpLtypeIds + + + + - : typeclass_instances.
+Global Hint Mode SimpLtype + + + + - : typeclass_instances.
+
+
+
 (** find type of val in context *)
 Definition FindVal `{!typeGS Σ} (v : val) :=
   {| fic_A := @sigT RT (λ rt, type rt * rt * thread_id)%type; fic_Prop '(existT rt (ty, r, π)) := (v ◁ᵥ{π} r @ ty)%I; |}.
@@ -2155,7 +2289,9 @@ Section judgments.
             (* we could unblock everything, directly subsume *)
             ⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r lt2 (◁ ty) (T L2 [] R2)
         | κs =>
-            ⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r (ltype_core lt2) (◁ ty) (T L2 κs R2)
+            ⌜bk = bk'⌝ ∗
+            trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2',
+            weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 κs R2))
         end))
     ⊢ prove_with_subtype E L true ProveWithStratify (l ◁ₗ[π, bk] r @ (◁ ty))%I T.
   Proof.
@@ -2171,8 +2307,10 @@ Section judgments.
       iDestruct "Hincl" as "(_ & Hincl & _)".
       iMod (ltype_incl'_use with "Hincl Hl"); first done.
       iModIntro. by iIntros "_ !>".
-    - iAssert (⌜bk = bk'⌝ ∗ weak_subltype E L2 bk r2 r (ltype_core lt2) (◁ ty) (T L2 (ltype_blocked_lfts lt2) R2))%I with "[HT]" as "(<- & HT)".
+    - iAssert (⌜bk = bk'⌝ ∗ trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L2 bk r2 r lt2' (◁ ty) (T L2 (ltype_blocked_lfts lt2) R2)))%I with "[HT]" as "(<- & HT)".
       { destruct (ltype_blocked_lfts lt2); done. }
+      iDestruct "HT" as "(%lt2' & %Heq & HT)".
+      destruct Heq as [<-].
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
       iModIntro. iExists _, _, _. iFrame.
       iApply (logical_step_wand with "Hstep").
@@ -2201,7 +2339,8 @@ Section judgments.
                 (* we could unblock everything, directly subsume *)
                 weak_subltype E L3 (Owned true) r2 r lt2 (◁ ty) (T L3 κs2 (R2 ∗ R3))
             | κs =>
-                weak_subltype E L3 (Owned true) r2 r (ltype_core lt2) (◁ ty) (T L3 (κs ++ κs2) (R2 ∗ R3))
+                trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2',
+                weak_subltype E L3 (Owned true) r2 r lt2' (◁ ty) (T L3 (κs ++ κs2) (R2 ∗ R3)))
             end)
         | _ => False
         end))
@@ -2225,8 +2364,10 @@ Section judgments.
       iDestruct "Hincl" as "(_ & Hincl & _)".
       iMod (ltype_incl'_use with "Hincl Hl"); first done.
       iModIntro. iFrame. by iIntros "_ !>".
-    - iAssert (weak_subltype E L3 (Owned true) r2 r (ltype_core lt2) (◁ ty) (T L3 (ltype_blocked_lfts lt2 ++ κs2) (R2 ∗ R3)))%I with "[HT]" as "HT".
+    - iAssert (trigger_tc (SimpLtype (ltype_core lt2)) (λ lt2', weak_subltype E L3 (Owned true) r2 r lt2' (◁ ty) (T L3 (ltype_blocked_lfts lt2 ++ κs2) (R2 ∗ R3))))%I with "[HT]" as "HT".
       { destruct (ltype_blocked_lfts lt2); simpl; first done. done. }
+      iDestruct "HT" as "(%lt2' & %Heq & HT)".
+      destruct Heq as [<-].
       iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & HL & HT)".
       iModIntro. iExists _, _, _. iFrame.
       iApply (logical_step_wand with "Hstep").

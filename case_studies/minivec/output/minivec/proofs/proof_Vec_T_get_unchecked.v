@@ -21,7 +21,8 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { move: _Hsz Hi Hcap.
+  { revert select (ly_size (mk_array_layout _ _) ≤ _).
+    move: Hi Hcap.
     rewrite ly_size_mk_array_layout.
     clear. nia. }
   { move: Hi Hcap. clear. nia. }

@@ -67,54 +67,98 @@ Ltac unfold_no_enrich :=
 
 (** Sidecondition caching *)
 
-(** Design decisions:
-   - How do we represent the cache?
-
-     Should we just have an opaque marker that we unfold?
-     => Go with this for now.
-
-     Should we pack stuff into a special list or so?
-     + This would be reflected directly in the proof term and not easily go away
-     + Might be more efficient for matching when we don't need it.
-
-   - Have tactics for entering things into the cache, for adding the cache to the context, etc.
-    invariant: no duplicates in the cache.
-
-
- *)
+(** Single cache *)
 Definition CACHED {A : Type} (a : A) := a.
 Global Typeclasses Opaque CACHED.
 Arguments CACHED : simpl never.
 Notation "'CACHED'" := (CACHED _) (only printing).
+
 Lemma enter_cache {A} : A → CACHED A.
 Proof. apply CACHED. Defined.
-
-Ltac open_cache :=
-  unfold CACHED in *
-  (*repeat match goal with*)
-  (*| H : context[CACHED ?a] |- _ => unfold CACHED in H*)
-  (*end*)
-.
-
 
 (** Hook to process an assumption [H] before entering it into the cache. *)
 Ltac enter_cache_hook H cont :=
   cont H.
-Ltac enter_cache H :=
-  enter_cache_hook H ltac:(fun Hn => apply enter_cache in Hn).
+
 (** Unsafe version that bypasses the hooks *)
 Ltac enter_cache_unsafe H :=
   apply enter_cache in H.
+Ltac enter_cache H :=
+  enter_cache_hook H ltac:(fun Hn => 
+    enter_cache_unsafe Hn).
+
+
+(** Joint cache *)
+Definition JCACHED {A : Type} (a : A) := a.
+Global Typeclasses Opaque JCACHED.
+Arguments JCACHED : simpl never.
+Notation "'JCACHED'" := (JCACHED _) (only printing).
+
+Lemma init_jcache : JCACHED True.
+Proof. by apply JCACHED. Defined.
+
+Lemma enter_jcache {A B} : 
+  B →
+  JCACHED A →
+  JCACHED (B ∧ A).
+Proof.
+  unfold JCACHED. done.
+Qed.
+
+Ltac open_jcache :=
+  match goal with
+  | H : JCACHED ?A |- _ =>
+      unfold JCACHED in H;
+      repeat match type of H with
+      | _ ∧ _ =>
+          destruct H as [? H]
+      end
+  end
+.
+
+Ltac open_scache :=
+  unfold CACHED in *
+.
+Ltac open_cache :=
+  open_scache;
+  try open_jcache
+.
+
+Ltac init_jcache :=
+  let Hcache := fresh "Hcache" in 
+  specialize init_jcache as Hcache.
+Ltac ensure_jcache :=
+  lazymatch goal with
+  | H : JCACHED _ |- _ => idtac
+  | |- _ => init_jcache
+  end.
+
+(** Unsafe version that bypasses the hooks *)
+Ltac enter_jcache_unsafe H :=
+  match goal with
+  | Hcache : JCACHED _ |- _ => 
+      apply (enter_jcache H) in Hcache;
+      clear H
+  end
+.
+Ltac enter_jcache H :=
+  enter_cache_hook H ltac:(fun Hn => 
+    enter_jcache_unsafe Hn)
+.
 
 Ltac specialize_cache T :=
   let Hn := fresh in
   specialize T as Hn;
-  enter_cache Hn.
+  enter_jcache Hn.
 Ltac assert_is_not_cached H :=
   lazymatch type of H with
   | CACHED _ => fail
+  | JCACHED _ => fail
   | _ => idtac
   end.
+
+
+
 
 (** Case distinctions *)
 Ltac add_case_distinction_info info :=

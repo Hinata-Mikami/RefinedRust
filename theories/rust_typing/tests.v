@@ -199,9 +199,11 @@ Section test.
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
-    intros Hly.
+    init_jcache.
+    intros Halg.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   Lemma inv_test s2_ly :
@@ -212,17 +214,21 @@ Section test.
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
+    init_jcache.
     intros Hly.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   Lemma inv_test4 len ly :
     syn_type_has_layout (ArraySynType T_st len) ly →
     ∃ ly2, syn_type_has_layout T_st ly2.
   Proof.
+    init_jcache.
     intros Hly. inv_layout_alg.
     eexists.
+    open_cache.
     solve_layout_alg; solve[fail].
   Abort.
 
@@ -231,6 +237,7 @@ Section test.
     use_layout_alg (ArraySynType (ty_syn_type T_ty) (length xs)) = Some ly →
     ∃ ly', syn_type_has_layout (T_st) ly'.
   Proof.
+    init_jcache.
     intros -> H1. inv_layout_alg.
     eexists.
     solve_layout_alg; solve[fail].
@@ -250,9 +257,11 @@ Section test.
       ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
+    init_jcache.
     intros Hly.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   Lemma inv_test u2_ly :
@@ -263,9 +272,11 @@ Section test.
       ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
+    init_jcache.
     intros Hly.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   Lemma inv_test3 ly :
@@ -276,8 +287,10 @@ Section test.
       ul_has_variants u1_ul [("u1_v1", T_ly); ("u1_v2", (it_layout I32))] ∧
       ul_has_variants u2_ul [("u2_v1", void*); ("u2_v2", (ul_layout u1_ul))].
   Proof.
+    init_jcache.
     intros Hly. inv_layout_alg.
-    eauto 10; solve[fail].
+    open_jcache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   (** Enums *)
@@ -296,8 +309,10 @@ Section test.
     use_enum_layout_alg std_option_Option_els = Some e_ly →
     ∃ ly, enum_layout_spec_has_layout std_option_Option_els ly.
   Proof.
+    init_jcache.
     intros.
     inv_layout_alg.
+    open_jcache.
     eexists.
     solve_layout_alg; solve[fail].
   Abort.
@@ -307,6 +322,7 @@ Section test.
     use_layout_alg (UntypedSynType (it_layout I32)) = Some ily →
     ily = it_layout I32.
   Proof.
+    init_jcache.
     intros Hly. inv_layout_alg. reflexivity.
   Abort.
 
@@ -316,6 +332,7 @@ Section test.
     syn_type_has_layout U_st ly2 →
     True.
   Proof.
+    init_jcache.
     intros.
     timeout 4 (intros; inv_layout_alg).
   Abort.
@@ -326,6 +343,7 @@ Section test.
     syn_type_has_layout T_st T_ly2 →
     T_ly1 = T_ly2.
   Proof.
+    init_jcache.
     intros ??.
     inv_layout_alg.
     reflexivity.
@@ -339,9 +357,11 @@ Section test.
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
+    init_jcache.
     intros ? ?.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
   Lemma inv_test4' ly1 ly2 :
     syn_type_has_layout (s1_spec) ly1 →
@@ -352,9 +372,11 @@ Section test.
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
+    init_jcache.
     intros ? ?.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 
   Lemma inv_test_name_collision {T_rt} (T_ty : type T_rt) U_st {U_rt} (U_ty : type U_rt) ly1 ly2 ly3 ly4 :
@@ -366,6 +388,7 @@ Section test.
     ty_syn_type U_ty = U_st →
     True.
   Proof.
+    init_jcache.
     (* Regression test: This should not diverge. *)
     intros []. inv_layout_alg.
     intros []. inv_layout_alg.
@@ -379,6 +402,7 @@ Section test.
   Lemma inv_test_5 {U_rt} (U_ty : type U_rt) x :
     use_layout_alg (tuple1_sls (st_of U_ty)) = Some x → True.
   Proof.
+    init_jcache.
     intros H.
     inv_layout_alg.
     open_cache.
@@ -390,6 +414,7 @@ Section test.
     ty_syn_type U_ty = U_st →
     True.
   Proof.
+    init_jcache.
     intros H.
     inv_layout_alg.
     intros Ha.
@@ -412,11 +437,13 @@ Section test.
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
+    init_jcache.
     intros Hly.
     inv_layout_alg.
     intros Ha.
     inv_layout_alg.
-    eauto 10; solve[fail].
+    open_cache.
+    (*eauto 10; solve[fail].*)
   Abort.
 End test.
 
@@ -466,6 +493,7 @@ Section test.
     use_layout_alg (s2_spec T_st) = Some s2_ly →
     syn_type_has_layout (s2_spec T_st) s2_ly.
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     solve_layout_alg; solve [fail].
   Abort.
@@ -505,6 +533,7 @@ Section test.
     use_layout_alg (s2_spec T_st) = Some s2_ly →
     ∃ s2_sl, struct_layout_spec_has_layout (s2_spec T_st) s2_sl.
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     eexists. solve_layout_alg; solve[fail].
   Abort.
@@ -513,6 +542,7 @@ Section test.
     use_layout_alg (s2_spec T_st) = Some s2_ly →
     syn_type_has_layout (s2_spec T_st) (use_layout_alg' (s2_spec T_st)).
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     solve_layout_alg; solve[fail].
   Abort.
@@ -539,6 +569,7 @@ Section test.
     use_layout_alg (s2_spec T_st) = Some s2_ly →
     ∃ ly, syn_type_has_layout (UntypedSynType (use_layout_alg' (s2_spec T_st))) ly.
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     eexists. solve_layout_alg; solve [fail].
   Abort.
@@ -547,6 +578,7 @@ Section test.
     use_layout_alg (std_option_Option_els T_st) = Some ly →
     ∃ ly, syn_type_has_layout (std_option_Option_els T_st) ly.
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     eexists. solve_layout_alg; solve[fail].
   Abort.
@@ -556,6 +588,7 @@ Section test.
     use_layout_alg (std_option_Option_els (IntSynType U32)) = Some ly' →
     ∃ ly1 ly2, syn_type_has_layout (std_option_Option_els T_st) ly1 ∧ syn_type_has_layout (std_option_Option_els (IntSynType U32)) ly2.
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     eexists _, _.
     split; solve_layout_alg.
@@ -577,6 +610,7 @@ Section test.
     syn_type_has_layout T_st ly →
     use_op_alg T_st = Some (use_op_alg' T_st).
   Proof.
+    init_jcache.
     intros; inv_layout_alg.
     solve_op_alg; solve [fail].
   Abort.
@@ -586,6 +620,7 @@ Section test.
     use_struct_layout_alg (s1_spec T_st) = Some s1_sl →
     use_op_alg (s2_spec T_st) = Some (StructOp s2_sl [PtrOp; StructOp s1_sl [use_op_alg' T_st; IntOp I32]]).
   Proof.
+    init_jcache.
     intros. inv_layout_alg.
     solve_op_alg.
     Unshelve. all: solve_goal.

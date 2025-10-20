@@ -444,7 +444,7 @@ Section enum.
     by eapply use_enum_layout_alg_Some.
   Qed.
 
-  Global Instance enum_t_copyable {rt} (e : enum rt):
+  Lemma enum_t_copyable {rt} (e : enum rt):
     (∀ r : rt, Copyable ((e.(enum_ty) r))) →
     Copyable (enum_t e).
   Proof.

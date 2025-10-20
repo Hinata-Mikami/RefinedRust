@@ -20,7 +20,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve.
-  all: try lia.
+  all: open_cache; try lia.
   all: sidecond_hammer.
   rewrite MaxInt_eq. solve_goal. (* NOTE : manual *)
   Unshelve. all: print_remaining_sidecond.

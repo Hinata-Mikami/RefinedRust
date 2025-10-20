@@ -1148,10 +1148,11 @@ Section typing.
   (* No instance here, as we may not always want to do that. *)
 
   (* TODO: also make this one optional *)
-  Lemma stratify_ltype_coreable {rt} π E L mu mdu ma {M} (ml : M) l (lt_full : ltype rt) κs r b T :
-    lft_dead_list κs ∗ stratify_ltype π E L mu mdu ma ml l (ltype_core lt_full) r b T
+  Lemma stratify_ltype_coreable {rt} π E L mu mdu ma {M} (ml : M) l (lt_full lt_full' : ltype rt) κs r b `{Hsimp: !SimpLtype (ltype_core lt_full) lt_full'} T :
+    lft_dead_list κs ∗ stratify_ltype π E L mu mdu ma ml l lt_full' r b T
     ⊢ stratify_ltype π E L mu mdu ma ml l (CoreableLtype κs lt_full) r b T.
   Proof.
+    destruct Hsimp as [<-].
     iIntros "(#Hdead & Hstrat)".
     iIntros (F ???) "#CTX #HE HL Hl".
     iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
@@ -1207,19 +1208,21 @@ Section typing.
         then (* keep it open *)
           T L' R _ (OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost) r'
         else
+          trigger_tc (SimpLtype (ltype_core lt_cur')) (λ lt_cur'',
           (* fold the invariant *)
           ∃ ri,
             (* show that the core of lt_cur' is a subtype of lt_inner and then fold to lt_full *)
-            weak_subltype E L' (Owned false) (r') (#ri) (ltype_core lt_cur') lt_inner (
+            weak_subltype E L' (Owned false) (r') (#ri) (lt_cur'') lt_inner (
               (* re-establish the invariant *)
               ∃ rf, prove_with_subtype E L' true ProveWithStratify (Cpre ri rf) (λ L'' κs R2,
               (* either fold to coreable, or to the core of lt_full *)
               match ltype_blocked_lfts lt_cur', κs with
               | [], [] =>
-                    (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (ltype_core lt_full) (#rf))
+                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full', 
+                    (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full lt_full' (#rf)))
               | κs', _ =>
                     (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (CoreableLtype (κs' ++ κs) lt_full) (#rf))
-              end)))
+              end))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r (Owned wl) T.
   Proof.
     iIntros "Hstrat". iIntros (F ???) "#CTX #HE HL Hl".
@@ -1242,13 +1245,15 @@ Section typing.
       iSplitR; first done. iSplitR; first done.
       iSplitR; first done. done.
     - (* fold it again *)
+      iDestruct "HT" as "(%lt_cur'' & %Heq & HT)". destruct Heq as [<-].
       iDestruct "HT" as "(%ri & HT)".
       iMod ("HT" with "[//] CTX HE HL") as "(Hincl & HL & %rf & HT)".
       iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs & %R2 & Hstep' & HL & HT)".
       iPoseProof (imp_unblockable_blocked_dead lt_cur') as "(_ & #Hb)".
       set (κs' := ltype_blocked_lfts lt_cur').
       destruct (decide (κs = [] ∧ κs' = [])) as [[-> ->] | ].
-      + iExists L3, _, _, _, _. iFrame.
+      + iDestruct "HT" as "(% & %Heq & HT)". destruct Heq as [<-].
+        iExists L3, _, _, _, _. iFrame.
         iSplitR. { iPureIntro. rewrite ltype_core_syn_type_eq. rewrite -Hst2 -Hst1 //. }
         iApply logical_step_fupd.
         iApply (logical_step_compose with "Hstep").
@@ -1323,7 +1328,8 @@ Section typing.
               (* either fold to coreable, or to the core of lt_full *)
               match κs, ltype_blocked_lfts lt_cur' with
               | [], [] =>
-                    (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full (ltype_core lt_full) (#rf))
+                    trigger_tc (SimpLtype (ltype_core lt_full)) (λ lt_full', 
+                    (T L'' (Cpost ri rf ∗ R2 ∗ R) rt_full lt_full' (#rf)))
               | _, κs' =>
                     (* inclusion sidecondition: require that all the blocked stuff ends before κ *)
                     ([∗ list] κ' ∈ κs ++ κs', ⌜lctx_lft_incl E L'' κ' κ⌝) ∗
@@ -1356,7 +1362,8 @@ Section typing.
       iPoseProof (imp_unblockable_blocked_dead lt_cur') as "#(_ & Hub)".
       set (κs' := ltype_blocked_lfts lt_cur').
       destruct (decide (κs = [] ∧ κs' = [])) as [[-> ->] | ].
-      + iExists L3, _, _, _, _. iFrame.
+      + iDestruct "HT" as "(% & %Heq & HT)". destruct Heq as [<-].
+        iExists L3, _, _, _, _. iFrame.
         iSplitR. { iPureIntro. rewrite ltype_core_syn_type_eq. rewrite -Hst2 -Hst1 //. }
         iApply logical_step_fupd.
         iApply (logical_step_compose with "Hstep").
@@ -1457,24 +1464,24 @@ Section typing.
     StratifyLtype π E L mu mdu ma StratifyUnblockOp l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
   Global Instance stratify_ltype_unblock_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
     StratifyLtype π E L mu mdu ma StratifyUnblockOp l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
-  Global Instance stratify_ltype_unblock_coreable_inst {rt} π E L mu mdu ma l (lt : ltype rt) b r κs :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt κs r b T).
+  Global Instance stratify_ltype_unblock_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt _ κs r b T).
 
   (** Extract stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_extract_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
     StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
   Global Instance stratify_ltype_extract_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
     StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
-  Global Instance stratify_ltype_extract_coreable_inst {rt} π E L mu mdu ma l (lt : ltype rt) b r κs κ' :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt κs r b T).
+  Global Instance stratify_ltype_extract_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs κ' `{!SimpLtype (ltype_core lt) lt'} :
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt _ κs r b T).
 
   (** Resolve stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_resolve_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ  :
     StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
     StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
-  Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt : ltype rt) b r κs :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt κs r b T).
+  Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
 
   (** ** place typing *)
 
@@ -1551,12 +1558,13 @@ Section typing.
   Global Instance typed_place_shrblocked_unblock_inst {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P:
     TypedPlace E L π l (ShrBlockedLtype ty κ) r bmin0 b P | 5 := λ T, i2p (typed_place_shrblocked_unblock π E L l ty κ r bmin0 b P T).
 
-  Lemma typed_place_coreable_unblock {rt} π E L l (lt : ltype rt) κs (r : place_rfn rt) bmin0 b P T :
-    ⌜bor_kind_writeable bmin0⌝ ∗ lft_dead_list κs ∗ typed_place π E L l (ltype_core lt) r bmin0 b P (
+  Lemma typed_place_coreable_unblock {rt} π E L l (lt lt' : ltype rt) κs (r : place_rfn rt) bmin0 b P `{Hsimp : !SimpLtype (ltype_core lt) lt'} T :
+    ⌜bor_kind_writeable bmin0⌝ ∗ lft_dead_list κs ∗ typed_place π E L l lt' r bmin0 b P (
       λ L2 κs li b2 bmin2 rti ltyi ri mstrong,
         T L2 κs li b2 bmin2 rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) mstrong.(mstrong_weak)))
     ⊢ typed_place π E L l (CoreableLtype κs lt) r bmin0 b P T.
   Proof.
+    destruct Hsimp as [<-].
     iIntros "(%Hw & Hdead & Hp)". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hincl0 Hl HΦ".
     iApply fupd_place_to_wp.
     iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
@@ -1578,9 +1586,9 @@ Section typing.
         unfold typed_place_cond_ty. simp_ltypes. done.
       + done.
   Qed.
-  Global Instance typed_place_coreable_unblock_inst {rt} π E L l (lt : ltype rt) κs r bmin0 b P :
+  Global Instance typed_place_coreable_unblock_inst {rt} π E L l (lt lt' : ltype rt) κs r bmin0 b P `{!SimpLtype (ltype_core lt) lt'} :
     TypedPlace E L π l (CoreableLtype κs lt) r bmin0 b P | 5 :=
-      λ T, i2p (typed_place_coreable_unblock π E L l lt κs r bmin0 b P T).
+      λ T, i2p (typed_place_coreable_unblock π E L l lt _ κs r bmin0 b P T).
 
   Lemma typed_place_resolve_ghost {rt} π E L l (lt : ltype rt) bmin0 b γ P T :
     ⌜lctx_bor_kind_alive E L b⌝ ∗ ⌜bor_kind_writeable bmin0⌝ ∗

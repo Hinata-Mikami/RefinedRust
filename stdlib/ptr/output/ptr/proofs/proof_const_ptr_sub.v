@@ -32,9 +32,11 @@ Proof.
   { apply val_to_of_loc. }
   { done. }
   { (* count is positive, so this should work *)
-    revert H30 H31.
+    rename select (MinInt _ ≤ count * _) into Hmin.
+    rename select (count * _ ≤ MaxInt _) into Hmax.
+    revert Hmin Hmax.
     split; rewrite -?MinInt_eq -?MaxInt_eq. 
-    { move: H31. unsafe_unfold_common_caesium_defs; simpl. lia. }
+    { move: Hmax. unsafe_unfold_common_caesium_defs; simpl. lia. }
     { lia. }
   }
   { rewrite /offset_loc.

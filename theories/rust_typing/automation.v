@@ -42,7 +42,7 @@ Ltac solve_protected_eq_hook ::=
 Ltac can_solve_hook ::= first [
   match goal with
   | |- _ ≠ _ => discriminate
-  end | open_cache; solve_goal].
+  end | open_scache; solve_goal].
 
 Ltac liTrace_hook info ::=
   add_case_distinction_info info.
@@ -761,20 +761,7 @@ Ltac unfold_introduce_direct :=
     change_no_check (envs_entails E' G)
   end.
 
-Ltac simp_ltypes_in_goal_step :=
-  match goal with
-  | |- context [ ltype_core ?lt ] =>
-        assert_fails Init.is_var lt;
-         (let ltc := fresh "ltc" in
-          let Heq := fresh "Heq_lt" in
-          remember (ltype_core lt) as ltc eqn:Heq ; simp_ltype_core Heq;
-           subst ltc)
-  end.
-Ltac simp_ltypes_in_goal :=
-  repeat simp_ltypes_in_goal_step.
-
-
-(* Variant of [liStep] that calls [liSimpl] when necessary, but does not require the surrounding wrapper to every call [liSimpl] itself. *)
+(* Variant of [liStep] that calls [liSimpl] when necessary, but does not require the surrounding wrapper to call [liSimpl] itself. *)
 Ltac liFastStep :=
   first
   [ liExtensible
@@ -811,7 +798,6 @@ Ltac liRStepCore :=
 Ltac liRStep :=
   liEnsureInvariant;
   try liRIntroduceLetInGoal;
-  simp_ltypes_in_goal;
   first [liRStepCore | simpl; liRStepCore ]
 .
 
@@ -953,6 +939,7 @@ TODO: does this still hold? we've since started doing this...
 (* TODO: don't use i... tactics here *)
 Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropattern(κs) ")" "(" simple_intropattern(tys) ")" "(" simple_intropattern(x) ")" "(" ident_list(params) ")" :=
   intros;
+  init_jcache;
   inv_layout_alg;
   iStartProof;
   repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl);
@@ -1039,6 +1026,8 @@ Ltac sidecond_hook_core :=
       solve_ty_has_op_type
   | |- layout_wf _ =>
       solve_layout_wf
+  | |- ly_align_in_bounds _ =>
+      solve_ly_align_ib
   | |- syn_type_compat _ _ =>
       solve_syn_type_compat
   | |- ty_allows_reads _ =>

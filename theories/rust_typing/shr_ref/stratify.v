@@ -97,10 +97,11 @@ Section stratify.
 
     - maybe we also want to have the depth certificates here? *)
   (* This is loosing information by dropping potential [ShadowedLtype], so we should only do it when really necessary. *)
-  Lemma stratify_ltype_shared {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) (T : stratify_ltype_cont_t):
-    (cast_ltype_to_type E L (ltype_core lt) (λ ty', T L True _ (◁ ty')%I (r)))
+  Lemma stratify_ltype_shared {rt} π E L mu mdu ma {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{Hsimp : !SimpLtype (ltype_core lt) lt'} (T : stratify_ltype_cont_t):
+    (cast_ltype_to_type E L lt' (λ ty', T L True _ (◁ ty')%I (r)))
     ⊢ stratify_ltype π E L mu mdu ma ml l lt r (Shared κ) T.
   Proof.
+    destruct Hsimp as [<-].
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     iDestruct "HT" as "(%ty & %Heq & HT)".
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; first apply Heq.
@@ -111,9 +112,9 @@ Section stratify.
     iModIntro. iSplitR. { simp_ltypes. done. }
     iApply logical_step_intro. iSplitL; done.
   Qed.
-  Global Instance stratify_ltype_shared_inst1 {rt} π E L mu mdu {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) :
+  Global Instance stratify_ltype_shared_inst1 {rt} π E L mu mdu {M} (ml : M) l (lt lt' : ltype rt) κ (r : place_rfn rt) `{!SimpLtype (ltype_core lt) lt'} :
     StratifyLtype π E L mu mdu StratRefoldFull ml l lt r (Shared κ) | 100 :=
-    λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldFull ml l lt κ r T).
+    λ T, i2p (stratify_ltype_shared π E L mu mdu StratRefoldFull ml l lt lt' κ r T).
   (* TODO needed? *)
   (*Global Instance stratify_ltype_shared_inst2 {rt} π E L mu mdu {M} (ml : M) l (lt : ltype rt) κ (r : place_rfn rt) :*)
     (*StratifyLtype π E L mu mdu StratRefoldOpened ml l lt r (Shared κ) | 100 :=*)

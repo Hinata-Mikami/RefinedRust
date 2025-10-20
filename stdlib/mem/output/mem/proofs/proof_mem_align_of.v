@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  by apply ly_align_in_usize.
+  apply ly_align_in_usize. sidecond_hook.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

@@ -93,7 +93,8 @@ Proof.
   iApply fupd_typed_call.
   iMod (ofty_uninit_to_value with "Hnew") as "(%vn & Hnew)"; first done.
   iMod (ofty_value_has_length with "Hnew") as "(%Hlen & Hnew)"; [done | | ].
-  { eapply syn_type_has_layout_untyped; [done.. | | done]. rewrite /ly_size/=. lia. }
+  { eapply syn_type_has_layout_untyped; [done.. | rewrite /ly_size/=; lia | ]. 
+    open_cache. done. }
   iPoseProof (ofty_value_untyped_to_bytes with "Hnew") as "Hnew".
   iMod (ofty_value_untyped_split_app_array _ _ _ _ (ly_size new_ly - ly_size old_ly) (ly_size old_ly)  with "Hnew") as "(Hnew1 & Hnew2)"; first done.
   { simpl. lia. }
@@ -223,7 +224,8 @@ Proof.
     unfold_no_enrich. inv_layout_alg.
     match goal with | H: Z.of_nat (ly_size ?Hly) ≠ 0%Z |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ USize by done.
-    opose proof* (ly_align_log_in_usize T_st_ly) as Ha; first done.
+    opose proof* (ly_align_log_in_usize T_st_ly) as Ha. 
+    { open_cache. sidecond_hook. }
     move: Ha.
     intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
@@ -415,7 +417,7 @@ Proof.
   Unshelve. all: sidecond_hammer.
   Unshelve.
   1-2: unfold size_of_array_in_bytes in *; simplify_layout_assum; sidecond_hammer.
-  all: by apply alloc_array_layout_wf.
+  1: apply alloc_array_layout_wf; sidecond_hook.
 Qed.
 
 (** realloc_array *)
@@ -504,8 +506,8 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   all: unfold size_of_array_in_bytes in *; simplify_layout_assum.
-  all: sidecond_hammer.
-  all: rewrite Nat.mul_comm; by apply array_layout_wf.
+  all: try open_jcache; sidecond_hammer.
+  all: rewrite Nat.mul_comm; apply array_layout_wf; sidecond_hook.
 Qed.
 
 
@@ -576,8 +578,8 @@ Proof.
   repeat liRStep; liShow.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  rewrite Nat.mul_comm.
-  by apply array_layout_wf.
+  all: rewrite Nat.mul_comm.
+  all: open_jcache; apply array_layout_wf; sidecond_hook.
 Qed.
 
 (** check_array_layoutable *)
