@@ -341,7 +341,7 @@ use crate::{fmt_list, model};
 /// [identifier]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-ident
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 #[display("{}", _0)]
-pub struct Ident(pub(crate) String);
+pub struct Ident(String);
 
 impl Ident {
     /// Create a new [identifier].
@@ -349,14 +349,28 @@ impl Ident {
     /// The identifier must start with a letter or underscore, followed by any non-whitespace characters.
     /// Furthermore, incompatible symbols (like `'` or `::`) are strip from the identifier to be compatible
     #[must_use]
-    pub fn new<I: Into<String>>(ident: I) -> Self {
-        let s = ident
-            .into()
+    pub fn new(ident: &str) -> Self {
+        if ident.is_empty() {
+            panic!("A Rocq identifier must be non-empty");
+        }
+
+        let mut chars = ident.chars();
+        let c = chars.next().unwrap_or_else(|| unreachable!("Empty identifiers are checked"));
+        if !(c.is_alphanumeric() || c == '_') {
+            panic!("The Rocq identifier {} must start with a letter or underscore", ident);
+        }
+
+        if chars.any(char::is_whitespace) {
+            panic!("The Rocq identifier {} must be composed of non-whitespace characters", ident);
+        }
+
+        let normalised = String::from(ident)
             .replace('\'', "")
             .replace("::", "_")
-            .replace(|c: char| !(c.is_alphanumeric() || c == '_'), "");
+            .replace('&', "REF")
+            .replace("()", "unit");
 
-        Self(s)
+        Self(normalised)
     }
 }
 

@@ -309,7 +309,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                 // TODO: ?
                 if region.is_named() {
                     let name = region.name.as_str();
-                    Ok(coq::Ident::new(format!("ulft_{}", name)))
+                    Ok(coq::Ident::new(&format!("ulft_{}", name)))
                 } else {
                     Err(TranslationError::UnknownEarlyRegion(region))
                 }

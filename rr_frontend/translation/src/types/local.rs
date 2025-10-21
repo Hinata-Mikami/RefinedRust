@@ -338,7 +338,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         // Re-bind the function's (early) lifetime parameters
         for i in 0..num_param_regions {
-            let lft_name = coq::Ident::new(format!("ulft_{}", i));
+            let lft_name = coq::Ident::new(&format!("ulft_{}", i));
             scope.add_lft_param(lft_name.clone());
             fn_inst.add_lft_param(lft_name);
         }
@@ -352,7 +352,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             // names work out when translating the types below
             let lft_name = self
                 .translate_region_var(region)
-                .unwrap_or_else(|_| coq::Ident::new(format!("ulft_{}", next_lft)));
+                .unwrap_or_else(|_| coq::Ident::new(&format!("ulft_{}", next_lft)));
             scope.add_lft_param(lft_name.clone());
 
             // Note: since these are not formal parameters of the function, we do not add them to
@@ -367,8 +367,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
                     let name = r.get_name(self.translator.env().tcx()).map_or_else(
-                        || coq::Ident::new(format!("late_lft_{}", late_bound_idx)),
-                        |x| coq::Ident::new(x.as_str()),
+                        || coq::Ident::new(&format!("late_lft_{}", late_bound_idx)),
+                        |x| coq::Ident::new(&format!("lft_{}", x)),
                     );
 
                     // push this to the context.

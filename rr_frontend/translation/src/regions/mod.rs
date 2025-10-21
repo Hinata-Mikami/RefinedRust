@@ -118,7 +118,7 @@ pub(crate) fn format_atomic_region_direct(
         },
     };
 
-    coq::Ident::new(format!("{}lft{}", prefix, index))
+    coq::Ident::new(&format!("{}lft{}", prefix, index))
 }
 
 pub(crate) fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {

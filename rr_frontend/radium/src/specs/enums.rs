@@ -292,7 +292,7 @@ impl<'def> Abstract<'def> {
             Box::new(coq::term::RocqTerm::Type(Box::new(coq::term::RocqType::UserDefined(
                 model::Type::Ttype(Box::new(coq::term::RocqType::Term(Box::new(coq::term::RocqTerm::App(
                     Box::new(coq::term::App::new(
-                        coq::term::RocqTerm::Ident(coq::Ident::new(self.enum_rt_def_name())),
+                        coq::term::RocqTerm::Ident(coq::Ident::new(&self.enum_rt_def_name())),
                         vec![coq::term::RocqTerm::Ident(coq::Ident::new("x"))],
                     )),
                 ))))),
@@ -529,8 +529,9 @@ impl<'def> Abstract<'def> {
                 ))),
             };
             document.push(coq::command::CommandAttrs::new(defn));
-            document
-                .push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(rt_name))));
+            document.push(coq::command::CommandAttrs::new(coq::command::CanonicalDecl(coq::Ident::new(
+                &rt_name,
+            ))));
 
             document.push(
                 coq::command::CommandAttrs::new(coq::command::Instance {

@@ -273,9 +273,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
                     let name = format!("ulft_{}", name);
-                    scope.push(Param::Region(coq::Ident::new(name)));
+                    scope.push(Param::Region(coq::Ident::new(&name)));
                 } else {
-                    let name = coq::Ident::new(format!("ulft_{}", region_count));
+                    let name = coq::Ident::new(&format!("ulft_{}", region_count));
                     region_count += 1;
                     scope.push(Param::Region(name));
                 }
@@ -358,8 +358,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         for (idx, region) in bound_regions.iter().rev().enumerate().rev() {
             // TODO smarter way to autogenerate anonymous names?
             let name = region.get_name(tcx).map_or_else(
-                || coq::Ident::new(format!("_lft_for_{}", idx)),
-                |x| coq::Ident::new(format!("lft_{}", x.as_str())),
+                || coq::Ident::new(&format!("_lft_for_{}", idx)),
+                |x| coq::Ident::new(&format!("lft_{}", x.as_str())),
             );
 
             new_binder.push(name.clone());
@@ -405,7 +405,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             for late_vid in binder {
                 let name = map.region_names.get(late_vid);
                 let name =
-                    name.map_or_else(|| coq::Ident::new(format!("_lft_for_fn_{}", idx)), ToOwned::to_owned);
+                    name.map_or_else(|| coq::Ident::new(&format!("_lft_for_fn_{}", idx)), ToOwned::to_owned);
                 new_binder.push(name);
                 idx += 1;
             }
@@ -697,7 +697,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
                 },
                 ty::GenericParamDefKind::Lifetime => {
                     lft_names.insert(p.name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(coq::Ident::new(format!("ulft_{}", name))));
+                    scope.push(Param::Region(coq::Ident::new(&format!("ulft_{}", name))));
                 },
             }
         }

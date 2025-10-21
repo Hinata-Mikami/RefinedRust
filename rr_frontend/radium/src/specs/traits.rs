@@ -841,7 +841,7 @@ fn make_trait_instance<'def>(
         for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
             let assoc_param = LiteralTyParam::new(name, name);
             term = coq::term::Term::LetIn(
-                coq::Ident::new(assoc_param.refinement_type),
+                coq::Ident::new(&assoc_param.refinement_type),
                 Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),
                 Box::new(term),
             );
@@ -934,7 +934,7 @@ impl SpecDecl<'_> {
             sig_decls.push(sig_defn.into());
 
             let record_item_ty = coq::term::App::new(
-                coq::term::Term::Ident(coq::Ident::new(record_item_sig_name)),
+                coq::term::Term::Ident(coq::Ident::new(&record_item_sig_name)),
                 field_params.make_using_terms(),
             );
             let ty = coq::term::RocqType::Term(Box::new(coq::term::Term::App(Box::new(record_item_ty))));
@@ -1465,7 +1465,7 @@ impl ImplSpec<'_> {
                 let record_item_name = of_trait.make_spec_attr_name(attr_name);
 
                 let item_ty = coq::term::App::new(
-                    coq::term::Term::Ident(coq::Ident::new(of_trait.make_spec_attr_sig_name(attr_name))),
+                    coq::term::Term::Ident(coq::Ident::new(&of_trait.make_spec_attr_sig_name(attr_name))),
                     attrs_type_terms.clone(),
                 );
 
