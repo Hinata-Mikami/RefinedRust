@@ -33,6 +33,17 @@ Tactic Notation "unfold_opaque" constr(c) "in" constr(d) := with_strategy 0 [c] 
    apply the arguments of literal type terms that would usually be implicit.
    Basically, we handle the case that the literal term expects a [typeGS] assumption
    and then a number of [RT]s that are later determined by the parameters we instantiate. *)
+Ltac instantiate_benign_universals term :=
+  lazymatch type of term with
+  | ∀ (_ : gFunctors) (_ : typeGS _), _ =>
+      instantiate_benign_universals uconstr:(term _ _)
+  | ∀ _ : typeGS _, _ =>
+      instantiate_benign_universals uconstr:(term ltac:(refine _))
+  | _ =>
+      constr:(term)
+  end.
+
+(** Instantiate a number of [RT] universals *)
 Ltac count_in_term' term acc :=
   match type of term with
   | ∀ _ : RT, _ =>
@@ -48,36 +59,92 @@ Ltac instantiate_universal_evars term count :=
   | S ?n =>
       instantiate_universal_evars uconstr:(term _) constr:(n)
   end.
-Ltac instantiate_benign_universals term :=
-  lazymatch type of term with
-  | ∀ (_ : gFunctors) (_ : typeGS _), _ =>
-      instantiate_benign_universals uconstr:(term _ _)
-  | ∀ _ : typeGS _, _ =>
-      instantiate_benign_universals uconstr:(term ltac:(refine _))
-  | _ =>
-      constr:(term)
-  end.
 Ltac instantiate_universals term :=
   let term := instantiate_benign_universals term in
   let count := count_in_term term in
   instantiate_universal_evars term count.
+
+(** Apply [term] to the sequence of arguments [apps]. [apps] is expected to be of type [hlist id ?tys] *)
 Ltac apply_term_het term apps :=
   match apps with
   | +[] => constr:(term)
   | ?app +:: ?apps =>
       apply_term_het uconstr:(term app) apps
   end.
-Ltac apply_term_het_evar term lfts tys :=
+Ltac apply_term_het' term apps :=
+  match apps with
+  | +[] => uconstr:(term)
+  | ?app +:: ?apps =>
+      apply_term_het' uconstr:(term app) apps
+  end.
+
+(** Instantiate a type-like definition receiving a list of semantic lifetime parameters [lfts] and a list of semantic type parameters [tys]. *)
+Ltac apply_type_term_het_evar term lfts tys attrs :=
   let term := instantiate_universals term in
+  let term := apply_term_het' term attrs in
   let term := constr:(term (list_to_plist (F:=id) lft lfts) (hlist_to_plist tys)) in
   let term := eval simpl in term in
   constr:(term)
 .
 
+
+
+
+(* Plan:
+   - apply_term_het_evar needs another list with terms
+   - first I need to interpret the additional terms
+
+
+   For this, I don't need to do the term counting
+ *)
+
 (** This interprets syntactic Rust types used in some annotations into semantic RefinedRust types *)
 (* NOTE: Be REALLY careful with this. The Ltac2 for looking up definitions will easily go haywire, and we cannot properly handle the exceptions here or show them.
    In particular, if this fails for some unknown reason, make sure that there are NO other definitions with the same name in scope, even below other modules! *)
 Ltac interpret_rust_type_core lfts env ty := idtac.
+Ltac interpret_lit_term lfts env term := idtac.
+
+Ltac interpret_lit_term_list lfts env terms :=
+  match terms with
+  | [] => exact (+[] : hlist (@id Type) [])
+  | ?term :: ?terms =>
+      refine (_ +:: _);
+      [interpret_lit_term lfts env term
+      | interpret_lit_term_list lfts env terms ]
+  end.
+
+Ltac interpret_lit_term lfts env term ::=
+  let term := eval hnf in term in
+  match term with
+  | TypeRt ?ty =>
+      let Ha := fresh in
+      refine (let Ha := ltac:(interpret_rust_type_core lfts env ty) in _);
+      let Hx := eval unfold Ha in Ha in
+      (*idtac "bla";*)
+      (*idtac "ty = " Hx;*)
+      let Hr := eval simpl in (rt_of Hx) in
+      exact Hr
+
+  | AppDef ?defname ?terms =>
+      lookup_definition
+        ltac:(fun term =>
+          (let Ha := fresh in
+          refine (let Ha : hlist (@id Type) _ := ltac:(interpret_lit_term_list lfts env terms) in _);
+          let Hx := eval unfold Ha in Ha in
+          (*let Hx := eval simpl in Hx in*)
+
+          let term := instantiate_benign_universals term in
+          let applied_term := apply_term_het term Hx in
+          let t := eval simpl in applied_term in
+          exact t)
+          || fail 1000 "processing failed"
+
+        )
+        defname || fail 1000 "definition lookup for " defname " failed"
+  end
+.
+
+
 Ltac interpret_rust_type_list lfts env tys :=
   match tys with
   | [] => exact +[]
@@ -91,7 +158,7 @@ Ltac interpret_rust_lft lfts env lft :=
   let κ := eval vm_compute in (lfts !! lft) in
   match κ with
   | Some ?κ =>
-    refine κ   
+    refine κ
   | None =>
       fail 3 "did not find lifetime"
   end.
@@ -104,18 +171,24 @@ Ltac interpret_rust_lfts lfts env ls :=
       | interpret_rust_lfts lfts env κs ]
   end.
 
-Ltac apply_rust_inst lfts env inst term :=
+Ltac apply_rust_scope_inst lfts env inst term :=
   (* interpret the arguments *)
   match inst with
-  | RSTScopeInst ?ls ?tys =>
+  | RSTScopeInst ?ls ?tys ?attrs =>
     let Ha := fresh in
     let Hb := fresh in
-    refine (let Ha : hlist type _ := ltac:(interpret_rust_type_list lfts env tys) in _);
-    let Ha := eval hnf in Ha in
-    refine (let Hb : list lft := ltac:(interpret_rust_lfts lfts env ls) in _);
-    let Hb := eval hnf in Hb in
+    let Hc := fresh in
 
-    let applied_term := apply_term_het_evar term Hb Ha in
+    refine (let Ha : hlist type _ := ltac:(interpret_rust_type_list lfts env tys) in _);
+    let Ha := eval unfold Ha in Ha in
+
+    refine (let Hb : list lft := ltac:(interpret_rust_lfts lfts env ls) in _);
+    let Hb := eval unfold Hb in Hb in
+
+    refine (let Hc : hlist (@id Type) _ := ltac:(interpret_lit_term_list lfts env attrs) in _);
+    let Hc := eval unfold Hc in Hc in
+
+    let applied_term := apply_type_term_het_evar term Hb Ha Hc in
     exact applied_term
   end.
 
@@ -134,7 +207,7 @@ Ltac interpret_rust_type_core lfts env ty ::=
       (* CAVEAT: This only works if a unique identifier can be found! *)
       lookup_definition
         ltac:(fun term =>
-          apply_rust_inst lfts env inst term
+          apply_rust_scope_inst lfts env inst term
         )
         name || fail 1000 "definition lookup for " name " failed"
   | RSTInt ?it =>
@@ -179,7 +252,7 @@ Ltac interpret_rust_enum_def_core lfts env ty :=
       (* CAVEAT: This only works if a unique identifier can be found! *)
       lookup_definition
         ltac:(fun term =>
-          apply_rust_inst lfts env inst term
+          apply_rust_scope_inst lfts env inst term
         )
         name || fail 1000 "definition lookup for " name " failed"
   end.
@@ -197,6 +270,8 @@ Ltac solve_interpret_rust_enum_def ::=
           exact I
       end
   end.
+
+
 
 (** Evar instantiation *)
 Ltac solve_ensure_evar_instantiated ::=

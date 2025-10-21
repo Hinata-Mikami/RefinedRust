@@ -709,7 +709,7 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test0 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32])) ty ∧ ty = testX _ _ *[] *[(int I32)].
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testX"] (RSTScopeInst [] [RSTInt I32] [])) ty ∧ ty = testX _ _ *[] *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -762,7 +762,7 @@ Section test.
   (* TODO: better error handling in the tactic above.
       Somehow the Ltac2 exceptions get gobbled up and just a no match error is raised... *)
   Lemma interpret_rust_type_test6 {rt} (T_ty : type rt) κ :
-    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅) (RSTLitType ["testY"] (RSTScopeInst ["κ"] [RSTInt I32] [])) ty ∧ ty = testY _ _ ( *[κ] : prod_vec lft 1)  *[(int I32)].
   Proof.
     init_tyvars (<["T" := (existT _ T_ty)]> ∅).
     eexists _; split; [ solve_interpret_rust_type | ]. done.
@@ -778,6 +778,42 @@ Section test.
     eexists _. split. { solve_interpret_rust_type. } done.
   Abort.
    *)
+  Definition boo (rt : RT) := rt.
+  Definition term1 : lit_term :=
+    AppDef ["boo"] [TypeRt (RSTInt I8)].
+
+  Goal True.
+  Proof.
+    init_tyvars (∅).
+    set (lfts := (∅ : gmap string lft)).
+
+    refine (let Ha := ltac:(interpret_lit_term lfts tyvars term1) in _);
+    simpl in Ha;
+    idtac
+    .
+  Abort.
+End test.
+Section test.
+
+  Record attrs_def : Type := mkAttr {
+
+  }.
+  Definition attrs_inst `{!typeGS Σ} (T_rt : RT) : attrs_def := mkAttr.
+  Definition Vec_t `{!typeGS Σ} {T_rt A_rt : RT} (x : attrs_def): spec_with 0 [T_rt; A_rt] (type Z) :=
+    (spec! ( *[]) : 0 | ( *[T_ty; A_ty]) : [_; _], int I8)
+  .
+
+  Context `{!typeGS Σ}.
+
+  Lemma interpret_rust_type_test7 {T_rt A_rt} κ (T_ty : type T_rt) (A_ty : type A_rt) :
+    ∃ ty, interpret_rust_type_pure_goal (<["κ" := κ]> ∅)
+      (RSTLitType ["Vec_t"] (RSTScopeInst [] [RSTTyVar "T"; RSTTyVar "A"] [AppDef ["attrs_inst"] [TypeRt (RSTTyVar "T")]])) ty ∧ ty = Vec_t (attrs_inst T_rt) ( *[] : prod_vec lft 0)  *[T_ty; A_ty].
+  Proof.
+    init_tyvars (<["T" := (existT _ T_ty)]> $ <["A" := (existT _ A_ty)]> ∅).
+    eexists _; split.
+    { solve_interpret_rust_type. }
+    done.
+  Abort.
 End test.
 
 (** evar instantiation *)

@@ -158,7 +158,10 @@ Inductive rust_type : Type :=
   | RSTArray (len : nat) (el : rust_type)
   | RSTRef (m : mutability) (lft : string) (ty : rust_type)
 with scope_inst :=
-  | RSTScopeInst (lfts : list string) (app : list rust_type)
+  | RSTScopeInst (lfts : list string) (app : list rust_type) (trait_attrs : list lit_term)
+with lit_term := 
+  | TypeRt (ty : rust_type)
+  | AppDef (def : list string) (app : list lit_term)
 .
 
 Inductive rust_enum_def : Type :=

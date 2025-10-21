@@ -278,7 +278,7 @@ impl<'def> LiteralSpecUse<'def> {
 
     /// Get the term for the spec attrs of this use.
     #[must_use]
-    fn make_spec_attrs_use(&self) -> String {
+    pub(crate) fn make_spec_attrs_use(&self) -> String {
         self.overridden_attrs.clone().unwrap_or_else(|| self.make_spec_attrs_param_name())
     }
 
@@ -497,8 +497,8 @@ impl fmt::Display for ReqScopeInst {
 /// Instantiation of a trait requirement by specializing an impl.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct SpecializedImpl<'def> {
-    impl_ref: LiteralImplRef<'def>,
-    impl_inst: GenericScopeInst<'def>,
+    pub(crate) impl_ref: LiteralImplRef<'def>,
+    pub(crate) impl_inst: GenericScopeInst<'def>,
 }
 
 impl SpecializedImpl<'_> {

@@ -57,11 +57,46 @@ fn make_lft_map_string(els: &Vec<(coq::Ident, coq::Ident)>) -> String {
     out
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
+pub enum LitTerm {
+    #[display("TypeRt {}", _0)]
+    TypeRt(RustType),
+    #[display("AppDef [{}] [{}]", fmt_list!(_0, "; "), fmt_list!(_1, "; "))]
+    AppDef(Vec<String>, Vec<LitTerm>),
+}
+
+impl LitTerm {
+    fn from_trait_req_inst(x: &traits::ReqInst<'_>) -> Self {
+        match &x.spec {
+            traits::ReqInstSpec::Specialized(s) => {
+                let mut args = Vec::new();
+
+                for ty in s.impl_inst.get_direct_ty_params_with_assocs() {
+                    let t = Self::TypeRt(RustType::of_type(&ty));
+                    args.push(t);
+                }
+                // get the attr terms this depends on
+                for req in s.impl_inst.get_direct_trait_requirements() {
+                    args.push(Self::from_trait_req_inst(req));
+                }
+
+                Self::AppDef(vec![format!("\"{}\"", s.impl_ref.spec_attrs_record.clone())], args)
+            },
+            traits::ReqInstSpec::Quantified(s) => {
+                let s = s.trait_ref.borrow();
+                let s = s.as_ref().unwrap();
+                Self::AppDef(vec![format!("\"{}\"", s.make_spec_attrs_use())], vec![])
+            },
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Display, Default)]
-#[display("RSTScopeInst [{}] [{}]", fmt_list!(lfts, "; ", |x| format!("\"{x}\"")), fmt_list!(apps, "; "))]
+#[display("RSTScopeInst [{}] [{}] [{}]", fmt_list!(lfts, "; ", |x| format!("\"{x}\"")), fmt_list!(apps, "; "), fmt_list!(trait_attrs, "; "))]
 pub struct RustScopeInst {
     apps: Vec<RustType>,
     lfts: Vec<Lft>,
+    trait_attrs: Vec<LitTerm>,
 }
 impl From<&GenericScopeInst<'_>> for RustScopeInst {
     fn from(scope_inst: &GenericScopeInst<'_>) -> Self {
@@ -71,9 +106,20 @@ impl From<&GenericScopeInst<'_>> for RustScopeInst {
             .map(|ty| RustType::of_type(ty))
             .collect();
         let lfts = scope_inst.get_lfts().to_owned();
+
+        let mut trait_attrs = Vec::new();
+        for x in scope_inst
+            .get_surrounding_trait_requirements()
+            .iter()
+            .chain(scope_inst.get_direct_trait_requirements().iter())
+        {
+            trait_attrs.push(LitTerm::from_trait_req_inst(x));
+        }
+
         Self {
             apps: typarams,
             lfts,
+            trait_attrs,
         }
     }
 }
@@ -102,7 +148,6 @@ impl TryFrom<types::LiteralUse<'_>> for RustEnumDef {
 /// A representation of syntactic Rust types that we can use in annotations for the `RefinedRust`
 /// type system.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
-// TODO: handle lifetime parameters in this representation
 pub enum RustType {
     #[display("RSTLitType [{}] ({})", fmt_list!(_0, "; ", "\"{}\""), _1)]
     Lit(Vec<String>, RustScopeInst),
