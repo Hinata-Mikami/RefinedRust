@@ -32,7 +32,7 @@ pub(crate) trait InvariantSpecParser {
         &'a mut self,
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<(specs::InvariantSpec, bool), String>;
+    ) -> Result<(specs::invariants::Spec, bool), String>;
 }
 
 /// Parse a binder pattern with an optional Coq type annotation, e.g.
@@ -151,9 +151,9 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct InvariantSpecFlags(specs::InvariantSpecFlags);
+pub(crate) struct InvariantSpecFlags(specs::invariants::SpecFlags);
 
-impl From<InvariantSpecFlags> for specs::InvariantSpecFlags {
+impl From<InvariantSpecFlags> for specs::invariants::SpecFlags {
     fn from(spec: InvariantSpecFlags) -> Self {
         spec.0
     }
@@ -164,10 +164,10 @@ impl<U> Parse<U> for InvariantSpecFlags {
         let mode: parse::Ident = stream.parse(meta)?;
 
         match mode.value().as_str() {
-            "persistent" => Ok(Self(specs::InvariantSpecFlags::Persistent)),
-            "plain" => Ok(Self(specs::InvariantSpecFlags::Plain)),
-            "na" => Ok(Self(specs::InvariantSpecFlags::NonAtomic)),
-            "atomic" => Ok(Self(specs::InvariantSpecFlags::Atomic)),
+            "persistent" => Ok(Self(specs::invariants::SpecFlags::Persistent)),
+            "plain" => Ok(Self(specs::invariants::SpecFlags::Plain)),
+            "na" => Ok(Self(specs::invariants::SpecFlags::NonAtomic)),
+            "atomic" => Ok(Self(specs::invariants::SpecFlags::Atomic)),
             _ => Err(parse::Error::OtherErr(stream.pos().unwrap(), "invalid ADT mode".to_owned())),
         }
     }
@@ -188,12 +188,12 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         &'a mut self,
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<(specs::InvariantSpec, bool), String> {
+    ) -> Result<(specs::invariants::Spec, bool), String> {
         if attrs.is_empty() {
             return Err("no invariant specifications given".to_owned());
         }
 
-        let mut invariants: Vec<(coq::iris::IProp, specs::InvariantMode)> = Vec::new();
+        let mut invariants: Vec<(coq::iris::IProp, specs::invariants::Mode)> = Vec::new();
         let mut type_invariants: Vec<specs::TyOwnSpec> = Vec::new();
         let mut abstracted_refinement = None;
 
@@ -204,7 +204,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         let mut existentials: Vec<coq::binder::Binder> = Vec::new();
 
         // use Plain as the default
-        let mut inv_flags = specs::InvariantSpecFlags::Plain;
+        let mut inv_flags = specs::invariants::SpecFlags::Plain;
 
         let mut params: Vec<coq::binder::Binder> = Vec::new();
 
@@ -235,22 +235,26 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
                     match prop {
                         MetaIProp::Own(iprop) => {
-                            invariants.push((iprop, specs::InvariantMode::OnlyOwned));
+                            invariants.push((iprop, specs::invariants::Mode::OnlyOwned));
                         },
                         MetaIProp::Shared(iprop) => {
-                            invariants.push((iprop, specs::InvariantMode::OnlyShared));
+                            invariants.push((iprop, specs::invariants::Mode::OnlyShared));
                         },
                         MetaIProp::Iris(iprop) => {
-                            invariants.push((iprop, specs::InvariantMode::All));
+                            invariants.push((iprop, specs::invariants::Mode::All));
                         },
                         MetaIProp::Type(ty) => {
                             type_invariants.push(ty);
                         },
                         MetaIProp::Pure(p, name) => match name {
-                            None => invariants.push((coq::iris::IProp::Pure(p), specs::InvariantMode::All)),
+                            None => {
+                                invariants.push((coq::iris::IProp::Pure(p), specs::invariants::Mode::All));
+                            },
                             Some(n) => {
-                                invariants
-                                    .push((coq::iris::IProp::PureWithName(p, n), specs::InvariantMode::All));
+                                invariants.push((
+                                    coq::iris::IProp::PureWithName(p, n),
+                                    specs::invariants::Mode::All,
+                                ));
                             },
                         },
                     }
@@ -291,7 +295,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         //let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
-        let spec = specs::InvariantSpec::new(
+        let spec = specs::invariants::Spec::new(
             ty_name.to_owned(),
             inv_flags,
             "κ".to_owned(),

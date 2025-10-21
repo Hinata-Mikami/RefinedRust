@@ -1060,7 +1060,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
         adt_deps: &mut TranslateAdtState<'_, 'tcx, 'def>,
-    ) -> Result<(radium::AbstractVariant<'def>, Option<radium::InvariantSpec>), TranslationError<'tcx>> {
+    ) -> Result<(radium::AbstractVariant<'def>, Option<radium::invariants::Spec>), TranslationError<'tcx>>
+    {
         info!("adt variant: {:?}", ty);
 
         let tcx = self.env.tcx();
