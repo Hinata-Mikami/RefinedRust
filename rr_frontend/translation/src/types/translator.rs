@@ -426,7 +426,7 @@ pub(crate) struct TX<'def, 'tcx> {
     /// during building, it will be None, afterwards it will always be Some
     struct_arena: &'def Arena<RefCell<Option<radium::AbstractStruct<'def>>>>,
     /// arena for keeping ownership of enums
-    enum_arena: &'def Arena<RefCell<Option<radium::AbstractEnum<'def>>>>,
+    enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
     /// arena for keeping ownership of shims
     shim_arena: &'def Arena<radium::LiteralType>,
 
@@ -450,7 +450,12 @@ pub(crate) struct TX<'def, 'tcx> {
     enum_registry: RefCell<
         HashMap<
             DefId,
-            (String, radium::AbstractEnumRef<'def>, ty::AdtDef<'tcx>, Option<radium::LiteralTypeRef<'def>>),
+            (
+                String,
+                radium::specs::enums::AbstractRef<'def>,
+                ty::AdtDef<'tcx>,
+                Option<radium::LiteralTypeRef<'def>>,
+            ),
         >,
     >,
     /// a registry for abstract struct defs for tuples, indexed by the number of tuple fields
@@ -467,7 +472,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
         struct_arena: &'def Arena<RefCell<Option<radium::AbstractStruct<'def>>>>,
-        enum_arena: &'def Arena<RefCell<Option<radium::AbstractEnum<'def>>>>,
+        enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
         shim_arena: &'def Arena<radium::LiteralType>,
     ) -> Self {
         TX {
@@ -539,7 +544,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the enum definitions that clients have used.
-    pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, radium::AbstractEnumRef<'def>> {
+    pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, radium::specs::enums::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -554,13 +559,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Returns the Radium enum representation according to the Rust representation options.
-    fn get_enum_representation(repr: &abi::ReprOptions) -> Result<radium::EnumRepr, TranslationError<'tcx>> {
+    fn get_enum_representation(
+        repr: &abi::ReprOptions,
+    ) -> Result<radium::specs::enums::Repr, TranslationError<'tcx>> {
         if repr.c() {
-            return Ok(radium::EnumRepr::ReprC);
+            return Ok(radium::specs::enums::Repr::C);
         }
 
         if repr.transparent() {
-            return Ok(radium::EnumRepr::ReprTransparent);
+            return Ok(radium::specs::enums::Repr::Transparent);
         }
 
         if repr.simd() {
@@ -581,7 +588,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             });
         }
 
-        Ok(radium::EnumRepr::ReprRust)
+        Ok(radium::specs::enums::Repr::Rust)
     }
 
     /// Returns the Radium structure representation according to the Rust representation options.
@@ -692,8 +699,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_enum(
         &self,
         did: DefId,
-    ) -> Result<(radium::AbstractEnumRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
-    {
+    ) -> Result<
+        (radium::specs::enums::AbstractRef<'def>, Option<radium::LiteralTypeRef<'def>>),
+        TranslationError<'tcx>,
+    > {
         if let Some((_n, st, _, lit)) = self.enum_registry.borrow().get(&did) {
             Ok((*st, *lit))
         } else {
@@ -787,7 +796,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::AbstractEnumUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::enums::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
@@ -804,7 +813,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 .or_insert_with(|| radium::LiteralTypeUse::new(lit_ref.unwrap(), params.clone()));
         }
 
-        Ok(radium::AbstractEnumUse::new(enum_ref, params))
+        Ok(radium::specs::enums::AbstractUse::new(enum_ref, params))
     }
 
     /// Check if a variant given by a [`DefId`] is [`std::marker::PhantomData`].
@@ -1167,11 +1176,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> radium::Int128 {
+    fn scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> radium::specs::enums::Int128 {
         if signed {
-            radium::Int128::Signed(s.to_int(s.size()))
+            radium::specs::enums::Int128::Signed(s.to_int(s.size()))
         } else {
-            radium::Int128::Unsigned(s.to_uint(s.size()))
+            radium::specs::enums::Int128::Unsigned(s.to_uint(s.size()))
         }
     }
 
@@ -1181,11 +1190,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         def: ty::AdtDef<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         signed: bool,
-    ) -> Result<HashMap<String, radium::Int128>, TranslationError<'tcx>> {
-        let mut map: HashMap<String, radium::Int128> = HashMap::new();
+    ) -> Result<HashMap<String, radium::specs::enums::Int128>, TranslationError<'tcx>> {
+        let mut map: HashMap<String, radium::specs::enums::Int128> = HashMap::new();
         let variants = def.variants();
 
-        let mut last_explicit_discr = radium::Int128::Unsigned(0);
+        let mut last_explicit_discr = radium::specs::enums::Int128::Unsigned(0);
         for v in variants {
             let v: &ty::VariantDef = v;
             let name = v.name.to_string();
@@ -1221,7 +1230,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     map.insert(name, evaluated_int);
                 },
                 ty::VariantDiscr::Relative(offset) => {
-                    let idx: radium::Int128 = last_explicit_discr + offset;
+                    let idx: radium::specs::enums::Int128 = last_explicit_discr + offset;
                     map.insert(name, idx);
                 },
             }
@@ -1259,12 +1268,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Given a Rust enum which has already been registered and whose fields have been translated, generate a
-    /// corresponding Coq Inductive as well as an `EnumSpec`.
+    /// corresponding Coq Inductive as well as an `enums::Spec`.
     fn generate_enum_spec(
         &self,
         def: ty::AdtDef<'tcx>,
         inductive_name: String,
-    ) -> (coq::inductive::Inductive, radium::EnumSpec) {
+    ) -> (coq::inductive::Inductive, radium::specs::enums::Spec) {
         trace!("Generating Inductive for enum {:?}", def);
 
         let mut variants: Vec<coq::inductive::Variant> = Vec::new();
@@ -1297,7 +1306,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             variants,
         );
 
-        let enum_spec = radium::EnumSpec {
+        let enum_spec = radium::specs::enums::Spec {
             rfn_type: coq::term::Type::Literal(inductive_name),
             variant_patterns,
             is_partial: false,
@@ -1426,7 +1435,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             }
 
             let mut enum_builder =
-                radium::EnumBuilder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
+                radium::specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
 
             // now build the enum itself
             for v in def.variants() {

@@ -27,7 +27,7 @@ pub(crate) trait EnumSpecParser {
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
         variant_attrs: &[Vec<&'a hir::AttrItem>],
-    ) -> Result<specs::EnumSpec, String>;
+    ) -> Result<specs::enums::Spec, String>;
 }
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
         ty_name: &str,
         attrs: &'a [&'a hir::AttrItem],
         variant_attrs: &[Vec<&'a hir::AttrItem>],
-    ) -> Result<specs::EnumSpec, String> {
+    ) -> Result<specs::enums::Spec, String> {
         let mut variant_patterns: Vec<(String, Vec<String>, String)> = Vec::new();
         let mut rfn_type = None;
         let mut is_partial = false;
@@ -152,7 +152,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
 
         let rfn_type = coq::term::Type::Literal(rfn_type);
 
-        Ok(specs::EnumSpec {
+        Ok(specs::enums::Spec {
             rfn_type,
             variant_patterns,
             is_partial,
