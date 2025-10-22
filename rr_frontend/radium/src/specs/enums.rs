@@ -12,7 +12,7 @@ use std::ops::Add;
 use derive_more::Display;
 use indent_write::fmt::IndentWriter;
 
-use crate::specs::{AbstractStructRef, AdtShimInfo, GenericScope, GenericScopeInst, LiteralType, Type};
+use crate::specs::{AdtShimInfo, GenericScope, GenericScopeInst, LiteralType, Type, structs};
 use crate::{BASE_INDENT, coq, lang, model, push_str_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -71,7 +71,7 @@ impl Add<u32> for Int128 {
 pub struct Abstract<'def> {
     /// variants of this enum: name, variant, a mask describing which of the type parameters it uses, and the
     /// discriminant
-    variants: Vec<(String, AbstractStructRef<'def>, Int128)>,
+    variants: Vec<(String, structs::AbstractRef<'def>, Int128)>,
 
     /// specification
     spec: Spec,
@@ -131,7 +131,7 @@ impl<'def> Abstract<'def> {
     }
 
     #[must_use]
-    pub fn get_variant(&self, i: usize) -> Option<&(String, AbstractStructRef<'def>, Int128)> {
+    pub fn get_variant(&self, i: usize) -> Option<&(String, structs::AbstractRef<'def>, Int128)> {
         self.variants.get(i)
     }
 
@@ -686,7 +686,7 @@ impl<'def> Abstract<'def> {
 /// A builder for plain enums without fancy invariants etc.
 pub struct Builder<'def> {
     /// the variants
-    variants: Vec<(String, AbstractStructRef<'def>, Int128)>,
+    variants: Vec<(String, structs::AbstractRef<'def>, Int128)>,
     /// the enum's name
     name: String,
     /// names for the type parameters (for the Coq definitions)
@@ -753,7 +753,7 @@ impl<'def> Builder<'def> {
     /// Append a variant to the struct def.
     /// `name` is also the Coq constructor of the refinement type we use.
     /// `used_params` is a mask describing which type parameters are used by this variant.
-    pub fn add_variant(&mut self, name: &str, variant: AbstractStructRef<'def>, discriminant: Int128) {
+    pub fn add_variant(&mut self, name: &str, variant: structs::AbstractRef<'def>, discriminant: Int128) {
         self.variants.push((name.to_owned(), variant, discriminant));
     }
 }

@@ -71,20 +71,20 @@ impl fmt::Display for IdentOrTerm {
 pub(crate) struct LiteralTypeWithRef {
     pub rfn: IdentOrTerm,
     pub ty: Option<String>,
-    pub raw: specs::TypeIsRaw,
+    pub raw: specs::structs::TypeIsRaw,
 }
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         // check if a #raw annotation is present
         let loc = stream.pos();
-        let mut raw = specs::TypeIsRaw::No;
+        let mut raw = specs::structs::TypeIsRaw::No;
         if parse::Pound::peek(stream) {
             stream.parse::<_, MToken![#]>(meta)?;
             let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "raw" => {
-                    raw = specs::TypeIsRaw::Yes;
+                    raw = specs::structs::TypeIsRaw::Yes;
                 },
                 _ => return Err(parse::Error::OtherErr(loc.unwrap(), "Unsupported flag".to_owned())),
             }

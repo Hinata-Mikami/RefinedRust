@@ -424,7 +424,7 @@ pub(crate) struct TX<'def, 'tcx> {
 
     /// arena for keeping ownership of structs
     /// during building, it will be None, afterwards it will always be Some
-    struct_arena: &'def Arena<RefCell<Option<radium::AbstractStruct<'def>>>>,
+    struct_arena: &'def Arena<RefCell<Option<radium::specs::structs::Abstract<'def>>>>,
     /// arena for keeping ownership of enums
     enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
     /// arena for keeping ownership of shims
@@ -438,7 +438,7 @@ pub(crate) struct TX<'def, 'tcx> {
             DefId,
             (
                 String,
-                radium::AbstractStructRef<'def>,
+                radium::specs::structs::AbstractRef<'def>,
                 &'tcx ty::VariantDef,
                 bool,
                 Option<radium::LiteralTypeRef<'def>>,
@@ -459,7 +459,8 @@ pub(crate) struct TX<'def, 'tcx> {
         >,
     >,
     /// a registry for abstract struct defs for tuples, indexed by the number of tuple fields
-    tuple_registry: RefCell<HashMap<usize, (radium::AbstractStructRef<'def>, radium::LiteralTypeRef<'def>)>>,
+    tuple_registry:
+        RefCell<HashMap<usize, (radium::specs::structs::AbstractRef<'def>, radium::LiteralTypeRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
     adt_deps: RefCell<BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>>,
@@ -471,7 +472,7 @@ pub(crate) struct TX<'def, 'tcx> {
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
-        struct_arena: &'def Arena<RefCell<Option<radium::AbstractStruct<'def>>>>,
+        struct_arena: &'def Arena<RefCell<Option<radium::specs::structs::Abstract<'def>>>>,
         enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
         shim_arena: &'def Arena<radium::LiteralType>,
     ) -> Self {
@@ -523,7 +524,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
-    pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
+    pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, radium::specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, is_of_enum, _)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
@@ -535,7 +536,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the variant definitions that clients have used (including the variants of enums).
-    pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, radium::AbstractStructRef<'def>> {
+    pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, radium::specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -594,13 +595,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Returns the Radium structure representation according to the Rust representation options.
     fn get_struct_representation(
         repr: &abi::ReprOptions,
-    ) -> Result<radium::StructRepr, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::structs::Repr, TranslationError<'tcx>> {
         if repr.c() {
-            return Ok(radium::StructRepr::ReprC);
+            return Ok(radium::specs::structs::Repr::C);
         }
 
         if repr.transparent() {
-            return Ok(radium::StructRepr::ReprTransparent);
+            return Ok(radium::specs::structs::Repr::Transparent);
         }
 
         if repr.simd() {
@@ -621,7 +622,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             });
         }
 
-        Ok(radium::StructRepr::ReprRust)
+        Ok(radium::specs::structs::Repr::Rust)
     }
 
     /// Try to translate a region to a Caesium lifetime.
@@ -662,8 +663,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_adt_variant(
         &self,
         did: DefId,
-    ) -> Result<(radium::AbstractStructRef<'def>, Option<radium::LiteralTypeRef<'def>>), TranslationError<'tcx>>
-    {
+    ) -> Result<
+        (radium::specs::structs::AbstractRef<'def>, Option<radium::LiteralTypeRef<'def>>),
+        TranslationError<'tcx>,
+    > {
         if let Some((_n, st, _, _, lit)) = self.variant_registry.borrow().get(&did) {
             Ok((*st, *lit))
         } else {
@@ -837,12 +840,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
         if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
             info!("replacing zero-sized struct with unit");
-            return Ok(radium::AbstractStructUse::new_unit());
+            return Ok(radium::specs::structs::AbstractUse::new_unit());
         }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
@@ -858,7 +861,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 .or_insert_with(|| radium::LiteralTypeUse::new(lit_ref.unwrap(), params.clone()));
         }
 
-        let struct_use = radium::AbstractStructUse::new(struct_ref, params, radium::TypeIsRaw::No);
+        let struct_use = radium::specs::structs::AbstractUse::new(
+            struct_ref,
+            params,
+            radium::specs::structs::TypeIsRaw::No,
+        );
         Ok(struct_use)
     }
 
@@ -870,7 +877,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::AbstractStructUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
@@ -879,12 +886,16 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let en = en.as_ref().unwrap();
 
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
-        let struct_ref: radium::AbstractStructRef<'def> = *struct_ref;
+        let struct_ref: radium::specs::structs::AbstractRef<'def> = *struct_ref;
 
         // apply the generic parameters according to the mask
         let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args, None)?;
 
-        let struct_use = radium::AbstractStructUse::new(struct_ref, params, radium::TypeIsRaw::No);
+        let struct_use = radium::specs::structs::AbstractUse::new(
+            struct_ref,
+            params,
+            radium::specs::structs::TypeIsRaw::No,
+        );
 
         // TODO maybe track the whole enum?
         // track this enum use for the current function
@@ -925,7 +936,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn get_tuple_struct_ref(
         &self,
         num_components: usize,
-    ) -> (radium::AbstractStructRef<'def>, radium::LiteralTypeRef<'def>) {
+    ) -> (radium::specs::structs::AbstractRef<'def>, radium::LiteralTypeRef<'def>) {
         self.register_tuple(num_components);
         let registry = self.tuple_registry.borrow();
         let (struct_ref, lit) = registry.get(&num_components).unwrap();
@@ -939,7 +950,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         info!("Generating a tuple type with {} components", num_components);
-        let struct_def = radium::make_tuple_struct_repr(num_components);
+        let struct_def = radium::specs::structs::Abstract::new_from_tuple(num_components);
         let literal = self.intern_literal(struct_def.make_literal_type());
 
         let struct_def = self.struct_arena.alloc(RefCell::new(Some(struct_def)));
@@ -1011,7 +1022,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &mut AdtState::new(&mut deps, &scope, &typing_env),
             )?;
 
-            let mut struct_def = radium::AbstractStruct::new(variant_def, scope.into());
+            let mut struct_def = radium::specs::structs::Abstract::new(variant_def, scope.into());
             if let Some(invariant_def) = invariant_def {
                 struct_def.add_invariant(invariant_def);
             }
@@ -1069,15 +1080,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
         adt_deps: &mut TranslateAdtState<'_, 'tcx, 'def>,
-    ) -> Result<(radium::AbstractVariant<'def>, Option<radium::invariants::Spec>), TranslationError<'tcx>>
-    {
+    ) -> Result<
+        (radium::specs::structs::AbstractVariant<'def>, Option<radium::invariants::Spec>),
+        TranslationError<'tcx>,
+    > {
         info!("adt variant: {:?}", ty);
 
         let tcx = self.env.tcx();
 
         // check for representation flags
         let repr = Self::get_struct_representation(&adt.repr())?;
-        let mut builder = radium::VariantBuilder::new(struct_name.to_owned(), repr);
+        let mut builder = radium::specs::structs::VariantBuilder::new(struct_name.to_owned(), repr);
 
         // parse attributes
         let outer_attrs = self.env.get_attributes(ty.def_id);
@@ -1363,7 +1376,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     &mut AdtState::new(&mut deps, &scope, &typing_env),
                 )?;
 
-                let mut struct_def = radium::AbstractStruct::new(variant_def, scope.clone().into());
+                let mut struct_def = radium::specs::structs::Abstract::new(variant_def, scope.clone().into());
                 if let Some(invariant_def) = invariant_def {
                     struct_def.add_invariant(invariant_def);
                 }

@@ -550,7 +550,7 @@ where
             // no literal type given, just a refinement
             // we use the translated Rust type with the given refinement
             let mut ty = ty.clone();
-            if lit.raw == specs::TypeIsRaw::Yes {
+            if lit.raw == specs::structs::TypeIsRaw::Yes {
                 ty.make_raw();
             }
             // TODO should use the xt?
@@ -1189,7 +1189,7 @@ where
             let tr = LiteralTypeWithRef {
                 rfn: IdentOrTerm::Ident(implicit_ret_name.to_owned()),
                 ty: None,
-                raw: specs::TypeIsRaw::No,
+                raw: specs::structs::TypeIsRaw::No,
             };
             let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
 
@@ -1311,14 +1311,14 @@ where
             let pre_ty = LiteralTypeWithRef {
                 rfn: IdentOrTerm::Term(capture_binder.get_name_ref().as_ref().unwrap().to_owned()),
                 ty: None,
-                raw: specs::TypeIsRaw::No,
+                raw: specs::structs::TypeIsRaw::No,
             };
             let capture_post = capture_is_mut.then(|| {
                 let binder = coq::binder::Binder::new(Some(capture_post_name.clone()), capture_ty);
                 let post_ty = LiteralTypeWithRef {
                     rfn: IdentOrTerm::Term(capture_post_name),
                     ty: None,
-                    raw: specs::TypeIsRaw::No,
+                    raw: specs::structs::TypeIsRaw::No,
                 };
                 (binder, post_ty)
             });
