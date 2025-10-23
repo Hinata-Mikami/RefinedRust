@@ -264,5 +264,10 @@ fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     // underdocumented, so just ignore it.
     let destruct_did = search::try_resolve_did(tcx, &["core", "marker", "Destruct"])?;
 
-    Some(trait_did == sized_did || trait_did == tuple_did || trait_did == meta_sized_did || trait_did == destruct_did)
+    Some(
+        trait_did == sized_did
+            || trait_did == tuple_did
+            || trait_did == meta_sized_did
+            || trait_did == destruct_did,
+    )
 }

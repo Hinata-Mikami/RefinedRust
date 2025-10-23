@@ -49,7 +49,7 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionRelabelVisitor<'tcx> {
 pub(crate) fn rename_closure_capture_regions<'tcx, 'a, T>(
     x: T,
     tcx: ty::TyCtxt<'tcx>,
-    substitution: &'a mut EarlyLateRegionMap,
+    substitution: &'a mut EarlyLateRegionMap<'_>,
     info: &'a PoloniusInfo<'a, 'tcx>,
 ) -> T
 where
@@ -64,13 +64,13 @@ where
 }
 
 /// Rename the regions appearing in closure captures to use the universal regions.
-struct ClosureCaptureRegionVisitor<'a, 'tcx> {
+struct ClosureCaptureRegionVisitor<'a, 'def, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
-    substitution: &'a mut EarlyLateRegionMap,
+    substitution: &'a mut EarlyLateRegionMap<'def>,
     info: &'a PoloniusInfo<'a, 'tcx>,
 }
 
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, '_, 'tcx> {
     fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
     }

@@ -9,7 +9,7 @@
 use std::collections::{BTreeMap, HashMap, hash_map};
 
 use derive_more::{Constructor, Debug};
-use log::{trace, warn};
+use log::{info, trace, warn};
 use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
@@ -115,7 +115,10 @@ pub(crate) struct Params<'tcx, 'def> {
     /// parameters
     extra_scope: Vec<specs::Lft>,
 
-    /// conversely, map the declaration name of a lifetime to an index
+    // lifetime constraints
+    lifetime_inclusions: Vec<specs::LftConstr<'def>>,
+
+    /// conversely, map the declaration name of a lifetime to an early index
     lft_names: HashMap<String, usize>,
     /// map types to their index
     ty_names: HashMap<String, usize>,
@@ -155,6 +158,10 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
                 scope.add_trait_requirement(trait_use.trait_use);
             }
         }
+        for constr in x.lifetime_inclusions {
+            scope.add_lft_constr(constr);
+        }
+
         trace!("Computed GenericScope: {scope:?}");
         scope
     }
@@ -304,6 +311,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             extra_scope: Vec::new(),
             lft_names,
             ty_names,
+            lifetime_inclusions: Vec::new(),
             trait_scope: Traits::default(),
         }
     }
@@ -385,9 +393,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     /// Update the lifetimes in this scope with the information from a region map for a function.
     /// We use this in order to get a scope that is sufficient for type translation out of a
     /// `FunctionState`.
-    /// Note that, in the case of closures, this excludes the lifetimes that only appear in the
-    /// captures and which have no formal designation as a Rust early/late parameter.
-    pub(crate) fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap) {
+    pub(crate) fn with_region_map(&mut self, map: &regions::EarlyLateRegionMap<'def>) {
         // replace the early region names
         for (idx, param) in self.scope.iter_mut().enumerate() {
             let Some(_) = param.as_region() else { continue };
@@ -417,20 +423,94 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             let name = &map.region_names[vid];
             self.extra_scope.push(name.to_owned());
         }
+
+        // replace all existing constraints
+        self.lifetime_inclusions = Vec::new();
+        // add lifetime constraints
+        for constr in &map.constraints {
+            match constr {
+                regions::LftConstr::RegionOutlives(r1, r2) => {
+                    let lft1 = map.lookup_region(*r1).unwrap();
+                    let lft2 = map.lookup_region(*r2).unwrap();
+
+                    self.lifetime_inclusions.push(specs::LftConstr::LftOutlives(
+                        specs::UniversalLft::Local(lft2.to_owned()),
+                        specs::UniversalLft::Local(lft1.to_owned()),
+                    ));
+                },
+                regions::LftConstr::TypeOutlives(ty, r) => {
+                    let lft = map.lookup_region(*r).unwrap();
+
+                    self.lifetime_inclusions.push(specs::LftConstr::TypeOutlives(
+                        ty.to_owned(),
+                        specs::UniversalLft::Local(lft.to_owned()),
+                    ));
+                },
+            }
+        }
     }
 
-    /// Add a `ParamEnv` of a given `DefId` to the scope to process trait obligations.
-    pub(crate) fn add_param_env(
+    fn translate_region(&self, region: ty::Region<'tcx>) -> Option<specs::Lft> {
+        match region.kind() {
+            ty::RegionKind::ReEarlyParam(early) => self.lookup_region_idx(early.index as usize).cloned(),
+            ty::RegionKind::ReBound(idx, r) => {
+                self.lookup_late_region_idx(usize::from(idx), r.var.index()).cloned()
+            },
+            ty::RegionKind::ReStatic => Some(coq::Ident::new("static")),
+            _ => None,
+        }
+    }
+
+    /// Add the lifetime constraints of a `ParamEnv`.
+    fn add_lifetime_constraints(
+        &mut self,
+        typing_env: ty::TypingEnv<'tcx>,
+        type_translator: &TX<'def, 'tcx>,
+    ) -> Result<(), TranslationError<'tcx>> {
+        let clauses = typing_env.param_env.caller_bounds();
+        for cl in clauses {
+            let cl_kind = cl.kind();
+            let cl_kind = cl_kind.skip_binder();
+
+            if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
+                info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
+                let lft1 = self
+                    .translate_region(region_pred.0)
+                    .ok_or(TranslationError::UnknownRegion(region_pred.0))?;
+                let lft2 = self
+                    .translate_region(region_pred.1)
+                    .ok_or(TranslationError::UnknownRegion(region_pred.1))?;
+
+                let constr = specs::LftConstr::LftOutlives(
+                    specs::UniversalLft::Local(lft2),
+                    specs::UniversalLft::Local(lft1),
+                );
+                self.lifetime_inclusions.push(constr);
+            }
+            if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
+                info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
+                let translated_ty =
+                    type_translator.translate_type_in_scope(&*self, typing_env, outlives_pred.0)?;
+                let lft = self
+                    .translate_region(outlives_pred.1)
+                    .ok_or(TranslationError::UnknownRegion(outlives_pred.1))?;
+
+                let constr = specs::LftConstr::TypeOutlives(translated_ty, specs::UniversalLft::Local(lft));
+                self.lifetime_inclusions.push(constr);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn add_trait_requirements(
         &mut self,
         did: DefId,
         env: &Environment<'tcx>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
     ) -> Result<(), TranslationError<'tcx>> {
-        trace!("Enter add_param_env for did = {did:?}");
-        //let param_env: ty::ParamEnv<'tcx> = env.tcx().param_env(did);
         let typing_env = ty::TypingEnv::post_analysis(env.tcx(), did);
-
         let is_trait = env.tcx().is_trait(did);
         let requirements = traits::requirements::get_trait_requirements_with_origin(env, did);
 
@@ -618,6 +698,22 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 }
             }
         }
+        Ok(())
+    }
+
+    /// Add a `ParamEnv` of a given `DefId` to the scope to process trait obligations.
+    pub(crate) fn add_param_env(
+        &mut self,
+        did: DefId,
+        env: &Environment<'tcx>,
+        type_translator: &TX<'def, 'tcx>,
+        trait_registry: &registry::TR<'tcx, 'def>,
+    ) -> Result<(), TranslationError<'tcx>> {
+        trace!("Enter add_param_env for did = {did:?}");
+        let typing_env = ty::TypingEnv::post_analysis(env.tcx(), did);
+
+        self.add_lifetime_constraints(typing_env, type_translator)?;
+        self.add_trait_requirements(did, env, type_translator, trait_registry)?;
 
         trace!("Leave add_param_env for did = {did:?} with trait scope {:?}", self.trait_scope);
         Ok(())
@@ -707,6 +803,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
             extra_scope: Vec::new(),
             lft_names,
             ty_names,
+            lifetime_inclusions: Vec::new(),
             trait_scope: Traits::default(),
         }
     }

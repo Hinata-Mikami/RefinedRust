@@ -25,16 +25,28 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 
+#[derive(Clone, Debug)]
+pub(crate) enum LftConstr<'def> {
+    RegionOutlives(facts::Region, facts::Region),
+    TypeOutlives(specs::Type<'def>, facts::Region),
+}
+
 /// Collect all the regions appearing in a type.
 /// Data structure that maps early and late region indices inside functions to Polonius regions.
 #[derive(Constructor, Clone, Debug, Default)]
-pub(crate) struct EarlyLateRegionMap {
+pub(crate) struct EarlyLateRegionMap<'def> {
     // Maps indices of early and late regions to Polonius region ids.
-    // For closures, this does not include the lifetimes for the captures.
+    // For closures, this does not include the lifetimes for the captures,
+    // which are included in `closure_regions` instead
     pub early_regions: Vec<Option<facts::Region>>,
     pub late_regions: Vec<Vec<facts::Region>>,
 
+    /// regions for closure captures that have no formal syntax representation in Rust;
+    /// used for translating closure bodies
     pub closure_regions: Vec<facts::Region>,
+
+    // lifetime constraints
+    pub constraints: Vec<LftConstr<'def>>,
 
     // Maps Polonius region ids to names.
     // This map is the ground truth of what eventually gets added to the generated Rocq
@@ -46,23 +58,7 @@ pub(crate) struct EarlyLateRegionMap {
     pub lft_names: HashMap<String, facts::Region>,
 }
 
-impl EarlyLateRegionMap {
-    /// Lookup a Polonius region with a given kind.
-    pub(crate) fn lookup_region_with_kind(
-        &self,
-        k: polonius_info::UniversalRegionKind,
-        r: Region,
-    ) -> Option<specs::UniversalLft> {
-        match k {
-            polonius_info::UniversalRegionKind::Function => Some(specs::UniversalLft::Function),
-            polonius_info::UniversalRegionKind::Static => Some(specs::UniversalLft::Static),
-
-            polonius_info::UniversalRegionKind::Local => {
-                self.lookup_region(r).map(|x| specs::UniversalLft::Local(x.to_owned()))
-            },
-        }
-    }
-
+impl EarlyLateRegionMap<'_> {
     pub(crate) fn lookup_region(&self, region: facts::Region) -> Option<&specs::Lft> {
         self.region_names.get(&region)
     }
@@ -83,6 +79,22 @@ impl EarlyLateRegionMap {
         format_atomic_region_direct(r, Some(self))
     }
 
+    pub(crate) fn translate_region_to_polonius(&self, r: ty::Region<'_>) -> Option<facts::Region> {
+        match r.kind() {
+            ty::RegionKind::ReVar(vid) => Some(vid.into()),
+            ty::RegionKind::ReEarlyParam(early) => {
+                let r = self.early_regions.get(early.index as usize)?;
+                *r
+            },
+            ty::RegionKind::ReBound(idx, r) => {
+                let binder = self.late_regions.get(usize::from(idx))?;
+                let vid = binder.get(r.var.index())?;
+                Some(*vid)
+            },
+            _ => None,
+        }
+    }
+
     /// Make sure that a region for a closure capture is registered.
     pub(crate) fn ensure_closure_region(&mut self, r: polonius_info::AtomicRegion) {
         if let btree_map::Entry::Vacant(e) = self.region_names.entry(r.get_region()) {
@@ -97,7 +109,7 @@ impl EarlyLateRegionMap {
 /// Format the Coq representation of an atomic region.
 pub(crate) fn format_atomic_region_direct(
     r: polonius_info::AtomicRegion,
-    scope: Option<&EarlyLateRegionMap>,
+    scope: Option<&EarlyLateRegionMap<'_>>,
 ) -> specs::Lft {
     let (prefix, index) = match r {
         polonius_info::AtomicRegion::Loan(r) => ("l", r.index()),

@@ -188,9 +188,6 @@ pub enum UniversalLft {
     External(Lft),
 }
 
-/// A lifetime constraint enforces a relation between two external lifetimes.
-type ExtLftConstr = (UniversalLft, UniversalLft);
-
 /// Meta information from parsing type annotations
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeAnnotMeta {
@@ -398,7 +395,6 @@ impl fmt::Display for LoopSpec {
             self.func_predicate,
             if let Some(loc) = &self.iterator_local { format!("Some {loc}") } else { "None".to_owned() },
         )?;
-
 
         Ok(())
     }
@@ -614,6 +610,18 @@ impl IncludeSelfReq {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LftConstr<'def> {
+    LftOutlives(UniversalLft, UniversalLft),
+    TypeOutlives(Type<'def>, UniversalLft),
+}
+
+/// A context of lifetime constraints
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct Elctx<'def> {
+    constrs: Vec<LftConstr<'def>>,
+}
+
 /// A scope of generics.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct GenericScope<'def, T = traits::LiteralSpecUseRef<'def>> {
@@ -630,21 +638,68 @@ pub struct GenericScope<'def, T = traits::LiteralSpecUseRef<'def>> {
     /// TODO: also separate into direct and surrounding
     lfts: Vec<Lft>,
 
+    /// lifetime constraints
+    lft_constraints: Elctx<'def>,
+
     _phantom: PhantomData<&'def ()>,
 }
 
-impl<T: traits::ReqInfo> GenericScope<'_, T> {
+impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     /// Create an empty scope.
     #[must_use]
-    pub const fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             direct_tys: TyParamList::empty(),
             surrounding_tys: TyParamList::empty(),
             direct_trait_requirements: Vec::new(),
             surrounding_trait_requirements: Vec::new(),
             lfts: Vec::new(),
+            lft_constraints: Elctx::default(),
             _phantom: PhantomData {},
         }
+    }
+
+    fn format_elctx(&self) -> String {
+        let mut out = String::with_capacity(100);
+
+        out.push_str("λ ϝ, [");
+
+        // implied bounds on inputs/outputs
+        let lft_outlives: Vec<_> = self
+            .lft_constraints
+            .constrs
+            .iter()
+            .filter_map(|constr| match constr {
+                LftConstr::LftOutlives(lft1, lft2) => Some(format!("({lft1}, {lft2})")),
+                LftConstr::TypeOutlives(_, _) => None,
+            })
+            .collect();
+        push_str_list!(out, &lft_outlives, "; ");
+
+        // all lifetime parameters outlive this function
+        if !lft_outlives.is_empty() && !self.lfts.is_empty() {
+            out.push_str("; ");
+        }
+        push_str_list!(out, &self.lfts, "; ", |lft| format!("(ϝ, {lft})"));
+
+        out.push(']');
+
+        // type outlives constraints
+        let ty_outlives: Vec<_> = self
+            .lft_constraints
+            .constrs
+            .iter()
+            .filter_map(|constr| match constr {
+                LftConstr::TypeOutlives(ty, lft) => Some(format!("ty_outlives_E ({ty}) {lft}")),
+                _ => None,
+            })
+            .collect();
+        if !ty_outlives.is_empty() {
+            out.push_str(" ++ ");
+            push_str_list!(out, ty_outlives, " ++ ");
+        }
+
+        out
     }
 
     /// Get the validity term for a generic on a function.
@@ -784,6 +839,10 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
 
     pub fn add_lft_param(&mut self, lft: Lft) {
         self.lfts.push(lft);
+    }
+
+    pub fn add_lft_constr(&mut self, constr: LftConstr<'def>) {
+        self.lft_constraints.constrs.push(constr);
     }
 
     pub fn remove_lft_param(&mut self, lft: &Lft) {

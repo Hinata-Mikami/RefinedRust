@@ -132,7 +132,7 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
     /// if this is a Fn/FnMut closure, the lifetime of the closure self arg inside `scope`
     pub(crate) _closure_lifetime: Option<specs::Lft>,
 
-    pub(crate) region_map: regions::EarlyLateRegionMap,
+    pub(crate) region_map: regions::EarlyLateRegionMap<'def>,
 
     // types of the closure trait
     // this is the type of the self variable in the closure, i.e. wrapped in references for

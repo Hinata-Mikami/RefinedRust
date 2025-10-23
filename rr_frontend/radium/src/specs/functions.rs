@@ -11,9 +11,7 @@ use std::fmt::Write as _;
 use derive_more::Constructor;
 use indent_write::fmt::IndentWriter;
 
-use crate::specs::{
-    ExtLftConstr, GenericScope, GenericScopeInst, IncludeSelfReq, Type, TypeWithRef, UniversalLft, traits,
-};
+use crate::specs::{GenericScope, GenericScopeInst, IncludeSelfReq, Type, TypeWithRef, traits};
 use crate::{BASE_INDENT, coq, push_str_list};
 
 /// A finished inner function specification.
@@ -95,7 +93,7 @@ impl<'def, T> Spec<'def, T> {
     }
 
     #[must_use]
-    pub(crate) const fn empty(
+    pub(crate) fn empty(
         spec_name: String,
         trait_req_incl_name: String,
         function_name: String,
@@ -266,12 +264,6 @@ impl<'def> fmt::Display for Spec<'def, InnerSpec<'def>> {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-struct Elctx {
-    constrs: Vec<ExtLftConstr>,
-    extra_constraints: Vec<String>,
-}
-
 /// Holds a specialized trait specification that a function assumes.
 /// This declares an attribute instantiation in the scope of the function.
 // Note: similar to `TraitRefInst`
@@ -385,8 +377,9 @@ impl<'def> SpecTraitReqSpecialization<'def> {
 pub struct LiteralSpec<'def> {
     params: Vec<coq::binder::Binder>,
 
-    /// external lifetime context
-    elctx: Elctx,
+    // extra elctx constraints added via unsafe annotations
+    extra_elctx: Vec<String>,
+
     /// precondition as a separating conjunction
     pre: coq::iris::IProp,
     /// argument types including refinements
@@ -422,25 +415,12 @@ impl<'def> LiteralSpec<'def> {
 
     /// Format the external lifetime contexts, consisting of constraints between lifetimes.
     fn format_elctx(&self, scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>) -> String {
-        let mut out = String::with_capacity(100);
-
-        out.push_str("λ ϝ, [");
-
-        // implied bounds on inputs/outputs
-        push_str_list!(out, &self.elctx.constrs, "; ", |(lft1, lft2)| format!("({lft1}, {lft2})"));
-
-        // all lifetime parameters outlive this function
-        if !self.elctx.constrs.is_empty() && !scope.lfts.is_empty() {
-            out.push_str("; ");
-        }
-        push_str_list!(out, &scope.lfts, "; ", |lft| format!("(ϝ, {lft})"));
-
-        out.push(']');
+        let mut out = scope.format_elctx();
 
         // extra constraints
-        if !self.elctx.extra_constraints.is_empty() {
+        if !self.extra_elctx.is_empty() {
             out.push_str(" ++ ");
-            push_str_list!(out, &self.elctx.extra_constraints, " ++ ");
+            push_str_list!(out, &self.extra_elctx, " ++ ");
         }
 
         out
@@ -560,7 +540,9 @@ impl<'def> LiteralSpec<'def> {
 #[derive(Debug)]
 pub struct LiteralSpecBuilder<'def> {
     params: Vec<coq::binder::Binder>,
-    elctx: Elctx,
+
+    extra_elctx: Vec<String>,
+
     pre: coq::iris::IProp,
     args: Vec<TypeWithRef<'def>>,
     existential: Vec<coq::binder::Binder>,
@@ -580,7 +562,7 @@ impl<'def> LiteralSpecBuilder<'def> {
     pub fn new() -> Self {
         Self {
             params: Vec::new(),
-            elctx: Elctx::default(),
+            extra_elctx: Vec::new(),
             pre: coq::iris::IProp::Sep(Vec::new()),
             args: Vec::new(),
             existential: Vec::new(),
@@ -623,14 +605,9 @@ impl<'def> LiteralSpecBuilder<'def> {
         self.specialized_trait_attrs = specs;
     }
 
-    /// Add a new universal lifetime constraint.
-    pub fn add_lifetime_constraint(&mut self, lft1: UniversalLft, lft2: UniversalLft) {
-        self.elctx.constrs.push((lft1, lft2));
-    }
-
     /// Add a literal elctx.
     pub fn add_literal_lifetime_constraint(&mut self, elctx: String) {
-        self.elctx.extra_constraints.push(elctx);
+        self.extra_elctx.push(elctx);
     }
 
     /// Add a new function argument.
@@ -693,7 +670,7 @@ impl<'def> LiteralSpecBuilder<'def> {
     pub(crate) fn into_function_spec(self) -> LiteralSpec<'def> {
         LiteralSpec {
             params: self.params,
-            elctx: self.elctx,
+            extra_elctx: self.extra_elctx,
             pre: self.pre,
             args: self.args,
             existentials: self.existential,

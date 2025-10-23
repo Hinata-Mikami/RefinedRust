@@ -9,17 +9,17 @@
 use std::collections::{BTreeMap, HashMap};
 
 use log::info;
-use radium::{coq, specs};
+use radium::coq;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::{Environment, polonius_info};
-use crate::regions::EarlyLateRegionMap;
 use crate::regions::arg_folder::instantiate_open;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder;
+use crate::regions::{EarlyLateRegionMap, LftConstr};
 use crate::traits::resolution;
 
 /// Process the signature of a function by instantiating the region variables with their
@@ -27,11 +27,11 @@ use crate::traits::resolution;
 /// Returns the argument and return type signature instantiated in this way.
 /// Moreover, returns a `EarlyLateRegionMap` that contains the mapping of indices to Polonius
 /// region variables.
-pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
+pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     env: &Environment<'tcx>,
     params: &[ty::GenericArg<'tcx>],
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
-) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap) {
+) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
     // a mapping of Polonius region IDs to names
     let mut universal_lifetimes = BTreeMap::new();
     let mut lifetime_names = HashMap::new();
@@ -147,6 +147,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'tcx>(
         region_substitution_early,
         vec![region_substitution_late],
         vec![],
+        vec![],
         universal_lifetimes,
         lifetime_names,
     );
@@ -179,16 +180,12 @@ pub(crate) fn find_placeholder_region_for(
     None
 }
 
-/// Filter the "interesting" constraints between universal lifetimes that need to hold
-/// (this does not include the constraints that need to hold for all universal lifetimes,
-/// e.g. that they outlive the function lifetime and are outlived by 'static).
-pub(crate) fn get_relevant_universal_constraints<'a>(
-    lifetime_scope: &EarlyLateRegionMap,
-    inclusion_tracker: &mut InclusionTracker<'_, '_>,
-    info: &'a PoloniusInfo<'a, '_>,
-) -> Vec<(specs::UniversalLft, specs::UniversalLft)> {
-    let input_facts = &info.borrowck_in_facts;
-    let placeholder_subset = &input_facts.known_placeholder_subset;
+/// Insert the initial universal constraints into the tracker.
+pub(crate) fn initialize_inclusion_tracker<'a, 'tcx>(
+    lifetime_scope: &EarlyLateRegionMap<'_>,
+    info: &'a PoloniusInfo<'a, 'tcx>,
+) -> InclusionTracker<'a, 'tcx> {
+    let mut inclusion_tracker = InclusionTracker::new(info);
 
     let root_location = mir::Location {
         block: mir::BasicBlock::from_u32(0),
@@ -198,36 +195,20 @@ pub(crate) fn get_relevant_universal_constraints<'a>(
         location: root_location,
         typ: facts::PointType::Start,
     });
-
-    let mut universal_constraints = Vec::new();
-
-    for (r1, r2) in placeholder_subset {
-        if let polonius_info::RegionKind::Universal(uk1) = info.get_region_kind(*r1)
-            && let polonius_info::RegionKind::Universal(uk2) = info.get_region_kind(*r2)
-        {
-            // if LHS is static, ignore.
-            if uk1 == polonius_info::UniversalRegionKind::Static {
-                continue;
-            }
-            // if RHS is the function lifetime, ignore
-            if uk2 == polonius_info::UniversalRegionKind::Function {
-                continue;
-            }
-
-            let to_universal = || {
-                let x = lifetime_scope.lookup_region_with_kind(uk1, *r2)?;
-                let y = lifetime_scope.lookup_region_with_kind(uk2, *r1)?;
-                Some((x, y))
-            };
-            // else, add this constraint
-            // for the purpose of this analysis, it is fine to treat it as a dynamic inclusion
-            if let Some((x, y)) = to_universal() {
-                inclusion_tracker.add_dynamic_inclusion(*r1, *r2, root_point);
-                universal_constraints.push((x, y));
-            }
+    for cstr in &lifetime_scope.constraints {
+        match cstr {
+            LftConstr::RegionOutlives(r1, r2) => {
+                inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+            },
+            LftConstr::TypeOutlives(_, _) => (),
         }
     }
-    universal_constraints
+
+    for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
+        inclusion_tracker.add_static_inclusion(*r1, *r2, root_point);
+    }
+
+    inclusion_tracker
 }
 
 /// Get additional constraints between capture places and value lifetimes that hold at the

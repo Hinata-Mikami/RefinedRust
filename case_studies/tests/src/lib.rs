@@ -8,24 +8,20 @@
 mod enums;
 mod structs;
 mod char;
-
 mod traits;
 mod trait_deps;
-
 mod statics;
-
 mod vec_client;
 mod mixed;
 mod closures;
-
 mod references;
 mod option;
 mod consts;
-
 mod generics;
-
 mod rectypes;
-
 mod loops;
+
+mod lft_constr;
+
 
 //mod leftpad;

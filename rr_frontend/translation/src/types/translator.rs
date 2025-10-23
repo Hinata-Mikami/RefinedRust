@@ -21,7 +21,7 @@ use crate::base::*;
 use crate::environment::Environment;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
-use crate::regions::{EarlyLateRegionMap, format_atomic_region_direct};
+use crate::regions::{EarlyLateRegionMap, LftConstr, format_atomic_region_direct};
 use crate::spec_parsers::enum_spec_parser::{
     EnumSpecParser as _, VerboseEnumSpecParser, parse_enum_refine_as,
 };
@@ -44,7 +44,7 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     /// generic mapping: map De Bruijn indices to type parameters
     pub generic_scope: scope::Params<'tcx, 'def>,
     /// mapping for regions
-    pub lifetime_scope: EarlyLateRegionMap,
+    pub lifetime_scope: EarlyLateRegionMap<'def>,
 
     /// collection of tuple types that we use
     pub tuple_uses: HashMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>,
@@ -99,7 +99,7 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
         did: DefId,
         env: &Environment<'tcx>,
         ty_params: ty::GenericArgsRef<'tcx>,
-        lifetimes: EarlyLateRegionMap,
+        lifetimes: EarlyLateRegionMap<'def>,
         type_translator: &TX<'def, 'tcx>,
         trait_registry: &registry::TR<'tcx, 'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
@@ -109,14 +109,51 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 
         generics.add_param_env(did, env, type_translator, trait_registry)?;
 
-        Ok(Self {
+        let mut t = Self {
             did,
             tuple_uses: HashMap::new(),
             generic_scope: generics,
             shim_uses: HashMap::new(),
             polonius_info: info,
             lifetime_scope: lifetimes,
-        })
+        };
+
+        // add lifetime constraints to the lifetime scope
+        let param_env = env.tcx().param_env(did);
+        let clauses = param_env.caller_bounds();
+        info!("looking for outlives clauses");
+        for cl in clauses {
+            let cl_kind = cl.kind();
+            let cl_kind = cl_kind.skip_binder();
+
+            if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
+                let region1 = t
+                    .lifetime_scope
+                    .translate_region_to_polonius(region_pred.0)
+                    .ok_or(TranslationError::UnknownRegion(region_pred.0))?;
+                let region2 = t
+                    .lifetime_scope
+                    .translate_region_to_polonius(region_pred.1)
+                    .ok_or(TranslationError::UnknownRegion(region_pred.1))?;
+
+                t.lifetime_scope.constraints.push(LftConstr::RegionOutlives(region1, region2));
+
+                info!("region outlives: {:?} {:?}", region1, region2);
+            }
+            if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
+                let mut st = STInner::InFunction(&mut t);
+                let translated_ty = type_translator.translate_type_in_state(outlives_pred.0, &mut st)?;
+                let translated_lft = t
+                    .lifetime_scope
+                    .translate_region_to_polonius(outlives_pred.1)
+                    .ok_or(TranslationError::UnknownRegion(outlives_pred.1))?;
+
+                t.lifetime_scope.constraints.push(LftConstr::TypeOutlives(translated_ty, translated_lft));
+                info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
+            }
+        }
+
+        Ok(t)
     }
 
     /// Make a params scope including all late-bound lifetimes.
@@ -162,7 +199,7 @@ pub(crate) struct TraitState<'a, 'tcx, 'def> {
     /// optional Polonius Info for the current function
     #[debug(ignore)]
     polonius_info: Option<&'def PoloniusInfo<'def, 'tcx>>,
-    lifetime_scope: Option<&'a EarlyLateRegionMap>,
+    lifetime_scope: Option<&'a EarlyLateRegionMap<'def>>,
 }
 
 /// Translation state for translating the interface of a called function.
@@ -225,7 +262,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         }
     }
 
-    pub(crate) const fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap> {
+    pub(crate) const fn polonius_region_map(&self) -> Option<&EarlyLateRegionMap<'def>> {
         match &self {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,

@@ -17,7 +17,6 @@ use typed_arena::Arena;
 
 use crate::base::*;
 use crate::body::translation;
-use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{Environment, dump_borrowck_info};
@@ -101,8 +100,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
-        // TODO: add universal constraints (ideally in setup_local_scope)
-
         // get argument names
         let arg_names: &'tcx [Option<span::symbol::Ident>] = env.tcx().fn_arg_idents(proc_did);
         let arg_names: Vec<_> = arg_names
@@ -134,7 +131,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn compute_closure_meta(
         clos_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         closure_arg: &mir::LocalDecl<'tcx>,
-        region_substitution: &mut regions::EarlyLateRegionMap,
+        region_substitution: &mut regions::EarlyLateRegionMap<'def>,
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
     ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<specs::Lft>) {
@@ -251,16 +248,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         trace!("fixed_closure_arg_ty={fixed_closure_arg_ty:?}");
 
-        let mut inclusion_tracker = InclusionTracker::new(info);
-        // add placeholder subsets
-        let initial_point: facts::Point = facts::Point {
-            location: mir::BasicBlock::from_u32(0).start_location(),
-            typ: facts::PointType::Start,
-        };
-        for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-            inclusion_tracker.add_static_inclusion(*r1, *r2, info.interner.get_point_index(&initial_point));
-        }
-
         let type_scope = Self::setup_local_scope(
             env,
             ty_translator,
@@ -271,6 +258,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             region_substitution.clone(),
             Some(info),
         )?;
+
+        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -402,16 +391,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             regions::init::replace_fnsig_args_with_polonius_vars(env, params, sig);
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
-        let mut inclusion_tracker = InclusionTracker::new(info);
-        // add placeholder subsets
-        let initial_point: facts::Point = facts::Point {
-            location: mir::BasicBlock::from_u32(0).start_location(),
-            typ: facts::PointType::Start,
-        };
-        for (r1, r2) in &info.borrowck_in_facts.known_placeholder_subset {
-            inclusion_tracker.add_static_inclusion(*r1, *r2, info.interner.get_point_index(&initial_point));
-        }
-
         let type_scope = Self::setup_local_scope(
             env,
             ty_translator,
@@ -422,6 +401,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             region_substitution,
             Some(info),
         )?;
+
+        let inclusion_tracker = regions::init::initialize_inclusion_tracker(&type_scope.lifetime_scope, info);
 
         let type_translator = types::LocalTX::new(ty_translator, type_scope);
 
@@ -460,7 +441,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         } else {
             // process attributes
-            let mut spec_builder = Self::process_attrs(
+            let spec_builder = Self::process_attrs(
                 attrs,
                 &t.ty_translator,
                 &mut t.translated_fn,
@@ -470,20 +451,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             )?;
 
             if spec_builder.has_spec() {
-                // add universal constraints
-                {
-                    let scope = t.ty_translator.scope.borrow();
-                    let universal_constraints = regions::init::get_relevant_universal_constraints(
-                        &scope.lifetime_scope,
-                        &mut t.inclusion_tracker,
-                        t.info,
-                    );
-                    info!("univeral constraints: {:?}", universal_constraints);
-                    for (lft1, lft2) in universal_constraints {
-                        spec_builder.add_lifetime_constraint(lft1, lft2);
-                    }
-                }
-
                 t.translated_fn.add_function_spec_from_builder(spec_builder);
             } else {
                 return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
@@ -540,7 +507,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         proc_did: DefId,
         params: &[ty::GenericArg<'tcx>],
         translated_fn: &mut code::FunctionBuilder<'def>,
-        region_substitution: regions::EarlyLateRegionMap,
+        region_substitution: regions::EarlyLateRegionMap<'def>,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
         // enter the procedure
@@ -557,26 +524,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // add generic args to the fn
         let generics = type_scope.make_params_scope();
         translated_fn.provide_generic_scope(generics.into());
-
-        // TODO: can we also setup the lifetime constraints here?
-        // TODO: understand better how these clauses relate to Polonius
-        // Note: these constraints do not seem to include implied bounds.
-        /*
-        let clauses = param_env.caller_bounds();
-        info!("looking for outlives clauses");
-        for cl in clauses.iter() {
-            let cl_kind = cl.kind();
-            let cl_kind = cl_kind.skip_binder();
-
-            // only look for trait predicates for now
-            if let ty::ClauseKind::RegionOutlives(region_pred) = cl_kind {
-                info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
-            }
-            if let ty::ClauseKind::TypeOutlives(outlives_pred) = cl_kind {
-                info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
-            }
-        }
-        */
 
         Ok(type_scope)
     }
@@ -632,20 +579,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
-
-        // add universal constraints
-        {
-            let scope = self.ty_translator.scope.borrow();
-            let universal_constraints = regions::init::get_relevant_universal_constraints(
-                &scope.lifetime_scope,
-                &mut self.inclusion_tracker,
-                self.info,
-            );
-            info!("universal constraints: {:?}", universal_constraints);
-            for (lft1, lft2) in universal_constraints {
-                spec_builder.add_lifetime_constraint(lft1, lft2);
-            }
-        }
 
         let ty_translator = &self.ty_translator;
         // Hack: create indirection by tracking the tuple uses we create in here.
