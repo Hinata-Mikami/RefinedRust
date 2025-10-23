@@ -7,6 +7,7 @@
 //! Get trait requirements of objects.
 
 use log::{info, trace};
+use radium::specs;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use topological_sort::TopologicalSort;
@@ -22,18 +23,18 @@ fn determine_origin_of_trait_requirement<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     surrounding_reqs: &Option<Vec<ty::TraitRef<'tcx>>>,
     req: ty::TraitRef<'tcx>,
-) -> radium::TyParamOrigin {
+) -> specs::TyParamOrigin {
     if let Some(surrounding_reqs) = surrounding_reqs {
         let in_trait_decl = tcx.trait_of_assoc(did);
 
         if surrounding_reqs.contains(&req) {
             if in_trait_decl.is_some() {
-                return radium::TyParamOrigin::SurroundingTrait;
+                return specs::TyParamOrigin::SurroundingTrait;
             }
-            return radium::TyParamOrigin::SurroundingImpl;
+            return specs::TyParamOrigin::SurroundingImpl;
         }
     }
-    radium::TyParamOrigin::Direct
+    specs::TyParamOrigin::Direct
 }
 
 /// Meta information of a trait requirement.
@@ -42,7 +43,7 @@ pub(crate) struct TraitReqMeta<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub bound_regions: Vec<ty::BoundRegionKind>,
     pub binders: ty::Binder<'tcx, ()>,
-    pub origin: radium::TyParamOrigin,
+    pub origin: specs::TyParamOrigin,
     pub is_used_in_self_trait: bool,
     pub is_self_in_trait_decl: bool,
     // for the ordered associated types, an optional constraint

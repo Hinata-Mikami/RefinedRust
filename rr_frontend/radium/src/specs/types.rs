@@ -4,8 +4,8 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use crate::specs::traits;
-use crate::{AdtShimInfo, GenericScopeInst, coq, lang};
+use crate::specs::{AdtShimInfo, GenericScopeInst, traits};
+use crate::{coq, lang};
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Literal {

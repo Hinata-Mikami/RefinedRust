@@ -570,17 +570,17 @@ mod place_parser {
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
-    use super::{ParamLookup, Projection, Projections, RustPath, RustPathElem, RustPlace};
+    use super::{ParamLookup, Projection, Projections, RustPath, RustPathElem, RustPlace, specs};
 
     #[derive(Default)]
     struct TestScope {
         /// conversely, map the declaration name of a lifetime to an index
-        lft_names: HashMap<String, radium::Lft>,
+        lft_names: HashMap<String, specs::Lft>,
 
         /// map types to their index
-        ty_names: HashMap<String, radium::LiteralTyParam>,
+        ty_names: HashMap<String, specs::LiteralTyParam>,
 
-        assoc_names: HashMap<RustPath, radium::LiteralTyParam>,
+        assoc_names: HashMap<RustPath, specs::LiteralTyParam>,
 
         literals: HashMap<RustPath, String>,
 
@@ -588,21 +588,21 @@ mod tests {
     }
 
     impl<'def> ParamLookup<'def> for TestScope {
-        fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+        fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
             if path.len() == 1 {
                 let RustPathElem::AssocItem(it) = &path[0];
                 if let Some(n) = self.ty_names.get(it) {
-                    return Some(radium::Type::LiteralParam(n.to_owned()));
+                    return Some(specs::Type::LiteralParam(n.to_owned()));
                 }
             }
 
             if let Some(n) = self.assoc_names.get(path) {
-                return Some(radium::Type::LiteralParam(n.to_owned()));
+                return Some(specs::Type::LiteralParam(n.to_owned()));
             }
             None
         }
 
-        fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
+        fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
             self.lft_names.get(lft)
         }
 
@@ -620,7 +620,7 @@ mod tests {
     fn literal1() {
         let lit = "{rt_of T} * {rt_of T}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
+        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T", "T"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(T_rt) * (T_rt)");
@@ -630,7 +630,7 @@ mod tests {
     fn literal2() {
         let lit = "{ty_of T} * {ty_of T}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("T".to_owned(), radium::LiteralTyParam::new("T", "T"));
+        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T", "T"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "T_ty * T_ty");
@@ -640,7 +640,7 @@ mod tests {
     fn literal3() {
         let lit = "{rt_of Self} * {rt_of Self}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
+        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self", "Self"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(Self_rt) * (Self_rt)");
@@ -650,7 +650,7 @@ mod tests {
     fn literal4() {
         let lit = "{{rt_of Bla}}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Self".to_owned(), radium::LiteralTyParam::new("Self", "Self"));
+        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self", "Self"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "{rt_of Bla}");
@@ -660,10 +660,10 @@ mod tests {
     fn assoc_1() {
         let lit = "{rt_of Bla::Blub}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
+        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla", "Bla"));
         scope.assoc_names.insert(
             vec![RustPathElem::AssocItem("Bla".to_owned()), RustPathElem::AssocItem("Blub".to_owned())],
-            radium::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
+            specs::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
         );
 
         let (res, _) = scope.process_coq_literal(lit);
@@ -674,14 +674,14 @@ mod tests {
     fn assoc_2() {
         let lit = "{rt_of Bla::Bla::Blub}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Bla".to_owned(), radium::LiteralTyParam::new("Bla", "Bla"));
+        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla", "Bla"));
         scope.assoc_names.insert(
             vec![
                 RustPathElem::AssocItem("Bla".to_owned()),
                 RustPathElem::AssocItem("Bla".to_owned()),
                 RustPathElem::AssocItem("Blub".to_owned()),
             ],
-            radium::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
+            specs::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
         );
 
         let (res, _) = scope.process_coq_literal(lit);

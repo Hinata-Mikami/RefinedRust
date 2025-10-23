@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use derive_more::{Constructor, Debug};
 use log::{info, trace};
-use radium::{coq, push_str_list};
+use radium::{coq, lang, push_str_list, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, ast, span};
@@ -47,10 +47,10 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     pub lifetime_scope: EarlyLateRegionMap,
 
     /// collection of tuple types that we use
-    pub tuple_uses: HashMap<Vec<radium::lang::SynType>, radium::specs::types::LiteralUse<'def>>,
+    pub tuple_uses: HashMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>,
 
     /// Shim uses for the current function
-    pub shim_uses: HashMap<scope::AdtUseKey, radium::specs::types::LiteralUse<'def>>,
+    pub shim_uses: HashMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
 
     /// optional Polonius Info for the current function
     #[debug(ignore)]
@@ -58,11 +58,11 @@ pub(crate) struct FunctionState<'tcx, 'def> {
 }
 
 impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
-    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
         self.generic_scope.lookup_ty_param(path)
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
         let vid = self.lifetime_scope.lft_names.get(lft)?;
         self.lifetime_scope.region_names.get(vid)
     }
@@ -77,7 +77,7 @@ impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::specs::traits::LiteralSpecUseRef<'def>> {
+    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
         trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
         self.generic_scope.determine_trait_requirement_origin(typaram, attr)
     }
@@ -85,9 +85,9 @@ impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::specs::traits::SpecAttrInst>,
-    ) -> Option<radium::specs::functions::SpecTraitReqSpecialization<'def>> {
+        trait_use: specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
+    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
         self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }
 }
@@ -283,18 +283,18 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Lookup a type parameter in the current state
-    fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    fn lookup_ty_param(&self, param_ty: ty::ParamTy) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         let ty = self.param_scope().lookup_ty_param_idx(param_ty.index as usize).ok_or_else(|| {
             TranslationError::UnknownVar(format!("unknown generic parameter {:?}", param_ty))
         })?;
-        Ok(radium::Type::LiteralParam(ty.clone()))
+        Ok(specs::Type::LiteralParam(ty.clone()))
     }
 
     /// Lookup an early-bound region.
     fn lookup_early_region(
         &self,
         region: ty::EarlyParamRegion,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError<'tcx>> {
         trace!("lookup_early_region in state={self:?}");
         match self {
             STInner::InFunction(scope) => {
@@ -336,7 +336,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Lookup a late-bound region.
-    fn lookup_late_region(&self, binder: usize, var: usize) -> Result<radium::Lft, TranslationError<'tcx>> {
+    fn lookup_late_region(&self, binder: usize, var: usize) -> Result<specs::Lft, TranslationError<'tcx>> {
         match self {
             STInner::InFunction(scope) => {
                 info!("Looking up late lifetime ({binder:?}, {var:?}) in scope {:?}", scope.lifetime_scope);
@@ -365,10 +365,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     }
 
     /// Try to translate a Polonius region variable to a Caesium lifetime.
-    pub(crate) fn lookup_polonius_var(
-        &self,
-        v: facts::Region,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
+    pub(crate) fn lookup_polonius_var(&self, v: facts::Region) -> Result<specs::Lft, TranslationError<'tcx>> {
         match self {
             STInner::InFunction(scope) => {
                 if let Some(info) = scope.polonius_info {
@@ -424,11 +421,11 @@ pub(crate) struct TX<'def, 'tcx> {
 
     /// arena for keeping ownership of structs
     /// during building, it will be None, afterwards it will always be Some
-    struct_arena: &'def Arena<RefCell<Option<radium::specs::structs::Abstract<'def>>>>,
+    struct_arena: &'def Arena<RefCell<Option<specs::structs::Abstract<'def>>>>,
     /// arena for keeping ownership of enums
-    enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
+    enum_arena: &'def Arena<RefCell<Option<specs::enums::Abstract<'def>>>>,
     /// arena for keeping ownership of shims
-    shim_arena: &'def Arena<radium::specs::types::Literal>,
+    shim_arena: &'def Arena<specs::types::Literal>,
 
     /// maps ADT variants to struct specifications.
     /// the boolean is true iff this is a variant of an enum.
@@ -438,10 +435,10 @@ pub(crate) struct TX<'def, 'tcx> {
             DefId,
             (
                 String,
-                radium::specs::structs::AbstractRef<'def>,
+                specs::structs::AbstractRef<'def>,
                 &'tcx ty::VariantDef,
                 bool,
-                Option<radium::specs::types::LiteralRef<'def>>,
+                Option<specs::types::LiteralRef<'def>>,
             ),
         >,
     >,
@@ -452,30 +449,29 @@ pub(crate) struct TX<'def, 'tcx> {
             DefId,
             (
                 String,
-                radium::specs::enums::AbstractRef<'def>,
+                specs::enums::AbstractRef<'def>,
                 ty::AdtDef<'tcx>,
-                Option<radium::specs::types::LiteralRef<'def>>,
+                Option<specs::types::LiteralRef<'def>>,
             ),
         >,
     >,
     /// a registry for abstract struct defs for tuples, indexed by the number of tuple fields
-    tuple_registry: RefCell<
-        HashMap<usize, (radium::specs::structs::AbstractRef<'def>, radium::specs::types::LiteralRef<'def>)>,
-    >,
+    tuple_registry:
+        RefCell<HashMap<usize, (specs::structs::AbstractRef<'def>, specs::types::LiteralRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
     adt_deps: RefCell<BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>>,
 
     /// shims for ADTs
-    adt_shims: RefCell<HashMap<DefId, radium::specs::types::LiteralRef<'def>>>,
+    adt_shims: RefCell<HashMap<DefId, specs::types::LiteralRef<'def>>>,
 }
 
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
-        struct_arena: &'def Arena<RefCell<Option<radium::specs::structs::Abstract<'def>>>>,
-        enum_arena: &'def Arena<RefCell<Option<radium::specs::enums::Abstract<'def>>>>,
-        shim_arena: &'def Arena<radium::specs::types::Literal>,
+        struct_arena: &'def Arena<RefCell<Option<specs::structs::Abstract<'def>>>>,
+        enum_arena: &'def Arena<RefCell<Option<specs::enums::Abstract<'def>>>>,
+        shim_arena: &'def Arena<specs::types::Literal>,
     ) -> Self {
         TX {
             env,
@@ -500,10 +496,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Intern a literal.
-    pub(crate) fn intern_literal(
-        &self,
-        lit: radium::specs::types::Literal,
-    ) -> radium::specs::types::LiteralRef<'def> {
+    pub(crate) fn intern_literal(&self, lit: specs::types::Literal) -> specs::types::LiteralRef<'def> {
         self.shim_arena.alloc(lit)
     }
 
@@ -512,11 +505,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register a shim for an ADT.
-    pub(crate) fn register_adt_shim(
-        &self,
-        did: DefId,
-        lit: &radium::specs::types::Literal,
-    ) -> Result<(), String> {
+    pub(crate) fn register_adt_shim(&self, did: DefId, lit: &specs::types::Literal) -> Result<(), String> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
         if let Some(old) = shims.insert(did, lit_ref) {
@@ -527,12 +516,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Lookup a shim for an ADT.
-    fn lookup_adt_shim(&self, did: DefId) -> Option<radium::specs::types::LiteralRef<'def>> {
+    fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
         self.adt_shims.borrow().get(&did).copied()
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
-    pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, radium::specs::structs::AbstractRef<'def>> {
+    pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, is_of_enum, _)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
@@ -544,7 +533,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the variant definitions that clients have used (including the variants of enums).
-    pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, radium::specs::structs::AbstractRef<'def>> {
+    pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -553,7 +542,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the enum definitions that clients have used.
-    pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, radium::specs::enums::AbstractRef<'def>> {
+    pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, specs::enums::AbstractRef<'def>> {
         let mut defs = HashMap::new();
         for (did, (_, su, _, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
@@ -570,13 +559,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Returns the Radium enum representation according to the Rust representation options.
     fn get_enum_representation(
         repr: &abi::ReprOptions,
-    ) -> Result<radium::specs::enums::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::Repr, TranslationError<'tcx>> {
         if repr.c() {
-            return Ok(radium::specs::enums::Repr::C);
+            return Ok(specs::enums::Repr::C);
         }
 
         if repr.transparent() {
-            return Ok(radium::specs::enums::Repr::Transparent);
+            return Ok(specs::enums::Repr::Transparent);
         }
 
         if repr.simd() {
@@ -597,19 +586,19 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             });
         }
 
-        Ok(radium::specs::enums::Repr::Rust)
+        Ok(specs::enums::Repr::Rust)
     }
 
     /// Returns the Radium structure representation according to the Rust representation options.
     fn get_struct_representation(
         repr: &abi::ReprOptions,
-    ) -> Result<radium::specs::structs::Repr, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::Repr, TranslationError<'tcx>> {
         if repr.c() {
-            return Ok(radium::specs::structs::Repr::C);
+            return Ok(specs::structs::Repr::C);
         }
 
         if repr.transparent() {
-            return Ok(radium::specs::structs::Repr::Transparent);
+            return Ok(specs::structs::Repr::Transparent);
         }
 
         if repr.simd() {
@@ -630,14 +619,14 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             });
         }
 
-        Ok(radium::specs::structs::Repr::Rust)
+        Ok(specs::structs::Repr::Rust)
     }
 
     /// Try to translate a region to a Caesium lifetime.
     pub(crate) fn translate_region(
         translation_state: ST<'_, '_, 'def, 'tcx>,
         region: ty::Region<'tcx>,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError<'tcx>> {
         match region.kind() {
             ty::RegionKind::ReEarlyParam(early) => {
                 info!("Translating region: EarlyParam {:?}", early);
@@ -672,7 +661,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         did: DefId,
     ) -> Result<
-        (radium::specs::structs::AbstractRef<'def>, Option<radium::specs::types::LiteralRef<'def>>),
+        (specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
         if let Some((_n, st, _, _, lit)) = self.variant_registry.borrow().get(&did) {
@@ -694,7 +683,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_adt_variant_literal(
         &self,
         did: DefId,
-    ) -> Result<radium::specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             return Ok(lit);
         }
@@ -711,7 +700,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         did: DefId,
     ) -> Result<
-        (radium::specs::enums::AbstractRef<'def>, Option<radium::specs::types::LiteralRef<'def>>),
+        (specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
         if let Some((_n, st, _, lit)) = self.enum_registry.borrow().get(&did) {
@@ -733,7 +722,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn lookup_enum_literal(
         &self,
         did: DefId,
-    ) -> Result<radium::specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
         if let Some(lit) = self.lookup_adt_shim(did) {
             Ok(lit)
         } else if let Some((_n, _, _, lit)) = self.enum_registry.borrow().get(&did) {
@@ -751,7 +740,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
         adt_deps: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
@@ -772,7 +761,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                     return self
                         .generate_struct_use_noshim(adt.did(), args, adt_deps)
-                        .map(radium::Type::Struct);
+                        .map(specs::Type::Struct);
                 }
 
                 if adt.is_enum() {
@@ -786,7 +775,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                     return self
                         .generate_enum_variant_use_noshim(adt.did(), variant, args, adt_deps)
-                        .map(radium::Type::Struct);
+                        .map(specs::Type::Struct);
                 }
 
                 Err(TranslationError::UnsupportedType {
@@ -794,7 +783,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 })
             },
 
-            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, adt_deps).map(radium::Type::Literal),
+            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, adt_deps).map(specs::Type::Literal),
 
             _ => Err(TranslationError::UnknownError("not a structlike".to_owned())),
         }
@@ -807,7 +796,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::specs::enums::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::enums::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
@@ -821,10 +810,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             lit_uses
                 .entry(key)
-                .or_insert_with(|| radium::specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
         }
 
-        Ok(radium::specs::enums::AbstractUse::new(enum_ref, params))
+        Ok(specs::enums::AbstractUse::new(enum_ref, params))
     }
 
     /// Check if a variant given by a [`DefId`] is [`std::marker::PhantomData`].
@@ -848,12 +837,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
         if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
             info!("replacing zero-sized struct with unit");
-            return Ok(radium::specs::structs::AbstractUse::new_unit());
+            return Ok(specs::structs::AbstractUse::new_unit());
         }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
@@ -866,14 +855,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             lit_uses
                 .entry(key)
-                .or_insert_with(|| radium::specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
         }
 
-        let struct_use = radium::specs::structs::AbstractUse::new(
-            struct_ref,
-            params,
-            radium::specs::structs::TypeIsRaw::No,
-        );
+        let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
         Ok(struct_use)
     }
 
@@ -885,7 +870,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         variant_idx: abi::VariantIdx,
         args: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
@@ -894,16 +879,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let en = en.as_ref().unwrap();
 
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
-        let struct_ref: radium::specs::structs::AbstractRef<'def> = *struct_ref;
+        let struct_ref: specs::structs::AbstractRef<'def> = *struct_ref;
 
         // apply the generic parameters according to the mask
         let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args, None)?;
 
-        let struct_use = radium::specs::structs::AbstractUse::new(
-            struct_ref,
-            params,
-            radium::specs::structs::TypeIsRaw::No,
-        );
+        let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
 
         // TODO maybe track the whole enum?
         // track this enum use for the current function
@@ -918,7 +899,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         tys: F,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>>
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
@@ -929,8 +910,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let num_components = params.get_direct_ty_params().len();
         let (_, lit) = self.get_tuple_struct_ref(num_components);
 
-        let key: Vec<_> = params.get_direct_ty_params().iter().map(radium::lang::SynType::from).collect();
-        let struct_use = radium::specs::types::LiteralUse::new(lit, params);
+        let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
+        let struct_use = specs::types::LiteralUse::new(lit, params);
         if let STInner::InFunction(ref mut scope) = *state {
             let tuple_uses = &mut scope.tuple_uses;
 
@@ -944,7 +925,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     fn get_tuple_struct_ref(
         &self,
         num_components: usize,
-    ) -> (radium::specs::structs::AbstractRef<'def>, radium::specs::types::LiteralRef<'def>) {
+    ) -> (specs::structs::AbstractRef<'def>, specs::types::LiteralRef<'def>) {
         self.register_tuple(num_components);
         let registry = self.tuple_registry.borrow();
         let (struct_ref, lit) = registry.get(&num_components).unwrap();
@@ -958,7 +939,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         info!("Generating a tuple type with {} components", num_components);
-        let struct_def = radium::specs::structs::Abstract::new_from_tuple(num_components);
+        let struct_def = specs::structs::Abstract::new_from_tuple(num_components);
         let literal = self.intern_literal(struct_def.make_literal_type());
 
         let struct_def = self.struct_arena.alloc(RefCell::new(Some(struct_def)));
@@ -1030,7 +1011,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &mut AdtState::new(&mut deps, &scope, &typing_env),
             )?;
 
-            let mut struct_def = radium::specs::structs::Abstract::new(variant_def, scope.into());
+            let mut struct_def = specs::structs::Abstract::new(variant_def, scope.into());
             if let Some(invariant_def) = invariant_def {
                 struct_def.add_invariant(invariant_def);
             }
@@ -1089,7 +1070,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'_>,
         adt_deps: &mut TranslateAdtState<'_, 'tcx, 'def>,
     ) -> Result<
-        (radium::specs::structs::AbstractVariant<'def>, Option<radium::invariants::Spec>),
+        (specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>),
         TranslationError<'tcx>,
     > {
         info!("adt variant: {:?}", ty);
@@ -1098,7 +1079,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         // check for representation flags
         let repr = Self::get_struct_representation(&adt.repr())?;
-        let mut builder = radium::specs::structs::VariantBuilder::new(struct_name.to_owned(), repr);
+        let mut builder = specs::structs::VariantBuilder::new(struct_name.to_owned(), repr);
 
         // parse attributes
         let outer_attrs = self.env.get_attributes(ty.def_id);
@@ -1197,11 +1178,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> radium::specs::enums::Int128 {
+    fn scalar_int_to_int128(s: ty::ScalarInt, signed: bool) -> specs::enums::Int128 {
         if signed {
-            radium::specs::enums::Int128::Signed(s.to_int(s.size()))
+            specs::enums::Int128::Signed(s.to_int(s.size()))
         } else {
-            radium::specs::enums::Int128::Unsigned(s.to_uint(s.size()))
+            specs::enums::Int128::Unsigned(s.to_uint(s.size()))
         }
     }
 
@@ -1211,11 +1192,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         def: ty::AdtDef<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         signed: bool,
-    ) -> Result<HashMap<String, radium::specs::enums::Int128>, TranslationError<'tcx>> {
-        let mut map: HashMap<String, radium::specs::enums::Int128> = HashMap::new();
+    ) -> Result<HashMap<String, specs::enums::Int128>, TranslationError<'tcx>> {
+        let mut map: HashMap<String, specs::enums::Int128> = HashMap::new();
         let variants = def.variants();
 
-        let mut last_explicit_discr = radium::specs::enums::Int128::Unsigned(0);
+        let mut last_explicit_discr = specs::enums::Int128::Unsigned(0);
         for v in variants {
             let v: &ty::VariantDef = v;
             let name = v.name.to_string();
@@ -1251,7 +1232,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     map.insert(name, evaluated_int);
                 },
                 ty::VariantDiscr::Relative(offset) => {
-                    let idx: radium::specs::enums::Int128 = last_explicit_discr + offset;
+                    let idx: specs::enums::Int128 = last_explicit_discr + offset;
                     map.insert(name, idx);
                 },
             }
@@ -1294,7 +1275,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         def: ty::AdtDef<'tcx>,
         inductive_name: String,
-    ) -> (coq::inductive::Inductive, radium::specs::enums::Spec) {
+    ) -> (coq::inductive::Inductive, specs::enums::Spec) {
         trace!("Generating Inductive for enum {:?}", def);
 
         let mut variants: Vec<coq::inductive::Variant> = Vec::new();
@@ -1327,7 +1308,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             variants,
         );
 
-        let enum_spec = radium::specs::enums::Spec {
+        let enum_spec = specs::enums::Spec {
             rfn_type: coq::term::Type::Literal(inductive_name),
             variant_patterns,
             is_partial: false,
@@ -1384,7 +1365,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     &mut AdtState::new(&mut deps, &scope, &typing_env),
                 )?;
 
-                let mut struct_def = radium::specs::structs::Abstract::new(variant_def, scope.clone().into());
+                let mut struct_def = specs::structs::Abstract::new(variant_def, scope.clone().into());
                 if let Some(invariant_def) = invariant_def {
                     struct_def.add_invariant(invariant_def);
                 }
@@ -1456,7 +1437,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             }
 
             let mut enum_builder =
-                radium::specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
+                specs::enums::Builder::new(enum_name, scope.into(), translated_it, repr, is_rec_type);
 
             // now build the enum itself
             for v in def.variants() {
@@ -1498,7 +1479,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         adt: ty::AdtDef<'tcx>,
         substs: ty::GenericArgsRef<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         let Some(shim) = self.lookup_adt_shim(adt.did()) else {
             return Err(TranslationError::UnknownError(format!(
                 "generate_adt_shim_use called for unknown adt shim {:?}",
@@ -1510,13 +1491,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         if let STInner::InFunction(scope) = state {
             let key = scope::AdtUseKey::new_from_inst(adt.did(), &params);
-            let shim_use = radium::specs::types::LiteralUse::new(shim, params);
+            let shim_use = specs::types::LiteralUse::new(shim, params);
             // track this shim use for the current function
             scope.shim_uses.entry(key).or_insert_with(|| shim_use.clone());
-            Ok(radium::Type::Literal(shim_use))
+            Ok(specs::Type::Literal(shim_use))
         } else {
-            let shim_use = radium::specs::types::LiteralUse::new(shim, params);
-            Ok(radium::Type::Literal(shim_use))
+            let shim_use = specs::types::LiteralUse::new(shim, params);
+            Ok(specs::Type::Literal(shim_use))
         }
     }
 
@@ -1526,30 +1507,30 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         state: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
-            ty::TyKind::Bool => Ok(radium::Type::Bool),
-            ty::TyKind::Char => Ok(radium::Type::Char),
+            ty::TyKind::Bool => Ok(specs::Type::Bool),
+            ty::TyKind::Char => Ok(specs::Type::Char),
 
-            ty::TyKind::Int(it) => Ok(radium::Type::Int(match it {
-                ty::IntTy::I8 => radium::lang::IntType::I8,
-                ty::IntTy::I16 => radium::lang::IntType::I16,
-                ty::IntTy::I32 => radium::lang::IntType::I32,
-                ty::IntTy::I64 => radium::lang::IntType::I64,
-                ty::IntTy::I128 => radium::lang::IntType::I128,
-                ty::IntTy::Isize => radium::lang::IntType::ISize, // should have same size as pointer types
+            ty::TyKind::Int(it) => Ok(specs::Type::Int(match it {
+                ty::IntTy::I8 => lang::IntType::I8,
+                ty::IntTy::I16 => lang::IntType::I16,
+                ty::IntTy::I32 => lang::IntType::I32,
+                ty::IntTy::I64 => lang::IntType::I64,
+                ty::IntTy::I128 => lang::IntType::I128,
+                ty::IntTy::Isize => lang::IntType::ISize, // should have same size as pointer types
             })),
 
-            ty::TyKind::Uint(it) => Ok(radium::Type::Int(match it {
-                ty::UintTy::U8 => radium::lang::IntType::U8,
-                ty::UintTy::U16 => radium::lang::IntType::U16,
-                ty::UintTy::U32 => radium::lang::IntType::U32,
-                ty::UintTy::U64 => radium::lang::IntType::U64,
-                ty::UintTy::U128 => radium::lang::IntType::U128,
-                ty::UintTy::Usize => radium::lang::IntType::USize, // should have same size as pointer types
+            ty::TyKind::Uint(it) => Ok(specs::Type::Int(match it {
+                ty::UintTy::U8 => lang::IntType::U8,
+                ty::UintTy::U16 => lang::IntType::U16,
+                ty::UintTy::U32 => lang::IntType::U32,
+                ty::UintTy::U64 => lang::IntType::U64,
+                ty::UintTy::U128 => lang::IntType::U128,
+                ty::UintTy::Usize => lang::IntType::USize, // should have same size as pointer types
             })),
 
-            ty::TyKind::RawPtr(_, _) => Ok(radium::Type::RawPtr),
+            ty::TyKind::RawPtr(_, _) => Ok(specs::Type::RawPtr),
 
             ty::TyKind::Ref(region, ty, mutability) => {
                 // TODO: this will have to change for handling fat ptrs. see the corresponding rustc
@@ -1559,7 +1540,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     // special handling for slice types commonly used in error handling branches we
                     // don't care about
                     // TODO: emit a warning
-                    return Ok(radium::Type::Unit);
+                    return Ok(specs::Type::Unit);
                 }
 
                 let translated_ty = self.translate_type_in_state(*ty, &mut *state)?;
@@ -1567,12 +1548,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let lft = TX::translate_region(&mut *state, *region)?;
 
                 match mutability {
-                    ast::ast::Mutability::Mut => Ok(radium::Type::MutRef(Box::new(translated_ty), lft)),
-                    _ => Ok(radium::Type::ShrRef(Box::new(translated_ty), lft)),
+                    ast::ast::Mutability::Mut => Ok(specs::Type::MutRef(Box::new(translated_ty), lft)),
+                    _ => Ok(specs::Type::ShrRef(Box::new(translated_ty), lft)),
                 }
             },
 
-            ty::TyKind::Never => Ok(radium::Type::Never),
+            ty::TyKind::Never => Ok(specs::Type::Never),
 
             ty::TyKind::Adt(adt, substs) => {
                 if adt.is_box() {
@@ -1585,12 +1566,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     };
 
                     let translated_ty = self.translate_type_in_state(ty.expect_ty(), &mut *state)?;
-                    return Ok(radium::Type::BoxT(Box::new(translated_ty)));
+                    return Ok(specs::Type::BoxT(Box::new(translated_ty)));
                 }
 
                 if self.is_struct_definitely_zero_sized(adt.did()) == Some(true) {
                     // make this unit
-                    return Ok(radium::Type::Unit);
+                    return Ok(specs::Type::Unit);
                 }
 
                 if let STInner::TranslateAdt(state) = state {
@@ -1606,7 +1587,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
 
                 if adt.is_enum() {
-                    return self.generate_enum_use_noshim(*adt, substs, &mut *state).map(radium::Type::Enum);
+                    return self.generate_enum_use_noshim(*adt, substs, &mut *state).map(specs::Type::Enum);
                 }
 
                 Err(TranslationError::UnsupportedFeature {
@@ -1624,10 +1605,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::TyKind::Tuple(params) => {
                 if params.is_empty() {
-                    return Ok(radium::Type::Unit);
+                    return Ok(specs::Type::Unit);
                 }
 
-                self.generate_tuple_use(params.iter(), &mut *state).map(radium::Type::Literal)
+                self.generate_tuple_use(params.iter(), &mut *state).map(specs::Type::Literal)
             },
 
             ty::TyKind::Param(param_ty) => state.lookup_ty_param(*param_ty),
@@ -1725,32 +1706,32 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Translate a `attr::IntType` (this is different from the `ty`
     /// `IntType`).
-    const fn translate_integer_type(it: abi::IntegerType) -> radium::lang::IntType {
+    const fn translate_integer_type(it: abi::IntegerType) -> lang::IntType {
         match it {
             abi::IntegerType::Fixed(size, sign) => {
                 if sign {
                     match size {
-                        abi::Integer::I8 => radium::lang::IntType::I8,
-                        abi::Integer::I16 => radium::lang::IntType::I16,
-                        abi::Integer::I32 => radium::lang::IntType::I32,
-                        abi::Integer::I64 => radium::lang::IntType::I64,
-                        abi::Integer::I128 => radium::lang::IntType::I128,
+                        abi::Integer::I8 => lang::IntType::I8,
+                        abi::Integer::I16 => lang::IntType::I16,
+                        abi::Integer::I32 => lang::IntType::I32,
+                        abi::Integer::I64 => lang::IntType::I64,
+                        abi::Integer::I128 => lang::IntType::I128,
                     }
                 } else {
                     match size {
-                        abi::Integer::I8 => radium::lang::IntType::U8,
-                        abi::Integer::I16 => radium::lang::IntType::U16,
-                        abi::Integer::I32 => radium::lang::IntType::U32,
-                        abi::Integer::I64 => radium::lang::IntType::U64,
-                        abi::Integer::I128 => radium::lang::IntType::U128,
+                        abi::Integer::I8 => lang::IntType::U8,
+                        abi::Integer::I16 => lang::IntType::U16,
+                        abi::Integer::I32 => lang::IntType::U32,
+                        abi::Integer::I64 => lang::IntType::U64,
+                        abi::Integer::I128 => lang::IntType::U128,
                     }
                 }
             },
             abi::IntegerType::Pointer(sign) => {
                 if sign {
-                    radium::lang::IntType::ISize
+                    lang::IntType::ISize
                 } else {
-                    radium::lang::IntType::USize
+                    lang::IntType::USize
                 }
             },
         }
@@ -1820,8 +1801,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: ST<'_, '_, 'def, 'tcx>,
-    ) -> Result<radium::lang::SynType, TranslationError<'tcx>> {
-        self.translate_type_in_state(ty, scope).map(radium::lang::SynType::from)
+    ) -> Result<lang::SynType, TranslationError<'tcx>> {
+        self.translate_type_in_state(ty, scope).map(lang::SynType::from)
     }
 
     /// Translate type in the scope of a function.
@@ -1829,7 +1810,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         self.translate_type_in_state(ty, &mut STInner::InFunction(&mut *scope))
     }
 
@@ -1839,7 +1820,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         scope: &scope::Params<'tcx, 'def>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         let mut deps = BTreeSet::new();
         let state = AdtState::new(&mut deps, scope, &typing_env);
         self.translate_type_in_state(ty, &mut STInner::TranslateAdt(state))
@@ -1852,7 +1833,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 if adt.is_struct() {
@@ -1896,11 +1877,11 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
         state: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
-        let enum_ref: radium::specs::types::LiteralRef<'def> = self.lookup_enum_literal(adt_def.did())?;
+        let enum_ref: specs::types::LiteralRef<'def> = self.lookup_enum_literal(adt_def.did())?;
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(&mut *state),
             adt_def.did(),
@@ -1908,7 +1889,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             None,
         )?;
         let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
-        let enum_use = radium::specs::types::LiteralUse::new(enum_ref, params);
+        let enum_use = specs::types::LiteralUse::new(enum_ref, params);
 
         // track this enum use for the current function
         let enum_uses = &mut state.shim_uses;
@@ -1926,7 +1907,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
 
         if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
@@ -1942,9 +1923,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: radium::specs::types::LiteralRef<'def> =
-            self.lookup_adt_variant_literal(variant_id)?;
-        let struct_use = radium::specs::types::LiteralUse::new(struct_ref, params);
+        let struct_ref: specs::types::LiteralRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
 
@@ -1958,7 +1938,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         scope: InFunctionState<'_, 'def, 'tcx>,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         info!("generating enum variant use for {:?}", variant_id);
 
         let params = self.trait_registry().compute_scope_inst_in_state(
@@ -1969,9 +1949,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: radium::specs::types::LiteralRef<'def> =
-            self.lookup_adt_variant_literal(variant_id)?;
-        let struct_use = radium::specs::types::LiteralUse::new(struct_ref, params);
+        let struct_ref: specs::types::LiteralRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
+        let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         // TODO: track?
         // generate the struct use key
@@ -1988,25 +1967,25 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
     /// use map so that we can this function when parsing closure specifications.
     pub(crate) fn make_tuple_use(
         &self,
-        translated_tys: Vec<radium::Type<'def>>,
-        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::specs::types::LiteralUse<'def>>>,
-    ) -> radium::Type<'def> {
+        translated_tys: Vec<specs::Type<'def>>,
+        uses: Option<&mut HashMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
+    ) -> specs::Type<'def> {
         let num_components = translated_tys.len();
         if num_components == 0 {
-            return radium::Type::Unit;
+            return specs::Type::Unit;
         }
 
         let (_, lit) = self.get_tuple_struct_ref(num_components);
-        let key: Vec<_> = translated_tys.iter().map(radium::lang::SynType::from).collect();
-        let mut scope_inst = radium::GenericScopeInst::empty();
+        let key: Vec<_> = translated_tys.iter().map(lang::SynType::from).collect();
+        let mut scope_inst = specs::GenericScopeInst::empty();
         for ty in translated_tys {
             scope_inst.add_direct_ty_param(ty);
         }
-        let struct_use = radium::specs::types::LiteralUse::new(lit, scope_inst);
+        let struct_use = specs::types::LiteralUse::new(lit, scope_inst);
         if let Some(tuple_uses) = uses {
             tuple_uses.entry(key).or_insert_with(|| struct_use.clone());
         }
 
-        radium::Type::Literal(struct_use)
+        specs::Type::Literal(struct_use)
     }
 }

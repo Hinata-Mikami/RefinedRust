@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
-use radium::{coq, model, specs};
+use radium::{code, coq, lang, model, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::mir;
 
@@ -20,8 +20,7 @@ use crate::spec_parsers::parse_utils::{
 /// Permitted attributes:
 /// TODO
 pub(crate) trait LoopAttrParser {
-    fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem])
-    -> Result<radium::LoopSpec, String>;
+    fn parse_loop_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<specs::LoopSpec, String>;
 }
 
 /// Representation of the `IProps` that can appear in a requires or ensures clause.
@@ -186,13 +185,13 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T>
 }
 
 pub(crate) struct VerboseLoopAttrParser<'def, 'a, T> {
-    locals: Vec<(mir::Local, String, radium::LocalKind, bool, radium::Type<'def>)>,
+    locals: Vec<(mir::Local, String, code::LocalKind, bool, specs::Type<'def>)>,
     info: LoopMetaInfo<'def, 'a, T>,
 }
 
 impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
     pub(crate) const fn new(
-        locals: Vec<(mir::Local, String, radium::LocalKind, bool, radium::Type<'def>)>,
+        locals: Vec<(mir::Local, String, code::LocalKind, bool, specs::Type<'def>)>,
         scope: &'a T,
         iterator_info: Option<LoopIteratorInfo<'def>>,
     ) -> Self {
@@ -205,10 +204,7 @@ impl<'def, 'a, T: ParamLookup<'def>> VerboseLoopAttrParser<'def, 'a, T> {
 }
 
 impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, '_, T> {
-    fn parse_loop_attrs<'b>(
-        &'b mut self,
-        attrs: &'b [&'b hir::AttrItem],
-    ) -> Result<radium::LoopSpec, String> {
+    fn parse_loop_attrs<'b>(&'b mut self, attrs: &'b [&'b hir::AttrItem]) -> Result<specs::LoopSpec, String> {
         let mut invariant: Vec<coq::iris::IProp> = Vec::new();
         let mut inv_vars: Vec<InvVar> = Vec::new();
         let mut inv_var_set: HashSet<String> = HashSet::new();
@@ -284,7 +280,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         for (local, name, kind, initialized, ty) in &self.locals {
             // get the refinement type
             let mut rfn_ty = ty.get_rfn_type();
-            let ty_st: radium::lang::SynType = ty.into();
+            let ty_st: lang::SynType = ty.into();
             // wrap it in place_rfn, since we reason about places
             rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 
@@ -298,7 +294,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
 
             let local_name = kind.mk_local_name(name);
 
-            if *kind == radium::LocalKind::CompilerTemp && !initialized {
+            if *kind == code::LocalKind::CompilerTemp && !initialized {
                 let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
                 uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
 
@@ -360,6 +356,6 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             coq::iris::IProp::Exists(coq::binder::BinderList::new(existentials), Box::new(prop_body));
 
         let pred = coq::iris::IPropPredicate::new(coq::binder::BinderList::new(rfn_binders), prop_body);
-        Ok(radium::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals))
+        Ok(specs::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals))
     }
 }

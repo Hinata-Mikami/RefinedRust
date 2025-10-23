@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 
 use log::{info, trace, warn};
-use radium::coq;
+use radium::{code, coq, specs};
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -143,9 +143,9 @@ fn get_new_unconstrained_regions(
 
 #[derive(Debug)]
 pub(crate) struct RegionInfo {
-    pub expr_annot: Option<radium::Annotation>,
-    pub new_dyn_inclusions: Vec<radium::Annotation>,
-    pub stmt_annot: Vec<radium::Annotation>,
+    pub expr_annot: Option<code::Annotation>,
+    pub new_dyn_inclusions: Vec<code::Annotation>,
+    pub stmt_annot: Vec<code::Annotation>,
     pub unconstrained_regions: BTreeSet<Region>,
 }
 
@@ -210,7 +210,7 @@ pub(crate) fn get_assignment_annots<'tcx>(
             inclusion_tracker.add_static_inclusion(*r1, *r2, *p);
             inclusion_tracker.add_static_inclusion(*r2, *r1, *p);
 
-            stmt_annot.push(radium::Annotation::CopyLftName(
+            stmt_annot.push(code::Annotation::CopyLftName(
                 ty_translator.format_atomic_region(ar1),
                 ty_translator.format_atomic_region(ar2),
             ));
@@ -245,7 +245,7 @@ fn generate_dyn_inclusion_annots<'tcx>(
     inclusion_tracker: &mut InclusionTracker<'_, 'tcx>,
     ty_translator: &types::LocalTX<'_, 'tcx>,
     incls: &BTreeSet<(Region, Region, PointIndex)>,
-) -> Vec<radium::Annotation> {
+) -> Vec<code::Annotation> {
     // before executing the assignment, first enforce dynamic inclusions
     info!("Generating dynamic inclusions {:?}", incls);
 
@@ -255,9 +255,9 @@ fn generate_dyn_inclusion_annots<'tcx>(
         .into_iter()
         .map(|incl| match incl {
             inclusion_tracker::DynamicInclusion::ExtendLft(l) => {
-                radium::Annotation::ExtendLft(ty_translator.format_atomic_region(l))
+                code::Annotation::ExtendLft(ty_translator.format_atomic_region(l))
             },
-            inclusion_tracker::DynamicInclusion::IncludeLft(l1, l2) => radium::Annotation::DynIncludeLft(
+            inclusion_tracker::DynamicInclusion::IncludeLft(l1, l2) => code::Annotation::DynIncludeLft(
                 ty_translator.format_atomic_region(l1),
                 ty_translator.format_atomic_region(l2),
             ),
@@ -295,7 +295,7 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     _rhs: &mir::Rvalue<'tcx>,
-) -> Vec<radium::Annotation> {
+) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
     let mut stmt_annots = Vec::new();
 
@@ -325,7 +325,7 @@ pub(crate) fn get_assignment_loan_annots<'tcx>(
 
         // add statement for issuing the loan
         stmt_annots
-            .insert(0, radium::Annotation::StartLft(ty_translator.format_atomic_region(lft), outliving_lfts));
+            .insert(0, code::Annotation::StartLft(ty_translator.format_atomic_region(lft), outliving_lfts));
 
         let a = info.get_region_kind(r);
         info!("Issuing loan at {:?} with kind {:?}: {:?}; outliving: {:?}", loc, a, loan, outliving);
@@ -341,7 +341,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
     unconstrained_regions: BTreeSet<Region>,
     loc: mir::Location,
     rhs: Option<&mir::Rvalue<'tcx>>,
-) -> Result<(Vec<radium::Annotation>, Vec<radium::Lft>), TranslationError<'tcx>> {
+) -> Result<(Vec<code::Annotation>, Vec<specs::Lft>), TranslationError<'tcx>> {
     let mut annotations = Vec::new();
 
     let info = inclusion_tracker.info();
@@ -371,7 +371,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
                 }
                 if let Some(r) = included_region {
                     //info!("Found inclusion {:?}⊑  {:?}", r, region);
-                    annotations.push(radium::Annotation::CopyLftName(
+                    annotations.push(code::Annotation::CopyLftName(
                         ty_translator.format_atomic_region(info.mk_atomic_region(*r)),
                         ty_translator.format_atomic_region(info.mk_atomic_region(region)),
                     ));
@@ -386,7 +386,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
             if let mir::Rvalue::Use(mir::Operand::Constant(_)) = rhs {
                 // we are probably using a static variable here
                 let lft = ty_translator.translate_region_var(r)?;
-                annotations.push(radium::Annotation::CopyLftName(coq::Ident::new("static"), lft));
+                annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
                 continue;
             }
 
@@ -396,7 +396,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
                 && region.as_var() == r.into()
             {
                 let lft = ty_translator.translate_region_var(r)?;
-                annotations.push(radium::Annotation::UnconstrainedLft(lft.clone()));
+                annotations.push(code::Annotation::UnconstrainedLft(lft.clone()));
                 unconstrained_hints.push(lft);
                 continue;
             }
@@ -406,7 +406,7 @@ pub(crate) fn make_unconstrained_region_annotations<'tcx>(
 
             // in case we initialize enums where the lifetime is unconstrained (e.g. `None` in `Option<&T>`)
             let lft = ty_translator.translate_region_var(r)?;
-            annotations.push(radium::Annotation::CopyLftName(coq::Ident::new("static"), lft));
+            annotations.push(code::Annotation::CopyLftName(coq::Ident::new("static"), lft));
         }
     }
 

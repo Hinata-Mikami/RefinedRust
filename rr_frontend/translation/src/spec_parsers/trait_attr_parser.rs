@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use attribute_parse::{MToken, parse};
 use derive_more::Constructor;
+use radium::specs;
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
@@ -30,11 +31,11 @@ struct TraitAttrScope<'a, T> {
 }
 
 impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
-    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
         self.inner_scope.lookup_ty_param(path)
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
         self.inner_scope.lookup_lft(lft)
     }
 
@@ -51,7 +52,7 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitAttrs {
-    pub attrs: radium::specs::traits::SpecAttrsDecl,
+    pub attrs: specs::traits::SpecAttrsDecl,
 }
 
 pub(crate) struct VerboseTraitAttrParser<'a, T, F> {
@@ -122,7 +123,7 @@ where
         }
 
         Ok(TraitAttrs {
-            attrs: radium::specs::traits::SpecAttrsDecl::new(trait_attrs, semantic_interp),
+            attrs: specs::traits::SpecAttrsDecl::new(trait_attrs, semantic_interp),
         })
     }
 }

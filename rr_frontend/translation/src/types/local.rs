@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{info, trace};
-use radium::coq;
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
@@ -32,12 +32,12 @@ use crate::types::{self, scope};
 #[derive(Debug)]
 pub(crate) struct AbstractedGenerics<'def> {
     /// the scope with new generics to quantify over for the function's specialized spec
-    pub scope: radium::GenericScope<'def, radium::specs::traits::LiteralSpecUseRef<'def>>,
+    pub scope: specs::GenericScope<'def, specs::traits::LiteralSpecUseRef<'def>>,
     /// instantiations for the specialized spec hint
-    pub callee_lft_param_inst: Vec<radium::Lft>,
-    pub callee_ty_param_inst: Vec<radium::Type<'def>>,
+    pub callee_lft_param_inst: Vec<specs::Lft>,
+    pub callee_ty_param_inst: Vec<specs::Type<'def>>,
     /// instantiations for the function use
-    pub fn_scope_inst: radium::GenericScopeInst<'def>,
+    pub fn_scope_inst: specs::GenericScopeInst<'def>,
 }
 
 /// Type translator bundling the function scope
@@ -59,7 +59,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_type_to_syn_type(
         &self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::lang::SynType, TranslationError<'tcx>> {
+    ) -> Result<lang::SynType, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         self.translator.translate_type_to_syn_type(ty, &mut state)
@@ -69,7 +69,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_region(
         &self,
         region: ty::Region<'tcx>,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let mut scope = STInner::InFunction(&mut scope);
         TX::translate_region(&mut scope, region)
@@ -79,7 +79,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_region_var(
         &self,
         region: facts::Region,
-    ) -> Result<radium::Lft, TranslationError<'tcx>> {
+    ) -> Result<specs::Lft, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         let scope = STInner::InFunction(&mut scope);
         scope.lookup_polonius_var(region)
@@ -89,7 +89,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn translate_type(
         &self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::Type<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.translate_type(ty, &mut scope)
     }
@@ -100,7 +100,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_structlike_use(ty, variant, &mut scope)
     }
@@ -111,7 +111,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_use(adt_def, args, &mut scope)
     }
@@ -124,7 +124,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_struct_use(variant_id, args, &mut scope)
     }
@@ -135,7 +135,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_variant_use(variant_id, args, &mut scope)
     }
@@ -145,16 +145,16 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     /// use map so that we can this function when parsing closure specifications.
     pub(crate) fn make_tuple_use(
         &self,
-        translated_tys: Vec<radium::Type<'def>>,
-        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::specs::types::LiteralUse<'def>>>,
-    ) -> radium::Type<'def> {
+        translated_tys: Vec<specs::Type<'def>>,
+        uses: Option<&mut HashMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>>,
+    ) -> specs::Type<'def> {
         self.translator.make_tuple_use(translated_tys, uses)
     }
 
     pub(crate) fn generate_tuple_use<F>(
         &self,
         tys: F,
-    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>>
+    ) -> Result<specs::types::LiteralUse<'def>, TranslationError<'tcx>>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {
@@ -199,12 +199,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     ) -> Result<
         (
             String,
-            (
-                radium::UsedProcedureSpec<'def>,
-                radium::specs::traits::ReqScope,
-                radium::specs::traits::ReqScopeInst,
-            ),
-            BTreeMap<radium::Lft, usize>,
+            (code::UsedProcedureSpec<'def>, specs::traits::ReqScope, specs::traits::ReqScopeInst),
+            BTreeMap<specs::Lft, usize>,
             ty::GenericArgsRef<'tcx>,
         ),
         TranslationError<'tcx>,
@@ -259,7 +255,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let translated_region = self.translate_region(region)?;
             mapped_inst.push(translated_region);
         }
-        let mapped_inst = radium::specs::traits::ReqScopeInst::new(mapped_inst);
+        let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
         trace!("using trait procedure with mapped instantiation: {mapped_inst:?}");
 
         let trait_spec_use = trait_use_ref.borrow();
@@ -267,10 +263,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         let lifted_scope = trait_spec_use.scope.clone();
         let quantified_impl =
-            radium::specs::traits::QuantifiedImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
+            specs::traits::QuantifiedImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
 
         // get spec. the spec takes the generics of the method as arguments
-        let method_spec_term = radium::UsedProcedureSpec::TraitMethod(quantified_impl, method_name.clone());
+        let method_spec_term = code::UsedProcedureSpec::TraitMethod(quantified_impl, method_name.clone());
 
         let mangled_method_name =
             types::mangle_name_with_args(&strip_coq_ident(&method_name), method_args.as_slice());
@@ -293,7 +289,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
         fnsig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
-        trait_reqs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_reqs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
         trace!(
@@ -307,7 +303,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // also count the number of (early) regions of the function itself
         let mut num_param_regions = 0;
 
-        let mut callee_lft_param_inst: Vec<radium::Lft> = Vec::new();
+        let mut callee_lft_param_inst: Vec<specs::Lft> = Vec::new();
         let mut callee_ty_param_inst = Vec::new();
         for v in method_params {
             if let Some(ty) = v.as_type() {
@@ -334,9 +330,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         let regions = lft_folder.get_regions();
 
         // the new scope that we quantify over in the assumed spec
-        let mut scope = radium::GenericScope::empty();
+        let mut scope = specs::GenericScope::empty();
         // instantiations for the function spec's parameters, using variables quantified in `scope`
-        let mut fn_inst = radium::GenericScopeInst::empty();
+        let mut fn_inst = specs::GenericScopeInst::empty();
 
         // STEP 2: Bind & instantiate lifetimes
 
@@ -391,8 +387,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Bind the generics we use.
         for param in &tyvars {
             // NOTE: this should have the same name as the using occurrences
-            let lit = radium::LiteralTyParam::new(param.name.as_str(), param.name.as_str());
-            callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
+            let lit = specs::LiteralTyParam::new(param.name.as_str(), param.name.as_str());
+            callee_ty_param_inst.push(specs::Type::LiteralParam(lit.clone()));
             scope.add_ty_param(lit);
         }
         // Also bind associated types of the trait requirements of the function (they are translated as
@@ -401,12 +397,12 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             for ty in &req.assoc_ty_inst {
                 // we should check if it there is a parameter in the current scope for it
                 let translated_ty = self.translate_type(*ty)?;
-                if let radium::Type::LiteralParam(mut lit) = translated_ty {
-                    lit.set_origin(radium::TyParamOrigin::Direct);
+                if let specs::Type::LiteralParam(mut lit) = translated_ty {
+                    lit.set_origin(specs::TyParamOrigin::Direct);
                     //lit.set_origin(req.origin);
 
                     scope.add_ty_param(lit.clone());
-                    callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
+                    callee_ty_param_inst.push(specs::Type::LiteralParam(lit.clone()));
                 }
             }
         }
@@ -417,10 +413,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let param_scope = self.scope.borrow().make_params_scope();
             let entry = param_scope.trait_scope().lookup_trait_use(env.tcx(), trait_did, alias_ty.args)?;
             let assoc_type = entry.get_associated_type_use(env, alias_ty.def_id)?;
-            if let radium::Type::LiteralParam(mut lit) = assoc_type {
-                lit.set_origin(radium::TyParamOrigin::Direct);
+            if let specs::Type::LiteralParam(mut lit) = assoc_type {
+                lit.set_origin(specs::TyParamOrigin::Direct);
                 scope.add_ty_param(lit.clone());
-                callee_ty_param_inst.push(radium::Type::LiteralParam(lit.clone()));
+                callee_ty_param_inst.push(specs::Type::LiteralParam(lit.clone()));
             }
         }
 
@@ -484,13 +480,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 let ty = TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req = radium::specs::traits::ReqInst::new(
-                req.spec,
-                req.origin,
-                assoc_inst,
-                req.of_trait,
-                req.scope,
-            );
+            let trait_req =
+                specs::traits::ReqInst::new(req.spec, req.origin, assoc_inst, req.of_trait, req.scope);
             fn_inst.add_trait_requirement(trait_req);
         }
 

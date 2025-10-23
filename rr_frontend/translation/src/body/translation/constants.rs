@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
+use radium::code;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 
@@ -12,52 +13,52 @@ use super::TX;
 use crate::base::*;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
-    /// Translate a scalar at a specific type to a `radium::Expr`.
+    /// Translate a scalar at a specific type to a `code::Expr`.
     // TODO: Use `TryFrom` instead
     fn translate_scalar(
         &mut self,
         sc: &mir::interpret::Scalar,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         // TODO: Use `TryFrom` instead
         fn translate_literal<'tcx, T>(
             sc: mir::interpret::InterpResult<'tcx, T>,
-            fptr: fn(T) -> radium::Literal,
-        ) -> Result<radium::Expr, TranslationError<'tcx>> {
+            fptr: fn(T) -> code::Literal,
+        ) -> Result<code::Expr, TranslationError<'tcx>> {
             sc.discard_err()
-                .map_or(Err(TranslationError::InvalidLayout), |lit| Ok(radium::Expr::Literal(fptr(lit))))
+                .map_or(Err(TranslationError::InvalidLayout), |lit| Ok(code::Expr::Literal(fptr(lit))))
         }
 
         match ty.kind() {
-            ty::TyKind::Bool => translate_literal(sc.to_bool(), radium::Literal::Bool),
+            ty::TyKind::Bool => translate_literal(sc.to_bool(), code::Literal::Bool),
 
             ty::TyKind::Int(it) => match it {
-                ty::IntTy::I8 => translate_literal(sc.to_i8(), radium::Literal::I8),
-                ty::IntTy::I16 => translate_literal(sc.to_i16(), radium::Literal::I16),
-                ty::IntTy::I32 => translate_literal(sc.to_i32(), radium::Literal::I32),
-                ty::IntTy::I128 => translate_literal(sc.to_i128(), radium::Literal::I128),
-                ty::IntTy::I64 => translate_literal(sc.to_i64(), radium::Literal::I64),
+                ty::IntTy::I8 => translate_literal(sc.to_i8(), code::Literal::I8),
+                ty::IntTy::I16 => translate_literal(sc.to_i16(), code::Literal::I16),
+                ty::IntTy::I32 => translate_literal(sc.to_i32(), code::Literal::I32),
+                ty::IntTy::I128 => translate_literal(sc.to_i128(), code::Literal::I128),
+                ty::IntTy::I64 => translate_literal(sc.to_i64(), code::Literal::I64),
                 // for Radium, we use 64-bit pointers
-                ty::IntTy::Isize => translate_literal(sc.to_i64(), radium::Literal::ISize),
+                ty::IntTy::Isize => translate_literal(sc.to_i64(), code::Literal::ISize),
             },
 
             ty::TyKind::Uint(it) => match it {
-                ty::UintTy::U8 => translate_literal(sc.to_u8(), radium::Literal::U8),
-                ty::UintTy::U16 => translate_literal(sc.to_u16(), radium::Literal::U16),
-                ty::UintTy::U32 => translate_literal(sc.to_u32(), radium::Literal::U32),
-                ty::UintTy::U128 => translate_literal(sc.to_u128(), radium::Literal::U128),
-                ty::UintTy::U64 => translate_literal(sc.to_u64(), radium::Literal::U64),
+                ty::UintTy::U8 => translate_literal(sc.to_u8(), code::Literal::U8),
+                ty::UintTy::U16 => translate_literal(sc.to_u16(), code::Literal::U16),
+                ty::UintTy::U32 => translate_literal(sc.to_u32(), code::Literal::U32),
+                ty::UintTy::U128 => translate_literal(sc.to_u128(), code::Literal::U128),
+                ty::UintTy::U64 => translate_literal(sc.to_u64(), code::Literal::U64),
                 // for Radium, we use 64-bit pointers
-                ty::UintTy::Usize => translate_literal(sc.to_u64(), radium::Literal::USize),
+                ty::UintTy::Usize => translate_literal(sc.to_u64(), code::Literal::USize),
             },
 
-            ty::TyKind::Char => translate_literal(sc.to_char(), radium::Literal::Char),
+            ty::TyKind::Char => translate_literal(sc.to_char(), code::Literal::Char),
 
             ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty).map(Into::into),
 
             ty::TyKind::Tuple(tys) => {
                 if tys.is_empty() {
-                    return Ok(radium::Expr::Literal(radium::Literal::ZST));
+                    return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
                 Err(TranslationError::UnsupportedFeature {
@@ -82,7 +83,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                             let s = self.const_registry.get_static(did)?;
                             self.collected_statics.insert(did);
-                            Ok(radium::Expr::Literal(radium::Literal::Loc(s.loc_name.clone())))
+                            Ok(code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())))
                         },
                         mir::interpret::GlobalAlloc::Memory(_) => {
                             // TODO: this is needed
@@ -122,7 +123,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         v: mir::ConstValue,
         ty: ty::Ty<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         match v {
             mir::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
             mir::ConstValue::ZeroSized => {
@@ -132,7 +133,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         info!("Translating ZST val for function call target: {:?}", ty);
                         self.translate_fn_def_use(ty).map(Into::into)
                     },
-                    _ => Ok(radium::Expr::Literal(radium::Literal::ZST)),
+                    _ => Ok(code::Expr::Literal(code::Literal::ZST)),
                 }
             },
             _ => {
@@ -145,11 +146,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    /// Translate a `mir::Constant` to a `radium::Expr`.
+    /// Translate a `mir::Constant` to a `code::Expr`.
     pub(crate) fn translate_constant(
         &mut self,
         constant: &mir::Const<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         match constant {
             mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {

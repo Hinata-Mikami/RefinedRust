@@ -7,9 +7,6 @@ pub mod lang;
 pub mod model;
 pub mod specs;
 
-pub use code::*;
-pub use specs::*;
-
 pub(crate) const BASE_INDENT: &str = "  ";
 
 fn make_indent(i: usize) -> String {

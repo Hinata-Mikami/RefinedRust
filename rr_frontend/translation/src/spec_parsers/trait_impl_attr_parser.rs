@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 use attribute_parse::MToken;
 use attribute_parse::parse::{self, Peek as _};
+use radium::{coq, specs};
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{IdentOrTerm, ParamLookup, attr_args_tokens, str_err};
@@ -25,7 +26,7 @@ pub(crate) trait TraitImplAttrParser {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitImplAttrs {
-    pub attrs: radium::specs::traits::SpecAttrsInst,
+    pub attrs: specs::traits::SpecAttrsInst,
 }
 
 pub(crate) struct VerboseTraitImplAttrParser<'a, T> {
@@ -74,7 +75,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                         let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                         let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
 
-                        radium::specs::traits::SpecAttrInst::Proof(parsed_term)
+                        specs::traits::SpecAttrInst::Proof(parsed_term)
                     } else {
                         // if this is delimited, just enter the delimiter
                         let buffer = if let Some(stream) = buffer.peek_delimited() {
@@ -85,9 +86,9 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
                         let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                         let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
-                        let term = radium::coq::term::Term::Literal(parsed_term);
+                        let term = coq::term::Term::Literal(parsed_term);
 
-                        radium::specs::traits::SpecAttrInst::Term(term)
+                        specs::traits::SpecAttrInst::Term(term)
                     };
                     if trait_attrs.insert(parsed_name.to_string(), inst).is_some() {
                         return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
@@ -101,7 +102,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
         }
 
         Ok(TraitImplAttrs {
-            attrs: radium::specs::traits::SpecAttrsInst::new(trait_attrs),
+            attrs: specs::traits::SpecAttrsInst::new(trait_attrs),
         })
     }
 }

@@ -8,6 +8,7 @@
 
 use std::collections::HashSet;
 
+use radium::code;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -25,7 +26,7 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
     ty_translator: &types::LocalTX<'_, 'tcx>,
     loc: mir::Location,
     rhs_ty: ty::Ty<'tcx>,
-) -> Vec<radium::Annotation> {
+) -> Vec<code::Annotation> {
     let info = inclusion_tracker.info();
     let input_facts = &info.borrowck_in_facts;
     let subset_base = &input_facts.subset_base;
@@ -53,7 +54,7 @@ pub(crate) fn get_composite_rvalue_creation_annots<'tcx>(
                     inclusion_tracker.add_static_inclusion(*s1, *s2, midpoint);
                     inclusion_tracker.add_static_inclusion(*s2, *s1, midpoint);
 
-                    let annot = radium::Annotation::CopyLftName(
+                    let annot = code::Annotation::CopyLftName(
                         ty_translator.format_atomic_region(lft1),
                         ty_translator.format_atomic_region(lft2),
                     );

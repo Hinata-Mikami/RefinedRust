@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::{info, trace};
+use radium::{code, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
@@ -121,7 +122,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params,
             ty::Binder::dummy(()),
             &[],
-            radium::TyParamOrigin::Direct,
+            specs::TyParamOrigin::Direct,
             &[],
             None,
         )?;
@@ -156,7 +157,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         loop_head: mir::BasicBlock,
         did: Option<DefId>,
-    ) -> Result<radium::LoopSpec, TranslationError<'tcx>> {
+    ) -> Result<specs::LoopSpec, TranslationError<'tcx>> {
         // Note that StorageDead will not help us for determining initialization/ making it invariant, since
         // it only applies to full stack slots, not individual paths. one thing that makes it more
         // complicated in the frontend: initialization may in practice also be path-dependent.
@@ -192,9 +193,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut locals_with_initialization: Vec<(
             mir::Local,
             String,
-            radium::LocalKind,
+            code::LocalKind,
             bool,
-            radium::Type<'def>,
+            specs::Type<'def>,
         )> = Vec::new();
 
         for (local, kind, name, ty) in &self.fn_locals {

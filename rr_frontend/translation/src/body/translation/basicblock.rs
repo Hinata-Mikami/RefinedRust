@@ -7,6 +7,7 @@
 use std::collections::BTreeSet;
 
 use log::{info, trace};
+use radium::code;
 use rr_rustc_interface::middle::mir;
 
 use super::TX;
@@ -19,7 +20,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         bb_idx: mir::BasicBlock,
         bb: &mir::BasicBlockData<'tcx>,
-    ) -> Result<radium::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError<'tcx>> {
         let mut prim_stmts = Vec::new();
 
         for (idx, stmt) in bb.statements.iter().enumerate() {
@@ -82,41 +83,41 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         }
 
 
-                        prim_stmts.push(radium::PrimStmt::Annot{
+                        prim_stmts.push(code::PrimStmt::Annot{
                             a: unconstrained_annots,
                             why: Some("assignment (unconstrained)".to_owned()),
                         });
 
-                        prim_stmts.push(radium::PrimStmt::Annot{
+                        prim_stmts.push(code::PrimStmt::Annot{
                             a: composite_annots,
                             why: Some("composite".to_owned()),
                         });
 
-                        prim_stmts.push(radium::PrimStmt::Annot{
+                        prim_stmts.push(code::PrimStmt::Annot{
                             a: borrow_annots,
                             why: Some("borrow".to_owned()),
                         });
 
-                        prim_stmts.push(radium::PrimStmt::Annot{
+                        prim_stmts.push(code::PrimStmt::Annot{
                             a: assignment_annots.new_dyn_inclusions,
                             why: Some("assignment".to_owned()),
                         });
 
 
-                        let translated_val = radium::Expr::with_optional_annotation(
+                        let translated_val = code::Expr::with_optional_annotation(
                             self.translate_rvalue(loc, val)?,
                             assignment_annots.expr_annot,
                             Some("assignment".to_owned()),
                         );
                         let translated_place = self.translate_place(plc)?;
                         let synty = self.ty_translator.translate_type_to_syn_type(plc_ty.ty)?;
-                        prim_stmts.push(radium::PrimStmt::Assign {
+                        prim_stmts.push(code::PrimStmt::Assign {
                             ot: synty.into(),
                             e1: Box::new(translated_place),
                             e2: Box::new(translated_val),
                         });
 
-                        prim_stmts.push(radium::PrimStmt::Annot{
+                        prim_stmts.push(code::PrimStmt::Annot{
                             a: assignment_annots.stmt_annot,
                             why: Some("post-assignment".to_owned()),
                         });
@@ -192,10 +193,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // TODO zombie?
         let _dying_zombie = self.info.get_dying_zombie_loans(loc);
         let all_dying_loans: BTreeSet<_> = dying.into_iter().collect();
-        let cont_stmt: radium::Stmt =
+        let cont_stmt: code::Stmt =
             self.translate_terminator(bb.terminator(), loc, all_dying_loans.into_iter().rev().collect())?;
 
-        let cont_stmt = radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
+        let cont_stmt = code::Stmt::Prim(prim_stmts, Box::new(cont_stmt));
 
         Ok(cont_stmt)
     }

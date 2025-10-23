@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace, warn};
+use radium::{code, lang, specs};
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
@@ -59,7 +60,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         term: &mir::Terminator<'tcx>,
         loc: mir::Location,
         dying_loans: Vec<facts::Loan>,
-    ) -> Result<radium::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError<'tcx>> {
         let mut endlfts = self.generate_endlfts(dying_loans.into_iter());
 
         match &term.kind {
@@ -75,7 +76,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 trace!("translating Call {:?}", term);
                 if self.is_call_destination_panic(func) {
                     info!("Replacing call to std::panicking::begin_panic with Stuck");
-                    return Ok(radium::Stmt::Stuck);
+                    return Ok(code::Stmt::Stuck);
                 }
 
                 self.translate_function_call(func, args, destination, *target, loc, endlfts)
@@ -88,13 +89,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // Is this semantics accurate wrt what the intended MIR semantics is?
                 // Possibly handle this differently by making the first argument of a function a dedicated
                 // return place? See also discussion at https://github.com/rust-lang/rust/issues/71117
-                let stmt = radium::Stmt::Return(radium::Expr::Use {
+                let stmt = code::Stmt::Return(code::Expr::Use {
                     ot: (&self.return_synty).into(),
-                    e: Box::new(radium::Expr::Var(self.return_name.clone())),
+                    e: Box::new(code::Expr::Var(self.return_name.clone())),
                 });
 
                 // TODO is this right?
-                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
+                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
             mir::TerminatorKind::SwitchInt { discr, targets } => {
@@ -113,15 +114,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let true_branch = self.translate_goto_like(&loc, true_target)?;
                     let false_branch = self.translate_goto_like(&loc, false_target)?;
 
-                    let stmt = radium::Stmt::If {
+                    let stmt = code::Stmt::If {
                         e: operand,
-                        ot: radium::lang::OpType::Bool,
+                        ot: lang::OpType::Bool,
                         s1: Box::new(true_branch),
                         s2: Box::new(false_branch),
                     };
 
                     // TODO: is this right?
-                    return Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)));
+                    return Ok(code::Stmt::Prim(endlfts, Box::new(stmt)));
                 }
 
                 //info!("switchint: {:?}", term.kind);
@@ -129,7 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let ty = self.get_type_of_operand(discr);
 
                 let mut target_map: HashMap<u128, usize> = HashMap::new();
-                let mut translated_targets: Vec<radium::Stmt> = Vec::new();
+                let mut translated_targets: Vec<code::Stmt> = Vec::new();
 
                 for (idx, (tgt, bb)) in targets.iter().enumerate() {
                     let bb: mir::BasicBlock = bb;
@@ -143,13 +144,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // TODO: need to put endlfts infront of gotos?
 
                 let translated_ty = self.ty_translator.translate_type(ty)?;
-                let radium::Type::Int(it) = translated_ty else {
+                let specs::Type::Int(it) = translated_ty else {
                     return Err(TranslationError::UnknownError(
                         "SwitchInt switching on non-integer type".to_owned(),
                     ));
                 };
 
-                Ok(radium::Stmt::Switch {
+                Ok(code::Stmt::Switch {
                     e: operand,
                     it,
                     index_map: target_map,
@@ -166,19 +167,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             } => {
                 // this translation gets stuck on failure
                 let cond_translated = self.translate_operand(cond, true)?;
-                let comp = radium::Expr::BinOp {
-                    o: radium::Binop::Eq,
-                    ot1: radium::lang::OpType::Bool,
-                    ot2: radium::lang::OpType::Bool,
+                let comp = code::Expr::BinOp {
+                    o: code::Binop::Eq,
+                    ot1: lang::OpType::Bool,
+                    ot2: lang::OpType::Bool,
                     e1: Box::new(cond_translated),
-                    e2: Box::new(radium::Expr::Literal(radium::Literal::Bool(*expected))),
+                    e2: Box::new(code::Expr::Literal(code::Literal::Bool(*expected))),
                 };
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
 
                 // TODO: should we really have this?
-                endlfts.insert(0, radium::PrimStmt::AssertS(Box::new(comp)));
-                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
+                endlfts.insert(0, code::PrimStmt::AssertS(Box::new(comp)));
+                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
             mir::TerminatorKind::Drop { place, target, .. } => {
@@ -186,11 +187,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 self.register_drop_shim_for(ty.ty);
 
                 let place_translated = self.translate_place(place)?;
-                let _drope = radium::Expr::DropE(Box::new(place_translated));
+                let _drope = code::Expr::DropE(Box::new(place_translated));
 
                 let stmt = self.translate_goto_like(&loc, *target)?;
 
-                Ok(radium::Stmt::Prim(endlfts, Box::new(stmt)))
+                Ok(code::Stmt::Prim(endlfts, Box::new(stmt)))
             },
 
             // just a goto for our purposes
@@ -206,7 +207,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::TerminatorKind::Unreachable => Ok(radium::Stmt::Stuck),
+            mir::TerminatorKind::Unreachable => Ok(code::Stmt::Stuck),
 
             mir::TerminatorKind::UnwindResume => Err(TranslationError::Unimplemented {
                 description: "implement UnwindResume".to_owned(),

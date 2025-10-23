@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, HashMap, hash_map};
 
 use derive_more::{Constructor, Debug};
 use log::{trace, warn};
-use radium::coq;
+use radium::{coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
@@ -66,13 +66,13 @@ pub(crate) fn generate_args_inst_key<'tcx>(
 #[derive(Eq, PartialEq, Hash, Debug)]
 pub(crate) struct AdtUseKey {
     base_did: DefId,
-    generics: Vec<radium::lang::SynType>,
+    generics: Vec<lang::SynType>,
 }
 
 impl AdtUseKey {
-    pub(crate) fn new_from_inst(defid: DefId, params: &radium::GenericScopeInst<'_>) -> Self {
+    pub(crate) fn new_from_inst(defid: DefId, params: &specs::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
-            params.get_all_ty_params_with_assocs().iter().map(radium::lang::SynType::from).collect();
+            params.get_all_ty_params_with_assocs().iter().map(lang::SynType::from).collect();
         Self {
             base_did: defid,
             generics: generic_syntys,
@@ -82,20 +82,20 @@ impl AdtUseKey {
 
 #[derive(Clone, Debug)]
 enum Param {
-    Region(radium::Lft),
-    Ty(radium::LiteralTyParam),
+    Region(specs::Lft),
+    Ty(specs::LiteralTyParam),
     // Note: we do not currently support Const params
     Const,
 }
 impl Param {
-    const fn as_type(&self) -> Option<&radium::LiteralTyParam> {
+    const fn as_type(&self) -> Option<&specs::LiteralTyParam> {
         match self {
             Self::Ty(lit) => Some(lit),
             _ => None,
         }
     }
 
-    const fn as_region(&self) -> Option<&radium::Lft> {
+    const fn as_region(&self) -> Option<&specs::Lft> {
         match self {
             Self::Region(lit) => Some(lit),
             _ => None,
@@ -110,10 +110,10 @@ pub(crate) struct Params<'tcx, 'def> {
     scope: Vec<Param>,
     /// maps De Bruijn indices for late lifetimes to the lifetime
     /// since rustc groups De Bruijn indices by (binder, var in the binder), this is a nested vec.
-    late_scope: Vec<Vec<radium::Lft>>,
+    late_scope: Vec<Vec<specs::Lft>>,
     /// extra lifetimes, mainly used for regions in closure captures which have no formal Rust
     /// parameters
-    extra_scope: Vec<radium::Lft>,
+    extra_scope: Vec<specs::Lft>,
 
     /// conversely, map the declaration name of a lifetime to an index
     lft_names: HashMap<String, usize>,
@@ -126,7 +126,7 @@ pub(crate) struct Params<'tcx, 'def> {
 
 #[expect(clippy::fallible_impl_from)]
 impl<'tcx, 'def> From<Params<'tcx, 'def>>
-    for radium::GenericScope<'def, radium::specs::traits::LiteralSpecUseRef<'def>>
+    for specs::GenericScope<'def, specs::traits::LiteralSpecUseRef<'def>>
 {
     fn from(mut x: Params<'tcx, 'def>) -> Self {
         let mut scope = Self::empty();
@@ -161,21 +161,21 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
 }
 
 impl<'def> ParamLookup<'def> for Params<'_, 'def> {
-    fn lookup_ty_param(&self, path: &RustPath) -> Option<radium::Type<'def>> {
+    fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>> {
         // first lookup if this is a type parameter
         if path.len() == 1 {
             let RustPathElem::AssocItem(it) = &path[0];
             if let Some(idx) = self.ty_names.get(it)
                 && let Some(n) = self.lookup_ty_param_idx(*idx)
             {
-                return Some(radium::Type::LiteralParam(n.to_owned()));
+                return Some(specs::Type::LiteralParam(n.to_owned()));
             }
         }
         // otherwise interpret this as an associated type path
         self.trait_scope.assoc_ty_names.get(path).cloned()
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&radium::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
         let idx = self.lft_names.get(lft)?;
         self.lookup_region_idx(*idx)
     }
@@ -190,7 +190,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::specs::traits::LiteralSpecUseRef<'def>> {
+    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
         let typaram_idx = self.ty_names.get(typaram)?;
 
         for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
@@ -219,9 +219,9 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::specs::traits::LiteralSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::specs::traits::SpecAttrInst>,
-    ) -> Option<radium::specs::functions::SpecTraitReqSpecialization<'def>> {
+        trait_use: specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
+    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
         let mut trait_ref = trait_use.borrow_mut();
         let trait_ref = trait_ref.as_mut().unwrap();
 
@@ -230,11 +230,11 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
 
         let assoc_types_inst = trait_ref.get_assoc_ty_inst();
 
-        let attrs = radium::specs::traits::SpecAttrsInst::new(reqs.to_owned());
+        let attrs = specs::traits::SpecAttrsInst::new(reqs.to_owned());
         // name for the definition
         let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
 
-        let specialization = radium::specs::functions::SpecTraitReqSpecialization::new(
+        let specialization = specs::functions::SpecTraitReqSpecialization::new(
             trait_use,
             trait_inst.to_owned(),
             assoc_types_inst,
@@ -286,9 +286,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
                     let lit = if let Some(of_did) = with_origin {
                         let origin = Self::determine_origin_of_param(of_did, tcx, *x);
-                        radium::LiteralTyParam::new_with_origin(&name, &name, origin)
+                        specs::LiteralTyParam::new_with_origin(&name, &name, origin)
                     } else {
-                        radium::LiteralTyParam::new(&name, &name)
+                        specs::LiteralTyParam::new(&name, &name)
                     };
                     scope.push(Param::Ty(lit));
                 } else {
@@ -310,21 +310,21 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Lookup a type parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_ty_param_idx(&self, idx: usize) -> Option<&radium::LiteralTyParam> {
+    pub(crate) fn lookup_ty_param_idx(&self, idx: usize) -> Option<&specs::LiteralTyParam> {
         let ty = self.scope.get(idx)?;
         ty.as_type()
     }
 
     /// Lookup a region parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_region_idx(&self, idx: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_region_idx(&self, idx: usize) -> Option<&specs::Lft> {
         let lft = self.scope.get(idx)?;
         lft.as_region()
     }
 
     /// Lookup a late region parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&radium::Lft> {
+    pub(crate) fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&specs::Lft> {
         let binder = self.late_scope.get(binder)?;
         let lft = binder.get(var)?;
         Some(lft)
@@ -332,7 +332,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Get all type parameters in scope.
     #[must_use]
-    pub(crate) fn tyvars(&self) -> Vec<radium::LiteralTyParam> {
+    pub(crate) fn tyvars(&self) -> Vec<specs::LiteralTyParam> {
         let mut tyvars = Vec::new();
         for x in &self.scope {
             if let Param::Ty(ty) = x {
@@ -348,7 +348,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         &mut self,
         tcx: ty::TyCtxt<'tcx>,
         bound_regions: &[ty::BoundRegionKind],
-    ) -> radium::specs::traits::ReqScope {
+    ) -> specs::traits::ReqScope {
         // We add these lifetimes to a special late scope, as the de bruijn indices are different
         // from the early-bound binders
         let mut regions_to_quantify = Vec::new();
@@ -374,11 +374,11 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             self.late_scope.insert(0, new_binder);
         }
 
-        radium::specs::traits::ReqScope::new(regions_to_quantify)
+        specs::traits::ReqScope::new(regions_to_quantify)
     }
 
     /// Add bound regions when descending under a for<...> binder.
-    pub(crate) fn add_trait_req_scope(&mut self, scope: &radium::specs::traits::ReqScope) {
+    pub(crate) fn add_trait_req_scope(&mut self, scope: &specs::traits::ReqScope) {
         self.late_scope.insert(0, scope.quantified_lfts.clone());
     }
 
@@ -532,7 +532,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 let trait_use = trait_use_ref.as_ref().unwrap();
 
                 let self_ty = &trait_use.trait_inst.get_direct_ty_params()[0];
-                let radium::Type::LiteralParam(self_param) = self_ty else {
+                let specs::Type::LiteralParam(self_param) = self_ty else {
                     // trait requirement for complex type, don't add shorthand notation
                     continue;
                 };
@@ -610,7 +610,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             for ty_did in &assoc_types {
                 let name = env.get_assoc_item_name(*ty_did).unwrap();
                 let path = vec![RustPathElem::AssocItem(name.clone())];
-                let ty = radium::Type::LiteralParam(radium::LiteralTyParam::new(&name, &name));
+                let ty = specs::Type::LiteralParam(specs::LiteralTyParam::new(&name, &name));
                 if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
                     e.insert(ty);
                 } else {
@@ -630,14 +630,14 @@ impl<'tcx> Params<'tcx, '_> {
         did: DefId,
         tcx: ty::TyCtxt<'tcx>,
         param: ty::ParamTy,
-    ) -> radium::TyParamOrigin {
+    ) -> specs::TyParamOrigin {
         // Check if there is a surrounding trait decl that introduces this parameter
         if let Some(trait_did) = tcx.trait_of_assoc(did) {
             let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
 
             for this_param in &generics.own_params {
                 if this_param.name == param.name {
-                    return radium::TyParamOrigin::SurroundingTrait;
+                    return specs::TyParamOrigin::SurroundingTrait;
                 }
             }
         }
@@ -647,12 +647,12 @@ impl<'tcx> Params<'tcx, '_> {
 
             for this_param in &generics.own_params {
                 if this_param.name == param.name {
-                    return radium::TyParamOrigin::SurroundingImpl;
+                    return specs::TyParamOrigin::SurroundingImpl;
                 }
             }
         }
 
-        radium::TyParamOrigin::Direct
+        specs::TyParamOrigin::Direct
     }
 
     /// Determine the number of args of a surrounding trait or impl.
@@ -691,7 +691,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
                     scope.push(Param::Const);
                 },
                 ty::GenericParamDefKind::Type { .. } => {
-                    let lit = radium::LiteralTyParam::new(&name, &name);
+                    let lit = specs::LiteralTyParam::new(&name, &name);
                     ty_names.insert(p.name.as_str().to_owned(), scope.len());
                     scope.push(Param::Ty(lit));
                 },
@@ -719,7 +719,7 @@ pub(crate) struct Traits<'tcx, 'def> {
     ordered_assumptions: Vec<(DefId, GenericsKey<'tcx>)>,
 
     /// mapping of associated type paths in scope
-    assoc_ty_names: HashMap<RustPath, radium::Type<'def>>,
+    assoc_ty_names: HashMap<RustPath, specs::Type<'def>>,
     /// mapping of attribute paths which are in scope.
     /// Maps to a Coq expression describing this attribute in the current context.
     attribute_names: HashMap<RustPath, String>,

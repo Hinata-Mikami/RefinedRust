@@ -5,6 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::info;
+use radium::{code, lang};
 use rr_rustc_interface::abi;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -17,7 +18,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_place(
         &self,
         pl: &mir::Place<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         // Get the type of the underlying local. We will use this to
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.get_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
@@ -27,7 +28,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .get(&pl.local)
             .ok_or_else(|| TranslationError::UnknownVar(format!("{:?}", pl.local)))?;
 
-        let mut acc_expr = radium::Expr::Var(local_name.to_owned());
+        let mut acc_expr = code::Expr::Var(local_name.to_owned());
 
         // iterate in evaluation order
         for it in pl.projection {
@@ -35,7 +36,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 mir::ProjectionElem::Deref => {
                     // use the type of the dereferencee
                     let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
-                    acc_expr = radium::Expr::Deref {
+                    acc_expr = code::Expr::Deref {
                         ot: st.into(),
                         e: Box::new(acc_expr),
                     };
@@ -44,15 +45,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     // `t` is the type of the field we are accessing!
                     let lit = self.ty_translator.generate_structlike_use(cur_ty.ty, cur_ty.variant_index)?;
                     // TODO: does not do the right thing for accesses to fields of zero-sized objects.
-                    let struct_sls =
-                        lit.map_or(radium::lang::SynType::Unit, |x| x.generate_raw_syn_type_term());
+                    let struct_sls = lit.map_or(lang::SynType::Unit, |x| x.generate_raw_syn_type_term());
                     let name = self.ty_translator.translator.get_field_name_of(
                         *f,
                         cur_ty.ty,
                         cur_ty.variant_index.map(abi::VariantIdx::as_usize),
                     )?;
 
-                    acc_expr = radium::Expr::FieldOf {
+                    acc_expr = code::Expr::FieldOf {
                         e: Box::new(acc_expr),
                         name,
                         sls: struct_sls.to_string(),
@@ -90,7 +90,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                             let variant_name = types::TX::get_variant_name_of(cur_ty.ty, *variant_idx)?;
 
-                            acc_expr = radium::Expr::EnumData {
+                            acc_expr = code::Expr::EnumData {
                                 els: els.to_string(),
                                 variant: variant_name,
                                 e: Box::new(acc_expr),

@@ -277,7 +277,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // parse trait spec
             // As different attributes of the spec may depend on each other, we need to pass a closure
             // determining under which Coq name we are going to introduce them
-            // Note: This needs to match up with `radium::LiteralTraitSpec.make_spec_attr_name`!
+            // Note: This needs to match up with `specs::LiteralTraitSpec.make_spec_attr_name`!
             let mut attr_parser =
                 VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
             let trait_spec =
@@ -326,7 +326,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     let type_name =
                         self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotAnAssocType(c.def_id))?;
                     let type_name = strip_coq_ident(&type_name);
-                    let lit = radium::LiteralTyParam::new(&type_name, &type_name);
+                    let lit = specs::LiteralTyParam::new(&type_name, &type_name);
                     assoc_types.push(lit);
                 } else {
                     return Err(Error::AssocConstNotSupported.into());
@@ -602,7 +602,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_args: ty::GenericArgsRef<'tcx>,
         below_binders: ty::Binder<'tcx, ()>,
         bound_regions: &[ty::BoundRegionKind],
-        origin: radium::TyParamOrigin,
+        origin: specs::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
         impl_deps: ImplDeps<'_>,
     ) -> Result<specs::traits::ReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
@@ -846,7 +846,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 impl_deps,
             )?;
 
-            if req_inst.origin == radium::TyParamOrigin::Direct {
+            if req_inst.origin == specs::TyParamOrigin::Direct {
                 direct_trait_spec_terms.push(req_inst);
             } else {
                 indirect_trait_spec_terms.push(req_inst);
@@ -866,8 +866,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
         params_inst: ty::GenericArgsRef<'tcx>,
-    ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
-        let mut scope_inst = radium::GenericScopeInst::empty();
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError<'tcx>> {
+        let mut scope_inst = specs::GenericScopeInst::empty();
 
         // pass the args for this specific impl
         for arg in params_inst {
@@ -908,7 +908,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
         impl_deps: ImplDeps<'_>,
-    ) -> Result<Vec<specs::traits::ReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<specs::traits::ReqInst<'def, specs::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
         for trait_req in
             self.resolve_trait_requirements_in_state(state, did, params_inst, impl_deps, false)?
@@ -933,7 +933,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
         impl_deps: ImplDeps<'_>,
-    ) -> Result<radium::GenericScopeInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::GenericScopeInst<'def>, TranslationError<'tcx>> {
         let mut scope_inst = self.compute_scope_inst_in_state_without_traits(state, params_inst)?;
 
         for trait_req in
@@ -1000,7 +1000,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // i.e. similar to the closure requirement resolution
         //
         /*
-        let mut trait_inst = radium::GenericScopeInst::empty();
+        let mut trait_inst = specs::GenericScopeInst::empty();
         trait_inst.add_direct_ty_param(info.self_ty.clone());
         trait_inst.add_direct_ty_param(info.args_ty.clone());
         if kind == ty::ClosureKind::FnMut {
@@ -1169,7 +1169,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         &self,
         env: &Environment<'tcx>,
         did: DefId,
-    ) -> Result<radium::Type<'def>, Error<'tcx>> {
+    ) -> Result<specs::Type<'def>, Error<'tcx>> {
         let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
         let type_idx = env.get_trait_associated_type_index(did).ok_or(Error::NotAnAssocType(did))?;
 
@@ -1177,12 +1177,12 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         // so make a symbolic reference
         if self.is_self_use {
             // make a literal
-            let lit = radium::LiteralTyParam::new_with_origin(
+            let lit = specs::LiteralTyParam::new_with_origin(
                 &type_name,
                 &type_name,
-                radium::TyParamOrigin::AssocInDecl,
+                specs::TyParamOrigin::AssocInDecl,
             );
-            Ok(radium::Type::LiteralParam(lit))
+            Ok(specs::Type::LiteralParam(lit))
         } else {
             let trait_use_ref = self.trait_use.borrow();
             let trait_use = trait_use_ref.as_ref().unwrap();
@@ -1191,7 +1191,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         }
     }
 
-    pub(crate) fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, radium::Type<'def>)> {
+    pub(crate) fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, specs::Type<'def>)> {
         let mut assoc_tys = Vec::new();
 
         // get associated types
@@ -1273,8 +1273,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_ref: ty::TraitRef<'tcx>,
         spec_ref: specs::traits::LiteralSpecRef<'def>,
         is_used_in_self_trait: bool,
-        assoc_ty_constraints: Vec<Option<radium::Type<'def>>>,
-        origin: radium::TyParamOrigin,
+        assoc_ty_constraints: Vec<Option<specs::Type<'def>>>,
+        origin: specs::TyParamOrigin,
     ) {
         trace!("Enter fill_trait_use with trait_ref = {trait_ref:?}, spec_ref = {spec_ref:?}");
 
@@ -1291,7 +1291,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // dummy for now
             specs::traits::ReqScope::empty(),
             // dummy for now
-            radium::GenericScopeInst::empty(),
+            specs::GenericScopeInst::empty(),
             attr_override,
             mangled_base,
             is_used_in_self_trait,

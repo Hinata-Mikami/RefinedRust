@@ -5,7 +5,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::{info, trace};
-use radium::coq;
+use radium::{code, coq, lang};
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{abi, index};
 
@@ -19,9 +19,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
         op: &index::IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         // translate operands
-        let mut translated_ops: Vec<radium::Expr> = Vec::new();
+        let mut translated_ops: Vec<code::Expr> = Vec::new();
         let mut operand_types: Vec<ty::Ty<'tcx>> = Vec::new();
 
         for o in op {
@@ -35,7 +35,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::AggregateKind::Tuple => {
                 if operand_types.is_empty() {
                     // translate to unit literal
-                    return Ok(radium::Expr::Literal(radium::Literal::ZST));
+                    return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
                 let struct_use = self.ty_translator.generate_tuple_use(operand_types.iter().copied())?;
@@ -43,7 +43,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let initializers: Vec<_> =
                     translated_ops.into_iter().enumerate().map(|(i, o)| (i.to_string(), o)).collect();
 
-                Ok(radium::Expr::StructInitE {
+                Ok(code::Expr::StructInitE {
                     sls: coq::term::App::new_lhs(sl.to_string()),
                     components: initializers,
                 })
@@ -59,7 +59,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     let Some(struct_use) = struct_use else {
                         // if not, it's replaced by unit
-                        return Ok(radium::Expr::Literal(radium::Literal::ZST));
+                        return Ok(code::Expr::Literal(code::Literal::ZST));
                     };
 
                     let sl = struct_use.generate_raw_syn_type_term();
@@ -69,7 +69,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         .map(|(o, field)| (field.name.to_string(), o))
                         .collect();
 
-                    return Ok(radium::Expr::StructInitE {
+                    return Ok(code::Expr::StructInitE {
                         sls: coq::term::App::new_lhs(sl.to_string()),
                         components: initializers,
                     });
@@ -88,7 +88,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         .map(|(o, field)| (field.name.to_string(), o))
                         .collect();
 
-                    let variant_e = radium::Expr::StructInitE {
+                    let variant_e = code::Expr::StructInitE {
                         sls: coq::term::App::new_lhs(sl.to_string()),
                         components: initializers,
                     };
@@ -97,10 +97,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let els = enum_use.generate_raw_syn_type_term();
 
                     info!("generating enum annotation for type {:?}", enum_use);
-                    let ty: radium::RustEnumDef = enum_use.clone().try_into().unwrap();
+                    let ty: code::RustEnumDef = enum_use.clone().try_into().unwrap();
                     let variant_name = variant_def.name.to_string();
 
-                    return Ok(radium::Expr::EnumInitE {
+                    return Ok(code::Expr::EnumInitE {
                         els: coq::term::App::new_lhs(els.to_string()),
                         variant: variant_name,
                         ty,
@@ -121,7 +121,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // We basically translate this to a tuple
                 if operand_types.is_empty() {
                     // translate to unit literal
-                    return Ok(radium::Expr::Literal(radium::Literal::ZST));
+                    return Ok(code::Expr::Literal(code::Literal::ZST));
                 }
 
                 let struct_use = self.ty_translator.generate_tuple_use(operand_types.iter().copied())?;
@@ -130,7 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let initializers: Vec<_> =
                     translated_ops.into_iter().enumerate().map(|(i, o)| (i.to_string(), o)).collect();
 
-                Ok(radium::Expr::StructInitE {
+                Ok(code::Expr::StructInitE {
                     sls: coq::term::App::new_lhs(sl.to_string()),
                     components: initializers,
                 })
@@ -152,7 +152,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         kind: mir::CastKind,
         op: &mir::Operand<'tcx>,
         to_ty: ty::Ty<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         let op_ty = self.get_type_of_operand(op);
         let op_st = self.ty_translator.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
@@ -164,9 +164,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         match kind {
             mir::CastKind::PointerCoercion(x, _) => match x {
-                ty::adjustment::PointerCoercion::MutToConstPointer => Ok(radium::Expr::UnOp {
-                    o: radium::Unop::Cast(radium::lang::OpType::Ptr),
-                    ot: radium::lang::OpType::Ptr,
+                ty::adjustment::PointerCoercion::MutToConstPointer => Ok(code::Expr::UnOp {
+                    o: code::Unop::Cast(lang::OpType::Ptr),
+                    ot: lang::OpType::Ptr,
                     e: Box::new(translated_op),
                 }),
 
@@ -183,8 +183,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::IntToInt => {
                 // Cast integer to integer
-                Ok(radium::Expr::UnOp {
-                    o: radium::Unop::Cast(target_ot),
+                Ok(code::Expr::UnOp {
+                    o: code::Unop::Cast(target_ot),
                     ot: op_ot,
                     e: Box::new(translated_op),
                 })
@@ -204,9 +204,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
-                    (ty::TyKind::RawPtr(..), ty::TyKind::RawPtr(..)) => Ok(radium::Expr::UnOp {
-                        o: radium::Unop::Cast(radium::lang::OpType::Ptr),
-                        ot: radium::lang::OpType::Ptr,
+                    (ty::TyKind::RawPtr(..), ty::TyKind::RawPtr(..)) => Ok(code::Expr::UnOp {
+                        o: code::Unop::Cast(lang::OpType::Ptr),
+                        ot: lang::OpType::Ptr,
                         e: Box::new(translated_op),
                     }),
 
@@ -235,9 +235,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::CastKind::PointerExposeProvenance => {
                 // Cast pointer to integer
-                Ok(radium::Expr::UnOp {
-                    o: radium::Unop::Cast(target_ot),
-                    ot: radium::lang::OpType::Ptr,
+                Ok(code::Expr::UnOp {
+                    o: code::Unop::Cast(target_ot),
+                    ot: lang::OpType::Ptr,
                     e: Box::new(translated_op),
                 })
             },
@@ -258,7 +258,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         match op {
             // In Caesium: typed_place needs deref (not use) for place accesses.
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
@@ -272,7 +272,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let st = self.ty_translator.translate_type_to_syn_type(ty.ty)?;
 
                 if to_rvalue {
-                    Ok(radium::Expr::Use {
+                    Ok(code::Expr::Use {
                         ot: st.into(),
                         e: Box::new(translated_place),
                     })
@@ -293,7 +293,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         match rval {
             mir::Rvalue::Use(op) => {
                 // converts an lvalue to an rvalue
@@ -308,7 +308,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
                     let atomic_region = self.info.atomic_region_of_loan(loan);
                     let lft = self.ty_translator.format_atomic_region(atomic_region);
-                    Ok(radium::Expr::Borrow {
+                    Ok(code::Expr::Borrow {
                         lft,
                         bk: translated_bk,
                         ty: ty_annot,
@@ -319,7 +319,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     let region = regions::region_to_region_vid(*region);
                     let lft = self.format_region(region);
 
-                    Ok(radium::Expr::Borrow {
+                    Ok(code::Expr::Borrow {
                         lft,
                         bk: translated_bk,
                         ty: ty_annot,
@@ -332,7 +332,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_mt = TX::translate_raw_ptr_kind(*mt);
 
-                Ok(radium::Expr::AddressOf {
+                Ok(code::Expr::AddressOf {
                     mt: translated_mt,
                     e: Box::new(translated_pl),
                 })
@@ -348,7 +348,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
                 let translated_op = TX::translate_unop(*op, e1_ty)?;
 
-                Ok(radium::Expr::UnOp {
+                Ok(code::Expr::UnOp {
                     o: translated_op,
                     ot: e1_st.into(),
                     e: Box::new(translated_e1),
@@ -380,7 +380,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
                 let els = enum_use.generate_raw_syn_type_term();
 
-                let discriminant_acc = radium::Expr::EnumDiscriminant {
+                let discriminant_acc = code::Expr::EnumDiscriminant {
                     els: els.to_string(),
                     e: Box::new(translated_pl),
                 };
@@ -411,7 +411,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &self,
         bk: mir::BorrowKind,
         pl: &mir::Place<'tcx>,
-    ) -> Result<Option<radium::RustType>, TranslationError<'tcx>> {
+    ) -> Result<Option<code::RustType>, TranslationError<'tcx>> {
         let mir::BorrowKind::Mut { .. } = bk else {
             return Ok(None);
         };
@@ -420,7 +420,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // For borrows, we can safely ignore the downcast type -- we cannot borrow a particularly variant
         let translated_ty = self.ty_translator.translate_type(ty.ty)?;
-        let annot_ty = radium::RustType::of_type(&translated_ty);
+        let annot_ty = code::RustType::of_type(&translated_ty);
 
         Ok(Some(annot_ty))
     }
@@ -433,7 +433,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         op: mir::BinOp,
         e1: &mir::Operand<'tcx>,
         e2: &mir::Operand<'tcx>,
-    ) -> Result<radium::Expr, TranslationError<'tcx>> {
+    ) -> Result<code::Expr, TranslationError<'tcx>> {
         let e1_ty = self.get_type_of_operand(e1);
         let e2_ty = self.get_type_of_operand(e2);
         let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
@@ -442,7 +442,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let translated_e1 = self.translate_operand(e1, true)?;
         let translated_e2 = self.translate_operand(e2, true)?;
 
-        let mk_binop = |op| radium::Expr::BinOp {
+        let mk_binop = |op| code::Expr::BinOp {
             o: op,
             ot1: e1_st.clone().into(),
             ot2: e2_st.clone().into(),
@@ -450,19 +450,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             e2: Box::new(translated_e2.clone()),
         };
 
-        let mk_checked_binop = |op: radium::Binop| {
+        let mk_checked_binop = |op: code::Binop| {
             // result has the same syntype
             let result_st = e1_st.clone();
 
             // the actual value
-            let op_term = radium::Expr::BinOp {
+            let op_term = code::Expr::BinOp {
                 o: op.clone(),
                 ot1: e1_st.clone().into(),
                 ot2: e2_st.clone().into(),
                 e1: Box::new(translated_e1.clone()),
                 e2: Box::new(translated_e2.clone()),
             };
-            let overflow_check = radium::Expr::CheckBinOp {
+            let overflow_check = code::Expr::CheckBinOp {
                 o: op,
                 ot1: e1_st.clone().into(),
                 ot2: e2_st.clone().into(),
@@ -472,41 +472,41 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let sls = coq::term::App::new_lhs(format!("(tuple2_sls ({result_st}) BoolSynType)"));
 
-            radium::Expr::StructInitE {
+            code::Expr::StructInitE {
                 sls,
                 components: vec![("0".to_owned(), op_term), ("1".to_owned(), overflow_check)],
             }
         };
 
         match op {
-            mir::BinOp::Add => Ok(mk_binop(radium::Binop::Add)),
-            mir::BinOp::Sub => Ok(mk_binop(radium::Binop::Sub)),
-            mir::BinOp::Mul => Ok(mk_binop(radium::Binop::Mul)),
-            mir::BinOp::Div => Ok(mk_binop(radium::Binop::Div)),
-            mir::BinOp::Rem => Ok(mk_binop(radium::Binop::Mod)),
+            mir::BinOp::Add => Ok(mk_binop(code::Binop::Add)),
+            mir::BinOp::Sub => Ok(mk_binop(code::Binop::Sub)),
+            mir::BinOp::Mul => Ok(mk_binop(code::Binop::Mul)),
+            mir::BinOp::Div => Ok(mk_binop(code::Binop::Div)),
+            mir::BinOp::Rem => Ok(mk_binop(code::Binop::Mod)),
 
-            mir::BinOp::BitXor => Ok(mk_binop(radium::Binop::BitXor)),
-            mir::BinOp::BitAnd => Ok(mk_binop(radium::Binop::BitAnd)),
-            mir::BinOp::BitOr => Ok(mk_binop(radium::Binop::BitOr)),
-            mir::BinOp::Shl => Ok(mk_binop(radium::Binop::Shl)),
-            mir::BinOp::Shr => Ok(mk_binop(radium::Binop::Shr)),
+            mir::BinOp::BitXor => Ok(mk_binop(code::Binop::BitXor)),
+            mir::BinOp::BitAnd => Ok(mk_binop(code::Binop::BitAnd)),
+            mir::BinOp::BitOr => Ok(mk_binop(code::Binop::BitOr)),
+            mir::BinOp::Shl => Ok(mk_binop(code::Binop::Shl)),
+            mir::BinOp::Shr => Ok(mk_binop(code::Binop::Shr)),
 
-            mir::BinOp::AddUnchecked => Ok(mk_binop(radium::Binop::AddUnchecked)),
-            mir::BinOp::SubUnchecked => Ok(mk_binop(radium::Binop::SubUnchecked)),
-            mir::BinOp::MulUnchecked => Ok(mk_binop(radium::Binop::MulUnchecked)),
-            mir::BinOp::ShlUnchecked => Ok(mk_binop(radium::Binop::ShlUnchecked)),
-            mir::BinOp::ShrUnchecked => Ok(mk_binop(radium::Binop::ShrUnchecked)),
+            mir::BinOp::AddUnchecked => Ok(mk_binop(code::Binop::AddUnchecked)),
+            mir::BinOp::SubUnchecked => Ok(mk_binop(code::Binop::SubUnchecked)),
+            mir::BinOp::MulUnchecked => Ok(mk_binop(code::Binop::MulUnchecked)),
+            mir::BinOp::ShlUnchecked => Ok(mk_binop(code::Binop::ShlUnchecked)),
+            mir::BinOp::ShrUnchecked => Ok(mk_binop(code::Binop::ShrUnchecked)),
 
-            mir::BinOp::AddWithOverflow => Ok(mk_checked_binop(radium::Binop::Add)),
-            mir::BinOp::MulWithOverflow => Ok(mk_checked_binop(radium::Binop::Mul)),
-            mir::BinOp::SubWithOverflow => Ok(mk_checked_binop(radium::Binop::Sub)),
+            mir::BinOp::AddWithOverflow => Ok(mk_checked_binop(code::Binop::Add)),
+            mir::BinOp::MulWithOverflow => Ok(mk_checked_binop(code::Binop::Mul)),
+            mir::BinOp::SubWithOverflow => Ok(mk_checked_binop(code::Binop::Sub)),
 
-            mir::BinOp::Eq => Ok(mk_binop(radium::Binop::Eq)),
-            mir::BinOp::Lt => Ok(mk_binop(radium::Binop::Lt)),
-            mir::BinOp::Le => Ok(mk_binop(radium::Binop::Le)),
-            mir::BinOp::Ne => Ok(mk_binop(radium::Binop::Ne)),
-            mir::BinOp::Ge => Ok(mk_binop(radium::Binop::Ge)),
-            mir::BinOp::Gt => Ok(mk_binop(radium::Binop::Gt)),
+            mir::BinOp::Eq => Ok(mk_binop(code::Binop::Eq)),
+            mir::BinOp::Lt => Ok(mk_binop(code::Binop::Lt)),
+            mir::BinOp::Le => Ok(mk_binop(code::Binop::Le)),
+            mir::BinOp::Ne => Ok(mk_binop(code::Binop::Ne)),
+            mir::BinOp::Ge => Ok(mk_binop(code::Binop::Ge)),
+            mir::BinOp::Gt => Ok(mk_binop(code::Binop::Gt)),
 
             mir::BinOp::Cmp => Err(TranslationError::UnsupportedFeature {
                 description: "<=> binop is currently not supported".to_owned(),
@@ -519,7 +519,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let off_ty = TX::get_offset_ty(e1_ty)?;
                 let st = self.ty_translator.translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();
-                Ok(mk_binop(radium::Binop::PtrOffset(ly)))
+                Ok(mk_binop(code::Binop::PtrOffset(ly)))
             },
         }
     }
@@ -534,16 +534,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate unary operators.
-    fn translate_unop(op: mir::UnOp, ty: ty::Ty<'tcx>) -> Result<radium::Unop, TranslationError<'tcx>> {
+    fn translate_unop(op: mir::UnOp, ty: ty::Ty<'tcx>) -> Result<code::Unop, TranslationError<'tcx>> {
         match op {
             mir::UnOp::Not => match ty.kind() {
-                ty::TyKind::Bool => Ok(radium::Unop::NotBool),
-                ty::TyKind::Int(_) | ty::TyKind::Uint(_) => Ok(radium::Unop::NotInt),
+                ty::TyKind::Bool => Ok(code::Unop::NotBool),
+                ty::TyKind::Int(_) | ty::TyKind::Uint(_) => Ok(code::Unop::NotInt),
                 _ => Err(TranslationError::UnknownError(
                     "application of UnOp::Not to non-{Int, Bool}".to_owned(),
                 )),
             },
-            mir::UnOp::Neg => Ok(radium::Unop::Neg),
+            mir::UnOp::Neg => Ok(code::Unop::Neg),
             mir::UnOp::PtrMetadata => Err(TranslationError::UnsupportedFeature {
                 description: "PtrMetadata unop not supported".to_owned(),
             }),
@@ -551,9 +551,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Translate a `BorrowKind`.
-    fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<radium::BorKind, TranslationError<'tcx>> {
+    fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<code::BorKind, TranslationError<'tcx>> {
         match kind {
-            mir::BorrowKind::Shared => Ok(radium::BorKind::Shared),
+            mir::BorrowKind::Shared => Ok(code::BorKind::Shared),
             mir::BorrowKind::Fake(_) => {
                 // TODO: figure out what to do with this
                 // arises in match lowering
@@ -563,15 +563,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
             mir::BorrowKind::Mut { .. } => {
                 // TODO: handle two-phase borrows?
-                Ok(radium::BorKind::Mutable)
+                Ok(code::BorKind::Mutable)
             },
         }
     }
 
-    const fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> radium::Mutability {
+    const fn translate_raw_ptr_kind(mt: mir::RawPtrKind) -> code::Mutability {
         match mt {
-            mir::RawPtrKind::Mut | mir::RawPtrKind::FakeForPtrMetadata => radium::Mutability::Mut,
-            mir::RawPtrKind::Const => radium::Mutability::Shared,
+            mir::RawPtrKind::Mut | mir::RawPtrKind::FakeForPtrMetadata => code::Mutability::Mut,
+            mir::RawPtrKind::Const => code::Mutability::Shared,
         }
     }
 }

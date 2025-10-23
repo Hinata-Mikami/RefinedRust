@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, btree_map};
 
 use derive_more::{Constructor, Display};
-use radium::coq;
+use radium::{code, coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
@@ -146,9 +146,9 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
     _closure_kind: ty::ClosureKind,
 
     // the generic scope of this impl
-    pub(crate) scope: radium::GenericScope<'def>,
+    pub(crate) scope: specs::GenericScope<'def>,
     /// if this is a Fn/FnMut closure, the lifetime of the closure self arg inside `scope`
-    pub(crate) _closure_lifetime: Option<radium::Lft>,
+    pub(crate) _closure_lifetime: Option<specs::Lft>,
 
     pub(crate) region_map: regions::EarlyLateRegionMap,
 
@@ -158,10 +158,10 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
     pub(crate) self_ty: ty::Ty<'tcx>,
     pub(crate) args_ty: ty::Ty<'tcx>,
 
-    pub(crate) tl_self_var_ty: radium::Type<'def>,
-    pub(crate) tl_args_ty: radium::Type<'def>,
-    pub(crate) tl_args_tys: Vec<radium::Type<'def>>,
-    pub(crate) tl_output_ty: radium::Type<'def>,
+    pub(crate) tl_self_var_ty: specs::Type<'def>,
+    pub(crate) tl_args_ty: specs::Type<'def>,
+    pub(crate) tl_args_tys: Vec<specs::Type<'def>>,
+    pub(crate) tl_output_ty: specs::Type<'def>,
 
     // the encoded pre and postconditions
     pub(crate) pre_encoded: coq::term::Term,
@@ -173,8 +173,8 @@ pub(crate) struct ClosureImplInfo<'tcx, 'def> {
 pub(crate) struct ClosureInfo<'tcx, 'rcx> {
     pub(crate) info: ClosureImplInfo<'tcx, 'rcx>,
 
-    pub(crate) generated_functions: Vec<radium::Function<'rcx>>,
-    pub(crate) generated_impls: Vec<radium::specs::traits::ImplSpec<'rcx>>,
+    pub(crate) generated_functions: Vec<code::Function<'rcx>>,
+    pub(crate) generated_impls: Vec<specs::traits::ImplSpec<'rcx>>,
 }
 
 /**
@@ -187,12 +187,10 @@ pub(crate) struct Scope<'tcx, 'def> {
     /// maps the defid to `(code_name, spec_name, trait_req_incl_name, name)`
     name_map: BTreeMap<OrderedDefId, Meta>,
     /// track the actually translated functions
-    translated_functions: BTreeMap<OrderedDefId, radium::Function<'def>>,
+    translated_functions: BTreeMap<OrderedDefId, code::Function<'def>>,
     /// track the functions with just a specification (`rr::only_spec`)
-    specced_functions: BTreeMap<
-        OrderedDefId,
-        &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-    >,
+    specced_functions:
+        BTreeMap<OrderedDefId, &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 
     /// store info of closures we translated to emit closure trait impls
     pub(crate) closure_info: BTreeMap<OrderedDefId, ClosureInfo<'tcx, 'def>>,
@@ -226,7 +224,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     pub(crate) fn lookup_function_spec(
         &'_ self,
         did: DefId,
-    ) -> Option<&'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>> {
+    ) -> Option<&'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>> {
         let ordered_did = self.get_ordered_did(did);
         if let Some(translated_fn) = self.translated_functions.get(&ordered_did) {
             Some(translated_fn.spec)
@@ -276,7 +274,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Provide the code for a translated function.
-    pub(crate) fn provide_translated_function(&mut self, did: DefId, trf: radium::Function<'def>) {
+    pub(crate) fn provide_translated_function(&mut self, did: DefId, trf: code::Function<'def>) {
         let ordered_did = self.get_ordered_did(did);
         let meta = &self.name_map[&ordered_did];
         assert!(meta.get_mode().needs_def() || meta.get_mode().is_code_shim());
@@ -287,7 +285,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     pub(crate) fn provide_specced_function(
         &mut self,
         did: DefId,
-        spec: &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        spec: &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
     ) {
         let ordered_did = self.get_ordered_did(did);
         let meta = &self.name_map[&ordered_did];
@@ -296,7 +294,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     }
 
     /// Iterate over the functions we have generated code for.
-    pub(crate) fn iter_code(&self) -> btree_map::Iter<'_, OrderedDefId, radium::Function<'def>> {
+    pub(crate) fn iter_code(&self) -> btree_map::Iter<'_, OrderedDefId, code::Function<'def>> {
         self.translated_functions.iter()
     }
 
@@ -306,7 +304,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     ) -> btree_map::Iter<
         '_,
         OrderedDefId,
-        &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        &'def specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>,
     > {
         self.specced_functions.iter()
     }

@@ -16,7 +16,7 @@ use std::collections::{HashMap, HashSet};
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
-use radium::coq;
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use typed_arena::Arena;
@@ -30,7 +30,7 @@ use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
 use crate::{consts, procedures, regions, types};
 
-/// Struct that keeps track of all information necessary to translate a MIR Body to a `radium::Function`.
+/// Struct that keeps track of all information necessary to translate a MIR Body to a `code::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.
 /// `'def` is the lifetime of the generated code (the code may refer to struct defs).
 /// `'tcx` is the lifetime of the rustc tctx.
@@ -56,10 +56,10 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// name of the return variable
     return_name: String,
     /// syntactic type of the thing to return
-    return_synty: radium::lang::SynType,
+    return_synty: lang::SynType,
     /// all the other procedures used by this function, and:
     /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
-    collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), radium::UsedProcedure<'def>>,
+    collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), code::UsedProcedure<'def>>,
     /// used statics
     collected_statics: HashSet<DefId>,
 
@@ -79,10 +79,10 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     loop_specs: HashMap<mir::BasicBlock, Option<DefId>>,
 
     /// relevant locals: (local, name, type)
-    fn_locals: Vec<(mir::Local, radium::LocalKind, String, radium::Type<'def>)>,
+    fn_locals: Vec<(mir::Local, code::LocalKind, String, specs::Type<'def>)>,
 
     /// the Caesium function buildder
-    translated_fn: radium::FunctionBuilder<'def>,
+    translated_fn: code::FunctionBuilder<'def>,
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -98,11 +98,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         inputs: &[ty::Ty<'tcx>],
 
         mut inclusion_tracker: InclusionTracker<'a, 'tcx>,
-        mut translated_fn: radium::FunctionBuilder<'def>,
+        mut translated_fn: code::FunctionBuilder<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
         let body = proc.get_mir();
 
-        // map to translate between locals and the string names we use in radium::
+        // map to translate between locals and the string names we use in radium:
         let mut variable_map: HashMap<mir::Local, String> = HashMap::new();
 
         let local_decls = &body.local_decls;
@@ -111,14 +111,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let debug_info = &body.var_debug_info;
         info!("using debug info: {:?}", debug_info);
 
-        let mut return_synty = radium::lang::SynType::Unit; // default
+        let mut return_synty = lang::SynType::Unit; // default
         let mut fn_locals = Vec::new();
         let mut opt_return_name =
             Err(TranslationError::UnknownError("could not find local for return value".to_owned()));
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
-        // go over local_decls and create the right radium:: stack layout
+        // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
             let kind = body.local_kind(local);
             let ty: ty::Ty<'tcx> = local_decl.ty;
@@ -196,14 +196,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         })
     }
 
-    /// Main translation function that actually does the translation and returns a `radium::Function`
+    /// Main translation function that actually does the translation and returns a `code::Function`
     /// if successful.
     pub(crate) fn translate(
         mut self,
-        spec_arena: &'def Arena<
-            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-        >,
-    ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
+        spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
+    ) -> Result<code::Function<'def>, TranslationError<'tcx>> {
         // add loop info
         let loop_info = self.proc.loop_info();
         loop_info.dump_body_head();
@@ -224,13 +222,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if !closure_constraints.is_empty() {
                 let mut annots = Vec::new();
                 for (r1, r2) in &closure_constraints {
-                    annots.push(radium::Annotation::CopyLftName(
+                    annots.push(code::Annotation::CopyLftName(
                         self.ty_translator.format_atomic_region(*r1),
                         self.ty_translator.format_atomic_region(*r2),
                     ));
                 }
-                translated_bb = radium::Stmt::Prim(
-                    vec![radium::PrimStmt::Annot {
+                translated_bb = code::Stmt::Prim(
+                    vec![code::PrimStmt::Annot {
                         a: annots,
                         why: Some("initialization (closure)".to_owned()),
                     }],
@@ -241,13 +239,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             // push annotation for initial constraints that relate argument's place regions to universals
             let mut annots = Vec::new();
             for (r1, r2) in &self.initial_constraints {
-                annots.push(radium::Annotation::CopyLftName(
+                annots.push(code::Annotation::CopyLftName(
                     self.ty_translator.format_atomic_region(*r1),
                     self.ty_translator.format_atomic_region(*r2),
                 ));
             }
-            translated_bb = radium::Stmt::Prim(
-                vec![radium::PrimStmt::Annot {
+            translated_bb = code::Stmt::Prim(
+                vec![code::PrimStmt::Annot {
                     a: annots,
                     why: Some("initialization".to_owned()),
                 }],
@@ -269,7 +267,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             let scope = self.ty_translator.scope.borrow();
             for ty in scope.generic_scope.tyvars() {
-                self.translated_fn.assume_synty_layoutable(radium::lang::SynType::Literal(ty.syn_type));
+                self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type));
             }
         }
         // assume that all used literals are layoutable
@@ -326,16 +324,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Classify the kind of a local.
-    fn get_local_kind(mir_body: &mir::Body<'tcx>, local: mir::Local) -> radium::LocalKind {
+    fn get_local_kind(mir_body: &mir::Body<'tcx>, local: mir::Local) -> code::LocalKind {
         let kind = mir_body.local_kind(local);
         match kind {
-            mir::LocalKind::Arg => radium::LocalKind::Arg,
+            mir::LocalKind::Arg => code::LocalKind::Arg,
             mir::LocalKind::Temp | mir::LocalKind::ReturnPointer => {
                 let used_names = HashSet::new();
                 if Self::find_name_for_local(mir_body, local, &used_names).is_some() {
-                    radium::LocalKind::Local
+                    code::LocalKind::Local
                 } else {
-                    radium::LocalKind::CompilerTemp
+                    code::LocalKind::CompilerTemp
                 }
             },
         }
@@ -411,9 +409,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         _loc: &mir::Location,
         target: mir::BasicBlock,
-    ) -> Result<radium::Stmt, TranslationError<'tcx>> {
+    ) -> Result<code::Stmt, TranslationError<'tcx>> {
         self.enqueue_basic_block(target);
-        let mut res_stmt = radium::Stmt::GotoBlock(target.as_usize());
+        let mut res_stmt = code::Stmt::GotoBlock(target.as_usize());
 
         let loop_info = self.proc.loop_info();
         if loop_info.is_loop_head(target) && !self.loop_specs.contains_key(&target) {
@@ -422,11 +420,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         if loop_info.is_loop_head(target) {
-            let annot_stmt = radium::PrimStmt::Annot {
-                a: vec![radium::Annotation::StratifyContext],
+            let annot_stmt = code::PrimStmt::Annot {
+                a: vec![code::Annotation::StratifyContext],
                 why: Some("goto to loop head".to_owned()),
             };
-            res_stmt = radium::Stmt::Prim(vec![annot_stmt], Box::new(res_stmt));
+            res_stmt = code::Stmt::Prim(vec![annot_stmt], Box::new(res_stmt));
         }
 
         Ok(res_stmt)
@@ -441,15 +439,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Generate endlft annotations
-    fn generate_endlfts<I>(&self, dying: I) -> Vec<radium::PrimStmt>
+    fn generate_endlfts<I>(&self, dying: I) -> Vec<code::PrimStmt>
     where
         I: ExactSizeIterator<Item = facts::Loan>,
     {
         let mut stmts = Vec::new();
         for d in dying {
             let lft = self.info.atomic_region_of_loan(d);
-            stmts.push(radium::PrimStmt::Annot {
-                a: vec![radium::Annotation::EndLft(self.ty_translator.format_atomic_region(lft))],
+            stmts.push(code::PrimStmt::Annot {
+                a: vec![code::Annotation::EndLft(self.ty_translator.format_atomic_region(lft))],
                 why: Some("endlft".to_owned()),
             });
         }

@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Debug;
 use log::info;
-use radium::coq;
+use radium::{code, coq};
 use rr_rustc_interface::middle::ty::TypeFolder as _;
 use rr_rustc_interface::middle::{mir, ty};
 
@@ -194,7 +194,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
     loc: mir::Location,
     unconstrained_regions: BTreeSet<facts::Region>,
     early_region_map: &BTreeMap<coq::Ident, usize>,
-) -> Result<(Vec<radium::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
+) -> Result<(Vec<code::Annotation>, BTreeSet<facts::Region>), TranslationError<'tcx>> {
     let info = inclusion_tracker.info();
     let midpoint = info.interner.get_point_index(&facts::Point {
         location: loc,
@@ -213,7 +213,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
             let early_lft_vid = scope.lifetime_scope.early_regions[*early_region_idx].unwrap();
             let early_lft_name = &scope.lifetime_scope.region_names[&early_lft_vid];
             unconstrained_annotations
-                .push(radium::Annotation::CopyLftName(early_lft_name.to_owned(), translated_region));
+                .push(code::Annotation::CopyLftName(early_lft_name.to_owned(), translated_region));
 
             inclusion_tracker.add_static_inclusion(r, early_lft_vid, midpoint);
             inclusion_tracker.add_static_inclusion(early_lft_vid, r, midpoint);

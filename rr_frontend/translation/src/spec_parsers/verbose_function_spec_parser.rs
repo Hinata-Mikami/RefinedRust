@@ -438,7 +438,7 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     fn_requirements: FunctionRequirements,
 
     /// specializations of trait assumptions we assume
-    //trait_specializations: Vec<radium::FunctionSpecTraitReqSpecialization<'def>>,
+    //trait_specializations: Vec<specs::functions::SpecTraitReqSpecialization<'def>>,
 
     // specialized trait specs we assume.
     // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
@@ -562,11 +562,11 @@ where
 
 struct ParsedSpecInfo<'def> {
     params: Vec<RRParam>,
-    args: Vec<radium::TypeWithRef<'def>>,
+    args: Vec<specs::TypeWithRef<'def>>,
     preconditions: Vec<MetaIProp>,
     postconditions: Vec<MetaIProp>,
     existentials: Vec<RRParam>,
-    ret: Option<radium::TypeWithRef<'def>>,
+    ret: Option<specs::TypeWithRef<'def>>,
     unsafe_lifetime_constraints: Vec<String>,
 
     ok_spec: OkSpec,
@@ -734,7 +734,7 @@ struct ParsedClosureSpecInfo<'def> {
     params: Vec<coq::binder::Binder>,
     postconditions: Vec<MetaIProp>,
     fnmut_observes: Option<MetaIProp>,
-    closure_arg: radium::TypeWithRef<'def>,
+    closure_arg: specs::TypeWithRef<'def>,
     closure_self_rfn: String,
     closure_self_post_rfn: String,
 }
@@ -1299,9 +1299,9 @@ where
             let capture_post_name = format!("capture_{base}_{projection}_new");
 
             let capture_ty = if matches!(kind, ty::UpvarCapture::ByRef(_)) {
-                if let radium::Type::MutRef(ty, _) = ty {
+                if let specs::Type::MutRef(ty, _) = ty {
                     ty.get_rfn_type()
-                } else if let radium::Type::ShrRef(ty, _) = ty {
+                } else if let specs::Type::ShrRef(ty, _) = ty {
                     ty.get_rfn_type()
                 } else {
                     unreachable!();

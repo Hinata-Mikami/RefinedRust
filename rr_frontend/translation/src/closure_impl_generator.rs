@@ -6,7 +6,7 @@
 
 use log::{info, trace};
 use radium::specs::traits::ReqInfo as _;
-use radium::{coq, lang};
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use typed_arena::Arena;
@@ -21,12 +21,12 @@ pub(crate) struct ClosureImplGenerator<'tcx, 'def> {
     ty_translator: &'def TX<'def, 'tcx>,
 
     /// the arena to intern function specs into
-    fn_arena: &'def Arena<radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>>,
+    fn_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 
     /// specs for the three closure traits
-    fnmut_spec: radium::specs::traits::LiteralSpecRef<'def>,
-    fn_spec: radium::specs::traits::LiteralSpecRef<'def>,
-    fnonce_spec: radium::specs::traits::LiteralSpecRef<'def>,
+    fnmut_spec: specs::traits::LiteralSpecRef<'def>,
+    fn_spec: specs::traits::LiteralSpecRef<'def>,
+    fnonce_spec: specs::traits::LiteralSpecRef<'def>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -46,9 +46,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         env: &'def Environment<'tcx>,
         trait_registry: &'def TR<'tcx, 'def>,
         ty_translator: &'def TX<'def, 'tcx>,
-        fn_arena: &'def Arena<
-            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-        >,
+        fn_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
     ) -> Option<Self> {
         let fnmut_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::FnMut)?;
         let fn_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::Fn)?;
@@ -72,15 +70,15 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
     /// Generate the `call_...` function shim, pushing it to the given `builder`.
     fn generate_call_shim(
         &self,
-        builder: &mut radium::FunctionBuilder<'def>,
+        builder: &mut code::FunctionBuilder<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &radium::specs::functions::Spec<'def>,
+        closure_spec: &specs::functions::Spec<'def>,
         ref_self: &ShimRefSelf,
     ) -> Result<(), base::TranslationError<'tcx>> {
         let (tupled_upvars_ty, self_is_ref) = match &info.tl_self_var_ty {
-            radium::Type::MutRef(ty, _) | radium::Type::ShrRef(ty, _) => ((**ty).clone(), true),
+            specs::Type::MutRef(ty, _) | specs::Type::ShrRef(ty, _) => ((**ty).clone(), true),
             _ => (info.tl_self_var_ty.clone(), false),
         };
 
@@ -91,7 +89,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let output_st: lang::SynType = info.tl_output_ty.clone().into();
 
         // the syntype of the self variable this function gets
-        //let self_var_st: radium::SynType = info.self_ty.clone().into();
+        //let self_var_st: lang::SynType = info.self_ty.clone().into();
         let self_var_st: lang::SynType = match ref_self {
             ShimRefSelf::NoRef => info.tl_self_var_ty.clone().into(),
             ShimRefSelf::RefMutToShr => lang::SynType::Ptr,
@@ -123,8 +121,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let params = info.scope.get_all_ty_params_with_assocs();
         let mut ty_hints = vec![];
         for param in params.params {
-            let ty = radium::Type::LiteralParam(param);
-            let rst = radium::RustType::of_type(&ty);
+            let ty = specs::Type::LiteralParam(param);
+            let rst = code::RustType::of_type(&ty);
             ty_hints.push(rst);
         }
 
@@ -146,12 +144,12 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         match ref_self {
             ShimRefSelf::NoRef => {
                 // just move the self argument into __1
-                let stmt = radium::PrimStmt::Assign {
+                let stmt = code::PrimStmt::Assign {
                     ot: self_var_st.clone().into(),
-                    e1: Box::new(radium::Expr::Var("__1".to_owned())),
-                    e2: Box::new(radium::Expr::Use {
+                    e1: Box::new(code::Expr::Var("__1".to_owned())),
+                    e2: Box::new(code::Expr::Use {
                         ot: self_var_st.into(),
-                        e: Box::new(radium::Expr::Var("self".to_owned())),
+                        e: Box::new(code::Expr::Var("self".to_owned())),
                     }),
                 };
                 statements.push(stmt);
@@ -159,37 +157,37 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             ShimRefSelf::RefMut => {
                 // start lft
                 let annot =
-                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
-                statements.push(radium::PrimStmt::Annot {
+                    code::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
+                statements.push(code::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,
                 });
-                statements.push(radium::PrimStmt::Assign {
+                statements.push(code::PrimStmt::Assign {
                     ot: lang::OpType::Ptr,
-                    e1: Box::new(radium::Expr::Var("__1".to_owned())),
-                    e2: Box::new(radium::Expr::Borrow {
+                    e1: Box::new(code::Expr::Var("__1".to_owned())),
+                    e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
-                        bk: radium::BorKind::Mutable,
+                        bk: code::BorKind::Mutable,
                         ty: None,
-                        e: Box::new(radium::Expr::Var("self".to_owned())),
+                        e: Box::new(code::Expr::Var("self".to_owned())),
                     }),
                 });
             },
             ShimRefSelf::RefShr => {
                 let annot =
-                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
-                statements.push(radium::PrimStmt::Annot {
+                    code::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_flft")]);
+                statements.push(code::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,
                 });
-                statements.push(radium::PrimStmt::Assign {
+                statements.push(code::PrimStmt::Assign {
                     ot: lang::OpType::Ptr,
-                    e1: Box::new(radium::Expr::Var("__1".to_owned())),
-                    e2: Box::new(radium::Expr::Borrow {
+                    e1: Box::new(code::Expr::Var("__1".to_owned())),
+                    e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
-                        bk: radium::BorKind::Shared,
+                        bk: code::BorKind::Shared,
                         ty: None,
-                        e: Box::new(radium::Expr::Var("self".to_owned())),
+                        e: Box::new(code::Expr::Var("self".to_owned())),
                     }),
                 });
             },
@@ -202,21 +200,21 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                 // - yeah, but that should happen in the spec encoder instead.
                 // - i.e., PostMut should state this.
                 let annot =
-                    radium::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_ref_lft")]);
-                statements.push(radium::PrimStmt::Annot {
+                    code::Annotation::StartLft(coq::Ident::new(ref_lft), vec![coq::Ident::new("_ref_lft")]);
+                statements.push(code::PrimStmt::Annot {
                     a: vec![annot],
                     why: None,
                 });
-                statements.push(radium::PrimStmt::Assign {
+                statements.push(code::PrimStmt::Assign {
                     ot: lang::OpType::Ptr,
-                    e1: Box::new(radium::Expr::Var("__1".to_owned())),
-                    e2: Box::new(radium::Expr::Borrow {
+                    e1: Box::new(code::Expr::Var("__1".to_owned())),
+                    e2: Box::new(code::Expr::Borrow {
                         lft: coq::Ident::new(ref_lft),
-                        bk: radium::BorKind::Shared,
+                        bk: code::BorKind::Shared,
                         ty: None,
-                        e: Box::new(radium::Expr::Deref {
+                        e: Box::new(code::Expr::Deref {
                             ot: lang::OpType::Ptr,
-                            e: Box::new(radium::Expr::Var("self".to_owned())),
+                            e: Box::new(code::Expr::Var("self".to_owned())),
                         }),
                     }),
                 });
@@ -227,8 +225,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let proc_use = self.generate_closure_procedure_use(closure_did, closure_meta, closure_spec)?;
 
         let tuple_sls = match &info.tl_args_ty {
-            radium::Type::Literal(lit) => lit.generate_raw_syn_type_term(),
-            radium::Type::Unit => lang::SynType::Unit,
+            specs::Type::Literal(lit) => lit.generate_raw_syn_type_term(),
+            specs::Type::Unit => lang::SynType::Unit,
             _ => {
                 unreachable!("args should be a tuple type")
             },
@@ -237,19 +235,19 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         // assemble the arguments, one by one
         let mut closure_args = Vec::new();
         // first the self argument
-        let expr = radium::Expr::Use {
+        let expr = code::Expr::Use {
             ot: self_call_st.into(),
-            e: Box::new(radium::Expr::Var("__1".to_owned())),
+            e: Box::new(code::Expr::Var("__1".to_owned())),
         };
         closure_args.push(expr);
 
         // then the args themselves, detupling them
         for (idx, arg_ty) in info.tl_args_tys.iter().enumerate() {
             let arg_st: lang::SynType = arg_ty.clone().into();
-            let expr = radium::Expr::Use {
+            let expr = code::Expr::Use {
                 ot: arg_st.into(),
-                e: Box::new(radium::Expr::FieldOf {
-                    e: Box::new(radium::Expr::Var("args".to_owned())),
+                e: Box::new(code::Expr::FieldOf {
+                    e: Box::new(code::Expr::Var("args".to_owned())),
                     sls: tuple_sls.to_string(),
                     name: format!("{}", idx),
                 }),
@@ -257,22 +255,22 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             closure_args.push(expr);
         }
 
-        let call_expr = radium::Expr::Call {
-            f: Box::new(radium::Expr::Literal(radium::Literal::Loc(proc_use.loc_name.clone()))),
+        let call_expr = code::Expr::Call {
+            f: Box::new(code::Expr::Literal(code::Literal::Loc(proc_use.loc_name.clone()))),
             lfts: lft_hints,
             tys: ty_hints,
             args: closure_args,
         };
-        statements.push(radium::PrimStmt::Assign {
+        statements.push(code::PrimStmt::Assign {
             ot: output_st.clone().into(),
-            e1: Box::new(radium::Expr::Var("__0".to_owned())),
+            e1: Box::new(code::Expr::Var("__0".to_owned())),
             e2: Box::new(call_expr),
         });
 
         if *ref_self != ShimRefSelf::NoRef {
             // end the lifetime of the created reference
-            let annot = radium::Annotation::EndLft(coq::Ident::new(ref_lft));
-            statements.push(radium::PrimStmt::Annot {
+            let annot = code::Annotation::EndLft(coq::Ident::new(ref_lft));
+            statements.push(code::PrimStmt::Annot {
                 a: vec![annot],
                 why: None,
             });
@@ -283,11 +281,11 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         //}
 
         // return
-        let ret_expr = radium::Expr::Use {
+        let ret_expr = code::Expr::Use {
             ot: output_st.clone().into(),
-            e: Box::new(radium::Expr::Var("__0".to_owned())),
+            e: Box::new(code::Expr::Var("__0".to_owned())),
         };
-        let stmt = radium::Stmt::Prim(statements, Box::new(radium::Stmt::Return(ret_expr)));
+        let stmt = code::Stmt::Prim(statements, Box::new(code::Stmt::Return(ret_expr)));
 
         builder.code.add_basic_block(0, stmt);
 
@@ -307,10 +305,10 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         &self,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &radium::specs::functions::Spec<'def>,
-    ) -> Result<radium::UsedProcedure<'def>, base::TranslationError<'tcx>> {
+        closure_spec: &specs::functions::Spec<'def>,
+    ) -> Result<code::UsedProcedure<'def>, base::TranslationError<'tcx>> {
         // explicit instantiation is needed sometimes
-        let spec_term = radium::UsedProcedureSpec::Literal(
+        let spec_term = code::UsedProcedureSpec::Literal(
             closure_meta.get_spec_name().to_owned(),
             closure_meta.get_trait_req_incl_name().to_owned(),
         );
@@ -342,7 +340,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
 
         // the assumption should quantify over these
         // this is also the closure's scope -- we just lift out all the parameters
-        let quantified_scope: radium::GenericScope<'_> = closure_spec.get_generics().to_owned();
+        let quantified_scope: specs::GenericScope<'_> = closure_spec.get_generics().to_owned();
 
         // now we need to figure out the instantiation of the generics
         // this should be the identity instantiation
@@ -353,7 +351,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             loc_name, closure_did, fn_inst, syntypes
         );
 
-        let proc_use = radium::UsedProcedure::new(loc_name, spec_term, quantified_scope, fn_inst, syntypes);
+        let proc_use = code::UsedProcedure::new(loc_name, spec_term, quantified_scope, fn_inst, syntypes);
 
         Ok(proc_use)
     }
@@ -375,21 +373,21 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
     fn create_impl_fn_scope(
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         kind: ty::ClosureKind,
-    ) -> radium::GenericScope<'def> {
+    ) -> specs::GenericScope<'def> {
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
-        let mut new_scope = radium::GenericScope::empty();
+        let mut new_scope = specs::GenericScope::empty();
 
         assert!(info.scope.get_surrounding_ty_params_with_assocs().params.is_empty());
         assert!(info.scope.get_surrounding_trait_requirements().is_empty());
 
         for ty in &info.scope.get_direct_ty_params().params {
             let mut ty = ty.clone();
-            ty.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            ty.set_origin(specs::TyParamOrigin::SurroundingImpl);
             new_scope.add_ty_param(ty);
         }
         for req in info.scope.get_direct_trait_requirements() {
             let mut req = *req;
-            req.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            req.set_origin(specs::TyParamOrigin::SurroundingImpl);
             new_scope.add_trait_requirement(req);
         }
         for lft in info.scope.get_lfts() {
@@ -415,10 +413,10 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         fn_meta: &procedures::Meta,
         kind: ty::ClosureKind,
         to_impl: ty::ClosureKind,
-        closure_spec: &radium::specs::functions::Spec<'def>,
-        impl_info: &radium::specs::traits::RefInst<'def>,
+        closure_spec: &specs::functions::Spec<'def>,
+        impl_info: &specs::traits::RefInst<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
-    ) -> Result<radium::Function<'def>, base::TranslationError<'tcx>> {
+    ) -> Result<code::Function<'def>, base::TranslationError<'tcx>> {
         // Assemble the inner spec, using the default spec of the closure traits and the impl info
         // we have already assembled before
         let method_name = match to_impl {
@@ -427,7 +425,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             ty::ClosureKind::FnOnce => "call_once".to_owned(),
         };
 
-        let mut builder = radium::FunctionBuilder::new(
+        let mut builder = code::FunctionBuilder::new(
             fn_meta.get_name(),
             fn_meta.get_code_name(),
             fn_meta.get_spec_name(),
@@ -438,8 +436,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let fn_generics = Self::create_impl_fn_scope(info, to_impl);
         builder.provide_generic_scope(fn_generics);
 
-        let inner_spec =
-            radium::specs::traits::InstantiatedFunctionSpec::new(impl_info.to_owned(), method_name);
+        let inner_spec = specs::traits::InstantiatedFunctionSpec::new(impl_info.to_owned(), method_name);
         builder.add_trait_function_spec(inner_spec);
 
         // replicate the Coq params for extra context items

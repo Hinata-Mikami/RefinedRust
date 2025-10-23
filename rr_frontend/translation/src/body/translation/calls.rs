@@ -7,8 +7,8 @@
 use std::collections::BTreeMap;
 
 use log::{info, trace};
-use radium::coq;
 use radium::specs::traits::ReqInfo as _;
+use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
@@ -29,7 +29,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     typing_env: &ty::TypingEnv<'tcx>,
     callee_did: DefId,
     ty_params: &[ty::GenericArg<'tcx>],
-) -> Result<Vec<radium::lang::SynType>, TranslationError<'tcx>> {
+) -> Result<Vec<lang::SynType>, TranslationError<'tcx>> {
     // Get the type of the callee, fully instantiated
     let full_ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(callee_did);
     let full_ty = full_ty.instantiate(tcx, ty_params);
@@ -59,7 +59,7 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
             let tuple_ty = clos_args.tupled_upvars_ty();
             match clos_args.kind() {
                 ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
-                    syntypes.push(radium::lang::SynType::Ptr);
+                    syntypes.push(lang::SynType::Ptr);
                 },
                 ty::ClosureKind::FnOnce => {
                     let st = ty_translator.translate_type_to_syn_type(tuple_ty, &mut dummy_state)?;
@@ -88,13 +88,13 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
 
 pub(crate) struct ProcedureInst<'def> {
     pub loc_name: String,
-    pub type_hint: Vec<radium::Type<'def>>,
-    pub lft_hint: Vec<radium::Lft>,
-    pub mapped_early_regions: BTreeMap<radium::Lft, usize>,
+    pub type_hint: Vec<specs::Type<'def>>,
+    pub lft_hint: Vec<specs::Lft>,
+    pub mapped_early_regions: BTreeMap<specs::Lft, usize>,
 }
-impl From<ProcedureInst<'_>> for radium::Expr {
+impl From<ProcedureInst<'_>> for code::Expr {
     fn from(x: ProcedureInst<'_>) -> Self {
-        let ty_hint = x.type_hint.into_iter().map(|x| radium::RustType::of_type(&x)).collect();
+        let ty_hint = x.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
 
         Self::CallTarget(x.loc_name, ty_hint, x.lft_hint, x.mapped_early_regions)
     }
@@ -112,7 +112,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
@@ -146,7 +146,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .lookup_function(callee_did)
                 .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", callee_did)))?;
             // explicit instantiation is needed sometimes
-            let spec_term = radium::UsedProcedureSpec::Literal(
+            let spec_term = code::UsedProcedureSpec::Literal(
                 meta.get_spec_name().to_owned(),
                 meta.get_trait_req_incl_name().to_owned(),
             );
@@ -174,7 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             );
 
             let proc_use =
-                radium::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
+                code::UsedProcedure::new(loc_name, spec_term, quantified_args.scope, fn_inst, syntypes);
 
             res = proc_use.loc_name.clone();
             self.collected_procedures.insert(tup, proc_use);
@@ -195,7 +195,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
@@ -220,7 +220,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
 
         // we add spec_scope and spec_inst as the first lifetimes to quantify in the new scope
-        let mut function_spec_scope: radium::GenericScope<'_, _> = spec_scope.into();
+        let mut function_spec_scope: specs::GenericScope<'_, _> = spec_scope.into();
         function_spec_scope.append(&quantified_args.scope);
 
         let ty_param_hint = quantified_args.callee_ty_param_inst;
@@ -252,7 +252,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 method_loc_name, callee_did, fn_inst, syntypes
             );
 
-            let proc_use = radium::UsedProcedure::new(
+            let proc_use = code::UsedProcedure::new(
                 method_loc_name,
                 method_spec_term,
                 function_spec_scope,
@@ -287,19 +287,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trace!("enter create_closure_impl_abstraction with closure_args={closure_args:?}, params={params:?}");
 
         // we lift the scope, all the generics below to the trait impl, not to the trait method itself.
-        let mut new_scope = radium::GenericScope::empty();
+        let mut new_scope = specs::GenericScope::empty();
 
         assert!(info.scope.get_surrounding_ty_params_with_assocs().params.is_empty());
         assert!(info.scope.get_surrounding_trait_requirements().is_empty());
 
         for ty in &info.scope.get_direct_ty_params().params {
             let mut ty = ty.clone();
-            ty.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            ty.set_origin(specs::TyParamOrigin::SurroundingImpl);
             new_scope.add_ty_param(ty);
         }
         for req in info.scope.get_direct_trait_requirements() {
             let mut req = *req;
-            req.set_origin(radium::TyParamOrigin::SurroundingImpl);
+            req.set_origin(specs::TyParamOrigin::SurroundingImpl);
             new_scope.add_trait_requirement(req);
         }
         for lft in info.scope.get_lfts() {
@@ -314,11 +314,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         trace!("new_scope={new_scope:?}");
 
-        let inst: radium::GenericScopeInst<'def> = new_scope.identity_instantiation();
+        let inst: specs::GenericScopeInst<'def> = new_scope.identity_instantiation();
 
         // instantiate the type parameters directly with the parameters of the surrounding function
         // (identity, the type parameters are the same)
-        let ty_param_inst_hint: Vec<radium::Type<'def>> = inst.get_all_ty_params_with_assocs();
+        let ty_param_inst_hint: Vec<specs::Type<'def>> = inst.get_all_ty_params_with_assocs();
 
         // for the lifetimes, we also want to take the surrounding lifetime parameters (which are
         // also included in this scope), but have to manually compute the instantiation for the
@@ -338,7 +338,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             self.trait_registry.compute_closure_late_bound_inst(&mut state, closure_args, params)
         };
 
-        let mut lft_param_inst_hint: Vec<radium::Lft> = Vec::new();
+        let mut lft_param_inst_hint: Vec<specs::Lft> = Vec::new();
 
         // The lifetime scope also contains the capture regions and late regions, which are not part of the
         // surrounding function scope.
@@ -366,7 +366,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         // we just requantify all the generics and directly instantiate
-        let fn_scope_inst: radium::GenericScopeInst<'def> = new_scope.identity_instantiation();
+        let fn_scope_inst: specs::GenericScopeInst<'def> = new_scope.identity_instantiation();
 
         let res = types::AbstractedGenerics {
             scope: new_scope,
@@ -391,7 +391,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         call_fn_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        _trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        _trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!(
             "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
@@ -426,7 +426,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", call_fn_did)))?;
 
             // explicit instantiation is needed sometimes
-            let spec_term = radium::UsedProcedureSpec::Literal(
+            let spec_term = code::UsedProcedureSpec::Literal(
                 meta.get_spec_name().to_owned(),
                 meta.get_trait_req_incl_name().to_owned(),
             );
@@ -452,7 +452,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 quantified_scope.fn_scope_inst, syntypes
             );
 
-            let proc_use = radium::UsedProcedure::new(
+            let proc_use = code::UsedProcedure::new(
                 loc_name,
                 spec_term,
                 quantified_scope.scope,
@@ -481,7 +481,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns
@@ -612,8 +612,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
-        endlfts: Vec<radium::PrimStmt>,
-    ) -> Result<radium::Stmt, TranslationError<'tcx>> {
+        endlfts: Vec<code::PrimStmt>,
+    ) -> Result<code::Stmt, TranslationError<'tcx>> {
         let startpoint = self.info.interner.get_point_index(&facts::Point {
             location: loc,
             typ: facts::PointType::Start,
@@ -681,12 +681,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let func_expr = self.translate_operand(func, false)?;
         // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
         // instantiate it with.
-        let radium::Expr::CallTarget(func_lit, ty_param_annots, mut lft_param_annots, mapped_early_regions) =
+        let code::Expr::CallTarget(func_lit, ty_param_annots, mut lft_param_annots, mapped_early_regions) =
             func_expr
         else {
             unreachable!("Logic error in call target translation");
         };
-        let func_expr = radium::Expr::MetaParam(func_lit);
+        let func_expr = code::Expr::MetaParam(func_lit);
 
         // translate the arguments
         let mut translated_args = Vec::new();
@@ -753,7 +753,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             match class {
                 regions::calls::CallRegionKind::EqR(r2) => {
                     let lft2 = self.format_region(*r2);
-                    stmt_annots.push(radium::Annotation::CopyLftName(lft2, lft));
+                    stmt_annots.push(code::Annotation::CopyLftName(lft2, lft));
                 },
 
                 regions::calls::CallRegionKind::Intersection(rs) => {
@@ -768,38 +768,38 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             // this is really just an equality constraint
                             if let Some(r2) = rs.iter().next() {
                                 let lft2 = self.format_region(*r2);
-                                stmt_annots.push(radium::Annotation::CopyLftName(lft2, lft));
+                                stmt_annots.push(code::Annotation::CopyLftName(lft2, lft));
                             }
                         },
                         _ => {
                             // a proper intersection
                             let lfts: Vec<_> = rs.iter().map(|r| self.format_region(*r)).collect();
-                            stmt_annots.push(radium::Annotation::AliasLftIntersection(lft, lfts));
+                            stmt_annots.push(code::Annotation::AliasLftIntersection(lft, lfts));
                         },
                     }
                 },
             }
         }
 
-        let mut prim_stmts = vec![radium::PrimStmt::Annot {
+        let mut prim_stmts = vec![code::PrimStmt::Annot {
             a: stmt_annots,
             why: Some("function_call".to_owned()),
         }];
 
         // add annotations for the assignment
-        let call_expr = radium::Expr::Call {
+        let call_expr = code::Expr::Call {
             f: Box::new(func_expr),
             lfts: lft_param_annots,
             tys: ty_param_annots,
             args: translated_args,
         };
         let stmt = if let Some(target) = target {
-            prim_stmts.push(radium::PrimStmt::Annot {
+            prim_stmts.push(code::PrimStmt::Annot {
                 a: remaining_unconstrained_annots,
                 why: Some("function_call (unconstrained)".to_owned()),
             });
 
-            prim_stmts.push(radium::PrimStmt::Annot {
+            prim_stmts.push(code::PrimStmt::Annot {
                 a: assignment_annots.new_dyn_inclusions,
                 why: Some("function_call (assign)".to_owned()),
             });
@@ -810,24 +810,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let place_expr = self.translate_place(destination)?;
             let ot = place_st.into();
 
-            let annotated_rhs = radium::Expr::with_optional_annotation(
+            let annotated_rhs = code::Expr::with_optional_annotation(
                 call_expr,
                 assignment_annots.expr_annot,
                 Some("function_call (assign)".to_owned()),
             );
-            let assign_stmt = radium::PrimStmt::Assign {
+            let assign_stmt = code::PrimStmt::Assign {
                 ot,
                 e1: Box::new(place_expr),
                 e2: Box::new(annotated_rhs),
             };
             prim_stmts.push(assign_stmt);
 
-            prim_stmts.push(radium::PrimStmt::Annot {
+            prim_stmts.push(code::PrimStmt::Annot {
                 a: unconstrained_annotations,
                 why: Some("post_function_call (assign, early)".to_owned()),
             });
 
-            prim_stmts.push(radium::PrimStmt::Annot {
+            prim_stmts.push(code::PrimStmt::Annot {
                 a: assignment_annots.stmt_annot,
                 why: Some("post_function_call (assign)".to_owned()),
             });
@@ -838,11 +838,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let cont_stmt = self.translate_goto_like(&loc, target)?;
 
-            radium::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
+            code::Stmt::Prim(prim_stmts, Box::new(cont_stmt))
         } else {
             // expr stmt with call; then stuck (we have not provided a continuation, after all)
-            let exprs = radium::PrimStmt::ExprS(Box::new(call_expr));
-            radium::Stmt::Prim(vec![exprs], Box::new(radium::Stmt::Stuck))
+            let exprs = code::PrimStmt::ExprS(Box::new(call_expr));
+            code::Stmt::Prim(vec![exprs], Box::new(code::Stmt::Stuck))
         };
 
         Ok(stmt)

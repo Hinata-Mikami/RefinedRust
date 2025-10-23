@@ -9,6 +9,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
+use radium::{code, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{hir, span};
@@ -33,7 +34,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// this needs to be annotated with the right borrowck things
     proc: &'def Procedure<'tcx>,
     /// the Caesium function buildder
-    translated_fn: radium::FunctionBuilder<'def>,
+    translated_fn: code::FunctionBuilder<'def>,
     /// tracking lifetime inclusions for the generation of lifetime inclusions
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
 
@@ -64,12 +65,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-    ) -> Result<
-        radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
         // use a dummy name as we're never going to use the code.
-        let mut translated_fn = radium::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
+        let mut translated_fn = code::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc_did);
         let ty = ty.instantiate_identity();
@@ -139,7 +137,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         region_substitution: &mut regions::EarlyLateRegionMap,
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
-    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<radium::Lft>) {
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<specs::Lft>) {
         // Process the lifetime parameters that come from the captures
         // Sideeffect: adds the regions that come from the captures (which may be local to the
         // surrounding function) to the region map, so that they appear as region parameters of the
@@ -185,7 +183,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<(Self, procedures::ClosureImplInfo<'tcx, 'def>), TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(
+        let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
             meta.get_spec_name(),
@@ -326,9 +324,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let self_ty = Environment::get_closure_self_ty_from_var_ty(fixed_closure_arg_ty, closure_kind);
         let args_ty = t.ty_translator.translate_type(input_tuple_ty)?;
         let output_ty = t.ty_translator.translate_type(output)?;
-        let mut args_tys: Vec<radium::Type<'def>> = Vec::new();
+        let mut args_tys: Vec<specs::Type<'def>> = Vec::new();
         for arg in inputs {
-            let translated: radium::Type<'def> = t.ty_translator.translate_type(arg)?;
+            let translated: specs::Type<'def> = t.ty_translator.translate_type(arg)?;
             args_tys.push(translated);
         }
 
@@ -368,7 +366,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         proc_registry: &'a procedures::Scope<'tcx, 'def>,
         const_registry: &'a consts::Scope<'def>,
     ) -> Result<Self, TranslationError<'tcx>> {
-        let mut translated_fn = radium::FunctionBuilder::new(
+        let mut translated_fn = code::FunctionBuilder::new(
             meta.get_name(),
             meta.get_code_name(),
             meta.get_spec_name(),
@@ -498,10 +496,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate the body of the function.
     pub(crate) fn translate(
         self,
-        spec_arena: &'def Arena<
-            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-        >,
-    ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
+        spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
+    ) -> Result<code::Function<'def>, TranslationError<'tcx>> {
         let translator = translation::TX::new(
             self.env,
             self.procedure_registry,
@@ -520,10 +516,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translation that only generates a specification.
     pub(crate) fn generate_spec(
         self,
-    ) -> Result<
-        radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
-        TranslationError<'tcx>,
-    > {
+    ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
         self.translated_fn.try_into().map_err(TranslationError::AttributeError)
     }
 }
@@ -546,7 +539,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trait_registry: &'def registry::TR<'tcx, 'def>,
         proc_did: DefId,
         params: &[ty::GenericArg<'tcx>],
-        translated_fn: &mut radium::FunctionBuilder<'def>,
+        translated_fn: &mut code::FunctionBuilder<'def>,
         region_substitution: regions::EarlyLateRegionMap,
         info: Option<&'def PoloniusInfo<'def, 'tcx>>,
     ) -> Result<types::FunctionState<'tcx, 'def>, TranslationError<'tcx>> {
@@ -590,7 +583,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Process extra requirements annotated on a function spec.
     fn process_function_requirements(
-        fn_builder: &mut radium::FunctionBuilder<'def>,
+        fn_builder: &mut code::FunctionBuilder<'def>,
         requirements: FunctionRequirements,
     ) {
         for e in requirements.early_coq_params {
@@ -620,12 +613,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // Translate signature
         info!("inputs: {:?}, output: {:?}", inputs, output);
-        let mut translated_arg_types: Vec<radium::Type<'def>> = Vec::new();
+        let mut translated_arg_types: Vec<specs::Type<'def>> = Vec::new();
         for arg in inputs {
-            let translated: radium::Type<'def> = self.ty_translator.translate_type(*arg)?;
+            let translated: specs::Type<'def> = self.ty_translator.translate_type(*arg)?;
             translated_arg_types.push(translated);
         }
-        let translated_ret_type: radium::Type<'def> = self.ty_translator.translate_type(output)?;
+        let translated_ret_type: specs::Type<'def> = self.ty_translator.translate_type(output)?;
         info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
 
         let ret_is_option = self.ty_translator.translator.is_builtin_option_type(output);
@@ -638,7 +631,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Err(TranslationError::UnknownAttributeParser(parser));
         }
 
-        let mut spec_builder = radium::specs::functions::LiteralSpecBuilder::new();
+        let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
 
         // add universal constraints
         {
@@ -693,25 +686,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn process_attrs(
         attrs: &[&hir::AttrItem],
         ty_translator: &types::LocalTX<'def, 'tcx>,
-        translator: &mut radium::FunctionBuilder<'def>,
+        translator: &mut code::FunctionBuilder<'def>,
         arg_names: &[String],
         inputs: &[ty::Ty<'tcx>],
         output: ty::Ty<'tcx>,
-    ) -> Result<radium::specs::functions::LiteralSpecBuilder<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::functions::LiteralSpecBuilder<'def>, TranslationError<'tcx>> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
-        let mut translated_arg_types: Vec<radium::Type<'def>> = Vec::new();
+        let mut translated_arg_types: Vec<specs::Type<'def>> = Vec::new();
         for arg in inputs {
-            let translated: radium::Type<'def> = ty_translator.translate_type(*arg)?;
+            let translated: specs::Type<'def> = ty_translator.translate_type(*arg)?;
             translated_arg_types.push(translated);
         }
-        let translated_ret_type: radium::Type<'def> = ty_translator.translate_type(output)?;
+        let translated_ret_type: specs::Type<'def> = ty_translator.translate_type(output)?;
         info!("translated function type: {:?} → {}", translated_arg_types, translated_ret_type);
 
         let ret_is_option = ty_translator.translator.is_builtin_option_type(output);
         let ret_is_result = ty_translator.translator.is_builtin_result_type(output);
 
-        let mut spec_builder = radium::specs::functions::LiteralSpecBuilder::new();
+        let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
 
         let parser = rrconfig::attribute_parser();
         match parser.as_str() {
@@ -745,7 +738,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Make a specification for a method of a trait impl derived from the trait's default spec.
     fn make_trait_instance_spec(
         &self,
-    ) -> Result<Option<radium::specs::traits::InstantiatedFunctionSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<specs::traits::InstantiatedFunctionSpec<'def>>, TranslationError<'tcx>> {
         let did = self.proc.get_id();
 
         let Some(impl_did) = self.env.tcx().impl_of_assoc(did) else {
@@ -763,7 +756,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
         let (trait_info, _) = self.trait_registry.get_trait_impl_info(impl_did)?;
-        Ok(Some(radium::specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name)))
+        Ok(Some(specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name)))
     }
 
     fn dump_body(body: &mir::Body<'_>) {

@@ -14,7 +14,7 @@ use std::io::{self, BufReader, BufWriter};
 
 use derive_more::{Display, From};
 use log::info;
-use radium::coq;
+use radium::{coq, specs};
 use serde::{Deserialize, Serialize};
 use typed_arena::Arena;
 
@@ -103,15 +103,15 @@ struct ShimAdtInfo {
     /// whether this definition depends on trait attrs of its generic scope
     needs_trait_atttrs: bool,
 }
-impl From<radium::AdtShimInfo> for ShimAdtInfo {
-    fn from(shim: radium::AdtShimInfo) -> Self {
+impl From<specs::AdtShimInfo> for ShimAdtInfo {
+    fn from(shim: specs::AdtShimInfo) -> Self {
         Self {
             enum_name: shim.enum_name,
             needs_trait_atttrs: shim.needs_trait_attrs,
         }
     }
 }
-impl From<ShimAdtInfo> for radium::AdtShimInfo {
+impl From<ShimAdtInfo> for specs::AdtShimInfo {
     fn from(shim: ShimAdtInfo) -> Self {
         Self {
             enum_name: shim.enum_name,
@@ -240,7 +240,7 @@ pub(crate) struct AdtShim<'a> {
     pub refinement_type: String,
     pub syn_type: String,
     pub sem_type: String,
-    pub info: radium::AdtShimInfo,
+    pub info: specs::AdtShimInfo,
 }
 
 impl<'a> From<AdtShim<'a>> for ShimAdtEntry {

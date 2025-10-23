@@ -9,7 +9,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use log::info;
-use radium::coq;
+use radium::{coq, specs};
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
@@ -184,7 +184,7 @@ pub(crate) fn get_relevant_universal_constraints<'a>(
     lifetime_scope: &EarlyLateRegionMap,
     inclusion_tracker: &mut InclusionTracker<'_, '_>,
     info: &'a PoloniusInfo<'a, '_>,
-) -> Vec<(radium::UniversalLft, radium::UniversalLft)> {
+) -> Vec<(specs::UniversalLft, specs::UniversalLft)> {
     let input_facts = &info.borrowck_in_facts;
     let placeholder_subset = &input_facts.known_placeholder_subset;
 
