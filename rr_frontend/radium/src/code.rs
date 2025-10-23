@@ -84,10 +84,10 @@ pub struct RustEnumDef {
     path: Vec<String>,
     inst: RustScopeInst,
 }
-impl TryFrom<LiteralTypeUse<'_>> for RustEnumDef {
+impl TryFrom<types::LiteralUse<'_>> for RustEnumDef {
     type Error = ();
 
-    fn try_from(other: LiteralTypeUse<'_>) -> Result<Self, ()> {
+    fn try_from(other: types::LiteralUse<'_>) -> Result<Self, ()> {
         let scope_inst = &other.scope_inst.ok_or(())?;
         let enum_name = other.def.info.enum_name.as_ref().ok_or(())?;
 

@@ -9,8 +9,8 @@ use std::fmt;
 use std::fmt::Write as _;
 
 use crate::specs::{
-    AdtShimInfo, GenericScope, GenericScopeInst, LiteralTyParam, LiteralType, Type,
-    format_extra_context_items, invariants, traits,
+    AdtShimInfo, GenericScope, GenericScopeInst, LiteralTyParam, Type, format_extra_context_items,
+    invariants, traits, types,
 };
 use crate::{coq, fmt_list, lang, model, push_str_list};
 
@@ -561,13 +561,13 @@ impl<'def> Abstract<'def> {
 
     /// Make a literal type.
     #[must_use]
-    pub fn make_literal_type(&self) -> LiteralType {
+    pub fn make_literal_type(&self) -> types::Literal {
         let info = AdtShimInfo {
             enum_name: None,
             needs_trait_attrs: self.has_invariant(),
         };
 
-        LiteralType {
+        types::Literal {
             rust_name: Some(self.name().to_owned()),
             type_term: self.public_type_name().to_owned(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name()),

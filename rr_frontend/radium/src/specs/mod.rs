@@ -20,6 +20,7 @@ pub mod functions;
 pub mod invariants;
 pub mod structs;
 pub mod traits;
+pub mod types;
 
 /// Representation of (semantic) `RefinedRust` types.
 /// 'def is the lifetime of the frontend for referencing struct definitions.
@@ -54,7 +55,7 @@ pub enum Type<'def> {
 
     /// literal types embedded as strings
     #[display("{}", _0.generate_type_term())]
-    Literal(LiteralTypeUse<'def>),
+    Literal(types::LiteralUse<'def>),
 
     /// literal type parameters
     #[display("{}", _0.type_term)]
@@ -284,124 +285,6 @@ impl AdtShimInfo {
         Self {
             enum_name: None,
             needs_trait_attrs: false,
-        }
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct LiteralType {
-    /// Rust name
-    pub rust_name: Option<String>,
-
-    /// Rocq name of the type
-    pub type_term: String,
-
-    /// the refinement type
-    pub refinement_type: coq::term::Type,
-
-    /// the syntactic type
-    pub syn_type: lang::SynType,
-
-    pub info: AdtShimInfo,
-}
-
-pub type LiteralTypeRef<'def> = &'def LiteralType;
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct LiteralTypeUse<'def> {
-    /// definition
-    pub(crate) def: LiteralTypeRef<'def>,
-
-    /// parameters
-    pub(crate) scope_inst: Option<GenericScopeInst<'def>>,
-}
-
-impl<'def> LiteralTypeUse<'def> {
-    #[must_use]
-    pub const fn new(s: LiteralTypeRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
-        LiteralTypeUse {
-            def: s,
-            scope_inst: Some(scope_inst),
-        }
-    }
-
-    #[must_use]
-    pub const fn new_with_annot(s: LiteralTypeRef<'def>) -> Self {
-        LiteralTypeUse {
-            def: s,
-            scope_inst: None,
-        }
-    }
-
-    /// Get the refinement type of a struct usage.
-    /// This requires that all type parameters of the struct have been instantiated.
-    #[must_use]
-    fn get_rfn_type(&self) -> String {
-        let ty_inst: Vec<_> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(|ty| ty.get_rfn_type())
-            .collect();
-
-        let rfn_type = self.def.refinement_type.to_string();
-        let applied = coq::term::App::new(rfn_type, ty_inst);
-        applied.to_string()
-    }
-
-    /// Get the `syn_type` term for this type use.
-    #[must_use]
-    pub fn generate_raw_syn_type_term(&self) -> lang::SynType {
-        let ty_inst: Vec<lang::SynType> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
-        lang::SynType::Literal(specialized_spec.to_string())
-    }
-
-    #[must_use]
-    pub fn generate_syn_type_term(&self) -> lang::SynType {
-        let ty_inst: Vec<lang::SynType> = self
-            .scope_inst
-            .as_ref()
-            .unwrap_or(&GenericScopeInst::empty())
-            .get_direct_ty_params_with_assocs()
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        let specialized_spec = coq::term::App::new(self.def.syn_type.clone(), ty_inst);
-        lang::SynType::Literal(format!("({specialized_spec} : syn_type)"))
-    }
-
-    /// Generate a string representation of this type use.
-    #[must_use]
-    fn generate_type_term(&self) -> String {
-        if let Some(scope_inst) = self.scope_inst.as_ref() {
-            let rt_inst = scope_inst
-                .get_all_ty_params_with_assocs()
-                .iter()
-                .map(|ty| format!("({})", ty.get_rfn_type()))
-                .chain(
-                    (if self.def.info.needs_trait_attrs {
-                        scope_inst.get_direct_trait_requirements()
-                    } else {
-                        &[]
-                    })
-                    .iter()
-                    .map(traits::ReqInst::get_attr_term),
-                )
-                .collect::<Vec<_>>()
-                .join(" ");
-            format!("({} {rt_inst} {})", self.def.type_term, scope_inst.instantiation(true, true))
-        } else {
-            self.def.type_term.clone()
         }
     }
 }

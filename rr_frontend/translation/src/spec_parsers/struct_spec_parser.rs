@@ -338,7 +338,7 @@ pub(crate) trait StructFieldSpecParser<'def> {
 /// in case none is annotated.
 pub(crate) struct VerboseStructFieldSpecParser<'a, 'def, T, F>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// The translated Rust field type that is used as a default.
     field_type: &'a specs::Type<'def>,
@@ -356,7 +356,7 @@ where
 
 impl<'a, 'def, T: ParamLookup<'def>, F> VerboseStructFieldSpecParser<'a, 'def, T, F>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     pub(crate) const fn new(
         field_type: &'a specs::Type<'def>,
@@ -381,7 +381,7 @@ where
         // we need this in order to be able to specify the invariant spec separately.
 
         info!("making type: {:?}, {:?}", lit, ty);
-        let lit_ty = specs::LiteralType {
+        let lit_ty = specs::types::Literal {
             rust_name: None,
             type_term: lit.ty.clone(),
             refinement_type: coq::term::Type::Infer,
@@ -389,7 +389,7 @@ where
             info: specs::AdtShimInfo::empty(),
         };
         let lit_ref = (self.make_literal)(lit_ty);
-        let lit_use = specs::LiteralTypeUse::new_with_annot(lit_ref);
+        let lit_use = specs::types::LiteralUse::new_with_annot(lit_ref);
 
         specs::Type::Literal(lit_use)
     }
@@ -398,7 +398,7 @@ where
 impl<'def, T: ParamLookup<'def>, F> StructFieldSpecParser<'def>
     for VerboseStructFieldSpecParser<'_, 'def, T, F>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     fn parse_field_spec(
         &mut self,

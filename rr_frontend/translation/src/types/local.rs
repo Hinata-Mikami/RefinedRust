@@ -100,7 +100,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_structlike_use(ty, variant, &mut scope)
     }
@@ -111,7 +111,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_use(adt_def, args, &mut scope)
     }
@@ -124,7 +124,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<Option<radium::LiteralTypeUse<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<radium::specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_struct_use(variant_id, args, &mut scope)
     }
@@ -135,7 +135,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         variant_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>> {
         let mut scope = self.scope.borrow_mut();
         self.translator.generate_enum_variant_use(variant_id, args, &mut scope)
     }
@@ -146,7 +146,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn make_tuple_use(
         &self,
         translated_tys: Vec<radium::Type<'def>>,
-        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::LiteralTypeUse<'def>>>,
+        uses: Option<&mut HashMap<Vec<radium::lang::SynType>, radium::specs::types::LiteralUse<'def>>>,
     ) -> radium::Type<'def> {
         self.translator.make_tuple_use(translated_tys, uses)
     }
@@ -154,7 +154,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     pub(crate) fn generate_tuple_use<F>(
         &self,
         tys: F,
-    ) -> Result<radium::LiteralTypeUse<'def>, TranslationError<'tcx>>
+    ) -> Result<radium::specs::types::LiteralUse<'def>, TranslationError<'tcx>>
     where
         F: IntoIterator<Item = ty::Ty<'tcx>>,
     {

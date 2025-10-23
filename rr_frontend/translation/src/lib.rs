@@ -220,7 +220,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn make_adt_shim_entry(
         &self,
         did: DefId,
-        lit: radium::LiteralType,
+        lit: radium::specs::types::Literal,
     ) -> Option<shim_registry::AdtShim<'_>> {
         info!("making shim entry for {did:?}");
         if did.is_local() && ty::Visibility::Public == self.env.tcx().visibility(did) {
@@ -1039,7 +1039,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             continue;
         };
 
-        let lit = radium::LiteralType {
+        let lit = radium::specs::types::Literal {
             rust_name: None,
             type_term: shim.sem_type.clone(),
             syn_type: radium::lang::SynType::Literal(shim.syn_type.clone()),

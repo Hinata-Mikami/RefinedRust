@@ -495,7 +495,7 @@ impl<'a, 'def, F, T> From<VerboseFunctionSpecParser<'a, 'def, F, T>> for Functio
 
 impl<'a, 'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'a, 'def, F, T>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Type parameters must already have been substituted in the given types.
     pub(crate) fn new(
@@ -535,7 +535,7 @@ where
             // TODO: get CoqType for refinement. maybe have it as an annotation? the Infer is currently a
             // placeholder.
 
-            let lit_ty = specs::LiteralType {
+            let lit_ty = specs::types::Literal {
                 rust_name: None,
                 type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
@@ -543,7 +543,7 @@ where
                 info: specs::AdtShimInfo::empty(),
             };
             let lit_ref = (self.make_literal)(lit_ty);
-            let lit_ty_use = specs::LiteralTypeUse::new_with_annot(lit_ref);
+            let lit_ty_use = specs::types::LiteralUse::new_with_annot(lit_ref);
 
             (specs::TypeWithRef::new(specs::Type::Literal(lit_ty_use), lit.rfn.to_string()), None)
         } else {
@@ -766,7 +766,7 @@ impl<'def> ParsedClosureSpecInfo<'def> {
 
 impl<'def, F, T: TraitReqHandler<'def>> VerboseFunctionSpecParser<'_, 'def, F, T>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     /// Handles attributes common among functions/methods and closures.
     fn handle_common_attributes<X: TraitReqHandler<'def>>(
@@ -1273,7 +1273,7 @@ where
 
 impl<'def, F, T: TraitReqHandler<'def>> FunctionSpecParser<'def> for VerboseFunctionSpecParser<'_, 'def, F, T>
 where
-    F: Fn(specs::LiteralType) -> specs::LiteralTypeRef<'def>,
+    F: Fn(specs::types::Literal) -> specs::types::LiteralRef<'def>,
 {
     fn parse_closure_spec<'a, H>(
         &'a mut self,
