@@ -12,9 +12,7 @@ use derive_more::Constructor;
 use indent_write::fmt::IndentWriter;
 
 use crate::specs::{
-    ExtLftConstr, GenericScope, GenericScopeInst, IncludeSelfReq, InstantiatedTraitFunctionSpec,
-    LiteralTraitSpecRef, LiteralTraitSpecUseRef, TraitSpecAttrInst, TraitSpecAttrsInst, Type, TypeWithRef,
-    UniversalLft,
+    ExtLftConstr, GenericScope, GenericScopeInst, IncludeSelfReq, Type, TypeWithRef, UniversalLft, traits,
 };
 use crate::{BASE_INDENT, coq, push_str_list};
 
@@ -24,14 +22,14 @@ pub enum InnerSpec<'def> {
     /// A specification declared via attributes
     Lit(LiteralSpec<'def>),
     /// Use the default specification of a trait
-    TraitDefault(InstantiatedTraitFunctionSpec<'def>),
+    TraitDefault(traits::InstantiatedFunctionSpec<'def>),
 }
 
 impl<'def> InnerSpec<'def> {
     /// Generate extra definitions needed for the specification.
     fn generate_extra_definitions(
         &self,
-        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
     ) -> coq::Document {
         match self {
             Self::Lit(lit) => lit.generate_extra_definitions(scope),
@@ -42,7 +40,7 @@ impl<'def> InnerSpec<'def> {
     fn write_spec_term<F>(
         &self,
         f: &mut F,
-        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
     ) -> fmt::Result
     where
         F: fmt::Write,
@@ -74,7 +72,7 @@ pub struct Spec<'def, T = InnerSpec<'def>> {
     pub trait_req_incl_name: String,
 
     /// Generics
-    pub(crate) generics: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    pub(crate) generics: GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
 
     /// Coq-level parameters the typing statement needs
     pub early_coq_params: coq::binder::BinderList,
@@ -280,7 +278,7 @@ struct Elctx {
 #[derive(Clone, Constructor, Debug)]
 pub struct SpecTraitReqSpecialization<'def> {
     /// literals of the trait this implements
-    of_trait: LiteralTraitSpecRef<'def>,
+    of_trait: traits::LiteralSpecRef<'def>,
 
     /// instantiation of the trait's scope
     /// Invariant: no surrounding instantiation
@@ -290,7 +288,7 @@ pub struct SpecTraitReqSpecialization<'def> {
     assoc_types_inst: Vec<Type<'def>>,
 
     /// the spec attribute instantiation
-    attrs: TraitSpecAttrsInst,
+    attrs: traits::SpecAttrsInst,
 
     /// the Rocq definition name for this specialization
     name: String,
@@ -318,7 +316,7 @@ impl<'def> SpecTraitReqSpecialization<'def> {
     #[must_use]
     fn generate_attr_decl(
         &self,
-        generics: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+        generics: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
     ) -> coq::command::Definition {
         let attrs = &self.attrs;
         let of_trait = &self.of_trait;
@@ -357,7 +355,7 @@ impl<'def> SpecTraitReqSpecialization<'def> {
                 // create an item for every attr
                 let record_item_name = of_trait.make_spec_attr_name(attr_name);
 
-                let TraitSpecAttrInst::Term(term) = inst else {
+                let traits::SpecAttrInst::Term(term) = inst else {
                     unimplemented!("trait req specialization should not assume proofs");
                 };
 
@@ -411,7 +409,7 @@ impl<'def> LiteralSpec<'def> {
     /// Generate extra definitions needed for the specification.
     fn generate_extra_definitions(
         &self,
-        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
     ) -> coq::Document {
         let mut doc = coq::Document::default();
         for spec in &self.specialized_trait_attrs {
@@ -423,7 +421,7 @@ impl<'def> LiteralSpec<'def> {
     }
 
     /// Format the external lifetime contexts, consisting of constraints between lifetimes.
-    fn format_elctx(&self, scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>) -> String {
+    fn format_elctx(&self, scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>) -> String {
         let mut out = String::with_capacity(100);
 
         out.push_str("λ ϝ, [");
@@ -496,7 +494,7 @@ impl<'def> LiteralSpec<'def> {
     fn write_spec_term<F>(
         &self,
         f: &mut F,
-        scope: &GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+        scope: &GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
     ) -> Result<(), fmt::Error>
     where
         F: fmt::Write,

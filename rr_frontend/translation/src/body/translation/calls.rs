@@ -7,7 +7,8 @@
 use std::collections::BTreeMap;
 
 use log::{info, trace};
-use radium::{TraitReqInfo as _, coq};
+use radium::coq;
+use radium::specs::traits::ReqInfo as _;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
@@ -111,7 +112,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
@@ -194,7 +195,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
@@ -390,7 +391,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         call_fn_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        _trait_specs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
+        _trait_specs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
     ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
         trace!(
             "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
@@ -480,7 +481,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns

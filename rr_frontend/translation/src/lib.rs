@@ -81,7 +81,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     shim_registry: shims::registry::SR<'rcx>,
 
     /// trait implementations we generated
-    trait_impls: BTreeMap<OrderedDefId, radium::TraitImplSpec<'rcx>>,
+    trait_impls: BTreeMap<OrderedDefId, radium::specs::traits::ImplSpec<'rcx>>,
     trait_impl_deps: BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>,
 }
 
@@ -129,7 +129,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn make_trait_impl_shim_entry(
         &self,
         did: DefId,
-        decl: &radium::TraitImplSpec<'rcx>,
+        decl: &radium::specs::traits::ImplSpec<'rcx>,
     ) -> Option<shim_registry::TraitImplShim> {
         info!("making shim entry for impl {did:?}");
         let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = self.env.tcx().impl_trait_ref(did);
@@ -164,7 +164,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         let mut method_specs = BTreeMap::new();
         for (name, spec) in &decl.methods.methods {
-            if let radium::TraitInstanceMethodSpec::Defined(spec) = spec {
+            if let radium::specs::traits::InstanceMethodSpec::Defined(spec) = spec {
                 method_specs.insert(
                     name.to_owned(),
                     (spec.function_name.clone(), spec.spec_name.clone(), spec.trait_req_incl_name.clone()),
@@ -193,7 +193,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     fn make_trait_shim_entry(
         &self,
         did: LocalDefId,
-        decl: radium::LiteralTraitSpecRef<'rcx>,
+        decl: radium::specs::traits::LiteralSpecRef<'rcx>,
     ) -> Option<shim_registry::TraitShim<'_>> {
         info!("making shim entry for {did:?}");
         if ty::Visibility::Public == self.env.tcx().visibility(did.to_def_id()) {
@@ -752,7 +752,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             }
         }
 
-        let mut write_trait_incl = |spec: &radium::TraitImplSpec<'_>| {
+        let mut write_trait_incl = |spec: &radium::specs::traits::ImplSpec<'_>| {
             let name = &spec.trait_ref.impl_ref.spec_subsumption_proof;
             let module_path = trait_file_path(name.as_str());
             let path = proof_dir_path.join(format!("{module_path}.v"));
@@ -1057,7 +1057,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     for shim in vcx.shim_registry.get_trait_shims() {
         if let Some(did) = search::try_resolve_did(vcx.env.tcx(), &shim.path) {
             let assoc_tys = vcx.trait_registry.get_associated_type_names(did);
-            let spec = radium::LiteralTraitSpec {
+            let spec = radium::specs::traits::LiteralSpec {
                 assoc_tys,
                 name: shim.name.clone(),
                 spec_attrs_record: shim.spec_attrs_record.clone(),
@@ -1106,7 +1106,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             continue;
         };
 
-        let impl_lit = radium::LiteralTraitImpl::new(
+        let impl_lit = radium::specs::traits::LiteralImpl::new(
             shim.spec_record.clone(),
             shim.spec_params_record.clone(),
             shim.spec_attrs_record.clone(),
@@ -1585,7 +1585,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let spec_semantic =
                 registered.spec_semantic.is_some().then(|| format!("{base_name}_semantic_interp"));
 
-            let impl_lit = radium::LiteralTraitImpl {
+            let impl_lit = radium::specs::traits::LiteralImpl {
                 spec_record: spec_name,
                 spec_params_record: spec_params_name,
                 spec_attrs_record: spec_attrs_name,
@@ -1652,7 +1652,7 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
             // the closure traits don't have a semantic component
             let spec_semantic = None;
 
-            let impl_lit = radium::LiteralTraitImpl {
+            let impl_lit = radium::specs::traits::LiteralImpl {
                 spec_record: spec_name,
                 spec_params_record: spec_params_name,
                 spec_attrs_record: spec_attrs_name,
@@ -1755,13 +1755,13 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
 
             let mut methods = BTreeMap::new();
             let spec = call_fn_def.spec;
-            methods.insert(name, radium::TraitInstanceMethodSpec::Defined(spec));
+            methods.insert(name, radium::specs::traits::InstanceMethodSpec::Defined(spec));
 
-            let instance_spec = radium::TraitInstanceSpec::new(methods);
+            let instance_spec = radium::specs::traits::InstanceSpec::new(methods);
 
             let extra_context_items = body_spec.early_coq_params.clone();
             // assemble the spec and register it
-            let spec = radium::TraitImplSpec::new(impl_info, instance_spec, extra_context_items);
+            let spec = radium::specs::traits::ImplSpec::new(impl_info, instance_spec, extra_context_items);
             Ok((spec, call_fn_def))
         };
 
@@ -1823,7 +1823,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
         let tcx = vcx.env.tcx();
 
-        let process_impl = || -> Result<(radium::TraitImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
+        let process_impl = || -> Result<(radium::specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
             let (impl_info, deps) = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = tcx.associated_items(did);
 
@@ -1843,7 +1843,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
                     if let Some(fn_item) = fn_item {
                         if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
-                            methods.insert(x.name().as_str().to_owned(), radium::TraitInstanceMethodSpec::Defined(spec));
+                            methods.insert(x.name().as_str().to_owned(), radium::specs::traits::InstanceMethodSpec::Defined(spec));
                         } else {
                             warn!("Incomplete specification for {}", fn_item.name());
                             return Err(base::TranslationError::IncompleteTraitImplSpec(did));
@@ -1851,7 +1851,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                     } else {
                         // this uses a default impl
                         let fn_name = base::strip_coq_ident(tcx.item_name(x.def_id).as_str());
-                        let spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.clone(), fn_name);
+                        let spec = radium::specs::traits::InstantiatedFunctionSpec::new(impl_info.clone(), fn_name);
 
                         let assoc_item = trait_assoc_items.find_by_ident_and_kind(tcx, x.ident(tcx), ty::AssocTag::Fn, trait_did).unwrap();
 
@@ -1885,7 +1885,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
                             let scope: radium::GenericScope<'_> = generics.into();
 
-                            methods.insert(x.name().as_str().to_owned(), radium::TraitInstanceMethodSpec::DefaultSpec(Box::new(spec), scope, default_meta.get_spec_name().to_owned()));
+                            methods.insert(x.name().as_str().to_owned(), radium::specs::traits::InstanceMethodSpec::DefaultSpec(Box::new(spec), scope, default_meta.get_spec_name().to_owned()));
                         }
                         else {
                             // this can happen for incompletely specified traits from stdlib, let's
@@ -1894,10 +1894,10 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                     }
                 }
             }
-            let instance_spec = radium::TraitInstanceSpec::new(methods);
+            let instance_spec = radium::specs::traits::InstanceSpec::new(methods);
 
             // assemble the spec and register it
-            let spec = radium::TraitImplSpec::new(impl_info, instance_spec, coq::binder::BinderList::empty());
+            let spec = radium::specs::traits::ImplSpec::new(impl_info, instance_spec, coq::binder::BinderList::empty());
             Ok((spec, deps))
         };
 

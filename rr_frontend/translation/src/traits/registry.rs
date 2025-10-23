@@ -36,25 +36,25 @@ pub(crate) struct TR<'tcx, 'def> {
     type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
 
     /// trait declarations
-    trait_decls: RefCell<HashMap<LocalDefId, specs::TraitSpecDecl<'def>>>,
+    trait_decls: RefCell<HashMap<LocalDefId, specs::traits::SpecDecl<'def>>>,
     /// trait literals for using occurrences, including shims we import
-    trait_literals: RefCell<HashMap<DefId, specs::LiteralTraitSpecRef<'def>>>,
+    trait_literals: RefCell<HashMap<DefId, specs::traits::LiteralSpecRef<'def>>>,
 
     /// for the trait instances in scope, the names for their Coq definitions
     /// (to enable references to them when translating functions)
-    impl_literals: RefCell<HashMap<DefId, specs::LiteralTraitImplRef<'def>>>,
+    impl_literals: RefCell<HashMap<DefId, specs::traits::LiteralImplRef<'def>>>,
 
     /// for all closures we process and all the closure traits they will implement, the names for
     /// the Coq definitions, as well as the meta information for the impl method
     closure_impls:
-        RefCell<HashMap<(DefId, ty::ClosureKind), (specs::LiteralTraitImplRef<'def>, procedures::Meta)>>,
+        RefCell<HashMap<(DefId, ty::ClosureKind), (specs::traits::LiteralImplRef<'def>, procedures::Meta)>>,
 
     /// arena for allocating trait literals
-    trait_arena: &'def Arena<specs::LiteralTraitSpec>,
+    trait_arena: &'def Arena<specs::traits::LiteralSpec>,
     /// arena for allocating impl literals
-    impl_arena: &'def Arena<specs::LiteralTraitImpl>,
+    impl_arena: &'def Arena<specs::traits::LiteralImpl>,
     /// arena for allocating trait use references
-    trait_use_arena: &'def Arena<specs::LiteralTraitSpecUseCell<'def>>,
+    trait_use_arena: &'def Arena<specs::traits::LiteralSpecUseCell<'def>>,
     /// arena for function specifications
     fn_spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 }
@@ -67,9 +67,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Create an empty trait registry.
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
-        trait_arena: &'def Arena<specs::LiteralTraitSpec>,
-        impl_arena: &'def Arena<specs::LiteralTraitImpl>,
-        trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
+        trait_arena: &'def Arena<specs::traits::LiteralSpec>,
+        impl_arena: &'def Arena<specs::traits::LiteralImpl>,
+        trait_use_arena: &'def Arena<specs::traits::LiteralSpecUseCell<'def>>,
         fn_spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
     ) -> Self {
         Self {
@@ -91,7 +91,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get registered trait declarations in the local crate.
-    pub(crate) fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::TraitSpecDecl<'def>> {
+    pub(crate) fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::traits::SpecDecl<'def>> {
         let decls = self.trait_decls.borrow();
         decls.clone()
     }
@@ -165,7 +165,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         declared_attrs: Vec<String>,
         has_semantic_interp: bool,
         attrs_dependent: bool,
-    ) -> Result<specs::LiteralTraitSpec, Error<'tcx>> {
+    ) -> Result<specs::traits::LiteralSpec, Error<'tcx>> {
         let spec_record = format!("{name}_spec");
         let spec_params_record = format!("{name}_spec_params");
         let spec_attrs_record = format!("{name}_spec_attrs");
@@ -191,7 +191,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
         }
 
-        Ok(specs::LiteralTraitSpec {
+        Ok(specs::traits::LiteralSpec {
             name,
             assoc_tys: self.get_associated_type_names(did),
             spec_record,
@@ -320,7 +320,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     // override the names in the procedure registry
                     proc_registry.override_trait_default_impl_names(c.def_id, &spec_name, trait_incl_name);
 
-                    methods.insert(method_name, specs::TraitInstanceMethodSpec::Defined(&*spec_ref));
+                    methods.insert(method_name, specs::traits::InstanceMethodSpec::Defined(&*spec_ref));
                 } else if let ty::AssocKind::Type { .. } = c.kind {
                     // get name
                     let type_name =
@@ -333,8 +333,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 }
             }
 
-            let base_instance_spec = radium::TraitInstanceSpec::new(methods);
-            let decl = radium::TraitSpecDecl::new(
+            let base_instance_spec = specs::traits::InstanceSpec::new(methods);
+            let decl = specs::traits::SpecDecl::new(
                 lit_trait_spec_ref,
                 param_scope.into(),
                 assoc_types,
@@ -367,8 +367,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn register_shim(
         &self,
         did: DefId,
-        spec: radium::LiteralTraitSpec,
-    ) -> TraitResult<'tcx, radium::LiteralTraitSpecRef<'def>> {
+        spec: specs::traits::LiteralSpec,
+    ) -> TraitResult<'tcx, specs::traits::LiteralSpecRef<'def>> {
         if !self.env.tcx().is_trait(did) {
             return Err(Error::NotATrait(did));
         }
@@ -388,8 +388,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn register_impl_shim(
         &self,
         did: DefId,
-        spec: radium::LiteralTraitImpl,
-    ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
+        spec: specs::traits::LiteralImpl,
+    ) -> TraitResult<'tcx, specs::traits::LiteralImplRef<'def>> {
         if self.env.tcx().trait_id_of_impl(did).is_none() {
             return Err(Error::NotATraitImpl(did));
         }
@@ -410,9 +410,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         closure_did: DefId,
         closure_kind: ty::ClosureKind,
-        spec: radium::LiteralTraitImpl,
+        spec: specs::traits::LiteralImpl,
         fn_lit: procedures::Meta,
-    ) -> TraitResult<'tcx, radium::LiteralTraitImplRef<'def>> {
+    ) -> TraitResult<'tcx, specs::traits::LiteralImplRef<'def>> {
         let spec = self.impl_arena.alloc(spec);
 
         let mut impl_literals = self.closure_impls.borrow_mut();
@@ -426,13 +426,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Lookup a trait.
-    pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<radium::LiteralTraitSpecRef<'def>> {
+    pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<specs::traits::LiteralSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
         trait_literals.get(&trait_did).copied()
     }
 
     /// Lookup the spec for an impl.
-    pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<radium::LiteralTraitImplRef<'def>> {
+    pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<specs::traits::LiteralImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
         impl_literals.get(&impl_did).copied()
     }
@@ -442,7 +442,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         closure_did: DefId,
         kind: ty::ClosureKind,
-    ) -> Option<(radium::LiteralTraitImplRef<'def>, procedures::Meta)> {
+    ) -> Option<(specs::traits::LiteralImplRef<'def>, procedures::Meta)> {
         let impl_literals = self.closure_impls.borrow();
         impl_literals.get(&(closure_did, kind)).cloned()
     }
@@ -455,7 +455,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         impl_did: DefId,
         impl_args: &[ty::GenericArg<'tcx>],
         trait_args: &[ty::GenericArg<'tcx>],
-    ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         trace!(
             "enter TR::get_impl_spec_term for impl_did={impl_did:?} impl_args={impl_args:?} trait_args={trait_args:?}"
         );
@@ -483,7 +483,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let scope_inst =
                 self.compute_scope_inst_in_state(state, impl_did, self.env.tcx().mk_args(impl_args), None)?;
 
-            radium::SpecializedTraitImpl::new(impl_spec, scope_inst)
+            specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
             return Err(TranslationError::TraitTranslation(Error::UnregisteredImpl(impl_did)));
         };
@@ -535,7 +535,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         trait_args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<(radium::SpecializedTraitImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
+    ) -> Result<(specs::traits::SpecializedImpl<'def>, Vec<ty::Ty<'tcx>>), TranslationError<'tcx>> {
         let closure_kind = search::get_closure_kind_of_trait_did(self.env.tcx(), trait_did)
             .ok_or(Error::NotAClosureTrait(trait_did))?;
 
@@ -589,7 +589,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         trace!("get_closure_impl_spec_term: computed scope_inst={scope_inst:?}");
 
-        let term = radium::SpecializedTraitImpl::new(closure_impl, scope_inst);
+        let term = specs::traits::SpecializedImpl::new(closure_impl, scope_inst);
 
         Ok((term, assoc_args))
     }
@@ -605,7 +605,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         origin: radium::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
         impl_deps: ImplDeps<'_>,
-    ) -> Result<radium::TraitReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
+    ) -> Result<specs::traits::ReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
 
         let trait_spec = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
@@ -653,8 +653,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
                         .collect();
 
-                    radium::TraitReqInst::new(
-                        radium::TraitReqInstSpec::Specialized(spec_term),
+                    specs::traits::ReqInst::new(
+                        specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
                         assoc_tys,
                         trait_spec,
@@ -705,12 +705,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         let translated_region = types::TX::translate_region(&mut quantified_state, region)?;
                         mapped_inst.push(translated_region);
                     }
-                    let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
+                    let mapped_inst = specs::traits::ReqScopeInst::new(mapped_inst);
                     trace!("mapped instantiation: {mapped_inst:?}");
 
-                    let trait_impl = radium::QuantifiedTraitImpl::new(trait_use_ref, mapped_inst);
-                    radium::TraitReqInst::new(
-                        radium::TraitReqInstSpec::Quantified(trait_impl),
+                    let trait_impl = specs::traits::QuantifiedImpl::new(trait_use_ref, mapped_inst);
+                    specs::traits::ReqInst::new(
+                        specs::traits::ReqInstSpec::Quantified(trait_impl),
                         origin,
                         assoc_types,
                         trait_spec,
@@ -737,8 +737,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                         .filter_map(|(ty, constr)| if constr.is_some() { None } else { Some(ty) })
                         .collect();
 
-                    radium::TraitReqInst::new(
-                        radium::TraitReqInstSpec::Specialized(spec_term),
+                    specs::traits::ReqInst::new(
+                        specs::traits::ReqInstSpec::Specialized(spec_term),
                         origin,
                         assoc_tys,
                         trait_spec,
@@ -767,7 +767,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         params: ty::GenericArgsRef<'tcx>,
         mut impl_deps: ImplDeps<'_>,
         include_self: bool,
-    ) -> Result<Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
         trace!(
             "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
         );
@@ -886,14 +886,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn translate_trait_req_inst_in_state(
         &self,
         state: types::ST<'_, '_, 'def, 'tcx>,
-        trait_req: radium::TraitReqInst<'def, ty::Ty<'tcx>>,
-    ) -> Result<radium::TraitReqInst<'def>, TranslationError<'tcx>> {
+        trait_req: specs::traits::ReqInst<'def, ty::Ty<'tcx>>,
+    ) -> Result<specs::traits::ReqInst<'def>, TranslationError<'tcx>> {
         let mut assoc_inst = Vec::new();
         for ty in trait_req.assoc_ty_inst {
             let ty = self.type_translator().translate_type_in_state(ty, state)?;
             assoc_inst.push(ty);
         }
-        Ok(radium::TraitReqInst::new(
+        Ok(specs::traits::ReqInst::new(
             trait_req.spec,
             trait_req.origin,
             assoc_inst,
@@ -908,7 +908,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params_inst: ty::GenericArgsRef<'tcx>,
         impl_deps: ImplDeps<'_>,
-    ) -> Result<Vec<radium::TraitReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<specs::traits::ReqInst<'def, radium::Type<'def>>>, TranslationError<'tcx>> {
         let mut trait_reqs = Vec::new();
         for trait_req in
             self.resolve_trait_requirements_in_state(state, did, params_inst, impl_deps, false)?
@@ -953,7 +953,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         kind: ty::ClosureKind,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
-    ) -> Result<radium::TraitRefInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<specs::traits::RefInst<'def>, TranslationError<'tcx>> {
         trace!(
             "enter get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?} with info={info:?}"
         );
@@ -1033,24 +1033,24 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // get this from Info
         let mut attrs = BTreeMap::new();
         if kind == ty::ClosureKind::FnOnce {
-            attrs.insert("Pre".to_owned(), radium::TraitSpecAttrInst::Term(info.pre_encoded.clone()));
-            attrs.insert("Post".to_owned(), radium::TraitSpecAttrInst::Term(info.post_encoded.clone()));
+            attrs.insert("Pre".to_owned(), specs::traits::SpecAttrInst::Term(info.pre_encoded.clone()));
+            attrs.insert("Post".to_owned(), specs::traits::SpecAttrInst::Term(info.post_encoded.clone()));
         } else if kind == ty::ClosureKind::FnMut {
             attrs.insert(
                 "PostMut".to_owned(),
-                radium::TraitSpecAttrInst::Term(info.post_mut_encoded.clone().unwrap()),
+                specs::traits::SpecAttrInst::Term(info.post_mut_encoded.clone().unwrap()),
             );
         }
 
         trace!("leave get_closure_trait_impl_info for closure_did={closure_did:?} and kind={kind:?}");
 
-        Ok(radium::TraitRefInst::new(
+        Ok(specs::traits::RefInst::new(
             trait_spec_ref,
             impl_ref,
             generics,
             trait_inst,
             assoc_types_inst,
-            radium::TraitSpecAttrsInst::new(attrs),
+            specs::traits::SpecAttrsInst::new(attrs),
         ))
     }
 
@@ -1059,7 +1059,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn get_trait_impl_info(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<(radium::TraitRefInst<'def>, BTreeSet<OrderedDefId>), TranslationError<'tcx>> {
+    ) -> Result<(specs::traits::RefInst<'def>, BTreeSet<OrderedDefId>), TranslationError<'tcx>> {
         let trait_did = self
             .env
             .tcx()
@@ -1132,7 +1132,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             }
 
             Ok((
-                radium::TraitRefInst::new(
+                specs::traits::RefInst::new(
                     trait_spec_ref,
                     impl_ref,
                     param_scope.into(),
@@ -1155,7 +1155,7 @@ pub(crate) struct GenericTraitUse<'tcx, 'def> {
     pub did: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     /// the Coq-level trait use
-    pub trait_use: radium::LiteralTraitSpecUseRef<'def>,
+    pub trait_use: specs::traits::LiteralSpecUseRef<'def>,
     /// quantifiers for HRTBs
     pub bound_regions: Vec<ty::BoundRegionKind>,
     /// this is a trait use of the trait itself in a trait declaration
@@ -1271,7 +1271,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn fill_trait_use(
         trait_use: &GenericTraitUse<'tcx, 'def>,
         trait_ref: ty::TraitRef<'tcx>,
-        spec_ref: radium::LiteralTraitSpecRef<'def>,
+        spec_ref: specs::traits::LiteralSpecRef<'def>,
         is_used_in_self_trait: bool,
         assoc_ty_constraints: Vec<Option<radium::Type<'def>>>,
         origin: radium::TyParamOrigin,
@@ -1286,10 +1286,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // create a name for this instance by including the args
         let mangled_base = types::mangle_name_with_args(&spec_ref.name, trait_ref.args.as_slice());
-        let spec_use = radium::LiteralTraitSpecUse::new(
+        let spec_use = specs::traits::LiteralSpecUse::new(
             spec_ref,
             // dummy for now
-            radium::TraitReqScope::empty(),
+            specs::traits::ReqScope::empty(),
             // dummy for now
             radium::GenericScopeInst::empty(),
             attr_override,

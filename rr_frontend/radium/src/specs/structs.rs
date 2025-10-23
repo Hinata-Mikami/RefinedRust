@@ -9,8 +9,8 @@ use std::fmt;
 use std::fmt::Write as _;
 
 use crate::specs::{
-    AdtShimInfo, GenericScope, GenericScopeInst, LiteralTyParam, LiteralType, TraitReqInst, Type,
-    format_extra_context_items, invariants,
+    AdtShimInfo, GenericScope, GenericScopeInst, LiteralTyParam, LiteralType, Type,
+    format_extra_context_items, invariants, traits,
 };
 use crate::{coq, fmt_list, lang, model, push_str_list};
 
@@ -743,7 +743,7 @@ impl<'def> AbstractUse<'def> {
             };
 
             let attrs = fmt_list!(
-                self.scope_inst.get_direct_trait_requirements().iter().map(TraitReqInst::get_attr_term),
+                self.scope_inst.get_direct_trait_requirements().iter().map(traits::ReqInst::get_attr_term),
                 " "
             );
 

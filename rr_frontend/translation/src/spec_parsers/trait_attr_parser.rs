@@ -51,7 +51,7 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitAttrs {
-    pub attrs: radium::TraitSpecAttrsDecl,
+    pub attrs: radium::specs::traits::SpecAttrsDecl,
 }
 
 pub(crate) struct VerboseTraitAttrParser<'a, T, F> {
@@ -122,7 +122,7 @@ where
         }
 
         Ok(TraitAttrs {
-            attrs: radium::TraitSpecAttrsDecl::new(trait_attrs, semantic_interp),
+            attrs: radium::specs::traits::SpecAttrsDecl::new(trait_attrs, semantic_interp),
         })
     }
 }

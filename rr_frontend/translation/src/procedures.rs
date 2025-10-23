@@ -174,7 +174,7 @@ pub(crate) struct ClosureInfo<'tcx, 'rcx> {
     pub(crate) info: ClosureImplInfo<'tcx, 'rcx>,
 
     pub(crate) generated_functions: Vec<radium::Function<'rcx>>,
-    pub(crate) generated_impls: Vec<radium::TraitImplSpec<'rcx>>,
+    pub(crate) generated_impls: Vec<radium::specs::traits::ImplSpec<'rcx>>,
 }
 
 /**

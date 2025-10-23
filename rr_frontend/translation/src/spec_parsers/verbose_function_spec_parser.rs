@@ -39,13 +39,13 @@ pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::LiteralTraitSpecUseRef<'def>>;
+    ) -> Option<specs::traits::LiteralSpecUseRef<'def>>;
 
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
+        trait_use: specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
     ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>>;
 }
 
@@ -444,7 +444,7 @@ pub(crate) struct VerboseFunctionSpecParser<'a, 'def, F, T> {
     // Indexed by the address of the corresponding `LiteralTraitSpecUseRef`.
     trait_specs: BTreeMap<
         *const u8,
-        (radium::LiteralTraitSpecUseRef<'def>, BTreeMap<String, radium::TraitSpecAttrInst>),
+        (specs::traits::LiteralSpecUseRef<'def>, BTreeMap<String, specs::traits::SpecAttrInst>),
     >,
 }
 
@@ -834,7 +834,7 @@ where
                         if entries
                             .insert(
                                 attr.clone(),
-                                radium::TraitSpecAttrInst::Term(coq::term::Term::Literal(term)),
+                                specs::traits::SpecAttrInst::Term(coq::term::Term::Literal(term)),
                             )
                             .is_some()
                         {
@@ -1257,15 +1257,15 @@ where
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+    ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
         self.scope.determine_trait_requirement_origin(typaram, attr)
     }
 
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
+        trait_use: specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, specs::traits::SpecAttrInst>,
     ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
         self.scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }

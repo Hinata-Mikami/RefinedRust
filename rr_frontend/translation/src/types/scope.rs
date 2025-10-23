@@ -126,7 +126,7 @@ pub(crate) struct Params<'tcx, 'def> {
 
 #[expect(clippy::fallible_impl_from)]
 impl<'tcx, 'def> From<Params<'tcx, 'def>>
-    for radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>
+    for radium::GenericScope<'def, radium::specs::traits::LiteralSpecUseRef<'def>>
 {
     fn from(mut x: Params<'tcx, 'def>) -> Self {
         let mut scope = Self::empty();
@@ -190,7 +190,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+    ) -> Option<radium::specs::traits::LiteralSpecUseRef<'def>> {
         let typaram_idx = self.ty_names.get(typaram)?;
 
         for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
@@ -219,8 +219,8 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
+        trait_use: radium::specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, radium::specs::traits::SpecAttrInst>,
     ) -> Option<radium::specs::functions::SpecTraitReqSpecialization<'def>> {
         let mut trait_ref = trait_use.borrow_mut();
         let trait_ref = trait_ref.as_mut().unwrap();
@@ -230,7 +230,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
 
         let assoc_types_inst = trait_ref.get_assoc_ty_inst();
 
-        let attrs = radium::TraitSpecAttrsInst::new(reqs.to_owned());
+        let attrs = radium::specs::traits::SpecAttrsInst::new(reqs.to_owned());
         // name for the definition
         let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
 
@@ -348,7 +348,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         &mut self,
         tcx: ty::TyCtxt<'tcx>,
         bound_regions: &[ty::BoundRegionKind],
-    ) -> radium::TraitReqScope {
+    ) -> radium::specs::traits::ReqScope {
         // We add these lifetimes to a special late scope, as the de bruijn indices are different
         // from the early-bound binders
         let mut regions_to_quantify = Vec::new();
@@ -374,11 +374,11 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             self.late_scope.insert(0, new_binder);
         }
 
-        radium::TraitReqScope::new(regions_to_quantify)
+        radium::specs::traits::ReqScope::new(regions_to_quantify)
     }
 
     /// Add bound regions when descending under a for<...> binder.
-    pub(crate) fn add_trait_req_scope(&mut self, scope: &radium::TraitReqScope) {
+    pub(crate) fn add_trait_req_scope(&mut self, scope: &radium::specs::traits::ReqScope) {
         self.late_scope.insert(0, scope.quantified_lfts.clone());
     }
 

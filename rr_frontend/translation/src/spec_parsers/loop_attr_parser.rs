@@ -140,7 +140,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
 pub(crate) struct LoopIteratorInfo<'def> {
     pub(crate) iterator_variable: mir::Local,
     pub(crate) binder_name: String,
-    pub(crate) iter_spec: radium::TraitReqInst<'def>,
+    pub(crate) iter_spec: specs::traits::ReqInst<'def>,
 }
 
 struct LoopMetaInfo<'def, 'a, T> {

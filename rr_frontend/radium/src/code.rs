@@ -1269,7 +1269,7 @@ pub enum UsedProcedureSpec<'def> {
     /// A direct specification term.
     Literal(String, String),
     /// A method of a trait impl we quantify over.
-    TraitMethod(QuantifiedTraitImpl<'def>, String),
+    TraitMethod(traits::QuantifiedImpl<'def>, String),
 }
 
 impl UsedProcedureSpec<'_> {
@@ -1318,7 +1318,7 @@ pub struct UsedProcedure<'def> {
     ///   function)
     /// - additional lifetimes that the generic instantiation introduces, as well as all lifetime parameters
     ///   of this function
-    quantified_scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>,
+    quantified_scope: GenericScope<'def, traits::LiteralSpecUseRef<'def>>,
 
     /// specialized specs for the trait assumptions of this procedure
     scope_inst: GenericScopeInst<'def>,
@@ -1672,7 +1672,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 
     /// Set this function's generic scope.
-    pub fn provide_generic_scope(&mut self, scope: GenericScope<'def, LiteralTraitSpecUseRef<'def>>) {
+    pub fn provide_generic_scope(&mut self, scope: GenericScope<'def, traits::LiteralSpecUseRef<'def>>) {
         if self.has_generic_scope {
             panic!("Logic error: Function's generic scope has been initialized twice!");
         }
@@ -1686,7 +1686,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 
     /// Add a default function spec.
-    pub fn add_trait_function_spec(&mut self, spec: InstantiatedTraitFunctionSpec<'def>) {
+    pub fn add_trait_function_spec(&mut self, spec: traits::InstantiatedFunctionSpec<'def>) {
         assert!(self.spec.spec.is_none(), "Overriding specification of FunctionBuilder");
         self.spec.spec = Some(functions::InnerSpec::TraitDefault(spec));
     }

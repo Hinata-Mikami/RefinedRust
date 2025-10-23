@@ -5,7 +5,8 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use log::{info, trace};
-use radium::{TraitReqInfo as _, coq, lang};
+use radium::specs::traits::ReqInfo as _;
+use radium::{coq, lang};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use typed_arena::Arena;
@@ -23,9 +24,9 @@ pub(crate) struct ClosureImplGenerator<'tcx, 'def> {
     fn_arena: &'def Arena<radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>>,
 
     /// specs for the three closure traits
-    fnmut_spec: radium::LiteralTraitSpecRef<'def>,
-    fn_spec: radium::LiteralTraitSpecRef<'def>,
-    fnonce_spec: radium::LiteralTraitSpecRef<'def>,
+    fnmut_spec: radium::specs::traits::LiteralSpecRef<'def>,
+    fn_spec: radium::specs::traits::LiteralSpecRef<'def>,
+    fnonce_spec: radium::specs::traits::LiteralSpecRef<'def>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -415,7 +416,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         kind: ty::ClosureKind,
         to_impl: ty::ClosureKind,
         closure_spec: &radium::specs::functions::Spec<'def>,
-        impl_info: &radium::TraitRefInst<'def>,
+        impl_info: &radium::specs::traits::RefInst<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
     ) -> Result<radium::Function<'def>, base::TranslationError<'tcx>> {
         // Assemble the inner spec, using the default spec of the closure traits and the impl info
@@ -437,7 +438,8 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let fn_generics = Self::create_impl_fn_scope(info, to_impl);
         builder.provide_generic_scope(fn_generics);
 
-        let inner_spec = radium::InstantiatedTraitFunctionSpec::new(impl_info.to_owned(), method_name);
+        let inner_spec =
+            radium::specs::traits::InstantiatedFunctionSpec::new(impl_info.to_owned(), method_name);
         builder.add_trait_function_spec(inner_spec);
 
         // replicate the Coq params for extra context items

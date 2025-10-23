@@ -745,7 +745,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Make a specification for a method of a trait impl derived from the trait's default spec.
     fn make_trait_instance_spec(
         &self,
-    ) -> Result<Option<radium::InstantiatedTraitFunctionSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<Option<radium::specs::traits::InstantiatedFunctionSpec<'def>>, TranslationError<'tcx>> {
         let did = self.proc.get_id();
 
         let Some(impl_did) = self.env.tcx().impl_of_assoc(did) else {
@@ -763,7 +763,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
         let (trait_info, _) = self.trait_registry.get_trait_impl_info(impl_did)?;
-        Ok(Some(radium::InstantiatedTraitFunctionSpec::new(trait_info, fn_name)))
+        Ok(Some(radium::specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name)))
     }
 
     fn dump_body(body: &mir::Body<'_>) {

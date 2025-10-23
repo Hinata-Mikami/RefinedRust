@@ -32,7 +32,7 @@ use crate::types::{self, scope};
 #[derive(Debug)]
 pub(crate) struct AbstractedGenerics<'def> {
     /// the scope with new generics to quantify over for the function's specialized spec
-    pub scope: radium::GenericScope<'def, radium::LiteralTraitSpecUseRef<'def>>,
+    pub scope: radium::GenericScope<'def, radium::specs::traits::LiteralSpecUseRef<'def>>,
     /// instantiations for the specialized spec hint
     pub callee_lft_param_inst: Vec<radium::Lft>,
     pub callee_ty_param_inst: Vec<radium::Type<'def>>,
@@ -199,7 +199,11 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
     ) -> Result<
         (
             String,
-            (radium::UsedProcedureSpec<'def>, radium::TraitReqScope, radium::TraitReqScopeInst),
+            (
+                radium::UsedProcedureSpec<'def>,
+                radium::specs::traits::ReqScope,
+                radium::specs::traits::ReqScopeInst,
+            ),
             BTreeMap<radium::Lft, usize>,
             ty::GenericArgsRef<'tcx>,
         ),
@@ -255,7 +259,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let translated_region = self.translate_region(region)?;
             mapped_inst.push(translated_region);
         }
-        let mapped_inst = radium::TraitReqScopeInst::new(mapped_inst);
+        let mapped_inst = radium::specs::traits::ReqScopeInst::new(mapped_inst);
         trace!("using trait procedure with mapped instantiation: {mapped_inst:?}");
 
         let trait_spec_use = trait_use_ref.borrow();
@@ -263,7 +267,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
 
         let lifted_scope = trait_spec_use.scope.clone();
         let quantified_impl =
-            radium::QuantifiedTraitImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
+            radium::specs::traits::QuantifiedImpl::new(trait_use_ref, lifted_scope.identity_instantiation());
 
         // get spec. the spec takes the generics of the method as arguments
         let method_spec_term = radium::UsedProcedureSpec::TraitMethod(quantified_impl, method_name.clone());
@@ -289,7 +293,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
         fnsig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
-        trait_reqs: Vec<radium::TraitReqInst<'def, ty::Ty<'tcx>>>,
+        trait_reqs: Vec<radium::specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
         trace!(
@@ -480,8 +484,13 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 let ty = TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req =
-                radium::TraitReqInst::new(req.spec, req.origin, assoc_inst, req.of_trait, req.scope);
+            let trait_req = radium::specs::traits::ReqInst::new(
+                req.spec,
+                req.origin,
+                assoc_inst,
+                req.of_trait,
+                req.scope,
+            );
             fn_inst.add_trait_requirement(trait_req);
         }
 

@@ -77,7 +77,7 @@ impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
         &self,
         typaram: &str,
         attr: &str,
-    ) -> Option<radium::LiteralTraitSpecUseRef<'def>> {
+    ) -> Option<radium::specs::traits::LiteralSpecUseRef<'def>> {
         trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
         self.generic_scope.determine_trait_requirement_origin(typaram, attr)
     }
@@ -85,8 +85,8 @@ impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
     fn attach_trait_attr_requirement(
         &self,
         name_prefix: &str,
-        trait_use: radium::LiteralTraitSpecUseRef<'def>,
-        reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
+        trait_use: radium::specs::traits::LiteralSpecUseRef<'def>,
+        reqs: &BTreeMap<String, radium::specs::traits::SpecAttrInst>,
     ) -> Option<radium::specs::functions::SpecTraitReqSpecialization<'def>> {
         self.generic_scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }

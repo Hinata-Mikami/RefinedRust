@@ -25,7 +25,7 @@ pub(crate) trait TraitImplAttrParser {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitImplAttrs {
-    pub attrs: radium::TraitSpecAttrsInst,
+    pub attrs: radium::specs::traits::SpecAttrsInst,
 }
 
 pub(crate) struct VerboseTraitImplAttrParser<'a, T> {
@@ -74,7 +74,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                         let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                         let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
 
-                        radium::TraitSpecAttrInst::Proof(parsed_term)
+                        radium::specs::traits::SpecAttrInst::Proof(parsed_term)
                     } else {
                         // if this is delimited, just enter the delimiter
                         let buffer = if let Some(stream) = buffer.peek_delimited() {
@@ -87,7 +87,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                         let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
                         let term = radium::coq::term::Term::Literal(parsed_term);
 
-                        radium::TraitSpecAttrInst::Term(term)
+                        radium::specs::traits::SpecAttrInst::Term(term)
                     };
                     if trait_attrs.insert(parsed_name.to_string(), inst).is_some() {
                         return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
@@ -101,7 +101,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
         }
 
         Ok(TraitImplAttrs {
-            attrs: radium::TraitSpecAttrsInst::new(trait_attrs),
+            attrs: radium::specs::traits::SpecAttrsInst::new(trait_attrs),
         })
     }
 }
