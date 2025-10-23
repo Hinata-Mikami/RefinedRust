@@ -20,7 +20,7 @@ pub(crate) struct ClosureImplGenerator<'tcx, 'def> {
     ty_translator: &'def TX<'def, 'tcx>,
 
     /// the arena to intern function specs into
-    fn_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    fn_arena: &'def Arena<radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>>,
 
     /// specs for the three closure traits
     fnmut_spec: radium::LiteralTraitSpecRef<'def>,
@@ -45,7 +45,9 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         env: &'def Environment<'tcx>,
         trait_registry: &'def TR<'tcx, 'def>,
         ty_translator: &'def TX<'def, 'tcx>,
-        fn_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+        fn_arena: &'def Arena<
+            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        >,
     ) -> Option<Self> {
         let fnmut_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::FnMut)?;
         let fn_did = search::get_closure_trait_did(env.tcx(), ty::ClosureKind::Fn)?;
@@ -73,7 +75,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &radium::FunctionSpec<'def>,
+        closure_spec: &radium::specs::functions::Spec<'def>,
         ref_self: &ShimRefSelf,
     ) -> Result<(), base::TranslationError<'tcx>> {
         let (tupled_upvars_ty, self_is_ref) = match &info.tl_self_var_ty {
@@ -304,7 +306,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         &self,
         closure_did: DefId,
         closure_meta: &procedures::Meta,
-        closure_spec: &radium::FunctionSpec<'def>,
+        closure_spec: &radium::specs::functions::Spec<'def>,
     ) -> Result<radium::UsedProcedure<'def>, base::TranslationError<'tcx>> {
         // explicit instantiation is needed sometimes
         let spec_term = radium::UsedProcedureSpec::Literal(
@@ -412,7 +414,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         fn_meta: &procedures::Meta,
         kind: ty::ClosureKind,
         to_impl: ty::ClosureKind,
-        closure_spec: &radium::FunctionSpec<'def>,
+        closure_spec: &radium::specs::functions::Spec<'def>,
         impl_info: &radium::TraitRefInst<'def>,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
     ) -> Result<radium::Function<'def>, base::TranslationError<'tcx>> {

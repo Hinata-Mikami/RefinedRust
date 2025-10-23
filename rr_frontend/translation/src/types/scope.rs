@@ -221,7 +221,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
         reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
-    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
+    ) -> Option<radium::specs::functions::SpecTraitReqSpecialization<'def>> {
         let mut trait_ref = trait_use.borrow_mut();
         let trait_ref = trait_ref.as_mut().unwrap();
 
@@ -234,7 +234,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
         // name for the definition
         let name = format!("{name_prefix}_{}trait_req", trait_ref.mangled_base);
 
-        let specialization = radium::FunctionSpecTraitReqSpecialization::new(
+        let specialization = radium::specs::functions::SpecTraitReqSpecialization::new(
             trait_use,
             trait_inst.to_owned(),
             assoc_types_inst,

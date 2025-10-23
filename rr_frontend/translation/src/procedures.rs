@@ -189,8 +189,10 @@ pub(crate) struct Scope<'tcx, 'def> {
     /// track the actually translated functions
     translated_functions: BTreeMap<OrderedDefId, radium::Function<'def>>,
     /// track the functions with just a specification (`rr::only_spec`)
-    specced_functions:
-        BTreeMap<OrderedDefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+    specced_functions: BTreeMap<
+        OrderedDefId,
+        &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+    >,
 
     /// store info of closures we translated to emit closure trait impls
     pub(crate) closure_info: BTreeMap<OrderedDefId, ClosureInfo<'tcx, 'def>>,
@@ -224,7 +226,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     pub(crate) fn lookup_function_spec(
         &'_ self,
         did: DefId,
-    ) -> Option<&'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>> {
+    ) -> Option<&'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>> {
         let ordered_did = self.get_ordered_did(did);
         if let Some(translated_fn) = self.translated_functions.get(&ordered_did) {
             Some(translated_fn.spec)
@@ -285,7 +287,7 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     pub(crate) fn provide_specced_function(
         &mut self,
         did: DefId,
-        spec: &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>,
+        spec: &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
     ) {
         let ordered_did = self.get_ordered_did(did);
         let meta = &self.name_map[&ordered_did];
@@ -301,8 +303,11 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     /// Iterate over the functions we have generated only specs for.
     pub(crate) fn iter_only_spec(
         &self,
-    ) -> btree_map::Iter<'_, OrderedDefId, &'def radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>
-    {
+    ) -> btree_map::Iter<
+        '_,
+        OrderedDefId,
+        &'def radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+    > {
         self.specced_functions.iter()
     }
 }

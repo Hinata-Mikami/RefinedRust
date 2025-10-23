@@ -64,7 +64,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         attrs: &'a [&'a hir::AttrItem],
         ty_translator: &'def types::TX<'def, 'tcx>,
         trait_registry: &'def registry::TR<'tcx, 'def>,
-    ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<
+        radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        TranslationError<'tcx>,
+    > {
         // use a dummy name as we're never going to use the code.
         let mut translated_fn = radium::FunctionBuilder::new(name, "dummy", spec_name, trait_req_incl_name);
 
@@ -495,7 +498,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate the body of the function.
     pub(crate) fn translate(
         self,
-        spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+        spec_arena: &'def Arena<
+            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        >,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
         let translator = translation::TX::new(
             self.env,
@@ -515,7 +520,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translation that only generates a specification.
     pub(crate) fn generate_spec(
         self,
-    ) -> Result<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<
+        radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        TranslationError<'tcx>,
+    > {
         self.translated_fn.try_into().map_err(TranslationError::AttributeError)
     }
 }
@@ -630,7 +638,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Err(TranslationError::UnknownAttributeParser(parser));
         }
 
-        let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
+        let mut spec_builder = radium::specs::functions::LiteralSpecBuilder::new();
 
         // add universal constraints
         {
@@ -689,7 +697,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         arg_names: &[String],
         inputs: &[ty::Ty<'tcx>],
         output: ty::Ty<'tcx>,
-    ) -> Result<radium::LiteralFunctionSpecBuilder<'def>, TranslationError<'tcx>> {
+    ) -> Result<radium::specs::functions::LiteralSpecBuilder<'def>, TranslationError<'tcx>> {
         info!("inputs: {:?}, output: {:?}", inputs, output);
 
         let mut translated_arg_types: Vec<radium::Type<'def>> = Vec::new();
@@ -703,7 +711,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let ret_is_option = ty_translator.translator.is_builtin_option_type(output);
         let ret_is_result = ty_translator.translator.is_builtin_result_type(output);
 
-        let mut spec_builder = radium::LiteralFunctionSpecBuilder::new();
+        let mut spec_builder = radium::specs::functions::LiteralSpecBuilder::new();
 
         let parser = rrconfig::attribute_parser();
         match parser.as_str() {

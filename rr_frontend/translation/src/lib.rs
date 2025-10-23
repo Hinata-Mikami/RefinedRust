@@ -65,7 +65,7 @@ pub struct VerificationCtxt<'tcx, 'rcx> {
     functions: &'rcx [LocalDefId],
     closures: &'rcx [LocalDefId],
 
-    fn_arena: &'rcx Arena<radium::FunctionSpec<'rcx, radium::InnerFunctionSpec<'rcx>>>,
+    fn_arena: &'rcx Arena<radium::specs::functions::Spec<'rcx, radium::specs::functions::InnerSpec<'rcx>>>,
 
     /// the second component determines whether to include it in the code file as well
     extra_exports: BTreeSet<(coq::module::Export, bool)>,

@@ -200,7 +200,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// if successful.
     pub(crate) fn translate(
         mut self,
-        spec_arena: &'def Arena<radium::FunctionSpec<'def, radium::InnerFunctionSpec<'def>>>,
+        spec_arena: &'def Arena<
+            radium::specs::functions::Spec<'def, radium::specs::functions::InnerSpec<'def>>,
+        >,
     ) -> Result<radium::Function<'def>, TranslationError<'tcx>> {
         // add loop info
         let loop_info = self.proc.loop_info();

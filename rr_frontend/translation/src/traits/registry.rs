@@ -36,7 +36,7 @@ pub(crate) struct TR<'tcx, 'def> {
     type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
 
     /// trait declarations
-    trait_decls: RefCell<HashMap<LocalDefId, radium::TraitSpecDecl<'def>>>,
+    trait_decls: RefCell<HashMap<LocalDefId, specs::TraitSpecDecl<'def>>>,
     /// trait literals for using occurrences, including shims we import
     trait_literals: RefCell<HashMap<DefId, specs::LiteralTraitSpecRef<'def>>>,
 
@@ -54,9 +54,9 @@ pub(crate) struct TR<'tcx, 'def> {
     /// arena for allocating impl literals
     impl_arena: &'def Arena<specs::LiteralTraitImpl>,
     /// arena for allocating trait use references
-    trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
+    trait_use_arena: &'def Arena<specs::LiteralTraitSpecUseCell<'def>>,
     /// arena for function specifications
-    fn_spec_arena: &'def Arena<specs::FunctionSpec<'def, specs::InnerFunctionSpec<'def>>>,
+    fn_spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
 }
 
 impl<'tcx, 'def> TR<'tcx, 'def> {
@@ -70,7 +70,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_arena: &'def Arena<specs::LiteralTraitSpec>,
         impl_arena: &'def Arena<specs::LiteralTraitImpl>,
         trait_use_arena: &'def Arena<radium::LiteralTraitSpecUseCell<'def>>,
-        fn_spec_arena: &'def Arena<specs::FunctionSpec<'def, specs::InnerFunctionSpec<'def>>>,
+        fn_spec_arena: &'def Arena<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>>,
     ) -> Self {
         Self {
             env,

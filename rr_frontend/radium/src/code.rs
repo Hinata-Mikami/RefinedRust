@@ -882,7 +882,7 @@ struct InvariantMap(HashMap<usize, LoopSpec>);
 #[expect(clippy::partial_pub_fields)]
 pub struct Function<'def> {
     pub code: FunctionCode,
-    pub spec: &'def FunctionSpec<'def, InnerFunctionSpec<'def>>,
+    pub spec: &'def functions::Spec<'def, functions::InnerSpec<'def>>,
 
     /// Other functions that are used by this one.
     other_functions: Vec<UsedProcedure<'def>>,
@@ -1563,7 +1563,7 @@ pub struct FunctionBuilder<'def> {
     code_name: String,
 
     /// optionally, a specification, if one has been created
-    pub spec: FunctionSpec<'def, Option<InnerFunctionSpec<'def>>>,
+    pub spec: functions::Spec<'def, Option<functions::InnerSpec<'def>>>,
 
     /// a sequence of other functions used by this function
     /// (Note that there may be multiple assumptions here with the same spec, if they are
@@ -1595,8 +1595,12 @@ impl<'def> FunctionBuilder<'def> {
     #[must_use]
     pub fn new(name: &str, code_name: &str, spec_name: &str, trait_req_incl_name: &str) -> Self {
         let code_builder = FunctionCodeDef::new();
-        let spec =
-            FunctionSpec::empty(spec_name.to_owned(), trait_req_incl_name.to_owned(), name.to_owned(), None);
+        let spec = functions::Spec::empty(
+            spec_name.to_owned(),
+            trait_req_incl_name.to_owned(),
+            name.to_owned(),
+            None,
+        );
         FunctionBuilder {
             other_functions: Vec::new(),
             code: code_builder,
@@ -1684,19 +1688,19 @@ impl<'def> FunctionBuilder<'def> {
     /// Add a default function spec.
     pub fn add_trait_function_spec(&mut self, spec: InstantiatedTraitFunctionSpec<'def>) {
         assert!(self.spec.spec.is_none(), "Overriding specification of FunctionBuilder");
-        self.spec.spec = Some(InnerFunctionSpec::TraitDefault(spec));
+        self.spec.spec = Some(functions::InnerSpec::TraitDefault(spec));
     }
 
     /// Add a functon specification from a specification builder.
-    pub fn add_function_spec_from_builder(&mut self, spec_builder: LiteralFunctionSpecBuilder<'def>) {
+    pub fn add_function_spec_from_builder(&mut self, spec_builder: functions::LiteralSpecBuilder<'def>) {
         assert!(self.spec.spec.is_none(), "Overriding specification of FunctionBuilder");
         let lit_spec = spec_builder.into_function_spec();
-        self.spec.spec = Some(InnerFunctionSpec::Lit(lit_spec));
+        self.spec.spec = Some(functions::InnerSpec::Lit(lit_spec));
     }
 
     pub fn into_function(
         mut self,
-        arena: &'def Arena<FunctionSpec<'def, InnerFunctionSpec<'def>>>,
+        arena: &'def Arena<functions::Spec<'def, functions::InnerSpec<'def>>>,
     ) -> Function<'def> {
         assert!(self.spec.spec.is_some(), "No specification provided");
 
@@ -1733,7 +1737,7 @@ impl<'def> FunctionBuilder<'def> {
     }
 }
 
-impl<'def> TryFrom<FunctionBuilder<'def>> for FunctionSpec<'def, InnerFunctionSpec<'def>> {
+impl<'def> TryFrom<FunctionBuilder<'def>> for functions::Spec<'def, functions::InnerSpec<'def>> {
     type Error = String;
 
     fn try_from(mut builder: FunctionBuilder<'def>) -> Result<Self, String> {

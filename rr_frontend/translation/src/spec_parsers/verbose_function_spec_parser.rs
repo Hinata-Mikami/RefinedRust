@@ -46,7 +46,7 @@ pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
         reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
-    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>>;
+    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>>;
 }
 
 pub(crate) struct ClosureSpecInfo {
@@ -207,7 +207,7 @@ pub(crate) trait FunctionSpecParser<'def> {
     fn parse_function_spec<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
     ) -> Result<(), String>;
 
     /// Parse a set of attributes into a closure spec.
@@ -216,7 +216,7 @@ pub(crate) trait FunctionSpecParser<'def> {
     fn parse_closure_spec<'a, F>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: F,
     ) -> Result<ClosureSpecInfo, String>
@@ -589,7 +589,10 @@ impl<'def> ParsedSpecInfo<'def> {
         }
     }
 
-    fn push_to_builder(&self, builder: &mut radium::LiteralFunctionSpecBuilder<'def>) -> Result<(), String> {
+    fn push_to_builder(
+        &self,
+        builder: &mut specs::functions::LiteralSpecBuilder<'def>,
+    ) -> Result<(), String> {
         for param in &self.params {
             builder.add_param(param.clone().into())?;
         }
@@ -737,7 +740,10 @@ struct ParsedClosureSpecInfo<'def> {
 }
 
 impl<'def> ParsedClosureSpecInfo<'def> {
-    fn push_to_builder(&self, builder: &mut radium::LiteralFunctionSpecBuilder<'def>) -> Result<(), String> {
+    fn push_to_builder(
+        &self,
+        builder: &mut specs::functions::LiteralSpecBuilder<'def>,
+    ) -> Result<(), String> {
         for param in &self.params {
             builder.add_param(param.to_owned())?;
         }
@@ -1260,7 +1266,7 @@ where
         name_prefix: &str,
         trait_use: radium::LiteralTraitSpecUseRef<'def>,
         reqs: &BTreeMap<String, radium::TraitSpecAttrInst>,
-    ) -> Option<radium::FunctionSpecTraitReqSpecialization<'def>> {
+    ) -> Option<specs::functions::SpecTraitReqSpecialization<'def>> {
         self.scope.attach_trait_attr_requirement(name_prefix, trait_use, reqs)
     }
 }
@@ -1272,7 +1278,7 @@ where
     fn parse_closure_spec<'a, H>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-        builder: &'a mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: H,
     ) -> Result<ClosureSpecInfo, String>
@@ -1391,7 +1397,7 @@ where
     fn parse_function_spec(
         &mut self,
         attrs: &[&hir::AttrItem],
-        builder: &mut radium::LiteralFunctionSpecBuilder<'def>,
+        builder: &mut specs::functions::LiteralSpecBuilder<'def>,
     ) -> Result<(), String> {
         let mut spec = ParsedSpecInfo::new();
 
