@@ -16,6 +16,7 @@ use derive_more::{Display, From};
 use log::info;
 use radium::{coq, specs};
 use serde::{Deserialize, Serialize};
+use specs::types;
 use typed_arena::Arena;
 
 use crate::shims::flat;
@@ -103,15 +104,15 @@ struct ShimAdtInfo {
     /// whether this definition depends on trait attrs of its generic scope
     needs_trait_atttrs: bool,
 }
-impl From<specs::AdtShimInfo> for ShimAdtInfo {
-    fn from(shim: specs::AdtShimInfo) -> Self {
+impl From<types::AdtShimInfo> for ShimAdtInfo {
+    fn from(shim: types::AdtShimInfo) -> Self {
         Self {
             enum_name: shim.enum_name,
             needs_trait_atttrs: shim.needs_trait_attrs,
         }
     }
 }
-impl From<ShimAdtInfo> for specs::AdtShimInfo {
+impl From<ShimAdtInfo> for types::AdtShimInfo {
     fn from(shim: ShimAdtInfo) -> Self {
         Self {
             enum_name: shim.enum_name,
@@ -240,7 +241,7 @@ pub(crate) struct AdtShim<'a> {
     pub refinement_type: String,
     pub syn_type: String,
     pub sem_type: String,
-    pub info: specs::AdtShimInfo,
+    pub info: types::AdtShimInfo,
 }
 
 impl<'a> From<AdtShim<'a>> for ShimAdtEntry {

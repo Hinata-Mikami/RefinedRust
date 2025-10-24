@@ -90,12 +90,15 @@ pub struct InstanceSpec<'def> {
 pub struct SpecAttrsDecl {
     /// a map of attributes and their types
     attrs: BTreeMap<String, coq::term::Type>,
+    /// optionally, a semantic interpretation (like `Copy`) of the trait in terms of semantic types
     semantic_interp: Option<String>,
 }
 
 #[derive(Clone, Debug)]
 pub enum SpecAttrInst {
+    /// attribute is implemented with a term
     Term(coq::term::Term),
+    /// attribute is implemented with an Ltac proof
     Proof(String),
 }
 
@@ -479,6 +482,7 @@ impl fmt::Display for ReqScopeInst {
     }
 }
 
+/// Instantiation of a trait requirement by specializing an impl.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct SpecializedImpl<'def> {
     impl_ref: LiteralImplRef<'def>,
@@ -519,6 +523,8 @@ impl SpecializedImpl<'_> {
     }
 }
 
+/// Instantiation of a trait requirement by instantiating with (a specialization of) a quantified
+/// trait requirement.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct QuantifiedImpl<'def> {
     pub(crate) trait_ref: LiteralSpecUseRef<'def>,
@@ -554,7 +560,9 @@ pub enum ReqInstSpec<'def> {
 /// The representation of the associated type instantiation is generic.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct ReqInst<'def, T = Type<'def>> {
+    /// the spec instantiation for this requirement
     pub spec: ReqInstSpec<'def>,
+    /// the origin of the trait requirement
     pub origin: TyParamOrigin,
     /// instantiation of associated types, excluding the associated types which are already
     /// determined by constraints between associated types at the declaration site of this
@@ -567,8 +575,6 @@ pub struct ReqInst<'def, T = Type<'def>> {
     /// This is non-empty if the trait requirement we are fulfilling is higher-ranked,
     /// i.e., it quantifies over some lifetimes (`for<'a> ...`), HRTBs.
     pub scope: ReqScope,
-    // remaining quantified associated types
-    //quantified_assoc_tys: Vec<LiteralTyParam>,
 }
 
 impl<T> ReqInst<'_, T> {
@@ -647,6 +653,7 @@ impl<'def> ReqInst<'def, Type<'def>> {
     }
 }
 
+/// Info about a trait requirement.
 pub trait ReqInfo {
     fn get_assoc_ty_params(&self) -> Vec<LiteralTyParam>;
     fn get_origin(&self) -> TyParamOrigin;
@@ -861,8 +868,7 @@ fn make_trait_instance<'def>(
     Ok(document)
 }
 
-/// When translating a trait declaration, we should generate this, bundling all the components of
-/// the trait together.
+/// This bundles all components of a trait in a trait declaration.
 #[derive(Constructor, Clone, Debug)]
 #[expect(clippy::partial_pub_fields)]
 pub struct SpecDecl<'def> {
@@ -1401,8 +1407,7 @@ impl<'def> RefInst<'def> {
     }
 }
 
-/// When translating an impl block, we should generate this, which bundles all components of the
-/// implementation together.
+/// The bundled specification of a trait impl.
 #[derive(Constructor, Clone, Debug)]
 pub struct ImplSpec<'def> {
     /// the instantiation of the trait

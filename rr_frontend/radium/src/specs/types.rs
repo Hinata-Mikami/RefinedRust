@@ -4,8 +4,26 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use crate::specs::{AdtShimInfo, GenericScopeInst, traits};
+use crate::specs::{GenericScopeInst, traits};
 use crate::{coq, lang};
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct AdtShimInfo {
+    /// if this is an enum, its name
+    pub enum_name: Option<String>,
+
+    /// whether the type definition needs trait attributes
+    pub needs_trait_attrs: bool,
+}
+impl AdtShimInfo {
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            enum_name: None,
+            needs_trait_attrs: false,
+        }
+    }
+}
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Literal {
@@ -21,6 +39,7 @@ pub struct Literal {
     /// the syntactic type
     pub syn_type: lang::SynType,
 
+    /// extra info needed for using this literal
     pub info: AdtShimInfo,
 }
 

@@ -540,7 +540,7 @@ where
                 type_term: lit_ty.to_owned(),
                 refinement_type: coq::term::Type::Infer,
                 syn_type: ty.into(),
-                info: specs::AdtShimInfo::empty(),
+                info: specs::types::AdtShimInfo::empty(),
             };
             let lit_ref = (self.make_literal)(lit_ty);
             let lit_ty_use = specs::types::LiteralUse::new_with_annot(lit_ref);

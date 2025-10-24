@@ -23,7 +23,7 @@ pub mod traits;
 pub mod types;
 
 /// Representation of (semantic) `RefinedRust` types.
-/// 'def is the lifetime of the frontend for referencing struct definitions.
+/// 'def is the lifetime of the frontend for referencing ADT definitions.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Type<'def> {
     #[display("bool_t")]
@@ -53,7 +53,7 @@ pub enum Type<'def> {
     #[display("{}", _0.generate_type_term())]
     Enum(enums::AbstractUse<'def>),
 
-    /// literal types embedded as strings
+    /// literal types (defined outside of the current module) embedded as strings
     #[display("{}", _0.generate_type_term())]
     Literal(types::LiteralUse<'def>),
 
@@ -271,22 +271,6 @@ where
     write!(f, "\n")?;
 
     Ok((context_names, context_names_without_sigma))
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct AdtShimInfo {
-    pub enum_name: Option<String>,
-
-    pub needs_trait_attrs: bool,
-}
-impl AdtShimInfo {
-    #[must_use]
-    pub const fn empty() -> Self {
-        Self {
-            enum_name: None,
-            needs_trait_attrs: false,
-        }
-    }
 }
 
 /// The origin of a type parameter.

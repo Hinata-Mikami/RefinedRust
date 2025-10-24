@@ -12,7 +12,7 @@ use std::ops::Add;
 use derive_more::Display;
 use indent_write::fmt::IndentWriter;
 
-use crate::specs::{AdtShimInfo, GenericScope, GenericScopeInst, Type, structs, types};
+use crate::specs::{GenericScope, GenericScopeInst, Type, structs, types};
 use crate::{BASE_INDENT, coq, lang, model, push_str_list};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -668,7 +668,7 @@ impl<'def> Abstract<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> types::Literal {
-        let info = AdtShimInfo {
+        let info = types::AdtShimInfo {
             enum_name: Some(self.enum_def_name.clone()),
             needs_trait_attrs: false,
         };

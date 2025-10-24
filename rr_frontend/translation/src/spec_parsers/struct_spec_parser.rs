@@ -386,7 +386,7 @@ where
             type_term: lit.ty.clone(),
             refinement_type: coq::term::Type::Infer,
             syn_type: ty.into(),
-            info: specs::AdtShimInfo::empty(),
+            info: specs::types::AdtShimInfo::empty(),
         };
         let lit_ref = (self.make_literal)(lit_ty);
         let lit_use = specs::types::LiteralUse::new_with_annot(lit_ref);
