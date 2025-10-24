@@ -326,7 +326,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     let type_name =
                         self.env.get_assoc_item_name(c.def_id).ok_or(Error::NotAnAssocType(c.def_id))?;
                     let type_name = strip_coq_ident(&type_name);
-                    let lit = specs::LiteralTyParam::new(&type_name, &type_name);
+                    let lit = specs::LiteralTyParam::new(&type_name);
                     assoc_types.push(lit);
                 } else {
                     return Err(Error::AssocConstNotSupported.into());
@@ -1177,11 +1177,7 @@ impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
         // so make a symbolic reference
         if self.is_self_use {
             // make a literal
-            let lit = specs::LiteralTyParam::new_with_origin(
-                &type_name,
-                &type_name,
-                specs::TyParamOrigin::AssocInDecl,
-            );
+            let lit = specs::LiteralTyParam::new_with_origin(&type_name, specs::TyParamOrigin::AssocInDecl);
             Ok(specs::Type::LiteralParam(lit))
         } else {
             let trait_use_ref = self.trait_use.borrow();

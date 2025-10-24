@@ -286,9 +286,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
                     let lit = if let Some(of_did) = with_origin {
                         let origin = Self::determine_origin_of_param(of_did, tcx, *x);
-                        specs::LiteralTyParam::new_with_origin(&name, &name, origin)
+                        specs::LiteralTyParam::new_with_origin(&name, origin)
                     } else {
-                        specs::LiteralTyParam::new(&name, &name)
+                        specs::LiteralTyParam::new(&name)
                     };
                     scope.push(Param::Ty(lit));
                 } else {
@@ -610,7 +610,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             for ty_did in &assoc_types {
                 let name = env.get_assoc_item_name(*ty_did).unwrap();
                 let path = vec![RustPathElem::AssocItem(name.clone())];
-                let ty = specs::Type::LiteralParam(specs::LiteralTyParam::new(&name, &name));
+                let ty = specs::Type::LiteralParam(specs::LiteralTyParam::new(&name));
                 if let hash_map::Entry::Vacant(e) = self.trait_scope.assoc_ty_names.entry(path) {
                     e.insert(ty);
                 } else {
@@ -691,7 +691,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
                     scope.push(Param::Const);
                 },
                 ty::GenericParamDefKind::Type { .. } => {
-                    let lit = specs::LiteralTyParam::new(&name, &name);
+                    let lit = specs::LiteralTyParam::new(&name);
                     ty_names.insert(p.name.as_str().to_owned(), scope.len());
                     scope.push(Param::Ty(lit));
                 },

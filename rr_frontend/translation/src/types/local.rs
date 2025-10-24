@@ -387,7 +387,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Bind the generics we use.
         for param in &tyvars {
             // NOTE: this should have the same name as the using occurrences
-            let lit = specs::LiteralTyParam::new(param.name.as_str(), param.name.as_str());
+            let lit = specs::LiteralTyParam::new(param.name.as_str());
             callee_ty_param_inst.push(specs::Type::LiteralParam(lit.clone()));
             scope.add_ty_param(lit);
         }

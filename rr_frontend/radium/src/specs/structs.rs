@@ -336,7 +336,7 @@ impl<'def> Abstract<'def> {
 
         for i in 0..num_fields {
             let param_name = format!("T{}", i);
-            let lit = LiteralTyParam::new(&param_name, &param_name);
+            let lit = LiteralTyParam::new(&param_name);
             scope.add_ty_param(lit.clone());
 
             builder.add_field(&i.to_string(), Type::LiteralParam(lit));

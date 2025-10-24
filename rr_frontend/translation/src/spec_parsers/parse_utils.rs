@@ -620,7 +620,7 @@ mod tests {
     fn literal1() {
         let lit = "{rt_of T} * {rt_of T}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T", "T"));
+        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(T_rt) * (T_rt)");
@@ -630,7 +630,7 @@ mod tests {
     fn literal2() {
         let lit = "{ty_of T} * {ty_of T}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T", "T"));
+        scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "T_ty * T_ty");
@@ -640,7 +640,7 @@ mod tests {
     fn literal3() {
         let lit = "{rt_of Self} * {rt_of Self}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self", "Self"));
+        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "(Self_rt) * (Self_rt)");
@@ -650,7 +650,7 @@ mod tests {
     fn literal4() {
         let lit = "{{rt_of Bla}}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self", "Self"));
+        scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self"));
 
         let (res, _) = scope.process_coq_literal(lit);
         assert_eq!(res, "{rt_of Bla}");
@@ -660,10 +660,10 @@ mod tests {
     fn assoc_1() {
         let lit = "{rt_of Bla::Blub}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla", "Bla"));
+        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla"));
         scope.assoc_names.insert(
             vec![RustPathElem::AssocItem("Bla".to_owned()), RustPathElem::AssocItem("Blub".to_owned())],
-            specs::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
+            specs::LiteralTyParam::new("Bla_Blub"),
         );
 
         let (res, _) = scope.process_coq_literal(lit);
@@ -674,14 +674,14 @@ mod tests {
     fn assoc_2() {
         let lit = "{rt_of Bla::Bla::Blub}";
         let mut scope = TestScope::default();
-        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla", "Bla"));
+        scope.ty_names.insert("Bla".to_owned(), specs::LiteralTyParam::new("Bla"));
         scope.assoc_names.insert(
             vec![
                 RustPathElem::AssocItem("Bla".to_owned()),
                 RustPathElem::AssocItem("Bla".to_owned()),
                 RustPathElem::AssocItem("Blub".to_owned()),
             ],
-            specs::LiteralTyParam::new("Bla_Blub", "Bla_Blub"),
+            specs::LiteralTyParam::new("Bla_Blub"),
         );
 
         let (res, _) = scope.process_coq_literal(lit);

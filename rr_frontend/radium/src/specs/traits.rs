@@ -419,7 +419,7 @@ impl<'def> LiteralSpecUse<'def> {
         } else {
             format!("{}_{}", self.mangled_base, name)
         };
-        LiteralTyParam::new_with_origin(&rust_name, &rust_name, self.origin)
+        LiteralTyParam::new_with_origin(&rust_name, self.origin)
     }
 
     /// Make a using occurrence of a particular associated type.
@@ -839,7 +839,7 @@ fn make_trait_instance<'def>(
         // Hence we manually introduce the binders necessary here.
         let self_assoc_inst = spec.methods.iter().next().unwrap().1.self_assoc_types_inst(assoc_types);
         for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
-            let assoc_param = LiteralTyParam::new(name, name);
+            let assoc_param = LiteralTyParam::new(name);
             term = coq::term::Term::LetIn(
                 coq::Ident::new(&assoc_param.refinement_type),
                 Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),

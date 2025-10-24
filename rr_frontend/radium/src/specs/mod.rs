@@ -307,12 +307,12 @@ pub struct LiteralTyParam {
 
 impl LiteralTyParam {
     #[must_use]
-    pub fn new(rust_name: &str, base: &str) -> Self {
+    pub fn new(rust_name: &str) -> Self {
         Self {
             rust_name: rust_name.to_owned(),
-            type_term: format!("{base}_ty"),
-            refinement_type: format!("{base}_rt"),
-            syn_type: format!("{base}_st"),
+            type_term: format!("{rust_name}_ty"),
+            refinement_type: format!("{rust_name}_rt"),
+            syn_type: format!("{rust_name}_st"),
             origin: TyParamOrigin::Direct,
         }
     }
@@ -322,8 +322,8 @@ impl LiteralTyParam {
     }
 
     #[must_use]
-    pub fn new_with_origin(rust_name: &str, base: &str, origin: TyParamOrigin) -> Self {
-        let mut x = Self::new(rust_name, base);
+    pub fn new_with_origin(rust_name: &str, origin: TyParamOrigin) -> Self {
+        let mut x = Self::new(rust_name);
         x.origin = origin;
         x
     }
