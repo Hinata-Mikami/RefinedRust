@@ -361,7 +361,7 @@ impl<'def> Abstract<'def> {
             .get_all_ty_params_with_assocs()
             .params
             .iter()
-            .map(|p| format!("(ty_lfts {})", p.type_term))
+            .map(|p| format!("(ty_lfts {})", p.type_term()))
             .collect();
 
         if self.is_recursive {
@@ -388,7 +388,7 @@ impl<'def> Abstract<'def> {
             .get_all_ty_params_with_assocs()
             .params
             .iter()
-            .map(|p| format!("(ty_wf_E {})", p.type_term))
+            .map(|p| format!("(ty_wf_E {})", p.type_term()))
             .collect();
 
         if self.is_recursive {
@@ -442,7 +442,7 @@ impl<'def> Abstract<'def> {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " {{{} : RT}}", names.refinement_type).unwrap();
+                write!(out, " {{{} : RT}}", names.refinement_type()).unwrap();
             }
             out.push_str(".\n");
         }
@@ -459,7 +459,7 @@ impl<'def> Abstract<'def> {
             write!(out, "{indent}Let {}", self.plain_rt_name).unwrap();
             // add dummy binders
             for names in &all_ty_params.params {
-                write!(out, " (_{} : RT)", names.refinement_type).unwrap();
+                write!(out, " (_{} : RT)", names.refinement_type()).unwrap();
             }
             writeln!(out, " := {}.", self.spec.rfn_type).unwrap();
 
@@ -469,7 +469,7 @@ impl<'def> Abstract<'def> {
             write!(out, "{indent}Let {}", self.plain_ty_name).unwrap();
             // add dummy binders
             for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type).unwrap();
+                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
             }
             writeln!(out, " := {} {dummy_ty_name}.", self.scope).unwrap();
 
@@ -552,7 +552,7 @@ impl<'def> Abstract<'def> {
         // generate terms to apply the sls app to
         let mut els_app = Vec::new();
         for names in &all_ty_params.params {
-            let term = format!("(ty_syn_type {})", names.type_term);
+            let term = format!("(ty_syn_type {})", names.type_term());
             els_app.push(term);
         }
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);

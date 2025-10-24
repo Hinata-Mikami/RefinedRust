@@ -188,7 +188,7 @@ impl Spec {
         // go over all the types and concat their lfts
         for spec in &self.ty_own_invariants {
             for ty in &spec.annot_meta.escaped_tyvars {
-                write!(out, " ++ (ty_lfts ({}))", ty.type_term).unwrap();
+                write!(out, " ++ (ty_lfts ({}))", ty.type_term()).unwrap();
             }
             for lft in &spec.annot_meta.escaped_lfts {
                 write!(out, " ++ [{}]", lft).unwrap();
@@ -206,7 +206,7 @@ impl Spec {
         // go over all the types and concat their lfts
         for spec in &self.ty_own_invariants {
             for ty in &spec.annot_meta.escaped_tyvars {
-                write!(out, " ++ (ty_wf_E ({}))", ty.type_term).unwrap();
+                write!(out, " ++ (ty_wf_E ({}))", ty.type_term()).unwrap();
             }
         }
 
@@ -430,7 +430,7 @@ impl Spec {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type).unwrap();
+                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
             }
             out.push_str(".\n");
         }

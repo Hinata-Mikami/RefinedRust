@@ -167,7 +167,7 @@ impl<'def> AbstractVariant<'def> {
             .iter()
             .map(|names| {
                 coq::term::Term::RecordProj(
-                    Box::new(coq::term::Term::Literal(names.type_term.clone())),
+                    Box::new(coq::term::Term::Literal(names.type_term())),
                     "ty_syn_type".to_owned(),
                 )
             })
@@ -253,7 +253,7 @@ impl<'def> AbstractVariant<'def> {
             // first push the (implicit) refinement type parameters
             write!(out, "{}Context", indent).unwrap();
             for names in &all_ty_params.params {
-                write!(out, " ({} : RT)", names.refinement_type).unwrap();
+                write!(out, " ({} : RT)", names.refinement_type()).unwrap();
             }
             out.push_str(".\n");
         }
@@ -457,7 +457,7 @@ impl<'def> Abstract<'def> {
                 // first push the (implicit) refinement type parameters
                 write!(out, "{}Context", indent).unwrap();
                 for names in &all_ty_params.params {
-                    write!(out, " ({} : RT)", names.refinement_type).unwrap();
+                    write!(out, " ({} : RT)", names.refinement_type()).unwrap();
                 }
                 out.push_str(".\n");
             }
@@ -469,7 +469,7 @@ impl<'def> Abstract<'def> {
             let mut sls_app = Vec::new();
             for names in &all_ty_params.params {
                 // TODO this is duplicated with the same processing for Type::Literal...
-                let term = format!("(ty_syn_type {})", names.type_term);
+                let term = format!("(ty_syn_type {})", names.type_term());
                 sls_app.push(term);
             }
 

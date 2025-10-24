@@ -58,7 +58,7 @@ pub enum Type<'def> {
     Literal(types::LiteralUse<'def>),
 
     /// literal type parameters
-    #[display("{}", _0.type_term)]
+    #[display("{}", _0.type_term())]
     LiteralParam(LiteralTyParam),
 
     /// the uninit type given to uninitialized values
@@ -104,7 +104,7 @@ impl<'def> From<&Type<'def>> for lang::SynType {
             // NOTE: for now, just treat Never as a ZST
             Type::Never => Self::Never,
 
-            Type::LiteralParam(lit) => Self::Literal(lit.syn_type.clone()),
+            Type::LiteralParam(lit) => Self::Literal(lit.syn_type()),
         }
     }
 }
@@ -137,7 +137,7 @@ impl Type<'_> {
 
             Self::RawPtr => model::Type::Loc.into(),
 
-            Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type.clone()),
+            Self::LiteralParam(lit) => coq::term::Type::Literal(lit.refinement_type()),
             Self::Literal(lit) => coq::term::Type::Literal(lit.get_rfn_type()),
 
             Self::Struct(su) => {
@@ -292,15 +292,6 @@ pub struct LiteralTyParam {
     /// Rust name
     pub rust_name: String,
 
-    /// Coq name of the type
-    pub(crate) type_term: String,
-
-    /// the refinement type
-    pub(crate) refinement_type: String,
-
-    /// the syntactic type
-    pub syn_type: String,
-
     /// the declaration site of this type parameter
     origin: TyParamOrigin,
 }
@@ -310,15 +301,8 @@ impl LiteralTyParam {
     pub fn new(rust_name: &str) -> Self {
         Self {
             rust_name: rust_name.to_owned(),
-            type_term: format!("{rust_name}_ty"),
-            refinement_type: format!("{rust_name}_rt"),
-            syn_type: format!("{rust_name}_st"),
             origin: TyParamOrigin::Direct,
         }
-    }
-
-    pub const fn set_origin(&mut self, origin: TyParamOrigin) {
-        self.origin = origin;
     }
 
     #[must_use]
@@ -328,21 +312,43 @@ impl LiteralTyParam {
         x
     }
 
+    pub const fn set_origin(&mut self, origin: TyParamOrigin) {
+        self.origin = origin;
+    }
+
+    /// Rocq name of the type
+    #[must_use]
+    pub(crate) fn type_term(&self) -> String {
+        format!("{}_ty", self.rust_name)
+    }
+
+    /// The refinement type
+    #[must_use]
+    pub(crate) fn refinement_type(&self) -> String {
+        format!("{}_rt", self.rust_name)
+    }
+
+    /// The syntactic type
+    #[must_use]
+    pub fn syn_type(&self) -> String {
+        format!("{}_st", self.rust_name)
+    }
+
     #[must_use]
     fn make_refinement_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.refinement_type.clone()), coq::term::Type::RT)
+        coq::binder::Binder::new(Some(self.refinement_type()), coq::term::Type::RT)
     }
 
     #[must_use]
     fn make_syntype_param(&self) -> coq::binder::Binder {
-        coq::binder::Binder::new(Some(self.syn_type.clone()), model::Type::SynType)
+        coq::binder::Binder::new(Some(self.syn_type()), model::Type::SynType)
     }
 
     #[must_use]
     fn make_semantic_param(&self) -> coq::binder::Binder {
         coq::binder::Binder::new(
-            Some(self.type_term.clone()),
-            model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type.clone()))),
+            Some(self.type_term()),
+            model::Type::Ttype(Box::new(coq::term::Type::Literal(self.refinement_type()))),
         )
     }
 }
@@ -672,7 +678,7 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
 
     #[must_use]
     fn generate_validity_term_for_typaram(ty: &LiteralTyParam) -> coq::iris::IProp {
-        let prop = format!("typaram_wf {} {} {}", ty.refinement_type, ty.syn_type, ty.type_term);
+        let prop = format!("typaram_wf {} {} {}", ty.refinement_type(), ty.syn_type(), ty.type_term());
         coq::iris::IProp::Atom(prop)
     }
 
@@ -735,7 +741,7 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
         let mut out = String::new();
 
         for ty in self.get_all_ty_params_with_assocs().params {
-            out.push_str(&format!(" <TY> {}", ty.type_term));
+            out.push_str(&format!(" <TY> {}", ty.type_term()));
         }
         for lft in self.get_lfts() {
             out.push_str(&format!(" <LFT> {}", lft));
@@ -752,11 +758,7 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
         coq::term::Type::UserDefined(model::Type::SpecWith(
             self.get_num_lifetimes(),
             // TODO: `LiteralTyParam` should take `Type` instead of `String`
-            params
-                .params
-                .iter()
-                .map(|x| coq::term::Type::Literal(x.refinement_type.clone()))
-                .collect(),
+            params.params.iter().map(|x| coq::term::Type::Literal(x.refinement_type())).collect(),
             spec,
         ))
     }
@@ -768,7 +770,7 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
 
         out.push_str(&format!("spec_with {} [", self.get_num_lifetimes()));
         let tys = self.get_all_ty_params_with_assocs();
-        push_str_list!(out, &tys.params, "; ", |x| x.refinement_type.clone());
+        push_str_list!(out, &tys.params, "; ", LiteralTyParam::refinement_type);
         out.push(']');
 
         out
@@ -847,16 +849,16 @@ impl<T: traits::ReqInfo> GenericScope<'_, T> {
         let mut typarams_pattern = String::with_capacity(100);
 
         write!(typarams_pattern, "( *[")?;
-        write_list!(typarams_pattern, &all_params.params, "; ", |x| x.type_term.clone())?;
+        write_list!(typarams_pattern, &all_params.params, "; ", LiteralTyParam::type_term)?;
         write!(typarams_pattern, "])")?;
 
         let mut typarams_ty_list = String::with_capacity(100);
         write!(typarams_ty_list, "[")?;
         write_list!(typarams_ty_list, &all_params.params, "; ", |x| {
             if only_core_as_fn {
-                format!("({}, {})", x.refinement_type, x.syn_type)
+                format!("({}, {})", x.refinement_type(), x.syn_type())
             } else {
-                x.refinement_type.clone()
+                x.refinement_type()
             }
         })?;
         write!(typarams_ty_list, "]")?;

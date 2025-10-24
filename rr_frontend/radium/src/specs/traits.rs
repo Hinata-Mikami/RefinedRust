@@ -693,12 +693,12 @@ fn make_trait_instance<'def>(
     let mut def_params = Vec::new();
     // all rts
     for param in ty_params.params.iter().chain(assoc_types).chain(assoc_params.params.iter()) {
-        let rt_param = coq::binder::Binder::new(Some(param.refinement_type.clone()), coq::term::Type::RT);
+        let rt_param = coq::binder::Binder::new(Some(param.refinement_type()), coq::term::Type::RT);
         def_params.push(rt_param);
     }
     // all sts
     for param in ty_params.params.iter().chain(assoc_types).chain(assoc_params.params.iter()) {
-        let rt_param = coq::binder::Binder::new(Some(param.syn_type.clone()), model::Type::SynType);
+        let rt_param = coq::binder::Binder::new(Some(param.syn_type()), model::Type::SynType);
         def_params.push(rt_param);
     }
 
@@ -814,7 +814,7 @@ fn make_trait_instance<'def>(
                 0
             };
             write!(body, " : (spec_with {num_direct_lifetimes} [")?;
-            write_list!(body, &direct_params.params, "; ", |x| x.refinement_type.clone())?;
+            write_list!(body, &direct_params.params, "; ", LiteralTyParam::refinement_type)?;
 
             write!(body, "] fn_spec)")?;
 
@@ -841,7 +841,7 @@ fn make_trait_instance<'def>(
         for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
             let assoc_param = LiteralTyParam::new(name);
             term = coq::term::Term::LetIn(
-                coq::Ident::new(&assoc_param.refinement_type),
+                coq::Ident::new(&assoc_param.refinement_type()),
                 Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),
                 Box::new(term),
             );

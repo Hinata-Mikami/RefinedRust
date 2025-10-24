@@ -267,7 +267,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             let scope = self.ty_translator.scope.borrow();
             for ty in scope.generic_scope.tyvars() {
-                self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type));
+                self.translated_fn.assume_synty_layoutable(lang::SynType::Literal(ty.syn_type()));
             }
         }
         // assume that all used literals are layoutable

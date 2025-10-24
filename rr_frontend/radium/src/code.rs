@@ -1104,8 +1104,8 @@ impl Function<'_> {
         let all_ty_params = self.spec.generics.get_all_ty_params_with_assocs();
         // pattern is right-associative
         for param in &all_ty_params.params {
-            write!(typaram_pattern, "[{} ", param.type_term).unwrap();
-            write!(f, "let {} := fresh \"{}\" in\n", param.type_term, param.type_term)?;
+            write!(typaram_pattern, "[{} ", param.type_term()).unwrap();
+            write!(f, "let {} := fresh \"{}\" in\n", param.type_term(), param.type_term())?;
         }
         write!(typaram_pattern, "[]").unwrap();
         for _ in 0..(all_ty_params.params.len()) {
@@ -1196,7 +1196,7 @@ impl Function<'_> {
             &all_ty_params
                 .params
                 .iter()
-                .map(|names| (names.rust_name.clone(), format!("existT _ ({})", names.type_term)))
+                .map(|names| (names.rust_name.clone(), format!("existT _ ({})", names.type_term())))
                 .collect(),
         );
 
