@@ -343,7 +343,7 @@ impl<'def> SpecTraitReqSpecialization<'def> {
             }
         }
 
-        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_params);
+        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_type_params);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
 
         // write the attr record decl

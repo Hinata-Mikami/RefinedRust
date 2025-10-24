@@ -114,31 +114,15 @@ pub struct SpecAttrsInst {
 pub struct LiteralSpec {
     /// Name of the trait
     pub name: String,
+
     /// Associated types
     pub assoc_tys: Vec<String>,
 
-    /// The name of the Coq definition for the spec param information
-    pub spec_params_record: String,
-    /// The name of the Coq definition for the spec attributes
-    pub spec_attrs_record: String,
-
-    /// The optional name of the Coq definition for the traits's semantic interpretation
-    pub spec_semantic: Option<String>,
+    /// The optional name of the Rocq definition for the traits's semantic interpretation
+    pub has_semantic_interp: bool,
 
     /// Whether the attrs record is dependent on the attrs of trait dependencies.
     pub attrs_dependent: bool,
-
-    /// The name of the Coq definition for the spec information
-    pub spec_record: String,
-
-    /// The basic specification annotated on the trait definition
-    /// (Coq def has self, type parameters, as well as associated types)
-    pub base_spec: String,
-    pub base_spec_params: String,
-
-    /// The subsumption relation between specs
-    /// (Coq def has no parameters)
-    pub spec_subsumption: String,
 
     /// declared attributes of the trait
     pub declared_attrs: Vec<String>,
@@ -149,40 +133,67 @@ pub struct LiteralSpec {
 pub type LiteralSpecRef<'def> = &'def LiteralSpec;
 
 impl LiteralSpec {
-    /// Make the name for the method spec field of the spec record.
+    /// The name of the Rocq definition for the spec information
     #[must_use]
-    pub(crate) fn make_spec_method_name(&self, method: &str) -> String {
-        format!("{}_{method}_spec", self.name)
-    }
-
-    #[must_use]
-    pub fn make_spec_attr_name(&self, attr: &str) -> String {
-        format!("{}_{attr}", self.name)
-    }
-
-    #[must_use]
-    fn make_spec_attr_sig_name(&self, attr: &str) -> String {
-        format!("{}_{attr}_sig", self.name)
+    fn spec_record(&self) -> String {
+        format!("{}_spec", self.name)
     }
 
     #[must_use]
     fn spec_record_constructor_name(&self) -> String {
-        format!("mk_{}", self.spec_record)
+        format!("mk_{}_spec", self.name)
     }
 
     #[must_use]
-    pub(crate) fn spec_record_attrs_constructor_name(&self) -> String {
-        format!("mk_{}", self.spec_attrs_record)
+    pub(crate) fn spec_attrs_record(&self) -> String {
+        format!("{}_spec_attrs", self.name)
     }
 
+    #[must_use]
+    fn spec_semantic(&self) -> Option<String> {
+        self.has_semantic_interp.then(|| format!("{}_semantic_interp", self.name))
+    }
+
+    /// The basic specification annotated on the trait definition
+    ///
+    /// NOTE: Rocq def has self, type parameters, as well as associated types
+    #[must_use]
+    fn base_spec(&self) -> String {
+        format!("{}_base_spec", self.name)
+    }
+
+    /// The subsumption relation between specs
+    ///
+    /// NOTE: Rocq def has no parameters
     #[must_use]
     fn spec_incl_name(&self) -> String {
-        self.spec_subsumption.clone()
+        format!("{}_spec_incl", self.name)
     }
 
     #[must_use]
     fn spec_incl_preorder_name(&self) -> String {
         format!("{}_preorder", self.spec_incl_name())
+    }
+
+    /// Make the name for the method spec field of the spec record.
+    #[must_use]
+    pub(crate) fn make_spec_method_name(&self, method: &str) -> String {
+        format!("{}_{}_spec", self.name, method)
+    }
+
+    #[must_use]
+    pub fn make_spec_attr_name(&self, attr: &str) -> String {
+        format!("{}_{}", self.name, attr)
+    }
+
+    #[must_use]
+    fn make_spec_attr_sig_name(&self, attr: &str) -> String {
+        format!("{}_{}_sig", self.name, attr)
+    }
+
+    #[must_use]
+    pub(crate) fn spec_record_attrs_constructor_name(&self) -> String {
+        format!("mk_{}", self.spec_attrs_record())
     }
 }
 
@@ -318,7 +329,7 @@ impl<'def> LiteralSpecUse<'def> {
             }
         }
 
-        let mut attr_param_ty = format!("{} (RRGS:=RRGS) ", self.trait_ref.spec_attrs_record);
+        let mut attr_param_ty = format!("{} (RRGS:=RRGS) ", self.trait_ref.spec_attrs_record());
         push_str_list!(attr_param_ty, &all_args, " ");
         attr_param_ty.push(' ');
         push_str_list!(attr_param_ty, &attr_args, " ");
@@ -339,7 +350,7 @@ impl<'def> LiteralSpecUse<'def> {
         let mut spec_param_ty = format!(
             "spec_with {} [] ({} (RRGS:=RRGS) ",
             self.scope.quantified_lfts.len(),
-            self.trait_ref.spec_record
+            self.trait_ref.spec_record()
         );
         push_str_list!(spec_param_ty, &all_args, " ");
         spec_param_ty.push(')');
@@ -350,7 +361,7 @@ impl<'def> LiteralSpecUse<'def> {
     /// Get the optional specialized semantic term for this trait assumption.
     #[must_use]
     pub fn make_semantic_spec_term(&self) -> Option<String> {
-        if let Some(semantic_def) = &self.trait_ref.spec_semantic {
+        if let Some(semantic_def) = &self.trait_ref.spec_semantic() {
             let inst = &self.trait_inst;
             let args = inst.get_all_ty_params_with_assocs();
 
@@ -368,7 +379,7 @@ impl<'def> LiteralSpecUse<'def> {
     #[must_use]
     pub(crate) fn make_spec_param_precond(&self) -> coq::term::Term {
         // the spec we have to require for this verification
-        let spec_to_require = self.trait_ref.base_spec.clone();
+        let spec_to_require = self.trait_ref.base_spec();
 
         let all_args = self.get_ordered_params_inst();
 
@@ -396,7 +407,7 @@ impl<'def> LiteralSpecUse<'def> {
 
         let spec = format!(
             "trait_incl_marker (lift_trait_incl {} {} {specialized_spec})",
-            self.trait_ref.spec_subsumption,
+            self.trait_ref.spec_incl_name(),
             self.make_spec_param_name(),
         );
 
@@ -721,7 +732,7 @@ fn make_trait_instance<'def>(
             attrs_params
                 .append(&mut scope.get_all_attr_trait_parameters(IncludeSelfReq::Dont).make_using_terms());
         }
-        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_params);
+        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_params);
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
         def_params.push(coq::binder::Binder::new(Some("_ATTRS".to_owned()), attrs_type));
     }
@@ -854,7 +865,7 @@ fn make_trait_instance<'def>(
     write!(term_with_specs, " {body_term}")?;
 
     let mut ty_annot = String::with_capacity(100);
-    let spec_record_type = coq::term::App::new(of_trait.spec_record.clone(), param_inst_rts);
+    let spec_record_type = coq::term::App::new(of_trait.spec_record(), param_inst_rts);
     write!(ty_annot, "spec_with _ _ {}", spec_record_type)?;
 
     document.push(coq::command::Definition {
@@ -954,7 +965,7 @@ impl SpecDecl<'_> {
         params.make_implicit(coq::binder::Kind::MaxImplicit);
 
         let record_decl = coq::term::Record {
-            name: self.lit.spec_attrs_record.clone(),
+            name: self.lit.spec_attrs_record(),
             params,
             ty: coq::term::Type::Type,
             constructor: Some(self.lit.spec_record_attrs_constructor_name()),
@@ -964,7 +975,7 @@ impl SpecDecl<'_> {
 
         sig_decls.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.lit.spec_attrs_record.clone(),
+                name: self.lit.spec_attrs_record(),
                 arguments_string: ": clear implicits".to_owned(),
             })
             .attributes("global")
@@ -972,7 +983,7 @@ impl SpecDecl<'_> {
         );
         sig_decls.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.lit.spec_attrs_record.clone(),
+                name: self.lit.spec_attrs_record(),
                 arguments_string: "{_ _}".to_owned(),
             })
             .attributes("global")
@@ -1007,7 +1018,7 @@ impl SpecDecl<'_> {
     #[must_use]
     pub fn make_semantic_decl(&self) -> Option<coq::command::Command> {
         if let Some(semantic_interp) = &self.attrs.semantic_interp {
-            let def_name = self.lit.spec_semantic.as_ref().unwrap();
+            let def_name = self.lit.spec_semantic().unwrap();
 
             let ordered_params = self.get_ordered_params();
             let mut params = ordered_params.get_coq_ty_rt_params();
@@ -1018,7 +1029,7 @@ impl SpecDecl<'_> {
 
             Some(coq::command::Command::Definition(coq::command::Definition {
                 program_mode: false,
-                name: def_name.to_owned(),
+                name: def_name,
                 params,
                 ty: Some(coq::term::Type::Prop),
                 body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(body)),
@@ -1068,7 +1079,7 @@ impl SpecDecl<'_> {
         params.0.insert(0, coq::binder::Binder::new_rrgs());
 
         let record = coq::term::Record {
-            name: self.lit.spec_record.clone(),
+            name: self.lit.spec_record(),
             params,
             ty: coq::term::Type::Type,
             constructor: Some(self.lit.spec_record_constructor_name()),
@@ -1079,7 +1090,7 @@ impl SpecDecl<'_> {
         // clear the implicit argument
         decls.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.lit.spec_record.clone(),
+                name: self.lit.spec_record(),
                 arguments_string: ": clear implicits".to_owned(),
             })
             .attributes("global")
@@ -1089,7 +1100,7 @@ impl SpecDecl<'_> {
         // make rrgs implicit again
         decls.push(
             coq::command::CommandAttrs::new(coq::command::Arguments {
-                name: self.lit.spec_record.clone(),
+                name: self.lit.spec_record(),
                 arguments_string: "{_ _}".to_owned(),
             })
             .attributes("global")
@@ -1144,8 +1155,7 @@ impl SpecDecl<'_> {
         spec_incl_params.make_implicit(coq::binder::Kind::MaxImplicit);
 
         // compute the type of the two spec params
-        let spec_param_type =
-            coq::term::App::new(self.lit.spec_record.clone(), spec_rt_using_terms).to_string();
+        let spec_param_type = coq::term::App::new(self.lit.spec_record(), spec_rt_using_terms).to_string();
 
         // add the two spec params
         spec_incl_params.0.push(coq::binder::Binder::new(
@@ -1261,7 +1271,7 @@ impl fmt::Display for SpecDecl<'_> {
             &self.default_spec,
             self.lit,
             true,
-            &self.lit.base_spec,
+            &self.lit.base_spec(),
         )?;
         write!(f, "{base_decls}\n")?;
 
@@ -1368,7 +1378,7 @@ impl<'def> RefInst<'def> {
 
     #[must_use]
     fn get_base_spec_term(&self) -> coq::term::Term {
-        let spec_record = &self.of_trait.base_spec;
+        let spec_record = &self.of_trait.base_spec();
 
         let all_args = self.get_ordered_params_inst();
 
@@ -1452,7 +1462,7 @@ impl ImplSpec<'_> {
         }
         let mut obligation_terms = Vec::new();
 
-        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record.clone(), attrs_type_terms.clone());
+        let attrs_type = coq::term::App::new(of_trait.spec_attrs_record(), attrs_type_terms.clone());
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
 
         // write the attr record decl
@@ -1517,7 +1527,7 @@ impl ImplSpec<'_> {
     /// Make the definition for the semantic declaration.
     fn make_semantic_decl(&self) -> Option<coq::Document> {
         if let Some(def_name) = &self.trait_ref.impl_ref.spec_semantic {
-            let base_name = self.trait_ref.of_trait.spec_semantic.as_ref().unwrap();
+            let base_name = self.trait_ref.of_trait.spec_semantic().unwrap();
 
             let generics = &self.trait_ref.generics;
 
@@ -1543,7 +1553,7 @@ impl ImplSpec<'_> {
             let inst_args = trait_inst.get_all_ty_params_with_assocs();
 
             // type
-            let mut specialized_semantic = format!("{} ", base_name.to_owned());
+            let mut specialized_semantic = format!("{} ", base_name);
             push_str_list!(specialized_semantic, &inst_args, " ", |x| { format!("{}", x.get_rfn_type()) });
             specialized_semantic.push(' ');
             push_str_list!(specialized_semantic, &inst_args, " ", |x| { x.to_string() });
@@ -1736,7 +1746,7 @@ impl<'def> InstantiatedFunctionSpec<'def> {
         params.push(attr_term.to_string());
 
         let mut applied_base_spec = String::with_capacity(100);
-        write!(applied_base_spec, "{}\n", coq::term::App::new(&self.trait_ref.of_trait.base_spec, params))?;
+        write!(applied_base_spec, "{}\n", coq::term::App::new(&self.trait_ref.of_trait.base_spec(), params))?;
 
         // now add the semantic components
         // instantiate semantic types

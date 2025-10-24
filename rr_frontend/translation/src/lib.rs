@@ -201,14 +201,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             let a = shim_registry::TraitShim {
                 path: interned_path,
                 name: decl.name.clone(),
-                spec_param_record: decl.spec_params_record.clone(),
-                spec_attrs_record: decl.spec_attrs_record.clone(),
-                spec_record: decl.spec_record.clone(),
-                spec_semantic: decl.spec_semantic.clone(),
+                has_semantic_interp: decl.has_semantic_interp,
                 attrs_dependent: decl.attrs_dependent,
-                base_spec: decl.base_spec.clone(),
-                base_spec_params: decl.base_spec_params.clone(),
-                spec_subsumption: decl.spec_subsumption.clone(),
                 allowed_attrs: decl.declared_attrs.clone(),
                 method_trait_incl_decls: decl.method_trait_incl_decls.clone(),
             };
@@ -1060,14 +1054,8 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             let spec = specs::traits::LiteralSpec {
                 assoc_tys,
                 name: shim.name.clone(),
-                spec_attrs_record: shim.spec_attrs_record.clone(),
-                spec_params_record: shim.spec_param_record.clone(),
-                spec_record: shim.spec_record.clone(),
-                spec_semantic: shim.spec_semantic.clone(),
+                has_semantic_interp: shim.has_semantic_interp,
                 attrs_dependent: shim.attrs_dependent,
-                base_spec: shim.base_spec.clone(),
-                base_spec_params: shim.base_spec_params.clone(),
-                spec_subsumption: shim.spec_subsumption.clone(),
                 declared_attrs: shim.allowed_attrs.clone(),
                 method_trait_incl_decls: shim.method_trait_incl_decls.clone(),
             };
@@ -1583,7 +1571,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let proof_statement = format!("{base_name}_spec_subsumption");
 
             let spec_semantic =
-                registered.spec_semantic.is_some().then(|| format!("{base_name}_semantic_interp"));
+                registered.has_semantic_interp.then(|| format!("{base_name}_semantic_interp"));
 
             let impl_lit = specs::traits::LiteralImpl {
                 spec_record: spec_name,

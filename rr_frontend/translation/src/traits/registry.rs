@@ -166,15 +166,6 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         has_semantic_interp: bool,
         attrs_dependent: bool,
     ) -> Result<specs::traits::LiteralSpec, Error<'tcx>> {
-        let spec_record = format!("{name}_spec");
-        let spec_params_record = format!("{name}_spec_params");
-        let spec_attrs_record = format!("{name}_spec_attrs");
-        let base_spec = format!("{name}_base_spec");
-        let base_spec_params = format!("{name}_base_spec_params");
-        let spec_subsumption = format!("{name}_spec_incl");
-
-        let spec_semantic = has_semantic_interp.then(|| format!("{name}_semantic_interp"));
-
         let mut method_trait_incl_decls = BTreeMap::new();
 
         let items: &ty::AssocItems = self.env.tcx().associated_items(did);
@@ -194,14 +185,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         Ok(specs::traits::LiteralSpec {
             name,
             assoc_tys: self.get_associated_type_names(did),
-            spec_record,
-            spec_params_record,
-            spec_attrs_record,
-            spec_semantic,
+            has_semantic_interp,
             attrs_dependent,
-            base_spec,
-            base_spec_params,
-            spec_subsumption,
             declared_attrs,
             method_trait_incl_decls,
         })
