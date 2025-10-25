@@ -6,6 +6,8 @@
 
 use std::fmt::Write as _;
 
+use derive_more::Constructor;
+
 use crate::specs::{GenericScope, IncludeSelfReq, TyOwnSpec, format_extra_context_items};
 use crate::{coq, fmt_list};
 
@@ -26,7 +28,7 @@ pub enum Mode {
     OnlyOwned,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Constructor)]
 pub struct Spec {
     /// the name of the type definition
     pub(crate) type_name: String,
@@ -57,37 +59,6 @@ pub struct Spec {
 }
 
 impl Spec {
-    #[must_use]
-    pub fn new(
-        type_name: String,
-        flags: SpecFlags,
-        shr_lft_binder: String,
-        rfn_type: coq::term::Type,
-        rfn_pat: coq::binder::Pattern,
-        existentials: Vec<coq::binder::Binder>,
-        invariants: Vec<(coq::iris::IProp, Mode)>,
-        ty_own_invariants: Vec<TyOwnSpec>,
-        abstracted_refinement: Option<coq::binder::Pattern>,
-        coq_params: Vec<coq::binder::Binder>,
-    ) -> Self {
-        if flags == SpecFlags::Persistent {
-            assert!(invariants.iter().all(|it| it.1 == Mode::All) && ty_own_invariants.is_empty());
-        }
-
-        Self {
-            type_name,
-            flags,
-            shr_lft_binder,
-            rfn_type,
-            rfn_pat,
-            existentials,
-            invariants,
-            ty_own_invariants,
-            abstracted_refinement,
-            coq_params,
-        }
-    }
-
     #[must_use]
     pub(crate) fn rt_def_name(&self) -> String {
         format!("{}_rt", self.type_name)
@@ -239,6 +210,10 @@ impl Spec {
     }
 
     pub(crate) fn generate_coq_invariant_def(&self, scope: &GenericScope<'_>, base_rfn_type: &str) -> String {
+        if self.flags == SpecFlags::Persistent {
+            assert!(self.invariants.iter().all(|it| it.1 == Mode::All) && self.ty_own_invariants.is_empty());
+        }
+
         let mut out = String::with_capacity(200);
         let indent = "  ";
 

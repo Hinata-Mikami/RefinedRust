@@ -78,7 +78,7 @@ impl Mode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub(crate) struct Meta {
     /// name for the specification
     spec_name: String,
@@ -95,24 +95,6 @@ pub(crate) struct Meta {
 }
 
 impl Meta {
-    pub(crate) const fn new(
-        spec_name: String,
-        code_name: String,
-        trait_req_incl_name: String,
-        name: String,
-        mode: Mode,
-        is_default_trait_impl: bool,
-    ) -> Self {
-        Self {
-            spec_name,
-            code_name,
-            trait_req_incl_name,
-            name,
-            mode,
-            is_default_trait_impl,
-        }
-    }
-
     pub(crate) fn get_spec_name(&self) -> &str {
         &self.spec_name
     }

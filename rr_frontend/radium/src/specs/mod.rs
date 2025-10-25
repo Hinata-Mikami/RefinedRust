@@ -159,16 +159,11 @@ impl Type<'_> {
 }
 
 /// Encodes a RR type with an accompanying refinement.
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Debug, Display, Constructor)]
 #[display("{} :@: {}", _1, _0)]
 pub struct TypeWithRef<'def>(pub Type<'def>, pub String);
 
-impl<'def> TypeWithRef<'def> {
-    #[must_use]
-    pub const fn new(ty: Type<'def>, rfn: String) -> Self {
-        TypeWithRef(ty, rfn)
-    }
-
+impl TypeWithRef<'_> {
     #[must_use]
     fn make_unit() -> Self {
         TypeWithRef(Type::Unit, "()".to_owned())
@@ -354,35 +349,18 @@ impl LiteralTyParam {
 }
 
 /// Specification for location ownership of a type.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Constructor)]
 pub struct TyOwnSpec {
     loc: String,
-    with_later: bool,
     rfn: String,
     /// type, with generics already fully substituted
     ty: String,
+    with_later: bool,
     /// literal lifetimes and types escaped in the annotation parser
     annot_meta: TypeAnnotMeta,
 }
 
 impl TyOwnSpec {
-    #[must_use]
-    pub const fn new(
-        loc: String,
-        rfn: String,
-        ty: String,
-        with_later: bool,
-        annot_meta: TypeAnnotMeta,
-    ) -> Self {
-        Self {
-            loc,
-            with_later,
-            rfn,
-            ty,
-            annot_meta,
-        }
-    }
-
     #[must_use]
     pub fn fmt_owned(&self, tid: &str) -> String {
         format!("{} ◁ₗ[{}, Owned {}] #({}) @ (◁ {})", self.loc, tid, self.with_later, self.rfn, self.ty)

@@ -9,7 +9,7 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::ops::Add;
 
-use derive_more::Display;
+use derive_more::{Constructor, Display};
 use indent_write::fmt::IndentWriter;
 
 use crate::specs::{GenericScope, GenericScopeInst, Type, structs, types};
@@ -769,7 +769,7 @@ impl<'def> Builder<'def> {
 }
 
 /// A usage of an `Abstract` that instantiates its type parameters.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct AbstractUse<'def> {
     /// reference to the enum's definition
     pub(crate) def: AbstractRef<'def>,
@@ -778,12 +778,7 @@ pub struct AbstractUse<'def> {
     pub(crate) scope_inst: GenericScopeInst<'def>,
 }
 
-impl<'def> AbstractUse<'def> {
-    #[must_use]
-    pub const fn new(s: AbstractRef<'def>, scope_inst: GenericScopeInst<'def>) -> Self {
-        AbstractUse { def: s, scope_inst }
-    }
-
+impl AbstractUse<'_> {
     /// Get the refinement type of an enum usage.
     /// This requires that all type parameters of the enum have been instantiated.
     #[must_use]
