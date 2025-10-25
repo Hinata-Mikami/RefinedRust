@@ -177,9 +177,9 @@ impl RustType {
 
                 // translate type parameter instantiations
                 let inst: RustScopeInst = (&as_use.scope_inst).into();
-                let ty_name = if is_raw { def.plain_ty_name() } else { def.public_type_name() };
+                let ty_name = if is_raw { def.plain_ty_name().to_owned() } else { def.public_type_name() };
 
-                Self::Lit(vec![ty_name.to_owned()], inst)
+                Self::Lit(vec![ty_name], inst)
             },
 
             Type::Enum(ae_use) => {

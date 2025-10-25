@@ -17,7 +17,7 @@ use crate::spec_parsers::parse_utils::{
 
 pub(crate) trait InvariantSpecParser {
     /// Parse attributes as an invariant type specification.
-    /// `ty_name` is the name of the type to generate.
+    /// `struct_name` is the name of the struct to generate.
     /// `params` are the type parameters of the surrounded type.
     ///
     /// Supported attributes on the invariant definition (outer):
@@ -30,7 +30,7 @@ pub(crate) trait InvariantSpecParser {
     /// Returns whether a Boolean stating whether a `rr::refines` attribute was included.
     fn parse_invariant_spec<'a>(
         &'a mut self,
-        ty_name: &str,
+        struct_name: &str,
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::invariants::Spec, bool), String>;
 }
@@ -186,7 +186,7 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseInvariantSpecParser<'a, T> {
 impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecParser<'_, T> {
     fn parse_invariant_spec<'a>(
         &'a mut self,
-        ty_name: &str,
+        struct_name: &str,
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<(specs::invariants::Spec, bool), String> {
         if attrs.is_empty() {
@@ -296,9 +296,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         //let xt_injection = format!("(@xmap ({xt_type}) ({rfn_type}) _)");
 
         let spec = specs::invariants::Spec::new(
-            ty_name.to_owned(),
+            struct_name.to_owned(),
             inv_flags,
-            "κ".to_owned(),
             rfn_type,
             //xt_type,
             //xt_injection,

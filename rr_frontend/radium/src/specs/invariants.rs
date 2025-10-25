@@ -30,15 +30,14 @@ pub enum Mode {
 
 #[derive(Clone, PartialEq, Eq, Debug, Constructor)]
 pub struct Spec {
-    /// the name of the type definition
-    pub(crate) type_name: String,
-    flags: SpecFlags,
+    /// the name of the struct definition
+    struct_name: String,
 
-    /// name for the sharing lifetime that is used in the invariant specifications
-    shr_lft_binder: String,
+    flags: SpecFlags,
 
     /// the refinement type of this struct
     pub(crate) rfn_type: coq::term::Type,
+
     /// the binding pattern for the refinement of this type
     rfn_pat: coq::binder::Pattern,
 
@@ -47,6 +46,7 @@ pub struct Spec {
 
     /// an optional invariant as a separating conjunction,
     invariants: Vec<(coq::iris::IProp, Mode)>,
+
     /// additional type ownership
     ty_own_invariants: Vec<TyOwnSpec>,
 
@@ -60,19 +60,24 @@ pub struct Spec {
 
 impl Spec {
     #[must_use]
+    pub(crate) fn type_name(&self) -> String {
+        format!("{}_inv_t", self.struct_name)
+    }
+
+    #[must_use]
     pub(crate) fn rt_def_name(&self) -> String {
-        format!("{}_rt", self.type_name)
+        format!("{}_rt", self.type_name())
     }
 
     #[must_use]
     pub(crate) fn spec_name(&self) -> String {
-        format!("{}_inv_spec", self.type_name)
+        format!("{}_inv_spec", self.type_name())
     }
 
     /// Add the abstracted refinement, if it was not already provided.
     pub fn provide_abstracted_refinement(&mut self, abstracted_refinement: coq::binder::Pattern) {
         if self.abstracted_refinement.is_some() {
-            panic!("abstracted refinement for {} already provided", self.type_name);
+            panic!("abstracted refinement for {} already provided", self.type_name());
         }
         self.abstracted_refinement = Some(abstracted_refinement);
     }
@@ -125,9 +130,8 @@ impl Spec {
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π {} inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
+            "λ π κ inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
-            &self.shr_lft_binder,
             self.rfn_type,
             self.rfn_pat,
             ex,
@@ -135,7 +139,7 @@ impl Spec {
         )
         .unwrap();
         for own in &self.ty_own_invariants {
-            write!(out, "{} ∗ ", coq::iris::IProp::Atom(own.fmt_shared("π", &self.shr_lft_binder))).unwrap();
+            write!(out, "{} ∗ ", coq::iris::IProp::Atom(own.fmt_shared("π", "κ"))).unwrap();
         }
         for (inv, mode) in &self.invariants {
             match mode {
@@ -343,7 +347,7 @@ impl Spec {
                 out,
                 "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
                 {indent}{indent}{scope} na_ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
-                self.type_name,
+                self.type_name(),
                 scope.get_all_type_term(),
                 self.rfn_type,
                 fmt_list!(attr_binders_uses, " "),
@@ -357,7 +361,7 @@ impl Spec {
                 out,
                 "{indent}Definition {} {attr_binders} : {} (type ({})%type) :=\n\
                 {indent}{indent}{scope} ex_plain_t _ _ ({spec_name} {} {}) {}.\n",
-                self.type_name,
+                self.type_name(),
                 scope.get_all_type_term(),
                 self.rfn_type,
                 fmt_list!(attr_binders_uses, " "),
@@ -366,17 +370,17 @@ impl Spec {
             )
             .unwrap();
         }
-        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name).unwrap();
-        write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name).unwrap();
+        write!(out, "{indent}Global Typeclasses Transparent {}.\n", self.type_name()).unwrap();
+        write!(out, "{indent}Definition {}_rt : RT.\n", self.type_name()).unwrap();
         write!(
             out,
             "{indent}Proof using {} {}. let __a := normalized_rt_of_spec_ty {} in exact __a. Defined.\n",
             fmt_list!(generics_rts, " "),
             context_names.join(" "),
-            self.type_name
+            self.type_name()
         )
         .unwrap();
-        write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", self.type_name).unwrap();
+        write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", self.type_name()).unwrap();
 
         out
     }
@@ -395,7 +399,7 @@ impl Spec {
 
         let indent = "  ";
         // the write_str impl will always return Ok.
-        write!(out, "Section {}.\n", self.type_name).unwrap();
+        write!(out, "Section {}.\n", self.type_name()).unwrap();
         write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
         let all_ty_params = scope.get_all_ty_params_with_assocs();
@@ -435,7 +439,7 @@ impl Spec {
         .unwrap();
 
         // finish
-        write!(out, "End {}.\n", self.type_name).unwrap();
+        write!(out, "End {}.\n", self.type_name()).unwrap();
         write!(out, "Global Arguments {} : clear implicits.\n", self.rt_def_name()).unwrap();
         if !context_names_without_sigma.is_empty() {
             //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };

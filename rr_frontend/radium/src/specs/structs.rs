@@ -379,10 +379,10 @@ impl<'def> Abstract<'def> {
 
     /// Get the name of the struct, or an ADT defined on it, if available.
     #[must_use]
-    pub(crate) fn public_type_name(&self) -> &str {
+    pub(crate) fn public_type_name(&self) -> String {
         match &self.invariant {
-            Some(inv) => &inv.type_name,
-            None => self.plain_ty_name(),
+            Some(inv) => inv.type_name(),
+            None => self.plain_ty_name().to_owned(),
         }
     }
 
@@ -449,7 +449,7 @@ impl<'def> Abstract<'def> {
 
             let indent = "  ";
             // the write_str impl will always return Ok.
-            write!(out, "Section {}.\n", inv.type_name).unwrap();
+            write!(out, "Section {}.\n", inv.type_name()).unwrap();
             write!(out, "{}Context `{{RRGS : !refinedrustGS Σ}}.\n", indent).unwrap();
 
             // add type parameters
@@ -490,7 +490,7 @@ impl<'def> Abstract<'def> {
             .unwrap();
 
             // generate the functor itself
-            let type_name = &inv.type_name;
+            let type_name = inv.type_name();
             let rfn_type = &inv.rfn_type;
             let spec_name = inv.spec_name();
 
@@ -538,7 +538,7 @@ impl<'def> Abstract<'def> {
             write!(out, "{indent}Global Typeclasses Transparent {}_rt.\n", type_name).unwrap();
 
             // finish
-            write!(out, "End {}.\n", inv.type_name).unwrap();
+            write!(out, "End {}.\n", inv.type_name()).unwrap();
             write!(out, "Global Arguments {} : clear implicits.\n", inv.rt_def_name()).unwrap();
             if !context_names_without_sigma.is_empty() {
                 //let dep_sigma_str = if dep_sigma { "{_} " } else { "" };
@@ -570,7 +570,7 @@ impl<'def> Abstract<'def> {
 
         types::Literal {
             rust_name: Some(self.name().to_owned()),
-            type_term: self.public_type_name().to_owned(),
+            type_term: self.public_type_name(),
             refinement_type: coq::term::Type::Literal(self.public_rt_def_name()),
             syn_type: lang::SynType::Literal(self.sls_def_name().to_owned()),
             info,
@@ -748,7 +748,7 @@ impl<'def> AbstractUse<'def> {
                 " "
             );
 
-            format!("({} {rt_inst} {attrs} {})", inv.type_name, self.scope_inst.instantiation(true, true))
+            format!("({} {rt_inst} {attrs} {})", inv.type_name(), self.scope_inst.instantiation(true, true))
         } else {
             format!("({} {rt_inst} {})", def.plain_ty_name(), self.scope_inst.instantiation(true, true))
         }

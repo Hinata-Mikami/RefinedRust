@@ -1089,9 +1089,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         if attrs::has_tool_attr(outer_attrs, "refined_by") {
             let outer_attrs = attrs::filter_for_tool(outer_attrs);
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(adt_deps.scope);
-            let ty_name = strip_coq_ident(format!("{}_inv_t", struct_name).as_str());
             let res = spec_parser
-                .parse_invariant_spec(&ty_name, &outer_attrs)
+                .parse_invariant_spec(struct_name, &outer_attrs)
                 .map_err(TranslationError::FatalError)?;
 
             invariant_spec = Some(res.0);
