@@ -15,6 +15,7 @@ pub struct AdtShimInfo {
     /// whether the type definition needs trait attributes
     pub needs_trait_attrs: bool,
 }
+
 impl AdtShimInfo {
     #[must_use]
     pub const fn empty() -> Self {

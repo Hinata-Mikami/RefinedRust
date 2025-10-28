@@ -178,12 +178,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             trait_path,
             for_type,
             method_specs,
-            spec_params_record: decl.trait_ref.impl_ref.spec_params_record.clone(),
-            spec_attrs_record: decl.trait_ref.impl_ref.spec_attrs_record.clone(),
-            spec_record: decl.trait_ref.impl_ref.spec_record.clone(),
-            spec_semantic: decl.trait_ref.impl_ref.spec_semantic.clone(),
-            spec_subsumption_proof: decl.trait_ref.impl_ref.spec_subsumption_proof.clone(),
-            spec_subsumption_statement: decl.trait_ref.impl_ref.spec_subsumption_statement.clone(),
+            specs: decl.trait_ref.impl_ref.clone(),
         };
 
         Some(a)
@@ -1094,15 +1089,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
             continue;
         };
 
-        let impl_lit = specs::traits::LiteralImpl::new(
-            shim.spec_record.clone(),
-            shim.spec_params_record.clone(),
-            shim.spec_attrs_record.clone(),
-            shim.spec_semantic.clone(),
-            shim.spec_subsumption_proof.clone(),
-            shim.spec_subsumption_statement.clone(),
-        );
-        vcx.trait_registry.register_impl_shim(did, impl_lit)?;
+        vcx.trait_registry.register_impl_shim(did, shim.specs.clone())?;
 
         // now register all the method shims
         let impl_assoc_items: &ty::AssocItems = vcx.env.tcx().associated_items(did);

@@ -16,12 +16,33 @@ use derive_more::{Display, From};
 use log::info;
 use radium::{coq, specs};
 use serde::{Deserialize, Serialize};
-use specs::types;
 use typed_arena::Arena;
 
 use crate::shims::flat;
 
 type Path<'a> = Vec<&'a str>;
+
+mod remote {
+    use super::*;
+
+    #[derive(Serialize, Deserialize)]
+    #[serde(remote = "specs::traits::LiteralImpl")]
+    pub(super) struct LiteralImpl {
+        spec_record: String,
+        spec_params_record: String,
+        spec_attrs_record: String,
+        spec_semantic: Option<String>,
+        spec_subsumption_proof: String,
+        spec_subsumption_statement: String,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    #[serde(remote = "specs::types::AdtShimInfo")]
+    pub(super) struct AdtShimInfo {
+        enum_name: Option<String>,
+        needs_trait_attrs: bool,
+    }
+}
 
 /// A file entry for a function/method shim.
 #[derive(Serialize, Deserialize)]
@@ -71,42 +92,9 @@ struct ShimTraitImplEntry {
     /// map from method names to (base name, specification name, trait incl name)
     method_specs: BTreeMap<String, (String, String, String)>,
 
-    /// the Coq def name of the spec record inst
-    spec_record: String,
-    /// the Coq def name of the spec params record inst
-    spec_params_record: String,
-    /// the Coq def name of the spec attrs record inst
-    spec_attrs_record: String,
-    /// the optional Coq def name of the spec semantic interp
-    spec_semantic: Option<String>,
-    /// the Coq lemma name of the spec subsumption proof
-    spec_subsumption_proof: String,
-    /// the Coq definition giving the lemma statement for the subsumption
-    spec_subsumption_statement: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct ShimAdtInfo {
-    /// if this is an enum: the enum definition
-    enum_name: Option<String>,
-    /// whether this definition depends on trait attrs of its generic scope
-    needs_trait_atttrs: bool,
-}
-impl From<types::AdtShimInfo> for ShimAdtInfo {
-    fn from(shim: types::AdtShimInfo) -> Self {
-        Self {
-            enum_name: shim.enum_name,
-            needs_trait_atttrs: shim.needs_trait_attrs,
-        }
-    }
-}
-impl From<ShimAdtInfo> for types::AdtShimInfo {
-    fn from(shim: ShimAdtInfo) -> Self {
-        Self {
-            enum_name: shim.enum_name,
-            needs_trait_attrs: shim.needs_trait_atttrs,
-        }
-    }
+    #[serde(flatten)]
+    #[serde(with = "remote::LiteralImpl")]
+    specs: specs::traits::LiteralImpl,
 }
 
 /// A file entry for an adt shim.
@@ -122,8 +110,10 @@ struct ShimAdtEntry {
     rtype: String,
     /// the Coq name of the semantic type
     semtype: String,
+
     /// more meta information
-    info: ShimAdtInfo,
+    #[serde(with = "remote::AdtShimInfo")]
+    info: specs::types::AdtShimInfo,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -160,16 +150,10 @@ impl<'a> From<FunctionShim<'a>> for ShimFunctionEntry {
 pub(crate) struct TraitImplShim {
     pub trait_path: flat::PathWithArgs,
     pub for_type: flat::Type,
-
     pub method_specs: BTreeMap<String, (String, String, String)>,
-
-    pub spec_record: String,
-    pub spec_params_record: String,
-    pub spec_attrs_record: String,
-    pub spec_semantic: Option<String>,
-    pub spec_subsumption_proof: String,
-    pub spec_subsumption_statement: String,
+    pub specs: specs::traits::LiteralImpl,
 }
+
 impl From<TraitImplShim> for ShimTraitImplEntry {
     fn from(shim: TraitImplShim) -> Self {
         Self {
@@ -177,12 +161,7 @@ impl From<TraitImplShim> for ShimTraitImplEntry {
             for_type: shim.for_type,
             method_specs: shim.method_specs,
             kind: "trait_impl".to_owned(),
-            spec_record: shim.spec_record,
-            spec_params_record: shim.spec_params_record,
-            spec_attrs_record: shim.spec_attrs_record,
-            spec_semantic: shim.spec_semantic,
-            spec_subsumption_proof: shim.spec_subsumption_proof,
-            spec_subsumption_statement: shim.spec_subsumption_statement,
+            specs: shim.specs,
         }
     }
 }
@@ -217,7 +196,7 @@ pub(crate) struct AdtShim<'a> {
     pub refinement_type: String,
     pub syn_type: String,
     pub sem_type: String,
-    pub info: types::AdtShimInfo,
+    pub info: specs::types::AdtShimInfo,
 }
 
 impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
@@ -228,7 +207,7 @@ impl<'a> From<AdtShim<'a>> for ShimAdtEntry {
             syntype: shim.syn_type,
             semtype: shim.sem_type,
             rtype: shim.refinement_type,
-            info: shim.info.into(),
+            info: shim.info,
         }
     }
 }
@@ -422,7 +401,7 @@ impl<'a> SR<'a> {
                         syn_type: b.syntype,
                         sem_type: b.semtype,
                         refinement_type: b.rtype,
-                        info: b.info.into(),
+                        info: b.info,
                     };
 
                     self.adt_shims.push(entry);
@@ -446,12 +425,7 @@ impl<'a> SR<'a> {
                         trait_path: b.trait_path,
                         for_type: b.for_type,
                         method_specs: b.method_specs,
-                        spec_record: b.spec_record,
-                        spec_params_record: b.spec_params_record,
-                        spec_attrs_record: b.spec_attrs_record,
-                        spec_semantic: b.spec_semantic,
-                        spec_subsumption_proof: b.spec_subsumption_proof,
-                        spec_subsumption_statement: b.spec_subsumption_statement,
+                        specs: b.specs,
                     };
 
                     self.trait_impl_shims.push(entry);

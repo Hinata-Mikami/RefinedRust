@@ -1283,17 +1283,25 @@ impl fmt::Display for SpecDecl<'_> {
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 #[expect(clippy::struct_field_names)]
 pub struct LiteralImpl {
-    /// The name of the record instance for spec information
+    /// The Rocq name of the specification record instance
     pub spec_record: String,
+
+    /// The Rocq name of the specification parameters record instance
     pub spec_params_record: String,
+
+    /// The Rocq name of the specification attributes record instance
     pub spec_attrs_record: String,
-    /// the optional definition for the trait's semantic interpretation
+
+    /// The optional Rocq definition name for the trait's semantic interpretation
     pub spec_semantic: Option<String>,
-    /// The name of the proof that the base spec is implied by the more specific spec
+
+    /// The Rocq lemma name of the proof that the base spec is implied by the more specific spec
     pub spec_subsumption_proof: String,
-    /// The name of the definition for the lemma statement
+
+    /// The Rocq name of the definition for the lemma statement
     pub spec_subsumption_statement: String,
 }
+
 pub type LiteralImplRef<'def> = &'def LiteralImpl;
 
 /// A full instantiation of a trait spec, e.g. for an impl of a trait,
