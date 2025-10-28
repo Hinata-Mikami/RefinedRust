@@ -26,74 +26,10 @@
 /// This provides parsing facilities for rustc attribute token streams.
 // TODO: refactor/ make into own crate?
 use std::cell::Cell;
-use std::str::FromStr;
-use std::{fmt, result, vec};
+use std::{result, vec};
 
 use ast::tokenstream::TokenStream;
 use rr_rustc_interface::{ast, span};
-use unicode_xid::UnicodeXID;
-
-pub trait IntoSpans<S> {
-    fn into_spans(self) -> S;
-}
-
-impl IntoSpans<[Self; 1]> for span::Span {
-    fn into_spans(self) -> [Self; 1] {
-        [self]
-    }
-}
-
-impl IntoSpans<[Self; 2]> for span::Span {
-    fn into_spans(self) -> [Self; 2] {
-        [self, self]
-    }
-}
-
-impl IntoSpans<[Self; 3]> for span::Span {
-    fn into_spans(self) -> [Self; 3] {
-        [self, self, self]
-    }
-}
-
-impl IntoSpans<[span::Span; 1]> for [span::Span; 1] {
-    fn into_spans(self) -> [span::Span; 1] {
-        self
-    }
-}
-
-impl IntoSpans<[span::Span; 2]> for [span::Span; 2] {
-    fn into_spans(self) -> [span::Span; 2] {
-        self
-    }
-}
-
-impl IntoSpans<[span::Span; 3]> for [span::Span; 3] {
-    fn into_spans(self) -> [span::Span; 3] {
-        self
-    }
-}
-
-pub trait FromSpans: Sized {
-    fn from_spans(spans: &[span::Span]) -> Self;
-}
-
-impl FromSpans for [span::Span; 1] {
-    fn from_spans(spans: &[span::Span]) -> Self {
-        [spans[0]]
-    }
-}
-
-impl FromSpans for [span::Span; 2] {
-    fn from_spans(spans: &[span::Span]) -> Self {
-        [spans[0], spans[1]]
-    }
-}
-
-impl FromSpans for [span::Span; 3] {
-    fn from_spans(spans: &[span::Span]) -> Self {
-        [spans[0], spans[1], spans[2]]
-    }
-}
 
 #[derive(Debug)]
 pub enum Error {
@@ -136,35 +72,24 @@ impl Buffer {
         T::parse(self, meta)
     }
 
-    pub fn call<T>(&self, function: fn(Stream<'_>) -> Result<T>) -> Result<T> {
-        function(self)
-    }
-
     pub fn pos(&self) -> Option<span::Span> {
         self.trees.get(self.index.get()).map(ast::tokenstream::TokenTree::span)
     }
 
-    pub fn peek(&self, n: usize) -> Result<&ast::tokenstream::TokenTree> {
+    fn peek(&self, n: usize) -> Result<&ast::tokenstream::TokenTree> {
         self.trees.get(self.index.get() + n).ok_or(Error::EOF)
     }
 
-    pub fn advance(&self, n: usize) {
+    fn advance(&self, n: usize) {
         self.index.set(self.index.get() + n);
     }
 
-    pub fn advance_get(&self) -> Result<&ast::tokenstream::TokenTree> {
-        let i = self.index.get();
-        let r = self.trees.get(i).ok_or(Error::EOF)?;
-        self.index.set(i + 1);
-        Ok(r)
-    }
-
-    pub const fn is_empty(&self) -> bool {
+    const fn is_empty(&self) -> bool {
         self.index.get() >= self.trees.len()
     }
 
     /// Check if the next symbol is a token matching the given kind.
-    pub fn peek_token(&self, token: &ast::token::TokenKind) -> bool {
+    fn peek_token(&self, token: &ast::token::TokenKind) -> bool {
         let tok = self.peek(0);
 
         match tok {
@@ -183,7 +108,7 @@ impl Buffer {
     }
 
     /// Consume a token of the given kind.
-    pub fn expect_token(&self, token: ast::token::TokenKind) -> Result<span::Span> {
+    fn expect_token(&self, token: ast::token::TokenKind) -> Result<span::Span> {
         let tok = self.peek(0)?;
         match tok {
             ast::tokenstream::TokenTree::Token(tok, _) => {
@@ -199,7 +124,7 @@ impl Buffer {
     }
 
     /// Consume an identifier.
-    pub fn expect_ident(&self) -> Result<span::Symbol> {
+    fn expect_ident(&self) -> Result<span::Symbol> {
         let tok = self.peek(0)?;
         match tok {
             ast::tokenstream::TokenTree::Token(tok, _) => match tok.kind {
@@ -214,7 +139,7 @@ impl Buffer {
     }
 
     /// Consume a literal.
-    pub fn expect_literal(&self) -> Result<(ast::token::Lit, span::Span)> {
+    fn expect_literal(&self) -> Result<(ast::token::Lit, span::Span)> {
         let tok = self.peek(0)?;
         match tok {
             ast::tokenstream::TokenTree::Token(tok, _) => match tok.kind {
@@ -444,221 +369,6 @@ impl Ident {
     }
 }
 
-pub struct LitInt {
-    span: span::Span,
-    digits: Box<str>,
-}
-
-impl LitInt {
-    pub fn base10_parse<N>(&self) -> Result<N>
-    where
-        N: FromStr,
-        N::Err: fmt::Display,
-    {
-        self.digits.parse().map_err(|err| Error::OtherErr(self.span, format!("{}", err)))
-    }
-}
-
-impl<U> Parse<U> for LitInt
-where
-    U: ?Sized,
-{
-    fn parse(stream: Stream<'_>, _: &U) -> Result<Self> {
-        let (lit, span) = stream.expect_literal()?;
-        match lit.kind {
-            ast::token::LitKind::Integer => {
-                let sym = lit.symbol;
-
-                let Some(digits) = value::parse_lit_int(&sym.to_string()) else {
-                    return Err(Error::OtherErr(span, format!("Not an integer literal: {}", sym)));
-                };
-
-                Ok(Self { span, digits })
-            },
-            _ => Err(Error::UnexpectedLitKind(ast::token::LitKind::Integer, lit.kind)),
-        }
-    }
-}
-
-mod value {
-    use crate::parse::BigInt;
-
-    // Returns base 10 digits and suffix.
-    pub(crate) fn parse_lit_int(mut s: &str) -> Option<Box<str>> {
-        let negative = byte(s, 0) == b'-';
-        if negative {
-            s = &s[1..];
-        }
-
-        let base = match (byte(s, 0), byte(s, 1)) {
-            (b'0', b'x') => {
-                s = &s[2..];
-                16
-            },
-            (b'0', b'o') => {
-                s = &s[2..];
-                8
-            },
-            (b'0', b'b') => {
-                s = &s[2..];
-                2
-            },
-            (b'0'..=b'9', _) => 10,
-            _ => return None,
-        };
-
-        let mut value = BigInt::new();
-        'outer: loop {
-            let b = byte(s, 0);
-            let digit = match b {
-                b'0'..=b'9' => b - b'0',
-                b'a'..=b'f' if base > 10 => b - b'a' + 10,
-                b'A'..=b'F' if base > 10 => b - b'A' + 10,
-                b'_' => {
-                    s = &s[1..];
-                    continue;
-                },
-                // If looking at a floating point literal, we don't want to
-                // consider it an integer.
-                b'.' if base == 10 => return None,
-                b'e' | b'E' if base == 10 => {
-                    let mut has_exp = false;
-                    for (i, b) in s[1..].bytes().enumerate() {
-                        match b {
-                            b'_' => {},
-                            b'-' | b'+' => return None,
-                            b'0'..=b'9' => has_exp = true,
-                            _ => {
-                                let suffix = &s[1 + i..];
-                                if has_exp && super::xid_ok(suffix) {
-                                    return None;
-                                }
-                                break 'outer;
-                            },
-                        }
-                    }
-                    if has_exp {
-                        return None;
-                    }
-                    break;
-                },
-                _ => break,
-            };
-
-            if digit >= base {
-                return None;
-            }
-
-            value *= base;
-            value += digit;
-            s = &s[1..];
-        }
-
-        let suffix = s;
-
-        (suffix.is_empty() || super::xid_ok(suffix)).then(|| {
-            let mut repr = value.to_string();
-            if negative {
-                repr.insert(0, '-');
-            }
-            repr.into_boxed_str()
-        })
-    }
-
-    /// Get the byte at offset idx, or a default of `b'\0'` if we're looking
-    /// past the end of the input buffer.
-    pub(crate) fn byte<S: AsRef<[u8]> + ?Sized>(s: &S, idx: usize) -> u8 {
-        let s = s.as_ref();
-        if idx < s.len() { s[idx] } else { 0 }
-    }
-}
-
-#[must_use]
-pub fn xid_ok(symbol: &str) -> bool {
-    let mut chars = symbol.chars();
-    let first = chars.next().unwrap();
-    if !(UnicodeXID::is_xid_start(first) || first == '_') {
-        return false;
-    }
-    for ch in chars {
-        if !UnicodeXID::is_xid_continue(ch) {
-            return false;
-        }
-    }
-    true
-}
-
-use std::ops::{AddAssign, MulAssign};
-
-// For implementing base10_digits() accessor on LitInt.
-pub struct BigInt {
-    digits: Vec<u8>,
-}
-
-impl BigInt {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { digits: Vec::new() }
-    }
-
-    fn reserve_two_digits(&mut self) {
-        let len = self.digits.len();
-        let desired =
-            len + usize::from(!self.digits.ends_with(&[0, 0])) + usize::from(!self.digits.ends_with(&[0]));
-
-        self.digits.resize(desired, 0);
-    }
-}
-
-impl fmt::Display for BigInt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut repr = String::with_capacity(self.digits.len());
-
-        let mut has_nonzero = false;
-        for digit in self.digits.iter().rev() {
-            has_nonzero |= *digit != 0;
-            if has_nonzero {
-                repr.push((*digit + b'0') as char);
-            }
-        }
-
-        if repr.is_empty() {
-            repr.push('0');
-        }
-
-        write!(f, "{}", repr)
-    }
-}
-
-impl AddAssign<u8> for BigInt {
-    // Assumes `rhs <16`.
-    fn add_assign(&mut self, mut rhs: u8) {
-        self.reserve_two_digits();
-
-        let mut i = 0;
-        while rhs > 0 {
-            let sum = self.digits[i] + rhs;
-            self.digits[i] = sum % 10;
-            rhs = sum / 10;
-            i += 1;
-        }
-    }
-}
-
-impl MulAssign<u8> for BigInt {
-    // Assumes `rhs <=16`.
-    fn mul_assign(&mut self, rhs: u8) {
-        self.reserve_two_digits();
-
-        let mut carry = 0;
-        for digit in &mut self.digits {
-            let prod = *digit * rhs + carry;
-            *digit = prod % 10;
-            carry = prod / 10;
-        }
-    }
-}
-
 pub struct Punctuated<T, P> {
     inner: Vec<(T, P)>,
     last: Option<Box<T>>,
@@ -667,7 +377,7 @@ pub struct Punctuated<T, P> {
 impl<T, P> Punctuated<T, P> {
     /// Creates an empty punctuated sequence.
     #[must_use]
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             inner: Vec::new(),
             last: None,
@@ -690,20 +400,8 @@ impl<T, P> Punctuated<T, P> {
         self.inner.len() + usize::from(self.last.is_some())
     }
 
-    /// Borrows the first element in this sequence.
-    #[must_use]
-    pub fn first(&self) -> Option<&T> {
-        self.iter().next()
-    }
-
-    /// Borrows the last element in this sequence.
-    #[must_use]
-    pub fn last(&self) -> Option<&T> {
-        self.iter().next_back()
-    }
-
     /// Returns an iterator over borrowed syntax tree nodes of type `&T`.
-    pub fn iter(&self) -> Iter<'_, T> {
+    fn iter(&self) -> Iter<'_, T> {
         Iter {
             inner: Box::new(PrivateIter {
                 inner: self.inner.iter(),
@@ -724,7 +422,7 @@ impl<T, P> Punctuated<T, P> {
     ///
     /// Panics if the sequence does not already have a trailing punctuation when
     /// this method is called.
-    pub fn push_value(&mut self, value: T) {
+    fn push_value(&mut self, value: T) {
         assert!(
             self.empty_or_trailing(),
             "Punctuated::push_value: cannot push value if Punctuated is missing trailing punctuation",
@@ -740,7 +438,7 @@ impl<T, P> Punctuated<T, P> {
     /// # Panics
     ///
     /// Panics if the sequence is empty or already has a trailing punctuation.
-    pub fn push_punct(&mut self, punctuation: P) {
+    fn push_punct(&mut self, punctuation: P) {
         assert!(
             self.last.is_some(),
             "Punctuated::push_punct: cannot push punctuation if Punctuated is empty or already has trailing punctuation",
@@ -750,19 +448,12 @@ impl<T, P> Punctuated<T, P> {
         self.inner.push((*last, punctuation));
     }
 
-    /// Determines whether this punctuated sequence ends with a trailing
-    /// punctuation.
-    #[must_use]
-    pub const fn trailing_punct(&self) -> bool {
-        self.last.is_none() && !self.is_empty()
-    }
-
     /// Returns true if either this `Punctuated` is empty, or it has a trailing
     /// punctuation.
     ///
     /// Equivalent to `punctuated.is_empty() || punctuated.trailing_punct()`.
     #[must_use]
-    pub const fn empty_or_trailing(&self) -> bool {
+    const fn empty_or_trailing(&self) -> bool {
         self.last.is_none()
     }
 
@@ -771,7 +462,7 @@ impl<T, P> Punctuated<T, P> {
     /// If there is not a trailing punctuation in this sequence when this method
     /// is called, the default value of punctuation type `P` is inserted before
     /// the given value of type `T`.
-    pub fn push(&mut self, value: T)
+    fn push(&mut self, value: T)
     where
         P: Default,
     {
@@ -779,31 +470,6 @@ impl<T, P> Punctuated<T, P> {
             self.push_punct(Default::default());
         }
         self.push_value(value);
-    }
-
-    /// Inserts an element at position `index`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `index` is greater than the number of elements previously in
-    /// this punctuated sequence.
-    pub fn insert(&mut self, index: usize, value: T)
-    where
-        P: Default,
-    {
-        assert!(index <= self.len(), "Punctuated::insert: index out of range",);
-
-        if index == self.len() {
-            self.push(value);
-        } else {
-            self.inner.insert(index, (value, Default::default()));
-        }
-    }
-
-    /// Clears the sequence of all values and punctuation, making it empty.
-    pub fn clear(&mut self) {
-        self.inner.clear();
-        self.last = None;
     }
 
     /// Parses zero or more occurrences of `T` separated by punctuation of type
@@ -834,7 +500,7 @@ impl<T, P> Punctuated<T, P> {
     ///
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
-    pub fn parse_terminated_with<U>(
+    fn parse_terminated_with<U>(
         input: Stream<'_>,
         parser: fn(Stream<'_>, &U) -> Result<T>,
         meta: &U,
@@ -891,7 +557,7 @@ impl<T, P> Punctuated<T, P> {
     ///
     /// *This function is available only if Syn is built with the `"parsing"`
     /// feature.*
-    pub fn parse_separated_nonempty_with<U>(
+    fn parse_separated_nonempty_with<U>(
         input: Stream<'_>,
         parser: fn(Stream<'_>, &U) -> Result<T>,
         meta: &U,
@@ -934,37 +600,6 @@ where
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for value in iter {
             self.push(value);
-        }
-    }
-}
-
-impl<T, P> FromIterator<Pair<T, P>> for Punctuated<T, P> {
-    fn from_iter<I: IntoIterator<Item = Pair<T, P>>>(iter: I) -> Self {
-        let mut ret = Self::new();
-        ret.extend(iter);
-        ret
-    }
-}
-
-impl<T, P> Extend<Pair<T, P>> for Punctuated<T, P> {
-    fn extend<I: IntoIterator<Item = Pair<T, P>>>(&mut self, iter: I) {
-        assert!(
-            self.empty_or_trailing(),
-            "Punctuated::extend: Punctuated is not empty or does not have a trailing punctuation",
-        );
-
-        let mut nomore = false;
-        for pair in iter {
-            if nomore {
-                panic!("Punctuated extended with items after a Pair::End");
-            }
-            match pair {
-                Pair::Punctuated(a, b) => self.inner.push((a, b)),
-                Pair::End(a) => {
-                    self.last = Some(Box::new(a));
-                    nomore = true;
-                },
-            }
         }
     }
 }
@@ -1134,80 +769,5 @@ where
 {
     fn clone_box(&self) -> Box<dyn IterTrait<'a, T, Item = &'a T> + 'a> {
         Box::new(self.clone())
-    }
-}
-
-/// A single syntax tree node of type `T` followed by its trailing punctuation
-/// of type `P` if any.
-///
-/// Refer to the [module documentation] for details about punctuated sequences.
-///
-/// [module documentation]: self
-pub enum Pair<T, P> {
-    Punctuated(T, P),
-    End(T),
-}
-
-impl<T, P> Pair<T, P> {
-    /// Extracts the syntax tree node from this punctuated pair, discarding the
-    /// following punctuation.
-    pub fn into_value(self) -> T {
-        match self {
-            Self::Punctuated(t, _) | Self::End(t) => t,
-        }
-    }
-
-    /// Borrows the syntax tree node from this punctuated pair.
-    pub const fn value(&self) -> &T {
-        match self {
-            Self::Punctuated(t, _) | Self::End(t) => t,
-        }
-    }
-
-    /// Mutably borrows the syntax tree node from this punctuated pair.
-    pub const fn value_mut(&mut self) -> &mut T {
-        match self {
-            Self::Punctuated(t, _) | Self::End(t) => t,
-        }
-    }
-
-    /// Borrows the punctuation from this punctuated pair, unless this pair is
-    /// the final one and there is no trailing punctuation.
-    pub const fn punct(&self) -> Option<&P> {
-        match self {
-            Self::Punctuated(_, p) => Some(p),
-            Self::End(_) => None,
-        }
-    }
-
-    /// Creates a punctuated pair out of a syntax tree node and an optional
-    /// following punctuation.
-    pub fn new(t: T, p: Option<P>) -> Self {
-        match p {
-            Some(p) => Self::Punctuated(t, p),
-            None => Self::End(t),
-        }
-    }
-
-    /// Produces this punctuated pair as a tuple of syntax tree node and
-    /// optional following punctuation.
-    pub fn into_tuple(self) -> (T, Option<P>) {
-        match self {
-            Self::Punctuated(t, p) => (t, Some(p)),
-            Self::End(t) => (t, None),
-        }
-    }
-}
-
-impl<T, P> Clone for Pair<T, P>
-where
-    T: Clone,
-    P: Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            Self::Punctuated(t, p) => Self::Punctuated(t.clone(), p.clone()),
-            Self::End(t) => Self::End(t.clone()),
-        }
     }
 }

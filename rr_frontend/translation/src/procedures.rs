@@ -35,7 +35,7 @@ pub(crate) enum Mode {
     Ignore,
 }
 
-#[allow(clippy::allow_attributes, dead_code)]
+#[allow(clippy::allow_attributes)]
 impl Mode {
     pub(crate) fn is_prove(self) -> bool {
         self == Self::Prove
@@ -62,19 +62,19 @@ impl Mode {
     }
 
     pub(crate) fn is_assumed(self) -> bool {
-        self == Self::OnlySpec || self == Self::TrustMe
+        self.is_only_spec() || self.is_trust_me()
     }
 
     pub(crate) fn needs_proof(self) -> bool {
-        self == Self::Prove || self == Self::CodeShim
+        self.is_prove() || self.is_code_shim()
     }
 
     pub(crate) fn needs_def(self) -> bool {
-        self == Self::Prove || self == Self::TrustMe
+        self.is_prove() || self.is_trust_me()
     }
 
     pub(crate) fn needs_spec(self) -> bool {
-        self == Self::Prove || self == Self::TrustMe || self == Self::OnlySpec || self == Self::CodeShim
+        self.is_prove() || self.is_trust_me() || self.is_only_spec() || self.is_code_shim()
     }
 }
 

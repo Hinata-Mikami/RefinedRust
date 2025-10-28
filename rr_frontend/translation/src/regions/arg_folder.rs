@@ -281,14 +281,6 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ArgFolder<'_, 'tcx> {
             _ => t.super_fold_with(self),
         }
     }
-
-    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Param(p) = c.kind() {
-            self.const_for_param(p, c)
-        } else {
-            c.super_fold_with(self)
-        }
-    }
 }
 
 impl<'tcx> ArgFolder<'_, 'tcx> {
@@ -319,41 +311,6 @@ impl<'tcx> ArgFolder<'_, 'tcx> {
         panic!(
             "type parameter `{:?}` ({:?}/{}) out of range when substituting, args={:?}",
             p, ty, p.index, self.args,
-        )
-    }
-
-    fn const_for_param(&self, p: ty::ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        // Look up the const in the args. It really should be in there.
-        let opt_ct = self.args.get(p.index as usize).map(|k| k.kind());
-        let ct = match opt_ct {
-            Some(ty::GenericArgKind::Const(ct)) => ct,
-            Some(kind) => self.const_param_expected(p, source_ct, &kind),
-            None => self.const_param_out_of_range(p, source_ct),
-        };
-
-        self.shift_vars_through_binders(ct)
-    }
-
-    #[cold]
-    #[inline(never)]
-    fn const_param_expected(
-        &self,
-        p: ty::ParamConst,
-        ct: ty::Const<'tcx>,
-        kind: &ty::GenericArgKind<'tcx>,
-    ) -> ! {
-        panic!(
-            "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting args={:?}",
-            p, ct, p.index, kind, self.args,
-        )
-    }
-
-    #[cold]
-    #[inline(never)]
-    fn const_param_out_of_range(&self, p: ty::ParamConst, ct: ty::Const<'tcx>) -> ! {
-        panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when substituting args={:?}",
-            p, ct, p.index, self.args,
         )
     }
 

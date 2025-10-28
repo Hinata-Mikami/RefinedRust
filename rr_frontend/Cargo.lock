@@ -111,7 +111,6 @@ name = "attribute_parse"
 version = "0.1.0"
 dependencies = [
  "rr_rustc_interface",
- "unicode-xid",
 ]
 
 [[package]]

@@ -51,11 +51,6 @@ impl Serialize for DefinitelyAllocatedState<'_, '_> {
 }
 
 impl DefinitelyAllocatedState<'_, '_> {
-    #[must_use]
-    pub const fn get_def_allocated_locals(&self) -> &FxHashSet<mir::Local> {
-        &self.def_allocated_locals
-    }
-
     /// Sets `local` as allocated.
     fn set_local_allocated(&mut self, local: mir::Local) {
         self.def_allocated_locals.insert(local);

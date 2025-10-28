@@ -1672,11 +1672,6 @@ impl<'def> FunctionBuilder<'def> {
         self.used_statics.push(s);
     }
 
-    /// Adds a lifetime parameter to the function.
-    pub fn add_universal_lifetime(&mut self, lft: Lft) {
-        self.spec.generics.add_lft_param(lft);
-    }
-
     /// Add a manual tactic used for a sidecondition proof.
     pub fn add_manual_tactic(&mut self, tac: String) {
         self.tactics.push(tac);
@@ -1685,12 +1680,6 @@ impl<'def> FunctionBuilder<'def> {
     /// Add a hint request for an unconstrained lifetime.
     pub fn add_unconstrained_lft_hint(&mut self, lft: Lft) {
         self.unconstrained_lfts.push(lft);
-    }
-
-    /// Get the universal lifetimes.
-    #[must_use]
-    pub fn get_lfts(&self) -> &[Lft] {
-        self.spec.generics.get_lfts()
     }
 
     /// Add the assumption that a particular syntype is layoutable to the typing proof.

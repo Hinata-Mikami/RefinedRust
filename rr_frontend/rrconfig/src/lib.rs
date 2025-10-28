@@ -22,7 +22,6 @@ struct Config {
     check_overflows: bool,
     dump_debug_info: bool,
     dump_borrowck_info: bool,
-    quiet: bool,
     skip_unsupported_features: bool,
     spec_hotword: String,
     attribute_parser: String,
@@ -48,7 +47,6 @@ impl Default for Config {
             check_overflows: true,
             dump_debug_info: false,
             dump_borrowck_info: false,
-            quiet: false,
             skip_unsupported_features: true,
             spec_hotword: "rr".to_owned(),
             attribute_parser: "verbose".to_owned(),
@@ -177,12 +175,6 @@ pub fn dump_debug_info() -> bool {
 #[must_use]
 pub fn dump_borrowck_info() -> bool {
     access_config(|c| c.dump_borrowck_info)
-}
-
-/// Should we hide user messages?
-#[must_use]
-pub fn quiet() -> bool {
-    access_config(|c| c.quiet)
 }
 
 /// Skip features that are unsupported or partially supported
@@ -335,11 +327,11 @@ mod tests {
 
     #[test]
     fn write() {
-        setup(|mut c| c.quiet = true);
-        setup(|c| assert_eq!(c.quiet, true));
+        setup(|mut c| c.admit_proofs = true);
+        setup(|c| assert_eq!(c.admit_proofs, true));
 
-        setup(|mut c| c.quiet = false);
-        setup(|c| assert_eq!(c.quiet, false));
+        setup(|mut c| c.admit_proofs = false);
+        setup(|c| assert_eq!(c.admit_proofs, false));
     }
 
     #[test]
