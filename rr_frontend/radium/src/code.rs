@@ -89,7 +89,7 @@ impl TryFrom<types::LiteralUse<'_>> for RustEnumDef {
 
     fn try_from(other: types::LiteralUse<'_>) -> Result<Self, ()> {
         let scope_inst = &other.scope_inst.ok_or(())?;
-        let enum_name = other.def.info.enum_name.as_ref().ok_or(())?;
+        let enum_name = other.def.info.enum_name().ok_or(())?;
 
         let inst: RustScopeInst = scope_inst.into();
         Ok(Self {

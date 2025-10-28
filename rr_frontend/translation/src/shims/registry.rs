@@ -28,15 +28,15 @@ mod remote {
     #[derive(Serialize, Deserialize)]
     #[serde(remote = "specs::traits::LiteralImpl")]
     pub(super) struct LiteralImpl {
-        #[serde(getter = "Self::resolver_name")]
+        #[serde(getter = "Self::name")]
         name: String,
 
-        #[serde(getter = "Self::resolver_has_semantic_interp")]
+        #[serde(getter = "Self::has_semantic_interp")]
         has_semantic_interp: bool,
     }
 
     impl LiteralImpl {
-        fn resolver_name(literal_impl: &specs::traits::LiteralImpl) -> String {
+        fn name(literal_impl: &specs::traits::LiteralImpl) -> String {
             literal_impl
                 .spec_record()
                 .strip_suffix("_spec")
@@ -44,7 +44,7 @@ mod remote {
                 .to_owned()
         }
 
-        fn resolver_has_semantic_interp(literal_impl: &specs::traits::LiteralImpl) -> bool {
+        fn has_semantic_interp(literal_impl: &specs::traits::LiteralImpl) -> bool {
             Option::is_some(&literal_impl.spec_semantic())
         }
     }
@@ -58,8 +58,27 @@ mod remote {
     #[derive(Serialize, Deserialize)]
     #[serde(remote = "specs::types::AdtShimInfo")]
     pub(super) struct AdtShimInfo {
+        #[serde(getter = "Self::enum_name")]
         enum_name: Option<String>,
+
+        #[serde(getter = "Self::needs_trait_attrs")]
         needs_trait_attrs: bool,
+    }
+
+    impl AdtShimInfo {
+        fn enum_name(adt_shim_info: &specs::types::AdtShimInfo) -> Option<String> {
+            adt_shim_info.enum_name().cloned()
+        }
+
+        const fn needs_trait_attrs(adt_shim_info: &specs::types::AdtShimInfo) -> bool {
+            adt_shim_info.needs_trait_attrs()
+        }
+    }
+
+    impl From<AdtShimInfo> for specs::types::AdtShimInfo {
+        fn from(adt_shim_info: AdtShimInfo) -> Self {
+            Self::new(adt_shim_info.enum_name, adt_shim_info.needs_trait_attrs)
+        }
     }
 }
 

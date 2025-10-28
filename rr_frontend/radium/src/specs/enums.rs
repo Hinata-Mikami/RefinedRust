@@ -678,10 +678,7 @@ impl<'def> Abstract<'def> {
     /// Make a literal type.
     #[must_use]
     pub fn make_literal_type(&self) -> types::Literal {
-        let info = types::AdtShimInfo {
-            enum_name: Some(self.enum_def_name.clone()),
-            needs_trait_attrs: false,
-        };
+        let info = types::AdtShimInfo::new(Some(self.enum_def_name.clone()), false);
 
         types::Literal {
             rust_name: Some(self.name().to_owned()),

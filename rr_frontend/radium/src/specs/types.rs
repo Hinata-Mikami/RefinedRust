@@ -4,25 +4,35 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
+use derive_more::Constructor;
+
 use crate::specs::{GenericScopeInst, traits};
 use crate::{coq, lang};
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct AdtShimInfo {
     /// if this is an enum, its name
-    pub enum_name: Option<String>,
+    enum_name: Option<String>,
 
     /// whether the type definition needs trait attributes
-    pub needs_trait_attrs: bool,
+    needs_trait_attrs: bool,
 }
 
 impl AdtShimInfo {
     #[must_use]
     pub const fn empty() -> Self {
-        Self {
-            enum_name: None,
-            needs_trait_attrs: false,
-        }
+        Self::new(None, false)
+    }
+
+    #[must_use]
+    pub const fn enum_name(&self) -> Option<&String> {
+        self.enum_name.as_ref()
+    }
+
+    #[must_use]
+    // TODO: This field is currently unused
+    pub const fn needs_trait_attrs(&self) -> bool {
+        self.needs_trait_attrs
     }
 }
 
