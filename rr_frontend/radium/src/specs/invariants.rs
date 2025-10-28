@@ -30,8 +30,8 @@ pub enum Mode {
 
 #[derive(Clone, PartialEq, Eq, Debug, Constructor)]
 pub struct Spec {
-    /// the name of the struct definition
-    struct_name: String,
+    /// the name of the definition
+    name: String,
 
     flags: SpecFlags,
 
@@ -61,7 +61,7 @@ pub struct Spec {
 impl Spec {
     #[must_use]
     pub(crate) fn type_name(&self) -> String {
-        format!("{}_inv_t", self.struct_name)
+        format!("{}_inv_t", self.name)
     }
 
     #[must_use]

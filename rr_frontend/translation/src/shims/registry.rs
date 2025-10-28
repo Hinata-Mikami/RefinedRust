@@ -28,12 +28,31 @@ mod remote {
     #[derive(Serialize, Deserialize)]
     #[serde(remote = "specs::traits::LiteralImpl")]
     pub(super) struct LiteralImpl {
-        spec_record: String,
-        spec_params_record: String,
-        spec_attrs_record: String,
-        spec_semantic: Option<String>,
-        spec_subsumption_proof: String,
-        spec_subsumption_statement: String,
+        #[serde(getter = "Self::resolver_name")]
+        name: String,
+
+        #[serde(getter = "Self::resolver_has_semantic_interp")]
+        has_semantic_interp: bool,
+    }
+
+    impl LiteralImpl {
+        fn resolver_name(literal_impl: &specs::traits::LiteralImpl) -> String {
+            literal_impl
+                .spec_record()
+                .strip_suffix("_spec")
+                .unwrap_or_else(|| unreachable!("This is the reverse function of `spec_record`"))
+                .to_owned()
+        }
+
+        fn resolver_has_semantic_interp(literal_impl: &specs::traits::LiteralImpl) -> bool {
+            Option::is_some(&literal_impl.spec_semantic())
+        }
+    }
+
+    impl From<LiteralImpl> for specs::traits::LiteralImpl {
+        fn from(literal_impl: LiteralImpl) -> Self {
+            Self::new(literal_impl.name, literal_impl.has_semantic_interp)
+        }
     }
 
     #[derive(Serialize, Deserialize)]

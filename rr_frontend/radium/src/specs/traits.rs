@@ -130,6 +130,7 @@ pub struct LiteralSpec {
     /// maps each trait method to its canonical trait inclusion assumption definition
     pub method_trait_incl_decls: BTreeMap<String, String>,
 }
+
 pub type LiteralSpecRef<'def> = &'def LiteralSpec;
 
 impl LiteralSpec {
@@ -504,7 +505,7 @@ impl SpecializedImpl<'_> {
     #[must_use]
     fn get_spec_term(&self) -> String {
         let mut out = String::new();
-        out.push_str(&format!("{} ", self.impl_ref.spec_record));
+        out.push_str(&format!("{} ", self.impl_ref.spec_record()));
 
         // specialize to rts
         push_str_list!(out, self.impl_inst.get_direct_ty_params_with_assocs(), " ", |x| {
@@ -631,8 +632,7 @@ impl<T> ReqInst<'_, T> {
                     args.push(req.get_attr_term());
                 }
 
-                let attr_term =
-                    format!("{}", coq::term::App::new(s.impl_ref.spec_attrs_record.clone(), args));
+                let attr_term = format!("{}", coq::term::App::new(s.impl_ref.spec_attrs_record(), args));
                 attr_term
             },
             ReqInstSpec::Quantified(s) => {
@@ -1279,30 +1279,55 @@ impl fmt::Display for SpecDecl<'_> {
     }
 }
 
-/// Coq Names used for the spec of a trait impl.
+/// Rocq names used for the specification of a trait impl.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
-#[expect(clippy::struct_field_names)]
 pub struct LiteralImpl {
-    /// The Rocq name of the specification record instance
-    pub spec_record: String,
+    /// The Rocq name of the specification
+    name: String,
 
-    /// The Rocq name of the specification parameters record instance
-    pub spec_params_record: String,
-
-    /// The Rocq name of the specification attributes record instance
-    pub spec_attrs_record: String,
-
-    /// The optional Rocq definition name for the trait's semantic interpretation
-    pub spec_semantic: Option<String>,
-
-    /// The Rocq lemma name of the proof that the base spec is implied by the more specific spec
-    pub spec_subsumption_proof: String,
-
-    /// The Rocq name of the definition for the lemma statement
-    pub spec_subsumption_statement: String,
+    /// Whether is there a Rocq definition name for the trait's semantic interpretation.
+    has_semantic_interp: bool,
 }
 
 pub type LiteralImplRef<'def> = &'def LiteralImpl;
+
+impl LiteralImpl {
+    /// The Rocq name of the specification record instance
+    #[must_use]
+    pub fn spec_record(&self) -> String {
+        format!("{}_spec", self.name)
+    }
+
+    /// The Rocq name of the specification parameters record instance
+    #[must_use]
+    pub fn spec_params_record(&self) -> String {
+        format!("{}_spec_params", self.name)
+    }
+
+    /// The Rocq name of the specification attributes record instance
+    #[must_use]
+    pub fn spec_attrs_record(&self) -> String {
+        format!("{}_spec_attrs", self.name)
+    }
+
+    /// The optional Rocq definition name for the trait's semantic interpretation
+    #[must_use]
+    pub fn spec_semantic(&self) -> Option<String> {
+        self.has_semantic_interp.then(|| format!("{}_semantic_interp", self.name))
+    }
+
+    /// The Rocq lemma name of the proof that the base spec is implied by the more specific spec
+    #[must_use]
+    pub fn spec_subsumption_proof(&self) -> String {
+        format!("{}_spec_subsumption_correct", self.name)
+    }
+
+    /// The Rocq name of the definition for the lemma statement
+    #[must_use]
+    pub fn spec_subsumption_statement(&self) -> String {
+        format!("{}_spec_subsumption", self.name)
+    }
+}
 
 /// A full instantiation of a trait spec, e.g. for an impl of a trait,
 /// which may itself be generic in a `GenericScope`.
@@ -1350,7 +1375,7 @@ impl<'def> RefInst<'def> {
     /// The parameters are expected to be in scope.
     #[must_use]
     fn get_attr_record_term(&self) -> coq::term::App<coq::term::Term, coq::term::Term> {
-        let attr_record = &self.impl_ref.spec_attrs_record;
+        let attr_record = &self.impl_ref.spec_attrs_record();
 
         // get all type parameters
         let mut binders = self.generics.get_all_ty_params_with_assocs().get_coq_ty_rt_params();
@@ -1365,7 +1390,7 @@ impl<'def> RefInst<'def> {
     /// The parameters are expected to be in scope.
     #[must_use]
     fn get_spec_record_term(&self) -> coq::term::Term {
-        let spec_record = &self.impl_ref.spec_record;
+        let spec_record = &self.impl_ref.spec_record();
 
         // specialize to all type parameters
         let tys = self.generics.get_all_ty_params_with_assocs();
@@ -1443,7 +1468,7 @@ impl ImplSpec<'_> {
     #[must_use]
     pub fn generate_attr_decl(&self) -> coq::Document {
         let attrs = &self.trait_ref.attrs;
-        let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record;
+        let attrs_name = &self.trait_ref.impl_ref.spec_attrs_record();
         let of_trait = &self.trait_ref.of_trait;
 
         let mut def_rts_params = self.extra_context_items.clone();
@@ -1534,7 +1559,7 @@ impl ImplSpec<'_> {
 
     /// Make the definition for the semantic declaration.
     fn make_semantic_decl(&self) -> Option<coq::Document> {
-        if let Some(def_name) = &self.trait_ref.impl_ref.spec_semantic {
+        if let Some(def_name) = &self.trait_ref.impl_ref.spec_semantic() {
             let base_name = self.trait_ref.of_trait.spec_semantic().unwrap();
 
             let generics = &self.trait_ref.generics;
@@ -1591,7 +1616,7 @@ impl ImplSpec<'_> {
     fn generate_lemma_statement(&self) -> coq::Document {
         let mut doc = coq::Document::default();
 
-        let spec_name = &self.trait_ref.impl_ref.spec_subsumption_statement;
+        let spec_name = &self.trait_ref.impl_ref.spec_subsumption_statement();
 
         // generate the lemma statement
         // get parameters
@@ -1629,7 +1654,7 @@ impl ImplSpec<'_> {
     pub fn generate_proof(&self) -> coq::Document {
         let mut doc = coq::Document::default();
 
-        let lemma_name = &self.trait_ref.impl_ref.spec_subsumption_proof;
+        let lemma_name = &self.trait_ref.impl_ref.spec_subsumption_proof();
 
         // generate the lemma statement
         // get parameters
@@ -1641,7 +1666,7 @@ impl ImplSpec<'_> {
 
         let ty_term = format!(
             "{} {}",
-            self.trait_ref.impl_ref.spec_subsumption_statement,
+            self.trait_ref.impl_ref.spec_subsumption_statement(),
             fmt_list!(params.make_using_terms(), " ")
         );
 
@@ -1651,7 +1676,7 @@ impl ImplSpec<'_> {
             ty: coq::term::Type::Literal(ty_term),
             body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
                 proof.push(model::LTac::SolveTraitInclPrelude(
-                    self.trait_ref.impl_ref.spec_subsumption_statement.clone(),
+                    self.trait_ref.impl_ref.spec_subsumption_statement(),
                 ));
                 proof.push(model::LTac::RepeatLiRStep.scope(coq::ltac::Scope::All));
                 proof.push(model::LTac::PrintRemainingTraitGoal.scope(coq::ltac::Scope::All));
@@ -1668,7 +1693,7 @@ impl ImplSpec<'_> {
 
 impl fmt::Display for ImplSpec<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record.clone(), |section| {
+        let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record(), |section| {
             section.push(coq::command::Context::refinedrust());
 
             section.push(coq::command::Context::new(self.extra_context_items.clone()));
@@ -1684,7 +1709,7 @@ impl fmt::Display for ImplSpec<'_> {
                 &self.methods,
                 self.trait_ref.of_trait,
                 false,
-                &self.trait_ref.impl_ref.spec_record,
+                &self.trait_ref.impl_ref.spec_record(),
             )
             .unwrap();
 

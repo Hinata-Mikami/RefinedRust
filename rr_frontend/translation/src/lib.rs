@@ -742,7 +742,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         }
 
         let mut write_trait_incl = |spec: &specs::traits::ImplSpec<'_>| {
-            let name = &spec.trait_ref.impl_ref.spec_subsumption_proof;
+            let name = &spec.trait_ref.impl_ref.spec_subsumption_proof();
             let module_path = trait_file_path(name.as_str());
             let path = proof_dir_path.join(format!("{module_path}.v"));
 
@@ -1550,24 +1550,11 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             }
 
             // make names for the spec and inclusion proof
-            let base_name = base::strip_coq_ident(&vcx.env.get_item_name(did));
-            let spec_name = format!("{base_name}_spec");
-            let spec_params_name = format!("{base_name}_spec_params");
-            let spec_attrs_name = format!("{base_name}_spec_attrs");
-            let proof_name = format!("{base_name}_spec_subsumption_correct");
-            let proof_statement = format!("{base_name}_spec_subsumption");
+            let impl_lit = specs::traits::LiteralImpl::new(
+                base::strip_coq_ident(&vcx.env.get_item_name(did)),
+                registered.has_semantic_interp,
+            );
 
-            let spec_semantic =
-                registered.has_semantic_interp.then(|| format!("{base_name}_semantic_interp"));
-
-            let impl_lit = specs::traits::LiteralImpl {
-                spec_record: spec_name,
-                spec_params_record: spec_params_name,
-                spec_attrs_record: spec_attrs_name,
-                spec_semantic,
-                spec_subsumption_proof: proof_name,
-                spec_subsumption_statement: proof_statement,
-            };
             vcx.trait_registry
                 .register_impl_shim(did, impl_lit)
                 .map_err(|x| ToString::to_string(&x))?;
@@ -1618,23 +1605,10 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
 
         let make_impl = |kind| -> Result<(), String> {
             // make names for the spec and inclusion proof
-            let base_name = base::strip_coq_ident(&format!("{}_{kind:?}", vcx.env.get_item_name(did)));
-            let spec_name = format!("{base_name}_spec");
-            let spec_params_name = format!("{base_name}_spec_params");
-            let spec_attrs_name = format!("{base_name}_spec_attrs");
-            let proof_name = format!("{base_name}_spec_subsumption_correct");
-            let proof_statement = format!("{base_name}_spec_subsumption");
-            // the closure traits don't have a semantic component
-            let spec_semantic = None;
-
-            let impl_lit = specs::traits::LiteralImpl {
-                spec_record: spec_name,
-                spec_params_record: spec_params_name,
-                spec_attrs_record: spec_attrs_name,
-                spec_semantic,
-                spec_subsumption_proof: proof_name,
-                spec_subsumption_statement: proof_statement,
-            };
+            let impl_lit = specs::traits::LiteralImpl::new(
+                base::strip_coq_ident(&format!("{}_{kind:?}", vcx.env.get_item_name(did))),
+                false,
+            );
 
             // create function meta
             let method_name = match kind {
