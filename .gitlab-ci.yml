@@ -97,6 +97,14 @@ machete:
    - cd rr_frontend
    - nix develop -c cargo machete
 
+unused:
+  extends: .nix
+  stage: lint
+  script:
+   - cd rr_frontend
+   - nix develop -c rust-analyzer scip . --output index.scip
+   - nix develop -c cargo workspace-unused-pub --extensions rs,unused
+
 theories:
   extends: [ .nix, .build_to_nix_artifacts ]
   stage: build

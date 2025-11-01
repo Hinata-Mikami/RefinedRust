@@ -1,0 +1,3 @@
+CollectClosureDefsVisitor::maybe_tcx
+CollectClosureDefsVisitor::visit_expr
+OrderedDefId::partial_cmp
