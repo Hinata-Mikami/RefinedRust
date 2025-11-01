@@ -281,10 +281,18 @@
       };
 
       devShells = {
-        target = rust.mkToolchains rust.toolchain.dev (toolchain:
+        target = rust.mkToolchains rust.toolchain.dev (toolchain: let
+          cargo-workspace-unused-pub = rust.env.buildPackage {
+            src = pkgs.fetchCrate {
+              pname = "cargo-workspace-unused-pub";
+              version = "0.1.0";
+              sha256 = "sha256-T0neI46w2u4hD1QvpF/qsCt8oH2bdyck8s9iNKMikCE=";
+            };
+          };
+        in
           pkgs.mkShell {
             inputsFrom = with packages; [frontend theories];
-            packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain];
+            packages = with pkgs; [cargo-deny cargo-machete cargo-workspace-unused-pub gnumake gnupatch gnused toolchain];
 
             LD_LIBRARY_PATH = rust.mkLibPath toolchain;
             DYLD_FALLBACK_LIBRARY_PATH = rust.mkLibPath toolchain;
