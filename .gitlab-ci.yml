@@ -1,4 +1,4 @@
-stages: [ nix-cache, lint, build, tests ]
+stages: [ nix-cache, build, lint, tests ]
 
 .upstream_only: &upstream_only
   rules:
@@ -27,6 +27,7 @@ stages: [ nix-cache, lint, build, tests ]
 
   variables:
     DEPENDENCIES: ".#theories.inputDerivation .#frontend.inputDerivation .#frontend.cargoArtifacts nixpkgs#gnumake nixpkgs#gnupatch nixpkgs#gnused"
+    NIX_PLATFORM: "$(eval nix-instantiate --eval --expr 'builtins.currentSystem')"
     NIX_STORE_ARTIFACTS_PATH: ".ci_nix_artifacts"
     NIX_STORE_CACHE_PATH: ".ci_nix_cache"
 
@@ -41,10 +42,10 @@ stages: [ nix-cache, lint, build, tests ]
     <<: *nix_cache
     policy: pull-push
 
-  script:
-   - nix build --print-build-logs ${NIX_DERIVATION}
-   - nix store sign --key-file <(echo "${NIX_CI_CACHE_PRIV_KEY}") --recursive ${NIX_DERIVATION}
-   - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" ${NIX_DERIVATION}
+  script: &build_drv
+   - nix build --print-build-logs $(eval echo ${NIX_DERIVATION})
+   - nix store sign --key-file <(echo "${NIX_CI_CACHE_PRIV_KEY}") --recursive $(eval echo ${NIX_DERIVATION})
+   - nix copy --to "file://$(pwd)/${NIX_STORE_CACHE_PATH}" $(eval echo ${NIX_DERIVATION})
 
 .build_to_nix_artifacts:
   artifacts:
@@ -53,14 +54,14 @@ stages: [ nix-cache, lint, build, tests ]
     expire_in: 1 week
 
   script:
-   - !reference [ .build_to_nix_cache, script ]
+   - *build_drv
 
    # To avoid generating large `artifacts` without cluttering the `cache`, an overlay on top of the nix store must be used.
    # So, one of the following solutions can be used:
    #  1. Using OverlayFS (with `local-overlay` feature), but SYS_ADMIN capability is required
    #  2. Moving files around, which is not the best way to do
    - mkdir -p "${NIX_STORE_ARTIFACTS_PATH}/nar"
-   - nix path-info ${NIX_DERIVATION} | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
+   - nix path-info $(eval echo ${NIX_DERIVATION}) | xargs -r basename -a | cut -d'-' -f1 | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s.narinfo\0" | xargs -r0 mv -v -t "${NIX_STORE_ARTIFACTS_PATH}" || true
    - find "${NIX_STORE_ARTIFACTS_PATH}" -name "*.narinfo" -type f -print0 | xargs -r0 grep -oPh "(?<=URL:\ ).*" | xargs -r printf -- "${NIX_STORE_CACHE_PATH}/%s\0" | xargs -r0 mv -v -t ${NIX_STORE_ARTIFACTS_PATH}/nar || true
 
 nix-cache:
@@ -68,42 +69,6 @@ nix-cache:
   stage: nix-cache
   variables:
     NIX_DERIVATION: ${DEPENDENCIES}
-
-clippy:
-  extends: .nix
-  stage: lint
-  script:
-   - cd rr_frontend
-   - nix develop -c cargo clippy --all-targets --all-features --no-deps
-
-fmt:
-  extends: .nix
-  stage: lint
-  script:
-   - cd rr_frontend
-   - nix develop -c cargo fmt --check
-
-deny:
-  extends: .nix
-  stage: lint
-  script:
-   - cd rr_frontend
-   - nix develop -c cargo deny check
-
-machete:
-  extends: .nix
-  stage: lint
-  script:
-   - cd rr_frontend
-   - nix develop -c cargo machete
-
-unused:
-  extends: .nix
-  stage: lint
-  script:
-   - cd rr_frontend
-   - nix develop -c rust-analyzer scip . --output index.scip
-   - nix develop -c cargo workspace-unused-pub --extensions rs,unused
 
 theories:
   extends: [ .nix, .build_to_nix_artifacts ]
@@ -125,6 +90,34 @@ stdlib:
   needs: [ theories, frontend ]
   variables:
     NIX_DERIVATION: .#stdlib
+
+clippy:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.clippy
+
+fmt:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
+
+deny:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.deny
+
+machete:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.machete
 
 case_studies:
   extends: .nix

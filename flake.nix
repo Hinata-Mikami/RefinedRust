@@ -124,6 +124,35 @@
           build = (pkgs.rust-bin.fromRustupToolchain inputsToolchain // {targets = [target];}).override addRustSrc;
           dev = build.override {extensions = inputsToolchain.components ++ devComponents;};
           envBuilder = rust.craneLib.overrideToolchain build;
+
+          # cargoRefinedRust = {
+          #   rrSrc,
+          #   cargoArtifacts,
+          #   cargoRefinedRustArgs ? "",
+          #   cargoExtraArgs ? "",
+          #   ...
+          # } @ origArgs: let
+          #   args = builtins.removeAttrs origArgs [
+          #     "cargoRefinedRustArgs"
+          #     "cargoExtraArgs"
+          #   ];
+          # in
+          #   craneLib.mkCargoDerivation (args
+          #     // {
+          #       inherit cargoArtifacts;
+
+          #       cargoVendorDir = envBuilder.vendorMultipleCargoDeps {
+          #         inherit (envBuilder.findCargoFiles rrSrc) cargoConfigs;
+          #         cargoLockList = [
+          #           "${rrSrc}/Cargo.lock"
+          #           "${build.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
+          #         ];
+          #       };
+
+          #       pnameSuffix = "-refinedrust";
+          #       buildPhaseCargoCommand = "cargo refinedrust ${cargoRefinedRustArgs} -- ${cargoExtraArgs}";
+          #       nativeBuildInputs = (args.nativeBuildInputs or []) ++ [ self.packages.${system}.frontend build ];
+          #     });
         };
 
         mkTargetToolchains = drv:
@@ -217,24 +246,23 @@
               inherit meta pname src version;
             };
           in
-            with pkgs;
-              rust.toolchain.envBuilder.buildPackage rec {
-                inherit cargoArtifacts meta pname src version;
+            rust.toolchain.envBuilder.buildPackage rec {
+              inherit cargoArtifacts meta pname src version;
 
-                buildInputs = [pkgs.gnupatch];
-                nativeBuildInputs = with pkgs;
-                  [makeWrapper]
-                  ++ lib.optionals stdenv.isDarwin [libiconv libzip];
+              buildInputs = [pkgs.gnupatch];
+              nativeBuildInputs = with pkgs;
+                [makeWrapper]
+                ++ lib.optionals stdenv.isDarwin [libiconv libzip];
 
-                postFixup = with pkgs.lib.strings; ''
-                  wrapProgram $out/bin/${pname} \
-                    --set PATH "${makeBinPath buildInputs}" \
-                '';
+              postFixup = with pkgs.lib.strings; ''
+                wrapProgram $out/bin/${pname} \
+                  --set PATH "${makeBinPath buildInputs}" \
+              '';
 
-                doNotRemoveReferencesToRustToolchain = true;
+              doNotRemoveReferencesToRustToolchain = true;
 
-                passthru = {inherit cargoArtifacts pname src;};
-              };
+              passthru = {inherit cargoArtifacts pname src;};
+            };
 
           stdlib = rocq.pkgs.mkRocqDerivation {
             inherit meta version;
@@ -284,6 +312,33 @@
               passthru = {inherit toolchain;};
             })
         );
+
+      checks = {
+        clippy = (rust.craneLib.cargoClippy.override {clippy = rust.toolchain.dev;}) {
+          inherit (packages.frontend.passthru) cargoArtifacts pname src;
+
+          cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
+        };
+
+        deny = rust.craneLib.cargoDeny {
+          inherit (packages.frontend.passthru) pname src;
+        };
+
+        fmt = (rust.craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;}) {
+          inherit (packages.frontend.passthru) pname src;
+        };
+
+        machete = rust.craneLib.mkCargoDerivation {
+          inherit (packages.frontend.passthru) pname src;
+
+          buildPhaseCargoCommand = "cargo machete";
+          nativeBuildInputs = with pkgs; [cargo-machete];
+
+          cargoArtifacts = null;
+          doInstallCargoArtifacts = false;
+          pnameSuffix = "-machete";
+        };
+      };
 
       devShells =
         {
