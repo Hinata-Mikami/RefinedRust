@@ -231,7 +231,6 @@
                   --set PATH "${makeBinPath buildInputs}" \
               '';
 
-              doCheck = false;
               doNotRemoveReferencesToRustToolchain = true;
             };
 

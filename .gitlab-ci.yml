@@ -126,14 +126,6 @@ stdlib:
   variables:
     NIX_DERIVATION: .#stdlib
 
-frontend-tests:
-  extends: .nix
-  stage: tests
-  needs: [ frontend ]
-  script:
-   - cd rr_frontend
-   - nix develop -c cargo test
-
 case_studies:
   extends: .nix
   stage: tests
