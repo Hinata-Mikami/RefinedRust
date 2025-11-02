@@ -110,10 +110,10 @@
 
       rust = with pkgs.lib; let
         availableTargets = attrsets.attrValues (import rust-targets.outPath);
-        toolchainAttrs = pkgs.rust-bin.fromRustupToolchain (importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
+        inputsToolchain = (importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
         devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
-        craneLib = crane.mkLib pkgs;
       in {
+        craneLib = crane.mkLib pkgs;
         hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
         toolchain = rust.mkToolchain rust.hostPlatform;
 
@@ -121,180 +121,185 @@
           addRustSrc =
             attrsets.optionalAttrs (target != rust.hostPlatform) {extensions = ["rust-src"];};
         in rec {
-          build = (toolchainAttrs // {targets = [target];}).override addRustSrc;
-          dev = build // {extensions = build.components ++ devComponents;};
-          envBuilder = craneLib.overrideToolchain build;
+          build = (pkgs.rust-bin.fromRustupToolchain inputsToolchain // {targets = [target];}).override addRustSrc;
+          dev = build.override {extensions = inputsToolchain.components ++ devComponents;};
+          envBuilder = rust.craneLib.overrideToolchain build;
         };
 
-        mkDrvToolchains = drv:
+        mkTargetToolchains = drv:
           listToAttrs (map (target: {
-              name = target;
+              name = "target-" + target;
               value = drv (rust.mkToolchain target);
             })
             availableTargets);
       };
     in rec {
-      packages = {
-        theories = let
-          mkDepRocqDerivation = pin: {
-            pname,
-            propagatedBuildInputs ? [rocq.pkgs.stdlib],
-            owner ? "iris",
-          }:
+      packages =
+        {
+          theories = let
+            mkDepRocqDerivation = pin: {
+              pname,
+              propagatedBuildInputs ? [rocq.pkgs.stdlib],
+              owner ? "iris",
+            }:
+              rocq.pkgs.mkRocqDerivation {
+                inherit pname propagatedBuildInputs owner;
+
+                domain = "gitlab.mpi-sws.org";
+                # NOTE: Remove `sed` line when Makefiles will be updated upstream
+                preBuild = ''
+                  sed -i -e 's/"$(COQBIN)coq_makefile"/"$(COQBIN)rocq" makefile/g' Makefile
+                  patchShebangs coq-lint.sh
+                '';
+
+                release.${pin.version}.sha256 = "${pin.sha256}";
+                version = pin.version;
+              };
+
+            # NOTE: Remove `coq-record-update` and `equations` when available in Nix's `RocqPackages`
+            equations = rocq.pkgs.mkRocqDerivation {
+              pname = "equations";
+              owner = "mattam82";
+              repo = "Coq-Equations";
+              opam-name = "rocq-equations";
+
+              propagatedBuildInputs = [rocq.pkgs.stdlib ocaml.pkgs.ppx_optcomp];
+
+              mlPlugin = true;
+              useDune = true;
+
+              version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
+              release = {
+                "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+              };
+            };
+
+            stdpp = mkDepRocqDerivation rocq.stdpp {
+              pname = "stdpp";
+            };
+
+            iris = mkDepRocqDerivation rocq.iris {
+              pname = "iris";
+
+              propagatedBuildInputs = [stdpp];
+            };
+
+            iris-contrib = mkDepRocqDerivation rocq.iris-contrib {
+              pname = "iris-contrib";
+
+              propagatedBuildInputs = [iris];
+            };
+
+            lambda-rust = mkDepRocqDerivation rocq.lambda-rust {
+              pname = "lambda-rust";
+
+              propagatedBuildInputs = [iris];
+            };
+          in
             rocq.pkgs.mkRocqDerivation {
-              inherit pname propagatedBuildInputs owner;
+              inherit meta version;
 
-              domain = "gitlab.mpi-sws.org";
-              # NOTE: Remove `sed` line when Makefiles will be updated upstream
-              preBuild = ''
-                sed -i -e 's/"$(COQBIN)coq_makefile"/"$(COQBIN)rocq" makefile/g' Makefile
-                patchShebangs coq-lint.sh
-              '';
+              pname = name;
+              opam-name = name;
+              src = ./theories;
 
-              release.${pin.version}.sha256 = "${pin.sha256}";
-              version = pin.version;
+              propagatedBuildInputs = [equations iris-contrib lambda-rust];
+
+              preBuild = "dune() { command dune $@ --display=short; }";
+              useDune = true;
             };
 
-          # NOTE: Remove `coq-record-update` and `equations` when available in Nix's `RocqPackages`
-          equations = rocq.pkgs.mkRocqDerivation {
-            pname = "equations";
-            owner = "mattam82";
-            repo = "Coq-Equations";
-            opam-name = "rocq-equations";
+          frontend = let
+            src = ./rr_frontend;
+            pname = "cargo-${name}";
 
-            propagatedBuildInputs = [rocq.pkgs.stdlib ocaml.pkgs.ppx_optcomp];
-
-            mlPlugin = true;
-            useDune = true;
-
-            version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
-            release = {
-              "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+            cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
+              inherit meta pname src version;
             };
+          in
+            with pkgs;
+              rust.toolchain.envBuilder.buildPackage rec {
+                inherit cargoArtifacts meta pname src version;
 
-          };
+                buildInputs = [pkgs.gnupatch];
+                nativeBuildInputs = with pkgs;
+                  [makeWrapper]
+                  ++ lib.optionals stdenv.isDarwin [libiconv libzip];
 
-          stdpp = mkDepRocqDerivation rocq.stdpp {
-            pname = "stdpp";
-          };
+                postFixup = with pkgs.lib.strings; ''
+                  wrapProgram $out/bin/${pname} \
+                    --set PATH "${makeBinPath buildInputs}" \
+                '';
 
-          iris = mkDepRocqDerivation rocq.iris {
-            pname = "iris";
+                doNotRemoveReferencesToRustToolchain = true;
 
-            propagatedBuildInputs = [stdpp];
-          };
+                passthru = {inherit cargoArtifacts pname src;};
+              };
 
-          iris-contrib = mkDepRocqDerivation rocq.iris-contrib {
-            pname = "iris-contrib";
-
-            propagatedBuildInputs = [iris];
-          };
-
-          lambda-rust = mkDepRocqDerivation rocq.lambda-rust {
-            pname = "lambda-rust";
-
-            propagatedBuildInputs = [iris];
-          };
-        in
-          rocq.pkgs.mkRocqDerivation {
+          stdlib = rocq.pkgs.mkRocqDerivation {
             inherit meta version;
 
-            pname = name;
-            opam-name = name;
-            src = ./theories;
+            pname = "refinedrust-stdlib";
+            opam-name = "refinedrust-stdlib";
+            src = ./stdlib;
 
-            propagatedBuildInputs = [equations iris-contrib lambda-rust];
+            buildInputs = [packages.frontend rust.toolchain.build];
+            propagatedBuildInputs = [packages.theories];
 
-            preBuild = "dune() { command dune $@ --display=short; }";
+            preBuild = ''
+              dune() { command dune $@ --display=short; }
+              make generate_stdlib
+            '';
             useDune = true;
           };
 
-        frontend = let
-          src = ./rr_frontend;
-          pname = "cargo-${name}";
+          default = packages."target-${rust.hostPlatform}";
+        }
+        // (
+          rust.mkTargetToolchains (toolchain:
+            pkgs.buildEnv {
+              inherit meta;
 
-          cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
-            inherit meta pname src version;
-          };
-        in
-          with pkgs;
-            rust.toolchain.envBuilder.buildPackage rec {
-              inherit cargoArtifacts meta pname src version;
+              name = "cargo-${name}";
+              paths = rocq.toolchain ++ [packages.frontend toolchain.build];
 
-              buildInputs = [pkgs.gnupatch];
-              nativeBuildInputs = with pkgs;
-                [makeWrapper]
-                ++ lib.optionals stdenv.isDarwin [libiconv libzip];
+              pathsToLink = ["/bin"];
+              nativeBuildInputs = [pkgs.makeWrapper];
 
-              postFixup = with pkgs.lib.strings; ''
-                wrapProgram $out/bin/${pname} \
-                  --set PATH "${makeBinPath buildInputs}" \
-              '';
+              postBuild = let
+                fetchRocqDeps = with pkgs.lib;
+                  drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
+              in
+                with pkgs.lib.strings; ''
+                  wrapProgram $out/bin/dune \
+                    --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
+                    --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
 
-              doNotRemoveReferencesToRustToolchain = true;
-            };
+                  wrapProgram $out/bin/cargo-refinedrust \
+                    --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
+                    --set DYLD_FALLBACK_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
+                    --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
+                '';
 
-        stdlib = rocq.pkgs.mkRocqDerivation {
-          inherit meta version;
+              passthru = {inherit toolchain;};
+            })
+        );
 
-          pname = "refinedrust-stdlib";
-          opam-name = "refinedrust-stdlib";
-          src = ./stdlib;
+      devShells =
+        {
+          default = devShells."target-${rust.hostPlatform}";
+        }
+        // (
+          rust.mkTargetToolchains (toolchain:
+            pkgs.mkShell {
+              inputsFrom = with packages; [frontend theories];
+              packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
 
-          buildInputs = [packages.frontend rust.toolchain.build];
-          propagatedBuildInputs = [packages.theories];
-
-          preBuild = ''
-            dune() { command dune $@ --display=short; }
-            make generate_stdlib
-          '';
-          useDune = true;
-        };
-
-        target = rust.mkDrvToolchains (toolchain:
-          pkgs.buildEnv {
-            inherit meta;
-
-            name = "cargo-${name}";
-            paths = rocq.toolchain ++ [packages.frontend toolchain.build];
-
-            pathsToLink = ["/bin"];
-            nativeBuildInputs = [pkgs.makeWrapper];
-
-            postBuild = let
-              fetchRocqDeps = with pkgs.lib;
-                drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
-            in
-              with pkgs.lib.strings; ''
-                wrapProgram $out/bin/dune \
-                  --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
-                  --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
-
-                wrapProgram $out/bin/cargo-refinedrust \
-                  --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
-                  --set DYLD_FALLBACK_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
-                  --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
-              '';
-
-            passthru = {inherit toolchain;};
-          });
-
-        default = packages.target."${rust.hostPlatform}";
-      };
-
-      devShells = {
-        target = rust.mkDrvToolchains (toolchain:
-          pkgs.mkShell {
-            inputsFrom = with packages; [frontend theories];
-            packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
-
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
-            DYLD_FALLBACK_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
-            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
-          });
-
-        default = devShells.target."${rust.hostPlatform}";
-      };
+              LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
+              DYLD_FALLBACK_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
+              LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
+            })
+        );
 
       formatter = pkgs.alejandra;
     });
