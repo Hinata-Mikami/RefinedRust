@@ -197,7 +197,7 @@ pub fn attribute_parser() -> String {
 
 /// Run the proof checker after generating the Coq code?
 #[must_use]
-pub fn check_proofs() -> bool {
+pub fn run_check() -> bool {
     access_config(|c| c.run_check)
 }
 

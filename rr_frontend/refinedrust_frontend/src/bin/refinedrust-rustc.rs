@@ -172,7 +172,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
         println!("Post-generation hook finished with {status}");
     }
 
-    if rrconfig::check_proofs() {
+    if rrconfig::run_check() {
         if cfg!(target_os = "windows") {
             println!("Cannot run proof checker on Windows.");
         } else if let Some(dir_str) = rrconfig::output_dir() {
