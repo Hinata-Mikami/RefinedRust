@@ -1298,13 +1298,6 @@ impl LiteralImpl {
         format!("{}_spec", self.name)
     }
 
-    /// The Rocq name of the specification parameters record instance
-    #[must_use]
-    // TODO: This field is currently unused
-    pub fn spec_params_record(&self) -> String {
-        format!("{}_spec_params", self.name)
-    }
-
     /// The Rocq name of the specification attributes record instance
     #[must_use]
     pub fn spec_attrs_record(&self) -> String {

@@ -106,7 +106,7 @@ struct ShimTraitEntry {
     kind: String,
     /// name of the trait
     name: String,
-    /// the optional Coq def name of the spec semantic interpretation
+    /// whether this trait has a semantic interpretation
     has_semantic_interp: bool,
     /// whether the attrs record is dependent
     attrs_dependent: bool,
