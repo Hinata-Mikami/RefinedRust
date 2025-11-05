@@ -43,20 +43,41 @@ Proof.
   refine (populate _). refine (mk_RT (nat : Type) (nat : Type) id).
 Qed.
 
+(** Specifications *)
+Class ScopeBindable `{!typeGS Σ} (S : Type) := mkScopeBindable {
+  scope_add_typarams :
+    ∀ rts : list RT, plist type rts → S → S;
+}.
+
+Definition spec_with `{!typeGS Σ} (lfts : nat) (rts : list RT) (SPEC : Type) :=
+  prod_vec lft lfts → plist type rts → SPEC.
+Arguments spec_with {_ _} / _ _ .
+
+(*Notation "'spec!' κs ':' n '|' tys ':' rts ',' S" :=*)
+  (*((fun κs tys => scope_add_typarams _ tys S) : spec_with n rts _) (at level 99, S at level 180, κs pattern, tys pattern) : stdpp_scope.*)
+Notation "'spec!' κs ':' n '|' tys ':' rts ',' S" :=
+  ((fun κs tys => S) : spec_with n rts _) (at level 99, S at level 180, κs pattern, tys pattern) : stdpp_scope.
+
+Global Instance scope_bindable_nest `{!typeGS Σ} {S} `{!ScopeBindable S} lfts rts :
+  ScopeBindable (spec_with lfts rts S) := {|
+    scope_add_typarams rts' tys' s :=
+      λ κs tys, (scope_add_typarams _ tys' (s κs tys));
+  |}.
+
 (** Instantiate a given type parameter *)
 Definition spec_instantiate_typaram `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
   (n : nat)
   (Hn : Nat.ltb n (length rts) = true)
   (ty : type (rts !!! n))
-  (F : prod_vec lft lfts → plist type rts → SPEC) :
-  prod_vec lft lfts → plist type (delete n rts) → SPEC :=
+  (F : spec_with lfts rts SPEC) :
+  spec_with lfts (delete n rts) SPEC :=
   λ κs tys,
   F κs (plist_replace_here rts n Hn tys ty).
 
 Definition spec_instantiate_typaram_fst `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rt : RT) (rts : list RT)
   (ty : type rt)
-  (F : prod_vec lft lfts → plist type (rt :: rts) → SPEC) :
-  prod_vec lft lfts → plist type rts → SPEC :=
+  (F : spec_with lfts (rt :: rts) SPEC) :
+  spec_with lfts rts SPEC :=
   λ κs tys,
   F κs (plist_replace_here (rt :: rts) 0 eq_refl tys ty).
 
@@ -70,16 +91,16 @@ Defined.
 
 Definition spec_instantiate_lft_fst `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
   (κ : lft)
-  (F : prod_vec lft (S lfts) → plist type rts → SPEC) :
-  prod_vec lft lfts → plist type rts → SPEC :=
+  (F : spec_with (S lfts) rts SPEC) :
+  spec_with lfts rts SPEC :=
   λ κs tys,
   F (κ -:: κs) tys.
 
 (** Add a new type parameter *)
 Definition spec_add_typaram `{!typeGS Σ} {SPEC : Type} {lfts : nat} (rts : list RT)
   (rt : RT) (st : syn_type)
-  (F : type rt → prod_vec lft lfts → plist type rts → SPEC) :
-  prod_vec lft lfts → plist type (rt :: rts) → SPEC :=
+  (F : type rt → spec_with lfts rts SPEC) :
+  spec_with lfts (rt :: rts) SPEC :=
   λ κs '(ty *:: tys),
   F ty κs tys.
 
@@ -111,8 +132,8 @@ Proof.
 Defined.
 
 Definition spec_collapse_params `{!typeGS Σ} {SPEC : Type} {lfts1 lfts2 : nat} (rts1 rts2 : list RT)
-  (F : prod_vec lft lfts1 → plist type rts1 → prod_vec lft lfts2 → plist type rts2 → SPEC) :
-  prod_vec lft (lfts1 + lfts2) → plist type (rts1 ++ rts2) → SPEC :=
+  (F : spec_with lfts1 rts1 (spec_with lfts2 rts2 SPEC)) :
+  spec_with (lfts1 + lfts2) (rts1 ++ rts2) SPEC :=
   λ κs tys,
   F
     (rew (take_replicate_add_transparent _ lfts1 lfts2) in ptake _ κs lfts1)
@@ -121,22 +142,20 @@ Definition spec_collapse_params `{!typeGS Σ} {SPEC : Type} {lfts1 lfts2 : nat} 
     (rew (drop_app_transparent rts1 rts2) in pdrop _ tys (length rts1)).
 
 
-Definition spec_instantiated `{!typeGS Σ} {SPEC : Type} (F : prod_vec lft 0 → plist type [] → SPEC) : SPEC :=
+Definition spec_instantiated `{!typeGS Σ} {SPEC : Type} (F : spec_with 0 [] SPEC) : SPEC :=
   F -[] -[].
-Definition spec_with `{!typeGS Σ} (lfts : nat) (rts : list RT) (SPEC : Type) :=
-  prod_vec lft lfts → plist type rts → SPEC.
-Arguments spec_with {_ _} / _ _ .
 
 Notation "x '<TY>' T" := (spec_instantiate_typaram_fst _ _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
 Notation "x '<TY>@{' n '}' T" := (spec_instantiate_typaram _ n _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
 Notation "x '<LFT>' T" := (spec_instantiate_lft_fst _ T x) (left associativity, at level 81, only printing) : stdpp_scope.
-Notation "x '<INST!>'" := (spec_instantiated x) (left associativity, at level 81) : stdpp_scope.
+Notation "x '<INST!>'" := (spec_instantiated x) (left associativity, at level 81, only printing) : stdpp_scope.
 Notation "x '<MERGE!>'" := (spec_collapse_params _ _ x) (left associativity, at level 181, only printing) : stdpp_scope.
 
 
+(* NOTE: these tactics also deal with the unfolded [spec_with] type, in order to deal well with [instantiate_spec_rec] in solvers.v *)
 Notation "x '<TY>' T" := (
   ltac:(
-    match type of x%function with
+    match type of x with
     | prod_vec _ _ → plist type ?rt → _ =>
         let rts := eval simpl in rt in
         match rts with
@@ -147,36 +166,36 @@ Notation "x '<TY>' T" := (
         let rts := eval simpl in rt in
         match rts with
         | (?rt :: ?rts) =>
-          refine (spec_instantiate_typaram_fst rt rts T x)
+          refine (@spec_instantiate_typaram_fst _ ltac:(apply _) _ _ rt rts T x)
         end
     | ?ty => idtac "<TY> failed with " ty
     end))
-     (left associativity, at level 81, only parsing) : stdpp_scope.
+     (left associativity, at level 81, T constr at next level, only parsing) : stdpp_scope.
 
 Notation "x '<TY>@{' n '}' T" := (
   ltac:(
-    match type of x%function with
+    match type of x with
     | prod_vec _ _ → plist type ?rt → _ =>
         refine (spec_instantiate_typaram rt n eq_refl T x)
     | spec_with _ ?rt _ =>
-        refine (spec_instantiate_typaram rt n eq_refl T x)
+        refine (@spec_instantiate_typaram _ ltac:(apply _) _ _ rt n eq_refl T x)
     | ?ty => idtac "<TY> failed with " ty
     end))
-     (left associativity, at level 81, only parsing) : stdpp_scope.
+     (left associativity, at level 81, T constr at next level, only parsing) : stdpp_scope.
 
 Notation "x '<LFT>' T" := (
   ltac:(
-    match type of x%function with
+    match type of x with
     | prod_vec _ _ → plist type ?rts → _ =>
         refine (spec_instantiate_lft_fst rts T x)
     | spec_with _ ?rts _ =>
-        refine (spec_instantiate_lft_fst rts T x)
+        refine (@spec_instantiate_lft_fst _ ltac:(apply _) _ _ rts T x)
     end))
-     (left associativity, at level 81, only parsing) : stdpp_scope.
+     (left associativity, at level 81, T constr at next level, only parsing) : stdpp_scope.
 
 Notation "x '<MERGE!>'" := (
   ltac:(
-    match type of x%function with
+    match type of x with
     | prod_vec _ _ → plist type ?rts1 → prod_vec _ _ → plist type ?rts2 → _ =>
         refine (spec_collapse_params rts1 rts2 x)
     | spec_with _ ?rts1 (prod_vec _ _ → plist type ?rts2 → _) =>
@@ -190,5 +209,5 @@ Notation "x '<MERGE!>'" := (
 
 Notation "<SIMPL> x" := (ltac:(let __x := eval simpl in (x) in refine __x)) (right associativity, at level 180, only parsing) : stdpp_scope.
 
-Notation "'spec!' κs ':' n '|' tys ':' rts ',' S" :=
-  ((fun κs tys => S) : prod_vec lft n → plist type rts → _) (at level 99, S at level 180, κs pattern, tys pattern) : stdpp_scope.
+Notation "x '<INST!>'" := (@spec_instantiated _ ltac:(apply _) _ x) (left associativity, at level 81, only parsing) : stdpp_scope.
+Notation "x '<MERGE!>'" := (@spec_collapse_params _ ltac:(apply _) _ _ _ _ _ x) (left associativity, at level 181, only parsing) : stdpp_scope.

@@ -80,7 +80,7 @@ impl LitTerm {
                     args.push(Self::from_trait_req_inst(req));
                 }
 
-                Self::AppDef(vec![format!("\"{}\"", s.impl_ref.spec_attrs_record.clone())], args)
+                Self::AppDef(vec![format!("\"{}\"", s.impl_ref.spec_attrs_record())], args)
             },
             traits::ReqInstSpec::Quantified(s) => {
                 let s = s.trait_ref.borrow();

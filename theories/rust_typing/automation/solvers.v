@@ -87,17 +87,6 @@ Ltac apply_type_term_het_evar term lfts tys attrs :=
   constr:(term)
 .
 
-
-
-
-(* Plan:
-   - apply_term_het_evar needs another list with terms
-   - first I need to interpret the additional terms
-
-
-   For this, I don't need to do the term counting
- *)
-
 (** This interprets syntactic Rust types used in some annotations into semantic RefinedRust types *)
 (* NOTE: Be REALLY careful with this. The Ltac2 for looking up definitions will easily go haywire, and we cannot properly handle the exceptions here or show them.
    In particular, if this fails for some unknown reason, make sure that there are NO other definitions with the same name in scope, even below other modules! *)
@@ -2423,6 +2412,20 @@ Ltac destruct_product_hypothesis name H :=
   end.
 
 (** Automation for finding [FunctionSubtype] for assumed trait specifications. *)
+Ltac is_applied_spec t :=
+  match t with
+  | ?spec ?a ?b =>
+      match type of a with
+      | plist _ _ => idtac
+      end;
+      match type of b with
+      | plist _ _ => idtac
+      end;
+      match type of spec with
+      | spec_with _ _ _ => idtac
+      | prod_vec _ _ → plist _ _ → _ => idtac
+      end
+  end.
 Local Ltac strip_applied_params a acc cont :=
   match a with
   | ?a1 ?a2 =>
@@ -2437,7 +2440,14 @@ Local Ltac strip_applied_params a acc cont :=
       | Set =>
           strip_applied_params a1 uconstr:(a2 +:: acc) cont
       | _ =>
-          cont a acc
+          first [
+            (* this is the spec term, finish *)
+            is_applied_spec a2;
+            cont a acc
+          |
+            (* this is an attrs record *)
+            strip_applied_params a1 uconstr:(a2 +:: acc) cont
+          ]
       end
   end.
 

@@ -127,7 +127,7 @@ Section function.
 
   (** This definition is not yet contractive, and also not a full type.
     We do this below in a separate definition. *)
-  Definition typed_function π {lfts : nat} {rts : list RT} (fn : function) (local_sts : list syn_type) (fp : eq rts rts * (prod_vec lft lfts → plist type rts → fn_spec)) : iProp Σ :=
+  Definition typed_function π {lfts : nat} {rts : list RT} (fn : function) (local_sts : list syn_type) (fp : eq rts rts * (spec_with lfts rts fn_spec)) : iProp Σ :=
     ( (* for any Coq-level parameters *)
       ∀ κs tys x,
       (* and any duration of the function call *)
@@ -181,7 +181,7 @@ Section function.
       this is actually a valid function pointer at the type. This is why we expose the list of argument syn_types in this type.
       The caller will have to show, when calling the function, that the instantiations validate the layout assumptions.
   *)
-  Program Definition function_ptr {lfts : nat} (arg_types : list (syn_type)) {rts : list (RT)} (fp : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) : type loc := {|
+  Program Definition function_ptr {lfts : nat} (arg_types : list (syn_type)) {rts : list (RT)} (fp : (rts = rts) * (spec_with lfts rts fn_spec)) : type loc := {|
     st_own π f v := (∃ fn local_sts, ⌜v = val_of_loc f⌝ ∗ fntbl_entry f fn ∗
       ⌜list_map_option use_layout_alg arg_types = Some fn.(f_args).*2⌝ ∗
       (* for the local variables, we need to pick [local_sts] at linking time (in adequacy, when we run the layout algorithm) *)
@@ -226,7 +226,7 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp (fp : prod_vec lft lfts → plist type rts → fn_spec) sta T :
+  Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp (fp : spec_with lfts rts fn_spec) sta T :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn) (λ '(π', mask),
       ⌜π' = π⌝ ∗
@@ -533,8 +533,8 @@ Notation "'fn(∀' κs ':' n '|' tys ':' rts '|' x ':' A ',' E ';' x1 ',' .. ','
 (** Add a new type parameter *)
 Definition fn_spec_add_typaram `{!typeGS Σ} {lfts : nat} (rts : list RT)
   (rt : RT) (st : syn_type)
-  (F : type rt → prod_vec lft lfts → plist type rts → fn_spec) :
-  prod_vec lft lfts → plist type (rt :: rts) → fn_spec :=
+  (F : type rt → spec_with lfts rts fn_spec) :
+  spec_with lfts (rt :: rts) fn_spec :=
   λ κs '(ty *:: tys),
   fn_spec_add_elctx (λ ϝ, typaram_elctx ϝ _ ty) $
   fn_spec_add_pre (typaram_wf _ st ty)%I $
@@ -542,36 +542,26 @@ Definition fn_spec_add_typaram `{!typeGS Σ} {lfts : nat} (rts : list RT)
 
 (** Add a new lifetime parameter *)
 Definition spec_add_lftparam `{!typeGS Σ} {SPEC} {lfts : nat} (rts : list RT)
-  (F : lft → prod_vec lft lfts → plist type rts → SPEC) :
-  prod_vec lft (S lfts) → plist type rts → SPEC :=
+  (F : lft → spec_with lfts rts SPEC) :
+  spec_with (S lfts) rts SPEC :=
   λ '(κ *:: κs) tys,
   F κ κs tys.
 
 Definition fn_spec_add_typaram_conditions `{!typeGS Σ} {lfts : nat} {rts : list RT}
   (rts2 : list RT) (sts2 : list syn_type) (tys2 : plist type rts2)
-  (F : prod_vec lft lfts → plist type rts → fn_spec) :
-  prod_vec lft lfts → plist type rts → fn_spec :=
+  (F : spec_with lfts rts fn_spec) :
+  spec_with lfts rts fn_spec :=
   λ κs tys,
     fn_spec_add_elctx (λ ϝ, typarams_elctx ϝ rts2 tys2) $
     fn_spec_add_pre (typarams_wf rts2 sts2 tys2) $
     F κs tys.
 
-(** Specs for functions include the syntypes of generics *)
-Notation "'fnspec!' κs ':' n '|' tys ':' rsts ',' S" :=
-  (((fun κs tys =>
-        fn_spec_add_typaram_conditions (fmap (A := RT * syn_type) fst rsts) (fmap (A := RT * syn_type) snd rsts) tys S)
-      : spec_with n (fmap (A := RT * syn_type) fst rsts) _))
-  (at level 99, S at level 180, κs pattern, tys pattern) : stdpp_scope.
-Notation "'fnspec!' κs ':' n '|' tys ':' rsts ',' S" :=
-  (((fun κs tys =>
-      ltac:(match type of S%function with
-      | prod_vec _ _ → plist type ?rts1 → _ =>
-        refine (fn_spec_add_typaram_conditions (rts := rts1) (fmap (A := RT * syn_type) fst rsts) (fmap (A := RT * syn_type) snd rsts) tys S)
-      | spec_with _ ?rts1 _ =>
-        refine (fn_spec_add_typaram_conditions (rts := rts1) (fmap (A := RT * syn_type) fst rsts) (fmap (A := RT * syn_type) snd rsts) tys S)
-      end))
-      : spec_with n (fmap (A := RT * syn_type) fst rsts) _))
-  (at level 99, S at level 180, κs pattern, tys pattern, only parsing) : stdpp_scope.
+(** Add the elctx. (We cannot add the typaram conditions, because they require the syntype parameter) *)
+Global Instance fn_spec_scope_bindable `{!typeGS Σ} :
+  ScopeBindable fn_spec := {|
+    scope_add_typarams rts tys s :=
+      fn_spec_add_elctx (λ ϝ, typarams_elctx ϝ rts tys) s;
+|}.
 
 (** Add a new late precondition to a fn specification *)
 Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id → iProp Σ) : fn_params :=
@@ -579,40 +569,6 @@ Definition fn_params_add_late_pre `{!typeGS Σ} (S : fn_params) (pre : thread_id
 Definition fn_spec_add_late_pre `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) : fn_spec :=
   mk_fn_spec S.(fn_A) (λ a, fn_params_add_late_pre (S.(fn_p) a) pre).
 
-Definition fn_spec_add_linking_condition `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) (ectx : lft → elctx) : fn_spec :=
-  fn_spec_add_late_pre (fn_spec_add_elctx ectx S) pre.
-
-
-(** Notation to get the params of a function type.
-  The function type might be parametric in some [syn_type]s.
-  The type of the parameters must not depend on these [syn_type]s.
-*)
-
-(*
-Ltac get_params_of_fntype x :=
-  lazymatch x with
-  | syn_type → ?A =>
-      get_params_of_fntype constr:(A)
-  | prod_vec _ _ → plist _ _ → fn_spec =>
-      let B := eval simpl in A in
-      constr:(B)
-  | _ → ?A =>
-      get_params_of_fntype A
-  (* To handle trait params + spec *)
-  | ∀ x : ?B, (_ x) → ?A =>
-      get_params_of_fntype constr:(A)
-  end.
-Notation "<get_params_of> x" := (
-  ltac:(
-    let y := constr:(x%function) in
-    match type of y with
-    | ?ty =>
-        let ty2 := eval unfold spec_with in ty in
-        let ty3 := eval simpl in ty2 in
-        let A := get_params_of_fntype ty3 in
-        refine A
-    end)) (left associativity, at level 82, only parsing) : stdpp_scope.
-*)
 
 (** Notation to bundle an [eq_refl] proof for [rts] that helps Coq's type inference *)
 Ltac get_rts_of_fntype x :=
@@ -918,6 +874,10 @@ Section function_subsume.
     simpl.
     iApply "Hsub'"; last iFrame; done.
   Qed.
+
+
+  Definition fn_spec_add_linking_condition `{!typeGS Σ} (S : fn_spec) (pre : thread_id → iProp Σ) (ectx : lft → elctx) : fn_spec :=
+  fn_spec_add_late_pre (fn_spec_add_elctx ectx S) pre.
   Lemma function_subtype_lift_linking_2 (S1 S2 : fn_spec) (P : thread_id → iProp Σ) (E : lft → elctx) `{!∀ π, Persistent (P π)} :
     function_subtype (lfts:= 0) (rts:=[]) (λ '*[] '*[], S1) (λ '*[] '*[], S2) →
     function_subtype (lfts:=0) (rts:=[])
@@ -936,7 +896,7 @@ Section function_subsume.
       iModIntro. iIntros (?? ??).
       iIntros "(? & ? & ? & ? & ? & ?)".
       iEval (rewrite /typed_function) in "HT".
-      simpl.
+      simpl. 
 
       (*
          What is happening here?
@@ -977,6 +937,31 @@ Section function_subsume.
          => For now, bake into the spec, until I understand this better or this actually makes somethign unprovable.
 
        *)
+
+      (* 
+        This lemma would be needed to lift inclusions for trait assumptions.
+         e.g. if I assume a specification for a trait method (trait assumption quantified) and I add elctx assumptions, I have a problem.
+
+
+         Where exactly do I want to add elctx assumptions? 
+         How do I figure this out?
+         - 
+         - probably need them 
+         
+
+         Point: I'm doing an impl. That impl is for a particular set of generics.
+         I should dispatch these assumptions probably at the point where I select an impl.
+         At that point I'm doing a subtyping proof. 
+         I'm not generic anymore in these parameters at that point.
+
+         So I guess I'm not doing these things for abstracted impls anyways.
+         Only for concrete impls. Abstracted impls have all the stuff already dispatched.
+
+         For the inclusion, I guess the target of the inclusion needs to imply the constraints there. Yeah, that makes sense. 
+
+
+       *)
+
 
 
       (*iSpecialize ("HT" $! *[] *[] x ϝ). *)
