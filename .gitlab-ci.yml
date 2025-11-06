@@ -159,18 +159,18 @@ case_studies:
     key: "$CI_JOB_NAME"
     paths: [ "_opam/" ]
 
-build-opam-rocq.9.1+rc1:
+build-opam-rocq.9.1.0:
   <<: *forks_only
   extends: .opam
   tags: [ fp ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1+rc1 dune version 3.19.1"
+    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.19.1"
     MAKE_TARGET: "all_with_examples"
 
-build-opam-rocq.9.1+rc1-timing:
+build-opam-rocq.9.1.0-timing:
   <<: *upstream_only
   extends: .opam
   tags: [ fp-timing ]
   variables:
-    OPAM_PINS: "rocq-core version 9.1+rc1 dune version 3.19.1"
+    OPAM_PINS: "rocq-core version 9.1.0 dune version 3.19.1"
     MAKE_TARGET: "all_with_examples"

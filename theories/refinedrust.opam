@@ -11,26 +11,25 @@ RefinedRust is a prototype framework for verifying safe and unsafe Rust code.
 license: "BSD-3-Clause"
 
 depends: [
-  "rocq-core" { (= "9.1+rc1" ) }
+  "rocq-core" { (= "9.1.0" ) }
   "rocq-stdlib"
-  "coq-stdpp"
-  "coq-stdpp-unstable"
-  "coq-stdpp-bitvector"
-  "coq-iris"
+  "rocq-stdpp"
+  "rocq-stdpp-unstable"
+  "rocq-stdpp-bitvector"
+  "rocq-iris"
   "coq-iris-contrib"
   "coq-lifetime-logic"
   "dune" {>= "3.16.1"}
-  "rocq-equations"
+  "rocq-equations" { (= "1.3.1+9.1") }
 ]
 
 pin-depends: [
-  ["rocq-equations.dev" "git+https://github.com/mattam82/Coq-Equations.git#ed986dad4a8700eae0dd5d8e5a57e0c287aeaa12"]
-  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
-  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
-  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#2d5412f48adadeb69fb3115da4d83075c9ba15bf"]
-  ["coq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#3e83a7affa51b91aa1eaab1fc0d8a68e5a38b221"]
-  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#4e3ace9604b7ec7a1826cd3563b05f1ef9be0dfd"]
-  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#a13bc8df1c0d9824d6fe51f9572f6485c5ce4fab"]
+  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
+  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
+  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
+  ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#6b080cdd7a145cd5cbb2b7d8b17adf6ee2ca8f08"]
+  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#6c7ba2fb49b0849ebc6c4476e1d11ffce534d4fd"]
+  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#8e401c363dc8e4337afcadce832e0cef9dc33a7c"]
 ]
 
 build: [

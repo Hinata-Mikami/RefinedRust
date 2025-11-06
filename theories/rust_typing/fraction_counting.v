@@ -1,4 +1,4 @@
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.base_logic Require Import ghost_map.
 From iris.bi.lib Require Export fractional.
 From iris.algebra Require Import frac.

@@ -88,23 +88,23 @@
         version = rocq.pkgs.rocq-core.rocq-version;
 
         stdpp = {
-          version = "2d5412f48adadeb69fb3115da4d83075c9ba15bf";
-          sha256 = "sha256-GXo9G+bF4wIdMrkedj7/yQnf/4n75kOWmj26g3rjgbg";
+          version = "ec795ece9125d60d9974e15fc52f3dfe91ae3f4b";
+          sha256 = "sha256-vtPP8K64MvweX5oUY4ka5ReeDim76FEv2gUvm941nj0=";
         };
 
         iris = {
-          version = "3e83a7affa51b91aa1eaab1fc0d8a68e5a38b221";
-          sha256 = "sha256-wL95wD0sESzzU7dCZCPw9pMzfJgz06MV/mWbYWjs+k8=";
+          version = "6b080cdd7a145cd5cbb2b7d8b17adf6ee2ca8f08";
+          sha256 = "sha256-4gubzNiDLFc0R4UmpYCUHVOuhUmQkLHbWa1yloudPxc=";
         };
 
         iris-contrib = {
-          version = "4e3ace9604b7ec7a1826cd3563b05f1ef9be0dfd";
-          sha256 = "sha256-+7MR4MGzHMNgio8GN4bEwnIpJO96MUzW2kbEedPf+Xk=";
+          version = "6c7ba2fb49b0849ebc6c4476e1d11ffce534d4fd";
+          sha256 = "sha256-pxd8VK8z5kWEam3t5DmXOQECDt4/BWKbUicesFkM6qw=";
         };
 
         lambda-rust = {
-          version = "a13bc8df1c0d9824d6fe51f9572f6485c5ce4fab";
-          sha256 = "sha256-d7gbHIDfS5KWeMIEpEFIaiGWm+h2ZsS+J17uC5x1OMk=";
+          version = "8e401c363dc8e4337afcadce832e0cef9dc33a7c";
+          sha256 = "sha256-D+MKk8MkP9MYgK9Gwrmc1IN7a8AUEXSzAk/pLinpEtg=";
         };
       };
 
@@ -170,6 +170,7 @@
             release = {
               "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
             };
+
           };
 
           stdpp = mkDepRocqDerivation rocq.stdpp {

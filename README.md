@@ -68,11 +68,10 @@ opam switch link refinedrust .
 opam switch refinedrust
 opam repo add rocq-released https://rocq-prover.org/opam/released
 opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
-opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
 ```
 2. Install the necessary dependencies:
 ```
-opam pin add rocq-prover 9.1+rc1
+opam pin add rocq-prover 9.1.0
 make builddep
 ```
 3. Build the Rocq implementation of the type system:

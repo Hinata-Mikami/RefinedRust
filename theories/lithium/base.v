@@ -778,10 +778,10 @@ Proof.
   - f_equal. move: p H. induction n as [|n IH].
     + move => p /= Hp. destruct p => //.
     + move => p Hp. destruct p.
-      * exfalso. zify. rewrite Nat.pow_succ_r' in Hp. lia.
+      * exfalso. rewrite Nat.pow_succ_r' in Hp. lia.
       * rewrite /=. f_equal. apply IH.
-        zify. rewrite Nat.pow_succ_r' in Hp. lia.
-      * exfalso. zify. rewrite Nat.pow_succ_r' in Hp. lia.
+        rewrite Nat.pow_succ_r' in Hp. lia.
+      * exfalso. rewrite Nat.pow_succ_r' in Hp. lia.
 Qed.
 
 Lemma factor2_pow n x:

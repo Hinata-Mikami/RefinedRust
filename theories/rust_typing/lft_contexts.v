@@ -1,7 +1,7 @@
 (** Based on a file from the RustBelt development.
   https://gitlab.mpi-sws.org/iris/lambda-rust/-/blob/8753a224e99ce646e27729aa078367d64788f447/theories/typing/lft_contexts.v
 *)
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.bi Require Import fractional.
 From iris.base_logic Require Import ghost_map.
 From lrust.lifetime Require Import frac_borrow.

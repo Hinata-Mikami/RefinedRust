@@ -1,5 +1,5 @@
 From iris.algebra Require Import ofe.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From refinedrust Require Import axioms base.
 Require Import Stdlib.Program.Equality.
 Local Set Universe Polymorphism.
