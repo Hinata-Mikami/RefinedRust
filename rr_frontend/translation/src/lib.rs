@@ -443,9 +443,6 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // Include extra specs
         {
             if let Some(extra_specs_path) = rrconfig::extra_specs_file() {
-                //writeln!(spec_file, "Section extra_specs.").unwrap();
-                //writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-                //writeln!(spec_file).unwrap();
                 writeln!(
                     spec_file,
                     "(* Included specifications from configured file {} *)",
@@ -458,7 +455,6 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
                 extra_specs_file.read_to_string(&mut extra_specs_string).unwrap();
 
                 write!(spec_file, "{}", extra_specs_string).unwrap();
-                //writeln!(spec_file, "End extra_specs.").unwrap();
             }
         }
 

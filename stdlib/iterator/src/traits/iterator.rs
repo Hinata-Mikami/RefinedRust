@@ -1,9 +1,6 @@
 
 #![rr::import("rrstd.iterator.theories", "iterator")]
 
-//use crate::adapters::map::Map;
-//use std::ops::Try;
-
 use crate::adapters::map::Map;
 
 // example for state changes on None:
@@ -11,10 +8,13 @@ use crate::adapters::map::Map;
 
 /// Spec: A relation
 #[rr::export_as(core::iter::Iterator)]
-#[rr::exists("Next" : "thread_id → {xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
+#[rr::external_attrs("Next", "Inv")]
+//#[rr::exists("Next" : "thread_id → {xt_of Self} → option {xt_of Item} → {xt_of Self} → iProp Σ")]
+//#[rr::exists("Inv" : "thread_id → {xt_of Self} → iProp Σ")]
 pub trait Iterator {
     type Item;
 
+    #[rr::requires(#iris "{Inv} π self.cur")]
     /// Postcondition: There exists an optional next item and the successor state of the iterator.
     #[rr::exists("new_it_state" : "{xt_of Self}")]
     /// Postcondition: The state of the iterator has been updated.
@@ -22,12 +22,13 @@ pub trait Iterator {
     /// Postcondition: If there is a next item, it obeys the iterator's relation, and similarly the
     /// successor state is determined.
     #[rr::ensures(#iris "{Next} π self.cur ret new_it_state")]
+    #[rr::ensures(#iris "{Inv} π new_it_state")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /// We pick an invariant Inv
     /// TODO: maybe release Inv when we drop the Map iterator
-    #[rr::trust_me]
     #[rr::params("Inv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π self")]
     /// Precondition: The picked invariant should hold initially.
     #[rr::requires(#iris "Inv π self f")]
     /// Precondition: persistently, each iteration preserves the invariant.
@@ -42,8 +43,10 @@ pub trait Iterator {
         {Self::Next} π it_state None it_state' -∗
         Inv π it_state clos_state -∗
         Inv π it_state' clos_state)")]
-    #[rr::returns("mk_map_x self f")]
-    fn map<B, F>(self, f: F) -> Map<B, Self, F>
+    #[rr::ensures("ret = mk_map_x self f")]
+    // TODO: spec shortcut to refer to attrs of Self
+    #[rr::ensures(#iris "MapInv traits_iterator_Iterator_Self_spec_attrs {F::Pre} {F::PostMut} π ret")]
+    fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> B,
@@ -71,6 +74,7 @@ pub trait Iterator {
     */
 
     #[rr::trust_me]
+    #[rr::requires(#iris "{Inv} π self")]
     #[rr::exists("seq", "s2", "s2'")]
     // TODO: have an escape to refer to the attrs record instead
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
@@ -106,6 +110,8 @@ pub trait IntoIterator {
     type IntoIter: Iterator<Item = Self::Item>;
 
     #[rr::returns("{IntoIter} self")]
+    // TODO
+    //#[rr::ensures(#iris "{IntoIter::Inv} π ({IntoIter} self)")]
     fn into_iter(self) -> Self::IntoIter;
 }
 

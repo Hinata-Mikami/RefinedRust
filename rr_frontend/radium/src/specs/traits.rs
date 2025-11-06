@@ -89,7 +89,7 @@ pub struct InstanceSpec<'def> {
 #[derive(Constructor, Clone, Debug)]
 pub struct SpecAttrsDecl {
     /// a map of attributes and their types
-    attrs: BTreeMap<String, coq::term::Type>,
+    attrs: Option<BTreeMap<String, coq::term::Type>>,
     /// optionally, a semantic interpretation (like `Copy`) of the trait in terms of semantic types
     semantic_interp: Option<String>,
 }
@@ -913,6 +913,10 @@ impl SpecDecl<'_> {
 
     #[must_use]
     pub fn make_attr_record_decl(&self) -> coq::Document {
+        let Some(attrs) = self.attrs.attrs.as_ref() else {
+            return coq::Document::default();
+        };
+
         // this is parametric in the params and associated types
         let ordered_params = self.get_ordered_params();
         let mut params = ordered_params.get_coq_ty_rt_params();
@@ -932,7 +936,7 @@ impl SpecDecl<'_> {
 
         // write attr record
         let mut record_items = Vec::new();
-        for (item_name, item_ty) in &self.attrs.attrs {
+        for (item_name, item_ty) in attrs {
             let record_item_name = self.lit.make_spec_attr_name(item_name);
             let record_item_sig_name = self.lit.make_spec_attr_sig_name(item_name);
 

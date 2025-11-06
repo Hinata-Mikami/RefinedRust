@@ -67,6 +67,7 @@ struct ListIter<'a, T> {
 #[rr::instantiate("Next" := "λ π l e l2, 
     (⌜if_None e (l = [] ∧ l2 = [])⌝∗
     ⌜if_Some e (λ e, l = e :: l2)⌝)%I")]
+#[rr::instantiate("Inv" := "λ π s, True%I")]
 impl<'a, T> Iterator for ListIter<'a, T> {
     type Item = &'a T;
 

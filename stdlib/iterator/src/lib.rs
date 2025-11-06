@@ -4,6 +4,7 @@
 #![feature(stmt_expr_attributes)]
 
 #![feature(try_trait_v2)]
+#![feature(unboxed_closures)]
 
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.iterator")]

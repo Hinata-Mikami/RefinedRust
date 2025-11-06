@@ -180,6 +180,12 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for LoopMetaInfo<'def, '_, T>
                         let term = format!("({attr_term}).({next_name})");
                         return Some(term);
                     },
+                    "IterInv" => {
+                        let attr_term = info.iter_spec.get_attr_term();
+                        let next_name = info.iter_spec.of_trait.make_spec_attr_name("Inv");
+                        let term = format!("({attr_term}).({next_name})");
+                        return Some(term);
+                    },
                     _ => (),
                 }
             }
@@ -384,6 +390,14 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                 "IteratorNextFusedTrans ({}) π {init_value_binder} {} {}",
                 iterator_info.iter_spec.get_attr_term(),
                 iterator_info.history_name,
+                iterator_info.binder_name
+            )));
+
+            // invariant
+            let attr_term = iterator_info.iter_spec.get_attr_term();
+            let inv_name = iterator_info.iter_spec.of_trait.make_spec_attr_name("Inv");
+            var_invariants.push(coq::iris::IProp::Atom(format!(
+                "({attr_term}).({inv_name}) π {}",
                 iterator_info.binder_name
             )));
         }

@@ -2,24 +2,18 @@
 
 use crate::traits::iterator::Iterator;
 
+
+// Some alternative ideas:
+// - I have an invariant field that iterators must satisfy to call next. 
+// - this invariant should be abstract to the user of the iterator, i.e. we shouldn't unfold it.
+// - This is basically just a way to move the iterator invariant out of the data structure...
+//   but let's try it.
+
+
+
 #[rr::export_as(core::iter::adapters::Map)]
 #[rr::refined_by("x" : "MapXRT {rt_of I} {rt_of F}")]
-#[rr::exists("Inv" : "thread_id → {xt_of I} → {xt_of F} → iProp Σ")]
-/// The map invariant holds.
-#[rr::invariant(#own "Inv π x.(map_it) x.(map_clos)")]
-/// Given the invariant, we can advance the iterator:
-#[rr::invariant(#own "li_sealed (□ (∀ it_state it_state' clos_state e,
-    {I::Next} π it_state (Some e) it_state' -∗
-    Inv π it_state clos_state -∗
-    {F::Pre} π clos_state *[e] ∗
-    (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state')))")]
-/// If no element is emitted, the invariant is also upheld.
-#[rr::invariant(#own "li_sealed (□ (∀ it_state it_state' clos_state,
-    {I::Next} π it_state None it_state' -∗
-    Inv π it_state clos_state -∗
-    Inv π it_state' clos_state))")]
-pub struct Map<B, I, F> 
-where I: Iterator, F: FnMut(I::Item) -> B
+pub struct Map<I, F> 
 {
     #[rr::field("$# x.(map_it)")]
     pub(crate) iter: I,
@@ -28,26 +22,10 @@ where I: Iterator, F: FnMut(I::Item) -> B
 }
 
 #[rr::export_as(core::iter::adapters::Map)]
-impl<B, I, F> Map<B, I, F> 
-where I: Iterator, F: FnMut(I::Item) -> B
+impl<I, F> Map<I, F> 
 {
-    #[rr::params("Inv" : "thread_id → {xt_of I} → {xt_of F} → iProp Σ")]
-    /// Precondition: The picked invariant should hold initially.
-    #[rr::requires(#iris "Inv π iter f")]
-    /// Precondition: persistently, each iteration preserves the invariant.
-    /// If the inner iterator has been advanced, we can call the closure.
-    #[rr::requires(#iris "li_sealed (□ (∀ it_state it_state' clos_state e,
-        {I::Next} π it_state (Some e) it_state' -∗
-        Inv π it_state clos_state -∗
-        {F::Pre} π clos_state *[e] ∗
-        (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state')))")]
-    /// Precondition: If no element is emitted, the invariant is also upheld.
-    #[rr::requires(#iris "li_sealed (□ (∀ it_state it_state' clos_state,
-        {I::Next} π it_state None it_state' -∗
-        Inv π it_state clos_state -∗
-        Inv π it_state' clos_state))")]
     #[rr::returns("mk_map_x iter f")]
-    pub(crate) fn new(iter: I, f: F) -> Map<B, I, F> {
+    pub(crate) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
     }
 
@@ -64,14 +42,15 @@ where I: Iterator, F: FnMut(I::Item) -> B
             boringly ({MF::Pre} π s1.(map_clos) *[e_inner]) ∗
             boringly ({MF::PostMut} π s1.(map_clos) *[e_inner] s2.(map_clos) e)
             ))%I")]
-impl<MB, MI: Iterator, MF> Iterator for Map<MB, MI, MF>
+#[rr::instantiate("Inv" := "MapInv traits_iterator_Iterator_MI_spec_attrs {MF::Pre} {MF::PostMut}")]
+impl<MB, MI: Iterator, MF> Iterator for Map<MI, MF>
 where
     MF: FnMut(MI::Item) -> MB,
 {
     type Item = MB;
 
-    #[rr::default_spec]
     #[rr::trust_me]
+    #[rr::default_spec]
     fn next(&mut self) -> Option<MB> {
         self.iter
             // Calling next is possible without preconditions.

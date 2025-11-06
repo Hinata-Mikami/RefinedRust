@@ -80,6 +80,7 @@ where
     fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
 
+        let mut external_attrs = false;
         let mut semantic_interp = None;
 
         for &it in attrs {
@@ -93,7 +94,22 @@ where
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
             match seg.name.as_str() {
+                "external_attrs" => {
+                    if !trait_attrs.is_empty() {
+                        return Err(
+                            "rr::external_attrs specified, but rr::exists has been previously specified"
+                                .to_owned(),
+                        );
+                    }
+                    external_attrs = true;
+                },
                 "exists" => {
+                    if external_attrs {
+                        return Err(
+                            "rr::exists specified, but rr::external_attrs has been previously specified"
+                                .to_owned(),
+                        );
+                    }
                     let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
                     buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
                     // add the new identifier to the scope
@@ -122,8 +138,9 @@ where
             }
         }
 
+        let attrs = if external_attrs { None } else { Some(trait_attrs) };
         Ok(TraitAttrs {
-            attrs: specs::traits::SpecAttrsDecl::new(trait_attrs, semantic_interp),
+            attrs: specs::traits::SpecAttrsDecl::new(attrs, semantic_interp),
         })
     }
 }
@@ -146,6 +163,12 @@ pub(crate) fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<S
             let parsed_name = parsed_name.to_string();
             buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
             trait_attrs.push(parsed_name);
+        } else if "external_attrs" == seg.name.as_str() {
+            let params: parse::Punctuated<parse::LitStr, MToken![,]> =
+                parse::Punctuated::<_, _>::parse_terminated(&buffer, &()).map_err(str_err)?;
+            for it in params {
+                trait_attrs.push(it.value());
+            }
         }
     }
 
