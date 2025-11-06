@@ -863,11 +863,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write the dune-project file, if required
         if rrconfig::generate_dune_project() {
-            let dune_project_path = rrconfig::absolute_work_dir().unwrap().join("dune-project");
+            base_dir_path.pop();
+            base_dir_path.pop();
+            base_dir_path.push("dune-project");
+
+            let dune_project_path = base_dir_path.as_path();
 
             if !dune_project_path.exists() {
-                let mut dune_project_file =
-                    io::BufWriter::new(File::create(dune_project_path.as_path()).unwrap());
+                let mut dune_project_file = io::BufWriter::new(File::create(dune_project_path).unwrap());
 
                 let (project_name, dune_project_package) = if let Some(dune_package) = &self.dune_package {
                     (dune_package.to_owned(), format!("(package (name {dune_package}))\n"))
