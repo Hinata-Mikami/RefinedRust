@@ -249,19 +249,11 @@
             rust.toolchain.envBuilder.buildPackage rec {
               inherit cargoArtifacts meta pname src version;
 
-              buildInputs = [pkgs.gnupatch];
               nativeBuildInputs = with pkgs;
-                [makeWrapper]
-                ++ lib.optionals stdenv.isDarwin [libiconv libzip];
-
-              postFixup = with pkgs.lib.strings; ''
-                wrapProgram $out/bin/${pname} \
-                  --set PATH "${makeBinPath buildInputs}" \
-              '';
+                lib.optionals stdenv.isDarwin [libiconv libzip];
 
               doNotRemoveReferencesToRustToolchain = true;
-
-              passthru = {inherit cargoArtifacts pname src;};
+              passthru = {inherit cargoArtifacts pname src;}; # TODO
             };
 
           stdlib = rocq.pkgs.mkRocqDerivation {
@@ -285,13 +277,11 @@
         }
         // (
           rust.mkTargetToolchains (toolchain:
-            pkgs.buildEnv {
-              inherit meta;
+            pkgs.symlinkJoin {
+              inherit meta name;
 
-              name = "cargo-${name}";
-              paths = rocq.toolchain ++ [packages.frontend toolchain.build];
+              paths = rocq.toolchain ++ [packages.frontend toolchain.build pkgs.gnupatch];
 
-              pathsToLink = ["/bin"];
               nativeBuildInputs = [pkgs.makeWrapper];
 
               postBuild = let
@@ -303,9 +293,10 @@
                     --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
                     --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
 
-                  wrapProgram $out/bin/cargo-refinedrust \
+                  wrapProgram $out/bin/cargo-${name} \
                     --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
                     --set DYLD_FALLBACK_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
+                    --set PATH "$out/bin" \
                     --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
                 '';
 
@@ -337,6 +328,42 @@
           cargoArtifacts = null;
           doInstallCargoArtifacts = false;
           pnameSuffix = "-machete";
+        };
+
+        evenInt = let
+          src = ./case_studies/evenint;
+          pname = "even-int";
+        in
+          rust.craneLib.mkCargoDerivation {
+            inherit pname src;
+
+            buildPhaseCargoCommand = "cargo refinedrust -- --offline";
+            nativeBuildInputs = with packages; [default];
+
+            cargoArtifacts = packages.frontend.passthru.cargoArtifacts;
+            cargoVendorDir = null;
+            pnameSuffix = "-refinedrust";
+
+            __contentAddressed = true;
+            installPhase = ''
+              RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')
+              cp -r $RR_OUTPUT_DIR $out
+            '';
+          };
+
+        evenIntRR = rocq.pkgs.mkRocqDerivation {
+          inherit meta version;
+
+          pname = "evenint";
+          opam-name = "evenint";
+          src = packages.evenInt;
+
+          propagatedBuildInputs = [packages.stdlib];
+
+          preBuild = ''
+            dune() { command dune $@ --display=short; }
+          '';
+          useDune = true;
         };
       };
 

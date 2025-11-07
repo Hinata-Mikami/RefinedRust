@@ -2,6 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
+#![rr::package("evenint")]
 #![rr::include("option")]
 
 #[rr::skip]
