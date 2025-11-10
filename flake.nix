@@ -5,14 +5,14 @@
 
     crane.url = "github:ipetkov/crane";
 
-    rust-targets = {
-      url = "file+https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix";
-      flake = false;
-    };
-
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    rust-targets = {
+      url = "file+https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix";
+      flake = false;
     };
   };
 
@@ -25,47 +25,12 @@
     rust-targets,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      ocamlFlambda = _: prev: rec {
-        # NOTE: Using OCaml 4.14 due to Rocq being slow with OCaml 5+
-        # See: https://github.com/NixOS/nixpkgs/blob/nixos-25.05/pkgs/applications/science/logic/rocq-core/default.nix#L15
-        ocamlPackages = prev.ocaml-ng.ocamlPackages_4_14.overrideScope (final: prev: {
-          ocaml = prev.ocaml.override {
-            flambdaSupport = true;
-          };
+      lib = nixpkgs.lib.extend (_: _: (import ./nix {
+        inherit pkgs;
+        craneLib = rust.lib.craneLib;
+      }));
 
-          # NOTE: Remove this when `dune` will handle `rocq` subcommands
-          # See: https://github.com/ocaml/dune/issues/11572
-          dune_3 = prev.dune_3.overrideAttrs (prev: {
-            nativeBuildInputs = prev.nativeBuildInputs ++ [pkgs.makeWrapper];
-
-            postFixup = let
-              coqSubcommand = newCmd: oldCmd:
-                pkgs.writeScriptBin oldCmd ''
-                  #!/bin/sh
-                  unset COQPATH
-                  rocq ${newCmd} "$@"
-                '';
-
-              coqc = coqSubcommand "compile" "coqc";
-              coqdep = coqSubcommand "dep" "coqdep";
-              coqpp = coqSubcommand "pp-mlg" "coqpp";
-            in ''
-              wrapProgram $out/bin/dune \
-                --prefix PATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
-                --prefix OCAMLPATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
-                --run "export COQPATH=\$(eval echo \$ROCQPATH)"
-            '';
-          });
-        });
-
-        rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
-          rocq-core = prev.rocq-core.override {
-            customOCamlPackages = ocamlPackages;
-          };
-        });
-      };
-
-      overlays = [ocamlFlambda rust-overlay.overlays.default];
+      overlays = [lib.overlays.ocamlFlambda rust-overlay.overlays.default];
       pkgs = import nixpkgs {inherit overlays system;};
 
       name = "refinedrust";
@@ -77,15 +42,14 @@
       };
 
       ocaml = {
-        pkgs = pkgs.ocamlPackages;
         version = pkgs.ocaml.version;
       };
 
       rocq = {
-        pkgs = pkgs.rocqPackages;
-        toolchain = [rocq.pkgs.rocq-core] ++ rocq.pkgs.rocq-core.nativeBuildInputs;
+        version = pkgs.rocqPackages.rocq-core.rocq-version;
 
-        version = rocq.pkgs.rocq-core.rocq-version;
+        # TODO: Try to remove
+        toolchain = [pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
 
         stdpp = {
           version = "ec795ece9125d60d9974e15fc52f3dfe91ae3f4b";
@@ -113,7 +77,15 @@
         inputsToolchain = (importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
         devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
       in {
-        craneLib = crane.mkLib pkgs;
+        lib = rec {
+          inherit (craneLib) cargoDeny;
+
+          craneLib = crane.mkLib pkgs;
+          cargoClippy = craneLib.cargoClippy.override {clippy = rust.toolchain.dev;};
+          cargoFmt = craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;};
+          cargoMachete = lib.cargoMachete;
+        };
+
         hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
         toolchain = rust.mkToolchain rust.hostPlatform;
 
@@ -123,7 +95,7 @@
         in rec {
           build = (pkgs.rust-bin.fromRustupToolchain inputsToolchain // {targets = [target];}).override addRustSrc;
           dev = build.override {extensions = inputsToolchain.components ++ devComponents;};
-          envBuilder = rust.craneLib.overrideToolchain build;
+          envBuilder = rust.lib.craneLib.overrideToolchain build;
 
           # cargoRefinedRust = {
           #   rrSrc,
@@ -163,36 +135,19 @@
             availableTargets);
       };
     in rec {
+      inherit lib;
+
       packages =
         {
           theories = let
-            mkDepRocqDerivation = pin: {
-              pname,
-              propagatedBuildInputs ? [rocq.pkgs.stdlib],
-              owner ? "iris",
-            }:
-              rocq.pkgs.mkRocqDerivation {
-                inherit pname propagatedBuildInputs owner;
-
-                domain = "gitlab.mpi-sws.org";
-                # NOTE: Remove `sed` line when Makefiles will be updated upstream
-                preBuild = ''
-                  sed -i -e 's/"$(COQBIN)coq_makefile"/"$(COQBIN)rocq" makefile/g' Makefile
-                  patchShebangs coq-lint.sh
-                '';
-
-                release.${pin.version}.sha256 = "${pin.sha256}";
-                version = pin.version;
-              };
-
-            # NOTE: Remove `coq-record-update` and `equations` when available in Nix's `RocqPackages`
-            equations = rocq.pkgs.mkRocqDerivation {
+            # NOTE: Remove `equations` when available in Nix's `RocqPackages`
+            equations = pkgs.rocqPackages.mkRocqDerivation {
               pname = "equations";
               owner = "mattam82";
               repo = "Coq-Equations";
               opam-name = "rocq-equations";
 
-              propagatedBuildInputs = [rocq.pkgs.stdlib ocaml.pkgs.ppx_optcomp];
+              propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
 
               mlPlugin = true;
               useDune = true;
@@ -203,29 +158,29 @@
               };
             };
 
-            stdpp = mkDepRocqDerivation rocq.stdpp {
+            stdpp = lib.mkDepRocqDerivation rocq.stdpp {
               pname = "stdpp";
             };
 
-            iris = mkDepRocqDerivation rocq.iris {
+            iris = lib.mkDepRocqDerivation rocq.iris {
               pname = "iris";
 
               propagatedBuildInputs = [stdpp];
             };
 
-            iris-contrib = mkDepRocqDerivation rocq.iris-contrib {
+            iris-contrib = lib.mkDepRocqDerivation rocq.iris-contrib {
               pname = "iris-contrib";
 
               propagatedBuildInputs = [iris];
             };
 
-            lambda-rust = mkDepRocqDerivation rocq.lambda-rust {
+            lambda-rust = lib.mkDepRocqDerivation rocq.lambda-rust {
               pname = "lambda-rust";
 
               propagatedBuildInputs = [iris];
             };
           in
-            rocq.pkgs.mkRocqDerivation {
+            pkgs.rocqPackages.mkRocqDerivation {
               inherit meta version;
 
               pname = name;
@@ -256,7 +211,7 @@
               passthru = {inherit cargoArtifacts pname src;}; # TODO
             };
 
-          stdlib = rocq.pkgs.mkRocqDerivation {
+          stdlib = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
 
             pname = "refinedrust-stdlib";
@@ -290,7 +245,7 @@
               in
                 with pkgs.lib.strings; ''
                   wrapProgram $out/bin/dune \
-                    --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([rocq.pkgs.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
+                    --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
                     --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
 
                   wrapProgram $out/bin/cargo-${name} \
@@ -305,36 +260,29 @@
         );
 
       checks = {
-        clippy = (rust.craneLib.cargoClippy.override {clippy = rust.toolchain.dev;}) {
+        clippy = rust.lib.cargoClippy {
           inherit (packages.frontend.passthru) cargoArtifacts pname src;
 
           cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
         };
 
-        deny = rust.craneLib.cargoDeny {
+        deny = rust.lib.cargoDeny {
           inherit (packages.frontend.passthru) pname src;
         };
 
-        fmt = (rust.craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;}) {
+        fmt = rust.lib.cargoFmt {
           inherit (packages.frontend.passthru) pname src;
         };
 
-        machete = rust.craneLib.mkCargoDerivation {
+        machete = rust.lib.cargoMachete {
           inherit (packages.frontend.passthru) pname src;
-
-          buildPhaseCargoCommand = "cargo machete";
-          nativeBuildInputs = with pkgs; [cargo-machete];
-
-          cargoArtifacts = null;
-          doInstallCargoArtifacts = false;
-          pnameSuffix = "-machete";
         };
 
         evenInt = let
           src = ./case_studies/evenint;
           pname = "even-int";
         in
-          rust.craneLib.mkCargoDerivation {
+          rust.lib.craneLib.mkCargoDerivation {
             inherit pname src;
 
             buildPhaseCargoCommand = "cargo refinedrust -- --offline";
@@ -351,12 +299,12 @@
             '';
           };
 
-        evenIntRR = rocq.pkgs.mkRocqDerivation {
+        evenIntRR = pkgs.rocqPackages.mkRocqDerivation {
           inherit meta version;
 
           pname = "evenint";
           opam-name = "evenint";
-          src = packages.evenInt;
+          src = checks.evenInt;
 
           propagatedBuildInputs = [packages.stdlib];
 
