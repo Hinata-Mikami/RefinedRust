@@ -26,7 +26,7 @@
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       lib = nixpkgs.lib.extend (_: _: (import ./nix {
-        inherit pkgs;
+        inherit self system pkgs;
         craneLib = rust.lib.craneLib;
       }));
 
@@ -47,9 +47,6 @@
 
       rocq = {
         version = pkgs.rocqPackages.rocq-core.rocq-version;
-
-        # TODO: Try to remove
-        toolchain = [pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
 
         stdpp = {
           version = "ec795ece9125d60d9974e15fc52f3dfe91ae3f4b";
@@ -84,6 +81,7 @@
           cargoClippy = craneLib.cargoClippy.override {clippy = rust.toolchain.dev;};
           cargoFmt = craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;};
           cargoMachete = lib.cargoMachete;
+          cargoRefinedRust = lib.cargoRefinedRust;
         };
 
         hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
@@ -164,19 +162,16 @@
 
             iris = lib.mkDepRocqDerivation rocq.iris {
               pname = "iris";
-
               propagatedBuildInputs = [stdpp];
             };
 
             iris-contrib = lib.mkDepRocqDerivation rocq.iris-contrib {
               pname = "iris-contrib";
-
               propagatedBuildInputs = [iris];
             };
 
             lambda-rust = lib.mkDepRocqDerivation rocq.lambda-rust {
               pname = "lambda-rust";
-
               propagatedBuildInputs = [iris];
             };
           in
@@ -208,7 +203,7 @@
                 lib.optionals stdenv.isDarwin [libiconv libzip];
 
               doNotRemoveReferencesToRustToolchain = true;
-              passthru = {inherit cargoArtifacts pname src;}; # TODO
+              passthru = {inherit cargoArtifacts pname src;};
             };
 
           stdlib = pkgs.rocqPackages.mkRocqDerivation {
@@ -235,7 +230,7 @@
             pkgs.symlinkJoin {
               inherit meta name;
 
-              paths = rocq.toolchain ++ [packages.frontend toolchain.build pkgs.gnupatch];
+              paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain.build pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
 
               nativeBuildInputs = [pkgs.makeWrapper];
 
@@ -278,26 +273,12 @@
           inherit (packages.frontend.passthru) pname src;
         };
 
-        evenInt = let
+        evenInt = rust.lib.cargoRefinedRust {
+          inherit (packages.frontend.passthru) cargoArtifacts;
+
           src = ./case_studies/evenint;
           pname = "even-int";
-        in
-          rust.lib.craneLib.mkCargoDerivation {
-            inherit pname src;
-
-            buildPhaseCargoCommand = "cargo refinedrust -- --offline";
-            nativeBuildInputs = with packages; [default];
-
-            cargoArtifacts = packages.frontend.passthru.cargoArtifacts;
-            cargoVendorDir = null;
-            pnameSuffix = "-refinedrust";
-
-            __contentAddressed = true;
-            installPhase = ''
-              RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')
-              cp -r $RR_OUTPUT_DIR $out
-            '';
-          };
+        };
 
         evenIntRR = pkgs.rocqPackages.mkRocqDerivation {
           inherit meta version;
