@@ -53,11 +53,13 @@ Section place.
       typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
         (λ L' κs l1 b2 bmin rti ltyi ri mstrong,
           T L' κs l1 b2 bmin rti ltyi ri
+          (* strong *)
           (mk_mstrong (fmap (λ strong, mk_strong
             (λ rt', plist place_rfnRT (<[i := strong.(strong_rt) rt']> rts))
             (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
             (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
             strong.(strong_R)) mstrong.(mstrong_strong))
+          (* weak *)
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
@@ -66,7 +68,7 @@ Section place.
     ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & TIME & LLCTX) #HE HL #Hincl0 Hl HΦ/=".
+  iIntros (Φ F ??) "#(LFT & TIME & LLCTX) #HE HL #Hincl0 Hl HΦ/=".
     iPoseProof (struct_ltype_acc_owned F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
     iApply fupd_wp.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
@@ -145,15 +147,15 @@ Section place.
         (λ L' κs' l1 b2 bmin rti ltyi ri mstrong,
           T L' (κs ++ κs') l1 b2 bmin rti ltyi ri
           (mk_mstrong
-          None
-          (* TODO allow strong by opening *)
-          (*
-          (fmap (λ strong, mk_strong
-            (λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))
-            (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
-            (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
-            strong.(strong_R)) strong)
-            *)
+          (* allow strong by opening *)
+          (fmap (λ strong, mk_strong 
+            (λ rt', plistRT (<[i := strong.(strong_rt) rt']> rts))
+            (λ rti2 ltyi2 ri2,
+                OpenedLtype (StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ ltyi2 ri2)) sls) (StructLtype lts sls) (StructLtype lts sls) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
+            (λ rti2 ri2, 
+            #(plist_insert rts r i _ (strong.(strong_rfn) _ ri2)))
+              strong.(strong_R)) mstrong.(mstrong_strong))
+          (* weak *)
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
@@ -203,7 +205,17 @@ Section place.
     simpl. iSplit.
     - (* strong *)
       destruct strong as [strong | ]; last done.
-      done.
+      iDestruct "Hcl" as "(_ & Hcl)".
+      iDestruct "Hc_close" as "(Hc_close & _)". simpl.
+      iDestruct "Hcont" as "(Hcont & _)".
+      iIntros (rti2 tyli2 ri2 ).
+      iIntros "Hl2 %Hst'".
+      iMod ("Hcont" with "Hl2 [//]") as "(Hb & %Hst2 & HR)".
+      iPoseProof ("Hc_close" with "Hb []") as "Hb".
+      { rewrite -Hst2. done. }
+      iPoseProof ("Hcl" with "[] Hb") as "Hb".
+      { rewrite length_insert. done. }
+      iFrame. done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
       iDestruct "Hcont" as "(_ & Hcont)".
@@ -239,12 +251,13 @@ Section place.
         (λ L' κs l1 b2 bmin rti ltyi ri mstrong,
           T L' κs l1 b2 bmin rti ltyi ri
           (mk_mstrong
-          None (* TODO *)
-          (*(fmap (λ strong, mk_strong*)
-            (*(λ rt', plist place_rfn (<[i := strong.(strong_rt) rt']> rts))*)
-            (*(λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)*)
-            (*(λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))*)
-            (*strong.(strong_R)) strong)*)
+          (* strong *)
+          (fmap (λ strong, mk_strong
+            (λ rt', plistRT (<[i := strong.(strong_rt) rt']> rts))
+            (λ rt' lt' r', StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ lt' r')) sls)
+            (λ rt' (r' : place_rfn rt'), #(plist_insert rts r i _ (strong.(strong_rfn) _ r')))
+            strong.(strong_R)) mstrong.(mstrong_strong))
+          (* weak *)
           (fmap (λ weak, mk_weak
             (λ lti2 ri2, StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) lti2 ri2)) sls)
             (λ (r' : place_rfn rti), #(plist_insert_id (unit : RT) rts r i (weak.(weak_rfn) r')))
@@ -285,6 +298,18 @@ Section place.
     iApply ("HΦ" $! _ _ _ _ _ _ _ _ _ with "Hincl1 Hli").
     simpl. iSplit.
     - (* strong *)
+      destruct strong as [ strong | ]; last done.
+      iDestruct "Hcont" as "(Hcont & _)". simpl.
+      iIntros (rti2 ltyi2 ri2) "Hli %Hst'".
+      iMod ("Hcont" with "Hli []") as "(Hb1 & %Hst2 & HR)".
+      { done. }
+      simpl. iDestruct "Hc_close" as "[Hc_close _]".
+      iPoseProof ("Hc_close" with "Hb1 []") as "Hb".
+      { iPureIntro. rewrite -Hst2. done. }
+      iFrame.
+      iL.
+      iMod ("Hcl" with "[] [Hb]") as "Hb"; last done.
+      { rewrite length_insert//. }
       done.
     - (* weak *)
       destruct weak as [ weak | ]; last done.

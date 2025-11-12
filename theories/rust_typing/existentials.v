@@ -663,7 +663,7 @@ Section stratify.
     (∀ r, introduce_with_hooks E L (P.(inv_P) π r x) (λ L2, typed_place π E L2 l
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, True)) (#r) bmin (Owned wl) K
       (λ L2 κs li b2 bmin' rti ltyi ri mstrong,
-        (* no weak update possible - after all, we have just opened this invariant *)
+        (* NOTE: no weak update possible - after all, we have just opened this invariant *)
         T L2 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None))))
     ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) bmin (Owned wl) K T.
   Proof.
@@ -689,7 +689,7 @@ Section stratify.
     (∀ r, introduce_with_hooks E L2 (P.(inv_P) π r x) (λ L3, typed_place π E L3 l
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) (#r) bmin (Uniq κ γ) K
       (λ L4 κs li b2 bmin' rti ltyi ri mstrong,
-        (* no weak update possible - after all, we have just opened this invariant *)
+        (* NOTE: no weak update possible - after all, we have just opened this invariant *)
         T L4 κs li b2 bmin' rti ltyi ri (mk_mstrong mstrong.(mstrong_strong) None )))))
     ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) bmin (Uniq κ γ) K T.
   Proof.
@@ -757,21 +757,6 @@ Section stratify.
     λ T, i2p (typed_place_ex_plain_t_shared π E L l ty x κ bmin K T).
 
 End stratify.
-(* How to reflect that into subtyping?
-
-   - It gives a clear proof principle for adding a later via subsume.
-   - We can eliminate to Owned false by using some of the creds.
-      In the next step, we can go back to Owned true, after one operation.
-     Note: We should find a clear spot where we actually do this regeneration.
-      existential folding/unfodlign?
-
-
-   We can also operate with Owned true in many places. Exception: array access that we use for decoupled physical operations.
-   potentially, we should also mark these as inlined eventually (ptr offset etc).
-
-   In principle, we could also just use credit from ptr::offset to use the Owned true case.
-   Then we can always leave the Owned true there.
- *)
 
 (* TODO move *)
 (* ty_share *)

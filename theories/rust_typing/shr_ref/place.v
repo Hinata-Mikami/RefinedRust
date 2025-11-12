@@ -99,7 +99,7 @@ Section place.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HT" with "[] HE HL Hcred") as "(%L1 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { 
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). {
       iApply bor_kind_min_incl_r. }
     iModIntro. iIntros (L' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb").
@@ -117,11 +117,11 @@ Section place.
       iDestruct "Hs" as "[_ Hs]".
       iIntros (ltyi2 ri2 bmin').
       iIntros "Hincl2 Hl2 Hcond".
-iDestruct "Hc" as "[Hc _]". simpl.
+      iDestruct "Hc" as "[Hc _]". simpl.
       iMod ("Hs" with "Hincl2 Hl2 Hcond") as "(Hb & Hcond & Htoks & HR)".
 
       iMod ("Hc" with "Hl Hb [] Hcond") as "(Hb & Hcond')".
-      { iApply bor_kind_incl_trans; last iApply "Hincl0". 
+      { iApply bor_kind_incl_trans; last iApply "Hincl0".
         iApply bor_kind_min_incl_l. }
       iDestruct "Hcond'" as "(Htoks' & Hcond)".
       rewrite llft_elt_toks_app.
@@ -139,18 +139,16 @@ iDestruct "Hc" as "[Hc _]". simpl.
         (λ L2 κs' l2 b2 bmin rti tyli ri mstrong,
           T L2 (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
             (mk_mstrong
-            (* strong branch: fold to ShadowedLtype *)
-            None
-            (*(fmap (λ strong, mk_strong *)
-              (*(λ rti, place_rfn rto)*)
-              (*(λ rti2 ltyi2 ri2,*)
-                (*ShadowedLtype (strong.(strong_lt) _ ltyi2 ri2) ((strong.(strong_rfn) _ ri2)) (ShrLtype lt2 κ))*)
-              (*(λ rti2 ri2, #r)*)
-              (*(λ rti2 ltyi2 ri2, strong.(strong_R) rti2 ltyi2 ri2 ∗ llft_elt_toks κs)) mstrong.(mstrong_strong))*)
-            (* weak branch: just keep the MutLtype *)
-            (fmap (λ weak, mk_weak 
-              (λ lti' ri', ShrLtype (weak.(weak_lt) lti' ri') κ) 
-              (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) 
+            (* strong branch: just keep the ShrLtype *)
+            (fmap (λ strong, mk_strong
+              (λ rti, place_rfn (strong.(strong_rt) rti))
+              (λ rti2 ltyi2 ri2, ShrLtype (strong.(strong_lt) _ ltyi2 ri2) κ)
+              (λ rti2 ri2, #((strong.(strong_rfn) _ ri2)))
+              (λ rti2 ltyi2 ri2, strong.(strong_R) rti2 ltyi2 ri2 ∗ llft_elt_toks κs)) mstrong.(mstrong_strong))
+            (* weak branch: just keep the ShrLtype *)
+            (fmap (λ weak, mk_weak
+              (λ lti' ri', ShrLtype (weak.(weak_lt) lti' ri') κ)
+              (λ (r : place_rfn rti), #(weak.(weak_rfn) r))
               weak.(weak_R)) mstrong.(mstrong_weak))
             )))))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
@@ -177,25 +175,14 @@ iDestruct "Hc" as "[Hc _]". simpl.
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
     simpl. iSplit.
     - (* strong update *)
-      (* of course this doesn't work, I'm trying to remove the pointer indirection.
-       *)
-         
-      (*
-      destruct strong as [strong | ]; simpl; last done. 
+      destruct strong as [strong | ]; simpl; last done.
       iDestruct "Hs" as "(Hs & _)".
       iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
       simp_ltypes.
       iMod ("Hs" with "Hl2 [//]") as "(Hl' & % & ?)".
-      iMod ("Hcl" with "Hl Hb") as "(Hb' & Htok & _)".
+      iMod ("Hcl" with "Hl Hl'") as "(Hb' & Htok & _)".
       iMod (fupd_mask_mono with "(Hclκ' Htok)") as "?"; first done.
-      iFrame. iL.
-      rewrite ltype_own_shadowed_unfold/shadowed_ltype_own/=.
-      iFrame.
-      *)
-      (* TODO: κ  needs to outlive κ' *)
-      (* TODO: the syntype needs to be the same... *)
-      done.
-      (*admit.*)
+      iFrame. done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
       iDestruct "Hs" as "(_ & Hs)".
@@ -211,8 +198,8 @@ iDestruct "Hc" as "[Hc _]". simpl.
       + iApply typed_place_cond_incl; last done.
         iApply bor_kind_min_incl_r.
   Qed.
-  Global Instance typed_place_shr_shared_inst {rto} E L π κ κ' (lt2 : ltype rto) bmin0 r l P :
-    TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_shared π E L lt2 P l r κ κ' bmin0 T).
+  Definition typed_place_shr_shared_inst := [instance @typed_place_shr_shared].
+  Global Existing Instance typed_place_shr_shared_inst | 30.
 
   (** prove_place_cond instances *)
   (* These need to have a lower priority than the ofty_refl instance (level 2) and the unblocking instances (level 5), but higher than the trivial "no" instance *)
@@ -222,16 +209,16 @@ iDestruct "Hc" as "[Hc _]". simpl.
   Proof.
     iApply prove_place_cond_eqltype_l. apply symmetry. apply shr_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_shr_l_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k (◁ (shr_ref κ ty))%I lt | 10 := λ T, i2p (prove_place_cond_unfold_shr_l E L ty lt κ k T).
+  Definition prove_place_cond_unfold_shr_l_inst := [instance @prove_place_cond_unfold_shr_l].
+  Global Existing Instance prove_place_cond_unfold_shr_l_inst | 10.
   Lemma prove_place_cond_unfold_shr_r E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k T :
     prove_place_cond E L k lt (ShrLtype (◁ ty) κ) T
     ⊢ prove_place_cond E L k lt (◁ (shr_ref κ ty)) T.
   Proof.
     iApply prove_place_cond_eqltype_r. apply symmetry. apply shr_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_shr_r_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k lt (◁ (shr_ref κ ty))%I | 10 := λ T, i2p (prove_place_cond_unfold_shr_r E L ty lt κ k T).
+  Definition prove_place_cond_unfold_shr_r_inst := [instance @prove_place_cond_unfold_shr_r].
+  Global Existing Instance prove_place_cond_unfold_shr_r_inst | 10.
 
   Lemma prove_place_cond_ShrLtype E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ k T :
     prove_place_cond E L (Shared κ ⊓ₖ k) lt1 lt2 (λ upd, T $ access_result_lift place_rfn upd)

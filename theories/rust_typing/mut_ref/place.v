@@ -130,13 +130,12 @@ Section place.
         (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
           T L'' (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
             (mk_mstrong
-            (* strong branch: fold to ShadowedLtype *)
-              None (* TODO *)
-            (*(fmap (λ strong, mk_strong (λ rti, (place_rfn (strong.(strong_rt) rti) * gname)%type)*)
-              (*(λ rti2 ltyi2 ri2,*)
-                (*OpenedLtype (MutLtype (strong.(strong_lt) _ ltyi2 ri2) κ) (MutLtype lt2 κ) (MutLtype lt2 κ) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))*)
-              (*(λ rti2 ri2, #((strong.(strong_rfn) _ ri2), γ))*)
-              (*strong.(strong_R)) strong)*)
+            (* strong branch: just update the type *)
+            (fmap (λ strong, mk_strong
+              (λ rti, ((place_rfn (strong.(strong_rt) rti) * gname)%type))
+              (λ rti2 ltyi2 ri2, MutLtype (strong.(strong_lt) _ ltyi2 ri2) κ)
+              (λ rti2 ri2, #(((strong.(strong_rfn) _ ri2)), γ))
+              (λ rti2 ltyi2 ri2, strong.(strong_R) rti2 ltyi2 ri2 ∗ llft_elt_toks κs)) mstrong.(mstrong_strong))
             (* weak branch: just keep the MutLtype *)
             (fmap (λ weak, mk_weak (λ lti' ri', MutLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r, γ)) weak.(weak_R)) mstrong.(mstrong_weak))
             ))))
@@ -162,7 +161,14 @@ Section place.
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
     simpl. iSplit.
     - (* strong update *)
-      done.
+      destruct strong as [strong | ]; simpl; last done.
+      iDestruct "Hs" as "(Hs & _)".
+      iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
+      simp_ltypes.
+      iMod ("Hs" with "Hl2 [//]") as "(Hl' & % & ?)".
+      iMod ("Hcl" with "Hl Hl'") as "(Hb' & Htok & _)".
+      iMod (fupd_mask_mono with "(Hclκ' Htok)") as "?"; first done.
+      iFrame. done.
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
       iDestruct "Hs" as "(_ & Hs)".

@@ -399,7 +399,7 @@ Section access.
     l ◁ₗ[π, Shared κ] #(r, γ) @ MutLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
       ∃ (l' : loc) q', l ↦{q'} l' ∗ (|={F}▷=> l' ◁ₗ[π, Shared (κ' ⊓ κ)] r @ lt) ∗
-    (∀ (lt' : ltype rt) r',
+    (∀ rt' (lt' : ltype rt') r',
       l ↦{q'} l' -∗
       l' ◁ₗ[π, Shared (κ' ⊓ κ)] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #(r', γ) @ MutLtype lt' κ' ∗
@@ -418,7 +418,7 @@ Section access.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
     iModIntro. iExists _, _. iFrame.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
-    iIntros (lt' r'') "Hpts #Hl'".
+    iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
     iFrame. iSplitL.
     { iModIntro.

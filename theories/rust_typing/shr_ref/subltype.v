@@ -395,7 +395,7 @@ Section acc.
     l ◁ₗ[π, Shared κ] #r @ ShrLtype lt κ' -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
       ∃ (l' : loc) q', l ↦{q'} l' ∗ (|={F}▷=> l' ◁ₗ[π, Shared κ'] r @ lt) ∗
-    (∀ (lt' : ltype rt) r',
+    (∀ rt' (lt' : ltype rt') r',
       l ↦{q'} l' -∗
       l' ◁ₗ[π, Shared κ'] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #r' @ ShrLtype lt' κ' ∗
@@ -413,7 +413,7 @@ Section acc.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
     iModIntro. iExists _, _. iFrame.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
-    iIntros (lt' r'') "Hpts #Hl'".
+    iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
     iFrame. iSplitL.
     { iModIntro. rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*. by iFrame "% #". }
