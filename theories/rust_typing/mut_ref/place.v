@@ -56,11 +56,10 @@ Section place.
       iPoseProof ("Hcond'" with "Hcond") as "Hcond".
       iModIntro. iFrame "HR Hb".
       iApply typed_place_cond_incl; last iApply "Hcond".
-      + iApply bor_kind_min_incl_r.
-      + iPureIntro. apply place_access_rt_rel_refl.
+      iApply bor_kind_min_incl_r.
   Qed.
-  Global Instance typed_place_mut_owned_inst {rto} E L π κ γ (lt2 : ltype rto) bmin0 r l wl P :
-    TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_owned π κ lt2 P E L γ l r wl bmin0 T).
+  Definition typed_place_mut_owned_inst := [instance @typed_place_mut_owned].
+  Global Existing Instance typed_place_mut_owned_inst | 30.
 
   Lemma typed_place_mut_uniq {rto} π E L (lt2 : ltype rto) P l r κ γ κ' γ' bmin0 (T : place_cont_t (place_rfn rto * gname)%type) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
@@ -122,8 +121,8 @@ Section place.
       iApply typed_place_cond_incl; last done.
       iApply bor_kind_min_incl_r.
   Qed.
-  Global Instance typed_place_mut_uniq_inst {rto} E L π κ κ' γ γ' (lt2 : ltype rto) bmin0 r l P :
-    TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_uniq π E L lt2 P l r κ γ κ' γ' bmin0 T).
+  Definition typed_place_mut_uniq_inst := [instance @typed_place_mut_uniq].
+  Global Existing Instance typed_place_mut_uniq_inst | 30.
 
   Lemma typed_place_mut_shared {rto} π E L (lt2 : ltype rto) P l r κ γ κ' bmin0 (T : place_cont_t (place_rfn rto * gname)%type) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
@@ -179,8 +178,8 @@ Section place.
       + iApply typed_place_cond_incl; last done.
         iApply bor_kind_min_incl_r.
   Qed.
-  Global Instance typed_place_mut_shared_inst {rto} E L π κ κ' γ (lt2 : ltype rto) bmin0 r l P :
-    TypedPlace E L π l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_mut_shared π E L lt2 P l r κ γ κ' bmin0 T).
+  Definition typed_place_mut_shared_inst := [instance @typed_place_mut_shared].
+  Global Existing Instance typed_place_mut_shared_inst | 30.
 
   (** prove_place_cond instances *)
   (* These need to have a lower priority than the ofty_refl instance (level 2) and the unblocking instances (level 5), but higher than the trivial "no" instance *)
@@ -190,16 +189,16 @@ Section place.
   Proof.
     iApply prove_place_cond_eqltype_l. apply symmetry. apply mut_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_mut_l_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k (◁ (mut_ref κ ty))%I lt | 10 := λ T, i2p (prove_place_cond_unfold_mut_l E L ty lt κ k T).
+  Definition prove_place_cond_unfold_mut_l_inst := [instance @prove_place_cond_unfold_mut_l].
+  Global Existing Instance prove_place_cond_unfold_mut_l_inst | 10.
   Lemma prove_place_cond_unfold_mut_r E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k T :
     prove_place_cond E L k lt (MutLtype (◁ ty) κ) T
     ⊢ prove_place_cond E L k lt (◁ (mut_ref κ ty)) T.
   Proof.
     iApply prove_place_cond_eqltype_r. apply symmetry. apply mut_ref_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_mut_r_inst E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) κ k :
-    ProvePlaceCond E L k lt (◁ (mut_ref κ ty))%I | 10 := λ T, i2p (prove_place_cond_unfold_mut_r E L ty lt κ k T).
+  Definition prove_place_cond_unfold_mut_r_inst := [instance @prove_place_cond_unfold_mut_r].
+  Global Existing Instance prove_place_cond_unfold_mut_r_inst | 10.
 
   Lemma prove_place_cond_mut_ltype E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 k T :
     ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ prove_place_cond E L k lt1 lt2 (λ upd, T $ access_result_lift (λ rt, (place_rfn rt * gname)%type) upd)
@@ -213,12 +212,10 @@ Section place.
     destruct upd.
     - subst rt2. cbn.
       iApply ltype_eq_place_cond_ty_trans; first last.
-      { by iApply mut_ltype_place_cond_ty. }
+      { by iApply mut_ltype_place_cond. }
       iIntros (??). iApply mut_ltype_eq; [ | done..]. iIntros (??). iApply ltype_eq_refl.
     - cbn. done.
   Qed.
-  Global Instance prove_place_cond_mut_ltype_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 k :
-    ProvePlaceCond E L k (MutLtype lt1 κ1) (MutLtype lt2 κ2) | 5 := λ T, i2p (prove_place_cond_mut_ltype E L lt1 lt2 κ1 κ2 k T).
-
-
+  Definition prove_place_cond_mut_ltype_inst := [instance @prove_place_cond_mut_ltype].
+  Global Existing Instance prove_place_cond_mut_ltype_inst | 5.
 End place.

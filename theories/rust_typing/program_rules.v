@@ -832,11 +832,11 @@ Section typing.
     T (ResultWeak eq_refl) ⊢ prove_place_cond E L bmin (◁ ty) (◁ ty) T.
   Proof.
     iIntros "HT" (F ?) "#CTX HE $". iExists (ResultWeak eq_refl). iFrame.
-    iApply typed_place_cond_ty_refl_ofty.
+    iApply typed_place_cond_refl_ofty.
   Qed.
   (* high-priority instance for reflexivity *)
-  Global Instance prove_place_cond_ofty_refl_inst E L bmin {rt} (ty : type rt) :
-    ProvePlaceCond E L bmin (◁ ty)%I (◁ ty)%I | 2 := λ T, i2p (prove_place_cond_ofty_refl E L bmin ty T).
+  Definition prove_place_cond_ofty_refl_inst := [instance @prove_place_cond_ofty_refl].
+  Global Existing Instance prove_place_cond_ofty_refl_inst | 2.
 
   Lemma prove_place_cond_trivial E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) T :
     ⌜ltype_st lt1 = ltype_st lt2⌝ ∗ T ResultStrong ⊢ prove_place_cond E L bmin lt1 lt2 T.
@@ -845,8 +845,8 @@ Section typing.
     iExists ResultStrong. by iFrame.
   Qed.
   (* very low-priority instance *)
-  Global Instance prove_place_cond_trivial_inst E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    ProvePlaceCond E L bmin lt1 lt2 | 200 := λ T, i2p (prove_place_cond_trivial E L bmin lt1 lt2 T).
+  Definition prove_place_cond_trivial_inst := [instance @prove_place_cond_trivial].
+  Global Existing Instance prove_place_cond_trivial_inst | 200.
 
   (** Lemmas to eliminate BlockedLtype on either side *)
   Lemma prove_place_cond_blocked_r_Uniq E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ κ' γ  T :
@@ -867,8 +867,8 @@ Section typing.
       iApply blocked_imp_unblockable.
     - simp_ltypes. done.
   Qed.
-  Global Instance prove_place_cond_blocked_r_Uniq_inst E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ κ' γ :
-    ProvePlaceCond E L (Uniq κ γ) lt (BlockedLtype ty κ') | 5 := λ T, i2p (prove_place_cond_blocked_r_Uniq E L ty lt κ κ' γ T).
+  Definition prove_place_cond_blocked_r_Uniq_inst := [instance @prove_place_cond_blocked_r_Uniq].
+  Global Existing Instance prove_place_cond_blocked_r_Uniq_inst | 5.
 
   Lemma prove_place_cond_blocked_r_Owned E L {rt rt2} (lt : ltype rt2) (ty : type rt) κ' wl T :
     prove_place_cond E L (Owned wl) lt (BlockedLtype ty κ') T ⊢
@@ -878,8 +878,8 @@ Section typing.
     iMod ("HT" with "[//] CTX HE HL") as "($ & %upd & Hcond & HT)".
     iExists upd. by iFrame.
   Qed.
-  Global Instance prove_place_cond_blocked_r_Owned_inst E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ' wl :
-    ProvePlaceCond E L (Owned wl) lt (BlockedLtype ty κ') | 5 := λ T, i2p (prove_place_cond_blocked_r_Owned E L lt ty κ' wl T).
+  Definition prove_place_cond_blocked_r_Owned_inst := [instance @prove_place_cond_blocked_r_Owned].
+  Global Existing Instance prove_place_cond_blocked_r_Owned_inst | 5.
   (* no shared lemma *)
 
   Lemma prove_place_cond_blocked_l_Uniq E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ κ' γ  T :
@@ -896,8 +896,8 @@ Section typing.
       iSplitL; done.
     - by iFrame.
   Qed.
-  Global Instance prove_place_cond_blocked_l_Uniq_inst E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ κ' γ :
-    ProvePlaceCond E L (Uniq κ γ) (BlockedLtype ty κ') lt | 5 := λ T, i2p (prove_place_cond_blocked_l_Uniq E L ty lt κ κ' γ T).
+  Definition prove_place_cond_blocked_l_Uniq_inst := [instance @prove_place_cond_blocked_l_Uniq].
+  Global Existing Instance prove_place_cond_blocked_l_Uniq_inst | 5.
 
   Lemma prove_place_cond_blocked_l_Owned E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ' wl T :
     prove_place_cond E L (Owned wl) (◁ ty)%I lt T ⊢
@@ -907,8 +907,8 @@ Section typing.
     iMod ("HT" with "[//] CTX HE HL") as "($ & (%upd & Hcond & T))".
     iExists upd. iFrame. done.
   Qed.
-  Global Instance prove_place_cond_blocked_l_Owned_inst E L {rt rt2} (ty : type rt) (lt : ltype rt2) κ' wl :
-    ProvePlaceCond E L (Owned wl) (BlockedLtype ty κ') lt | 5 := λ T, i2p (prove_place_cond_blocked_l_Owned E L ty lt κ' wl T).
+  Definition prove_place_cond_blocked_l_Owned_inst := [instance @prove_place_cond_blocked_l_Owned].
+  Global Existing Instance prove_place_cond_blocked_l_Owned_inst | 5.
 
   Lemma prove_place_cond_coreable_r_Owned E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs wl T :
     prove_place_cond E L (Owned wl) lt1 lt2 T ⊢
@@ -918,8 +918,9 @@ Section typing.
     iMod ("HT" with "[//] CTX HE HL") as "($ & %upd & Hcond & HT)".
     iExists upd. by iFrame.
   Qed.
-  Global Instance prove_place_cond_coreable_r_Owned_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs wl :
-    ProvePlaceCond E L (Owned wl) lt1 (CoreableLtype κs lt2) | 5 := λ T, i2p (prove_place_cond_coreable_r_Owned E L lt1 lt2 κs wl T).
+  Definition prove_place_cond_coreable_r_Owned_inst := [instance @prove_place_cond_coreable_r_Owned].
+  Global Existing Instance prove_place_cond_coreable_r_Owned_inst | 5.
+
   (* κ needs to outlive all the κ' ∈ κs *)
   Lemma prove_place_cond_coreable_r_Uniq E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs κ γ T :
     ([∗ list] κ' ∈ κs, ⌜lctx_lft_incl E L κ' κ⌝) ∗ prove_place_cond E L (Uniq κ γ) lt1 lt2 T
@@ -940,8 +941,8 @@ Section typing.
       by iApply (lft_incl_dead with "Hincl0 Hdead").
     - simp_ltypes. done.
   Qed.
-  Global Instance prove_place_cond_coreable_r_Uniq_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs κ γ :
-    ProvePlaceCond E L (Uniq κ γ) lt1 (CoreableLtype κs lt2) | 5 := λ T, i2p (prove_place_cond_coreable_r_Uniq E L lt1 lt2 κs κ γ T).
+  Definition prove_place_cond_coreable_r_Uniq_inst := [instance @prove_place_cond_coreable_r_Uniq].
+  Global Existing Instance prove_place_cond_coreable_r_Uniq_inst | 5.
 
   Lemma prove_place_cond_coreable_l_Owned E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs wl T :
     prove_place_cond E L (Owned wl) lt1 lt2 T
@@ -951,8 +952,8 @@ Section typing.
     iMod ("HT" with "[//] CTX HE HL") as "($ & %upd & Hcond & HT)".
     iExists upd. by iFrame.
   Qed.
-  Global Instance prove_place_cond_coreable_l_Owned_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs wl :
-    ProvePlaceCond E L (Owned wl) (CoreableLtype κs lt1) lt2 | 5 := λ T, i2p (prove_place_cond_coreable_l_Owned E L lt1 lt2 κs wl T).
+  Definition prove_place_cond_coreable_l_Owned_inst := [instance @prove_place_cond_coreable_l_Owned].
+  Global Existing Instance prove_place_cond_coreable_l_Owned_inst | 5.
 
   Lemma prove_place_cond_coreable_l_Uniq E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs κ γ T :
     prove_place_cond E L (Uniq κ γ) lt1 lt2 T
@@ -967,8 +968,8 @@ Section typing.
       iExists eq_refl. cbn. simp_ltypes. by iFrame.
     - simp_ltypes. done.
   Qed.
-  Global Instance prove_place_cond_coreable_l_Uniq_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs κ γ :
-    ProvePlaceCond E L (Uniq κ γ) (CoreableLtype κs lt1) lt2 | 5 := λ T, i2p (prove_place_cond_coreable_l_Uniq E L lt1 lt2 κs κ γ T).
+  Definition prove_place_cond_coreable_l_Uniq_inst := [instance @prove_place_cond_coreable_l_Uniq].
+  Global Existing Instance prove_place_cond_coreable_l_Uniq_inst | 5.
 
   (* NOTE: unfolding lemmas should have lower priority than the primitive ones. *)
 
@@ -1519,13 +1520,11 @@ Section typing.
       iIntros (ltyi2 ri2 bmin') "Hincl Hl2 Hcond".
       iMod ("Hs" with "Hincl Hl2 Hcond") as "(Hl & Hcond & Htoks & HR)".
       iFrame. iModIntro.
-      iDestruct "Hcond" as "(Ht & Hr)". iSplit.
-      + destruct bmin0; [done.. | ].
-        unfold typed_place_cond_ty. simp_ltypes. done.
-      + done.
+      destruct bmin0; [done.. | ].
+      unfold typed_place_cond. simp_ltypes. done.
   Qed.
-  Global Instance typed_place_blocked_unblock_inst {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P:
-    TypedPlace E L π l (BlockedLtype ty κ) r bmin0 b P | 5 := λ T, i2p (typed_place_blocked_unblock π E L l ty κ r bmin0 b P T).
+  Definition typed_place_blocked_unblock_inst := [instance @typed_place_blocked_unblock].
+  Global Existing Instance typed_place_blocked_unblock_inst | 5.
 
   Lemma typed_place_shrblocked_unblock {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P T :
     ⌜bor_kind_writeable bmin0⌝ ∗ [† κ] ∗ typed_place π E L l (◁ ty) r bmin0 b P (
@@ -1549,13 +1548,11 @@ Section typing.
       iIntros (ltyi2 ri2 bmin') "Hincl Hl2 Hcond".
       iMod ("Hs" with "Hincl Hl2 Hcond") as "(Hl & Hcond & Htoks & HR)".
       iFrame. iModIntro.
-      iDestruct "Hcond" as "(Ht & Hr)". iSplit.
-      + destruct bmin0; [done.. | ].
-        unfold typed_place_cond_ty. simp_ltypes. done.
-      + done.
+      destruct bmin0; [done.. | ].
+      unfold typed_place_cond. simp_ltypes. done.
   Qed.
-  Global Instance typed_place_shrblocked_unblock_inst {rt} π E L l (ty : type rt) κ (r : place_rfn rt) bmin0 b P:
-    TypedPlace E L π l (ShrBlockedLtype ty κ) r bmin0 b P | 5 := λ T, i2p (typed_place_shrblocked_unblock π E L l ty κ r bmin0 b P T).
+  Definition typed_place_shrblocked_unblock_inst := [instance @typed_place_shrblocked_unblock].
+  Global Existing Instance typed_place_shrblocked_unblock_inst | 5.
 
   Lemma typed_place_coreable_unblock {rt} π E L l (lt lt' : ltype rt) κs (r : place_rfn rt) bmin0 b P `{Hsimp : !SimpLtype (ltype_core lt) lt'} T :
     ⌜bor_kind_writeable bmin0⌝ ∗ lft_dead_list κs ∗ typed_place π E L l lt' r bmin0 b P (
@@ -1580,14 +1577,11 @@ Section typing.
       iIntros (ltyi2 ri2 bmin') "Hincl Hl2 Hcond".
       iMod ("Hs" with "Hincl Hl2 Hcond") as "(Hl & Hcond & Htoks & HR)".
       iFrame. iModIntro.
-      iDestruct "Hcond" as "(Ht & Hr)". iSplit.
-      + destruct bmin0; simpl; [simp_ltypes; done | done | ].
-        unfold typed_place_cond_ty. simp_ltypes. done.
-      + done.
+      destruct bmin0; simpl; [simp_ltypes; done | done | ].
+      unfold typed_place_cond. simp_ltypes. done.
   Qed.
-  Global Instance typed_place_coreable_unblock_inst {rt} π E L l (lt lt' : ltype rt) κs r bmin0 b P `{!SimpLtype (ltype_core lt) lt'} :
-    TypedPlace E L π l (CoreableLtype κs lt) r bmin0 b P | 5 :=
-      λ T, i2p (typed_place_coreable_unblock π E L l lt _ κs r bmin0 b P T).
+  Definition typed_place_coreable_unblock_inst := [instance @typed_place_coreable_unblock].
+  Global Existing Instance typed_place_coreable_unblock_inst | 5.
 
   Lemma typed_place_resolve_ghost {rt} π E L l (lt : ltype rt) bmin0 b γ P T :
     ⌜lctx_bor_kind_alive E L b⌝ ∗ ⌜bor_kind_writeable bmin0⌝ ∗
@@ -1615,12 +1609,10 @@ Section typing.
       iMod ("Hs" with "Hincl Hl2 Hcond") as "(Hl & Hcond & Htoks & HR)".
       iFrame. iModIntro.
       done.
-      (*iDestruct "Hcond" as "(Ht & Hr)". iSplit; first done.*)
-      (*destruct bmin0; done.*)
   Qed.
   (* this needs to have a lower priority than place_blocked_unblock *)
-  Global Instance typed_place_resolve_ghost_inst {rt} π E L l (lt : ltype rt) bmin0 b γ P :
-    TypedPlace E L π l lt (PlaceGhost γ) bmin0 b P | 8 := λ T, i2p (typed_place_resolve_ghost π E L l lt bmin0 b γ P T).
+  Definition typed_place_resolve_ghost_inst := [instance @typed_place_resolve_ghost].
+  Global Existing Instance typed_place_resolve_ghost_inst | 8.
 
   (** *** Place access instances *)
 
@@ -1654,9 +1646,8 @@ Section typing.
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     cbn. eauto with iFrame.
   Qed.
-  Global Instance typed_place_opened_owned_inst π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r bmin0 l wl P :
-    TypedPlace E L π l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin0 (Owned wl) P | 5 :=
-        λ T, i2p (typed_place_opened_owned π E L lt_cur lt_inner lt_full Cpre Cpost r bmin0 l wl P T).
+  Definition typed_place_opened_owned_inst := [instance @typed_place_opened_owned].
+  Global Existing Instance typed_place_opened_owned_inst | 5.
 
   Lemma typed_place_opened_uniq π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r bmin0 l κ γ P T :
     typed_place π E L l lt_cur r bmin0 (Owned false) P (λ L' κs l2 b2 bmin rti ltyi ri mstrong,
@@ -1683,9 +1674,8 @@ Section typing.
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     cbn. eauto with iFrame.
   Qed.
-  Global Instance typed_place_opened_uniq_inst π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r bmin0 l κ γ P :
-    TypedPlace E L π l (OpenedLtype lt_cur lt_inner lt_full Cpre Cpost) r bmin0 (Uniq κ γ) P | 5 :=
-        λ T, i2p (typed_place_opened_uniq π E L lt_cur lt_inner lt_full Cpre Cpost r bmin0 l κ γ P T).
+  Definition typed_place_opened_uniq_inst := [instance @typed_place_opened_uniq].
+  Global Existing Instance typed_place_opened_uniq_inst | 5.
 
   Lemma typed_place_shadowed_shared π E L {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r_cur (r_full : place_rfn rt_full) bmin0 l κ P (T : place_cont_t rt_full) :
     (* sidecondition needed for the weak update *)
@@ -1719,15 +1709,12 @@ Section typing.
       iIntros (lti2 ri2 bmin') "Hincl Hl Hcond".
       iMod ("Hcc" with "Hincl Hl Hcond") as "(Hl & Hcond & Htoks & Hr)".
       iFrame.
-      iDestruct "Hcond" as "(Hcond & _)".
-      iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond") as "%Hsteq".
+      iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hsteq".
       iPoseProof ("Hcl" with "[//] Hl") as "Hl".
-      iFrame. iSplitL; first last. { destruct bmin0; done. }
-      iApply typed_place_cond_ty_shadowed_update_cur. done.
+      iFrame. iApply typed_place_cond_shadowed_update_cur. done.
   Qed.
-  Global Instance typed_place_shadowed_shr_inst π E L {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r_cur r_full bmin0 l κ P :
-    TypedPlace E L π l (ShadowedLtype lt_cur #r_cur lt_full) r_full bmin0 (Shared κ) P | 5 :=
-        λ T, i2p (typed_place_shadowed_shared π E L lt_cur lt_full r_cur r_full bmin0 l κ P T).
+  Definition typed_place_shadowed_shared_inst := [instance @typed_place_shadowed_shared].
+  Global Existing Instance typed_place_shadowed_shared_inst | 5.
 
   (* TODO: OpenedNaType *)
 
@@ -2080,14 +2067,13 @@ Section typing.
         stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (** Omitted from the paper: Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
-        prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri3 (
         (** Require the stratified place to be a value type *)
         (* TODO remove this and instead have a [ltype_read_as] TC or so. Currently this will prevent us from reading from ShrBlocked*)
         cast_ltype_to_type E L2 lt3 (λ ty3,
         (** Finish reading *)
         typed_read_end π E L2 l2 (◁ ty3) ri3 b2 bmin (mstrong_ctx_access_allowed mstrong) ot (λ L3 v rt3 ty3 r3 rt2' lt2' ri2' upd2,
         typed_place_finish π E L3 mstrong (access_result_meet upd upd2) R (llft_elt_toks κs) l b lt1 r1 lt2 ri2 lt2' ri2' (λ L4, T L4 π v _ ty3 r3))
-      )))))))%I
+      ))))))%I
     ⊢ typed_read E L e ot T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL HΦ".
@@ -2100,7 +2086,7 @@ Section typing.
     iPoseProof ("HT" with "[//] [//] [//] CTX HE HL Hl2") as "Hb".
     iApply fupd_logical_step. iApply logical_step_fupd.
     iMod "Hb" as "(%L2 & %R & %rt2' & %lt2' & %ri2 & HL & %Hst & Hl2 & HT)".
-    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & Hrcond & HT)".
+    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & HT)".
     iApply (logical_step_wand with "Hl2").
     iIntros "!> (Hl2 & HR)".
     iDestruct "HT" as "(%ty3 & %Heqt & HT)".
@@ -2122,7 +2108,7 @@ Section typing.
       destruct Heq_ctx as [Heq1 ->]. subst.
       destruct upd, res; try done. subst.
       iDestruct "Hs" as "[_ Hs]".
-      iMod ("Hs" with "[] Hl2 [Hcond Hx Hrcond]") as "(Hl & Hcond'' & Htoks & HR')".
+      iMod ("Hs" with "[] Hl2 [Hcond Hx]") as "(Hl & Hcond'' & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
       { iApply (typed_place_cond_trans with "[-Hx] Hx").
         iApply (typed_place_cond_ltype_eq_ofty with "[-]"); last done.
@@ -2139,7 +2125,7 @@ Section typing.
       { unshelve iSpecialize ("Heq" $! (Owned false) inhabitant); first apply _.
         iPoseProof (ltype_eq_syn_type with "Heq") as "%Hst2".
         destruct upd.
-        - iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond") as "%Hcond2".
+        - iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hcond2".
           rewrite Hsteq Hcond2 //.
         - rewrite Hsteq -Hst2. done.
       }
@@ -2149,7 +2135,7 @@ Section typing.
   Qed.
 
   (** [type_read_end] instance that does a copy *)
-  Lemma type_read_ofty_copy E L {rt} π (T : typed_read_end_cont_t rt) b2 bmin br l (ty : type rt) r ot `{!Copyable ty}:
+  Lemma type_read_ofty_copy E L {rt} π b2 bmin br l (ty : type rt) r ot `{!Copyable ty} (T : typed_read_end_cont_t rt) :
     (** We have to show that the type allows reads *)
     (⌜ty_has_op_type ty ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
       (** The place is left as-is *)
@@ -2204,9 +2190,7 @@ Section typing.
 
       iSplitR "Hs"; last done.
 
-      iSplit.
-      { iApply typed_place_cond_ty_refl_ofty. }
-      { iApply typed_place_cond_rfn_refl. }
+      iApply typed_place_cond_refl_ofty.
 
     - iIntros "_ Hl".
       simpl in Hal.
@@ -2233,13 +2217,10 @@ Section typing.
 
       iSplitR "Hs"; last done.
 
-      iSplit.
-      { iApply typed_place_cond_ty_refl_ofty. }
-      { iApply typed_place_cond_rfn_refl. }
+      iApply typed_place_cond_refl_ofty.
   Qed.
-  Global Instance type_read_ofty_copy_inst E L {rt} π b2 bmin br l (ty : type rt) r ot `{!Copyable ty} :
-    TypedReadEnd π E L l (◁ ty)%I (PlaceIn r) b2 bmin br ot | 10 :=
-    λ T, i2p (type_read_ofty_copy E L π T b2 bmin br l ty r ot).
+  Definition type_read_ofty_copy_inst := [instance @type_read_ofty_copy].
+  Global Existing Instance type_read_ofty_copy_inst | 10.
 
   (*
   For more generality, maybe have LtypeReadAs lty (λ ty r, ...)
@@ -2301,10 +2282,9 @@ Section typing.
         stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (* certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
-        prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri3 (
         (* end writing *)
         typed_write_end π E L2 ot v ty r b2 bmin (if mstrong.(mstrong_strong) is Some _ then AllowStrong else AllowWeak) l2 lt3 ri3 (λ L3 (rt3' : RT) (ty3 : type rt3') (r3 : rt3') upd2,
-        typed_place_finish π E L3 mstrong (access_result_meet upd upd2) R (llft_elt_toks κs) l b lt1 r1 lt2 ri2 (◁ ty3)%I (#r3) T)))))))
+        typed_place_finish π E L3 mstrong (access_result_meet upd upd2) R (llft_elt_toks κs) l b lt1 r1 lt2 ri2 (◁ ty3)%I (#r3) T))))))
     ⊢ typed_write π E L e ot v ty r T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL HΦ".
@@ -2319,7 +2299,7 @@ Section typing.
     iMod "Hb" as "(%L2 & %R & %rt2' & %lt2' & %ri2 & HL & %Hst & Hl2 & HT)".
     iModIntro. iApply (logical_step_wand with "Hl2").
     iIntros "(Hl2 & HR)".
-    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & Hrcond & HT)".
+    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & HT)".
     iMod ("HT" with "[//] [//] [//] [//] CTX HE HL [//] Hl2 Hv") as "Hwrite".
     iDestruct "Hwrite" as "(% & Hl2 & Hcl)".
     iModIntro. iFrame "Hl2". iSplitR; first done.
@@ -2334,9 +2314,9 @@ Section typing.
       destruct Heq_ctx as [Heq1 ->]. subst.
       destruct upd, res; try done. subst.
       iDestruct "Hs" as "[_ Hs]".
-      iMod ("Hs" with "[] Hl2 [Hcond Hx Hrcond]") as "(Hl & Hcond'' & Htoks & HR')".
+      iMod ("Hs" with "[] Hl2 [Hcond Hx]") as "(Hl & Hcond'' & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
-      { iApply (typed_place_cond_trans with "[$Hcond $Hrcond] Hx"). }
+      { iApply (typed_place_cond_trans with "[$Hcond] Hx"). }
       cbn. iPoseProof ("Hfin" with "Hl HR'") as "Hfin".
       iMod ("Hfin" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
       iModIntro. iExists L4. iFrame.
@@ -2344,9 +2324,9 @@ Section typing.
       apply access_result_meet_mstrong_ctx_inv_strong in Heq_ctx; simpl in Heq_ctx.
       destruct Heq_ctx as [Heq1 ->].
       iDestruct "Hs" as "[Hs _]".
-      iMod ("Hs" with "Hl2 [Hcond Hrcond]") as "(Hl & Hcond'' & HR')".
+      iMod ("Hs" with "Hl2 [Hcond]") as "(Hl & Hcond'' & HR')".
       { destruct upd.
-        - iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond") as "%Hcond2".
+        - iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hcond2".
           simp_ltypes. rewrite Hcond2 //.
         - simp_ltypes. rewrite Hsteq //. }
         iPoseProof ("Hfin" with "Hl HR'") as "Hfin".
@@ -2362,7 +2342,7 @@ Section typing.
   (* TODO the syntype equality requirement currently is too strong: it does not allow us to go from UntypedSynType to "proper sy types".
     more broadly, this is a symptom of our language not understanding about syntypes.
   *)
-  Lemma type_write_ofty_strong E L {rt rt2} π (T : typed_write_end_cont_t rt2) l (ty : type rt) (ty2 : type rt2) `{Hg : !TyGhostDrop ty2} r1 (r2 : rt2) v ot wl wl' :
+  Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) `{Hg : !TyGhostDrop ty2} r1 (r2 : rt2) v ot wl wl' (T : typed_write_end_cont_t rt2) :
     (⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗
         (ty_ghost_drop_for ty2 Hg π r2 -∗ T L rt ty r1 ResultStrong))
     ⊢ typed_write_end π E L ot v ty r1 (Owned wl) (Owned wl') AllowStrong l (◁ ty2) (#r2) T.
@@ -2391,15 +2371,14 @@ Section typing.
     iR.
     iApply ("HT" with "Hgdrop").
   Qed.
-  Global Instance type_write_ofty_strong_inst E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) `{!TyGhostDrop ty2} (r1 : rt) (r2 : rt2) v ot wl wl' :
-    TypedWriteEnd π E L ot v ty r1 (Owned wl) (Owned wl') AllowStrong l (◁ ty2)%I (PlaceIn r2) | 10 :=
-    λ T, i2p (type_write_ofty_strong E L π T l ty ty2 r1 r2 v ot wl wl').
+  Definition type_write_ofty_strong_inst := [instance @type_write_ofty_strong].
+  Global Existing Instance type_write_ofty_strong_inst | 10.
 
   (** This does not allow updates to the refinement type, rt stays the same. *)
   (* TODO: also allow writes here if the place is not an ofty *)
   (* Write v : r1 @ ty to l : #r2 @ ◁ ty2. We first need to show that ty is a subtype of ty2.
      Afterwards, we obtain l : #r3 @ ◁ ty2 for some r3, as well as the result of ghost-dropping r2 @ ty2. *)
-  Lemma type_write_ofty_weak E L {rt} π (T : typed_write_end_cont_t rt) b2 bmin ac l (ty ty2 : type rt) `{Hg : !TyGhostDrop ty2} r1 r2 v ot :
+  Lemma type_write_ofty_weak E L {rt} π b2 bmin ac l (ty ty2 : type rt) `{Hg : !TyGhostDrop ty2} r1 r2 v ot (T : typed_write_end_cont_t rt) :
     (∃ r3, owned_subtype π E L false r1 r3 ty ty2 (λ L2,
       ⌜ty_syn_type ty = ty_syn_type ty2⌝ ∗ (* TODO: would be nice to remove this requirement *)
       ⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜lctx_bor_kind_alive E L2 b2⌝ ∗ ⌜bor_kind_writeable b2⌝ ∗ (ty_ghost_drop_for ty2 Hg π r2 -∗ T L2 rt ty2 r3 (ResultWeak eq_refl))))
@@ -2430,8 +2409,7 @@ Section typing.
       iFrame.
       iR.
       iSplitR.
-      { iSplit; first iApply typed_place_cond_ty_refl_ofty.
-        destruct bmin; simpl; done. }
+      { iApply typed_place_cond_refl_ofty. }
       iApply ("HT" with "Hgdrop").
     - (* we know that bmin is also Shared, so it can't be writeable *)
       (*destruct bmin; done.*)
@@ -2463,12 +2441,11 @@ Section typing.
       iExists _, _, ty2, r3, (ResultWeak eq_refl). iFrame.
       iR.
       iSplitR.
-      { iSplit; first iApply typed_place_cond_ty_refl_ofty. done. }
+      { iApply typed_place_cond_refl_ofty. }
       iApply ("HT" with "Hgdrop").
   Qed.
-  Global Instance type_write_ofty_weak_inst E L {rt} π b2 bmin br l ty ty2 `{!TyGhostDrop ty2} (r1 r2 : rt) v ot :
-    TypedWriteEnd π E L ot v ty r1 b2 bmin br l (◁ ty2)%I (PlaceIn r2) | 20 :=
-    λ T, i2p (type_write_ofty_weak E L π T b2 bmin br l ty ty2 r1 r2 v ot).
+  Definition type_write_ofty_weak_inst := [instance @type_write_ofty_weak].
+  Global Existing Instance type_write_ofty_weak_inst | 20.
 
   (* TODO move *)
   (*
@@ -2609,7 +2586,6 @@ Section typing.
         stratify_ltype_unblock π E L2 StratRefoldFull l2 lt2 ri2 b2 (λ L3 R rt2' lt2' ri2',
         (** Omitted from paper: Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L3 bmin lt2 lt2' (λ upd,
-        prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri2' (
         (** The result of the stratification needs to be a value type *)
         ∃ ty2 ri2'',
         ⌜ri2' = #ri2''⌝ ∗
@@ -2631,7 +2607,7 @@ Section typing.
           (** return the credit store *)
           credit_store n m -∗
           typed_place_finish π E L3 mstrong (access_result_meet upd upd') R (llft_elt_toks κs) l b
-          lt1 r1 lt2 ri2 lt5 r5 (λ L4, T L4 π (val_of_loc l2) γ rt4 ty4 ri4)))))))))))
+          lt1 r1 lt2 ri2 lt5 r5 (λ L4, T L4 π (val_of_loc l2) γ rt4 ty4 ri4))))))))))
     ⊢ typed_borrow_mut E L e κ orty T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL HΦ".
@@ -2647,7 +2623,7 @@ Section typing.
     iPoseProof ("HT" with "[//] [//] [//] CTX HE HL2 Hl2") as "Hb".
     iApply fupd_logical_step. iApply logical_step_fupd.
     iMod "Hb" as "(%L3 & %R & %rt' & %lt' & %r' & HL & %Hst & Hl2 & HT)".
-    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & Hrcond & HT)".
+    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & HT)".
     iDestruct "HT" as "(%ty2 & %ri2' & -> & HT)".
     iDestruct "HT" as "(%Heq & HT)".
     (*iMod ("HT" with "[//] CTX HE HL") as "(#Hincl_ty2 & HL & HT)".*)
@@ -2663,7 +2639,7 @@ Section typing.
 
     (* eliminate the optional subtyping *)
     iPoseProof (typed_option_map_elim_fupd _ _ _ (λ '(existT rt4 (ty4, r4, upd')),
-      ltype_incl b2 (#ri2') (#r4) (◁ ty2) (◁ ty4) ∗ typed_place_cond bmin (◁ ty2) (◁ ty4) (#ri2') (#r4) )%I with "HT [] [] HL") as ">(%ra & HL & Hincl & Hbor)"; first done.
+      ltype_incl b2 (#ri2') (#r4) (◁ ty2) (◁ ty4) ∗ typed_place_cond bmin (◁ ty2) (◁ ty4) )%I with "HT [] [] HL") as ">(%ra & HL & Hincl & Hbor)"; first done.
     { iIntros ([rst ?]) "%Heqo HL Ha".
       rewrite /FindNamedLfts.
       iDestruct "Ha" as "(%M & HM & HT)". iPoseProof ("HT" with "HM") as "Ha".
@@ -2674,8 +2650,7 @@ Section typing.
       destruct bmin; [ | destruct orty; done.. ].
       iSplitR; last done.
       destruct b2; [ | done..]. iApply (type_ltype_incl_owned_in with "Hincl"). }
-    { iSplitR; first iApply ltype_incl_refl. iSplitL; first iApply typed_place_cond_ty_refl_ofty.
-      iApply typed_place_cond_rfn_refl. }
+    { iSplitR; first iApply ltype_incl_refl. iApply typed_place_cond_refl_ofty. }
     destruct ra as [rt4 [[ty4 r4] upd']].
     iDestruct "Hincl" as "(#Hincl & #Hcond2)".
 
@@ -2693,15 +2668,13 @@ Section typing.
       destruct Heq_ctx as [Heq1 ->]. subst.
       destruct upd, upd'; try done. subst.
       iDestruct "Hs" as "[_ Hs]".
-      iMod ("Hs" with "[] Hblock [Hcond Hcond' Hrcond]") as "(Hl & Hcond & Htoks & HR')".
+      iMod ("Hs" with "[] Hblock [Hcond Hcond']") as "(Hl & Hcond & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
-      { iApply (typed_place_cond_trans with "[$Hcond]"); first iApply typed_place_cond_rfn_refl.
+      { iApply (typed_place_cond_trans with "[$Hcond]").
         iApply ltype_eq_place_cond_trans; first done.
         (*iApply ltype_eq_place_cond_trans. *)
         (* want: the place cond holds trivially, because we are Owned if they are different *)
-        iApply (typed_place_cond_trans with "[Hcond2 Hrcond] Hcond'").
-        iDestruct "Hcond2" as "(Hcond2 & Hcond2')".
-        iFrame "Hcond2". iApply (typed_place_cond_rfn_trans with "Hrcond Hcond2'"). }
+        iApply (typed_place_cond_trans with "Hcond2 Hcond'"). }
       cbn.
       iDestruct ("HT" with "Hl HR'") as "HT".
       iMod ("HT" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
@@ -2762,10 +2735,7 @@ Section typing.
         iApply (lc_fupd_add_later with "Hcred1").
         iNext. done. }
       iSplitR.
-      { iSplit.
-        + iApply ofty_blocked_place_cond_ty. iIntros (?). destruct bmin; simpl; done.
-        + destruct bmin; simpl; done.
-      }
+      { iApply ofty_blocked_place_cond. iIntros (?). destruct bmin; simpl; done. }
       iApply "HT".
     - (* shared bor is contradictory *)
       destruct bmin; done.
@@ -2823,13 +2793,11 @@ Section typing.
         iDestruct "Hrfn" as "(%r'' & >Hobs & >Hauth)".
         iMod (gvar_obs_persist with "Hauth") as "Hauth".
         iModIntro. iExists _, _. iFrame. done. }
-      iSplitL; first last. { destruct bmin; done. }
-      iApply ofty_blocked_place_cond_ty.
+      iApply ofty_blocked_place_cond.
       iIntros (?). done.
   Qed.
-  Global Instance type_borrow_mut_inst E L π κ l rt (ty : type rt) r b2 bmin :
-    TypedBorrowMutEnd π E L κ l ty (r) b2 bmin | 20 :=
-    λ T, i2p (type_borrow_mut_end E L π κ l rt ty r b2 bmin T).
+  Definition type_borrow_mut_end_inst := [instance @type_borrow_mut_end].
+  Global Existing Instance type_borrow_mut_end_inst | 20.
 
   Lemma type_borrow_shr E L T T' e κ orty :
     IntoPlaceCtx E e T' →
@@ -2840,7 +2808,6 @@ Section typing.
       stratify_ltype_unblock π E L2 StratRefoldOpened l2 lt2 ri2 b2 (λ L3 R rt2' lt2' ri2',
       (* certify that this stratification is allowed, or otherwise commit to a strong update *)
       prove_place_cond E L3 bmin lt2 lt2' (λ upd,
-      prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri2' (
       (* needs to be a type *)
       (* we require unblocking to have happened before. TODO: maybe also in a nested way? *)
       ∃ ty2 ri2'', ⌜ri2' = #ri2''⌝ ∗
@@ -2857,7 +2824,7 @@ Section typing.
           typed_borrow_shr_end π E L3 κ l2 ty4 (#ri4) b2 bmin (λ (lt5 : ltype rt4) (r5 : place_rfn rt4),
           (* return toks *)
           typed_place_finish π E L3 mstrong (access_result_meet upd upd') R (llft_elt_toks κs) l b lt1 r1 lt2 ri2 lt5 r5
-            (λ L4, T L4 π (val_of_loc l2) rt4 ty4 (#ri4)))))))))))
+            (λ L4, T L4 π (val_of_loc l2) rt4 ty4 (#ri4))))))))))
     ⊢ typed_borrow_shr E L e κ orty T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL HΦ".
@@ -2871,7 +2838,7 @@ Section typing.
     iPoseProof ("HT" with "[//] [//] [//] CTX HE HL Hl2") as "Hb".
     iApply fupd_logical_step.
     iMod "Hb" as "(%L3 & %R & %rt2' & %lt2' & %ri2 & HL & %Hst & Hl2 & HT)".
-    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & Hrcond & HT)".
+    iMod ("HT" with "[//] CTX HE HL") as "(HL & %upd & Hcond & HT)".
     iDestruct "HT" as (ty2 ri2') "(-> & %Heq & HT)".
     (* needs two logical steps: one for stratification and one for initiating sharing.
        - that means: creating a reference will now be two skips.
@@ -2886,7 +2853,7 @@ Section typing.
 
     (* eliminate the optional subtyping *)
     iPoseProof (typed_option_map_elim_fupd _ _ _ (λ '(existT rt4 (ty4, r4, upd')),
-      ltype_incl b2 (#ri2') (#r4) (◁ ty2) (◁ ty4) ∗ typed_place_cond bmin (◁ ty2) (◁ ty4) (#ri2') (#r4) )%I with "HT [] [] HL") as ">(%ra & HL & Hincl & Hbor)"; first done.
+      ltype_incl b2 (#ri2') (#r4) (◁ ty2) (◁ ty4) ∗ typed_place_cond bmin (◁ ty2) (◁ ty4))%I with "HT [] [] HL") as ">(%ra & HL & Hincl & Hbor)"; first done.
     { iIntros ([rst ?]) "%Heqo HL Ha".
       rewrite /FindNamedLfts.
       iDestruct "Ha" as "(%M & HM & HT)". iPoseProof ("HT" with "HM") as "Ha".
@@ -2897,8 +2864,7 @@ Section typing.
       destruct bmin; [ | destruct orty; done.. ].
       iSplitR; last done.
       destruct b2; [ | done..]. iApply (type_ltype_incl_owned_in with "Hincl"). }
-    { iSplitR; first iApply ltype_incl_refl. iSplitL; first iApply typed_place_cond_ty_refl_ofty.
-      iApply typed_place_cond_rfn_refl. }
+    { iSplitR; first iApply ltype_incl_refl. iApply typed_place_cond_refl_ofty. }
     destruct ra as [rt4 [[ty4 r4] upd']].
     iDestruct "Hincl" as "(#Hincl & #Hcond2)".
 
@@ -2917,14 +2883,11 @@ Section typing.
       destruct Heq_ctx as [Heq1 ->]. subst.
       destruct upd, upd'; try done. subst.
       iDestruct "Hs" as "[_ Hs]".
-      iMod ("Hs" with "[] Hblocked [Hcond Hcond' Hrcond]") as "(Hl & Hcond & Htoks & HR')".
+      iMod ("Hs" with "[] Hblocked [Hcond Hcond']") as "(Hl & Hcond & Htoks & HR')".
       { iApply bor_kind_incl_refl. }
-      { iApply (typed_place_cond_trans with "[$Hcond $Hrcond]").
+      { iApply (typed_place_cond_trans with "[$Hcond]").
         iApply ltype_eq_place_cond_trans; first done.
-        (*iApply ltype_eq_place_cond_trans. *)
-        (* want: the place cond holds trivially, because we are Owned if they are different *)
-        iApply (typed_place_cond_trans with "[Hcond2] Hcond'").
-        done. }
+        iApply (typed_place_cond_trans with "Hcond2 Hcond'"). }
       cbn.
       iDestruct ("HT" with "Hl HR'") as "HT".
       iMod ("HT" with "[//] HE HL [$HR $Htoks]") as "(%L4 & HL & HT)".
@@ -2987,7 +2950,6 @@ Section typing.
     iModIntro.
     iSplitR.
     { destruct bmin; simpl; [done | done | ].
-      iSplit; last done.
       iExists eq_refl. cbn.
       simp_ltypes. iSplitR. { iIntros (??). iApply ltype_eq_refl. }
       iApply imp_unblockable_shorten'; first done.
@@ -2995,9 +2957,8 @@ Section typing.
     }
     iApply "HT".
   Qed.
-  Global Instance type_borrow_shr_owned_inst E L π κ l rt (ty : type rt) r wl bmin :
-    TypedBorrowShrEnd π E L κ l ty r (Owned wl) bmin | 20 :=
-    λ T, i2p (type_borrow_shr_end_owned E L π κ l ty r bmin wl T).
+  Definition type_borrow_shr_end_owned_inst := [instance @type_borrow_shr_end_owned].
+  Global Existing Instance type_borrow_shr_end_owned_inst | 20.
 
   Lemma type_borrow_shr_end_uniq E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) bmin κ' γ T:
     ⌜lctx_bor_kind_incl E L (Uniq κ inhabitant) bmin⌝ ∗
@@ -3055,12 +3016,10 @@ Section typing.
     { rewrite ltype_own_shrblocked_unfold /shr_blocked_lty_own.
       iExists ly. iR. iR. iR. iR. iExists _. iR.
       iFrame. done. }
-    iSplitL. { iApply ofty_shr_blocked_place_cond_ty. iModIntro. iIntros (?). done. }
-    destruct bmin; done.
+    iApply ofty_shr_blocked_place_cond. iModIntro. iIntros (?). done.
   Qed.
-  Global Instance type_borrow_shr_uniq_inst E L π κ l rt (ty : type rt) r κ' γ bmin :
-    TypedBorrowShrEnd π E L κ l ty r (Uniq κ' γ) bmin | 20 :=
-    λ T, i2p (type_borrow_shr_end_uniq E L π κ l ty r bmin κ' γ T).
+  Definition type_borrow_shr_end_uniq_inst := [instance @type_borrow_shr_end_uniq].
+  Global Existing Instance type_borrow_shr_end_uniq_inst | 20.
 
   Lemma type_borrow_shr_end_shared E L π κ l {rt : RT} (ty : type rt) (r : place_rfn rt) κ' bmin T:
     ⌜lctx_bor_kind_incl E L (Shared κ) (Shared κ')⌝ ∗
@@ -3081,12 +3040,10 @@ Section typing.
     iR. iFrame "Hlb Hsc". iModIntro. iR.
     iSplitR. { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly. iR. iR. by iFrame "∗ #". }
-    iFrame. iSplitL; first iApply typed_place_cond_ty_refl_ofty.
-    iApply typed_place_cond_rfn_refl.
+    iFrame. iApply typed_place_cond_refl_ofty.
   Qed.
-  Global Instance type_borrow_shr_end_shared_inst E L π κ l rt (ty : type rt) r κ' bmin :
-    TypedBorrowShrEnd π E L κ l ty r (Shared κ') bmin | 20 :=
-    λ T, i2p (type_borrow_shr_end_shared E L π κ l ty r κ' bmin T).
+  Definition type_borrow_shr_end_shared_inst := [instance @type_borrow_shr_end_shared].
+  Global Existing Instance type_borrow_shr_end_shared_inst | 20.
 
   (** statements *)
   Inductive CtxFoldExtract : Type :=
@@ -3811,7 +3768,6 @@ Global Typeclasses Opaque mut_eqltype.
 Global Typeclasses Opaque prove_with_subtype.
 
 Global Typeclasses Opaque prove_place_cond.
-Global Typeclasses Opaque prove_place_rfn_cond.
 Global Typeclasses Opaque typed_read_end.
 
 Global Typeclasses Opaque typed_write_end.

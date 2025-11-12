@@ -232,9 +232,9 @@ Section access.
   Context `{!typeGS Σ}.
 
   Import EqNotations.
-  Lemma mut_ltype_place_cond_ty b κ {rt rt2} (lt1 : ltype rt) (lt2 : ltype rt2) :
-    typed_place_cond_ty (b) lt1 lt2
-    ⊢ typed_place_cond_ty b (MutLtype lt1 κ) (MutLtype lt2 κ).
+  Lemma mut_ltype_place_cond b κ {rt rt2} (lt1 : ltype rt) (lt2 : ltype rt2) :
+    typed_place_cond (b) lt1 lt2
+    ⊢ typed_place_cond b (MutLtype lt1 κ) (MutLtype lt2 κ).
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
@@ -257,9 +257,8 @@ Section access.
         l ↦ l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Owned wl] #(r2, γ') @ MutLtype lt2 κ' ∗
-        (∀ bmin, typed_place_cond bmin lt lt2 r r2 -∗
-         ⌜place_access_rt_rel bmin rt rt'⌝ -∗
-         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ') (#(r, γ')) (#(r2, γ')))).
+        (∀ bmin, typed_place_cond bmin lt lt2 -∗
+         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ'))).
   Proof.
     iIntros (?) "#[LFT TIME] HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
@@ -275,11 +274,7 @@ Section access.
     iModIntro. iSplitL.
     - rewrite ltype_own_mut_ref_unfold /mut_ltype_own. iExists void*.
       iSplitR; first done. by iFrame "Hlb % ∗".
-    - iIntros (bmin) "Hcond %Hrt". iDestruct "Hcond" as "[Hty Hrfn]".
-      subst. iSplit.
-      + by iApply (mut_ltype_place_cond_ty).
-      + destruct bmin; cbn in Hrt; [ done | subst rt2..].
-        all: by iApply (typed_place_cond_rfn_lift _ _ _ (λ r, PlaceIn (r, γ'))).
+    - iIntros (bmin) "Hcond". by iApply (mut_ltype_place_cond).
   Qed.
 
   Lemma mut_ltype_acc_uniq {rt} F π (lt : ltype rt) (r : place_rfn rt) l κ' γ' κ γ q R :
@@ -296,10 +291,10 @@ Section access.
         l ↦ l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2  -∗
         bmin ⊑ₖ Uniq κ γ -∗
-        typed_place_cond bmin lt lt2 r r2 ={F}=∗
+        typed_place_cond bmin lt lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn (r2, γ') @ MutLtype lt2 κ' ∗
         R ∗
-        typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ') (PlaceIn (r, γ')) (PlaceIn (r2, γ'))) ∧
+        typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
         l ↦ l' -∗
@@ -333,7 +328,6 @@ Section access.
       iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
-      iDestruct "Hcond'" as "(Hcond' & _)".
       iDestruct "Hcond'" as "(%Heq & Heq & (#Hub & _))".
       rewrite (UIP_refl _ _ Heq). cbn.
       iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
@@ -379,10 +373,7 @@ Section access.
           rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
       }
-      iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-      iSplit.
-      + iApply mut_ltype_place_cond_ty; done.
-      + iApply (typed_place_cond_rfn_lift _ _ _ (λ a, #(a, γ'))). done.
+      iApply mut_ltype_place_cond; done.
     - (* shift to OpenedLtype *)
       iIntros (rt2 lt2 r2) "Hl %Hst' Hb". iModIntro.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -415,8 +406,8 @@ Section access.
       q.[κ] ∗
       (∀ bmin,
       bmin ⊑ₖ Shared κ -∗
-      typed_place_cond bmin lt lt' r r' ={F}=∗
-      typed_place_cond bmin (MutLtype lt κ') (MutLtype lt' κ') #(r, γ) #(r', γ))).
+      typed_place_cond bmin lt lt' ={F}=∗
+      typed_place_cond bmin (MutLtype lt κ') (MutLtype lt' κ'))).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & %γ' & %Ha & #Hb)".
@@ -434,10 +425,8 @@ Section access.
       rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
       iExists void*. iFrame "% #". by iExists _. }
     iModIntro. iIntros (bmin) "Hincl Hcond".
-    iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-    iModIntro. iSplit.
-    + iApply mut_ltype_place_cond_ty; done.
-    + destruct bmin; simpl; done.
+    iModIntro.
+    iApply mut_ltype_place_cond; done.
   Qed.
 
 End access.

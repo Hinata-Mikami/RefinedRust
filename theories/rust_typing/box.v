@@ -650,9 +650,9 @@ End unfold.
 Section lemmas.
   Context `{!typeGS Σ}.
 
-  Lemma box_ltype_place_cond_ty b {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    typed_place_cond_ty b lt1 lt2 -∗
-    typed_place_cond_ty b (BoxLtype lt1) (BoxLtype lt2).
+  Lemma box_ltype_place_cond b {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    typed_place_cond b lt1 lt2 -∗
+    typed_place_cond b (BoxLtype lt1) (BoxLtype lt2).
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
@@ -676,8 +676,8 @@ Section lemmas.
         l ◁ₗ[π, Owned wl] PlaceIn r2 @ BoxLtype lt2 ∗
         (∀ bmin,
         ⌜place_access_rt_rel bmin rt rt2⌝ -∗
-        typed_place_cond bmin lt lt2 r r2 -∗
-        typed_place_cond bmin (BoxLtype lt) (BoxLtype lt2) (PlaceIn r) (PlaceIn r2))).
+        typed_place_cond bmin lt lt2 -∗
+        typed_place_cond bmin (BoxLtype lt) (BoxLtype lt2))).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hlb & Hcred & %r' & <- & Hb)".
@@ -695,9 +695,7 @@ Section lemmas.
       iR. iNext.
       rewrite Hst. by iFrame "%#". }
     iIntros (bmin) "%Hrt Hcond".
-    iDestruct "Hcond" as "(Hcondt & Hcondr)".
-    iSplit; [| done ].
-    by iApply box_ltype_place_cond_ty.
+    by iApply box_ltype_place_cond.
   Qed.
 
   Lemma box_ltype_acc_uniq {rt} F π (lt : ltype rt) (r : place_rfn rt) l q κ γ R :
@@ -713,10 +711,10 @@ Section lemmas.
         l ↦ l' -∗
         l' ◁ₗ[π, Owned true] r2 @ lt2  -∗
         bmin ⊑ₖ Uniq κ γ -∗
-        typed_place_cond bmin lt lt2 r r2 ={F}=∗
+        typed_place_cond bmin lt lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn r2 @ BoxLtype lt2 ∗
         R ∗
-        typed_place_cond bmin (BoxLtype lt) (BoxLtype lt2) (PlaceIn r) (PlaceIn r2)) ∧
+        typed_place_cond bmin (BoxLtype lt) (BoxLtype lt2)) ∧
       ((* strong *)∀ rt2 (lt2 : ltype rt2) r2,
         l ↦ l' -∗
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
@@ -748,7 +746,6 @@ Section lemmas.
       iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
-      iDestruct "Hcond'" as "(Hcond' & _)".
       iDestruct "Hcond'" as "(%Heq & Heq & (_ & #Hub))".
       rewrite (UIP_refl _ _ Heq). cbn.
       iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
@@ -797,10 +794,7 @@ Section lemmas.
           rewrite ltype_own_core_equiv. iMod ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           rewrite Hst_eq. eauto with iFrame.
       }
-      iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-      iSplit.
-      + iApply box_ltype_place_cond_ty; done.
-      + iApply typed_place_cond_rfn_lift. done.
+      iApply box_ltype_place_cond; done.
     - (* shift to OpenedLtype *)
       iIntros (rt2 lt2 r2) "Hl %Hst' Hb". iModIntro.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -835,8 +829,8 @@ Section lemmas.
       q.[κ] ∗
       (∀ bmin,
       bmin ⊑ₖ Shared κ -∗
-      typed_place_cond bmin lt lt' r r' ={F}=∗
-      typed_place_cond bmin (BoxLtype lt) (BoxLtype lt') #r #r')).
+      typed_place_cond bmin lt lt' ={F}=∗
+      typed_place_cond bmin (BoxLtype lt) (BoxLtype lt'))).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
@@ -851,10 +845,7 @@ Section lemmas.
     iFrame. iSplitL.
     { iModIntro. rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. by iFrame "% #". }
     iModIntro. iIntros (bmin) "Hincl Hcond".
-    iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-    iModIntro. iSplit.
-    + iApply box_ltype_place_cond_ty; done.
-    + destruct bmin; done.
+    iApply box_ltype_place_cond; done.
   Qed.
 End lemmas.
 
@@ -1136,7 +1127,7 @@ Section rules.
         iIntros "[Hcl _] (Hb & HR)".
         iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
         { iApply bor_kind_incl_refl. }
-        { iSplit; first done. done. }
+        { done. }
         iDestruct (box_ltype_incl_uniq with "[]") as "(_ & #Hincl & _)".
         { iIntros (?). iApply "Heq". }
         iPoseProof ("Hincl" with "Hl") as "Hl".
@@ -1152,7 +1143,7 @@ Section rules.
         iIntros "[Hcl _] (Hb & HR)".
         iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
         { iApply bor_kind_incl_refl. }
-        { iSplit; first done. done. }
+        { done. }
         done.
     - (* strong *)
       iDestruct "Hs" as "(-> & Hs)".
@@ -1213,7 +1204,7 @@ Section rules.
     iIntros "HT". iIntros (F ?) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "($ & (%upd & Hcond & HT))".
     iExists _. iFrame. destruct upd; cbn.
-    - subst rt2. by iApply box_ltype_place_cond_ty.
+    - subst rt2. by iApply box_ltype_place_cond.
     - done.
   Qed.
   Global Instance prove_place_cond_box_ltype_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k :

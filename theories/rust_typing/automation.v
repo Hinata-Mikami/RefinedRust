@@ -165,8 +165,6 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
   | prove_place_cond ?E ?L ?b ?lt1 ?lt2 ?T =>
       cont uconstr:(((_ : ProvePlaceCond E L b lt1 lt2) T))
-  | prove_place_rfn_cond ?b ?b1 ?r1 ?r2 ?T =>
-      cont uconstr:(((_ : ProvePlaceRfnCond b b1 r1 r2) T))
   | typed_option_map ?o ?Φ ?d ?T =>
       cont uconstr:(((_ : TypedOptionMap o Φ d) T))
   | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>

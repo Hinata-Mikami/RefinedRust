@@ -6,41 +6,27 @@ From refinedrust Require Import options.
 Section place.
   Context `{!typeGS Σ}.
 
-  Local Lemma typed_place_cond_ty_array_lift {rt} (def : type rt) len bmin i lts (lt1 lt2 : ltype rt) :
+  Local Lemma typed_place_cond_array_lift {rt} (def : type rt) len bmin i lts (lt1 lt2 : ltype rt) :
     interpret_iml (◁ def)%I len lts !! i = Some lt1 →
     ([∗ list] κ ∈ concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> lts), bor_kind_outlives bmin κ) -∗
-    typed_place_cond_ty bmin lt1 lt2 -∗
-    [∗ list] lt1;lt2 ∈ interpret_iml (◁ def) len lts;<[i:= lt2]> (interpret_iml (◁ def) len lts), typed_place_cond_ty bmin lt1 lt2.
+    typed_place_cond bmin lt1 lt2 -∗
+    [∗ list] lt1;lt2 ∈ interpret_iml (◁ def) len lts;<[i:= lt2]> (interpret_iml (◁ def) len lts), typed_place_cond bmin lt1 lt2.
   Proof.
     iIntros (Hlook) "#Houtl Hcond".
     rewrite -{1}(list_insert_id (interpret_iml _ _ _) i lt1); last done.
-    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ lt1 lt2, typed_place_cond_ty bmin lt1 lt2) 0); cycle 1.
+    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ lt1 lt2, typed_place_cond bmin lt1 lt2) 0); cycle 1.
     { by eapply lookup_lt_Some. }
     { by eapply lookup_lt_Some. }
     iFrame. iApply big_sepL2_intro; first done.
     iModIntro. iIntros (k lt1' lt2' Hlook' ?). case_decide; first done.
     assert (lt1' = lt2') as -> by congruence.
     apply lookup_interpret_iml_Some_inv in Hlook' as (? & [-> | Hel]).
-    { iApply typed_place_cond_ty_refl_ofty. }
+    { iApply typed_place_cond_refl_ofty. }
     apply list_elem_of_lookup_1 in Hel as (k' & Hlook2).
-    iApply typed_place_cond_ty_refl.
+    iApply typed_place_cond_refl.
     iPoseProof (big_sepL_concat_lookup _ _ k' with "Houtl") as "Ha".
     { rewrite list_lookup_fmap Hlook2. done. }
     done.
-  Qed.
-  Local Lemma typed_place_cond_rfn_array_lift {rt} (rs : list (place_rfnRT rt)) ri1 ri2 i bmin :
-    rs !! i = Some ri1 → ⊢@{iProp Σ}
-    typed_place_cond_rfn bmin ri1 ri2 -∗
-    [∗ list] r1;r2 ∈ rs;<[i:=ri2]> rs, typed_place_cond_rfn bmin r1 r2.
-  Proof.
-    iIntros (Hlook) "Hcond".
-    specialize (lookup_lt_Some _ _ _ Hlook) as Hlt.
-    rewrite -{1}(list_insert_id rs i ri1); last done.
-    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ r1 r2, _) 0); [ | lia..].
-    iSplitL; first done.
-    iApply big_sepL2_intro; first done. iModIntro.
-    iIntros (? r1 r2 ??). case_decide; first done.
-    assert (r1 = r2) as -> by congruence. destruct bmin; done.
   Qed.
 
   (** ** typed_place *)
@@ -57,7 +43,9 @@ Section place.
         ⌜Forall (lctx_bor_kind_outlives E L1 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
         typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri mstrong,
           T L2 κs li bi bmin2 rti ltyi ri
-          (mk_mstrong None
+          (mk_mstrong
+            (* NOTE: no strong access allowed *)
+            None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
@@ -122,15 +110,12 @@ Section place.
     (*{ iPureIntro. rewrite Forall_cons. split; first lia. done. }*)
     iFrame.
     iModIntro.
-    iDestruct "Hcond" as "(Hcond & Hcond_rfn)".
-    iApply ("Hcondv" with "[Hcond] [Hcond_rfn] []").
-    - iApply typed_place_cond_ty_array_lift; done.
-    - iApply typed_place_cond_rfn_array_lift; done.
+    iApply ("Hcondv" with "[Hcond] []").
+    - iApply typed_place_cond_array_lift; done.
     - iPureIntro. apply place_access_rt_rel_refl.
   Qed.
-  Global Instance typed_place_array_owned_inst π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) P :
-    TypedPlace E L π l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) | 30 :=
-    λ T, i2p (typed_place_array_owned π E L def lts len rs wl bmin ly l it v tyv i P T).
+  Definition typed_place_array_owned_inst := [instance @typed_place_array_owned].
+  Global Existing Instance typed_place_array_owned_inst | 30.
 
   Lemma typed_place_array_uniq π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin ly l it v (tyv : type rtv) (i : rtv) P T :
     (∃ i',
@@ -147,7 +132,9 @@ Section place.
         ⌜Forall (lctx_bor_kind_outlives E L2 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
         typed_place π E L2 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri mstrong,
         T L3 (κs ++ κs') li bi bmin2 rti ltyi ri
-          (mk_mstrong None
+          (mk_mstrong
+            (* NOTE: no strong access allowed *)
+            None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
@@ -212,20 +199,17 @@ Section place.
     iPoseProof ("Hcl_b" with "[Hi]") as "Hb".
     { rewrite /i Z2Nat.id; last done. iFrame. rewrite -Hsteq//. }
     rewrite insert_interpret_iml.
-    iMod ("Hcl" with "[//] [] [] [] [] Hb") as "(Hb & ? & Hcondv)".
+    iMod ("Hcl" with "[//] [] [] [] Hb") as "(Hb & ? & Hcondv)".
     { rewrite length_insert //. }
     { iApply "Hincl". }
-    { iApply typed_place_cond_ty_array_lift; [done.. | ].
-      iDestruct "Hcond" as "($ & _)". }
-    { iApply typed_place_cond_rfn_array_lift; first done.
-      iDestruct "Hcond" as "(_ & $)". }
+    { iApply typed_place_cond_array_lift; [done.. | ].
+      done. }
     { rewrite llft_elt_toks_app. iFrame.
       iApply typed_place_cond_incl; last done.
       iApply bor_kind_min_incl_r. }
   Qed.
-  Global Instance typed_place_array_uniq_inst π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin ly l it v (tyv : type rtv) (i : rtv) P :
-    TypedPlace E L π l (ArrayLtype def len lts) (#rs) bmin (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) | 30 :=
-    λ T, i2p (typed_place_array_uniq π E L def lts len rs κ γ bmin ly l it v tyv i P T).
+  Definition typed_place_array_uniq_inst := [instance @typed_place_array_uniq].
+  Global Existing Instance typed_place_array_uniq_inst | 30.
 
   (* TODO this is a problem, because we can only get strong below OpenedLtype etc. *)
   Lemma typed_place_array_shared π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) P T :
@@ -243,7 +227,9 @@ Section place.
         ⌜Forall (lctx_bor_kind_outlives E L1 bmin) (concat ((λ '(_, lt), ltype_blocked_lfts lt) <$> (lts)))⌝ ∗
         typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r bmin (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri mstrong,
         T L3 (κs') li bi bmin2 rti ltyi ri
-          (mk_mstrong None
+          (mk_mstrong
+            (* NOTE: no strong access allowed *)
+            None
             (fmap (λ weak, mk_weak
               (λ lti2 ri2, ArrayLtype def len ((Z.to_nat i', weak.(weak_lt) lti2 ri2) :: lts))
               (λ ri, #(<[Z.to_nat i' := weak.(weak_rfn) ri]> rs))
@@ -310,29 +296,26 @@ Section place.
     (*{ iPureIntro. rewrite Forall_cons. split; first lia. done. }*)
     iFrame.
     iModIntro.
-    iDestruct "Hcond" as "(Hcond & Hcond_rfn)".
     iApply "Hcondv".
     simpl.
 
     rewrite -{1}(list_insert_id (interpret_iml _ _ _) i lti); last done.
-    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ lt1 lt2, typed_place_cond_ty bmin lt1 lt2) 0); cycle 1.
+    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ lt1 lt2, typed_place_cond bmin lt1 lt2) 0); cycle 1.
     { rewrite length_interpret_iml. lia. }
     { rewrite length_interpret_iml. lia. }
     iFrame. iApply big_sepL2_intro; first done.
     iModIntro. iIntros (k lt1 lt2 Hlook ?). case_decide; first done.
     assert (lt1 = lt2) as -> by congruence.
     apply lookup_interpret_iml_Some_inv in Hlook as (? & [-> | Hel]).
-    { iApply typed_place_cond_ty_refl_ofty. }
+    { iApply typed_place_cond_refl_ofty. }
     apply list_elem_of_lookup_1 in Hel as (k' & Hlook).
-    iApply typed_place_cond_ty_refl.
+    iApply typed_place_cond_refl.
     iPoseProof (big_sepL_concat_lookup _ _ k' with "Houtl") as "Ha".
     { rewrite list_lookup_fmap Hlook. done. }
     done.
   Qed.
-  Global Instance typed_place_array_shared_inst π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) P :
-    TypedPlace E L π l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) | 30 :=
-    λ T, i2p (typed_place_array_shared π E L def lts len rs κ bmin ly l it v tyv i P T).
-
+  Definition typed_place_array_shared_inst := [instance @typed_place_array_shared].
+  Global Existing Instance typed_place_array_shared_inst | 30.
 End place.
 
 Section place_cond.
@@ -350,7 +333,7 @@ Section place_cond.
       fr_core_rel (E : elctx) (L : llctx) (i : nat) (lt1 : (ltype rt1)) (lt2 : (ltype rt2))  :=
         (∃ upd : access_result rt1 rt2,
           match upd with
-          | ResultWeak _ => typed_place_cond_ty k lt1 lt2
+          | ResultWeak _ => typed_place_cond k lt1 lt2
           | ResultStrong => ⌜ltype_st lt1 = ltype_st lt2⌝%I
           end)%I
     |}.

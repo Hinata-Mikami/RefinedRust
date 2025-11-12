@@ -105,7 +105,7 @@ Section stratify.
         iIntros "[Hcl _] (Hb & HR)".
         iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
         { iApply bor_kind_incl_refl. }
-        { iSplit; first done. done. }
+        { done. }
         iDestruct (mut_ltype_incl_uniq with "[] [] []") as "(_ & #Hincl & _)".
         { iIntros (?). iApply "Heq". }
         { iApply lft_incl_refl. }
@@ -123,7 +123,7 @@ Section stratify.
         iIntros "[Hcl _] (Hb & HR)".
         iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
         { iApply bor_kind_incl_refl. }
-        { iSplit; first done. done. }
+        { done. }
         done.
     - (* strong *)
       iDestruct "Hs" as "(-> & Hs)".

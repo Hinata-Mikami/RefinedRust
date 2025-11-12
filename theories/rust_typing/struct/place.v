@@ -14,18 +14,18 @@ Section place.
       But it's not clear that that is possible: We can arbitrarily shorten the lifetime of outer things -- then at the later point we just don't knwo anymore that really the lender expects it back at a later point.
     *)
 
-  Local Lemma struct_lift_place_cond_ty_homo {rts} (lts : hlist ltype rts) i (lto lto' : ltype (lnth (unit : RT) rts i)) bmin0 :
+  Local Lemma struct_lift_place_cond_homo {rts} (lts : hlist ltype rts) i (lto lto' : ltype (lnth (unit : RT) rts i)) bmin0 :
     hnth (UninitLtype UnitSynType) lts i = lto →
     i < length rts →
     ([∗ list] κ0 ∈ concat ((λ X : RT, ltype_blocked_lfts) +c<$> lts), bor_kind_outlives bmin0 κ0) -∗
-    typed_place_cond_ty bmin0 lto lto' -∗
-    [∗ list] ty1;ty2 ∈ hzipl rts lts;hzipl rts (hlist_insert_id (unit : RT) rts lts i lto'), typed_place_cond_ty bmin0 (projT2 ty1) (projT2 ty2).
+    typed_place_cond bmin0 lto lto' -∗
+    [∗ list] ty1;ty2 ∈ hzipl rts lts;hzipl rts (hlist_insert_id (unit : RT) rts lts i lto'), typed_place_cond bmin0 (projT2 ty1) (projT2 ty2).
   Proof.
     iIntros (Hlto ?) "#Houtl Hcond".
     rewrite hzipl_hlist_insert_id.
     rewrite -(list_insert_id (hzipl rts lts) i (existT _ lto)).
     2: { rewrite -Hlto. apply hzipl_lookup_hnth. done. }
-    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, typed_place_cond_ty _ _ _) 0%nat); simpl.
+    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, typed_place_cond _ _ _) 0%nat); simpl.
     2: { rewrite length_hzipl. lia. }
     2: { rewrite length_insert length_hzipl. lia. }
     iSplitL "Hcond"; first done.
@@ -35,34 +35,10 @@ Section place.
     rewrite list_lookup_insert_ne in Hlook2; last done.
     rewrite Hlook2 in Hlook1. injection Hlook1 as [= -> Heq2].
     apply existT_inj in Heq2 as ->.
-    iApply typed_place_cond_ty_refl.
+    iApply typed_place_cond_refl.
     iPoseProof (big_sepL_concat_lookup _ _ k with "Houtl") as "Ha".
     { eapply hcmap_lookup_hzipl. done. }
     simpl. done.
-  Qed.
-  Local Lemma struct_lift_place_cond_rfn_homo {rts : list RT} (rs : plist place_rfnRT rts) i (ro ro' : place_rfn (lnth (unit : RT) rts i)) bmin0 :
-    pnth (#tt) rs i = ro →
-    i < length rts →
-    ⊢@{iProp Σ} typed_place_cond_rfn bmin0 ro ro' -∗
-    ([∗ list] ty1;ty2 ∈ pzipl rts rs;pzipl rts (plist_insert_id (unit : RT) rts rs i ro'), typed_place_cond_rfn bmin0 (projT2 ty1) (projT2 ty2)).
-  Proof.
-    (* plan: first separate the first one also into an insert, then show a general lemma about inserting into big_sepL2 *)
-    iIntros (Hro ?) "Hcond".
-    rewrite pzipl_plist_insert_id.
-    rewrite -(list_insert_id (pzipl rts rs) i (existT _ ro)).
-    2: { rewrite -Hro. apply pzipl_lookup_pnth. done. }
-    rewrite (big_sepL2_insert _ _ _ _ _ (λ _ a b, _) 0%nat); simpl.
-    2: { rewrite length_pzipl. lia. }
-    2: { rewrite length_insert length_pzipl. lia. }
-    iSplitL "Hcond"; first done.
-    iApply big_sepL2_intro. { rewrite length_insert; done. }
-    iIntros "!>" (k [rt1 r1] [rt2 r2] Hlook1 Hlook2).
-    case_decide as Heqki; first done.
-    rewrite list_lookup_insert_ne in Hlook2; last done.
-    rewrite Hlook2 in Hlook1. injection Hlook1 as [= -> Heq2].
-    apply existT_inj in Heq2 as ->.
-    destruct bmin0; done.
-    (*iApply typed_place_cond_rfn_refl.*)
   Qed.
 
   Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) π E L (r : plist place_rfnRT rts) sls f wl bmin0 P l
@@ -141,14 +117,13 @@ Section place.
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
       iPoseProof ("Hc_close" with "Hb1") as "Hb".
       iFrame "HL HR".
-      iDestruct "Hcond" as "(#Hcond_ty & Hcond_rfn)".
+      iDestruct "Hcond" as "#Hcond".
       iMod ("Hcl" with "[] [Hb]") as "Hb".
       { done. }
-      { iApply "Hb". iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond_ty") as "<-". done. }
+      { iApply "Hb". iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "<-". done. }
       iFrame "Hb".
-      iApply (typed_place_cond_struct_lift with "[] [Hcond_rfn] []").
-      + iApply (struct_lift_place_cond_ty_homo with "Houtl Hcond_ty"); [done | lia].
-      + iApply (struct_lift_place_cond_rfn_homo with "Hcond_rfn"); [done | lia].
+      iApply (typed_place_cond_struct_lift with "[] []").
+      + iApply (struct_lift_place_cond_homo with "Houtl Hcond"); [done | lia].
       + iPureIntro. clear. induction rts; simpl; first done.
         constructor; first apply place_access_rt_rel_refl. done.
   Qed.
@@ -237,13 +212,12 @@ Section place.
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
       iPoseProof ("Hc_close" with "Hb1") as "Hb".
       iFrame "HR".
-      iDestruct "Hcond" as "(#Hcond_ty & #Hcond_rfn)".
+      iDestruct "Hcond" as "#Hcond".
       iDestruct "Hcl" as "(Hcl & _)".
-      iMod ("Hcl" with "[] [Hb] [] [] ") as "(Hb & Htoks & Hcond)".
+      iMod ("Hcl" with "[] [Hb] [] ") as "(Hb & Htoks & Hcond')".
       { done. }
-      { iApply "Hb". iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond_ty") as "<-". done. }
-      { iApply (struct_lift_place_cond_ty_homo with "Houtl Hcond_ty"); [done | lia]. }
-      { iApply (struct_lift_place_cond_rfn_homo with "Hcond_rfn"); [done | lia]. }
+      { iApply "Hb". iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "<-". done. }
+      { iApply (struct_lift_place_cond_homo with "Houtl Hcond"); [done | lia]. }
       iFrame "Hb".
       rewrite llft_elt_toks_app. iFrame.
       iApply typed_place_cond_incl; last done.
@@ -320,14 +294,13 @@ Section place.
       simpl. iDestruct "Hc_close" as "[_ Hc_close]".
       iPoseProof ("Hc_close" with "Hb1") as "Hb".
       iFrame "HL HR".
-      iDestruct "Hcond" as "(#Hcond_ty & Hcond_rfn)".
+      iDestruct "Hcond" as "#Hcond".
       iMod ("Hcl" with "[] [Hb]") as "Hb".
       { done. }
-      { iApply "Hb". iPoseProof (typed_place_cond_ty_syn_type_eq with "Hcond_ty") as "<-". done. }
+      { iApply "Hb". iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "<-". done. }
       iFrame "Hb".
-      iApply (typed_place_cond_struct_lift with "[] [Hcond_rfn] []").
-      + iApply (struct_lift_place_cond_ty_homo with "Houtl Hcond_ty"); [done | lia].
-      + iApply (struct_lift_place_cond_rfn_homo with "Hcond_rfn"); [done | lia].
+      iApply (typed_place_cond_struct_lift with "[] []").
+      + iApply (struct_lift_place_cond_homo with "Houtl Hcond"); [done | lia].
       + iPureIntro. clear. induction rts; simpl; first done.
         constructor; first apply place_access_rt_rel_refl. done.
   Qed.

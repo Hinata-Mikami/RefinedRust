@@ -715,8 +715,8 @@ Section stratify.
     TypedPlace E L π l (◁ (∃; P, ty))%I #x bmin (Uniq κ γ) K | 15 :=
     λ T, i2p (typed_place_ex_plain_t_uniq π E L l ty x κ γ bmin K T).
 
-  Lemma typed_place_cond_ty_ex_shadowed (ty : type rt) r bmin :
-    ⊢ typed_place_cond_ty bmin (◁ (∃; P, ty))%I (ShadowedLtype (◁ ty) # r (◁ (∃; P, ty)))%I.
+  Lemma typed_place_cond_ex_shadowed (ty : type rt) r bmin :
+    ⊢ typed_place_cond bmin (◁ (∃; P, ty))%I (ShadowedLtype (◁ ty) # r (◁ (∃; P, ty)))%I.
   Proof.
     iStartProof.
     destruct bmin; simpl; simp_ltypes.
@@ -749,11 +749,8 @@ Section stratify.
       iIntros (???) "Hincl Hl Hcond".
       iMod ("Hc" with "Hincl Hl Hcond") as "(Ha & Hb & Htoks & Hc)".
       iFrame.
-      iDestruct "Hb" as "(Hcond_ty & _)".
-      iSplitL.
-      + iApply (typed_place_cond_ty_trans with "[] Hcond_ty").
-        iApply typed_place_cond_ty_ex_shadowed.
-      + destruct bmin; done.
+      iApply (typed_place_cond_trans with "[] Hb").
+      iApply typed_place_cond_ex_shadowed.
   Qed.
   Global Instance typed_place_ex_plain_t_shared_inst π E L l (ty : type rt) x κ bmin K `{!TCDone (K ≠ [])} :
     TypedPlace E L π l (◁ (∃; P, ty))%I #x bmin (Shared κ) K | 15 :=

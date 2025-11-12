@@ -227,9 +227,9 @@ End subltype.
 Section acc.
   Context `{!typeGS Σ}.
 
-  Lemma shr_ltype_place_cond_ty b κ {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    typed_place_cond_ty b lt1 lt2 -∗
-    typed_place_cond_ty b (ShrLtype lt1 κ) (ShrLtype lt2 κ).
+  Lemma shr_ltype_place_cond b κ {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    typed_place_cond b lt1 lt2 -∗
+    typed_place_cond b (ShrLtype lt1 κ) (ShrLtype lt2 κ).
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
@@ -252,9 +252,9 @@ Section acc.
         l ↦ l' -∗
         l' ◁ₗ[π, Shared κ'] r2 @ lt2 ={F}=∗
         l ◁ₗ[π, Owned wl] PlaceIn (r2) @ ShrLtype lt2 κ' ∗
-        (∀ bmin, typed_place_cond bmin lt lt2 r r2 -∗
+        (∀ bmin, typed_place_cond bmin lt lt2 -∗
          ⌜place_access_rt_rel bmin rt rt'⌝ -∗
-         typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ') (PlaceIn (r)) (PlaceIn (r2)))).
+         typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ'))).
   Proof.
     iIntros (?) "#[LFT TIME] HP".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
@@ -270,11 +270,7 @@ Section acc.
     - rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*.
       iSplitR; first done. iFrame "Hlb % ∗".
       iSplitR; first done. iNext. eauto with iFrame.
-    - iIntros (bmin) "Hcond %Hrt". iDestruct "Hcond" as "[Hty Hrfn]".
-      subst. iSplit.
-      + by iApply (shr_ltype_place_cond_ty).
-      + destruct bmin; cbn in Hrt; [ done | subst rt2..].
-        all: by iApply (typed_place_cond_rfn_lift _ _ _ (λ r, PlaceIn (r))).
+    - iIntros (bmin) "Hcond %Hrt". by iApply (shr_ltype_place_cond).
   Qed.
 
 
@@ -293,10 +289,10 @@ Section acc.
         l ↦ l' -∗
         l' ◁ₗ[π, Shared κ'] r2 @ lt2 -∗
         bmin ⊑ₖ Uniq κ γ -∗
-        typed_place_cond bmin lt lt2 r r2 ={F}=∗
+        typed_place_cond bmin lt lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #r2 @ ShrLtype lt2 κ' ∗
         R ∗
-        typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ') (#r) (#r2)) ∧
+        typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
         l ↦ l' -∗
@@ -329,7 +325,6 @@ Section acc.
       iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
-      iDestruct "Hcond'" as "(Hcond' & _)".
       iDestruct "Hcond'" as "(%Heq & Heq & _)".
       rewrite (UIP_refl _ _ Heq). cbn.
       iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
@@ -374,10 +369,7 @@ Section acc.
           rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
           eauto with iFrame.
       }
-      iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-      iSplit.
-      + iApply shr_ltype_place_cond_ty; done.
-      + iApply (typed_place_cond_rfn_lift _ _ _ (λ a, #a)). done.
+      iApply shr_ltype_place_cond; done.
     - (* shift to OpenedLtype *)
       iIntros (rt2 lt2 r2) "Hl %Hst' Hb". iModIntro.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -410,8 +402,8 @@ Section acc.
       q.[κ] ∗
       (∀ bmin,
       bmin ⊑ₖ Shared κ -∗
-      typed_place_cond bmin lt lt' r r' ={F}=∗
-      typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt' κ') #r #r')).
+      typed_place_cond bmin lt lt' ={F}=∗
+      typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt' κ'))).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_shr_ref_unfold /shr_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
@@ -426,10 +418,7 @@ Section acc.
     iFrame. iSplitL.
     { iModIntro. rewrite ltype_own_shr_ref_unfold /shr_ltype_own. iExists void*. by iFrame "% #". }
     iModIntro. iIntros (bmin) "Hincl Hcond".
-    iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
-    iModIntro. iSplit.
-    + iApply shr_ltype_place_cond_ty; done.
-    + destruct bmin; simpl; done.
+    iApply shr_ltype_place_cond; done.
   Qed.
 
 End acc.

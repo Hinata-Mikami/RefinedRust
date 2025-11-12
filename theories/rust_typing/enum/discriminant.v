@@ -98,11 +98,10 @@ Section discriminant.
         stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (** Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
-        prove_place_rfn_cond (if upd is ResultWeak _ then true else false) bmin ri2 ri3 (
         (** Finish reading *)
         typed_discriminant_end π E L2 l2 lt3 ri3 b2 bmin els (λ L3 v rt3 ty3 r3,
         typed_place_finish π E L3 mstrong upd True%I (llft_elt_toks κs) l b lt1 r1 lt2 ri2 lt3 ri3 (λ L4, T L4 π v _ (ty3) r3))
-      ))))))%I
+      )))))%I
     ⊢ typed_val_expr E L (EnumDiscriminant els e)%E T.
   Proof.
     (*iIntros "[% Hread]" (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".*)
