@@ -65,7 +65,7 @@ Section place.
   Lemma typed_place_shr_uniq {rto} π κ (lt2 : ltype rto) P E L l r κ' γ bmin0 (T : place_cont_t (place_rfn rto)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L1),
       introduce_with_hooks E L1 (£1) (λ L2,
-    (∀ l', typed_place π E L2 l' lt2 r (Shared κ) (Shared κ) P
+    (∀ l', typed_place π E L2 l' lt2 r (bmin0 ⊓ₖ Shared κ) (Shared κ) P
         (λ L3 κs' l2 b2 bmin rti tyli ri mstrong,
           T L3 (κs' ++ κs) l2 b2 bmin rti tyli ri
             (mk_mstrong
@@ -75,15 +75,12 @@ Section place.
                 OpenedLtype (ShrLtype (strong.(strong_lt) _ ltyi2 ri2) κ) (ShrLtype lt2 κ) (ShrLtype lt2 κ) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
               (λ rti2 ri2, #((strong.(strong_rfn) _ ri2)))
               strong.(strong_R)) mstrong.(mstrong_strong))
-              (* TODO: maybe we should enable weak accesses *)
             (* weak branch: just keep the ShrLtype *)
-              (*
             (fmap (λ weak,  mk_weak
             (λ lti2 ri2, ShrLtype (weak.(weak_lt) lti2 ri2) κ)
-            (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r))
+            (λ (r : place_rfn rti), #(weak.(weak_rfn) r))
             weak.(weak_R)) mstrong.(mstrong_weak))
-               *)
-              None )
+              )
         ))))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -102,7 +99,8 @@ Section place.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HT" with "[] HE HL Hcred") as "(%L1 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { iApply bor_kind_incl_refl. }
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { 
+      iApply bor_kind_min_incl_r. }
     iModIntro. iIntros (L' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb").
     simpl. iSplit.
@@ -117,23 +115,22 @@ Section place.
     - (* weak *)
       destruct weak as [ weak | ]; last done.
       iDestruct "Hs" as "[_ Hs]".
-      done.
-      (*
       iIntros (ltyi2 ri2 bmin').
       iIntros "Hincl2 Hl2 Hcond".
-      iDestruct "Hc" as "[Hc _]". simpl.
+iDestruct "Hc" as "[Hc _]". simpl.
       iMod ("Hs" with "Hincl2 Hl2 Hcond") as "(Hb & Hcond & Htoks & HR)".
 
-      iMod ("Hc" with "Hl Hb []") as "(Hb & Hcond')".
-      iPoseProof ("Hcond'" with "Hcond") as "Hcond".
-      iModIntro. iFrame "HR Hb".
+      iMod ("Hc" with "Hl Hb [] Hcond") as "(Hb & Hcond')".
+      { iApply bor_kind_incl_trans; last iApply "Hincl0". 
+        iApply bor_kind_min_incl_l. }
+      iDestruct "Hcond'" as "(Htoks' & Hcond)".
+      rewrite llft_elt_toks_app.
+      iFrame.
       iApply typed_place_cond_incl; last iApply "Hcond".
-      + iApply bor_kind_min_incl_r.
-      + iPureIntro. apply place_access_rt_rel_refl.
-       *)
+      iApply bor_kind_min_incl_l.
   Qed.
-  Global Instance typed_place_shr_uniq_inst {rto} E L π κ (lt2 : ltype rto) bmin0 r l κ' γ P :
-    TypedPlace E L π l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_shr_uniq π κ lt2 P E L l r κ' γ bmin0 T).
+  Definition typed_place_shr_uniq_inst := [instance @typed_place_shr_uniq].
+  Global Existing Instance typed_place_shr_uniq_inst | 30.
 
   Lemma typed_place_shr_shared {rto} π E L (lt2 : ltype rto) P l r κ κ' bmin0 (T : place_cont_t (place_rfn rto)) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
@@ -143,14 +140,18 @@ Section place.
           T L2 (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
             (mk_mstrong
             (* strong branch: fold to ShadowedLtype *)
-              None (* TODO *)
-            (*(fmap (λ strong, mk_strong (λ rti, (place_rfn (strong.(strong_rt) rti) * gname)%type)*)
+            None
+            (*(fmap (λ strong, mk_strong *)
+              (*(λ rti, place_rfn rto)*)
               (*(λ rti2 ltyi2 ri2,*)
-                (*OpenedLtype (MutLtype (strong.(strong_lt) _ ltyi2 ri2) κ) (MutLtype lt2 κ) (MutLtype lt2 κ) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))*)
-              (*(λ rti2 ri2, #((strong.(strong_rfn) _ ri2), γ))*)
-              (*strong.(strong_R)) strong)*)
+                (*ShadowedLtype (strong.(strong_lt) _ ltyi2 ri2) ((strong.(strong_rfn) _ ri2)) (ShrLtype lt2 κ))*)
+              (*(λ rti2 ri2, #r)*)
+              (*(λ rti2 ltyi2 ri2, strong.(strong_R) rti2 ltyi2 ri2 ∗ llft_elt_toks κs)) mstrong.(mstrong_strong))*)
             (* weak branch: just keep the MutLtype *)
-            (fmap (λ weak, mk_weak (λ lti' ri', ShrLtype (weak.(weak_lt) lti' ri') κ) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
+            (fmap (λ weak, mk_weak 
+              (λ lti' ri', ShrLtype (weak.(weak_lt) lti' ri') κ) 
+              (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) 
+              weak.(weak_R)) mstrong.(mstrong_weak))
             )))))
     ⊢ typed_place π E L l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
@@ -176,7 +177,22 @@ Section place.
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
     simpl. iSplit.
     - (* strong update *)
+      (*
+      destruct strong as [strong | ]; simpl; last done. 
+      iDestruct "Hs" as "(Hs & _)".
+      iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
+      simp_ltypes.
+      iMod ("Hs" with "Hl2 [//]") as "(Hl' & % & ?)".
+      iMod ("Hcl" with "Hl Hb") as "(Hb' & Htok & _)".
+      iMod (fupd_mask_mono with "(Hclκ' Htok)") as "?"; first done.
+      iFrame. iL.
+      rewrite ltype_own_shadowed_unfold/shadowed_ltype_own/=.
+      iFrame.
+      *)
+      (* TODO: κ  needs to outlive κ' *)
+      (* TODO: the syntype needs to be the same... *)
       done.
+      (*admit.*)
     - (* weak update *)
       destruct weak as [ weak | ]; last done.
       iDestruct "Hs" as "(_ & Hs)".

@@ -289,14 +289,14 @@ Section acc.
       ∃ l' : loc, l ↦ l' ∗ (l' ◁ₗ[π, Shared κ'] r @ lt) ∗
       logical_step F
       ( (* weak update *)
-       (∀ bmin r2,
+       (∀ bmin (lt2 : ltype rt) r2,
         l ↦ l' -∗
-        l' ◁ₗ[π, Shared κ'] r2 @ lt -∗
+        l' ◁ₗ[π, Shared κ'] r2 @ lt2 -∗
         bmin ⊑ₖ Uniq κ γ -∗
-        typed_place_cond bmin lt lt r r2 ={F}=∗
-        l ◁ₗ[π, Uniq κ γ] #r2 @ ShrLtype lt κ' ∗
+        typed_place_cond bmin lt lt2 r r2 ={F}=∗
+        l ◁ₗ[π, Uniq κ γ] #r2 @ ShrLtype lt2 κ' ∗
         R ∗
-        typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt κ') (#r) (#r2)) ∧
+        typed_place_cond bmin (ShrLtype lt κ') (ShrLtype lt2 κ') (#r) (#r2)) ∧
       (* strong update, go to Opened *)
       (∀ rt2 (lt2 : ltype rt2) r2,
         l ↦ l' -∗
@@ -313,7 +313,6 @@ Section acc.
 
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iMod "Hb".
-    (* NOTE: we are currently throwing away the existing "coring"-viewshift that we get *)
     iMod (pinned_bor_acc_strong lftE with "LFT Hb Hκ") as "(%κ'' & #Hincl & Hb & Hx & Hb_cl)"; first done.
     iMod "Hcl_F" as "_".
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -327,19 +326,30 @@ Section acc.
     iModIntro.
     iSplit.
     - (* close *)
-      iIntros (bmin r2) "Hl Hb #Hincl_k #Hcond".
+      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
       (* extract the necessary info from the place_cond *)
       iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
       iDestruct "Hcond'" as "(Hcond' & _)".
-      iDestruct "Hcond'" as "(%Heq & Heq & (#Hub & _))".
+      iDestruct "Hcond'" as "(%Heq & Heq & _)".
       rewrite (UIP_refl _ _ Heq). cbn.
       iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
       (* close the borrow *)
       iMod (gvar_update r2 with "Hauth Hrfn") as "(Hauth & Hrfn)".
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
-      iMod ("Hb_cl" with "Hx Hcred1 [Hauth Hl Hb]") as "(Hb & Htok)".
-      { iModIntro. eauto 8 with iFrame. }
+      (* Throw away the existing coring viewshift [Hx] *)
+      set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), l ↦ l' ∗ ltype_own lt2 (Shared κ') π r' l'))%I).
+      iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hl Hb]") as "(Hb & Htok)".
+      { iNext. iIntros "(%r' & Hauth & Hb) Hdead".
+        iModIntro. iNext. iExists r'. iFrame "Hauth".
+        clear. iMod "Hb" as "(%l' & ? & Ha)".
+        (* go to core *)
+        iPoseProof (ltype_own_shared_to_core with "Ha") as "Ha".
+        (* use that the cores are equal *)
+        iDestruct ("Heq" $! (Shared _) _) as "(_ & (%Hst & #Hi & _))".
+        setoid_rewrite ltype_own_core_equiv. iPoseProof ("Hi" with "Ha") as "Ha".
+        eauto with iFrame. }
+      { iModIntro. rewrite /V. eauto 8 with iFrame. }
       iMod ("HR" with "Htok") as "$".
       iMod "Hcl_F" as "_".
       iModIntro.
@@ -348,7 +358,22 @@ Section acc.
       { rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
         iExists void*. iFrame. do 3 iR.
         iPoseProof (pinned_bor_shorten with "Hincl Hb") as "Hb".
-        iModIntro. done. }
+        (* need to adapt the pinned part, too *)
+        iApply (pinned_bor_iff with "[] [] Hb").
+        { iNext. iModIntro. eauto. }
+        clear -Hst_eq.
+        iNext. iModIntro. iSplit.
+        - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
+          iMod "Hb" as "(%l' & Hl & Hb)".
+          iDestruct ("Heq" $! (Shared _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
+          rewrite ltype_own_core_equiv. iPoseProof ("Heq1" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
+          eauto with iFrame.
+        - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
+          iMod "Hb" as "(%l' & Hl & Hb)".
+          iDestruct ("Heq" $! (Shared _) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
+          rewrite ltype_own_core_equiv. iPoseProof ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
+          eauto with iFrame.
+      }
       iDestruct "Hcond" as "(Hcond_ty & Hcond_rfn)".
       iSplit.
       + iApply shr_ltype_place_cond_ty; done.
