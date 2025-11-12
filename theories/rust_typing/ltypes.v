@@ -821,6 +821,7 @@ Section ltype_def.
     | CoreableLty κ lt_full =>
         lty_core lt_full
     | ShadowedLty lt_cur r_cur lt_full =>
+        (** Important: in contrast to [OpenedLty], this core is meaningful. [ShadowedLty] can be used below Uniq if there is a shared reference below, and in order to then allow updates, [typed_place_cond] for [Uniq] needs to be satisfiable. *)
         lty_core lt_full
     | OpenedNaLty lt_cur lt_inner Cpre Cpost =>
         OpenedNaLty lt_cur lt_inner Cpre Cpost
@@ -1482,7 +1483,6 @@ Section ltype_def.
       (if core then lty_own_pre true lt_full k π r l
        else
         ∃ (Heq_cur : rt_cur = lty_rt lt_cur),
-        ⌜lty_st lt_cur = lty_st lt_full⌝ ∗
         lty_own_pre core lt_cur k π ((rew [place_rfnRT] Heq_cur in r_cur)) l ∗
         lty_own_pre core lt_full k π r l)%I;
     lty_own_pre core (@OpenedNaLty rt_inner lt_cur lt_inner Cpre Cpost) k π r l :=
@@ -1571,8 +1571,10 @@ Section ltype_def.
     - simpl. iDestruct "Hown" as "(%ly & ? & ? & ? & ? & _)".
       eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)". eauto.
-    - iDestruct ("Hown") as (->) "(%Hst & Ha & Hb)".
-      simpl. rewrite -Hst. iApply ("IH" with "Ha").
+    - iDestruct ("Hown") as (->) "(Ha & Hb)".
+      simpl.
+      iApply "IH1". done.
+      (*rewrite -Hst. iApply ("IH" with "Ha").*)
     - simpl. iDestruct "Hown" as "(%ly & ? & ? & ? & ? & _)".
       eauto.
   Qed.
@@ -1620,9 +1622,9 @@ Section ltype_def.
     - iDestruct "Hown" as "(%ly' & %Halg & ? & ? & _)".
       simpl in *. assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
       iFrame.
-    - iDestruct "Hown" as (->) "(%Hst & Ha & Hb)".
-      simpl in Ha. rewrite -Hst in Ha.
-      iApply "IH"; done.
+    - iDestruct "Hown" as (->) "( Ha & Hb)".
+      simpl in Ha.
+      iApply "IH1"; done.
     - iDestruct "Hown" as "(%ly' & %Halg & ? & ? & ? & ?)".
       simpl in *. assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
       iFrame.
@@ -2302,7 +2304,7 @@ Section ltype_def.
       iIntros "(%ly & %Halg & %Hly & Hlb & Hown)".
       clear. rewrite -lty_own_core_equiv. done.
     - simp lty_own_pre.
-      iIntros "(%Heq_cur & %Hst & Ha & Hb)".
+      iIntros "(%Heq_cur & Ha & Hb)".
       iApply (IH2 with "Hb").
     - simp lty_own_pre.
       iIntros "(%ly & % & % & ? & % & [])".
@@ -3066,7 +3068,6 @@ Section ltype_def.
   Definition shadowed_ltype_own (rec : ltype_own_type) (rec_core : ltype_own_type)
     {rt_cur rt_full} (lt_cur : ltype rt_cur) (r_cur : place_rfn rt_cur) (lt_full : ltype rt_full)
     (k : bor_kind) (π : thread_id) (r : place_rfn rt_full) (l : loc) : iProp Σ :=
-    ⌜ltype_st lt_cur = ltype_st lt_full⌝ ∗
     rec _ lt_cur k π (r_cur) l ∗
     rec _ lt_full k π r l.
 
@@ -5429,10 +5430,10 @@ Section blocked.
     iIntros "#(Ha1 & Ha2)".
     iModIntro. iSplitL.
     - iIntros (?????). rewrite ltype_own_core_equiv ltype_own_shadowed_unfold. simp_ltypes.
-      iIntros "Hdead (_ & _ & Hb)".
+      iIntros "Hdead (_ & Hb)".
       rewrite -ltype_own_core_equiv. iApply ("Ha1" with "Hdead Hb").
     - iIntros (????). rewrite ltype_own_core_equiv ltype_own_shadowed_unfold. simp_ltypes.
-      iIntros "Hdead (_ & _ & Hb)".
+      iIntros "Hdead (_ & Hb)".
       rewrite -ltype_own_core_equiv. iApply ("Ha2" with "Hdead Hb").
   Qed.
 

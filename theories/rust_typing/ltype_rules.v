@@ -308,7 +308,7 @@ Proof.
     simp_ltypes. iSplitL; first last.
     { iPoseProof (IH2 with "Hincl") as "(_ &  Ha)". iApply "Ha". }
     rewrite !ltype_own_shadowed_unfold /shadowed_ltype_own.
-    iIntros "(%Hst & Ha & Hb)". iSplitR; first done.
+    iIntros "( Ha & Hb)".
     iSplitL "Ha". { iPoseProof (IH1 with "Hincl") as "(Ha1 & _)". by iApply "Ha1". }
     iPoseProof (IH2 with "Hincl") as "(Ha1 & _)". by iApply "Ha1".
   - iIntros (rt_cur rt_inner lt_cur lt_inner Cpre Cpost IH1 IH2 r l b1 b2) "#Hincl".
@@ -376,10 +376,10 @@ Section accessors.
       l ◁ₗ[π, b] r @ ShadowedLtype lt_cur' (r_cur') lt_full).
   Proof.
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
-    iIntros "(%Hst & Hcur & Hfull)". iFrame.
+    iIntros "( Hcur & Hfull)". iFrame.
     iIntros (rt_cur' lt_cur' r_cur' Hst') "Hb".
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
-    iFrame. rewrite -Hst. done.
+    iFrame. 
   Qed.
 
   Lemma opened_ltype_create_uniq_simple π {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r l κ κ' γ (r1 r2 : rt_full) q C n R :

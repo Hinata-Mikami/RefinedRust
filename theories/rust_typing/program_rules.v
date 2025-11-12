@@ -1430,13 +1430,12 @@ Section typing.
   Proof.
     iIntros "Hstrat".
     iIntros (????) "#CTX #HE HL Hl".
-    rewrite ltype_own_shadowed_unfold /shadowed_ltype_own. iDestruct "Hl" as "(%Hst & Hcur & Hfull)".
+    rewrite ltype_own_shadowed_unfold /shadowed_ltype_own. iDestruct "Hl" as "(Hcur & Hfull)".
     iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hcur") as "(%L' & %R & %rt' & %lt' & %r' & HL & %Hst' & Ha & HT)".
     iModIntro. case_decide.
     - iExists _, _, _, _, _. iFrame. simp_ltypes.
       iR. iApply (logical_step_wand with "Ha").
       iIntros "(Ha & $)". rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
-      iSplitR. { rewrite -Hst'//. }
       iFrame.
     - iExists _, _, _, _, _. iFrame. simp_ltypes.
       iR. iApply (logical_step_wand with "Ha").

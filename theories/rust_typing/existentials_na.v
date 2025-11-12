@@ -582,7 +582,7 @@ Section na_subtype.
     { iApply bor_kind_min_incl_r. }
     { rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
 
-      iR; iSplitL.
+      iSplitL.
       { rewrite ltype_own_alias_unfold /alias_lty_own.
         iExists ly. by repeat iR. }
 

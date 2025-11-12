@@ -379,7 +379,7 @@ Section open.
     iDestruct "Hb'" as "(%r & HP & Hb)".
     iModIntro. iExists r. iFrame "#".
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
-    simp_ltypes. iSplitR; first done. iSplitL; last done.
+    simp_ltypes. iSplitL; last done.
     iApply ltype_own_ofty_unfold. rewrite /lty_of_ty_own.
     iExists ly. iSplitR; first done. do 3 iR.
     iExists r. iSplitR; first done. iModIntro. done.
