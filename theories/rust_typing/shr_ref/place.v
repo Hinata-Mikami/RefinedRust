@@ -177,6 +177,9 @@ iDestruct "Hc" as "[Hc _]". simpl.
     { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
     simpl. iSplit.
     - (* strong update *)
+      (* of course this doesn't work, I'm trying to remove the pointer indirection.
+       *)
+         
       (*
       destruct strong as [strong | ]; simpl; last done. 
       iDestruct "Hs" as "(Hs & _)".

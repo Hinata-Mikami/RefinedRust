@@ -238,7 +238,7 @@ Section access.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "(-> & %)". iR. simp_ltypes. done.
+    - iIntros "%". simp_ltypes. done.
     - iIntros "(%Hrefl & Heq & Hub)".
       subst rt2. cbn.
       iExists eq_refl. cbn. iSplitR "Hub".

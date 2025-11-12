@@ -656,7 +656,7 @@ Section lemmas.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "(-> & %)". simp_ltypes. done.
+    - iIntros "%". simp_ltypes. done.
     - iIntros "(%Hrefl & Heq & Hub)". subst.
       iExists eq_refl. cbn.
       iSplitL "Heq".

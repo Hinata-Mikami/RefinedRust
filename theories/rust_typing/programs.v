@@ -1105,17 +1105,12 @@ Section judgments.
               (this isn't completely true for products: we will need sideconditions for products to handle components that don't change, because we can't just extract this from the VS again when we change one component).
               TODO: pinned borrows actually allow to get the VS out now with the strong accessor, so there should be nothing stopping us from allowing this.
           *)
-          (∀ b r, ltype_eq b r r (ltype_core lt) (ltype_core (rew <- [ltype] Heq in lt2))) ∗ imp_unblockable [κ] lt2
+          (∀ b r, ltype_eq b r r (ltype_core lt) (ltype_core (rew <- [ltype] Heq in lt2))) ∗ 
+          imp_unblockable [κ] lt2
 
           (* ∨ ⌜lt = rew <- [lty] Heq in lt2⌝ *)
       | Shared κ =>
-          (* TODO: Is this is too strict? It does not directly allow shared reborrows below shared references.
-            Maybe change this to [ltype_incl lt2 lt]?
-            OTOH, it's not really clear that that would be the right way to model shared reborrows...
-          *)
-          ⌜rt = rt2⌝ ∗ ⌜ltype_st lt = ltype_st lt2⌝
-          (*∃ (Heq: rt = rt2),*)
-            (*( ∀ b r, ltype_eq b r r lt (rew <- [ltype] Heq in lt2)) ∗ imp_unblockable [κ] lt2*)
+          ⌜ltype_st lt = ltype_st lt2⌝
       end%I.
 
     (** Condition on the refinement *)
@@ -1147,15 +1142,10 @@ Section judgments.
     Proof using Type*.
       iIntros "? Hcond//".
       destruct b1, b2; simpl; try done.
-      - iDestruct "Hcond" as "(_ & $)".
-      (*- iDestruct "Hcond" as (<-) "(Heq & Hub)"; cbn in *.*)
-        (*iExists eq_refl. cbn. iFrame.*)
-        (*iApply (imp_unblockable_shorten' with "[$] Hub").*)
       - iDestruct "Hcond" as (<-) "(Ha & _)".
         iDestruct ("Ha" $! inhabitant inhabitant) as "(( #Hly & _) & _)".
         rewrite !ltype_core_syn_type_eq. done.
       - iDestruct "Hcond" as (<-) "(Heq & _)"; cbn in *.
-        iR.
         iDestruct ("Heq" $! inhabitant inhabitant) as "(( #Hly & _) & _)".
         rewrite !ltype_core_syn_type_eq//.
       - iDestruct "Hcond" as (<-) "(Heq & Hub)"; cbn in *.
@@ -1192,7 +1182,7 @@ Section judgments.
   Proof.
     destruct b; simpl.
     - iIntros "% % !%". congruence.
-    - iIntros "(-> & ->) (-> & ->)".
+    - iIntros "-> ->".
       done.
     - iIntros "(%Heq & Heq & Hub) (%Heq' & Heq' & Hub')".
       subst.
@@ -1257,7 +1247,7 @@ Section judgments.
   Proof.
     iIntros "Hcond". destruct b; simpl.
     - done.
-    - iDestruct "Hcond" as "(-> & $)".
+    - iDestruct "Hcond" as "$".
     - iDestruct "Hcond" as "(%Heq & [Heq Hub])".
       iDestruct ("Heq" $! inhabitant inhabitant) as "((%Hly & _) & _)". subst; cbn in *.
       rewrite !ltype_core_syn_type_eq in Hly. iPureIntro. done.
@@ -1328,17 +1318,8 @@ Section judgments.
     destruct k; simpl; first done.
     (* TODO why does the following not work? *)
     (*all: iDestruct "Hcond" as "(%Heq & _)". *)
+    all: try done.
     all: iDestruct "Hcond" as "(%Heq & Ha)"; iClear "Ha"; by done.
-  Qed.
-  Lemma place_cond_ty_Shared_rt_eq {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k κ :
-    k ⊑ₖ Shared κ -∗
-    typed_place_cond_ty k lt1 lt2 -∗
-    ⌜rt1 = rt2⌝.
-  Proof.
-    iIntros "Hincl Hcond".
-    destruct k; simpl; [done | | ].
-    - iDestruct "Hcond" as "($ & _)".
-    - iDestruct "Hcond" as "(%Heq & Ha)"; iClear "Ha"; by done.
   Qed.
 
   (* NOTE: if put the ltype_eq disjunct for the Uniq case into typed_place_cond,
@@ -1352,8 +1333,8 @@ Section judgments.
     destruct b; simpl.
     - iDestruct "Hc" as "<-".
       iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hc" as "(-> & <-)".
-      iR. iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
+    - iDestruct "Hc" as "<-".
+      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
     - iDestruct "Hc" as "(%Heq & Heq' & $)". subst. iExists eq_refl.
       iIntros (??).
       iPoseProof (ltype_eq_core with "Heq") as "Heq".
@@ -1367,7 +1348,7 @@ Section judgments.
     iIntros "Hcond #Heq".
     destruct b; simpl.
     - iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hcond" as "(-> & ->)".
+    - iDestruct "Hcond" as "->".
       iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
     - iDestruct "Hcond" as "(%Heq & #Heq2 & Hub)". subst rt2.
       iExists eq_refl.
@@ -1392,8 +1373,8 @@ Section judgments.
     destruct b; simpl.
     - iDestruct "Hc" as "->".
       iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hc" as "(-> & ->)".
-      iR. iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
+    - iDestruct "Hc" as "->".
+      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
     - iDestruct "Hc" as "(%Heq & Heq' & Hub)". destruct Heq. iExists eq_refl. cbn.
       iSplitL. {
         iIntros (??).
