@@ -5,7 +5,8 @@
   pkgs,
 }: {
   cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
-  cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib self system pkgs;};
+  cargoRefinedRust =
+    import ./cargoRefinedRust.nix {inherit craneLib self system pkgs;};
 
   mkDepRocqDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
 

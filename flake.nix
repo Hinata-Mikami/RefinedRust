@@ -26,7 +26,7 @@
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       lib = nixpkgs.lib.extend (_: _: (import ./nix {
-        inherit self system pkgs;
+        inherit self pkgs system;
         craneLib = rust.lib.craneLib;
       }));
 
@@ -76,12 +76,11 @@
       in {
         lib = rec {
           inherit (craneLib) cargoDeny;
+          inherit (lib) cargoMachete cargoRefinedRust;
 
           craneLib = crane.mkLib pkgs;
           cargoClippy = craneLib.cargoClippy.override {clippy = rust.toolchain.dev;};
           cargoFmt = craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;};
-          cargoMachete = lib.cargoMachete;
-          cargoRefinedRust = lib.cargoRefinedRust;
         };
 
         hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
@@ -94,35 +93,6 @@
           build = (pkgs.rust-bin.fromRustupToolchain inputsToolchain // {targets = [target];}).override addRustSrc;
           dev = build.override {extensions = inputsToolchain.components ++ devComponents;};
           envBuilder = rust.lib.craneLib.overrideToolchain build;
-
-          # cargoRefinedRust = {
-          #   rrSrc,
-          #   cargoArtifacts,
-          #   cargoRefinedRustArgs ? "",
-          #   cargoExtraArgs ? "",
-          #   ...
-          # } @ origArgs: let
-          #   args = builtins.removeAttrs origArgs [
-          #     "cargoRefinedRustArgs"
-          #     "cargoExtraArgs"
-          #   ];
-          # in
-          #   craneLib.mkCargoDerivation (args
-          #     // {
-          #       inherit cargoArtifacts;
-
-          #       cargoVendorDir = envBuilder.vendorMultipleCargoDeps {
-          #         inherit (envBuilder.findCargoFiles rrSrc) cargoConfigs;
-          #         cargoLockList = [
-          #           "${rrSrc}/Cargo.lock"
-          #           "${build.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
-          #         ];
-          #       };
-
-          #       pnameSuffix = "-refinedrust";
-          #       buildPhaseCargoCommand = "cargo refinedrust ${cargoRefinedRustArgs} -- ${cargoExtraArgs}";
-          #       nativeBuildInputs = (args.nativeBuildInputs or []) ++ [ self.packages.${system}.frontend build ];
-          #     });
         };
 
         mkTargetToolchains = drv:
@@ -183,28 +153,25 @@
               src = ./theories;
 
               propagatedBuildInputs = [equations iris-contrib lambda-rust];
-
-              preBuild = "dune() { command dune $@ --display=short; }";
               useDune = true;
             };
 
-          frontend = let
-            src = ./rr_frontend;
+          frontend = rust.toolchain.envBuilder.buildPackage rec {
+            inherit meta version;
+
             pname = "cargo-${name}";
+            src = ./rr_frontend;
 
             cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
               inherit meta pname src version;
             };
-          in
-            rust.toolchain.envBuilder.buildPackage rec {
-              inherit cargoArtifacts meta pname src version;
 
-              nativeBuildInputs = with pkgs;
-                lib.optionals stdenv.isDarwin [libiconv libzip];
+            nativeBuildInputs = with pkgs;
+              lib.optionals stdenv.isDarwin [libiconv libzip];
 
-              doNotRemoveReferencesToRustToolchain = true;
-              passthru = {inherit cargoArtifacts pname src;};
-            };
+            doNotRemoveReferencesToRustToolchain = true;
+            passthru = {inherit cargoArtifacts pname src;};
+          };
 
           stdlib = pkgs.rocqPackages.mkRocqDerivation {
             inherit meta version;
@@ -216,10 +183,7 @@
             buildInputs = [packages.frontend rust.toolchain.build];
             propagatedBuildInputs = [packages.theories];
 
-            preBuild = ''
-              dune() { command dune $@ --display=short; }
-              make generate_stdlib
-            '';
+            configurePhase = "make generate_stdlib";
             useDune = true;
           };
 
@@ -273,25 +237,23 @@
           inherit (packages.frontend.passthru) pname src;
         };
 
-        evenInt = rust.lib.cargoRefinedRust {
-          inherit (packages.frontend.passthru) cargoArtifacts;
-
-          src = ./case_studies/evenint;
-          pname = "even-int";
-        };
-
-        evenIntRR = pkgs.rocqPackages.mkRocqDerivation {
+        evenInt = pkgs.rocqPackages.mkRocqDerivation rec {
           inherit meta version;
 
           pname = "evenint";
           opam-name = "evenint";
-          src = checks.evenInt;
+
+          src = rust.lib.cargoRefinedRust {
+            inherit (packages.frontend.passthru) cargoArtifacts;
+            inherit meta pname version;
+
+            src = ./case_studies/evenint;
+
+            cargoExtraArgs = "";
+            cargoVendorDir = null;
+          };
 
           propagatedBuildInputs = [packages.stdlib];
-
-          preBuild = ''
-            dune() { command dune $@ --display=short; }
-          '';
           useDune = true;
         };
       };
