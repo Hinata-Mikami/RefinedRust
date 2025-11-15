@@ -18,7 +18,7 @@ stages: [ nix-cache, build, lint, tests ]
   tags: [ fp ]
 
   before_script:
-   - echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+   - echo "experimental-features = nix-command flakes ca-derivations" >> /etc/nix/nix.conf
    - echo "substituters = file://$(pwd)/${NIX_STORE_ARTIFACTS_PATH} file://$(pwd)/${NIX_STORE_CACHE_PATH} https://cache.nixos.org" >> /etc/nix/nix.conf
    - echo "trusted-public-keys = ${NIX_CI_CACHE_PUB_KEY} cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.conf
 
@@ -119,15 +119,22 @@ machete:
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.machete
 
-case_studies:
-  extends: .nix
+case-studies:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: tests
+  needs: [ stdlib ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.case-study-{evenint,minivec,paper-examples,paper-examples-rr20,tests}
+
+nix-shell:
+  extends: [ .nix ]
   stage: tests
   needs: [ stdlib ]
   script:
    - nix shell -c cargo refinedrust -V
-   - nix shell -c nix run nixpkgs#gnumake -- generate_case_studies
-   - cd case_studies
-   - nix shell -c dune build --display=short
+   - cd case_studies/evenint
+   - nix shell -c cargo refinedrust
+   - nix shell -c dune build --display=short -p evenint
 
 
 .opam:
