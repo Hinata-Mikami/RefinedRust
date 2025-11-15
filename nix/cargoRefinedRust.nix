@@ -21,7 +21,7 @@ in
       buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
       nativeBuildInputs = [self.packages.${system}."target-${target}"];
 
-      RR_GENERATE_DUNE_PROJECT = 1; 
+      RR_GENERATE_DUNE_PROJECT = 1;
 
       installPhase = ''
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')

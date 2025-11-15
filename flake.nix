@@ -102,270 +102,213 @@
             })
             availableTargets);
       };
-    in rec {
-      inherit lib;
+    in
+      with pkgs.lib; rec {
+        inherit lib;
 
-      packages =
-        {
-          theories = let
-            # NOTE: Remove `equations` when available in Nix's `RocqPackages`
-            equations = pkgs.rocqPackages.mkRocqDerivation {
-              pname = "equations";
-              owner = "mattam82";
-              repo = "Coq-Equations";
-              opam-name = "rocq-equations";
+        packages =
+          {
+            theories = let
+              # NOTE: Remove `equations` when available in Nix's `RocqPackages`
+              equations = pkgs.rocqPackages.mkRocqDerivation {
+                pname = "equations";
+                owner = "mattam82";
+                repo = "Coq-Equations";
+                opam-name = "rocq-equations";
 
-              propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
+                propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
 
-              mlPlugin = true;
-              useDune = true;
+                mlPlugin = true;
+                useDune = true;
 
-              version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
-              release = {
-                "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+                version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
+                release = {
+                  "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+                };
               };
-            };
 
-            stdpp = lib.mkDepRocqDerivation rocq.stdpp {
-              pname = "stdpp";
-            };
+              stdpp = lib.mkDepRocqDerivation rocq.stdpp {
+                pname = "stdpp";
+              };
 
-            iris = lib.mkDepRocqDerivation rocq.iris {
-              pname = "iris";
-              propagatedBuildInputs = [stdpp];
-            };
+              iris = lib.mkDepRocqDerivation rocq.iris {
+                pname = "iris";
+                propagatedBuildInputs = [stdpp];
+              };
 
-            iris-contrib = lib.mkDepRocqDerivation rocq.iris-contrib {
-              pname = "iris-contrib";
-              propagatedBuildInputs = [iris];
-            };
+              iris-contrib = lib.mkDepRocqDerivation rocq.iris-contrib {
+                pname = "iris-contrib";
+                propagatedBuildInputs = [iris];
+              };
 
-            lambda-rust = lib.mkDepRocqDerivation rocq.lambda-rust {
-              pname = "lambda-rust";
-              propagatedBuildInputs = [iris];
-            };
-          in
-            pkgs.rocqPackages.mkRocqDerivation {
+              lambda-rust = lib.mkDepRocqDerivation rocq.lambda-rust {
+                pname = "lambda-rust";
+                propagatedBuildInputs = [iris];
+              };
+            in
+              pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = name;
+                opam-name = name;
+                src = ./theories;
+
+                propagatedBuildInputs = [equations iris-contrib lambda-rust];
+                useDune = true;
+              };
+
+            frontend = rust.toolchain.envBuilder.buildPackage rec {
               inherit meta version;
 
-              pname = name;
-              opam-name = name;
-              src = ./theories;
+              pname = "cargo-${name}";
+              src = ./rr_frontend;
 
-              propagatedBuildInputs = [equations iris-contrib lambda-rust];
+              cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
+                inherit meta pname src version;
+              };
+
+              nativeBuildInputs = with pkgs;
+                lib.optionals stdenv.isDarwin [libiconv libzip];
+
+              doNotRemoveReferencesToRustToolchain = true;
+              passthru = {inherit cargoArtifacts pname src;};
+            };
+
+            stdlib = pkgs.rocqPackages.mkRocqDerivation {
+              inherit meta version;
+
+              pname = "refinedrust-stdlib";
+              opam-name = "refinedrust-stdlib";
+              src = ./stdlib;
+
+              buildInputs = [packages.frontend rust.toolchain.build];
+              propagatedBuildInputs = [packages.theories];
+
+              configurePhase = "make generate_stdlib";
               useDune = true;
             };
 
-          frontend = rust.toolchain.envBuilder.buildPackage rec {
+            default = packages."target-${rust.hostPlatform}";
+          }
+          // (
+            rust.mkTargetToolchains (toolchain:
+              pkgs.symlinkJoin {
+                inherit meta name;
+
+                paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain.build pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
+
+                nativeBuildInputs = [pkgs.makeWrapper];
+
+                postBuild = let
+                  fetchRocqDeps = drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
+                in
+                  with strings; ''
+                    wrapProgram $out/bin/dune \
+                      --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
+                      --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+
+                    wrapProgram $out/bin/cargo-${name} \
+                      --set LD_LIBRARY_PATH "${makeLibraryPath [toolchain.build]}" \
+                      --set DYLD_FALLBACK_LIBRARY_PATH "${makeLibraryPath [toolchain.build]}" \
+                      --set PATH "$out/bin" \
+                      --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
+                  '';
+
+                passthru = {inherit toolchain;};
+              })
+          );
+
+        checks = let
+          extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
             inherit meta version;
 
-            pname = "cargo-${name}";
-            src = ./rr_frontend;
+            pname = "extra-proofs";
+            opam-name = "extra-proofs";
 
-            cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
-              inherit meta pname src version;
-            };
+            src = ./case_studies/extra_proofs;
 
-            nativeBuildInputs = with pkgs;
-              lib.optionals stdenv.isDarwin [libiconv libzip];
-
-            doNotRemoveReferencesToRustToolchain = true;
-            passthru = {inherit cargoArtifacts pname src;};
-          };
-
-          stdlib = pkgs.rocqPackages.mkRocqDerivation {
-            inherit meta version;
-
-            pname = "refinedrust-stdlib";
-            opam-name = "refinedrust-stdlib";
-            src = ./stdlib;
-
-            buildInputs = [packages.frontend rust.toolchain.build];
-            propagatedBuildInputs = [packages.theories];
-
-            configurePhase = "make generate_stdlib";
+            propagatedBuildInputs = [packages.stdlib];
             useDune = true;
           };
+        in
+          {
+            clippy = rust.lib.cargoClippy {
+              inherit (packages.frontend.passthru) cargoArtifacts pname src;
 
-          default = packages."target-${rust.hostPlatform}";
-        }
-        // (
-          rust.mkTargetToolchains (toolchain:
-            pkgs.symlinkJoin {
-              inherit meta name;
+              cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
+            };
 
-              paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain.build pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
+            deny = rust.lib.cargoDeny {
+              inherit (packages.frontend.passthru) pname src;
+            };
 
-              nativeBuildInputs = [pkgs.makeWrapper];
+            fmt = rust.lib.cargoFmt {
+              inherit (packages.frontend.passthru) pname src;
+            };
 
-              postBuild = let
-                fetchRocqDeps = with pkgs.lib;
-                  drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
-              in
-                with pkgs.lib.strings; ''
-                  wrapProgram $out/bin/dune \
-                    --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
-                    --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+            machete = rust.lib.cargoMachete {
+              inherit (packages.frontend.passthru) pname src;
+            };
+          }
+          // listToAttrs (map ({
+              pname,
+              src,
+            }: {
+              name = "case-study-" + pname;
+              value = pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta pname version;
 
-                  wrapProgram $out/bin/cargo-${name} \
-                    --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
-                    --set DYLD_FALLBACK_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [toolchain.build]}" \
-                    --set PATH "$out/bin" \
-                    --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
-                '';
+                opam-name = pname;
+                src = rust.lib.cargoRefinedRust {
+                  inherit (packages.frontend.passthru) cargoArtifacts;
+                  inherit meta pname src version;
 
-              passthru = {inherit toolchain;};
-            })
-        );
+                  cargoExtraArgs = "";
+                  cargoVendorDir = null;
+                };
 
-      checks = {
-        clippy = rust.lib.cargoClippy {
-          inherit (packages.frontend.passthru) cargoArtifacts pname src;
+                propagatedBuildInputs = [packages.stdlib extraProofs];
+                useDune = true;
+              };
+            }) [
+              {
+                pname = "evenint";
+                src = ./case_studies/evenint;
+              }
+              {
+                pname = "minivec";
+                src = ./case_studies/minivec;
+              }
+              {
+                pname = "paper-examples";
+                src = ./case_studies/paper_examples;
+              }
+              {
+                pname = "paper-examples-rr20";
+                src = ./case_studies/refinedrust-20-paper-examples;
+              }
+              {
+                pname = "tests";
+                src = ./case_studies/tests;
+              }
+            ]);
 
-          cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
-        };
+        devShells =
+          {
+            default = devShells."target-${rust.hostPlatform}";
+          }
+          // (
+            rust.mkTargetToolchains (toolchain:
+              pkgs.mkShell {
+                inputsFrom = with packages; [frontend theories];
+                packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
 
-        deny = rust.lib.cargoDeny {
-          inherit (packages.frontend.passthru) pname src;
-        };
+                LD_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
+                DYLD_FALLBACK_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
+                LIBCLANG_PATH = makeLibraryPath [pkgs.libclang.lib];
+              })
+          );
 
-        fmt = rust.lib.cargoFmt {
-          inherit (packages.frontend.passthru) pname src;
-        };
-
-        machete = rust.lib.cargoMachete {
-          inherit (packages.frontend.passthru) pname src;
-        };
-
-        evenInt = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "evenint";
-          opam-name = "evenint";
-
-          src = rust.lib.cargoRefinedRust {
-            inherit (packages.frontend.passthru) cargoArtifacts;
-            inherit meta pname version;
-
-            src = ./case_studies/evenint;
-
-            cargoExtraArgs = "";
-            cargoVendorDir = null;
-          };
-
-          propagatedBuildInputs = [packages.stdlib];
-          useDune = true;
-        };
-
-        extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "extra-proofs";
-          opam-name = "extra-proofs";
-
-          src = ./case_studies/extra_proofs;
-
-          propagatedBuildInputs = [packages.stdlib];
-          useDune = true;
-        };
-
-        minivec = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "minivec";
-          opam-name = "minivec";
-
-          src = rust.lib.cargoRefinedRust {
-            inherit (packages.frontend.passthru) cargoArtifacts;
-            inherit meta pname version;
-
-            src = ./case_studies/minivec;
-
-            cargoExtraArgs = "";
-            cargoVendorDir = null;
-          };
-
-          propagatedBuildInputs = [packages.stdlib checks.extraProofs];
-          useDune = true;
-        };
-        
-        paperExamples = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "paper-examples";
-          opam-name = "paper-examples";
-
-          src = rust.lib.cargoRefinedRust {
-            inherit (packages.frontend.passthru) cargoArtifacts;
-            inherit meta pname version;
-
-            src = ./case_studies/paper_examples;
-
-            cargoExtraArgs = "";
-            cargoVendorDir = null;
-          };
-
-          propagatedBuildInputs = [packages.stdlib];
-          useDune = true;
-        };
-
-        paperExamplesRefinedRust20 = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "paper-examples";
-          opam-name = "paper-examples";
-
-          src = rust.lib.cargoRefinedRust {
-            inherit (packages.frontend.passthru) cargoArtifacts;
-            inherit meta pname version;
-
-            src = ./case_studies/refinedrust-20-paper-examples;
-
-            cargoExtraArgs = "";
-            cargoVendorDir = null;
-          };
-
-          propagatedBuildInputs = [packages.stdlib];
-          useDune = true;
-        };
-
-        tests = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
-
-          pname = "tests";
-          opam-name = "tests";
-
-          src = rust.lib.cargoRefinedRust {
-            inherit (packages.frontend.passthru) cargoArtifacts;
-            inherit meta pname version;
-
-            src = ./case_studies/tests;
-
-            cargoExtraArgs = "";
-            cargoVendorDir = null;
-          };
-
-          propagatedBuildInputs = [packages.stdlib checks.extraProofs];
-          useDune = true;
-        };
-      };
-
-      devShells =
-        {
-          default = devShells."target-${rust.hostPlatform}";
-        }
-        // (
-          rust.mkTargetToolchains (toolchain:
-            pkgs.mkShell {
-              inputsFrom = with packages; [frontend theories];
-              packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
-
-              LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
-              DYLD_FALLBACK_LIBRARY_PATH = pkgs.lib.makeLibraryPath [toolchain.dev];
-              LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
-            })
-        );
-
-      formatter = pkgs.alejandra;
-    });
+        formatter = pkgs.alejandra;
+      });
 }
