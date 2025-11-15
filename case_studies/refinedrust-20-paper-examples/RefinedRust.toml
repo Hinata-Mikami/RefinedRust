@@ -1,4 +1,3 @@
-output_dir="./output"
-lib_load_paths=["../../stdlib/"]
-generate_dune_project = false
-extra_specs="extra_specs.v"
+output_dir = "./output"
+lib_load_paths = ["../../stdlib"]
+extra_specs = "extra_specs.v"
