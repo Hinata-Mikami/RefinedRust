@@ -3,6 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![feature(stmt_expr_attributes)]
 
+#![rr::package("paper-examples")]
 #![rr::include("stdlib")]
 
 // Point: I want to be able to borrow the contents of the box, but not the box itself

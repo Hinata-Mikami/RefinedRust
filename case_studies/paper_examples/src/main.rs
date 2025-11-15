@@ -3,6 +3,8 @@
 #![feature(custom_inner_attributes)]
 #![allow(dead_code)]
 
+#![rr::package("paper-examples")]
+
 // Examples from Section 2
 
 

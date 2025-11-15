@@ -14,12 +14,15 @@
 in
   craneLib.mkCargoDerivation (args
     // {
-      buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
-      nativeBuildInputs = [self.packages.${system}."target-${target}"];
+      __contentAddressed = true;
 
       pnameSuffix = "-refinedrust";
 
-      __contentAddressed = true;
+      buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
+      nativeBuildInputs = [self.packages.${system}."target-${target}"];
+
+      RR_GENERATE_DUNE_PROJECT = 1; 
+
       installPhase = ''
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')
         cp -r $RR_OUTPUT_DIR $out

@@ -256,6 +256,98 @@
           propagatedBuildInputs = [packages.stdlib];
           useDune = true;
         };
+
+        extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit meta version;
+
+          pname = "extra-proofs";
+          opam-name = "extra-proofs";
+
+          src = ./case_studies/extra_proofs;
+
+          propagatedBuildInputs = [packages.stdlib];
+          useDune = true;
+        };
+
+        minivec = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit meta version;
+
+          pname = "minivec";
+          opam-name = "minivec";
+
+          src = rust.lib.cargoRefinedRust {
+            inherit (packages.frontend.passthru) cargoArtifacts;
+            inherit meta pname version;
+
+            src = ./case_studies/minivec;
+
+            cargoExtraArgs = "";
+            cargoVendorDir = null;
+          };
+
+          propagatedBuildInputs = [packages.stdlib checks.extraProofs];
+          useDune = true;
+        };
+        
+        paperExamples = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit meta version;
+
+          pname = "paper-examples";
+          opam-name = "paper-examples";
+
+          src = rust.lib.cargoRefinedRust {
+            inherit (packages.frontend.passthru) cargoArtifacts;
+            inherit meta pname version;
+
+            src = ./case_studies/paper_examples;
+
+            cargoExtraArgs = "";
+            cargoVendorDir = null;
+          };
+
+          propagatedBuildInputs = [packages.stdlib];
+          useDune = true;
+        };
+
+        paperExamplesRefinedRust20 = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit meta version;
+
+          pname = "paper-examples";
+          opam-name = "paper-examples";
+
+          src = rust.lib.cargoRefinedRust {
+            inherit (packages.frontend.passthru) cargoArtifacts;
+            inherit meta pname version;
+
+            src = ./case_studies/refinedrust-20-paper-examples;
+
+            cargoExtraArgs = "";
+            cargoVendorDir = null;
+          };
+
+          propagatedBuildInputs = [packages.stdlib];
+          useDune = true;
+        };
+
+        tests = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit meta version;
+
+          pname = "tests";
+          opam-name = "tests";
+
+          src = rust.lib.cargoRefinedRust {
+            inherit (packages.frontend.passthru) cargoArtifacts;
+            inherit meta pname version;
+
+            src = ./case_studies/tests;
+
+            cargoExtraArgs = "";
+            cargoVendorDir = null;
+          };
+
+          propagatedBuildInputs = [packages.stdlib checks.extraProofs];
+          useDune = true;
+        };
       };
 
       devShells =

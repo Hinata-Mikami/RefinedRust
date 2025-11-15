@@ -3,6 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![feature(stmt_expr_attributes)]
 
+#![rr::package("tests")]
 #![rr::include("stdlib")]
 
 mod enums;

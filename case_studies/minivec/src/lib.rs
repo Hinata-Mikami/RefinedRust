@@ -1,12 +1,14 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(dead_code)]
+
+#![rr::package("minivec")]
 #![rr::import("refinedrust.extra_proofs.minivec", "minivec")]
 #![rr::include("option")]
 #![rr::include("ptr")]
 #![rr::include("mem")]
 #![rr::include("rr_internal")]
-#![allow(dead_code)]
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
 
