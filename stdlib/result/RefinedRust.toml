@@ -1,3 +1,2 @@
-extra_specs = "./extra_specs.v"
-generate_dune_project = false
 lib_load_paths = ["../"]
+extra_specs = "./extra_specs.v"

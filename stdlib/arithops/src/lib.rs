@@ -1,9 +1,10 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
-#![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("rrstd.arithops")]
 #![allow(unused)]
+
+#![rr::package("stdlib-arithops")]
+#![rr::coq_prefix("rrstd.arithops")]
 
 
 #[rr::export_as(core::ops::Add)]

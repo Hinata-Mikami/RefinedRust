@@ -1,12 +1,13 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![feature(allocator_api)]
-#![rr::package("refinedrust-stdlib")]
+
+#![rr::package("stdlib-mem")]
 #![rr::coq_prefix("rrstd.mem")]
 #![rr::import("rrstd.mem.theories", "shims")]
-#![allow(unused)]
 
 #[rr::export_as(core::mem::size_of)]
 #[rr::code_shim("mem_size_of")]

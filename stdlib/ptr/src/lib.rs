@@ -1,14 +1,15 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![feature(allocator_api)]
-#![rr::package("refinedrust-stdlib")]
+
+#![rr::package("stdlib-ptr")]
 #![rr::coq_prefix("rrstd.ptr")]
 #![rr::include("mem")]
 #![rr::import("rrstd.ptr.theories", "shims")]
 #![rr::import("rrstd.ptr.theories", "specs")]
-#![allow(unused)]
 
 mod alignment;
 mod non_null;

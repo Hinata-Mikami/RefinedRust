@@ -1,11 +1,12 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
-#![rr::package("refinedrust-stdlib")]
+#![allow(unused)]
+
+#![rr::package("stdlib-option")]
 #![rr::coq_prefix("rrstd.option")]
 
 #![rr::include("closures")]
-#![allow(unused)]
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 #[rr::export_as(core::option::Option)]

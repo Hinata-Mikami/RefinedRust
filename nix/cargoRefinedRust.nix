@@ -4,12 +4,14 @@
   system,
   pkgs,
 }: {
-  cargoExtraArgs ? "",
+  cargoExtraArgs ? "--locked",
   target ? pkgs.stdenv.hostPlatform.rust.rustcTarget,
+  withStdlib ? true,
   ...
 } @ origArgs: let
   args = builtins.removeAttrs origArgs [
     "target"
+    "withStdlib"
   ];
 in
   craneLib.mkCargoDerivation (args
@@ -19,9 +21,10 @@ in
       pnameSuffix = "-refinedrust";
 
       buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
-      nativeBuildInputs = [self.packages.${system}."target-${target}"];
-
-      RR_GENERATE_DUNE_PROJECT = 1;
+      nativeBuildInputs =
+        if withStdlib
+        then [self.packages.${system}."target-${target}"]
+        else [self.packages.${system}.frontend];
 
       installPhase = ''
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')

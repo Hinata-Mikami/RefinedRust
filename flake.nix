@@ -174,11 +174,11 @@
               passthru = {inherit cargoArtifacts pname src;};
             };
 
-            stdlib = pkgs.rocqPackages.mkRocqDerivation {
+            stdlibNew = pkgs.rocqPackages.mkRocqDerivation {
               inherit meta version;
 
               pname = "refinedrust-stdlib";
-              opam-name = "refinedrust-stdlib";
+              opam-pname = "refinedrust-stdlib";
               src = ./stdlib;
 
               buildInputs = [packages.frontend rust.toolchain.build];
@@ -186,6 +186,202 @@
 
               configurePhase = "make generate_stdlib";
               useDune = true;
+            };
+
+            closures = pkgs.rocqPackages.mkRocqDerivation {
+              inherit meta version;
+
+              pname = "stdlib-closures";
+              opam-name = "stdlib-closures";
+
+              src = rust.lib.cargoRefinedRust {
+                inherit meta version;
+
+                pname = "stdlib-closures";
+                src = ./stdlib/closures;
+
+                cargoArtifacts = null;
+                withStdlib = false;
+              };
+
+              propagatedBuildInputs = [packages.theories];
+              useDune = true;
+
+              postInstall = ''
+                mkdir -p $out/share/refinedrust-stdlib/closures
+                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/closures/. \;
+              '';
+            };
+
+            arithops = pkgs.rocqPackages.mkRocqDerivation {
+              inherit meta version;
+
+              pname = "stdlib-arithops";
+              opam-name = "stdlib-arithops";
+
+              src = rust.lib.cargoRefinedRust {
+                inherit meta version;
+
+                pname = "stdlib-arithops";
+                src = ./stdlib/arithops;
+
+                cargoArtifacts = null;
+                withStdlib = false;
+              };
+
+              propagatedBuildInputs = [packages.theories];
+              useDune = true;
+
+              postInstall = ''
+                mkdir -p $out/share/refinedrust-stdlib/arithops
+                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/arithops/. \;
+              '';
+            };
+
+            mem = let
+              theories = pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-mem-theories";
+                opam-name = "stdlib-mem-theories";
+
+                src = ./stdlib/mem/theories;
+
+                propagatedBuildInputs = [packages.theories];
+                useDune = true;
+              };
+            in
+              pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-mem";
+                opam-name = "stdlib-mem";
+
+                src = rust.lib.cargoRefinedRust {
+                  inherit meta version;
+
+                  pname = "stdlib-mem";
+                  src = ./stdlib/mem;
+
+                  cargoArtifacts = null;
+                  withStdlib = false;
+                };
+
+                propagatedBuildInputs = [packages.theories theories];
+                useDune = true;
+
+                postInstall = ''
+                  mkdir -p $out/share/refinedrust-stdlib/mem
+                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/mem/. \;
+                '';
+              };
+
+            ptr = let
+              theories = pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-ptr-theories";
+                opam-name = "stdlib-ptr-theories";
+
+                src = ./stdlib/ptr/theories;
+
+                propagatedBuildInputs = [packages.theories];
+                useDune = true;
+              };
+            in
+              pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-ptr";
+                opam-name = "stdlib-ptr";
+
+                src = rust.lib.cargoRefinedRust {
+                  inherit meta version;
+
+                  pname = "stdlib-ptr";
+                  src = ./stdlib/ptr;
+
+                  cargoArtifacts = null;
+                  withStdlib = false;
+                };
+
+                propagatedBuildInputs = [packages.theories theories];
+                useDune = true;
+
+                postInstall = ''
+                  mkdir -p $out/share/refinedrust-stdlib/ptr
+                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/ptr/. \;
+                '';
+              };
+
+            result = let
+              theories = pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-result-theories";
+                opam-name = "stdlib-result-theories";
+
+                src = ./stdlib/result/theories;
+
+                propagatedBuildInputs = [packages.theories];
+                useDune = true;
+              };
+            in
+              pkgs.rocqPackages.mkRocqDerivation {
+                inherit meta version;
+
+                pname = "stdlib-result";
+                opam-name = "stdlib-result";
+
+                src = rust.lib.cargoRefinedRust {
+                  inherit meta version;
+
+                  pname = "stdlib-result";
+                  src = ./stdlib/result;
+
+                  cargoArtifacts = null;
+                  withStdlib = false;
+                };
+
+                propagatedBuildInputs = [packages.theories theories];
+                useDune = true;
+
+                postInstall = ''
+                  mkdir -p $out/share/refinedrust-stdlib/result
+                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/result/. \;
+                '';
+              };
+
+            option = pkgs.rocqPackages.mkRocqDerivation rec {
+              inherit meta version;
+
+              pname = "stdlib-option";
+              opam-name = "stdlib-option";
+
+              src = rust.lib.cargoRefinedRust {
+                inherit meta version;
+
+                pname = "stdlib-option";
+                src = ./stdlib/option;
+
+                cargoArtifacts = null;
+                withStdlib = false;
+              };
+
+              propagatedBuildInputs = [packages.theories];
+              useDune = true;
+              postInstall = ''
+                mkdir -p $out/share/refinedrust-stdlib/option
+                find ${src} -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/option/. \;
+              '';
+            };
+
+            stdlib = pkgs.symlinkJoin {
+              inherit meta version;
+
+              pname = "refinedrust-stdlib";
+              opam-name = "refinedrust-stdlib";
+              paths = with packages; [closures arithops mem ptr result option];
             };
 
             default = packages."target-${rust.hostPlatform}";
@@ -260,9 +456,9 @@
 
                 opam-name = pname;
                 src = rust.lib.cargoRefinedRust {
-                  inherit (packages.frontend.passthru) cargoArtifacts;
                   inherit meta pname src version;
 
+                  cargoArtifacts = null;
                   cargoExtraArgs = "";
                   cargoVendorDir = null;
                 };
