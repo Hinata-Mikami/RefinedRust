@@ -1,14 +1,14 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![feature(allocator_api)]
-#![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("rrstd.rr_internal")]
-#![rr::import("rrstd.rr_internal.theories", "shims")]
 
+#![rr::package("stdlib-rr_internal")]
+#![rr::coq_prefix("rrstd.rr_internal")]
 #![rr::include("ptr")]
 #![rr::include("alloc")]
-#![allow(unused)]
+#![rr::import("rrstd.rr_internal.theories", "shims")]
 
 use std::alloc;

@@ -1,13 +1,12 @@
-
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
-#![rr::package("refinedrust-stdlib")]
+#![rr::package("stdlib-controlflow")]
 #![rr::coq_prefix("rrstd.controlflow")]
 #![rr::include("option")]
 #![rr::include("result")]
-#![allow(unused)]
 
 mod convert;
 use convert::*;

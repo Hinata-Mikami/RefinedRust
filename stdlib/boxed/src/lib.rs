@@ -1,15 +1,16 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![feature(allocator_api)]
-#![rr::package("refinedrust-stdlib")]
+
+#![rr::package("stdlib-boxed")]
 #![rr::coq_prefix("rrstd.boxed")]
 #![rr::import("rrstd.boxed.theories", "shims")]
-#![rr::include("option")]
 #![rr::include("alloc")]
+#![rr::include("option")]
 #![rr::include("rr_internal")]
-#![allow(unused)]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;

@@ -1,16 +1,16 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
+#![feature(allocator_api)]
+
+#![rr::package("stdlib-vec")]
+#![rr::coq_prefix("rrstd.alloc")]
 #![rr::include("option")]
 #![rr::include("alloc")]
 #![rr::include("rr_internal")]
 #![rr::include("iterator")]
-
-#![rr::package("refinedrust-stdlib")]
-#![feature(allocator_api)]
-#![rr::coq_prefix("rrstd.alloc")]
-#![allow(unused)]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;

@@ -1,12 +1,13 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
 #![feature(allocator_api)]
 #![feature(ptr_alignment_type)]
-#![rr::package("refinedrust-stdlib")]
+
+#![rr::package("stdlib-alloc")]
 #![rr::coq_prefix("rrstd.alloc")]
-#![allow(unused)]
 #![rr::import("rrstd.alloc.theories", "shims")]
 
 

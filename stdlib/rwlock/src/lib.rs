@@ -1,9 +1,10 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
-#![rr::package("refinedrust-stdlib")]
-#![rr::coq_prefix("rrstd.rwlock")]
 #![allow(unused)]
+
+#![rr::package("stdlib-rwlock")]
+#![rr::coq_prefix("rrstd.rwlock")]
 
 use std::ops::{Deref, DerefMut};
 

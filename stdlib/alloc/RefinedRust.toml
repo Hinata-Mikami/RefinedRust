@@ -1,4 +1,2 @@
 lib_load_paths = ["../"]
-generate_dune_project = false
-output_dir="./output"
-#admit_proofs = true
+output_dir = "./output"

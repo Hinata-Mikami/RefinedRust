@@ -1,12 +1,12 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![allow(unused)]
 
-#![rr::package("refinedrust-stdlib")]
+#![rr::package("stdlib-btreemap")]
 #![rr::coq_prefix("rrstd.btreemap")]
 #![rr::include("option")]
 #![rr::include("alloc")]
-#![allow(unused)]
 
 #![feature(allocator_api)]
 

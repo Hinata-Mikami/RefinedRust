@@ -2,7 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
-#![rr::package("refinedrust-stdlib")]
+#![rr::package("stdlib-range")]
 #![rr::coq_prefix("rrstd.range")]
 #![rr::include("option")]
 #![rr::include("cmp")]

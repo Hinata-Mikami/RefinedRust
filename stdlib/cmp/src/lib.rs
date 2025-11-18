@@ -2,11 +2,10 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
-#![rr::include("option")]
-#![rr::include("closures")]
-
-#![rr::package("refinedrust-stdlib")]
+#![rr::package("stdlib-cmp")]
 #![rr::coq_prefix("rrstd.cmp")]
+#![rr::include("closures")]
+#![rr::include("option")]
 #![rr::import("rrstd.cmp.theories", "ordering")]
 
 #[repr(i8)]
