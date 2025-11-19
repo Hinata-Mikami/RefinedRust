@@ -41,10 +41,9 @@ Section discriminant.
 
   Definition typed_discriminant_end_cont_t : Type :=
     llctx → val → ∀ (rt : RT), type rt → rt → iProp Σ.
-  Definition typed_discriminant_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt: RT} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) (T : typed_discriminant_end_cont_t) :=
+  Definition typed_discriminant_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt: RT} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (els : enum_layout_spec) (T : typed_discriminant_end_cont_t) :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      bmin ⊑ₖ b2 -∗
       (* given ownership of the read location *)
       l ◁ₗ[π, b2] r @ lt ={F}=∗
       ∃ q v discr,
@@ -61,30 +60,30 @@ Section discriminant.
             llctx_interp L' ∗
             l ◁ₗ[π, b2] r @ lt ∗
             T L' v rt3 ty3 r3))%I.
-  Class TypedDiscriminantEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (els : enum_layout_spec) : Type :=
-    typed_discriminant_end_proof T : iProp_to_Prop (typed_discriminant_end π E L l lt r b2 bmin els T).
+  Class TypedDiscriminantEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (els : enum_layout_spec) : Type :=
+    typed_discriminant_end_proof T : iProp_to_Prop (typed_discriminant_end π E L l lt r b2 els T).
 
-  Lemma typed_discriminant_end_enum_ltype π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 bmin els (T : typed_discriminant_end_cont_t) :
-    typed_discriminant_end π E L l (EnumLtype en tag lte re) (#r) b2 bmin els T :-
+  Lemma typed_discriminant_end_enum_ltype π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 els (T : typed_discriminant_end_cont_t) :
+    typed_discriminant_end π E L l (EnumLtype en tag lte re) (#r) b2 els T :-
     exhale (⌜en.(enum_els) = els⌝);
     ∀ v,
     return (T L v rt  (enum_discriminant_t en) (r)).
   Proof.
   Admitted.
-  Global Instance typed_discriminant_end_enum_ltype_inst π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 bmin els:
-    TypedDiscriminantEnd π E L l (EnumLtype en tag lte re) (#r) b2 bmin els :=
-    λ T, i2p (typed_discriminant_end_enum_ltype π E L l en tag lte re r b2 bmin els T).
+  Global Instance typed_discriminant_end_enum_ltype_inst π E L l {rt rte} (en : enum rt) tag (lte : ltype rte) (re : rte) r b2 els:
+    TypedDiscriminantEnd π E L l (EnumLtype en tag lte re) (#r) b2 els :=
+    λ T, i2p (typed_discriminant_end_enum_ltype π E L l en tag lte re r b2 els T).
 
-  Lemma typed_discriminant_end_enum π E L l {rt} (en : enum rt) r b2 bmin els (T : typed_discriminant_end_cont_t) :
-    typed_discriminant_end π E L l (◁ enum_t en) (#r) b2 bmin els T :-
+  Lemma typed_discriminant_end_enum π E L l {rt} (en : enum rt) r b2 els (T : typed_discriminant_end_cont_t) :
+    typed_discriminant_end π E L l (◁ enum_t en) (#r) b2 els T :-
     exhale (⌜en.(enum_els) = els⌝);
     ∀ v,
     return (T L v rt (enum_discriminant_t en) (r)).
   Proof.
   Admitted.
-  Global Instance typed_discriminant_end_enum_inst π E L l {rt} (en : enum rt) r b2 bmin els:
-    TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 bmin els :=
-    λ T, i2p (typed_discriminant_end_enum π E L l en r b2 bmin els T).
+  Global Instance typed_discriminant_end_enum_inst π E L l {rt} (en : enum rt) r b2 els:
+    TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 els :=
+    λ T, i2p (typed_discriminant_end_enum π E L l en r b2 els T).
 
   Lemma type_discriminant E L e els T' (T : typed_read_cont_t) :
     IntoPlaceCtx E e T' →
@@ -93,14 +92,14 @@ Section discriminant.
       (** Find the type assignment *)
       find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
       (** Check the place access *)
-      typed_place π E L' l lt1 r1 b b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 bmin : bor_kind) rti (lt2 : ltype rti) (ri2 : place_rfn rti) (mstrong : mstrong_ctx rto rti),
+      typed_place π E L' l lt1 r1 UpdStrong b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) bmin rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto _ _),
         (** Stratify *)
         stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (** Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
         (** Finish reading *)
-        typed_discriminant_end π E L2 l2 lt3 ri3 b2 bmin els (λ L3 v rt3 ty3 r3,
-        typed_place_finish π E L3 mstrong upd True%I (llft_elt_toks κs) l b lt1 r1 lt2 ri2 lt3 ri3 (λ L4, T L4 π v _ (ty3) r3))
+        typed_discriminant_end π E L2 l2 lt3 ri3 b2 els (λ L3 v rt3 ty3 r3,
+        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 π v _ (ty3) r3))
       )))))%I
     ⊢ typed_val_expr E L (EnumDiscriminant els e)%E T.
   Proof.

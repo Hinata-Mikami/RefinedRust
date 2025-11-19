@@ -59,7 +59,7 @@ Section access.
       iNext. eauto with iFrame. }
     iMod "Ha" as "(Hl & Hcred)".
 
-    iPoseProof (array_ltype_acc_owned' with "Hl") as "(%ly & %Halg & % & % & Hlb & >(Hb & Hcl))"; first done.
+    iPoseProof (array_ltype_acc_owned_cred with "Hl") as "(%ly & %Halg & % & % & Hlb & >(Hb & Hcl))"; first done.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen".
     rewrite length_interpret_iml in Hlen.
     specialize (lookup_lt_is_Some_2 rs (Z.to_nat off)) as (r & Hr).
@@ -96,7 +96,7 @@ Section access.
     specialize (lookup_lt_is_Some_2 (interpret_iml (◁ ty)%I len iml) (Z.to_nat off)) as (lt & Hlt).
     { rewrite length_interpret_iml. lia. }
     iPoseProof (big_sepL2_lookup _ _ _ (Z.to_nat off) with "Hb") as "(%Hst' & Hel)"; [done.. | ].
-    iMod ("Hcl" $! ty iml with "[//] [//] Hb") as "(Ha & _)".
+    iMod ("Hcl" $! ty iml with "[//] [//] Hb") as "Ha".
     iPoseProof ("HT" with "[//] [//]") as "HT".
     iModIntro. iExists _, _, _, _, _, _, _, _. iExists _, _. iFrame.
     rewrite /OffsetLocSt /use_layout_alg' Hst Halg Z2Nat.id //.

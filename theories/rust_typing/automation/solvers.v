@@ -1660,7 +1660,7 @@ End bor_kind_alive_tac.
 Global Arguments lctx_bor_kind_alive : simpl never.
 Ltac solve_bor_kind_alive :=
   (* first compute [bor_kind_min] *)
-  let simp_min := let x := fresh in intros x; unfold bor_kind_min; simpl; unfold x; notypeclasses refine eq_refl in
+  let simp_min := let x := fresh in intros x; simpl; unfold x; notypeclasses refine eq_refl in
   match goal with
   | |- lctx_bor_kind_alive ?E ?L ?b =>
       refine (tac_lctx_bor_kind_alive_simpl _ _ _ _ _ _);
@@ -1679,85 +1679,7 @@ Ltac solve_bor_kind_alive :=
   | |- lctx_bor_kind_alive _ _ _ =>
       fail 1000 "solve_bor_kind_alive: cannot determine bor_kind shape"
   end.
-
-(** lctx_bor_kind_incl solver *)
-(* this essentially reduces to solve_lft_incl *)
-Section bor_kind_incl_tac.
-  Context `{typeGS Σ}.
-
-  Lemma tac_lctx_bor_kind_incl_simpl E L b1 b1' b2 b2' :
-    (∀ (b1'':=b1'), b1 = b1'') →
-    (∀ (b2'':=b2'), b2 = b2'') →
-    lctx_bor_kind_incl E L b1' b2' →
-    lctx_bor_kind_incl E L b1 b2.
-  Proof.
-    intros -> ->. done.
-  Qed.
-
-  Lemma tac_lctx_bor_kind_incl_any_owned E L b wl :
-    lctx_bor_kind_incl E L b (Owned wl).
-  Proof.
-    iIntros (?) "HL !> HE". destruct b; done.
-  Qed.
-
-  Lemma tac_lctx_bor_kind_incl_uniq_uniq E L κ γ κ' γ' :
-    lctx_lft_incl E L κ κ' →
-    lctx_bor_kind_incl E L (Uniq κ γ) (Uniq κ' γ').
-  Proof.
-    iIntros (Hincl ?) "HL". iPoseProof (Hincl with "HL") as "#Hincl".
-    iIntros "!> HE". iDestruct ("Hincl" with "HE") as "#Hincl'".
-    done.
-  Qed.
-
-  Lemma tac_lctx_bor_kind_incl_uniq_shared E L κ γ κ' :
-    lctx_lft_incl E L κ κ' →
-    lctx_bor_kind_incl E L (Uniq κ γ) (Shared κ').
-  Proof.
-    iIntros (Hincl ?) "HL". iPoseProof (Hincl with "HL") as "#Hincl".
-    iIntros "!> HE". iDestruct ("Hincl" with "HE") as "#Hincl'".
-    done.
-  Qed.
-
-  Lemma tac_lctx_bor_kind_incl_shared_shared E L κ κ' :
-    lctx_lft_incl E L κ κ' →
-    lctx_bor_kind_incl E L (Shared κ) (Shared κ').
-  Proof.
-    iIntros (Hincl ?) "HL". iPoseProof (Hincl with "HL") as "#Hincl".
-    iIntros "!> HE". iDestruct ("Hincl" with "HE") as "#Hincl'".
-    done.
-  Qed.
-End bor_kind_incl_tac.
-Ltac solve_bor_kind_incl :=
-  try match goal with
-  | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>
-      try (is_var b1; destruct b1);
-      try (is_var b2; destruct b2)
-  end;
-  (* first compute [bor_kind_min] *)
-  let simp_min := let x := fresh in intros x; unfold bor_kind_min; simpl; unfold x; notypeclasses refine eq_refl in
-  match goal with
-  | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>
-      refine (tac_lctx_bor_kind_incl_simpl _ _ _ _ _ _ _ _ _);
-      [ simp_min
-      | simp_min
-      | ]
-  | |- _ =>
-      fail 1000 "solve_bor_kind_incl: not an lctx_bor_kind_incl"
-  end;
-  match goal with
-  | |- lctx_bor_kind_incl ?E ?L _ (Owned _) =>
-      refine (tac_lctx_bor_kind_incl_any_owned _ _ _ _); solve[fail]
-  | |- lctx_bor_kind_incl ?E ?L (Uniq _ _) (Uniq _ _) =>
-      refine (tac_lctx_bor_kind_incl_uniq_uniq _ _ _ _ _ _ _); [solve_lft_incl]
-  | |- lctx_bor_kind_incl ?E ?L (Uniq _ _) (Shared _) =>
-      refine (tac_lctx_bor_kind_incl_uniq_shared _ _ _ _ _ _); [solve_lft_incl]
-  | |- lctx_bor_kind_incl ?E ?L (Shared _) (Shared _) =>
-      refine (tac_lctx_bor_kind_incl_shared_shared _ _ _ _ _); [solve_lft_incl]
-  | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>
-      fail 1000 "solve_bor_kind_incl: unable to solve inclusion"
-  end.
-
-(** llctx_bor_kind_direct_incl solver *)
+(** lctx_bor_kind_direct_incl solver *)
 Section bor_kind_direct_incl_tac.
   Context `{typeGS Σ}.
 
@@ -1801,7 +1723,7 @@ Ltac solve_bor_kind_direct_incl :=
       try (is_var b2; destruct b2)
   end;
   (* first compute [bor_kind_min] *)
-  let simp_min := let x := fresh in intros x; unfold bor_kind_min; simpl; unfold x; notypeclasses refine eq_refl in
+  let simp_min := let x := fresh in intros x; simpl; unfold x; notypeclasses refine eq_refl in
   match goal with
   | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
       refine (tac_lctx_bor_kind_direct_incl_simpl _ _ _ _ _ _ _ _ _);
@@ -1820,6 +1742,194 @@ Ltac solve_bor_kind_direct_incl :=
       refine (tac_lctx_bor_kind_direct_incl_shared_shared _ _ _ _ _); [solve_lft_incl]
   | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
       fail 1000 "solve_bor_kind_direct_incl: unable to solve inclusion"
+  end.
+
+(** [lctx_lft_list_incl] solver *)
+Section lft_list_incl.
+  Context `{!typeGS Σ}.
+
+  (* now process left to right *)
+  Lemma tac_lctx_lft_list_incl_cons E L κ κs1 κs2 i κ' :
+    κs2 !! i = Some κ' →
+    lctx_lft_incl E L κ κ' →
+    lctx_lft_list_incl E L κs1 κs2 →
+    lctx_lft_list_incl E L (κ :: κs1) κs2.
+  Proof.
+    intros Hlook Hincl1 Hincl2.
+    apply (lctx_lft_list_incl_app _ _ [_]); last done.
+    eapply lctx_lft_list_incl_singleton_l; last done.
+    by eapply list_elem_of_lookup_2.
+  Qed.
+  (* For this, we need to show inclusion of lists, where we interpret both sides as a join (i.e. max)
+     In other words, for each lifetime on the left we have to find one on the right which lives longer.
+  *)
+End lft_list_incl.
+
+Ltac solve_lft_list_incl_step cont :=
+  lazymatch goal with
+  | |- lctx_lft_list_incl ?E ?L [] _ =>
+      notypeclasses refine (lctx_lft_list_incl_nil_l E L _)
+  | |- lctx_lft_list_incl ?E ?L (?κ :: ?κs1) ?κs2 =>
+        list_find_tac ltac:(fun i el =>
+          notypeclasses refine (tac_lctx_lft_list_incl_cons E L κ κs1 κs2 i el _ _ _);
+          [ reflexivity | solve_lft_incl | cont ]
+        ) κs2
+  end.
+Ltac solve_lft_list_incl := repeat solve_lft_list_incl_step idtac.
+
+(** ** [place_update_kind] solvers *)
+Section place_update_kind_outlives.
+  Context `{!typeGS Σ}.
+
+  Lemma tac_lctx_place_update_kind_outlives_simpl E L b b' κs :
+    (∀ (b'':=b'), b = b'') →
+    lctx_place_update_kind_outlives E L b' κs →
+    lctx_place_update_kind_outlives E L b κs.
+  Proof.
+    intros <-. done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_outlives_strong E L κs :
+    lctx_place_update_kind_outlives E L UpdStrong κs.
+  Proof.
+    iIntros (?) "HL HE". done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_outlives_weak E L κs :
+    lctx_place_update_kind_outlives E L UpdWeak κs.
+  Proof.
+    iIntros (?) "HL HE". done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_outlives_uniq E L κs κs' :
+    lctx_lft_list_incl E L κs' κs →
+    lctx_place_update_kind_outlives E L (UpdUniq κs) κs'.
+  Proof.
+    iIntros (Hincl ?) "HL HE".
+    iPoseProof (Hincl with "HL") as "#Ha".
+    by iApply "Ha".
+  Qed.
+End place_update_kind_outlives.
+
+Ltac solve_place_update_kind_outlives :=
+  (* simplify first *)
+  let simp_min := let x := fresh in intros x; unfold place_update_kind_restrict, place_update_kind_max, UpdBot; simpl; unfold x; notypeclasses refine eq_refl in
+  match goal with
+  | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
+      refine (tac_lctx_place_update_kind_outlives_simpl _ _ _ _ _ _ _);
+      [ simp_min
+      | ]
+  | |- _ =>
+      fail 1000 "solve_place_update_kind_outlives: not an lctx_place_update_kind_outlives goal"
+  end;
+  lazymatch goal with
+  | |- lctx_place_update_kind_outlives ?E ?L UpdStrong _ =>
+      refine (tac_lctx_place_update_kind_outlives_strong E L _)
+  | |- lctx_place_update_kind_outlives ?E ?L UpdWeak _ =>
+      refine (tac_lctx_place_update_kind_outlives_weak E L _)
+  | |- lctx_place_update_kind_outlives ?E ?L (UpdUniq ?κs) _ =>
+      refine (tac_lctx_place_update_kind_outlives_uniq _ _ _ _ _);
+      solve_lft_list_incl
+  end.
+
+(** [lctx_place_update_kind_incl] solver *)
+(* this essentially reduces to solve_lft_incl *)
+Section place_update_kind_incl_tac.
+  Context `{typeGS Σ}.
+
+  Lemma tac_lctx_place_update_kind_incl_simpl E L b1 b1' b2 b2' :
+    (∀ (b1'':=b1'), b1 = b1'') →
+    (∀ (b2'':=b2'), b2 = b2'') →
+    lctx_place_update_kind_incl E L b1' b2' →
+    lctx_place_update_kind_incl E L b1 b2.
+  Proof.
+    intros -> ->. done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_incl_any_strong E L b :
+    lctx_place_update_kind_incl E L b UpdStrong.
+  Proof.
+    iIntros (?) "HL !> HE". destruct b; done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_incl_uniq_uniq E L κs κs' :
+    lctx_lft_list_incl E L κs κs' →
+    lctx_place_update_kind_incl E L (UpdUniq κs) (UpdUniq κs').
+  Proof.
+    iIntros (Hincl ?) "HL". iPoseProof (Hincl with "HL") as "#Hincl".
+    iIntros "!> HE". iDestruct ("Hincl" with "HE") as "#Hincl'".
+    done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_incl_uniq_weak E L κs :
+    lctx_place_update_kind_incl E L (UpdUniq κs) UpdWeak.
+  Proof.
+    iIntros (?) "HL". iIntros "!> HE". done.
+  Qed.
+
+  Lemma tac_lctx_place_update_kind_incl_weak_weak E L :
+    lctx_place_update_kind_incl E L UpdWeak UpdWeak.
+  Proof.
+    iIntros (?) "HL". iIntros "!> HE". done.
+  Qed.
+End place_update_kind_incl_tac.
+
+Ltac solve_place_update_kind_incl :=
+  try match goal with
+  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      try (is_var b1; destruct b1);
+      try (is_var b2; destruct b2)
+  end;
+  (* first compute [place_update_kind_max] *)
+  let simp_min := let x := fresh in intros x; unfold place_update_kind_restrict, place_update_kind_max, UpdBot; simpl; unfold x; notypeclasses refine eq_refl in
+  match goal with
+  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      refine (tac_lctx_place_update_kind_incl_simpl _ _ _ _ _ _ _ _ _);
+      [ simp_min
+      | simp_min
+      | ]
+  | |- _ =>
+      fail 1000 "solve_place_update_kind_incl: not an lctx_place_update_kind_incl"
+  end;
+  match goal with
+  | |- lctx_place_update_kind_incl ?E ?L _ UpdStrong =>
+      refine (tac_lctx_place_update_kind_incl_any_strong _ _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L (UpdUniq _) (UpdUniq _) =>
+      refine (tac_lctx_place_update_kind_incl_uniq_uniq _ _ _ _ _); [solve_lft_list_incl]
+  | |- lctx_place_update_kind_incl ?E ?L (UpdUniq _) UpdWeak =>
+      refine (tac_lctx_place_update_kind_incl_uniq_weak _ _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L UpdWeak UpdWeak =>
+      refine (tac_lctx_place_update_kind_incl_weak_weak _ _); solve[fail]
+  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      fail 1000 "solve_place_update_kind_incl: unable to solve inclusion"
+  end.
+
+(** [check_llctx_place_update_kind_incl] *)
+
+Ltac solve_check_llctx_place_update_kind_incl_pure_goal ::=
+  lazymatch goal with
+  | |- check_llctx_place_update_kind_incl_pure_goal ?E ?L ?b1 ?b2 ?res =>
+      first [
+        assert (res = true) by reflexivity;
+        simpl;
+        solve_place_update_kind_incl
+      | assert (res = false) by reflexivity;
+        simpl;
+        exact I ]
+  end.
+
+(* [check_llctx_place_update_kind_incl_uniq] *)
+
+Ltac solve_check_llctx_place_update_kind_incl_uniq_pure_goal ::=
+  lazymatch goal with
+  | |- check_llctx_place_update_kind_incl_uniq_pure_goal ?E ?L ?b1 ?κs ?res =>
+      first [
+        assert (res = Some eq_refl) by reflexivity;
+        simpl;
+        solve_place_update_kind_incl
+      | assert (res = None) by reflexivity;
+        simpl;
+        exact I ]
   end.
 
 (** lctx_lft_alive_count *)
@@ -2262,45 +2372,6 @@ Ltac solve_ty_allows :=
   end;
   solve_ty_has_op_type.
 
-
-(** ** [bor_kind] solvers *)
-Section bor_kind_outlives.
-  Context `{!typeGS Σ}.
-
-  Lemma lctx_bor_kind_outlives_owned E L wl κ :
-    lctx_bor_kind_outlives E L (Owned wl) κ.
-  Proof.
-    iIntros (?) "HL HE". done.
-  Qed.
-
-  Lemma lctx_bor_kind_outlives_uniq E L κ γ κ' :
-    lctx_lft_incl E L κ' κ →
-    lctx_bor_kind_outlives E L (Uniq κ γ) κ'.
-  Proof.
-    iIntros (Hincl ?) "HL HE".
-    iPoseProof (Hincl with "HL") as "#Ha".
-    by iApply "Ha".
-  Qed.
-
-  Lemma lctx_bor_kind_outlives_shared E L κ κ' :
-    lctx_lft_incl E L κ' κ →
-    lctx_bor_kind_outlives E L (Shared κ) κ'.
-  Proof.
-    iIntros (Hincl ?) "HL HE".
-    iPoseProof (Hincl with "HL") as "#Ha".
-    by iApply "Ha".
-  Qed.
-End bor_kind_outlives.
-
-Ltac solve_bor_kind_outlives :=
-  lazymatch goal with
-  | |- lctx_bor_kind_outlives ?E ?L (Owned _) ?κ =>
-      refine (lctx_bor_kind_outlives_owned E L _ _)
-  | |- lctx_bor_kind_outlives ?E ?L (Uniq _ _) _ =>
-      refine (lctx_bor_kind_outlives_uniq E L _ _ _ _); solve_lft_incl
-  | |- lctx_bor_kind_outlives ?E ?L (Shared _) _ =>
-      refine (lctx_bor_kind_outlives_shared _ _ _ _ _); solve_lft_incl
-  end.
 
 (** ** Augment the context with commonly needed facts. *)
 Section augment.

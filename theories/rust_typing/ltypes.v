@@ -267,28 +267,6 @@ Definition lctx_bor_kind_alive (E : elctx) (L : llctx) (b : bor_kind) :=
   end.
 
 (** ** Inclusion of bor_kinds *)
-(* we ignore the ghost variable names *)
-Definition bor_kind_min (b1 b2 : bor_kind) : bor_kind :=
-  match b1, b2 with
-  | Owned wl, _ => b2
-  | _, Owned wl => b1
-  | Uniq κ1 γ1, Uniq κ2 γ2 => Uniq (κ1 ⊓ κ2) γ1
-  | Shared κ1, Uniq κ2 γ2 => Uniq (κ1 ⊓ κ2) γ2
-  | Uniq κ1 γ1, Shared κ2 => Uniq (κ1 ⊓ κ2) γ1
-  | Shared κ1, Shared κ2 => Shared (κ1 ⊓ κ2)
-  end.
-Arguments bor_kind_min : simpl nomatch.
-
-Definition bor_kind_incl (b1 b2 : bor_kind) : iProp Σ :=
-  match b1, b2 with
-  | _, Owned _ => True
-  | Uniq κ1 γ1, Uniq κ2 γ2 => κ1 ⊑ κ2
-  | Uniq κ1 γ1, Shared κ2 => κ1 ⊑ κ2
-  | Shared κ1, Shared κ2 => κ1 ⊑ κ2
-  | _, _ => False
-  end%I.
-Arguments bor_kind_incl : simpl nomatch.
-
 Definition bor_kind_direct_incl (b1 b2 : bor_kind) : iProp Σ :=
   match b1, b2 with
   | Owned wl1, Owned wl2 => ⌜wl1 = wl2⌝
@@ -297,75 +275,7 @@ Definition bor_kind_direct_incl (b1 b2 : bor_kind) : iProp Σ :=
   | _, _ => False
   end.
 Arguments bor_kind_direct_incl : simpl nomatch.
-
-
-Infix "⊑ₖ" := bor_kind_incl (at level 70) : bi_scope.
-Infix "⊓ₖ" := bor_kind_min (at level 40) : stdpp_scope.
 Infix "⊑ₛₖ" := bor_kind_direct_incl (at level 70) : bi_scope.
-
-Global Instance bor_kind_incl_pers b1 b2 : Persistent (b1 ⊑ₖ b2).
-Proof. destruct b1, b2; apply _. Qed.
-
-Lemma bor_kind_incl_refl b:
-  ⊢ (b ⊑ₖ b)%I.
-Proof. destruct b; first done; iApply lft_incl_refl. Qed.
-Lemma bor_kind_min_incl_l b1 b2 :
-  ⊢ (b1 ⊓ₖ b2 ⊑ₖ b1)%I.
-Proof. destruct b1, b2; simpl; eauto using lft_incl_refl, lft_intersect_incl_l. Qed.
-Lemma bor_kind_min_incl_r b1 b2 :
-  ⊢ (b1 ⊓ₖ b2 ⊑ₖ b2)%I.
-Proof. destruct b1, b2; simpl; eauto using lft_incl_refl, lft_intersect_incl_r. Qed.
-Lemma bor_kind_incl_trans b1 b2 b3 :
-  ⊢ (b1 ⊑ₖ b2 -∗ b2 ⊑ₖ b3 -∗ b1 ⊑ₖ b3)%I.
-Proof. destruct b1, b2, b3; simpl; iIntros "#?? //"; by iApply lft_incl_trans. Qed.
-Lemma bor_kind_incl_glb b1 b2 b3 :
-  b1 ⊑ₖ b2 -∗
-  b1 ⊑ₖ b3 -∗
-  b1 ⊑ₖ b2 ⊓ₖ b3.
-Proof.
-  iIntros "Hincl1 Hincl2".
-  destruct b1, b2, b3; unfold bor_kind_min, bor_kind_incl; simpl; try done; try iApply lft_incl_refl.
-  all: iApply (lft_incl_glb with "Hincl1 Hincl2").
-Qed.
-
-Definition lctx_bor_kind_incl (E : elctx) (L : llctx) b b' : Prop :=
-  ∀ qL, llctx_interp_noend L qL -∗ □ (elctx_interp E -∗ b ⊑ₖ b').
-
-Lemma lctx_bor_kind_incl_acc E L k1 k2 :
-  lctx_bor_kind_incl E L k1 k2 →
-  elctx_interp E -∗ llctx_interp L -∗ k1 ⊑ₖ k2.
-Proof.
-  intros Hincl. iIntros "HE HL".
-  iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
-  iApply (Hincl with "HL HE").
-Qed.
-
-Lemma lctx_bor_kind_incl_use E L b1 b2 :
-  lctx_bor_kind_incl E L b1 b2 →
-  elctx_interp E -∗
-  llctx_interp L -∗
-  b1 ⊑ₖ b2.
-Proof.
-  iIntros (Hincl) "HE HL".
-  iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
-  by iPoseProof (Hincl with "HL HE") as "Ha".
-Qed.
-
-
-(** Outliving *)
-Definition bor_kind_outlives (b : bor_kind) (κ : lft) : iProp Σ :=
-  match b with
-  | Owned _ => True
-  | Uniq κ' _ => κ ⊑ κ'
-  | Shared κ' => κ ⊑ κ'
-  end.
-Global Instance bor_kind_outlives_persistent b κ : Persistent (bor_kind_outlives b κ).
-Proof. destruct b; apply _. Qed.
-Lemma bor_kind_outlives_mono b b' κ :
-  b ⊑ₖ b' -∗ bor_kind_outlives b κ -∗ bor_kind_outlives b' κ.
-Proof.
-  iIntros "#Hincl1 #Hincl2". destruct b, b'; unfold bor_kind_incl; simpl; first [done | iApply lft_incl_trans; done ].
-Qed.
 
 Definition bor_kind_outlives_elctx (b : bor_kind) (κ : lft) : elctx :=
   match b with
@@ -373,23 +283,6 @@ Definition bor_kind_outlives_elctx (b : bor_kind) (κ : lft) : elctx :=
   | Uniq κ' _ => [κ ⊑ₑ κ']
   | Shared κ' => [κ ⊑ₑ κ']
   end.
-
-Definition lctx_bor_kind_outlives (E : elctx) (L : llctx) (b : bor_kind) (κ : lft) :=
-  ∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ bor_kind_outlives b κ.
-Arguments lctx_bor_kind_outlives : simpl nomatch.
-
-Lemma lctx_bor_kind_outlives_all_use (E : elctx) (L : llctx) k κs :
-  ⌜Forall (lctx_bor_kind_outlives E L k) κs⌝ -∗
-  elctx_interp E -∗
-  llctx_interp L -∗
-  [∗ list] κ ∈ κs, bor_kind_outlives k κ.
-Proof.
-  iIntros (Hf) "#HE HL".
-  iPoseProof (Forall_big_sepL _ (bor_kind_outlives k) with "HL []") as "(Houtl & HL)"; first apply Hf.
-  { iModIntro. iIntros (?) "HL %Hout". iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
-    iPoseProof (Hout with "HL HE") as "#Hout". iPoseProof ("HL_cl"  with "HL") as "?". by iFrame. }
-  done.
-Qed.
 
 (** Direct inclusion *)
 Global Instance bor_kind_direct_incl_pers b1 b2 : Persistent (b1 ⊑ₛₖ b2).
@@ -411,24 +304,6 @@ Proof.
   - by iApply lft_incl_trans.
   - iSplit; last done. by iApply lft_incl_trans.
 Qed.
-Lemma bor_kind_direct_incl_glb b1 b2 b3 :
-  b1 ⊑ₛₖ b2 -∗
-  b1 ⊑ₛₖ b3 -∗
-  b1 ⊑ₛₖ b2 ⊓ₖ b3.
-Proof.
-  iIntros "Hincl1 Hincl2".
-  destruct b1, b2, b3; unfold bor_kind_min, bor_kind_incl; simpl; try done; try iApply lft_incl_refl.
-  - iApply (lft_incl_glb with "Hincl1 Hincl2").
-  - iDestruct "Hincl1" as "(Hincl1 & ->)". iDestruct "Hincl2" as "(Hincl2 & ->)".
-    iSplit; last done. iApply (lft_incl_glb with "Hincl1 Hincl2").
-Qed.
-Lemma bor_kind_direct_incl_bor_kind_incl b1 b2 :
-  b1 ⊑ₛₖ b2 -∗ b1 ⊑ₖ b2.
-Proof.
-  iIntros "Hincl".
-  destruct b1, b2; unfold bor_kind_incl, bor_kind_direct_incl; simpl; try done.
-  iDestruct "Hincl" as "($ & _)".
-Qed.
 
 Definition lctx_bor_kind_direct_incl (E : elctx) (L : llctx) b b' : Prop :=
   ∀ qL, llctx_interp_noend L qL -∗ □ (elctx_interp E -∗ b ⊑ₛₖ b').
@@ -445,16 +320,8 @@ Proof.
 Qed.
 
 End ltype.
-
-Infix "⊑ₖ" := bor_kind_incl (at level 70) : bi_scope.
 Infix "⊑ₛₖ" := bor_kind_direct_incl (at level 70) : bi_scope.
-Infix "⊓ₖ" := bor_kind_min (at level 40) : stdpp_scope.
-
-Global Arguments bor_kind_min : simpl never.
-Global Arguments bor_kind_incl : simpl never.
 Global Arguments bor_kind_direct_incl : simpl never.
-
-(*Global Hint Extern 4 (Inhabited _) => refine (populate _); assumption : typeclass_instances.*)
 
 Section ltype_def.
   Context `{typeGS Σ}.
@@ -5041,6 +4908,15 @@ Section blocked.
   (** Ofty is trivially unblockable *)
   Lemma ofty_imp_unblockable {rt} (ty : type rt) κs :
     ⊢ imp_unblockable κs (◁ ty).
+  Proof.
+    iModIntro. iSplitR.
+    - iIntros "*". rewrite ltype_own_core_equiv. simp_ltypes. eauto.
+    - iIntros "*". rewrite ltype_own_core_equiv. simp_ltypes. eauto.
+  Qed.
+
+  (** The core is trivially unblockable *)
+  Lemma core_imp_unblockable {rt} (lt : ltype rt) κs :
+    ⊢ imp_unblockable κs (ltype_core lt).
   Proof.
     iModIntro. iSplitR.
     - iIntros "*". rewrite ltype_own_core_equiv. simp_ltypes. eauto.

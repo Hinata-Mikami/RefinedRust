@@ -5,14 +5,49 @@
 
 #![rr::include("stdlib")]
 
+// Point: I want to be able to borrow the contents of the box, but not the box itself
+// If I were to borrow the T field, would I be able to inject back? 
+// 
+// I'd have: 
+// StructLtype [BlockedLtype T; ◁ List<T>] 
+// Then I fold that to Coreable ?? 
+//
+// for Vec, I went to Coreable κ (Vec) I think. 
+// in the process of folding, I'm updating the refinement.
+//
+// Here the same happens as well. 
+// I'll need a stratification lemma that lifts coreable for enum. 
+// Basically, these coreable lifting lemmas are what is needed to reborrow mutably below a type.
+//
+// I'll need two changes to make this work nicely:
+// - allow invariants on enums, or (better) allow them on the constituent structs.
+// - don't always require PlaceIn on the invariant struct fields. 
+//
+// Basically I need to be careful with the place_rfn placement to control where I can reborrow or not.
+// 
+//
+// What if I allow invariants on structs here? 
+// Maybe I can formulate the lemmas such that I _always_ use invariants (in order to avoid
+// duplication)?
+// 
+//
+//
+//
+
 #[rr::refined_by("list ({rt_of T})")]
+//#[rr::refined_by("list (place_rfn {rt_of T})")]
 enum List<T> {
     #[rr::pattern("nil")]
     Nil,
     #[rr::pattern("cons" $ "x", "xs")]
+    //#[rr::refinement("-[x; xs]")]
     #[rr::refinement("(x, xs)")]
     #[rr::refined_by("(x, xs)" : "({rt_of T}) * (list ({rt_of T}))")]
-    Cons(#[rr::field("x")] T, #[rr::field("#xs")] Box<List<T>>),
+    Cons(
+        #[rr::field("x")]
+        T, 
+        #[rr::field("#xs")]
+        Box<List<T>>),
 }
 
 impl<T> List<T> {

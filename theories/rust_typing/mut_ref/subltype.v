@@ -238,7 +238,7 @@ Section access.
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "%". simp_ltypes. done.
+    - iIntros "->". simp_ltypes. done.
     - iIntros "(%Hrefl & Heq & Hub)".
       subst rt2. cbn.
       iExists eq_refl. cbn. iSplitR "Hub".
@@ -256,9 +256,7 @@ Section access.
       (∀ rt' (lt2 : ltype rt') r2,
         l ↦ l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2 ={F}=∗
-        l ◁ₗ[π, Owned wl] #(r2, γ') @ MutLtype lt2 κ' ∗
-        (∀ bmin, typed_place_cond bmin lt lt2 -∗
-         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ'))).
+        l ◁ₗ[π, Owned wl] #(r2, γ') @ MutLtype lt2 κ').
   Proof.
     iIntros (?) "#[LFT TIME] HP".
     rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
@@ -271,10 +269,9 @@ Section access.
     iModIntro. iExists l'. iFrame.
     iApply (logical_step_intro_maybe with "Hat").
     iIntros "Hcred' !>". iIntros (rt2 lt2 r2) "Hl Hb".
-    iModIntro. iSplitL.
-    - rewrite ltype_own_mut_ref_unfold /mut_ltype_own. iExists void*.
-      iSplitR; first done. by iFrame "Hlb % ∗".
-    - iIntros (bmin) "Hcond". by iApply (mut_ltype_place_cond).
+    iModIntro.
+    rewrite ltype_own_mut_ref_unfold /mut_ltype_own. iExists void*.
+    iSplitR; first done. by iFrame "Hlb % ∗".
   Qed.
 
   Lemma mut_ltype_acc_uniq {rt} F π (lt : ltype rt) (r : place_rfn rt) l κ' γ' κ γ q R :
@@ -290,9 +287,10 @@ Section access.
        (∀ bmin (lt2 : ltype rt) r2,
         l ↦ l' -∗
         l' ◁ₗ[π, Uniq κ' γ'] r2 @ lt2  -∗
-        bmin ⊑ₖ Uniq κ γ -∗
+        bmin ⪯ₚ UpdUniq [κ] -∗
+        ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         typed_place_cond bmin lt lt2 ={F}=∗
-        l ◁ₗ[π, Uniq κ γ] PlaceIn (r2, γ') @ MutLtype lt2 κ' ∗
+        l ◁ₗ[π, Uniq κ γ] #(r2, γ') @ MutLtype lt2 κ' ∗
         R ∗
         typed_place_cond bmin (MutLtype lt κ') (MutLtype lt2 κ')) ∧
       (* strong update, go to Opened *)
@@ -325,12 +323,11 @@ Section access.
     iModIntro.
     iSplit.
     - (* close *)
-      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
+      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k %Hst_eq #Hcond".
       (* extract the necessary info from the place_cond *)
-      iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
+      iPoseProof (typed_place_cond_incl _ (UpdUniq [κ]) with "Hincl_k Hcond") as "Hcond'".
       iDestruct "Hcond'" as "(%Heq & Heq & (#Hub & _))".
       rewrite (UIP_refl _ _ Heq). cbn.
-      iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
       (* close the borrow *)
       iMod (gvar_update (r2, γ') with "Hauth Hrfn") as "(Hauth & Hrfn)".
       set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc), l ↦ l' ∗ ltype_own lt2 (Uniq κ' r'.2) π r'.1 l'))%I).
@@ -403,11 +400,7 @@ Section access.
       l ↦{q'} l' -∗
       l' ◁ₗ[π, Shared (κ' ⊓ κ)] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #(r', γ) @ MutLtype lt' κ' ∗
-      q.[κ] ∗
-      (∀ bmin,
-      bmin ⊑ₖ Shared κ -∗
-      typed_place_cond bmin lt lt' ={F}=∗
-      typed_place_cond bmin (MutLtype lt κ') (MutLtype lt' κ'))).
+      q.[κ]).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_mut_ref_unfold /mut_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & %γ' & %Ha & #Hb)".
@@ -420,13 +413,10 @@ Section access.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
     iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
-    iFrame. iSplitL.
-    { iModIntro.
-      rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
-      iExists void*. iFrame "% #". by iExists _. }
-    iModIntro. iIntros (bmin) "Hincl Hcond".
+    iFrame.
     iModIntro.
-    iApply mut_ltype_place_cond; done.
+    rewrite ltype_own_mut_ref_unfold /mut_ltype_own.
+    iExists void*. iFrame "% #". by iExists _.
   Qed.
 
 End access.

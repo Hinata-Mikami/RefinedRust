@@ -1072,68 +1072,410 @@ Section judgments.
   End find_place_ctx_correct.
 
 
+  Lemma imp_unblockable_lft_incl κs1 κs2 {rt} (lt : ltype rt) :
+    lft_list_incl κs1 κs2 -∗
+    imp_unblockable κs1 lt -∗
+    imp_unblockable κs2 lt.
+  Proof.
+    unfold lft_list_incl.
+    iIntros "(_ & Hincl)".
+    by iApply imp_unblockable_shorten.
+  Qed.
+
   (** ** Condition on places: when is a client allowed to replace [lt] with [lt2]
     under a context where the intersected [bor_kind] is [b]?
     *)
-  Section fix_inner.
-    Context {rt rt2 : RT}
-    .
+  Inductive place_update_kind : Type :=
+  (* strong updates *)
+  | UpdStrong
+  (* weak updates that don't change the refinement type *)
+  | UpdWeak
+  (* uniq updates: once all the lifetimes are dead, the place becomes unblockable *)
+  (* This becomes degenerate if [κs = nil] -- then this means that updates are allowed as long as the core is equal *)
+  | UpdUniq (κs : list lft)
+  .
 
-    (** [b] is the intersection of all bor_kinds which are "above" the position affecting this place.
-      This means: [b] expresses what we can do with the place.
-      * [Shared] should not allow mutable borrowing/mutable accesses, refinement needs to stay the same (the refinement is fixed in the fractional borrow).
-      * [Uniq] allows mutation and requires no condition on the refinement.
-      * [Owned] states that there are no borrows above, only "plain" ownership.
-          That means we can do arbitrary strong updates (even changing the refinement type if we need to).
-    *)
-    Import EqNotations.
 
-    (** Condition on type changes from [lt] to [lt2] *)
-    (* NOTE Now that ltype_eq involves the refinement, maybe we should merge this with the condition on the refinement?
-        -> no. since the eq proof is used in the lifetime logic's inheritance vs in the Uniq case, we cannot fix to the current refinement, but rather need to have a proof for all refinements.
-    *)
-    Definition typed_place_cond (b : bor_kind) (lt : ltype rt) (lt2 : ltype rt2) : iProp Σ :=
-      match b with
-      | Owned _ =>
-          (* TODO weaken this? *)
-          ⌜ltype_st lt = ltype_st lt2⌝
-      | Uniq κ _ =>
-          ∃ (Heq : rt = rt2),
-          (* We could allow a disjunction here:
-             - if we actually change the place type, then we change the contents of the borrow, and we must prove that we can actually unblock the new type [lt2] in time.
-             - if we don't actually change the place type, we've proved this before, and it is fine.
-              (this isn't completely true for products: we will need sideconditions for products to handle components that don't change, because we can't just extract this from the VS again when we change one component).
-              TODO: pinned borrows actually allow to get the VS out now with the strong accessor, so there should be nothing stopping us from allowing this.
-          *)
-          (∀ b r, ltype_eq b r r (ltype_core lt) (ltype_core (rew <- [ltype] Heq in lt2))) ∗ 
-          imp_unblockable [κ] lt2
+  Definition place_update_kind_incl (a b : place_update_kind) : iProp Σ :=
+    match a, b with
+    | _, UpdStrong => True
+    | UpdWeak, UpdWeak => True
+    | UpdUniq _, UpdWeak => True
+    | UpdUniq κs1, UpdUniq κs2 =>
+        lft_list_incl κs1 κs2
+    | _, _ => False
+    end.
+  Definition place_update_kind_max (a b : place_update_kind) : place_update_kind :=
+    match a, b with
+    | UpdStrong, _ => UpdStrong
+    | _, UpdStrong => UpdStrong
+    | UpdWeak, _ => UpdWeak
+    | _, UpdWeak => UpdWeak
+    | UpdUniq κs1, UpdUniq κs2 =>
+        UpdUniq (κs1 ++ κs2)
+    end.
 
-          (* ∨ ⌜lt = rew <- [lty] Heq in lt2⌝ *)
-      | Shared κ =>
-          ⌜ltype_st lt = ltype_st lt2⌝
-      end%I.
+  (* We cannot easily define a notion of intersection for the [UpdUniq] case, but we can define intersection with a [place_restriction] *)
+  Inductive place_restriction : Type :=
+  | RestrictNone
+  | RestrictWeak
+  | RestrictUniq (κ : lft)
+  .
+  Definition place_update_kind_restrict (a : place_update_kind) (b : place_restriction) : place_update_kind :=
+    match a, b with
+    | UpdUniq κs1, RestrictUniq κ => UpdUniq ((λ κ1, κ1 ⊓ κ) <$> κs1)
+    | UpdUniq κ1, _ => UpdUniq κ1
+    | _, RestrictUniq κ1 => UpdUniq [κ1]
+    | UpdWeak, _ => UpdWeak
+    | _, RestrictWeak => UpdWeak
+    | _, _ => UpdStrong
+    end.
+  Definition bor_kind_to_place_restriction (b : bor_kind) : place_restriction :=
+    match b with
+    | Uniq κ _ => RestrictUniq κ
+    | _ => RestrictNone
+    end.
+  Global Coercion bor_kind_to_place_restriction : bor_kind >-> place_restriction.
 
-    Global Instance typed_place_cond_pers b lt lt2 :
-      Persistent (typed_place_cond b lt lt2).
-    Proof. destruct b; apply _. Qed.
+  (* Bottom in the hierarchy *)
+  Definition UpdBot := (UpdUniq []).
 
-    Lemma typed_place_cond_incl b1 b2 lt1 lt2 :
-      b1 ⊑ₖ b2 -∗ typed_place_cond b1 lt1 lt2 -∗ typed_place_cond b2 lt1 lt2.
-    Proof using Type*.
-      iIntros "? Hcond//".
-      destruct b1, b2; simpl; try done.
-      - iDestruct "Hcond" as (<-) "(Ha & _)".
-        iDestruct ("Ha" $! inhabitant inhabitant) as "(( #Hly & _) & _)".
-        rewrite !ltype_core_syn_type_eq. done.
-      - iDestruct "Hcond" as (<-) "(Heq & _)"; cbn in *.
-        iDestruct ("Heq" $! inhabitant inhabitant) as "(( #Hly & _) & _)".
-        rewrite !ltype_core_syn_type_eq//.
-      - iDestruct "Hcond" as (<-) "(Heq & Hub)"; cbn in *.
-        iExists eq_refl. cbn. iFrame.
-        iApply (imp_unblockable_shorten' with "[$] Hub").
-    Qed.
-  End fix_inner.
+  Infix "⪯ₚ" := (place_update_kind_incl) (at level 51).
+  Infix "⊔ₚₖ" := (place_update_kind_max) (at level 50).
+  Infix "⊓ₚ" := (place_update_kind_restrict) (at level 50).
 
+  Global Instance place_update_kind_incl_pers b1 b2 : Persistent (b1 ⪯ₚ b2).
+  Proof. destruct b1, b2; try apply _. Qed.
+
+  Lemma place_update_kind_incl_refl b:
+    ⊢ (b ⪯ₚ b)%I.
+  Proof.
+    destruct b; try done.
+    iApply lft_list_incl_refl.
+  Qed.
+  Lemma place_update_kind_incl_trans b1 b2 b3 :
+    ⊢ (b1 ⪯ₚ b2 -∗ b2 ⪯ₚ b3 -∗ b1 ⪯ₚ b3)%I.
+  Proof.
+    destruct b1, b2, b3; simpl; iIntros "#Hx#Hy //".
+    iApply lft_list_incl_trans; done.
+  Qed.
+  Lemma upd_bot_min b :
+    ⊢ UpdBot ⪯ₚ b.
+  Proof.
+    destruct b; try done.
+    simpl.
+    iApply lft_list_incl_nil_l.
+  Qed.
+
+  (** Properties about meet *)
+  (*Lemma place_update_kind_min_incl_l b1 b2 :*)
+    (*⊢ (b1 ⊓ₚ b2 ⪯ₚ b1)%I.*)
+  (*Proof. destruct b1, b2; simpl; eauto using lft_incl_refl, lft_intersect_incl_l. Qed.*)
+  (*Lemma place_update_kind_min_incl_r b1 b2 :*)
+    (*⊢ (b1 ⊓ₚ b2 ⪯ₚ b2)%I.*)
+  (*Proof. destruct b1, b2; simpl; eauto using lft_incl_refl, lft_intersect_incl_r. Qed.*)
+  (*
+  Lemma place_update_kind_incl_glb b1 b2 b3 :
+    b1 ⪯ₚ b2 -∗
+    b1 ⪯ₚ b3 -∗
+    b1 ⪯ₚ b2 ⊓ₚ b3.
+  Proof.
+    iIntros "Hincl1 Hincl2".
+    destruct b1, b2, b3; unfold place_update_kind_min, place_update_kind_incl; simpl; try done; try iApply lft_incl_refl.
+    all: iApply (lft_incl_glb with "Hincl1 Hincl2").
+  Qed.
+   *)
+
+  Lemma place_update_kind_restrict_incl b r :
+    ⊢ b ⊓ₚ r ⪯ₚ b.
+  Proof.
+    destruct b, r; simpl; try done.
+    - iApply lft_list_incl_refl.
+    - iApply lft_list_incl_refl.
+    - iApply lft_list_incl_pointwise.
+      iApply big_sepL2_intro.
+      { rewrite length_fmap//. }
+      iModIntro. iIntros (??? Hlook1 Hlook2).
+      rewrite list_lookup_fmap Hlook2/= in Hlook1.
+      injection Hlook1 as <-.
+      iApply lft_intersect_incl_l.
+  Qed.
+
+  (** Properties about join *)
+  Lemma place_update_kind_max_incl_l b1 b2 :
+    ⊢ (b1 ⪯ₚ b1 ⊔ₚₖ b2)%I.
+  Proof.
+    destruct b1, b2; simpl; try done.
+    iApply lft_list_incl_app_l.
+  Qed.
+  Lemma place_update_kind_max_incl_r b1 b2 :
+    ⊢ (b2 ⪯ₚ b1 ⊔ₚₖ b2)%I.
+  Proof.
+    destruct b1, b2; simpl; try done.
+    iApply lft_list_incl_app_r.
+  Qed.
+  Lemma place_update_kind_incl_lub b1 b2 b3 :
+    b1 ⪯ₚ b3 -∗
+    b2 ⪯ₚ b3 -∗
+    b1 ⊔ₚₖ b2 ⪯ₚ b3.
+  Proof.
+    iIntros "#Hincl1 #Hincl2".
+    destruct b1, b2, b3; unfold place_update_kind_max, place_update_kind_incl; simpl; try done.
+    by iApply lft_list_incl_lub.
+  Qed.
+
+
+  Global Arguments place_update_kind_incl : simpl nomatch.
+
+  Definition lctx_place_update_kind_incl (E : elctx) (L : llctx) b b' : Prop :=
+    ∀ qL, llctx_interp_noend L qL -∗ □ (elctx_interp E -∗ b ⪯ₚ b').
+
+  Lemma lctx_place_update_kind_incl_acc E L k1 k2 :
+    lctx_place_update_kind_incl E L k1 k2 →
+    elctx_interp E -∗ llctx_interp L -∗ k1 ⪯ₚ k2.
+  Proof.
+    intros Hincl. iIntros "HE HL".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & Hcl_L)".
+    iApply (Hincl with "HL HE").
+  Qed.
+
+  Lemma lctx_place_update_kind_incl_use E L b1 b2 :
+    lctx_place_update_kind_incl E L b1 b2 →
+    elctx_interp E -∗
+    llctx_interp L -∗
+    b1 ⪯ₚ b2.
+  Proof.
+    iIntros (Hincl) "HE HL".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+    by iPoseProof (Hincl with "HL HE") as "Ha".
+  Qed.
+
+  (** Outliving:
+    Usually, we want to know that we can perform updates to a place at least until all the blocked lifetimes in the place are over.
+    Otherwise, already something went wrong before.
+
+    TODO: it would be nice if we could get this as an implicit property of our model.
+  *)
+  Definition place_update_kind_outlives (b : place_update_kind) (κs : list lft) : iProp Σ :=
+    match b with
+    | UpdUniq κs' =>
+        lft_list_incl κs κs'
+    | _ => True
+    end.
+  Global Instance place_update_kind_outlives_persistent b κ : Persistent (place_update_kind_outlives b κ).
+  Proof. destruct b; apply _. Qed.
+  Lemma place_update_kind_outlives_incl b b' κ :
+    b ⪯ₚ b' -∗ place_update_kind_outlives b κ -∗ place_update_kind_outlives b' κ.
+  Proof.
+    iIntros "#Hincl1 #Hincl2".
+    destruct b, b'; unfold place_update_kind_incl; simpl; try done.
+    by iApply lft_list_incl_trans.
+  Qed.
+
+  Lemma place_update_kind_outlives_uniq_incl b κs :
+    place_update_kind_outlives b κs -∗
+    UpdUniq κs ⪯ₚ b.
+  Proof.
+    destruct b; simpl; by eauto.
+  Qed.
+
+  Definition lctx_place_update_kind_outlives (E : elctx) (L : llctx) (b : place_update_kind) (κs : list lft) :=
+    ∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ place_update_kind_outlives b κs.
+  Arguments lctx_place_update_kind_outlives : simpl nomatch.
+
+  Lemma lctx_place_update_kind_outlives_use (E : elctx) (L : llctx) k κs :
+    lctx_place_update_kind_outlives E L k κs →
+    elctx_interp E -∗
+    llctx_interp L -∗
+    place_update_kind_outlives k κs.
+  Proof.
+    iIntros (Hf) "#HE HL".
+    iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+    iPoseProof (Hf with "HL HE") as "#Hout".
+    done.
+  Qed.
+  Lemma lctx_place_update_kind_outlives_all_use (E : elctx) (L : llctx) k κs :
+    Forall (lctx_place_update_kind_outlives E L k) κs →
+    elctx_interp E -∗
+    llctx_interp L -∗
+    [∗ list] κ ∈ κs, place_update_kind_outlives k κ.
+  Proof.
+    iIntros (Hf) "#HE HL".
+    iPoseProof (Forall_big_sepL _ (place_update_kind_outlives k) with "HL []") as "(Houtl & HL)"; first apply Hf.
+    { iModIntro. iIntros (?) "HL %Hout". iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+      iPoseProof (Hout with "HL HE") as "#Hout". iPoseProof ("HL_cl"  with "HL") as "?". by iFrame. }
+    done.
+  Qed.
+
+
+  (* How do I handle Opened now?
+      I allow strong updates below.
+      if the thing above doesn't allow strong updates, I'm stuck.
+      I can rule that out already in the precondition of the place rule, so that's okay.
+  *)
+
+  Definition place_update_kind_rt_same (pupd : place_update_kind) : bool :=
+    match pupd with
+    | UpdStrong => false
+    | _ => true
+    end.
+  Definition opt_place_update_eq (upd : place_update_kind) (rt1 rt2 : RT) : Prop :=
+    if place_update_kind_rt_same upd then rt1 = rt2 else True.
+  Definition opt_place_update_eq_refl `{upd : !place_update_kind} `{rt : !RT} : opt_place_update_eq upd rt rt.
+  Proof.
+    unfold opt_place_update_eq.
+    destruct upd; simpl; [apply I | apply eq_refl..].
+  Defined.
+  Import EqNotations.
+  Lemma opt_place_update_eq_lift (f : RT → RT) {b rt1 rt2} :
+    opt_place_update_eq b rt1 rt2 →
+    opt_place_update_eq b (f rt1) (f rt2).
+  Proof.
+    unfold opt_place_update_eq.
+    destruct b; simpl.
+    - intros. exact I.
+    - intros Heq. exact (rew [λ rt, f rt1 = f rt] Heq in @eq_refl _ (f rt1)).
+    - intros Heq. exact (rew [λ rt, f rt1 = f rt] Heq in @eq_refl _ (f rt1)).
+  Defined.
+
+  Lemma opt_place_update_eq_lift_join {rt1 rt2} b1 b2 :
+    opt_place_update_eq b1 rt1 rt2 →
+    opt_place_update_eq (b1 ⊔ₚₖ b2) rt1 rt2.
+  Proof.
+    unfold opt_place_update_eq.
+    destruct b1, b2; simpl; done.
+  Defined.
+
+  Lemma opt_place_update_eq_use allowed old_rt pupd_rt :
+    place_update_kind_rt_same allowed = true →
+    opt_place_update_eq allowed old_rt pupd_rt →
+    old_rt = pupd_rt.
+  Proof.
+    unfold opt_place_update_eq. intros ->.
+    done.
+  Defined.
+
+
+  (* Note: I can't make the bound condition part of this because it is an iProp *)
+  Record place_update (old_rt : RT) (allowed : place_update_kind) : Type := mkPUpd {
+    pupd_rt : RT;
+    pupd_lt : ltype pupd_rt;
+    pupd_rfn : place_rfn pupd_rt;
+    pupd_R : iProp Σ;
+    pupd_performed : place_update_kind;
+    (*pupd_bound *)
+    pupd_eq_1 :
+      opt_place_update_eq pupd_performed old_rt pupd_rt;
+    pupd_eq_2 :
+      opt_place_update_eq allowed old_rt pupd_rt;
+  }.
+  Add Printing Constructor place_update.
+  Global Arguments pupd_rt {_ _}.
+  Global Arguments pupd_lt {_ _}.
+  Global Arguments pupd_rfn {_ _}.
+  Global Arguments pupd_R {_ _}.
+  Global Arguments pupd_performed {_ _}.
+  Global Arguments pupd_eq_1 {_ _ _}.
+  Global Arguments pupd_eq_2 {_ _ _}.
+
+  Lemma pupd_performed_incl_uniq_rt old_rt allowed (upd : place_update old_rt allowed) κs  :
+    upd.(pupd_performed) ⪯ₚ UpdUniq κs -∗
+    ⌜old_rt = upd.(pupd_rt)⌝.
+  Proof.
+    destruct upd as [? ? ? ? [] ? ?]; simpl; eauto.
+  Qed.
+
+  Definition place_update_ctx (rti rto: RT) (allowed_inner allowed_outer : place_update_kind) : Type :=
+      llctx →
+      place_update rti allowed_inner →
+      (place_update rto allowed_outer → iProp Σ) →
+      iProp Σ.
+
+
+  Import EqNotations.
+
+  (** Condition on type changes from [lt] to [lt2] *)
+  (* NOTE Now that ltype_eq involves the refinement, maybe we should merge this with the condition on the refinement?
+      -> no. since the eq proof is used in the lifetime logic's inheritance vs in the Uniq case, we cannot fix to the current refinement, but rather need to have a proof for all refinements.
+  *)
+  Definition typed_place_cond {rt rt2} (b : place_update_kind) (lt : ltype rt) (lt2 : ltype rt2) : iProp Σ :=
+    match b with
+    | UpdStrong =>
+        True
+    | UpdWeak =>
+        ⌜rt = rt2⌝
+    | UpdUniq κs =>
+        ∃ (Heq : rt = rt2),
+        (* We could allow a disjunction here:
+           - if we actually change the place type, then we change the contents of the borrow, and we must prove that we can actually unblock the new type [lt2] in time.
+           - if we don't actually change the place type, we've proved this before, and it is fine.
+            (this isn't completely true for products: we will need sideconditions for products to handle components that don't change, because we can't just extract this from the VS again when we change one component).
+            TODO: pinned borrows actually allow to get the VS out now with the strong accessor, so there should be nothing stopping us from allowing this.
+        *)
+        (∀ b r, ltype_eq b r r (ltype_core lt) (ltype_core (rew <- [ltype] Heq in lt2))) ∗
+        imp_unblockable κs lt2
+        (* ∨ ⌜lt = rew <- [lty] Heq in lt2⌝ *)
+    end%I.
+
+
+  (* TODO: If we would allow viewshifts in the Uniq case of [ltype_incl], we could use [ltype_incl] for the RHS instead *)
+  Lemma imp_unblockable_nil {rt} (lt : ltype rt) :
+    imp_unblockable [] lt ⊣⊢
+    (□ ∀ π b r l, l ◁ₗ[ π, b] r @ lt ={lftE}=∗ l ◁ₗ[ π, b] r @ ltype_core lt).
+  Proof.
+    iSplit.
+    - iIntros "(#Hub1 & #Hub2)".
+      iModIntro. iIntros (π b r l) "Hl".
+      destruct b.
+      + rewrite -ltype_own_core_equiv.
+        iApply "Hub2"; last done.
+        iApply lft_dead_list_nil_1.
+      + iModIntro. by iApply ltype_own_shared_to_core.
+      + rewrite -ltype_own_core_equiv.
+        iApply "Hub1"; last done.
+        iApply lft_dead_list_nil_1.
+    - iIntros "#Hub".
+      iSplitL; iModIntro.
+      + iIntros (?????) "_".
+        rewrite ltype_own_core_equiv.
+        iApply "Hub".
+      + iIntros (????) "_".
+        rewrite ltype_own_core_equiv.
+        iApply "Hub".
+  Qed.
+
+  (*  TODO: can I change UpdUniq such that UpdBot becomes satisfying?
+  Lemma typed_place_cond_upd_eq {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    typed_place_cond UpdEq lt1 lt2 ⊣⊢
+    ((∃ Heq, (∀ b r, ltype_eq b r r lt1 ((rew <- [ltype] Heq in lt2))))).
+  Proof.
+    simpl. iSplit.
+    - iIntros "(%Heq & Ha & Hub)".
+      iExists Heq. subst.
+      rewrite imp_unblockable_nil.
+      done.
+    - iIntros "(%Heq & Ha)".
+      iExists Heq. iFrame.
+      Search imp_unblockable.
+      iApply imp_unblockable.
+   *)
+
+  Global Instance typed_place_cond_pers {rt rt2} b (lt : ltype rt) (lt2 : ltype rt2) :
+    Persistent (typed_place_cond b lt lt2).
+  Proof. destruct b; apply _. Qed.
+
+  Lemma typed_place_cond_incl k1 k2 {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) :
+    k1 ⪯ₚ k2 -∗
+    typed_place_cond k1 lt1 lt2 -∗
+    typed_place_cond k2 lt1 lt2.
+  Proof.
+    iIntros "#Hincl Hcond".
+    destruct k2, k1; simpl in *; try done.
+    - iDestruct "Hcond" as "(%Heq & ?)". done.
+    - iDestruct "Hcond" as "(%Heq & ? & Hub)".
+      iExists Heq. iFrame.
+      iApply imp_unblockable_lft_incl; done.
+  Qed.
   Lemma typed_place_cond_trans {rt1 rt2 rt3} (lt1 : ltype rt1) (lt2 : ltype rt2) (lt3 : ltype rt3) b :
     typed_place_cond b lt1 lt2 -∗
     typed_place_cond b lt2 lt3 -∗
@@ -1141,30 +1483,39 @@ Section judgments.
   Proof.
     destruct b; simpl.
     - iIntros "% % !%". congruence.
-    - iIntros "-> ->".
-      done.
+    - iIntros "-> ->". done.
     - iIntros "(%Heq & Heq & Hub) (%Heq' & Heq' & Hub')".
       subst.
       iExists eq_refl. iFrame. cbn.
       iIntros (b r). iApply (ltype_eq_trans with "Heq Heq'").
   Qed.
 
-  Lemma imp_unblockable_incl_blocked_lfts {rt} κ (lt : ltype rt) :
-    ([∗ list] κ' ∈ ltype_blocked_lfts lt, κ' ⊑ κ) -∗
-    imp_unblockable [κ] lt.
+  Lemma imp_unblockable_incl_blocked_lfts {rt} κs (lt : ltype rt) :
+    □ (lft_dead_list κs ={lftE}=∗ lft_dead_list (ltype_blocked_lfts lt)) -∗
+    imp_unblockable κs lt.
   Proof.
     iIntros "#Houtl".
     iApply (imp_unblockable_shorten with "[Houtl]"); last iApply imp_unblockable_blocked_dead.
-    iModIntro. iIntros "(#Hdead & _)".
-    iApply big_sepL_fupd. iApply big_sepL_intro.
-    iIntros "!>" (? κ' Hlook). iPoseProof (big_sepL_lookup with "Houtl") as "Hincl"; first done.
-    iApply (lft_incl_dead with "Hincl Hdead"). done.
+    done.
+  Qed.
+
+  Definition place_kind_outlives_unblock_lt {rt} (k : place_update_kind) (lt : ltype rt) : iProp Σ :=
+    place_update_kind_outlives k (ltype_blocked_lfts lt).
+  Lemma place_kind_outlives_unblock_lt_use F κs {rt} (lt : ltype rt) :
+    lftE ⊆ F →
+    place_kind_outlives_unblock_lt (UpdUniq κs) lt -∗
+    lft_dead_list κs ={F}=∗
+    lft_dead_list (ltype_blocked_lfts lt).
+  Proof.
+    iIntros (?) "Houtl".
+    unfold place_kind_outlives_unblock_lt, place_update_kind_outlives.
+    iApply lft_list_incl_acc_dead; done.
   Qed.
 
   (** Requires a sidecondition to make sure we can actually do the unblocking. *)
   (* NOTE: if we were to revise the use of unblocking and have a disjunct to just show ltype_eq instead of unblockable, we could get rid of the sidecondition *)
   Lemma typed_place_cond_refl {rt} b (lt : ltype rt) :
-    ([∗ list] κ' ∈ ltype_blocked_lfts lt, bor_kind_outlives b κ') -∗
+    place_kind_outlives_unblock_lt b lt -∗
     typed_place_cond b lt lt.
   Proof.
     iIntros "#Houtl".
@@ -1173,42 +1524,38 @@ Section judgments.
     - done.
     - iExists eq_refl. cbn. iSplitR.
       { iIntros (??). iApply ltype_eq_refl. }
-      by iApply imp_unblockable_incl_blocked_lfts.
+      iApply imp_unblockable_incl_blocked_lfts.
+      iModIntro. iApply lft_list_incl_acc_dead; done.
   Qed.
 
   Lemma typed_place_cond_refl_ofty {rt} b (ty : type rt) :
     ⊢ typed_place_cond b (◁ ty)%I (◁ ty)%I.
   Proof.
-    iApply typed_place_cond_refl. done.
-  Qed.
-
-  Lemma typed_place_cond_syn_type_eq {rt1 rt2} b (lt1 : ltype rt1) (lt2 : ltype rt2) :
-    typed_place_cond b lt1 lt2 -∗
-    ⌜ltype_st lt1 = ltype_st lt2⌝.
-  Proof.
-    iIntros "Hcond". destruct b; simpl.
+    destruct b.
     - done.
-    - iDestruct "Hcond" as "$".
-    - iDestruct "Hcond" as "(%Heq & [Heq Hub])".
-      iDestruct ("Heq" $! inhabitant inhabitant) as "((%Hly & _) & _)". subst; cbn in *.
-      rewrite !ltype_core_syn_type_eq in Hly. iPureIntro. done.
+    - iPureIntro. done.
+    - iApply (typed_place_cond_refl (UpdUniq _)).
+      unfold place_kind_outlives_unblock_lt.
+      simpl. iApply lft_list_incl_nil_l.
   Qed.
 
-  Lemma typed_place_cond_uniq_core_eq {rt} (lt1 lt2 : ltype rt) κ γ :
-    typed_place_cond (Uniq κ γ) lt1 lt2 -∗ ∀ b r, ltype_eq b r r (ltype_core lt1) (ltype_core lt2).
+  Lemma typed_place_cond_uniq_core_eq {rt} (lt1 lt2 : ltype rt) κ :
+    typed_place_cond (UpdUniq κ) lt1 lt2 -∗
+    ∀ b r, ltype_eq b r r (ltype_core lt1) (ltype_core lt2).
   Proof.
     iIntros "(%Heq & Ha & _)". rewrite (UIP_refl _ _ Heq). done.
   Qed.
-  Lemma typed_place_cond_uniq_unblockable {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ γ :
-    typed_place_cond (Uniq κ γ) lt1 lt2 -∗ imp_unblockable [κ] lt2.
+  Lemma typed_place_cond_uniq_unblockable {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κs :
+    typed_place_cond (UpdUniq κs) lt1 lt2 -∗
+    imp_unblockable κs lt2.
   Proof.
     iIntros "(%Heq & _ & Ha)". done.
   Qed.
-  Lemma typed_place_cond_shadowed_update_cur {rt_cur rt_full} (lt_cur lt_cur' : ltype rt_cur) r_cur r_cur' (lt_full : ltype rt_full) k :
-    ([∗ list] κ0 ∈ ltype_blocked_lfts lt_full, bor_kind_outlives k κ0) -∗
+  Lemma typed_place_cond_shadowed_update_cur {rt_cur rt_cur' rt_full} (lt_cur : ltype rt_cur) (lt_cur' : ltype rt_cur') r_cur r_cur' (lt_full : ltype rt_full) k :
+    place_kind_outlives_unblock_lt k lt_full -∗
     typed_place_cond k (ShadowedLtype lt_cur r_cur lt_full) (ShadowedLtype lt_cur' r_cur' lt_full).
   Proof.
-    iIntros "Hcond".
+    iIntros "#Hcond".
     destruct k; simpl; simp_ltypes.
     - done.
     - done.
@@ -1216,28 +1563,128 @@ Section judgments.
       iSplitR. { iIntros (??). iApply ltype_eq_refl. }
       iApply shadowed_ltype_imp_unblockable.
       iApply imp_unblockable_incl_blocked_lfts.
-      done.
+      iModIntro. iIntros "Hdead".
+      by iApply place_kind_outlives_unblock_lt_use.
+  Qed.
+  Lemma typed_place_cond_blocked_r_Uniq {rt} (lt : ltype rt) (ty : type rt) κs κ' :
+    lft_list_incl [κ'] κs -∗
+    typed_place_cond (UpdUniq κs) lt (◁ ty) -∗
+    typed_place_cond (UpdUniq κs) lt (BlockedLtype ty κ').
+  Proof.
+    iIntros "#Hincl Hcond".
+    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
+    rewrite (UIP_refl _ _ Heq).
+    iExists eq_refl. cbn. simp_ltypes.
+    iSplitL "Heq"; first done.
+    iApply imp_unblockable_lft_incl; last iApply blocked_imp_unblockable.
+    done.
+  Qed.
+  Lemma typed_place_cond_blocked_l {rt1 rt2} (lt : ltype rt1) (ty : type rt2) b κ' :
+    typed_place_cond b (◁ ty) lt -∗
+    typed_place_cond b (BlockedLtype ty κ') lt.
+  Proof.
+    iIntros "Hcond". destruct b; try done.
+    iDestruct "Hcond" as "(%Heq & #Heq & #Hub)".
+    subst rt2.
+    iExists eq_refl. cbn. simp_ltypes.
+    iSplitL; done.
+  Qed.
+  Lemma typed_place_cond_shrblocked_r_Uniq {rt} (lt : ltype rt) (ty : type rt) κs κ' :
+    lft_list_incl [κ'] κs -∗
+    typed_place_cond (UpdUniq κs) lt (◁ ty) -∗
+    typed_place_cond (UpdUniq κs) lt (ShrBlockedLtype ty κ').
+  Proof.
+    iIntros "#Hincl Hcond".
+    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
+    rewrite (UIP_refl _ _ Heq).
+    iExists eq_refl. cbn. simp_ltypes.
+    iSplitL "Heq"; first done.
+    iApply imp_unblockable_lft_incl; last iApply shr_blocked_imp_unblockable.
+    done.
+  Qed.
+  Lemma typed_place_cond_shrblocked_l {rt1 rt2} (lt : ltype rt1) (ty : type rt2) b κ' :
+    typed_place_cond b (◁ ty) lt -∗
+    typed_place_cond b (ShrBlockedLtype ty κ') lt.
+  Proof.
+    iIntros "Hcond". destruct b; try done.
+    iDestruct "Hcond" as "(%Heq & #Heq & #Hub)".
+    subst rt2.
+    iExists eq_refl. cbn. simp_ltypes.
+    iSplitL; done.
+  Qed.
+  Lemma typed_place_cond_coreable_r_Uniq {rt} (lt1 lt2 : ltype rt) κ κs :
+    lft_list_incl κs κ -∗
+    typed_place_cond (UpdUniq κ) lt1 lt2 -∗
+    typed_place_cond (UpdUniq κ) lt1 (CoreableLtype κs lt2).
+  Proof.
+    iIntros "#Hincl (%Heq & Heq & Hub)".
+    rewrite (UIP_refl _ _ Heq).
+    iExists eq_refl. cbn.
+    simp_ltypes. iSplitL "Heq"; first done.
+    iApply imp_unblockable_lft_incl; last iApply coreable_ltype_imp_unblockable.
+    done.
+  Qed.
+  Lemma typed_place_cond_coreable_l {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) b κs :
+    typed_place_cond b lt1 lt2 -∗
+    typed_place_cond b (CoreableLtype κs lt1) lt2.
+  Proof.
+    iIntros "Hcond". destruct b; try done.
+    iDestruct "Hcond" as "(%Heq & Heq & Hub)".
+    subst rt2.
+    iExists eq_refl. cbn. simp_ltypes. by iFrame.
   Qed.
 
+  Lemma typed_place_cond_shadowed_l {rt_cur rt_full rt2} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (lt2 : ltype rt2) b r_cur :
+    typed_place_cond b lt_full lt2 -∗
+    typed_place_cond b (ShadowedLtype lt_cur r_cur lt_full) lt2.
+  Proof.
+    unfold typed_place_cond. destruct b; try by eauto.
+    iIntros "(%Heq & Ha & Hb)".
+    subst rt2. iExists eq_refl. iFrame.
+    simp_ltypes. done.
+  Qed.
+  Lemma typed_place_cond_shadowed_r {rt_cur rt_full rt2} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) (lt2 : ltype rt2) b r_cur :
+    typed_place_cond b lt2 lt_full -∗
+    typed_place_cond b lt2 (ShadowedLtype lt_cur r_cur lt_full).
+  Proof.
+    unfold typed_place_cond. destruct b; try by eauto.
+    iIntros "(%Heq & Ha & Hb)".
+    subst rt2. iExists eq_refl.
+    simp_ltypes. iFrame.
+    iApply shadowed_ltype_imp_unblockable.
+    done.
+  Qed.
+
+  Lemma typed_place_cond_core {rt} (lt : ltype rt) b :
+    ⊢ typed_place_cond b lt (ltype_core lt).
+  Proof.
+    iStartProof.
+    destruct b; simpl; try done.
+    iExists eq_refl. cbn.
+    iSplitL.
+    - rewrite ltype_core_idemp.
+      iIntros (??). iApply ltype_eq_refl.
+    - iApply core_imp_unblockable.
+  Qed.
+
+  Global Arguments typed_place_cond : simpl never.
+
   (* controls conditions on refinement type changes *)
-  Definition place_access_rt_rel (bmin : bor_kind) (rt1 rt2 : RT) :=
+  Definition place_access_rt_rel (bmin : place_update_kind) (rt1 rt2 : RT) :=
     match bmin with
-    | Uniq _ _ => rt1 = rt2 
-    | _ => True
+    | UpdStrong => True
+    | _ => rt1 = rt2
     end.
   Lemma place_access_rt_rel_refl bmin rt : place_access_rt_rel bmin rt rt.
   Proof. by destruct bmin. Qed.
 
-  Lemma place_cond_ty_Uniq_rt_eq {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k κ γ :
-    k ⊑ₖ Uniq κ γ -∗
+  Lemma typed_place_cond_Uniq_rt_eq {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k κ :
+    k ⪯ₚ UpdUniq κ -∗
     typed_place_cond k lt1 lt2 -∗
     ⌜rt1 = rt2⌝.
   Proof.
     iIntros "Hincl Hcond".
-    destruct k; simpl; first done.
-    (* TODO why does the following not work? *)
-    (*all: iDestruct "Hcond" as "(%Heq & _)". *)
-    all: try done.
+    destruct k; simpl; try done.
     all: iDestruct "Hcond" as "(%Heq & Ha)"; iClear "Ha"; by done.
   Qed.
 
@@ -1250,10 +1697,8 @@ Section judgments.
   Proof.
     iIntros "Heq Hc".
     destruct b; simpl.
-    - iDestruct "Hc" as "<-".
-      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hc" as "<-".
-      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
+    - done.
+    - done.
     - iDestruct "Hc" as "(%Heq & Heq' & $)". subst. iExists eq_refl.
       iIntros (??).
       iPoseProof (ltype_eq_core with "Heq") as "Heq".
@@ -1266,9 +1711,8 @@ Section judgments.
   Proof.
     iIntros "Hcond #Heq".
     destruct b; simpl.
-    - iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hcond" as "->".
-      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
+    - done.
+    - done.
     - iDestruct "Hcond" as "(%Heq & #Heq2 & Hub)". subst rt2.
       iExists eq_refl.
       iSplitR. { iIntros (??). iPoseProof (ltype_eq_core with "Heq") as "Heq'". iApply ltype_eq_trans; done. }
@@ -1290,10 +1734,8 @@ Section judgments.
   Proof.
     iIntros "Hc Heq".
     destruct b; simpl.
-    - iDestruct "Hc" as "->".
-      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-    - iDestruct "Hc" as "->".
-      iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
+    - done.
+    - done.
     - iDestruct "Hc" as "(%Heq & Heq' & Hub)". destruct Heq. iExists eq_refl. cbn.
       iSplitL. {
         iIntros (??).
@@ -1305,44 +1747,38 @@ Section judgments.
 
   (** We can mutably borrow from the place, assuming that the ownership [b] of the place is at least Uniq κ. *)
   Lemma ofty_blocked_place_cond b κ {rt} (ty : type rt) :
-    (∀ γ, Uniq κ γ ⊑ₖ b) -∗
+    UpdUniq [κ] ⪯ₚ b -∗
     typed_place_cond b (◁ ty)%I (BlockedLtype ty κ).
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "Ha". simp_ltypes. done.
-    - iIntros "Hincl". iDestruct ("Hincl" $! 1%positive) as "Hincl".
+    - iIntros "Ha". done.
+    - iIntros "#Hincl".
       iExists eq_refl. cbn. iSplitR.
       + simp_ltypes. iIntros (??). iApply ltype_eq_refl.
-      + iApply (imp_unblockable_shorten' with "Hincl"). iApply blocked_imp_unblockable.
+      + iApply (imp_unblockable_lft_incl); last iApply blocked_imp_unblockable.
+        done.
   Qed.
 
   (* Note: [ShrBlockedLtype] is not used for reborrowing shared borrows, so the sidecondition is okay *)
   Lemma ofty_shr_blocked_place_cond b κ {rt} (ty : type rt) :
-    (∀ γ, Uniq κ γ ⊑ₖ b) -∗
+    UpdUniq [κ] ⪯ₚ b -∗
     typed_place_cond b (◁ ty)%I (ShrBlockedLtype ty κ).
   Proof.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "Ha". simp_ltypes. done.
-    - iIntros "Hincl". iDestruct ("Hincl" $! 1%positive) as "Hincl".
+    - iIntros "Ha". done.
+    - iIntros "#Hincl".
       iExists eq_refl. cbn. iSplitR.
       + simp_ltypes. iIntros (??). iApply ltype_eq_refl.
-      + iApply (imp_unblockable_shorten' with "Hincl"). iApply shr_blocked_imp_unblockable.
+      + iApply (imp_unblockable_lft_incl); last iApply shr_blocked_imp_unblockable.
+        done.
   Qed.
 
-  (* TODO later on generalize this to also capture condition on when we are allowed to do strong updates/
-    change the refinement type  *)
   Definition bor_kind_writeable (b : bor_kind) :=
     match b with
     | Owned _ => True
     | Uniq _ _ => True
-    | Shared _ => False
-    end.
-  Definition bor_kind_strongly_writeable (b : bor_kind) :=
-    match b with
-    | Owned _ => True
-    | Uniq _ _ => False
     | Shared _ => False
     end.
   Definition bor_kind_mut_borrowable (b : bor_kind) :=
@@ -1350,52 +1786,6 @@ Section judgments.
     | Shared _ => False
     | _ => True
     end.
-
-  Record weak_ctx (rto rti : RT) : Type := mk_weak {
-    weak_lt : (ltype rti → place_rfn rti → ltype rto);
-    weak_rfn : (place_rfn rti → place_rfn rto);
-    weak_R : (ltype rti → place_rfn rti → iProp Σ)
-  }.
-  Global Arguments weak_lt {_ _}.
-  Global Arguments weak_rfn {_ _}.
-  Global Arguments weak_R {_ _}.
-  Global Arguments mk_weak {_ _}.
-  Add Printing Constructor weak_ctx.
-
-  Record strong_ctx (rti : RT) : Type := mk_strong {
-    strong_rt : RT → RT;
-    strong_lt : (∀ rti2 : RT, ltype rti2 → place_rfn rti2 → ltype (strong_rt rti2));
-    strong_rfn : (∀ rti2 : RT, place_rfn rti2 → place_rfn (strong_rt rti2));
-    strong_R : (∀ rti2, ltype rti2 → place_rfn rti2 → iProp Σ)
-  }.
-  Global Arguments strong_rt {_}.
-  Global Arguments strong_lt {_}.
-  Global Arguments strong_rfn {_}.
-  Global Arguments strong_R {_}.
-  Global Arguments mk_strong {_}.
-  Add Printing Constructor strong_ctx.
-
-  Record immut_ctx : Type := mk_immut {
-    immut_R : iProp Σ;
-  }.
-  Add Printing Constructor immut_ctx.
-
-  Record mstrong_ctx (rto rti : RT) : Type := mk_mstrong {
-    (* rt-changing *)
-    mstrong_strong : option (strong_ctx rti);
-    (* non-rt-changing *)
-    mstrong_weak : option (weak_ctx rto rti);
-  }.
-  Global Arguments mstrong_strong {_ _}.
-  Global Arguments mstrong_weak {_ _}.
-  Global Arguments mk_mstrong {_ _}.
-  (* Note: this gives us three distinct update modes, and we cannot subsume one into the other, because all of this is invariant. *)
-
-
-  (* Problem with the current approach is just that I can't practically use the result of the boolean flag
-      -- I can't state the tctx without without the equality proof.
-      The alternative is that this should be directly embedded in the strong continuation.
-   *)
 
   (*
     Parameters:
@@ -1425,62 +1815,55 @@ Section judgments.
       Note that the [strong] and [weak] options are incomparable. [weak] does not only give stronger assumptions, but also requires giving stronger guarantees, which not all place types can do.
       In particular, [OpenedLtype] can not guarantee that an update will uphold the contract of the place it is nested under, so it cannot support [weak] updates.
    *)
-  Definition place_cont_t rto : Type := llctx → list lft → loc → bor_kind → bor_kind → ∀ rti, ltype rti → place_rfn rti → mstrong_ctx rto rti → iProp Σ.
-  Definition typed_place π (E : elctx) (L : llctx) (l1 : loc) {rto : RT} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : bor_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto) : iProp Σ :=
+  Definition place_cont_t rto allowed_outer : Type := llctx → list lft → loc → bor_kind → ∀ (allowed_inner : place_update_kind) rti, ltype rti → place_rfn rti → place_update_ctx rti rto allowed_inner allowed_outer → iProp Σ.
+
+  Definition typed_place π (E : elctx) (L : llctx) (l1 : loc) {rto : RT} (ltyo : ltype rto) (r1 : place_rfn rto) (allowed0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto allowed0) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      (* [bmin0] is the intersection of all bor_kinds to this place, including [b1] *)
-      bmin0 ⊑ₖ b1 -∗
+      (* [allowed0] is the intersection of all bor_kinds to this place, including [b1] *)
+      (*allowed0 ⪯ₚ b1 -∗*)
       (* assume ownership of l1 *)
       l1 ◁ₗ[π, b1] r1 @ ltyo -∗
       (* precondition provided by the client that we necessarily need to go through to get Φ *)
-      (∀ (L' : llctx) (κs : list lft) (l2 : loc) (b2 bmin : bor_kind) (rti : RT) (ltyi : ltype rti) (ri : place_rfn rti)
-        (mstrong : mstrong_ctx rto rti),
+      (∀ (L' : llctx) (κs : list lft) (l2 : loc) (allowed1 : place_update_kind) (b2 : bor_kind) (rti : RT) (ltyi : ltype rti) (ri : place_rfn rti)
+        (updcx : place_update_ctx rti rto allowed1 allowed0),
         (* sanity check *)
         (*bmin ⊑ₖ bmin0 -∗*)
-        bmin ⊑ₖ b2 -∗
+        (*allowed1 ⪯ₚ b2 -∗*)
         (* l2 is the inner location we eventually access, provide that to the client *)
         l2 ◁ₗ[π, b2] ri @ ltyi -∗
 
         (* for any update to l2 by the client, we need to update our "outer" place accordingly: *)
-        (* we have a conjunction: the client can choose to do a strong, refinement-type changing update, or a weak update *)
-        (match mstrong.(mstrong_strong) with | Some strong =>
-          ∀ (rti2 : RT) (ltyi2 : ltype rti2) (ri2 : place_rfn rti2),
+        (∀ (upd : place_update rti allowed1),
+          upd.(pupd_performed) ⪯ₚ allowed1 -∗
           (* assume an update by the client *)
-          l2 ◁ₗ[π, b2] ri2 @ ltyi2 -∗
+          l2 ◁ₗ[π, b2] upd.(pupd_rfn) @ upd.(pupd_lt) -∗
           (* needs to have the same st *)
-          ⌜ltype_st ltyi = ltype_st ltyi2⌝ ={F}=∗
-          (* provide the updated ownership of l1 *)
-          l1 ◁ₗ[π, b1] (strong.(strong_rfn) rti2 ri2) @ strong.(strong_lt) rti2 ltyi2 ri2 ∗
-          (* and a proof that the "outer" update is legal *)
-          ⌜ltype_st ltyo = ltype_st (strong.(strong_lt) rti2 ltyi2 ri2)⌝ ∗
-          (* as well as a "remaining" ownership that we get out from the update *)
-          strong.(strong_R) rti2 ltyi2 ri2
-        | None => True
-        end) ∧
-
-        (* weak update *)
-        (match mstrong.(mstrong_weak) with | Some weak =>
-          ∀ (ltyi2 : ltype rti) (ri2 : place_rfn rti) (bmin' : bor_kind),
-          (* the update made by the client is allowed by the intersected bmin *)
-          bmin' ⊑ₖ bmin -∗
-          (* assume an update by the client *)
-          l2 ◁ₗ[π, b2] ri2 @ ltyi2 -∗
-          (* we can assume that the update by the client obeys the intersected kind bmin along the current path *)
-          typed_place_cond bmin' ltyi ltyi2 ={F}=∗
-          (* provide the updated ownership of l1 *)
-          l1 ◁ₗ[π, b1] (weak.(weak_rfn) ri2) @ weak.(weak_lt) ltyi2 ri2 ∗
-          (* and a proof that the "outer" update is legal *)
-          typed_place_cond bmin0 ltyo (weak.(weak_lt) ltyi2 ri2)  ∗
-          (* the tokens for the lifetime *)
-          llft_elt_toks κs ∗
-          (* as well as a "remaining" ownership that we get out from the update *)
-          weak.(weak_R) ltyi2 ri2
-         | None => True
-         end) -∗
+          ⌜ltype_st ltyi = ltype_st upd.(pupd_lt)⌝ -∗
+          (* remaining ownership *)
+          upd.(pupd_R) -∗
+          typed_place_cond upd.(pupd_performed) ltyi upd.(pupd_lt) ={F}=∗
+          ∀ (L2 : llctx) (cont : place_update rto allowed0 → iProp Σ),
+          llctx_interp L2 -∗
+          updcx L2 upd cont ={F}=∗
+          ∃ upd' : place_update rto allowed0,
+            (* provide the updated ownership of l1 *)
+            l1 ◁ₗ[π, b1] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗
+            (* and a proof that the "outer" update is legal *)
+            ⌜ltype_st ltyo = ltype_st upd'.(pupd_lt)⌝ ∗
+            (* and a proof that the "outer" update is legal *)
+            typed_place_cond upd'.(pupd_performed) ltyo upd'.(pupd_lt) ∗
+            (* the update obeys the restrictions *)
+            upd'.(pupd_performed) ⪯ₚ allowed0 ∗
+            (* the tokens for the lifetime *)
+            llft_elt_toks κs ∗
+            (* as well as a "remaining" ownership that we get out from the update *)
+            upd'.(pupd_R) ∗
+            llctx_interp L2 ∗
+            cont upd') -∗
 
         (* provide the continuation condition *)
-        T L' κs l2 b2 bmin rti ltyi ri mstrong -∗
+        T L' κs l2 b2 allowed1  rti ltyi ri updcx -∗
         (* and the context: we hand the client the new context [L'] *)
         llctx_interp L' -∗
         (* then we can assume the postcondition *)
@@ -1488,29 +1871,27 @@ Section judgments.
       place_to_wp P Φ l1).
 
   (** Instances need to have priority >= 10, the ones below are reserved for ghost resolution, id, etc. *)
-  Class TypedPlace E L π l1 {rto} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 b1 : bor_kind) (P : list place_ectx_item) : Type :=
+  Class TypedPlace E L π l1 {rto} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) : Type :=
     typed_place_proof T : iProp_to_Prop (typed_place π E L l1 ltyo r1 bmin0 b1 P T).
 
   Import EqNotations.
-  Lemma typed_place_id {rt} π E L (lt : ltype rt) bmin0 b r l (T : place_cont_t rt) :
-    ⌜lctx_bor_kind_incl E L bmin0 b⌝ ∗ T L [] l b bmin0 rt lt r
-      (mk_mstrong
-        (Some $ mk_strong id (λ _ lti2 _, lti2) (λ _ , id) (λ _ _ _, True))
-        (Some $ mk_weak (λ lti2 _, lti2) id (λ _ _, True))
-       )
+  (*place_update*)
+  Lemma typed_place_id {rt} π E L (lt : ltype rt) bmin0 (b : bor_kind) r l (T : place_cont_t rt bmin0) :
+    (*⌜lctx_place_update_kind_incl E L bmin0 b⌝ ∗*)
+    T L [] l b bmin0 rt lt r (λ L2 upd cont, cont upd)
     ⊢ typed_place π E L l lt r bmin0 b [] T.
   Proof.
-    iIntros "(%Hincl & Hs)" (Φ F ??). iIntros "#LFT #HE HL Hincl0 HP HΦ /=".
-    iPoseProof (lctx_bor_kind_incl_use with "HE HL") as "#Hincl"; first apply Hincl.
-    iSpecialize ("HΦ" $! _ _ _ _ _ _ _ _ _ with "[] HP").
-    { iApply "Hincl". }
+    iIntros "Hs" (Φ F ??). iIntros "#LFT #HE HL HP HΦ /=".
+    (*iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl"; first apply Hincl.*)
+    iSpecialize ("HΦ" $! _ _ _ _ _ _ _ _ _ with "HP").
+    (*{ iApply "Hincl". }*)
     iApply ("HΦ" with "[] Hs HL").
-    iSplit.
-    - iIntros (rti2 tyli2 ri2) "Hl Hcond" => /=. iFrame. done.
-    - iIntros (tyli2 ri2 bmin') "Hincl' Hl Hcond" => /=. iFrame.
-      iSplitL. { iApply (typed_place_cond_incl with "Hincl' Hcond"). }
-      rewrite /llft_elt_toks.
-      iSplitR; first iApply big_sepL_nil; done.
+    iIntros (upd) "Hincl' Hl %Hst ? Hcond" => /=.
+    iModIntro.
+    iIntros (L2 cont) "HL Hcont".
+    iExists upd.
+    iFrame. iR.
+    iApply llft_elt_toks_nil.
   Qed.
   Global Instance typed_place_id_inst {rt} π E L (lt : ltype rt) bmin0 b r l :
     TypedPlace E L π l lt r bmin0 b [] | 9 := λ T, i2p (typed_place_id π E L lt bmin0 b r l T).
@@ -1520,29 +1901,26 @@ Section judgments.
     typed_place π E L l lt2 r bmin0 b P T -∗
     typed_place π E L l lt1 r bmin0 b P T.
   Proof.
-    iIntros (Heq) "Hp". iIntros (????) "#CTX #HE HL Hincl0 Hl HΦ".
+    iIntros (Heq) "Hp". iIntros (????) "#CTX #HE HL Hl HΦ".
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [apply Heq | ].
     iDestruct ("Heq" $! b r) as "[Hi1 Hi2]".
     iApply fupd_place_to_wp.
     iMod (ltype_incl_use with "Hi1 Hl") as "Hl"; first done. iModIntro.
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
 
-    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hincl0 Hl").
-    iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hl2 Hs HT HL".
-    iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hincl1 Hl2 [Hs] HT HL").
-    iSplit.
-    - destruct strong as [ strong | ]; last done.
-      iIntros (rti2 tyli2 ri2) "Hl2 %Hcond". iDestruct "Hs" as "[Hs _]".
-      iMod ("Hs" with "Hl2 [//]") as "(Hl & %Hcond2 & HR)".
-      iFrame. iModIntro.
-      iDestruct ("Hi1") as "(-> & _)".
-      iPureIntro. rewrite -Hcond2. done.
-    - destruct weak as [ weak | ]; last done.
-      iIntros (tyli2 ri2 bmin') "Hincl Hl2 Hcond". iDestruct "Hs" as "[_ Hs]".
-      iMod ("Hs" with "Hincl Hl2 Hcond") as "(Hl & Hcond & Htoks & HR)".
-      iFrame. iModIntro.
-      iApply ltype_eq_place_cond_trans; last done.
-      iApply "Heq".
+    iApply ("Hp" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl").
+    iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL".
+    iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hl2 [Hs] HT HL").
+    iIntros (upd) "Hincl' Hl2 %Hst HR Hcond".
+    iMod ("Hs" with "Hincl' Hl2 [//] HR Hcond") as "Hs".
+    (*"(Hl & %Hst2 & Hcond & Htoks & HR)".*)
+    iModIntro. iIntros (L2 cont) "HL Hcont".
+    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hst2 & ? & ? & ? & ?)".
+    iExists upd'.
+    iPoseProof (ltype_incl_syn_type with "Hi1") as "%Hst'".
+    rewrite Hst' Hst2. iFrame. iR.
+    iApply ltype_eq_place_cond_trans; last done.
+    iApply "Heq".
   Qed.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
@@ -1553,27 +1931,20 @@ Section judgments.
       v ◁ᵥ{π} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
-          T L' [] li b3 bmin rti ltyi ri
-            (mk_mstrong (match mstrong.(mstrong_strong) with
-             | Some strong => Some $ mk_strong (λ _, _) (λ _ _ _, ◁ ty) (λ _ _, #r) (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
-             | None => None
-             end)
-            (match mstrong.(mstrong_weak) with
-             | Some weak => Some $ mk_weak (λ _ _, ◁ ty) (λ _, #r) (λ ltyi2 ri2, llft_elt_toks κs ∗ l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)
-             | None =>
-                 match mstrong.(mstrong_strong) with
-                  | Some strong => Some $ mk_weak (λ _ _, ◁ ty) (λ _, #r) (λ ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)
-                  | None => None
-                  end
-              end)
-            )
+        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+          (* point: the outer place is not updated, it stays at ◁ ty.
+             but I emit new updated ownership *)
+          T L' κs li b3 bmin rti ltyi ri
+          (λ L2 upd cont, updcx L2 upd (λ upd',
+            cont (mkPUpd _ _ _ (◁ ty) (# r)
+              (l2 ◁ₗ[π, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
+              UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
       ⊢
     typed_place π E L l (◁ ty) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "HT".
-    iIntros (????) "#CTX #HE HL #Hincl Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (ofty_ltype_acc_owned ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     simpl. iModIntro.
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
@@ -1588,32 +1959,16 @@ Section judgments.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
-    { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
-    iApply ("Hcont" with "[//] Hl3 [Hcl Hl] HT HL").
-    iSplit.
-    -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
-      destruct strong as [ strong | ]; simpl; last done.
-      iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
-      iMod ("Hcl" with "Hl2 [//]") as "(Hl' & % & Hstrong)".
-      iModIntro. iFrame. done.
-    - (* weak *)
-      destruct weak as [weak | ]; simpl.
-      + iDestruct "Hcl" as "[_ Hcl]". simpl.
-        iIntros (ltyi2 ri2 ?) "#Hincl3 Hl2 Hcond".
-        iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl' & Hcond & Htoks & Hweak)".
-        iModIntro. iFrame. iSplitL.
-        { iApply typed_place_cond_refl. done. }
-        rewrite /llft_elt_toks. done.
-      + destruct strong as [ strong | ]; simpl; last done.
-        iDestruct "Hcl" as "[Hcl _]".
-        iIntros (ltyi2 ri2 ?) "#Hincl3 Hl2 Hcond".
-        iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst".
-        iMod ("Hcl" with "Hl2 [//]") as "(Hl' & %Hst' & Hweak)".
-        iFrame. iModIntro.
-        iSplitL. { iApply typed_place_cond_refl. done. }
-        rewrite /llft_elt_toks. done.
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
+    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
+    iIntros (upd) "#Hincl2 Hl2 %Hst HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iModIntro. iIntros (L3 cont) "HL Hcont".
+    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & Hstrong & ?)".
+    simpl. iFrame. iR. simpl.
+    iSplitL; last iApply upd_bot_min.
+    iApply typed_place_cond_refl_ofty.
   Qed.
 
   (* TODO generalize this similarly as the one above? *)
@@ -1624,20 +1979,17 @@ Section judgments.
       v ◁ᵥ{π} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
+        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
-          (mk_mstrong
-          (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ ty) (λ _ _, PlaceIn r)
-            (* give back ownership through R *)
-            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
-          (option_map (λ weak, mk_weak (λ _ _, ◁ ty) (λ _, PlaceIn r)
-            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-          )
+          (λ L2 upd cont, updcx L2 upd (λ upd',
+            cont (mkPUpd _ _ _ (◁ ty) (# r)
+              (l2 ◁ₗ[π, b2] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗ upd'.(pupd_R))
+              UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
     ⊢ typed_place π E L l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
-    iIntros (????) "#CTX #HE HL #Hincl Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
@@ -1657,22 +2009,16 @@ Section judgments.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
-    { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
-    iApply ("Hcont" with "[//] Hl3 [Hcl Hl] HT HL").
-    iSplit.
-    -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
-      destruct strong as [ strong | ]; simpl; last done.
-      iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
-      iMod ("Hcl" with "Hl2 [//]") as "(Hl' & % & Hstrong)".
-      iModIntro. iFrame. done.
-    - (* weak *) iDestruct "Hcl" as "[_ Hcl]". simpl.
-      destruct weak as [weak | ]; simpl; last done.
-      iIntros (ltyi2 ri2 ?) "#Hincl3 Hl2 Hcond".
-      iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl' & Hcond & Htoks & Hweak)".
-      iModIntro. iFrame.
-      iApply typed_place_cond_refl. done.
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
+    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
+    iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iModIntro. iIntros (? cont) "HL Hcont".
+    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? & ?)".
+    simpl. iFrame. simpl. iR.
+    iSplitL; last iApply upd_bot_min.
+    iApply typed_place_cond_refl_ofty.
   Qed.
 
   (* NOTE: we need to require it to be a simple type to get this generic lemma *)
@@ -1683,20 +2029,16 @@ Section judgments.
       v ◁ᵥ{π} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
         v ◁ᵥ{π} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 b2 b2 P (λ L' κs li b3 bmin rti ltyi ri mstrong,
+        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
-          (mk_mstrong
-          (option_map (λ strong, mk_strong (λ _, _) (λ _ _ _, ◁ ty) (λ _ _, PlaceIn r)
-            (* give back ownership through R *)
-            (λ rti2 ltyi2 ri2, l2 ◁ₗ[π, b2] strong.(strong_rfn) _ ri2 @ strong.(strong_lt) _ ltyi2 ri2 ∗ strong.(strong_R) _ ltyi2 ri2)) mstrong.(mstrong_strong))
-          (option_map (λ weak, mk_weak (λ _ _, ◁ ty) (λ _, PlaceIn r)
-            (λ ltyi2 ri2, l2 ◁ₗ[π, b2] weak.(weak_rfn) ri2 @ weak.(weak_lt) ltyi2 ri2 ∗ weak.(weak_R) ltyi2 ri2)) mstrong.(mstrong_weak))
-          )
-        ))
+          (λ L2 upd cont, updcx L2 upd  (λ upd',
+            cont (mkPUpd _ _ _ (◁ ty) (# r)
+              (l2 ◁ₗ[π, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
+              UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))))
     ⊢ typed_place π E L l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
-    iIntros (????) "#CTX #HE HL #Hincl #Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL #Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
     iPoseProof (ofty_ltype_acc_shared ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hlb & >Hb)"; first done.
@@ -1718,23 +2060,111 @@ Section judgments.
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hl2").
-    { iApply bor_kind_incl_refl. }
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri [strong weak]) "#Hincl1 Hl3 Hcl HT HL".
-    iApply ("Hcont" with "[//] Hl3 [Hcl Hv] HT HL").
-    iSplit.
-    -  (* strong *) iDestruct "Hcl" as "[Hcl _]". simpl.
-      destruct strong as [ strong | ]; simpl; last done.
-      iIntros (rti2 ltyi2 ri2) "Hl2 %Hst".
-      iMod ("Hcl" with "Hl2 [//]") as "(Hl' & % & Hstrong)".
-      iModIntro. iFrame. iSplitR; done.
-    - (* weak *) iDestruct "Hcl" as "[_ Hcl]". simpl.
-      destruct weak as [weak | ]; simpl; last done.
-      iIntros (ltyi2 ri2 ?) "#Hincl3 Hl2 Hcond".
-      iMod ("Hcl" with "Hincl3 Hl2 Hcond") as "(Hl' & Hcond & Htoks & Hweak)".
-      iModIntro. iFrame. iSplitR; first done.
-      iApply typed_place_cond_refl. done.
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
+    iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL"). simpl.
+    iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
+    iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
+    iModIntro. iIntros (? cont) "HL Hcont".
+    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? &?)".
+    simpl. iFrame. iFrame "#". simpl. iR.
+    iSplitL; last iApply upd_bot_min.
+    iApply typed_place_cond_refl_ofty.
   Qed.
+
+  (** ** Prove a typed_place_cond (used together with [stratify_ltype]) *)
+  Record place_update_kind_res (allowed : place_update_kind) (rt1 rt2 : RT) : Type := mkPUKRes{
+    puk_res_k :> place_update_kind;
+    puk_res_eq_1 : opt_place_update_eq puk_res_k rt1 rt2;
+    puk_res_eq_2 : opt_place_update_eq allowed rt1 rt2;
+  }.
+  Global Arguments puk_res_eq_1 {_ _ _}.
+  Global Arguments puk_res_eq_2 {_ _ _}.
+  Global Arguments puk_res_k {_ _ _}.
+  Global Arguments mkPUKRes {_ _ _}.
+
+  (* Compose two updates *)
+  Program Definition place_update_kind_res_trans {allowed} {rt1 rt2 rt3}
+    (upd1 : place_update_kind_res allowed rt1 rt2)
+    (upd2 : place_update_kind_res allowed rt2 rt3) :
+    place_update_kind_res allowed rt1 rt3 :=
+    mkPUKRes (upd1.(puk_res_k) ⊔ₚₖ upd2.(puk_res_k))  _ _.
+  Next Obligation.
+    intros ???? [pk1 Heq1 Heq2] [pk2 Heq3 Heq4].
+    simpl.
+    unfold opt_place_update_eq in *.
+    destruct pk1, pk2; simpl in *; try done.
+    all: subst; done.
+  Defined.
+  Next Obligation.
+    intros ???? [pk1 Heq1 Heq2] [pk2 Heq3 Heq4].
+    simpl.
+    unfold opt_place_update_eq in *.
+    destruct allowed; simpl in *; try done.
+    all: subst; done.
+  Defined.
+
+  Definition prove_place_cond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : place_update_kind_res bmin rt1 rt2 → iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L ={F}=∗
+      llctx_interp L ∗
+      ∃ upd : place_update_kind_res _ _ _,
+        upd ⪯ₚ bmin ∗
+        typed_place_cond upd lt1 lt2 ∗ ⌜ltype_st lt1 = ltype_st lt2⌝ ∗
+        T upd.
+  Class ProvePlaceCond (E : elctx) (L : llctx) {rt1 rt2} (bmin : place_update_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
+    prove_place_cond_proof T : iProp_to_Prop (prove_place_cond E L bmin lt1 lt2 T).
+
+  Lemma prove_place_cond_eqltype_l E L bmin {rt1 rt2} (lt1 lt1' : ltype rt1) (lt2 : ltype rt2) T :
+    full_eqltype E L lt1 lt1' →
+    prove_place_cond E L bmin lt1' lt2 T -∗
+    prove_place_cond E L bmin lt1 lt2 T.
+  Proof.
+    iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
+    iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
+    iDestruct "Hcond" as "(%upd & Hcond & Hcond' & <- & HT)".
+    iExists upd. iFrame.
+    iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->".
+    iL. iApply ltype_eq_place_cond_ty_trans; done.
+  Qed.
+  Lemma prove_place_cond_eqltype_r E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 lt2' : ltype rt2) T :
+    full_eqltype E L lt2 lt2' →
+    prove_place_cond E L bmin lt1 lt2' T -∗
+    prove_place_cond E L bmin lt1 lt2 T.
+  Proof.
+    iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
+    iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
+    iDestruct "Hcond" as "(%upd & Hcond & #Hcond' & -> & HT)".
+    iExists upd. iFrame.
+    iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". iL.
+    iApply (place_cond_ltype_eq_trans with "Hcond'").
+    iModIntro. iIntros (??). iApply ltype_eq_sym. done.
+  Qed.
+
+  (** ** Some utilities for finishing a place access by either using the strong or the weak VS *)
+  Definition typed_place_finish_upd
+    {rti rti2 : RT}
+    {allowed_inner : place_update_kind}
+    (performed_access : place_update_kind_res allowed_inner rti rti2)
+    (lt2 : ltype rti2) (r2 : place_rfn rti2)
+    : place_update rti allowed_inner :=
+      (mkPUpd _ _ rti2 lt2 r2 True performed_access performed_access.(puk_res_eq_1) performed_access.(puk_res_eq_2))
+  .
+
+  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2 : RT}
+    {allowed_inner allowed_outer : place_update_kind}
+    (upd_cx : place_update_ctx rti rto allowed_inner allowed_outer)
+    (* this might be the result from [prove_place_cond], updating from [rti] to [rti2] *)
+    (performed_access : place_update_kind_res allowed_inner rti rti2)
+    (* leftover ownership *)
+    (R : iProp Σ)
+    (* the updated type assignment of the inner place *)
+    (l : loc) (b : bor_kind) (lt2 : ltype rti2) (r2 : place_rfn rti2)
+    (T : llctx → iProp Σ) : iProp Σ :=
+    upd_cx L (typed_place_finish_upd performed_access lt2 r2) (λ upd2,
+    l ◁ₗ[π, b] upd2.(pupd_rfn) @ upd2.(pupd_lt) -∗
+    introduce_with_hooks E L (upd2.(pupd_R) ∗ R) T)%I.
 
   (** Fold an [lty] to a [type].
     This is usually used after accessing a place, to push the ◁ to the outside again.
@@ -2453,194 +2883,28 @@ Section judgments.
     destruct pm; eauto with iFrame.
   Qed.
 
-  (** ** Prove a typed_place_cond (used together with [stratify_ltype]) *)
+  (** Interpreting typing hints *)
+  Definition interpret_typing_hint_cont_t (bmin : place_update_kind) (rt : RT) :=
+    ∀ (rt' : RT), type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition interpret_typing_hint (E : elctx) (L : llctx) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) (T : interpret_typing_hint_cont_t bmin rt) : iProp Σ :=
+    ∀ F,
+      ⌜lftE ⊆ F⌝ →
+      ⌜↑rrustN ⊆ F⌝ →
+      ⌜lft_userE ⊆ F⌝ →
+      rrust_ctx -∗
+      elctx_interp E -∗
+      llctx_interp L ={F}=∗
+      ∃ (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (upd : place_update_kind_res bmin rt rt2),
+        llctx_interp L ∗
+        type_incl r r2 ty ty2 ∗
+        typed_place_cond upd (◁ ty) (◁ ty2) ∗
+        upd ⪯ₚ bmin ∗
+        T rt2 ty2 r2 upd
+    .
+  Class InterpretTypingHint (E : elctx) (L : llctx) (orty : option rust_type) (bmin : place_update_kind) {rt} (ty : type rt) (r : rt) : Type :=
+    interpret_typing_hint_proof T : iProp_to_Prop (interpret_typing_hint E L orty bmin ty r T).
+  Global Hint Mode InterpretTypingHint + + + + + + + : typeclass_instances.
 
-    (* Lattice with AllowWeak < AllowStrong. *)
-  Inductive access_allowed : Type :=
-  | AllowStrong
-  | AllowWeak.
-  (* Lattice with ResultStrong < ResultWeak *)
-  Inductive access_result (rti rti2 : RT) : Type :=
-  | ResultWeak (Heq : rti = rti2)
-  | ResultStrong.
-  Global Arguments ResultStrong {_ _}.
-  Global Arguments ResultWeak {_ _}.
-
-  Definition mstrong_ctx_access_allowed {rto rti} (mstrong : mstrong_ctx rto rti) : access_allowed :=
-    if mstrong.(mstrong_strong) is Some _ then AllowStrong
-    else AllowWeak.
-
-  Definition access_result_meet {rti1 rti2 rti3 : RT} (r1 : access_result rti1 rti2) (r2 : access_result rti2 rti3) : access_result rti1 rti3 :=
-    match r1, r2 with
-    | ResultWeak Heq1, ResultWeak Heq2 => ResultWeak $ eq_trans Heq1 Heq2
-    | _, _ => ResultStrong
-    end.
-  Lemma access_result_meet_strong_r {rt1 rt2 rt3} (o : access_result rt1 rt2) :
-    @access_result_meet rt1 rt2 rt3 o ResultStrong = ResultStrong.
-  Proof. destruct o; done. Qed.
-  Lemma access_result_meet_strong_l {rt1 rt2 rt3} (o : access_result rt2 rt3) :
-    @access_result_meet rt1 rt2 rt3 ResultStrong o = ResultStrong.
-  Proof. done. Qed.
-
-  Lemma access_result_lift (f : RT → RT) {rt1 rt2} :
-    access_result rt1 rt2 → access_result (f rt1) (f rt2).
-  Proof.
-    refine (λ Ha,
-      match Ha with
-      | ResultWeak Heq => ResultWeak _
-      | ResultStrong => ResultStrong
-      end).
-    - exact (rew [λ rt, f rt1 = f rt] Heq in @eq_refl _ (f rt1)).
-  Defined.
-
-  Definition access_result_weak_refl {rt} : access_result rt rt := ResultWeak (eq_refl).
-
-  Definition prove_place_cond (E : elctx) (L : llctx) {rt1 rt2} (bmin : bor_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) (T : access_result rt1 rt2 → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ rrust_ctx -∗ elctx_interp E -∗ llctx_interp L ={F}=∗
-      llctx_interp L ∗ ∃ upd,
-        (match upd with
-         | ResultWeak _ => typed_place_cond bmin lt1 lt2
-         | ResultStrong => ⌜ltype_st lt1 = ltype_st lt2⌝
-         end) ∗
-        T upd.
-  Class ProvePlaceCond (E : elctx) (L : llctx) {rt1 rt2} (bmin : bor_kind) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
-    prove_place_cond_proof T : iProp_to_Prop (prove_place_cond E L bmin lt1 lt2 T).
-
-  Lemma prove_place_cond_eqltype_l E L bmin {rt1 rt2} (lt1 lt1' : ltype rt1) (lt2 : ltype rt2) T :
-    full_eqltype E L lt1 lt1' →
-    prove_place_cond E L bmin lt1' lt2 T -∗
-    prove_place_cond E L bmin lt1 lt2 T.
-  Proof.
-    iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
-    iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
-    iDestruct "Hcond" as "(%upd & Hcond & HT)".
-    iExists upd. iFrame.
-    destruct upd as [ | ].
-    - iApply ltype_eq_place_cond_ty_trans; done.
-    - iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-  Qed.
-  Lemma prove_place_cond_eqltype_r E L bmin {rt1 rt2} (lt1 : ltype rt1) (lt2 lt2' : ltype rt2) T :
-    full_eqltype E L lt2 lt2' →
-    prove_place_cond E L bmin lt1 lt2' T -∗
-    prove_place_cond E L bmin lt1 lt2 T.
-  Proof.
-    iIntros (Heq) "Hcond". iIntros (F ?) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [done.. | ].
-    iMod ("Hcond" with "[//] CTX HE HL") as "($ & Hcond)".
-    iDestruct "Hcond" as "(%upd & #Hcond & HT)".
-    iExists upd. iFrame.
-    destruct upd as [ | ].
-    - iApply (place_cond_ltype_eq_trans with "Hcond").
-      iModIntro. iIntros (??). iApply ltype_eq_sym. done.
-    - iPoseProof (ltype_eq_syn_type inhabitant inhabitant with "Heq") as "->". done.
-  Qed.
-
-  (** ** Solving [lctx_lft_alive_count] *)
-  (** the continuation gets the list of opened lifetimes + the new local lifetime context *)
-  Definition lctx_lft_alive_count_goal (E : elctx) (L : llctx) (κ : lft)
-      (T : (list lft) * llctx → iProp Σ) : iProp Σ :=
-    ∃ κs L', ⌜lctx_lft_alive_count E L κ κs L'⌝ ∗ T (κs, L').
-  Program Definition lctx_lft_alive_count_hint E L κ (κs : list lft) (L' : llctx) :
-    lctx_lft_alive_count E L κ κs L' →
-    LiTactic (lctx_lft_alive_count_goal E L κ) := λ a, {|
-      li_tactic_P T := T (κs, L');
-    |}.
-  Next Obligation.
-    simpl. iIntros (E L κ κs L' ? T) "HT".
-    iExists κs, L'. iFrame. done.
-  Qed.
-
-  (** ** Releasing lifetime tokens *)
-  Definition llctx_release_toks_goal (L : llctx) (κs : list lft) (T : llctx → iProp Σ) : iProp Σ :=
-    ∃ L', ⌜llctx_release_toks L κs L'⌝ ∗ T L'.
-  Program Definition llctx_release_toks_hint L κs (L' : llctx) :
-    llctx_release_toks L κs L' →
-    LiTactic (llctx_release_toks_goal L κs) := λ a, {|
-      li_tactic_P T := T L';
-    |}.
-  Next Obligation.
-    iIntros (L κs L' ? T) "HT". iExists L'. iFrame. done.
-  Qed.
-
-  Lemma introduce_with_hooks_lft_toks E L κs T :
-    li_tactic (llctx_release_toks_goal L κs) T ⊢
-    introduce_with_hooks E L (llft_elt_toks κs) T.
-  Proof.
-    rewrite /li_tactic /llctx_release_toks_goal.
-    iIntros "(%L' & %HL & HT)".
-    iIntros (F ?) "#HE HL Htoks".
-    iMod (llctx_return_elt_toks _ _ L' with "HL Htoks") as "HL"; first done.
-    eauto with iFrame.
-  Qed.
-  Global Instance introduce_with_hooks_lft_toks_inst E L κs : IntroduceWithHooks E L (llft_elt_toks κs) | 10 :=
-    λ T, i2p (introduce_with_hooks_lft_toks E L κs T).
-
-
-
-  (** ** Some utilities for finishing a place access by either using the strong or the weak VS *)
-
-  Inductive access_result_ctx {rto rti rti2 : RT} :=
-  | ARweak (Heq : rti = rti2) (weak : weak_ctx rto rti)
-  | ARstrong (strong : strong_ctx rti).
-  Global Arguments access_result_ctx : clear implicits.
-
-  (* use a weak update if possible, otherwise a strong update *)
-  Definition access_result_meet_mstrong_ctx {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) : option (access_result_ctx rto rti rti2) :=
-    match upd with
-    | ResultWeak Heq =>
-        match mstrong.(mstrong_weak) with
-        | Some weak => Some $ ARweak Heq weak
-        | None =>
-            match mstrong.(mstrong_strong) with
-            | Some strong => Some $ ARstrong strong
-            | None => None
-            end
-        end
-    | ResultStrong =>
-        match mstrong.(mstrong_strong) with
-        | Some strong => Some $ ARstrong strong
-        | None => None
-        end
-    end.
-  Lemma access_result_meet_mstrong_ctx_inv_weak {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) Heq weak:
-    access_result_meet_mstrong_ctx mstrong upd = Some (ARweak Heq weak) →
-    upd = ResultWeak Heq ∧ mstrong.(mstrong_weak) = Some weak.
-  Proof.
-    unfold access_result_meet_mstrong_ctx.
-    destruct mstrong as [strong weak'].
-    destruct upd, strong, weak'; simpl; intros ?; simplify_eq; try naive_solver.
-    all: by rewrite (UIP_refl _ _ Heq).
-  Qed.
-  Lemma access_result_meet_mstrong_ctx_inv_strong {rto rti rti2} (mstrong : mstrong_ctx rto rti) (upd : access_result rti rti2) strong :
-    access_result_meet_mstrong_ctx mstrong upd = Some (ARstrong strong) →
-    (upd = ResultStrong ∨ mstrong.(mstrong_weak) = None) ∧ mstrong.(mstrong_strong) = Some strong.
-  Proof.
-    unfold access_result_meet_mstrong_ctx.
-    destruct mstrong as [strong' weak].
-    destruct upd, strong', weak; simpl; intros ?; simplify_eq; try naive_solver.
-  Qed.
-
-  Definition typed_place_finish π (E : elctx) (L : llctx) {rto rti rti2 : RT}
-    (mstrong : mstrong_ctx rto rti)
-    (upd : access_result rti rti2)
-    (R : iProp Σ) (R_weak : iProp Σ)
-    l b
-    (lto : ltype rto) (ro : place_rfn rto)
-    (lt1 : ltype rti) (r1 : place_rfn rti)
-    (lt2 : ltype rti2) (r2 : place_rfn rti2)
-    (T : llctx → iProp Σ) : iProp Σ :=
-    match access_result_meet_mstrong_ctx mstrong upd with
-    | Some (ARweak Heq weak) =>
-        l ◁ₗ[π, b] (weak.(weak_rfn) (rew <- [place_rfnRT] Heq in r2)) @ (weak.(weak_lt) (rew <- [ltype] Heq in lt2) (rew <- [place_rfnRT] Heq in r2)) -∗
-        weak.(weak_R) (rew <- [ltype] Heq in lt2) (rew <- [place_rfnRT] Heq in r2) -∗
-        introduce_with_hooks E L (R_weak ∗ R) T
-    | Some (ARstrong strong) =>
-        l ◁ₗ[π, b] (strong.(strong_rfn) rti2 r2) @ (strong.(strong_lt) rti2 lt2 r2) -∗
-        strong.(strong_R) rti2 lt2 r2 -∗
-        introduce_with_hooks E L R T
-    | None => False
-    end.
 
   (** ** Read judgments *)
   (* In a given lifetime context, we can read from [e], in the process determining that [e] reads from a location [l] and getting a value typed at a type [ty] with a layout compatible with [ot], and afterwards, the remaining [T L' v ty' r'] needs to be proved, where [ty'] is the new type of the read value and [v] is the read value.
@@ -2693,12 +2957,12 @@ Section judgments.
     The continuation [T] has access to the new place type and refinement of [l] after reading ([lt']),
     and the type ([ty3]) and refinement that is "moved out" of [l] for the client to keep (i.e., the ownership of the read value)
   *)
-  Definition typed_read_end_cont_t (rt : RT) : Type :=
-    llctx → val → ∀ rt3, type rt3 → rt3 → ∀ rt', ltype rt' → place_rfn rt' → access_result rt rt' → iProp Σ.
-  Definition typed_read_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (ac : access_allowed) (ot : op_type) (T : typed_read_end_cont_t rt) : iProp Σ :=
+  Definition typed_read_end_cont_t (allowed : place_update_kind) (rt : RT) : Type :=
+    llctx → val → ∀ rt3, type rt3 → rt3 → ∀ rt', ltype rt' → place_rfn rt' → place_update_kind_res allowed rt rt' → iProp Σ.
+  Definition typed_read_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) (T : typed_read_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      bmin ⊑ₖ b2 -∗
+      (*bmin ⪯ₚ b2 -∗*)
       (* given ownership of the read location *)
       l ◁ₗ[π, b2] r @ lt ={F}=∗
       ∃ q v
@@ -2718,17 +2982,15 @@ Section judgments.
             (mem_cast v ot st) ◁ᵥ{π} r3 @ ty3 ∗
             (* and the lifetime context *)
             llctx_interp L' ∗
-            (∃ rt' (lt' : ltype rt') (r' : place_rfn rt') res,
+            (∃ rt' (lt' : ltype rt') (r' : place_rfn rt') (res : place_update_kind_res _ _ _),
               (* and the remaining ownership for the location *)
               l ◁ₗ[π, b2] r' @ lt' ∗
               ⌜ltype_st lt' = ltype_st lt⌝ ∗
-              match res with
-              | ResultStrong => ⌜ac = AllowStrong⌝
-              | ResultWeak _ => typed_place_cond bmin lt lt'
-              end ∗
+              res ⪯ₚ bmin ∗
+              typed_place_cond res lt lt' ∗
               T L' (mem_cast v ot st) rt3 ty3 r3 rt' lt' r' res))).
-  Class TypedReadEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (br : access_allowed) (ot : op_type) : Type :=
-    typed_read_end_proof T : iProp_to_Prop (typed_read_end π E L l lt r b2 bmin br ot T).
+  Class TypedReadEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) : Type :=
+    typed_read_end_proof T : iProp_to_Prop (typed_read_end π E L l lt r b2 bmin ot T).
 
   (** ** Write judgments *)
   (* In a given lifetime context, we can write [v] to [e], compatible with [ot], where the written value has type [ty] at refinement [r], and afterwards, the remaining [T] needs to be proved.
@@ -2764,11 +3026,11 @@ Section judgments.
 
     After the write, [l2] has a new type [ty3] that is passed on to the continuation.
   *)
-  Definition typed_write_end_cont_t rt2 := llctx → ∀ rt3 : RT, type rt3 → rt3 → access_result rt2 rt3 → iProp Σ.
-  Definition typed_write_end (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 bmin : bor_kind) (ac : access_allowed) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) (T : typed_write_end_cont_t rt2) : iProp Σ :=
+  Definition typed_write_end_cont_t allowed rt2 := llctx → ∀ rt3 : RT, type rt3 → rt3 → place_update_kind_res allowed rt2 rt3 → iProp Σ.
+  Definition typed_write_end (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 : bor_kind) (bmin : place_update_kind) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) (T : typed_write_end_cont_t bmin rt2) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      bmin ⊑ₖ b2 -∗
+      (*bmin ⪯ₚ b2 -∗*)
       (* given ownership of the written-to location *)
       l2 ◁ₗ[π, b2] r2 @ lt2 -∗
       (* assuming that the client provides ownership of [v1] *)
@@ -2780,19 +3042,16 @@ Section judgments.
 
       (* and after the client has written to [l2] ... *)
       logical_step F (l2 ↦ v1 ={F}=∗
-        ((∃ L' (rt3 : RT) (ty3 : type rt3) (r3 : rt3) res,
+        ((∃ L' (rt3 : RT) (ty3 : type rt3) (r3 : rt3) (res : place_update_kind_res _ _ _),
         llctx_interp L' ∗
         (* [l2] is typed at a new type [ty3] satisfying the postcondition *)
         l2 ◁ₗ[π, b2] PlaceIn r3 @ (◁ ty3) ∗
         ⌜ltype_st lt2 = ty_syn_type ty3⌝ ∗
-        (* rt-changing, require br = false *)
-        match res with
-        | ResultStrong => ⌜ac = AllowStrong⌝
-        | ResultWeak _ => typed_place_cond bmin lt2 (◁ ty3)
-        end ∗
+        res ⪯ₚ bmin ∗
+        typed_place_cond res lt2 (◁ ty3) ∗
         T L' rt3 ty3 r3 res)))).
-  Class TypedWriteEnd (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 bmin : bor_kind) (br : access_allowed) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) : Type :=
-    typed_write_end_proof T : iProp_to_Prop (typed_write_end π E L ot v1 ty1 r1 b2 bmin br l2 lt2 r2 T).
+  Class TypedWriteEnd (π : thread_id) (E : elctx) (L : llctx) (ot : op_type) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (b2 : bor_kind) (bmin : place_update_kind) (l2 : loc) {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) : Type :=
+    typed_write_end_proof T : iProp_to_Prop (typed_write_end π E L ot v1 ty1 r1 b2 bmin l2 lt2 r2 T).
 
   (** ** Borrow judgments *)
   (** [typed_borrow_mut] gets triggered when we borrow mutably at lifetime [κ] from a place [e].
@@ -2832,28 +3091,31 @@ Section judgments.
           Φ (val_of_loc l)) -∗
       WP e {{ Φ }})%I.
 
-  Definition typed_borrow_mut_end_cont_t rt := gname → ltype rt → place_rfn rt → iProp Σ.
-  Definition typed_borrow_mut_end (π : thread_id) (E : elctx) (L : llctx) (κ : lft) (l : loc) {rt} (ty : type rt) (r : place_rfn rt) (b2 bmin : bor_kind) (T : typed_borrow_mut_end_cont_t rt) : iProp Σ :=
+  Definition typed_borrow_mut_end_cont_t bmin rt := gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition typed_borrow_mut_end (π : thread_id) (E : elctx) (L : llctx) (κ : lft) (l : loc) (ty_hint : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_mut_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-    bmin ⊑ₖ b2 -∗
+    (*bmin ⪯ₚ b2 -∗*)
     (* given ownership of the location we borrow from *)
-    (* TODO should we require a PlaceIn refinement here? *)
-    l ◁ₗ[π, b2] r @ (◁ ty) -∗ £(num_cred) ={F}=∗
+    l ◁ₗ[π, b2] r @ lt -∗ £(num_cred) ={F}=∗
+    ∃ (γ : gname) (ly : layout) (rt2 : RT) (ty2 : type rt2) (r2 : rt2) (res : place_update_kind_res bmin rt rt2),
     (* we provide a borrow of ty *)
-    ∃ (γ : gname) (ly : layout), place_rfn_interp_mut r γ ∗
-    &{κ}(∃ (r': rt), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r')  ∗
-    ty_sidecond ty ∗
-    ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗ loc_in_bounds l 0 (ly.(ly_size)) ∗
+    place_rfn_interp_mut (#r2) γ ∗
+    &{κ}(∃ (r': rt2), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty2.(ty_own_val) π r')  ∗
+    ty_sidecond ty2 ∗
+    ⌜syn_type_has_layout ty2.(ty_syn_type) ly⌝ ∗
+    loc_in_bounds l 0 (ly.(ly_size)) ∗
     (* and a blocked ownership of the borrowed location *)
-    l ◁ₗ[π, b2] (PlaceGhost γ: place_rfn rt) @ (BlockedLtype ty κ) ∗
+    l ◁ₗ[π, b2] (PlaceGhost γ: place_rfn rt2) @ (BlockedLtype ty2 κ) ∗
+    res ⪯ₚ bmin ∗
     (* and a proof that we can unblock again *)
-    typed_place_cond bmin (◁ ty) (BlockedLtype ty κ) ∗
+    typed_place_cond res lt (BlockedLtype ty2 κ) ∗
+    ⌜ltype_st lt = ty_syn_type ty2⌝ ∗
     (* and the context and postco *)
     llctx_interp L ∗
-    T γ (BlockedLtype ty κ) (PlaceGhost γ)).
-  Class TypedBorrowMutEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) {rt} (ty : type rt) (r : place_rfn rt) (b2 bmin : bor_kind) : Type :=
-    typed_borrow_mut_end_proof T : iProp_to_Prop (typed_borrow_mut_end π E L κ l ty r b2 bmin T).
+    T γ rt2 (BlockedLtype ty2 κ) (PlaceGhost γ) ty2 r2 res).
+  Class TypedBorrowMutEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
+    typed_borrow_mut_end_proof T : iProp_to_Prop (typed_borrow_mut_end π E L κ l orty lt r b2 bmin T).
 
   (** [typed_borrow_shr] gets triggered when we do a shared borrow at lifetime [κ] from a place [e].
 
@@ -2885,35 +3147,34 @@ Section judgments.
         Φ (val_of_loc l)) -∗
       WP e {{ Φ }})%I.
 
-  Definition typed_borrow_shr_end_cont_t rt := ltype rt → place_rfn rt → iProp Σ.
-  Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) {rt} (ty : type rt) (r : place_rfn rt) (b2 bmin : bor_kind) (T : typed_borrow_shr_end_cont_t rt) : iProp Σ :=
+  Definition typed_borrow_shr_end_cont_t bmin rt := ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
+  Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-    bmin ⊑ₖ b2 -∗
-    (* given ownership of the location we borrow from
-
-       TODO (this might well be an lty and not simply ◁ ty, to handle the case that a subplace was already shared-borrowed)
-        but how to formulate this properly?
-        Really, I want to say that [lt]'s core should be equivalent to ◁ty for some ty?
-    *)
-    l ◁ₗ[π, b2] r @ (◁ ty) ={F}=∗
+    (*bmin ⪯ₚ b2 -∗*)
+    (* given ownership of the location we borrow from *)
+    l ◁ₗ[π, b2] r @ lt ={F}=∗
     (* we provide a borrow of ty *)
     logical_step F (
     (* one credit for the inheritance VS *)
     £1 ={F}=∗
-    ∃ ly (lt : ltype rt) r',
-    place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ π r' l ∗
-    ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-    loc_in_bounds l 0 (ly.(ly_size)) ∗ ty.(ty_sidecond) ∗
+    ∃ ly rt2 (lt2 : ltype rt2) (r2 : rt2) (ty2 : type rt2) (res : place_update_kind_res bmin rt rt2),
+    (*place_rfn_interp_shared r r2 ∗*)
+    ty2.(ty_shr) κ π r2 l ∗
+    ⌜syn_type_has_layout ty2.(ty_syn_type) ly⌝ ∗
+    loc_in_bounds l 0 (ly.(ly_size)) ∗ ty2.(ty_sidecond) ∗
     (* and a blocked ownership of the borrowed location *)
-    l ◁ₗ[π, b2] r @ lt  ∗
+    l ◁ₗ[π, b2] #r2 @ lt2  ∗
     (* and a proof that we can unblock again *)
-    typed_place_cond bmin (◁ ty) lt ∗
+    typed_place_cond res lt lt2 ∗
+    ⌜ltype_st lt = ltype_st lt2⌝ ∗
+    ⌜ltype_st lt = ty_syn_type ty2⌝ ∗
+    res ⪯ₚ bmin ∗
     (* and the context and postco *)
     llctx_interp L ∗
-    T lt (r))).
-  Class TypedBorrowShrEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) {rt} (ty : type rt) (r : place_rfn rt) (b2 bmin : bor_kind) : Type :=
-    typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end π E L κ l ty r b2 bmin T).
+    T rt2 lt2 (#r2) ty2 r2 res)).
+  Class TypedBorrowShrEnd π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
+    typed_borrow_shr_end_proof T : iProp_to_Prop (typed_borrow_shr_end π E L κ l orty lt r b2 bmin T).
 
   (** ** Address-of judgments *)
   (** [*mut] address of *)
@@ -2935,10 +3196,10 @@ Section judgments.
      This does not seem that terrible, because we should not take *mut references from shared borrows anyways.
      (Note: we are really using here that the difference between *mut and *const have the role of providing some intent by the programmer.) *)
   Definition typed_addr_of_mut_end_cont_t := llctx → ∀ rt0, type rt0 → rt0 → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ.
-  Definition typed_addr_of_mut_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) (T : typed_addr_of_mut_end_cont_t) : iProp Σ :=
+  Definition typed_addr_of_mut_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_addr_of_mut_end_cont_t) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-    bmin ⊑ₖ b2 -∗
+    (*bmin ⪯ₚ b2 -∗*)
     (* given ownership of the location we borrow from *)
     l ◁ₗ[π, b2] r @ lt -∗
     (* do a logical step in order to be able to create [OpenedLtype] *)
@@ -2957,7 +3218,7 @@ Section judgments.
     (* and the context and postco *)
     llctx_interp L' ∗
     T L' rt0 ty0 r0 rt' lt' r')).
-  Class TypedAddrOfMutEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 bmin : bor_kind) : Type :=
+  Class TypedAddrOfMutEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) : Type :=
     typed_addr_of_mut_end_proof T : iProp_to_Prop (typed_addr_of_mut_end π E L l lt r b2 bmin T).
 
   (*
@@ -2978,6 +3239,11 @@ Section judgments.
   *)
 
 End judgments.
+
+Global Infix "⪯ₚ" := (place_update_kind_incl) (at level 51).
+Global Infix "⊔ₚₖ" := (place_update_kind_max) (at level 50).
+Global Infix "⊓ₚ" := (place_update_kind_restrict) (at level 50).
+
 
 (* TODO: can we just make this a li_tactic? *)
 Ltac solve_into_place_ctx :=
@@ -3005,6 +3271,11 @@ Next Obligation.
   iIntros (?? K ?? V M k ? res Hlook T) "HT". iExists res. iFrame. done.
 Qed.
 
+Global Typeclasses Opaque compute_map_lookup_goal.
+Ltac solve_compute_map_lookup unchecked := fail "implement solve_compute_map_lookup".
+#[global] Hint Extern 10 (LiTactic (compute_map_lookup_goal _ _ ?unchecked)) =>
+    refine (compute_map_lookup_hint _ _ _ _ _); solve_compute_map_lookup unchecked : typeclass_instances.
+
 (** Variant of [compute_map_lookup_goal] that expects a [Some v]. *)
 Definition compute_map_lookup_nofail_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (k : K) (T : V → iProp Σ) : iProp Σ :=
   ∃ res, ⌜M !! k = Some res⌝ ∗ T res.
@@ -3017,6 +3288,11 @@ Program Definition compute_map_lookup_nofail_hint `{!typeGS Σ} `{Countable K} {
 Next Obligation.
   iIntros (?? K ?? V M k res Hlook T) "HT". iExists res. iFrame. done.
 Qed.
+
+Global Typeclasses Opaque compute_map_lookup_nofail_goal.
+Ltac solve_compute_map_lookup_nofail := fail "implement solve_compute_map_lookup_nofail".
+#[global] Hint Extern 10 (LiTactic (compute_map_lookup_nofail_goal _ _)) =>
+    refine (compute_map_lookup_nofail_hint _ _ _ _); solve_compute_map_lookup_nofail : typeclass_instances.
 
 (** Tactic hint to compute an iterated map lookup *)
 Definition compute_map_lookups_nofail_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (ks : list K) (T : (list V) → iProp Σ) : iProp Σ :=
@@ -3031,6 +3307,11 @@ Next Obligation.
   iIntros (?? K ?? V M ks res Hlook T) "HT". iExists res. iFrame. done.
 Qed.
 
+Global Typeclasses Opaque compute_map_lookups_nofail_goal.
+Ltac solve_compute_map_lookups_nofail := fail "implement solve_compute_map_lookups_nofail".
+#[global] Hint Extern 10 (LiTactic (compute_map_lookups_nofail_goal _ _)) =>
+    refine (compute_map_lookups_nofail_hint _ _ _ _); solve_compute_map_lookups_nofail : typeclass_instances.
+
 (** Tactic hint to simplify a map, e.g. compute deletes *)
 Definition simplify_gmap_goal `{!typeGS Σ} `{Countable K} {V} (M : gmap K V) (T : gmap K V → iProp Σ) : iProp Σ :=
   ∃ M', ⌜M = M'⌝ ∗ T M'.
@@ -3043,6 +3324,11 @@ Program Definition simplify_gmap_hint `{!typeGS Σ} `{Countable K} {V} (M M' : g
 Next Obligation.
   iIntros (?? K ?? V M M' -> T) "HT". iExists M'. iFrame. done.
 Qed.
+
+Global Typeclasses Opaque simplify_gmap_goal.
+Ltac solve_simplify_gmap := fail "implement solve_simplify_gmap".
+#[global] Hint Extern 10 (LiTactic (simplify_gmap_goal _)) =>
+    refine (simplify_gmap_hint _ _ _); solve_simplify_gmap : typeclass_instances.
 
 (** Tactic hint to simplify a lft map, e.g. compute deletes *)
 (* We don't actually require an equality here, since the map doesn't have any semantic meaning *)
@@ -3059,6 +3345,11 @@ Program Definition simplify_lft_map_hint `{!typeGS Σ} `{Countable K} {V} (M M' 
 Next Obligation.
   iIntros (?? K ?? V M M' ? T) "HT". iExists M'. iFrame. done.
 Qed.
+
+Global Typeclasses Opaque simplify_lft_map_goal.
+Ltac solve_simplify_lft_map := fail "implement solve_simplify_lft_map".
+#[global] Hint Extern 10 (LiTactic (simplify_lft_map_goal _)) =>
+    refine (simplify_lft_map_hint _ _ _); solve_simplify_lft_map : typeclass_instances.
 
 (** Tactic hint to find a local lifetime and split it off from the context *)
 Definition llctx_find_llft_goal `{!typeGS Σ} (L : llctx) (κ : lft) (key : llctx_find_llft_key) (T : (list lft * llctx) → iProp Σ) : iProp Σ :=
@@ -3112,6 +3403,11 @@ Next Obligation.
   iIntros (?? st ly Hly T) "HT". iExists ly. iFrame. done.
 Qed.
 
+Global Typeclasses Opaque compute_layout_goal.
+Ltac solve_compute_layout := fail "implement solve_compute_layout".
+#[global] Hint Extern 1 (LiTactic (compute_layout_goal _)) =>
+    refine (compute_layout_hint _ _ _); solve_compute_layout : typeclass_instances.
+
 (** Tactic hint to compute a struct_layout for a struct_layout_spec *)
 Definition compute_struct_layout_goal `{!typeGS Σ} (sls : struct_layout_spec) (T : struct_layout → iProp Σ) : iProp Σ :=
   ∃ sl, ⌜struct_layout_spec_has_layout sls sl⌝ ∗ T sl.
@@ -3125,6 +3421,11 @@ Next Obligation.
   iIntros (?? sls sl Hly T) "HT". iExists sl. iFrame. done.
 Qed.
 
+Global Typeclasses Opaque compute_struct_layout_goal.
+Ltac solve_compute_struct_layout := fail "implement solve_compute_struct_layout".
+#[global] Hint Extern 1 (LiTactic (compute_struct_layout_goal _)) =>
+    refine (compute_struct_layout_hint _ _ _); solve_compute_struct_layout : typeclass_instances.
+
 (** Tactic hint to compute a enum_layout for a enum_layout_spec *)
 Definition compute_enum_layout_goal `{!typeGS Σ} (sls : enum_layout_spec) (T : struct_layout → iProp Σ) : iProp Σ :=
   ∃ sl, ⌜enum_layout_spec_has_layout sls sl⌝ ∗ T sl.
@@ -3137,6 +3438,11 @@ Program Definition compute_enum_layout_hint `{!typeGS Σ} (sls : enum_layout_spe
 Next Obligation.
   iIntros (?? sls sl Hly T) "HT". iExists sl. iFrame. done.
 Qed.
+
+Global Typeclasses Opaque compute_enum_layout_goal.
+Ltac solve_compute_enum_layout := fail "implement solve_compute_enum_layout".
+#[global] Hint Extern 1 (LiTactic (compute_enum_layout_goal _)) =>
+    refine (compute_enum_layout_hint _ _ _); solve_compute_enum_layout : typeclass_instances.
 
 (** Tactic hint to compute a semantic Rust type for a given syntactic [rust_type] *)
 Definition interpret_rust_type_goal `{!typeGS Σ} (lfts : gmap string lft) (sty : rust_type) (T : sigT type → iProp Σ) : iProp Σ :=
@@ -3218,6 +3524,11 @@ Next Obligation.
   iIntros (??? evar hint _ T). done.
 Qed.
 
+Global Typeclasses Opaque ensure_evar_instantiated_goal.
+Ltac solve_ensure_evar_instantiated := fail "implement solve_ensure_evar_instantiated".
+#[global] Hint Extern 1 (LiTactic (ensure_evar_instantiated_goal _ _)) =>
+    refine (ensure_evar_instantiated_hint _ _ _); solve_ensure_evar_instantiated : typeclass_instances.
+
 (** Same thing but for multiple evars *)
 Definition ensure_evars_instantiated_goal `{!typeGS Σ} {A} {F : A → Type} (evars : list (sigT F)) (hint : list (sigT F)) (T : () → iProp Σ) :=
   T tt.
@@ -3234,66 +3545,90 @@ Next Obligation.
   iIntros (???? evar hint _ T). done.
 Qed.
 
+Global Typeclasses Opaque ensure_evars_instantiated_goal.
+Ltac solve_ensure_evars_instantiated := fail "implement solve_ensure_evars_instantiated".
+#[global] Hint Extern 1 (LiTactic (ensure_evars_instantiated_goal _ _)) =>
+    refine (ensure_evars_instantiated_hint _ _ _); solve_ensure_evars_instantiated : typeclass_instances.
+
+(** Solving [lctx_lft_alive_count] *)
+(** the continuation gets the list of opened lifetimes + the new local lifetime context *)
+Definition lctx_lft_alive_count_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ : lft)
+    (T : (list lft) * llctx → iProp Σ) : iProp Σ :=
+  ∃ κs L', ⌜lctx_lft_alive_count E L κ κs L'⌝ ∗ T (κs, L').
+Program Definition lctx_lft_alive_count_hint `{!typeGS Σ} E L κ (κs : list lft) (L' : llctx) :
+  lctx_lft_alive_count E L κ κs L' →
+  LiTactic (lctx_lft_alive_count_goal E L κ) := λ a, {|
+    li_tactic_P T := T (κs, L');
+  |}.
+Next Obligation.
+  simpl. iIntros (?? E L κ κs L' ? T) "HT".
+  iExists κs, L'. iFrame. done.
+Qed.
 
 Global Typeclasses Opaque lctx_lft_alive_count_goal.
 Ltac solve_lft_alive_count := fail "implement solve_lft_alive_count".
 #[global] Hint Extern 10 (LiTactic (lctx_lft_alive_count_goal _ _ _)) =>
     refine (lctx_lft_alive_count_hint _ _ _ _ _ _); solve_lft_alive_count : typeclass_instances.
 
+
+(** Releasing lifetime tokens *)
+Definition llctx_release_toks_goal `{!typeGS Σ} (L : llctx) (κs : list lft) (T : llctx → iProp Σ) : iProp Σ :=
+  ∃ L', ⌜llctx_release_toks L κs L'⌝ ∗ T L'.
+Program Definition llctx_release_toks_hint `{!typeGS Σ} L κs (L' : llctx) :
+  llctx_release_toks L κs L' →
+  LiTactic (llctx_release_toks_goal L κs) := λ a, {|
+    li_tactic_P T := T L';
+  |}.
+Next Obligation.
+  iIntros (?? L κs L' ? T) "HT". iExists L'. iFrame. done.
+Qed.
+
 Global Typeclasses Opaque llctx_release_toks_goal.
 Ltac solve_llctx_release_toks := fail "implement solve_llctx_release_toks".
 #[global] Hint Extern 10 (LiTactic (llctx_release_toks_goal _ _)) =>
     refine (llctx_release_toks_hint _ _ _ _); solve_llctx_release_toks : typeclass_instances.
 
-Global Typeclasses Opaque simplify_gmap_goal.
-Ltac solve_simplify_gmap := fail "implement solve_simplify_gmap".
-#[global] Hint Extern 10 (LiTactic (simplify_gmap_goal _)) =>
-    refine (simplify_gmap_hint _ _ _); solve_simplify_gmap : typeclass_instances.
+(** Attempt to prove a [place_update_kind] inclusion *)
+Definition check_llctx_place_update_kind_incl_goal `{!typeGS Σ} (E : elctx) (L : llctx) (k1 k2 : place_update_kind) (T : bool → iProp Σ) : iProp Σ :=
+  ∃ b : bool, ⌜if b then lctx_place_update_kind_incl E L k1 k2 else True⌝ ∗ T b.
+Definition check_llctx_place_update_kind_incl_pure_goal `{!typeGS Σ} (E : elctx) (L : llctx) (k1 k2 : place_update_kind) (b : bool) : Prop :=
+  if b then lctx_place_update_kind_incl E L k1 k2 else True.
+Program Definition check_llctx_place_update_kind_incl_goal_hint `{!typeGS Σ} (E : elctx) (L : llctx) (k1 k2 : place_update_kind)  (b : bool) :
+  check_llctx_place_update_kind_incl_pure_goal E L k1 k2 b →
+  LiTactic (check_llctx_place_update_kind_incl_goal E L k1 k2) := λ a, {|
+    li_tactic_P T := T b;
+  |}.
+Next Obligation.
+  unfold check_llctx_place_update_kind_incl_pure_goal.
+  iIntros (?????? b Ha T) "HT".
+  iExists b. iR. done.
+Qed.
 
-Global Typeclasses Opaque simplify_lft_map_goal.
-Ltac solve_simplify_lft_map := fail "implement solve_simplify_lft_map".
-#[global] Hint Extern 10 (LiTactic (simplify_lft_map_goal _)) =>
-    refine (simplify_lft_map_hint _ _ _); solve_simplify_lft_map : typeclass_instances.
+Global Typeclasses Opaque check_llctx_place_update_kind_incl_goal.
+Ltac solve_check_llctx_place_update_kind_incl_pure_goal := fail "implement solve_check_llctx_place_update_kind_incl_pure_goal".
+#[global] Hint Extern 10 (LiTactic (check_llctx_place_update_kind_incl_goal _ _ _ _)) =>
+    refine (check_llctx_place_update_kind_incl_goal_hint _ _ _ _ _ _); solve_check_llctx_place_update_kind_incl_pure_goal : typeclass_instances.
 
-Global Typeclasses Opaque compute_map_lookup_goal.
-Ltac solve_compute_map_lookup unchecked := fail "implement solve_compute_map_lookup".
-#[global] Hint Extern 10 (LiTactic (compute_map_lookup_goal _ _ ?unchecked)) =>
-    refine (compute_map_lookup_hint _ _ _ _ _); solve_compute_map_lookup unchecked : typeclass_instances.
+(** Check whether a [place_update_kind] obeys [UpdUniq] *)
+Definition check_llctx_place_update_kind_incl_uniq_goal `{!typeGS Σ} (E : elctx) (L : llctx) (k1 : place_update_kind) (κs : list lft) (T : option (place_update_kind_rt_same k1 = true) → iProp Σ) : iProp Σ :=
+  ∃ ob : option _, ⌜if ob then lctx_place_update_kind_incl E L k1 (UpdUniq κs) else True⌝ ∗ T ob.
+Definition check_llctx_place_update_kind_incl_uniq_pure_goal `{!typeGS Σ} (E : elctx) (L : llctx) (k1 : place_update_kind) (κs : list lft) (b : option (place_update_kind_rt_same k1 = true)) : Prop :=
+  if b then lctx_place_update_kind_incl E L k1 (UpdUniq κs) else True.
+Program Definition check_llctx_place_update_kind_incl_uniq_goal_hint `{!typeGS Σ} (E : elctx) (L : llctx) (k1 : place_update_kind) (κs : list lft) (b : option (place_update_kind_rt_same k1 = true)) :
+  check_llctx_place_update_kind_incl_uniq_pure_goal E L k1 κs b →
+  LiTactic (check_llctx_place_update_kind_incl_uniq_goal E L k1 κs) := λ a, {|
+    li_tactic_P T := T b;
+  |}.
+Next Obligation.
+  unfold check_llctx_place_update_kind_incl_uniq_pure_goal.
+  iIntros (?????? b Ha T) "HT".
+  iExists b. iR. done.
+Qed.
 
-Global Typeclasses Opaque compute_map_lookup_nofail_goal.
-Ltac solve_compute_map_lookup_nofail := fail "implement solve_compute_map_lookup_nofail".
-#[global] Hint Extern 10 (LiTactic (compute_map_lookup_nofail_goal _ _)) =>
-    refine (compute_map_lookup_nofail_hint _ _ _ _); solve_compute_map_lookup_nofail : typeclass_instances.
-
-Global Typeclasses Opaque compute_map_lookups_nofail_goal.
-Ltac solve_compute_map_lookups_nofail := fail "implement solve_compute_map_lookups_nofail".
-#[global] Hint Extern 10 (LiTactic (compute_map_lookups_nofail_goal _ _)) =>
-    refine (compute_map_lookups_nofail_hint _ _ _ _); solve_compute_map_lookups_nofail : typeclass_instances.
-
-Global Typeclasses Opaque compute_layout_goal.
-Ltac solve_compute_layout := fail "implement solve_compute_layout".
-#[global] Hint Extern 1 (LiTactic (compute_layout_goal _)) =>
-    refine (compute_layout_hint _ _ _); solve_compute_layout : typeclass_instances.
-
-Global Typeclasses Opaque compute_struct_layout_goal.
-Ltac solve_compute_struct_layout := fail "implement solve_compute_struct_layout".
-#[global] Hint Extern 1 (LiTactic (compute_struct_layout_goal _)) =>
-    refine (compute_struct_layout_hint _ _ _); solve_compute_struct_layout : typeclass_instances.
-
-Global Typeclasses Opaque compute_enum_layout_goal.
-Ltac solve_compute_enum_layout := fail "implement solve_compute_enum_layout".
-#[global] Hint Extern 1 (LiTactic (compute_enum_layout_goal _)) =>
-    refine (compute_enum_layout_hint _ _ _); solve_compute_enum_layout : typeclass_instances.
-
-Global Typeclasses Opaque ensure_evar_instantiated_goal.
-Ltac solve_ensure_evar_instantiated := fail "implement solve_ensure_evar_instantiated".
-#[global] Hint Extern 1 (LiTactic (ensure_evar_instantiated_goal _ _)) =>
-    refine (ensure_evar_instantiated_hint _ _ _); solve_ensure_evar_instantiated : typeclass_instances.
-
-Global Typeclasses Opaque ensure_evars_instantiated_goal.
-Ltac solve_ensure_evars_instantiated := fail "implement solve_ensure_evars_instantiated".
-#[global] Hint Extern 1 (LiTactic (ensure_evars_instantiated_goal _ _)) =>
-    refine (ensure_evars_instantiated_hint _ _ _); solve_ensure_evars_instantiated : typeclass_instances.
+Global Typeclasses Opaque check_llctx_place_update_kind_incl_uniq_goal.
+Ltac solve_check_llctx_place_update_kind_incl_uniq_pure_goal := fail "implement solve_check_llctx_place_update_kind_incl_uniq_pure_goal".
+#[global] Hint Extern 10 (LiTactic (check_llctx_place_update_kind_incl_uniq_goal _ _ _ _)) =>
+    refine (check_llctx_place_update_kind_incl_uniq_goal_hint _ _ _ _ _ _); solve_check_llctx_place_update_kind_incl_uniq_pure_goal : typeclass_instances.
 
 (** ** Generic context folding mechanism *)
 Section folding.
@@ -4224,7 +4559,6 @@ Section guarded.
 
 End guarded.
 
-
 From lithium Require Import hooks.
 Ltac generate_i2p_instance_to_tc_hook arg c ::=
   lazymatch c with
@@ -4235,12 +4569,12 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_check_un_op ?E ?L ?v ?P ?o ?ot => constr:(TypedCheckUnOp E L v P o ot)
   | typed_call ?π ?E ?L ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall π E L κs etys v P vs tys)
   | typed_place ?π ?E ?L ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L π l lto ro b1 b2 K)
-  | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?al ?ot => constr:(TypedReadEnd π E L l lt r b1 b2 al  ot)
-  | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?al ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 al l lt2 r2)
-  | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?ty ?r ?b1 ?b2 =>
-    constr:(TypedBorrowMutEnd π E L κ l ty r b1 b2)
-  | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?ty ?r ?b1 ?b2 =>
-    constr:(TypedBorrowShrEnd π E L κ l ty r b1 b2)
+  | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot => constr:(TypedReadEnd π E L l lt r b1 b2 ot)
+  | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 l lt2 r2)
+  | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
+    constr:(TypedBorrowMutEnd π E L κ l orty lt r b1 b2)
+  | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
+    constr:(TypedBorrowShrEnd π E L κ l orty lt r b1 b2)
   | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 => constr:(TypedAddrOfMutEnd π E L l lt r b1 b2)
   | typed_annot_expr ?π ?E ?L ?n ?a ?v ?P => constr:(TypedAnnotExpr π E L n a v P)
   | typed_if ?E ?L ?v ?P => constr:(TypedIf E L v P)
@@ -4260,6 +4594,10 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
+  | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?lt ?r ?b =>
+      constr:(StratifyLtype π E L mu mdu ma m l lt r b)
+  | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r =>
+      constr:(InterpretTypingHint E L orty bmin ty r)
   | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?ls ?acc =>
       constr:(TypedContextFoldStep P π E L m l lt r ls acc)
   | _ => fail "unknown judgement" c

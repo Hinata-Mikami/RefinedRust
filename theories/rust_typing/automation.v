@@ -107,14 +107,14 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedSwitch π E L v rt ty r it) m ss def fn R ϝ))
   | typed_assert ?π ?E ?L ?v ?ty ?r ?s ?fn ?R ?ϝ =>
       cont uconstr:(((_ : TypedAssert π E L v ty r) s fn R ϝ))
-  | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?br ?ot ?T =>
-      cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin br ot) T))
-  | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?br ?l2 ?lt2 ?r2 ?T =>
-      cont uconstr:(((_ : TypedWriteEnd π E L ot v1 ty1 r1 b2 bmin br l2 lt2 r2) T))
-  | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?ty ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedBorrowMutEnd π E L κ l ty r b2 bmin) T))
-  | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?ty ?r ?b2 ?bmin ?T =>
-      cont uconstr:(((_ : TypedBorrowShrEnd π E L κ l ty r b2 bmin) T))
+  | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?T =>
+      cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot) T))
+  | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>
+      cont uconstr:(((_ : TypedWriteEnd π E L ot v1 ty1 r1 b2 bmin l2 lt2 r2) T))
+  | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : TypedBorrowMutEnd π E L κ l orty lt r b2 bmin) T))
+  | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
+      cont uconstr:(((_ : TypedBorrowShrEnd π E L κ l orty lt r b2 bmin) T))
   | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?T =>
       cont uconstr:(((_ : TypedAddrOfMutEnd π E L l lt r b2 bmin) T))
   | cast_ltype_to_type ?E ?L ?lt ?T =>
@@ -173,8 +173,10 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedArrayAccess π E L base offset st lt r k) T))
   | resolve_ghost_iter ?π ?E ?L ?rm ?lb ?l ?st ?lts ?b ?rs ?ig ?i0 ?T =>
       cont uconstr:(((_ : ResolveGhostIter π E L rm lb l st lts b rs ig i0) T))
-  | typed_discriminant_end ?π ?E ?L ?l ?lt ?r ?b2 ?bmin ?els ?T =>
-      cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 bmin els) T))
+  | typed_discriminant_end ?π ?E ?L ?l ?lt ?r ?b2 ?els ?T =>
+      cont uconstr:(((_ : TypedDiscriminantEnd π E L l lt r b2 els) T))
+  | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r ?T =>
+      cont uconstr:(((_ : InterpretTypingHint E L orty bmin ty r) T))
   end.
 
 (** Strategy to directly unfold the instance we're applying;
@@ -290,7 +292,7 @@ Ltac liRGoto goto_bb :=
               | None =>
                 notypeclasses refine (tac_fast_apply (typed_goto_acc E L fn R Inv goto_bb ϝ _ _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
-              | Some ?var => 
+              | Some ?var =>
                 notypeclasses refine (tac_fast_apply (typed_goto_acc' E L fn R goto_bb ϝ _ var Inv _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               end)
@@ -455,9 +457,10 @@ Ltac liROnEndlftTriggerInit :=
 Ltac liRJudgement :=
   lazymatch goal with
     (* place finish *)
-    | |- envs_entails _ (typed_place_finish ?π ?E ?L _ _ _ _ _ _ _ _ _ _ _ _ ?T) =>
-      (* simplify eqcasts and the match on strong/weak branch *)
-        unfold typed_place_finish; simpl
+    | |- envs_entails _ (typed_place_finish ?π ?E ?L _ _ _ _ _ _ _ ?T) =>
+      (* simplify eqcasts *)
+        unfold typed_place_finish
+        (*; simpl*)
     (* write *)
     | |- envs_entails _ (typed_write ?π ?E ?L _ _ _ ?ty ?r ?T) =>
         notypeclasses refine (tac_fast_apply (type_write E L T _ _ _ _ _ ty r π _) _); [ solve [refine _ ] |]
@@ -723,8 +726,10 @@ Ltac sidecond_hook_core :=
       solve_lft_alive
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       solve_lft_incl
-  | |- lctx_bor_kind_incl ?E ?L ?b1 ?b2 =>
-      solve_bor_kind_incl
+  | |- lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
+      solve_lft_list_incl
+  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      solve_place_update_kind_incl
   | |- lctx_bor_kind_alive ?E ?L ?b =>
       solve_bor_kind_alive
   | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
@@ -733,8 +738,8 @@ Ltac sidecond_hook_core :=
       solve_elctx_sat
   | |- fn_arg_layout_assumptions ?L1 ?L2 =>
       repeat first [constructor | done]
-  | |- lctx_bor_kind_outlives ?E ?L ?b ?κ =>
-      solve_bor_kind_outlives
+  | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
+      solve_place_update_kind_outlives
   | |- ty_has_op_type _ _ _ =>
       solve_ty_has_op_type
   | |- layout_wf _ =>

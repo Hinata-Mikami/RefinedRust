@@ -444,7 +444,6 @@ Section to_default.
     done.
   Qed.
 
-  Import EqNotations.
   Lemma array_ltype_place_cond b {rt rt'} (def : type rt) (def' : type rt') (len : nat) (lts : list (nat * ltype rt)) (lts' : list (nat * ltype rt')) :
     place_access_rt_rel b rt rt' →
     ty_syn_type def = ty_syn_type def' →
@@ -452,9 +451,11 @@ Section to_default.
     typed_place_cond b (ArrayLtype def len lts) (ArrayLtype def' len lts').
   Proof.
     iIntros (Hrel Hst). destruct b; simpl.
-    - iIntros "_". iPureIntro. simp_ltypes. rewrite Hst. done.
+    - iIntros "_". done.
     - iIntros "Hrel".
-      simp_ltypes. rewrite Hst. done.
+      unfold typed_place_cond; simpl.
+      unfold place_access_rt_rel in Hrel.
+      iPureIntro. subst rt'. done.
     - iIntros "Hrel".
       simpl in Hrel. subst rt'.
       iExists eq_refl.
@@ -469,31 +470,22 @@ Section to_default.
         rewrite (UIP_refl _ _ Heq). iIntros (?). iApply "Ha".
       + iApply array_ltype_imp_unblockable. done.
   Qed.
-  Lemma array_ltype_place_cond_strong wl {rt rt'} (def : type rt) (def' : type rt') (len : nat) (lts : list (nat * ltype rt)) (lts' : list (nat * ltype rt')) :
-    ty_syn_type def = ty_syn_type def' →
-    ⊢ typed_place_cond (Owned wl) (ArrayLtype def len lts) (ArrayLtype def' len lts').
-  Proof.
-    iIntros (Hst). iPureIntro. simp_ltypes. rewrite Hst. done.
-  Qed.
-
 End to_default.
 
 Section accessors.
   Context `{!typeGS Σ}.
 
-  Lemma array_ltype_acc_owned' {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l wl :
+  Lemma array_ltype_acc_owned_cred {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l wl :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] #rs @ ArrayLtype def len lts -∗
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
-      (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         (if wl then £1 else True) -∗
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
-        (*⌜Forall (λ '(i, _), i < len) lts'⌝ -∗*)
         (* new ownership *)
         ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
@@ -522,22 +514,15 @@ Section accessors.
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
-      (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       logical_step F
       (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
-        (*⌜Forall (λ '(i, _), i < len) lts'⌝ -∗*)
         (* new ownership *)
         ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
-        l ◁ₗ[π, Owned wl] #rs' @ ArrayLtype def' len lts' ∗
-        (* place condition, if required *)
-        (∀ bmin,
-         ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond bmin lt1 lt2) -∗
-         ⌜place_access_rt_rel bmin rt rt'⌝ -∗
-         typed_place_cond bmin (ArrayLtype def len lts) (ArrayLtype def' len lts'))).
+        l ◁ₗ[π, Owned wl] #rs' @ ArrayLtype def' len lts').
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_array_unfold /array_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & % & %Hly & #Hlb & Hcred & %r' & <- & Hb)".
@@ -546,43 +531,41 @@ Section accessors.
     iModIntro. iFrame.
     iApply (logical_step_intro_maybe with "Hat"). iIntros "Hcred' !>".
     iIntros (rt' def' lts' rs') "%Hst' Hb".
-    iSplitL "Hb Hcred'".
-    { rewrite ltype_own_array_unfold /array_ltype_own.
-      iModIntro.
-      iExists ly. rewrite -Hst'. iR. iR. iR. iR. iFrame "Hcred'".
-      iExists rs'. iR.
-      iPoseProof (big_sepL2_length with "Hb") as "%Hleneq".
-      rewrite length_interpret_iml in Hleneq. iR.
-      iNext. done. }
-    (* place cond: *)
+    rewrite ltype_own_array_unfold /array_ltype_own.
     iModIntro.
-    iIntros (bmin) "Hcond_ty %Hrt".
-    rewrite /typed_place_cond.
-    iApply array_ltype_place_cond; [done | done | done].
+    iExists ly. rewrite -Hst'. iR. iR. iR. iR. iFrame "Hcred'".
+    iExists rs'. iR.
+    iPoseProof (big_sepL2_length with "Hb") as "%Hleneq".
+    rewrite length_interpret_iml in Hleneq. iR.
+    iNext. done.
   Qed.
 
-  Local Lemma typed_place_cond_uniq_core_eq_array {rt} (def : type rt) (def' : type rt) lts lts' len κ γ :
-    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (Uniq κ γ) ty1 ty2) -∗
-    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts', ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)).
+  Local Lemma typed_place_cond_uniq_core_eq_array {rt} (def : type rt) (def' : type rt) lts lts' len κs :
+    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
+      typed_place_cond (UpdUniq κs) ty1 ty2) -∗
+    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
+      ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)).
   Proof.
     iIntros "Hcond". iApply (big_sepL2_impl with "Hcond").
     iModIntro. iIntros (? lt1 lt2 Hlook1 Hlook2).
     iApply typed_place_cond_uniq_core_eq.
   Qed.
-  Local Lemma typed_place_cond_uniq_unblockable_array {rt} (def : type rt) (def' : type rt) lts lts' len κ γ :
-    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (Uniq κ γ) ty1 ty2) -∗
-    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts', imp_unblockable [κ] ty2).
+  Local Lemma typed_place_cond_uniq_unblockable_array {rt} (def : type rt) (def' : type rt) lts lts' len κs :
+    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
+      typed_place_cond (UpdUniq κs) ty1 ty2) -∗
+    ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def)%I len lts; interpret_iml (◁ def')%I len lts',
+      imp_unblockable κs ty2).
   Proof.
     iIntros "Hcond". iApply (big_sepL2_impl with "Hcond").
     iModIntro. iIntros (? lt1 lt2 Hlook1 Hlook2).
     iApply typed_place_cond_uniq_unblockable.
   Qed.
 
-  Local Lemma array_acc_uniq_elems_unblock π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) κ γ :
+  Local Lemma array_acc_uniq_elems_unblock π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) κs :
     syn_type_has_layout (ty_syn_type def) ly →
     ty_syn_type def = ty_syn_type def' →
-    ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (Uniq κ γ) ty1 ty2) -∗
-    [† κ] -∗
+    ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (UpdUniq κs) ty1 ty2) -∗
+    lft_dead_list κs -∗
     (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @  lt) -∗
     |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
@@ -597,12 +580,11 @@ Section accessors.
       apply lookup_zip in Hlook1 as (Hlook1 & Hlook1').
       apply lookup_zip in Hlook2 as (Hlook2 & Hlook2'). simpl in *.
       assert (r1 = r2) as -> by naive_solver.
-      iPoseProof (typed_place_cond_uniq_core_eq_array _ _ _ _ _ κ γ with "Hcond") as "Heq".
-      iPoseProof (typed_place_cond_uniq_unblockable_array _ _ _ _ _ κ γ with "Hcond") as "Hub".
+      iPoseProof (typed_place_cond_uniq_core_eq_array _ _ _ _ _ κs with "Hcond") as "Heq".
+      iPoseProof (typed_place_cond_uniq_unblockable_array _ _ _ _ _ κs with "Hcond") as "Hub".
       iPoseProof (big_sepL2_lookup with "Heq") as "Heq1"; [ done.. | ].
       iPoseProof (big_sepL2_lookup with "Hub") as "Hub1"; [ done.. | ].
-      iMod (imp_unblockable_use with "Hub1 [] Hl") as "Hl"; first done.
-      { iFrame "Hdead"; done. }
+      iMod (imp_unblockable_use with "Hub1 Hdead Hl") as "Hl"; first done.
       iDestruct ("Heq1" $! (Owned _) _) as "((%Hst1' & #Heq1' & _) & (_ & #Heq2 & _))".
       iMod ("Heq2" with "Hl") as "Hl".
       rewrite !ltype_core_syn_type_eq in Hst1'.
@@ -613,9 +595,12 @@ Section accessors.
   Local Lemma array_acc_uniq_elems_core_eq π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) :
     syn_type_has_layout (ty_syn_type def) ly →
     ty_syn_type def = ty_syn_type def' →
-    ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts', ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
-    (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt) -∗
-    |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
+    ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts',
+      ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
+    (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
+      ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt) -∗
+    |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs,
+      ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
     iIntros (Hst Hst_eq) "#Heq >Hb". iApply big_sepL2_fupd.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite length_interpret_iml in Hlen2.
@@ -646,21 +631,23 @@ Section accessors.
     ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
-      (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
-      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
+      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
+        ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       logical_step F
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) (rs' : list (place_rfn rt)) bmin,
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         ⌜len = length rs'⌝ -∗
-        bmin ⊑ₖ Uniq κ γ -∗
-        ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond (bmin) (ty1) (ty2)) -∗
+        bmin ⪯ₚ UpdUniq [κ] -∗
+        ([∗ list] ty1; ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts',
+          typed_place_cond bmin ty1 ty2) -∗
         (* new ownership *)
-        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
+        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs',
+          ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #rs' @ ArrayLtype def' len lts' ∗
         R ∗
-        typed_place_cond (Uniq κ γ ⊓ₖ bmin) (ArrayLtype def len lts) (ArrayLtype def' len lts')
+        typed_place_cond bmin (ArrayLtype def len lts) (ArrayLtype def' len lts')
         ).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Htok Htokcl Hb". rewrite ltype_own_array_unfold /array_ltype_own.
@@ -690,11 +677,13 @@ Section accessors.
       iModIntro. iNext. iExists r'. iFrame "Hauth". iMod "Hb" as "($ & Hb)".
       iMod (lft_incl_dead with "Hincl Hdead") as "Hdead"; first done.
       setoid_rewrite ltype_own_core_equiv.
-      iApply (array_acc_uniq_elems_unblock with "[Hcond_ty] Hdead Hb").
-      { done. } { done. }
-      iApply (big_sepL2_impl with "Hcond_ty").
-      iModIntro. iIntros (? [] [] ? ?).
-      iApply typed_place_cond_incl. done.
+      iApply (array_acc_uniq_elems_unblock _ _ _ _ _ _ _ _ _ [κ] with "[Hcond_ty] [Hdead] Hb").
+      - done.
+      - done.
+      - iApply (big_sepL2_impl with "Hcond_ty").
+        iModIntro. iIntros (? [] [] ? ?).
+        iApply typed_place_cond_incl. done.
+      - by iApply lft_dead_list_singleton.
     }
     { iModIntro. rewrite /V. iExists rs'. iFrame. rewrite Hst_eq. eauto 8 with iFrame. }
     iMod ("Htokcl" with "Htok") as "$".
@@ -712,7 +701,7 @@ Section accessors.
       iNext. iModIntro.
       setoid_rewrite ltype_own_core_equiv.
 
-      iAssert ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond (Uniq κ γ) ty1 ty2)%I with "[Hcond_ty]" as "Ha".
+      iAssert ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond (UpdUniq [κ]) ty1 ty2)%I with "[Hcond_ty]" as "Ha".
       { iApply (big_sepL2_impl with "Hcond_ty"). iModIntro. iIntros (k ? ? ? ?). by iApply typed_place_cond_incl. }
       iSplit.
       - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame. iMod "Hb" as "($ & Hb)".
@@ -726,8 +715,6 @@ Section accessors.
         iModIntro. iIntros (? ? ? ? ?) "Heq" => /=.
         iIntros (??). iApply ltype_eq_sym. iApply "Heq".
     }
-    iApply (typed_place_cond_incl bmin).
-    { iApply bor_kind_incl_glb; first done. iApply bor_kind_incl_refl. }
     iApply (array_ltype_place_cond _ _  with "Hcond_ty"); last done.
     apply place_access_rt_rel_refl.
   Qed.
@@ -739,18 +726,16 @@ Section accessors.
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
-      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
+      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
+        ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) rs',
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         ⌜length rs = length rs'⌝ -∗
         (* new ownership *)
-        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt)
+        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs',
+          ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt)
          ={F}=∗
-        l ◁ₗ[π, Shared κ] #rs' @ ArrayLtype def' len lts' ∗
-        (* place condition, if required *)
-        (∀ bmin,
-         ([∗ list] lt1; lt2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def') len lts', typed_place_cond bmin lt1 lt2) -∗
-         typed_place_cond bmin (ArrayLtype def len lts) (ArrayLtype def' len lts'))
+        l ◁ₗ[π, Shared κ] #rs' @ ArrayLtype def' len lts'
       ).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_array_unfold /array_ltype_own.
@@ -761,15 +746,8 @@ Section accessors.
     iIntros (def' lts' rs') "%Hst' %Hlen #Hb''".
     rewrite ltype_own_array_unfold /array_ltype_own.
     iModIntro.
-    iSplitL.
-    { iExists ly. rewrite -Hst'. iR. iR. iR. iR.
-      iExists _. iR. iR. iModIntro. by iFrame "Hb''".
-    }
-    iIntros (bmin) "Hcond".
-    iApply array_ltype_place_cond.
-    - apply place_access_rt_rel_refl.
-    - done.
-    - done.
+    iExists ly. rewrite -Hst'. iR. iR. iR. iR.
+    iExists _. iR. iR. iModIntro. by iFrame "Hb''".
   Qed.
 
 End accessors.

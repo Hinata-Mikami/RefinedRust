@@ -9,7 +9,7 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural instances *)
-  Lemma stratify_ltype_shr_owned {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl
+  Lemma stratify_ltype_shr_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl
       (T : stratify_ltype_cont_t) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
       match ma with
@@ -37,7 +37,7 @@ Section stratify.
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       iMod ("Hvs" with "Hb") as "Hb".
-      iMod ("Hcl" with "Hl Hb") as "(Hb & _)".
+      iMod ("Hcl" with "Hl Hb") as "Hb".
       iDestruct (shr_ref_unfold_1 ty' κ (Owned wl)) as "(_ & #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
@@ -49,10 +49,10 @@ Section stratify.
       iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
-      by iMod ("Hcl" with "Hl Hb") as "($ & _)".
+      by iMod ("Hcl" with "Hl Hb") as "$".
   Qed.
-  Global Instance stratify_ltype_shr_owned_none_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl :
-    StratifyLtype π E L StratMutNone mdu ma ml l (ShrLtype lt κ) (#r) (Owned wl) := λ T, i2p (stratify_ltype_shr_owned π E L StratMutNone mdu ma ml l lt κ r wl T).
+  Definition stratify_ltype_shr_owned_inst := [instance (@stratify_ltype_shr_owned StratMutNone) ].
+  Global Existing Instance stratify_ltype_shr_owned_inst.
 
   (* TODO Uniq *)
 
@@ -128,6 +128,6 @@ Section stratify.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_shr_inst {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt)) b :
-    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (shr_ref κ ty))%I r b | 30 := λ T, i2p (stratify_ltype_ofty_shr π E L mu ma ml l ty κ r b T).
+  Definition stratify_ltype_ofty_shr_inst := [instance @stratify_ltype_ofty_shr].
+  Global Existing Instance stratify_ltype_ofty_shr_inst | 30.
 End stratify.

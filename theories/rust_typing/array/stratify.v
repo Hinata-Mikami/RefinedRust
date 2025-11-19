@@ -77,7 +77,7 @@ Section stratify.
               ⌜if k is Owned _ then True else False⌝ ∗
               (* we cannot have blocked lfts below shared; TODO: also allow Uniq *)
               trigger_tc (SimpLtype (ltype_core lty3)) (λ lty3',
-              ∃ r4, 
+              ∃ r4,
               weak_subltype E L3 k r3 r4 lty3' (◁ def) (T L3 (R3 ∗ R2) ((j, CoreableLtype (ltype_blocked_lfts lty3) (◁ def)) :: iml2) (<[j := r4]> rs2)))
           end
         else

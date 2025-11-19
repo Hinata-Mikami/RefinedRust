@@ -499,9 +499,9 @@ Section rules.
   Context (F : type rt → type rt) `{!TypeContractive F}.
 
   (* on place access, unfold *)
-  Lemma typed_place_fixpoint_unfold π E L l r k1 k2 P (T : place_cont_t rt) :
-    typed_place π E L l (◁ (type_fixpoint F)) r k1 k2 P T :-
-    return (typed_place π E L l (◁ (F (type_fixpoint F))) r k1 k2 P T).
+  Lemma typed_place_fixpoint_unfold π E L l r k1 bmin P (T : place_cont_t rt bmin) :
+    typed_place π E L l (◁ (type_fixpoint F)) r bmin k1 P T :-
+    return (typed_place π E L l (◁ (F (type_fixpoint F))) r bmin k1 P T).
   Proof.
     iApply typed_place_eqltype.
     apply full_eqtype_eqltype.
@@ -539,7 +539,7 @@ Section rules.
     return (mut_subtype E L ty1 (F (type_fixpoint F)) T).
   Proof.
     unfold mut_subtype.
-    iIntros "(%Ha & $)". iPureIntro. 
+    iIntros "(%Ha & $)". iPureIntro.
     intros r.
     eapply subtype_trans; first apply Ha.
     apply type_fixpoint_subtype_2.

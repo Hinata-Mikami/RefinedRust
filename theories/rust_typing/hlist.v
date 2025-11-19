@@ -955,6 +955,13 @@ Section hzipl.
     - eapply IH.
   Qed.
 
+  Lemma hcmap_hzipl_fmap {X Y} {F} (f : ∀ x, F x → Y) (Xl : list X) (hl : hlist F Xl) :
+    f +c<$> hl = (λ x, f _ (projT2 x)) <$> (hzipl _ hl).
+  Proof.
+    induction Xl as [ | ? Xl IH] in hl |-*; inv_hlist hl; simpl; first done.
+    intros ??. f_equiv. apply IH.
+  Qed.
+
   Lemma TCHForall_nth_hzipl {X F} (Ψ : ∀ x : X, F x → Prop) (Xl : list X) (hl : hlist F Xl) i x y :
     TCHForall Ψ hl →
     hzipl _ hl !! i = Some (existT x y)  →

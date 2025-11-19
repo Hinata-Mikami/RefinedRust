@@ -65,9 +65,9 @@ impl<T> UnsafeCell<T> {
     }
 }
 
-#[rr::refined_by("P" : "{rt_of T} → Prop" ; "{rt_of T} → Prop" )]
+#[rr::refined_by("P" : "{xt_of T} → Prop")]
 #[rr::exists("x" : "{xt_of T}")]
-#[rr::invariant("P ($# x)")]
+#[rr::invariant("P x")]
 #[rr::mode(na)]
 pub struct Cell<T> {
     #[rr::field("$# x")]
@@ -77,7 +77,7 @@ pub struct Cell<T> {
 impl<T> Cell<T> {
     // // NOTE: calling this function requires manual effort to instantiate P
     #[rr::params("P")]
-    #[rr::requires("P ($# value)")]
+    #[rr::requires("P (value)")]
     #[rr::returns("P")]
     pub const fn new(value: T) -> Cell<T> {
         Cell {
@@ -86,7 +86,7 @@ impl<T> Cell<T> {
     }
 
     #[rr::only_spec]
-    #[rr::requires("self ($# val)")]
+    #[rr::requires("self (val)")]
     pub fn set(&self, val: T) {
         let old = self.replace(val);
         drop(old);
@@ -109,9 +109,9 @@ impl<T> Cell<T> {
     }
 
     #[rr::only_spec]
-    #[rr::requires("self ($# val)")]
+    #[rr::requires("self val")]
     #[rr::exists("y")]
-    #[rr::ensures("self ($# y)")]
+    #[rr::ensures("self y")]
     #[rr::returns("y")]
     pub fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
@@ -123,7 +123,7 @@ impl<T> Cell<T> {
     #[rr::only_spec]
     #[rr::exists("x")]
     #[rr::returns("x")]
-    #[rr::ensures("self ($# x)")]
+    #[rr::ensures("self x")]
     pub fn into_inner(self) -> T {
         self.value.into_inner()
     }
@@ -144,7 +144,7 @@ impl<T: Copy> Cell<T> {
     #[rr::skip]
     #[rr::exists("x")]
     #[rr::returns("x")]
-    #[rr::ensures("self ($# x)")]
+    #[rr::ensures("self x")]
     pub fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.

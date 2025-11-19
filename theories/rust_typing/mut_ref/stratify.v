@@ -8,8 +8,7 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural rules *)
-  Lemma stratify_ltype_mut_owned {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl γ
-      (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :
+  Lemma stratify_ltype_mut_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl γ (T : stratify_ltype_cont_t) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Uniq κ γ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
@@ -37,45 +36,44 @@ Section stratify.
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       iMod ("Hvs" with "Hb") as "Hb".
-      iMod ("Hcl" with "Hl Hb") as "(Hb & _)".
+      iMod ("Hcl" with "Hl Hb") as "Hb".
       iDestruct (mut_ref_unfold_1 ty' κ (Owned wl)) as "(_ & #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
     - iAssert (T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ)))%I with "[Hc]" as "Hc".
       { destruct ma; done. }
       iModIntro. iExists L', R, _, _, _. iFrame.
-      iSplitR. { simp_ltypes; done. }
+    iSplitR. { simp_ltypes; done. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
-      by iMod ("Hcl" with "Hl Hb") as "($ & _)".
+      by iMod ("Hcl" with "Hl Hb") as "$".
   Qed.
-  Global Instance stratify_ltype_mut_owned_weak_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl γ :
-    StratifyLtype π E L StratMutWeak mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned wl) :=
-      λ T, i2p (stratify_ltype_mut_owned π E L StratMutWeak mdu ma ml l lt κ r wl γ T).
-  Global Instance stratify_ltype_mut_owned_none_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl γ :
-    StratifyLtype π E L StratMutNone mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned wl) := λ T, i2p (stratify_ltype_mut_owned π E L StratMutNone mdu ma ml l lt κ r wl γ T).
+  Definition stratify_ltype_mut_owned_weak_inst := [instance (@stratify_ltype_mut_owned StratMutWeak)].
+  Global Existing Instance stratify_ltype_mut_owned_weak_inst.
+  Definition stratify_ltype_mut_owned_none_inst := [instance (@stratify_ltype_mut_owned StratMutNone)].
+  Global Existing Instance stratify_ltype_mut_owned_none_inst.
 
-  Lemma stratify_ltype_mut_uniq {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ
+  Lemma stratify_ltype_mut_uniq mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ
       (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :
     (* get a lifetime token *)
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L1),
       (∀ l', stratify_ltype π E L1 mu mdu ma ml l' lt r (Uniq κ γ) (λ L2 R rt' lt' r',
         (* validate the update *)
-        prove_place_cond E L2 (Uniq κ' γ') lt lt' (λ upd,
-          match upd with
-          | ResultWeak Heq =>
-              (* update obeys the contract, get a mutable reference *)
-              match ma with
-              | StratRefoldFull => cast_ltype_to_type E L2 lt' (λ ty', T L2 (llft_elt_toks κs ∗ R) _ (◁ (mut_ref κ ty'))%I (#(r', γ)))
-              | _ => T L2 (llft_elt_toks κs ∗ R) _ (MutLtype lt' κ) (#(r', γ))
-              end
-          | ResultStrong =>
-              (* unfold to an OpenedLtype *)
-              ⌜ma = StratNoRefold⌝ ∗
-              T L2 R _ (OpenedLtype (MutLtype lt' κ) (MutLtype lt κ) (MutLtype lt κ) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#(r', γ))
-          end))))
+        prove_place_cond E L2 UpdStrong lt lt' (λ upd,
+          li_tactic (check_llctx_place_update_kind_incl_goal E L2 upd.(puk_res_k) (UpdUniq [κ'])) (λ b,
+          if b then
+            (* update obeys the contract, get a mutable reference *)
+            match ma with
+            | StratRefoldFull => cast_ltype_to_type E L2 lt' (λ ty', T L2 (llft_elt_toks κs ∗ R) _ (◁ (mut_ref κ ty'))%I (#(r', γ)))
+            | _ => T L2 (llft_elt_toks κs ∗ R) _ (MutLtype lt' κ) (#(r', γ))
+            end
+          else
+            (* unfold to an OpenedLtype *)
+            ⌜ma = StratNoRefold⌝ ∗
+            T L2 R _ (OpenedLtype (MutLtype lt' κ) (MutLtype lt κ) (MutLtype lt κ) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#(r', γ))
+          )))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (#(r, γ)) (Uniq κ' γ') T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
@@ -88,48 +86,37 @@ Section stratify.
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
     iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
-    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & Hupd & Hs)"; first done.
-    destruct upd as [ Heq | ].
+    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond &  %Hsteq & Hs)"; first done.
+    unfold check_llctx_place_update_kind_incl_goal.
+    iDestruct "Hs" as "(%b & %Hb & Hs)".
+    destruct b.
     - (* weak *)
+      iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl2"; first apply Hb.
+      iPoseProof (typed_place_cond_Uniq_rt_eq with "Hincl2 Hcond") as "%Heq".
       subst rt'.
-      destruct (decide (ma = StratRefoldFull)) as [Heq | ].
-      + rewrite Heq. iDestruct "Hs" as "(%ty' & %Heqt & HT)".
-        iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heqt | ].
-
-        iExists _, _, _, _, _. iFrame.
-        iSplitR. { iModIntro. done. }
-        iApply logical_step_fupd.
-        iApply (logical_step_compose with "Hstep").
-        iApply (logical_step_compose with "Hcl").
-        iModIntro. iApply logical_step_intro.
-        iIntros "[Hcl _] (Hb & HR)".
-        iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
-        { iApply bor_kind_incl_refl. }
-        { done. }
-        iDestruct (mut_ltype_incl_uniq with "[] [] []") as "(_ & #Hincl & _)".
-        { iIntros (?). iApply "Heq". }
-        { iApply lft_incl_refl. }
-        { iApply lft_incl_refl. }
-        iPoseProof ("Hincl" with "Hl") as "Hl".
-        by iApply (mut_ref_unfold_1_uniq with "Hl").
-      + iAssert (T L2 (llft_elt_toks κs ∗ R) _ (MutLtype lt' κ) #(r', γ))%I with "[Hs]" as "Hs".
-        { destruct ma; first done. all: done. }
-        iExists _, _, _, _, _. iFrame.
-        iSplitR. { iModIntro. done. }
-        iApply logical_step_fupd.
-        iApply (logical_step_compose with "Hstep").
-        iApply (logical_step_compose with "Hcl").
-        iModIntro. iApply logical_step_intro.
-        iIntros "[Hcl _] (Hb & HR)".
-        iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
-        { iApply bor_kind_incl_refl. }
-        { done. }
-        done.
+      iAssert (∃ lt2, ⌜full_eqltype E L2 (MutLtype lt' κ) lt2⌝ ∗ T L2 (llft_elt_toks κs ∗ R) _ lt2 # (r', γ))%I with "[Hs]" as "HT".
+      { destruct ma.
+        - iDestruct "Hs" as "(%ty & %Heqty & $)".
+          iPureIntro. apply mut_ref_unfold_full_eqltype. done.
+        - iFrame. done.
+        - iFrame. done. }
+      iDestruct "HT" as "(%lt2 & %Heql & $)".
+      iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
+      iFrame.
+      iSplitR. {
+        unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].
+        iApply (ltype_eq_syn_type with "Heq"). }
+      iApply logical_step_fupd.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "Hcl").
+      iModIntro. iApply logical_step_intro.
+      iIntros "[Hcl _] (Hb & HR)".
+      iFrame. iMod ("Hcl" with "Hl Hb Hincl2 [//] Hcond") as "(Hl & $ & _)".
+      iDestruct ("Heq" $! _ _) as "(Heq1 & _)".
+      iMod (ltype_incl_use with "Heq1 Hl") as "Hb"; done.
     - (* strong *)
       iDestruct "Hs" as "(-> & Hs)".
-      iDestruct "Hupd" as "%Hst".
-      iExists _, _, _, _, _. iFrame.
-      iSplitR. { done. }
+      iFrame. iR.
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "Hcl").
@@ -139,12 +126,10 @@ Section stratify.
       { done. }
       done.
   Qed.
-  Global Instance stratify_ltype_mut_uniq_weak_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ :
-    StratifyLtype π E L StratMutWeak mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Uniq κ' γ') :=
-      λ T, i2p (stratify_ltype_mut_uniq π E L StratMutWeak mdu ma ml l lt κ r κ' γ' γ T).
-  Global Instance stratify_ltype_mut_uniq_none_inst {rt} π E L mdu ma {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) κ' γ' γ :
-    StratifyLtype π E L StratMutNone mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Uniq κ' γ') :=
-      λ T, i2p (stratify_ltype_mut_uniq π E L StratMutNone mdu ma ml l lt κ r κ' γ' γ T).
+  Definition stratify_ltype_mut_uniq_weak_inst := [instance (@stratify_ltype_mut_uniq StratMutWeak)].
+  Global Existing Instance stratify_ltype_mut_uniq_weak_inst.
+  Definition stratify_ltype_mut_uniq_none_inst := [instance (@stratify_ltype_mut_uniq StratMutNone)].
+  Global Existing Instance stratify_ltype_mut_uniq_none_inst.
 
   (** Unfolding instances *)
   Lemma stratify_ltype_ofty_mut {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b T :
@@ -155,8 +140,6 @@ Section stratify.
     iPureIntro. iIntros (?) "HL CTX HE".
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
-  Global Instance stratify_ltype_ofty_mut_inst {rt} π E L mu ma {M} (ml : M) l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) b :
-    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (mut_ref κ ty))%I r b | 30 :=
-      λ T, i2p (stratify_ltype_ofty_mut π E L mu ma ml l ty κ r b T).
-
+  Definition stratify_ltype_ofty_mut_inst := [instance @stratify_ltype_ofty_mut].
+  Global Existing Instance stratify_ltype_ofty_mut_inst | 30.
 End stratify.

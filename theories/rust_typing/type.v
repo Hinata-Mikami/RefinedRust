@@ -2509,6 +2509,12 @@ Definition listRT (A : RT) : RT :=
   mk_RT (list (RT_rt A)) (list (RT_xt A)) (fmap (RT_xrt A)).
 Canonical Structure listRT.
 
+Definition propRT : RT :=
+  mk_RT Prop Prop id.
+Canonical Structure propRT.
+
+Canonical Structure funRT (A B : Type) : RT := directRT (A → B). 
+
 Definition resultRT (A1 A2 : RT) : RT :=
   mk_RT (result (RT_rt A1) (RT_rt A2)) (result (RT_xt A1) (RT_xt A2))
   (λ x,

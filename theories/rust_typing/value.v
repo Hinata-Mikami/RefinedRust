@@ -884,12 +884,12 @@ Section rules.
   (* Read instance that leaves uninit on moves.
      TODO: Ideally, we would like to leave a value instead to not loose information.
       The lemmas below explore this, but currently do not work. *)
-  Lemma type_read_ofty_move_owned E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ot wl bmin :
+  Lemma type_read_ofty_move_owned E L {rt} π l (ty : type rt) r ot wl (T : typed_read_end_cont_t UpdStrong rt) :
     (⌜ty_has_op_type ty ot MCCopy⌝ ∗
-        ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#()) ResultStrong)
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong ot T.
+      ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#()) (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
   Proof.
-    iIntros "(%Hot & Hs)" (F ????) "#CTX #HE HL _ Hb".
+    iIntros "(%Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     specialize (ty_op_type_stable Hot) as Halg''.
@@ -902,27 +902,26 @@ Section rules.
     { simpl. done. }
     { iNext. iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
     iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
-    iModIntro. iExists _, _,_, _. iFrame.
-    (* strong update *)
-    iExists ResultStrong.
-    iSplitR; first done.
-    iR.
-    done.
+    iModIntro.
+    iSpecialize ("Hs" $! (mem_cast v ot st)).
+    iFrame. done.
   Qed.
-  Global Instance type_read_ofty_move_owned_inst E L {rt} π wl bmin l (ty : type rt) r ot :
-    TypedReadEnd π E L l (◁ ty)%I (PlaceIn r) (Owned wl) bmin AllowStrong (ot) | 20 :=
-    λ T, i2p (type_read_ofty_move_owned E L π T l ty r ot wl bmin).
+  Definition type_read_ofty_move_owned_inst := [instance @type_read_ofty_move_owned].
+  Global Existing Instance type_read_ofty_move_owned_inst | 20.
 
   (* We also have a corresponding rule for Uniq ownership that leaves [Opened].
     This allows us to move out of mutable references, as long as another object is moved in at a later point. *)
   (* TODO also move value out here. *)
-  Lemma type_read_ofty_move_uniq E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ot κ γ bmin :
+  Lemma type_read_ofty_move_uniq E L {rt} π l (ty : type rt) r ot κ γ (T : typed_read_end_cont_t UpdStrong rt)  :
     (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
       ⌜ty_has_op_type ty ot MCCopy⌝ ∗
-        ∀ v, T L2 v _ ty r unit (OpenedLtype (◁ uninit ty.(ty_syn_type)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#()) ResultStrong))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) bmin AllowStrong ot T.
+        ∀ v, T L2 v _ ty r unit
+          (OpenedLtype (◁ uninit ty.(ty_syn_type)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs))
+          (#())
+          (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) UpdStrong ot T.
   Proof.
-    iIntros "HT" (F ????) "#CTX #HE HL Hincl0 Hb".
+    iIntros "HT" (F ????) "#CTX #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "HT" as (κs L2) "(%Hal & %Hot & HT)".
 
@@ -945,30 +944,28 @@ Section rules.
     { iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
     iPoseProof (ty_memcast_compat _ _ _ _ st with "Hv") as "Hid"; first done. simpl.
     iMod "Hcl_F" as "_".
-    iModIntro. iExists _, _,_, _. iFrame.
-    (* strong update *)
-    iExists ResultStrong. iFrame.
-    iSplitR; first done.
-    iR.
-    done.
+    iModIntro.
+    iSpecialize ("HT" $! (mem_cast v ot st)).
+    iFrame. done.
   Qed.
-  Global Instance type_read_ofty_move_uniq_inst E L {rt} π κ γ bmin l (ty : type rt) r ot :
-    TypedReadEnd π E L l (◁ ty)%I (#r) (Uniq κ γ) bmin AllowStrong ot | 20 :=
-    λ T, i2p (type_read_ofty_move_uniq E L π T l ty r ot κ γ bmin).
+  Definition type_read_ofty_move_uniq_inst := [instance @type_read_ofty_move_uniq].
+  Global Existing Instance type_read_ofty_move_uniq_inst | 20.
 
   (* [type_read_end] instance that does a move -- should be triggered when the copy instance does not work, hence the lower priority.
      This leaves a [value_t] at the place. *)
-  Lemma type_read_ofty_move_owned_value E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ot wl bmin :
-    ( ⌜use_op_alg (ty_syn_type ty) = Some ot⌝ ∗ (* TODO too strong, should also allow Untyped *)
+  Lemma type_read_ofty_move_owned_value E L {rt} π l (ty : type rt) r ot wl (T : typed_read_end_cont_t UpdStrong rt) :
+    (⌜use_op_alg (ty_syn_type ty) = Some ot⌝ ∗ (* TODO too strong, should also allow Untyped *)
     (* TODO for some reason, [simpl] will even unfold [ty_has_op_type] here... this breaks automation ofc *)
       (*⌜ty_allows_reads ty⌝ ∗*)
       ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy⌝ ∗
       (*⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗*)
       ∀ v v', v ◁ᵥ{π} r @ ty -∗
-      T L v' _ (value_t ty.(ty_syn_type)) v val (◁ value_t ty.(ty_syn_type)) (#v) ResultStrong)
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong ot T.
+      T L v' _ (value_t ty.(ty_syn_type)) v val
+      (◁ value_t ty.(ty_syn_type)) (#v)
+      (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
   Proof.
-    iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL _ Hb".
+    iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     specialize (ty_op_type_stable Hot) as Halg''.
@@ -991,36 +988,37 @@ Section rules.
     { simpl. done. }
     { iNext. done. }
     (*iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.*)
-    iModIntro. iExists _, _, (value_t (ty_syn_type ty)), _. iFrame "∗ #".
-    (* strong update *)
-    iExists ResultStrong. iFrame.
-    do 2 iR.
-    iApply "Hs". done.
+    iModIntro.
+
+    iSpecialize ("Hs" with "Hv").
+    iFrame. iR. done.
   Qed.
-  (* TODO replace the preceding instances with this, once we have fixed:
+    (* TODO replace the preceding instances with this, once we have fixed:
       (a) owned_subtype to be able to move stuff into it again reliably, also below structs etc.
       (b) the model to allow syntype updates as long as the layout stays the same *)
-  (*Global Instance type_read_ofty_move_owned_inst E L {rt} π wl bmin l (ty : type rt) r ot :*)
-    (*TypedReadEnd π E L l (◁ ty)%I (PlaceIn r) (Owned wl) bmin AllowStrong ot | 19 :=*)
-    (*λ T, i2p (type_read_ofty_move_owned E L π T l ty r ot wl bmin).*)
+  (*Definition type_read_ofty_move_owned_value_inst := [instance @type_read_ofty_move_owned_value].*)
+  (*Global Existing Instance type_read_ofty_move_owned_value_inst | 19.*)
+
 
   (* TODO for Untyped, we currently cannot leave a value, because we cannot do syntype updates, but [value_t] relies on the syntype to compute the value update *)
-  Lemma type_read_ofty_move_owned_untyped E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ly wl bmin :
+  Lemma type_read_ofty_move_owned_untyped E L {rt} π  l (ty : type rt) r ly wl (T : typed_read_end_cont_t UpdStrong rt):
     ( ∀ v v', v ◁ᵥ{π} r @ ty -∗
-      T L v' _ (value_t (UntypedSynType ly)) v val (◁ value_t (UntypedSynType ly)) (#v) ResultStrong) -∗
-      typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong (UntypedOp ly) T.
+      T L v' _ (value_t (UntypedSynType ly)) v val (◁ value_t (UntypedSynType ly)) (#v)
+      (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)) -∗
+      typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
   Proof.
-    iIntros "Hs" (F ???) "#CTX #HE HL".
-    iIntros "_ Hb".
+    iIntros "Hs" (F ????) "#CTX #HE HL".
+    iIntros "Hb".
   Abort.
 
   (* Instead we leave uninit *)
-  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π (T : typed_read_end_cont_t rt) l (ty : type rt) r ly wl bmin :
+  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) r ly wl (T : typed_read_end_cont_t UpdStrong rt) :
     (⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-        ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#()) ResultStrong)
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) bmin AllowStrong (UntypedOp ly) T.
+        ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#())
+        (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
   Proof.
-    iIntros "(%Hst & Hs)" (F ????) "#CTX #HE HL _ Hb".
+    iIntros "(%Hst & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
     assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
@@ -1034,18 +1032,12 @@ Section rules.
     iPoseProof (ty_memcast_compat _ _ _ MCCopy with "Hv") as "Hid".
     { by apply ty_has_op_type_untyped. }
     simpl.
-    iModIntro. iExists _, _,_, _. iFrame.
-    (* strong update *)
-    iExists ResultStrong. iFrame.
-    iSplitR; first done.
-    iR.
-    done.
+    iModIntro.
+    iSpecialize ("Hs" $! (mem_cast v (UntypedOp ly) st)).
+    iFrame. done.
   Qed.
-  (*
-  Global Instance type_read_ofty_move_owned_untyped_inst E L {rt} π wl bmin l (ty : type rt) r ly :
-    TypedReadEnd π E L l (◁ ty)%I (PlaceIn r) (Owned wl) bmin AllowStrong (UntypedOp ly) | 20 :=
-    λ T, i2p (type_read_ofty_move_owned_untyped E L π T l ty r ly wl bmin).
-  *)
+  Definition type_read_ofty_move_owned_value_untyped_inst := [instance @type_read_ofty_move_owned_value_untyped].
+  Global Existing Instance type_read_ofty_move_owned_value_untyped_inst | 20.
 
   (* TODO: this is now problematic. Maybe should have an untyped bit in the syntype after all?
        Alternative: use syn_type_compat everywhere to allow untyped interaction.

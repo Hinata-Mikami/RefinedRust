@@ -1208,37 +1208,37 @@ Section test.
   Proof. solve[solve_bor_kind_alive]. Abort.
 
   Lemma test2 κ γ c1 :
-    lctx_bor_kind_alive [] [κ ⊑ₗ{c1} []] (Uniq κ γ ⊓ₖ Uniq κ γ ⊓ₖ Owned true).
+    lctx_bor_kind_alive [] [κ ⊑ₗ{c1} []] (Uniq κ γ).
   Proof. solve [solve_bor_kind_alive]. Abort.
 
   Lemma test3 κ κ' c1 :
-    lctx_bor_kind_alive [κ' ⊑ₑ κ] [κ' ⊑ₗ{c1} []] (Shared κ ⊓ₖ Owned false).
+    lctx_bor_kind_alive [κ' ⊑ₑ κ] [κ' ⊑ₗ{c1} []] (Shared κ).
   Proof. solve[solve_bor_kind_alive]. Abort.
 End test.
 
-(** solve_bor_kind_incl *)
+(** solve_place_update_kind_incl *)
 Section test.
   Context `{typeGS Σ}.
 
   Lemma test1 E L :
-    lctx_bor_kind_incl E L (Owned false) (Owned true).
-  Proof. solve[solve_bor_kind_incl]. Abort.
+    lctx_place_update_kind_incl E L UpdStrong UpdStrong.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
 
   Lemma test2 κ γ c1 :
-    lctx_bor_kind_incl [] [κ ⊑ₗ{c1} []] (Owned false ⊓ₖ Uniq κ γ) (Owned true).
-  Proof. solve[solve_bor_kind_incl]. Abort.
+    lctx_place_update_kind_incl [] [κ ⊑ₗ{c1} []] (UpdStrong ⊓ₚ Uniq κ γ) UpdStrong.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
 
-  Lemma test3 κ γ κ' γ' c1 :
-    lctx_bor_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Owned false ⊓ₖ Uniq κ γ) (Uniq κ' γ').
-  Proof. solve[solve_bor_kind_incl]. Abort.
+  Lemma test3 κ γ κ' c1 :
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (UpdStrong ⊓ₚ Uniq κ γ) (UpdUniq [κ']).
+  Proof. solve[solve_place_update_kind_incl]. Abort.
 
   Lemma test4 κ κ' γ' c1 :
-    lctx_bor_kind_incl [κ' ⊑ₑ static] [κ' ⊑ₗ{c1} [κ]] (Shared κ ⊓ₖ Uniq κ' γ') (Shared κ ⊓ₖ Shared κ).
-  Proof. solve[solve_bor_kind_incl]. Abort.
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ' ⊑ₗ{c1} [κ]] (UpdUniq [κ] ⊓ₚ Uniq κ' γ') (UpdUniq [κ] ⊓ₚ Uniq κ γ').
+  Proof. solve[solve_place_update_kind_incl]. Abort.
 
   Lemma test5 κ κ' c1 :
-    lctx_bor_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Shared κ) (Shared κ' ⊓ₖ Owned false).
-  Proof. solve[solve_bor_kind_incl]. Abort.
+    lctx_place_update_kind_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (UpdUniq [κ]) UpdWeak.
+  Proof. solve[solve_place_update_kind_incl]. Abort.
 End test.
 
 (** solve_bor_kind_direct_incl *)
@@ -1250,19 +1250,15 @@ Section test.
   Proof. solve[solve_bor_kind_direct_incl]. Abort.
 
   Lemma test2 κ γ c1 :
-    lctx_bor_kind_direct_incl [] [κ ⊑ₗ{c1} []] (Owned false ⊓ₖ Uniq κ γ) (Uniq κ γ).
+    lctx_bor_kind_direct_incl [] [κ ⊑ₗ{c1} []] (Uniq κ γ) (Uniq κ γ).
   Proof. solve[solve_bor_kind_direct_incl]. Abort.
 
   Lemma test3 κ γ κ' c1 :
-    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Owned false ⊓ₖ Uniq κ γ) (Uniq κ' γ).
+    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Uniq κ γ) (Uniq κ' γ).
   Proof. solve[solve_bor_kind_direct_incl]. Abort.
 
-  Lemma test4 κ γ κ' c1 :
-    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Shared κ ⊓ₖ Uniq κ γ) (Shared κ ⊓ₖ Uniq κ' γ) .
-  Proof. solve[solve_bor_kind_direct_incl]. Abort.
-
-  Lemma test5 κ κ' c1 :
-    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Shared κ) (Shared κ' ⊓ₖ Owned false).
+  Lemma test4 κ κ' c1 :
+    lctx_bor_kind_direct_incl [κ' ⊑ₑ static] [κ ⊑ₗ{c1} [κ']] (Shared κ) (Shared κ') .
   Proof. solve[solve_bor_kind_direct_incl]. Abort.
 End test.
 
@@ -1391,14 +1387,14 @@ Section test.
 
 End test.
 
-(** solve_bor_kind_outlives *)
+(** solve_place_update_kind_outlives *)
 Section test.
   Context `{!typeGS Σ}.
 
-  Lemma lctx_bor_kind_outlives_test1 κ1 κ2 :
-    lctx_bor_kind_outlives [] [κ1 ⊑ₗ{0} [κ2]] (Shared κ2) κ1.
+  Lemma lctx_place_update_kind_outlives_test1 κ1 κ2 :
+    lctx_place_update_kind_outlives [] [κ1 ⊑ₗ{0} [κ2]] (UpdUniq [κ2]) [κ1].
   Proof.
-    solve_bor_kind_outlives; solve [fail].
+    solve_place_update_kind_outlives; solve [fail].
   Abort.
 End test.
 

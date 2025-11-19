@@ -114,32 +114,18 @@ Section rules.
         (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
-      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Owned false) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Owned false) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
-          (mk_mstrong
-          (*(fmap (λ strong, mk_strong (λ rti ltyi ri, *)
-          (fmap (λ strong, mk_strong
-            _
-            (λ rti ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ ltyi ri)) sls)
-              (plist_insert rts rs i _ (strong.(strong_rfn) _ ri)))
-            (λ rti ri,
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            cont (mkPUpd _ bmin0 
+              _ 
+              (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
               (* no update, as we are owned *)
               #r
-              )
-            strong.(strong_R)) mstrong.(mstrong_strong))
-          (fmap (λ weak, mk_weak
-            (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
-            (λ ri,
-              (* no update, as we are owned *)
-              #r
-              (*#(enum_tag_rfn_inj' en tag r Heq ()*)
-              )
-            (*(λ ri, #(enum_tag_rfn_inj' en tag r Heq (placein_or_default (weak.(weak_rfn) ri) (enum_tag_rfn en tag r Heq)))) *)
-            weak.(weak_R)) mstrong.(mstrong_weak))
-          )
+              upd'.(pupd_R)
+              upd'.(pupd_performed)
+              opt_place_update_eq_refl
+              opt_place_update_eq_refl)))
       )).
   Proof.
   Admitted.
@@ -158,31 +144,18 @@ Section rules.
         (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
-      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Shared κ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
-          (mk_mstrong
-          (fmap (λ strong, mk_strong
-            _
-            (λ rti ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ ltyi ri)) sls)
-              (plist_insert rts rs i _ (strong.(strong_rfn) _ ri)))
-            (λ rti ri,
-              (* no update, as we are shared we can just override this *)
+          (λ L3 upd cont, updcx L3 upd (λ upd',
+            cont (mkPUpd _ bmin0 
+              _ 
+              (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
+              (* no update, as we are shared *)
               #r
-              )
-            strong.(strong_R)) mstrong.(mstrong_strong))
-          (fmap (λ weak, mk_weak
-            (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
-            (λ ri,
-              (* no update, as we are shared we can just override this *)
-              #r
-              (*#(enum_tag_rfn_inj' en tag r Heq ()*)
-              )
-            (*(λ ri, #(enum_tag_rfn_inj' en tag r Heq (placein_or_default (weak.(weak_rfn) ri) (enum_tag_rfn en tag r Heq)))) *)
-            weak.(weak_R)) mstrong.(mstrong_weak))
-          )
+              upd'.(pupd_R)
+              upd'.(pupd_performed)
+              opt_place_update_eq_refl
+              opt_place_update_eq_refl)))
       )).
   Proof.
   Admitted.
@@ -221,33 +194,27 @@ Section rules.
         (ro : place_rfn (lnth (unit : RT) rts i)),
       exhale (⌜hnth (UninitLtype UnitSynType) lts i = lto⌝);
       exhale (⌜pnth (# tt) rs i = ro⌝);
-      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Uniq κ γ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri mstrong,
+      return (typed_place π E L ((GetEnumDataLocSt l els) atst{sls}ₗ mem) lto ro bmin0 (Uniq κ γ) P (λ L2 κs l2 b2 bmin2 rti ltyi ri updcx,
         T L2 κs l2 b2 bmin2 rti ltyi ri
-          (mk_mstrong
-          (* TODO: strong update with OpenedLtype? *)
-          None
-          (*
-          (fmap (λ strong, mk_strong
-            _
-            (λ rti ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert rts lts i _ (strong.(strong_lt) _ ltyi ri)) sls)
-              (plist_insert rts rs i _ (strong.(strong_rfn) _ ri)))
-            (λ rti ri,
-              (* no update, as we are shared we can just override this *)
-              #r
-              )
-              strong.(strong_R)) mstrong.(mstrong_strong)) *)
-          (fmap (λ weak, mk_weak
-            (λ ltyi ri, EnumLtype en tag
-              (StructLtype (hlist_insert_id (unit : RT) rts lts i (weak.(weak_lt) ltyi ri)) sls)
-              (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri)))
-            (λ ri,
-              (* inject back *)
-              #(enum_tag_rfn_inj en tag r Heq (rew <- [RT_rt] Heq2 in (plist_insert_id (unit : RT) rts rs i (weak.(weak_rfn) ri))))
-              )
-            weak.(weak_R)) mstrong.(mstrong_weak))
-          )
-      )).
+          (λ L3 upd cont, updcx L3 upd (λ upd', 
+            li_tactic (check_llctx_place_update_kind_incl_uniq_goal E L3 upd'.(pupd_performed) ([κ])) (λ oeq,
+              match oeq with
+              | Some Heq3 =>
+                cont (mkPUpd _ bmin0 _
+                  (EnumLtype en tag (StructLtype (hlist_insert rts lts i _ upd'.(pupd_lt)) sls) (plist_insert rts rs i _ upd'.(pupd_rfn)))
+                  (#(enum_tag_rfn_inj en tag r Heq (rew <- [RT_rt] Heq2 in (plist_insert_id (unit : RT) rts rs i (
+                    rew <- opt_place_update_eq_use _ _ _ Heq3 upd'.(pupd_eq_1)  in upd'.(pupd_rfn))))))
+                  upd'.(pupd_R) 
+                  upd'.(pupd_performed)
+                  opt_place_update_eq_refl
+                  opt_place_update_eq_refl
+                )
+              | None =>
+                (* TODO strong update with Opened *)
+                False
+              end
+            )))
+        )).
   Proof.
   Admitted.
   Definition typed_place_enum_data_field_uniq_inst := [instance @typed_place_enum_data_field_uniq].

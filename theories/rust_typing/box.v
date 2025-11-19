@@ -15,7 +15,7 @@ Section box.
         inner.(ty_sidecond) ∗
         (* No later here over the freeable. I don't know how to make the unfolding equation work with one. *)
         (freeable_nz l ly.(ly_size) 1 HeapAlloc) ∗
-        £ num_cred ∗ atime 1 ∗
+    £ num_cred ∗ atime 1 ∗
         ∃ (ri : rt), place_rfn_interp_owned r ri ∗
         (* this needs to match up with the corresponding later/fupd in the OfTyLtype to get the unfolding equation *)
         ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri v';
@@ -518,7 +518,7 @@ Section unfold.
     iDestruct "Hb" as "(%ri & Hrfn & Hb)". iFrame "% ∗".
   Qed.
 
-  Lemma box_ltype_unfold_1_shared `{!Inhabited rt} κ r :
+  Lemma box_ltype_unfold_1_shared κ r :
     ⊢ ltype_incl' (Shared κ) r r (BoxLtype (◁ ty)) (◁ (box (ty))).
   Proof.
     iModIntro. iIntros (π l).
@@ -602,7 +602,7 @@ Section unfold.
       eapply syn_type_has_layout_inj; done.
   Qed.
 
-  Local Lemma box_ltype_unfold_1' `{!Inhabited rt} b r :
+  Local Lemma box_ltype_unfold_1' b r :
     ⊢ ltype_incl' b r r (BoxLtype (◁ ty)) (◁ (box (ty))).
   Proof.
     iModIntro. destruct b.
@@ -618,7 +618,7 @@ Section unfold.
     - iApply box_ltype_unfold_2_shared.
     - iApply box_ltype_unfold_2_uniq.
   Qed.
-  Lemma box_ltype_unfold_1 `{!Inhabited rt} b r :
+  Lemma box_ltype_unfold_1 b r :
     ⊢ ltype_incl b r r (BoxLtype (◁ ty)) (◁ (box (ty))).
   Proof.
     iModIntro. iSplitR; first done.
@@ -630,13 +630,13 @@ Section unfold.
     iModIntro. iSplitR; first done.
     simp_ltypes. iSplit; iApply box_ltype_unfold_2'.
   Qed.
-  Lemma box_ltype_unfold `{Inhabited rt} b r :
+  Lemma box_ltype_unfold b r :
     ⊢ ltype_eq b r r (BoxLtype (◁ ty)) (◁ (box (ty))).
   Proof.
     iSplit; [iApply box_ltype_unfold_1 | iApply box_ltype_unfold_2].
   Qed.
 
-  Lemma box_ltype_unfold_full_eqltype `{!Inhabited rt} E L (lt : ltype rt) :
+  Lemma box_ltype_unfold_full_eqltype E L (lt : ltype rt) :
     full_eqltype E L lt (◁ ty)%I →
     full_eqltype E L (BoxLtype lt) (◁ (box ty))%I.
   Proof.
@@ -654,9 +654,10 @@ Section lemmas.
     typed_place_cond b lt1 lt2 -∗
     typed_place_cond b (BoxLtype lt1) (BoxLtype lt2).
   Proof.
+    unfold typed_place_cond.
     destruct b; simpl.
     - iIntros "_". done.
-    - iIntros "%". simp_ltypes. done.
+    - iIntros "->". done.
     - iIntros "(%Hrefl & Heq & Hub)". subst.
       iExists eq_refl. cbn.
       iSplitL "Heq".
@@ -673,11 +674,7 @@ Section lemmas.
       (∀ rt2 (lt2 : ltype rt2) (r2 : place_rfn rt2),
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         l ↦ l' -∗ l' ◁ₗ[π, Owned true] r2 @ lt2 ={F}=∗
-        l ◁ₗ[π, Owned wl] PlaceIn r2 @ BoxLtype lt2 ∗
-        (∀ bmin,
-        ⌜place_access_rt_rel bmin rt rt2⌝ -∗
-        typed_place_cond bmin lt lt2 -∗
-        typed_place_cond bmin (BoxLtype lt) (BoxLtype lt2))).
+        l ◁ₗ[π, Owned wl] PlaceIn r2 @ BoxLtype lt2).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hlb & Hcred & %r' & <- & Hb)".
@@ -688,14 +685,11 @@ Section lemmas.
     iModIntro. iExists l'. iFrame.
     iApply (logical_step_intro_maybe with "Hat").
     iIntros "Hcred' !>". iIntros (rt2 lt2 r2 Hst) "Hl Hb". iModIntro.
-    iSplitL "Hf Hl Hb Hcred'".
-    { rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. iFrame "# ∗".
-      iSplitR. { iPureIntro. by apply syn_type_has_layout_ptr. }
-      iSplitR; first done.
-      iR. iNext.
-      rewrite Hst. by iFrame "%#". }
-    iIntros (bmin) "%Hrt Hcond".
-    by iApply box_ltype_place_cond.
+    rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. iFrame "# ∗".
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_ptr. }
+    iSplitR; first done.
+    iR. iNext.
+    rewrite Hst. by iFrame "%#".
   Qed.
 
   Lemma box_ltype_acc_uniq {rt} F π (lt : ltype rt) (r : place_rfn rt) l q κ γ R :
@@ -710,7 +704,8 @@ Section lemmas.
       ((* weak *)(∀ bmin (lt2 : ltype rt) r2,
         l ↦ l' -∗
         l' ◁ₗ[π, Owned true] r2 @ lt2  -∗
-        bmin ⊑ₖ Uniq κ γ -∗
+        bmin ⪯ₚ UpdUniq [κ] -∗
+        ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         typed_place_cond bmin lt lt2 ={F}=∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn r2 @ BoxLtype lt2 ∗
         R ∗
@@ -719,7 +714,7 @@ Section lemmas.
         l ↦ l' -∗
         ⌜ltype_st lt2 = ltype_st lt⌝ -∗
         l' ◁ₗ[π, Owned true] r2 @ lt2 ={F}=∗
-        l ◁ₗ[π, Uniq κ γ] PlaceIn r2 @ OpenedLtype (BoxLtype lt2) (BoxLtype lt) (BoxLtype lt)
+        l ◁ₗ[π, Uniq κ γ] #r2 @ OpenedLtype (BoxLtype lt2) (BoxLtype lt) (BoxLtype lt)
           (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, R)))
       .
   Proof.
@@ -743,12 +738,11 @@ Section lemmas.
     iModIntro.
     iSplit.
     - (* close *)
-      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k #Hcond".
+      iIntros (bmin lt2 r2) "Hl Hb #Hincl_k %Hsteq #Hcond".
       (* extract the necessary info from the place_cond *)
-      iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond") as "Hcond'".
+      iPoseProof (typed_place_cond_incl _ (UpdUniq [κ]) with "Hincl_k Hcond") as "Hcond'".
       iDestruct "Hcond'" as "(%Heq & Heq & (_ & #Hub))".
       rewrite (UIP_refl _ _ Heq). cbn.
-      iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst_eq".
       (* close the borrow *)
       iMod (gvar_update r2 with "Hauth Hrfn") as "(Hauth & Hrfn)".
       set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ∃ (l' : loc) ly', l ↦ l' ∗ ⌜syn_type_has_layout (ltype_st lt2) ly'⌝ ∗ ⌜l' `has_layout_loc` ly'⌝ ∗ freeable_nz l' (ly_size ly') 1 HeapAlloc ∗ ltype_own lt2 (Owned true) π r' l'))%I).
@@ -766,7 +760,7 @@ Section lemmas.
         rewrite ltype_own_core_equiv. iMod ("Hi" with "Ha") as "Ha".
         rewrite -ltype_own_core_equiv. move: Hst. rewrite !ltype_core_syn_type_eq.
         intros ->. eauto with iFrame. }
-      { iModIntro. rewrite /V. rewrite -Hst_eq. eauto 8 with iFrame. }
+      { iModIntro. rewrite /V. rewrite Hsteq. eauto 8 with iFrame. }
       iMod ("HR" with "Htok") as "$".
       iMod "Hcl_F" as "_".
       iModIntro.
@@ -781,18 +775,18 @@ Section lemmas.
         (* need to adapt the pinned part, too *)
         iApply (pinned_bor_iff with "[] [] Hb").
         { iNext. iModIntro. eauto. }
-        clear -Hst_eq.
+        clear -Hsteq.
         iNext. iModIntro. iSplit.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
           iMod "Hb" as "(%l' & %ly' & Hl & Halg & Hly & Hf & Hb)".
           iDestruct ("Heq" $! (Owned true) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iMod ("Heq1" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
-          rewrite Hst_eq. eauto with iFrame.
+          rewrite Hsteq. eauto with iFrame.
         - iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame.
           iMod "Hb" as "(%l' & %ly' & Hl & Halg & Hly & Hf & Hb)".
           iDestruct ("Heq" $! (Owned true) _) as "((_ & #Heq1 & _) & (_ & #Heq2 & _))".
           rewrite ltype_own_core_equiv. iMod ("Heq2" with "Hb") as "Hb". rewrite -ltype_own_core_equiv.
-          rewrite Hst_eq. eauto with iFrame.
+          rewrite Hsteq. eauto with iFrame.
       }
       iApply box_ltype_place_cond; done.
     - (* shift to OpenedLtype *)
@@ -822,15 +816,11 @@ Section lemmas.
     l ◁ₗ[π, Shared κ] #r @ BoxLtype lt -∗
     ⌜l `has_layout_loc` void*⌝ ∗ loc_in_bounds l 0 (ly_size void*) ∗ |={F}=>
       ∃ (l' : loc) q', l ↦{q'} l' ∗ (|={F}▷=> l' ◁ₗ[π, Shared κ] r @ lt) ∗
-    (∀ (lt' : ltype rt) r',
+    (∀ rt' (lt' : ltype rt') r',
       l ↦{q'} l' -∗
       l' ◁ₗ[π, Shared κ] r' @ lt' -∗ |={F}=>
       l ◁ₗ[π, Shared κ] #r' @ BoxLtype lt' ∗
-      q.[κ] ∗
-      (∀ bmin,
-      bmin ⊑ₖ Shared κ -∗
-      typed_place_cond bmin lt lt' ={F}=∗
-      typed_place_cond bmin (BoxLtype lt) (BoxLtype lt'))).
+      q.[κ]).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Hκ Hb". rewrite {1}ltype_own_box_unfold /box_ltype_own.
     iDestruct "Hb" as "(%ly & %Hst & %Hly & #Hlb & %r' & -> & #Hb)".
@@ -840,12 +830,10 @@ Section lemmas.
     iMod (frac_bor_acc with "LFT Hf Hκ") as "(%q' & >Hpts & Hclf)"; first done.
     iModIntro. iExists _, _. iFrame.
     iSplitR. { iApply step_fupd_intro; first done. auto. }
-    iIntros (lt' r'') "Hpts #Hl'".
+    iIntros (rt' lt' r'') "Hpts #Hl'".
     iMod ("Hclf" with "Hpts") as "Htok".
-    iFrame. iSplitL.
-    { iModIntro. rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. by iFrame "% #". }
-    iModIntro. iIntros (bmin) "Hincl Hcond".
-    iApply box_ltype_place_cond; done.
+    iFrame.
+    iModIntro. rewrite ltype_own_box_unfold /box_ltype_own. iExists void*. by iFrame "% #".
   Qed.
 End lemmas.
 
@@ -861,29 +849,28 @@ Section rules.
     ⊢ typed_place π E L l (◁ (box ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
-    symmetry. apply box_ltype_unfold_full_eqltype; first apply _. reflexivity.
+    symmetry. apply box_ltype_unfold_full_eqltype. reflexivity.
   Qed.
-  Global Instance typed_place_ofty_box_inst {rt} `{Inhabited rt} π E L l (ty : type rt) (r : place_rfn (place_rfn rt)) bmin0 b P :
-    TypedPlace E L π l (◁ (box ty))%I r bmin0 b P | 30 := λ T, i2p (place_ofty_box π E L l ty r bmin0 b P T).
+  Definition place_ofty_box_inst := [instance @place_ofty_box].
+  Global Existing Instance place_ofty_box_inst | 30.
 
-  Lemma typed_place_box_owned {rto} π E L (lt2 : ltype rto) P l r wl bmin0 (T : place_cont_t (place_rfn rto)) :
-    (∀ l', typed_place π E L l' lt2 r (bmin0) (Owned true) P
-      (λ L' κs l2 b2 bmin rti tyli ri mstrong,
+  Lemma typed_place_box_owned {rto} π E L (lt2 : ltype rto) P l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+    (∀ l', typed_place π E L l' lt2 r bmin0 (Owned true) P
+      (λ L' κs l2 b2 bmin rti tyli ri updcx,
         T L' κs l2 b2 bmin rti tyli ri
-          (mk_mstrong
-          (fmap (λ strong, mk_strong
-            (λ rti2, place_rfn (strong.(strong_rt) rti2))
-            (λ rti2 lti2 ri2, BoxLtype (strong.(strong_lt) _ lti2 ri2))
-            (λ rti2 (r : place_rfn rti2), PlaceIn (strong.(strong_rfn) _ r))
-            strong.(strong_R)) mstrong.(mstrong_strong))
-          (fmap (λ weak, mk_weak
-            (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2))
-            (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r))
-            weak.(weak_R)) mstrong.(mstrong_weak))
-          )))
+          (λ L2 upd cont, updcx L2 upd (λ upd',
+            cont (mkPUpd _ bmin0
+              (place_rfn upd'.(pupd_rt))
+              (BoxLtype upd'.(pupd_lt))
+              (# upd'.(pupd_rfn))
+              upd'.(pupd_R)
+              upd'.(pupd_performed)
+              (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
+              (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2))
+          )))))
     ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
-    iIntros "HR" (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL Hincl0 HP HΦ/=".
+    iIntros "HR" (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
     iPoseProof (box_ltype_acc_owned F with "HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iApply fupd_wp. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
@@ -892,56 +879,58 @@ Section rules.
     iNext. iIntros (st) "Hl Hcred Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ bmin _ _ _ _ with "Hincl1 Hb") => /=.
-    iSplit.
-    - (* strong update *) iDestruct "Hs" as "[Hs _]".
-      destruct strong as [ strong | ]; last done.
-      iIntros (rti2 ltyi2 ri2).
-      iIntros "Hl2 %Hcond".
-      iMod ("Hs" with "Hl2 [//]") as "(Hb & %Hcond2 & HR)".
-      iMod ("Hc" with "[] Hl Hb") as "(Hb & Hcond)".
-      { done. }
-      iModIntro. iFrame "HR Hb".
-      done.
-    - (* weak update *)
-      destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "[_ Hs]".
-      iIntros (ltyi2 ri2 bmin').
-      iIntros "Hincl2 Hl2 Hcond".
-      iMod ("Hs" with "Hincl2 Hl2 Hcond") as "(Hb & Hcond & $ & HR)".
-      iPoseProof (typed_place_cond_syn_type_eq with "Hcond") as "%Hst".
-      iMod ("Hc" with "[//] Hl Hb") as "(Hb & Ha)".
-      iPoseProof ("Ha" with "[] Hcond") as "Hcond".
-      { iPureIntro. apply place_access_rt_rel_refl. }
-      iModIntro. iFrame "HR Hb".
-      done.
+    iApply ("HR" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ bmin with "Hb") => /=.
+    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
+    iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iModIntro. iIntros (? cont) "HL Hcont".
+    iMod ("Hs" with "HL Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iFrame. simpl.
+    iMod ("Hc" with "[] Hl Hl'") as "$".
+    { done. }
+    iR.
+    by iApply box_ltype_place_cond.
   Qed.
-  Global Instance typed_place_box_owned_inst {rto} π E L (lt2 : ltype rto) bmin0 r l wl P :
-    TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_owned π E L lt2 P l r wl bmin0 T).
+  Definition typed_place_box_owned_inst := [instance @typed_place_box_owned].
+  Global Existing Instance typed_place_box_owned_inst | 30.
 
-  Lemma typed_place_box_uniq {rto} π E L (lt2 : ltype rto) P l r κ' γ' bmin0
-    (T : place_cont_t (place_rfn rto)) :
+  Lemma typed_place_box_uniq {rto} π E L (lt2 : ltype rto) P l r κ' γ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
-      (∀ l', typed_place π E L' l' lt2 r (bmin0) (Owned true) P
-        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
-          T L'' (κs ++ κs') l2 b2 (Uniq κ' γ' ⊓ₖ bmin) rti tyli ri
-            (mk_mstrong
-            (* strong branch: fold to OpenedLtype *)
-            (fmap (λ strong, mk_strong (place_rfn ∘ strong.(strong_rt))
-              (λ rti2 ltyi2 ri2,
-                OpenedLtype (BoxLtype (strong.(strong_lt) _ ltyi2 ri2)) (BoxLtype lt2) (BoxLtype lt2) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
-              (λ rti2 ri2, PlaceIn $ strong.(strong_rfn) _ ri2)
-              strong.(strong_R)) mstrong.(mstrong_strong))
-            (* weak branch: just keep the Box *)
-            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), PlaceIn (weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))
-            ))))
+      (∀ l', typed_place π E L' l' lt2 r bmin0 (Owned true) P
+        (λ L'' κs' l2 b2 bmin rti tyli ri updcx,
+          T L'' κs' l2 b2 bmin rti tyli ri
+            (λ L4 upd cont, updcx L4 upd (λ upd',
+              li_tactic (check_llctx_place_update_kind_incl_goal E L4 upd'.(pupd_performed) (UpdUniq [κ'])) (λ b,
+              if b then
+                (* keep BoxLtype *)
+                cont (mkPUpd _ bmin0
+                  (place_rfn (upd').(pupd_rt))
+                  (BoxLtype (upd').(pupd_lt))
+                  (# (upd').(pupd_rfn))
+                  ((upd').(pupd_R) ∗ llft_elt_toks κs)
+                  (upd').(pupd_performed)
+                  (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
+                  (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
+              else
+                (* fold to OpenedLtype *)
+                (* for this, we need to allow strong updates *)
+                ⌜bmin0 = UpdStrong⌝ ∗
+                cont (mkPUpd _ bmin0
+                  (place_rfn upd'.(pupd_rt))
+                  (OpenedLtype (BoxLtype upd'.(pupd_lt)) (BoxLtype lt2) (BoxLtype lt2) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, llft_elt_toks κs))
+                  (# (upd').(pupd_rfn))
+                  (upd').(pupd_R)
+                  UpdStrong
+                  I
+                  (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
+              )))
+            )))
     ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL #Hincl0 HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
     (* get a token *)
     iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
@@ -954,49 +943,58 @@ Section rules.
     iIntros (st) "Hl Hcred Hcl".
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ (Uniq κ' γ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
-    { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
-    - (* strong update *)
-      iDestruct "Hs" as "(Hs & _)". iDestruct "Hcl" as "(_ & Hcl)".
-      destruct strong as [strong | ]; last done.
-      iIntros (tyli2 ri2 bmin').
-      iIntros "Hl2 %Hst".
-      iMod ("Hs" with "Hl2 [//]") as "(Hb & %Hst' & HR)".
-      iMod ("Hcl" with "Hl [] Hb") as "Hb".
-      { iPureIntro. done. }
-      iModIntro. simp_ltypes.
-      iFrame. done.
-    - (* weak update *)
-      destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs)". iDestruct "Hcl" as "(Hcl & _)".
-      iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
-      iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb & Hcond & ? & HR)".
-      { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
-      iMod ("Hcl" with "Hl Hb [//] Hcond") as "(Hb & Hκ' & Hcond)".
-      iModIntro. rewrite llft_elt_toks_app. iFrame.
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
+    simpl. iIntros (upd) "#Hincl Hl2 %Hst ? Hcond".
+    iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iModIntro. iIntros (? cont) "HL Hcont".
+    iMod ("Hs" with "HL Hcont") as (upd') "(Hb & %Hsteq & Hcond & ? & ? & ? & HL & HT)".
+    unfold check_llctx_place_update_kind_incl_goal.
+    iDestruct "HT" as (b Hb) "HT".
+    destruct b; simpl.
+    - (* weak *)
+      iDestruct "Hcl" as "[Hc _]". simpl.
+      iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl2"; first apply Hb.
+      iPoseProof (pupd_performed_incl_uniq_rt with "Hincl2") as "%Heq".
+      destruct upd' as [rt' ? ? ? ? Heq1 ? ]; simpl in *.
+      subst rt'.
+      iMod ("Hc" with "Hl Hb [] [] Hcond") as "(Hb & ? & Hcond')".
+      { done. }
+      { done. }
+      iFrame. simpl. iFrame.
+      done.
+    - (* strong *)
+      iDestruct "HT" as "(-> & HT)".
+      iDestruct "Hcl" as "[_ Hc]".
+      iMod ("Hc" with "Hl [] Hb") as "Hb".
+      { rewrite Hsteq. done. }
+      iFrame. simpl. iFrame.
+      done.
   Qed.
-  Global Instance typed_place_box_uniq_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' γ' P :
-    TypedPlace E L π l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_uniq π E L lt2 P l r κ' γ' bmin0 T).
+  Definition typed_place_box_uniq_inst := [instance @typed_place_box_uniq].
+  Global Existing Instance typed_place_box_uniq_inst | 30.
 
-  Lemma typed_place_box_shared {rto} π E L (lt2 : ltype rto) P l r κ' bmin0 (T : place_cont_t (place_rfn rto)) :
+  Lemma typed_place_box_shared {rto} π E L (lt2 : ltype rto) P l r κ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
-      (∀ l', typed_place π E L' l' lt2 r (bmin0) (Shared κ') P
-        (λ L'' κs' l2 b2 bmin rti tyli ri mstrong,
-          T L'' (κs ++ κs') l2 b2 (Shared κ' ⊓ₖ bmin) rti tyli ri
-            (mk_mstrong
-            (* strong branch: fold to ShadowedLtype *)
-            (* TODO *)
-              None
-            (* weak branch: just keep the Box *)
-            (fmap (λ weak, mk_weak (λ lti2 ri2, BoxLtype (weak.(weak_lt) lti2 ri2)) (λ (r : place_rfn rti), #(weak.(weak_rfn) r)) weak.(weak_R)) mstrong.(mstrong_weak))))))
+      (∀ l', typed_place π E L' l' lt2 r bmin0 (Shared κ') P
+        (λ L'' κs' l2 b2 bmin rti tyli ri updcx,
+          T L'' κs' l2 b2 bmin rti tyli ri
+            (λ L2 upd cont, updcx L2 upd (λ upd',
+              cont (mkPUpd _ bmin0
+                (place_rfn upd'.(pupd_rt))
+                (BoxLtype upd'.(pupd_lt))
+                (# upd'.(pupd_rfn))
+                upd'.(pupd_R)
+                upd'.(pupd_performed)
+                (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
+                (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2))
+            ))))))
     ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL #Hincl0 HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & TIME & LLCTX) #HE HL HP HΦ/=".
     (* get a token *)
     iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
@@ -1011,29 +1009,24 @@ Section rules.
     iIntros (st) "Hl Hcred".
     iExists l'. iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL [] Hb"). { destruct bmin0; done. }
-    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri [strong weak]) "#Hincl1 Hb Hs".
-    iApply ("HΦ" $! _ _ _ _ (Shared κ' ⊓ₖ bmin) _ _ _ _ with "[Hincl1] Hb").
-    { iApply bor_kind_incl_trans; last iApply "Hincl1". iApply bor_kind_min_incl_r. }
-    simpl. iSplit.
-    - (* strong update *)
-      done.
-    - (* weak update *)
-      destruct weak as [ weak | ]; last done.
-      iDestruct "Hs" as "(_ & Hs)".
-      iIntros (ltyi2 ri2 bmin') "#Hincl2 Hl2 Hcond".
-      iMod ("Hs" with "[Hincl2] Hl2 Hcond") as "(Hb & Hcond & ? & HR)".
-      { iApply bor_kind_incl_trans; first iApply "Hincl2". iApply bor_kind_min_incl_r. }
-      iMod ("Hcl" with "Hl Hb") as "(Hb & Hκ' & Hcond')".
-      iMod (fupd_mask_mono with "(Hclκ' Hκ')") as "?"; first done.
-      rewrite llft_elt_toks_app. iFrame.
-      cbn. iApply "Hcond'"; last done. done.
+    iApply ("HT" with "[//] [//] [$LFT $TIME $LLCTX] HE HL Hb").
+    iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
+    iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
+    iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
+    iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
+    iModIntro. iIntros (? cont) "HL Hcont".
+    iMod ("Hs" with "HL Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iFrame. simpl.
+    iMod ("Hcl" with "Hl Hl'") as "(? & Htok)".
+    iMod (fupd_mask_mono with "(Hclκ' Htok)") as "?"; first done.
+    iFrame.
+    iR.
+    by iApply box_ltype_place_cond.
   Qed.
-  Global Instance typed_place_box_shared_inst {rto} π E L (lt2 : ltype rto) bmin0 r l κ' P :
-    TypedPlace E L π l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) | 30 := λ T, i2p (typed_place_box_shared π E L lt2 P l r κ' bmin0 T).
+  Definition typed_place_box_shared_inst := [instance @typed_place_box_shared].
+  Global Existing Instance typed_place_box_shared_inst | 30.
 
-
-  Lemma stratify_ltype_box_Owned {rt} `{Inhabited rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) wl
+  Lemma stratify_ltype_box_Owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) wl
       (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Owned true) (λ L' R rt' (lt' : ltype rt') r',
         if ma is StratRefoldFull
@@ -1061,7 +1054,7 @@ Section rules.
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       iMod ("Hvs" with "Hb") as "Hb".
-      iMod ("Hcl" with "[] Hl Hb") as "(Hb & _)".
+      iMod ("Hcl" with "[] Hl Hb") as "Hb".
       { simp_ltype. done. }
       iDestruct (box_ltype_unfold_1 ty' (Owned wl)) as "(_ & #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
@@ -1074,30 +1067,32 @@ Section rules.
       iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
-      by iMod ("Hcl" with "[] Hl Hb") as "($ & _)".
+      by iMod ("Hcl" with "[] Hl Hb") as "$".
   Qed.
-  Global Instance stratify_ltype_box_Owned_inst {rt} `{Inhabited rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) wl :
-    StratifyLtype π E L mu mdu ma ml l (BoxLtype lt) (PlaceIn r) (Owned wl) := λ T, i2p (stratify_ltype_box_Owned π E L mu mdu ma ml l lt r wl T).
+  Definition stratify_ltype_box_owned_weak_inst := [instance (@stratify_ltype_box_Owned StratMutWeak)].
+  Global Existing Instance stratify_ltype_box_owned_weak_inst.
+  Definition stratify_ltype_box_owned_none_inst := [instance (@stratify_ltype_box_Owned StratMutNone)].
+  Global Existing Instance stratify_ltype_box_owned_none_inst.
 
-  Lemma stratify_ltype_box_uniq {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) κ' γ'
+  Lemma stratify_ltype_box_uniq mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) κ' γ'
       (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :
     (* get a lifetime token *)
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L1),
       (∀ l', stratify_ltype π E L1 mu mdu ma ml l' lt r (Owned true) (λ L2 R rt' lt' r',
         (* validate the update *)
-        prove_place_cond E L2 (Uniq κ' γ') lt lt' (λ upd,
-          match upd with
-          | ResultWeak Heq =>
-              (* update obeys the contract, get a box *)
-              match ma with
-              | StratRefoldFull => cast_ltype_to_type E L2 lt' (λ ty', T L2 (llft_elt_toks κs ∗ R) _ (◁ (box ty'))%I (#r'))
-              | _ => T L2 (llft_elt_toks κs ∗ R) _ (BoxLtype lt') (#r')
-              end
-          | ResultStrong =>
-              (* unfold to an OpenedLtype *)
-              ⌜ma = StratNoRefold⌝ ∗
-              T L2 R _ (OpenedLtype (BoxLtype lt') (BoxLtype lt) (BoxLtype lt) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#r')
-          end))))
+        prove_place_cond E L2 UpdStrong lt lt' (λ upd,
+          li_tactic (check_llctx_place_update_kind_incl_goal E L2 upd.(puk_res_k) (UpdUniq [κ'])) (λ b,
+          if b then
+            (* update obeys the contract, get a box *)
+            match ma with
+            | StratRefoldFull => cast_ltype_to_type E L2 lt' (λ ty', T L2 (llft_elt_toks κs ∗ R) _ (◁ (box ty'))%I (#r'))
+            | _ => T L2 (llft_elt_toks κs ∗ R) _ (BoxLtype lt') (#r')
+            end
+          else
+            (* unfold to an OpenedLtype *)
+            ⌜ma = StratNoRefold⌝ ∗
+            T L2 R _ (OpenedLtype (BoxLtype lt') (BoxLtype lt) (BoxLtype lt) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs)) (#r')
+          )))))
     ⊢ stratify_ltype π E L mu mdu ma ml l (BoxLtype lt) (PlaceIn r) (Uniq κ' γ') T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT & TIME & LLCTX) #HE HL Hb".
@@ -1110,46 +1105,38 @@ Section rules.
     iDestruct "Hb" as "(%Hly & #Hlb & >(%l' & Hl & Hb & Hcl))".
     iPoseProof ("Hs" with "[//] [//] [//] [$LFT $TIME $LLCTX] HE HL Hb") as "Hb".
     iMod "Hb" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hcond & Hstep & Hc)".
-    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & Hupd & Hs)"; first done.
-    destruct upd as [ Heq | ].
-    - (* weak *)
-      subst rt'.
-      destruct (decide (ma = StratRefoldFull)) as [Heq | ].
-      + rewrite Heq. iDestruct "Hs" as "(%ty' & %Heqt & HT)".
-        iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heqt | ].
+    iMod ("Hc" with "[] [$LFT $TIME $LLCTX] HE HL") as "(HL & %upd & #Hincl & Hcond & %Hsteq & Hs)"; first done.
 
-        iExists _, _, _, _, _. iFrame.
-        iSplitR. { iModIntro. done. }
-        iApply logical_step_fupd.
-        iApply (logical_step_compose with "Hstep").
-        iApply (logical_step_compose with "Hcl").
-        iModIntro. iApply logical_step_intro.
-        iIntros "[Hcl _] (Hb & HR)".
-        iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
-        { iApply bor_kind_incl_refl. }
-        { done. }
-        iDestruct (box_ltype_incl_uniq with "[]") as "(_ & #Hincl & _)".
-        { iIntros (?). iApply "Heq". }
-        iPoseProof ("Hincl" with "Hl") as "Hl".
-        by iApply (box_ltype_unfold_1_uniq with "Hl").
-      + iAssert (T L2 (llft_elt_toks κs ∗ R) (place_rfn rt) (BoxLtype lt') # r')%I with "[Hs]" as "Hs".
-        { destruct ma; first done. all: done. }
-        iExists _, _, _, _, _. iFrame.
-        iSplitR. { iModIntro. done. }
-        iApply logical_step_fupd.
-        iApply (logical_step_compose with "Hstep").
-        iApply (logical_step_compose with "Hcl").
-        iModIntro. iApply logical_step_intro.
-        iIntros "[Hcl _] (Hb & HR)".
-        iFrame. iMod ("Hcl" with "Hl Hb [] [Hupd]") as "(Hl & $ & _)".
-        { iApply bor_kind_incl_refl. }
-        { done. }
-        done.
+    unfold check_llctx_place_update_kind_incl_goal.
+    iDestruct "Hs" as "(%b & %Hb & Hs)".
+    destruct b.
+    - (* weak *)
+      iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl2"; first apply Hb.
+      iPoseProof (typed_place_cond_Uniq_rt_eq with "Hincl2 Hcond") as "%Heq".
+      subst rt'.
+      iAssert (∃ lt2, ⌜full_eqltype E L2 (BoxLtype lt') lt2⌝ ∗ T L2 (llft_elt_toks κs ∗ R) _ lt2 # (r'))%I with "[Hs]" as "HT".
+      { destruct ma.
+        - iDestruct "Hs" as "(%ty & %Heqty & $)".
+          iPureIntro. apply box_ltype_unfold_full_eqltype. done.
+        - iFrame. done.
+        - iFrame. done. }
+      iDestruct "HT" as "(%lt2 & %Heql & $)".
+      iPoseProof (full_eqltype_acc with "[$LFT $TIME $LLCTX] HE HL") as "#Heq"; [apply Heql | ].
+      iFrame.
+      iSplitR. {
+        unshelve iSpecialize ("Heq" $! inhabitant inhabitant); [apply _.. | ].
+        iApply (ltype_eq_syn_type with "Heq"). }
+      iApply logical_step_fupd.
+      iApply (logical_step_compose with "Hstep").
+      iApply (logical_step_compose with "Hcl").
+      iModIntro. iApply logical_step_intro.
+      iIntros "[Hcl _] (Hb & HR)".
+      iFrame. iMod ("Hcl" with "Hl Hb Hincl2 [//] Hcond") as "(Hl & $ & _)".
+      iDestruct ("Heq" $! _ _) as "(Heq1 & _)".
+      iMod (ltype_incl_use with "Heq1 Hl") as "Hb"; done.
     - (* strong *)
       iDestruct "Hs" as "(-> & Hs)".
-      iDestruct "Hupd" as "%Hst".
-      iExists _, _, _, _, _. iFrame.
-      iSplitR. { done. }
+      iFrame. iR.
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hstep").
       iApply (logical_step_compose with "Hcl").
@@ -1159,56 +1146,57 @@ Section rules.
       { done. }
       done.
   Qed.
-  Global Instance stratify_ltype_box_uniq_inst {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : (place_rfn rt)) κ' γ' :
-    StratifyLtype π E L mu mdu ma ml l (BoxLtype lt) (PlaceIn r) (Uniq κ' γ') :=
-      λ T, i2p (stratify_ltype_box_uniq π E L mu mdu ma ml l lt r κ' γ' T).
+  Definition stratify_ltype_box_uniq_weak_inst := [instance (@stratify_ltype_box_uniq StratMutWeak)].
+  Global Existing Instance stratify_ltype_box_uniq_weak_inst.
+  Definition stratify_ltype_box_uniq_none_inst := [instance (@stratify_ltype_box_uniq StratMutNone)].
+  Global Existing Instance stratify_ltype_box_uniq_none_inst.
 
   (* TODO: shared folding instance *)
 
   (** Unfolding instances *)
-  Lemma stratify_ltype_ofty_box {rt} `{!Inhabited rt} π E L mu ma {M} (ml : M) l (ty : type rt) (r : place_rfn (place_rfn rt)) b T :
+  Lemma stratify_ltype_ofty_box {rt} π E L mu ma {M} (ml : M) l (ty : type rt) (r : place_rfn (place_rfn rt)) b T :
     stratify_ltype π E L mu StratDoUnfold ma ml l (BoxLtype (◁ ty)) r b T
     ⊢ stratify_ltype π E L mu StratDoUnfold ma ml l (◁ (box ty)) r b T.
   Proof.
     iIntros "Hp". iApply stratify_ltype_eqltype; iFrame.
     iPureIntro. apply full_eqltype_alt. symmetry.
-    eapply box_ltype_unfold_full_eqltype; first apply _. reflexivity.
+    eapply box_ltype_unfold_full_eqltype. reflexivity.
   Qed.
-  Global Instance stratify_ltype_ofty_box_inst {rt} `{Inhabited rt} π E L mu ma {M} (ml : M) l (ty : type rt) (r : place_rfn (place_rfn rt)) b :
-    StratifyLtype π E L mu StratDoUnfold ma ml l (◁ (box ty))%I r b | 30 := λ T, i2p (stratify_ltype_ofty_box π E L mu ma ml l ty r b T).
-
+  Definition stratify_ltype_ofty_box_inst := [instance @stratify_ltype_ofty_box].
+  Global Existing Instance stratify_ltype_ofty_box_inst | 30.
 
   (** prove_place_cond instances *)
   (* These need to have a lower priority than the ofty_refl instance (level 2) and the unblocking instances (level 5), but higher than the trivial "no" instance *)
-  Lemma prove_place_cond_unfold_box_l E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) k T :
+  Lemma prove_place_cond_unfold_box_l E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) k T :
     prove_place_cond E L k (BoxLtype (◁ ty)) lt T
     ⊢ prove_place_cond E L k (◁ (box ty)) lt T.
   Proof.
     iApply prove_place_cond_eqltype_l. apply symmetry. apply box_ltype_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_box_l_inst E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) k :
-    ProvePlaceCond E L k (◁ (box ty))%I lt | 10 := λ T, i2p (prove_place_cond_unfold_box_l E L ty lt k T).
-  Lemma prove_place_cond_unfold_box_r E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) k T :
+  Definition prove_place_cond_unfold_box_l_inst := [instance @prove_place_cond_unfold_box_l].
+  Global Existing Instance prove_place_cond_unfold_box_l_inst | 10.
+  Lemma prove_place_cond_unfold_box_r E L {rt1 rt2} (ty : type rt1) (lt : ltype rt2) k T :
     prove_place_cond E L k lt (BoxLtype (◁ ty)) T
     ⊢ prove_place_cond E L k lt (◁ (box ty)) T.
   Proof.
     iApply prove_place_cond_eqltype_r. apply symmetry. apply box_ltype_unfold_full_eqltype; done.
   Qed.
-  Global Instance prove_place_cond_unfold_box_r_inst E L {rt1 rt2} `{Inhabited rt1} (ty : type rt1) (lt : ltype rt2) k :
-    ProvePlaceCond E L k lt (◁ (box ty))%I | 10 := λ T, i2p (prove_place_cond_unfold_box_r E L ty lt k T).
+  Definition prove_place_cond_unfold_box_r_inst := [instance @prove_place_cond_unfold_box_r].
+  Global Existing Instance prove_place_cond_unfold_box_r_inst | 10.
 
   Lemma prove_place_cond_box_ltype E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k T :
-    prove_place_cond E L k lt1 lt2 (λ upd, T $ access_result_lift (place_rfn) upd)
+    prove_place_cond E L k lt1 lt2 (λ upd,
+      T (mkPUKRes
+        upd.(puk_res_k) (opt_place_update_eq_lift place_rfnRT (upd).(puk_res_eq_1)) (opt_place_update_eq_lift place_rfnRT(upd).(puk_res_eq_2))))
     ⊢ prove_place_cond E L k (BoxLtype lt1) (BoxLtype lt2) T.
   Proof.
     iIntros "HT". iIntros (F ?) "#CTX #HE HL".
-    iMod ("HT" with "[//] CTX HE HL") as "($ & (%upd & Hcond & HT))".
-    iExists _. iFrame. destruct upd; cbn.
-    - subst rt2. by iApply box_ltype_place_cond.
-    - done.
+    iMod ("HT" with "[//] CTX HE HL") as "($ & (%upd & Hincl & Hcond & %Hsteq & HT))".
+    iFrame. iL.
+    by iApply box_ltype_place_cond.
   Qed.
-  Global Instance prove_place_cond_box_ltype_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) k :
-    ProvePlaceCond E L k (BoxLtype lt1) (BoxLtype lt2) | 5 := λ T, i2p (prove_place_cond_box_ltype E L lt1 lt2 k T).
+  Definition prove_place_cond_box_ltype_inst := [instance @prove_place_cond_box_ltype].
+  Global Existing Instance prove_place_cond_box_ltype_inst | 5.
 
   (** Resolve ghost *)
   Import EqNotations.
@@ -1230,8 +1218,8 @@ Section rules.
       iExists _. by iFrame.
     - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Global Instance resolve_ghost_box_owned_inst {rt} π E L l (lt : ltype rt) γ wl rm lb :
-    ResolveGhost π E L rm lb l (BoxLtype lt) (Owned wl) (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_box_Owned π E L l lt γ wl rm lb T).
+  Definition resolve_ghost_box_Owned_inst := [instance @resolve_ghost_box_Owned].
+  Global Existing Instance resolve_ghost_box_Owned_inst | 7.
 
   Lemma resolve_ghost_box_Uniq {rt} π E L l (lt : ltype rt) γ rm lb κ γ' T :
     find_observation (place_rfn rt) γ FindObsModeDirect (λ or,
@@ -1252,8 +1240,8 @@ Section rules.
       iExists _. iFrame. done.
     - iExists _, _, _, _. iFrame.  iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Global Instance resolve_ghost_box_uniq_inst {rt} π E L l (lt : ltype rt) γ κ γ' rm lb :
-    ResolveGhost π E L rm lb l (BoxLtype lt) (Uniq κ γ') (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_box_Uniq π E L l lt γ rm lb κ γ' T).
+  Definition resolve_ghost_box_Uniq_inst := [instance @resolve_ghost_box_Uniq].
+  Global Existing Instance resolve_ghost_box_Uniq_inst | 7 .
 
   Lemma resolve_ghost_box_shared {rt} π E L l (lt : ltype rt) γ rm lb κ T :
     find_observation (place_rfn rt) γ FindObsModeDirect (λ or,
@@ -1273,11 +1261,11 @@ Section rules.
       iExists _. by iFrame.
     - iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Global Instance resolve_ghost_box_shared_inst {rt} π E L l (lt : ltype rt) γ κ rm lb :
-    ResolveGhost π E L rm lb l (BoxLtype lt) (Shared κ) (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_box_shared π E L l lt γ rm lb κ T).
+  Definition resolve_ghost_box_shared_inst := [instance @resolve_ghost_box_shared].
+  Global Existing Instance resolve_ghost_box_shared_inst | 7.
 
   (** cast_ltype *)
-  Lemma cast_ltype_to_type_box E L {rt} `{Inhabited rt} (lt : ltype rt) T  :
+  Lemma cast_ltype_to_type_box E L {rt} (lt : ltype rt) T  :
     cast_ltype_to_type E L lt (λ ty, T (box ty))
     ⊢ cast_ltype_to_type E L (BoxLtype lt) T.
   Proof.
@@ -1285,8 +1273,8 @@ Section rules.
     iExists (box ty). iFrame "HT". iPureIntro.
     apply box_ltype_unfold_full_eqltype; done.
   Qed.
-  Global Instance cast_ltype_to_type_box_inst E L {rt} `{Inhabited rt} (lt : ltype rt) :
-    CastLtypeToType E L (BoxLtype lt) := λ T, i2p (cast_ltype_to_type_box E L lt T).
+  Definition cast_ltype_to_type_box_inst := [instance @cast_ltype_to_type_box].
+  Global Existing Instance cast_ltype_to_type_box_inst.
 
   (** Subtyping instances *)
   Lemma weak_subtype_box_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
