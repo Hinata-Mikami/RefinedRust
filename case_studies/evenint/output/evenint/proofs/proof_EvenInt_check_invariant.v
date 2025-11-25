@@ -21,7 +21,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { unsafe_unfold_common_caesium_defs. simpl. lia. }
-  { revert select (Zeven z). revert select (z `rem` 2 ≠ 0%Z).
+  { revert select (Zeven self). revert select (self `rem` 2 ≠ 0%Z).
     rewrite Zeven_ex_iff Z.rem_divide; last done.
     setoid_rewrite Z.mul_comm; done. }
   Unshelve. all: print_remaining_sidecond.

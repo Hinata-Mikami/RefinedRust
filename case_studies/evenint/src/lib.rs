@@ -79,10 +79,8 @@ impl EvenInt {
     }
 
     /// Create a new even integer.
-    #[rr::params("i" : "Z")]
-    #[rr::args("i")] 
-    #[rr::requires("Zeven i")]
-    #[rr::returns("i")]
+    #[rr::requires("Zeven x")]
+    #[rr::returns("x")]
     pub unsafe fn new(x: i32) -> Self {
         Self {num: x}
     }
@@ -97,35 +95,28 @@ impl EvenInt {
     }
 
     /// Get the even integer
-    #[rr::params("z")]
-    #[rr::args("z")]
-    #[rr::ensures("Zeven z")]
-    #[rr::returns("z")]
+    #[rr::ensures("Zeven self")]
+    #[rr::returns("self")]
     pub fn get(&self) -> i32 {
         self.num
     }
 
     /// This should always succeed.
-    #[rr::params("z")]
-    #[rr::args("z")]
+    #[rr::verify]
     pub fn check_invariant(&self) {
         assert!(self.get() % 2 == 0);
     }
 
     /// Add another even integer.
-    #[rr::params("z", "y", "γ")]
-    #[rr::args("(z, γ)", "y")]
-    #[rr::requires("(z + y)%Z ∈ i32")]
-    #[rr::observe("γ": "z + y")]
+    #[rr::requires("(self.cur + other)%Z ∈ i32")]
+    #[rr::observe("self.ghost": "self.cur + other")]
     pub fn add_even(&mut self, other: &EvenInt) {
         self.num += other.num;
     }
 
     /// Add 2 to an even integer.
-    #[rr::params("z", "γ")]
-    #[rr::args("(z, γ)")]
-    #[rr::requires("(z + 2 ≤ MaxInt i32)%Z")]
-    #[rr::observe("γ": "z + 2")]
+    #[rr::requires("(self.cur + 2 ≤ MaxInt i32)%Z")]
+    #[rr::observe("self.ghost": "self.cur + 2")]
     pub fn add_two(&mut self) {
         self.num;
 

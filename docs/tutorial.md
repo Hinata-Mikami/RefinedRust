@@ -114,10 +114,8 @@ This invariant says that RefinedRust's mathematical model of `EvenInt` are Coq i
 The integer should be even, using Coq's `Zeven` predicate.
 You can find a more thorough overview in the `SPEC_FORMAT.md` file placed in the same directory as this tutorial.
 
-Using this specification for `EvenInt`, we can already give a sensible specification to the `new` function:
+Using this specification for `EvenInt`, we can already give a sensible specification to the `new` function, mentioning the argument `x`:
 ```
-#[rr::params("x")]
-#[rr::args("x")]
 #[rr::requires("Zeven x")]
 #[rr::returns("x")]
 ```
@@ -164,7 +162,7 @@ For `add` we take the following specification:
 #[rr::params("x", "γ")]
 #[rr::args(#raw "((-[x]), γ)")]
 #[rr::requires("(x + 1 ≤ MaxInt i32)%Z")]
-#[rr::observe("γ": "(-[#(x+1)%Z] : plist place_rfn _)")]
+#[rr::observe("γ": "(-[#(x+1)%Z] : plistRT _)")]
 ```
 The first noteworthy part is the `#raw` annotation on the first argument: it asserts that we do not require the invariant on `EvenInt` to currently hold.
 That is why we also use `-[x]` for the contents of the mutable reference, which is the "raw" refinement for the struct (where `x` is the refinement of the first field) without the annotated invariant.
@@ -172,25 +170,36 @@ As we add 1, we require that `x + 1` fits into a `i32` integer.
 
 For `add_two`, we add the following specification:
 ```
-#[rr::params("x", "γ")]
-#[rr::args("(x, γ)")]
-#[rr::requires("(x + 2 ≤ MaxInt i32)%Z")]
-#[rr::observe("γ": "(x+2)")]
+#[rr::requires("(x.cur + 2 ≤ MaxInt i32)%Z")]
+#[rr::observe("x.ghost": "(x.cur + 2)")]
 ```
 This works without the `#raw` annotation, as the function keeps the invariant intact.
 
 ### Manual proof hints
-When checking `add_two`, the RefinedRust solvers will be unable to solve a sidecondition.
-Concretely, the proof will fail, with a message of the following shape:
+When checking `add_two`, you will find that RefinedRust will need some help.
+Concretely, the proof will fail with an error message of the following shape:
+
 ```
-Shelved goal remaining in  "EvenInt_add_two" !
+Type system got stuck in function "EvenInt_add_two" !
+
 Goal:
-....
----------
-(Inhabited (Zeven (x + 1 + 1)))
+...
+
 ```
-This message says that RefinedRust's solvers were not able to prove that `x + 1 + 1` is even again!
-At this point we have to step in manually.
+
+Here, the type system could not make progress anymore.
+A closer inspection of the message reveals the proof goal the type system got stuck at:
+```
+typed_val_expr [ϝ ⊑ₑ ulft_1; ϝ ⊑ₑ ulft_1] [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 1} []]
+  (&ref{Mut,Some (RSTLitType ["EvenInt_inv_t"] (RSTScopeInst [] [] [])),"llft3"} (!{PtrOp}arg_self))%E
+...
+```
+This means that the type system got stuck when checking the expression
+`&ref{Mut,Some (RSTLitType ["EvenInt_inv_t"] (RSTScopeInst [] [] [])),"llft3"} (!{PtrOp}arg_self)`,
+i.e., it attempted to do a mutable borrow of the dereferenced argument `self` at type `EvenInt_inv_t` (the type that `EvenInt` has when its invariant is upheld).
+Presumably, this is the implicit reborrow that Rust does when calling `self.add()`.
+At this point, let us step into the Rocq proof and interactively investigate this.
+
 For that, open the proof file for `EvenInt::add_two`, which should be located at `output/minivec/proofs/proof_EvenInt_add_two.v`.
 Currently, it contains mainly a proof of the following shape:
 ```
@@ -199,7 +208,7 @@ Lemma EvenInt_add_two_proof (π : thread_id) :
 Proof.
   EvenInt_add_two_prelude.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
@@ -211,7 +220,64 @@ This proof will not be overwritten by RefinedRust on subsequent invocations, so 
 It consists of the following components:
 - `EvenInt_add_two_prelude.` is a function-specific tactic that RefinedRust generated to prepare the proof context.
 - `repeat liRStep; liShow.` invokes RefinedRust's type system. After running this, a few shelved pure sideconditions remain.
-- the rest of the proof calls into RefinedRust's sidecondition solvers.
+- the rest of the proof calls into RefinedRust's sidecondition solvers for pure Rocq sideconditions.
+
+Currently, `rep <-! liRStep; liShow.` will not fully solve the type-checking obligations; it will stop at the last so-called backtracking point before it fails -- in this case, the mutable re-borrow.
+We can tell RefinedRust to progress type-checking until the failure point, by adding `rep liRStep; liShow.` .
+This advances the typesystem state to a goal of this form:
+```
+weak_subtype [ϝ ⊑ₑ ulft_1; ϝ ⊑ₑ ulft_1] [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 1} []]
+  -[# self] (protected Hevar)
+  (struct_t EvenInt_sls +[int i32]) (∃; EvenInt_inv_t_inv_spec <INST!>, (EvenInt_ty <INST!>))
+```
+This means that RefinedRust is proving a subtyping relation of the form `struct_t EvenInt_sls +[int i32] ⊆ (∃; EvenInt_inv_t_inv_spec <INST!>, (EvenInt_ty <INST!>))`,
+i.e., it is trying to establish the invariant for `EvenInt` (when performing the borrow).
+
+In this case, however, we do not want to establish the invariant at all: `self.add()`'s specification does not require the invariant to be established.
+Thus, we can modify the proof to the following:
+```
+rep <-! liRStep; liShow.
+liRStepUntil interpret_typing_hint.
+iApply interpret_typing_hint_ignore.
+```
+First, `liRStepUntil` steps until the typing state reaches the given judgment `interpret_typing_hint`, which is responsible for interpreting the typing hint for the borrow and establishing it.
+Then, we apply a typing rule for ignoring the typing hint.
+
+Now we can make progress!
+Calling `rep liRStep; liShow.` again will lead us to the same error for the second call to `self.add()`.
+We can apply the same trick again, resulting in the full proof script:
+
+```
+rep <-! liRStep; liShow.
+liRStepUntil interpret_typing_hint.
+iApply interpret_typing_hint_ignore.
+rep <-! liRStep; liShow.
+liRStepUntil interpret_typing_hint.
+iApply interpret_typing_hint_ignore.
+rep <-! liRStep; liShow.
+```
+
+This should conclude the main type-checking procedure of RefinedRust, and no goals should remain.
+What is now left is to prove the *sideconditions* that the type-checking procedure emitted, residing on Rocq's shelf.
+
+If you run the remaining lines
+```
+
+  all: print_remaining_goal.
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
+  Unshelve. all: print_remaining_sidecond.
+```
+most of these sideconditions will be dispatched automatically, but you will receive the following message:
+```
+Shelved goal remaining in  "EvenInt_add_two" !
+Goal:
+....
+---------
+(Inhabited (Zeven (x + 1 + 1)))
+```
+This message says that RefinedRust's solvers were not able to prove that `x + 1 + 1` is even again!
+At this point we have to step in manually.
 
 In this case, after `sidecond_hammer`, the sidecondition `Zeven (x + 1 + 1)` is still remaining.
 Luckily, we know that `Zeven x`, so we can add the following line to solve it:
@@ -225,7 +291,13 @@ Lemma EvenInt_add_two_proof (π : thread_id) :
 Proof.
   EvenInt_add_two_prelude.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
+  liRStepUntil interpret_typing_hint.
+  iApply interpret_typing_hint_ignore.
+  rep <-! liRStep; liShow.
+  liRStepUntil interpret_typing_hint.
+  iApply interpret_typing_hint_ignore.
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
