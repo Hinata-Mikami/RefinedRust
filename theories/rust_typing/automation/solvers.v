@@ -46,11 +46,26 @@ Ltac instantiate_benign_universals term :=
 (** Instantiate a number of [RT] universals *)
 Ltac count_in_term' term acc :=
   match type of term with
-  | ∀ _ : RT, _ =>
+  | RT → _ =>
       (* [ZRT] is a dummy to instantiate the generic *)
-      count_in_term' constr:(term ZRT) constr:(S acc)
-  | _ => acc
+      count_in_term' ltac:(constr:((term ZRT))) ltac:(constr:((S acc)))
+  | spec_with _ _ _ =>
+      acc
+  (* hack, because for arguments afterwards we cannot instantiate with default inhabitants *)
+  | _ → spec_with _ _ _ =>
+      constr:(S acc)
+  | _ → _ → spec_with _ _ _ =>
+      constr:((2 + acc)%nat)
+  | _ → _ → _ → spec_with _ _ _ =>
+      constr:((3 + acc)%nat)
+  | _ → _ → _ → _ → spec_with _ _ _ =>
+      constr:((4 + acc)%nat)
+  | ?x =>
+      fail 1000 "extend count_in_term' for " x
   end.
+
+
+
 Ltac count_in_term term :=
   count_in_term' term constr:(0).
 Ltac instantiate_universal_evars term count :=
@@ -59,10 +74,15 @@ Ltac instantiate_universal_evars term count :=
   | S ?n =>
       instantiate_universal_evars uconstr:(term _) constr:(n)
   end.
-Ltac instantiate_universals term :=
+Ltac instantiate_universals term sub_count cont :=
   let term := instantiate_benign_universals term in
   let count := count_in_term term in
-  instantiate_universal_evars term count.
+  let count := constr:((count - sub_count)%nat) in
+  let count := eval simpl in count in
+  let term := instantiate_universal_evars term count in
+  cont term
+.
+
 
 (** Apply [term] to the sequence of arguments [apps]. [apps] is expected to be of type [hlist id ?tys] *)
 Ltac apply_term_het term apps :=
@@ -79,12 +99,17 @@ Ltac apply_term_het' term apps :=
   end.
 
 (** Instantiate a type-like definition receiving a list of semantic lifetime parameters [lfts] and a list of semantic type parameters [tys]. *)
-Ltac apply_type_term_het_evar term lfts tys attrs :=
-  let term := instantiate_universals term in
-  let term := apply_term_het' term attrs in
-  let term := constr:(term (list_to_plist (F:=id) lft lfts) (hlist_to_plist tys)) in
-  let term := eval simpl in term in
-  constr:(term)
+Definition hlist_indexl {A} {F : A → Type} {Xs} (hl : hlist F Xs) := Xs.
+Ltac apply_type_term_het_evar term lfts tys attrs cont :=
+  let attr_len := constr:(length (hlist_indexl attrs)) in
+  let attr_len := eval simpl in attr_len in
+  instantiate_universals term attr_len ltac:(fun term =>
+    let term := apply_term_het' term attrs in
+    let term := uconstr:(term (list_to_plist (F:=id) lft lfts) (hlist_to_plist tys)) in
+    let term := constr:(term) in
+    let term := eval simpl in term in
+    cont constr:(term)
+  )
 .
 
 (** This interprets syntactic Rust types used in some annotations into semantic RefinedRust types *)
@@ -126,7 +151,7 @@ Ltac interpret_lit_term lfts env term ::=
           let applied_term := apply_term_het term Hx in
           let t := eval simpl in applied_term in
           exact t)
-          || fail 1000 "processing failed"
+          || fail 1000 "processing for " defname " failed"
 
         )
         defname || fail 1000 "definition lookup for " defname " failed"
@@ -177,8 +202,9 @@ Ltac apply_rust_scope_inst lfts env inst term :=
     refine (let Hc : hlist (@id Type) _ := ltac:(interpret_lit_term_list lfts env attrs) in _);
     let Hc := eval unfold Hc in Hc in
 
-    let applied_term := apply_type_term_het_evar term Hb Ha Hc in
-    exact applied_term
+    apply_type_term_het_evar term Hb Ha Hc ltac:(fun applied_term =>
+      exact applied_term
+    )
   end.
 
 
@@ -197,6 +223,7 @@ Ltac interpret_rust_type_core lfts env ty ::=
       lookup_definition
         ltac:(fun term =>
           apply_rust_scope_inst lfts env inst term
+          || fail 1000 "processing for " name " failed"
         )
         name || fail 1000 "definition lookup for " name " failed"
   | RSTInt ?it =>
