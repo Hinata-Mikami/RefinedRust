@@ -269,28 +269,28 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         }
     }
 
+    pub(crate) fn register_dep_on(&mut self, did: OrderedDefId) {
+        if let Self::TranslateAdt(state) = self {
+            state.deps.insert(did);
+        }
+    }
+
     pub(crate) fn register_adt_use(
         &mut self,
         env: &'def Environment<'tcx>,
         did: DefId,
         lit_ref: Option<specs::types::LiteralRef<'def>>,
         params: &specs::GenericScopeInst<'def>,
-        mut impl_deps: BTreeSet<OrderedDefId>,
     ) {
-        match self {
-            Self::InFunction(state) => {
-                let lit_ref = lit_ref.unwrap();
-                let key = scope::AdtUseKey::new_from_inst(did, params);
-                let lit_uses = &mut state.shim_uses;
-                lit_uses
-                    .entry(key)
-                    .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
-            },
-            Self::TranslateAdt(state) => {
-                state.deps.insert(OrderedDefId::new(env.tcx(), did));
-                state.deps.append(&mut impl_deps);
-            },
-            _ => (),
+        self.register_dep_on(OrderedDefId::new(env.tcx(), did));
+
+        if let Self::InFunction(state) = self {
+            let lit_ref = lit_ref.unwrap();
+            let key = scope::AdtUseKey::new_from_inst(did, params);
+            let lit_uses = &mut state.shim_uses;
+            lit_uses
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
     }
 
@@ -381,14 +381,12 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .ok_or(TranslationError::UnknownEarlyRegion(region))?;
                 Ok(lft.to_owned())
             },
-            STInner::TranslateAdt(_scope) => {
-                // TODO: ?
-                if region.is_named() {
-                    let name = region.name.as_str();
-                    Ok(coq::Ident::new(&format!("ulft_{}", name)))
-                } else {
-                    Err(TranslationError::UnknownEarlyRegion(region))
-                }
+            STInner::TranslateAdt(scope) => {
+                let lft = scope
+                    .scope
+                    .lookup_region_idx(region.index as usize)
+                    .ok_or(TranslationError::UnknownEarlyRegion(region))?;
+                Ok(lft.to_owned())
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
@@ -396,16 +394,6 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .lookup_region_idx(region.index as usize)
                     .ok_or(TranslationError::UnknownEarlyRegion(region))?;
                 Ok(lft.to_owned())
-
-                /*
-                // TODO: ?
-                if region.has_name() {
-                    let name = region.name.as_str();
-                    Ok(coq::Ident::new(format!("ulft_{}", name)))
-                } else {
-                    Err(TranslationError::UnknownEarlyRegion(region))
-                }
-                    */
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
@@ -856,15 +844,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let mut impl_deps = BTreeSet::new();
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            state,
-            adt_def.did(),
-            args,
-            Some(&mut impl_deps),
-        )?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args)?;
 
-        state.register_adt_use(self.env, adt_def.did(), lit_ref, &params, impl_deps);
+        state.register_adt_use(self.env, adt_def.did(), lit_ref, &params);
 
         Ok(specs::enums::AbstractUse::new(enum_ref, params))
     }
@@ -900,16 +882,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
 
-        let mut impl_deps = BTreeSet::new();
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            state,
-            variant_id,
-            args,
-            Some(&mut impl_deps),
-        )?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args)?;
         info!("struct use has params: {params:?}");
 
-        state.register_adt_use(self.env, variant_id, lit_ref, &params, impl_deps);
+        state.register_adt_use(self.env, variant_id, lit_ref, &params);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
         Ok(struct_use)
@@ -934,12 +910,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
         let struct_ref: specs::structs::AbstractRef<'def> = *struct_ref;
 
-        let mut impl_deps = BTreeSet::new();
-        let params =
-            self.trait_registry()
-                .compute_scope_inst_in_state(state, adt_id, args, Some(&mut impl_deps))?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args)?;
 
-        state.register_adt_use(self.env, adt_id, lit_ref, &params, impl_deps);
+        state.register_adt_use(self.env, adt_id, lit_ref, &params);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
 
@@ -1518,15 +1491,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             )));
         };
 
-        let mut impl_deps = BTreeSet::new();
-        let params = self.trait_registry().compute_scope_inst_in_state(
-            state,
-            adt.did(),
-            substs,
-            Some(&mut impl_deps),
-        )?;
+        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs)?;
 
-        state.register_adt_use(self.env, adt.did(), Some(shim), &params, impl_deps);
+        state.register_adt_use(self.env, adt.did(), Some(shim), &params);
         let shim_use = specs::types::LiteralUse::new(shim, params);
         Ok(specs::Type::Literal(shim_use))
     }
@@ -1915,7 +1882,6 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(state),
             adt_def.did(),
             args,
-            None,
         )?;
         let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
         let enum_use = specs::types::LiteralUse::new(enum_ref, params);
@@ -1948,7 +1914,6 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(scope),
             variant_id,
             args,
-            None,
         )?;
         let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
@@ -1974,7 +1939,6 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             &mut STInner::InFunction(scope),
             variant_id,
             args,
-            None,
         )?;
         let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 

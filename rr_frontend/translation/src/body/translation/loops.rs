@@ -124,7 +124,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             &[],
             specs::TyParamOrigin::Direct,
             &[],
-            None,
         )?;
         let trait_spec_term =
             self.trait_registry.translate_trait_req_inst_in_state(&mut state, trait_spec_term)?;
