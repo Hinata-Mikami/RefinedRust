@@ -125,6 +125,12 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },
 
+    #[display("Unknown ADT: {:?}", _0)]
+    UnknownAdt(DefId),
+
+    #[display("ADT shim was overridden for {:?}", _0)]
+    OverriddenAdtShim(DefId),
+
     #[display("Invalid Layout")]
     InvalidLayout,
 

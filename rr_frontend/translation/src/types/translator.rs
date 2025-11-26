@@ -467,31 +467,11 @@ pub(crate) struct TX<'def, 'tcx> {
     /// maps ADT variants to struct specifications.
     /// the boolean is true iff this is a variant of an enum.
     /// the literal is present after the variant has been fully translated
-    variant_registry: RefCell<
-        HashMap<
-            DefId,
-            (
-                String,
-                specs::structs::AbstractRef<'def>,
-                &'tcx ty::VariantDef,
-                bool,
-                Option<specs::types::LiteralRef<'def>>,
-            ),
-        >,
-    >,
+    variant_registry:
+        RefCell<HashMap<DefId, (String, specs::structs::AbstractRef<'def>, &'tcx ty::VariantDef, bool)>>,
     /// maps ADTs that are enums to the enum specifications
     /// the literal is present after the enum has been fully translated
-    enum_registry: RefCell<
-        HashMap<
-            DefId,
-            (
-                String,
-                specs::enums::AbstractRef<'def>,
-                ty::AdtDef<'tcx>,
-                Option<specs::types::LiteralRef<'def>>,
-            ),
-        >,
-    >,
+    enum_registry: RefCell<HashMap<DefId, (String, specs::enums::AbstractRef<'def>, ty::AdtDef<'tcx>)>>,
     /// a registry for abstract struct defs for tuples, indexed by the number of tuple fields
     tuple_registry:
         RefCell<HashMap<usize, (specs::structs::AbstractRef<'def>, specs::types::LiteralRef<'def>)>>,
@@ -542,11 +522,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Register a shim for an ADT.
-    pub(crate) fn register_adt_shim(&self, did: DefId, lit: &specs::types::Literal) -> Result<(), String> {
+    pub(crate) fn register_adt_shim(
+        &self,
+        did: DefId,
+        lit: &specs::types::Literal,
+    ) -> Result<(), TranslationError<'tcx>> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
-        if let Some(old) = shims.insert(did, lit_ref) {
-            Err(format!("Shim for defid {:?} was {:?} before and has been overridden by {:?}", did, old, lit))
+        if let Some(_old) = shims.insert(did, lit_ref) {
+            Err(TranslationError::OverriddenAdtShim(did))
         } else {
             Ok(())
         }
@@ -560,7 +544,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
     pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
-        for (did, (_, su, _, is_of_enum, _)) in self.variant_registry.borrow().iter() {
+        for (did, (_, su, _, is_of_enum)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
             if !is_of_enum {
                 defs.insert(*did, *su);
@@ -572,7 +556,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Get all the variant definitions that clients have used (including the variants of enums).
     pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
         let mut defs = HashMap::new();
-        for (did, (_, su, _, _, _)) in self.variant_registry.borrow().iter() {
+        for (did, (_, su, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
         }
         defs
@@ -581,7 +565,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Get all the enum definitions that clients have used.
     pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, specs::enums::AbstractRef<'def>> {
         let mut defs = HashMap::new();
-        for (did, (_, su, _, _)) in self.enum_registry.borrow().iter() {
+        for (did, (_, su, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
         }
         defs
@@ -701,8 +685,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         (specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
-        if let Some((_n, st, _, _, lit)) = self.variant_registry.borrow().get(&did) {
-            Ok((*st, *lit))
+        if let Some((_n, st, _, _)) = self.variant_registry.borrow().get(&did) {
+            let lit = self.lookup_adt_shim(did);
+            Ok((*st, lit))
         } else {
             Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
         }
@@ -716,22 +701,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         reg.get(&did).is_some()
     }
 
-    /// Lookup the literal for an ADT variant.
-    fn lookup_adt_variant_literal(
-        &self,
-        did: DefId,
-    ) -> Result<specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
-        if let Some(lit) = self.lookup_adt_shim(did) {
-            return Ok(lit);
-        }
-
-        if let Some((_n, _, _, _, lit)) = self.variant_registry.borrow().get(&did) {
-            return Ok(lit.unwrap());
-        }
-
-        Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
-    }
-
     /// Lookup an enum ADT and return a reference to its enum def.
     fn lookup_enum(
         &self,
@@ -740,8 +709,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         (specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
-        if let Some((_n, st, _, lit)) = self.enum_registry.borrow().get(&did) {
-            Ok((*st, *lit))
+        if let Some((_n, st, _)) = self.enum_registry.borrow().get(&did) {
+            let lit = self.lookup_adt_shim(did);
+            Ok((*st, lit))
         } else {
             Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
         }
@@ -755,20 +725,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         reg.get(&did).is_some()
     }
 
-    /// Lookup the literal for an enum.
-    fn lookup_enum_literal(
-        &self,
-        did: DefId,
-    ) -> Result<specs::types::LiteralRef<'def>, TranslationError<'tcx>> {
-        if let Some(lit) = self.lookup_adt_shim(did) {
-            Ok(lit)
-        } else if let Some((_n, _, _, lit)) = self.enum_registry.borrow().get(&did) {
-            Ok(lit.unwrap())
-        } else {
-            Err(TranslationError::UnknownError(format!("could not find type: {:?}", did)))
-        }
-    }
-
     /// Generate a use of a struct, instantiated with type parameters.
     /// This should only be called on tuples and struct ADTs.
     /// Only for internal references as part of type translation.
@@ -776,13 +732,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         variant: Option<abi::VariantIdx>,
-        adt_deps: ST<'_, '_, 'def, 'tcx>,
+        st: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::Type<'def>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
                 if self.lookup_adt_shim(adt.did()).is_some() {
-                    return self.generate_adt_shim_use(*adt, args, adt_deps);
+                    return self.generate_adt_shim_use(*adt, args, st);
                 }
 
                 if adt.is_box() {
@@ -796,9 +752,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     // register the ADT, if necessary
                     self.register_adt(*adt)?;
 
-                    return self
-                        .generate_struct_use_noshim(adt.did(), args, adt_deps)
-                        .map(specs::Type::Struct);
+                    return self.generate_struct_use_noshim(adt.did(), args, st).map(specs::Type::Struct);
                 }
 
                 if adt.is_enum() {
@@ -811,7 +765,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     self.register_adt(*adt)?;
 
                     return self
-                        .generate_enum_variant_use_noshim(adt.did(), variant, args, adt_deps)
+                        .generate_enum_variant_use_noshim(adt.did(), variant, args, st)
                         .map(specs::Type::Struct);
                 }
 
@@ -820,7 +774,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 })
             },
 
-            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, adt_deps).map(specs::Type::Literal),
+            ty::TyKind::Tuple(args) => self.generate_tuple_use(*args, st).map(specs::Type::Literal),
 
             _ => Err(TranslationError::UnknownError("not a structlike".to_owned())),
         }
@@ -1036,7 +990,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         self.variant_registry
             .borrow_mut()
-            .insert(ty.def_id, (struct_name, &*struct_def_init, ty, false, None));
+            .insert(ty.def_id, (struct_name, &*struct_def_init, ty, false));
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
@@ -1074,8 +1028,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 }
 
                 // finalize the definition
-                // TODO for generating the semtype definition, we will also need to track dependencies
-                // between structs so that we know when we need recursive types etc.
                 let mut struct_def_ref = struct_def_init.borrow_mut();
                 *struct_def_ref = Some(struct_def);
 
@@ -1083,9 +1035,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 deps_ref.insert(OrderedDefId::new(self.env.tcx(), adt.did()), deps);
 
                 // also add the entry for the literal
-                let mut reg = self.variant_registry.borrow_mut();
-                let aref = reg.get_mut(&ty.def_id).unwrap();
-                aref.4 = Some(lit);
+                self.register_adt_shim(ty.def_id, lit)?;
 
                 Ok(())
             },
@@ -1105,7 +1055,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         struct_name: &str,
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
-        adt_deps: &mut TranslateAdtState<'_, 'tcx, 'def>,
+        st: &mut TranslateAdtState<'_, 'tcx, 'def>,
     ) -> Result<
         (specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>),
         TranslationError<'tcx>,
@@ -1125,7 +1075,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut invariant_spec;
         if attrs::has_tool_attr(outer_attrs, "refined_by") {
             let outer_attrs = attrs::filter_for_tool(outer_attrs);
-            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(adt_deps.scope);
+            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(st.scope);
             let res = spec_parser
                 .parse_invariant_spec(struct_name, &outer_attrs)
                 .map_err(TranslationError::FatalError)?;
@@ -1136,7 +1086,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             invariant_spec = None;
             expect_refinement = false;
         }
-        info!("adt variant spec: {:?}", invariant_spec);
 
         // assemble the field definition
         let mut field_refinements = Vec::new();
@@ -1149,12 +1098,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
             let ty = self.translate_type_in_state(
                 f_ty,
-                &mut STInner::TranslateAdt(AdtState::new(adt_deps.deps, adt_deps.scope, adt_deps.typing_env)),
+                &mut STInner::TranslateAdt(AdtState::new(st.deps, st.scope, st.typing_env)),
             )?;
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
                 &ty,
-                adt_deps.scope,
+                st.scope,
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
@@ -1192,9 +1141,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             invariant_spec.provide_abstracted_refinement(rfn);
         }
-
-        // TODO for generating the semtype definition, we will also need to track dependencies
-        // between structs so that we know when we need recursive types etc.
 
         Ok((struct_def, invariant_spec))
     }
@@ -1319,7 +1265,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         for v in def.variants() {
             let registry = self.variant_registry.borrow();
-            let (variant_name, coq_def, variant_def, _, _) = registry.get(&v.def_id).unwrap();
+            let (variant_name, coq_def, variant_def, _) = registry.get(&v.def_id).unwrap();
             let coq_def = coq_def.borrow();
             let coq_def = coq_def.as_ref().unwrap();
             let refinement_type = coq_def.plain_rt_def_name().to_owned();
@@ -1381,7 +1327,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         // insert partial definition for recursive occurrences
         self.enum_registry
             .borrow_mut()
-            .insert(def.did(), (enum_name.clone(), &*enum_def_init, def, None));
+            .insert(def.did(), (enum_name.clone(), &*enum_def_init, def));
 
         let translate_variants = || {
             let mut variant_attrs = Vec::new();
@@ -1392,7 +1338,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let struct_name = strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
                 self.variant_registry
                     .borrow_mut()
-                    .insert(v.def_id, (struct_name.clone(), &*struct_def_init, v, true, None));
+                    .insert(v.def_id, (struct_name.clone(), &*struct_def_init, v, true));
 
                 let (variant_def, invariant_def) = self.make_adt_variant(
                     struct_name.as_str(),
@@ -1417,9 +1363,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     let mut struct_def_ref = struct_def_init.borrow_mut();
                     *struct_def_ref = Some(struct_def);
 
-                    let mut reg = self.variant_registry.borrow_mut();
-                    let aref = reg.get_mut(&v.def_id).unwrap();
-                    aref.4 = Some(lit);
+                    self.register_adt_shim(v.def_id, lit)?;
                 }
             }
 
@@ -1493,10 +1437,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // finalize the definition
                 let mut enum_def_ref = enum_def_init.borrow_mut();
                 *enum_def_ref = Some(enum_def);
-
-                let mut reg = self.enum_registry.borrow_mut();
-                let aref = reg.get_mut(&def.did()).unwrap();
-                aref.3 = Some(lit);
+                self.register_adt_shim(def.did(), lit)?;
 
                 let mut deps_ref = self.adt_deps.borrow_mut();
                 deps_ref.insert(OrderedDefId::new(self.env.tcx(), def.did()), deps);
@@ -1917,7 +1858,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         info!("generating enum use for {:?}", adt_def.did());
         self.register_adt(adt_def)?;
 
-        let enum_ref: specs::types::LiteralRef<'def> = self.lookup_enum_literal(adt_def.did())?;
+        let enum_ref: specs::types::LiteralRef<'def> = self
+            .lookup_adt_shim(adt_def.did())
+            .ok_or_else(|| TranslationError::UnknownAdt(adt_def.did()))?;
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(&mut *state),
             adt_def.did(),
@@ -1959,7 +1902,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or(TranslationError::UnknownAdt(variant_id))?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
@@ -1967,8 +1911,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         Ok(Some(struct_use))
     }
 
-    /// Generate a struct use.
-    /// Returns None if this should be unit.
+    /// Generate an enum use.
     pub(crate) fn generate_enum_variant_use(
         &self,
         variant_id: DefId,
@@ -1985,7 +1928,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> = self.lookup_adt_variant_literal(variant_id)?;
+        let struct_ref: specs::types::LiteralRef<'def> =
+            self.lookup_adt_shim(variant_id).ok_or(TranslationError::UnknownAdt(variant_id))?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         // TODO: track?
