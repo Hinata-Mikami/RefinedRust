@@ -275,7 +275,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
         did: DefId,
         lit_ref: Option<specs::types::LiteralRef<'def>>,
         params: &specs::GenericScopeInst<'def>,
-        impl_deps: BTreeSet<OrderedDefId>,
+        mut impl_deps: BTreeSet<OrderedDefId>,
     ) {
         match self {
             Self::InFunction(state) => {
@@ -288,6 +288,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             },
             Self::TranslateAdt(state) => {
                 state.deps.insert(OrderedDefId::new(env.tcx(), did));
+                state.deps.append(&mut impl_deps);
             },
             _ => (),
         }

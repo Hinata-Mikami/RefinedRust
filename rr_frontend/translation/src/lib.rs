@@ -379,12 +379,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             }
         }
 
-        // write structs and enums
+        // write structs, enums, and impl attrs
         // we need to do a bit of work to order them right
         {
             let struct_defs = self.type_translator.get_struct_defs();
             let enum_defs = self.type_translator.get_enum_defs();
-            let adt_deps = self.type_translator.get_adt_deps();
+            let mut adt_deps = self.type_translator.get_adt_deps();
+
+            adt_deps.append(&mut self.trait_impl_deps.clone());
 
             let ordered = base::order_defs_with_deps(self.env.tcx(), &adt_deps);
             info!("ordered ADT defns: {:?}", ordered);
@@ -400,8 +402,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
                     // type aliases
                     writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
-                } else {
-                    let eu = enum_defs[did].borrow();
+                } else if let Some(eu_ref) = enum_defs.get(did) {
+                    let eu = eu_ref.borrow();
                     let eu = eu.as_ref().unwrap();
                     info!("writing enum {:?}, {:?}", did, eu);
 
@@ -410,6 +412,12 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
                     // type definition
                     writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
+                } else if let Some(impl_ref) = self.trait_impls.get(&OrderedDefId::new(self.env.tcx(), *did))
+                {
+                    writeln!(spec_file, "Section attrs.").unwrap();
+                    writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
+                    writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
+                    writeln!(spec_file, "End attrs.\n").unwrap();
                 }
             }
         }
@@ -417,18 +425,6 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write tuples up to the necessary size
         // TODO
 
-        // write the attribute spec declarations of trait impls
-        {
-            writeln!(spec_file, "Section attrs.").unwrap();
-            writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
-            // sort according to dependency order
-            let order = base::order_defs_with_deps(self.env.tcx(), &self.trait_impl_deps);
-            for did in order {
-                let spec = &self.trait_impls[&OrderedDefId::new(self.env.tcx(), did)];
-                writeln!(spec_file, "{}\n", spec.generate_attr_decl()).unwrap();
-            }
-            writeln!(spec_file, "End attrs.\n").unwrap();
-        }
         // write the attribute spec declarations of closure trait impls
         {
             writeln!(spec_file, "Section closure_attrs.").unwrap();

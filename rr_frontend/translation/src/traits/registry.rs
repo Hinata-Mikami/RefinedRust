@@ -1077,8 +1077,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // set up scope
             let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
             let mut deps = BTreeSet::new();
-            let state = types::TraitState::new(param_scope.clone(), typing_env, None, None);
-            let mut state = types::STInner::TraitReqs(Box::new(state));
+            let mut deps1 = BTreeSet::new();
+            let state = types::AdtState::new(&mut deps1, &param_scope, &typing_env);
+            let mut state = types::STInner::TranslateAdt(state);
 
             let scope_inst = self.compute_scope_inst_in_state(
                 &mut state,
@@ -1104,17 +1105,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     if let Some(ty_item) = ty_item {
                         let ty_did = ty_item.def_id;
                         let ty = self.env.tcx().type_of(ty_did);
-                        let translated_ty = self.type_translator().translate_type_in_scope(
-                            &param_scope,
-                            typing_env,
-                            ty.skip_binder(),
-                        )?;
+                        let translated_ty =
+                            self.type_translator().translate_type_in_state(ty.skip_binder(), &mut state)?;
                         assoc_types_inst.push(translated_ty);
                     } else {
                         unreachable!("trait impl does not have required item");
                     }
                 }
             }
+
+            deps.append(&mut deps1);
 
             Ok((
                 specs::traits::RefInst::new(
