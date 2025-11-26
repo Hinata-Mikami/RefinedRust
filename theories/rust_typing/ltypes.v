@@ -4660,7 +4660,7 @@ Section eqltype.
     by iApply (type_ltype_incl_shared_in).
   Qed.
 
-  Lemma type_ltype_incl_shared {rt : RT} `{!Inhabited rt} κ (ty1 : type rt) (ty2 : type rt) :
+  Lemma type_ltype_incl_shared {rt : RT} κ (ty1 : type rt) (ty2 : type rt) :
     (∀ r, type_incl r r ty1 ty2) -∗
     ∀ r, ltype_incl (Shared κ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
@@ -4676,7 +4676,7 @@ Section eqltype.
     iDestruct ("Hsub" $! r') as "(_ & _ & _ & Hshr)".
     by iApply "Hshr".
   Qed.
-  Lemma subtype_subltype_shared E L {rt : RT} `{!Inhabited rt} κ (ty1 : type rt) (ty2 : type rt) :
+  Lemma subtype_subltype_shared E L {rt : RT} κ (ty1 : type rt) (ty2 : type rt) :
     (∀ r, subtype E L r r ty1 ty2) →
     ∀ r, subltype E L (Shared κ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
@@ -4719,7 +4719,7 @@ Section eqltype.
     by iApply (type_ltype_incl_owned_in).
   Qed.
 
-  Lemma type_ltype_incl_owned {rt : RT} `{!Inhabited rt} wl (ty1 : type rt) (ty2 : type rt) :
+  Lemma type_ltype_incl_owned {rt : RT} wl (ty1 : type rt) (ty2 : type rt) :
     (∀ r, type_incl r r ty1 ty2) -∗ ∀ r, ltype_incl (Owned wl) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "#Hsub" (r).
@@ -4736,7 +4736,7 @@ Section eqltype.
     iFrame. iNext. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. by iApply "Hown".
   Qed.
-  Lemma subtype_subltype_owned E L {rt : RT} `{!Inhabited rt} wl (ty1 : type rt) (ty2 : type rt) :
+  Lemma subtype_subltype_owned E L {rt : RT} wl (ty1 : type rt) (ty2 : type rt) :
     (∀ r, subtype E L r r ty1 ty2) → ∀ r, subltype E L (Owned wl) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". rewrite all_subtype_alt in Hsub.
@@ -4755,7 +4755,7 @@ Section eqltype.
      *)
   Abort.
 
-  Lemma type_eq_ltype_incl_uniq {rt : RT} `{!Inhabited rt} κ γ (ty1 : type rt) (ty2 : type rt) :
+  Lemma type_eq_ltype_incl_uniq {rt : RT} κ γ (ty1 : type rt) (ty2 : type rt) :
     (∀ r, type_incl r r ty1 ty2) -∗ (∀ r, type_incl r r ty2 ty1) -∗ ∀ r, ltype_incl (Uniq κ γ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "#Hsub1 #Hsub2" (r).
@@ -4782,7 +4782,7 @@ Section eqltype.
       iDestruct ("Hsub2" $! r') as "(_ & _ & Hown & _)".
       by iApply "Hown".
   Qed.
-  Lemma eqtype_subltype_uniq E L {rt : RT} `{!Inhabited rt} κ γ (ty1 : type rt) (ty2 : type rt) :
+  Lemma eqtype_subltype_uniq E L {rt : RT} κ γ (ty1 : type rt) (ty2 : type rt) :
     (∀ r, eqtype E L r r ty1 ty2) → ∀ r, subltype E L (Uniq κ γ) r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". apply all_eqtype_alt in Hsub as [Hsub1 Hsub2].
@@ -4791,19 +4791,19 @@ Section eqltype.
     iApply (type_eq_ltype_incl_uniq with "Hsub1 Hsub2").
   Qed.
 
-  Lemma full_eqtype_subltype E L {rt : RT} `{!Inhabited rt} (ty1 : type rt) (ty2 : type rt) :
+  Lemma full_eqtype_subltype E L {rt : RT} (ty1 : type rt) (ty2 : type rt) :
     (full_eqtype E L ty1 ty2) → full_subltype E L (◁ ty1)%I (◁ ty2)%I.
   Proof.
     intros Heq. apply full_subltype_alt => b r.
     destruct b.
-    - eapply subtype_subltype_owned; [done | ].
+    - eapply subtype_subltype_owned.
       intros. eapply Heq.
-    - eapply subtype_subltype_shared; [done | ].
+    - eapply subtype_subltype_shared.
       intros. eapply Heq.
-    - eapply eqtype_subltype_uniq; [done | ]. done.
+    - eapply eqtype_subltype_uniq. done.
   Qed.
 
-  Lemma full_eqtype_eqltype E L {rt : RT} `{!Inhabited rt} (ty1 ty2 : type rt):
+  Lemma full_eqtype_eqltype E L {rt : RT} (ty1 ty2 : type rt):
     (full_eqtype E L ty1 ty2) → full_eqltype E L (◁ ty1)%I (◁ ty2)%I.
   Proof.
     intros Ha. apply full_subltype_eqltype; apply full_eqtype_subltype; last symmetry; done.

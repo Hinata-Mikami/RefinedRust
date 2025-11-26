@@ -505,12 +505,22 @@ Section rules.
   Proof.
     iApply typed_place_eqltype.
     apply full_eqtype_eqltype.
-    { apply populate. apply RT_xrt. apply inhabitant. }
     intros ?.
     apply type_fixpoint_unfold_eqtype.
   Qed.
   Definition typed_place_fixpoint_unfold_inst := [instance typed_place_fixpoint_unfold].
   Global Existing Instance typed_place_fixpoint_unfold_inst.
+
+
+  Lemma owned_subtype_fixpoint_id π E L b r1 r2 T :
+    owned_subtype π E L b r1 r2 (type_fixpoint F) (type_fixpoint F) T :-
+    exhale (⌜r1 = r2⌝);
+    return T L.
+  Proof.
+    iIntros "Ha". by iApply owned_subtype_id.
+  Qed.
+  Definition owned_subtype_fixpoint_id_inst := [instance @owned_subtype_fixpoint_id].
+  Global Existing Instance owned_subtype_fixpoint_id_inst | 5.
 
   Lemma owned_subtype_fixpoint_r {rt1} (ty1 : type rt1) π E L b r1 r2 T :
     owned_subtype π E L b r1 r2 ty1 (type_fixpoint F) T :-
@@ -521,7 +531,16 @@ Section rules.
     apply type_fixpoint_subtype_2.
   Qed.
   Definition owned_subtype_fixpoint_r_inst := [instance @owned_subtype_fixpoint_r].
-  Global Existing Instance owned_subtype_fixpoint_r_inst.
+  Global Existing Instance owned_subtype_fixpoint_r_inst | 6.
+
+  Lemma weak_subtype_fixpoint_id E L r1 r2 T :
+    weak_subtype E L r1 r2 (type_fixpoint F) (type_fixpoint F) T :-
+    exhale (⌜r1 = r2⌝); return T.
+  Proof.
+    iIntros "(-> & HT)". by iApply weak_subtype_id.
+  Qed.
+  Definition weak_subtype_fixpoint_id_inst := [instance @weak_subtype_fixpoint_id].
+  Global Existing Instance weak_subtype_fixpoint_id_inst | 5.
 
   Lemma weak_subtype_fixpoint_r {rt1} (ty1 : type rt1) E L r1 r2 T :
     weak_subtype E L r1 r2 ty1 (type_fixpoint F) T :-
@@ -532,7 +551,18 @@ Section rules.
     apply type_fixpoint_subtype_2.
   Qed.
   Definition weak_subtype_fixpoint_r_inst := [instance @weak_subtype_fixpoint_r].
-  Global Existing Instance weak_subtype_fixpoint_r_inst.
+  Global Existing Instance weak_subtype_fixpoint_r_inst | 6.
+
+  Lemma mut_subtype_fixpoint_id E L  T :
+    mut_subtype E L (type_fixpoint F) (type_fixpoint F) T :-
+    return T.
+  Proof.
+    unfold mut_subtype.
+    iIntros "$". iPureIntro.
+    reflexivity.
+  Qed.
+  Definition mut_subtype_fixpoint_id_inst := [instance @mut_subtype_fixpoint_id].
+  Global Existing Instance mut_subtype_fixpoint_id_inst | 5.
 
   Lemma mut_subtype_fixpoint_r (ty1 : type rt) E L  T :
     mut_subtype E L ty1 (type_fixpoint F) T :-
@@ -545,5 +575,5 @@ Section rules.
     apply type_fixpoint_subtype_2.
   Qed.
   Definition mut_subtype_fixpoint_r_inst := [instance @mut_subtype_fixpoint_r].
-  Global Existing Instance mut_subtype_fixpoint_r_inst | 5.
+  Global Existing Instance mut_subtype_fixpoint_r_inst | 6.
 End rules.

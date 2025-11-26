@@ -570,6 +570,10 @@ Section rules.
     SubsumeFull E L false (l ◁ₗ[π, Owned wl] PlaceIn v @ ◁ value_t st)%I (l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty))%I | 101 :=
     λ T, i2p (subsume_full_value_merge_ofty π E L ty r v l st wl T).
 
+  Definition owned_subtype_value_id π E L step st r1 r2 := owned_subtype_id π E L step r1 r2 (value_t st).
+  Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
+  Global Existing Instance owned_subtype_value_id_inst | 10.
+
   Lemma owned_subtype_value_merge {rt} π E L (ty : type rt) r v' st T :
     prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π} r @ ty) (λ L' _ R,
       introduce_with_hooks E L' R (λ L2, ⌜ty_has_op_type ty (use_op_alg' ty.(ty_syn_type)) MCCopy⌝ ∗
@@ -592,9 +596,8 @@ Section rules.
     iApply (ty_memcast_compat_copy with "Hv'"). done.
   Qed.
   (* shouldn't have super high priority because the conclusion is very general *)
-  Global Instance owned_subtype_value_merge_inst {rt} π E L (ty : type rt) r v' st :
-    OwnedSubtype π E L false v' r (value_t st) (ty) | 100 :=
-    λ T, i2p (owned_subtype_value_merge π E L ty r v' st T).
+  Definition owned_subtype_value_merge_inst := [instance @owned_subtype_value_merge].
+  Global Existing Instance owned_subtype_value_merge_inst | 100.
 End rules.
 
 Section unify_loc.

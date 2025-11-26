@@ -560,7 +560,11 @@ impl<'def> Abstract<'def> {
         write!(out, "{indent}{}\n", self.generate_enum_rt()).unwrap();
         write!(out, "{indent}{}\n", self.generate_enum_ty()).unwrap();
 
-        let pre_enum_def_name = format!("{}_pre", self.enum_def_name);
+        let pre_enum_def_name = if self.is_recursive {
+            format!("{}_pre", self.enum_def_name)
+        } else {
+            self.enum_def_name.clone()
+        };
 
         let scope_inst = self.scope.identity_instantiation().instantiation(true, true);
 
@@ -596,6 +600,8 @@ impl<'def> Abstract<'def> {
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_lfts_incl. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_ty_wf_E. Qed.\n").unwrap();
         write!(out, "{indent}Next Obligation. solve_mk_enum_tag_consistent. Defined.\n\n").unwrap();
+
+        write!(out, "{indent}Global Arguments {pre_enum_def_name} : simpl never.\n\n").unwrap();
 
         write!(out, "{indent}End components.\n").unwrap();
 
@@ -649,16 +655,6 @@ impl<'def> Abstract<'def> {
                 self.scope,
                 self.plain_ty_name,
                 ).unwrap();
-        } else {
-            #[expect(deprecated)]
-            writeln!(
-                out,
-                "{indent}Definition {} : {} (enum ({})) := {pre_enum_def_name}.",
-                self.enum_def_name,
-                self.scope.get_all_type_term(),
-                self.spec.rfn_type,
-            )
-            .unwrap();
         }
 
         // make it Typeclasses Transparent

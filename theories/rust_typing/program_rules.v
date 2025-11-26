@@ -515,6 +515,18 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
     SubsumeFull E L step (v ◁ᵥ{π} r1 @ ty) (v ◁ᵥ{π} r2 @ ty) | 5 :=
     λ T, i2p (subsume_full_value_evar π E L step v ty r1 r2 T).
 
+
+  Lemma owned_subtype_default {rt} π E L (ty1 ty2 : type rt) r1 r2 b T :
+    ⌜fast_eq_hint (ty1 = ty2)⌝ ∗ ⌜r1 = r2⌝ ∗ T L 
+    ⊢ owned_subtype π E L b r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros "(<- & <- & HT)".
+    iApply owned_subtype_id. 
+    iFrame. done.
+  Qed.
+  (*Definition owned_subtype_default_inst := [instance @owned_subtype_default].*)
+  (*Global Existing Instance owned_subtype_default_inst | 1000.*)
+
   Lemma subsume_full_owned_subtype π E L step v {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
     owned_subtype π E L false r1 r2 ty1 ty2 (λ L', T L' True%I)
     ⊢ subsume_full E L step (v ◁ᵥ{π} r1 @ ty1) (v ◁ᵥ{π} r2 @ ty2) T.
@@ -625,25 +637,6 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
   Proof.
     iIntros "$" (??) "?? $". iApply type_incl_refl.
   Qed.
-  Global Instance weak_subtype_refl_inst E L {rt} (ty : type rt) r :
-    Subtype E L r r ty ty := λ T, i2p (weak_subtype_id E L ty r T).
-
-  Lemma weak_subtype_evar1 E L {rt} (ty : type rt) r r2 T :
-    ⌜r = r2⌝ ∗ T ⊢ weak_subtype E L r r2 ty ty T.
-  Proof.
-    iIntros "(<- & $)" (??) "?? $". iApply type_incl_refl.
-  Qed.
-  (* We want this to work even if [r2] has shape e.g. [Z.of_nat ?evar], so we do not actually require this to be an evar.
-      Instead, we have a super low priority so that more specific instances will get picked first. *)
-  Global Instance weak_subtype_evar1_inst E L {rt} (ty : type rt) r r2 :
-    Subtype E L r r2 ty ty | 200 := λ T, i2p (weak_subtype_evar1 E L ty r r2 T).
-
-  Lemma weak_subtype_evar2 E L {rt} (ty ty2 : type rt) r r2 T :
-    ⌜ty = ty2⌝ ∗ weak_subtype E L r r2 ty ty T ⊢ weak_subtype E L r r2 ty ty2 T.
-  Proof. iIntros "(<- & $)". Qed.
-  Global Instance weak_subtype_evar2_inst E L {rt} (ty : type rt) r r2 `{!IsProtected ty2} :
-    Subtype E L r r2 ty ty2 | 100 := λ T, i2p (weak_subtype_evar2 E L ty ty2 r r2 T).
-
   Lemma weak_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 E L T :
     subtype E L r1 r1' ty1 ty1' →
     weak_subtype E L r1' r2 ty1' ty2 T -∗
@@ -667,35 +660,51 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
     iModIntro. iApply type_incl_trans; done.
   Qed.
 
-  (** ** Subtyping instances: [mut_subtype] *)
-  Lemma mut_subtype_id E L {rt} (ty : type rt) T :
-    T ⊢ mut_subtype E L ty ty T.
-  Proof.
-    iIntros "$". iPureIntro. reflexivity.
-  Qed.
-  Global Instance mut_subtype_refl_inst E L {rt} (ty : type rt) :
-    MutSubtype E L ty ty | 1 := λ T, i2p (mut_subtype_id E L ty T).
+  Lemma weak_subtype_evar2 E L {rt} (ty ty2 : type rt) r r2 `{!ContainsProtected ty2} T :
+    ⌜ty = ty2⌝ ∗ weak_subtype E L r r2 ty ty T ⊢ weak_subtype E L r r2 ty ty2 T.
+  Proof. iIntros "(<- & $)". Qed.
+  Definition weak_subtype_evar2_inst := [instance @weak_subtype_evar2].
+  Global Existing Instance weak_subtype_evar2_inst | 1000.
 
-  Lemma mut_subtype_evar E L {rt} (ty ty2 : type rt) T :
+  Lemma weak_subtype_default E L {rt} (ty1 ty2 : type rt) r1 r2 T :
+    ⌜r1 = r2⌝ ∗ mut_subtype E L ty1 ty2 T 
+    ⊢ weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros "(<- & %Heq & ?)".
+    iApply weak_subtype_subtype_l; first done.
+    by iApply weak_subtype_id.
+  Qed.
+  Definition weak_subtype_default_inst := [instance @weak_subtype_default].
+  Global Existing Instance weak_subtype_default_inst | 1001.
+
+  (** ** Subtyping instances: [mut_subtype] *)
+  Lemma mut_subtype_evar E L {rt} (ty ty2 : type rt) `{!ContainsProtected ty2} T :
     ⌜ty = ty2⌝ ∗ T ⊢ mut_subtype E L ty ty2 T.
   Proof. iIntros "(<- & $)". iPureIntro. reflexivity. Qed.
-  Global Instance mut_subtype_evar_inst E L {rt} (ty : type rt) `{!IsProtected ty2} :
-    MutSubtype E L ty ty2 | 100 := λ T, i2p (mut_subtype_evar E L ty ty2 T).
+  Definition mut_subtype_evar_inst := [instance @mut_subtype_evar].
+  Global Existing Instance mut_subtype_evar_inst | 1000.
+
+  Lemma mut_subtype_default E L {rt} (ty ty2 : type rt) T :
+    mut_eqtype E L ty ty2 T ⊢ mut_subtype E L ty ty2 T.
+  Proof. 
+    iIntros "(%Heq & $)".
+    iPureIntro. by apply full_eqtype_subtype_l.
+  Qed.
+  Definition mut_subtype_default_inst := [instance @mut_subtype_default].
+  Global Existing Instance mut_subtype_default_inst | 1001.
 
   (** ** Subtyping instances: [mut_eqtype] *)
-  Lemma mut_eqtype_id E L {rt} (ty : type rt) T :
-    T ⊢ mut_eqtype E L ty ty T.
-  Proof.
-    iIntros "$". iPureIntro. reflexivity.
-  Qed.
-  Global Instance mut_eqtype_refl_inst E L {rt} (ty : type rt) :
-    MutEqtype E L ty ty | 99 := λ T, i2p (mut_eqtype_id E L ty T).
-
-  Lemma mut_eqtype_evar E L {rt} (ty ty2 : type rt) T :
+  Lemma mut_eqtype_evar E L {rt} (ty ty2 : type rt) `{!ContainsProtected ty2} T :
     ⌜ty = ty2⌝ ∗ T ⊢ mut_eqtype E L ty ty2 T.
   Proof. iIntros "(<- & $)". iPureIntro. reflexivity. Qed.
-  Global Instance mut_eqtype_evar_inst E L {rt} (ty : type rt) `{!IsProtected ty2} :
-    MutEqtype E L ty ty2 | 100 := λ T, i2p (mut_eqtype_evar E L ty ty2 T).
+  Definition mut_eqtype_evar_inst := [instance @mut_eqtype_evar].
+  Global Existing Instance mut_eqtype_evar_inst | 1000.
+
+  Lemma mut_eqtype_default E L {rt} (ty ty2 : type rt) T :
+    ⌜fast_eq_hint (ty = ty2)⌝ ∗ T ⊢ mut_eqtype E L ty ty2 T.
+  Proof. iIntros "(<- & $)". iPureIntro. reflexivity. Qed.
+  Definition mut_eqtype_default_inst := [instance @mut_eqtype_default].
+  Global Existing Instance mut_eqtype_default_inst | 1001.
 
 
   (** ** Subtyping instances: [weak_subltype] *)
@@ -713,40 +722,24 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
   Lemma weak_subltype_id E L {rt} (lt : ltype rt) k r T :
     T ⊢ weak_subltype E L k r r lt lt T.
   Proof. iIntros "$" (??) "_ _ $". iApply ltype_incl_refl. Qed.
-  Global Instance weak_subltype_refl_inst E L {rt} (lt : ltype rt) k r : SubLtype E L k r r lt lt | 1 :=
-    λ T, i2p (weak_subltype_id E L lt k r T).
 
-  Lemma weak_subltype_evar1 E L {rt} (lt1 : ltype rt) k r1 r2 T :
-    ⌜r1 = r2⌝ ∗ T ⊢ weak_subltype E L k r1 r2 lt1 lt1 T.
-  Proof.
-    iIntros "(<- & HT)" (??) "#CTX #HE HL". iFrame. iApply ltype_incl_refl.
-  Qed.
-  (*Global Instance weak_subltype_evar1_inst E L {rt} (lt1 : ltype rt) k r1 r2  :*)
-    (*SubLtype E L k r1 r2 (lt1)%I (lt1)%I | 1 :=*)
-    (*λ T, i2p (weak_subltype_evar1 E L lt1 k r1 r2 T).*)
-  Global Instance weak_subltype_evar1_inst E L {rt} (lt1 : ltype rt) k r1 r2 :
-    SubLtype E L k r1 r2 (lt1)%I (lt1)%I | 1000 :=
-    λ T, i2p (weak_subltype_evar1 E L lt1 k r1 r2 T).
-
-  Lemma weak_subltype_evar2 E L {rt} (lt1 lt2 : ltype rt) k r1 r2 T :
+  Lemma weak_subltype_evar2 E L {rt} (lt1 lt2 : ltype rt) k r1 r2  `{!ContainsProtected lt2} T :
     ⌜lt1 = lt2⌝ ∗ weak_subltype E L k r1 r2 lt1 lt1 T ⊢ weak_subltype E L k r1 r2 lt1 lt2 T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance weak_subltype_evar2_inst E L {rt} (lt1 lt2 : ltype rt) k r1 r2 `{!IsProtected lt2} :
-    SubLtype E L k r1 r2 (lt1)%I (lt2)%I | 100 :=
-    λ T, i2p (weak_subltype_evar2 E L lt1 lt2 k r1 r2 T).
+  Definition weak_subltype_evar2_inst := [instance @weak_subltype_evar2].
+  Global Existing Instance weak_subltype_evar2_inst | 1000.
 
   (* Escape into the stronger subtyping judgment. Note: should not be used when lt2 is an evar. *)
-  Lemma weak_subltype_base E L {rt} (lt1 lt2 : ltype rt) k r1 r2 T :
-    ⌜r1 = r2⌝ ∗ mut_eqltype E L lt1 lt2 T
+  Lemma weak_subltype_default E L {rt} (lt1 lt2 : ltype rt) k r1 r2 T :
+    ⌜r1 = r2⌝ ∗ mut_subltype E L lt1 lt2 T
     ⊢ weak_subltype E L k r1 r2 lt1 lt2 T.
   Proof.
     iIntros "(<- & %Hsub & HT)" (??) "#CTX #HE HL".
-    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hsub"; first done.
-    iFrame. iPoseProof ("Hsub" $! _ _) as "(Ha1 & _)". done.
+    iPoseProof (full_subltype_acc with "CTX HE HL") as "#Hsub"; first done.
+    iFrame. done.
   Qed.
-  Global Instance weak_subltype_base_inst E L {rt} (lt1 lt2 : ltype rt) k r1 r2 :
-    SubLtype E L k r1 r2 (lt1)%I (lt2)%I | 200 :=
-    λ T, i2p (weak_subltype_base E L lt1 lt2 k r1 r2 T).
+  Definition weak_subltype_default_inst := [instance @weak_subltype_default].
+  Global Existing Instance weak_subltype_default_inst | 1001.
 
   Lemma weak_subltype_ofty_ofty_owned_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) wl r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ weak_subtype E L r1 r2' ty1 ty2 T)
@@ -756,8 +749,8 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     by iApply type_ltype_incl_owned_in.
   Qed.
-  Global Instance weak_subltype_ofty_ofty_owned_in_inst E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) wl r1 r2 : SubLtype E L (Owned wl) #r1 r2 (◁ ty1)%I (◁ ty2)%I | 10 :=
-    λ T, i2p (weak_subltype_ofty_ofty_owned_in E L ty1 ty2 wl r1 r2 T).
+  Definition weak_subltype_ofty_ofty_owned_in_inst := [instance @weak_subltype_ofty_ofty_owned_in].
+  Global Existing Instance weak_subltype_ofty_ofty_owned_in_inst | 10.
 
   Lemma weak_subltype_ofty_ofty_shared_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ weak_subtype E L r1 r2' ty1 ty2 T)
@@ -767,52 +760,64 @@ Global Instance find_in_context_type_val_with_rt_id_inst {rt} π v :
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl & $ & $)".
     by iApply type_ltype_incl_shared_in.
   Qed.
-  Global Instance weak_subltype_ofty_ofty_shared_in_inst E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) κ r1 r2 : SubLtype E L (Shared κ) #r1 r2 (◁ ty1)%I (◁ ty2)%I | 10 :=
-    λ T, i2p (weak_subltype_ofty_ofty_shared_in E L ty1 ty2 κ r1 r2 T).
+  Definition weak_subltype_ofty_ofty_shared_in_inst := [instance @weak_subltype_ofty_ofty_shared_in].
+  Global Existing Instance weak_subltype_ofty_ofty_shared_in_inst | 10.
 
   (* Note: no similar rule for Uniq -- we can just get strong subtyping through the base lemmas *)
 
   (** ** Subtyping instances: [mut_eqltype] *)
-  Lemma mut_eqltype_id E L {rt} (lt : ltype rt) T :
-    T ⊢ mut_eqltype E L lt lt T.
-  Proof. iIntros "$". iPureIntro. reflexivity. Qed.
-  Global Instance mut_eqltype_refl_inst E L {rt} (lt : ltype rt) : MutEqLtype E L lt lt | 1 :=
-    λ T, i2p (mut_eqltype_id E L lt T).
-
-  Lemma mut_eqltype_base_evar E L {rt} (lt1 lt2 : ltype rt) T :
+  Lemma mut_eqltype_base_evar E L {rt} (lt1 lt2 : ltype rt)`{!ContainsProtected lt2}  T :
     ⌜lt1 = lt2⌝ ∗ T
     ⊢ mut_eqltype E L lt1 lt2 T.
   Proof.
     iIntros "(<- & $)". iPureIntro. reflexivity.
   Qed.
-  Global Instance mut_eqltype_base_evar_inst E L {rt} (lt1 lt2 : ltype rt) `{!IsProtected lt2} :
-    MutEqLtype E L (lt1)%I (lt2)%I | 100 := λ T, i2p (mut_eqltype_base_evar E L lt1 lt2 T).
+  Definition mut_eqltype_base_evar_inst := [instance @mut_eqltype_base_evar].
+  Global Existing Instance mut_eqltype_base_evar_inst | 1000.
 
-  Lemma mut_eqltype_ofty E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) T :
+  Lemma mut_eqltype_default E L {rt} (lt1 lt2 : ltype rt)  T :
+    ⌜fast_eq_hint (lt1 = lt2)⌝ ∗ T
+    ⊢ mut_eqltype E L lt1 lt2 T.
+  Proof.
+    iIntros "(<- & $)". iPureIntro. reflexivity.
+  Qed.
+  Definition mut_eqltype_default_inst := [instance @mut_eqltype_default].
+  Global Existing Instance mut_eqltype_default_inst | 1001.
+
+  Lemma mut_eqltype_ofty E L {rt} (ty1 ty2 : type rt) T :
     mut_eqtype E L ty1 ty2 T
     ⊢ mut_eqltype E L (◁ ty1) (◁ ty2) T.
   Proof.
     iIntros "(%Heqt & $)".
-    iPureIntro. eapply full_eqtype_eqltype; done.
+    iPureIntro. eapply full_eqtype_eqltype. done.
   Qed.
-  Global Instance mut_eqltype_ofty_inst E L {rt} `{!Inhabited rt} (ty1 ty2 : type rt) :
-    MutEqLtype E L (◁ ty1)%I (◁ ty2)%I | 5 := λ T, i2p (mut_eqltype_ofty E L ty1 ty2 T).
+  Definition mut_eqltype_ofty_inst := [instance @mut_eqltype_ofty].
+  Global Existing Instance mut_eqltype_ofty_inst | 5.
 
   (** ** Subtyping instances: [mut_subltype] *)
   Lemma mut_subltype_id E L {rt} (lt : ltype rt) T :
     T ⊢ mut_subltype E L lt lt T.
   Proof. iIntros "$". iPureIntro. reflexivity. Qed.
-  Global Instance mut_subltype_refl_inst E L {rt} (lt : ltype rt) : MutSubLtype E L lt lt | 1 :=
-    λ T, i2p (mut_subltype_id E L lt T).
+  (*Global Instance mut_subltype_refl_inst E L {rt} (lt : ltype rt) : MutSubLtype E L lt lt | 1 :=*)
+    (*λ T, i2p (mut_subltype_id E L lt T).*)
 
-  Lemma mut_subltype_base_evar E L {rt} (lt1 lt2 : ltype rt) T :
+  Lemma mut_subltype_base_evar E L {rt} (lt1 lt2 : ltype rt) `{!ContainsProtected lt2} T :
     ⌜lt1 = lt2⌝ ∗ T
     ⊢ mut_subltype E L lt1 lt2 T.
   Proof.
     iIntros "(<- & $)". iPureIntro. reflexivity.
   Qed.
-  Global Instance mut_subltype_base_evar_inst E L {rt} (lt1 lt2 : ltype rt) `{!IsProtected lt2} :
-    MutSubLtype E L (lt1)%I (lt2)%I | 100 := λ T, i2p (mut_subltype_base_evar E L lt1 lt2 T).
+  Definition mut_subltype_base_evar_inst := [instance @mut_subltype_base_evar].
+  Global Existing Instance mut_subltype_base_evar_inst | 1000.
+
+  Lemma mut_subltype_default E L {rt} (lt1 lt2 : ltype rt) T :
+    mut_eqltype E L lt1 lt2 T
+    ⊢ mut_subltype E L lt1 lt2 T.
+  Proof.
+    iIntros "(%Heq & $)". iPureIntro. by apply full_eqltype_subltype_l.
+  Qed.
+  Definition mut_subltype_default_inst := [instance @mut_subltype_default].
+  Global Existing Instance mut_subltype_default_inst | 1001.
 
   (** ** Subtyping instances: [owned_subltype_step] *)
 

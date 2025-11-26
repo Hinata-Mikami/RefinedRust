@@ -41,6 +41,12 @@ Section named_tyvars.
   Arguments TYVAR_MAP : simpl never.
 End named_tyvars.
 
+(** Hint for sideconditions to use a different sidecondition strategy *)
+Definition fast_eq_hint (P : Prop) : Prop := 
+  P.
+Global Typeclasses Opaque fast_eq_hint.
+Arguments fast_eq_hint : simpl never.
+
 (** Instances for Lithium to put things into the persistent context *)
 Section intro_persistent.
   Context `{!typeGS Σ}.
@@ -2440,8 +2446,8 @@ Section judgments.
     iIntros (????) "#CTX #HE HL". iExists L. iFrame.
     iModIntro. destruct step; simpl; try iModIntro. all: iApply owned_type_incl_refl.
   Qed.
-  Global Instance owned_subtype_id_inst π E L step {rt} (r1 r2 : rt) (ty : type rt) :
-    OwnedSubtype π E L step r1 r2 ty ty | 5 := λ T, i2p (owned_subtype_id π E L step r1 r2 ty T).
+  (*Global Instance owned_subtype_id_inst π E L step {rt} (r1 r2 : rt) (ty : type rt) :*)
+    (*OwnedSubtype π E L step r1 r2 ty ty | 5 := λ T, i2p (owned_subtype_id π E L step r1 r2 ty T).*)
 
   Lemma owned_type_incl_incl_l π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
     type_incl r1 r2 ty1 ty2 -∗
@@ -4589,9 +4595,11 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_on_endlft ?E ?L ?κ ?worklist => constr:(TypedOnEndlft E L κ worklist)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)
+  | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
   | owned_subtype ?π ?E ?L ?wl ?r1 ?r2 ?ty1 ?ty2 => constr:(OwnedSubtype π E L wl r1 r2 ty1 ty2)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
   | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)
+  | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
   | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?lt ?r ?b =>

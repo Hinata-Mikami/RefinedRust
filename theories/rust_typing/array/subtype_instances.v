@@ -532,7 +532,7 @@ Section instances.
     iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL_Forall with "Ha") as "%Ha".
     iPureIntro. eapply full_eqltype_subltype_l.
-    etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. apply _. }
+    etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. }
     trans (ArrayLtype def1 len1 []); first last.
     { symmetry. eapply array_t_unfold_full_eqltype. }
     apply array_ltype_make_defaults_full_eqltype. done.
@@ -594,7 +594,7 @@ Section instances.
     iSpecialize ("Ha" with "[] [//]"); simpl. { rewrite length_interpret_iml. iPureIntro. lia. }
     iPoseProof (big_sepL_Forall with "Ha") as "%Ha".
     iPureIntro.
-    etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. apply _. }
+    etrans; first last. { apply full_eqtype_eqltype; last apply Heqt. }
     trans (ArrayLtype def1 len1 []); first last.
     { symmetry. eapply array_t_unfold_full_eqltype. }
     apply array_ltype_make_defaults_full_eqltype. done.
