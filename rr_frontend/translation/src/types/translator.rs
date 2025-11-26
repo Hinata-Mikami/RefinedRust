@@ -232,7 +232,6 @@ pub(crate) enum STInner<'b, 'def, 'tcx> {
 
 pub(crate) type ST<'a, 'b, 'def, 'tcx> = &'a mut STInner<'b, 'def, 'tcx>;
 pub(crate) type InFunctionState<'a, 'def, 'tcx> = &'a mut FunctionState<'tcx, 'def>;
-pub(crate) type TranslateAdtState<'a, 'tcx, 'def> = AdtState<'a, 'tcx, 'def>;
 
 impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
     /// Create a copy of the param scope.
@@ -267,6 +266,45 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
             Self::InFunction(state) => Some(&state.lifetime_scope),
             Self::TraitReqs(state) => state.lifetime_scope,
             Self::TranslateAdt(_) | Self::CalleeTranslation(_) => None,
+        }
+    }
+
+    pub(crate) fn register_adt_use(
+        &mut self,
+        env: &'def Environment<'tcx>,
+        did: DefId,
+        lit_ref: Option<specs::types::LiteralRef<'def>>,
+        params: &specs::GenericScopeInst<'def>,
+        impl_deps: BTreeSet<OrderedDefId>,
+    ) {
+        match self {
+            Self::InFunction(state) => {
+                let lit_ref = lit_ref.unwrap();
+                let key = scope::AdtUseKey::new_from_inst(did, params);
+                let lit_uses = &mut state.shim_uses;
+                lit_uses
+                    .entry(key)
+                    .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
+            },
+            Self::TranslateAdt(state) => {
+                state.deps.insert(OrderedDefId::new(env.tcx(), did));
+            },
+            _ => (),
+        }
+    }
+
+    pub(crate) fn register_tuple_use(
+        &mut self,
+        lit_ref: specs::types::LiteralRef<'def>,
+        params: &specs::GenericScopeInst<'def>,
+    ) {
+        if let Self::InFunction(state) = self {
+            let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
+            let tuple_uses = &mut state.tuple_uses;
+
+            tuple_uses
+                .entry(key)
+                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref, params.clone()));
         }
     }
 
@@ -483,6 +521,15 @@ pub(crate) struct TX<'def, 'tcx> {
     adt_shims: RefCell<HashMap<DefId, specs::types::LiteralRef<'def>>>,
 }
 
+// NOTE: For ADT use translation, there are two variants:
+//  - one "external" one, used in function body translation
+//  - one "internal" one, used when registering ADT definitions and basically everything else
+//
+//  The external one generates `LiteralUse`, whereas the internal one generates `VariantUse` (etc.)
+//  This is needed because we register literals (shims) at the very end of ADT registration.
+//  The internal one is also useful for interpreting #raw annotations, for which we need to know
+//  the structure of the ADT definition.
+//
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
@@ -539,6 +586,20 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     /// Lookup a shim for an ADT.
     fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
         self.adt_shims.borrow().get(&did).copied()
+    }
+
+    /// Check whether this is an ADT that was registered as part of this crate.
+    fn is_registered_adt(&self, did: DefId) -> bool {
+        let reg = self.variant_registry.borrow();
+        if reg.contains_key(&did) {
+            return true;
+        }
+
+        let reg = self.enum_registry.borrow();
+        if reg.contains_key(&did) {
+            return true;
+        }
+        false
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
@@ -693,12 +754,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_adt_variant_already_registered(&self, did: DefId) -> bool {
+    fn is_adt_already_registered(&self, did: DefId) -> bool {
         if self.lookup_adt_shim(did).is_some() {
             return true;
         }
+        // Also have to check these: in case the translation is currently in progress (recursive
+        // types), the shim is not registered yet, but these are.
+        let reg = self.enum_registry.borrow();
+        if reg.get(&did).is_some() {
+            return true;
+        }
         let reg = self.variant_registry.borrow();
-        reg.get(&did).is_some()
+        if reg.get(&did).is_some() {
+            return true;
+        }
+        false
     }
 
     /// Lookup an enum ADT and return a reference to its enum def.
@@ -717,14 +787,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_enum_already_registered(&self, did: DefId) -> bool {
-        if self.lookup_adt_shim(did).is_some() {
-            return true;
-        }
-        let reg = self.enum_registry.borrow();
-        reg.get(&did).is_some()
-    }
-
     /// Generate a use of a struct, instantiated with type parameters.
     /// This should only be called on tuples and struct ADTs.
     /// Only for internal references as part of type translation.
@@ -737,7 +799,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         match ty.kind() {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
-                if self.lookup_adt_shim(adt.did()).is_some() {
+                // we prefer to use the registered ADT instead of the shim, to support things like `#raw`
+                if !self.is_registered_adt(adt.did()) && self.lookup_adt_shim(adt.did()).is_some() {
                     return self.generate_adt_shim_use(*adt, args, st);
                 }
 
@@ -792,17 +855,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         self.register_adt(adt_def)?;
 
         let (enum_ref, lit_ref) = self.lookup_enum(adt_def.did())?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_def.did(), args, None)?;
-        let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
+        let mut impl_deps = BTreeSet::new();
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            state,
+            adt_def.did(),
+            args,
+            Some(&mut impl_deps),
+        )?;
 
-        // track this enum use for the current function
-        if let STInner::InFunction(state) = state {
-            let lit_uses = &mut state.shim_uses;
-
-            lit_uses
-                .entry(key)
-                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
-        }
+        state.register_adt_use(self.env, adt_def.did(), lit_ref, &params, impl_deps);
 
         Ok(specs::enums::AbstractUse::new(enum_ref, params))
     }
@@ -837,17 +898,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
-        let params = self.trait_registry().compute_scope_inst_in_state(state, variant_id, args, None)?;
+
+        let mut impl_deps = BTreeSet::new();
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            state,
+            variant_id,
+            args,
+            Some(&mut impl_deps),
+        )?;
         info!("struct use has params: {params:?}");
 
-        if let STInner::InFunction(scope) = state {
-            let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
-            let lit_uses = &mut scope.shim_uses;
-
-            lit_uses
-                .entry(key)
-                .or_insert_with(|| specs::types::LiteralUse::new(lit_ref.unwrap(), params.clone()));
-        }
+        state.register_adt_use(self.env, variant_id, lit_ref, &params, impl_deps);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
         Ok(struct_use)
@@ -865,22 +926,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         info!("generating variant use for variant {:?} of {:?}", variant_idx, adt_id);
 
         let variant_idx = variant_idx.as_usize();
-        let (enum_ref, _lit_ref) = self.lookup_enum(adt_id)?;
+        let (enum_ref, lit_ref) = self.lookup_enum(adt_id)?;
         let en = enum_ref.borrow();
         let en = en.as_ref().unwrap();
 
         let (_, struct_ref, _) = en.get_variant(variant_idx).unwrap();
         let struct_ref: specs::structs::AbstractRef<'def> = *struct_ref;
 
-        // apply the generic parameters according to the mask
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt_id, args, None)?;
+        let mut impl_deps = BTreeSet::new();
+        let params =
+            self.trait_registry()
+                .compute_scope_inst_in_state(state, adt_id, args, Some(&mut impl_deps))?;
+
+        state.register_adt_use(self.env, adt_id, lit_ref, &params, impl_deps);
 
         let struct_use = specs::structs::AbstractUse::new(struct_ref, params, specs::structs::TypeIsRaw::No);
-
-        // TODO maybe track the whole enum?
-        // track this enum use for the current function
-        //let mut struct_uses = self.struct_uses.borrow_mut();
-        //struct_uses.push(struct_use.clone());
 
         Ok(struct_use)
     }
@@ -901,14 +961,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let num_components = params.get_direct_ty_params().len();
         let (_, lit) = self.get_tuple_struct_ref(num_components);
 
-        let key: Vec<_> = params.get_direct_ty_params().iter().map(lang::SynType::from).collect();
+        state.register_tuple_use(lit, &params);
+
         let struct_use = specs::types::LiteralUse::new(lit, params);
-        if let STInner::InFunction(ref mut scope) = *state {
-            let tuple_uses = &mut scope.tuple_uses;
-
-            tuple_uses.entry(key).or_insert_with(|| struct_use.clone());
-        }
-
         Ok(struct_use)
     }
 
@@ -968,7 +1023,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
     ) -> Result<(), TranslationError<'tcx>> {
-        if self.is_adt_variant_already_registered(ty.def_id) {
+        if self.is_adt_already_registered(ty.def_id) {
             // already there, that's fine.
             return Ok(());
         }
@@ -999,7 +1054,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 &struct_name,
                 ty,
                 adt,
-                &mut AdtState::new(&mut deps, &scope, &typing_env),
+                &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
             )?;
 
             let mut struct_def = specs::structs::Abstract::new(variant_def, scope.into());
@@ -1055,7 +1110,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         struct_name: &str,
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
-        st: &mut TranslateAdtState<'_, 'tcx, 'def>,
+        state: ST<'_, '_, 'def, 'tcx>,
+        //st: &mut TranslateAdtState<'_, 'tcx, 'def>,
     ) -> Result<
         (specs::structs::AbstractVariant<'def>, Option<specs::invariants::Spec>),
         TranslationError<'tcx>,
@@ -1075,7 +1131,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let mut invariant_spec;
         if attrs::has_tool_attr(outer_attrs, "refined_by") {
             let outer_attrs = attrs::filter_for_tool(outer_attrs);
-            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(st.scope);
+            let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
             let res = spec_parser
                 .parse_invariant_spec(struct_name, &outer_attrs)
                 .map_err(TranslationError::FatalError)?;
@@ -1096,14 +1152,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let attrs = attrs::filter_for_tool(attrs);
 
             let f_ty = self.env.tcx().type_of(f.did).instantiate_identity();
-            let ty = self.translate_type_in_state(
-                f_ty,
-                &mut STInner::TranslateAdt(AdtState::new(st.deps, st.scope, st.typing_env)),
-            )?;
+            let ty = self.translate_type_in_state(f_ty, state)?;
 
             let mut parser = struct_spec_parser::VerboseStructFieldSpecParser::new(
                 &ty,
-                st.scope,
+                state.param_scope(),
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
@@ -1242,7 +1295,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    /// Check whether this is an Option type.
+    /// Check whether this is a Result type.
     pub(crate) fn is_builtin_result_type(&self, ty: ty::Ty<'tcx>) -> bool {
         if let ty::TyKind::Adt(def, _) = ty.kind() {
             self.does_did_match(def.did(), &["core", "result", "Result"])
@@ -1303,7 +1356,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Register an enum ADT
     fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
-        if self.is_enum_already_registered(def.did()) {
+        if self.is_adt_already_registered(def.did()) {
             // already there, that's fine.
             return Ok(());
         }
@@ -1344,7 +1397,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     struct_name.as_str(),
                     v,
                     def,
-                    &mut AdtState::new(&mut deps, &scope, &typing_env),
+                    &mut STInner::TranslateAdt(AdtState::new(&mut deps, &scope, &typing_env)),
                 )?;
 
                 let mut struct_def = specs::structs::Abstract::new(variant_def, scope.clone().into());
@@ -1389,7 +1442,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let mut parser = VerboseEnumSpecParser::new(&scope);
 
                 enum_spec = parser
-                    .parse_enum_spec("", &attributes, &variant_attrs)
+                    .parse_enum_spec(&enum_name, &attributes, &variant_attrs)
                     .map_err(TranslationError::FatalError)?;
             } else {
                 // generate a specification
@@ -1464,18 +1517,17 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             )));
         };
 
-        let params = self.trait_registry().compute_scope_inst_in_state(state, adt.did(), substs, None)?;
+        let mut impl_deps = BTreeSet::new();
+        let params = self.trait_registry().compute_scope_inst_in_state(
+            state,
+            adt.did(),
+            substs,
+            Some(&mut impl_deps),
+        )?;
 
-        if let STInner::InFunction(scope) = state {
-            let key = scope::AdtUseKey::new_from_inst(adt.did(), &params);
-            let shim_use = specs::types::LiteralUse::new(shim, params);
-            // track this shim use for the current function
-            scope.shim_uses.entry(key).or_insert_with(|| shim_use.clone());
-            Ok(specs::Type::Literal(shim_use))
-        } else {
-            let shim_use = specs::types::LiteralUse::new(shim, params);
-            Ok(specs::Type::Literal(shim_use))
-        }
+        state.register_adt_use(self.env, adt.did(), Some(shim), &params, impl_deps);
+        let shim_use = specs::types::LiteralUse::new(shim, params);
+        Ok(specs::Type::Literal(shim_use))
     }
 
     /// Translate types, while placing the `DefIds` of ADTs that this type uses in the `adt_deps`
@@ -1551,11 +1603,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return Ok(specs::Type::Unit);
                 }
 
-                if let STInner::TranslateAdt(state) = state {
-                    state.deps.insert(OrderedDefId::new(self.env.tcx(), adt.did()));
-                }
-
-                if self.lookup_adt_shim(adt.did()).is_some() {
+                // we prefer to use the registered ADT instead of the shim, to support things like `#raw`
+                if !self.is_registered_adt(adt.did()) && self.lookup_adt_shim(adt.did()).is_some() {
                     return self.generate_adt_shim_use(*adt, substs, &mut *state);
                 }
 
@@ -1862,7 +1911,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             .lookup_adt_shim(adt_def.did())
             .ok_or_else(|| TranslationError::UnknownAdt(adt_def.did()))?;
         let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(&mut *state),
+            &mut STInner::InFunction(state),
             adt_def.did(),
             args,
             None,
@@ -1895,7 +1944,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         }
 
         let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(&mut *scope),
+            &mut STInner::InFunction(scope),
             variant_id,
             args,
             None,
@@ -1921,7 +1970,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         info!("generating enum variant use for {:?}", variant_id);
 
         let params = self.trait_registry().compute_scope_inst_in_state(
-            &mut STInner::InFunction(&mut *scope),
+            &mut STInner::InFunction(scope),
             variant_id,
             args,
             None,
