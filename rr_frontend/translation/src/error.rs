@@ -6,6 +6,7 @@
 
 use derive_more::Display;
 use rr_rustc_interface::errors::DiagMessage;
+use rr_rustc_interface::hir::def_id::DefId;
 
 use crate::procedures;
 
@@ -13,6 +14,12 @@ use crate::procedures;
 pub(crate) enum Message {
     #[display("No assumption is allowed, but this function is annotated with `#[rr::{}]`", _0)]
     NoAssumptionAllowed(procedures::Mode),
+
+    #[display("Unknown ADT: {:?}", _0)]
+    UnknownAdt(DefId),
+
+    #[display("ADT shim was overridden for {:?}", _0)]
+    OverriddenAdtShim(DefId),
 }
 
 impl From<Message> for DiagMessage {

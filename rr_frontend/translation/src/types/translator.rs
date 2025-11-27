@@ -30,7 +30,7 @@ use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, St
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry;
 use crate::types::scope;
-use crate::{attrs, search};
+use crate::{attrs, error, search};
 
 /// A scope tracking the type translation state when translating the body of a function.
 /// This also includes the state needed for tracking trait constraints, as type translation for
@@ -566,7 +566,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
         if let Some(_old) = shims.insert(did, lit_ref) {
-            Err(TranslationError::OverriddenAdtShim(did))
+            Err(self.env.tcx().dcx().err(error::Message::OverriddenAdtShim(did)).into())
         } else {
             Ok(())
         }
@@ -1862,7 +1862,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
 
         let enum_ref: specs::types::LiteralRef<'def> = self
             .lookup_adt_shim(adt_def.did())
-            .ok_or_else(|| TranslationError::UnknownAdt(adt_def.did()))?;
+            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(adt_def.did())))?;
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(state),
             adt_def.did(),
@@ -1902,8 +1902,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> =
-            self.lookup_adt_shim(variant_id).ok_or(TranslationError::UnknownAdt(variant_id))?;
+        let struct_ref: specs::types::LiteralRef<'def> = self
+            .lookup_adt_shim(variant_id)
+            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(variant_id)))?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         scope.shim_uses.entry(key).or_insert_with(|| struct_use.clone());
@@ -1927,8 +1928,9 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         )?;
         let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
-        let struct_ref: specs::types::LiteralRef<'def> =
-            self.lookup_adt_shim(variant_id).ok_or(TranslationError::UnknownAdt(variant_id))?;
+        let struct_ref: specs::types::LiteralRef<'def> = self
+            .lookup_adt_shim(variant_id)
+            .ok_or_else(|| self.env.tcx().dcx().err(error::Message::UnknownAdt(variant_id)))?;
         let struct_use = specs::types::LiteralUse::new(struct_ref, params);
 
         // TODO: track?

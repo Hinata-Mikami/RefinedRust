@@ -8,6 +8,7 @@ use std::cmp;
 use std::collections::{BTreeMap, BTreeSet};
 
 use derive_more::Display;
+use rr_rustc_interface::errors::ErrorGuaranteed;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::hir::definitions::DefPathHash;
 use rr_rustc_interface::middle::ty;
@@ -125,12 +126,6 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },
 
-    #[display("Unknown ADT: {:?}", _0)]
-    UnknownAdt(DefId),
-
-    #[display("ADT shim was overridden for {:?}", _0)]
-    OverriddenAdtShim(DefId),
-
     #[display("Invalid Layout")]
     InvalidLayout,
 
@@ -187,10 +182,19 @@ pub(crate) enum TranslationError<'tcx> {
 
     #[display("Incomplete specification for trait impl {:?}", _0)]
     IncompleteTraitImplSpec(DefId),
+
+    #[display("Error reported")]
+    ErrorReported(ErrorGuaranteed),
 }
 
 impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {
     fn from(x: traits::Error<'tcx>) -> Self {
         Self::TraitTranslation(x)
+    }
+}
+
+impl From<ErrorGuaranteed> for TranslationError<'_> {
+    fn from(x: ErrorGuaranteed) -> Self {
+        Self::ErrorReported(x)
     }
 }
