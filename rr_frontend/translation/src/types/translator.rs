@@ -578,17 +578,18 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Check whether this is an ADT that was registered as part of this crate.
-    fn is_registered_adt(&self, did: DefId) -> bool {
-        let reg = self.variant_registry.borrow();
-        if reg.contains_key(&did) {
-            return true;
-        }
+    fn is_registered_local_adt(&self, did: DefId) -> bool {
+        self.variant_registry.borrow().contains_key(&did) || self.enum_registry.borrow().contains_key(&did)
+    }
 
-        let reg = self.enum_registry.borrow();
-        if reg.contains_key(&did) {
-            return true;
-        }
-        false
+    /// Check whether this is an ADT that is registered as part of another crate
+    fn is_registered_remote_adt(&self, did: DefId) -> bool {
+        self.lookup_adt_shim(did).is_some() && !self.is_registered_local_adt(did)
+    }
+
+    /// Check whether this is a registered ADT (remote or local).
+    fn is_registered_adt(&self, did: DefId) -> bool {
+        self.lookup_adt_shim(did).is_some() || self.is_registered_local_adt(did)
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
@@ -743,23 +744,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         }
     }
 
-    fn is_adt_already_registered(&self, did: DefId) -> bool {
-        if self.lookup_adt_shim(did).is_some() {
-            return true;
-        }
-        // Also have to check these: in case the translation is currently in progress (recursive
-        // types), the shim is not registered yet, but these are.
-        let reg = self.enum_registry.borrow();
-        if reg.get(&did).is_some() {
-            return true;
-        }
-        let reg = self.variant_registry.borrow();
-        if reg.get(&did).is_some() {
-            return true;
-        }
-        false
-    }
-
     /// Lookup an enum ADT and return a reference to its enum def.
     fn lookup_enum(
         &self,
@@ -789,7 +773,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::TyKind::Adt(adt, args) => {
                 // Check if we have a shim
                 // we prefer to use the registered ADT instead of the shim, to support things like `#raw`
-                if !self.is_registered_adt(adt.did()) && self.lookup_adt_shim(adt.did()).is_some() {
+                if self.is_registered_remote_adt(adt.did()) {
                     return self.generate_adt_shim_use(*adt, args, st);
                 }
 
@@ -997,7 +981,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         ty: &'tcx ty::VariantDef,
         adt: ty::AdtDef<'_>,
     ) -> Result<(), TranslationError<'tcx>> {
-        if self.is_adt_already_registered(ty.def_id) {
+        if self.is_registered_adt(ty.def_id) {
             // already there, that's fine.
             return Ok(());
         }
@@ -1330,7 +1314,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Register an enum ADT
     fn register_enum(&self, def: ty::AdtDef<'tcx>) -> Result<(), TranslationError<'tcx>> {
-        if self.is_adt_already_registered(def.did()) {
+        if self.is_registered_adt(def.did()) {
             // already there, that's fine.
             return Ok(());
         }
@@ -1571,8 +1555,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return Ok(specs::Type::Unit);
                 }
 
-                // we prefer to use the registered ADT instead of the shim, to support things like `#raw`
-                if !self.is_registered_adt(adt.did()) && self.lookup_adt_shim(adt.did()).is_some() {
+                // we prefer to use the registered local ADT instead of the shim, to support things like
+                // `#raw`
+                if self.is_registered_remote_adt(adt.did()) {
                     return self.generate_adt_shim_use(*adt, substs, &mut *state);
                 }
 
