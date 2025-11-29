@@ -9,9 +9,53 @@
 use std::path::{NormalizeError, PathBuf};
 use std::process::Command;
 use std::sync::{LazyLock, RwLock, RwLockWriteGuard};
-use std::{env, path};
+use std::{env, fmt, path};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
+
+fn vec_or_split_colon<'de, D>(d: D) -> Result<Vec<String>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    struct V;
+
+    impl<'de> de::Visitor<'de> for V {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("string with ':' or list of strings")
+        }
+
+        // Case 1: string => split
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v.split(':').map(ToOwned::to_owned).collect())
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v.split(':').map(ToOwned::to_owned).collect())
+        }
+
+        // Case 2: list of strings => just collect
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut out = Vec::new();
+            while let Some(elem) = seq.next_element::<String>()? {
+                out.push(elem);
+            }
+            Ok(out)
+        }
+    }
+
+    d.deserialize_any(V)
+}
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
@@ -31,6 +75,7 @@ struct Config {
     no_assumption: bool,
     admit_proofs: bool,
     generate_dune_project: bool,
+    #[serde(deserialize_with = "vec_or_split_colon")]
     lib_load_paths: Vec<String>,
     work_dir: String,
     output_dir: Option<String>,

@@ -23,9 +23,7 @@
       in ''
         wrapProgram $out/bin/dune \
           --prefix PATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
-          --prefix OCAMLPATH ":" "${
-          pkgs.lib.makeBinPath [coqc coqdep coqpp]
-        }" \
+          --prefix OCAMLPATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
           --run "export COQPATH=\$(eval echo \$ROCQPATH)"
       '';
     });
