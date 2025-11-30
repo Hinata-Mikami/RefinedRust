@@ -128,7 +128,7 @@ By default, RefinedRust will place this code in a subdirectory of Cargo's `targe
 To make inspection easier in the sequel, we will configure RefinedRust to put the generated code in an `output` directory in the project directory.
 To do so, we create a new file `RefinedRust.toml` in the project directory (alongside `Cargo.toml`) with the following contents:
 ```
-output_dir="./output"
+output_dir="output"
 ```
 You can find more valid configuration options described in RefinedRust's readme.
 

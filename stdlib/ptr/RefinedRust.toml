@@ -1,2 +1,2 @@
-output_dir = "./output"
 lib_load_paths = ["../mem"]
+output_dir = "output"

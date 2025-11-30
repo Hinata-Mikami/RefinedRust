@@ -14,8 +14,7 @@
     "withStdlib"
   ];
 in
-  craneLib.mkCargoDerivation (args
-    // {
+  craneLib.mkCargoDerivation ({
       __contentAddressed = true;
 
       pnameSuffix = "-refinedrust";
@@ -30,4 +29,4 @@ in
         RR_OUTPUT_DIR=$(cargo refinedrust --show-config | grep output_dir | cut -d' ' -f3 | tr '"' ' ')
         cp -r $RR_OUTPUT_DIR $out
       '';
-    })
+    } // args)

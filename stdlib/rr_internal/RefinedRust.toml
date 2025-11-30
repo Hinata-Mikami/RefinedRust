@@ -1,2 +1,2 @@
-lib_load_paths = ["../"]
-output_dir = "./output"
+lib_load_paths = ["../alloc", "../ptr"]
+output_dir = "output"

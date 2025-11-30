@@ -7,10 +7,10 @@
 
 #![rr::package("stdlib-vec")]
 #![rr::coq_prefix("rrstd.alloc")]
-#![rr::include("option")]
 #![rr::include("alloc")]
-#![rr::include("rr_internal")]
 #![rr::include("iterator")]
+#![rr::include("option")]
+#![rr::include("rr_internal")]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;

@@ -1,2 +1,3 @@
-lib_load_paths = ["../"]
 extra_specs = "extra_specs.v"
+lib_load_paths = ["../closures", "../option"]
+output_dir = "output"

@@ -1,1 +1,1 @@
-lib_load_paths = ["../"]
+lib_load_paths = ["../alloc", "../option"]

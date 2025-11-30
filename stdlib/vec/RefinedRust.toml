@@ -1,2 +1,2 @@
-lib_load_paths = ["../"]
 extra_specs = "extra_specs.v"
+lib_load_paths = ["../alloc", "../iterator", "../option", "../rr_internal"]

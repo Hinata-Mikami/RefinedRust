@@ -1,2 +1,2 @@
-output_dir = "./output"
 lib_load_paths = ["../../stdlib"]
+output_dir = "output"

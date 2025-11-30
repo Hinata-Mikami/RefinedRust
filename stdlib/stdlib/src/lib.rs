@@ -5,8 +5,9 @@
 #![feature(custom_inner_attributes)]
 
 #![feature(allocator_api)]
+
+#![rr::package("stdlib-refinedrust")]
 #![rr::coq_prefix("rrstd.stdlib")]
-#![allow(unused)]
 
 #![rr::export_include("alloc")]
 #![rr::export_include("boxed")]
@@ -23,4 +24,3 @@
 #![rr::export_include("arithops")]
 #![rr::export_include("cmp")]
 #![rr::export_include("range")]
-

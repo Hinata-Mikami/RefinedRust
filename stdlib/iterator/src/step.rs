@@ -1,8 +1,8 @@
 #![rr::import("rrstd.iterator.theories", "step")]
 
+#![rr::include("clone")]
 #![rr::include("cmp")]
 #![rr::include("option")]
-#![rr::include("clone")]
 #![rr::include("range")]
 
 use crate::traits::iterator::*;

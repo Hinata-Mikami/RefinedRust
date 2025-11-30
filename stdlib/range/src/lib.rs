@@ -4,8 +4,8 @@
 
 #![rr::package("stdlib-range")]
 #![rr::coq_prefix("rrstd.range")]
-#![rr::include("option")]
 #![rr::include("cmp")]
+#![rr::include("option")]
 
 #![feature(step_trait)]
 

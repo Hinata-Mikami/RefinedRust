@@ -7,8 +7,8 @@
 
 #![rr::package("stdlib-rr_internal")]
 #![rr::coq_prefix("rrstd.rr_internal")]
-#![rr::include("ptr")]
 #![rr::include("alloc")]
+#![rr::include("ptr")]
 #![rr::import("rrstd.rr_internal.theories", "shims")]
 
 use std::alloc;

@@ -5,8 +5,8 @@
 
 #![rr::package("stdlib-btreemap")]
 #![rr::coq_prefix("rrstd.btreemap")]
-#![rr::include("option")]
 #![rr::include("alloc")]
+#![rr::include("option")]
 
 #![feature(allocator_api)]
 

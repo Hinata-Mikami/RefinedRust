@@ -1,0 +1,7 @@
+interface.rrlib
+generated
+proofs
+!proofs/proof_PartialOrd_ge.v
+!proofs/proof_PartialOrd_gt.v
+!proofs/proof_PartialOrd_le.v
+!proofs/proof_PartialOrd_lt.v
