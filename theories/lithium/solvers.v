@@ -82,9 +82,9 @@ Ltac normalize_and_simpl_impl handle_exist :=
   | |- name_hint _ ?P → ?Q =>
       change_no_check (P → Q)
   end;
-  let add_hint := 
+  let add_hint :=
     idtac;
-    match goal with 
+    match goal with
     | |- ?P → ?Q =>
       match discr with
       | true =>
@@ -97,6 +97,9 @@ Ltac normalize_and_simpl_impl handle_exist :=
           idtac
         end
       end
+    | |- _ =>
+        (* the goal shape might have changed due to simplification, in this case drop the hint *)
+        idtac
     end
   in
   let do_intro :=
@@ -112,9 +115,9 @@ Ltac normalize_and_simpl_impl handle_exist :=
         let Hi := fresh "Hi" in move => Hi; injection Hi; clear Hi
     | |- (?x = _) → _ =>
         is_var x;
-        let He := fresh "Heq" in move => He; 
-        repeat match goal with 
-               | H : context[x] |- _ => 
+        let He := fresh "Heq" in move => He;
+        repeat match goal with
+               | H : context[x] |- _ =>
                    assert_fails (unify H He);
                    before_revert_hook H;
                    revert H
@@ -123,15 +126,16 @@ Ltac normalize_and_simpl_impl handle_exist :=
         subst
     | |- (_ = ?x) → _ =>
         is_var x;
-        let He := fresh "Heq" in move => He; 
-        repeat match goal with 
-               | H : context[x] |- _ => 
+        let He := fresh "Heq" in move => He;
+        repeat match goal with
+               | H : context[x] |- _ =>
                    assert_fails (unify H He);
                    before_revert_hook H;
                    revert H
                    (*generalize dependent H*)
         end;
         subst
+    | |- False → _ => intros []
     | |- ?P → _ =>
         match discr with
         | true =>
@@ -142,7 +146,7 @@ Ltac normalize_and_simpl_impl handle_exist :=
             string_ident.string_to_ident_cps h ltac:(fun H => first [intros H | intros ?])
           | None =>
               assert_is_not_trivial P;
-              let H := fresh in 
+              let H := fresh in
               intros H; hooks.after_intro_hook H
           end
         end
@@ -166,7 +170,7 @@ Ltac normalize_and_simpl_impl handle_exist :=
         for the lemma application above). *)
         simpl;
         lazymatch changed with
-        | true => add_hint 
+        | true => add_hint
         | false => do_intro
         end
       | do_intro

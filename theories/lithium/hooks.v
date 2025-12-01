@@ -84,6 +84,9 @@ Ltac liForall_hook := fail.
 (** [liTrace_hook] is called on each liTrace. *)
 Ltac liTrace_hook info := idtac.
 
+(** [liDestruct_hook] is called before destructing a term [term] *)
+Ltac liDestruct_hook term := idtac.
+
 (** [liToSyntax_hook] is called by [liToSyntax] to (heurisitically)
 convert the goal to the Lithium syntax. If one overrides
 [liToSyntax_hook] with [fail], conversion to the syntax is disabled. *)

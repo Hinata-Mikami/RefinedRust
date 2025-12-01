@@ -43,6 +43,9 @@ Definition bb_inv_map_marker_aux M : seal (bb_inv_map_marker_def M). Proof. by e
 Definition bb_inv_map_marker M := (bb_inv_map_marker_aux M).(unseal).
 Definition bb_inv_map_marker_unfold M : bb_inv_map_marker M = bb_inv_map_marker_def M := (bb_inv_map_marker_aux M).(seal_eq).
 
+(* Loop invariant map *)
+Notation "'BB_INV'" := (bb_inv_map_marker _) (only printing) : rr_hidden.
+
 Lemma pose_bb_inv (M : bb_inv_map_t) :
   bb_inv_map_marker M.
 Proof.
@@ -249,7 +252,7 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
     clear Hinv;
     cont Inv iterator_var
 
-  | None => 
+  | None =>
     pose (Hinv :=
       λ (params : _) (E : elctx) (L : llctx),
       ltac:(

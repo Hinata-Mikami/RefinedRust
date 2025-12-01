@@ -360,3 +360,62 @@ Global Instance simpl_impl_not_empty {A} (xs : list A) :
 Proof.
   intros T. destruct xs; simpl; naive_solver lia.
 Qed.
+
+Lemma not_is_Some_iff {A} (a : option A) :
+  ¬ is_Some a ↔ a = None.
+Proof. destruct a; naive_solver. Qed.
+Instance simpl_both_not_is_Some {A} (a : option A):
+  SimplBoth (¬ is_Some a) (a = None).
+Proof.
+  unfold SimplBoth. apply not_is_Some_iff.
+Qed.
+
+Instance simpl_and_impl P1 P2 T2 :
+  SimplImpl true P1 T2 →
+  SimplAnd (P1 → P2) (λ T, (T2 P2) ∧ T).
+Proof.
+  intros Ha T. rewrite Ha; done.
+Qed.
+
+Instance simpl_both_rel_eq_contradict {A} (a b : A) `{TCDone (a ≠ b)} :
+  SimplBothRel (=) a b False.
+Proof.
+  unfold TCDone in *. unfold SimplBothRel. naive_solver.
+Qed.
+
+Instance simpl_both_rel_iff_False P :
+  SimplBothRel iff P False (¬ P).
+Proof.
+  unfold SimplBothRel. naive_solver.
+Qed.
+
+Global Instance simpl_impl_is_Err {A B} (x : result A B) :
+  SimplImpl true (is_Err x) (λ T, ∀ y, x = inr y → T).
+Proof.
+  unfold is_Err, SimplImpl.
+  naive_solver.
+Qed.
+Global Instance simpl_impl_not_is_Err {A B} (x : result A B) :
+  SimplImpl true (¬ is_Err x) (λ T, ∀ y, x = inl y → T).
+Proof.
+  unfold is_Err, SimplImpl.
+  destruct x; naive_solver.
+Qed.
+Global Instance simpl_impl_is_Ok {A B} (x : result A B) :
+  SimplImpl true (is_Ok x) (λ T, ∀ y, x = inl y → T).
+Proof.
+  unfold is_Ok, SimplImpl.
+  naive_solver.
+Qed.
+Global Instance simpl_impl_not_is_Ok {A B} (x : result A B) :
+  SimplImpl true (¬ is_Ok x) (λ T, ∀ y, x = inr y → T).
+Proof.
+  unfold is_Ok, SimplImpl.
+  destruct x; naive_solver.
+Qed.
+
+Global Instance simpl_exist_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{Hg : !TyGhostDrop ty} Q :
+  SimplExist (TyGhostDrop ty) Q (Q Hg).
+Proof.
+  intros Ha. eauto.
+Qed.

@@ -130,6 +130,25 @@ Definition if_Err {A B} (x : result A B) (ϕ : B → Prop) : Prop :=
   | _ => True
   end.
 
+Definition is_Ok {A B} (x : result A B) :=
+  ∃ y : A, x = Ok y.
+Global Instance is_Ok_dec {A B} (x : result A B) : Decision (is_Ok x).
+Proof.
+  destruct x.
+  - left. eexists _. done.
+  - right. intros [y Hx]. naive_solver.
+Defined.
+
+Definition is_Err {A B} (x : result A B) :=
+  ∃ y : B, x = Err y.
+Global Instance is_Err_dec {A B} (x : result A B) : Decision (is_Err x).
+Proof.
+  destruct x.
+  - right. intros [y Hx]. naive_solver.
+  - left. eexists _. done.
+Defined.
+
+
 (** The same for Iris *)
 Section iris.
 Context `{!refinedcG Σ}.

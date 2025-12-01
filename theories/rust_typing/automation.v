@@ -77,6 +77,49 @@ Ltac liForall_hook ::=
       end
   end.
 
+Ltac liDestruct_hook term ::=
+  (** Revert branching hypotheses that are affected by the term.
+    For pure terms, Lithium itself already takes care of this. *)
+  li_unfold_lets_in_context;
+  repeat iSelect (if_iNone _ _) (fun H =>
+    match iTypeOf H with
+    | Some (_, if_iNone ?x _) =>
+        match term with
+        | context [x] => idtac
+        end;
+        iRevert H
+    end
+  );
+  repeat iSelect (if_iSome _ _) (fun H =>
+    match iTypeOf H with
+    | Some (_, if_iSome ?x _) =>
+        match term with
+        | context [x] => idtac
+        end;
+        iRevert H
+    end
+  );
+  repeat iSelect (if_iOk _ _) (fun H =>
+    match iTypeOf H with
+    | Some (_, if_iOk ?x _) =>
+        match term with
+        | context [x] => idtac
+        end;
+        iRevert H
+    end
+  );
+  repeat iSelect (if_iErr _ _) (fun H =>
+    match iTypeOf H with
+    | Some (_, if_iErr ?x _) =>
+        match term with
+        | context [x] => idtac
+        end;
+        iRevert H
+    end
+  );
+  try let_bind_envs
+.
+
 Ltac liExtensible_to_i2p_hook P bind cont ::=
   lazymatch P with
   | subsume_full ?E ?L ?step ?P ?Q ?T =>
@@ -862,14 +905,20 @@ Ltac after_intro_hook H ::=
   try (inv_layout_alg_in H)
 .
 
-(* TODO: put a name_hint to preserve names? *)
+
+Lemma apply_name_hint name (P : Prop) :
+  P → name_hint name P.
+Proof. done. Qed.
 Ltac before_revert_hook H ::=
   match type of H with
   | CACHED _ =>
       (* don't alter this *)
       fail 2
       (*unfold CACHED in H*)
-  | _ => idtac
+  | _ =>
+      (* put a name hint to preserve names *)
+      let Hident_str := constr:(ident_to_string! H) in
+      apply (apply_name_hint Hident_str _) in H
   end.
 
 Ltac enter_cache_hook H cont ::=

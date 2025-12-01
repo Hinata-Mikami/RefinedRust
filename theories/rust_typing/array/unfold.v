@@ -75,6 +75,69 @@ Section split.
   (* TODO: corresponding merge lemma *)
 
 
+  Lemma array_t_ofty_split {rt} (ty : type rt) n rs n1 n2 l π F :
+    lftE ⊆ F →
+    n = n1 + n2 →
+    (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) ={F}=∗
+    (l ◁ₗ[π, Owned false] #(take n1 rs) @ (◁ array_t n1 ty) ∗
+     (l offsetst{st_of ty MetaNone}ₗ n1) ◁ₗ[π, Owned false] #(drop n1 rs) @ ◁ array_t n2 ty).
+  Proof.
+    intros ? ->. rewrite !ltype_own_ofty_unfold; simpl.
+    iIntros "(%ly & %Hst & %Hly & _ & #Hlb & _ & %r' & <- & Hx)".
+    simpl in *.
+    iMod (fupd_mask_mono with "Hx") as "Hx"; first done.
+    iDestruct "Hx" as "(%v & Hl & Hv)".
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
+
+    set (v1 := take (n1 * ly_size ly') v).
+    set (v2 := drop (n1 * ly_size ly') v).
+    set (rs1 := take n1 rs).
+    set (rs2 := drop n1 rs).
+    replace v with (v1 ++ v2); last by apply take_drop.
+    replace rs with (rs1 ++ rs2); last by apply take_drop.
+    rewrite heap_pointsto_app. iDestruct "Hl" as "(Hl1 & Hl2)".
+    iPoseProof (array_t_own_val_split with "Hv") as "(Hv1 & Hv2)".
+    { subst rs1. rewrite length_take. lia. }
+    { subst rs2. rewrite length_drop. lia. }
+    { move: Hlyv. subst v1. rewrite length_take.
+      rewrite /has_layout_val ly_size_mk_array_layout.
+      rewrite /size_of_st.
+      erewrite use_layout_alg_eq'; last done.
+      lia. }
+    { move: Hlyv. subst v2. rewrite length_drop.
+      rewrite /has_layout_val ly_size_mk_array_layout.
+      rewrite /size_of_st.
+      erewrite use_layout_alg_eq'; last done.
+      lia. }
+    iSplitL "Hl1 Hv1".
+    - rewrite /lty_of_ty_own.
+      iFrame. iExists (mk_array_layout ly' n1).
+      iSplitR. { iPureIntro. eapply syn_type_has_layout_array; try done.
+        move: Hsz. rewrite ly_size_mk_array_layout. lia. }
+      iR. iL. iApply (loc_in_bounds_offset with "Hlb"); [done.. | ].
+      rewrite !ly_size_mk_array_layout. lia.
+    - rewrite /lty_of_ty_own.
+      iFrame. iExists (mk_array_layout ly' n2).
+      iSplitR. { iPureIntro. eapply syn_type_has_layout_array; try done.
+        move: Hsz. rewrite ly_size_mk_array_layout. lia. }
+      iSplitR. { iPureIntro.
+        rewrite /has_layout_loc ly_align_mk_array_layout.
+        eapply has_layout_loc_offset_loc'.
+        - rewrite /use_layout_alg' Hst//.
+        - rewrite /use_layout_alg' Hst//. by eapply use_layout_alg_wf.
+        - rewrite /use_layout_alg' Hst//. }
+      iSplitR. { iApply (loc_in_bounds_offset with "Hlb"); [ done | | ].
+        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst/=. lia.
+        - rewrite /OffsetLocSt/offset_loc/use_layout_alg' Hst/=.
+          rewrite !ly_size_mk_array_layout. lia. }
+      iR. iModIntro. iModIntro.
+      rewrite /OffsetLocSt. erewrite use_layout_alg_eq'; last done.
+      unfold offset_loc. enough (Z.of_nat $ length v1 = (ly_size ly' * n1)%Z) as -> by done.
+      subst v1. rewrite length_take.
+      rewrite Hlyv. rewrite ly_size_mk_array_layout. lia.
+  Qed.
 
   Lemma array_t_ofty_split_reshape {rt} (ty : type rt) F π n num size l rs :
     lftE ⊆ F →

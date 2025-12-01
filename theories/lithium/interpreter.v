@@ -537,6 +537,27 @@ Section coq_tactics.
     iIntros "Ha Hb".
     iApply "Ha". iApply (boringly_exists_elim with "Hb").
   Qed.
+
+  Lemma tac_wand_or_guard_l Δ guard (P1 P2 R : iProp Σ) :
+    (¬ guard) →
+    envs_entails Δ (P2 -∗ R) →
+    envs_entails Δ (((⌜guard⌝ ∗ P1) ∨ P2) -∗ R).
+  Proof.
+    intros ?.
+    apply tac_fast_apply.
+    iIntros "Ha [(% & ?) | ?]"; first done.
+    by iApply "Ha".
+  Qed.
+  Lemma tac_wand_or_guard_r Δ guard (P1 P2 R : iProp Σ) :
+    (¬ guard) →
+    envs_entails Δ (P1 -∗ R) →
+    envs_entails Δ ((P1 ∨ (⌜guard⌝ ∗ P2)) -∗ R).
+  Proof.
+    intros ?.
+    apply tac_fast_apply.
+    iIntros "Ha [? | (% & ?)]"; last done.
+    by iApply "Ha".
+  Qed.
 End coq_tactics.
 
 Ltac liWand :=
@@ -572,6 +593,11 @@ Ltac liWand :=
       | bi_emp => notypeclasses refine (tac_wand_emp _ _ _)
       | bi_pure _ => notypeclasses refine (tac_do_intro_pure _ _ _ _)
       | bi_intuitionistically (bi_pure _) => notypeclasses refine (tac_wand_intuit_pure _ _ _ _)
+      | bi_or ?P1 ?P2 =>
+        first [
+          notypeclasses refine (tac_wand_or_guard_l _ _ _ _ _ _); [done | ]
+          | notypeclasses refine (tac_wand_or_guard_r _ _ _ _ _ _); [done | ]
+          | wand_intro P]
       | match ?x with _ => _ end => fail "should not have match in wand"
       | boringly ?Q =>
           first [lazymatch Q with
@@ -736,6 +762,7 @@ Ltac liCase :=
   | |- @envs_entails ?PROP ?Δ (case_destruct ?x ?T) =>
       tryif (non_trivial_destruct x) then
         notypeclasses refine (tac_case_destruct true _ _ _ _);
+        liDestruct_hook x;  
         case_eq x
       else (
         notypeclasses refine (tac_case_destruct false _ _ _ _)
