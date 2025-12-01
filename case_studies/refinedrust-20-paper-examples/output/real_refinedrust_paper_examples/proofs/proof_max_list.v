@@ -17,19 +17,20 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
+
   { case_bool_decide as Heq; revert Heq; normalize_and_simpl_goal_step.
-    { rewrite max_list_cmp_app. simpl. 
-      rewrite max_by_r.
-      { rewrite max_by_l; first done.
-        rewrite correct_ord_antisym. apply Min_MIN_minimal. }
-      rewrite max_by_l; first last.
-      { rewrite correct_ord_antisym. apply Min_MIN_minimal. }
+    { rewrite max_list_cmp_def_app max_list_cmp_def_singleton.
+      rewrite max_by_r_1.
+      { rewrite max_by_r_1; first done.
+        apply Min_MIN_minimal. }
+      rewrite max_by_r_1; first last.
+      { apply Min_MIN_minimal. }
       apply not_ord_gt_iff. by right. }
-    { rewrite max_list_cmp_app. simpl.
-      rewrite max_by_l; first done.
-      rewrite max_by_l; first done.
-      rewrite correct_ord_antisym.
-      apply Min_MIN_minimal. }
+    { rewrite max_list_cmp_def_app max_list_cmp_def_singleton. simpl.
+      rewrite max_by_l_1; first done.
+      rewrite max_by_r_1; last apply Min_MIN_minimal.
+      done.
+    }
   }
 
   Unshelve. all: print_remaining_sidecond.

@@ -28,3 +28,5 @@ pub const fn mem_align_of<T>() -> usize {
 pub const fn mem_align_log_of<T>() -> usize {
     unimplemented!();
 }
+
+// mem::swap and mem::replace are in the ptr crate.

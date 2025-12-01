@@ -473,3 +473,70 @@ pub const fn dangling<T>() -> *const T {
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
+
+
+// alignment
+#[rr::only_spec]
+#[rr::export_as(#method core::ptr::const_ptr::is_aligned_to)]
+#[rr::requires("(∃ align_log, align = 2^align_log)")]
+#[rr::returns("bool_decide (a `aligned_to` Z.to_nat align)")]
+pub fn const_ptr_is_aligned_to<T>(a: *const T, align: usize) -> bool {
+    if !align.is_power_of_two() {
+        panic!("is_aligned_to: align is not a power-of-two");
+    }
+
+    a.addr() & (align - 1) == 0
+}
+#[rr::only_spec]
+#[rr::export_as(#method core::ptr::const_ptr::is_aligned)]
+#[rr::returns("bool_decide (a `aligned_to` (ly_align {ly_of T}))")]
+pub fn const_ptr_is_aligned<T>(a: *const T) -> bool
+where
+    T: Sized,
+{
+    const_ptr_is_aligned_to(a, align_of::<T>())
+}
+
+#[rr::only_spec]
+#[rr::export_as(#method core::ptr::mut_ptr::is_aligned_to)]
+#[rr::requires("(∃ align_log, align = 2^align_log)")]
+#[rr::returns("bool_decide (a `aligned_to` Z.to_nat align)")]
+pub fn mut_ptr_is_aligned_to<T>(a: *mut T, align: usize) -> bool {
+    if !align.is_power_of_two() {
+        panic!("is_aligned_to: align is not a power-of-two");
+    }
+
+    a.addr() & (align - 1) == 0
+}
+#[rr::only_spec]
+#[rr::export_as(#method core::ptr::mut_ptr::is_aligned)]
+#[rr::returns("bool_decide (a `aligned_to` (ly_align {ly_of T}))")]
+pub fn mut_ptr_is_aligned<T>(a: *mut T) -> bool
+where
+    T: Sized,
+{
+    mut_ptr_is_aligned_to(a, align_of::<T>())
+}
+
+
+// Mem
+#[rr::only_spec]
+#[rr::export_as(core::mem::replace)]
+#[rr::returns("dest.cur")]
+#[rr::observe("dest.ghost": "src")]
+pub fn mem_replace<T>(dest: &mut T, src: T) -> T {
+    let x = read(dest as *mut T);
+    write(dest as *mut T, src);
+    x
+}
+
+#[rr::only_spec]
+#[rr::export_as(core::mem::swap)]
+#[rr::observe("x.ghost" : "y.cur")]
+#[rr::observe("y.ghost" : "x.cur")]
+pub fn mem_swap<T>(x: &mut T, y: &mut T) {
+    let xr = read(x as *mut T);
+    let yr = read(y as *mut T);
+    write(x as *mut T, yr);
+    write(y as *mut T, xr);
+}

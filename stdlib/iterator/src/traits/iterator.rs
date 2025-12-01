@@ -97,6 +97,107 @@ pub trait Iterator {
     }
 
 
+    /*
+    #[rr::only_spec]
+    #[rr::params("P" : "{xt_of Self::Item} → Prop", "ClosInv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π self.cur")]
+    #[rr::requires(#iris "ClosInv π self.cur f")]
+    /// Precondition: If the inner iterator has been advanced, we can call the closure.
+    #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
+        {Self::Next} π it_state (Some e) it_state' -∗
+        ClosInv π it_state clos_state -∗
+        {F::Pre} π clos_state *[e] ∗
+        {Self::Next} π it_state (Some e) it_state' ∗ 
+        (∀ b clos_state', {F::PostMut} π clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
+    #[rr::exists("seq", "s2", "s2'")]
+    // Postcondition: We consume a sequence of elements from the iterator
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self.cur seq s2")]
+    // If true is returned, the whole iterator was consumed; otherwise, the last element didn't pass the check
+    #[rr::ensures(#iris "if ret then {Next} π s2 None s2' else ⌜s2 = s2'⌝ ∗ ⌜∃ e, last seq = Some e ∧ ¬ P e⌝")]
+    // For all emitted elements, the predicate is satisfied
+    #[rr::ensures("Forall P seq")]
+    // Postcondition: the invariant is upheld
+    #[rr::ensures(#iris "{Inv} π s2'")]
+    // Postcondition: the iterator is updated to the new state
+    #[rr::observe("self.ghost": "$# s2'")]
+    fn all<F>(&mut self, f: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    {
+        unimplemented!();
+    }
+
+    #[rr::only_spec]
+    #[rr::params("P" : "{xt_of Self::Item} → Prop", "ClosInv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
+    #[rr::requires(#iris "{Inv} π self.cur")]
+    #[rr::requires(#iris "ClosInv π self.cur f")]
+    /// Precondition: If the inner iterator has been advanced, we can call the closure.
+    #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
+        {Self::Next} π it_state (Some e) it_state' -∗
+        ClosInv π it_state clos_state -∗
+        {F::Pre} π clos_state *[e] ∗
+        {Self::Next} π it_state (Some e) it_state' ∗ 
+        (∀ b clos_state', {F::PostMut} π clos_state *[e] clos_state' b -∗ ⌜b = true ↔ P e⌝ ∗ ClosInv π it_state' clos_state'))")]
+    #[rr::exists("seq", "s2", "s2'")]
+    // Postcondition: We consume a sequence of elements from the iterator
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self.cur seq s2")]
+    // For all emitted elements, the predicate is not satisfied
+    #[rr::ensures("Forall (λ x, ¬ P x) seq")]
+    // Postcondition: if None is returned, the whole iterator was consumed
+    #[rr::ensures(#iris "if_iNone ret ({Next} π s2 None s2')")]
+    // Postcondition: if we find an index, then the element satisfies the predicate
+    #[rr::ensures(#iris "if_iSome ret (λ idx, ⌜length seq = Z.to_nat idx⌝ ∗ ∃ e, {Next} π s2 (Some e) s2' ∗ ⌜P e⌝)")]
+    // Postcondition: the invariant is upheld
+    #[rr::ensures(#iris "{Inv} π s2'")]
+    // Postcondition: the iterator is updated to the new state
+    #[rr::observe("self.ghost": "$# s2'")]
+    fn position<F>(&mut self, f: F) -> Option<usize>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
+    {
+        unimplemented!();
+    }
+    */
+
+    #[rr::only_spec]
+    #[rr::requires(#iris "{Inv} π self")]
+    #[rr::exists("seq", "s2", "s2'")]
+    // TODO: have an escape to refer to the attrs record instead
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
+    // TODO: fix: reference {Self::Item::Ord}
+    #[rr::returns("max_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    fn max(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        unimplemented!();
+        //self.max_by(Ord::cmp)
+    }
+
+    #[rr::only_spec]
+    #[rr::requires(#iris "{Inv} π self")]
+    #[rr::exists("seq", "s2", "s2'")]
+    // TODO: have an escape to refer to the attrs record instead
+    #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
+    // TODO: fix: reference {Self::Item::Ord}
+    #[rr::returns("min_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
+    fn min(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        unimplemented!();
+        //self.max_by(Ord::cmp)
+    }
+
+
+
+
     // TODO: more methods
 }
 

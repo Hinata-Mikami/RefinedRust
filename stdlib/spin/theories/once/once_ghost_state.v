@@ -117,6 +117,17 @@ Section typing.
   Global Instance find_in_context_once_status_tok_inst γ :
     FindInContext (FindOnceStatusTok γ) FICSyntactic | 1 :=
     λ T, i2p (find_in_context_once_status_tok γ T).
+
+  Global Program Instance once_init_agree {A} `{!onceG Σ A} n a : LiAgree (once_init_tok n a) (λ a, once_status_tok n (Some a)) := {|
+    li_agree_elem := a;
+  |}.
+  Next Obligation.
+    done.
+  Qed.
+  Next Obligation.
+    iIntros (??? _ ??).
+    iApply once_init_tok_agree.
+  Qed.
 End typing.
 
 (** Since a frequent use case of once is in conjunction with static variables, we provide some extra support for that *)

@@ -18,7 +18,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { unsafe_unfold_common_caesium_defs. simpl. lia. }
-  { case_bool_decide as Heq; revert Heq; normalize_and_simpl_goal_step.
+  { case_bool_decide as Heq; revert Heq; normalize_and_simpl_goal_step; try done.
     all: rewrite max_list_Z_with_def; lia. }
   Unshelve. all: print_remaining_sidecond.
 Qed.

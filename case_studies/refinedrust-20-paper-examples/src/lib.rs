@@ -119,7 +119,7 @@ trait Min : Ord {
     fn minimum() -> Self;
 }
 
-#[rr::returns("max_list_cmp {T::Ord} {T::MIN} v")]
+#[rr::returns("max_list_cmp_def {T::Ord} {T::MIN} v")]
 fn max_list<T>(v: &List<T>) -> T 
     where T: Ord + Min + Copy
 {
@@ -127,7 +127,7 @@ fn max_list<T>(v: &List<T>) -> T
 
     for x in v {
         #[rr::inv_vars("m")]
-        #[rr::inv("m = max_list_cmp {T::Ord} {T::MIN} {Hist}")]
+        #[rr::inv("m = max_list_cmp_def {T::Ord} {T::MIN} {Hist}")]
         #[rr::ignore] ||{};
 
         m = m.max(*x);

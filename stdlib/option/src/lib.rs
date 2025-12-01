@@ -7,9 +7,14 @@
 #![rr::coq_prefix("rrstd.option")]
 
 #![rr::include("closures")]
+#![rr::include("ptr")]
+#![rr::include("clone")]
+
+use core::mem;
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 #[rr::export_as(core::option::Option)]
+#[derive(Copy, Clone)]
 pub enum Option<T> {
     #[rr::pattern("None")]
     #[rr::export_as(core::option::Option::None)]
@@ -68,6 +73,43 @@ impl<T> Option<T> {
     {
         match self {
             Some(x) => Some(f(x)),
+            None => None,
+        }
+    }
+
+    #[rr::only_spec]
+    #[rr::returns("self.cur")]
+    #[rr::observe("self.ghost": "(None : option (place_rfn {rt_of T}))")]
+    pub fn take(&mut self) -> Option<T> {
+        // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
+        mem::replace(self, None)
+    }
+
+    // TODO: maybe ghost drop Self, too, in case pred returns false.
+    #[rr::params("Hx" : "TyGhostDrop {P}")]
+    #[rr::requires(#iris "if_iSome self (λ self, {P::Pre} π predicate *[self])")]
+    #[rr::ensures(#iris "if_iSome ret (λ ret, ⌜self = Some ret⌝ ∗ {P::Post} π predicate *[ret] true)")]
+    #[rr::ensures(#iris "if_iNone ret (if_iNone self (ty_ghost_drop_for {P} Hx π ($# predicate)) ∗ 
+                            if_iSome self (λ x, {P::Post} π predicate *[x] false))")]
+    pub fn filter<P>(self, predicate: P) -> Self
+    where
+        P: FnOnce(&T) -> bool,
+    {
+        if let Some(x) = self {
+            if predicate(&x) {
+                return Some(x);
+            }
+        }
+        None
+    }
+}
+
+#[rr::export_as(core::option::Option)]
+impl<T> Option<Option<T>> {
+    #[rr::returns("self ≫= id")]
+    pub fn flatten(self) -> Option<T> {
+        match self {
+            Some(inner) => inner,
             None => None,
         }
     }

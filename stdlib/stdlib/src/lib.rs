@@ -20,6 +20,7 @@
 #![rr::export_include("ptr")]
 #![rr::export_include("result")]
 #![rr::export_include("rr_internal")]
+#![rr::export_include("index")]
 #![rr::export_include("vec")]
 #![rr::export_include("arithops")]
 #![rr::export_include("cmp")]

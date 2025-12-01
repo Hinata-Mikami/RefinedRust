@@ -169,11 +169,9 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 
 #[rr::instantiate("PEq" := "λ _ _, true")]
 impl PartialEq for () {
-    #[rr::default_spec]
     fn eq(&self, _other: &()) -> bool {
         true
     }
-    #[rr::default_spec]
     fn ne(&self, _other: &()) -> bool {
         false
     }
@@ -183,9 +181,7 @@ macro_rules! partial_eq_impl {
     ($($t:ty)*) => ($(
         #[rr::instantiate("PEq" := "λ a b, bool_decide (a = b)")]
         impl PartialEq for $t {
-            #[rr::default_spec]
             fn eq(&self, other: &Self) -> bool { *self == *other }
-            #[rr::default_spec]
             fn ne(&self, other: &Self) -> bool { *self != *other }
         }
     )*)
@@ -213,7 +209,6 @@ eq_impl! {
 #[rr::instantiate("POrd" := "λ a b, Some Equal")]
 #[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
 impl PartialOrd for () {
-    #[rr::default_spec]
     fn partial_cmp(&self, _: &()) -> Option<Ordering> {
         Some(Equal)
     }
@@ -227,7 +222,6 @@ impl PartialOrd for () {
 #[rr::instantiate("Ord_leibniz" := #proof "intros ? [] []; solve_goal")]
 #[rr::instantiate("Ord_antisym" := #proof "intros ? [] []; unfold ord_lt, ord_gt; naive_solver")]
 impl Ord for () {
-    #[rr::default_spec]
     fn cmp(&self, _other: &()) -> Ordering {
         Equal
     }
@@ -237,13 +231,9 @@ impl Ord for () {
 
 macro_rules! partial_ord_methods_primitive_impl {
     () => {
-        #[rr::default_spec]
         fn lt(&self, other: &Self) -> bool { *self <  *other }
-        #[rr::default_spec]
         fn le(&self, other: &Self) -> bool { *self <= *other }
-        #[rr::default_spec]
         fn gt(&self, other: &Self) -> bool { *self >  *other }
-        #[rr::default_spec]
         fn ge(&self, other: &Self) -> bool { *self >= *other }
     };
 }
@@ -252,7 +242,6 @@ macro_rules! ord_impl {
         #[rr::instantiate("POrd" := "λ a b, Some(Z.cmp a b)")]
         #[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
         impl PartialOrd for $t {
-            #[rr::default_spec]
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                 Some(Ord::cmp(self, other))
             }
@@ -268,7 +257,6 @@ macro_rules! ord_impl {
         #[rr::instantiate("Ord_leibniz" := #proof "intros ???; solve_goal")]
         #[rr::instantiate("Ord_antisym" := #proof "intros ???; solve_goal")]
         impl Ord for $t {
-            #[rr::default_spec]
             fn cmp(&self, other: &Self) -> Ordering {
                 if *self < *other {
                     Ordering::Less
@@ -289,10 +277,11 @@ ord_impl! {
 }
 
 
+/*
 macro_rules! partial_ord_impl {
     ($($t:ty)*) => ($(
+        #[rr::verify]
         impl PartialOrd for $t {
-            #[rr::default_spec]
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                 match (*self <= *other, *self >= *other) {
                     (false, false) => None,
@@ -306,6 +295,7 @@ macro_rules! partial_ord_impl {
         }
     )*)
 }
+*/
 
 /*
 impl Ord for bool {
@@ -349,3 +339,61 @@ impl PartialOrd for bool {
     partial_ord_methods_primitive_impl!();
 }
 */
+
+
+// Note: We cannot use `bool_decide` here, as we don't know that `T` is Eq, i.e. that the equality is correct.
+#[rr::instantiate("PEq" := "λ a b, match a, b with | Some a, Some b => {T::PEq} a b | None, None => true | _, _ => false end")]
+impl<T: PartialEq> PartialEq for Option<T> {
+    // TODO: lifetime encoding
+    #[rr::trust_me]
+    fn eq(&self, other: &Self) -> bool {
+        // Spelling out the cases explicitly optimizes better than
+        // `_ => false`
+        match (self, other) {
+            (Some(l), Some(r)) => l.eq(r),
+            (Some(_), None) => false,
+            (None, Some(_)) => false,
+            (None, None) => true,
+        }
+    }
+}
+
+#[rr::instantiate("PEq_refl" := #proof "intros ??? ?[]; simpl; by try apply Eq_PEq_refl")]
+#[rr::instantiate("PEq_sym" := #proof "intros ??? ? [] []; simpl; by try apply Eq_PEq_sym")]
+#[rr::instantiate("PEq_trans" := #proof "intros ??? ? [] [] []; simpl; by try apply Eq_PEq_trans")]
+impl<T: Eq> Eq for Option<T> { }
+
+#[rr::instantiate("POrd" := "option_partial_cmp {T::POrd}")]
+#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ? [] []; simpl; by try apply PartialOrd_POrd_eq_cons")]
+impl<T: PartialOrd> PartialOrd for Option<T> {
+    // TODO lifetime encoding
+    #[rr::trust_me]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Some(l), Some(r)) => l.partial_cmp(r),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
+            (None, None) => Some(Ordering::Equal),
+        }
+    }
+}
+
+
+#[rr::instantiate("Ord" := "option_cmp {T::Ord}")]
+#[rr::instantiate("Ord_POrd" := #proof "intros ?????? [] []; simpl; by try apply Ord_Ord_POrd")]
+#[rr::instantiate("Ord_lt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_lt_trans")]
+#[rr::instantiate("Ord_eq_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_eq_trans")]
+#[rr::instantiate("Ord_gt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_gt_trans")]
+#[rr::instantiate("Ord_leibniz" := #proof "intros ?????? [a | ] [b | ]; unfold ord_eq; simpl; [etrans; first apply Ord_Ord_leibniz | ..]; naive_solver")]
+#[rr::instantiate("Ord_antisym" := #proof "intros ?????? [] []; simpl; by try apply Ord_Ord_antisym")]
+impl<T: Ord> Ord for Option<T> {
+    #[rr::trust_me]
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Some(l), Some(r)) => l.cmp(r),
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (None, None) => Ordering::Equal,
+        }
+    }
+}

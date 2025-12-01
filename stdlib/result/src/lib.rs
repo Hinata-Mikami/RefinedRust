@@ -6,12 +6,14 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.result")]
 #![rr::import("rrstd.result.theories", "result")]
+#![rr::include("clone")]
 
 use std::marker::PhantomData;
 use std::hint;
 
 #[rr::export_as(core::result::Result)]
 #[rr::refined_by("result (place_rfn {rt_of T}) (place_rfn {rt_of E})")]
+#[derive(Copy, Clone)]
 pub enum Result<T, E> {
     #[rr::export_as(core::result::Result::Ok)]
     #[rr::pattern("Ok" $ "x")]
