@@ -300,7 +300,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .iter()
             .enumerate()
             .map(|(i, maybe_name)| {
-                maybe_name.map(|x| x.as_str().to_owned()).unwrap_or_else(|| format!("_arg_{i}"))
+                maybe_name
+                    .and_then(|x| if x.as_str() == "_" { None } else { Some(x.as_str().to_owned()) })
+                    .unwrap_or_else(|| format!("_arg_{i}"))
             })
             .collect();
         info!("arg names: {arg_names:?}");
