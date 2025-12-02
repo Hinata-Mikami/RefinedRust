@@ -14,21 +14,38 @@
     refinedrust,
   }:
     refinedrust.inputs.flake-utils.lib.eachDefaultSystem (localSystem: let
+      lib = refinedrust.lib.${localSystem};
+      rrPackages = refinedrust.outputs.packages.${localSystem};
+      pkgs = lib.pkgs;
+
       crossSystem = "riscv64-linux";
       target = "riscv64gc-unknown-none-elf";
 
       crossPkgs = import refinedrust.inputs.nixpkgs {
         inherit localSystem crossSystem;
       };
-      pkgs = import refinedrust.inputs.nixpkgs {inherit localSystem;};
 
-      toolchain =
-        refinedrust.outputs.packages.${localSystem}."target-${target}".passthru.toolchain;
+      toolchain = rrPackages."target-${target}".passthru.toolchain;
 
-      version = "0.4.0";
-      meta = with pkgs.lib; {
-        homepage = "https://github.com/IBM/ACE-RISCV";
-        license = licenses.asl20;
+      ace = rec {
+        version = "0.4.0";
+        src = "${ACE-RISCV}/security-monitor";
+
+        meta = with pkgs.lib; {
+          homepage = "https://github.com/IBM/ACE-RISCV";
+          license = licenses.asl20;
+        };
+
+        doCheck = false;
+        cargoExtraArgs = "-Zbuild-std=core,alloc --target=${target}";
+        cargoVendorDir = toolchain.envBuilder.vendorMultipleCargoDeps {
+          inherit (toolchain.envBuilder.findCargoFiles src) cargoConfigs;
+
+          cargoLockList = [
+            "${src}/Cargo.lock"
+            "${toolchain.build.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
+          ];
+        };
       };
     in rec {
       packages = {
@@ -57,55 +74,98 @@
           '';
         });
 
-        securityMonitor = toolchain.envBuilder.buildPackage rec {
-          inherit meta version;
+        pointersUtility = pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit (ace) meta version;
 
-          pname = "security-monitor";
-          src = "${ACE-RISCV}/security-monitor";
+          pname = "pointers-utility";
+          opam-name = "pointers-utility";
 
-          doCheck = false;
+          src = lib.cargoRefinedRust rec {
+            inherit (ace) cargoVendorDir doCheck meta src version;
+            inherit pname target;
 
-          cargoExtraArgs = "-Zbuild-std=core,alloc --target=${target} --config target.x86_64-unknown-linux-gnu.linker=\\\"/nix/store/kaj8d1zcn149m40s9h0xi0khakibiphz-gcc-wrapper-14.3.0/bin/cc\\\"";
-          cargoVendorDir = toolchain.envBuilder.vendorMultipleCargoDeps {
-            inherit (toolchain.envBuilder.findCargoFiles src) cargoConfigs;
+            cargoExtraArgs = ace.cargoExtraArgs + " --package pointers_utility";
 
-            cargoLockList = [
-              "${src}/Cargo.lock"
-              "${toolchain.build.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
-            ];
+            cargoArtifacts = toolchain.envBuilder.buildDepsOnly {
+              inherit (ace) cargoVendorDir doCheck meta src version;
+              inherit cargoExtraArgs pname;
+            };
+
+            preBuild = ''
+              sed -i -e '11i#![rr::package("pointers-utility")]' ./rust-crates/pointers_utility/src/lib.rs
+              cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
+            '';
           };
 
-          cargoArtifacts = toolchain.envBuilder.buildDepsOnly {
-            inherit cargoExtraArgs cargoVendorDir doCheck meta pname src version;
+          propagatedBuildInputs = [rrPackages.stdlib];
+          useDune = true;
+
+          postInstall = ''
+            mkdir -p $out/share/pointers-utility
+            find . -name "interface.rrlib" -exec cp {} $out/share/pointers-utility/. \;
+          '';
+        };
+
+        ace = let
+          libDeps = [packages.pointersUtility];
+          theories = pkgs.rocqPackages.mkRocqDerivation rec {
+            inherit (ace) meta version;
+
+            pname = "ace-theories";
+            opam-name = "ace-theories";
+
+            src = "${ACE-RISCV}/verification/theories";
+
+            preBuild = ''
+              find . -name "dune" -exec sed -i -e '3s|.*|  (package ace-theories)|g' {} \;
+              cat << EOF > dune-project
+              (lang dune 3.8)
+              (using coq 0.8)
+              (name ace-theories)
+              (package (name ace-theories))
+              EOF
+            '';
+
+            propagatedBuildInputs = [rrPackages.theories];
+            useDune = true;
           };
-
-          INSTALL_DIR = packages.opensbi;
-          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
-
-          passthru = {inherit cargoArtifacts cargoExtraArgs cargoVendorDir pname src;};
-        };
-
-        securityMonitorRR = refinedrust.lib.${localSystem}.cargoRefinedRust {
-          inherit (packages.securityMonitor.passthru) cargoArtifacts cargoExtraArgs cargoVendorDir pname src;
-          inherit meta target version;
-
-          INSTALL_DIR = packages.opensbi;
-          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
-        };
-
-        ace = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit meta version;
+        in pkgs.rocqPackages.mkRocqDerivation rec {
+          inherit (ace) meta version;
 
           pname = "ace";
           opam-name = "ace";
+          
+          src = lib.cargoRefinedRust rec {
+            inherit (ace) cargoExtraArgs cargoVendorDir doCheck meta src version;
+            inherit libDeps pname target;
 
-          src = "${ACE-RISCV}/verification";
+            cargoArtifacts = toolchain.envBuilder.buildDepsOnly {
+              inherit (ace) cargoExtraArgs cargoVendorDir doCheck meta src version;
+              inherit pname;
+            };
 
-          propagatedBuildInputs = [refinedrust.outputs.packages.${localSystem}.stdlib];
+            preBuild = ''
+              sed -i -e '15i#![rr::package("ace")]' ./src/lib.rs
+              sed -i -e '16i#![rr::import("ace.theories.base", "base")]' ./src/lib.rs
+              cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
+            '';
+
+            INSTALL_DIR = packages.opensbi;
+            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
+          };
+
+          propagatedBuildInputs = libDeps ++ [rrPackages.stdlib theories];
           useDune = true;
+
+          passthru = {inherit src;};
+
+          postInstall = ''
+            mkdir -p $out/share/ace
+            find . -name "interface.rrlib" -exec cp {} $out/share/ace/. \;
+          '';
         };
 
-        default = packages.securityMonitor;
+        default = packages.ace;
       };
 
       formatter = pkgs.alejandra;
