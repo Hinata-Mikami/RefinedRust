@@ -70,6 +70,35 @@ Ltac normalize_and_simpl_impl handle_exist :=
         constr:(true)
     | |- _ => constr:(false)
     end in
+  let hint :=
+    lazymatch goal with
+    | |- name_hint ?h ?P -> ?Q =>
+        constr:(Some h)
+    | |- _ => constr:(@None String.string)
+    end in
+  try lazymatch goal with
+  | |- discriminate_hint ?P → ?Q =>
+      change_no_check (P → Q)
+  | |- name_hint _ ?P → ?Q =>
+      change_no_check (P → Q)
+  end;
+  let add_hint := 
+    idtac;
+    match goal with 
+    | |- ?P → ?Q =>
+      match discr with
+      | true =>
+        change_no_check (discriminate_hint P → Q)
+      | false =>
+        match hint with
+        | Some ?h =>
+          change_no_check (name_hint h P → Q)
+        | None =>
+          idtac
+        end
+      end
+    end
+  in
   let do_intro :=
     idtac;
     match goal with
@@ -103,16 +132,20 @@ Ltac normalize_and_simpl_impl handle_exist :=
                    (*generalize dependent H*)
         end;
         subst
-    | |- discriminate_hint ?P → ?Q =>
-        change (P → Q);
-         let Hd := fresh "Hd" in move => Hd; try discriminate Hd
-    | |- name_hint ?s ?P → ?Q =>
-        change_no_check (P → Q);
-        string_ident.string_to_ident_cps s ltac:(fun H => first [intros H | intros ?])
-    | |- ?P → _ => 
-        assert_is_not_trivial P;
-        let H := fresh in 
-        intros H; hooks.after_intro_hook H
+    | |- ?P → _ =>
+        match discr with
+        | true =>
+          let Hd := fresh "Hd" in move => Hd; try discriminate Hd
+        | false =>
+          match hint with
+          | Some ?h =>
+            string_ident.string_to_ident_cps h ltac:(fun H => first [intros H | intros ?])
+          | None =>
+              assert_is_not_trivial P;
+              let H := fresh in 
+              intros H; hooks.after_intro_hook H
+          end
+        end
     | |- _ => move => _
     end
   in
@@ -125,7 +158,7 @@ Ltac normalize_and_simpl_impl handle_exist :=
     | Prop => first [
         (* first check if the hyp is trivial *)
         assert_is_trivial P; intros _
-      | progress normalize_goal_impl
+      | (progress normalize_goal_impl); add_hint
       | let changed := open_constr:(_) in
         notypeclasses refine (@simpl_impl_unsafe changed P _ _ Q _); [solve [refine _] |];
         (* We need to simpl here to make sure that we only introduce
@@ -133,7 +166,7 @@ Ltac normalize_and_simpl_impl handle_exist :=
         for the lemma application above). *)
         simpl;
         lazymatch changed with
-        | true => idtac
+        | true => add_hint 
         | false => do_intro
         end
       | do_intro

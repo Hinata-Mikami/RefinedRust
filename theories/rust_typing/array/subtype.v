@@ -26,26 +26,26 @@ Section subtype.
   Proof. apply big_sepL2_persistent. intros ? [] []; simpl; apply _. Qed.
 
   (* TODO move *)
-  Lemma type_incl_use_val π {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 v :
-    type_incl r1 r2 ty1 ty2 -∗ v ◁ᵥ{π} r1 @ ty1 -∗ v ◁ᵥ{π} r2 @ ty2.
+  Lemma type_incl_use_val π {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 v m :
+    type_incl r1 r2 ty1 ty2 -∗ v ◁ᵥ{π, m} r1 @ ty1 -∗ v ◁ᵥ{π, m} r2 @ ty2.
   Proof. iIntros "#(_ & _ & Hval & _) Hv". by iApply "Hval". Qed.
-  Lemma type_incl_use_shr π κ {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 l :
-    type_incl r1 r2 ty1 ty2 -∗ l ◁ₗ{π, κ} r1 @ ty1 -∗ l ◁ₗ{π, κ} r2 @ ty2.
+  Lemma type_incl_use_shr π κ {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 l m :
+    type_incl r1 r2 ty1 ty2 -∗ l ◁ₗ{π, m, κ} r1 @ ty1 -∗ l ◁ₗ{π, m, κ} r2 @ ty2.
   Proof. iIntros "#(_ & _ & _ & Hshr) Hl". by iApply "Hshr". Qed.
 
   (* TODO: in practice, we probably just want equality for the refinements? think about the symbolic case.. *)
-  Lemma array_t_own_val_mono' {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len v :
-    ty1.(ty_syn_type) = ty2.(ty_syn_type) →
+  Lemma array_t_own_val_mono' {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len v m :
+    ty1.(ty_syn_type) MetaNone = ty2.(ty_syn_type) MetaNone →
     array_t_incl_precond ty1 ty2 rs1 rs2 -∗
-    v ◁ᵥ{π} rs1 @ array_t len ty1 -∗
-    v ◁ᵥ{π} rs2 @ array_t len ty2.
+    v ◁ᵥ{π, m} rs1 @ array_t len ty1 -∗
+    v ◁ᵥ{π, m} rs2 @ array_t len ty2.
   Proof.
     iIntros (Heqst) "Hincl Ha".
     rewrite /ty_own_val/=.
-    iDestruct "Ha" as "(%ly & %Hst & % & % & %Hly & Ha)".
+    iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & Ha)".
     iExists ly. rewrite -Heqst. iR. iR.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
-    rewrite -Hleneq. iR. iR.
+    rewrite -Hleneq. iR. iR. iR.
     iPoseProof (big_sepL2_length with "Ha") as "%Hleneq'".
     iApply big_sepL2_from_zip. { rewrite -Hleneq//. }
     iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
@@ -73,11 +73,11 @@ Section subtype.
     rewrite length_zip. lia.
   Qed.
   (* the "trivial" (Rust) subtyping that we need for, e.g., lifetimes *)
-  Lemma array_t_own_val_mono {rt} π (ty1 ty2 : type rt) len v rs :
-    ty_syn_type ty1 = ty_syn_type ty2 →
+  Lemma array_t_own_val_mono {rt} π (ty1 ty2 : type rt) len v rs m :
+    ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone →
     (∀ r, type_incl r r ty1 ty2) -∗
-    v ◁ᵥ{π} rs @ array_t len ty1 -∗
-    v ◁ᵥ{π} rs @ array_t len ty2.
+    v ◁ᵥ{π, m} rs @ array_t len ty1 -∗
+    v ◁ᵥ{π, m} rs @ array_t len ty2.
   Proof.
     iIntros (?) "#Hincl". iApply array_t_own_val_mono'; first done.
     iApply big_sepL2_intro; first done.
@@ -87,16 +87,16 @@ Section subtype.
     iExists eq_refl. iR. done.
   Qed.
 
-  Lemma array_t_shr_mono' {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len v κ :
-    ty_syn_type ty1 = ty_syn_type ty2 →
+  Lemma array_t_shr_mono' {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len v κ m :
+    (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) →
     array_t_incl_precond ty1 ty2 rs1 rs2 -∗
-    v ◁ₗ{π, κ} rs1 @ array_t len ty1 -∗
-    v ◁ₗ{π, κ} rs2 @ array_t len ty2.
+    v ◁ₗ{π, m, κ} rs1 @ array_t len ty1 -∗
+    v ◁ₗ{π, m, κ} rs2 @ array_t len ty2.
   Proof.
     iIntros (Heqst) "Hincl Ha".
     rewrite /ty_shr/=.
-    iDestruct "Ha" as "(%ly & %Hst & % & % & %Hly & Ha)".
-    iExists ly. rewrite -Heqst. iR. iR.
+    iDestruct "Ha" as "(%ly & -> & %Hst & % & % & %Hly & Ha)".
+    iExists ly. rewrite -Heqst. iR. iR. iR.
     iPoseProof (big_sepL2_length with "Hincl") as "%Hleneq".
     rewrite -Hleneq. iR. iR.
     iPoseProof (big_sepL_extend_r rs2 with "Ha") as "Ha"; first done.
@@ -111,11 +111,11 @@ Section subtype.
     - iDestruct "Hincl" as "(%Heq & %Heq' & Hincl)". subst. injection Heq' as <-.
       iPoseProof (type_incl_use_shr with "Hincl Hown") as "?". eauto with iFrame.
   Qed.
-  Lemma array_t_shr_mono {rt} π (ty1 ty2 : type rt) len v rs κ :
-    ty_syn_type ty1 = ty_syn_type ty2 →
+  Lemma array_t_shr_mono {rt} π (ty1 ty2 : type rt) len v rs κ m :
+    (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) →
     (∀ r, type_incl r r ty1 ty2) -∗
-    v ◁ₗ{π, κ} rs @ array_t len ty1 -∗
-    v ◁ₗ{π, κ} rs @ array_t len ty2.
+    v ◁ₗ{π, m, κ} rs @ array_t len ty1 -∗
+    v ◁ₗ{π, m, κ} rs @ array_t len ty2.
   Proof.
     iIntros (?) "#Hincl". iApply array_t_shr_mono'; first done.
     iApply big_sepL2_intro; first done.
@@ -126,7 +126,7 @@ Section subtype.
   Qed.
 
   Lemma array_t_type_incl' {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) rs1 rs2 len :
-    ty_syn_type ty1 = ty_syn_type ty2 →
+    (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) →
     array_t_incl_precond ty1 ty2 rs1 rs2 -∗
     type_incl rs1 rs2 (array_t len ty1) (array_t len ty2).
   Proof.
@@ -134,13 +134,13 @@ Section subtype.
     iSplit; last iSplit; last iSplit.
     - simpl. rewrite Hst. done.
     - simpl. eauto.
-    - iModIntro. iIntros (π v) "Hv".
+    - iModIntro. iIntros (π m v) "Hv".
       iApply array_t_own_val_mono'; done.
-    - iModIntro. iIntros (κ π l) "Hl".
+    - iModIntro. iIntros (κ π m l) "Hl".
       by iApply array_t_shr_mono'.
   Qed.
   Lemma array_t_type_incl {rt} (ty1 ty2 : type rt) rs len :
-    ty_syn_type ty1 = ty_syn_type ty2 →
+    (ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) →
     (∀ r, type_incl r r ty1 ty2) -∗
     type_incl rs rs (array_t len ty1) (array_t len ty2).
   Proof.
@@ -148,9 +148,9 @@ Section subtype.
     iSplit; last iSplit; last iSplit.
     - simpl. rewrite Hst. done.
     - simpl. eauto.
-    - iModIntro. iIntros (π v) "Hv".
+    - iModIntro. iIntros (π m v) "Hv".
       iApply array_t_own_val_mono; done.
-    - iModIntro. iIntros (κ π l) "Hl".
+    - iModIntro. iIntros (κ π m l) "Hl".
       by iApply array_t_shr_mono.
   Qed.
 

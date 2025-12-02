@@ -9,13 +9,13 @@ Section ofty.
 
   (** A very fundamental equivalence that should hold. *)
   Lemma mut_ref_ofty_uniq_equiv {rt} (ty : type rt) π κ l r γ :
-    l ◁ₗ[π, Uniq κ γ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} (#r, γ) @ mut_ref κ ty.
+    l ◁ₗ[π, Uniq κ γ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π, MetaNone} (#r, γ) @ mut_ref κ ty.
   Proof.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own {3}/ty_own_val/=.
     iSplit.
     - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & Hc & Hobs & Hb)".
-      iExists _, _. iR. iR. iR. iFrame "# ∗".
-    -iIntros "(%l' & %ly & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
+      iExists _, _. iR. iR. iR. iR. iFrame "# ∗".
+    - iIntros "(%l' & %ly & % & %Hl & % & % & #Hlb & #Hsc & Hobs & Hc & Hb)".
       apply val_of_loc_inj in Hl. subst.
       iExists _. iR. iR. iFrame "# ∗".
   Qed.
@@ -56,7 +56,7 @@ Section ltype_agree.
       iDestruct "Hb" as "(%ly' & Hst' & Hly' & Hsc & Hlb & ? & Hrfn & >Hb)".
       iModIntro. iExists l', ly'. iFrame "∗". iSplitR; first done. by iFrame.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%v & Hl & Hb)". destruct r' as [r' γ'].
-      iDestruct "Hb" as "(%l' & %ly' & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
+      iDestruct "Hb" as "(%l' & %ly' & _ & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
       iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iModIntro. iExists ly'. iFrame. done.
   Qed.
@@ -99,7 +99,7 @@ Section ltype_agree.
     iIntros "(%ly & ? & ? & _ & #Hlb & ? & %r' & Hrfn & Hb)". destruct r' as [r' γ'].
     (*iApply except_0_if_intro.*)
     iModIntro. iExists ly. iFrame "∗ #". iNext.
-    iMod "Hb" as "(%v & Hl & %l' & %ly' & -> & ? & ? & #Hlb' & Hsc & ? &  Hrfn' & >Hb)".
+    iMod "Hb" as "(%v & Hl & %l' & %ly' & _ & -> & ? & ? & #Hlb' & Hsc & ? &  Hrfn' & >Hb)".
     iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame "∗ #". done.
   Qed.
 
@@ -114,7 +114,7 @@ Section ltype_agree.
     iApply (pinned_bor_iff' with "[] Hb").
     iNext. iModIntro. iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%v & Hl & Hb)". destruct r' as [r' γ'].
-      iDestruct "Hb" as "(%l' & %ly' & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
+      iDestruct "Hb" as "(%l' & %ly' & _ & -> & ? & ? & Hlb & Hsc & Hrfn & ? & >Hb)".
       iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iModIntro. iExists ly'. iFrame. done.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iMod "Hb" as "(%l' & Hl & Hb)".
@@ -185,8 +185,8 @@ Section place.
     iIntros (?) "HL CTX HE". iIntros (??).
     iApply ltype_eq_sym. iApply mut_ref_unfold.
   Qed.
-  Global Instance typed_place_ofty_mut_inst {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) bmin0 b P :
-    TypedPlace E L π l (◁ (mut_ref κ ty))%I r bmin0 b P | 30 := λ T, i2p (typed_place_ofty_mut π E L l ty κ r bmin0 b P T).
+  Definition typed_place_ofty_mut_inst := [instance @typed_place_ofty_mut].
+  Global Existing Instance typed_place_ofty_mut_inst | 30.
 End place.
 
 Section cast.
@@ -201,7 +201,6 @@ Section cast.
     iExists (mut_ref κ ty). iFrame "HT". iPureIntro.
     by apply mut_ref_unfold_full_eqltype.
   Qed.
-  Global Instance cast_ltype_to_type_mut_inst E L {rt} (lt : ltype rt) κ :
-    CastLtypeToType E L (MutLtype lt κ) :=
-    λ T, i2p (cast_ltype_to_type_mut E L lt κ T).
+  Definition cast_ltype_to_type_mut_inst := [instance @cast_ltype_to_type_mut].
+  Global Existing Instance cast_ltype_to_type_mut_inst.
 End cast.

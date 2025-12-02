@@ -12,21 +12,27 @@ Section owned_ptr.
 
   Program Definition owned_ptr : type (place_rfn rt * loc)%type := {|
     ty_sidecond := True;
-    ty_own_val π '(r, l) (v : val) :=
-      ∃ (ly : layout), ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    ty_metadata_kind := MetadataNone;
+    ty_own_val π '(r, l) m (v : val) :=
+      ∃ (ly : layout), 
+        ⌜m = MetaNone⌝ ∗
+        ⌜v = val_of_loc l⌝ ∗ ⌜syn_type_has_layout (inner.(ty_syn_type) m) ly⌝ ∗ 
+        ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
         £ num_cred ∗ atime 1 ∗
         ∃ (ri : rt), place_rfn_interp_owned r ri ∗
         (* this needs to match up with the corresponding later/fupd in the OfTyLtype to get the unfolding equation *)
-        ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri v';
+        ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri MetaNone v';
     _ty_has_op_type ot mt := is_ptr_ot ot;
-    ty_syn_type := PtrSynType;
+    ty_syn_type _ := PtrSynType;
 
-    ty_shr κ tid '(r, li) l :=
-      (∃ (ly : layout) (ri : rt), place_rfn_interp_shared r ri ∗
+    ty_shr κ tid '(r, li) m l :=
+      (∃ (ly : layout) (ri : rt), 
+        ⌜m = MetaNone⌝ ∗
+        place_rfn_interp_shared r ri ∗
         ⌜l `has_layout_loc` void*⌝ ∗
-        ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
         ⌜li `has_layout_loc` ly⌝ ∗
         inner.(ty_sidecond) ∗
         loc_in_bounds l 0 void*.(ly_size) ∗
@@ -34,7 +40,7 @@ Section owned_ptr.
         loc_in_bounds li 0 ly.(ly_size) ∗
         &frac{κ}(λ q', l ↦{q'} val_of_loc li) ∗
         (* later for contractiveness *)
-        ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
+        ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri MetaNone li)%I;
 
     _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
@@ -44,7 +50,7 @@ Section owned_ptr.
     by apply ty_xt_inhabited.
   Qed.
   Next Obligation.
-    iIntros (π [r l] v) "(%ly & -> & % & % & _)".
+    iIntros (π [r l] m v) "(%ly & -> & -> & % & % & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -53,27 +59,29 @@ Section owned_ptr.
     by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
-    iIntros (?[] ?) "(%ly & -> & _)". done.
+    iIntros (?[] m ?) "(%ly & -> & _)". done.
   Qed.
   Next Obligation.
-    iIntros (??[] ?) "_". done.
+    iIntros (??[] ? ?) "_". done.
   Qed.
   Next Obligation.
     unfold TCNoResolve.
     intros ??? []. apply _.
   Qed.
   Next Obligation.
-    iIntros (κ π l []) "(%ly & %ri & Hr & % & % & ?  & _)".
-    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    iIntros (κ π l [] m) "(%ly & %ri & -> & Hr & % & % & ?  & _)".
+    iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π [r li] q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π [r li] m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
     iMod (bor_exists with "LFT Hb") as (ly') "Hb"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Heq Htok") as "(>-> & Htok)"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Heq Htok") as "(>-> & Htok)"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hst & Hb)"; first solve_ndisj.
@@ -96,7 +104,7 @@ Section owned_ptr.
     iDestruct "Htok" as "(Htok1 & Htok)".
     iMod (bor_acc with "LFT Hcred Htok1") as "(>(Hcred & Hat) & Hcl_cred)"; first solve_ndisj.
     iDestruct "Hcred" as "(Hcred1 & Hcred2 & Hcred)".
-    set (R := (∃ v' : val, li ↦ v' ∗ v' ◁ᵥ{ π} ri @ inner)%I).
+    set (R := (∃ v' : val, li ↦ v' ∗ v' ◁ᵥ{ π, MetaNone} ri @ inner)%I).
     iPoseProof (bor_fupd_later_strong E lftE _ _ R True with "LFT [//] [Hcred1] [] Hb Htok") as "Hu"; [done | done | ..].
     { iIntros "(_ & Ha)". iModIntro. iNext. iApply (lc_fupd_add_later with "Hcred1"); iNext.
       iMod "Ha". by iFrame. }
@@ -123,30 +131,31 @@ Section owned_ptr.
     iModIntro.
     iExists ly', ri. iFrame.
     apply syn_type_has_layout_ptr_inv in Halg as ->.
-    do 3 iR. iFrame "#".
+    do 4 iR. iFrame "#".
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.
-    simpl. iIntros (κ κ' π [r li] l) "#Hincl (%ly & %r' & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hl & #Hshr)".
-    iExists ly, r'. iFrame. iSplitL "Hl".
+    simpl. iIntros (κ κ' π [r li] m l) "#Hincl (%ly & %r' & -> & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hl & #Hshr)".
+    iExists ly, r'. iFrame. iR. iSplitL "Hl".
     { iApply (frac_bor_shorten with "Hincl Hl"). }
     iNext. iDestruct "Hshr" as "#Hshr". iModIntro. iMod "Hshr". iModIntro.
     by iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    iIntros (ot mt st π [r l] ? Hot).
+    iIntros (ot mt st π [r l] m ? Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%ly & -> & ?)".
+    - iIntros "(%ly & -> & -> & ?)".
       iExists ly. iFrame.
+      iR.
       iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
       + eauto.
       + iPureIntro. by apply Hl.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%ly & -> & _)". eauto.
+      iIntros "(%ly & -> & -> & _)". eauto.
   Qed.
   Next Obligation.
-    intros ly mt Hst.
+    intros ly mt Heq Hst.
     apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
@@ -156,7 +165,7 @@ Section owned_ptr.
     mk_ty_ghost_drop _ (λ π '(r, l),
       ∃ ri, place_rfn_interp_owned r ri ∗ ty_ghost_drop_for inner Hg π ri)%I _.
   Next Obligation.
-    simpl. iIntros (Hg π [r l] v??) "(%ly & -> & Halg & Hly & Hlb & Hsc & Hcred & Hat & Hb)".
+    simpl. iIntros (Hg π [r l] v ???) "(%ly & -> & -> & Halg & Hly & Hlb & Hsc & Hcred & Hat & Hb)".
     iDestruct "Hb" as "(%r' & Hr & Hv)".
     iApply fupd_logical_step.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -177,13 +186,13 @@ Section ofty.
 
   (** A very fundamental equivalence that should hold. *)
   Lemma owned_ptr_ofty_owned_equiv {rt} (ty : type rt) π l r :
-    l ◁ₗ[π, Owned true] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} (#r, l) @ owned_ptr ty.
+    l ◁ₗ[π, Owned true] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π, MetaNone} (#r, l) @ owned_ptr ty.
   Proof.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own {2}/ty_own_val/=.
     iSplit.
     - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & (? & ?) & %r' & <- & Hb)".
       iExists _. iR. iR. iR. by iFrame "# ∗".
-    - iIntros "(%ly & %Hl & % & % & #Hlb & #Hsc & ? & ? & %r' & -> & Hb)".
+    - iIntros "(%ly & _ & %Hl & % & % & #Hlb & #Hsc & ? & ? & %r' & -> & Hb)".
       apply val_of_loc_inj in Hl. subst.
       iExists _. iR. iR. by iFrame "# ∗".
   Qed.

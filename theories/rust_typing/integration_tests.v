@@ -26,7 +26,7 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
 (* Maybe this should also be specced in terms of value? *)
 Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
-      l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type)))))
+      l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type) MetaNone))))
     → ∃ () : unit, () @ unit_t; λ π,
         l ◁ₗ[π, Owned false] (#$# r) @ ◁ T_ty.
 
@@ -64,15 +64,17 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) 
   spec! ( *[κ]) : 1 | ( *[U_ty]) : [U_rt],
     (* Then instantiate the existing type parameter with shr_ref U_ty κ *)
     fn_spec_add_late_pre ((type_of_ptr_write (place_rfnRT U_rt) (PtrSynType) <TY> shr_ref κ U_ty) <INST!>)
-    (λ π, typaram_wf U_rt U_st U_ty)
+    (λ π, typaram_wf U_rt U_st U_ty)%I
 .
 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
   ⊢ typed_function π (ptr_write (PtrSynType)) [] (<tag_type> type_of_ptr_write_shrref U_rt U_st).
 Proof.
   start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
+
   intros ls_dst ls_src.
   repeat liRStep; liShow.
+
   Unshelve. all: unshelve_sidecond; sidecond_hook.
   Unshelve. all: unfold_common_defs; try solve_goal.
 Qed.
@@ -106,7 +108,7 @@ Section std_option_Option_ty.
   Definition std_option_Option_None_rt : RT := rt_of std_option_Option_None_ty.
   Global Typeclasses Transparent std_option_Option_None_ty.
 
-  Definition std_option_Option_Some_ty : type (plist place_rfnRT [T_rt : RT]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty)) +[
+  Definition std_option_Option_Some_ty : type (plist place_rfnRT [T_rt : RT]) := struct_t (std_option_Option_Some_sls (ty_syn_type T_ty MetaNone)) +[
     T_ty].
   Definition std_option_Option_Some_rt : RT := rt_of std_option_Option_Some_ty.
   Global Typeclasses Transparent std_option_Option_Some_ty.
@@ -115,7 +117,7 @@ Section std_option_Option_ty.
   Definition std_option_Option_enum_ty : ∀ x, type (std_option_Option_enum_rt x) := (λ rfn, match rfn with | None => std_option_Option_None_ty | Some x => std_option_Option_Some_ty end).
   Program Definition std_option_Option_enum : enum (option (place_rfnRT T_rt)) := mk_enum
     _
-    ((std_option_Option_els (ty_syn_type T_ty)))
+    ((std_option_Option_els (ty_syn_type T_ty MetaNone)))
     (λ rfn, match rfn with | None => Some "None" | Some x => Some "Some" end)
     std_option_Option_enum_rt
     std_option_Option_enum_ty

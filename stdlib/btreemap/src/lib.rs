@@ -7,6 +7,8 @@
 #![rr::coq_prefix("rrstd.btreemap")]
 #![rr::include("alloc")]
 #![rr::include("option")]
+#![rr::include("cmp")]
+#![rr::include("clone")]
 
 #![feature(allocator_api)]
 
@@ -39,6 +41,7 @@ pub struct BTreeMap<
 #[rr::only_spec]
 impl<K, V> BTreeMap<K, V> {
     
+    #[rr::skip]
     #[rr::returns("∅")]
     pub const fn new() -> BTreeMap<K, V> {
         unimplemented!();

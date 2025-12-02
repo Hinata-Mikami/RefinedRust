@@ -51,21 +51,24 @@ Section uninit.
   Global Instance uninit_copy st : Copyable (uninit st).
   Proof. apply _. Qed.
 
-  Lemma uninit_own_spec π v st r :
-    (v ◁ᵥ{π} r @ uninit st)%I ≡ (∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜v `has_layout_val` ly⌝)%I.
+  Global Instance uninit_sized st : TySized (uninit st).
+  Proof. apply _. Qed.
+
+  Lemma uninit_own_spec π v st m r :
+    (v ◁ᵥ{π, m} r @ uninit st)%I ≡ (⌜m = MetaNone⌝ ∗ ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜v `has_layout_val` ly⌝)%I.
   Proof.
     rewrite /ty_own_val/=; iSplit.
-    - iIntros "(%ly & ? & ?)"; iExists ly. iFrame.
-    - iIntros "(%ly & ? & ?)"; iExists ly. iFrame.
+    - iIntros "(-> & %ly & ? & ?)"; iR. iExists ly. by iFrame.
+    - iIntros "(-> & %ly & ? & ?)"; iR. iExists ly. iFrame.
   Qed.
 
-  Lemma uninit_memcast π v r st ot hst :
-    v ◁ᵥ{π} r @ uninit st -∗
-    mem_cast v ot hst ◁ᵥ{π} r @ uninit st.
+  Lemma uninit_memcast π v r st ot m hst :
+    v ◁ᵥ{π, m} r @ uninit st -∗
+    mem_cast v ot hst ◁ᵥ{π, m} r @ uninit st.
   Proof.
     rewrite !uninit_own_spec.
-    iIntros "(%ly & %Hst & %Hly)".
-    iExists ly. iR. iPureIntro.
+    iIntros "(-> & %ly & %Hst & %Hly)".
+    iR. iExists ly. iR. iPureIntro.
     by apply has_layout_val_mem_cast.
   Qed.
 End uninit.

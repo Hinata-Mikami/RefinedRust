@@ -6,20 +6,21 @@ From refinedrust Require Import options.
 Section value.
   Context `{!typeGS Σ}.
 
-  Lemma value_t_untyped_to_array' π v vs n ly ly' :
+  Lemma value_t_untyped_to_array' π v vs n ly ly' m :
     ly_size ly' = ly_size ly * n →
     syn_type_has_layout (UntypedSynType ly) ly →
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType ly') -∗
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
+    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType ly') -∗
+    v ◁ᵥ{π, m} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (Hsz ?) "Hv". rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ot & %Hot & %Hmv & %Hv & %Hst)".
+    iDestruct "Hv" as "(-> & %ot & %Hot & %Hmv & %Hv & %Hst)".
     apply use_op_alg_untyped_inv in Hot as ->.
     simpl in *.
     apply is_memcast_val_untyped_inv in Hmv as <-.
     apply (syn_type_has_layout_untyped_inv) in Hst as (_ & Hwf & Hsz' & Hal).
     iExists ly.
-    iSplitR. { done. }
+    iR.
+    iR.
     iSplitR. { iPureIntro. rewrite Hsz in Hsz'. lia. }
     iSplitR. { rewrite length_fmap length_reshape length_replicate //. }
     iSplitR. { rewrite /has_layout_val /mk_array_layout /ly_mult /= Hv Hsz. done. }
@@ -29,6 +30,7 @@ Section value.
     rewrite list_lookup_fmap in Hlook1.
     rewrite Hlook2 in Hlook1.  simpl in Hlook1. injection Hlook1 as [= <-].
     iExists _. iR.
+    rewrite /ty_own_val/=. iR.
     iExists (UntypedOp ly).
     simpl.
     iSplitR. { iPureIntro. apply use_op_alg_untyped; done. }
@@ -47,10 +49,10 @@ Section value.
     }
     iPureIntro. done.
   Qed.
-  Lemma value_t_untyped_to_array  π v vs n ly :
+  Lemma value_t_untyped_to_array  π v vs n ly m :
     syn_type_has_layout (UntypedSynType ly) ly →
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType (mk_array_layout ly n)) -∗
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
+    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType (mk_array_layout ly n)) -∗
+    v ◁ᵥ{π, m} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (?) "Hv".
     iApply (value_t_untyped_to_array' with "Hv").
@@ -58,16 +60,17 @@ Section value.
     - done.
   Qed.
 
-  Lemma value_t_untyped_from_array' π v vs (vs' : list val) vs'' n ly ly' :
+  Lemma value_t_untyped_from_array' π v vs (vs' : list val) vs'' n ly ly' m :
     ly' = mk_array_layout ly n →
     vs = fmap PlaceIn vs' →
     vs'' = (mjoin vs') →
-    v ◁ᵥ{π} vs @ (array_t n (value_t (UntypedSynType ly))) -∗
-    v ◁ᵥ{π} vs'' @ value_t (UntypedSynType ly').
+    v ◁ᵥ{π, m} vs @ (array_t n (value_t (UntypedSynType ly))) -∗
+    v ◁ᵥ{π, m} vs'' @ value_t (UntypedSynType ly').
   Proof.
     iIntros (-> -> ->) "Hv".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly'' & %Hst & %Hsz & <- & %Hv & Hl)".
+    iDestruct "Hv" as "(%ly'' & -> & %Hst & %Hsz & <- & %Hv & Hl)".
+    iR.
     apply syn_type_has_layout_untyped_inv in Hst as (-> & Hwf & Hsz' & Hal).
     rewrite length_fmap. rewrite length_fmap in Hv.
     iExists (UntypedOp (mk_array_layout ly (length vs'))).
@@ -80,7 +83,7 @@ Section value.
       { iApply (big_sepL2_impl with "Hl"). iModIntro.
         iIntros (? v1 v2 _ _) "(%v3 & -> & Ha)".
         rewrite {1}/ty_own_val/=.
-        iDestruct "Ha" as "(%ot & %Hot & %Hv1 & ? & ?)".
+        iDestruct "Ha" as "(_ & %ot & %Hot & %Hv1 & ? & ?)".
         apply use_op_alg_untyped_inv in Hot as ->.
         apply is_memcast_val_untyped_inv in Hv1 as ->.
         simpl. iFrame. done. }
@@ -102,10 +105,10 @@ Section value.
       move: Hsz. rewrite length_fmap MaxInt_eq. lia.
     - rewrite /ly_align_in_bounds ly_align_mk_array_layout //.
   Qed.
-  Lemma value_t_untyped_from_array π v vs n ly :
+  Lemma value_t_untyped_from_array π v vs n ly m :
     length vs = n * ly_size ly →
-    v ◁ᵥ{π} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))) -∗
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType (mk_array_layout ly n)).
+    v ◁ᵥ{π, m} (fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ (array_t n (value_t (UntypedSynType ly))) -∗
+    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType (mk_array_layout ly n)).
   Proof.
     iIntros (?) "Hv". iApply value_t_untyped_from_array'; last done.
     - done.

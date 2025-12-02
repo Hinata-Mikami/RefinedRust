@@ -8,6 +8,8 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.clone")]
 
+#![rr::include("sized")]
+
 #[rr::export_as(core::clone::Clone)]
 pub trait Clone: Sized {
     #[rr::returns("self")]

@@ -16,9 +16,10 @@ Section init.
     | (name, st) :: sts =>
         (* TODO should have a faster way to do the lookup *)
         ∃ init, ⌜(list_to_map (M:=gmap _ _) fields) !! name = Some init⌝ ∗
-        typed_val_expr E L init (λ L2 π2 v rt ty r,
+        typed_val_expr E L init (λ L2 π2 v m rt ty r,
         ⌜π = π2⌝ ∗
-        ⌜ty.(ty_syn_type) = st⌝ ∗
+        ⌜m = MetaNone⌝ ∗
+        ⌜ty.(ty_syn_type) MetaNone = st⌝ ∗
         struct_init_fold π E L2 fields sts (λ L3 rts vs tys rs,
             T L3 (rt :: rts) (v :: vs) (ty +:: tys) (r -:: rs)))%I
     end.
@@ -36,8 +37,8 @@ Section init.
       ([∗ list] i ↦ v; Ty ∈ vs; hpzipl rts tys rs,
         let '(existT rt (ty, r)) := Ty in
         ∃ name st ly, ⌜sts !! i = Some (name, st)⌝ ∗ ⌜syn_type_has_layout st ly⌝ ∗
-        ⌜syn_type_has_layout (ty_syn_type ty) ly⌝ ∗
-        v ◁ᵥ{ π} r @ ty
+        ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly⌝ ∗
+        v ◁ᵥ{π, MetaNone} r @ ty
       ) ∗
       T L3 rts vs tys rs) -∗ Φ vs) -∗
     struct_init_components ⊤ sts fields Φ
@@ -54,14 +55,14 @@ Section init.
     rewrite Hlook/=.
     iApply (wp_wand with "(Ha [Hcont])").
     2: { eauto. }
-    iIntros (L2 π2 v rt ty r) "HL Hv (<- & <- & Hr)".
+    iIntros (L2 π2 v rt ty r m) "HL Hv (<- & -> & <- & Hr)".
     iApply ("IH" with "HL Hr").
     iIntros (vs L3) "HL Hc".
     iApply ("Hcont" with "HL").
     iDestruct "Hc" as (rts tys rs) "(%Hlen & Ha & HT)".
     iExists (rt :: rts), (ty +:: tys), (r -:: rs).
     iFrame. iSplitR. { rewrite /=Hlen//. }
-    iExists name, (ty_syn_type ty). iExists ly.
+    iExists name, (ty_syn_type ty MetaNone). iExists ly.
     iR. done.
   Qed.
 
@@ -70,7 +71,7 @@ Section init.
     find_in_context FindNaOwn (λ '(π, mask), na_own π mask -∗
     li_tactic (compute_struct_layout_goal sls) (λ sl,
     struct_init_fold π E L fields sls.(sls_fields) (λ L2 rts vs tys rs,
-      ∀ v, T L2 π v _ (struct_t sls tys) (pmap (λ _ a, #a) rs))))
+      ∀ v, T L2 π v MetaNone _ (struct_t sls tys) (pmap (λ _ a, #a) rs))))
     ⊢ typed_val_expr E L (StructInit sls fields) T.
   Proof.
     iIntros "HT". iDestruct "HT" as ([π mask]) "(Hna & HT)".

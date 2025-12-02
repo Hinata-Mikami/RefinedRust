@@ -27,7 +27,7 @@ Section deinit.
     iR. iR.
     iSplitL "Hlb"; first by iFrame. iR.
     iExists tt. iR.
-    iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iExists ly.
+    iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
@@ -55,7 +55,7 @@ Section deinit.
     iSplitR "Hl".
     { destruct wl; last done. simpl. rewrite /num_cred. iFrame. iApply lc_succ; iFrame. }
     iExists tt. iR.
-    iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iExists ly.
+    iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.

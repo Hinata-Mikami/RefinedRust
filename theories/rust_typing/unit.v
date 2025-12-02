@@ -37,19 +37,21 @@ Section unit.
 
   Global Instance unit_copyable : Copyable unit_t.
   Proof. apply _. Qed.
+  Global Instance unit_sized : TySized unit_t.
+  Proof. apply _. Qed.
 
-  Global Instance unit_timeless l z π:
-    Timeless (l ◁ᵥ{π} z @ unit_t)%I.
+  Global Instance unit_timeless l z π m :
+    Timeless (l ◁ᵥ{π, m} z @ unit_t)%I.
   Proof. apply _. Qed.
 
   Lemma type_val_unit π (T : typed_value_cont_t):
-    T _ (unit_t) () ⊢ typed_value π (zst_val) T.
+    T MetaNone _ (unit_t) () ⊢ typed_value π (zst_val) T.
   Proof.
     iIntros "HT #LFT".
     iExists _, unit_t, (). iFrame "HT". done.
   Qed.
-  Global Instance type_val_unit_inst π : TypedValue π zst_val :=
-    λ T, i2p (type_val_unit π T).
+  Definition type_val_unit_inst := [instance @type_val_unit].
+  Global Existing Instance type_val_unit_inst.
 End unit.
 
 Global Hint Unfold unit_t : tyunfold.

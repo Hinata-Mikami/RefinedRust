@@ -15,7 +15,7 @@ Proof.
 
   rep <-! liRStep; liShow.
 
-  apply_update (updateable_typed_array_access x0 i (st_of T_ty)).
+  apply_update (updateable_typed_array_access x1 i (st_of T_ty MetaNone)).
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

@@ -12,30 +12,32 @@ Section type.
      Note that this really makes it isomorphic to [MaybeUninit<T>] in our model,
      which is a union and thus would also get the place wrapper. *)
   Program Definition maybe_uninit {rt} (T : type rt) : type (option (place_rfn rt)) := {|
-    ty_own_val π r v :=
+    ty_metadata_kind := T.(ty_metadata_kind);
+    ty_own_val π r m v :=
       match r with
-      | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' v
-      | None => (uninit T.(ty_syn_type)).(ty_own_val) π () v
+      | Some r' => ∃ r'', place_rfn_interp_owned r' r'' ∗ T.(ty_own_val) π r'' m v
+      | None => (uninit (T.(ty_syn_type) m)).(ty_own_val) π () m v
       end%I;
     ty_syn_type := T.(ty_syn_type);
     _ty_has_op_type ot mt :=
-      ∃ ly, syn_type_has_layout T.(ty_syn_type) ly ∧ ot_layout ot = ly ∧
+      ∃ ly, 
+      syn_type_has_layout (T.(ty_syn_type) MetaNone) ly ∧ ot_layout ot = ly ∧
       match mt with
       | MCId => ot = UntypedOp ly
       | MCCopy => ty_has_op_type T ot MCCopy
       | MCNone => True
       end;
-    ty_shr κ π r l :=
+    ty_shr κ π r m l :=
       match r with
-      | Some r' => ∃ r'', place_rfn_interp_shared r' r'' ∗ T.(ty_shr) κ π r'' l
-      | None => (uninit T.(ty_syn_type)).(ty_shr) κ π () l
+      | Some r' => ∃ r'', place_rfn_interp_shared r' r'' ∗ T.(ty_shr) κ π r'' m l
+      | None => (uninit (T.(ty_syn_type) m)).(ty_shr) κ π () m l
       end%I;
     ty_sidecond := True;
     _ty_lfts := ty_lfts T;
     _ty_wf_E := ty_wf_E T;
   |}.
   Next Obligation.
-    iIntros (rt T π r v) "Hv". destruct r as [r | ].
+    iIntros (rt T π r m v) "Hv". destruct r as [r | ].
     - iDestruct "Hv" as "(%r'' & Hrfn & Hv)".
       iApply (ty_has_layout with "Hv").
     - iApply (ty_has_layout with "Hv").
@@ -45,21 +47,22 @@ Section type.
     destruct Hot as (ly & Hot & <- & Hmt). done.
   Qed.
   Next Obligation.
-    iIntros (rt T π r v) "_". done.
+    iIntros (rt T π r m v) "_". done.
   Qed.
   Next Obligation.
-    iIntros (rt T ? π r v) "_". done.
+    iIntros (rt T ? π r m v) "_". done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (rt T κ π l r) "Hl". destruct r as [r | ].
+    iIntros (rt T κ π l r m) "Hl". destruct r as [r | ].
     - iDestruct "Hl" as "(%r'' & Hrfn & Hl)". iApply (ty_shr_aligned with "Hl").
-    - iApply (ty_shr_aligned with "Hl").
+    - iPoseProof (ty_shr_aligned with "Hl") as "Ha".
+      done.
   Qed.
   Next Obligation.
-    iIntros (rt T E κ l ly π [r | ] ? ?) "#CTX Htok %Hst %Hly #Hlb Hb".
+    iIntros (rt T E κ l ly π [r | ] m ? ?) "#CTX Htok %Hst %Hly #Hlb Hb".
     -
-      iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π} r' @ T))%I with "[Hb]" as "Hb".
+      iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
         - iIntros "(%v & ? & %r' & ? & ?)". eauto with iFrame.
         - iIntros "(%r' & ? & %v & ? & ?)". eauto with iFrame. }
@@ -84,17 +87,17 @@ Section type.
       iPoseProof ((uninit _).(ty_share) with "CTX [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
       { rewrite right_id. done. }
       { done. }
-      iApply (logical_step_wand with "Ha"). iIntros "($ & Htok1)".
+      iApply (logical_step_wand with "Ha"). iIntros "(? & Htok1)".
       rewrite right_id. iFrame.
   Qed.
   Next Obligation.
-    iIntros (rt T κ κ' π r l) "#Hincl Ha".
+    iIntros (rt T κ κ' π r m l) "#Hincl Ha".
     destruct r as [r | ]; last by iApply ty_shr_mono.
     iDestruct "Ha" as "(%r'' & ? & Hv)".
     iExists _. iFrame. by iApply ty_shr_mono.
   Qed.
   Next Obligation.
-    iIntros (rt T ot mt st π r v (ly & Hst & <- & Hmt)) "Ha".
+    iIntros (rt T ot mt st π r m v (ly & Hst & <- & Hmt)) "Ha".
     destruct mt; [done | | ].
     - (* copy *)
       destruct r as [r | ]; simpl; first last.
@@ -108,10 +111,20 @@ Section type.
       rewrite mem_cast_UntypedOp//.
   Qed.
   Next Obligation.
-    intros ?? ly mt Hst.
+    intros ?? ly mt Heq Hst.
     simpl. exists ly. split_and!; [done.. | ].
     destruct mt; [done | | done].
-    by apply ty_has_op_type_untyped.
+    rewrite ty_has_op_type_unfold.
+    by apply _ty_has_op_type_untyped.
+  Qed.
+
+  Global Instance maybe_uninit_sized {rt} (ty : type rt) :
+    TySized ty →
+    TySized (maybe_uninit ty).
+  Proof.
+    intros Hsz. econstructor; simpl.
+    - apply Hsz. 
+    - apply Hsz. 
   Qed.
 
   Global Program Instance maybe_uninit_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty}: TyGhostDrop (maybe_uninit ty) :=
@@ -122,7 +135,7 @@ Section type.
           ∃ r', place_rfn_interp_owned r r' ∗ ty_ghost_drop_for ty Hg π r'
       end)%I _.
   Next Obligation.
-    iIntros (rt ty Hg π r v F ?) "Hv".
+    iIntros (rt ty Hg π r m v F ?) "Hv".
     rewrite /ty_own_val/=.
     destruct r as [r' | ]; first last.
     { by iApply logical_step_intro. }
@@ -141,6 +154,7 @@ Section ne.
     TypeNonExpansive (maybe_uninit (rt:=rt)).
   Proof.
     constructor; simpl.
+    - done.
     - done.
     - eapply ty_lft_morph_make_id.
       + rewrite {1}ty_lfts_unfold//.
@@ -166,8 +180,8 @@ Section subtype.
   Proof.
     iSplitR; first done. iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π v) "Hv". iExists x. eauto with iFrame.
-    - iIntros (κ π l) "Hl". iExists x. eauto with iFrame.
+    - iIntros (π m v) "Hv". iExists x. eauto with iFrame.
+    - iIntros (κ π m l) "Hl". iExists x. eauto with iFrame.
   Qed.
 
   Lemma type_incl_Some_maybe_uninit {rt} (ty : type rt) (x : rt) :
@@ -176,26 +190,38 @@ Section subtype.
   Proof.
     iIntros "#Hsc". iSplitR; first done. iSplitR; first iModIntro. { simpl; eauto. }
     iSplit; iModIntro.
-    - rewrite {1}/ty_own_val/=. iIntros (π v) "(% & <- & Hv)". done.
-    - rewrite {1}/ty_shr/=. iIntros (κ π v) "(% & <- & Hl)". done.
+    - rewrite {1}/ty_own_val/=. iIntros (π m v) "(% & <- & Hv)". done.
+    - rewrite {1}/ty_shr/=. iIntros (κ π m v) "(% & <- & Hl)". done.
   Qed.
 
-  Lemma type_incl_maybe_uninit_None {rt} (ty : type rt) :
-    ⊢ type_incl () None (uninit (ty.(ty_syn_type))) (maybe_uninit ty).
+  Lemma type_incl_maybe_uninit_None {rt} (ty : type rt) `{!TySized ty} :
+    ⊢ type_incl () None (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty).
   Proof.
-    iSplitR; first done. iSplitR; first iModIntro. { simpl. eauto. }
+    iSplitR. 
+    { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
+    iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π v) "Hv". done.
-    - iIntros (κ π l) "Hl". done.
+    - iIntros (π m v) "Hv". simpl. 
+      iEval (rewrite /ty_own_val/=).
+      rewrite (ty_sized_syn_type_eq _ m). done.
+    - iIntros (κ π m l) "Hl".
+      iEval (rewrite /ty_shr/=).
+      rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
 
-  Lemma type_incl_None_maybe_uninit {rt} (ty : type rt) :
-    ⊢ type_incl None () (maybe_uninit ty) (uninit (ty.(ty_syn_type))).
+  Lemma type_incl_None_maybe_uninit {rt} (ty : type rt) `{!TySized ty} :
+    ⊢ type_incl None () (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)).
   Proof.
-    iSplitR; first done. iSplitR; first iModIntro. { simpl. eauto. }
+    iSplitR.
+    { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
+    iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π v) "Hv". done.
-    - iIntros (κ π l) "Hl". done.
+    - iIntros (π m v) "Hv". simpl. 
+      iEval (rewrite /ty_own_val/=).
+      rewrite (ty_sized_syn_type_eq _ m). done.
+    - iIntros (κ π m l) "Hl". 
+      iEval (rewrite /ty_shr/=).
+      rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
 
 End subtype.
@@ -205,38 +231,38 @@ Section rules.
 
   (** subtyping rules: *)
 
-  Lemma weak_subtype_None_maybe_uninit E L {rt} (ty : type rt) (r2 : unit) T :
-    ⌜r2 = tt⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) (uninit ty.(ty_syn_type)) T.
+  Lemma weak_subtype_None_maybe_uninit E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) T :
+    ⌜r2 = tt⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) (uninit (ty.(ty_syn_type) MetaNone)) T.
   Proof.
     iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_None_maybe_uninit.
   Qed.
-  Global Instance weak_subtype_None_maybe_uninit_None_inst E L {rt} (ty : type rt) r2 :
-    Subtype E L None r2 (maybe_uninit ty) (uninit (ty.(ty_syn_type))) := λ T, i2p (weak_subtype_None_maybe_uninit E L ty r2 T).
+  Definition weak_subtype_None_maybe_uninit_inst := [instance @weak_subtype_None_maybe_uninit].
+  Global Existing Instance weak_subtype_None_maybe_uninit_inst.
 
   (* a variant that works in case the goal is an evar *)
-  Lemma weak_subtype_None_maybe_uninit_evar E L {rt} (ty : type rt) (r2 : unit) (ty2 : type unit) `{!IsProtected ty2} T :
-    ⌜r2 = tt⌝ ∗ ⌜ty2 = (uninit ty.(ty_syn_type))⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) ty2 T.
+  Lemma weak_subtype_None_maybe_uninit_evar E L {rt} (ty : type rt) `{!TySized ty} (r2 : unit) (ty2 : type unit) `{!IsProtected ty2} T :
+    ⌜r2 = tt⌝ ∗ ⌜ty2 = (uninit (ty.(ty_syn_type) MetaNone))⌝ ∗ T ⊢ weak_subtype E L None r2 (maybe_uninit ty) ty2 T.
   Proof.
     iIntros "(-> & -> & HT)". iApply weak_subtype_None_maybe_uninit. iR; done.
   Qed.
-  Global Instance weak_subtype_None_maybe_uninit_None_evar_inst E L {rt} (ty : type rt) r2 ty2 `{!IsProtected ty2} :
-    Subtype E L None r2 (maybe_uninit ty) ty2 := λ T, i2p (weak_subtype_None_maybe_uninit_evar E L ty r2 ty2 T).
+  Definition weak_subtype_None_maybe_uninit_evar_inst := [instance @weak_subtype_None_maybe_uninit_evar].
+  Global Existing Instance weak_subtype_None_maybe_uninit_evar_inst.
 
-  Lemma weak_subtype_maybe_uninit_None E L {rt} (ty : type rt) r2 T :
-    ⌜r2 = None⌝ ∗ T ⊢ weak_subtype E L () r2 (uninit ty.(ty_syn_type)) (maybe_uninit ty) T.
+  Lemma weak_subtype_maybe_uninit_None E L {rt} (ty : type rt) `{!TySized ty} r2 T :
+    ⌜r2 = None⌝ ∗ T ⊢ weak_subtype E L () r2 (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty) T.
   Proof.
     iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_maybe_uninit_None.
   Qed.
-  Global Instance weak_subtype_maybe_uninit_None_inst E L {rt} (ty : type rt) r2 :
-    Subtype E L () r2 (uninit (ty.(ty_syn_type))) (maybe_uninit ty) := λ T, i2p (weak_subtype_maybe_uninit_None E L ty r2 T).
+  Definition weak_subtype_maybe_uninit_None_inst := [instance @weak_subtype_maybe_uninit_None].
+  Global Existing Instance weak_subtype_maybe_uninit_None_inst.
 
   Lemma weak_subtype_Some_maybe_uninit E L {rt} (ty : type rt) (x : place_rfn rt) r2 T :
     (∃ x', ⌜x = #x'⌝ ∗ ⌜r2 = x'⌝ ∗ ty_sidecond ty ∗ T) ⊢ weak_subtype E L (Some x) r2 (maybe_uninit ty) ty T.
   Proof.
     iIntros "(%x' & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_Some_maybe_uninit.
   Qed.
-  Global Instance weak_subtype_Some_maybe_uninit_inst E L {rt} (ty : type rt) (x : place_rfn rt) r2 :
-    Subtype E L (Some x) r2 (maybe_uninit ty) ty := λ T, i2p (weak_subtype_Some_maybe_uninit E L ty x r2 T).
+  Definition weak_subtype_Some_maybe_uninit_inst := [instance @weak_subtype_Some_maybe_uninit].
+  Global Existing Instance weak_subtype_Some_maybe_uninit_inst.
 
   (* a variant that works in case the goal is an evar *)
   Lemma weak_subtype_Some_maybe_uninit_evar E L {rt} (ty : type rt) (x : place_rfn rt) r2 ty2 `{!IsProtected ty2} T :
@@ -244,16 +270,16 @@ Section rules.
   Proof.
     iIntros "(%x' & -> & -> & -> & Hsc & HT)" (??) "#CTX #HE HL". iFrame. by iApply type_incl_Some_maybe_uninit.
   Qed.
-  Global Instance weak_subtype_Some_maybe_uninit_evar_inst E L {rt} (ty : type rt) (x : place_rfn rt) r2 ty2 `{!IsProtected ty2} :
-    Subtype E L (Some x) r2 (maybe_uninit ty) ty2 := λ T, i2p (weak_subtype_Some_maybe_uninit_evar E L ty x r2 ty2 T).
+  Definition weak_subtype_Some_maybe_uninit_evar_inst := [instance @weak_subtype_Some_maybe_uninit_evar].
+  Global Existing Instance weak_subtype_Some_maybe_uninit_evar_inst.
 
   Lemma weak_subtype_maybe_uninit_Some E L {rt} (ty : type rt) (x : rt) r2 T :
     ⌜r2 = Some #x⌝ ∗ T ⊢ weak_subtype E L x r2 ty (maybe_uninit ty) T.
   Proof.
     iIntros "(-> & HT)" (??) "#CTX #HE HL". iFrame. iApply type_incl_maybe_uninit_Some.
   Qed.
-  Global Instance weak_subtype_maybe_uninit_Some_inst E L {rt} (ty : type rt) (x : rt) r2 :
-    Subtype E L x r2 ty (maybe_uninit ty) := λ T, i2p (weak_subtype_maybe_uninit_Some E L ty x r2 T).
+  Definition weak_subtype_maybe_uninit_Some_inst := [instance @weak_subtype_maybe_uninit_Some].
+  Global Existing Instance weak_subtype_maybe_uninit_Some_inst.
 
   Lemma weak_subltype_maybe_uninit_ghost E L {rt} (ty : type rt) γ r2 T :
     ⌜r2 = #(Some (👻 γ))⌝ ∗ T
@@ -273,13 +299,12 @@ Section rules.
     rewrite {2}/ty_own_val/=.
     eauto with iFrame.
   Qed.
-  Global Instance weak_subltype_maybe_uninit_ghost_inst E L {rt} (ty : type rt) γ r2 :
-    SubLtype E L (Owned false) (👻 γ) r2 (◁ ty)%I (◁ (maybe_uninit ty))%I | 40 :=
-    λ T, i2p (weak_subltype_maybe_uninit_ghost E L ty γ r2 T).
+  Definition weak_subltype_maybe_uninit_ghost_inst := [instance @weak_subltype_maybe_uninit_ghost].
+  Global Existing Instance weak_subltype_maybe_uninit_ghost_inst | 40.
 
   Lemma owned_subtype_uninit_maybe_uninit π E L pers {rt} (ty : type rt) (st : syn_type) T :
     li_tactic (compute_layout_goal st) (λ ly1,
-      li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly2,
+      li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly2,
         ⌜ly_size ly1 = ly_size ly2⌝ ∗ T L))
     ⊢ owned_subtype π E L pers () None (uninit st) (maybe_uninit ty) T.
   Proof.
@@ -294,14 +319,15 @@ Section rules.
       done. }
     { simpl. done. }
     iIntros (v) "Hv". rewrite !uninit_own_spec.
-    iDestruct "Hv" as "(%ly &  %Hst & %Hly)".
+    iDestruct "Hv" as "(_ & %ly &  %Hst & %Hly)".
     assert (ly1 = ly) as <- by by eapply syn_type_has_layout_inj.
+    rewrite /ty_own_val/=. iApply uninit_own_spec.
+    iR.
     iExists _. iR.
     iPureIntro. rewrite /has_layout_val -Hsz//.
   Qed.
-  Global Instance owned_subtype_uninit_maybe_uninit_inst π E L pers {rt} (ty : type rt) st :
-    OwnedSubtype π E L pers () None (uninit st) (maybe_uninit ty) :=
-    λ T, i2p (owned_subtype_uninit_maybe_uninit π E L pers ty st T).
+  Definition owned_subtype_uninit_maybe_uninit_inst := [instance @owned_subtype_uninit_maybe_uninit].
+  Global Existing Instance owned_subtype_uninit_maybe_uninit_inst.
 
   (* reading/writing:
      does this need special handling?

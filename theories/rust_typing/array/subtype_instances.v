@@ -22,12 +22,12 @@ Section subtype.
   (* Higher priority instance than direct search for the value: as a heuristic, we split app values *)
   (* TODO: how would that scale to more complex transformations? E.g. what about take etc. -- I guess for that we could have instances as well.
     Basically, I would imagine that we only want to look in the context for primitive values. *)
-  Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) T :
-    ⌜(size_of_st (ty_syn_type ty) * len ≤ MaxInt ISize)%Z⌝ ∗
+  Lemma prove_with_subtype_array_val_split π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) m T :
+    ⌜(size_of_st (ty_syn_type ty m) * len ≤ MaxInt ISize)%Z⌝ ∗
     ⌜length r1 ≤ len⌝ ∗
-    prove_with_subtype E L false pm (v1 ◁ᵥ{π} r1 @ array_t (length r1) ty) (λ L2 κs1 R2,
-      prove_with_subtype E L2 false pm (v2 ◁ᵥ{π} r2 @ array_t (len - length r1) ty) (λ L3 κs2 R3, T L3 (κs1 ++ κs2) (R2 ∗ R3)%I))
-    ⊢ prove_with_subtype E L false pm ((v1 ++ v2) ◁ᵥ{π} r1 ++ r2 @ array_t len ty) T.
+    prove_with_subtype E L false pm (v1 ◁ᵥ{π, m} r1 @ array_t (length r1) ty) (λ L2 κs1 R2,
+      prove_with_subtype E L2 false pm (v2 ◁ᵥ{π, m} r2 @ array_t (len - length r1) ty) (λ L3 κs2 R3, T L3 (κs1 ++ κs2) (R2 ∗ R3)%I))
+    ⊢ prove_with_subtype E L false pm ((v1 ++ v2) ◁ᵥ{π, m} r1 ++ r2 @ array_t len ty) T.
   Proof.
     iIntros "(% & % & HT)" (????) "#CTX #HE HL".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs1 & %R2 & >(Hv1 & HR2) & HL & HT)".
@@ -43,10 +43,8 @@ Section subtype.
       iApply (array_t_own_val_merge with "Hv1 Hv2").
       nia.
   Qed.
-  Global Instance prove_with_subtype_array_val_split_inst π E L pm v1 v2 {rt} (ty : type rt) r1 r2 (len : nat) :
-    ProveWithSubtype E L false pm ((v1 ++ v2) ◁ᵥ{π} r1 ++ r2 @ array_t len ty) | 20 :=
-    λ T, i2p (prove_with_subtype_array_val_split π E L pm v1 v2 ty r1 r2 len T).
-
+  Definition prove_with_subtype_array_val_split_inst := [instance @prove_with_subtype_array_val_split].
+  Global Existing Instance prove_with_subtype_array_val_split_inst | 20.
 
   (* TODO: we could strengthen this by taking into account the refinements *)
   Lemma weak_subtype_array E L {rt} (ty1 ty2 : type rt) len1 len2 rs1 rs2 T :
@@ -58,9 +56,8 @@ Section subtype.
     iPoseProof ("Hincl" $! inhabitant) as "(%Hst & _)".
     iFrame. iApply array_t_type_incl; done.
   Qed.
-  Global Instance weak_subtype_array_inst E L {rt} (ty1 ty2 : type rt) len1 len2 rs1 rs2 :
-    Subtype E L rs1 rs2 (array_t len1 ty1) (array_t len2 ty2) :=
-    λ T, i2p (weak_subtype_array E L ty1 ty2 len1 len2 rs1 rs2 T).
+  Definition weak_subtype_array_inst := [instance @weak_subtype_array].
+  Global Existing Instance weak_subtype_array_inst.
 
   Lemma mut_subtype_array E L {rt} (ty1 ty2 : type rt) len1 len2 T :
     ⌜len1 = len2⌝ ∗ mut_subtype E L ty1 ty2 T
@@ -69,9 +66,8 @@ Section subtype.
     iIntros "(<- & %Hsubt & HT)".
     iSplitR; last done. iPureIntro. by eapply array_t_full_subtype.
   Qed.
-  Global Instance mut_subtype_array_inst E L {rt} (ty1 ty2 : type rt) len1 len2 :
-    MutSubtype E L (array_t len1 ty1) (array_t len2 ty2) :=
-    λ T, i2p (mut_subtype_array E L ty1 ty2 len1 len2 T).
+  Definition mut_subtype_array_inst := [instance @mut_subtype_array].
+  Global Existing Instance mut_subtype_array_inst.
 
   Lemma mut_eqtype_array E L {rt} (ty1 ty2 : type rt) len1 len2 T :
     ⌜len1 = len2⌝ ∗ mut_eqtype E L ty1 ty2 T
@@ -83,13 +79,12 @@ Section subtype.
     - eapply array_t_full_subtype. by apply full_eqtype_subtype_l.
     - eapply array_t_full_subtype. by apply full_eqtype_subtype_r.
   Qed.
-  Global Instance mut_eqtype_array_inst E L {rt} (ty1 ty2 : type rt) len1 len2 :
-    MutEqtype E L (array_t len1 ty1) (array_t len2 ty2) :=
-    λ T, i2p (mut_eqtype_array E L ty1 ty2 len1 len2 T).
+  Definition mut_eqtype_array_inst := [instance @mut_eqtype_array].
+  Global Existing Instance mut_eqtype_array_inst.
 
   Lemma owned_subtype_array π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 T :
     (∃ r1' r2', ⌜r1 = replicate len #r1'⌝ ∗ ⌜r2 = replicate len #r2'⌝ ∗
-      li_tactic (compute_layout_goal (ty_syn_type ty2)) (λ _,
+      li_tactic (compute_layout_goal (ty_syn_type ty2 MetaNone)) (λ _,
       owned_subtype π E L true r1' r2' ty1 ty2 T))
     ⊢ owned_subtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) T.
   Proof.
@@ -109,8 +104,8 @@ Section subtype.
     - simpl. done.
     - iIntros (v) "Ha".
       rewrite {3 4}/ty_own_val /=.
-      iDestruct "Ha" as "(%ly & %Hst1 & % & <- & %Hvly & Ha)".
-      iExists _. iR.
+      iDestruct "Ha" as "(%ly & _ & %Hst1 & % & <- & %Hvly & Ha)".
+      iExists _. iR. iR.
       assert (ly_size ly = ly_size ly') as Hlysz. { eapply Hszeq; done. }
       rewrite -Hlysz length_replicate. iR.
       rewrite length_replicate. iR.
@@ -122,16 +117,15 @@ Section subtype.
       iPoseProof ("IH" with "Hr") as "$".
       iExists _. iR. by iApply "Hv".
   Qed.
-  Global Instance owned_subtype_array_inst π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 :
-    OwnedSubtype π E L pers r1 r2 (array_t len ty1) (array_t len ty2) :=
-    λ T, i2p (owned_subtype_array π E L pers ty1 ty2 len r1 r2 T).
+  Definition owned_subtype_array_inst := [instance @owned_subtype_array].
+  Global Existing Instance owned_subtype_array_inst.
 
   (** Owned subtype for initialization *)
   Lemma owned_subtype_uninit_array π E L pers {rt} (ty : type rt) (st : syn_type) len r2 T :
     li_tactic (compute_layout_goal st) (λ ly1,
-      li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly2,
+      li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly2,
         ⌜(ly_size ly1 = ly_size ly2 * len)%nat⌝ ∗
-        owned_subtype π E L pers (replicate len #()) r2 (array_t len (uninit (ty_syn_type ty))) (array_t len ty) T))
+        owned_subtype π E L pers (replicate len #()) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) T))
     ⊢ owned_subtype π E L pers () r2 (uninit st) (array_t len ty) T.
   Proof.
     rewrite /compute_layout_goal.
@@ -139,7 +133,7 @@ Section subtype.
     iIntros (????) "#CTX #HE HL".
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & Hincl & ? & ?)".
     iExists L'. iModIntro. iFrame.
-    iAssert (owned_type_incl π (replicate len # ()) r2 (array_t len (uninit (ty_syn_type ty))) (array_t len ty) -∗ owned_type_incl π () r2 (uninit st) (array_t len ty))%I as "Hw"; first last.
+    iAssert (owned_type_incl π (replicate len # ()) r2 (array_t len (uninit (ty_syn_type ty MetaNone))) (array_t len ty) -∗ owned_type_incl π () r2 (uninit st) (array_t len ty))%I as "Hw"; first last.
     { destruct pers.
       { simpl. iDestruct "Hincl" as "#Hincl". iModIntro. by iApply "Hw". }
       { simpl. by iApply "Hw". } }
@@ -159,9 +153,8 @@ Section subtype.
       + done.
       + lia.
   Qed.
-  Global Instance owned_subtype_uninit_array_inst π E L pers {rt} (ty : type rt) st len r2 :
-    OwnedSubtype π E L pers () r2 (uninit st) (array_t len ty) :=
-    λ T, i2p (owned_subtype_uninit_array π E L pers ty st len r2 T).
+  Definition owned_subtype_uninit_array_inst := [instance @owned_subtype_uninit_array].
+  Global Existing Instance owned_subtype_uninit_array_inst.
 End subtype.
 
 Section instances.
@@ -209,9 +202,8 @@ Section instances.
     { specialize (Hi Hnel). congruence. }
     iApply "Hincl".
   Qed.
-  Global Instance weak_subltype_list_replicate_1_inst (E : elctx) (L : llctx) {rt} (k : bor_kind) (lt1 : ltype rt) (lt2 : ltype rt) rs1 rs2 n ig i0 :
-    RelateList E L ig (replicate n lt1) (replicate n lt2) i0 (weak_subltype_list_interp k rs1 rs2) :=
-    λ T, i2p (weak_subltype_list_replicate_1 E L k lt1 lt2 rs1 rs2 n ig i0 T).
+  Definition weak_subltype_list_replicate_1_inst := [instance @weak_subltype_list_replicate_1].
+  Global Existing Instance weak_subltype_list_replicate_1_inst.
 
   Program Definition mut_subltype_list_interp {rt} (cap : nat) (interp : bool) : FoldableRelation :=
     {|
@@ -242,9 +234,8 @@ Section instances.
     - iApply relate_list_replicate_elim_weak; first done; last done.
       simpl. iIntros "_". eauto.
   Qed.
-  Global Instance mut_subltype_list_replicate_inst (E : elctx) (L : llctx) {rt} (lt1 : ltype rt) (lt2 : ltype rt) cap interp n ig i0 :
-    RelateList E L ig (replicate n lt1) (replicate n lt2) i0 (mut_subltype_list_interp cap interp) :=
-    λ T, i2p (mut_subltype_list_replicate E L lt1 lt2 cap interp n ig i0 T).
+  Definition mut_subltype_list_replicate_inst := [instance @mut_subltype_list_replicate].
+  Global Existing Instance mut_subltype_list_replicate_inst.
 
   Program Definition mut_eqltype_list_interp {rt} (cap : nat) (interp : bool) : FoldableRelation :=
     {|
@@ -275,29 +266,26 @@ Section instances.
     - iApply relate_list_replicate_elim_weak; first done; last done.
       simpl. iIntros "_". eauto.
   Qed.
-  Global Instance mut_eqltype_list_replicate_inst (E : elctx) (L : llctx) {rt} (lt1 : ltype rt) (lt2 : ltype rt) cap interp n ig i0 :
-    RelateList E L ig (replicate n lt1) (replicate n lt2) i0 (mut_eqltype_list_interp cap interp) :=
-    λ T, i2p (mut_eqltype_list_replicate E L lt1 lt2 cap interp n ig i0 T).
+  Definition mut_eqltype_list_replicate_inst := [instance @mut_eqltype_list_replicate].
+  Global Existing Instance mut_eqltype_list_replicate_inst.
 
   Local Typeclasses Transparent weak_subltype_list_interp.
   Local Typeclasses Transparent mut_subltype_list_interp.
   Local Typeclasses Transparent mut_eqltype_list_interp.
 
-  Lemma weak_subltype_array_evar_def E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 k T :
+  Lemma weak_subltype_array_evar_def E L {rt1} (def1 : type rt1) (def2 : type rt1) `{!IsProtected def2} len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 k T :
     ⌜def1 = def2⌝ ∗ weak_subltype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def1 len2 lts2) T
     ⊢ weak_subltype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance weak_subltype_array_evar_def_inst E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 k `{!IsProtected def2} :
-    SubLtype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 8 :=
-    λ T, i2p (weak_subltype_array_evar_def E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 k T).
+  Definition weak_subltype_array_evar_def_inst := [instance @weak_subltype_array_evar_def].
+  Global Existing Instance weak_subltype_array_evar_def_inst | 8.
 
-  Lemma weak_subltype_array_evar_lts E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 k T :
+  Lemma weak_subltype_array_evar_lts E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) `{!IsProtected lts2} rs1 rs2 k T :
     ⌜lts1 = lts2⌝ ∗ weak_subltype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts1) T
     ⊢ weak_subltype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance weak_subltype_array_evar_lts_inst E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 k `{!IsProtected lts2} :
-    SubLtype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 9 :=
-    λ T, i2p (weak_subltype_array_evar_lts E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 k T).
+  Definition weak_subltype_array_evar_lts_inst := [instance @weak_subltype_array_evar_lts].
+  Global Existing Instance weak_subltype_array_evar_lts_inst | 9.
 
   Local Lemma weak_subltype_array_helper {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 b1 :
     length rs2 = len1 → length rs1 = len1 →
@@ -337,9 +325,8 @@ Section instances.
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
   Qed.
-  Global Instance weak_subltype_array_owned_in_inst E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 wl :
-    SubLtype E L (Owned wl) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) |10 :=
-    λ T, i2p (weak_subltype_array_owned_in E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 wl T).
+  Definition weak_subltype_array_owned_in_inst := [instance @weak_subltype_array_owned_in].
+  Global Existing Instance weak_subltype_array_owned_in_inst | 10.
 
   Lemma weak_subltype_array_owned E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 wl T :
     (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
@@ -354,9 +341,8 @@ Section instances.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
-  Global Instance weak_subltype_array_owned_inst E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 wl :
-    SubLtype E L (Owned wl) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) |11 :=
-    λ T, i2p (weak_subltype_array_owned E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 wl T).
+  Definition weak_subltype_array_owned_inst := [instance @weak_subltype_array_owned].
+  Global Existing Instance weak_subltype_array_owned_inst | 11.
 
   Lemma weak_subltype_array_shared_in E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 κ T :
     (⌜len1 = len2⌝ ∗
@@ -375,9 +361,8 @@ Section instances.
     iR. setoid_rewrite Nat.add_0_r.
     iApply weak_subltype_array_helper; done.
   Qed.
-  Global Instance weak_subltype_array_shared_in_inst E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 κ :
-    SubLtype E L (Shared κ) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) |10 :=
-    λ T, i2p (weak_subltype_array_shared_in E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 κ T).
+  Definition weak_subltype_array_shared_in_inst := [instance @weak_subltype_array_shared_in].
+  Global Existing Instance weak_subltype_array_shared_in_inst | 10.
 
   Lemma weak_subltype_array_shared E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ T :
     (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
@@ -392,9 +377,8 @@ Section instances.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
-  Global Instance weak_subltype_array_shared_inst E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ :
-    SubLtype E L (Shared κ) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) |11 :=
-    λ T, i2p (weak_subltype_array_shared E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 κ T).
+  Definition weak_subltype_array_shared_inst := [instance @weak_subltype_array_shared].
+  Global Existing Instance weak_subltype_array_shared_inst | 11.
 
   Lemma weak_subltype_array_base E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ γ T :
     (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
@@ -409,9 +393,8 @@ Section instances.
     iSpecialize ("Ha" with "[] [//]"). { iPureIntro. lia. }
     iApply (big_sepL2_mono with "Ha"). eauto.
   Qed.
-  Global Instance weak_subltype_array_base_inst E L {rt1} (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 κ γ :
-    SubLtype E L (Uniq κ γ) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 20 :=
-    λ T, i2p (weak_subltype_array_base E L def1 def2 len1 len2 lts1 lts2 rs1 rs2 κ γ T).
+  Definition weak_subltype_array_base_inst := [instance @weak_subltype_array_base].
+  Global Existing Instance weak_subltype_array_base_inst | 20.
 
   (* for folding : *)
   Program Definition fold_overrides_list_interp {rt} (def : type rt) (cap : nat) (req : bool) : FoldablePredicate :=
@@ -444,9 +427,9 @@ Section instances.
     - iApply fold_list_replicate_elim_weak; first done; last done.
       simpl. iIntros "_". eauto.
   Qed.
-  Global Instance fold_overrides_list_replicate_inst {rt} E L (def : type rt) (lt : ltype rt) n ig i0 cap req :
-    FoldList E L ig (replicate n lt) i0 (fold_overrides_list_interp def cap req) | 20 :=
-    λ T, i2p (fold_overrides_list_replicate E L def lt n ig i0 cap req T).
+  Definition fold_overrides_list_replicate_inst := [instance @fold_overrides_list_replicate].
+  Global Existing Instance fold_overrides_list_replicate_inst | 20.
+
   Local Typeclasses Transparent fold_overrides_list_interp.
 
   Lemma weak_subltype_array_ofty_r E L {rt1} (def1 : type rt1) ty len1 (lts1 : list (nat * ltype rt1)) rs1 rs2 k T :
@@ -473,9 +456,8 @@ Section instances.
       iApply "Hb". }
     iApply ltype_eq_ltype_incl_l. iApply "Hc".
   Qed.
-  Global Instance weak_subltype_array_ofty_r_inst E L {rt1} (def1 : type rt1) ty len1 (lts1 : list (nat * ltype rt1)) rs1 rs2 k :
-    SubLtype E L k rs1 rs2 (ArrayLtype def1 len1 lts1) (◁ ty)%I | 14 :=
-    λ T, i2p (weak_subltype_array_ofty_r E L def1 ty len1 lts1 rs1 rs2 k T).
+  Definition weak_subltype_array_ofty_r_inst := [instance @weak_subltype_array_ofty_r].
+  Global Existing Instance weak_subltype_array_ofty_r_inst | 14.
 
   Lemma weak_subltype_array_ofty_l E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts2 : list (nat * ltype rt2)) rs1 rs2 k T :
     weak_subltype E L k rs1 rs2 (ArrayLtype def1 len1 []) (ArrayLtype def2 len2 lts2) T
@@ -486,10 +468,8 @@ Section instances.
     iModIntro. iApply ltype_incl_trans; last done.
     iApply array_t_unfold_2.
   Qed.
-  Global Instance weak_subltype_array_ofty_l_inst E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts2 : list (nat * ltype rt2)) rs1 rs2 k :
-    SubLtype E L k rs1 rs2 (◁ array_t len1 def1)%I (ArrayLtype def2 len2 lts2) | 14 :=
-    λ T, i2p (weak_subltype_array_ofty_l E L def1 def2 len1 len2 lts2 rs1 rs2 k T).
-
+  Definition weak_subltype_array_ofty_l_inst := [instance @weak_subltype_array_ofty_l].
+  Global Existing Instance weak_subltype_array_ofty_l_inst | 14.
 
   (** mut_subltype *)
   Lemma mut_subltype_array E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T:
@@ -504,24 +484,23 @@ Section instances.
     iPoseProof (big_sepL2_Forall2 with "Hr") as "%Ha".
     iPureIntro. eapply array_full_subltype; done.
   Qed.
-  Global Instance mut_subltype_array_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) :
-    MutSubLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 10 :=
-    λ T, i2p (mut_subltype_array E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_subltype_array_inst := [instance @mut_subltype_array].
+  Global Existing Instance mut_subltype_array_inst | 10.
 
   (* evar handling *)
   Lemma mut_subltype_array_evar_def E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T `{!IsProtected def2} :
     ⌜def1 = def2⌝ ∗ mut_subltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def1 len2 lts2) T
     ⊢ mut_subltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_subltype_array_evar_def_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) `{!IsProtected def2} :
-    MutSubLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 8 := λ T, i2p (mut_subltype_array_evar_def E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_subltype_array_evar_def_inst := [instance @mut_subltype_array_evar_def].
+  Global Existing Instance mut_subltype_array_evar_def_inst | 8.
 
   Lemma mut_subltype_array_evar_lts E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T `{!IsProtected lts2} :
     ⌜lts1 = lts2⌝ ∗ mut_subltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts1) T
     ⊢ mut_subltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_subltype_array_evar_lts_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) `{!IsProtected lts2} :
-    MutSubLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 9 := λ T, i2p (mut_subltype_array_evar_lts E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_subltype_array_evar_lts_inst := [instance @mut_subltype_array_evar_lts].
+  Global Existing Instance mut_subltype_array_evar_lts_inst | 9.
 
   (* ofty unfolding *)
   Lemma mut_subltype_array_ofty_r E L {rt} (def1 : type rt) len1 lts1 ty T :
@@ -537,9 +516,8 @@ Section instances.
     { symmetry. eapply array_t_unfold_full_eqltype. }
     apply array_ltype_make_defaults_full_eqltype. done.
   Qed.
-  Global Instance mut_subltype_array_ofty_r_inst E L {rt} (def1 : type rt) len1 lts1 ty :
-    MutSubLtype E L (ArrayLtype def1 len1 lts1)%I (◁ ty)%I | 14 :=
-    λ T, i2p (mut_subltype_array_ofty_r E L def1 len1 lts1 ty T).
+  Definition mut_subltype_array_ofty_r_inst := [instance @mut_subltype_array_ofty_r].
+  Global Existing Instance mut_subltype_array_ofty_r_inst | 14.
 
   Lemma mut_subltype_array_ofty_l E L {rt} (def1 : type rt) (def2 : type rt) len1 len2 (lts2 : list (nat * ltype rt)) T :
     mut_subltype E L (ArrayLtype def1 len1 []) (ArrayLtype def2 len2 lts2) T
@@ -550,9 +528,8 @@ Section instances.
     apply full_eqltype_subltype_l.
     apply array_t_unfold_full_eqltype.
   Qed.
-  Global Instance mut_subltype_array_ofty_l_inst E L {rt} (def1 : type rt) (def2 : type rt) len1 len2 (lts2 : list (nat * ltype rt)) :
-    MutSubLtype E L (◁ array_t len1 def1)%I (ArrayLtype def2 len2 lts2) | 14 :=
-    λ T, i2p (mut_subltype_array_ofty_l E L def1 def2 len1 len2 lts2 T).
+  Definition mut_subltype_array_ofty_l_inst := [instance @mut_subltype_array_ofty_l].
+  Global Existing Instance mut_subltype_array_ofty_l_inst | 14.
 
   (** eqltype *)
   Lemma mut_eqltype_array E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T:
@@ -567,24 +544,23 @@ Section instances.
     iPoseProof (big_sepL2_Forall2 with "Hr") as "%Ha".
     iPureIntro. eapply array_full_eqltype; done.
   Qed.
-  Global Instance mut_eqltype_array_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) :
-    MutEqLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 10 :=
-    λ T, i2p (mut_eqltype_array E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_eqltype_array_inst := [instance @mut_eqltype_array].
+  Global Existing Instance mut_eqltype_array_inst | 10.
 
   (* evar handling *)
   Lemma mut_eqltype_array_evar_def E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T `{!IsProtected def2} :
     ⌜def1 = def2⌝ ∗ mut_eqltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def1 len2 lts2) T
     ⊢ mut_eqltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_eqltype_array_evar_def_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) `{!IsProtected def2} :
-    MutEqLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 8 := λ T, i2p (mut_eqltype_array_evar_def E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_eqltype_array_evar_def_inst := [instance @mut_eqltype_array_evar_def].
+  Global Existing Instance mut_eqltype_array_evar_def_inst | 8.
 
   Lemma mut_eqltype_array_evar_lts E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) T `{!IsProtected lts2} :
     ⌜lts1 = lts2⌝ ∗ mut_eqltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts1) T
     ⊢ mut_eqltype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_eqltype_array_evar_lts_inst E L {rt} (def1 def2 : type rt) len1 len2 (lts1 lts2 : list (nat * ltype rt)) `{!IsProtected lts2} :
-    MutEqLtype E L (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) | 9 := λ T, i2p (mut_eqltype_array_evar_lts E L def1 def2 len1 len2 lts1 lts2 T).
+  Definition mut_eqltype_array_evar_lts_inst := [instance @mut_eqltype_array_evar_lts].
+  Global Existing Instance mut_eqltype_array_evar_lts_inst | 9.
 
   Lemma mut_eqltype_array_ofty_r E L {rt} (def1 : type rt) len1 lts1 ty T :
     mut_eqtype E L (array_t len1 def1) ty (fold_list E L [] (interpret_iml (◁ def1) len1 lts1) 0 (fold_overrides_list_interp def1 len1 false) T)
@@ -599,9 +575,8 @@ Section instances.
     { symmetry. eapply array_t_unfold_full_eqltype. }
     apply array_ltype_make_defaults_full_eqltype. done.
   Qed.
-  Global Instance mut_eqltype_array_ofty_r_inst E L {rt} (def1 : type rt) len1 lts1 ty :
-    MutEqLtype E L (ArrayLtype def1 len1 lts1)%I (◁ ty)%I | 14 :=
-    λ T, i2p (mut_eqltype_array_ofty_r E L def1 len1 lts1 ty T).
+  Definition mut_eqltype_array_ofty_r_inst := [instance @mut_eqltype_array_ofty_r].
+  Global Existing Instance mut_eqltype_array_ofty_r_inst | 14.
 
   Lemma mut_eqltype_array_ofty_l E L {rt} (def1 : type rt) (def2 : type rt) len1 len2 (lts2 : list (nat * ltype rt)) T :
     mut_eqltype E L (ArrayLtype def1 len1 []) (ArrayLtype def2 len2 lts2) T
@@ -611,9 +586,8 @@ Section instances.
     iPureIntro. etrans; last apply Hsubt.
     apply array_t_unfold_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_array_ofty_l_inst E L {rt} (def1 : type rt) (def2 : type rt) len1 len2 (lts2 : list (nat * ltype rt)) :
-    MutEqLtype E L (◁ array_t len1 def1)%I (ArrayLtype def2 len2 lts2) | 14 :=
-    λ T, i2p (mut_eqltype_array_ofty_l E L def1 def2 len1 len2 lts2 T).
+  Definition mut_eqltype_array_ofty_l_inst := [instance @mut_eqltype_array_ofty_l].
+  Global Existing Instance mut_eqltype_array_ofty_l_inst | 14.
 End instances.
 
 Global Typeclasses Opaque weak_subltype_list_interp.
@@ -621,5 +595,3 @@ Global Typeclasses Opaque mut_subltype_list_interp.
 Global Typeclasses Opaque mut_eqltype_list_interp.
 
 Global Typeclasses Opaque fold_overrides_list_interp.
-
-

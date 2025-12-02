@@ -166,10 +166,13 @@ impl<'def> AbstractVariant<'def> {
             .params
             .iter()
             .map(|names| {
-                coq::term::Term::RecordProj(
-                    Box::new(coq::term::Term::Literal(names.type_term())),
-                    "ty_syn_type".to_owned(),
-                )
+                coq::term::Term::App(Box::new(coq::term::App::new(
+                    coq::term::Term::RecordProj(
+                        Box::new(coq::term::Term::Literal(names.type_term())),
+                        "ty_syn_type".to_owned(),
+                    ),
+                    vec![coq::term::Term::Literal("MetaNone".to_owned())],
+                )))
             })
             .collect();
 
@@ -183,7 +186,7 @@ impl<'def> AbstractVariant<'def> {
                     .get_spec_all_type_term(Box::new(model::Type::Ttype(Box::new(self.rfn_type()))).into()),
             ),
             body: coq::command::DefinitionBody::Proof(coq::proof::Proof::new_using(
-                ty_context_names.join("{}"),
+                ty_context_names.join(" "),
                 coq::proof::Terminator::Defined,
                 |proof| {
                     proof.push(coq::ltac::LTac::Exact(coq::term::Term::App(Box::new(coq::term::App::new(
@@ -469,7 +472,7 @@ impl<'def> Abstract<'def> {
             let mut sls_app = Vec::new();
             for names in &all_ty_params.params {
                 // TODO this is duplicated with the same processing for Type::Literal...
-                let term = format!("(ty_syn_type {})", names.type_term());
+                let term = format!("(ty_syn_type {} MetaNone)", names.type_term());
                 sls_app.push(term);
             }
 

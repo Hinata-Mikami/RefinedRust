@@ -17,10 +17,10 @@ Proof.
   (* do the alloc *)
   typed_val_expr_bind. repeat liRStep; liShow.
   typed_val_expr_bind. repeat liRStep; liShow.
-  iSelect (_ ◁ᵥ{_} size @ _)%I (fun H => iRename H into "Hsize").
-  iSelect (_ ◁ᵥ{_} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "%Hsize".
-  iDestruct "Halign_log2" as "%Halign_log2".
+  iSelect (_ ◁ᵥ{_, _} size @ _)%I (fun H => iRename H into "Hsize").
+  iSelect (_ ◁ᵥ{_, _} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
+  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "(_ & %Hsize)".
+  iDestruct "Halign_log2" as "(_ & %Halign_log2)".
   rewrite /typed_val_expr.
   iIntros (Φ) "#CTX HE HL Hcont".
   iApply (wp_alloc _ _ _ _ (Z.to_nat size) (Z.to_nat align_log2)).
@@ -40,12 +40,10 @@ Proof.
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     assert (syn_type_has_layout (UntypedSynType ly) ly) as Hly'.
     { solve_layout_alg. }
-    iExists ly. simpl. iSplitR; first done.
-    iSplitR; first done. iSplitR; first done.
+    iExists ly. simpl. do 3 iR.
     iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
-    iSplitR; first done.
-    iExists tt. iSplitR; first done.
-    iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iExists ly.
+    iR. iExists tt. iR.
+    iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     iSplitR; first done. iPureIntro. rewrite /has_layout_val length_replicate /ly /ly_size //. }
 
   iRevert "Hf".

@@ -233,8 +233,8 @@ Section test.
   Abort.
 
   Lemma inv_test5 {rt} (T_ty : type rt) (xs : list nat) ly :
-    T_st = ty_syn_type T_ty →
-    use_layout_alg (ArraySynType (ty_syn_type T_ty) (length xs)) = Some ly →
+    T_st = ty_syn_type T_ty MetaNone →
+    use_layout_alg (ArraySynType (ty_syn_type T_ty MetaNone) (length xs)) = Some ly →
     ∃ ly', syn_type_has_layout (T_st) ly'.
   Proof.
     init_jcache.
@@ -381,26 +381,26 @@ Section test.
 
   Lemma inv_test_name_collision {T_rt} (T_ty : type T_rt) U_st {U_rt} (U_ty : type U_rt) ly1 ly2 ly3 ly4 :
     syn_type_has_layout T_st ly1 →
-    syn_type_has_layout (ty_syn_type T_ty) ly2 →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) ly2 →
     syn_type_has_layout U_st ly3 →
-    syn_type_has_layout (ty_syn_type U_ty) ly4 →
-    ty_syn_type T_ty = T_st →
-    ty_syn_type U_ty = U_st →
+    syn_type_has_layout (ty_syn_type U_ty MetaNone) ly4 →
+    ty_syn_type T_ty MetaNone = T_st →
+    ty_syn_type U_ty MetaNone = U_st →
     True.
   Proof.
     init_jcache.
     (* Regression test: This should not diverge. *)
-    intros []. inv_layout_alg.
-    intros []. inv_layout_alg.
-    intros []. inv_layout_alg.
-    intros []. inv_layout_alg.
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
+    intros ?. inv_layout_alg.
   Abort.
 
   (* Regression test: [st_of] is a notation now, not a definition. *)
   Definition tuple1_sls (T0_st : syn_type) : struct_layout_spec :=
    mk_sls "tuple1" [("0", T0_st)] StructReprRust.
   Lemma inv_test_5 {U_rt} (U_ty : type U_rt) x :
-    use_layout_alg (tuple1_sls (st_of U_ty)) = Some x → True.
+    use_layout_alg (tuple1_sls (st_of U_ty MetaNone)) = Some x → True.
   Proof.
     init_jcache.
     intros H.
@@ -410,8 +410,8 @@ Section test.
 
   Lemma inv_test_5 {U_rt} (U_ty : type U_rt) U_st x x1 :
     use_layout_alg (tuple1_sls U_st) = Some x1 →
-    use_layout_alg (tuple1_sls (st_of U_ty)) = Some x →
-    ty_syn_type U_ty = U_st →
+    use_layout_alg (tuple1_sls (st_of U_ty MetaNone)) = Some x →
+    ty_syn_type U_ty MetaNone = U_st →
     True.
   Proof.
     init_jcache.
@@ -429,11 +429,11 @@ End test.
 
 Section test.
   Lemma inv_test `{!typeGS Σ} {rt} (T : type rt) s2_ly :
-    use_layout_alg (s2_spec (ty_syn_type T)) = Some s2_ly →
-    use_layout_alg (s2_spec (ty_syn_type T)) = Some s2_ly →
+    use_layout_alg (s2_spec (ty_syn_type T MetaNone)) = Some s2_ly →
+    use_layout_alg (s2_spec (ty_syn_type T MetaNone)) = Some s2_ly →
     ∃ s2_sl : struct_layout, s2_ly = layout_of s2_sl ∧
     ∃ s1_sl : struct_layout,
-    ∃ T_ly, syn_type_has_layout (ty_syn_type T) T_ly ∧
+    ∃ T_ly, syn_type_has_layout (ty_syn_type T MetaNone) T_ly ∧
       sl_has_members s1_sl [("s1_f1", T_ly); ("s1_f2", (it_layout I32))] ∧
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
@@ -558,8 +558,8 @@ Section test.
   *)
 
   Lemma solve_layout_alg_test8 {T_rt} (T_ty : type T_rt) T_ly :
-    syn_type_has_layout (ty_syn_type T_ty) T_ly →
-    syn_type_has_layout (ty_syn_type T_ty) (use_layout_alg' (ty_syn_type T_ty)).
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) T_ly →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) (use_layout_alg' (ty_syn_type T_ty MetaNone)).
   Proof.
     intros. inv_layout_alg.
     solve_layout_alg; solve[fail].
@@ -642,8 +642,8 @@ Section test.
   Abort.
 
   Lemma solve_op_alg_test5 {T_rt} (T_ty : type T_rt) T_ly :
-    syn_type_has_layout (ty_syn_type T_ty) T_ly →
-    use_op_alg (ty_syn_type T_ty) = Some (use_op_alg' (ty_syn_type T_ty)).
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) T_ly →
+    use_op_alg (ty_syn_type T_ty MetaNone) = Some (use_op_alg' (ty_syn_type T_ty MetaNone)).
   Proof.
     intros. inv_layout_alg.
     solve_op_alg; solve[fail].
@@ -684,11 +684,11 @@ Section test.
     all: solve [fail].
   Abort.
 
-  Lemma ty_allows_reads_struct_2 {T_rt} (T_ty : type T_rt) ly :
+  Lemma ty_allows_reads_struct_2 {T_rt} (T_ty : type T_rt) `{!TySized T_ty} ly :
     ty_allows_reads T_ty →
-    struct_layout_spec_has_layout (s1_spec (ty_syn_type T_ty)) ly →
-    syn_type_has_layout (ty_syn_type T_ty) ly →
-    ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty)) +[T_ty; int I32]).
+    struct_layout_spec_has_layout (s1_spec (ty_syn_type T_ty MetaNone)) ly →
+    syn_type_has_layout (ty_syn_type T_ty MetaNone) ly →
+    ty_allows_reads (struct_t (s1_spec (ty_syn_type T_ty MetaNone)) +[T_ty; int I32]).
   Proof.
     intros. inv_layout_alg.
     solve_ty_allows.
@@ -908,7 +908,7 @@ Section test.
     ("p1", T_st);
     ("p2", T_st)] StructReprRust.
   Lemma test7 E L {T_rt} (T_ty : type T_rt) :
-    lctx_lft_incl E L (lft_intersect_list (ty_lfts (struct_t (pair_sls (ty_syn_type T_ty)) +[T_ty; T_ty]))) (lft_intersect_list (ty_lfts T_ty)).
+    lctx_lft_incl E L (lft_intersect_list (ty_lfts (struct_t (pair_sls (ty_syn_type T_ty MetaNone)) +[T_ty; T_ty]))) (lft_intersect_list (ty_lfts T_ty)).
   Proof.
     (* TODO: we cannot handle this currently *)
     (*solve_lft_incl.*)
@@ -1021,7 +1021,7 @@ Section test.
     Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition RawVec_ty : type (plist place_rfnRT [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty)) +[
+    Definition RawVec_ty : type (plist place_rfnRT [_ : RT; Z : RT; unit : RT]) := struct_t (RawVec_sls (ty_syn_type T_ty MetaNone)) +[
       alias_ptr_t;
       (int USize);
       unit_t].
@@ -1060,7 +1060,7 @@ Section test.
     Context {T_rt : RT}.
     Context (T_ty : type (T_rt)).
 
-    Definition Vec_ty : type (plist place_rfnRT [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty)) +[
+    Definition Vec_ty : type (plist place_rfnRT [_ : RT; Z : RT]) := struct_t (Vec_sls (ty_syn_type T_ty MetaNone)) +[
       (RawVec_inv_t (T_ty));
       (int USize)].
     Definition Vec_rt : RT := Eval hnf in rt_of Vec_ty.

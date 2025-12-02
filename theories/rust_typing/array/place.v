@@ -18,7 +18,7 @@ Section place.
     { by eapply lookup_lt_Some. }
     { by eapply lookup_lt_Some. }
     iFrame. iApply big_sepL2_intro; first done.
-  iModIntro. iIntros (k lt1' lt2' Hlook' ?). case_decide; first done.
+    iModIntro. iIntros (k lt1' lt2' Hlook' ?). case_decide; first done.
     assert (lt1' = lt2') as -> by congruence.
     apply lookup_interpret_iml_Some_inv in Hlook' as (? & [-> | Hel]).
     { iApply typed_place_cond_refl_ofty. }
@@ -54,10 +54,10 @@ Section place.
     done.
   Qed.
 
-  Lemma typed_place_array_owned π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) P T :
+  Lemma typed_place_array_owned π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
-      ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π} i @ tyv) (v ◁ᵥ{π} i' @ int it) (λ L1 R2, R2 -∗
+      ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
+      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -65,7 +65,7 @@ Section place.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L1 bmin (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
+        typed_place π E L1 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
           T L2 κs li bi bmin2 rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (mkPUpd _ bmin
@@ -78,7 +78,7 @@ Section place.
               opt_place_update_eq_refl
             )))
         )))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
+    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
     iIntros (????) "#CTX #HE HL Hl Hcont".
@@ -91,7 +91,7 @@ Section place.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "%Hi".
+    iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
     iApply wp_ptr_offset.
@@ -154,10 +154,10 @@ Section place.
   Definition typed_place_array_owned_inst := [instance @typed_place_array_owned].
   Global Existing Instance typed_place_array_owned_inst | 30.
 
-  Lemma typed_place_array_uniq π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) P T :
+  Lemma typed_place_array_uniq π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
-      ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π} i @ tyv) (v ◁ᵥ{π} i' @ int it) (λ L1 R2, R2 -∗
+      ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
+      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       (* get lifetime token *)
       li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
@@ -168,7 +168,7 @@ Section place.
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L2 (UpdUniq [κ]) (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
         ⌜lctx_place_update_kind_incl E L2 (UpdUniq [κ]) bmin0⌝ ∗
-        typed_place π E L2 (l offsetst{ty_syn_type def}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
+        typed_place π E L2 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
           T L3 (κs ++ κs') li bi bmin2 rti ltyi ri
             (λ L4 upd cont, updcx L4 upd (λ upd',
               ⌜lctx_place_update_kind_incl E L4 upd'.(pupd_performed) (UpdUniq [κ])⌝ ∗
@@ -182,7 +182,7 @@ Section place.
                 opt_place_update_eq_refl
               )))
           ))))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin0 (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
+    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin0 (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%i' & %Hst & HT)".
@@ -199,7 +199,7 @@ Section place.
     iMod "HclF" as "_".
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "%Hi".
+    iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply (wp_logical_step with "TIME Hcl"); [done.. | ].
     iApply wp_ptr_offset.
@@ -258,10 +258,10 @@ Section place.
   Global Existing Instance typed_place_array_uniq_inst | 30.
 
   (* TODO this is a problem, because we can only get strong below OpenedLtype etc. *)
-  Lemma typed_place_array_shared π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) P T :
+  Lemma typed_place_array_shared π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
-      ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π} i @ tyv) (v ◁ᵥ{π} i' @ int it) (λ L1 R2, R2 -∗
+      ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
+      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -269,7 +269,7 @@ Section place.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L1 bmin (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
+        typed_place π E L1 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
         T L3 κs' li bi bmin2 rti ltyi ri
           (λ L4 upd cont, updcx L4 upd (λ upd',
             cont (mkPUpd _ bmin
@@ -282,7 +282,7 @@ Section place.
               opt_place_update_eq_refl
             )))
           )))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v rtv tyv i :: P) T.
+    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
     iIntros (????) "#CTX #HE HL Hl Hcont".
@@ -295,7 +295,7 @@ Section place.
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     iMod "HclF" as "_".
     iEval (rewrite /ty_own_val/=) in "Hi".
-    iDestruct "Hi" as "%Hi".
+    iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & TIME & LLCTX)".
     iApply wp_fupd.
     iApply wp_ptr_offset.

@@ -8,32 +8,34 @@ Section mut_ref.
 
   Program Definition mut_ref  {rt : RT} (κ : lft) (inner : type rt) : type (place_rfn rt * gname)%type := {|
     ty_sidecond := True;
-    ty_own_val π '(r, γ) v :=
-      (∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗
-      ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗
+    ty_metadata_kind := MetadataNone;
+    ty_own_val π '(r, γ) m v :=
+      (∃ (l : loc) (ly : layout), ⌜m = MetaNone⌝ ∗ ⌜v = l⌝ ∗
+      ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
       inner.(ty_sidecond) ∗
       place_rfn_interp_mut r γ ∗
       have_creds ∗
-      |={lftE}=> &pin{κ} (∃ r' : rt, gvar_auth γ r' ∗ |={lftE}=> l ↦: inner.(ty_own_val) π r'))%I;
+      |={lftE}=> &pin{κ} (∃ r' : rt, gvar_auth γ r' ∗ |={lftE}=> l ↦: inner.(ty_own_val) π r' MetaNone))%I;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;
-    ty_syn_type := PtrSynType;
+    ty_syn_type _ := PtrSynType;
 
-    ty_shr κ' tid '(r, γ) l :=
+    ty_shr κ' π '(r, γ) m l :=
       (∃ (li : loc) (ly : layout) (r' : rt),
+        ⌜m = MetaNone⌝ ∗
         ⌜l `has_layout_loc` void*⌝ ∗
         place_rfn_interp_shared r r' ∗
           &frac{κ'}(λ q', l ↦{q'} li) ∗
           (* needed explicity because there is a later + fupd over the sharing predicate *)
-          ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗
+          ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
           ⌜li `has_layout_loc` ly⌝ ∗
           loc_in_bounds l 0 void*.(ly_size) ∗
           loc_in_bounds li 0 ly.(ly_size) ∗
           inner.(ty_sidecond) ∗
           (* we still need a later for contractiveness *)
-          ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') tid r' li))%I;
+          ▷ □ (|={lftE}=> inner.(ty_shr) (κ⊓κ') π r' MetaNone li))%I;
     (* NOTE: we cannot descend below the borrow here to get more information recursively.
        But this is fine, since the observation about γ here already contains all the information we need. *)
     (* We need the inner lifetimes also to initiate sharing *)
@@ -44,7 +46,7 @@ Section mut_ref.
     simpl. apply _.
   Qed.
   Next Obligation.
-    iIntros (? κ inner  π [r γ] v) "(%l & %ly & -> & _)".
+    iIntros (? κ inner  π [r γ] m v) "(%l & %ly & -> & -> & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -54,18 +56,18 @@ Section mut_ref.
     - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
-    iIntros (? κ ? π r v) "_". done.
+    iIntros (? κ ? π r m v) "_". done.
   Qed.
   Next Obligation.
-    iIntros (? κ ? ? π r v) "_". done.
+    iIntros (? κ ? ? π r m v) "_". done.
   Qed.
   Next Obligation.
     unfold TCNoResolve.
     iIntros (? κ ? κ' π l [r γ]). apply _.
   Qed.
   Next Obligation.
-    iIntros (??????[r γ]) "(%li & %ly & %r' & % & ? &  _)".
-    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    iIntros (??????[r γ] m) "(%li & %ly & %r' & -> & % & ? &  _)".
+    iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
@@ -88,7 +90,7 @@ Section mut_ref.
 
     *)
 
-    iIntros (? κ ? E κ' l ly π [r γ] q ?) "#[LFT TIME] Htok %Hst %Hly _ Hb".
+    iIntros (? κ ? E κ' l ly π [r γ] m q ?) "#[LFT TIME] Htok %Hst %Hly _ Hb".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
@@ -96,6 +98,8 @@ Section mut_ref.
 
     iMod (bor_exists with "LFT Hb") as (l0) "Hb"; first solve_ndisj.
     iMod (bor_exists with "LFT Hb") as (ly0) "Hb"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Ha Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Ha & Hb)"; first solve_ndisj.
@@ -163,7 +167,7 @@ Section mut_ref.
     iCombine "Htok Htok2" as "Htok".
     rewrite {2}lft_intersect_comm lft_intersect_assoc.
     iFrame "Htok".
-    iExists l0, ly0, r'. iFrame "Hl".
+    iExists l0, ly0, r'. iR. iFrame "Hl".
     apply syn_type_has_layout_ptr_inv in Hst as ->.
     iR. iSplitR. { destruct r; simpl; eauto. }
     iSplitR; first done. iSplitR; first done.
@@ -172,26 +176,27 @@ Section mut_ref.
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.
-    iIntros (? κ inner κ0 κ' π [r γ] l) "#Hincl".
-    iIntros "(%li & %ly & %r' & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & #Hb)".
-    iExists li, ly, r'. iFrame.
+    iIntros (? κ inner κ0 κ' π [r γ] m l) "#Hincl".
+    iIntros "(%li & %ly & %r' & -> & Hly & Hrfn & Hf & ? & ? & ? & ? & ? & #Hb)".
+    iExists li, ly, r'. iR. iFrame.
     iSplitL "Hf". { iApply frac_bor_shorten; done. }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
     iApply ty_shr_mono; last done.
     iApply lft_intersect_mono; last done. iApply lft_incl_refl.
   Qed.
   Next Obligation.
-    iIntros (??? ot mt st ? [r γ] ? Hot).
+    iIntros (??? ot mt st ? [r γ] m ? Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%l & %ly & -> & ?)". iExists l, ly. iFrame.
+    - iIntros "(%l & %ly & -> & -> & ?)". iExists l, ly. iFrame.
+      iR.
       iPureIntro. move: ot Hot => [] /=// _.
       rewrite /mem_cast val_to_of_loc //.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%l & %ly & -> & _)". eauto.
+      iIntros "(%l & %ly & -> & -> & _)". eauto.
   Qed.
   Next Obligation.
-    intros ??? ly mt Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    intros ??? ly mt _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
 
@@ -205,16 +210,22 @@ Section mut_ref.
       end
     ) _.
   Next Obligation.
-    iIntros (????[r γ]???) "(%l & %ly & -> & _ & _ & _ & _ & Hrfn & Hcred &  _)".
+    iIntros (????[r γ]????) "(%l & %ly & -> & -> & _ & _ & _ & _ & Hrfn & Hcred &  _)".
     iApply fupd_logical_step. destruct r as [ r | γ'].
     - iMod (gvar_obs_persist with "Hrfn") as "?".
       iApply logical_step_intro. by iFrame.
     - by iApply logical_step_intro.
   Qed.
 
+  Global Instance mut_ref_sized {rt} (ty : type rt) κ : TySized (mut_ref κ ty).
+  Proof.
+    econstructor; done.
+  Qed.
+
   Global Instance mut_ref_type_contractive {rt : RT} κ : TypeContractive (mut_ref (rt:=rt) κ).
   Proof.
     constructor; simpl.
+    - done.
     - done.
     - eapply ty_lft_morph_make_ref.
       + rewrite {1}ty_lfts_unfold. done.

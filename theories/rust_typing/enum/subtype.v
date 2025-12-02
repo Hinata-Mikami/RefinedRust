@@ -25,17 +25,17 @@ Section subtype.
   Global Instance enum_incl_pers {rt} (e1 e2 : enum rt) : Persistent (enum_incl e1 e2).
   Proof. apply _. Qed.
 
-  Lemma enum_own_val_mono {rt} (e1 e2 : enum rt) r :
+  Lemma enum_own_val_mono {rt} (e1 e2 : enum rt) r m :
     enum_incl e1 e2 -∗
-    ∀ π v, v ◁ᵥ{π} r @ enum_t e1 -∗ v ◁ᵥ{π} r @ enum_t e2.
+    ∀ π v, v ◁ᵥ{π, m} r @ enum_t e1 -∗ v ◁ᵥ{π, m} r @ enum_t e2.
   Proof.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (π v) "Hv".
     rewrite /ty_own_val/=.
-    iDestruct "Hv" as "(%ly & %tag & %Hst & %Htag' & Hv)".
+    iDestruct "Hv" as "(%ly & %tag & -> & %Hst & %Htag' & Hv)".
     iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
     iExists ly, tag.
-    rewrite -Hels. iR. rewrite -Htag. iR.
+    rewrite -Hels. iR. rewrite -Htag. iR. iR.
     simpl.
     (* TODO: somehow specializing with Hv doesn't work *)
     iApply (struct_t_own_val_mono with "[]"); last done.
@@ -46,17 +46,17 @@ Section subtype.
     simpl. iApply active_union_type_incl; first done.
     destruct Heq. done.
   Qed.
-  Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r :
+  Lemma enum_shr_mono {rt} (e1 e2 : enum rt) r m :
     enum_incl e1 e2 -∗
-    ∀ κ π l, l ◁ₗ{π, κ} r @ enum_t e1 -∗ l ◁ₗ{π, κ} r @ enum_t e2.
+    ∀ κ π l, l ◁ₗ{π, m, κ} r @ enum_t e1 -∗ l ◁ₗ{π, m, κ} r @ enum_t e2.
   Proof.
     iIntros "(%Hels & %Htag & #Hincl)".
     iIntros (κ π l) "Hl".
     rewrite /ty_shr/=.
-    iDestruct "Hl" as "(%ly & %tag & %Hst & %Htag' & Hl)".
+    iDestruct "Hl" as "(%ly & %tag & -> & %Hst & %Htag' & Hl)".
     iDestruct ("Hincl" $! r) as "(%Heq & Hincl')".
     iExists ly, tag.
-    rewrite -Hels. rewrite -Htag. iR. iR.
+    rewrite -Hels. rewrite -Htag. iR. iR. iR.
     iApply (struct_t_shr_mono with "[] Hl").
     rewrite /struct_t_incl_precond. simpl.
     iSplit. { rewrite Hels. iApply type_incl_refl. }
@@ -73,8 +73,8 @@ Section subtype.
     iSplitR. { simpl. rewrite Hels //. }
     iSplitR. { iModIntro. simpl. eauto. }
     iSplit; iModIntro.
-    - by iApply enum_own_val_mono.
-    - by iApply enum_shr_mono.
+    - iIntros (???) "?". by iApply enum_own_val_mono.
+    - iIntros (????) "?". by iApply enum_shr_mono.
   Qed.
 
   Definition full_enum_incl E L {rt} (e1 e2 : enum rt) : Prop :=

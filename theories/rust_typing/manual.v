@@ -181,8 +181,8 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
       prove_with_subtype updateable_E updateable_L false ProveDirect (£ (Nat.b2n wl)) (λ L2 κs R, R -∗
-      li_tactic (compute_layout_goal ty.(ty_syn_type)) (λ ly,
-      (∀ v3, v3 ◁ᵥ{π} r' @ ty -∗
+      li_tactic (compute_layout_goal (ty.(ty_syn_type) MetaNone)) (λ ly,
+      (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
         l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (UntypedSynType ly)) -∗
         updateable_core updateable_E L2))))
     ⊢ P.
@@ -209,8 +209,8 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
       prove_with_subtype updateable_E updateable_L false ProveDirect (£ (Nat.b2n wl)) (λ L2 κs R, R -∗
-      (∀ v3, v3 ◁ᵥ{π} r' @ ty -∗
-        l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (st_of ty)) -∗
+      (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
+        l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (st_of ty MetaNone)) -∗
         updateable_core updateable_E L2)))
     ⊢ P.
   Proof.
@@ -238,12 +238,13 @@ Section updateable_rules.
       ∃ wl v st,
         subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned wl] #v @ ◁ value_t st)
         (λ L2 R2,
-        find_in_context (FindVal v) (λ '(existT rt (ty', r', π')),
-        ⌜π' = π⌝ ∗
-        ⌜ty_has_op_type ty' (use_op_alg' ty'.(ty_syn_type)) MCCopy⌝ ∗
-        ⌜ty'.(ty_syn_type) = st⌝ ∗
+        find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
+        ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
+        find_tc_inst (TySized ty') (λ _,
+        ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
+        ⌜ty'.(ty_syn_type) MetaNone = st⌝ ∗
         introduce_with_hooks updateable_E L2 ((l ◁ₗ[π, Owned wl] #r' @ ◁ ty') ∗ R2)%I (λ L3,
-          updateable_core updateable_E L3))))
+          updateable_core updateable_E L3)))))
     ⊢ P.
   Proof.
     iIntros "HT".
@@ -253,7 +254,7 @@ Section updateable_rules.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %wl & %v & %st & HT)"; simpl.
     rewrite /subsume_full.
     iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & HT)"; [done.. | ].
-    iDestruct "HT" as ([rt' [[ty' r'] π']]) "(Hv & -> & %Hot & %Heq & HT)" => /=.
+    iDestruct "HT" as ([rt' [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
     iPoseProof (ofty_own_merge_value with "Hv Hl") as "Ha".
     { subst st. destruct (ty_syn_type ty'); try done.
@@ -368,8 +369,8 @@ Section test.
 End test.
 
 Lemma tac_typed_val_expr_bind' `{!typeGS Σ} E L K e T :
-  typed_val_expr E L (W.to_expr e) (λ L' π v rt ty r,
-    v ◁ᵥ{π} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill K (W.Val v))) T) -∗
+  typed_val_expr E L (W.to_expr e) (λ L' π v m rt ty r,
+    v ◁ᵥ{π, m} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill K (W.Val v))) T) -∗
   typed_val_expr E L (W.to_expr (W.fill K e)) T.
 Proof.
   iIntros "He".
@@ -377,14 +378,14 @@ Proof.
   iIntros (Φ) "#CTX #HE HL Hcont".
   iApply tac_wp_bind'.
   iApply ("He" with "CTX HE HL").
-  iIntros (L' π v rt ty r) "HL Hv Hcont'".
+  iIntros (L' π v m rt ty r) "HL Hv Hcont'".
   iApply ("Hcont'" with "Hv CTX HE HL"). done.
 Qed.
 Lemma tac_typed_val_expr_bind `{!typeGS Σ} E L e Ks e' T :
   W.find_expr_fill e false = Some (Ks, e') →
-  typed_val_expr E L (W.to_expr e') (λ L' π v rt ty r,
-    if Ks is [] then T L' π v rt ty r else
-      v ◁ᵥ{π} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill Ks (W.Val v))) T) -∗
+  typed_val_expr E L (W.to_expr e') (λ L' π v m rt ty r,
+    if Ks is [] then T L' π v m rt ty r else
+      v ◁ᵥ{π, m} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill Ks (W.Val v))) T) -∗
   typed_val_expr E L (W.to_expr e) T.
 Proof.
   move => /W.find_expr_fill_correct ->. move: Ks => [|K Ks] //.
@@ -404,8 +405,8 @@ Tactic Notation "typed_val_expr_bind" :=
 
 Lemma tac_typed_stmt_bind `{!typeGS Σ} E L s e Ks fn ϝ T :
   W.find_stmt_fill s = Some (Ks, e) →
-  typed_val_expr E L (W.to_expr e) (λ L' π v rt ty r,
-    v ◁ᵥ{π} r @ ty -∗ typed_stmt E L' (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ) -∗
+  typed_val_expr E L (W.to_expr e) (λ L' π v m rt ty r,
+    v ◁ᵥ{π, m} r @ ty -∗ typed_stmt E L' (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ) -∗
   typed_stmt E L (W.to_stmt s) fn T ϝ.
 Proof.
   move => /W.find_stmt_fill_correct ->. iIntros "He".
@@ -416,7 +417,7 @@ Proof.
   iApply wp_bind.
   iApply (wp_wand with "[He HL]").
   { rewrite /typed_val_expr. iApply ("He" with "CTX HE HL").
-    iIntros (L' π v rt ty r) "HL Hv Hcont".
+    iIntros (L' π v m rt ty r) "HL Hv Hcont".
     iApply ("Hcont" with "Hv CTX HE HL"). }
   iIntros (v) "HWP".
   rewrite -(HKs' (W.Val _)) /W.to_expr.

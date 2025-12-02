@@ -379,7 +379,7 @@ Section accessors.
     iIntros "( Hcur & Hfull)". iFrame.
     iIntros (rt_cur' lt_cur' r_cur' Hst') "Hb".
     rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
-    iFrame. 
+    iFrame.
   Qed.
 
   Lemma opened_ltype_create_uniq_simple π {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r l κ κ' γ (r1 r2 : rt_full) q C n R :
@@ -449,15 +449,15 @@ Section accessors.
   Lemma ofty_ltype_acc_owned {rt} F π (ty : type rt) (r : rt) wl l :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty) -∗
-    ∃ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗ ty_sidecond ty ∗ loc_in_bounds l 0 (ly_size ly) ∗ |={F}=>
-      ∃ v : val, l ↦ v ∗ v ◁ᵥ{π} r @ ty ∗
+      ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r @ ty ∗
       logical_step F
       (∀ v2 rt2 (ty2 : type rt2) (r2 : rt2),
         l ↦ v2 -∗
-        ⌜ty.(ty_syn_type) = ty2.(ty_syn_type)⌝ -∗
+        ⌜ty.(ty_syn_type) MetaNone = ty2.(ty_syn_type) MetaNone⌝ -∗
         ty_sidecond ty2 -∗
-        (▷?wl v2 ◁ᵥ{π} r2 @ ty2) ={F}=∗
+        (▷?wl v2 ◁ᵥ{π, MetaNone} r2 @ ty2) ={F}=∗
         l ◁ₗ[π, Owned wl] PlaceIn r2 @ (◁ ty2)).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -481,21 +481,21 @@ Section accessors.
     q.[κ] -∗
     (q.[κ] ={lftE}=∗ R) -∗
     l ◁ₗ[π, Uniq κ γ] #r @ (◁ ty) -∗
-    ∃ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly) ∗ |={F}=>
-      ∃ v : val, l ↦ v ∗ v ◁ᵥ{π} r @ ty ∗
+      ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r @ ty ∗
       logical_step F
       ((* weak update *)
        (∀ v2 (r2 : rt),
         l ↦ v2 -∗
-        (▷ v2 ◁ᵥ{π} r2 @ ty) ={F}=∗
+        (▷ v2 ◁ᵥ{π, MetaNone} r2 @ ty) ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #r2 @ (◁ ty) ∗ R) ∧
        (* strong update *)
        (∀ v2 rt2 (ty2 : type rt2) (r2 : rt2),
         l ↦ v2 -∗
         ty_sidecond ty2 -∗
-        (v2 ◁ᵥ{π} r2 @ ty2)  -∗
-        ⌜ty_syn_type ty = ty_syn_type ty2⌝ ={F}=∗
+        (v2 ◁ᵥ{π, MetaNone} r2 @ ty2)  -∗
+        ⌜ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone⌝ ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #(r2) @ OpenedLtype (◁ty2) (◁ty) (◁ty) (λ r1 r1', ⌜r1 = r1'⌝) (λ _ _, R))).
   Proof.
     iIntros (?) "#(LFT & TIME & LLCTX) Htok HclR Hb". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -524,7 +524,8 @@ Section accessors.
       (* TODO maybe provide excess credits *)
     - iIntros (v2 rt2 ty2 r2) "Hl #Hsc2 Hv %Hst". iModIntro.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
-      iApply (opened_ltype_create_uniq_simple with "Hobs Hauth Hcred1 Hat Hinclκ HclR Hcl [] [Hcred']"); first done.
+      iApply (opened_ltype_create_uniq_simple with "Hobs Hauth Hcred1 Hat Hinclκ HclR Hcl [] [Hcred']").
+      { setoid_rewrite Hst. done. }
       { iModIntro. iIntros (?) "Hauth Hc". iExists _. iFrame. simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         iDestruct "Hc" as ">(%ly' & % & % & _ & _ & _ & %r' & -> & >Hb)". eauto. }
@@ -538,10 +539,10 @@ Section accessors.
 
   Lemma ofty_ltype_acc_shared {rt} F π (ty : type rt) (r : rt) κ l :
     lftE ⊆ F →
-    l ◁ₗ[π, Shared κ] PlaceIn r @ (◁ ty) -∗
-    ∃ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
+    l ◁ₗ[π, Shared κ] #r @ (◁ ty) -∗
+    ∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
     ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly) ∗ |={F}=>
-    l ◁ₗ{π, κ} r @ ty.
+    l ◁ₗ{π, MetaNone, κ} r @ ty.
   Proof.
     iIntros (?) "Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -586,11 +587,11 @@ Section ofty.
   Context `{!typeGS Σ}.
 
   Lemma ofty_mono_ly_strong_in π {rt1 rt2} l wl (ty1 : type rt1) (ty2 : type rt2) (r1 : rt1) (r2 : rt2) ly1 ly2 :
-    syn_type_has_layout (ty1.(ty_syn_type)) ly1 →
-    syn_type_has_layout (ty2.(ty_syn_type)) ly2 →
+    syn_type_has_layout (ty1.(ty_syn_type) MetaNone) ly1 →
+    syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly2 →
     (l `has_layout_loc` ly1 → l `has_layout_loc` ly2) →
     ly_size ly2 = ly_size ly1 →
-    (∀ v, ty1.(ty_own_val) π r1 v -∗ ty2.(ty_own_val) π r2 v) -∗
+    (∀ v, ty1.(ty_own_val) π r1 MetaNone v -∗ ty2.(ty_own_val) π r2 MetaNone v) -∗
     (ty_sidecond ty1 -∗ ty_sidecond ty2) -∗
     l ◁ₗ[π, Owned wl] #r1 @ (◁ ty1) -∗
     l ◁ₗ[π, Owned wl] #r2 @ (◁ ty2).
@@ -608,11 +609,11 @@ Section ofty.
     iModIntro. iExists v. iFrame. by iApply "Hvs".
   Qed.
   Lemma ofty_mono_ly_strong π {rt1} l wl (ty1 : type rt1) (ty2 : type rt1) (r1 : place_rfn rt1) ly1 ly2 :
-    syn_type_has_layout (ty1.(ty_syn_type)) ly1 →
-    syn_type_has_layout (ty2.(ty_syn_type)) ly2 →
+    syn_type_has_layout (ty1.(ty_syn_type) MetaNone) ly1 →
+    syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly2 →
     (l `has_layout_loc` ly1 → l `has_layout_loc` ly2) →
     ly_size ly2 = ly_size ly1 →
-    (∀ v r, ty1.(ty_own_val) π r v -∗ ty2.(ty_own_val) π r v) -∗
+    (∀ v r, ty1.(ty_own_val) π r MetaNone v -∗ ty2.(ty_own_val) π r MetaNone v) -∗
     (ty_sidecond ty1 -∗ ty_sidecond ty2) -∗
     l ◁ₗ[π, Owned wl] r1 @ (◁ ty1) -∗
     l ◁ₗ[π, Owned wl] r1 @ (◁ ty2).

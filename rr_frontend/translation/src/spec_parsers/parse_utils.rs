@@ -419,7 +419,7 @@ pub(crate) trait ParamLookup<'def> {
             };
 
             annot_meta.add_type(&param);
-            format!("{}(ty_syn_type {})", &c[1], param)
+            format!("{}(ty_syn_type {} MetaNone)", &c[1], param)
         });
 
         let cs = RE_LY_OF.replace_all(&cs, |c: &Captures<'_>| {
@@ -432,7 +432,7 @@ pub(crate) trait ParamLookup<'def> {
             };
 
             annot_meta.add_type(&param);
-            format!("{}(use_layout_alg' (ty_syn_type {}))", &c[1], param)
+            format!("{}(use_layout_alg' (ty_syn_type {} MetaNone))", &c[1], param)
         });
 
         let cs = RE_TY_OF.replace_all(&cs, |c: &Captures<'_>| {

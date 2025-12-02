@@ -13,8 +13,8 @@ Section subltype.
     length rs1 = len → length rs2 = len →
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1;lt2 ∈ zip (interpret_iml (◁ def1) len lts1) rs1; zip (interpret_iml (◁ def2) len lts2) rs2, ltype_incl b lt1.2 lt2.2 lt1.1 lt2.1) -∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs1, ⌜ltype_st lt = ty_syn_type def1⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs2, ⌜ltype_st lt = ty_syn_type def2⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs1, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs2, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
   Proof.
     iIntros (? Hlen1 Hlen2 Hstdef) "#Hincl Ha".
     iInduction len as [ | len] "IH" forall (k rs1 rs2 lts1 lts2 Hlen1 Hlen2); simpl.
@@ -42,8 +42,8 @@ Section subltype.
     length rs = len →
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ∀ r, ltype_incl b r r lt1 lt2) -∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt) ={F}=∗
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ lt).
   Proof.
     iIntros (? Hlen Hstdef) "#Hincl Ha".
     iInduction len as [ | len] "IH" forall (k rs lts1 lts2 Hlen); simpl.
@@ -68,8 +68,8 @@ Section subltype.
     length rs = len →
     ty_syn_type def1 = ty_syn_type def2 →
     ([∗ list] lt1;lt2 ∈ interpret_iml (◁ def1) len lts1; interpret_iml (◁ def2) len lts2, ∀ r, ltype_incl b r r lt1 lt2) -∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt) ={F}=∗
-    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt).
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def1) len lts1;rs, ⌜ltype_st lt = ty_syn_type def1 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt) ={F}=∗
+    ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def2) len lts2;rs, ⌜ltype_st lt = ty_syn_type def2 MetaNone⌝ ∗ (l offset{ly}ₗ (k + i)%nat) ◁ₗ[ π, b] r0 @ ltype_core lt).
   Proof.
     iIntros (? Hlen Hstdef) "#Hincl Ha".
     iMod (array_ltype_incl_big_wand _ _ _ _ _ _ ((λ '(a, b), (a, ltype_core b)) <$> lts1) ((λ '(a, b), (a, ltype_core b)) <$> lts2)  with "[] [Ha]") as "Ha".
@@ -478,16 +478,16 @@ Section accessors.
   Lemma array_ltype_acc_owned_cred {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l wl :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] #rs @ ArrayLtype def len lts -∗
-    ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (def.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
-      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
+      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         (if wl then £1 else True) -∗
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         (* new ownership *)
-        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
+        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def' MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
         l ◁ₗ[π, Owned wl] #rs' @ ArrayLtype def' len lts').
   Proof.
@@ -511,16 +511,16 @@ Section accessors.
   Lemma array_ltype_acc_owned {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l wl :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] #rs @ ArrayLtype def len lts -∗
-    ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (def.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
-      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
+      ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       logical_step F
       (∀ (rt' : RT) (def' : type rt') (lts' : list (nat * ltype rt')) (rs' : list (place_rfn rt')),
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         (* new ownership *)
-        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
+        ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs', ⌜ltype_st lt = ty_syn_type def' MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
         l ◁ₗ[π, Owned wl] #rs' @ ArrayLtype def' len lts').
   Proof.
@@ -562,12 +562,12 @@ Section accessors.
   Qed.
 
   Local Lemma array_acc_uniq_elems_unblock π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) κs :
-    syn_type_has_layout (ty_syn_type def) ly →
+    syn_type_has_layout (ty_syn_type def MetaNone) ly →
     ty_syn_type def = ty_syn_type def' →
     ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts', typed_place_cond (UpdUniq κs) ty1 ty2) -∗
     lft_dead_list κs -∗
-    (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @  lt) -∗
-    |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
+    (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @  lt) -∗
+    |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs, ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
     iIntros (Hst Hst_eq) "#Hcond #Hdead >Hb". iApply big_sepL2_fupd.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite length_interpret_iml in Hlen2.
@@ -593,14 +593,14 @@ Section accessors.
     rewrite !length_zip !length_interpret_iml//.
   Qed.
   Local Lemma array_acc_uniq_elems_core_eq π l {rt} len (def def' : type rt) ly lts lts' (rs : list (place_rfn rt)) :
-    syn_type_has_layout (ty_syn_type def) ly →
+    syn_type_has_layout (ty_syn_type def MetaNone) ly →
     ty_syn_type def = ty_syn_type def' →
     ([∗ list] ty1;ty2 ∈ interpret_iml (◁ def) len lts; interpret_iml (◁ def')%I len lts',
       ∀ b' r, ltype_eq b' r r (ltype_core ty1) (ltype_core ty2)) -∗
     (|={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
-      ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt) -∗
+      ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt) -∗
     |={lftE}=> [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs,
-      ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
+      ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[ π, Owned false] r0 @ ltype_core lt.
   Proof.
     iIntros (Hst Hst_eq) "#Heq >Hb". iApply big_sepL2_fupd.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen2". rewrite length_interpret_iml in Hlen2.
@@ -628,12 +628,12 @@ Section accessors.
     q.[κ] -∗
     (q.[κ] ={lftE}=∗ R) -∗
     l ◁ₗ[π, Uniq κ γ] #rs @ ArrayLtype def len lts -∗
-    ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (def.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
-        ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
+        ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt) ∗
       logical_step F
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) (rs' : list (place_rfn rt)) bmin,
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
@@ -643,7 +643,7 @@ Section accessors.
           typed_place_cond bmin ty1 ty2) -∗
         (* new ownership *)
         ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs',
-          ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
+          ⌜ltype_st lt = ty_syn_type def' MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Owned false] r0 @ lt)
          ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #rs' @ ArrayLtype def' len lts' ∗
         R ∗
@@ -669,7 +669,7 @@ Section accessors.
     (* close with updated type *)
     iIntros (def' lts' rs' bmin Hst_eq Hlen_eq) "#Hincl' #Hcond_ty Hb".
     iMod (gvar_update rs' with "Hauth Hrfn") as "(Hauth & Hrfn)".
-    set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗ [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';r', ⌜ltype_st lt = ty_syn_type def⌝ ∗ ltype_own lt (Owned false) π r0 (l offset{ly}ₗ i)))%I).
+    set (V := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗ [∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';r', ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ ltype_own lt (Owned false) π r0 (l offset{ly}ₗ i)))%I).
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
     iMod ("Hb_cl" $! V with "[] Hcred1 [Hauth Hb]") as "(Hb & Htok)".
@@ -722,18 +722,18 @@ Section accessors.
   Lemma array_ltype_acc_shared {rt} F π (def : type rt) (len : nat) (lts : list (nat * ltype rt)) (rs : list (place_rfn rt)) l κ :
     lftE ⊆ F →
     l ◁ₗ[π, Shared κ] #rs @ ArrayLtype def len lts -∗
-    ∃ ly, ⌜syn_type_has_layout def.(ty_syn_type) ly⌝ ∗
+    ∃ ly, ⌜syn_type_has_layout (def.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` (mk_array_layout ly len)⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗ |={F}=>
       ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def) len lts;rs,
-        ⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
+        ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt) ∗
       (∀ (def' : type rt) (lts' : list (nat * ltype rt)) rs',
         ⌜ty_syn_type def = ty_syn_type def'⌝ -∗
         ⌜length rs = length rs'⌝ -∗
         (* new ownership *)
         ([∗ list] i↦lt;r0 ∈ interpret_iml (◁ def') len lts';rs',
-          ⌜ltype_st lt = ty_syn_type def'⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt)
+          ⌜ltype_st lt = ty_syn_type def' MetaNone⌝ ∗ (l offset{ly}ₗ i) ◁ₗ[π, Shared κ] r0 @ lt)
          ={F}=∗
         l ◁ₗ[π, Shared κ] #rs' @ ArrayLtype def' len lts'
       ).

@@ -39,20 +39,20 @@ Section int.
     done.
   Qed.
 
-  Lemma ty_own_int_in_range l π n it : l ◁ᵥ{π} n @ int it -∗ ⌜n ∈ it⌝.
-  Proof. iIntros "%Hl". iPureIntro. by eapply val_to_Z_in_range. Qed.
+  Lemma ty_own_int_in_range l π n it m : l ◁ᵥ{π, m} n @ int it -∗ ⌜m = MetaNone⌝ ∗ ⌜n ∈ it⌝.
+  Proof. iIntros "(-> & %Hl)". iR. iPureIntro. by eapply val_to_Z_in_range. Qed.
 
-  Lemma ty_shr_int_in_range l π κ n it : l ◁ₗ{π, κ} n @ int it -∗ ▷ ⌜n ∈ it⌝.
+  Lemma ty_shr_int_in_range l π κ n m it : l ◁ₗ{π, m, κ} n @ int it -∗ ▷ ⌜n ∈ it⌝.
   Proof.
-    iIntros "(%v & (%ly & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
+    iIntros "(%v & (%ly & -> & Hv & Ha & Halg & Hl))" => /=. iNext. iDestruct "Ha" as "%Hn".
     iPureIntro. by eapply val_to_Z_in_range.
   Qed.
 
   Global Instance int_copyable it : Copyable (int it).
   Proof. apply _. Qed.
 
-  Global Instance int_timeless l z it π:
-    Timeless (l ◁ᵥ{π} z @ int it)%I.
+  Global Instance int_timeless l z it m π :
+    Timeless (l ◁ᵥ{π, m} z @ int it)%I.
   Proof. apply _. Qed.
 
 End int.
@@ -94,12 +94,12 @@ Section boolean.
     done.
   Qed.
 
-  Lemma bool_own_val_eq v π b :
-    (v ◁ᵥ{π} b @ bool_t)%I ≡ ⌜val_to_bool v = Some b⌝%I.
+  Lemma bool_own_val_eq v π b m :
+    (v ◁ᵥ{π, m} b @ bool_t)%I ≡ (⌜m = MetaNone⌝ ∗ ⌜val_to_bool v = Some b⌝)%I.
   Proof. done. Qed.
 
-  Global Instance bool_timeless π l b:
-    Timeless (l ◁ᵥ{π} b @ bool_t)%I.
+  Global Instance bool_timeless π l b m:
+    Timeless (l ◁ᵥ{π, m} b @ bool_t)%I.
   Proof. apply _. Qed.
 
   Global Instance bool_copy : Copyable bool_t.
@@ -143,12 +143,12 @@ Section char.
     done.
   Qed.
 
-  Lemma char_own_val_eq v π z :
-    (v ◁ᵥ{π} z @ char_t)%I ≡ ⌜val_to_char v = Some z⌝%I.
+  Lemma char_own_val_eq v π m z :
+    (v ◁ᵥ{π, m} z @ char_t)%I ≡ (⌜m = MetaNone⌝ ∗ ⌜val_to_char v = Some z⌝)%I.
   Proof. done. Qed.
 
-  Global Instance char_timeless π l b:
-    Timeless (l ◁ᵥ{π} b @ char_t)%I.
+  Global Instance char_timeless π l b m:
+    Timeless (l ◁ᵥ{π, m} b @ char_t)%I.
   Proof. apply _. Qed.
 
   Global Instance char_copy : Copyable char_t.

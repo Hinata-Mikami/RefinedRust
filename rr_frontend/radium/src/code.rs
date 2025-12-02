@@ -1026,7 +1026,7 @@ impl Function<'_> {
 
                 write!(
                     f,
-                    "{} ◁ᵥ{{π}} {} @ function_ptr [{}] {} -∗\n",
+                    "{} ◁ᵥ{{π, MetaNone}} {} @ function_ptr [{}] {} -∗\n",
                     proc_use.loc_name,
                     proc_use.loc_name,
                     arg_syntys.join("; "),
@@ -1091,7 +1091,12 @@ impl Function<'_> {
         };
         let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
-        write!(f, ") (λ π, {params_late_pre} ∗ ⌜{trait_late_pre}⌝)")?;
+        let prop = coq::iris::IProp::Sep(vec![params_late_pre, coq::iris::IProp::Pure(trait_late_pre)]);
+        // TODO: don't require that _all_ of them are sized
+        //let prop = coq::iris::IProp::Exists(self.spec.generics.generate_sized_requirements(),
+        // Box::new(prop));
+
+        write!(f, ") (λ π, {prop})")?;
 
         write!(f, ").\n")
     }
@@ -1593,7 +1598,12 @@ impl fmt::Display for UsedProcedure<'_> {
 
         let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();
-        write!(f, " (λ π, {generics_term} ∗ ⌜{trait_req_term}⌝)%I)")
+
+        let prop = coq::iris::IProp::Sep(vec![generics_term, coq::iris::IProp::Pure(trait_req_term)]);
+        // TODO: don't require that _all_ of them are sized
+        //let prop = coq::iris::IProp::Exists(self.quantified_scope.generate_sized_requirements(),
+        // Box::new(prop));
+        write!(f, " (λ π, {prop})%I)")
     }
 }
 

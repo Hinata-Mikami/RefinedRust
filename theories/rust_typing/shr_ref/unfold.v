@@ -9,13 +9,13 @@ Section ofty.
 
   (** A very fundamental equivalence that should hold *)
   Lemma shr_ref_ofty_shared_equiv {rt} (ty : type rt) π κ l r :
-    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π} #r @ shr_ref κ ty.
+    l ◁ₗ[π, Shared κ] #r @ (◁ ty) ⊣⊢ l ◁ᵥ{π, MetaNone} #r @ shr_ref κ ty.
   Proof.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own /ty_own_val/=.
     iSplit.
     - iIntros "(%ly & %Hst & %Hly & #Hsc & #Hlb & %r' & <- & #Ha)".
-      iExists _, _, _. iR. iR. iR. iFrame "#". done.
-    -iIntros "(%l' & %ly & %r' & %Hl & % & % & #Hsc & #Hlb & <- & #Ha)".
+      iExists _, _, _. iR. iR. iR. iR. iFrame "#". done.
+    -iIntros "(%l' & %ly & %r' & _ & %Hl & % & % & #Hsc & #Hlb & <- & #Ha)".
       apply val_of_loc_inj in Hl. subst.
       iExists _. iR. iR. iFrame "#". done.
   Qed.
@@ -51,7 +51,7 @@ Section ltype_agree.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly' & >? & >? & >Hsc & >Hlb' & %r' & >Hrfn & Hb)".
     iModIntro.
-    iExists _, _, _. iFrame. iSplitR; last done.
+    iExists _, _, _. iFrame. iR. iSplitR; last done.
     apply syn_type_has_layout_ptr_inv in Ha as ?. subst. done.
   Qed.
 
@@ -69,7 +69,7 @@ Section ltype_agree.
         iExists l', ly', _. iFrame. done.
       * iIntros "(%r' & Hauth & Hb)". iExists _; iFrame.
         iMod "Hb" as "(%v & Hl & Hb)".
-        iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
+        iDestruct "Hb" as "(%li & %ly' & %ri & _ & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         by iFrame.
     - iNext. iModIntro. iSplit.
@@ -81,7 +81,7 @@ Section ltype_agree.
         iExists l', ly', _. iFrame. done.
       * iIntros "(%r' & Hauth & Hb)". iExists _; iFrame.
         iMod "Hb" as "(%v & Hl & Hb)".
-        iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
+        iDestruct "Hb" as "(%li & %ly' & %ri & _ & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame.
         rewrite ltype_own_core_equiv. simp_ltype.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -111,7 +111,7 @@ Section ltype_agree.
     iIntros "(%ly & ? & ? & Hsc & Hlb & ? & %r' & Hrfn & Hb)".
     iModIntro. iExists ly. iFrame.
     iModIntro.
-    iMod "Hb" as "(%v & Hl & %li & %ly' & %ri & -> & ? & ? & Hlb' & Hsc' & Hrfn' & Hb)".
+    iMod "Hb" as "(%v & Hl & %li & %ly' & %ri & _ & -> & ? & ? & Hlb' & Hsc' & Hrfn' & Hb)".
     iModIntro.
     iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists ly'. iFrame.
@@ -123,7 +123,7 @@ Section ltype_agree.
     iModIntro. iIntros (π l). rewrite ltype_own_shr_ref_unfold /shr_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & Hlb & %r' & Hrfn & #Hb)". iExists ly. iFrame.
     iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & %ly' & %ri & ? & ? & ? & Hlb' & Hsc & Hrfn & Hs & Hb)".
+    iDestruct "Hb" as "(%li & %ly' & %ri & _ & ? & ? & ? & Hlb' & Hsc & Hrfn & Hs & Hb)".
     iModIntro. iExists _. iFrame. iNext. iDestruct "Hb" as "#Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists ly'. by iFrame.
@@ -140,7 +140,7 @@ Section ltype_agree.
     - iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
         iMod "Hb" as "(%v & Hl & Hb)".
-        iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
+        iDestruct "Hb" as "(%li & %ly' & %ri & _ & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         iExists ly'. by iFrame.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
@@ -151,7 +151,7 @@ Section ltype_agree.
     - iNext. iModIntro. iSplit.
       * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame.
         iMod "Hb" as "(%v & Hl & Hb)".
-        iDestruct "Hb" as "(%li & %ly' & %ri & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
+        iDestruct "Hb" as "(%li & %ly' & %ri & _ & -> & ? & ? & Hlb & Hsc & Hrfn & Hb)".
         iExists _. iFrame. rewrite ltype_own_core_equiv. simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         iExists ly'. by iFrame.
@@ -211,9 +211,8 @@ Section place.
     iIntros (?) "HL CTX HE".
     iIntros (??). iApply ltype_eq_sym. iApply shr_ref_unfold.
   Qed.
-  Global Instance typed_place_ofty_shr_inst {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P :
-    TypedPlace E L π l (◁ (shr_ref κ ty))%I r bmin0 b P | 30 := λ T, i2p (typed_place_ofty_shr π E L l ty κ r bmin0 b P T).
-
+  Definition typed_place_ofty_shr_inst := [instance @typed_place_ofty_shr].
+  Global Existing Instance typed_place_ofty_shr_inst | 30.
 End place.
 
 Section cast.
@@ -228,9 +227,7 @@ Section cast.
     iExists (shr_ref κ ty). iFrame "HT". iPureIntro.
     by apply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance cast_ltype_to_type_shr_inst E L {rt} (lt : ltype rt) κ :
-    CastLtypeToType E L (ShrLtype lt κ) :=
-    λ T, i2p (cast_ltype_to_type_shr E L lt κ T).
-
+  Definition cast_ltype_to_type_shr_inst := [instance @cast_ltype_to_type_shr].
+  Global Existing Instance cast_ltype_to_type_shr_inst.
 End cast.
 

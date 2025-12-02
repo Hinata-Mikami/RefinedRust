@@ -198,8 +198,17 @@ Proof.
   rewrite /SimplBoth. naive_solver.
 Qed.
 
+Lemma not_is_Some_iff {A} (a : option A) :
+  ¬ is_Some a ↔ a = None.
+Proof. destruct a; naive_solver. Qed.
+Instance simpl_both_not_is_Some {A} (a : option A):
+  SimplBoth (¬ is_Some a) (a = None).
+Proof.
+  unfold SimplBoth. apply not_is_Some_iff.
+Qed.
+
 Global Instance simplify_all_xtype `{!typeGS Σ} Q :
-  SimplForall xtype 3 Q (∀ (rt : RT) (ty : type rt) (r : RT_xt rt), Q (mk_xtype (xtype_rt:=rt) ty r)).
+  SimplForall xtype 4 Q (∀ (rt : RT) (ty : type rt) (Hsz : TySized ty) (r : RT_xt rt), Q (mk_xtype (xtype_rt:=rt) ty r Hsz)).
 Proof.
   intros ? []. done.
 Qed.
@@ -216,7 +225,6 @@ Hint Rewrite Nat.min_l Nat.min_r using lia : lithium_rewrite.
 Hint Rewrite -> @take_take : lithium_rewrite.
 Hint Rewrite -> @drop_drop : lithium_rewrite.
 Hint Rewrite @lookup_take : lithium_rewrite.
-
 
 (** More automation for sets *)
 Lemma difference_union_subseteq (E F H H': coPset):

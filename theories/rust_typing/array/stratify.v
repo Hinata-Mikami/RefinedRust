@@ -39,10 +39,10 @@ Section stratify.
     elctx_interp E -∗
     llctx_interp L -∗
     ([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml; rs,
-      if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[π, k] r @ lt) else True) ={F}=∗
+      if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[π, k] r @ lt) else True) ={F}=∗
     ∃ (L' : llctx) (R' : iProp Σ) (iml' : list (nat * ltype rt)) (rs' : list (place_rfn rt)),
       ⌜length rs' = length rs⌝ ∗
-      logical_step F (([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml'; rs', if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[π, k] r @ lt) else True) ∗ R') ∗
+      logical_step F (([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml'; rs', if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[π, k] r @ lt) else True) ∗ R') ∗
       llctx_interp L' ∗
       T L' R' iml' rs'.
   Class StratifyLtypeArrayIter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) : Type :=
@@ -64,7 +64,7 @@ Section stratify.
   Lemma stratify_ltype_array_iter_cons_no_ignore π E L mu mdu ma {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (rs : list (place_rfn rt)) (len : nat) (iml : list (nat * ltype rt)) (lt : ltype rt) j k T `{Hnel : !CanSolve (j ∉ ig)%nat} :
     ⌜j < len⌝ ∗ (∀ r, ⌜rs !! j = Some r⌝ -∗
     stratify_ltype_array_iter π E L mu mdu ma m l (j :: ig) def len iml rs k (λ L2 R2 iml2 rs2,
-      stratify_ltype π E L2 mu mdu ma m (l offsetst{ty_syn_type def}ₗ j) lt r k (λ L3 R3 rt3 lty3 r3,
+      stratify_ltype π E L2 mu mdu ma m (l offsetst{ty_syn_type def MetaNone}ₗ j) lt r k (λ L3 R3 rt3 lty3 r3,
         if (decide (ma = StratRefoldFull)) then
           match ltype_blocked_lfts lty3 with
           | [] =>
@@ -93,7 +93,7 @@ Section stratify.
     edestruct (lookup_lt_is_Some_2 rs j) as (r & Hlook); first done.
     rewrite -{5}(list_insert_id _ _ _ Hlook).
 
-    iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
+    iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
     { rewrite length_interpret_iml. done. }
     { done. }
     iDestruct ("Ha" with "Hl") as "(Hl & Hl2)". iClear "Ha".
@@ -120,7 +120,7 @@ Section stratify.
       iApply logical_step_intro.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
-      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (lt')%I r' (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
+      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (lt')%I r' (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
       { rewrite length_interpret_iml. lia. }
       { lia. }
       rewrite -Hleneq. iApply "Ha".
@@ -144,7 +144,7 @@ Section stratify.
       iApply logical_step_intro.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
-      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (◁ def)%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
+      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (◁ def)%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
       { rewrite length_interpret_iml. lia. }
       { lia. }
       iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
@@ -169,7 +169,7 @@ Section stratify.
       iApply logical_step_intro.
       iIntros "!> (Hl & $) (Hl2 & $)".
       simpl.
-      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (CoreableLtype (ltype_blocked_lfts lt') (◁ def))%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
+      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs2) iml2) rs2 j (CoreableLtype (ltype_blocked_lfts lt') (◁ def))%I r4 (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(_ & Ha)".
       { rewrite length_interpret_iml. lia. }
       { lia. }
       rewrite -Hleneq -Hbl. iApply "Ha". iClear "Ha".
@@ -182,7 +182,7 @@ Section stratify.
         iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hly)".
         iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
         iExists ly. simp_ltypes.
-        match goal with H : ty_syn_type def = ltype_st lt' |- _ => rename H into Hsteq end.
+        match goal with H : ty_syn_type def MetaNone = ltype_st lt' |- _ => rename H into Hsteq end.
         rewrite Hsteq. iR.
         simpl. rewrite -Hsteq. iR. iR.
         iIntros "Hdead".
@@ -211,7 +211,7 @@ Section stratify.
     { edestruct (lookup_lt_is_Some_2 rs j) as (r & Hlook). { lia. }
       rewrite -{2}(list_insert_id _ _ _ Hlook).
       simpl.
-      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def⌝ ∗ (l offsetst{ty_syn_type def}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
+      iPoseProof (big_sepL2_insert (interpret_iml (◁ def)%I (length rs) iml) rs j lt r (λ i lt r, if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[ π, k] r @ lt) else True)%I 0) as "(Ha & _)".
       { rewrite length_interpret_iml. done. }
       { done. }
       iDestruct ("Ha" with "Hl") as "(_ & Hl)". iClear "Ha".

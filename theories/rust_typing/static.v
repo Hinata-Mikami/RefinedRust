@@ -58,7 +58,7 @@ Section statics.
   (* The global variable "name" has been initialized *)
   Definition initialized (π : thread_id) (name : string) : iProp Σ :=
     ∃ (l : loc) (ty : btype), ⌜static_locs !! name = Some l⌝ ∗ ⌜static_types !! name = Some ty⌝ ∗
-        (l ◁ᵥ{π} (#ty.(btype_r)) @ shr_ref static ty.(btype_ty))%I.
+        (l ◁ᵥ{π, MetaNone} (#ty.(btype_r)) @ shr_ref static ty.(btype_ty))%I.
 
   Global Instance initialized_persistent (π : thread_id) (name : string) :
     Persistent (initialized π name).
@@ -71,7 +71,7 @@ Section statics.
   (* On introduction of `initialized`, destruct it *)
   Lemma simplify_initialized_hyp π name ty l
     `{!TCFastDone (static_is_registered name l ty)} T:
-    (∀ r, (□ l ◁ᵥ{π} (#r) @ shr_ref static (projT2 ty)) -∗ ⌜static_has_refinement name r⌝ -∗ T)
+    (∀ r, (□ l ◁ᵥ{π, MetaNone} (#r) @ shr_ref static (projT2 ty)) -∗ ⌜static_has_refinement name r⌝ -∗ T)
     ⊢ simplify_hyp (initialized π name) T.
   Proof.
     unfold TCFastDone in *. destruct ty as [rt' ty].
@@ -93,7 +93,7 @@ Section statics.
   Lemma initialized_intro {rt : RT} π ty name l (x : rt) :
     static_is_registered name l ty →
     static_has_refinement name x →
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew [place_rfnRT] Heq in #x) @ shr_ref static (projT2 ty)) -∗
+    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π, MetaNone} (rew [place_rfnRT] Heq in #x) @ shr_ref static (projT2 ty)) -∗
     initialized π name.
   Proof.
     iIntros ([Hl1 Hl2] (ty2 & Hl3 & Heq' & Hb)) "(%Heq & #Hl)".
@@ -112,7 +112,7 @@ Section statics.
 
   Lemma simplify_initialized_goal {rt : RT} π (x : rt) name l ty
     `{!TCFastDone (static_is_registered name l ty)} `{!TCFastDone (static_has_refinement name x)} T:
-    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π} (rew [place_rfnRT] Heq in #x) @ shr_ref static (projT2 ty) ∗ T)
+    (∃ (Heq : rt = projT1 ty), l ◁ᵥ{π, MetaNone} (rew [place_rfnRT] Heq in #x) @ shr_ref static (projT2 ty) ∗ T)
     ⊢ simplify_goal (initialized π name) T.
   Proof.
     unfold TCFastDone in *. iIntros "[% [? $]]". subst.

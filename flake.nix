@@ -249,6 +249,10 @@
               withTheories = true;
             }
             {
+              pname = "stdlib-sized";
+              src = ./stdlib/sized;
+            } 
+            {
               pname = "stdlib-result";
               src = ./stdlib/result;
               withTheories = true;

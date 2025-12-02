@@ -12,30 +12,30 @@ Section unfold.
   *)
 
   (* TODO move *)
-  Lemma ty_own_val_active_union_split π {rt} (ty : type rt) r v uls variant :
-    v ◁ᵥ{π} r @ active_union_t ty variant uls -∗
+  Lemma ty_own_val_active_union_split π {rt} (ty : type rt) r v uls variant m :
+    v ◁ᵥ{π, m} r @ active_union_t ty variant uls -∗
     ∃ ul ly v1 v2, ⌜v = v1 ++ v2⌝ ∗
       ⌜union_layout_spec_has_layout uls ul⌝ ∗
-      ⌜syn_type_has_layout (ty_syn_type ty) ly⌝ ∗
-      v1 ◁ᵥ{π} r @ ty ∗ v2 ◁ᵥ{π} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
+      ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝ ∗
+      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
   Proof.
     iIntros "Hv".
     rewrite {1}/ty_own_val/=.
-    iDestruct "Hv" as "(%ul & %ly & %Hul' & %Hly & %Hst' & Hv1 & Hv2)".
+    iDestruct "Hv" as "(%ul & %ly & -> & %Hul' & %Hly & %Hst' & Hv1 & Hv2)".
     iExists ul, ly.
     iExists (take (ly_size ly) v), (drop (ly_size ly) v).
     rewrite take_drop. iR. iR. iR. iFrame.
   Qed.
-  Lemma ty_own_val_active_union_split' π {rt} (ty : type rt) r v uls ul ly variant :
+  Lemma ty_own_val_active_union_split' π {rt} (ty : type rt) r v uls ul ly variant m :
     union_layout_spec_has_layout uls ul →
-    syn_type_has_layout (ty_syn_type ty) ly →
-    v ◁ᵥ{π} r @ active_union_t ty variant uls -∗
+    syn_type_has_layout (ty_syn_type ty m) ly →
+    v ◁ᵥ{π, m} r @ active_union_t ty variant uls -∗
     ∃ v1 v2, ⌜v = v1 ++ v2⌝ ∗
-      v1 ◁ᵥ{π} r @ ty ∗ v2 ◁ᵥ{π} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
+      v1 ◁ᵥ{π, m} r @ ty ∗ v2 ◁ᵥ{π, m} () @ uninit (UntypedSynType (active_union_rest_ly ul ly)).
   Proof.
     iIntros (Hul Hst) "Hv".
     rewrite {1}/ty_own_val/=.
-    iDestruct "Hv" as "(%ul' & %ly' & %Hul' & %Hly & %Hst' & Hv1 & Hv2)".
+    iDestruct "Hv" as "(%ul' & %ly' & -> & %Hul' & %Hly & %Hst' & Hv1 & Hv2)".
     assert (ly' = ly) as -> by by eapply syn_type_has_layout_inj.
     assert (ul' = ul) as -> by by eapply union_layout_spec_has_layout_inj.
     iExists (take (ly_size ly) v), (drop (ly_size ly) v).

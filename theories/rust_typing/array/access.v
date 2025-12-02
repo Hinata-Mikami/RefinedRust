@@ -41,7 +41,7 @@ Section access.
     λ T, i2p (typed_array_access_unfold π E L base off st ty len rs k T).
 
   Lemma typed_array_access_array_owned π E L base (off : Z) st {rt} (ty : type rt) (len : nat) iml rs (wl : bool) (T : typed_array_access_cont_t) :
-    (⌜(off < len)%Z⌝ ∗ ⌜(0 ≤ off)%Z⌝ ∗ ⌜st = ty_syn_type ty⌝ ∗
+    (⌜(off < len)%Z⌝ ∗ ⌜(0 ≤ off)%Z⌝ ∗ ⌜st = ty_syn_type ty MetaNone⌝ ∗
       prove_with_subtype E L false ProveDirect (if wl then £ 1 else True) (λ L2 κs Q, Q -∗
       ∀ lt r, ⌜interpret_iml (◁ ty)%I len iml !! Z.to_nat off = Some lt⌝ -∗ ⌜rs !! Z.to_nat off = Some r⌝ -∗
       introduce_with_hooks E L2 (maybe_creds wl) (λ L3,
@@ -68,7 +68,7 @@ Section access.
     { rewrite length_interpret_iml. lia. }
     iPoseProof (big_sepL2_insert_acc _ _ _ (Z.to_nat off) with "Hb") as "((%Hst' & Hel) & Hcl_b)"; [done.. | ].
     iPoseProof (ltype_own_make_alias false _ _ r with "Hel [//]") as "(Hel & Halias)".
-    iPoseProof ("Hcl_b" $! (AliasLtype _ (ty_syn_type ty) (base offsetst{st}ₗ off)) r with "[Halias]") as "Ha".
+    iPoseProof ("Hcl_b" $! (AliasLtype _ (ty_syn_type ty MetaNone) (base offsetst{st}ₗ off)) r with "[Halias]") as "Ha".
     { simp_ltypes. iR. rewrite /OffsetLocSt /offset_loc /use_layout_alg' Hst Halg /=. rewrite Hst'. rewrite !Z2Nat.id; last done. done. }
     iMod ("Hcl" $! _ ty ((Z.to_nat off, AliasLtype rt st (base offsetst{st}ₗ off)) :: iml) rs with "[//] [//] [Ha]") as "Ha".
     { simpl. rewrite (list_insert_id rs (Z.to_nat off) r); last done. rewrite Hst.  done. }
@@ -82,7 +82,7 @@ Section access.
 
   (* NOTE: this will misbehave if we've moved the value out before already! *)
   Lemma typed_array_access_array_shared π E L base off st {rt} (ty : type rt) (len : nat) iml rs κ (T : typed_array_access_cont_t) :
-    (⌜(off < len)%Z⌝ ∗ ⌜(0 ≤ off)%Z⌝ ∗ ⌜st = ty_syn_type ty⌝ ∗ ∀ lt r, ⌜interpret_iml (◁ ty)%I len iml !! Z.to_nat off = Some lt⌝ -∗ ⌜rs !! Z.to_nat off = Some r⌝ -∗
+    (⌜(off < len)%Z⌝ ∗ ⌜(0 ≤ off)%Z⌝ ∗ ⌜st = ty_syn_type ty MetaNone⌝ ∗ ∀ lt r, ⌜interpret_iml (◁ ty)%I len iml !! Z.to_nat off = Some lt⌝ -∗ ⌜rs !! Z.to_nat off = Some r⌝ -∗
       T L _ ty len iml (rs) (Shared κ) _ lt r)
     ⊢ typed_array_access π E L base off st (ArrayLtype ty len iml) (#rs) (Shared κ) T.
   Proof.

@@ -82,12 +82,14 @@ Section na_ex.
   Context (X Y : RT) (P : na_ex_inv_def X Y).
 
   Program Definition na_ex_plain_t (ty : type X) : type Y := {|
-    ty_own_val π r v := ∃ x : X, P.(na_inv_P) π x r ∗ ty.(ty_own_val) π x v;
-    ty_shr κ π r l :=
+    ty_metadata_kind := ty.(ty_metadata_kind);
+    ty_own_val π r m v := ∃ x : X, P.(na_inv_P) π x r ∗ ty.(ty_own_val) π x m v;
+    ty_shr κ π r m l :=
       (* TODO: Add persistant part that cannot depends on the refined value *)
       ty.(ty_sidecond) ∗
-      &na{κ, π, shrN.@l}(∃ x, l ↦: ty.(ty_own_val) π x ∗ P.(na_inv_P) π x r) ∗
-      (∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty) ly⌝);
+      (* TODO: metdata *)
+      &na{κ, π, shrN.@l}(∃ x, l ↦: ty.(ty_own_val) π x m  ∗ P.(na_inv_P) π x r) ∗
+      (∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝);
 
     ty_syn_type := ty.(ty_syn_type);
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
@@ -104,7 +106,7 @@ Section na_ex.
 
   (* ty_has_layout *)
   Next Obligation.
-    iIntros (????) "(% & _ & ?)".
+    iIntros (?????) "(% & _ & ?)".
     by iApply ty_has_layout.
   Qed.
 
@@ -116,13 +118,13 @@ Section na_ex.
 
   (* ty_own_val_sidecond *)
   Next Obligation.
-    iIntros (????) "(% & _ & ?)".
+    iIntros (?????) "(% & _ & ?)".
     by iApply ty_own_val_sidecond.
 Qed.
 
   (* ty_shr_sidecond *)
   Next Obligation.
-    iIntros (?????) "($ & _ & _)".
+    iIntros (??????) "($ & _ & _)".
   Qed.
 
   (* ty_shr_persistent *)
@@ -130,12 +132,13 @@ Qed.
 
   (* ty_shr_aligned *)
   Next Obligation.
-    iIntros (?????) "(_ & _ & $)".
+    iIntros (??????) "(_ & _ & (%ly & % & %))".
+    eauto.
   Qed.
 
   (* ty_share *)
   Next Obligation.
-    iIntros (ty E κ l ly π r q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hbor".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hbor".
     iEval (setoid_rewrite bi.sep_exist_l) in "Hbor".
     iEval (setoid_rewrite bi_exist_comm) in "Hbor".
 
@@ -144,7 +147,7 @@ Qed.
 
     iApply fupd_logical_step; iApply logical_step_intro.
 
-    iPoseProof (bor_iff _ _ (∃ x: X, l ↦: ty_own_val ty π x ∗ P.(na_inv_P) π x r) with "[] Hbor") as "Hbor".
+    iPoseProof (bor_iff _ _ (∃ x: X, l ↦: ty_own_val ty π x m ∗ P.(na_inv_P) π x r) with "[] Hbor") as "Hbor".
     { iNext. iModIntro. iSplit; [iIntros "(% & % & ? & ? & ?)" | iIntros "(% & (% & ? & ?) & ?)"]; eauto with iFrame. }
 
     iMod (bor_get_persistent _ (ty_sidecond ty) with "LFT [] Hbor Htok") as "(Hty & Hbor & Htok)"; first solve_ndisj.
@@ -162,7 +165,7 @@ Qed.
 
   (* ty_shr_mono *)
   Next Obligation.
-    iIntros (ty κ κ' π r l) "Hincl ($ & Hbor & %ly & ? & ?)".
+    iIntros (ty κ κ' π r ? l) "Hincl ($ & Hbor & %ly & ? & ?)".
     iSplitL "Hincl Hbor".
     - iApply (na_bor_shorten with "Hincl Hbor").
     - iExists ly. iFrame.
@@ -170,14 +173,15 @@ Qed.
 
   (* _ty_memcast_compat *)
   Next Obligation.
-    iIntros (ty ot mt st π r v Hot) "(%x & ? & Hv)".
+    iIntros (ty ot mt st π r m v Hot) "(%x & ? & Hv)".
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
     destruct mt; eauto with iFrame.
   Qed.
 
   Next Obligation.
-    intros ty ly mt Hst.
-    by apply ty_has_op_type_untyped.
+    intros ty ly mt Heq Hst.
+    rewrite ty_has_op_type_unfold.
+    by apply _ty_has_op_type_untyped.
   Qed.
 
 End na_ex.
@@ -195,8 +199,9 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
+    - apply HF.
     - destruct HP as [Hlft _].
-      destruct HF as [_ Hlft' _ _ _ _].
+      destruct HF as [_ _ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
@@ -206,12 +211,12 @@ Section contr.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
     - intros n ty ty' Hd.
-      intros ????. rewrite /ty_shr/=.
+      intros ?????. rewrite /ty_shr/=.
       do 1 f_equiv.
       { rewrite type_ctr_sidecond; first done.
         apply Hd. }
@@ -240,8 +245,9 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
+    - apply HF.
     - destruct HP as [Hlft _].
-      destruct HF as [_ Hlft' _ _ _ _].
+      destruct HF as [_ _ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
@@ -253,12 +259,12 @@ Section contr.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
     - intros n ty ty' Hd.
-      intros ????. rewrite /ty_shr/=.
+      intros ?????. rewrite /ty_shr/=.
       do 1 f_equiv.
       { rewrite type_ne_sidecond; first done; apply Hd. }
       do 1 f_equiv.
@@ -356,12 +362,12 @@ Section na_subtype.
 
   Lemma na_ex_plain_t_acc_owned F π (ty : type rt) (wl : bool) (l : loc) (x : X) :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] PlaceIn x @ (◁ (∃na; P, ty)) ={F}=∗
+    l ◁ₗ[π, Owned wl] #x @ (◁ (∃na; P, ty)) ={F}=∗
     ∃ r : rt, P.(na_inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty) ∗
+    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
     (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
       l ◁ₗ[π, Owned false] r' @ lt' -∗
-      ⌜ltype_st lt' = ty_syn_type ty⌝ -∗
+      ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
       l ◁ₗ[π, Owned wl] r' @
         (OpenedLtype lt' (◁ ty) (◁ ∃na; P, ty)
           (λ (r : rt) (x : X), P.(na_inv_P) π r x)
@@ -453,7 +459,7 @@ Section na_subtype.
     ∃ r : rt,
       P.(na_inv_P) π r x ∗
       (l ◁ₗ[π, Owned false] (#r) @ (◁ ty)) ∗
-      &na{κ,π,shrN.@l} (∃ r' : rt, l ↦: ty_own_val ty π r' ∗ na_inv_P P π r' x) ∗
+      &na{κ,π,shrN.@l} (∃ r' : rt, l ↦: ty_own_val ty π r' MetaNone ∗ na_inv_P P π r' x) ∗
 
       ( ∀ r' : rt,
           l ◁ₗ[π, Owned false] #r' @ (◁ ty) ∗ P.(na_inv_P) π r' x ={E}=∗
@@ -524,7 +530,7 @@ Section na_subtype.
             na_own π (mask ∖ ↑shrN.@l))
             (λ L3,
               typed_place π E L3 l
-                (ShadowedLtype (AliasLtype _ (ty_syn_type ty) l) #tt (◁ (∃na; P, ty))) (#x) (bmin) (Shared κ) K
+                (ShadowedLtype (AliasLtype _ (ty_syn_type ty MetaNone) l) #tt (◁ (∃na; P, ty))) (#x) (bmin) (Shared κ) K
                 (λ L4 κs li b2 bmin' rti ltyi ri updcx,
                   T L4 κs li b2 bmin' rti ltyi ri
                   (λ L3 upd cont, updcx L3 upd (λ upd',

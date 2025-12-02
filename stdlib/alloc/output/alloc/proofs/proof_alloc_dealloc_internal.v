@@ -17,12 +17,12 @@ Proof.
   typed_stmt_bind. repeat liRStep; liShow.
   typed_stmt_bind. repeat liRStep; liShow.
   typed_stmt_bind. repeat liRStep; liShow.
-  iSelect (_ ◁ᵥ{_} size @ _)%I (fun H => iRename H into "Hsize").
-  iSelect (_ ◁ᵥ{_} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
+  iSelect (_ ◁ᵥ{_, _} size @ _)%I (fun H => iRename H into "Hsize").
+  iSelect (_ ◁ᵥ{_, _} align_log2 @ _)%I (fun H => iRename H into "Halign_log2").
   iSelect (ptr ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "Hptr").
   iSelect (freeable_nz _ _ _ _) (fun H => iRename H into "Hfree").
-  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "%Hsize".
-  iDestruct "Halign_log2" as "%Halign_log2".
+  rewrite {1 2}/ty_own_val /=. iDestruct "Hsize" as "(_ & %Hsize)".
+  iDestruct "Halign_log2" as "(_ & %Halign_log2)".
 
   rewrite /typed_stmt.
   iIntros (?) "#CTX #HE HL Hcont".

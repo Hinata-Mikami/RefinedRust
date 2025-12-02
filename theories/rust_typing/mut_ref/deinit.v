@@ -33,7 +33,7 @@ Section deinit.
     iR. iSplitR. { rewrite /ty_own_val/=//. }
     iSplitL "Hlb"; first by iFrame. iR.
     iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iExists ly.
+    rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
@@ -67,7 +67,7 @@ Section deinit.
     iSplitR "Hl".
     { iModIntro. destruct wl; last done. simpl. rewrite /num_cred. iFrame. iApply lc_succ; iFrame. }
     iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iExists ly.
+    rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
@@ -97,7 +97,7 @@ Section deinit.
     iR. iSplitR. { rewrite /ty_own_val/=//. }
     iSplitL "Hlb"; first done. iR.
     iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iExists ly.
+    rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
@@ -131,7 +131,7 @@ Section deinit.
     iSplitR "Hl".
     { iModIntro. destruct wl; last done. simpl. rewrite /num_cred. iFrame. iApply lc_succ; iFrame. }
     iExists tt. iR. iModIntro. iExists _. iFrame.
-    rewrite uninit_own_spec. iExists ly.
+    rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
     iPureIntro. destruct Hcompat as [<- | (ly1 & Hst' & ->)]; first by apply syn_type_has_layout_ptr.
     specialize (syn_type_has_layout_ptr_inv _ Hst') as ->.
@@ -155,14 +155,14 @@ Section extract.
     iMod (maybe_use_credit with "Hcreds Hb") as "(Hcreds & Hat & Hb)"; first done.
     iDestruct "Hb" as "(%v & Hl & Hb)".
     rewrite /ty_own_val/=.
-    iDestruct "Hb" as "(% & % & -> & ? & ? & ? & ? & Hb & Hcred' & ?)".
+    iDestruct "Hb" as "(% & % & _ & -> & ? & ? & ? & ? & Hb & Hcred' & ?)".
     iFrame.
     iSplitR. { simp_ltypes. done. }
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists _. simpl. iFrame. iR. iR.
     iSplitL "Hcred'". { destruct wl; last done. by iFrame. }
     iExists _. iR. iModIntro. iModIntro. iModIntro.
-    rewrite uninit_own_spec. iExists _. iR.
+    rewrite uninit_own_spec. iR. iExists _. iR.
     iPureIntro. eapply syn_type_has_layout_ptr_inv in Hst. subst.
     done.
   Qed.

@@ -16,15 +16,15 @@ Proof.
   liFromSyntax.
   iIntros "Hbounds".
   (* do the actual offset *)
-  iAssert (loc_in_bounds l (if (decide (count < 0)) then (Z.to_nat (-count) * size_of_st (ty_syn_type T_ty))%nat else 0%nat) (if decide (count > 0)%Z then (Z.to_nat count * size_of_st (ty_syn_type T_ty))%nat else 0%nat))%I with "[Hbounds]" as "#Hbounds'" .
+  iAssert (loc_in_bounds l (if (decide (count < 0)) then (Z.to_nat (-count) * size_of_st (ty_syn_type T_ty MetaNone))%nat else 0%nat) (if decide (count > 0)%Z then (Z.to_nat count * size_of_st (ty_syn_type T_ty MetaNone))%nat else 0%nat))%I with "[Hbounds]" as "#Hbounds'" .
   { rewrite /case_if.
     case_decide; case_decide; case_bool_decide; eauto with lia.
     iApply (loc_in_bounds_shorten_suf with "[Hbounds //]"). lia. }
   repeat liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as %Hv1.
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "[-> %]".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds'") as %[Hran1 Hran2].
   rewrite /size_of_st. simplify_layout_goal.
   iRename select (credit_store _ _) into "Hstore".
@@ -36,7 +36,7 @@ Proof.
   { apply val_to_of_loc. }
   { done. }
   { split; simplify_layout_goal; rewrite -?MinInt_eq -?MaxInt_eq; lia. }
-  { rewrite /offset_loc. fold (size_of_st (ty_syn_type T_ty)).
+  { rewrite /offset_loc. fold (size_of_st (ty_syn_type T_ty MetaNone)).
     iApply (loc_in_bounds_offset with "Hbounds'").
     { done. }
     { destruct l; simpl. clear Hran2. case_decide; lia. }
@@ -50,11 +50,12 @@ Proof.
   iPoseProof ("Hatcl" with "Hat'") as "Hstore".
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
   iPoseProof (credit_store_donate_atime with "Hstore Hat") as "Hstore".
-  iAssert (loc_in_bounds (l offsetst{st_of T_ty}ₗ count) 0 0) as "#Hlb'". 
+  iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ count) 0 0) as "#Hlb'". 
   { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
   iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "[% %Hup]".
   iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
   { rewrite /ty_own_val /=. 
+    iR.
     iPureIntro. split; first done. 
     unfold OffsetLocSt in *.
     simplify_layout_assum.

@@ -13,7 +13,7 @@ Section rules.
   Lemma type_mut_bor E L (T : typed_val_expr_cont_t) e κ_name (ty_annot : option rust_type) :
     (∃ M, named_lfts M ∗ li_tactic (compute_map_lookup_nofail_goal M κ_name) (λ κ,
       (named_lfts M -∗ typed_borrow_mut E L e κ ty_annot (λ L' π v γ rt ty r,
-        T L' π v (place_rfn rt * gname)%type (mut_ref κ ty) (#r, γ)))))
+        T L' π v MetaNone (place_rfn rt * gname)%type (mut_ref κ ty) (#r, γ)))))
     ⊢ typed_val_expr E L (&ref{Mut, ty_annot, κ_name} e)%E T.
   Proof.
     rewrite /compute_map_lookup_nofail_goal.
@@ -42,7 +42,7 @@ Section rules.
     (* We use [Hcred1] for folding the pinned borrow, and [Hcred] as a deposit in the reference *)
     iApply ("HΦ" with "HL [Hcred Hcred1 Hat Hat1 Hbor Hobs] HT").
     iExists l, ly. iSplitR; first done. iFrame "# ∗".
-    iSplitR; first done. iSplitR; first done.
+    iR. iR. iR.
     by iApply (pinned_bor_unfold with "LFT Hcred1 Hbor").
   Qed.
 

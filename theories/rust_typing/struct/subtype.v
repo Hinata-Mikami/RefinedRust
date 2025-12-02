@@ -20,16 +20,16 @@ Section subtype.
     apply big_sepL2_persistent. intros ? [? [? []]] [? [? []]]; simpl; apply _.
   Qed.
 
-  Lemma struct_t_own_val_mono {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls v π :
+  Lemma struct_t_own_val_mono {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls v π m :
     struct_t_incl_precond tys1 tys2 rs1 rs2 -∗
-    v ◁ᵥ{π} rs1 @ struct_t sls tys1 -∗
-    v ◁ᵥ{π} rs2 @ struct_t sls tys2.
+    v ◁ᵥ{π, m} rs1 @ struct_t sls tys1 -∗
+    v ◁ᵥ{π, m} rs2 @ struct_t sls tys2.
   Proof.
     iIntros "#Hincl Hv".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
-    iDestruct "Hv" as "(%sl & %Halg & %Hlen1 & %Hly & Hb)".
-    iExists sl. iR. rewrite -Hlen. iR. iR.
+    iDestruct "Hv" as "(%sl & -> & %Halg & %Hlen1 & %Hly & Hb)".
+    iExists sl. iR. rewrite -Hlen. iR. iR. iR.
     iApply (big_sepL2_impl' with "Hb").
     { done. }
     { rewrite !pad_struct_length //. }
@@ -64,16 +64,16 @@ Section subtype.
       rewrite Hly'' -Hst. eauto with iFrame.
   Qed.
 
-  Lemma struct_t_shr_mono {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls l κ π :
+  Lemma struct_t_shr_mono {rts1 rts2} (tys1 : hlist type rts1) (tys2 : hlist type rts2) rs1 rs2 sls l κ π m :
     struct_t_incl_precond tys1 tys2 rs1 rs2 -∗
-    l ◁ₗ{π, κ} rs1 @ struct_t sls tys1 -∗
-    l ◁ₗ{π, κ} rs2 @ struct_t sls tys2.
+    l ◁ₗ{π, m, κ} rs1 @ struct_t sls tys1 -∗
+    l ◁ₗ{π, m, κ} rs2 @ struct_t sls tys2.
   Proof.
     iIntros "#Hincl Hl".
     iPoseProof (big_sepL2_length with "Hincl") as "%Hlen".
     rewrite !length_hpzipl in Hlen.
-    iDestruct "Hl" as "(%sl & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
-    iExists sl. iR. rewrite -Hlen. iR. iR. iR.
+    iDestruct "Hl" as "(%sl & -> & %Halg & %Hlen1 & %Hly & #Hlb & Hb)".
+    iExists sl. iR. rewrite -Hlen. iR. iR. iR. iR.
     iApply (big_sepL_impl' with "Hb").
     { rewrite !pad_struct_length //. }
     iModIntro.
@@ -118,8 +118,8 @@ Section subtype.
     rewrite !length_hpzipl in Hlen.
     iSplitR; first done. iSplitR. { simpl. rewrite Hlen. done. }
     iSplit; iModIntro.
-    - iIntros (??). by iApply struct_t_own_val_mono.
-    - iIntros (???). by iApply struct_t_shr_mono.
+    - iIntros (???). by iApply struct_t_own_val_mono.
+    - iIntros (????). by iApply struct_t_shr_mono.
   Qed.
 
   Lemma struct_t_full_subtype E L {rts} (tys1 : hlist type rts) (tys2 : hlist type rts) sls :

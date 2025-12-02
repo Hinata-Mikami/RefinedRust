@@ -56,8 +56,8 @@ Proof.
   liRStep; liShow.
   iApply introduce_with_hooks_base.
   iIntros  "(%i & -> & -> & Hcredit & Hlen & Hcount & Hsrc & Hdst & Hs & Ht)".
-  repeat liRStep; liShow.
-   (*return: go back to values *)
+  rep liRStep. liShow.
+  (*return: go back to values *)
   assert (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t) = (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) (take (i * ly_size T_st_ly) vs ++ drop (i * ly_size T_st_ly) v_t) : list val)) as ->.
   { shelve. }
   iPoseProof (ofty_value_untyped_from_array with "Hs") as "Hs".

@@ -14,14 +14,15 @@ Proof.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
-  apply_update (updateable_typed_array_access x1 (length xs - 1) (st_of T_ty)).
+  rename x2 into lel.
+  apply_update (updateable_typed_array_access lel (length xs - 1) (st_of T_ty MetaNone)).
   liRStepUntil typed_call.
   (* We need to manually extract it now *)
-  apply_update (updateable_extract_typed_value (x1 offsetst{st_of T_ty}ₗ (length xs - 1))).
+  apply_update (updateable_extract_typed_value (lel offsetst{st_of T_ty MetaNone}ₗ (length xs - 1))).
   rep <-! liRStep; liShow.
   apply_update (updateable_merge_value local___5).
   rep <-! liRStep.
-  apply_update (updateable_subsume_to (x1 offsetst{st_of T_ty}ₗ (length xs - 1)) (◁ uninit (st_of T_ty))%I (# ())).
+  apply_update (updateable_subsume_to (lel offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ uninit (st_of T_ty MetaNone))%I (# ())).
   repeat liRStep.
 
   all: print_remaining_goal.

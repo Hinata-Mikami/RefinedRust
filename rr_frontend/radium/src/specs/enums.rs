@@ -552,7 +552,7 @@ impl<'def> Abstract<'def> {
         // generate terms to apply the sls app to
         let mut els_app = Vec::new();
         for names in &all_ty_params.params {
-            let term = format!("(ty_syn_type {})", names.type_term());
+            let term = format!("(ty_syn_type {} MetaNone)", names.type_term());
             els_app.push(term);
         }
         let els_app_term = coq::term::App::new(&self.els_def_name, els_app);

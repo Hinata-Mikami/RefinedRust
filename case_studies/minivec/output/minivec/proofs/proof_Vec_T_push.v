@@ -13,10 +13,10 @@ Proof.
   Vec_T_push_prelude.
 
   rep <-! liRStep; liShow.
-  { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty)).
+  { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
   { rep <-! liRStep; liShow.
-    apply_update (updateable_typed_array_access x1 (length self ) (st_of T_ty)).
+    apply_update (updateable_typed_array_access x2 (length self ) (st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
 
 
@@ -24,11 +24,13 @@ Proof.
   Unshelve. all: sidecond_solver.
 
   (*all: match type of Hlen_cap with (Z.of_nat (length (project_vec_els ?len2 ?xs2)) < _)%Z => rename len2 into len; rename xs2 into xs end.*)
+  all: rename select (_ = project_vec_els _ _) into Hxs.
   all: match type of Hxs with _ = project_vec_els ?len2 ?xs2 => 
       rename xs2 into xs';
       specialize (project_vec_els_length len2 xs') as Hlen_eq;
       rewrite -Hxs !length_fmap in Hlen_eq
     end.
+  all: rename select (∀ i : nat, _ → xs' !! i = Some (#None)) into Hlook_2.
   (*all: rewrite project_vec_els_length in Hlen_cap.*)
 
   Unshelve. all: prepare_sideconditions; normalize_and_simpl_goal.

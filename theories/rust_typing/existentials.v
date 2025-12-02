@@ -141,10 +141,11 @@ Section ex.
      [R] determines a relation between the inner and outer refinement. *)
   Program Definition ex_plain_t (ty : type X) : type Y := {|
     ty_xt_inhabited := _;
-    ty_own_val π r v :=
-      (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x v)%I;
-    ty_shr κ π r l :=
-      (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x l)%I;
+    ty_metadata_kind := ty.(ty_metadata_kind);
+    ty_own_val π r m v :=
+      (∃ x : X, P.(inv_P) π x r ∗ ty.(ty_own_val) π x m v)%I;
+    ty_shr κ π r m l :=
+      (∃ x : X, P.(inv_P_shr) π κ x r ∗ ty.(ty_shr) κ π x m l)%I;
     ty_syn_type := ty.(ty_syn_type);
     _ty_has_op_type ot mt := ty_has_op_type ty ot mt;
     ty_sidecond :=
@@ -156,24 +157,24 @@ Section ex.
     intros. apply P.
   Qed.
   Next Obligation.
-    iIntros (ty π r v) "(%x & HP & Hv)".
+    iIntros (ty π r m v) "(%x & HP & Hv)".
     by iApply ty_has_layout.
   Qed.
   Next Obligation.
     iIntros (ty ot mt Hot). by eapply ty_op_type_stable.
   Qed.
   Next Obligation.
-    iIntros (ty π r v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
+    iIntros (ty π r m v) "(%x & HP & Hv)". by iApply ty_own_val_sidecond.
   Qed.
   Next Obligation.
-    iIntros (ty ? π r v) "(%x & HP & Hs)". by iApply ty_shr_sidecond.
+    iIntros (ty ? π r m v) "(%x & HP & Hs)". by iApply ty_shr_sidecond.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (ty κ π l r) "(%x & HP & Hv)". by iApply ty_shr_aligned.
+    iIntros (ty κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
   Qed.
   Next Obligation.
-    iIntros (ty E κ l ly π r q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hb".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly Hlb Hb".
     iApply fupd_logical_step.
     setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
     iDestruct "Htok" as "(Htok & Htok2)".
@@ -181,7 +182,7 @@ Section ex.
     rewrite -{1}lft_tok_sep -{1}lft_tok_sep. iDestruct "Htok" as "(Htok & HtokP & Htoki)".
     rewrite lft_intersect_assoc. rewrite -lft_tok_sep. iDestruct "Htok2" as "(Htok2 & Htoki2)".
     iMod (bor_exists_tok with "LFT Hb Htok") as "(%x & Hb & Htok)"; first solve_ndisj.
-    iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π} x @ ty)) with "[] Hb") as "Hb".
+    iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
     iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
     iPoseProof (P.(inv_P_share) E with "[$LFT $TIME $LLCTX] Htok2 HP") as "HP"; first done.
@@ -197,19 +198,20 @@ Section ex.
     iCombine "Htok Htok2" as "$".
   Qed.
   Next Obligation.
-    iIntros (ty κ κ' π r l) "#Hincl (%x & HP & Hshr)".
+    iIntros (ty κ κ' π r m l) "#Hincl (%x & HP & Hshr)".
     iExists x. iSplitL "HP".
     { by iApply P.(inv_P_shr_mono). }
     iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    iIntros (ty ot mt st π r v Hot) "(%x & HP & Hv)".
+    iIntros (ty ot mt st π r m v Hot) "(%x & HP & Hv)".
     iPoseProof (ty_memcast_compat with "Hv") as "Hm"; first done.
     destruct mt; eauto with iFrame.
   Qed.
   Next Obligation.
-    intros ty ly mt Hst. simpl.
-    by apply ty_has_op_type_untyped.
+    intros ty ly mt Heq Hst. simpl.
+    rewrite ty_has_op_type_unfold.
+    by apply _ty_has_op_type_untyped.
   Qed.
 
   (* TODO generalize ghost_drop in the type def *)
@@ -217,7 +219,7 @@ Section ex.
   Global Program Instance ex_plain_t_ghost_drop ty `{Hg : !TyGhostDrop ty} : TyGhostDrop (ex_plain_t ty) | 100 :=
     mk_ty_ghost_drop _ (λ π r, (∃ x, P.(inv_P) π x r ∗ ty_ghost_drop_for ty Hg π x)%I) _.
   Next Obligation.
-    iIntros (ty Hg π r v F ?) "(%x & HP & Ha)".
+    iIntros (ty Hg π r m v F ?) "(%x & HP & Ha)".
     iPoseProof (ty_own_ghost_drop with "Ha") as "Ha"; first done.
     iApply (logical_step_compose with "Ha").
     iApply logical_step_intro.
@@ -238,8 +240,9 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
+    - apply HF.
     - destruct HP as [Hlft _ _].
-      destruct HF as [_ Hlft' _ _ _ _].
+      destruct HF as [_ _ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
@@ -249,12 +252,12 @@ Section contr.
     - rewrite ty_has_op_type_unfold. eapply HF.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
     - intros n ty ty' ?.
-      intros ????. rewrite /ty_shr/=.
+      intros ?????. rewrite /ty_shr/=.
       do 3 f_equiv.
       { apply HP. done. }
       apply HF; done.
@@ -272,8 +275,9 @@ Section contr.
     intros HP HF.
     constructor; simpl.
     - apply HF.
+    - apply HF.
     - destruct HP as [Hlft _ _].
-      destruct HF as [_ Hlft' _ _ _ _].
+      destruct HF as [_ _ Hlft' _ _ _ _].
       apply ty_lft_morphism_of_direct.
       apply ty_lft_morphism_to_direct in Hlft'.
       simpl in *.
@@ -285,12 +289,12 @@ Section contr.
       rewrite ty_has_op_type_unfold. done.
     - simpl. eapply HF.
     - intros n ty ty' ?.
-      intros π r v. rewrite /ty_own_val/=.
+      intros π r m v. rewrite /ty_own_val/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
     - intros n ty ty' ?.
-      intros ????. rewrite /ty_shr/=.
+      intros ?????. rewrite /ty_shr/=.
       do 3 f_equiv.
       { apply HP; done. }
       apply HF; done.
@@ -308,7 +312,7 @@ Section open.
     {| learn_from_hyp_val_Q := ∃ π, boringly (∃ x : rt, P.(inv_P) π x r) |}.
   Next Obligation.
     rewrite /ty_own_val/=.
-    iIntros (? r ?? v ?) "(%x & Hinv & Hv)".
+    iIntros (? r ?? v m ?) "(%x & Hinv & Hv)".
     iPoseProof (boringly_intro with "Hinv") as "#Hinv'".
     iModIntro. iSplitL; first by eauto with iFrame.
     iExists π.
@@ -317,12 +321,12 @@ Section open.
 
   Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] PlaceIn x @ (◁ (∃; P, ty)) ={F}=∗
+    l ◁ₗ[π, Owned wl] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty) ∗
+    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
     (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
       l ◁ₗ[π, Owned false] r' @ lt' -∗
-      ⌜ltype_st lt' = ty_syn_type ty⌝ -∗
+      ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
       l ◁ₗ[π, Owned wl] r' @
         (OpenedLtype lt' (◁ ty) (◁ ∃; P, ty)
           (λ (r : rt) (x : X), P.(inv_P) π r x)
@@ -368,9 +372,9 @@ Section open.
   *)
   Lemma ex_plain_t_open_shared F π (ty : type rt) κ l (x : X) :
     lftE ⊆ F →
-    l ◁ₗ[π, Shared κ] PlaceIn x @ (◁ (∃; P, ty)) ={F}=∗
+    l ◁ₗ[π, Shared κ] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P_shr) π κ r x ∗
-    l ◁ₗ[π, Shared κ] PlaceIn x @ (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))).
+    l ◁ₗ[π, Shared κ] #x @ (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))).
   Proof.
     iIntros (?) "#Ha". iPoseProof "Ha" as "Hb".
     rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
@@ -390,12 +394,12 @@ Section open.
     rrust_ctx -∗
     q.[κ] -∗
     (q.[κ] ={lftE}=∗ llft_elt_toks κs) -∗
-    l ◁ₗ[π, Uniq κ γ] PlaceIn x @ (◁ (∃; P, ty)) ={F}=∗
+    l ◁ₗ[π, Uniq κ γ] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty) ∗
+    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
     (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
       l ◁ₗ[π, Owned false] r' @ lt' -∗
-      ⌜ltype_st lt' = ty_syn_type ty⌝ -∗
+      ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
       l ◁ₗ[π, Uniq κ γ] r' @
       (OpenedLtype (lt') (◁ ty) (◁ ∃; P, ty)
         (λ (r : rt) (x : X), P.(inv_P) π r x)
@@ -535,8 +539,8 @@ Section stratify.
     λ T, i2p (owned_subtype_ex_plain_t π E L ty r r' T).
 
   Lemma owned_subtype_ex_plain_t_strong {rt0 : RT} π E L (ty : type rt0) (ty2 : type rt) (r : rt0) (r' : X) T :
-    (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2, 
-    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') (λ L1 _ R, 
+    (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2,
+    (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') (λ L1 _ R,
     R -∗ T L1))))
     ⊢ owned_subtype π E L false r r' ty (∃; P, ty2) T.
   Proof.
@@ -660,11 +664,11 @@ Section stratify.
 
   (** Unfolding by place access *)
   Lemma typed_place_ex_plain_t_owned π E L l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
-    (∀ r, 
+    (∀ r,
       introduce_with_hooks E L (P.(inv_P) π r x) (λ L2, typed_place π E L2 l
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, True)) (#r) UpdStrong (Owned wl) K
       (λ L2 κs li b2 bmin' rti ltyi ri updcx,
-        T L2 κs li b2 bmin' rti ltyi ri 
+        T L2 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
@@ -693,7 +697,7 @@ Section stratify.
     (∀ r, introduce_with_hooks E L2 (P.(inv_P) π r x) (λ L3, typed_place π E L3 l
       (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) (#r) UpdStrong (Uniq κ γ) K
       (λ L4 κs li b2 bmin' rti ltyi ri updcx,
-        T L4 κs li b2 bmin' rti ltyi ri 
+        T L4 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
@@ -724,10 +728,10 @@ Section stratify.
   Global Existing Instance typed_place_ex_plain_t_uniq_inst | 15.
 
   Lemma typed_place_ex_plain_t_shared π E L l (ty : type rt) x κ K `{!TCDone (K ≠ [])} T :
-    (∀ r, introduce_with_hooks E L (P.(inv_P_shr) π κ r x) (λ L2, 
+    (∀ r, introduce_with_hooks E L (P.(inv_P_shr) π κ r x) (λ L2,
       typed_place π E L2 l (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
         (λ L3 κs li b2 bmin' rti ltyi ri updcx,
-          T L3 κs li b2 bmin' rti ltyi ri 
+          T L3 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong

@@ -58,7 +58,7 @@ Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains :
   (* show that the main functions for the individual threads are well-typed for a provable precondition [P] *)
   (∀ {HtypeG : typeGS Σ},
     ([∗ map] k↦qs∈fns, fntbl_entry (fn_loc k) qs) ={⊤}=∗
-      [∗ list] main ∈ thread_mains, ∀ π, ∃ P, (val_of_loc main) ◁ᵥ{π} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
+      [∗ list] main ∈ thread_mains, ∀ π, ∃ P, (val_of_loc main) ◁ᵥ{π, MetaNone} main @ function_ptr [] (@eq_refl _ [], main_type P) ∗ P) →
   (* if the whole thread pool steps for [n] steps *)
   nsteps (Λ := c_lang) n (initial_prog <$> thread_mains, σ) obs (t2, σ2) →
   (* then it has not gotten stuck *)
@@ -102,7 +102,7 @@ Proof.
     iMod (na_alloc) as "(%π & Hna)".
     iDestruct ("Hfn" $! π) as (P) "[Hmain HP]".
     rewrite /initial_prog.
-    iApply (type_call_fnptr π [] [] 0 [] [] [] main (val_of_loc main) [] [] eq_refl (main_type P) [] (λ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
+    iApply (type_call_fnptr π [] [] 0 [] [] [] main (val_of_loc main) [] [] eq_refl _ (main_type P) [] (λ _ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
     + iExists (π, ⊤) => /=.
       iFrame. do 2 iR.
       iIntros "_". iExists eq_refl, -[], tt.
@@ -127,7 +127,7 @@ Proof.
     + rewrite /rrust_ctx. iFrame "#".
     + by iApply big_sepL_nil.
     + by iApply big_sepL_nil.
-    + by iIntros (??????) "HL Hv _".
+    + by iIntros (???????) "HL Hv _".
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
     by iFrame.

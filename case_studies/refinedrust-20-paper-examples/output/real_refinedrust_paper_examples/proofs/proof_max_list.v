@@ -12,8 +12,8 @@ Lemma max_list_proof (π : thread_id) :
 Proof.
   max_list_prelude.
  
-  repeat liRStep; liShow.
-
+  rep <-! liRStep; liShow.
+  
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.

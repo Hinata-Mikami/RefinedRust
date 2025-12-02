@@ -12,28 +12,31 @@ Section shr_ref.
      so the simple_type interface doesn't suffice *)
   Program Definition shr_ref {rt : RT} κ (inner : type rt) : type (place_rfn rt) := {|
     ty_sidecond := True;
-    ty_own_val π r v :=
+    ty_metadata_kind := MetadataNone;
+    ty_own_val π r m v :=
       (∃ (l : loc) (ly : layout) (r' : rt),
+        ⌜m = MetaNone⌝ ∗
         ⌜v = val_of_loc l⌝ ∗
-        ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
         place_rfn_interp_shared r r' ∗
-        □ |={lftE}=> inner.(ty_shr) κ π r' l)%I;
+        □ |={lftE}=> inner.(ty_shr) κ π r' MetaNone l)%I;
 
     _ty_has_op_type ot mt := is_ptr_ot ot;
-    ty_syn_type := PtrSynType;
+    ty_syn_type m := PtrSynType;
 
-    ty_shr κ' π r l :=
+    ty_shr κ' π r m l :=
       (∃ (li : loc) (ly : layout) (ri : rt),
+        ⌜m = MetaNone⌝ ∗
         ⌜l `has_layout_loc` void*⌝ ∗
         (*loc_in_bounds l void*.(ly_size) ∗*)
-        ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
         ⌜li `has_layout_loc` ly⌝ ∗
         loc_in_bounds li 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
         place_rfn_interp_shared r ri ∗
-        &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri li)%I;
+        &frac{κ'} (λ q, l ↦{q} li) ∗ ▷ □ |={lftE}=> inner.(ty_shr) (κ) π ri MetaNone li)%I;
     _ty_lfts := [κ] ++ ty_lfts inner;
     _ty_wf_E := ty_wf_E inner ++ ty_outlives_E inner κ;
   |}.
@@ -41,7 +44,7 @@ Section shr_ref.
     intros. simpl. apply _.
   Qed.
   Next Obligation.
-    iIntros (??????) "(%l & %ly & %r' & -> & ? & ? & ?)".
+    iIntros (???????) "(%l & %ly & %r' & -> & -> & ? & ? & ?)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -51,16 +54,16 @@ Section shr_ref.
     - intros; by apply syn_type_has_layout_ptr.
     - intros ->; by apply syn_type_has_layout_ptr.
   Qed.
-  Next Obligation. iIntros (??????) "_". done. Qed.
   Next Obligation. iIntros (???????) "_". done. Qed.
+  Next Obligation. iIntros (????????) "_". done. Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (???????). simpl. iIntros "(%l' & %ly & %r' & % & ? & ? & _)".
-    iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
+    iIntros (????????). simpl. iIntros "(%l' & %ly & %r' & % & % & ? & ? & _)".
+    iPureIntro. eexists _. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (? κ ? E κ' l ly π r q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
+    iIntros (? κ ? E κ' l ly π r m q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
     simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
     iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
     iApply fupd_logical_step.
@@ -69,6 +72,8 @@ Section shr_ref.
     iMod (bor_exists with "LFT Hb") as "(%l' & Hb)"; first solve_ndisj.
     iMod (bor_exists with "LFT Hb") as "(%ly' & Hb)"; first solve_ndisj.
     iMod (bor_exists_tok with "LFT Hb Htok_κ'") as "(%r' & Hb & Htok_κ')"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Heq Htok_κ'") as "(>-> & Htok_κ')"; first solve_ndisj.
     iMod (bor_persistent with "LFT Hb Htok_κ'") as "(Ha & Htok_κ')"; first solve_ndisj.
@@ -80,49 +85,58 @@ Section shr_ref.
     apply syn_type_has_layout_ptr_inv in Halg as ->.
     iExists ly'.
     iR.
-    do 3 iR. iFrame "Hsc".
+    do 4 iR. iFrame "Hsc".
   Qed.
   Next Obligation.
-    iIntros (? ? ? κ' κ'' π r l) "#Hord H".
-    iDestruct "H" as (li ly ri) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & #Hown)".
-    iExists li, ly, ri. iFrame. iSplit.
+    iIntros (? ? ? κ' κ'' π r m l) "#Hord H".
+    iDestruct "H" as (li ly ri ->) "(? & ? & ? & Hlb & Hsc & Hr & #Hf & #Hown)".
+    iExists li, ly, ri. iR. iFrame. iSplit.
     - by iApply (frac_bor_shorten with "Hord").
     - iNext. iDestruct "Hown" as "#Hown". iModIntro. iMod "Hown". iModIntro.
       done.
   Qed.
   Next Obligation.
-    iIntros (? ?? ot mt st ? r ? Hot).
+    iIntros (? ?? ot mt st ? r m ? Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%l & %ly & %ri & -> & ? & ? & ?)".
+    - iIntros "(%l & %ly & %ri & -> & -> & ? & ? & ?)".
       iExists l, ly, ri. iFrame.
-      iPureIntro. move: ot Hot => [] /=// _.
+      iPureIntro. split; first done.
+      move: ot Hot => [] /= // _.
       rewrite /mem_cast val_to_of_loc //.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%l & %ly & %ri & -> & _)". eauto.
+      iIntros "(%l & %ly & %ri & -> & -> & _)". eauto.
   Qed.
   Next Obligation.
-    intros ??? ly mt Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    intros ??? ly mt _ Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
 
   Global Program Instance shr_ref_ghost_drop {rt} κ (ty : type rt) : TyGhostDrop (shr_ref κ ty) :=
     mk_ty_ghost_drop _ (λ _ _, True)%I _.
   Next Obligation.
-    iIntros (????????) "Ha".
+    iIntros (?????????) "Ha".
     iApply logical_step_intro. done.
+  Qed.
+
+  Global Instance shr_ref_sized {rt} (ty : type rt) κ : TySized (shr_ref κ ty).
+  Proof.
+    econstructor; done.
   Qed.
 
   Global Instance shr_ref_copyable {rt} (ty : type rt) κ : Copyable (shr_ref κ ty).
   Proof.
     constructor; first apply _.
-    iIntros (κ' π E l ly r ? ? Ha) "[LFT TIME] (%li & %ly' & %r' & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Hlft".
+    iIntros (κ' π E l r ? ? ?) "[LFT TIME] (%li & %ly' & %r' & -> & %Hly' & % & % & #Hlb & #Hsc & #Hr & Hf & #Hown) Hlft".
     iMod (frac_bor_acc with "LFT Hf Hlft") as (q') "[Hmt Hclose]"; first solve_ndisj.
     iModIntro.
-    apply syn_type_has_layout_ptr_inv in Ha as ->.
-    iSplitR; first done.
+    (*apply syn_type_has_layout_ptr_inv in Ha as ->.*)
+    (*iSplitR; first done.*)
+    iExists _.
+    iSplitR. { simpl. iPureIntro. by apply syn_type_has_layout_ptr. }
+    iR.
     iExists _, li. iDestruct "Hmt" as "[Hmt1 Hmt2]".
-    iSplitL "Hmt1". { iNext. iFrame "Hmt1". iExists li, ly', r'. iFrame "#". eauto. }
+    iSplitL "Hmt1". { iNext. iFrame "Hmt1". iExists li, ly', r'. iFrame "#". iPureIntro. split_and!; try done. }
     iIntros "Hmt1".
     iApply "Hclose". iModIntro. rewrite -{3}(Qp.div_2 q').
     iPoseProof (heap_pointsto_agree with "Hmt1 Hmt2") as "%Heq"; first done.
@@ -133,6 +147,7 @@ Section shr_ref.
   Proof.
     constructor; simpl.
     - done.
+    - done.
     - eapply ty_lft_morph_make_ref.
       + rewrite {1}ty_lfts_unfold; done.
       + rewrite {1}ty_wf_E_unfold; done.
@@ -140,7 +155,7 @@ Section shr_ref.
     - done.
     - solve_type_proper.
     - solve_type_proper.
-Qed.
+  Qed.
 
   Global Instance shr_ref_type_ne {rt : RT} κ : TypeNonExpansive (shr_ref (rt:=rt) κ).
   Proof. apply type_contractive_type_ne, _. Qed.

@@ -16,8 +16,8 @@ Proof.
   liFromSyntax.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
-  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as %Hv1.
-  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "[-> %]".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
+  rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
   iRename select (credit_store _ _) into "Hstore".
   iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hatcl)".
   iDestruct "CTX" as "(LFT & TIME & LLCTX)".

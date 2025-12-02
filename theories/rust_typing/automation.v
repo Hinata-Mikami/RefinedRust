@@ -255,7 +255,7 @@ Ltac liRInstantiateEvars :=
       instantiate_protected a +[]
 
   | |- envs_entails _ (subsume_full _ _ _ (@ltype_own _ _ ?rt (◁ ?ty)%I _ _ _ _) (@ltype_own _ _ (xtype_rt (protected ?H)) (◁ xtype_ty (protected ?H))%I _ _ _ _) _) =>
-      instantiate_protected H (@mk_xtype _ _ rt ty (protected (EVAR_ID _)))
+      instantiate_protected H (@mk_xtype _ _ rt ty (protected (EVAR_ID _)) _)
 
   | |- envs_entails _ (subsume (@ltype_own _ _ (place_rfn ?rt1) _ _ _ _ _) (@ltype_own _ _ (place_rfn (protected ?rt2)) _ _ _ _ _) _) => liInst rt2 rt1
   | |- envs_entails _ (subsume (@ltype_own _ _ ?rt1 _ _ _ _ _) (@ltype_own _ _ (protected ?rt2) _ _ _ _ _) _) => liInst rt2 rt1
@@ -653,8 +653,8 @@ Tactic Notation "prepare_parameters" "(" ident_list(i) ")" :=
   revert i; repeat liForall.
 
 (* Put function assumptions into the persistent context *)
-Global Instance intro_pers_fn `{!typeGS Σ} {rts : list RT} v π l sts lfts (fnspec : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) :
-  IntroPersistent (v ◁ᵥ{π} l @ function_ptr sts fnspec) (v ◁ᵥ{π} l @ function_ptr sts fnspec).
+Global Instance intro_pers_fn `{!typeGS Σ} {rts : list RT} v π l sts lfts (fnspec : (rts = rts) * (prod_vec lft lfts → plist type rts → fn_spec)) m :
+  IntroPersistent (v ◁ᵥ{π, m} l @ function_ptr sts fnspec) (v ◁ᵥ{π, m} l @ function_ptr sts fnspec).
 Proof.
   constructor. iIntros "#HA". done.
 Qed.
@@ -700,7 +700,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
     end;
     inv_vec lsv; inv_vec lsa;
     simpl;
-    unfold typarams_wf, typaram_wf;
+    unfold typaram_wf;
     init_cache
   end
 .
@@ -824,6 +824,12 @@ Global Instance loc_inh : Inhabited loc.
 Proof. unfold loc. apply _. Qed.
 
 #[global] Typeclasses Opaque layout_wf.
+
+Global Instance simpl_exist_tysized `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} Q :
+  SimplExist (TySized ty) Q (Q _).
+Proof.
+  intros ?. eauto.
+Qed.
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
 #[export] Unset Keyed Unification.

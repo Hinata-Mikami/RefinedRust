@@ -19,7 +19,7 @@ Lemma is_value_ot_core_refl ot mt :
 Proof. destruct ot;simpl; done. Qed.
 
 Definition is_value_ot `{!LayoutAlg} (st : syn_type) (ot' : op_type) (mt : memcast_compat_type) : Prop :=
-  ∃ ot, use_op_alg st = Some ot ∧ is_value_ot_core ot ot' mt ∧ syn_type_has_layout st (ot_layout ot).
+∃ ot, use_op_alg st = Some ot ∧ is_value_ot_core ot ot' mt ∧ syn_type_has_layout st (ot_layout ot).
 
 Global Typeclasses Opaque is_value_ot.
 
@@ -92,69 +92,74 @@ Section value.
 
   Global Instance value_copy st : Copyable (value_t st).
   Proof. apply _. Qed.
+
+  Global Instance value_sized st : TySized (value_t st).
+  Proof. apply _. Qed.
 End value.
 
 Section lemmas.
   Context `{!typeGS Σ}.
 
-  Lemma value_has_length π v v1 st ly :
+  Lemma value_has_length π v v1 st ly m :
     syn_type_has_layout st ly →
-    v ◁ᵥ{π} v1 @ value_t st -∗
+    v ◁ᵥ{π, m} v1 @ value_t st -∗
     ⌜length v1 = ly_size ly⌝ ∗ ⌜length v = ly_size ly⌝.
   Proof.
     rewrite /ty_own_val/=.
-    iDestruct 1 as "(%ot & %Hot & %Hmc & %Hly & %Hst)".
+    iDestruct 1 as "(-> & %ot & %Hot & %Hmc & %Hly & %Hst)".
     assert (ly = ot_layout ot) as -> by by eapply syn_type_has_layout_inj.
     iL. iPureIntro. apply is_memcast_val_length in Hmc as ->; done.
   Qed.
 
-  Lemma value_has_layout π st v vs :
-    v ◁ᵥ{π} vs @ value_t st -∗
+  Lemma value_has_layout π st v vs m :
+    v ◁ᵥ{π, m} vs @ value_t st -∗
     ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜v `has_layout_val` ly⌝.
   Proof.
     rewrite /ty_own_val.
-    iDestruct 1 as "(%ot & %Hot & %Hmv & %Hv & %Hst)".
+    iDestruct 1 as "(-> & %ot & %Hot & %Hmv & %Hv & %Hst)".
     iExists (ot_layout ot). iR. done.
   Qed.
 
-  Lemma own_val_split_value π {rt} (ty : type rt) r v st ly :
-    syn_type_has_layout (ty_syn_type ty) ly ∧ syn_type_has_layout st ly →
-    v ◁ᵥ{π} r @ ty -∗
-    v ◁ᵥ{π} v @ value_t st ∗ v ◁ᵥ{π} r @ ty.
+  Lemma own_val_split_value π {rt} (ty : type rt) r v st ly m :
+    syn_type_has_layout (ty_syn_type ty m) ly ∧ syn_type_has_layout st ly →
+    v ◁ᵥ{π, m} r @ ty -∗
+    v ◁ᵥ{π, MetaNone} v @ value_t st ∗ v ◁ᵥ{π, m} r @ ty.
   Proof.
     iIntros ((Hly & Hly')) "Hv".
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
     subst. iFrame.
     specialize (syn_type_has_layout_op_alg _ _ Hly') as (ot & Hot & <-).
+    iR.
     iExists ot. iSplitR; first done.
     iSplitR. { iLeft. done. }
     done.
   Qed.
 
-  Lemma value_untyped_make_typed π st ly v vs :
+  Lemma value_untyped_make_typed π st ly v vs m :
     syn_type_has_layout st ly →
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType ly) -∗
-    v ◁ᵥ{π} vs @ value_t st.
+    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType ly) -∗
+    v ◁ᵥ{π, m} vs @ value_t st.
   Proof.
     iIntros "%Halg Hv".
-    rewrite /ty_own_val /=. iDestruct "Hv" as "(%ot & %Heq & %Hmc & %Hlyv & _)".
+    rewrite /ty_own_val /=. iDestruct "Hv" as "(-> & %ot & %Heq & %Hmc & %Hlyv & _)".
     injection Heq as <-.
     specialize (syn_type_has_layout_op_alg _ _ Halg) as (ot & Hop & <-).
+    iR.
     iExists ot. iSplitR; first done.
     iSplitR. { iLeft. apply is_memcast_val_untyped_inv in Hmc. done. }
     iSplitR; first done. done.
   Qed.
 
-  Lemma value_untyped_layout_mono π v vs ly1 ly2 :
+  Lemma value_untyped_layout_mono π v vs ly1 ly2 m :
     ly_size ly1 = ly_size ly2 →
     (layout_wf ly1 → layout_wf ly2) →
     (ly_align_in_bounds ly1 → ly_align_in_bounds ly2) →
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType ly1) -∗
-    v ◁ᵥ{π} vs @ value_t (UntypedSynType ly2).
+    v ◁ᵥ{π, m} vs @ value_t (UntypedSynType ly1) -∗
+    v ◁ᵥ{π, MetaNone} vs @ value_t (UntypedSynType ly2).
   Proof.
     iIntros (Hsz Hwf Hal) "Hv". rewrite /ty_own_val /=.
-    iDestruct "Hv" as "(%ot & %Heq & %Hmc & %Hly & %Hst)".
-    injection Heq as <-. iExists _. iSplitR; first done.
+    iDestruct "Hv" as "(-> & %ot & %Heq & %Hmc & %Hly & %Hst)".
+    injection Heq as <-. iR. iExists _. iSplitR; first done.
     iSplitR. { apply is_memcast_val_untyped_inv in Hmc. by iLeft. }
     simpl. iSplitR. { rewrite /has_layout_val -Hsz //. }
     iPureIntro. simpl in Hst. apply syn_type_has_layout_untyped_inv in Hst as (_ & Hwf' & Hsz_le & ?).
@@ -165,53 +170,53 @@ Section lemmas.
     - by apply Hal.
   Qed.
 
-  Lemma value_untyped_app_merge π v1 v2 r1 r2 ly1 ly2 ly3 :
+  Lemma value_untyped_app_merge π v1 v2 r1 r2 ly1 ly2 ly3 m :
     syn_type_has_layout (UntypedSynType ly3) ly3 →
     ly_size ly3 = ly_size ly1 + ly_size ly2 →
-    v1 ◁ᵥ{π} r1 @ value_t (UntypedSynType ly1) -∗
-    v2 ◁ᵥ{π} r2 @ value_t (UntypedSynType ly2) -∗
-    (v1 ++ v2) ◁ᵥ{π} (r1 ++ r2) @ value_t (UntypedSynType ly3).
+    v1 ◁ᵥ{π, m} r1 @ value_t (UntypedSynType ly1) -∗
+    v2 ◁ᵥ{π, m} r2 @ value_t (UntypedSynType ly2) -∗
+    (v1 ++ v2) ◁ᵥ{π, m} (r1 ++ r2) @ value_t (UntypedSynType ly3).
   Proof.
     iIntros (??) "Hv1 Hv2".
     rewrite /ty_own_val /=.
-    iDestruct "Hv1" as "(%ot1 & %Heq1 & %Hmc1 & %Hly1 & %Halg1)".
-    iDestruct "Hv2" as "(%ot2 & %Heq2 & %Hmc2 & %Hly2 & %Halg2)".
+    iDestruct "Hv1" as "(-> & %ot1 & %Heq1 & %Hmc1 & %Hly1 & %Halg1)".
+    iDestruct "Hv2" as "(_ & %ot2 & %Heq2 & %Hmc2 & %Hly2 & %Halg2)".
     injection Heq1 as <-. injection Heq2 as <-.
     apply syn_type_has_layout_untyped_inv in Halg1 as (<- & Hwf1 & Hsz1).
     apply syn_type_has_layout_untyped_inv in Halg2 as (<- & Hwf2 & Hsz2).
     rewrite /has_layout_val in Hly1. rewrite /has_layout_val in Hly2.
     simpl in *.
-    iExists _. iR. simpl.
+    iR. iExists _. iR. simpl.
     iPureIntro. split_and!.
     - eapply is_memcast_val_untyped_app; [ | done..]. done.
     - rewrite /has_layout_val. rewrite length_app. lia.
     - done.
   Qed.
 
-  Lemma value_untyped_app_split π v v1 v2 ly1 ly2 ly3 :
+  Lemma value_untyped_app_split π v v1 v2 ly1 ly2 ly3 m :
     ly_size ly1 = ly_size ly2 + ly_size ly3 →
     length v1 = ly_size ly2 →
     layout_wf ly2 →
     layout_wf ly3 →
     ly_align_in_bounds ly3 →
     ly_align_in_bounds ly2 →
-    v ◁ᵥ{π} (v1 ++ v2) @ value_t (UntypedSynType ly1) -∗
-    (take (length v1) v) ◁ᵥ{π} v1 @ value_t (UntypedSynType ly2) ∗
-    (drop (length v1) v) ◁ᵥ{π} v2 @ value_t (UntypedSynType ly3).
+    v ◁ᵥ{π, m} (v1 ++ v2) @ value_t (UntypedSynType ly1) -∗
+    (take (length v1) v) ◁ᵥ{π, m} v1 @ value_t (UntypedSynType ly2) ∗
+    (drop (length v1) v) ◁ᵥ{π, m} v2 @ value_t (UntypedSynType ly3).
   Proof.
     iIntros (Hsz ?????) "Hv".
-    rewrite /ty_own_val/=. iDestruct "Hv" as "(%ot & %Hot & %Hmc & %Hly & %Hst)".
+    rewrite /ty_own_val/=. iDestruct "Hv" as "(-> & %ot & %Hot & %Hmc & %Hly & %Hst)".
     apply use_op_alg_untyped_inv in Hot as ->.
     apply syn_type_has_layout_untyped_inv in Hst as (<- & Hwf & Hsz' & ?).
     apply is_memcast_val_untyped_inv in Hmc as <-.
     rewrite /has_layout_val/= length_app in Hly.
     simpl in *.
     iSplit.
-    - iPureIntro. exists (UntypedOp ly2). split; first done.
+    - iR. iPureIntro. exists (UntypedOp ly2). split; first done.
       split. { left. rewrite take_app_length//. }
       split. { rewrite take_app_length. rewrite /has_layout_val/=. lia. }
       apply syn_type_has_layout_untyped; try naive_solver lia.
-    - iPureIntro. exists (UntypedOp ly3). split; first done.
+    - iR. iPureIntro. exists (UntypedOp ly3). split; first done.
       split. { left. rewrite drop_app_length//. }
       split. { rewrite drop_app_length. rewrite /has_layout_val/=. lia. }
       apply syn_type_has_layout_untyped; naive_solver lia.
@@ -239,9 +244,9 @@ Section ofty_lemmas.
   (* NOTE: We can make this into a typed value afterwards using [ofty_value_untyped_make_typed] *)
   Lemma ofty_own_split_value_untyped π F l wl {rt} (ty : type rt) r ly :
     lftE ⊆ F →
-    syn_type_has_layout (ty_syn_type ty) ly →
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
     (l ◁ₗ[π, Owned wl] #r @ ◁ ty)%I -∗ ▷?wl |={F}=> ∃ v,
-    v ◁ᵥ{π} r @ ty ∗ l ◁ₗ[π, Owned wl] #v @ ◁ (value_t (UntypedSynType ly)).
+    v ◁ᵥ{π, MetaNone} r @ ty ∗ l ◁ₗ[π, Owned wl] #v @ ◁ (value_t (UntypedSynType ly)).
   Proof.
     iIntros (? Halg) "Hty".
     rewrite (ltype_own_ofty_unfold ty) /lty_of_ty_own.
@@ -260,10 +265,10 @@ Section ofty_lemmas.
 
   Lemma ofty_own_split_value_untyped_lc π F l wl {rt} (ty : type rt) r ly :
     lftE ⊆ F →
-    syn_type_has_layout (ty_syn_type ty) ly →
+    syn_type_has_layout (ty_syn_type ty MetaNone) ly →
     £ (Nat.b2n wl) -∗
     (l ◁ₗ[π, Owned wl] #r @ ◁ ty)%I ={F}=∗ ∃ v,
-    v ◁ᵥ{π} r @ ty ∗ l ◁ₗ[π, Owned wl] #v @ ◁ (value_t (UntypedSynType ly)).
+    v ◁ᵥ{π, MetaNone} r @ ty ∗ l ◁ₗ[π, Owned wl] #v @ ◁ (value_t (UntypedSynType ly)).
   Proof.
     iIntros (? Halg) "Hcred Hty".
     iPoseProof (ofty_own_split_value_untyped with "Hty") as "Hb"; [done.. |].
@@ -271,14 +276,14 @@ Section ofty_lemmas.
   Qed.
 
   (* TODO ideally, the requirement for the UntypedOp case should just generally hold for types. Untyped should always be possible. *)
-  Lemma ofty_own_merge_value {rt} π (ty : type rt) wl v r st l :
+  Lemma ofty_own_merge_value {rt} π (ty : type rt) `{!TySized ty} wl v r st l :
     match st with
     | UntypedSynType ly1 =>
-        syn_type_has_layout (ty_syn_type ty) ly1
+        syn_type_has_layout (ty_syn_type ty MetaNone) ly1
     | _ =>
-        ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st
+        ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) MCCopy ∧ ty_syn_type ty MetaNone = st
     end →
-    v ◁ᵥ{ π} r @ ty -∗
+    v ◁ᵥ{ π, MetaNone} r @ ty -∗
     l ◁ₗ[ π, Owned wl] #v @ (◁ value_t st) -∗
     l ◁ₗ[ π, Owned wl] #r @ (◁ ty).
   Proof.
@@ -289,7 +294,7 @@ Section ofty_lemmas.
     iExists ly.
     iFrame "%".
     iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
-    assert ((∃ ly1, st = UntypedSynType ly1 ∧ syn_type_has_layout (ty_syn_type ty) ly1) ∨ (ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy ∧ ty_syn_type ty = st)) as Hb.
+    assert ((∃ ly1, st = UntypedSynType ly1 ∧ syn_type_has_layout (ty_syn_type ty MetaNone) ly1) ∨ (ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) MCCopy ∧ ty_syn_type ty MetaNone = st)) as Hb.
     { destruct st; eauto. }
     iSplitR. { iPureIntro. destruct Hb as [(ly1 & -> & ?) | (? & <-)]; last done.
       apply syn_type_has_layout_untyped_inv in Halg as (-> & _). done. }
@@ -299,13 +304,13 @@ Section ofty_lemmas.
     iDestruct "Hrfn" as "<-".
     iExists v'. iFrame.
     iEval (rewrite /ty_own_val/=) in "Hv'".
-    iDestruct "Hv'" as "(%ot & %Hot' & %Hmc & %Hv & ?)".
+    iDestruct "Hv'" as "(_ & %ot & %Hot' & %Hmc & %Hv & ?)".
     destruct Hmc as [-> | [st' ->]]; first done.
     iApply (ty_memcast_compat_copy with "Hv").
 
     destruct Hb as [(ly1 & -> & Hst) | (Hst & <-)].
     - injection Hot' as <-.
-      by apply ty_has_op_type_untyped.
+      by eapply ty_sized_has_op_type_untyped.
     - move: Hst. rewrite /use_op_alg' Hot' //.
   Qed.
 
@@ -498,26 +503,25 @@ Section rules.
      so we should really try it as a last resort. So we give it a pretty low priority. *)
 
   (** By default, we go to UntypedSynType, and can later on specialize if needed by subsumption (we cannot go the other way around due to memcast compatibility) *)
-  Lemma value_subsume_goal π {rt} (ty : type rt) (r : rt) v vs st T :
-    (∃ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-      (v ◁ᵥ{π} r @ ty -∗ subsume (v ◁ᵥ{π} v @ value_t (UntypedSynType ly)) (v ◁ᵥ{π} vs @ value_t st) T))
-    ⊢ subsume (v ◁ᵥ{π} r @ ty) (v ◁ᵥ{π} vs @ value_t st) T.
+  Lemma value_subsume_goal π {rt} (ty : type rt) (r : rt) v vs st m T :
+    (∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) m) ly⌝ ∗
+      (v ◁ᵥ{π, m} r @ ty -∗ subsume (v ◁ᵥ{π, MetaNone} v @ value_t (UntypedSynType ly)) (v ◁ᵥ{π, MetaNone} vs @ value_t st) T))
+    ⊢ subsume (v ◁ᵥ{π, m} r @ ty) (v ◁ᵥ{π, MetaNone} vs @ value_t st) T.
   Proof.
     iIntros "(%ly & %Halg & HT) Hv".
     iPoseProof (own_val_split_value _ _ _ _ (UntypedSynType _) with "Hv") as "(Hv' & Hv)".
     { split; first done. eapply syn_type_has_layout_make_untyped; done. }
     iApply ("HT" with "Hv Hv'").
   Qed.
-  Global Instance value_subsume_goal_inst π {rt} (ty : type rt) (r : rt) v vs st :
-    Subsume (v ◁ᵥ{π} r @ ty) (v ◁ᵥ{π} vs @ value_t st) | 50 :=
-    λ T, i2p (value_subsume_goal π ty r v vs st T).
+  Definition value_subsume_goal_inst := [instance @value_subsume_goal].
+  Global Existing Instance value_subsume_goal_inst | 50.
 
   (* TODO: this isn't ideal if v' is an evar -- then this currently will lead to evar instantiation failures, since we don't know the value yet.
      Maybe we want to have a type which encapsulates the existential quantifier in that case?
   *)
   Lemma value_subsume_full_goal_ofty π E L step {rt} l v' st (ty : type rt) r T:
-    li_tactic (compute_layout_goal ty.(ty_syn_type)) (λ ly,
-      (∀ v, v ◁ᵥ{π} r @ ty -∗
+    li_tactic (compute_layout_goal (ty.(ty_syn_type) MetaNone)) (λ ly,
+      (∀ v, v ◁ᵥ{π, MetaNone} r @ ty -∗
       subsume_full E L step (l ◁ₗ[π, Owned false] #v @ ◁ value_t (UntypedSynType ly)) (l ◁ₗ[π, Owned false] #v' @ ◁ (value_t st)) T))
     ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] #r @ ◁ ty)
         (l ◁ₗ[π, Owned false] #v' @ ◁ (value_t st)) T.
@@ -535,10 +539,10 @@ Section rules.
 
   (** When we require assembled ownership, try to assemble it. *)
 
-  Lemma subsume_full_value_merge_ofty_untyped {rt} π E L (ty : type rt) r v l ly1 wl T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π} r @ ty) (λ L' _ R,
-      ⌜syn_type_has_layout ty.(ty_syn_type) ly1⌝ ∗ T L' R))
-    ⊢ subsume_full E L false (l ◁ₗ[π, Owned wl] PlaceIn v @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty)) T.
+  Lemma subsume_full_value_merge_ofty_untyped {rt} π E L (ty : type rt) `{!TySized ty} r v l ly1 wl T :
+    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+      ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly1⌝ ∗ T L' R))
+    ⊢ subsume_full E L false (l ◁ₗ[π, Owned wl] #v @ ◁ value_t (UntypedSynType ly1)) (l ◁ₗ[π, Owned wl] #r @ (◁ ty)) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
@@ -547,13 +551,12 @@ Section rules.
     iModIntro. iExists L', R. iFrame. done.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  Global Instance subsume_full_value_merge_ofty_untyped_inst {rt} π E L (ty : type rt) r v l ly1 wl :
-    SubsumeFull E L false (l ◁ₗ[π, Owned wl] PlaceIn v @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty))%I | 100 :=
-    λ T, i2p (subsume_full_value_merge_ofty_untyped π E L ty r v l ly1 wl T).
+  Definition subsume_full_value_merge_ofty_untyped_inst := [instance @subsume_full_value_merge_ofty_untyped].
+  Global Existing Instance subsume_full_value_merge_ofty_untyped_inst | 100.
 
-  Lemma subsume_full_value_merge_ofty {rt} π E L (ty : type rt) r v l st wl T :
-    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π} r @ ty) (λ L' _ R,
-      ⌜ty_has_op_type ty (use_op_alg' ty.(ty_syn_type)) MCCopy⌝ ∗ ⌜ty_syn_type ty = st⌝ ∗ T L' R))
+  Lemma subsume_full_value_merge_ofty {rt} π E L (ty : type rt) `{!TySized ty} r v l st wl T :
+    (prove_with_subtype E L false ProveDirect (v ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+      ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗ ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L' R))
     ⊢ subsume_full E L false (l ◁ₗ[π, Owned wl] #v @ ◁ value_t st) (l ◁ₗ[π, Owned wl] #r @ (◁ ty)) T.
   Proof.
     iIntros "HT".
@@ -566,18 +569,17 @@ Section rules.
     rewrite Ha in Hc. done.
   Qed.
   (* should have a lower priority than Lithium's id instance - in case the goal specifies that we want a value_t, we should not try to fiddle with that. *)
-  Global Instance subsume_full_value_merge_ofty_inst {rt} π E L (ty : type rt) r v l st wl :
-    SubsumeFull E L false (l ◁ₗ[π, Owned wl] PlaceIn v @ ◁ value_t st)%I (l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty))%I | 101 :=
-    λ T, i2p (subsume_full_value_merge_ofty π E L ty r v l st wl T).
+  Definition subsume_full_value_merge_ofty_inst := [instance @subsume_full_value_merge_ofty].
+  Global Existing Instance subsume_full_value_merge_ofty_inst | 101.
 
   Definition owned_subtype_value_id π E L step st r1 r2 := owned_subtype_id π E L step r1 r2 (value_t st).
   Definition owned_subtype_value_id_inst := [instance @owned_subtype_value_id].
   Global Existing Instance owned_subtype_value_id_inst | 10.
 
   Lemma owned_subtype_value_merge {rt} π E L (ty : type rt) r v' st T :
-    prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π} r @ ty) (λ L' _ R,
-      introduce_with_hooks E L' R (λ L2, ⌜ty_has_op_type ty (use_op_alg' ty.(ty_syn_type)) MCCopy⌝ ∗
-      ⌜ty_syn_type ty = st⌝ ∗ T L2))
+    prove_with_subtype E L false ProveDirect (v' ◁ᵥ{π, MetaNone} r @ ty) (λ L' _ R,
+      introduce_with_hooks E L' R (λ L2, ⌜ty_has_op_type ty (use_op_alg' (ty.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
+      ⌜ty_syn_type ty MetaNone = st⌝ ∗ T L2))
     ⊢ owned_subtype π E L false v' r (value_t st) (ty) T.
   Proof.
     iIntros "HT".
@@ -586,11 +588,12 @@ Section rules.
     iMod ("HT" with "[//] HE HL HR") as "(%L3 & HL & %Hot & <- & HT)".
     iExists _. iFrame. iModIntro.
     iPoseProof (ty_own_val_sidecond with "Hv'") as "#$".
-    iSplitR. { iPureIntro. simpl. iIntros (????). f_equiv. by eapply syn_type_has_layout_inj. }
+    iSplitR. { iPureIntro. simpl. intros ????. 
+      f_equiv. eapply syn_type_has_layout_inj; first done. done. }
     iSplitR; first by eauto.
     iIntros (v) "Hv".
     iEval (rewrite /ty_own_val/=) in "Hv".
-    iDestruct "Hv" as "(%ot & %Hot' & %Hmc & %Hly & %Hst')".
+    iDestruct "Hv" as "(_ & %ot & %Hot' & %Hmc & %Hly & %Hst')".
     rewrite /use_op_alg' Hot'/= in Hot.
     destruct Hmc as [-> | (st & ->)]; first done.
     iApply (ty_memcast_compat_copy with "Hv'"). done.
@@ -622,15 +625,16 @@ Section unify_loc.
 
   (** Step 1 *)
   (* instantiate in case [st2] is an evar *)
-  Lemma subsume_full_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 T :
-    ⌜st1 = st2⌝ ∗ subsume_full E L step (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t st1)%I (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t st1)%I T
-    ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t st1) (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t st2) T.
+  Lemma subsume_full_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 `{!ContainsProtected st2} T :
+    ⌜st1 = st2⌝ ∗ 
+    subsume_full E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t st1)%I 
+      (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t st1)%I T
+    ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t st1) (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t st2) T.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
-  Global Instance subsume_full_ofty_value_st_evar_inst π E L step l st1 st2 vs1 vs2 `{!ContainsProtected st2} :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] PlaceIn vs1 @ ◁ value_t st1)%I (l ◁ₗ[π, Owned false] PlaceIn vs2 @ ◁ value_t st2)%I | 10 :=
-    λ T, i2p (subsume_full_ofty_value_st_evar π E L step l st1 st2 vs1 vs2 T).
+  Definition subsume_full_ofty_value_st_evar_inst := [instance @subsume_full_ofty_value_st_evar].
+  Global Existing Instance subsume_full_ofty_value_st_evar_inst | 10.
 
   (* in case st1 is Untyped, make the goal untyped, too *)
   Lemma subsume_full_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T :
@@ -654,16 +658,16 @@ Section unify_loc.
     - done.
     - done.
     - iIntros (v r) "Hv". rewrite /ty_own_val /=.
-      iDestruct "Hv" as "(%ot & %Heq & %Hmc & %Hv & _)".
+      iDestruct "Hv" as "(_ & %ot & %Heq & %Hmc & %Hv & _)".
+      iR.
       injection Heq as <-. apply is_memcast_val_untyped_inv in Hmc as <-.
       specialize (syn_type_has_layout_op_alg _ _ Halg) as (ot & Hot & <-).
       iExists ot. iSplitR; first done. iSplitR. { by iLeft. }
       done.
     - simpl. done.
   Qed.
-  Global Instance subsume_full_ofty_value_st_untyped_inst π E L step l ly1 st2 vs1 vs2 :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned false] vs2 @ ◁ value_t st2)%I | 15 :=
-    λ T, i2p (subsume_full_ofty_value_st_untyped π E L step vs1 vs2 l st2 ly1 T).
+  Definition subsume_full_ofty_value_st_untyped_inst := [instance @subsume_full_ofty_value_st_untyped].
+  Global Existing Instance subsume_full_ofty_value_st_untyped_inst | 15.
 
   (* if both of the above fail, require equality of the syntypes.
      TODO: this is too strict *)
@@ -675,10 +679,8 @@ Section unify_loc.
   Proof.
     iIntros "(-> & $)".
   Qed.
-  Global Instance subsume_full_ofty_value_st_eq_inst π E L step l st1 st2 vs1 vs2 :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t st1)%I (l ◁ₗ[π, Owned false] vs2 @ ◁ value_t st2)%I | 20 :=
-    λ T, i2p (subsume_full_ofty_value_st_eq π E L step l vs1 vs2 st1 st2 T).
-
+  Definition subsume_full_ofty_value_st_eq_inst := [instance @subsume_full_ofty_value_st_eq].
+  Global Existing Instance subsume_full_ofty_value_st_eq_inst | 20.
 
   (** Step 2 *)
 
@@ -689,10 +691,8 @@ Section unify_loc.
   Proof.
     iIntros "(-> & HT)". iApply subsume_full_id. done.
   Qed.
-  Global Instance subsume_full_ofty_value_unify_vs_inst π E L step l vs1 vs2 st :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t st)%I (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t st)%I | 5 :=
-    λ T, i2p (subsume_full_ofty_value_unify_vs π E L step l vs1 vs2 st T).
-
+  Definition subsume_full_ofty_value_unify_vs_inst := [instance @subsume_full_ofty_value_unify_vs].
+  Global Existing Instance subsume_full_ofty_value_unify_vs_inst | 5.
 
   (* if both are untyped, and have not been handled by the previous instance,
      check if the sizes of the layout are the same;
@@ -700,7 +700,9 @@ Section unify_loc.
      - else if the size of the first layout is smaller, prove that the left one is a prefix of the latter, and continue searching for the rest.
      - else, the goal refers to a subset of the current chunk and we split off. *)
   Lemma subsume_full_ofty_value_untyped_full π E L step l vs1 vs2 ly1 ly2 T `{!LayoutSizeEq ly1 ly2} :
-    (⌜l `has_layout_loc` ly1⌝ -∗ ⌜ly_align_in_bounds ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗ ⌜vs1 = vs2⌝ ∗ ⌜ly_align_in_bounds ly2⌝ ∗ ⌜layout_wf ly2⌝ ∗ T L True%I)
+    (⌜l `has_layout_loc` ly1⌝ -∗ 
+      ⌜ly_align_in_bounds ly1⌝ -∗ 
+      ⌜l `has_layout_loc` ly2⌝ ∗ ⌜vs1 = vs2⌝ ∗ ⌜ly_align_in_bounds ly2⌝ ∗ ⌜layout_wf ly2⌝ ∗ T L True%I)
     ⊢ subsume_full E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1))
         (l ◁ₗ[π, Owned false] vs2 @ ◁ value_t (UntypedSynType ly2)) T.
   Proof.
@@ -717,10 +719,8 @@ Section unify_loc.
     { done. }
     iFrame. iApply (maybe_logical_step_intro). iL. done.
   Qed.
-  Global Instance subsume_full_ofty_value_untyped_full_inst π E L step l vs1 vs2 ly1 ly2 `{!LayoutSizeEq ly1 ly2} :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] vs1 @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned false] vs2 @ ◁ value_t (UntypedSynType ly2))%I | 6 :=
-    λ T, i2p (subsume_full_ofty_value_untyped_full π E L step l vs1 vs2 ly1 ly2 T).
-
+  Definition subsume_full_ofty_value_untyped_full_inst := [instance @subsume_full_ofty_value_untyped_full].
+  Global Existing Instance subsume_full_ofty_value_untyped_full_inst | 6.
 
   (* Prove a prefix of the goal, and continue finding the rest of the ownership *)
   Lemma subsume_full_ofty_value_untyped_prefix π E L step l (vs1 vs2 : val) ly1 ly2 T `{!LayoutSizeLe ly1 ly2} :
@@ -751,9 +751,8 @@ Section unify_loc.
     - done.
     - done.
   Qed.
-  Global Instance subsume_full_ofty_value_untyped_prefix_inst π E L step l vs1 vs2 ly1 ly2 `{!LayoutSizeLe ly1 ly2} :
-    SubsumeFull E L step (l ◁ₗ[π, Owned false] #vs1 @ ◁ value_t (UntypedSynType ly1))%I (l ◁ₗ[π, Owned false] #vs2 @ ◁ value_t (UntypedSynType ly2))%I | 7 :=
-    λ T, i2p (subsume_full_ofty_value_untyped_prefix π E L step l vs1 vs2 ly1 ly2 T).
+  Definition subsume_full_ofty_value_untyped_prefix_inst := [instance @subsume_full_ofty_value_untyped_prefix].
+  Global Existing Instance subsume_full_ofty_value_untyped_prefix_inst | 7.
 
   (* TODO we should also have a corresponding case if the RHS is smaller *)
   (* TODO: need simplification mechanism for the ly_offset here to get to a sane layout.
@@ -804,20 +803,21 @@ Section unify_val.
 
   (** Step 1 *)
   (* instantiate in case [st2] is an evar *)
-  Lemma subsume_full_value_st_evar E L step π v st1 st2 vs1 vs2 T :
-    ⌜st1 = st2⌝ ∗ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t st1)%I (v ◁ᵥ{π} vs2 @ value_t st1)%I T
-    ⊢ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t st1) (v ◁ᵥ{π} vs2 @ value_t st2) T.
+  Lemma subsume_full_value_st_evar E L step π v st1 st2 vs1 vs2 m1 m2  `{!IsProtected st2} T :
+    ⌜st1 = st2⌝ ∗ subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t st1)%I (v ◁ᵥ{π, m2} vs2 @ value_t st1)%I T
+    ⊢ subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t st1) (v ◁ᵥ{π, m2} vs2 @ value_t st2) T.
   Proof.
     iIntros "(-> & HT)". iApply "HT".
   Qed.
-  Global Instance subsume_full_value_st_evar_inst E L step π v st1 st2 vs1 vs2 `{!IsProtected st2} :
-    SubsumeFull E L step (v ◁ᵥ{π} vs1 @ value_t st1)%I (v ◁ᵥ{π} vs2 @ value_t st2)%I | 10 :=
-    λ T, i2p (subsume_full_value_st_evar E L step π v st1 st2 vs1 vs2 T).
+  Definition subsume_full_value_st_evar_inst := [instance @subsume_full_value_st_evar].
+  Global Existing Instance subsume_full_value_st_evar_inst | 10.
 
   (* in case st1 is Untyped, make the goal untyped, too *)
-  Lemma subsume_full_value_st_untyped E L step π vs1 vs2 v st2 ly1 T :
-    (li_tactic (compute_layout_goal st2) (λ ly2, subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1))%I (v ◁ᵥ{π} vs2 @ (value_t (UntypedSynType ly2)))%I T))
-    ⊢ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1)) (v ◁ᵥ{π} vs2 @ (value_t st2)) T.
+  Lemma subsume_full_value_st_untyped E L step π vs1 vs2 v st2 ly1 m1 m2 T :
+    (li_tactic (compute_layout_goal st2) (λ ly2, 
+      subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t (UntypedSynType ly1))%I 
+        (v ◁ᵥ{π, m2} vs2 @ (value_t (UntypedSynType ly2)))%I T))
+    ⊢ subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t (UntypedSynType ly1)) (v ◁ᵥ{π, m2} vs2 @ (value_t st2)) T.
   Proof.
     rewrite /compute_layout_goal.
     iIntros "(%ly2 & %Halg & HT)".
@@ -827,21 +827,19 @@ Section unify_val.
     iApply (maybe_logical_step_wand with "[] Hv").
     iIntros "(Hv & $)". iApply value_untyped_make_typed; done.
   Qed.
-  Global Instance subsume_full_value_st_untyped_inst E L step π v ly1 st2 vs1 vs2 :
-    SubsumeFull E L step (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1))%I (v ◁ᵥ{π} vs2 @ value_t st2)%I | 15 :=
-    λ T, i2p (subsume_full_value_st_untyped E L step π vs1 vs2 v st2 ly1 T).
+  Definition subsume_full_value_st_untyped_inst := [instance @subsume_full_value_st_untyped].
+  Global Existing Instance subsume_full_value_st_untyped_inst | 15.
 
   (* if all of the above fail, require equality of the syntypes.
      TODO: this is too strict *)
-  Lemma subsume_full_value_st_eq E L step π v vs1 vs2 st1 st2 T :
-    ⌜st1 = st2⌝ ∗ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t st2) (v ◁ᵥ{π} vs2 @ value_t st2) T
-    ⊢ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t st1) (v ◁ᵥ{π} vs2 @ value_t st2) T.
+  Lemma subsume_full_value_st_eq E L step π v vs1 vs2 st1 st2 m1 m2 T :
+    ⌜st1 = st2⌝ ∗ subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t st2) (v ◁ᵥ{π, m2} vs2 @ value_t st2) T
+    ⊢ subsume_full E L step (v ◁ᵥ{π, m1} vs1 @ value_t st1) (v ◁ᵥ{π, m2} vs2 @ value_t st2) T.
   Proof.
     iIntros "(-> & $)".
   Qed.
-  Global Instance subsume_full_value_st_eq_inst E L step π v st1 st2 vs1 vs2 :
-    SubsumeFull E L step (v ◁ᵥ{π} vs1 @ value_t st1)%I (v ◁ᵥ{π} vs2 @ value_t st2)%I | 20 :=
-    λ T, i2p (subsume_full_value_st_eq E L step π v vs1 vs2 st1 st2 T).
+  Definition subsume_full_value_st_eq_inst := [instance @subsume_full_value_st_eq].
+  Global Existing Instance subsume_full_value_st_eq_inst | 20.
 
   (* TODO: one thing that definitely needs to work:
       value_t (UntypedOp ly) <: value_t st when st_has_layout st ly
@@ -849,11 +847,13 @@ Section unify_val.
 
   (** Step 2 *)
   (* for untyped, require compatibility of the layouts *)
-  Lemma subsume_full_value_untyped_full π E L step v vs1 vs2 ly1 ly2 T `{!LayoutSizeEq ly1 ly2} :
-    ⌜ly_align_log ly2 ≤ ly_align_log ly1⌝ ∗ ⌜vs1 = vs2⌝ ∗ T L True%I
-    ⊢ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1)) (v ◁ᵥ{π} vs2 @ value_t (UntypedSynType ly2)) T.
+  Lemma subsume_full_value_untyped_full π E L step v vs1 vs2 ly1 ly2 m1 m2 T `{!LayoutSizeEq ly1 ly2} :
+    ⌜ly_align_log ly2 ≤ ly_align_log ly1⌝ ∗ ⌜vs1 = vs2⌝ ∗ ⌜m2 = MetaNone⌝ ∗ T L True%I
+    ⊢ subsume_full E L step 
+      (v ◁ᵥ{π, m1} vs1 @ value_t (UntypedSynType ly1)) 
+      (v ◁ᵥ{π, m2} vs2 @ value_t (UntypedSynType ly2)) T.
   Proof.
-    iIntros "(%Hal & -> & HT)".
+    iIntros "(%Hal & -> & -> & HT)".
     iIntros (????) "#CTX #HE HL Hv".
     iExists _, _. iFrame.
     iApply maybe_logical_step_intro. iL.
@@ -863,21 +863,20 @@ Section unify_val.
     - intros. by eapply ly_align_in_bounds_mono.
   Qed.
   (* NOTE: needs to be higher-priority than [subsume_full_value_st_untyped] in order to prevent divergence *)
-  Global Instance subsume_full_value_untyped_full_inst π E L step v vs1 vs2 ly1 ly2 `{!LayoutSizeEq ly1 ly2} :
-    SubsumeFull E L step (v ◁ᵥ{π} vs1 @ value_t (UntypedSynType ly1))%I (v ◁ᵥ{π} vs2 @ value_t (UntypedSynType ly2))%I | 6 :=
-    λ T, i2p (subsume_full_value_untyped_full π E L step v vs1 vs2 ly1 ly2 T).
+  Definition subsume_full_value_untyped_full_inst := [instance @subsume_full_value_untyped_full].
+  Global Existing Instance subsume_full_value_untyped_full_inst | 6.
 
   (* if both are using the same st, unify the values *)
-  Lemma subsume_full_value_unify_vs E L step π v vs1 vs2 st T :
-    ⌜vs1 = vs2⌝ ∗ T L True%I
-    ⊢ subsume_full E L step (v ◁ᵥ{π} vs1 @ value_t st) (v ◁ᵥ{π} vs2 @ value_t st) T.
+  Lemma subsume_full_value_unify_vs E L step π v vs1 vs2 st m1 m2 T :
+    ⌜vs1 = vs2⌝ ∗ ⌜m1 = m2⌝ ∗ T L True%I
+    ⊢ subsume_full E L step 
+      (v ◁ᵥ{π, m1} vs1 @ value_t st)
+      (v ◁ᵥ{π, m2} vs2 @ value_t st) T.
   Proof.
-    iIntros "(-> & HT)". iApply subsume_full_id. done.
+    iIntros "(-> & -> & HT)". iApply subsume_full_id. done.
   Qed.
-  Global Instance subsume_full_value_unify_vs_inst E L step π v vs1 vs2 st :
-    SubsumeFull E L step (v ◁ᵥ{π} vs1 @ value_t st)%I (v ◁ᵥ{π} vs2 @ value_t st)%I | 5 :=
-    λ T, i2p (subsume_full_value_unify_vs E L step π v vs1 vs2 st T).
-
+  Definition subsume_full_value_unify_vs_inst := [instance @subsume_full_value_unify_vs].
+  Global Existing Instance subsume_full_value_unify_vs_inst | 5.
   (* TODO prefix /suffix *)
 End unify_val.
 
@@ -889,7 +888,7 @@ Section rules.
       The lemmas below explore this, but currently do not work. *)
   Lemma type_read_ofty_move_owned E L {rt} π l (ty : type rt) r ot wl (T : typed_read_end_cont_t UpdStrong rt) :
     (⌜ty_has_op_type ty ot MCCopy⌝ ∗
-      ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#()) (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
+      ∀ v, T L v _ ty r unit (◁ uninit (ty.(ty_syn_type) MetaNone)) (#()) (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
   Proof.
     iIntros "(%Hot & Hs)" (F ????) "#CTX #HE HL Hb".
@@ -899,11 +898,12 @@ Section rules.
     assert (ly' = ot_layout ot) as ->. { by eapply syn_type_has_layout_inj. }
     iModIntro. iExists _, _, rt, _, _.
     iFrame "Hl Hv".
-    iSplitR; first done. iSplitR; first done.
+    iR. iR.
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl %st Hl Hv". iMod ("Hcl" $! v _ (uninit ty.(ty_syn_type)) tt with "Hl [//] [] []") as "Hl".
+    iIntros "Hcl %st Hl Hv". 
+    iMod ("Hcl" $! v _ (uninit (ty.(ty_syn_type) MetaNone)) tt with "Hl [//] [] []") as "Hl".
     { simpl. done. }
-    { iNext. iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
+    { iNext. iApply uninit_own_spec. iR. iExists _. iSplitR; first done. done. }
     iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.
     iModIntro.
     iSpecialize ("Hs" $! (mem_cast v ot st)).
@@ -919,7 +919,7 @@ Section rules.
     (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
       ⌜ty_has_op_type ty ot MCCopy⌝ ∗
         ∀ v, T L2 v _ ty r unit
-          (OpenedLtype (◁ uninit ty.(ty_syn_type)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs))
+          (OpenedLtype (◁ uninit (ty.(ty_syn_type) MetaNone)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs))
           (#())
           (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) UpdStrong ot T.
@@ -942,9 +942,9 @@ Section rules.
     iApply (logical_step_wand with "Hcl").
     iIntros "[_ Hcl] %st Hl Hv".
     iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
-    iMod ("Hcl" $! v _ (uninit ty.(ty_syn_type)) tt with "Hl [] [] [//]") as "Hl".
+    iMod ("Hcl" $! v _ (uninit (ty.(ty_syn_type) MetaNone)) tt with "Hl [] [] [//]") as "Hl".
     { simpl. done. }
-    { iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
+    { iApply uninit_own_spec. iR. iExists _. iSplitR; first done. done. }
     iPoseProof (ty_memcast_compat _ _ _ _ st with "Hv") as "Hid"; first done. simpl.
     iMod "Hcl_F" as "_".
     iModIntro.
@@ -957,14 +957,14 @@ Section rules.
   (* [type_read_end] instance that does a move -- should be triggered when the copy instance does not work, hence the lower priority.
      This leaves a [value_t] at the place. *)
   Lemma type_read_ofty_move_owned_value E L {rt} π l (ty : type rt) r ot wl (T : typed_read_end_cont_t UpdStrong rt) :
-    (⌜use_op_alg (ty_syn_type ty) = Some ot⌝ ∗ (* TODO too strong, should also allow Untyped *)
+    (⌜use_op_alg (ty_syn_type ty MetaNone) = Some ot⌝ ∗ (* TODO too strong, should also allow Untyped *)
     (* TODO for some reason, [simpl] will even unfold [ty_has_op_type] here... this breaks automation ofc *)
       (*⌜ty_allows_reads ty⌝ ∗*)
-      ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty)) MCCopy⌝ ∗
+      ⌜ty_has_op_type ty (use_op_alg' (ty_syn_type ty MetaNone)) MCCopy⌝ ∗
       (*⌜ty.(ty_has_op_type) ot MCCopy⌝ ∗*)
-      ∀ v v', v ◁ᵥ{π} r @ ty -∗
-      T L v' _ (value_t ty.(ty_syn_type)) v val
-      (◁ value_t ty.(ty_syn_type)) (#v)
+      ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
+      T L v' _ (value_t (ty.(ty_syn_type) MetaNone)) v val
+      (◁ value_t (ty.(ty_syn_type) MetaNone)) (#v)
       (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
   Proof.
@@ -979,15 +979,16 @@ Section rules.
     iSplitR; first done. iSplitR; first done.
     iApply (logical_step_wand with "Hcl").
     iIntros "Hcl %st Hl Hv".
-    iAssert (v ◁ᵥ{π} v @ value_t ty.(ty_syn_type))%I as "Hv'".
+    iAssert (v ◁ᵥ{π, MetaNone} v @ value_t (ty.(ty_syn_type) MetaNone))%I as "Hv'".
     { rewrite /ty_own_val/=.
       (*destruct (syn_type_has_layout_op_alg _ _ Halg) as (ot' & Hop & Hot').*)
+      iR.
       iExists (ot).
       iR. iSplitR. { iPureIntro. left. done. }
       iSplitR; last done. iPureIntro. rewrite /has_layout_val . done. }
-    iPoseProof (ty_memcast_compat_copy _ _ _ ot _ st with "Hv'") as "Hv''".
+    iPoseProof (ty_memcast_compat_copy _ _ _ ot _ _ st with "Hv'") as "Hv''".
     { rewrite ty_has_op_type_unfold. exists ot. split_and!; first done; last done. by apply is_value_ot_core_refl. }
-    iMod ("Hcl" $! v _ (value_t ty.(ty_syn_type)) (v) with "Hl [//] [] []") as "Hl".
+    iMod ("Hcl" $! v _ (value_t (ty.(ty_syn_type) MetaNone)) (v) with "Hl [//] [] []") as "Hl".
     { simpl. done. }
     { iNext. done. }
     (*iPoseProof (ty_memcast_compat with "Hv") as "Hid"; first done. simpl.*)
@@ -1005,7 +1006,7 @@ Section rules.
 
   (* TODO for Untyped, we currently cannot leave a value, because we cannot do syntype updates, but [value_t] relies on the syntype to compute the value update *)
   Lemma type_read_ofty_move_owned_untyped E L {rt} π  l (ty : type rt) r ly wl (T : typed_read_end_cont_t UpdStrong rt):
-    ( ∀ v v', v ◁ᵥ{π} r @ ty -∗
+    ( ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
       T L v' _ (value_t (UntypedSynType ly)) v val (◁ value_t (UntypedSynType ly)) (#v)
       (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)) -∗
       typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
@@ -1015,9 +1016,9 @@ Section rules.
   Abort.
 
   (* Instead we leave uninit *)
-  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) r ly wl (T : typed_read_end_cont_t UpdStrong rt) :
-    (⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗
-        ∀ v, T L v _ ty r unit (◁ uninit ty.(ty_syn_type)) (#())
+  Lemma type_read_ofty_move_owned_value_untyped E L {rt} π l (ty : type rt) `{!TySized ty} r ly wl (T : typed_read_end_cont_t UpdStrong rt) :
+    (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
+        ∀ v, T L v _ ty r unit (◁ uninit (ty.(ty_syn_type) MetaNone)) (#())
         (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
     ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
   Proof.
@@ -1029,11 +1030,11 @@ Section rules.
     iFrame "Hl Hv".
     iSplitR; first done. iSplitR; first done.
     iApply (logical_step_wand with "Hcl").
-    iIntros "Hcl %st Hl Hv". iMod ("Hcl" $! v _ (uninit ty.(ty_syn_type)) tt with "Hl [//] [] []") as "Hl".
+    iIntros "Hcl %st Hl Hv". iMod ("Hcl" $! v _ (uninit (ty.(ty_syn_type) MetaNone)) tt with "Hl [//] [] []") as "Hl".
     { simpl. done. }
-    { iNext. iApply uninit_own_spec. iExists _. iSplitR; first done. done. }
+    { iNext. iApply uninit_own_spec. iR. iExists _. iSplitR; first done. done. }
     iPoseProof (ty_memcast_compat _ _ _ MCCopy with "Hv") as "Hid".
-    { by apply ty_has_op_type_untyped. }
+    { by eapply ty_sized_has_op_type_untyped. }
     simpl.
     iModIntro.
     iSpecialize ("Hs" $! (mem_cast v (UntypedOp ly) st)).
@@ -1090,14 +1091,15 @@ Section rules.
      Instead, should give stratify some syntactic guidance from OpenedLtype above it.
    *)
   Lemma stratify_ltype_ofty_value_owned π E L mu mdu ma {M} (m : M) l st v wl (T : stratify_ltype_cont_t) :
-    find_in_context (FindVal v) (λ '(existT rt (ty', r', π')),
-      ⌜π' = π⌝ ∗
-      ⌜ty_has_op_type ty' (use_op_alg' ty'.(ty_syn_type)) MCCopy⌝ ∗
-      ⌜ty'.(ty_syn_type) = st⌝ ∗
-      stratify_ltype π E L mu mdu ma m l (◁ ty') (#r') (Owned wl) T)
+    find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m)),
+      ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
+      find_tc_inst (TySized ty') (λ _, 
+      ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) m)) MCCopy⌝ ∗
+      ⌜ty'.(ty_syn_type) m = st⌝ ∗
+      stratify_ltype π E L mu mdu ma m l (◁ ty') (#r') (Owned wl) T))
     ⊢ stratify_ltype π E L mu mdu ma m l (◁ value_t st)%I (#v) (Owned wl) T.
   Proof.
-    iDestruct 1 as ([rt [[ty' r'] π']]) "(Hv & -> & %Hot & %Heq & HT)" => /=.
+    iDestruct 1 as ([rt [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
     iIntros (????) "#CTX #HE HL Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "#(%ly & %Hst &_)".
     iPoseProof (ofty_own_merge_value with "Hv Hl") as "Ha".

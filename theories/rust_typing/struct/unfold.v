@@ -18,7 +18,7 @@ Section unfold.
       (*eapply use_struct_layout_alg_Some_inv. done. }*)
     iExists sl. do 4 iR. iFrame.
     iModIntro. iNext. iMod "Hv" as "(%v & Hl & Hv)".
-    iDestruct "Hv" as "(%sl' & %Halg' & _ & %Hly' & Hb)".
+    iDestruct "Hv" as "(%sl' & _ & %Halg' & _ & %Hly' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
@@ -52,10 +52,9 @@ Section unfold.
     rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
     iIntros "(%ly & %Halg & %Hly & %Hsc & #Hlb & %r' & Hrfn & #Hb)".
     apply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
-    iExists sl. iSplitR; first done.
-    iSplitR; first done. iSplitR; first done. iFrame "Hlb".
+    iExists sl. do 4 iR.
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%sl' & %Halg' & _ & %Hly' & Hlb' & Hb)".
+    iDestruct "Hb" as "(%sl' & _ & %Halg' & _ & %Hly' & Hlb' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
 
     rewrite hpzipl_hmap.
@@ -84,7 +83,7 @@ Section unfold.
     length rts = length (sls_fields sls) →
     ⊢ loc_in_bounds l 0 (ly_size sl) -∗
       (∃ r' : plist place_rfnRT rts, gvar_auth γ r' ∗
-        (|={lftE}=> ∃ v : val, l ↦ v ∗ v ◁ᵥ{ π} r' @ struct_t sls tys)) ↔
+        (|={lftE}=> ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r' @ struct_t sls tys)) ↔
       (∃ r' : plist place_rfnRT rts, gvar_auth γ r' ∗ (|={lftE}=>
         [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts ((λ X : RT, OfTy) +<$> tys) r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
@@ -95,7 +94,7 @@ Section unfold.
     iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iDestruct "Hb" as ">(%v & Hl & Hb)".
       iApply big_sepL_fupd.
-      iDestruct "Hb" as "(%sl' & %Halg & %Hlen & %Hly' & Hb)".
+      iDestruct "Hb" as "(%sl' & _ & %Halg & %Hlen & %Hly' & Hb)".
       assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
       rewrite hpzipl_hmap.
       set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).
@@ -163,7 +162,7 @@ Section unfold.
             rewrite shift_loc_assoc.
             replace ((ly_size ly + offset_of_idx slm k)%Z) with (Z.of_nat (ly_size ly + offset_of_idx slm k)%nat)by lia.
             eauto. }
-          iMod "IH" as "(%v1 & Hl1 & %Hv1_len & Hb)".
+          iMod "IH" as "(%v1 & Hl1 & _ & %Hv1_len & Hb)".
           (* destruct the head *)
           iDestruct "Hb0" as "(%ly0 & %Heq0 & %Halg0 & Hb0)".
           injection Heq0 as [= <-].
@@ -179,6 +178,7 @@ Section unfold.
           iSplitL "Hl0 Hl1".
           { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
             rewrite Hly0'. done. }
+          iR.
           iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
           iSplitL "Hb0 Hrfn0".
           { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
@@ -205,7 +205,7 @@ Section unfold.
             rewrite shift_loc_assoc.
             replace ((ly_size ly + offset_of_idx slm k)%Z) with (Z.of_nat (ly_size ly + offset_of_idx slm k)%nat)by lia.
             eauto. }
-          iMod "IH" as "(%v1 & Hl1 & %Hv1_len & Hb)".
+          iMod "IH" as "(%v1 & Hl1 & _ & %Hv1_len & Hb)".
           (* destruct the head *)
           iDestruct "Hb0" as "(%ly0 & %Heq0 & %Halg0 & Hb0)".
           injection Heq0 as [= <-].
@@ -219,6 +219,7 @@ Section unfold.
           iSplitL "Hl0 Hl1".
           { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
             rewrite Hly0'. done. }
+          iR.
           iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
           iSplitL "Hb0 Hrfn0".
           { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
@@ -322,7 +323,7 @@ Section unfold.
           replace ((ly_size ly + offset_of_idx slm k)%Z) with (Z.of_nat (ly_size ly + offset_of_idx slm k)%nat)by lia.
           eauto. }
         iMod "IH".
-        iDestruct "IH" as "(%v1 & Hl1 & %Hv1_len & Hb)".
+        iDestruct "IH" as "(%v1 & Hl1 & _ & %Hv1_len & Hb)".
         (* destruct the head *)
         iDestruct "Hb0" as "(%ly0 & %Heq0 & %Halg0 & Hb0)".
         injection Heq0 as [= <-].
@@ -337,6 +338,7 @@ Section unfold.
         iSplitL "Hl0 Hl1".
         { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
           rewrite Hly0'. done. }
+        iR.
         iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
         iSplitL "Hb0 Hrfn0".
         { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
@@ -364,7 +366,7 @@ Section unfold.
           replace ((ly_size ly + offset_of_idx slm k)%Z) with (Z.of_nat (ly_size ly + offset_of_idx slm k)%nat)by lia.
           eauto. }
         iMod "IH".
-        iDestruct "IH" as "(%v1 & Hl1 & %Hv1_len & Hb)".
+        iDestruct "IH" as "(%v1 & Hl1 & _ & %Hv1_len & Hb)".
         (* destruct the head *)
         iDestruct "Hb0" as "(%ly0 & %Heq0 & %Halg0 & Hb0)".
         injection Heq0 as [= <-].
@@ -378,6 +380,7 @@ Section unfold.
         iSplitL "Hl0 Hl1".
         { rewrite /offset_of_idx. simpl. rewrite shift_loc_0_nat. iFrame "Hl0".
           rewrite Hly0'. done. }
+        iR.
         iSplitR. { iPureIntro. rewrite length_app Hv1_len Hly0'. done. }
         iSplitL "Hb0 Hrfn0".
         { iExists _, ly. iFrame. iSplitR; first done. iSplitR; first done.
@@ -395,7 +398,7 @@ Section unfold.
     iSplitR; first done. iSplitR; first done. iFrame "Hlb".
     iExists r'. iFrame "Hrfn". iModIntro. iMod "Hb".
 
-    rewrite /ty_shr /=. do 3 iR.
+    rewrite /ty_shr /=. do 4 iR.
     rewrite -big_sepL_fupd.
     rewrite hpzipl_hmap.
     set (f := (λ '(existT x (a, b)), existT x (◁ a, b))%I).

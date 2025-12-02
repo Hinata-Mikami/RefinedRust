@@ -15,7 +15,7 @@ Import EqNotations.
 (* NOTE this is a pretty strong lemma, in that we allow strong updates of the type parameter.
    This is needed for the time being, as we might not pick the right lifetimes for T when initializing with None. *)
 Lemma Option_ty_weak_subtype_None E L {T_rt1 T_rt2} (T_ty1 : type T_rt1) (T_ty2 : type T_rt2) r2 T :
-  (⌜r2 = None⌝ ∗ ⌜st_of T_ty1 = st_of T_ty2⌝ ∗ T) ⊢
+  (⌜r2 = None⌝ ∗ ⌜st_of T_ty1 MetaNone = st_of T_ty2 MetaNone⌝ ∗ T) ⊢
   weak_subtype E L (None) r2 (Option_ty T_rt1 <TY> T_ty1 <INST!>) (Option_ty T_rt2 <TY> T_ty2 <INST!>) T.
 Proof.
   iIntros "(-> & %Hst & HT)". subst. 
@@ -24,12 +24,12 @@ Proof.
   iModIntro. iSplitR. { simpl. rewrite Hst//. } 
   simpl. iSplitR; first eauto.
   iSplitR. { iModIntro. 
-    iIntros (??). simpl. 
+    iIntros (???). simpl. 
     iIntros "Ha". unfold Option_ty.
     rewrite /ty_own_val/=. simpl. 
     rewrite Hst. done. }
   iModIntro. 
-  iIntros (???). simpl. 
+  iIntros (????). simpl. 
   iIntros "Ha". unfold Option_ty.
   rewrite /ty_shr/=. simpl. 
   rewrite Hst. done.

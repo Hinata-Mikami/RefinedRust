@@ -8,24 +8,28 @@ Section box.
   Context `{typeGS Σ} {rt : RT} (inner : type rt).
 
   Program Definition box : type (place_rfn rt) := {|
+    ty_metadata_kind := MetadataNone;
     ty_sidecond := True;
-    ty_own_val π r v :=
-      ∃ (l : loc) (ly : layout), ⌜v = l⌝ ∗ ⌜syn_type_has_layout inner.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    ty_own_val π r m v :=
+      ∃ (l : loc) (ly : layout), ⌜m = MetaNone⌝ ∗ ⌜v = l⌝ ∗ ⌜syn_type_has_layout (inner.(ty_syn_type) MetaNone) ly⌝ ∗
+        ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 ly.(ly_size) ∗
         inner.(ty_sidecond) ∗
         (* No later here over the freeable. I don't know how to make the unfolding equation work with one. *)
         (freeable_nz l ly.(ly_size) 1 HeapAlloc) ∗
-    £ num_cred ∗ atime 1 ∗
+        £ num_cred ∗ atime 1 ∗
         ∃ (ri : rt), place_rfn_interp_owned r ri ∗
         (* this needs to match up with the corresponding later/fupd in the OfTyLtype to get the unfolding equation *)
-        ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri v';
+        ▷ |={lftE}=> ∃ v' : val, l ↦ v' ∗ inner.(ty_own_val) π ri MetaNone v';
     _ty_has_op_type ot mt := is_ptr_ot ot;
-    ty_syn_type := PtrSynType;
+    ty_syn_type _ := PtrSynType;
 
-    ty_shr κ tid r l :=
-      (∃ (li : loc) (ly : layout) (ri : rt), place_rfn_interp_shared r ri ∗
+    ty_shr κ tid r m l :=
+      (∃ (li : loc) (ly : layout) (ri : rt),
+        ⌜m = MetaNone⌝ ∗
+        place_rfn_interp_shared r ri ∗
         ⌜l `has_layout_loc` void*⌝ ∗
-        ⌜use_layout_alg inner.(ty_syn_type) = Some ly⌝ ∗
+        ⌜use_layout_alg (inner.(ty_syn_type) MetaNone) = Some ly⌝ ∗
         ⌜li `has_layout_loc` ly⌝ ∗
         inner.(ty_sidecond) ∗
         loc_in_bounds l 0 void*.(ly_size) ∗
@@ -33,7 +37,7 @@ Section box.
         loc_in_bounds li 0 ly.(ly_size) ∗
         &frac{κ}(λ q', l ↦{q'} li) ∗
         (* later for contractiveness *)
-        ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri li)%I;
+        ▷ □ |={lftE}=> inner.(ty_shr) κ tid ri MetaNone li)%I;
 
     _ty_lfts := ty_lfts inner;
     _ty_wf_E := ty_wf_E inner;
@@ -42,7 +46,7 @@ Section box.
     simpl. apply _.
   Qed.
   Next Obligation.
-    iIntros (π v r) "(%l & %ly & -> & % & % & _)".
+    iIntros (π r m v) "(%l & %ly & -> & -> & % & % & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_ptr.
     done.
   Qed.
@@ -51,25 +55,27 @@ Section box.
     by apply syn_type_has_layout_ptr.
   Qed.
   Next Obligation.
-    iIntros (???) "(%l & %ly & -> & _)". done.
+    iIntros (????) "(%l & %ly & -> & _)". done.
   Qed.
   Next Obligation.
-    iIntros (????) "_". done.
+    iIntros (?????) "_". done.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    iIntros (κ π l r) "(%li & %ly & %ri & Hr & % & % & %  & _)".
+    iIntros (κ π l r m) "(%li & %ly & %ri & -> & Hr & % & % & %  & _)".
     iPureIntro. eexists. split; last by apply syn_type_has_layout_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π r q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π r m q ?) "#(LFT & TIME & LLCTX) Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
     iMod (bor_exists with "LFT Hb") as (l') "Hb"; first solve_ndisj.
     iMod (bor_exists with "LFT Hb") as (ly') "Hb"; first solve_ndisj.
+    iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
+    iMod (bor_persistent with "LFT Heq Htok") as "(>-> & Htok)"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Heq & Hb)"; first solve_ndisj.
     iMod (bor_persistent with "LFT Heq Htok") as "(>-> & Htok)"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hst & Hb)"; first solve_ndisj.
@@ -93,7 +99,7 @@ Section box.
     iDestruct "Htok" as "(Htok1 & Htok)".
     iMod (bor_acc with "LFT Hcred Htok1") as "(>(Hcred & Hat) & Hcl_cred)"; first solve_ndisj.
     iDestruct "Hcred" as "(Hcred1 & Hcred2 & Hcred)".
-    set (R := (∃ v' : val, l' ↦ v' ∗ v' ◁ᵥ{ π} ri @ inner)%I).
+    set (R := (∃ v' : val, l' ↦ v' ∗ v' ◁ᵥ{ π, MetaNone} ri @ inner)%I).
     iPoseProof (bor_fupd_later_strong E lftE _ _ R True with "LFT [//] [Hcred1] [] Hb Htok") as "Hu"; [done | done | ..].
     { iIntros "(_ & Ha)". iModIntro. iNext. iApply (lc_fupd_add_later with "Hcred1"); iNext.
       iMod "Ha". by iFrame. }
@@ -120,39 +126,42 @@ Section box.
     iModIntro.
     iExists l', ly', ri. iFrame.
     apply syn_type_has_layout_ptr_inv in Halg as ->.
-    do 3 iR. iFrame "#".
+    do 4 iR. iFrame "#".
     iNext. iModIntro. iModIntro. done.
   Qed.
   Next Obligation.
-    simpl. iIntros (κ κ' π r l) "#Hincl (%li & %ly & %r' & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hl & #Hshr)".
-    iExists li, ly, r'. iFrame. iSplitL "Hl".
+    simpl. iIntros (κ κ' π r m l) "#Hincl (%li & %ly & %r' & -> & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hl & #Hshr)".
+    iExists li, ly, r'. iFrame. iR. iSplitL "Hl".
     { iApply (frac_bor_shorten with "Hincl Hl"). }
     iNext. iDestruct "Hshr" as "#Hshr". iModIntro. iMod "Hshr". iModIntro.
     by iApply (ty_shr_mono with "Hincl Hshr").
   Qed.
   Next Obligation.
-    iIntros (ot mt st π r ? Hot).
+    iIntros (ot mt st π r m ? Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%l & %ly & -> & ?)".
+    - iIntros "(%l & %ly & -> & -> & ?)".
       iExists l, ly. iFrame.
+      iR.
       iPoseProof (mem_cast_compat_loc (λ v, True)%I) as "%Hl"; first done.
       + eauto.
       + iPureIntro. by apply Hl.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%l & %ly & -> & _)". eauto.
+      iIntros "(%l & %ly & -> & -> & _)". eauto.
   Qed.
   Next Obligation.
-    intros ly mt Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
+    intros ly mt Heq Hst. apply syn_type_has_layout_ptr_inv in Hst as ->.
     done.
   Qed.
 
+  Global Instance box_sized : TySized box.
+  Proof. econstructor; done. Qed.
 
   Global Program Instance box_ghost_drop `{Hg : !TyGhostDrop inner} : TyGhostDrop box :=
     mk_ty_ghost_drop _ (λ π r,
       ∃ ri, place_rfn_interp_owned r ri ∗ ty_ghost_drop_for inner Hg π ri)%I _.
   Next Obligation.
-    simpl. iIntros (? π r v??) "(%l & %ly & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+    simpl. iIntros (? π r m v ??) "(%l & %ly & -> & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
     iDestruct "Hb" as "(%r' & Hr & Hv)".
     iApply fupd_logical_step.
     iDestruct "Hcred" as "(Hcred1 & Hcred)".
@@ -174,6 +183,7 @@ Section contractive.
   Proof.
     constructor; simpl.
     - done.
+    - done.
     - eapply ty_lft_morph_make_id.
       + rewrite {1}ty_lfts_unfold//.
       + rewrite {1}ty_wf_E_unfold//.
@@ -194,55 +204,55 @@ End contractive.
 Section subtype.
   Context `{!typeGS Σ}.
 
-  Lemma box_own_val_mono_in {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) r1 r2 v  :
+  Lemma box_own_val_mono_in {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) r1 r2 v m :
     type_incl r2 r1 ty2 ty1 -∗
-    v ◁ᵥ{π} #r2 @ box ty2 -∗
-    v ◁ᵥ{π} #r1 @ box ty1.
+    v ◁ᵥ{π, m} #r2 @ box ty2 -∗
+    v ◁ᵥ{π, m} #r1 @ box ty1.
   Proof.
     iIntros "(%Hst_eq & #Hsc_eq & #Hincl & #Hincl_shr)".
     iIntros "Hv".
-    iDestruct "Hv" as (l ly) "(-> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
-    iExists l. rewrite -Hst_eq. iExists ly. iSplitR; first done.
+    iDestruct "Hv" as (l ly) "(-> & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+    iExists l. rewrite -Hst_eq. iExists ly. do 2 iR.
     iFrame. iDestruct "Hb" as (ri) "(-> & Hb)".
     iSplitL "Hsc". { by iApply "Hsc_eq". }
     iExists _. iSplitR; first done.
     iNext. iMod "Hb". iDestruct "Hb" as (v) "(Hl & Hv)". iExists v. iFrame. by iApply "Hincl".
   Qed.
-  Lemma box_own_val_mono {rt} π (ty1 : type rt) (ty2 : type rt) r v  :
+  Lemma box_own_val_mono {rt} π (ty1 : type rt) (ty2 : type rt) r v m :
     (∀ r, type_incl r r ty2 ty1) -∗
-    v ◁ᵥ{π} r @ box ty2 -∗
-    v ◁ᵥ{π} r @ box ty1.
+    v ◁ᵥ{π, m} r @ box ty2 -∗
+    v ◁ᵥ{π, m} r @ box ty1.
   Proof.
     iIntros "#Hincl".
     iIntros "Hv".
-    iDestruct "Hv" as (l ly) "(-> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+    iDestruct "Hv" as (l ly) "(-> & -> & Halg & Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
     iExists l. iDestruct "Hb" as (ri) "(Hrfn & Hb)".
     iDestruct ("Hincl" $! ri) as "(%Hst_eq & #Hsc_eq & #Hinclv & #Hincl_shr)".
-    rewrite -Hst_eq. iExists ly. iSplitR; first done. iFrame.
+    rewrite -Hst_eq. iExists ly. do 2 iR. iFrame.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
     iNext. iMod "Hb". iDestruct "Hb" as (v) "(Hl & Hv)". iExists v. iFrame. by iApply "Hinclv".
   Qed.
 
-  Lemma box_shr_mono_in {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) r1 r2 l κ :
+  Lemma box_shr_mono_in {rt1 rt2} π (ty1 : type rt1) (ty2 : type rt2) r1 r2 l κ m :
     type_incl r2 r1 ty2 ty1 -∗
-    l ◁ₗ{π, κ} #r2 @ box ty2 -∗
-    l ◁ₗ{π, κ} #r1 @ box ty1.
+    l ◁ₗ{π, m, κ} #r2 @ box ty2 -∗
+    l ◁ₗ{π, m, κ} #r1 @ box ty1.
   Proof.
     iIntros "(%Hst_eq & #Hsc_eq & #Hincl & #Hincl_shr) Hl".
-    iDestruct "Hl" as (li ly ri) "(-> & ? & ? & ? & Hsc & Hlb & Hlb' & Hs & Hb)".
-    iExists li, ly, _. iSplitR; first done. iFrame. rewrite -Hst_eq. iFrame.
+    iDestruct "Hl" as (li ly ri) "(-> & -> & ? & ? & ? & Hsc & Hlb & Hlb' & Hs & Hb)".
+    iExists li, ly, _. do 2 iR. iFrame. rewrite -Hst_eq. iFrame.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro. by iApply "Hincl_shr".
   Qed.
-  Lemma box_shr_mono {rt} π (ty1 ty2 : type rt) r l κ :
+  Lemma box_shr_mono {rt} π (ty1 ty2 : type rt) r l κ m :
     (∀ r, type_incl r r ty2 ty1) -∗
-    l ◁ₗ{π, κ} r @ box ty2 -∗
-    l ◁ₗ{π, κ} r @ box ty1.
+    l ◁ₗ{π, m, κ} r @ box ty2 -∗
+    l ◁ₗ{π, m, κ} r @ box ty1.
   Proof.
     iIntros "Hincl Hl".
-    iDestruct "Hl" as (li ly ri) "(Hrfn & ? & ? & ? & Hsc & Hlb & Hlb' & Hs & Hb)".
+    iDestruct "Hl" as (li ly ri) "(-> & Hrfn & ? & ? & ? & Hsc & Hlb & Hlb' & Hs & Hb)".
     iDestruct ("Hincl" $! ri) as "(%Hst_eq & #Hsc_eq & #Hincl & #Hincl_shr)".
-    iExists li, ly, ri. iFrame. rewrite -Hst_eq. iFrame.
+    iExists li, ly, ri. iFrame. iR. rewrite -Hst_eq. iFrame.
     iSplitL "Hsc". { by iApply "Hsc_eq". }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro. by iApply "Hincl_shr".
   Qed.
@@ -255,8 +265,8 @@ Section subtype.
     iSplitR; first done. iSplitR.
     { iPureIntro. simpl. lia. }
     iSplit; iIntros "!#".
-    - iIntros (??). by iApply box_own_val_mono_in.
-    - iIntros (???). by iApply box_shr_mono_in.
+    - iIntros (???). by iApply box_own_val_mono_in.
+    - iIntros (????). by iApply box_shr_mono_in.
   Qed.
   Lemma box_type_incl {rt} (ty1 ty2 : type rt) r :
     (∀ r, type_incl r r ty2 ty1) -∗
@@ -266,8 +276,8 @@ Section subtype.
     iSplitR; first done. iSplitR.
     { iPureIntro. simpl. lia. }
     iSplit; iIntros "!#".
-    - iIntros (??). by iApply box_own_val_mono.
-    - iIntros (???). by iApply box_shr_mono.
+    - iIntros (???). by iApply box_own_val_mono.
+    - iIntros (????). by iApply box_shr_mono.
   Qed.
 
   Lemma box_subtype {rt1 rt2} E L (ty1 : type rt1) (ty2 : type rt2) r1 r2 :
@@ -512,7 +522,7 @@ Section unfold.
     rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & Halg & Hly & Hsc & Hlb & Hcred & %r' & Hrfn & Hb)".
     iModIntro. iExists ly. iFrame. iNext.
-    iDestruct "Hb" as ">(%v & Hl & %l' & %ly' & -> & %Halg & %Hly & Hlb & Hsc' & Hf & Hcred & Hat & Hb)".
+    iDestruct "Hb" as ">(%v & Hl & %l' & %ly' & _ & -> & %Halg & %Hly & Hlb & Hsc' & Hf & Hcred & Hat & Hb)".
     iExists l', ly'. iFrame "∗ %".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. iModIntro. iR. iExists ly'.
     iDestruct "Hb" as "(%ri & Hrfn & Hb)". iFrame "% ∗".
@@ -540,7 +550,7 @@ Section unfold.
     iModIntro. iIntros (π l). rewrite ltype_own_box_unfold /box_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
     iIntros "(%ly & ? & ? & Hsc & ? & %r' & Hrfn & #Hb)". iExists ly. iFrame "∗ %".
     iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & %ly' & %ri & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hs & Hb)".
+    iDestruct "Hb" as "(%li & %ly' & %ri & _ & Hrfn & ? & ? & ? & Hsc & Hlb & Hlbi & Hs & Hb)".
     iModIntro. iExists li. iFrame. iNext. iDestruct "Hb" as "#Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. by iFrame.
   Qed.
@@ -559,13 +569,13 @@ Section unfold.
       iDestruct "Hb" as "(%l' & %ly' & Hl & %Halg & Hly & Hf & Hb)".
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iFrame "∗". iSplitR; first done.
-      iDestruct "Hb" as "(%ly'' & %Halg' & Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
+      iDestruct "Hb" as "(%ly'' & %Halg' & %Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
       iModIntro. iFrame. iSplitR; first done.
-      simp_ltypes in Halg. replace ly'' with ly'; first done.
-      eapply syn_type_has_layout_inj; done.
+      assert (ly'' = ly') as -> by by eapply syn_type_has_layout_inj.
+      iR. done.
     * iIntros "(%r' & Hauth & Hb)".
       iExists _. iFrame. iMod "Hb".
-      iDestruct "Hb" as "(%v & Hl & %l' & %ly' & -> & %Halg & %Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+      iDestruct "Hb" as "(%v & Hl & %l' & %ly' & _ & -> & %Halg & %Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
       iDestruct "Hb" as "(%ri & Hown & Hv)".
       iModIntro. iExists l', ly'. iFrame.
       iSplitR; first done. iSplitR; first done.
@@ -586,7 +596,7 @@ Section unfold.
     iNext. iModIntro. iSplit.
     * iIntros "(%r' & Hauth & Hb)".
       iExists _. iFrame. iMod "Hb".
-      iDestruct "Hb" as "(%v & Hl & %l' & %ly' & -> & %Halg & %Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
+      iDestruct "Hb" as "(%v & Hl & %l' & %ly' & _ & -> & %Halg & %Hly & Hlb & Hsc & Hf & Hcred & Hat & Hb)".
       iDestruct "Hb" as "(%ri & Hown & Hv)".
       iModIntro. iExists l', ly'. iFrame.
       iSplitR; first done. iSplitR; first done.
@@ -596,8 +606,8 @@ Section unfold.
       iDestruct "Hb" as "(%l' & %ly' & Hl & %Halg & Hly & Hf & Hb)".
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iFrame "∗". iSplitR; first done.
-      iDestruct "Hb" as "(%ly'' & %Halg' & Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
-      iModIntro. iFrame. iSplitR; first done.
+      iDestruct "Hb" as "(%ly'' & %Halg' & %Hly & Hsc & Hlb & [Hcred Hat] & Hb)".
+      iModIntro. iFrame. do 2 iR.
       simp_ltypes in Halg. replace ly'' with ly'; first done.
       eapply syn_type_has_layout_inj; done.
   Qed.

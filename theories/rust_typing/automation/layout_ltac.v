@@ -264,7 +264,7 @@ Ltac simplify_layout' H_ly :=
       [ | solve_layout_alg]
   | _ = ot_layout (use_op_alg' ?st) =>
       match st with
-      | ty_syn_type ?ty =>
+      | ty_syn_type ?ty ?m =>
           is_var ty;
           erewrite (simplify_ot_layout_var st) in H_ly;
           [ | solve_layout_alg ]
@@ -347,7 +347,7 @@ Ltac solve_layout_alg_from_assumption :=
         unify st st2; apply H
     | H : CACHED (use_layout_alg ?st2 = Some ly) |- _ =>
         unify st st2; apply H
-    end 
+    end
   end.
 
 (** Solve goals of the form [layout_wf ly]. *)
@@ -375,10 +375,10 @@ End layout.
 Ltac layout_is_var ly :=
   match ly with
   | layout_of ?sl =>
-      is_var sl 
+      is_var sl
   | ul_layout ?ul =>
-      is_var ul 
-  | _ => is_var ly 
+      is_var ul
+  | _ => is_var ly
   end.
 Ltac solve_layout_wf :=
   unfold_no_enrich;
@@ -460,7 +460,7 @@ Ltac solve_layout_size :=
   unfold_no_enrich;
 
   first [
-    match goal with 
+    match goal with
     | |- (Z.of_nat (ly_size ?ly) ≤ MaxInt ISize)%Z =>
       layout_is_var ly;
       refine (use_layout_alg_size _ _ _);
@@ -650,7 +650,7 @@ Ltac solve_layout_alg_forall ::=
 Ltac solve_compute_layout ::=
   unfold_no_enrich;
   open_scache;
-  first [eassumption | 
+  first [eassumption |
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
@@ -664,7 +664,7 @@ Ltac solve_compute_struct_layout ::=
 Ltac solve_compute_enum_layout ::=
   unfold_no_enrich;
   open_scache;
-  first [eassumption | 
+  first [eassumption |
   simplify_layout_goal;
   first [eassumption | progress solve_layout_alg; shelve]].
 
@@ -761,7 +761,7 @@ Ltac solve_ot_eq ::=
 
 (** Solve goals of the form [Forall2 _ xs ?fields], by instantiating [?fields]. *)
 Ltac assert_is_atomic_st st :=
-  first [is_var st | match st with | ty_syn_type ?T => is_var T end].
+  first [is_var st | match st with | ty_syn_type ?T ?m => is_var T end].
 Ltac assert_is_atomic_sls sls :=
   is_var sls.
 Ltac assert_is_atomic_els els :=
@@ -841,8 +841,8 @@ Ltac solve_op_alg_core_step :=
   | |- use_op_alg (UnionSynType ?name ?fields ?repr) = Some ?ot =>
       notypeclasses refine (use_op_alg_union _ _ _ _ _ _ _);
       [solve_layout_alg | solve_ot_eq]
-  | |- use_op_alg (ty_syn_type _) = Some ?ot =>
-      notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _) _ ot _ _);
+  | |- use_op_alg (ty_syn_type _ _) = Some ?ot =>
+      notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _ _) _ ot _ _);
       [solve_layout_alg | solve_ot_eq]
   | |- use_op_alg ?st = Some ?ot =>
       is_var st;
@@ -1168,7 +1168,7 @@ Ltac simplify_layout_alg_simpl_step H :=
 Ltac simplify_layout_alg_atomic H :=
   (* Handle atomic alg applications *)
   lazymatch type of H with
-  | use_layout_alg (ty_syn_type ?ty) = Some _ =>
+  | use_layout_alg (ty_syn_type ?ty _) = Some _ =>
       is_var ty;
       enter_cache H
   | use_layout_alg ?st = Some _ =>
@@ -1292,7 +1292,7 @@ Ltac simplify_layout_alg_nonatomic H :=
         subst_with Heq;
         enter_cache Hwf;
         enter_cache Hsz;
-        enter_cache Hib 
+        enter_cache Hib
 
     | use_layout_alg (EnumSynType _ ?it ?variants ?repr) = Some ?ly =>
         let Hrec := fresh "_Hrec" in
@@ -1334,9 +1334,9 @@ Ltac simplify_layout_alg H ::=
 (* TODO: we currently need this because we introduce syn_type equalities on generic args in preconditions of functions and not before, so we may get duplicates.
   Once this is fixed, we can remove this hack *)
 Section remove_duplicates.
-  Lemma remove_generic_layout_duplicate `{!typeGS Σ} {T_rt} (T_ty : type T_rt) ly1 ly2 :
-    CACHED (use_layout_alg (ty_syn_type T_ty) = Some ly1) →
-    CACHED (use_layout_alg (ty_syn_type T_ty) = Some ly2) →
+  Lemma remove_generic_layout_duplicate `{!typeGS Σ} {T_rt} (T_ty : type T_rt) ly1 ly2 m :
+    CACHED (use_layout_alg (ty_syn_type T_ty m) = Some ly1) →
+    CACHED (use_layout_alg (ty_syn_type T_ty m) = Some ly2) →
     ly2 = ly1.
   Proof.
     intros Ha Hb. by eapply syn_type_has_layout_inj.
@@ -1345,8 +1345,8 @@ End remove_duplicates.
 
 Ltac remove_duplicate_layout_assumptions :=
   repeat match goal with
-  | H : CACHED (use_layout_alg (ty_syn_type ?T_ty) = Some ?Hly1),
-      H2 : CACHED (use_layout_alg (ty_syn_type ?T_ty) = Some ?Hly2) |- _ =>
+  | H : CACHED (use_layout_alg (ty_syn_type ?T_ty ?m) = Some ?Hly1),
+      H2 : CACHED (use_layout_alg (ty_syn_type ?T_ty ?m) = Some ?Hly2) |- _ =>
     is_var Hly1;
     is_var Hly2;
     is_var T_ty;

@@ -11,7 +11,7 @@ Section lemmas.
   (* TODO move *)
   Lemma ofty_owned_subtype_aligned π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
     (* location needs to be suitably aligned for ty2 *)
-    syn_type_has_layout (ty_syn_type ty2) ly2 →
+    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
     l `has_layout_loc` ly2 →
     owned_type_incl π r1 r2 ty1 ty2
     ⊢ (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2).
@@ -21,7 +21,8 @@ Section lemmas.
     iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & _ & % & -> & Hl)".
     iExists ly2. iR. iR.
     iDestruct "Hincl" as "(%Hszeq & Hsc & Hvi)".
-    assert (ly_size ly' = ly_size ly2) as Hszeq'. { apply Hszeq; done. }
+    assert (ly_size ly' = ly_size ly2) as Hszeq'. {
+      eapply Hszeq; done. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
     rewrite -Hszeq'. iFrame. iR.
     iExists _. iR. iMod "Hl" as "(%v & Hl & Hv)".
@@ -30,7 +31,7 @@ Section lemmas.
   Qed.
   Lemma ofty_owned_subtype_aligned' π {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 ly2 l  :
     (* location needs to be suitably aligned for ty2 *)
-    syn_type_has_layout (ty_syn_type ty2) ly2 →
+    syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
     l `has_layout_loc` ly2 →
     (∀ r1, owned_type_incl π r1 r2 ty1 ty2)
     ⊢ (l ◁ₗ[π, Owned false] r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2).
@@ -40,7 +41,7 @@ Section lemmas.
     iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & _ & % & Hrfn & Hl)".
     iExists ly2. iR. iR.
     iDestruct ("Hincl" $! r') as "(%Hszeq & Hsc & Hvi)".
-    assert (ly_size ly' = ly_size ly2) as Hszeq'. { apply Hszeq; done. }
+    assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply Hszeq; done. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
     rewrite -Hszeq'. iFrame. iR.
     iExists r2. iR. iMod "Hl" as "(%v & Hl & Hv)".
@@ -49,21 +50,22 @@ Section lemmas.
   Qed.
 
   Lemma owned_type_incl_uninit' π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st ly :
-    syn_type_size_eq (ty_syn_type ty1) st →
+    syn_type_size_eq (ty_syn_type ty1 MetaNone) st →
     syn_type_has_layout st ly →
     ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
   Proof.
     iIntros (Hst ?). iSplitR; last iSplitR.
-    - iPureIntro. done.
+    - iPureIntro. intros. simpl. done.
     - simpl. eauto.
     - iIntros (v) "Hv".
       rewrite uninit_own_spec.
       iEval (rewrite /ty_own_val/=).
       iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hly)".
+      iR.
       iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly. apply Hst; done.
   Qed.
   Lemma owned_type_incl_uninit π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st :
-    st = ty_syn_type ty1 →
+    st = ty_syn_type ty1 MetaNone →
     ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
   Proof.
     iIntros (Hst). iSplitR; last iSplitR.
@@ -72,6 +74,7 @@ Section lemmas.
     - simpl. eauto.
     - iIntros (v) "Hv". rewrite uninit_own_spec.
       iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst' & %Hly)".
+      iR.
       iExists ly. subst st. iR. done.
   Qed.
 End lemmas.
@@ -109,8 +112,8 @@ Section deinit.
     return
     cast_ltype_to_type E L lt (λ ty,
     find_tc_inst (TyGhostDrop ty) (λ Hg,
-    li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
-      ⌜syn_type_has_layout (ty_syn_type ty) ly1⌝ -∗
+    li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly1,
+      ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly1⌝ -∗
       li_tactic (compute_layout_goal st) (λ ly2,
         ⌜syn_type_has_layout st ly2⌝ -∗
         ⌜l `has_layout_loc` ly1⌝ -∗ ⌜l `has_layout_loc` ly2⌝ ∗
@@ -160,8 +163,8 @@ Section deinit.
   Lemma owned_subltype_step_ofty_uninit_untyped π E L l {rt} (lt : ltype rt) r ly T :
     cast_ltype_to_type E L lt (λ ty,
       find_tc_inst (TyGhostDrop ty) (λ Hg,
-      li_tactic (compute_layout_goal (ty_syn_type ty)) (λ ly1,
-      ⌜syn_type_has_layout (ty_syn_type ty) ly1⌝ -∗
+      li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly1,
+      ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly1⌝ -∗
       ⌜l `has_layout_loc` ly⌝ ∗
       ⌜syn_type_has_layout (UntypedSynType ly) ly⌝ ∗
       (⌜l `has_layout_loc` ly1⌝ -∗
@@ -185,9 +188,8 @@ Section deinit.
     iPoseProof ("HT" with "[//]") as "(%Hsz & ?)".
     iR. iR. done.
   Qed.
-  Global Instance owned_subltype_step_ofty_uninit_untyped_inst π E L l {rt} (lt : ltype rt) r ly :
-    OwnedSubltypeStep π E L l #r #() lt (◁ uninit (UntypedSynType ly))%I | 100 :=
-    λ T, i2p (owned_subltype_step_ofty_uninit_untyped π E L l lt r ly T).
+  Definition owned_subltype_step_ofty_uninit_untyped_inst := [instance @owned_subltype_step_ofty_uninit_untyped].
+  Global Existing Instance owned_subltype_step_ofty_uninit_untyped_inst | 100.
 End deinit.
 
 Section deinit_fallback.
@@ -201,9 +203,9 @@ Section deinit_fallback.
       (l ◁ₗ[π, Owned false] #r @ (◁ ty))
       (l ◁ₗ[π, Owned false] .@ (◁ (uninit st))) T :-
     ly ← tactic (compute_layout_goal st);
-    exhale (⌜syn_type_has_layout ty.(ty_syn_type) ly⌝);
+    exhale (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝);
     ∀ v,
-    inhale (v ◁ᵥ{π} r @ ty);
+    inhale (v ◁ᵥ{π, MetaNone} r @ ty);
     return T L True%I.
   Proof.
     rewrite /compute_layout_goal.
@@ -220,6 +222,7 @@ Section deinit_fallback.
     iSplitR; first done. iFrame. iExists _. iSplitR; first done.
     iModIntro. iModIntro.
     rewrite uninit_own_spec.
+    iR.
     iExists ly. done.
   Qed.
   Definition uninit_mono_inst := [instance uninit_mono].
@@ -228,7 +231,7 @@ Section deinit_fallback.
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
     weak_subltype E L (Owned false) r1 #r2 (◁ ty) (◁ uninit st) T :-
-    exhale (⌜ty_syn_type ty = st⌝);
+    exhale (⌜ty_syn_type ty MetaNone = st⌝);
     return T.
   Proof.
     iIntros "(%Hst & HT)".
@@ -247,9 +250,9 @@ Section deinit_fallback.
 
   Lemma owned_subtype_to_uninit π E L pers {rt} (ty1 : type rt) r st2 T :
     owned_subtype π E L pers r () (ty1) (uninit st2) T :-
-    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
+    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1 MetaNone));
     (* augment context *)
-    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1) ly1)⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1 MetaNone) ly1)⌝);
     ly2 ← tactic (compute_layout_goal st2);
     (* augment context *)
     inhale (⌜enter_cache_hint(syn_type_has_layout st2 ly2)⌝);
@@ -273,6 +276,7 @@ Section deinit_fallback.
       rewrite uninit_own_spec.
       iPoseProof (ty_own_val_has_layout with "Hv") as "%Hv"; first done.
       (*iIntros "(%ly & %Hst & %Hly & Hv)".*)
+      iR.
       iExists _. iR.
       iPureIntro. move: Hv. rewrite /has_layout_val Hsz//.
   Qed.
@@ -318,12 +322,12 @@ Section init.
     subsume_full E L step
       (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1)
       (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2) T :-
-    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1));
+    ly1 ← tactic (compute_layout_goal (ty_syn_type ty1 MetaNone));
       (* augment context *)
-    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1) ly1)⌝);
-    ly2 ← tactic (compute_layout_goal (ty_syn_type ty2));
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1 MetaNone) ly1)⌝);
+    ly2 ← tactic (compute_layout_goal (ty_syn_type ty2 MetaNone));
     (* augment context *)
-    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty2) ly2)⌝);
+    inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2)⌝);
     inhale (⌜l `has_layout_loc` ly1⌝);
     exhale (⌜l `has_layout_loc` ly2⌝);
     return (owned_subtype π E L false r1 r2 ty1 ty2 (λ L', (T L' True%I))).

@@ -417,16 +417,16 @@ Section ltype_def.
 
   Fixpoint lty_st (lt : lty) : syn_type :=
     match lt with
-    | BlockedLty ty _ => ty.(ty_syn_type)
-    | ShrBlockedLty ty _ => ty.(ty_syn_type)
-    | OfTyLty ty => ty.(ty_syn_type)
+    | BlockedLty ty _ => ty.(ty_syn_type) MetaNone
+    | ShrBlockedLty ty _ => ty.(ty_syn_type) MetaNone
+    | OfTyLty ty => ty.(ty_syn_type) MetaNone
     | AliasLty _ st l => st
     | MutLty _ _ => PtrSynType
     | BoxLty _ => PtrSynType
     | OwnedPtrLty _ _ => PtrSynType
     | ShrLty _ _ => PtrSynType
     | StructLty _ sls => sls
-    | ArrayLty def len lts => ArraySynType (ty_syn_type def) len
+    | ArrayLty def len lts => ArraySynType (ty_syn_type def MetaNone) len
     | EnumLty en variant lte re => en.(enum_els)
     | OpenedLty lt_cur _ _ _ _ => lty_st lt_cur
     | CoreableLty _ lt_full =>
@@ -834,7 +834,8 @@ Section ltype_def.
   Definition UninitLty st := OfTyLty (uninit st).
 
   Definition lty_of_ty_own {rt} (ty : type rt) k π (r : place_rfn rt) l :=
-    (∃ ly : layout, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    (∃ ly : layout,
+      ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       ty.(ty_sidecond) ∗ loc_in_bounds l 0 (ly.(ly_size)) ∗
     match k with
     | Owned wl =>
@@ -843,7 +844,7 @@ Section ltype_def.
         place_rfn_interp_owned r r' ∗
         (* Have a later here according to wl, which is imposed by e.g. a Box directly above it.
           As such, this is really needed for contractiveness/making working with rec types possible. *)
-        ▷?(wl)|={lftE}=>  ∃ v, l ↦ v ∗ ty.(ty_own_val) π r' v
+        ▷?(wl)|={lftE}=>  ∃ v, l ↦ v ∗ ty.(ty_own_val) π r' MetaNone v
     | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
@@ -853,10 +854,10 @@ Section ltype_def.
           And there, it means that we actually have an update over the pointsto (e.g. in Box and Mutref) in the Uniq case,
             which breaks timelessness after opening the borrow..
          *)
-        |={lftE}=> &pin{κ} (∃ r', gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r')
+        |={lftE}=> &pin{κ} (∃ r', gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone)
     | Shared κ =>
         (* we need an update for timelessness in the unfolding equations (eg for mut_ref) *)
-        ∃ r' : rt, place_rfn_interp_shared r r' ∗ □ |={lftE}=> ty.(ty_shr) κ π r' l
+        ∃ r' : rt, place_rfn_interp_shared r r' ∗ □ |={lftE}=> ty.(ty_shr) κ π r' MetaNone l
     end)%I.
 
   Definition alias_lty_own (rt : RT) (st : syn_type) (p : loc) k π (r : place_rfn rt) l :=
@@ -871,12 +872,12 @@ Section ltype_def.
     end%I.
 
   Definition blocked_lty_own {rt} (ty : type rt) κ k π (r : place_rfn rt) l :=
-    (∃ ly, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
+    (∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       ty.(ty_sidecond) ∗ loc_in_bounds l 0 ly.(ly_size) ∗
     match k with
     | Owned wl =>
         ([† κ] ={lftE}=∗
-          ∃ (r' : rt), place_rfn_interp_owned_blocked r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r')) ∗
+          ∃ (r' : rt), place_rfn_interp_owned_blocked r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r' MetaNone)) ∗
         (* and the original credits *)
         maybe_creds wl
     | Shared κ' =>
@@ -888,20 +889,20 @@ Section ltype_def.
         (* borrow needs to be synced up with OfTy *)
         ([† κ] ={lftE}=∗
           place_rfn_interp_mut_blocked r γ' ∗
-          &pin{κ'} (∃ r' : rt, gvar_auth γ' r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r')) ∗
+          &pin{κ'} (∃ r' : rt, gvar_auth γ' r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone)) ∗
         (* and the original credits *)
         £ num_cred ∗ atime 1
     end)%I.
 
   Definition shr_blocked_lty_own {rt} (ty : type rt) κ k π (r : place_rfn rt) l :=
-    (∃ ly : layout, ⌜syn_type_has_layout ty.(ty_syn_type) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗ ty.(ty_sidecond) ∗
+    (∃ ly : layout, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗ ty.(ty_sidecond) ∗
       loc_in_bounds l 0 ly.(ly_size) ∗
     ∃ r': rt, place_rfn_interp_shared r r' ∗
     match k with
     | Owned wl =>
         (* also have the sharing predicate *)
-        ty.(ty_shr) κ π r' l ∗
-        ([† κ] ={lftE}=∗ l ↦: ty.(ty_own_val) π r') ∗
+        ty.(ty_shr) κ π r' MetaNone l ∗
+        ([† κ] ={lftE}=∗ l ↦: ty.(ty_own_val) π r' MetaNone) ∗
         maybe_creds wl
     | Shared κ' =>
         (* already shared -- no need to do something special *)
@@ -909,10 +910,10 @@ Section ltype_def.
         False
     | Uniq κ' γ' =>
         place_rfn_interp_mut r γ' ∗
-        ty.(ty_shr) κ π r' l ∗
+        ty.(ty_shr) κ π r' MetaNone l ∗
         ([† κ] ={lftE}=∗
           (* this needs to be synced up with [OfTy] *)
-          &pin{κ'} (∃ r'': rt, gvar_auth γ' r'' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r'')) ∗
+          &pin{κ'} (∃ r'': rt, gvar_auth γ' r'' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r'' MetaNone)) ∗
         (* original credits *)
         £ num_cred ∗ atime 1
     end)%I.
@@ -1186,7 +1187,7 @@ Section ltype_def.
     lty_own_pre core (@ArrayLty rt def len lts) k π r l :=
       (** ArrayLty *)
       ∃ ly,
-        ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
+        ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
         ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 (ly.(ly_size) * len) ∗
@@ -1200,7 +1201,7 @@ Section ltype_def.
         big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
           (λ i ty HP,
             ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
-              ⌜lty_st ty.1 = ty_syn_type def⌝ ∗
+              ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
               lty_own_pre core ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)))
       | Uniq κ γ =>
         have_creds ∗
@@ -1210,14 +1211,14 @@ Section ltype_def.
               big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
-                  ⌜lty_st ty.1 = ty_syn_type def⌝ ∗
+                  ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
                   lty_own_pre true ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)
               ))]
           (∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
-                  ⌜lty_st ty.1 = ty_syn_type def⌝ ∗
+                  ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
                   lty_own_pre core ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i))))
 
       | Shared κ =>
@@ -1226,7 +1227,7 @@ Section ltype_def.
             big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
-                  ⌜lty_st ty.1 = ty_syn_type def⌝ ∗
+                  ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
                   lty_own_pre core ty.1 (Shared κ) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i))
       end;
 
@@ -1911,7 +1912,7 @@ Section ltype_def.
       normalize_dep_rt_goal.
   Qed.
 
- Lemma lty_own_core_equiv (lt : lty) core k π r l Heq :
+  Lemma lty_own_core_equiv (lt : lty) core k π r l Heq :
     lty_own_pre true lt k π r l ≡ lty_own_pre core (lty_core lt) k π (transport_rfn Heq r) l.
   Proof.
     rewrite /lty_own_core /lty_own.
@@ -2803,7 +2804,7 @@ Section ltype_def.
     (rt : RT) (def : type rt) (len : nat) (lts : list (nat * ltype rt))
     (k : bor_kind) (π : thread_id) (r : place_rfn (list (place_rfn rt))) (l : loc) : iProp Σ :=
     ∃ ly,
-      ⌜syn_type_has_layout (ty_syn_type def) ly⌝ ∗
+      ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
       ⌜(ly_size ly * len ≤ MaxInt ISize)%Z⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗
@@ -2815,21 +2816,21 @@ Section ltype_def.
           ▷?wl |={lftE}=>
           (⌜length r' = len⌝ ∗
           [∗ list] i ↦ lt; r0 ∈ (interpret_iml (OfTy def) len lts); r',
-              ⌜ltype_st lt = ty_syn_type def⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i))
+              ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i))
       | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
         |={lftE}=> &pin{κ}
           [∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
-                ⌜ltype_st lt = ty_syn_type def⌝ ∗ rec_core _ lt (Owned false) π r0 (offset_loc l ly i))]
+                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec_core _ lt (Owned false) π r0 (offset_loc l ly i))]
           (∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
-                ⌜ltype_st lt = ty_syn_type def⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i)))
+                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i)))
       | Shared κ =>
           ∃ r', place_rfn_interp_shared r r' ∗
             □ |={lftE}=> (⌜length r' = len⌝ ∗ [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
-                  ⌜ltype_st lt = ty_syn_type def⌝ ∗ rec _ lt (Shared κ) π r0 (offset_loc l ly i))
+                  ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Shared κ) π r0 (offset_loc l ly i))
       end.
 
 
@@ -3850,16 +3851,16 @@ Section ltype_def.
 
   (** Rules for ltype_st *)
   Lemma ltype_st_ofty {rt} (ty : type rt) :
-    ltype_st (OfTy ty) = ty.(ty_syn_type).
+    ltype_st (OfTy ty) = ty.(ty_syn_type) MetaNone.
   Proof. done. Qed.
   Lemma ltype_st_alias rt st p :
     ltype_st (AliasLtype rt st p) = st.
   Proof. done. Qed.
   Lemma ltype_st_blocked {rt} (ty : type rt) (κ : lft) :
-    ltype_st (BlockedLtype ty κ) = ty.(ty_syn_type).
+    ltype_st (BlockedLtype ty κ) = ty.(ty_syn_type) MetaNone.
   Proof. done. Qed.
   Lemma ltype_st_shrblocked {rt} (ty : type rt) (κ : lft) :
-    ltype_st (ShrBlockedLtype ty κ) = ty.(ty_syn_type).
+    ltype_st (ShrBlockedLtype ty κ) = ty.(ty_syn_type) MetaNone.
   Proof. done. Qed.
   Lemma ltype_st_box {rt} (lt : ltype rt) :
     ltype_st (BoxLtype lt) = PtrSynType.
@@ -3877,7 +3878,7 @@ Section ltype_def.
     ltype_st (StructLtype lts sls) = sls.
   Proof. done. Qed.
   Lemma ltype_st_array {rt} (def : type rt) (len : nat) (lts : list (nat * ltype rt)) :
-    ltype_st (ArrayLtype def len lts) = ArraySynType (ty_syn_type def) len.
+    ltype_st (ArrayLtype def len lts) = ArraySynType (ty_syn_type def MetaNone) len.
   Proof. rewrite /ltype_st /= //. Qed.
   Lemma ltype_st_enum {rt rte} (en : enum rt) (tag : string) (lte : ltype rte) (re : rte) :
     ltype_st (EnumLtype en tag lte re) = en.(enum_els).
@@ -4644,7 +4645,7 @@ Section eqltype.
   Proof.
     iIntros "Hsub".
     iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
-    iSplitR; first done; iModIntro; simpl.
+    iSplitR; iModIntro; simpl. { unfold ltype_st. iPureIntro. simpl. by rewrite Hst.  }
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & -> & #Hb)".
@@ -4666,7 +4667,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub". iIntros (r).
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first done. iModIntro.
+    iSplitR; first by setoid_rewrite Hst. iModIntro.
     simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb". rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
     iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
@@ -4687,8 +4688,8 @@ Section eqltype.
   Qed.
 
   Lemma type_ltype_incl_owned_in_strong {rt1 rt2} π r1 r2 wl (ty1 : type rt1) (ty2 : type rt2) :
-    ty1.(ty_syn_type) = ty2.(ty_syn_type) →
-    (∀ v, v ◁ᵥ{π} r1 @ ty1 -∗ v ◁ᵥ{π} r2 @ ty2) -∗
+    (∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m) →
+    (∀ v, v ◁ᵥ{π, MetaNone} r1 @ ty1 -∗ v ◁ᵥ{π, MetaNone} r2 @ ty2) -∗
     (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond)) -∗
     ∀ l, l ◁ₗ[π, Owned wl] #r1 @ (◁ ty1) -∗ l ◁ₗ[π, Owned wl] #r2 @ (◁ ty2)%I.
   Proof.
@@ -4706,7 +4707,8 @@ Section eqltype.
   Proof.
     iIntros "Hsub".
     iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
-    iSplitR; first done; iModIntro; simpl.
+    iSplitR; first by setoid_rewrite Hst.
+    iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     iApply (type_ltype_incl_owned_in_strong with "Hown"); [done.. | ].
@@ -4724,7 +4726,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub" (r).
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first done; iModIntro; simpl.
+    iSplitR; first by setoid_rewrite Hst. iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     iModIntro.
@@ -4760,7 +4762,7 @@ Section eqltype.
   Proof.
     iIntros "#Hsub1 #Hsub2" (r).
     iPoseProof ("Hsub1" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iSplitR; first done; iModIntro; simpl.
+    iSplitR; first by setoid_rewrite Hst. iModIntro; simpl.
     simpl. simp_ltypes. rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hb".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.

@@ -8,18 +8,18 @@ From refinedrust Require Import options.
 Section subtype.
   Context `{!typeGS Σ}.
 
-  Lemma mut_ref_own_val_mono {rt} (ty1 ty2 : type rt) v π r κ1 κ2 :
+  Lemma mut_ref_own_val_mono {rt} (ty1 ty2 : type rt) v π r κ1 κ2 m :
     κ1 ⊑ κ2 -∗
     (∀ r, type_incl r r ty1 ty2) -∗
     (∀ r, type_incl r r ty2 ty1) -∗
-    v ◁ᵥ{π} r @ mut_ref κ2 ty1 -∗
-    v ◁ᵥ{π} r @ mut_ref κ1 ty2.
+    v ◁ᵥ{π, m} r @ mut_ref κ2 ty1 -∗
+    v ◁ᵥ{π, m} r @ mut_ref κ1 ty2.
   Proof.
     destruct r as [r γ].
-    iIntros "#Hincl #Ht12 #Ht21 (%l & %ly & -> & ? & Hly & Hlb & Hsc & Hobs & ? & Hb)".
+    iIntros "#Hincl #Ht12 #Ht21 (%l & %ly & -> & -> & ? & Hly & Hlb & Hsc & Hobs & ? & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(%Hst & #Hsceq & _)".
     (*iDestruct "Ht21" as "(_ & _ & #Hv21 & #Hs21)".*)
-    iExists l, ly. iFrame. iSplitR; first done.
+    iExists l, ly. iFrame. iR. iR.
     rewrite -Hst. iFrame. iSplitL "Hsc". { by iApply "Hsceq". }
     iMod "Hb". iModIntro.
     iApply (pinned_bor_shorten with "Hincl").
@@ -33,15 +33,15 @@ Section subtype.
       iDestruct ("Ht21" $! r') as "(_ & _ & Hv21 & _)". by iApply "Hv21".
   Qed.
 
-  Lemma mut_ref_shr_mono_in {rt} (ty1 ty2 : type rt) l π r1 r2 γ κ κ1 κ2 :
+  Lemma mut_ref_shr_mono_in {rt} (ty1 ty2 : type rt) l π r1 r2 γ κ κ1 κ2 m :
     κ1 ⊑ κ2 -∗
     type_incl r1 r2 ty1 ty2 -∗
-    l ◁ₗ{π, κ} (#r1, γ) @ mut_ref κ2 ty1 -∗
-    l ◁ₗ{π, κ} (#r2, γ) @ mut_ref κ1 ty2.
+    l ◁ₗ{π, m, κ} (#r1, γ) @ mut_ref κ2 ty1 -∗
+    l ◁ₗ{π, m, κ} (#r2, γ) @ mut_ref κ1 ty2.
   Proof.
-    iIntros "#Hincl #Ht12 (%li & %ly & %r' & ? & <- & Hs & ? & ? & ? & ? & Hsc & Hb)".
+    iIntros "#Hincl #Ht12 (%li & %ly & %r' & -> & ? & <- & Hs & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct "Ht12" as "(%Hst & #Hsceq & #Hv12 & #Hs12)".
-    iExists li, ly, r2. iFrame. iR. rewrite Hst. iFrame.
+    iExists li, ly, r2. iFrame. iR. rewrite Hst. iFrame. iR.
     iSplitL "Hsc". { by iApply "Hsceq". }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
     iApply ty_shr_mono.
@@ -50,16 +50,16 @@ Section subtype.
       + iApply lft_intersect_incl_r. }
     by iApply "Hs12".
   Qed.
-  Lemma mut_ref_shr_mono {rt} (ty1 ty2 : type rt) l π r κ κ1 κ2 :
+  Lemma mut_ref_shr_mono {rt} (ty1 ty2 : type rt) l π r κ κ1 κ2 m :
     κ1 ⊑ κ2 -∗
     (∀ r, type_incl r r ty1 ty2) -∗
-    l ◁ₗ{π, κ} r @ mut_ref κ2 ty1 -∗
-    l ◁ₗ{π, κ} r @ mut_ref κ1 ty2.
+    l ◁ₗ{π, m, κ} r @ mut_ref κ2 ty1 -∗
+    l ◁ₗ{π, m, κ} r @ mut_ref κ1 ty2.
   Proof.
     destruct r as [r γ].
-    iIntros "#Hincl #Ht12 (%li & %ly & %r' & ? & ? & Hs & ? & ? & ? & ? & Hsc & Hb)".
+    iIntros "#Hincl #Ht12 (%li & %ly & %r' & -> & ? & ? & Hs & ? & ? & ? & ? & Hsc & Hb)".
     iDestruct ("Ht12" $! inhabitant) as "(%Hst & #Hsceq & _)".
-    iExists li, ly, r'. iFrame. rewrite Hst. iFrame.
+    iExists li, ly, r'. iFrame. rewrite Hst. iFrame. iR.
     iSplitL "Hsc". { by iApply "Hsceq". }
     iNext. iDestruct "Hb" as "#Hb". iModIntro. iMod "Hb". iModIntro.
     iApply ty_shr_mono.
@@ -77,8 +77,8 @@ Section subtype.
   Proof.
     iIntros "#Hincl #Ht12 #Ht21". iSplitR; first done. iSplitR; first done.
     iSplit; iIntros "!#".
-    - iIntros (??). by unshelve iApply mut_ref_own_val_mono.
-    - iIntros (???). by unshelve iApply mut_ref_shr_mono.
+    - iIntros (???). by unshelve iApply mut_ref_own_val_mono.
+    - iIntros (????). by unshelve iApply mut_ref_shr_mono.
   Qed.
 
   Lemma mut_ref_full_subtype {rt} E L (ty1 ty2 : type rt) κ1 κ2 :

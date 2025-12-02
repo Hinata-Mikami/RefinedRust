@@ -10,7 +10,7 @@ Section discriminant.
   Program Definition enum_discriminant_t {rt} (en : enum rt) : type rt := {|
     st_own π r v :=
       ∃ tag, ⌜en.(enum_tag) r = Some tag⌝ ∗
-      v ◁ᵥ{π} (els_lookup_tag en.(enum_els) tag) @ int en.(enum_els).(els_tag_it);
+      v ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag) @ int en.(enum_els).(els_tag_it);
     st_has_op_type ot mt := is_int_ot ot en.(enum_els).(els_tag_it);
     st_syn_type := IntSynType en.(enum_els).(els_tag_it);
   |}%I.
@@ -50,13 +50,13 @@ Section discriminant.
         ⌜GetEnumDiscriminantLocSt l els `has_layout_loc` els.(els_tag_it)⌝ ∗
         ⌜v `has_layout_val` els.(els_tag_it)⌝ ∗
         (GetEnumDiscriminantLocSt l els) ↦{q} v ∗
-        ▷ v ◁ᵥ{π} discr @ (int els.(els_tag_it)) ∗
+        ▷ v ◁ᵥ{π, MetaNone} discr @ (int els.(els_tag_it)) ∗
         (* prove the continuation after the client is done *)
         logical_step F (
           (* assuming that the client provides the ownership back... *)
           (GetEnumDiscriminantLocSt l els) ↦{q} v ={F}=∗
           ∃ (L' : llctx) (rt3 : RT) (ty3 : type rt3) (r3 : rt3),
-            v ◁ᵥ{ π} r3 @ ty3 ∗
+            v ◁ᵥ{ π, MetaNone} r3 @ ty3 ∗
             llctx_interp L' ∗
             l ◁ₗ[π, b2] r @ lt ∗
             T L' v rt3 ty3 r3))%I.
@@ -85,7 +85,7 @@ Section discriminant.
     TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 els :=
     λ T, i2p (typed_discriminant_end_enum π E L l en r b2 els T).
 
-  Lemma type_discriminant E L e els T' (T : typed_read_cont_t) :
+  Lemma type_discriminant E L e els T' (T : typed_val_expr_cont_t) :
     IntoPlaceCtx E e T' →
     (** Decompose the expression *)
     T' L (λ L' K l,
@@ -99,7 +99,7 @@ Section discriminant.
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
         (** Finish reading *)
         typed_discriminant_end π E L2 l2 lt3 ri3 b2 els (λ L3 v rt3 ty3 r3,
-        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 π v _ (ty3) r3))
+        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 π v MetaNone _ (ty3) r3))
       )))))%I
     ⊢ typed_val_expr E L (EnumDiscriminant els e)%E T.
   Proof.
@@ -155,7 +155,7 @@ Section switch.
   Proof.
     unfold li_trace.
     iIntros "HT Hit". rewrite /ty_own_val/=.
-    iDestruct "Hit" as "(%tag & %Htag & %Hv)".
+    iDestruct "Hit" as "(_ & %tag & %Htag & _ & %Hv)".
     iDestruct "HT" as "(-> & Hc)".
     rewrite /compute_map_lookup_goal.
     iDestruct "Hc" as "(%b & %tag' & %Htag' & %idx & <- & %res & <- & Ha)".
