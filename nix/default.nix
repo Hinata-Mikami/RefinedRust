@@ -1,18 +1,31 @@
 {
-  craneLib,
-  self,
+  inputs,
   system,
-  pkgs,
-}: {
-  inherit pkgs;
-  
-  cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
-  cargoRefinedRust =
-    import ./cargoRefinedRust.nix {inherit craneLib self system pkgs;};
+}:
+with inputs; rec {
+  pkgs = import nixpkgs {inherit overlays system;};
+  rrPkgs = self.packages.${system};
 
-  mkDepRocqDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
-
-  overlays = {
+  overlays = let
     ocamlFlambda = import ./ocamlFlambdaOverlay.nix {inherit pkgs;};
+  in [ocamlFlambda rust-overlay.overlays.default];
+
+  mapToAttrs = fName: fValue: l: let
+    f = {pname, ...} @ args: {
+      name = fName pname;
+      value = fValue args;
+    };
+  in
+    pkgs.lib.listToAttrs (map f l);
+
+  rocq = {
+    mkDepRocqDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
   };
+
+  rust =
+    rec {
+      hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
+      mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
+    }
+    // (import ./rustTools.nix {inherit crane pkgs rrPkgs;});
 }

@@ -17,21 +17,17 @@
   };
 
   outputs = {
-    self,
-    crane,
     flake-utils,
     nixpkgs,
-    rust-overlay,
     rust-targets,
-  }:
+    ...
+  } @ inputs:
     flake-utils.lib.eachDefaultSystem (system: let
-      lib = nixpkgs.lib.extend (_: _: (import ./nix {
-        inherit self pkgs system;
-        craneLib = rust.lib.craneLib;
-      }));
+      inherit (lib) pkgs;
 
-      overlays = [lib.overlays.ocamlFlambda rust-overlay.overlays.default];
-      pkgs = import nixpkgs {inherit overlays system;};
+      lib = nixpkgs.lib.extend (_: _: (import ./nix {
+        inherit inputs system;
+      }));
 
       name = "refinedrust";
       version = "0.1.0";
@@ -69,38 +65,21 @@
         };
       };
 
-      rust = with pkgs.lib; let
-        availableTargets = attrsets.attrValues (import rust-targets.outPath);
-        inputsToolchain = (importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
+      rust = let
+        inherit (toolchainFile) channel components;
+        toolchainFile = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
         devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
-      in {
-        lib = rec {
-          inherit (craneLib) cargoDeny;
-          inherit (lib) cargoMachete cargoRefinedRust;
-
-          craneLib = crane.mkLib pkgs;
-          cargoClippy = craneLib.cargoClippy.override {clippy = rust.toolchain.dev;};
-          cargoFmt = craneLib.cargoFmt.override {rustfmt = rust.toolchain.dev;};
+      in rec {
+        toolchain = {
+          build = lib.rust.mkToolchain channel components lib.rust.hostPlatform;
+          dev = lib.rust.mkToolchain channel (components ++ devComponents) lib.rust.hostPlatform;
         };
 
-        hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
-        toolchain = rust.mkToolchain rust.hostPlatform;
+        envBuilder = lib.rust.overrideToolchain toolchain.build;
 
-        mkToolchain = target: let
-          addRustSrc =
-            attrsets.optionalAttrs (target != rust.hostPlatform) {extensions = ["rust-src"];};
-        in rec {
-          build = (pkgs.rust-bin.fromRustupToolchain inputsToolchain // {targets = [target];}).override addRustSrc;
-          dev = build.override {extensions = inputsToolchain.components ++ devComponents;};
-          envBuilder = rust.lib.craneLib.overrideToolchain build;
-        };
-
-        mkTargetToolchains = drv:
-          listToAttrs (map (target: {
-              name = "target-" + target;
-              value = drv (rust.mkToolchain target);
-            })
-            availableTargets);
+        mkDrvRustTargetToolchains = drv:
+          lib.mapToAttrs (targetName: "target-" + targetName) (targetName: drv (lib.rust.mkToolchain channel components targetName))
+          (map (pname: {inherit pname;}) (pkgs.lib.attrsets.attrValues (import rust-targets.outPath)));
       };
     in
       with pkgs.lib; rec {
@@ -127,21 +106,21 @@
                 };
               };
 
-              stdpp = lib.mkDepRocqDerivation rocq.stdpp {
+              stdpp = lib.rocq.mkDepRocqDerivation rocq.stdpp {
                 pname = "stdpp";
               };
 
-              iris = lib.mkDepRocqDerivation rocq.iris {
+              iris = lib.rocq.mkDepRocqDerivation rocq.iris {
                 pname = "iris";
                 propagatedBuildInputs = [stdpp];
               };
 
-              iris-contrib = lib.mkDepRocqDerivation rocq.iris-contrib {
+              iris-contrib = lib.rocq.mkDepRocqDerivation rocq.iris-contrib {
                 pname = "iris-contrib";
                 propagatedBuildInputs = [iris];
               };
 
-              lambda-rust = lib.mkDepRocqDerivation rocq.lambda-rust {
+              lambda-rust = lib.rocq.mkDepRocqDerivation rocq.lambda-rust {
                 pname = "lambda-rust";
                 propagatedBuildInputs = [iris];
               };
@@ -157,13 +136,13 @@
                 useDune = true;
               };
 
-            frontend = rust.toolchain.envBuilder.buildPackage rec {
+            frontend = rust.envBuilder.buildPackage rec {
               inherit meta version;
 
               pname = "cargo-${name}";
               src = ./rr_frontend;
 
-              cargoArtifacts = rust.toolchain.envBuilder.buildDepsOnly {
+              cargoArtifacts = rust.envBuilder.buildDepsOnly {
                 inherit meta pname src version;
               };
 
@@ -194,7 +173,7 @@
                 pname = "stdlib-alloc";
                 opam-name = "stdlib-alloc";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-alloc";
@@ -219,7 +198,7 @@
               pname = "stdlib-arithops";
               opam-name = "stdlib-arithops";
 
-              src = rust.lib.cargoRefinedRust {
+              src = lib.rust.cargoRefinedRust {
                 inherit meta version;
 
                 pname = "stdlib-arithops";
@@ -258,7 +237,7 @@
                 pname = "stdlib-boxed";
                 opam-name = "stdlib-boxed";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-boxed";
@@ -287,7 +266,7 @@
                 pname = "stdlib-btreemap";
                 opam-name = "stdlib-btreemap";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-btreemap";
@@ -312,7 +291,7 @@
               pname = "stdlib-clone";
               opam-name = "stdlib-clone";
 
-              src = rust.lib.cargoRefinedRust {
+              src = lib.rust.cargoRefinedRust {
                 inherit meta version;
 
                 pname = "stdlib-clone";
@@ -337,7 +316,7 @@
               pname = "stdlib-closures";
               opam-name = "stdlib-closures";
 
-              src = rust.lib.cargoRefinedRust {
+              src = lib.rust.cargoRefinedRust {
                 inherit meta version;
 
                 pname = "stdlib-closures";
@@ -376,7 +355,7 @@
                 pname = "stdlib-cmp";
                 opam-name = "stdlib-cmp";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-cmp";
@@ -404,7 +383,7 @@
                 pname = "stdlib-controlflow";
                 opam-name = "stdlib-controlflow";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-controlflow";
@@ -443,7 +422,7 @@
                 pname = "stdlib-iterator";
                 opam-name = "stdlib-iterator";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-iterator";
@@ -481,7 +460,7 @@
                 pname = "stdlib-mem";
                 opam-name = "stdlib-mem";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit meta version;
 
                   pname = "stdlib-mem";
@@ -509,7 +488,7 @@
                 pname = "stdlib-option";
                 opam-name = "stdlib-option";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-option";
@@ -548,7 +527,7 @@
                 pname = "stdlib-ptr";
                 opam-name = "stdlib-ptr";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-ptr";
@@ -586,7 +565,7 @@
                 pname = "stdlib-result";
                 opam-name = "stdlib-result";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit meta version;
 
                   pname = "stdlib-result";
@@ -614,7 +593,7 @@
                 pname = "stdlib-range";
                 opam-name = "stdlib-range";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-range";
@@ -653,7 +632,7 @@
                 pname = "stdlib-rr_internal";
                 opam-name = "stdlib-rr_internal";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-rr_internal";
@@ -678,7 +657,7 @@
               pname = "stdlib-rwlock";
               opam-name = "stdlib-rwlock";
 
-              src = rust.lib.cargoRefinedRust {
+              src = lib.rust.cargoRefinedRust {
                 inherit meta version;
 
                 pname = "stdlib-rwlock";
@@ -717,7 +696,7 @@
                 pname = "stdlib-spin";
                 opam-name = "stdlib-spin";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-spin";
@@ -745,7 +724,7 @@
                 pname = "stdlib-vec";
                 opam-name = "stdlib-vec";
 
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit libDeps meta version;
 
                   pname = "stdlib-vec";
@@ -773,7 +752,7 @@
                 pname = "stdlib-refinedrust";
                 opam-name = "stdlib-refinedrust";
 
-                src = rust.lib.cargoRefinedRust rec {
+                src = lib.rust.cargoRefinedRust rec {
                   inherit libDeps meta version;
 
                   pname = "stdlib-refinedrust";
@@ -792,14 +771,14 @@
                 '';
               };
 
-            default = packages."target-${rust.hostPlatform}";
+            default = packages."target-${lib.rust.hostPlatform}";
           }
           // (
-            rust.mkTargetToolchains (toolchain:
+            rust.mkDrvRustTargetToolchains (toolchain:
               pkgs.symlinkJoin {
                 inherit meta name;
 
-                paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain.build pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
+                paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
                 nativeBuildInputs = [pkgs.makeWrapper];
 
                 postBuild = let
@@ -811,8 +790,8 @@
                       --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
 
                     wrapProgram $out/bin/cargo-${name} \
-                      --set LD_LIBRARY_PATH "${makeLibraryPath [toolchain.build]}" \
-                      --set DYLD_FALLBACK_LIBRARY_PATH "${makeLibraryPath [toolchain.build]}" \
+                      --set LD_LIBRARY_PATH "${makeLibraryPath [toolchain]}" \
+                      --set DYLD_FALLBACK_LIBRARY_PATH "${makeLibraryPath [toolchain]}" \
                       --set PATH "$out/bin" \
                       --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
                   '';
@@ -822,47 +801,28 @@
           );
 
         checks = let
-          extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
-            inherit meta version;
+          mkCaseStudies = let
+            extraProofs = pkgs.rocqPackages.mkRocqDerivation rec {
+              inherit meta version;
 
-            pname = "extra-proofs";
-            opam-name = "extra-proofs";
+              pname = "extra-proofs";
+              opam-name = "extra-proofs";
 
-            src = ./case_studies/extra_proofs;
+              src = ./case_studies/extra_proofs;
 
-            buildInputs = [packages.theories];
-            useDune = true;
-          };
-        in
-          {
-            clippy = rust.lib.cargoClippy {
-              inherit (packages.frontend.passthru) cargoArtifacts pname src;
-
-              cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
+              buildInputs = [packages.theories];
+              useDune = true;
             };
-
-            deny = rust.lib.cargoDeny {
-              inherit (packages.frontend.passthru) pname src;
-            };
-
-            fmt = rust.lib.cargoFmt {
-              inherit (packages.frontend.passthru) pname src;
-            };
-
-            machete = rust.lib.cargoMachete {
-              inherit (packages.frontend.passthru) pname src;
-            };
-          }
-          // listToAttrs (map ({
+          in
+            {
               pname,
               src,
-            }: {
-              name = "case-study-" + pname;
-              value = pkgs.rocqPackages.mkRocqDerivation {
+            }:
+              pkgs.rocqPackages.mkRocqDerivation {
                 inherit meta pname version;
 
                 opam-name = pname;
-                src = rust.lib.cargoRefinedRust {
+                src = lib.rust.cargoRefinedRust {
                   inherit meta pname src version;
 
                   cargoArtifacts = null;
@@ -873,35 +833,55 @@
                 buildInputs = [packages.stdlib extraProofs];
                 useDune = true;
               };
-            }) [
-              {
-                pname = "evenint";
-                src = ./case_studies/evenint;
-              }
-              {
-                pname = "minivec";
-                src = ./case_studies/minivec;
-              }
-              {
-                pname = "paper-examples";
-                src = ./case_studies/paper_examples;
-              }
-              {
-                pname = "paper-examples-rr20";
-                src = ./case_studies/refinedrust-20-paper-examples;
-              }
-              {
-                pname = "tests";
-                src = ./case_studies/tests;
-              }
-            ]);
+        in
+          {
+            clippy = lib.rust.cargoClippy rust.toolchain.dev {
+              inherit (packages.frontend.passthru) cargoArtifacts pname src;
+
+              cargoClippyExtraArgs = "--all-targets --all-features --no-deps";
+            };
+
+            deny = lib.rust.cargoDeny {
+              inherit (packages.frontend.passthru) pname src;
+            };
+
+            fmt = lib.rust.cargoFmt rust.toolchain.dev {
+              inherit (packages.frontend.passthru) pname src;
+            };
+
+            machete = lib.rust.cargoMachete {
+              inherit (packages.frontend.passthru) pname src;
+            };
+          }
+          // lib.mapToAttrs id mkCaseStudies [
+            {
+              pname = "case-study-evenint";
+              src = ./case_studies/evenint;
+            }
+            {
+              pname = "case-study-minivec";
+              src = ./case_studies/minivec;
+            }
+            {
+              pname = "paper-examples";
+              src = ./case_studies/paper_examples;
+            }
+            {
+              pname = "paper-examples-rr20";
+              src = ./case_studies/refinedrust-20-paper-examples;
+            }
+            {
+              pname = "tests";
+              src = ./case_studies/tests;
+            }
+          ];
 
         devShells =
           {
-            default = devShells."target-${rust.hostPlatform}";
+            default = devShells."target-${lib.rust.hostPlatform}";
           }
           // (
-            rust.mkTargetToolchains (toolchain:
+            rust.mkDrvRustTargetToolchains (toolchain:
               pkgs.mkShell {
                 inputsFrom = with packages; [frontend theories];
                 packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
