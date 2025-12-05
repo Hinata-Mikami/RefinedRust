@@ -803,7 +803,7 @@
                 nativeBuildInputs = [pkgs.makeWrapper];
 
                 postBuild = let
-                  fetchRocqDeps = drv: lists.unique [drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs);
+                  fetchRocqDeps = drv: lists.unique ([drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs));
                 in
                   with strings; ''
                     wrapProgram $out/bin/dune \
