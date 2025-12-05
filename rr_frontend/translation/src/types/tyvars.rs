@@ -6,35 +6,43 @@
 
 //! Utility folders for handling type variables.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeSuperFoldable as _;
 
+use crate::environment::Environment;
+use crate::rustcmp;
+
 /// A `TypeFolder` that gathers all the type variables.
-pub(crate) struct TyVarFolder<'tcx> {
-    tcx: ty::TyCtxt<'tcx>,
-    tyvars: HashSet<ty::ParamTy>,
+pub(crate) struct TyVarFolder<'def, 'tcx> {
+    env: &'def Environment<'tcx>,
+    tyvars: BTreeSet<ty::ParamTy>,
     projections: HashSet<ty::AliasTy<'tcx>>,
 }
 
-impl<'tcx> TyVarFolder<'tcx> {
-    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
+impl<'def, 'tcx> TyVarFolder<'def, 'tcx> {
+    pub(crate) fn new(env: &'def Environment<'tcx>) -> Self {
         TyVarFolder {
-            tcx,
-            tyvars: HashSet::new(),
+            env,
+            tyvars: BTreeSet::new(),
             projections: HashSet::new(),
         }
     }
 
-    pub(crate) fn get_result(self) -> (HashSet<ty::ParamTy>, HashSet<ty::AliasTy<'tcx>>) {
-        (self.tyvars, self.projections)
+    pub(crate) fn get_result(self) -> (BTreeSet<ty::ParamTy>, Vec<ty::AliasTy<'tcx>>) {
+        // We first need to order the aliases
+        let mut ordered_projections: Vec<_> = self.projections.into_iter().collect();
+
+        ordered_projections.sort_by(|a, b| rustcmp::cmp_alias_ty(self.env, a, b));
+
+        (self.tyvars, ordered_projections)
     }
 }
 
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'tcx> {
+impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyVarFolder<'_, 'tcx> {
     fn cx(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
+        self.env.tcx()
     }
 
     // TODO: handle the case that we pass below binders

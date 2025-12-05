@@ -125,6 +125,8 @@ fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_
         borrowck::consumers::ConsumerOptions::PoloniusOutputFacts,
     );
 
+    // NB the order of iteration doesn't matter here
+    #[expect(clippy::iter_over_hash_type)]
     for (did, body) in bodies_with_facts {
         // SAFETY: This is safe because we are feeding in the same `tcx` that is
         // going to be used as a witness when pulling out the data.

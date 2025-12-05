@@ -63,14 +63,14 @@ pub(crate) fn generate_args_inst_key<'tcx>(
 /// Keys used to deduplicate adt uses for `syn_type` assumptions.
 /// TODO maybe we should use `SimplifiedType` + `simplify_type` instead of the syntys?
 /// Or types with erased regions?
-#[derive(Eq, PartialEq, Hash, Debug)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub(crate) struct AdtUseKey {
-    base_did: DefId,
+    base_did: OrderedDefId,
     generics: Vec<lang::SynType>,
 }
 
 impl AdtUseKey {
-    pub(crate) fn new_from_inst(defid: DefId, params: &specs::GenericScopeInst<'_>) -> Self {
+    pub(crate) fn new_from_inst(defid: OrderedDefId, params: &specs::GenericScopeInst<'_>) -> Self {
         let generic_syntys: Vec<_> =
             params.get_all_ty_params_with_assocs().iter().map(lang::SynType::from).collect();
         Self {
@@ -193,13 +193,15 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
 }
 
 impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
-    fn determine_trait_requirement_origin(
+    fn determine_trait_attr_requirement_origin(
         &self,
         typaram: &str,
         attr: &str,
     ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
         let typaram_idx = self.ty_names.get(typaram)?;
 
+        // NB: order of iteration doesn't matter for result.
+        #[expect(clippy::iter_over_hash_type)]
         for ((_, ty), trait_use_ref) in &self.trait_scope.used_traits {
             // check if the Self parameter matches up
             if ty[0].is_param(*typaram_idx as u32) {
@@ -215,7 +217,7 @@ impl<'def> TraitReqHandler<'def> for Params<'_, 'def> {
                     continue;
                 }
 
-                trace!("determine_trait_requirement_origin: found trait_ref={trait_ref:?}");
+                trace!("determine_trait_attr_requirement_origin: found trait_ref={trait_ref:?}");
 
                 return Some(trait_use_ref.trait_use);
             }
@@ -846,6 +848,7 @@ impl<'tcx, 'def> Traits<'tcx, 'def> {
 
     /// Within a trait declaration, get the Self trait use.
     pub(crate) fn get_self_trait_use(&self) -> Option<&GenericTraitUse<'tcx, 'def>> {
+        #[expect(clippy::iter_over_hash_type)]
         for trait_use in self.used_traits.values() {
             // check if this is the Self trait use
             {

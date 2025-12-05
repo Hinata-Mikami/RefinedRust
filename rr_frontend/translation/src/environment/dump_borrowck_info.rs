@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write as _};
 use std::marker::PhantomData;
@@ -89,19 +90,10 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 
         let output_facts = &info.borrowck_out_facts;
 
-        // TODO: why doesn't this contain anything???
-        write!(writer, "Subset anywhere: \n")?;
-        for fact in &output_facts.subset_anywhere {
-            write!(writer, "({:?}, {:?})\n", fact.0, fact.1)?;
-        }
-        write!(writer, "\n\n")?;
-
-        // TODO: find out how to do the subset computation properly to make our analysis work...
-        write!(writer, "Superset:\n")?;
-        let mut v: Vec<_> = info.superset.iter().map(|(i, m)| (*i, m)).collect();
-        v.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        write!(writer, "Subset:\n")?;
+        let v: BTreeMap<_, _> = info.borrowck_out_facts.subset.iter().collect();
         for (l, m) in v {
-            write!(writer, "({:?}, {:?})\n", interner.get_point(l).location, m)?;
+            write!(writer, "({:?}, {:?})\n", interner.get_point(*l).location, m)?;
         }
         write!(writer, "\n\n")?;
 

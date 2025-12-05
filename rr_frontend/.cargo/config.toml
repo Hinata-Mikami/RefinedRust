@@ -120,7 +120,6 @@ rustflags = [
     "-Aclippy::implicit_return",
     "-Aclippy::integer_division",
     "-Aclippy::integer_division_remainder_used",
-    "-Aclippy::iter_over_hash_type",
     "-Aclippy::min_ident_chars",
     "-Aclippy::missing_inline_in_public_items",
     "-Aclippy::missing_trait_methods",

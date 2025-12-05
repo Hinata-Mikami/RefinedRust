@@ -300,18 +300,18 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 pub(crate) struct InitialPoloniusUnifier<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    mapping: HashMap<Region, Region>,
+    mapping: BTreeMap<Region, Region>,
 }
 impl<'tcx> InitialPoloniusUnifier<'tcx> {
-    pub(crate) fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
+    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
         Self {
             tcx,
             typing_env,
-            mapping: HashMap::new(),
+            mapping: BTreeMap::new(),
         }
     }
 
-    pub(crate) fn get_result(self) -> HashMap<Region, Region> {
+    pub(crate) fn get_result(self) -> BTreeMap<Region, Region> {
         self.mapping
     }
 }

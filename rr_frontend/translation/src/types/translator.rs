@@ -47,10 +47,10 @@ pub(crate) struct FunctionState<'tcx, 'def> {
     pub lifetime_scope: EarlyLateRegionMap<'def>,
 
     /// collection of tuple types that we use
-    pub tuple_uses: HashMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>,
+    pub tuple_uses: BTreeMap<Vec<lang::SynType>, specs::types::LiteralUse<'def>>,
 
     /// Shim uses for the current function
-    pub shim_uses: HashMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
+    pub shim_uses: BTreeMap<scope::AdtUseKey, specs::types::LiteralUse<'def>>,
 
     /// optional Polonius Info for the current function
     #[debug(ignore)]
@@ -73,13 +73,13 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
 }
 
 impl<'def> TraitReqHandler<'def> for FunctionState<'_, 'def> {
-    fn determine_trait_requirement_origin(
+    fn determine_trait_attr_requirement_origin(
         &self,
         typaram: &str,
         attr: &str,
     ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
         trace!("attaching trait attr requirement: {typaram:?}::{attr:?}");
-        self.generic_scope.determine_trait_requirement_origin(typaram, attr)
+        self.generic_scope.determine_trait_attr_requirement_origin(typaram, attr)
     }
 
     fn attach_trait_attr_requirement(
@@ -111,9 +111,9 @@ impl<'tcx, 'def> FunctionState<'tcx, 'def> {
 
         let mut t = Self {
             did,
-            tuple_uses: HashMap::new(),
+            tuple_uses: BTreeMap::new(),
             generic_scope: generics,
-            shim_uses: HashMap::new(),
+            shim_uses: BTreeMap::new(),
             polonius_info: info,
             lifetime_scope: lifetimes,
         };
@@ -286,7 +286,8 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
 
         if let Self::InFunction(state) = self {
             let lit_ref = lit_ref.unwrap();
-            let key = scope::AdtUseKey::new_from_inst(did, params);
+            let ordered_did = OrderedDefId::new(env.tcx(), did);
+            let key = scope::AdtUseKey::new_from_inst(ordered_did, params);
             let lit_uses = &mut state.shim_uses;
             lit_uses
                 .entry(key)
@@ -494,20 +495,22 @@ pub(crate) struct TX<'def, 'tcx> {
     /// maps ADT variants to struct specifications.
     /// the boolean is true iff this is a variant of an enum.
     /// the literal is present after the variant has been fully translated
-    variant_registry:
-        RefCell<HashMap<DefId, (String, specs::structs::AbstractRef<'def>, &'tcx ty::VariantDef, bool)>>,
+    variant_registry: RefCell<
+        BTreeMap<OrderedDefId, (String, specs::structs::AbstractRef<'def>, &'tcx ty::VariantDef, bool)>,
+    >,
     /// maps ADTs that are enums to the enum specifications
     /// the literal is present after the enum has been fully translated
-    enum_registry: RefCell<HashMap<DefId, (String, specs::enums::AbstractRef<'def>, ty::AdtDef<'tcx>)>>,
+    enum_registry:
+        RefCell<BTreeMap<OrderedDefId, (String, specs::enums::AbstractRef<'def>, ty::AdtDef<'tcx>)>>,
     /// a registry for abstract struct defs for tuples, indexed by the number of tuple fields
     tuple_registry:
-        RefCell<HashMap<usize, (specs::structs::AbstractRef<'def>, specs::types::LiteralRef<'def>)>>,
+        RefCell<BTreeMap<usize, (specs::structs::AbstractRef<'def>, specs::types::LiteralRef<'def>)>>,
 
     /// dependencies of one ADT definition on another ADT definition
     adt_deps: RefCell<BTreeMap<OrderedDefId, BTreeSet<OrderedDefId>>>,
 
     /// shims for ADTs
-    adt_shims: RefCell<HashMap<DefId, specs::types::LiteralRef<'def>>>,
+    adt_shims: RefCell<BTreeMap<OrderedDefId, specs::types::LiteralRef<'def>>>,
 }
 
 // NOTE: For ADT use translation, there are two variants:
@@ -520,7 +523,7 @@ pub(crate) struct TX<'def, 'tcx> {
 //  the structure of the ADT definition.
 //
 impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         env: &'def Environment<'tcx>,
         struct_arena: &'def Arena<RefCell<Option<specs::structs::Abstract<'def>>>>,
         enum_arena: &'def Arena<RefCell<Option<specs::enums::Abstract<'def>>>>,
@@ -530,13 +533,13 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             env,
             trait_registry: Cell::new(None),
             adt_deps: RefCell::new(BTreeMap::new()),
-            adt_shims: RefCell::new(HashMap::new()),
+            adt_shims: RefCell::new(BTreeMap::new()),
             struct_arena,
             enum_arena,
             shim_arena,
-            variant_registry: RefCell::new(HashMap::new()),
-            enum_registry: RefCell::new(HashMap::new()),
-            tuple_registry: RefCell::new(HashMap::new()),
+            variant_registry: RefCell::new(BTreeMap::new()),
+            enum_registry: RefCell::new(BTreeMap::new()),
+            tuple_registry: RefCell::new(BTreeMap::new()),
         }
     }
 
@@ -565,7 +568,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     ) -> Result<(), TranslationError<'tcx>> {
         let lit_ref = self.intern_literal(lit.clone());
         let mut shims = self.adt_shims.borrow_mut();
-        if let Some(_old) = shims.insert(did, lit_ref) {
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        if let Some(_old) = shims.insert(ordered_did, lit_ref) {
             Err(self.env.tcx().dcx().err(error::Message::OverriddenAdtShim(did)).into())
         } else {
             Ok(())
@@ -574,12 +578,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Lookup a shim for an ADT.
     fn lookup_adt_shim(&self, did: DefId) -> Option<specs::types::LiteralRef<'def>> {
-        self.adt_shims.borrow().get(&did).copied()
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        self.adt_shims.borrow().get(&ordered_did).copied()
     }
 
     /// Check whether this is an ADT that was registered as part of this crate.
     fn is_registered_local_adt(&self, did: DefId) -> bool {
-        self.variant_registry.borrow().contains_key(&did) || self.enum_registry.borrow().contains_key(&did)
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        self.variant_registry.borrow().contains_key(&ordered_did)
+            || self.enum_registry.borrow().contains_key(&ordered_did)
     }
 
     /// Check whether this is an ADT that is registered as part of another crate
@@ -593,8 +600,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the struct definitions that clients have used (excluding the variants of enums).
-    pub(crate) fn get_struct_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
-        let mut defs = HashMap::new();
+    pub(crate) fn get_struct_defs(&self) -> BTreeMap<OrderedDefId, specs::structs::AbstractRef<'def>> {
+        let mut defs = BTreeMap::new();
         for (did, (_, su, _, is_of_enum)) in self.variant_registry.borrow().iter() {
             // skip structs belonging to enums
             if !is_of_enum {
@@ -605,8 +612,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the variant definitions that clients have used (including the variants of enums).
-    pub(crate) fn get_variant_defs(&self) -> HashMap<DefId, specs::structs::AbstractRef<'def>> {
-        let mut defs = HashMap::new();
+    pub(crate) fn get_variant_defs(&self) -> BTreeMap<OrderedDefId, specs::structs::AbstractRef<'def>> {
+        let mut defs = BTreeMap::new();
         for (did, (_, su, _, _)) in self.variant_registry.borrow().iter() {
             defs.insert(*did, *su);
         }
@@ -614,8 +621,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
     }
 
     /// Get all the enum definitions that clients have used.
-    pub(crate) fn get_enum_defs(&self) -> HashMap<DefId, specs::enums::AbstractRef<'def>> {
-        let mut defs = HashMap::new();
+    pub(crate) fn get_enum_defs(&self) -> BTreeMap<OrderedDefId, specs::enums::AbstractRef<'def>> {
+        let mut defs = BTreeMap::new();
         for (did, (_, su, _)) in self.enum_registry.borrow().iter() {
             defs.insert(*did, *su);
         }
@@ -736,7 +743,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         (specs::structs::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
-        if let Some((_n, st, _, _)) = self.variant_registry.borrow().get(&did) {
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        if let Some((_n, st, _, _)) = self.variant_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
@@ -752,7 +760,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         (specs::enums::AbstractRef<'def>, Option<specs::types::LiteralRef<'def>>),
         TranslationError<'tcx>,
     > {
-        if let Some((_n, st, _)) = self.enum_registry.borrow().get(&did) {
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+        if let Some((_n, st, _)) = self.enum_registry.borrow().get(&ordered_did) {
             let lit = self.lookup_adt_shim(did);
             Ok((*st, lit))
         } else {
@@ -1001,9 +1010,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
 
+        let ordered_did = OrderedDefId::new(self.env.tcx(), ty.def_id);
         self.variant_registry
             .borrow_mut()
-            .insert(ty.def_id, (struct_name, &*struct_def_init, ty, false));
+            .insert(ordered_did, (struct_name, &*struct_def_init, ty, false));
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
@@ -1031,7 +1041,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 if is_rec_type {
                     if !struct_def.has_invariant() {
                         // this is an error, we need an invariant on recursive types
-                        self.variant_registry.borrow_mut().remove(&ty.def_id);
+                        self.variant_registry.borrow_mut().remove(&ordered_did);
                         return Err(TranslationError::RecursiveTypeWithoutInvariant(ty.def_id));
                     }
 
@@ -1054,7 +1064,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             },
             Err(err) => {
                 // remove the partial definition
-                self.variant_registry.borrow_mut().remove(&ty.def_id);
+                self.variant_registry.borrow_mut().remove(&ordered_did);
                 Err(err)
             },
         }
@@ -1276,7 +1286,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         for v in def.variants() {
             let registry = self.variant_registry.borrow();
-            let (variant_name, coq_def, variant_def, _) = registry.get(&v.def_id).unwrap();
+            let ordered_did = OrderedDefId::new(self.env.tcx(), v.def_id);
+            let (variant_name, coq_def, variant_def, _) = registry.get(&ordered_did).unwrap();
             let coq_def = coq_def.borrow();
             let coq_def = coq_def.as_ref().unwrap();
             let refinement_type = coq_def.plain_rt_def_name().to_owned();
@@ -1336,9 +1347,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         let enum_name = strip_coq_ident(format!("{:?}", def).as_str());
 
         // insert partial definition for recursive occurrences
+        let ordered_did = OrderedDefId::new(self.env.tcx(), def.did());
         self.enum_registry
             .borrow_mut()
-            .insert(def.did(), (enum_name.clone(), &*enum_def_init, def));
+            .insert(ordered_did, (enum_name.clone(), &*enum_def_init, def));
 
         let translate_variants = || {
             let mut variant_attrs = Vec::new();
@@ -1347,9 +1359,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
                 let struct_name = strip_coq_ident(format!("{}_{}", enum_name, v.ident(tcx)).as_str());
+                let ordered_vdid = OrderedDefId::new(self.env.tcx(), v.def_id);
                 self.variant_registry
                     .borrow_mut()
-                    .insert(v.def_id, (struct_name.clone(), &*struct_def_init, v, true));
+                    .insert(ordered_vdid, (struct_name.clone(), &*struct_def_init, v, true));
 
                 let (variant_def, invariant_def) = self.make_adt_variant(
                     struct_name.as_str(),
@@ -1456,7 +1469,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             },
             Err(err) => {
                 // deregister the ADT again
-                self.enum_registry.borrow_mut().remove(&def.did());
+                self.enum_registry.borrow_mut().remove(&ordered_did);
                 Err(err)
             },
         }
@@ -1868,7 +1881,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             adt_def.did(),
             args,
         )?;
-        let key = scope::AdtUseKey::new_from_inst(adt_def.did(), &params);
+        let ordered_did = OrderedDefId::new(self.env.tcx(), adt_def.did());
+        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
         let enum_use = specs::types::LiteralUse::new(enum_ref, params);
 
         // track this enum use for the current function
@@ -1900,7 +1914,8 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             variant_id,
             args,
         )?;
-        let key = scope::AdtUseKey::new_from_inst(variant_id, &params);
+        let ordered_did = OrderedDefId::new(self.env.tcx(), variant_id);
+        let key = scope::AdtUseKey::new_from_inst(ordered_did, &params);
 
         let struct_ref: specs::types::LiteralRef<'def> = self
             .lookup_adt_shim(variant_id)
@@ -1926,7 +1941,7 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
             variant_id,
             args,
         )?;
-        let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
+        //let _key = scope::AdtUseKey::new_from_inst(variant_id, &params);
 
         let struct_ref: specs::types::LiteralRef<'def> = self
             .lookup_adt_shim(variant_id)

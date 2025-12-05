@@ -33,7 +33,7 @@ pub(crate) type Region = <borrowck::consumers::RustcFacts as polonius_engine::Fa
 pub(crate) type PointIndex = <borrowck::consumers::RustcFacts as polonius_engine::FactTypes>::Point;
 
 /// Ordered `DefId`s, ordered by their `DefPathHash`, which should be stable across compilations.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct OrderedDefId {
     pub def_id: DefId,
     pub def_path_hash: DefPathHash,

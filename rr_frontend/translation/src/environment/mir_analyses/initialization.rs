@@ -16,6 +16,8 @@
 //! the set at the same time. For example, having `x.f` and `x.f.g` in
 //! `S` at the same time is illegal.
 
+use std::collections::BTreeMap;
+
 use analysis::abstract_interpretation::{AbstractState as _, FixpointEngine as _};
 use analysis::domains::DefinitelyInitializedAnalysis;
 //use prusti_common::Stopwatch;
@@ -82,7 +84,10 @@ pub(crate) fn compute_definitely_initialized<'a, 'tcx: 'a>(
             location = location.successor_within_block();
         }
         // `location` identifies a terminator
-        let mut states_after_block = pointwise_state.lookup_after_block(bb).unwrap().values();
+        let states_after_block = pointwise_state.lookup_after_block(bb).unwrap();
+        let states_after_block: BTreeMap<_, _> =
+            states_after_block.iter().map(|x| (*x.0, x.1.clone())).collect();
+        let mut states_after_block = states_after_block.values();
         let mut opt_state_after_block = states_after_block.next().cloned();
         if let Some(curr_state) = opt_state_after_block.as_mut() {
             for state in states_after_block {

@@ -35,7 +35,7 @@ pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
 /// Specifies that a trait attribute requirement on a function can be attached to a scope.
 pub(crate) trait TraitReqHandler<'def>: ParamLookup<'def> {
     /// Determine the trait requirement for `typaram` and `attr`.
-    fn determine_trait_requirement_origin(
+    fn determine_trait_attr_requirement_origin(
         &self,
         typaram: &str,
         attr: &str,
@@ -825,7 +825,7 @@ where
                         return Err("assumptions on trait attributes are not allowed on closures".to_owned());
                     }
 
-                    if let Some(req) = scope.determine_trait_requirement_origin(&for_ty, &attr) {
+                    if let Some(req) = scope.determine_trait_attr_requirement_origin(&for_ty, &attr) {
                         let (_, entries) = self
                             .trait_specs
                             .entry((&raw const *req).cast())
@@ -1253,12 +1253,12 @@ impl<'def, T> TraitReqHandler<'def> for ClosureCaptureScope<'_, T>
 where
     T: TraitReqHandler<'def>,
 {
-    fn determine_trait_requirement_origin(
+    fn determine_trait_attr_requirement_origin(
         &self,
         typaram: &str,
         attr: &str,
     ) -> Option<specs::traits::LiteralSpecUseRef<'def>> {
-        self.scope.determine_trait_requirement_origin(typaram, attr)
+        self.scope.determine_trait_attr_requirement_origin(typaram, attr)
     }
 
     fn attach_trait_attr_requirement(

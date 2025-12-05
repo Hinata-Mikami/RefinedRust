@@ -14,7 +14,7 @@ use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
 use rr_rustc_interface::type_ir::TypeFoldable as _;
 
-use super::TX;
+use super::{TX, TranslationKey};
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::traits::{self, resolution};
@@ -136,7 +136,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             true,
         )?;
 
-        let tup = (callee_did, key);
+        let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
@@ -227,7 +227,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut lft_param_hint = spec_inst.lft_insts;
         lft_param_hint.append(&mut quantified_args.callee_lft_param_inst);
 
-        let tup = (callee_did, key);
+        let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
@@ -415,7 +415,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let quantified_scope =
             self.create_closure_impl_abstraction(info, closure_args, closure_kind, ty_params)?;
 
-        let tup = (call_fn_did, key);
+        let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), call_fn_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();

@@ -241,7 +241,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             for (early, polonius) in early_regions_inst {
                 let mut scope = STInner::InFunction(&mut scope);
                 let polonius_lft = TX::translate_region(&mut scope, polonius)?;
-                mapped_early_regions.insert(polonius_lft, early.index as usize);
+                mapped_early_regions.insert(polonius_lft, early);
             }
 
             //trace!("register_use_trait_procedure: mapped {:?} with {:?}; early_regions_inst =
@@ -297,7 +297,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         );
 
         // STEP 1: get all the regions and type variables appearing in the instantiation of generics
-        let mut tyvar_folder = TyVarFolder::new(self.translator.env().tcx());
+        let mut tyvar_folder = TyVarFolder::new(self.translator.env());
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.env().tcx());
 
         // also count the number of (early) regions of the function itself

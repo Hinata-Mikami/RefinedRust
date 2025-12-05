@@ -4,7 +4,7 @@
 // If a copy of the BSD-3-clause license was not distributed with this
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use log::{info, trace, warn};
 use radium::{code, lang, specs};
@@ -129,7 +129,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let operand = self.translate_operand(discr, true)?;
                 let ty = self.get_type_of_operand(discr);
 
-                let mut target_map: HashMap<u128, usize> = HashMap::new();
+                let mut target_map: BTreeMap<u128, usize> = BTreeMap::new();
                 let mut translated_targets: Vec<code::Stmt> = Vec::new();
 
                 for (idx, (tgt, bb)) in targets.iter().enumerate() {

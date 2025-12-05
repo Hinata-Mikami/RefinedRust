@@ -26,7 +26,7 @@ fn fmt_with_op(op: &str, v: &[IProp]) -> String {
     fmt_list!(v, &format!("\n{op} "), "({})")
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 pub enum IProp {
     #[display("True")]
     True,

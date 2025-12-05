@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::HashMap;
 
 use log::{debug, trace};
 use rr_rustc_interface::middle::ty::TypeFolder as _;
@@ -120,8 +120,6 @@ pub(crate) struct PoloniusInfo<'a, 'tcx> {
     pub(crate) loan_position: HashMap<facts::Loan, mir::Location>,
     pub(crate) loan_at_position: HashMap<mir::Location, facts::Loan>,
     pub(crate) additional_facts: AdditionalFacts,
-    /// The flipped `subset` relation for each point.
-    pub(crate) superset: HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>>,
 }
 
 impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
@@ -157,8 +155,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
 
         let additional_facts = AdditionalFacts::new(&all_facts, &output);
 
-        let superset = Self::compute_superset(&output);
-
         Self {
             tcx,
             mir,
@@ -168,7 +164,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             loan_position,
             loan_at_position,
             additional_facts,
-            superset,
         }
     }
 
@@ -256,30 +251,6 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
             }
         }
         constraints
-    }
-
-    /// Flips the `subset` relation computed by Polonius for each point.
-    #[must_use]
-    pub(crate) fn compute_superset(
-        output: &facts::AllOutput,
-    ) -> HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>> {
-        let subset = &output.subset;
-        let mut superset: HashMap<facts::PointIndex, BTreeMap<facts::Region, BTreeSet<facts::Region>>> =
-            HashMap::new();
-
-        for (&loc, map) in subset {
-            let mut new_map: BTreeMap<facts::Region, BTreeSet<facts::Region>> = BTreeMap::new();
-            for (&r1, set) in map {
-                for &r2 in set {
-                    new_map.entry(r2).or_default();
-
-                    let new_set = new_map.get_mut(&r2).unwrap();
-                    new_set.insert(r1);
-                }
-            }
-            superset.insert(loc, new_map);
-        }
-        superset
     }
 
     #[must_use]

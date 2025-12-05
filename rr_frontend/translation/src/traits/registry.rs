@@ -34,13 +34,13 @@ pub(crate) struct TR<'tcx, 'def> {
     type_translator: Cell<Option<&'def types::TX<'def, 'tcx>>>,
 
     /// trait declarations
-    trait_decls: RefCell<HashMap<LocalDefId, specs::traits::SpecDecl<'def>>>,
+    trait_decls: RefCell<BTreeMap<OrderedDefId, specs::traits::SpecDecl<'def>>>,
     /// trait literals for using occurrences, including shims we import
-    trait_literals: RefCell<HashMap<DefId, specs::traits::LiteralSpecRef<'def>>>,
+    trait_literals: RefCell<BTreeMap<OrderedDefId, specs::traits::LiteralSpecRef<'def>>>,
 
     /// for the trait instances in scope, the names for their Coq definitions
     /// (to enable references to them when translating functions)
-    impl_literals: RefCell<HashMap<DefId, specs::traits::LiteralImplRef<'def>>>,
+    impl_literals: RefCell<BTreeMap<OrderedDefId, specs::traits::LiteralImplRef<'def>>>,
 
     /// for all closures we process and all the closure traits they will implement, the names for
     /// the Coq definitions, as well as the meta information for the impl method
@@ -77,9 +77,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             impl_arena,
             trait_use_arena,
             fn_spec_arena,
-            trait_decls: RefCell::new(HashMap::new()),
-            trait_literals: RefCell::new(HashMap::new()),
-            impl_literals: RefCell::new(HashMap::new()),
+            trait_decls: RefCell::new(BTreeMap::new()),
+            trait_literals: RefCell::new(BTreeMap::new()),
+            impl_literals: RefCell::new(BTreeMap::new()),
             closure_impls: RefCell::new(HashMap::new()),
         }
     }
@@ -89,7 +89,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 
     /// Get registered trait declarations in the local crate.
-    pub(crate) fn get_trait_decls(&self) -> HashMap<LocalDefId, specs::traits::SpecDecl<'def>> {
+    pub(crate) fn get_trait_decls(&self) -> BTreeMap<OrderedDefId, specs::traits::SpecDecl<'def>> {
         let decls = self.trait_decls.borrow();
         decls.clone()
     }
@@ -134,8 +134,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let decls = self.trait_decls.borrow();
         for trait_decl in decls.keys() {
-            let deps = self.get_deps_of_trait(trait_decl.to_def_id());
-            dep_map.insert(OrderedDefId::new(self.env.tcx(), trait_decl.to_def_id()), deps);
+            let deps = self.get_deps_of_trait(trait_decl.def_id);
+            dep_map.insert(trait_decl.to_owned(), deps);
         }
 
         dep_map
@@ -194,7 +194,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn preregister_trait(&'def self, did: LocalDefId) -> Result<(), TranslationError<'tcx>> {
         {
             let scope = self.trait_decls.borrow();
-            if scope.get(&did).is_some() {
+            let ordered_did = OrderedDefId::new(self.env.tcx(), did.to_def_id());
+            if scope.get(&ordered_did).is_some() {
                 return Ok(());
             }
         }
@@ -234,9 +235,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<(), TranslationError<'tcx>> {
         trace!("enter TR::register_trait for did={did:?}");
 
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did.to_def_id());
         {
             let scope = self.trait_decls.borrow();
-            if scope.get(&did).is_some() {
+            if scope.get(&ordered_did).is_some() {
                 return Ok(());
             }
         }
@@ -326,14 +328,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             );
 
             let mut scope = self.trait_decls.borrow_mut();
-            scope.insert(did, decl);
+            scope.insert(ordered_did, decl);
             Ok(())
         };
 
         if let Err(err) = cont() {
             // if there is an error, rollback the registration of the shim
             let mut trait_literals = self.trait_literals.borrow_mut();
-            trait_literals.remove(&did.to_def_id());
+            trait_literals.remove(&ordered_did);
             trace!("leave TR::register_trait (failed)");
             return Err(err);
         }
@@ -356,13 +358,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             return Err(Error::NotATrait(did));
         }
 
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
         let mut trait_literals = self.trait_literals.borrow_mut();
-        if trait_literals.get(&did).is_some() {
+        if trait_literals.get(&ordered_did).is_some() {
             return Err(Error::TraitAlreadyExists(did));
         }
 
         let spec = self.trait_arena.alloc(spec);
-        trait_literals.insert(did, &*spec);
+        trait_literals.insert(ordered_did, &*spec);
 
         Ok(spec)
     }
@@ -377,13 +380,14 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             return Err(Error::NotATraitImpl(did));
         }
 
+        let ordered_did = OrderedDefId::new(self.env.tcx(), did);
         let mut impl_literals = self.impl_literals.borrow_mut();
-        if impl_literals.get(&did).is_some() {
+        if impl_literals.get(&ordered_did).is_some() {
             return Err(Error::ImplAlreadyExists(did));
         }
 
         let spec = self.impl_arena.alloc(spec);
-        impl_literals.insert(did, &*spec);
+        impl_literals.insert(ordered_did, &*spec);
 
         Ok(spec)
     }
@@ -411,13 +415,15 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Lookup a trait.
     pub(crate) fn lookup_trait(&self, trait_did: DefId) -> Option<specs::traits::LiteralSpecRef<'def>> {
         let trait_literals = self.trait_literals.borrow();
-        trait_literals.get(&trait_did).copied()
+        let ordered_did = OrderedDefId::new(self.env.tcx(), trait_did);
+        trait_literals.get(&ordered_did).copied()
     }
 
     /// Lookup the spec for an impl.
     pub(crate) fn lookup_impl(&self, impl_did: DefId) -> Option<specs::traits::LiteralImplRef<'def>> {
         let impl_literals = self.impl_literals.borrow();
-        impl_literals.get(&impl_did).copied()
+        let ordered_did = OrderedDefId::new(self.env.tcx(), impl_did);
+        impl_literals.get(&ordered_did).copied()
     }
 
     /// Lookup the spec for a closure impl.
@@ -1315,11 +1321,11 @@ pub(crate) struct LateBoundUnifier<'tcx, 'a> {
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     binders_to_unify: &'a [ty::BoundRegionKind],
-    instantiation: HashMap<usize, ty::Region<'tcx>>,
-    early_instantiation: HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>,
+    instantiation: BTreeMap<usize, ty::Region<'tcx>>,
+    early_instantiation: BTreeMap<usize, ty::Region<'tcx>>,
 }
 impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         tcx: ty::TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         binders_to_unify: &'a [ty::BoundRegionKind],
@@ -1328,14 +1334,12 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
             tcx,
             typing_env,
             binders_to_unify,
-            instantiation: HashMap::new(),
-            early_instantiation: HashMap::new(),
+            instantiation: BTreeMap::new(),
+            early_instantiation: BTreeMap::new(),
         }
     }
 
-    pub(crate) fn get_result(
-        mut self,
-    ) -> (Vec<ty::Region<'tcx>>, HashMap<ty::EarlyParamRegion, ty::Region<'tcx>>) {
+    pub(crate) fn get_result(mut self) -> (Vec<ty::Region<'tcx>>, BTreeMap<usize, ty::Region<'tcx>>) {
         trace!("computed latebound unification map {:?}", self.instantiation);
         let mut res = Vec::new();
         for i in 0..self.binders_to_unify.len() {
@@ -1368,10 +1372,11 @@ impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
             }
         } else if let ty::RegionKind::ReEarlyParam(e1) = r1.kind() {
             trace!("trying to unify region {r1:?} with {r2:?}");
-            if let Some(r1_l) = self.early_instantiation.get(&e1) {
+            let idx = e1.index as usize;
+            if let Some(r1_l) = self.early_instantiation.get(&idx) {
                 assert!(*r1_l == r2);
             } else {
-                self.early_instantiation.insert(e1, r2);
+                self.early_instantiation.insert(idx, r2);
             }
         }
     }

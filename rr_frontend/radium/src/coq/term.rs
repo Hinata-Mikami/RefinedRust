@@ -36,7 +36,7 @@ pub(crate) fn fmt_binders_empty(op: &str, binders: &binder::BinderList, empty: &
 /// A Rocq [term], limited to Rocq defined terms.
 ///
 /// [term]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-term
-#[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, From)]
 #[expect(clippy::module_name_repetitions)]
 pub enum RocqTerm<T, U> {
     /// A Rocq type
@@ -153,7 +153,7 @@ impl<T: fmt::Display, U: fmt::Display> fmt::Display for RocqTerm<T, U> {
 /// An [application].
 ///
 /// [application]: https://rocq-prover.org/doc/v8.20/refman/language/core/assumptions.html#function-application
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct App<T, U> {
     pub(crate) lhs: T,
     pub(crate) rhs: Vec<U>,
@@ -185,7 +185,7 @@ impl<T, U> App<T, U> {
 /// A [record].
 ///
 /// [record]: https://rocq-prover.org/doc/v8.20/refman/language/core/records.html#constructing-records
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RecordBody {
     pub items: Vec<RecordBodyItem>,
 }
@@ -203,7 +203,7 @@ impl fmt::Display for RecordBody {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RecordBodyItem {
     pub name: String,
     pub params: binder::BinderList,
@@ -243,7 +243,7 @@ pub(crate) fn fmt_prod(v: &Vec<Type>) -> String {
 /// A Rocq [type], limited to Rocq defined types.
 ///
 /// [type]: https://rocq-prover.org/doc/v8.20/refman/language/core/basic.html#grammar-token-type
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Display)]
 pub enum RocqType<T, U> {
     /// An arbitrary term.
     #[display("{}", _0)]

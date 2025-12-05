@@ -81,8 +81,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 did, sc, ty
                             );
 
-                            let s = self.const_registry.get_static(did)?;
-                            self.collected_statics.insert(did);
+                            let ordered_did = OrderedDefId::new(self.env.tcx(), did);
+                            let s = self.const_registry.get_static(ordered_did)?;
+                            self.collected_statics.insert(ordered_did);
                             Ok(code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())))
                         },
                         mir::interpret::GlobalAlloc::Memory(_) => {

@@ -2,7 +2,7 @@ use derive_more::Display;
 
 use crate::coq;
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 pub enum IntType {
     #[display("I8")]
     I8,
@@ -51,7 +51,7 @@ pub(crate) static BOOL_REPR: IntType = IntType::U8;
 ///
 /// A syntactic type does not necessarily specify a concrete [layout]. A [layout] is only fixed once
 /// a specific layout algorithm that resolves the non-deterministic choice of the compiler.
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Display)]
 pub enum SynType {
     #[display("BoolSynType")]
     Bool,
@@ -112,7 +112,7 @@ pub enum OpType {
 }
 
 /// A representation of Caesium layouts we are interested in.
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Display)]
 pub enum Layout {
     // in the case of 32bits
     #[display("void*")]

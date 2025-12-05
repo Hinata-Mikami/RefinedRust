@@ -13,7 +13,7 @@ use rr_rustc_interface::middle::ty;
 use topological_sort::TopologicalSort;
 
 use crate::environment::Environment;
-use crate::{search, traits};
+use crate::{rustcmp, search, traits};
 
 /// Determine the origin of a trait obligation.
 /// `surrounding_reqs` are the requirements of a surrounding impl or decl.
@@ -217,7 +217,7 @@ pub(crate) fn get_nontrivial<'tcx>(
             next_refs.push(trait_refs[x].clone());
         }
 
-        next_refs.sort_by(|(a, _, _), (b, _, _)| traits::cmp_trait_ref(env, in_trait_decl, a, b));
+        next_refs.sort_by(|(a, _, _), (b, _, _)| rustcmp::cmp_trait_ref(env, in_trait_decl, a, b));
 
         defn_order.append(&mut next_refs);
     }

@@ -12,7 +12,8 @@ mod place;
 mod rvalue;
 mod terminator;
 
-use std::collections::{HashMap, HashSet};
+use std::cmp;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 pub(crate) use calls::get_arg_syntypes_for_procedure_call;
 use log::{info, trace};
@@ -28,7 +29,17 @@ use crate::environment::procedure::Procedure;
 use crate::environment::{Environment, polonius_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
-use crate::{consts, procedures, regions, types};
+use crate::{consts, procedures, regions, rustcmp, types};
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+struct TranslationKey<'tcx>(OrderedDefId, types::GenericsKey<'tcx>);
+
+impl<'tcx> TranslationKey<'tcx> {
+    fn cmp(&self, env: &Environment<'tcx>, b: &Self) -> cmp::Ordering {
+        let did_ord = self.0.cmp(&b.0);
+        did_ord.then_with(|| rustcmp::cmp_tys(env, &self.1, &b.1))
+    }
+}
 
 /// Struct that keeps track of all information necessary to translate a MIR Body to a `code::Function`.
 /// `'a` is the lifetime of the translator and ends after translation has finished.
@@ -59,9 +70,9 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     return_synty: lang::SynType,
     /// all the other procedures used by this function, and:
     /// `(code_loc_parameter_name, spec_name, type_inst, syntype_of_all_args)`
-    collected_procedures: HashMap<(DefId, types::GenericsKey<'tcx>), code::UsedProcedure<'def>>,
+    collected_procedures: HashMap<TranslationKey<'tcx>, code::UsedProcedure<'def>>,
     /// used statics
-    collected_statics: HashSet<DefId>,
+    collected_statics: BTreeSet<OrderedDefId>,
 
     /// tracking lifetime inclusions for the generation of lifetime inclusions
     inclusion_tracker: InclusionTracker<'a, 'tcx>,
@@ -76,7 +87,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     processed_bbs: HashSet<mir::BasicBlock>,
 
     /// map of loop heads to their optional spec closure defid
-    loop_specs: HashMap<mir::BasicBlock, Option<DefId>>,
+    loop_specs: BTreeMap<mir::BasicBlock, Option<DefId>>,
 
     /// relevant locals: (local, name, type)
     fn_locals: Vec<(mir::Local, code::LocalKind, String, specs::Type<'def>)>,
@@ -187,12 +198,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             bb_queue: Vec::new(),
             processed_bbs: HashSet::new(),
             ty_translator,
-            loop_specs: HashMap::new(),
+            loop_specs: BTreeMap::new(),
             fn_locals,
             initial_constraints,
             const_registry,
             trait_registry,
-            collected_statics: HashSet::new(),
+            collected_statics: BTreeSet::new(),
         })
     }
 
@@ -289,7 +300,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         // generate dependencies on other procedures.
-        for used_proc in self.collected_procedures.values() {
+        let mut used_procs: Vec<_> = self.collected_procedures.iter().collect();
+        used_procs.sort_by(|a, b| a.0.cmp(self.env, b.0));
+        for (_, used_proc) in used_procs {
             self.translated_fn.require_function(used_proc.clone());
         }
 

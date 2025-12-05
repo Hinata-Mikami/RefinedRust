@@ -6,7 +6,7 @@
 
 /// Provides the Coq AST for code and specifications as well as utilities for
 /// constructing them.
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::Write as _;
 use std::io::Write as _;
 use std::{fmt, io};
@@ -586,7 +586,7 @@ pub enum Stmt {
         // e needs to evaluate to an integer/variant index used as index to bs
         e: Expr,
         it: lang::IntType,
-        index_map: HashMap<u128, usize>,
+        index_map: BTreeMap<u128, usize>,
         bs: Vec<Stmt>,
         def: Box<Stmt>,
     },
@@ -920,7 +920,7 @@ impl LocalKind {
 #[display("({}PolyNil)", fmt_list!(_0, "",
     |(bb, spec)| format!("PolyCons (\"_bb{}\", {}) $ ", bb, spec))
 )]
-struct InvariantMap(HashMap<usize, LoopSpec>);
+struct InvariantMap(BTreeMap<usize, LoopSpec>);
 
 /// A Caesium function bundles up the Caesium code itself as well as the generated specification
 /// for it.
@@ -1652,7 +1652,7 @@ impl<'def> FunctionBuilder<'def> {
             code_name: code_name.to_owned(),
             spec,
             layoutable_syntys: Vec::new(),
-            loop_invariants: InvariantMap(HashMap::new()),
+            loop_invariants: InvariantMap(BTreeMap::new()),
             tactics: Vec::new(),
             used_statics: Vec::new(),
             unconstrained_lfts: Vec::new(),

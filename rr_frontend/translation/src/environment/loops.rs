@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use log::{debug, info};
 use rr_rustc_interface::data_structures::graph::dominators::dominators;
@@ -19,7 +19,7 @@ fn collect_loop_body(
     head: BasicBlockIndex,
     back_edge_source: BasicBlockIndex,
     real_edges: &RealEdges,
-    body: &mut HashSet<BasicBlockIndex>,
+    body: &mut BTreeSet<BasicBlockIndex>,
 ) {
     let mut work_queue = vec![back_edge_source];
     body.insert(back_edge_source);
@@ -43,12 +43,12 @@ fn collect_loop_body(
 fn order_basic_blocks(
     mir: &mir::Body<'_>,
     real_edges: &RealEdges,
-    back_edges: &HashSet<(BasicBlockIndex, BasicBlockIndex)>,
+    back_edges: &BTreeSet<(BasicBlockIndex, BasicBlockIndex)>,
     loop_depth: &dyn Fn(BasicBlockIndex) -> usize,
 ) -> Vec<BasicBlockIndex> {
     fn visit(
         real_edges: &RealEdges,
-        back_edges: &HashSet<(BasicBlockIndex, BasicBlockIndex)>,
+        back_edges: &BTreeSet<(BasicBlockIndex, BasicBlockIndex)>,
         loop_depth: &dyn Fn(BasicBlockIndex) -> usize,
         current: BasicBlockIndex,
         sorted_blocks: &mut Vec<BasicBlockIndex>,
@@ -116,19 +116,19 @@ fn order_basic_blocks(
 #[derive(Clone)]
 pub(crate) struct ProcedureLoops {
     /// A list of basic blocks that are loop heads.
-    loop_heads: HashSet<BasicBlockIndex>,
+    loop_heads: BTreeSet<BasicBlockIndex>,
     /// A map from loop heads to the corresponding bodies.
-    loop_bodies: HashMap<BasicBlockIndex, HashSet<BasicBlockIndex>>,
-    ordered_loop_bodies: HashMap<BasicBlockIndex, Vec<BasicBlockIndex>>,
+    loop_bodies: BTreeMap<BasicBlockIndex, BTreeSet<BasicBlockIndex>>,
+    ordered_loop_bodies: BTreeMap<BasicBlockIndex, Vec<BasicBlockIndex>>,
     /// A map from loop bodies to the ordered vector of enclosing loop heads (from outer to inner).
-    enclosing_loop_heads: HashMap<BasicBlockIndex, Vec<BasicBlockIndex>>,
+    enclosing_loop_heads: BTreeMap<BasicBlockIndex, Vec<BasicBlockIndex>>,
 }
 
 impl ProcedureLoops {
     pub(crate) fn new(mir: &mir::Body<'_>, real_edges: &RealEdges) -> Self {
         let dominators = dominators(&mir.basic_blocks);
 
-        let mut back_edges: HashSet<(_, _)> = HashSet::new();
+        let mut back_edges: BTreeSet<(_, _)> = BTreeSet::new();
         for bb in mir.basic_blocks.indices() {
             for successor in real_edges.successors(bb) {
                 if dominators.dominates(*successor, bb) {
@@ -138,13 +138,14 @@ impl ProcedureLoops {
             }
         }
 
-        let mut loop_bodies = HashMap::new();
+        let mut loop_bodies = BTreeMap::new();
         for &(source, target) in &back_edges {
-            let body = loop_bodies.entry(target).or_insert_with(HashSet::new);
+            let body = loop_bodies.entry(target).or_insert_with(BTreeSet::new);
             collect_loop_body(target, source, real_edges, body);
         }
 
-        let mut enclosing_loop_heads_set: HashMap<BasicBlockIndex, HashSet<BasicBlockIndex>> = HashMap::new();
+        let mut enclosing_loop_heads_set: BTreeMap<BasicBlockIndex, BTreeSet<BasicBlockIndex>> =
+            BTreeMap::new();
         for (&loop_head, loop_body) in &loop_bodies {
             for &block in loop_body {
                 let heads_set = enclosing_loop_heads_set.entry(block).or_default();
@@ -152,13 +153,13 @@ impl ProcedureLoops {
             }
         }
 
-        let loop_heads: HashSet<_> = loop_bodies.keys().copied().collect();
-        let mut loop_head_depths = HashMap::new();
+        let loop_heads: BTreeSet<_> = loop_bodies.keys().copied().collect();
+        let mut loop_head_depths = BTreeMap::new();
         for &loop_head in &loop_heads {
             loop_head_depths.insert(loop_head, enclosing_loop_heads_set[&loop_head].len());
         }
 
-        let mut enclosing_loop_heads = HashMap::new();
+        let mut enclosing_loop_heads = BTreeMap::new();
         for (&block, loop_heads) in &enclosing_loop_heads_set {
             let mut heads: Vec<BasicBlockIndex> = loop_heads.iter().copied().collect();
             heads.sort_by_key(|bbi| loop_head_depths[bbi]);
@@ -173,11 +174,11 @@ impl ProcedureLoops {
         };
 
         let ordered_blocks = order_basic_blocks(mir, real_edges, &back_edges, &get_loop_depth);
-        let block_order: HashMap<BasicBlockIndex, usize> =
+        let block_order: BTreeMap<BasicBlockIndex, usize> =
             ordered_blocks.iter().copied().enumerate().map(|(i, v)| (v, i)).collect();
         debug!("ordered_blocks: {:?}", ordered_blocks);
 
-        let mut ordered_loop_bodies = HashMap::new();
+        let mut ordered_loop_bodies = BTreeMap::new();
         for (&loop_head, loop_body) in &loop_bodies {
             let mut ordered_body: Vec<_> = loop_body.iter().copied().collect();
             ordered_body.sort_by_key(|bb| block_order[bb]);
@@ -190,14 +191,14 @@ impl ProcedureLoops {
         // They are those blocks in the loop that:
         // 1. have a SwitchInt terminator (TODO: can we remove this condition?)
         // 2. have an out-edge that exits from the loop
-        let mut loop_exit_blocks = HashMap::new();
+        let mut loop_exit_blocks = BTreeMap::new();
         for &loop_head in &loop_heads {
             let loop_head_depth = loop_head_depths[&loop_head];
             let loop_body = &loop_bodies[&loop_head];
             let ordered_loop_body = &ordered_loop_bodies[&loop_head];
 
             let mut exit_blocks = vec![];
-            let mut border = HashSet::new();
+            let mut border = BTreeSet::new();
             border.insert(loop_head);
 
             for &curr_bb in ordered_loop_body {

@@ -23,6 +23,7 @@ mod environment;
 mod error;
 mod procedures;
 mod regions;
+mod rustcmp;
 mod search;
 mod shims;
 mod spec_parsers;
@@ -30,7 +31,7 @@ mod traits;
 mod types;
 mod unification;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -241,7 +242,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // traits
         let decls = self.trait_registry.get_trait_decls();
         for (did, decl) in &decls {
-            if let Some(entry) = self.make_trait_shim_entry(*did, decl.lit) {
+            if let Some(entry) = self.make_trait_shim_entry(did.def_id.expect_local(), decl.lit) {
                 trait_shims.push(entry);
             }
         }
@@ -262,7 +263,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         for (did, entry) in &variant_defs {
             let entry = entry.borrow();
             if let Some(entry) = entry.as_ref()
-                && let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type())
+                && let Some(shim) = self.make_adt_shim_entry(did.def_id, entry.make_literal_type())
             {
                 adt_shims.push(shim);
             }
@@ -270,7 +271,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         for (did, entry) in &enum_defs {
             let entry = entry.borrow();
             if let Some(entry) = entry.as_ref()
-                && let Some(shim) = self.make_adt_shim_entry(*did, entry.make_literal_type())
+                && let Some(shim) = self.make_adt_shim_entry(did.def_id, entry.make_literal_type())
             {
                 adt_shims.push(shim);
             }
@@ -367,13 +368,15 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         let trait_decls = self.trait_registry.get_trait_decls();
 
         for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
+            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_attr_record_decl()).unwrap();
         }
 
         // write semantic interps
         for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
+            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let decl = &trait_decls[&ordered_did];
             if let Some(decl) = decl.make_semantic_decl() {
                 write!(spec_file, "{decl}\n").unwrap();
             }
@@ -392,7 +395,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             info!("ordered ADT defns: {:?}", ordered);
 
             for did in &ordered {
-                if let Some(su_ref) = struct_defs.get(did) {
+                let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+                if let Some(su_ref) = struct_defs.get(&ordered_did) {
                     let su_ref = su_ref.borrow();
                     info!("writing struct {:?}, {:?}", did, su_ref);
                     let su = su_ref.as_ref().unwrap();
@@ -402,7 +406,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
                     // type aliases
                     writeln!(spec_file, "{}", su.generate_coq_type_def()).unwrap();
-                } else if let Some(eu_ref) = enum_defs.get(did) {
+                } else if let Some(eu_ref) = enum_defs.get(&ordered_did) {
                     let eu = eu_ref.borrow();
                     let eu = eu.as_ref().unwrap();
                     info!("writing enum {:?}, {:?}", did, eu);
@@ -412,8 +416,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
                     // type definition
                     writeln!(spec_file, "{}", eu.generate_coq_type_def()).unwrap();
-                } else if let Some(impl_ref) = self.trait_impls.get(&OrderedDefId::new(self.env.tcx(), *did))
-                {
+                } else if let Some(impl_ref) = self.trait_impls.get(&ordered_did) {
                     writeln!(spec_file, "Section attrs.").unwrap();
                     writeln!(spec_file, "Context `{{RRGS : !refinedrustGS Σ}}.").unwrap();
                     writeln!(spec_file, "{}\n", impl_ref.generate_attr_decl()).unwrap();
@@ -461,19 +464,22 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // write trait specs
         for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
+            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_spec_record_decl()).unwrap();
         }
 
         // write remaining trait things
         for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
+            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{decl}\n").unwrap();
         }
 
         // write trait req incls
         for did in &dep_order {
-            let decl = &trait_decls[&did.as_local().unwrap()];
+            let ordered_did = OrderedDefId::new(self.env.tcx(), *did);
+            let decl = &trait_decls[&ordered_did];
             write!(spec_file, "{}\n", decl.make_trait_req_incls()).unwrap();
         }
 
@@ -1452,7 +1458,8 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
                     loc_name,
                     ty: translated_ty,
                 };
-                vcx.const_registry.register_static(s.to_def_id(), meta);
+                let ordered_did = OrderedDefId::new(vcx.env.tcx(), s.to_def_id());
+                vcx.const_registry.register_static(ordered_did, meta);
             },
             Err(e) => {
                 println!("Warning: static {:?} has unsupported type, skipping: {:?}", s, e);
@@ -1866,16 +1873,17 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 }
 
 /// Get and parse all module attributes.
-fn get_module_attributes(env: &Environment<'_>) -> Result<HashMap<LocalDefId, ModuleAttrs>, String> {
+fn get_module_attributes(env: &Environment<'_>) -> Result<BTreeMap<OrderedDefId, ModuleAttrs>, String> {
     let modules = env.get_modules();
-    let mut attrs = HashMap::new();
+    let mut attrs = BTreeMap::new();
     info!("collected modules: {:?}", modules);
 
     for m in &modules {
         let module_attrs = attrs::filter_for_tool(env.get_attributes(m.to_def_id()));
         let mut module_parser = VerboseModuleAttrParser::new();
         let module_spec = module_parser.parse_module_attrs(*m, &module_attrs)?;
-        attrs.insert(*m, module_spec);
+        let ordered_did = OrderedDefId::new(env.tcx(), m.to_def_id());
+        attrs.insert(ordered_did, module_spec);
     }
 
     Ok(attrs)
