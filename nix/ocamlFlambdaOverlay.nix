@@ -40,5 +40,23 @@
 
     rocq-core =
       prev.rocq-core.override {customOCamlPackages = ocamlPackages;};
+
+    # NOTE: Remove `equations` when available in Nix's `RocqPackages`
+    equations = pkgs.rocqPackages.mkRocqDerivation {
+      pname = "equations";
+      owner = "mattam82";
+      repo = "Coq-Equations";
+      opam-name = "rocq-equations";
+
+      propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
+
+      mlPlugin = true;
+      useDune = true;
+
+      version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
+      release = {
+        "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+      };
+    };
   });
 }

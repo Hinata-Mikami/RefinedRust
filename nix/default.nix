@@ -6,9 +6,10 @@ with inputs; rec {
   pkgs = import nixpkgs {inherit overlays system;};
   rrPkgs = self.packages.${system};
 
-  overlays = let
-    ocamlFlambda = import ./ocamlFlambdaOverlay.nix {inherit pkgs;};
-  in [ocamlFlambda rust-overlay.overlays.default];
+  overlays = [
+    (import ./ocamlFlambdaOverlay.nix {inherit pkgs;})
+    rust-overlay.overlays.default
+  ];
 
   mapToAttrs = fName: fValue: l: let
     f = {pname, ...} @ args: {
@@ -19,13 +20,24 @@ with inputs; rec {
     pkgs.lib.listToAttrs (map f l);
 
   rocq = {
-    mkDepRocqDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
+    mkDepDerivation = import ./mkDepRocqDerivation.nix {inherit pkgs;};
+    mkRefinedRust = import ./mkRocqRefinedRust.nix {
+      inherit pkgs rrPkgs;
+      inherit (rust) cargoRefinedRust;
+    };
   };
 
-  rust =
-    rec {
-      hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
-      mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
-    }
-    // (import ./rustTools.nix {inherit crane pkgs rrPkgs;});
+  rust = let
+    craneLib = crane.mkLib pkgs;
+  in rec {
+    inherit (craneLib) cargoDeny overrideToolchain;
+    hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
+
+    cargoClippy = devToolchain: craneLib.cargoClippy.override {clippy = devToolchain;};
+    cargoFmt = devToolchain: craneLib.cargoFmt.override {rustfmt = devToolchain;};
+    cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
+    cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib hostPlatform rrPkgs pkgs;};
+
+    mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
+  };
 }

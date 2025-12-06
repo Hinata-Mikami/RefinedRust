@@ -37,13 +37,7 @@
         license = licenses.bsd3;
       };
 
-      ocaml = {
-        version = pkgs.ocaml.version;
-      };
-
       rocq = {
-        version = pkgs.rocqPackages.rocq-core.rocq-version;
-
         stdpp = {
           version = "ec795ece9125d60d9974e15fc52f3dfe91ae3f4b";
           sha256 = "sha256-vtPP8K64MvweX5oUY4ka5ReeDim76FEv2gUvm941nj0=";
@@ -88,39 +82,21 @@
         packages =
           {
             theories = let
-              # NOTE: Remove `equations` when available in Nix's `RocqPackages`
-              equations = pkgs.rocqPackages.mkRocqDerivation {
-                pname = "equations";
-                owner = "mattam82";
-                repo = "Coq-Equations";
-                opam-name = "rocq-equations";
-
-                propagatedBuildInputs = [pkgs.rocqPackages.stdlib pkgs.ocamlPackages.ppx_optcomp];
-
-                mlPlugin = true;
-                useDune = true;
-
-                version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
-                release = {
-                  "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
-                };
-              };
-
-              stdpp = lib.rocq.mkDepRocqDerivation rocq.stdpp {
+              stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
                 pname = "stdpp";
               };
 
-              iris = lib.rocq.mkDepRocqDerivation rocq.iris {
+              iris = lib.rocq.mkDepDerivation rocq.iris {
                 pname = "iris";
                 propagatedBuildInputs = [stdpp];
               };
 
-              iris-contrib = lib.rocq.mkDepRocqDerivation rocq.iris-contrib {
+              iris-contrib = lib.rocq.mkDepDerivation rocq.iris-contrib {
                 pname = "iris-contrib";
                 propagatedBuildInputs = [iris];
               };
 
-              lambda-rust = lib.rocq.mkDepRocqDerivation rocq.lambda-rust {
+              lambda-rust = lib.rocq.mkDepDerivation rocq.lambda-rust {
                 pname = "lambda-rust";
                 propagatedBuildInputs = [iris];
               };
@@ -132,7 +108,7 @@
                 opam-name = name;
                 src = ./theories;
 
-                propagatedBuildInputs = [equations iris-contrib lambda-rust];
+                propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
                 useDune = true;
               };
 
@@ -153,595 +129,249 @@
               passthru = {inherit cargoArtifacts pname src;};
             };
 
-            alloc = let
+            alloc = lib.rocq.mkRefinedRust {
+              inherit meta version;
+
+              pname = "stdlib-alloc";
+              src = ./stdlib/alloc;
+
               libDeps = [packages.ptr packages.result];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-alloc-theories";
-                opam-name = "stdlib-alloc-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/alloc/theories;
-
-                propagatedBuildInputs = [packages.theories packages.mem packages.ptr];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-alloc";
-                opam-name = "stdlib-alloc";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-alloc";
-                  src = ./stdlib/alloc;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/alloc
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/alloc/. \;
-                '';
-              };
-
-            arithops = pkgs.rocqPackages.mkRocqDerivation {
+            arithops = lib.rocq.mkRefinedRust {
               inherit meta version;
 
               pname = "stdlib-arithops";
-              opam-name = "stdlib-arithops";
-
-              src = lib.rust.cargoRefinedRust {
-                inherit meta version;
-
-                pname = "stdlib-arithops";
-                src = ./stdlib/arithops;
-
-                cargoArtifacts = null;
-                withStdlib = false;
-              };
+              src = ./stdlib/arithops;
 
               propagatedBuildInputs = [packages.theories];
-              useDune = true;
 
-              postInstall = ''
-                mkdir -p $out/share/refinedrust-stdlib/arithops
-                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/arithops/. \;
-              '';
+              cargoArtifacts = null;
+              withStdlib = false;
             };
 
-            boxed = let
+            boxed = lib.rocq.mkRefinedRust {
+              inherit meta version;
+
+              pname = "stdlib-boxed";
+              src = ./stdlib/boxed;
+
               libDeps = [packages.alloc packages.option packages.rr_internal];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-boxed-theories";
-                opam-name = "stdlib-boxed-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/boxed/theories;
+            btreemap = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              pname = "stdlib-btreemap";
+              src = ./stdlib/btreemap;
 
-                pname = "stdlib-boxed";
-                opam-name = "stdlib-boxed";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-boxed";
-                  src = ./stdlib/boxed;
-
-                  cargoArtifacts = null;
-
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/boxed
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/boxed/. \;
-                '';
-              };
-
-            btreemap = let
               libDeps = [packages.alloc packages.option];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-btreemap";
-                opam-name = "stdlib-btreemap";
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-btreemap";
-                  src = ./stdlib/btreemap;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/btreemap
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/btreemap/. \;
-                '';
-              };
-
-            clone = pkgs.rocqPackages.mkRocqDerivation {
+            clone = lib.rocq.mkRefinedRust {
               inherit meta version;
 
               pname = "stdlib-clone";
-              opam-name = "stdlib-clone";
-
-              src = lib.rust.cargoRefinedRust {
-                inherit meta version;
-
-                pname = "stdlib-clone";
-                src = ./stdlib/clone;
-
-                cargoArtifacts = null;
-                withStdlib = false;
-              };
+              src = ./stdlib/clone;
 
               propagatedBuildInputs = [packages.theories];
-              useDune = true;
 
-              postInstall = ''
-                mkdir -p $out/share/refinedrust-stdlib/clone
-                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/clone/. \;
-              '';
+              cargoArtifacts = null;
+              withStdlib = false;
             };
 
-            closures = pkgs.rocqPackages.mkRocqDerivation {
+            closures = lib.rocq.mkRefinedRust {
               inherit meta version;
 
               pname = "stdlib-closures";
-              opam-name = "stdlib-closures";
-
-              src = lib.rust.cargoRefinedRust {
-                inherit meta version;
-
-                pname = "stdlib-closures";
-                src = ./stdlib/closures;
-
-                cargoArtifacts = null;
-                withStdlib = false;
-              };
+              src = ./stdlib/closures;
 
               propagatedBuildInputs = [packages.theories];
-              useDune = true;
 
-              postInstall = ''
-                mkdir -p $out/share/refinedrust-stdlib/closures
-                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/closures/. \;
-              '';
+              cargoArtifacts = null;
+              withStdlib = false;
             };
 
-            cmp = let
+            cmp = lib.rocq.mkRefinedRust {
+              inherit meta version;
+
+              pname = "stdlib-cmp";
+              src = ./stdlib/cmp;
+
               libDeps = [packages.closures packages.option];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-cmp-theories";
-                opam-name = "stdlib-cmp-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/cmp/theories;
+            controlflow = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              pname = "stdlib-controlflow";
+              src = ./stdlib/controlflow;
 
-                pname = "stdlib-cmp";
-                opam-name = "stdlib-cmp";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-cmp";
-                  src = ./stdlib/cmp;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/cmp
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/cmp/. \;
-                '';
-              };
-
-            controlflow = let
               libDeps = [packages.option packages.result];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-controlflow";
-                opam-name = "stdlib-controlflow";
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+            iterator = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                  pname = "stdlib-controlflow";
-                  src = ./stdlib/controlflow;
+              pname = "stdlib-iterator";
+              src = ./stdlib/iterator;
 
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/controlflow
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/controlflow/. \;
-                '';
-              };
-
-            iterator = let
               libDeps = [packages.clone packages.closures packages.cmp packages.option packages.range];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-iterator-theories";
-                opam-name = "stdlib-iterator-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/iterator/theories;
+            mem = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              pname = "stdlib-mem";
+              src = ./stdlib/mem;
 
-                pname = "stdlib-iterator";
-                opam-name = "stdlib-iterator";
+              propagatedBuildInputs = [packages.theories];
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                  pname = "stdlib-iterator";
-                  src = ./stdlib/iterator;
+            option = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
+              pname = "stdlib-option";
+              src = ./stdlib/option;
 
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/iterator
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/iterator/. \;
-                '';
-              };
-
-            mem = let
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-mem-theories";
-                opam-name = "stdlib-mem-theories";
-
-                src = ./stdlib/mem/theories;
-
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-mem";
-                opam-name = "stdlib-mem";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit meta version;
-
-                  pname = "stdlib-mem";
-                  src = ./stdlib/mem;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/mem
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/mem/. \;
-                '';
-              };
-
-            option = let
               libDeps = [packages.closures];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-option";
-                opam-name = "stdlib-option";
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+            ptr = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                  pname = "stdlib-option";
-                  src = ./stdlib/option;
+              pname = "stdlib-ptr";
+              src = ./stdlib/ptr;
 
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/option
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/option/. \;
-                '';
-              };
-
-            ptr = let
               libDeps = [packages.mem];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-ptr-theories";
-                opam-name = "stdlib-ptr-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/ptr/theories;
+            result = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              pname = "stdlib-result";
+              src = ./stdlib/result;
 
-                pname = "stdlib-ptr";
-                opam-name = "stdlib-ptr";
+              propagatedBuildInputs = [packages.theories];
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                  pname = "stdlib-ptr";
-                  src = ./stdlib/ptr;
+            range = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
+              pname = "stdlib-range";
+              src = ./stdlib/range;
 
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/ptr
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/ptr/. \;
-                '';
-              };
-
-            result = let
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-result-theories";
-                opam-name = "stdlib-result-theories";
-
-                src = ./stdlib/result/theories;
-
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-result";
-                opam-name = "stdlib-result";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit meta version;
-
-                  pname = "stdlib-result";
-                  src = ./stdlib/result;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/result
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/result/. \;
-                '';
-              };
-
-            range = let
               libDeps = [packages.cmp packages.option];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-range";
-                opam-name = "stdlib-range";
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+            rr_internal = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                  pname = "stdlib-range";
-                  src = ./stdlib/range;
+              pname = "stdlib-rr_internal";
+              src = ./stdlib/rr_internal;
 
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/range
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/range/. \;
-                '';
-              };
-
-            rr_internal = let
               libDeps = [packages.alloc packages.ptr];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-rr_internal-theories";
-                opam-name = "stdlib-rr_internal-theories";
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+            };
 
-                src = ./stdlib/rr_internal/theories;
-
-                propagatedBuildInputs = [packages.theories packages.alloc packages.mem packages.ptr packages.result];
-                useDune = true;
-              };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
-
-                pname = "stdlib-rr_internal";
-                opam-name = "stdlib-rr_internal";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-rr_internal";
-                  src = ./stdlib/rr_internal;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/rr_internal
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/rr_internal/. \;
-                '';
-              };
-
-            rwlock = pkgs.rocqPackages.mkRocqDerivation {
+            rwlock = lib.rocq.mkRefinedRust {
               inherit meta version;
 
               pname = "stdlib-rwlock";
-              opam-name = "stdlib-rwlock";
-
-              src = lib.rust.cargoRefinedRust {
-                inherit meta version;
-
-                pname = "stdlib-rwlock";
-                src = ./stdlib/rwlock;
-
-                cargoArtifacts = null;
-                withStdlib = false;
-              };
+              src = ./stdlib/rwlock;
 
               propagatedBuildInputs = [packages.theories];
-              useDune = true;
 
-              postInstall = ''
-                mkdir -p $out/share/refinedrust-stdlib/rwlock
-                find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/rwlock/. \;
-              '';
+              cargoArtifacts = null;
+              withStdlib = false;
             };
 
-            spin = let
-              libDeps = [packages.option];
-              theories = pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+            spin = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
+              pname = "stdlib-spin";
+              src = ./stdlib/spin;
+
+              libDeps = [packages.option];
+              propagatedBuildInputs = [packages.theories];
+
+              cargoArtifacts = null;
+              withStdlib = false;
+              withTheories = true;
+
+              rocqTheoriesArgs = {
                 pname = "stdlib-spin-once-theories";
                 opam-name = "stdlib-spin-once-theories";
 
                 src = ./stdlib/spin/theories/once;
-
-                propagatedBuildInputs = [packages.theories];
-                useDune = true;
               };
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+            };
 
-                pname = "stdlib-spin";
-                opam-name = "stdlib-spin";
+            vec = lib.rocq.mkRefinedRust {
+              inherit meta version;
 
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
+              pname = "stdlib-vec";
+              src = ./stdlib/vec;
 
-                  pname = "stdlib-spin";
-                  src = ./stdlib/spin;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/spin
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/spin/. \;
-                '';
-              };
-
-            vec = let
               libDeps = [packages.alloc packages.iterator packages.option packages.rr_internal];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-vec";
-                opam-name = "stdlib-vec";
-
-                src = lib.rust.cargoRefinedRust {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-vec";
-                  src = ./stdlib/vec;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/vec
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/vec/. \;
-                '';
-              };
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
             stdlib = let
               libDeps = with packages; [alloc arithops boxed btreemap clone closures cmp controlflow iterator mem option ptr range result rr_internal rwlock spin vec];
@@ -786,8 +416,8 @@
                 in
                   with strings; ''
                     wrapProgram $out/bin/dune \
-                      --set OCAMLPATH "${makeSearchPath "lib/ocaml/${ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
-                      --set ROCQPATH "${makeSearchPath "lib/coq/${rocq.version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
+                      --set OCAMLPATH "${makeSearchPath "lib/ocaml/${pkgs.ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
+                      --set ROCQPATH "${makeSearchPath "lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
 
                     wrapProgram $out/bin/cargo-${name} \
                       --set LD_LIBRARY_PATH "${makeLibraryPath [toolchain]}" \
