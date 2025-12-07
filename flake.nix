@@ -80,8 +80,23 @@
       with pkgs.lib; rec {
         inherit lib;
 
-        packages =
+        packages = let
+          stdlibPkgs = with pkgs.lib; attrsets.attrValues (filterAttrs (name: _: strings.hasPrefix "stdlib-" name) packages);
+
+          mkStdlib = args:
+            lib.rocq.mkRefinedRust ({
+                inherit meta version;
+
+                propagatedBuildInputs = [packages.theories];
+
+                cargoArtifacts = null;
+                withStdlib = false;
+              }
+              // args);
+        in
           {
+            default = packages."target-${lib.rust.hostPlatform}";
+
             theories = let
               stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
                 pname = "stdpp";
@@ -129,228 +144,95 @@
               doNotRemoveReferencesToRustToolchain = true;
               passthru = {inherit cargoArtifacts pname src;};
             };
-
-            alloc = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+          }
+          // lib.mapToAttrs id mkStdlib [
+            {
               pname = "stdlib-alloc";
               src = ./stdlib/alloc;
-
-              libDeps = [packages.ptr packages.result];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-ptr stdlib-result];
               withTheories = true;
-            };
-
-            arithops = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-arithops";
               src = ./stdlib/arithops;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            boxed = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-boxed";
               src = ./stdlib/boxed;
-
-              libDeps = [packages.alloc packages.option packages.rr_internal];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-alloc stdlib-option stdlib-rr_internal];
               withTheories = true;
-            };
-
-            btreemap = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-btreemap";
               src = ./stdlib/btreemap;
-
-              libDeps = [packages.alloc packages.option];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            clone = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+              libDeps = with packages; [stdlib-alloc stdlib-option];
+            }
+            {
               pname = "stdlib-clone";
               src = ./stdlib/clone;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            closures = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-closures";
               src = ./stdlib/closures;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            cmp = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-cmp";
               src = ./stdlib/cmp;
-
-              libDeps = [packages.closures packages.option];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-closures stdlib-option];
               withTheories = true;
-            };
-
-            controlflow = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-controlflow";
               src = ./stdlib/controlflow;
-
-              libDeps = [packages.option packages.result];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            iterator = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+              libDeps = with packages; [stdlib-option stdlib-result];
+            }
+            {
               pname = "stdlib-iterator";
               src = ./stdlib/iterator;
-
-              libDeps = [packages.clone packages.closures packages.cmp packages.option packages.range];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-clone stdlib-closures stdlib-cmp stdlib-option stdlib-range];
               withTheories = true;
-            };
-
-            mem = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-mem";
               src = ./stdlib/mem;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
               withTheories = true;
-            };
-
-            option = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-option";
               src = ./stdlib/option;
-
-              libDeps = [packages.closures];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            ptr = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+              libDeps = with packages; [stdlib-closures];
+            }
+            {
               pname = "stdlib-ptr";
               src = ./stdlib/ptr;
-
-              libDeps = [packages.mem];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-mem];
               withTheories = true;
-            };
-
-            result = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-result";
               src = ./stdlib/result;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
               withTheories = true;
-            };
-
-            range = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-range";
               src = ./stdlib/range;
-
-              libDeps = [packages.cmp packages.option];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            rr_internal = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+              libDeps = with packages; [stdlib-cmp stdlib-option];
+            }
+            {
               pname = "stdlib-rr_internal";
               src = ./stdlib/rr_internal;
-
-              libDeps = [packages.alloc packages.ptr];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-alloc stdlib-ptr];
               withTheories = true;
-            };
-
-            rwlock = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-rwlock";
               src = ./stdlib/rwlock;
-
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
               withStdlib = false;
-            };
-
-            spin = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-spin";
               src = ./stdlib/spin;
-
-              libDeps = [packages.option];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
+              libDeps = with packages; [stdlib-option];
               withTheories = true;
 
               rocqTheoriesArgs = {
@@ -359,62 +241,43 @@
 
                 src = ./stdlib/spin/theories/once;
               };
-            };
-
-            vec = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
+            }
+            {
               pname = "stdlib-vec";
               src = ./stdlib/vec;
-
-              libDeps = [packages.alloc packages.iterator packages.option packages.rr_internal];
-              propagatedBuildInputs = [packages.theories];
-
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
-
-            stdlib = lib.rocq.mkRefinedRust {
-              inherit meta version;
-
-              pname = "stdlib-refinedrust";
+              libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal];
+            }
+            {
+              pname = "stdlib";
+              opam-name = "stdlib-refinedrust";
               src = ./stdlib/stdlib;
+              libDeps = stdlibPkgs;
+            }
+          ]
+          // rust.mkDrvRustTargetToolchains (toolchain:
+            pkgs.symlinkJoin {
+              inherit meta name;
 
-              libDeps = with packages; [alloc arithops boxed btreemap clone closures cmp controlflow iterator mem option ptr range result rr_internal rwlock spin vec];
-              propagatedBuildInputs = [packages.theories];
+              paths =
+                [pkgs.gcc pkgs.gnupatch toolchain.build]
+                ++ ([pkgs.rocqPackages.rocq-core packages.frontend] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
+                ++ (stdlibPkgs ++ [packages.stdlib]);
 
-              cargoArtifacts = null;
-              withStdlib = false;
-            };
+              nativeBuildInputs = [pkgs.makeWrapper];
+              postBuild = ''
+                wrapProgram $out/bin/dune \
+                  --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
+                  --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
 
-            default = packages."target-${lib.rust.hostPlatform}";
-          }
-          // (
-            rust.mkDrvRustTargetToolchains (toolchain:
-              pkgs.symlinkJoin {
-                inherit meta name;
+                wrapProgram $out/bin/cargo-${name} \
+                  --set PATH "$out/bin" \
+                  --set LD_LIBRARY_PATH $out/lib \
+                  --set DYLD_FALLBACK_LIBRARY_PATH $out/lib \
+                  --set RR_NIX_STDLIB $out/share/stdlib
+              '';
 
-                paths =
-                  [pkgs.gcc pkgs.gnupatch toolchain.build]
-                  ++ ([pkgs.rocqPackages.rocq-core packages.frontend] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                  ++ (with packages; [alloc arithops boxed btreemap clone closures cmp controlflow iterator mem option ptr range result rr_internal rwlock spin stdlib vec]);
-
-                nativeBuildInputs = [pkgs.makeWrapper];
-                postBuild = ''
-                  wrapProgram $out/bin/dune \
-                    --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
-                    --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
-
-                  wrapProgram $out/bin/cargo-${name} \
-                    --set PATH "$out/bin" \
-                    --set LD_LIBRARY_PATH $out/lib \
-                    --set DYLD_FALLBACK_LIBRARY_PATH $out/lib \
-                    --set RR_NIX_STDLIB $out/share/stdlib
-                '';
-
-                passthru = {inherit toolchain;};
-              })
-          );
+              passthru = {inherit toolchain;};
+            });
 
         checks = let
           mkCaseStudies = let
@@ -431,16 +294,15 @@
             };
           in
             args:
-              lib.rocq.mkRefinedRust {
-                inherit (args) pname src;
-                inherit meta version;
+              lib.rocq.mkRefinedRust ({
+                  inherit meta version;
 
-                propagatedBuildInputs = [extraProofs];
+                  propagatedBuildInputs = [extraProofs];
 
-                cargoArtifacts = null;
-                cargoExtraArgs = "";
-                cargoVendorDir = null;
-              };
+                  cargoArtifacts = null;
+                  cargoExtraArgs = "";
+                  cargoVendorDir = null;
+                } // args);
         in
           {
             clippy = lib.rust.cargoClippy rust.toolchain.dev {
@@ -488,17 +350,15 @@
           {
             default = devShells."target-${lib.rust.hostPlatform}";
           }
-          // (
-            rust.mkDrvRustTargetToolchains (toolchain:
-              pkgs.mkShell {
-                inputsFrom = with packages; [frontend theories];
-                packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
+          // rust.mkDrvRustTargetToolchains (toolchain:
+            pkgs.mkShell {
+              inputsFrom = with packages; [frontend theories];
+              packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
 
-                LD_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
-                DYLD_FALLBACK_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
-                LIBCLANG_PATH = makeLibraryPath [pkgs.libclang.lib];
-              })
-          );
+              LD_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
+              DYLD_FALLBACK_LIBRARY_PATH = makeLibraryPath [toolchain.dev];
+              LIBCLANG_PATH = makeLibraryPath [pkgs.libclang.lib];
+            });
 
         formatter = pkgs.alejandra;
       });
