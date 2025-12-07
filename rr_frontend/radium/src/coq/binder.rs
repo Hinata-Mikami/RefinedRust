@@ -240,4 +240,35 @@ impl BinderList {
             .map(|x| term::Term::Literal(format!("({} := {})", x.get_name(), x.get_name())))
             .collect()
     }
+
+    #[must_use]
+    pub fn uncurry(&self) -> (Pattern, term::Type) {
+        if self.0.is_empty() {
+            return ("_".to_owned(), term::Type::Unit);
+        }
+
+        let mut pattern = String::with_capacity(100);
+        let mut types = String::with_capacity(100);
+
+        pattern.push('(');
+        types.push('(');
+
+        let mut need_sep = false;
+        for binder in &self.0 {
+            if need_sep {
+                pattern.push_str(", ");
+                types.push_str(" * ");
+            }
+
+            pattern.push_str(&binder.get_name());
+            types.push_str(&format!("{}", binder.get_type().unwrap()));
+
+            need_sep = true;
+        }
+
+        pattern.push(')');
+        types.push(')');
+
+        (pattern, term::Type::Literal(types))
+    }
 }

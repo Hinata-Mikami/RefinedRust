@@ -6,11 +6,11 @@
 
 //! Extended Rocq definitions, specifically made for `RefinedRust`.
 
-use derive_more::Display;
+use derive_more::{Display, From};
 
 use crate::{coq, fmt_list};
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display, From)]
 pub enum Term {
     /// An Iris Term
     #[display("({})%I", _0)]
@@ -23,6 +23,9 @@ pub enum Type {
     /// `function_ty` type
     #[display("function_ty")]
     FunctionTy,
+
+    #[display("iProp Σ")]
+    IProp,
 
     /// `gname` type
     #[display("gname")]

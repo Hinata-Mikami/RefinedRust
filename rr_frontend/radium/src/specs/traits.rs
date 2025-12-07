@@ -855,7 +855,7 @@ fn make_trait_instance<'def>(
         for (name, inst) in of_trait.assoc_tys.iter().zip(self_assoc_inst) {
             let assoc_param = LiteralTyParam::new(name);
             term = coq::term::Term::LetIn(
-                coq::Ident::new(&assoc_param.refinement_type()),
+                assoc_param.refinement_type(),
                 Box::new(coq::term::Term::Type(Box::new(inst.get_rfn_type()))),
                 Box::new(term),
             );

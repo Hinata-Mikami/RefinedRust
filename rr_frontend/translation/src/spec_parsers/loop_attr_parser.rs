@@ -214,6 +214,8 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut inv_var_set: HashSet<String> = HashSet::new();
         let mut existentials: Vec<coq::binder::Binder> = Vec::new();
 
+        let mut params: Vec<coq::binder::Binder> = Vec::new();
+
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
@@ -225,6 +227,12 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
             match seg.name.as_str() {
+                "params" => {
+                    let p = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
+                    for param in p.params {
+                        params.push(param.into());
+                    }
+                },
                 "exists" => {
                     let params = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
                     for param in params.params {
@@ -279,6 +287,13 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut preserved_locals: Vec<String> = Vec::new();
 
         let mut declare_iterator_var = None;
+
+        // insert params at the front
+        let param_binders = coq::binder::BinderList::new(params);
+        let (param_pat, param_ty) = param_binders.uncurry();
+        let param_name = "_params";
+        let param_ident = coq::Ident::new(param_name);
+        rfn_binders.push(coq::binder::Binder::new(Some(param_name.to_owned()), param_ty));
 
         // get locals
         for (local, name, kind, initialized, ty) in &self.locals {
@@ -344,8 +359,8 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             }
         }
 
-        let mut iterator_init_var = None;
         // also add a constraint on the iterator variable
+        let mut iterator_init_var = None;
         if let Some(iterator_info) = &self.info.iterator_info
             && let Some((name, local_name, rfn_ty)) = declare_iterator_var
             && let Some(binder_name) = rfn_binder_names.get(&name)
@@ -380,7 +395,19 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let prop_body =
             coq::iris::IProp::Exists(coq::binder::BinderList::new(existentials), Box::new(prop_body));
 
-        let pred = coq::iris::IPropPredicate::new(coq::binder::BinderList::new(rfn_binders), prop_body);
+        let prop_body: coq::term::Term = coq::term::RocqTerm::AsType(
+            Box::new(coq::term::RocqTerm::UserDefined(model::Term::IProp(prop_body))),
+            Box::new(coq::term::RocqType::UserDefined(model::Type::IProp)),
+        );
+        let pat = format!("'{param_pat}");
+        let prop_body = coq::term::RocqTerm::LetIn(
+            pat,
+            Box::new(coq::term::RocqTerm::Ident(param_ident)),
+            Box::new(prop_body),
+        );
+        let pred =
+            coq::term::RocqTerm::Lambda(coq::binder::BinderList::new(rfn_binders), Box::new(prop_body));
+
         Ok(specs::LoopSpec::new(pred, inv_locals, preserved_locals, uninit_locals, iterator_init_var))
     }
 }

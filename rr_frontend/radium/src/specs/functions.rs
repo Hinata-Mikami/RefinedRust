@@ -52,7 +52,7 @@ impl<'def> InnerSpec<'def> {
     #[must_use]
     pub(crate) fn get_params(&self) -> Option<&[coq::binder::Binder]> {
         match self {
-            Self::Lit(lit) => Some(&lit.params),
+            Self::Lit(lit) => Some(&lit.params.0),
             Self::TraitDefault(_) => None,
         }
     }
@@ -375,7 +375,7 @@ impl<'def> SpecTraitReqSpecialization<'def> {
 /// A function specification below generics.
 #[derive(Clone, Debug)]
 pub struct LiteralSpec<'def> {
-    params: Vec<coq::binder::Binder>,
+    params: coq::binder::BinderList,
 
     // extra elctx constraints added via unsafe annotations
     extra_elctx: Vec<String>,
@@ -385,7 +385,7 @@ pub struct LiteralSpec<'def> {
     /// argument types including refinements
     args: Vec<TypeWithRef<'def>>,
     /// existential quantifiers for the postcondition
-    existentials: Vec<coq::binder::Binder>,
+    existentials: coq::binder::BinderList,
     /// return type
     ret: TypeWithRef<'def>,
     /// postcondition as a separating conjunction
@@ -434,41 +434,6 @@ impl<'def> LiteralSpec<'def> {
         out
     }
 
-    fn uncurry_typed_binders<'a, F>(v: F) -> (coq::binder::Pattern, coq::term::Type)
-    where
-        F: IntoIterator<Item = &'a coq::binder::Binder>,
-    {
-        let mut v = v.into_iter().peekable();
-
-        if v.peek().is_none() {
-            return ("_".to_owned(), coq::term::Type::Literal("unit".to_owned()));
-        }
-
-        let mut pattern = String::with_capacity(100);
-        let mut types = String::with_capacity(100);
-
-        pattern.push('(');
-        types.push('(');
-
-        let mut need_sep = false;
-        for binder in v {
-            if need_sep {
-                pattern.push_str(", ");
-                types.push_str(" * ");
-            }
-
-            pattern.push_str(&binder.get_name());
-            types.push_str(&format!("{}", binder.get_type().unwrap()));
-
-            need_sep = true;
-        }
-
-        pattern.push(')');
-        types.push(')');
-
-        (pattern, coq::term::Type::Literal(types))
-    }
-
     /// Write the core spec term. Assumes that the coq parameters for the type parameters (as given by
     /// `get_coq_ty_params`) are in scope.
     fn write_spec_term<F>(
@@ -490,7 +455,7 @@ impl<'def> LiteralSpec<'def> {
         write!(f2, " | \n")?;
 
         // introduce parameters
-        let param = Self::uncurry_typed_binders(self.params.iter());
+        let param = self.params.uncurry();
         write!(f2, "(* params....... *) {} : {},\n", param.0, param.1)?;
 
         // elctx
@@ -525,7 +490,7 @@ impl<'def> LiteralSpec<'def> {
         write!(f3, "(* trait reqs... *) (λ π : thread_id, {})) →\n", coq::iris::IProp::Sep(late_pre))?;
 
         // existential + post
-        let existential = Self::uncurry_typed_binders(&self.existentials);
+        let existential = self.existentials.uncurry();
         write!(
             f2,
             "(* existential.. *) ∃ {} : {}, {} @ {};\n",
@@ -669,11 +634,11 @@ impl<'def> LiteralSpecBuilder<'def> {
     /// Generate an actual function spec.
     pub(crate) fn into_function_spec(self) -> LiteralSpec<'def> {
         LiteralSpec {
-            params: self.params,
+            params: coq::binder::BinderList::new(self.params),
             extra_elctx: self.extra_elctx,
             pre: self.pre,
             args: self.args,
-            existentials: self.existential,
+            existentials: coq::binder::BinderList::new(self.existential),
             ret: self.ret.unwrap_or_else(TypeWithRef::make_unit),
             post: self.post,
             specialized_trait_attrs: self.specialized_trait_attrs,

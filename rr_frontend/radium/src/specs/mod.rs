@@ -377,7 +377,7 @@ impl TyOwnSpec {
 #[derive(Clone, Constructor, Debug)]
 pub struct LoopSpec {
     /// the functional invariant as a predicate on the refinement of local variables.
-    func_predicate: coq::iris::IPropPredicate,
+    func_predicate: coq::term::Term,
     inv_locals: Vec<String>,
     preserved_locals: Vec<String>,
     uninit_locals: Vec<String>,

@@ -38,7 +38,7 @@ Proof.
   { simplify_layout_goal. by eapply syn_type_has_layout_make_untyped. }
   iModIntro.
 
-  set (loop_inv := (λ (E : elctx) (L : llctx),
+  set (loop_inv := (λ (_ : ()) (E : elctx) (L : llctx),
     ∃ (i : nat),
     ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
     ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
@@ -51,7 +51,7 @@ Proof.
     dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
   iApply (typed_goto_acc _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
-  liRStep; liShow. iExists 0%nat.
+  do 2 liRStep; liShow. iExists 0%nat.
   liRStepUntil (introduce_with_hooks).
   liRStep; liShow.
   iApply introduce_with_hooks_base.

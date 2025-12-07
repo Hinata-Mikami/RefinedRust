@@ -13,6 +13,7 @@ use std::fmt;
 use derive_more::{Display, From};
 use indent_write::fmt::IndentWriter;
 
+use crate::coq::binder::Pattern;
 use crate::coq::{Ident, binder};
 use crate::{BASE_INDENT, fmt_list, model};
 
@@ -56,7 +57,7 @@ pub enum RocqTerm<T, U> {
     App(Box<App<Term, Term>>),
 
     /// A let declaration
-    LetIn(Ident, Box<RocqTerm<T, U>>, Box<RocqTerm<T, U>>),
+    LetIn(Pattern, Box<RocqTerm<T, U>>, Box<RocqTerm<T, U>>),
 
     /// A record constructor
     RecordBody(RecordBody),

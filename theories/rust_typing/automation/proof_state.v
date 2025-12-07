@@ -52,7 +52,7 @@ Arguments FUNCTION_NAME : simpl never.
 Notation "'HIDDEN'" := (FUNCTION_NAME _) (only printing).
 
 (* Function ptr type assignments *)
-Notation "'HIDDEN_FUNCTION_PTR_T' v" := (ty_own_val (function_ptr _ _) _ _ v) (only printing, at level 100).
+Notation "'HIDDEN_FUNCTION_PTR_T' v" := (ty_own_val (function_ptr _ _) _ _ _ v) (only printing, at level 100).
 
 (** marker for tactics that have already exploited a particular fact *)
 Definition NO_ENRICH {A} (a : A) := a.
@@ -84,7 +84,7 @@ Ltac enter_cache_hook H cont :=
 Ltac enter_cache_unsafe H :=
   apply enter_cache in H.
 Ltac enter_cache H :=
-  enter_cache_hook H ltac:(fun Hn => 
+  enter_cache_hook H ltac:(fun Hn =>
     enter_cache_unsafe Hn).
 
 
@@ -97,7 +97,7 @@ Notation "'JCACHED'" := (JCACHED _) (only printing).
 Lemma init_jcache : JCACHED True.
 Proof. by apply JCACHED. Defined.
 
-Lemma enter_jcache {A B} : 
+Lemma enter_jcache {A B} :
   B →
   JCACHED A →
   JCACHED (B ∧ A).
@@ -125,7 +125,7 @@ Ltac open_cache :=
 .
 
 Ltac init_jcache :=
-  let Hcache := fresh "Hcache" in 
+  let Hcache := fresh "Hcache" in
   specialize init_jcache as Hcache.
 Ltac ensure_jcache :=
   lazymatch goal with
@@ -136,13 +136,13 @@ Ltac ensure_jcache :=
 (** Unsafe version that bypasses the hooks *)
 Ltac enter_jcache_unsafe H :=
   match goal with
-  | Hcache : JCACHED _ |- _ => 
+  | Hcache : JCACHED _ |- _ =>
       apply (enter_jcache H) in Hcache;
       clear H
   end
 .
 Ltac enter_jcache H :=
-  enter_cache_hook H ltac:(fun Hn => 
+  enter_cache_hook H ltac:(fun Hn =>
     enter_jcache_unsafe Hn)
 .
 

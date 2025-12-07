@@ -3190,19 +3190,20 @@ Section typing.
      Instead of just jumping there, we can setup an invariant [P] on ownership and the lifetime contexts.
      Then instead prove: wp of the block, but in the context we can persistently assume the WP of the goto with the same invariant already. *)
   (* Note: these need to be manually applied. *)
-  Lemma typed_goto_acc E L fn R P b ϝ s :
+  Lemma typed_goto_acc E L fn R {A} (P : A → elctx → llctx → iProp Σ) b ϝ s :
     fn.(rf_fn).(f_code) !! b = Some s →
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L true ProveDirect (P E L) (λ L' _ R2,
+    (∃ params,
+    prove_with_subtype E L true ProveDirect (P params E L) (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ E L, (□ typed_block (λ E L, P E L ∗ Q) b fn R ϝ) -∗
-          introduce_with_hooks E L (P E L ∗ Q) (λ L2,
-          typed_stmt E L2 s fn R ϝ))))
+      (∀ E L, (□ typed_block (λ E L, P params E L ∗ Q) b fn R ϝ) -∗
+          introduce_with_hooks E L (P params E L ∗ Q) (λ L2,
+          typed_stmt E L2 s fn R ϝ)))))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
-    iIntros (Hlook) "Hsubt". iIntros (?) "#CTX #HE HL Hcont".
+    iIntros (Hlook) "(%params & Hsubt)". iIntros (?) "#CTX #HE HL Hcont".
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.
@@ -3214,18 +3215,19 @@ Section typing.
   Qed.
 
   (* A variant where [P] is first instantiated with the refinement of some local variable *)
-  Lemma typed_goto_acc' E L fn R b ϝ s {rt : RT} (l : loc) (P : RT_xt rt → elctx → llctx → iProp Σ) :
+  Lemma typed_goto_acc' E L fn R b ϝ s {rt : RT} (l : loc) {A} (P : RT_xt rt → A → elctx → llctx → iProp Σ) :
     fn.(rf_fn).(f_code) !! b = Some s →
     find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
     l ◁ₗ[π, bk] r @ lt -∗
-    ∃ (Heq : rt = rt') (r' : RT_xt rt), ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
+    ∃ (Heq : rt = rt') (r' : RT_xt rt) (a : A), 
+    ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
     (* TODO maybe also stratify? *)
-    prove_with_subtype E L true ProveDirect (P r' E L) (λ L' _ R2,
+    prove_with_subtype E L true ProveDirect (P r' a E L) (λ L' _ R2,
       ⌜L' = L⌝ ∗ (* TODO maybe relax if we have a separate condition on lifetime contexts *)
       (* gather up the remaining ownership *)
       accu (λ Q,
-      (∀ E L, (□ typed_block (λ E L, P r' E L ∗ Q) b fn R ϝ) -∗
-          introduce_with_hooks E L (P r' E L ∗ Q) (λ L2,
+      (∀ E L, (□ typed_block (λ E L, P r' a E L ∗ Q) b fn R ϝ) -∗
+          introduce_with_hooks E L (P r' a E L ∗ Q) (λ L2,
           typed_stmt E L2 s fn R ϝ)))))
     ⊢ typed_stmt E L (Goto b) fn R ϝ.
   Proof.
@@ -3233,7 +3235,7 @@ Section typing.
     unfold FindLoc.
     iDestruct "Hsubt" as "(%x & Hlt & HT)". simpl in *.
     destruct x as [rt' (((lt & r) & ?) & ?)].
-    iDestruct ("HT" with "Hlt") as "(%Heq & %r' & -> & Hsubt)".
+    iDestruct ("HT" with "Hlt") as "(%Heq & %r' & %a & -> & Hsubt)".
     iMod ("Hsubt" with "[] [] [] CTX HE HL") as "(%L' & % & %R2 & Hinv & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(-> & Hrec)".
     rewrite /accu.
