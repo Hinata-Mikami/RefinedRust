@@ -26,7 +26,6 @@ where
             formatter.write_str("string with ':' or list of strings")
         }
 
-        // Case 1: string => split
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
@@ -41,7 +40,6 @@ where
             Ok(v.split(':').map(ToOwned::to_owned).collect())
         }
 
-        // Case 2: list of strings => just collect
         fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
         where
             A: de::SeqAccess<'de>,

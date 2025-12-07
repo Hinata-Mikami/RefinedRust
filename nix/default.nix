@@ -37,6 +37,7 @@ with inputs; rec {
     cargoFmt = devToolchain: craneLib.cargoFmt.override {rustfmt = devToolchain;};
     cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
     cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib hostPlatform rrPkgs pkgs;};
+    cargoWorkspaceUnused = import ./cargoWorkspaceUnused.nix {inherit craneLib pkgs;};
 
     mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
   };

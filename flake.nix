@@ -326,6 +326,10 @@
             machete = lib.rust.cargoMachete {
               inherit (packages.frontend.passthru) pname src;
             };
+
+            workspace-unused = lib.rust.cargoWorkspaceUnused rust.toolchain.dev {
+              inherit (packages.frontend.passthru) pname src;
+            };
           }
           // lib.mapToAttrs id mkCaseStudies [
             {

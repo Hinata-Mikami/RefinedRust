@@ -98,13 +98,6 @@ clippy:
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.clippy
 
-fmt:
-  extends: [ .nix, .build_to_nix_artifacts ]
-  stage: lint
-  needs: [ frontend ]
-  variables:
-    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
-
 deny:
   extends: [ .nix, .build_to_nix_artifacts ]
   stage: lint
@@ -112,12 +105,26 @@ deny:
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.deny
 
+fmt:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.fmt
+
 machete:
   extends: [ .nix, .build_to_nix_artifacts ]
   stage: lint
   needs: [ frontend ]
   variables:
     NIX_DERIVATION: .#checks.${NIX_PLATFORM}.machete
+
+unused:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: lint
+  needs: [ frontend ]
+  variables:
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.workspace-unused
 
 case-studies:
   extends: [ .nix, .build_to_nix_artifacts ]
