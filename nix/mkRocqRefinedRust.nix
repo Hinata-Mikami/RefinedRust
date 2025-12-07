@@ -28,9 +28,9 @@
   theories = pkgs.rocqPackages.mkRocqDerivation ({
       src = "${src}/theories";
       propagatedBuildInputs =
-        libDeps
-        ++ propagatedBuildInputs
-        ++ (pkgs.lib.optionals withStdlib [rrPkgs.stdlib]);
+        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
+        ++ libDeps
+        ++ propagatedBuildInputs;
 
       pname = pname + "-theories";
       opam-name = opam-name + "-theories";
@@ -40,9 +40,9 @@ in
   pkgs.rocqPackages.mkRocqDerivation ({
       src = cargoRefinedRust (args.cargo // cargoRefinedRustArgs);
       propagatedBuildInputs =
-        libDeps
+        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
+        ++ libDeps
         ++ propagatedBuildInputs
-        ++ (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
         ++ (pkgs.lib.optionals withTheories [theories]);
 
       postInstall = let

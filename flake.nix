@@ -63,16 +63,17 @@
         inherit (toolchainFile) channel components;
         toolchainFile = (pkgs.lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
         devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
-      in rec {
-        toolchain = {
-          build = lib.rust.mkToolchain channel components lib.rust.hostPlatform;
-          dev = lib.rust.mkToolchain channel (components ++ devComponents) lib.rust.hostPlatform;
-        };
 
+        mkToolchain = target: {
+          build = lib.rust.mkToolchain channel components target;
+          dev = lib.rust.mkToolchain channel (components ++ devComponents) target;
+        };
+      in rec {
+        toolchain = mkToolchain lib.rust.hostPlatform;
         envBuilder = lib.rust.overrideToolchain toolchain.build;
 
         mkDrvRustTargetToolchains = drv:
-          lib.mapToAttrs (targetName: "target-" + targetName) (targetName: drv (lib.rust.mkToolchain channel components targetName))
+          lib.mapToAttrs (target: "target-" + target) (target: drv (mkToolchain target))
           (map (pname: {inherit pname;}) (pkgs.lib.attrsets.attrValues (import rust-targets.outPath)));
       };
     in
@@ -373,33 +374,18 @@
               withStdlib = false;
             };
 
-            stdlib = let
+            stdlib = lib.rocq.mkRefinedRust {
+              inherit meta version;
+
+              pname = "stdlib-refinedrust";
+              src = ./stdlib/stdlib;
+
               libDeps = with packages; [alloc arithops boxed btreemap clone closures cmp controlflow iterator mem option ptr range result rr_internal rwlock spin vec];
-            in
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta version;
+              propagatedBuildInputs = [packages.theories];
 
-                pname = "stdlib-refinedrust";
-                opam-name = "stdlib-refinedrust";
-
-                src = lib.rust.cargoRefinedRust rec {
-                  inherit libDeps meta version;
-
-                  pname = "stdlib-refinedrust";
-                  src = ./stdlib/stdlib;
-
-                  cargoArtifacts = null;
-                  withStdlib = false;
-                };
-
-                propagatedBuildInputs = libDeps ++ [packages.theories];
-                useDune = true;
-
-                postInstall = ''
-                  mkdir -p $out/share/refinedrust-stdlib/stdlib
-                  find . -name "interface.rrlib" -exec cp {} $out/share/refinedrust-stdlib/stdlib/. \;
-                '';
-              };
+              cargoArtifacts = null;
+              withStdlib = false;
+            };
 
             default = packages."target-${lib.rust.hostPlatform}";
           }
@@ -408,23 +394,23 @@
               pkgs.symlinkJoin {
                 inherit meta name;
 
-                paths = [pkgs.rocqPackages.rocq-core packages.frontend toolchain pkgs.gnupatch] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs;
+                paths =
+                  [pkgs.gcc pkgs.gnupatch toolchain.build]
+                  ++ ([pkgs.rocqPackages.rocq-core packages.frontend] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
+                  ++ (with packages; [alloc arithops boxed btreemap clone closures cmp controlflow iterator mem option ptr range result rr_internal rwlock spin stdlib vec]);
+
                 nativeBuildInputs = [pkgs.makeWrapper];
+                postBuild = ''
+                  wrapProgram $out/bin/dune \
+                    --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
+                    --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
 
-                postBuild = let
-                  fetchRocqDeps = drv: lists.unique ([drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs));
-                in
-                  with strings; ''
-                    wrapProgram $out/bin/dune \
-                      --set OCAMLPATH "${makeSearchPath "lib/ocaml/${pkgs.ocaml.version}/site-lib" ([pkgs.rocqPackages.rocq-core] ++ (fetchRocqDeps packages.stdlib))}" \
-                      --set ROCQPATH "${makeSearchPath "lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib" (fetchRocqDeps packages.stdlib)}"
-
-                    wrapProgram $out/bin/cargo-${name} \
-                      --set LD_LIBRARY_PATH "${makeLibraryPath [toolchain]}" \
-                      --set DYLD_FALLBACK_LIBRARY_PATH "${makeLibraryPath [toolchain]}" \
-                      --set PATH "$out/bin" \
-                      --set RR_NIX_STDLIB "${packages.stdlib}"/share/refinedrust-stdlib/
-                  '';
+                  wrapProgram $out/bin/cargo-${name} \
+                    --set PATH "$out/bin" \
+                    --set LD_LIBRARY_PATH $out/lib \
+                    --set DYLD_FALLBACK_LIBRARY_PATH $out/lib \
+                    --set RR_NIX_STDLIB $out/share/stdlib
+                '';
 
                 passthru = {inherit toolchain;};
               })
@@ -444,24 +430,16 @@
               useDune = true;
             };
           in
-            {
-              pname,
-              src,
-            }:
-              pkgs.rocqPackages.mkRocqDerivation {
-                inherit meta pname version;
+            args:
+              lib.rocq.mkRefinedRust {
+                inherit (args) pname src;
+                inherit meta version;
 
-                opam-name = pname;
-                src = lib.rust.cargoRefinedRust {
-                  inherit meta pname src version;
+                propagatedBuildInputs = [extraProofs];
 
-                  cargoArtifacts = null;
-                  cargoExtraArgs = "";
-                  cargoVendorDir = null;
-                };
-
-                buildInputs = [packages.stdlib extraProofs];
-                useDune = true;
+                cargoArtifacts = null;
+                cargoExtraArgs = "";
+                cargoVendorDir = null;
               };
         in
           {
@@ -485,11 +463,11 @@
           }
           // lib.mapToAttrs id mkCaseStudies [
             {
-              pname = "case-study-evenint";
+              pname = "evenint";
               src = ./case_studies/evenint;
             }
             {
-              pname = "case-study-minivec";
+              pname = "minivec";
               src = ./case_studies/minivec;
             }
             {

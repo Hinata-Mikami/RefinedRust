@@ -24,7 +24,7 @@
         inherit localSystem crossSystem;
       };
 
-      toolchain = rrPkgs."target-${target}".passthru.toolchain;
+      toolchain = rrPkgs."target-${target}".passthru.toolchain.build;
       envBuilder = lib.rust.overrideToolchain toolchain;
 
       ace = rec {
@@ -36,7 +36,6 @@
           license = licenses.asl20;
         };
 
-        doCheck = false;
         cargoExtraArgs = "-Zbuild-std=core,alloc --target=${target}";
         cargoVendorDir = envBuilder.vendorMultipleCargoDeps {
           inherit (envBuilder.findCargoFiles src) cargoConfigs;
@@ -74,46 +73,52 @@
           '';
         });
 
-        pointersUtility = pkgs.rocqPackages.mkRocqDerivation rec {
-          inherit (ace) meta version;
+        pointersUtility = lib.rocq.mkRefinedRust rec {
+          inherit (ace) cargoVendorDir meta src version;
+          inherit target;
 
+          doCheck = false;
           pname = "pointers-utility";
-          opam-name = "pointers-utility";
 
-          src = lib.rust.cargoRefinedRust rec {
-            inherit (ace) cargoVendorDir doCheck meta src version;
-            inherit pname target;
+          cargoExtraArgs = ace.cargoExtraArgs + " --package pointers_utility";
+          cargoArtifacts = envBuilder.buildDepsOnly {
+            inherit (ace) cargoVendorDir meta src version;
+            inherit cargoExtraArgs doCheck pname;
+          };
 
-            cargoExtraArgs = ace.cargoExtraArgs + " --package pointers_utility";
-
-            cargoArtifacts = envBuilder.buildDepsOnly {
-              inherit (ace) cargoVendorDir doCheck meta src version;
-              inherit cargoExtraArgs pname;
-            };
-
+          cargoRefinedRustArgs = {
             preBuild = ''
               sed -i -e '11i#![rr::package("pointers-utility")]' ./rust-crates/pointers_utility/src/lib.rs
               cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
             '';
           };
-
-          propagatedBuildInputs = [rrPkgs.stdlib];
-          useDune = true;
-
-          postInstall = ''
-            mkdir -p $out/share/pointers-utility
-            find . -name "interface.rrlib" -exec cp {} $out/share/pointers-utility/. \;
-          '';
         };
 
-        ace = let
+        ace = lib.rocq.mkRefinedRust rec {
+          inherit (ace) cargoExtraArgs cargoVendorDir meta src version;
+          inherit target;
+
+          pname = "ace";
           libDeps = [packages.pointersUtility];
-          theories = pkgs.rocqPackages.mkRocqDerivation rec {
-            inherit (ace) meta version;
 
-            pname = "ace-theories";
-            opam-name = "ace-theories";
+          doCheck = false;
+          cargoArtifacts = envBuilder.buildDepsOnly {
+            inherit cargoExtraArgs cargoVendorDir doCheck pname meta src version;
+          };
+          withTheories = true;
 
+          cargoRefinedRustArgs = {
+            preBuild = ''
+              sed -i -e '15i#![rr::package("ace")]' ./src/lib.rs
+              sed -i -e '16i#![rr::import("ace.theories.base", "base")]' ./src/lib.rs
+              cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
+            '';
+
+            INSTALL_DIR = packages.opensbi;
+            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
+          };
+
+          rocqTheoriesArgs = {
             src = "${ACE-RISCV}/verification/theories";
 
             preBuild = ''
@@ -125,46 +130,8 @@
               (package (name ace-theories))
               EOF
             '';
-
-            propagatedBuildInputs = [rrPkgs.theories];
-            useDune = true;
           };
-        in
-          pkgs.rocqPackages.mkRocqDerivation rec {
-            inherit (ace) meta version;
-
-            pname = "ace";
-            opam-name = "ace";
-
-            src = lib.rust.cargoRefinedRust rec {
-              inherit (ace) cargoExtraArgs cargoVendorDir doCheck meta src version;
-              inherit libDeps pname target;
-
-              cargoArtifacts = envBuilder.buildDepsOnly {
-                inherit (ace) cargoExtraArgs cargoVendorDir doCheck meta src version;
-                inherit pname;
-              };
-
-              preBuild = ''
-                sed -i -e '15i#![rr::package("ace")]' ./src/lib.rs
-                sed -i -e '16i#![rr::import("ace.theories.base", "base")]' ./src/lib.rs
-                cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
-              '';
-
-              INSTALL_DIR = packages.opensbi;
-              LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.libclang.lib];
-            };
-
-            propagatedBuildInputs = libDeps ++ [rrPkgs.stdlib theories];
-            useDune = true;
-
-            passthru = {inherit src;};
-
-            postInstall = ''
-              mkdir -p $out/share/ace
-              find . -name "interface.rrlib" -exec cp {} $out/share/ace/. \;
-            '';
-          };
+        };
 
         default = packages.ace;
       };
