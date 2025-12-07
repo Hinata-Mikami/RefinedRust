@@ -258,10 +258,13 @@
             pkgs.symlinkJoin {
               inherit meta name;
 
-              paths =
-                [pkgs.gcc pkgs.gnupatch toolchain.build]
-                ++ ([pkgs.rocqPackages.rocq-core packages.frontend] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                ++ (stdlibPkgs ++ [packages.stdlib]);
+              paths = let
+                fetchRocqDeps = with pkgs.lib;
+                  drv: lists.unique ([drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs));
+              in 
+                [pkgs.gcc pkgs.gnupatch packages.frontend toolchain.build]
+                ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
+                ++ (fetchRocqDeps packages.stdlib);
 
               nativeBuildInputs = [pkgs.makeWrapper];
               postBuild = ''
