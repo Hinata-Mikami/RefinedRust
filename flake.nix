@@ -261,7 +261,7 @@
               paths = let
                 fetchRocqDeps = with pkgs.lib;
                   drv: lists.unique ([drv] ++ flatten (map fetchRocqDeps drv.propagatedBuildInputs));
-              in 
+              in
                 [pkgs.gcc pkgs.gnupatch packages.frontend toolchain.build]
                 ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
                 ++ (fetchRocqDeps packages.stdlib);
@@ -305,7 +305,8 @@
                   cargoArtifacts = null;
                   cargoExtraArgs = "";
                   cargoVendorDir = null;
-                } // args);
+                }
+                // args);
         in
           {
             clippy = lib.rust.cargoClippy rust.toolchain.dev {
