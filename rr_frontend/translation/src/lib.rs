@@ -829,15 +829,17 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         // write gitignore file
         let gitignore_path = base_dir_path.as_path().join(".gitignore");
         {
-            let mut gitignore_file = io::BufWriter::new(File::create(gitignore_path.as_path()).unwrap());
-            write!(
-                gitignore_file,
-                "\
-                generated\n\
-                proofs/dune\n\
-                interface.rrlib"
-            )
-            .unwrap();
+            if !gitignore_path.as_path().exists() {
+                let mut gitignore_file = io::BufWriter::new(File::create(gitignore_path.as_path()).unwrap());
+                write!(
+                    gitignore_file,
+                    "\
+                    generated\n\
+                    proofs/dune\n\
+                    interface.rrlib"
+                )
+                .unwrap();
+            }
         }
 
         // build the path for generated files
