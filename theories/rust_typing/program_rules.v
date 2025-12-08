@@ -1474,9 +1474,9 @@ Section typing.
   (* On an ofty leaf, do a ghost resolution.
     This will also trigger resolve_ghost instances for custom-user defined types.
     This needs to have a lower priority than custom user-defined instances (e.g. for [◁ value_t]), so we give it a high cost. *)
-  Global Instance stratify_ltype_unblock_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : place_rfn rt) b :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (◁ ty)%I r b | 100 :=
-    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mu mdu ma StratifyUnblockOp ResolveTry l (◁ ty)%I b r T).
+  Global Instance stratify_ltype_unblock_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (◁ ty)%I (#r) b | 100 :=
+    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mu mdu ma StratifyUnblockOp ResolveTry l (◁ ty)%I b (#r) T).
 
   (* Note: instance needs to have a higher priority than the resolve_ghost instance -- we should first unblock *)
   Global Instance stratify_ltype_unblock_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
@@ -3126,8 +3126,8 @@ Section typing.
     | CtxFoldResolveAll.
 
   Inductive CtxFoldStratify : Type :=
-    | CtxFoldStratifyAllInit
-    | CtxFoldStratifyAll.
+    | CtxFoldStratifyAllInit (ma : StratifyAscendMode)
+    | CtxFoldStratifyAll (ma : StratifyAscendMode).
 
   Lemma type_goto E L b fn R s ϝ :
     fn.(rf_fn).(f_code) !! b = Some s →
@@ -3621,11 +3621,11 @@ Section typing.
 
   (** We instantiate the context folding mechanism for unblocking. *)
   Definition typed_context_fold_stratify_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
-  Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) acc R T :
+  Lemma typed_context_fold_step_stratify π E L l {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) ma acc R T :
     (* TODO: this needs a different stratification strategy *)
-    stratify_ltype_unblock π E L StratRefoldOpened l lt r (Owned false)
-      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_stratify_interp π) E L' (CtxFoldStratifyAll) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
-    ⊢ typed_context_fold_step (typed_context_fold_stratify_interp π) π E L (CtxFoldStratifyAll) l lt r tctx (acc, R) T.
+    stratify_ltype_unblock π E L ma l lt r (Owned false)
+      (λ L' R' rt' lt' r', typed_context_fold (typed_context_fold_stratify_interp π) E L' (CtxFoldStratifyAll ma) tctx ((l, mk_bltype _ r' lt') :: acc, R' ∗ R) T)
+    ⊢ typed_context_fold_step (typed_context_fold_stratify_interp π) π E L (CtxFoldStratifyAll ma) l lt r tctx (acc, R) T.
   Proof.
     iIntros "Hstrat". iIntros (????) "#CTX #HE HL Hdel Hl".
     iPoseProof ("Hstrat" $! F with "[//] [//] [//] CTX HE HL Hl") as ">Hc".
@@ -3641,17 +3641,17 @@ Section typing.
   Global Existing Instance typed_context_fold_step_stratify_inst.
 
   (* Note: the following lemma introduces evars on application and is thus not suitable to be directly applied with Lithium. *)
-  Lemma typed_context_fold_stratify_init tctx π E L T :
-    typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldStratifyAll) tctx ([], True%I) (λ L' m' acc, True ∗
+  Lemma typed_context_fold_stratify_init tctx π E L ma T :
+    typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldStratifyAll ma) tctx ([], True%I) (λ L' m' acc, True ∗
       typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T)
-    ⊢ typed_pre_context_fold E L CtxFoldStratifyAllInit T.
+    ⊢ typed_pre_context_fold E L (CtxFoldStratifyAllInit ma) T.
   Proof.
-    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) _ _ (CtxFoldStratifyAll)). iFrame.
+    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) _ _ (CtxFoldStratifyAll ma)). iFrame.
     rewrite /typed_context_fold_stratify_interp/type_ctx_interp; simpl; done.
   Qed.
 
   Lemma type_stratify_context_annot E L s fn R ϝ :
-    typed_pre_context_fold E L CtxFoldStratifyAllInit (λ L', typed_stmt E L' s fn R ϝ)
+    typed_pre_context_fold E L (CtxFoldStratifyAllInit StratNoRefold) (λ L', typed_stmt E L' s fn R ϝ)
     ⊢ typed_stmt E L (annot: (StratifyContextAnnot); s) fn R ϝ.
   Proof.
     iIntros "HT".
@@ -3733,7 +3733,7 @@ Section typing.
   Lemma type_return E L e fn (R : typed_stmt_R_t) ϝ:
     typed_val_expr E L e (λ L' π v m rt ty r,
       v ◁ᵥ{π, m} r @ ty -∗
-      typed_context_fold (typed_context_fold_stratify_interp π) E L' CtxFoldStratifyAll fn.(rf_locs).*1 ([], True%I) (λ L2 m' acc,
+      typed_context_fold (typed_context_fold_stratify_interp π) E L' (CtxFoldStratifyAll StratRefoldOpened) fn.(rf_locs).*1 ([], True%I) (λ L2 m' acc,
         introduce_with_hooks E L2 (type_ctx_interp π acc.1 ∗ acc.2) (λ L3,
           prove_with_subtype E L3 true ProveDirect (
             foldr (λ (e : (loc * layout)) T, e.1 ◁ₗ[π, Owned false] (#()) @ (◁ (uninit (UntypedSynType e.2))) ∗ T)

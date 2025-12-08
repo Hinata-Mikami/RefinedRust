@@ -395,12 +395,12 @@ Ltac gather_location_list env :=
   end.
 Ltac liRContextStratifyInit :=
   lazymatch goal with
-  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit) ?T) =>
+  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit ?ma) ?T) =>
       let envs := eval hnf in envs in
       match envs with
       | Envs _ ?spatial _ =>
           let tctx := gather_location_list spatial in
-          notypeclasses refine (tac_fast_apply (typed_context_fold_stratify_init tctx _ E L T) _)
+          notypeclasses refine (tac_fast_apply (typed_context_fold_stratify_init tctx _ E L ma T) _)
       | _ => fail 1000 "gather_tctx: cannot determine Iris context"
       end
   end.
@@ -480,7 +480,7 @@ Ltac liRJudgement :=
     | |- envs_entails _ (typed_context_fold_end ?AI ?E ?L ?acc ?T) =>
         notypeclasses refine (tac_fast_apply (type_context_fold_end AI E L acc T) _)
     (* initialize context folding *)
-    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit) ?T) =>
+    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit _) ?T) =>
         liRContextStratifyInit
     (* initialize context folding *)
     | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
