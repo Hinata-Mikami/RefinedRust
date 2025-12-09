@@ -174,8 +174,8 @@ mod dep5 {
 
     }
 
+    #[rr::verify]
     impl<'a> Foo<&'a i32> for i32 {
-        #[rr::default_spec]
         fn foo(&self, x: &'a i32) {
 
         }
@@ -249,7 +249,6 @@ mod dep3 {
     }
 
     trait Foo<T: Bar> {
-
         #[rr::verify]
         fn foofoo(x: T);
     }
@@ -265,16 +264,15 @@ mod dep3 {
     #[rr::skip]
     impl Foo<i32> for i32 {
 
-        #[rr::default_spec]
         fn foofoo(x: i32) {
 
         }
     }
 
     // parametric dispatch
+    #[rr::verify]
     impl<T: Bar> Foo<T> for u32 {
 
-        #[rr::default_spec]
         fn foofoo(x: T) {
 
         }

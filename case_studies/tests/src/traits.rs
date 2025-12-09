@@ -133,31 +133,31 @@ mod foo {
         }
     }
 
+    #[rr::verify]
     impl<'a, T> Foo<i32> for &'a T
     {
         type Output = i32;
 
-        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (53, 54, x)
         }
     }
 
+    #[rr::verify]
     impl<T: Foo<i32>> Foo<i32> for (T, T) {
         type Output = i32;
 
-        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (53, 54, x)
         }
     }
 
 
+    #[rr::verify]
     impl Foo<i32> for u32
     {
         type Output = i32;
 
-        #[rr::default_spec]
         fn bar<U>(&self, x: U) -> (Self::Output, i32, U) {
             (64, 54, x)
         }
@@ -399,7 +399,6 @@ mod iter {
     impl Iter for Counter {
         type Elem = i32;
 
-        #[rr::default_spec]
         fn next(&mut self) -> Option<i32> {
             None
             //if self.cur < self.max {
@@ -443,20 +442,19 @@ mod default_fn {
         }
     }
 
+    #[rr::verify]
     impl Foo for i32 {
-        #[rr::default_spec]
         fn foo1(&self) -> i32 {
             42
         }
     }
 
+    #[rr::verify]
     impl Foo for u32 {
-        #[rr::default_spec]
         fn foo1(&self) -> i32 {
             42
         }
 
-        #[rr::default_spec]
         fn foo2(&self) -> i32 {
             40
         }
@@ -476,9 +474,9 @@ mod default_fn2 {
         }
     }
 
+    #[rr::verify]
     impl Foo for i32 {
         type Output = i32;
-        #[rr::default_spec]
         fn foo1(&self) -> i32 {
             42
         }

@@ -11,6 +11,7 @@ mod structs;
 mod char;
 mod traits;
 mod trait_deps;
+mod trait_derive;
 mod statics;
 mod vec_client;
 mod mixed;
