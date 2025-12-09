@@ -139,7 +139,14 @@
               };
 
               nativeBuildInputs = with pkgs;
-                lib.optionals stdenv.isDarwin [libiconv libzip];
+                [makeWrapper]
+                ++ (lib.optionals stdenv.isDarwin [libiconv libzip]);
+
+              postInstall = ''
+                wrapProgram $out/bin/${pname} \
+                  --set LD_LIBRARY_PATH ${rust.toolchain.dev}/lib \
+                  --set DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.dev}/lib
+              '';
 
               doNotRemoveReferencesToRustToolchain = true;
               passthru = {inherit cargoArtifacts pname src;};
@@ -274,8 +281,6 @@
 
                 wrapProgram $out/bin/cargo-${name} \
                   --set PATH "$out/bin" \
-                  --set LD_LIBRARY_PATH $out/lib \
-                  --set DYLD_FALLBACK_LIBRARY_PATH $out/lib \
                   --set RR_NIX_STDLIB $out/share/stdlib
               '';
 
