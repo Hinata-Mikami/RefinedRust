@@ -1698,7 +1698,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
     /// Translate a `attr::IntType` (this is different from the `ty`
     /// `IntType`).
-    const fn translate_integer_type(it: abi::IntegerType) -> lang::IntType {
+    pub(crate) const fn translate_integer_type(it: abi::IntegerType) -> lang::IntType {
         match it {
             abi::IntegerType::Fixed(size, sign) => {
                 if sign {

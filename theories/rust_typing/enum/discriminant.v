@@ -128,6 +128,55 @@ Section discriminant.
 
 End discriminant.
 
+Section subtype.
+  Context `{!typeGS Σ}.
+
+  Lemma type_incl_enum_discriminant_int {rt} (en : enum rt) r tag  :
+    en.(enum_tag) r = Some tag →
+    ⊢ type_incl r (els_lookup_tag (enum_els en) tag) (enum_discriminant_t en) (int (els_tag_it (enum_els en))).
+  Proof.
+    intros Htag.
+    iApply type_incl_simple_type; simpl; last done.
+    iIntros "!>" (??) "(%tag' & % & (_ & Hv))".
+    simplify_eq. done.
+  Qed.
+
+  Lemma weak_subtype_enum_discriminant_int E L {rt} (en : enum rt) r i it T :
+    weak_subtype E L r i (enum_discriminant_t en) (int it) T :-
+      ∃ tag,
+      exhale (⌜en.(enum_tag) r = Some tag⌝);
+      exhale (⌜i = els_lookup_tag en.(enum_els) tag⌝);
+      exhale (⌜it = en.(enum_els).(els_tag_it)⌝);
+      return T.
+  Proof.
+    iIntros "(%tag & %Htag & -> & -> & HT)".
+    iIntros (??) "#CTX HE HL".
+    iFrame.
+    by iApply type_incl_enum_discriminant_int.
+  Qed.
+  Definition weak_subtype_enum_discriminant_int_inst := [instance @weak_subtype_enum_discriminant_int].
+  Global Existing Instance weak_subtype_enum_discriminant_int_inst.
+End subtype.
+
+Section ops.
+  Context `{!typeGS Σ}.
+
+  Lemma type_relop_discr_discr E L {rt} (en : enum rt) it v1 v2 (x1 x2 : rt) op π (T : typed_val_expr_cont_t) :
+    (∀ tag1 tag2,
+    ⌜en.(enum_tag) x1 = Some tag1⌝ -∗
+    ⌜en.(enum_tag) x2 = Some tag2⌝ -∗
+    typed_bin_op E L v1 (v1 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag1) @ int en.(enum_els).(els_tag_it))%I v2 (v2 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag2) @ int en.(enum_els).(els_tag_it)) op (IntOp it) (IntOp it) T) ⊢
+    typed_bin_op E L v1 (v1 ◁ᵥ{π, MetaNone} x1 @ enum_discriminant_t en) v2 (v2 ◁ᵥ{π, MetaNone} x2 @ enum_discriminant_t en) op (IntOp it) (IntOp it) T.
+  Proof.
+    iIntros "HT".
+    rewrite /ty_own_val/=.
+    iIntros "(_ & %tag1 & % & Hv1) (_ & %tag2 & % & Hv2)".
+    iApply ("HT" with "[//] [//] [$Hv1] [$Hv2]").
+  Qed.
+  Definition type_relop_discr_discr_inst := [instance @type_relop_discr_discr].
+  Global Existing Instance type_relop_discr_discr_inst.
+End ops.
+
 Section switch.
   Context `{!typeGS Σ}.
 

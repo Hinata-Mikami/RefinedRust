@@ -207,14 +207,20 @@ impl<'def> Abstract<'def> {
         let mut out = String::with_capacity(200);
 
         let spec = &self.spec;
-        write!(out, "λ rfn, match rfn with ").unwrap();
-        for ((name, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
-            write!(out, "| {} => Some \"{name}\" ", coq::term::App::new(pat, apps.clone())).unwrap();
-        }
         if spec.is_partial {
+            write!(out, "λ rfn, match rfn with ").unwrap();
+            for ((name, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+                write!(out, "| {} => Some \"{name}\" ", coq::term::App::new(pat, apps.clone())).unwrap();
+            }
             write!(out, "| _ => None ").unwrap();
+            write!(out, "end").unwrap();
+        } else {
+            write!(out, "λ rfn, Some (match rfn with ").unwrap();
+            for ((name, _, _), (pat, apps, _)) in self.variants.iter().zip(spec.variant_patterns.iter()) {
+                write!(out, "| {} => \"{name}\" ", coq::term::App::new(pat, apps.clone())).unwrap();
+            }
+            write!(out, "end)").unwrap();
         }
-        write!(out, "end").unwrap();
 
         out
     }

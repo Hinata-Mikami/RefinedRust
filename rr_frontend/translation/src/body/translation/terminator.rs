@@ -8,16 +8,16 @@ use std::collections::BTreeMap;
 
 use log::{info, trace, warn};
 use radium::{code, lang, specs};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
-use crate::search;
+use crate::{search, types};
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
-    /// Check if a call goes to `std::rt::begin_panic`
-    fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
+    fn check_call_destination(func: &mir::Operand<'_>, target_did: DefId) -> bool {
         let mir::Operand::Constant(box c) = func else {
             return false;
         };
@@ -30,10 +30,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return false;
         };
 
+        target_did == *did
+    }
+
+    /// Check if a call goes to `std::rt::begin_panic`
+    fn is_call_destination_panic(&self, func: &mir::Operand<'_>) -> bool {
         if let Some(panic_id_std) =
             search::try_resolve_did(self.env.tcx(), &["std", "panicking", "begin_panic"])
         {
-            if panic_id_std == *did {
+            if Self::check_call_destination(func, panic_id_std) {
                 return true;
             }
         } else {
@@ -42,7 +47,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         if let Some(panic_id_core) = search::try_resolve_did(self.env.tcx(), &["core", "panicking", "panic"])
         {
-            if panic_id_core == *did {
+            if Self::check_call_destination(func, panic_id_core) {
                 return true;
             }
         } else {
@@ -50,6 +55,69 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         false
+    }
+
+    // Check if the destination of this call is `core::intrinsics::discriminant_value`.
+    fn is_call_destination_discriminant(&self, func: &mir::Operand<'_>) -> bool {
+        if let Some(discriminant_did) =
+            search::try_resolve_did(self.env.tcx(), &["core", "intrinsics", "discriminant_value"])
+        {
+            if Self::check_call_destination(func, discriminant_did) {
+                return true;
+            }
+        } else {
+            warn!("Failed to determine DefId of core::intrinsics::discriminant_value");
+        }
+
+        false
+    }
+
+    fn make_discriminant_shim(
+        &mut self,
+        op: &mir::Operand<'tcx>,
+        dest: &mir::Place<'tcx>,
+    ) -> Result<Vec<code::PrimStmt>, TranslationError<'tcx>> {
+        let translated_op = self.translate_operand(op, false)?;
+        let ty = self.get_type_of_operand(op);
+
+        let st = self.ty_translator.translate_type_to_syn_type(ty)?;
+        let translated_rhs = code::Expr::Deref {
+            ot: st.into(),
+            e: Box::new(translated_op),
+        };
+
+        let ty::TyKind::Ref(_, ty, _) = ty.kind() else {
+            unreachable!();
+        };
+        let ty::TyKind::Adt(adt_def, args) = ty.kind() else {
+            return Err(TranslationError::UnsupportedFeature {
+                description: format!(
+                    "RefinedRust does currently not support discriminant accesses on non-enum types (got {:?})",
+                    ty
+                ),
+            });
+        };
+        let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
+        let els = enum_use.generate_raw_syn_type_term();
+
+        let discriminant_acc = code::Expr::EnumDiscriminant {
+            els: els.to_string(),
+            e: Box::new(translated_rhs),
+        };
+
+        let translated_place = self.translate_place(dest)?;
+
+        // get the discriminant type
+        let it = adt_def.repr().discr_type();
+        let translated_it = types::TX::translate_integer_type(it);
+
+        let assign = code::PrimStmt::Assign {
+            ot: lang::OpType::Int(translated_it),
+            e1: Box::new(translated_place),
+            e2: Box::new(discriminant_acc),
+        };
+
+        Ok(vec![assign])
     }
 
     /// Translate a terminator.
@@ -77,6 +145,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 if self.is_call_destination_panic(func) {
                     info!("Replacing call to std::panicking::begin_panic with Stuck");
                     return Ok(code::Stmt::Stuck);
+                }
+                if self.is_call_destination_discriminant(func) {
+                    let op = &args[0].node;
+                    let stmt = self.make_discriminant_shim(op, destination)?;
+                    let goto = self.translate_goto_like(&loc, target.unwrap())?;
+
+                    return Ok(code::Stmt::Prim(stmt, Box::new(goto)));
                 }
 
                 self.translate_function_call(func, args, destination, *target, loc, endlfts)
