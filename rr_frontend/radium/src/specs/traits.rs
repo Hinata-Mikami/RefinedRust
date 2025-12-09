@@ -106,7 +106,7 @@ pub enum SpecAttrInst {
 #[derive(Constructor, Clone, Debug)]
 pub struct SpecAttrsInst {
     /// a map of attributes and their implementation
-    pub(crate) attrs: BTreeMap<String, SpecAttrInst>,
+    pub attrs: BTreeMap<String, SpecAttrInst>,
 }
 
 /// A using occurrence of a trait spec.

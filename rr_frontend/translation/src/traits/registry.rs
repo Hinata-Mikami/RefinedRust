@@ -26,7 +26,7 @@ use crate::spec_parsers::trait_attr_parser::{
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
 use crate::types::scope;
-use crate::{attrs, procedures, regions, search, traits, types};
+use crate::{attrs, error, procedures, regions, search, traits, types};
 
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
@@ -1032,6 +1032,41 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         ))
     }
 
+    /// Check for a specification for `derive`d traits on a trait impl for an ADT, and parse it.
+    pub(crate) fn check_for_derive_trait_attrs(
+        &self,
+        trait_impl_did: DefId,
+    ) -> Result<Option<specs::traits::SpecAttrsInst>, TranslationError<'tcx>> {
+        let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
+        let ty::ImplSubject::Trait(trait_ref) = subject else {
+            return Err(Error::NotATraitImpl(trait_impl_did).into());
+        };
+
+        let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or(Error::NotATrait(trait_ref.def_id))?;
+
+        let self_ty = trait_ref.self_ty();
+        let ty::TyKind::Adt(def, _) = self_ty.kind() else {
+            return Ok(None);
+        };
+
+        let impl_generics: &'tcx ty::Generics = self.env.tcx().generics_of(trait_impl_did);
+        let mut param_scope = scope::Params::from(impl_generics.own_params.as_slice());
+        param_scope.add_param_env(trait_impl_did, self.env, self.type_translator(), self)?;
+
+        let adt_attrs = attrs::filter_for_tool(self.env.get_attributes(def.did()));
+        let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
+
+        let res = attr_parser
+            .parse_derive_trait_impl_attrs(&adt_attrs)
+            .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
+
+        if let Ok(attrs) = res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
+            Ok(Some(attrs))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Get information on a trait implementation and create its Radium encoding.
     /// Also return the trait impls this impl depends on.
     pub(crate) fn get_trait_impl_info(
@@ -1059,65 +1094,87 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // parse specification
         let trait_impl_attrs = attrs::filter_for_tool(self.env.get_attributes(trait_impl_did));
-        let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
-        let impl_spec = attr_parser
-            .parse_trait_impl_attrs(&trait_impl_attrs)
-            .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
+        let impl_spec = if !trait_impl_attrs.is_empty() || trait_spec_ref.declared_attrs.is_empty() {
+            let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
+            let res = attr_parser
+                .parse_trait_impl_attrs(&trait_impl_attrs)
+                .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
+            res.attrs
+        } else if super::is_derive_trait_with_no_annotations(self.env.tcx(), trait_did) == Some(true) {
+            specs::traits::SpecAttrsInst::new(BTreeMap::new())
+        } else if super::is_derive_trait_with_annotations(self.env.tcx(), trait_did) == Some(true) {
+            let Some(attrs) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
+                let err = error::Message::TraitTranslation(Error::TraitImplSpec(
+                    trait_impl_did,
+                    "No specification provided".to_owned(),
+                ));
+                return Err(self
+                    .env
+                    .tcx()
+                    .dcx()
+                    .span_err(self.env.tcx().def_span(trait_impl_did), err)
+                    .into());
+            };
+            attrs
+        } else {
+            let err = error::Message::TraitTranslation(Error::TraitImplSpec(
+                trait_impl_did,
+                "No specification provided".to_owned(),
+            ));
+            return Err(self.env.tcx().dcx().span_err(self.env.tcx().def_span(trait_impl_did), err).into());
+        };
 
         // figure out the trait ref for this
         let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
-        if let ty::ImplSubject::Trait(trait_ref) = subject {
-            // set up scope
-            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
-            let mut deps = BTreeSet::new();
+        let ty::ImplSubject::Trait(trait_ref) = subject else {
+            return Err(Error::NotATraitImpl(trait_impl_did).into());
+        };
 
-            // using the ADT translation state to track dependencies on other impls and ADTs
-            let state = types::AdtState::new(&mut deps, &param_scope, &typing_env);
-            let mut state = types::STInner::TranslateAdt(state);
+        // set up scope
+        let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
+        let mut deps = BTreeSet::new();
 
-            let scope_inst =
-                self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
-            //trace!("Determined trait requirements in impl: {trait_reqs:?}");
-            //trace!("get_trait_impl_info: have deps={deps:?}");
+        // using the ADT translation state to track dependencies on other impls and ADTs
+        let state = types::AdtState::new(&mut deps, &param_scope, &typing_env);
+        let mut state = types::STInner::TranslateAdt(state);
 
-            // get instantiation for the associated types
-            let mut assoc_types_inst = Vec::new();
+        let scope_inst = self.compute_scope_inst_in_state(&mut state, trait_ref.def_id, trait_ref.args)?;
+        //trace!("Determined trait requirements in impl: {trait_reqs:?}");
+        //trace!("get_trait_impl_info: have deps={deps:?}");
 
-            let items = traits::sort_assoc_items(self.env, trait_assoc_items);
-            for x in items {
-                if let ty::AssocKind::Type { .. } = x.kind {
-                    let ty_item = assoc_items.find_by_ident_and_kind(
-                        self.env.tcx(),
-                        x.ident(self.env.tcx()),
-                        ty::AssocTag::Type,
-                        trait_impl_did,
-                    );
-                    if let Some(ty_item) = ty_item {
-                        let ty_did = ty_item.def_id;
-                        let ty = self.env.tcx().type_of(ty_did);
-                        let translated_ty =
-                            self.type_translator().translate_type_in_state(ty.skip_binder(), &mut state)?;
-                        assoc_types_inst.push(translated_ty);
-                    } else {
-                        unreachable!("trait impl does not have required item");
-                    }
+        // get instantiation for the associated types
+        let mut assoc_types_inst = Vec::new();
+
+        let items = traits::sort_assoc_items(self.env, trait_assoc_items);
+        for x in items {
+            if let ty::AssocKind::Type { .. } = x.kind {
+                let ty_item = assoc_items
+                    .filter_by_name_unhygienic_and_kind(x.ident(self.env.tcx()).name, ty::AssocTag::Type)
+                    .find(|y| y.trait_item_def_id == Some(x.def_id));
+
+                if let Some(ty_item) = ty_item {
+                    let ty_did = ty_item.def_id;
+                    let ty = self.env.tcx().type_of(ty_did);
+                    let translated_ty =
+                        self.type_translator().translate_type_in_state(ty.skip_binder(), &mut state)?;
+                    assoc_types_inst.push(translated_ty);
+                } else {
+                    unreachable!("trait impl does not have required item");
                 }
             }
-
-            Ok((
-                specs::traits::RefInst::new(
-                    trait_spec_ref,
-                    impl_ref,
-                    param_scope.into(),
-                    scope_inst,
-                    assoc_types_inst,
-                    impl_spec.attrs,
-                ),
-                deps,
-            ))
-        } else {
-            unreachable!("Expected trait impl");
         }
+
+        Ok((
+            specs::traits::RefInst::new(
+                trait_spec_ref,
+                impl_ref,
+                param_scope.into(),
+                scope_inst,
+                assoc_types_inst,
+                impl_spec,
+            ),
+            deps,
+        ))
     }
 }
 

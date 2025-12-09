@@ -1020,6 +1020,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     shim.name.clone(),
                     procedures::Mode::Shim,
                     false,
+                    false,
                 );
                 vcx.procedure_registry.register_function(did, meta)?;
             },
@@ -1122,6 +1123,7 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
                     name.clone(),
                     procedures::Mode::Shim,
                     false,
+                    false,
                 );
 
                 vcx.procedure_registry.register_function(method_did, meta)?;
@@ -1170,7 +1172,16 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
 fn register_functions<'tcx>(
     vcx: &mut VerificationCtxt<'tcx, '_>,
 ) -> Result<(), base::TranslationError<'tcx>> {
-    for &f in vcx.functions.iter().chain(vcx.closures.iter()) {
+    for (f, is_closure) in vcx
+        .functions
+        .iter()
+        .map(|did| (did, false))
+        .chain(vcx.closures.iter().map(|did| (did, true)))
+    {
+        if !check_consider_function(&*vcx, *f)? {
+            continue;
+        }
+
         let mut mode = get_most_restrictive_function_mode(vcx, f.to_def_id());
 
         let fname = base::strip_coq_ident(&vcx.env.get_item_name(f.to_def_id()));
@@ -1205,6 +1216,7 @@ fn register_functions<'tcx>(
                 fname.clone(),
                 procedures::Mode::Shim,
                 is_default_trait_impl,
+                is_closure,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
@@ -1224,6 +1236,7 @@ fn register_functions<'tcx>(
                 fname.clone(),
                 procedures::Mode::CodeShim,
                 is_default_trait_impl,
+                is_closure,
             );
             vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
 
@@ -1249,6 +1262,7 @@ fn register_functions<'tcx>(
             fname,
             mode,
             is_default_trait_impl,
+            is_closure,
         );
 
         vcx.procedure_registry.register_function(f.to_def_id(), meta)?;
@@ -1258,33 +1272,52 @@ fn register_functions<'tcx>(
 }
 
 /// Translate functions of the crate, assuming they were previously registered.
-fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
+fn translate_functions(vcx: &mut VerificationCtxt<'_, '_>) {
     // First translate closures, then functions: the function translation assumes that closures
     // they contain have been translated already.
     for &f in vcx.closures.iter().chain(vcx.functions.iter()) {
-        let proc = vcx.env.get_procedure(f.to_def_id());
-        let fname = vcx.env.get_item_name(f.to_def_id());
-        let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
-
-        let filtered_attrs = vcx
-            .env
-            .get_attributes_of_function(f.to_def_id(), &spec_parsers::propagate_method_attr_from_impl);
-
-        let mode = meta.get_mode();
-        if mode.is_shim() {
-            continue;
+        if vcx.procedure_registry.lookup_function(f.to_def_id()).is_some() && !translate_function(vcx, f) {
+            break;
         }
-        if mode.is_ignore() {
-            continue;
-        }
+    }
+}
 
-        info!("\nTranslating function {}", fname);
+fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId) -> bool {
+    let proc = vcx.env.get_procedure(f.to_def_id());
+    let fname = vcx.env.get_item_name(f.to_def_id());
+    let meta = vcx.procedure_registry.lookup_function(f.to_def_id()).unwrap();
 
-        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(proc.get_id());
-        let ty = ty.instantiate_identity();
+    let filtered_attrs = vcx
+        .env
+        .get_attributes_of_function(f.to_def_id(), &spec_parsers::propagate_method_attr_from_impl);
 
-        let translator = match ty.kind() {
-            ty::TyKind::FnDef(_def, _args) => signature::TX::new(
+    let mode = meta.get_mode();
+    if mode.is_shim() {
+        return true;
+    }
+    if mode.is_ignore() {
+        return true;
+    }
+
+    info!("\nTranslating function {}", fname);
+
+    let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = vcx.env.tcx().type_of(proc.get_id());
+    let ty = ty.instantiate_identity();
+
+    let translator = match ty.kind() {
+        ty::TyKind::FnDef(_def, _args) => signature::TX::new(
+            vcx.env,
+            &meta,
+            proc,
+            &filtered_attrs,
+            vcx.type_translator,
+            vcx.trait_registry,
+            &vcx.procedure_registry,
+            &vcx.const_registry,
+        )
+        .map(|x| (x, None)),
+        ty::TyKind::Closure(_, _) => {
+            let translator = signature::TX::new_closure(
                 vcx.env,
                 &meta,
                 proc,
@@ -1293,99 +1326,90 @@ fn translate_functions<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                 vcx.trait_registry,
                 &vcx.procedure_registry,
                 &vcx.const_registry,
-            )
-            .map(|x| (x, None)),
-            ty::TyKind::Closure(_, _) => {
-                let translator = signature::TX::new_closure(
-                    vcx.env,
-                    &meta,
-                    proc,
-                    &filtered_attrs,
-                    vcx.type_translator,
-                    vcx.trait_registry,
-                    &vcx.procedure_registry,
-                    &vcx.const_registry,
-                );
-                match translator {
-                    Ok((translator, info)) => {
-                        // store the info to generate the trait impl later
-                        let stored_info = procedures::ClosureInfo {
-                            info,
-                            generated_functions: Vec::new(),
-                            generated_impls: Vec::new(),
-                        };
-                        Ok((translator, Some(stored_info)))
-                    },
-                    Err(err) => Err(err),
+            );
+            match translator {
+                Ok((translator, info)) => {
+                    // store the info to generate the trait impl later
+                    let stored_info = procedures::ClosureInfo {
+                        info,
+                        generated_functions: Vec::new(),
+                        generated_impls: Vec::new(),
+                    };
+                    Ok((translator, Some(stored_info)))
+                },
+                Err(err) => Err(err),
+            }
+        },
+        _ => Err(base::TranslationError::UnknownError("unknown function kind".to_owned())),
+    };
+
+    if mode.is_only_spec() {
+        // Only generate a spec
+        match translator.and_then(|(tx, info)| tx.generate_spec().map(|x| (x, info))) {
+            Ok((spec, info)) => {
+                if vcx.env.tcx().dcx().has_errors().is_some() {
+                    return false;
                 }
+
+                let spec_ref = vcx.fn_arena.alloc(spec);
+                vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
+
+                if let Some(info) = info {
+                    let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                    vcx.procedure_registry.closure_info.insert(ordered_did, info);
+                }
+                true
             },
-            _ => Err(base::TranslationError::UnknownError("unknown function kind".to_owned())),
-        };
+            Err(base::TranslationError::FatalError(err)) => {
+                println!("Encountered fatal cross-function error in translation: {:?}", err);
+                println!("Aborting...");
+                false
+            },
+            Err(err) => {
+                println!("Encountered error: {:?}", err);
+                println!("Skipping function {}", fname);
+                if !rrconfig::skip_unsupported_features() {
+                    exit_with_error(&format!(
+                        "Encountered error when translating function {}, stopping...",
+                        fname
+                    ));
+                }
+                true
+            },
+        }
+    } else {
+        // Fully translate the function
+        match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
+            Ok((fun, info)) => {
+                if vcx.env.tcx().dcx().has_errors().is_some() {
+                    return false;
+                }
 
-        if mode.is_only_spec() {
-            // Only generate a spec
-            match translator.and_then(|(tx, info)| tx.generate_spec().map(|x| (x, info))) {
-                Ok((spec, info)) => {
-                    if vcx.env.tcx().dcx().has_errors().is_some() {
-                        return;
-                    }
+                println!("Successfully translated {}", fname);
+                vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
 
-                    let spec_ref = vcx.fn_arena.alloc(spec);
-                    vcx.procedure_registry.provide_specced_function(f.to_def_id(), spec_ref);
-
-                    if let Some(info) = info {
-                        let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
-                        vcx.procedure_registry.closure_info.insert(ordered_did, info);
-                    }
-                },
-                Err(base::TranslationError::FatalError(err)) => {
-                    println!("Encountered fatal cross-function error in translation: {:?}", err);
-                    println!("Aborting...");
-                    return;
-                },
-                Err(err) => {
-                    println!("Encountered error: {:?}", err);
-                    println!("Skipping function {}", fname);
-                    if !rrconfig::skip_unsupported_features() {
-                        exit_with_error(&format!(
-                            "Encountered error when translating function {}, stopping...",
-                            fname
-                        ));
-                    }
-                },
-            }
-        } else {
-            // Fully translate the function
-            match translator.and_then(|(tx, info)| tx.translate(vcx.fn_arena).map(|x| (x, info))) {
-                Ok((fun, info)) => {
-                    if vcx.env.tcx().dcx().has_errors().is_some() {
-                        return;
-                    }
-
-                    println!("Successfully translated {}", fname);
-                    vcx.procedure_registry.provide_translated_function(f.to_def_id(), fun);
-
-                    if let Some(info) = info {
-                        let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
-                        vcx.procedure_registry.closure_info.insert(ordered_did, info);
-                    }
-                },
-                Err(base::TranslationError::FatalError(err)) => {
-                    println!("Encountered fatal cross-function error in translation: {:?}", err);
-                    println!("Aborting...");
-                    return;
-                },
-                Err(err) => {
-                    println!("Encountered error: {:?}", err);
-                    println!("Skipping function {}", fname);
-                    if !rrconfig::skip_unsupported_features() {
-                        exit_with_error(&format!(
-                            "Encountered error when translating function {}, stopping...",
-                            fname
-                        ));
-                    }
-                },
-            }
+                if let Some(info) = info {
+                    let ordered_did = OrderedDefId::new(vcx.env.tcx(), f.to_def_id());
+                    vcx.procedure_registry.closure_info.insert(ordered_did, info);
+                }
+                true
+            },
+            Err(base::TranslationError::FatalError(err)) => {
+                println!("Encountered fatal cross-function error in translation: {:?}", err);
+                println!("Aborting...");
+                false
+            },
+            Err(err) => {
+                println!("Encountered error: {:?}", err);
+                println!("Skipping function {}", fname);
+                if !rrconfig::skip_unsupported_features() {
+                    exit_with_error(&format!(
+                        "Encountered error when translating function {}, stopping...",
+                        fname
+                    ));
+                }
+                true
+            },
         }
     }
 }
@@ -1397,36 +1421,55 @@ fn exit_with_error(s: &str) {
 
 /// Get all functions and closures in the current crate that have attributes on them and are not
 /// skipped due to `rr::skip` attributes.
-fn get_filtered_functions(env: &Environment<'_>, functions: Vec<LocalDefId>) -> Vec<LocalDefId> {
-    let functions_with_spec: Vec<_> = functions
-        .into_iter()
-        .filter(|id| {
-            if !env.has_any_tool_attribute(id.to_def_id()) {
-                return false;
-            }
-
-            if env.has_tool_attribute(id.to_def_id(), "skip") {
-                warn!("Function {:?} will be skipped due to a rr::skip annotation", id);
-                return false;
-            }
-
-            let Some(impl_did) = env.tcx().impl_of_assoc(id.to_def_id()) else {
-                return true;
-            };
-
-            if env.has_tool_attribute(impl_did, "skip") {
-                warn!("Function {:?} will be skipped due to a rr::skip annotation on impl", id);
-                return false;
-            }
-
-            true
-        })
-        .collect();
-
-    for f in &functions_with_spec {
-        info!("Function {:?} has a spec and will be processed", f);
+fn check_consider_function<'tcx>(
+    vcx: &VerificationCtxt<'tcx, '_>,
+    id: LocalDefId,
+) -> Result<bool, base::TranslationError<'tcx>> {
+    let env = vcx.env;
+    if env.has_tool_attribute(id.to_def_id(), "skip") {
+        warn!("Function {:?} will be skipped due to a rr::skip annotation", id);
+        return Ok(false);
     }
-    functions_with_spec
+    let has_any_attribute = env.has_any_tool_attribute(id.to_def_id());
+
+    // check if this is an impl with a skip annotation
+    let Some(impl_did) = env.tcx().impl_of_assoc(id.to_def_id()) else {
+        return Ok(has_any_attribute);
+    };
+
+    if env.has_tool_attribute(impl_did, "skip") {
+        warn!("Function {:?} will be skipped due to a rr::skip annotation on impl", id);
+        return Ok(false);
+    }
+
+    // if there's no skip on the impl, having any attribute is sufficient
+    if has_any_attribute {
+        return Ok(true);
+    }
+
+    // check if this is an impl of a trait
+    let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) else {
+        return Ok(false);
+    };
+
+    // check if the impl has any attributes declared on it
+    if env.has_any_tool_attribute(impl_did) {
+        return Ok(true);
+    }
+
+    // otherwise, check if this is a Derive trait for which we have special support
+    if traits::is_derive_trait_with_no_annotations(env.tcx(), trait_did) == Some(true) {
+        return Ok(true);
+    }
+
+    // otherwise, check if this is for an ADT with derive annotations.
+    if traits::is_derive_trait_with_annotations(env.tcx(), trait_did) == Some(true)
+        && vcx.trait_registry.check_for_derive_trait_attrs(impl_did)?.is_some()
+    {
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 /// Get constants in the current scope.
@@ -1600,7 +1643,9 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
         let did = closure_did.to_def_id();
 
         // check if this closure is registered and will be verified
-        let meta = vcx.procedure_registry.lookup_function(did).unwrap();
+        let Some(meta) = vcx.procedure_registry.lookup_function(did) else {
+            continue;
+        };
         let mode = meta.get_mode();
 
         if !mode.needs_spec() {
@@ -1635,6 +1680,7 @@ fn register_closure_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> 
                 fn_name,
                 procedures::Mode::Prove,
                 true,
+                false,
             );
 
             vcx.trait_registry
@@ -1780,9 +1826,12 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
         let tcx = vcx.env.tcx();
 
+        trace!("Assembling trait impl {trait_impl_id:?}");
+
         let process_impl = || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
             let (impl_info, deps) = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = tcx.associated_items(did);
+            trace!("impl assoc items: {assoc_items:?}");
 
             let trait_assoc_items: &'tcx ty::AssocItems = tcx.associated_items(trait_did);
 
@@ -1791,12 +1840,11 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
             for x in sorted_trait_assoc_items {
                 if x.as_tag() == ty::AssocTag::Fn {
-                    let fn_item = assoc_items.find_by_ident_and_kind(
-                        tcx,
-                        x.ident(tcx),
+                    let fn_item = assoc_items.filter_by_name_unhygienic_and_kind(
+                        x.ident(tcx).name,
                         ty::AssocTag::Fn,
-                        did,
-                    );
+                    ).find(|y| y.trait_item_def_id == Some(x.def_id));
+                    trace!("Translating item {x:?}, fn_item = {fn_item:?}");
 
                     if let Some(fn_item) = fn_item {
                         if let Some(spec) = vcx.procedure_registry.lookup_function_spec(fn_item.def_id) {
@@ -1950,8 +1998,6 @@ where
     let functions = env.get_procedures();
     let closures = env.get_closures();
     info!("Found {} function(s) and {} closure(s)", functions.len(), closures.len());
-    let functions = get_filtered_functions(env, functions);
-    let closures = get_filtered_functions(env, closures);
 
     let struct_arena = Arena::new();
     let enum_arena = Arena::new();

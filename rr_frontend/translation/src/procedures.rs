@@ -92,6 +92,8 @@ pub(crate) struct Meta {
     mode: Mode,
     /// true if this is a default trait impl
     is_default_trait_impl: bool,
+    /// true if this is a closure
+    is_closure: bool,
 }
 
 impl Meta {
@@ -166,7 +168,7 @@ pub(crate) struct ClosureInfo<'tcx, 'rcx> {
  */
 pub(crate) struct Scope<'tcx, 'def> {
     tcx: ty::TyCtxt<'tcx>,
-    /// maps the defid to `(code_name, spec_name, trait_req_incl_name, name)`
+    /// maps the defid to meta data
     name_map: BTreeMap<OrderedDefId, Meta>,
     /// track the actually translated functions
     translated_functions: BTreeMap<OrderedDefId, code::Function<'def>>,

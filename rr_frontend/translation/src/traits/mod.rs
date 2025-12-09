@@ -12,12 +12,13 @@ use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
 use crate::rustcmp;
+use crate::search;
 
 pub(crate) mod registry;
 pub(crate) mod requirements;
 pub(crate) mod resolution;
 
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone, Display, Eq, PartialEq)]
 pub(crate) enum Error<'tcx> {
     /// This `DefId` is not a trait
     #[display("The given `DefId` {:?} is not a trait", _0)]
@@ -127,4 +128,27 @@ pub(crate) fn sort_assoc_items<'tcx>(
     items.sort_by(|a, b| rustcmp::cmp_defid(env, a.def_id, b.def_id));
 
     items
+}
+
+/// Check if this is a derive trait that does not need spec annotations to implement.
+pub(crate) fn is_derive_trait_with_no_annotations(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
+    let copy_did = search::try_resolve_did(tcx, &["core", "marker", "Copy"])?;
+    let clone_did = search::try_resolve_did(tcx, &["core", "clone", "Clone"])?;
+
+    Some(trait_did == copy_did || trait_did == clone_did)
+}
+
+/// Check if this is a derive trait that needs spec annotations to implement.
+pub(crate) fn is_derive_trait_with_annotations(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
+    let eq_did = search::try_resolve_did(tcx, &["core", "cmp", "Eq"])?;
+    let partial_eq_did = search::try_resolve_did(tcx, &["core", "cmp", "PartialEq"])?;
+    let ord_did = search::try_resolve_did(tcx, &["core", "cmp", "Ord"])?;
+    let partial_ord_did = search::try_resolve_did(tcx, &["core", "cmp", "PartialOrd"])?;
+
+    Some(
+        trait_did == eq_did
+            || trait_did == partial_eq_did
+            || trait_did == ord_did
+            || trait_did == partial_ord_did,
+    )
 }

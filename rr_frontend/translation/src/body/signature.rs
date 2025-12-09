@@ -346,6 +346,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok((t, info))
     }
 
+    fn function_has_nontrivial_annotations(env: &'def Environment<'tcx>, did: DefId) -> bool {
+        env.has_tool_attribute(did, "params")
+            || env.has_tool_attribute(did, "ensures")
+            || env.has_tool_attribute(did, "requires")
+            || env.has_tool_attribute(did, "returns")
+            || env.has_tool_attribute(did, "observe")
+            || env.has_tool_attribute(did, "args")
+    }
+
     /// Translate the body of a function.
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
@@ -433,13 +442,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             inputs: inputs.clone(),
         };
 
-        if env.has_tool_attribute(proc.get_id(), "default_spec") {
+        // If this is an impl of a trait, and there are no explicit annotations, use the default specification
+        // of the trait (instead of the Rust implied safety contract)
+        if env.trait_impl_of_method(proc.get_id()).is_some()
+            && !Self::function_has_nontrivial_annotations(env, proc.get_id())
+        {
             // Use the default spec annotated on the trait
             let spec = t.make_trait_instance_spec()?;
             if let Some(spec) = spec {
                 t.translated_fn.add_trait_function_spec(spec);
             } else {
-                return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
+                return Err(TranslationError::AttributeError(
+                    "No valid specification provided for trait impl".to_owned(),
+                ));
             }
         } else {
             // process attributes

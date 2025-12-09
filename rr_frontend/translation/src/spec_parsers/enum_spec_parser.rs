@@ -104,7 +104,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 "partial" => {
                     is_partial = true;
                 },
-                "export_as" => {},
+                "export_as" | "derive_instantiate" => {},
                 _ => {
                     return Err(format!("unknown attribute for enum specification: {:?}", args));
                 },
