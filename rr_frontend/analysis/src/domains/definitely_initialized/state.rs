@@ -98,7 +98,9 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
     }
 
     fn check_invariant(&self) {
+        #[expect(clippy::iter_over_hash_type)]
         for &place1 in &self.def_init_places {
+            #[expect(clippy::iter_over_hash_type)]
             for &place2 in &self.def_init_places {
                 if place1 != place2 {
                     debug_assert!(
@@ -145,6 +147,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         }
 
         let old_places = mem::take(&mut self.def_init_places);
+        #[expect(clippy::iter_over_hash_type)]
         for old_place in old_places {
             if is_prefix(place, old_place) {
                 // We are uninitializing a field of the place `old_place`.
@@ -161,6 +164,7 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         }
 
         // Check that place is properly removed
+        #[expect(clippy::iter_over_hash_type)]
         for &place1 in &self.def_init_places {
             debug_assert!(
                 !is_prefix(place1, place) && !is_prefix(place, place1),
@@ -326,6 +330,7 @@ impl<'mir, 'tcx: 'mir> AbstractState for DefinitelyInitializedState<'mir, 'tcx> 
         // TODO: make more efficient/modify self directly?
         let mut propagate_places_fn =
             |place_set1: &FxHashSet<mir::Place<'tcx>>, place_set2: &FxHashSet<mir::Place<'tcx>>| {
+                #[expect(clippy::iter_over_hash_type)]
                 for &place in place_set1 {
                     // find matching place in place_set2:
                     // if there is a matching place that contains exactly the same or more memory
