@@ -17,7 +17,7 @@
   ];
 in
   craneLib.mkCargoDerivation ({
-      __contentAddressed = false; # TODO: Make RefinedRust frontend's output deterministic
+      __contentAddressed = true;
 
       pnameSuffix = "-refinedrust";
 
