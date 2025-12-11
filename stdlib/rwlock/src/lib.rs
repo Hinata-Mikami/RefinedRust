@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
 
-#![rr::package("stdlib-rwlock")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.rwlock")]
 
 use std::ops::{Deref, DerefMut};

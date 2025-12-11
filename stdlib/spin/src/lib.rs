@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
 
-#![rr::package("stdlib-spin")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.spin")]
 
 mod relax;

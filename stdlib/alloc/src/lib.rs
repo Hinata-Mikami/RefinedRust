@@ -6,7 +6,7 @@
 #![feature(allocator_api)]
 #![feature(ptr_alignment_type)]
 
-#![rr::package("stdlib-alloc")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.alloc")]
 #![rr::import("rrstd.alloc.theories", "shims")]
 

@@ -6,7 +6,7 @@
 
 #![feature(allocator_api)]
 
-#![rr::package("stdlib-refinedrust")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.stdlib")]
 
 #![rr::export_include("alloc")]

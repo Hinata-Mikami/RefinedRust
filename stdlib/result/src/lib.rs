@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
 
-#![rr::package("stdlib-result")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.result")]
 #![rr::import("rrstd.result.theories", "result")]
 

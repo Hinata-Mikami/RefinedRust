@@ -5,7 +5,7 @@
 
 #![feature(allocator_api)]
 
-#![rr::package("stdlib-mem")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.mem")]
 #![rr::import("rrstd.mem.theories", "shims")]
 

@@ -1,3 +1,4 @@
 extra_specs = "extra_specs.v"
+generate_dune_project = false
 lib_load_paths = ["../clone", "../closures", "../cmp", "../option", "../range"]
 output_dir = "output"

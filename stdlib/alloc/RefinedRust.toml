@@ -1,2 +1,3 @@
+generate_dune_project = false
 lib_load_paths = ["../ptr", "../result"]
 output_dir = "output"

@@ -2,7 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
-#![rr::package("stdlib-closures")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.closures")]
 
 // NOTE: Our translation of trait requirements erases `Tuple` requirements.

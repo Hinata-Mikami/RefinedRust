@@ -2,7 +2,7 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
-#![rr::package("stdlib-cmp")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.cmp")]
 #![rr::include("closures")]
 #![rr::include("option")]

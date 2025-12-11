@@ -5,7 +5,7 @@
 
 #![feature(allocator_api)]
 
-#![rr::package("stdlib-vec")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.alloc")]
 #![rr::include("alloc")]
 #![rr::include("iterator")]

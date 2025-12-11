@@ -83,7 +83,15 @@
         packages = let
           stdlibPkgs = with pkgs.lib; attrsets.attrValues (filterAttrs (name: _: strings.hasPrefix "stdlib-" name) packages);
 
-          mkStdlib = args:
+          mkStdlib = {
+            pname,
+            opam-name ? pname,
+            rocqTheoriesArgs ? {},
+            withTheories ? false,
+            ...
+          } @ origArgs: let
+            args = builtins.removeAttrs origArgs ["rocqTheoriesArgs"];
+          in
             lib.rocq.mkRefinedRust ({
                 inherit meta version;
 
@@ -91,7 +99,32 @@
 
                 cargoArtifacts = null;
                 withStdlib = false;
+
+                cargoRefinedRustArgs = {
+                  preBuild = ''
+                    sed -i -e 's/rr::package("refinedrust-stdlib")/rr::package("${opam-name}")/g' ./src/lib.rs
+                  '';
+                };
               }
+              // (
+                if withTheories
+                then {
+                  rocqTheoriesArgs =
+                    {
+                      preBuild = ''
+                        find . -name "dune" -exec sed -i -e '3s|.*|  (package ${opam-name}-theories)|g' {} \;
+                        cat << EOF > dune-project
+                        (lang dune 3.8)
+                        (using coq 0.8)
+                        (name ${opam-name}-theories)
+                        (package (name ${opam-name}-theories))
+                        EOF
+                      '';
+                    }
+                    // rocqTheoriesArgs;
+                }
+                else rocqTheoriesArgs
+              )
               // args);
         in
           {
@@ -243,9 +276,6 @@
               withTheories = true;
 
               rocqTheoriesArgs = {
-                pname = "stdlib-spin-once-theories";
-                opam-name = "stdlib-spin-once-theories";
-
                 src = ./stdlib/spin/theories/once;
               };
             }
@@ -256,7 +286,7 @@
             }
             {
               pname = "stdlib";
-              opam-name = "stdlib-refinedrust";
+              opam-name = "refinedrust-stdlib";
               src = ./stdlib/stdlib;
               libDeps = stdlibPkgs;
             }

@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
 
-#![rr::package("stdlib-controlflow")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.controlflow")]
 #![rr::include("option")]
 #![rr::include("result")]

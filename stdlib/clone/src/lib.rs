@@ -5,7 +5,7 @@
 
 #![feature(allocator_api)]
 
-#![rr::package("stdlib-clone")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.clone")]
 
 #[rr::export_as(core::clone::Clone)]

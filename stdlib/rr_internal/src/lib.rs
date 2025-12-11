@@ -5,7 +5,7 @@
 
 #![feature(allocator_api)]
 
-#![rr::package("stdlib-rr_internal")]
+#![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.rr_internal")]
 #![rr::include("alloc")]
 #![rr::include("ptr")]
