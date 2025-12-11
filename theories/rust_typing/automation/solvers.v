@@ -2505,8 +2505,10 @@ Ltac destruct_product_hypothesis name H :=
                       destruct_product_hypothesis name tmp2
       | [] => destruct H
       end
-  |    _ => let id := fresh name in
-                      rename H into id
+  |    _ =>
+      simpl in H;
+      let id := fresh name in
+      rename H into id
   end.
 
 (** Automation for finding [FunctionSubtype] for assumed trait specifications. *)

@@ -69,7 +69,7 @@ Next Obligation.
   iApply logical_step_intro. by iFrame.
 Qed.
 
-
+Global Arguments mk_pers_ex_inv_def : simpl never.
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
@@ -225,7 +225,29 @@ Section ex.
     iApply logical_step_intro.
     iIntros "Hdrop". eauto with iFrame.
   Qed.
+
 End ex.
+
+Section copy.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_plain_t_pers_copy {X Y : RT} ty (P : ex_inv_def X Y)  :
+    Copyable ty →
+    (∀ π a b, Persistent (P.(inv_P) π a b)) →
+    (* Alternative: I could also require invariants to have a sharing accessor *)
+    TCDone (∀ π κ a b, P.(inv_P) π a b = P.(inv_P_shr) π κ a b) →
+    Copyable (ex_plain_t X Y P ty).
+  Proof.
+    intros Hcopy Hpers Heq. econstructor.
+    { apply _. }
+    iIntros (???? r m q ?).
+    iIntros "CTX Hs Htok".
+    iDestruct "Hs" as "(%x & Hshr & Hl)".
+    unfold TCDone in Heq. rewrite -Heq.
+    iMod (copy_shr_acc with "CTX Hl Htok") as "(%ly & >%Hst & >%Hly & %q' & %v & Ha & Hcl)"; first done.
+    iExists ly. iR. iR. iFrame. done.
+  Qed.
+End copy.
 
 Section contr.
   Context `{!typeGS Σ}.

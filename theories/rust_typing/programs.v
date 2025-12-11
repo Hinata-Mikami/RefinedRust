@@ -382,6 +382,13 @@ Global Hint Mode SimpLtypes + + + + - : typeclass_instances.
 Global Hint Mode SimpLtypeIds + + + + - : typeclass_instances.
 Global Hint Mode SimpLtype + + + + - : typeclass_instances.
 
+(** Agreement-style propositions *)
+Class LiAgree {Σ} {A} (P : iProp Σ) (P' : A → iProp Σ) := {
+  li_agree_elem : A;
+  li_agree_to_pred : P ⊣⊢ P' li_agree_elem;
+  li_agree_pers : ∀ a, Persistent (P' a);
+  li_agree_agree : ⊢ ∀ a b, P' a -∗ P' b -∗ ⌜a = b⌝;
+}.
 
 
 (** find type of val in context *)

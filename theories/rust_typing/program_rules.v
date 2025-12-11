@@ -464,6 +464,183 @@ Section typing.
     Subsume (l1 ◁ₗ[π, k] r @ lt) (loc_in_bounds l2 pre suf) :=
     λ T, i2p (subsume_place_loc_in_bounds π l1 l2 lt  k r pre suf T).
 
+  (** Introduce with Hooks *)
+  Lemma introduce_with_hooks_boringly_exist E L {A} P T :
+    introduce_with_hooks E L (☒ (∃ a : A, P a)) T :-
+      ∀ a,
+        return (introduce_with_hooks E L (☒ P a) T).
+  Proof.
+    unfold introduce_with_hooks.
+    iIntros "HT".
+    iIntros (??) "HE HL Ha".
+    rewrite boringly_exists.
+    iDestruct "Ha" as "(%a & Ha)".
+    iApply ("HT" with "[//] HE HL Ha").
+  Qed.
+  Definition introduce_with_hooks_boringly_exist_inst := [instance @introduce_with_hooks_boringly_exist].
+  Global Existing Instance introduce_with_hooks_boringly_exist_inst.
+
+  Lemma introduce_with_hooks_boringly_sep E L P1 P2 T :
+    introduce_with_hooks E L (☒ (P1 ∗ P2)) T :-
+      return (introduce_with_hooks E L (☒ P1 ∗ ☒ P2) T).
+  Proof.
+    unfold introduce_with_hooks.
+    iIntros "HT".
+    iIntros (??) "HE HL Ha".
+    rewrite boringly_sep.
+    iApply ("HT" with "[//] HE HL Ha").
+  Qed.
+  Definition introduce_with_hooks_boringly_sep_inst := [instance @introduce_with_hooks_boringly_sep].
+  Global Existing Instance introduce_with_hooks_boringly_sep_inst.
+
+  Lemma introduce_with_hooks_boringly_persistent E L P `{!Persistent P} T :
+    introduce_with_hooks E L (☒ P) T :-
+      return (introduce_with_hooks E L P T).
+  Proof.
+    unfold introduce_with_hooks.
+    iIntros "HT".
+    iIntros (??) "HE HL Ha".
+    rewrite boringly_persistent.
+    iApply ("HT" with "[//] HE HL Ha").
+  Qed.
+  Definition introduce_with_hooks_boringly_persistent_inst := [instance @introduce_with_hooks_boringly_persistent].
+  Global Existing Instance introduce_with_hooks_boringly_persistent_inst.
+
+  Lemma introduce_with_hooks_agree {A} {P' : A → iProp Σ} P `{Hag : !LiAgree P P'} E L b `{!CheckOwnInContext (P' b)} T :
+    introduce_with_hooks E L (P) T :-
+      exhale (P' b);
+      inhale (P' b);
+      inhale (⌜Hag.(li_agree_elem) = b⌝);
+      return (T L).
+  Proof.
+    unfold introduce_with_hooks.
+    iIntros "(Hb & HT)".
+    iIntros (??) "HE HL Ha".
+    iPoseProof (Hag.(li_agree_to_pred) with "Ha") as "Ha".
+    iPoseProof (li_agree_agree with "Ha Hb") as "<-".
+    iSpecialize ("HT" with "Ha [//]"). by iFrame.
+  Qed.
+  Definition introduce_with_hooks_agree_inst := [instance @introduce_with_hooks_agree].
+  Global Existing Instance introduce_with_hooks_agree_inst.
+
+  (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be refuted *)
+  Lemma introduce_with_hooks_disj_guard_l E L guard P1 P2 `{!TCDone (¬ guard)} T :
+    introduce_with_hooks E L ((⌜guard⌝ ∗ P1) ∨ P2) T :-
+      return introduce_with_hooks E L P2 T.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "HE HL [(% & ?) | HP]"; first done.
+    iApply ("HT" with "[//] HE HL HP").
+  Qed.
+  Definition introduce_with_hooks_disj_guard_l_inst := [instance @introduce_with_hooks_disj_guard_l].
+  Global Existing Instance introduce_with_hooks_disj_guard_l_inst.
+  Lemma introduce_with_hooks_disj_guard_r E L guard P1 P2 `{!TCDone (¬ guard)} T :
+    introduce_with_hooks E L (P1 ∨ (⌜guard⌝ ∗ P2)) T :-
+      return introduce_with_hooks E L P1 T.
+  Proof.
+    iIntros "HT".
+    iIntros (??) "HE HL [HP | (% & ?)]"; last done.
+    iApply ("HT" with "[//] HE HL HP").
+  Qed.
+  Definition introduce_with_hooks_disj_guard_r_inst := [instance @introduce_with_hooks_disj_guard_r].
+  Global Existing Instance introduce_with_hooks_disj_guard_r_inst.
+
+  (** ** prove_with_subtype *)
+  (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be proved or refuted *)
+  Lemma prove_with_subtype_disj_guard_l_right E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
+    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) T :-
+      return prove_with_subtype E L b pm P2 T.
+  Proof.
+    unfold prove_with_subtype.
+    iIntros "HT".
+    iIntros (????) "CTX HE HL".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    destruct pm.
+    - iIntros "(? & $)". iRight. by iFrame.
+    - iIntros "(Ha & $) Hdead".
+      iMod ("Ha" with "Hdead") as "?".
+      iRight. by iFrame.
+  Qed.
+  Definition prove_with_subtype_disj_guard_l_right_inst := [instance @prove_with_subtype_disj_guard_l_right].
+  Global Existing Instance prove_with_subtype_disj_guard_l_right_inst.
+  Lemma prove_with_subtype_disj_guard_r_left E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
+    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) T :-
+      return prove_with_subtype E L b pm P1 T.
+  Proof.
+    unfold prove_with_subtype.
+    iIntros "HT".
+    iIntros (????) "CTX HE HL".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    destruct pm.
+    - iIntros "(? & $)". iLeft. by iFrame.
+    - iIntros "(Ha & $) Hdead".
+      iMod ("Ha" with "Hdead") as "?".
+      iLeft. by iFrame.
+  Qed.
+  Definition prove_with_subtype_disj_guard_r_left_inst := [instance @prove_with_subtype_disj_guard_r_left].
+  Global Existing Instance prove_with_subtype_disj_guard_r_left_inst.
+
+  (** Below rules are lower priority because they might make a goal unprovable *)
+  Lemma prove_with_subtype_disj_guard_l_left E L b pm guard P1 P2 `{!TCDone guard} T  :
+    prove_with_subtype E L b pm ((⌜guard⌝ ∗ P1) ∨ P2) T :-
+      return prove_with_subtype E L b pm P1 T.
+  Proof.
+    unfold prove_with_subtype.
+    iIntros "HT".
+    iIntros (????) "CTX HE HL".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    destruct pm.
+    - iIntros "(? & $)". iLeft. by iFrame.
+    - iIntros "(Ha & $) Hdead".
+      iMod ("Ha" with "Hdead") as "?".
+      iLeft. by iFrame.
+  Qed.
+  Definition prove_with_subtype_disj_guard_l_left_inst := [instance @prove_with_subtype_disj_guard_l_left].
+  Global Existing Instance prove_with_subtype_disj_guard_l_left_inst | 100.
+  Lemma prove_with_subtype_disj_guard_r_right E L b pm guard P1 P2 `{!TCDone guard} T  :
+    prove_with_subtype E L b pm (P1 ∨ (⌜guard⌝ ∗ P2)) T :-
+      return prove_with_subtype E L b pm P2 T.
+  Proof.
+    unfold prove_with_subtype.
+    iIntros "HT".
+    iIntros (????) "CTX HE HL".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R & Hstep & $ & $)".
+    iApply (maybe_logical_step_wand with "[] Hstep").
+    destruct pm.
+    - iIntros "(? & $)". iRight. by iFrame.
+    - iIntros "(Ha & $) Hdead".
+      iMod ("Ha" with "Hdead") as "?".
+      iRight. by iFrame.
+  Qed.
+  Definition prove_with_subtype_disj_guard_r_right_inst := [instance @prove_with_subtype_disj_guard_r_right].
+  Global Existing Instance prove_with_subtype_disj_guard_r_right_inst | 100.
+
+  (** Do a case analysis when proving if_iNone/if_iSome *)
+  Inductive destruct_hint_prove : Type :=
+  | DestructHintProve {A} (a : A)
+  | DestructHintProveKnown {A} (a : A)
+  .
+  Lemma prove_with_subtype_destruct {A} (a : A) P E L step pm T :
+    prove_with_subtype E L step pm P T :-
+      c, b ← destruct a;
+      trace (if b then DestructHintProve c else DestructHintProveKnown c);
+      return (prove_with_subtype E L step pm P T).
+  Proof.
+    iIntros "(%b & HT)". done.
+  Qed.
+  Definition prove_with_subtype_destruct_if_iSome {A} (x : option A) P :=
+    prove_with_subtype_destruct x (if_iSome x P).
+  Definition prove_with_subtype_destruct_if_iSome_inst := [instance @prove_with_subtype_destruct_if_iSome].
+  Global Existing Instance prove_with_subtype_destruct_if_iSome_inst | 100.
+
+  Definition prove_with_subtype_destruct_if_iNone {A} (x : option A) P :=
+    prove_with_subtype_destruct x (if_iNone x P).
+  Definition prove_with_subtype_destruct_if_iNone_inst := [instance @prove_with_subtype_destruct_if_iNone].
+  Global Existing Instance prove_with_subtype_destruct_if_iNone_inst | 100.
+
   (** Simplify instances *)
   Lemma simplify_goal_lft_dead_list κs T :
     ([∗ list] κ ∈ κs, [† κ]) ∗ T ⊢ simplify_goal (lft_dead_list κs) T.
@@ -3219,7 +3396,7 @@ Section typing.
     fn.(rf_fn).(f_code) !! b = Some s →
     find_in_context (FindLoc l) (λ '(existT rt' (lt, r, bk, π)),
     l ◁ₗ[π, bk] r @ lt -∗
-    ∃ (Heq : rt = rt') (r' : RT_xt rt) (a : A), 
+    ∃ (Heq : rt = rt') (r' : RT_xt rt) (a : A),
     ⌜r = # $# (rew [RT_xt] Heq in r')⌝ ∗
     (* TODO maybe also stratify? *)
     prove_with_subtype E L true ProveDirect (P r' a E L) (λ L' _ R2,
