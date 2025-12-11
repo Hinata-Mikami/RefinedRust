@@ -68,8 +68,8 @@ pub(crate) enum Error<'tcx> {
     UnregisteredTrait(DefId),
 
     /// Trait impl hasn't been registered yet but is used
-    #[display("This trait impl {:?} has not been registered yet", _0)]
-    UnregisteredImpl(DefId),
+    #[display("This trait impl {:?} of {:?} has not been registered yet", _0, _1)]
+    UnregisteredImpl(DefId, DefId),
 
     /// Cannot find this trait instance in the local environment
     #[display("An instance for this trait {:?} cannot by found with generic args {:?}", _0, _1)]

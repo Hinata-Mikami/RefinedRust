@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use log::{info, trace};
-use radium::{code, specs};
+use radium::{code, coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::{hir, span};
@@ -449,8 +449,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         {
             // Use the default spec annotated on the trait
             let spec = t.make_trait_instance_spec()?;
-            if let Some(spec) = spec {
+            if let Some((spec, context_items)) = spec {
                 t.translated_fn.add_trait_function_spec(spec);
+                for binder in context_items.0 {
+                    t.translated_fn.add_late_coq_param(binder);
+                }
             } else {
                 return Err(TranslationError::AttributeError(
                     "No valid specification provided for trait impl".to_owned(),
@@ -688,7 +691,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Make a specification for a method of a trait impl derived from the trait's default spec.
     fn make_trait_instance_spec(
         &self,
-    ) -> Result<Option<specs::traits::InstantiatedFunctionSpec<'def>>, TranslationError<'tcx>> {
+    ) -> Result<
+        Option<(specs::traits::InstantiatedFunctionSpec<'def>, coq::binder::BinderList)>,
+        TranslationError<'tcx>,
+    > {
         let did = self.proc.get_id();
 
         let Some(impl_did) = self.env.tcx().impl_of_assoc(did) else {
@@ -705,8 +711,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let fn_name = strip_coq_ident(self.env.tcx().item_name(self.proc.get_id()).as_str());
 
-        let (trait_info, _) = self.trait_registry.get_trait_impl_info(impl_did)?;
-        Ok(Some(specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name)))
+        let (trait_info, _, context_items) = self.trait_registry.get_trait_impl_info(impl_did)?;
+        Ok(Some((specs::traits::InstantiatedFunctionSpec::new(trait_info, fn_name), context_items)))
     }
 
     fn dump_body(body: &mir::Body<'_>) {

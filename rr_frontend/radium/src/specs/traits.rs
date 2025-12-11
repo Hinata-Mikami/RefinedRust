@@ -689,6 +689,7 @@ fn make_trait_instance<'def>(
     of_trait: LiteralSpecRef<'def>,
     is_base_spec: bool,
     spec_record_name: &str,
+    mut extra_context_items: coq::binder::BinderList,
 ) -> Result<coq::Document, fmt::Error> {
     let mut document = coq::Document::default();
 
@@ -736,6 +737,8 @@ fn make_trait_instance<'def>(
         let attrs_type = coq::term::Type::Literal(format!("{attrs_type}"));
         def_params.push(coq::binder::Binder::new(Some("_ATTRS".to_owned()), attrs_type));
     }
+
+    def_params.append(&mut extra_context_items.0);
 
     let def_params = coq::binder::BinderList::new(def_params);
 
@@ -1272,6 +1275,7 @@ impl fmt::Display for SpecDecl<'_> {
             self.lit,
             true,
             &self.lit.base_spec(),
+            coq::binder::BinderList::empty(),
         )?;
         write!(f, "{base_decls}\n")?;
 
@@ -1563,6 +1567,8 @@ impl ImplSpec<'_> {
             let mut params = all_tys.get_coq_ty_rt_params();
             params.append(all_tys.get_semantic_ty_params().0);
 
+            params.append(self.extra_context_items.0.clone());
+
             // add semantic assumptions for all trait requirements
             for x in generics
                 .get_surrounding_trait_requirements()
@@ -1632,12 +1638,18 @@ impl ImplSpec<'_> {
         scope.format(&mut ty_term, false, &[]).unwrap();
         ty_term.push_str(&format!(" {base_spec}))"));
 
+        let body = coq::term::Term::Literal(ty_term);
+
+        // don't want implicit generalizing binders here
+        params.make_implicit(coq::binder::Kind::Explicit);
+        let body = coq::term::Term::All(params, Box::new(body));
+
         let lem = coq::command::Definition {
             program_mode: false,
             name: spec_name.to_owned(),
-            params,
+            params: coq::binder::BinderList::empty(),
             ty: None,
-            body: coq::command::DefinitionBody::Term(coq::term::Term::Literal(ty_term)),
+            body: coq::command::DefinitionBody::Term(body),
         };
         doc.push(coq::command::Command::Definition(lem));
 
@@ -1650,24 +1662,10 @@ impl ImplSpec<'_> {
 
         let lemma_name = &self.trait_ref.impl_ref.spec_subsumption_proof();
 
-        // generate the lemma statement
-        // get parameters
-        // this is parametric in the rts, sts, semtys attrs of all trait deps.
-        let ty_params = self.trait_ref.generics.get_all_ty_params_with_assocs();
-        let mut params = self.extra_context_items.clone();
-        params.append(ty_params.get_coq_ty_params().0);
-        params.append(self.trait_ref.generics.get_all_attr_trait_parameters(IncludeSelfReq::Dont).0);
-
-        let ty_term = format!(
-            "{} {}",
-            self.trait_ref.impl_ref.spec_subsumption_statement(),
-            fmt_list!(params.make_using_terms(), " ")
-        );
-
         doc.push(coq::command::Lemma {
             name: lemma_name.to_owned(),
-            params,
-            ty: coq::term::Type::Literal(ty_term),
+            params: coq::binder::BinderList::empty(),
+            ty: coq::term::Type::Literal(self.trait_ref.impl_ref.spec_subsumption_statement()),
             body: coq::proof::Proof::new(coq::proof::Terminator::Qed, |proof| {
                 proof.push(model::LTac::SolveTraitInclPrelude(
                     self.trait_ref.impl_ref.spec_subsumption_statement(),
@@ -1690,8 +1688,6 @@ impl fmt::Display for ImplSpec<'_> {
         let section = coq::section::Section::new(self.trait_ref.impl_ref.spec_record(), |section| {
             section.push(coq::command::Context::refinedrust());
 
-            section.push(coq::command::Context::new(self.extra_context_items.clone()));
-
             // Instantiate with the parameter and associated types
             let params_inst = self.trait_ref.get_ordered_params_inst();
 
@@ -1704,6 +1700,7 @@ impl fmt::Display for ImplSpec<'_> {
                 self.trait_ref.of_trait,
                 false,
                 &self.trait_ref.impl_ref.spec_record(),
+                self.extra_context_items.clone(),
             )
             .unwrap();
 

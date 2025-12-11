@@ -252,6 +252,11 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
         })
     }
 }
+impl From<RRCoqContextItem> for coq::binder::Binder {
+    fn from(x: RRCoqContextItem) -> Self {
+        Self::new_generalized(coq::binder::Kind::MaxImplicit, None, coq::term::Type::Literal(x.item))
+    }
+}
 
 #[expect(clippy::needless_pass_by_value)]
 pub(crate) fn str_err(e: parse::Error) -> String {

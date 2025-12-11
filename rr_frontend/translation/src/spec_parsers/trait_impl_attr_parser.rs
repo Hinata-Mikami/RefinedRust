@@ -7,17 +7,20 @@
 use std::collections::BTreeMap;
 
 use attribute_parse::MToken;
-use attribute_parse::parse::{self, Peek as _};
+use attribute_parse::parse::{self, Parse as _, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
 
-use crate::spec_parsers::parse_utils::{IdentOrTerm, ParamLookup, attr_args_tokens, str_err};
+use crate::spec_parsers::parse_utils::{
+    IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
+};
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::instantiate("x" := "True")`, which will instantiate a specification attribute "x" to a given term
 ///   "True"
 /// - `rr::derive_instantiate`, similar, but on an ADT with a `derive` attribute
+/// - `rr::context` for specifying extra context items
 pub(crate) trait TraitImplAttrParser {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
@@ -32,8 +35,10 @@ pub(crate) trait TraitImplAttrParser {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitImplAttrs {
-    pub attrs: specs::traits::SpecAttrsInst,
+    pub(crate) attrs: specs::traits::SpecAttrsInst,
+    pub(crate) context_items: coq::binder::BinderList,
 }
+
 impl TraitImplAttrs {
     pub(crate) fn filter_for_attrs(
         &self,
@@ -102,6 +107,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<TraitImplAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
+        let mut context_items = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -119,6 +125,11 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
                         return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
                     }
                 },
+                "context" => {
+                    let context_item = RRCoqContextItem::parse(&buffer, self.scope).map_err(str_err)?;
+                    let param = context_item.into();
+                    context_items.push(param);
+                },
                 "export_as" | "only_spec" | "trust_me" | "skip" | "verify" => (),
                 _ => {
                     return Err(format!("unknown attribute for trait impl specification: {:?}", it.path));
@@ -128,6 +139,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
         Ok(TraitImplAttrs {
             attrs: specs::traits::SpecAttrsInst::new(trait_attrs),
+            context_items: coq::binder::BinderList::new(context_items),
         })
     }
 
@@ -136,6 +148,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
         attrs: &'a [&'a hir::AttrItem],
     ) -> Result<TraitImplAttrs, String> {
         let mut trait_attrs = BTreeMap::new();
+        let mut context_items = Vec::new();
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -146,17 +159,26 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            if seg.name.as_str() == "derive_instantiate" {
-                let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
-                if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
-                    return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
-                }
+            match seg.name.as_str() {
+                "derive_instantiate" => {
+                    let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
+                    if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
+                        return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
+                    }
+                },
+                "context" => {
+                    let context_item = RRCoqContextItem::parse(&buffer, self.scope).map_err(str_err)?;
+                    let param = context_item.into();
+                    context_items.push(param);
+                },
+                _ => (),
             }
             // rest is handled by the ADT spec parser
         }
 
         Ok(TraitImplAttrs {
             attrs: specs::traits::SpecAttrsInst::new(trait_attrs),
+            context_items: coq::binder::BinderList::new(context_items),
         })
     }
 }

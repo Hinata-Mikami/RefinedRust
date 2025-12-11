@@ -677,7 +677,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             && env.tcx().trait_id_of_impl(impl_did).is_some()
         {
             // we are in a trait impl
-            let (impl_ref, _) = trait_registry.get_trait_impl_info(impl_did)?;
+            let (impl_ref, _, _) = trait_registry.get_trait_impl_info(impl_did)?;
             for attr in &impl_ref.of_trait.declared_attrs {
                 let term = impl_ref.get_attr_record_item_term(attr);
                 let path = vec![RustPathElem::AssocItem(attr.to_owned())];

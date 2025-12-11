@@ -8,7 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log::{info, trace};
-use radium::specs;
+use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::type_ir::TypeFoldable as _;
@@ -474,7 +474,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
-            return Err(TranslationError::TraitTranslation(Error::UnregisteredImpl(impl_did)));
+            return Err(TranslationError::TraitTranslation(Error::UnregisteredImpl(impl_did, trait_did)));
         };
 
         trace!("leave TR::get_impl_spec_term");
@@ -1036,7 +1036,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn check_for_derive_trait_attrs(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<Option<specs::traits::SpecAttrsInst>, TranslationError<'tcx>> {
+    ) -> Result<Option<(specs::traits::SpecAttrsInst, coq::binder::BinderList)>, TranslationError<'tcx>> {
         let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
         let ty::ImplSubject::Trait(trait_ref) = subject else {
             return Err(Error::NotATraitImpl(trait_impl_did).into());
@@ -1061,7 +1061,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
 
         if let Ok(attrs) = res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
-            Ok(Some(attrs))
+            Ok(Some((attrs, res.context_items)))
         } else {
             Ok(None)
         }
@@ -1072,7 +1072,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     pub(crate) fn get_trait_impl_info(
         &self,
         trait_impl_did: DefId,
-    ) -> Result<(specs::traits::RefInst<'def>, BTreeSet<OrderedDefId>), TranslationError<'tcx>> {
+    ) -> Result<
+        (specs::traits::RefInst<'def>, BTreeSet<OrderedDefId>, coq::binder::BinderList),
+        TranslationError<'tcx>,
+    > {
         let trait_did = self
             .env
             .tcx()
@@ -1094,16 +1097,16 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // parse specification
         let trait_impl_attrs = attrs::filter_for_tool(self.env.get_attributes(trait_impl_did));
-        let impl_spec = if !trait_impl_attrs.is_empty() || trait_spec_ref.declared_attrs.is_empty() {
+        let (impl_spec, context_items) = if !trait_impl_attrs.is_empty() {
             let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
             let res = attr_parser
                 .parse_trait_impl_attrs(&trait_impl_attrs)
                 .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
-            res.attrs
-        } else if super::is_derive_trait_with_no_annotations(self.env.tcx(), trait_did) == Some(true) {
-            specs::traits::SpecAttrsInst::new(BTreeMap::new())
-        } else if super::is_derive_trait_with_annotations(self.env.tcx(), trait_did) == Some(true) {
-            let Some(attrs) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
+            (res.attrs, res.context_items)
+        } else if super::is_derive_trait_with_no_annotations(self.env.tcx(), trait_did) == Some(true)
+            || super::is_derive_trait_with_annotations(self.env.tcx(), trait_did) == Some(true)
+        {
+            let Some((attrs, context_items)) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
                 let err = error::Message::TraitTranslation(Error::TraitImplSpec(
                     trait_impl_did,
                     "No specification provided".to_owned(),
@@ -1115,7 +1118,9 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                     .span_err(self.env.tcx().def_span(trait_impl_did), err)
                     .into());
             };
-            attrs
+            (attrs, context_items)
+        } else if trait_spec_ref.declared_attrs.is_empty() {
+            (specs::traits::SpecAttrsInst::new(BTreeMap::new()), coq::binder::BinderList::empty())
         } else {
             let err = error::Message::TraitTranslation(Error::TraitImplSpec(
                 trait_impl_did,
@@ -1174,6 +1179,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 impl_spec,
             ),
             deps,
+            context_items,
         ))
     }
 }

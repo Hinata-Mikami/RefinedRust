@@ -1848,7 +1848,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
         trace!("Assembling trait impl {trait_impl_id:?}");
 
         let process_impl = || -> Result<(specs::traits::ImplSpec<'_>, BTreeSet<OrderedDefId>), base::TranslationError<'tcx>> {
-            let (impl_info, deps) = vcx.trait_registry.get_trait_impl_info(did)?;
+            let (impl_info, deps, context_items) = vcx.trait_registry.get_trait_impl_info(did)?;
             let assoc_items: &'tcx ty::AssocItems = tcx.associated_items(did);
             trace!("impl assoc items: {assoc_items:?}");
 
@@ -1890,13 +1890,13 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                             let mut generics = scope::Params::new_from_generics(tcx, params, Some(assoc_item.def_id));
                             generics.add_param_env(assoc_item.def_id, vcx.env, vcx.type_translator, vcx.trait_registry)?;
                             // TODO: We don't respect dependencies of the direct scope on the
-                            // surrounding scope here. For instance for assoc type constraints. 
-                            // 
+                            // surrounding scope here. For instance for assoc type constraints.
+                            //
                             // Dirty fix: I introduce let bindings in the translation for the inst
                             // => let's just do this for now.
                             //
                             // Better: we should already substitute suitably in Rust.
-                            // But how do I do that? This seems a bit difficult. 
+                            // But how do I do that? This seems a bit difficult.
 
                             // add late bounds
                             let sig = ty.fn_sig(vcx.env.tcx());
@@ -1921,7 +1921,9 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
             let instance_spec = specs::traits::InstanceSpec::new(methods);
 
             // assemble the spec and register it
-            let spec = specs::traits::ImplSpec::new(impl_info, instance_spec, coq::binder::BinderList::empty());
+            let spec = specs::traits::ImplSpec::new(impl_info,
+                instance_spec,
+                context_items);
             Ok((spec, deps))
         };
 

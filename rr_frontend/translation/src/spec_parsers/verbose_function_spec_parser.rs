@@ -914,12 +914,9 @@ where
             "context" => {
                 // TODO: do not allow this on closures?
                 let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
-                let param = coq::binder::Binder::new_generalized(
-                    coq::binder::Kind::MaxImplicit,
-                    None,
-                    coq::term::Type::Literal(context_item.item),
-                );
-                if context_item.at_end {
+                let at_end = context_item.at_end;
+                let param = context_item.into();
+                if at_end {
                     self.fn_requirements.late_coq_params.push(param);
                 } else {
                     self.fn_requirements.early_coq_params.push(param);

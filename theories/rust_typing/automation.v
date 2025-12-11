@@ -1032,6 +1032,7 @@ Ltac print_remaining_sidecond :=
 
 (* Prelude for trait incl files *)
 Ltac solve_trait_incl_prelude :=
+  intros;
   solve_trait_incl_prepare;
   solve_trait_incl_core;
   first [
