@@ -151,20 +151,20 @@ Proof.
 Qed.
  *)
 
-
-
-Global Instance simpl_and_unsafe_apply_evar_right {A B} (f g : A → B) (a y : A) `{!IsProtected y} :
-  SimplAndUnsafe (f a = g y) (λ T, a = y ∧ f = g ∧ T) | 1000.
+Global Instance simpl_and_unsafe_apply_evar_right {A B} (f g : A → B) (a y : A) `{!IsProtected y} `{!TCDone (f = g)} :
+  SimplAndUnsafe (f a = g y) (λ T, a = y ∧ T) | 1000.
 Proof.
+  unfold TCDone in *. subst g.
   rewrite /SimplAndUnsafe.
-  intros T (<- & <- & HT).
+  intros T (<- & HT).
   done.
 Qed.
-Global Instance simpl_and_unsafe_apply_evar_left {A B} (f g : A → B) (a y : A) `{!IsProtected y} :
-  SimplAndUnsafe (f y = g a) (λ T, a = y ∧ f = g ∧ T) | 1000.
+Global Instance simpl_and_unsafe_apply_evar_left {A B} (f g : A → B) (a y : A) `{!IsProtected y} `{!TCDone (f = g)} :
+  SimplAndUnsafe (f y = g a) (λ T, a = y ∧ T) | 1000.
 Proof.
+  unfold TCDone in *. subst g.
   rewrite /SimplAndUnsafe.
-  intros T (<- & <- & HT).
+  intros T (<- & HT).
   done.
 Qed.
 
@@ -309,4 +309,18 @@ Global Instance simpl_both_iff_true (P : Prop) :
   SimplBothRel (iff) True P P.
 Proof.
   unfold SimplBothRel. naive_solver.
+Qed.
+
+Global Instance simpl_both_not P1 P1' :
+  SimplBoth P1 P1' →
+  SimplBoth (¬ P1) (¬ P1').
+Proof.
+  unfold SimplBoth. naive_solver.
+Qed.
+
+(* We usually want to keep a fact about the length for lia to understand *)
+Global Instance simpl_impl_not_empty {A} (xs : list A) :
+  SimplImpl false (xs ≠ []) (λ T, (xs ≠ []) → (0 < length xs)%nat → T) | 20.
+Proof.
+  intros T. destruct xs; simpl; naive_solver lia.
 Qed.

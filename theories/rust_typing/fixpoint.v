@@ -576,4 +576,29 @@ Section rules.
   Qed.
   Definition mut_subtype_fixpoint_r_inst := [instance @mut_subtype_fixpoint_r].
   Global Existing Instance mut_subtype_fixpoint_r_inst | 6.
+
+  Lemma mut_eqtype_fixpoint_id E L  T :
+    mut_eqtype E L (type_fixpoint F) (type_fixpoint F) T :-
+    return T.
+  Proof.
+    unfold mut_eqtype.
+    iIntros "$". iPureIntro.
+    reflexivity.
+  Qed.
+  Definition mut_eqtype_fixpoint_id_inst := [instance @mut_eqtype_fixpoint_id].
+  Global Existing Instance mut_eqtype_fixpoint_id_inst | 5.
+
+  Lemma mut_eqtype_fixpoint_r (ty1 : type rt) E L  T :
+    mut_eqtype E L ty1 (type_fixpoint F) T :-
+    return (mut_eqtype E L ty1 (F (type_fixpoint F)) T).
+  Proof.
+    unfold mut_eqtype.
+    iIntros "(%Ha & $)". iPureIntro.
+    etrans; first apply Ha.
+    split.
+    - apply type_fixpoint_subtype_2.
+    - apply type_fixpoint_subtype_1.
+  Qed.
+  Definition mut_eqtype_fixpoint_r_inst := [instance @mut_eqtype_fixpoint_r].
+  Global Existing Instance mut_eqtype_fixpoint_r_inst | 6.
 End rules.

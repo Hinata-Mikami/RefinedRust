@@ -777,7 +777,7 @@ lazymatch P with
   | trait_incl_marker _ => split; [shelve_sidecond |]
   | fast_eq_hint _ =>
       split; [
-        unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | ]
+        first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
 end.
 
 (** ** Hints for automation *)
