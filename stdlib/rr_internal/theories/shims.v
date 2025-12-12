@@ -223,7 +223,7 @@ Proof.
     iIntros (?) "#CTX #HE HL Hcont".
     rewrite /Box.
     unfold_no_enrich. inv_layout_alg.
-    match goal with | H: (ly_size ?Hly) ≠ 0%nat |- _ => rename Hly into T_st_ly end.
+    match goal with | H: ly_size ?Hly ≠ 0%nat |- _ => rename Hly into T_st_ly end.
     have: (Z.of_nat $ ly_size T_st_ly) ∈ USize by done.
     opose proof* (ly_align_log_in_usize T_st_ly) as Ha.
     { open_cache. sidecond_hook. }
@@ -237,7 +237,7 @@ Proof.
     { done. }
     { simplify_layout_goal. rewrite /i2v Hsz /=. by eapply val_to_of_Z. }
     { simplify_layout_goal. rewrite /i2v Halign /=. by eapply val_to_of_Z. }
-    { simplify_layout_assum.  case_bool_decide; [lia | lia]. }
+    { simplify_layout_assum. lia. }
     iIntros "!> %l Hl Hfree %Hly [Hcred1 Hcred] Hat".
     iEval (rewrite (additive_time_receipt_succ 1)) in "Hat".
     iDestruct "Hat" as "[Hat1 Hat]".

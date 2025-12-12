@@ -344,6 +344,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // surrounding function scope.
         // We have to filter these.
         let closure_region_count = inst.get_lfts().len();
+        trace!(
+            "computing surrounding region count: {:?} - {late_inst:?} - {capture_regions_inst:?}",
+            inst.get_lfts()
+        );
         let surrounding_region_count = closure_region_count - late_inst.len() - capture_regions_inst.len();
         for x in &inst.get_lfts()[..surrounding_region_count] {
             lft_param_inst_hint.push(x.to_owned());

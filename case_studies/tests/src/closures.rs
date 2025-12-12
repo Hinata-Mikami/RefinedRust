@@ -76,7 +76,6 @@ fn closure_test_arg_fn_2<T>(x: T)
 #[rr::requires(#trait T::Pre := "λ _ _ _, True%I")]
 #[rr::requires(#trait T::Post := "λ _ _ _ ret, True%I")]
 #[rr::requires(#trait T::PostMut := "λ _ _ _ _ _, True%I")]
-
 fn closure_test_arg_fnmut_1<T>(mut x: T)
     where T: FnMut()
 {
@@ -397,6 +396,71 @@ fn closure_test_hrtb_2() {
     assert!(x(&b) == 8);
 }
 
+// Late bound 
+#[rr::verify]
+fn closure_test_late_bound() {
+    let a = 42;
+    let x = 
+        #[rr::verify]
+        |y: &i32| {
+            a;
+        };
+}
+
+#[rr::verify]
+fn closure_test_late_bound2() {
+    let a = 42;
+    let b = 100;
+    let x = 
+        #[rr::verify]
+        |y: &i32, z: &i32| {
+            b;
+            a;
+        };
+}
+
+#[rr::verify]
+fn closure_test_late_bound3(v: &i32) {
+    let a = 42;
+    let b = 100;
+    let x = 
+        #[rr::verify]
+        |y: &i32, z: &i32| {
+            b;
+            a;
+            *v;
+        };
+}
+
+#[rr::verify]
+fn closure_test_late_bound4(v: &i32, w: &i32) {
+    let a = 42;
+    let b = 100;
+    let x = 
+        #[rr::verify]
+        |y: &i32, z: &i32| {
+            b;
+            a;
+            *v;
+            *w;
+        };
+}
+
+
+#[rr::only_spec]
+fn closure_test_late_bound5<'a, T: 'a>(v: &i32, w: &'a i32) {
+    let a = 42;
+    let b = 100;
+    let x = 
+        #[rr::skip]
+        |y: &i32, z: &i32| {
+            b;
+            a;
+            *v;
+            *w;
+        };
+}
+
 
 mod fncoercion {
     fn bla(b: bool) {
@@ -415,3 +479,4 @@ mod fncoercion {
 
 // Note: probably I could try to have a more creusot-like language that compiles down to this
 // representation
+

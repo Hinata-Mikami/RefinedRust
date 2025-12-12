@@ -30,6 +30,9 @@ use crate::traits::resolution;
 pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     env: &Environment<'tcx>,
     params: &[ty::GenericArg<'tcx>],
+    num_universal_regions: u32,
+    num_early_bounds: u32,
+    num_late_bounds: u32,
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
 ) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
     // a mapping of Polonius region IDs to names
@@ -38,14 +41,24 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
 
     let mut region_substitution_early: Vec<Option<facts::Region>> = Vec::new();
 
+    // We have to enumerate universal region variables in the same way that the borrow checker does,
+    // as implemented in `compiler/rustc_borrowck/src/universal_regions.rs`.
+    // There, universal regions are divided into three successive groups:
+    // - global regions, starting at index 0: only 'static
+    // - external regions (in case of closures/coroutines), containing regions from the surrounding scopes
+    //   (i.e. a surrounding function's late bounds, and the regions of the captures)
+    // - local regions, containing local early/late regions The last local region always seems to be the local
+    //   function lifetime.
+    let first_late_bound = num_universal_regions - 1 - num_late_bounds;
+    let first_early_bound = first_late_bound - num_early_bounds;
+
     // we create a substitution that replaces early bound regions with their Polonius
     // region variables
     let mut subst_early_bounds: Vec<ty::GenericArg<'tcx>> = Vec::new();
-    let mut num_early_bounds = 0;
+    let mut early_count = 0;
     for a in params {
         if let ty::GenericArgKind::Lifetime(r) = a.kind() {
-            // skip over 0 = static
-            let next_id = facts::Region::from_u32(num_early_bounds + 1);
+            let next_id = facts::Region::from_u32(first_early_bound + early_count);
             let revar = ty::Region::new_var(env.tcx(), next_id.into());
             subst_early_bounds.push(ty::GenericArg::from(revar));
 
@@ -55,17 +68,17 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
                 ty::RegionKind::ReEarlyParam(r) => {
                     let mut name = strip_coq_ident(r.name.as_str());
                     if name == "_" {
-                        name = format!("{num_early_bounds}");
+                        name = format!("{}", next_id.index());
                     }
                     universal_lifetimes.insert(next_id, coq::Ident::new(&format!("ulft_{}", name)));
                     lifetime_names.insert(name, next_id);
                 },
                 _ => {
                     universal_lifetimes
-                        .insert(next_id, coq::Ident::new(&format!("ulft_{}", num_early_bounds)));
+                        .insert(next_id, coq::Ident::new(&format!("ulft_{}", next_id.index())));
                 },
             }
-            num_early_bounds += 1;
+            early_count += 1;
         } else {
             subst_early_bounds.push(*a);
             region_substitution_early.push(None);
@@ -76,10 +89,10 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     info!("Computed early region map {region_substitution_early:?}");
 
     // add names for late bound region variables
-    let mut num_late_bounds = 0;
+    let mut late_count = 0;
     let mut region_substitution_late = Vec::new();
     for b in sig.bound_vars() {
-        let next_id = facts::Region::from_u32(num_early_bounds + num_late_bounds + 1);
+        let next_id = facts::Region::from_u32(first_late_bound + late_count);
 
         let ty::BoundVariableKind::Region(r) = b else {
             continue;
@@ -118,13 +131,13 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             _ => (),
         }
 
-        num_late_bounds += 1;
+        late_count += 1;
     }
 
     // replace late-bound region variables by re-enumerating them in the same way as the MIR
     // type checker does (that this happens in the same way is important to make the names
     // line up!)
-    let mut next_index = num_early_bounds + 1; // skip over one additional due to static
+    let mut next_index = first_late_bound;
     let mut folder = |_| {
         let cur_index = next_index;
         next_index += 1;
@@ -155,7 +168,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
 }
 
 /// At the start of the function, there's a universal (placeholder) region for reference argument.
-/// These get subsequently relabeled.
+/// These get subsequently relabeled by Polonius.
 /// Given the relabeled region, find the original placeholder region.
 pub(crate) fn find_placeholder_region_for(
     r: facts::Region,
@@ -173,7 +186,7 @@ pub(crate) fn find_placeholder_region_for(
     for (r1, r2, p) in &info.borrowck_in_facts.subset_base {
         let k1 = info.get_region_kind(*r1);
         if *p == root_point && *r2 == r && matches!(k1, polonius_info::RegionKind::Universal(_)) {
-            info!("find placeholder region for: {:?} ⊑ {:?} = r = {:?}", r1, r2, r);
+            info!("find placeholder region for: {:?} ⊑ {:?} = r", r1, r2);
             return Some(*r1);
         }
     }
