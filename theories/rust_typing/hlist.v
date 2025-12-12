@@ -1500,3 +1500,56 @@ Section of_list.
     apply IH. lia.
   Qed.
 End of_list.
+
+
+(** Notation for accessing a concretely known [plist] entry *)
+Section lnth.
+Local Set Program Cases.
+Program Fixpoint lnth_acc {A} (xl: list A) (i: nat) (Hi : i < length xl) : A :=
+  match xl with
+  | [] => _
+  | x :: xl' => match i with 0 => x | S j => lnth_acc xl' j _  end
+  end.
+Next Obligation.
+  intros ???? <-. simpl in *. lia.
+Qed.
+Next Obligation.
+  intros ?? i Hi ? ? <- j <-.
+  simpl in *.
+  lia.
+Qed.
+
+Program Fixpoint pnth_acc {A} {F : A → Type} Xl {struct Xl} : plist F Xl → ∀ i (Hi : i < length Xl), F (lnth_acc Xl i Hi) :=
+  match Xl as Xl return plist F Xl → ∀ i (Hi : i < length Xl), F (lnth_acc Xl i Hi) with
+  | [] => λ xl i Hi, _
+  | _ :: Xl' =>
+      λ xl i Hi,
+        let '(cons_pair x xl') := xl in
+        match i with 0 => x | S j => pnth_acc Xl' xl' j _ end
+  end.
+Next Obligation.
+  simpl. intros. lia.
+Qed.
+Next Obligation.
+  intros. subst.
+  simpl. done.
+Qed.
+Next Obligation.
+  intros. subst. simpl in *. lia.
+Qed.
+Next Obligation.
+  intros. subst. simpl.
+  f_equiv.
+  cbn. apply proof_irrel.
+Qed.
+End lnth.
+
+Program Definition pnth_acc' {A} {F : A → Type} Xl (xl : plist F Xl) i (Hi : bool_decide (i < length Xl) = true) :  F (lnth_acc Xl i _) :=
+  pnth_acc Xl xl i _.
+Next Obligation.
+  intros.
+  apply bool_decide_eq_true_1 in Hi.
+  done.
+Qed.
+
+Notation "a '.:' n" := (pnth_acc' _ a n ltac:(reflexivity)) (at level 1, only parsing).
