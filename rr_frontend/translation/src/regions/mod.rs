@@ -52,24 +52,24 @@ pub(crate) struct EarlyLateRegionMap<'def> {
     // This map is the ground truth of what eventually gets added to the generated Rocq
     // representation.
     // In particular, it contains the mapping of closure capture lifetimes.
-    pub region_names: BTreeMap<facts::Region, specs::Lft>,
+    pub region_names: BTreeMap<facts::Region, specs::LftParam>,
 
     // Maps source-level universal lifetime names to region ids.
     pub lft_names: HashMap<String, facts::Region>,
 }
 
 impl EarlyLateRegionMap<'_> {
-    pub(crate) fn lookup_region(&self, region: facts::Region) -> Option<&specs::Lft> {
+    pub(crate) fn lookup_region(&self, region: facts::Region) -> Option<&specs::LftParam> {
         self.region_names.get(&region)
     }
 
-    pub(crate) fn lookup_early_region(&self, idx: usize) -> Option<&specs::Lft> {
+    pub(crate) fn lookup_early_region(&self, idx: usize) -> Option<&specs::LftParam> {
         let ovid = self.early_regions.get(idx)?;
         let vid = ovid.as_ref()?;
         self.lookup_region(*vid)
     }
 
-    pub(crate) fn lookup_late_region(&self, idx: usize, var: usize) -> Option<&specs::Lft> {
+    pub(crate) fn lookup_late_region(&self, idx: usize, var: usize) -> Option<&specs::LftParam> {
         let binder = self.late_regions.get(idx)?;
         let vid = binder.get(var)?;
         self.lookup_region(*vid)
@@ -99,7 +99,7 @@ impl EarlyLateRegionMap<'_> {
     pub(crate) fn ensure_closure_region(&mut self, r: polonius_info::AtomicRegion) {
         if let btree_map::Entry::Vacant(e) = self.region_names.entry(r.get_region()) {
             let name = format_atomic_region_direct(r, None);
-            e.insert(name);
+            e.insert(specs::LftParam::new(name, specs::LftParamOrigin::LocalLateBound));
 
             self.closure_regions.push(r.get_region());
         }
@@ -123,7 +123,7 @@ pub(crate) fn format_atomic_region_direct(
             if let Some(scope) = scope
                 && let Some(s) = scope.lookup_region(r)
             {
-                return s.clone();
+                return s.clone().into();
             }
 
             ("u", r.index())

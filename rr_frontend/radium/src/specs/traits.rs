@@ -448,7 +448,7 @@ impl<'def> LiteralSpecUse<'def> {
 /// A scope of quantifiers for HRTBs on trait requirements.
 #[derive(Clone, Eq, PartialEq, Debug, Constructor)]
 pub struct ReqScope {
-    pub quantified_lfts: Vec<Lft>,
+    pub quantified_lfts: Vec<super::LftParam>,
 }
 
 impl ReqScope {
@@ -461,7 +461,7 @@ impl ReqScope {
 
     #[must_use]
     pub fn identity_instantiation(&self) -> ReqScopeInst {
-        ReqScopeInst::new(self.quantified_lfts.clone())
+        ReqScopeInst::new(self.quantified_lfts.iter().map(|x| x.lft().to_owned()).collect())
     }
 }
 
@@ -761,7 +761,6 @@ fn make_trait_instance<'def>(
             let direct_scope = spec.get_direct_scope();
             let direct_params = direct_scope.get_direct_ty_params_with_assocs();
             let direct_trait_params = direct_scope.get_direct_attr_trait_parameters(IncludeSelfReq::Dont);
-            let num_all_lifetimes = direct_scope.get_num_lifetimes();
 
             // now just need to generalize over the surrounding scope inst.
             // maybe compute a "surrounding_scope_inst" of the fn spec term
@@ -819,14 +818,8 @@ fn make_trait_instance<'def>(
             // we leave the direct type parameters and associated types of the function uninstantiated
 
             // provide type annotation
-            // counting lifetimes: workaround because we currently don't distinguish direct and surrounding
-            // lifetimes
-            trace!("computing local lifetimes for {record_item_name}: {direct_scope:?} - {scope:?}");
-            let num_direct_lifetimes = if scope.get_num_lifetimes() < num_all_lifetimes {
-                num_all_lifetimes - scope.get_num_lifetimes()
-            } else {
-                0
-            };
+            trace!("computing local lifetimes for {record_item_name}: {:?}", direct_scope.lfts);
+            let num_direct_lifetimes = direct_scope.get_num_direct_lifetimes();
             write!(body, " : (spec_with {num_direct_lifetimes} [")?;
             write_list!(body, &direct_params.params, "; ", LiteralTyParam::refinement_type)?;
 
@@ -848,7 +841,7 @@ fn make_trait_instance<'def>(
         let record_body = coq::term::RecordBody { items: components };
         let mut term = coq::term::Term::RecordBody(record_body);
 
-        // NOTE: hack because we don't compute the correct direct scope for default fns for now:
+        // NOTE: HACK because we don't compute the correct direct scope for default fns for now:
         // dependencies on other surrounding params/assocs are not instantiated correctly.
         // Hence we manually introduce the binders necessary here.
         let self_assoc_inst = spec.methods.iter().next().unwrap().1.self_assoc_types_inst(assoc_types);

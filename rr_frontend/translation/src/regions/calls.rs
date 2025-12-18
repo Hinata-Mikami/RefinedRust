@@ -213,7 +213,7 @@ pub(crate) fn compute_unconstrained_region_annots<'tcx>(
             let early_lft_vid = scope.lifetime_scope.early_regions[*early_region_idx].unwrap();
             let early_lft_name = &scope.lifetime_scope.region_names[&early_lft_vid];
             unconstrained_annotations
-                .push(code::Annotation::CopyLftName(early_lft_name.to_owned(), translated_region));
+                .push(code::Annotation::CopyLftName(early_lft_name.lft().to_owned(), translated_region));
 
             inclusion_tracker.add_static_inclusion(r, early_lft_vid, midpoint);
             inclusion_tracker.add_static_inclusion(early_lft_vid, r, midpoint);

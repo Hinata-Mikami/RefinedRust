@@ -35,7 +35,7 @@ impl<'def, T: ParamLookup<'def>> ParamLookup<'def> for TraitAttrScope<'_, T> {
         self.inner_scope.lookup_ty_param(path)
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam> {
         self.inner_scope.lookup_lft(lft)
     }
 

@@ -9,7 +9,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use log::info;
-use radium::coq;
+use radium::{coq, specs};
+use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 
 use crate::base::*;
@@ -21,6 +22,7 @@ use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::regions::{EarlyLateRegionMap, LftConstr};
 use crate::traits::resolution;
+use crate::types::scope;
 
 /// Process the signature of a function by instantiating the region variables with their
 /// Polonius variables.
@@ -30,6 +32,7 @@ use crate::traits::resolution;
 pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     env: &Environment<'tcx>,
     params: &[ty::GenericArg<'tcx>],
+    of_did: DefId,
     num_universal_regions: u32,
     num_early_bounds: u32,
     num_late_bounds: u32,
@@ -67,15 +70,19 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
             match r.kind() {
                 ty::RegionKind::ReEarlyParam(r) => {
                     let mut name = strip_coq_ident(r.name.as_str());
+                    let origin = scope::determine_origin_of_lft_param(of_did, env.tcx(), r);
+
                     if name == "_" {
                         name = format!("{}", next_id.index());
                     }
-                    universal_lifetimes.insert(next_id, coq::Ident::new(&format!("ulft_{}", name)));
+                    universal_lifetimes.insert(
+                        next_id,
+                        specs::LftParam::new(coq::Ident::new(&format!("ulft_{}", name)), origin),
+                    );
                     lifetime_names.insert(name, next_id);
                 },
                 _ => {
-                    universal_lifetimes
-                        .insert(next_id, coq::Ident::new(&format!("ulft_{}", next_id.index())));
+                    unimplemented!("didn't expect a region of kind {:?}", r);
                 },
             }
             early_count += 1;
@@ -106,27 +113,41 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
                     let mut region_name = strip_coq_ident(name.as_str());
                     if region_name == "_" {
                         region_name = next_id.as_usize().to_string();
-                        universal_lifetimes
-                            .insert(next_id, coq::Ident::new(&format!("ulft_{}", region_name)));
                     } else {
-                        universal_lifetimes
-                            .insert(next_id, coq::Ident::new(&format!("ulft_{}", region_name)));
-                        lifetime_names.insert(region_name, next_id);
+                        lifetime_names.insert(region_name.clone(), next_id);
                     }
+                    universal_lifetimes.insert(
+                        next_id,
+                        specs::LftParam::new(
+                            coq::Ident::new(&format!("ulft_{}", region_name)),
+                            specs::LftParamOrigin::LocalLateBound,
+                        ),
+                    );
                 }
             },
             ty::BoundRegionKind::NamedAnon(name) => {
                 let mut region_name = strip_coq_ident(name.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();
-                    universal_lifetimes.insert(next_id, coq::Ident::new(&format!("ulft_{}", region_name)));
                 } else {
-                    universal_lifetimes.insert(next_id, coq::Ident::new(&format!("ulft_{}", region_name)));
-                    lifetime_names.insert(region_name, next_id);
+                    lifetime_names.insert(region_name.clone(), next_id);
                 }
+                universal_lifetimes.insert(
+                    next_id,
+                    specs::LftParam::new(
+                        coq::Ident::new(&format!("ulft_{}", region_name)),
+                        specs::LftParamOrigin::LocalLateBound,
+                    ),
+                );
             },
             ty::BoundRegionKind::Anon => {
-                universal_lifetimes.insert(next_id, coq::Ident::new(&format!("ulft_{}", next_id.as_usize())));
+                universal_lifetimes.insert(
+                    next_id,
+                    specs::LftParam::new(
+                        coq::Ident::new(&format!("ulft_{}", next_id.as_usize())),
+                        specs::LftParamOrigin::LocalLateBound,
+                    ),
+                );
             },
             _ => (),
         }

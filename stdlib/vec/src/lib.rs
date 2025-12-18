@@ -295,7 +295,6 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
-
 /*
 #[rr::instantiate("SliceIndexProj" := "λ slice i, slice !! (Z.to_nat i)")]
 #[rr::instantiate("SliceIndexInj" := "λ slice i γ, <[Z.to_nat i := PlaceGhost γ]> ($# slice)")]

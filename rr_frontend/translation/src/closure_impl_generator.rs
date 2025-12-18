@@ -114,7 +114,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         let mut lft_hints = vec![];
         for lft in info.scope.get_lfts() {
             // TODO: do we need something more elaborate?
-            lft_hints.push(lft.to_owned());
+            lft_hints.push(lft.lft().to_owned());
         }
         // for the type hints, we have to instantiate all type parameters
         // use the identitity instantiation
@@ -391,15 +391,16 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
             new_scope.add_trait_requirement(req);
         }
         for lft in info.scope.get_lfts() {
-            // TODO: be more careful here: the lifetime of the self argument in the Fn/FnMut closure
-            // belongs to the method
-            // We should separate between direct and surrounding lifetimes also.
-            new_scope.add_lft_param(lft.to_owned());
+            let lft = specs::LftParam::new(lft.lft().to_owned(), specs::LftParamOrigin::SurroundingImpl);
+            new_scope.add_lft_param(lft);
         }
 
         // also add the lifetime for the call function itself as a dummy
         if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
-            new_scope.add_lft_param(coq::Ident::new("_ref_lft"));
+            new_scope.add_lft_param(specs::LftParam::new(
+                coq::Ident::new("_ref_lft"),
+                specs::LftParamOrigin::LocalLateBound,
+            ));
         }
 
         new_scope

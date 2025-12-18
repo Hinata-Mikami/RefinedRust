@@ -97,7 +97,6 @@ pub trait Iterator {
     }
 
 
-    /*
     #[rr::only_spec]
     #[rr::params("P" : "{xt_of Self::Item} → Prop", "ClosInv" : "thread_id → {xt_of Self} → {xt_of F} → iProp Σ")]
     #[rr::requires(#iris "{Inv} π self.cur")]
@@ -159,7 +158,6 @@ pub trait Iterator {
     {
         unimplemented!();
     }
-    */
 
     #[rr::only_spec]
     #[rr::requires(#iris "{Inv} π self")]

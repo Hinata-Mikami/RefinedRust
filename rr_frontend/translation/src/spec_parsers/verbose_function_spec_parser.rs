@@ -1240,7 +1240,7 @@ where
         self.scope.lookup_ty_param(path)
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam> {
         self.scope.lookup_lft(lft)
     }
 

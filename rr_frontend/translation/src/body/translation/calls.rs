@@ -366,7 +366,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // also add the lifetime for the call function itself as a dummy
         if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
-            new_scope.add_lft_param(coq::Ident::new("_ref_lft"));
+            new_scope.add_lft_param(specs::LftParam::new(
+                coq::Ident::new("_ref_lft"),
+                specs::LftParamOrigin::FunctionRebound,
+            ));
         }
 
         // we just requantify all the generics and directly instantiate

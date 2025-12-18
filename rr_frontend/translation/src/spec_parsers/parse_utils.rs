@@ -308,7 +308,7 @@ impl fmt::Display for Projections {
 /// Lookup of lifetime and type parameters given their Rust source names.
 pub(crate) trait ParamLookup<'def> {
     fn lookup_ty_param(&self, path: &RustPath) -> Option<specs::Type<'def>>;
-    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft>;
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam>;
     fn lookup_literal(&self, path: &RustPath) -> Option<String>;
 
     fn lookup_place(&self, _place: &RustPlace, _modifier: Option<String>) -> Option<String> {
@@ -461,7 +461,7 @@ pub(crate) trait ParamLookup<'def> {
                 return "ERR".to_owned();
             };
 
-            annot_meta.add_lft(lft);
+            annot_meta.add_lft(lft.to_owned().into());
             format!("{}{}", &c[1], lft)
         });
 
@@ -580,7 +580,7 @@ mod tests {
     #[derive(Default)]
     struct TestScope {
         /// conversely, map the declaration name of a lifetime to an index
-        lft_names: HashMap<String, specs::Lft>,
+        lft_names: HashMap<String, specs::LftParam>,
 
         /// map types to their index
         ty_names: HashMap<String, specs::LiteralTyParam>,
@@ -607,7 +607,7 @@ mod tests {
             None
         }
 
-        fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+        fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam> {
             self.lft_names.get(lft)
         }
 

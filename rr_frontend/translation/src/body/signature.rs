@@ -92,6 +92,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
             env,
             params,
+            proc_did,
             num_universal_regions,
             num_early_bounds,
             num_late_bounds,
@@ -145,7 +146,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         region_substitution: &mut regions::EarlyLateRegionMap<'def>,
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
-    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<specs::Lft>) {
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<specs::LftParam>) {
         // Process the lifetime parameters that come from the captures
         // Sideeffect: adds the regions that come from the captures (which may be local to the
         // surrounding function) to the region map, so that they appear as region parameters of the
@@ -250,6 +251,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             regions::init::replace_fnsig_args_with_polonius_vars(
                 env,
                 params,
+                proc.get_id(),
                 num_universals as u32,
                 num_early_bounds,
                 num_late_bounds,
@@ -272,6 +274,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // captures to the region map.
         let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) =
             Self::compute_closure_meta(clos_args, closure_arg, &mut region_substitution, info, env);
+        let maybe_outer_lifetime = maybe_outer_lifetime.map(|x| x.lft().to_owned());
 
         trace!("fixed_closure_arg_ty={fixed_closure_arg_ty:?}");
 
@@ -349,7 +352,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
 
         let mut generics = t.translated_fn.spec.get_generics().to_owned();
-        // remove the direct lifetime param
+        // remove the direct lifetime param, which is a latebound of the function, not the impl
         if let Some(lft) = &maybe_outer_lifetime {
             generics.remove_lft_param(lft);
         }
@@ -432,6 +435,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
             env,
             params,
+            proc.get_id(),
             num_universals as u32,
             num_early_bounds,
             num_late_bounds,

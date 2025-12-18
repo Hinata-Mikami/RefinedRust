@@ -62,7 +62,7 @@ impl<'def> ParamLookup<'def> for FunctionState<'_, 'def> {
         self.generic_scope.lookup_ty_param(path)
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam> {
         let vid = self.lifetime_scope.lft_names.get(lft)?;
         self.lifetime_scope.region_names.get(vid)
     }
@@ -380,21 +380,21 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .lifetime_scope
                     .lookup_early_region(region.index as usize)
                     .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
                     .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
                     .scope
                     .lookup_region_idx(region.index as usize)
                     .ok_or(TranslationError::UnknownEarlyRegion(region))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
@@ -409,21 +409,21 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                     .lifetime_scope
                     .lookup_late_region(binder, var)
                     .ok_or(TranslationError::UnknownLateRegion(binder, var))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::TranslateAdt(scope) => {
                 let lft = scope
                     .scope
                     .lookup_late_region_idx(binder, var)
                     .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::TraitReqs(scope) => {
                 let lft = scope
                     .scope
                     .lookup_late_region_idx(binder, var)
                     .ok_or(TranslationError::UnknownLateRegionOutsideFunction(binder, var))?;
-                Ok(lft.to_owned())
+                Ok(lft.lft().to_owned())
             },
             STInner::CalleeTranslation(_) => Ok(coq::Ident::new("DUMMY")),
         }
@@ -446,7 +446,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                         .lookup_region(v)
                         .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.to_owned())
+                    Ok(r.lft().to_owned())
                 }
             },
             STInner::TraitReqs(scope) => {
@@ -465,7 +465,7 @@ impl<'def, 'tcx> STInner<'_, 'def, 'tcx> {
                         .lookup_region(v)
                         .ok_or(TranslationError::UnknownPoloniusRegion(v))?;
                     info!("Translating region: ReVar {:?} as {:?}", v, r);
-                    Ok(r.to_owned())
+                    Ok(r.lft().to_owned())
                     //info!("Translating region: ReVar {:?} as None (trait)", v);
                     //return Err(TranslationError::UnknownPoloniusRegion(v));
                 }

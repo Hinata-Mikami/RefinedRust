@@ -82,7 +82,7 @@ impl AdtUseKey {
 
 #[derive(Clone, Debug)]
 enum Param {
-    Region(specs::Lft),
+    Region(specs::LftParam),
     Ty(specs::LiteralTyParam),
     // Note: we do not currently support Const params
     Const,
@@ -95,7 +95,7 @@ impl Param {
         }
     }
 
-    const fn as_region(&self) -> Option<&specs::Lft> {
+    const fn as_region(&self) -> Option<&specs::LftParam> {
         match self {
             Self::Region(lit) => Some(lit),
             _ => None,
@@ -110,10 +110,10 @@ pub(crate) struct Params<'tcx, 'def> {
     scope: Vec<Param>,
     /// maps De Bruijn indices for late lifetimes to the lifetime
     /// since rustc groups De Bruijn indices by (binder, var in the binder), this is a nested vec.
-    late_scope: Vec<Vec<specs::Lft>>,
+    late_scope: Vec<Vec<specs::LftParam>>,
     /// extra lifetimes, mainly used for regions in closure captures which have no formal Rust
     /// parameters
-    extra_scope: Vec<specs::Lft>,
+    extra_scope: Vec<specs::LftParam>,
 
     // lifetime constraints
     lifetime_inclusions: Vec<specs::LftConstr<'def>>,
@@ -182,7 +182,7 @@ impl<'def> ParamLookup<'def> for Params<'_, 'def> {
         self.trait_scope.assoc_ty_names.get(path).cloned()
     }
 
-    fn lookup_lft(&self, lft: &str) -> Option<&specs::Lft> {
+    fn lookup_lft(&self, lft: &str) -> Option<&specs::LftParam> {
         let idx = self.lft_names.get(lft)?;
         self.lookup_region_idx(*idx)
     }
@@ -282,11 +282,24 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 {
                     lft_names.insert(name.as_str().to_owned(), scope.len());
                     let name = format!("ulft_{}", name);
-                    scope.push(Param::Region(coq::Ident::new(&name)));
+
+                    let ty::RegionKind::ReEarlyParam(early) = r.kind() else {
+                        unreachable!("should have early param");
+                    };
+                    let origin = if let Some(of_did) = with_origin {
+                        determine_origin_of_lft_param(of_did, tcx, early)
+                    } else {
+                        specs::LftParamOrigin::LocalEarlyBound
+                    };
+
+                    scope.push(Param::Region(specs::LftParam::new(coq::Ident::new(&name), origin)));
                 } else {
                     let name = coq::Ident::new(&format!("ulft_{}", region_count));
                     region_count += 1;
-                    scope.push(Param::Region(name));
+                    scope.push(Param::Region(specs::LftParam::new(
+                        name,
+                        specs::LftParamOrigin::LocalEarlyBound,
+                    )));
                 }
             } else if let Some(ty) = p.as_type() {
                 if let ty::TyKind::Param(x) = ty.kind() {
@@ -327,14 +340,14 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Lookup a region parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_region_idx(&self, idx: usize) -> Option<&specs::Lft> {
+    pub(crate) fn lookup_region_idx(&self, idx: usize) -> Option<&specs::LftParam> {
         let lft = self.scope.get(idx)?;
         lft.as_region()
     }
 
     /// Lookup a late region parameter by its De Bruijn index.
     #[must_use]
-    pub(crate) fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&specs::Lft> {
+    pub(crate) fn lookup_late_region_idx(&self, binder: usize, var: usize) -> Option<&specs::LftParam> {
         let binder = self.late_scope.get(binder)?;
         let lft = binder.get(var)?;
         Some(lft)
@@ -372,12 +385,12 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 |x| coq::Ident::new(&format!("lft_{}", x.as_str())),
             );
 
-            new_binder.push(name.clone());
+            new_binder.push(specs::LftParam::new(name.clone(), specs::LftParamOrigin::ForBinder));
             if region.get_name(tcx).is_some() {
                 self.lft_names.insert(format!("{}", name), idx);
             }
 
-            regions_to_quantify.push(name);
+            regions_to_quantify.push(specs::LftParam::new(name, specs::LftParamOrigin::ForBinder));
         }
         // NB only push a binder if there were any regions bound here.
         if !new_binder.is_empty() {
@@ -389,7 +402,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     /// Add bound regions when descending under a for<...> binder.
     pub(crate) fn add_trait_req_scope(&mut self, scope: &specs::traits::ReqScope) {
-        self.late_scope.insert(0, scope.quantified_lfts.clone());
+        let binder = scope.quantified_lfts.clone();
+        self.late_scope.insert(0, binder);
     }
 
     /// Update the lifetimes in this scope with the information from a region map for a function.
@@ -412,8 +426,15 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             let mut new_binder = Vec::new();
             for late_vid in binder {
                 let name = map.region_names.get(late_vid);
-                let name =
-                    name.map_or_else(|| coq::Ident::new(&format!("_lft_for_fn_{}", idx)), ToOwned::to_owned);
+                let name = name.map_or_else(
+                    || {
+                        specs::LftParam::new(
+                            coq::Ident::new(&format!("_lft_for_fn_{}", idx)),
+                            specs::LftParamOrigin::LocalLateBound,
+                        )
+                    },
+                    ToOwned::to_owned,
+                );
                 new_binder.push(name);
                 idx += 1;
             }
@@ -436,8 +457,8 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                     let lft2 = map.lookup_region(*r2).unwrap();
 
                     self.lifetime_inclusions.push(specs::LftConstr::LftOutlives(
-                        specs::UniversalLft::Local(lft2.to_owned()),
-                        specs::UniversalLft::Local(lft1.to_owned()),
+                        specs::UniversalLft::Local(lft2.lft().to_owned()),
+                        specs::UniversalLft::Local(lft1.lft().to_owned()),
                     ));
                 },
                 regions::LftConstr::TypeOutlives(ty, r) => {
@@ -445,7 +466,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
                     self.lifetime_inclusions.push(specs::LftConstr::TypeOutlives(
                         ty.to_owned(),
-                        specs::UniversalLft::Local(lft.to_owned()),
+                        specs::UniversalLft::Local(lft.lft().to_owned()),
                     ));
                 },
             }
@@ -454,9 +475,11 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
 
     fn translate_region(&self, region: ty::Region<'tcx>) -> Option<specs::Lft> {
         match region.kind() {
-            ty::RegionKind::ReEarlyParam(early) => self.lookup_region_idx(early.index as usize).cloned(),
+            ty::RegionKind::ReEarlyParam(early) => {
+                self.lookup_region_idx(early.index as usize).map(|x| x.lft().to_owned())
+            },
             ty::RegionKind::ReBound(idx, r) => {
-                self.lookup_late_region_idx(usize::from(idx), r.var.index()).cloned()
+                self.lookup_late_region_idx(usize::from(idx), r.var.index()).map(|x| x.lft().to_owned())
             },
             ty::RegionKind::ReStatic => Some(coq::Ident::new("static")),
             _ => None,
@@ -722,6 +745,41 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     }
 }
 
+pub(crate) fn determine_origin_of_lft_param<'tcx>(
+    did: DefId,
+    tcx: ty::TyCtxt<'tcx>,
+    param: ty::EarlyParamRegion,
+) -> specs::LftParamOrigin {
+    // Check if there is a surrounding trait decl that introduces this parameter
+    if let Some(trait_did) = tcx.trait_of_assoc(did) {
+        let generics: &'tcx ty::Generics = tcx.generics_of(trait_did);
+
+        for this_param in &generics.own_params {
+            if matches!(this_param.kind, ty::GenericParamDefKind::Lifetime)
+                && this_param.name == param.name
+                && this_param.index == param.index
+            {
+                return specs::LftParamOrigin::SurroundingTrait;
+            }
+        }
+    }
+    // Check if there is a surrounding trait impl that introduces this parameter
+    if let Some(impl_did) = tcx.impl_of_assoc(did) {
+        let generics: &'tcx ty::Generics = tcx.generics_of(impl_did);
+
+        for this_param in &generics.own_params {
+            if matches!(this_param.kind, ty::GenericParamDefKind::Lifetime)
+                && this_param.name == param.name
+                && this_param.index == param.index
+            {
+                return specs::LftParamOrigin::SurroundingImpl;
+            }
+        }
+    }
+
+    specs::LftParamOrigin::LocalEarlyBound
+}
+
 impl<'tcx> Params<'tcx, '_> {
     /// Determine the declaration origin of a type parameter of a function.
     fn determine_origin_of_param(
@@ -795,7 +853,10 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
                 },
                 ty::GenericParamDefKind::Lifetime => {
                     lft_names.insert(p.name.as_str().to_owned(), scope.len());
-                    scope.push(Param::Region(coq::Ident::new(&format!("ulft_{}", name))));
+                    scope.push(Param::Region(specs::LftParam::new(
+                        coq::Ident::new(&format!("ulft_{}", name)),
+                        specs::LftParamOrigin::LocalEarlyBound,
+                    )));
                 },
             }
         }

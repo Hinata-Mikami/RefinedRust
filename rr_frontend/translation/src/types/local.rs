@@ -339,7 +339,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Re-bind the function's (early) lifetime parameters
         for i in 0..num_param_regions {
             let lft_name = coq::Ident::new(&format!("ulft_{}", i));
-            scope.add_lft_param(lft_name.clone());
+            scope.add_lft_param(specs::LftParam::new(
+                lft_name.clone(),
+                specs::LftParamOrigin::FunctionRebound,
+            ));
             fn_inst.add_lft_param(lft_name);
         }
 
@@ -353,7 +356,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let lft_name = self
                 .translate_region_var(region)
                 .unwrap_or_else(|_| coq::Ident::new(&format!("ulft_{}", next_lft)));
-            scope.add_lft_param(lft_name.clone());
+            scope.add_lft_param(specs::LftParam::new(
+                lft_name.clone(),
+                specs::LftParamOrigin::FunctionRebound,
+            ));
 
             // Note: since these are not formal parameters of the function, we do not add them to
             // `fn_inst`.
@@ -372,7 +378,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                     );
 
                     // push this to the context.
-                    scope.add_lft_param(name.clone());
+                    scope.add_lft_param(specs::LftParam::new(
+                        name.clone(),
+                        specs::LftParamOrigin::FunctionRebound,
+                    ));
                     fn_inst.add_lft_param(name);
                     // TODO: also add instantiation for callee_lft_param_inst?
                 },

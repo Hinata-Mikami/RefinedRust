@@ -172,6 +172,36 @@ impl TypeWithRef<'_> {
 
 pub type Lft = coq::Ident;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LftParamOrigin {
+    SurroundingTrait,
+    SurroundingImpl,
+    LocalEarlyBound,
+    LocalLateBound,
+    ForBinder,
+    /// RefinedRust-specific: a re-bound binder for a generic function
+    FunctionRebound,
+}
+
+#[derive(Clone, Debug, Constructor, Display, PartialEq, Eq)]
+#[display("{}", lft)]
+pub struct LftParam {
+    lft: coq::Ident,
+    origin: LftParamOrigin,
+}
+impl From<LftParam> for Lft {
+    fn from(x: LftParam) -> Self {
+        x.lft
+    }
+}
+
+impl LftParam {
+    #[must_use]
+    pub const fn lft(&self) -> &Lft {
+        &self.lft
+    }
+}
+
 /// A universal lifetime that is not locally owned.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UniversalLft {
@@ -219,8 +249,8 @@ impl TypeAnnotMeta {
         self.escaped_tyvars = tyvars;
     }
 
-    pub fn add_lft(&mut self, lft: &Lft) {
-        self.escaped_lfts.insert(lft.to_owned());
+    pub fn add_lft(&mut self, lft: Lft) {
+        self.escaped_lfts.insert(lft);
     }
 
     pub fn add_type(&mut self, ty: &Type<'_>) {
@@ -635,8 +665,7 @@ pub struct GenericScope<'def, T = traits::LiteralSpecUseRef<'def>> {
     /// trait requirements quantified by a surrounding scope.
     surrounding_trait_requirements: Vec<T>,
 
-    /// TODO: also separate into direct and surrounding
-    lfts: Vec<Lft>,
+    pub(crate) lfts: Vec<LftParam>,
 
     /// lifetime constraints
     lft_constraints: Elctx<'def>,
@@ -813,7 +842,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     }
 
     #[must_use]
-    pub fn get_lfts(&self) -> &[Lft] {
+    pub fn get_lfts(&self) -> &[LftParam] {
         &self.lfts
     }
 
@@ -837,7 +866,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
         }
     }
 
-    pub fn add_lft_param(&mut self, lft: Lft) {
+    pub fn add_lft_param(&mut self, lft: LftParam) {
         self.lfts.push(lft);
     }
 
@@ -846,7 +875,7 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     }
 
     pub fn remove_lft_param(&mut self, lft: &Lft) {
-        if let Some(p) = self.lfts.iter().position(|x| x == lft) {
+        if let Some(p) = self.lfts.iter().position(|x| x.lft() == lft) {
             self.lfts.remove(p);
         }
     }
@@ -863,6 +892,18 @@ impl<'def, T: traits::ReqInfo> GenericScope<'def, T> {
     #[must_use]
     pub(crate) const fn get_num_lifetimes(&self) -> usize {
         self.lfts.len()
+    }
+
+    #[must_use]
+    pub(crate) fn get_num_direct_lifetimes(&self) -> usize {
+        self.lfts
+            .iter()
+            .filter(|x| {
+                x.origin == LftParamOrigin::LocalEarlyBound
+                    || x.origin == LftParamOrigin::LocalLateBound
+                    || x.origin == LftParamOrigin::ForBinder
+            })
+            .count()
     }
 
     /// Format this generic scope.
@@ -1013,7 +1054,7 @@ impl<'def> GenericScope<'def, traits::LiteralSpecUseRef<'def>> {
             surrounding_tys,
             direct_trait_requirements,
             surrounding_trait_requirements,
-            lfts: self.lfts.clone(),
+            lfts: self.lfts.iter().map(|x| x.lft().to_owned()).collect(),
         }
     }
 }

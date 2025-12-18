@@ -1236,8 +1236,13 @@ impl Function<'_> {
         write!(f, "specialize (pose_bb_inv {}) as loop_map;\n", self.loop_invariants)?;
 
         // initialize lifetimes
-        let mut lfts: Vec<_> =
-            self.spec.generics.get_lfts().iter().map(|n| (n.to_owned(), n.to_owned())).collect();
+        let mut lfts: Vec<_> = self
+            .spec
+            .generics
+            .get_lfts()
+            .iter()
+            .map(|n| (n.lft().to_owned(), n.lft().to_owned()))
+            .collect();
         lfts.push((coq::Ident::new("_flft"), coq::Ident::new("ϝ")));
         lfts.push((coq::Ident::new("static"), coq::Ident::new("static")));
         let formatted_lifetimes = make_lft_map_string(&lfts);
