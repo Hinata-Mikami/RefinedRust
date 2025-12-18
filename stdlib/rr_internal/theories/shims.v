@@ -195,7 +195,7 @@ Proof.
     { iApply (ofty_owned_subtype_aligned with "[-H_0] H_0").
       { solve_layout_alg. }
       { done. }
-      iSplitR. { iPureIntro. intros ly1 ly2 Hptr1 Hptr2. simpl in *. f_equiv. by eapply syn_type_has_layout_inj. }
+      iSplitR. { iPureIntro. simpl. apply syn_type_size_eq_refl. }
       iSplitR. { simpl. eauto. }
       iIntros (v2) "Hv".
       iEval (rewrite /ty_own_val/=) in "Hv".

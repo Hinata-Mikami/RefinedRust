@@ -65,9 +65,9 @@ Section deinit.
     - destruct Hstcomp as [<- | Hst]; first apply syn_type_size_eq_refl.
       destruct Hst as (ly1 & Hst & ->). simpl.
       specialize (syn_type_has_layout_inj _ _ _ Hst Halg) as ->.
-      intros ly1 ly2 Halg1 Halg2.
-      specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as ->.
-      apply syn_type_has_layout_untyped_inv in Halg2 as (-> & _); done.
+      eapply syn_type_size_eq_prove; first done.
+      { by eapply syn_type_has_layout_make_untyped. }
+      done.
     - destruct Hstcomp as [<- | Hst]; first done.
       destruct Hst as (ly1 & Hst & ->).
       specialize (syn_type_has_layout_inj _ _ _ Hst Halg) as ->.

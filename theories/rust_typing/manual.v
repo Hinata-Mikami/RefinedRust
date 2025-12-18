@@ -156,6 +156,7 @@ Section updateable_rules.
     iMod "HT" as "$". by iFrame.
   Qed.
 
+  (** Access an array element, moving its ownership out *)
   Lemma updateable_typed_array_access l off st :
     find_in_context (FindLoc l) (λ '(existT _ (lt, r, k, π)),
       typed_array_access π updateable_E updateable_L l off st lt r k (λ L2 rt2 ty2 len2 iml2 rs2 k2 rte lte re,
@@ -233,6 +234,7 @@ Section updateable_rules.
     iModIntro. iExists _. iFrame.
   Qed.
 
+  (** Merge a value *)
   Lemma updateable_merge_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ wl v st,
@@ -266,6 +268,62 @@ Section updateable_rules.
     by iFrame.
   Qed.
 
+  (** Split an into two parts *)
+  Lemma updateable_split_array l (k : nat) :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+    ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗    
+      ∃ rs n (ty : type rt'),
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
+        ⌜k ≤ n⌝ ∗
+        ((l ◁ₗ[π, Owned false] #(take k rs) @ (◁ array_t k ty) -∗
+         (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned false] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
+         introduce_with_hooks updateable_E L2 R2 (λ L3, 
+          updateable_core updateable_E L3))))) 
+    ⊢ P.
+  Proof.
+    iIntros "HT". 
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %rt' & -> & %rs & %n & %ty & HT)"; simpl.
+    rewrite /subsume_full.
+    iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & %Hlt & HT)"; [done.. | ].
+    iMod (array_t_ofty_split _ _ _ k (n - k) with "Hl") as "(Hl1 & Hl2)"; [done | lia | ].
+    unfold introduce_with_hooks.
+    iPoseProof  ("HT" with "Hl1 Hl2 [//] HE HL HR") as "HT". 
+    iMod (fupd_mask_mono with "HT") as "(%L3 & HL & HT)"; first done.
+    by iFrame.
+  Qed.
+
+  (** Reshape an array *)
+  Lemma updateable_reshape_array l num size :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
+      ∃ rs n (ty : type rt'),
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
+        ⌜n = (num * size)%nat⌝ ∗
+        ⌜num ≠ 0%nat⌝ ∗ 
+        (l ◁ₗ[π, Owned false] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗
+         introduce_with_hooks updateable_E L2 R2 (λ L3, 
+          updateable_core updateable_E L3)))) 
+    ⊢ P.
+  Proof.
+    iIntros "HT". 
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX #HE HL".
+    rewrite /FindLoc /find_in_context.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %rt' & -> & %rs & %n & %ty & HT)"; simpl.
+    rewrite /subsume_full.
+    iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & -> & % & HT)"; [done.. | ].
+    iMod (array_t_ofty_reshape _ _ _ _ _ _ size num with "Hl") as "Hl"; [done | lia | lia | ].
+    unfold introduce_with_hooks.
+    iPoseProof  ("HT" with "Hl [//] HE HL HR") as "HT". 
+    iMod (fupd_mask_mono with "HT") as "(%L3 & HL & HT)"; first done.
+    by iFrame.
+  Qed.
+
+
+  (** Subtype a location to a given place type *)
   Lemma updateable_subsume_to l {rt2} (lt2 : ltype rt2) (r2 : place_rfn rt2) :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] r2 @ lt2) (λ L2 R2,
@@ -305,6 +363,7 @@ Section updateable_rules.
     iFrame. iApply ("Hs" with "Hnamed").
   Qed.
 
+  (** Strip a later from a type assignment *)
   Lemma updateable_ltype_strip_later l  :
     (find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ⌜bk = Owned true⌝ ∗ ⌜match ltype_lty _ lt with
@@ -327,6 +386,7 @@ Section updateable_rules.
     by iApply "HT".
   Qed.
 
+  (** Discard the opened invariant on an owned location, removing the obligation to re-establish the invariant *)
   Lemma opened_owned_discard (rt_cur rt_inner rt_full : RT) (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Pre Post π l r :
     l ◁ₗ[π, Owned false] r @ OpenedLtype lt_cur lt_inner lt_full Pre Post -∗
     l ◁ₗ[π, Owned false] r @ lt_cur.

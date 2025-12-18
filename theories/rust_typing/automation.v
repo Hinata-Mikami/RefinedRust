@@ -36,7 +36,7 @@ Ltac solve_protected_eq_hook ::=
       (*end*)
 
   (* don't fail if nothing matches *)
-  | |- _ =>
+  | |- _ => 
       unfold reverse_coercion
   end.
 

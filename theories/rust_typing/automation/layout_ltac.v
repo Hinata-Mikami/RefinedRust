@@ -489,7 +489,7 @@ Ltac solve_layout_size :=
   subst;
   try assumption;
   (* call into lia *)
-  try (simpl; lia)
+  try solve [simpl; try open_jcache; lia ]
   ]
 .
 

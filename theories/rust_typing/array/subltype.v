@@ -327,7 +327,7 @@ Section subltype.
     { iIntros (k).
       iPoseProof (Forall2_big_sepL2 with "HL []") as "(Ha & HL)"; first apply Hsub.
       { rewrite !length_interpret_iml. done. }
-      { iModIntro. iIntros (lt1 lt2) "HL %Heqt".
+      { iModIntro. iIntros (lt1 lt2) "HL _ _ %Heqt".
         iPoseProof (Heqt with "HL CTX HE") as "#Ha". iFrame "HL". iApply "Ha". }
       iApply (big_sepL2_mono with "Ha").
       iIntros (??? ??) "#Heq". iIntros (r). iApply "Heq". }
@@ -438,7 +438,7 @@ Section to_default.
   Proof.
     intros Ha. iIntros (?) "HL #CTX #HE". iIntros (??).
     iPoseProof (Forall_big_sepL with "HL []") as "(Ha & HL)"; first apply Ha.
-    { iModIntro. iIntros (lt) "HL %Heqt". iPoseProof (Heqt with "HL CTX HE") as "#Heq".
+    { iModIntro. iIntros (lt) "HL _%Heqt". iPoseProof (Heqt with "HL CTX HE") as "#Heq".
       iFrame "HL". iApply "Heq". }
     iApply array_ltype_make_defaults.
     done.

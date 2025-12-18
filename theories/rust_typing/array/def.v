@@ -1,7 +1,7 @@
 From refinedrust Require Export type.
 From refinedrust Require Import uninit_def int.
-(*From refinedrust Require Import programs.*)
 From refinedrust Require Import options.
+Local Open Scope nat_scope.
 
 (** * Array types *)
 
@@ -349,6 +349,12 @@ End ne.
 Section lemmas.
   Context `{!typeGS Σ}.
 
+  Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v m :
+    v ◁ᵥ{π, m} r @ array_t len ty -∗ ⌜length r = len⌝.
+  Proof.
+    rewrite /ty_own_val/=. iIntros "(%ly & -> & %Hst & % & $ & _)".
+  Qed.
+
   Lemma array_val_from_uninit π v st1 st2 ly1 ly2 len m :
     syn_type_has_layout st1 ly1 →
     syn_type_has_layout st2 ly2 →
@@ -469,5 +475,186 @@ Section lemmas.
     rewrite /array_own_el_shr. setoid_rewrite offset_loc_offset_loc. rewrite -Hlen1.
     setoid_rewrite Nat2Z.inj_add. done.
   Qed.
+
+  Lemma array_t_own_val_split_reshape {rt} (ty : type rt) π (n : nat) v rs (num size : nat) ly :
+    n = (num * size)%nat →
+    syn_type_has_layout (st_of ty MetaNone) ly →
+    v ◁ᵥ{π, MetaNone} rs @ array_t n ty -∗
+    ⌜mjoin (reshape (replicate num (ly_size ly * size)%nat) v) = v⌝ ∗
+    [∗ list] v'; r' ∈ reshape (replicate num (ly_size ly * size)%nat) v; reshape (replicate num size) rs,
+      v' ◁ᵥ{π, MetaNone} r' @ array_t size ty.
+  Proof.
+    iIntros (-> Hst) "Hv".
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hlyv)".
+    apply syn_type_has_layout_array_inv in Hst' as (ly'' & Hst'' & -> & Hsz).
+    assert (ly'' = ly) as -> by by eapply syn_type_has_layout_inj.
+    opose proof (join_reshape (replicate num (ly_size ly * size)%nat) v _) as Hv_eq.
+    { rewrite sum_list_replicate. rewrite Hlyv {2}/ly_size/=. lia. }
+    opose proof (join_reshape (replicate num size) rs _) as Hrs_eq.
+    { rewrite sum_list_replicate Hlen//. }
+    rewrite -{1}Hv_eq -{1}Hrs_eq.
+    iSplitR; first done.
+    iInduction num as [ | num] "IH" forall (v rs Hlyv Hv_eq Hrs_eq Hlen); simpl; first done.
+    iPoseProof (array_t_own_val_split with "Hv") as "($ & Hv2)".
+    { rewrite length_take. lia. }
+    { rewrite length_join.
+      rewrite fmap_length_reshape; rewrite sum_list_replicate; first done.
+      rewrite length_drop. lia. }
+    { rewrite length_take /size_of_st.
+      rewrite /use_layout_alg' Hst/=.
+      rewrite Hlyv. rewrite ly_size_mk_array_layout. lia. }
+    { rewrite length_join. rewrite fmap_length_reshape.
+      { rewrite sum_list_replicate. rewrite /size_of_st /use_layout_alg' Hst/=. lia. }
+      rewrite sum_list_replicate.
+      rewrite length_drop.
+      rewrite Hlyv ly_size_mk_array_layout. lia. }
+    iApply "IH"; last done; iPureIntro.
+    { rewrite ly_size_mk_array_layout. rewrite ly_size_mk_array_layout in Hsz. lia. }
+    { rewrite /has_layout_val length_drop Hlyv !ly_size_mk_array_layout. lia. }
+    { rewrite join_reshape; first done.
+      rewrite sum_list_replicate length_drop.
+      rewrite Hlyv ly_size_mk_array_layout. lia. }
+    { rewrite join_reshape; first done. rewrite sum_list_replicate length_drop Hlen. lia. }
+    { rewrite length_drop Hlen. lia. }
+  Qed.
+  (* TODO: corresponding merge lemma *)
+
+  Lemma array_t_own_val_reshape F v π {rt} (ty : type rt) rs (n m k : nat) :
+    k ≠ 0%nat →
+    n = (m * k)%nat →
+    v ◁ᵥ{π, MetaNone} rs @ array_t n ty ={F}=∗
+    v ◁ᵥ{π, MetaNone} (<#> reshape (replicate k m) rs) @ array_t k (array_t m ty).
+  Proof.
+    intros ? ->.
+    iIntros "Hv".
+    iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst & %Hlyv)".
+    apply syn_type_has_layout_array_inv in Hst as (ly' & Hst & -> & Hsz).
+    rewrite ly_size_mk_array_layout in Hsz.
+    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
+    iPoseProof (array_t_own_val_split_reshape ty _ _ _ _ k m with "Hv") as "(%Hv & Hv)"; [lia | done | ].
+    iEval (rewrite /ty_own_val/=).
+    iExists (mk_array_layout ly' m). iR.
+    iSplitR. { iPureIntro. eapply syn_type_has_layout_array; [done.. | nia ]. }
+    iSplitR. { iPureIntro. rewrite ly_size_mk_array_layout. lia. }
+    iSplitR. { iPureIntro. rewrite length_fmap length_reshape length_replicate//. }
+    iSplitR. { iPureIntro. rewrite /has_layout_val Hlyv !ly_size_mk_array_layout. lia. }
+    rewrite ly_size_mk_array_layout.
+    rewrite big_sepL2_flip.
+    rewrite big_sepL2_fmap_l.
+    iApply (big_sepL2_wand with "Hv").
+    iApply big_sepL2_intro.
+    { rewrite !length_reshape !length_replicate//. }
+    iModIntro. iModIntro.
+    iIntros (i r v' Hlook1 Hlook2).
+    unfold array_own_el_val.
+    eauto.
+  Qed.
+
   (* Lemmas about ◁ₗ splitting in unfold.v *)
+
+  (* Converting between arrays of integers of different sizes *)
+  Lemma ty_own_val_array_int_to_int v π rs n (it it' : int_type) :
+    (n * ly_size it)%nat = ly_size it' →
+    v ◁ᵥ{π, MetaNone} rs @ array_t n (int it) -∗
+    ∃ x, v ◁ᵥ{π, MetaNone} x @ int it'.
+  Proof.
+    iIntros (Hsz) "Hv".
+    rewrite /ty_own_val/=.
+    iDestruct "Hv" as "(%ly & _ & %Hst & %Hsz' & <- & %Hlyv & Hv)".
+    iPoseProof (big_sepL2_impl _ (λ _ r v, ⌜is_Some (val_to_Z v it)⌝)%I with "Hv []") as "Hv".
+    { iModIntro. iIntros (??? ??). iIntros "(%r' & ? & _ & %Hv)". iPureIntro. done. }
+    iPoseProof (big_sepL2_elim_l with "Hv") as "Hv".
+    iPoseProof (big_sepL_Forall with "Hv") as "%Ha".
+
+    apply syn_type_has_layout_int_inv in Hst as ->.
+    move: Hlyv. rewrite /has_layout_val ly_size_mk_array_layout => Hlyv.
+
+    destruct (val_to_Z v it') eqn:Heq; first by eauto.
+    exfalso.
+    move: Heq.
+    unfold val_to_Z.
+    rewrite bool_decide_true; first last.
+    { move: Hsz Hlyv. unfold ly_size; simpl. lia. }
+    enough (is_Some (val_to_Z_go v)) as (? & ->).
+    { simpl. case_match; done. }
+    apply val_to_Z_go_is_Some.
+    rewrite -(join_reshape (replicate (length rs) (ly_size it)) v); first last.
+    { rewrite sum_list_replicate. rewrite Hlyv. rewrite Nat.mul_comm. done. }
+    apply Forall_Forall_join.
+    apply Forall_lookup_2.
+    intros ?? Hx.
+    apply val_to_Z_go_is_Some.
+    opose proof (Forall_lookup_1 _ _ i x Ha Hx) as Hb.
+    move: Hb.
+    unfold val_to_Z.
+    case_bool_decide; last done.
+    destruct (val_to_Z_go _); done.
+  Qed.
+  Lemma ty_own_val_int_to_array_int v π x n (it it' : int_type) :
+    (n * ly_size it)%nat = ly_size it' →
+    v ◁ᵥ{π, MetaNone} x @ int it' -∗
+    ∃ rs, v ◁ᵥ{π, MetaNone} (<#> rs) @ array_t n (int it).
+  Proof.
+    iIntros (Hsz) "Hv".
+    rewrite /ty_own_val/=.
+    iDestruct "Hv" as "(_ & %Hv)".
+    apply val_to_Z_Some in Hv as (Hv & Hlen).
+    unfold array_own_el_val.
+
+    rewrite -(join_reshape (replicate n (ly_size it)) v) in Hv; first last.
+    { rewrite sum_list_replicate. rewrite Hsz. unfold ly_size; simpl. done. }
+    apply Forall_Forall_join in Hv.
+    iPoseProof (Forall_big_sepL _ (λ v, ∃ r, v ◁ᵥ{π, MetaNone} r @ int it)%I True%I with "[//] []") as "(Ha & _)".
+    { apply Hv. }
+    { iModIntro. iIntros (?) "_ %Hel %Hx".
+      opose proof (val_to_Z_Some_1 _ _ Hx _) as (r' & ?).
+      { eapply reshape_replicate_elem_length in Hel; first apply Hel.
+        move: Hsz. rewrite /ly_size/=. lia. }
+      iL. iExists r'. iR. simpl. done. }
+    iPoseProof (big_sepL_exists with "Ha") as "(%rs' & Ha')".
+    iPoseProof (big_sepL2_length with "Ha'") as "%Hlen'".
+    iExists rs'.
+    iExists (it_layout it). iR.
+    iSplitR. { iPureIntro. by apply syn_type_has_layout_int. }
+    iSplitR. { iPureIntro. specialize (it_size_bounded it'). lia. }
+    iSplitR. { iPureIntro. rewrite length_fmap -Hlen'.
+      rewrite length_reshape length_replicate//. }
+    iSplitR. { iPureIntro. rewrite /has_layout_val Hlen ly_size_mk_array_layout.
+      move: Hsz Hlen. rewrite /ly_size/=. lia. }
+    rewrite big_sepL2_flip big_sepL2_fmap_l. iApply (big_sepL2_impl with "Ha'").
+    iModIntro. iIntros (??? ??) "Hv".
+    iFrame. done.
+  Qed.
+
+  Lemma ty_own_val_array_subtype_strong F v π {rt} (ty : type rt) {rt'} (ty' : type rt') n rs :
+    syn_type_size_eq (st_of ty MetaNone) (st_of ty' MetaNone) →
+    (□ ∀ v r, v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗ ∃ r', v ◁ᵥ{π, MetaNone} r' @ ty') -∗
+    v ◁ᵥ{π, MetaNone} (<#> rs) @ array_t n ty ={F}=∗
+    ∃ rs', v ◁ᵥ{π, MetaNone} (<#> rs') @ array_t n ty'.
+  Proof.
+    iIntros (Hsteq) "#Hv".
+    iEval (rewrite /ty_own_val/=).
+    iIntros "(%ly & _ & %Hst & %Hsz & <- & %Hlyv & Ha)".
+    rewrite big_sepL2_fmap_l. rewrite length_fmap.
+    iPoseProof (big_sepL2_impl _ (λ _ r' v', |={F}=> ∃ r'', array_own_el_val π ty' #r'' v')%I with "Ha []") as "Ha".
+    { iModIntro. iIntros (??? Hlook1 Hlook2) "(%r0 & <- & Ha)".
+      iMod ("Hv" with "Ha") as "(% & Ha)". iExists _. iExists _. iR. done. }
+    iMod (big_sepL2_fupd with "Ha") as "Ha".
+    iPoseProof (big_sepL2_elim_l with "Ha") as "Ha".
+    iPoseProof (big_sepL_exists with "Ha") as "(%rs' & Ha)".
+    iPoseProof (big_sepL2_length with "Ha") as "%Hlen_eq".
+    rewrite length_reshape length_replicate in Hlen_eq.
+    rewrite length_fmap in Hsz.
+    iExists rs'.
+    destruct (Hsteq _ Hst) as (ly' & Hst' & Hszeq).
+    iExists ly'. iR. iR.
+    iSplitR. { iPureIntro. rewrite -Hszeq. done. }
+    rewrite length_fmap. iR.
+    iSplitR. { iPureIntro. rewrite /has_layout_val Hlyv !ly_size_mk_array_layout.
+      rewrite length_fmap. lia. }
+    iModIntro.
+    rewrite Hszeq. rewrite big_sepL2_fmap_l big_sepL2_flip.
+    done.
+  Qed.
 End lemmas.

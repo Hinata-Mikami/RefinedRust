@@ -7,13 +7,6 @@ From refinedrust Require Import options.
 (** ** Unfolding [array_t] into [ArrayLtype]. *)
 Section lemmas.
   Context `{!typeGS Σ}.
-
-  Lemma array_t_rfn_length_eq π {rt} (ty : type rt) len r v m :
-    v ◁ᵥ{π, m} r @ array_t len ty -∗ ⌜length r = len⌝.
-  Proof.
-    rewrite /ty_own_val/=. iIntros "(%ly & -> & %Hst & % & $ & _)".
-  Qed.
-
   (** Learnable *)
   Global Program Instance learn_from_hyp_val_array {rt} (ty : type rt) xs len :
     LearnFromHypVal (array_t len ty) xs :=
@@ -30,50 +23,67 @@ End lemmas.
 Section split.
   Context `{!typeGS Σ}.
 
-  Lemma array_t_own_val_split_reshape {rt} (ty : type rt) π (n : nat) v rs (num size : nat) ly :
-    n = (num * size)%nat →
-    syn_type_has_layout (st_of ty MetaNone) ly →
-    v ◁ᵥ{π, MetaNone} rs @ array_t n ty -∗
-    ⌜mjoin (reshape (replicate num (ly_size ly * size)%nat) v) = v⌝ ∗
-    [∗ list] v'; r' ∈ reshape (replicate num (ly_size ly * size)%nat) v; reshape (replicate num size) rs,
-      v' ◁ᵥ{π, MetaNone} r' @ array_t size ty.
+  Lemma array_t_ofty_reshape F l π {rt} (ty : type rt) rs n m k :
+    lftE ⊆ F →
+    k ≠ 0 →
+    n = m * k →
+    (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty)%I ={F}=∗
+    l ◁ₗ[π, Owned false] #(<#> reshape (replicate k m) rs) @ ◁ array_t k (array_t m ty).
   Proof.
-    iIntros (-> Hst) "Hv".
-    iPoseProof (array_t_rfn_length_eq with "Hv") as "%Hlen".
-    iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hlyv)".
-    apply syn_type_has_layout_array_inv in Hst' as (ly'' & Hst'' & -> & Hsz).
-    assert (ly'' = ly) as -> by by eapply syn_type_has_layout_inj.
-    opose proof (join_reshape (replicate num (ly_size ly * size)) v _) as Hv_eq.
-    { rewrite sum_list_replicate. rewrite Hlyv {2}/ly_size/=. lia. }
-    opose proof (join_reshape (replicate num size) rs _) as Hrs_eq.
-    { rewrite sum_list_replicate Hlen//. }
-    rewrite -{1}Hv_eq -{1}Hrs_eq.
-    iSplitR; first done.
-    iInduction num as [ | num] "IH" forall (v rs Hlyv Hv_eq Hrs_eq Hlen); simpl; first done.
-    iPoseProof (array_t_own_val_split with "Hv") as "($ & Hv2)".
-    { rewrite length_take. lia. }
-    { rewrite length_join.
-      rewrite fmap_length_reshape; rewrite sum_list_replicate; first done.
-      rewrite length_drop. lia. }
-    { rewrite length_take /size_of_st.
-      rewrite /use_layout_alg' Hst/=.
-      rewrite Hlyv. rewrite ly_size_mk_array_layout. lia. }
-    { rewrite length_join. rewrite fmap_length_reshape.
-      { rewrite sum_list_replicate. rewrite /size_of_st /use_layout_alg' Hst/=. lia. }
-      rewrite sum_list_replicate.
-      rewrite length_drop.
-      rewrite Hlyv ly_size_mk_array_layout. lia. }
-    iApply "IH"; last done; iPureIntro.
-    { rewrite ly_size_mk_array_layout. rewrite ly_size_mk_array_layout in Hsz. lia. }
-    { rewrite /has_layout_val length_drop Hlyv !ly_size_mk_array_layout. lia. }
-    { rewrite join_reshape; first done.
-      rewrite sum_list_replicate length_drop.
-      rewrite Hlyv ly_size_mk_array_layout. lia. }
-    { rewrite join_reshape; first done. rewrite sum_list_replicate length_drop Hlen. lia. }
-    { rewrite length_drop Hlen. lia. }
+    iIntros (? ? ->) "Hl". 
+    rewrite ltype_own_ofty_unfold/lty_of_ty_own. simpl.
+    iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & #Hlb & Hcred & %rs' & <- & Ha)".
+    iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
+    iDestruct "Ha" as "(%v & Hl & Hv)".
+    iMod (array_t_own_val_reshape with "Hv") as "Hv"; [ | done | ]; first done.
+    rewrite ltype_own_ofty_unfold/lty_of_ty_own. simpl.
+    apply syn_type_has_layout_array_inv in Hst as (ly' & ? & -> & Hsz).
+    rewrite ly_size_mk_array_layout in Hsz.
+    iExists (mk_array_layout ly' (m * k)). iSplitR. 
+    { iPureIntro. eapply syn_type_has_layout_array.
+      2: { eapply syn_type_has_layout_array; [done.. | ]. nia. }
+      { unfold mk_array_layout, ly_mult; simpl.
+        f_equiv. unfold ly_size. lia. }
+      { rewrite ly_size_mk_array_layout. lia. } }
+    iSplitR. { done. }
+    iR. iR. iR.
+    iExists _. iR.
+    iModIntro. iModIntro. iExists v. iFrame.
   Qed.
-  (* TODO: corresponding merge lemma *)
+  (* TODO: unnesting lemma to reverse this *)
 
+  Lemma ltype_own_array_subtype_strong F l π {rt} (ty : type rt) {rt'} (ty' : type rt') rs n ly' :
+    lftE ⊆ F →
+    syn_type_size_eq (st_of ty MetaNone) (st_of ty' MetaNone) →
+    (* [l] also needs to be well-aligned for the new type *)
+    syn_type_has_layout (st_of ty' MetaNone) ly' →
+    l `has_layout_loc` ly' →
+    (□∀ v r, v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗ ∃ r', v ◁ᵥ{π, MetaNone} r' @ ty') -∗
+    (l ◁ₗ[π, Owned false] #(<#> rs) @ ◁ array_t n ty) ={F}=∗
+    ∃ rs', l ◁ₗ[π, Owned false] #(<#> rs') @ ◁ array_t n ty'.
+  Proof.
+    iIntros (? Hsteq ??) "#Hupd Hl".
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & #Hlb & _ & %r' & <- & Ha)".
+    iMod (fupd_mask_mono with "Ha") as "(%v & Hl & Hv)"; first done.
+    iMod (ty_own_val_array_subtype_strong with "Hupd Hv") as "(%rs' & Hv)".
+    { done. } 
+    iExists rs'. 
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
+    iExists (mk_array_layout ly' n).
+    apply syn_type_has_layout_array_inv in Hst as (ly'' & Hst' & -> & Hsz).
+    apply Hsteq in Hst' as (ly2 & Hst2 & Hszeq).
+    assert (ly' = ly2) as -> by by eapply syn_type_has_layout_inj.
+    rewrite ly_size_mk_array_layout in Hsz.
+    iSplitR. { iPureIntro. 
+      eapply syn_type_has_layout_array; first done; first done.
+      lia. }
+    iR. iR. 
+    rewrite !ly_size_mk_array_layout Hszeq.
+    iR. iR. 
+    iExists _. iR. iModIntro. iModIntro.  
+    iExists v. iFrame.
+  Qed.
 
   Lemma array_t_ofty_split {rt} (ty : type rt) n rs n1 n2 l π F :
     lftE ⊆ F →

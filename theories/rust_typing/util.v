@@ -115,6 +115,15 @@ Proof.
   rewrite take_0 drop_0. f_equiv. apply IH.
 Qed.
 
+Lemma Forall_Forall_join {A} (l : list (list A)) P :
+  Forall (Forall P) l ↔ Forall P (mjoin l).
+Proof.
+  induction l as [ | x l IH]; simpl.
+  { rewrite !Forall_nil//. }
+  rewrite Forall_cons. rewrite Forall_app.
+  naive_solver.
+Qed.
+
 Lemma and_proper (A B C : Prop) :
   (A → B ↔ C) →
   (A ∧ B) ↔ (A ∧ C).
@@ -338,14 +347,17 @@ End big_sepL.
 Lemma Forall_big_sepL {Σ} {X} (P : X → Prop) (Q : X → iProp Σ) (R : iProp Σ) (l : list X) :
   Forall P l →
   R -∗
-  □(∀ x, R -∗ ⌜P x⌝ -∗ Q x ∗ R) -∗
+  □(∀ x, R -∗ ⌜x ∈ l⌝ -∗ ⌜P x⌝ -∗ Q x ∗ R) -∗
   ([∗ list] x ∈ l, Q x) ∗ R.
 Proof.
   iIntros (Hf) "HR #HP".
   iInduction l as [ | x l] "IH"; simpl; first by iFrame.
   inversion Hf; subst.
-  iPoseProof ("HP" with "HR [//]") as "(Ha & HR)".
-  iPoseProof ("IH" with "[//] HR") as "(Hb & HR)".
+  iPoseProof ("HP" with "HR [] [//]") as "(Ha & HR)".
+  { iPureIntro. set_solver. }
+  iPoseProof ("IH" with "[//] [] HR") as "(Hb & HR)".
+  { iModIntro. iIntros (?) "HR %Hel".
+    iApply ("HP" with "HR"). iPureIntro. set_solver. }
   iFrame.
 Qed.
 
@@ -353,15 +365,19 @@ Lemma Forall2_big_sepL2 {Σ} {X Y} (P : X → Y → Prop) (Q : X → Y → iProp
   Forall2 P l1 l2 →
   length l1 = length l2 →
   R -∗
-  □(∀ x y, R -∗ ⌜P x y⌝ -∗ Q x y ∗ R) -∗
+  □(∀ x y, R -∗ ⌜x ∈ l1⌝ -∗ ⌜y ∈ l2⌝ -∗ ⌜P x y⌝ -∗ Q x y ∗ R) -∗
   ([∗ list] x;y ∈ l1;l2, Q x y) ∗ R.
 Proof.
   iIntros (Hf Hlen) "HR #HP".
   iInduction l1 as [ | x l] "IH" forall (l2 Hlen Hf); destruct l2 as [ | y l2]; simpl; [by iFrame |done | done | ].
   inversion Hf; subst.
-  iPoseProof ("HP" with "HR [//]") as "(Ha & HR)".
-  iPoseProof ("IH" with "[] [//] HR") as "(Hb & HR)".
+  iPoseProof ("HP" with "HR [] [] [//]") as "(Ha & HR)".
+  { iPureIntro. set_solver. }
+  { iPureIntro. set_solver. }
+  iPoseProof ("IH" with "[] [//] [] HR") as "(Hb & HR)".
   { simpl in *. iPureIntro. lia. }
+  { iModIntro. iIntros (??) "HR %Hel1 %Hel2".
+    iApply ("HP" with "HR"); iPureIntro; set_solver. }
   iFrame.
 Qed.
 

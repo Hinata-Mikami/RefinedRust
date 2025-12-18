@@ -220,9 +220,7 @@ Section rule.
     iPoseProof (MaybeInherit_update (place_rfn_interp_mut_extracted r γ) with "[] Hf") as "Hf".
     { iIntros (?) "Hrfn". iMod (place_rfn_interp_mut_extract with "Hrfn") as "?". done. }
     iModIntro. iSplitL. { iApply logical_step_intro. iFrame. }
-    iPureIntro. iIntros (ly1 ly2 Halg1 Halg2).
-    specialize (syn_type_compat_layout_trans _ _ _ Hstcomp Halg2) as ?.
-    f_equiv. by eapply syn_type_has_layout_inj.
+    iPureIntro. by apply syn_type_compat_size_eq.
   Qed.
   Definition owned_subltype_step_mutltype_uninit_inst := [instance owned_subltype_step_mutltype_uninit].
   Global Existing Instance owned_subltype_step_mutltype_uninit_inst | 20.

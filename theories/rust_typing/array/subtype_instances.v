@@ -82,6 +82,22 @@ Section subtype.
   Definition mut_eqtype_array_inst := [instance @mut_eqtype_array].
   Global Existing Instance mut_eqtype_array_inst.
 
+  Lemma syn_type_size_eq_array st1 st2 len :
+    syn_type_size_eq st1 st2 →
+    syn_type_size_eq (ArraySynType st1 len) (ArraySynType st2 len).
+  Proof.
+    intros Heq ly1 Hst1.
+    apply syn_type_has_layout_array_inv in Hst1 as (ly1' & Hst1 & -> & Hsz).
+    apply Heq in Hst1 as (ly2 & Hst2 & ?).
+    exists (mk_array_layout ly2 len).
+    rewrite ly_size_mk_array_layout in Hsz.
+    rewrite !ly_size_mk_array_layout.
+    split.
+    - eapply syn_type_has_layout_array; [done.. | ].
+      lia.
+    - lia.
+  Qed.
+
   Lemma owned_subtype_array π E L pers {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) len r1 r2 T :
     (∃ r1' r2', ⌜r1 = replicate len #r1'⌝ ∗ ⌜r2 = replicate len #r2'⌝ ∗
       li_tactic (compute_layout_goal (ty_syn_type ty2 MetaNone)) (λ _,
@@ -96,17 +112,16 @@ Section subtype.
     iApply bi.intuitionistically_intuitionistically_if. iModIntro.
     iDestruct "Hincl" as "(%Hszeq & Hsceq & Hv)".
     iSplitR; last iSplitR.
-    - iPureIntro. simpl. intros ly1 ly2 Hst1 Hst2.
-      apply syn_type_has_layout_array_inv in Hst1 as (ly1' & Hst1 & -> & ?).
-      apply syn_type_has_layout_array_inv in Hst2 as (ly2' & Hst2 & -> & ?).
-      rewrite /mk_array_layout/ly_mult/=.
-      specialize (Hszeq _ _ Hst1 Hst2) as ->. done.
+    - iPureIntro. simpl.
+      by apply syn_type_size_eq_array.
     - simpl. done.
     - iIntros (v) "Ha".
       rewrite {3 4}/ty_own_val /=.
       iDestruct "Ha" as "(%ly & _ & %Hst1 & % & <- & %Hvly & Ha)".
       iExists _. iR. iR.
-      assert (ly_size ly = ly_size ly') as Hlysz. { eapply Hszeq; done. }
+      assert (ly_size ly = ly_size ly') as Hlysz. {
+        apply Hszeq in Hst1 as (ly2 & ? & ->).
+        f_equiv. by eapply syn_type_has_layout_inj. }
       rewrite -Hlysz length_replicate. iR.
       rewrite length_replicate. iR.
       iSplitR. { iPureIntro. rewrite /has_layout_val/mk_array_layout/ly_mult/=. rewrite -Hlysz.
@@ -139,12 +154,14 @@ Section subtype.
       { simpl. by iApply "Hw". } }
     iIntros "Hincl". iDestruct "Hincl" as "(%Hszeq' & _ & Hv)".
     iSplitR; last iSplitR.
-    - iPureIntro. intros ly3 ly4 Hst1 Hst2.
+    - iPureIntro.
+      intros ly3 Hst1.
       simpl in *.
       assert (ly3 = ly1) as -> by by eapply syn_type_has_layout_inj.
       rewrite Hszeq.
-      specialize (syn_type_has_layout_array_inv _ _ _ Hst2) as (ly2' & Hst2' & -> & ?).
-      assert (ly2' = ly2) as -> by by eapply syn_type_has_layout_inj.
+      opose proof (Hszeq' (mk_array_layout ly2 len) _).
+      { eapply syn_type_has_layout_array; [done.. | ].
+        apply use_layout_alg_size in Halg1. lia. }
       done.
     - simpl; done.
     - iIntros (v) "Hun".

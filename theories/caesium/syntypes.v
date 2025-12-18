@@ -1664,28 +1664,55 @@ Qed.
 Global Instance syn_type_comapt_refl `{!LayoutAlg}: Reflexive syn_type_compat.
 Proof. by left. Qed.
 
-Definition syn_type_size_eq `{!LayoutAlg} st1 st2 := ∀ ly1 ly2, syn_type_has_layout st1 ly1 → syn_type_has_layout st2 ly2 → ly_size ly1 = ly_size ly2.
+Definition syn_type_size_eq `{!LayoutAlg} st1 st2 :=
+  ∀ ly1, syn_type_has_layout st1 ly1 → ∃ ly2, syn_type_has_layout st2 ly2 ∧ ly_size ly1 = ly_size ly2.
 Lemma syn_type_size_eq_refl `{!LayoutAlg} st :
   syn_type_size_eq st st.
 Proof.
-  intros ly1 ly2 ? ?. assert (ly1 = ly2) as <- by by eapply syn_type_has_layout_inj. done.
+  intros ly1 Hst. exists ly1. done.
 Qed.
 
 Lemma syn_type_compat_size_eq `{!LayoutAlg} st1 st2 :
   syn_type_compat st1 st2 → syn_type_size_eq st1 st2.
 Proof.
   intros [-> | (ly1 & Hst & ->)]; first apply syn_type_size_eq_refl.
-  intros ?? Halg1 Halg2.
-  specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as ->.
-  apply syn_type_has_layout_untyped_inv in Halg2 as (-> & _).
-  done.
+  intros ? Halg1.
+  specialize (syn_type_has_layout_inj _ _ _ Hst Halg1) as <-.
+  exists ly1. split; last done.
+  by eapply syn_type_has_layout_make_untyped.
 Qed.
 
+Lemma syn_type_size_eq_use `{!LayoutAlg} st1 st2 ly1 ly2 :
+  syn_type_size_eq st1 st2 →
+  syn_type_has_layout st1 ly1 →
+  syn_type_has_layout st2 ly2 →
+  ly_size ly1 = ly_size ly2.
+Proof.
+  intros Heq Hst1 Hst2. apply Heq in Hst1 as (ly3 & Hst1 & ->).
+  f_equiv. by eapply syn_type_has_layout_inj.
+Qed.
+Lemma syn_type_size_eq_prove `{!LayoutAlg} st1 st2 ly1 ly2 :
+  syn_type_has_layout st1 ly1 →
+  syn_type_has_layout st2 ly2 →
+  ly_size ly1 = ly_size ly2 →
+  syn_type_size_eq st1 st2.
+Proof.
+  intros ???.
+  intros ly3 ?. assert (ly3 = ly1) as -> by by eapply syn_type_has_layout_inj.
+  eauto.
+Qed.
+
+
+
+(*
 Global Instance syn_type_size_eq_sym `{!LayoutAlg} : Symmetric syn_type_size_eq.
 Proof.
-  intros st1 st2 Hsz ly1 ly2 Halg1 Halg2.
+  intros st1 st2 Hsz ly1 Halg1.
+
+  exists
   symmetry. by eapply Hsz.
 Qed.
+ *)
 
 (** Existential versions *)
 Definition syn_type_is_layoutable `{!LayoutAlg} (st : syn_type) : Prop :=

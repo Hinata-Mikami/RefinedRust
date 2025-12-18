@@ -22,7 +22,7 @@ Section lemmas.
     iExists ly2. iR. iR.
     iDestruct "Hincl" as "(%Hszeq & Hsc & Hvi)".
     assert (ly_size ly' = ly_size ly2) as Hszeq'. {
-      eapply Hszeq; done. }
+      by eapply syn_type_size_eq_use. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
     rewrite -Hszeq'. iFrame. iR.
     iExists _. iR. iMod "Hl" as "(%v & Hl & Hv)".
@@ -41,7 +41,7 @@ Section lemmas.
     iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & _ & % & Hrfn & Hl)".
     iExists ly2. iR. iR.
     iDestruct ("Hincl" $! r') as "(%Hszeq & Hsc & Hvi)".
-    assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply Hszeq; done. }
+    assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply syn_type_size_eq_use; done. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
     rewrite -Hszeq'. iFrame. iR.
     iExists r2. iR. iMod "Hl" as "(%v & Hl & Hv)".
@@ -62,15 +62,16 @@ Section lemmas.
       iEval (rewrite /ty_own_val/=).
       iPoseProof (ty_has_layout with "Hv") as "(%ly' & %Hst' & %Hly)".
       iR.
-      iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly. apply Hst; done.
+      iExists ly. iR. iPureIntro. rewrite /has_layout_val Hly.
+      eapply syn_type_size_eq_use; done.
   Qed.
   Lemma owned_type_incl_uninit π {rt1 : RT} (r1 : rt1) r2 (ty1 : type rt1) st :
     st = ty_syn_type ty1 MetaNone →
     ⊢ owned_type_incl π r1 r2 ty1 (uninit st).
   Proof.
     iIntros (Hst). iSplitR; last iSplitR.
-    - iPureIntro. iIntros (?? Hst1 Hst2). subst st. simpl in *.
-      f_equiv. by eapply syn_type_has_layout_inj.
+    - iPureIntro.
+      simpl. rewrite Hst. apply syn_type_size_eq_refl.
     - simpl. eauto.
     - iIntros (v) "Hv". rewrite uninit_own_spec.
       iPoseProof (ty_has_layout with "Hv") as "(%ly & %Hst' & %Hly)".
@@ -137,11 +138,7 @@ Section deinit.
 
     iExists _, _. iFrame.
     assert (syn_type_size_eq (ltype_st lt) st) as ?.
-    { rewrite Hst ltype_st_ofty.
-      intros ly3 ly4 Hst3 Hst4.
-      assert (ly3 = ly1) as -> by by eapply syn_type_has_layout_inj.
-      assert (ly4 = ly2) as -> by by eapply syn_type_has_layout_inj.
-      done. }
+    { rewrite Hst ltype_st_ofty. by eapply syn_type_size_eq_prove. }
     iSplitL.
     { iMod lc_zero as "Hlc".
       iMod (ofty_own_split_value_untyped_lc with "[Hlc] Hl") as "(%v & Hv & Hl)"; [done.. | ].
@@ -151,9 +148,8 @@ Section deinit.
       { done. }
       iApply owned_type_incl_uninit'; last done.
       simpl.
-      intros ?? (-> & _)%syn_type_has_layout_untyped_inv Hst4.
-      assert (ly2 = ly3) as <- by by eapply syn_type_has_layout_inj. done.
-    }
+      intros ?(-> & _)%syn_type_has_layout_untyped_inv.
+      eauto. }
     iPureIntro. done.
   Qed.
   Definition owned_subltype_step_ofty_uninit_inst := [instance owned_subltype_step_ofty_uninit].
@@ -267,10 +263,8 @@ Section deinit_fallback.
     iModIntro. iExists _. iFrame. iApply bi.intuitionistically_intuitionistically_if.
     iModIntro.
     iSplit; last iSplitR.
-    - iPureIntro. simpl. iIntros (ly1' ly2' Hst1' Hst2').
-      assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
-      assert (ly2' = ly2) as -> by by eapply syn_type_has_layout_inj.
-      done.
+    - iPureIntro. simpl.
+      by eapply syn_type_size_eq_prove.
     - simpl. eauto.
     - iIntros (v) "Hv".
       rewrite uninit_own_spec.

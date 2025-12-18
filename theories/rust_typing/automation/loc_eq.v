@@ -51,6 +51,7 @@ Ltac prepare_loc_eq :=
   (* Checking that both sides have the same [alloc_id]. *)
   notypeclasses refine (eq_loc _ _ _ _); [ reflexivity | simpl ];
   (* Rewrite with the hints. *)
+  autounfold with refinedrust_loc_eq_rewrite;
   autorewrite with refinedrust_loc_eq_rewrite;
   (* Simplify layout terms *)
   simplify_layout_goal_noshelve;

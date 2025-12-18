@@ -1314,7 +1314,7 @@ Section judgments.
   Proof.
     iIntros (Hf) "#HE HL".
     iPoseProof (Forall_big_sepL _ (place_update_kind_outlives k) with "HL []") as "(Houtl & HL)"; first apply Hf.
-    { iModIntro. iIntros (?) "HL %Hout". iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
+    { iModIntro. iIntros (?) "HL _ %Hout". iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
       iPoseProof (Hout with "HL HE") as "#Hout". iPoseProof ("HL_cl"  with "HL") as "?". by iFrame. }
     done.
   Qed.
@@ -2413,7 +2413,7 @@ Section judgments.
     iIntros "(%Hst & #$ & #Hv & _)".
     iDestruct ("Hv" $! π _) as "$".
     iPureIntro. setoid_rewrite Hst.
-    intros ly1 ly2 Hst1 Hst2. f_equiv. by eapply syn_type_has_layout_inj.
+    apply syn_type_size_eq_refl.
   Qed.
 
   Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
@@ -2464,8 +2464,10 @@ Section judgments.
     iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
     iSplit; last iSplitR "Hv1 Hv2".
     - iPureIntro.
-      intros ?? Ha1 Ha2.
-      apply (Hst2 ); last done. rewrite -Hst1. done.
+      intros ? Ha1.
+      rewrite Hst1 in Ha1.
+      apply Hst2 in Ha1.
+      done.
     - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
     - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
   Qed.
@@ -2477,8 +2479,9 @@ Section judgments.
     iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
     iSplit; last iSplitR "Hv1 Hv2".
     - iPureIntro.
-      intros ?? Ha1 Ha2.
-      apply (Hst1 ); first done. rewrite Hst2. done.
+      intros ? Ha1.
+      apply Hst1 in Ha1.
+      rewrite Hst2 in Ha1. done.
     - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
     - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
   Qed.

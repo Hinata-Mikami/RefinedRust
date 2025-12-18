@@ -588,8 +588,7 @@ Section rules.
     iMod ("HT" with "[//] HE HL HR") as "(%L3 & HL & %Hot & <- & HT)".
     iExists _. iFrame. iModIntro.
     iPoseProof (ty_own_val_sidecond with "Hv'") as "#$".
-    iSplitR. { iPureIntro. simpl. intros ????. 
-      f_equiv. eapply syn_type_has_layout_inj; first done. done. }
+    iSplitR. { iPureIntro. apply syn_type_size_eq_refl. }
     iSplitR; first by eauto.
     iIntros (v) "Hv".
     iEval (rewrite /ty_own_val/=) in "Hv".

@@ -20,7 +20,7 @@ Section type.
       end%I;
     ty_syn_type := T.(ty_syn_type);
     _ty_has_op_type ot mt :=
-      ∃ ly, 
+      ∃ ly,
       syn_type_has_layout (T.(ty_syn_type) MetaNone) ly ∧ ot_layout ot = ly ∧
       match mt with
       | MCId => ot = UntypedOp ly
@@ -123,8 +123,8 @@ Section type.
     TySized (maybe_uninit ty).
   Proof.
     intros Hsz. econstructor; simpl.
-    - apply Hsz. 
-    - apply Hsz. 
+    - apply Hsz.
+    - apply Hsz.
   Qed.
 
   Global Program Instance maybe_uninit_ghost_drop {rt} (ty : type rt) `{Hg : !TyGhostDrop ty}: TyGhostDrop (maybe_uninit ty) :=
@@ -197,11 +197,11 @@ Section subtype.
   Lemma type_incl_maybe_uninit_None {rt} (ty : type rt) `{!TySized ty} :
     ⊢ type_incl () None (uninit (ty.(ty_syn_type) MetaNone)) (maybe_uninit ty).
   Proof.
-    iSplitR. 
+    iSplitR.
     { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π m v) "Hv". simpl. 
+    - iIntros (π m v) "Hv". simpl.
       iEval (rewrite /ty_own_val/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
     - iIntros (κ π m l) "Hl".
@@ -216,10 +216,10 @@ Section subtype.
     { iPureIntro. intros m. simpl. apply ty_sized_syn_type_eq. }
     iSplitR; first iModIntro. { simpl. eauto. }
     iSplit; iModIntro.
-    - iIntros (π m v) "Hv". simpl. 
+    - iIntros (π m v) "Hv". simpl.
       iEval (rewrite /ty_own_val/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
-    - iIntros (κ π m l) "Hl". 
+    - iIntros (κ π m l) "Hl".
       iEval (rewrite /ty_shr/=).
       rewrite (ty_sized_syn_type_eq _ m). done.
   Qed.
@@ -313,10 +313,7 @@ Section rules.
     iIntros (????) "#CTX #HE HL". iExists L. iModIntro. iFrame.
     iApply bi.intuitionistically_intuitionistically_if. iModIntro.
     iSplit; last iSplitR.
-    { iPureIntro. simpl. intros ly3 ly4 Hst3 Hst4.
-      assert (ly1 = ly3) as <- by by eapply syn_type_has_layout_inj.
-      assert (ly4 = ly2) as <- by by eapply syn_type_has_layout_inj.
-      done. }
+    { iPureIntro. simpl. by eapply syn_type_size_eq_prove. }
     { simpl. done. }
     iIntros (v) "Hv". rewrite !uninit_own_spec.
     iDestruct "Hv" as "(_ & %ly &  %Hst & %Hly)".

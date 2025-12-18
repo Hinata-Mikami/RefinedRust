@@ -77,11 +77,8 @@ Section rule.
     iMod (ltype_deinit_shr with "Hl") as "Hl"; [done.. | ].
     iExists _, _. iFrame.
     iSplitL. { iApply logical_step_intro. by iFrame. }
-    iModIntro. iPureIntro. intros ?? Hst1 Hst2.
-    destruct Hstcomp as [<- | (ly1' & Hst' & ->)].
-    + f_equiv. by eapply syn_type_has_layout_inj.
-    + eapply syn_type_has_layout_untyped_inv in Hst2 as (<- & _).
-      f_equiv. by eapply syn_type_has_layout_inj.
+    iModIntro. iPureIntro.
+    by apply syn_type_compat_size_eq.
   Qed.
   Definition owned_subltype_step_shrltype_uninit_inst := [instance owned_subltype_step_shrltype_uninit].
   Global Existing Instance owned_subltype_step_shrltype_uninit_inst | 20.

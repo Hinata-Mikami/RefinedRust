@@ -300,8 +300,7 @@ Section na_subtype.
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L2 & % & %R2 & >(Hinv & HR2) & HL & HT)".
     iExists L2. iFrame. iPoseProof ("HT" with "HR2") as "$". iModIntro.
     iSplitR; last iSplitR.
-    - simpl. iPureIntro.
-      intros ly1 ly2 Hly1 HLy2. f_equiv. by eapply syn_type_has_layout_inj.
+    - simpl. iPureIntro. eapply syn_type_size_eq_refl.
     - simpl. eauto.
     - iIntros (v) "Hv0".
       iEval (rewrite /ty_own_val/=).

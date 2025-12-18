@@ -308,6 +308,41 @@ Proof.
   have := bytes_per_int_gt_0 it. lia.
 Qed.
 
+Lemma val_to_Z_go_is_Some v :
+  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ↔
+  is_Some (val_to_Z_go v).
+Proof.
+  induction v as [ | mb v IH]; simpl; first by eauto.
+  rewrite Forall_cons. rewrite IH.
+  destruct mb; try naive_solver.
+  destruct (val_to_Z_go v); naive_solver.
+Qed.
+Lemma val_to_Z_is_Some v it :
+  (Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ∧ length v = bytes_per_int it) ↔
+  is_Some (val_to_Z v it).
+Proof.
+  unfold val_to_Z. case_bool_decide; last naive_solver.
+  split.
+  - intros [Ha%val_to_Z_go_is_Some _].
+    destruct Ha as (? & ->). simpl.
+    case_match; try naive_solver.
+  - intros Ha. split; last done.
+    apply val_to_Z_go_is_Some. destruct (val_to_Z_go v); done.
+Qed.
+Lemma val_to_Z_Some v it x :
+  val_to_Z v it = Some x →
+  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ∧ length v = bytes_per_int it.
+Proof.
+  intros Heq. apply val_to_Z_is_Some. rewrite Heq. done.
+Qed.
+Lemma val_to_Z_Some_1 v it :
+  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v →
+  length v = bytes_per_int it →
+  is_Some (val_to_Z v it).
+Proof.
+  intros ??. by apply val_to_Z_is_Some.
+Qed.
+
 Lemma val_to_Z_val_of_loc_n_None n l it:
   val_to_Z (val_of_loc_n n l) it = None.
 Proof.
