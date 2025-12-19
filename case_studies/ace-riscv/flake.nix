@@ -122,10 +122,11 @@
             src = "${ACE-RISCV}/verification/theories";
 
             preBuild = ''
+              find . -name "dune" -exec sed -i -e '1s|.*|(rocq.theory|g' {} \;
               find . -name "dune" -exec sed -i -e '3s|.*|  (package ace-theories)|g' {} \;
               cat << EOF > dune-project
-              (lang dune 3.8)
-              (using coq 0.8)
+              (lang dune 3.21)
+              (using rocq 0.11)
               (name ace-theories)
               (package (name ace-theories))
               EOF

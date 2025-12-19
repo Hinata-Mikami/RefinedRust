@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
  (name lithium)
  (package refinedrust)
  (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)

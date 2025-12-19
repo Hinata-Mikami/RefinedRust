@@ -25,12 +25,12 @@ setup-nix:
 .PHONY: setup-nix
 
 setup-dune:
-	@echo "(lang dune 3.8)" > dune-project
+	@echo "(lang dune 3.21)" > dune-project
 .PHONY: setup-dune
 
 # setup a dune workspace where coqc is wrapped in the script necessary for the timing CI
 define DUNE_WORKSPACE_BODY
-(lang dune 3.8)
+(lang dune 3.21)
 
 (env
  (_

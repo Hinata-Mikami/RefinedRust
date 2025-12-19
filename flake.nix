@@ -114,8 +114,8 @@
                       preBuild = ''
                         find . -name "dune" -exec sed -i -e '3s|.*|  (package ${opam-name}-theories)|g' {} \;
                         cat << EOF > dune-project
-                        (lang dune 3.8)
-                        (using coq 0.8)
+                        (lang dune 3.21)
+                        (using rocq 0.11)
                         (name ${opam-name}-theories)
                         (package (name ${opam-name}-theories))
                         EOF

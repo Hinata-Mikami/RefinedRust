@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
 (flags -w -notation-overridden -w -redundant-canonical-projection)
 (package refinedrust-stdlib)
 (name rrstd.mem.theories)

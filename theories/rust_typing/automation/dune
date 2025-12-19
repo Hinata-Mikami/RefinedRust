@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
  (name refinedrust.automation)
  (package refinedrust)
  (flags -w -notation-incompatible-prefix -w -notation-overridden -w -redundant-canonical-projection)

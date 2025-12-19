@@ -24,7 +24,7 @@
         // args);
 
     rocq-core =
-      prev.rocq-core.override {customOCamlPackages = ocamlPackages;};
+      pkgs.rocq-core_9_1.override {customOCamlPackages = ocamlPackages;};
 
     # NOTE: Remove `equations` when available in Nix's `RocqPackages`
     equations = pkgs.rocqPackages.mkRocqDerivation {
@@ -38,10 +38,17 @@
       mlPlugin = true;
       useDune = true;
 
-      version = "2ce6d98dd03979369d739ac139db4da4f7eab352";
+      version = "v1.3.1-9.1";
       release = {
-        "2ce6d98dd03979369d739ac139db4da4f7eab352".sha256 = "sha256-186Z0/wCuGAjIvG1LoYBMPooaC6HmnKWowYXuR0y6bA=";
+        "v1.3.1-9.1".sha256 = "sha256-LtYbAR3jt+JbYcqP+m1n3AZhAWSMIeOZtmdSJwg7L1A=";
       };
+
+      patchPhase = ''
+        sed -i -e 's/(lang dune 3.13)/(lang dune 3.21)/g' dune-project
+        sed -i -e 's/(using coq 0.8)/(using rocq 0.11)/g' dune-project
+        sed -i -e 's/coq-core/rocq-runtime/g' src/dune
+        sed -i -e 's/coq/rocq/g' examples/dune src/dune theories/dune theories/Prop/dune theories/Type/dune test-suite/dune
+      '';
     };
   });
 }
