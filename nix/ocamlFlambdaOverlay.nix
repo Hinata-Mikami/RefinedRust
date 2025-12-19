@@ -1,32 +1,17 @@
 {pkgs}: _: prev: rec {
   # NOTE: Using OCaml 4.14 due to Rocq being slow with OCaml 5+
-  # See: https://github.com/NixOS/nixpkgs/blob/nixos-25.05/pkgs/applications/science/logic/rocq-core/default.nix#L15
+  # See: https://github.com/NixOS/nixpkgs/blob/nixos-25.11/pkgs/applications/science/logic/rocq-core/default.nix#L16
   ocamlPackages = prev.ocaml-ng.ocamlPackages_4_14.overrideScope (_: prev: {
     ocaml = prev.ocaml.override {flambdaSupport = true;};
 
-    # NOTE: Remove this when `dune` will handle `rocq` subcommands
-    # See: https://github.com/ocaml/dune/issues/11572
-    dune_3 = prev.dune_3.overrideAttrs (prev: {
-      nativeBuildInputs = prev.nativeBuildInputs ++ [pkgs.makeWrapper];
+    dune_3 = prev.dune_3.overrideAttrs rec {
+      version = "3.21.0~alpha4";
 
-      postFixup = let
-        coqSubcommand = newCmd: oldCmd:
-          pkgs.writeScriptBin oldCmd ''
-            #!/bin/sh
-            unset COQPATH
-            rocq ${newCmd} "$@"
-          '';
-
-        coqc = coqSubcommand "compile" "coqc";
-        coqdep = coqSubcommand "dep" "coqdep";
-        coqpp = coqSubcommand "pp-mlg" "coqpp";
-      in ''
-        wrapProgram $out/bin/dune \
-          --prefix PATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
-          --prefix OCAMLPATH ":" "${pkgs.lib.makeBinPath [coqc coqdep coqpp]}" \
-          --run "export COQPATH=\$(eval echo \$ROCQPATH)"
-      '';
-    });
+      src = pkgs.fetchurl {
+        url = "https://github.com/ocaml/dune/releases/download/3.21.0_alpha4/dune-3.21.0.alpha4.tbz";
+        hash = "sha256-PSuZtghLx0+qSoyFnqHwPhz1jfi3EbgL/rhdxRGva08=";
+      };
+    };
   });
 
   rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
