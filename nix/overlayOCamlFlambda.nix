@@ -1,4 +1,4 @@
-{pkgs}: _: prev: rec {
+_: pkgs: prev: rec {
   # NOTE: Using OCaml 4.14 due to Rocq being slow with OCaml 5+
   # See: https://github.com/NixOS/nixpkgs/blob/nixos-25.11/pkgs/applications/science/logic/rocq-core/default.nix#L16
   ocamlPackages = prev.ocaml-ng.ocamlPackages_4_14.overrideScope (_: prev: {

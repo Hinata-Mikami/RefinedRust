@@ -7,7 +7,7 @@ with inputs; rec {
   rrPkgs = self.packages.${system};
 
   overlays = [
-    (import ./ocamlFlambdaOverlay.nix {inherit pkgs;})
+    (import ./overlayOCamlFlambda.nix {})
     rust-overlay.overlays.default
   ];
 
