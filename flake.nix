@@ -51,6 +51,11 @@
           version = "2d20dc5def11269b2c4ef17f43a3dddd54f3bb46";
           sha256 = "sha256-9uKI8hqOlMAeN10IlvgRIG+4gyZGQ9g7m6HQofHWwbA=";
         };
+
+        smtcoq = {
+          version = "eb8e552e821a6e3f8b00b08d22047d23e2f3ef20";
+          sha256 = "sha256-jWZpLPZ5xs5r36lEtU0JXTgYEoYLTxbNdxeqAxYBmAI=";
+        };
       };
 
       rust = let
@@ -124,6 +129,24 @@
               pname = "lambda-rust";
               propagatedBuildInputs = [iris];
             };
+
+            smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
+              inherit (rocq.smtcoq) version;
+
+              pname = "smtcoq";
+              owner = "smtcoq";
+              repo = "smtcoq";
+
+              mlPlugin = true;
+              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib cvc4 verit zchaff];
+
+              preBuild = ''
+                sed -i -e 's/$(COQBIN)coq_makefile/$(COQBIN)rocq makefile/g' src/Makefile
+                sed -i -e 's/coq-core/rocq-runtime/g' src/CoqMakefile.local src/META.coq-smtcoq src/extraction/Makefile
+              '';
+
+              release.${version}.sha256 = "${rocq.smtcoq.sha256}";
+            };
           in
             pkgs.rocqPackages.mkRocqDerivation {
               inherit meta version;
@@ -132,7 +155,7 @@
               opam-name = name;
               src = ./theories;
 
-              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
+              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust smtcoq];
               useDune = true;
             };
 

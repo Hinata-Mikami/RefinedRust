@@ -8,6 +8,7 @@ with inputs; rec {
 
   overlays = [
     (import ./overlayOCamlFlambda.nix {})
+    (import ./overlaySMTCoq.nix {})
     rust-overlay.overlays.default
   ];
 
