@@ -1748,6 +1748,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
         let meta = vcx.procedure_registry.lookup_function(closure_did.to_def_id()).unwrap();
 
         let process_impl = |to_impl: ty::ClosureKind, info: &procedures::ClosureImplInfo<'tcx, 'rcx>| {
+            trace!("Generating closure impl {to_impl:?} for did = {closure_did:?}");
             // get the stored info
             let impl_info = vcx.trait_registry.get_closure_trait_impl_info(
                 closure_did.to_def_id(),
@@ -1756,6 +1757,7 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
                 closure_args,
             )?;
 
+            trace!("Got closure info: {impl_info:?}");
             let (_, fn_meta) =
                 vcx.trait_registry.lookup_closure_impl(closure_did.to_def_id(), to_impl).unwrap();
 
@@ -1771,6 +1773,8 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
             )?;
             let name = generator.get_call_spec_record_entry_name(to_impl);
 
+            trace!("Generated call fn");
+
             let mut methods = BTreeMap::new();
             let spec = call_fn_def.spec;
             methods.insert(name, specs::traits::InstanceMethodSpec::Defined(spec));
@@ -1780,6 +1784,8 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
             let extra_context_items = body_spec.early_coq_params.clone();
             // assemble the spec and register it
             let spec = specs::traits::ImplSpec::new(impl_info, instance_spec, extra_context_items);
+
+            trace!("Successfully generated closure impl");
             Ok((spec, call_fn_def))
         };
 

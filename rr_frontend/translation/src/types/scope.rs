@@ -111,9 +111,9 @@ pub(crate) struct Params<'tcx, 'def> {
     /// maps De Bruijn indices for late lifetimes to the lifetime
     /// since rustc groups De Bruijn indices by (binder, var in the binder), this is a nested vec.
     late_scope: Vec<Vec<specs::LftParam>>,
-    /// extra lifetimes, mainly used for regions in closure captures which have no formal Rust
-    /// parameters
-    extra_scope: Vec<specs::LftParam>,
+    /// external lifetimes from surrounding bodies,
+    /// mainly used for regions in closure captures which have no formal Rust parameters
+    external_scope: Vec<specs::LftParam>,
 
     // lifetime constraints
     lifetime_inclusions: Vec<specs::LftConstr<'def>>,
@@ -149,7 +149,7 @@ impl<'tcx, 'def> From<Params<'tcx, 'def>>
                 scope.add_lft_param(lft);
             }
         }
-        for lft in x.extra_scope {
+        for lft in x.external_scope {
             scope.add_lft_param(lft);
         }
         for key in x.trait_scope.ordered_assumptions {
@@ -323,7 +323,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         Self {
             scope,
             late_scope: Vec::new(),
-            extra_scope: Vec::new(),
+            external_scope: Vec::new(),
             lft_names,
             ty_names,
             lifetime_inclusions: Vec::new(),
@@ -442,9 +442,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
 
         // add extra closure regions
-        for vid in &map.closure_regions {
+        for vid in &map.external_regions {
             let name = &map.region_names[vid];
-            self.extra_scope.push(name.to_owned());
+            self.external_scope.push(name.to_owned());
         }
 
         // replace all existing constraints
@@ -863,7 +863,7 @@ impl From<&[ty::GenericParamDef]> for Params<'_, '_> {
         Self {
             scope,
             late_scope: Vec::new(),
-            extra_scope: Vec::new(),
+            external_scope: Vec::new(),
             lft_names,
             ty_names,
             lifetime_inclusions: Vec::new(),

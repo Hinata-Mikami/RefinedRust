@@ -143,10 +143,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn compute_closure_meta(
         clos_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         closure_arg: &mir::LocalDecl<'tcx>,
+        input_tuple_ty: ty::Ty<'tcx>,
         region_substitution: &mut regions::EarlyLateRegionMap<'def>,
         info: &PoloniusInfo<'def, 'tcx>,
         env: &Environment<'tcx>,
-    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, Option<specs::LftParam>) {
+    ) -> (ty::Ty<'tcx>, Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, Option<specs::LftParam>) {
         // Process the lifetime parameters that come from the captures
         // Sideeffect: adds the regions that come from the captures (which may be local to the
         // surrounding function) to the region map, so that they appear as region parameters of the
@@ -159,7 +160,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             fixed_upvars_tys.push(fixed_ty);
         }
 
-        // Do the same to the whole closure arg
+        // Do the same for the arguments of the closure -- this may contain external Polonius
+        // regions in lieu of early bounds.
+        let fixed_closure_args = regions::arg_folder::rename_closure_capture_regions(
+            input_tuple_ty,
+            env.tcx(),
+            region_substitution,
+            info,
+        );
+
+        // Do the same to the whole closure arg, which will add the optional lifetime for the
+        // capture reference
+        // NOTE: we rely on adding this lifetime last when generating the `call_*` fn shims.
         let fixed_closure_arg_ty = regions::arg_folder::rename_closure_capture_regions(
             closure_arg.ty,
             env.tcx(),
@@ -178,7 +190,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         }
 
-        (fixed_closure_arg_ty, fixed_upvars_tys, maybe_outer_lifetime)
+        (fixed_closure_arg_ty, fixed_upvars_tys, fixed_closure_args, maybe_outer_lifetime)
     }
 
     /// Create a translation instance for a closure.
@@ -243,6 +255,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut num_late_bounds = sig.bound_vars().len() as u32;
         let num_early_bounds =
             params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+        // closures don't have early bounds: only late bounds and external lifetimes from the
+        // surrounding scope.
+        assert!(num_early_bounds == 0);
         if let ty::TyKind::Ref(_, _, _) = closure_arg.ty.kind() {
             // add 1 for the closure arg
             num_late_bounds += 1;
@@ -261,22 +276,32 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // detuple the inputs
         assert!(tupled_inputs.len() == 1);
         let input_tuple_ty = tupled_inputs[0];
-        let mut inputs = Vec::new();
 
+        info!("region substitution: {region_substitution:?}");
+
+        // fix the regions in the closure args (esp the captures) and add the regions for the
+        // captures to the region map.
+        let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, maybe_outer_lifetime) =
+            Self::compute_closure_meta(
+                clos_args,
+                closure_arg,
+                input_tuple_ty,
+                &mut region_substitution,
+                info,
+                env,
+            );
+        let maybe_outer_lifetime = maybe_outer_lifetime.map(|x| x.lft().to_owned());
+
+        trace!(
+            "fixed_closure_arg_ty={fixed_closure_arg_ty:?}, upvars_tys={upvars_tys:?}, input_tuple_ty={input_tuple_ty:?}, region_substitution={region_substitution:?}"
+        );
+
+        let mut inputs = Vec::new();
         if let ty::TyKind::Tuple(args) = input_tuple_ty.kind() {
             inputs.extend(args.iter());
         }
 
         info!("inputs({}): {:?}, output: {:?}", inputs.len(), inputs, output);
-        info!("region substitution: {region_substitution:?}");
-
-        // fix the regions in the closure args (esp the captures) and add the regions for the
-        // captures to the region map.
-        let (fixed_closure_arg_ty, upvars_tys, maybe_outer_lifetime) =
-            Self::compute_closure_meta(clos_args, closure_arg, &mut region_substitution, info, env);
-        let maybe_outer_lifetime = maybe_outer_lifetime.map(|x| x.lft().to_owned());
-
-        trace!("fixed_closure_arg_ty={fixed_closure_arg_ty:?}");
 
         let type_scope = Self::setup_local_scope(
             env,

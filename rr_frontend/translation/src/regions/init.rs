@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use log::info;
+use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
@@ -38,6 +38,10 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     num_late_bounds: u32,
     sig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
 ) -> (Vec<ty::Ty<'tcx>>, ty::Ty<'tcx>, EarlyLateRegionMap<'def>) {
+    trace!(
+        "enter replace_fnsig_args_with_polonius_vars for {of_did:?}, num_universal_regions={num_universal_regions:?}, num_early_bounds={num_early_bounds:?}, num_late_bounds={num_late_bounds:?}"
+    );
+
     // a mapping of Polonius region IDs to names
     let mut universal_lifetimes = BTreeMap::new();
     let mut lifetime_names = HashMap::new();
@@ -93,7 +97,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     }
     let subst_early_bounds = env.tcx().mk_args(&subst_early_bounds);
 
-    info!("Computed early region map {region_substitution_early:?}");
+    trace!("Computed early region map {region_substitution_early:?}");
 
     // add names for late bound region variables
     let mut late_count = 0;
@@ -175,7 +179,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
 
     let output = instantiate_open(late_sig.output(), env.tcx(), subst_early_bounds);
 
-    info!("Computed late region map {region_substitution_late:?}");
+    trace!("Computed late region map {region_substitution_late:?}");
 
     let region_map = EarlyLateRegionMap::new(
         region_substitution_early,
@@ -185,6 +189,9 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
         universal_lifetimes,
         lifetime_names,
     );
+
+    trace!("leave replace_fnsig_args_with_polonius_vars for {of_did:?}");
+
     (inputs, output, region_map)
 }
 

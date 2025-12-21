@@ -108,6 +108,8 @@ pub(crate) fn compute_call_regions<'tcx>(
     // first sort this to enable cycle resolution
     let mut new_regions_sorted: Vec<Region> = new_regions.iter().copied().collect();
     new_regions_sorted.sort();
+    info!("new regions: {new_regions_sorted:?}");
+    info!("relevant constraints: {relevant_constraints:?}");
 
     // identify the late-bound regions
     let mut late_regions = Vec::new();
@@ -138,6 +140,11 @@ pub(crate) fn compute_call_regions<'tcx>(
             }
             // reflexive constraints do not help us, of course.
             if *r1 == *r2 {
+                continue;
+            }
+            // r1 should be known or a new region
+            if !incl_tracker.is_region_known(*r1, midpoint) && !new_regions.contains(r1) {
+                // this is a constraint that won't help us
                 continue;
             }
 

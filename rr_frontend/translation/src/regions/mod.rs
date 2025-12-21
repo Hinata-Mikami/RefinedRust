@@ -37,13 +37,12 @@ pub(crate) enum LftConstr<'def> {
 pub(crate) struct EarlyLateRegionMap<'def> {
     // Maps indices of early and late regions to Polonius region ids.
     // For closures, this does not include the lifetimes for the captures,
-    // which are included in `closure_regions` instead
+    // which are included in `external_regions` instead
     pub early_regions: Vec<Option<facts::Region>>,
     pub late_regions: Vec<Vec<facts::Region>>,
 
-    /// regions for closure captures that have no formal syntax representation in Rust;
-    /// used for translating closure bodies
-    pub closure_regions: Vec<facts::Region>,
+    /// regions for closure (e.g. captures) that come from surrounding bodies
+    pub external_regions: Vec<facts::Region>,
 
     // lifetime constraints
     pub constraints: Vec<LftConstr<'def>>,
@@ -101,7 +100,7 @@ impl EarlyLateRegionMap<'_> {
             let name = format_atomic_region_direct(r, None);
             e.insert(specs::LftParam::new(name, specs::LftParamOrigin::LocalLateBound));
 
-            self.closure_regions.push(r.get_region());
+            self.external_regions.push(r.get_region());
         }
     }
 }

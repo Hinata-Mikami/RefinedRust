@@ -356,6 +356,28 @@ fn closure_test7<T, U>(x: T, y: U)
     cls(x);
 }
 
+
+// This test demonstrates the case where even the arguments of a closure may use external
+// lifetimes, in lieu of early bounds.
+#[rr::verify]
+fn closure_test10_helper<'a, T>(x: T, v: &'a i32) 
+    where T: FnMut(&'a i32)
+{
+
+}
+#[rr::verify]
+fn closure_test10() {
+    let a = 4;
+    let b : i32 = 5;
+    let ar = &a;
+    closure_test10_helper(
+        #[rr::requires("(y + 2) ∈ i32")]
+        |y: &i32| {
+            b;
+            *y + 2;
+        }, ar);
+}
+
 // HRTB
 #[rr::verify]
 #[rr::requires(#trait T::Pre := "λ _ _ _, True%I")]

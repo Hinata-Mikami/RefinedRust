@@ -12,7 +12,6 @@ use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
 use rr_rustc_interface::span;
-use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use super::{TX, TranslationKey};
 use crate::base::*;
@@ -276,10 +275,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Ok(inst)
     }
 
-    // TODO: can I unify this with TraitRegistry::get_closure_impl_spec_term?
     fn create_closure_impl_abstraction(
         &self,
         info: &procedures::ClosureImplInfo<'tcx, 'def>,
+        closure_did: DefId,
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         kind: ty::ClosureKind,
         params: ty::GenericArgsRef<'tcx>,
@@ -305,6 +304,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for lft in info.scope.get_lfts() {
             new_scope.add_lft_param(lft.to_owned());
         }
+        // also add the lifetime for the call function itself as a dummy
+        if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
+            new_scope.add_lft_param(specs::LftParam::new(
+                coq::Ident::new("_ref_lft"),
+                specs::LftParamOrigin::FunctionRebound,
+            ));
+            // this does not have an instantiation hint
+        }
+        trace!("new_scope={new_scope:?}");
 
         // for the instantiation hints, we proceed as follows:
         // - the type parameters are the same as on the surrounding function
@@ -312,24 +320,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // - but in addition, we have to add the capture lifetimes
         // - as well as the lifetime of the closure arg (for Fn/FnMut)
 
-        trace!("new_scope={new_scope:?}");
-
-        let inst: specs::GenericScopeInst<'def> = new_scope.identity_instantiation();
-
         // instantiate the type parameters directly with the parameters of the surrounding function
         // (identity, the type parameters are the same)
-        let ty_param_inst_hint: Vec<specs::Type<'def>> = inst.get_all_ty_params_with_assocs();
-
-        // for the lifetimes, we also want to take the surrounding lifetime parameters (which are
-        // also included in this scope), but have to manually compute the instantiation for the
-        // closure capture lifetimes, which are local to the function
-        let upvars_tys = closure_args.upvar_tys();
-        trace!("upvars_tys: {upvars_tys:?}");
-        let mut folder = regions::arg_folder::ClosureCaptureRegionCollector::new(self.env.tcx());
-        for ty in upvars_tys {
-            ty.fold_with(&mut folder);
-        }
-        let capture_regions_inst = folder.result();
+        let ty_param_inst_hint: Vec<specs::Type<'def>> =
+            new_scope.identity_instantiation().get_all_ty_params_with_assocs();
+        let mut lft_param_inst_hint: Vec<specs::Lft> = Vec::new();
 
         // compute the instantiation of late bounds
         let late_inst = {
@@ -337,39 +332,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let mut state = STInner::InFunction(&mut scope);
             self.trait_registry.compute_closure_late_bound_inst(&mut state, closure_args, params)
         };
-
-        let mut lft_param_inst_hint: Vec<specs::Lft> = Vec::new();
-
-        // The lifetime scope also contains the capture regions and late regions, which are not part of the
-        // surrounding function scope.
-        // We have to filter these.
-        let closure_region_count = inst.get_lfts().len();
-        trace!(
-            "computing surrounding region count: {:?} - {late_inst:?} - {capture_regions_inst:?}",
-            inst.get_lfts()
-        );
-        let surrounding_region_count = closure_region_count - late_inst.len() - capture_regions_inst.len();
-        for x in &inst.get_lfts()[..surrounding_region_count] {
-            lft_param_inst_hint.push(x.to_owned());
-        }
         for region in late_inst {
             let translated_region = self.ty_translator.translate_region(region)?;
             lft_param_inst_hint.push(translated_region);
         }
-
-        for r in capture_regions_inst {
+        // compute the instantiation of external regions
+        let external_inst = {
+            let mut scope = self.ty_translator.scope.borrow_mut();
+            let mut state = STInner::InFunction(&mut scope);
+            self.trait_registry.compute_closure_extern_inst(&mut state, closure_did, closure_args)
+        };
+        for r in external_inst {
             let lft = self.ty_translator.translate_region(r)?;
             lft_param_inst_hint.push(lft);
-        }
-
-        // TODO: _ref_lft instantiation?
-
-        // also add the lifetime for the call function itself as a dummy
-        if kind == ty::ClosureKind::Fn || kind == ty::ClosureKind::FnMut {
-            new_scope.add_lft_param(specs::LftParam::new(
-                coq::Ident::new("_ref_lft"),
-                specs::LftParamOrigin::FunctionRebound,
-            ));
         }
 
         // we just requantify all the generics and directly instantiate
@@ -420,7 +395,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let info = self.procedure_registry.lookup_closure_info(closure_did).unwrap();
 
         let quantified_scope =
-            self.create_closure_impl_abstraction(info, closure_args, closure_kind, ty_params)?;
+            self.create_closure_impl_abstraction(info, closure_did, closure_args, closure_kind, ty_params)?;
 
         let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), call_fn_did), key);
         let res;

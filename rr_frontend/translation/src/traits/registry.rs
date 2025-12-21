@@ -5,13 +5,12 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
 use log::{info, trace};
 use radium::{coq, specs};
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::type_ir::TypeFoldable as _;
 use traits::{Error, TraitResult, resolution};
 use typed_arena::Arena;
 
@@ -26,7 +25,7 @@ use crate::spec_parsers::trait_attr_parser::{
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
 use crate::traits::requirements;
 use crate::types::scope;
-use crate::{attrs, error, procedures, regions, search, traits, types};
+use crate::{attrs, error, procedures, search, traits, types};
 
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
@@ -515,6 +514,41 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         inst
     }
 
+    pub(crate) fn compute_closure_extern_inst(
+        &self,
+        state: types::ST<'_, '_, 'def, 'tcx>,
+        closure_did: DefId,
+        closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
+    ) -> Vec<ty::Region<'tcx>> {
+        // Also instantiate the external regions for the upvars and closure inputs
+        // Important: needs to be in the same order as in `compute_closure_meta`!
+        // First upvars, then the inputs.
+        let mut unifier = RegionUnifier::new(self.env.tcx(), state.get_typing_env(self.env.tcx()));
+        let decl_args = self.env.get_closure_args(closure_did);
+
+        let decl_upvars_tys = decl_args.upvar_tys();
+        let upvars_tys = closure_args.upvar_tys();
+        unifier.map_ty_slices(decl_upvars_tys.as_slice(), upvars_tys.as_slice());
+
+        // TODO: is skipping the late bound binder okay?
+        let decl_sig = decl_args.sig();
+        let decl_inputs = decl_sig.inputs();
+        let decl_inputs = decl_inputs.skip_binder();
+        let sig = closure_args.sig();
+        let inputs = sig.inputs();
+        let inputs = inputs.skip_binder();
+        unifier.map_ty_slices(decl_inputs, inputs);
+
+        let (regions, map) = unifier.get_result();
+        let mut scope_inst = Vec::new();
+        for r in regions {
+            let r2 = map[&r];
+            scope_inst.push(r2);
+        }
+
+        scope_inst
+    }
+
     /// Get the term for the specification of a trait impl of `trait_did` for closure `closure_did` (applied
     /// to `closure_args`), as well as the list of associated types.
     pub(crate) fn get_closure_impl_spec_term(
@@ -551,27 +585,22 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let mut scope_inst =
             self.compute_scope_inst_in_state(state, closure_did, self.env.tcx().mk_args(args))?;
 
-        // Also instantiate late-bound arguments of the closure by comparing the closure argument
-        // tuple type
-        let inst = self.compute_closure_late_bound_inst(state, closure_args, trait_args);
-        trace!("get_closure_impl_spec_term: found unification {inst:?}");
+        // We also need to compute the lifetime instantiation, in the following order (mirroring
+        // the declaration site):
+        // - late bounds
+        // - external regions in the upvars
+        // - external regions in the inputs
 
+        // Late bounds, by comparing the closure argument tuple type
+        let inst = self.compute_closure_late_bound_inst(state, closure_args, trait_args);
+        trace!("get_closure_impl_spec_term: found late bound unification {inst:?}");
         for region in inst {
             let translated_region = types::TX::translate_region(state, region)?;
             scope_inst.add_lft_param(translated_region);
         }
 
-        // Also instantiate the regions for the upvars
-        let upvars_tys = closure_args.upvar_tys();
-        let mut folder = regions::arg_folder::ClosureCaptureRegionCollector::new(self.env.tcx());
-        for ty in upvars_tys {
-            ty.fold_with(&mut folder);
-        }
-        let upvar_regions = folder.result();
-        trace!(
-            "get_closure_impl_spec_term: collected upvar regions {upvar_regions:?}, translating in state={state:?}"
-        );
-        for r in upvar_regions {
+        let extern_inst = self.compute_closure_extern_inst(state, closure_did, closure_args);
+        for r in extern_inst {
             let lft = types::TX::translate_region(state, r)?;
             scope_inst.add_lft_param(lft);
         }
@@ -999,6 +1028,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), closure_did);
         let state = types::TraitState::new(param_scope.clone(), typing_env, None, Some(&info.region_map));
         let mut state = types::STInner::TraitReqs(Box::new(state));
+
+        trace!(
+            "get_closure_trait_impl_info ({closure_did:?}, {kind:?}): computing trait inst in state={state:?} for args={trait_args:?}"
+        );
         let trait_inst = self.compute_scope_inst_in_state(&mut state, trait_did, trait_args)?;
 
         // only if we're implementing FnOnce
@@ -1380,6 +1413,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     }
 }
 
+/// Unifier to compute the instantiation of given binders by comparing the uninstantiated and the
+/// instantiated terms.
 pub(crate) struct LateBoundUnifier<'tcx, 'a> {
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -1442,5 +1477,49 @@ impl<'tcx> RegionBiFolder<'tcx> for LateBoundUnifier<'tcx, '_> {
                 self.early_instantiation.insert(idx, r2);
             }
         }
+    }
+}
+
+/// Unifier to compute a mapping between two sets of Polonius variables by comparing two terms.
+pub(crate) struct RegionUnifier<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    instantiation: BTreeMap<ty::RegionVid, ty::Region<'tcx>>,
+    term_order: Vec<ty::RegionVid>,
+}
+impl<'tcx> RegionUnifier<'tcx> {
+    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
+        Self {
+            tcx,
+            typing_env,
+            instantiation: BTreeMap::new(),
+            term_order: Vec::new(),
+        }
+    }
+
+    pub(crate) fn get_result(self) -> (Vec<ty::RegionVid>, BTreeMap<ty::RegionVid, ty::Region<'tcx>>) {
+        trace!("computed region unification map {:?}", self.instantiation);
+        (self.term_order, self.instantiation)
+    }
+}
+impl<'tcx> RegionBiFolder<'tcx> for RegionUnifier<'tcx> {
+    fn tcx(&self) -> ty::TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
+        &self.typing_env
+    }
+
+    fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {
+        if let ty::RegionKind::ReVar(v1) = r1.kind() {
+            trace!("trying to unify region {r1:?} with {r2:?}");
+
+            if let btree_map::Entry::Vacant(e) = self.instantiation.entry(v1) {
+                e.insert(r2);
+                self.term_order.push(v1);
+            }
+        }
+        // otherwise, this can be a late-bound region, which we don't care to unify here.
     }
 }

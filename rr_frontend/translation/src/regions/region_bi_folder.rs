@@ -9,6 +9,14 @@ pub(crate) trait RegionBiFolder<'tcx> {
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>);
 
+    fn map_ty_slices(&mut self, tys1: &[ty::Ty<'tcx>], tys2: &[ty::Ty<'tcx>]) {
+        assert_eq!(tys1.len(), tys2.len());
+
+        for (ty1, ty2) in tys1.iter().zip(tys2.iter()) {
+            self.map_tys(*ty1, *ty2);
+        }
+    }
+
     fn map_tys(&mut self, ty1: ty::Ty<'tcx>, mut ty2: ty::Ty<'tcx>) {
         // normalize
         // Probably we should normalize the original thing before folding instead.

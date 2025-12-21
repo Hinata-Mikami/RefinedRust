@@ -7,7 +7,7 @@
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::type_ir::{TypeFoldable, TypeSuperFoldable as _, TypeVisitableExt as _};
 
-use crate::environment::polonius_info::PoloniusInfo;
+use crate::environment::polonius_info::{PoloniusInfo, RegionKind};
 use crate::regions;
 use crate::regions::EarlyLateRegionMap;
 
@@ -78,6 +78,11 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
             ty::ReVar(v) => {
+                if matches!(self.info.get_region_kind(v.into()), RegionKind::Universal(_)) {
+                    // leave unchanged
+                    return r;
+                }
+
                 // We need to do some hacks here to find the right Polonius region:
                 // `r` is the non-placeholder region that the variable gets, but we are
                 // looking for the corresponding placeholder region
@@ -90,35 +95,6 @@ impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionVisitor<'_, 
             },
             _ => r,
         }
-    }
-}
-
-/// Find the regions mentioned in the captures of a closure
-pub(crate) struct ClosureCaptureRegionCollector<'tcx> {
-    tcx: ty::TyCtxt<'tcx>,
-    regions: Vec<ty::Region<'tcx>>,
-}
-impl<'tcx> ClosureCaptureRegionCollector<'tcx> {
-    pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>) -> Self {
-        Self {
-            tcx,
-            regions: vec![],
-        }
-    }
-
-    pub(crate) fn result(self) -> Vec<ty::Region<'tcx>> {
-        self.regions
-    }
-}
-
-impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for ClosureCaptureRegionCollector<'tcx> {
-    fn cx(&self) -> ty::TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        self.regions.push(r);
-        r
     }
 }
 
