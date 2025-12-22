@@ -77,6 +77,9 @@ pub enum SynType {
     #[display("UnitSynType")]
     Never,
 
+    #[display("(ArraySynType {} {})", _0, _1)]
+    Array(Box<Self>, u128),
+
     /// A Coq term, in case of generics.
     ///
     /// This Coq term is required to have type `syn_type`.
@@ -141,6 +144,9 @@ pub enum Layout {
     /// padding of a given number of bytes
     #[display("(Layout {}%nat 0%nat)", _0)]
     Pad(u32),
+
+    #[display("(mk_array_layout {} {})", _0, _1)]
+    Array(Box<Self>, u128),
 }
 
 impl From<SynType> for Layout {
@@ -160,6 +166,7 @@ impl From<&SynType> for Layout {
 
             SynType::Ptr | SynType::FnPtr => Self::Ptr,
 
+            SynType::Array(st, len) => Self::Array(Box::new(st.as_ref().to_owned().into()), *len),
             SynType::Untyped(ly) => ly.clone(),
             SynType::Unit | SynType::Never => Self::Unit,
 
@@ -189,6 +196,8 @@ impl From<&SynType> for OpType {
             SynType::Untyped(ly) => Self::Untyped(ly.clone()),
             SynType::Unit => Self::Struct,
             SynType::Never => Self::Untyped(Layout::Unit),
+
+            SynType::Array(_, _) => Self::Untyped(x.to_owned().into()),
 
             SynType::Literal(rhs) => Self::UseOpAlg(coq::term::Term::Literal(rhs.clone())),
         }

@@ -163,6 +163,7 @@ These include:
 | `run_check` | Boolean | Automatically call the Rocq type checker on the generated files |
 | `verify_deps` | Boolean | Verify dependencies or not |
 | `admit_proofs` | Boolean | Skip Rocq's `Qed` check and instead run `Admitted` |
+| `trust_debug` | Boolean  | Trust `Debug` implementations (which typically cannot be verified by RefinedRust) |
 | `extra_specs` | Relative/absolute path | File whose contents will be inlined at the end of the generated specs file |
 | `post_generation_hook` | Command | Run a command after code generation and before proof checking |
 | `generate_dune_project` | Boolean | Generate a dune-project file (on by default) |

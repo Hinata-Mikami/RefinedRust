@@ -7,7 +7,7 @@
 //! A wrapper around a `translator::TX` for the case we are translating the body of a function.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 
 use log::{info, trace};
 use radium::{code, coq, lang, specs};
@@ -325,7 +325,6 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             }
         }
 
-        // TODO: sort tyvars and projections canonically
         let (tyvars, projections) = tyvar_folder.get_result();
         let regions = lft_folder.get_regions();
 
@@ -471,16 +470,14 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // STEP 5: add trait requirements
         for req in trait_reqs {
             // translate type in scope with HRTB binders
-            let scope = self.scope.borrow();
+            let mut scope = self.scope.borrow_mut();
 
             let tcx = self.translator.env().tcx();
-            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
 
-            let mut scope = scope.make_params_scope();
-            scope.add_trait_req_scope(&req.scope);
-            let mut deps = BTreeSet::new();
-            let state = types::AdtState::new(&mut deps, &scope, &typing_env);
-            let mut state = STInner::TranslateAdt(state);
+            let mut params = scope.make_params_scope();
+            params.add_trait_req_scope(&req.scope);
+            let sc = STInner::InFunction(&mut scope);
+            let mut state = sc.setup_trait_state(tcx, params);
 
             // TODO: we need to lift up the HRTB lifetimes here.
 

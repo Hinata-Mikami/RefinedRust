@@ -114,11 +114,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
     }
 
-    //enum ConstantKind {
-    //Scalar(mir::interpret::Scalar, ty::Ty<'tcx>),
-    //Fn(ty::Ty<'tcx>),
-    //}
-
     /// Translate a constant value from const evaluation.
     fn translate_constant_value(
         &mut self,

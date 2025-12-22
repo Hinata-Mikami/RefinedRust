@@ -183,7 +183,7 @@ pub enum RustType {
     Struct(String, Vec<RustType>),
 
     #[display("RSTArray {} ({})", _0, &_1)]
-    Array(usize, Box<RustType>),
+    Array(u128, Box<RustType>),
 }
 
 impl RustType {
@@ -236,6 +236,8 @@ impl RustType {
             },
 
             Type::LiteralParam(lit) => Self::TyVar(lit.rust_name.clone()),
+
+            Type::Array(ty, len) => Self::Array(*len, Box::new(Self::of_type(ty.as_ref()))),
 
             Type::Literal(lit) => {
                 if let Some(scope_inst) = lit.scope_inst.as_ref() {

@@ -44,6 +44,9 @@ pub enum Type<'def> {
     #[display("(box {})", _0)]
     BoxT(Box<Type<'def>>),
 
+    #[display("(array_t {} {})", _1, _0)]
+    Array(Box<Type<'def>>, u128),
+
     /// a struct type, potentially instantiated with some type parameters
     /// the boolean indicates
     #[display("{}", _0.generate_type_term())]
@@ -99,6 +102,7 @@ impl<'def> From<&Type<'def>> for lang::SynType {
 
             Type::Literal(lit) => lit.generate_syn_type_term(),
             Type::Uninit(st) => st.clone(),
+            Type::Array(ty, len) => Self::Array(Box::new(ty.as_ref().to_owned().into()), *len),
 
             Type::Unit => Self::Unit,
             // NOTE: for now, just treat Never as a ZST
@@ -149,6 +153,8 @@ impl Type<'_> {
                 // similar to structs, we don't need to subst
                 coq::term::Type::Literal(su.get_rfn_type())
             },
+
+            Self::Array(ty, _) => coq::term::Type::List(Box::new(ty.get_rfn_type())),
 
             Self::Unit | Self::Never | Self::Uninit(_) => {
                 // NOTE: could also choose to use an uninhabited type for Never

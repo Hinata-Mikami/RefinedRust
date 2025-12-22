@@ -1495,6 +1495,29 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(specs::Type::Literal(shim_use))
     }
 
+    fn evaluate_constant_as_uint(v: ty::Const<'tcx>) -> Result<u128, TranslationError<'tcx>> {
+        match v.kind() {
+            ty::ConstKind::Value(v) => {
+                // this doesn't contain the necessary structure anymore. Need to reconstruct using the
+                // type.
+                match v.valtree.try_to_scalar() {
+                    Some(sc) => match v.ty.kind() {
+                        ty::TyKind::Uint(_) => {
+                            sc.to_u128().discard_err().ok_or(TranslationError::InvalidLayout)
+                        },
+                        _ => Err(TranslationError::InvalidLayout),
+                    },
+                    _ => Err(TranslationError::UnsupportedFeature {
+                        description: format!("const value not supported: {:?}", v),
+                    }),
+                }
+            },
+            _ => Err(TranslationError::UnsupportedFeature {
+                description: format!("Unsupported ConstKind: {v:?}"),
+            }),
+        }
+    }
+
     /// Translate types, while placing the `DefIds` of ADTs that this type uses in the `adt_deps`
     /// argument, if provided.
     pub(crate) fn translate_type_in_state(
@@ -1609,9 +1632,12 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support floats".to_owned(),
             }),
 
-            ty::TyKind::Array(_, _) => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does not support arrays".to_owned(),
-            }),
+            ty::TyKind::Array(ty, num) => {
+                let num_eval = Self::evaluate_constant_as_uint(*num)?;
+                let translated_ty = self.translate_type_in_state(*ty, state)?;
+
+                Ok(specs::Type::Array(Box::new(translated_ty), num_eval))
+            },
 
             ty::TyKind::Slice(_) => {
                 // TODO this should really be a fat ptr?

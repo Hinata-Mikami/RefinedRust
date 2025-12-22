@@ -288,6 +288,10 @@ pub enum RocqType<T, U> {
     #[display("bool")]
     Bool,
 
+    /// List type
+    #[display("list ({})", _0)]
+    List(Box<Type>),
+
     /// Product type
     #[display("{}", fmt_prod(_0))]
     Prod(Vec<Type>),

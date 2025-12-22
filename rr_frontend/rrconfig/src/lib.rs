@@ -80,6 +80,7 @@ struct Config {
     post_generation_hook: Option<String>,
     shims: Option<String>,
     extra_specs: Option<String>,
+    trust_debug: bool,
 }
 
 impl Default for Config {
@@ -105,6 +106,7 @@ impl Default for Config {
             post_generation_hook: None,
             shims: None,
             extra_specs: None,
+            trust_debug: false,
         }
     }
 }
@@ -319,6 +321,12 @@ pub fn shim_file() -> Option<PathBuf> {
 #[must_use]
 pub fn extra_specs_file() -> Option<PathBuf> {
     access_config(|c| c.extra_specs.clone()).map(make_path_absolute).and_then(Result::ok)
+}
+
+/// Should we automatically trust `fmt::Debug` trait impls?
+#[must_use]
+pub fn trust_debug() -> bool {
+    access_config(|c| c.trust_debug)
 }
 
 #[cfg(test)]

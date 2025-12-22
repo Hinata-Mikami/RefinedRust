@@ -133,9 +133,9 @@ pub(crate) fn sort_assoc_items<'tcx>(
 pub(crate) fn is_derive_trait_with_no_annotations(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let copy_did = search::try_resolve_did(tcx, &["core", "marker", "Copy"])?;
     let clone_did = search::try_resolve_did(tcx, &["core", "clone", "Clone"])?;
-    //let debug_did = search::try_resolve_did(tcx, &["core", "fmt", "Debug"])?;
+    let debug_did = search::try_resolve_did(tcx, &["core", "fmt", "Debug"])?;
 
-    Some(trait_did == copy_did || trait_did == clone_did)
+    Some(trait_did == copy_did || trait_did == clone_did || trait_did == debug_did)
 }
 
 /// Check if this is a derive trait that needs spec annotations to implement.

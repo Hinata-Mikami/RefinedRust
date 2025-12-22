@@ -1136,6 +1136,28 @@ fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base
     Ok(())
 }
 
+/// Check if this is a function whose implementation we always skip, asserting just a
+/// specification.
+/// This is unsafe, and should only be done for functions we really don't care about.
+fn is_only_spec_function(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
+    // Check if `did` is an impl of `Debug::fmt`. These impls use unsupported features like strings
+    // and trait objects, but don't do anything functionally interesting.
+
+    if let Some(impl_did) = vcx.env.trait_impl_of_method(did) {
+        let trait_impl = vcx.env.tcx().impl_subject(impl_did);
+        if let ty::ImplSubject::Trait(trait_ref) = trait_impl.skip_binder() {
+            let debug_did = search::try_resolve_did(vcx.env.tcx(), &["core", "fmt", "Debug"]);
+            if rrconfig::trust_debug() && debug_did == Some(trait_ref.def_id) {
+                println!("Warning: automatically trusting implementation of `Debug::fmt`: {did:?}");
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+/// Get the most restrictive function mode arising from annotations on a function.
 fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> procedures::Mode {
     let attrs = vcx.env.get_attributes_of_function(did, &spec_parsers::propagate_method_attr_from_impl);
 
@@ -1152,7 +1174,7 @@ fn get_most_restrictive_function_mode(vcx: &VerificationCtxt<'_, '_>, did: DefId
         return procedures::Mode::CodeShim;
     }
 
-    if attrs::has_tool_attr_filtered(attrs.as_slice(), "only_spec") {
+    if attrs::has_tool_attr_filtered(attrs.as_slice(), "only_spec") || is_only_spec_function(vcx, did) {
         return procedures::Mode::OnlySpec;
     }
 
