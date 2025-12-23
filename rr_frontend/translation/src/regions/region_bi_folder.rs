@@ -17,6 +17,20 @@ pub(crate) trait RegionBiFolder<'tcx> {
         }
     }
 
+    fn map_fn_sig(
+        &mut self,
+        sig1: &ty::Binder<'tcx, ty::FnSig<'tcx>>,
+        sig2: &ty::Binder<'tcx, ty::FnSig<'tcx>>,
+    ) {
+        let inputs1 = sig1.skip_binder().inputs();
+        let inputs2 = sig1.skip_binder().inputs();
+        self.map_ty_slices(inputs1, inputs2);
+
+        let output1 = sig1.skip_binder().output();
+        let output2 = sig2.skip_binder().output();
+        self.map_tys(output1, output2);
+    }
+
     fn map_tys(&mut self, ty1: ty::Ty<'tcx>, mut ty2: ty::Ty<'tcx>) {
         // normalize
         // Probably we should normalize the original thing before folding instead.
@@ -100,12 +114,17 @@ pub(crate) trait RegionBiFolder<'tcx> {
                 };
                 let args1 = args1.as_closure();
                 let args2 = args2.as_closure();
+
+                // fold upvars
                 let upvars1 = args1.upvar_tys();
                 let upvars2 = args2.upvar_tys();
                 assert_eq!(upvars1.len(), upvars2.len());
                 for (ty1, ty2) in upvars1.iter().zip(upvars2.iter()) {
                     self.map_tys(ty1, ty2);
                 }
+
+                // fold sig
+                self.map_fn_sig(&args1.sig(), &args2.sig());
             },
 
             ty::TyKind::RawPtr(ty1, mut1) => {

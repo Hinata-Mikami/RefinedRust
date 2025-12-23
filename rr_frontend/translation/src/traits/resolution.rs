@@ -104,7 +104,7 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             // enumerate regions in args since they were erased before
             let (enumerated_impl_args, num_regions) = arg_folder::relabel_erased_regions(impl_args, tcx);
 
-            trace!("re-enumerated impl args: {enumerated_impl_args:?}");
+            trace!("re-enumerated impl args: {enumerated_impl_args:?}, num_regions={num_regions:?}");
 
             if num_regions == 0 {
                 return impl_source.to_owned();
@@ -182,7 +182,10 @@ impl<'tcx> RegionMapper<'tcx> {
     fn get_result(mut self, num_regions: usize) -> Vec<ty::Region<'tcx>> {
         let mut res = Vec::new();
         for i in 0..num_regions {
-            let r = self.map.remove(&ty::RegionVid::from(i)).unwrap();
+            let r = self
+                .map
+                .remove(&ty::RegionVid::from(i))
+                .unwrap_or_else(|| panic!("could not map region {i}"));
             res.push(r);
         }
         res
