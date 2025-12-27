@@ -75,6 +75,20 @@ Section boringly.
     iPoseProof (Ha with "HP") as "Hx".
     by iApply boringly_intro.
   Qed.
+  Global Instance boringly_proper : Proper (equiv ==> equiv) boringly.
+  Proof.
+    intros ?? Heq. iSplit; iApply boringly_mono; by rewrite Heq.
+  Qed.
+  Global Instance boringly_mono' : Proper (bi_entails ==> bi_entails) boringly.
+  Proof.
+    intros ?? Heq. by iApply boringly_mono.
+  Qed.
+  Global Instance boringly_ne n : Proper (dist n ==> dist n) boringly.
+  Proof.
+    intros ?? Heq.
+    rewrite !boringly_unfold /boringly_def.
+    solve_proper.
+  Qed.
 
   Lemma boringly_persistent P `{!Persistent P} :
     (☒ P) ⊣⊢ P.

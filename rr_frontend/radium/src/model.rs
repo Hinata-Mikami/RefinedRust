@@ -15,6 +15,9 @@ pub enum Term {
     /// An Iris Term
     #[display("({})%I", _0)]
     IProp(coq::iris::IProp),
+
+    #[display("name_hint \"{}\" ({})%Z", _1, _0)]
+    WithName(Box<coq::term::Term>, String),
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]

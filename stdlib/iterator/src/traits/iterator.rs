@@ -34,13 +34,13 @@ pub trait Iterator {
     /// Precondition: persistently, each iteration preserves the invariant.
     /// If the inner iterator has been advanced, we can call the closure.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state e,
-        {Self::Next} π it_state (Some e) it_state' -∗
+        (☒ {Self::Next} π it_state (Some e) it_state') -∗
         Inv π it_state clos_state -∗
         {F::Pre} π clos_state *[e] ∗
         (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state'))")]
     /// Precondition: If no element is emitted, the invariant is also upheld.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state,
-        {Self::Next} π it_state None it_state' -∗
+        (☒ {Self::Next} π it_state None it_state') -∗
         Inv π it_state clos_state -∗
         Inv π it_state' clos_state)")]
     #[rr::ensures("ret = mk_map_x self f")]

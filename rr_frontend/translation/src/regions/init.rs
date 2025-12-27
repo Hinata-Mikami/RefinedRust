@@ -286,6 +286,9 @@ pub(crate) fn get_initial_universal_arg_constraints<'a, 'tcx>(
 
     let mut initial_arg_mapping = Vec::new();
     for (l, s) in unifier.get_result() {
+        if l == s {
+            continue;
+        }
         inclusion_tracker.add_static_inclusion(s, l, root_point);
         inclusion_tracker.add_static_inclusion(l, s, root_point);
 

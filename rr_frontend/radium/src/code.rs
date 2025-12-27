@@ -1091,7 +1091,10 @@ impl Function<'_> {
         };
         let params_late_pre = self.spec.generics.generate_validity_term_for_generics();
 
-        let prop = coq::iris::IProp::Sep(vec![params_late_pre, coq::iris::IProp::Pure(trait_late_pre)]);
+        let prop = coq::iris::IProp::Sep(vec![
+            params_late_pre,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(trait_late_pre))),
+        ]);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.spec.generics.generate_sized_requirements(),
         // Box::new(prop));
@@ -1599,7 +1602,10 @@ impl fmt::Display for UsedProcedure<'_> {
         let trait_req_term = self.get_trait_req_incl_term()?;
         let generics_term = self.quantified_scope.generate_validity_term_for_generics();
 
-        let prop = coq::iris::IProp::Sep(vec![generics_term, coq::iris::IProp::Pure(trait_req_term)]);
+        let prop = coq::iris::IProp::Sep(vec![
+            generics_term,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(trait_req_term))),
+        ]);
         // TODO: don't require that _all_ of them are sized
         //let prop = coq::iris::IProp::Exists(self.quantified_scope.generate_sized_requirements(),
         // Box::new(prop));

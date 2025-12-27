@@ -9,12 +9,13 @@
 #![rr::include("closures")]
 #![rr::include("ptr")]
 #![rr::include("clone")]
+#![rr::include("result")]
 
 use core::mem;
 
 #[rr::refined_by("option (place_rfn {rt_of T})")]
 #[rr::export_as(core::option::Option)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Option<T> {
     #[rr::pattern("None")]
     #[rr::export_as(core::option::Option::None)]

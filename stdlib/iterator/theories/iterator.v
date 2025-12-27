@@ -1,5 +1,6 @@
 From refinedrust Require Import typing.
 
+(** Declaration of the spec attributes of the `Iterator` trait (external, in order to use it in the below theories) *)
 Definition traits_iterator_Iterator_Inv_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Item_rt: RT) :=
   (thread_id → (RT_xt (Self_rt)) → iProp Σ).
 Definition traits_iterator_Iterator_Next_sig `{RRGS : !(refinedrustGS Σ)} (Self_rt: RT) (Item_rt: RT) (traits_iterator_Iterator_Inv: (traits_iterator_Iterator_Inv_sig (Self_rt) (Item_rt))) :=
@@ -66,4 +67,31 @@ Section trans.
   Qed.
   Definition simplify_goal_iterator_next_fused_trans_nil_inst := [instance @simplify_goal_iterator_next_fused_trans_nil with 10%N].
   Global Existing Instance simplify_goal_iterator_next_fused_trans_nil_inst.
+
+  Global Instance IteratorNextFusedTrans_pers {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) π :
+    (∀ s1 e s2, Persistent (A.(traits_iterator_Iterator_Next) π s1 e s2)) →
+    ∀ s1 hist s2, Persistent (IteratorNextFusedTrans A π s1 hist s2).
+  Proof.
+    intros Hpers. intros s1 hist s2.
+    induction hist as [ | x hist IH] in s1, s2, hist |-*; simpl; first apply _.
+    apply _.
+  Qed.
+
+  (** Automation support for learning inductive properties about iterator executions *)
+  Class IteratorLearnInductive {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) := mk_iterator_learn {
+    iterator_learn_inductive_Q : RT_xt Self_rt → list (RT_xt Item_rt) → RT_xt Self_rt → Prop;
+    iterator_learn_inductive_proof π s1 hist s2 :
+      ☒ IteratorNextFusedTrans A π s1 hist s2 -∗ ⌜iterator_learn_inductive_Q s1 hist s2⌝;
+  }.
+
+  Global Program Instance learn_from_hyp_iterator {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) π s1 xs s2 :
+    IteratorLearnInductive A →
+    LearnFromHyp (IteratorNextFusedTrans A π s1 xs s2) :=
+    λ L, {| learn_from_hyp_Q := ⌜L.(iterator_learn_inductive_Q) s1 xs s2⌝ |}.
+  Next Obligation.
+    iIntros (?? A ? s1 xs s2 L F ?) "Ha".
+    iPoseProof (boringly_intro with "Ha") as "#Hx".
+    iPoseProof (iterator_learn_inductive_proof with "Hx") as "$".
+    done.
+  Qed.
 End trans.

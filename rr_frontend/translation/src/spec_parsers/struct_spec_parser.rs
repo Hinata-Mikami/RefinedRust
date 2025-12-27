@@ -248,11 +248,19 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                         },
                         MetaIProp::Pure(p, name) => match name {
                             None => {
-                                invariants.push((coq::iris::IProp::Pure(p), specs::invariants::Mode::All));
+                                invariants.push((
+                                    coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(p))),
+                                    specs::invariants::Mode::All,
+                                ));
                             },
                             Some(n) => {
                                 invariants.push((
-                                    coq::iris::IProp::PureWithName(p, n),
+                                    coq::iris::IProp::Pure(Box::new(coq::term::Term::UserDefined(
+                                        radium::model::Term::WithName(
+                                            Box::new(coq::term::Term::Literal(p)),
+                                            n,
+                                        ),
+                                    ))),
                                     specs::invariants::Mode::All,
                                 ));
                             },

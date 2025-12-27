@@ -409,12 +409,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Get the type to annotate a borrow with.
     fn get_type_annotation_for_borrow(
         &self,
-        bk: mir::BorrowKind,
+        _bk: mir::BorrowKind,
         pl: &mir::Place<'tcx>,
     ) -> Result<Option<code::RustType>, TranslationError<'tcx>> {
-        let mir::BorrowKind::Mut { .. } = bk else {
-            return Ok(None);
-        };
+        //let mir::BorrowKind::Mut { .. } = bk else {
+        //return Ok(None);
+        //};
 
         let ty = self.get_type_of_place(pl);
 

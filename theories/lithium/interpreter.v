@@ -762,7 +762,7 @@ Ltac liCase :=
   | |- @envs_entails ?PROP ?Δ (case_destruct ?x ?T) =>
       tryif (non_trivial_destruct x) then
         notypeclasses refine (tac_case_destruct true _ _ _ _);
-        liDestruct_hook x;  
+        liDestruct_hook x;
         case_eq x
       else (
         notypeclasses refine (tac_case_destruct false _ _ _ _)
@@ -840,3 +840,64 @@ Ltac liStep :=
     | liAccu
     | liUnfoldLetGoal
     ].
+
+
+(** TC Automation for turning boring propositions into pure propositions. *)
+Section automation.
+Context {Σ : gFunctors}.
+Class SimplifyBoringlyImpl (P : iProp Σ) := {
+  simplify_boringly_impl_q : Prop;
+  simplify_boringly_impl_proof : ☒ P ⊢ ⌜simplify_boringly_impl_q⌝;
+}.
+Global Arguments simplify_boringly_impl_q : clear implicits.
+Global Arguments simplify_boringly_impl_q _ {_}.
+
+Global Program Instance simplify_boringly_impl_pure (P : Prop) :
+  SimplifyBoringlyImpl ⌜P⌝ := {|
+    simplify_boringly_impl_q := P;
+|}.
+Next Obligation. intros. rewrite boringly_persistent_elim. done. Qed.
+
+Global Program Instance simplify_boringly_impl_sep (P1 P2 : iProp Σ)
+  `{S1 : !SimplifyBoringlyImpl P1} `{S2 : SimplifyBoringlyImpl P2} :
+  SimplifyBoringlyImpl (P1 ∗ P2) := {|
+    simplify_boringly_impl_q := S1.(simplify_boringly_impl_q _) ∧ S2.(simplify_boringly_impl_q _);
+|}.
+Next Obligation.
+  intros. rewrite boringly_sep.
+  rewrite !simplify_boringly_impl_proof.
+  iIntros "(% & %)".
+  done.
+Qed.
+
+Global Program Instance simplify_boringly_impl_exist {A} (P : A → iProp Σ)
+  `{S1 : !∀ a, SimplifyBoringlyImpl (P a)} :
+  SimplifyBoringlyImpl (∃ a, P a) := {|
+    simplify_boringly_impl_q := ∃ a, (S1 a).(simplify_boringly_impl_q _);
+|}.
+Next Obligation.
+  intros. rewrite boringly_exists.
+  iIntros "(%x & Ha)".
+  rewrite !simplify_boringly_impl_proof.
+  iExists x. done.
+Qed.
+
+Global Program Instance simplify_boringly_impl_forall {A} (P : A → iProp Σ)
+  `{S1 : !∀ a, SimplifyBoringlyImpl (P a)} :
+  SimplifyBoringlyImpl (∀ a, P a) := {|
+    simplify_boringly_impl_q := ∀ a, (S1 a).(simplify_boringly_impl_q _);
+|}.
+Next Obligation.
+  intros. rewrite boringly_forall.
+  iIntros "Ha" (a). iSpecialize ("Ha" $! a).
+  rewrite !simplify_boringly_impl_proof.
+  done.
+Qed.
+
+(** Fallback instance, in case we cannot extract a pure fact *)
+Global Program Instance simplify_boringly_impl_default (P : iProp Σ) :
+  SimplifyBoringlyImpl P | 1000 := {|
+    simplify_boringly_impl_q := True;
+|}.
+Next Obligation. intros. eauto. Qed.
+End automation.

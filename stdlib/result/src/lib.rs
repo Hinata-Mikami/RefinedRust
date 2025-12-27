@@ -48,7 +48,7 @@ impl<T, E> Result<T, E> {
     #[rr::args("Ok x")]
     #[rr::returns("x")]
     pub fn unwrap(self) -> T
-    where E: Debug,
+        where E: Debug,
     {
         match self {
             Ok(t) => t,
@@ -71,15 +71,21 @@ impl<T, E> Result<T, E> {
     }
 }
 
+
+
+
 #[rr::export_as(core::fmt::Error)]
 pub struct Error;
+
 #[rr::export_as(core::fmt::Debug)]
 pub trait Debug {
-    #[rr::verify]
+    #[rr::observe("f.ghost": "tt")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error>;
 }
 
 #[rr::export_as(core::fmt::Formatter)]
+#[rr::refined_by("()" : "unit")]
 pub struct Formatter<'a> {
+    #[rr::field("tt")]
     _marker: PhantomData<&'a mut i32>,
 }

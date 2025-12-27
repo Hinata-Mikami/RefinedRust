@@ -35,7 +35,7 @@ pub enum IProp {
     Atom(String),
 
     #[display("⌜({})%Z⌝", _0)]
-    Pure(String),
+    Pure(Box<term::Term>),
 
     #[display("{}", fmt_with_op("∗", _0))]
     Sep(Vec<IProp>),
@@ -54,23 +54,37 @@ pub enum IProp {
 
     #[display("{}{}", term::fmt_binders("∀", _0), _1)]
     All(binder::BinderList, Box<IProp>),
-
-    // prop, name
-    #[display("⌜name_hint \"{}\" ({})%Z⌝", _1, _0)]
-    PureWithName(String, String),
 }
 
-/// Representation of an Iris predicate
-#[derive(Clone, Eq, PartialEq, Debug, Display)]
-#[display("{} ({})%I : iProp Σ", term::fmt_binders("λ", binders), prop)]
-pub struct IPropPredicate {
-    binders: binder::BinderList,
-    prop: IProp,
-}
+impl IProp {
+    pub fn try_to_pure(&self) -> Option<term::Term> {
+        match self {
+            Self::True => Some(term::Term::Literal("True".to_owned())),
+            Self::Pure(term) => Some(term.as_ref().to_owned()),
+            Self::Sep(props) | Self::Conj(props) => {
+                let props: Vec<_> = props.iter().map(Self::try_to_pure).try_collect()?;
+                Some(term::Term::Infix("∧".to_owned(), props))
+            },
+            Self::Disj(props) => {
+                let props: Vec<_> = props.iter().map(Self::try_to_pure).try_collect()?;
+                Some(term::Term::Infix("∨".to_owned(), props))
+            },
+            // don't lift over existential quantifiers for now, as the RR sidecondition solver does
+            // not instantiate existentials
+            //Self::Exists(binders, prop) => {
+            //let prop = prop.try_to_pure()?;
+            //Some(term::Term::Exists(binders.to_owned(), Box::new(prop)))
+            //},
+            Self::All(binders, prop) => {
+                let prop = prop.try_to_pure()?;
+                Some(term::Term::All(binders.to_owned(), Box::new(prop)))
+            },
+            _ => None,
+        }
+    }
 
-impl IPropPredicate {
     #[must_use]
-    pub const fn new(binders: binder::BinderList, prop: IProp) -> Self {
-        Self { binders, prop }
+    pub fn purify(self) -> Self {
+        if let Some(t) = self.try_to_pure() { Self::Pure(Box::new(t)) } else { self }
     }
 }

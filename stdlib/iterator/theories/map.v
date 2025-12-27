@@ -64,13 +64,13 @@ Section map.
       iter_attrs.(traits_iterator_Iterator_Inv) π s.(map_it) ∗
       (* progress *)
       li_sealed (□ (∀ it_state it_state' clos_state e,
-        iter_attrs.(traits_iterator_Iterator_Next) π it_state (Some e) it_state' -∗
+        (☒ iter_attrs.(traits_iterator_Iterator_Next) π it_state (Some e) it_state') -∗
         Inv π it_state clos_state -∗
         Pre π clos_state *[e] ∗
         (∀ e' clos_state', PostMut π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state'))) ∗
       (* progress (no element) *)
       li_sealed (□ (∀ it_state it_state' clos_state,
-        iter_attrs.(traits_iterator_Iterator_Next) π it_state None it_state' -∗
+        (☒ iter_attrs.(traits_iterator_Iterator_Next) π it_state None it_state') -∗
         Inv π it_state clos_state -∗
         Inv π it_state' clos_state)))%I.
 

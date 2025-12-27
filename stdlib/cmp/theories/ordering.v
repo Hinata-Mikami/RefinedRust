@@ -27,6 +27,17 @@ Notation "a '=o{' cmp '}' b" := (ord_eq cmp a b) (at level 42).
 Notation "a '≤o{' cmp '}' b" := (ord_le cmp a b) (at level 42).
 Notation "a '≥o{' cmp '}' b" := (ord_ge cmp a b) (at level 42).
 
+Global Instance ord_lt_dec {A} cmp (a b : A) : Decision (a <o{ cmp } b).
+Proof. apply ordering_eqdec. Qed.
+Global Instance ord_eq_dec {A} cmp (a b : A) : Decision (a =o{ cmp } b).
+Proof. apply ordering_eqdec. Qed.
+Global Instance ord_gt_dec {A} cmp (a b : A) : Decision (a >o{ cmp } b).
+Proof. apply ordering_eqdec. Qed.
+Global Instance ord_le_dec {A} cmp (a b : A) : Decision (a ≤o{ cmp } b).
+Proof. apply _. Qed.
+Global Instance ord_ge_dec {A} cmp (a b : A) : Decision (a ≥o{ cmp } b).
+Proof. apply _. Qed.
+
 Global Hint Unfold ord_lt ord_gt ord_eq ord_le ord_ge: lithium_rewrite.
 
 (** Nat *)

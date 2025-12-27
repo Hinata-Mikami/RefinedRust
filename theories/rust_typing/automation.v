@@ -36,7 +36,8 @@ Ltac solve_protected_eq_hook ::=
       (*end*)
 
   (* don't fail if nothing matches *)
-  | |- _ => idtac
+  | |- _ =>
+      unfold reverse_coercion
   end.
 
 Ltac can_solve_hook ::= first [
@@ -873,6 +874,14 @@ Global Instance simpl_exist_tysized `{!typeGS Σ} {rt} (ty : type rt) `{!TySized
 Proof.
   intros ?. eauto.
 Qed.
+
+(** A typeclass to check whether a relation is the identity relation *)
+Class RelationIsIdentity {A} (R : A → A → Prop) := {
+  relation_is_identity_proof : ∀ a b, R a b → a = b;
+}.
+Global Hint Extern 100 (RelationIsIdentity _) =>
+    simpl; econstructor; solve_goal : typeclass_instances.
+Global Hint Mode RelationIsIdentity + + : typeclass_instances.
 
 (* In my experience, this has led to more problems with [normalize_autorewrite] rewriting below definitions too eagerly. *)
 #[export] Unset Keyed Unification.

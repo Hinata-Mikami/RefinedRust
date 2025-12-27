@@ -189,7 +189,7 @@
             {
               pname = "stdlib-alloc";
               src = ./stdlib/alloc;
-              libDeps = with packages; [stdlib-ptr stdlib-result];
+              libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone];
               withTheories = true;
             }
             {
@@ -233,6 +233,15 @@
               withTheories = true;
             }
             {
+              pname = "stdlib-sized";
+              src = ./stdlib/sized;
+            }
+            {
+              pname = "stdlib-index";
+              src = ./stdlib/index;
+              libDeps = with packages; [stdlib-sized];
+            }
+            {
               pname = "stdlib-mem";
               src = ./stdlib/mem;
               withTheories = true;
@@ -240,7 +249,7 @@
             {
               pname = "stdlib-option";
               src = ./stdlib/option;
-              libDeps = with packages; [stdlib-closures];
+              libDeps = with packages; [stdlib-closures stdlib-clone stdlib-ptr stdlib-result];
             }
             {
               pname = "stdlib-ptr";
@@ -255,6 +264,7 @@
             {
               pname = "stdlib-result";
               src = ./stdlib/result;
+              libDeps = with packages; [stdlib-clone];
               withTheories = true;
             }
             {
@@ -286,7 +296,7 @@
             {
               pname = "stdlib-vec";
               src = ./stdlib/vec;
-              libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal];
+              libDeps = with packages; [stdlib-alloc stdlib-iterator stdlib-option stdlib-rr_internal stdlib-closures stdlib-index stdlib-cmp];
             }
             {
               pname = "stdlib";

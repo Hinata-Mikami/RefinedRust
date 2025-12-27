@@ -5,7 +5,7 @@ From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import ident_to_string lookup_definition proof_state.
 From refinedrust.automation Require Export layout_ltac.
-From refinedrust Require Import int programs program_rules functions uninit mut_ref.mut_ref shr_ref.shr_ref struct.struct unit value array.array alias_ptr.
+From refinedrust Require Import int programs program_rules functions uninit mut_ref.mut_ref shr_ref.shr_ref struct.struct unit value array.array alias_ptr box.
 
 Set Default Proof Using "Type".
 
@@ -238,6 +238,8 @@ Ltac interpret_rust_type_core lfts env ty ::=
       refine (struct_t sls ltac:(interpret_rust_type_list lfts env tys))
   | RSTArray ?len ?ty =>
       refine (array_t len _); interpret_rust_type_core lfts env ty
+  | RSTBox ?ty =>
+      refine (box _); interpret_rust_type_core lfts env ty
   | RSTRef ?mut ?κ ?ty =>
       match mut with
       | Mut =>

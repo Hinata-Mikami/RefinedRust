@@ -457,6 +457,15 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         unimplemented!();
     }
+
+    //#[rr::only_spec]
+    //fn position<F>(&mut self, f: F) -> Option<usize>
+    //where
+        //Self: Sized,
+        //F: FnMut(Self::Item) -> bool,
+    //{
+        //unimplemented!();
+    //}
 }
 
 

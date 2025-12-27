@@ -8,17 +8,17 @@ Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
 
-Program Instance learn_from_hyp_range_it π s1 hist s2 :
-  LearnFromHyp (IteratorNextFusedTrans loops_MyRangeasstd_iter_Iterator_spec_attrs π s1 hist s2) :=
-  {| learn_from_hyp_Q := ⌜s1.2 = s2.2 ∧ s1.1 ≤ s2.1 ∧ (* s2.1 ≤ s2.2 ∧ *) hist = seqZ s1.1 (s2.1 - s1.1)⌝%I |}.
+Program Instance iterator_learn_range_it :
+  IteratorLearnInductive (loops_MyRangeasstd_iter_Iterator_spec_attrs) :=
+  {| iterator_learn_inductive_Q s1 hist s2 := s1.2 = s2.2 ∧ s1.1 ≤ s2.1 ∧ (* s2.1 ≤ s2.2 ∧ *) hist = seqZ s1.1 (s2.1 - s1.1) |}.
 Next Obligation.
-  iIntros (??????) "Hx".
-  iModIntro.
+  iIntros (????) "Hx".
+  iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
   { iDestruct "Hx" as "%". subst. iPureIntro.
     rewrite Z.sub_diag. done. }
   iDestruct "Hx" as "(%s1' & %Ha & Hx)".
-  iPoseProof ("IH" with "Hx") as "($ & %Hb)".
+  iPoseProof ("IH" with "Hx") as "%Hb".
   iPureIntro.
   destruct Ha as (? & _ & <- & ? & ?). destruct Hb as (? & ? & ->).
   destruct s1, s2, s1'; simpl in *.

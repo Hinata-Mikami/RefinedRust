@@ -483,7 +483,7 @@ impl<'def> LiteralSpec<'def> {
                 && let Some(spec_precond) = trait_use.make_semantic_spec_term()
             {
                 //let spec_precond = trait_use.make_spec_param_precond();
-                late_pre.push(coq::iris::IProp::Pure(spec_precond));
+                late_pre.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(spec_precond))));
             }
         }
         let mut f3 = IndentWriter::new_skip_initial(BASE_INDENT, &mut f2);

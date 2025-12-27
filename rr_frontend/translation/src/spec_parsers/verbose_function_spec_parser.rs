@@ -118,7 +118,10 @@ impl ClosureSpecInfo {
         // one variant for the PostMut predicate
         let mut post_ex_clauses_mut: Vec<coq::iris::IProp> =
             parsed_spec.postconditions.iter().map(|x| x.clone().into()).collect();
-        post_ex_clauses_mut.insert(0, coq::iris::IProp::Pure(post_ret_rfn_clause.clone()));
+        post_ex_clauses_mut.insert(
+            0,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(post_ret_rfn_clause.clone()))),
+        );
         // one for the Post predicate, which also contains the individual observations on FnOnce captures
         let mut post_ex_clauses: Vec<coq::iris::IProp> = parsed_spec
             .postconditions
@@ -126,10 +129,12 @@ impl ClosureSpecInfo {
             .map(|x| x.clone().into())
             .chain(parsed_captures.postconditions.iter().map(|x| x.clone().into()))
             .collect();
-        post_ex_clauses.insert(0, coq::iris::IProp::Pure(post_ret_rfn_clause));
+        post_ex_clauses
+            .insert(0, coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(post_ret_rfn_clause))));
 
         let post_self_rfn_clause = format!("{self_post_var} = ({})", parsed_captures.closure_self_post_rfn);
-        post_ex_clauses_mut.push(coq::iris::IProp::Pure(post_self_rfn_clause));
+        post_ex_clauses_mut
+            .push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(post_self_rfn_clause))));
 
         let tid_binder = coq::binder::Binder::new(
             Some("π".to_owned()),
@@ -139,9 +144,16 @@ impl ClosureSpecInfo {
         // assemble precondition
         let mut pre_clauses: Vec<coq::iris::IProp> =
             parsed_spec.preconditions.iter().map(|x| x.clone().into()).collect();
-        pre_clauses.insert(0, coq::iris::IProp::Pure(pre_self_rfn_clause.clone()));
-        pre_clauses.insert(0, coq::iris::IProp::Pure(pre_args_rfn_clause.clone()));
+        pre_clauses.insert(
+            0,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_self_rfn_clause.clone()))),
+        );
+        pre_clauses.insert(
+            0,
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause.clone()))),
+        );
         let pre = coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(pre_clauses)));
+        let pre = pre.purify();
         let pre_encoded = coq::term::Term::Lambda(
             coq::binder::BinderList::new(vec![tid_binder.clone(), self_binder.clone(), args_binder.clone()]),
             Box::new(coq::term::Term::UserDefined(model::Term::IProp(pre))),
@@ -153,12 +165,13 @@ impl ClosureSpecInfo {
             Box::new(coq::iris::IProp::Sep(post_ex_clauses)),
         );
         let post_clauses = vec![
-            coq::iris::IProp::Pure(pre_self_rfn_clause.clone()),
-            coq::iris::IProp::Pure(pre_args_rfn_clause.clone()),
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_self_rfn_clause.clone()))),
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause.clone()))),
             post_ex_clause,
         ];
         let post =
             coq::iris::IProp::Exists(all_params.clone(), Box::new(coq::iris::IProp::Sep(post_clauses)));
+        let post = post.purify();
         let post_encoded = coq::term::Term::Lambda(
             coq::binder::BinderList::new(vec![
                 tid_binder.clone(),
@@ -173,12 +186,13 @@ impl ClosureSpecInfo {
         let post_mut_ex_clause =
             coq::iris::IProp::Exists(all_existentials, Box::new(coq::iris::IProp::Sep(post_ex_clauses_mut)));
         let post_mut_clauses = vec![
-            coq::iris::IProp::Pure(pre_self_rfn_clause),
-            coq::iris::IProp::Pure(pre_args_rfn_clause),
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_self_rfn_clause))),
+            coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(pre_args_rfn_clause))),
             post_mut_ex_clause,
         ];
         let post_mut =
             coq::iris::IProp::Exists(all_params, Box::new(coq::iris::IProp::Sep(post_mut_clauses)));
+        let post_mut = post_mut.purify();
         let post_mut_encoded = coq::term::Term::Lambda(
             coq::binder::BinderList::new(vec![
                 tid_binder,
@@ -376,8 +390,11 @@ impl From<MetaIProp> for coq::iris::IProp {
     fn from(meta: MetaIProp) -> Self {
         match meta {
             MetaIProp::Pure(p, name) => match name {
-                None => Self::Pure(p),
-                Some(n) => Self::PureWithName(p, n),
+                None => Self::Pure(Box::new(coq::term::Term::Literal(p))),
+                Some(n) => Self::Pure(Box::new(coq::term::Term::UserDefined(model::Term::WithName(
+                    Box::new(coq::term::Term::Literal(p)),
+                    n,
+                )))),
             },
             MetaIProp::Iris(p) => p,
             MetaIProp::Type(spec) => {

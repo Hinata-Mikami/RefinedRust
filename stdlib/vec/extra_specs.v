@@ -36,29 +36,29 @@ Admitted.
 Definition resolve_ghost_Vec_T_uniq_inst := [instance @resolve_ghost_Vec_T_uniq].
 Global Existing Instance resolve_ghost_Vec_T_uniq_inst.
 
-Global Program Instance learn_from_hyp_vec_intoiter_it π T_rt A_rt A_attrs s1 hist s2 :
-  LearnFromHyp (IteratorNextFusedTrans (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs) π s1 hist s2) :=
-  {| learn_from_hyp_Q := ⌜s1 = hist ++ s2⌝%I |}.
+Global Program Instance iterator_learn_vec_intoiter_it T_rt A_rt A_attrs :
+  IteratorLearnInductive (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs) :=
+  {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
 Next Obligation.
-  iIntros (?????????) "Hx".
-  iModIntro.
+  iIntros (???????) "Hx".
+  iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
-  { iDestruct "Hx" as "->". iPureIntro. done. } 
+  { iDestruct "Hx" as "->". iPureIntro. done. }
   iDestruct "Hx" as "(%s1' & (_ & ->) & Hx)".
-  iPoseProof ("IH" with "Hx") as "($ & ->)".
+  iPoseProof ("IH" with "Hx") as "->".
   done.
 Qed.
 
-Global Program Instance learn_from_hyp_iter_it π T_rt s1 hist s2 :
-  LearnFromHyp (IteratorNextFusedTrans (IteraTasstd_iter_Iterator_spec_attrs T_rt) π s1 hist s2) :=
-  {| learn_from_hyp_Q := ⌜s1 = hist ++ s2⌝%I |}.
+Global Program Instance iterator_learn_learn_slice_iter T_rt :
+  IteratorLearnInductive (IteraTasstd_iter_Iterator_spec_attrs T_rt) :=
+  {| iterator_learn_inductive_Q s1 hist s2 := s1 = hist ++ s2 |}.
 Next Obligation.
-  iIntros (???????) "Hx".
-  iModIntro.
+  iIntros (?????) "Hx".
+  iPoseProof (boringly_persistent_elim with "Hx") as "Hx".
   iInduction hist as [ | x hist] "IH" forall (s1 s2); simpl.
-  { iDestruct "Hx" as "->". iPureIntro. done. } 
+  { iDestruct "Hx" as "->". iPureIntro. done. }
   iDestruct "Hx" as "(%s1' & (_ & ->) & Hx)".
-  iPoseProof ("IH" with "Hx") as "($ & ->)".
+  iPoseProof ("IH" with "Hx") as "->".
   done.
 Qed.
 

@@ -94,8 +94,11 @@ impl From<MetaIProp> for coq::iris::IProp {
     fn from(meta: MetaIProp) -> Self {
         match meta {
             MetaIProp::Pure(p, name) => match name {
-                None => Self::Pure(p),
-                Some(n) => Self::PureWithName(p, n),
+                None => Self::Pure(Box::new(coq::term::Term::Literal(p))),
+                Some(n) => Self::Pure(Box::new(coq::term::Term::UserDefined(model::Term::WithName(
+                    Box::new(coq::term::Term::Literal(p)),
+                    n,
+                )))),
             },
             MetaIProp::Iris(p) => p,
             MetaIProp::Type(spec) => {
@@ -349,13 +352,17 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         for inv_var in inv_vars {
             if let Some(binder_name) = rfn_binder_names.get(&inv_var.local) {
                 if let Some(rfn) = &inv_var.rfn {
-                    var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = {rfn}")));
+                    var_invariants.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(format!(
+                        "{binder_name} = {rfn}"
+                    )))));
                 } else {
                     // introduce an implicit quantifier and use xt
                     let ex_name = inv_var.local.clone();
                     existentials
                         .push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
-                    var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = ($# {ex_name})")));
+                    var_invariants.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(format!(
+                        "{binder_name} = ($# {ex_name})"
+                    )))));
                 }
             } else {
                 return Err(format!(
@@ -373,7 +380,9 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         {
             let ex_name = iterator_info.binder_name.clone();
             existentials.push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
-            var_invariants.push(coq::iris::IProp::Pure(format!("{binder_name} = ($# {ex_name})")));
+            var_invariants.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(format!(
+                "{binder_name} = ($# {ex_name})"
+            )))));
 
             let init_value_binder = format!("_init_{name}");
             let init_value_ty = coq::term::RocqType::UserDefined(model::Type::RTXT(Box::new(rfn_ty)));
