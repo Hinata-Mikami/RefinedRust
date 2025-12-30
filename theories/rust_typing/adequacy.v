@@ -102,7 +102,7 @@ Proof.
     iMod (na_alloc) as "(%π & Hna)".
     iDestruct ("Hfn" $! π) as (P) "[Hmain HP]".
     rewrite /initial_prog.
-    iApply (type_call_fnptr π [] [] 0 [] [] [] main (val_of_loc main) [] [] eq_refl _ (main_type P) [] (λ _ _ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
+    iApply (type_call_fnptr π [] [] 0 [] [] [] main (val_of_loc main) [] [] eq_refl _ (main_type P) [] (λ _ _ _ _ _, True%I) with "[HP Hna] Hmain [] [] [] [] []").
     + iExists (π, ⊤) => /=.
       iFrame. do 2 iR.
       iIntros "_". iExists eq_refl, -[], tt.
@@ -118,7 +118,7 @@ Proof.
       simpl.
       iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
-      iSplitR. { iPureIntro. intros. 
+      iSplitR. { iPureIntro. intros.
         rewrite /ty_outlives_E ty_lfts_unfold.
         rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
       iIntros (v []).
@@ -127,7 +127,7 @@ Proof.
     + rewrite /rrust_ctx. iFrame "#".
     + by iApply big_sepL_nil.
     + by iApply big_sepL_nil.
-    + by iIntros (???????) "HL Hv _".
+    + by iIntros (?????) "HL _".
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - rewrite /heap_state_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
     by iFrame.

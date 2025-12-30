@@ -646,10 +646,17 @@ Section judgments.
 
   (** Typed call expressions, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
-  Definition typed_call π E L (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_val_expr_cont_t) : iProp Σ :=
+  Definition typed_call_cont_t := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
+  Definition typed_call π E L (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_call_cont_t) : iProp Σ :=
     (P -∗
      ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{π, MetaNone} r @ ty) -∗
-     typed_val_expr E L (Call v (Val <$> vl)) T)%I.
+     ∀ Φ,
+      rrust_ctx -∗
+      elctx_interp E -∗
+      llctx_interp L -∗
+      (∀ (L' : llctx) (v : val) (rt : RT) (ty : type rt) r,
+        llctx_interp L' -∗ T L' v rt ty r -∗ Φ v) -∗
+      WP (Call v (Val <$> vl)) {{ v, Φ v }})%I.
   Class TypedCall π (E : elctx) (L : llctx) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
     typed_call_proof T : iProp_to_Prop (typed_call π E L eκs etys v P vl tys T).
 

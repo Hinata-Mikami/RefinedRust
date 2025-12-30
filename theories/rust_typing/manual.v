@@ -76,10 +76,9 @@ Section updateable.
     iIntros (? ? ? ? ? ? ? ? ? ? ? ?).
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    unshelve iApply add_updateable; first apply _.
-    iApply (updateable_mono with "HT").
-    iIntros (L2) "Hb".
-    iApply ("Hb" with "HP Ha").
+    iIntros (?) "#CTX #HE HL Hc".
+    iApply fupd_wp. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
+    iApply ("HT" with "HP Ha CTX HE HL Hc").
   Qed.
   Next Obligation.
     simpl. eauto.
@@ -132,7 +131,8 @@ Section updateable.
   Proof.
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    iApply fupd_typed_val_expr. iMod "HT" as "HT". iApply ("HT" with "HP Ha").
+    iIntros (?) "CTX HE HL Hc".
+    iApply fupd_wp. iMod ("HT") as "HT". iApply ("HT" with "HP Ha CTX HE HL Hc").
   Qed.
 
   Lemma fupd_typed_stmt `{!typeGS Σ} E L s rf R ϝ :
@@ -271,17 +271,17 @@ Section updateable_rules.
   (** Split an into two parts *)
   Lemma updateable_split_array l (k : nat) :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-    ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗    
+    ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
         subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
         ⌜k ≤ n⌝ ∗
         ((l ◁ₗ[π, Owned false] #(take k rs) @ (◁ array_t k ty) -∗
          (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned false] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
-         introduce_with_hooks updateable_E L2 R2 (λ L3, 
-          updateable_core updateable_E L3))))) 
+         introduce_with_hooks updateable_E L2 R2 (λ L3,
+          updateable_core updateable_E L3)))))
     ⊢ P.
   Proof.
-    iIntros "HT". 
+    iIntros "HT".
     unshelve iApply add_updateable; first apply _.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
@@ -290,7 +290,7 @@ Section updateable_rules.
     iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & %Hlt & HT)"; [done.. | ].
     iMod (array_t_ofty_split _ _ _ k (n - k) with "Hl") as "(Hl1 & Hl2)"; [done | lia | ].
     unfold introduce_with_hooks.
-    iPoseProof  ("HT" with "Hl1 Hl2 [//] HE HL HR") as "HT". 
+    iPoseProof  ("HT" with "Hl1 Hl2 [//] HE HL HR") as "HT".
     iMod (fupd_mask_mono with "HT") as "(%L3 & HL & HT)"; first done.
     by iFrame.
   Qed.
@@ -302,13 +302,13 @@ Section updateable_rules.
       ∃ rs n (ty : type rt'),
         subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
         ⌜n = (num * size)%nat⌝ ∗
-        ⌜num ≠ 0%nat⌝ ∗ 
+        ⌜num ≠ 0%nat⌝ ∗
         (l ◁ₗ[π, Owned false] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗
-         introduce_with_hooks updateable_E L2 R2 (λ L3, 
-          updateable_core updateable_E L3)))) 
+         introduce_with_hooks updateable_E L2 R2 (λ L3,
+          updateable_core updateable_E L3))))
     ⊢ P.
   Proof.
-    iIntros "HT". 
+    iIntros "HT".
     unshelve iApply add_updateable; first apply _.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
@@ -317,7 +317,7 @@ Section updateable_rules.
     iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & -> & % & HT)"; [done.. | ].
     iMod (array_t_ofty_reshape _ _ _ _ _ _ size num with "Hl") as "Hl"; [done | lia | lia | ].
     unfold introduce_with_hooks.
-    iPoseProof  ("HT" with "Hl [//] HE HL HR") as "HT". 
+    iPoseProof  ("HT" with "Hl [//] HE HL HR") as "HT".
     iMod (fupd_mask_mono with "HT") as "(%L3 & HL & HT)"; first done.
     by iFrame.
   Qed.

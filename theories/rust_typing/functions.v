@@ -230,7 +230,7 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) (T : typed_val_expr_cont_t) :
+  Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) (T : typed_call_cont_t) :
     let eκs' := list_to_tup eκs in
     find_in_context (FindNaOwn) (λ '(π', mask),
       ⌜π' = π⌝ ∗
@@ -264,8 +264,8 @@ Section call.
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
-      introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π) (λ L3,
-      T L3 π v MetaNone (fps.(fp_fr) x').(fr_rt) (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
+      introduce_with_hooks E L2 (£ (S num_cred) ∗ atime 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
+      T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
     ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
     simpl. iIntros "HT (-> & %fn & %local_sts & -> & He & %Halg & %Halgl & Hfn) Htys" (Φ) "#CTX #HE HL HΦ".
@@ -440,9 +440,9 @@ Section call.
       iPoseProof ("HL_cl" with "HL") as "HL".
        (*we currently don't actually kill the lifetime, as we don't conceptually need that. *)
       iDestruct ("HPr") as (?) "(Hty & HR2 & _)".
-      iMod ("Hr" with "[] HE HL [Hat Hcred Hna HR2 HR]") as "(%L3 & HL & Hr)"; first done.
+      iMod ("Hr" with "[] HE HL [Hat Hcred Hna HR2 Hty HR]") as "(%L3 & HL & Hr)"; first done.
       { iFrame. }
-      iApply ("HΦ" with "HL Hty").
+      iApply ("HΦ" with "HL").
       by iApply ("Hr").
   Qed.
   Definition type_call_fnptr_inst := [instance type_call_fnptr].

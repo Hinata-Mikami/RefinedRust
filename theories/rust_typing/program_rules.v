@@ -2083,7 +2083,8 @@ Section typing.
         foldr (λ e T L'' vl tys, typed_val_expr E L'' e (λ L''' π' v m rt ty r,
           ⌜π' = π⌝ ∗ ⌜m = MetaNone⌝ ∗
           T L''' (vl ++ [v]) (tys ++ [existT rt (ty, r)])))
-            (λ L'' vl tys, typed_call π E L'' eκs' atys vf (vf ◁ᵥ{π, m} rf @ tyf) vl tys T)
+            (λ L'' vl tys, typed_call π E L'' eκs' atys vf (vf ◁ᵥ{π, m} rf @ tyf) vl tys (λ L v rt ty r,
+              v ◁ᵥ{π, MetaNone} r @ ty ∗ T L π v MetaNone _ ty r))
               es L' [] []))))
     ⊢ typed_val_expr E L (CallE ef eκs etys es) T.
   Proof.
@@ -2101,7 +2102,11 @@ Section typing.
       iApply ("IH" with "HΦ HL Hvf Hnext").
       iFrame. by iApply big_sepL2_nil.
     }
-    by iApply ("HT" with "Hvf Htys CTX HE HL").
+    unfold typed_call.
+    iApply ("HT" with "Hvf Htys CTX HE HL [-]").
+    iIntros (?????) "HL".
+    iIntros "(Hv & HT)".
+    iApply ("HΦ" with "HL Hv HT").
   Qed.
 
   Lemma type_bin_op E L o e1 e2 ot1 ot2 T :
