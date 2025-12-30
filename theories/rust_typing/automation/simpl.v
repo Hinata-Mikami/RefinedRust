@@ -208,6 +208,16 @@ Qed.
 #[export] Hint Rewrite Nat.add_sub : lithium_rewrite.
 #[export] Hint Rewrite Z.mul_1_l Z.mul_1_r Nat.mul_1_l Nat.mul_1_r : lithium_rewrite.
 
+Hint Rewrite -> @list_lookup_fmap : lithium_rewrite.
+
+Hint Rewrite @length_take @length_drop : lithium_rewrite.
+Hint Rewrite @lookup_total_drop : lithium_rewrite.
+Hint Rewrite Nat.min_l Nat.min_r using lia : lithium_rewrite.
+Hint Rewrite -> @take_take : lithium_rewrite.
+Hint Rewrite -> @drop_drop : lithium_rewrite.
+Hint Rewrite @lookup_take : lithium_rewrite.
+
+
 (** More automation for sets *)
 Lemma difference_union_subseteq (E F H H': coPset):
   E ⊆ F →
@@ -269,6 +279,24 @@ Qed.
 
 Global Instance simpl_both_orb_eq_true b1 b2 :
   SimplBothRel (=) (orb b1 b2) true (b1 = true ∨ b2 = true).
+Proof.
+  unfold SimplBothRel.
+  destruct b1, b2; simpl; naive_solver.
+Qed.
+Global Instance simpl_both_orb_eq_false b1 b2 :
+  SimplBothRel (=) (orb b1 b2) false (b1 = false ∧ b2 = false).
+Proof.
+  unfold SimplBothRel.
+  destruct b1, b2; simpl; naive_solver.
+Qed.
+Global Instance simpl_both_andb_eq_true b1 b2 :
+  SimplBothRel (=) (andb b1 b2) true (b1 = true ∧ b2 = true).
+Proof.
+  unfold SimplBothRel.
+  destruct b1, b2; simpl; naive_solver.
+Qed.
+Global Instance simpl_both_andb_eq_false b1 b2 :
+  SimplBothRel (=) (andb b1 b2) false (b1 = false ∨ b2 = false).
 Proof.
   unfold SimplBothRel.
   destruct b1, b2; simpl; naive_solver.
