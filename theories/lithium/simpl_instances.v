@@ -297,7 +297,8 @@ Proof.
   - move => [-> P]. split => //. lia.
 Qed.
 
-Global Instance simpl_insert_list_subequiv {A} (l1 l2 : list A) j x1 `{!CanSolve (j < length l1)%nat} :
+(* only if [l2] is not a var; otherwise we'd turn a simple equality into a much more complicated beast. *)
+Global Instance simpl_insert_list_subequiv {A} (l1 l2 : list A) j x1 `{!IsNotVar l2} `{!CanSolve (j < length l1)%nat} :
   SimplBothRel (=) (<[j:=x1]>l1) l2 (list_subequiv [j] l1 l2 ∧ l2 !! j = Some x1).
 Proof. unfold CanSolve in *. split; rewrite list_insert_subequiv //; naive_solver. Qed.
 

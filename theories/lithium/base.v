@@ -254,6 +254,10 @@ Class IsVar {A} (x : A) : Set := {}.
 Global Hint Extern 0 (IsVar ?x) => (is_var x; constructor) : typeclass_instances.
 Global Hint Mode IsVar + + : typeclass_instances.
 
+Class IsNotVar {A} (x : A) : Set := {}.
+Global Hint Extern 0 (IsNotVar ?x) => (assert_fails (is_var x); constructor) : typeclass_instances.
+Global Hint Mode IsNotVar + + : typeclass_instances.
+
 Definition exists_dec_unique {A} (x : A) (P : _ → Prop) : (∀ y, P y → P x) → Decision (P x) → Decision (∃ y, P y).
 Proof.
   intros Hx Hdec.
