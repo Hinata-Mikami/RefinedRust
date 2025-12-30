@@ -53,8 +53,13 @@
         };
 
         smtcoq = {
-          version = "eb8e552e821a6e3f8b00b08d22047d23e2f3ef20";
-          sha256 = "sha256-jWZpLPZ5xs5r36lEtU0JXTgYEoYLTxbNdxeqAxYBmAI=";
+          version = "cb861dc1ab343673b3e5a2fe0ec8f1b005e48c56";
+          sha256 = "sha256-a12ALvQiRYK8Ma6CoWAQfsnjQwxttSY6AVQq06daRhY=";
+        };
+
+        sniper = {
+          version = "7f20d2e1510d75b6bf86d29616e7305c0a9dfb6b";
+          sha256 = "sha256-+DPgcWVHGtgBNUoBe7NZ3CClgre6LlBZjGgE+7ob3v8=";
         };
       };
 
@@ -129,24 +134,6 @@
               pname = "lambda-rust";
               propagatedBuildInputs = [iris];
             };
-
-            smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
-              inherit (rocq.smtcoq) version;
-
-              pname = "smtcoq";
-              owner = "smtcoq";
-              repo = "smtcoq";
-
-              mlPlugin = true;
-              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib cvc4 verit zchaff];
-
-              preBuild = ''
-                sed -i -e 's/$(COQBIN)coq_makefile/$(COQBIN)rocq makefile/g' src/Makefile
-                sed -i -e 's/coq-core/rocq-runtime/g' src/CoqMakefile.local src/META.coq-smtcoq src/extraction/Makefile
-              '';
-
-              release.${version}.sha256 = "${rocq.smtcoq.sha256}";
-            };
           in
             pkgs.rocqPackages.mkRocqDerivation {
               inherit meta version;
@@ -155,9 +142,56 @@
               opam-name = name;
               src = ./theories;
 
-              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust smtcoq];
+              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
               useDune = true;
             };
+
+          solver = let
+            smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
+              inherit (rocq.smtcoq) version;
+
+              pname = "smtcoq";
+              owner = "smtcoq";
+              repo = "smtcoq";
+
+              mlPlugin = true;
+              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt cvc4 verit zchaff];
+
+              patchPhase = ''
+                sed -i -e '92s/.*/  let obj =/g' src/g_smtcoq.mlg
+              '';
+
+              preBuild = ''
+                sed -i -e 's/$(COQBIN)coq_makefile/$(COQBIN)rocq makefile/g' src/Makefile
+                sed -i -e 's/coq-core/rocq-runtime/g' src/CoqMakefile.local src/META.coq-smtcoq src/extraction/Makefile
+              '';
+              release.${version}.sha256 = "${rocq.smtcoq.sha256}";
+            };
+
+            sniper = pkgs.rocqPackages.mkRocqDerivation rec {
+              inherit (rocq.sniper) version;
+
+              pname = "sniper";
+              owner = "smtcoq";
+              repo = "sniper";
+
+              mlPlugin = true;
+              propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
+
+              preBuild = ''
+                sed -i -e 's/coq_makefile/rocq makefile/g' Makefile
+                find . -name "*.v" -exec sed -i -e 's/metacoq/metarocq/g' {} \;
+                find . -name "*.v" -exec sed -i -e 's/MetaCoq/MetaRocq/g' {} \;
+                find . -name "*.v" -exec sed -i -e 's/MCMonadNotation/MRMonadNotation/g' {} \;
+                sed -i -e '67ipred subterms i: term, o: (list term).' elpi/eliminate_fix.elpi
+                sed -i -e '1ipred append_nodup i: list A, i: list A, o: list A.' elpi/subterms.elpi
+                sed -i -e '480,566d' theories/deciderel/linearize_plugin.v
+                sed -i -e '1098,1272d' theories/deciderel/generate_fix.v
+                sed -i -e '105,625d' theories/deciderel/proof_correctness.v
+              '';
+              release.${version}.sha256 = "${rocq.sniper.sha256}";
+            };
+          in sniper;
 
           frontend = rust.envBuilder.buildPackage rec {
             inherit meta version;
@@ -193,7 +227,8 @@
                 in
                   [pkgs.gcc pkgs.gnupatch packages.frontend toolchain]
                   ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                  ++ (fetchRocqDeps packages.stdlib);
+                  ++ (fetchRocqDeps packages.stdlib)
+                  ++ (fetchRocqDeps packages.solver);
 
                 nativeBuildInputs = [pkgs.makeWrapper];
                 postBuild = ''
