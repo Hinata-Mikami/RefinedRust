@@ -44,12 +44,17 @@ impl<T> Option<T> {
     pub fn is_none(&self) -> bool {
         unimplemented!()
     }
+}
 
-    #[rr::params("x")]
-    #[rr::args("Some x")]
-    #[rr::returns("x")]
+#[rr::export_as(core::option::Option)]
+impl<T> Option<T> {
+    #[rr::requires("destruct_hint self is_Some")]
+    #[rr::ensures("match self with | Some x => ret = x | None => False end")]
     pub fn unwrap(self) -> T {
-        unimplemented!();
+        match self {
+            Some(val) => val,
+            None => panic!(),
+        }
     }
 
     #[rr::returns("default def self")]
@@ -60,10 +65,6 @@ impl<T> Option<T> {
         }
     }
 
-}
-
-#[rr::export_as(core::option::Option)]
-impl<T> Option<T> {
     #[rr::params("Hx" : "TyGhostDrop {F}")]
     #[rr::ensures(#iris "if_iNone self (⌜ret = None⌝ ∗ ty_ghost_drop_for {F} Hx π ($# f))")]
     #[rr::requires(#iris "if_iSome self (λ self, {F::Pre} π f *[self])")]

@@ -263,15 +263,45 @@ Ltac liImpl :=
   normalize_and_simpl_impl false.
 
 (** ** [liSideCond] *)
+(* This tactic checks if destructing x would lead to multiple
+non-trivial subgoals. The main reason for it is that we don't want to
+destruct constructors like true as this would not be useful. *)
+Ltac non_trivial_destruct x :=
+  first [
+      have : (const False x); [ clear; case_eq x; intros => //; (*
+      check if there is only one goal remaining *) [ idtac ]; fail 1 "trivial destruct" |]
+    | idtac
+  ].
+
+Section coq.
+  Lemma tac_sidecond_destruct {A} (P : A → Prop) x Q :
+    P x ∧ Q →
+    destruct_hint x P ∧ Q.
+  Proof. unfold destruct_hint. done. Qed.
+End coq.
 Ltac liSideCond :=
   try lazymatch goal with
   | |- (name_hint _ ?P) ∧ ?Q =>
+      change_no_check (P ∧ Q)
+  | |- (discriminate_hint _ ?P) ∧ ?Q =>
       change_no_check (P ∧ Q)
   end;
   lazymatch goal with
   | |- ?P ∧ ?Q =>
     first [
-        liSidecond_hook P
+        lazymatch P with
+        | shelve_hint _ => split; [ unfold shelve_hint; shelve_sidecond |]
+        | destruct_hint ?x ?P =>
+          (* same handling as in [liCase] *)
+          tryif (non_trivial_destruct x) then
+            notypeclasses refine (tac_sidecond_destruct P x Q _);
+            liDestruct_hook x;
+            case_eq x
+          else (
+            notypeclasses refine (tac_sidecond_destruct P x Q _)
+          )
+        end
+      | liSidecond_hook P
       | lazymatch P with
         | context [protected _] => fail
         | _ => split; [splitting_fast_done|]
@@ -741,15 +771,6 @@ Section coq_tactics.
   Proof. apply tac_fast_apply. iIntros "?". iExists _. iFrame. Qed.
 End coq_tactics.
 
-(* This tactic checks if destructing x would lead to multiple
-non-trivial subgoals. The main reason for it is that we don't want to
-destruct constructors like true as this would not be useful. *)
-Ltac non_trivial_destruct x :=
-  first [
-      have : (const False x); [ clear; case_eq x; intros => //; (*
-      check if there is only one goal remaining *) [ idtac ]; fail 1 "trivial destruct" |]
-    | idtac
-  ].
 
 Ltac liCase :=
   lazymatch goal with

@@ -817,7 +817,6 @@ Ltac sidecond_hook ::=
 
 Ltac liSidecond_hook P ::=
 lazymatch P with
-  | shelve_hint _ => split; [ unfold shelve_hint; shelve_sidecond |]
   | trait_incl_marker _ => split; [shelve_sidecond |]
   | fast_eq_hint _ =>
       split; [

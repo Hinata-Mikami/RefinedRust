@@ -44,9 +44,8 @@ impl<T, E> Result<T, E> {
         unimplemented!();
     }
 
-    #[rr::params("x")]
-    #[rr::args("Ok x")]
-    #[rr::returns("x")]
+    #[rr::requires("destruct_hint self is_Ok")]
+    #[rr::ensures("match self with | Ok x => ret = x | Err _ => False end")]
     pub fn unwrap(self) -> T
         where E: Debug,
     {
@@ -59,9 +58,8 @@ impl<T, E> Result<T, E> {
 
     /// # Safety
     /// See stdlib
-    #[rr::params("x")]
-    #[rr::args("Ok x")]
-    #[rr::returns("x")]
+    #[rr::requires("destruct_hint self is_Ok")]
+    #[rr::ensures("match self with | Ok x => ret = x | Err _ => False end")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         match self {
             Ok(t) => t,

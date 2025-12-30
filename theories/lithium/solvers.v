@@ -81,6 +81,10 @@ Ltac normalize_and_simpl_impl handle_exist :=
       change_no_check (P → Q)
   | |- name_hint _ ?P → ?Q =>
       change_no_check (P → Q)
+  | |- shelve_hint ?P → ?Q =>
+      change_no_check (P → Q)
+  | |- destruct_hint ?x ?P → ?Q =>
+      change_no_check (P x → Q)
   end;
   let add_hint :=
     idtac;

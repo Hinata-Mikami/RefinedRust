@@ -46,3 +46,8 @@ Definition discriminate_hint (P : Prop) : Prop := P.
 Global Typeclasses Opaque discriminate_hint.
 Arguments discriminate_hint : simpl never.
 
+(** * [destruct_hint] *)
+(** [destruct_hint x P] tells the automation to destruct [x] before proving [P x]. *)
+Definition destruct_hint {A} (x : A) (P : A → Prop) : Prop := P x.
+Global Typeclasses Opaque destruct_hint.
+Arguments destruct_hint : simpl never.
