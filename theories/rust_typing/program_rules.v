@@ -1792,8 +1792,7 @@ Section typing.
 
 
   (* instances for Opened *)
-  (* NOTE: these should have a higher priority than place id, because we always want to descend below Opened when accessing a place, in order to get the actual current type *)
-  Lemma typed_place_opened_owned π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l wl P T :
+  Lemma typed_place_opened_owned π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l wl P  T :
     (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
     typed_place π E L l lt_cur r UpdStrong (Owned false) P (λ L' κs l2 b2 bmin rti ltyi ri updcx,
       T L' κs l2 b2 bmin rti ltyi ri
@@ -1820,8 +1819,18 @@ Section typing.
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     eauto with iFrame.
   Qed.
-  Definition typed_place_opened_owned_inst := [instance @typed_place_opened_owned].
-  Global Existing Instance typed_place_opened_owned_inst | 5.
+
+  (* By default, don't descend below [Opened] if we don't make another place access *)
+  Definition typed_place_opened_owned_guarded π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l wl P `{!TCDone (P ≠ [])} :=
+    typed_place_opened_owned π E L lt_cur lt_inner lt_full Cpre Cpost r l wl P.
+  Definition typed_place_opened_owned_guarded_inst := [instance @typed_place_opened_owned_guarded].
+  Global Existing Instance typed_place_opened_owned_guarded_inst | 5.
+
+  (* But we can enable always descending with a config flag. *)
+  Definition typed_place_opened_owned_config π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l wl P `{!CheckConfig rr_config_dont_fold_places} :=
+    typed_place_opened_owned π E L lt_cur lt_inner lt_full Cpre Cpost r l wl P.
+  Definition typed_place_opened_owned_config_inst := [instance @typed_place_opened_owned_config].
+  Global Existing Instance typed_place_opened_owned_config_inst | 5.
 
   Lemma typed_place_opened_uniq π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l κ γ P T :
     (* no weak access possible -- we currently don't have the machinery to restore and fold invariants at this point, though we could in principle enable this *)
@@ -1851,8 +1860,18 @@ Section typing.
     iPoseProof ("Hcl" with "Hl [//]") as "Hl".
     eauto with iFrame.
   Qed.
-  Definition typed_place_opened_uniq_inst := [instance @typed_place_opened_uniq].
-  Global Existing Instance typed_place_opened_uniq_inst | 5.
+
+  (* By default, don't descend below [Opened] if we don't make another place access *)
+  Definition typed_place_opened_uniq_guarded π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l κ γ P `{!TCDone (P ≠ [])} :=
+    typed_place_opened_uniq π E L lt_cur lt_inner lt_full Cpre Cpost r l κ γ P.
+  Definition typed_place_opened_uniq_guarded_inst := [instance @typed_place_opened_uniq_guarded].
+  Global Existing Instance typed_place_opened_uniq_guarded_inst | 5.
+
+  (* But we can enable always descending with a config flag. *)
+  Definition typed_place_opened_uniq_config π E L {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost r l κ γ P `{!CheckConfig rr_config_dont_fold_places} :=
+    typed_place_opened_uniq π E L lt_cur lt_inner lt_full Cpre Cpost r l κ γ P.
+  Definition typed_place_opened_uniq_config_inst := [instance @typed_place_opened_uniq_config].
+  Global Existing Instance typed_place_opened_uniq_config_inst | 5.
 
   Lemma typed_place_shadowed_shared π E L {rt_cur rt_full} (lt_cur : ltype rt_cur) (lt_full : ltype rt_full) r_cur (r_full : place_rfn rt_full) bmin0 l κ P (T : place_cont_t rt_full bmin0) :
     (* sidecondition needed for the weak update *)

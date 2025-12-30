@@ -10,6 +10,7 @@ Context `{!refinedrustGS Σ}.
 Lemma Vec_T_get_unchecked_mut_proof (π : thread_id) :
   Vec_T_get_unchecked_mut_lemma π.
 Proof.
+  generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
   pose_unconstrained_lft_hint "vuclft4" ["ulft_1"].
   Vec_T_get_unchecked_mut_prelude.
 

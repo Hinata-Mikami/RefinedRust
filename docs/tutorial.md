@@ -223,7 +223,11 @@ It consists of the following components:
 - the rest of the proof calls into RefinedRust's sidecondition solvers for pure Rocq sideconditions.
 
 Currently, `rep <-! liRStep; liShow.` will not fully solve the type-checking obligations; it will stop at the last so-called backtracking point before it fails -- in this case, the mutable re-borrow.
-We can tell RefinedRust to progress type-checking until the failure point, by adding `rep liRStep; liShow.` .
+
+As a first step towards fixing the proof, we enable a config flag for RefinedRust that disables its default behavior of establishing type invariants before doing a borrow: after all, `EvenInt::add` does *not* expect the invariant for `EvenInt` to currently hold.
+We do this by adding the line `generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.`.
+
+Next, we can tell RefinedRust to progress type-checking until the failure point, by adding `rep liRStep; liShow.` .
 This advances the typesystem state to a goal of this form:
 ```
 weak_subtype [ϝ ⊑ₑ ulft_1; ϝ ⊑ₑ ulft_1] [κ ⊑ₗ{ 0} [ulft_1]; ϝ ⊑ₗ{ 1} []]
@@ -290,6 +294,7 @@ Lemma EvenInt_add_two_proof (π : thread_id) :
   EvenInt_add_two_lemma π.
 Proof.
   EvenInt_add_two_prelude.
+  generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
 
   rep <-! liRStep; liShow.
   liRStepUntil interpret_typing_hint.

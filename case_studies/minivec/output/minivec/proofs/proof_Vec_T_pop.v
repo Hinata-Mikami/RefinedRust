@@ -11,6 +11,7 @@ Context `{!refinedrustGS Σ}.
 Lemma Vec_T_pop_proof (π : thread_id) :
   Vec_T_pop_lemma π.
 Proof.
+  generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.

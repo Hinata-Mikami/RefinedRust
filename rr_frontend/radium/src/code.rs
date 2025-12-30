@@ -1289,7 +1289,7 @@ impl Function<'_> {
 
             write!(f, "{}_prelude.\n\n", self.name())?;
 
-            write!(f, "repeat liRStep; liShow.\n\n")?;
+            write!(f, "rep <-! liRStep; liShow.\n\n")?;
             write!(f, "all: print_remaining_goal.\n")?;
             write!(f, "Unshelve. all: sidecond_solver.\n")?;
             write!(f, "Unshelve. all: sidecond_hammer.\n")?;

@@ -1,5 +1,20 @@
 From refinedrust Require Import base.
 
+
+(** * Config options for the type checker *)
+
+Inductive rr_config_dont_fold_places :=
+| RR_CONFIG_DONT_FOLD_PLACES.
+
+Class CheckConfig (C : Type) := mk_check_config { check_config_witness : C }.
+Global Hint Extern 10 (CheckConfig ?C) =>
+  match goal with
+  | H: C |- _ =>
+      refine (mk_check_config C H)
+  end : typeclass_instances.
+
+(** * Annotations *)
+
 Inductive stop_annot : Prop :=
   StopAnnot.
 

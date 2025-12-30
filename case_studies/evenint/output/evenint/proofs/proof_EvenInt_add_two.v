@@ -10,6 +10,7 @@ Context `{!refinedrustGS Σ}.
 Lemma EvenInt_add_two_proof (π : thread_id) :
   EvenInt_add_two_lemma π.
 Proof.
+  generalize RR_CONFIG_DONT_FOLD_PLACES; intros ?.
   EvenInt_add_two_prelude.
 
   rep <-! liRStep; liShow.
