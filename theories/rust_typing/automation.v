@@ -913,6 +913,8 @@ Ltac after_intro_hook H ::=
   try (inv_layout_alg_in H)
 .
 
+Ltac shelve_sidecond_hook ::=
+  unfold name_hint, discriminate_hint.
 
 Lemma apply_name_hint name (P : Prop) :
   P → name_hint name P.

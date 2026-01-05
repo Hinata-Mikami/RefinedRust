@@ -102,7 +102,7 @@ Section na_ex.
   (* ty_xt_inhabited *)
   Next Obligation.
     intros. apply P.
-  Qed.
+  Defined.
 
   (* ty_has_layout *)
   Next Obligation.

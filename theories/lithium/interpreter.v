@@ -192,6 +192,8 @@ Ltac liForall :=
       notypeclasses refine (tac_do_exist_wand _ _ _ _ _); do_intro (S O) name
   | |- (∃ name, _) → _ =>
       case; do_intro (S O) name
+  | |- (name_hint _ (ex _ ?P)) → ?Q =>
+      change ((ex _ P) → Q)
   | |- forall name, _ =>
       do_intro (S O) name
   | _ => fail "liForall: unknown goal"

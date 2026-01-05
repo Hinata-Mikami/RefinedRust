@@ -155,7 +155,7 @@ Section ex.
   |}.
   Next Obligation.
     intros. apply P.
-  Qed.
+  Defined.
   Next Obligation.
     iIntros (ty π r m v) "(%x & HP & Hv)".
     by iApply ty_has_layout.
