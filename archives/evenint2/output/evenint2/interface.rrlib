@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "kind": "method",
+      "name": "EvenInt_new",
+      "path": [
+        "new"
+      ],
+      "spec": "type_of_EvenInt_new"
+    },
+    {
+      "kind": "method",
+      "name": "EvenInt_add_even",
+      "path": [
+        "add_even"
+      ],
+      "spec": "type_of_EvenInt_add_even"
+    },
+    {
+      "kind": "method",
+      "name": "EvenInt_add_two",
+      "path": [
+        "add_two"
+      ],
+      "spec": "type_of_EvenInt_add_two"
+    }
+  ],
+  "refinedrust_module": "generated_specs_evenint2",
+  "refinedrust_name": "evenint2",
+  "refinedrust_path": "refinedrust.examples.evenint2.generated"
+}
