@@ -38,7 +38,7 @@ Proof. apply _. Qed.
 Global Instance ord_ge_dec {A} cmp (a b : A) : Decision (a ≥o{ cmp } b).
 Proof. apply _. Qed.
 
-Global Hint Unfold ord_lt ord_gt ord_eq ord_le ord_ge: lithium_rewrite.
+Global Hint Unfold ord_lt ord_gt ord_eq : lithium_rewrite.
 
 (** Nat *)
 Module Nat.
@@ -80,6 +80,30 @@ Module Nat.
   Proof.
     unfold cmp. repeat case_bool_decide.
     all: split; intros; try congruence; try lia.
+  Qed.
+
+  Lemma ord_lt_iff a b :
+    a <o{cmp} b ↔ a < b.
+  Proof. apply cmp_less_iff. Qed.
+  Lemma ord_gt_iff a b :
+    a >o{cmp} b ↔ a > b.
+  Proof. apply cmp_greater_iff. Qed.
+  Lemma ord_eq_iff a b :
+    a =o{cmp} b ↔ a = b.
+  Proof. apply cmp_equal_iff. Qed.
+  Lemma ord_le_iff a b :
+    a ≤o{cmp} b ↔ a ≤ b.
+  Proof.
+    unfold ord_le.
+    rewrite ord_lt_iff ord_eq_iff.
+    lia.
+  Qed.
+  Lemma ord_ge_iff a b :
+    a ≥o{cmp} b ↔ a >= b.
+  Proof.
+    unfold ord_ge.
+    rewrite ord_gt_iff ord_eq_iff.
+    lia.
   Qed.
 End Nat.
 
@@ -149,6 +173,30 @@ Module Z.
   Proof.
     unfold cmp. repeat case_bool_decide.
     all: split; intros; try congruence; try lia.
+  Qed.
+
+  Lemma ord_lt_iff a b :
+    a <o{cmp} b ↔ a < b.
+  Proof. apply cmp_less_iff. Qed.
+  Lemma ord_gt_iff a b :
+    a >o{cmp} b ↔ a > b.
+  Proof. apply cmp_greater_iff. Qed.
+  Lemma ord_eq_iff a b :
+    a =o{cmp} b ↔ a = b.
+  Proof. apply cmp_equal_iff. Qed.
+  Lemma ord_le_iff a b :
+    a ≤o{cmp} b ↔ a ≤ b.
+  Proof.
+    unfold ord_le.
+    rewrite ord_lt_iff ord_eq_iff.
+    lia.
+  Qed.
+  Lemma ord_ge_iff a b :
+    a ≥o{cmp} b ↔ a >= b.
+  Proof.
+    unfold ord_ge.
+    rewrite ord_gt_iff ord_eq_iff.
+    lia.
   Qed.
 End Z.
 
@@ -243,24 +291,126 @@ Section correct_ord.
     by rewrite -correct_ord_eq_compat'.
   Qed.
 
+  Lemma correct_ord_eq_leibniz' x y : x =o{cmp} y ↔ x = y.
+  Proof.
+    rewrite -!correct_ord_eq_compat.
+    by rewrite correct_ord_eq_leibniz.
+  Qed.
   Lemma correct_ord_cmp_leibniz a b :
     cmp a b = Equal ↔ a = b.
   Proof.
     rewrite -correct_ord_eq_compat'.
     apply correct_ord_eq_leibniz.
   Qed.
+  Lemma correct_ord_cmp_equal_sym a b :
+    cmp a b = Equal ↔ cmp b a = Equal.
+  Proof.
+    rewrite -!correct_ord_eq_compat'.
+    rewrite !correct_ord_eq_leibniz.
+    done.
+  Qed.
+
+  Global Instance ord_le_refl : Reflexive (ord_le cmp).
+  Proof. intros ?. by right. Qed.
+  Global Instance ord_ge_refl : Reflexive (ord_ge cmp).
+  Proof. intros ?. by right. Qed.
+
+  Global Instance ord_le_trans : Transitive (ord_le cmp).
+  Proof.
+    intros a b c [Hlt1 | ->%correct_ord_eq_leibniz'] [Hlt2 | ->%correct_ord_eq_leibniz'].
+    - left. by etrans.
+    - left. done.
+    - left. done.
+    - by right.
+  Qed.
+  Global Instance ord_ge_trans : Transitive (ord_ge cmp).
+  Proof.
+    intros a b c [Hlt1 | ->%correct_ord_eq_leibniz'] [Hlt2 | ->%correct_ord_eq_leibniz'].
+    - left. by etrans.
+    - left. done.
+    - left. done.
+    - by right.
+  Qed.
+
+  Lemma ord_le_antisym a b :
+    a ≤o{cmp} b ↔ b ≥o{cmp} a.
+  Proof.
+    split.
+    - intros [Ha | Hb].
+      + left. by apply correct_ord_antisym.
+      + right. done.
+    - intros [Ha | Hb].
+      + left. by apply correct_ord_antisym.
+      + right. done.
+  Qed.
 
   Lemma not_ord_lt_iff a b :
-    (¬ a <o{cmp} b) ↔ (a =o{cmp} b ∨ a >o{cmp} b).
+    (¬ a <o{cmp} b) ↔ (b ≤o{cmp} a).
   Proof.
-    unfold ord_lt, ord_gt, ord_eq.
+    unfold ord_lt, ord_le.
+    rewrite correct_ord_antisym.
+    unfold ord_gt, ord_eq.
+    rewrite correct_ord_cmp_equal_sym.
     destruct (cmp a b); naive_solver.
   Qed.
   Lemma not_ord_gt_iff a b :
-    (¬ a >o{cmp} b) ↔ (a =o{cmp} b ∨ a <o{cmp} b).
+    (¬ a >o{cmp} b) ↔ a ≤o{cmp} b.
   Proof.
-    unfold ord_lt, ord_gt, ord_eq.
+    unfold ord_lt, ord_le.
+    unfold ord_gt, ord_lt, ord_eq.
     destruct (cmp a b); naive_solver.
+  Qed.
+  Lemma not_ord_le_iff a b :
+    (¬ a ≤o{cmp} b) ↔ (b <o{cmp} a).
+  Proof.
+    rewrite -not_ord_lt_iff.
+    solve_goal.
+  Qed.
+  Lemma not_ord_ge_iff a b :
+    (¬ a ≥o{cmp} b) ↔ (a <o{cmp} b).
+  Proof.
+    rewrite -ord_le_antisym.
+    rewrite not_ord_le_iff; done.
+  Qed.
+
+  Lemma ord_lt_ord_le_trans a b c :
+    a <o{cmp} b → b ≤o{cmp} c → a <o{cmp} c.
+  Proof.
+    intros Ha [Hb | Heq]; first by etrans.
+    apply correct_ord_eq_leibniz' in Heq. by subst.
+  Qed.
+  Lemma ord_le_ord_lt_trans a b c :
+    a ≤o{cmp} b → b <o{cmp} c → a <o{cmp} c.
+  Proof.
+    intros [Ha | Heq] Hb; first by etrans.
+    apply correct_ord_eq_leibniz' in Heq. by subst.
+  Qed.
+  Lemma ord_gt_ord_ge_trans a b c :
+    a >o{cmp} b → b ≥o{cmp} c → a >o{cmp} c.
+  Proof.
+    intros Ha [Hb | Heq]; first by etrans.
+    apply correct_ord_eq_leibniz' in Heq. by subst.
+  Qed.
+  Lemma ord_ge_ord_gt_trans a b c :
+    a ≥o{cmp} b → b >o{cmp} c → a >o{cmp} c.
+  Proof.
+    intros [Ha | Heq] Hb; first by etrans.
+    apply correct_ord_eq_leibniz' in Heq. by subst.
+  Qed.
+
+  Lemma ord_lt_irrefl a :
+    ¬ a <o{cmp} a.
+  Proof.
+    unfold ord_lt.
+    opose proof (proj2 (correct_ord_eq_leibniz' a a) _) as Ha; first done.
+    rewrite Ha. done.
+  Qed.
+  Lemma ord_gt_irrefl a :
+    ¬ a >o{cmp} a.
+  Proof.
+    unfold ord_gt.
+    opose proof (proj2 (correct_ord_eq_leibniz' a a) _) as Ha; first done.
+    rewrite Ha. done.
   Qed.
 
   Lemma max_by_refl a : max_by cmp a a = a.

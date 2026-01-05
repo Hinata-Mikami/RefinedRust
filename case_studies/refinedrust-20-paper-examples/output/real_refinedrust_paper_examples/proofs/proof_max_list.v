@@ -11,9 +11,9 @@ Lemma max_list_proof (π : thread_id) :
   max_list_lemma π.
 Proof.
   max_list_prelude.
- 
+
   rep <-! liRStep; liShow.
-  
+
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
@@ -25,7 +25,7 @@ Proof.
         apply Min_MIN_minimal. }
       rewrite max_by_r_1; first last.
       { apply Min_MIN_minimal. }
-      apply not_ord_gt_iff. by right. }
+      apply not_ord_gt_iff. by left. }
     { rewrite max_list_cmp_def_app max_list_cmp_def_singleton. simpl.
       rewrite max_by_l_1; first done.
       rewrite max_by_r_1; last apply Min_MIN_minimal.
