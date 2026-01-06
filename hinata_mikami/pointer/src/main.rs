@@ -5,8 +5,12 @@
 fn main() {
 }
 
+/// paper_exampleでは可変参照を値とghost変数(γ)?の組として扱ったが...
+// #[rr::params(x : "Z", "γ")]
+// #[rr::args("(x, γ)")]
+// #[rr::requires("(x + 42)%Z ∈ i32")]
+// #[rr::observe("γ": "x + 42")]
 /// ok
-/// 以前は可変参照を値とghost変数(γ)?の組として扱ったが...
 #[rr::params("x")]
 #[rr::args("x")]
 #[rr::requires("(x.cur + 42)%Z ∈ i32")]
