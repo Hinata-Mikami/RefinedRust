@@ -11,8 +11,7 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::environment::Environment;
-use crate::rustcmp;
-use crate::search;
+use crate::{rustcmp, search};
 
 pub(crate) mod registry;
 pub(crate) mod requirements;
@@ -134,6 +133,7 @@ pub(crate) fn sort_assoc_items<'tcx>(
 pub(crate) fn is_derive_trait_with_no_annotations(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     let copy_did = search::try_resolve_did(tcx, &["core", "marker", "Copy"])?;
     let clone_did = search::try_resolve_did(tcx, &["core", "clone", "Clone"])?;
+    //let debug_did = search::try_resolve_did(tcx, &["core", "fmt", "Debug"])?;
 
     Some(trait_did == copy_did || trait_did == clone_did)
 }

@@ -1457,6 +1457,25 @@ fn check_consider_function<'tcx>(
         return Ok(true);
     }
 
+    // Check if this is part of an impl of a derive trait for an ADT
+    let subject = vcx.env.tcx().impl_subject(impl_did).skip_binder();
+    let ty::ImplSubject::Trait(trait_ref) = subject else {
+        return Err(traits::Error::NotATraitImpl(impl_did).into());
+    };
+    let self_ty = trait_ref.self_ty();
+    let ty::TyKind::Adt(def, _) = self_ty.kind() else {
+        return Ok(false);
+    };
+
+    // ADT has a skip annotation?
+    if env.has_tool_attribute(def.did(), "skip") {
+        return Ok(false);
+    }
+    // if there are no annotations, also skip
+    if !env.has_any_tool_attribute(def.did()) {
+        return Ok(false);
+    }
+
     // otherwise, check if this is a Derive trait for which we have special support
     if traits::is_derive_trait_with_no_annotations(env.tcx(), trait_did) == Some(true) {
         return Ok(true);
