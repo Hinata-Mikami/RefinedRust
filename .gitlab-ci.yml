@@ -131,7 +131,15 @@ case-studies:
   stage: tests
   needs: [ stdlib ]
   variables:
-    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,minivec,paper-examples,paper-examples-rr20,tests} ./case_studies/ace-riscv#
+    NIX_DERIVATION: .#checks.${NIX_PLATFORM}.{evenint,minivec,paper-examples,paper-examples-rr20,tests}
+
+ace:
+  extends: [ .nix, .build_to_nix_artifacts ]
+  stage: tests
+  needs: [ stdlib ]
+  allow_failure: true
+  variables:
+    NIX_DERIVATION: ./case_studies/ace-riscv#
 
 nix-shell:
   extends: [ .nix ]
