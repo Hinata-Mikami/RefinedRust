@@ -8,6 +8,7 @@
 #![rr::include("option")]
 #![rr::include("ptr")]
 #![rr::include("mem")]
+#![rr::include("sized")]
 #![rr::include("rr_internal")]
 
 /// Vec implementation from https://doc.rust-lang.org/nomicon/vec/vec-final.html
@@ -171,7 +172,7 @@ pub struct RawVec<T> {
     ptr: *const T,
     #[rr::field("Z.of_nat cap")]
     cap: usize,
-    #[rr::field("tt")]
+    #[rr::field("-[]")]
     _marker: PhantomData<T>,
 }
 

@@ -210,6 +210,7 @@
             {
               pname = "stdlib-clone";
               src = ./stdlib/clone;
+              libDeps = with packages; [stdlib-sized];
             }
             {
               pname = "stdlib-closures";
@@ -260,7 +261,7 @@
             {
               pname = "stdlib-sized";
               src = ./stdlib/sized;
-            } 
+            }
             {
               pname = "stdlib-result";
               src = ./stdlib/result;

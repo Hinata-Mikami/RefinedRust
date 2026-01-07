@@ -1,6 +1,7 @@
 #![rr::import("refinedrust.extra_proofs.tests", "enums")]
 
 
+#[rr::verify]
 #[derive(Clone, Copy)]
 enum Color {
     ColorA, 

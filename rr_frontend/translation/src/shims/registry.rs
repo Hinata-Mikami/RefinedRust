@@ -334,6 +334,10 @@ impl<'a> SR<'a> {
         }
     }
 
+    pub(crate) fn add_adt_shim(&mut self, shim: AdtShim<'a>) {
+        self.adt_shims.push(shim);
+    }
+
     pub(crate) fn add_source(&mut self, f: File) -> Result<Option<BTreeSet<String>>, Error> {
         info!("Adding file {f:?}");
         let reader = BufReader::new(f);

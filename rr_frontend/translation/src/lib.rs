@@ -1987,6 +1987,18 @@ fn get_module_attributes(env: &Environment<'_>) -> Result<BTreeMap<OrderedDefId,
     Ok(attrs)
 }
 
+fn add_builtin_shims(registry: &mut shim_registry::SR<'_>) {
+    let phantom_data_shim = shim_registry::AdtShim {
+        path: registry.intern_path(vec!["core".to_owned(), "marker".to_owned(), "PhantomData".to_owned()]),
+        refinement_type: "core_marker_PhantomData_rt".to_owned(),
+        syn_type: "core_marker_PhantomData_sls".to_owned(),
+        sem_type: "core_marker_PhantomData_ty".to_owned(),
+        info: specs::types::AdtShimInfo::empty(),
+    };
+
+    registry.add_adt_shim(phantom_data_shim);
+}
+
 /// Translate a crate, creating a `VerificationCtxt` in the process.
 pub fn generate_coq_code<'tcx, F>(tcx: ty::TyCtxt<'tcx>, continuation: F) -> Result<(), String>
 where
@@ -2061,6 +2073,9 @@ where
     let procedure_registry = procedures::Scope::new(tcx);
     let shim_string_arena = Arena::new();
     let mut shim_registry = shim_registry::SR::empty(&shim_string_arena);
+
+    // add builtin shims
+    add_builtin_shims(&mut shim_registry);
 
     // add includes to the shim registry
     let library_load_paths = rrconfig::lib_load_paths();

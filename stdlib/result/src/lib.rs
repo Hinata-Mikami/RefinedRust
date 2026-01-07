@@ -84,6 +84,6 @@ pub trait Debug {
 #[rr::export_as(core::fmt::Formatter)]
 #[rr::refined_by("()" : "unit")]
 pub struct Formatter<'a> {
-    #[rr::field("tt")]
+    #[rr::field("-[]")]
     _marker: PhantomData<&'a mut i32>,
 }

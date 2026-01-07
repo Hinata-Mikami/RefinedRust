@@ -44,3 +44,12 @@ Definition tuple5_rt (T0_rt : RT) (T1_rt : RT) (T2_rt : RT) (T3_rt : RT) (T4_rt 
   plist place_rfnRT [T0_rt; T1_rt; T2_rt; T3_rt; T4_rt].
 Definition tuple5_ty `{!refinedrustGS Σ} (T0_rt T1_rt T2_rt T3_rt T4_rt : RT) : spec_with 0 [T0_rt; T1_rt; T2_rt; T3_rt; T4_rt] (type (tuple5_rt _ _ _ _ _)) :=
   spec! ( *[]) : 0 | ( *[T0_ty; T1_ty; T2_ty; T3_ty; T4_ty]) : [T0_rt; T1_rt; T2_rt; T3_rt; T4_rt], struct_t (tuple5_sls (st_of T0_ty MetaNone) (st_of T1_ty MetaNone) (st_of T2_ty MetaNone) (st_of T3_ty MetaNone) (st_of T4_ty MetaNone)) +[T0_ty; T1_ty; T2_ty; T3_ty; T4_ty].
+
+(** PhantomData *)
+Definition core_marker_PhantomData_sls (T_st : syn_type) : struct_layout_spec :=
+  mk_sls "core_marker_PhantomData" [] StructReprRust.
+Definition core_marker_PhantomData_st (T_st : syn_type) : syn_type := core_marker_PhantomData_sls T_st.
+Definition core_marker_PhantomData_rt (T_rt : RT) : RT :=
+  plist place_rfnRT [].
+Definition core_marker_PhantomData_ty `{!refinedrustGS Σ} (T_rt : RT) : spec_with 0 [T_rt] (type (core_marker_PhantomData_rt T_rt)) :=
+  spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt], struct_t (core_marker_PhantomData_sls (st_of T_ty MetaNone)) +[].

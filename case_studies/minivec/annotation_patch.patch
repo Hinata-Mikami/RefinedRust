@@ -2,7 +2,7 @@
 >     (* TODO manually added *)
 >      annot: ExtendLftAnnot "llft4";
 >      annot: ExtendLftAnnot "llft5";
-486a490
+487a491
 >     annot: ExtendLftAnnot "plft6"; (* TODO manual *)
 534c538
 <     "ret" <-{ PtrOp } &ref{ Mut, Some (RSTTyVar "T"), "vuclft4" } (!{ PtrOp } ( "p" ));

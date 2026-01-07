@@ -22,10 +22,6 @@ pub trait Clone: Sized {
     }
 }
 
-//#[rr::export_as(core::marker::Sized)]
-//pub trait Sized { }
-
-
 #[rr::export_as(core::marker::Copy)]
 #[rr::semantic("Copyable {Self}")]
 pub trait Copy: Clone {

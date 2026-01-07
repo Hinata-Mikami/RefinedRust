@@ -844,20 +844,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         Ok(specs::enums::AbstractUse::new(enum_ref, params))
     }
 
-    /// Check if a variant given by a [`DefId`] is [`std::marker::PhantomData`].
-    fn is_phantom_data(&self, did: DefId) -> Option<bool> {
-        let ty: ty::Ty<'tcx> = self.env.tcx().type_of(did).instantiate_identity();
-        match ty.kind() {
-            ty::TyKind::Adt(def, _) => Some(def.is_phantom_data()),
-            _ => None,
-        }
-    }
-
-    /// Check if a struct is definitely zero-sized.
-    fn is_struct_definitely_zero_sized(&self, did: DefId) -> Option<bool> {
-        self.is_phantom_data(did)
-    }
-
     /// Generate the use of a struct.
     /// Only for internal references as part of type translation.
     fn generate_struct_use_noshim(
@@ -867,11 +853,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         state: ST<'_, '_, 'def, 'tcx>,
     ) -> Result<specs::structs::AbstractUse<'def>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
-
-        if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
-            info!("replacing zero-sized struct with unit");
-            return Ok(specs::structs::AbstractUse::new_unit());
-        }
 
         let (struct_ref, lit_ref) = self.lookup_adt_variant(variant_id)?;
 
@@ -967,8 +948,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             Err(TranslationError::Unimplemented {
                 description: "union ADTs are not yet supported".to_owned(),
             })
-        } else if self.is_struct_definitely_zero_sized(def.did()) == Some(true) {
-            Ok(())
         } else if def.is_enum() {
             self.register_enum(def)
         } else if def.is_struct() {
@@ -1586,11 +1565,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return Ok(specs::Type::BoxT(Box::new(translated_ty)));
                 }
 
-                if self.is_struct_definitely_zero_sized(adt.did()) == Some(true) {
-                    // make this unit
-                    return Ok(specs::Type::Unit);
-                }
-
                 // we prefer to use the registered local ADT instead of the shim, to support things like
                 // `#raw`
                 if self.is_registered_remote_adt(adt.did()) {
@@ -1929,11 +1903,6 @@ impl<'def, 'tcx> TX<'def, 'tcx> {
         scope: InFunctionState<'_, 'def, 'tcx>,
     ) -> Result<Option<specs::types::LiteralUse<'def>>, TranslationError<'tcx>> {
         info!("generating struct use for {:?}", variant_id);
-
-        if self.is_struct_definitely_zero_sized(variant_id) == Some(true) {
-            info!("replacing zero-sized struct with unit");
-            return Ok(None);
-        }
 
         let params = self.trait_registry().compute_scope_inst_in_state(
             &mut STInner::InFunction(scope),
