@@ -2113,15 +2113,6 @@ where
         }
     }
 
-    // register shims from the shim config
-    match rrconfig::shim_file() {
-        None => (),
-        Some(file) => {
-            let f = File::open(file).map_err(|a| a.to_string())?;
-            shim_registry.add_source(f).map_err(|e| e.to_string())?;
-        },
-    }
-
     // first register names for all the procedures, to resolve mutual dependencies
     let mut vcx = VerificationCtxt {
         env,

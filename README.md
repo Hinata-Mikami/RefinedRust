@@ -159,7 +159,6 @@ These include:
 | `dump_borrowck_info` | Boolean | Dumps borrowck debug output in the log directory |
 | `output_dir` | Relative/absolute path | Determines the directory where the generated output files will be placed |
 | `log_dir` | Relative/absolute path | Determines the directory where logs and debug dumps will be placed if enabled |
-| `shims` | Relative/absolute path | Determines the JSON file storing information about shims that RefinedRust uses |
 | `run_check` | Boolean | Automatically call the Rocq type checker on the generated files |
 | `verify_deps` | Boolean | Verify dependencies or not |
 | `admit_proofs` | Boolean | Skip Rocq's `Qed` check and instead run `Admitted` |

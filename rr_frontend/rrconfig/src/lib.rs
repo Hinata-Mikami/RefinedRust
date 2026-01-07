@@ -78,7 +78,6 @@ struct Config {
     work_dir: String,
     output_dir: Option<String>,
     post_generation_hook: Option<String>,
-    shims: Option<String>,
     extra_specs: Option<String>,
     trust_debug: bool,
 }
@@ -104,7 +103,6 @@ impl Default for Config {
             work_dir: ".".to_owned(),
             output_dir: None,
             post_generation_hook: None,
-            shims: None,
             extra_specs: None,
             trust_debug: false,
         }
@@ -309,12 +307,6 @@ pub fn output_dir() -> Option<PathBuf> {
 #[must_use]
 pub fn post_generation_hook() -> Option<String> {
     access_config(|c| c.post_generation_hook.clone())
-}
-
-/// Which file to read shims from?
-#[must_use]
-pub fn shim_file() -> Option<PathBuf> {
-    access_config(|c| c.shims.clone()).map(make_path_absolute).and_then(Result::ok)
 }
 
 /// Which file should we read extra specs from?
