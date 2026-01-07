@@ -1308,18 +1308,6 @@ Ltac simplify_elctx :=
 Section reorder_elctx.
   Context `{!typeGS Σ}.
 
-  Lemma reorder_elctx_tac E E' L s fn R ϝ :
-    E ≡ₚ E' →
-    typed_stmt (E') L s fn R ϝ -∗
-    typed_stmt E L s fn R ϝ.
-  Proof.
-    iIntros (HP) "Hs".
-    rewrite /typed_stmt.
-    iIntros (?) "#CTX #HE HL Hcont".
-    iApply ("Hs" with "CTX [] HL Hcont").
-    iApply elctx_interp_permut; done.
-  Qed.
-
   Lemma reorder_elctx_init_tac (E E0 E' E'' : elctx) :
     E ≡ₚ E' ++ E'' →
     E0 = E' ++ E'' →
@@ -2233,6 +2221,30 @@ Ltac compute_map_lookups :=
 Ltac solve_compute_map_lookups_nofail ::=
   compute_map_lookups.
 
+(** local_fresh *)
+Section tac.
+  Lemma tac_local_fresh_nil x :
+    local_fresh x [].
+  Proof.
+    unfold local_fresh. set_solver.
+  Qed.
+  Lemma tac_local_fresh_cons x y ys :
+    x ≠ y →
+    local_fresh x ys →
+    local_fresh x (y :: ys).
+  Proof.
+    unfold local_fresh. set_solver.
+  Qed.
+
+End tac.
+Ltac solve_local_fresh :=
+  repeat match goal with
+  | |- local_fresh ?x [] =>
+      notypeclasses refine (tac_local_fresh_nil _)
+  | |- local_fresh ?x (?y :: ?ys) =>
+      notypeclasses refine (tac_local_fresh_cons _ _ _ _ _);
+      [done | ]
+  end.
 
 (** solve_simplify_map *)
 
@@ -2326,6 +2338,54 @@ Ltac solve_simplify_lft_map ::=
       let Q' := simplify_lft_map constr:(Q) in
       refine (simplify_lft_map_tac Q Q' e _);
       [reflexivity ]
+  end.
+
+(** Simplifying local lists *)
+Section tac.
+  Lemma tac_simplify_remove_local_cons_ne M x y xs :
+    x ≠ y →
+    remove_local xs y = M →
+    remove_local (x :: xs) y = (x :: M).
+  Proof.
+    unfold remove_local.
+    intros Hneq. simpl.
+    rewrite decide_False; first naive_solver.
+    set_solver.
+  Qed.
+  Lemma tac_simplify_remove_local_cons_eq M x xs :
+    remove_local xs x = M →
+    remove_local (x :: xs) x = M.
+  Proof.
+    unfold remove_local.
+    intros Hneq. simpl.
+    rewrite decide_True; first naive_solver.
+    set_solver.
+  Qed.
+  Lemma tac_simplify_remove_local_nil x :
+    remove_local [] x = [].
+  Proof.
+    unfold remove_local. done.
+  Qed.
+End tac.
+
+Ltac simplify_local_list_step :=
+  lazymatch goal with
+  | |- remove_local (?x :: ?xs) ?x = ?m =>
+    notypeclasses refine (tac_simplify_remove_local_cons_eq _ _ _ _)
+  | |- remove_local (?x :: ?xs) ?y = ?m =>
+    notypeclasses refine (tac_simplify_remove_local_cons_ne _ _ _ _ _ _);
+    [done | ]
+  | |- remove_local [] ?y = ?m =>
+    notypeclasses refine (tac_simplify_remove_local_nil _)
+  end.
+Ltac solve_simplify_local_list ::=
+  match goal with
+  | |- ?Q = ?e => is_evar e
+  | _ => fail "unknown goal for simplify_local_list"
+  end;
+  lazymatch goal with
+  | |- ?Q = ?e =>
+      repeat simplify_local_list_step
   end.
 
 (** ** Solver for goals of the form [ty_has_op_type] *)

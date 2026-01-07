@@ -1,9 +1,8 @@
 From caesium Require Import lang notation.
-From refinedrust Require Import annotations.
+From refinedrust Require Import annotations typing.
 
-Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];
-  f_local_vars := [("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
       (* NOTE: the rust impl uses copy_nonoverlapping and then asserts with an intrinsic that the validity invariant for T holds,
@@ -14,44 +13,48 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("src", void* )];
-  f_local_vars := [("tmp", use_layout_alg' T_st); ("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+      local_live{T_st} "tmp";
       "tmp" <-{use_op_alg' T_st} use{use_op_alg' T_st} (!{PtrOp} "src");
       return (use{use_op_alg' T_st} "tmp")
     ]>%E $
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 (* Our implementation does not actually do anything with the type parameter, it's just there to mirror the Rust API. *)
-Definition ptr_invalid `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_invalid `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("align", USize : layout)];
-  f_local_vars := [("ret", use_layout_alg' PtrSynType); ("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+      local_live{PtrSynType} "ret";
       "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (UnOp EraseProv (UntypedOp USize) (use{IntOp USize} "align")));
       return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc) (ptr_invalid_loc : loc) : function := {|
+Program Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc) (ptr_invalid_loc : loc) : function := {|
   f_args := [];
-  f_local_vars := [("align", USize : layout)];
   f_code :=
     <["_bb0" :=
+      local_live{IntSynType USize} "align";
       "align" <-{IntOp USize} CallE mem_align_of_loc [] [RSTTyVar "T"] [@{expr} ];
       return (CallE ptr_invalid_loc [] [RSTTyVar "T"] [@{expr} use{IntOp USize} "align"])
     ]>%E $
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 (** copy_nonoverlapping *)
@@ -77,11 +80,11 @@ Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc)
     }
   }
  *)
-Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("src", void* ); ("dst", void* ); ("size", USize : layout)];
-  f_local_vars := [("_0", use_layout_alg' UnitSynType); ("_1", use_layout_alg' UnitSynType); ("count", USize : layout); ("_3", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+      local_live{IntSynType USize} "count";
       "count" <-{IntOp USize} i2v 0 USize;
       (* TODO: add safety checks *)
       annot: StopAnnot;
@@ -111,76 +114,83 @@ Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : function :=
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", ISize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} ((use{PtrOp} "self") at_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", USize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} ((use{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
-Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", ISize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", USize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("count", USize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
-Definition ptr_with_addr `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_with_addr `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("self", void* ); ("addr", USize : layout)];
-  f_local_vars := [("ret", void* : layout); ("_1", use_layout_alg' UnitSynType); ("_2", use_layout_alg' UnitSynType)];
   f_code :=
     <["_bb0" :=
+        local_live{PtrSynType} "ret";
         "ret" <-{PtrOp} CopyAllocId (IntOp USize) (use{IntOp USize} "addr") (use{PtrOp} "self");
         return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.

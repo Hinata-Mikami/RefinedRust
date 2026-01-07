@@ -26,6 +26,7 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
     ∀ F π κ x y q,
     lftE ⊆ F →
     rrust_ctx -∗
+    na_own π ∅ -∗
     let κ' := lft_intersect_list inv_P_lfts in
     q.[κ ⊓ κ'] -∗
     &{κ} (inv_P π x y) -∗
@@ -62,7 +63,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   rewrite /TCNoResolve.
-  iIntros (????? P ?? F ? κ x y q ?) "#CTX Htok Hb".
+  iIntros (????? P ?? F ? κ x y q ?) "#CTX Hna Htok Hb".
   iDestruct "CTX" as "(LFT & LLCTX)".
   iApply fupd_logical_step.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
@@ -174,7 +175,7 @@ Section ex.
     iIntros (ty κ π l r m) "(%x & HP & Hv)". by iApply ty_shr_aligned.
   Qed.
   Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly Hlb Hb".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hb".
     iApply fupd_logical_step.
     setoid_rewrite bi.sep_exist_l. setoid_rewrite bi_exist_comm.
     iDestruct "Htok" as "(Htok & Htok2)".
@@ -185,10 +186,10 @@ Section ex.
     iPoseProof (bor_iff _ _ (P.(inv_P) π x r ∗ (∃ a : val, l ↦ a ∗ a ◁ᵥ{ π, m} x @ ty)) with "[] Hb") as "Hb".
     { iNext. iModIntro. iSplit; [iIntros "(% & ? & ? & ?)" | iIntros "(? & (% & ? & ?))"]; eauto with iFrame. }
     iMod (bor_sep with "LFT Hb") as "(HP & Hb)"; first solve_ndisj.
-    iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Htok2 HP") as "HP"; first done.
+    iPoseProof (P.(inv_P_share) E with "[$LFT $LLCTX] Hna Htok2 HP") as "HP"; first done.
     iCombine "Htok Htoki" as "Htok". rewrite lft_tok_sep.
     rewrite ty_lfts_unfold.
-    iPoseProof (ty_share with "[$] Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
+    iPoseProof (ty_share with "[$] Hna Htok [//] [//] Hlb Hb") as "Hb"; first solve_ndisj.
     iModIntro. iApply (logical_step_compose with "HP"). iApply (logical_step_wand with "Hb").
     iIntros "(Hshr & Htok) (HP & Htok2)".
     iSplitL "HP Hshr". { eauto with iFrame. }
@@ -690,39 +691,39 @@ Section stratify.
     (*λ T, i2p (stratify_unfold_ex_plain_t_shared π E L smu sa sm l ty x κ T).*)
 
   (** Unfolding by place access *)
-  Lemma typed_place_ex_plain_t_owned π E L l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
+  Lemma typed_place_ex_plain_t_owned E L f l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
     (∀ r,
-      introduce_with_hooks E L (P.(inv_P) π r x) (λ L2, typed_place π E L2 l
-      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, True)) (#r) UpdStrong (Owned wl) K
+      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l
+      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) f.1 r x) (λ r x, True)) (#r) UpdStrong (Owned wl) K
       (λ L2 κs li b2 bmin' rti ltyi ri updcx,
         T L2 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I))))))
-    ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned wl) K T.
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned wl) K T.
   Proof.
-    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb Hcont".
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
     iMod (ex_plain_t_open_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
     iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] CTX HE HL Hb").
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
     iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hc" with "HL Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_owned_inst := [instance @typed_place_ex_plain_t_owned].
   Global Existing Instance typed_place_ex_plain_t_owned_inst | 15.
 
-  Lemma typed_place_ex_plain_t_uniq π E L l (ty : type rt) x κ γ K `{!TCDone (K ≠ [])} T :
+  Lemma typed_place_ex_plain_t_uniq E L f l (ty : type rt) x κ γ K `{!TCDone (K ≠ [])} T :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
-    (∀ r, introduce_with_hooks E L2 (P.(inv_P) π r x) (λ L3, typed_place π E L3 l
-      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) (#r) UpdStrong (Uniq κ γ) K
+    (∀ r, introduce_with_hooks E L2 (P.(inv_P) f.1 r x) (λ L3, typed_place E L3 f l
+      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) f.1 r x) (λ r x, llft_elt_toks κs)) (#r) UpdStrong (Uniq κ γ) K
       (λ L4 κs li b2 bmin' rti ltyi ri updcx,
         T L4 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
@@ -730,9 +731,9 @@ Section stratify.
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I)))
         ))))
-    ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) UpdStrong (Uniq κ γ) K T.
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Uniq κ γ) K T.
   Proof.
-    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb Hcont".
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     rewrite /lctx_lft_alive_count_goal.
     iDestruct "HT" as "(%κs & %L' & %Hal & HT)".
     iApply fupd_place_to_wp.
@@ -742,21 +743,21 @@ Section stratify.
     iMod (ex_plain_t_open_uniq with "CTX Htok Hcl_tok Hb") as "(%r & HP & Hb & Hcl)"; first done.
     iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] CTX HE HL Hb").
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
     iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hc" with "HL Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_uniq_inst := [instance @typed_place_ex_plain_t_uniq].
   Global Existing Instance typed_place_ex_plain_t_uniq_inst | 15.
 
-  Lemma typed_place_ex_plain_t_shared π E L l (ty : type rt) x κ K `{!TCDone (K ≠ [])} T :
-    (∀ r, introduce_with_hooks E L (P.(inv_P_shr) π κ r x) (λ L2,
-      typed_place π E L2 l (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
+  Lemma typed_place_ex_plain_t_shared E L f l (ty : type rt) x κ K `{!TCDone (K ≠ [])} T :
+    (∀ r, introduce_with_hooks E L (P.(inv_P_shr) f.1 κ r x) (λ L2,
+      typed_place E L2 f l (ShadowedLtype (◁ ty) #r (◁ (∃; P, ty))) (#x) UpdStrong (Shared κ) K
         (λ L3 κs li b2 bmin' rti ltyi ri updcx,
           T L3 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',
@@ -764,19 +765,19 @@ Section stratify.
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I)))
           )))
-    ⊢ typed_place π E L l (◁ (∃; P, ty))%I (#x) UpdStrong (Shared κ) K T.
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Shared κ) K T.
   Proof.
-    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb Hcont".
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
     iMod (ex_plain_t_open_shared with "Hb") as "(%r & HP & Hb)"; first done.
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] CTX HE HL Hb").
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
     iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hc" with "HL Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_ex_plain_t_shared_inst := [instance @typed_place_ex_plain_t_shared].
@@ -789,12 +790,13 @@ End stratify.
 Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   lftE ⊆ F →
   rrust_ctx -∗
+  na_own π ∅ -∗
   let κ' := lft_intersect_list (ty_lfts ty) in
   q.[κ ⊓ κ'] -∗
   (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
   logical_step F ((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
 Proof.
-  iIntros (?) "#(LFT & LLCTX) Htok Hl".
+  iIntros (?) "#(LFT & LLCTX) #Hna Htok Hl".
   iApply fupd_logical_step.
   iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
   rewrite -lft_tok_sep.
@@ -823,7 +825,7 @@ Proof.
   iDestruct "Hcred" as "(Hcred1 & Hcred)".
   iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Ha" as "(Hl & Htok)".
   iDestruct "Htok2" as "(Htok2 & Htok2')".
-  iPoseProof (ty_share _ F with "[$LFT $LLCTX] [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
+  iPoseProof (ty_share _ F with "[$LFT $LLCTX] Hna [Htok Htok2] [//] [//] Hlb Hl") as "Hstep"; [done | ..].
   { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_compose with "Hstep").
@@ -846,12 +848,13 @@ Lemma ltype_own_ofty_share' `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt) r 
   lftE ⊆ F →
   (ty_lfts ty) ⊆ κ' →
   rrust_ctx -∗
+  na_own π ∅ -∗
   q.[κ] -∗
   q.[lft_intersect_list κ'] -∗
   (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
   logical_step F ((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ] ∗ q.[lft_intersect_list κ']).
 Proof.
-  iIntros (? Hsub) "#CTX Htok1 Htok2 Hl".
+  iIntros (? Hsub) "#CTX #Hna Htok1 Htok2 Hl".
   iApply fupd_logical_step.
   iMod (lft_incl_acc _ _ (lft_intersect_list (ty_lfts ty)) with "[] Htok2") as "(%q' & Htok2 & Hcltok2)"; first done.
   { iApply list_incl_lft_incl_list. done. }
@@ -860,7 +863,7 @@ Proof.
   { apply Qp.le_min_l. }
   iPoseProof (Fractional_fractional_le (λ q, q.[lft_intersect_list (ty_lfts ty)])%I q' q0 with "Htok2") as "[Htok2 Hcltok2']".
   { apply Qp.le_min_r. }
-  iPoseProof (ltype_own_ofty_share with "CTX [Htok1 Htok2] Hl") as "Hstep"; first done.
+  iPoseProof (ltype_own_ofty_share with "CTX Hna [Htok1 Htok2] Hl") as "Hstep"; first done.
   { rewrite -lft_tok_sep. iFrame. }
   iApply logical_step_fupd.
   iApply (logical_step_wand with "Hstep").
@@ -874,14 +877,15 @@ Lemma ltype_own_ofty_share_tac `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt)
   lftE ⊆ F →
   (ty_lfts ty) ⊆ κ' →
   rrust_ctx -∗
+  na_own π ∅ -∗
   q.[κ] -∗
   q.[lft_intersect_list κ'] -∗
   (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
   ((q/2).[κ] -∗ (q/2).[lft_intersect_list κ'] -∗ logical_step F (((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ (q/2).[κ] ∗ (q/2).[lft_intersect_list κ']) -∗ P)) -∗
   logical_step F P.
 Proof.
-  iIntros (??) "#CTX [Htok11 Htok12] [Htok21 Htok22] Hl Hstep".
-  iPoseProof (ltype_own_ofty_share' with "CTX Htok11 Htok21 Hl") as "Hstep'"; [done.. | ].
+  iIntros (??) "#CTX #Hna [Htok11 Htok12] [Htok21 Htok22] Hl Hstep".
+  iPoseProof (ltype_own_ofty_share' with "CTX Hna Htok11 Htok21 Hl") as "Hstep'"; [done.. | ].
   iApply (logical_step_compose with "(Hstep Htok12 Htok22)").
   iApply (logical_step_wand with "Hstep'").
   iIntros "Ha Hb". by iApply "Hb".

@@ -198,7 +198,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             specs::Type<'def>,
         )> = Vec::new();
 
-        for (local, kind, name, ty) in &self.fn_locals {
+        for (local, kind, name, ty, _) in &self.fn_locals {
             let place = mir::Place::from(*local);
             let initialized = init_places.contains(place);
 

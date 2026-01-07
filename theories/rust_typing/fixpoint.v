@@ -221,17 +221,17 @@ Section fixpoint_def.
     intros. unfold F_ty_own_val_ty_shr_fixpoint.
     eapply @limit_preserving_compl.
     - eapply bi.limit_preserving_entails; first apply _.
-      intros ? [] [] Heq. do 8 f_equiv.
+      intros ? [] [] Heq. do 9 f_equiv.
       { do 2 f_equiv. apply Heq. }
       apply Heq.
     - intros ?. simpl.
-      iIntros "#RUST Htok %% Hlb Hb".
+      iIntros "#RUST Hna Htok %% Hlb Hb".
       iApply fupd_logical_step.
       iPoseProof (Fn_lfts_const_0 (3+n)) as "[_ Hincl]".
       iMod (lft_incl_acc with "[] Htok") as "(%q' & Htok & Hcl_tok)"; first done.
       { iApply lft_intersect_mono; first iApply lft_incl_refl. iApply "Hincl". }
       rewrite ty_lfts_unfold.
-      iPoseProof (ty_share with "RUST Htok [] [//] Hlb Hb") as "Hlb"; first done.
+      iPoseProof (ty_share with "RUST Hna Htok [] [//] Hlb Hb") as "Hlb"; first done.
       { erewrite Fn_syn_type_const. done. }
       iApply logical_step_fupd.
       iApply (logical_step_compose with "Hlb").

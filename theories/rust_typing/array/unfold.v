@@ -30,7 +30,7 @@ Section split.
     (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty)%I ={F}=∗
     l ◁ₗ[π, Owned false] #(<#> reshape (replicate k m) rs) @ ◁ array_t k (array_t m ty).
   Proof.
-    iIntros (? ? ->) "Hl". 
+    iIntros (? ? ->) "Hl".
     rewrite ltype_own_ofty_unfold/lty_of_ty_own. simpl.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & #Hlb & Hcred & %rs' & <- & Ha)".
     iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
@@ -39,7 +39,7 @@ Section split.
     rewrite ltype_own_ofty_unfold/lty_of_ty_own. simpl.
     apply syn_type_has_layout_array_inv in Hst as (ly' & ? & -> & Hsz).
     rewrite ly_size_mk_array_layout in Hsz.
-    iExists (mk_array_layout ly' (m * k)). iSplitR. 
+    iExists (mk_array_layout ly' (m * k)). iSplitR.
     { iPureIntro. eapply syn_type_has_layout_array.
       2: { eapply syn_type_has_layout_array; [done.. | ]. nia. }
       { unfold mk_array_layout, ly_mult; simpl.
@@ -67,21 +67,21 @@ Section split.
     iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & #Hlb & _ & %r' & <- & Ha)".
     iMod (fupd_mask_mono with "Ha") as "(%v & Hl & Hv)"; first done.
     iMod (ty_own_val_array_subtype_strong with "Hupd Hv") as "(%rs' & Hv)".
-    { done. } 
-    iExists rs'. 
+    { done. }
+    iExists rs'.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
     iExists (mk_array_layout ly' n).
     apply syn_type_has_layout_array_inv in Hst as (ly'' & Hst' & -> & Hsz).
     apply Hsteq in Hst' as (ly2 & Hst2 & Hszeq).
     assert (ly' = ly2) as -> by by eapply syn_type_has_layout_inj.
     rewrite ly_size_mk_array_layout in Hsz.
-    iSplitR. { iPureIntro. 
+    iSplitR. { iPureIntro.
       eapply syn_type_has_layout_array; first done; first done.
       lia. }
-    iR. iR. 
+    iR. iR.
     rewrite !ly_size_mk_array_layout Hszeq.
-    iR. iR. 
-    iExists _. iR. iModIntro. iModIntro.  
+    iR. iR.
+    iExists _. iR. iModIntro. iModIntro.
     iExists v. iFrame.
   Qed.
 
@@ -532,14 +532,13 @@ End unfold.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_array_unfold π E L l {rt} (def : type rt) len rs bmin k P T :
-    typed_place π E L l (ArrayLtype def len []) rs bmin k P T
-    ⊢ typed_place π E L l (◁ array_t len def) rs bmin k P T.
+  Lemma typed_place_array_unfold E L f l {rt} (def : type rt) len rs bmin k P T :
+    typed_place E L f l (ArrayLtype def len []) rs bmin k P T
+    ⊢ typed_place E L f l (◁ array_t len def) rs bmin k P T.
   Proof.
     iIntros "HT". iApply typed_place_eqltype; last done.
     apply array_t_unfold_full_eqltype.
   Qed.
-  Global Instance typed_place_array_unfold_inst π E L l {rt} (def : type rt) len rs bmin k P :
-    TypedPlace E L π l (◁ array_t len def)%I rs bmin k P | 20 :=
-    λ T, i2p (typed_place_array_unfold π E L l def len rs bmin k P T).
+  Definition typed_place_array_unfold_inst := [instance @typed_place_array_unfold].
+  Global Existing Instance typed_place_array_unfold_inst | 20.
 End place.

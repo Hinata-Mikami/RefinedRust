@@ -133,6 +133,15 @@ Qed.
 Lemma heap_free_delete h a1 a2 n :
   delete a1 (heap_free a2 n h) = heap_free a2 n (delete a1 h).
 Proof. elim: n a2 => //= ? IH ?. by rewrite delete_delete IH. Qed.
+Lemma heap_free_comm l1 l2 n1 n2 h :
+  heap_free l2 n2 (heap_free l1 n1 h) =
+  heap_free l1 n1 (heap_free l2 n2 h).
+Proof.
+  induction n2 as [ | n2 IH] in n1, l1, l2 |-*; simpl; first done.
+  rewrite -heap_free_delete.
+  f_equiv. apply IH.
+Qed.
+
 
 Lemma heap_upd_ext h l v f1 f2:
   (∀ x, f1 x = f2 x) → heap_upd l v f1 h = heap_upd l v f2 h.
@@ -181,6 +190,33 @@ Proof.
   elim: n a => //= n IH a H.
   destruct (decide (a = p)) as [->|]; first lia.
   rewrite lookup_delete_ne; last done. apply IH. lia.
+Qed.
+
+Lemma heap_lookup_loc_heap_free_disj_allocs s (n : nat) l v Lp h :
+  (∀ a, l.2 ≤ a < l.2 + length v → a < s ∨ s + n ≤ a) →
+  heap_lookup_loc l v Lp (heap_free s n h) ↔ heap_lookup_loc l v Lp h.
+Proof.
+  unfold heap_lookup_loc.
+  induction v as [ | b v IH] in l, s, n, h |-*; simpl; first done.
+  intros Hdisj. split.
+  - intros [(aid & lk & Hf & ? & ?) Hl].
+    split; first last.
+    { eapply (IH _ _ (l +ₗ 1)); last done.
+      simpl. intros. eapply Hdisj. lia. }
+    eexists _, _. split_and!; try done.
+    rewrite -Hf.
+    rewrite heap_free_lookup_not_in_range; first done.
+    intros [Ha Hb].
+    ospecialize (Hdisj l.2 _); lia.
+  - intros [(aid & lk & Hf & ? & ?) Hl].
+    split; first last.
+    { eapply (IH _ _ (l +ₗ 1)); last done.
+      simpl. intros. eapply Hdisj. lia. }
+    eexists _, _. split_and!; try done.
+    rewrite -Hf.
+    rewrite heap_free_lookup_not_in_range; first done.
+    intros [Ha Hb].
+    ospecialize (Hdisj l.2 _); lia.
 Qed.
 
 (** ** Representation of allocations. *)
@@ -625,6 +661,22 @@ Proof.
   by apply: free_block_inj.
 Qed.
 
+Lemma free_blocks_inv_cons hs kind hs2 l ly ls :
+  free_blocks hs kind ((l, ly) :: ls) hs2 →
+  ∃ hs1, free_block hs kind l ly hs1 ∧ free_blocks hs1 kind ls hs2.
+Proof.
+  inversion 1; eauto.
+Qed.
+Lemma free_block_inv hs kind l ly hs':
+  free_block hs kind l ly hs' →
+  ∃ aid v,
+  l.1 = ProvAlloc (Some aid) ∧
+  hs.(hs_allocs) !! aid = Some (Allocation l.2 ly.(ly_size) true kind) ∧
+  length v = ly.(ly_size) ∧
+  heap_lookup_loc l v (λ st, st = RSt 0%nat) hs.(hs_heap) ∧
+  hs' = {| hs_heap := heap_free l.2 ly.(ly_size) hs.(hs_heap); hs_allocs := <[aid := Allocation l.2 ly.(ly_size) false kind]> hs.(hs_allocs); |}.
+Proof. inversion 1; eauto 10. Qed.
+
 (** ** Heap state invariant definition. *)
 
 (** Predicate stating that every address [a] mapped by the heap of [st] has
@@ -891,4 +943,57 @@ Proof.
   - move => *. naive_solver.
   - move => *. naive_solver.
   - by eapply heap_update_alloc_alive_in_heap.
+Qed.
+
+Lemma free_blocks_perm hs kind ls1 ls2 hs1 :
+  ls1 ≡ₚ ls2 →
+  heap_state_invariant hs →
+  free_blocks hs kind ls1 hs1 →
+  free_blocks hs kind ls2 hs1.
+Proof.
+  induction 1 as [ | ??? ? IH | [l1 ly1] [l2 ly2] ls | ??? ? IH1 ? IH2] in hs, hs1 |-*.
+  - done.
+  - intros ?. inversion 1; subst.
+    econstructor; first done.
+    eapply IH; last done.
+    eapply free_block_invariant; done.
+  - intros Hinv Ha.
+    eapply free_blocks_inv_cons in Ha as (hs2 & Ha & Hb).
+    eapply free_blocks_inv_cons in Hb as (hs3 & Hb & Hc).
+    eapply free_block_inv in Ha as (aid1 & v1 & ? & Hal1 & Hlen1 & Hlook1 & ->).
+    eapply free_block_inv in Hb as (aid2 & v2 & ? & Hal2 & Hlen2 & Hlook2 & ->).
+    simpl in *.
+    destruct (decide (aid1 = aid2)) as [<- | Hneq].
+    { (* contradiction *) move: Hal2. rewrite lookup_insert_eq. congruence. }
+    rewrite lookup_insert_ne in Hal2; last done.
+    econstructor.
+    { econstructor; try done.
+      apply heap_lookup_loc_heap_free_disj_allocs in Hlook2; first done.
+      destruct Hinv as (_ & _ & _ & Hdisj & _).
+      ospecialize (Hdisj aid1 aid2 _ _ _ _ _ _ _); [done.. | by eexists | by eexists | ].
+      rewrite elem_of_disjoint in Hdisj. simpl in Hdisj.
+      unfold elem_of, elem_of_alloc, al_end in Hdisj. simpl in Hdisj.
+      rewrite Hlen2.
+      intros a []. apply dec_stable.
+      intros ?%Decidable.not_or.
+      eapply (Hdisj a); lia. }
+    econstructor.
+    { econstructor; try done.
+      { simpl. rewrite lookup_insert_ne; last done. done. }
+      simpl.
+      apply heap_lookup_loc_heap_free_disj_allocs; last done.
+      destruct Hinv as (_ & _ & _ & Hdisj & _).
+      ospecialize (Hdisj aid1 aid2 _ _ _ _ _ _ _); [done.. | by eexists | by eexists | ].
+      rewrite elem_of_disjoint in Hdisj. simpl in Hdisj.
+      unfold elem_of, elem_of_alloc, al_end in Hdisj. simpl in Hdisj.
+      rewrite Hlen1.
+      intros a []. apply dec_stable.
+      intros ?%Decidable.not_or.
+      eapply (Hdisj a); lia. }
+    simpl.
+    rewrite insert_insert_ne; last done.
+    rewrite heap_free_comm.
+    done.
+  - intros ? Ha. eapply IH2; first done.
+    eapply IH1; done.
 Qed.

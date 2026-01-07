@@ -15,7 +15,7 @@ Proof.
   Vec_T_pop_prelude.
 
   rep <-! liRStep; liShow.
-  rename x2 into lel.
+  rename x1 into lel.
   apply_update (updateable_typed_array_access lel (length xs - 1) (st_of T_ty MetaNone)).
   liRStepUntil typed_call.
   (* We need to manually extract it now *)

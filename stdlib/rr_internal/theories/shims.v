@@ -26,11 +26,12 @@ From rrstd.alloc.alloc.generated Require Export generated_specs_alloc.
     new_ptr
   }
 *)
-Definition alloc_realloc_def `{!LayoutAlg} (alloc_alloc_loc : loc) (copy_nonoverlapping_loc : loc) (alloc_dealloc_loc : loc) : function := {|
+Program Definition alloc_realloc_def `{!LayoutAlg} (alloc_alloc_loc : loc) (copy_nonoverlapping_loc : loc) (alloc_dealloc_loc : loc) : function := {|
   f_args := [("old_size", USize : layout); ("align", USize : layout); ("new_size", USize : layout); ("ptr", void* )];
-  f_local_vars := [("new_ptr", void* ); ("min_size", USize : layout)];
   f_code :=
     <["_bb0" :=
+      local_live{PtrSynType} "new_ptr";
+      local_live{IntSynType USize} "min_size";
       "new_ptr" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} use{IntOp USize} "new_size"; use{IntOp USize} "align"];
       "min_size" <-{IntOp USize} (IfE BoolOp (use{IntOp USize} "new_size" <{IntOp USize, IntOp USize, U8} use{IntOp USize} "old_size") (use{IntOp USize} "new_size") (use{IntOp USize} "old_size"));
       annot: StopAnnot;
@@ -41,6 +42,7 @@ Definition alloc_realloc_def `{!LayoutAlg} (alloc_alloc_loc : loc) (copy_nonover
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 #[global] Typeclasses Opaque layout_wf.
@@ -67,9 +69,9 @@ Lemma alloc_realloc_typed `{RRGS : !refinedrustGS Σ} π (alloc_alloc_loc copy_n
   alloc_alloc_loc ◁ᵥ{π, MetaNone} alloc_alloc_loc @ function_ptr [IntSynType USize; IntSynType USize] (<tag_type> type_of_alloc_alloc_internal) -∗
   copy_nonoverlapping_loc ◁ᵥ{π, MetaNone} copy_nonoverlapping_loc @ function_ptr [PtrSynType; PtrSynType; IntSynType USize] (<tag_type> type_of_copy_nonoverlapping Z (IntSynType U8)) -∗
   alloc_dealloc_loc ◁ᵥ{π, MetaNone} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
-  typed_function π (alloc_realloc_def alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc) [PtrSynType; IntSynType USize] (<tag_type> type_of_alloc_realloc).
+  typed_function π (alloc_realloc_def alloc_alloc_loc copy_nonoverlapping_loc alloc_dealloc_loc) (<tag_type> type_of_alloc_realloc).
 Proof.
-  start_function "alloc_realloc" ϝ ( () ) ( () ) ( [[[[old_size align_log2] new_size] ptr_old] v_old] ) ( ) => l_old_size l_align_log2 l_new_size l_ptr_old l_ptr_new l_min_size.
+  start_function "alloc_realloc" ϝ ( () ) ( () ) ( [[[[old_size align_log2] new_size] ptr_old] v_old] ) ( ) => l_old_size l_align_log2 l_new_size l_ptr_old.
   init_lfts ∅.
   init_tyvars ∅.
   set (old_ly := Layout (Z.to_nat old_size) (Z.to_nat align_log2)).
@@ -78,7 +80,8 @@ Proof.
   fold old_ly new_ly.
   (* augment context with layout well-formedness info *)
   iRename select (ptr_old ◁ₗ[_, _] _ @ _)%I into "Hold".
-  iRename select (x' ◁ₗ[_, _] _ @ _)%I into "Hnew".
+  rename x' into l_new.
+  iRename select (l_new ◁ₗ[_, _] _ @ _)%I into "Hnew".
   iPoseProof (ltype_own_has_layout with "Hold") as "(%ly_old & %Halg_old & %)".
   iPoseProof (ltype_own_has_layout with "Hnew") as "(%ly_new & %Halg_new & %)".
   simp_ltypes in Halg_old. apply syn_type_has_layout_untyped_inv in Halg_old as (-> & ? & ?).
@@ -87,7 +90,7 @@ Proof.
   iApply typed_stmt_annot_skip.
   liRStepUntil (typed_call).
   (* make into value, because the part not affected by the memcpy will be returned *)
-  iRename select (x' ◁ₗ[_, _] .@ _)%I into "Hnew".
+  iRename select (l_new ◁ₗ[_, _] .@ _)%I into "Hnew".
 
   (* The copy_nonoverlapping does a bytewise copy, so we need to convert it into an "array" of bytes *)
   iApply fupd_typed_call.
@@ -118,14 +121,11 @@ Qed.
 
 
 (** Box API *)
-Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (ptr_dangling_T_loc : loc) : function := {|
+Program Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (ptr_dangling_T_loc : loc) : function := {|
  f_args := [("x", use_layout_alg' T_st)];
- f_local_vars := [
-   ("__0", void* : layout);
-   ("size", USize : layout)
- ];
  f_code :=
   <["_bb0" :=
+   local_live{IntSynType USize} "size";
    (* check if the size is 0 *)
    "size" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
    if{BoolOp}: use{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
@@ -133,6 +133,7 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
    else Goto "_bb2"
   ]>%E $
   <["_bb2" :=
+   local_live{PtrSynType} "__0";
    (* non-ZST, do an actual allocation *)
    (* TODO maybe call alloc_alloc here? *)
    "__0" <-{ PtrOp } box{ T_st };
@@ -140,6 +141,7 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
    return (use{ PtrOp } ("__0"))
   ]>%E $
   <["_bb1" :=
+    local_live{PtrSynType} "__0";
     (* ZST, use a dangling pointer *)
     "__0" <-{PtrOp} CallE ptr_dangling_T_loc [] [RSTTyVar "T"] [@{expr} ];
     annot: StopAnnot;
@@ -150,6 +152,7 @@ Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : loc) (pt
   ∅;
  f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 Definition type_of_box_new `{RRGS : !refinedrustGS Σ} T_rt T_st :=
   fn(∀ ( *[]) : 0 | ( *[T]) : [(T_rt, T_st)] | (x) : _, (λ ϝ, []); x :@: T; λ π, True)
@@ -166,13 +169,13 @@ Lemma box_new_typed `{RRGS : !refinedrustGS Σ} π T_st (T_rt : RT) (mem_size_of
         fn_spec_add_late_pre
         (type_of_dangling T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
-  typed_function π (box_new T_st mem_size_of_T_loc ptr_dangling_T_loc) [PtrSynType; IntSynType USize] (<tag_type>
+  typed_function π (box_new T_st mem_size_of_T_loc ptr_dangling_T_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
         (type_of_box_new T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "box_new" ϝ ( () ) ( [T []] ) ( x ) ( ) => arg_x local_0 local_size.
+  start_function "box_new" ϝ ( () ) ( [T []] ) ( x ) ( ) => arg_x.
   init_tyvars (<["T" := existT _ T]> ∅).
   init_lfts ∅.
 
@@ -186,9 +189,11 @@ Proof.
 
     (* make a box type out of the alias_ptr *)
     iSelect (_ ◁ₗ[_, _] _ @ ◁ (uninit UnitSynType))%I (fun H => iRename H into "H_pts").
-    iSelect (local_0 ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "H_0").
-    iAssert (local_0 ◁ₗ[π, Owned false] #(#())  @ ◁ box (uninit (ty_syn_type T MetaNone)))%I with "[H_pts H_0 Hcred Hat1]" as "H_0".
-    { iApply (ofty_owned_subtype_aligned with "[-H_0] H_0").
+    iSelect (local___0 ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "H_0").
+    iAssert (local___0 ◁ₗ[π, Owned false] #(#())  @ ◁ box (uninit (ty_syn_type T MetaNone)))%I with "[H_pts H_0 Hcred Hat1]" as "H_0".
+    { iPoseProof (ltype_own_has_layout with "H_0") as "(%ly & %Hstly & %Hlyv)".
+      simpl in *. simp_ltypes in Hstly. simpl in *. 
+      iApply (ofty_owned_subtype_aligned with "[-H_0] H_0").
       { solve_layout_alg. }
       { done. }
       iSplitR. { iPureIntro. simpl. apply syn_type_size_eq_refl. }
@@ -208,15 +213,15 @@ Proof.
       iDestruct "H_pts" as "(%ly & % & % & _ & _ & _ & %r' & <- & >(%v2 & Hpt & Hb))".
       iModIntro. iExists v2. iFrame.
       rewrite !uninit_own_spec.
-      iDestruct "Hb" as "(_ & %ly' & %Hstly' & %Hlyv)".
+      iDestruct "Hb" as "(_ & %ly' & %Hstly' & %Hlyv')".
       iR. iExists _. iR. iFrame. iPureIntro.
       apply syn_type_has_layout_unit_inv in Hstly'; subst.
-      move: Hlyv. rewrite /has_layout_val => ->. rewrite Hsz. done.
+      move: Hlyv'. rewrite /has_layout_val => ->. rewrite Hsz. done.
     }
     repeat liRStep.
   - (* non-zero branch, do the allocation *)
     rewrite /typed_val_expr.
-    iIntros (?) "#CTX #HE HL Hcont".
+    iIntros (?) "#CTX #HE HL Hf Hcont".
     rewrite /Box.
     unfold_no_enrich. inv_layout_alg.
     match goal with | H: ly_size ?Hly ≠ 0%nat |- _ => rename Hly into T_st_ly end.
@@ -236,7 +241,7 @@ Proof.
     iIntros "%l Hl Hfree %Hly".
     iPoseProof ("Hstore" with "[Hat1]") as "Hstore".
     { iApply tr_weaken; last done. lia. }
-    iApply ("Hcont" $! _ π _ _ (box (uninit (ty_syn_type T MetaNone))) (# ()) with "HL [Hfree Hl Hcred Hat]").
+    iApply ("Hcont" $! _ _ _ (box (uninit (ty_syn_type T MetaNone))) (# ()) with "HL Hf [Hfree Hl Hcred Hat]").
     { iExists _, _. iSplitR; first done. iSplitR; first done.
       match goal with | H : CACHED (use_layout_alg (ty_syn_type T MetaNone) = Some ?ly) |- _ => rename ly into T_ly; rename H into H_T end.
       iR.
@@ -258,13 +263,11 @@ Qed.
 (* Drop functions receive a pointer to the thing to drop, just like drop_in_place *)
 
 (* Drop for box *)
-Definition drop_box_T (T_ly : layout) (drop_T_loc : loc) : function := {|
+Program Definition drop_box_T `{!LayoutAlg}  (T_ly : layout) (drop_T_loc : loc) : function := {|
  f_args := [("x", void*)];
- f_local_vars := [
-  ("__0", unit_sl : layout)
- ];
  f_code :=
   <["_bb0" :=
+   local_live{UnitSynType} "__0";
     (* TODO: have a path for ZST *)
    (* drop T in-place, pass a pointer to the T *)
    expr: Call drop_T_loc [&raw{Mut} (!{PtrOp} (!{PtrOp} "x"))];
@@ -278,32 +281,30 @@ Definition drop_box_T (T_ly : layout) (drop_T_loc : loc) : function := {|
   ∅;
  f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 (* Drop for integer types *)
-Definition drop_int (it : int_type) : function := {|
+Program Definition drop_int `{!LayoutAlg} (it : int_type) : function := {|
   f_args := [("x", void* : layout)];
- f_local_vars := [
-  ("__0", unit_sl : layout)
- ];
  f_code :=
   <["_bb0" :=
    (* do nothing *)
+   local_live{UnitSynType} "__0";
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
    return (use{ UntypedOp (unit_sl) } ("__0"))
   ]>%E $
   ∅;
  f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 (* Drop for mutable references *)
-Definition drop_mutref : function := {|
+Program Definition drop_mutref `{!LayoutAlg} : function := {|
  f_args := [("x", void*)];
- f_local_vars := [
-  ("__0", unit_sl : layout)
- ];
  f_code :=
   <["_bb0" :=
+   local_live{UnitSynType} "__0";
    (* do nothing, but on the ghost level, do a ghost drop *)
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
    return (use{ UntypedOp (unit_sl) } ("__0"))
@@ -311,15 +312,14 @@ Definition drop_mutref : function := {|
   ∅;
  f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 (* Drop for shared references *)
-Definition drop_shrref : function := {|
+Program Definition drop_shrref `{!LayoutAlg} : function := {|
  f_args := [("x", void*)];
- f_local_vars := [
-  ("__0", unit_sl : layout)
- ];
  f_code :=
   <["_bb0" :=
+   local_live{UnitSynType} "__0";
    (* do nothing *)
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
    return (use{ UntypedOp (unit_sl) } ("__0"))
@@ -327,6 +327,7 @@ Definition drop_shrref : function := {|
   ∅;
  f_init := "_bb0";
 |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 
@@ -338,16 +339,14 @@ Definition size_of_array_in_bytes `{!LayoutAlg} (st : syn_type) (len : nat) : na
 Global Hint Unfold size_of_array_in_bytes : core.
 
 (** alloc_array *)
-Definition alloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_alloc_loc : loc) : function := {|
+Program Definition alloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_alloc_loc : loc) : function := {|
   f_args := [("len", USize : layout)];
-  f_local_vars := [
-    ("__0", void* : layout);
-    ("align_log2", USize : layout);
-    ("size_of_T", USize : layout);
-    ("bytes", USize : layout)
-  ];
   f_code :=
     <["bb0" :=
+      local_live{IntSynType USize} "align_log2";
+      local_live{IntSynType USize} "size_of_T";
+      local_live{IntSynType USize} "bytes";
+      local_live{PtrSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "bytes" <-{ IntOp USize } ((use{IntOp USize} "len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
@@ -357,6 +356,7 @@ Definition alloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_siz
     ∅;
   f_init := "bb0";
  |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 Definition trait_incl_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
@@ -399,13 +399,13 @@ Lemma alloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) (m
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_alloc_loc ◁ᵥ{π, MetaNone} alloc_alloc_loc @ function_ptr [IntSynType USize; IntSynType USize] (<tag_type> type_of_alloc_alloc_internal) -∗
-  typed_function π (alloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_alloc_loc) [PtrSynType; IntSynType USize; IntSynType USize; IntSynType USize] (<tag_type>
+  typed_function π (alloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_alloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
         (type_of_alloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "alloc_array" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len local_0 local_align_log2 local_size_of_T local_bytes.
+  start_function "alloc_array" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
   init_lfts ∅.
   repeat liRStep; liShow.
@@ -418,21 +418,19 @@ Proof.
 Qed.
 
 (** realloc_array *)
-Definition realloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_realloc_loc : loc) : function := {|
+Program Definition realloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_realloc_loc : loc) : function := {|
   f_args := [
     ("old_len", USize : layout);
     ("ptr", void* : layout);
     ("new_len", USize : layout)
   ];
-  f_local_vars := [
-    ("__0", void* : layout);
-    ("align_log2", USize : layout);
-    ("size_of_T", USize : layout);
-    ("old_bytes", USize : layout);
-    ("new_bytes", USize : layout)
-  ];
   f_code :=
     <["bb0" :=
+      local_live{IntSynType USize} "align_log2";
+      local_live{IntSynType USize} "size_of_T";
+      local_live{IntSynType USize} "old_bytes";
+      local_live{IntSynType USize} "new_bytes";
+      local_live{PtrSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "old_bytes" <-{ IntOp USize } ((use{IntOp USize} "old_len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
@@ -443,6 +441,7 @@ Definition realloc_array (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_s
     ∅;
   f_init := "bb0";
  |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 Definition trait_incl_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
@@ -477,17 +476,17 @@ Lemma realloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) 
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_realloc_loc ◁ᵥ{π, MetaNone} alloc_realloc_loc @ function_ptr [IntSynType USize; IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_realloc_internal) -∗
-  typed_function π (realloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc) [PtrSynType; IntSynType USize; IntSynType USize; IntSynType USize; IntSynType USize] (<tag_type>
+  typed_function π (realloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_realloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
         (type_of_realloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "realloc_array" ϝ ( () ) ( [T_ty []] ) ( [[[old_size new_size] l] v] ) ( ) => arg_old_len arg_ptr arg_new_len local_0 local_align_log2 local_size_of_T local_old_bytes local_new_bytes.
+  start_function "realloc_array" ϝ ( () ) ( [T_ty []] ) ( [[[old_size new_size] l] v] ) ( ) => arg_old_len arg_ptr arg_new_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
   init_lfts ∅.
 
-  rep liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   iAssert (x'0 ◁ᵥ{π, MetaNone} .@ uninit (UntypedSynType (mk_array_layout T_st_ly (Z.to_nat (new_size - old_size)))))%I as "Ha".
   { rewrite uninit_own_spec. iR. iExists _.
@@ -509,19 +508,17 @@ Qed.
 
 
 (** dealloc_array *)
-Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_dealloc_loc : loc) : function := {|
+Program Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_dealloc_loc : loc) : function := {|
   f_args := [
     ("len", USize : layout);
     ("ptr", void* : layout)
   ];
-  f_local_vars := [
-    ("__0", use_layout_alg' UnitSynType : layout);
-    ("align_log2", USize : layout);
-    ("size_of_T", USize : layout);
-    ("bytes", USize : layout)
-  ];
   f_code :=
     <["bb0" :=
+      local_live{IntSynType USize} "align_log2";
+      local_live{IntSynType USize} "size_of_T";
+      local_live{IntSynType USize} "bytes";
+      local_live{UnitSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "bytes" <-{ IntOp USize } ((use{IntOp USize} "len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
@@ -532,6 +529,7 @@ Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc
     ∅;
   f_init := "bb0";
  |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 Definition trait_incl_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
@@ -563,13 +561,13 @@ Lemma dealloc_array_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : syn_type) 
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
 
   alloc_dealloc_loc ◁ᵥ{π, MetaNone} alloc_dealloc_loc @ function_ptr [IntSynType USize; IntSynType USize; PtrSynType] (<tag_type> type_of_alloc_dealloc_internal) -∗
-  typed_function π (dealloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc) [UnitSynType; IntSynType USize; IntSynType USize; IntSynType USize] (<tag_type>
+  typed_function π (dealloc_array T_st mem_align_log_of_T_loc mem_size_of_T_loc alloc_dealloc_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
         (type_of_dealloc_array T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "dealloc_array" ϝ ( () ) ( [T_ty []] ) ( [size l] ) ( ) => arg_len arg_ptr local_0 local_align_log2 local_size_of_T local_bytes.
+  start_function "dealloc_array" ϝ ( () ) ( [T_ty []] ) ( [size l] ) ( ) => arg_len arg_ptr.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
   init_lfts ∅.
   repeat liRStep; liShow.
@@ -580,19 +578,17 @@ Proof.
 Qed.
 
 (** check_array_layoutable *)
-Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) : function := {|
+Program Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) : function := {|
   f_args := [
     ("len", USize : layout)
   ];
-  f_local_vars := [
-    ("__0", use_layout_alg' BoolSynType : layout);
-    ("align_log2", USize : layout);
-    ("size_of_T", USize : layout);
-    ("bytes", USize : layout);
-    ("check", use_layout_alg' BoolSynType : layout)
-  ];
   f_code :=
     <["bb0" :=
+      local_live{BoolSynType} "__0";
+      local_live{IntSynType USize} "align_log2";
+      local_live{IntSynType USize} "size_of_T";
+      local_live{IntSynType USize} "bytes";
+      local_live{BoolSynType} "check";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "check" <-{ BoolOp } ((use{IntOp USize} "len") ×c{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
@@ -610,6 +606,7 @@ Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_align_log
     ∅;
   f_init := "bb0";
  |}.
+Next Obligation. solve_fn_vars_nodup. Qed.
 
 
 Definition trait_incl_of_check_array_layoutable `{RRGS : !refinedrustGS Σ} (T_rt: RT) (T_st: syn_type) : spec_with _ _ Prop :=
@@ -630,13 +627,13 @@ Lemma check_array_layoutable_typed `{RRGS : !refinedrustGS Σ} π T_rt (T_st : s
         fn_spec_add_late_pre
         (type_of_mem_size_of T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)) -∗
-  typed_function π (check_array_layoutable T_st mem_align_log_of_T_loc mem_size_of_T_loc) [BoolSynType; IntSynType USize; IntSynType USize; IntSynType USize; BoolSynType] (<tag_type>
+  typed_function π (check_array_layoutable T_st mem_align_log_of_T_loc mem_size_of_T_loc) (<tag_type>
     spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
         fn_spec_add_late_pre
         (type_of_check_array_layoutable T_rt T_st <TY> T_ty <INST!>)
         (λ π, typaram_wf T_rt T_st T_ty)).
 Proof.
-  start_function "check_array_layoutable" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len local_0 local_align_log2 local_size_of_T local_bytes local_check.
+  start_function "check_array_layoutable" ϝ ( () ) ( [T_ty []] ) ( size ) ( ) => arg_len.
   init_tyvars (<["T" := existT _ T_ty]> ∅).
   init_lfts ∅.
   repeat liRStep; liShow.

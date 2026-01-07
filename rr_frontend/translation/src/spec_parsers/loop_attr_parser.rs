@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
-use radium::{code, coq, lang, model, specs};
+use radium::{code, coq, model, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::mir;
 
@@ -288,7 +288,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         let mut rfn_binders = Vec::new();
 
         // proposition for unknown locals
-        let mut uninit_locals_prop: Vec<coq::iris::IProp> = Vec::new();
+        //let mut uninit_locals_prop: Vec<coq::iris::IProp> = Vec::new();
 
         // track locals
         let mut inv_locals: Vec<String> = Vec::new();
@@ -308,7 +308,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         for (local, name, kind, initialized, ty) in &self.locals {
             // get the refinement type
             let mut rfn_ty = ty.get_rfn_type();
-            let ty_st: lang::SynType = ty.into();
+            //let ty_st: lang::SynType = ty.into();
             // wrap it in place_rfn, since we reason about places
             rfn_ty = model::Type::PlaceRfn(Box::new(rfn_ty)).into();
 
@@ -324,25 +324,25 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             let local_name = kind.mk_local_name(name);
 
             if *kind == code::LocalKind::CompilerTemp && !initialized {
-                let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
-                uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
+                //let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
+                //uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
 
-                uninit_locals.push(local_name);
+                uninit_locals.push(name.clone());
             } else if *initialized && inv_var_set.contains(name) {
-                inv_locals.push(local_name.clone());
+                inv_locals.push(name.clone());
 
                 let binder_name = format!("_var_{name}");
                 rfn_binder_names.insert(name, binder_name.clone());
                 rfn_binders.push(coq::binder::Binder::new(Some(binder_name), rfn_ty));
             } else if *initialized && has_iterator_var {
-                inv_locals.push(local_name.clone());
+                inv_locals.push(name.clone());
                 declare_iterator_var = Some((name.clone(), local_name, rfn_ty.clone()));
 
                 let binder_name = format!("_var_{name}");
                 rfn_binder_names.insert(name, binder_name.clone());
                 rfn_binders.push(coq::binder::Binder::new(Some(binder_name), rfn_ty));
             } else {
-                preserved_locals.push(local_name);
+                preserved_locals.push(name.clone());
             }
         }
         // Important: order in `inv_locals` and `rfn_binders` needs to be the same!
@@ -375,7 +375,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         // also add a constraint on the iterator variable
         let mut iterator_init_var = None;
         if let Some(iterator_info) = &self.info.iterator_info
-            && let Some((name, local_name, rfn_ty)) = declare_iterator_var
+            && let Some((name, _, rfn_ty)) = declare_iterator_var
             && let Some(binder_name) = rfn_binder_names.get(&name)
         {
             let ex_name = iterator_info.binder_name.clone();
@@ -388,7 +388,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             let init_value_ty = coq::term::RocqType::UserDefined(model::Type::RTXT(Box::new(rfn_ty)));
 
             rfn_binders.insert(0, coq::binder::Binder::new(Some(init_value_binder.clone()), init_value_ty));
-            iterator_init_var = Some(local_name);
+            iterator_init_var = Some(name.clone());
 
             // history
             existentials.push(coq::binder::Binder::new(
@@ -412,7 +412,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
         }
 
         var_invariants.extend(invariant);
-        var_invariants.extend(uninit_locals_prop);
+        //var_invariants.extend(uninit_locals_prop);
 
         let prop_body = coq::iris::IProp::Sep(var_invariants);
         let prop_body =

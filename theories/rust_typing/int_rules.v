@@ -56,7 +56,7 @@ End typing.
 Section relop.
   Context `{!typeGS Σ}.
 
-  Lemma type_relop_int_int E L it v1 (n1 : Z) v2 (n2 : Z) (T : typed_val_expr_cont_t) b op π :
+  Lemma type_relop_int_int E L it v1 (n1 : Z) v2 (n2 : Z) (T : typed_val_expr_cont_t) b op f :
     match op with
     | EqOp rit => Some (bool_decide (n1 = n2)%Z, rit)
     | NeOp rit => Some (bool_decide (n1 ≠ n2)%Z, rit)
@@ -66,11 +66,11 @@ Section relop.
     | GeOp rit => Some (bool_decide (n1 >= n2)%Z, rit)
     | _ => None
     end = Some (b, U8) →
-    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ T L π (val_of_bool b) MetaNone bool bool_t b) ⊢
-      typed_bin_op E L v1 (v1 ◁ᵥ{π, MetaNone} n1 @ int it) v2 (v2 ◁ᵥ{π, MetaNone} n2 @ int it) op (IntOp it) (IntOp it) T.
+    ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ T L (val_of_bool b) MetaNone bool bool_t b)) ⊢
+      typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, MetaNone} n1 @ int it) v2 (v2 ◁ᵥ{f.1, MetaNone} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT (_ & %Hv1) (_ & %Hv2)" (Φ) "#CTX #HE HL HΦ".
+    iIntros "%Hop HT (_ & %Hv1) (_ & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply (wp_binop_det_pure (val_of_bool b)).
@@ -80,27 +80,27 @@ Section relop.
       - move => ->. econstructor; [done.. | ].
         by apply val_of_bool_iff_val_of_Z. }
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL") => //.
+    iApply ("HΦ" with "HL Hf") => //.
     rewrite /ty_own_val/=. by destruct b.
   Qed.
 
-  Global Program Instance type_eq_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (EqOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 = n2)) _ π _).
+  Global Program Instance type_eq_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (EqOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 = n2)) _ f _).
   Solve Obligations with done.
-  Global Program Instance type_ne_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (NeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 ≠ n2)) _ π _).
+  Global Program Instance type_ne_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (NeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 ≠ n2)) _ f _).
   Solve Obligations with done.
-  Global Program Instance type_lt_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 < n2)%Z) _ π _).
+  Global Program Instance type_lt_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (LtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 < n2)%Z) _ f _).
   Solve Obligations with done.
-  Global Program Instance type_gt_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 > n2)%Z) _ π _).
+  Global Program Instance type_gt_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (GtOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 > n2)%Z) _ f _).
   Solve Obligations with done.
-  Global Program Instance type_le_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (LeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 <= n2)%Z) _ π _).
+  Global Program Instance type_le_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (LeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 <= n2)%Z) _ f _).
   Solve Obligations with done.
-  Global Program Instance type_ge_int_int_inst E L it v1 n1 v2 n2 π :
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 (GeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 >= n2)%Z) _ π _).
+  Global Program Instance type_ge_int_int_inst E L it v1 n1 v2 n2 f :
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 (GeOp U8) (IntOp it) (IntOp it) := λ T, i2p (type_relop_int_int E L it v1 n1 v2 n2 T (bool_decide (n1 >= n2)%Z) _ f _).
   Solve Obligations with done.
 End relop.
 
@@ -108,20 +108,20 @@ Section arithop.
   Context `{!typeGS Σ}.
 
   (** We first define a version that wraps the result and has few sideconditions *)
-  Lemma type_arithop_int_int E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
+  Lemma type_arithop_int_int E L f it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
     int_arithop_result it n1 n2 op = Some n →
-    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L π (i2v (wrap_to_it n it) it) MetaNone Z (int it) (wrap_to_it n it)) ⊢
-      typed_bin_op E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
+    ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (i2v (wrap_to_it n it) it) MetaNone Z (int it) (wrap_to_it n it))) ⊢
+      typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} n1 @ int it) v2 (v2 ◁ᵥ{f.1, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
 
     iIntros (v Hv).
     iApply physical_step_intro. iNext.
-    rewrite /i2v Hv/=. iApply ("HΦ" with "HL [] HT").
+    rewrite /i2v Hv/=. iApply ("HΦ" with "HL Hf [] HT").
     rewrite /ty_own_val/=.
     iR.
     iPureIntro. by apply: val_to_of_Z.
@@ -216,13 +216,13 @@ Section arithop.
         rewrite -(Z.pow_0_r 2). apply Z.pow_le_mono_r; lia.
   Qed.
 
-  Lemma type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
+  Lemma type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
     int_arithop_result it n1 n2 op = Some n →
-    (⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ ⌜int_arithop_in_range it n op⌝ ∗ T L π (i2v n it) MetaNone Z (int it) n) ⊢
-      typed_bin_op E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
+    ((⌜n1 ∈ it⌝ -∗ ⌜n2 ∈ it⌝ -∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ ⌜int_arithop_in_range it n op⌝ ∗ T L (i2v n it) MetaNone Z (int it) n)) ⊢
+      typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} n1 @ int it) v2 (v2 ◁ᵥ{f.1, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iDestruct ("HT" with "[] []" ) as (Hsc Hran) "HT".
     1-2: iPureIntro; by apply: val_to_Z_in_range.
     iApply wp_int_arithop; [done..| ].
@@ -239,50 +239,50 @@ Section arithop.
       - done. }
 
     rewrite Heq in Hv. rewrite /i2v Hv/=.
-    iApply ("HΦ" with "HL [] HT").
+    iApply ("HΦ" with "HL Hf [] HT").
     rewrite /ty_own_val/=.
     iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
-  Global Program Instance type_add_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 AddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
+  Global Program Instance type_add_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 AddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_sub_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 SubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
+  Global Program Instance type_sub_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 SubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_mul_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 MulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
+  Global Program Instance type_mul_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 MulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_div_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 DivOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 `quot` n2) _ MetaNone MetaNone _).
+  Global Program Instance type_div_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 DivOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 `quot` n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_mod_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 ModOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 `rem` n2) _ MetaNone MetaNone _).
+  Global Program Instance type_mod_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ModOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 `rem` n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_and_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 AndOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (Z.land n1 n2) _ MetaNone MetaNone _).
+  Global Program Instance type_and_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 AndOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (Z.land n1 n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_or_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 OrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (Z.lor n1 n2) _ MetaNone MetaNone _).
+  Global Program Instance type_or_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 OrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (Z.lor n1 n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_xor_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 XorOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (Z.lxor n1 n2) _ MetaNone MetaNone _).
+  Global Program Instance type_xor_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 XorOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (Z.lxor n1 n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_shl_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 ≪ n2) _ MetaNone MetaNone _).
+  Global Program Instance type_shl_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 ≪ n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_shr_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 ≫ n2) _ MetaNone MetaNone _).
+  Global Program Instance type_shr_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 ≫ n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
 
-  Global Program Instance type_unchecked_add_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedAddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
+  Global Program Instance type_unchecked_add_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 UncheckedAddOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 + n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_unchecked_sub_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedSubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
+  Global Program Instance type_unchecked_sub_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 UncheckedSubOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 - n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_unchecked_mul_int_int_inst E L π it v1 n1 v2 n2:
-    TypedBinOpVal π E L v1 (int it) n1 v2 (int it) n2 UncheckedMulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L π it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
+  Global Program Instance type_unchecked_mul_int_int_inst E L f it v1 n1 v2 n2:
+    TypedBinOpVal E L f v1 (int it) n1 v2 (int it) n2 UncheckedMulOp (IntOp it) (IntOp it) := λ T, i2p (type_arithop_int_int_nowrap E L f it v1 n1 v2 n2 T (n1 * n2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
 End arithop.
 
@@ -316,13 +316,13 @@ Section check_arithop.
   Qed.
 
 
-  Lemma type_check_arithop_int_int E L π it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
+  Lemma type_check_arithop_int_int E L π f it v1 n1 v2 n2 (T : typed_val_expr_cont_t) n op m1 m2 :
     int_arithop_result it n1 n2 op = Some n →
-    ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L π (val_of_bool (negb $ bool_decide (int_arithop_in_range it n op))) MetaNone bool (bool_t) (negb $ bool_decide (int_arithop_in_range it n op)) ⊢
-    typed_check_bin_op E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
+    ⌜π = f.1⌝ ∗ ⌜int_arithop_sidecond it n1 n2 n op⌝ ∗ T L (val_of_bool (negb $ bool_decide (int_arithop_in_range it n op))) MetaNone bool (bool_t) (negb $ bool_decide (int_arithop_in_range it n op)) ⊢
+    typed_check_bin_op E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) op (IntOp it) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop [%Hsc HT] (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop (-> & %Hsc & HT) (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     set (b := (negb $ bool_decide (int_arithop_in_range it n op))).
 
     iApply wp_check_binop.
@@ -344,39 +344,39 @@ Section check_arithop.
     iApply physical_step_intro. iNext.
     iIntros (v Hv).
     inversion Hv; subst. simplify_eq/=.
-    iApply ("HΦ" with "HL [] HT").
+    iApply ("HΦ" with "HL Hf [] HT").
     rewrite /ty_own_val.
     simpl. subst b. case_bool_decide; done.
   Qed.
-  Global Program Instance type_check_add_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) AddOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 + n2) AddOp m1 m2 _).
+  Global Program Instance type_check_add_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) AddOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 + n2) AddOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_sub_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) SubOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 - n2) SubOp m1 m2 _).
+  Global Program Instance type_check_sub_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) SubOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 - n2) SubOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_mul_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) MulOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 * n2) MulOp m1 m2 _).
+  Global Program Instance type_check_mul_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) MulOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 * n2) MulOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_div_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) DivOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 `quot` n2) DivOp m1 m2 _).
+  Global Program Instance type_check_div_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) DivOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 `quot` n2) DivOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_mod_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ModOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 `rem` n2) ModOp m1 m2 _).
+  Global Program Instance type_check_mod_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ModOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 `rem` n2) ModOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_and_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) AndOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.land n1 n2) AndOp m1 m2 _).
+  Global Program Instance type_check_and_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) AndOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (Z.land n1 n2) AndOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_or_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) OrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.lor n1 n2) OrOp m1 m2 _).
+  Global Program Instance type_check_or_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) OrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (Z.lor n1 n2) OrOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_xor_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) XorOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (Z.lxor n1 n2) XorOp m1 m2 _).
+  Global Program Instance type_check_xor_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) XorOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (Z.lxor n1 n2) XorOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_shl_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 ≪  n2) ShlOp m1 m2 _).
+  Global Program Instance type_check_shl_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ShlOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 ≪  n2) ShlOp m1 m2 _).
   Next Obligation. done. Qed.
-  Global Program Instance type_check_shr_int_int_inst E L π it v1 n1 v2 n2 m1 m2 :
-    TypedCheckBinOp E L v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π it v1 n1 v2 n2 T (n1 ≫  n2) ShrOp m1 m2 _).
+  Global Program Instance type_check_shr_int_int_inst E L π f it v1 n1 v2 n2 m1 m2 :
+    TypedCheckBinOp E L f v1 (v1 ◁ᵥ{π, m1} n1 @ int it) v2 (v2 ◁ᵥ{π, m2} n2 @ int it) ShrOp (IntOp it) (IntOp it) := λ T, i2p (type_check_arithop_int_int E L π f it v1 n1 v2 n2 T (n1 ≫  n2) ShrOp m1 m2 _).
   Next Obligation. done. Qed.
 End check_arithop.
 
@@ -387,13 +387,13 @@ Section switch.
   | DestructHintSwitchIntCase (n : Z)
   | DestructHintSwitchIntDefault.
 
-  Lemma type_switch_int π E L n it v m ss def fn R ϝ:
+  Lemma type_switch_int E L f n it v m ss def fn R ϝ:
     ([∧ map] i↦mi ∈ m,
       li_trace (DestructHintSwitchIntCase i) (
-             ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ)) ∧
+             ⌜discriminate_hint (n = i)⌝ -∗ ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L f s fn R ϝ)) ∧
     (li_trace (DestructHintSwitchIntDefault) (
-                     ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L def fn R ϝ))
-    ⊢ typed_switch π E L v _ (int it) n it m ss def fn R ϝ.
+                     ⌜discriminate_hint (n ∉ (map_to_list m).*1)⌝ -∗ typed_stmt E L f def fn R ϝ))
+    ⊢ typed_switch E L f v _ (int it) n it m ss def fn R ϝ.
   Proof.
     unfold li_trace, discriminate_hint.
     iIntros "HT Hit". rewrite /ty_own_val/=. iDestruct "Hit" as "(_ & %Hv)".
@@ -407,20 +407,20 @@ Section switch.
       iIntros (Hn). iDestruct "HT" as "[_ HT]". iApply "HT". iPureIntro.
       rewrite map_to_list_insert //. set_solver.
   Qed.
-  Global Instance type_switch_int_inst π E L n v it : TypedSwitch π E L v _ (int it) n it :=
-    λ m ss def fn R ϝ, i2p (type_switch_int π E L n it v m ss def fn R ϝ).
+  Global Instance type_switch_int_inst E L f n v it : TypedSwitch E L f v _ (int it) n it :=
+    λ m ss def fn R ϝ, i2p (type_switch_int E L f n it v m ss def fn R ϝ).
 End switch.
 
 
 Section unop.
   Context `{!typeGS Σ}.
 
-  Lemma type_neg_int π E L n it v m (T : typed_val_expr_cont_t) :
-    (⌜n ∈ it⌝ -∗ ⌜it_signed it = true⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L π (i2v (-n) it) MetaNone _ (int it) (-n))
-    ⊢ typed_un_op E L v (v ◁ᵥ{π, m} n @ int it)%I (NegOp) (IntOp it) T.
+  Lemma type_neg_int π E L f n it v m (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ (⌜n ∈ it⌝ -∗ ⌜it_signed it = true⌝ ∗ ⌜n ≠ MinInt it⌝ ∗ T L (i2v (-n) it) MetaNone _ (int it) (-n)))
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it)%I (NegOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT (-> & %Hv) %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
+    iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as (Hs Hn) "HT".
     have [|v' Hv']:= val_of_Z_is_Some None it (- n). {
       rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
@@ -434,7 +434,7 @@ Section unop.
     iApply wp_neg_int => //.
     { rewrite wrap_to_it_id//. }
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL [] HT").
+    iApply ("HΦ" with "HL Hf [] HT").
     rewrite /ty_own_val/=.
     iR.
     iPureIntro. by apply: val_to_of_Z.
@@ -442,12 +442,12 @@ Section unop.
   Definition type_neg_int_inst := [instance @type_neg_int].
   Global Existing Instance type_neg_int_inst.
 
-  Lemma type_not_int π E L n it v m (T : typed_val_expr_cont_t) :
-    (⌜n ∈ it⌝ -∗ T L π (i2v ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)) it) MetaNone _ (int it) ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)))
-    ⊢ typed_un_op E L v (v ◁ᵥ{π, m} n @ int it)%I (NotIntOp) (IntOp it) T.
+  Lemma type_not_int E L π f n it v m (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ (⌜n ∈ it⌝ -∗ T L (i2v ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)) it) MetaNone _ (int it) ((if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n))))
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it)%I (NotIntOp) (IntOp it) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT (-> & %Hv) %Φ #CTX #HE HL HΦ". move: (Hv) => /val_to_Z_in_range Hel.
+    iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as "HT".
     set (nz := (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)).
     have [|v' Hv']:= val_of_Z_is_Some None it nz. {
@@ -467,26 +467,26 @@ Section unop.
       econstructor; done. }
     rewrite Hv' /=.
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL"); last done.
+    iApply ("HΦ" with "HL Hf"); last done.
     rewrite /ty_own_val/=. iR. iPureIntro.
     by apply: val_to_of_Z.
   Qed.
   Definition type_not_int_inst := [instance @type_not_int].
   Global Existing Instance type_not_int_inst.
 
-  Lemma type_cast_int π E L n (it1 it2 : int_type) v m (T : typed_val_expr_cont_t) :
-    (⌜n ∈ it1⌝ -∗ ∀ v, T L π v MetaNone _ (int it2) (wrap_to_it n it2))
-    ⊢ typed_un_op E L v (v ◁ᵥ{π, m} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
+  Lemma type_cast_int π E L f n (it1 it2 : int_type) v m (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ (⌜n ∈ it1⌝ -∗ ∀ v, T L v MetaNone _ (int it2) (wrap_to_it n it2)))
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} n @ int it1)%I (CastOp (IntOp it2)) (IntOp it1) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT (-> & %Hv) %Φ #CTX #HE HL HΦ".
+    iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ".
     iSpecialize ("HT" with "[]").
     { iPureIntro. by apply: val_to_Z_in_range. }
     destruct (val_of_Z_is_Some (val_to_byte_prov v) it2 (wrap_to_it n it2)) as (n' & Hit').
     { apply wrap_to_it_in_range. }
     iApply wp_cast_int => //.
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL [] HT") => //.
+    iApply ("HΦ" with "HL Hf [] HT") => //.
     rewrite /ty_own_val/=. iR.
     iPureIntro. by apply: val_to_of_Z.
   Qed.
@@ -526,17 +526,17 @@ Section bool.
     destruct m as [ | [] | []]; congruence.
   Qed.
 
-  Lemma type_relop_bool_bool E L v1 b1 v2 b2 (T : typed_val_expr_cont_t) b op π m1 m2 :
+  Lemma type_relop_bool_bool E L f v1 b1 v2 b2 (T : typed_val_expr_cont_t) b op m1 m2 :
     match op with
     | EqOp rit => Some (eqb b1 b2, rit)
     | NeOp rit => Some (negb (eqb b1 b2), rit)
     | _ => None
     end = Some (b, U8) →
-    (T L π (val_of_bool b) MetaNone bool bool_t b)
-    ⊢ typed_bin_op E L v1 (v1 ◁ᵥ{π, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{π, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
+    (T L (val_of_bool b) MetaNone bool bool_t b)
+    ⊢ typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{f.1, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2)" (Φ) "#CTX #HE HL HΦ".
+    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2)" (Φ) "#CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
     { destruct op, b1, b2; simplify_eq.
       all: split; [ inversion 1; simplify_eq/= | move => -> ]; simplify_eq/=.
@@ -544,29 +544,29 @@ Section bool.
       all: econstructor => //; case_bool_decide; try done.
       all: by apply val_of_bool_iff_val_of_Z. }
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL"); last done.
+    iApply ("HΦ" with "HL Hf"); last done.
     rewrite /ty_own_val/=.
     iPureIntro. by destruct b.
   Qed.
 
-  Global Program Instance type_eq_bool_bool_inst E L v1 b1 v2 b2 π :
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (EqOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (eqb b1 b2) _ π MetaNone MetaNone _).
+  Global Program Instance type_eq_bool_bool_inst E L f v1 b1 v2 b2 :
+    TypedBinOpVal E L f v1 (bool_t) b1 v2 (bool_t) b2 (EqOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L f v1 b1 v2 b2 T (eqb b1 b2) _ MetaNone MetaNone _).
   Solve Obligations with done.
-  Global Program Instance type_ne_bool_bool_inst E L v1 b1 v2 b2 π :
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 (NeOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L v1 b1 v2 b2 T (negb (eqb b1 b2)) _ π MetaNone MetaNone _).
+  Global Program Instance type_ne_bool_bool_inst E L f v1 b1 v2 b2 :
+    TypedBinOpVal E L f v1 (bool_t) b1 v2 (bool_t) b2 (NeOp U8) (BoolOp) (BoolOp) := λ T, i2p (type_relop_bool_bool E L f v1 b1 v2 b2 T (negb (eqb b1 b2)) _ MetaNone MetaNone _).
   Solve Obligations with done.
 
-  Lemma type_notop_bool π E L v b m (T : typed_val_expr_cont_t) :
-    T L π (val_of_bool (negb b)) MetaNone bool bool_t (negb b)
-    ⊢ typed_un_op E L v (v ◁ᵥ{π, m} b @ bool_t) NotBoolOp BoolOp T.
+  Lemma type_notop_bool π E L f v b m (T : typed_val_expr_cont_t) :
+    ⌜π = f.1⌝ ∗ T L (val_of_bool (negb b)) MetaNone bool bool_t (negb b)
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, m} b @ bool_t) NotBoolOp BoolOp T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "HT (-> & %Hv)" (Φ) "#CTX #HE HL HΦ".
+    iIntros "(-> & HT) (-> & %Hv)" (Φ) "#CTX #HE HL Hf HΦ".
     iApply (wp_unop_det_pure (val_of_bool (negb b))).
     { intros. split; [inversion 1; simplify_eq/= | move => ->]; simplify_eq/=; first done.
       econstructor; done. }
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL"); last done.
+    iApply ("HΦ" with "HL Hf"); last done.
     rewrite /ty_own_val/=. iPureIntro. by destruct b.
   Qed.
   Definition type_notop_bool_inst := [instance @type_notop_bool].
@@ -581,30 +581,30 @@ Section bool.
     | _     => None (* Other operators are not supported. *)
     end.
 
-  Lemma type_arithop_bool_bool E L π v1 b1 v2 b2 (T : typed_val_expr_cont_t) b op m1 m2 :
+  Lemma type_arithop_bool_bool E L f v1 b1 v2 b2 (T : typed_val_expr_cont_t) b op m1 m2 :
     bool_arith_op_result b1 b2 op = Some b →
-    T L π (val_of_bool b) MetaNone bool (bool_t) b ⊢
-    typed_bin_op E L v1 (v1 ◁ᵥ{π, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{π, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
+    T L (val_of_bool b) MetaNone bool (bool_t) b ⊢
+    typed_bin_op E L f v1 (v1 ◁ᵥ{f.1, m1} b1 @ bool_t) v2 (v2 ◁ᵥ{f.1, m2} b2 @ bool_t) op (BoolOp) (BoolOp) T.
   Proof.
     rewrite /ty_own_val/=.
-    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL HΦ".
+    iIntros "%Hop HT (-> & %Hv1) (-> & %Hv2) %Φ #CTX #HE HL Hf HΦ".
     iApply (wp_binop_det_pure (val_of_bool b)).
     { destruct op, b1, b2; simplify_eq.
       all: split; [ inversion 1; simplify_eq/= | move => -> ]; simplify_eq/=; try done.
       all: eapply ArithOpBB; done. }
     iApply physical_step_intro. iNext.
-    iApply ("HΦ" with "HL [] HT").
+    iApply ("HΦ" with "HL Hf [] HT").
     rewrite /ty_own_val/=. destruct b; done.
   Qed.
 
-  Global Program Instance type_and_bool_bool_inst E L π v1 b1 v2 b2:
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 AndOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L π v1 b1 v2 b2 T (andb b1 b2) _ MetaNone MetaNone _).
+  Global Program Instance type_and_bool_bool_inst E L f v1 b1 v2 b2:
+    TypedBinOpVal E L f v1 (bool_t) b1 v2 (bool_t) b2 AndOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L f v1 b1 v2 b2 T (andb b1 b2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_or_bool_bool_inst E L π v1 b1 v2 b2:
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 OrOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L π v1 b1 v2 b2 T (orb b1 b2) _ MetaNone MetaNone _).
+  Global Program Instance type_or_bool_bool_inst E L f v1 b1 v2 b2:
+    TypedBinOpVal E L f v1 (bool_t) b1 v2 (bool_t) b2 OrOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L f v1 b1 v2 b2 T (orb b1 b2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
-  Global Program Instance type_xor_bool_bool_inst E L π v1 b1 v2 b2:
-    TypedBinOpVal π E L v1 (bool_t) b1 v2 (bool_t) b2 XorOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L π v1 b1 v2 b2 T (xorb b1 b2) _ MetaNone MetaNone _).
+  Global Program Instance type_xor_bool_bool_inst E L f v1 b1 v2 b2:
+    TypedBinOpVal E L f v1 (bool_t) b1 v2 (bool_t) b2 XorOp (BoolOp) (BoolOp) := λ T, i2p (type_arithop_bool_bool E L f v1 b1 v2 b2 T (xorb b1 b2) _ MetaNone MetaNone _).
   Next Obligation. done. Qed.
 
   Inductive trace_if_bool :=
@@ -622,14 +622,14 @@ Section bool.
   Definition type_if_bool_inst := [instance @type_if_bool].
   Global Existing Instance type_if_bool_inst.
 
-  Lemma type_assert_bool E L π b s fn R v ϝ :
-    (⌜b = true⌝ ∗ typed_stmt E L s fn R ϝ)
-    ⊢ typed_assert π E L v (bool_t) b s fn R ϝ.
+  Lemma type_assert_bool E L f b s fn R v ϝ :
+    (⌜b = true⌝ ∗ typed_stmt E L f s fn R ϝ)
+    ⊢ typed_assert E L f v (bool_t) b s fn R ϝ.
   Proof.
-    iIntros "[-> Hs] #CTX #HE HL (_ & Hb)". by iFrame.
+    iIntros "[-> Hs] #CTX #HE HL Hf (_ & Hb)". by iFrame.
   Qed.
-  Global Instance type_assert_bool_inst E L π b v : TypedAssert π E L v (bool_t) b :=
-    λ s fn R ϝ, i2p (type_assert_bool E L π b s fn R v ϝ).
+  Global Instance type_assert_bool_inst E L f b v : TypedAssert E L f v (bool_t) b :=
+    λ s fn R ϝ, i2p (type_assert_bool E L f b s fn R v ϝ).
 End bool.
 
 Section char.

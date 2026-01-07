@@ -9,9 +9,9 @@ Section init.
 
   Import EqNotations.
 
-  Lemma type_enum_init E L (els : enum_layout_spec) (variant : string) (rsen : rust_enum_def) (e : expr) (T : typed_val_expr_cont_t) :
+  Lemma type_enum_init E L f (els : enum_layout_spec) (variant : string) (rsen : rust_enum_def) (e : expr) (T : typed_val_expr_cont_t) :
     li_tactic (compute_enum_layout_goal els) (λ _,
-    typed_val_expr E L e (λ L2 π v m rti tyi ri,
+    typed_val_expr E L f e (λ L2 v m rti tyi ri,
       ∃ M, named_lfts M ∗ (named_lfts M -∗
       (* get the desired enum type *)
       li_tactic (interpret_rust_enum_def_goal M rsen) (λ '(existT rto e),
@@ -19,21 +19,21 @@ Section init.
         ⌜m = MetaNone⌝ ∗
         ∃ sem, ⌜e.(enum_tag_ty_inj) variant = Some sem⌝ ∗
         ⌜(lookup_iml (els_variants els) variant) = Some (st_of sem.(enum_tag_sem_ty) MetaNone)⌝ ∗
-          ∃ ri', owned_subtype π E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
+          ∃ ri', owned_subtype f.1 E L2 false ri ri' tyi sem.(enum_tag_sem_ty) (λ L3,
             (* could try to remove this by strengthening enum *)
             ⌜e.(enum_tag) (sem.(enum_tag_rt_inj) ri') = Some variant⌝ ∗
             ∃ (Heq : enum_tag_sem_rt sem = enum_rt e (enum_tag_rt_inj sem ri')),
             ⌜e.(enum_r) (sem.(enum_tag_rt_inj) ri') = (rew [RT_rt] Heq in ri')⌝ ∗
-              ∀ v', T L3 π v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
-    ⊢ typed_val_expr E L (EnumInit els variant rsen e) T.
+              ∀ v', T L3 v' MetaNone _ (enum_t e) (sem.(enum_tag_rt_inj) ri'))))))
+    ⊢ typed_val_expr E L f (EnumInit els variant rsen e) T.
   Proof.
     rewrite /compute_enum_layout_goal.
     iIntros "(%el & %Hly & HT)".
-    iIntros (?) "#CTX #HE HL Hc".
-    iApply wp_fupd.
+    iIntros (?) "#CTX #HE HL Hf Hc".
+    iApply wpe_fupd.
     iApply wp_enum_init; first done.
-    iApply ("HT" with "CTX HE HL [Hc]").
-    iIntros (L2 π v rt ty r m) "HL Hv HT".
+    iApply ("HT" with "CTX HE HL Hf [Hc]").
+    iIntros (L2 v rt ty r m) "HL Hf Hv HT".
     iDestruct "HT" as "(%M & Hlfts & HT)".
     iPoseProof ("HT" with "Hlfts") as "HT".
     rewrite /interpret_rust_enum_def_goal.
@@ -43,7 +43,7 @@ Section init.
     iPoseProof ("Hincl" with "Hv") as "Hv".
     iDestruct "HT" as "(%Htagr & %Heq & %Htag_rfn & HT)".
     iApply physical_step_intro; iNext.
-    iApply ("Hc" with "HL [Hv] HT").
+    iApply ("Hc" with "HL Hf [Hv] HT").
 
     iEval (rewrite /ty_own_val/=).
     iExists _, variant.

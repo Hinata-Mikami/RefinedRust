@@ -36,7 +36,7 @@ Ltac solve_protected_eq_hook ::=
       (*end*)
 
   (* don't fail if nothing matches *)
-  | |- _ => 
+  | |- _ =>
       unfold reverse_coercion
   end.
 
@@ -53,9 +53,9 @@ Ltac rep_check_backtrack_point_hook ::=
   | |- BACKTRACK_POINT ?P => idtac
   | |- envs_entails _ ?P =>
       lazymatch P with
-      | typed_stmt _ _ _ _ _ _ => idtac
-      | typed_val_expr _ _ _ _ => idtac
-      | typed_call _ _ _ _ _ _ _ _ _ => idtac
+      | typed_stmt _ _ _ _ _ _ _ => idtac
+      | typed_val_expr _ _ _ _ _ => idtac
+      | typed_call _ _ _ _ _ _ _ _ _ _  => idtac
       (* TODO maybe also typed_assert etc *)
       end
   end.
@@ -131,26 +131,26 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : RelateHList E L ig Xs l1 l2 i0 R) T))
   | fold_list ?E ?L ?ig ?l ?i0 ?P ?T =>
       cont uconstr:(((_ : FoldList E L ig l i0 P) T))
-  | typed_value ?v ?π ?T =>
-      cont uconstr:(((_ : TypedValue v π) T))
-  | typed_bin_op ?E ?L ?v1 ?ty1 ?v2 ?ty2 ?o ?ot1 ?ot2 ?T =>
-      cont uconstr:(((_ : TypedBinOp E L v1 ty1 v2 ty2 o ot1 ot2) T))
-  | typed_un_op ?E ?L ?v ?ty ?o ?ot ?T =>
-      cont uconstr:(((_ : TypedUnOp E L v ty o ot) T))
-  | typed_check_bin_op ?E ?L ?v1 ?ty1 ?v2 ?ty2 ?o ?ot1 ?ot2 ?T =>
-      cont uconstr:(((_ : TypedCheckBinOp E L v1 ty1 v2 ty2 o ot1 ot2) T))
-  | typed_check_un_op ?E ?L ?v ?ty ?o ?ot ?T =>
-      cont uconstr:(((_ : TypedCheckUnOp E L v ty o ot) T))
-  | typed_call ?π ?E ?L ?eκs ?etys ?v ?P ?vl ?tys ?T =>
-      cont uconstr:(((_ : TypedCall π E L eκs etys v P vl tys) T))
-  | typed_place ?π ?E ?L ?l ?lt ?r ?bmin0 ?b ?P ?T =>
-      cont uconstr:(((_ : TypedPlace E L π l lt r bmin0 b P) T))
+  | typed_value ?π ?v ?T =>
+      cont uconstr:(((_ : TypedValue π v) T))
+  | typed_bin_op ?E ?L ?f ?v1 ?ty1 ?v2 ?ty2 ?o ?ot1 ?ot2 ?T =>
+      cont uconstr:(((_ : TypedBinOp E L f v1 ty1 v2 ty2 o ot1 ot2) T))
+  | typed_un_op ?E ?L ?f ?v ?ty ?o ?ot ?T =>
+      cont uconstr:(((_ : TypedUnOp E L f v ty o ot) T))
+  | typed_check_bin_op ?E ?L ?f ?v1 ?ty1 ?v2 ?ty2 ?o ?ot1 ?ot2 ?T =>
+      cont uconstr:(((_ : TypedCheckBinOp E L f v1 ty1 v2 ty2 o ot1 ot2) T))
+  | typed_check_un_op ?E ?L ?f ?v ?ty ?o ?ot ?T =>
+      cont uconstr:(((_ : TypedCheckUnOp E L f v ty o ot) T))
+  | typed_call ?E ?L ?f ?eκs ?etys ?v ?P ?vl ?tys ?T =>
+      cont uconstr:(((_ : TypedCall E L f eκs etys v P vl tys) T))
+  | typed_place ?E ?L ?f ?l ?lt ?r ?bmin0 ?b ?P ?T =>
+      cont uconstr:(((_ : TypedPlace E L f l lt r bmin0 b P) T))
   | typed_if ?E ?L ?v ?P ?T1 ?T2 =>
       cont uconstr:(((_ : TypedIf E L v P) T1 T2))
-  | typed_switch ?π ?E ?L ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
-      cont uconstr:(((_ : TypedSwitch π E L v rt ty r it) m ss def fn R ϝ))
-  | typed_assert ?π ?E ?L ?v ?ty ?r ?s ?fn ?R ?ϝ =>
-      cont uconstr:(((_ : TypedAssert π E L v ty r) s fn R ϝ))
+  | typed_switch ?E ?L ?f ?v ?rt ?ty ?r ?it ?m ?ss ?def ?fn ?R ?ϝ =>
+      cont uconstr:(((_ : TypedSwitch E L f v rt ty r it) m ss def fn R ϝ))
+  | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?ϝ =>
+      cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R ϝ))
   | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?T =>
       cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot) T))
   | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>
@@ -209,8 +209,6 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
   | prove_place_cond ?E ?L ?b ?lt1 ?lt2 ?T =>
       cont uconstr:(((_ : ProvePlaceCond E L b lt1 lt2) T))
-  | typed_option_map ?o ?Φ ?d ?T =>
-      cont uconstr:(((_ : TypedOptionMap o Φ d) T))
   | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>
       cont uconstr:(((_ : StratifyLtypeArrayIter π E L mu mdu ma ml l ig def len iml rs bk) T))
   | typed_array_access ?π ?E ?L ?base ?offset ?st ?lt ?r ?k ?T =>
@@ -240,11 +238,6 @@ end.
 Section automation.
   Context `{!typeGS Σ}.
 
-  Lemma tac_simpl_subst E L xs s fn R ϝ :
-    typed_stmt E L (W.to_stmt (W.subst_stmt xs s)) fn R ϝ -∗
-    typed_stmt E L (subst_stmt xs (W.to_stmt s)) fn R ϝ.
-  Proof. rewrite W.to_stmt_subst. auto. Qed.
-
   Lemma tac_trigger_tc {A} (a : A) (H : A → Type) (HP : H a) (T : A → iProp Σ) :
     T a ⊢ trigger_tc H T.
   Proof. iIntros "HT". iExists a, HP. iFrame. Qed.
@@ -260,18 +253,18 @@ Ltac liRIntroduceLetInGoal :=
     lazymatch P with
     | @bi_wand ?PROP ?Q ?T =>
       pose H := (LET_ID T); change_no_check (@envs_entails PROP Δ (@bi_wand PROP Q H))
-    | @typed_val_expr ?Σ ?tG ?E ?L ?e ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_val_expr Σ tG E L e H))
-    | @typed_write ?Σ ?tG ?π ?E ?L ?e ?ot ?v ?rt ?ty ?r ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_write Σ tG π E L e ot v rt ty r H))
+    | @typed_val_expr ?Σ ?tG ?E ?L ?f ?e ?T =>
+      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_val_expr Σ tG E L f e H))
+    | @typed_write ?Σ ?tG ?E ?L ?f ?e ?ot ?v ?rt ?ty ?r ?T =>
+      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_write Σ tG E L f e ot v rt ty r H))
     (* NOTE: these two guys really hurt Qed performance. Not a good idea at all! *)
     (*| @typed_place ?Σ ?tG ?π ?E ?L ?l ?rto ?lt ?r ?b ?bmin ?P ?T =>*)
       (*pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_place Σ tG π E L l rto lt r b bmin P H))*)
     (*| @typed_context_fold ?Σ ?tG ?Acc ?P ?M ?π ?E ?L ?m ?tcx ?acc ?T =>*)
       (*pose (H := LET_ID T);*)
       (*change_no_check (@envs_entails PROP Δ (@typed_context_fold Σ tG Acc P M π E L m tcx acc H))*)
-    | @typed_bin_op ?Σ ?tG ?E ?L ?v1 ?P1 ?v2 ?P2 ?op ?ot1 ?ot2 ?T =>
-      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_bin_op Σ tG E L v1 P1 v2 P2 op ot1 ot2 H))
+    | @typed_bin_op ?Σ ?tG ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?op ?ot1 ?ot2 ?T =>
+      pose (H := LET_ID T); change_no_check (@envs_entails PROP Δ (@typed_bin_op Σ tG E L f v1 P1 v2 P2 op ot1 ot2 H))
     end
   end.
 
@@ -312,10 +305,10 @@ Ltac liRInstantiateEvars :=
 (** Goto [goto_bb] *)
 Ltac liRGoto goto_bb :=
   lazymatch goal with
-  | |- envs_entails ?Δ (typed_stmt ?E ?L (Goto _) ?fn ?R ?ϝ) =>
+  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f (Goto _) ?fn ?R ?ϝ) =>
       first [
         (* try to find an inductive hypothesis we obtained previously *)
-        notypeclasses refine (tac_fast_apply (type_goto_precond E L _ _ fn R ϝ) _);
+        notypeclasses refine (tac_fast_apply (type_goto_precond E L f  _ _ fn R ϝ) _);
         progress liFindHyp FICSyntactic
       | (* if we jump to a loop head, initiate Löb induction *)
         lazymatch goal with
@@ -330,97 +323,91 @@ Ltac liRGoto goto_bb :=
                 fail 1 "infer_loop_invariant: no loop invariant found"
             end in
             (* pose the composed loop invariant *)
-            compute_loop_invariant fn Inv Δ E L ltac:(fun Inv IterVar =>
+            compute_loop_invariant f fn Inv Δ E L ltac:(fun Inv IterVar =>
               (* finally initiate Löb *)
               match IterVar with
               | None =>
-                notypeclasses refine (tac_fast_apply (typed_goto_acc E L fn R Inv goto_bb ϝ _ _) _);
+                notypeclasses refine (tac_fast_apply (typed_goto_acc E L f fn R Inv goto_bb ϝ _ _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               | Some ?var =>
-                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L fn R goto_bb ϝ _ var Inv _) _);
+                notypeclasses refine (tac_fast_apply (typed_goto_acc' E L f fn R goto_bb ϝ _ var Inv _) _);
                   [unfold_code_marker_and_compute_map_lookup|  ]
               end)
         end
       | (* do a direct jump *)
-        notypeclasses refine (tac_fast_apply (type_goto E L _ fn R _ ϝ _) _);
+        notypeclasses refine (tac_fast_apply (type_goto E L f _ fn R _ ϝ _) _);
           [unfold_code_marker_and_compute_map_lookup|]
       ]
   end.
 
 Ltac liRStmt :=
   lazymatch goal with
-  | |- envs_entails ?Δ (typed_stmt ?E ?L ?s ?fn ?R ?ϝ) =>
-    lazymatch s with
-    | subst_stmt ?xs ?s =>
-      let s' := W.of_stmt s in
-      change (subst_stmt xs s) with (subst_stmt xs (W.to_stmt s'));
-      refine (tac_fast_apply (tac_simpl_subst E L _ _ fn R ϝ) _); simpl; unfold W.to_stmt, W.to_expr
-    | _ =>
-      let s' := W.of_stmt s in
-      lazymatch s' with
-      | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L _ _ _ _ fn R _ ϝ) _)
-      | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L _ fn R ϝ) _)
-      | W.IfS _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L _ _ _ fn R _ ϝ) _)
-      | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L _ _ _ _ _ fn R ϝ) _)
-      | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L _ _ fn R ϝ) _)
-      | W.Goto ?bid => liRGoto bid
-      | W.ExprS _ _ => notypeclasses refine (tac_fast_apply (type_exprs E L _ _ fn R ϝ) _)
-      | W.SkipS _ => notypeclasses refine (tac_fast_apply (type_skips' E L _ fn R ϝ) _)
-      | W.StuckS => exfalso
-      | W.AnnotStmt _ (StartLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_startlft E L κ κs _ fn R ϝ) _)
-      | W.AnnotStmt _ (AliasLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_alias_lft E L κ κs _ fn R ϝ) _)
-      | W.AnnotStmt _ (EndLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_endlft E L κ _ fn R ϝ) _)
-      | W.AnnotStmt _ (StratifyContextAnnot) _ => notypeclasses refine (tac_fast_apply (type_stratify_context_annot E L _ fn R ϝ) _)
-      | W.AnnotStmt _ (CopyLftNameAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_copy_lft_name E L n1 n2 _ fn R ϝ) _)
-      | W.AnnotStmt _ (DynIncludeLftAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_dyn_include_lft E L n1 n2 _ fn R ϝ) _)
-      | W.AnnotStmt _ (ExtendLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_extendlft E L κ _ fn R ϝ) _)
-      | W.AnnotStmt _ (UnconstrainedLftAnnot ?κ) _ =>
-        notypeclasses refine (tac_fast_apply (type_unconstrained_lft E L κ _ fn R ϝ _) _);
-          [solve [refine _] | ]
-      | _ => fail "do_stmt: unknown stmt" s
-      end
+  | |- envs_entails ?Δ (typed_stmt ?E ?L ?f ?s ?fn ?R ?ϝ) =>
+    let s' := W.of_stmt s in
+    lazymatch s' with
+    | W.AssignSE _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_assign E L f _ _ _ _ fn R _ ϝ) _)
+    | W.Return _ => notypeclasses refine (tac_fast_apply (type_return E L f _ fn R ϝ) _)
+    | W.IfS _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_if E L f _ _ _ fn R _ ϝ) _)
+    | W.Switch _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_switch E L f _ _ _ _ _ fn R ϝ) _)
+    | W.Assert _ _ _ => notypeclasses refine (tac_fast_apply (type_assert E L f _ _ fn R ϝ) _)
+    | W.Goto ?bid => liRGoto bid
+    | W.ExprS _ _ => notypeclasses refine (tac_fast_apply (type_exprs E L f _ _ fn R ϝ) _)
+    | W.LocalLive ?x ?st _ => notypeclasses refine (tac_fast_apply (type_local_live E L f st x _ fn R ϝ) _)
+    | W.LocalDead ?x _ => notypeclasses refine (tac_fast_apply (type_local_dead E L f x _ fn R ϝ) _)
+    | W.SkipS _ => notypeclasses refine (tac_fast_apply (type_skips' E L f _ fn R ϝ) _)
+    | W.StuckS => exfalso
+    | W.AnnotStmt _ (StartLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_startlft E L f κ κs _ fn R ϝ) _)
+    | W.AnnotStmt _ (AliasLftAnnot ?κ ?κs) _ => notypeclasses refine (tac_fast_apply (type_alias_lft E L f κ κs _ fn R ϝ) _)
+    | W.AnnotStmt _ (EndLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_endlft E L f κ _ fn R ϝ) _)
+    | W.AnnotStmt _ (StratifyContextAnnot) _ => notypeclasses refine (tac_fast_apply (type_stratify_context_annot E L f _ fn R ϝ) _)
+    | W.AnnotStmt _ (CopyLftNameAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_copy_lft_name E L f n1 n2 _ fn R ϝ) _)
+    | W.AnnotStmt _ (DynIncludeLftAnnot ?n1 ?n2) _ => notypeclasses refine (tac_fast_apply (type_dyn_include_lft E L f n1 n2 _ fn R ϝ) _)
+    | W.AnnotStmt _ (ExtendLftAnnot ?κ) _ => notypeclasses refine (tac_fast_apply (type_extendlft E L f κ _ fn R ϝ) _)
+    | W.AnnotStmt _ (UnconstrainedLftAnnot ?κ) _ =>
+      notypeclasses refine (tac_fast_apply (type_unconstrained_lft E L f κ _ fn R ϝ _) _);
+        [solve [refine _] | ]
+    | _ => fail "do_stmt: unknown stmt" s
     end
   end.
 
 Ltac liRIntroduceTypedStmt :=
   lazymatch goal with
-  | |- @envs_entails ?PROP ?Δ (introduce_typed_stmt ?E ?L ?ϝ ?fn ?lsa ?lsv ?lya ?lyv ?R) =>
-    iEval (rewrite /introduce_typed_stmt /to_runtime_function /subst_function !fmap_insert fmap_empty; simpl_subst);
+  | |- @envs_entails ?PROP ?Δ (introduce_typed_stmt ?E ?L ?f ?ϝ ?fn ?R) =>
+    iEval (rewrite /introduce_typed_stmt);
       lazymatch goal with
-      | |- @envs_entails ?PROP ?Δ (@typed_stmt ?Σ ?tG ?E ?L ?s ?fn ?R ?ϝ) =>
+      | |- @envs_entails ?PROP ?Δ (@typed_stmt ?Σ ?tG ?E ?L ?f ?s ?fn ?R ?ϝ) =>
         let Hfn := fresh "FN" in
         let HR := fresh "R" in
         pose (Hfn := (CODE_MARKER fn));
         pose (HR := (RETURN_MARKER R));
-        change_no_check (@envs_entails PROP Δ (@typed_stmt Σ tG E L s Hfn HR ϝ));
+        change_no_check (@envs_entails PROP Δ (@typed_stmt Σ tG E L f s Hfn HR ϝ));
         iEval (simpl) (* To simplify f_init *)
-        (*notypeclasses refine (tac_fast_apply (tac_simplify_elctx _ _ _ _ _ _ _ _ _) _); [simplify_elctx | ]*)
       end
   end.
 
 Ltac liRExpr :=
   lazymatch goal with
-  | |- envs_entails ?Δ (typed_val_expr ?E ?L ?e ?T) =>
+  | |- envs_entails ?Δ (typed_val_expr ?E ?L ?f ?e ?T) =>
     let e' := W.of_expr e in
     lazymatch e' with
-    | W.Val _ => notypeclasses refine (tac_fast_apply (type_val E L _ T) _)
-    | W.Loc _ => notypeclasses refine (tac_fast_apply (type_val E L _ T) _)
-    | W.Use _ _ true _ => notypeclasses refine (tac_fast_apply (type_use E L _ _ _ T) _)
-    | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L _ _ _ T _) _); [apply _ | ]
-    | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L T _ _ _) _)
-    | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L T _ _ _) _)
-    | W.AddrOf _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L _ T) _)
-    | W.BinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_bin_op E L _ _ _ _ _ T) _)
-    | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L _ _ _ T) _)
-    | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L _ _ _ _ _ T) _)
-    | W.CheckUnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_check_un_op E L _ _ _ T) _)
-    | W.Call _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L T _ _ _ _) _)
-    | W.AnnotExpr _ ?a _ => notypeclasses refine (tac_fast_apply (type_annot_expr E L _ a _ T) _)
-    | W.StructInit ?sls ?init => notypeclasses refine (tac_fast_apply (type_struct_init E L sls _ T) _)
-    | W.EnumInit ?els ?variant ?rsty ?init => notypeclasses refine (tac_fast_apply (type_enum_init E L els variant rsty _ T) _)
-    | W.IfE _ _ _ _ => notypeclasses refine (tac_fast_apply (type_ife E L _ _ _ T) _)
-    | W.LogicalAnd _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_and E L _ _ _ _ T) _)
-    | W.LogicalOr _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_or E L _ _ _ _ T) _)
+    | W.Val _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
+    | W.Loc _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
+    | W.Use _ _ true _ => notypeclasses refine (tac_fast_apply (type_use E L f _ _ _ T) _)
+    | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L f _ _ _ T _) _); [apply _ | ]
+    | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L f T _ _ _) _)
+    | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L f T _ _ _) _)
+    | W.AddrOf _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L f _ T) _)
+    | W.BinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_bin_op E L f _ _ _ _ _ T) _)
+    | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L f _ _ _ T) _)
+    | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L f _ _ _ _ _ T) _)
+    | W.CheckUnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_check_un_op E L f _ _ _ T) _)
+    | W.Call _ _ _ _ => notypeclasses refine (tac_fast_apply (type_call E L f T _ _ _ _) _)
+    | W.AnnotExpr _ ?a _ => notypeclasses refine (tac_fast_apply (type_annot_expr E L f _ a _ T) _)
+    | W.StructInit ?sls ?init => notypeclasses refine (tac_fast_apply (type_struct_init E L f sls _ T) _)
+    | W.EnumInit ?els ?variant ?rsty ?init => notypeclasses refine (tac_fast_apply (type_enum_init E L f els variant rsty _ T) _)
+    | W.IfE _ _ _ _ => notypeclasses refine (tac_fast_apply (type_ife E L f _ _ _ T) _)
+    | W.LogicalAnd _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_and E L f _ _ _ _ T) _)
+    | W.LogicalOr _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_logical_or E L f _ _ _ _ T) _)
     | _ => fail "do_expr: unknown expr" e
     end
   end.
@@ -506,20 +493,20 @@ Ltac liRJudgement :=
         unfold typed_place_finish
         (*; simpl*)
     (* write *)
-    | |- envs_entails _ (typed_write ?π ?E ?L _ _ _ ?ty ?r ?T) =>
-        notypeclasses refine (tac_fast_apply (type_write E L T _ _ _ _ _ ty r π _) _); [ solve [refine _ ] |]
+    | |- envs_entails _ (typed_write ?E ?L ?f _ _ _ ?ty ?r ?T) =>
+        notypeclasses refine (tac_fast_apply (type_write E L f T _ _ _ _ _ ty r _) _); [ solve [refine _ ] |]
     (* read *)
-    | |- envs_entails _ (typed_read ?E ?L _ _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_read E L T _ _ _ _) _); [ solve [refine _ ] |]
+    | |- envs_entails _ (typed_read ?E ?L ?f _ _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_read E L f T _ _ _ _) _); [ solve [refine _ ] |]
     (* borrow mut *)
-    | |- envs_entails _ (typed_borrow_mut ?E ?L _ _ _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_borrow_mut E L T _ _ _ _ _) _); [solve [refine _] |]
+    | |- envs_entails _ (typed_borrow_mut ?E ?L ?f _ _ _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_borrow_mut E L f T _ _ _ _ _) _); [solve [refine _] |]
     (* borrow shr *)
-    | |- envs_entails _ (typed_borrow_shr ?E ?L _ _ _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_borrow_shr E L T _ _ _ _ _) _); [solve [refine _] |]
+    | |- envs_entails _ (typed_borrow_shr ?E ?L ?f _ _ _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_borrow_shr E L f T _ _ _ _ _) _); [solve [refine _] |]
     (* addr_of mut *)
-    | |- envs_entails _ (typed_addr_of_mut ?E ?L _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_addr_of_mut E L _ T _ _) _); [solve [refine _] |]
+    | |- envs_entails _ (typed_addr_of_mut ?E ?L ?f _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_addr_of_mut E L f _ T _ _) _); [solve [refine _] |]
     (* end context folding *)
     | |- envs_entails _ (typed_context_fold_end ?AI ?E ?L ?acc ?T) =>
         notypeclasses refine (tac_fast_apply (type_context_fold_end AI E L acc T) _)
@@ -579,6 +566,7 @@ Ltac liFastStep :=
   | liTrue
   | liFalse
   | liAccu
+  | liClear
   | liUnfoldLetGoal ].
 
 (* This does everything *)
@@ -643,51 +631,50 @@ Ltac prepare_initial_coq_context :=
 Section tac.
   Context `{!typeGS Σ}.
 
-  Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (local_sts : list syn_type) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
-    (∀ κs tys x (ϝ : lft),
+  Lemma intro_typed_function {rts : list RT} (n : nat) π (fn : function) (fp : (eq rts rts) * (prod_vec lft n → plist type rts → fn_spec)) :
+    (∀ κs tys x (ϝ : lft) (f : frame_id),
       □ (
       let lya := fn.(f_args).*2 in
-      let lyv := fn.(f_local_vars).*2 in
-      ⌜fn_arg_layout_assumptions ((fp.2 κs tys).(fn_p) x).(fp_atys) lya⌝ -∗
-      ⌜fn_local_layout_assumptions local_sts lyv⌝ -∗
-      ∀ (lsa : vec loc (length ((fp.2 κs tys).(fn_p) x).(fp_atys))) (lsv : vec loc (length fn.(f_local_vars))),
-        let Qinit :=
-          (* sidecondition first *)
-          ((fp.2 κs tys).(fn_p) x).(fp_Sc) π ∗
-          ((fp.2 κs tys).(fn_p) x).(fp_Pa) π ∗
-          ([∗list] l;t∈lsa;((fp.2 κs tys).(fn_p) x).(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] #r @ (◁ ty)) ∗
-          ([∗list] l;p∈lsv;local_sts, (l ◁ₗ[π, Owned false] .@ (◁ (uninit p))))
-           in
-      let E := (((fp.2 κs tys).(fn_p) x).(fp_elctx) ϝ) in
+      let fps := fn_p (fp.2 κs tys) x in
+      let sta := fn_arg_syntys (fp_atys fps) in
+      ⌜Forall2 syn_type_has_layout sta lya⌝ -∗
+      ∀ (lsa : vec loc (length fps.(fp_atys))),
+      let Qinit :=
+        (* sidecondition first *)
+        fps.(fp_Sc) π ∗
+        fps.(fp_Pa) π ∗
+        ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned false] # r @ (◁ ty)) ∗
+        ([∗ list] xl;synty ∈ zip (f_args fn).*1 lsa;sta, xl.1 is_live{ (π, f), synty} xl.2) in
+      let E := (fps.(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in
       ∃ E', ⌜E' ⊆+ E⌝ ∗ ⌜E' = E'⌝ ∗
-      (credit_store 0 0 -∗ na_own π ⊤ -∗ introduce_with_hooks E' L (Qinit) (λ L2,
-        introduce_typed_stmt E' L2 ϝ fn lsa lsv lya lyv (
+      (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
+        introduce_typed_stmt E' L2 (π, f) ϝ fn (
         λ v L2,
             prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
             find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn) (λ '(π', mask), ⌜π' = π⌝ ∗ ⌜mask = ⊤⌝ ∗ True))
+              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True))
           )))
         ))))) -∗
-    typed_function π fn local_sts fp.
+    typed_function π fn fp.
   Proof.
     iIntros "#Ha".
     rewrite /typed_function.
-    iIntros (????) "!# Hx1 Hx2".
-    iIntros (lsa lsv) "(Hstore & Hna & Hinit)".
+    iIntros (?????) "!# Hx1".
+    iIntros (lsa) "(Hstore & Hna & Halloc & Hinit)".
     rewrite /introduce_typed_stmt /typed_stmt.
-    iIntros (?) "#CTX #HE HL Hcont".
+    iIntros (?) "#CTX #HE HL Hf Hcont".
     iApply fupd_wps.
-    iPoseProof ("Ha" with "Hx1 Hx2") as "HT".
-    iDestruct ("HT" $! lsa lsv) as "(%E' & %Hsub & _ & HT)".
+    iPoseProof ("Ha" with "Hx1") as "HT".
+    iDestruct ("HT" $! lsa) as "(%E' & %Hsub & _ & HT)".
     iPoseProof (elctx_interp_submseteq _ _ Hsub with "HE") as "HE'".
     rewrite /introduce_with_hooks.
-    iMod ("HT" with "Hstore Hna [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
+    iMod ("HT" with "Hstore Hna Halloc [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
-    iApply ("HT" with "CTX HE' HL").
+    iApply ("HT" with "CTX HE' HL Hf").
     iModIntro. done.
   Qed.
 End tac.
@@ -718,18 +705,17 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
   repeat (liEnsureInvariant || liWand || liSimpl || liForall || liPersistent || liImpl);
   li_unfold_lets_in_context;
   lazymatch goal with
-  | |- envs_entails _ (typed_function _ _ _ _) =>
+  | |- envs_entails _ (typed_function _ _ _) =>
     iApply (intro_typed_function);
     (* simpl in order to simplify the projection in the type of type variables, e.g.
        T_ty : type (T_rt, T_st).1
        otherwise we can't substitute equalities on the T_st later. *)
     simpl;
-    iIntros ( κs tys x ϝ ) "!#";
+    iIntros ( κs tys x ϝ _fid) "!#";
     let Harg_ly := fresh "Harg_ly" in
-    let Hlocal_ly := fresh "Hlocal_ly" in
-    iIntros (_ _);
-    let lsa := fresh "lsa" in let lsv := fresh "lsv" in
-    iIntros (lsa lsv);
+    iIntros (_);
+    let lsa := fresh "lsa" in
+    iIntros (lsa);
     simpl in lsa;
     revert params;
     repeat liForall;
@@ -742,7 +728,7 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
         (*eapply mk_elctx_eqn in Helctx;*)
         iSplitR; first done
     end;
-    inv_vec lsv; inv_vec lsa;
+    inv_vec lsa;
     simpl;
     unfold typaram_wf;
     init_cache
@@ -780,8 +766,11 @@ Ltac sidecond_hook_core :=
       solve_bor_kind_direct_incl
   | |- elctx_sat ?E ?L ?E' =>
       solve_elctx_sat
-  | |- fn_arg_layout_assumptions ?L1 ?L2 =>
-      repeat first [constructor | done]
+  | |- local_fresh _ _ =>
+      (* for local variables *)
+      solve_local_fresh
+  (*| |- fn_arg_layout_assumptions ?L1 ?L2 =>*)
+      (*repeat first [constructor | done]*)
   | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
       solve_place_update_kind_outlives
   | |- ty_has_op_type _ _ _ =>

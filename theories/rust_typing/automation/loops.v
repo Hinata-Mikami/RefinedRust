@@ -33,7 +33,7 @@ Definition wrap_inv {T} (x : T) := existT (P := id) _ x.
    - a predicate on the lifetime contexts
    - optionally, the iterator variable, for which we pass the refinement into the invariant
 *)
-Definition bb_inv_t := (list loc * list loc * list loc * sigT (@id Type) * sigT (@id Type) * option loc)%type.
+Definition bb_inv_t := (list var_name * list var_name * list var_name * sigT (@id Type) * sigT (@id Type) * option var_name)%type.
 (* Type of the loop invariant map we keep in the context *)
 Definition bb_inv_map_t := poly_list (var_name * bb_inv_t)%type.
 
@@ -51,13 +51,6 @@ Lemma pose_bb_inv (M : bb_inv_map_t) :
 Proof.
   rewrite bb_inv_map_marker_unfold. done.
 Qed.
-
-(** Given a [runtime_function] [rfn], get the list of stack locations as a [constr]. *)
-Ltac gather_locals rfn :=
-  match rfn with
-  | Build_runtime_function ?fn ?l =>
-    eval simpl in (map fst l)
-  end.
 
 (** Find the invariant for basic block [loop_bb] in the invariant map [loop_inv_map].
   Returns a uconstr option with the result. *)
@@ -176,10 +169,10 @@ Ltac get_π :=
   end.
 
 (** Composes the loop invariant from the invariant [Inv : bb_inv_t] (a constr),
-  the runtime function [FN : runtime_function], the current Iris environment [env : env],
+  the runtime function [FN : function], the current Iris environment [env : env],
   and the current contexts [current_E : elctx], [current_L : llctx],
   and calls [cont Inv opt_var], where [Inv] is the invariant and [opt_var] is the optional iterator variable. *)
-Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
+Ltac compute_loop_invariant frame FN Inv envs current_E current_L cont :=
   (* find Σ *)
   let Σ := get_Σ in
   (* get spatial env *)
@@ -196,10 +189,10 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
     match Inv with
     | (?inv_locals, _, _, _, _, _) => constr:(inv_locals)
     end in
-  let preserved_locals :=
-    match Inv with
-    | (_, ?pres_locals, _, _, _, _) => constr:(pres_locals)
-    end in
+  (*let preserved_locals :=*)
+    (*match Inv with*)
+    (*| (_, ?pres_locals, _, _, _, _) => constr:(pres_locals)*)
+    (*end in*)
   let functional_inv := match Inv with
                        | (_, _, _, wrap_inv ?inv, _, _) => uconstr:(inv)
                        end
@@ -220,6 +213,12 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
   let names := eval cbv in names_ident in
   clear names_ident;
 
+  (* get the locations for the local variables *)
+  let Hlocals := constr:(_ : FindLocalLocs frame inv_locals _) in
+  let inv_locals_locs := match type of Hlocals with
+  | FindLocalLocs _ _ ?l => l
+  end in
+
   let Hinv := fresh "Hinv" in
 
   (* optionally apply to the refinement of the iterator variable *)
@@ -231,6 +230,11 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
       (*| (?loc ◁ₗ[?π, ?b] ?r @ ?lt)%I =>*)
           (*specialize (Ha r)*)
       (*end*)
+      let Hlocal_iter := constr:(_ : FindLocalLoc frame var _) in
+      let iter_local_loc := match type of Hlocal_iter with
+      | FindLocalLoc _ _ ?l => l
+      end in
+
     pose (Hinv :=
       λ (iter_init_state : _) (params : _) (E : elctx) (L : llctx),
       ltac:(
@@ -244,13 +248,13 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
 
         specialize (Ha iter_init_state params);
 
-        build_local_sepconj inv_locals spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
+        build_local_sepconj inv_locals_locs spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
     ));
     (* get rid of all the lets we introduced *)
     simpl in Hinv;
     let Inv := eval unfold Hinv in Hinv in
     clear Hinv;
-    cont Inv iterator_var
+    cont Inv (Some iter_local_loc)
 
   | None =>
     pose (Hinv :=
@@ -266,7 +270,7 @@ Ltac compute_loop_invariant FN Inv envs current_E current_L cont :=
 
         specialize (Ha params);
 
-        build_local_sepconj inv_locals spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
+        build_local_sepconj inv_locals_locs spatial_env names constr:(((True ∗ ⌜HEL⌝)%I: iProp Σ)) Ha
     ));
     (* get rid of all the lets we introduced *)
     simpl in Hinv;

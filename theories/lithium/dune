@@ -3,4 +3,4 @@
  (package refinedrust)
  (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)
  (synopsis "Lithium")
- (theories stdpp iris Ltac2 Stdlib))
+ (theories stdpp iris iris_contrib Ltac2 Stdlib))

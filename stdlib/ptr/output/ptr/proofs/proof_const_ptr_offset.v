@@ -22,7 +22,7 @@ Proof.
     iApply (loc_in_bounds_shorten_suf with "[Hbounds //]"). lia. }
   repeat liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
-  iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
+  iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
   rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
   iDestruct (loc_in_bounds_ptr_in_range with "Hbounds'") as %[Hran1 Hran2].
@@ -49,18 +49,18 @@ Proof.
   { iApply tr_weaken; last done. lia. }
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
   iPoseProof (credit_store_donate_tr with "Hstore Hat") as "Hstore".
-  iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ count) 0 0) as "#Hlb'". 
+  iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNone}ₗ count) 0 0) as "#Hlb'".
   { iApply loc_in_bounds_offset; last done. all: sidecond_hammer. }
   iPoseProof (loc_in_bounds_ptr_in_range with "Hlb'") as "[% %Hup]".
   iModIntro.
-  iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
-  { rewrite /ty_own_val /=. 
+  iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").
+  { rewrite /ty_own_val /=.
     iR.
-    iPureIntro. split; first done. 
+    iPureIntro. split; first done.
     unfold OffsetLocSt in *.
     simplify_layout_assum.
-    split; first sidecond_hammer. 
-    move: Hup. 
+    split; first sidecond_hammer.
+    move: Hup.
     unsafe_unfold_common_caesium_defs.
     sidecond_hammer.
   }

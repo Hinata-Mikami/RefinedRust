@@ -121,7 +121,7 @@ Section place.
     done.
   Qed.
 
-  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) π E L (r : plist place_rfnRT rts) sls f wl bmin0 P l
+  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) E L fp (r : plist place_rfnRT rts) sls f wl bmin0 P l
     (T : place_cont_t (plist place_rfnRT rts) bmin0) :
     ( (* sidecondition for other components *)
       ⌜lctx_place_update_kind_outlives E L bmin0 (mjoin ((@ltype_blocked_lfts  _ _) +c<$> lts))⌝ ∗
@@ -130,7 +130,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
+      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
         (λ L' κs l1 b2 bmin rti ltyi ri updcx,
           T L' κs l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -143,13 +143,13 @@ Section place.
               (opt_place_update_eq_lift_join _ _ $ struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_1))
               (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
           )))
-    ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
+    ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
     iPoseProof (struct_ltype_acc_owned F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
 
     eapply (sls_field_index_of_lookup) in Hfield as (ly & Hfield).
@@ -157,7 +157,7 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
-    iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].
+    iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
     { apply val_to_of_loc. }
     { done. }
@@ -173,15 +173,15 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf [Hb]").
     { rewrite -Hlto -Hro. done. }
     iIntros (L' κs l2 bmin b2 rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ bmin with "Hli").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
 
     iFrame. simpl.
     iDestruct "Hc_close" as "[Hc_close _]".
@@ -208,7 +208,7 @@ Section place.
 
   Import EqNotations.
 
-  Lemma typed_place_struct_uniq {rts} (lts : hlist ltype rts) π E L (r : plist place_rfnRT rts) sls f κ γ bmin0 P l
+  Lemma typed_place_struct_uniq {rts} (lts : hlist ltype rts) E L fp (r : plist place_rfnRT rts) sls f κ γ bmin0 P l
     (T : place_cont_t (plist place_rfnRT rts) bmin0) :
     ((* sidecondition for other components: the blocked lifetimes need to be included in the lifetime of the mutable reference *)
     ⌜lctx_place_update_kind_outlives E L (UpdUniq [κ]) (mjoin ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
@@ -220,7 +220,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place π E L2 (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
+      typed_place E L2 fp (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
         (λ L' κs' l1 b2 bmin rti ltyi ri updcx,
           T L' (κs') l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -250,21 +250,21 @@ Section place.
                   (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))
               end))
           )))))
-    ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) T.
+    ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Uniq κ γ) (GetMemberPCtx sls f :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%Houtl & %Hincl0 & %κs & %L' &  %Hal & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
 
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl0"; first apply Hincl0.
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as "(%q & Htok & Hcltok & HL)"; [done.. | ].
     iMod "HclF" as "_".
 
     iPoseProof (struct_ltype_acc_uniq F with "[$LFT $LLCTX] Htok Hcltok Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
 
     eapply (sls_field_index_of_lookup) in Hfield as (ly & Hfield).
@@ -272,7 +272,7 @@ Section place.
     (* Note: if we later on want to allow the struct alg to change order of fields, then we need to change pad_struct (or use something else here), because it currently relies on the order of the types and the order of the sl members matching up *)
     assert (field_index_of (sl_members sl) f = Some i) as Hfield'.
     { eapply struct_layout_spec_has_layout_lookup; done. }
-    iApply (wp_logical_step with "Hcl"); [done | solve_ndisj.. | ].
+    iApply (wpe_logical_step with "Hcl"); [done | solve_ndisj.. | ].
     iApply (wp_get_member).
     { apply val_to_of_loc. }
     { done. }
@@ -288,15 +288,15 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf [Hb]").
     { rewrite -Hlto -Hro. done. }
     iIntros (L2 κs' l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hli").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
     unfold check_llctx_place_update_kind_incl_uniq_goal.
     iDestruct "Hcont" as (b Hb) "Hcont".
     destruct b as [Heqb | ]; simpl in *.
@@ -332,7 +332,7 @@ Section place.
   Definition typed_place_struct_uniq_inst := [instance @typed_place_struct_uniq].
   Global Existing Instance typed_place_struct_uniq_inst | 30.
 
-  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) π E L (r : plistRT rts) sls f κ bmin0 P l
+  Lemma typed_place_struct_shared {rts} (lts : hlist ltype rts) E L fp (r : plistRT rts) sls f κ bmin0 P l
     (T : place_cont_t (plistRT rts) bmin0) :
     ((* sidecondition for other components *)
     ⌜lctx_place_update_kind_outlives E L bmin0 (mjoin ((λ _, ltype_blocked_lfts) +c<$> lts))⌝ ∗
@@ -341,7 +341,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place π E L (l atst{sls}ₗ f) lto ro bmin0 (Shared κ) P
+      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Shared κ) P
         (λ L' κs l1 b2 bmin rti ltyi ri updcx,
           T L' κs l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -356,12 +356,12 @@ Section place.
               (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
 
           )))
-    ⊢ typed_place π E L l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
+    ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Shared κ) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
-    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hl HΦ/=".
+    iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
     iPoseProof (struct_ltype_acc_shared F with "Hl") as "(%sl & %Halg & %Hly & %Hmem & #Hlb & Hb)"; first done.
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod (fupd_mask_mono with "Hb") as "(Hb & Hcl)"; first done.
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with "HE HL") as "#Houtl".
 
@@ -385,15 +385,15 @@ Section place.
     assert (l at{sl}ₗ f = l atst{sls}ₗ f) as Hleq.
     { rewrite /GetMemberLocSt /use_struct_layout_alg' Halg //. }
     rewrite Hleq.
-    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL [Hb]").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf [Hb]").
     { rewrite -Hlto -Hro. done. }
     iIntros (L' κs l2 b2 bmin rti ltyi ri updcx) "Hli Hcont".
     iApply ("HΦ" with "Hli").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hcont" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL &  Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl2 & %Hsteq2 & Hcond & #Hmin & ? & ? & HL & Hf & Hcont)".
     iFrame. simpl.
     iDestruct "Hc_close" as "[Hc_close _]".
     iPoseProof ("Hc_close" with "Hl2 []") as "Ha".

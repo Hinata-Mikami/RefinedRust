@@ -7,12 +7,12 @@
 use std::collections::BTreeSet;
 
 use log::{info, trace};
-use radium::code;
-use rr_rustc_interface::middle::mir;
+use radium::{code, lang};
+use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
 use crate::base::*;
-use crate::regions;
+use crate::{procedures, regions};
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a single basic block.
@@ -165,6 +165,39 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     });
                 },
 
+                | mir::StatementKind::StorageLive(l) => {
+                    let local_decls = &self.proc.get_mir().local_decls;
+                    let local_decl = local_decls.get(*l).unwrap();
+                    let ty = local_decl.ty;
+                    let translated_ty = self.ty_translator.translate_type(ty)?;
+                    let translated_st: lang::SynType = translated_ty.into();
+
+                    if let Some(local_name) = self.variable_map.get(l) {
+                        let var = code::Variable::new(local_name.to_owned(), translated_st);
+                        prim_stmts.push(code::PrimStmt::LocalLive(var));
+                    } else {
+                        let ty::TyKind::Closure(did, _) = ty.kind() else {
+                            unreachable!()
+                        };
+                        assert!(self.procedure_registry.lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
+                    }
+                },
+
+                | mir::StatementKind::StorageDead(l) => {
+                    let local_decls = &self.proc.get_mir().local_decls;
+                    let local_decl = local_decls.get(*l).unwrap();
+                    let ty = local_decl.ty;
+
+                    if let Some(local_name) = self.variable_map.get(l) {
+                        prim_stmts.push(code::PrimStmt::LocalDead(local_name.to_owned()));
+                    } else {
+                        let ty::TyKind::Closure(did, _) = ty.kind() else {
+                            unreachable!()
+                        };
+                        assert!(self.procedure_registry.lookup_function_mode(*did).is_some_and(procedures::Mode::is_ignore));
+                    }
+                },
+
                 // don't need that info
                 | mir::StatementKind::AscribeUserType(_, _)
                 // don't need that
@@ -173,10 +206,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | mir::StatementKind::ConstEvalCounter
                 // ignore
                 | mir::StatementKind::Nop
-                // just ignore 
-                | mir::StatementKind::StorageLive(_)
-                // just ignore
-                | mir::StatementKind::StorageDead(_)
                 // just ignore
                 | mir::StatementKind::BackwardIncompatibleDropHint { .. }
                 // just ignore retags

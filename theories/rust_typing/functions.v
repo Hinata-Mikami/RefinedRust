@@ -5,13 +5,8 @@ From refinedrust Require Import options.
 (** * Function types *)
 
 (* "entry-point" statement *)
-Definition to_runtime_function (fn : function) (lsa lsv : list loc) (lya lyv : list layout) : runtime_function :=
-  let rf := subst_function (zip (fn.(f_args).*1 ++ fn.(f_local_vars).*1) (val_of_loc <$> (lsa ++ lsv))) fn in
-  {| rf_fn := rf; rf_locs := zip lsa lya ++ zip lsv lyv |}.
-Definition introduce_typed_stmt {Σ} `{!typeGS Σ} (E : elctx) (L : llctx) (ϝ : lft) (fn : function) (lsa lsv : list loc) (lya lyv : list layout) (R : typed_stmt_R_t) : iProp Σ :=
-  let rf := to_runtime_function fn lsa lsv lya lyv in
-  typed_stmt E L (Goto fn.(f_init)) rf R ϝ.
-Global Typeclasses Opaque to_runtime_function.
+Definition introduce_typed_stmt {Σ} `{!typeGS Σ} (E : elctx) (L : llctx) (f : frame_path) (ϝ : lft) (fn : function) (R : typed_stmt_R_t) : iProp Σ :=
+  typed_stmt E L f (Goto fn.(f_init)) fn R ϝ.
 Global Typeclasses Opaque introduce_typed_stmt.
 Global Arguments introduce_typed_stmt : simpl never.
 
@@ -49,7 +44,7 @@ Section function.
   Definition fn_params_add_pre (pre : iProp Σ) (F : fn_params) : fn_params :=
     FP F.(fp_atys) (λ π, pre ∗ F.(fp_Pa) π)%I F.(fp_Sc) F.(fp_elctx) F.(fp_extype) F.(fp_fr).
   Definition fn_params_add_elctx (E : lft → elctx) (F : fn_params) : fn_params :=
-  FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
+    FP F.(fp_atys) F.(fp_Pa) F.(fp_Sc) (λ ϝ, E ϝ ++ F.(fp_elctx) ϝ) F.(fp_extype) F.(fp_fr).
 
  (**
      Compute a [fn_params] definition that includes the required lifetime constraints for the
@@ -65,7 +60,7 @@ Section function.
       (atys : list (@sigT RT (λ rt, type rt * rt)%type))
    (pa : thread_id → iProp Σ)
       (sc : thread_id → iProp Σ)
-      (exty : Type)
+     (exty : Type)
       (retrt : RT)
       (retty : type retrt)
       (fr_ref : exty → retrt)
@@ -82,7 +77,7 @@ Section function.
       exty
       (λ e, mk_FR retrt retty (fr_ref e) (fr_R e)).
 
-  (* TODO: move elctx into this? *)
+(* TODO: move elctx into this? *)
   Record fn_spec := mk_fn_spec {
     fn_A : Type;
     fn_p : fn_A → fn_params;
@@ -107,12 +102,8 @@ Section function.
       (* for Lithium compatibility *)
       True)%I.
 
-  Definition fn_arg_layout_assumptions
-      (atys : list (@sigT RT (λ rt, type rt * rt)%type)) (lya : list layout) :=
-    Forall2 (λ '(existT rt (ty, _)) ly, syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly) atys lya.
-  Definition fn_local_layout_assumptions
-      (sts : list syn_type) (lyv : list layout) :=
-    Forall2 (syn_type_has_layout) sts lyv.
+  Definition fn_arg_syntys (atys : list (@sigT RT (λ rt, type rt * rt)%type)) : list syn_type :=
+    (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) <$> atys.
 
   Definition typaram_wf rt st (ty : type rt) : iProp Σ :=
     (∃ _ : TySized ty,
@@ -125,57 +116,54 @@ Section function.
   Definition typarams_elctx (ϝ : lft) rts (tys : plist type rts) : elctx :=
     concat (pcmap (typaram_elctx ϝ) tys).
 
+  Definition fn_init_context (fn : function) (fps : fn_params) (π : thread_id) (f : frame_id) (lsa : list loc) (sta : list syn_type) : iProp Σ :=
+    (* initial credits from the beta step *)
+    credit_store 0 0 ∗
+    (* initial mask *)
+    na_own π ⊤ ∗
+    (* current frame *)
+    allocated_locals (π, f) (f_args fn).*1 ∗
+    (* arg ownership *)
+    ([∗list] l;t∈lsa;fps.(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] #r @ (◁ ty)) ∗
+    ([∗ list] xl; synty ∈ zip ((f_args fn).*1) lsa; sta, xl.1 is_live{(π, f), synty} xl.2) ∗
+    (* sidecondition *)
+    fps.(fp_Sc) π ∗
+    (* precondition *)
+    fps.(fp_Pa) π.
 
   (** This definition is not yet contractive, and also not a full type.
     We do this below in a separate definition. *)
-  Definition typed_function π {lfts : nat} {rts : list RT} (fn : function) (local_sts : list syn_type) (fp : eq rts rts * (spec_with lfts rts fn_spec)) : iProp Σ :=
+  Definition typed_function {lfts : nat} {rts : list RT} (π : thread_id) (fn : function) (fp : eq rts rts * (spec_with lfts rts fn_spec)) : iProp Σ :=
     ( (* for any Coq-level parameters *)
       ∀ κs tys x,
       (* and any duration of the function call *)
       ∀ (ϝ : lft),
+      (* for any stack frame *)
+      ∀ (f : frame_id),
       □ (
       let lya := fn.(f_args).*2 in
-      let lyv := fn.(f_local_vars).*2 in
       let fps := (fp.2 κs tys).(fn_p) x in
+      let sta := fn_arg_syntys fps.(fp_atys) in
       (* the function arg type layouts match what is given in the function [fn]: this is something we assume here *)
-      ⌜fn_arg_layout_assumptions fps.(fp_atys) lya⌝ -∗
-      (* the local var layouts also match the specified syn_types *)
-      ⌜fn_local_layout_assumptions local_sts lyv⌝ -∗
+      ⌜Forall2 syn_type_has_layout sta lya⌝ -∗
       ∀ (* for any stack locations that get picked nondeterministically... *)
-          (lsa : vec loc (length fps.(fp_atys)))
-          (lsv : vec loc (length fn.(f_local_vars))),
-          (* initial stack *)
-          let Qinit :=
-            (* initial credits from the beta step *)
-            credit_store 0 0 ∗
-            (* initial mask *)
-            na_own π ⊤ ∗
-            (* arg ownership *)
-            ([∗list] l;t∈lsa;fps.(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] PlaceIn r @ (◁ ty)) ∗
-            (* local vars ownership *)
-            ([∗list] l;p∈lsv;local_sts, (l ◁ₗ[π, Owned false] (PlaceIn ()) @ (◁ (uninit p)))) ∗
-            (* sidecondition *)
-            fps.(fp_Sc) π ∗
-            (* precondition *)
-            fps.(fp_Pa) π in
+          (lsa : vec loc (length fps.(fp_atys))),
           (* external lifetime context: can require external lifetimes syntactically outlive the function lifetime, as well as syntactic constraints between universal lifetimes *)
           let E := (fps.(fp_elctx) ϝ) in
           (* local lifetime context: the function needs to be alive *)
           let L := [ϝ ⊑ₗ{0} []] in
-          Qinit -∗ introduce_typed_stmt E L ϝ fn lsa lsv lya lyv (
+          fn_init_context fn fps π f lsa sta -∗ introduce_typed_stmt E L (π, f) ϝ fn (
             λ v L2,
             prove_with_subtype E L2 false ProveDirect (fn_ret_prop π fps.(fp_fr) v) (λ L3 _ R3,
             introduce_with_hooks E L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
             find_in_context FindCreditStore (λ _,
-              find_in_context (FindNaOwn) (λ '(π', mask), ⌜π' = π⌝ ∗ ⌜mask = ⊤⌝ ∗ True))
+              find_in_context (FindNaOwn π) (λ mask : coPset, ⌜mask = ⊤⌝ ∗ True))
           )))))
     )%I.
 
-  Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn local_sts fp : Persistent (typed_function (lfts:=lfts) π (rts := rts) fn local_sts fp) := _.
-
-  (* TODO: need a notion of equivalence on functions? *)
+  Global Instance typed_function_persistent {lfts : nat} {rts : list (RT)} π fn fp : Persistent (typed_function (lfts:=lfts) (rts := rts) π fn fp) := _.
 
   (** function pointer type. Requires that the location stores a function that has suitable layouts for the fn_params.
       Note that the fn_params may contain generics: this means that only for particular choices of types to instantiate this,
@@ -183,16 +171,14 @@ Section function.
       The caller will have to show, when calling the function, that the instantiations validate the layout assumptions.
   *)
   Program Definition function_ptr {lfts : nat} (arg_types : list (syn_type)) {rts : list (RT)} (fp : (rts = rts) * (spec_with lfts rts fn_spec)) : type loc := {|
-    st_own π f v := (∃ fn local_sts, ⌜v = val_of_loc f⌝ ∗ fntbl_entry f fn ∗
-      ⌜list_map_option use_layout_alg arg_types = Some fn.(f_args).*2⌝ ∗
-      (* for the local variables, we need to pick [local_sts] at linking time (in adequacy, when we run the layout algorithm) *)
-      ⌜list_map_option use_layout_alg local_sts = Some fn.(f_local_vars).*2⌝ ∗
-      ▷ typed_function π fn local_sts fp)%I;
+    st_own π f v := (∃ fn, ⌜v = val_of_loc f⌝ ∗ fntbl_entry f fn ∗
+      ⌜Forall2 syn_type_has_layout arg_types fn.(f_args).*2⌝ ∗
+      ▷ typed_function π fn fp)%I;
     st_has_op_type ot mt := is_ptr_ot ot;
     st_syn_type := FnPtrSynType;
   |}.
   Next Obligation.
-    simpl. iIntros (lfts rts fal fp π r v) "(%fn & %local_sts & -> & _)".
+    simpl. iIntros (lfts sta rts fp π r v) "(%fn & -> & _)".
     iPureIntro. eexists. split; first by apply syn_type_has_layout_fnptr.
     done.
   Qed.
@@ -202,14 +188,14 @@ Section function.
   Qed.
   Next Obligation. unfold TCNoResolve. apply _. Qed.
   Next Obligation.
-    simpl. iIntros (lfts rts lya fp ot mt st π r v Hot).
+    simpl. iIntros (lfts lya rts fp ot mt st π r v Hot).
     destruct mt.
     - eauto.
-    - iIntros "(%fn & %local_sts & -> & Hfntbl & %Halg & Hfn)".
-      iExists fn, _. iFrame. iPureIntro. split; last done.
+    - iIntros "(%fn & -> & Hfntbl & %Halg & Hfn)".
+      iExists fn. iFrame. iPureIntro. split; last done.
       destruct ot; try done. unfold mem_cast. rewrite val_to_of_loc. done.
     - iApply (mem_cast_compat_loc (λ v, _)); first done.
-      iIntros "(%fn & % & -> & _)". eauto.
+      iIntros "(%fn & -> & _)". eauto.
   Qed.
   Next Obligation.
     intros ???? mt ly Hst.
@@ -230,10 +216,10 @@ Section call.
   Context `{!typeGS Σ}.
   Import EqNotations.
 
-  Lemma type_call_fnptr π E L (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) (T : typed_call_cont_t) :
+  Lemma type_call_fnptr E L f π (lfts : nat) (rts : list (RT)) eκs etys l v vl tys eqp m (fp : spec_with lfts rts fn_spec) (sta : list syn_type) (T : typed_call_cont_t) :
     let eκs' := list_to_tup eκs in
-    find_in_context (FindNaOwn) (λ '(π', mask),
-      ⌜π' = π⌝ ∗
+    find_in_context (FindNaOwn π) (λ mask : coPset,
+      ⌜π = f.1⌝ ∗
       (* TODO: do something to ensure invariants are closed before *)
       ⌜mask = ⊤⌝ ∗
       (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) -∗
@@ -249,7 +235,7 @@ Section call.
       prove_with_subtype E L false ProveDirect ([∗ list] v;t ∈ vl; fps.(fp_atys), let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) (λ L1 _ R2,
       R2 -∗
       (* the syntypes of the actual arguments match with the syntypes the function assumes *)
-      ⌜sta = map (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) fps.(fp_atys)⌝ ∗
+      ⌜sta = fmap (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) fps.(fp_atys)⌝ ∗
       (* precondition *)
       (* TODO it would be good if we could also stratify.
           However a lot of the subsumption instances relating to values need subsume_full.
@@ -266,22 +252,22 @@ Section call.
       (* also donate some credits we are generating here *)
       introduce_with_hooks E L2 (£ (S num_cred) ∗ tr 2 ∗ na_own π mask ∗ R3 ∗ (fps.(fp_fr) x').(fr_R) π ∗ v ◁ᵥ{π, MetaNone} (fps.(fp_fr) x').(fr_ref) @ (fps.(fp_fr) x').(fr_ty)) (λ L3,
       T L3 v _ (fps.(fp_fr) x').(fr_ty) (fps.(fp_fr) x').(fr_ref)))))))
-    ⊢ typed_call π E L eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys T.
+    ⊢ typed_call E L f eκs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, fp)) vl tys T.
   Proof.
-    simpl. iIntros "HT (-> & %fn & %local_sts & -> & He & %Halg & %Halgl & Hfn) Htys" (Φ) "#CTX #HE HL HΦ".
+    simpl. iIntros "HT (-> & %fn & -> & He & %Halg & Hfn) Htys" (Φ) "#CTX #HE HL Hf HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
-    iDestruct "HT" as ([π' mask]) "(Hna & -> & -> & HT) /=".
+    iDestruct "HT" as (mask) "(Hna & -> & -> & HT) /=".
     iDestruct ("HT" with "Htys") as "(%Heq & %stys & %x & HP)". subst lfts.
     set (aκs := list_to_tup eκs).
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).
-    iApply fupd_wp. iMod ("HP" with "[] [] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].
+    iApply fupd_wpe. iMod ("HP" with "[] [] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(-> & HT)".
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R3 & Hstep & HL & HT)"; [done.. | ].
     iDestruct ("HT") as "(Hsc & %Hal & %Hsat & Hr)".
     (* initialize the function's lifetime *)
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
-    iApply fupd_wp. iMod (lctx_lft_alive_tok_noend_list with "HE HL") as "(%q & Htok & HL & HL_cl')";
+    iApply fupd_wpe. iMod (lctx_lft_alive_tok_noend_list with "HE HL") as "(%q & Htok & HL & HL_cl')";
       [done | apply Hal | ].
     iDestruct "CTX" as "#(LFT & LCTX)".
     iMod (llctx_startlft_extra _ _  _ [] with "LFT LCTX Htok") as "(%ϝ & Hϝ & %Hincl & Hkill)"; [set_solver.. | ].
@@ -301,112 +287,104 @@ Section call.
       iClear "Hfn Hr HL Hstep HL_cl HL_cl' Hϝ Hkill Hsc".
       move: Halg. move: (fp_atys fps) => atys Hl.
       iInduction (fn.(f_args)) as [|[? ly]] "IH" forall (vl atys Hl).
-      { move: Hl => /=. intros ->%list_map_option_nil_inv_r%map_eq_nil. destruct vl => //=. }
+      { move: Hl => /=. intros ->%Forall2_nil_inv_r%map_eq_nil. destruct vl => //=. }
       move: Hl.
-      simpl. intros (st & atys' & Ha & ? & ?)%list_map_option_cons_inv_r.
+      simpl. intros (st & atys' & Hst & ? & Ha)%Forall2_cons_inv_r.
       apply map_eq_cons in Ha as (xa & ? & -> & <- & <-).
       destruct vl => //=. iDestruct "Hvl" as "[Hv Hvl]".
       destruct xa as (rt & (ty & r)).
-      iDestruct ("IH" with "[//] Hna He HΦ Hvl") as %?.
+      iDestruct ("IH" with "[//] Hna He Hf HΦ Hvl") as %?.
       iDestruct (ty_has_layout with "Hv") as "(%ly' & % & %)".
       assert (ly = ly') as ->. { by eapply syn_type_has_layout_inj. }
       iPureIntro. constructor => //.
     }
 
-    iAssert (|={⊤}=> [∗ list] v;t ∈ vl;fp_atys fps, let 'existT rt (ty, r) := t in v ◁ᵥ{ π, MetaNone} r @ ty)%I with "[Hvl]" as ">Hvl".
+    iAssert (|={⊤}=> [∗ list] v;t ∈ vl;fp_atys fps, let 'existT rt (ty, r) := t in v ◁ᵥ{f.1, MetaNone} r @ ty)%I with "[Hvl]" as ">Hvl".
     { rewrite -big_sepL2_fupd. iApply (big_sepL2_mono with "Hvl").
       iIntros (?? (rt & (ty & r)) ??) "Hv". eauto with iFrame. }
 
     (* eliminate the logical step *)
     iModIntro. iModIntro.
-    iApply (wp_call with "He") => //. { by apply val_to_of_loc. }
+    iApply (wp_call with "He Hf") => //.
+    { by apply val_to_of_loc. }
     iApply (physical_step_step_upd with "Hstep").
     iMod (tr_zero) as "Hc".
     iApply (physical_step_intro_tr with "Hc").
     iNext. iIntros "Hc Hcred". iModIntro.
     iIntros "(HP & HR)".
-    iIntros (lsa lsv Hlya) "Ha Hv".
+    iIntros (lsa Hlya) "Ha Hx Hf Halloc".
     iDestruct (big_sepL2_length with "Ha") as %Hlen1.
-    iDestruct (big_sepL2_length with "Hv") as %Hlen2.
-    iDestruct (big_sepL2_length with "Hvl") as %Hlen3.
+    iDestruct (big_sepL2_length with "Hx") as %Hlen2.
+    specialize (Forall2_length _ _ _ Hlya) as Hlen3.
+    rewrite length_fmap in Hlen3.
+    rewrite length_map length_zip length_fmap -Hlen3 Nat.min_idempotent in Hlen2.
 
-    apply list_map_option_alt in Halg. apply list_map_option_alt in Halgl.
-    iDestruct ("Hfn" $! aκs stys x ϝ with "[] []") as "Hfn".
+    iDestruct ("Hfn" $! aκs stys x ϝ (S f.2) with "[]") as "Hfn".
     { iPureIntro. move: Halg. rewrite Forall2_fmap_l => Halg.
       eapply Forall2_impl; first done. intros (rt & ty & r) ly; done. }
-    { done. }
 
-    have [lsa' ?]: (∃ (ls : vec loc (length (fp_atys fps))), lsa = ls)
-      by rewrite -Hlen3 -Hlen1; eexists (list_to_vec _); symmetry; apply vec_to_list_to_vec. subst.
-    have [lsv' ?]: (∃ (ls : vec loc (length (f_local_vars fn))), lsv = ls)
-      by rewrite -Hlen2; eexists (list_to_vec _); symmetry; apply vec_to_list_to_vec. subst.
+    have [lsa' ?]: (∃ (ls : vec loc (length (fp_atys fps))), lsa = ls).
+    { rewrite -Hlen2. eexists (list_to_vec _); symmetry; apply vec_to_list_to_vec. }
+    subst lsa. simpl.
 
-    iDestruct ("Hfn" $! lsa' lsv') as "Hm". unfold introduce_typed_stmt.
+    iDestruct ("Hfn" $! lsa') as "Hm". unfold introduce_typed_stmt.
 
-    set (RET_PROP v := (∃ κs',
+    set (RET_PROP v := (∃ κs' locals,
         llctx_elt_interp (ϝ ⊑ₗ{ 0} κs') ∗
         credit_store 0 0 ∗
-        na_own π ⊤ ∗
-        ([∗ list] l0 ∈ (zip lsa' (f_args fn).*2 ++ zip lsv' (f_local_vars fn).*2), l0.1 ↦|l0.2|) ∗
-        fn_ret_prop π (fp_fr fps) v)%I).
+        current_frame f.1 (S f.2) ∗
+        allocated_locals (f.1, S f.2) locals ∗
+        na_own f.1 ⊤ ∗
+        ([∗ list] x0 ∈ locals,
+          ∃ (ly : layout) (l : loc) (st : syn_type), ⌜syn_type_has_layout st ly⌝ ∗ x0 is_live{ (f.1, S f.2), st} l ∗ l ↦|ly|) ∗
+        fn_ret_prop f.1 (fp_fr fps) v)%I).
+    unfold fn_init_context.
+    (* prove the initial context *)
+    iSpecialize ("Hm" with "[Hcred Hc $Hna $Halloc $Hsc $HP Ha Hvl $Hx]").
+    { (* we use the certificate + other credit to initialize the new functions credit store *)
+      iSplitL "Hcred Hc". { rewrite credit_store_eq /credit_store_def.
+        iSplitL "Hcred".
+        - iApply lc_weaken; last done. unfold num_laters_per_step; lia.
+        - iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
+      (* initialize arguments *)
+      (* reshape to zip lsa' fps; vl *)
+      fold fps.
+      iApply big_sepL2_from_zip. { done. }
+      iApply (big_sepL2_elim_r vl).
+      iApply big_sepL2_from_zip. { rewrite length_zip. lia. }
+      (* wand Ha *)
+      iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
+      iPoseProof (big_sepL_extend_r (fp_atys fps) with "Ha") as "Ha". { rewrite length_zip. lia. }
+      iPoseProof (big_sepL2_to_zip with "Ha") as "Ha".
+      iEval (rewrite zip_assoc_l (zip_flip vl (fp_atys fps)) zip_fmap_r zip_assoc_r !big_sepL_fmap) in "Ha".
+      iApply (big_sepL_wand with "Ha").
+      (* wand Hvl *)
+      iPoseProof (big_sepL2_to_zip with "Hvl") as "Hvl".
+      rewrite zip_flip big_sepL_fmap.
+      iPoseProof (big_sepL_extend_l lsa' with "Hvl") as "Hvl". { rewrite length_zip. lia. }
+      iPoseProof (big_sepL2_to_zip with "Hvl") as "Hvl".
+      rewrite zip_assoc_r big_sepL_fmap.
+      iApply (big_sepL_impl with "Hvl").
+      iModIntro. iIntros (k ((l' & ty) & v) Hlook).
+      destruct ty as [rt [ty r]]. simpl.
+      apply lookup_zip in Hlook as (Hlook1 & Hlook3).
+      apply lookup_zip in Hlook1 as (Hlook1 & Hlook2). simpl in *.
+      iIntros "Hv Hl".
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      opose proof (Forall2_lookup_l _ _ _ _ _ Hlya _) as (lya & Hlook4 & Hlyl); first done.
+      opose proof (Forall2_lookup_lr _ _ _ _ _ _ Hall _ _) as Hlyv; [done.. | ].
+      opose proof (Forall2_lookup_lr _ _ _ k _ _ Halg _ _) as Halg'.
+      { rewrite list_lookup_fmap Hlook2/=//. }
+      { done. }
+      iExists _. iR. iR.
+      iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
+      iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+      rewrite Hlyv. do 2 iR. iExists _. iR. iNext. eauto with iFrame. }
 
-    iExists RET_PROP. iSplitR "Hr HR HΦ HL HL_cl HL_cl' Hkill" => /=.
+    iExists RET_PROP. iSplitL "Hf Hm Hϝ" => /=.
     - iApply wps_fupd.
-      iApply ("Hm" with "[-Hϝ] [$LFT $LCTX] HE' [$Hϝ//] []").
-      { iFrame.
-        (* we use the certificate + other credit to initialize the new functions credit store *)
-        iSplitL "Hcred Hc". { rewrite credit_store_eq /credit_store_def.
-          iSplitL "Hcred".
-          - iApply lc_weaken; last done. unfold num_laters_per_step; lia.
-          - iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
-        move: Hlen1 Hlya. move: (lsa' : list _) => lsa'' Hlen1 Hly. clear RET_PROP lsa' Hall.
-        move: Hlen3 Halg. move: (fp_atys fps) => atys Hlen3 Hl.
-        move: Hly Hl. move: (f_args fn) => alys Hly Hl.
-        iInduction (vl) as [|v vl] "IH" forall (atys lsa'' alys Hlen1 Hly Hlen3 Hl).
-        { destruct atys, lsa'' => //. iSplitR => //.
-          iPoseProof (big_sepL2_fmap_r (λ x, x.2) (λ _ l v, l ↦|v|)%I with "Hv") as "Hv".
-          move: Halgl. rewrite Forall2_fmap_r => Halgl.
-          assert ((f_local_vars fn).*2 = use_layout_alg' <$> local_sts) as Heq.
-          { clear -Halgl. move: Halgl. generalize (f_local_vars fn) => l.
-            induction local_sts as [ | ?? IH] in l |-*; inversion 1; first done.
-            simplify_eq/=. f_equiv. { rewrite /use_layout_alg'.
-              match goal with | H : use_layout_alg _ = Some _ |- _ => rewrite H end. done. }
-            by apply IH. }
-          rewrite Heq. rewrite big_sepL2_fmap_r.
-          iApply (big_sepL2_wand with "Hv").
-          iApply big_sepL2_intro. { rewrite Hlen2. apply Forall2_length in Halgl. done. }
-          iIntros "!>" (?? st ? Hlook) => /=. iDestruct 1 as (? Hly') "[%Hly'' Hl]".
-          rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
-          eapply (Forall2_lookup_l _ _ _ k) in Halgl as (ly & ? & Halg_st); last done.
-          simpl in Halg_st. rewrite /use_layout_alg' Halg_st in Hly'. rewrite /use_layout_alg' Halg_st in Hly''.
-          iExists _. iSplitR; first done.
-          iSplitR; first done. iSplitR; first done.
-          iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
-          rewrite Hly'. iFrame "Hlb". iSplitR; first done.
-          iExists _. iSplitR; first done. iModIntro. iExists _. iFrame.
-          rewrite uninit_own_spec. iR.
-          iExists _. done. }
-        destruct atys, lsa'' => //.
-        move: Hl. simpl. intros (ly & ? & ? & ? & Ha)%Forall2_cons_inv_l.
-        apply map_eq_cons in Ha as ([? ly'] & ? & -> & <- & <-).
-        csimpl in *; simplify_eq.
-        move: Hly => /(Forall2_cons _ _ _ _)[Hly ?].
-        (*apply bind_Some in Hlya as (lys & Hlya & (ly & Halg & [= <- <-])%bind_Some).*)
-        iDestruct "Hvl" as "[Hvl ?]".
-        iDestruct "Ha" as "[Ha ?]".
-        rewrite -bi.sep_assoc. iSplitL "Hvl Ha".
-        { destruct s as (rt & (ty & r)).
-          rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-          iDestruct (ty_has_layout with "Hvl") as "(%ly & % & %Hlyv)".
-          assert (ly = ly') as <-. { by eapply syn_type_has_layout_inj. }
-          iExists _. iSplitR; first done. iSplitR; first done.
-          iPoseProof (ty_own_val_sidecond with "Hvl") as "#$".
-          iPoseProof (heap_pointsto_loc_in_bounds with "Ha") as "#Hlb".
-          rewrite Hlyv. iSplitR; first done. iSplitR; first done.
-          iExists _. iSplitR; first done. iNext. eauto with iFrame. }
-        iApply ("IH" with "[//] [//] [//] [//] [$] [$] [$]").
-      }
-      iIntros (L5 v) "HL Hloc HT".
+      iApply ("Hm" with "[$LFT $LCTX] HE' [$Hϝ//] Hf []").
+      iIntros (L5 v locals) "HL Hf Hlocals Hloc HT". simpl.
       iMod ("HT" with "[] [] [] [] HE' HL") as "(%L3 & %κs1 & %R4 & Hp & HL & HT)"; [done.. |  | ].
       { rewrite /rrust_ctx. iFrame "#". }
       iMod "Hp" as "(Hret & HR)".
@@ -417,20 +395,14 @@ Section call.
       unfold llctx_find_lft_key_interp in Hoc. subst.
       iDestruct "HL" as "(_ & Hϝ & _)".
       iDestruct "HT" as ([n' m']) "(Hstore & HT)"; simpl.
-      iDestruct "HT" as ([π' mask]) "(Hna & -> & -> & _)"; simpl.
-
+      iDestruct "HT" as (mask) "(Hna & -> & _)"; simpl.
       subst RET_PROP; simpl.
       iExists _. iFrame.
       iApply (credit_store_mono with "Hstore"); lia.
     - (* handle the postcondition at return *)
-      iIntros (v). iDestruct 1 as (κs') "(Hϝ & Hstore & Hna & Hls & HPr)".
-      simpl. rewrite !big_sepL2_alt. iDestruct (big_sepL_app with "Hls") as "[? ?]".
-      rewrite !zip_fmap_r !big_sepL_fmap. iFrame.
-
-      iSplitR. { iPureIntro. apply Forall2_length in Halg.
-        rewrite length_map in Halg. rewrite Hlen1 Hlen3 Halg length_fmap. done. }
-      iSplitR; first done.
-
+      iIntros (v). iDestruct 1 as (κs' locals) "(Hϝ & Hstore & Hf & Hlocals & Hna & Hls & HPr)".
+      iFrame.
+      simpl.
       iPoseProof (credit_store_borrow with "Hstore") as "(Hcred1 & Hat & _)".
       iApply (physical_step_intro_tr with "Hat").
       iNext. iIntros "Hat Hcred".
@@ -445,7 +417,8 @@ Section call.
         iSplitL "Hcred".
         - iApply lc_weaken; last done. unfold num_cred. lia.
         - iApply tr_weaken; last done. lia. }
-      iApply ("HΦ" with "HL").
+      iModIntro. iIntros "Hf".
+      iApply ("HΦ" with "HL Hf").
       by iApply ("Hr").
   Qed.
   Definition type_call_fnptr_inst := [instance type_call_fnptr].
@@ -604,9 +577,9 @@ Section function_subsume.
   Context `{!typeGS Σ}.
 
   (** Given a function typing proof, we can always specialize it to more specific generics *)
-  Lemma typed_function_specialize {lfts lfts2 : nat} {rts rts2 : list RT} (S1 : spec_with lfts rts fn_spec) π fn sts eqp1 eqp2 Fκ Fty :
-    typed_function π fn sts (eqp1, S1) -∗
-    typed_function π fn sts (eqp2, spec! κs : lfts | tys : rts, S1 (Fκ κs) (Fty κs tys)).
+  Lemma typed_function_specialize {lfts lfts2 : nat} {rts rts2 : list RT} (S1 : spec_with lfts rts fn_spec) π fn eqp1 eqp2 Fκ Fty :
+    typed_function π fn (eqp1, S1) -∗
+    typed_function π fn (eqp2, spec! κs : lfts | tys : rts, S1 (Fκ κs) (Fty κs tys)).
   Proof.
     iIntros "Ha".
     rewrite /typed_function.
@@ -633,8 +606,8 @@ Section function_subsume.
      I don't think I can always just subtype that to use the lifetime of the closure. That would definitely break ghostcell etc. And also not everything might be covariant in the lifetime.
   *)
   (* This variant operates directly on our [typed_function] definition, used to statically prove subtyping. *)
-  Lemma subsume_typed_function π fn local_sts {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
-    subsume (typed_function π fn local_sts (eqp1, F1)) (typed_function π fn local_sts (eqp2, F2)) T :-
+  Lemma subsume_typed_function π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
+    subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) T :-
       and:
       | drop_spatial;
         ∀ (κs : prod_vec lft lfts) (tys : plist type rts),
@@ -646,7 +619,7 @@ Section function_subsume.
                ∀ l : loc,
                 inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
         ∃ (a : _),
-        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 = ty_syn_type ty2) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
+        exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
         iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
@@ -664,9 +637,9 @@ Section function_subsume.
     iIntros "[#Ha Hb] #Hf". iFrame "Hb".
 
     rewrite /typed_function.
-    iIntros (κs tys b ϝ) "!>".
-    iIntros (Hargly Hlocally lsa lsv).
-    iIntros "(Hcred & Hna & Hargs & Hlocals & Hsc & Hpre)".
+    iIntros (κs tys b ϝ f) "!>".
+    iIntros (Hargly lsa).
+    iIntros "(Hcred & Hna & Hlocals & Hargs & Hx & Hsc & Hpre)".
     iSpecialize ("Ha" $! κs tys).
     iDestruct "Ha" as "(%Helctx & Ha)".
     iSpecialize ("Ha" $! b with "Hpre Hsc").
@@ -732,31 +705,37 @@ Section function_subsume.
     subst INV. simpl.
     iDestruct "Hb" as "(Hargs & Hpre & Hsc & HT)".
 
-    iSpecialize ("Hf" $! κs tys a ϝ with "[] [//]").
+    assert ((fn_arg_syntys (fp_atys (fn_p (F1 κs tys) a))) = (fn_arg_syntys (fp_atys (fn_p (F2 κs tys) b)))) as Heq_st.
+    { apply Forall2_eq. apply Forall2_fmap_2. eapply Forall2_impl; first apply Hsts.
+      intros [? []] [? []]. simpl.
+      intros Ha. apply Ha. }
+    iSpecialize ("Hf" $! κs tys a ϝ f with "[]").
     { (* the arg assumptions transfer *)
-      iPureIntro.
-      eapply Forall2_transitive; last done; last done.
-      intros [? []] [? []] ly ->; done. }
+      iPureIntro. rewrite Heq_st. done. }
     rewrite Hlen.
-    iSpecialize ("Hf" $! lsa lsv).
-    iSpecialize ("Hf" with "[Hcred Hna Hlocals Hargs Hsc Hpre]").
-    { iFrame. iApply (big_sepL2_impl with "Hargs").
+    rewrite Heq_st.
+    iSpecialize ("Hf" $! lsa).
+    iSpecialize ("Hf" with "[Hcred Hna Hlocals Hargs Hx Hsc Hpre]").
+    { iFrame.
+      iApply (big_sepL2_impl with "Hargs").
       iModIntro. iIntros (?? [? []] Hlook1 Hlook2).
       rewrite decide_True; first eauto.
       rewrite length_zip.
       rewrite length_take.
       apply lookup_lt_Some in Hlook1.
       apply lookup_lt_Some in Hlook2.
-      lia. }
+      lia.
+    }
     rewrite /introduce_typed_stmt.
-    iIntros (?) "#CTX HE HL Hrt".
+    iIntros (?) "#CTX HE HL Hfr Hrt".
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
     iDestruct (Helctx with "HL") as "#HEincl".
-    iPoseProof ("HLcl" with "HL") as "HL".
-    iApply ("Hf" with "CTX [HE] HL").
+    iPoseProof ("HLcl" with "HL") as "HL". simpl.
+    iSpecialize ("Hf" with "CTX [HE] HL Hfr").
     { by iApply "HEincl". }
-    iIntros (L' v) "HL Hlocs Hpost".
-    iApply ("Hrt" with "HL Hlocs").
+    simpl. iApply "Hf".
+    iIntros (L' v locals) "HL Hfr Hlocals Hlocs Hpost". simpl.
+    iApply ("Hrt" with "HL Hfr Hlocals Hlocs").
     iIntros (????) "_ HE HL".
     iPoseProof ("HEincl" with "HE") as "HE".
     iMod ("Hpost" with "[//] [//] [//] CTX HE HL") as "(%L2 & %κs2 & %R & Hs & HL & Hintro)".
@@ -776,9 +755,9 @@ Section function_subsume.
     by iExists _, _.
   Qed.
   (* NOTE: Don't use the instance generation, as it will instantiate the equalities with [eq_refl]. *)
-  Global Instance subsume_typed_function_inst π fn local_sts {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
-    Subsume (typed_function π fn local_sts (eqp1, F1)) (typed_function π fn local_sts (eqp2, F2)) | 10 :=
-    λ T, i2p (subsume_typed_function π fn local_sts eqp1 eqp2 F1 F2 T).
+  Global Instance subsume_typed_function_inst π fn {lfts : nat} {rts : list RT} (eqp1 eqp2 : eq rts rts) (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) :
+    Subsume (typed_function π fn (eqp1, F1)) (typed_function π fn (eqp2, F2)) | 10 :=
+    λ T, i2p (subsume_typed_function π fn eqp1 eqp2 F1 F2 T).
 
   (* This weaker notion operates on the [function_ptr] indirection *)
   Lemma subsume_function_ptr π v l1 l2 sts1 sts2 {lfts : nat} {rts : list RT} eqp1 eqp2 (F1 : spec_with lfts rts fn_spec) (F2 : spec_with lfts rts fn_spec) T :
@@ -813,16 +792,18 @@ Section function_subsume.
     iIntros "Hv". iFrame.
     iDestruct "Ha" as "(-> & Ha)".
     iEval (rewrite /ty_own_val/=) in "Hv".
-    iDestruct "Hv" as "(_ & %fn & %local_sts & -> & Hen & %Halg1 & %Halg2 & #Htf)".
+    iDestruct "Hv" as "(_ & %fn & -> & Hen & %Halg1 & #Htf)".
     iEval (rewrite /ty_own_val/=).
     iR.
-    iExists fn, local_sts. iR. iFrame.
-    iR. iR.
-    iNext.
-    iPoseProof (subsume_typed_function with "[Ha] Htf") as "(Hb & _)".
-    { iSplit; first iModIntro; first done. done. }
-    iApply "Hb".
-  Qed.
+    iExists fn. iR. iFrame.
+    iR. iNext.
+    iPoseProof (subsume_typed_function _ _ _ _ _ (F2) with "[Ha] Htf") as "(Hb & _)".
+    { iSplit; first iModIntro.
+      (* TODO: somehow fails  to unify... *)
+      (*{ done. }*)
+    (*iApply "Hb".*)
+  (*Qed.*)
+  Abort.
   (*Definition subsume_function_ptr_inst := [instance subsume_function_ptr].*)
   (*Global Existing Instance subsume_function_ptr_inst  | 10.*)
   (* TODO: maybe also make this a subsume_full instance *)
@@ -831,9 +812,9 @@ Section function_subsume.
 
   (* A pure version that we can shelve as a pure sidecondition. *)
   Definition function_subtype `{!typeGS Σ} {lfts : nat} {rts : list RT} (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) : Prop :=
-    ⊢ ∀ π fn local_sts eqp1 eqp2 κs tys,
-    subsume (typed_function π fn local_sts (eqp1, spec! ( *[]) : 0 | ( *[]) : [], a κs tys))
-      (typed_function π fn local_sts (eqp2, spec! ( *[]) : 0 | ( *[]) : [], b κs tys)) (True).
+    ⊢ ∀ π fn eqp1 eqp2 κs tys,
+    subsume (typed_function π fn (eqp1, spec! ( *[]) : 0 | ( *[]) : [], a κs tys))
+      (typed_function π fn (eqp2, spec! ( *[]) : 0 | ( *[]) : [], b κs tys)) (True).
 
   (** Central lemma: we can lift all generics out *)
   Lemma function_subtype_lift_generics_1 {lfts : nat} {rts : list RT} (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) :
@@ -841,8 +822,8 @@ Section function_subsume.
     function_subtype S1 S2.
   Proof.
     intros Hsub.
-    iIntros (π fn local_sts eqp1 eqp2 κs tys) "Hf".
-    iPoseProof (Hsub κs tys $! _ _ _ eqp1 eqp2 -[] -[] with "[Hf]") as "(Ha & _)".
+    iIntros (π fn eqp1 eqp2 κs tys) "Hf".
+    iPoseProof (Hsub κs tys $! _ _ eqp1 eqp2 -[] -[] with "[Hf]") as "(Ha & _)".
     { rewrite /typed_function. iIntros ([] []). iApply "Hf". }
     iL. simpl. done.
   Qed.
@@ -851,7 +832,7 @@ Section function_subsume.
     (∀ κs tys, function_subtype (spec! ( *[]) : 0 | ( *[]) : [], S1 κs tys) (spec! ( *[]) : 0 | ( *[]) : [], S2 κs tys)).
   Proof.
     iIntros (Hsub κs tys).
-    iIntros (π fn local_sts eqp1 eqp2 [] []) "Hf".
+    iIntros (π fn eqp1 eqp2 [] []) "Hf".
     iApply Hsub. done.
   Qed.
   Lemma function_subtype_lift_generics {lfts : nat} {rts : list RT} (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) :
@@ -867,17 +848,17 @@ Section function_subsume.
     function_subtype (lfts:=0) (rts:=[]) (λ '*[] '*[], fn_spec_add_late_pre S1 P) (λ '*[] '*[], fn_spec_add_late_pre S2 P).
   Proof.
     intros Hsub.
-    iIntros (π fn sts Heq1 Heq2 [] []).
-    iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
+    iIntros (π fn Heq1 Heq2 [] []).
+    iPoseProof (Hsub $! π fn Heq1 Heq2 *[] *[]) as "Hsub".
     iIntros "#HT". iSplitL; last done.
     iEval (unfold typed_function).
-    iIntros ([] [] x ϝ); simpl.
-    iModIntro. iIntros (????) "(Hs & Hna & Ha & Hl & [Hsc #HP] & Hpre)".
+    iIntros ([] [] x ϝ f); simpl.
+    iModIntro. iIntros (??) "(Hc & Hna & Hlocals & Ha & Hl & [Hsc #HP] & Hpre)".
     iDestruct ("Hsub" with "[]") as "(Hsub' & _)".
     { clear. iEval (rewrite /typed_function).
-      iIntros ([] []). simpl. iIntros (x ϝ).
-      iModIntro. iIntros (?? ??).
-      iIntros "(? & ? & ? & ? & ? & ?)".
+      iIntros ([] []). simpl. iIntros (x ϝ f).
+      iModIntro. iIntros (??).
+      iIntros "(? & ? & ? & ? & ? & ? & ?)".
       iEval (rewrite /typed_function) in "HT".
       iApply ("HT" $! *[] *[] x ϝ); [done.. | ].
       iFrame "∗ #". }
@@ -897,17 +878,17 @@ Section function_subsume.
       (λ '*[] '*[], fn_spec_add_linking_condition S1 P E) (λ '*[] '*[], fn_spec_add_linking_condition S2 P E).
   Proof.
     intros Hsub.
-    iIntros (π fn sts Heq1 Heq2 [] []).
-    iPoseProof (Hsub $! π fn sts Heq1 Heq2 *[] *[]) as "Hsub".
+    iIntros (π fn Heq1 Heq2 [] []).
+    iPoseProof (Hsub $! π fn Heq1 Heq2 *[] *[]) as "Hsub".
     iIntros "#HT". iSplitL; last done.
     iEval (unfold typed_function).
-    iIntros ([] [] x ϝ); simpl.
-    iModIntro. iIntros (????) "(Hs & Hna & Ha & Hl & [Hsc #HP] & Hpre)".
+    iIntros ([] [] x ϝ f); simpl.
+    iModIntro. iIntros (??) "(Hs & Hna & Hlocals & Ha & Hl & [Hsc #HP] & Hpre)".
     iDestruct ("Hsub" with "[]") as "(Hsub' & _)".
     { clear. iEval (rewrite /typed_function).
-      iIntros ([] []). simpl. iIntros (x ϝ).
-      iModIntro. iIntros (?? ??).
-      iIntros "(? & ? & ? & ? & ? & ?)".
+      iIntros ([] []). simpl. iIntros (x ϝ f).
+      iModIntro. iIntros (??).
+      iIntros "(? & ? & ? & ? & ? & ? & ?)".
       iEval (rewrite /typed_function) in "HT".
       simpl.
 
@@ -998,14 +979,14 @@ Section function_subsume.
   Proof.
     iIntros (Hincl) "Ha".
     rewrite /ty_own_val/=.
-    iDestruct "Ha" as "(-> & %fn & %local_sts & -> & Hfn & %Ha & %Hb & Hf)".
+    iDestruct "Ha" as "(-> & %fn & -> & Hfn & %Ha & Hf)".
     iR.
-    iExists fn, local_sts. iFrame.
-    iR. iR. iR.
+    iExists fn. iFrame.
+    iR. iR.
     iNext.
     rewrite {2}/typed_function.
     iIntros (κs tys).
-    iPoseProof (Hincl $! _ _ _ _ _ κs tys with "[Hf]") as "(Hb & _)".
+    iPoseProof (Hincl $! _ _ _ _ κs tys with "[Hf]") as "(Hb & _)".
     { rewrite /typed_function. iIntros ([] []). iApply "Hf". }
     rewrite /typed_function.
     iApply ("Hb" $! -[] -[]).
@@ -1016,7 +997,7 @@ Section function_subsume.
     Reflexive (function_subtype (lfts:=lfts) (rts:=rts)).
   Proof.
     intros S1.
-    iIntros (π fn local_sts eqp1 eqp2 κs tys).
+    iIntros (π fn eqp1 eqp2 κs tys).
     rewrite (UIP_refl _ _ eqp1).
     rewrite (UIP_refl _ _ eqp2).
     iIntros "Ha". iFrame.
@@ -1027,7 +1008,7 @@ Section function_subsume.
     intros S1 S2 S3.
     rewrite /function_subtype.
     intros Hs1 Hs2.
-    iIntros (π fn local_sts ? ? κs tys).
+    iIntros (π fn ? ? κs tys).
     iIntros "Ha".
     iPoseProof (Hs1 with "Ha") as "(Hb & _)".
     by iApply Hs2.
@@ -1037,9 +1018,9 @@ Section function_subsume.
   Class FunctionSubtype {lfts : nat} {rts : list RT} (a : spec_with lfts rts fn_spec) (b : spec_with lfts rts fn_spec) : Prop := make_function_subtype : function_subtype a b.
 
   (** Alternative lemma for calling function pointers that simplifies first *)
-  Lemma type_call_fnptr_simplify π E L κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} T :
-    typed_call π E L κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args T
-    ⊢ typed_call π E L κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args T.
+  Lemma type_call_fnptr_simplify E L π f κs etys v l sta {lfts : nat} {rts : list RT} eqp (S1 : spec_with lfts rts fn_spec) (S2 : spec_with lfts rts fn_spec) vs args m {SH : FunctionSubtype S1 S2} T :
+    typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S2)) vs args T
+    ⊢ typed_call E L f κs etys v (v ◁ᵥ{π, m} l @ function_ptr sta (eqp, S1)) vs args T.
   Proof.
     iIntros "Ha". rewrite /typed_call.
     iIntros "Hs".

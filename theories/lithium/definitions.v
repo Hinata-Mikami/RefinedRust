@@ -15,7 +15,7 @@ Arguments i2p_P {_ _} _.
 Arguments i2p_proof {_ _} _.
 
 (** * Checking if a hyp in the context
-  The implementation can be found in interpreter.v *)
+  The implementation can be found in proof_state.v *)
 Class CheckOwnInContext {Σ} (P : iProp Σ) : Prop := { check_own_in_context : True }.
 
 (** * [find_in_context] *)
@@ -136,3 +136,7 @@ Global Typeclasses Opaque accu.
 
 (** * trace *)
 Definition li_trace {Σ A} (t : A) (T : iProp Σ) : iProp Σ := T.
+
+(** * clear *)
+Definition li_clear {Σ A} (t : A) (T : iProp Σ) : iProp Σ := T.
+

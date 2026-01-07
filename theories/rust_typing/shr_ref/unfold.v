@@ -203,9 +203,9 @@ End ltype_agree.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_ofty_shr {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P T :
-    typed_place π E L l (ShrLtype (◁ ty) κ) r bmin0 b P T
-    ⊢ typed_place π E L l (◁ (shr_ref κ ty)) r bmin0 b P T.
+  Lemma typed_place_ofty_shr {rt} E L f l (ty : type rt) κ (r : place_rfn (place_rfn rt)) bmin0 b P T :
+    typed_place E L f l (ShrLtype (◁ ty) κ) r bmin0 b P T
+    ⊢ typed_place E L f l (◁ (shr_ref κ ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
     iIntros (?) "HL CTX HE".

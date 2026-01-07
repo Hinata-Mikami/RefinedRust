@@ -20,6 +20,7 @@ use log::{info, trace};
 use radium::{code, coq, lang, specs};
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::{mir, ty};
+use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use typed_arena::Arena;
 
 use crate::base::*;
@@ -89,8 +90,8 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     /// map of loop heads to their optional spec closure defid
     loop_specs: BTreeMap<mir::BasicBlock, Option<DefId>>,
 
-    /// relevant locals: (local, name, type)
-    fn_locals: Vec<(mir::Local, code::LocalKind, String, specs::Type<'def>)>,
+    /// relevant locals: (local, kind, name, type, always live)
+    fn_locals: Vec<(mir::Local, code::LocalKind, String, specs::Type<'def>, bool)>,
 
     /// the Caesium function buildder
     translated_fn: code::FunctionBuilder<'def>,
@@ -129,6 +130,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
+        let always_live = always_storage_live_locals(proc.get_mir());
         // go over local_decls and create the right radium stack layout
         for (local, local_decl) in local_decls.iter_enumerated() {
             let kind = body.local_kind(local);
@@ -153,17 +155,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             let local_kind = Self::get_local_kind(body, local);
 
-            fn_locals.push((local, local_kind, name.clone(), tr_ty));
+            fn_locals.push((local, local_kind, name.clone(), tr_ty, always_live.contains(local)));
 
             match kind {
                 mir::LocalKind::Arg => {
                     translated_fn.code.add_argument(&name, st);
                     arg_tys.push(ty);
                 },
-                mir::LocalKind::Temp => translated_fn.code.add_local(&name, st),
+                mir::LocalKind::Temp => (),
                 mir::LocalKind::ReturnPointer => {
                     return_synty = st.clone();
-                    translated_fn.code.add_local(&name, st);
                     opt_return_name = Ok(name);
                 },
             }
@@ -262,6 +263,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }],
                 Box::new(translated_bb),
             );
+
+            // allocate always live locals
+            let mut prim_stmts = Vec::new();
+            for (_, kind, name, ty, live) in &self.fn_locals {
+                if *kind == code::LocalKind::Arg || !live {
+                    continue;
+                }
+                let translated_st: lang::SynType = ty.into();
+                let var = code::Variable::new(name.to_owned(), translated_st);
+                prim_stmts.push(code::PrimStmt::LocalLive(var));
+            }
+
+            translated_bb = code::Stmt::Prim(prim_stmts, Box::new(translated_bb));
 
             self.translated_fn.code.add_basic_block(initial_bb_idx.as_usize(), translated_bb);
         } else {

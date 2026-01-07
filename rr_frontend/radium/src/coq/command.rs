@@ -156,6 +156,7 @@ pub enum Command {
     /// The [`Next Obligation`] command.
     ///
     /// [`Next Obligation`]: https://rocq-prover.org/doc/v8.20/refman/addendum/program.html?highlight=next%20obligation#coq:cmd.Next-Obligation
+    #[display("{}", _0)]
     NextObligation(ObligationProof),
 
     /// The [`Section`] command.

@@ -63,7 +63,7 @@ Section shr_ref.
     done.
   Qed.
   Next Obligation.
-    iIntros (? κ ? E κ' l ly π r m q ?) "#[LFT TIME] Htok %Halg %Hly _ Hb".
+    iIntros (? κ ? E κ' l ly π r m q ?) "#[LFT TIME] #Hna Htok %Halg %Hly _ Hb".
     simpl. rewrite -{1}lft_tok_sep -{1}lft_tok_sep.
     iDestruct "Htok" as "(Htok_κ' & Htok_κ & Htok)".
     iApply fupd_logical_step.

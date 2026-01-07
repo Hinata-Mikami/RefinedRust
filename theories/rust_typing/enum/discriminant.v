@@ -85,23 +85,23 @@ Section discriminant.
     TypedDiscriminantEnd π E L l (◁ enum_t en)%I (#r) b2 els :=
     λ T, i2p (typed_discriminant_end_enum π E L l en r b2 els T).
 
-  Lemma type_discriminant E L e els T' (T : typed_val_expr_cont_t) :
-    IntoPlaceCtx E e T' →
+  Lemma type_discriminant E L f e els T' (T : typed_val_expr_cont_t) :
+    IntoPlaceCtx E f e T' →
     (** Decompose the expression *)
     T' L (λ L' K l,
       (** Find the type assignment *)
       find_in_context (FindLoc l) (λ '(existT rto (lt1, r1, b, π)),
       (** Check the place access *)
-      typed_place π E L' l lt1 r1 UpdStrong b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) bmin rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto _ _),
+      typed_place E L' f l lt1 r1 UpdStrong b K (λ (L1 : llctx) (κs : list lft) (l2 : loc) (b2 : bor_kind) bmin rti (lt2 : ltype rti) (ri2 : place_rfn rti) (updcx : place_update_ctx rti rto _ _),
         (** Stratify *)
         stratify_ltype_unblock π E L1 StratRefoldOpened l2 lt2 ri2 b2 (λ L2 R rt3 lt3 ri3,
         (** Certify that this stratification is allowed, or otherwise commit to a strong update *)
         prove_place_cond E L2 bmin lt2 lt3 (λ upd,
         (** Finish reading *)
         typed_discriminant_end π E L2 l2 lt3 ri3 b2 els (λ L3 v rt3 ty3 r3,
-        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 π v MetaNone _ (ty3) r3))
+        typed_place_finish π E L3 updcx upd (llft_elt_toks κs) l b lt3 ri3 (λ L4, T L4 v MetaNone _ (ty3) r3))
       )))))%I
-    ⊢ typed_val_expr E L (EnumDiscriminant els e)%E T.
+    ⊢ typed_val_expr E L f (EnumDiscriminant els e)%E T.
   Proof.
     (*iIntros "[% Hread]" (Φ) "#(LFT & TIME & LLCTX) #HE HL HΦ".*)
     (*wp_bind.*)
@@ -161,14 +161,14 @@ End subtype.
 Section ops.
   Context `{!typeGS Σ}.
 
-  Lemma type_relop_discr_discr E L {rt} (en : enum rt) it v1 v2 (x1 x2 : rt) op π (T : typed_val_expr_cont_t) :
-    (∀ tag1 tag2,
+  Lemma type_relop_discr_discr E L f {rt} (en : enum rt) it v1 v2 (x1 x2 : rt) op π (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ ∀ tag1 tag2,
     ⌜en.(enum_tag) x1 = Some tag1⌝ -∗
     ⌜en.(enum_tag) x2 = Some tag2⌝ -∗
-    typed_bin_op E L v1 (v1 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag1) @ int en.(enum_els).(els_tag_it))%I v2 (v2 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag2) @ int en.(enum_els).(els_tag_it)) op (IntOp it) (IntOp it) T) ⊢
-    typed_bin_op E L v1 (v1 ◁ᵥ{π, MetaNone} x1 @ enum_discriminant_t en) v2 (v2 ◁ᵥ{π, MetaNone} x2 @ enum_discriminant_t en) op (IntOp it) (IntOp it) T.
+    typed_bin_op E L f v1 (v1 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag1) @ int en.(enum_els).(els_tag_it))%I v2 (v2 ◁ᵥ{π, MetaNone} (els_lookup_tag en.(enum_els) tag2) @ int en.(enum_els).(els_tag_it)) op (IntOp it) (IntOp it) T) ⊢
+    typed_bin_op E L f v1 (v1 ◁ᵥ{π, MetaNone} x1 @ enum_discriminant_t en) v2 (v2 ◁ᵥ{π, MetaNone} x2 @ enum_discriminant_t en) op (IntOp it) (IntOp it) T.
   Proof.
-    iIntros "HT".
+    iIntros "(-> & HT)".
     rewrite /ty_own_val/=.
     iIntros "(_ & %tag1 & % & Hv1) (_ & %tag2 & % & Hv2)".
     iApply ("HT" with "[//] [//] [$Hv1] [$Hv2]").
@@ -187,7 +187,7 @@ Section switch.
   | DestructHintSwitchEnumKnown {rt} (r : rt) (n : string)
   .
 
-  Lemma type_switch_enum π E L {rt} (en : enum rt) r (it : int_type) m ss def fn R ϝ v:
+  Lemma type_switch_enum E L f {rt} (en : enum rt) r (it : int_type) m ss def fn R ϝ v:
     ⌜it = en.(enum_els).(els_tag_it)⌝ ∗
     case_destruct r (λ c b,
       ∃ tag, ⌜enum_tag en c = Some tag⌝ ∗
@@ -196,11 +196,11 @@ Section switch.
         li_tactic (compute_map_lookup_goal m (default 0%Z idx) false) (λ o,
         match o with
         | Some mi =>
-           ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L s fn R ϝ
+           ∃ s, ⌜ss !! mi = Some s⌝ ∗ typed_stmt E L f s fn R ϝ
         | None =>
-          typed_stmt E L def fn R ϝ
+          typed_stmt E L f def fn R ϝ
         end))))
-    ⊢ typed_switch π E L v _ (enum_discriminant_t en) r it m ss def fn R ϝ.
+    ⊢ typed_switch E L f v _ (enum_discriminant_t en) r it m ss def fn R ϝ.
   Proof.
     unfold li_trace.
     iIntros "HT Hit". rewrite /ty_own_val/=.
@@ -212,7 +212,7 @@ Section switch.
     iExists _. iR.
     unfold els_lookup_tag. done.
   Qed.
-  Global Instance type_switch_enum_inst π E L {rt} (en : enum rt) r v it : TypedSwitch π E L v _ (enum_discriminant_t en) r it :=
-    λ m ss def fn R ϝ, i2p (type_switch_enum π E L en r it m ss def fn R ϝ v).
+  Global Instance type_switch_enum_inst E L f {rt} (en : enum rt) r v it : TypedSwitch E L f v _ (enum_discriminant_t en) r it :=
+    λ m ss def fn R ϝ, i2p (type_switch_enum E L f en r it m ss def fn R ϝ v).
 
 End switch.

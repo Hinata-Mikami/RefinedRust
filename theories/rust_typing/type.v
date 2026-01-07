@@ -1,5 +1,6 @@
 From iris.bi Require Export fractional.
-From iris.base_logic.lib Require Export invariants na_invariants.
+From iris.base_logic.lib Require Export invariants.
+From iris.base_logic Require Import ghost_map na_invariants.
 From caesium Require Export proofmode notation syntypes.
 From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Export base util hlist pinned_borrows lft_contexts gvar_refinement memcasts.
@@ -14,19 +15,171 @@ From refinedrust Require Import options.
 Class typeGS Σ := TypeG {
   type_heapG :: refinedcG Σ;
   type_lftGS :: lftGS Σ lft_userE;
+  type_na_mapG :: ghost_mapG Σ thread_id na_inv_pool_name;
+  type_na_map_name : gname;
   type_na_invG :: na_invG Σ;
   type_frac_borrowG :: frac_borG Σ;
   type_lctxGS :: lctxGS Σ;
   type_ghost_var :: ghost_varG Σ RT;
   type_pinnedBorG :: pinnedBorG Σ;
-  (* we also fix a global layout algorithm here *)
-  ALG :: LayoutAlg;
 }.
 #[export] Hint Mode typeGS - : typeclass_instances.
 
 Definition rrust_ctx `{typeGS Σ} : iProp Σ := lft_ctx ∗ llctx_ctx.
 
-Definition thread_id := na_inv_pool_name.
+(** A thin wrapper around non-atomic invariants, using RefinedRust's thread ids as identifiers. *)
+Section non_atomic.
+  Context `{!typeGS Σ}.
+
+  (* NOTE: auth element is allocated in adequacy and inaccessible afterwards. *)
+  Definition na_own_def (π : thread_id) (E : coPset) :=
+    (∃ γ, ghost_map_elem type_na_map_name π DfracDiscarded γ ∗ na_own γ E)%I.
+  Definition na_own_aux π E : seal (na_own_def π E). Proof. by eexists. Qed.
+  Definition na_own π E := (na_own_aux π E).(unseal).
+  Definition na_own_unfold π E : na_own π E = na_own_def π E := (na_own_aux π E).(seal_eq).
+
+  Definition na_inv_def (π : thread_id) (N : namespace) (P : iProp Σ) : iProp Σ :=
+    (∃ γ, ghost_map_elem type_na_map_name π DfracDiscarded γ ∗ na_inv γ N P)%I.
+  Definition na_inv_aux π N : seal (na_inv_def π N). Proof. by eexists. Qed.
+  Definition na_inv π N := (na_inv_aux π N).(unseal).
+  Definition na_inv_unfold π N : na_inv π N = na_inv_def π N := (na_inv_aux π N).(seal_eq).
+
+  Global Instance na_own_timeless π E : Timeless (na_own π E).
+  Proof. rewrite na_own_unfold. apply _. Qed.
+  Global Instance na_own_empty_persistent π : Persistent (na_own π ∅).
+  Proof. rewrite na_own_unfold. apply _. Qed.
+
+  Global Instance na_inv_contractive p N : Contractive (na_inv p N).
+  Proof. rewrite na_inv_unfold. solve_contractive. Qed.
+  Global Instance na_inv_ne p N : NonExpansive (na_inv p N).
+  Proof. rewrite na_inv_unfold. solve_proper. Qed.
+  Global Instance na_inv_proper p N : Proper ((≡) ==> (≡)) (na_inv p N).
+  Proof. apply (ne_proper _). Qed.
+
+  Global Instance na_inv_persistent p N P : Persistent (na_inv p N P).
+  Proof. rewrite na_inv_unfold; apply _. Qed.
+
+  Lemma na_inv_iff p N P Q : na_inv p N P -∗ ▷ □ (P ↔ Q) -∗ na_inv p N Q.
+  Proof.
+    rewrite !na_inv_unfold.
+    iIntros "(%γ & Hg & Hna) HPQ".
+    iExists γ. iFrame. iApply (na_inv_iff with "Hna HPQ").
+  Qed.
+
+  (*Lemma na_alloc : ⊢ |==> ∃ p, na_own p ⊤.*)
+  (*Proof. by apply own_alloc. Qed.*)
+
+  Lemma na_own_disjoint π E1 E2 :
+    na_own π E1 -∗ na_own π E2 -∗ ⌜E1 ## E2⌝.
+  Proof.
+    rewrite !na_own_unfold.
+    iIntros "(%γ1 & Hg & Hna) (%γ2 & Hg2 & Hna2)".
+    iPoseProof (ghost_map_elem_agree with "Hg Hg2") as "<-".
+    iApply (na_own_disjoint with "Hna Hna2").
+  Qed.
+
+  Lemma na_own_union π E1 E2 :
+    E1 ## E2 → na_own π (E1 ∪ E2) ⊣⊢ na_own π E1 ∗ na_own π E2.
+  Proof.
+    intros. rewrite !na_own_unfold. iSplit.
+    - iIntros "(%γ & #Hg & Hna)". iFrame "#". by iApply na_own_union.
+    - iIntros "[(%γ1 & Hg & Hna) (%γ2 & Hg2 & Hna2)]".
+      iPoseProof (ghost_map_elem_agree with "Hg Hg2") as "<-".
+      iExists γ1. iFrame. iApply na_own_union; first done.
+      iFrame.
+  Qed.
+
+  Lemma na_own_acc E2 E1 π :
+    E2 ⊆ E1 → na_own π E1 -∗ na_own π E2 ∗ (na_own π E2 -∗ na_own π E1).
+  Proof.
+    rewrite !na_own_unfold.
+    iIntros (Hf) "(%γ & #Hg & Hna)".
+    iPoseProof (na_own_acc with "Hna") as "(Hna & Hcl)"; first apply Hf.
+    iFrame "#∗".
+    iIntros "(%γ' & Hg' & Hna)".
+    iPoseProof (ghost_map_elem_agree with "Hg Hg'") as "<-".
+    iFrame. by iApply "Hcl".
+  Qed.
+
+  (* TODO Note: for compatibility with na_borrow, let's add na_own π ∅ to [ty_share].
+     In existentials_na interpretation put the same mapping here (let's not go through the trouble of creating an abstraction for na_bor as well).
+     Alternative: Redo the na_borrow definition on top of this interface here.
+
+   *)
+  Lemma na_inv_alloc π E N P :
+    na_own π ∅ -∗
+    ▷ P ={E}=∗
+    na_inv π N P.
+  Proof.
+    iIntros "Hown HP".
+    rewrite na_inv_unfold na_own_unfold.
+    iDestruct "Hown" as "(%γ & Hg & Hown)".
+    iMod (na_inv_alloc with "HP") as "Ha".
+    by iFrame.
+  Qed.
+
+  Lemma na_inv_acc p E F N P :
+    ↑N ⊆ E → ↑N ⊆ F →
+    na_inv p N P -∗ na_own p F ={E}=∗ ▷ P ∗ na_own p (F∖↑N) ∗
+                       (▷ P ∗ na_own p (F∖↑N) ={E}=∗ na_own p F).
+  Proof.
+    rewrite na_inv_unfold !na_own_unfold.
+    iIntros (??) "(%γ1 & #Hg1 & Hna) (%γ2 & Hg2 & Hown)".
+    iPoseProof (ghost_map_elem_agree with "Hg1 Hg2") as "<-".
+    iMod (na_inv_acc with "Hna Hown") as "($ & Hna & Hcl)"; [done.. | ].
+    iModIntro.
+    iFrame. iIntros "(Hp & (%γ3 & Hg3 & Hown))".
+    iPoseProof (ghost_map_elem_agree with "Hg1 Hg3") as "<-".
+    iMod ("Hcl" with "[$]") as "Hna".
+    by iFrame.
+  Qed.
+
+  (* Note: we don't get this *)
+  Lemma na_own_empty π :
+    ⊢ |==> na_own π ∅.
+  Proof.
+  Abort.
+  (* But we can get this (note that [na_own π ∅] is persistent) *)
+  Lemma na_own_empty π E :
+    ⊢ na_own π E -∗ na_own π ∅.
+  Proof.
+    iIntros "Ha".
+    iPoseProof (na_own_acc ∅ with "Ha") as "(#Hna' & Hcl)"; first set_solver.
+    done.
+  Qed.
+
+  Lemma na_own_split π E E' :
+    E' ⊆ E →
+    na_own π E -∗ na_own π E' ∗ na_own π (E ∖ E').
+  Proof.
+    iIntros (?) "Hna".
+    rewrite comm.
+
+    iApply na_own_union.
+    { set_solver. }
+
+    replace E with ((E ∖ E') ∪ E') at 1; first done.
+
+    set_unfold.
+    split; first intuition.
+    destruct (decide (x ∈ E')); intuition.
+  Qed.
+
+  Global Instance into_inv_na p N P : IntoInv (na_inv p N P) N := {}.
+
+  Global Instance into_acc_na p F E N P :
+    IntoAcc (X:=unit) (na_inv p N P)
+            (↑N ⊆ E ∧ ↑N ⊆ F) (na_own p F) (fupd E E) (fupd E E)
+            (λ _, ▷ P ∗ na_own p (F∖↑N))%I (λ _, ▷ P ∗ na_own p (F∖↑N))%I
+              (λ _, Some (na_own p F))%I.
+  Proof.
+    rewrite /IntoAcc /accessor. iIntros ((?&?)) "#Hinv Hown".
+    iExists tt.
+    rewrite -assoc /=.
+    iApply (na_inv_acc with "Hinv"); done.
+  Qed.
+End non_atomic.
+
 
 (* The number of credits we deposit in the interpretation of Box/&mut for accessing them at a logical_step. *)
 Definition num_cred := 5%nat.
@@ -140,6 +293,7 @@ Record type `{!typeGS Σ} (rt : RT) := {
   ty_share E κ l ly π r m q:
     lftE ⊆ E →
     rrust_ctx -∗
+    na_own π ∅ -∗
     (* We get a token not only for κ, but for all that we might need to recursively use to initiate sharing *)
     let κ' := lft_intersect_list (_ty_lfts) in
     q.[κ ⊓ κ'] -∗
@@ -447,7 +601,7 @@ Next Obligation.
   eauto.
 Qed.
 Next Obligation.
-  iIntros (??? st E κ l ly π r m ? ?) "#(LFT & TIME) Hκ Hst Hly Hlb Hmt".
+  iIntros (??? st E κ l ly π r m ? ?) "#(LFT & TIME) Hna Hκ Hst Hly Hlb Hmt".
   simpl. rewrite right_id.
   iApply fupd_logical_step.
   iMod (bor_exists with "LFT Hmt") as (vl) "Hmt"; first solve_ndisj.
@@ -2002,6 +2156,7 @@ Fixpoint shr_locsE (l : loc) (n : nat) : coPset :=
   | S n => ↑shrN.@l ∪ shr_locsE (l +ₗ 1%nat) n
   end.
 
+(* TODO: add na_own here. *)
 Class Copyable `{!typeGS Σ} {rt} (ty : type rt) := {
   copy_own_persistent π r m v : Persistent (ty.(ty_own_val) π r m v);
   (* sharing predicates of copyable types should actually allow us to get a Copy out from below the reference *)
@@ -2099,12 +2254,24 @@ Section copy.
     rewrite -Nat.add_1_l [(_ + _)%nat]comm_L shr_locsE_shift. set_solver+.
   Qed.
 
-  (*Lemma shr_locsE_split_tok l n m tid :*)
-    (*na_own tid (shr_locsE l (n + m)) ⊣⊢*)
-      (*na_own tid (shr_locsE l n) ∗ na_own tid (shr_locsE (l +ₗ n) m).*)
-  (*Proof.*)
-    (*rewrite shr_locsE_shift na_own_union //. apply shr_locsE_disj.*)
-  (*Qed.*)
+  Lemma shr_locsE_disj l n m :
+    shr_locsE l n ## shr_locsE (l +ₗ n) m.
+  Proof.
+    revert l; induction n as [|n IHn]; intros l.
+    - simpl. set_solver+.
+    - rewrite -Nat.add_1_l Nat2Z.inj_add /=.
+      apply disjoint_union_l. split; last (rewrite -shift_loc_assoc; exact: IHn).
+      clear IHn. revert n; induction m as [|m IHm]; intros n; simpl; first set_solver+.
+      rewrite shift_loc_assoc. apply disjoint_union_r. split.
+      + apply ndot_ne_disjoint. destruct l. intros [=]. lia.
+      + rewrite -Z.add_assoc. move:(IHm (n + 1)%nat). rewrite Nat2Z.inj_add //.
+  Qed.
+  Lemma shr_locsE_split_tok `{!typeGS Σ} l n m tid :
+    na_own tid (shr_locsE l (n + m)) ⊣⊢
+      na_own tid (shr_locsE l n) ∗ na_own tid (shr_locsE (l +ₗ n) m).
+  Proof.
+    rewrite shr_locsE_shift na_own_union //. apply shr_locsE_disj.
+  Qed.
 
   #[export] Program Instance simple_type_copyable `{typeGS Σ} {rt} (st : simple_type rt) : Copyable st.
   Next Obligation.

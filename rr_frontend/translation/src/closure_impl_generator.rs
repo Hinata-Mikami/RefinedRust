@@ -106,10 +106,6 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         builder.code.add_argument("self", self_var_st.clone());
         builder.code.add_argument("args", args_st.clone());
 
-        // add locals
-        builder.code.add_local("__0", output_st.clone());
-        builder.code.add_local("__1", self_call_st.clone());
-
         // compute instantiation hint for the function we're calling
         let mut lft_hints = vec![];
         for lft in info.scope.get_lfts() {
@@ -128,6 +124,11 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
 
         // add basic blocks
         let mut statements = Vec::new();
+
+        // add locals
+        statements.push(code::PrimStmt::LocalLive(code::Variable::new("__0".to_owned(), output_st.clone())));
+        statements
+            .push(code::PrimStmt::LocalLive(code::Variable::new("__1".to_owned(), self_call_st.clone())));
 
         // initialize the self argument
         let ref_lft = "_mk_ref_lft";

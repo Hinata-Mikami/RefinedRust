@@ -39,7 +39,6 @@ Inductive expr :=
 | LocInfoE (a : location_info) (e : expr)
 | StructInit (sls : struct_layout_spec) (fs : list (string * expr))
 | EnumInit (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr)
-| MacroE (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m)
 | Borrow (m : mutability) (κn : string) (ty : option rust_type) (e : expr)
 | Box (st : syn_type)
 (* for opaque expressions*)
@@ -79,13 +78,12 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (a : location_info) (e : expr), P e → P (LocInfoE a e)) →
   (∀ (ly : struct_layout_spec) (fs : list (string * expr)), Forall P fs.*2 → P (StructInit ly fs)) →
   (∀ (els : enum_layout_spec) (variant : var_name) (ty : rust_enum_def) (e : expr), P e → P (EnumInit els variant ty e)) →
-  (∀ (m : list lang.expr → lang.expr) (es : list expr) (well_founded : MacroWfSubst m), Forall P es → P (MacroE m es well_founded)) →
   (∀ (m : mutability) (ty : option rust_type) (κn : string) (e : expr), P e → P (Borrow m κn ty e)) →
   (∀ (st : syn_type), P (Box st)) →
   (∀ (e : lang.expr), P (Expr e)) → ∀ (e : expr), P e.
 Proof.
   move => *. generalize dependent P => P. match goal with | e : expr |- _ => revert e end.
-  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ????????????????? Hstruct Henum Hmacro Hbor ??.
+  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ????????????????? Hstruct Henum Hbor ??.
   11: {
     apply Hcall; [ |apply Forall_true => ?]; by apply: FIX.
   }
@@ -94,9 +92,6 @@ Proof.
   }
   28: {
     apply Hstruct. apply Forall_fmap. apply Forall_true => ?. by apply: FIX.
-  }
-  29: {
-    apply Hmacro. apply Forall_true => ?. by apply: FIX.
   }
   all: auto.
 Qed.
@@ -134,7 +129,6 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | EnumData els variant e => notation.EnumData els variant (to_expr e)
   | OffsetOf s m => notation.OffsetOf s m
   | OffsetOfUnion ul m => notation.OffsetOfUnion ul m
-  | MacroE m es _ => notation.MacroE m (to_expr <$> es)
   | Borrow m κn ty e => notation.Ref m κn ty (to_expr e)
   | Box st => notation.Box st
   | Expr e => e
@@ -155,8 +149,6 @@ Ltac of_expr e :=
     let e := of_expr e in constr:(LValue e)
   | notation.AnnotExpr ?n ?a ?e =>
     let e := of_expr e in constr:(AnnotExpr n a e)
-  | notation.MacroE ?m ?es =>
-    let es := of_expr es in constr:(MacroE m es _)
   | notation.Ref ?m ?κn ?ty ?e =>
     let e := of_expr e in constr:(Borrow m κn ty e)
   | notation.LocInfo ?a ?e =>
@@ -346,7 +338,7 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
     if find_expr_fill f bind_val is Some (Ks, e') then
       Some (Ks ++ [CallLCtx eκs etys args], e') else
       (* TODO: handle arguments? *) None
-  | Concat _ | MacroE _ _ _ | OffsetOf _ _ | OffsetOfUnion _ _ | LogicalAnd _ _ _ _ _ | LogicalOr _ _ _ _ _ | Box _ => None
+  | Concat _ | OffsetOf _ _ | OffsetOfUnion _ _ | LogicalAnd _ _ _ _ _ | LogicalOr _ _ _ _ _ | Box _ => None
   | IfE ot e1 e2 e3 =>
     if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [IfECtx ot e2 e3], e') else Some ([], e)
@@ -393,12 +385,13 @@ Proof.
      rewrite ?fill_app /=; f_equal; eauto.
 Qed.
 
-Lemma ectx_item_correct `{!LayoutAlg} Ks:
-  ∃ Ks', ∀ e, to_rtexpr (to_expr (fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr (to_expr e)).
+Lemma ectx_item_correct `{!LayoutAlg} π Ks:
+  ∃ Ks', ∀ e, to_rtexpr π (to_expr (fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr π (to_expr e)).
 Proof.
   elim/rev_ind: Ks; [by exists []|].
   move => K Ks [Ks' IH].
-  eexists (Ks' ++ (ExprCtx <$> ?[K])) => ?. rewrite fill_app ectxi_language.fill_app /= -IH.
+
+  eexists (Ks' ++ ((λ a, ExprCtx a π) <$> ?[K])) => ?. rewrite fill_app ectxi_language.fill_app /= -IH.
   only [K]: (destruct K; [
     apply: [lang.UnOpCtx _ _]|
     apply: [lang.BinOpLCtx _ _ _ _]|
@@ -466,6 +459,8 @@ Inductive stmt :=
 | Assert (ot : op_type) (e : expr) (s : stmt)
 | AnnotStmt (n : nat) {A} (a : A) (s : stmt)
 | LocInfoS (a : location_info) (s : stmt)
+| LocalLive (x : var_name) (st : syn_type) (s : stmt)
+| LocalDead (x : var_name) (s : stmt)
 (* for opaque statements *)
 | Stmt (s : lang.stmt).
 End stmt.
@@ -484,6 +479,8 @@ Lemma stmt_ind (P : stmt → Prop):
   (∀ (ot : op_type) (e : expr) (s : stmt), P s → P (Assert ot e s)) →
   (∀ (n : nat) (A : Type) (a : A) (s : stmt), P s → P (AnnotStmt n a s)) →
   (∀ (a : location_info) (s : stmt), P s → P (LocInfoS a s)) →
+  (∀ (x : var_name) (st : syn_type) (s : stmt), P s → P (LocalLive x st s)) →
+  (∀ (x : var_name) (s : stmt), P s → P (LocalDead x s)) →
   (∀ s : lang.stmt, P (Stmt s)) → ∀ s : stmt, P s.
 Proof.
   move => *. generalize dependent P => P. match goal with | s : stmt |- _ => revert s end.
@@ -509,6 +506,8 @@ Fixpoint to_stmt `{LayoutAlg} (s : stmt) : lang.stmt :=
   | Assert ot e s => notation.Assert ot (to_expr e) (to_stmt s)
   | AnnotStmt n a s => notation.AnnotStmt n a (to_stmt s)
   | LocInfoS a s => notation.LocInfo a (to_stmt s)
+  | LocalLive x st s => notation.LocalLiveSt x st (to_stmt s)
+  | LocalDead x s => notation.LocalDeadSt x (to_stmt s)
   | Stmt s => s
   end.
 
@@ -526,6 +525,12 @@ Ltac of_stmt s :=
   | notation.LocInfo ?a ?s =>
     let s := of_stmt s in
     constr:(LocInfoS a s)
+  | notation.LocalLiveSt ?x ?st ?s =>
+    let s := of_stmt s in
+    constr:(LocalLive x st s)
+  | notation.LocalDeadSt ?x ?s =>
+    let s := of_stmt s in
+    constr:(LocalDead x s)
   | (assert{?ot}: ?e ; ?s)%E =>
     let e := of_expr e in
     let s := of_stmt s in
@@ -603,7 +608,7 @@ Definition stmt_fill (Ki : stmt_ectx) (e : expr) : stmt :=
 
 Definition find_stmt_fill (s : stmt) : option (stmt_ectx * expr) :=
   match s with
-  | Goto _ | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS => None
+  | Goto _ | Stmt _ | AnnotStmt _ _ _ | LocInfoS _ _ | SkipS _ | StuckS | LocalLive _ _ _ | LocalDead _ _ => None
   | Return e => if e is (Val v) then None else Some (ReturnCtx, e)
   | ExprS e s => if e is (Val v) then None else Some (ExprSCtx s, e)
   | IfS ot join e s1 s2 => if e is (Val v) then None else Some (IfSCtx ot join s1 s2, e)
@@ -626,22 +631,22 @@ Proof.
   destruct s => *; repeat (try case_match; simpl in *; simplify_eq => //).
 Qed.
 
-Lemma stmt_fill_correct `{!LayoutAlg} Ks rf:
-  ∃ Ks', ∀ e, to_rtstmt rf (to_stmt (stmt_fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr (to_expr e)).
+Lemma stmt_fill_correct `{!LayoutAlg} Ks π rf:
+  ∃ Ks', ∀ e, to_rtstmt π rf (to_stmt (stmt_fill Ks e)) = ectxi_language.fill Ks' (to_rtexpr π (to_expr e)).
 Proof.
   move: Ks => [] *; [
-  eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.AssignLCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) rf])|
-  eexists ([ExprCtx lang.SkipECtx; StmtCtx (lang.AssignLCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.ReturnCtx) rf])|
-  eexists ([StmtCtx (lang.IfSCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.SwitchCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.ExprSCtx _) rf])|
-  eexists ([StmtCtx (lang.IfSCtx _ _ _ _) rf])|
-  eexists ([StmtCtx (lang.FreeLCtx _ _ _) rf])|
-  eexists ([StmtCtx (lang.FreeMCtx _ _ _) rf])|
-  eexists ([StmtCtx (lang.FreeRCtx _ _ _) rf])|
+  eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.AssignRCtx _ _ _ _) π rf])|
+  eexists ([ExprCtx lang.SkipECtx π; StmtCtx (lang.AssignLCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.ReturnCtx) π rf])|
+  eexists ([StmtCtx (lang.IfSCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.SwitchCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.ExprSCtx _) π rf])|
+  eexists ([StmtCtx (lang.IfSCtx _ _ _ _) π rf])|
+  eexists ([StmtCtx (lang.FreeLCtx _ _ _) π rf])|
+  eexists ([StmtCtx (lang.FreeMCtx _ _ _) π rf])|
+  eexists ([StmtCtx (lang.FreeRCtx _ _ _) π rf])|
 ..] => //=.
 Qed.
 
@@ -654,116 +659,6 @@ Definition list_find_fast {A} (P : A → Prop) `{!∀ x, Decision (P x)} :=
     end.
 Global Instance: Params (@list_find_fast) 3 := {}.
 
-Fixpoint subst_l (xs : list (var_name * val)) (e : expr)  : expr :=
-  match e with
-  | Var y => if list_find_fast (λ x, x.1 = y) xs is Some (_, v) then Val v else Var y
-  | Loc l => Loc l
-  | Val v => Val v
-  | UnOp op ot e => UnOp op ot (subst_l xs e)
-  | BinOp op ot1 ot2 e1 e2 => BinOp op ot1 ot2 (subst_l xs e1) (subst_l xs e2)
-  | CheckUnOp op ot e => CheckUnOp op ot (subst_l xs e)
-  | CheckBinOp op ot1 ot2 e1 e2 => CheckBinOp op ot1 ot2 (subst_l xs e1) (subst_l xs e2)
-  | CopyAllocId ot1 e1 e2 => CopyAllocId ot1 (subst_l xs e1) (subst_l xs e2)
-  | Deref o l mc e => Deref o l mc (subst_l xs e)
-  | CAS ot e1 e2 e3 => CAS ot (subst_l xs e1) (subst_l xs e2) (subst_l xs e3)
-  | Call f eκs etys args => Call (subst_l xs f) eκs etys (subst_l xs <$> args)
-  | Concat es => Concat (subst_l xs <$> es)
-  | IfE ot e1 e2 e3 => IfE ot (subst_l xs e1) (subst_l xs e2) (subst_l xs e3)
-  | Alloc e_size e_align => Alloc (subst_l xs e_size) (subst_l xs e_align)
-  | SkipE e => SkipE (subst_l xs e)
-  | StuckE => StuckE
-  | LogicalAnd ot1 ot2 rit e1 e2 => LogicalAnd ot1 ot2 rit (subst_l xs e1) (subst_l xs e2)
-  | LogicalOr ot1 ot2 rit e1 e2 => LogicalOr ot1 ot2 rit (subst_l xs e1) (subst_l xs e2)
-  | Use o ot mc e => Use o ot mc (subst_l xs e)
-  | AddrOf m e => AddrOf m (subst_l xs e)
-  | LValue e => LValue (subst_l xs e)
-  | AnnotExpr n a e => AnnotExpr n a (subst_l xs e)
-  | LocInfoE a e => LocInfoE a (subst_l xs e)
-  | StructInit ly fs => StructInit ly (prod_map id (subst_l xs) <$> fs)
-  | EnumInit en variant ty e => EnumInit en variant ty (subst_l xs e)
-  | GetMember e s m => GetMember (subst_l xs e) s m
-  | GetMemberUnion e ul m => GetMemberUnion (subst_l xs e) ul m
-  | EnumDiscriminant els e => EnumDiscriminant els (subst_l xs e)
-  | EnumData els variant e => EnumData els variant (subst_l xs e)
-  | OffsetOf s m => OffsetOf s m
-  | OffsetOfUnion ul m => OffsetOfUnion ul m
-  | MacroE m es well_founded => MacroE m (subst_l xs <$> es) well_founded
-  | Borrow m κn ty e => Borrow m κn ty (subst_l xs e)
-  | Box st => Box st
-  | Expr e => Expr (lang.subst_l xs e)
-  end.
-
-Lemma to_expr_subst `{!LayoutAlg} x v e :
-  to_expr (subst_l [(x, v)] e) = lang.subst x v (to_expr e).
-Proof.
-  elim: e => *//; cbn -[notation.GetMember]; (repeat case_bool_decide) => //=; f_equal; eauto; try by case_decide.
-  - (** Call *)
-    rewrite /CallE. f_equiv; first done.
-    rewrite -!list_fmap_compose. apply list_fmap_ext' => //. by apply Forall_forall.
-  - (** Concat *)
-    rewrite -!list_fmap_compose. apply list_fmap_ext' => //. by apply Forall_forall.
-  - (** LogicalAnd *)
-    rewrite /notation.LogicalAnd/=. do 2 f_equal; eauto.
-  - (** LogicalOr *)
-    rewrite /notation.LogicalOr/=. do 2 f_equal; eauto.
-  - (** Use *)
-    rewrite /notation.Use /=. do 2 f_equal; eauto.
-  - (** GetMember *)
-    match goal with
-    | _ : ?e1 = ?e2 |- _ => assert (e1 = e2) as -> by assumption
-    end; done.
-  - (** EnumDiscriminant *)
-    match goal with
-    | _ : ?e1 = ?e2 |- _ => assert (e1 = e2) as -> by assumption
-    end; done.
-  - (** OffsetOf *)
-    rewrite /notation.OffsetOf/=.
-    match goal with | |- context [offset_of ?s ?m] => destruct (offset_of s m) end => //=.
-    by match goal with | |- context [val_of_Z ?o ?it] => destruct (val_of_Z o it) end.
-  - (** AnnotExpr *)
-    match goal with
-    | |- notation.AnnotExpr ?n _ _ = _ => generalize dependent n
-    end.
-    by rewrite /notation.AnnotExpr; elim; eauto => /= n ->.
-  - (** StructInit *)
-    match goal with | H : struct_layout_spec |- _ => rename H into sls end.
-    match goal with | H : list (string * expr) |- _ => rename H into fs end.
-    rewrite /notation.StructInit /notation.StructInit'; f_equal.
-    generalize (use_struct_layout_alg' sls) => sl. clear sls.
-    generalize dependent fs.
-    induction (sl_members sl) as [|[f ly] ? IHfs]; first done. move => fs Hf.
-    rewrite fmap_cons IHfs //=; clear IHfs; f_equal.
-    rewrite [X in _ = X]apply_default /=. f_equal. destruct f as [f|] => //=.
-    rewrite !list_to_map_fmap !lookup_fmap. destruct (list_to_map fs !! f) as [e|] eqn:Ha; simpl; last done.
-    f_equal. move: Hf => /Forall_forall IH. apply (IH _).
-    simplify_eq. apply elem_of_list_to_map_2 in Ha. set_solver.
-  - (* EnumInit *)
-    match goal with | H : enum_layout_spec |- _ => rename H into els end.
-    match goal with | H : var_name |- _ => rename H into discr end.
-    rewrite /notation.EnumInit /notation.StructInit /notation.StructInit'; f_equal.
-    match goal with |- context[use_layout_alg' (default UnitSynType ?H)] => generalize (use_layout_alg' (default UnitSynType H)) => ly end.
-    match goal with |- context[i2v ?Ha ?Hb] => generalize (i2v Ha Hb) => dv end.
-    generalize (use_union_layout_alg' (uls_of_els els)) => ul.
-    generalize (use_struct_layout_alg' (sls_of_els els)) => el.
-    clear els.
-    induction (sl_members el) as [ | [f ly'] ? IH]; simpl; first done.
-    destruct f as [ n | ]; simpl; first last.
-    { f_equiv. apply IH. }
-    destruct (decide (n = "discriminant")) as [-> | ?].
-    { rewrite !lookup_insert_eq. simpl. f_equiv. apply IH. }
-    rewrite !(lookup_insert_ne _ "discriminant"); [ | done..].
-    destruct (decide (n = "data")) as [-> | ?].
-    { rewrite !lookup_insert_eq. simpl. f_equiv; last apply IH.
-      f_equiv. f_equiv. done. }
-    rewrite !lookup_insert_ne; [ | done..]. f_equiv; last apply IH.
-    rewrite lookup_empty//.
-  - (** MacroE *)
-    rewrite /notation.MacroE macro_wf_subst. f_equal.
-    rewrite -!list_fmap_compose. apply list_fmap_ext' => //. by apply Forall_forall.
-  - (** Ref *)
-    rewrite /Ref. f_equal. f_equal. done.
-Qed.
-
 Lemma Forall_eq_fmap {A B} (xs : list A) (f1 f2 : A → B) :
   Forall (λ x, f1 x = f2 x) xs → f1 <$> xs = f2 <$> xs.
 Proof. elim => //. csimpl. congruence. Qed.
@@ -772,97 +667,16 @@ Lemma fmap_snd_prod_map {A B C} (l : list (A * B)) (f1 f2 : B → C)  :
   f1 <$> l.*2 = f2 <$> l.*2 →
   prod_map id f1 <$> l = prod_map id f2 <$> l.
 Proof. elim: l => // -[??] ? IH. csimpl => -[??]. rewrite IH //. congruence. Qed.
-
-Lemma to_expr_subst_l `{!LayoutAlg} xs e :
-  to_expr (subst_l xs e) = lang.subst_l xs (to_expr e).
-Proof.
-  elim: xs e => //=.
-  - elim => //= >; try congruence; try move => ->.
-    all: try move => /Forall_eq_fmap; try move/fmap_snd_prod_map.
-    all: by move => <-; by rewrite -list_fmap_compose.
-  - move => [x v] xs IH e. rewrite -to_expr_subst -IH. f_equal.
-    elim: e => //= >; try congruence; try move => ->.
-    all: try move => /Forall_eq_fmap; try move/fmap_snd_prod_map.
-    all: try by move => ->; by rewrite -list_fmap_compose.
-    case_decide => //.
-Qed.
-
-Fixpoint subst_stmt (xs : list (var_name * val)) (s : stmt) : stmt :=
-  match s with
-  | Goto b => Goto b
-  | Return e => Return (subst_l xs e)
-  | IfS ot join e s1 s2 => IfS ot join (subst_l xs e) (subst_stmt xs s1) (subst_stmt xs s2)
-  | Switch it e m' bs def => Switch it (subst_l xs e) m' (subst_stmt xs <$> bs) (subst_stmt xs def)
-  | Assign o ot e1 e2 s => Assign o ot (subst_l xs e1) (subst_l xs e2) (subst_stmt xs s)
-  | AssignSE o ot e1 e2 s => AssignSE o ot (subst_l xs e1) (subst_l xs e2) (subst_stmt xs s)
-  | Free e_size e_align e s => Free (subst_l xs e_size) (subst_l xs e_align) (subst_l xs e) (subst_stmt xs s)
-  | SkipS s => SkipS (subst_stmt xs s)
-  | StuckS => StuckS
-  | ExprS e s => ExprS (subst_l xs e) (subst_stmt xs s)
-  | Assert ot e s => Assert ot (subst_l xs e) (subst_stmt xs s)
-  | AnnotStmt n a s => AnnotStmt n a (subst_stmt xs s)
-  | LocInfoS a s => LocInfoS a (subst_stmt xs s)
-  | Stmt s => Stmt (lang.subst_stmt xs s)
-  end.
-
-(* TODO this lemma would be nicer if we'd have a notion of closedness under a set of binders.
-  Then we could just say that subst does nothiung on closed terms. *)
-Lemma subst_skipE xs e :
-  lang.subst_l xs (lang.SkipE e) = lang.SkipE (lang.subst_l xs e).
-Proof.
-  induction xs as [ | [] xs IH] in e |-*; simpl; eauto.
-Qed.
-Lemma subst_stmt_SkipES xs s :
-  lang.subst_stmt xs (SkipES s) = SkipES (lang.subst_stmt xs s).
-Proof. simpl. rewrite subst_skipE subst_l_val. done. Qed.
-
-Lemma to_stmt_subst `{!LayoutAlg} xs s :
-  to_stmt (subst_stmt xs s) = lang.subst_stmt xs (to_stmt s).
-Proof.
-  elim: s => * //=; repeat rewrite to_expr_subst_l //; repeat f_equal => //; repeat rewrite -list_fmap_compose.
-  - by apply Forall_fmap_ext_1.
-  - rewrite /notation.AssignSE/=; f_equal; eauto. by rewrite subst_skipE.
-  - rewrite /notation.Assert. by f_equal.
-  - match goal with
-    | |- notation.AnnotStmt ?n _ _ = _ => generalize dependent n
-    end.
-    rewrite /notation.AnnotStmt; elim.
-    + eauto.
-    + intros n Hn. rewrite subst_stmt_SkipES /= Hn //.
-Qed.
 End W.
-
-(** Substitution *)
-Ltac simpl_subst :=
-  (* We need to be careful to never call simpl on the goal as that may
-  become quite slow. TODO: vm_compute seems to perform a lot better
-  than simpl but it reduces to much. Can we somehow still use it?  *)
-  repeat (lazymatch goal with
-          | |- context C [subst_stmt ?xs ?s] =>
-            let s' := W.of_stmt s in
-            let P := context C [subst_stmt xs (W.to_stmt s')] in
-            change_no_check P; rewrite <-(W.to_stmt_subst xs)
-          end);
-  repeat (lazymatch goal with
-          | |- context C [W.to_stmt (W.subst_stmt ?xs ?s)] =>
-            let s' := eval simpl in (W.subst_stmt xs s) in
-            let s' := eval unfold W.to_stmt, W.to_expr in (W.to_stmt s') in
-            let s' := eval simpl in s' in
-            let P := context C [s'] in
-            change_no_check P
-          end).
 Arguments W.to_expr : simpl never.
 Arguments W.to_stmt : simpl never.
-Arguments subst : simpl never.
-Arguments subst_l : simpl never.
-Arguments subst_stmt : simpl never.
 
 Ltac inv_stmt_step :=
   repeat match goal with
   | _ => progress simplify_map_eq/= (* simplify memory stuff *)
   | H : to_val _ = Some _ |- _ => apply of_to_val in H
   | H : context [to_val (of_val _)] |- _ => rewrite to_of_val in H
-  | H : stmt_step ?e _ _ _ _ _ _ |- _ =>
+  | H : stmt_step ?e _ _ _ _ _ _ _ |- _ =>
      try (is_var e; fail 1); (* inversion yields many goals if [e] is a variable *)
 (*      and can thus better be avoided. *)
      inversion H; subst; clear H
@@ -873,10 +687,12 @@ Ltac inv_expr_step :=
   | _ => progress simplify_map_eq/= (* simplify memory stuff *)
   | H : to_val _ = Some _ |- _ => apply of_to_val in H
   | H : context [to_val (of_val _)] |- _ => rewrite to_of_val in H
-  | H : expr_step ?e _ _ _ _ _ |- _ =>
+  | H : expr_step ?e _ _ _ _ _ _ |- _ =>
      try (is_var e; fail 1); (* inversion yields many goals if [e] is a variable *)
 (*      and can thus better be avoided. *)
      inversion H; subst; clear H
   end.
 
 Ltac solve_struct_obligations := done.
+
+Ltac solve_fn_vars_nodup := intros; simpl; repeat econstructor; set_solver.

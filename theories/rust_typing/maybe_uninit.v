@@ -60,7 +60,7 @@ Section type.
       done.
   Qed.
   Next Obligation.
-    iIntros (rt T E κ l ly π [r | ] m ? ?) "#CTX Htok %Hst %Hly #Hlb Hb".
+    iIntros (rt T E κ l ly π [r | ] m ? ?) "#CTX #Hna Htok %Hst %Hly #Hlb Hb".
     -
       iAssert (&{κ} (∃ r', place_rfn_interp_owned r r' ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, m} r' @ T))%I with "[Hb]" as "Hb".
       { iApply (bor_iff with "[] Hb"). iNext. iModIntro. iSplit.
@@ -74,7 +74,7 @@ Section type.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine ("Htok1 Htok2") as "Htok". rewrite lft_tok_sep.
       rewrite ty_lfts_unfold.
-      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Htok [//] [//] Hlb Hb") as "Hstep"; first done.
+      iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna Htok [//] [//] Hlb Hb") as "Hstep"; first done.
       iApply (logical_step_wand with "Hstep").
       iIntros "!> (Hl & $)". eauto with iFrame.
     - rewrite -lft_tok_sep. iDestruct "Htok" as "[Htok1 Htok2]".
@@ -84,7 +84,7 @@ Section type.
         (*- iIntros "($ & ?)". done. }*)
       (*iDestruct "CTX" as "(LFT & TIME & LLCTX)".*)
       (*iApply fupd_logical_step. iMod (bor_sep with "LFT Hb") as "(_ & Hb)"; first done.*)
-      iPoseProof ((uninit _).(ty_share) with "CTX [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
+      iPoseProof ((uninit _).(ty_share) with "CTX Hna [Htok1] [] [//] [//] Hb") as "Ha"; simpl; first done.
       { rewrite right_id. done. }
       { done. }
       iApply (logical_step_wand with "Ha"). iIntros "(? & Htok1)".

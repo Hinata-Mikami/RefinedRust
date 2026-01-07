@@ -148,7 +148,7 @@ Section union.
     iSplitR; first done. iPureIntro. by eapply use_union_layout_alg_Some_inv.
   Qed.
   Next Obligation.
-    iIntros (rt ty variant uls E κ l ly π r m q ?) "CTX Htok %Halg %Hly #Hlb Hb".
+    iIntros (rt ty variant uls E κ l ly π r m q ?) "CTX #Hna Htok %Halg %Hly #Hlb Hb".
     set (bor_contents :=
       (∃ (ul : union_layout) ly',
         ⌜m = MetaNone⌝ ∗
@@ -209,13 +209,13 @@ Section union.
     iDestruct "Htok" as "(Htok11 & Htok12)".
     iDestruct "Htok1" as "(Htok21 & Htok22)".
 
-    iPoseProof (ty_share _ E with "[$LFT $LLCTX] [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
+    iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok11 Htok21] [] [] [] Hb1") as "Hb1"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     { done. }
     { iPureIntro. by eapply has_layout_loc_layout_of_union_member. }
     { iApply (loc_in_bounds_shorten_suf with "Hlb"). done. }
 
-    iPoseProof (ty_share _ E with "[$LFT $LLCTX] [Htok12] [] [] [] Hb2") as "Hb2"; first done.
+    iPoseProof (ty_share _ E with "[$LFT $LLCTX] Hna [Htok12] [] [] [] Hb2") as "Hb2"; first done.
     { simpl. rewrite right_id. iFrame. }
     { simpl. iPureIntro. apply syn_type_has_layout_untyped; first done.
       - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
@@ -376,7 +376,7 @@ Section enum.
     iExists sl. done.
   Qed.
   Next Obligation.
-    iIntros (rt e E κ l ly π r m q ?) "#CTX Htok %Halg %Hly Hlb Hb".
+    iIntros (rt e E κ l ly π r m q ?) "#CTX #Hna Htok %Halg %Hly Hlb Hb".
     iAssert (&{κ} ((∃ (el : struct_layout) (tag : string), ⌜m = MetaNone⌝ ∗ ⌜use_enum_layout_alg (enum_els e) = Some el⌝ ∗ ⌜e.(enum_tag) r = Some tag⌝ ∗ ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} -[# (els_lookup_tag e.(enum_els) tag); # (e.(enum_r) r)] @ struct_t (sls_of_els (enum_els e)) +[int (els_tag_it (enum_els e)); active_union_t (e.(enum_ty) r) tag (uls_of_els (enum_els e))])))%I with "[Hb]" as "Hb".
     { iApply (bor_iff with "[] Hb"). iNext. iModIntro.
       iSplit.
@@ -400,7 +400,7 @@ Section enum.
     iCombine ("Htok1 Htok2") as "Htok".
     rewrite !lft_tok_sep.
     specialize (syn_type_has_layout_els_sls _ _ Halg) as (sl & Halg'' & ->).
-    iPoseProof (ty_share _ E _ _ _ _ _ _ q'' with "[$] [Htok] [] [] Hlb Hb") as "Hstep"; first done.
+    iPoseProof (ty_share _ E _ _ _ _ _ _ q'' with "[$] Hna [Htok] [] [] Hlb Hb") as "Hstep"; first done.
     { simpl. rewrite !ty_lfts_unfold/=ty_lfts_unfold/=. rewrite right_id. done. }
     { simpl. iPureIntro. by apply use_struct_layout_alg_Some_inv. }
     { done. }

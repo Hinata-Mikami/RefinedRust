@@ -90,7 +90,7 @@ Section mut_ref.
 
     *)
 
-    iIntros (? κ ? E κ' l ly π [r γ] m q ?) "#[LFT TIME] Htok %Hst %Hly _ Hb".
+    iIntros (? κ ? E κ' l ly π [r γ] m q ?) "#[LFT TIME] #Hna Htok %Hst %Hly _ Hb".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
     iMod (bor_sep with "LFT Hb") as "(Hl & Hb)"; first solve_ndisj.
@@ -151,7 +151,7 @@ Section mut_ref.
 
     (* recursively share *)
     iDestruct "Htok" as "(Htok1 & Htok2)".
-    iPoseProof (ty_share _ E with "[$LFT $TIME] [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
+    iPoseProof (ty_share _ E with "[$LFT $TIME] Hna [Htok2 Htoka] [//] [//] Hlb Hb") as "Hu"; first solve_ndisj.
     { rewrite ty_lfts_unfold. rewrite -!lft_tok_sep. iFrame. }
     iModIntro. iApply (logical_step_compose with "Hu").
     iApply (logical_step_intro_tr with "Hat").

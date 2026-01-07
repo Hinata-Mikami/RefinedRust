@@ -4,8 +4,8 @@ Set Default Proof Using "Type".
 Section derived.
   Context `{refinedcG Σ} `{ALG : LayoutAlg}.
 
-  Lemma wps_annot A (a : A) Q Ψ s:
-    (|={⊤}⧗=> WPs s {{ Q, Ψ }}) -∗ WPs AnnotStmt 1 a s {{ Q , Ψ }}.
+  Lemma wps_annot A (a : A) π Q Ψ s:
+    (|={⊤}⧗=> WPs{π} s {{ Q, Ψ }}) -∗ WPs{π} AnnotStmt 1 a s {{ Q , Ψ }}.
   Proof using ALG.
     iIntros "Hs".
     rewrite /AnnotStmt /SkipES /=.
@@ -15,20 +15,6 @@ Section derived.
     iApply physical_step_intro.
     iNext. done.
   Qed.
-
-  (*
-  Lemma wps_annot n A (a : A) Q Ψ s:
-    (|={⊤}[∅]▷=>^n £ n -∗ WPs s {{ Q, Ψ }}) -∗ WPs AnnotStmt n a s {{ Q , Ψ }}.
-  Proof using ALG.
-    iIntros "Hs". iInduction n as [|n] "IH" => /=.
-    { iMod lc_zero as "Hc". iApply ("Hs" with "Hc"). }
-    rewrite /AnnotStmt /SkipES /=.
-    wps_bind. iApply wp_skip. iNext. iIntros "Hc". iApply wps_exprs.
-    iApply (step_fupd_wand with "Hs [IH Hc]").
-    iIntros "Ha Hc2". iApply "IH". iApply (step_fupdN_wand with "Ha"). iIntros "Ha Hc3".
-    iApply "Ha". rewrite (lc_succ n). iFrame.
-  Qed.
-  *)
 
   Lemma step_fupdN_add (Ei Eo : coPset) (n m : nat) (P : iProp Σ) :
     (|={Eo}[Ei]▷=>^(n + m) P)%I ⊣⊢ (|={Eo}[Ei]▷=>^n (|={Eo}[Ei]▷=>^m P))%I.

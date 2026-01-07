@@ -126,20 +126,42 @@ Section coq_tactics.
   Context {Σ : gFunctors}.
 
   Lemma tac_do_forall A Δ (P : A → iProp Σ) :
-    (∀ x, envs_entails Δ (P x)) → envs_entails Δ (∀ x : A, P x).
+    (∀ _x, envs_entails Δ (P _x)) → envs_entails Δ (∀ x : A, P x).
   Proof.
     rewrite envs_entails_unseal. intros HP. by apply bi.forall_intro.
   Qed.
 
   Lemma tac_do_exist_wand A Δ (P : A → iProp Σ) Q :
-    (∀ x, envs_entails Δ (P x -∗ Q)) → envs_entails Δ ((∃ x : A, P x) -∗ Q).
+    (∀ _x, envs_entails Δ (P _x -∗ Q)) → envs_entails Δ ((∃ x : A, P x) -∗ Q).
   Proof.
     rewrite envs_entails_unseal. iIntros (HP) "Henv". iDestruct 1 as (x) "HP".
     by iApply (HP with "Henv HP").
   Qed.
+  Lemma tac_remove_name_hint {A} (P : A → Prop) x :
+    (∀ _x : A, P _x) → (∀ x : name_hint x A, P x).
+  Proof. done. Qed.
+  Lemma tac_remove_bi_name_hint {A} Δ (P : A → iProp Σ) x :
+    envs_entails Δ (∀ x : A, P x) → envs_entails Δ (∀ x : (name_hint x A), P x).
+  Proof. done. Qed.
 End coq_tactics.
 
 Ltac liForall :=
+  let _name_hint :=
+    lazymatch goal with
+    | |- forall name : name_hint ?h ?T, ?P =>
+        constr:(Some h)
+    | |- envs_entails _ (bi_forall (λ name : name_hint ?h ?T, _)) =>
+        constr:(Some h)
+    | |- _ => constr:(@None string)
+    end in
+  lazymatch goal with
+  | |- ∀ name : name_hint ?h ?T, ?P =>
+        notypeclasses refine (@tac_remove_name_hint T _ h _)
+  | |- envs_entails _ (bi_forall (λ name : name_hint ?h ?T, _)) =>
+        notypeclasses refine (@tac_remove_bi_name_hint _ T _ _ h _)
+  | |- _ => idtac
+  end;
+
   (* n tells us how many quantifiers we should introduce with this name *)
   let rec do_intro n name :=
     lazymatch n with
@@ -176,6 +198,12 @@ Ltac liForall :=
                     do_intro sn name
                 end
               | liForall_hook
+              | match _name_hint with
+                | Some ?h =>
+                    let h := eval unfold String.app in h in
+                    string_ident.string_to_ident_cps h ltac:(fun H => intro H)
+                | None => fail
+                end
               | intro name
               | let H := fresh name in intro H
               ]
@@ -187,13 +215,17 @@ Ltac liForall :=
   in
   lazymatch goal with
   | |- envs_entails _ (bi_forall (λ name, _)) =>
-      notypeclasses refine (tac_do_forall _ _ _ _); do_intro (S O) name
+      notypeclasses refine (tac_do_forall _ _ _ _);
+      (* directly introduce in order to preserve the name *)
+      do_intro (S O) name
   | |- envs_entails _ (bi_wand (bi_exist (λ name, _)) _) =>
-      notypeclasses refine (tac_do_exist_wand _ _ _ _ _); do_intro (S O) name
+      notypeclasses refine (tac_do_exist_wand _ _ _ _ _);
+      do_intro (S O) name
   | |- (∃ name, _) → _ =>
       case; do_intro (S O) name
   | |- (name_hint _ (ex _ ?P)) → ?Q =>
       change ((ex _ P) → Q)
+  (* has to come last, as it also matches the previous implications *)
   | |- forall name, _ =>
       do_intro (S O) name
   | _ => fail "liForall: unknown goal"
@@ -841,6 +873,14 @@ Ltac liTrace :=
     liTrace_hook info
   end.
 
+(** ** [liClear] *)
+Ltac liClear :=
+  lazymatch goal with
+  | |- @envs_entails ?PROP ?Δ (li_clear ?t ?T) =>
+    change_no_check (@envs_entails PROP Δ T);
+    try clear dependent t
+  end.
+
 (** ** [liStep] *)
 Ltac liStep :=
   first [
@@ -861,6 +901,7 @@ Ltac liStep :=
     | liTrue
     | liFalse
     | liAccu
+    | liClear
     | liUnfoldLetGoal
     ].
 

@@ -25,7 +25,7 @@ Proof.
   iDestruct "Halign_log2" as "(_ & %Halign_log2)".
 
   rewrite /typed_stmt.
-  iIntros (?) "#CTX #HE HL Hcont".
+  iIntros (?) "#CTX #HE HL Hf Hcont".
   rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
   set (ly := Layout (Z.to_nat size) (Z.to_nat align_log2)).
   iDestruct "Hptr" as "(%ly' & %Hst & %Hly & _ & #Hlb & _ & %r' & <- & Hb)".
@@ -34,7 +34,7 @@ Proof.
   iDestruct "Hb" as "(%v' & Hptr & Hv')".
   iPoseProof (ty_own_val_has_layout with "Hv'") as "%Hlyv'"; first done.
 
-  iApply (wps_free _ _ _ ptr _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
+  iApply (wps_free _ _ _ _ ptr _ _ (Z.to_nat size) (Z.to_nat align_log2) with "[Hptr] [Hfree]").
   { rewrite Hsize. f_equiv.
     apply val_to_Z_unsigned_nonneg in Hsize; last done. lia. }
   { rewrite Halign_log2. f_equiv.
@@ -45,7 +45,7 @@ Proof.
     destruct ((Z.to_nat size)) eqn:Heq; first lia. done. }
   iApply physical_step_intro; iNext.
 
-  to_typed_stmt "CTX HE HL Hcont".
+  to_typed_stmt "CTX HE HL Hf Hcont".
   (* TODO *)
   instantiate (1 := ϝ).
   repeat liRStep; liShow.

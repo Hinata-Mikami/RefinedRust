@@ -177,9 +177,9 @@ Section place.
   Context `{!typeGS Σ}.
 
   (* This needs to have a lower priority than the id instances, because we do not want to unfold when P = []. *)
-  Lemma typed_place_ofty_mut {rt} π E L l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) bmin0 b P T :
-    typed_place π E L l (MutLtype (◁ ty) κ) r bmin0 b P T
-    ⊢ typed_place π E L l (◁ (mut_ref κ ty)) r bmin0 b P T.
+  Lemma typed_place_ofty_mut {rt} E L f l (ty : type rt) κ (r : place_rfn (place_rfn rt * gname)%type) bmin0 b P T :
+    typed_place E L f l (MutLtype (◁ ty) κ) r bmin0 b P T
+    ⊢ typed_place E L f l (◁ (mut_ref κ ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
     iIntros (?) "HL CTX HE". iIntros (??).

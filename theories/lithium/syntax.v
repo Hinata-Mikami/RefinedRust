@@ -49,6 +49,9 @@ Section lithium.
   Definition trace {A} : A → iProp Σ → iProp Σ :=
     @li_trace Σ A.
 
+  Definition clear {A} : A → iProp Σ → iProp Σ :=
+    @li_clear Σ A.
+
   Definition subsume : iProp Σ → iProp Σ → iProp Σ → iProp Σ :=
     subsume.
   (* TODO: Should we also have a syntax for subsume list? *)
@@ -127,6 +130,9 @@ Notation "'accu'" := (li.accu) (in custom lithium at level 0) : lithium_scope.
 Notation "'trace' x" := (li.trace x) (in custom lithium at level 0, x constr,
                            format "'trace'  '[' x ']'") : lithium_scope.
 
+Notation "'clear' x" := (li.clear x) (in custom lithium at level 0, x constr,
+                           format "'clear'  '[' x ']'") : lithium_scope.
+
 Notation "x :>> y" := (li.subsume x y) (in custom lithium at level 0, x constr, y constr,
                            format "'[' x ']'  :>>  '[' y ']'") : lithium_scope.
 
@@ -192,7 +198,7 @@ Notation "'pattern:' x .. y , P ; G" :=
 Declare Reduction liFromSyntax_eval :=
   cbv [ li.exhale li.inhale li.all li.exist li.done li.false li.and li.and_map
         li.find_in_context li.case_if li.case_destruct li.drop_spatial li.tactic
-        li.accu li.trace li.subsume li.ret li.iterate
+        li.accu li.trace li.clear li.subsume li.ret li.iterate
         li.bind0 li.bind1 li.bind2 li.bind3 li.bind4 li.bind5 ].
 
 Ltac liFromSyntaxTerm c :=
@@ -241,6 +247,7 @@ Ltac liToSyntax :=
   change (li_tactic ?t) with (li.bind1 (li.tactic t));
   change (@accu ?Σ) with (li.bind1 (@li.accu Σ));
   change (@li_trace ?Σ ?A ?t) with (li.bind0 (@li.trace Σ A t));
+  change (@li_clear ?Σ ?A ?t) with (li.bind0 (@li.clear Σ A t));
   change (subsume ?a ?b) with (li.bind0 (li.subsume (liToSyntax_UNFOLD_MARKER a) (liToSyntax_UNFOLD_MARKER b)));
   change (subsume_list ?A ?ig ?l1 ?l2 ?f) with (li.bind0 (subsume_list A ig l1 l2 f));
   (* Try to at least unfold some spurious conversions. *)

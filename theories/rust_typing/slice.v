@@ -65,7 +65,7 @@ Section def.
   Qed.
   Next Obligation.
     iIntros (ty E κ l ly π r m q ?).
-    iIntros "#(LFT & LCTX) Htok %Hst %Hly #Hlb Hb".
+    iIntros "#(LFT & LCTX) #Hna Htok %Hst %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htok')".
     iApply fupd_logical_step.
     (* reshape the borrow - we must not freeze the existential over v to initiate recursive sharing *)
@@ -117,7 +117,7 @@ Section def.
       iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok1") as "(Hrfn & Htok1)"; first done.
       iCombine "Htok1 Htok2" as "Htok". rewrite lft_tok_sep. iModIntro.
       rewrite ty_lfts_unfold.
-      iPoseProof (ty_share with "[$LFT $LCTX] Htok [] [] [] Hb") as "Hb"; first done.
+      iPoseProof (ty_share with "[$LFT $LCTX] Hna Htok [] [] [] Hb") as "Hb"; first done.
       - done.
       - iPureIntro.
         apply has_layout_loc_offset_loc.

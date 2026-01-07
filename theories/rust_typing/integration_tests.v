@@ -11,9 +11,8 @@ Definition bla3 `{typeGS Σ} T_st T_rt :=
   (fn(∀ ( *[]) : 0 | ( *[ T_ty]) : [ (T_rt, T_st) ] | (x) : _, (λ _, []); x :@: T_ty, () :@: (uninit PtrSynType) ; (λ π, True)) → ∃ y : Z, () @ (uninit PtrSynType) ; (λ π, ⌜ (4 > y)%Z⌝)).
 
 (** Testing type parameter instantiation *)
-Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
+Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];
-  f_local_vars := [];
   f_code :=
     <["_bb0" :=
       !{PtrOp} "dst" <-{use_op_alg' T_st} use{use_op_alg' T_st} "src";
@@ -22,6 +21,9 @@ Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
     ∅;
   f_init := "_bb0";
 |}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
 
 (* Maybe this should also be specced in terms of value? *)
 Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
@@ -32,13 +34,17 @@ Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
-  ⊢ typed_function π (ptr_write T_st) [] (<tag_type>
+  ⊢ typed_function π (ptr_write T_st) (<tag_type>
       spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
     (fn_spec_add_late_pre (type_of_ptr_write T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
 Proof.
   start_function "ptr_write" ϝ ( [] ) ( [T_ty []] ) ( [l r] ) ( ).
 
-  intros ls_dst ls_src.
+  match goal with
+  | |- ∀ x : loc, ?P =>
+      change (∀ x : name_hint "ls1" loc, P)
+  end.
+
   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
@@ -49,7 +55,7 @@ Qed.
 Definition type_of_ptr_write_int `{!typeGS Σ} :=
   spec_instantiate_typaram [_] 0 eq_refl (int I32) (type_of_ptr_write Z (IntSynType I32)).
 Lemma ptr_write_typed_int `{!typeGS Σ} π :
-  ⊢ typed_function π (ptr_write (IntSynType I32)) [] (<tag_type> type_of_ptr_write_int).
+  ⊢ typed_function π (ptr_write (IntSynType I32)) (<tag_type> type_of_ptr_write_int).
 Proof.
   start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
@@ -68,7 +74,7 @@ Definition type_of_ptr_write_shrref `{!typeGS Σ} (U_rt : RT) (U_st : syn_type) 
 .
 
 Lemma ptr_write_typed_shrref `{!typeGS Σ} π U_rt U_st :
-  ⊢ typed_function π (ptr_write (PtrSynType)) [] (<tag_type> type_of_ptr_write_shrref U_rt U_st).
+  ⊢ typed_function π (ptr_write (PtrSynType)) (<tag_type> type_of_ptr_write_shrref U_rt U_st).
 Proof.
   start_function "ptr_write" ϝ ( [ulft_a []]  ) ( [U_ty []] ) ( [l r] ) ( ).
 
@@ -78,6 +84,49 @@ Proof.
   Unshelve. all: unshelve_sidecond; sidecond_hook.
   Unshelve. all: unfold_common_defs; try solve_goal.
 Qed.
+
+Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("src", void* )];
+  f_code :=
+    <["_bb0" :=
+      local_live{T_st} "tmp";
+      local_live{T_st} "bla";
+      "tmp" <-{use_op_alg' T_st} use{use_op_alg' T_st} (!{PtrOp} "src");
+      local_dead "bla";
+      return (use{use_op_alg' T_st} "tmp")
+    ]>%E $
+    ∅;
+  f_init := "_bb0";
+|}.
+Next Obligation.
+  solve_fn_vars_nodup.
+Qed.
+
+Definition type_of_ptr_read `{!typeGS Σ} (T_rt: RT) (T_st: syn_type) :=
+  fn(∀ ( *[]) : 0 | ( *[T_ty]) : ([(T_rt, T_st)] : list (RT * syn_type)%type) |
+      (* params....... *) (src, r) : (_ * _),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) src :@: alias_ptr_t;
+      (* precondition. *) (λ π : thread_id, (src ◁ₗ[π, Owned false] #($# r) @ ◁ T_ty)
+        ∗ (⌜(Copyable T_ty)%Z⌝)) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, r @ T_ty;
+      (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned false] # ($# r) @ ◁ T_ty)).
+
+Lemma ptr_read_typed `{!typeGS Σ} π T_rt T_st T_ly :
+  syn_type_has_layout T_st T_ly →
+  ⊢ typed_function π (ptr_read T_st) (<tag_type>
+      spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
+    (fn_spec_add_late_pre (type_of_ptr_read T_rt T_st <TY> T_ty <INST!>) (λ π, typaram_wf T_rt T_st T_ty))).
+Proof.
+  start_function "ptr_read" ϝ ( [] ) ( [T_ty []] ) ( [src r] ) ( ).
+
+  repeat liRStep; liShow.
+
+  Unshelve. all: sidecond_solver.
+  Unshelve. all: unfold_common_defs; try solve_goal.
+Qed.
+
 
 Section enum.
 Context `{!typeGS Σ}.

@@ -54,10 +54,10 @@ Section place.
     done.
   Qed.
 
-  Lemma typed_place_array_owned π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
+  Lemma typed_place_array_owned E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -65,7 +65,7 @@ Section place.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L1 bmin (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
+        typed_place E L1 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
           T L2 κs li bi bmin2 rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (mkPUpd _ bmin
@@ -78,12 +78,12 @@ Section place.
               opt_place_update_eq_refl
             )))
         )))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
+    ⊢ typed_place E L f l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) v m rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
-    iIntros (????) "#CTX #HE HL Hl Hcont".
+    iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(% & % & HT)".
     iMod (fupd_mask_subseteq F) as "HclF"; first done.
@@ -93,7 +93,7 @@ Section place.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply (wp_logical_step with "Hcl"); [done.. | ].
+    iApply (wpe_logical_step with "Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -117,7 +117,7 @@ Section place.
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
     iPoseProof (lctx_place_update_kind_outlives_use _ _ _ _ Houtl with " HE HL") as "#Houtl".
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").
@@ -126,8 +126,8 @@ Section place.
     iApply ("Hcont" with "Hi").
     iIntros (upd) "#Hincl Hl2 %Hsteq HR Hcond".
     iMod ("Hc" with "Hincl Hl2 [//] HR Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
     iFrame. simpl.
     generalize (opt_place_update_eq_use _ _ (pupd_rt upd') place_update_kind_rt_same_array upd'.(pupd_eq_2)).
     intros Heq.
@@ -156,10 +156,10 @@ Section place.
   Definition typed_place_array_owned_inst := [instance @typed_place_array_owned].
   Global Existing Instance typed_place_array_owned_inst | 30.
 
-  Lemma typed_place_array_uniq π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) m P T :
+  Lemma typed_place_array_uniq E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ γ bmin0 ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       (* get lifetime token *)
       li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
@@ -170,7 +170,7 @@ Section place.
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L2 (UpdUniq [κ]) (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
         ⌜lctx_place_update_kind_incl E L2 (UpdUniq [κ]) bmin0⌝ ∗
-        typed_place π E L2 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
+        typed_place E L2 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
           T L3 (κs ++ κs') li bi bmin2 rti ltyi ri
             (λ L4 upd cont, updcx L4 upd (λ upd',
               ⌜lctx_place_update_kind_incl E L4 upd'.(pupd_performed) (UpdUniq [κ])⌝ ∗
@@ -184,13 +184,13 @@ Section place.
                 opt_place_update_eq_refl
               )))
           ))))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin0 (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
+    ⊢ typed_place E L f l (ArrayLtype def len lts) (#rs) bmin0 (Uniq κ γ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) v m rtv tyv i :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%i' & %Hst & HT)".
-    iIntros (????) "#CTX #HE HL Hl Hcont".
+    iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(% & % & HT)".
     iDestruct "HT" as "(%κs & %L1 & %Hal & HT)".
@@ -203,7 +203,7 @@ Section place.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply (wp_logical_step with "Hcl"); [done.. | ].
+    iApply (wpe_logical_step with "Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -226,7 +226,7 @@ Section place.
     iPoseProof (lctx_place_update_kind_outlives_use with "HE HL") as "#Houtl"; first apply Houtl.
     iPoseProof (lctx_place_update_kind_incl_use _ _ _ _ Hincl with "HE HL") as "#Houtl2".
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").
@@ -235,8 +235,8 @@ Section place.
     iApply ("Hcont" with "Hi").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hc" with "Hincl Hl2 [//] [$] Hcond") as "Hc".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hc" with "HL Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & %Hincl2 & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hf & %Hincl2 & Hcont)".
     iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl3"; first apply Hincl2.
     iFrame. simpl.
 
@@ -260,10 +260,10 @@ Section place.
   Global Existing Instance typed_place_array_uniq_inst | 30.
 
   (* TODO this is a problem, because we can only get strong below OpenedLtype etc. *)
-  Lemma typed_place_array_shared π E L {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
+  Lemma typed_place_array_shared E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) κ bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
-      subsume_full E L false (v ◁ᵥ{π, m} i @ tyv) (v ◁ᵥ{π, m} i' @ int it) (λ L1 R2, R2 -∗
+      subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
       ⌜(0 ≤ i')%Z⌝ ∗ ⌜(i' < len)%Z⌝ ∗
       ∀ lt r,
         (* relies on Lithium's built-in simplification of lookups. *)
@@ -271,7 +271,7 @@ Section place.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L1 bmin (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
-        typed_place π E L1 (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
+        typed_place E L1 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Shared κ) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
         T L3 κs' li bi bmin2 rti ltyi ri
           (λ L4 upd cont, updcx L4 upd (λ upd',
             cont (mkPUpd _ bmin
@@ -284,12 +284,12 @@ Section place.
               opt_place_update_eq_refl
             )))
           )))
-    ⊢ typed_place π E L l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) π v m rtv tyv i :: P) T.
+    ⊢ typed_place E L f l (ArrayLtype def len lts) (#rs) bmin (Shared κ) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) v m rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
-    iIntros (????) "#CTX #HE HL Hl Hcont".
+    iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl. iIntros "Hv".
-    iApply fupd_wp.
+    iApply fupd_wpe.
     iMod ("HT" with "[] [] [] CTX HE HL Hv") as "(%L' & %R2 & >(Hi & R2) & HL & HT)"; [done.. | ].
     iDestruct ("HT" with "R2") as "(% & % & HT)".
     iMod (fupd_mask_subseteq F) as "HclF"; first done.
@@ -299,7 +299,7 @@ Section place.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply wp_fupd.
+    iApply wpe_fupd.
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -321,7 +321,7 @@ Section place.
     iPoseProof ("HT" $! lti ri with "[//] [//]") as "(%Houtl & HT)".
     iPoseProof (lctx_place_update_kind_outlives_use with "HE HL") as "#Houtl"; first apply Houtl.
     iPoseProof (big_sepL2_insert_acc with "Hb") as "((%Hsti & Hb) & Hcl_b)"; [done | done | ].
-    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL") as "Hc".
+    iPoseProof ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf") as "Hc".
     rewrite /OffsetLocSt/use_layout_alg' Hst/=.
     rewrite /offset_loc.
     iApply ("Hc" with "[Hb]").
@@ -331,8 +331,8 @@ Section place.
 
     iIntros (upd) "#Hincl Hl2 %Hsteq HR Hcond".
     iMod ("Hc" with "Hincl Hl2 [//] HR Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & #Hincl2 & ? & ? & HL & Hcont)".
     iFrame. simpl.
     generalize (opt_place_update_eq_use _ _ (pupd_rt upd') place_update_kind_rt_same_array upd'.(pupd_eq_2)).
     intros Heq.

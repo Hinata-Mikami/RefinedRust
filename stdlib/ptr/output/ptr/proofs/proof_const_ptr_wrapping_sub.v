@@ -15,7 +15,7 @@ Proof.
   repeat liRStep; liShow.
   liFromSyntax.
   rewrite /typed_bin_op/typed_val_expr.
-  iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hcont".
+  iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".
   rewrite {1}/ty_own_val /=. iDestruct "Hv2" as "(_ & -> & %)".
   iRename select (credit_store _ _) into "Hstore".
@@ -32,7 +32,7 @@ Proof.
   assert ((l wrapping_offset{T_st_ly}ₗ -count).2 ∈ USize).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
     by apply wrap_unsigned_in_range. }
-  iApply ("Hcont" $! _ π _ _ (alias_ptr_t) with "HL").
+  iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").
   { rewrite /ty_own_val /=. iPureIntro. sidecond_hammer. }
   repeat liRStep; liShow.
 

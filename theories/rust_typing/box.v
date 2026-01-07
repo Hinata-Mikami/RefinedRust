@@ -67,7 +67,7 @@ Section box.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π r m q ?) "#(LFT & LLCTX) Hna Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -112,7 +112,7 @@ Section box.
 
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
-    iPoseProof (ty_share with "[$LFT $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
+    iPoseProof (ty_share with "[$LFT $LLCTX] Hna [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
@@ -818,7 +818,7 @@ Section lemmas.
         setoid_rewrite ltype_own_core_equiv. rewrite ltype_core_idemp.
         rewrite ltype_core_syn_type_eq. iModIntro.
         iAssert (have_creds) with "[Hat Hcred]" as "?".
-        { simpl. unfold have_creds, num_laters_per_step, num_cred. 
+        { simpl. unfold have_creds, num_laters_per_step, num_cred.
           iSplitL "Hcred".
           - iApply lc_weaken; last done. lia.
           - iApply tr_weaken; last done. lia. }
@@ -863,9 +863,9 @@ Section rules.
 
   (** Place access *)
   (* Needs to have lower priority than the id instance *)
-  Lemma place_ofty_box {rt} `{Inhabited rt} π E L l (ty : type rt) (r : place_rfn (place_rfn rt)) bmin0 b P T :
-    typed_place π E L l (BoxLtype (◁ ty)) r bmin0 b P T
-    ⊢ typed_place π E L l (◁ (box ty)) r bmin0 b P T.
+  Lemma place_ofty_box {rt} E L f l (ty : type rt) (r : place_rfn (place_rfn rt)) bmin0 b P T :
+    typed_place E L f l (BoxLtype (◁ ty)) r bmin0 b P T
+    ⊢ typed_place E L f l (◁ (box ty)) r bmin0 b P T.
   Proof.
     iIntros "Hp". iApply typed_place_eqltype; last done.
     symmetry. apply box_ltype_unfold_full_eqltype. reflexivity.
@@ -873,8 +873,8 @@ Section rules.
   Definition place_ofty_box_inst := [instance @place_ofty_box].
   Global Existing Instance place_ofty_box_inst | 30.
 
-  Lemma typed_place_box_owned {rto} π E L (lt2 : ltype rto) P l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
-    (∀ l', typed_place π E L l' lt2 r bmin0 (Owned true) P
+  Lemma typed_place_box_owned {rto} E L f (lt2 : ltype rto) P l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+    (∀ l', typed_place E L f l' lt2 r bmin0 (Owned true) P
       (λ L' κs l2 b2 bmin rti tyli ri updcx,
         T L' κs l2 b2 bmin rti tyli ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -887,27 +887,27 @@ Section rules.
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2))
           )))))
-    ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (BoxLtype lt2) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
-    iIntros "HR" (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros "HR" (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     iPoseProof (box_ltype_acc_owned F with "HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
-    iApply fupd_wp. iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
-    iModIntro. 
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
+    iModIntro.
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb") => /=.
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hf & Hcont)".
     iFrame. simpl.
     iMod ("Hc" with "[] Hl Hl'") as "$".
     { done. }
@@ -917,9 +917,9 @@ Section rules.
   Definition typed_place_box_owned_inst := [instance @typed_place_box_owned].
   Global Existing Instance typed_place_box_owned_inst | 30.
 
-  Lemma typed_place_box_uniq {rto} π E L (lt2 : ltype rto) P l r κ' γ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_box_uniq {rto} E L f (lt2 : ltype rto) P l r κ' γ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
-      (∀ l', typed_place π E L' l' lt2 r bmin0 (Owned true) P
+      (∀ l', typed_place E L' f l' lt2 r bmin0 (Owned true) P
         (λ L'' κs' l2 b2 bmin rti tyli ri updcx,
           T L'' κs' l2 b2 bmin rti tyli ri
             (λ L4 upd cont, updcx L4 upd (λ upd',
@@ -948,32 +948,32 @@ Section rules.
                   (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
               )))
             )))
-    ⊢ typed_place π E L l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (BoxLtype lt2) (PlaceIn r) bmin0 (Uniq κ' γ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     (* get a token *)
-    iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (box_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_".
-    iModIntro. 
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
+    iModIntro.
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl Hcl".
     iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
     simpl. iIntros (upd) "#Hincl Hl2 %Hst ? Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hb & %Hsteq & Hcond & ? & ? & ? & HL & HT)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hb & %Hsteq & Hcond & ? & ? & ? & HL & Hf & HT)".
     unfold check_llctx_place_update_kind_incl_goal.
     iDestruct "HT" as (b Hb) "HT".
     destruct b; simpl.
@@ -999,9 +999,9 @@ Section rules.
   Definition typed_place_box_uniq_inst := [instance @typed_place_box_uniq].
   Global Existing Instance typed_place_box_uniq_inst | 30.
 
-  Lemma typed_place_box_shared {rto} π E L (lt2 : ltype rto) P l r κ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_box_shared {rto} E L f (lt2 : ltype rto) P l r κ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
-      (∀ l', typed_place π E L' l' lt2 r bmin0 (Shared κ') P
+      (∀ l', typed_place E L' f l' lt2 r bmin0 (Shared κ') P
         (λ L'' κs' l2 b2 bmin rti tyli ri updcx,
           T L'' κs' l2 b2 bmin rti tyli ri
             (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -1014,32 +1014,32 @@ Section rules.
                 (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
                 (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2))
             ))))))
-    ⊢ typed_place π E L l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (BoxLtype lt2) (#r) bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     (* get a token *)
-    iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (box_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & %q' & Hl & Hb & Hcl)". iMod "Hb".
     iMod "HclF" as "_".
     iModIntro.
-    iApply wp_fupd.
+    iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro. iNext.
     iIntros (st) "Hl".
     iExists l'. iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 b2 bmin rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ _ bmin with "Hb").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & ? & HL & Hf & Hcont)".
     iFrame. simpl.
     iMod ("Hcl" with "Hl Hl'") as "(? & Htok)".
     iMod (fupd_mask_mono with "(Hclκ' Htok)") as "?"; first done.

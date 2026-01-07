@@ -12,7 +12,6 @@ use std::io::Write as _;
 use std::{fmt, io};
 
 use derive_more::{Constructor, Display};
-use indent_write::fmt::IndentWriter as FmtIndentWriter;
 use indent_write::indentable::Indentable as _;
 use indent_write::io::IndentWriter;
 use indoc::{formatdoc, writedoc};
@@ -20,7 +19,7 @@ use log::{info, trace};
 use typed_arena::Arena;
 
 use crate::specs::*;
-use crate::{BASE_INDENT, coq, fmt_list, lang, make_indent, model, write_list};
+use crate::{BASE_INDENT, coq, fmt_list, lang, make_indent, model};
 
 fn fmt_comment(o: Option<&String>) -> String {
     match o {
@@ -547,6 +546,12 @@ pub enum PrimStmt {
     #[display("assert{{ {} }}: {};\n", lang::OpType::Bool, _0)]
     AssertS(Box<Expr>),
 
+    #[display("local_live{{ {} }} \"{}\";\n", _0.1, _0.0)]
+    LocalLive(Variable),
+
+    #[display("local_dead \"{}\";\n", _0)]
+    LocalDead(String),
+
     #[display("{}", fmt_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why.as_ref()))}))]
     Annot {
         a: Vec<Annotation>,
@@ -712,22 +717,14 @@ impl Binop {
 /**
  * A variable in the Caesium code, composed of a name and a type.
  */
-#[derive(Clone, Eq, PartialEq, Debug)]
-struct Variable((String, lang::SynType));
-
-impl Variable {
-    #[must_use]
-    const fn new(name: String, st: lang::SynType) -> Self {
-        Self((name, st))
-    }
-}
+#[derive(Clone, Eq, PartialEq, Debug, Constructor)]
+pub struct Variable(String, lang::SynType);
 
 /**
  * Maintain necessary info to map MIR places to Caesium stack variables.
  */
 struct StackMap {
     args: Vec<Variable>,
-    locals: Vec<Variable>,
     used_names: HashSet<String>,
 }
 
@@ -736,18 +733,8 @@ impl StackMap {
     fn new() -> Self {
         Self {
             args: Vec::new(),
-            locals: Vec::new(),
             used_names: HashSet::new(),
         }
-    }
-
-    fn insert_local(&mut self, name: String, st: lang::SynType) -> bool {
-        if self.used_names.contains(&name) {
-            return false;
-        }
-        self.used_names.insert(name.clone());
-        self.locals.push(Variable::new(name, st));
-        true
     }
 
     fn insert_arg(&mut self, name: String, st: lang::SynType) -> bool {
@@ -805,10 +792,6 @@ impl FunctionCode {
         }
     }
 
-    fn get_locals(&self) -> &[Variable] {
-        &self.def.stack_layout.locals
-    }
-
     fn get_args(&self) -> &[Variable] {
         &self.def.stack_layout.args
     }
@@ -816,12 +799,25 @@ impl FunctionCode {
 
 impl fmt::Display for FunctionCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Definition {} {} : function := \n", self.code_name, self.required_parameters,)?;
-        let mut f_indent = FmtIndentWriter::new(BASE_INDENT, f);
-        write!(&mut f_indent, "{}", self.def)?;
-        write!(&mut f_indent, ".")?;
+        let mut doc = coq::Document::default();
 
-        Ok(())
+        let def = coq::command::Definition {
+            name: self.code_name.clone(),
+            params: self.required_parameters.clone(),
+            ty: Some(coq::term::RocqType::UserDefined(model::Type::Function)),
+            body: coq::command::DefinitionBody::Term(coq::term::RocqTerm::Literal(self.def.to_string())),
+            program_mode: true,
+        };
+        doc.push(def);
+
+        let proof = coq::ltac::LTac::UserDefined(model::LTac::SolveFnVarNoDup);
+        let obligation_proof = coq::command::ObligationProof {
+            content: coq::ProofDocument::new(vec![coq::Vernac::LTac(proof.into())]),
+            terminator: coq::proof::Terminator::Qed,
+        };
+        doc.push(coq::command::Command::NextObligation(obligation_proof));
+
+        write!(f, "{doc}\n")
     }
 }
 
@@ -843,10 +839,6 @@ impl FunctionCodeDef {
         self.stack_layout.insert_arg(name.to_owned(), st);
     }
 
-    pub fn add_local(&mut self, name: &str, st: lang::SynType) {
-        self.stack_layout.insert_local(name.to_owned(), st);
-    }
-
     pub fn add_basic_block(&mut self, index: usize, bb: Stmt) {
         self.basic_blocks.insert(index, bb);
     }
@@ -854,7 +846,7 @@ impl FunctionCodeDef {
 
 impl fmt::Display for FunctionCodeDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn fmt_variable(Variable((name, ty)): &Variable) -> String {
+        fn fmt_variable(Variable(name, ty): &Variable) -> String {
             format!("(\"{}\", {} : layout)", name, lang::Layout::from(ty))
         }
 
@@ -870,7 +862,6 @@ impl fmt::Display for FunctionCodeDef {
         }
 
         let args = fmt_list!(&self.stack_layout.args, ";\n", fmt_variable);
-        let locals = fmt_list!(&self.stack_layout.locals, ";\n", fmt_variable);
         let blocks = fmt_list!(&self.basic_blocks, "\n", fmt_blocks);
 
         writedoc!(
@@ -879,16 +870,12 @@ impl fmt::Display for FunctionCodeDef {
                 f_args := [
                  {}
                 ];
-                f_local_vars := [
-                 {}
-                ];
                 f_code :=
                  {}
                  ∅;
                 f_init := "_bb0";
                |}}"#,
             args.indented_skip_initial(&make_indent(1)),
-            locals.indented_skip_initial(&make_indent(1)),
             blocks.indented_skip_initial(&make_indent(1))
         )?;
         Ok(())
@@ -1055,10 +1042,7 @@ impl Function<'_> {
             write!(f, "{}  ", x)?;
         }
 
-        // write local syntypes
-        write!(f, ") [")?;
-        write_list!(f, &self.code.get_locals(), "; ", |Variable((_, st))| st.to_string())?;
-        write!(f, "] (<tag_type> ")?;
+        write!(f, ") (<tag_type> ")?;
 
         // write the specification term
         let mut scope_str = String::new();
@@ -1223,12 +1207,8 @@ impl Function<'_> {
         // intro stack locations
         write!(f, "intros")?;
 
-        for Variable((arg, _)) in self.code.get_args() {
+        for Variable(arg, _) in self.code.get_args() {
             write!(f, " {}", LocalKind::Arg.mk_local_name(arg))?;
-        }
-
-        for Variable((local, _)) in self.code.get_locals() {
-            write!(f, " {}", LocalKind::Local.mk_local_name(local))?;
         }
         write!(f, ";\n")?;
 

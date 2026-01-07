@@ -31,13 +31,22 @@ Ltac unfold_elctx :=
   (*end.*)
 
 
-Definition CODE_MARKER (rf : runtime_function) : runtime_function := rf.
+Definition CODE_MARKER (rf : function) : function := rf.
 Notation "'HIDDEN'" := (CODE_MARKER _) (only printing).
 Arguments CODE_MARKER : simpl never.
 Ltac unfold_code_marker_and_compute_map_lookup :=
   unfold CODE_MARKER in *;
   match goal with
-    | |- f_code (rf_fn ?FN) !! _ = Some _ => unfold rf_fn, f_code, FN
+    | |- f_code ?FN !! _ = Some _ => unfold FN;
+          match goal with
+          | |- f_code ?t !! _ = Some _ =>
+              let rec unfold_fn t :=
+                match t with
+                | ?a _ => unfold_fn a
+                | ?a => unfold a
+                end
+              in unfold_fn t
+          end; unfold f_code
   end;
   compute_map_lookup.
 

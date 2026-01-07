@@ -8,9 +8,9 @@ From refinedrust Require Import options.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_shr_owned {rto} π κ (lt2 : ltype rto) P E L l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_shr_owned {rto} f κ (lt2 : ltype rto) P E L l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
    introduce_with_hooks E L (£1) (λ L1,
-     ∀ l', typed_place π E L1 l' lt2 r bmin0 (Shared κ) P
+     ∀ l', typed_place E L1 f l' lt2 r bmin0 (Shared κ) P
         (λ L' κs l2 b2 bmin rti tyli ri updcx,
           T L' (κs) l2 b2 bmin rti tyli ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -22,15 +22,15 @@ Section place.
             (upd').(pupd_performed)
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))))))
-    ⊢ typed_place π E L l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
-    iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
-    iApply fupd_wp. iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl HT". iMod (fupd_mask_subseteq F) as "HclF"; first done.
@@ -38,13 +38,13 @@ Section place.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HR" with "[] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
-    iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HR" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb"). simpl.
     iIntros (upd) "Hincl Hl2 %Hsteq HR Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] HR Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hb & %Hsteq' & Hcond & HR & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hb & %Hsteq' & Hcond & HR & ? & ? & ?)".
     iFrame. simpl.
     iMod ("HT" with "Hl Hb") as "Hb".
     iFrame. simp_ltypes. iR.
@@ -53,10 +53,10 @@ Section place.
   Definition typed_place_shr_owned_inst := [instance @typed_place_shr_owned].
   Global Existing Instance typed_place_shr_owned_inst | 30.
 
-  Lemma typed_place_shr_uniq {rto} π κ (lt2 : ltype rto) P E L l r κ' γ bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_shr_uniq {rto} f κ (lt2 : ltype rto) P E L l r κ' γ bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L1),
       introduce_with_hooks E L1 (£1) (λ L2,
-      (∀ l', typed_place π E L2 l' lt2 r (bmin0) (Shared κ) P
+      (∀ l', typed_place E L2 f l' lt2 r (bmin0) (Shared κ) P
         (λ L3 κs' l2 b2 bmin rti tyli ri updcx,
           T L3 (κs') l2 b2 bmin rti tyli ri
             (λ L4 upd cont, updcx L4 upd (λ upd',
@@ -85,19 +85,19 @@ Section place.
                   (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
               )))
         ))))
-    ⊢ typed_place π E L l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Uniq κ' γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     (* get a token *)
-    iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_uniq F with "[$LFT $LLCTX] Hκ' Hclκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [solve_ndisj.. | ].
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
     iIntros (st) "Hl Hc". iMod (fupd_mask_subseteq F) as "HclF"; first done.
@@ -105,13 +105,13 @@ Section place.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HT" with "[] HE HL [Hcred]") as "(%L1 & HL & HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L' κs' l2 bmin b2 rti tyli ri updcx) "Hb Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb").
     simpl. iIntros (upd) "#Hincl Hl2 %Hst ? Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hb & %Hsteq & Hcond & ? & ? & ? & HL & HT)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hb & %Hsteq & Hcond & ? & ? & ? & HL & Hf & HT)".
     unfold check_llctx_place_update_kind_incl_goal.
     iDestruct "HT" as (b Hb) "HT".
     destruct b; simpl.
@@ -137,10 +137,10 @@ Section place.
   Definition typed_place_shr_uniq_inst := [instance @typed_place_shr_uniq].
   Global Existing Instance typed_place_shr_uniq_inst | 30.
 
-  Lemma typed_place_shr_shared {rto} π E L (lt2 : ltype rto) P l r κ κ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_shr_shared {rto} f E L (lt2 : ltype rto) P l r κ κ' bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
     li_tactic (lctx_lft_alive_count_goal E L κ') (λ '(κs, L'),
       introduce_with_hooks E L' (£1) (λ L1,
-      (∀ l', typed_place π E L1 l' lt2 r bmin0 (Shared κ) P
+      (∀ l', typed_place E L1 f l' lt2 r bmin0 (Shared κ) P
         (λ L2 κs' l2 b2 bmin rti tyli ri updcx,
           T L2 κs' l2 b2 bmin rti tyli ri
             (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -153,18 +153,18 @@ Section place.
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
               (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))
             ))))))
-    ⊢ typed_place π E L l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) #r bmin0 (Shared κ') (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     rewrite /lctx_lft_alive_count_goal.
     iIntros "(%κs & %L2 & %Hal & HT)".
-    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL HP HΦ/=".
+    iIntros (Φ F ??). iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
     (* get a token *)
-    iApply fupd_wp. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
+    iApply fupd_wpe. iMod (fupd_mask_subseteq lftE) as "HclF"; first done.
     iMod (lctx_lft_alive_count_tok lftE with "HE HL") as (q) "(Hκ' & Hclκ' & HL)"; [done.. | ].
     iMod "HclF" as "_". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iPoseProof (shr_ltype_acc_shared F with "[$LFT $LLCTX] Hκ' HP") as "(%Hly & Hlb & Hb)"; [done.. | ].
     iMod "Hb" as "(%l' & %q' & Hl & >Hb & Hcl)". iMod "HclF" as "_".
-    iModIntro. iApply wp_fupd.
+    iModIntro. iApply wpe_fupd.
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro_lc. iIntros "Hcred !>!>".
     iIntros (st) "Hl". iMod (fupd_mask_mono with "Hb") as "#Hb"; first done.
@@ -172,13 +172,13 @@ Section place.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HT" with "[] HE HL [Hcred]") as "(%L1 & HL &HT)"; first done.
     { iApply lc_weaken; last done. unfold num_laters_per_step. lia. }
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hb").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hb").
     iModIntro. iIntros (L'' κs' l2 bmin b2 rti tyli ri updcx) "Hb' Hs".
     iApply ("HΦ" $! _ _ _ bmin with "Hb'").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hs" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl' & %Hsteq2 & Hcond & ? & ? & HL & Hcont)".
     iMod ("Hcl" with "Hl Hl'") as "(Hl & Htok)".
     iMod (fupd_mask_mono with "(Hclκ' Htok)") as "Htoks"; first done.
     iFrame. simpl. iFrame. iR.

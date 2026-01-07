@@ -49,50 +49,50 @@ Section updateable.
     eauto.
   Qed.
 
-  Global Program Instance updateable_typed_val_expr E L e T :
-    Updateable (typed_val_expr E L e T) := {|
+  Global Program Instance updateable_typed_val_expr E L f e T :
+    Updateable (typed_val_expr E L f e T) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := typed_val_expr E L e T;
+      updateable_core E L := typed_val_expr E L f e T;
   |}.
   Next Obligation.
-    iIntros (_ _ e T E L).
+    iIntros (_ _ ? e T E L).
     rewrite /typed_val_expr.
-    iIntros "HT" (?) "#CTX #HE HL Hc".
-    iApply fupd_wp. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
-    iApply ("HT" with "CTX HE HL Hc").
+    iIntros "HT" (?) "#CTX #HE HL Hf Hc".
+    iApply fupd_wpe. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
+    iApply ("HT" with "CTX HE HL Hf Hc").
   Qed.
   Next Obligation.
     simpl. eauto.
   Qed.
 
-  Global Program Instance updateable_typed_call π E L κs etys v (P : iProp Σ) vl tys T :
-    Updateable (typed_call π E L κs etys v P vl tys T) := {|
+  Global Program Instance updateable_typed_call E L f κs etys v (P : iProp Σ) vl tys T :
+    Updateable (typed_call E L f κs etys v P vl tys T) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := typed_call π E L κs etys v P vl tys T;
+      updateable_core E L := typed_call E L f κs etys v P vl tys T;
   |}.
   Next Obligation.
     iIntros (? ? ? ? ? ? ? ? ? ? ? ?).
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    iIntros (?) "#CTX #HE HL Hc".
-    iApply fupd_wp. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
-    iApply ("HT" with "HP Ha CTX HE HL Hc").
+    iIntros (?) "#CTX #HE HL Hf Hc".
+    iApply fupd_wpe. iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
+    iApply ("HT" with "HP Ha CTX HE HL Hf Hc").
   Qed.
   Next Obligation.
     simpl. eauto.
   Qed.
 
 
-  Global Program Instance updateable_typed_stmt E L s rf R ϝ :
-    Updateable (typed_stmt E L s rf R ϝ) := {|
+  Global Program Instance updateable_typed_stmt E L f s rf R ϝ :
+    Updateable (typed_stmt E L f s rf R ϝ) := {|
       updateable_E := E;
       updateable_L := L;
-      updateable_core E L := typed_stmt E L s rf R ϝ;
+      updateable_core E L := typed_stmt E L f s rf R ϝ;
   |}.
   Next Obligation.
-    iIntros (_ _ ? ? ? ? E L).
+    iIntros (_ _ ? ? ? ? ? E L).
     iIntros "HT". rewrite /typed_stmt.
     iIntros (?) "#CTX #HE HL Hcont".
     iMod ("HT" with "CTX HE HL") as "(%L2 & HL & HT)".
@@ -119,27 +119,27 @@ Section updateable.
     eauto.
   Qed.
 
-  Lemma fupd_typed_val_expr `{!typeGS Σ} E L e T :
-    (|={⊤}=> typed_val_expr E L e T) -∗ typed_val_expr E L e T.
+  Lemma fupd_typed_val_expr `{!typeGS Σ} E L f e T :
+    (|={⊤}=> typed_val_expr E L f e T) -∗ typed_val_expr E L f e T.
   Proof.
     rewrite /typed_val_expr.
-    iIntros "HT" (?) "CTX HE HL Hc".
-    iApply fupd_wp. iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hc").
+    iIntros "HT" (?) "CTX HE HL Hf Hc".
+    iApply fupd_wpe. iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hf Hc").
   Qed.
-  Lemma fupd_typed_call `{!typeGS Σ} π E L κs etys v (P : iProp Σ) vl tys T :
-    (|={⊤}=> typed_call π E L κs etys v P vl tys T) -∗ typed_call π E L κs etys v P vl tys T.
+  Lemma fupd_typed_call `{!typeGS Σ} E L f κs etys v (P : iProp Σ) vl tys T :
+    (|={⊤}=> typed_call E L f κs etys v P vl tys T) -∗ typed_call E L f κs etys v P vl tys T.
   Proof.
     rewrite /typed_call.
     iIntros "HT HP Ha".
-    iIntros (?) "CTX HE HL Hc".
-    iApply fupd_wp. iMod ("HT") as "HT". iApply ("HT" with "HP Ha CTX HE HL Hc").
+    iIntros (?) "CTX HE HL Hf Hc".
+    iApply fupd_wpe. iMod ("HT") as "HT". iApply ("HT" with "HP Ha CTX HE HL Hf Hc").
   Qed.
 
-  Lemma fupd_typed_stmt `{!typeGS Σ} E L s rf R ϝ :
-    ⊢ (|={⊤}=> typed_stmt E L s rf R ϝ) -∗ typed_stmt E L s rf R ϝ.
+  Lemma fupd_typed_stmt `{!typeGS Σ} E L f s rf R ϝ :
+    ⊢ (|={⊤}=> typed_stmt E L f s rf R ϝ) -∗ typed_stmt E L f s rf R ϝ.
   Proof.
-    iIntros "HT". rewrite /typed_stmt. iIntros (?) "CTX HE HL Hcont".
-    iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hcont").
+    iIntros "HT". rewrite /typed_stmt. iIntros (?) "CTX HE HL Hf Hcont".
+    iMod ("HT") as "HT". iApply ("HT" with "CTX HE HL Hf Hcont").
   Qed.
 End updateable.
 
@@ -419,8 +419,8 @@ Section test.
     idtac.
   Abort.
 
-  Lemma typed_s_updateable E L s rf R ϝ (l : loc) (off : Z) (st : syn_type) :
-    ⊢ typed_stmt E L s rf R ϝ.
+  Lemma typed_s_updateable E L f s rf R ϝ (l : loc) (off : Z) (st : syn_type) :
+    ⊢ typed_stmt E L f s rf R ϝ.
   Proof.
     iStartProof.
     unshelve apply_update (updateable_typed_array_access l off st).
@@ -428,25 +428,25 @@ Section test.
   Abort.
 End test.
 
-Lemma tac_typed_val_expr_bind' `{!typeGS Σ} E L K e T :
-  typed_val_expr E L (W.to_expr e) (λ L' π v m rt ty r,
-    v ◁ᵥ{π, m} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill K (W.Val v))) T) -∗
-  typed_val_expr E L (W.to_expr (W.fill K e)) T.
+Lemma tac_typed_val_expr_bind' `{!typeGS Σ} E L f K e T :
+  typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
+    v ◁ᵥ{f.1, m} r @ ty -∗ typed_val_expr E L' f (W.to_expr (W.fill K (W.Val v))) T) -∗
+  typed_val_expr E L f (W.to_expr (W.fill K e)) T.
 Proof.
   iIntros "He".
   rewrite /typed_val_expr.
-  iIntros (Φ) "#CTX #HE HL Hcont".
-  iApply tac_wp_bind'.
-  iApply ("He" with "CTX HE HL").
-  iIntros (L' π v m rt ty r) "HL Hv Hcont'".
-  iApply ("Hcont'" with "Hv CTX HE HL"). done.
+  iIntros (Φ) "#CTX #HE HL Hf Hcont".
+  iApply tac_wpe_bind'.
+  iApply ("He" with "CTX HE HL Hf").
+  iIntros (L' v m rt ty r) "HL Hf Hv Hcont'".
+  iApply ("Hcont'" with "Hv CTX HE HL Hf"). done.
 Qed.
-Lemma tac_typed_val_expr_bind `{!typeGS Σ} E L e Ks e' T :
+Lemma tac_typed_val_expr_bind `{!typeGS Σ} E L f e Ks e' T :
   W.find_expr_fill e false = Some (Ks, e') →
-  typed_val_expr E L (W.to_expr e') (λ L' π v m rt ty r,
-    if Ks is [] then T L' π v m rt ty r else
-      v ◁ᵥ{π, m} r @ ty -∗ typed_val_expr E L' (W.to_expr (W.fill Ks (W.Val v))) T) -∗
-  typed_val_expr E L (W.to_expr e) T.
+  typed_val_expr E L f (W.to_expr e') (λ L' v m rt ty r,
+    if Ks is [] then T L' v m rt ty r else
+      v ◁ᵥ{f.1, m} r @ ty -∗ typed_val_expr E L' f (W.to_expr (W.fill Ks (W.Val v))) T) -∗
+  typed_val_expr E L f (W.to_expr e) T.
 Proof.
   move => /W.find_expr_fill_correct ->. move: Ks => [|K Ks] //.
   { auto. }
@@ -456,29 +456,31 @@ Qed.
 Tactic Notation "typed_val_expr_bind" :=
   iStartProof;
   lazymatch goal with
-  | |- envs_entails _ (typed_val_expr ?E ?L ?e ?T) =>
-    let e' := W.of_expr e in change (typed_val_expr E L e T) with (typed_val_expr E L (W.to_expr e') T);
+  | |- envs_entails _ (typed_val_expr ?E ?L ?f ?e ?T) =>
+    let e' := W.of_expr e in change (typed_val_expr E L f e T) with (typed_val_expr E L f (W.to_expr e') T);
     iApply tac_typed_val_expr_bind; [done |];
     unfold W.to_expr; simpl
   | _ => fail "typed_val_expr_bind: not a 'typed_val_expr'"
   end.
 
-Lemma tac_typed_stmt_bind `{!typeGS Σ} E L s e Ks fn ϝ T :
+Lemma tac_typed_stmt_bind `{!typeGS Σ} E L f s e Ks fn ϝ T :
   W.find_stmt_fill s = Some (Ks, e) →
-  typed_val_expr E L (W.to_expr e) (λ L' π v m rt ty r,
-    v ◁ᵥ{π, m} r @ ty -∗ typed_stmt E L' (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ) -∗
-  typed_stmt E L (W.to_stmt s) fn T ϝ.
+  typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
+    v ◁ᵥ{f.1, m} r @ ty -∗ typed_stmt E L' f (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ) -∗
+  typed_stmt E L f (W.to_stmt s) fn T ϝ.
 Proof.
   move => /W.find_stmt_fill_correct ->. iIntros "He".
   rewrite /typed_stmt.
-  iIntros (?) "#CTX #HE HL Hcont".
+  iIntros (?) "#CTX #HE HL Hf Hcont".
   rewrite stmt_wp_eq. iIntros (? rf ?) "?".
-  have [Ks' HKs']:= W.stmt_fill_correct Ks rf. rewrite HKs'.
+  have [Ks' HKs']:= W.stmt_fill_correct Ks f.1 rf. rewrite HKs'.
   iApply wp_bind.
-  iApply (wp_wand with "[He HL]").
-  { rewrite /typed_val_expr. iApply ("He" with "CTX HE HL").
-    iIntros (L' π v m rt ty r) "HL Hv Hcont".
-    iApply ("Hcont" with "Hv CTX HE HL"). }
+  iApply (wp_wand with "[He HL Hf]").
+  { rewrite /typed_val_expr.
+    iSpecialize ("He" with "CTX HE HL Hf").
+    rewrite expr_wp_unfold. iApply "He".
+    iIntros (L' v m rt ty r) "HL Hf Hv Hcont".
+    iApply ("Hcont" with "Hv CTX HE HL Hf"). }
   iIntros (v) "HWP".
   rewrite -(HKs' (W.Val _)) /W.to_expr.
   iSpecialize ("HWP" with "Hcont").
@@ -489,29 +491,30 @@ Qed.
 Tactic Notation "typed_stmt_bind" :=
   iStartProof;
   lazymatch goal with
-  | |- envs_entails _ (typed_stmt ?E ?L ?s ?fn ?R ?ϝ) =>
-    let s' := W.of_stmt s in change (typed_stmt E L s fn R ϝ) with (typed_stmt E L (W.to_stmt s') fn R ϝ);
+  | |- envs_entails _ (typed_stmt ?E ?L ?f ?s ?fn ?R ?ϝ) =>
+    let s' := W.of_stmt s in change (typed_stmt E L f s fn R ϝ) with (typed_stmt E L f (W.to_stmt s') fn R ϝ);
     iApply tac_typed_stmt_bind; [done |];
     unfold W.to_expr, W.to_stmt; simpl; unfold W.to_expr; simpl
   | _ => fail "typed_stmt_bind: not a 'typed_stmt'"
   end.
 
-Lemma intro_typed_stmt `{!typeGS Σ} fn R ϝ E L s Φ :
+Lemma intro_typed_stmt `{!typeGS Σ} rf R π f ϝ E L s Φ :
   rrust_ctx -∗
   elctx_interp E -∗
   llctx_interp L -∗
-  (∀ (L' : llctx) (v : val), llctx_interp L' -∗ ([∗ list] l ∈ rf_locs fn, l.1 ↦|l.2|) -∗ R v L' -∗ Φ v) -∗
-  typed_stmt E L s fn R ϝ -∗
-  WPs s {{ f_code (rf_fn fn), Φ }}.
+  current_frame π f -∗
+  typed_stmt_post_cond (π, f) rf R Φ -∗
+  typed_stmt E L (π, f) s rf R ϝ -∗
+  WPs{π} s {{ f_code (rf), Φ }}.
 Proof.
-  iIntros "#CTX #HE HL Hcont Hs".
+  iIntros "#CTX #HE HL Hf Hcont Hs".
   rewrite /typed_stmt.
-  iApply ("Hs" with "CTX HE HL Hcont").
+  iApply ("Hs" with "CTX HE HL Hf Hcont").
 Qed.
 
 Ltac to_typed_stmt SPEC :=
   iStartProof;
   lazymatch goal with
-  | FN : runtime_function |- envs_entails _ (WPs ?s {{ ?code, ?c }}) =>
+  | FN : function |- envs_entails _ (WPs{?π} ?s {{ ?code, ?c }}) =>
     iApply (intro_typed_stmt FN with SPEC)
   end.

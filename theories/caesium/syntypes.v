@@ -464,8 +464,15 @@ Definition syn_type_has_layout `{!LayoutAlg} (synty : syn_type) (ly : layout) : 
 Lemma syn_type_has_layout_inj `{!LayoutAlg} synty ly1 ly2 :
   syn_type_has_layout synty ly1 → syn_type_has_layout synty ly2 → ly1 = ly2.
 Proof. rewrite /syn_type_has_layout => ??. simplify_option_eq => //. Qed.
-
-
+Lemma Forall2_syn_type_has_layout_inj `{!LayoutAlg} synty lys1 lys2 :
+  Forall2 syn_type_has_layout synty lys1 → Forall2 syn_type_has_layout synty lys2 → lys1 = lys2.
+Proof.
+  induction 1 as [ | st ly ? ? ? Ha IH] in lys2 |-*; simpl.
+  { intros Ha. apply Forall2_nil_inv_l in Ha. done. }
+  intros Hb. apply Forall2_cons_inv_l in Hb as (ly' & lys' & ? & Hb & ->).
+  opose proof (syn_type_has_layout_inj st ly ly' _ _) as <-; [done.. | ].
+  f_equiv. by apply IH.
+Qed.
 
 (** Use a layout algorithm on a struct_layout_spec *)
 Definition use_struct_layout_alg `{!LayoutAlg} (sl_spec : struct_layout_spec) : option struct_layout :=

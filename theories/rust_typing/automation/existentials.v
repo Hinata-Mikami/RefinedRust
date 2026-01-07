@@ -88,7 +88,7 @@ Ltac ex_t_destruct_bor :=
           iModStrict (bor_persistent with ("LFT __H0 Htok1")) as ("(>% & Htok1)");
           [done | ]
       | (?l ◁ₗ[?π, Owned true] ?r @ (◁ ?ty))%I =>
-          iApply (ltype_own_ofty_share_tac with "[$] [Htok1] [Htok] __H0");
+          iApply (ltype_own_ofty_share_tac with "[$] [$] [Htok1] [Htok] __H0");
           [ done
           |
           | iFrame
@@ -166,7 +166,7 @@ Ltac ex_plain_t_solve_shr :=
   iIntros (???????);
   simpl in *;
   prepare_initial_coq_context;
-  iIntros "#(LFT & LLCTX) Htok Hb";
+  iIntros "#(LFT & LLCTX) #Hna Htok Hb";
   iEval (rewrite -lft_tok_sep) in "Htok";
   iDestruct "Htok" as "(Htok1 & Htok)";
   let ty_of_Htok1 := iTypeOf' "Htok1" in

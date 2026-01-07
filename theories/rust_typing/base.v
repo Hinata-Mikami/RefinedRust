@@ -4,9 +4,6 @@ From caesium Require Export proofmode notation syntypes.
 From refinedrust Require Export axioms pinned_borrows.
 From refinedrust Require Import options.
 
-Ltac iR := iSplitR; first done.
-Ltac iL := iSplitL; last done.
-
 Definition rrustN := nroot .@ "rrust".
 Definition shrN  := rrustN .@ "shr".
 

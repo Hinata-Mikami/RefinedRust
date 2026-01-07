@@ -13,7 +13,7 @@ use std::marker::PhantomData;
 
 use derive_more::{Constructor, Display};
 
-use crate::{BASE_INDENT, coq, lang, model, push_str_list, write_list};
+use crate::{BASE_INDENT, coq, fmt_list, lang, model, push_str_list, write_list};
 
 pub mod enums;
 pub mod functions;
@@ -425,11 +425,11 @@ impl fmt::Display for LoopSpec {
         write!(
             f,
             "([{}], [{}], [{}], wrap_inv ({}), wrap_inv (λ (L : llctx), True%I : iProp Σ), {})",
-            self.inv_locals.join("; "),
-            self.preserved_locals.join("; "),
-            self.uninit_locals.join("; "),
+            fmt_list!(&self.inv_locals, "; ", |x| format!("\"{x}\"")),
+            fmt_list!(&self.preserved_locals, "; ", |x| format!("\"{x}\"")),
+            fmt_list!(&self.uninit_locals, "; ", |x| format!("\"{x}\"")),
             self.func_predicate,
-            if let Some(loc) = &self.iterator_local { format!("Some {loc}") } else { "None".to_owned() },
+            if let Some(var) = &self.iterator_local { format!("Some \"{var}\"") } else { "None".to_owned() },
         )?;
 
         Ok(())

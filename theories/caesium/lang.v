@@ -95,44 +95,78 @@ Inductive stmt :=
 | SkipS (s : stmt)
 | StuckS (* stuck statement *)
 | ExprS (e : expr) (s : stmt)
+| LocalLive (x : var_name) (ly : layout) (s : stmt)
+| LocalDead (x : var_name) (s : stmt)
 .
 
 Arguments Switch _%_E _%_E _%_E.
 
 Record function := {
   f_args : list (var_name * layout);
-  f_local_vars : list (var_name * layout);
-  (* TODO should we add this: f_ret : layout; ?*)
   f_code : gmap label stmt;
   f_init : label;
+  f_args_nodup : NoDup f_args.*1;
 }.
+
+Notation thread_id := nat (only parsing).
+Record call_frame := {
+  cf_locals : gmap var_name (loc * layout);
+}.
+Record thread_state := {
+  ts_frames : list call_frame;
+}.
+
+
+Definition pop_frame (ts : thread_state) : thread_state :=
+  {| ts_frames := tail ts.(ts_frames) |}.
+
+Definition thread_get_frame (ts : thread_state) : option call_frame :=
+  head ts.(ts_frames).
+
+Definition frame_alloc_var (cf : call_frame) (x : var_name) (l : loc) (ly : layout) : call_frame :=
+  {| cf_locals := <[x := (l, ly)]> cf.(cf_locals) |}.
+Definition frame_alloc_vars (cf : call_frame) (args : list (var_name * layout)) (ls : list loc) : call_frame :=
+  List.fold_right (λ '((x, ly), l) cf, frame_alloc_var cf x l ly) cf (zip args ls).
+
+Definition frame_dealloc_var (cf : call_frame) (x : var_name) : call_frame :=
+  {| cf_locals := delete x cf.(cf_locals) |}.
+Definition frame_dealloc_vars (cf : call_frame) (xs : list var_name) : call_frame :=
+  List.fold_right (λ x cf, frame_dealloc_var cf x) cf xs.
+
+Definition thread_push_frame (ts : thread_state) (cf : call_frame) : thread_state :=
+  {| ts_frames := cf :: ts.(ts_frames) |}.
+Definition thread_update_frame (ts : thread_state) (cf : call_frame) : thread_state :=
+  {| ts_frames := cf :: tail ts.(ts_frames) |}.
+
+Definition empty_frame : call_frame := {| cf_locals := ∅ |}.
+Definition initialize_new_frame (args : list (string * layout)) (lsa : list loc) : call_frame :=
+  frame_alloc_vars empty_frame args lsa.
 
 (* TODO: put both function and bytes in the same heap or make pointers disjoint *)
 Record state := {
   st_heap: heap_state;
   st_fntbl: gmap addr function;
+  (* thread-local state *)
+  st_thread : gmap thread_id thread_state;
 }.
+
+Definition state_get_thread (σ : state) (π : thread_id) : option thread_state :=
+  σ.(st_thread) !! π.
 
 Definition heap_fmap (f : heap → heap) (σ : state) := {|
   st_heap := {| hs_heap := f σ.(st_heap).(hs_heap); hs_allocs := σ.(st_heap).(hs_allocs) |};
   st_fntbl := σ.(st_fntbl);
+  st_thread := σ.(st_thread);
 |}.
 
-Record runtime_function := {
-  (* locations of args and local vars are substitued in the body *)
-  rf_fn : function;
-  (* locations in the stack frame (locations of arguments and local
-  vars allocated on Call, need to be freed by Return) *)
-  rf_locs: list (loc * layout);
-}.
-
 Inductive runtime_expr :=
-| Expr (e : rtexpr)
-| Stmt (rf : runtime_function) (s : rtstmt)
+(* separate from [Expr], as we need to define [of_val] *)
+| RTVal (v : val)
+| Expr (π : thread_id) (e : rtexpr)
+| Stmt (π : thread_id) (rf : function) (s : rtstmt)
 | AllocFailed
 with rtexpr :=
 | RTVar (x : var_name)
-| RTVal (v : val)
 | RTUnOp (op : un_op) (ot : op_type) (e : runtime_expr)
 | RTBinOp (op : bin_op) (ot1 ot2 : op_type) (e1 e2 : runtime_expr)
 | RTCheckUnOp (op : un_op) (ot : op_type) (e : runtime_expr)
@@ -156,104 +190,95 @@ with rtstmt :=
 | RTSkipS (s : stmt)
 | RTStuckS
 | RTExprS (e : runtime_expr) (s : stmt)
+| RTLocalLive (x : var_name) (ly : layout) (s : stmt)
+| RTLocalDead (x : var_name) (s : stmt)
 .
 
-Fixpoint to_rtexpr (e : expr) : runtime_expr :=
-  Expr $ match e with
-  | Var x => RTVar x
-  | Val v => RTVal v
-  | UnOp op ot e => RTUnOp op ot (to_rtexpr e)
-  | BinOp op ot1 ot2 e1 e2 => RTBinOp op ot1 ot2 (to_rtexpr e1) (to_rtexpr e2)
-  | CheckUnOp op ot e => RTCheckUnOp op ot (to_rtexpr e)
-  | CheckBinOp op ot1 ot2 e1 e2 => RTCheckBinOp op ot1 ot2 (to_rtexpr e1) (to_rtexpr e2)
-  | CopyAllocId ot1 e1 e2 => RTCopyAllocId ot1 (to_rtexpr e1) (to_rtexpr e2)
-  | Deref o ot mc e => RTDeref o ot mc (to_rtexpr e)
-  | Call f args => RTCall (to_rtexpr f) (to_rtexpr <$> args)
-  | CAS ot e1 e2 e3 => RTCAS ot (to_rtexpr e1) (to_rtexpr e2) (to_rtexpr e3)
-  | Concat es => RTConcat (to_rtexpr <$> es)
-  | IfE ot e1 e2 e3 => RTIfE ot (to_rtexpr e1) (to_rtexpr e2) (to_rtexpr e3)
-  | Alloc e_size e_align => RTAlloc (to_rtexpr e_size) (to_rtexpr e_align)
-  | SkipE e => RTSkipE (to_rtexpr e)
-  | StuckE => RTStuckE
+Definition to_val (e : runtime_expr) : option val :=
+  match e with
+  | RTVal v => Some v
+  | _ => None
   end.
-Definition coerce_rtexpr := to_rtexpr.
-Coercion coerce_rtexpr : expr >-> runtime_expr.
-Arguments coerce_rtexpr : simpl never.
-Definition to_rtstmt (rf : runtime_function) (s : stmt) : runtime_expr :=
-  Stmt rf $ match s with
+Definition of_val (v : val) : runtime_expr := RTVal v.
+
+Fixpoint to_rtexpr (π : thread_id) (e : expr) : runtime_expr :=
+  match e with
+  | Var x => Expr π $ RTVar x
+  | Val v => RTVal v
+  | UnOp op ot e => Expr π $ RTUnOp op ot (to_rtexpr π e)
+  | BinOp op ot1 ot2 e1 e2 => Expr π $ RTBinOp op ot1 ot2 (to_rtexpr π e1) (to_rtexpr π e2)
+  | CheckUnOp op ot e => Expr π $ RTCheckUnOp op ot (to_rtexpr π e)
+  | CheckBinOp op ot1 ot2 e1 e2 => Expr π $ RTCheckBinOp op ot1 ot2 (to_rtexpr π e1) (to_rtexpr π e2)
+  | CopyAllocId ot1 e1 e2 => Expr π $ RTCopyAllocId ot1 (to_rtexpr π e1) (to_rtexpr π e2)
+  | Deref o ot mc e => Expr π $ RTDeref o ot mc (to_rtexpr π e)
+  | Call f args => Expr π $ RTCall (to_rtexpr π f) (to_rtexpr π <$> args)
+  | CAS ot e1 e2 e3 => Expr π $ RTCAS ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
+  | Concat es => Expr π $ RTConcat (to_rtexpr π <$> es)
+  | IfE ot e1 e2 e3 => Expr π $ RTIfE ot (to_rtexpr π e1) (to_rtexpr π e2) (to_rtexpr π e3)
+  | Alloc e_size e_align => Expr π $ RTAlloc (to_rtexpr π e_size) (to_rtexpr π e_align)
+  | SkipE e => Expr π $ RTSkipE (to_rtexpr π e)
+  | StuckE => Expr π $ RTStuckE
+  end.
+Definition to_rtstmt (π : thread_id) (f : function) (s : stmt) : runtime_expr :=
+  Stmt π f $ match s with
   | Goto b => RTGoto b
-  | Return e => RTReturn (to_rtexpr e)
-  | IfS ot join e s1 s2 => RTIfS ot join (to_rtexpr e) s1 s2
-  | Switch it e m bs def => RTSwitch it (to_rtexpr e) m bs def
-  | Assign o ot e1 e2 s => RTAssign o ot (to_rtexpr e1) (to_rtexpr e2) s
-  | Free e_size e_align e s => RTFree (to_rtexpr e_size) (to_rtexpr e_align) (to_rtexpr e) s
+  | Return e => RTReturn (to_rtexpr π e)
+  | IfS ot join e s1 s2 => RTIfS ot join (to_rtexpr π e) s1 s2
+  | Switch it e m bs def => RTSwitch it (to_rtexpr π e) m bs def
+  | Assign o ot e1 e2 s => RTAssign o ot (to_rtexpr π e1) (to_rtexpr π e2) s
+  | Free e_size e_align e s => RTFree (to_rtexpr π e_size) (to_rtexpr π e_align) (to_rtexpr π e) s
   | SkipS s => RTSkipS s
   | StuckS => RTStuckS
-  | ExprS e s => RTExprS (to_rtexpr e) s
+  | ExprS e s => RTExprS (to_rtexpr π e) s
+  | LocalLive x ly s => RTLocalLive x ly s
+  | LocalDead x s => RTLocalDead x s
   end.
 
-Global Instance to_rtexpr_inj : Inj (=) (=) to_rtexpr.
+Lemma to_rtexpr_inj' π1 π2 e1 e2 :
+  to_rtexpr π1 e1 = to_rtexpr π2 e2 → e1 = e2.
 Proof.
-  elim => [ ^ e1 ] [ ^ e2 ] // ?; simplify_eq => //; try naive_solver.
+  induction e1 in e2 |-*; destruct e2; try done.
+  all: simpl; intros ?; simplify_eq.
+  all: try naive_solver.
   - f_equal; [naive_solver|].
-    generalize dependent e2args.
+    generalize dependent args0.
     revert select (Forall _ _). elim; [by case|].
     move => ????? [|??]//. naive_solver.
-  - generalize dependent e2es.
+  - generalize dependent es0.
     revert select (Forall _ _). elim; [by case|].
     move => ????? [|??]//. naive_solver.
 Qed.
-Global Instance to_rtstmt_inj : Inj2 (=) (=) (=) to_rtstmt.
-Proof. move => ? s1 ? s2 [-> ]. elim: s1 s2 => [ ^ e1 ] [ ^ e2 ] // ?; simplify_eq => //. Qed.
+Lemma to_rtexpr_inj_strong_1 π1 π2 e1 e2 :
+  to_val (to_rtexpr π1 e1) = None →
+  to_rtexpr π1 e1 = to_rtexpr π2 e2 → π1 = π2 ∧ e1 = e2.
+Proof.
+  intros Hv Heq. split; last by eapply to_rtexpr_inj'.
+  destruct e1, e2; try done.
+  all: simplify_eq; done.
+Qed.
+Lemma to_rtexpr_inj_strong_2 π1 π2 e1 e2 :
+  to_val (to_rtexpr π2 e2) = None →
+  to_rtexpr π1 e1 = to_rtexpr π2 e2 → π1 = π2 ∧ e1 = e2.
+Proof.
+  intros Hv Heq. split; last by eapply to_rtexpr_inj'.
+  destruct e1, e2; try done.
+  all: simplify_eq; done.
+Qed.
 
-Implicit Type (l : loc) (re : rtexpr) (v : val) (h : heap) (σ : state) (ly : layout) (rs : rtstmt) (s : stmt) (sgn : signed) (rf : runtime_function).
+Global Instance to_rtexpr_inj π : Inj (=) (=) (to_rtexpr π).
+Proof.
+  intros ???.
+  by eapply to_rtexpr_inj'.
+Qed.
+Global Instance to_rtstmt_inj : Inj3 (=) (=) (=) (=) to_rtstmt.
+Proof.
+  intros π1 f1 s1 π2 f2 s2.
+  destruct s1, s2; try done.
+  all: simpl; intros ?; simplify_eq.
+  all: done.
+Qed.
 
-(*** Substitution *)
-Fixpoint subst (x : var_name) (v : val) (e : expr)  : expr :=
-  match e with
-  | Var y => if bool_decide (x = y) then Val v else Var y
-  | Val v => Val v
-  | UnOp op ot e => UnOp op ot (subst x v e)
-  | BinOp op ot1 ot2 e1 e2 => BinOp op ot1 ot2 (subst x v e1) (subst x v e2)
-  | CheckUnOp op ot e => CheckUnOp op ot (subst x v e)
-  | CheckBinOp op ot1 ot2 e1 e2 => CheckBinOp op ot1 ot2 (subst x v e1) (subst x v e2)
-  | CopyAllocId ot1 e1 e2 => CopyAllocId ot1 (subst x v e1) (subst x v e2)
-  | Deref o l mc e => Deref o l mc (subst x v e)
-  | Call e es => Call (subst x v e) (subst x v <$> es)
-  | CAS ly e1 e2 e3 => CAS ly (subst x v e1) (subst x v e2) (subst x v e3)
-  | Concat el => Concat (subst x v <$> el)
-  | IfE ot e1 e2 e3 => IfE ot (subst x v e1) (subst x v e2) (subst x v e3)
-  | Alloc e_size e_align => Alloc (subst x v e_size) (subst x v e_align)
-  | SkipE e => SkipE (subst x v e)
-  | StuckE => StuckE
-  end.
-
-Fixpoint subst_l (xs : list (var_name * val)) (e : expr)  : expr :=
-  match xs with
-  | (x, v)::xs' => subst_l xs' (subst x v e)
-  | _ => e
-  end.
-
-Lemma subst_l_val xs v : subst_l xs (Val v) = Val v.
-Proof. induction xs as [ | [x v'] xs IH]; done. Qed.
-
-Fixpoint subst_stmt (xs : list (var_name * val)) (s : stmt) : stmt :=
-  match s with
-  | Goto b => Goto b
-  | Return e => Return (subst_l xs e)
-  | IfS ot join e s1 s2 => IfS ot join (subst_l xs e) (subst_stmt xs s1) (subst_stmt xs s2)
-  | Switch it e m' bs def => Switch it (subst_l xs e) m' (subst_stmt xs <$> bs) (subst_stmt xs def)
-  | Assign o ot e1 e2 s => Assign o ot (subst_l xs e1) (subst_l xs e2) (subst_stmt xs s)
-  | Free e_size e_align e s => Free (subst_l xs e_size) (subst_l xs e_align) (subst_l xs e) (subst_stmt xs s)
-  | SkipS s => SkipS (subst_stmt xs s)
-  | StuckS => StuckS
-  | ExprS e s => ExprS (subst_l xs e) (subst_stmt xs s)
-  end.
-
-Definition subst_function (xs : list (var_name * val)) (f : function) : function := {|
-  f_code := (subst_stmt xs) <$> f.(f_code);
-  f_args := f.(f_args); f_init := f.(f_init); f_local_vars := f.(f_local_vars);
-|}.
+Implicit Type (π : thread_id) (l : loc) (re : rtexpr) (v : val) (h : heap) (σ : state) (ly : layout) (rs : rtstmt) (s : stmt) (sgn : signed) (rf : function).
 
 (*** Evaluation of operations *)
 Definition compute_arith_bin_op (n1 n2 : Z) (it : _) (op : _) : option Z :=
@@ -501,22 +526,27 @@ Inductive check_un_op : un_op → op_type → val → bool → Prop :=
 
 (*** Evaluation of Expressions *)
 
-Inductive expr_step : expr → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
-| SkipES v σ:
-    expr_step (SkipE (Val v)) σ [] (Val v) σ []
-| UnOpS op v σ v' ot:
+Inductive expr_step : expr → thread_id → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
+| SkipES v σ π:
+    expr_step (SkipE (Val v)) π σ [] (RTVal v) σ []
+| UnOpS op v σ π v' ot:
     eval_un_op op ot σ v v' →
-    expr_step (UnOp op ot (Val v)) σ [] (Val v') σ []
-| BinOpS op v1 v2 σ v' ot1 ot2:
+    expr_step (UnOp op ot (Val v)) π σ [] (RTVal v') σ []
+| BinOpS op v1 v2 σ π v' ot1 ot2:
     eval_bin_op op ot1 ot2 σ v1 v2 v' →
-    expr_step (BinOp op ot1 ot2 (Val v1) (Val v2)) σ [] (Val v') σ []
-| CheckUnOpS op v σ b ot :
+    expr_step (BinOp op ot1 ot2 (Val v1) (Val v2)) π σ [] (RTVal v') σ []
+| CheckUnOpS op v σ π b ot :
     check_un_op op ot v b →
-    expr_step (CheckUnOp op ot (Val v)) σ [] (Val (val_of_bool b)) σ []
-| CheckBinOpS op v1 v2 σ b ot1 ot2 :
+    expr_step (CheckUnOp op ot (Val v)) π σ [] (RTVal (val_of_bool b)) σ []
+| CheckBinOpS op v1 v2 σ π b ot1 ot2 :
     check_bin_op op ot1 ot2 v1 v2 b →
-    expr_step (CheckBinOp op ot1 ot2 (Val v1) (Val v2)) σ [] (Val (val_of_bool b)) σ []
-| DerefS o v l ot v' σ (mc : bool):
+    expr_step (CheckBinOp op ot1 ot2 (Val v1) (Val v2)) π σ [] (RTVal (val_of_bool b)) σ []
+| VarS π x σ ts cf l ly :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    cf.(cf_locals) !! x = Some (l, ly) →
+    expr_step (Var x) π σ [] (RTVal (val_of_loc l)) σ []
+| DerefS o v l ot v' σ π (mc : bool):
     let start_st st := ∃ n, st = if o is Na2Ord then RSt (S n) else RSt n in
     let end_st st :=
       match o, st with
@@ -533,11 +563,11 @@ Inductive expr_step : expr → state → list Empty_set → runtime_expr → sta
         Val (if mc then mem_cast v' ot (dom σ.(st_fntbl), σ.(st_heap)) else v') in
     val_to_loc v = Some l →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
-    expr_step (Deref o ot mc (Val v)) σ [] end_expr (heap_fmap (heap_upd l v' end_st) σ) []
+    expr_step (Deref o ot mc (Val v)) π σ [] (to_rtexpr π end_expr) (heap_fmap (heap_upd l v' end_st) σ) []
 (* TODO: look at CAS and see whether it makes sense. Also allow
 comparing pointers? (see lambda rust) *)
 (* corresponds to atomic_compare_exchange_strong, see https://en.cppreference.com/w/c/atomic/atomic_compare_exchange *)
-| CasFailS l1 l2 vo ve σ z1 z2 v1 v2 v3 ot:
+| CasFailS l1 l2 vo ve σ π z1 z2 v1 v2 v3 ot:
     val_to_loc v1 = Some l1 →
     heap_at l1 (ot_layout ot) vo (λ st, ∃ n, st = RSt n) σ.(st_heap).(hs_heap) →
     val_to_loc v2 = Some l2 →
@@ -547,9 +577,9 @@ comparing pointers? (see lambda rust) *)
     v3 `has_layout_val` ot_layout ot →
     ((ot_layout ot).(ly_size) ≤ bytes_per_addr)%nat →
     z1 ≠ z2 →
-    expr_step (CAS ot (Val v1) (Val v2) (Val v3)) σ []
-              (Val (val_of_bool false)) (heap_fmap (heap_upd l2 vo (λ _, RSt 0%nat)) σ) []
-| CasSucS l1 l2 ot vo ve σ z1 z2 v1 v2 v3:
+    expr_step (CAS ot (Val v1) (Val v2) (Val v3)) π σ []
+              (RTVal (val_of_bool false)) (heap_fmap (heap_upd l2 vo (λ _, RSt 0%nat)) σ) []
+| CasSucS l1 l2 ot vo ve σ π z1 z2 v1 v2 v3:
     val_to_loc v1 = Some l1 →
     heap_at l1 (ot_layout ot) vo (λ st, st = RSt 0%nat) σ.(st_heap).(hs_heap) →
     val_to_loc v2 = Some l2 →
@@ -559,63 +589,65 @@ comparing pointers? (see lambda rust) *)
     v3 `has_layout_val` ot_layout ot →
     ((ot_layout ot).(ly_size) ≤ bytes_per_addr)%nat →
     z1 = z2 →
-    expr_step (CAS ot (Val v1) (Val v2) (Val v3)) σ []
-              (Val (val_of_bool true)) (heap_fmap (heap_upd l1 v3 (λ _, RSt 0%nat)) σ) []
-| CallS lsa lsv σ hs' hs'' vf vs f rf fn fn' a:
+    expr_step (CAS ot (Val v1) (Val v2) (Val v3)) π σ []
+              (RTVal (val_of_bool true)) (heap_fmap (heap_upd l1 v3 (λ _, RSt 0%nat)) σ) []
+| CallS π lsa σ hs' ts ts' vf vs f fn a:
     val_to_loc vf = Some f →
     f = fn_loc a →
     σ.(st_fntbl) !! a = Some fn →
     length lsa = length fn.(f_args) →
-    length lsv = length fn.(f_local_vars) →
-    (* substitute the variables in fn with the corresponding locations *)
-    fn' = subst_function (zip (fn.(f_args).*1 ++ fn.(f_local_vars).*1) (val_of_loc <$> (lsa ++ lsv))) fn →
+
     (* check the layout of the arguments *)
     Forall2 has_layout_val vs fn.(f_args).*2 →
     (* ensure that locations are aligned *)
     Forall2 has_layout_loc lsa fn.(f_args).*2 →
-    Forall2 has_layout_loc lsv fn.(f_local_vars).*2 →
-    (* initialize the local vars to poison *)
-    alloc_new_blocks σ.(st_heap) StackAlloc lsv ((λ p, replicate p.2.(ly_size) MPoison) <$> fn.(f_local_vars)) hs' →
+
     (* initialize the arguments with the supplied values *)
-    alloc_new_blocks hs' StackAlloc lsa vs hs'' →
-    (* add used blocks allocations  *)
-    rf = {| rf_fn := fn'; rf_locs := zip lsa fn.(f_args).*2 ++ zip lsv fn.(f_local_vars).*2; |} →
-    expr_step (Call (Val vf) (Val <$> vs)) σ [] (to_rtstmt rf (Goto fn'.(f_init))) {| st_heap := hs''; st_fntbl := σ.(st_fntbl)|} []
-| CallFailS σ vf vs f fn a:
+    alloc_new_blocks σ.(st_heap) StackAlloc lsa vs hs' →
+
+    (* push new frame *)
+    state_get_thread σ π = Some ts →
+    ts' = thread_push_frame ts (initialize_new_frame fn.(f_args) lsa) →
+
+    expr_step (Call (Val vf) (Val <$> vs)) π σ []
+      (to_rtstmt π fn (Goto fn.(f_init)))
+      {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := <[π := ts']> σ.(st_thread) |} []
+| CallFailS π σ vf vs f fn a:
     val_to_loc vf = Some f →
     f = fn_loc a →
     σ.(st_fntbl) !! a = Some fn →
     Forall2 has_layout_val vs fn.(f_args).*2 →
-    expr_step (Call (Val vf) (Val <$> vs)) σ [] AllocFailed σ []
-| ConcatS vs σ:
-    expr_step (Concat (Val <$> vs)) σ [] (Val (mjoin vs)) σ []
+    expr_step (Call (Val vf) (Val <$> vs)) π σ [] AllocFailed σ []
+| ConcatS vs π σ :
+    expr_step (Concat (Val <$> vs)) π σ [] (RTVal (mjoin vs)) σ []
 (* for ptr::with_addr *)
-| CopyAllocIdS σ v1 v2 a it l:
+| CopyAllocIdS π σ v1 v2 a it l:
     val_to_Z v1 it = Some a →
     val_to_loc v2 = Some l →
-    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) σ [] (Val (val_of_loc (l.1, a))) σ []
-| IfES v ot e1 e2 b σ:
+    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal (val_of_loc (l.1, a))) σ []
+| IfES v ot e1 e2 b π σ:
     cast_to_bool ot v σ.(st_heap) = Some b →
-    expr_step (IfE ot (Val v) e1 e2) σ [] (if b then e1 else e2) σ []
-| AllocS v_size v_align (n_size n_align : nat) l σ hs' :
+    expr_step (IfE ot (Val v) e1 e2) π σ [] (to_rtexpr π $ if b then e1 else e2) σ []
+| AllocS v_size v_align (n_size n_align : nat) l π σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
     (* Rust's allocation APIs allow allocators to exhibit UB if the size is zero, so we also trigger UB here *)
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align)  →
     alloc_new_block σ.(st_heap) HeapAlloc l (replicate n_size MPoison) hs' →
-    expr_step (Alloc (Val v_size) (Val v_align)) σ [] (Val (val_of_loc l)) {| st_heap := hs'; st_fntbl := σ.(st_fntbl) |} []
-| AllocFailS v_size v_align (n_size n_align : nat) σ :
+    expr_step (Alloc (Val v_size) (Val v_align)) π σ []
+      (RTVal (val_of_loc l)) {| st_heap := hs'; st_fntbl := σ.(st_fntbl); st_thread := σ.(st_thread) |} []
+| AllocFailS v_size v_align (n_size n_align : nat) π σ :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
     n_size > 0 →
-    expr_step (Alloc (Val v_size) (Val v_align)) σ [] AllocFailed σ []
+    expr_step (Alloc (Val v_size) (Val v_align)) π σ [] AllocFailed σ []
 (* no rule for StuckE *)
 .
 
 (*** Evaluation of statements *)
-Inductive stmt_step : stmt → runtime_function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
-| AssignS (o : order) rf σ s v1 v2 l v' ot:
+Inductive stmt_step : stmt → thread_id → function → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
+| AssignS (o : order) π rf σ s v1 v2 l v' ot:
     let start_st st := st = if o is Na2Ord then WSt else RSt 0%nat in
     let end_st _ := if o is Na1Ord then WSt else RSt 0%nat in
     let end_val  := if o is Na1Ord then v' else v2 in
@@ -623,49 +655,85 @@ Inductive stmt_step : stmt → runtime_function → state → list Empty_set →
     val_to_loc v1 = Some l →
     v2 `has_layout_val` (ot_layout ot) →
     heap_at l (ot_layout ot) v' start_st σ.(st_heap).(hs_heap) →
-    stmt_step (Assign o ot (Val v1) (Val v2) s) rf σ [] (to_rtstmt rf end_stmt) (heap_fmap (heap_upd l end_val end_st) σ) []
-| IfSS ot join v s1 s2 rf σ b:
+    stmt_step (Assign o ot (Val v1) (Val v2) s) π rf σ [] (to_rtstmt π rf end_stmt) (heap_fmap (heap_upd l end_val end_st) σ) []
+| IfSS ot join v s1 s2 π rf σ b:
     cast_to_bool ot v σ.(st_heap) = Some b →
-    stmt_step (IfS ot join (Val v) s1 s2) rf σ [] (to_rtstmt rf ((if b then s1 else s2))) σ []
-| SwitchS rf σ v n m bs s def it :
+    stmt_step (IfS ot join (Val v) s1 s2) π rf σ [] (to_rtstmt π rf ((if b then s1 else s2))) σ []
+| SwitchS π rf σ v n m bs s def it :
     val_to_Z v it = Some n →
     (∀ i : nat, m !! n = Some i → is_Some (bs !! i)) →
-    stmt_step (Switch it (Val v) m bs def) rf σ [] (to_rtstmt rf (default def (i ← m !! n; bs !! i))) σ []
-| GotoS rf σ b s :
-    rf.(rf_fn).(f_code) !! b = Some s →
-    stmt_step (Goto b) rf σ [] (to_rtstmt rf s) σ []
-| ReturnS rf σ hs v:
-    free_blocks σ.(st_heap) StackAlloc rf.(rf_locs) hs → (* Deallocate the stack. *)
-    stmt_step (Return (Val v)) rf σ [] (Val v) {| st_fntbl := σ.(st_fntbl); st_heap := hs |} []
-| FreeS v_size v_align (n_size n_align : nat) v l s rf σ hs' :
+    stmt_step (Switch it (Val v) m bs def) π rf σ [] (to_rtstmt π rf (default def (i ← m !! n; bs !! i))) σ []
+| GotoS π rf σ b s :
+    rf.(f_code) !! b = Some s →
+    stmt_step (Goto b) π rf σ [] (to_rtstmt π rf s) σ []
+| ReturnS π rf σ hs v ts cf :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    (* Deallocate the stack. *)
+    free_blocks σ.(st_heap) StackAlloc (map_to_list cf.(cf_locals)).*2 hs →
+    stmt_step (Return (Val v)) π rf σ [] (RTVal v) {| st_fntbl := σ.(st_fntbl); st_heap := hs; st_thread := <[π := pop_frame ts]> σ.(st_thread) |} []
+| FreeS v_size v_align (n_size n_align : nat) v l s π rf σ hs' :
     val_to_Z v_size USize = Some (Z.of_nat n_size) →
     val_to_Z v_align USize = Some (Z.of_nat n_align) →
     val_to_loc v = Some l →
     n_size > 0 →
     l `has_layout_loc` (Layout n_size n_align) →
     free_block σ.(st_heap) HeapAlloc l (Layout n_size n_align) hs' →
-    stmt_step (Free (Val v_size) (Val v_align) (Val v) s) rf σ [] (to_rtstmt rf s) {| st_fntbl := σ.(st_fntbl); st_heap := hs' |} []
-| SkipSS rf σ s :
-    stmt_step (SkipS s) rf σ [] (to_rtstmt rf s) σ []
-| ExprSS rf σ s v:
-    stmt_step (ExprS (Val v) s) rf σ [] (to_rtstmt rf s) σ []
+    stmt_step (Free (Val v_size) (Val v_align) (Val v) s) π rf σ []
+      (to_rtstmt π rf s) {| st_fntbl := σ.(st_fntbl); st_heap := hs'; st_thread := σ.(st_thread) |} []
+| SkipSS π rf σ s :
+    stmt_step (SkipS s) π rf σ [] (to_rtstmt π rf s) σ []
+| ExprSS π rf σ s v:
+    stmt_step (ExprS (Val v) s) π rf σ [] (to_rtstmt π rf s) σ []
+| LocalLiveS π rf σ x ly s hs' ts cf cf' l :
+    (* NB: this also works for zero-sized locals *)
+    l `has_layout_loc` ly  →
+    alloc_new_block σ.(st_heap) StackAlloc l (replicate ly.(ly_size) MPoison) hs' →
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    cf.(cf_locals) !! x = None →
+    cf' = frame_alloc_var cf x l ly →
+    stmt_step (LocalLive x ly s) π rf σ [] (to_rtstmt π rf s) {| st_fntbl := σ.(st_fntbl); st_heap := hs'; st_thread := <[π := thread_update_frame ts cf']> σ.(st_thread) |} []
+| LocalLiveFailS π rf σ x ly s ts cf :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    cf.(cf_locals) !! x = None →
+    stmt_step (LocalLive x ly s) π  rf σ [] AllocFailed σ []
+| LocalDeadDeallocS π rf σ x s hs' ts cf cf' l ly :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    cf.(cf_locals) !! x = Some (l, ly) →
+
+    l `has_layout_loc` ly →
+    free_block σ.(st_heap) StackAlloc l ly hs' →
+
+    cf' = frame_dealloc_var cf x →
+
+    stmt_step (LocalDead x s) π rf σ [] (to_rtstmt π rf s) {| st_fntbl := σ.(st_fntbl); st_heap := hs'; st_thread := <[π := thread_update_frame ts cf']> σ.(st_thread) |} []
+(* NOP in Rust if it has already been deallocated *)
+| LocalDeadNopS π rf σ x s ts cf :
+    state_get_thread σ π = Some ts →
+    thread_get_frame ts = Some cf →
+    cf.(cf_locals) !! x = None →
+
+    stmt_step (LocalDead x s) π rf σ [] (to_rtstmt π rf s) σ []
 (* no rule for StuckS *)
 .
 
 (*** Evaluation of runtime_expr *)
 Inductive runtime_step : runtime_expr → state → list Empty_set → runtime_expr → state → list runtime_expr → Prop :=
-| ExprStep e σ κs e' σ' efs:
-    expr_step e σ κs e' σ' efs →
-    runtime_step (to_rtexpr e) σ κs e' σ' efs
-| StmtStep s rf σ κs e' σ' efs:
-    stmt_step s rf σ κs e' σ' efs →
-    runtime_step (to_rtstmt rf s) σ κs e' σ' efs
+| ExprStep e π σ κs e' σ' efs:
+    expr_step e π σ κs e' σ' efs →
+    runtime_step (to_rtexpr π e) σ κs e' σ' efs
+| StmtStep s π rf σ κs e' σ' efs:
+    stmt_step s π rf σ κs e' σ' efs →
+    runtime_step (to_rtstmt π rf s) σ κs e' σ' efs
 | AllocFailedStep σ :
     (* Alloc failure is nb, not ub so we go into an infinite loop*)
     runtime_step AllocFailed σ [] AllocFailed σ [].
 
-Lemma expr_step_preserves_invariant e1 e2 σ1 σ2 κs efs:
-  expr_step e1 σ1 κs e2 σ2 efs →
+Lemma expr_step_preserves_invariant π e1 e2 σ1 σ2 κs efs:
+  expr_step e1 π σ1 κs e2 σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
 Proof.
@@ -677,8 +745,8 @@ Proof.
   - eapply alloc_new_block_invariant => //.
 Qed.
 
-Lemma stmt_step_preserves_invariant s rf e σ1 σ2 κs efs:
-  stmt_step s rf σ1 κs e σ2 efs →
+Lemma stmt_step_preserves_invariant s π rf e σ1 σ2 κs efs:
+  stmt_step s π rf σ1 κs e σ2 efs →
   heap_state_invariant σ1.(st_heap) →
   heap_state_invariant σ2.(st_heap).
 Proof.
@@ -688,9 +756,10 @@ Proof.
     rewrite /heap_fmap/=. eapply heap_update_heap_state_invariant => //.
     match goal with H : _ `has_layout_val` _ |- _ => rewrite H end.
     by destruct o.
-  - move => ??? _ Hfree Hinv. by eapply free_blocks_invariant.
-  - move => ???? ?? _ _ ?? Hsz Hal Hloc Haligned Hfree Hinv.
-    by eapply free_block_invariant.
+  - intros. by eapply free_blocks_invariant.
+  - intros. by eapply free_block_invariant.
+  - intros. eapply alloc_new_block_invariant => //.
+  - intros. by eapply free_block_invariant.
 Qed.
 
 Lemma runtime_step_preserves_invariant e1 e2 σ1 σ2 κs efs:
@@ -732,21 +801,21 @@ Definition expr_fill_item (Ki : expr_ectx) (e : runtime_expr) : rtexpr :=
   | UnOpCtx op ot => RTUnOp op ot e
   | CheckUnOpCtx op ot => RTCheckUnOp op ot e
   | BinOpLCtx op ot1 ot2 e2 => RTBinOp op ot1 ot2 e e2
-  | BinOpRCtx op ot1 ot2 v1 => RTBinOp op ot1 ot2 (Val v1) e
+  | BinOpRCtx op ot1 ot2 v1 => RTBinOp op ot1 ot2 (RTVal v1) e
   | CheckBinOpLCtx op ot1 ot2 e2 => RTCheckBinOp op ot1 ot2 e e2
-  | CheckBinOpRCtx op ot1 ot2 v1 => RTCheckBinOp op ot1 ot2 (Val v1) e
+  | CheckBinOpRCtx op ot1 ot2 v1 => RTCheckBinOp op ot1 ot2 (RTVal v1) e
   | CopyAllocIdLCtx ot1 e2 => RTCopyAllocId ot1 e e2
-  | CopyAllocIdRCtx ot1 v1 => RTCopyAllocId ot1 (Val v1) e
+  | CopyAllocIdRCtx ot1 v1 => RTCopyAllocId ot1 (RTVal v1) e
   | DerefCtx o l mc => RTDeref o l mc e
   | CallLCtx args => RTCall e args
-  | CallRCtx f vl el => RTCall (Val f) ((Expr <$> (RTVal <$> vl)) ++ e :: el)
+  | CallRCtx f vl el => RTCall (RTVal f) (((RTVal <$> vl)) ++ e :: el)
   | CASLCtx ot e2 e3 => RTCAS ot e e2 e3
-  | CASMCtx ot v1 e3 => RTCAS ot (Val v1) e e3
-  | CASRCtx ot v1 v2 => RTCAS ot (Val v1) (Val v2) e
-  | ConcatCtx vs es => RTConcat ((Expr <$> (RTVal <$> vs)) ++ e :: es)
+  | CASMCtx ot v1 e3 => RTCAS ot (RTVal v1) e e3
+  | CASRCtx ot v1 v2 => RTCAS ot (RTVal v1) (RTVal v2) e
+  | ConcatCtx vs es => RTConcat (((RTVal <$> vs)) ++ e :: es)
   | IfECtx ot e2 e3 => RTIfE ot e e2 e3
   | AllocLCtx e_align => RTAlloc e e_align
-  | AllocRCtx v_size => RTAlloc (Val v_size) e
+  | AllocRCtx v_size => RTAlloc (RTVal v_size) e
   | SkipECtx => RTSkipE e
   end.
 
@@ -764,39 +833,32 @@ Inductive stmt_ectx :=
 | ExprSCtx (s : stmt)
 .
 
-Definition stmt_fill_item (Ki : stmt_ectx) (e : runtime_expr) : rtstmt :=
+Definition stmt_fill_item (π : thread_id) (Ki : stmt_ectx) (e : runtime_expr) : rtstmt :=
   match Ki with
-  | AssignRCtx o ot e1 s => RTAssign o ot e1 e s
-  | AssignLCtx o ot v2 s => RTAssign o ot e (Val v2) s
+  | AssignRCtx o ot e1 s => RTAssign o ot (to_rtexpr π e1) e s
+  | AssignLCtx o ot v2 s => RTAssign o ot e (RTVal v2) s
   | ReturnCtx => RTReturn e
-  | FreeLCtx e_align e' s => RTFree e e_align e' s
-  | FreeMCtx v_size e' s => RTFree (Val v_size) e e' s
-  | FreeRCtx v_size v_align s => RTFree (Val v_size) (Val v_align) e s
+  | FreeLCtx e_align e' s => RTFree e (to_rtexpr π e_align) (to_rtexpr π e') s
+  | FreeMCtx v_size e' s => RTFree (RTVal v_size) e (to_rtexpr π e') s
+  | FreeRCtx v_size v_align s => RTFree (RTVal v_size) (RTVal v_align) e s
   | IfSCtx ot join s1 s2 => RTIfS ot join e s1 s2
   | SwitchCtx it m bs def => RTSwitch it e m bs def
   | ExprSCtx s => RTExprS e s
   end.
-Definition to_val (e : runtime_expr) : option val :=
-  match e with
-  | Expr (RTVal v) => Some v
-  | _ => None
-  end.
-
-Definition of_val (v : val) : runtime_expr := Expr (RTVal v).
 
 Inductive lang_ectx :=
-| ExprCtx (E : expr_ectx)
-| StmtCtx (E : stmt_ectx) (rf : runtime_function).
+| ExprCtx (E : expr_ectx) (π : thread_id)
+| StmtCtx (E : stmt_ectx) (π : thread_id) (rf : function).
 
 Definition lang_fill_item (Ki : lang_ectx) (e : runtime_expr) : runtime_expr :=
   match Ki with
-  | ExprCtx E => Expr (expr_fill_item E e)
-  | StmtCtx E rf => Stmt rf (stmt_fill_item E e)
+  | ExprCtx E π => Expr π (expr_fill_item E e)
+  | StmtCtx E π rf => Stmt π rf (stmt_fill_item π E e)
   end.
 
 Lemma list_expr_val_eq_inv vl1 vl2 e1 e2 el1 el2 :
   to_val e1 = None → to_val e2 = None →
-  (Expr <$> (RTVal <$> vl1)) ++ e1 :: el1 = (Expr <$> (RTVal <$> vl2)) ++ e2 :: el2 →
+  ((RTVal <$> vl1)) ++ e1 :: el1 = ((RTVal <$> vl2)) ++ e2 :: el2 →
   vl1 = vl2 ∧ e1 = e2 ∧ el1 = el2.
 Proof.
   revert vl2; induction vl1; destruct vl2; intros H1 H2; inversion 1.
@@ -806,18 +868,18 @@ Proof.
   - destruct (IHvl1 vl2); auto. split; f_equal; auto.
 Qed.
 
-Lemma list_expr_val_eq_false vl1 vl2 e el :
-  to_val e = None → to_rtexpr <$> (Val <$> vl1) = (Expr <$> (RTVal <$> vl2)) ++ e :: el → False.
+Lemma list_expr_val_eq_false π vl1 vl2 e el :
+  to_val e = None → to_rtexpr π <$> (Val <$> vl1) = ((RTVal <$> vl2)) ++ e :: el → False.
 Proof.
   move => He. elim: vl2 vl1 => [[]//=*|v vl2 IH [|??]?]; csimpl in *; simplify_eq; eauto.
 Qed.
 
-Lemma of_to_val (e : runtime_expr) v : to_val e = Some v → Expr (RTVal v) = e.
-Proof. case: e => // -[]//. naive_solver. Qed.
+Lemma of_to_val (e : runtime_expr) v : to_val e = Some v → RTVal v = e.
+Proof. case: e => //. naive_solver. Qed.
 
 Lemma val_stuck e1 σ1 κ e2 σ2 ef :
   runtime_step e1 σ1 κ e2 σ2 ef → to_val e1 = None.
-Proof. destruct 1 => //. revert select (expr_step _ _ _ _ _ _). by destruct 1. Qed.
+Proof. destruct 1 => //. revert select (expr_step _ _ _ _ _ _ _). by destruct 1. Qed.
 
 Global Instance fill_item_inj Ki : Inj (=) (=) (lang_fill_item Ki).
 Proof. destruct Ki as [E|E ?]; destruct E; intros ???; simplify_eq/=; auto with f_equal. Qed.
@@ -839,8 +901,8 @@ Lemma expr_ctx_step_val Ki e σ1 κ e2 σ2 ef :
   runtime_step (lang_fill_item Ki e) σ1 κ e2 σ2 ef → is_Some (to_val e).
 Proof.
   destruct Ki as [[]|[]?]; inversion 1; simplify_eq.
-  all: try (revert select (expr_step _ _ _ _ _ _)).
-  all: try (revert select (stmt_step _ _ _ _ _ _ _)).
+  all: try (revert select (expr_step _ _ _ _ _ _ _)).
+  all: try (revert select (stmt_step _ _ _ _ _ _ _ _)).
   all: inversion 1; simplify_eq/=; eauto.
   all: apply not_eq_None_Some; intros ?; by eapply list_expr_val_eq_false.
 Qed.
@@ -859,12 +921,17 @@ Global Instance mbyte_inhabited : Inhabited mbyte := populate (MPoison).
 Global Instance val_inhabited : Inhabited val := _.
 Global Instance expr_inhabited : Inhabited expr := populate (Val inhabitant).
 Global Instance stmt_inhabited : Inhabited stmt := populate (Goto "a").
-Global Instance function_inhabited : Inhabited function :=
-  populate {| f_args := []; f_local_vars := []; f_code := ∅; f_init := "" |}.
+Global Program Instance function_inhabited : Inhabited function :=
+  populate {| f_args := []; f_code := ∅; f_init := ""; |}.
+Next Obligation. apply NoDup_nil_2. Qed.
 Global Instance heap_state_inhabited : Inhabited heap_state :=
   populate {| hs_heap := inhabitant; hs_allocs := inhabitant; |}.
+Global Instance call_frame_inhabited : Inhabited call_frame :=
+  populate {| cf_locals := inhabitant |}.
+Global Instance thread_state_inhabited : Inhabited thread_state :=
+  populate {| ts_frames := inhabitant |}.
 Global Instance state_inhabited : Inhabited state :=
-  populate {| st_heap := inhabitant; st_fntbl := inhabitant; |}.
+  populate {| st_heap := inhabitant; st_fntbl := inhabitant; st_thread := inhabitant |}.
 
 Canonical Structure mbyteO := leibnizO mbyte.
 Canonical Structure functionO := leibnizO function.

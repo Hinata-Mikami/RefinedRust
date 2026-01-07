@@ -117,6 +117,18 @@ Global Typeclasses Opaque Assert.
 Notation "'free{' e_size ',' e_align '}' e_ptr ; s" := (Free e_size%E e_align%E e_ptr%E s%E)
   (at level 80, s at level 200, format "'[v' 'free{' e_size ','  e_align '}'  e_ptr ';' '/' s ']'") : expr_scope.
 
+Definition LocalLiveSt `{!LayoutAlg} (x : var_name) (st : syn_type) (s : stmt) :=
+  LocalLive x (use_layout_alg' st) s.
+Arguments LocalLiveSt : simpl never.
+Global Typeclasses Opaque LocalLiveSt.
+Notation "'local_live{' st '}' x ';' s" := (LocalLiveSt x st s%E) (at level 80, s at level 200, format "'[v' 'local_live{' st '}' x ';' '/' s ']'") : expr_scope.
+
+(* Adding a skip here. *)
+Definition LocalDeadSt (x : var_name) (s : stmt) :=
+  SkipS (LocalDead x s).
+Arguments LocalDeadSt : simpl never.
+Global Typeclasses Opaque LocalDeadSt.
+Notation "'local_dead' x ';' s" := (LocalDeadSt x s%E) (at level 80, s at level 200, format "'[v' 'local_dead'  x ';' '/' s ']'") : expr_scope.
 
 (** This has a skip in order to facilitate unblocking. *)
 Definition Use (o : order) (ot : op_type) (memcast : bool) (e : expr) := Deref o ot memcast (SkipE e).
@@ -160,7 +172,7 @@ Inductive rust_type : Type :=
   | RSTBox (ty : rust_type)
 with scope_inst :=
   | RSTScopeInst (lfts : list string) (app : list rust_type) (trait_attrs : list lit_term)
-with lit_term := 
+with lit_term :=
   | TypeRt (ty : rust_type)
   | AppDef (def : list string) (app : list lit_term)
 .
@@ -221,7 +233,6 @@ Notation "'box{' st '}'" := (Box st) (at level 9, format "'box{' st }") : expr_s
 Arguments Box : simpl never.
 Global Typeclasses Opaque Box.
 
-
 Inductive location_info :=
 | LocationInfo (file : string) (line_start column_start line_end column_end : Z).
 
@@ -231,33 +242,6 @@ Global Typeclasses Opaque LocInfo.
 Notation "'locinfo:' a ; b" := (LocInfo (B:=stmt) a b%E)
   (at level 80, b at level 200, format "'[v' 'locinfo:'  a ';' '/' b ']'") : expr_scope.
 Notation LocInfoE := (LocInfo (B:=expr)).
-
-Definition MacroE (m : list expr → expr) (es : list expr) := m es.
-Arguments MacroE : simpl never.
-Global Typeclasses Opaque MacroE.
-
-(* One could probably get rid of this type class by swallowing the
-substitutions in MacroE, i.e. make it parametrized by a list of names
-and a list of expressions which are substituted in m. (Then one can
-maybe also get rid of es?) *)
-Class MacroWfSubst (m : list expr → expr) : Prop :=
-  macro_wf_subst x v es: subst x v (m es) = m (subst x v <$> es)
-.
-
-(* Like [MacroE m es] but checks that [m es] is equal to [e] *)
-Notation CheckedMacroE m es e := (ltac:(
-   let rec get_head e := match e with
-                         | ?f ?a => get_head f
-                         | ?x => x
-                         end in
-   let mhead := get_head constr:(m%function) in
-   let munf := (eval unfold mhead in (m%function)) in
-   let esunf := (eval unfold LocInfo in (es%list)) in
-   let eunf := (eval unfold LocInfo in e) in
-   (* idtac munf; *)
-   unify (munf esunf) eunf with typeclass_instances;
-   exact (MacroE m es))) (only parsing).
-
 
 Lemma annot_expr_S {A} n (a : A) e:
   AnnotExpr (S n) a e = SkipE (AnnotExpr n a e).

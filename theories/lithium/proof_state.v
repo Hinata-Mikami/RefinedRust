@@ -52,6 +52,10 @@ Ltac generate_i2p_instance print to_tc arg c :=
   (* Try to find the typeclass *)
   try (
     let tc := lazymatch type_c with
+    | (∀ _ _ _ _ _ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _ _ _ _ _ _) => do_to_tc Q
+    | (∀ _ _ _ _ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _ _ _ _ _) => do_to_tc Q
+    | (∀ _ _ _ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _ _ _ _) => do_to_tc Q
+    | (∀ _ _ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _ _ _) => do_to_tc Q
     | (∀ _ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _ _) => do_to_tc Q
     | (∀ _ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _ _) => do_to_tc Q
     | (∀ _ _ _ _ _ _ _ _, _ ⊢ ?Q _ _ _ _ _ _ _ _) => do_to_tc Q

@@ -12,11 +12,7 @@ Lemma const_ptr_add_proof (π : thread_id) :
 Proof.
   const_ptr_add_prelude.
 
-   rep <-! liRStep; liShow.
-   all:
-    iAssert (loc_in_bounds (l offsetst{st_of T_ty MetaNNone}ₗ count) 0 0) as "?";
-      first (iApply (loc_in_bounds_offset l); last done; sidecond_hammer).
-  all: rep liRStep; liShow.
+  repeat liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

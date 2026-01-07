@@ -47,6 +47,26 @@ Definition fast_eq_hint (P : Prop) : Prop :=
 Global Typeclasses Opaque fast_eq_hint.
 Arguments fast_eq_hint : simpl never.
 
+(** Automation for finding the location for a local variable *)
+Class FindLocalLoc (f : frame_path) (v : var_name) (l : loc) := {}.
+Global Hint Mode FindLocalLoc + + - : typeclass_instances.
+Global Instance find_local_loc `{!typeGS Σ} f v l st :
+  CheckOwnInContext (v is_live{f, st} l) →
+  FindLocalLoc f v l.
+Proof. Qed.
+
+Class FindLocalLocs (f : frame_path) (vars : list var_name) (locs : list loc) := {}.
+Global Hint Mode FindLocalLocs + + - : typeclass_instances.
+
+Global Instance find_local_locs_cons f x xs l ls :
+  FindLocalLoc f x l →
+  FindLocalLocs f xs ls →
+  FindLocalLocs f (x :: xs) (l :: ls).
+Proof. Qed.
+Global Instance find_local_locs_nil f :
+  FindLocalLocs f [] [].
+Proof. Qed.
+
 (** Instances for Lithium to put things into the persistent context *)
 Section intro_persistent.
   Context `{!typeGS Σ}.
@@ -189,76 +209,6 @@ Section credits.
     iApply tr_weaken; last done. lia.
   Qed.
 End credits.
-
-Section option_map.
-  Context `{!typeGS Σ}.
-
-  Definition option_combine {A B} (a : option A) (b : option B) : option (A * B) :=
-    match a, b with
-    | Some a, Some b => Some (a, b)
-    | _, _ => None
-    end.
-  Lemma option_combine_Some {A B} (a : option A) (b : option B) c :
-    option_combine a b = Some c →
-    ∃ a' b', a = Some a' ∧ b = Some b' ∧ c = (a', b').
-  Proof.
-    rewrite /option_combine. destruct a, b; naive_solver.
-  Qed.
-  Lemma option_combine_None {A B} (a : option A) (b : option B) :
-    option_combine a b = None →
-    a = None ∨ b = None.
-  Proof.
-    rewrite /option_combine. destruct a, b; naive_solver.
-  Qed.
-
-  Definition typed_option_map {A R} (o : option A) (Φ : A → (R → iProp Σ) → iProp Σ) (d : R) (T : R → iProp Σ) :=
-    match o with
-    | Some o => Φ o T
-    | None => T d
-    end.
-  Class TypedOptionMap {A R} (o : option A) (Φ : A → (R → iProp Σ) → iProp Σ) (d : R) :=
-    typed_option_map_proof T : iProp_to_Prop (typed_option_map o Φ d T).
-  Lemma typed_option_map_some {A R} (a : A) Φ (d : R) T :
-    Φ a T ⊢ typed_option_map (Some a) Φ d T.
-  Proof. rewrite /typed_option_map. iIntros "$". Qed.
-  Global Instance typed_option_map_some_inst {A R} (a : A) Φ (d : R) : TypedOptionMap (Some a) Φ d :=
-    λ T, i2p (typed_option_map_some a Φ d T).
-  Lemma typed_option_map_none {A R} (Φ : A → (R → iProp Σ) → iProp Σ) (d : R) T :
-    T d ⊢ typed_option_map None Φ d T.
-  Proof. rewrite /typed_option_map. eauto. Qed.
-  Global Instance typed_option_map_none_inst {A R} (Φ : A → (R → iProp Σ) → iProp Σ) d : TypedOptionMap None Φ d :=
-    λ T, i2p (typed_option_map_none Φ d T).
-
-  (* If we can find a common predicate [P] that should be satisfied by [r], we can eliminate into that. *)
-  Lemma typed_option_map_elim {A R} (o : option A) (d : R) (Φ : A → (R → iProp Σ) → iProp Σ) (P : R → iProp Σ) (F : iProp Σ) T :
-    typed_option_map o Φ d T -∗
-    (∀ a, ⌜o = Some a⌝ -∗ F -∗ Φ a T -∗ ∃ r, F ∗ P r ∗ T r) -∗
-    P d -∗
-    F -∗
-    (∃ r, F ∗ P r ∗ T r).
-  Proof.
-    iIntros "Ha Helim1 Helim2 HF".
-    rewrite /typed_option_map.
-    destruct o as [ a | ].
-    - iPoseProof ("Helim1" with "[//] HF Ha") as "(%r & HF & HP & HT)". iExists r. iFrame.
-    - iExists d. iFrame.
-  Qed.
-  Lemma typed_option_map_elim_fupd {A R E} (o : option A) (d : R) (Φ : A → (R → iProp Σ) → iProp Σ) (P : R → iProp Σ) (F : iProp Σ) T :
-    lftE ⊆ E →
-    typed_option_map o Φ d T -∗
-    (∀ a, ⌜o = Some a⌝ -∗ F -∗ Φ a T ={E}=∗ ∃ r, F ∗ P r ∗ T r) -∗
-    P d -∗
-    F ={E}=∗
-    (∃ r, F ∗ P r ∗ T r).
-  Proof.
-    iIntros (?) "Ha Helim1 Helim2 HF".
-    rewrite /typed_option_map.
-    destruct o as [ a | ].
-    - iMod ("Helim1" with "[//] HF Ha") as "(%r & HF & HP & HT)". iExists r. by iFrame.
-    - iModIntro. iExists d. iFrame.
-  Qed.
-End option_map.
-Global Hint Mode TypedOptionMap + + + ! - - : typeclass_instances.
 
 Section simp_ltype.
   Context `{!typeGS Σ}.
@@ -443,6 +393,19 @@ Definition FindLocWithRt `{!typeGS Σ} (rt : RT) (l : loc) (π : thread_id) :=
   {| fic_A := (ltype rt * (place_rfn rt) * bor_kind)%type; fic_Prop '(lt, r, b) := (l ◁ₗ[π, b] r @ lt)%I; |}.
 Global Typeclasses Opaque FindLocWithRt.
 
+(* Find a local variable mapping *)
+Definition FindLocal `{!typeGS Σ} (f : frame_path) (x : var_name) :=
+  {| fic_A := (syn_type * loc)%type;
+     fic_Prop '(st, l) := (x is_live{f, st} l)%I; |}.
+Global Typeclasses Opaque FindLocal.
+
+(* Find the set of local variables in a frame *)
+Definition FindFrameLocals `{!typeGS Σ} (f : frame_path) :=
+  {| fic_A := list var_name;
+     fic_Prop locals := (allocated_locals f locals); |}.
+Global Typeclasses Opaque FindFrameLocals.
+
+
 (** find a loc_in_bounds fact for l.
    We also allow other propositions [P], in particular location ownership,
    and will handle them using subsume instances. *)
@@ -461,15 +424,15 @@ Definition FindCreditStore `{!typeGS Σ} :=
 Global Typeclasses Opaque FindCreditStore.
 
 (** find the mask token *)
-Definition FindNaOwn `{!typeGS Σ} :=
-  {| fic_A := thread_id * coPset; fic_Prop '(π, E) := na_own π E; |}.
+Definition FindNaOwn `{!typeGS Σ} (π : thread_id) :=
+  {| fic_A := coPset; fic_Prop '(E) := na_own π E; |}.
 Global Typeclasses Opaque FindNaOwn.
 
-Definition FindOptNaOwn `{!typeGS Σ} :=
-  {| fic_A := option (thread_id * coPset);
+Definition FindOptNaOwn `{!typeGS Σ} (π : thread_id) :=
+  {| fic_A := option coPset;
      fic_Prop a :=
         match a with
-        | Some (π, E) => na_own π E
+        | Some (E) => na_own π E
         | _ => True%I
         end
   |}.
@@ -609,66 +572,69 @@ Section judgments.
     typed_value_proof T : iProp_to_Prop (typed_value π v T).
 
   (** Typing of value expressions (unfolding [typed_value] for easier usage) *)
-  Definition typed_val_expr_cont_t := llctx → thread_id → val → metadata → ∀ (rt : RT), type rt → rt → iProp Σ.
-  Definition typed_val_expr (E : elctx) (L : llctx) (e : expr) (T : typed_val_expr_cont_t) : iProp Σ :=
+  Definition typed_val_expr_cont_t := llctx → val → metadata → ∀ (rt : RT), type rt → rt → iProp Σ.
+  Definition typed_val_expr (E : elctx) (L : llctx) (f : frame_path) (e : expr) (T : typed_val_expr_cont_t) : iProp Σ :=
     (∀ Φ, rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      (∀ L' π v rt (ty : type rt) r m, llctx_interp L' -∗ v ◁ᵥ{π, m} r @ ty -∗ T L' π v m rt ty r -∗ Φ v) -∗
-    WP e {{ Φ }}).
+      current_frame f.1 f.2 -∗
+      (∀ L' v rt (ty : type rt) r m,
+        llctx_interp L' -∗ current_frame f.1 f.2 -∗ v ◁ᵥ{f.1, m} r @ ty -∗ T L' v m rt ty r -∗ Φ v) -∗
+    WPe{f.1} e {{ Φ }}).
 
   (** Typing of binary op expressions *)
-  Definition typed_bin_op (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ)
+  Definition typed_bin_op (E : elctx) (L : llctx) (f : frame_path) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ)
     (o : bin_op) (ot1 ot2 : op_type) (T : typed_val_expr_cont_t) : iProp Σ :=
-    (P1 -∗ P2 -∗ typed_val_expr E L (BinOp o ot1 ot2 v1 v2) T).
-  Class TypedBinOp (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ) (o : bin_op) (ot1 ot2 : op_type) : Type :=
-    typed_bin_op_proof T : iProp_to_Prop (typed_bin_op E L v1 P1 v2 P2 o ot1 ot2 T).
+    (P1 -∗ P2 -∗ typed_val_expr E L f (BinOp o ot1 ot2 v1 v2) T).
+  Class TypedBinOp (E : elctx) (L : llctx) (f : frame_path) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ) (o : bin_op) (ot1 ot2 : op_type) : Type :=
+    typed_bin_op_proof T : iProp_to_Prop (typed_bin_op E L f v1 P1 v2 P2 o ot1 ot2 T).
 
   (* class for instances specialized to value ownership *)
-  Class TypedBinOpVal (π : thread_id) (E : elctx) (L : llctx) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (v2 : val) {rt2} (ty2 : type rt2) (r2 : rt2) (o : bin_op) (ot1 ot2 : op_type) : Type :=
-    typed_bin_op_val :: TypedBinOp E L v1 (v1 ◁ᵥ{π, MetaNone} r1 @ ty1) v2 (v2 ◁ᵥ{π, MetaNone} r2 @ ty2) o ot1 ot2.
+  Class TypedBinOpVal (E : elctx) (L : llctx) (f : frame_path) (v1 : val) {rt1} (ty1 : type rt1) (r1 : rt1) (v2 : val) {rt2} (ty2 : type rt2) (r2 : rt2) (o : bin_op) (ot1 ot2 : op_type) : Type :=
+    typed_bin_op_val :: TypedBinOp E L f v1 (v1 ◁ᵥ{f.1, MetaNone} r1 @ ty1) v2 (v2 ◁ᵥ{f.1, MetaNone} r2 @ ty2) o ot1 ot2.
   Global Hint Mode TypedBinOpVal + + + + + + + + + + + + + + : typeclass_instances.
 
   (** Checking for overflows *)
-  Definition typed_check_bin_op (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ)
+  Definition typed_check_bin_op (E : elctx) (L : llctx) (f : frame_path) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ)
     (o : bin_op) (ot1 ot2 : op_type) (T : typed_val_expr_cont_t) : iProp Σ :=
-    (P1 -∗ P2 -∗ typed_val_expr E L (CheckBinOp o ot1 ot2 v1 v2) T).
-  Class TypedCheckBinOp (E : elctx) (L : llctx) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ) (o : bin_op) (ot1 ot2 : op_type) : Type :=
-    typed_check_bin_op_proof T : iProp_to_Prop (typed_check_bin_op E L v1 P1 v2 P2 o ot1 ot2 T).
+    (P1 -∗ P2 -∗ typed_val_expr E L f (CheckBinOp o ot1 ot2 v1 v2) T).
+  Class TypedCheckBinOp (E : elctx) (L : llctx) (f : frame_path) (v1 : val) (P1 : iProp Σ) (v2 : val) (P2 : iProp Σ) (o : bin_op) (ot1 ot2 : op_type) : Type :=
+    typed_check_bin_op_proof T : iProp_to_Prop (typed_check_bin_op E L f v1 P1 v2 P2 o ot1 ot2 T).
 
   (** Typing of unary op expressions *)
-  Definition typed_un_op (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
+  Definition typed_un_op (E : elctx) (L : llctx) (f : frame_path) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
     (T : typed_val_expr_cont_t) : iProp Σ :=
-    (P -∗ typed_val_expr E L (UnOp o ot v) T).
-  Class TypedUnOp (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type) : Type :=
-    typed_un_op_proof T : iProp_to_Prop (typed_un_op E L v P o ot T).
+    (P -∗ typed_val_expr E L f (UnOp o ot v) T).
+  Class TypedUnOp (E : elctx) (L : llctx) (f : frame_path) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type) : Type :=
+    typed_un_op_proof T : iProp_to_Prop (typed_un_op E L f v P o ot T).
 
   (* class for instances specialized to value ownership *)
-  Class TypedUnOpVal π (E : elctx) (L : llctx) (v : val) {rt} (ty : type rt) (r : rt) (o : un_op) (ot : op_type) : Type :=
-    typed_un_op_val :: TypedUnOp E L v (v ◁ᵥ{π, MetaNone} r @ ty) o ot.
+  Class TypedUnOpVal (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (o : un_op) (ot : op_type) : Type :=
+    typed_un_op_val :: TypedUnOp E L f v (v ◁ᵥ{f.1, MetaNone} r @ ty) o ot.
   Global Hint Mode TypedUnOpVal + + + + + + + + + : typeclass_instances.
 
   (** Checking for overflows *)
-  Definition typed_check_un_op (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
+  Definition typed_check_un_op (E : elctx) (L : llctx) (f : frame_path) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type)
     (T : typed_val_expr_cont_t) : iProp Σ :=
-    (P -∗ typed_val_expr E L (CheckUnOp o ot v) T).
-  Class TypedCheckUnOp (E : elctx) (L : llctx) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type) : Type :=
-    typed_check_un_op_proof T : iProp_to_Prop (typed_check_un_op E L v P o ot T).
+    (P -∗ typed_val_expr E L f (CheckUnOp o ot v) T).
+  Class TypedCheckUnOp (E : elctx) (L : llctx) (f : frame_path) (v : val) (P : iProp Σ) (o : un_op) (ot : op_type) : Type :=
+    typed_check_un_op_proof T : iProp_to_Prop (typed_check_un_op E L f v P o ot T).
 
 
   (** Typed call expressions, assuming a list of argument values with given types and refinements.
     [P] may state additional preconditions on the function. *)
   Definition typed_call_cont_t := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
-  Definition typed_call π E L (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_call_cont_t) : iProp Σ :=
+  Definition typed_call E L (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt : RT, type rt * rt)%type)) (T : typed_call_cont_t) : iProp Σ :=
     (P -∗
-     ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{π, MetaNone} r @ ty) -∗
+     ([∗ list] v;ty∈vl;tys, let '(existT rt (ty, r)) := ty in v ◁ᵥ{f.1, MetaNone} r @ ty) -∗
      ∀ Φ,
       rrust_ctx -∗
       elctx_interp E -∗
       llctx_interp L -∗
+      current_frame f.1 f.2 -∗
       (∀ (L' : llctx) (v : val) (rt : RT) (ty : type rt) r,
-        llctx_interp L' -∗ T L' v rt ty r -∗ Φ v) -∗
-      WP (Call v (Val <$> vl)) {{ v, Φ v }})%I.
-  Class TypedCall π (E : elctx) (L : llctx) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
-    typed_call_proof T : iProp_to_Prop (typed_call π E L eκs etys v P vl tys T).
+        llctx_interp L' -∗ current_frame f.1 f.2 -∗ T L' v rt ty r -∗ Φ v) -∗
+      WPe{f.1} (Call v (Val <$> vl)) {{ λ v, Φ v }})%I.
+  Class TypedCall (E : elctx) (L : llctx) (f : frame_path) (eκs : list lft) (etys : list (sigT type)) (v : val) (P : iProp Σ) (vl : list val) (tys : list (sigT (λ rt, type rt * rt)%type)) : Type :=
+    typed_call_proof T : iProp_to_Prop (typed_call E L f eκs etys v P vl tys T).
 
   Definition typed_if (E : elctx) (L : llctx) (v : val) (P T1 T2 : iProp Σ) : iProp Σ :=
     (P -∗ ∃ b, ⌜val_to_bool v = Some b⌝ ∗ (if b then T1 else T2)).
@@ -677,10 +643,14 @@ Section judgments.
 
   (** Typing of annotated expressions -- annotation determined by the [A]*)
   (* A is the annotation from the code *)
-  Definition typed_annot_expr (E : elctx) (L : llctx) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) (T : typed_val_expr_cont_t) : iProp Σ :=
-    (rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ P ={⊤}[∅]▷=∗^n |={⊤}=> ∃ L2 π m rt (ty : type rt) r, llctx_interp L2 ∗ v ◁ᵥ{π, m} r @ ty ∗ T L2 π v m rt ty r).
-  Class TypedAnnotExpr (E : elctx) (L : llctx) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) : Type :=
-    typed_annot_expr_proof T : iProp_to_Prop (typed_annot_expr E L n a v P T).
+  Definition typed_annot_expr (E : elctx) (L : llctx) π (n : nat) {A} (a : A) (v : val) (P : iProp Σ) (T : typed_val_expr_cont_t) : iProp Σ :=
+    (rrust_ctx -∗
+      elctx_interp E -∗
+      llctx_interp L -∗
+      P ={⊤}[∅]▷=∗^n |={⊤}=>
+      ∃ L2 m rt (ty : type rt) r, llctx_interp L2 ∗ v ◁ᵥ{π, m} r @ ty ∗ T L2 v m rt ty r).
+  Class TypedAnnotExpr (E : elctx) (L : llctx) (π : thread_id) (n : nat) {A} (a : A) (v : val) (P : iProp Σ) : Type :=
+    typed_annot_expr_proof T : iProp_to_Prop (typed_annot_expr E L π n a v P T).
 
   Definition enter_cache_hint (P : Prop) := P.
   Global Arguments enter_cache_hint : simpl never.
@@ -841,17 +811,17 @@ Section judgments.
 
   (** non-atomic token related instances *)
   Lemma introduce_with_hooks_na_own E L π mask T :
-    find_in_context (FindOptNaOwn) (λ res,
+    find_in_context (FindOptNaOwn π) (λ res,
       match res with
       | None => na_own π mask -∗ T L
-      | Some (π', mask') =>
-          ⌜π = π'⌝ ∗ ⌜mask' ## mask⌝ ∗ (na_own π (mask' ∪ mask) -∗ T L)
+      | Some mask' =>
+          ⌜mask' ## mask⌝ ∗ (na_own π (mask' ∪ mask) -∗ T L)
       end)
     ⊢ introduce_with_hooks E L (na_own π mask) T.
   Proof.
     rewrite /FindOptNaOwn. iIntros "(%res & Ha)".
-    destruct res as [[π' mask']|]; simpl; iIntros (??) "#HE HL Hna".
-    - iDestruct "Ha" as "(Hna' & <- & % & HT)".
+    destruct res as [mask'|]; simpl; iIntros (??) "#HE HL Hna".
+    - iDestruct "Ha" as "(Hna' & % & HT)".
       iExists _; iFrame.
       iApply "HT".
       by iApply na_own_union; [ done | iFrame ].
@@ -863,51 +833,47 @@ Section judgments.
     λ T, i2p (introduce_with_hooks_na_own E L π mask T).
 
   (** *** Statements *)
-  (* [fn]: the surrounding function,
-     [ls]: stack (list of locations for args and local variables),
-  *)
   Definition typed_stmt_R_t := val → llctx → iProp Σ.
-  Definition typed_stmt_post_cond (L : llctx) (fn : runtime_function) (R : typed_stmt_R_t) (v : val) : iProp Σ :=
-    ((* return ownership of the stack *)
-     ([∗ list] l ∈ (fn.(rf_locs)), l.1 ↦|l.2|) ∗
-     (* continuation *)
-     R v L)%I.
+
+  Definition typed_stmt_post_cond (f : frame_path) (rf : function) (R : typed_stmt_R_t) (Φ : val → iProp Σ) : iProp Σ :=
+    (∀ L' (v : val) locals,
+      llctx_interp L' -∗
+      current_frame f.1 f.2 -∗
+      (* get ownership of the frame assertion. *)
+      allocated_locals f locals -∗
+      ([∗ list] x ∈ locals, ∃ ly l st, ⌜syn_type_has_layout st ly⌝ ∗ x is_live{f, st} l ∗ l ↦|ly|) -∗
+      R v L' -∗
+      Φ v).
 
   (* [Q]: the current function body,
-     [ls]: stack
      [ϝ]: the function lifetime
-
      [R] is a relation on the result value of this statement and its type: we require that the result value is a well-typed [R]-value at this type.
   *)
-  Definition typed_stmt (E : elctx) (L : llctx) (s : stmt) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+  Definition typed_stmt (E : elctx) (L : llctx) (f : frame_path) (s : stmt) (rf : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
     (∀ (Φ : val → iProp Σ),
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
-      (∀ L' (v : val),
-        llctx_interp L' -∗
-        ([∗ list] l ∈ (fn.(rf_locs)), l.1 ↦|l.2|) -∗
-        R v L' -∗
-        Φ v) -∗
-      (*typed_stmt_post_cond π ϝ fn R L')*)
-      WPs s {{fn.(rf_fn).(f_code), Φ}})%I.
-  Global Arguments typed_stmt _ _ _%_E _ _%_I _.
+      current_frame f.1 f.2 -∗
+      typed_stmt_post_cond f rf R Φ -∗
+      WPs{f.1} s {{rf.(f_code), Φ}})%I.
+  Global Arguments typed_stmt _ _ _ _%_E _ _%_I _.
 
   (* [P] is an invariant on the context. *)
-  Definition typed_block (P : elctx → llctx → iProp Σ) (b : label) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+  Definition typed_block (P : elctx → llctx → iProp Σ) (f : frame_path) (b : label) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
     (∀ Φ E L,
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      current_frame f.1 f.2 -∗
       logical_step ⊤ (P E L) -∗
-      (∀ L' (v : val),
-        llctx_interp L' -∗
-        ([∗ list] l ∈ (fn.(rf_locs)), l.1 ↦|l.2|) -∗
-        R v L' -∗
-        Φ v) -∗
-      WPs (Goto b) {{ fn.(rf_fn).(f_code), Φ}}).
+      typed_stmt_post_cond f fn R Φ -∗
+      WPs{f.1} (Goto b) {{ fn.(f_code), Φ}}).
 
   (** for all succeeding statements [s], assuming that [v] has type [ty], it can be converted to a non-zero integer *)
-  Definition typed_assert (π : thread_id) (E : elctx) (L : llctx) (v : val) {rt} (ty : type rt) (r : rt) (s : stmt) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ v ◁ᵥ{π, MetaNone} r @ ty -∗ ⌜val_to_bool v = Some true⌝ ∗ llctx_interp L ∗ typed_stmt E L s fn R ϝ)%I.
-  Class TypedAssert (π : thread_id) (E : elctx) (L : llctx) (v : val) {rt} (ty : type rt) (r : rt) : Type :=
-    typed_assert_proof s fn R ϝ : iProp_to_Prop (typed_assert π E L v ty r s fn R ϝ).
+  Definition typed_assert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) (s : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+    (rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      current_frame f.1 f.2 -∗
+      v ◁ᵥ{f.1, MetaNone} r @ ty -∗
+      ⌜val_to_bool v = Some true⌝ ∗ llctx_interp L ∗ current_frame f.1 f.2 ∗ typed_stmt E L f s fn R ϝ)%I.
+  Class TypedAssert (E : elctx) (L : llctx) (f : frame_path) (v : val) {rt} (ty : type rt) (r : rt) : Type :=
+    typed_assert_proof s fn R ϝ : iProp_to_Prop (typed_assert E L f v ty r s fn R ϝ).
 
 
   (** annotated statements are allowed to execute an update and take a step *)
@@ -917,14 +883,14 @@ Section judgments.
   Class TypedAnnotStmt {A} (a : A) : Type :=
     typed_annot_stmt_proof T : iProp_to_Prop (typed_annot_stmt a T).
 
-  Definition typed_switch (π : thread_id) (E : elctx) (L : llctx) (v : val) rt (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : runtime_function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
-    (v ◁ᵥ{π, MetaNone} r @ ty -∗ ∃ z, ⌜val_to_Z v it = Some z⌝ ∗
+  Definition typed_switch (E : elctx) (L : llctx) (f : frame_path) (v : val) rt (ty : type rt) (r : rt) (it : int_type) (m : gmap Z nat) (ss : list stmt) (def : stmt) (fn : function) (R : typed_stmt_R_t) (ϝ : lft) : iProp Σ :=
+    (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ ∃ z, ⌜val_to_Z v it = Some z⌝ ∗
       match m !! z with
-      | Some i => ∃ s, ⌜ss !! i = Some s⌝ ∗ typed_stmt E L s fn R ϝ
-      | None   => typed_stmt E L def fn R ϝ
+      | Some i => ∃ s, ⌜ss !! i = Some s⌝ ∗ typed_stmt E L f s fn R ϝ
+      | None   => typed_stmt E L f def fn R ϝ
       end).
-  Class TypedSwitch (π : thread_id) (E : elctx) (L : llctx) (v : val) rt (ty : type rt) (r : rt) (it : int_type) : Type :=
-    typed_switch_proof m ss def fn R ϝ : iProp_to_Prop (typed_switch π E L v rt ty r it m ss def fn R ϝ).
+  Class TypedSwitch (E : elctx) (L : llctx) (f : frame_path) (v : val) rt (ty : type rt) (r : rt) (it : int_type) : Type :=
+    typed_switch_proof m ss def fn R ϝ : iProp_to_Prop (typed_switch E L f v rt ty r it m ss def fn R ϝ).
 
 
 
@@ -939,7 +905,7 @@ Section judgments.
   | GetMemberUnionPCtx (uls : union_layout_spec) (m : var_name)
   | AnnotExprPCtx (n : nat) {A} (x : A)
     (* for PtrOffsetOp, second ot must be PtrOp *)
-  | BinOpPCtx (op : bin_op) (ot : op_type) (π : thread_id) (v : val) (m : metadata) rt (ty : type rt) (r : rt)
+  | BinOpPCtx (op : bin_op) (ot : op_type) (v : val) (m : metadata) rt (ty : type rt) (r : rt)
     (* for ptr-to-ptr casts, ot must be PtrOp *)
   | UnOpPCtx (op : un_op)
   | EnumDataPCtx (els : enum_layout_spec) (variant : var_name)
@@ -947,43 +913,45 @@ Section judgments.
 
   (* Computes the WP one has to prove for the place ectx_item Ki
   applied to the location l. *)
-  Definition place_item_to_wp (Ki : place_ectx_item) (Φ : loc → iProp Σ) (l : loc) : iProp Σ :=
+  Definition place_item_to_wp (f : frame_path) (Ki : place_ectx_item) (Φ : loc → iProp Σ) (l : loc) : iProp Σ :=
     match Ki with
-    | DerefPCtx o ot mc => WP !{ot, o, mc} l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | GetMemberPCtx sls m => WP l at{sls} m {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | GetMemberUnionPCtx uls m => WP l at_union{uls} m {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | AnnotExprPCtx n x => WP AnnotExpr n x l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | DerefPCtx o ot mc => WPe{f.1} !{ot, o, mc} l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | GetMemberPCtx sls m => WPe{f.1} l at{sls} m {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | GetMemberUnionPCtx uls m => WPe{f.1} l at_union{uls} m {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | AnnotExprPCtx n x => WPe{f.1} AnnotExpr n x l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
     (* we have proved typed_val_expr e1 before so we can use v ◁ᵥ ty here;
       note that the offset is on the left and evaluated first *)
-    | BinOpPCtx op ot π v m rt ty r => v ◁ᵥ{π, m} r @ ty -∗ WP BinOp op ot PtrOp v l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | UnOpPCtx op => WP UnOp op PtrOp l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
-    | EnumDataPCtx els variant => WP EnumData els variant l {{ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | BinOpPCtx op ot v m rt ty r => v ◁ᵥ{f.1, m} r @ ty -∗ WPe{f.1} BinOp op ot PtrOp v l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | UnOpPCtx op => WPe{f.1} UnOp op PtrOp l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
+    | EnumDataPCtx els variant => WPe{f.1} EnumData els variant l {{ λ v, ∃ l' : loc, ⌜v = val_of_loc l'⌝ ∗ Φ l' }}
     end%I.
-  Definition place_to_wp (K : list place_ectx_item) (Φ : loc → iProp Σ) : (loc → iProp Σ) := foldr (place_item_to_wp) (λ v, |={⊤}=> Φ v)%I K.
+  Definition place_to_wp (f : frame_path) (K : list place_ectx_item) (Φ : loc → iProp Σ) : (loc → iProp Σ) := foldr (place_item_to_wp f) (λ v, |={⊤}=> Φ v)%I K.
 
-  Lemma fupd_place_item_to_wp Ki Φ l :
-    (|={⊤}=> place_item_to_wp Ki Φ l) -∗ place_item_to_wp Ki Φ l.
+  Lemma fupd_place_item_to_wp f Ki Φ l :
+    (|={⊤}=> place_item_to_wp f Ki Φ l) -∗ place_item_to_wp f Ki Φ l.
   Proof.
-    destruct Ki; simpl; iIntros "Ha"; iIntros; iApply fupd_wp; iMod "Ha"; by iApply "Ha".
+    destruct Ki; simpl; iIntros "Ha"; iIntros; iApply fupd_wpe; iMod "Ha"; by iApply "Ha".
   Qed.
-  Lemma fupd_place_to_wp K Φ l:
-    (|={⊤}=> place_to_wp K Φ l) -∗ place_to_wp K Φ l.
+  Lemma fupd_place_to_wp f K Φ l:
+    (|={⊤}=> place_to_wp f K Φ l) -∗ place_to_wp f K Φ l.
   Proof.
     destruct K as [ | Ki K]; simpl.
     - by iIntros ">>$".
     - iApply fupd_place_item_to_wp.
   Qed.
 
-  Global Instance place_item_to_wp_proper K :
-    Proper (pointwise_relation _ equiv ==> eq ==> equiv) (place_item_to_wp K).
+  Global Instance place_item_to_wp_proper f K :
+    Proper (pointwise_relation _ equiv ==> eq ==> equiv) (place_item_to_wp f K).
   Proof.
     intros Φ1 Φ2 Hequiv l l' <-.
     destruct K; simpl.
     5: f_equiv.
-    all: apply wp_proper; solve_proper.
+    all: apply wpe_proper.
+    1-7: solve_proper.
+    all: solve_proper.
   Qed.
-  Lemma place_to_wp_app (K1 K2 : list place_ectx_item) Φ l :
-    place_to_wp (K1 ++ K2) Φ l ≡ place_to_wp K1 (place_to_wp K2 Φ) l.
+  Lemma place_to_wp_app f (K1 K2 : list place_ectx_item) Φ l :
+    place_to_wp f (K1 ++ K2) Φ l ≡ place_to_wp f K1 (place_to_wp f K2 Φ) l.
   Proof.
     induction K1 as [ | Ki K IH] in l |-*.
     - simpl. iSplit; [ by eauto | ].
@@ -992,19 +960,19 @@ Section judgments.
       intros l'. by rewrite IH.
   Qed.
 
-  Lemma place_item_to_wp_mono K Φ1 Φ2 l:
-    place_item_to_wp K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_item_to_wp K Φ2 l.
+  Lemma place_item_to_wp_mono f K Φ1 Φ2 l:
+    place_item_to_wp f K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_item_to_wp f K Φ2 l.
   Proof.
-    iIntros "HP HΦ". move: K => [o ly mc|sls m|uls m |n A x|op ot π v m rt ty r|op | els variant]//=.
+    iIntros "HP HΦ". move: K => [o ly mc|sls m|uls m |n A x|op ot v m rt ty r|op | els variant]//=.
     5: iIntros "Hv".
-    1-4,6-7: iApply (@wp_wand with "HP").
-    7: iApply (@wp_wand with "[Hv HP]"); first by iApply "HP".
+    1-4,6-7: iApply (@wpe_wand with "HP").
+    7: iApply (@wpe_wand with "[Hv HP]"); first by iApply "HP".
     all: iIntros (?); iDestruct 1 as (l' ->) "HΦ1".
     all: iExists _; iSplit => //; by iApply "HΦ".
   Qed.
 
-  Lemma place_to_wp_mono K Φ1 Φ2 l:
-    place_to_wp K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_to_wp K Φ2 l.
+  Lemma place_to_wp_mono f K Φ1 Φ2 l:
+    place_to_wp f K Φ1 l -∗ (∀ l, Φ1 l -∗ Φ2 l) -∗ place_to_wp f K Φ2 l.
   Proof.
     iIntros "HP HΦ".
     iInduction (K) as [] "IH" forall (l) => /=. { by iApply "HΦ". }
@@ -1012,8 +980,8 @@ Section judgments.
     iIntros (l') "HP". by iApply ("IH" with "HP HΦ").
   Qed.
 
-  Lemma place_to_wp_fupd K Φ l:
-    (place_to_wp K (λ l, |={⊤}=> Φ l) l) -∗ place_to_wp K Φ l.
+  Lemma place_to_wp_fupd f K Φ l:
+    (place_to_wp f K (λ l, |={⊤}=> Φ l) l) -∗ place_to_wp f K Φ l.
   Proof.
     induction K as [ | Ki K IH] in l |-*; simpl.
     - by iIntros ">>$".
@@ -1022,16 +990,16 @@ Section judgments.
   Qed.
 
   (* We need to take some extra care because the lifetime context may change during this operation. *)
-  Fixpoint find_place_ctx (E : elctx) (e : W.expr) : option (llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
+  Fixpoint find_place_ctx (E : elctx) (f : frame_path) (e : W.expr) : option (llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
     match e with
     | W.Loc l => Some (λ L T, T L [] l)
     | W.Deref o ot mc e =>
-      T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [DerefPCtx o ot mc]) l))
-    | W.GetMember e sls m => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberPCtx sls m]) l))
-    | W.GetMemberUnion e uls m => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberUnionPCtx uls m]) l))
-    | W.EnumData els variant e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDataPCtx els variant]) l))
-    | W.AnnotExpr n x e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [AnnotExprPCtx n x]) l))
-    | W.LocInfoE a e => find_place_ctx E e
+      T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [DerefPCtx o ot mc]) l))
+    | W.GetMember e sls m => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberPCtx sls m]) l))
+    | W.GetMemberUnion e uls m => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [GetMemberUnionPCtx uls m]) l))
+    | W.EnumData els variant e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDataPCtx els variant]) l))
+    | W.AnnotExpr n x e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [AnnotExprPCtx n x]) l))
+    | W.LocInfoE a e => find_place_ctx E f e
 
     (* Here we use the power of having a continuation available to add
     a typed_val_expr. It is important that this happens before we get
@@ -1039,63 +1007,70 @@ Section judgments.
     root of the place expression once we hit it. This allows us to
     support e.g. a[a[0]]. *)
     | W.BinOp op ot PtrOp e1 e2 =>
-      T' ← find_place_ctx E e2;
-      Some (λ L T, typed_val_expr E L (W.to_expr e1) (λ L' π v m rt ty r, T' L' (λ L'' K l, T L'' (K ++ [BinOpPCtx op ot π v m rt ty r]) l)))
-    | W.UnOp op PtrOp e => T' ← find_place_ctx E e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [UnOpPCtx op]) l))
+      T' ← find_place_ctx E f e2;
+      Some (λ L T, typed_val_expr E L f (W.to_expr e1) (λ L' v m rt ty r, T' L' (λ L'' K l, T L'' (K ++ [BinOpPCtx op ot v m rt ty r]) l)))
+    | W.UnOp op PtrOp e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [UnOpPCtx op]) l))
     (* TODO: Is the existential quantifier here a good idea or should this be a fullblown judgment? *)
     | W.UnOp op (IntOp it) e =>
-      Some (λ L T, typed_val_expr E L (UnOp op (IntOp it) (W.to_expr e)) (λ L' π v m rt ty r,
-        v ◁ᵥ{π, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
+      Some (λ L T, typed_val_expr E L f (UnOp op (IntOp it) (W.to_expr e)) (λ L' v m rt ty r,
+        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
     | W.LValue e =>
-      Some (λ L T, typed_val_expr E L (W.to_expr e) (λ L' π v m rt ty r,
-        v ◁ᵥ{π, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
+      Some (λ L T, typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
+        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
+    | W.Var x =>
+      Some (λ L T, find_in_context (FindLocal f x) (λ '(st, l), x is_live{f, st} l -∗ T L [] l))%I
     | _ => None
     end.
 
-  Class IntoPlaceCtx E (e : expr) (T : llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
+  Class IntoPlaceCtx E f (e : expr) (T : llctx → (llctx → list place_ectx_item → loc → iProp Σ) → iProp Σ) :=
     into_place_ctx Φ Φ':
-    (⊢ ∀ L, rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ T L Φ' -∗
-      (∀ L' K l, llctx_interp L' -∗ Φ' L' K l -∗ place_to_wp K (Φ ∘ val_of_loc) l) -∗
-        WP e {{ Φ }}).
+    (⊢ ∀ L, rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗ T L Φ' -∗
+      (∀ L' K l, llctx_interp L' -∗ current_frame f.1 f.2 -∗ Φ' L' K l -∗ place_to_wp f K (Φ ∘ val_of_loc) l) -∗
+        WPe{f.1} e {{ Φ }}).
 
   Section find_place_ctx_correct.
   Arguments W.to_expr : simpl nomatch.
-  Lemma find_place_ctx_correct E e T:
-    find_place_ctx E e = Some T →
-    IntoPlaceCtx E (W.to_expr e) T.
+  Lemma find_place_ctx_correct E f e T:
+    find_place_ctx E f e = Some T →
+    IntoPlaceCtx E f (W.to_expr e) T.
   Proof.
     elim: e T => //= *.
-    all: iIntros (Φ Φ' L) "#LFT #HE HL HT HΦ'".
-    all: iApply ewp_fupd.
-    2,3: case_match.
+    all: iIntros (Φ Φ' L) "#LFT #HE HL Hframe HT HΦ'".
+    all: iApply wpe_fupd.
+    3,4: case_match.
     all: try match goal with
     |  H : ?x ≫= _ = Some _ |- _ => destruct x as [?|] eqn:Hsome
     end; simplify_eq/=.
     all: try match goal with
-    |  H : context [IntoPlaceCtx _ _ _ ] |- _ => rename H into IH
+    |  H : context [IntoPlaceCtx _ _ _ _ ] |- _ => rename H into IH
     end.
-    1: iApply @wp_value; by iApply ("HΦ'" with "HL HT").
+    1: { iDestruct "HT" as ([st l])  "(Hx & HT)". destruct f as [π i].
+      simpl. iApply (wp_var with "Hframe Hx").
+      iApply physical_step_intro. iNext.
+      iIntros "Hframe Hx". iSpecialize ("HT" with "Hx").
+      iApply ("HΦ'" with "HL Hframe HT"). }
+    1: iApply @wpe_value; by iApply ("HΦ'" with "HL Hframe HT").
     1: {
-      iApply ("HT" with "LFT HE HL"). iIntros (L' π rt ty v m r) "HL Hv HT".
+      iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' rt ty v m r) "HL Hframe Hv HT".
       iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
-        by iApply ("HΦ'" $! _ [] with "HL HT").
+        by iApply ("HΦ'" $! _ [] with "HL Hframe HT").
     }
     4: {
-      rewrite /LValue. iApply ("HT" with "LFT HE HL"). iIntros (L' π rt ty v m r) "HL Hv HT".
+      rewrite /LValue. iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' rt ty v m r) "HL Hframe Hv HT".
       iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
-      by iApply ("HΦ'" $! _ [] with "HL").
+      by iApply ("HΦ'" $! _ [] with "HL Hframe").
     }
-    2: wp_bind. 2: rewrite -!/(W.to_expr _).
-    2: iApply ("HT" with "LFT HE HL"); iIntros (L' π v m rt ty r) "HL Hv HT".
-    2: iDestruct (IH with "LFT HE HL HT") as "HT" => //.
+    2: wpe_bind. 2: rewrite -!/(W.to_expr _).
+    2: iApply ("HT" with "LFT HE HL Hframe"); iIntros (L' v m rt ty r) "HL Hframe Hv HT".
+    2: iDestruct (IH with "LFT HE HL Hframe HT") as "HT" => //.
     2: fold W.to_expr.
-    1, 3-7: iDestruct (IH with "LFT HE HL HT") as " HT" => //.
-    all: wp_bind; iApply "HT".
-    all: iIntros (L'' K l) "HL HT" => /=.
-    all: iDestruct ("HΦ'" with "HL HT") as "HΦ"; rewrite place_to_wp_app /=.
+    1, 3-7: iDestruct (IH with "LFT HE HL Hframe HT") as " HT" => //.
+    all: wpe_bind; iApply "HT".
+    all: iIntros (L'' K l) "HL Hframe HT" => /=.
+    all: iDestruct ("HΦ'" with "HL Hframe HT") as "HΦ"; rewrite place_to_wp_app /=.
     all: iApply (place_to_wp_mono with "HΦ"); iIntros (l') "HWP" => /=.
-    7: iApply (@wp_wand with "[Hv HWP]"); first by iApply "HWP".
-    1-6: iApply (@wp_wand with "HWP").
+    7: iApply (@wpe_wand with "[Hv HWP]"); first by iApply "HWP".
+    1-6: iApply (@wpe_wand with "HWP").
     all: iIntros (?); by iDestruct 1 as (? ->) "$".
   Qed.
   End find_place_ctx_correct.
@@ -1846,13 +1821,14 @@ Section judgments.
    *)
   Definition place_cont_t rto allowed_outer : Type := llctx → list lft → loc → bor_kind → ∀ (allowed_inner : place_update_kind) rti, ltype rti → place_rfn rti → place_update_ctx rti rto allowed_inner allowed_outer → iProp Σ.
 
-  Definition typed_place π (E : elctx) (L : llctx) (l1 : loc) {rto : RT} (ltyo : ltype rto) (r1 : place_rfn rto) (allowed0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto allowed0) : iProp Σ :=
+  Definition typed_place (E : elctx) (L : llctx) (f : frame_path) (l1 : loc) {rto : RT} (ltyo : ltype rto) (r1 : place_rfn rto) (allowed0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) (T : place_cont_t rto allowed0) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      current_frame f.1 f.2 -∗
       (* [allowed0] is the intersection of all bor_kinds to this place, including [b1] *)
       (*allowed0 ⪯ₚ b1 -∗*)
       (* assume ownership of l1 *)
-      l1 ◁ₗ[π, b1] r1 @ ltyo -∗
+      l1 ◁ₗ[f.1, b1] r1 @ ltyo -∗
       (* precondition provided by the client that we necessarily need to go through to get Φ *)
       (∀ (L' : llctx) (κs : list lft) (l2 : loc) (allowed1 : place_update_kind) (b2 : bor_kind) (rti : RT) (ltyi : ltype rti) (ri : place_rfn rti)
         (updcx : place_update_ctx rti rto allowed1 allowed0),
@@ -1860,13 +1836,13 @@ Section judgments.
         (*bmin ⊑ₖ bmin0 -∗*)
         (*allowed1 ⪯ₚ b2 -∗*)
         (* l2 is the inner location we eventually access, provide that to the client *)
-        l2 ◁ₗ[π, b2] ri @ ltyi -∗
+        l2 ◁ₗ[f.1, b2] ri @ ltyi -∗
 
         (* for any update to l2 by the client, we need to update our "outer" place accordingly: *)
         (∀ (upd : place_update rti allowed1),
           upd.(pupd_performed) ⪯ₚ allowed1 -∗
           (* assume an update by the client *)
-          l2 ◁ₗ[π, b2] upd.(pupd_rfn) @ upd.(pupd_lt) -∗
+          l2 ◁ₗ[f.1, b2] upd.(pupd_rfn) @ upd.(pupd_lt) -∗
           (* needs to have the same st *)
           ⌜ltype_st ltyi = ltype_st upd.(pupd_lt)⌝ -∗
           (* remaining ownership *)
@@ -1874,10 +1850,11 @@ Section judgments.
           typed_place_cond upd.(pupd_performed) ltyi upd.(pupd_lt) ={F}=∗
           ∀ (L2 : llctx) (cont : place_update rto allowed0 → iProp Σ),
           llctx_interp L2 -∗
+          current_frame f.1 f.2 -∗
           updcx L2 upd cont ={F}=∗
           ∃ upd' : place_update rto allowed0,
             (* provide the updated ownership of l1 *)
-            l1 ◁ₗ[π, b1] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗
+            l1 ◁ₗ[f.1, b1] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗
             (* and a proof that the "outer" update is legal *)
             ⌜ltype_st ltyo = ltype_st upd'.(pupd_lt)⌝ ∗
             (* and a proof that the "outer" update is legal *)
@@ -1889,62 +1866,64 @@ Section judgments.
             (* as well as a "remaining" ownership that we get out from the update *)
             upd'.(pupd_R) ∗
             llctx_interp L2 ∗
+            current_frame f.1 f.2 ∗
             cont upd') -∗
 
         (* provide the continuation condition *)
         T L' κs l2 b2 allowed1  rti ltyi ri updcx -∗
         (* and the context: we hand the client the new context [L'] *)
         llctx_interp L' -∗
+        current_frame f.1 f.2 -∗
         (* then we can assume the postcondition *)
         Φ l2) -∗
-      place_to_wp P Φ l1).
+      place_to_wp f P Φ l1).
 
   (** Instances need to have priority >= 10, the ones below are reserved for ghost resolution, id, etc. *)
-  Class TypedPlace E L π l1 {rto} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) : Type :=
-    typed_place_proof T : iProp_to_Prop (typed_place π E L l1 ltyo r1 bmin0 b1 P T).
+  Class TypedPlace E L f l1 {rto} (ltyo : ltype rto) (r1 : place_rfn rto) (bmin0 : place_update_kind) (b1 : bor_kind) (P : list place_ectx_item) : Type :=
+    typed_place_proof T : iProp_to_Prop (typed_place E L f l1 ltyo r1 bmin0 b1 P T).
 
   Import EqNotations.
   (*place_update*)
-  Lemma typed_place_id {rt} π E L (lt : ltype rt) bmin0 (b : bor_kind) r l (T : place_cont_t rt bmin0) :
+  Lemma typed_place_id {rt} E L f (lt : ltype rt) bmin0 (b : bor_kind) r l (T : place_cont_t rt bmin0) :
     (*⌜lctx_place_update_kind_incl E L bmin0 b⌝ ∗*)
     T L [] l b bmin0 rt lt r (λ L2 upd cont, cont upd)
-    ⊢ typed_place π E L l lt r bmin0 b [] T.
+    ⊢ typed_place E L f l lt r bmin0 b [] T.
   Proof.
-    iIntros "Hs" (Φ F ??). iIntros "#LFT #HE HL HP HΦ /=".
+    iIntros "Hs" (Φ F ??). iIntros "#LFT #HE HL Hf HP HΦ /=".
     (*iPoseProof (lctx_place_update_kind_incl_use with "HE HL") as "#Hincl"; first apply Hincl.*)
     iSpecialize ("HΦ" $! _ _ _ _ _ _ _ _ _ with "HP").
     (*{ iApply "Hincl". }*)
-    iApply ("HΦ" with "[] Hs HL").
+    iApply ("HΦ" with "[] Hs HL Hf").
     iIntros (upd) "Hincl' Hl %Hst ? Hcond" => /=.
     iModIntro.
-    iIntros (L2 cont) "HL Hcont".
+    iIntros (L2 cont) "HL Hf Hcont".
     iExists upd.
     iFrame. iR.
     iApply llft_elt_toks_nil.
   Qed.
-  Global Instance typed_place_id_inst {rt} π E L (lt : ltype rt) bmin0 b r l :
-    TypedPlace E L π l lt r bmin0 b [] | 9 := λ T, i2p (typed_place_id π E L lt bmin0 b r l T).
+  Global Instance typed_place_id_inst {rt} E L f (lt : ltype rt) bmin0 b r l :
+    TypedPlace E L f l lt r bmin0 b [] | 9 := λ T, i2p (typed_place_id E L f lt bmin0 b r l T).
 
-  Lemma typed_place_eqltype {rto} π E L (lt1 lt2 : ltype rto) bmin0 b r l P T :
+  Lemma typed_place_eqltype {rto} E L f (lt1 lt2 : ltype rto) bmin0 b r l P T :
     full_eqltype E L lt1 lt2 →
-    typed_place π E L l lt2 r bmin0 b P T -∗
-    typed_place π E L l lt1 r bmin0 b P T.
+    typed_place E L f l lt2 r bmin0 b P T -∗
+    typed_place E L f l lt1 r bmin0 b P T.
   Proof.
-    iIntros (Heq) "Hp". iIntros (????) "#CTX #HE HL Hl HΦ".
+    iIntros (Heq) "Hp". iIntros (????) "#CTX #HE HL Hf Hl HΦ".
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Heq"; [apply Heq | ].
     iDestruct ("Heq" $! b r) as "[Hi1 Hi2]".
     iApply fupd_place_to_wp.
     iMod (ltype_incl_use with "Hi1 Hl") as "Hl"; first done. iModIntro.
     iDestruct "CTX" as "(LFT & LLCTX)".
 
-    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hl").
+    iApply ("Hp" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl").
     iIntros (L' κs l2 b2 bmin rti tyli ri updcx) "Hl2 Hs HT HL".
     iApply ("HΦ" $! _ _ _ _ _ _ _ _  with "Hl2 [Hs] HT HL").
     iIntros (upd) "Hincl' Hl2 %Hst HR Hcond".
     iMod ("Hs" with "Hincl' Hl2 [//] HR Hcond") as "Hs".
     (*"(Hl & %Hst2 & Hcond & Htoks & HR)".*)
-    iModIntro. iIntros (L2 cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hst2 & ? & ? & ? & ?)".
+    iModIntro. iIntros (L2 cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hst2 & ? & ? & ? & ?)".
     iExists upd'.
     iPoseProof (ltype_incl_syn_type with "Hi1") as "%Hst'".
     rewrite Hst' Hst2. iFrame. iR.
@@ -1954,31 +1933,31 @@ Section judgments.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
   (* generic instance constructors for descending below ofty *)
-  Lemma typed_place_ofty_access_val_owned π E L {rt} l (ty : type rt) (r : rt) bmin0 wl P T :
+  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 wl P T :
     ty_has_op_type ty PtrOp MCCopy →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
-      v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗
+      v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
-        v ◁ᵥ{π, MetaNone} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
+        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           (* point: the outer place is not updated, it stays at ◁ ty.
              but I emit new updated ownership *)
           T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ ty) (# r)
-              (l2 ◁ₗ[π, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
+              (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
       ⊢
-    typed_place π E L l (◁ ty) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    typed_place E L f l (◁ ty) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "HT".
-    iIntros (????) "#CTX #HE HL Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (ofty_ltype_acc_owned ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
     simpl. iModIntro.
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [done.. | ].
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [done.. | ].
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
@@ -1990,37 +1969,37 @@ Section judgments.
     iMod ("Ha" with "Hl [//] Hsc Hv") as "Hl".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
-    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
+    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
     iIntros (upd) "#Hincl2 Hl2 %Hst HR Hcond".
     iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
-    iModIntro. iIntros (L3 cont) "HL Hcont".
-    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & Hstrong & ?)".
+    iModIntro. iIntros (L3 cont) "HL Hf Hcont".
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & Hstrong & ?)".
     simpl. iFrame. iR. simpl.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
   Qed.
 
   (* TODO generalize this similarly as the one above? *)
-  Lemma typed_place_ofty_access_val_uniq π E L {rt} l (ty : type rt) (r : rt) bmin0 κ γ P T :
+  Lemma typed_place_ofty_access_val_uniq E L f {rt} l (ty : type rt) (r : rt) bmin0 κ γ P T :
     ty_has_op_type ty PtrOp MCCopy →
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
-      v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗
+      v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
-        v ◁ᵥ{π, MetaNone} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
+        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
             cont (mkPUpd _ _ _ (◁ ty) (# r)
-              (l2 ◁ₗ[π, b2] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗ upd'.(pupd_R))
+              (l2 ◁ₗ[f.1, b2] upd'.(pupd_rfn) @ upd'.(pupd_lt) ∗ upd'.(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
-    ⊢ typed_place π E L l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (#r) bmin0 (Uniq κ γ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
-    iIntros (????) "#CTX #HE HL Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (fupd_mask_subseteq lftE) as "HF_cl"; first done.
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
@@ -2028,8 +2007,8 @@ Section judgments.
     iMod "HF_cl" as "_".
     simpl. iModIntro.
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply wp_fupd.
-    iApply (wp_logical_step with "Hcl"); [done.. | ].
+    iApply wpe_fupd.
+    iApply (wpe_logical_step with "Hcl"); [done.. | ].
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
@@ -2042,36 +2021,36 @@ Section judgments.
     iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
-    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL"). simpl.
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
+    iApply ("Hcont" with "Hl3 [Hcl Hl] HT HL Hf"). simpl.
     iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
     iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? & ?)".
     simpl. iFrame. simpl. iR.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
   Qed.
 
   (* NOTE: we need to require it to be a simple type to get this generic lemma *)
-  Lemma typed_place_ofty_access_val_shared π E L {rt} l (ty : simple_type rt) (r : rt) bmin0 κ P T :
+  Lemma typed_place_ofty_access_val_shared E L f {rt} l (ty : simple_type rt) (r : rt) bmin0 κ P T :
     ty_has_op_type ty PtrOp MCCopy →
     ⌜lctx_lft_alive E L κ⌝ ∗
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
-      v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗
+      v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
       ∃ (l2 : loc) (rt2 : RT) (lt2 : ltype rt2) r2 b2, ⌜v = l2⌝ ∗
-        v ◁ᵥ{π, MetaNone} r @ ty ∗ l2 ◁ₗ[π, b2] r2 @ lt2 ∗
-        typed_place π E L l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
+        v ◁ᵥ{f.1, MetaNone} r @ ty ∗ l2 ◁ₗ[f.1, b2] r2 @ lt2 ∗
+        typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
           T L' κs li b3 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd  (λ upd',
             cont (mkPUpd _ _ _ (◁ ty) (# r)
-              (l2 ◁ₗ[π, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
+              (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))))
-    ⊢ typed_place π E L l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (◁ ty) (# r) bmin0 (Shared κ) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "(%Hal & HT)".
-    iIntros (????) "#CTX #HE HL #Hl Hcont". iApply fupd_place_to_wp.
+    iIntros (????) "#CTX #HE HL Hf #Hl Hcont". iApply fupd_place_to_wp.
     iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HL_cl)".
     iMod (Hal with "HE HL") as "(%q' & Htok & HL_cl2)"; first done.
     iPoseProof (ofty_ltype_acc_shared ⊤ with "Hl") as "(%ly & %Halg & %Hly & Hlb & >Hb)"; first done.
@@ -2084,7 +2063,7 @@ Section judgments.
     specialize (ty_op_type_stable Hot) as Halg'.
     assert (ly = ot_layout PtrOp) as -> by by eapply syn_type_has_layout_inj.
     iPoseProof (ty_own_val_has_layout with "Hv") as "#>%Hlyv"; first done.
-    iApply wp_fupd.
+    iApply wpe_fupd.
     iApply (wp_deref with "Hloc"); [by right | | done | done | ].
     { by rewrite val_to_of_loc. }
     iApply physical_step_intro. iNext.
@@ -2094,13 +2073,13 @@ Section judgments.
     iMod ("HL_cl2" with "Htok") as "HL". iPoseProof ("HL_cl" with "HL") as "HL".
     iModIntro.
     iExists l2. rewrite mem_cast_id_loc. iSplitR; first done.
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hl2").
-    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL".
-    iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL"). simpl.
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf Hl2").
+    iIntros (L2 κs l3 b3 bmin rti ltyi ri updcx) "Hl3 Hcl HT HL Hf".
+    iApply ("Hcont" with "Hl3 [Hcl Hv] HT HL Hf"). simpl.
     iIntros (upd) "Hincl2 Hl2 %Hst HR Hcond".
     iMod ("Hcl" with "Hincl2 Hl2 [//] HR Hcond") as "Hcl".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hcl" with "HL Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? &?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hcl" with "HL Hf Hcont") as (upd') "(Hl' & % & ? & ? & ? & ? &?)".
     simpl. iFrame. iFrame "#". simpl. iR.
     iSplitL; last iApply upd_bot_min.
     iApply typed_place_cond_refl_ofty.
@@ -2964,29 +2943,30 @@ Section judgments.
           + [ty' : type rt] : the type of the read value
           + [r' : rt] : the refinement of the read value
   *)
-  Definition typed_read_cont_t : Type := llctx → thread_id → val → ∀ rt : RT, type rt → rt → iProp Σ.
-  Definition typed_read (E : elctx) (L : llctx) (e : expr) (ot : op_type) (T : typed_read_cont_t) : iProp Σ :=
+  Definition typed_read_cont_t : Type := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
+  Definition typed_read (E : elctx) (L : llctx) (f : frame_path) (e : expr) (ot : op_type) (T : typed_read_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
-      rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
       (∀ (l : loc),
         (* the client gets ownership of the read value and fractional ownership of the location *)
         (* this is below a logical step in order to execute stratification here.
           TODO we may want to move this into a separate thing, together with moving the skip in Use to a separate annotation *)
-        logical_step F (∃ v q π rt (ty : type rt) r,
+        logical_step F (∃ v q rt (ty : type rt) r,
           ⌜l `has_layout_loc` ot_layout ot⌝ ∗ ⌜v `has_layout_val` ot_layout ot⌝ ∗ l ↦{q} v ∗
-            ▷ v ◁ᵥ{π, MetaNone} r @ ty ∗
+            ▷ v ◁ᵥ{f.1, MetaNone} r @ ty ∗
           (* additionally, the client can assume that it can transform this to the ownership required by the continuation T *)
           logical_step F (∀ st,
               l ↦{q} v -∗
-              v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗
+              v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
               ∃ L' rt' (ty' : type rt') r',
                 llctx_interp L' ∗
-                mem_cast v ot st ◁ᵥ{π, MetaNone} r' @ ty' ∗
-                T L' π (mem_cast v ot st) rt' ty' r')) -∗
+                current_frame f.1 f.2 ∗
+                mem_cast v ot st ◁ᵥ{f.1, MetaNone} r' @ ty' ∗
+                T L' (mem_cast v ot st) rt' ty' r')) -∗
         (* under this knowledge, the client has to prove the postcondition *)
         Φ (val_of_loc l)) -∗
       (* TODO: maybe different mask F *)
-      WP e {{ Φ }})%I.
+      WPe{f.1} e {{ Φ }})%I.
 
 
   (* The core of reading from a location [l] with [ot] that is typed at [lt] and immediately owned at [b2] below a path with intersected [bor_kind] [bmin].
@@ -3039,15 +3019,15 @@ Section judgments.
      - then, the actual type-checking of the read is performed with [typed_read_end]
    *)
   Definition typed_write_cont_t : Type := llctx → iProp Σ.
-  Definition typed_write (π : thread_id) (E : elctx) (L : llctx) (e : expr) (ot : op_type) (v : val) {rt} (ty : type rt) (r : rt) (T : typed_write_cont_t) : iProp Σ :=
+  Definition typed_write (E : elctx) (L : llctx) (f : frame_path) (e : expr) (ot : op_type) (v : val) {rt} (ty : type rt) (r : rt) (T : typed_write_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
-    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
       (* provided by the client: for any location l... *)
       (∀ (l : loc),
         (* we can hand out ownership to [l], and when the client has written [v] to it,
           the postcondition holds. *)
         (* if the client provides ownership of v... *)
-        (v ◁ᵥ{π, MetaNone} r @ ty -∗ logical_step F (
+        (v ◁ᵥ{f.1, MetaNone} r @ ty -∗ logical_step F (
           (* This is something the client learns (in order to prove its wp), rather than something that is provided.
             That the type is compatible with the ot is something that actually needs to be proven as part of [typed_write_end],
             and so we provide it here to the client. *)
@@ -3055,10 +3035,10 @@ Section judgments.
           (* then it gets access to l *)
           l ↦|ot_layout ot| ∗
           (* and after having written v to it, it gets access to T *)
-          logical_step F (l ↦ v ={F}=∗ ∃ L', llctx_interp L' ∗ T L'))) -∗
+          logical_step F (l ↦ v ={F}=∗ ∃ L', llctx_interp L' ∗ current_frame f.1 f.2 ∗ T L'))) -∗
         Φ (val_of_loc l)) -∗
       (* TODO: maybe different mask F *)
-      WP e {{ Φ }})%I.
+      WPe{f.1} e {{ Φ }})%I.
 
 
   (* The core of writing a value [v1] typed at [ty1] to a location [l2] typed at [lt2] with [ot], where [l2] immediately owned at [b2] below a path with intersected [bor_kind] [bmin].
@@ -3101,10 +3081,10 @@ Section judgments.
     * we type the place context with [typed_place]
     * we use [typed_borrow_mut_end] to do the final checking
   *)
-  Definition typed_borrow_mut_cont_t := llctx → thread_id → val → gname → ∀ (rt : RT), type rt → rt → iProp Σ.
-  Definition typed_borrow_mut (E : elctx) (L : llctx) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_mut_cont_t) : iProp Σ :=
+  Definition typed_borrow_mut_cont_t := llctx → val → gname → ∀ (rt : RT), type rt → rt → iProp Σ.
+  Definition typed_borrow_mut (E : elctx) (L : llctx) (f : frame_path) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_mut_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
-      rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
       (* for any location provided to the client *)
       (∀ (l : loc),
         (* and a time receipt we provide for generating our credits *)
@@ -3115,20 +3095,21 @@ Section judgments.
           £ num_cred -∗
           (* and the returned receipt *)
           tr 1 ={F}=∗
-          ∃ L' (π : thread_id) (rt : RT) (ty : type rt) (r : rt) (γ : gname) (ly : layout),
+          ∃ L' (rt : RT) (ty : type rt) (r : rt) (γ : gname) (ly : layout),
           (* a new observation *)
           gvar_obs γ r ∗
           (* and a borrow *)
-          &{κ}(∃ (r': rt), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone) ∗
+          &{κ}(∃ (r': rt), gvar_auth γ r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) f.1 r' MetaNone) ∗
           (* + some well-formedness *)
           ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
           ⌜l `has_layout_loc` ly⌝ ∗
           loc_in_bounds l 0 (ly.(ly_size)) ∗ ty_sidecond ty ∗
           (* + the condition T *)
           llctx_interp L' ∗
-          T L' π (val_of_loc l) γ rt ty r) -∗
+          current_frame f.1 f.2 ∗
+          T L' (val_of_loc l) γ rt ty r) -∗
           Φ (val_of_loc l)) -∗
-      WP e {{ Φ }})%I.
+      WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_mut_end_cont_t bmin rt := gname → ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
   Definition typed_borrow_mut_end (π : thread_id) (E : elctx) (L : llctx) (κ : lft) (l : loc) (ty_hint : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_mut_end_cont_t bmin rt) : iProp Σ :=
@@ -3164,10 +3145,10 @@ Section judgments.
     * we type the place context with [typed_place]
     * we use [typed_borrow_shr_end] to do the final checking
   *)
-  Definition typed_borrow_shr_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → place_rfn rt → iProp Σ.
-  Definition typed_borrow_shr (E : elctx) (L : llctx) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_shr_cont_t) : iProp Σ :=
+  Definition typed_borrow_shr_cont_t := llctx → val → ∀ (rt : RT), type rt → place_rfn rt → iProp Σ.
+  Definition typed_borrow_shr (E : elctx) (L : llctx) (f : frame_path) (e : expr) (κ : lft) (ty_annot : option rust_type) (T : typed_borrow_shr_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
-    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
       (* for any location provided to the client... *)
       (∀ (l : loc),
       (* the client needs to prove the postcondition, assuming shared ownership after an update *)
@@ -3175,16 +3156,17 @@ Section judgments.
       logical_step F (logical_step F (
         (* one credit for the inheritance VS *)
         £1 ={F}=∗
-        ∃ (L' : llctx) (π : thread_id) (rt : RT) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
-          place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ π r' MetaNone l ∗
+        ∃ (L' : llctx) (rt : RT) (ty : type rt) (r : place_rfn rt) (r' : rt) (ly : layout),
+          place_rfn_interp_shared r r' ∗ ty.(ty_shr) κ f.1 r' MetaNone l ∗
           ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
           ⌜l `has_layout_loc` ly⌝ ∗
           loc_in_bounds l 0 (ly.(ly_size)) ∗ ty.(ty_sidecond) ∗
           (* as well as the condition T *)
           llctx_interp L' ∗
-          T L' π (val_of_loc l) rt ty r)) -∗
+          current_frame f.1 f.2 ∗
+          T L' (val_of_loc l) rt ty r)) -∗
         Φ (val_of_loc l)) -∗
-      WP e {{ Φ }})%I.
+      WPe{f.1} e {{ Φ }})%I.
 
   Definition typed_borrow_shr_end_cont_t bmin rt := ∀ rt', ltype rt' → place_rfn rt' → type rt' → rt' → place_update_kind_res bmin rt rt' → iProp Σ.
   Definition typed_borrow_shr_end π (E : elctx) (L : llctx) (κ : lft) (l : loc) (orty : option rust_type) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (T : typed_borrow_shr_end_cont_t bmin rt) : iProp Σ :=
@@ -3217,19 +3199,20 @@ Section judgments.
 
   (** ** Address-of judgments *)
   (** [*mut] address of *)
-  Definition typed_addr_of_mut_cont_t := llctx → thread_id → val → ∀ (rt : RT), type rt → rt → iProp Σ.
-  Definition typed_addr_of_mut (E : elctx) (L : llctx) (e : expr) (T : typed_addr_of_mut_cont_t) : iProp Σ :=
+  Definition typed_addr_of_mut_cont_t := llctx → val → ∀ (rt : RT), type rt → rt → iProp Σ.
+  Definition typed_addr_of_mut (E : elctx) (L : llctx) (f : frame_path) (e : expr) (T : typed_addr_of_mut_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
-    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+    rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
     (* for any location provided to the client *)
     (∀ (l : loc),
       logical_step F (
-        ∃ L' (π : thread_id) (rt : RT) (ty : type rt) (r : rt),
-        l ◁ᵥ{π, MetaNone} r @ ty ∗
+        ∃ L' (rt : RT) (ty : type rt) (r : rt),
+        l ◁ᵥ{f.1, MetaNone} r @ ty ∗
         llctx_interp L' ∗
-        T L' π (val_of_loc l) rt ty r) -∗
+        current_frame f.1 f.2 ∗
+        T L' (val_of_loc l) rt ty r) -∗
         Φ (val_of_loc l)) -∗
-    WP e {{ Φ }})%I.
+    WPe{f.1} e {{ Φ }})%I.
 
   (** This does not work below shared references, as we cannot get a full fraction out of the sharing predicate.
      This does not seem that terrible, because we should not take *mut references from shared borrows anyways.
@@ -3287,12 +3270,12 @@ Global Infix "⊓ₚ" := (place_update_kind_restrict) (at level 50).
 (* TODO: can we just make this a li_tactic? *)
 Ltac solve_into_place_ctx :=
   match goal with
-  | |- IntoPlaceCtx ?E ?e ?T =>
+  | |- IntoPlaceCtx ?E ?f ?e ?T =>
       let e' := W.of_expr e in
-      change_no_check (IntoPlaceCtx E (W.to_expr e') T);
-      refine (find_place_ctx_correct E _ _ _); rewrite/=/W.to_expr/=; done
+      change_no_check (IntoPlaceCtx E f (W.to_expr e') T);
+      refine (find_place_ctx_correct E f _ _ _); rewrite/=/W.to_expr/=; done
   end.
-Global Hint Extern 0 (IntoPlaceCtx _ _ _) => solve_into_place_ctx : typeclass_instances.
+Global Hint Extern 0 (IntoPlaceCtx _ _ _ _) => solve_into_place_ctx : typeclass_instances.
 
 (* we want this to be transparent because it's just a cosmetic wrapper around [stratify_ltype], but the same typeclasses should fire *)
 Global Typeclasses Transparent stratify_ltype_unblock.
@@ -3389,6 +3372,24 @@ Global Typeclasses Opaque simplify_lft_map_goal.
 Ltac solve_simplify_lft_map := fail "implement solve_simplify_lft_map".
 #[global] Hint Extern 10 (LiTactic (simplify_lft_map_goal _)) =>
     refine (simplify_lft_map_hint _ _ _); solve_simplify_lft_map : typeclass_instances.
+
+(** Tactic hint to simplify the local list, i.e. compute [list_difference] *)
+Definition simplify_local_list_goal `{!typeGS Σ} (M : list var_name) (T : list var_name → iProp Σ) : iProp Σ :=
+  ∃ M', ⌜M = M'⌝ ∗ T M'.
+#[global] Typeclasses Opaque simplify_local_list_goal.
+Program Definition simplify_local_list_hint `{!typeGS Σ} (M M' : list var_name) :
+  M = M' →
+  LiTactic (simplify_local_list_goal M) := λ a, {|
+    li_tactic_P T := T M';
+  |}.
+Next Obligation.
+  iIntros (?? M M' -> T) "HT". iExists M'. iFrame. done.
+Qed.
+
+Global Typeclasses Opaque simplify_local_list_goal.
+Ltac solve_simplify_local_list := fail "implement solve_simplify_local_list".
+#[global] Hint Extern 10 (LiTactic (simplify_local_list_goal _)) =>
+    refine (simplify_local_list_hint _ _ _); solve_simplify_local_list : typeclass_instances.
 
 (** Tactic hint to find a local lifetime and split it off from the context *)
 Definition llctx_find_llft_goal `{!typeGS Σ} (L : llctx) (κ : lft) (key : llctx_find_llft_key) (T : (list lft * llctx) → iProp Σ) : iProp Σ :=
@@ -4601,13 +4602,13 @@ From lithium Require Import hooks.
 Ltac generate_i2p_instance_to_tc_hook arg c ::=
   lazymatch c with
   | typed_value ?π ?x => constr:(TypedValue π x)
-  | typed_bin_op ?E ?L ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedBinOp E L v1 P1 v2 P2 o ot1 ot2)
-  | typed_un_op ?E ?L ?v ?P ?o ?ot => constr:(TypedUnOp E L v P o ot)
-  | typed_check_bin_op ?E ?L ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedCheckBinOp E L v1 P1 v2 P2 o ot1 ot2)
-  | typed_check_un_op ?E ?L ?v ?P ?o ?ot => constr:(TypedCheckUnOp E L v P o ot)
-  | typed_switch ?π ?E ?L ?v ?ty ?r ?it => constr:(TypedSwitch π E L v ty r it)
-  | typed_call ?π ?E ?L ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall π E L κs etys v P vs tys)
-  | typed_place ?π ?E ?L ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L π l lto ro b1 b2 K)
+  | typed_bin_op ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedBinOp E L f v1 P1 v2 P2 o ot1 ot2)
+  | typed_un_op ?E ?L ?f ?v ?P ?o ?ot => constr:(TypedUnOp E L f v P o ot)
+  | typed_check_bin_op ?E ?L ?f ?v1 ?P1 ?v2 ?P2 ?o ?ot1 ?ot2 => constr:(TypedCheckBinOp E L f v1 P1 v2 P2 o ot1 ot2)
+  | typed_check_un_op ?E ?L ?f ?v ?P ?o ?ot => constr:(TypedCheckUnOp E L f v P o ot)
+  | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
+  | typed_call ?E ?L ?f ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall E L f κs etys v P vs tys)
+  | typed_place ?E ?L ?f ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L f l lto ro b1 b2 K)
   | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot => constr:(TypedReadEnd π E L l lt r b1 b2 ot)
   | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 l lt2 r2)
   | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
@@ -4615,10 +4616,10 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_borrow_shr_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
     constr:(TypedBorrowShrEnd π E L κ l orty lt r b1 b2)
   | typed_addr_of_mut_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 => constr:(TypedAddrOfMutEnd π E L l lt r b1 b2)
-  | typed_annot_expr ?E ?L ?n ?a ?v ?P => constr:(TypedAnnotExpr E L n a v P)
+  | typed_annot_expr ?E ?L ?f ?n ?a ?v ?P => constr:(TypedAnnotExpr E L f n a v P)
   | typed_if ?E ?L ?v ?P => constr:(TypedIf E L v P)
-  | typed_assert ?π ?E ?L ?v ?ty ?r  => constr:(TypedAssert π E L v ty r)
-  | typed_switch ?π ?E ?L ?v ?ty ?r ?it => constr:(TypedSwitch π E L v ty r it)
+  | typed_assert ?E ?L ?f ?v ?ty ?r  => constr:(TypedAssert E L f v ty r)
+  | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
   | typed_annot_stmt ?a => constr:(TypedAnnotStmt a)
   | introduce_with_hooks ?E ?L ?P => constr:(IntroduceWithHooks E L P)
   | subsume_full ?E ?L ?wl ?P1 ?P2 => constr:(SubsumeFull E L wl P1 P2)
@@ -4652,7 +4653,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
 Declare Scope rr_hidden.
 
 Notation "'typed_value' π x 'HIDDEN_CONT'" := (typed_value π x _) (only printing): rr_hidden.
-Notation "'typed_place' π E L l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place π E L l lto ro b1 b2 K _) (only printing): rr_hidden.
+Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E L f l lto ro b1 b2 K _) (only printing): rr_hidden.
 
 Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 P2 _) (only printing): rr_hidden.
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
@@ -4665,9 +4666,6 @@ Notation "'typed_context_fold_step' step π E L m l lt r ls 'HIDDEN_ACC' 'HIDDEN
 Notation "'typed_context_fold' step E L m ls 'HIDDEN_ACC' 'HIDDEN_CONT'" := (typed_context_fold step E L m ls _ _) (only printing) : rr_hidden.
 Notation "'weak_subltype' E L b r1 r2 lt1 lt2 'HIDDEN_CONT'" := (weak_subltype E L b r1 r2 lt1 lt2 _) (only printing) : rr_hidden.
 
-Notation "'typed_block' 'HIDDEN_INV' l rf R ϝ" := (typed_block _ l rf R ϝ) (only printing, at level 100) : rr_hidden.
+Notation "'typed_block' 'HIDDEN_INV' f l rf R ϝ" := (typed_block _ f l rf R ϝ) (only printing, at level 100) : rr_hidden.
 
 Global Open Scope rr_hidden.
-
-
-

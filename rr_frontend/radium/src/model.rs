@@ -38,6 +38,10 @@ pub enum Type {
     #[display("thread_id")]
     ThreadId,
 
+    /// Radium `function` type
+    #[display("function")]
+    Function,
+
     /// `layout` type
     #[display("layout")]
     Layout,
@@ -122,6 +126,9 @@ pub enum LTac {
 
     #[display("Unshelve")]
     Unshelve,
+
+    #[display("solve_fn_vars_nodup")]
+    SolveFnVarNoDup,
 }
 
 impl From<LTac> for coq::ltac::LTac {

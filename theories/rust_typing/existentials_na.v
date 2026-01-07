@@ -1,7 +1,70 @@
 From refinedrust Require Export type ltypes programs.
+From iris.base_logic Require Import ghost_map.
 From refinedrust Require Import uninit int ltype_rules.
-From lrust.lifetime Require Import na_borrow.
 From refinedrust Require Import options.
+
+(** A copy of [na_borrow]  from the lifetime logic for our version of thread-local invariants *)
+Definition na_bor `{!typeGS Σ}
+           (κ : lft) (π : thread_id) (N : namespace) (P : iProp Σ) :=
+  (∃ i, &{κ,i}P ∗ na_inv π N (idx_bor_own 1 i))%I.
+
+Notation "&na{ κ , π , N }" := (na_bor κ π N)
+    (format "&na{ κ , π , N }") : bi_scope.
+
+Section na_bor.
+  Context `{!typeGS Σ}
+          (π : thread_id) (N : namespace) (P : iProp Σ).
+
+  Global Instance na_bor_ne κ n : Proper (dist n ==> dist n) (na_bor κ π N).
+  Proof. solve_proper. Qed.
+  Global Instance na_bor_contractive κ : Contractive (na_bor κ π N).
+  Proof. solve_contractive. Qed.
+  Global Instance na_bor_proper κ : Proper ((⊣⊢) ==> (⊣⊢)) (na_bor κ π N).
+  Proof. solve_proper. Qed.
+
+  Lemma na_bor_iff κ P' :
+    ▷ □ (P ↔ P') -∗ &na{κ, π, N} P -∗ &na{κ, π, N} P'.
+  Proof.
+    iIntros "HPP' H". iDestruct "H" as (i) "[HP ?]". iExists i. iFrame.
+    iApply (idx_bor_iff with "HPP' HP").
+  Qed.
+
+  Global Instance na_bor_persistent κ : Persistent (&na{κ,π,N} P) := _.
+
+  Lemma bor_na κ E : ↑lftN ⊆ E → na_own π ∅ -∗ &{κ}P ={E}=∗ &na{κ,π,N}P.
+  Proof.
+    iIntros (?) "Hna HP". rewrite bor_unfold_idx. iDestruct "HP" as (i) "[#? Hown]".
+    iExists i. iFrame "#". iApply (na_inv_alloc π E N with "Hna [Hown]"). auto.
+  Qed.
+
+  Lemma na_bor_acc q κ E F :
+    ↑lftN ⊆ E → ↑N ⊆ E → ↑N ⊆ F →
+    lft_ctx -∗ &na{κ,π,N}P -∗ q.[κ] -∗ na_own π F ={E}=∗
+            ▷P ∗ na_own π (F ∖ ↑N) ∗
+            (▷P -∗ na_own π (F ∖ ↑N) ={E}=∗ q.[κ] ∗ na_own π F).
+  Proof.
+    iIntros (???) "#LFT#HP Hκ Hnaown".
+    iDestruct "HP" as (i) "(#Hpers&#Hinv)".
+    iMod (na_inv_acc with "Hinv Hnaown") as "(>Hown&Hnaown&Hclose)"; try done.
+    iMod (idx_bor_acc with "LFT Hpers Hown Hκ") as "[HP Hclose']"; first done.
+    iIntros "{$HP $Hnaown} !> HP Hnaown".
+    iMod ("Hclose'" with "HP") as "[Hown $]". iApply "Hclose". by iFrame.
+  Qed.
+
+  Lemma na_bor_shorten κ κ': κ ⊑ κ' -∗ &na{κ',π,N}P -∗ &na{κ,π,N}P.
+  Proof.
+    iIntros "Hκκ' H". iDestruct "H" as (i) "[H ?]". iExists i. iFrame.
+    iApply (idx_bor_shorten with "Hκκ' H").
+  Qed.
+
+  Lemma na_bor_fake E κ: ↑lftN ⊆ E → lft_ctx -∗ na_own π ∅ -∗ [†κ] ={E}=∗ &na{κ,π,N}P.
+  Proof.
+    iIntros (?) "#LFT #Hna #H†". iApply (bor_na with "Hna [>]"); first done.
+    by iApply (bor_fake with "LFT H†").
+  Qed.
+End na_bor.
+Global Typeclasses Opaque na_bor.
+
 
 Record na_ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := na_mk_ex_inv_def' {
   na_inv_xr_inh : Inhabited (RT_xt Y);
@@ -87,8 +150,7 @@ Section na_ex.
     ty_shr κ π r m l :=
       (* TODO: Add persistant part that cannot depends on the refined value *)
       ty.(ty_sidecond) ∗
-      (* TODO: metdata *)
-      &na{κ, π, shrN.@l}(∃ x, l ↦: ty.(ty_own_val) π x m  ∗ P.(na_inv_P) π x r) ∗
+      &na{κ, π, shrN.@l}(∃ x, l ↦: ty.(ty_own_val) π x m ∗ P.(na_inv_P) π x r) ∗
       (∃ ly : layout, ⌜l `has_layout_loc` ly⌝ ∗ ⌜syn_type_has_layout (ty_syn_type ty m) ly⌝);
 
     ty_syn_type := ty.(ty_syn_type);
@@ -132,13 +194,13 @@ Qed.
 
   (* ty_shr_aligned *)
   Next Obligation.
-    iIntros (??????) "(_ & _ & (%ly & % & %))".
+    iIntros (??????) "(_ &  _ & (%ly & % & %))".
     eauto.
   Qed.
 
   (* ty_share *)
   Next Obligation.
-    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) Htok %Halg %Hly Hlb Hbor".
+    iIntros (ty E κ l ly π r m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly Hlb Hbor".
     iEval (setoid_rewrite bi.sep_exist_l) in "Hbor".
     iEval (setoid_rewrite bi_exist_comm) in "Hbor".
 
@@ -157,18 +219,16 @@ Qed.
       iModIntro; iSplit; [iNext | done].
       iExists v; iFrame. }
 
-    iMod (bor_na with "Hbor") as "Hbor"; first solve_ndisj.
+    iMod (bor_na with "Hna Hbor") as "Hbor"; first solve_ndisj.
 
-    iModIntro; iFrame.
+    iModIntro; iFrame "∗ #".
     iExists ly; eauto with iFrame.
   Qed.
 
   (* ty_shr_mono *)
   Next Obligation.
     iIntros (ty κ κ' π r ? l) "Hincl ($ & Hbor & %ly & ? & ?)".
-    iSplitL "Hincl Hbor".
-    - iApply (na_bor_shorten with "Hincl Hbor").
-    - iExists ly. iFrame.
+    iFrame. iApply (na_bor_shorten with "Hincl Hbor").
   Qed.
 
   (* _ty_memcast_compat *)
@@ -220,7 +280,7 @@ Section contr.
       do 1 f_equiv.
       { rewrite type_ctr_sidecond; first done.
         apply Hd. }
-      f_equiv.
+      do 1 f_equiv.
       { f_contractive. do 3 f_equiv.
         - do 4 solve_type_proper_step.
           unfold_sidx.
@@ -326,8 +386,8 @@ Section na_subtype.
     rewrite ltype_own_opened_na_unfold /opened_ltype_own.
     iExists ly. rewrite Hst. eauto with iFrame.
   Qed.
-  Lemma typed_place_opened_na_owned π E L {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l wl P''' T :
-    typed_place π E L l lt_cur r UpdStrong (Owned false) P''' (λ L' κs l2 b2 bmin rti ltyi ri updcx,
+  Lemma typed_place_opened_na_owned E L f {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l wl P''' T :
+    typed_place E L f l lt_cur r UpdStrong (Owned false) P''' (λ L' κs l2 b2 bmin rti ltyi ri updcx,
       T L' κs l2 b2 bmin rti ltyi ri
         (λ L2 upd cont, updcx L2 upd (λ upd',
           cont (mkPUpd _ UpdStrong
@@ -338,20 +398,20 @@ Section na_subtype.
             UpdStrong
             I I))
         ))
-    ⊢ typed_place π E L l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r UpdStrong (Owned wl) P''' T.
+    ⊢ typed_place E L f l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r UpdStrong (Owned wl) P''' T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
     (* Nothing has changed *)
-    iIntros "HT". iIntros (Φ F ??) "#CTX #HE HL Hl HR".
+    iIntros "HT". iIntros (Φ F ??) "#CTX #HE HL Hf Hl HR".
     iPoseProof (opened_na_ltype_acc_owned with "Hl") as "(Hl & Hcl)".
-    iApply ("HT" with "[//] [//] CTX HE HL Hl").
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hl").
     iIntros (L' ??????? updcx) "Hl Hv".
     iApply ("HR" with "Hl").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hv" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq2 & Hcond & ? & ? & ? & HL & Hcont)".
     iFrame. simpl.
     iPoseProof ("Hcl" with "Hl [//]") as "$".
     done.
@@ -410,10 +470,10 @@ Section na_subtype.
     done.
   Qed.
 
-  Lemma typed_place_na_ex_plain_t_owned π E L l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
-    (∀ r, introduce_with_hooks E L (P.(na_inv_P) π r x)
-      (λ L2, typed_place π E L2 l
-              (OpenedLtype (◁ ty) (◁ ty) (◁ (∃na; P, ty)) (λ (r : rt) (x : X), P.(na_inv_P) π r x) (λ r x, True))
+  Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
+    (∀ r, introduce_with_hooks E L (P.(na_inv_P) f.1 r x)
+      (λ L2, typed_place E L2 f l
+              (OpenedLtype (◁ ty) (◁ ty) (◁ (∃na; P, ty)) (λ (r : rt) (x : X), P.(na_inv_P) f.1 r x) (λ r x, True))
               (#r) UpdStrong (Owned wl) K
         (λ L2 κs li b2 bmin' rti ltyi ri updcx,
           T L2 κs li b2 bmin' rti ltyi ri
@@ -422,23 +482,23 @@ Section na_subtype.
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I)))
         )))
-    ⊢ typed_place π E L l (◁ (∃na; P, ty))%I (#x) UpdStrong (Owned wl) K T.
+    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) UpdStrong (Owned wl) K T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
     (* Nothing has changed *)
-    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb Hcont".
+    iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
     iMod (na_ex_plain_t_acc_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
     iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
-    iApply ("HT" with "[//] [//] CTX HE HL Hb").
+    iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
     iApply ("Hcont" with "Hl").
     iIntros (upd) "#Hincl Hl2 %Hsteq ? ?".
     iMod ("Hc" with "Hincl Hl2 [//] [$] [$]") as "Hc".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hc" with "HL Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hc" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & ? & ?)".
     iFrame. simp_ltypes. done.
   Qed.
   Definition typed_place_na_ex_plain_t_owned_inst := [instance @typed_place_na_ex_plain_t_owned].
@@ -456,7 +516,7 @@ Section na_subtype.
     q.[κ] -∗
     l ◁ₗ[π, Shared κ] (#x) @ (◁ (∃na; P, ty)) ={E}=∗
 
-    ∃ r : rt,
+    ∃ (r : rt),
       P.(na_inv_P) π r x ∗
       (l ◁ₗ[π, Owned false] (#r) @ (◁ ty)) ∗
       &na{κ,π,shrN.@l} (∃ r' : rt, l ↦: ty_own_val ty π r' MetaNone ∗ na_inv_P P π r' x) ∗
@@ -494,42 +554,24 @@ Section na_subtype.
     iExists r'; iFrame.
   Qed.
 
-  Lemma na_own_split π E E' :
-    E' ⊆ E ->
-    na_own π E -∗ na_own π E' ∗ na_own π (E ∖ E').
-  Proof.
-    iIntros (?) "Hna".
-    rewrite comm.
-
-    iApply na_own_union.
-    { set_solver. }
-
-    replace E with ((E ∖ E') ∪ E') at 1; first done.
-
-    set_unfold.
-    split; first intuition.
-    destruct (decide (x ∈ E')); intuition.
-  Qed.
-
   (**
      This emits owned ownership of [l] into the context, leaving an indirection via [ShadowedLtype] here.
      We cannot directly put [OpenedLtype] here, as we can't have shared ownership of [OpenedLtype].
    *)
-  Lemma typed_place_na_ex_plain_t_shared π E L l (ty : type rt) x κ bmin K `{!TCDone (K ≠ [])} (T : place_cont_t X bmin) :
-    find_in_context (FindNaOwn) (λ '(π', mask),
-      ⌜π = π'⌝ ∗
+  Lemma typed_place_na_ex_plain_t_shared E L (f : frame_path) l (ty : type rt) x κ bmin K `{!TCDone (K ≠ [])} (T : place_cont_t X bmin) :
+    find_in_context (FindNaOwn f.1) (λ mask : coPset,
       ⌜↑shrN.@l ⊆ mask⌝ ∗
       prove_with_subtype E L false ProveDirect (£ 1) (λ L1 _ R, R -∗
         li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
           ∀ r, introduce_with_hooks E L2
-            (P.(na_inv_P) π r x ∗
-            l ◁ₗ[π, Owned false] (#r) @
+            (P.(na_inv_P) f.1 r x ∗
+            l ◁ₗ[f.1, Owned false] (#r) @
               (OpenedNaLtype (◁ ty) (◁ ty)
-                (λ rfn, P.(na_inv_P) π rfn x)
-                (λ _, na_own π (↑shrN.@l) ∗ llft_elt_toks κs)) ∗
-            na_own π (mask ∖ ↑shrN.@l))
+                (λ rfn, P.(na_inv_P) f.1 rfn x)
+                (λ _, na_own f.1 (↑shrN.@l) ∗ llft_elt_toks κs)) ∗
+            na_own f.1 (mask ∖ ↑shrN.@l))
             (λ L3,
-              typed_place π E L3 l
+              typed_place E L3 f l
                 (ShadowedLtype (AliasLtype _ (ty_syn_type ty MetaNone) l) #tt (◁ (∃na; P, ty))) (#x) (bmin) (Shared κ) K
                 (λ L4 κs li b2 bmin' rti ltyi ri updcx,
                   T L4 κs li b2 bmin' rti ltyi ri
@@ -541,13 +583,13 @@ Section na_subtype.
                       upd'.(pupd_eq_2)
                       )))
                 )))))
-    ⊢ typed_place π E L l (◁ (∃na; P, ty))%I (#x) bmin (Shared κ) K T.
+    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) bmin (Shared κ) K T.
   Proof.
     rewrite /find_in_context.
-    iDestruct 1 as ([π' mask]) "(Hna & <- & % & HT) /=".
+    iDestruct 1 as (mask) "(Hna & % & HT) /=".
 
     rewrite /typed_place /introduce_with_hooks.
-    iIntros (Φ ???) "#(LFT & LLCTX) #HE HL Hl Hcont".
+    iIntros (Φ ???) "#(LFT & LLCTX) #HE HL Hf Hl Hcont".
 
     rewrite /prove_with_subtype.
     iApply fupd_place_to_wp.
@@ -559,7 +601,7 @@ Section na_subtype.
     rewrite /li_tactic /lctx_lft_alive_count_goal.
     iDestruct "HT" as (???) "HT".
 
-    iMod (fupd_mask_subseteq (lftE ∪ shrE)) as "Hf"; first done.
+    iMod (fupd_mask_subseteq (lftE ∪ shrE)) as "Hf'"; first done.
     iMod (lctx_lft_alive_count_tok with "HE HL") as (q) "(Htok & Htokcl & HL)"; [ solve_ndisj.. |].
     iPoseProof (na_own_split with "Hna") as "(Hna & Hna')"; first done.
     iMod (na_ex_plain_t_acc_shared with "LFT Hna Hcred Htok Hl") as (r) "(HP & Hl & #Hbor & Hvs)"; [ try solve_ndisj.. |].
@@ -594,7 +636,7 @@ Section na_subtype.
 
     iDestruct "HT" as (?) "(HL & HT)".
 
-    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL []").
+    iApply ("HT" with "[//] [//] [$LFT $LLCTX] HE HL Hf []").
     { rewrite ltype_own_shadowed_unfold /shadowed_ltype_own.
 
       iSplitL.
@@ -609,14 +651,14 @@ Section na_subtype.
       repeat iR.
       by iExists ly; repeat iR. }
 
-    iMod "Hf" as "_".
+    iMod "Hf'" as "_".
     iIntros "!>" (? ? ? ? ? ? ? ? updcx) "Hl Ha".
     iApply ("Hcont" with "Hl").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Ha" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
-    iModIntro. iIntros (? cont) "HL Hcont".
-    iMod ("Hs" with "HL Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & HL & Hcont)".
+    iModIntro. iIntros (? cont) "HL Hf Hcont".
+    iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & %Hsteq' & Hcond & ? & ? & ? & HL & Hcont)".
     iFrame. simpl. simp_ltypes. iR.
     iApply (typed_place_cond_trans with "[] Hcond").
     iApply typed_place_cond_shadowed_r.

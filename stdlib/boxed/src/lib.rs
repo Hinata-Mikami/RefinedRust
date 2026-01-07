@@ -11,9 +11,12 @@
 #![rr::include("alloc")]
 #![rr::include("option")]
 #![rr::include("rr_internal")]
+#![rr::include("mem")]
+#![rr::include("ptr")]
 
 use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;
+use std::ptr::dangling;
 
 
 // TODO: maybe we should seal this definition at the module boundary so that there's no chance of
@@ -30,10 +33,12 @@ pub struct Box<T: ?Sized, A: Allocator = Global>{
 
 #[rr::export_as(alloc::boxed::Box)]
 impl<T> Box<T> {
-    // TODO: put shim here
     #[rr::trust_me]
+    #[rr::code_shim("box_new")]
     #[rr::returns("x")]
     pub fn new(x: T) -> Self {
+        core::mem::size_of::<T>();
+        std::ptr::dangling::<T>();
         unimplemented!();
     }
 }

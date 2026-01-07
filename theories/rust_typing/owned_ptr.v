@@ -74,7 +74,7 @@ Section owned_ptr.
     done.
   Qed.
   Next Obligation.
-    iIntros (E κ l ly π [r li] m q ?) "#(LFT & LLCTX) Htok %Halg %Hly #Hlb Hb".
+    iIntros (E κ l ly π [r li] m q ?) "#(LFT & LLCTX) #Hna Htok %Halg %Hly #Hlb Hb".
     rewrite -lft_tok_sep. iDestruct "Htok" as "(Htok & Htoki)".
     iApply fupd_logical_step.
     iMod (bor_exists with "LFT Hb") as (v) "Hb"; first solve_ndisj.
@@ -117,7 +117,7 @@ Section owned_ptr.
 
     (* recusively share *)
     iDestruct "Htoki" as "(Htoki & Htoki2)".
-    iPoseProof (ty_share with "[$LFT $LLCTX] [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
+    iPoseProof (ty_share with "[$LFT $LLCTX] Hna [Htok Htoki] [//] [//] Hlb' Hb") as "Hb"; first done.
     { rewrite ty_lfts_unfold. rewrite -lft_tok_sep. iFrame. }
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hb").
