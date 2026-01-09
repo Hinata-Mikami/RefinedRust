@@ -1,0 +1,6 @@
+(rocq.theory
+ (name caesium.physical_step)
+ (package refinedrust)
+ (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)
+ (synopsis "Physical step library")
+ (theories stdpp iris Ltac2 Stdlib))

@@ -243,9 +243,7 @@ Section logical_steps.
   Qed.
 
   Lemma logical_step_intro_atime F P n :
-    atime n -∗
-    (£ (num_laters_per_step n) -∗ atime n ={F}=∗ P) -∗
-    logical_step F P.
+    ⧗ n -∗ (⧗ (tr_f n) -∗ £ (tr_f n) ={F}=∗ P) -∗ logical_step F P.
   Proof.
     iIntros "Hat Hvs". iExists n. by iFrame.
   Qed.
@@ -384,6 +382,110 @@ Section logical_steps.
     - iMod "Ha". iMod "Hb". by iApply "Hb".
   Qed.
 End logical_steps.
+
+Section physical_step.
+  Context `{!refinedcG Σ}.
+
+  (* TODO: this should be in the program_logic *)
+  Lemma wp_lift_base_step_physical_step {s E Φ} e1 :
+    to_val e1 = None →
+    (∀ σ1 ns κ κs nt, state_interp σ1 ns (κ ++ κs) nt ={E,∅}=∗
+      ⌜base_reducible e1 σ1⌝ ∗
+      ∀ e2 σ2 efs, ⌜base_step e1 σ1 κ e2 σ2 efs⌝ -∗
+        |={∅}⧗=>
+        (|={∅, E}=>
+        state_interp σ2 (S ns) κs (length efs + nt) ∗
+        WP e2 @ s; E {{ Φ }} ∗
+        [∗ list] ef ∈ efs, WP ef @ s; ⊤ {{ fork_post }}))
+    ⊢ WP e1 @ s; E {{ Φ }}.
+  Proof.
+    iIntros (?) "H". iApply wp_lift_step_physical_step=>//.
+    iIntros (σ1 ns κ κs nt) "Hσ".
+    iSpecialize ("H" with "Hσ").
+    iSplit. { iMod "H" as "(%Hred & _)".
+      iModIntro.
+      destruct s; iPureIntro; first apply base_prim_reducible; done. }
+    iIntros (e2 σ2 efs ?).
+    iMod "H" as "(%Hred & H)".
+    iSpecialize ("H" with "[]").
+    { iPureIntro. by eapply base_reducible_prim_step. }
+    done.
+  Qed.
+
+  (** Derived rules as sanity check *)
+  Lemma physical_step_intro_tr n P E :
+    ⧗ n -∗
+    ▷ (⧗ (tr_f (S n)) -∗ £ (tr_f (S n)) ={E}=∗ P) -∗
+    |={E}⧗=> P.
+  Proof.
+    iIntros "Htr Ha".
+    iApply (physical_step_tr_use with "Htr").
+    iApply physical_step_step.
+    iSplit.
+    { iMod (tr_persistent_zero) as "$".
+      iMod (fupd_mask_subseteq) as "_"; last done. set_solver. }
+    iIntros "Hcred1 Htr1".
+    iMod (fupd_mask_subseteq ∅) as "Hcl"; first set_solver.
+    iModIntro. simpl.
+    iModIntro.
+    iNext. iModIntro. iMod "Hcl".
+    iModIntro.
+    iIntros "Htr Hcred".
+    iCombine "Hcred1 Hcred" as "Hcred".
+    iCombine "Htr1 Htr" as "Htr".
+    iApply ("Ha" with "[Htr] [Hcred]").
+    - iApply (tr_weaken with "Htr").
+      simpl. unfold num_laters_per_step. lia.
+    - iApply (lc_weaken with "Hcred").
+      simpl. unfold num_laters_per_step. lia.
+  Qed.
+
+  Lemma physical_step_intro_tr_trp n m P E :
+    ⧗ n -∗
+    ⧖ m -∗
+    ▷ (⧗ (tr_f (S (n + m))) -∗ £ (tr_f (S (n + m))) ={E}=∗ P) -∗
+    |={E}⧗=> P.
+  Proof.
+    iIntros "Htr #Htrp Ha".
+    iApply (physical_step_tr_use with "Htr").
+    iApply physical_step_step.
+    iSplit.
+    { iFrame "Htrp".
+      iMod (fupd_mask_subseteq) as "_"; last done. set_solver. }
+    iIntros "Hcred1 Htr1".
+    iMod (fupd_mask_subseteq ∅) as "Hcl"; first set_solver.
+    iModIntro. simpl.
+    iModIntro.
+    iNext. iModIntro.
+    iApply step_fupdN_intro; first done.
+    iNext.
+    iMod "Hcl".
+    iModIntro.
+    iIntros "Htr Hcred".
+    iCombine "Hcred1 Hcred" as "Hcred".
+    iCombine "Htr1 Htr" as "Htr".
+    iApply ("Ha" with "[Htr] [Hcred]").
+    - iApply (tr_weaken with "Htr").
+      simpl. unfold num_laters_per_step. lia.
+    - iApply (lc_weaken with "Hcred").
+      simpl. unfold num_laters_per_step. lia.
+  Qed.
+
+  Lemma physical_step_intro_lc E P :
+    (£ (num_laters_per_step 1) ={E}=∗ ▷ P) -∗
+    |={E}⧗=> P.
+  Proof.
+    iIntros "Ha".
+    iApply physical_step_step.
+    iSplit. { iMod (tr_persistent_zero) as "$". iMod (fupd_mask_subseteq) as "_"; last done. set_solver. }
+    iIntros "Hcred Hreceipt".
+    iMod ("Ha" with "Hcred") as "Ha".
+    iMod (fupd_mask_subseteq ∅) as "Hcl"; first set_solver.
+    iModIntro. simpl.
+    iModIntro.
+    iNext. iModIntro. iMod "Hcl". done.
+  Qed.
+End physical_step.
 
 (*** General lifting lemmas *)
 
