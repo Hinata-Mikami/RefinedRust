@@ -22,7 +22,6 @@ fn main() {
     // unsafe { write_raw(p, 1); }
 
     unsafe { write_raw(&mut x as *mut i32, 1); }  // 同じエラー
-
                                                   // minivecではraw pointerを使用している
                                                   // 何かヒントがあるかも？
 

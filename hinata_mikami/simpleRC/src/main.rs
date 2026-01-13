@@ -4,45 +4,49 @@
 
 // sub functions
 #[rr::only_spec]
-#[rr::params("x" : "{rt_of T}")] // x の型を T のリファインメント型として明示
-#[rr::args("x" @ "T")]           // {ty_of T} よりも単純に T と書くのが推奨されます
+#[rr::params("x")]
+#[rr::args("x" @ "{ty_of T}")]
 #[rr::returns("x")]
 fn box_new<T>(t: T) -> Box<T> {
     Box::new(t)
 }
 
 #[rr::only_spec]
-#[rr::params("x" : "{rt_of T}", "l" : "loc")] // l は場所(loc)であることを明示
-#[rr::args("x" @ "Box {ty_of T}")]            // Box<T>のリファインメントは中身のリファインメントと同じ
+#[rr::params("x", "l")]
+#[rr::args("x" @ "{ty_of T}")]
+#[rr::exists("l")]
 #[rr::returns("l")]
-#[rr::ensures(#type "l" : "x" @ "{st_of T}")] 
+#[rr::ensures(#type "l" : "x" @ "{ty_of T}")] 
 fn box_into_raw<T>(b: Box<T>) -> *mut T {
     Box::into_raw(b)
 }
 
-#[rr::only_spec]
-#[rr::params("l" : "loc", "c" : "Z", "x" : "{rt_of T}")]
-#[rr::args("l")]
-#[rr::requires(#type "l" : "(c, x)" @ "RcInner {st_of T}")] 
-#[rr::returns("x")] // Box<T>を返すが、そのリファインメントは x
+
+// #[rr::only_spec]
+// #[rr::params("l", "x")]
+// #[rr::args("l")]
+// #[rr::exists("T")]
+// #[rr::requires(#type "l" : "(1, x)" @ "int i32 * T")] 
+// #[rr::returns("(1, x)")]
 unsafe fn box_from_raw<T>(ptr: *mut T) -> Box<T> {
     Box::from_raw(ptr)
 }
 
-// --- 構造体定義 ---
-
-#[rr::refined_by("(c, x)" : "Z * {rt_of T}")] // リファインメントの型を明示
+// ヒープ領域に確保されるデータ
+#[rr::refined_by("(c, x)")]
 #[rr::invariant("1 <= c")]
+// rc>=1ならば data が有効
 struct RcInner<T> {
-    #[rr::field("c" @ "int usize")] // usize は int usize を使用
+    #[rr::field("c" @ "int i32")]
     count: usize,
-    #[rr::field("x" @ "{st_of T}")]
+    #[rr::field("x" @ "{ty_of T}")]
     data: T,
 }
 
-#[rr::refined_by("l" : "loc")]
-#[rr::exists("c" : "Z", "x" : "{rt_of T}")]
-#[rr::invariant(#type "l" : "(c, x)" @ "RcInner {st_of T}")]
+// ユーザが使用するスマートポインタ
+#[rr::refined_by("l")]
+#[rr::exists("c", "x")]
+#[rr::invariant(#type "l" : "(c, x)" @ "int i32 * {ty_of T}")]
 #[rr::invariant("1 <= c")]
 struct SimpleRC<T> {
     #[rr::field("l")]
@@ -51,13 +55,11 @@ struct SimpleRC<T> {
 
 impl<T> SimpleRC<T> {
     
-    // #[rr::params("x", "T")]
-    // #[rr::args("x" @ "T")]
-    // #[rr::exists("l", "c")]
-    // #[rr::returns("l")]
-    // // TODO : 事後条件
-    // #[rr::ensures(#type "l" : "(1, x)" @ "int i32 * T")]
-    
+    #[rr::params("x")]
+    #[rr::args("x" @ "{ty_of T}")]
+    #[rr::exists("l")]
+    #[rr::returns("l")]
+    #[rr::ensures(#type "l" : "(1, x)" @ "int i32 * {ty_of T}")]
     fn new(data: T) -> Self {
 
         let inner = RcInner {
