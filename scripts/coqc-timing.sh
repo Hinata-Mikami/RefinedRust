@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # From RefinedC: https://gitlab.mpi-sws.org/iris/refinedc/-/blob/master/tools/coqc_timing.sh?ref_type=heads
 
 set -e

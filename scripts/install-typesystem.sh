@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Installs RefinedRust in the current opam switch.
 # Inputs:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Installs RefinedRust stdlib in the current opam switch.
 # Inputs:

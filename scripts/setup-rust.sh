@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Installs rustup and builds the frontend.
 # Inputs: 

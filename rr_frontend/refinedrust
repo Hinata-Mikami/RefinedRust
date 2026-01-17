@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # script based on the `miri` script of Miri
 set -e
 USAGE=$(cat <<"EOF"
