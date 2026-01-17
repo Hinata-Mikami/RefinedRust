@@ -53,13 +53,13 @@
         };
 
         smtcoq = {
-          version = "cb861dc1ab343673b3e5a2fe0ec8f1b005e48c56";
-          sha256 = "sha256-a12ALvQiRYK8Ma6CoWAQfsnjQwxttSY6AVQq06daRhY=";
+          version = "d32d496c6acffab8f317c65eba8c293ad72fa4e0";
+          sha256 = "sha256-WUZ9oapi37eaXA5iTxZDAPYpptZmh1eTHbMrS4CQzfM=";
         };
 
         sniper = {
-          version = "7f20d2e1510d75b6bf86d29616e7305c0a9dfb6b";
-          sha256 = "sha256-+DPgcWVHGtgBNUoBe7NZ3CClgre6LlBZjGgE+7ob3v8=";
+          version = "2b30e532c4edd8f82516ca1b18c0291c6d60be16";
+          sha256 = "sha256-i7Pphlbj7ACzjTEjle1eOqTnWAsY3j/ZHW+SpNfJSUE=";
         };
       };
 
@@ -158,12 +158,7 @@
               propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt cvc4 verit zchaff];
 
               patchPhase = ''
-                sed -i -e '92s/.*/  let obj =/g' src/g_smtcoq.mlg
-              '';
-
-              preBuild = ''
-                sed -i -e 's/$(COQBIN)coq_makefile/$(COQBIN)rocq makefile/g' src/Makefile
-                sed -i -e 's/coq-core/rocq-runtime/g' src/CoqMakefile.local src/META.coq-smtcoq src/extraction/Makefile
+                sed -i -e 's/CAMLPKGS +=/CAMLPKGS += -package num/g' src/CoqMakefile.local
               '';
               release.${version}.sha256 = "${rocq.smtcoq.sha256}";
             };
@@ -178,17 +173,6 @@
               mlPlugin = true;
               propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
 
-              preBuild = ''
-                sed -i -e 's/coq_makefile/rocq makefile/g' Makefile
-                find . -name "*.v" -exec sed -i -e 's/metacoq/metarocq/g' {} \;
-                find . -name "*.v" -exec sed -i -e 's/MetaCoq/MetaRocq/g' {} \;
-                find . -name "*.v" -exec sed -i -e 's/MCMonadNotation/MRMonadNotation/g' {} \;
-                sed -i -e '67ipred subterms i: term, o: (list term).' elpi/eliminate_fix.elpi
-                sed -i -e '1ipred append_nodup i: list A, i: list A, o: list A.' elpi/subterms.elpi
-                sed -i -e '480,566d' theories/deciderel/linearize_plugin.v
-                sed -i -e '1098,1272d' theories/deciderel/generate_fix.v
-                sed -i -e '105,625d' theories/deciderel/proof_correctness.v
-              '';
               release.${version}.sha256 = "${rocq.sniper.sha256}";
             };
           in sniper;
