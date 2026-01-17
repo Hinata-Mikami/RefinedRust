@@ -5,11 +5,11 @@
     ocaml = prev.ocaml.override {flambdaSupport = true;};
 
     dune_3 = prev.dune_3.overrideAttrs rec {
-      version = "3.21.0~alpha4";
+      version = "3.21.0";
 
       src = pkgs.fetchurl {
-        url = "https://github.com/ocaml/dune/releases/download/3.21.0_alpha4/dune-3.21.0.alpha4.tbz";
-        hash = "sha256-PSuZtghLx0+qSoyFnqHwPhz1jfi3EbgL/rhdxRGva08=";
+        url = "https://github.com/ocaml/dune/releases/download/3.21.0/dune-3.21.0.tbz";
+        hash = "sha256-521NiTaKCnACUZOur098W1QDHbo/Wb+dKvGXHcDs7d0=";
       };
     };
   });
