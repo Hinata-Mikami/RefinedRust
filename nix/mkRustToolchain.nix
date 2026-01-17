@@ -1,16 +1,12 @@
 {
   hostPlatform,
   pkgs,
-}: let
-  addComponent = component: {extensions = [component];};
-  addTarget = target: {targets = [target];};
-in
-  channel: components: target: let
-    toolchain = {
-      inherit channel components;
-      profile = "minimal";
-    };
-  in
-    (pkgs.rust-bin.fromRustupToolchain toolchain // addTarget target).override (
-      pkgs.lib.attrsets.optionalAttrs (target != hostPlatform) (addComponent "rust-src")
-    )
+}: channel: components: target:
+pkgs.rust-bin.fromRustupToolchain {
+  inherit channel;
+
+  components = components ++ (pkgs.lib.lists.optional (target != hostPlatform) "rust-src");
+
+  profile = "minimal";
+  targets = [target];
+}

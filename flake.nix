@@ -73,7 +73,7 @@
         envBuilder = lib.rust.overrideToolchain toolchain.build;
 
         mkDrvRustTargetToolchains = drv:
-          lib.mapToAttrs (target: "target-" + target) (target: drv (mkToolchain target))
+          lib.mapToAttrs (target: "target-" + target) ({pname}: drv (mkToolchain pname))
           (map (pname: {inherit pname;}) (pkgs.lib.attrsets.attrValues (import rust-targets.outPath)));
       };
     in
@@ -177,8 +177,8 @@
 
               postInstall = ''
                 wrapProgram $out/bin/${pname} \
-                  --set LD_LIBRARY_PATH ${rust.toolchain.dev}/lib \
-                  --set DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.dev}/lib
+                  --set LD_LIBRARY_PATH ${rust.toolchain.build}/lib \
+                  --set DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.build}/lib
               '';
 
               doNotRemoveReferencesToRustToolchain = true;
