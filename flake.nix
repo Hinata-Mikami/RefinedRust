@@ -177,8 +177,8 @@
 
               postInstall = ''
                 wrapProgram $out/bin/${pname} \
-                  --set LD_LIBRARY_PATH ${rust.toolchain.build}/lib \
-                  --set DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.build}/lib
+                  --set-default LD_LIBRARY_PATH ${rust.toolchain.build}/lib \
+                  --set-default DYLD_FALLBACK_LIBRARY_PATH ${rust.toolchain.build}/lib
               '';
 
               doNotRemoveReferencesToRustToolchain = true;
@@ -325,6 +325,8 @@
                   --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
 
                 wrapProgram $out/bin/cargo-${name} \
+                  --set LD_LIBRARY_PATH ${toolchain.build}/lib \
+                  --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain.build}/lib \
                   --set PATH "$out/bin" \
                   --set RR_NIX_STDLIB $out/share/stdlib
               '';

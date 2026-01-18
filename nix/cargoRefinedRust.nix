@@ -21,13 +21,10 @@ in
 
       pnameSuffix = "-refinedrust";
 
-      buildPhaseCargoCommand =
-        "cargo refinedrust -- ${cargoExtraArgs}"
-        + (
-          if target == hostPlatform
-          then ""
-          else " --config target.${hostPlatform}.linker=\\\"${pkgs.gcc}/bin/cc\\\""
-        );
+      buildPhaseCargoCommand = ''
+        cargo refinedrust -- ${cargoExtraArgs} \
+        ${pkgs.lib.strings.optionalString (target == hostPlatform) (" " + ''--config target.${hostPlatform}.linker=\"${pkgs.gcc}/bin/cc\"'')}
+      '';
 
       nativeBuildInputs =
         if withStdlib
