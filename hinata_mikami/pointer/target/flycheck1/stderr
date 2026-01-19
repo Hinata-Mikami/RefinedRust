@@ -1,5 +1,5 @@
-   0.023766703s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: false }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
-   0.023928029s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-5f1643c888063052/bin-pointer`
+   0.014841215s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: false }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
+   0.014915211s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-5f1643c888063052/bin-pointer`
 
 Caused by:
     No such file or directory (os error 2)
@@ -41,8 +41,8 @@ Stack backtrace:
   24: <unknown>
   25: __libc_start_main
   26: <unknown>
-   0.059787679s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: true }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
-   0.059857507s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-0f80dc6da8bf7257/test-bin-pointer`
+   0.025516281s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: true }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
+   0.025557164s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-0f80dc6da8bf7257/test-bin-pointer`
 
 Caused by:
     No such file or directory (os error 2)
@@ -85,6 +85,6 @@ Stack backtrace:
   25: __libc_start_main
   26: <unknown>
     Checking pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)
-error: could not compile `pointer` (bin "pointer") due to 2 previous errors
-warning: build failed, waiting for other jobs to finish...
 error: could not compile `pointer` (bin "pointer" test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `pointer` (bin "pointer") due to 2 previous errors

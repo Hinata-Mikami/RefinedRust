@@ -2,131 +2,63 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
+#[rr::params("x")]
+#[rr::args("x")]        // x : T_ty
+#[rr::returns("x")]
+fn id<T>(x : T) -> T{
+    x
+}
+
 // sub functions
 #[rr::only_spec]
-#[rr::params("x" : "{rt_of T}")] // x の型を T のリファインメント型として明示
-#[rr::args("x" @ "T")]           // {ty_of T} よりも単純に T と書くのが推奨されます
-#[rr::returns("x")]
-fn box_new<T>(t: T) -> Box<T> {
+#[rr::params("x")]      // x : int I32
+#[rr::args("x" @ "int I32")]
+#[rr::returns("x" @ "(box (int I32))")]
+fn box_new(t: i32) -> Box<i32> {
     Box::new(t)
 }
 
 #[rr::only_spec]
-#[rr::params("x" : "{rt_of T}", "l" : "loc")] // l は場所(loc)であることを明示
-#[rr::args("x" @ "Box {ty_of T}")]            // Box<T>のリファインメントは中身のリファインメントと同じ
+#[rr::params("x")]
+#[rr::args("x" @ "(box (int I32))")]    // x : (box (int I32))
+#[rr::exists("l")]
 #[rr::returns("l")]
-#[rr::ensures(#type "l" : "x" @ "{st_of T}")] 
-fn box_into_raw<T>(b: Box<T>) -> *mut T {
+#[rr::ensures(#type "l" : "x" @ "int i32")] 
+fn box_into_raw(b: Box<i32>) -> *mut i32 {
     Box::into_raw(b)
 }
 
 #[rr::only_spec]
-#[rr::params("l" : "loc", "c" : "Z", "x" : "{rt_of T}")]
+#[rr::params("l", "x")]
 #[rr::args("l")]
-#[rr::requires(#type "l" : "(c, x)" @ "RcInner {st_of T}")] 
-#[rr::returns("x")] // Box<T>を返すが、そのリファインメントは x
-unsafe fn box_from_raw<T>(ptr: *mut T) -> Box<T> {
+#[rr::requires(#type "l" : "x" @ "int i32")] 
+#[rr::returns("x" @ "(box (int I32))")]
+unsafe fn box_from_raw(ptr: *mut i32) -> Box<i32> {
     Box::from_raw(ptr)
 }
 
-// --- 構造体定義 ---
+#[rr::params("x")]
+#[rr::args("x" @ "int i32")]
+#[rr::exists("l")]
+#[rr::returns("l")]
+#[rr::ensures(#type "l" : "x" @ "int i32")] 
+fn new(data: i32) -> *mut i32 {
 
-#[rr::refined_by("(c, x)" : "Z * {rt_of T}")] // リファインメントの型を明示
-#[rr::invariant("1 <= c")]
-struct RcInner<T> {
-    #[rr::field("c" @ "int usize")] // usize は int usize を使用
-    count: usize,
-    #[rr::field("x" @ "{st_of T}")]
-    data: T,
-}
-
-#[rr::refined_by("l" : "loc")]
-#[rr::exists("c" : "Z", "x" : "{rt_of T}")]
-#[rr::invariant(#type "l" : "(c, x)" @ "RcInner {st_of T}")]
-#[rr::invariant("1 <= c")]
-struct SimpleRC<T> {
-    #[rr::field("l")]
-    ptr: *mut RcInner<T>,
-}
-
-impl<T> SimpleRC<T> {
-    
-    // #[rr::params("x", "T")]
-    // #[rr::args("x" @ "T")]
-    // #[rr::exists("l", "c")]
-    // #[rr::returns("l")]
-    // // TODO : 事後条件
-    // #[rr::ensures(#type "l" : "(1, x)" @ "int i32 * T")]
-    
-    fn new(data: T) -> Self {
-
-        let inner = RcInner {
-            count: 1,
-            data,
-        };
+        let inner = data;
         
         let boxed = box_new(inner);
 
         let ptr = box_into_raw(boxed);
 
-        return SimpleRC { ptr };
+        return ptr;
     }
 
-    // 現在の参照カウントを取得
-    pub fn rc_count(&self) -> usize {
-        return unsafe { (*self.ptr).count }
-    }
-
-    // 
-    pub fn read_from(&self) -> &T {
-        // 絶対に rc >= 1
-        return unsafe { &(*self.ptr).data }
-    }
-}
-
-// Clone トレイトの実装
-// 参照カウントをインクリメントし，新しい SimpleRC を返す
-impl<T> Clone for SimpleRC<T> {
-    fn clone(&self) -> Self {
-        unsafe {
-            (*self.ptr).count += 1;
-        }
-        return SimpleRC { ptr: self.ptr };
-    }
-}
-
-// Drop トレイトの実装
-// 参照カウントをデクリメントし，0 になったらデータ管理を Box に戻す
-
-// （優先度低）正しく解放されるのか？実際には何個の参照が存在するか（ghost）
-impl<T> Drop for SimpleRC<T> {
-    fn drop(&mut self) {
-        unsafe {
-            (*self.ptr).count -= 1;
-
-            if (*self.ptr).count == 0 {
-                let _ = box_from_raw(self.ptr);
-            }
-        }
-    }
-}
-
-
-
+#[rr::returns("()")]
 fn main(){
-    let a = SimpleRC::new('a');
 
-    assert!(a.rc_count() == 1); // Rc(a) = 1
+    let ptr = new(10);
+    unsafe {
+        let _ = box_from_raw(ptr);
+    }
 
-    {
-        let b = a.clone();
-        let c = b.clone(); 
-        assert!(a.rc_count() == 3); // Rc(a) = 3
-
-        drop(c); 
-        assert!(a.rc_count() == 2); // Rc(a) = 2
-
-    }   // drop(b) が実行される
-
-    assert!(a.rc_count() == 1); // Rc(a) = 1
-}   // drop(a) が実行され，a が free される   
+}
