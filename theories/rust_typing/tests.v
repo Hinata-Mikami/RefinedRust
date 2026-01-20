@@ -200,7 +200,7 @@ Section test.
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     init_jcache.
-    intros Halg.
+    intros H.
     inv_layout_alg.
     open_cache.
     (*eauto 10; solve[fail].*)
@@ -215,7 +215,7 @@ Section test.
       sl_has_members s2_sl [("s2_f1", void*); ("s2_f2", (layout_of s1_sl))].
   Proof.
     init_jcache.
-    intros Hly.
+    intros H.
     inv_layout_alg.
     open_cache.
     (*eauto 10; solve[fail].*)
@@ -513,6 +513,7 @@ Section test.
   Proof.
     intros. eexists.
     solve_layout_alg.
+    Unshelve. done.
   Abort.
 
   Lemma solve_layout_alg_test3 T_ly :

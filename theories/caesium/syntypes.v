@@ -1443,6 +1443,51 @@ Proof.
   eapply Forall2_impl; first done.
   intros [] ?; done.
 Qed.
+Lemma use_op_alg_sls `{!LayoutAlg} sls sl ots ot :
+  Forall2 use_op_alg_struct_pred (sls.(sls_fields)) ots →
+  use_struct_layout_alg sls = Some sl →
+  ot = StructOp sl ots →
+  use_op_alg (syn_type_of_sls sls) = Some ot.
+Proof.
+  intros. by eapply use_op_alg_struct.
+Qed.
+
+Lemma use_op_alg_enum `{!LayoutAlg} name it variants ly ot repr :
+  use_layout_alg (EnumSynType name it variants repr) = Some ly →
+  ot = (UntypedOp ly) →
+  use_op_alg (EnumSynType name it variants repr) = Some ot.
+Proof.
+  intros Halg ->.
+  rewrite /use_op_alg Halg//.
+Qed.
+Lemma use_op_alg_els `{!LayoutAlg} els sl ot :
+  use_enum_layout_alg els = Some sl →
+  ot = (UntypedOp sl) →
+  use_op_alg (syn_type_of_els els) = Some ot.
+Proof.
+  intros Halg ->.
+  eapply use_op_alg_enum; last done.
+  by eapply use_enum_layout_alg_Some_inv.
+Qed.
+
+Lemma use_op_alg_union `{!LayoutAlg} name variants ly ot repr :
+  use_layout_alg (UnionSynType name variants repr) = Some ly →
+  ot = (UntypedOp ly) →
+  use_op_alg (UnionSynType name variants repr) = Some ot.
+Proof.
+  intros Halg ->.
+  rewrite /use_op_alg Halg//.
+Qed.
+Lemma use_op_alg_uls `{!LayoutAlg} uls ul ot :
+  use_union_layout_alg uls = Some ul →
+  ot = (UntypedOp ul) →
+  use_op_alg (syn_type_of_uls uls) = Some ot.
+Proof.
+  intros Halg ->.
+  eapply use_op_alg_union; last done.
+  by eapply use_union_layout_alg_Some_inv.
+Qed.
+
 Lemma use_op_alg_int `{!LayoutAlg} it ot:
   ot = IntOp it →
   use_op_alg (IntSynType it) = Some ot.
@@ -1475,22 +1520,6 @@ Lemma use_op_alg_untyped `{!LayoutAlg} ly ot :
   ot = (UntypedOp ly) →
   use_op_alg (UntypedSynType ly) = Some ot.
 Proof. intros ->. done. Qed.
-Lemma use_op_alg_enum `{!LayoutAlg} name it variants ly ot repr :
-  use_layout_alg (EnumSynType name it variants repr) = Some ly →
-  ot = (UntypedOp ly) →
-  use_op_alg (EnumSynType name it variants repr) = Some ot.
-Proof.
-  intros Halg ->.
-  rewrite /use_op_alg Halg//.
-Qed.
-Lemma use_op_alg_union `{!LayoutAlg} name variants ly ot repr :
-  use_layout_alg (UnionSynType name variants repr) = Some ly →
-  ot = (UntypedOp ly) →
-  use_op_alg (UnionSynType name variants repr) = Some ot.
-Proof.
-  intros Halg ->.
-  rewrite /use_op_alg Halg//.
-Qed.
 
 Lemma use_op_alg_untyped_inv `{!LayoutAlg} ly ot :
   use_op_alg (UntypedSynType ly) = Some ot → ot = (UntypedOp ly).

@@ -141,22 +141,24 @@ Section solve_layout_alg_tac.
   Qed.
   Lemma syn_type_has_layout_untyped_struct_alg_tac (sls : struct_layout_spec) sl ly' :
     ly' = sl →
-    syn_type_has_layout sls sl →
+    struct_layout_spec_has_layout sls sl →
     syn_type_has_layout (UntypedSynType (use_struct_layout_alg' sls)) ly'.
   Proof.
     intros -> Hst.
     rewrite /use_struct_layout_alg'.
+    apply use_struct_layout_alg_Some_inv in Hst.
     specialize (use_layout_alg_struct_Some_inv _ _  Hst) as (sl' & -> & <-).
     eapply (syn_type_has_layout_make_untyped sls); done.
   Qed.
 
   Lemma syn_type_has_layout_untyped_enum_alg_tac (els : enum_layout_spec) el ly' :
     ly' = el →
-    syn_type_has_layout els el →
+    enum_layout_spec_has_layout els el →
     syn_type_has_layout (UntypedSynType (use_enum_layout_alg' els)) ly'.
   Proof.
     intros -> Hst.
     rewrite /use_enum_layout_alg'.
+    apply use_enum_layout_alg_Some_inv in Hst.
     specialize (use_layout_alg_enum_Some_inv _ _  Hst) as (sl' & -> & <-).
     eapply (syn_type_has_layout_make_untyped els); done.
   Qed.
@@ -512,6 +514,10 @@ Ltac solve_layout_eq :=
   (* TODO *)
   try reflexivity.
 
+Section tac.
+  
+End tac.
+
 Ltac solve_layout_alg_prepare :=
   try match goal with
   | |- syn_type_has_layout ?st ?ly =>
@@ -519,10 +525,16 @@ Ltac solve_layout_alg_prepare :=
   end;
   unfold_no_enrich;
   (* normalize goal *)
-  lazymatch goal with
+  repeat lazymatch goal with
   | |- use_layout_alg ?st = Some ?ly => refine (use_layout_alg_layout_tac st ly _)
   | |- use_layout_alg' ?st = ?ly => refine (use_layout_alg'_layout_tac st ly _)
-  | |- syn_type_has_layout ?st ?ly => idtac
+
+  | |- syn_type_has_layout ?st ?ly => 
+      first [
+        refine (use_struct_layout_alg_Some_inv _ _ _) |  
+        refine (use_enum_layout_alg_Some_inv _ _ _) |
+        refine (use_union_layout_alg_Some_inv _ _ _) | 
+      idtac ]
   (* structs *)
   | |- use_struct_layout_alg ?sls = ?Some ?sl => refine (use_struct_layout_alg_layout_tac _ _ _)
   | |- struct_layout_spec_has_layout ?sls ?sl => idtac
@@ -574,9 +586,6 @@ Ltac solve_layout_alg_core_step3 :=
   | |- syn_type_has_layout FnPtrSynType ?ly =>
       notypeclasses refine (syn_type_has_layout_fnptr _ _);
       [fast_solve_layout_eq ]
-  | |- syn_type_has_layout (StructSynType ?name ?fields ?repr) ?ly =>
-      notypeclasses refine (syn_type_has_layout_struct_tac name fields _ repr _ _  _ _ _);
-      [| | fast_solve_layout_eq]
   | |- struct_layout_spec_has_layout ?sls ?sl =>
       notypeclasses refine (struct_layout_spec_has_layout_tac sls _ sl _ _ _ _);
       [| | fast_solve_layout_eq]
@@ -593,7 +602,7 @@ Ltac solve_layout_alg_core_step3 :=
       lazymatch ly with
       | use_layout_alg' ?st' =>
           notypeclasses refine (syn_type_has_layout_untyped_alg_tac st' _ ly' _ _);
-            [fast_solve_layout_eq | ]
+            [fast_solve_layout_eq | solve_layout_alg_prepare ]
       | use_struct_layout_alg' ?sls' =>
           notypeclasses refine (syn_type_has_layout_untyped_struct_alg_tac sls' _ ly' _ _);
             [fast_solve_layout_eq | ]
@@ -616,15 +625,9 @@ Ltac solve_layout_alg_core_step3 :=
             | solve_layout_size; shelve
             | solve_ly_align_ib; shelve ]
       end
-  | |- syn_type_has_layout (EnumSynType ?name ?it ?variants ?repr) ?ly =>
-      notypeclasses refine (syn_type_has_layout_enum_tac name variants _ it _ _ _ _ _ _ _ _ _ _ _ _ );
-      [| refine eq_refl | refine eq_refl | | | fast_solve_layout_eq]
   | |- enum_layout_spec_has_layout ?els ?el =>
       notypeclasses refine (enum_layout_spec_has_layout_tac els _ _ _ _ _ _ _ _ _ _ _ _ );
       [| refine eq_refl | refine eq_refl | | | fast_solve_layout_eq]
-  | |- syn_type_has_layout (UnionSynType ?name ?variants ?repr) ?ly =>
-      notypeclasses refine (syn_type_has_layout_union_tac name variants _ _ _ _ _ _ _ );
-      [| | fast_solve_layout_eq]
   | |- union_layout_spec_has_layout ?uls ?ul =>
       notypeclasses refine (union_layout_spec_has_layout_tac uls _ _ _ _ _ _);
       [| | fast_solve_layout_eq]
@@ -790,6 +793,11 @@ Ltac solve_op_alg_core_step :=
       refine (use_op_alg_tyvar_tac st _ _ _ _);
       [solve_layout_alg | solve_ot_eq]
   end;
+  (* For ADTs *)
+  first [notypeclasses refine (use_op_alg_els _ _ _ _ _); [solve_layout_alg | solve_ot_eq]
+      | notypeclasses refine (use_op_alg_uls _ _ _ _ _); [solve_layout_alg | solve_ot_eq]
+      | notypeclasses refine (use_op_alg_sls _ _ _ _ _ _ _); [ | solve_layout_alg | solve_ot_eq]
+      | idtac];
   (* Unfold *)
   try lazymatch goal with
   | |- Forall2 use_op_alg_struct_pred ?fields ?fields' =>
@@ -820,9 +828,6 @@ Ltac solve_op_alg_core_step :=
   | |- use_op_alg FnPtrSynType = Some ?ot =>
       notypeclasses refine (use_op_alg_fnptr _ _);
       [solve_ot_eq ]
-  | |- use_op_alg (StructSynType ?name ?fields ?repr) = Some ?ot =>
-      notypeclasses refine (use_op_alg_struct name fields _ _ _ _  _ _ _);
-      [ | solve_layout_alg | solve_ot_eq ]
   | |- use_op_alg UnitSynType = Some ?ot =>
       notypeclasses refine (use_op_alg_unit _ _);
       [solve_ot_eq ]
@@ -835,12 +840,6 @@ Ltac solve_op_alg_core_step :=
       simplify_layout ly;
       notypeclasses refine (use_op_alg_untyped _ ot _);
       [solve_ot_eq ]
-  | |- use_op_alg (EnumSynType ?name ?it ?fields ?repr) = Some ?ot =>
-      notypeclasses refine (use_op_alg_enum _ _ _ _ _ _ _ _);
-      [solve_layout_alg | solve_ot_eq]
-  | |- use_op_alg (UnionSynType ?name ?fields ?repr) = Some ?ot =>
-      notypeclasses refine (use_op_alg_union _ _ _ _ _ _ _);
-      [solve_layout_alg | solve_ot_eq]
   | |- use_op_alg (ty_syn_type _ _) = Some ?ot =>
       notypeclasses refine (use_op_alg_tyvar_tac (ty_syn_type _ _) _ ot _ _);
       [solve_layout_alg | solve_ot_eq]
@@ -1075,59 +1074,13 @@ End handle_duplicate.
 Ltac postprocess_new_struct_assum H Halg :=
   lazymatch type of Halg with
   | struct_layout_alg ?name ?field_lys ?repr = Some _ =>
-    first [
-      (* if this is a duplicate, remove it *)
-      lazymatch goal with
-      | H2 : CACHED (struct_layout_alg name field_lys repr = Some _) |- _ =>
-        let Heq := fresh "_Heq" in
-        specialize (handle_duplicate_struct_layout_alg_tac _ _ _ _ _ Halg H2) as Heq;
-        subst_with Heq;
-        clear Halg
-      end
-    |
-      (* derive some information from the original assumption *)
-      (*lazymatch type of H with*)
-      (*| use_layout_alg _ = Some _  =>*)
-        (*specialize_cache (use_layout_alg_wf _ _ H);*)
-        (*specialize_cache (use_layout_alg_size _  _ H);*)
-        (*specialize_cache (use_layout_alg_align _  _ H)*)
-      (*| use_struct_layout_alg _ = Some _ =>*)
-        (*specialize_cache (use_struct_layout_alg_wf _ _ H);*)
-        (*specialize_cache (use_struct_layout_alg_size _  _ H)*)
-      (*| use_enum_layout_alg _ = Some _ =>*)
-        (*specialize_cache (use_enum_layout_alg_wf _ _ H);*)
-        (*specialize_cache (use_enum_layout_alg_size _  _ H)*)
-      (*end;*)
-      rename_layouts in Halg with (fun Halg => enter_cache_unsafe Halg)
-    ]
+    rename_layouts in Halg with (fun Halg => (* enter_cache_unsafe Halg *) clear Halg)
   end.
 Ltac postprocess_new_union_assum H Halg :=
   lazymatch type of Halg with
   | union_layout_alg ?name ?variant_lys ?repr = Some _ =>
-    first [
-      (* if this is a duplicate, remove it *)
-      lazymatch goal with
-      | H2 : CACHED (union_layout_alg name variant_lys repr = Some _) |- _ =>
-        let Heq := fresh "_Heq" in
-        specialize (handle_duplicate_union_layout_alg_tac _ _ _ _ _ Halg H2) as Heq;
-        subst_with Heq;
-        clear Halg
-      end
-    |
-      (* derive some information from the original assumption *)
-      (*lazymatch type of H with*)
-      (*| use_layout_alg _ = Some _ =>*)
-        (*specialize_cache (use_layout_alg_wf _ _ H);*)
-        (*specialize_cache (use_layout_alg_size _  _ H);*)
-        (*specialize_cache (use_layout_alg_align _  _ H)*)
-      (*| use_union_layout_alg _ = Some _ =>*)
-        (*specialize_cache (use_union_layout_alg_wf _ _ H);*)
-        (*specialize_cache (use_union_layout_alg_size _ _ H)*)
-      (*end;*)
-      rename_layouts in Halg with (fun Halg => enter_cache_unsafe Halg)
-    ]
+    rename_layouts in Halg with (fun Halg => (* enter_cache_unsafe Halg *) clear Halg )
   end.
-
 
 Ltac simplify_layout_alg_prepare H :=
   simpl in H;
@@ -1140,11 +1093,52 @@ Ltac simplify_layout_alg_prepare H :=
       change_no_check (use_union_layout_alg uls = Some ul) in H
   | enum_layout_spec_has_layout ?els ?el =>
       change_no_check (use_enum_layout_alg els = Some el) in H
-  end;
-  try lazymatch type of H with
-  | use_layout_alg ?spec = Some _ =>
-      unfold syn_type_of_sls, syn_type_of_els, syn_type_of_uls in H
+  end
+.
+
+Ltac simplify_layout_alg_normalize_with_eq a H Heq cont := 
+  (* This detects whether the layout assumption is trivial (i.e. we already know about it).
+     This is necessary as we cannot invert equalities like [layout_of sl1 = layout_of sl2]: it is not an injective mapping. *)
+  match type of Heq with
+  | ?x = _ =>
+      first [is_var x; subst x; cont |
+        (* otherwise this should be a trivial assumption *)
+        let Heq2 := fresh "Heq" in
+        (* make sure this is actually trivial and then clear everything *)
+        match type of H with
+        | use_struct_layout_alg ?sls = Some _ =>
+          match x with
+          | layout_of ?sl =>
+            assert (use_struct_layout_alg sls = Some sl) as Heq2 by eassumption;
+            clear a H Heq Heq2
+          end
+        | use_enum_layout_alg ?sls = Some _ =>
+          match x with
+          | layout_of ?sl =>
+            assert (use_enum_layout_alg sls = Some sl) as Heq2 by eassumption;
+            clear a H Heq Heq2
+          end
+        | use_union_layout_alg ?sls = Some _ =>
+          match x with 
+          | ul_layout ?ul =>
+            assert (use_union_layout_alg sls = Some ul) as Heq2 by eassumption;
+            clear a H Heq Heq2
+          end
+        end
+      ]
   end.
+Ltac simplify_layout_alg_normalize H cont := 
+  let Heq := fresh "Heq" in
+  let ly := fresh "ly" in
+  (* Check if this is an ADT spec *)
+  tryif (apply use_layout_alg_struct_Some_inv in H as (ly & H & Heq))
+  then simplify_layout_alg_normalize_with_eq ly H Heq cont
+  else tryif (apply use_layout_alg_enum_Some_inv in H as (ly & H & Heq))
+    then simplify_layout_alg_normalize_with_eq ly H Heq cont
+    else tryif (apply use_layout_alg_union_Some_inv in H as (ly & H & Heq)) 
+      then simplify_layout_alg_normalize_with_eq ly H Heq cont
+      else cont.
+
 
 Ltac simplify_layout_alg_simpl_step H :=
   (* simplify head *)
@@ -1153,16 +1147,6 @@ Ltac simplify_layout_alg_simpl_step H :=
       first [assert_is_atomic_st spec
       | let spec_eval := eval hnf in spec in
         change_no_check spec with spec_eval in H ]
-  | use_struct_layout_alg ?spec = Some _ =>
-      let spec_eval := eval hnf in spec in
-      change_no_check spec with spec_eval in H
-      (*is_var spec; rewrite /spec in H*)
-  | use_union_layout_alg ?spec = Some _ =>
-      let spec_eval := eval hnf in spec in
-      change_no_check spec with spec_eval in H
-  | use_enum_layout_alg ?spec = Some _ =>
-      let spec_eval := eval hnf in spec in
-      change_no_check spec with spec_eval in H
   end.
 
 Ltac simplify_layout_alg_atomic H :=
@@ -1188,8 +1172,6 @@ Ltac simplify_layout_alg_nonatomic H :=
         first [
           (* don't do anything *)
           assert_is_atomic_sls sls;
-          (*specialize_cache (use_struct_layout_alg_size _ _ H);*)
-          (*specialize_cache (use_struct_layout_alg_wf _ _ H);*)
           rename_layouts in H with (fun H_n => enter_cache H_n)
         |
           let Hrec := fresh "_Hrec" in
@@ -1205,8 +1187,6 @@ Ltac simplify_layout_alg_nonatomic H :=
         first [
           (* don't do anything *)
           assert_is_atomic_els els;
-          (*specialize_cache (use_enum_layout_alg_size _ _ H);*)
-          (*specialize_cache (use_enum_layout_alg_wf _ _ H);*)
           (* stop exploiting this further to prevent divergence *)
           rename_layouts in H with (fun H_n => enter_cache H_n)
         |
@@ -1225,8 +1205,6 @@ Ltac simplify_layout_alg_nonatomic H :=
         first [
           (* don't do anything *)
           assert_is_atomic_uls uls;
-          (*specialize_cache (use_union_layout_alg_size _ _ H);*)
-          (*specialize_cache (use_union_layout_alg_wf _ _ H);*)
           rename_layouts in H with (fun H_n => enter_cache H_n)
         |
           let Hrec := fresh "_Hrec" in
@@ -1253,18 +1231,6 @@ Ltac simplify_layout_alg_nonatomic H :=
     | use_layout_alg FnPtrSynType = Some _ =>
         apply syn_type_has_layout_fnptr_inv in H;
         subst_with H
-
-    | use_layout_alg (StructSynType _ ?fields ?repr) = Some _ =>
-        let Hrec := fresh "_Hrec" in
-        let Halg := fresh "_Halg" in
-        let Heq := fresh "_Heq" in
-        specialize (syn_type_has_layout_struct_inv _ _ _ _ H) as (? & ? & Heq & Halg & Hrec);
-        simpl in Halg;
-        inv_multi_fields Hrec;
-        subst_with Heq;
-
-        postprocess_new_struct_assum H Halg;
-        enter_cache H
 
     | use_layout_alg UnitSynType = Some _ =>
         apply syn_type_has_layout_unit_inv in H;
@@ -1293,43 +1259,21 @@ Ltac simplify_layout_alg_nonatomic H :=
         enter_cache Hwf;
         enter_cache Hsz;
         enter_cache Hib
-
-    | use_layout_alg (EnumSynType _ ?it ?variants ?repr) = Some ?ly =>
-        let Hrec := fresh "_Hrec" in
-        let Halg_ul := fresh "_Halg" in
-        let Halg_sl := fresh "_Halg" in
-        let Heq := fresh "_Heq" in
-        specialize (syn_type_has_layout_enum_inv _ _ _ _ _ H) as (? & ? & ? & Halg_ul & Halg_sl & Heq & Hrec);
-        simpl in Halg_ul, Halg_sl;
-        inv_multi_fields Hrec;
-        subst_with Heq;
-        postprocess_new_union_assum H Halg_ul;
-        postprocess_new_struct_assum H Halg_sl;
-        enter_cache H
-
-    | use_layout_alg (UnionSynType _ ?variants ?repr) = Some _ =>
-        let Hrec := fresh "_Hrec" in
-        let Halg_ul := fresh "_Halg" in
-        let Heq := fresh "_Heq" in
-        specialize (syn_type_has_layout_union_inv _ _ _ _ H) as (? & ? & Heq & Halg_ul & Hrec);
-        simpl in Halg_ul;
-        inv_multi_fields Hrec;
-        subst_with Heq;
-        postprocess_new_union_assum H Halg_ul;
-        enter_cache H
     | use_layout_alg ?st = Some _ =>
         fail 1000 "Unimplemented case in simplify_layout_alg"
     end.
 
 Ltac simplify_layout_alg H ::=
   simplify_layout_alg_prepare H;
-  simplify_layout_alg_simpl_step H;
-  first
-  [ (* Check for cached applications *)
-    check_for_cached_layout H
-  | simplify_layout_alg_atomic H
-  | simplify_layout_alg_nonatomic H
-  ].
+  simplify_layout_alg_normalize H ltac:(
+    simplify_layout_alg_simpl_step H;
+    (*try simplify_layout_alg_normalize H;*)
+    first
+    [ (* Check for cached applications *)
+      check_for_cached_layout H
+    | simplify_layout_alg_atomic H
+    | simplify_layout_alg_nonatomic H
+    ]).
 
 (* TODO: we currently need this because we introduce syn_type equalities on generic args in preconditions of functions and not before, so we may get duplicates.
   Once this is fixed, we can remove this hack *)
