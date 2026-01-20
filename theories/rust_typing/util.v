@@ -440,6 +440,18 @@ Qed.
 Section util.
 Context `{!lftGS Σ lft_userE} `{!refinedcG Σ}.
 
+Lemma step_fupd_subseteq F1 F2 (P : iProp Σ) :
+  F2 ⊆ F1 →
+  (|={F2}▷=> P) -∗ |={F1}▷=> P.
+Proof.
+  iIntros (?) "HP".
+  iMod (fupd_mask_subseteq F2) as "Hcl"; first done.
+  iMod "HP". iMod "Hcl" as "_".
+  iModIntro. iNext.
+  iMod (fupd_mask_subseteq F2) as "Hcl"; first done.
+  iMod "HP". iMod "Hcl" as "_". done.
+Qed.
+
 (** We can shift [P] to [Q] while assuming the additional frame [R],
   but we also need to prove that we can go back. *)
 Lemma bor_fupd_later_strong F1 F2 κ P Q R q :

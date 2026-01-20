@@ -20,7 +20,7 @@ Definition num_laters_per_step (n : nat) : nat := (n+n+n+n+n)%nat.
 Arguments num_laters_per_step _ /.
 
 Program Definition refinedc_trgen : tr_generation :=
-TrGeneration num_laters_per_step _.
+  TrGeneration num_laters_per_step _.
 Next Obligation.
   unfold num_laters_per_step.
   intros; simpl. lia.
@@ -163,22 +163,25 @@ Local Hint Unfold heap_at : core.
 
 
 Local Ltac solve_atomic :=
-  apply strongly_atomic_atomic, ectx_language_atomic;
-    [inversion 1; simplify_eq; inv_expr_step; naive_solver
-    |apply ectxi_language_sub_redexes_are_values; intros [[]|[]] **; naive_solver].
+  match goal with
+  | |- Atomic _ (to_rtexpr _ ?e) =>
+    apply strongly_atomic_atomic, ectx_language_atomic;
+    [inversion 1; simplify_eq;
+      match goal with
+      | H : to_rtexpr _ _ = Expr _ _ |- _ =>
+          apply (to_rtexpr_inj' _ _ _ e) in H
+      end;
+      simplify_eq;
+      inv_expr_step; naive_solver
+    |apply ectxi_language_sub_redexes_are_values; intros [[]|[]] **; naive_solver]
+  end.
 
 Global Instance cas_atomic π s ot (v1 v2 v3 : val) : Atomic s (to_rtexpr π (CAS ot v1 v2 v3)).
-Proof.
-(*solve_atomic. Qed.*)
-Abort.
+Proof. solve_atomic. Qed.
 Global Instance skipe_atomic π s (v : val) : Atomic s (to_rtexpr π (SkipE v)).
-Proof.
-(*solve_atomic. Qed.*)
-Abort.
+Proof. solve_atomic. Qed.
 Global Instance deref_atomic π s (l : loc) ly mc : Atomic s (to_rtexpr π (Deref ScOrd ly mc l)).
-Proof.
-(*solve_atomic. Qed.*)
-Abort.
+Proof. solve_atomic. Qed.
 (*Global Instance use_atomic s (l : loc) ly : Atomic s (coerce_rtexpr (Use ScOrd ly l)).*)
 (*Proof. solve_atomic. Qed.*)
 
