@@ -208,8 +208,9 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
     λ T, i2p (subsume_credit_store_evar n m n' m' T).
 
   Lemma subsume_credit_store n m n' m' T :
-    ⌜n' ≤ n⌝ ∗ ⌜m' ≤ m⌝ ∗ T ⊢ subsume (Σ := Σ) (credit_store n m) (credit_store n' m') T.
+    ⌜fast_lia_hint (n' ≤ n)⌝ ∗ ⌜fast_lia_hint (m' ≤ m)⌝ ∗ T ⊢ subsume (Σ := Σ) (credit_store n m) (credit_store n' m') T.
   Proof.
+    rewrite /fast_lia_hint.
     iIntros "(% & % & HT) Hc".
     iFrame. iApply (credit_store_mono with "Hc"); done.
   Qed.

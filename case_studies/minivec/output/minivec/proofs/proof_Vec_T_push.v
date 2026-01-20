@@ -7,6 +7,7 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{!refinedrustGS Σ}.
+
 Lemma Vec_T_push_proof (π : thread_id) :
   Vec_T_push_lemma π.
 Proof.
@@ -26,15 +27,16 @@ Proof.
 
   (*all: match type of Hlen_cap with (Z.of_nat (length (project_vec_els ?len2 ?xs2)) < _)%Z => rename len2 into len; rename xs2 into xs end.*)
   all: rename select (_ = project_vec_els _ _) into Hxs.
-  all: match type of Hxs with _ = project_vec_els ?len2 ?xs2 => 
+  all: match type of Hxs with _ = project_vec_els ?len2 ?xs2 =>
       rename xs2 into xs';
       specialize (project_vec_els_length len2 xs') as Hlen_eq;
       rewrite -Hxs !length_fmap in Hlen_eq
-    end.
+      end.
   all: rename select (∀ i : nat, _ → xs' !! i = Some (#None)) into Hlook_2.
   (*all: rewrite project_vec_els_length in Hlen_cap.*)
 
-  Unshelve. all: prepare_sideconditions; normalize_and_simpl_goal.
+  Unshelve.
+  all: prepare_sideconditions; normalize_and_simpl_goal.
   all: try solve_goal with (lia).
   all: try (unfold_common_defs; solve_goal with (lia)).
 
@@ -51,26 +53,26 @@ Proof.
   {
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length self)).
-    - rewrite take_insert_ge/=; [|lia]. 
+    - rewrite take_insert_ge/=; [|lia].
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take project_vec_els_take_r.
-      rewrite take_app_le; [|lia]. 
+      rewrite take_app_le; [|lia].
       rewrite take_ge; [|lia].
       rewrite Nat.min_l; last lia.
       rewrite -Hxs list_fmap_compose//.
     - rewrite drop_insert_ge/=; [|lia].
       rewrite !fmap_app.
       rewrite drop_app_length' ?project_vec_els_length; last solve_goal.
-      rewrite project_vec_els_drop. apply list_eq_singleton. 
+      rewrite project_vec_els_drop. apply list_eq_singleton.
       split; solve_goal.
   }
   { revert select (ly_size (mk_array_layout _ _) ≤ _).
-    move: Hcap. 
+    move: Hcap.
     rewrite ly_size_mk_array_layout.
     clear. nia. }
   { revert select (ly_size (mk_array_layout _ _) ≤ _).
-    move: Hcap. 
+    move: Hcap.
     rewrite ly_size_mk_array_layout.
     clear. nia. }
   {
@@ -82,7 +84,7 @@ Proof.
     simpl in Hlt.
 
     rewrite project_vec_els_insert_lt /=; [|lia].
-    apply list_lookup_insert_Some'. split; normalize_and_simpl_goal. 
+    apply list_lookup_insert_Some'. split; normalize_and_simpl_goal.
     { lia. }
     { rewrite Hxs. erewrite project_vec_els_lookup_mono; [solve_goal|lia|done]. }
   }
@@ -101,7 +103,7 @@ Proof.
       lia. }
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length self)).
-    - rewrite take_insert_ge/=; [|lia]. 
+    - rewrite take_insert_ge/=; [|lia].
       rewrite !fmap_app.
       rewrite take_app_length' ?project_vec_els_length; last solve_goal.
       rewrite project_vec_els_take. rewrite Hxs. f_equal. lia.

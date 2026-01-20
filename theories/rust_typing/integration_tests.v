@@ -60,6 +60,7 @@ Proof.
   start_function "ptr_write" ϝ ( [] ) ( [] ) ( [l r] ) ( ).
   intros ls_dst ls_src.
   repeat liRStep; liShow.
+
   Unshelve. all: unshelve_sidecond; sidecond_hook.
   Unshelve. all: sidecond_hammer.
 Qed.

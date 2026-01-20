@@ -21,7 +21,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
 
-  1-3: admit.
+  1-2: admit.
 
   Unshelve. all: print_remaining_sidecond.
 (*Qed.*)

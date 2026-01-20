@@ -41,11 +41,19 @@ Section named_tyvars.
   Arguments TYVAR_MAP : simpl never.
 End named_tyvars.
 
-(** Hint for sideconditions to use a different sidecondition strategy *)
+(** Hint for equality sideconditions to use a different strategy *)
 Definition fast_eq_hint (P : Prop) : Prop :=
   P.
 Global Typeclasses Opaque fast_eq_hint.
 Arguments fast_eq_hint : simpl never.
+
+(** Hint for solving credit store sideconditions *)
+Definition fast_lia_hint (P : Prop) : Prop :=
+  P.
+Global Typeclasses Opaque fast_lia_hint.
+Arguments fast_lia_hint : simpl never.
+
+
 
 (** Automation for finding the location for a local variable *)
 Class FindLocalLoc (f : frame_path) (v : var_name) (l : loc) := {}.
@@ -2832,10 +2840,10 @@ Section judgments.
 
   Lemma prove_with_subtype_scrounge_credits E L step pm (n : nat) T :
     find_in_context (FindCreditStore) (λ '(c, a),
-      ⌜n ≤ c⌝ ∗ (credit_store (c - n)%nat a -∗ T L [] True%I))
+      ⌜fast_lia_hint (n ≤ c)⌝ ∗ (credit_store (c - n)%nat a -∗ T L [] True%I))
     ⊢ prove_with_subtype E L step pm (£ n) T.
   Proof.
-    iIntros "Ha". rewrite /FindCreditStore.
+    iIntros "Ha". rewrite /FindCreditStore /fast_lia_hint.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
     iPoseProof (credit_store_scrounge n with "Hstore") as "(Hcred & Hstore)"; first lia.
     iPoseProof ("HT" with "Hstore") as "HT".
@@ -2849,10 +2857,10 @@ Section judgments.
 
   Lemma prove_with_subtype_scrounge_tr E L step pm (n : nat) T :
     find_in_context (FindCreditStore) (λ '(c, a),
-      ⌜n ≤ a⌝ ∗ (credit_store c (a - n)%nat -∗ T L [] True%I))
+      ⌜fast_lia_hint (n ≤ a)⌝ ∗ (credit_store c (a - n)%nat -∗ T L [] True%I))
     ⊢ prove_with_subtype E L step pm (tr n) T.
   Proof.
-    iIntros "Ha". rewrite /FindCreditStore.
+    iIntros "Ha". rewrite /FindCreditStore /fast_lia_hint.
     iDestruct "Ha" as ([c a]) "(Hstore  & %Hn & HT)". simpl.
     iPoseProof (credit_store_acc with "Hstore") as "(Hcred & Hat & Hcl)".
     replace (S a) with (S (a - n) + n)%nat by lia.
@@ -4563,12 +4571,12 @@ Section guarded.
 
   Lemma introduce_with_hooks_guarded (E : elctx) (L : llctx) (P : iProp Σ) T :
     find_in_context (FindCreditStore) (λ '(c, a),
-      ⌜1 ≤ c⌝ ∗ (credit_store (c - 1)%nat a -∗
+      ⌜fast_lia_hint (1 ≤ c)⌝ ∗ (credit_store (c - 1)%nat a -∗
         introduce_with_hooks E L P T)) ⊢
     introduce_with_hooks E L (guarded P) T.
   Proof.
     iIntros "Ha" (??) "HE HL HP".
-    rewrite /guarded/FindCreditStore/=.
+    rewrite /guarded/FindCreditStore/fast_lia_hint/=.
     iDestruct "Ha" as ([n m]) "(Hc & % & Ha)".
     simpl.
     iPoseProof (credit_store_scrounge 1 with "Hc") as "(Hc1 & Hc)"; first lia.

@@ -324,7 +324,8 @@ Ltac liSideCond :=
   | |- ?P ∧ ?Q =>
     first [
         lazymatch P with
-        | shelve_hint _ => split; [ unfold shelve_hint; shelve_sidecond |]
+        | shelve_hint _ =>
+            split; [ unfold shelve_hint; shelve_sidecond |]
         | destruct_hint ?x ?P =>
           (* same handling as in [liCase] *)
           tryif (non_trivial_destruct x) then
@@ -350,7 +351,11 @@ Ltac liSideCond :=
          (* We use done instead of fast_done here because solving more
          sideconditions here is a bigger performance win than the overhead
          of done. *)
-        | _ => split; [ first [ done | shelve_sidecond ] | ]
+        | _ =>
+            first [ split; first done |
+                liAfterSidecond_hook P; split; first shelve_sidecond
+            ]
+            (*split; [ first [ done | shelve_sidecond ] | ]*)
         end
       ]
   | _ => fail "liSideCond: unknown goal"

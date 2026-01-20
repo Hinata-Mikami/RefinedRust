@@ -19,7 +19,6 @@ Proof.
   Unshelve. all: sidecond_hammer.
   { simpl.
     admit. }
-  { admit. }
   Unshelve. all: print_remaining_sidecond.
 (*Qed.*)
 Admitted.
