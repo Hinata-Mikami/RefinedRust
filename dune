@@ -1,3 +1,4 @@
+; NOTE: this has to mirror the config for `dune-workspace` defined in `Makefile`
 (env
  (_
-  (binaries (scripts/coqc-timing.sh as coqc))))
+  (binaries (scripts/rocq-timing.sh as rocq))))

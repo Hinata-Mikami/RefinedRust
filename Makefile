@@ -34,7 +34,7 @@ define DUNE_WORKSPACE_BODY
 
 (env
  (_
-  (binaries (scripts/coqc-timing.sh as coqc))))
+  (binaries (scripts/rocq-timing.sh as rocq))))
 endef
 export DUNE_WORKSPACE_BODY
 
