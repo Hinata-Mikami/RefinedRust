@@ -194,6 +194,21 @@ Ltac clear_unused_vars :=
            match ty with | Type => clear H | Set => clear H end
          end.
 
+Ltac li_clear_all :=
+  repeat multimatch goal with
+  | H : ?P |- _ =>
+      match P with
+      | JCACHED _ => idtac
+      | _ => try clear H
+      end
+  end.
+Ltac clear_layout :=
+repeat match goal with
+| H : use_struct_layout_alg _ = _ |- _ => clear H
+| H : use_enum_layout_alg _ = _ |- _ => clear H
+| H : use_union_layout_alg _ = _ |- _ => clear H
+end.
+
 Ltac prepare_sideconditions :=
   li_unfold_lets_in_context;
   unfold_instantiated_evars;
@@ -202,6 +217,7 @@ Ltac prepare_sideconditions :=
   repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
   repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
   unfold_no_enrich;
+  clear_layout;
   clear_unused_vars.
 
 Ltac solve_goal_prepare_hook ::=

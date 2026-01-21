@@ -109,7 +109,6 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. apply Z.divide_1_l. }
-  { rewrite /has_layout_loc/layout_wf/aligned_to /ly_align/=. apply Z.divide_1_l. }
   { rewrite /has_layout_val length_drop/=. rewrite Hlen/new_ly/ly_size/=.  lia.  }
   { rewrite /ly_align_in_bounds.
     rewrite ly_align_mk_array_layout.
@@ -192,7 +191,7 @@ Proof.
     iSelect (local___0 ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "H_0").
     iAssert (local___0 ◁ₗ[π, Owned false] #(#())  @ ◁ box (uninit (ty_syn_type T MetaNone)))%I with "[H_pts H_0 Hcred Hat1]" as "H_0".
     { iPoseProof (ltype_own_has_layout with "H_0") as "(%ly & %Hstly & %Hlyv)".
-      simpl in *. simp_ltypes in Hstly. simpl in *. 
+      simpl in *. simp_ltypes in Hstly. simpl in *.
       iApply (ofty_owned_subtype_aligned with "[-H_0] H_0").
       { solve_layout_alg. }
       { done. }
