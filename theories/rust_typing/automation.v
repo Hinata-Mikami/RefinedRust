@@ -847,13 +847,16 @@ Ltac is_builtin_sidecond P :=
       idtac
   | use_op_alg _ = _ =>
       idtac
+  | ?P ∧ ?Q =>
+      first [is_builtin_sidecond P | is_builtin_sidecond Q]
   end.
 
-Lemma cache_sidecond P T :
-  P ∧ (enter_cache_hint P → T) →
+Lemma cache_sidecond P P' T :
+  (∀ (P'':=P'), P = P'') →
+  P ∧ (enter_cache_hint P' → T) →
   P ∧ T.
 Proof.
-  intros [HP HT].
+  intros <- [HP HT].
   split; first done.
   by apply HT.
 Qed.
@@ -869,7 +872,7 @@ lazymatch P with
 end.
 Ltac hooks.liAfterSidecond_hook P ::=
   first [is_builtin_sidecond P
-  | refine (cache_sidecond _ _ _) ].
+  | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
 
 (** ** Hints for automation *)
 Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_size : typeclass_instances.
