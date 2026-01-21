@@ -45,7 +45,7 @@ Proof.
       change (∀ x : name_hint "ls1" loc, P)
   end.
 
-  repeat liRStep; liShow.
+   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: unfold_common_defs; try solve_goal.

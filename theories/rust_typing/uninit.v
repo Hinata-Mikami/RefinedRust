@@ -108,6 +108,43 @@ Section deinit.
     *)
 
   (* Two low-priority instances that trigger as a fallback for ltypes foldable to a ty (no borrows below) *)
+  (* First, if the syntype is equal *)
+  Lemma owned_subltype_step_ofty_uninit_eq π E L {rt} (lt : ltype rt) r st l `{Hst : !TCDone (ltype_st lt = st)} T :
+    owned_subltype_step π E L l #r #() lt (◁ uninit st) T :-
+    return cast_ltype_to_type E L lt (λ ty, find_tc_inst (TyGhostDrop ty) (λ Hg, T L (ty_ghost_drop_for ty Hg π r))).
+  Proof.
+    unfold TCDone in Hst. subst st.
+    iDestruct 1 as "(%ty & %Heqt & HT)".
+    iDestruct "HT" as (?) "HT".
+    iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
+
+    iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
+    iSpecialize ("Hincl" $! (Owned false) (#r)).
+    iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
+    iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
+    iExists _, _. iFrame.
+    iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
+    simp_ltypes in Hst'.
+    iSplitL.
+    { iMod lc_zero as "Hlc".
+      iMod (ofty_own_split_value_untyped_lc with "[Hlc] Hl") as "(%v & Hv & Hl)"; [done.. | ].
+      iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
+      iApply (logical_step_wand with "Hb"). iModIntro. iIntros "$".
+      iApply (ofty_owned_subtype_aligned with "[] Hl").
+      { simpl. rewrite Hst. done. }
+      { done. }
+      rewrite Hst.
+      iApply owned_type_incl_uninit'.
+      - simpl.
+        intros ?(-> & _)%syn_type_has_layout_untyped_inv.
+        eauto.
+      - done. }
+    iPureIntro. rewrite Hst. apply syn_type_size_eq_refl.
+  Qed.
+  Definition owned_subltype_step_ofty_uninit_eq_inst := [instance owned_subltype_step_ofty_uninit_eq].
+  Global Existing Instance owned_subltype_step_ofty_uninit_eq_inst | 100.
+
+  (* Otherwise, more complicated: *)
   Lemma owned_subltype_step_ofty_uninit π E L {rt} (lt : ltype rt) r st l T :
     owned_subltype_step π E L l #r #() lt (◁ uninit st) T :-
     return
@@ -154,38 +191,6 @@ Section deinit.
   Qed.
   Definition owned_subltype_step_ofty_uninit_inst := [instance owned_subltype_step_ofty_uninit].
   Global Existing Instance owned_subltype_step_ofty_uninit_inst | 101.
-
-  (* Higher-priority instacne for the special case that we go to Untyped *)
-  Lemma owned_subltype_step_ofty_uninit_untyped π E L l {rt} (lt : ltype rt) r ly T :
-    cast_ltype_to_type E L lt (λ ty,
-      find_tc_inst (TyGhostDrop ty) (λ Hg,
-      li_tactic (compute_layout_goal (ty_syn_type ty MetaNone)) (λ ly1,
-      ⌜syn_type_has_layout (ty_syn_type ty MetaNone) ly1⌝ -∗
-      ⌜l `has_layout_loc` ly⌝ ∗
-      ⌜syn_type_has_layout (UntypedSynType ly) ly⌝ ∗
-      (⌜l `has_layout_loc` ly1⌝ -∗
-      ⌜ly_size ly1 = ly_size ly⌝ ∗ T L (ty_ghost_drop_for ty Hg π r)))))
-    ⊢ owned_subltype_step π E L l #r #() lt (◁ uninit (UntypedSynType ly)) T.
-  Proof.
-    iDestruct 1 as "(%ty & %Heqt & HT)".
-    iDestruct "HT" as (Hg) "HT".
-    rewrite /compute_layout_goal.
-    iDestruct "HT" as "(%ly1 & %Hst & HT)".
-    iApply owned_subltype_step_ofty_uninit.
-    iExists ty. iR.
-    iExists Hg.
-    iExists ly1. iR. iIntros (_). iExists ly.
-    iPoseProof ("HT" with "[//]") as "(%Hly & %Hwf & HT)".
-    iR.
-    (*iSplitR. { iPureIntro. *)
-      (*eapply (syn_type_has_layout_untyped_mono ly1); [done.. | ].*)
-      (*by eapply syn_type_has_layout_make_untyped. }*)
-    iIntros (? ?).
-    iPoseProof ("HT" with "[//]") as "(%Hsz & ?)".
-    iR. iR. done.
-  Qed.
-  Definition owned_subltype_step_ofty_uninit_untyped_inst := [instance @owned_subltype_step_ofty_uninit_untyped].
-  Global Existing Instance owned_subltype_step_ofty_uninit_untyped_inst | 100.
 End deinit.
 
 Section deinit_fallback.
