@@ -38,6 +38,9 @@ Section resolve_ghost.
   Global Instance resolve_ghost_iter_fmap_in_inst π E L rm lb l st {rt} (lts : list (ltype rt)) rs b ig i0 :
     ResolveGhostIter π E L rm lb l st lts b (<#> rs) ig i0 :=
     λ T, i2p (resolve_ghost_iter_id π E L rm lb l st lts b (<#> rs) ig i0 T).
+  Global Instance resolve_ghost_iter_fmap_xin_inst π E L rm lb l st {rt} (lts : list (ltype rt)) rs b ig i0 :
+    ResolveGhostIter π E L rm lb l st lts b ((PlaceIn ∘ RT_xrt rt) <$> rs) ig i0 :=
+    λ T, i2p (resolve_ghost_iter_id π E L rm lb l st lts b ((PlaceIn ∘ RT_xrt rt) <$> rs) ig i0 T).
 
   Lemma resolve_ghost_iter_cons_not_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) (rs : list (place_rfn rt)) ig (i0 : nat) T `{!CanSolve(i0 ∉ ig)} :
     (∃ lt lts', ⌜lts = lt :: lts'⌝ ∗

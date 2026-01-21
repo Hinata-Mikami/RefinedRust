@@ -412,6 +412,8 @@ Global Hint Extern 3 (type ?rt) => lazymatch goal with H : type rt |- _ => apply
 Definition RT_of `{!typeGS Σ} {rt} (ty : type rt) : RT := rt.
 Definition rt_of `{!typeGS Σ} {rt} (ty : type rt) : Type := rt.
 Notation st_of ty := (ty_syn_type ty).
+Global Arguments RT_of _ _ _ _ /.
+Global Arguments rt_of _ _ _ _ /.
 
 Definition ty_is_xrfn `{!typeGS Σ} {rt} (ty : type rt) (r : rt) :=
   ∃ xr, r = RT_xrt _ xr.

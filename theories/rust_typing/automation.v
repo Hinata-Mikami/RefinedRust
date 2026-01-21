@@ -60,6 +60,8 @@ Ltac rep_check_backtrack_point_hook ::=
       end
   end.
 
+Global Arguments RT_xt : simpl nomatch.
+(*
 Ltac liForall_hook ::=
   (* simpl RT_xt *)
   lazymatch goal with
@@ -72,11 +74,11 @@ Ltac liForall_hook ::=
               assert_fails (is_var ty)
               (* TODO: maybe unfold the RT_of? *)
           | _ => idtac
-          end;
-
-          simpl
+          end
+          (*simpl*)
       end
   end.
+ *)
 
 Ltac liDestruct_hook term ::=
   (** Revert branching hypotheses that are affected by the term.

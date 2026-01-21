@@ -3593,37 +3593,50 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
 
   Lemma type_local_dead E L f x s fn R ϝ :
     find_in_context (FindFrameLocals f) (λ locals : list var_name,
-    find_in_context (FindLocal f x) (λ '(st, l),
-    li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
-      prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned false] .@ ◁ uninit st) (λ L2 κs R2,
-        R2 -∗
-        li_clear l ((allocated_locals f locals' -∗ typed_stmt E L2 f s fn R ϝ))))))
+    if decide (x ∈ locals) then
+      find_in_context (FindLocal f x) (λ '(st, l),
+      li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
+        prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned false] .@ ◁ uninit st) (λ L2 κs R2,
+          R2 -∗
+          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L2 f s fn R ϝ)))))
+    else (allocated_locals f locals -∗ typed_stmt E L f s fn R ϝ))
     ⊢ typed_stmt E L f (local_dead x; s) fn R ϝ.
   Proof.
     destruct f as [π f].
-    iIntros "(%locals & Hlocals & %stl & Hx & HT)".
-    destruct stl as [st l]. simpl in *.
-    unfold LocalDeadSt.
-    iIntros (?) "#CTX #HE HL Hf Hpost".
-    unfold simplify_local_list_goal.
-    iDestruct "HT" as "(%locals' & <- & HT)".
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R2 & Hstep & HL & HT)"; [done.. | ].
-    simpl.
-    iApply wps_skip.
-    iApply (physical_step_logical_step with "Hstep").
-    iApply physical_step_intro. iNext.
-    iIntros "(Hl & HR)".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & _ & % & <- & Ha)".
-    iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
-    iDestruct "Ha" as "(%v & Hl & Hv)".
-    iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
-    iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
-    { simpl in Hst. done. }
-    { iExists _. iFrame. done. }
-    iApply physical_step_intro. iNext.
-    iIntros "Hf Hlocals".
-    iApply ("HT" with "HR Hlocals CTX HE HL Hf Hpost").
+    iIntros "(%locals & Hlocals & HT)".
+    case_decide.
+    - iDestruct "HT" as "(%stl & Hx & HT)".
+      destruct stl as [st l]. simpl in *.
+      unfold LocalDeadSt.
+      iIntros (?) "#CTX #HE HL Hf Hpost".
+      unfold simplify_local_list_goal.
+      iDestruct "HT" as "(%locals' & <- & HT)".
+      iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R2 & Hstep & HL & HT)"; [done.. | ].
+      simpl.
+      iApply wps_skip.
+      iApply (physical_step_logical_step with "Hstep").
+      iApply physical_step_intro. iNext.
+      iIntros "(Hl & HR)".
+      rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      iDestruct "Hl" as "(%ly & %Hst & %Hlyl & _ & _ & _ & % & <- & Ha)".
+      iMod (fupd_mask_mono with "Ha") as "Ha"; first done.
+      iDestruct "Ha" as "(%v & Hl & Hv)".
+      iPoseProof (ty_own_val_has_layout with "Hv") as "%Hlyv"; first done.
+      iApply (wps_local_dead with "Hf Hlocals Hx [Hl]").
+      { simpl in Hst. done. }
+      { iExists _. iFrame. done. }
+      iApply physical_step_intro. iNext.
+      iIntros "Hf Hlocals".
+      iApply ("HT" with "HR Hlocals CTX HE HL Hf Hpost").
+    - unfold LocalDeadSt.
+      iIntros (?) "#CTX #HE HL Hf Hpost".
+      simpl.
+      iApply wps_skip. iApply physical_step_intro. iNext.
+      iApply (wps_local_dead_nop with "Hf Hlocals").
+      { done. }
+      iApply physical_step_intro. iNext.
+      iIntros "Hf Hlocals".
+      iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
   Qed.
 
 
