@@ -764,6 +764,49 @@ Lemma big_sepL2_sep_1 {Σ} {A B} (l1 : list A) (l2 : list B) Φ Ψ :
   ([∗ list] k↦y1;y2 ∈ l1;l2, Φ k y1 y2 ∗ Ψ k y1 y2).
 Proof. iIntros "Ha Hb". iApply big_sepL2_sep. iFrame. Qed.
 
+Lemma big_sepL2_from_big_sepL_lookup_l {Σ} {A B} (xs : list A) (ys : list B) Φ :
+  length xs = length ys →
+  ([∗ list] i ↦ y ∈ ys, ∃ x, ⌜xs !! i = Some x⌝ ∗ Φ i x y) ⊢@{iProp Σ}
+  ([∗ list] i ↦ x; y ∈ xs; ys, Φ i x y).
+Proof.
+  iIntros (Hlen) "Ha".
+  iPoseProof (big_sepL_extend_l with "Ha") as "Ha"; first apply Hlen.
+  iApply (big_sepL2_impl with "Ha").
+  iModIntro. iIntros (k x y Hlook1 Hlook2) "(%x' & %Hlook3 & Ha)".
+  simplify_eq. done.
+Qed.
+Lemma big_sepL2_from_big_sepL_lookup_r {Σ} {A B} (xs : list A) (ys : list B) Φ :
+  length xs = length ys →
+  ([∗ list] i ↦ x ∈ xs, ∃ y, ⌜ys !! i = Some y⌝ ∗ Φ i x y) ⊢@{iProp Σ}
+  ([∗ list] i ↦ x; y ∈ xs; ys, Φ i x y).
+Proof.
+  iIntros (Hlen) "Ha".
+  iPoseProof (big_sepL_extend_r ys with "Ha") as "Ha"; first lia.
+  iApply (big_sepL2_impl with "Ha").
+  iModIntro. iIntros (k x y Hlook1 Hlook2) "(%x' & %Hlook3 & Ha)".
+  simplify_eq. done.
+Qed.
+Lemma big_sepL2_to_big_sepL_lookup_l {Σ} {A B} (xs : list A) (ys : list B) Φ :
+  ([∗ list] i ↦ x; y ∈ xs; ys, Φ i x y) ⊢@{iProp Σ}
+  ([∗ list] i ↦ y ∈ ys, ∃ x, ⌜xs !! i = Some x⌝ ∗ Φ i x y).
+Proof.
+  iIntros "Ha".
+  iApply big_sepL2_elim_l.
+  iApply (big_sepL2_impl with "Ha").
+  iModIntro. iIntros (k x y Hlook1 Hlook2) "Ha".
+  eauto.
+Qed.
+Lemma big_sepL2_to_big_sepL_lookup_r {Σ} {A B} (xs : list A) (ys : list B) Φ :
+  ([∗ list] i ↦ x; y ∈ xs; ys, Φ i x y) ⊢@{iProp Σ}
+  ([∗ list] i ↦ x ∈ xs, ∃ y, ⌜ys !! i = Some y⌝ ∗ Φ i x y).
+Proof.
+  iIntros "Ha".
+  iApply big_sepL2_elim_r.
+  iApply (big_sepL2_impl with "Ha").
+  iModIntro. iIntros (k x y Hlook1 Hlook2) "Ha".
+  eauto.
+Qed.
+
 
 (** Lifting existentials out of big sep *)
 Local Lemma big_sepL_exists_zip' {Σ} {A X} (Φ : nat → A → X → iProp Σ) (l : list A) k :

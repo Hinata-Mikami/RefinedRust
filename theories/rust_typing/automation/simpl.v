@@ -243,6 +243,7 @@ Qed.
 #[export] Hint Rewrite Z.mul_1_l Z.mul_1_r Nat.mul_1_l Nat.mul_1_r : lithium_rewrite.
 
 Hint Rewrite -> @list_lookup_fmap : lithium_rewrite.
+Hint Rewrite -> @list_fmap_compose : lithium_rewrite.
 
 Hint Rewrite @length_take @length_drop : lithium_rewrite.
 Hint Rewrite @lookup_total_drop : lithium_rewrite.

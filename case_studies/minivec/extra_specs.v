@@ -31,9 +31,7 @@ Section Vec_inv_t_ne.
       + solve_type_proper.
     - (* TODO improve *) 
       unfold RawVec_ty.
-      simpl.
-      unfold RawVec_sls.
-      unfold core_marker_PhantomData_ty, core_marker_PhantomData_sls.
+      unfold RawVec_sls, core_marker_PhantomData_sls.
       apply _.
   Qed.
   Global Instance RawVec_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
@@ -66,7 +64,7 @@ Section Vec_inv_t_ne.
       unfold Vec_sls. 
       unfold RawVec_st.
       unfold RawVec_sls.
-      unfold core_marker_PhantomData_ty, core_marker_PhantomData_sls.
+      unfold core_marker_PhantomData_sls.
       apply _.
   Qed.
   Global Instance Vec_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :

@@ -21,8 +21,6 @@ Proof.
   (* We need to manually extract it now *)
   apply_update (updateable_extract_typed_value (lel offsetst{st_of T_ty MetaNone}ₗ (length xs - 1))).
   rep <-! liRStep; liShow.
-  apply_update (updateable_merge_value local___5).
-  rep <-! liRStep.
   apply_update (updateable_subsume_to (lel offsetst{st_of T_ty MetaNone}ₗ (length xs - 1)) (◁ uninit (st_of T_ty MetaNone))%I (# ())).
   repeat liRStep.
 

@@ -1858,6 +1858,13 @@ Definition type_incl `{!typeGS Σ} {rt1 rt2 : RT}  (r1 : rt1) (r2 : rt2) (ty1 : 
   (□ ∀ κ π m l, ty1.(ty_shr) κ π r1 m l -∗ ty2.(ty_shr) κ π r2 m l))%I.
 #[export] Instance: Params (@type_incl) 4 := {}.
 
+(** Owned value subtyping (is NOT compatible with shared references). *)
+(* NOTE: For supporting subtyping of unsized types, parameterize by metadata *)
+Definition owned_type_incl `{!typeGS Σ}  π {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
+  ⌜syn_type_size_eq (ty_syn_type ty1 MetaNone) (ty_syn_type ty2 MetaNone)⌝ ∗
+  (ty_sidecond ty1 -∗ ty_sidecond ty2) ∗
+  (∀ (v : val), v ◁ᵥ{π, MetaNone} r1 @ ty1 -∗ v ◁ᵥ{ π, MetaNone} r2 @ ty2).
+
 (* Heterogeneous subtyping *)
 Definition subtype `{!typeGS Σ} (E : elctx) (L : llctx) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : Prop :=
   ∀ qL, llctx_interp_noend L qL  -∗ (elctx_interp E -∗ type_incl r1 r2 ty1 ty2).
@@ -1919,6 +1926,52 @@ Section subtyping.
     iSplit; iModIntro; iIntros.
     - iApply "Ho23". iApply "Ho12". done.
     - iApply "Hs23". iApply "Hs12". done.
+  Qed.
+
+  (** *** [owned_type_incl] *)
+  Lemma owned_type_incl_refl π {rt} (ty : type rt) (r : rt) :
+    ⊢ owned_type_incl π r r ty ty.
+  Proof.
+    iSplitR. { iPureIntro. intros ?. by eapply syn_type_size_eq_refl. }
+    iSplitR. { eauto. }
+    iIntros (v). eauto.
+  Qed.
+  Lemma type_incl_owned_type_incl π {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
+    type_incl r1 r2 ty1 ty2 -∗ □ owned_type_incl π r1 r2 ty1 ty2.
+  Proof.
+    iIntros "(%Hst & #$ & #Hv & _)".
+    iDestruct ("Hv" $! π _) as "$".
+    iPureIntro. setoid_rewrite Hst.
+    apply syn_type_size_eq_refl.
+  Qed.
+  Lemma owned_type_incl_incl_l π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    type_incl r1 r2 ty1 ty2 -∗
+    owned_type_incl π r2 r3 ty2 ty3 -∗
+    owned_type_incl π r1 r3 ty1 ty3.
+  Proof.
+    iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
+    iSplit; last iSplitR "Hv1 Hv2".
+    - iPureIntro.
+      intros ? Ha1.
+      rewrite Hst1 in Ha1.
+      apply Hst2 in Ha1.
+      done.
+    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
+    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
+  Qed.
+  Lemma owned_type_incl_incl_r π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
+    owned_type_incl π r1 r2 ty1 ty2 -∗
+    type_incl r2 r3 ty2 ty3 -∗
+    owned_type_incl π r1 r3 ty1 ty3.
+  Proof.
+    iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
+    iSplit; last iSplitR "Hv1 Hv2".
+    - iPureIntro.
+      intros ? Ha1.
+      apply Hst1 in Ha1.
+      rewrite Hst2 in Ha1. done.
+    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
+    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
   Qed.
 
   (** *** [subtype] *)

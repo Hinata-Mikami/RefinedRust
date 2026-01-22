@@ -39,6 +39,7 @@ Section subtype.
     simpl.
     (* TODO: somehow specializing with Hv doesn't work *)
     iApply (struct_t_own_val_mono with "[]"); last done.
+    iApply struct_t_incl_precond_from_strong.
     rewrite /struct_t_incl_precond. simpl.
     iFrame.
     iSplit. { rewrite Hels. iApply type_incl_refl. }

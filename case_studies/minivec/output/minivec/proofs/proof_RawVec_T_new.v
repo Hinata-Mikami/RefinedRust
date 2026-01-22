@@ -15,7 +15,7 @@ Proof.
   (* Otherwise, in the ZST case, we try to compute a very big list *)
   Arguments replicate : simpl never.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

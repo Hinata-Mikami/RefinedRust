@@ -98,6 +98,17 @@ Proof.
   intros ->. apply Hnel. done.
 Qed.
 
+Lemma list_lookup_omap_inv {A B} (f : A → option B) (l : list A) i x :
+  omap f l !! i = Some x → ∃ j y, l !! j = Some y ∧ f y = Some x.
+Proof.
+  induction l as [ | a l IH] in i, x |-*; simpl; first done.
+  destruct (f a) as [y | ] eqn:Heq; first last.
+  { intros (j & y & ? & ?)%IH. exists (S j), y. eauto. }
+  rewrite lookup_cons. destruct i as [ | i].
+  - intros [= ->]. exists 0%nat, a. rewrite lookup_cons. done.
+  - intros (j & z & ? & ?)%IH. exists (S j), z. eauto.
+Qed.
+
 
 
 

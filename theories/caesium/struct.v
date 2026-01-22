@@ -57,6 +57,12 @@ Lemma struct_layout_eq sl1 sl2 :
   sl1 = sl2.
 Proof. destruct sl1, sl2 => /= ?. subst. f_equal; apply: proof_irrel. Qed.
 
+Lemma field_names_NoDup sl :
+  NoDup (field_names sl.(sl_members)).
+Proof.
+  specialize (sl_nodup sl). naive_solver.
+Qed.
+
 Lemma field_members_length s:
   length (field_members s) = length (field_names s).
 Proof. apply: omap_length_eq => [?[[?|]?]] ?//. Qed.
@@ -439,44 +445,33 @@ Qed.
 
 (** get the named fields of a struct field list *)
 Definition named_fields (sl_fields : field_list) : list (var_name * layout) :=
-  foldr (λ '(n, ly) acc, match n with Some n => (n, ly) :: acc | _ => acc end) [] sl_fields.
+  omap (λ '(n, ly), (λ n, (n, ly)) <$> n) sl_fields.
 Lemma elem_of_named_fields x ly members :
   (x, ly) ∈ named_fields members ↔ (Some x, ly) ∈ members.
 Proof.
-  induction members as [ | [[y|] ly'] members IH].
-  - simpl. split; rewrite !elem_of_nil; done.
-  - simpl. rewrite !elem_of_cons IH. naive_solver.
-  - simpl. rewrite elem_of_cons. naive_solver.
+  rewrite list_elem_of_omap.
+  split.
+  - intros ([[|] ?] & ? & ?); naive_solver.
+  - eauto.
 Qed.
 Lemma elem_of_named_fields_field_names fields v ly :
   (v, ly) ∈ named_fields fields → v ∈ field_names fields.
 Proof.
-  induction fields as [ | [[]] fields IH]; simpl.
-  - rewrite elem_of_nil. done.
-  - rewrite elem_of_cons. intros [[= <- <-] | ? ]; apply elem_of_cons.
-    + eauto.
-    + right. by apply IH.
-  - done.
+  rewrite !list_elem_of_omap.
+  intros ([[|] ?] & ? & ?); naive_solver.
 Qed.
 Lemma named_fields_lookup_1 fields v ly i :
   named_fields fields !! i = Some (v, ly) → ∃ j, fields !! j = Some (Some v, ly).
 Proof.
-  induction fields as [ | [[]] fields IH] in i |-*; simpl; first done.
-  - destruct i as [ | i]; simpl.
-    + intros [= -> ->]. exists 0%nat. done.
-    + intros (j & ?)%IH. exists (S j). done.
-  - intros (j & ?)%IH. exists (S j). done.
+  intros (j & [[x | ] ly'] & Hlook & Hsome)%list_lookup_omap_inv; last done.
+  simpl in *. simplify_eq.
+  exists j. done.
 Qed.
 Lemma named_fields_lookup_2 fields v ly i :
   fields !! i = Some (Some v, ly) → ∃ j, named_fields fields !! j = Some (v, ly).
 Proof.
-  induction fields as [ | [[]] fields IH] in i |-*; simpl; first done.
-  - destruct i as [ | i]; simpl.
-    + intros [= -> ->]. exists 0%nat. done.
-    + intros (j & ?)%IH. exists (S j). done.
-  - destruct i as [ | i].
-    + intros [=].
-    + intros (j & ?)%IH. exists j. done.
+  intros Hlook.
+  eapply list_lookup_omap_Some; first done. done.
 Qed.
 (** A stronger version that gives us the concrete index, if there are no duplicate field names *)
 Lemma named_fields_lookup_field_index_of fields i x ly :
@@ -497,17 +492,9 @@ Proof.
       simpl. inversion Hnd; subst. intros Hlook. erewrite IH; done.
   - rewrite option_fmap_id. simpl in Hnd. apply IH. done.
 Qed.
-Lemma named_fields_eq fields :
-  named_fields fields = omap (λ '(name, ly), name ← name; Some(name, ly)) fields.
-Proof.
-  induction fields as [ | [[name | ] ly] fields IH]; simpl; first done.
-  - rewrite IH. done.
-  - done.
-Qed.
 Lemma named_fields_field_names_length fields :
   length (named_fields fields) = length (field_names fields).
 Proof.
-  rewrite named_fields_eq /field_names.
   apply omap_length_eq. intros ? [[] ] ? => //.
 Qed.
 

@@ -566,6 +566,11 @@ Section stratify.
     OwnedSubtype π E L false r r' ty (∃; P, ty) :=
     λ T, i2p (owned_subtype_ex_plain_t π E L ty r r' T).
 
+  Definition owned_subtype_ex_plain_t_refl π E L (ty : type rt) r1 r2 := owned_subtype_id π E L false r1 r2 (∃; P, ty).
+  Definition owned_subtype_ex_plain_t_refl_inst := [instance @owned_subtype_ex_plain_t_refl].
+  Global Existing Instance owned_subtype_ex_plain_t_refl_inst | 19.
+
+  (* Lower priority instance for subtyping from any type *)
   Lemma owned_subtype_ex_plain_t_strong {rt0 : RT} π E L (ty : type rt0) (ty2 : type rt) (r : rt0) (r' : X) T :
     (∃ r1, owned_subtype π E L false r r1 ty ty2 (λ L2,
     (prove_with_subtype E L2 false ProveDirect (P.(inv_P) π r1 r') (λ L1 _ R,
@@ -589,7 +594,7 @@ Section stratify.
       eauto with iFrame.
   Qed.
   Definition owned_subtype_ex_plain_t_strong_inst := [instance @owned_subtype_ex_plain_t_strong].
-  Global Existing Instance owned_subtype_ex_plain_t_strong_inst.
+  Global Existing Instance owned_subtype_ex_plain_t_strong_inst | 20.
 
   (*
   Lemma owned_subtype_unfold_ex_plain_t π E L (ty : type rt) (r : rt) (r' : X) T :

@@ -12,7 +12,7 @@ Lemma Vec_T_new_proof (π : thread_id) :
 Proof.
   Vec_T_new_prelude.
 
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.

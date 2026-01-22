@@ -49,7 +49,45 @@ Definition tuple5_ty `{!refinedrustGS Σ} (T0_rt T1_rt T2_rt T3_rt T4_rt : RT) :
 Definition core_marker_PhantomData_sls (T_st : syn_type) : struct_layout_spec :=
   mk_sls "core_marker_PhantomData" [] StructReprRust.
 Definition core_marker_PhantomData_st (T_st : syn_type) : syn_type := core_marker_PhantomData_sls T_st.
-Definition core_marker_PhantomData_rt (T_rt : RT) : RT :=
-  plist place_rfnRT [].
-Definition core_marker_PhantomData_ty `{!refinedrustGS Σ} (T_rt : RT) : spec_with 0 [T_rt] (type (core_marker_PhantomData_rt T_rt)) :=
-  spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt], struct_t (core_marker_PhantomData_sls (st_of T_ty MetaNone)) +[].
+
+Section def.
+  Context `{!refinedrustGS Σ}.
+
+  Program Definition core_marker_PhantomData_inv {T_rt : RT} (T_ty : type T_rt) : ex_inv_def (plist place_rfnRT []) unitRT :=
+    mk_ex_inv_def (λ  _ _ _, True)%I (λ _ _ _ _, True)%I (ty_lfts T_ty) (ty_wf_E T_ty) _ _ _ .
+  Next Obligation. intros. unfold TCNoResolve. apply _. Qed.
+  Next Obligation. eauto. Qed.
+  Next Obligation. simpl. intros ??. ex_plain_t_solve_shr. Qed.
+
+  Definition core_marker_PhantomData_rt (T_rt : RT) := unitRT.
+  Definition core_marker_PhantomData_ty (T_rt : RT) : spec_with 0 [T_rt] (type unitRT) :=
+    spec! ( *[]) : 0 | ( *[T_ty]) : [T_rt],
+      ex_plain_t _ _ (core_marker_PhantomData_inv T_ty) (struct_t (core_marker_PhantomData_sls (st_of T_ty MetaNone)) +[]).
+
+  Global Instance core_marker_PhantomData_inv_contractive {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeContractive (λ ty, core_marker_PhantomData_ty T_rt <TY> (T ty) <INST!>).
+  Proof.
+    intros ?.
+    apply ex_inv_def_contractive.
+    - unfold core_marker_PhantomData_inv. simpl.
+      constructor.
+      + simpl. apply _.
+      + solve_type_proper.
+      + solve_type_proper.
+    - unfold core_marker_PhantomData_sls. apply _.
+  Qed.
+  Global Instance core_marker_PhantomData_inv_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
+    TypeNonExpansive T →
+    TypeNonExpansive (λ ty, core_marker_PhantomData_ty T_rt <TY> (T ty) <INST!>).
+  Proof.
+    intros ?.
+    apply ex_inv_def_ne.
+    - unfold core_marker_PhantomData_inv. simpl.
+      constructor.
+      + simpl. apply _.
+      + solve_type_proper.
+      + solve_type_proper.
+    - unfold core_marker_PhantomData_sls. apply _.
+  Qed.
+End def.

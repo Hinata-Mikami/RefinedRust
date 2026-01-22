@@ -2409,22 +2409,6 @@ Section judgments.
   Class SubLtype (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     subltype_proof T : iProp_to_Prop (weak_subltype E L b r1 r2 lt1 lt2 T).
 
-  (** Owned value subtyping (is NOT compatible with shared references). *)
-  (* NOTE: For supporting subtyping of unsized types, parameterize by metadata *)
-  Definition owned_type_incl π {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) : iProp Σ :=
-    ⌜syn_type_size_eq (ty_syn_type ty1 MetaNone) (ty_syn_type ty2 MetaNone)⌝ ∗
-    (ty_sidecond ty1 -∗ ty_sidecond ty2) ∗
-    (∀ (v : val), v ◁ᵥ{π, MetaNone} r1 @ ty1 -∗ v ◁ᵥ{ π, MetaNone} r2 @ ty2).
-
-  Lemma type_incl_owned_type_incl π {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
-    type_incl r1 r2 ty1 ty2 -∗ owned_type_incl π r1 r2 ty1 ty2.
-  Proof.
-    iIntros "(%Hst & #$ & #Hv & _)".
-    iDestruct ("Hv" $! π _) as "$".
-    iPureIntro. setoid_rewrite Hst.
-    apply syn_type_size_eq_refl.
-  Qed.
-
   Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F,
     ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
@@ -2443,18 +2427,12 @@ Section judgments.
     iMod ("HT" with "[//] CTX HE HL") as "(#Hincl & ? & ?)".
     iExists L. iFrame.
     iModIntro. iApply bi.intuitionistically_intuitionistically_if. iModIntro.
-    by iApply type_incl_owned_type_incl.
+    iPoseProof (type_incl_owned_type_incl with "Hincl") as "Hincl'".
+    done.
   Qed.
   Global Instance owned_subtype_weak_subtype_inst π E L pers {rt1 rt2} (r1 : rt1) (r2 : rt2) ty1 ty2 :
     OwnedSubtype π E L pers r1 r2 ty1 ty2 | 1000 := λ T, i2p (owned_subtype_weak_subtype π E L pers r1 r2 ty1 ty2 T).
 
-  Lemma owned_type_incl_refl π {rt} (ty : type rt) (r : rt) :
-    ⊢ owned_type_incl π r r ty ty.
-  Proof.
-    iSplitR. { iPureIntro. intros ?. by eapply syn_type_size_eq_refl. }
-    iSplitR. { eauto. }
-    iIntros (v). eauto.
-  Qed.
   Lemma owned_subtype_id π E L step {rt} (r1 r2 : rt) (ty : type rt) T :
     ⌜r1 = r2⌝ ∗ T L ⊢ owned_subtype π E L step r1 r2 ty ty T.
   Proof.
@@ -2465,35 +2443,6 @@ Section judgments.
   (*Global Instance owned_subtype_id_inst π E L step {rt} (r1 r2 : rt) (ty : type rt) :*)
     (*OwnedSubtype π E L step r1 r2 ty ty | 5 := λ T, i2p (owned_subtype_id π E L step r1 r2 ty T).*)
 
-  Lemma owned_type_incl_incl_l π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
-    type_incl r1 r2 ty1 ty2 -∗
-    owned_type_incl π r2 r3 ty2 ty3 -∗
-    owned_type_incl π r1 r3 ty1 ty3.
-  Proof.
-    iIntros "(%Hst1 & Hsc1 & Hv1 & _) (%Hst2 & Hsc2 & Hv2)".
-    iSplit; last iSplitR "Hv1 Hv2".
-    - iPureIntro.
-      intros ? Ha1.
-      rewrite Hst1 in Ha1.
-      apply Hst2 in Ha1.
-      done.
-    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
-    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
-  Qed.
-  Lemma owned_type_incl_incl_r π {rt1 rt2 rt3} (ty1 : type rt1) (ty2 : type rt2) (ty3 : type rt3) r1 r2 r3 :
-    owned_type_incl π r1 r2 ty1 ty2 -∗
-    type_incl r2 r3 ty2 ty3 -∗
-    owned_type_incl π r1 r3 ty1 ty3.
-  Proof.
-    iIntros "(%Hst1 & Hsc1 & Hv1) (%Hst2 & Hsc2 & Hv2 & _)".
-    iSplit; last iSplitR "Hv1 Hv2".
-    - iPureIntro.
-      intros ? Ha1.
-      apply Hst1 in Ha1.
-      rewrite Hst2 in Ha1. done.
-    - iIntros "Hsc". iApply "Hsc2". by iApply "Hsc1".
-    - iIntros (v) "Hv". iApply "Hv2". by iApply "Hv1".
-  Qed.
   Lemma owned_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 π E L b T :
     subtype E L r1 r1' ty1 ty1' →
     owned_subtype π E L b r1' r2 ty1' ty2 T -∗

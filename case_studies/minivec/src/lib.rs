@@ -172,7 +172,7 @@ pub struct RawVec<T> {
     ptr: *const T,
     #[rr::field("Z.of_nat cap")]
     cap: usize,
-    #[rr::field("-[]")]
+    #[rr::field("tt")]
     _marker: PhantomData<T>,
 }
 
