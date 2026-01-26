@@ -38,7 +38,6 @@ Arguments shelve_hint : simpl never.
 (** [name_hint H P] tells the automation to give a name [H] to [P] upon introduction. *)
 Require Import Stdlib.Strings.String.
 Definition name_hint (n : string) {T} (P : T) : T := P.
-Global Typeclasses Opaque name_hint.
 Arguments name_hint : simpl never.
 
 (** * [discriminate_hint] *)
