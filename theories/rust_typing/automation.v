@@ -942,7 +942,7 @@ Global Hint Mode RelationIsIdentity + + : typeclass_instances.
 Ltac normalize_hook ::=
   rewrite /size_of_st;
   simplify_layout_normalize;
-  normalize_autorewrite.
+  normalize_autorewrite_tc.
 
 Ltac after_intro_hook H ::=
   try match type of H with

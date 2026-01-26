@@ -238,20 +238,6 @@ Proof.
   intros ? []. done.
 Qed.
 
-(** ** Additional normalization instances *)
-#[export] Hint Rewrite Nat.add_sub : lithium_rewrite.
-#[export] Hint Rewrite Z.mul_1_l Z.mul_1_r Nat.mul_1_l Nat.mul_1_r : lithium_rewrite.
-
-Hint Rewrite -> @list_lookup_fmap : lithium_rewrite.
-Hint Rewrite -> @list_fmap_compose : lithium_rewrite.
-
-Hint Rewrite @length_take @length_drop : lithium_rewrite.
-Hint Rewrite @lookup_total_drop : lithium_rewrite.
-Hint Rewrite Nat.min_l Nat.min_r using lia : lithium_rewrite.
-Hint Rewrite -> @take_take : lithium_rewrite.
-Hint Rewrite -> @drop_drop : lithium_rewrite.
-Hint Rewrite @lookup_take : lithium_rewrite.
-
 (** More automation for sets *)
 Lemma difference_union_subseteq (E F H H': coPset):
   E ⊆ F →
@@ -411,3 +397,6 @@ Global Instance simpl_exist_ghost_drop `{!typeGS Σ} {rt} (ty : type rt) `{Hg : 
 Proof.
   intros Ha. eauto.
 Qed.
+
+(** Extra normalization *)
+Hint Rewrite -> @sum_list_Z_with_app : lithium_rewrite.

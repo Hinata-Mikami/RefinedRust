@@ -501,6 +501,49 @@ Global Instance simpl_and_lookup_lookup_total {A} (l : list A) (i : nat) `{Inhab
   SimplBothRel (=) (l !! i) (Some (l !!! i)) (i < length l).
 Proof. rewrite /SimplBothRel list_lookup_alt. naive_solver lia. Qed.
 
+Global Instance simpl_both_sublist_drop {A} (l : list A) n :
+  SimplBothRel (sublist (A:=A)) (drop n l) l True.
+Proof.
+  split; first done.
+  intros. apply sublist_drop.
+Qed.
+Global Instance simpl_both_sublist_take {A} (l : list A) n :
+  SimplBothRel (sublist (A:=A)) (take n l) l True.
+Proof.
+  split; first done.
+  intros. apply sublist_take.
+Qed.
+Global Instance simpl_both_sublist_cons {A} (l1 l2 : list A) x :
+  SimplAndUnsafe (sublist (x :: l1) (x :: l2)) (λ T, sublist l1 l2 ∧ T).
+Proof.
+  intros T []. split; last done.
+  by apply sublist_skip.
+Qed.
+Global Instance simpl_both_sublist_nil_l {A} (l : list A) :
+  SimplBothRel (sublist (A:=A)) [] l True.
+Proof.
+  split; first done.
+  intros. apply sublist_nil_l.
+Qed.
+
+
+Global Instance simpl_and_sublist_app_l {A} (l1 k1 k2 : list A) :
+  SimplAndUnsafe (sublist (l1 ++ k1) (l1 ++ k2)) (λ T, k1 `sublist_of` k2  ∧ T).
+Proof.
+  intros T [].
+  split; last done.
+  eapply sublist_app; done.
+Qed.
+Global Instance simpl_and_sublist_app_r {A} (l1 l2 k1 : list A) :
+  SimplAndUnsafe (sublist (l1 ++ k1) (l2 ++ k1)) (λ T, l1 `sublist_of` l2 ∧ T).
+Proof.
+  intros T [].
+  split; last done.
+  eapply sublist_app; done.
+Qed.
+
+
+
 Global Instance simpl_learn_insert_some_len_impl {A} l i (x : A) :
   (* The false is important here as we learn additional information,
   but don't want to get stuck in an endless loop. *)

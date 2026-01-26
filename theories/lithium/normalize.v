@@ -32,7 +32,7 @@ Ltac normalize_autorewrite :=
 
 #[export] Hint Rewrite @drop_0 @take_ge using can_solve : lithium_rewrite.
 #[export] Hint Rewrite @take_app_le @drop_app_ge using can_solve : lithium_rewrite.
-#[export] Hint Rewrite @length_insert @length_app @length_fmap @length_rotate @length_replicate @length_drop : lithium_rewrite.
+#[export] Hint Rewrite length_seq length_seqZ @length_insert @length_app @length_fmap @length_rotate @length_replicate @length_drop @length_take : lithium_rewrite.
 #[export] Hint Rewrite <- @fmap_take @fmap_drop : lithium_rewrite.
 #[export] Hint Rewrite @list_insert_fold : lithium_rewrite.
 #[export] Hint Rewrite @list_insert_insert_eq : lithium_rewrite.
@@ -41,6 +41,10 @@ Ltac normalize_autorewrite :=
 #[export] Hint Rewrite <- @app_assoc @cons_middle : lithium_rewrite.
 #[export] Hint Rewrite @app_nil_r @rev_involutive : lithium_rewrite.
 #[export] Hint Rewrite <- @list_fmap_insert : lithium_rewrite.
+#[export] Hint Rewrite -> @list_lookup_fmap : lithium_rewrite.
+#[export] Hint Rewrite -> @list_fmap_compose : lithium_rewrite.
+#[export] Hint Rewrite -> @lookup_take : lithium_rewrite.
+#[export] Hint Rewrite -> @take_take @drop_drop : lithium_rewrite.
 #[export] Hint Rewrite Nat.sub_0_r Nat.add_0_r Nat.sub_diag : lithium_rewrite.
 #[export] Hint Rewrite Nat2Z.id Nat2Z.inj_add Nat2Z.inj_mul : lithium_rewrite.
 #[export] Hint Rewrite Z2Nat.inj_mul Z2Nat.inj_sub Z2Nat.id using can_solve : lithium_rewrite.
@@ -58,6 +62,20 @@ Ltac normalize_autorewrite :=
 
 #[export] Hint Rewrite -> Z2Nat.inj_0 : lithium_rewrite.
 #[export] Hint Rewrite -> Z.sub_0_r Z.add_0_r Z.sub_0_l Z.add_0_l : lithium_rewrite.
+#[export] Hint Rewrite -> Z.add_1_r Z.add_1_l Nat.add_1_r Nat.add_1_l : lithium_rewrite.
+#[export] Hint Rewrite Z.mul_1_l Z.mul_1_r Nat.mul_1_l Nat.mul_1_r : lithium_rewrite.
+
+#[export] Hint Rewrite -> Nat.min_l Nat.min_r using lia : lithium_rewrite.
+#[export] Hint Rewrite -> Nat.max_l Nat.max_r using lia : lithium_rewrite.
+#[export] Hint Rewrite -> Z.min_l Z.min_r using lia : lithium_rewrite.
+#[export] Hint Rewrite -> Z.max_l Z.max_r using lia : lithium_rewrite.
+
+#[export] Hint Rewrite Nat.add_sub : lithium_rewrite.
+
+#[export] Hint Rewrite @lookup_total_drop : lithium_rewrite.
+
+(** ** Additional normalization instances *)
+
 
 
 
@@ -89,55 +107,24 @@ Proof. done. Qed.
 Global Instance normalize_end A (x : A): Normalize false x x | 100.
 Proof. done. Qed.
 
-Lemma normalize_length_fmap A B (f : A → B) l r p `{!Normalize p (length l) r} :
-  Normalize true (length (f <$> l)) r.
-Proof. by rewrite length_fmap. Qed.
-Global Hint Extern 5 (Normalize _ (length (_ <$> _)) _) => class_apply normalize_length_fmap: typeclass_instances.
-Lemma normalize_insert_length A i (x : A) l r p `{!Normalize p (length l) r} :
-  Normalize true (length (<[i:=x]> l)) r.
-Proof. by rewrite length_insert. Qed.
-Global Hint Extern 5 (Normalize _ (length (<[_:=_]> _)) _) => class_apply normalize_insert_length : typeclass_instances.
-Lemma normalize_app_length A (l1 l2 : list A) r1 r2 r3 p1 p2 p3
-       `{!Normalize p1 (length l1) r1} `{!Normalize p2 (length l2) r2} `{!Normalize p3 (r1 + r2)%nat r3}:
-  Normalize true (length (l1 ++ l2)) r3.
-Proof. unfold Normalize in *; subst. by rewrite length_app. Qed.
-Global Hint Extern 5 (Normalize _ (length (_ ++ _)) _) => class_apply normalize_app_length : typeclass_instances.
-Lemma normalize_app_assoc A (l1 l2 l3 : list A) r1 r2 p1 p2
-       `{!Normalize p1 (l2 ++ l3) r1} `{!Normalize p2 (l1 ++ r1) r2}:
-  Normalize true ((l1 ++ l2) ++ l3) r2.
-Proof. unfold Normalize in *; subst. by rewrite -app_assoc. Qed.
-Global Hint Extern 5 (Normalize _ (((_ ++ _) ++ _)) _) => class_apply normalize_app_assoc : typeclass_instances.
-Lemma normalize_cons_middle A x (l1 l2 : list A) r1 r2 p1 p2
-       `{!Normalize p1 (x :: l2) r1} `{!Normalize p2 (l1 ++ r1) r2}:
-  Normalize true (l1 ++ [x] ++ l2) r2.
-Proof. unfold Normalize in *; subst. by rewrite -cons_middle. Qed.
-(* The hint extern is especially imporant for this lemma as otherwise
-tc search loops on goal of form l ++ [_]. *)
-Global Hint Extern 5 (Normalize _ (_ ++ [_] ++ _) _) => class_apply normalize_cons_middle : typeclass_instances.
-Lemma normalize_app_nil_r A (l : list A):
-  Normalize true (l ++ []) l.
-Proof. unfold Normalize in *; subst. by rewrite app_nil_r. Qed.
-Global Hint Extern 5 (Normalize _ (_ ++ []) _) => class_apply normalize_app_nil_r : typeclass_instances.
-Lemma normalize_rev_involutive A (l : list A):
-  Normalize true (rev (rev l)) l.
-Proof. unfold Normalize in *; subst. by rewrite rev_involutive. Qed.
-Global Hint Extern 5 (Normalize _ (rev (rev _)) _) => class_apply normalize_rev_involutive : typeclass_instances.
-Lemma normalize_minus_n_O n:
-  Normalize true (n - 0)%nat n.
-Proof. unfold Normalize in *; subst. by rewrite Nat.sub_0_r. Qed.
-Global Hint Extern 5 (Normalize _ (_ - 0)%nat _) => class_apply normalize_minus_n_O : typeclass_instances.
-Lemma normalize_rotate_length A n (l : list A) r p `{!Normalize p (length l) r} :
-  Normalize true (length (rotate n l)) r.
-Proof. by rewrite length_rotate. Qed.
-Global Hint Extern 5 (Normalize _ (length (rotate _ _)) _) => class_apply normalize_rotate_length : typeclass_instances.
-Lemma normalize_replicate_length A n (l : list A) :
-  Normalize true (length (replicate n l)) n.
-Proof. by rewrite length_replicate. Qed.
-Global Hint Extern 5 (Normalize _ (length (replicate _ _)) _) => class_apply normalize_replicate_length : typeclass_instances.
+(*Lemma normalize_take_S_r_total {A} `{!Inhabited A} (l : list A) (n : nat) :*)
+  (*CanSolve ((n < length l)%nat) →*)
+  (*Normalize true (take (S n) l) (take n l ++ [l !!! n]).*)
+(*Proof.*)
+  (*unfold CanSolve.*)
+  (*intros Hlt. apply take_S_r.*)
+  (*by apply list_lookup_lookup_total_lt.*)
+(*Qed.*)
+(*#[export] Hint Extern 5 (Normalize _ (take (S _) _) _) => class_apply normalize_take_S_r_total : typeclass_instances.*)
 
 Ltac normalize_tc :=
   first [
       lazymatch goal with
-      | |- ?a = ?b => change_no_check (NormalizeWalk true a b); solve [refine _]
+      | |- ?a = ?b => change_no_check (NormalizeWalk true a b); solve [typeclasses eauto]
       end
     | exact: eq_refl].
+
+Ltac normalize_autorewrite_tc :=
+  autounfold with lithium_rewrite;
+  autorewrite with lithium_rewrite;
+  normalize_tc.

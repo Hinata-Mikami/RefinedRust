@@ -691,9 +691,14 @@ Section sum_list.
   Lemma sum_list_Z_fmap_const l n :
     sum_list_Z ((λ _, n) <$> l) = length l * n.
   Proof. by apply sum_list_Z_fmap_same, Forall_true. Qed.
-End sum_list.
 
-Global Hint Rewrite -> @sum_list_Z_with_app : lithium_rewrite.
+  Lemma sum_list_Z_with_split (f : A → Z) i l :
+    sum_list_Z_with f l = sum_list_Z_with f (take i l) + sum_list_Z_with f (drop i l).
+  Proof.
+    induction l as [ | z l1 IH] in i |-*; destruct i as [ | i]; simpl; try lia.
+    rewrite -Z.add_assoc -IH //.
+  Qed.
+End sum_list.
 
 Definition max_list_Z_with {A} (f : A → Z) (def : Z) : list A → Z :=
   fix go l :=

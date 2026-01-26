@@ -249,3 +249,73 @@ Proof.
     + rewrite Permutation_swap IH; done.
     + rewrite list_elem_of_singleton. set_solver.
 Qed.
+
+Lemma list_difference_proper {A} `{!EqDecision A} :
+  Proper ((⊆) ==> (⊆) --> (⊆)) (list_difference (A:=A)).
+Proof.
+  intros l1 l2 Hincl x y Hincl'.
+  induction l1 as [ | z l1 IH] in l2, x, y, Hincl, Hincl' |-*; simpl; first set_solver.
+  case_decide as Hel.
+  - apply IH; set_solver.
+  - apply list_subseteq_cons_iff. split.
+    + apply list_elem_of_difference. set_solver.
+    + apply IH; set_solver.
+Qed.
+
+Lemma list_difference_incl {A} `{!EqDecision A} (l1 l2 : list A) :
+  list_difference l1 l2 ⊆ l1.
+Proof.
+  rewrite -{2}(list_difference_id l1 []); last set_solver.
+  eapply list_difference_proper; set_solver.
+Qed.
+
+Lemma list_difference_sublist {A} `{!EqDecision A} (l1 l2 : list A) :
+  sublist (list_difference l1 l2) l1.
+Proof.
+  induction l1 as [ | x l1 IH] in l2 |-*; simpl; first done.
+  case_decide as Hel.
+  - apply sublist_cons. apply IH.
+  - apply sublist_skip. apply IH.
+Qed.
+
+Lemma length_list_difference_incl_singleton {A} `{!EqDecision A} x (l1 : list A) :
+  x ∈ l1 →
+  (length (list_difference l1 [x]) ≤ (length l1 - 1))%nat.
+Proof.
+  induction l1 as [ | y l1 IH]; simpl; first done.
+  intros Hel. case_decide as Hel'.
+  - apply list_elem_of_singleton in Hel' as ->.
+    rewrite Nat.sub_0_r. apply sublist_length.
+    apply list_difference_sublist.
+  - simpl. ospecialize (IH _). { set_solver. }
+    enough (length l1 > 0) by lia.
+    destruct l1; simpl in *; last done.
+    set_solver.
+Qed.
+
+Lemma list_subseteq_permute {A} (l1 l2 : list A) :
+  NoDup l1 →
+  l1 ⊆ l2 →
+  ∃ l3, l2 ≡ₚ l1 ++ l3.
+Proof.
+  induction l1 as [ | x l1 IH] in l2 |-*.
+  { intros _ _. exists l2. done. }
+  intros Hnd [Hel Hsub]%list_subseteq_cons_iff.
+  apply NoDup_cons in Hnd as [Hnel Hnd].
+  apply elem_of_Permutation in Hel as (l3 & Hperm).
+  rewrite Hperm in Hsub.
+  opose proof (IH l3 _ _) as (l4 & Hperm').
+  { done. }
+  { set_solver. }
+  exists l4. rewrite Hperm Hperm'.
+  done.
+Qed.
+Lemma NoDup_list_subseteq_length_le {A} (l1 l2 : list A) :
+  NoDup l1 →
+  l1 ⊆ l2 →
+  (length l1 ≤ length l2)%nat.
+Proof.
+  intros Hnd Hincl.
+  opose proof (list_subseteq_permute l1 l2 Hnd Hincl) as (l3 & Hperm).
+  rewrite Hperm. rewrite length_app. lia.
+Qed.
