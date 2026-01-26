@@ -244,7 +244,30 @@ Class CorrectEq {A : Type} (eq : A → A → bool) := {
   correct_eq_refl :: Reflexive (λ a b, Is_true (eq a b));
   correct_eq_sym :: Symmetric (λ a b, Is_true (eq a b));
   correct_eq_trans :: Transitive (λ a b, Is_true (eq a b));
+  (* For convenience. Maybe get rid of this at a later point, or make it optional with an extension trait? *)
+  correct_eq_leibniz : ∀ x y, eq x y ↔ x = y;
 }.
+
+Section correct_eq.
+  Context {A : Type} {eq} `{!CorrectEq (A := A) eq}.
+
+  Local Set Default Proof Using "Type*".
+
+  Global Instance correct_eq_true_simpl a b :
+    SimplBothRel (=) (eq a b) true (a = b).
+  Proof.
+    unfold SimplBothRel. rewrite -correct_eq_leibniz Is_true_true//.
+  Qed.
+
+  Global Instance correct_eq_false_simpl a b :
+    SimplBothRel (=) (eq a b) false (a ≠ b).
+  Proof.
+    unfold SimplBothRel.
+    rewrite -correct_eq_leibniz -Is_true_false//.
+  Qed.
+End correct_eq.
+
+(* TODO: develop some abstraction for PartialOrd? Let's look at what things we need for that and if we can just lead that back to Ord. *)
 
 Class CorrectOrd {A : Type} (eq : A → A → bool) (cmp : A → A → ordering) := {
   correct_ord_correct_eq :: CorrectEq eq;
@@ -252,8 +275,6 @@ Class CorrectOrd {A : Type} (eq : A → A → bool) (cmp : A → A → ordering)
   correct_ord_lt_trans :: Transitive (ord_lt cmp);
   correct_ord_gt_trans :: Transitive (ord_gt cmp);
   correct_ord_antisym : ∀ x y, ord_lt cmp x y ↔ ord_gt cmp y x;
-  (* for convenience *)
-  correct_ord_eq_leibniz : ∀ x y, eq x y ↔ x = y;
 }.
 
 Section correct_ord.
@@ -294,19 +315,19 @@ Section correct_ord.
   Lemma correct_ord_eq_leibniz' x y : x =o{cmp} y ↔ x = y.
   Proof.
     rewrite -!correct_ord_eq_compat.
-    by rewrite correct_ord_eq_leibniz.
+    by rewrite correct_eq_leibniz.
   Qed.
   Lemma correct_ord_cmp_leibniz a b :
     cmp a b = Equal ↔ a = b.
   Proof.
     rewrite -correct_ord_eq_compat'.
-    apply correct_ord_eq_leibniz.
+    apply correct_eq_leibniz.
   Qed.
   Lemma correct_ord_cmp_equal_sym a b :
     cmp a b = Equal ↔ cmp b a = Equal.
   Proof.
     rewrite -!correct_ord_eq_compat'.
-    rewrite !correct_ord_eq_leibniz.
+    rewrite !correct_eq_leibniz.
     done.
   Qed.
 
@@ -432,7 +453,7 @@ Section correct_ord.
     destruct (cmp a b) eqn:Hab.
     all: try apply correct_ord_antisym in Hab; try rewrite Hab; try done.
     apply correct_ord_eq_sym in Hab. rewrite Hab.
-    apply correct_ord_eq_leibniz.
+    apply correct_eq_leibniz.
     by apply correct_ord_eq_compat.
   Qed.
   Lemma max_by_assoc a b c :
@@ -481,7 +502,7 @@ Section correct_ord.
       { unfold ord_eq in *. congruence. }
       apply correct_ord_eq_compat. done.
     - apply correct_ord_eq_compat in Heq.
-      apply correct_ord_eq_leibniz in Heq as <-.
+      apply correct_eq_leibniz in Heq as <-.
       done.
   Qed.
   Lemma max_by_l_1 a b :
@@ -507,7 +528,7 @@ Section correct_ord.
     destruct (cmp a b) eqn:Hab.
     all: try apply correct_ord_antisym in Hab; try rewrite Hab; try done.
     apply correct_ord_eq_sym in Hab. rewrite Hab.
-    apply correct_ord_eq_leibniz.
+    apply correct_eq_leibniz.
     by apply correct_ord_eq_compat.
   Qed.
   Lemma min_by_assoc a b c :
@@ -543,7 +564,7 @@ Section correct_ord.
       { unfold ord_eq in *. congruence. }
       apply correct_ord_eq_compat. done.
     - apply correct_ord_eq_compat in Heq.
-      apply correct_ord_eq_leibniz in Heq as <-.
+      apply correct_eq_leibniz in Heq as <-.
       done.
   Qed.
   Lemma min_by_r_1 a b :
@@ -612,7 +633,7 @@ Section correct_ord.
   Qed.
 End correct_ord.
 
-(** option *)
+(** Instance for [option]: defined here as it is also useful to define [max_list_cmp] and [min_list_cmp] *)
 Section option.
   Definition option_partial_eq {A} (A_partial_eq : A → A → bool) (a b : option A) : bool :=
     match a, b with
@@ -630,6 +651,9 @@ Section option.
       simpl. apply correct_eq_sym.
     - intros [] [] []; try done.
       simpl. apply correct_eq_trans.
+    - intros [] []; try done.
+      simpl. rewrite correct_eq_leibniz.
+      naive_solver.
   Qed.
 
   (** The canonical comparison used by Rust, making [None < Some x]. *)
@@ -663,9 +687,6 @@ Section option.
       apply (correct_ord_gt_trans x y z).
     - intros [x | ] [y | ]; simpl; try done.
       apply (correct_ord_antisym x y).
-    - intros [x | ] [y | ]; simpl; try done.
-      rewrite correct_ord_eq_leibniz.
-      naive_solver.
   Qed.
 
   Section props.
@@ -728,9 +749,6 @@ Section option.
       apply (correct_ord_gt_trans x y z).
     - intros [x | ] [y | ]; simpl; try done.
       apply (correct_ord_antisym x y).
-    - intros [x | ] [y | ]; simpl; try done.
-      rewrite correct_ord_eq_leibniz.
-      naive_solver.
   Qed.
 
   Section props.

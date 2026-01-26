@@ -40,6 +40,9 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 #[rr::exists("PEq_refl" : "∀ x : {xt_of Self}, {Self::PEq} x x")]
 #[rr::exists("PEq_sym" : "∀ x y : {xt_of Self}, {Self::PEq} x y → {Self::PEq} y x")]
 #[rr::exists("PEq_trans" : "∀ x y z: {xt_of Self}, {Self::PEq} x y → {Self::PEq} y z → {Self::PEq} x z")]
+/// This is a strong requirement. We should relax this in the future, once we have better setoid
+/// automation support in Rocq.
+#[rr::exists("PEq_leibniz" : "∀ a b, {Self::PEq} a b ↔ a = b")]
 pub trait Eq: PartialEq<Self> {
     // this method is used solely by #[derive(Eq)] to assert
     // that every component of a type implements `Eq`
@@ -91,9 +94,6 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 #[rr::exists("Ord_eq_trans" : "∀ a b c, a=o{{ {Ord} }} b → b =o{{ {Ord} }} c → a =o{{ {Ord} }} c")]
 #[rr::exists("Ord_gt_trans" : "∀ a b c, a>o{{ {Ord} }} b → b >o{{ {Ord} }} c → a >o{{ {Ord} }} c")]
 #[rr::exists("Ord_antisym" : "∀ a b, a <o{{ {Ord} }} b ↔ b >o{{ {Ord} }} a")]
-/// This is a strong requirement. We should relax this in the future, once we have better setoid
-/// automation support in Rocq.
-#[rr::exists("Ord_leibniz" : "∀ a b, a =o{{ {Ord} }} b ↔ a = b")]
 pub trait Ord: Eq + PartialOrd<Self> {
 
     #[rr::returns("{Ord} self other")]
@@ -167,16 +167,6 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     //if compare(&v2, &v1).is_lt() { v2 } else { v1 }
 }
 
-#[rr::instantiate("PEq" := "λ _ _, true")]
-impl PartialEq for () {
-    fn eq(&self, _other: &()) -> bool {
-        true
-    }
-    fn ne(&self, _other: &()) -> bool {
-        false
-    }
-}
-
 macro_rules! partial_eq_impl {
     ($($t:ty)*) => ($(
         #[rr::instantiate("PEq" := "λ a b, bool_decide (a = b)")]
@@ -197,14 +187,31 @@ macro_rules! eq_impl {
         #[rr::instantiate("PEq_refl" := #proof "intros ??; solve_goal")]
         #[rr::instantiate("PEq_sym" := #proof "intros ???; solve_goal")]
         #[rr::instantiate("PEq_trans" := #proof "intros ????; solve_goal")]
+        #[rr::instantiate("PEq_leibniz" := #proof "intros ???; solve_goal")]
         impl Eq for $t { }
     )*)
 }
 
 eq_impl! {
-    () bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128
+    bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128
         //char
 }
+
+
+#[rr::instantiate("PEq" := "λ _ _, true")]
+impl PartialEq for () {
+    fn eq(&self, _other: &()) -> bool {
+        true
+    }
+    fn ne(&self, _other: &()) -> bool {
+        false
+    }
+}
+#[rr::instantiate("PEq_refl" := #proof "intros ??; solve_goal")]
+#[rr::instantiate("PEq_sym" := #proof "intros ???; solve_goal")]
+#[rr::instantiate("PEq_trans" := #proof "intros ????; solve_goal")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ? [] []; solve_goal")]
+impl Eq for () { }
 
 #[rr::instantiate("POrd" := "λ a b, Some Equal")]
 #[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
@@ -219,7 +226,6 @@ impl PartialOrd for () {
 #[rr::instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
 #[rr::instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]
 #[rr::instantiate("Ord_gt_trans" := #proof "intros ????; solve_goal")]
-#[rr::instantiate("Ord_leibniz" := #proof "intros ? [] []; solve_goal")]
 #[rr::instantiate("Ord_antisym" := #proof "intros ? [] []; unfold ord_lt, ord_gt; naive_solver")]
 impl Ord for () {
     fn cmp(&self, _other: &()) -> Ordering {
@@ -254,7 +260,6 @@ macro_rules! ord_impl {
         #[rr::instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
         #[rr::instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]
         #[rr::instantiate("Ord_gt_trans" := #proof "intros ????; solve_goal")]
-        #[rr::instantiate("Ord_leibniz" := #proof "intros ???; solve_goal")]
         #[rr::instantiate("Ord_antisym" := #proof "intros ???; solve_goal")]
         impl Ord for $t {
             fn cmp(&self, other: &Self) -> Ordering {
@@ -340,6 +345,52 @@ impl PartialOrd for bool {
 }
 */
 
+// & pointers
+/*
+#[rr::instantiate("PEq" := "{A::PEq}")]
+impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
+where A: PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+    fn ne(&self, other: &&B) -> bool {
+        PartialEq::ne(*self, *other)
+    }
+}
+impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
+where
+    A: PartialOrd<B>,
+{
+    fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
+        PartialOrd::partial_cmp(*self, *other)
+    }
+    fn lt(&self, other: &&B) -> bool {
+        PartialOrd::lt(*self, *other)
+    }
+    fn le(&self, other: &&B) -> bool {
+        PartialOrd::le(*self, *other)
+    }
+    fn gt(&self, other: &&B) -> bool {
+        PartialOrd::gt(*self, *other)
+    }
+    fn ge(&self, other: &&B) -> bool {
+        PartialOrd::ge(*self, *other)
+    }
+}
+impl<A: ?Sized> Ord for &A
+where
+    A: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(*self, *other)
+    }
+}
+impl<A: ?Sized> Eq for &A where A: Eq {}
+*/
+
+
+// Option
 
 // Note: We cannot use `bool_decide` here, as we don't know that `T` is Eq, i.e. that the equality is correct.
 #[rr::instantiate("PEq" := "λ a b, match a, b with | Some a, Some b => {T::PEq} a b | None, None => true | _, _ => false end")]
@@ -361,6 +412,7 @@ impl<T: PartialEq> PartialEq for Option<T> {
 #[rr::instantiate("PEq_refl" := #proof "intros ??? ?[]; simpl; by try apply Eq_PEq_refl")]
 #[rr::instantiate("PEq_sym" := #proof "intros ??? ? [] []; simpl; by try apply Eq_PEq_sym")]
 #[rr::instantiate("PEq_trans" := #proof "intros ??? ? [] [] []; simpl; by try apply Eq_PEq_trans")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ? [a | ] [b | ]; simpl; [etrans; first apply Eq_PEq_leibniz | ..]; naive_solver")]
 impl<T: Eq> Eq for Option<T> { }
 
 #[rr::instantiate("POrd" := "option_partial_cmp {T::POrd}")]
@@ -384,7 +436,6 @@ impl<T: PartialOrd> PartialOrd for Option<T> {
 #[rr::instantiate("Ord_lt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_lt_trans")]
 #[rr::instantiate("Ord_eq_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_eq_trans")]
 #[rr::instantiate("Ord_gt_trans" := #proof "intros ?????? [] [] []; simpl; by try apply Ord_Ord_gt_trans")]
-#[rr::instantiate("Ord_leibniz" := #proof "intros ?????? [a | ] [b | ]; unfold ord_eq; simpl; [etrans; first apply Ord_Ord_leibniz | ..]; naive_solver")]
 #[rr::instantiate("Ord_antisym" := #proof "intros ?????? [] []; simpl; by try apply Ord_Ord_antisym")]
 impl<T: Ord> Ord for Option<T> {
     #[rr::trust_me]
