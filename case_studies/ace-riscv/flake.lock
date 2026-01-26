@@ -3,11 +3,11 @@
     "ACE-RISCV": {
       "flake": false,
       "locked": {
-        "lastModified": 1761036542,
-        "narHash": "sha256-ufzEeAdbF2OLOT5vN8KstjYiwiiDnM6F9Rl4LKxsiM0=",
+        "lastModified": 1767862702,
+        "narHash": "sha256-hVyPFa88fHbz+uTz6gfkstR3mkcjT1OTMC98hs0tdFo=",
         "owner": "IBM",
         "repo": "ACE-RISCV",
-        "rev": "b831232f1ae31162d4cb03b8785154b7942a7406",
+        "rev": "24be7b6ce0aeabdf3c5120ff819992fdf2688213",
         "type": "github"
       },
       "original": {
@@ -18,11 +18,11 @@
     },
     "crane": {
       "locked": {
-        "lastModified": 1765145449,
-        "narHash": "sha256-aBVHGWWRzSpfL++LubA0CwOOQ64WNLegrYHwsVuVN7A=",
+        "lastModified": 1769287525,
+        "narHash": "sha256-gABuYA6BzoRMLuPaeO5p7SLrpd4qExgkwEmYaYQY4bM=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "69f538cdce5955fcd47abfed4395dc6d5194c1c5",
+        "rev": "0314e365877a85c9e5758f9ea77a9972afbb4c21",
         "type": "github"
       },
       "original": {
@@ -51,11 +51,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1764983851,
-        "narHash": "sha256-y7RPKl/jJ/KAP/VKLMghMgXTlvNIJMHKskl8/Uuar7o=",
+        "lastModified": 1769318308,
+        "narHash": "sha256-Mjx6p96Pkefks3+aA+72lu1xVehb6mv2yTUUqmSet6Q=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "d9bc5c7dceb30d8d6fafa10aeb6aa8a48c218454",
+        "rev": "1cd347bf3355fce6c64ab37d3967b4a2cb4b878c",
         "type": "github"
       },
       "original": {
@@ -96,11 +96,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1765161692,
-        "narHash": "sha256-XdY9AFzmgRPYIhP4N+WiCHMNxPoifP5/Ld+orMYBD8c=",
+        "lastModified": 1769396217,
+        "narHash": "sha256-YNzh46h8fby49yOIB40lNoQ9ucVoXe1bHVwkZ4AwGe0=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "7ed7e8c74be95906275805db68201e74e9904f07",
+        "rev": "e9bcd12156a577ac4e47d131c14dc0293cc9c8c2",
         "type": "github"
       },
       "original": {
@@ -112,7 +112,7 @@
     "rust-targets": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-KdFR3kx0HGzyoHXpF+kT82b2dE8Z+jti8kwSEMyy6hM=",
+        "narHash": "sha256-j3tFcsW5C9iJKe4uf91cS1hxletAz0ZTHa6qO4AslLg=",
         "type": "file",
         "url": "https://raw.githubusercontent.com/oxalica/rust-overlay/refs/heads/master/manifests/targets.nix"
       },
