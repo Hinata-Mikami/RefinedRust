@@ -56,6 +56,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
     //   (i.e. a surrounding function's late bounds, and the regions of the captures)
     // - local regions, containing local early/late regions The last local region always seems to be the local
     //   function lifetime.
+    // Note: We handle external regions separately from this function just for closures.
     let first_late_bound = num_universal_regions - 1 - num_late_bounds;
     let first_early_bound = first_late_bound - num_early_bounds;
 

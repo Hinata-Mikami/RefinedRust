@@ -255,10 +255,10 @@ Ltac liExist protect :=
   | |- envs_entails _ (bi_exist _) => notypeclasses refine (tac_do_exist _ _ _ _)
   | _ => idtac
   end;
-  lazymatch goal with
+  match goal with
     | |- @ex ?A ?P =>
-        (*simpl (A) at 1*)
-      let B := eval simpl in A in
+      let B := eval unfold name_hint in A in
+      let B := eval simpl in B in
       change_no_check (@ex B P)
     | |- _ => idtac
   end;

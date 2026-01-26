@@ -280,7 +280,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         info!("region substitution: {region_substitution:?}");
 
         // fix the regions in the closure args (esp the captures) and add the regions for the
-        // captures to the region map.
+        // captures to the region map (i.e., external regions).
         let (fixed_closure_arg_ty, upvars_tys, input_tuple_ty, maybe_outer_lifetime) =
             Self::compute_closure_meta(
                 clos_args,
@@ -435,6 +435,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         Self::dump_body(body);
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
+        info!("Function type: {ty:?}");
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
@@ -457,6 +458,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let num_late_bounds = sig.bound_vars().len() as u32;
         let num_early_bounds =
             params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+
         let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
             env,
             params,

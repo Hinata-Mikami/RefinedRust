@@ -8,7 +8,7 @@ use std::fmt;
 use derive_more::Display;
 
 use crate::coq::term;
-use crate::fmt_list;
+use crate::{fmt_list, model};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Kind {
@@ -41,6 +41,13 @@ impl Binder {
     #[must_use]
     pub fn new<I: Into<term::Type>>(name: Option<String>, ty: I) -> Self {
         Self::Default(name, ty.into())
+    }
+
+    #[must_use]
+    pub fn new_with_name_hint<I: Into<term::Type>>(name: String, ty: I) -> Self {
+        let ty = ty.into();
+        let ty = model::Term::WithName(Box::new(term::RocqTerm::Type(Box::new(ty))), name.clone());
+        Self::Default(Some(name), term::RocqType::Term(Box::new(term::RocqTerm::UserDefined(ty))))
     }
 
     #[must_use]

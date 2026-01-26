@@ -358,8 +358,10 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                 } else {
                     // introduce an implicit quantifier and use xt
                     let ex_name = inv_var.local.clone();
-                    existentials
-                        .push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
+                    existentials.push(coq::binder::Binder::new_with_name_hint(
+                        ex_name.clone(),
+                        coq::term::RocqType::Infer,
+                    ));
                     var_invariants.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(format!(
                         "{binder_name} = ($# {ex_name})"
                     )))));
@@ -379,7 +381,8 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             && let Some(binder_name) = rfn_binder_names.get(&name)
         {
             let ex_name = iterator_info.binder_name.clone();
-            existentials.push(coq::binder::Binder::new(Some(ex_name.clone()), coq::term::RocqType::Infer));
+            existentials
+                .push(coq::binder::Binder::new_with_name_hint(ex_name.clone(), coq::term::RocqType::Infer));
             var_invariants.push(coq::iris::IProp::Pure(Box::new(coq::term::Term::Literal(format!(
                 "{binder_name} = ($# {ex_name})"
             )))));
@@ -391,8 +394,8 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             iterator_init_var = Some(name.clone());
 
             // history
-            existentials.push(coq::binder::Binder::new(
-                Some(iterator_info.history_name.clone()),
+            existentials.push(coq::binder::Binder::new_with_name_hint(
+                iterator_info.history_name.clone(),
                 coq::term::RocqType::Infer,
             ));
             var_invariants.push(coq::iris::IProp::Atom(format!(
