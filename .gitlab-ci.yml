@@ -13,7 +13,7 @@ stages: [ nix-cache, build, lint, tests ]
 # Those variables can be generated with: `nix-store --generate-binary-cache-key ci_nix_store priv.pem pub.pem`
 .nix:
   <<: *upstream_only
-  image: nixos/nix:2.32.1
+  image: nixos/nix:2.33.1
   interruptible: true
   tags: [ fp ]
 
