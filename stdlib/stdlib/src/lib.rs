@@ -23,5 +23,6 @@
 #![rr::export_include("index")]
 #![rr::export_include("vec")]
 #![rr::export_include("arithops")]
+#![rr::export_include("num")]
 #![rr::export_include("cmp")]
 #![rr::export_include("range")]

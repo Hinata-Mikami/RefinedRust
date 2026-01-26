@@ -285,6 +285,10 @@
               withStdlib = false;
             }
             {
+              pname = "stdlib-num";
+              src = ./stdlib/num;
+            }
+            {
               pname = "stdlib-spin";
               src = ./stdlib/spin;
               libDeps = with packages; [stdlib-option];
