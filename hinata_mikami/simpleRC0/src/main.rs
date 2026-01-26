@@ -5,19 +5,19 @@
 // sub functions
 #[rr::only_spec]
 #[rr::params("x")]
-#[rr::args("x" @ "(T_ty)")]
-#[rr::returns("x" @ "(box T_ty)")]
-fn box_new<T>(t: T) -> Box<T> {
+#[rr::args("x" @ "(RcInner_inv_t <INST!>)")] // RRにより自動生成された型
+#[rr::returns("x" @ "(box (RcInner_inv_t <INST!>))")]
+fn box_new(t: RcInner) -> Box<RcInner> {
     Box::new(t)
 }
 
 #[rr::only_spec]
 #[rr::params("x")]
-#[rr::args("x" @ "(box T_ty)")]
+#[rr::args("x" @ "(box (RcInner_inv_t <INST!>))")]
 #[rr::exists("l")]
 #[rr::returns("l")]
-#[rr::ensures(#type "l" : "x" @ "T_ty")] 
-fn box_into_raw<T>(b: Box<T>) -> *mut T {
+#[rr::ensures(#type "l" : "x" @ "(RcInner_inv_t <INST!>)")] 
+fn box_into_raw(b: Box<RcInner>) -> *mut RcInner {
     Box::into_raw(b)
 }
 
@@ -25,9 +25,9 @@ fn box_into_raw<T>(b: Box<T>) -> *mut T {
 #[rr::only_spec]
 #[rr::params("l", "x")]
 #[rr::args("l")]
-#[rr::requires(#type "l" : "x" @ "T_ty")] 
-#[rr::returns("x")]
-unsafe fn box_from_raw<T>(ptr: *mut T) -> Box<T> {
+#[rr::requires(#type "l" : "x" @ "(RcInner_inv_t <INST!>)")] 
+#[rr::returns("x" @ "(box (RcInner_inv_t <INST!>))")]
+unsafe fn box_from_raw(ptr: *mut RcInner) -> Box<RcInner> {
     Box::from_raw(ptr)
 }
 
@@ -41,9 +41,9 @@ struct RcInner {
 }
 
 // ユーザが使用するスマートポインタ
-#[rr::refined_by("l")]
-#[rr::exists("c")]
-#[rr::invariant(#type "l" : "c" @ "int i32")]
+#[rr::refined_by("l" : "loc")]
+#[rr::exists("c")] 
+#[rr::invariant(#type "l" : "c" @ "(RcInner_inv_t <INST!>)")]
 struct SimpleRC{
     #[rr::field("l")]
     ptr: *mut RcInner,
@@ -53,21 +53,20 @@ impl SimpleRC {
     
     #[rr::exists("l")]
     #[rr::returns("l")]
-    #[rr::ensures(#type "l" : "1" @ "int i32")]
+    #[rr::ensures(#type "l" : "1" @ "(RcInner_inv_t <INST!>)")]
     fn new() -> Self {
 
-        let inner = RcInner {
-            count: 1,
-        };
-        
+        let inner = RcInner { count: 1,};
         let boxed = box_new(inner);
-
         let ptr = box_into_raw(boxed);
 
         return SimpleRC { ptr };
     }
 
     // 現在の参照カウントを取得
+    #[rr::params("self")]
+    #[rr::args("self")] 
+    // #[rr::returns("c")]
     pub fn rc_count(&self) -> usize {
         return unsafe { (*self.ptr).count }
     }

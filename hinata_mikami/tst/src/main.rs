@@ -2,6 +2,15 @@
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 
+// all OK
+
+#[rr::params("x")]
+#[rr::args("x")]        // x : int I32
+#[rr::returns("x")]
+fn id_int(x : i32) -> i32{
+    x
+}
+
 #[rr::params("x")]
 #[rr::args("x")]        // x : T_ty
 #[rr::returns("x")]
@@ -11,7 +20,7 @@ fn id<T>(x : T) -> T{
 
 // sub functions
 #[rr::only_spec]
-#[rr::params("x")]      // x : int I32
+#[rr::params("x")]      // x : Int I32
 #[rr::args("x" @ "int I32")]
 #[rr::returns("x" @ "(box (int I32))")]
 fn box_new(t: i32) -> Box<i32> {
@@ -23,7 +32,7 @@ fn box_new(t: i32) -> Box<i32> {
 #[rr::args("x" @ "(box (int I32))")]    // x : (box (int I32))
 #[rr::exists("l")]
 #[rr::returns("l")]
-#[rr::ensures(#type "l" : "x" @ "int i32")] 
+#[rr::ensures(#type "l" : "x" @ "int I32")] 
 fn box_into_raw(b: Box<i32>) -> *mut i32 {
     Box::into_raw(b)
 }
@@ -36,6 +45,7 @@ fn box_into_raw(b: Box<i32>) -> *mut i32 {
 unsafe fn box_from_raw(ptr: *mut i32) -> Box<i32> {
     Box::from_raw(ptr)
 }
+
 
 #[rr::params("x")]
 #[rr::args("x" @ "int i32")]
