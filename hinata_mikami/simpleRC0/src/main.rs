@@ -41,9 +41,12 @@ struct RcInner {
 }
 
 // ユーザが使用するスマートポインタ
-#[rr::refined_by("l" : "loc")]
 #[rr::exists("c")] 
+#[rr::refined_by("l" : "loc", "c" : "Z")]
 #[rr::invariant(#type "l" : "c" @ "(RcInner_inv_t <INST!>)")]
+// #[rr::refined_by("l" : "loc")]
+// #[rr::exists("c")]
+// #[rr::invariant(#type "l" : "c" @ "(RcInner_inv_t <INST!>)")]
 struct SimpleRC{
     #[rr::field("l")]
     ptr: *mut RcInner,
@@ -51,9 +54,11 @@ struct SimpleRC{
 
 impl SimpleRC {
     
-    #[rr::exists("l")]
-    #[rr::returns("l")]
-    #[rr::ensures(#type "l" : "1" @ "(RcInner_inv_t <INST!>)")]
+    // #[rr::exists("l")]
+    // #[rr::args("l")]
+    #[rr::exists("l", "c")]
+    #[rr::returns("l", "c")]
+    #[rr::ensures("c = 1")]
     fn new() -> Self {
 
         let inner = RcInner { count: 1,};
@@ -65,7 +70,7 @@ impl SimpleRC {
 
     // 現在の参照カウントを取得
     #[rr::params("self")]
-    #[rr::args("self")] 
+    #[rr::args("self")]
     // #[rr::returns("c")]
     pub fn rc_count(&self) -> usize {
         return unsafe { (*self.ptr).count }
