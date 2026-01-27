@@ -14,7 +14,9 @@
     };
   });
 
-  rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
+  rocqPackages = prev.rocqPackages.overrideScope (_: prev: rec {
+    dune = ocamlPackages.dune_3;
+
     mkRocqDerivation = args:
       prev.mkRocqDerivation ({
           preBuild = ''
@@ -23,8 +25,10 @@
         }
         // args);
 
-    rocq-core =
-      pkgs.rocq-core_9_1.override {customOCamlPackages = ocamlPackages;};
+    rocq-core = pkgs.rocq-core_9_1.override {
+      inherit dune;
+      customOCamlPackages = ocamlPackages;
+    };
 
     # NOTE: Remove `equations` when available in Nix's `RocqPackages`
     equations = pkgs.rocqPackages.mkRocqDerivation {
