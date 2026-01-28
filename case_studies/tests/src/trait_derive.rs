@@ -16,6 +16,7 @@ enum Color {
 #[rr::derive_instantiate("PEq_refl" := #proof "intros ??; solve_goal")]
 #[rr::derive_instantiate("PEq_sym" := #proof "intros ???; solve_goal")]
 #[rr::derive_instantiate("PEq_trans" := #proof "intros ????; solve_goal")]
+#[rr::derive_instantiate("PEq_leibniz" := #proof "intros ???; solve_goal")]
 // POrd
 #[rr::derive_instantiate("POrd" := "λ a b, Some (match a, b with | Sz1, Sz2 => Less | Sz2, Sz1 => Greater | _, _ => Equal end)")]
 #[rr::derive_instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
@@ -25,7 +26,6 @@ enum Color {
 #[rr::derive_instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
 #[rr::derive_instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]
 #[rr::derive_instantiate("Ord_gt_trans" := #proof "intros ????; solve_goal")]
-#[rr::derive_instantiate("Ord_leibniz" := #proof "intros ???; solve_goal")]
 #[rr::derive_instantiate("Ord_antisym" := #proof "intros ???; solve_goal")]
 enum Sizes {
     #[rr::pattern("Sz1")]

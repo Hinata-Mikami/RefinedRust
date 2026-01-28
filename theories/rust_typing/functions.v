@@ -223,12 +223,13 @@ Section call.
       (* TODO: do something to ensure invariants are closed before *)
       ⌜mask = ⊤⌝ ∗
       (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) -∗
-      ∃ (Heq : lfts = length eκs),
-      ∃ tys,
+      (*∃ (Heq : lfts = length eκs),*)
+      ∃ (κs : prod_vec lft lfts) tys,
       (* TODO: currently we instantiate evars very early to make the xt injection work. maybe move that down once we have a better design *)
       li_tactic (ensure_evars_instantiated_goal (pzipl _ tys) etys) (λ _,
+      ⌜take (length eκs) (tup_to_list _ κs) = eκs⌝ ∗
       ∃ x,
-      let κs := (rew <- Heq in eκs') in
+      (*let κs := (rew <- Heq in eκs') in*)
       let fps := (fp κs tys).(fn_p) x in
       (* ensure that type variable evars have been instantiated now *)
       (* show typing for the function's actual arguments. *)
@@ -257,8 +258,8 @@ Section call.
     simpl. iIntros "HT (-> & %fn & -> & He & %Halg & Hfn) Htys" (Φ) "#CTX #HE HL Hf HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
     iDestruct "HT" as (mask) "(Hna & -> & -> & HT) /=".
-    iDestruct ("HT" with "Htys") as "(%Heq & %stys & %x & HP)". subst lfts.
-    set (aκs := list_to_tup eκs).
+    iDestruct ("HT" with "Htys") as "(%aκs & %stys & %Heq & %x & HP)".
+    (*set (aκs := list_to_tup eκs).*)
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).
     iApply fupd_wpe. iMod ("HP" with "[] [] [] CTX HE HL") as "(%L1 & % & %R2 & >(Hvl & R2) & HL & HT)"; [done.. | ].

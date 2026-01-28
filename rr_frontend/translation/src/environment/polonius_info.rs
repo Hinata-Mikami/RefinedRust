@@ -244,9 +244,19 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         &self,
         point: facts::PointIndex,
     ) -> Vec<(facts::Region, facts::Region)> {
+        let root_location = mir::Location {
+            block: mir::BasicBlock::from_u32(0),
+            statement_index: 0,
+        };
+        let root_point = self.interner.get_point_index(&facts::Point {
+            location: root_location,
+            typ: facts::PointType::Mid,
+        });
+
         let mut constraints = Vec::new();
         for (r1, r2, p) in &self.borrowck_in_facts.subset_base {
-            if *p == point {
+            // only if the root doesn't also contain the constraint
+            if *p == point && !self.borrowck_in_facts.subset_base.contains(&(*r1, *r2, root_point)) {
                 constraints.push((*r1, *r2));
             }
         }

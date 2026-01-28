@@ -103,6 +103,17 @@ impl EarlyLateRegionMap<'_> {
             self.external_regions.push(r.get_region());
         }
     }
+
+    /// Fixup: insert a mapping for `from`, mapping to the lifetime of `to`.
+    pub(crate) fn insert_vid_fixup(&mut self, from: facts::Region, to: facts::Region) {
+        if from == to {
+            return;
+        }
+
+        assert!(!self.region_names.contains_key(&from));
+        let to_name = &self.region_names[&to];
+        self.region_names.insert(from, to_name.to_owned());
+    }
 }
 
 /// Format the Coq representation of an atomic region.

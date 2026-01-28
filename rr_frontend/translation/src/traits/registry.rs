@@ -1100,6 +1100,46 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         }
     }
 
+    /// Get the expected signature for a trait impl function.
+    pub(crate) fn get_expected_sig_for_impl_fn(
+        &self,
+        did: DefId,
+    ) -> Result<ty::PolyFnSig<'tcx>, TranslationError<'tcx>> {
+        let impl_did = self.env.tcx().impl_of_assoc(did).ok_or(Error::NotATraitMethod(did))?;
+
+        let subject = self.env.tcx().impl_subject(impl_did).skip_binder();
+        let ty::ImplSubject::Trait(trait_ref) = subject else {
+            return Err(Error::NotATraitImpl(impl_did).into());
+        };
+
+        let assoc_item = self.env.tcx().associated_item(did);
+        let trait_item_did = assoc_item.trait_item_def_id.unwrap();
+
+        let impl_ty = self.env.tcx().type_of(did).instantiate_identity();
+        let ty::TyKind::FnDef(_, impl_item_params) = impl_ty.kind() else { unreachable!() };
+
+        let item_ty = self.env.tcx().type_of(trait_item_did).instantiate_identity();
+        let ty::TyKind::FnDef(_, item_params) = item_ty.kind() else { unreachable!() };
+
+        trace!("impl_item_params = {impl_item_params:?}");
+        trace!("item_params = {item_params:?}");
+        trace!("trait ref args = {:?}", trait_ref.args);
+
+        //let trait_generics = self.env.tcx().generics_of(trait_ref.def_id);
+        let impl_generics = self.env.tcx().generics_of(impl_did);
+        //item_params.iter().map(|x| { } );
+
+        //ty::GenericArgKind
+        let new_args = trait_ref.args.iter().chain(impl_item_params.iter().skip(impl_generics.count()));
+        let method_args = self.env.tcx().mk_args_from_iter(new_args);
+        trace!("method args = {method_args:?}");
+
+        let subst_fn_ty = self.env.tcx().mk_ty_from_kind(ty::TyKind::FnDef(trait_item_did, method_args));
+        let fn_sig = subst_fn_ty.fn_sig(self.env.tcx());
+
+        Ok(fn_sig)
+    }
+
     /// Get information on a trait implementation and create its Radium encoding.
     /// Also return the trait impls this impl depends on.
     pub(crate) fn get_trait_impl_info(
@@ -1486,6 +1526,7 @@ pub(crate) struct RegionUnifier<'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
     instantiation: BTreeMap<ty::RegionVid, ty::Region<'tcx>>,
     term_order: Vec<ty::RegionVid>,
+    ignore_aliases: bool,
 }
 impl<'tcx> RegionUnifier<'tcx> {
     pub(crate) const fn new(tcx: ty::TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Self {
@@ -1494,7 +1535,12 @@ impl<'tcx> RegionUnifier<'tcx> {
             typing_env,
             instantiation: BTreeMap::new(),
             term_order: Vec::new(),
+            ignore_aliases: false,
         }
+    }
+
+    pub(crate) const fn ignore_aliases(&mut self) {
+        self.ignore_aliases = true;
     }
 
     pub(crate) fn get_result(self) -> (Vec<ty::RegionVid>, BTreeMap<ty::RegionVid, ty::Region<'tcx>>) {
@@ -1509,6 +1555,14 @@ impl<'tcx> RegionBiFolder<'tcx> for RegionUnifier<'tcx> {
 
     fn typing_env(&self) -> &ty::TypingEnv<'tcx> {
         &self.typing_env
+    }
+
+    fn examine_ty(&mut self, ty1: ty::Ty<'tcx>, ty2: ty::Ty<'tcx>) -> bool {
+        if !self.ignore_aliases {
+            return true;
+        }
+
+        !matches!(ty1.kind(), ty::TyKind::Alias(_, _)) && !matches!(ty2.kind(), ty::TyKind::Alias(_, _))
     }
 
     fn map_regions(&mut self, r1: ty::Region<'tcx>, r2: ty::Region<'tcx>) {

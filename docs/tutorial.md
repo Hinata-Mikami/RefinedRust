@@ -278,15 +278,15 @@ Shelved goal remaining in  "EvenInt_add_two" !
 Goal:
 ....
 ---------
-(Inhabited (Zeven (x + 1 + 1)))
+(Inhabited (Zeven (Z.succ (Z.succ x))))
 ```
-This message says that RefinedRust's solvers were not able to prove that `x + 1 + 1` is even again!
+This message says that RefinedRust's solvers were not able to prove that `Z.succ (Z.succ x)` is even again!
 At this point we have to step in manually.
 
-In this case, after `sidecond_hammer`, the sidecondition `Zeven (x + 1 + 1)` is still remaining.
+In this case, after `sidecond_hammer`, the sidecondition `Zeven (Z.succ (Z.succ x))` is still remaining.
 Luckily, we know that `Zeven x`, so we can add the following line to solve it:
 ```
-{ rewrite -Z.add_assoc; apply Zeven_plus_Zeven; solve_goal. }
+{ by apply Zeven_Sn, Zodd_Sn. }
 ```
 The final proof script should look like this:
 ```
@@ -307,7 +307,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { rewrite -Z.add_assoc; apply Zeven_plus_Zeven; solve_goal. }
+  { by apply Zeven_Sn, Zodd_Sn. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 ```

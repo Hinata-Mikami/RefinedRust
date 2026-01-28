@@ -82,7 +82,6 @@ Proof.
     rename select ((reshape _ vs : list val) !! i = Some _) into Hlook.
     rename select (i < (Z.to_nat size))%nat into Hi.
     clear -Hlook Hi.
-    rewrite Nat.add_1_r.
     erewrite take_S_r; last done.
     rewrite -app_assoc.
     f_equiv.

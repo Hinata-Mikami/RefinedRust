@@ -9,6 +9,17 @@ Section subtype.
   Context `{!typeGS Σ}.
 
   (** Subtyping instances *)
+
+  Lemma weak_subtype_mut_lft_evar E L {rt} (ty1 ty2 : type rt) r1 r2 κ1 κ2 `{!IsProtected κ2} T :
+    weak_subtype E L r1 r2 (mut_ref κ1 ty1) (mut_ref κ2 ty2) T :-
+      exhale (⌜κ1 = κ2⌝);
+      return weak_subtype E L r1 r2 (mut_ref κ1 ty1) (mut_ref κ2 ty2) T.
+  Proof.
+    iIntros "(<- & HT)". done.
+  Qed.
+  Definition weak_subtype_mut_lft_evar_inst := [instance @weak_subtype_mut_lft_evar].
+  Global Existing Instance weak_subtype_mut_lft_evar_inst | 10.
+
   Lemma weak_subtype_mut E L {rt} (ty1 ty2 : type rt) r1 r2 κ1 κ2 T :
     ⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqtype E L ty1 ty2 T
     ⊢ weak_subtype E L r1 r2 (mut_ref κ1 ty1) (mut_ref κ2 ty2) T.
@@ -22,9 +33,18 @@ Section subtype.
     - iIntros (r). iDestruct ("Heq" $! r) as "($ & _)".
     - iModIntro. iIntros (r). iDestruct ("Heq" $! r) as "(_ & $)".
   Qed.
-  Global Instance weak_subtype_mut_inst E L {rt} (ty1 ty2 : type rt) r1 r2 κ1 κ2 :
-    Subtype E L r1 r2 (mut_ref κ1 ty1) (mut_ref κ2 ty2) :=
-    λ T, i2p (weak_subtype_mut E L ty1 ty2 r1 r2 κ1 κ2 T).
+  Definition weak_subtype_mut_inst := [instance @weak_subtype_mut].
+  Global Existing Instance weak_subtype_mut_inst | 15.
+
+  Lemma mut_subtype_mut_lft_evar E L {rt} (ty1 ty2 : type rt) κ1 κ2 `{!IsProtected κ2} T :
+    mut_subtype E L (mut_ref κ1 ty1) (mut_ref κ2 ty2) T :-
+      exhale (⌜κ1 = κ2⌝);
+      return (mut_subtype E L (mut_ref κ1 ty1) (mut_ref κ1 ty2) T).
+  Proof.
+    iIntros "(-> & HT)". done.
+  Qed.
+  Definition mut_subtype_mut_lft_evar_inst := [instance @mut_subtype_mut_lft_evar].
+  Global Existing Instance mut_subtype_mut_lft_evar_inst | 10.
 
   Lemma mut_subtype_mut E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqtype E L ty1 ty2 T
@@ -33,9 +53,18 @@ Section subtype.
     iIntros "(%Hincl1 & %Hincl2 & %Hsub & HT)". iFrame "HT".
     iPureIntro. apply mut_ref_full_subtype; done.
   Qed.
-  Global Instance mut_subtype_mut_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
-    MutSubtype E L (mut_ref κ1 ty1) (mut_ref κ2 ty2) :=
-    λ T, i2p (mut_subtype_mut E L ty1 ty2 κ1 κ2 T).
+  Definition mut_subtype_mut_inst := [instance @mut_subtype_mut].
+  Global Existing Instance mut_subtype_mut_inst | 15.
+
+  Lemma mut_eqtype_mut_lft_evar E L {rt} (ty1 ty2 : type rt) κ1 κ2 `{!IsProtected κ2} T :
+    mut_eqtype E L (mut_ref κ1 ty1) (mut_ref κ2 ty2) T :-
+      exhale (⌜κ1 = κ2⌝);
+      return (mut_eqtype E L (mut_ref κ1 ty1) (mut_ref κ1 ty2) T).
+  Proof.
+    iIntros "(-> & HT)". done.
+  Qed.
+  Definition mut_eqtype_mut_lft_evar_inst := [instance @mut_eqtype_mut_lft_evar].
+  Global Existing Instance mut_eqtype_mut_lft_evar_inst | 10.
 
   Lemma mut_eqtype_mut E L {rt} (ty1 ty2 : type rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqtype E L ty1 ty2 T
@@ -44,9 +73,8 @@ Section subtype.
     iIntros "(%Hincl1 & %Hincl2 & %Heq & HT)". iFrame "HT".
     iPureIntro. apply full_subtype_eqtype; apply mut_ref_full_subtype; done.
   Qed.
-  Global Instance mut_eqtype_mut_inst E L {rt} (ty1 ty2 : type rt) κ1 κ2 :
-    MutEqtype E L (mut_ref κ1 ty1) (mut_ref κ2 ty2) :=
-    λ T, i2p (mut_eqtype_mut E L ty1 ty2 κ1 κ2 T).
+  Definition mut_eqtype_mut_inst := [instance @mut_eqtype_mut].
+  Global Existing Instance mut_eqtype_mut_inst | 15.
 End subtype.
 
 Section subltype.

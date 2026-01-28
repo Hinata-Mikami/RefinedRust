@@ -57,8 +57,8 @@ Definition initial_heap_state :=
 Definition initial_thread_state : thread_state :=
   {| ts_frames := [] |}.
 Definition initial_state (num_threads : nat) (fns : gmap addr function) :=
-  {| st_heap := initial_heap_state; 
-     st_fntbl := fns; 
+  {| st_heap := initial_heap_state;
+     st_fntbl := fns;
      st_thread := list_to_map (zip (seq 0 num_threads) (replicate num_threads initial_thread_state));
   |}.
 
@@ -106,7 +106,7 @@ Proof.
 
   set (num_threads := length thread_mains).
   set (initial_thread_map := list_to_map (zip (seq 0 num_threads) (replicate num_threads 0)) : gmap _ _).
-  iMod (ghost_map_alloc initial_thread_map) as (γcur) "(Hcur & Hcur_thread)". 
+  iMod (ghost_map_alloc initial_thread_map) as (γcur) "(Hcur & Hcur_thread)".
   (* TODO: instead, maybe allocate an empty frame *)
   iMod (ghost_map_alloc_empty (K:=nat * nat) (V:= list string)) as (γlocals) "Hall_locals".
   iMod (ghost_map_alloc_empty (K:= nat * nat * string) (V:= loc * syn_type)) as (γloc) "Hlocals".
@@ -126,7 +126,7 @@ Proof.
   iPoseProof (big_sepL_exists with "Ha") as "(%γnas & Hna)".
   iPoseProof (big_sepL2_length with "Hna") as "%Hna_len".
   iMod (ghost_map_alloc (list_to_map (zip (seq 0 num_threads) γnas))) as "(%γna & Hna_auth & Hna_map)".
-  rewrite big_sepM_list_to_map; first last. 
+  rewrite big_sepM_list_to_map; first last.
   { rewrite fst_zip; first apply NoDup_seq. lia. }
 
   set (HtypeG := TypeG _ HrefinedCG Hlft _ γna _ _ Hlctx _ _).
@@ -134,37 +134,37 @@ Proof.
   iAssert (|==> [∗ list] π ∈ seq 0 num_threads, na_own π ⊤)%I with "[Hna_map Hna]" as ">Hna".
   { iApply big_sepL_bupd.
     iApply big_sepL2_elim_r. iApply (big_sepL2_wand with "Hna").
-    iApply big_sepL2_from_zip. { lia. } 
+    iApply big_sepL2_from_zip. { lia. }
     iApply (big_sepL_impl with "Hna_map").
     iModIntro. iIntros (? [] Hlook).
     simpl. rewrite na_own_unfold /na_own_def.
     iIntros "Hna $". iApply (ghost_map_elem_persist with "Hna"). }
 
-  iAssert ([∗ list] π ∈ seq 0 num_threads, current_frame π 0)%I with "[Hcur_thread]" as "Hframe".  
-  { rewrite big_sepM_list_to_map; first last. 
+  iAssert ([∗ list] π ∈ seq 0 num_threads, current_frame π 0)%I with "[Hcur_thread]" as "Hframe".
+  { rewrite big_sepM_list_to_map; first last.
     { rewrite fst_zip; first apply NoDup_seq. rewrite length_seq length_replicate. lia. }
     iPoseProof (big_sepL2_from_zip _ _  (λ _ a b, a ↪[γcur] b)%I with "Hcur_thread") as "Ha".
     { rewrite length_seq length_replicate. done. }
-    rewrite big_sepL2_replicate_r; last by rewrite length_seq. 
-    iApply (big_sepL_impl with "Ha"). iModIntro. 
+    rewrite big_sepL2_replicate_r; last by rewrite length_seq.
+    iApply (big_sepL_impl with "Ha"). iModIntro.
     iIntros (???). rewrite current_frame_unfold. eauto. }
-    
+
   move: (Hwp HtypeG) => {Hwp}.
   move => Hwp.
   iAssert (|==> [∗ map] k↦qs ∈ fns, fntbl_entry (fn_loc k) qs)%I with "[Hfm]" as ">Hfm". {
     iApply big_sepM_bupd. iApply (big_sepM_impl with "Hfm").
     iIntros "!>" (???) "Hm". rewrite fntbl_entry_eq.
-    iExists _. iSplitR; [done|]. 
+    iExists _. iSplitR; [done|].
     iApply (ghost_map_elem_persist with "Hm"). }
   iMod (Hwp with "Hfm") as "Hmains".
 
   iModIntro. iExists _, (replicate (length thread_mains) (λ _, True%I)), _, _.
   iSplitL "Hh Hf Hr Hs Hcur Hall_locals Hlocals"; last first. 1: iSplitL "Hmains Hna Hframe".
-  - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r. 
+  - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r.
     { rewrite length_zip length_seq. unfold num_threads. lia. }
     iApply (big_sepL2_to_zip _ _ (λ _ a b, WP initial_prog (a, b) {{ _, True }})%I).
     rewrite -(big_sepL_zip_seq (λ (imain : nat * loc), ∃ P : iProp Σ, (imain.2 ◁ᵥ{imain.1, MetaNone} imain.2 @ function_ptr [] (eq_refl, main_type P)) ∗ P)%I 0%nat num_threads); last lia.
-    iPoseProof (big_sepL2_from_zip _ _ (λ _ a (b : loc), ∃ P : iProp Σ, (b ◁ᵥ{a, MetaNone} b @ function_ptr [] (eq_refl, main_type P)) ∗ P)%I with "Hmains") as "Hmains". 
+    iPoseProof (big_sepL2_from_zip _ _ (λ _ a (b : loc), ∃ P : iProp Σ, (b ◁ᵥ{a, MetaNone} b @ function_ptr [] (eq_refl, main_type P)) ∗ P)%I with "Hmains") as "Hmains".
     { rewrite length_seq. lia. }
     iApply (big_sepL2_wand with "Hmains").
     iPoseProof (big_sepL_extend_r with "Hna") as "Hna"; last iApply (big_sepL2_wand with "Hna").
@@ -186,8 +186,9 @@ Proof.
     + by iApply big_sepL2_nil.
     + iExists ⊤ => /=.
       iFrame. do 2 iR.
-      iIntros "_". iExists eq_refl, -[], tt.
+      iIntros "_". iExists *[], -[].
       rewrite /li_tactic/ensure_evars_instantiated_goal.
+      iR. iExists tt.
       iIntros (????) "#CTX #HE HL".
       iModIntro. iExists [], [], True%I.
       iFrame. iSplitR.
@@ -207,20 +208,20 @@ Proof.
   - iFrame. iIntros (?? _ _ ?) "_ _ _". iApply fupd_mask_intro_discard => //. iPureIntro. by eauto.
   - rewrite /state_ctx /heap_state_ctx /thread_ctx /alloc_meta_ctx /to_alloc_meta_map /alloc_alive_ctx /to_alloc_alive_map.
     iFrame. iR.
-    iSplitL. 
+    iSplitL.
     { unfold thread_current_frame_auth.
       iApply (ghost_map_auth_prove_eq with "Hcur").
       rewrite /to_current_frame /initial_thread_map/=.
       rewrite -list_to_map_fmap prod_map_zip.
       rewrite list_fmap_id.
-      f_equiv. f_equiv. 
+      f_equiv. f_equiv.
       rewrite fmap_replicate//. }
     iSplitR; first iSplit; last iSplitL; [ | | by iApply big_sepM_empty | iSplit]; iPureIntro.
-    + intros ???? ? Hlook1 ?. simpl. 
+    + intros ???? ? Hlook1 ?. simpl.
       apply initial_state_thread_empty in Hlook1.
       subst. done.
     + done.
-    + intros ???????? Hlook1 ?. 
+    + intros ???????? Hlook1 ?.
       apply initial_state_thread_empty in Hlook1.
       subst. done.
     + done.

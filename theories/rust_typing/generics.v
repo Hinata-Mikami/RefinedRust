@@ -5,6 +5,13 @@ From refinedrust Require Import options.
 Definition prod_vec (A : Type) (n : nat) := plist id (replicate n A).
 Definition list_to_tup {A} (l : list A) : prod_vec A (length l) := list_to_plist A l.
 
+Fixpoint tup_to_list {A} n : prod_vec A n → list A :=
+  match n with
+  | 0 => λ _, []
+  | S n =>
+      λ '(hd *:: tl), hd :: tup_to_list n tl
+  end.
+
 (** ** Operations for partially instantiating the type parameters of a spec and introducing new lifetime/type parameters *)
 (** We carefully setup these lemmas and definitions such that the equality rewrites reduce to eq_refl for any concrete application *)
 Definition list_insert_shift {A} (l : list A) (n : nat) (x : A) :=

@@ -270,8 +270,8 @@ macro_rules! sub_assign_impl {
         //#[rr::instantiate("SubAssignOp" := "λ a b : Z, a + b")] 
         //#[rr::instantiate("SubAssignOpDefined" := $x)]
         //impl SubAssign<& $t> for $t {
-            //fn add_assign(&mut self, other: & $t) {
-                //Self::add_assign(self, *other);
+            //fn sub_assign(&mut self, other: & $t) {
+                //Self::sub_assign(self, *other);
             //}
         //}
     )
@@ -313,8 +313,8 @@ macro_rules! mul_assign_impl {
         //#[rr::instantiate("MulAssignOp" := "λ a b : Z, a + b")] 
         //#[rr::instantiate("MulAssignOpDefined" := $x)]
         //impl MulAssign<& $t> for $t {
-            //fn add_assign(&mut self, other: & $t) {
-                //Self::add_assign(self, *other);
+            //fn mul_assign(&mut self, other: & $t) {
+                //Self::mul_assign(self, *other);
             //}
         //}
     )

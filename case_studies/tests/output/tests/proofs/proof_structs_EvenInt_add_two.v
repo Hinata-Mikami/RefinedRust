@@ -16,7 +16,7 @@ Proof.
   rep <-! liRStep; liShow.
   liRStepUntil interpret_typing_hint.
   iApply interpret_typing_hint_ignore.
-  rep <-! liRStep; liShow. 
+  rep <-! liRStep; liShow.
   liRStepUntil interpret_typing_hint.
   iApply interpret_typing_hint_ignore.
   rep <-! liRStep; liShow.
@@ -24,7 +24,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { rewrite -Z.add_assoc; apply Zeven_plus_Zeven; solve_goal. }
+  { by apply Zeven_Sn, Zodd_Sn. }
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

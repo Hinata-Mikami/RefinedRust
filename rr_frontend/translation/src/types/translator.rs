@@ -987,16 +987,15 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
         // we first generate a dummy struct (None)
         let struct_def_init = self.struct_arena.alloc(RefCell::new(None));
 
-        let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
+        let struct_name = strip_coq_ident(&self.env.get_item_name(ty.def_id));
 
         let ordered_did = OrderedDefId::new(self.env.tcx(), ty.def_id);
         self.variant_registry
             .borrow_mut()
-            .insert(ordered_did, (struct_name, &*struct_def_init, ty, false));
+            .insert(ordered_did, (struct_name.clone(), &*struct_def_init, ty, false));
         // TODO: can we also add the literal already?
 
         let translate_adt = || {
-            let struct_name = strip_coq_ident(&ty.ident(tcx).to_string());
             let (variant_def, invariant_def) = self.make_adt_variant(
                 &struct_name,
                 ty,

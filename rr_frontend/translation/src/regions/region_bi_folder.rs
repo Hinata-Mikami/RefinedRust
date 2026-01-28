@@ -31,6 +31,10 @@ pub(crate) trait RegionBiFolder<'tcx> {
         self.map_tys(output1, output2);
     }
 
+    fn examine_ty(&mut self, _: ty::Ty<'tcx>, _: ty::Ty<'tcx>) -> bool {
+        true
+    }
+
     fn map_tys(&mut self, ty1: ty::Ty<'tcx>, mut ty2: ty::Ty<'tcx>) {
         // normalize
         // Probably we should normalize the original thing before folding instead.
@@ -44,6 +48,10 @@ pub(crate) trait RegionBiFolder<'tcx> {
         // Figure out how to handle that while not normalizing away the regions.
         // We could normalize erasing regions below, resolve, and then recursively restore the
         // regions?
+
+        if !self.examine_ty(ty1, ty2) {
+            return;
+        }
 
         if mem::discriminant(ty1.kind()) != mem::discriminant(ty2.kind()) {
             // Hack right now. Figure out how to do this properly...

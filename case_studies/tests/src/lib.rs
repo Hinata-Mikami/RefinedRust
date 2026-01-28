@@ -25,5 +25,6 @@ mod loops;
 
 mod lft_constr;
 
+mod latebounds;
 
 //mod leftpad;

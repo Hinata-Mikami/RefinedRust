@@ -288,7 +288,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
-        fnsig: ty::Binder<'tcx, ty::FnSig<'tcx>>,
+        late_bounds: &[ty::BoundVariableKind],
         trait_reqs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
@@ -367,8 +367,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             callee_lft_param_inst.push(lft_name);
         }
 
-        // Also need to re-bind late bound regions of the function, by looking at the function signature.
-        for (late_bound_idx, late_bound) in fnsig.bound_vars().into_iter().enumerate() {
+        // Also need to re-bind late bound regions of the function.
+        for (late_bound_idx, late_bound) in late_bounds.iter().enumerate() {
             match late_bound {
                 ty::BoundVariableKind::Region(r) => {
                     let name = r.get_name(self.translator.env().tcx()).map_or_else(
@@ -382,7 +382,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                         specs::LftParamOrigin::FunctionRebound,
                     ));
                     fn_inst.add_lft_param(name);
+
                     // TODO: also add instantiation for callee_lft_param_inst?
+                    // Problem: we do not know the concrete instantiation by just looking at the
+                    // function pointer.
                 },
                 _ => {
                     unimplemented!("late bound is not a region");

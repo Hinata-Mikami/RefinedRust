@@ -122,20 +122,32 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let key = types::generate_args_inst_key(self.env.tcx(), ty_params)?;
 
         let tcx = self.env.tcx();
-        let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
-        let fn_ty = fn_ty.instantiate(tcx, ty_params);
-        let fnsig = fn_ty.fn_sig(tcx);
+
+        let late_bounds = if let Some(impl_did) = tcx.impl_of_assoc(callee_did)
+            && tcx.trait_id_of_impl(impl_did).is_some()
+        {
+            // Fixup: We need a matching workaround as we do in the encoding of the function type
+            // in an impl member, to deal with quirks around lifetime elision.
+            let expected_sig = self.trait_registry.get_expected_sig_for_impl_fn(callee_did)?;
+            expected_sig.bound_vars().as_slice()
+        } else {
+            let fn_ty: ty::EarlyBinder<'_, ty::Ty<'_>> = tcx.type_of(callee_did);
+            let fn_ty = fn_ty.instantiate(tcx, ty_params);
+            let fnsig = fn_ty.fn_sig(tcx);
+
+            fnsig.bound_vars().as_slice()
+        };
 
         // re-quantify
         let quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             ty_params,
-            fnsig,
+            late_bounds,
             trait_specs,
             true,
         )?;
 
-        let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), callee_did), key);
+        let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
@@ -154,9 +166,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let loc_name = format!("{}_loc", types::mangle_name_with_tys(code_name, tup.1.as_slice()));
 
             let scope = self.ty_translator.scope.borrow();
-            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), scope.did);
+            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
             let syntypes = get_arg_syntypes_for_procedure_call(
-                self.env.tcx(),
+                tcx,
                 self.ty_translator.translator,
                 // note: this is sufficient (without the lifetime map) as we erase lifetimes here anyways
                 &scope.generic_scope,
@@ -213,7 +225,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut quantified_args = self.ty_translator.get_generic_abstraction_for_procedure(
             callee_did,
             method_params,
-            fnsig,
+            fnsig.bound_vars().as_slice(),
             trait_specs,
             false,
         )?;
@@ -226,7 +238,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut lft_param_hint = spec_inst.lft_insts;
         lft_param_hint.append(&mut quantified_args.callee_lft_param_inst);
 
-        let tup = TranslationKey(OrderedDefId::new(self.env.tcx(), callee_did), key);
+        let tup = TranslationKey(OrderedDefId::new(tcx, callee_did), key);
         let res;
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
@@ -234,9 +246,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let scope = self.ty_translator.scope.borrow();
 
             // TODO: should we use ty_params or method_params?
-            let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), scope.did);
+            let typing_env = ty::TypingEnv::post_analysis(tcx, scope.did);
             let syntypes = get_arg_syntypes_for_procedure_call(
-                self.env.tcx(),
+                tcx,
                 self.ty_translator.translator,
                 &scope.generic_scope,
                 &typing_env,
@@ -680,7 +692,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             translated_args.push(translated_arg);
         }
 
-        // We have to add the late regions, since we do not requantify over them.
+        // We have to add the late regions instantiation.
+        // TODO: this is not a great way to do this.
+        // The order is somewhat arbitrary.
         for late in &classification.late_regions {
             let lft = self.format_region(*late);
             lft_param_annots.push(lft);

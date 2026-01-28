@@ -21,11 +21,12 @@ use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
 use crate::environment::{Environment, dump_borrowck_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
+use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
     ClosureMetaInfo, ClosureSpecInfo, FunctionRequirements, FunctionSpecParser as _,
     VerboseFunctionSpecParser,
 };
-use crate::traits::registry;
+use crate::traits::registry::{self, RegionUnifier};
 use crate::{consts, procedures, regions, types};
 
 pub(crate) struct TX<'a, 'def, 'tcx> {
@@ -436,39 +437,101 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = env.tcx().type_of(proc.get_id());
         info!("Function type: {ty:?}");
+
+        let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
+        info!("Function generic args: {:?}", params);
+
         let ty = ty.instantiate_identity();
         // substs are the generic args of this function (including lifetimes)
         // sig is the function signature
         assert!(ty.is_fn());
         let sig = ty.fn_sig(env.tcx());
-        info!("Function signature: {:?}", sig);
+        info!("sig: {sig:?}");
 
         let info = PoloniusInfo::new(env, proc);
         // TODO: avoid leak
         let info: &'def PoloniusInfo<'_, '_> = &*Box::leak(Box::new(info));
 
-        let params = Self::get_proc_ty_params(env.tcx(), proc.get_id());
-        info!("Function generic args: {:?}", params);
-
         if rrconfig::dump_borrowck_info() {
             dump_borrowck_info(env, proc.get_id(), info);
         }
 
-        let num_universals = info.borrowck_in_facts.universal_region.len();
-        let num_late_bounds = sig.bound_vars().len() as u32;
-        let num_early_bounds =
-            params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+        let (inputs, output, region_substitution) = if let Some(impl_did) =
+            env.tcx().impl_of_assoc(proc.get_id())
+            && env.tcx().trait_id_of_impl(impl_did).is_some()
+        {
+            // If this is a function in a trait impl, we need to do some extra fixing up, because
+            // lifetime elision behaves strangely.
 
-        let (inputs, output, region_substitution) = regions::init::replace_fnsig_args_with_polonius_vars(
-            env,
-            params,
-            proc.get_id(),
-            num_universals as u32,
-            num_early_bounds,
-            num_late_bounds,
-            sig,
-        );
-        info!("inputs: {:?}, output: {:?}", inputs, output);
+            // We compute the expected signature this function *should* have
+            let expected_sig = trait_registry.get_expected_sig_for_impl_fn(proc.get_id())?;
+            info!("expected sig: {expected_sig:?}");
+
+            // Important: use the fn's sig here.
+            let num_universals = info.borrowck_in_facts.universal_region.len();
+            let num_late_bounds = sig.bound_vars().len() as u32;
+            let num_early_bounds =
+                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+
+            let (direct_inputs, direct_output, _) = regions::init::replace_fnsig_args_with_polonius_vars(
+                env,
+                params,
+                proc.get_id(),
+                num_universals as u32,
+                num_early_bounds,
+                num_late_bounds,
+                sig,
+            );
+
+            info!("direct signature: {direct_inputs:?} -> {direct_output:?}");
+
+            let (inputs, output, mut mapping) = regions::init::replace_fnsig_args_with_polonius_vars(
+                env,
+                params,
+                proc.get_id(),
+                num_universals as u32,
+                num_early_bounds,
+                num_late_bounds,
+                expected_sig,
+            );
+
+            // Now unify the two signatures.
+            let typing_env = ty::TypingEnv::post_analysis(env.tcx(), proc.get_id());
+            let mut unifier = RegionUnifier::new(env.tcx(), typing_env);
+            // Since we cannot reliably normalize here without erasing regions, ignore aliases for now.
+            unifier.ignore_aliases();
+
+            unifier.map_ty_slices(&direct_inputs, &inputs);
+            unifier.map_tys(direct_output, output);
+            let (_, vid_mapping) = unifier.get_result();
+
+            info!("region mapping: {vid_mapping:?}");
+            for (from, to) in vid_mapping {
+                let to = to.as_var();
+                if from != to {
+                    mapping.insert_vid_fixup(from.into(), to.into());
+                }
+            }
+            // TODO: also add the equality constraints to the inclusion tracker?
+
+            (inputs, output, mapping)
+        } else {
+            let num_universals = info.borrowck_in_facts.universal_region.len();
+            let num_late_bounds = sig.bound_vars().len() as u32;
+            let num_early_bounds =
+                params.iter().filter(|x| matches!(x.kind(), ty::GenericArgKind::Lifetime(_))).count() as u32;
+
+            regions::init::replace_fnsig_args_with_polonius_vars(
+                env,
+                params,
+                proc.get_id(),
+                num_universals as u32,
+                num_early_bounds,
+                num_late_bounds,
+                sig,
+            )
+        };
+        info!("normalized signature: {inputs:?} -> {output:?}");
 
         let type_scope = Self::setup_local_scope(
             env,

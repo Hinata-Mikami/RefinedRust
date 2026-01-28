@@ -48,6 +48,11 @@ Ltac can_solve_hook ::= first [
 Ltac liTrace_hook info ::=
   add_case_distinction_info info.
 
+Ltac liExist_hook A protect ::=
+  lazymatch A with
+  | prod_vec _ 0 => exists nil_tt
+  end.
+
 Ltac rep_check_backtrack_point_hook ::=
   lazymatch goal with
   | |- BACKTRACK_POINT ?P => idtac
