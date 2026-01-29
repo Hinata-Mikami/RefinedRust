@@ -393,6 +393,10 @@
               src = ./case_studies/evenint;
             }
             {
+              pname = "hillel";
+              src = ./case_studies/hillel;
+            }
+            {
               pname = "minivec";
               src = ./case_studies/minivec;
             }
