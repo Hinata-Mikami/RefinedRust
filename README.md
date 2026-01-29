@@ -3,16 +3,15 @@
 
 ![RefinedRust logo](refinedrust-logo.svg "RefinedRust logo"){width=200}
 
-This repository contains a public mirror of the RefinedRust development version.
+This repository contains the RefinedRust development version.
+
+[Wiki and Documentation](https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/wikis/home)
 
 ## Structure
 The Rocq implementation of RefinedRust can be found in the `theories` subfolder.
 The frontend implementation can be found in the `rr_frontend` subfolder.
 Case studies and tests can be found in the `case_studies` subfolder.
 Stdlib interfaces (without proofs) can be found in the `stdlib` subfolder.
-Documentation can be found in the `docs` subfolder.
-
-The file `docs/paper_mapping.md` contains more details on how to map the contents of the RefinedRust paper to this repository.
 
 ### For the `theories` subfolder:
 * the `caesium` subfolder contains the Radium operational semantics, an adaptation of RefinedC's Caesium semantics.
@@ -63,7 +62,7 @@ Note that, if you choose the latter option, you will potentially run into issues
 0. `cd` into the directory containing this README.
 1. Create a new opam switch for RefinedRust:
 ```
-opam switch create refinedrust --packages=ocaml-variants.4.14.0+options,ocaml-option-flambda
+opam switch create refinedrust --packages=ocaml-variants.4.14.2+options,ocaml-option-flambda
 opam switch link refinedrust .
 opam switch refinedrust
 opam repo add rocq-released https://rocq-prover.org/opam/released
@@ -88,7 +87,7 @@ We provide scripts to install RefinedRust.
 0. `cd` into the directory containing this README.
 1. First, set up a new opam switch.
 ```
-opam switch create refinedrust --packages=ocaml-variants.4.14.0+options,ocaml-option-flambda
+opam switch create refinedrust --packages=ocaml-variants.4.14.2+options,ocaml-option-flambda
 opam switch link refinedrust .
 opam switch refinedrust
 ```
@@ -148,30 +147,6 @@ This enables to write semi-automatic proofs.
 On changes to implementations or specifications, only the files located in `generated` are modified.
 The default automatic proofs in `proof_*.v` files are stable under any changes to a function.
 Of course, once you change proofs manually, changing an implementation or specification may require changes to your manually-written code.
-
-## Frontend Configuration
-Configuration options can be set in the `RefinedRust.toml` file.
-These include:
-
-| Option | Type | Configures |
-|--------|------|------------|
-| `work_dir` | Relative/absolue path | Determines the working directory. Other relative paths are interpreted relative to this one. |
-| `dump_borrowck_info` | Boolean | Dumps borrowck debug output in the log directory |
-| `output_dir` | Relative/absolute path | Determines the directory where the generated output files will be placed |
-| `log_dir` | Relative/absolute path | Determines the directory where logs and debug dumps will be placed if enabled |
-| `run_check` | Boolean | Automatically call the Rocq type checker on the generated files |
-| `verify_deps` | Boolean | Verify dependencies or not |
-| `admit_proofs` | Boolean | Skip Rocq's `Qed` check and instead run `Admitted` |
-| `trust_debug` | Boolean  | Trust `Debug` implementations (which typically cannot be verified by RefinedRust) |
-| `extra_specs` | Relative/absolute path | File whose contents will be inlined at the end of the generated specs file |
-| `post_generation_hook` | Command | Run a command after code generation and before proof checking |
-| `generate_dune_project` | Boolean | Generate a dune-project file (on by default) |
-| `lib_load_paths` | Array of relative/absolute paths to directories | Search these paths (recursively) for RefinedRust libraries |
-
-The path to the config file can also be specified via the environment variable `RR_CONFIG`.
-Setting this variable will also change the `work_dir` (relative to which paths are interpreted) to the path of `RR_CONFIG`.
-
-Overrides for all settings can be specified in the environment via variables with the prefix `RR_`, e.g. `RR_SHIMS`, `RR_DUMP_BORROWCK_INFO`, etc.
 
 ## License
 We currently re-use code from the following projects:
