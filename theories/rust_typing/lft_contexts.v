@@ -9,6 +9,84 @@ From refinedrust Require Export base.
 From refinedrust Require Import fraction_counting util.
 From refinedrust Require Import options.
 
+(* Lifetime equivalence *)
+Section lft_equiv.
+  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
+  Implicit Type (κ : lft).
+
+  Definition lft_equiv (κ1 κ2 : lft) : iProp Σ :=
+    κ1 ⊑ κ2 ∧ κ2 ⊑ κ1.
+
+  Lemma lft_equiv_trans κ1 κ2 κ3 :
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ2 κ3 -∗
+    lft_equiv κ1 κ3.
+  Proof.
+    iIntros "#[??] #[??]". iSplit.
+    - iApply lft_incl_trans; done.
+    - iApply lft_incl_trans; done.
+  Qed.
+  Lemma lft_equiv_sym κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ2 κ1.
+  Proof.
+    iIntros "#[??]". iSplit; done.
+  Qed.
+  Lemma lft_equiv_refl κ :
+    ⊢ lft_equiv κ κ.
+  Proof.
+    iSplit; iApply lft_incl_refl.
+  Qed.
+
+  Lemma lft_equiv_intersect κ1 κ2 κ3 κ4 :
+    lft_equiv κ1 κ2 -∗
+    lft_equiv κ3 κ4 -∗
+    lft_equiv (κ1 ⊓ κ3) (κ2 ⊓ κ4).
+  Proof.
+    iIntros "#[??] #[??]". iSplit.
+    all: iApply lft_intersect_mono; done.
+  Qed.
+  Lemma lft_intersect_idempotent κ :
+    ⊢ lft_equiv κ (κ ⊓ κ).
+  Proof.
+    iSplit.
+    - iApply lft_incl_glb; iApply lft_incl_refl.
+    - iApply lft_intersect_incl_l.
+  Qed.
+
+  Lemma lft_equiv_incl_l κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    κ1 ⊑ κ2.
+  Proof.
+    iIntros "[$ _]".
+  Qed.
+  Lemma lft_equiv_incl_r κ1 κ2 :
+    lft_equiv κ1 κ2 -∗
+    κ2 ⊑ κ1.
+  Proof.
+    iIntros "[_ $]".
+  Qed.
+
+  Lemma lft_incl_proper κ1 κ2 κ3 κ4 :
+    (⊢ lft_equiv κ1 κ3) →
+    (⊢ lft_equiv κ2 κ4) →
+    (κ1 ⊑ κ2) ⊣⊢ (κ3 ⊑ κ4).
+  Proof.
+    iIntros (Ha Hb).
+    iPoseProof Ha as "[Ha1 Ha2]".
+    iPoseProof Hb as "[Hb1 Hb2]".
+    iSplit.
+    - iIntros "Hc".
+      iApply (lft_incl_trans with "Ha2").
+      iApply (lft_incl_trans with "Hc").
+      done.
+    - iIntros "Hc".
+      iApply (lft_incl_trans with "Ha1").
+      iApply (lft_incl_trans with "Hc").
+      done.
+  Qed.
+End lft_equiv.
+
 (** * Lifetime contexts for keeping track of which lifetimes are alive *)
 
 Class lctxGS Σ := LctxGS {
@@ -559,6 +637,20 @@ Section lft_contexts.
     iIntros "!> #HE". iDestruct ("Hκ'" with "HE") as "#?".
     iApply lft_incl_trans; last done.
     by iApply lft_intersect_incl_r.
+  Qed.
+
+  Lemma lctx_lft_incl_idemp_l κ κ1 κ2 :
+    lctx_lft_incl (κ ⊓ κ ⊓ κ1) κ2 →
+    lctx_lft_incl (κ ⊓ κ1) κ2.
+  Proof.
+    intros Hincl.
+    iIntros (?) "HL".
+    iPoseProof (Hincl with "HL") as "#H1".
+    iModIntro. iIntros "HE". iSpecialize ("H1" with "HE").
+    iPoseProof (lft_intersect_idempotent κ) as "(Hincl1 & Hincl2)".
+    iApply (lft_incl_trans with "[] H1").
+    iApply lft_intersect_mono; last iApply lft_incl_refl.
+    done.
   Qed.
 
   Lemma list_incl_lft_incl_list κs1 κs2 :
@@ -1673,80 +1765,3 @@ Global Typeclasses Opaque lft_list_incl.
 Global Arguments lft_list_incl : simpl never.
 Global Arguments lft_dead_list : simpl never.
 
-(* Lifetime equivalence *)
-Section lft_equiv.
-  Context `{!invGS Σ, !lftGS Σ lft_userE, !lctxGS Σ}.
-  Implicit Type (κ : lft).
-
-  Definition lft_equiv (κ1 κ2 : lft) : iProp Σ :=
-    κ1 ⊑ κ2 ∧ κ2 ⊑ κ1.
-
-  Lemma lft_equiv_trans κ1 κ2 κ3 :
-    lft_equiv κ1 κ2 -∗
-    lft_equiv κ2 κ3 -∗
-    lft_equiv κ1 κ3.
-  Proof.
-    iIntros "#[??] #[??]". iSplit.
-    - iApply lft_incl_trans; done.
-    - iApply lft_incl_trans; done.
-  Qed.
-  Lemma lft_equiv_sym κ1 κ2 :
-    lft_equiv κ1 κ2 -∗
-    lft_equiv κ2 κ1.
-  Proof.
-    iIntros "#[??]". iSplit; done.
-  Qed.
-  Lemma lft_equiv_refl κ :
-    ⊢ lft_equiv κ κ.
-  Proof.
-    iSplit; iApply lft_incl_refl.
-  Qed.
-
-  Lemma lft_equiv_intersect κ1 κ2 κ3 κ4 :
-    lft_equiv κ1 κ2 -∗
-    lft_equiv κ3 κ4 -∗
-    lft_equiv (κ1 ⊓ κ3) (κ2 ⊓ κ4).
-  Proof.
-    iIntros "#[??] #[??]". iSplit.
-    all: iApply lft_intersect_mono; done.
-  Qed.
-  Lemma lft_intersect_idempotent κ :
-    ⊢ lft_equiv κ (κ ⊓ κ).
-  Proof.
-    iSplit.
-    - iApply lft_incl_glb; iApply lft_incl_refl.
-    - iApply lft_intersect_incl_l.
-  Qed.
-
-  Lemma lft_equiv_incl_l κ1 κ2 :
-    lft_equiv κ1 κ2 -∗
-    κ1 ⊑ κ2.
-  Proof.
-    iIntros "[$ _]".
-  Qed.
-  Lemma lft_equiv_incl_r κ1 κ2 :
-    lft_equiv κ1 κ2 -∗
-    κ2 ⊑ κ1.
-  Proof.
-    iIntros "[_ $]".
-  Qed.
-
-  Lemma lft_incl_proper κ1 κ2 κ3 κ4 :
-    (⊢ lft_equiv κ1 κ3) →
-    (⊢ lft_equiv κ2 κ4) →
-    (κ1 ⊑ κ2) ⊣⊢ (κ3 ⊑ κ4).
-  Proof.
-    iIntros (Ha Hb).
-    iPoseProof Ha as "[Ha1 Ha2]".
-    iPoseProof Hb as "[Hb1 Hb2]".
-    iSplit.
-    - iIntros "Hc".
-      iApply (lft_incl_trans with "Ha2").
-      iApply (lft_incl_trans with "Hc").
-      done.
-    - iIntros "Hc".
-      iApply (lft_incl_trans with "Ha1").
-      iApply (lft_incl_trans with "Hc").
-      done.
-  Qed.
-End lft_equiv.

@@ -398,19 +398,22 @@ Section incl_tac.
   Lemma tac_lctx_lft_incl_list_dispatch_r E L i j κ κs1 κs2 P :
     κs1 !! i = Some κ →
     κs2 !! j = Some κ →
-    lctx_lft_incl_list E L (delete i κs1) (delete j κs2) ∨ P →
+    lctx_lft_incl_list E L (κs1) (delete j κs2) ∨ P →
     lctx_lft_incl_list E L κs1 κs2 ∨ P.
   Proof.
     rewrite /lctx_lft_incl_list /=.
     rewrite !delete_take_drop.
     intros H1 H2.
-    rewrite -{3}(take_drop_middle κs1 _ _ H1).
+    rewrite -{1 2}(take_drop_middle κs1 _ _ H1).
     rewrite -{3}(take_drop_middle κs2 _ _ H2).
-    rewrite !lft_intersect_list_app. simpl. intros Ha.
+    rewrite !lft_intersect_list_app. simpl.
     rewrite !lft_intersect_assoc.
     rewrite ![lft_intersect_list _ ⊓ κ]lft_intersect_comm.
     rewrite -!lft_intersect_assoc.
+    intros Ha.
     destruct Ha as [ Ha | ?]; last by right. left.
+    apply lctx_lft_incl_idemp_l.
+    rewrite -lft_intersect_assoc.
     apply lctx_lft_incl_intersect; done.
   Qed.
 
@@ -493,6 +496,7 @@ Section incl_tac.
   Qed.
 
   (* TODO this doesnt' work. we also have to remove it on the LHS. *)
+  (* TODO: no, not true. see [lctx_lft_incl_idemp_l] *)
   Lemma lctx_lft_incl_list_ty_lfts_r E L κs1 κs2 {rt} (ty : type rt) P :
     ty_lfts ty ⊆ κs1 →
     lctx_lft_incl_list E L κs1 κs2 ∨ P →
@@ -696,15 +700,15 @@ Ltac solve_lft_incl_list_step cont :=
       list_find_tac find_in_llctx κs2
 
   (* eliminate a lifetime on the RHS that also occurs on the LHS *)
-  | |- lctx_lft_incl_list ?E ?L ?κs1 (?κ :: ?κs2) ∨ _ =>
-      let check_equality := ltac:(fun i κ1 =>
-        first [unify κ1 κ;
-          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i 0 κ1 κs1 (κ :: κs2) _ _ _ _);
-            [reflexivity | reflexivity | simpl; cont ]
+  | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
+      let check_equality j κ2 := ltac:(fun i κ1 =>
+        first [unify κ1 κ2;
+          notypeclasses refine (tac_lctx_lft_incl_list_dispatch_r E L i j κ1 κs1 κs2 _ _ _ _);
+            [reflexivity | reflexivity | simpl ]
         | fail ]
       ) in
-      (*let check_left := (fun j κ2 => list_find_tac ltac:(check_equality j κ2) κs1) in*)
-      list_find_tac check_equality κs1
+      let check_rhs := ltac:(fun j κ2 => list_find_tac ltac:(check_equality j κ2) κs1) in
+      list_find_tac check_rhs κs2
 
   (* Expand a local lifetime on the LHS *)
   | |- lctx_lft_incl_list ?E ?L ?κs1 ?κs2 ∨ _ =>
