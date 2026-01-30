@@ -77,7 +77,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         op: &mir::Operand<'tcx>,
         dest: &mir::Place<'tcx>,
     ) -> Result<Vec<code::PrimStmt>, TranslationError<'tcx>> {
-        let translated_op = self.translate_operand(op, false)?;
+        let (translated_op, _) = self.translate_operand(op, false)?;
         let ty = self.get_type_of_operand(op);
 
         let st = self.ty_translator.translate_type_to_syn_type(ty)?;
@@ -174,7 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::SwitchInt { discr, targets } => {
-                let operand = self.translate_operand(discr, true)?;
+                let (operand, _) = self.translate_operand(discr, true)?;
                 let all_targets: &[mir::BasicBlock] = targets.all_targets();
 
                 if self.get_type_of_operand(discr).is_bool() {
@@ -201,7 +201,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 //info!("switchint: {:?}", term.kind);
-                let operand = self.translate_operand(discr, true)?;
+                let (operand, _) = self.translate_operand(discr, true)?;
                 let ty = self.get_type_of_operand(discr);
 
                 let mut target_map: BTreeMap<u128, usize> = BTreeMap::new();
@@ -241,7 +241,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ..
             } => {
                 // this translation gets stuck on failure
-                let cond_translated = self.translate_operand(cond, true)?;
+                let (cond_translated, _) = self.translate_operand(cond, true)?;
                 let comp = code::Expr::BinOp {
                     o: code::Binop::Eq,
                     ot1: lang::OpType::Bool,

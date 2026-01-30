@@ -15,6 +15,7 @@ use rr_rustc_interface::span;
 
 use super::{TX, TranslationKey};
 use crate::base::*;
+use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
 use crate::traits::{self, resolution};
 use crate::types::STInner;
@@ -85,18 +86,12 @@ pub(crate) fn get_arg_syntypes_for_procedure_call<'tcx, 'def>(
     Ok(syntypes)
 }
 
-pub(crate) struct ProcedureInst<'def> {
-    pub loc_name: String,
+pub(crate) struct ProcedureInst<'tcx, 'def> {
+    pub method_params: ty::GenericArgsRef<'tcx>,
     pub type_hint: Vec<specs::Type<'def>>,
     pub lft_hint: Vec<specs::Lft>,
+    pub num_of_latebounds: usize,
     pub mapped_early_regions: BTreeMap<specs::Lft, usize>,
-}
-impl From<ProcedureInst<'_>> for code::Expr {
-    fn from(x: ProcedureInst<'_>) -> Self {
-        let ty_hint = x.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
-
-        Self::CallTarget(x.loc_name, ty_hint, x.lft_hint, x.mapped_early_regions)
-    }
 }
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -112,7 +107,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
-    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
         // should always be unique for one combination of type parameters, as long as we remain in
@@ -192,12 +187,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         trace!("leave register_use_procedure");
         let inst = ProcedureInst {
-            loc_name: res,
+            method_params: ty_params,
             type_hint: quantified_args.callee_ty_param_inst,
             lft_hint: quantified_args.callee_lft_param_inst,
+            num_of_latebounds: quantified_args.num_of_latebounds,
             mapped_early_regions: BTreeMap::new(),
         };
-        Ok(inst)
+        Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
     }
 
     /// Internally register that we have used a trait method with a particular instantiation of
@@ -207,7 +203,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
-    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
         // explanation.
@@ -279,12 +275,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         trace!("leave register_use_trait_method");
 
         let inst = ProcedureInst {
-            loc_name: res,
+            method_params: ty_params,
             type_hint: ty_param_hint,
             lft_hint: lft_param_hint,
+            num_of_latebounds: quantified_args.num_of_latebounds,
             mapped_early_regions,
         };
-        Ok(inst)
+        Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
     }
 
     fn create_closure_impl_abstraction(
@@ -365,6 +362,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let res = types::AbstractedGenerics {
             scope: new_scope,
             fn_scope_inst,
+            num_of_latebounds: 0,
             callee_lft_param_inst: lft_param_inst_hint,
             callee_ty_param_inst: ty_param_inst_hint,
         };
@@ -386,7 +384,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         call_fn_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
         _trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
-    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!(
             "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
         );
@@ -459,12 +457,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }
         trace!("leave register_use_closure");
         let inst = ProcedureInst {
-            loc_name: res,
+            method_params: ty_params,
             type_hint: quantified_scope.callee_ty_param_inst,
             lft_hint: quantified_scope.callee_lft_param_inst,
+            num_of_latebounds: quantified_scope.num_of_latebounds,
             mapped_early_regions: BTreeMap::new(),
         };
-        Ok(inst)
+        Ok((code::Expr::MetaParam(res), Some(ExprInfo::Call(inst))))
     }
 
     /// Resolve the trait requirements of a function call.
@@ -488,7 +487,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_fn_def_use(
         &mut self,
         ty: ty::Ty<'tcx>,
-    ) -> Result<ProcedureInst<'def>, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
             return Err(TranslationError::UnknownError("not a FnDef type".to_owned()));
         };
@@ -626,7 +625,29 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let (target_did, sig, generic_args, inst_sig) =
             self.call_expr_op_split_inst(&func_constant.const_)?;
         info!("calling function {:?}", target_did);
+        for arg in args {
+            let arg = &arg.node;
+            info!("arg ty: {:?}", self.get_type_of_operand(arg));
+        }
         info!("call substs: {:?} = {:?}, {:?}", func, sig, generic_args);
+
+        // translate the function expression.
+        let (func_expr, info) = self.translate_operand(func, false)?;
+        // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
+        // instantiate it with.
+        let Some(ExprInfo::Call(mut call_info)) = info else {
+            unreachable!("Logic error in call target translation");
+        };
+
+        // translate the arguments
+        let mut translated_args = Vec::new();
+        for arg in args {
+            // to_ty is the type the function expects
+
+            //let ty = arg.ty(&self.proc.get_mir().local_decls, self.env.tcx());
+            let (translated_arg, _) = self.translate_operand(&arg.node, true)?;
+            translated_args.push(translated_arg);
+        }
 
         // for lifetime annotations:
         // 1. get the regions involved here. for that, get the instantiation of the function.
@@ -648,8 +669,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         //    substituted regions) should be.
         // 6. annotate the return value on assignment and establish constraints.
 
-        let classification =
-            regions::calls::compute_call_regions(self.env, &self.inclusion_tracker, generic_args, loc);
+        let classification = regions::calls::compute_call_regions(
+            self.env,
+            &self.inclusion_tracker,
+            call_info.method_params,
+            loc,
+            call_info.num_of_latebounds,
+        );
 
         // update the inclusion tracker with the new regions we have introduced
         // We just add the inclusions and ignore that we resolve it in a "tight" way.
@@ -671,38 +697,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             }
         }
 
-        // translate the function expression.
-        let func_expr = self.translate_operand(func, false)?;
-        // We expect this to be an Expr::CallTarget, being annotated with the type parameters we
-        // instantiate it with.
-        let code::Expr::CallTarget(func_lit, ty_param_annots, mut lft_param_annots, mapped_early_regions) =
-            func_expr
-        else {
-            unreachable!("Logic error in call target translation");
-        };
-        let func_expr = code::Expr::MetaParam(func_lit);
-
-        // translate the arguments
-        let mut translated_args = Vec::new();
-        for arg in args {
-            // to_ty is the type the function expects
-
-            //let ty = arg.ty(&self.proc.get_mir().local_decls, self.env.tcx());
-            let translated_arg = self.translate_operand(&arg.node, true)?;
-            translated_args.push(translated_arg);
-        }
-
         // We have to add the late regions instantiation.
-        // TODO: this is not a great way to do this.
-        // The order is somewhat arbitrary.
         for late in &classification.late_regions {
             let lft = self.format_region(*late);
-            lft_param_annots.push(lft);
+            call_info.lft_hint.push(lft);
         }
         info!("Call lifetime instantiation (early): {:?}", classification.early_regions);
         info!("Call lifetime instantiation (late): {:?}", classification.late_regions);
 
-        // TODO: do we need to do something with late bounds?
         let output_ty = inst_sig.output().skip_binder();
         info!("call has instantiated type {:?}", inst_sig);
 
@@ -727,7 +729,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 &self.ty_translator,
                 loc,
                 assignment_annots.unconstrained_regions,
-                &mapped_early_regions,
+                &call_info.mapped_early_regions,
             )?;
 
         let (remaining_unconstrained_annots, unconstrained_hints) =
@@ -783,10 +785,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         }];
 
         // add annotations for the assignment
+        let ty_hint = call_info.type_hint.into_iter().map(|x| code::RustType::of_type(&x)).collect();
         let call_expr = code::Expr::Call {
             f: Box::new(func_expr),
-            lfts: lft_param_annots,
-            tys: ty_param_annots,
+            lfts: call_info.lft_hint,
+            tys: ty_hint,
             args: translated_args,
         };
         let stmt = if let Some(target) = target {

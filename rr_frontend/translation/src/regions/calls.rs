@@ -46,6 +46,7 @@ pub(crate) fn compute_call_regions<'tcx>(
     incl_tracker: &InclusionTracker<'_, '_>,
     substs: &[ty::GenericArg<'tcx>],
     loc: mir::Location,
+    num_expected_late_bounds: usize,
 ) -> CallRegions {
     let info = incl_tracker.info();
 
@@ -62,6 +63,7 @@ pub(crate) fn compute_call_regions<'tcx>(
             early_regions.push(r.into());
         }
     }
+    info!("call args: {substs:?}");
     info!("call region instantiations (early): {:?}", early_regions);
 
     // this is a hack to identify the inference variables introduced for the
@@ -119,6 +121,18 @@ pub(crate) fn compute_call_regions<'tcx>(
         if !early_regions.contains(r) && !generic_regions.contains(r) {
             late_regions.push(*r);
         }
+    }
+    info!("computed late regions: {:?}, expected: {num_expected_late_bounds:?}", late_regions.len());
+
+    // Heuristic: if we have too many late bounds here, try to filter spurious extra late bounds.
+    // If a late bound is equal to an early bound, it is likely to be spurious.
+    // Ideally, we'd have a more reliable way of computing an instantiation for late-bounds.
+    if late_regions.len() > num_expected_late_bounds {
+        late_regions.retain(|x| {
+            !early_regions
+                .iter()
+                .any(|y| relevant_constraints.contains(&(*x, *y)) && relevant_constraints.contains(&(*y, *x)))
+        });
     }
     info!("call region instantiations (late): {:?}", late_regions);
 

@@ -24,6 +24,7 @@ use rr_rustc_interface::mir_dataflow::impls::always_storage_live_locals;
 use typed_arena::Arena;
 
 use crate::base::*;
+use crate::body::translation::calls::ProcedureInst;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
@@ -31,6 +32,12 @@ use crate::environment::{Environment, polonius_info};
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
 use crate::{consts, procedures, regions, rustcmp, types};
+
+pub(crate) enum ExprInfo<'tcx, 'def> {
+    Call(ProcedureInst<'tcx, 'def>),
+}
+
+pub(crate) type ExprWithInfo<'tcx, 'def> = (code::Expr, Option<ExprInfo<'tcx, 'def>>);
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 struct TranslationKey<'tcx>(OrderedDefId, types::GenericsKey<'tcx>);

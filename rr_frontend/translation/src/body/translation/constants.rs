@@ -11,6 +11,7 @@ use rr_rustc_interface::span;
 
 use super::TX;
 use crate::base::*;
+use crate::body::translation::ExprWithInfo;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a scalar at a specific type to a `code::Expr`.
@@ -19,14 +20,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         sc: &mir::interpret::Scalar,
         ty: ty::Ty<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         // TODO: Use `TryFrom` instead
-        fn translate_literal<'tcx, T>(
+        fn translate_literal<'def, 'tcx, T>(
             sc: mir::interpret::InterpResult<'tcx, T>,
             fptr: fn(T) -> code::Literal,
-        ) -> Result<code::Expr, TranslationError<'tcx>> {
-            sc.discard_err()
-                .map_or(Err(TranslationError::InvalidLayout), |lit| Ok(code::Expr::Literal(fptr(lit))))
+        ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+            sc.discard_err().map_or(Err(TranslationError::InvalidLayout), |lit| {
+                Ok((code::Expr::Literal(fptr(lit)), None))
+            })
         }
 
         match ty.kind() {
@@ -54,11 +56,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             ty::TyKind::Char => translate_literal(sc.to_char(), code::Literal::Char),
 
-            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty).map(Into::into),
+            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
 
             ty::TyKind::Tuple(tys) => {
                 if tys.is_empty() {
-                    return Ok(code::Expr::Literal(code::Literal::ZST));
+                    return Ok((code::Expr::Literal(code::Literal::ZST), None));
                 }
 
                 Err(TranslationError::UnsupportedFeature {
@@ -84,7 +86,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             let ordered_did = OrderedDefId::new(self.env.tcx(), did);
                             let s = self.const_registry.get_static(ordered_did)?;
                             self.collected_statics.insert(ordered_did);
-                            Ok(code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())))
+                            Ok((code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())), None))
                         },
                         mir::interpret::GlobalAlloc::Memory(_) => {
                             // TODO: this is needed
@@ -119,7 +121,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         v: mir::ConstValue,
         ty: ty::Ty<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         match v {
             mir::ConstValue::Scalar(sc) => self.translate_scalar(&sc, ty),
             mir::ConstValue::ZeroSized => {
@@ -127,9 +129,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 match ty.kind() {
                     ty::TyKind::FnDef(_, _) => {
                         info!("Translating ZST val for function call target: {:?}", ty);
-                        self.translate_fn_def_use(ty).map(Into::into)
+                        self.translate_fn_def_use(ty)
                     },
-                    _ => Ok(code::Expr::Literal(code::Literal::ZST)),
+                    _ => Ok((code::Expr::Literal(code::Literal::ZST), None)),
                 }
             },
             _ => {
@@ -146,7 +148,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_constant(
         &mut self,
         constant: &mir::Const<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         match constant {
             mir::Const::Ty(_const_ty, v) => {
                 match v.kind() {

@@ -36,6 +36,8 @@ pub(crate) struct AbstractedGenerics<'def> {
     /// instantiations for the specialized spec hint
     pub callee_lft_param_inst: Vec<specs::Lft>,
     pub callee_ty_param_inst: Vec<specs::Type<'def>>,
+    /// num latebounds
+    pub num_of_latebounds: usize,
     /// instantiations for the function use
     pub fn_scope_inst: specs::GenericScopeInst<'def>,
 }
@@ -383,8 +385,8 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                     ));
                     fn_inst.add_lft_param(name);
 
-                    // TODO: also add instantiation for callee_lft_param_inst?
-                    // Problem: we do not know the concrete instantiation by just looking at the
+                    // Note: we cannot add an instantiation for the callee_lft_param_inst.
+                    // We do not know the concrete instantiation by just looking at the
                     // function pointer.
                 },
                 _ => {
@@ -502,6 +504,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             scope,
             callee_lft_param_inst,
             callee_ty_param_inst,
+            num_of_latebounds: late_bounds.len(),
             fn_scope_inst: fn_inst,
         };
 

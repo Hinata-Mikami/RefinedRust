@@ -104,8 +104,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         });
 
 
+                        let (e, _) = self.translate_rvalue(loc, val)?;
                         let translated_val = code::Expr::with_optional_annotation(
-                            self.translate_rvalue(loc, val)?,
+                            e,
                             assignment_annots.expr_annot,
                             Some("assignment".to_owned()),
                         );

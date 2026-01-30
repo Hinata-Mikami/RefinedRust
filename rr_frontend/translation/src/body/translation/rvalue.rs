@@ -11,6 +11,7 @@ use rr_rustc_interface::{abi, index};
 
 use super::TX;
 use crate::base::*;
+use crate::body::translation::ExprWithInfo;
 use crate::regions;
 
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -25,7 +26,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let mut operand_types: Vec<ty::Ty<'tcx>> = Vec::new();
 
         for o in op {
-            let translated_o = self.translate_operand(o, true)?;
+            let (translated_o, _) = self.translate_operand(o, true)?;
             let type_of_o = self.get_type_of_operand(o);
             translated_ops.push(translated_o);
             operand_types.push(type_of_o);
@@ -157,7 +158,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let op_st = self.ty_translator.translate_type_to_syn_type(op_ty)?;
         let op_ot = op_st.into();
 
-        let translated_op = self.translate_operand(op, true)?;
+        let (translated_op, _) = self.translate_operand(op, true)?;
 
         let target_st = self.ty_translator.translate_type_to_syn_type(to_ty)?;
         let target_ot = target_st.into();
@@ -258,7 +259,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         op: &mir::Operand<'tcx>,
         to_rvalue: bool,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         match op {
             // In Caesium: typed_place needs deref (not use) for place accesses.
             // use is used top-level to convert an lvalue to an rvalue, which is why we use it here.
@@ -272,12 +273,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let st = self.ty_translator.translate_type_to_syn_type(ty.ty)?;
 
                 if to_rvalue {
-                    Ok(code::Expr::Use {
-                        ot: st.into(),
-                        e: Box::new(translated_place),
-                    })
+                    Ok((
+                        code::Expr::Use {
+                            ot: st.into(),
+                            e: Box::new(translated_place),
+                        },
+                        None,
+                    ))
                 } else {
-                    Ok(translated_place)
+                    Ok((translated_place, None))
                 }
             },
             mir::Operand::Constant(constant) => {
@@ -293,7 +297,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         loc: mir::Location,
         rval: &mir::Rvalue<'tcx>,
-    ) -> Result<code::Expr, TranslationError<'tcx>> {
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         match rval {
             mir::Rvalue::Use(op) => {
                 // converts an lvalue to an rvalue
@@ -308,23 +312,29 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
                     let atomic_region = self.info.atomic_region_of_loan(loan);
                     let lft = self.ty_translator.format_atomic_region(atomic_region);
-                    Ok(code::Expr::Borrow {
-                        lft,
-                        bk: translated_bk,
-                        ty: ty_annot,
-                        e: Box::new(translated_pl),
-                    })
+                    Ok((
+                        code::Expr::Borrow {
+                            lft,
+                            bk: translated_bk,
+                            ty: ty_annot,
+                            e: Box::new(translated_pl),
+                        },
+                        None,
+                    ))
                 } else {
                     info!("Didn't find loan at {:?}: {:?}; region {:?}", loc, rval, region);
                     let region = regions::region_to_region_vid(*region);
                     let lft = self.format_region(region);
 
-                    Ok(code::Expr::Borrow {
-                        lft,
-                        bk: translated_bk,
-                        ty: ty_annot,
-                        e: Box::new(translated_pl),
-                    })
+                    Ok((
+                        code::Expr::Borrow {
+                            lft,
+                            bk: translated_bk,
+                            ty: ty_annot,
+                            e: Box::new(translated_pl),
+                        },
+                        None,
+                    ))
                 }
             },
 
@@ -332,27 +342,34 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let translated_pl = self.translate_place(pl)?;
                 let translated_mt = TX::translate_raw_ptr_kind(*mt);
 
-                Ok(code::Expr::AddressOf {
-                    mt: translated_mt,
-                    e: Box::new(translated_pl),
-                })
+                Ok((
+                    code::Expr::AddressOf {
+                        mt: translated_mt,
+                        e: Box::new(translated_pl),
+                    },
+                    None,
+                ))
             },
 
             mir::Rvalue::BinaryOp(op, operands) => {
-                self.translate_binop(*op, &operands.as_ref().0, &operands.as_ref().1)
+                let e = self.translate_binop(*op, &operands.as_ref().0, &operands.as_ref().1)?;
+                Ok((e, None))
             },
 
             mir::Rvalue::UnaryOp(op, operand) => {
-                let translated_e1 = self.translate_operand(operand, true)?;
+                let (translated_e1, _) = self.translate_operand(operand, true)?;
                 let e1_ty = self.get_type_of_operand(operand);
                 let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
                 let translated_op = TX::translate_unop(*op, e1_ty)?;
 
-                Ok(code::Expr::UnOp {
-                    o: translated_op,
-                    ot: e1_st.into(),
-                    e: Box::new(translated_e1),
-                })
+                Ok((
+                    code::Expr::UnOp {
+                        o: translated_op,
+                        ot: e1_st.into(),
+                        e: Box::new(translated_e1),
+                    },
+                    None,
+                ))
             },
 
             mir::Rvalue::NullaryOp(_, _) => {
@@ -385,12 +402,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     e: Box::new(translated_pl),
                 };
 
-                Ok(discriminant_acc)
+                Ok((discriminant_acc, None))
             },
 
-            mir::Rvalue::Aggregate(kind, op) => self.translate_aggregate(kind.as_ref(), op),
+            mir::Rvalue::Aggregate(kind, op) => {
+                let e = self.translate_aggregate(kind.as_ref(), op)?;
+                Ok((e, None))
+            },
 
-            mir::Rvalue::Cast(kind, op, to_ty) => self.translate_cast(*kind, op, *to_ty),
+            mir::Rvalue::Cast(kind, op, to_ty) => {
+                let e = self.translate_cast(*kind, op, *to_ty)?;
+                Ok((e, None))
+            },
 
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Repeat(..)
@@ -439,8 +462,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
         let e2_st = self.ty_translator.translate_type_to_syn_type(e2_ty)?;
 
-        let translated_e1 = self.translate_operand(e1, true)?;
-        let translated_e2 = self.translate_operand(e2, true)?;
+        let (translated_e1, _) = self.translate_operand(e1, true)?;
+        let (translated_e2, _) = self.translate_operand(e2, true)?;
 
         let mk_binop = |op| code::Expr::BinOp {
             o: op,
