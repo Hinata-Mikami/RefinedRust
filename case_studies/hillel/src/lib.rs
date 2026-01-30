@@ -95,7 +95,7 @@ fn insert_unique<T: Eq>(vec: &mut Vec<T>, elem: T) {
         #[rr::ignore] ||{};
         // !end spec
         // !start code(unique)
-        if *e == elem {
+        if e == &elem {
             return;
         }
     }
@@ -179,7 +179,7 @@ fn fulcrum(s: &Vec<u32>) -> usize {
             min_dist = dist;
         }
 
-        sum += *vec_index(s, i);
+        sum += vec_index(s, i);
     }
 
     min_i

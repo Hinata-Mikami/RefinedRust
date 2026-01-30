@@ -51,6 +51,7 @@ impl<'a> Foo {
 }
 
 
+#[rr::verify]
 fn test1() {
     let a = 5;
     let b = 3;

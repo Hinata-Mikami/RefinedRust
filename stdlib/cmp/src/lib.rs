@@ -346,7 +346,6 @@ impl PartialOrd for bool {
 */
 
 // & pointers
-/*
 #[rr::instantiate("PEq" := "{A::PEq}")]
 impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
 where A: PartialEq<B>,
@@ -358,6 +357,16 @@ where A: PartialEq<B>,
         PartialEq::ne(*self, *other)
     }
 }
+
+
+#[rr::instantiate("PEq_refl" := #proof "intros ??? ??; simpl; by apply Eq_PEq_refl")]
+#[rr::instantiate("PEq_sym" := #proof "intros ??? ??; simpl; by apply Eq_PEq_sym")]
+#[rr::instantiate("PEq_trans" := #proof "intros ??? ??; simpl; by apply Eq_PEq_trans")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ??; simpl; by apply Eq_PEq_leibniz")]
+impl<A: ?Sized> Eq for &A where A: Eq {}
+
+#[rr::instantiate("POrd" := "λ a b, {A::POrd} a b")]
+#[rr::instantiate("POrd_eq_cons" := #proof "intros ??? ????; simpl; apply PartialOrd_POrd_eq_cons")]
 impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
 where
     A: PartialOrd<B>,
@@ -378,6 +387,13 @@ where
         PartialOrd::ge(*self, *other)
     }
 }
+
+#[rr::instantiate("Ord" := "λ a b, {A::Ord} a b")]
+#[rr::instantiate("Ord_POrd" := #proof "intros ??? ????; simpl; by apply Ord_Ord_POrd")]
+#[rr::instantiate("Ord_lt_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_lt_trans")]
+#[rr::instantiate("Ord_eq_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_eq_trans")]
+#[rr::instantiate("Ord_gt_trans" := #proof "intros ???? ????; simpl; by apply Ord_Ord_gt_trans")]
+#[rr::instantiate("Ord_antisym" := #proof "intros ??? ????; simpl; by apply Ord_Ord_antisym")]
 impl<A: ?Sized> Ord for &A
 where
     A: Ord,
@@ -386,7 +402,84 @@ where
         Ord::cmp(*self, *other)
     }
 }
-impl<A: ?Sized> Eq for &A where A: Eq {}
+
+// &mut pointers
+#[rr::instantiate("PEq" := "λ a b, {A::PEq} a.cur b.cur")]
+impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &mut A
+    where A: PartialEq<B>,
+{
+    fn eq(&self, other: &&mut B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+    fn ne(&self, other: &&mut B) -> bool {
+        PartialEq::ne(*self, *other)
+    }
+}
+
+
+#[rr::instantiate("PEq" := "λ a b, {A::PEq} a b.cur")]
+impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &A
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&mut B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+    fn ne(&self, other: &&mut B) -> bool {
+        PartialEq::ne(*self, *other)
+    }
+}
+
+#[rr::instantiate("PEq" := "λ a b, {A::PEq} a.cur b")]
+impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &mut A
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+    fn ne(&self, other: &&B) -> bool {
+        PartialEq::ne(*self, *other)
+    }
+}
+
+// TODO: Requiring Leibniz is too strong: we cannot take equality on the borrow variable into
+// account
+/*
+#[rr::instantiate("PEq_refl" := #proof "intros ??? ??; simpl; by apply Eq_PEq_refl")]
+#[rr::instantiate("PEq_sym" := #proof "intros ??? ??; simpl; by apply Eq_PEq_sym")]
+#[rr::instantiate("PEq_trans" := #proof "intros ??? ??; simpl; by apply Eq_PEq_trans")]
+#[rr::instantiate("PEq_leibniz" := #proof "intros ??? ??; simpl; by apply Eq_PEq_leibniz")]
+impl<A: ?Sized> Eq for &mut A where A: Eq {}
+
+impl<A: ?Sized, B: ?Sized> const PartialOrd<&mut B> for &mut A
+where
+    A: PartialOrd<B>,
+{
+    fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
+        PartialOrd::partial_cmp(*self, *other)
+    }
+    fn lt(&self, other: &&mut B) -> bool {
+        PartialOrd::lt(*self, *other)
+    }
+    fn le(&self, other: &&mut B) -> bool {
+        PartialOrd::le(*self, *other)
+    }
+    fn gt(&self, other: &&mut B) -> bool {
+        PartialOrd::gt(*self, *other)
+    }
+    fn ge(&self, other: &&mut B) -> bool {
+        PartialOrd::ge(*self, *other)
+    }
+}
+impl<A: ?Sized> const Ord for &mut A
+where
+    A: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(*self, *other)
+    }
+}
 */
 
 
