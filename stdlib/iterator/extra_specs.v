@@ -107,7 +107,7 @@ Section extra.
     (Step_attrs : step_Step_spec_attrs Z Clone_attrs PartialEq_attrs PartialOrd_attrs)
     :
     (∀ a b z, Step_attrs.(step_Step_Forward) a b = Some z → z = a + b) →
-    (∀ a b, PartialOrd_attrs.(PartialOrd_POrd) a b = Some (Z.cmp a b)) →
+    (∀ a b, PartialOrd_attrs.(PartialOrd_POrd) a b = Some (Z.compare a b)) →
     IteratorLearnInductive (step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs (Z)
       Clone_attrs PartialEq_attrs PartialOrd_attrs Step_attrs) :=
     λ _ _, {| iterator_learn_inductive_Q s1 hist s2 :=
@@ -128,7 +128,7 @@ Section extra.
     subst z.
     rewrite Hcmp_eq in Hcmp.
     injection Hcmp.
-    rewrite Z.cmp_less_iff. intros.
+    rewrite Z.compare_lt_iff. intros.
     split_and!; try solve_goal.
     rewrite (seqZ_cons r (r1 - r)); last lia.
     f_equiv. f_equiv; lia.

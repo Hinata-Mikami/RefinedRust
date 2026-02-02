@@ -16,7 +16,7 @@ Lemma ord_correct_ord `{!refinedrustGS Σ} rt
   (partial_eq_attrs : PartialEq_spec_attrs rt rt)
   (eq_attrs : Eq_spec_attrs rt partial_eq_attrs)
   (partial_ord_attrs : PartialOrd_spec_attrs rt rt partial_eq_attrs)
-  (ord_attrs : Ord_spec_attrs rt partial_eq_attrs eq_attrs partial_ord_attrs) : CorrectOrd (PartialEq_PEq partial_eq_attrs) (Ord_Ord ord_attrs). 
+  (ord_attrs : Ord_spec_attrs rt partial_eq_attrs eq_attrs partial_ord_attrs) : CorrectOrd (PartialEq_PEq partial_eq_attrs) (Ord_Ord ord_attrs).
 Proof.
   constructor.
   - apply _.
@@ -28,3 +28,13 @@ Proof.
 Qed.
 Global Hint Extern 1 (CorrectOrd _ (Ord_Ord _)) => apply ord_correct_ord; done : typeclass_instances.
 
+Lemma ord_correct_partial_ord `{!refinedrustGS Σ} rt
+  (partial_eq_attrs : PartialEq_spec_attrs rt rt)
+  (eq_attrs : Eq_spec_attrs rt partial_eq_attrs)
+  (partial_ord_attrs : PartialOrd_spec_attrs rt rt partial_eq_attrs)
+  (ord_attrs : Ord_spec_attrs rt partial_eq_attrs eq_attrs partial_ord_attrs) : CorrectPartialOrd (PartialOrd_POrd partial_ord_attrs) (Ord_Ord ord_attrs).
+Proof.
+  constructor.
+  - intros. apply Ord_Ord_POrd.
+Qed.
+Global Hint Extern 1 (CorrectPartialOrd _ (Ord_Ord _)) => apply ord_correct_partial_ord; done : typeclass_instances.

@@ -245,7 +245,7 @@ macro_rules! partial_ord_methods_primitive_impl {
 }
 macro_rules! ord_impl {
     ($($t:ty)*) => ($(
-        #[rr::instantiate("POrd" := "λ a b, Some(Z.cmp a b)")]
+        #[rr::instantiate("POrd" := "λ a b, Some(Z.compare a b)")]
         #[rr::instantiate("POrd_eq_cons" := #proof "intros ???; solve_goal")]
         impl PartialOrd for $t {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -255,7 +255,7 @@ macro_rules! ord_impl {
             partial_ord_methods_primitive_impl!();
         }
 
-        #[rr::instantiate("Ord" := "Z.cmp")]
+        #[rr::instantiate("Ord" := "Z.compare")]
         #[rr::instantiate("Ord_POrd" := #proof "intros ???; solve_goal")]
         #[rr::instantiate("Ord_lt_trans" := #proof "intros ????; solve_goal")]
         #[rr::instantiate("Ord_eq_trans" := #proof "intros ????; solve_goal")]

@@ -1,13 +1,14 @@
 From refinedrust Require Import typing.
+From rrstd.cmp.theories Require Export zify.
 
-Inductive ordering : Set :=
-| Less
-| Equal
-| Greater
-.
-Canonical Structure orderingRT := directRT ordering.
+Notation ordering := comparison (only parsing).
+Notation Less := Lt (only parsing).
+Notation Greater := Gt (only parsing).
+Notation Equal := Eq (only parsing).
 
-Global Instance ordering_eqdec : EqDecision ordering.
+Canonical Structure comparisonRT := directRT comparison.
+
+Global Instance comparison_eqdec : EqDecision comparison.
 Proof. solve_decision. Defined.
 
 Definition ord_lt {A} (cmp : A → A → ordering) (a b : A) : Prop :=
@@ -28,11 +29,11 @@ Notation "a '≤o{' cmp '}' b" := (ord_le cmp a b) (at level 42).
 Notation "a '≥o{' cmp '}' b" := (ord_ge cmp a b) (at level 42).
 
 Global Instance ord_lt_dec {A} cmp (a b : A) : Decision (a <o{ cmp } b).
-Proof. apply ordering_eqdec. Qed.
+Proof. apply comparison_eqdec. Qed.
 Global Instance ord_eq_dec {A} cmp (a b : A) : Decision (a =o{ cmp } b).
-Proof. apply ordering_eqdec. Qed.
+Proof. apply comparison_eqdec. Qed.
 Global Instance ord_gt_dec {A} cmp (a b : A) : Decision (a >o{ cmp } b).
-Proof. apply ordering_eqdec. Qed.
+Proof. apply comparison_eqdec. Qed.
 Global Instance ord_le_dec {A} cmp (a b : A) : Decision (a ≤o{ cmp } b).
 Proof. apply _. Qed.
 Global Instance ord_ge_dec {A} cmp (a b : A) : Decision (a ≥o{ cmp } b).
@@ -42,157 +43,83 @@ Global Hint Unfold ord_lt ord_gt ord_eq : lithium_rewrite.
 
 (** Nat *)
 Module Nat.
-  Definition cmp (a b : nat) : ordering :=
-    if bool_decide (a < b) then Less
-    else if bool_decide (a = b) then Equal
-    else Greater.
-
-  Lemma cmp_less_iff a b :
-    cmp a b = Less ↔ a < b.
-  Proof.
-    unfold cmp. repeat case_bool_decide; naive_solver.
-  Qed.
-  Lemma cmp_not_less_iff a b :
-    cmp a b ≠ Less ↔ a >= b.
-  Proof.
-    unfold cmp. repeat case_bool_decide; naive_solver.
-  Qed.
-  Lemma cmp_equal_iff a b :
-    cmp a b = Equal ↔ a = b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_not_equal_iff a b :
-    cmp a b ≠ Equal ↔ a ≠ b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_greater_iff a b :
-    cmp a b = Greater ↔ a > b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_not_greater_iff a b :
-    cmp a b ≠ Greater ↔ a ≤ b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-
   Lemma ord_lt_iff a b :
-    a <o{cmp} b ↔ a < b.
-  Proof. apply cmp_less_iff. Qed.
+    a <o{Nat.compare} b ↔ (a < b)%nat.
+  Proof. apply Nat.compare_lt_iff. Qed.
   Lemma ord_gt_iff a b :
-    a >o{cmp} b ↔ a > b.
-  Proof. apply cmp_greater_iff. Qed.
+    a >o{Nat.compare} b ↔ (a > b)%nat.
+  Proof.
+    rewrite /ord_gt.
+    rewrite Nat.compare_gt_iff. lia.
+  Qed.
   Lemma ord_eq_iff a b :
-    a =o{cmp} b ↔ a = b.
-  Proof. apply cmp_equal_iff. Qed.
+    a =o{Nat.compare} b ↔ a = b.
+  Proof. apply Nat.compare_eq_iff. Qed.
   Lemma ord_le_iff a b :
-    a ≤o{cmp} b ↔ a ≤ b.
+    a ≤o{Nat.compare} b ↔ (a ≤ b)%nat.
   Proof.
     unfold ord_le.
     rewrite ord_lt_iff ord_eq_iff.
     lia.
   Qed.
   Lemma ord_ge_iff a b :
-    a ≥o{cmp} b ↔ a >= b.
+    a ≥o{Nat.compare} b ↔ (a >= b)%nat.
   Proof.
     unfold ord_ge.
     rewrite ord_gt_iff ord_eq_iff.
     lia.
   Qed.
 End Nat.
+Global Arguments Nat.compare : simpl never.
 
 Global Instance nat_cmp_less_simpl a b :
-  SimplBothRel (=) (Nat.cmp a b) Less (a < b).
+  SimplBothRel (=) (Nat.compare a b) Less (a < b)%nat.
 Proof.
-  unfold SimplBothRel. by rewrite Nat.cmp_less_iff.
+  unfold SimplBothRel. lia.
 Qed.
 Global Instance nat_cmp_equal_simpl a b :
-  SimplBothRel (=) (Nat.cmp a b) Equal (a = b).
+  SimplBothRel (=) (Nat.compare a b) Equal (a = b).
 Proof.
-  unfold SimplBothRel. by rewrite Nat.cmp_equal_iff.
+  unfold SimplBothRel. lia.
 Qed.
 Global Instance nat_cmp_greater_simpl a b :
-  SimplBothRel (=) (Nat.cmp a b) Greater (a > b).
+  SimplBothRel (=) (Nat.compare a b) Greater (a > b)%nat.
 Proof.
-  unfold SimplBothRel. by rewrite Nat.cmp_greater_iff.
+  unfold SimplBothRel. lia.
 Qed.
 Global Instance nat_cmp_not_greater_simpl a b :
-  SimplBoth (Nat.cmp a b ≠ Greater) (a ≤ b).
+  SimplBoth (Nat.compare a b ≠ Greater) (a ≤ b)%nat.
 Proof.
-  unfold SimplBoth. by rewrite Nat.cmp_not_greater_iff.
+  unfold SimplBoth. lia.
 Qed.
 Global Instance nat_cmp_not_less_simpl a b :
-  SimplBoth (Nat.cmp a b ≠ Less) (a >= b).
+  SimplBoth (Nat.compare a b ≠ Less) (a >= b)%nat.
 Proof.
-  unfold SimplBoth. by rewrite Nat.cmp_not_less_iff.
+  unfold SimplBoth. lia.
 Qed.
 
 (** Z *)
 Module Z.
-  Definition cmp (a b : Z) : ordering :=
-    if bool_decide (a < b) then Less
-    else if bool_decide (a = b) then Equal
-    else Greater.
-
-  Lemma cmp_less_iff a b :
-    cmp a b = Less ↔ a < b.
-  Proof.
-    unfold cmp. repeat case_bool_decide; naive_solver.
-  Qed.
-  Lemma cmp_not_less_iff a b :
-    cmp a b ≠ Less ↔ a >= b.
-  Proof.
-    unfold cmp. repeat case_bool_decide; naive_solver.
-  Qed.
-  Lemma cmp_equal_iff a b :
-    cmp a b = Equal ↔ a = b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_not_equal_iff a b :
-    cmp a b ≠ Equal ↔ a ≠ b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_greater_iff a b :
-    cmp a b = Greater ↔ a > b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-  Lemma cmp_not_greater_iff a b :
-    cmp a b ≠ Greater ↔ a ≤ b.
-  Proof.
-    unfold cmp. repeat case_bool_decide.
-    all: split; intros; try congruence; try lia.
-  Qed.
-
   Lemma ord_lt_iff a b :
-    a <o{cmp} b ↔ a < b.
-  Proof. apply cmp_less_iff. Qed.
+    a <o{Z.compare} b ↔ a < b.
+  Proof. apply Z.compare_lt_iff. Qed.
   Lemma ord_gt_iff a b :
-    a >o{cmp} b ↔ a > b.
-  Proof. apply cmp_greater_iff. Qed.
+    a >o{Z.compare} b ↔ a > b.
+  Proof.
+    rewrite /ord_gt. rewrite Z.compare_gt_iff. lia.
+  Qed.
   Lemma ord_eq_iff a b :
-    a =o{cmp} b ↔ a = b.
-  Proof. apply cmp_equal_iff. Qed.
+    a =o{Z.compare} b ↔ a = b.
+  Proof. apply Z.compare_eq_iff. Qed.
   Lemma ord_le_iff a b :
-    a ≤o{cmp} b ↔ a ≤ b.
+    a ≤o{Z.compare} b ↔ a ≤ b.
   Proof.
     unfold ord_le.
     rewrite ord_lt_iff ord_eq_iff.
     lia.
   Qed.
   Lemma ord_ge_iff a b :
-    a ≥o{cmp} b ↔ a >= b.
+    a ≥o{Z.compare} b ↔ a >= b.
   Proof.
     unfold ord_ge.
     rewrite ord_gt_iff ord_eq_iff.
@@ -201,31 +128,21 @@ Module Z.
 End Z.
 
 Global Instance cmp_less_simpl a b :
-  SimplBothRel (=) (Z.cmp a b) Less (a < b).
+  SimplBothRel (=) (Z.compare a b) Less (a < b).
 Proof.
-  unfold SimplBothRel. by rewrite Z.cmp_less_iff.
+  unfold SimplBothRel. by rewrite Z.compare_lt_iff.
 Qed.
 Global Instance cmp_equal_simpl a b :
-  SimplBothRel (=) (Z.cmp a b) Equal (a = b).
+  SimplBothRel (=) (Z.compare a b) Equal (a = b).
 Proof.
-  unfold SimplBothRel. by rewrite Z.cmp_equal_iff.
+  unfold SimplBothRel. by rewrite Z.compare_eq_iff.
 Qed.
 Global Instance cmp_greater_simpl a b :
-  SimplBothRel (=) (Z.cmp a b) Greater (a > b).
+  SimplBothRel (=) (Z.compare a b) Greater (a > b).
 Proof.
-  unfold SimplBothRel. by rewrite Z.cmp_greater_iff.
+  unfold SimplBothRel. lia.
 Qed.
-Global Instance cmp_not_greater_simpl a b :
-  SimplBoth (Z.cmp a b ≠ Greater) (a ≤ b).
-Proof.
-  unfold SimplBoth. by rewrite Z.cmp_not_greater_iff.
-Qed.
-Global Instance cmp_not_less_simpl a b :
-  SimplBoth (Z.cmp a b ≠ Less) (a >= b).
-Proof.
-  unfold SimplBoth. by rewrite Z.cmp_not_less_iff.
-Qed.
-
+(* [Z.le] and [Z.ge] are *defined* via [Z.compare] *)
 
 Definition max_by {A} (cmp : A → A → ordering) (a b : A) : A :=
   match cmp a b with
@@ -497,13 +414,13 @@ Section correct_ord.
   Proof.
     unfold max_by, ord_lt.
     destruct (cmp a b) eqn:Heq; try done.
+    - apply correct_ord_eq_compat in Heq.
+      apply correct_eq_leibniz in Heq as <-.
+      done.
     - split; first done. intros ->.
       enough (a =o{ cmp } a).
       { unfold ord_eq in *. congruence. }
       apply correct_ord_eq_compat. done.
-    - apply correct_ord_eq_compat in Heq.
-      apply correct_eq_leibniz in Heq as <-.
-      done.
   Qed.
   Lemma max_by_l_1 a b :
     ¬ (a <o{cmp} b) → max_by cmp a b = a.
@@ -559,13 +476,13 @@ Section correct_ord.
   Proof.
     unfold min_by, ord_lt.
     destruct (cmp a b) eqn:Heq; try done.
+    - apply correct_ord_eq_compat in Heq.
+      apply correct_eq_leibniz in Heq as <-.
+      done.
     - split; first done. intros ->.
       enough (b =o{ cmp } b).
       { unfold ord_eq in *. congruence. }
       apply correct_ord_eq_compat. done.
-    - apply correct_ord_eq_compat in Heq.
-      apply correct_eq_leibniz in Heq as <-.
-      done.
   Qed.
   Lemma min_by_r_1 a b :
     ¬ (a <o{cmp} b) → min_by cmp a b = b.
@@ -596,8 +513,8 @@ Section correct_ord.
     x <o{cmp} max_by cmp a b.
   Proof.
     unfold max_by. destruct (cmp a b) eqn:Heq; try done.
-    - intros ?. eapply correct_ord_lt_trans; done.
     - apply correct_ord_cmp_leibniz in Heq as <-. done.
+    - intros ?. eapply correct_ord_lt_trans; done.
   Qed.
   Lemma max_by_lt_r x a b :
     x <o{cmp} b →
@@ -628,8 +545,8 @@ Section correct_ord.
     min_by cmp a b <o{cmp} x.
   Proof.
     unfold min_by. destruct (cmp a b) eqn:Heq; try done.
-    - intros ?. eapply correct_ord_lt_trans; done.
     - apply correct_ord_cmp_leibniz in Heq as <-. done.
+    - intros ?. eapply correct_ord_lt_trans; done.
   Qed.
 End correct_ord.
 
@@ -975,3 +892,36 @@ End max_list.
 
 (* TODO autorewrite cannot handle the TC assumption... *)
 (*Global Hint Rewrite -> @max_list_cmp_app : lithium_rewrite.*)
+
+Class CorrectPartialOrd {A : Type} (partial_cmp : A → A → option ordering) (cmp : A → A → ordering) := {
+  correct_partial_ord_correct : ∀ x y, partial_cmp x y = Some (cmp x y);
+}.
+
+Section partial_ord.
+  Context `{!typeGS Σ}.
+  Context {A : Type} {partial_cmp cmp} `{!CorrectPartialOrd (A := A) partial_cmp cmp}.
+
+  Local Set Default Proof Using "Type*".
+
+  Global Instance simpl_partial_cmp_less a b :
+    SimplBoth (partial_cmp a b = Some Less) (a <o{cmp} b).
+  Proof.
+    unfold SimplBoth.
+    rewrite correct_partial_ord_correct.
+    solve_goal.
+  Qed.
+  Global Instance simpl_partial_cmp_greater a b :
+    SimplBoth (partial_cmp a b = Some Greater) (a >o{cmp} b).
+  Proof.
+    unfold SimplBoth.
+    rewrite correct_partial_ord_correct.
+    solve_goal.
+  Qed.
+  Global Instance simpl_partial_cmp_eq a b :
+    SimplBoth (partial_cmp a b = Some Equal) (a =o{cmp} b).
+  Proof.
+    unfold SimplBoth.
+    rewrite correct_partial_ord_correct.
+    solve_goal.
+  Qed.
+End partial_ord.
