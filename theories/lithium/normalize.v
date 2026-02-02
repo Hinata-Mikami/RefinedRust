@@ -42,6 +42,7 @@ Ltac normalize_autorewrite :=
 #[export] Hint Rewrite @app_nil_r @rev_involutive : lithium_rewrite.
 #[export] Hint Rewrite <- @list_fmap_insert : lithium_rewrite.
 #[export] Hint Rewrite -> @list_lookup_fmap : lithium_rewrite.
+#[export] Hint Rewrite -> @list_fmap_id : lithium_rewrite.
 #[export] Hint Rewrite -> @list_fmap_compose : lithium_rewrite.
 #[export] Hint Rewrite -> @lookup_take : lithium_rewrite.
 #[export] Hint Rewrite -> @take_take @drop_drop : lithium_rewrite.

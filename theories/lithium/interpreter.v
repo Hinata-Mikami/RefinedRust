@@ -138,26 +138,26 @@ Section coq_tactics.
     by iApply (HP with "Henv HP").
   Qed.
   Lemma tac_remove_name_hint {A} (P : A → Prop) x :
-    (∀ _x : A, P _x) → (∀ x : name_hint x A, P x).
+    (∀ _x : A, P _x) → (∀ x : name_hint_ty x A, P x).
   Proof. done. Qed.
   Lemma tac_remove_bi_name_hint {A} Δ (P : A → iProp Σ) x :
-    envs_entails Δ (∀ x : A, P x) → envs_entails Δ (∀ x : (name_hint x A), P x).
+    envs_entails Δ (∀ x : A, P x) → envs_entails Δ (∀ x : (name_hint_ty x A), P x).
   Proof. done. Qed.
 End coq_tactics.
 
 Ltac liForall :=
   let _name_hint :=
     lazymatch goal with
-    | |- forall name : name_hint ?h ?T, ?P =>
+    | |- forall name : name_hint_ty ?h ?T, ?P =>
         constr:(Some h)
-    | |- envs_entails _ (bi_forall (λ name : name_hint ?h ?T, _)) =>
+    | |- envs_entails _ (bi_forall (λ name : name_hint_ty ?h ?T, _)) =>
         constr:(Some h)
     | |- _ => constr:(@None string)
     end in
   lazymatch goal with
-  | |- ∀ name : name_hint ?h ?T, ?P =>
+  | |- ∀ name : name_hint_ty ?h ?T, ?P =>
         notypeclasses refine (@tac_remove_name_hint T _ h _)
-  | |- envs_entails _ (bi_forall (λ name : name_hint ?h ?T, _)) =>
+  | |- envs_entails _ (bi_forall (λ name : name_hint_ty ?h ?T, _)) =>
         notypeclasses refine (@tac_remove_bi_name_hint _ T _ _ h _)
   | |- _ => idtac
   end;
@@ -223,7 +223,7 @@ Ltac liForall :=
       do_intro (S O) name
   | |- (∃ name, _) → _ =>
       case; do_intro (S O) name
-  | |- (name_hint _ (ex _ ?P)) → ?Q =>
+  | |- (name_hint_ty _ (ex _ ?P)) → ?Q =>
       change ((ex _ P) → Q)
   (* has to come last, as it also matches the previous implications *)
   | |- forall name, _ =>
@@ -257,7 +257,7 @@ Ltac liExist protect :=
   end;
   match goal with
     | |- @ex ?A ?P =>
-      let B := eval unfold name_hint in A in
+      let B := eval unfold name_hint_ty in A in
       let B := eval simpl in B in
       change_no_check (@ex B P)
     | |- _ => idtac

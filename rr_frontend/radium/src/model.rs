@@ -90,6 +90,9 @@ pub enum Type {
 
     #[display("(RT_xt {})", _0)]
     RTXT(Box<coq::term::Type>),
+
+    #[display("name_hint_ty \"{}\" ({})%Z", _1, _0)]
+    WithName(Box<coq::term::Term>, String),
 }
 
 impl From<Type> for coq::term::Type {

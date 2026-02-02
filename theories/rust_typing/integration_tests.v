@@ -42,7 +42,7 @@ Proof.
 
   match goal with
   | |- ∀ x : loc, ?P =>
-      change (∀ x : name_hint "ls1" loc, P)
+      change (∀ x : name_hint_ty "ls1" loc, P)
   end.
 
    repeat liRStep; liShow.

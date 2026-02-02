@@ -3563,7 +3563,7 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
     li_tactic (compute_layout_goal st) (λ ly,
       find_in_context (FindFrameLocals f) (λ locals : list var_name,
         ⌜local_fresh x locals⌝ ∗
-        (∀ l : name_hint (String.append "local_" x) loc, allocated_locals f (x :: locals) -∗
+        (∀ l : name_hint_ty (String.append "local_" x) loc, allocated_locals f (x :: locals) -∗
               x is_live{f, st} l -∗
               l ◁ₗ[f.1, Owned false] .@ (◁ uninit st) -∗
               typed_stmt E L f s fn R ϝ)))

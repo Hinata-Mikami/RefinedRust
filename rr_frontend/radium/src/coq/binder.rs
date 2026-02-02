@@ -46,8 +46,8 @@ impl Binder {
     #[must_use]
     pub fn new_with_name_hint<I: Into<term::Type>>(name: String, ty: I) -> Self {
         let ty = ty.into();
-        let ty = model::Term::WithName(Box::new(term::RocqTerm::Type(Box::new(ty))), name.clone());
-        Self::Default(Some(name), term::RocqType::Term(Box::new(term::RocqTerm::UserDefined(ty))))
+        let ty = model::Type::WithName(Box::new(term::RocqTerm::Type(Box::new(ty))), name.clone());
+        Self::Default(Some(name), term::RocqType::UserDefined(ty))
     }
 
     #[must_use]
