@@ -76,9 +76,9 @@ with identifier [id] has a range corresponding to that of [a]. *)
   the fact that this allocation is in bounds of allocatable memory. *)
   Definition loc_in_bounds_def (l : loc) (pre : nat) (suf : nat) : iProp Σ :=
     (∃ (id : alloc_id) (al : allocation),
-    ⌜l.1 = ProvAlloc (Some id)⌝ ∗ ⌜al.(al_start) + pre ≤ l.2⌝ ∗ ⌜l.2 + suf ≤ al_end al⌝ ∗
+    ⌜l.1 = ProvAlloc id⌝ ∗ ⌜al.(al_start) + pre ≤ l.2⌝ ∗ ⌜l.2 + suf ≤ al_end al⌝ ∗
       ⌜allocation_in_range al⌝ ∗ alloc_meta id al) ∨
-    (⌜l.1 = ProvAlloc None⌝ ∗ ⌜min_alloc_start ≤ l.2⌝ ∗ ⌜l.2 ≤ max_alloc_end_zero⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
+    (⌜l.1 = ProvNone⌝ ∗ ⌜0 ≤ l.2⌝ ∗ ⌜l.2 ≤ max_alloc_end_zero⌝ ∗ ⌜pre = 0%nat⌝ ∗ ⌜suf = 0%nat⌝).
   Definition loc_in_bounds_aux : seal (@loc_in_bounds_def). by eexists. Qed.
   Definition loc_in_bounds := unseal loc_in_bounds_aux.
   Definition loc_in_bounds_eq : @loc_in_bounds = @loc_in_bounds_def :=
@@ -112,7 +112,7 @@ with identifier [id] has a range corresponding to that of [a]. *)
   (** [alloc_global l] is knowledge that the provenance of [l] is
   alive forever (i.e. corresponds to a global variable). *)
   Definition alloc_global_def (l : loc) : iProp Σ :=
-    ∃ id, ⌜l.1 = ProvAlloc (Some id)⌝ ∗ alloc_alive id DfracDiscarded true.
+    ∃ id, ⌜l.1 = ProvAlloc id⌝ ∗ alloc_alive id DfracDiscarded true.
   Definition alloc_global_aux : seal (@alloc_global_def). by eexists. Qed.
   Definition alloc_global := unseal alloc_global_aux.
   Definition alloc_global_eq : @alloc_global = @alloc_global_def :=
@@ -148,7 +148,7 @@ with identifier [id] has a range corresponding to that of [a]. *)
     own heap_heap_name (◯ {[ l.2 := (q, to_lock_stateR st, to_agree (id, b)) ]}).
 
   Definition heap_pointsto_mbyte_def (l : loc) (q : Qp) (b : mbyte) : iProp Σ :=
-    ∃ id, ⌜l.1 = ProvAlloc (Some id)⌝ ∗ heap_pointsto_mbyte_st (RSt 0) l id q b.
+    ∃ id, ⌜l.1 = ProvAlloc id⌝ ∗ heap_pointsto_mbyte_st (RSt 0) l id q b.
   Definition heap_pointsto_mbyte_aux : seal (@heap_pointsto_mbyte_def). by eexists. Qed.
   Definition heap_pointsto_mbyte := unseal heap_pointsto_mbyte_aux.
   Definition heap_pointsto_mbyte_eq : @heap_pointsto_mbyte = @heap_pointsto_mbyte_def :=
@@ -165,7 +165,7 @@ with identifier [id] has a range corresponding to that of [a]. *)
 
   (** Token witnessing that [l] has an allocation identifier that is alive. *)
   Definition alloc_alive_loc_def (l : loc) : iProp Σ :=
-    |={⊤, ∅}=> ((∃ id q, ⌜l.1 = ProvAlloc (Some id)⌝ ∗ alloc_alive id q true) ∨
+    |={⊤, ∅}=> ((∃ id q, ⌜l.1 = ProvAlloc id⌝ ∗ alloc_alive id q true) ∨
                (∃ a q v, ⌜v ≠ []⌝ ∗ heap_pointsto (l.1, a) q v)).
   Definition alloc_alive_loc_aux : seal (@alloc_alive_loc_def). by eexists. Qed.
   Definition alloc_alive_loc := unseal alloc_alive_loc_aux.
@@ -175,7 +175,7 @@ with identifier [id] has a range corresponding to that of [a]. *)
   (** * Freeable *)
 
   Definition freeable_def (l : loc) (n : nat) (q : Qp) (k : alloc_kind) : iProp Σ :=
-    ∃ id, ⌜l.1 = ProvAlloc (Some id)⌝ ∗ alloc_meta id {| al_start := l.2; al_len := n; al_alive := true; al_kind := k |} ∗
+    ∃ id, ⌜l.1 = ProvAlloc id⌝ ∗ alloc_meta id {| al_start := l.2; al_len := n; al_alive := true; al_kind := k |} ∗
      alloc_alive id (DfracOwn q) true.
   Definition freeable_aux : seal (@freeable_def). by eexists. Qed.
   Definition freeable := unseal freeable_aux.
@@ -318,7 +318,7 @@ Section alloc_meta.
   Qed.
 
   Lemma alloc_meta_to_loc_in_bounds l id (pre suf : nat) al:
-    l.1 = ProvAlloc (Some id) →
+    l.1 = ProvAlloc id →
     al.(al_start) + pre ≤ l.2 ∧ l.2 + suf ≤ al_end al →
     allocation_in_range al →
     alloc_meta id al -∗ loc_in_bounds l pre suf.
@@ -573,16 +573,16 @@ Section loc_in_bounds.
 
   Lemma loc_in_bounds_ptr_in_range l pre suf :
     loc_in_bounds l pre suf -∗
-    ⌜min_alloc_start ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end_zero⌝.
+    ⌜0 ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end_zero⌝.
   Proof.
     rewrite loc_in_bounds_eq. iIntros "[Hlib | Hlib]".
     - iDestruct "Hlib" as (?????[??]) "?". iPureIntro.
-      unfold max_alloc_end in *.
+      unfold max_alloc_end, min_alloc_start in *.
       lia.
     - iDestruct "Hlib" as "(% & % & % & -> & ->)". iPureIntro. lia.
   Qed.
   Lemma loc_in_bounds_ptr_in_range_alloc l pre suf :
-    l.1 ≠ ProvAlloc None →
+    l.1 ≠ ProvNone →
     loc_in_bounds l pre suf -∗
     ⌜min_alloc_start ≤ l.2 - pre ∧ l.2 + suf ≤ max_alloc_end⌝.
   Proof.
@@ -605,7 +605,7 @@ Section loc_in_bounds.
 
   Lemma loc_in_bounds_is_alloc l pre suf :
     loc_in_bounds l pre suf -∗
-    ⌜(∃ aid, l.1 = ProvAlloc (Some aid)) ∨ (l.1 = ProvAlloc None ∧ pre = 0%nat ∧ suf = 0%nat)⌝.
+    ⌜(∃ aid, l.1 = ProvAlloc aid) ∨ (l.1 = ProvNone ∧ pre = 0%nat ∧ suf = 0%nat)⌝.
   Proof.
     rewrite loc_in_bounds_eq. iIntros "[H|H]".
     - iDestruct "H" as (id ?????) "H". iPureIntro. left. by exists id.
@@ -613,8 +613,8 @@ Section loc_in_bounds.
   Qed.
 
   Lemma loc_in_bounds_prov_none l :
-    l.1 = ProvAlloc None →
-    min_alloc_start ≤ l.2 →
+    l.1 = ProvNone →
+    0 ≤ l.2 →
     l.2 ≤ max_alloc_end_zero →
     ⊢ loc_in_bounds l 0 0.
   Proof.
@@ -695,7 +695,7 @@ Section heap.
 
   Lemma heap_pointsto_is_alloc l q v :
     l ↦{q} v -∗
-    ⌜(∃ aid, l.1 = ProvAlloc (Some aid)) ∨ (l.1 = ProvAlloc None ∧ l.2 ≠ 0%nat ∧ v = [])⌝.
+    ⌜(∃ aid, l.1 = ProvAlloc aid) ∨ (l.1 = ProvNone ∧ v = [])⌝.
   Proof.
     iIntros "Hl". iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "Hlb".
     iPoseProof (loc_in_bounds_is_alloc with "Hlb") as "%Ha".
@@ -777,7 +777,7 @@ Section heap.
   Proof. iIntros "(% & % & % & ?)". done. Qed.
 
   Lemma heap_pointsto_ptr_in_range l q v :
-    l ↦{q} v -∗ ⌜min_alloc_start ≤ l.2 ∧ l.2 + length v ≤ max_alloc_end_zero⌝.
+    l ↦{q} v -∗ ⌜0 ≤ l.2 ∧ l.2 + length v ≤ max_alloc_end_zero⌝.
   Proof.
     iIntros "Hl". iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "Hlb".
     iPoseProof (loc_in_bounds_ptr_in_range with "Hlb") as "%Ha".
@@ -785,8 +785,8 @@ Section heap.
   Qed.
 
   Lemma heap_pointsto_prov_none_nil l q :
-    l.1 = ProvAlloc None →
-    min_alloc_start ≤ l.2 →
+    l.1 = ProvNone →
+    0 ≤ l.2 →
     l.2 ≤ max_alloc_end_zero →
     ⊢ l ↦{q} [].
   Proof.
@@ -795,7 +795,7 @@ Section heap.
   Qed.
 
   Lemma heap_alloc_st l h v aid :
-    l.1 = ProvAlloc (Some aid) →
+    l.1 = ProvAlloc aid →
     heap_range_free h l.2 (length v) →
     heap_ctx h ==∗
       heap_ctx (heap_alloc l.2 v aid h) ∗
@@ -820,7 +820,7 @@ Section heap.
   Qed.
 
   Lemma heap_alloc l h v id al :
-    l.1 = ProvAlloc (Some id) →
+    l.1 = ProvAlloc id →
     heap_range_free h l.2 (length v) →
     al.(al_start) = l.2 →
     al.(al_len) = length v →
@@ -1014,7 +1014,7 @@ Section heap.
   Qed.
 
   Lemma heap_free_free_st l h v aid :
-    l.1 = ProvAlloc (Some aid) →
+    l.1 = ProvAlloc aid →
     heap_ctx h ∗ ([∗ list] i↦b ∈ v, heap_pointsto_mbyte_st (RSt 0) (l +ₗ i) aid 1 b) ==∗
       heap_ctx (heap_free l.2 (length v) h).
   Proof.
@@ -1042,7 +1042,7 @@ Section heap.
     heap_ctx h -∗ l ↦ v ==∗ heap_ctx (heap_free l.2 (length v) h).
   Proof.
     iIntros "Hctx Hl".
-    iDestruct (heap_pointsto_is_alloc with "Hl") as %[[??]|(? & _ & ->)]; last done.
+    iDestruct (heap_pointsto_is_alloc with "Hl") as %[[??]|(? & ->)]; last done.
     iMod (heap_free_free_st with "[$Hctx Hl]"); [done| |done].
     rewrite heap_pointsto_eq /heap_pointsto_def. iDestruct "Hl" as "[_ Hl]".
     iApply (big_sepL_impl with "Hl"). iIntros (???) "!> H".

@@ -789,7 +789,7 @@ Qed.
 
 Lemma wp_neg_int Φ v v' n π E it:
   val_to_Z v it = Some n →
-  val_of_Z (wrap_to_it (-n) it) it None = Some v' →
+  val_of_Z (wrap_to_it (-n) it) it = Some v' →
   (|={E}⧗=> Φ (v')) -∗ WPe{π} UnOp NegOp (IntOp it) (Val v) @ E {{ Φ }}.
 Proof.
   iIntros (Hv Hv') "HΦ".
@@ -802,7 +802,7 @@ Qed.
 Lemma wp_cast_int Φ v v' i i' π E its itt:
   val_to_Z v its = Some i →
   wrap_to_it i itt = i' →
-  val_of_Z i' itt (val_to_byte_prov v) = Some v' →
+  val_of_Z i' itt = Some v' →
   (|={E}⧗=> Φ (v')) -∗ WPe{π} UnOp (CastOp (IntOp itt)) (IntOp its) (Val v) @ E {{ Φ }}.
 Proof.
   iIntros (Hv ? Hv') "HΦ".
@@ -825,7 +825,7 @@ Qed.
 
 Lemma wp_cast_bool_int Φ b v v' π E it:
   val_to_bool v = Some b →
-  val_of_Z (bool_to_Z b) it None = Some v' →
+  val_of_Z (bool_to_Z b) it = Some v' →
   (|={E}⧗=> Φ v') -∗
   WPe{π} UnOp (CastOp (IntOp it)) (BoolOp) (Val v) @ E {{ Φ }}.
 Proof.
@@ -837,7 +837,7 @@ Qed.
 
 Lemma wp_cast_ptr_int Φ v v' l π E it:
   val_to_loc v = Some l →
-  val_of_Z l.2 it None = Some v' →
+  val_of_Z l.2 it = Some v' →
   (|={E}⧗=> Φ (v')) -∗
   WPe{π} UnOp (CastOp (IntOp it)) PtrOp (Val v) @ E {{ Φ }}.
 Proof.
@@ -858,7 +858,7 @@ Proof.
 Qed.
 
 Lemma wp_cast_null_int Φ v π E it:
-  val_of_Z 0 it None = Some v →
+  val_of_Z 0 it = Some v →
   (|={E}⧗=> Φ v) -∗
   WPe{π} UnOp (CastOp (IntOp it)) PtrOp (Val NULL) @ E {{ Φ }}.
 Proof.
@@ -883,47 +883,18 @@ Proof.
   iApply fupd_mask_intro; first set_solver. iIntros "HE".
   iIntros (v' Hv'). iMod "HE" as "_". iModIntro. iFrame.
   inversion Hv'; simplify_eq.
-  case_bool_decide; [ iApply ("HΦ")|].
-  case_bool_decide; simplify_eq; [ iApply "HΦ" |].
-  case_bool_decide; simplify_eq; iApply "HΦ".
-Qed.
-
-Lemma wp_cast_int_ptr_alive π Φ v a p l it:
-  val_to_Z v it = Some a →
-  val_to_byte_prov v = Some p →
-  l = (ProvAlloc (Some p), a) →
-  loc_in_bounds l 0 0 -∗
-  alloc_alive_loc l ∧ (|={⊤}⧗=> Φ (val_of_loc l)) -∗
-  WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) {{ Φ }}.
-Proof.
-  iIntros (Hv Hp ->) "#Hlib HΦ".
-  iApply wp_unop_det. iIntros (σ) "Hctx".
-  destruct (decide (valid_ptr (ProvAlloc (Some p), a) σ.(st_heap))).
-  2: { iDestruct "HΦ" as "[Ha _]".
-    iDestruct "Hctx" as "(Hhctx & ?)".
-    by iMod (alloc_alive_loc_to_valid_ptr with "Hlib Ha Hhctx") as %Hb. }
-  iApply fupd_mask_intro; [set_solver|]. iIntros "HE". iDestruct "HΦ" as "[_ HΦ]".
-  iSplit. {
-    iPureIntro. split.
-    - inversion 1; simplify_eq; case_bool_decide; by rewrite ->Hp in *.
-    - move => ->. econstructor; [done..|]. rewrite Hp. by case_bool_decide.
-  }
-  iMod "HE" as "_".
-  iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
-  iApply fupd_mask_intro_subseteq; first done.
-  iFrame.
+  iApply "HΦ".
 Qed.
 
 Lemma wp_cast_int_ptr_prov_none Φ v a l it π E :
   val_to_Z v it = Some a →
-  min_alloc_start ≤ a →
+  0 ≤ a →
   a ≤ max_alloc_end_zero →
-  val_to_byte_prov v = None →
-  l = (ProvAlloc None, a) →
+  l = (ProvNone, a) →
   (|={E}⧗=> l ↦ [] -∗ Φ (val_of_loc l)) -∗
   WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
 Proof.
-  iIntros (Hv Hs He Hprov Hl) "HΦ".
+  iIntros (Hv Hs He Hl) "HΦ".
   iApply wp_unop.
   iIntros (σ) "Hctx". iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iSplit; [iPureIntro; eexists _; by econstructor |].
@@ -931,26 +902,7 @@ Proof.
   iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
   iIntros (v' Hv'). iMod "HE" as "_". iModIntro. iFrame.
   inversion Hv'; simplify_eq.
-  case_bool_decide.
-  { rewrite Hprov. iApply ("HΦ" with "[]"). iApply heap_pointsto_prov_none_nil; done. }
-  exfalso. match goal with H : ¬ (valid_ptr _ _) |- _ => apply H end.
-  rewrite Hprov. split; right; done.
-Qed.
-
-Lemma wp_cast_int_null Φ v E π it:
-  val_to_Z v it = Some 0 →
-  (|={E}⧗=> Φ (val_of_loc NULL_loc)) -∗
-  WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
-Proof.
-  iIntros (Hv) "HΦ".
-  iApply wp_unop_det_pure; [|done].
-  move => ??. split.
-  - inversion 1; simplify_eq => //. case_bool_decide; last done. exfalso.
-    revert select (valid_ptr _ _) => /valid_ptr_in_allocation_range []/=.
-    rewrite /min_alloc_start //.
-  - move => ->. econstructor => //. case_bool_decide; last done. exfalso.
-    revert select (valid_ptr _ _) => /valid_ptr_in_allocation_range []/=.
-    rewrite /min_alloc_start //.
+  iApply ("HΦ" with "[]"). iApply heap_pointsto_prov_none_nil; done.
 Qed.
 
 Lemma wp_cast_int_bool Φ v n E π it:
@@ -964,19 +916,6 @@ Proof.
     revert select (cast_to_bool _ _ _ = _) => /=.
     rewrite Hv. by move => /= [<-].
   - move => ->. econstructor => //=. by rewrite Hv.
-Qed.
-
-Lemma wp_erase_prov Φ v ly π E :
-  v `has_layout_val` ly →
-  (|={E}⧗=> Φ (erase_prov v)) -∗
-  WPe{π} UnOp EraseProv (UntypedOp ly) (Val v) @ E {{ Φ }}.
-Proof.
-  iIntros (Hv) "HΦ". iApply (wp_unop_det_pure (erase_prov v)).
-  { iIntros (? vt). split.
-    - by inversion 1.
-    - intros ->. econstructor; [done | | done].
-      rewrite /erase_prov /has_layout_val length_fmap //. }
-  eauto.
 Qed.
 
 Lemma wp_copy_alloc_id Φ it a l v1 v2 π E :
@@ -1038,11 +977,11 @@ Lemma wp_int_arithop Φ op v1 v2 n1 n2 nr it π E :
   val_to_Z v2 it = Some n2 →
   int_arithop_result it n1 n2 op = Some nr →
   int_arithop_sidecond it n1 n2 nr op →
-  (∀ v, ⌜val_of_Z (wrap_to_it nr it) it None = Some v⌝ -∗ |={E}⧗=> Φ v) -∗
+  (∀ v, ⌜val_of_Z (wrap_to_it nr it) it = Some v⌝ -∗ |={E}⧗=> Φ v) -∗
   WPe{π} BinOp op (IntOp it) (IntOp it) (Val v1) (Val v2) @ E {{ Φ }}.
 Proof.
   iIntros (Hn1 Hn2 Hop Hsc) "HΦ".
-  assert (wrap_to_it nr it ∈ it) as [v Hv]%(val_of_Z_is_Some None).
+  assert (wrap_to_it nr it ∈ it) as [v Hv]%(val_of_Z_is_Some).
   { apply wrap_to_it_in_range. }
   move: (Hv) => /val_of_Z_in_range ?.
   iApply (wp_binop_det_pure v with "[HΦ]"). 2: by iApply "HΦ".
@@ -1088,7 +1027,7 @@ Qed.
 Lemma wp_ptr_relop Φ op v1 v2 v l1 l2 b rit π E :
   val_to_loc v1 = Some l1 →
   val_to_loc v2 = Some l2 →
-  val_of_Z (bool_to_Z b) rit None = Some v →
+  val_of_Z (bool_to_Z b) rit = Some v →
   match op with
   | EqOp rit => Some (bool_decide (l1.2 = l2.2), rit)
   | NeOp rit => Some (bool_decide (l1.2 ≠ l2.2), rit)
@@ -1208,7 +1147,7 @@ Qed.
 Lemma wp_ptr_diff π Φ vl1 l1 vl2 l2 ly vo:
   val_to_loc vl1 = Some l1 →
   val_to_loc vl2 = Some l2 →
-  val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize None = Some vo →
+  val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize = Some vo →
   l1.1 = l2.1 →
   0 < ly.(ly_size) →
   loc_in_bounds l1 0 0 -∗
@@ -1253,7 +1192,7 @@ Proof.
   iIntros (Hvl Halg [i Hi]) "#Hl HΦ".
   rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
-  have [|v Hv]:= (val_of_Z_is_Some None ISize (offset_of_idx sl.(sl_members) i)). {
+  have [|v Hv]:= (val_of_Z_is_Some ISize (offset_of_idx sl.(sl_members) i)). {
     rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus/=; lia.
     by apply offset_of_bound. }
@@ -1273,19 +1212,11 @@ Qed.
 Lemma wp_get_member_union `{!LayoutAlg} Φ vl l ul uls n π E:
   use_union_layout_alg uls = Some ul →
   val_to_loc vl = Some l →
- (* Technically, we only need vl ≠ NULL_bytes here, but we use
-  the loc_in_bounds precondition for uniformity with wp_get_member *)
-  loc_in_bounds l 0 (ly_size ul) -∗
   Φ (val_of_loc (l at_union{ul}ₗ n)) -∗
   WPe{π} Val vl at_union{uls} n @ E {{ Φ }}.
 Proof.
-  iIntros (Halg [|[??]]%val_of_to_loc) "Hlib HΦ"; subst.
-  all: rewrite expr_wp_unfold.
-  2: {
-    iDestruct (loc_in_bounds_is_alloc with "Hlib") as %[[?[=]] | (? & ? & ?)].
-    rewrite /GetMemberUnion/GetMemberUnionLoc.
-    by iApply @wp_value.
-  }
+  iIntros (Halg ?%val_of_to_loc) "HΦ"; subst.
+  rewrite expr_wp_unfold.
   rewrite /GetMemberUnion/GetMemberUnionLoc. by iApply @wp_value.
 Qed.
 
@@ -1294,12 +1225,12 @@ Qed.
 Lemma wp_offset_of `{!LayoutAlg} Φ sls sl m i π E:
   use_struct_layout_alg sls = Some sl →
   offset_of sl.(sl_members) m = Some i →
-  (∀ v, ⌜val_of_Z i ISize None = Some v⌝ -∗ Φ v) -∗
+  (∀ v, ⌜val_of_Z i ISize = Some v⌝ -∗ Φ v) -∗
   WPe{π} OffsetOf sls m @ E {{ Φ }}.
 Proof.
   rewrite /OffsetOf. iIntros (Halg Ho) "HΦ".
   rewrite /use_struct_layout_alg' Halg /=.
-  have [|? Hs]:= (val_of_Z_is_Some None ISize i). {
+  have [|? Hs]:= (val_of_Z_is_Some ISize i). {
     rewrite int_elem_of_it_iff.
     split; first by rewrite /min_int /int_half_modulus /=; lia.
     move: Ho => /fmap_Some[?[?->]].
@@ -1850,7 +1781,7 @@ Proof.
   iIntros (???? Hstep ?). inv_stmt_step.
   iApply (physical_step_wand with "HWP"). iIntros "HWP".
   iSplitR; first done.
-  revert select (val_to_loc _ = Some _) => /val_of_to_loc[/(inj _ _ _)Heq|[??]//]. subst.
+  revert select (val_to_loc _ = Some _) => /val_of_to_loc. intros [= <-].
   erewrite (free_block_inj σ.(st_heap) _ (Layout n_size n_align) HeapAlloc hs' σ'); [ | done..].
   iFrame. by iApply "HWP".
 Qed.

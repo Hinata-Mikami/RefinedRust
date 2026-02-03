@@ -49,14 +49,14 @@ Fixpoint heap_update (a : addr) (v : val) (faid : option alloc_id → alloc_id)
 
 Definition heap_lookup_loc (l : loc) (v : val) (Plk : lock_state → Prop)
                            (h : heap) : Prop :=
-  heap_lookup l.2 v (λ aid, l.1 = ProvAlloc (Some aid)) Plk h.
+  heap_lookup l.2 v (λ aid, l.1 = ProvAlloc aid) Plk h.
 
 Definition heap_alloc (a : addr) (v : val) (aid : alloc_id) (h : heap) : heap :=
   heap_update a v (λ _, aid) (λ _, RSt 0%nat) h.
 
 Definition heap_at (l : loc) (ly : layout) (v : val) (Plk : lock_state → Prop)
                    (h : heap) : Prop :=
-  ((∃ aid, l.1 = ProvAlloc (Some aid)) ∨ (l.1 = ProvAlloc None ∧ l.2 ≠ 0%nat ∧ v = [])) ∧
+  ((∃ aid, l.1 = ProvAlloc (aid)) ∨ (l.1 = ProvNone ∧ v = [])) ∧
   l `has_layout_loc` ly ∧ v `has_layout_val` ly ∧
   heap_lookup_loc l v Plk h.
 
@@ -275,40 +275,36 @@ Definition alloc_id_alive (aid : alloc_id) (st : heap_state) : Prop :=
   ∃ alloc, st.(hs_allocs) !! aid = Some alloc ∧ alloc.(al_alive).
 
 Definition block_alive (l : loc) (st : heap_state) : Prop :=
-  (∃ aid, l.1 = ProvAlloc (Some aid) ∧ alloc_id_alive aid st) ∨
+  (∃ aid, l.1 = ProvAlloc aid ∧ alloc_id_alive aid st) ∨
   (* Rust: have a virtual allocation of size zero at every non-null address,
      see the comment on [heap_state_loc_in_bounds] below *)
-  (* TODO: should this really consider l.2? *)
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero).
+  (l.1 = ProvNone ∧ 0 ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero).
 
 (** The address range between [l] and [l +ₗ n] (included) is in range of the
     allocation that contains [l]. Note that we consider the 1-past-the-end
     pointer to be in range of an allocation.
 
-   For Rust, we consider every address (except the 0 address) to have an implicit
-   allocation of size zero.
+   For Rust, we consider every address to have an implicit allocation of size zero.
    See also the discussions at
+    https://doc.rust-lang.org/std/ptr/index.html
     https://github.com/model-checking/kani/issues/1489
     https://github.com/rust-lang/unsafe-code-guidelines/issues/93
     https://rust-lang.zulipchat.com/#narrow/stream/136281-t-lang.2Fwg-unsafe-code-guidelines/topic/MiniRust.20.22monotonicity.22.20and.20ZST.20accesses
-   NOTE: we do not allow this for max_alloc_end + 1, which would be allowed in Rust (I think).
 *)
 Definition heap_state_loc_in_bounds (l : loc) (n : nat) (st : heap_state) : Prop :=
   (∃ alloc_id al,
-    l.1 = ProvAlloc (Some alloc_id) ∧
+    l.1 = ProvAlloc alloc_id ∧
     st.(hs_allocs) !! alloc_id = Some al ∧
     allocation_in_range al ∧
     al.(al_start) ≤ l.2 ∧
     l.2 + n ≤ al_end al) ∨
-  (* NOTE: new for Rust:
-     zero-sized accesses are also allowed with an invalid provenance,
-     as long as they are not based off a null ptr *)
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat).
+  (* NOTE: new for Rust: zero-sized accesses are also allowed with an invalid provenance *)
+  (l.1 = ProvNone ∧ 0 ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat).
 
 Lemma heap_state_loc_in_bounds_zero_or_has_alloc_id l n σ:
   heap_state_loc_in_bounds l n σ →
-  (l.1 = ProvAlloc None ∧ min_alloc_start ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat) ∨
-  (∃ aid, l.1 = ProvAlloc (Some aid)).
+  (l.1 = ProvNone ∧ 0 ≤ l.2 ∧ l.2 ≤ max_alloc_end_zero ∧ n = 0%nat) ∨
+  (∃ aid, l.1 = ProvAlloc aid).
 Proof. rewrite /heap_state_loc_in_bounds. naive_solver. Qed.
 
 (** Checks that the location [l] is inbounds of its allocation
@@ -317,16 +313,16 @@ Definition valid_ptr (l : loc) (st : heap_state) : Prop :=
   block_alive l st ∧ heap_state_loc_in_bounds l 0 st.
 
 Lemma valid_ptr_in_allocation_range l σ:
-  valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end_zero.
+  valid_ptr l σ → 0 ≤ l.2 ≤ max_alloc_end_zero.
 Proof.
   move => [_] [Ha|Ha].
   - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]].
-    unfold max_alloc_end in *.
+    unfold max_alloc_end, min_alloc_start in *.
     lia.
   - move : Ha => [? [?[??]]]. lia.
 Qed.
 Lemma valid_ptr_in_allocation_range_alloc l σ:
-  l.1 ≠ ProvAlloc None → valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end.
+  l.1 ≠ ProvNone → valid_ptr l σ → min_alloc_start ≤ l.2 ≤ max_alloc_end.
 Proof.
   move => ? [_] [Ha|Ha].
   - move : Ha => [?] [] ? [] ? [_ [[? ?] [? ?]]]. lia.
@@ -335,8 +331,8 @@ Qed.
 
 Lemma valid_ptr_is_alloc l σ:
   valid_ptr l σ →
-  (∃ aid, l.1 = ProvAlloc (Some aid)) ∨
-  (l.1 = ProvAlloc None).
+  (∃ aid, l.1 = ProvAlloc aid) ∨
+  l.1 = ProvNone.
 Proof.
   rewrite /valid_ptr /block_alive => [[? _]]. naive_solver.
 Qed.
@@ -359,16 +355,16 @@ Qed.
 Global Instance block_alive_dec l st : Decision (block_alive l st).
 Proof.
   apply or_dec.
-  - destruct (l.1) as [| [aid|] |] eqn: Hl.
-    1,3,4: try (right => -[?[??]]; destruct l; naive_solver).
+  - destruct (l.1) as [| aid |] eqn: Hl.
+    1,3: try (right => -[?[??]]; destruct l; naive_solver).
     eapply (exists_dec_unique aid); [| apply _]. destruct l; naive_solver.
   - solve_decision.
 Qed.
 Global Instance heap_state_loc_in_bounds_dec l n st : Decision (heap_state_loc_in_bounds l n st).
 Proof.
   apply or_dec.
-  - destruct (l.1) as [| [aid|] |] eqn: Hl.
-    1,3,4: (right => -[?[??]]; destruct l; naive_solver).
+  - destruct (l.1) as [| aid |] eqn: Hl.
+    1,3: (right => -[?[??]]; destruct l; naive_solver).
     destruct (st.(hs_allocs) !! aid) as [al|] eqn:?.
     2: right => -[?[?[??]]]; destruct l; naive_solver.
     eapply (exists_dec_unique aid); [ destruct l; naive_solver|].
@@ -383,34 +379,20 @@ Definition cast_to_bool (ot: op_type) (v: val) (st: heap_state) : option bool :=
   match ot with
   | BoolOp   => val_to_bool v
   | IntOp it => val_to_Z v it ≫= λ n, Some (bool_decide (n ≠ 0))
-  (*| PtrOp    => val_to_loc v ≫= λ l, heap_loc_eq l NULL_loc st ≫= λ b, Some (negb b)*)
   | _        => None
   end.
 
 (** ** MemCast: Transforming bytes read from memory.
-  [mem_cast] is corresponds to the [abst] function in the VIP paper.
-
   [mem_cast] should only be called with length of [v] matching [ot] *)
-
 Fixpoint mem_cast (v : val) (ot : op_type) (st : (gset addr * heap_state)) : val :=
   default (replicate (length v) MPoison) (
   match ot with
   | PtrOp =>
     if val_to_loc v is Some l then Some v else
-      (* The following reimplements integer to pointer casts as described in the VIP paper. *)
+      (* interpret as an integer *)
       v' ← val_to_bytes v;
       a ← val_to_Z v' USize;
-      (* Technically, this clause is redundant since val_to_loc already converts 0 to NULL. *)
-      if bool_decide (a = 0) then
-        Some (val_of_loc (ProvNull, a))
-      else if bool_decide (a ∈ st.1) then
-        Some (val_of_loc (ProvFnPtr, a))
-      else
-        let l' := (ProvAlloc (head (provs_in_bytes v)), a) in
-        if bool_decide (valid_ptr l' st.2) then
-          Some (val_of_loc l')
-        else
-          Some (val_of_loc (ProvAlloc None, a))
+      Some (val_of_loc (ProvNone, a))
   | IntOp it => val_to_bytes v
   | CharOp => if val_to_char v is Some _ then val_to_bytes v else None
   | BoolOp => if val_to_bool v is Some _ then val_to_bytes v else None
@@ -534,9 +516,7 @@ Proof.
     { rewrite Heq. done. }
     destruct (val_to_bytes v) as [v' | ] eqn:Heq'; simpl.
     + destruct (val_to_Z v' USize) as [ z | ] eqn:Heq2; simpl.
-      * case_bool_decide; first by rewrite val_to_of_loc //.
-        case_bool_decide; first by rewrite val_to_of_loc //.
-        case_bool_decide; by rewrite val_to_of_loc //.
+      * by rewrite val_to_of_loc //.
       * destruct v; simpl; first done.
         rewrite length_replicate. done.
     + destruct v; simpl; first done.
@@ -609,7 +589,7 @@ Arguments mem_cast : simpl never.
 Inductive alloc_new_block : heap_state → alloc_kind → loc → val → heap_state → Prop :=
 | AllocNewBlock σ l aid kind v:
     let alloc := Allocation l.2 (length v) true kind in
-    l.1 = ProvAlloc (Some aid) →
+    l.1 = ProvAlloc aid →
     σ.(hs_allocs) !! aid = None →
     allocation_in_range alloc →
     heap_range_free σ.(hs_heap) l.2 (length v) →
@@ -630,7 +610,7 @@ Inductive free_block : heap_state → alloc_kind → loc → layout → heap_sta
 | FreeBlock σ l aid ly kind v:
     let al_alive := Allocation l.2 ly.(ly_size) true  kind in
     let al_dead  := Allocation l.2 ly.(ly_size) false kind in
-    l.1 = ProvAlloc (Some aid) →
+    l.1 = ProvAlloc aid →
     σ.(hs_allocs) !! aid = Some al_alive →
     length v = ly.(ly_size) →
     heap_lookup_loc l v (λ st, st = RSt 0%nat) σ.(hs_heap) →
@@ -670,7 +650,7 @@ Qed.
 Lemma free_block_inv hs kind l ly hs':
   free_block hs kind l ly hs' →
   ∃ aid v,
-  l.1 = ProvAlloc (Some aid) ∧
+  l.1 = ProvAlloc aid ∧
   hs.(hs_allocs) !! aid = Some (Allocation l.2 ly.(ly_size) true kind) ∧
   length v = ly.(ly_size) ∧
   heap_lookup_loc l v (λ st, st = RSt 0%nat) hs.(hs_heap) ∧

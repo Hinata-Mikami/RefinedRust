@@ -288,7 +288,7 @@ Arguments EnumInit : simpl never.
 (* NOTE: in contrast to Caesium, this uses ISize, because LLVMs GEP uses signed integer offsets
       https://llvm.org/docs/LangRef.html#getelementptr-instruction *)
 Definition GetMember' (e : expr) (sl : struct_layout) (m : var_name) : expr :=
-  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize None))))%E.
+  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize))))%E.
 Definition GetMember `{!LayoutAlg} (e : expr) (sls : struct_layout_spec) (m : var_name) : expr :=
   let sl := use_struct_layout_alg' sls in
   GetMember' e sl m.
@@ -298,7 +298,7 @@ Arguments GetMember : simpl never.
 
 Definition OffsetOf `{!LayoutAlg} (sls : struct_layout_spec) (m : var_name) : expr :=
   let sl := use_struct_layout_alg' sls in
-  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) ISize None)))%E.
+  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) ISize)))%E.
 Global Typeclasses Opaque OffsetOf.
 Arguments OffsetOf : simpl never.
 

@@ -224,7 +224,7 @@ Proof.
     opose proof* (ly_align_log_in_usize T_st_ly) as Ha.
     { open_cache. sidecond_hook. }
     move: Ha.
-    intros [? Halign]%(val_of_Z_is_Some None) [? Hsz]%(val_of_Z_is_Some None).
+    intros [? Halign]%(val_of_Z_is_Some ) [? Hsz]%(val_of_Z_is_Some ).
     iDestruct "CTX" as "(LFT & LLCTX)".
     iSelect (credit_store _ _) ltac:(fun H => iRename H into "Hstore").
     iPoseProof (credit_store_borrow_receipt with "Hstore") as "(Hat & Hstore)".

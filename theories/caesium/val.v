@@ -5,7 +5,7 @@ Set Default Proof Using "Type".
 
 (** Representation of a byte stored in memory. *)
 Inductive mbyte : Set :=
-| MByte (b : byte) (p : option alloc_id) (** [p] is Some if this integer contains provenance *)
+| MByte (b : byte)
 | MPtrFrag (l : loc) (n : nat) (** Fragment [n] for location [l]. *)
 | MPoison.
 
@@ -14,10 +14,10 @@ Proof. solve_decision. Qed.
 
 Program Definition mbyte_to_byte (mb : mbyte) : option (byte * option alloc_id) :=
   match mb with
-  | MByte b p => Some (b, p)
+  | MByte b => Some (b, None)
   | MPtrFrag l n => Some (
      {| byte_val := ((l.2 `div` 2^(8 * n)) `mod` byte_modulus) |},
-     if l.1 is ProvAlloc a then a else None)
+     if l.1 is ProvAlloc a then Some a else None)
   | MPoison => None
   end.
 Next Obligation. move => ? l n. have [] := Z_mod_lt (l.2 `div` 2 ^ (8 * n)) byte_modulus => //*. lia. Qed.
@@ -43,19 +43,9 @@ Definition val_of_loc_n (n : nat) (l : loc) : val :=
 Definition val_of_loc : loc → val :=
   val_of_loc_n bytes_per_addr.
 
-(* [NULL_bytes(_n)] is the alternative representation of NULL as integer 0 bytes. *)
-Definition NULL_bytes_n (n : nat) : val := repeat (MByte byte0 None) n.
-Definition NULL_bytes := NULL_bytes_n bytes_per_addr.
-
 Definition val_to_loc_n (n : nat) (v : val) : option loc :=
   if v is MPtrFrag l _ :: _ then
     if (bool_decide (v = val_of_loc_n n l)) then Some l else None
-  (* A list of 0s is interpreted as NULL. This is mainly useful when
-  memcasting is turned off. Interpreting 0s as NULL does not cause the
-  steps for pointers to overlap with the steps for integers since the
-  steps are dispatched based on the op_type, not on val_to_loc. *)
-  else if v is MByte b _ :: _ then
-    if (bool_decide (v = NULL_bytes_n n)) then Some NULL_loc else None
   else None.
 
 Definition val_to_loc : val → option loc :=
@@ -86,7 +76,7 @@ Proof.
 Qed.
 
 Lemma val_of_to_loc_n n v l:
-  val_to_loc_n n v = Some l → v = val_of_loc_n n l ∨ v = NULL_bytes_n n ∧ l = NULL_loc.
+  val_to_loc_n n v = Some l → v = val_of_loc_n n l.
 Proof.
   rewrite /val_to_loc_n.
   destruct v as [|b v'] eqn:Hv; first done.
@@ -94,17 +84,15 @@ Proof.
 Qed.
 
 Lemma val_of_to_loc v l:
-  val_to_loc v = Some l → v = val_of_loc l ∨ v = NULL_bytes ∧ l = NULL_loc.
+  val_to_loc v = Some l → v = val_of_loc l.
 Proof. apply val_of_to_loc_n. Qed.
 
 Lemma val_to_loc_n_length n v:
   is_Some (val_to_loc_n n v) → length v = n.
 Proof.
   rewrite /val_to_loc_n. move => [? H]. repeat case_match => //; simplify_eq.
-  - revert select (bool_decide _ = _) => /bool_decide_eq_true ->.
-    rewrite /NULL_bytes_n. by rewrite repeat_length.
-  - revert select (bool_decide _ = _) => /bool_decide_eq_true ->.
-    by rewrite val_of_loc_n_length.
+  revert select (bool_decide _ = _) => /bool_decide_eq_true ->.
+  by rewrite val_of_loc_n_length.
 Qed.
 
 Lemma val_to_loc_length v:
@@ -129,7 +117,7 @@ Arguments val_to_loc : simpl never.
 Fixpoint val_to_Z_go v : option Z :=
   match v with
   | []           => Some 0
-  | MByte b _ :: v => z ← val_to_Z_go v; Some (byte_modulus * z + b.(byte_val))
+  | MByte b :: v => z ← val_to_Z_go v; Some (byte_modulus * z + b.(byte_val))
   | _            => None
   end.
 
@@ -142,42 +130,34 @@ Definition val_to_Z (v : val) (it : int_type) : option Z :=
       Some z
   else None.
 
-Definition val_to_byte_prov (v : val) : option alloc_id :=
-  if v is MByte _ (Some p) :: _ then
-    guard (Forall (λ e, Is_true (if e is MByte _ (Some p') then bool_decide (p = p') else false)) v);; Some p
-  else None.
-
-Definition provs_in_bytes (v : val) : list alloc_id :=
-  omap (λ b, if b is MByte _ (Some p) then Some p else None) v.
-
 Definition val_to_bytes (v : val) : option val :=
-  mapM (λ b, (λ '(v, a), MByte v a) <$> mbyte_to_byte b) v.
+  mapM (λ b, (λ '(v, a), MByte v) <$> mbyte_to_byte b) v.
 
-Program Fixpoint val_of_Z_go (n : Z) (sz : nat) (p : option alloc_id) : val :=
+Program Fixpoint val_of_Z_go (n : Z) (sz : nat) : val :=
   match sz return _ with
   | O    => []
-  | S sz => MByte {| byte_val := (n `mod` byte_modulus) |} p
-            :: val_of_Z_go (n / byte_modulus) sz p
+  | S sz => MByte {| byte_val := (n `mod` byte_modulus) |}
+            :: val_of_Z_go (n / byte_modulus) sz
   end.
 Next Obligation. move => n. have [] := Z_mod_lt n byte_modulus => //*. lia. Qed.
 
-Definition val_of_Z (z : Z) (it : int_type) (p : option alloc_id) : option val :=
+Definition val_of_Z (z : Z) (it : int_type) : option val :=
   if bool_decide (z ∈ it) then
     let n := if bool_decide (z < 0) then z + int_modulus it else z in
-    Some (val_of_Z_go n (bytes_per_int it) p)
+    Some (val_of_Z_go n (bytes_per_int it))
   else
     None.
 
 Definition i2v (n : Z) (it : int_type) : val :=
-  default (replicate (bytes_per_int it) MPoison) (val_of_Z n it None).
+  default (replicate (bytes_per_int it) MPoison) (val_of_Z n it).
 
-Lemma val_of_Z_go_length z sz p:
-  length (val_of_Z_go z sz p) = sz.
+Lemma val_of_Z_go_length z sz :
+  length (val_of_Z_go z sz) = sz.
 Proof. elim: sz z => //= ? IH ?. by f_equal. Qed.
 
-Lemma val_to_of_Z_go z (sz : nat) p:
+Lemma val_to_of_Z_go z (sz : nat):
   0 ≤ z < 2 ^ (sz * bits_per_byte) →
-  val_to_Z_go (val_of_Z_go z sz p) = Some z.
+  val_to_Z_go (val_of_Z_go z sz) = Some z.
 Proof.
   rewrite /bits_per_byte.
   elim: sz z => /=. 1: rewrite /Z.of_nat; move => ??; f_equal; lia.
@@ -187,8 +167,8 @@ Proof.
   lia.
 Qed.
 
-Lemma val_of_Z_length z it v p:
-  val_of_Z z it p = Some v → length v = bytes_per_int it.
+Lemma val_of_Z_length z it v :
+  val_of_Z z it = Some v → length v = bytes_per_int it.
 Proof.
   rewrite /val_of_Z => Hv. case_bool_decide => //. simplify_eq.
   by rewrite val_of_Z_go_length.
@@ -196,7 +176,7 @@ Qed.
 
 Lemma i2v_length n it: length (i2v n it) = bytes_per_int it.
 Proof.
-  rewrite /i2v. destruct (val_of_Z n it None) eqn:Heq.
+  rewrite /i2v. destruct (val_of_Z n it) eqn:Heq.
   - by apply val_of_Z_length in Heq.
   - by rewrite length_replicate.
 Qed.
@@ -205,12 +185,12 @@ Lemma val_to_Z_length v it z:
   val_to_Z v it = Some z → length v = bytes_per_int it.
 Proof. rewrite /val_to_Z. by case_decide. Qed.
 
-Lemma val_of_Z_is_Some p it z:
-  z ∈ it → is_Some (val_of_Z z it p).
+Lemma val_of_Z_is_Some it z:
+  z ∈ it → is_Some (val_of_Z z it).
 Proof. rewrite /val_of_Z. case_bool_decide; by eauto. Qed.
 
-Lemma val_of_Z_in_range it z v p:
-  val_of_Z z it p = Some v → z ∈ it.
+Lemma val_of_Z_in_range it z v :
+  val_of_Z z it = Some v → z ∈ it.
 Proof. rewrite /val_of_Z. case_bool_decide; by eauto. Qed.
 
 Lemma val_to_Z_go_in_range v n:
@@ -263,8 +243,8 @@ Proof.
   lia.
 Qed.
 
-Lemma val_to_of_Z z it v p:
-  val_of_Z z it p = Some v → val_to_Z v it = Some z.
+Lemma val_to_of_Z z it v :
+  val_of_Z z it = Some v → val_to_Z v it = Some z.
 Proof.
   rewrite /val_of_Z /val_to_Z => Ht.
   destruct (bool_decide (z ∈ it)) eqn: Hr => //. simplify_eq.
@@ -289,27 +269,8 @@ Proof.
     + rewrite /int_modulus /bits_per_int in HM. lia.
 Qed.
 
-Lemma val_of_Z_go_to_prov z n p :
-  n ≠ 0%nat →
-  val_to_byte_prov (val_of_Z_go z n p) = p.
-Proof.
-  destruct n as [|n] => // _. destruct p as [a|] => //.
-  rewrite /val_to_byte_prov/=. case_guard as Hf => //.
-  contradict Hf. constructor; [by eauto|].
-  move: (z `div` byte_modulus) => {}z.
-  elim: n z => /=; eauto.
-Qed.
-
-Lemma val_of_Z_to_prov z it p v :
-  val_of_Z z it p = Some v →
-  val_to_byte_prov v = p.
-Proof.
-  rewrite /val_of_Z. case_bool_decide => // -[<-]. apply val_of_Z_go_to_prov.
-  have := bytes_per_int_gt_0 it. lia.
-Qed.
-
 Lemma val_to_Z_go_is_Some v :
-  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ↔
+  Forall (λ mb, match mb with | MByte b => True | _ => False end) v ↔
   is_Some (val_to_Z_go v).
 Proof.
   induction v as [ | mb v IH]; simpl; first by eauto.
@@ -318,7 +279,7 @@ Proof.
   destruct (val_to_Z_go v); naive_solver.
 Qed.
 Lemma val_to_Z_is_Some v it :
-  (Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ∧ length v = bytes_per_int it) ↔
+  (Forall (λ mb, match mb with | MByte b => True | _ => False end) v ∧ length v = bytes_per_int it) ↔
   is_Some (val_to_Z v it).
 Proof.
   unfold val_to_Z. case_bool_decide; last naive_solver.
@@ -331,12 +292,12 @@ Proof.
 Qed.
 Lemma val_to_Z_Some v it x :
   val_to_Z v it = Some x →
-  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v ∧ length v = bytes_per_int it.
+  Forall (λ mb, match mb with | MByte b => True | _ => False end) v ∧ length v = bytes_per_int it.
 Proof.
   intros Heq. apply val_to_Z_is_Some. rewrite Heq. done.
 Qed.
 Lemma val_to_Z_Some_1 v it :
-  Forall (λ mb, match mb with | MByte b _ => True | _ => False end) v →
+  Forall (λ mb, match mb with | MByte b => True | _ => False end) v →
   length v = bytes_per_int it →
   is_Some (val_to_Z v it).
 Proof.
@@ -357,28 +318,22 @@ Lemma val_to_Z_val_of_loc_None l it:
   val_to_Z (val_of_loc l) it = None.
 Proof. apply val_to_Z_val_of_loc_n_None. Qed.
 
-Lemma val_to_loc_to_Z_overlap v l it z:
-  val_to_loc v = Some l →
-  val_to_Z v it = Some z →
-  v = NULL_bytes.
-Proof. move => /val_of_to_loc[->|[-> ?//]]. by rewrite val_to_Z_val_of_loc_None. Qed.
-
-Lemma val_of_Z_bool_is_Some p it b:
-  is_Some (val_of_Z (bool_to_Z b) it p).
+Lemma val_of_Z_bool_is_Some it b:
+  is_Some (val_of_Z (bool_to_Z b) it).
 Proof. apply: val_of_Z_is_Some. apply: bool_to_Z_elem_of_int_type. Qed.
 
 Lemma val_of_Z_bool b it:
-  val_of_Z (bool_to_Z b) it None = Some (i2v (bool_to_Z b) it).
-Proof. rewrite /i2v. by have [? ->]:= val_of_Z_bool_is_Some None it b. Qed.
+  val_of_Z (bool_to_Z b) it = Some (i2v (bool_to_Z b) it).
+Proof. rewrite /i2v. by have [? ->]:= val_of_Z_bool_is_Some it b. Qed.
 
 Program Definition val_of_bool (b : bool) : val :=
-  [MByte (Byte (bool_to_Z b) _) None].
+  [MByte (Byte (bool_to_Z b) _)].
 Next Obligation. by destruct b. Qed.
 
 Definition val_to_bool (v : val) : option bool :=
   match v with
-  | [MByte (Byte 0 _) _] => Some false
-  | [MByte (Byte 1 _) _] => Some true
+  | [MByte (Byte 0 _)] => Some false
+  | [MByte (Byte 1 _)] => Some true
   | _                    => None
   end.
 
@@ -401,7 +356,7 @@ Proof.
 Qed.
 
 Lemma val_of_bool_iff_val_of_Z v b:
-  val_of_bool b = v ↔ val_of_Z (bool_to_Z b) U8 None = Some v.
+  val_of_bool b = v ↔ val_of_Z (bool_to_Z b) U8 = Some v.
 Proof.
   destruct b.
   - rewrite /val_of_Z/val_of_bool. rewrite bool_decide_true.
@@ -502,45 +457,6 @@ Proof.
   apply IH in Hb. simpl. rewrite Hb. simpl. done.
 Qed.
 
-(** Rust: Erase provenance information from bytes. Needed to implement the EraseProv operation. *)
-Definition erase_prov (v : val) : val :=
-  fmap (λ byte,
-    match byte with
-    | MByte byte _ => MByte byte None
-    | _ => byte
-    end) v.
-Lemma val_to_byte_prov_erase_prov v :
-  val_to_byte_prov (erase_prov v) = None.
-Proof.
-  destruct v as [ | [] v]; done.
-Qed.
-Lemma erase_prov_length v :
-  length (erase_prov v) = length v.
-Proof.
-  rewrite /erase_prov length_fmap //.
-Qed.
-Lemma val_to_Z_go_erase_prov v z :
-  val_to_Z_go v = Some z →
-  val_to_Z_go (erase_prov v) = Some z.
-Proof.
-  induction v as [ | mb v IH] in z |-*; simpl; first done.
-  destruct mb; simpl; [ | done..].
-  intros (? & Hz%IH & [= <-])%bind_Some.
-  rewrite Hz //.
-Qed.
-Lemma val_to_Z_erase_prov v it z :
-  val_to_Z v it = Some z →
-  val_to_Z (erase_prov v) it = Some z.
-Proof.
-  rewrite /val_to_Z erase_prov_length.
-  case_bool_decide as Ha; last done.
-  intros (z' & Hz & Hb)%bind_Some.
-  erewrite val_to_Z_go_erase_prov; last done.
-  done.
-Qed.
-
-Arguments erase_prov : simpl never.
 Arguments val_to_Z : simpl never.
 Arguments val_of_Z : simpl never.
-Arguments val_to_byte_prov : simpl never.
-Global Typeclasses Opaque val_to_Z val_of_Z val_to_char val_of_char val_of_bool val_to_bool val_to_byte_prov val_to_bytes provs_in_bytes.
+Global Typeclasses Opaque val_to_Z val_of_Z val_to_char val_of_char val_of_bool val_to_bool val_to_bytes.

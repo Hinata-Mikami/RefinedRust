@@ -264,10 +264,18 @@ fn is_builtin_trait(tcx: ty::TyCtxt<'_>, trait_did: DefId) -> Option<bool> {
     // underdocumented, so just ignore it.
     let destruct_did = search::try_resolve_did(tcx, &["core", "marker", "Destruct"])?;
 
+    // For us all Metadata is () right now.
+    let pointee_did = search::try_resolve_did(tcx, &["core", "ptr", "Pointee"])?;
+
+    // Everything is Thin.
+    let thin_did = search::try_resolve_did(tcx, &["core", "ptr", "metadata", "Thin"])?;
+
     Some(
         trait_did == sized_did
             || trait_did == tuple_did
             || trait_did == meta_sized_did
-            || trait_did == destruct_did,
+            || trait_did == destruct_did
+            || trait_did == pointee_did
+            || trait_did == thin_did,
     )
 }

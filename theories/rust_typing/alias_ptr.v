@@ -1,5 +1,5 @@
 From refinedrust Require Export type ltypes programs.
-From refinedrust Require Import memcasts ltype_rules value int.
+From refinedrust Require Import memcasts ltype_rules value int unit.
 From refinedrust Require Import options.
 
 (** * Raw pointers *)
@@ -173,7 +173,7 @@ Section cast.
   Proof.
     rewrite /ty_own_val/=.
     iIntros "(-> & HT) (_ & -> & %Husize) %Φ #CTX #HE HL Hf HΦ".
-    odestruct (val_of_Z_is_Some _ _ _ _) as (? & ?); first apply Husize.
+    odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.
     iApply wp_cast_ptr_int.
     { apply val_to_of_loc. }
     { done. }
@@ -184,6 +184,44 @@ Section cast.
   Qed.
   Definition type_cast_ptr_int_inst := [instance @type_cast_ptr_int].
   Global Existing Instance type_cast_ptr_int_inst.
+
+  Lemma type_cast_int_ptr π E L f (l : Z) v (T : typed_val_expr_cont_t) :
+    (⌜π = f.1⌝ ∗ ((((ProvNone, l) : loc) ◁ₗ[π, Owned false] .@ ◁ unit_t) -∗ T L (val_of_loc (ProvNone, l)) MetaNone _ alias_ptr_t ((ProvNone, l) : loc)))
+    ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ int USize)%I (CastOp PtrOp) (IntOp USize) T.
+  Proof.
+    rewrite /ty_own_val/=.
+    iIntros "(-> & HT) (_ & %Husize) %Φ #CTX #HE HL Hf HΦ".
+    pose proof (val_to_Z_in_range _ _ _ Husize) as [Hmin Hmax].
+    rewrite MinInt_unsigned_0 in Hmin; last done.
+    (*odestruct (val_of_Z_is_Some _ _ _) as (? & ?); first apply Husize.*)
+    iApply wp_cast_int_ptr_prov_none.
+    { done. }
+    { done. }
+    { move: Hmax. rewrite MaxInt_eq. done. }
+    { done. }
+    iApply physical_step_intro. iNext. iIntros "Hl".
+
+    set (l2 := ((ProvNone, l) : loc)).
+    iAssert (l2 ◁ₗ[f.1, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "Hl2".
+    { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+      iExists _. simpl.
+      iSplitR. { iPureIntro. by apply syn_type_has_layout_unit. }
+      iSplitR. { iPureIntro. rewrite /has_layout_loc/aligned_to.
+        eapply Z.divide_1_l. }
+      iSplitR; first done.
+      iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
+      iSplitR; first done. iSplitR; first done.
+      iExists (). iSplitR; first done.
+      iModIntro. iExists []. iFrame. rewrite /ty_own_val /= //. }
+
+    iApply ("HΦ" with "HL Hf [] (HT Hl2)") => //.
+
+    rewrite /ty_own_val/=. iR. iR.
+    iPureIntro. split; last done.
+    rewrite MinInt_unsigned_0; done.
+  Qed.
+  Definition type_cast_int_ptr_inst := [instance @type_cast_int_ptr].
+  Global Existing Instance type_cast_int_ptr_inst.
 End cast.
 
 Section place.

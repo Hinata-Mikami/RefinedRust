@@ -36,7 +36,7 @@ Section typing.
     z ∈ it → ⊢ i2v z it ◁ᵥ{π, MetaNone} z @ int it.
   Proof.
     intros Hn.
-    move: Hn => /(val_of_Z_is_Some None) [v Hv].
+    move: Hn => /(val_of_Z_is_Some) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
     rewrite /ty_own_val/=. iPureIntro.
     rewrite /i2v Hv/=//.
@@ -422,7 +422,7 @@ Section unop.
     rewrite /ty_own_val/=.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as (Hs Hn) "HT".
-    have [|v' Hv']:= val_of_Z_is_Some None it (- n). {
+    have [|v' Hv']:= val_of_Z_is_Some it (- n). {
       rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
       rewrite MinInt_eq in Hn.
       unfold elem_of, int_elem_of_it, max_int, min_int in *.
@@ -450,7 +450,7 @@ Section unop.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ". move: (Hv) => /val_to_Z_in_range Hel.
     iDestruct ("HT" with "[//]") as "HT".
     set (nz := (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n)).
-    have [|v' Hv']:= val_of_Z_is_Some None it nz. {
+    have [|v' Hv']:= val_of_Z_is_Some it nz. {
       rewrite int_elem_of_it_iff. rewrite int_elem_of_it_iff in Hel.
       unfold elem_of, int_elem_of_it, max_int, min_int, Z_lunot, Z.lnot, Z.pred in *.
       destruct (it_signed it); simpl in *; first lia.
@@ -482,7 +482,7 @@ Section unop.
     iIntros "(-> & HT) (-> & %Hv) %Φ #CTX #HE HL Hf HΦ".
     iSpecialize ("HT" with "[]").
     { iPureIntro. by apply: val_to_Z_in_range. }
-    destruct (val_of_Z_is_Some (val_to_byte_prov v) it2 (wrap_to_it n it2)) as (n' & Hit').
+    destruct (val_of_Z_is_Some it2 (wrap_to_it n it2)) as (n' & Hit').
     { apply wrap_to_it_in_range. }
     iApply wp_cast_int => //.
     iApply physical_step_intro. iNext.
@@ -641,7 +641,7 @@ Section char.
   Proof.
     intros Hvalid.
     specialize (is_valid_char_in_char_it _ Hvalid) as Hn.
-    move: Hn => /(val_of_Z_is_Some None) [v Hv].
+    move: Hn => /(val_of_Z_is_Some) [v Hv].
     move: (Hv) => /val_to_of_Z Hn.
     rewrite /ty_own_val/=. iPureIntro.
     rewrite /val_to_char.

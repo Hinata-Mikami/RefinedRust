@@ -16,6 +16,22 @@ mod non_null;
 
 use core::mem;
 
+#[rr::export_as(core::ptr::null)]
+#[rr::only_spec]
+#[rr::ensures("ret = (ProvNone, 0)")]
+pub const fn ptr_null<T>() -> *const T {
+    unimplemented!();
+    //from_raw_parts(without_provenance::<()>(0), ())
+}
+
+#[rr::export_as(core::ptr::null_mut)]
+#[rr::only_spec]
+#[rr::ensures("ret = (ProvNone, 0)")]
+pub const fn ptr_null_mut<T>() -> *mut T {
+    unimplemented!();
+    //from_raw_parts(without_provenance::<()>(0), ())
+}
+
 
 #[rr::export_as(core::ptr::write)]
 #[rr::code_shim("ptr_write")]
@@ -408,33 +424,8 @@ pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
     unimplemented!();
 }
 
-// TODO: replaced in newer Rust versions by `without_provenance`
-#[rr::export_as(core::ptr::invalid)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn invalid<T>(addr: usize) -> *const T {
-    unimplemented!();
-}
-#[rr::export_as(core::ptr::invalid_mut)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
-#[rr::exists("l")]
-#[rr::returns("l")]
-#[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
-#[rr::ensures(#type "l" : "()" @ "unit_t")]
-pub const fn invalid_mut<T>(addr: usize) -> *mut T {
-    unimplemented!();
-}
-
 #[rr::export_as(core::ptr::without_provenance)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::code_shim("ptr_without_provenance")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
@@ -444,8 +435,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
     unimplemented!();
 }
 #[rr::export_as(core::ptr::without_provenance_mut)]
-#[rr::code_shim("ptr_invalid")]
-#[rr::requires("(min_alloc_start ≤ addr)%Z")]
+#[rr::code_shim("ptr_without_provenance")]
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]

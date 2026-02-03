@@ -65,7 +65,7 @@ Section test.
   Definition mkloc (p : prov) (a : addr) : loc := (p, a).
 
   Lemma lir_test_3 :
-    loc_in_range (mkloc (ProvAlloc None) 4) 0 (mkloc (ProvAlloc None) 4) 0.
+    loc_in_range (mkloc (ProvNone) 4) 0 (mkloc (ProvNone) 4) 0.
   Proof.
     solve_loc_in_range.
   Abort.

@@ -22,7 +22,7 @@ Inductive bin_op : Set :=
 .
 
 Inductive un_op : Set :=
-| NotBoolOp | NotIntOp | NegOp | CastOp (ot : op_type) | EraseProv.
+| NotBoolOp | NotIntOp | NegOp | CastOp (ot : op_type).
 
 Inductive order : Set :=
 | ScOrd | Na1Ord | Na2Ord.
@@ -363,7 +363,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     (* both pointers are valid, i.e. in bounds of that allocation *)
     valid_ptr l1 σ.(st_heap) →
     valid_ptr l2 σ.(st_heap) →
-    val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize None = Some v →
+    val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize = Some v →
     eval_bin_op (PtrDiffOp ly) PtrOp PtrOp σ v1 v2 v
 
 | RelOpPP v1 v2 σ l1 l2 p1 p2 a1 a2 v b op rit:
@@ -381,7 +381,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     | NeOp rit => Some (bool_decide (a1 <> a2), rit)
     | _ => None
     end = Some (b, rit) →
-    val_of_Z (bool_to_Z b) rit None = Some v →
+    val_of_Z (bool_to_Z b) rit = Some v →
     eval_bin_op op PtrOp PtrOp σ v1 v2 v
 | RelOpII op v1 v2 v σ n1 n2 it b rit:
     match op with
@@ -396,7 +396,7 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     val_to_Z v1 it = Some n1 →
     val_to_Z v2 it = Some n2 →
     (* equivalent to [val_of_bool] if using [u8] by [val_of_bool_iff_val_of_Z] *)
-    val_of_Z (bool_to_Z b) rit None = Some v →
+    val_of_Z (bool_to_Z b) rit = Some v →
     eval_bin_op op (IntOp it) (IntOp it) σ v1 v2 v
 | RelOpBB op v1 v2 v σ b1 b2 b rit :
   (* relational operators on booleans -- requires that the two are actually booleans *)
@@ -408,14 +408,14 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
   val_to_bool v1 = Some b1 →
   val_to_bool v2 = Some b2 →
   (* equivalent to [val_of_bool] if using [u8] by [val_of_bool_iff_val_of_Z] *)
-  val_of_Z (bool_to_Z b) rit None = Some v →
+  val_of_Z (bool_to_Z b) rit = Some v →
   eval_bin_op op BoolOp BoolOp σ v1 v2 v
 | ArithOpII op v1 v2 σ n1 n2 it n v:
     compute_arith_bin_op n1 n2 it op = Some n →
     val_to_Z v1 it = Some n1 →
     val_to_Z v2 it = Some n2 →
     (* wrap *)
-    val_of_Z (wrap_to_it n it) it None = Some v →
+    val_of_Z (wrap_to_it n it) it = Some v →
     eval_bin_op op (IntOp it) (IntOp it) σ v1 v2 v
 | ArithOpBB op v1 v2 σ b1 b2 b v :
     match op with
@@ -450,7 +450,7 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
 | CastOpII itt its σ vs vt i i':
     val_to_Z vs its = Some i →
     wrap_to_it i itt = i' →
-    val_of_Z i' itt (val_to_byte_prov vs) = Some vt →
+    val_of_Z i' itt  = Some vt →
     eval_un_op (CastOp (IntOp itt)) (IntOp its) σ vs vt
 | CastOpPP σ vs l:
     val_to_loc vs = Some l →
@@ -460,22 +460,12 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
        We do not require a valid provenance.
        This does not expose the provenance and thus is stricter than Rust's casts (akin to Rusts strict-provenance ptr.addr()). *)
     val_to_loc vs = Some l →
-    val_of_Z l.2 it None = Some vt →
+    val_of_Z l.2 it = Some vt →
     eval_un_op (CastOp (IntOp it)) PtrOp σ vs vt
-(* TODO: we could simplify this, remove the provenance that bytes have, and fully commit to strict provenance. *)
-| CastOpIP it σ vs vt l l' a:
+| CastOpIP it σ vs vt l a:
     val_to_Z vs it = Some a →
-    (* Check that we can extract a provenance out of the bytes *)
-    l = (ProvAlloc (val_to_byte_prov vs), a) →
-    (** This is using that the address 0 is never alive. *)
-    l' = (if bool_decide (valid_ptr l σ.(st_heap)) then l else
-            (if bool_decide (a = 0) then NULL_loc else
-               if bool_decide (is_Some (σ.(st_fntbl) !! l.2)) then
-                 (ProvFnPtr, a)
-               else
-                 (* assign empty provenance *)
-                 (ProvAlloc None, a))) →
-    val_of_loc l' = vt →
+    l = (* assign empty provenance *) (ProvNone, a) →
+    val_of_loc l = vt →
     eval_un_op (CastOp PtrOp) (IntOp it) σ vs vt
 | CastOpB ot σ vs vt b:
     cast_to_bool ot vs σ.(st_heap) = Some b →
@@ -483,25 +473,16 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
     eval_un_op (CastOp BoolOp) ot σ vs vt
 | CastOpBI it σ vs vt b:
     val_to_bool vs = Some b →
-    val_of_Z (bool_to_Z b) it None = Some vt →
+    val_of_Z (bool_to_Z b) it = Some vt →
     eval_un_op (CastOp (IntOp it)) BoolOp σ vs vt
-(* Rust: new operation to make VIP integer-pointer casts compatible with
-    implementing Rust's ptr::invalid. ptr::invalid should never make any
-    attempt at guessing the right provenance (it should yield an invalid provenance),
-   so we need to make sure to erase any provenance from the integer we are casting beforehand.*)
-| EraseProvOp ly σ vs vt :
-    vs `has_layout_val` ly →
-    vt `has_layout_val` ly →
-    vt = erase_prov vs →
-    eval_un_op (EraseProv) (UntypedOp ly) σ vs vt
 | NegOpI it σ vs vt n:
     val_to_Z vs it = Some n →
     (* wrap *)
-    val_of_Z (wrap_to_it (-n) it) it None = Some vt →
+    val_of_Z (wrap_to_it (-n) it) it = Some vt →
     eval_un_op NegOp (IntOp it) σ vs vt
 | NotIntOpI it σ vs vt n:
     val_to_Z vs it = Some n →
-    val_of_Z (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n) it None = Some vt →
+    val_of_Z (if it_signed it then Z.lnot n else Z_lunot (bits_per_int it) n) it = Some vt →
     eval_un_op NotIntOp (IntOp it) σ vs vt
 | NotBoolOpB σ vs vt b :
     val_to_bool vs = Some b →

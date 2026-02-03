@@ -30,32 +30,18 @@ Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
 Next Obligation. solve_fn_vars_nodup. Qed.
 
 (* Our implementation does not actually do anything with the type parameter, it's just there to mirror the Rust API. *)
-Program Definition ptr_invalid `{!LayoutAlg} (T_st : syn_type) : function := {|
-  f_args := [("align", USize : layout)];
+Program Definition ptr_without_provenance `{!LayoutAlg} (T_st : syn_type) : function := {|
+  f_args := [("addr", USize : layout)];
   f_code :=
     <["_bb0" :=
       local_live{PtrSynType} "ret";
-      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (UnOp EraseProv (UntypedOp USize) (use{IntOp USize} "align")));
+      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (use{IntOp USize} "addr"));
       return (use{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
 |}.
 Next Obligation. solve_fn_vars_nodup. Qed.
-
-Program Definition ptr_dangling `{!LayoutAlg} (T_st : syn_type) (mem_align_of_loc : loc) (ptr_invalid_loc : loc) : function := {|
-  f_args := [];
-  f_code :=
-    <["_bb0" :=
-      local_live{IntSynType USize} "align";
-      "align" <-{IntOp USize} CallE mem_align_of_loc [] [RSTTyVar "T"] [@{expr} ];
-      return (CallE ptr_invalid_loc [] [RSTTyVar "T"] [@{expr} use{IntOp USize} "align"])
-    ]>%E $
-    ∅;
-  f_init := "_bb0";
-|}.
-Next Obligation. solve_fn_vars_nodup. Qed.
-
 
 (** copy_nonoverlapping *)
 (*
