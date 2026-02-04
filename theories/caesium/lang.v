@@ -108,7 +108,7 @@ Record function := {
   f_args_nodup : NoDup f_args.*1;
 }.
 
-Notation thread_id := nat (only parsing).
+Definition thread_id := nat.
 Record call_frame := {
   cf_locals : gmap var_name (loc * layout);
 }.
