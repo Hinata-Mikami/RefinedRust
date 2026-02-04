@@ -158,8 +158,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedSwitch E L f v rt ty r it) m ss def fn R ϝ))
   | typed_assert ?E ?L ?f ?v ?ty ?r ?s ?fn ?R ?ϝ =>
       cont uconstr:(((_ : TypedAssert E L f v ty r) s fn R ϝ))
-  | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?T =>
-      cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot) T))
+  | typed_read_end ?π ?E ?L ?l ?ty ?r ?b2 ?bmin ?ot ?m ?T =>
+      cont uconstr:(((_ : TypedReadEnd π E L l ty r b2 bmin ot m) T))
   | typed_write_end ?π ?E ?L ?ot ?v1 ?ty1 ?r1 ?b2 ?bmin ?l2 ?lt2 ?r2 ?T =>
       cont uconstr:(((_ : TypedWriteEnd π E L ot v1 ty1 r1 b2 bmin l2 lt2 r2) T))
   | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b2 ?bmin ?T =>
@@ -399,7 +399,8 @@ Ltac liRExpr :=
     lazymatch e' with
     | W.Val _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
     | W.Loc _ => notypeclasses refine (tac_fast_apply (type_val E L f _ T) _)
-    | W.Use _ _ true _ => notypeclasses refine (tac_fast_apply (type_use E L f _ _ _ T) _)
+    | W.Copy _ _ true _ => notypeclasses refine (tac_fast_apply (type_copy E L f _ _ _ T) _)
+    | W.Move _ _ true _ => notypeclasses refine (tac_fast_apply (type_move E L f _ _ _ T) _)
     | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L f _ _ _ T _) _); [apply _ | ]
     | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L f T _ _ _) _)
     | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L f T _ _ _) _)
@@ -503,8 +504,8 @@ Ltac liRJudgement :=
     | |- envs_entails _ (typed_write ?E ?L ?f _ _ _ ?ty ?r ?T) =>
         notypeclasses refine (tac_fast_apply (type_write E L f T _ _ _ _ _ ty r _) _); [ solve [refine _ ] |]
     (* read *)
-    | |- envs_entails _ (typed_read ?E ?L ?f _ _ ?T) =>
-        notypeclasses refine (tac_fast_apply (type_read E L f T _ _ _ _) _); [ solve [refine _ ] |]
+    | |- envs_entails _ (typed_read ?E ?L ?f _ _ _ ?T) =>
+        notypeclasses refine (tac_fast_apply (type_read E L f T _ _ _ _ _) _); [ solve [refine _ ] |]
     (* borrow mut *)
     | |- envs_entails _ (typed_borrow_mut ?E ?L ?f _ _ _ ?T) =>
         notypeclasses refine (tac_fast_apply (type_borrow_mut E L f T _ _ _ _ _) _); [solve [refine _] |]

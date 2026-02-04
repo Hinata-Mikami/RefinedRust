@@ -148,7 +148,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
                 let stmt = code::PrimStmt::Assign {
                     ot: self_var_st.clone().into(),
                     e1: Box::new(code::Expr::Var("__1".to_owned())),
-                    e2: Box::new(code::Expr::Use {
+                    e2: Box::new(code::Expr::Move {
                         ot: self_var_st.into(),
                         e: Box::new(code::Expr::Var("self".to_owned())),
                     }),
@@ -236,7 +236,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         // assemble the arguments, one by one
         let mut closure_args = Vec::new();
         // first the self argument
-        let expr = code::Expr::Use {
+        let expr = code::Expr::Move {
             ot: self_call_st.into(),
             e: Box::new(code::Expr::Var("__1".to_owned())),
         };
@@ -245,7 +245,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         // then the args themselves, detupling them
         for (idx, arg_ty) in info.tl_args_tys.iter().enumerate() {
             let arg_st: lang::SynType = arg_ty.clone().into();
-            let expr = code::Expr::Use {
+            let expr = code::Expr::Move {
                 ot: arg_st.into(),
                 e: Box::new(code::Expr::FieldOf {
                     e: Box::new(code::Expr::Var("args".to_owned())),
@@ -282,7 +282,7 @@ impl<'tcx, 'def> ClosureImplGenerator<'tcx, 'def> {
         //}
 
         // return
-        let ret_expr = code::Expr::Use {
+        let ret_expr = code::Expr::Move {
             ot: output_st.clone().into(),
             e: Box::new(code::Expr::Var("__0".to_owned())),
         };

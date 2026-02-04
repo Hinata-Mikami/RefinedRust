@@ -888,7 +888,7 @@ Section rules.
   Lemma type_read_ofty_move_owned E L {rt} π l (ty : type rt) r ot wl (T : typed_read_end_cont_t UpdStrong rt) :
     (⌜ty_has_op_type ty ot MCCopy⌝ ∗
       ∀ v, T L v _ ty r unit (◁ uninit (ty.(ty_syn_type) MetaNone)) (#()) (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot ReadDoMove T.
   Proof.
     iIntros "(%Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
@@ -921,7 +921,7 @@ Section rules.
           (OpenedLtype (◁ uninit (ty.(ty_syn_type) MetaNone)) (◁ ty) (◁ ty) (λ r1 r2, ⌜r1 = r2⌝) (λ _ _, llft_elt_toks κs))
           (#())
           (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) UpdStrong ot T.
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Uniq κ γ) UpdStrong ot ReadDoMove T.
   Proof.
     iIntros "HT" (F ????) "#CTX #HE HL Hb".
     rewrite /lctx_lft_alive_count_goal.
@@ -965,7 +965,7 @@ Section rules.
       T L v' _ (value_t (ty.(ty_syn_type) MetaNone)) v val
       (◁ value_t (ty.(ty_syn_type) MetaNone)) (#v)
       (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot T.
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong ot ReadDoMove T.
   Proof.
     iIntros "(%Hotalg & %Hot & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.
@@ -1008,7 +1008,7 @@ Section rules.
     ( ∀ v v', v ◁ᵥ{π, MetaNone} r @ ty -∗
       T L v' _ (value_t (UntypedSynType ly)) v val (◁ value_t (UntypedSynType ly)) (#v)
       (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)) -∗
-      typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
+      typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) ReadDoMove T.
   Proof.
     iIntros "Hs" (F ????) "#CTX #HE HL".
     iIntros "Hb".
@@ -1019,7 +1019,7 @@ Section rules.
     (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
         ∀ v, T L v _ ty r unit (◁ uninit (ty.(ty_syn_type) MetaNone)) (#())
         (mkPUKRes (allowed:=UpdStrong) UpdStrong I I))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) T.
+    ⊢ typed_read_end π E L l (◁ ty) (#r) (Owned wl) UpdStrong (UntypedOp ly) ReadDoMove T.
   Proof.
     iIntros "(%Hst & Hs)" (F ????) "#CTX #HE HL Hb".
     iPoseProof (ofty_ltype_acc_owned with "Hb") as "(%ly' & %Halg & %Hly & Hsc & Hlb & >(%v & Hl & Hv & Hcl))"; first done.

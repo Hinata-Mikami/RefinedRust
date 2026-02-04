@@ -164,7 +164,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // Is this semantics accurate wrt what the intended MIR semantics is?
                 // Possibly handle this differently by making the first argument of a function a dedicated
                 // return place? See also discussion at https://github.com/rust-lang/rust/issues/71117
-                let stmt = code::Stmt::Return(code::Expr::Use {
+                let stmt = code::Stmt::Return(code::Expr::Move {
                     ot: (&self.return_synty).into(),
                     e: Box::new(code::Expr::Var(self.return_name.clone())),
                 });

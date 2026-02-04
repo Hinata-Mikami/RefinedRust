@@ -15,7 +15,7 @@ Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_args := [("dst", void* ); ("src", use_layout_alg' T_st)];
   f_code :=
     <["_bb0" :=
-      !{PtrOp} "dst" <-{use_op_alg' T_st} use{use_op_alg' T_st} "src";
+      !{PtrOp} "dst" <-{use_op_alg' T_st} move{use_op_alg' T_st} "src";
       return zst_val
     ]>%E $
     ∅;
@@ -92,9 +92,9 @@ Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
     <["_bb0" :=
       local_live{T_st} "tmp";
       local_live{T_st} "bla";
-      "tmp" <-{use_op_alg' T_st} use{use_op_alg' T_st} (!{PtrOp} "src");
+      "tmp" <-{use_op_alg' T_st} copy{use_op_alg' T_st} (!{PtrOp} "src");
       local_dead "bla";
-      return (use{use_op_alg' T_st} "tmp")
+      return (move{use_op_alg' T_st} "tmp")
     ]>%E $
     ∅;
   f_init := "_bb0";

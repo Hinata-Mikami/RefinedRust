@@ -7,7 +7,7 @@ Program Definition ptr_write `{!LayoutAlg} (T_st : syn_type) : function := {|
     <["_bb0" :=
       (* NOTE: the rust impl uses copy_nonoverlapping and then asserts with an intrinsic that the validity invariant for T holds,
           but we don't have such a thing and should simply use a typed copy *)
-      !{PtrOp} "dst" <-{use_op_alg' T_st} use{use_op_alg' T_st} "src";
+      !{PtrOp} "dst" <-{use_op_alg' T_st} move{use_op_alg' T_st} "src";
       return zst_val
     ]>%E $
     ∅;
@@ -21,8 +21,8 @@ Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_code :=
     <["_bb0" :=
       local_live{T_st} "tmp";
-      "tmp" <-{use_op_alg' T_st} use{use_op_alg' T_st} (!{PtrOp} "src");
-      return (use{use_op_alg' T_st} "tmp")
+      "tmp" <-{use_op_alg' T_st} copy{use_op_alg' T_st} (!{PtrOp} "src");
+      return (move{use_op_alg' T_st} "tmp")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -35,8 +35,8 @@ Program Definition ptr_without_provenance `{!LayoutAlg} (T_st : syn_type) : func
   f_code :=
     <["_bb0" :=
       local_live{PtrSynType} "ret";
-      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (use{IntOp USize} "addr"));
-      return (use{PtrOp} "ret")
+      "ret" <-{PtrOp} (UnOp (CastOp PtrOp) (IntOp USize) (move{IntOp USize} "addr"));
+      return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -79,18 +79,18 @@ Program Definition ptr_copy_nonoverlapping `{!LayoutAlg} (T_st : syn_type) : fun
     <["_bb_loop_head" :=
 
       if{BoolOp}:
-        (use{IntOp USize} "count") <{IntOp USize, IntOp USize, U8} (use{IntOp USize} "size")
+        (copy{IntOp USize} "count") <{IntOp USize, IntOp USize, U8} (copy{IntOp USize} "size")
       then
         Goto "_bb_loop_body"
       else
         Goto "_bb_loop_exit"
     ]>%E $
     <["_bb_loop_body" :=
-        ((!{PtrOp} "dst") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} use{IntOp USize} "count")
+        ((!{PtrOp} "dst") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} copy{IntOp USize} "count")
       <-{UntypedOp (use_layout_alg' T_st)}
-        use{UntypedOp (use_layout_alg' T_st)} (
-          ((!{PtrOp} "src") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} use{IntOp USize} "count"));
-      "count" <-{IntOp USize} (use{IntOp USize} "count") +{IntOp USize, IntOp USize} (i2v 1 USize);
+        copy{UntypedOp (use_layout_alg' T_st)} (
+          ((!{PtrOp} "src") at_offset{use_layout_alg' T_st, PtrOp, IntOp USize} copy{IntOp USize} "count"));
+      "count" <-{IntOp USize} (copy{IntOp USize} "count") +{IntOp USize, IntOp USize} (i2v 1 USize);
       Goto "_bb_loop_head"
     ]>%E $
     <["_bb_loop_exit" :=
@@ -107,8 +107,8 @@ Program Definition ptr_offset `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} ((copy{PtrOp} "self") at_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (copy{IntOp ISize} "count"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
@@ -120,8 +120,8 @@ Program Definition ptr_sub `{!LayoutAlg} (T_st : syn_type) : function := {|
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} ((copy{PtrOp} "self") at_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (copy{IntOp USize} "count"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
@@ -134,8 +134,8 @@ Program Definition ptr_wrapping_offset `{!LayoutAlg} (T_st : syn_type) : functio
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (use{IntOp ISize} "count"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} ((copy{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp ISize} (copy{IntOp ISize} "count"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
@@ -147,8 +147,8 @@ Program Definition ptr_wrapping_add `{!LayoutAlg} (T_st : syn_type) : function :
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} ((copy{PtrOp} "self") at_wrapping_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (copy{IntOp USize} "count"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
@@ -160,8 +160,8 @@ Program Definition ptr_wrapping_sub `{!LayoutAlg} (T_st : syn_type) : function :
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} ((use{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (use{IntOp USize} "count"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} ((copy{PtrOp} "self") at_wrapping_neg_offset{use_layout_alg' T_st, PtrOp, IntOp USize} (copy{IntOp USize} "count"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"
@@ -173,8 +173,8 @@ Program Definition ptr_with_addr `{!LayoutAlg} (T_st : syn_type) : function := {
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} CopyAllocId (IntOp USize) (use{IntOp USize} "addr") (use{PtrOp} "self");
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} CopyAllocId (IntOp USize) (copy{IntOp USize} "addr") (copy{PtrOp} "self");
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0"

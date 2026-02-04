@@ -12,10 +12,6 @@ Set Default Proof Using "Type".
 
 (** * Automation for solving sideconditions *)
 
-(* TODO sometimes this diverges, so we put a timeout on it.
-      Should really fix the refined_solver though. *)
-Ltac hammer :=
-  first [timeout 4 lia | timeout 4 nia | timeout 4 refined_solver lia].
 Ltac solve_goal_final_hook ::= refined_solver lia.
 
 
@@ -964,6 +960,14 @@ End alive_tac.
 Section alive_external_tac.
   Context `{!typeGS Σ}.
 
+  Lemma tac_lctx_lft_alive_list_simpl_head_app E L κs1 κs1' κs2 P :
+    (∀ (κs1'':=κs1'), κs1 = κs1'') →
+    (lctx_lft_alive_list E L (κs1' ++ κs2) ∨ P) →
+    lctx_lft_alive_list E L (κs1 ++ κs2) ∨ P.
+  Proof.
+    intros ->. done.
+  Qed.
+
   Definition lctx_lft_alive_list_expand_ext
     (candidates : list lft)
     (E : elctx) (L : llctx) (κs : list lft) : Prop :=
@@ -1036,6 +1040,23 @@ Ltac elctx_find_expansions_for_rhs E κ :=
       constr:([] : list lft)
   end.
 
+(** Specialized solver for proving list inclusions on normalized elctx.
+  Treats lists as atomic parts. *)
+Ltac elctx_fast_inclusion_solver_step :=
+  match goal with
+  | |- ?a ⊆ _ :: _ =>
+      notypeclasses refine (list_subseteq_cons _ _ _ _)
+  | |- ?a ⊆ ?a ++ _ =>
+      notypeclasses refine (list_subseteq_app_l _ _ _ _);
+      reflexivity
+  | |- ?a ⊆ _ ++ _ =>
+      notypeclasses refine (list_subseteq_app_r _ _ _ _)
+  | |- ?a ⊆ ?a =>
+      reflexivity
+  end.
+Ltac elctx_fast_inclusion_solver :=
+  repeat elctx_fast_inclusion_solver_step.
+
 Ltac solve_lft_alive := idtac.
 Ltac solve_lft_alive_step :=
   simpl;
@@ -1069,7 +1090,7 @@ Ltac solve_lft_alive_step :=
               match el with
               | κ1 ⊑ₗ{_} [] =>
                 notypeclasses refine (tac_lctx_lft_alive_list_ty_lfts ty E L i κ1 _ _ _ _ _ _);
-                [ set_solver | reflexivity | ]
+                [ elctx_fast_inclusion_solver | reflexivity | ]
               end) L
         | _ => fail
         end
@@ -1077,7 +1098,8 @@ Ltac solve_lft_alive_step :=
       list_find_tac_app find_outlives E
   (* If it is not a var, unfold *)
   | |- lctx_lft_alive_list ?E ?L (ty_lfts ?ty ++ _) ∨ _ =>
-      rewrite [@ty_lfts _ _]ty_lfts_unfold; simpl
+      notypeclasses refine (tac_lctx_lft_alive_list_simpl_head_app _ _ _ _ _ _ _ _);
+      [let x := fresh in intros x; rewrite [(@ty_lfts _ _)]ty_lfts_unfold; simpl; subst x; reflexivity | ]
       (*unfold_opaque (@ty_lfts) in (ty_lfts ty); simpl*)
 
   (* liveness of local lifetimes *)

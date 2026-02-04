@@ -32,12 +32,12 @@ Program Definition alloc_realloc_def `{!LayoutAlg} (alloc_alloc_loc : loc) (copy
     <["_bb0" :=
       local_live{PtrSynType} "new_ptr";
       local_live{IntSynType USize} "min_size";
-      "new_ptr" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} use{IntOp USize} "new_size"; use{IntOp USize} "align"];
-      "min_size" <-{IntOp USize} (IfE BoolOp (use{IntOp USize} "new_size" <{IntOp USize, IntOp USize, U8} use{IntOp USize} "old_size") (use{IntOp USize} "new_size") (use{IntOp USize} "old_size"));
+      "new_ptr" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} copy{IntOp USize} "new_size"; copy{IntOp USize} "align"];
+      "min_size" <-{IntOp USize} (IfE BoolOp (copy{IntOp USize} "new_size" <{IntOp USize, IntOp USize, U8} copy{IntOp USize} "old_size") (copy{IntOp USize} "new_size") (copy{IntOp USize} "old_size"));
       annot: StopAnnot;
-      expr: CallE copy_nonoverlapping_loc [] [RSTInt U8] [@{expr} use{PtrOp} "ptr"; use{PtrOp} "new_ptr"; use{IntOp USize} "min_size"];
-      expr: CallE alloc_dealloc_loc [] [] [@{expr} use{IntOp USize} "old_size"; use{IntOp USize} "align"; use{PtrOp} "ptr"];
-      return (use{PtrOp} "new_ptr")
+      expr: CallE copy_nonoverlapping_loc [] [RSTInt U8] [@{expr} copy{PtrOp} "ptr"; copy{PtrOp} "new_ptr"; copy{IntOp USize} "min_size"];
+      expr: CallE alloc_dealloc_loc [] [] [@{expr} copy{IntOp USize} "old_size"; copy{IntOp USize} "align"; copy{PtrOp} "ptr"];
+      return (move{PtrOp} "new_ptr")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -123,7 +123,7 @@ Program Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : 
    local_live{IntSynType USize} "size";
    (* check if the size is 0 *)
    "size" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-   if{BoolOp}: use{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
+   if{BoolOp}: copy{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
    then Goto "_bb1"
    else Goto "_bb2"
   ]>%E $
@@ -132,8 +132,8 @@ Program Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : 
    (* non-ZST, do an actual allocation *)
    (* TODO maybe call alloc_alloc here? *)
    "__0" <-{ PtrOp } box{ T_st };
-   !{ PtrOp } "__0" <-{ use_op_alg' T_st } (use{use_op_alg' T_st} "x");
-   return (use{ PtrOp } ("__0"))
+   !{ PtrOp } "__0" <-{ use_op_alg' T_st } (move{use_op_alg' T_st} "x");
+   return (move{ PtrOp } ("__0"))
   ]>%E $
   <["_bb1" :=
     local_live{PtrSynType} "__0";
@@ -141,8 +141,8 @@ Program Definition box_new `{!LayoutAlg} (T_st : syn_type) (mem_size_of_T_loc : 
     "__0" <-{PtrOp} CallE ptr_dangling_T_loc [] [RSTTyVar "T"] [@{expr} ];
     annot: StopAnnot;
     (* do a zero-sized write - this is fine *)
-    !{ PtrOp } "__0" <-{ use_op_alg' T_st } (use{use_op_alg' T_st} "x");
-    return (use{PtrOp} "__0")
+    !{ PtrOp } "__0" <-{ use_op_alg' T_st } (move{use_op_alg' T_st} "x");
+    return (move{PtrOp} "__0")
   ]>%E $
   ∅;
  f_init := "_bb0";
@@ -271,7 +271,7 @@ Program Definition drop_box_T `{!LayoutAlg}  (T_ly : layout) (drop_T_loc : loc) 
    (*Free (use{ PtrOp } (!{PtrOp} "x"));*)
    (* return *)
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (use{ UntypedOp (unit_sl) } ("__0"))
+   return (move{ UntypedOp (unit_sl) } ("__0"))
   ]>%E $
   ∅;
  f_init := "_bb0";
@@ -287,7 +287,7 @@ Program Definition drop_int `{!LayoutAlg} (it : int_type) : function := {|
    (* do nothing *)
    local_live{UnitSynType} "__0";
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (use{ UntypedOp (unit_sl) } ("__0"))
+   return (move{ UntypedOp (unit_sl) } ("__0"))
   ]>%E $
   ∅;
  f_init := "_bb0";
@@ -302,7 +302,7 @@ Program Definition drop_mutref `{!LayoutAlg} : function := {|
    local_live{UnitSynType} "__0";
    (* do nothing, but on the ghost level, do a ghost drop *)
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (use{ UntypedOp (unit_sl) } ("__0"))
+   return (move{ UntypedOp (unit_sl) } ("__0"))
   ]>%E $
   ∅;
  f_init := "_bb0";
@@ -317,7 +317,7 @@ Program Definition drop_shrref `{!LayoutAlg} : function := {|
    local_live{UnitSynType} "__0";
    (* do nothing *)
    "__0" <-{ UntypedOp (unit_sl) } zst_val;
-   return (use{ UntypedOp (unit_sl) } ("__0"))
+   return (move{ UntypedOp (unit_sl) } ("__0"))
   ]>%E $
   ∅;
  f_init := "_bb0";
@@ -344,9 +344,9 @@ Program Definition alloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of
       local_live{PtrSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "bytes" <-{ IntOp USize } ((use{IntOp USize} "len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      "__0" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} use{IntOp USize} "bytes"; use{IntOp USize} "align_log2"];
-      return (use{PtrOp} "__0")
+      "bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      "__0" <-{PtrOp} CallE alloc_alloc_loc [] [] [@{expr} copy{IntOp USize} "bytes"; copy{IntOp USize} "align_log2"];
+      return (move{PtrOp} "__0")
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -428,10 +428,10 @@ Program Definition realloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
       local_live{PtrSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "old_bytes" <-{ IntOp USize } ((use{IntOp USize} "old_len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      "new_bytes" <-{ IntOp USize } ((use{IntOp USize} "new_len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      "__0" <-{PtrOp} CallE alloc_realloc_loc [] [] [@{expr} use{IntOp USize} "old_bytes"; use{IntOp USize} "align_log2"; use{IntOp USize} "new_bytes"; use{PtrOp} "ptr"];
-      return (use{PtrOp} "__0")
+      "old_bytes" <-{ IntOp USize } ((copy{IntOp USize} "old_len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      "new_bytes" <-{ IntOp USize } ((copy{IntOp USize} "new_len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      "__0" <-{PtrOp} CallE alloc_realloc_loc [] [] [@{expr} copy{IntOp USize} "old_bytes"; copy{IntOp USize} "align_log2"; copy{IntOp USize} "new_bytes"; copy{PtrOp} "ptr"];
+      return (move{PtrOp} "__0")
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -516,10 +516,10 @@ Program Definition dealloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_
       local_live{UnitSynType} "__0";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "bytes" <-{ IntOp USize } ((use{IntOp USize} "len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      expr: CallE alloc_dealloc_loc [] [] [@{expr} use{IntOp USize} "bytes"; use{IntOp USize} "align_log2"; use{PtrOp} "ptr"];
+      "bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      expr: CallE alloc_dealloc_loc [] [] [@{expr} copy{IntOp USize} "bytes"; copy{IntOp USize} "align_log2"; copy{PtrOp} "ptr"];
       "__0" <-{use_op_alg' UnitSynType} zst_val;
-      return (use{use_op_alg' UnitSynType} "__0")
+      return (move{use_op_alg' UnitSynType} "__0")
     ]>%E $
     ∅;
   f_init := "bb0";
@@ -586,13 +586,13 @@ Program Definition check_array_layoutable `{!LayoutAlg} (T_st : syn_type) (mem_a
       local_live{BoolSynType} "check";
       "align_log2" <-{ IntOp USize } CallE mem_align_log_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
       "size_of_T" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-      "check" <-{ BoolOp } ((use{IntOp USize} "len") ×c{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      if{BoolOp}: (use{BoolOp} "check") then Goto "bb2" else Goto "bb1" ]>%E $
+      "check" <-{ BoolOp } ((copy{IntOp USize} "len") ×c{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      if{BoolOp}: (copy{BoolOp} "check") then Goto "bb2" else Goto "bb1" ]>%E $
     <["bb1" :=
       (* result fits into usize *)
-      "bytes" <-{ IntOp USize } ((use{IntOp USize} "len") ×{IntOp USize, IntOp USize} (use{IntOp USize} "size_of_T"));
-      "__0" <-{use_op_alg' BoolSynType} ((use{IntOp USize} "bytes") ≤{IntOp USize, IntOp USize, U8} (i2v (MaxInt ISize) USize));
-      return (use{use_op_alg' BoolSynType} "__0")
+      "bytes" <-{ IntOp USize } ((copy{IntOp USize} "len") ×{IntOp USize, IntOp USize} (copy{IntOp USize} "size_of_T"));
+      "__0" <-{use_op_alg' BoolSynType} ((copy{IntOp USize} "bytes") ≤{IntOp USize, IntOp USize, U8} (i2v (MaxInt ISize) USize));
+      return (move{use_op_alg' BoolSynType} "__0")
     ]>%E $
     <["bb2" :=
       (* result does not fit into usize *)

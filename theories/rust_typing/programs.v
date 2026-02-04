@@ -2881,6 +2881,7 @@ Section judgments.
 
 
   (** ** Read judgments *)
+  Inductive ReadMode := ReadDoCopy | ReadDoMove.
   (* In a given lifetime context, we can read from [e], in the process determining that [e] reads from a location [l] and getting a value typed at a type [ty] with a layout compatible with [ot], and afterwards, the remaining [T L' v ty' r'] needs to be proved, where [ty'] is the new type of the read value and [v] is the read value.
 
     The prover will prove a [typed_read] in a number of steps:
@@ -2901,7 +2902,7 @@ Section judgments.
           + [r' : rt] : the refinement of the read value
   *)
   Definition typed_read_cont_t : Type := llctx → val → ∀ rt : RT, type rt → rt → iProp Σ.
-  Definition typed_read (E : elctx) (L : llctx) (f : frame_path) (e : expr) (ot : op_type) (T : typed_read_cont_t) : iProp Σ :=
+  Definition typed_read (E : elctx) (L : llctx) (f : frame_path) (e : expr) (ot : op_type) (m : ReadMode) (T : typed_read_cont_t) : iProp Σ :=
     (∀ Φ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗ current_frame f.1 f.2 -∗
       (∀ (l : loc),
@@ -2935,7 +2936,7 @@ Section judgments.
   *)
   Definition typed_read_end_cont_t (allowed : place_update_kind) (rt : RT) : Type :=
     llctx → val → ∀ rt3, type rt3 → rt3 → ∀ rt', ltype rt' → place_rfn rt' → place_update_kind_res allowed rt rt' → iProp Σ.
-  Definition typed_read_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) (T : typed_read_end_cont_t bmin rt) : iProp Σ :=
+  Definition typed_read_end (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) (m : ReadMode) (T : typed_read_end_cont_t bmin rt) : iProp Σ :=
     (∀ F, ⌜lftE ⊆ F⌝ → ⌜↑rrustN ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ → ⌜shrE ⊆ F⌝ →
     rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       (*bmin ⪯ₚ b2 -∗*)
@@ -2965,8 +2966,8 @@ Section judgments.
               res ⪯ₚ bmin ∗
               typed_place_cond res lt lt' ∗
               T L' (mem_cast v ot st) rt3 ty3 r3 rt' lt' r' res))).
-  Class TypedReadEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) : Type :=
-    typed_read_end_proof T : iProp_to_Prop (typed_read_end π E L l lt r b2 bmin ot T).
+  Class TypedReadEnd (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (b2 : bor_kind) (bmin : place_update_kind) (ot : op_type) (m : ReadMode) : Type :=
+    typed_read_end_proof T : iProp_to_Prop (typed_read_end π E L l lt r b2 bmin ot m T).
 
   (** ** Write judgments *)
   (* In a given lifetime context, we can write [v] to [e], compatible with [ot], where the written value has type [ty] at refinement [r], and afterwards, the remaining [T] needs to be proved.
@@ -4566,7 +4567,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
   | typed_call ?E ?L ?f ?κs ?etys ?v ?P ?vs ?tys => constr:(TypedCall E L f κs etys v P vs tys)
   | typed_place ?E ?L ?f ?l ?lto ?ro ?b1 ?b2 ?K => constr:(TypedPlace E L f l lto ro b1 b2 K)
-  | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot => constr:(TypedReadEnd π E L l lt r b1 b2 ot)
+  | typed_read_end ?π ?E ?L ?l ?lt ?r ?b1 ?b2 ?ot ?m => constr:(TypedReadEnd π E L l lt r b1 b2 ot m)
   | typed_write_end ?π ?E ?L ?ot ?v ?ty1 ?r1 ?b1 ?b2 ?l ?lt2 ?r2 => constr:(TypedWriteEnd π E L ot v ty1 r1 b1 b2 l lt2 r2)
   | typed_borrow_mut_end ?π ?E ?L ?κ ?l ?orty ?lt ?r ?b1 ?b2 =>
     constr:(TypedBorrowMutEnd π E L κ l orty lt r b1 b2)

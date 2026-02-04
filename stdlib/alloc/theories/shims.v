@@ -6,8 +6,8 @@ Program Definition alloc_alloc_def `{!LayoutAlg} : function := {|
   f_code :=
     <["_bb0" :=
         local_live{PtrSynType} "ret";
-        "ret" <-{PtrOp} (Alloc (use{IntOp USize} "size") (use{IntOp USize} "align_log2"));
-        return (use{PtrOp} "ret")
+        "ret" <-{PtrOp} (Alloc (copy{IntOp USize} "size") (copy{IntOp USize} "align_log2"));
+        return (move{PtrOp} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -20,7 +20,7 @@ Program Definition alloc_dealloc_def `{!LayoutAlg} : function := {|
   f_args := [("size", USize : layout); ("align", USize : layout); ("ptr", void* )];
   f_code :=
     <["_bb0" :=
-      free{ use{IntOp USize} "size", use{IntOp USize} "align"} (use{PtrOp} "ptr");
+      free{ copy{IntOp USize} "size", copy{IntOp USize} "align"} (copy{PtrOp} "ptr");
       return zst_val
     ]>%E $
     ∅;

@@ -8,7 +8,7 @@ Program Definition mem_size_of `{!LayoutAlg} (T_st : syn_type) : function := {|
     <["_bb0" :=
       local_live{IntSynType USize} "ret";
       "ret" <-{IntOp USize} (i2v (ly_size (use_layout_alg' T_st)) USize);
-      return (use{IntOp USize} "ret")
+      return (move{IntOp USize} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -21,7 +21,7 @@ Program Definition mem_align_of `{!LayoutAlg} (T_st : syn_type) : function := {|
     <["_bb0" :=
     local_live{IntSynType USize} "ret";
     "ret" <-{IntOp USize} (i2v (ly_align (use_layout_alg' T_st)) USize);
-    return (use{IntOp USize} "ret")
+    return (move{IntOp USize} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";
@@ -34,7 +34,7 @@ Program Definition mem_align_log_of `{!LayoutAlg} (T_st : syn_type) : function :
     <["_bb0" :=
     local_live{IntSynType USize} "ret";
     "ret" <-{IntOp USize} (i2v (ly_align_log (use_layout_alg' T_st)) USize);
-    return (use{IntOp USize} "ret")
+    return (move{IntOp USize} "ret")
     ]>%E $
     ∅;
   f_init := "_bb0";

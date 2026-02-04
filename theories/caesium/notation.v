@@ -132,11 +132,25 @@ Notation "'local_dead' x ';' s" := (LocalDeadSt x s%E) (at level 80, s at level 
 
 (** This has a skip in order to facilitate unblocking. *)
 Definition Use (o : order) (ot : op_type) (memcast : bool) (e : expr) := Deref o ot memcast (SkipE e).
-Notation "'use{' ot , o , mc } e" := (Use o ot mc e%E) (at level 9, format "'use{' ot ,  o ,  mc }  e") : expr_scope.
-Notation "'use{' ot , o } e" := (Use o ot true e%E) (at level 9, format "'use{' ot ,  o }  e") : expr_scope.
-Notation "'use{' ot } e" := (Use Na1Ord ot true e%E) (at level 9, format "'use{' ot }  e") : expr_scope.
-Arguments Use : simpl never.
-Global Typeclasses Opaque Use.
+(*Notation "'use{' ot , o , mc } e" := (Use o ot mc e%E) (at level 9, format "'use{' ot ,  o ,  mc }  e") : expr_scope.*)
+(*Notation "'use{' ot , o } e" := (Use o ot true e%E) (at level 9, format "'use{' ot ,  o }  e") : expr_scope.*)
+(*Notation "'use{' ot } e" := (Use Na1Ord ot true e%E) (at level 9, format "'use{' ot }  e") : expr_scope.*)
+(*Arguments Use : simpl never.*)
+(*Global Typeclasses Opaque Use.*)
+
+Definition Copy := Use.
+Notation "'copy{' ot , o , mc } e" := (Copy o ot mc e%E) (at level 9, format "'copy{' ot ,  o ,  mc }  e") : expr_scope.
+Notation "'copy{' ot , o } e" := (Copy o ot true e%E) (at level 9, format "'copy{' ot ,  o }  e") : expr_scope.
+Notation "'copy{' ot } e" := (Copy Na1Ord ot true e%E) (at level 9, format "'copy{' ot }  e") : expr_scope.
+Arguments Copy : simpl never.
+Global Typeclasses Opaque Copy.
+
+Definition Move := Use.
+Notation "'move{' ot , o , mc } e" := (Move o ot mc e%E) (at level 9, format "'move{' ot ,  o ,  mc }  e") : expr_scope.
+Notation "'move{' ot , o } e" := (Move o ot true e%E) (at level 9, format "'move{' ot ,  o }  e") : expr_scope.
+Notation "'move{' ot } e" := (Move Na1Ord ot true e%E) (at level 9, format "'move{' ot }  e") : expr_scope.
+Arguments Move : simpl never.
+Global Typeclasses Opaque Move.
 
 (* This has a skip in order to facilitate unblocking. *)
 Definition AssignSE o ot e1 e2 s := Assign o ot (SkipE e1) e2 s.
@@ -218,12 +232,6 @@ Notation "'annot:' a ; s" := (AnnotStmt 1%nat a s%E)
   (at level 80, s at level 200, format "'annot:'  a ;  s") : expr_scope.
 Arguments AnnotStmt : simpl never.
 Global Typeclasses Opaque AnnotStmt.
-
-Definition Move (o : order) (ot : op_type) (memcast : bool) (e : expr) := Deref o ot memcast e.
-Notation "'move{' ot , o , mc } e" := (Move o (UntypedOp ot) mc e%E) (at level 9, format "'move{' ot ,  o ,  mc }  e") : expr_scope.
-Notation "'move{' ot } e" := (Move Na1Ord (UntypedOp ot) true e%E) (at level 9, format "'move{' ot }  e") : expr_scope.
-Arguments Move : simpl never.
-Global Typeclasses Opaque Move.
 
 (* This uses a syn_type at the surface level so that we have the syn_type annotation still available in the type system *)
 Definition Box `{!LayoutAlg} (st : syn_type) :=
@@ -364,8 +372,8 @@ Notation zst_val := ([] : val).
 
 (*** Tests *)
 Example test1 (l : loc) ly ot :
-  (l <-{ly} use{ot}(&l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
-  (AssignSE Na1Ord ly l (Use Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (AddrOf l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
+  (l <-{ly} copy{ot}(&l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
+  (AssignSE Na1Ord ly l (Copy Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (AddrOf l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
       (ExprS (Call l [ Val (val_of_loc l); Val (val_of_loc l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 

@@ -267,20 +267,31 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // check if this goes to a temporary of a checked op
                 let place_kind = *place;
 
+                let is_copy = matches!(op, mir::Operand::Copy(_));
+
                 let translated_place = self.translate_place(&place_kind)?;
                 let ty = self.get_type_of_place(place);
 
                 let st = self.ty_translator.translate_type_to_syn_type(ty.ty)?;
 
-                if to_rvalue {
+                if to_rvalue && is_copy {
                     Ok((
-                        code::Expr::Use {
+                        code::Expr::Copy {
+                            ot: st.into(),
+                            e: Box::new(translated_place),
+                        },
+                        None,
+                    ))
+                } else if to_rvalue {
+                    Ok((
+                        code::Expr::Move {
                             ot: st.into(),
                             e: Box::new(translated_place),
                         },
                         None,
                     ))
                 } else {
+                    // Usually only happens when we translate call destinations
                     Ok((translated_place, None))
                 }
             },

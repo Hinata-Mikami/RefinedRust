@@ -365,9 +365,13 @@ pub enum Expr {
     #[display("!{{ {} }} ( {} )", ot, &e)]
     Deref { ot: lang::OpType, e: Box<Expr> },
 
-    /// lvalue to rvalue conversion
-    #[display("use{{ {} }} ({})", ot, &e)]
-    Use { ot: lang::OpType, e: Box<Expr> },
+    /// lvalue to rvalue conversion (move)
+    #[display("move{{ {} }} ({})", ot, &e)]
+    Move { ot: lang::OpType, e: Box<Expr> },
+
+    /// lvalue to rvalue conversion (copy)
+    #[display("copy{{ {} }} ({})", ot, &e)]
+    Copy { ot: lang::OpType, e: Box<Expr> },
 
     /// the borrow-operator to get a reference
     #[display("&ref{{ {}, {}, \"{}\" }} ({})", bk, fmt_option(ty.as_ref()), lft, &e)]

@@ -43,7 +43,7 @@ Section typing.
   Global Instance related_to_local_live f x st l : RelatedTo (x is_live{f, st} l) | 100 :=
     {| rt_fic := FindLocal f x |}.
 
-Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f locals) | 100 :=
+  Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f locals) | 100 :=
     {| rt_fic := FindFrameLocals f |}.
 
   (** Value ownership *)
@@ -2264,14 +2264,15 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
   (** Similar to type_assign, use is formulated with a skip over the expression, in order to allow
     on-demand unblocking. We can't just use any of the potential place access steps, because there might not be any (if it's just a location). So we can't easily use any of the other steps around.
    *)
-  Lemma type_use E L f ot e o (T : typed_val_expr_cont_t) :
+  Lemma type_use m E L f ot e o (T : typed_val_expr_cont_t) :
     ⌜if o is Na2Ord then False else True⌝ ∗
-      typed_read E L f e ot (λ L2 v rt ty r,
+      typed_read E L f e ot m (λ L2 v rt ty r,
         introduce_with_hooks E L2 (tr 2 ∗ £ num_cred) (λ L3,
           T L3 v MetaNone rt ty r))
-    ⊢ typed_val_expr E L f (use{ot, o} e)%E T.
+    ⊢ typed_val_expr E L f (Use o ot true e)%E T.
   Proof.
     iIntros "[% Hread]" (Φ) "#(LFT & LLCTX) #HE HL Hf HΦ".
+    unfold Use.
     wpe_bind.
     iApply ("Hread" $! _ ⊤ with "[//] [//] [//] [//] [$LFT $LLCTX] HE HL Hf").
     iIntros (l) "Hl".
@@ -2297,6 +2298,26 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
       - iApply lc_weaken; last done.
         simpl. unfold num_laters_per_step, num_cred; lia. }
     by iApply ("HΦ" with "HL Hf Hv HT").
+  Qed.
+  Lemma type_copy E L f ot e o (T : typed_val_expr_cont_t) :
+    ⌜if o is Na2Ord then False else True⌝ ∗
+      typed_read E L f e ot ReadDoCopy (λ L2 v rt ty r,
+        introduce_with_hooks E L2 (tr 2 ∗ £ num_cred) (λ L3,
+          T L3 v MetaNone rt ty r))
+    ⊢ typed_val_expr E L f (copy{ot, o} e)%E T.
+  Proof.
+    unfold Copy.
+    apply type_use.
+  Qed.
+  Lemma type_move E L f ot e o (T : typed_val_expr_cont_t) :
+    ⌜if o is Na2Ord then False else True⌝ ∗
+      typed_read E L f e ot ReadDoMove (λ L2 v rt ty r,
+        introduce_with_hooks E L2 (tr 2 ∗ £ num_cred) (λ L3,
+          T L3 v MetaNone rt ty r))
+    ⊢ typed_val_expr E L f (move{ot, o} e)%E T.
+  Proof.
+    unfold Move.
+    apply type_use.
   Qed.
 
   (* TODO move *)
@@ -2372,7 +2393,7 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
 
   Import EqNotations.
   (** Entry point for checking reads *)
-  Lemma type_read E L f T T' e ot :
+  Lemma type_read E L f T T' e ot m :
     (** Decompose the expression *)
     IntoPlaceCtx E f e T' →
     T' L (λ L' K l,
@@ -2389,11 +2410,11 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
         (* TODO remove this and instead have a [ltype_read_as] TC or so. Currently this will prevent us from reading from ShrBlocked*)
         cast_ltype_to_type E L2 lt3 (λ ty3,
         (** Finish reading *)
-        typed_read_end f.1 E L2 l2 (◁ ty3) ri3 b2 bmin ot (λ L3 v rt3 ty3 r3 rt2' lt2' ri2' upd2,
+        typed_read_end f.1 E L2 l2 (◁ ty3) ri3 b2 bmin ot m (λ L3 v rt3 ty3 r3 rt2' lt2' ri2' upd2,
         typed_place_finish f.1 E L3 updcx (place_update_kind_res_trans upd upd2) (R ∗ llft_elt_toks κs) l b lt2' ri2' (λ L4,
           T L4 v _ ty3 r3))
       ))))))%I
-    ⊢ typed_read E L f e ot T.
+    ⊢ typed_read E L f e ot m T.
   Proof.
     iIntros (HT') "HT'". iIntros (Φ F ????) "#CTX #HE HL Hf HΦ".
     iApply (HT' with "CTX HE HL Hf HT'").
@@ -2448,7 +2469,7 @@ Global Instance related_to_alloc_locals f locals : RelatedTo (allocated_locals f
     (⌜ty_has_op_type ty ot MCCopy⌝ ∗ ⌜lctx_bor_kind_alive E L b2⌝ ∗
       (** The place is left as-is *)
       ∀ v, T L v rt ty r rt (◁ ty) (#r) (mkPUKRes UpdBot opt_place_update_eq_refl opt_place_update_eq_refl))
-    ⊢ typed_read_end π E L l (◁ ty) (#r) b2 bmin ot T.
+    ⊢ typed_read_end π E L l (◁ ty) (#r) b2 bmin ot ReadDoCopy T.
   Proof.
     iIntros "(%Hot & %Hal & Hs)".
     iIntros (F ????) "#CTX #HE HL".

@@ -26,7 +26,8 @@ Inductive expr :=
 (* new constructors *)
 | LogicalAnd (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr)
 | LogicalOr (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr)
-| Use (o : order) (ot : op_type) (memcast : bool) (e : expr)
+| Move (o : order) (ot : op_type) (memcast : bool) (e : expr)
+| Copy (o : order) (ot : op_type) (memcast : bool) (e : expr)
 | AddrOf (m : mutability) (e : expr)
 | LValue (e : expr)
 | GetMember (e : expr) (s : struct_layout_spec) (m : var_name)
@@ -65,7 +66,8 @@ Lemma expr_ind (P : expr → Prop) :
   (P StuckE) →
   (∀ (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr), P e1 → P e2 → P (LogicalAnd ot1 ot2 rit e1 e2)) →
   (∀ (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr), P e1 → P e2 → P (LogicalOr ot1 ot2 rit e1 e2)) →
-  (∀ (o : order) (ot : op_type) (mc : bool) (e : expr), P e → P (Use o ot mc e)) →
+  (∀ (o : order) (ot : op_type) (mc : bool) (e : expr), P e → P (Move o ot mc e)) →
+  (∀ (o : order) (ot : op_type) (mc : bool) (e : expr), P e → P (Copy o ot mc e)) →
   (∀ (m : mutability) (e : expr), P e → P (AddrOf m e)) →
   (∀ (e : expr), P e → P (LValue e)) →
   (∀ (e : expr) (s : struct_layout_spec) (m : var_name), P e → P (GetMember e s m)) →
@@ -83,14 +85,14 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (e : lang.expr), P (Expr e)) → ∀ (e : expr), P e.
 Proof.
   move => *. generalize dependent P => P. match goal with | e : expr |- _ => revert e end.
-  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ????????????????? Hstruct Henum Hbor ??.
+  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ?????????????????? Hstruct Henum Hbor ??.
   11: {
     apply Hcall; [ |apply Forall_true => ?]; by apply: FIX.
   }
   11: {
     apply Hconcat. apply Forall_true => ?. by apply: FIX.
   }
-  28: {
+  29: {
     apply Hstruct. apply Forall_fmap. apply Forall_true => ?. by apply: FIX.
   }
   all: auto.
@@ -116,7 +118,8 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | StuckE => lang.StuckE
   | LogicalAnd ot1 ot2 rit e1 e2 => notation.LogicalAnd ot1 ot2 rit (to_expr e1) (to_expr e2)
   | LogicalOr ot1 ot2 rit e1 e2 => notation.LogicalOr ot1 ot2 rit (to_expr e1) (to_expr e2)
-  | Use o ot mc e => notation.Use o ot mc (to_expr e)
+  | Move o ot mc e => notation.Move o ot mc (to_expr e)
+  | Copy o ot mc e => notation.Copy o ot mc (to_expr e)
   | AddrOf m e => notation.Raw m (to_expr e)
   | LValue e => notation.LValue (to_expr e)
   | AnnotExpr n a e => notation.AnnotExpr n a (to_expr e)
@@ -175,8 +178,10 @@ Ltac of_expr e :=
     let e1 := of_expr e1 in
     let e2 := of_expr e2 in
     constr:(LogicalOr ot1 ot2 rit e1 e2)
-  | notation.Use ?o ?ot ?mc ?e =>
-    let e := of_expr e in constr:(Use o ot mc e)
+  | notation.Move ?o ?ot ?mc ?e =>
+    let e := of_expr e in constr:(Move o ot mc e)
+  | notation.Copy ?o ?ot ?mc ?e =>
+    let e := of_expr e in constr:(Copy o ot mc e)
   | lang.Val ?x => constr:(Val x)
   | lang.Var ?x => constr:(Var x)
   | lang.UnOp ?op ?ot ?e =>
@@ -243,7 +248,8 @@ Inductive ectx_item :=
 | AllocRCtx (v_size : val)
 | SkipECtx
 (* new constructors *)
-| UseCtx (o : order) (ot : op_type) (mc : bool)
+| MoveCtx (o : order) (ot : op_type) (mc : bool)
+| CopyCtx (o : order) (ot : op_type) (mc : bool)
 | AddrOfCtx (m : mutability)
 | LValueCtx
 | AnnotExprCtx (n : nat) {A} (a : A)
@@ -279,7 +285,8 @@ Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
   | AllocLCtx e_align => Alloc e e_align
   | AllocRCtx v_size => Alloc (Val v_size) e
   | SkipECtx => SkipE e
-  | UseCtx o l mc => Use o l mc e
+  | MoveCtx o l mc => Move o l mc e
+  | CopyCtx o l mc => Copy o l mc e
   | AddrOfCtx m => AddrOf m e
   | LValueCtx => LValue e
   | AnnotExprCtx n a => AnnotExpr n a e
@@ -353,8 +360,10 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
       Some (Ks ++ [SkipECtx], e') else Some ([], e)
   | Deref o ly mc e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [DerefCtx o ly mc], e') else Some ([], e)
-  | Use o ly mc e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
-      Some (Ks ++ [UseCtx o ly mc], e') else Some ([], e)
+  | Move o ly mc e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
+      Some (Ks ++ [MoveCtx o ly mc], e') else Some ([], e)
+  | Copy o ly mc e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
+      Some (Ks ++ [CopyCtx o ly mc], e') else Some ([], e)
   | AddrOf m e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [AddrOfCtx m], e') else Some ([], e)
   | LValue e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
@@ -413,6 +422,7 @@ Proof.
     apply: [lang.AllocRCtx _]|
     apply: [lang.SkipECtx]|
     apply: [lang.SkipECtx; lang.DerefCtx _ _ _]|
+    apply: [lang.SkipECtx; lang.DerefCtx _ _ _]|
     apply: [lang.SkipECtx]|
     apply: []|
     apply: (replicate n lang.SkipECtx)|
@@ -423,7 +433,7 @@ Proof.
     apply: [lang.BinOpRCtx _ _ _ _; lang.DerefCtx _ _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
-  move: K => [||||||||||||||||||||||n||||||] * //=.
+  move: K => [|||||||||||||||||||||||n||||||] * //=.
   - (** Call *)
     do 2 f_equal.
     rewrite !fmap_app !fmap_cons. repeat f_equal; eauto.

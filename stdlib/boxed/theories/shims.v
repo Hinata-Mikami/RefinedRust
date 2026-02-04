@@ -8,7 +8,7 @@ Program Definition box_new `{!LayoutAlg} (ptr_dangling_T_loc : loc) (mem_size_of
     local_live{IntSynType usize} "size";
    (* check if the size is 0 *)
    "size" <-{IntOp USize} CallE mem_size_of_T_loc [] [RSTTyVar "T"] [@{expr} ];
-   if{BoolOp}: use{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
+   if{BoolOp}: copy{IntOp USize} "size" = {IntOp USize, IntOp USize, U8} i2v 0 USize
    then Goto "_bb1"
    else Goto "_bb2"
   ]>%E $
@@ -17,8 +17,8 @@ Program Definition box_new `{!LayoutAlg} (ptr_dangling_T_loc : loc) (mem_size_of
    (* non-ZST, do an actual allocation *)
    (* TODO maybe call alloc_alloc here? *)
    "__0" <-{ PtrOp } box{ T_st };
-   !{ PtrOp } "__0" <-{ use_op_alg' T_st } (use{use_op_alg' T_st} "x");
-   return (use{ PtrOp } ("__0"))
+   !{ PtrOp } "__0" <-{ use_op_alg' T_st } (move{use_op_alg' T_st} "x");
+   return (move{ PtrOp } ("__0"))
   ]>%E $
   <["_bb1" :=
     local_live{PtrSynType} "__0";
@@ -26,8 +26,8 @@ Program Definition box_new `{!LayoutAlg} (ptr_dangling_T_loc : loc) (mem_size_of
     "__0" <-{PtrOp} CallE ptr_dangling_T_loc [] [RSTTyVar "T"] [@{expr} ];
     annot: StopAnnot;
     (* do a zero-sized write - this is fine *)
-    !{ PtrOp } "__0" <-{ use_op_alg' T_st } (use{use_op_alg' T_st} "x");
-    return (use{PtrOp} "__0")
+    !{ PtrOp } "__0" <-{ use_op_alg' T_st } (move{use_op_alg' T_st} "x");
+    return (move{PtrOp} "__0")
   ]>%E $
   ∅;
  f_init := "_bb0";
