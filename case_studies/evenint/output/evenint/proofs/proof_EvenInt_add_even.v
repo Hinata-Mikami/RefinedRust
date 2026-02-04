@@ -9,10 +9,18 @@ Section proof.
 Context `{!refinedrustGS Σ}.
 
 (* The lemma Zeven relies on the internal representation of Z *)
-(* As this is too complicated, let's rewrite Zeven *)
-Variable f: Z → Z.
-Variable transport: ∀ (x: Z), Zeven x ↔ x = 2 * f x.
-Variable transport_lemma: ∀ (x y: Z), f (x + y) = f x + f y.
+(* As this is too complicated, let's instead use a witness *)
+Lemma Zeven_div2_equiv (z: Z) : Zeven z ↔ z = 2 * (Z.div2 z).
+Proof.
+  by induction z; [| split; destruct p.. ].
+Qed.
+
+Lemma Zeven_div2_linearity: ∀ (x y: Z),
+  Zeven x ∨ Zeven y →
+  Z.div2 (x + y) = Z.div2 x + Z.div2 y.
+Proof.
+  destruct 1; destruct x, y; try lia; destruct p, p0; try done; lia.
+Qed.
 
 Lemma EvenInt_add_even_proof (π : thread_id) :
   EvenInt_add_even_lemma π.
@@ -30,13 +38,18 @@ Proof.
 
     (* The filters are defined in the file `sniper/orchestrator/triggers_tactics.v`, *)
     (* in those lists: `filter_reflexivity` and `filter_algebraic_types` *)
-    clear -transport transport_lemma H8 H9.
+    clear -H8 H9.
 
     (* Due to the above limitations, let's do manual rewriting *)
-    revert H8 H9. rewrite !transport. clear transport.
+    (* Command idea: Snipe Register Zeven [Zeven_div2_linearity; ...] *)
+    revert H8 H9.
+    generalize Zeven_div2_linearity.
+
+    (* Command idea: Snipe Rewrite Zeven Zeven_div2_equiv. *)
+    setoid_rewrite Zeven_div2_equiv.
 
     (* Finally ! *)
-    smt. }
+    verit. }
 
   Unshelve. all: print_remaining_sidecond.
 Qed.
