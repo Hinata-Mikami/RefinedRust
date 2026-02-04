@@ -296,9 +296,13 @@ Ltac unfold_instantiated_evar H :=
   (* This is copied from the end of liInstantiateProtected *)
   let tmp := fresh "tmp" in
   intros tmp;
-  pattern (protected tmp);
-  simple refine (tac_protected_eq_app _ _ _);
+  (*pattern (protected tmp);*)
+  (*simple refine (tac_protected_eq_app _ _ _);*)
+  (*unfold tmp, EVAR_ID; clear tmp.*)
+  replace (protected tmp) with tmp;
+  [ | simple refine (tac_protected_eq_app _ _ _); unfold tmp; reflexivity];
   unfold tmp, EVAR_ID; clear tmp.
+
 
 (*
   H should be (protected Hevar) where Hevar is the letbinding of an evar
@@ -331,8 +335,8 @@ Ltac do_instantiate_protected H' tac_with :=
     (* This is copied from the end of liUnfoldInstantiatedEvar *)
     let tmp := fresh "tmp" in
     intros tmp;
-    pattern (protected tmp);
-    simple refine (tac_protected_eq_app _ _ _);
+    replace (protected tmp) with tmp;
+    [ | simple refine (tac_protected_eq_app _ _ _); unfold tmp; reflexivity];
     unfold tmp, EVAR_ID; clear tmp
   end.
 Tactic Notation "instantiate_protected" hyp(H) open_constr(c) :=
