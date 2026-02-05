@@ -248,7 +248,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
                         existentials.push(param.into());
                     }
                 },
-                "inv" => {
+                "inv" | "invariant" => {
                     let parsed_iprop: MetaIProp = buffer.parse(&self.info).map_err(str_err)?;
                     invariant.push(parsed_iprop.into());
                 },

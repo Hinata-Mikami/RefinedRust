@@ -230,7 +230,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     //xt_type = ty;
                     //}
                 },
-                "invariant" => {
+                "inv" | "invariant" => {
                     let prop = MetaIProp::parse(&buffer, self.scope).map_err(str_err)?;
 
                     match prop {
