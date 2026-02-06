@@ -386,6 +386,32 @@ Section updateable_rules.
     by iApply "HT".
   Qed.
 
+  (** Add a later to a type assignment *)
+  Lemma updateable_ltype_add_later l  :
+    (find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      ⌜bk = Owned false⌝ ∗
+      ⌜match ltype_lty _ lt with
+       | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
+       | _ => True
+       end⌝ ∗
+      prove_with_subtype updateable_E updateable_L false ProveDirect (have_creds) (λ L2 _ R,
+      R -∗ l ◁ₗ[π, Owned true] r @ lt -∗ updateable_core updateable_E L2)))
+    ⊢ P.
+  Proof.
+    unfold find_in_context,FindLoc. simpl.
+    iIntros "(%x & Ha)".
+    destruct x as [rt (((lt & r) & bk) & π)].
+    iDestruct "Ha" as "(Hl & -> & % & HT)".
+    unshelve iApply add_updateable; first apply _.
+    iIntros "#CTX HE HL".
+    unfold prove_with_subtype.
+    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R & Ha & HL & HT)"; [done.. | ].
+    simpl. iMod "Ha" as "(Hcred & HR)".
+    iPoseProof (ltype_own_Owned_false_true with "Hl Hcred") as "Hl"; first done.
+    iFrame.
+    iApply ("HT" with "HR Hl").
+  Qed.
+
   (** Discard the opened invariant on an owned location, removing the obligation to re-establish the invariant *)
   Lemma opened_owned_discard (rt_cur rt_inner rt_full : RT) (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Pre Post π l r :
     l ◁ₗ[π, Owned false] r @ OpenedLtype lt_cur lt_inner lt_full Pre Post -∗
@@ -394,6 +420,32 @@ Section updateable_rules.
     rewrite ltype_own_opened_unfold.
     iIntros "(%ly & % & % & ? & % & % & Hcur & _)".
     done.
+  Qed.
+
+  (* TODO: ideally, we could do this anytime, not just at prove_with_subtype, by using logical_step receipts. *)
+  Lemma prove_with_subtype_stratify l E L pm Q T :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      stratify_ltype π E L StratMutNone StratNoUnfold StratRefoldFull StratifyUnblockOp l lt r bk (λ L2 R rt' lt' r',
+      prove_with_subtype E L2 true pm (l ◁ₗ[π, bk] r' @ lt' -∗ R -∗ Q) T))
+    ⊢ prove_with_subtype E L true pm Q T.
+  Proof.
+    unfold find_in_context,FindLoc. simpl.
+    iIntros "(%x & Ha)".
+    destruct x as [rt (((lt & r) & bk) & π)].
+    iDestruct "Ha" as "(Hl & HT)".
+    rewrite /prove_with_subtype.
+    iIntros (????) "#CTX #HE HL".
+    rewrite /stratify_ltype.
+    iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hst' & Hstep & HT)".
+    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs2 & %R' & Hstep' & HL & HT)".
+    simpl. iFrame.
+    iApply (logical_step_compose with "Hstep").
+    iApply (logical_step_wand with "Hstep'").
+    iModIntro. iIntros "(Ha & $) (Hl & HR)".
+    destruct pm.
+    - iApply ("Ha" with "[$] [$]").
+    - iIntros "Hdead". iMod ("Ha" with "Hdead") as "Ha".
+      iModIntro. iApply ("Ha" with "[$] [$]").
   Qed.
 End updateable_rules.
 
