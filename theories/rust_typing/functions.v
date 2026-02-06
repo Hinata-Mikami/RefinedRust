@@ -227,7 +227,7 @@ Section call.
       ∃ (κs : prod_vec lft lfts) tys,
       (* TODO: currently we instantiate evars very early to make the xt injection work. maybe move that down once we have a better design *)
       li_tactic (ensure_evars_instantiated_goal (pzipl _ tys) etys) (λ _,
-      ⌜take (length eκs) (tup_to_list _ κs) = eκs⌝ ∗
+      ⌜take (min (length eκs) lfts) (tup_to_list _ κs) = take (min (length eκs) lfts) eκs⌝ ∗
       ∃ x,
       (*let κs := (rew <- Heq in eκs') in*)
       let fps := (fp κs tys).(fn_p) x in
