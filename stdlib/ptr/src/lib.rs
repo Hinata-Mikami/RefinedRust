@@ -18,7 +18,7 @@ use core::mem;
 
 #[rr::export_as(core::ptr::null)]
 #[rr::only_spec]
-#[rr::ensures("ret = (ProvNone, 0)")]
+#[rr::returns("NULL_loc")]
 pub const fn ptr_null<T>() -> *const T {
     unimplemented!();
     //from_raw_parts(without_provenance::<()>(0), ())
@@ -26,7 +26,7 @@ pub const fn ptr_null<T>() -> *const T {
 
 #[rr::export_as(core::ptr::null_mut)]
 #[rr::only_spec]
-#[rr::ensures("ret = (ProvNone, 0)")]
+#[rr::returns("NULL_loc")]
 pub const fn ptr_null_mut<T>() -> *mut T {
     unimplemented!();
     //from_raw_parts(without_provenance::<()>(0), ())

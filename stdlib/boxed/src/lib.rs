@@ -21,6 +21,8 @@ use std::ptr::dangling;
 
 // TODO: maybe we should seal this definition at the module boundary so that there's no chance of
 // the definition details leaking?
+
+/*
 #[rr::export_as(alloc::boxed::Box)]
 #[rr::refined_by("x" : "{rt_of T}")]
 #[rr::exists("a", "b")]
@@ -30,15 +32,14 @@ pub struct Box<T: ?Sized, A: Allocator = Global>{
     #[rr::field("b")]
     _y: A,
 }
+*/
 
-#[rr::export_as(alloc::boxed::Box)]
-impl<T> Box<T> {
-    #[rr::trust_me]
-    #[rr::code_shim("box_new")]
-    #[rr::returns("x")]
-    pub fn new(x: T) -> Self {
-        core::mem::size_of::<T>();
-        std::ptr::dangling::<T>();
-        unimplemented!();
-    }
+#[rr::export_as(#method alloc::boxed::Box::new)]
+#[rr::trust_me]
+#[rr::code_shim("box_new")]
+#[rr::returns("x")]
+pub fn box_new<T>(x: T) -> Box<T> {
+    core::mem::size_of::<T>();
+    std::ptr::dangling::<T>();
+    unimplemented!();
 }
