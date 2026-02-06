@@ -128,6 +128,20 @@ Proof.
   Unshelve. all: unfold_common_defs; try solve_goal.
 Qed.
 
+Local Lemma test_destruct_hint `{!typeGS Σ} (x : option nat) :
+  if_iNone x (False) ∗ if_iSome x (λ x, ⌜x = 5%nat⌝)
+  ⊢@{iProp Σ} ⌜destruct_hint x (λ x, x = Some 5%nat)⌝ ∗ True.
+Proof.
+  iStartProof. repeat liRStep.
+Qed.
+
+Local Lemma test_name_hint_ex `{!typeGS Σ} (x : option nat) :
+   ⊢@{iProp Σ} ⌜name_hint "x" (∃ x : nat, x = 5%nat)⌝ -∗ True ∗ True.
+Proof.
+  iStartProof.
+  repeat liRStep.
+Qed.
+
 
 Section enum.
 Context `{!typeGS Σ}.

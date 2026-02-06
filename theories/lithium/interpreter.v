@@ -137,8 +137,11 @@ Section coq_tactics.
     rewrite envs_entails_unseal. iIntros (HP) "Henv". iDestruct 1 as (x) "HP".
     by iApply (HP with "Henv HP").
   Qed.
-  Lemma tac_remove_name_hint {A} (P : A → Prop) x :
+  Lemma tac_remove_name_hint_ty {A} (P : A → Prop) x :
     (∀ _x : A, P _x) → (∀ x : name_hint_ty x A, P x).
+  Proof. done. Qed.
+  Lemma tac_remove_name_hint (P Q : Prop) x :
+    (Q → P) → (name_hint x Q → P).
   Proof. done. Qed.
   Lemma tac_remove_bi_name_hint {A} Δ (P : A → iProp Σ) x :
     envs_entails Δ (∀ x : A, P x) → envs_entails Δ (∀ x : (name_hint_ty x A), P x).
@@ -156,7 +159,7 @@ Ltac liForall :=
     end in
   lazymatch goal with
   | |- ∀ name : name_hint_ty ?h ?T, ?P =>
-        notypeclasses refine (@tac_remove_name_hint T _ h _)
+        notypeclasses refine (@tac_remove_name_hint_ty T _ h _)
   | |- envs_entails _ (bi_forall (λ name : name_hint_ty ?h ?T, _)) =>
         notypeclasses refine (@tac_remove_bi_name_hint _ T _ _ h _)
   | |- _ => idtac
@@ -223,8 +226,8 @@ Ltac liForall :=
       do_intro (S O) name
   | |- (∃ name, _) → _ =>
       case; do_intro (S O) name
-  | |- (name_hint_ty _ (ex _ ?P)) → ?Q =>
-      change ((ex _ P) → Q)
+  | |- (name_hint _ (@ex _ ?P)) → ?Q =>
+      notypeclasses refine (tac_remove_name_hint Q (ex P) _ _)
   (* has to come last, as it also matches the previous implications *)
   | |- forall name, _ =>
       do_intro (S O) name
@@ -297,22 +300,6 @@ Ltac liImpl :=
   normalize_and_simpl_impl false.
 
 (** ** [liSideCond] *)
-(* This tactic checks if destructing x would lead to multiple
-non-trivial subgoals. The main reason for it is that we don't want to
-destruct constructors like true as this would not be useful. *)
-Ltac non_trivial_destruct x :=
-  first [
-      have : (const False x); [ clear; case_eq x; intros => //; (*
-      check if there is only one goal remaining *) [ idtac ]; fail 1 "trivial destruct" |]
-    | idtac
-  ].
-
-Section coq.
-  Lemma tac_sidecond_destruct {A} (P : A → Prop) x Q :
-    P x ∧ Q →
-    destruct_hint x P ∧ Q.
-  Proof. unfold destruct_hint. done. Qed.
-End coq.
 Ltac liSideCond :=
   try lazymatch goal with
   | |- (name_hint _ ?P) ∧ ?Q =>
@@ -326,15 +313,6 @@ Ltac liSideCond :=
         lazymatch P with
         | shelve_hint _ =>
             split; [ unfold shelve_hint; shelve_sidecond |]
-        | destruct_hint ?x ?P =>
-          (* same handling as in [liCase] *)
-          tryif (non_trivial_destruct x) then
-            notypeclasses refine (tac_sidecond_destruct P x Q _);
-            liDestruct_hook x;
-            case_eq x
-          else (
-            notypeclasses refine (tac_sidecond_destruct P x Q _)
-          )
         end
       | liSidecond_hook P
       | lazymatch P with
@@ -469,6 +447,11 @@ Section coq_tactics.
     iIntros "HΔ".  iSplit => //. by iApply HΔ.
   Qed.
 
+  Lemma tac_sep_destruct Δ {A} (P : A → Prop) x (Q : iProp Σ) :
+    envs_entails Δ (⌜P x⌝ ∗ Q) →
+    envs_entails Δ (⌜destruct_hint x P⌝ ∗ Q).
+  Proof. unfold destruct_hint. done. Qed.
+
   Lemma tac_do_intro_intuit_sep Δ (P Q : iProp Σ) :
     envs_entails Δ (□ (P ∗ True) ∧ Q) → envs_entails Δ (□ P ∗ Q).
   Proof. apply tac_fast_apply. iIntros "[#[$ _] $]". Qed.
@@ -494,6 +477,16 @@ Section coq_tactics.
   Proof. apply tac_fast_apply. iDestruct 1 as (x) "[HP HT]". by iApply "HT". Qed.
 End coq_tactics.
 
+(* This tactic checks if destructing x would lead to multiple
+non-trivial subgoals. The main reason for it is that we don't want to
+destruct constructors like true as this would not be useful. *)
+Ltac non_trivial_destruct x :=
+  first [
+      have : (const False x); [ clear; case_eq x; intros => //; (*
+      check if there is only one goal remaining *) [ idtac ]; fail 1 "trivial destruct" |]
+    | idtac
+  ].
+
 Ltac liSep :=
   lazymatch goal with
   | |- envs_entails ?Δ (bi_sep ?P ?Q) =>
@@ -502,6 +495,15 @@ Ltac liSep :=
     | bi_sep _ _ => notypeclasses refine (tac_sep_sep_assoc _ _ _ _ _)
     | bi_exist _ => notypeclasses refine (tac_sep_exist_assoc _ _ _ _)
     | bi_emp => notypeclasses refine (tac_sep_emp _ _ _)
+    | (⌜destruct_hint ?x ?P⌝)%I =>
+          (* same handling as in [liCase] *)
+          tryif (non_trivial_destruct x) then
+            notypeclasses refine (tac_sep_destruct _ P x Q _);
+            liDestruct_hook x;
+            case_eq x
+          else (
+            notypeclasses refine (tac_sep_destruct _ P x Q _)
+          )
     | (⌜_⌝)%I => notypeclasses refine (tac_do_intro_pure_and _ _ _ _)
     | (□ ?P)%I => notypeclasses refine (tac_do_intro_intuit_sep _ _ _ _)
     | (☒ ?P)%I => notypeclasses refine (tac_do_intro_boringly_sep _ _ _ _)
