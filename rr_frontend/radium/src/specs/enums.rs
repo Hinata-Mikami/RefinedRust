@@ -180,11 +180,11 @@ impl<'def> Abstract<'def> {
         push_str_list!(out, &self.variants, "; ", |(name, _, discr)| format!("(\"{name}\", {discr})"));
 
         out.push_str("] _ _ _ _.\n");
-        out.push_str(&format!("{indent}Next Obligation. repeat first [econstructor | set_solver]. Qed.\n"));
-        out.push_str(&format!("{indent}Next Obligation. done. Qed.\n"));
-        out.push_str(&format!("{indent}Next Obligation. repeat first [econstructor | set_solver]. Qed.\n"));
+        out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_variants_nodup. Qed.\n"));
+        out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_variants_eq. Qed.\n"));
+        out.push_str(&format!("{indent}Next Obligation. solve_enum_layout_spec_discriminant_nodup. Qed.\n"));
         out.push_str(&format!(
-            "{indent}Next Obligation. repeat first [econstructor | init_cache; solve_goal]. all: unsafe_unfold_common_caesium_defs; simpl; lia. Qed.\n"
+            "{indent}Next Obligation. solve_enum_layout_spec_discriminant_in_range. Qed.\n"
         ));
         out.push_str(&format!("{indent}Global Typeclasses Opaque {}.\n", self.els_def_name));
 

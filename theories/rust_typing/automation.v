@@ -946,7 +946,8 @@ Global Hint Mode RelationIsIdentity + + : typeclass_instances.
 
 (** Lithium hook *)
 Ltac normalize_hook ::=
-  rewrite /size_of_st;
+  (* also simpl *)
+  rewrite /size_of_st/=;
   simplify_layout_normalize;
   normalize_autorewrite_tc.
 
@@ -1097,6 +1098,18 @@ Ltac enum_contractive_solve_dist :=
         destruct r; simpl; apply _
     end.
 
+Ltac els_not_elem_solver :=
+    repeat (apply not_elem_of_cons; split; first discriminate);
+    apply not_elem_of_nil.
+Ltac solve_enum_layout_spec_variants_nodup :=
+  simpl; repeat first [econstructor | els_not_elem_solver ].
+Ltac solve_enum_layout_spec_variants_eq :=
+  simpl; reflexivity.
+Ltac solve_enum_layout_spec_discriminant_nodup :=
+  simpl; repeat first [econstructor | els_not_elem_solver].
+Ltac solve_enum_layout_spec_discriminant_in_range :=
+  init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_caesium_defs; simpl; lia.
+
 (** User facing tactic calls *)
 Ltac sidecond_hammer_it :=
   prepare_sideconditions; normalize_and_simpl_goal; try solve_goal; try (unfold_common_defs; solve_goal); unsolved_sidecond_hook.
@@ -1161,4 +1174,17 @@ Ltac print_remaining_trait_goal :=
   match goal with
   | |- _ =>
   idtac "Type system got stuck while proving trait inclusion"; print_goal; admit
+  end.
+
+(** For starting Lithium on manual subgoals *)
+Lemma tac_li_start {Σ} Δ (P : iProp Σ) :
+  envs_entails Δ (P ∗ True)%I →
+  envs_entails Δ P.
+Proof.
+  rewrite right_id. done.
+Qed.
+Ltac liStart :=
+  match goal with
+  | |- envs_entails _ _ =>
+      notypeclasses refine (tac_li_start _ _ _)
   end.
