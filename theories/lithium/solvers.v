@@ -6,7 +6,7 @@ From lithium Require Import hooks simpl_classes pure_definitions normalize.
 
 (** * [refined_solver]
     Version of naive_solver which fails faster. *)
-Tactic Notation "refined_solver" tactic(tac) :=
+Ltac refined_solver_init :=
   unfold iff, not in *;
   repeat match goal with
   | H : context [∀ _, _ ∧ _ ] |- _ =>
@@ -14,9 +14,10 @@ Tactic Notation "refined_solver" tactic(tac) :=
   | H : context [Is_true _ ] |- _ =>
     repeat setoid_rewrite Is_true_eq in H
   | |- Is_true _ => repeat setoid_rewrite Is_true_eq
-  end;
-  let rec go :=
-  repeat match goal with
+  end.
+Ltac refined_solver tac := fail.
+Ltac refined_solver_step_1 tac :=
+  match goal with
   (**i solve the goal *)
   | |- _ => fast_done
   (**i intros *)
@@ -44,22 +45,27 @@ Tactic Notation "refined_solver" tactic(tac) :=
      (* apply orb_True in H; let H1 := fresh in destruct H as [H1|H1]; try clear H *)
   (**i solve the goal using the user supplied tactic *)
   | |- _ => solve [tac]
-  end;
+  end.
+Ltac refined_solver_step_2 tac :=
   (**i use recursion to enable backtracking on the following clauses. *)
   match goal with
   (**i instantiation of the conclusion *)
-  | |- ∃ x, _ => no_new_unsolved_evars ltac:(eexists; go)
-  | |- _ ∨ _ => first [left; go | right; go]
+  | |- ∃ x, _ => no_new_unsolved_evars ltac:(eexists; refined_solver tac)
+  | |- _ ∨ _ => first [left; refined_solver tac | right; refined_solver tac]
   (* | |- Is_true (_ || _) => apply orb_True; first [left; go | right; go] *)
   | _ =>
     (**i instantiations of assumptions. *)
     match goal with
     | H : ?P → ?Q |- _ =>
       let H' := fresh "H" in
-      assert P as H'; [clear H; go|];
-      specialize (H H'); clear H'; go
+      assert P as H'; [clear H; refined_solver tac | specialize (H H'); clear H']
     end
-  end in go.
+  end.
+Ltac refined_solver_step tac :=
+  repeat (refined_solver_step_1 tac); (refined_solver_step_2 tac).
+Ltac refined_solver tac ::=
+  solve [repeat (refined_solver_step tac)].
+Tactic Notation "refined_solver" tactic(t) := refined_solver t.
 Tactic Notation "refined_solver" := refined_solver eauto.
 
 (** * [normalize_and_simpl_goal] *)
