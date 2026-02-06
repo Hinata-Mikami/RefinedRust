@@ -64,9 +64,9 @@ Section statics.
     Persistent (initialized π name).
   Proof. apply _. Qed.
 
-  (*Global Instance initialized_intro_persistent (π : thread_id) name :*)
-    (*IntroPersistent (initialized π name) (initialized π name).*)
-  (*Proof. constructor. iIntros "#$". Qed.*)
+  Global Instance initialized_intro_persistent (π : thread_id) name :
+    IntroPersistent (initialized π name) (initialized π name).
+  Proof. constructor. iIntros "#$". Qed.
 
   (* On introduction of `initialized`, destruct it *)
   Lemma simplify_initialized_hyp π name ty l
