@@ -186,7 +186,7 @@ Proof.
     iSelect (_ ◁ₗ[_, _] _ @ ◁ (uninit UnitSynType))%I (fun H => iRename H into "H_pts").
     iSelect (local___0 ◁ₗ[_, _] _ @ _)%I (fun H => iRename H into "H_0").
     iAssert (local___0 ◁ₗ[π, Owned false] #(#())  @ ◁ box (uninit (ty_syn_type T MetaNone)))%I with "[H_pts H_0 Hcred Hat1]" as "H_0".
-    { iPoseProof (ltype_own_has_layout with "H_0") as "(%ly & %Hstly & %Hlyv)".
+    { iPoseProof (ltype_own_has_layout with "H_0") as "(%ly' & %Hstly & %Hlyv)".
       simpl in *. simp_ltypes in Hstly. simpl in *.
       iApply (ofty_owned_subtype_aligned with "[-H_0] H_0").
       { solve_layout_alg. }
@@ -205,10 +205,10 @@ Proof.
       rename select (ly_size _ = 0%nat) into Hsz. rewrite Hsz. iFrame "Hlb".
       iFrame. iR. iExists tt. iR. iNext.
       rewrite ltype_own_ofty_unfold/lty_of_ty_own.
-      iDestruct "H_pts" as "(%ly & % & % & _ & _ & _ & %r' & <- & >(%v2 & Hpt & Hb))".
+      iDestruct "H_pts" as "(%ly' & % & % & _ & _ & _ & %r' & <- & >(%v2 & Hpt & Hb))".
       iModIntro. iExists v2. iFrame.
       rewrite !uninit_own_spec.
-      iDestruct "Hb" as "(_ & %ly' & %Hstly' & %Hlyv')".
+      iDestruct "Hb" as "(_ & %ly'' & %Hstly' & %Hlyv')".
       iR. iExists _. iR. iFrame. iPureIntro.
       apply syn_type_has_layout_unit_inv in Hstly'; subst.
       move: Hlyv'. rewrite /has_layout_val => ->. rewrite Hsz. done.

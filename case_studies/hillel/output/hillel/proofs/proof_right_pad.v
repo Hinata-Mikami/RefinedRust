@@ -14,9 +14,9 @@ Proof.
 
   (* !start proof(right_pad) *)
   repeat liRStep.
-  liInst Hevar1 0%nat.
+  liInst Hevar_num 0%nat.
   repeat liRStep.
-  liInst Hevar (S x2).
+  liInst Hevar_num (S num).
   repeat liRStep; liShow.
   (* !end proof *)
 

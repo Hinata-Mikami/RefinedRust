@@ -259,11 +259,11 @@ Ltac unfold_all_protected_evars :=
          | He := EVAR_ID _ |- _ => unfold He, EVAR_ID; clear He
          end.
 
-Ltac create_protected_evar A :=
+Ltac create_protected_evar A name :=
   (* necessary, otherwise pattern might not find all occurences later,
   see also instantiate protected *)
   let A := eval cbn in A in
-  let Hevar := fresh "Hevar" in
+  let Hevar := fresh "Hevar_" name in
   (* see https://stackoverflow.com/a/46178884*)
   let c :=
       match goal with

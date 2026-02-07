@@ -15,14 +15,14 @@ Proof.
   repeat liRStep; liShow.
   { iRename select (Inherit κ0 _ _) into "Hinh1".
     iRename select (MaybeInherit (Some κ1) _ _) into "Hinh2".
-    liInst Hevar1 γ0. repeat liRStep; liShow.
+    liInst Hevar_x0 γ0. repeat liRStep; liShow.
     iApply (prove_with_subtype_inherit_manual with "Hinh1 []"); [shelve_sidecond | iIntros "$" | ].
     repeat liRStep; liShow.
     iApply (prove_with_subtype_inherit_manual with "Hinh2 []"); [shelve_sidecond | iIntros "$" | ].
     repeat liRStep; liShow.
   }
   {
-    liInst Hevar1 γ.
+    liInst Hevar_x0 γ.
     repeat liRStep; liShow.
   }
 

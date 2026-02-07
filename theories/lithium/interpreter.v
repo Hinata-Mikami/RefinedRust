@@ -1,9 +1,28 @@
 From iris.proofmode Require Import coq_tactics reduction.
+From iris.proofmode Require Import string_ident.
 From lithium Require Export base.
 From lithium Require Import hooks definitions simpl_classes normalize proof_state solvers syntax boringly.
 Set Default Proof Using "Type".
 
 (** This file contains the main Lithium interpreter. *)
+
+Module Import IdentToStringImpl.
+  Import IdentToString.
+  Import Ltac2.
+  Inductive Ltac2IdentToPass := mkLtac2IdentToPass.
+
+  (* Trick from https://pit-claudel.fr/clement/papers/koika-dsls-CoqPL21.pdf *)
+  Ltac serialize_ident_in_context :=
+    ltac2:(match! goal with
+           | [ h: Ltac2IdentToPass |- _  ] =>
+             let s := ident_to_string h in exact $s
+           end).
+End IdentToStringImpl.
+
+Notation "ident_to_string! a" :=
+  (match mkLtac2IdentToPass return string with
+   | a => ltac:(serialize_ident_in_context)
+   end) (at level 10, only parsing).
 
 (** * General proof state management tactics  *)
 Tactic Notation "liInst" hyp(H) open_constr(c) :=
@@ -254,11 +273,30 @@ Section coq_tactics.
 End coq_tactics.
 
 Ltac liExist protect :=
+  let evar_ident :=
+    lazymatch goal with
+    | |- envs_entails _ (bi_exist ?P) =>
+        match P with
+        | (fun x => _) => constr:(ident_to_string! x)
+        end
+    | |- @ex ?A ?P =>
+        match P with
+        | (fun x => _) => constr:(ident_to_string! x)
+        end
+    end
+  in
   lazymatch goal with
   | |- envs_entails _ (bi_exist _) => notypeclasses refine (tac_do_exist _ _ _ _)
   | _ => idtac
   end;
-  match goal with
+  let evar_ident :=
+    lazymatch goal with
+    | |- @ex (name_hint_ty ?hint ?A) ?P =>
+        hint
+    | |- _ =>
+        evar_ident
+    end in
+  lazymatch goal with
     | |- @ex ?A ?P =>
       let B := eval unfold name_hint_ty in A in
       let B := eval simpl in B in
@@ -283,7 +321,10 @@ Ltac liExist protect :=
                 refine (@simpl_exist_proof A P _ p _)
               |
                 lazymatch protect with
-                | true => let Hevar := create_protected_evar A in exists (protected Hevar)
+                | true =>
+                    string_ident.string_to_ident_cps evar_ident ltac:(fun H =>
+                      let Hevar := create_protected_evar A H in
+                      exists (protected Hevar))
                 | false => eexists _
                 end
               ]

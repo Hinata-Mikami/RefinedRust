@@ -1,7 +1,7 @@
 Require Import Stdlib.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type ltypes hlist.
-From refinedrust.automation Require Import ident_to_string lookup_definition proof_state.
+From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust Require Import int programs.
 Set Default Proof Using "Type".
 

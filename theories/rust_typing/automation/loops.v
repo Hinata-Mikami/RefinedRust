@@ -3,7 +3,7 @@ From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
-From refinedrust.automation Require Import ident_to_string lookup_definition.
+From refinedrust.automation Require Import lookup_definition.
 From refinedrust Require Import programs.
 From refinedrust Require Import options.
 

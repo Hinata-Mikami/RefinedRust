@@ -64,7 +64,7 @@ Notation "'HIDDEN'" := (FUNCTION_NAME _) (only printing).
 Notation "'HIDDEN_FUNCTION_PTR_T' v" := (ty_own_val (function_ptr _ _) _ _ _ v) (only printing, at level 100).
 
 (* Trait incl assumptions *)
-Notation "'HIDDEN_TRAIT_INCL' P" := (trait_incl_marker P) (only printing, at level 100).
+Notation "'HIDDEN_TRAIT_INCL'" := (trait_incl_marker _) (only printing, at level 100).
 
 (** marker for tactics that have already exploited a particular fact *)
 Definition NO_ENRICH {A} (a : A) := a.

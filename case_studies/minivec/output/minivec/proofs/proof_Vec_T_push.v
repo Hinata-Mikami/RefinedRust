@@ -18,7 +18,7 @@ Proof.
   { apply_update (updateable_typed_array_access x'0 (length self ) (st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
   { rep <-! liRStep; liShow.
-    apply_update (updateable_typed_array_access x2 (length self ) (st_of T_ty MetaNone)).
+    apply_update (updateable_typed_array_access l (length self ) (st_of T_ty MetaNone)).
     repeat liRStep; liShow. }
 
 

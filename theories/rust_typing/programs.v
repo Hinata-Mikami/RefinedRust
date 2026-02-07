@@ -4153,7 +4153,7 @@ Notation "'typed_place' E L f l lto ro b1 b2 K 'HIDDEN_CONT'" := (typed_place E 
 Notation "'subsume_full' E L wl P1 P2 'HIDDEN_CONT'" := (subsume_full E L wl P1 P2 _) (only printing): rr_hidden.
 Notation "'resolve_ghost' π E L rm f l lt k r 'HIDDEN_CONT'" := (resolve_ghost π E L rm f l lt k r _) (only printing): rr_hidden.
 Notation "'prove_with_subtype' E L wl pm P 'HIDDEN_CONT'" := (prove_with_subtype E L wl pm P _) (only printing): rr_hidden.
-Notation "'introduce_with_hooks E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
+Notation "'introduce_with_hooks' E L P 'HIDDEN_CONT'" := (introduce_with_hooks E L P _) (only printing): rr_hidden.
 Notation "'stratify_ltype' π E L mu mdu ma m l lt r b 'HIDDEN_CONT'" := (stratify_ltype π E L mu mdu ma m l lt r b _) (only printing): rr_hidden.
 
 

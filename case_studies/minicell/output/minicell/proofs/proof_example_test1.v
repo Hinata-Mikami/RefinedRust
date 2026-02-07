@@ -13,7 +13,7 @@ Proof.
   example_test1_prelude.
 
   repeat liRStep; liShow.
-  liInst Hevar Zeven.
+  liInst Hevar_x1 Zeven.
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

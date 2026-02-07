@@ -15,7 +15,7 @@ Proof.
   repeat liRStep; liShow.
   unfold MapInv.
   repeat liRStep; liShow.
-  liInst Hevar Inv.
+  liInst Hevar_Inv Inv.
   iApply prove_with_subtype_default.
   iFrame.
   rep liRStep. liShow.

@@ -45,7 +45,7 @@ Proof.
       change (∀ x : name_hint_ty "ls1" loc, P)
   end.
 
-   repeat liRStep; liShow.
+  repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: unfold_common_defs; try solve_goal.
@@ -140,6 +140,36 @@ Local Lemma test_name_hint_ex `{!typeGS Σ} (x : option nat) :
 Proof.
   iStartProof.
   repeat liRStep.
+Qed.
+
+Local Lemma test_introduce_ex_named `{!typeGS Σ} :
+  ⊢ introduce_with_hooks [] [] (∃ foo : nat, ⌜foo = 4%nat⌝) (λ L2, True).
+Proof.
+  iStartProof.
+  liRStep. liRStep.
+  rep liRStep.
+Qed.
+Local Lemma test_introduce_boringly_ex_named `{!typeGS Σ} :
+  ⊢ introduce_with_hooks [] [] (☒ ∃ foo : nat, ⌜foo = 4%nat⌝) (λ L2, True).
+Proof.
+  iStartProof.
+  liRStep. liRStep.
+  rep liRStep.
+Qed.
+Local Lemma test_prove_with_subtype_ex `{!typeGS Σ} :
+  ⊢ prove_with_subtype [] [] false ProveDirect (∃ foo : nat, ⌜foo = 4%nat⌝) (λ L2 _ _, True).
+Proof.
+  iStartProof.
+  liRStep. liRStep.
+  liRStep. liRStep.
+  rep liRStep.
+Qed.
+Local Lemma test_introduce_all_named `{!typeGS Σ} :
+  ⊢ introduce_with_hooks [] [] (∀ foo : nat, ⌜foo ≥ 0%nat⌝) (λ L2, True).
+Proof.
+  iStartProof.
+  liRStep. liRStep.
+  rep liRStep.
 Qed.
 
 

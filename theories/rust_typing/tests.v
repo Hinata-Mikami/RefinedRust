@@ -830,7 +830,7 @@ Section test_evar.
     ∃ x : Z,
     ensure_evar_instantiated_pure_goal x 32.
   Proof.
-    let Hevar := create_protected_evar Z in exists (protected Hevar).
+    let Hevar := create_protected_evar Z x in exists (protected Hevar).
     solve_ensure_evar_instantiated; solve[fail].
   Abort.
 
@@ -838,8 +838,8 @@ Section test_evar.
     ∃ x : plist type [Z : RT; Z: RT],
     ensure_evars_instantiated_pure_goal (pzipl _ x) [existT (Z : RT) (int I32); existT (Z : RT) (int U32)].
   Proof.
-    let Hevar := create_protected_evar (type Z) in
-    let Hevar2 := create_protected_evar (type Z) in
+    let Hevar := create_protected_evar (type Z) x in
+    let Hevar2 := create_protected_evar (type Z) x in
     exists (-[protected Hevar; protected Hevar2]).
     solve_ensure_evars_instantiated; solve [fail].
   Abort.

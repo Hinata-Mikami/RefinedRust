@@ -529,8 +529,7 @@ Section introduce.
     iIntros "Ha" (F ?) "#HE HL (%x & HP)".
     iApply ("Ha" with "[//] HE HL HP").
   Qed.
-  Definition introduce_with_hooks_exists_inst := [instance @introduce_with_hooks_exists].
-  Global Existing Instance introduce_with_hooks_exists_inst.
+  (* No instance, applied manually in [liRBinder], to preserve binder name *)
 
   (* low priority base instances so that other more specialized instances trigger first *)
   Lemma introduce_with_hooks_base_learnable E L P `{HP : !LearnFromHyp P} T :
@@ -631,8 +630,7 @@ Section introduce.
     iDestruct "Ha" as "(%a & Ha)".
     iApply ("HT" with "[//] HE HL Ha").
   Qed.
-  Definition introduce_with_hooks_boringly_exist_inst := [instance @introduce_with_hooks_boringly_exist].
-  Global Existing Instance introduce_with_hooks_boringly_exist_inst.
+  (* No instance, applied manually in [liRBinder], to preserve binder name *)
 
   Lemma introduce_with_hooks_boringly_sep E L P1 P2 T :
     introduce_with_hooks E L (☒ (P1 ∗ P2)) T :-
@@ -751,8 +749,9 @@ Section prove_subtype.
     destruct pm. { iIntros "(? & ?)". eauto with iFrame. }
     iIntros "(Ha & $) Htok". iMod ("Ha" with "Htok") as "?". eauto with iFrame.
   Qed.
-  Definition prove_with_subtype_exists_inst := [instance @prove_with_subtype_exists].
-  Global Existing Instance prove_with_subtype_exists_inst.
+  (* No instance, applied manually in [liRBinder], to preserve binder name *)
+
+  (* No corresponding lemma for [∀] -- this doesn't work, because we cannot commute the quantifier over the existential quantifiers in [prove_with_subtype] *)
 
   (** For ofty location ownership, we have special handling to stratify first, if possible.
       This only happens in the [ProveWithStratify] proof mode though, because we sometimes directly want to get into [Subsume]. *)

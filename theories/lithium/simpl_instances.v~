@@ -542,6 +542,16 @@ Proof.
   eapply sublist_app; done.
 Qed.
 
+Search head Some.
+Global Instance simpl_both_last_Some {A} (xs : list A) x : 
+  SimplBothRel (=) (last xs) (Some x) (∃ xs', xs = xs' ++ [x]).
+Proof.
+  unfold SimplBothRel.
+  rewrite last_Some.
+  done.
+Qed.
+
+
 Global Instance simpl_learn_insert_some_len_impl {A} l i (x : A) :
   (* The false is important here as we learn additional information,
   but don't want to get stuck in an endless loop. *)

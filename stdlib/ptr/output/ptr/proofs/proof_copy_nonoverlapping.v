@@ -51,6 +51,7 @@ Proof.
     dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
   iApply (typed_goto_acc _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
+  unfold loop_inv.
   do 2 liRStep; liShow. iExists 0%nat.
   liRStepUntil (introduce_with_hooks).
   liRStep; liShow.

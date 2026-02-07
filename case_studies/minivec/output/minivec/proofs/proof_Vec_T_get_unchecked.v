@@ -7,6 +7,7 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{!refinedrustGS Σ}.
+
 Lemma Vec_T_get_unchecked_proof (π : thread_id) :
   Vec_T_get_unchecked_lemma π.
 Proof.
@@ -15,7 +16,7 @@ Proof.
 
   rep <-! liRStep; liShow.
 
-  apply_update (updateable_typed_array_access x1 i (st_of T_ty MetaNone)).
+  apply_update (updateable_typed_array_access l i (st_of T_ty MetaNone)).
   repeat liRStep; liShow.
 
   all: print_remaining_goal.

@@ -3,7 +3,7 @@ From iris.proofmode Require Import coq_tactics reduction string_ident.
 From refinedrust Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
-From refinedrust.automation Require Import ident_to_string lookup_definition.
+From refinedrust.automation Require Import lookup_definition.
 From refinedrust Require Import int programs program_rules functions mut_ref.mut_ref shr_ref struct.struct array.array enum xmap.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
 From refinedrust.automation Require Export loops existentials simpl solvers proof_state.
@@ -12,6 +12,8 @@ From refinedrust Require Import options.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
+Ltac liEnsureInvariant ::=
+  unfold_instantiated_evars; try let_bind_envs; try liFromSyntax.
 
 Global Hint Transparent ly_size : solve_protected_eq_db.
 Ltac solve_protected_eq_hook ::=
@@ -546,6 +548,78 @@ Ltac liRJudgement :=
         end
   end.
 
+(** [liRBinder] explicitly handles binder transformations to preserve names. *)
+Section tac.
+  Context `{!typeGS Σ}.
+
+  Lemma tac_introduce_with_hooks_exists name Δ {X} E L (Φ : X → iProp Σ) T :
+    envs_entails Δ (∀ x : name_hint_ty name X, introduce_with_hooks E L (Φ x) T) →
+    envs_entails Δ (introduce_with_hooks E L (∃ x, Φ x) T).
+  Proof.
+    apply tac_fast_apply.
+    apply introduce_with_hooks_exists.
+  Qed.
+
+  Lemma tac_introduce_with_hooks_boringly_exists name Δ E L {X} (P : X → iProp Σ) T :
+    envs_entails Δ (∀ x : name_hint_ty name X, introduce_with_hooks E L (☒ P x) T) →
+    envs_entails Δ (introduce_with_hooks E L (☒ (∃ x : X, P x)) T).
+  Proof.
+    apply tac_fast_apply.
+    apply introduce_with_hooks_boringly_exist.
+  Qed.
+  Lemma tac_prove_with_subtype_exists name Δ {X} E L step pm (Φ : X → iProp Σ) T :
+    envs_entails Δ (∃ x : name_hint_ty name X, prove_with_subtype E L step pm (Φ x) T) →
+    envs_entails Δ (prove_with_subtype E L step pm (∃ x, Φ x) T).
+  Proof.
+    apply tac_fast_apply.
+    apply prove_with_subtype_exists.
+  Qed.
+End tac.
+Ltac liRBinder :=
+  lazymatch goal with
+  | |- envs_entails _ (introduce_with_hooks _ _ ?P _) =>
+    let P := eval simpl in P in
+    match P with
+    | @bi_exist _ ?T ?Φ =>
+      match T with
+      | name_hint_ty _ _ =>
+        notypeclasses refine (tac_fast_apply (introduce_with_hooks_exists _ _ _ _) _)
+      | _ =>
+        match Φ with
+        | (fun x => _) =>
+          let ident := constr:(ident_to_string! x) in
+          notypeclasses refine (tac_introduce_with_hooks_exists ident _ _ _ _ _ _)
+        end
+      end
+    | boringly (@bi_exist _ ?T ?Φ) =>
+      match T with
+      | name_hint_ty _ _ =>
+        notypeclasses refine (tac_fast_apply (introduce_with_hooks_boringly_exist _ _ _ _) _)
+      | _ =>
+        match Φ with
+          | (fun x => _) =>
+            let ident := constr:(ident_to_string! x) in
+            notypeclasses refine (tac_introduce_with_hooks_boringly_exists ident _ _ _ _ _ _)
+        end
+      end
+    end
+  | |- envs_entails _ (prove_with_subtype _ _ _ _ ?P _) =>
+      let P := eval simpl in P in
+      match P with
+      | @bi_exist _ ?T ?Φ =>
+        match T with
+        | name_hint_ty _ _ =>
+          notypeclasses refine (tac_fast_apply (prove_with_subtype_exists _ _ _ _ _ _) _)
+        | _ =>
+          match Φ with
+          | (fun x => _) =>
+            let ident := constr:(ident_to_string! x) in
+            notypeclasses refine (tac_prove_with_subtype_exists ident _ _ _ _ _ _ _ _)
+          end
+        end
+      end
+  end.
+
 (* TODO Maybe this should rather be a part of Lithium? *)
 Ltac unfold_introduce_direct :=
   lazymatch goal with
@@ -584,6 +658,7 @@ Ltac liRStepCore :=
   | liRStmt
   | liRIntroduceTypedStmt
   | liRExpr
+  | liRBinder
   | liRJudgement
   | liFastStep
   | lazymatch goal with | |- BACKTRACK_POINT ?P => change_no_check P end
@@ -980,7 +1055,12 @@ Ltac before_revert_hook H ::=
   | CACHED _ =>
       (* don't alter this *)
       fail 2
-      (*unfold CACHED in H*)
+  | JCACHED _ =>
+      fail 2
+  | bb_inv_map_marker _ =>
+      fail 2
+  | TYVAR_MAP _ =>
+      fail 2
   | _ =>
       (* put a name hint to preserve names *)
       let Hident_str := constr:(ident_to_string! H) in

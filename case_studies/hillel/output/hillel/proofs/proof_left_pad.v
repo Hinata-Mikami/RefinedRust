@@ -15,9 +15,9 @@ Proof.
   (* !start proof(left_pad) *)
   rep <-! liRStep; liShow.
   rep liRStep; liShow.
-  liInst Hevar1 0%nat.
+  liInst Hevar_num 0%nat.
   rep liRStep; liShow.
-  { liInst Hevar (S x2).
+  { liInst Hevar_num (S num).
     rep liRStep; liShow. }
   rep liRStep; liShow.
   (* !end proof *)
