@@ -12,9 +12,6 @@ From refinedrust Require Import options.
 (** More automation for modular arithmetics. *)
 Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
 
-Ltac liEnsureInvariant ::=
-  unfold_instantiated_evars; try let_bind_envs; try liFromSyntax.
-
 Global Hint Transparent ly_size : solve_protected_eq_db.
 Ltac solve_protected_eq_hook ::=
   lazymatch goal with
