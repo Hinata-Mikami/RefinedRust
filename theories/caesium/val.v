@@ -16,11 +16,11 @@ Program Definition mbyte_to_byte (mb : mbyte) : option (byte * option alloc_id) 
   match mb with
   | MByte b => Some (b, None)
   | MPtrFrag l n => Some (
-     {| byte_val := ((l.2 `div` 2^(8 * n)) `mod` byte_modulus) |},
-     if l.1 is ProvAlloc a then Some a else None)
+     {| byte_val := ((l.(loc_a) `div` 2^(8 * n)) `mod` byte_modulus) |},
+     if l.(loc_p) is ProvAlloc a then Some a else None)
   | MPoison => None
   end.
-Next Obligation. move => ? l n. have [] := Z_mod_lt (l.2 `div` 2 ^ (8 * n)) byte_modulus => //*. lia. Qed.
+Next Obligation. move => ? l n. have [] := Z_mod_lt (l.(loc_a) `div` 2 ^ (8 * n)) byte_modulus => //*. lia. Qed.
 
 (** Representation of a value (list of bytes). *)
 Definition val : Set := list mbyte.

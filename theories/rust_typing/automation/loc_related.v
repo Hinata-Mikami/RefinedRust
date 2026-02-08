@@ -9,7 +9,7 @@ From refinedrust Require Import programs program_rules.
 (** Asserts that [l .. l +ₗ l_sz] is in range [l1 .. l1 +ₗ l1_sz].
   We have a range [l_sz] for the accessed part in order to support zero-sized accesses, which should be valid even if [l1_sz] is zero. *)
 Definition loc_in_range (l : loc) (l_sz : nat) (l1 : loc) (l1_sz : nat) :=
-  l.1 = l1.1 ∧ ((l.2 >= l1.2)%Z ∧ (l.2 + l_sz <= l1.2 + l1_sz)%Z).
+  l.(loc_p) = l1.(loc_p) ∧ ((l.(loc_a) >= l1.(loc_a))%Z ∧ (l.(loc_a) + l_sz <= l1.(loc_a) + l1_sz)%Z).
 
 (** * Tactics *)
 
@@ -61,11 +61,8 @@ Section test.
     solve_loc_in_range.
   Abort.
 
-  (* TODO move *)
-  Definition mkloc (p : prov) (a : addr) : loc := (p, a).
-
   Lemma lir_test_3 :
-    loc_in_range (mkloc (ProvNone) 4) 0 (mkloc (ProvNone) 4) 0.
+    loc_in_range (Loc (ProvNone) 4) 0 (Loc ProvNone 4) 0.
   Proof.
     solve_loc_in_range.
   Abort.

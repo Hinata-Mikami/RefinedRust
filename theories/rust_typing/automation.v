@@ -921,10 +921,6 @@ Global Hint Unfold OffsetLocSt : core.
 
 Hint Unfold els_lookup_tag : lithium_rewrite.
 
-Global Typeclasses Opaque loc.
-Global Instance loc_inh : Inhabited loc.
-Proof. unfold loc. apply _. Qed.
-
 #[global] Typeclasses Opaque layout_wf.
 
 Global Instance simpl_exist_tysized `{!typeGS Σ} {rt} (ty : type rt) `{!TySized ty} Q :

@@ -22,7 +22,7 @@ Create HintDb refinedrust_loc_eq_rewrite discriminated.
 
 (** * Tactics *)
 
-Lemma eq_loc (l1 l2 : loc): l1.1 = l2.1 → l1.2 = l2.2 → l1 = l2.
+Lemma eq_loc (l1 l2 : loc): l1.(loc_p) = l2.(loc_p) → l1.(loc_a) = l2.(loc_a) → l1 = l2.
 Proof. destruct l1, l2 => /= -> -> //. Qed.
 
 Ltac simplify_layout_goal_noshelve :=
@@ -76,13 +76,13 @@ Section test.
   Goal (l = l)%Z.
   solve_loc_eq. Qed.
 
-  Goal (@eq loc (id, a) (id, a))%Z.
+  Goal (@eq loc (Loc id a) (Loc id a))%Z.
   solve_loc_eq. Qed.
 
-  Goal ((l.1, l.2) = l)%Z.
+  Goal (Loc l.(loc_p) l.(loc_a) = l)%Z.
   solve_loc_eq. Qed.
 
-  Goal ((l.1, l.2 + n)%Z = l +ₗ n)%Z.
+  Goal (Loc l.(loc_p) (l.(loc_a) + n)%Z = l +ₗ n)%Z.
   solve_loc_eq. Qed.
 
   Goal ((l +ₗ n1 +ₗ n2) = (l +ₗ (n1 + n2)))%Z.
@@ -91,7 +91,7 @@ Section test.
   Goal ((l +ₗ 0%nat * n) = l)%Z.
   solve_loc_eq. Qed.
 
-  Goal ((id, a + n1 + n2) = (id, a + (n1 + n2)))%Z.
+  Goal (Loc id (a + n1 + n2) = Loc id (a + (n1 + n2)))%Z.
   solve_loc_eq. Qed.
 
   Goal ((l +ₗ (n + (i + j)%nat)) = (l +ₗ (n + i + j)))%Z.
@@ -106,7 +106,7 @@ Section test.
   Goal ((l +ₗ (n1 + (i + j)%nat) * n2) = (l +ₗ (n1 + i + j) * n2))%Z.
   solve_loc_eq. Qed.
 
-  Goal (l = (l.1, l.2 * 1))%Z.
+  Goal (l = Loc l.(loc_p) (l.(loc_a) * 1))%Z.
   solve_loc_eq. Qed.
 
   Goal (l offsetst{IntSynType U8}ₗ n1) = l +ₗ (ly_size U8 * n1).

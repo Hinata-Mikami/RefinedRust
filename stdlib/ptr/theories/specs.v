@@ -16,5 +16,5 @@ Inductive trace_offset :=
 
 (* with_addr *)
 Definition with_addr (l : loc) (a : addr) : loc :=
-  (l.1, a).
+  Loc l.(loc_p) a.
 Arguments with_addr : simpl never.

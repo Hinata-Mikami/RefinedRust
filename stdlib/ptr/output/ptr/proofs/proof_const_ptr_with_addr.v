@@ -24,8 +24,8 @@ Proof.
   iDestruct "Hv" as "(_ & %)".
   iApply wp_copy_alloc_id; [done | apply val_to_of_loc | ].
   iApply physical_step_intro; iNext.
-  set (l2 := (x.1, addr) : loc).
-  iAssert (l2 ◁ᵥ{π, MetaNone} (x.1, addr) @ alias_ptr_t)%I as "?".
+  set (l2 := Loc x.(loc_p) addr).
+  iAssert (l2 ◁ᵥ{π, MetaNone} l2 @ alias_ptr_t)%I as "?".
   { rewrite /ty_own_val/=. do 2 iR.
     simpl. iPureIntro. by eapply val_to_Z_in_range. }
   iApply ("HCont" $! _ _ _ (alias_ptr_t) l2 with "HL Hf []").

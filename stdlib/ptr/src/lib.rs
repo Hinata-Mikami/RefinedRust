@@ -384,12 +384,12 @@ pub const fn const_ptr_cast_mut<T>(x: *const T) -> *mut T {
 }
 
 #[rr::export_as(#method core::ptr::const_ptr::is_null)]
-#[rr::returns("bool_decide (x.2 = 0)")]
+#[rr::returns("bool_decide (x.(loc_a) = 0)")]
 pub fn const_ptr_is_null<T>(x: *const T) -> bool {
     const_ptr_addr(x) == 0
 }
 #[rr::export_as(#method core::ptr::mut_ptr::is_null)]
-#[rr::returns("bool_decide (x.2 = 0)")]
+#[rr::returns("bool_decide (x.(loc_a) = 0)")]
 pub fn mut_ptr_is_null<T>(x: *mut T) -> bool {
     mut_ptr_addr(x) == 0
 }
@@ -401,12 +401,12 @@ pub fn mut_ptr_is_null<T>(x: *mut T) -> bool {
 // TODO: map_addr
 
 #[rr::export_as(#method core::ptr::const_ptr::addr)]
-#[rr::returns("x.2")]
+#[rr::returns("x.(loc_a)")]
 pub fn const_ptr_addr<T>(x: *const T) -> usize {
     x as usize
 }
 #[rr::export_as(#method core::ptr::mut_ptr::addr)]
-#[rr::returns("x.2")]
+#[rr::returns("x.(loc_a)")]
 pub fn mut_ptr_addr<T>(x: *const T) -> usize {
     x as usize
 }
@@ -429,7 +429,7 @@ pub fn mut_ptr_with_addr<T>(x: *mut T, addr: usize) -> *mut T {
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
+#[rr::ensures("l.(loc_a) = addr")]
 #[rr::ensures(#type "l" : "()" @ "unit_t")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     unimplemented!();
@@ -439,7 +439,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[rr::exists("l")]
 #[rr::returns("l")]
 #[rr::ensures("l `aligned_to` (Z.to_nat addr)")]
-#[rr::ensures("l.2 = addr")]
+#[rr::ensures("l.(loc_a) = addr")]
 #[rr::ensures(#type "l" : "()" @ "unit_t")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unimplemented!();

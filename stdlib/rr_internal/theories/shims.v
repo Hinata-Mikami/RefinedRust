@@ -90,7 +90,7 @@ Proof.
   iApply typed_stmt_annot_skip.
   liRStepUntil (typed_call).
   (* make into value, because the part not affected by the memcpy will be returned *)
-  iRename select (l_new ◁ₗ[_, _] .@ _)%I into "Hnew".
+  (*iRename select (l_new ◁ₗ[_, _] .@ _)%I into "Hnew".*)
 
   (* The copy_nonoverlapping does a bytewise copy, so we need to convert it into an "array" of bytes *)
   iApply fupd_typed_call.
@@ -104,7 +104,7 @@ Proof.
   { rewrite /layout_wf/ly_align/it_layout. simpl. apply Z.divide_1_l. }
   simpl. rewrite !Nat.add_0_r.
   iModIntro.
-  repeat liRStep; liShow.
+  rep <-! liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.

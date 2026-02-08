@@ -467,7 +467,7 @@ Section typing.
     λ T, i2p (find_in_context_loc_in_bounds_loc l T).
 
   Lemma subsume_loc_in_bounds (l1 l2 : loc) (pre1 suf1 pre2 suf2 : nat) T :
-    ⌜l1.1 = l2.1⌝ ∗ ⌜(l1.2 + pre2 ≤ l2.2 + pre1)%Z⌝ ∗ ⌜(l2.2 + suf2 ≤ l1.2 + suf1)%Z⌝ ∗ T
+    ⌜l1.(loc_p) = l2.(loc_p)⌝ ∗ ⌜(l1.(loc_a) + pre2 ≤ l2.(loc_a) + pre1)%Z⌝ ∗ ⌜(l2.(loc_a) + suf2 ≤ l1.(loc_a) + suf1)%Z⌝ ∗ T
     ⊢ subsume (loc_in_bounds l1 pre1 suf1) (loc_in_bounds l2 pre2 suf2) T.
   Proof.
     iIntros "(% & % & % & $)". by iApply loc_in_bounds_offset.

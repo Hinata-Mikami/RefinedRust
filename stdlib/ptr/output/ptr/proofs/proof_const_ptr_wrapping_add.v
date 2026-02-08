@@ -29,7 +29,7 @@ Proof.
   { iApply tr_weaken; last done. lia. }
   iPoseProof (credit_store_donate with "Hstore Hcred") as "Hstore".
   iPoseProof (credit_store_donate_tr with "Hstore Hat") as "Hstore".
-  assert ((l wrapping_offset{T_st_ly}ₗ count).2 ∈ USize).
+  assert ((l wrapping_offset{T_st_ly}ₗ count).(loc_a) ∈ USize).
   { rewrite /wrapping_offset_loc /wrapping_shift_loc/=.
     by apply wrap_unsigned_in_range. }
   iApply ("Hcont" $! _ _ _ (alias_ptr_t) with "HL Hf").

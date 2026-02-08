@@ -714,7 +714,7 @@ Section judgments.
 
   Global Program Instance learn_hyp_loc_in_bounds l off1 off2 :
     LearnFromHyp (loc_in_bounds l off1 off2)%I | 10 :=
-    {| learn_from_hyp_Q := ⌜enter_cache_hint (0 ≤ l.2 - off1)%Z⌝ ∗ ⌜enter_cache_hint (l.2 + off2 ≤ MaxInt USize)%Z⌝ |}.
+    {| learn_from_hyp_Q := ⌜enter_cache_hint (0 ≤ l.(loc_a) - off1)%Z⌝ ∗ ⌜enter_cache_hint (l.(loc_a) + off2 ≤ MaxInt USize)%Z⌝ |}.
   Next Obligation.
     iIntros (l off1 off2 ? ?) "Hlb".
     iPoseProof (loc_in_bounds_ptr_in_range with "Hlb") as "%Hinrange".

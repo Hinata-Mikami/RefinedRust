@@ -46,22 +46,36 @@ Definition prov_alloc_id (p : prov) : option alloc_id :=
   if p is ProvAlloc aid then Some aid else None.
 
 (** Memory location. *)
-Definition loc : Set := prov * addr.
+Record loc := Loc {
+  loc_p : prov;
+  loc_a : addr;
+}.
+Add Printing Constructor loc.
 Bind Scope loc_scope with loc.
 
-Definition fn_loc (a : addr) : loc := (ProvFnPtr, a).
-Definition NULL_loc : loc := (ProvNone, 0).
+Global Instance loc_inhabited : Inhabited loc := populate (Loc ProvNone 0).
+Global Instance loc_eq_dec : EqDecision loc.
+Proof. solve_decision. Qed.
+Global Instance loc_countable : Countable loc.
+Proof.
+  refine (inj_countable'
+    (λ l, (l.(loc_p), l.(loc_a)))
+    (λ l, Loc l.1 l.2) _); abstract by intros [].
+Defined.
+
+Definition fn_loc (a : addr) : loc := Loc ProvFnPtr a.
+Definition NULL_loc : loc := Loc ProvNone 0.
 Global Typeclasses Opaque NULL_loc fn_loc.
 
 (** Shifts location [l] by offset [z]. *)
-Definition shift_loc (l : loc) (z : Z) : loc := (l.1, l.2 + z).
+Definition shift_loc (l : loc) (z : Z) : loc := Loc l.(loc_p) (l.(loc_a) + z).
 Notation "l +ₗ z" := (shift_loc l%L z%Z)
   (at level 50, left associativity) : loc_scope.
 Global Typeclasses Opaque shift_loc.
 
 (** Shifts location [l] by offset [z], wrapping at the address space boundary. *)
 Definition wrapping_shift_loc (l : loc) (z : Z) : loc :=
-  (l.1, wrap_unsigned (l.2 + z) USize).
+  Loc l.(loc_p) (wrap_unsigned (l.(loc_a) + z) USize).
 Notation "l +wₗ z" := (wrapping_shift_loc l%L z%Z)
   (at level 50, left associativity) : loc_scope.
 Global Typeclasses Opaque wrapping_shift_loc.
@@ -79,7 +93,7 @@ Notation "l 'wrapping_offset{' ly '}ₗ' z" := (wrapping_offset_loc l%L ly z%Z)
 Global Typeclasses Opaque wrapping_offset_loc.
 
 (** Proposition stating that location [l] is aligned to [n] *)
-Definition aligned_to (l : loc) (n : nat) : Prop := (n | l.2).
+Definition aligned_to (l : loc) (n : nat) : Prop := (n | l.(loc_a)).
 Notation "l `aligned_to` n" := (aligned_to l n) (at level 50) : stdpp_scope.
 Arguments aligned_to : simpl never.
 Global Typeclasses Opaque aligned_to.
@@ -113,7 +127,7 @@ Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
 Global Instance shift_loc_inj2 l : Inj (=) (=) (shift_loc l).
 Proof. destruct l as [b o]; intros n n' H; inversion H; lia. Qed.
 
-Lemma shift_loc_block l n : (l +ₗ n).1 = l.1.
+Lemma shift_loc_block l n : (l +ₗ n).(loc_p) = l.(loc_p).
 Proof. done. Qed.
 
 
@@ -144,11 +158,11 @@ Proof. by rewrite wrapping_shift_loc_assoc_nat. Qed.
 Lemma wrapping_shift_loc_inj1 l1 l2 n : l1 +ₗ n = l2 +ₗ n → l1 = l2.
 Proof. destruct l1, l2. case => -> ?. f_equal. lia. Qed.
 
-Lemma wrapping_shift_loc_block l n : (l +wₗ n).1 = l.1.
+Lemma wrapping_shift_loc_block l n : (l +wₗ n).(loc_p) = l.(loc_p).
 Proof. done. Qed.
 
 Lemma wrapping_shift_loc_0 l :
-  l.2 ∈ USize →
+  l.(loc_a) ∈ USize →
   l +wₗ 0 = l.
 Proof.
   destruct l as [prov addr]; simpl.
@@ -158,7 +172,7 @@ Proof.
   rewrite Z.add_0_r. by rewrite wrap_unsigned_id.
 Qed.
 Lemma wrapping_shift_loc_shift_loc a o :
-  a.2 + o ∈ USize →
+  a.(loc_a) + o ∈ USize →
   a +wₗ o = a +ₗ o.
 Proof.
   destruct a as [prov addr].

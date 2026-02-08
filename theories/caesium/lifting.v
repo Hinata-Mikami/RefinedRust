@@ -837,7 +837,7 @@ Qed.
 
 Lemma wp_cast_ptr_int Φ v v' l π E it:
   val_to_loc v = Some l →
-  val_of_Z l.2 it = Some v' →
+  val_of_Z l.(loc_a) it = Some v' →
   (|={E}⧗=> Φ (v')) -∗
   WPe{π} UnOp (CastOp (IntOp it)) PtrOp (Val v) @ E {{ Φ }}.
 Proof.
@@ -869,28 +869,11 @@ Proof.
   done.
 Qed.
 
-Lemma wp_cast_int_ptr_weak Φ v a π E it:
-  val_to_Z v it = Some a →
-  (|={E}⧗=> ∀ i, Φ (val_of_loc (i, a))) -∗
-  WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
-Proof.
-  iIntros (Hv) "HΦ".
-  iApply wp_unop.
-  iIntros (σ) "Hctx". iApply fupd_mask_intro; [set_solver|]. iIntros "HE".
-  iSplit; [iPureIntro; eexists _; by econstructor |].
-  iMod "HE" as "_".
-  iApply (physical_step_wand with "HΦ"). iIntros "HΦ".
-  iApply fupd_mask_intro; first set_solver. iIntros "HE".
-  iIntros (v' Hv'). iMod "HE" as "_". iModIntro. iFrame.
-  inversion Hv'; simplify_eq.
-  iApply "HΦ".
-Qed.
-
 Lemma wp_cast_int_ptr_prov_none Φ v a l it π E :
   val_to_Z v it = Some a →
   0 ≤ a →
   a ≤ max_alloc_end_zero →
-  l = (ProvNone, a) →
+  l = Loc ProvNone a →
   (|={E}⧗=> l ↦ [] -∗ Φ (val_of_loc l)) -∗
   WPe{π} UnOp (CastOp PtrOp) (IntOp it) (Val v) @ E {{ Φ }}.
 Proof.
@@ -921,7 +904,7 @@ Qed.
 Lemma wp_copy_alloc_id Φ it a l v1 v2 π E :
   val_to_Z v1 it = Some a →
   val_to_loc v2 = Some l →
-  (|={E}⧗=> Φ (val_of_loc (l.1, a))) -∗
+  (|={E}⧗=> Φ (val_of_loc (Loc l.(loc_p) a))) -∗
   WPe{π} CopyAllocId (IntOp it) (Val v1) (Val v2) @ E {{ Φ }}.
 Proof.
   iIntros (Ha Hl) "HΦ".
@@ -1029,12 +1012,12 @@ Lemma wp_ptr_relop Φ op v1 v2 v l1 l2 b rit π E :
   val_to_loc v2 = Some l2 →
   val_of_Z (bool_to_Z b) rit = Some v →
   match op with
-  | EqOp rit => Some (bool_decide (l1.2 = l2.2), rit)
-  | NeOp rit => Some (bool_decide (l1.2 ≠ l2.2), rit)
-  | LtOp rit => Some (bool_decide (l1.2 < l2.2), rit)
-  | GtOp rit => Some (bool_decide (l1.2 > l2.2), rit)
-  | LeOp rit => Some (bool_decide (l1.2 <= l2.2), rit)
-  | GeOp rit => Some (bool_decide (l1.2 >= l2.2), rit)
+  | EqOp rit => Some (bool_decide (l1.(loc_a) = l2.(loc_a)), rit)
+  | NeOp rit => Some (bool_decide (l1.(loc_a) ≠ l2.(loc_a)), rit)
+  | LtOp rit => Some (bool_decide (l1.(loc_a) < l2.(loc_a)), rit)
+  | GtOp rit => Some (bool_decide (l1.(loc_a) > l2.(loc_a)), rit)
+  | LeOp rit => Some (bool_decide (l1.(loc_a) <= l2.(loc_a)), rit)
+  | GeOp rit => Some (bool_decide (l1.(loc_a) >= l2.(loc_a)), rit)
   | _ => None
   end = Some (b, rit) →
   (|={E}⧗=> Φ v) -∗
@@ -1147,8 +1130,8 @@ Qed.
 Lemma wp_ptr_diff π Φ vl1 l1 vl2 l2 ly vo:
   val_to_loc vl1 = Some l1 →
   val_to_loc vl2 = Some l2 →
-  val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize = Some vo →
-  l1.1 = l2.1 →
+  val_of_Z ((l1.(loc_a) - l2.(loc_a)) `div` ly.(ly_size)) ISize = Some vo →
+  l1.(loc_p) = l2.(loc_p) →
   0 < ly.(ly_size) →
   loc_in_bounds l1 0 0 -∗
   loc_in_bounds l2 0 0 -∗

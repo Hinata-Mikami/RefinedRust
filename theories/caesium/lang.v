@@ -357,21 +357,21 @@ Inductive eval_bin_op : bin_op → op_type → op_type → state → val → val
     val_to_loc v1 = Some l1 →
     val_to_loc v2 = Some l2 →
     (* derived from the same object, i.e., same provenance *)
-    l1.1 = l2.1 →
+    l1.(loc_p) = l2.(loc_p) →
     (* excludes the case of ZSTs (the Rust version panics in that case) *)
     0 < ly.(ly_size) →
     (* both pointers are valid, i.e. in bounds of that allocation *)
     valid_ptr l1 σ.(st_heap) →
     valid_ptr l2 σ.(st_heap) →
-    val_of_Z ((l1.2 - l2.2) `div` ly.(ly_size)) ISize = Some v →
+    val_of_Z ((l1.(loc_a) - l2.(loc_a)) `div` ly.(ly_size)) ISize = Some v →
     eval_bin_op (PtrDiffOp ly) PtrOp PtrOp σ v1 v2 v
 
 | RelOpPP v1 v2 σ l1 l2 p1 p2 a1 a2 v b op rit:
     val_to_loc v1 = Some l1 →
     val_to_loc v2 = Some l2 →
     (* We do not compare the provenance *)
-    l1 = (p1, a1) →
-    l2 = (p2, a2) →
+    l1 = Loc p1 a1 →
+    l2 = Loc p2 a2 →
     match op with
     | LtOp rit => Some (bool_decide (a1 < a2), rit)
     | GtOp rit => Some (bool_decide (a1 > a2), rit)
@@ -460,11 +460,11 @@ Inductive eval_un_op : un_op → op_type → state → val → val → Prop :=
        We do not require a valid provenance.
        This does not expose the provenance and thus is stricter than Rust's casts (akin to Rusts strict-provenance ptr.addr()). *)
     val_to_loc vs = Some l →
-    val_of_Z l.2 it = Some vt →
+    val_of_Z l.(loc_a) it = Some vt →
     eval_un_op (CastOp (IntOp it)) PtrOp σ vs vt
 | CastOpIP it σ vs vt l a:
     val_to_Z vs it = Some a →
-    l = (* assign empty provenance *) (ProvNone, a) →
+    l = (* assign empty provenance *) Loc ProvNone a →
     val_of_loc l = vt →
     eval_un_op (CastOp PtrOp) (IntOp it) σ vs vt
 | CastOpB ot σ vs vt b:
@@ -605,7 +605,7 @@ comparing pointers? (see lambda rust) *)
 | CopyAllocIdS π σ v1 v2 a it l:
     val_to_Z v1 it = Some a →
     val_to_loc v2 = Some l →
-    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal (val_of_loc (l.1, a))) σ []
+    expr_step (CopyAllocId (IntOp it) (Val v1) (Val v2)) π σ [] (RTVal (val_of_loc (Loc l.(loc_p) a))) σ []
 | IfES v ot e1 e2 b π σ:
     cast_to_bool ot v σ.(st_heap) = Some b →
     expr_step (IfE ot (Val v) e1 e2) π σ [] (to_rtexpr π $ if b then e1 else e2) σ []

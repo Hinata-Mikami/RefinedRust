@@ -250,7 +250,7 @@ Lemma fn_lists_to_fns_cons `{!refinedcG Σ} addr fn addrs fns :
   length addrs = length fns →
   addr ∉ addrs →
   ([∗ map] k↦qs ∈ fn_lists_to_fns (addr :: addrs) (fn :: fns), fntbl_entry (fn_loc k) qs) -∗
-  fntbl_entry (ProvFnPtr, addr) fn ∗ ([∗ map] k↦qs ∈ fn_lists_to_fns addrs fns, fntbl_entry (fn_loc k) qs).
+  fntbl_entry (Loc ProvFnPtr addr) fn ∗ ([∗ map] k↦qs ∈ fn_lists_to_fns addrs fns, fntbl_entry (fn_loc k) qs).
 Proof.
   move => Hnotin ?.
   rewrite /fn_lists_to_fns /= big_sepM_insert //; auto.

@@ -12,8 +12,6 @@ Lemma without_provenance_proof (π : thread_id) :
 Proof.
   without_provenance_prelude.
 
-  repeat liRStep. liShow.
-  set ((ProvNone, addr) : loc) as l.
   repeat liRStep.
 
   all: print_remaining_goal.

@@ -12,7 +12,7 @@ Section alias.
   Program Definition alias_ptr_t : type locRT := {|
     st_own π (l : loc) v :=
       (⌜v = l⌝%I ∗
-      ⌜l.2 ∈ USize⌝)%I;
+      ⌜l.(loc_a) ∈ USize⌝)%I;
     st_syn_type := PtrSynType;
     st_has_op_type ot mt := is_ptr_ot ot;
   |}.
@@ -32,7 +32,7 @@ Section alias.
   Next Obligation.
     iIntros (ot mt st π l v Hot) "Hv".
     simpl in Hot.
-    iPoseProof (mem_cast_compat_loc (λ v, ⌜v = val_of_loc l⌝ ∗ ⌜l.2 ∈ USize⌝)%I with "Hv") as "%Hid"; first done.
+    iPoseProof (mem_cast_compat_loc (λ v, ⌜v = val_of_loc l⌝ ∗ ⌜l.(loc_a) ∈ USize⌝)%I with "Hv") as "%Hid"; first done.
     { iIntros "(-> & ?)". eauto. }
     destruct mt; [done | | done].
     rewrite Hid. done.
@@ -57,7 +57,7 @@ Section rules.
 
   (* TODO interaction with ghost drop? *)
   Lemma alias_ptr_simplify_hyp (v : val) π (l : loc) m T :
-    (⌜m = MetaNone⌝ -∗ ⌜v = l⌝ -∗ ⌜l.2 ∈ USize⌝ -∗ T)
+    (⌜m = MetaNone⌝ -∗ ⌜v = l⌝ -∗ ⌜l.(loc_a) ∈ USize⌝ -∗ T)
     ⊢ simplify_hyp (v ◁ᵥ{π, m} l @ alias_ptr_t) T.
   Proof.
     iIntros "HT (% & %Hv & %)". by iApply "HT".
@@ -65,7 +65,7 @@ Section rules.
   Definition alias_ptr_simplify_hyp_inst := [instance @alias_ptr_simplify_hyp with 0%N].
   Global Existing Instance alias_ptr_simplify_hyp_inst.
 
-  Lemma alias_ptr_simplify_goal_fast π (l l2 : loc) m `{!CanSolve (l.2 ∈ USize)} T :
+  Lemma alias_ptr_simplify_goal_fast π (l l2 : loc) m `{!CanSolve (l.(loc_a) ∈ USize)} T :
     (⌜l = l2⌝ ∗ ⌜m = MetaNone⌝ ∗ T)
     ⊢ simplify_goal (l ◁ᵥ{π, m} l2 @ alias_ptr_t) T.
   Proof.
@@ -93,7 +93,7 @@ Section rules.
 
   Global Program Instance learn_from_hyp_val_alias_ptr l :
     LearnFromHypVal (alias_ptr_t) l :=
-    {| learn_from_hyp_val_Q := ⌜l.2 ∈ USize⌝ |}.
+    {| learn_from_hyp_val_Q := ⌜l.(loc_a) ∈ USize⌝ |}.
   Next Obligation.
     iIntros (??????) "Hv".
     rewrite /ty_own_val/=.
@@ -107,12 +107,12 @@ Section comparison.
 
   Lemma type_relop_ptr_ptr E L f v1 (l1 : loc) v2 (l2 : loc) (T : typed_val_expr_cont_t) b op :
     match op with
-    | EqOp rit => Some (bool_decide (l1.2 = l2.2)%Z, rit)
-    | NeOp rit => Some (bool_decide (l1.2 ≠ l2.2)%Z, rit)
-    | LtOp rit => Some (bool_decide (l1.2 < l2.2)%Z, rit)
-    | GtOp rit => Some (bool_decide (l1.2 > l2.2)%Z, rit)
-    | LeOp rit => Some (bool_decide (l1.2 <= l2.2)%Z, rit)
-    | GeOp rit => Some (bool_decide (l1.2 >= l2.2)%Z, rit)
+    | EqOp rit => Some (bool_decide (l1.(loc_a) = l2.(loc_a))%Z, rit)
+    | NeOp rit => Some (bool_decide (l1.(loc_a) ≠ l2.(loc_a))%Z, rit)
+    | LtOp rit => Some (bool_decide (l1.(loc_a) < l2.(loc_a))%Z, rit)
+    | GtOp rit => Some (bool_decide (l1.(loc_a) > l2.(loc_a))%Z, rit)
+    | LeOp rit => Some (bool_decide (l1.(loc_a) <= l2.(loc_a))%Z, rit)
+    | GeOp rit => Some (bool_decide (l1.(loc_a) >= l2.(loc_a))%Z, rit)
     | _ => None
     end = Some (b, U8) →
     T L (val_of_bool b) MetaNone bool bool_t b
@@ -131,22 +131,22 @@ Section comparison.
   Qed.
 
   Global Program Instance type_eq_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (EqOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 = l2.2)) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (EqOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) = l2.(loc_a))) _ _).
   Solve Obligations with done.
   Global Program Instance type_ne_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (NeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 ≠ l2.2)) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (NeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) ≠ l2.(loc_a))) _ _).
   Solve Obligations with done.
   Global Program Instance type_lt_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 < l2.2)%Z) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) < l2.(loc_a))%Z) _ _).
   Solve Obligations with done.
   Global Program Instance type_gt_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 > l2.2)%Z) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GtOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) > l2.(loc_a))%Z) _ _).
   Solve Obligations with done.
   Global Program Instance type_le_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 <= l2.2)%Z) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (LeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) <= l2.(loc_a))%Z) _ _).
   Solve Obligations with done.
   Global Program Instance type_ge_ptr_ptr_inst E L f v1 l1 v2 l2 :
-    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.2 >= l2.2)%Z) _ _).
+    TypedBinOpVal E L f v1 (alias_ptr_t) l1 v2 (alias_ptr_t) l2 (GeOp U8) (PtrOp) (PtrOp) := λ T, i2p (type_relop_ptr_ptr E L f v1 l1 v2 l2 T (bool_decide (l1.(loc_a) >= l2.(loc_a))%Z) _ _).
   Solve Obligations with done.
 End comparison.
 
@@ -168,7 +168,7 @@ Section cast.
   Global Existing Instance type_cast_ptr_ptr_inst.
 
   Lemma type_cast_ptr_int π E L f (l : loc) v (T : typed_val_expr_cont_t) :
-    (⌜π = f.1⌝ ∗ ∀ v, T L v MetaNone _ (int USize) (l.2))
+    (⌜π = f.1⌝ ∗ ∀ v, T L v MetaNone _ (int USize) (l.(loc_a)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ alias_ptr_t)%I (CastOp (IntOp USize)) PtrOp T.
   Proof.
     rewrite /ty_own_val/=.
@@ -186,7 +186,7 @@ Section cast.
   Global Existing Instance type_cast_ptr_int_inst.
 
   Lemma type_cast_int_ptr π E L f (l : Z) v (T : typed_val_expr_cont_t) :
-    (⌜π = f.1⌝ ∗ ((((ProvNone, l) : loc) ◁ₗ[π, Owned false] .@ ◁ unit_t) -∗ T L (val_of_loc (ProvNone, l)) MetaNone _ alias_ptr_t ((ProvNone, l) : loc)))
+    (⌜π = f.1⌝ ∗ ((Loc ProvNone l ◁ₗ[π, Owned false] .@ ◁ unit_t) -∗ T L (val_of_loc (Loc ProvNone l)) MetaNone _ alias_ptr_t (Loc ProvNone l)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ int USize)%I (CastOp PtrOp) (IntOp USize) T.
   Proof.
     rewrite /ty_own_val/=.
@@ -201,7 +201,7 @@ Section cast.
     { done. }
     iApply physical_step_intro. iNext. iIntros "Hl".
 
-    set (l2 := ((ProvNone, l) : loc)).
+    set (l2 := Loc ProvNone l).
     iAssert (l2 ◁ₗ[f.1, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "Hl2".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists _. simpl.
