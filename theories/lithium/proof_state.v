@@ -296,6 +296,8 @@ Ltac unfold_instantiated_evar H :=
   (* This is copied from the end of liInstantiateProtected *)
   let tmp := fresh "tmp" in
   intros tmp;
+  (* simpl in order to make sure the type in the occurences of [protected] is simplified *)
+  try progress simpl;
   (*pattern (protected tmp);*)
   (*simple refine (tac_protected_eq_app _ _ _);*)
   (*unfold tmp, EVAR_ID; clear tmp.*)
@@ -335,6 +337,8 @@ Ltac do_instantiate_protected H' tac_with :=
     (* This is copied from the end of liUnfoldInstantiatedEvar *)
     let tmp := fresh "tmp" in
     intros tmp;
+    (* simpl in order to make sure the type in the occurences of [protected] is simplified *)
+    try progress simpl; 
     replace (protected tmp) with tmp;
     [ | simple refine (tac_protected_eq_app _ _ _); unfold tmp; reflexivity];
     unfold tmp, EVAR_ID; clear tmp
