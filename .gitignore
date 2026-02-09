@@ -3,6 +3,8 @@ _opam
 .coq-native/
 builddep/
 
+*~
+
 .merlin
 *.timing
 .lia.cache
