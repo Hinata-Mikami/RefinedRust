@@ -494,17 +494,16 @@ Section find.
   (* TODO: maybe generalize this to have a TC or so so? *)
   Lemma subsume_place_loc_in_bounds π (l1 l2 : loc) {rt} (lt : ltype rt) k r (pre suf : nat) T :
     ⌜l1 = l2⌝ ∗ ⌜pre = 0%nat⌝ ∗ li_tactic (compute_layout_goal (ltype_st lt)) (λ ly,
-      ⌜suf ≤ ly_size ly⌝ ∗ (l1 ◁ₗ[π, k] r @ lt -∗ T))
+      l1 ◁ₗ[π, k] r @ lt -∗
+      subsume (loc_in_bounds l1 0%nat (ly_size ly)) (loc_in_bounds l2 pre suf) T)
     ⊢ subsume (l1 ◁ₗ[π, k] r @ lt) (loc_in_bounds l2 pre suf) T.
   Proof.
-    rewrite /compute_layout_goal. iIntros "(-> & -> & %ly & %Halg & %Ha & HT)".
+    rewrite /compute_layout_goal. iIntros "(-> & -> & %ly & %Halg & HT)".
     iIntros "Ha". iPoseProof (ltype_own_loc_in_bounds with "Ha") as "#Hb"; first done.
-    iPoseProof ("HT" with "Ha") as "$".
-    iApply (loc_in_bounds_shorten_suf with "Hb"). lia.
+    iPoseProof ("HT" with "Ha Hb") as "$".
   Qed.
-  Global Instance subsume_place_loc_in_bounds_inst π (l1 l2 : loc) {rt} (lt : ltype rt) k r (pre suf : nat) :
-    Subsume (l1 ◁ₗ[π, k] r @ lt) (loc_in_bounds l2 pre suf) :=
-    λ T, i2p (subsume_place_loc_in_bounds π l1 l2 lt  k r pre suf T).
+  Definition subsume_place_loc_in_bounds_inst := [instance @subsume_place_loc_in_bounds].
+  Global Existing Instance subsume_place_loc_in_bounds_inst.
 End find.
 
 Section introduce.
