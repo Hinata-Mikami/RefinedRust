@@ -13,10 +13,10 @@ Proof.
   const_ptr_offset_prelude.
 
   rep liRStep; liShow.
-  iRename select (case_destruct _ _) into "Hbounds".
+  iIntros "Hbounds".
   (* do the actual offset *)
   iAssert (loc_in_bounds l (if (decide (count < 0)) then (Z.to_nat (-count) * size_of_st (ty_syn_type T_ty MetaNone))%nat else 0%nat) (if decide (count > 0)%Z then (Z.to_nat count * size_of_st (ty_syn_type T_ty MetaNone))%nat else 0%nat))%I with "[Hbounds]" as "#Hbounds'" .
-  { rewrite /case_destruct. iDestruct "Hbounds" as "(% & Hbounds)".
+  { rewrite /case_destruct.
     case_decide; case_decide; case_bool_decide; eauto with lia.
     iApply (loc_in_bounds_shorten_suf with "[Hbounds //]"). lia. }
   repeat liRStep; liShow.
