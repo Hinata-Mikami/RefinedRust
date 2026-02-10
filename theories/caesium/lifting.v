@@ -44,7 +44,23 @@ Section logical_steps.
     ⧗ n -∗ (⧗ (tr_f n) -∗ £ (tr_f n) ={F}=∗ P) -∗ logical_step F P.
   Proof.
     iApply logical_step_intro_tr.
-Qed.
+  Qed.
+
+  Lemma logical_step_intro_later E P :
+    ▷ P -∗ logical_step E P.
+  Proof.
+    iIntros "HP". unfold logical_step.
+    iApply (step_update_lb_step_very_strong E _ True 0).
+    iSplit.
+    - iMod tr_persistent_zero as "$".
+      iMod (fupd_mask_subseteq); last done.
+      set_solver.
+    - iSplitL; first last.
+      { iApply step_update_intro; done. }
+      iModIntro. simpl. iModIntro. iNext.
+      iModIntro. iIntros "_".
+      done.
+  Qed.
 
   Lemma logical_step_intro_maybe F P n (b : bool) :
     (if b then tr n else True) -∗

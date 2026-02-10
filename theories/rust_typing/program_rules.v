@@ -720,6 +720,18 @@ Section prove_subtype.
   Context `{!typeGS Σ}.
 
   (** ** prove_with_subtype *)
+  (* We could make this an instance, but do not want to: it would sometimes make goals unprovable where stepping in manually would help *)
+  Lemma prove_with_subtype_default E L step pm P T :
+    P ∗ T L [] True ⊢
+    prove_with_subtype E L step pm P T.
+  Proof.
+    iIntros "(? & ?)".
+    iIntros (????) "???". iModIntro.
+    iExists _, _, _. iFrame.
+    iApply maybe_logical_step_intro. iL.
+    destruct pm; eauto with iFrame.
+  Qed.
+
   Lemma prove_with_subtype_sep E L step pm P1 P2 T :
     prove_with_subtype E L step pm P1 (λ L' κs R1, prove_with_subtype E L' step pm P2 (λ L'' κs2 R2, T L'' (κs ++ κs2) (R1 ∗ R2)))
     ⊢ prove_with_subtype E L step pm (P1 ∗ P2) T.
@@ -752,6 +764,17 @@ Section prove_subtype.
   Qed.
   Definition prove_with_subtype_exists_inst := [instance @prove_with_subtype_exists].
   Global Existing Instance prove_with_subtype_exists_inst.
+
+  Lemma prove_with_subtype_pers E L step pm (P : iProp Σ) T :
+    (□ P) ∧ T L [] True ⊢
+    prove_with_subtype E L step pm (□ P) T.
+  Proof.
+    iIntros "[#HP HT]".
+    iApply prove_with_subtype_default.
+    by iFrame.
+  Qed.
+  Definition prove_with_subtype_pers_inst := [instance @prove_with_subtype_pers].
+  Global Existing Instance prove_with_subtype_pers_inst.
 
   (* No corresponding lemma for [∀] -- this doesn't work, because we cannot commute the quantifier over the existential quantifiers in [prove_with_subtype] *)
 
@@ -1016,18 +1039,6 @@ Section prove_subtype.
     { iIntros (?) "HQ". iApply ("HQP" with "HQ"). }
     iExists _, _, _. iFrame. iApply maybe_logical_step_intro.
     iModIntro. iL. destruct pm; iFrame. eauto.
-  Qed.
-
-  (* We could make this an instance, but do not want to: it would sometimes make goals unprovable where stepping in manually would help *)
-  Lemma prove_with_subtype_default E L step pm P T :
-    P ∗ T L [] True ⊢
-    prove_with_subtype E L step pm P T.
-  Proof.
-    iIntros "(? & ?)".
-    iIntros (????) "???". iModIntro.
-    iExists _, _, _. iFrame.
-    iApply maybe_logical_step_intro. iL.
-    destruct pm; eauto with iFrame.
   Qed.
 
   (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be proved or refuted *)

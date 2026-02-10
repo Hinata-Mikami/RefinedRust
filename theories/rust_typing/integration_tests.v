@@ -172,6 +172,34 @@ Proof.
   rep liRStep.
 Qed.
 
+Lemma simplify_goal_guarded `{!typeGS Σ} (T P : iProp Σ) :
+  P ∗ T ⊢ simplify_goal (guarded P) T.
+Proof.
+  iIntros "(HP & $)".
+  by iApply guarded_intro.
+Qed.
+Global Instance simplify_goal_guarded_inst `{!typeGS Σ} (P : iProp Σ) :
+  SimplifyGoal (guarded P) (Some 0%N) := λ T, i2p (simplify_goal_guarded T P).
+
+Section test.
+  Context `{!typeGS Σ}.
+
+  (* The subtype of positive integers *)
+  Local Definition P_a := λ (x : Z) (y : Z), (∃ z : Z, ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝)%I : iProp Σ.
+  Local Program Definition Pdef := mk_pers_ex_inv_def P_a _ _.
+  Next Obligation. ex_t_solve_persistent. Qed.
+  Next Obligation. ex_t_solve_timeless. Qed.
+  Local Definition Pty := (∃; Pdef, int I32)%I.
+
+  Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ l ◁ₗ[π, Owned true] #42%Z @ (◁ int I32))%I : iProp Σ.
+  Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int I32)))%I : iProp Σ.
+
+  Local Program Definition Adef := mk_ex_inv_def P_b S_b [] [] _ _ _.
+  Next Obligation. ex_t_solve_persistent. Qed.
+  Next Obligation. rewrite /S_b. ex_plain_t_solve_shr_mono. Qed.
+  Next Obligation. rewrite /P_b /S_b. ex_plain_t_solve_shr. Qed.
+End test.
+
 
 Section enum.
 Context `{!typeGS Σ}.
