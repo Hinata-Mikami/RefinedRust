@@ -43,14 +43,12 @@ Proof.
     move: Ha. rewrite take_S_r_total; solve_goal. }
   { opose proof (Hbounded (take (S (Z.to_nat j)) _iter_hist_7) _) as Ha; first solve_goal.
     move: Ha. rewrite take_S_r_total; solve_goal. }
-  { rewrite take_S_r_total; solve_goal. }
   { destruct (decide (i = Z.to_nat j)) as [-> | ]; first lia.
     ospecialize (Hsmallest i _); solve_goal. }
   { opose proof (Hbounded (take (S (Z.to_nat j)) _iter_hist_7) _) as Ha; first solve_goal.
     move: Ha. rewrite take_S_r_total; solve_goal. }
   { opose proof (Hbounded (take (S (Z.to_nat j)) _iter_hist_7) _) as Ha; first solve_goal.
     move: Ha. rewrite take_S_r_total; solve_goal. }
-  { rewrite take_S_r_total; solve_goal. }
   { destruct (decide (i = Z.to_nat j)) as [-> | ]; first lia.
     ospecialize (Hsmallest i _); solve_goal. }
   (* !end proof *)

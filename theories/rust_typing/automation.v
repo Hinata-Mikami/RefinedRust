@@ -1179,38 +1179,41 @@ Global Hint Unfold num_cred : solve_goal_unfold.
 
 (** Normalization that should be done to all goals -- even ones that will be presented to the user. *)
 Ltac sidecond_hammer_normalize :=
+  autounfold with lithium_rewrite;
   autounfold with lithium_rewrite in *;
   try rewrite -> unfold_int_elem_of_it in *;
   simpl in *;
   normalize_and_simpl_goal.
 
-(** Clear info that is not needed for a successful [solve_goal] run. 
+(** Clear info that is not needed for a successful [solve_goal] run.
   These simplifications don't stay around if [solve_goal] fails. *)
 Ltac solve_goal_prepare_hook ::=
   repeat match goal with | H : CASE_DISTINCTION_INFO _ |- _ =>  clear H end;
-  clear_layout
+  clear_layout;
+  (* also normalize by unfolding a bit *)
+  autounfold with solve_goal_unfold;
+  autounfold with solve_goal_unfold in *
 .
 
 (** Called to normalize the goal after running [normalize_and_simpl_goal].
   These simplifications don't stay around if [solve_goal] fails. *)
 Ltac solve_goal_normalized_prepare_hook ::=
-  autounfold with solve_goal_unfold in *;
   simplify_layout_goal;
   unfold_no_enrich;
   open_cache;
   idtac
 .
 
-
 (** Normalize more aggressively by unfolding more. *)
 Ltac normalize_aggressively :=
+  autounfold with solve_goal_unfold;
   autounfold with solve_goal_unfold in *;
   unfold_common_caesium_defs;
   simplify_layout_assum;
   unfold unit_sl in *.
 
 (** The main automation tactic after normalizing *)
-Ltac solve_goal_final_hook ::= 
+Ltac solve_goal_final_hook ::=
   refined_solver lia
 .
 
@@ -1225,7 +1228,7 @@ Ltac sidecond_hammer_it :=
   solve_goal_normalized_prepare_hook; reduce_closed_Z; enrich_context;
   repeat case_bool_decide => //; repeat case_decide => //; repeat case_match => //;
 
-  try solve_goal_final_hook; 
+  try solve_goal_final_hook;
 
   (* if the goal isn't solved yet, try harder to normalize *)
   normalize_aggressively;
