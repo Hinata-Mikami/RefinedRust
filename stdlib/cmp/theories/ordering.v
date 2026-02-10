@@ -39,7 +39,7 @@ Proof. apply _. Qed.
 Global Instance ord_ge_dec {A} cmp (a b : A) : Decision (a ≥o{ cmp } b).
 Proof. apply _. Qed.
 
-Global Hint Unfold ord_lt ord_gt ord_eq : lithium_rewrite.
+Global Hint Unfold ord_lt ord_gt ord_eq : solve_goal_unfold.
 
 (** Nat *)
 Module Nat.
@@ -893,13 +893,30 @@ End max_list.
 (* TODO autorewrite cannot handle the TC assumption... *)
 (*Global Hint Rewrite -> @max_list_cmp_app : lithium_rewrite.*)
 
-Class CorrectPartialOrd {A : Type} (partial_cmp : A → A → option ordering) (cmp : A → A → ordering) := {
-  correct_partial_ord_correct : ∀ x y, partial_cmp x y = Some (cmp x y);
+(** TC to simplify [partial_cmp] to [cmp], if possible (i.e. for [Ord] types) *)
+Class PartialCmpToCmp {A} (partial_cmp : A → A → option comparison) (cmp : A → A → comparison) := { 
+  partial_cmp_cmp_iff : ∀ x y, partial_cmp x y = Some (cmp x y);
 }.
+Global Hint Mode PartialCmpToCmp + + - : typeclass_instances.
+
+Global Instance partial_cmp_to_cmp_direct {A} (cmp : A → A → comparison) :
+  PartialCmpToCmp (λ a b, Some (cmp a b)) cmp.
+Proof.
+  econstructor. 
+  done.
+Qed.
+
+Global Instance partial_cmp_to_cmp_option {A} (partial_cmp : A → A → option comparison) cmp :
+  PartialCmpToCmp partial_cmp cmp →
+  PartialCmpToCmp (option_partial_cmp partial_cmp) (option_cmp cmp).
+Proof.
+  intros [Hcmp]. 
+  econstructor. intros [] []; simpl; try done.
+Qed.
 
 Section partial_ord.
   Context `{!typeGS Σ}.
-  Context {A : Type} {partial_cmp cmp} `{!CorrectPartialOrd (A := A) partial_cmp cmp}.
+  Context {A : Type} {partial_cmp cmp} `{!@PartialCmpToCmp A partial_cmp cmp}.
 
   Local Set Default Proof Using "Type*".
 
@@ -907,21 +924,22 @@ Section partial_ord.
     SimplBoth (partial_cmp a b = Some Less) (a <o{cmp} b).
   Proof.
     unfold SimplBoth.
-    rewrite correct_partial_ord_correct.
+    rewrite partial_cmp_cmp_iff.
     solve_goal.
   Qed.
   Global Instance simpl_partial_cmp_greater a b :
     SimplBoth (partial_cmp a b = Some Greater) (a >o{cmp} b).
   Proof.
     unfold SimplBoth.
-    rewrite correct_partial_ord_correct.
+    rewrite partial_cmp_cmp_iff.
     solve_goal.
   Qed.
   Global Instance simpl_partial_cmp_eq a b :
     SimplBoth (partial_cmp a b = Some Equal) (a =o{cmp} b).
   Proof.
     unfold SimplBoth.
-    rewrite correct_partial_ord_correct.
+    rewrite partial_cmp_cmp_iff.
     solve_goal.
   Qed.
 End partial_ord.
+
