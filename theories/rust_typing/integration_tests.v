@@ -48,7 +48,7 @@ Proof.
   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
-  Unshelve. all: unfold_common_defs; try solve_goal.
+  Unshelve. all: try solve_goal.
 Qed.
 
 (** If we specialize the type to [int I32], the proof should still work. *)
@@ -83,7 +83,7 @@ Proof.
   repeat liRStep; liShow.
 
   Unshelve. all: unshelve_sidecond; sidecond_hook.
-  Unshelve. all: unfold_common_defs; try solve_goal.
+  Unshelve. all: try solve_goal.
 Qed.
 
 Program Definition ptr_read `{!LayoutAlg} (T_st : syn_type) : function := {|
@@ -125,7 +125,7 @@ Proof.
   repeat liRStep; liShow.
 
   Unshelve. all: sidecond_solver.
-  Unshelve. all: unfold_common_defs; try solve_goal.
+  Unshelve. all: try solve_goal.
 Qed.
 
 Local Lemma test_destruct_hint `{!typeGS Σ} (x : option nat) :

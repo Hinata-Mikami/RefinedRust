@@ -10,10 +10,7 @@ From refinedrust Require Import int programs program_rules functions uninit mut_
 Set Default Proof Using "Type".
 
 
-(** * Automation for solving sideconditions *)
-
-Ltac solve_goal_final_hook ::= refined_solver lia.
-
+(** * Automation for solving sideconditions spawned by the type system *)
 
 (** The main hook for solving sideconditions, will be re-defined later. *)
 Ltac sidecond_hook := idtac.

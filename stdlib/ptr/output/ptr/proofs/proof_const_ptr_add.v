@@ -22,7 +22,7 @@ Proof.
       - if T is a ZST, then the wrapped offset gets annihilated everywhere, so it's fine.
       - else, we also know that it's in isize_t, so it's same as before.
     *)
-  4,6: rewrite /OffsetLocSt/offset_loc; simplify_layout (use_layout_alg' (ty_syn_type T_ty MetaNone)); f_equiv.
+  3,5: rewrite /OffsetLocSt/offset_loc; simplify_layout (use_layout_alg' (ty_syn_type T_ty MetaNone)); f_equiv.
   all: destruct (decide (ly_size T_st_ly = 0%nat)); [lia | ].
   all: assert (MinInt ISize ≤ count ≤ MaxInt ISize)%Z; first by solve_goal with nia; sidecond_hammer.
   all: rewrite wrap_to_it_id; sidecond_hammer.

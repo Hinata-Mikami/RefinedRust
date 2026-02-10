@@ -27,7 +27,7 @@ Proof. destruct l1, l2 => /= -> -> //. Qed.
 
 Ltac simplify_layout_goal_noshelve :=
   unshelve simplify_layout_goal;
-  [ unfold_common_defs; solve_goal.. | ].
+  [ normalize_aggressively; solve_goal.. | ].
 
 (** Turns an equality over locations into an equality over physical addresses
 (in type [Z]) that has been simplified with [autorewrite]. This tactics only
@@ -55,7 +55,7 @@ Ltac prepare_loc_eq :=
   autorewrite with refinedrust_loc_eq_rewrite;
   (* Simplify layout terms *)
   simplify_layout_goal_noshelve;
-  unfold_common_defs;
+  normalize_aggressively;
   simpl.
 
 (** Solver for location equality. *)

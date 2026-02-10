@@ -24,8 +24,8 @@ Proof.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
+  Unshelve. all: sidecond_hammer.
 
-  (*all: match type of Hlen_cap with (Z.of_nat (length (project_vec_els ?len2 ?xs2)) < _)%Z => rename len2 into len; rename xs2 into xs end.*)
   all: rename select (_ = project_vec_els _ _) into Hxs.
   all: match type of Hxs with _ = project_vec_els ?len2 ?xs2 =>
       rename xs2 into xs';
@@ -33,14 +33,7 @@ Proof.
       rewrite -Hxs !length_fmap in Hlen_eq
       end.
   all: rename select (∀ i : nat, _ → xs' !! i = Some (#None)) into Hlook_2.
-  (*all: rewrite project_vec_els_length in Hlen_cap.*)
 
-  Unshelve.
-  all: prepare_sideconditions; normalize_and_simpl_goal.
-  all: try solve_goal with (lia).
-  all: try (unfold_common_defs; solve_goal with (lia)).
-
-  (*{ rewrite project_vec_els_length in Hlen_eq. solve_goal. }*)
   {
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply list_lookup_insert_Some'.
@@ -62,14 +55,8 @@ Proof.
       rewrite project_vec_els_drop. apply list_eq_singleton.
       split; solve_goal.
   }
-  { revert select (ly_size (mk_array_layout _ _) ≤ _).
-    move: Hcap.
-    rewrite ly_size_mk_array_layout.
-    clear. nia. }
-  { revert select (ly_size (mk_array_layout _ _) ≤ _).
-    move: Hcap.
-    rewrite ly_size_mk_array_layout.
-    clear. nia. }
+  { revert select ((ly_size _ * _)%nat ≤ _).
+    move: Hcap. clear. nia. }
   {
     (* TODO *)
     assert (length self < length xs') as Hlt.

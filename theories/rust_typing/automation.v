@@ -989,8 +989,6 @@ Global Arguments lft_intersect_list : simpl never.
 Global Typeclasses Opaque Rel2.
 Global Arguments Rel2 : simpl never.
 
-Global Hint Unfold OffsetLocSt : core.
-
 Hint Unfold els_lookup_tag : lithium_rewrite.
 
 #[global] Typeclasses Opaque layout_wf.
@@ -1017,7 +1015,10 @@ Ltac normalize_hook ::=
   (* also simpl *)
   rewrite /size_of_st/=;
   simplify_layout_normalize;
-  normalize_autorewrite_tc.
+  autounfold with lithium_rewrite;
+  autorewrite with lithium_rewrite;
+  exact: eq_refl
+.
 
 Ltac after_intro_hook H ::=
   try match type of H with
@@ -1077,27 +1078,6 @@ Ltac enter_cache_hook H cont ::=
     end
   | cont H].
 
-(** Lithium hooks for [solve_goal]: called for remaining sideconditions *)
-Lemma unfold_int_elem_of_it (z : Z) (it : int_type) :
-  z ∈ it = (MinInt it ≤ z ∧ z ≤ MaxInt it)%Z.
-Proof. done. Qed.
-
-Ltac unfold_common_defs :=
-  unfold_common_caesium_defs;
-  unfold xmap, xmap_id in *;
-  unfold num_cred in *;
-  unfold unit_sl in *.
-
-Ltac solve_goal_normalized_prepare_hook ::=
-  try rewrite -> unfold_int_elem_of_it in *;
-  autounfold in *;
-  simplify_layout_goal;
-  open_cache;
-  unfold_no_enrich;
-  simpl in *;
-  idtac
-.
-
 Lemma ty_lfts_unfold_lem `{!typeGS Σ} {rt} (ty : type rt) :
   ty_lfts ty = _ty_lfts _ ty.
 Proof. rewrite ty_lfts_unfold. done. Qed.
@@ -1115,11 +1095,6 @@ Ltac ty_lfts_incl_solver :=
         assert_fails (is_var ty);
         rewrite (ty_lfts_unfold_lem ty)
     end;
-    (*match b with*)
-    (*| context[ty_lfts ?ty] =>*)
-        (*assert_fails (is_var ty);*)
-        (*rewrite (ty_lfts_unfold_lem ty)*)
-    (*end;*)
     simpl;
     try set_solver
   end.
@@ -1134,11 +1109,6 @@ Ltac ty_wf_E_incl_solver :=
         assert_fails (is_var ty);
         rewrite (ty_wf_E_unfold_lem ty)
     end;
-    (*match b with*)
-    (*| context[ty_wf_E ?ty] =>*)
-        (*assert_fails (is_var ty);*)
-        (*rewrite (ty_wf_E_unfold_lem ty)*)
-    (*end;*)
     simpl;
     try set_solver
   end.
@@ -1147,7 +1117,6 @@ Ltac solve_mk_enum_ty_wf_E :=
   intros []; ty_wf_E_incl_solver.
 Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
-  (*intros []; naive_solver.*)
   intros [] ? [=<-]; eexists _; done.
 
 
@@ -1183,17 +1152,93 @@ Ltac solve_enum_layout_spec_discriminant_nodup :=
 Ltac solve_enum_layout_spec_discriminant_in_range :=
   init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_caesium_defs; simpl; lia.
 
-(** User facing tactic calls *)
-Ltac sidecond_hammer_it :=
-  prepare_sideconditions; normalize_and_simpl_goal; try solve_goal; try (unfold_common_defs; solve_goal); unsolved_sidecond_hook.
-Ltac sidecond_hammer :=
-  (* the first run may spawn further sideconditions *)
-  unshelve sidecond_hammer_it;
-  (* hence run another iteration *)
-  sidecond_hammer_it
-.
+(** ** Sideconditions *)
+
+Ltac prepare_sideconditions :=
+  li_unfold_lets_in_context;
+  unfold_instantiated_evars;
+  repeat match goal with | H : BLOCK_PRECOND _ _ |- _ => clear H end;
+  (* get rid of Q *)
+  repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
+  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
+  unfold_no_enrich;
+  clear_unused_vars.
+
 Ltac sidecond_solver :=
-  unshelve_sidecond; liSimpl; sidecond_hook.
+  unshelve_sidecond; prepare_sideconditions; liSimpl; sidecond_hook.
+
+(** Lithium hooks for [solve_goal]: called for remaining sideconditions *)
+Lemma unfold_int_elem_of_it (z : Z) (it : int_type) :
+  z ∈ it = (MinInt it ≤ z ∧ z ≤ MaxInt it)%Z.
+Proof. done. Qed.
+
+(** Another rewrite DB that we use to normalize more aggressively *)
+Create HintDb solve_goal_unfold discriminated.
+Global Hint Unfold OffsetLocSt : solve_goal_unfold.
+Global Hint Unfold num_cred : solve_goal_unfold.
+
+(** Normalization that should be done to all goals -- even ones that will be presented to the user. *)
+Ltac sidecond_hammer_normalize :=
+  autounfold with lithium_rewrite in *;
+  try rewrite -> unfold_int_elem_of_it in *;
+  simpl in *;
+  normalize_and_simpl_goal.
+
+(** Clear info that is not needed for a successful [solve_goal] run. 
+  These simplifications don't stay around if [solve_goal] fails. *)
+Ltac solve_goal_prepare_hook ::=
+  repeat match goal with | H : CASE_DISTINCTION_INFO _ |- _ =>  clear H end;
+  clear_layout
+.
+
+(** Called to normalize the goal after running [normalize_and_simpl_goal].
+  These simplifications don't stay around if [solve_goal] fails. *)
+Ltac solve_goal_normalized_prepare_hook ::=
+  autounfold with solve_goal_unfold in *;
+  simplify_layout_goal;
+  unfold_no_enrich;
+  open_cache;
+  idtac
+.
+
+
+(** Normalize more aggressively by unfolding more. *)
+Ltac normalize_aggressively :=
+  autounfold with solve_goal_unfold in *;
+  unfold_common_caesium_defs;
+  simplify_layout_assum;
+  unfold unit_sl in *.
+
+(** The main automation tactic after normalizing *)
+Ltac solve_goal_final_hook ::= 
+  refined_solver lia
+.
+
+(** The main sidecondition tactic: basically, an adaptation of [solve_goal].
+  Important: does not change the goal if it doesn't fully solve it. *)
+Ltac sidecond_hammer_it :=
+  simpl;
+  try fast_done;
+  solve_goal_prepare_hook;
+
+  normalize_and_simpl_goal;
+  solve_goal_normalized_prepare_hook; reduce_closed_Z; enrich_context;
+  repeat case_bool_decide => //; repeat case_decide => //; repeat case_match => //;
+
+  try solve_goal_final_hook; 
+
+  (* if the goal isn't solved yet, try harder to normalize *)
+  normalize_aggressively;
+  normalize_and_simpl_goal;
+  solve_goal_normalized_prepare_hook; reduce_closed_Z; enrich_context;
+  repeat case_bool_decide => //; repeat case_decide => //; repeat case_match => //;
+
+  solve_goal_final_hook
+.
+Ltac sidecond_hammer :=
+  sidecond_hammer_normalize;
+  try sidecond_hammer_it
+.
 
 (* Solve this sidecondition within Lithium *)
 Ltac solve_function_subtype_hook ::=
@@ -1204,6 +1249,7 @@ Ltac solve_function_subtype_hook ::=
   sidecond_hammer
 .
 
+(** **  Generics / Traits *)
 Ltac normalized_rt_of_spec_ty_rec ty :=
   match ty with
   | ∀ x: _, ?B =>

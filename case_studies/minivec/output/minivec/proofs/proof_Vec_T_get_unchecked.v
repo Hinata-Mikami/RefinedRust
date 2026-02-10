@@ -22,10 +22,9 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { revert select (ly_size (mk_array_layout _ _) ≤ _).
-    move: Hi Hcap.
-    rewrite ly_size_mk_array_layout.
-    clear. nia. }
+  { split; first lia.
+    revert select ((ly_size _ * _)%nat ≤ _).
+    move: Hi Hcap. clear. nia. }
   { move: Hi Hcap. clear. nia. }
   Unshelve. all: print_remaining_sidecond.
 Qed.

@@ -331,7 +331,7 @@ Next Obligation. solve_fn_vars_nodup. Qed.
 Definition size_of_array_in_bytes `{!LayoutAlg} (st : syn_type) (len : nat) : nat :=
   let ly := use_layout_alg' st in
   ly.(ly_size) * len.
-Global Hint Unfold size_of_array_in_bytes : core.
+Global Hint Unfold size_of_array_in_bytes : solve_goal_unfold.
 
 (** alloc_array *)
 Program Definition alloc_array `{!LayoutAlg} (T_st : syn_type) (mem_align_log_of_T_loc : loc) (mem_size_of_T_loc : loc) (alloc_alloc_loc : loc) : function := {|
@@ -408,7 +408,7 @@ Proof.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
   Unshelve.
-  1-2: unfold size_of_array_in_bytes in *; simplify_layout_assum; sidecond_hammer.
+  all: unfold size_of_array_in_bytes in *; simplify_layout_assum; sidecond_hammer.
   1: apply alloc_array_layout_wf; sidecond_hook.
 Qed.
 

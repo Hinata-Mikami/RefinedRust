@@ -26,10 +26,6 @@ Ltac normalize_goal_impl :=
 (** * First version of normalization based on [autorewrite] *)
 Create HintDb lithium_rewrite discriminated.
 
-Ltac normalize_autorewrite :=
-  autounfold with lithium_rewrite;
-  autorewrite with lithium_rewrite; exact: eq_refl.
-
 #[export] Hint Rewrite @drop_0 @take_ge using can_solve : lithium_rewrite.
 #[export] Hint Rewrite @take_app_le @drop_app_ge using can_solve : lithium_rewrite.
 #[export] Hint Rewrite length_seq length_seqZ @length_insert @length_app @length_fmap @length_rotate @length_replicate @length_drop @length_take : lithium_rewrite.
@@ -126,6 +122,5 @@ Ltac normalize_tc :=
     | exact: eq_refl].
 
 Ltac normalize_autorewrite_tc :=
-  autounfold with lithium_rewrite;
   autorewrite with lithium_rewrite;
   normalize_tc.

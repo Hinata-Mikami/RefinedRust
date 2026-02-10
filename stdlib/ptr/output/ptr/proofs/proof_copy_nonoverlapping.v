@@ -98,7 +98,7 @@ Proof.
     assert (Z.to_nat size ≤ i) as Hle by lia. clear -Hle Hlen_s.
     rewrite take_ge. 2: { rewrite length_reshape length_replicate. lia. }
     rewrite take_ge; first done.
-    rewrite Hlen_s /mk_array_layout{1}/ly_size/=. nia.
+    rewrite Hlen_s /mk_array_layout/=. nia.
 
   Unshelve. all: print_remaining_sidecond.
 Qed.
