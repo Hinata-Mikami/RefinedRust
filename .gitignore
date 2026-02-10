@@ -5,6 +5,7 @@ builddep/
 
 *~
 
+*.log
 .merlin
 *.timing
 .lia.cache
