@@ -12,7 +12,8 @@ use radium::{coq, specs};
 use rr_rustc_interface::hir;
 
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParams, attr_args_tokens, str_err,
+    IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParamsNamed, RRTerms, attr_args_tokens,
+    str_err,
 };
 
 pub(crate) trait InvariantSpecParser {
@@ -208,6 +209,9 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
 
         let mut params: Vec<coq::binder::Binder> = Vec::new();
 
+        let mut ty_lfts = Vec::new();
+        let mut ty_wf_elctx = Vec::new();
+
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
@@ -267,8 +271,16 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                         },
                     }
                 },
+                "ty_lfts" => {
+                    let mut terms = RRTerms::parse(&buffer, self.scope).map_err(str_err)?;
+                    ty_lfts.append(&mut terms.terms);
+                },
+                "ty_wf_elctx" | "ty_wf_E" => {
+                    let mut terms = RRTerms::parse(&buffer, self.scope).map_err(str_err)?;
+                    ty_wf_elctx.append(&mut terms.terms);
+                },
                 "exists" => {
-                    let params = RRParams::parse(&buffer, self.scope).map_err(str_err)?;
+                    let params = RRParamsNamed::parse(&buffer, self.scope).map_err(str_err)?;
                     existentials.append(&mut params.params.into_iter().map(Into::into).collect());
                 },
                 "mode" => {
@@ -313,6 +325,8 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             existentials,
             invariants,
             type_invariants,
+            ty_lfts,
+            ty_wf_elctx,
             abstracted_refinement,
             params,
         );

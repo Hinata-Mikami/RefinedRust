@@ -36,9 +36,11 @@ Local Ltac prepare_initial_coq_context :=
 
 (** ** Solve [Persistent]/[Timeless] assumptions. *)
 Ltac ex_t_solve_persistent :=
+  simpl;
   intro_adt_params;
   rewrite /TCNoResolve; intros; prepare_initial_coq_context; apply _.
 Ltac ex_t_solve_timeless :=
+  simpl;
   intro_adt_params;
   rewrite /TCNoResolve; intros; prepare_initial_coq_context; apply _.
 
@@ -66,7 +68,9 @@ Ltac ex_plain_t_solve_shr_mono :=
   intro_adt_params;
   let κ := fresh "κ" in
   let κ' := fresh "κ'" in
-  iIntros (? κ κ' ??); prepare_initial_coq_context;
+  iIntros (? κ κ' ??);
+  prepare_initial_coq_context;
+  simpl;
   iIntros "#Hincl"; iIntros "Ha";
   rewrite -?bi.sep_assoc;
   let ty := iTypeOf' "Ha" in
@@ -100,24 +104,6 @@ Proof. set_solver; solve[fail]. Abort.
 Lemma ex_t_lft_solve_sublist_test3 (l1 l3 l : list lft) :
   l3 ⊆ (l1 ++ l ++ l3).
 Proof. set_solver; solve[fail]. Abort.
-
-(** Typeclass to customize how certain props are shared. *)
-Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : iProp Σ) := {
-  shareable_prop : iProp Σ;
-  shareable_proof :
-    ∀ F G q,
-    lftE ⊆ F →
-    rrust_ctx -∗
-    na_own π ∅ -∗
-    q.[κ] -∗
-    q.[lft_intersect_list κs] -∗
-    &{κ} P -∗
-    (logical_step F
-      (shareable_prop ∗ (q).[κ] ∗ (q).[lft_intersect_list κs] -∗
-       G)) -∗
-   logical_step F G;
-}.
-Global Hint Mode Shareable + + + + + + : typeclass_instances.
 
 (** Find a full borrow in the context and destruct/share it.
   Assumes there is a lifetime token "Htok1" for [κ] in the Iris context.
@@ -185,6 +171,12 @@ Ltac ex_plain_t_solve_shr :=
   [ ex_plain_t_solve_shr_solve_hook
   | iCombine "Htok1 Htok" as "Htok"; iEval (rewrite lft_tok_sep) in "Htok"; iApply "Htok"
   ].
+
+Ltac ex_plain_t_solve_shr_auto :=
+  simpl; intro_adt_params;
+  rewrite /TCNoResolve;
+  intros; prepare_initial_coq_context;
+  apply _.
 
 (** Instances *)
 Global Program Instance sep_as_shared `{!typeGS Σ} (P1 P2 : iProp Σ) κ :

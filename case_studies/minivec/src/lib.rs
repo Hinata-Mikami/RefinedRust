@@ -164,8 +164,7 @@ mod rrptr {
 // Compared to the Rustonomicon implementation, we use *const T instead of NonNull<T>.
 // The only difference is that the null bitpattern can't be used for niche optimizations in our case.
 #[rr::refined_by("(l, cap)" : "(loc * nat)")]
-// only part of the invariant for the ownership predicate, not sharing
-#[rr::invariant(#own "freeable_nz l (size_of_array_in_bytes {st_of T} cap) 1 HeapAlloc")]
+#[rr::invariant(#iris "freeable_nz l (size_of_array_in_bytes {st_of T} cap) 1 HeapAlloc")]
 pub struct RawVec<T> {
     // *const T because it is covariant in T
     #[rr::field("l")]

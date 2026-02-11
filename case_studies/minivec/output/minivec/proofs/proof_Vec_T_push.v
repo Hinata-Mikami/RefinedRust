@@ -32,7 +32,6 @@ Proof.
       specialize (project_vec_els_length len2 xs') as Hlen_eq;
       rewrite -Hxs !length_fmap in Hlen_eq
       end.
-  all: rename select (∀ i : nat, _ → xs' !! i = Some (#None)) into Hlook_2.
 
   {
     rewrite project_vec_els_insert_lt /=; [|lia].

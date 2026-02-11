@@ -30,7 +30,7 @@ Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
     let κ' := lft_intersect_list inv_P_lfts in
     q.[κ ⊓ κ'] -∗
     &{κ} (inv_P π x y) -∗
-    logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
+   logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
 }.
 (* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
 Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
@@ -69,8 +69,46 @@ Next Obligation.
   rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
   iApply logical_step_intro. by iFrame.
 Qed.
-
 Global Arguments mk_pers_ex_inv_def : simpl never.
+
+(** Typeclass to customize how a prop is shared *)
+Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : iProp Σ) := {
+  shareable_prop : iProp Σ;
+  shareable_proof :
+    ∀ F G q,
+    lftE ⊆ F →
+    rrust_ctx -∗
+    na_own π ∅ -∗
+    q.[κ] -∗
+    q.[lft_intersect_list κs] -∗
+    &{κ} P -∗
+    (logical_step F
+      (shareable_prop ∗ (q).[κ] ∗ (q).[lft_intersect_list κs] -∗
+       G)) -∗
+   logical_step F G;
+}.
+Global Hint Mode Shareable + + + + + + : typeclass_instances.
+
+(** Smart constructor to auto derive the sharing predicate *)
+Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : thread_id → X → Y → iProp Σ)
+  (inv_P_lfts : list lft)
+  (inv_P_wf_E : elctx)
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  inv_P_shr_pers
+  inv_P_shr_mono
+  : ex_inv_def X Y :=
+  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _.
+Next Obligation.
+  simpl.
+  iIntros (???????? Hshr ? ? ? π κ x y ??).
+  iIntros "CTX Hna Htok Hb".
+  rewrite -lft_tok_sep.
+  iDestruct "Htok" as "(Htok & Htok1)".
+  iApply ((Hshr π κ x y).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply logical_step_intro.
+  eauto.
+Qed.
+
 
 Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
   ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));

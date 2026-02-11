@@ -50,6 +50,12 @@ pub struct Spec {
     /// additional type ownership
     ty_own_invariants: Vec<TyOwnSpec>,
 
+    // additional ty_lfts
+    ty_lfts: Vec<String>,
+
+    // additional ty_wf_elctx
+    ty_wf_elctx: Vec<String>,
+
     /// the specification of the abstracted refinement under a context where `rfn_pat` is bound
     pub(crate) abstracted_refinement: Option<coq::binder::Pattern>,
 
@@ -97,7 +103,7 @@ impl Spec {
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
+            "λ π inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -130,7 +136,7 @@ impl Spec {
         let ex = self.make_existential_binders();
         write!(
             out,
-            "λ π κ inner_rfn (_ty_rfn : RT_rt ({}%type : RT)), 
+            "λ π κ inner_rfn (_ty_rfn : RT_rt ({}%type : RT)),
             let '{} := _ty_rfn in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -169,6 +175,9 @@ impl Spec {
                 write!(out, " ++ [{}]", lft).unwrap();
             }
         }
+        for x in &self.ty_lfts {
+            write!(out, " ++ {x}").unwrap();
+        }
 
         out
     }
@@ -184,6 +193,9 @@ impl Spec {
                 write!(out, " ++ (ty_wf_E ({}))", ty.type_term()).unwrap();
             }
         }
+        for x in &self.ty_wf_elctx {
+            write!(out, " ++ {x}").unwrap();
+        }
 
         out
     }
@@ -197,7 +209,7 @@ impl Spec {
         // persistence/timeless inference go nuts.
         write!(
             out,
-            "λ inner_rfn (_rfn_binder : RT_rt ({}%type : RT)), 
+            "λ inner_rfn (_rfn_binder : RT_rt ({}%type : RT)),
             let '{} := _rfn_binder in {}⌜inner_rfn = {}⌝ ∗ ",
             self.rfn_type,
             self.rfn_pat,
@@ -280,21 +292,40 @@ impl Spec {
                     format!("intros{}; ", " ?".repeat(attr_binders.0.len()))
                 };
 
-                write!(
-                    out,
-                    "{scope} mk_ex_inv_def\n\
-                    {indent}{indent}({own_inv})%I\n\
-                    {indent}{indent}({shr_inv})%I\n\
-                    {indent}{indent}({lft_outlives})\n\
-                    {indent}{indent}({lft_wf_elctx})\n\
-                    {indent}{indent}_ _ _\n\
-                    {indent}.\n",
-                )
-                .unwrap();
-                write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
-                write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                // If there are no specific invariants given just for owned/shared ownership, use
+                // automatic inference of the sharing predicate
+                if self.invariants.iter().all(|(_, mode)| *mode == Mode::All) {
+                    write!(
+                        out,
+                        "{scope} mk_auto_ex_inv_def\n\
+                        {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({lft_outlives})\n\
+                        {indent}{indent}({lft_wf_elctx})\n\
+                        {indent}{indent}_ _ _\n\
+                        {indent}.\n",
+                    )
                     .unwrap();
-                write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n").unwrap();
+                    write!(out, "{indent}Next Obligation. ex_plain_t_solve_shr_auto. Defined.\n").unwrap();
+                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                        .unwrap();
+                } else {
+                    write!(
+                        out,
+                        "{scope} mk_ex_inv_def\n\
+                        {indent}{indent}({own_inv})%I\n\
+                        {indent}{indent}({shr_inv})%I\n\
+                        {indent}{indent}({lft_outlives})\n\
+                        {indent}{indent}({lft_wf_elctx})\n\
+                        {indent}{indent}_ _ _\n\
+                        {indent}.\n",
+                    )
+                    .unwrap();
+                    write!(out, "{indent}Next Obligation. ex_t_solve_persistent. Qed.\n").unwrap();
+                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr_mono. Qed.\n")
+                        .unwrap();
+                    write!(out, "{indent}Next Obligation. {attr_intro}ex_plain_t_solve_shr. Qed.\n").unwrap();
+                }
             },
             SpecFlags::NonAtomic => {
                 let own_inv = self.assemble_plain_owned_invariant();

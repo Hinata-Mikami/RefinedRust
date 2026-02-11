@@ -158,6 +158,34 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
     }
 }
 
+// A literal term.
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub(crate) struct RRTerm {
+    pub term: String,
+}
+
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRTerm {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let term: parse::LitStr = stream.parse(meta)?;
+        let (term, _) = meta.process_coq_literal(&term.value());
+        Ok(Self { term })
+    }
+}
+#[derive(Debug)]
+pub(crate) struct RRTerms {
+    pub(crate) terms: Vec<String>,
+}
+
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRTerms {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let terms: parse::Punctuated<RRTerm, MToken![,]> =
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
+        Ok(Self {
+            terms: terms.into_iter().map(|x| x.term).collect(),
+        })
+    }
+}
+
 /// Parse a binder declaration with an optional Coq type annotation, e.g.
 /// `x : "Z"`,
 /// `"y"`,
@@ -196,6 +224,44 @@ pub(crate) struct RRParams {
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParams {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let params: parse::Punctuated<RRParam, MToken![,]> =
+            parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
+        Ok(Self {
+            params: params.into_iter().collect(),
+        })
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub(crate) struct RRParamNamed(pub(crate) coq::binder::Binder);
+
+impl From<RRParamNamed> for coq::binder::Binder {
+    fn from(param: RRParamNamed) -> Self {
+        param.0
+    }
+}
+
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParamNamed {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let name: IdentOrTerm = stream.parse(meta)?;
+        let name = name.to_string();
+
+        if parse::Colon::peek(stream) {
+            stream.parse::<_, MToken![:]>(meta)?;
+            let ty: RRCoqType = stream.parse(meta)?;
+            Ok(Self(coq::binder::Binder::new_with_name_hint(name, ty.ty)))
+        } else {
+            Ok(Self(coq::binder::Binder::new_with_name_hint(name, coq::term::Type::Infer)))
+        }
+    }
+}
+#[derive(Debug)]
+pub(crate) struct RRParamsNamed {
+    pub(crate) params: Vec<RRParamNamed>,
+}
+
+impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRParamsNamed {
+    fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let params: parse::Punctuated<RRParamNamed, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
         Ok(Self {
             params: params.into_iter().collect(),

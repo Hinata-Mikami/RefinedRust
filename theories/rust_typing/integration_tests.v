@@ -172,15 +172,6 @@ Proof.
   rep liRStep.
 Qed.
 
-Lemma simplify_goal_guarded `{!typeGS Σ} (T P : iProp Σ) :
-  P ∗ T ⊢ simplify_goal (guarded P) T.
-Proof.
-  iIntros "(HP & $)".
-  by iApply guarded_intro.
-Qed.
-Global Instance simplify_goal_guarded_inst `{!typeGS Σ} (P : iProp Σ) :
-  SimplifyGoal (guarded P) (Some 0%N) := λ T, i2p (simplify_goal_guarded T P).
-
 Section test.
   Context `{!typeGS Σ}.
 
@@ -198,6 +189,12 @@ Section test.
   Next Obligation. ex_t_solve_persistent. Qed.
   Next Obligation. rewrite /S_b. ex_plain_t_solve_shr_mono. Qed.
   Next Obligation. rewrite /P_b /S_b. ex_plain_t_solve_shr. Qed.
+
+  Local Program Definition Bdef := mk_auto_ex_inv_def P_b [] [] _ _ _.
+  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_t_solve_persistent. Qed.
+  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+
 End test.
 
 

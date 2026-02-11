@@ -28,7 +28,7 @@ Section Vec_inv_t_ne.
     - constructor.
       + simpl. apply direct_lft_morph_make_const.
       + solve_type_proper.
-      + solve_type_proper.
+      + simpl. intros. prepare_initial_coq_context. solve_type_proper.
     - (* TODO improve *) 
       unfold RawVec_ty.
       unfold RawVec_sls, core_marker_PhantomData_sls.
