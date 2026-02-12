@@ -64,7 +64,7 @@ Ltac refined_solver_step_2 tac :=
 Ltac refined_solver_step tac :=
   repeat (refined_solver_step_1 tac); (refined_solver_step_2 tac).
 Ltac refined_solver tac ::=
-  solve [repeat (refined_solver_step tac)].
+  solve [refined_solver_init; repeat (refined_solver_step tac)].
 Tactic Notation "refined_solver" tactic(t) := refined_solver t.
 Tactic Notation "refined_solver" := refined_solver eauto.
 
