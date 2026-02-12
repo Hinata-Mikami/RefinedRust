@@ -112,7 +112,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
         // only export public items
         let (interned_path, as_method) = self.get_path_for_shim(did);
-        let is_method = self.env.tcx().impl_of_assoc(did).is_some() || as_method;
+        let is_method = as_method;
 
         let name = base::strip_coq_ident(&self.env.get_item_name(did));
         info!("Found function path {:?} for did {:?} with name {:?}", interned_path, did, name);
@@ -998,14 +998,18 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     }
 }
 
+fn resolve_shim(vcx: &VerificationCtxt<'_, '_>, path: &[&str], is_method: bool) -> Option<DefId> {
+    if is_method {
+        search::try_resolve_method_did(vcx.env.tcx(), path.iter().map(ToString::to_string).collect())
+    } else {
+        search::try_resolve_did(vcx.env.tcx(), path)
+    }
+}
+
 /// Register shims in the procedure registry.
 fn register_shims<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(), base::TranslationError<'tcx>> {
     for shim in vcx.shim_registry.get_function_shims() {
-        let did = if shim.is_method {
-            search::try_resolve_method_did(vcx.env.tcx(), shim.path.iter().map(ToString::to_string).collect())
-        } else {
-            search::try_resolve_did(vcx.env.tcx(), &shim.path)
-        };
+        let did = resolve_shim(vcx, &shim.path, shim.is_method);
 
         match did {
             Some(did) => {
@@ -1272,6 +1276,26 @@ fn register_functions<'tcx>(
         if mode.is_shim() || mode.is_code_shim() {
             warn!("Nonsensical shim attribute on impl; ignoring");
             mode = procedures::Mode::Prove;
+        }
+
+        // also register it under the export path, if annotated.
+        if let Some(export_path) = shims::flat::get_external_export_path_for_did(vcx.env, f.to_def_id()) {
+            let interned_path = vcx.shim_registry.intern_path(export_path.path.path);
+            info!("Looking up annotated shim {interned_path:?} for is_method={:?}", export_path.as_method);
+            if let Some(export_did) = resolve_shim(vcx, &interned_path, export_path.as_method) {
+                let meta = procedures::Meta::new(
+                    spec_name.clone(),
+                    code_name.clone(),
+                    trait_req_incl_name.clone(),
+                    fname.clone(),
+                    procedures::Mode::Shim,
+                    is_default_trait_impl,
+                    is_closure,
+                );
+                vcx.procedure_registry.register_function(export_did, meta)?;
+            } else {
+                warn!("Could not resolve annotated export path {interned_path:?}");
+            }
         }
 
         //info!("Registering function {f:?} with is_default_trait_impl={is_default_trait_impl}");

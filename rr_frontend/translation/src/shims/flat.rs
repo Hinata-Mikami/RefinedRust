@@ -258,6 +258,9 @@ pub(crate) fn get_external_export_path_for_did(env: &Environment<'_>, did: DefId
             let mut this_path = get_cleaned_def_path(env.tcx(), did);
             path_prefix.path.path.push(this_path.pop().unwrap());
 
+            // this is a method (not in a trait decl, though)
+            path_prefix.as_method = env.tcx().impl_of_assoc(did).is_some();
+
             return Some(path_prefix);
         }
     }
@@ -288,8 +291,9 @@ pub(crate) fn get_export_path_for_did(env: &Environment<'_>, did: DefId) -> Expo
         let crate_name = env.tcx().crate_name(span::def_id::LOCAL_CRATE);
         basic_path.insert(0, crate_name.as_str().to_owned());
     }
+    let as_method = env.tcx().impl_of_assoc(did).is_some();
     ExportAs {
         path: RustPath { path: basic_path },
-        as_method: false,
+        as_method,
     }
 }

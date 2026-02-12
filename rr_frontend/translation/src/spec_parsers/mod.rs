@@ -14,6 +14,7 @@ use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
 
 /// For parsing of `RustPaths`
+#[derive(Debug)]
 pub(crate) struct RustPath {
     pub path: Vec<String>,
 }
@@ -28,6 +29,7 @@ impl<F> Parse<F> for RustPath {
 }
 
 /// For parsing of `rr::export_as` annotations
+#[derive(Debug)]
 pub(crate) struct ExportAs {
     pub path: RustPath,
     /// this is a method
