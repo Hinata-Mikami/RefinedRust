@@ -811,38 +811,39 @@ End ne.
 Section guarded.
   Context `{!typeGS Σ}.
 
-  Definition guarded (P : iProp Σ) : iProp Σ :=
-    ▷ P.
+  Definition guarded (prepaid : bool) (P : iProp Σ) : iProp Σ :=
+    maybe_creds prepaid ∗ ▷ P.
   Global Typeclasses Opaque guarded.
   Global Arguments guarded : simpl never.
 
   Global Instance guarded_pers P :
-    Persistent P → Persistent (guarded P).
+    Persistent P → Persistent (guarded false P).
   Proof.
     unfold guarded.
     apply _.
   Qed.
 
-  Lemma guarded_mono (P Q : iProp Σ) :
+  Lemma guarded_mono prepaid (P Q : iProp Σ) :
     (P -∗ Q) -∗
-    guarded P -∗
-    guarded Q.
+    guarded prepaid P -∗
+    guarded prepaid Q.
   Proof.
     rewrite /guarded.
-    iIntros "H HP !>". by iApply "H".
+    iIntros "H ($ & HP) !>". by iApply "H".
   Qed.
-  Lemma guarded_intro (P : iProp Σ) :
-    P ⊢ guarded P.
+  Lemma guarded_intro prepaid (P : iProp Σ) :
+    maybe_creds prepaid ∗ P ⊢ guarded prepaid P.
   Proof.
-    rewrite /guarded. eauto.
+    rewrite /guarded.
+    iIntros "($ & HP)". eauto.
   Qed.
 
-  Lemma guarded_dist (P Q : iProp Σ) n :
+  Lemma guarded_dist prepaid (P Q : iProp Σ) n :
     (∀ m, m < n → P ≡{m}≡ Q) →
-    guarded P ≡{n}≡ guarded Q.
+    guarded prepaid P ≡{n}≡ guarded prepaid Q.
   Proof.
     rewrite /guarded.
-    intros Hle. f_contractive.
+    intros Hle. f_equiv. f_contractive.
     by apply Hle.
   Qed.
 End guarded.

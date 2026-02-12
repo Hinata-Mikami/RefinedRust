@@ -507,6 +507,12 @@ Definition FindRelatedLoc `{!typeGS Σ} (π : thread_id) :=
   |}.
 Global Typeclasses Opaque FindRelatedLoc.
 
+(** Degenerate instance for optionally finding any guarded proposition in the context. *)
+Definition FindOptGuarded `{!typeGS Σ} :=
+  {| fic_A := option (bool * iProp Σ)%type;
+     fic_Prop x := if_iSome x (λ '(prepaid, P), guarded prepaid P);
+  |}.
+Global Typeclasses Opaque FindOptGuarded.
 
 (** A judgment to trigger TC search on [H] for some output [a : A]. *)
 Definition trigger_tc `{!typeGS Σ} {A} (H : A → Type) (T : A → iProp Σ) : iProp Σ :=
@@ -731,6 +737,12 @@ Section judgments.
     ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L -∗ P ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
   Class IntroduceWithHooks (E : elctx) (L : llctx) (P : iProp Σ) : Type :=
     introduce_with_hooks_proof T : iProp_to_Prop (introduce_with_hooks E L P T).
+
+  (** Do a custom iteration in the type system, determined by rules for specific M *)
+  Definition iterate_with_hooks (E : elctx) (L : llctx) {M} (m : M) (T : llctx → iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
+  Class IterateWithHooks (E : elctx) (L : llctx) {M} (m : M) : Type :=
+    iterate_with_hooks_proof T : iProp_to_Prop (iterate_with_hooks E L m T).
 
   (** *** Statements *)
   Definition typed_stmt_R_t := val → llctx → iProp Σ.
@@ -4117,6 +4129,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | typed_switch ?E ?L ?f ?v ?ty ?r ?it => constr:(TypedSwitch E L f v ty r it)
   | typed_annot_stmt ?a => constr:(TypedAnnotStmt a)
   | introduce_with_hooks ?E ?L ?P => constr:(IntroduceWithHooks E L P)
+  | iterate_with_hooks ?E ?L ?m => constr:(IterateWithHooks E L m)
   | subsume_full ?E ?L ?wl ?P1 ?P2 => constr:(SubsumeFull E L wl P1 P2)
   | resolve_ghost ?π ?E ?L ?rm ?f ?l ?lt ?k ?r => constr:(ResolveGhost π E L rm f l lt k r)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)

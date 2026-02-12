@@ -297,6 +297,33 @@ Section find.
     FindInContext (FindOptLftDead κ) FICSyntactic | 10 :=
     λ T, i2p (find_in_context_opt_lft_dead_none κ T).
 
+  (** FindGuarded *)
+  Lemma subsume_guarded prepaid1 prepaid2 P1 P2 T :
+    ⌜prepaid1 = prepaid2⌝ ∗ ⌜P1 = P2⌝ ∗ T ⊢ subsume (Σ := Σ) (guarded prepaid1 P1) (guarded prepaid2 P2) T.
+  Proof. iIntros "(-> & -> & $)". eauto. Qed.
+  Definition subsume_guarded_inst := [instance @subsume_guarded].
+  Global Existing Instance subsume_guarded_inst.
+
+  (** FindOptGuarded *)
+  Lemma find_in_context_opt_guarded T :
+    (∃ prepaid P, guarded prepaid P ∗ T (Some (prepaid, P)))
+    ⊢ find_in_context (FindOptGuarded) T.
+  Proof.
+    iIntros "(% & % & Hg & HT)". iExists _. iFrame. done.
+  Qed.
+  Definition find_in_context_opt_guarded_inst := [instance @find_in_context_opt_guarded with FICSyntactic].
+  Global Existing Instance find_in_context_opt_guarded_inst | 1.
+
+  (* dummy instance in case we don't find it *)
+  Lemma find_in_context_opt_guarded_none T :
+    True ∗ T None
+    ⊢ find_in_context (FindOptGuarded) T.
+  Proof.
+    iIntros "(_ & HT)". iExists None. iFrame. simpl. done.
+  Qed.
+  Definition find_in_context_opt_guarded_none_inst := [instance @find_in_context_opt_guarded_none with FICSyntactic].
+  Global Existing Instance find_in_context_opt_guarded_none_inst | 10.
+
   (** Freeable *)
   Lemma subsume_freeable l1 q1 n1 k1 l2 q2 n2 k2 T :
     ⌜l1 = l2⌝ ∗ ⌜n1 = n2⌝ ∗ ⌜q1 = q2⌝ ∗ ⌜k1 = k2⌝ ∗ T
@@ -506,6 +533,33 @@ Section find.
   Global Existing Instance subsume_place_loc_in_bounds_inst.
 End find.
 
+Section iterate.
+  Context `{!typeGS Σ}.
+
+  (** Iteration for stripping all guards in the context *)
+  Variant StripGuarded := strip_guarded.
+
+  Lemma iterate_with_hooks_strip_guarded E L T :
+    (find_in_context FindOptGuarded (λ g,
+      match g with
+      | None => T L
+      | Some (prepaid, P) =>
+          introduce_with_hooks E L (guarded prepaid P) (λ L2,
+            iterate_with_hooks E L2 strip_guarded T)
+      end))
+    ⊢ iterate_with_hooks E L strip_guarded T.
+  Proof.
+    iIntros "(%g & Hg & HT)".
+    iIntros (??) "#HE HL".
+    destruct g as [[prepaid P] | ]; simpl.
+    - simpl. iMod ("HT" with "[//] HE HL Hg") as "(%L2 & HL & HT)".
+      by iApply "HT".
+    - by iFrame.
+  Qed.
+  Definition iterate_with_hooks_strip_guarded_inst := [instance @iterate_with_hooks_strip_guarded].
+  Global Existing Instance iterate_with_hooks_strip_guarded_inst.
+End iterate.
+
 Section introduce.
   Context `{!typeGS Σ}.
 
@@ -702,10 +756,10 @@ Section introduce.
     find_in_context (FindCreditStore) (λ '(c, a),
       ⌜fast_lia_hint (1 ≤ c)⌝ ∗ (credit_store (c - 1)%nat a -∗
         introduce_with_hooks E L P T)) ⊢
-    introduce_with_hooks E L (guarded P) T.
+    introduce_with_hooks E L (guarded false P) T.
   Proof.
-    iIntros "Ha" (??) "HE HL HP".
     rewrite /guarded/FindCreditStore/fast_lia_hint/=.
+    iIntros "Ha" (??) "HE HL (_ & HP)".
     iDestruct "Ha" as ([n m]) "(Hc & % & Ha)".
     simpl.
     iPoseProof (credit_store_scrounge 1 with "Hc") as "(Hc1 & Hc)"; first lia.
@@ -714,6 +768,20 @@ Section introduce.
   Qed.
   Definition introduce_with_hooks_guarded_inst := [instance @introduce_with_hooks_guarded].
   Global Existing Instance introduce_with_hooks_guarded_inst.
+
+  Lemma introduce_with_hooks_guarded_prepaid (E : elctx) (L : llctx) (P : iProp Σ) T :
+    introduce_with_hooks E L (tr 1 ∗ P) T ⊢
+    introduce_with_hooks E L (guarded true P) T.
+  Proof.
+    rewrite /guarded.
+    iIntros "Ha" (??) "HE HL ((Hcred & Htr) & HP)".
+    iDestruct "Hcred" as "(Hc1 & Hcred)".
+    iMod (lc_fupd_elim_later with "Hc1 HP") as "HP".
+    iApply ("Ha" with "[//] HE HL").
+    iFrame.
+  Qed.
+  Definition introduce_with_hooks_guarded_prepaid_inst := [instance @introduce_with_hooks_guarded_prepaid].
+  Global Existing Instance introduce_with_hooks_guarded_prepaid_inst.
 End introduce.
 
 Section prove_subtype.
@@ -1136,9 +1204,9 @@ Section prove_subtype.
   Definition prove_with_subtype_destruct_if_iNone_inst := [instance @prove_with_subtype_destruct_if_iNone].
   Global Existing Instance prove_with_subtype_destruct_if_iNone_inst | 100.
 
-  Lemma prove_with_subtype_guarded E L b pm P T :
-    prove_with_subtype E L b pm P T ⊢
-    prove_with_subtype E L b pm (guarded P) T.
+  Lemma prove_with_subtype_guarded E L b pm wl P T :
+    prove_with_subtype E L b pm (maybe_creds wl ∗ P) T ⊢
+    prove_with_subtype E L b pm (guarded wl P) T.
   Proof.
     iIntros "HT" (????) "#CTX HE HL".
     iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & % & Hs & HL & HT)"; [done.. | ].
@@ -1146,12 +1214,12 @@ Section prove_subtype.
     iApply (maybe_logical_step_wand with "[] Hs").
     iIntros "(Ha & $)".
     unfold guarded. destruct pm.
-    - eauto.
-    - iIntros "Hd". iMod ("Ha" with "Hd") as "Ha". eauto.
+    - iDestruct "Ha" as "(Hcred & HP)". iFrame.
+    - iIntros "Hd". iMod ("Ha" with "Hd") as "Ha".
+      iDestruct "Ha" as "(Hcred & HP)". by iFrame.
   Qed.
-  Global Instance prove_with_subtype_guarded_inst E L b pm P :
-    ProveWithSubtype E L b pm (guarded P) :=
-    λ T, i2p (prove_with_subtype_guarded E L b pm P T).
+  Definition prove_with_subtype_guarded_inst := [instance @prove_with_subtype_guarded].
+  Global Existing Instance prove_with_subtype_guarded_inst.
 End prove_subtype.
 
 Section subsume.
@@ -4636,6 +4704,7 @@ Global Typeclasses Opaque typed_call.
 Global Typeclasses Opaque typed_annot_expr.
 
 Global Typeclasses Opaque introduce_with_hooks.
+Global Typeclasses Opaque iterate_with_hooks.
 Global Typeclasses Opaque typed_stmt_post_cond.
 
 Global Typeclasses Opaque typed_assert.

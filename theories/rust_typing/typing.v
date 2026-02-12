@@ -44,7 +44,7 @@ Ltac solve_type_proper_hook ::=
       | Owned true => apply ofty_own_contr_owned; try apply _
       | Owned false => apply ofty_own_ne_owned; try apply _
       end
-    | |- guarded _ ≡{_}≡ guarded _ =>
+    | |- guarded _ _ ≡{_}≡ guarded _ _ =>
       apply guarded_dist; intros
   end.
 

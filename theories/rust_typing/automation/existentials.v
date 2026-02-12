@@ -286,19 +286,19 @@ Global Instance shareable_discard_freeable `{!typeGS Σ} π κ κs l n q al :
 Global Instance shareable_discard_freeable_nz `{!typeGS Σ} π κ κs l n q al :
   Shareable π κ κs (freeable_nz l n q al) := shareable_discard _ _ _ _.
 
-Global Program Instance guarded_as_shared `{!typeGS Σ} P κ :
+Global Program Instance guarded_as_shared `{!typeGS Σ} prepaid P κ :
   AsShared κ P →
-  AsShared κ (guarded P) := λ HP,
-  {| as_shared_pred κ := guarded (HP.(as_shared_pred) κ) |}.
+  AsShared κ (guarded prepaid P) := λ HP,
+  {| as_shared_pred κ := guarded prepaid (HP.(as_shared_pred) κ) |}.
 Next Obligation.
-  iIntros (???? [? Hshr]).
+  iIntros (????? [? Hshr]).
   iApply guarded_mono.
   iIntros "HP". by iApply Hshr.
 Qed.
-Global Program Instance guarded_share_mono `{!typeGS Σ} Φ :
-  ShareMono Φ → ShareMono (λ κ, guarded (Φ κ)).
+Global Program Instance guarded_share_mono `{!typeGS Σ} prepaid Φ :
+  ShareMono Φ → ShareMono (λ κ, guarded prepaid (Φ κ)).
 Next Obligation.
-  iIntros (??? [Hmono] ??) "Hincl Ha".
+  iIntros (???? [Hmono] ??) "Hincl Ha".
   iApply (guarded_mono with "[Hincl] Ha").
   by iApply Hmono.
 Qed.
@@ -378,14 +378,24 @@ Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   na_own π ∅ -∗
   let κ' := lft_intersect_list (ty_lfts ty) in
   q.[κ ⊓ κ'] -∗
-  (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
-  logical_step F ((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
+  (&{κ} (guarded true (l ◁ₗ[π, Owned false] r @ ◁ ty))) -∗
+  logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
 Proof.
   iIntros (?) "#(LFT & LLCTX) #Hna Htok Hl".
   iApply fupd_logical_step.
+
+  unfold guarded.
   iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
   rewrite -lft_tok_sep.
   iDestruct "Htok" as "(Htok & Htok2)".
+  iMod (bor_sep with "LFT Hl") as "(Hcred & Hl)"; first done.
+  iDestruct "Htok" as "(Htok & Htok1)".
+  iMod (bor_acc with "LFT Hcred Htok1") as "(>Hcred & Hcl_cred)"; first done.
+  iDestruct "Hcred" as "(Hcred & Hat)".
+  iDestruct "Hcred" as "(Hcred1 & Hcred)".
+  iMod (bor_later with "LFT Hl") as "Hl"; first done.
+  iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Hl" as "Hl".
+
   iMod (bor_exists_tok with "LFT Hl Htok") as "(%ly & Hl & Htok)"; first done.
   iMod (bor_sep with "LFT Hl") as "(Hst & Hl)"; first done.
   iMod (bor_persistent with "LFT Hst Htok") as "(>%Hst & Htok)"; first done.
@@ -395,17 +405,11 @@ Proof.
   iMod (bor_persistent with "LFT Hsc Htok") as "(>#Hsc & Htok)"; first done.
   iMod (bor_sep with "LFT Hl") as "(Hlb & Hl)"; first done.
   iMod (bor_persistent with "LFT Hlb Htok") as "(>#Hlb & Htok)"; first done.
-  iMod (bor_sep with "LFT Hl") as "(Hcred & Hl)"; first done.
+  iMod (bor_sep with "LFT Hl") as "(_ & Hl)"; first done.
   iMod (bor_exists_tok with "LFT Hl Htok") as "(%r' & Hl & Htok)"; first done.
   iMod (bor_sep with "LFT Hl") as "(Hrfn & Hl)"; first done.
 
   iMod (place_rfn_interp_owned_share with "LFT Hrfn Htok") as "(Hrfn & Htok)"; first done.
-  iDestruct "Htok" as "(Htok & Htok1)".
-  iMod (bor_acc with "LFT Hcred Htok1") as "(>Hcred & Hcl_cred)"; first done.
-  iDestruct "Hcred" as "(Hcred & Hat)".
-  iDestruct "Hcred" as "(Hcred1 & Hcred)".
-  iMod (bor_later with "LFT Hl") as "Hl"; first done.
-  iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Hl" as "Hl".
   iMod (bor_fupd_later with "LFT Hl Htok") as "Ha"; [done.. | ].
   iDestruct "Hcred" as "(Hcred1 & Hcred)".
   iApply (lc_fupd_add_later with "Hcred1"). iNext. iMod "Ha" as "(Hl & Htok)".
@@ -424,7 +428,7 @@ Proof.
   iCombine "Htok1 Htok2'" as "Htok1".
   rewrite !lft_tok_sep. iFrame "Htok Htok1".
   iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own/=.
-  iExists _. iR. iR. iR. iR.
+  iR. iNext. iExists _. iR. iR. iR. iR.
   iExists _. iFrame. iModIntro. iModIntro. done.
 Qed.
 
@@ -436,8 +440,8 @@ Lemma ltype_own_ofty_share' `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt) r 
   na_own π ∅ -∗
   q.[κ] -∗
   q.[lft_intersect_list κ'] -∗
-  (&{κ} (l ◁ₗ[π, Owned true] r @ ◁ ty)) -∗
-  logical_step F ((l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ] ∗ q.[lft_intersect_list κ']).
+  (&{κ} (guarded true (l ◁ₗ[π, Owned false] r @ ◁ ty))) -∗
+  logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ] ∗ q.[lft_intersect_list κ']).
 Proof.
   iIntros (? Hsub) "#CTX #Hna Htok1 Htok2 Hl".
   iApply fupd_logical_step.
@@ -466,8 +470,8 @@ Hint Extern 1 (SolveTyLftIncl ?ty ?κs) =>
 Global Hint Mode SolveTyLftIncl + + + + + : typeclass_instances.
 
 Global Program Instance shareable_ltype_own `{!typeGS Σ} π κ κs l {rt} (ty : type rt) r `{!SolveTyLftIncl ty κs} :
-  Shareable π κ κs (l ◁ₗ[π, Owned true] r @ (◁ ty))%I := {|
-    shareable_prop := guarded (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I
+  Shareable π κ κs (guarded true (l ◁ₗ[π, Owned false] r @ (◁ ty)))%I := {|
+    shareable_prop := guarded false (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I
   |}.
 Next Obligation.
   iIntros (?? π κ κs l ? ty r Hincl F G q ?) "#CTX Hna Htok1 Htok2 Hl HT".
@@ -476,6 +480,6 @@ Next Obligation.
   iApply (logical_step_compose with "HT").
   iApply (logical_step_wand with "Hstep'").
   iIntros "(Ha & ? & ?) Hb". iApply "Hb".
-  iFrame. by iApply guarded_intro.
+  iFrame.
 Qed.
 

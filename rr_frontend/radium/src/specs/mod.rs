@@ -396,13 +396,20 @@ pub struct TyOwnSpec {
 impl TyOwnSpec {
     #[must_use]
     pub fn fmt_owned(&self, tid: &str) -> String {
-        format!("{} ◁ₗ[{}, Owned {}] #({}) @ (◁ {})", self.loc, tid, self.with_later, self.rfn, self.ty)
+        if self.with_later {
+            format!("guarded true ({} ◁ₗ[{}, Owned false] #({}) @ (◁ {}))", self.loc, tid, self.rfn, self.ty)
+        } else {
+            format!("{} ◁ₗ[{}, Owned false] #({}) @ (◁ {})", self.loc, tid, self.rfn, self.ty)
+        }
     }
 
     #[must_use]
     fn fmt_shared(&self, tid: &str, lft: &str) -> String {
         if self.with_later {
-            format!("guarded ({} ◁ₗ[{}, Shared {}] #({}) @ (◁ {}))", self.loc, tid, lft, self.rfn, self.ty)
+            format!(
+                "guarded false ({} ◁ₗ[{}, Shared {}] #({}) @ (◁ {}))",
+                self.loc, tid, lft, self.rfn, self.ty
+            )
         } else {
             format!("{} ◁ₗ[{}, Shared {}] #({}) @ (◁ {})", self.loc, tid, lft, self.rfn, self.ty)
         }

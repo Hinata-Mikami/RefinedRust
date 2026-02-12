@@ -213,6 +213,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedOnEndlftTrigger E L key P) T))
   | introduce_with_hooks ?E ?L ?P ?T =>
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
+  | iterate_with_hooks ?E ?L ?m ?T =>
+      cont uconstr:(((_ : IterateWithHooks E L m) T))
   | prove_place_cond ?E ?L ?b ?lt1 ?lt2 ?T =>
       cont uconstr:(((_ : ProvePlaceCond E L b lt1 lt2) T))
   | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?ml ?l ?ig ?def ?len ?iml ?rs ?bk ?T =>
