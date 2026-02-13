@@ -76,9 +76,9 @@ pub trait Iterator {
     #[rr::trust_me]
     #[rr::requires(#iris "{Inv} π self")]
     #[rr::exists("seq", "s2", "s2'")]
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     #[rr::returns("{B::FromSequence} seq")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
@@ -162,9 +162,10 @@ pub trait Iterator {
     #[rr::only_spec]
     #[rr::requires(#iris "{Inv} π self")]
     #[rr::exists("seq", "s2", "s2'")]
+    // first: gain knowledge that iterator has ended (better for simplification)
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("max_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
     fn max(self) -> Option<Self::Item>
@@ -179,9 +180,9 @@ pub trait Iterator {
     #[rr::only_spec]
     #[rr::requires(#iris "{Inv} π self")]
     #[rr::exists("seq", "s2", "s2'")]
+    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     // TODO: have an escape to refer to the attrs record instead
     #[rr::ensures(#iris "IteratorNextFusedTrans traits_iterator_Iterator_Self_spec_attrs π self seq s2")]
-    #[rr::ensures(#iris "{Next} π s2 None s2'")]
     // TODO: fix: reference {Self::Item::Ord}
     #[rr::returns("min_list_cmp Ord_Selfastraits_iterator_Iterator_Item_spec_attrs.(Ord_Ord) seq None")]
     fn min(self) -> Option<Self::Item>
