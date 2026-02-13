@@ -41,6 +41,8 @@ Proof. apply _. Qed.
 
 Global Hint Unfold ord_lt ord_gt ord_eq : solve_goal_unfold.
 
+Global Typeclasses Opaque ord_le ord_ge ord_lt ord_eq ord_gt.
+
 (** Nat *)
 Module Nat.
   Lemma ord_lt_iff a b :
@@ -248,6 +250,10 @@ Section correct_ord.
     done.
   Qed.
 
+  Global Instance simpl_correct_ord_eq_leibniz x y :
+    SimplBoth (x =o{cmp} y) (x = y).
+  Proof. rewrite /SimplBoth correct_ord_eq_leibniz'//. Qed.
+
   Global Instance ord_le_refl : Reflexive (ord_le cmp).
   Proof. intros ?. by right. Qed.
   Global Instance ord_ge_refl : Reflexive (ord_ge cmp).
@@ -311,6 +317,21 @@ Section correct_ord.
     rewrite not_ord_le_iff; done.
   Qed.
 
+  (* Normalize to </≤ *)
+  Global Instance simpl_both_ord_gt a b :
+    SimplBoth (b >o{cmp} a) (a <o{cmp} b).
+  Proof. rewrite /SimplBoth correct_ord_antisym//. Qed.
+  Global Instance simpl_both_ord_ge a b :
+    SimplBoth (b ≥o{cmp} a) (a ≤o{cmp} b).
+  Proof. rewrite /SimplBoth ord_le_antisym//. Qed.
+
+  Global Instance simpl_both_not_ord_le a b :
+    SimplBoth (¬ a ≤o{cmp} b) (b <o{cmp} a).
+  Proof. rewrite /SimplBoth not_ord_le_iff//. Qed.
+  Global Instance simpl_both_not_ord_lt a b :
+    SimplBoth (¬ a <o{cmp} b) (b ≤o{cmp} a).
+  Proof. rewrite /SimplBoth not_ord_lt_iff//. Qed.
+
   Lemma ord_lt_ord_le_trans a b c :
     a <o{cmp} b → b ≤o{cmp} c → a <o{cmp} c.
   Proof.
@@ -349,6 +370,15 @@ Section correct_ord.
     unfold ord_gt.
     opose proof (proj2 (correct_ord_eq_leibniz' a a) _) as Ha; first done.
     rewrite Ha. done.
+  Qed.
+
+  Global Instance simpl_impl_ord_lt_refl a :
+    SimplImpl true (a <o{cmp} a) (λ T, False → T).
+  Proof.
+    unfold SimplImpl. intros T.
+    split.
+    - intros H1 H2. apply H1. by eapply ord_lt_irrefl.
+    - done.
   Qed.
 
   Lemma max_by_refl a : max_by cmp a a = a.
@@ -608,6 +638,7 @@ Section option.
 
   Section props.
     Context {A : Type}  {eq cmp} `{!CorrectOrd (A := A) eq cmp}.
+
     Lemma max_by_Some a b :
       max_by (option_cmp cmp) (Some a) (Some b) = Some (max_by cmp a b).
     Proof.
@@ -633,6 +664,99 @@ Section option.
     Lemma min_by_None_r b :
       min_by (option_cmp cmp) b None = None.
     Proof. destruct b; done. Qed.
+
+    Lemma ord_lt_option_Some_iff x y :
+      Some x <o{option_cmp cmp} Some y ↔ x <o{cmp} y.
+    Proof. solve_goal. Qed.
+    Global Instance simpl_both_ord_lt_option_Some x y:
+      SimplBoth (Some x <o{option_cmp cmp} Some y) (x <o{cmp} y).
+    Proof. rewrite /SimplBoth ord_lt_option_Some_iff//. Qed.
+
+    Lemma ord_eq_option_Some_iff x y :
+      Some x =o{option_cmp cmp} Some y ↔ x =o{cmp} y.
+    Proof. solve_goal. Qed.
+    Global Instance simpl_both_ord_eq_option_Some x y:
+      SimplBoth (Some x =o{option_cmp cmp} Some y) (x =o{cmp} y).
+    Proof. rewrite /SimplBoth ord_eq_option_Some_iff//. Qed.
+
+    Lemma ord_gt_option_Some_iff x y :
+      Some x >o{option_cmp cmp} Some y ↔ x >o{cmp} y.
+    Proof. solve_goal. Qed.
+    Global Instance simpl_both_ord_gt_option_Some x y:
+      SimplBoth (Some x >o{option_cmp cmp} Some y) (x >o{cmp} y).
+    Proof. rewrite /SimplBoth ord_gt_option_Some_iff//. Qed.
+
+    Lemma ord_le_option_Some_iff x y :
+      Some x ≤o{option_cmp cmp} Some y ↔ x ≤o{cmp} y.
+    Proof. solve_goal. Qed.
+    Global Instance simpl_both_ord_le_option_Some x y:
+      SimplBoth (Some x ≤o{option_cmp cmp} Some y) (x ≤o{cmp} y).
+    Proof. rewrite /SimplBoth ord_le_option_Some_iff//. Qed.
+
+    Lemma ord_ge_option_Some_iff x y :
+      Some x ≥o{option_cmp cmp} Some y ↔ x ≥o{cmp} y.
+    Proof. solve_goal. Qed.
+    Global Instance simpl_both_ord_ge_option_Some x y:
+      SimplBoth (Some x ≥o{option_cmp cmp} Some y) (x ≥o{cmp} y).
+    Proof. rewrite /SimplBoth ord_ge_option_Some_iff//. Qed.
+
+    Lemma ord_lt_None_Some x :
+      None <o{option_cmp cmp} Some x.
+    Proof. done. Qed.
+    Lemma ord_le_None_l oy :
+      None ≤o{option_cmp cmp} oy.
+    Proof using Type*.
+      destruct oy; last by right.
+      by left.
+    Qed.
+
+    Global Instance simpl_both_ord_le_None_l oy :
+      SimplBoth (None ≤o{option_cmp cmp} oy) True.
+    Proof using Type*.
+      rewrite /SimplBoth.
+      split; first done.
+      intros _. apply ord_le_None_l.
+    Qed.
+    Global Instance simpl_both_ord_lt_None_Some y :
+      SimplBoth (None <o{option_cmp cmp} Some y) True.
+    Proof.
+      rewrite /SimplBoth.
+      split; first done.
+      intros _. apply ord_lt_None_Some.
+    Qed.
+
+    Lemma ord_le_option_Some_None x :
+      ¬ Some x ≤o{option_cmp cmp} None.
+    Proof using Type*. solve_goal. Qed.
+    Global Instance simpl_impl_some_le_none x :
+      SimplImpl true (Some x ≤o{option_cmp cmp} None) (λ T, False → T).
+    Proof using Type*.
+      unfold SimplImpl. intros T.
+      split; last solve_goal.
+      intros H1 H2. apply H1. eapply ord_le_option_Some_None. done.
+    Qed.
+
+    Lemma ord_le_option_Some_l x oy :
+      Some x ≤o{option_cmp cmp} oy ↔ ∃ y, oy = Some y ∧ x ≤o{cmp} y.
+    Proof using Type*.
+      destruct oy as [ y | ]; simpl.
+      - split; solve_goal.
+      - split; solve_goal.
+    Qed.
+    Global Instance simpl_both_ord_le_option_Some_l x oy :
+      SimplBoth (Some x ≤o{option_cmp cmp} oy) (∃ y, oy = Some y ∧ x ≤o{cmp} y).
+    Proof using Type*. unfold SimplBoth. rewrite ord_le_option_Some_l//. Qed.
+
+    Lemma ord_lt_option_Some_l x oy :
+      Some x <o{option_cmp cmp} oy ↔ ∃ y, oy = Some y ∧ x <o{cmp} y.
+    Proof using Type*.
+      destruct oy as [ y | ]; simpl.
+      - split; solve_goal.
+      - split; solve_goal.
+    Qed.
+    Global Instance simpl_both_ord_lt_option_Some_l x oy :
+      SimplBoth (Some x <o{option_cmp cmp} oy) (∃ y, oy = Some y ∧ x <o{cmp} y).
+    Proof using Type*. unfold SimplBoth. rewrite ord_lt_option_Some_l//. Qed.
   End props.
 
   (** The reverse order, making [None > Some x] (used to define [min_list_cmp] below) *)
@@ -894,7 +1018,7 @@ End max_list.
 (*Global Hint Rewrite -> @max_list_cmp_app : lithium_rewrite.*)
 
 (** TC to simplify [partial_cmp] to [cmp], if possible (i.e. for [Ord] types) *)
-Class PartialCmpToCmp {A} (partial_cmp : A → A → option comparison) (cmp : A → A → comparison) := { 
+Class PartialCmpToCmp {A} (partial_cmp : A → A → option comparison) (cmp : A → A → comparison) := {
   partial_cmp_cmp_iff : ∀ x y, partial_cmp x y = Some (cmp x y);
 }.
 Global Hint Mode PartialCmpToCmp + + - : typeclass_instances.
@@ -902,7 +1026,7 @@ Global Hint Mode PartialCmpToCmp + + - : typeclass_instances.
 Global Instance partial_cmp_to_cmp_direct {A} (cmp : A → A → comparison) :
   PartialCmpToCmp (λ a b, Some (cmp a b)) cmp.
 Proof.
-  econstructor. 
+  econstructor.
   done.
 Qed.
 
@@ -910,7 +1034,7 @@ Global Instance partial_cmp_to_cmp_option {A} (partial_cmp : A → A → option 
   PartialCmpToCmp partial_cmp cmp →
   PartialCmpToCmp (option_partial_cmp partial_cmp) (option_cmp cmp).
 Proof.
-  intros [Hcmp]. 
+  intros [Hcmp].
   econstructor. intros [] []; simpl; try done.
 Qed.
 
