@@ -341,6 +341,14 @@ Ltac liImpl :=
   normalize_and_simpl_impl false.
 
 (** ** [liSideCond] *)
+Section tac.
+  Lemma tac_sidecond_assoc (P1 P2 Q : Prop) :
+    (P1 ∧ (P2 ∧ Q)) →
+    (P1 ∧ P2) ∧ Q.
+  Proof.
+    intros [? []]. done.
+  Qed.
+End tac.
 Ltac liSideCond :=
   try lazymatch goal with
   | |- (name_hint _ ?P) ∧ ?Q =>
@@ -354,6 +362,8 @@ Ltac liSideCond :=
         lazymatch P with
         | shelve_hint _ =>
             split; [ unfold shelve_hint; shelve_sidecond |]
+        | _ ∧ _ =>
+            notypeclasses refine (tac_sidecond_assoc _ _ _ _)
         end
       | liSidecond_hook P
       | lazymatch P with

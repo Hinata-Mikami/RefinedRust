@@ -30,8 +30,7 @@ Proof.
   { solve_goal with nia. }
   { apply list_lookup_insert_Some'.
     split; normalize_and_simpl_goal.
-    { simpl in *. lia. }
-    { rewrite Hxs. solve_goal with lia. }
+    rewrite Hxs. solve_goal with lia.
   }
   { by rewrite Hxs. }
   Unshelve. all: print_remaining_sidecond.

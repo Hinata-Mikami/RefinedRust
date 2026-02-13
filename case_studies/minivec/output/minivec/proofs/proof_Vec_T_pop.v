@@ -37,7 +37,6 @@ Proof.
   }
   { apply list_lookup_insert_Some'.
     split; solve_goal. }
-  { solve_goal. }
   {
     rewrite last_lookup list_lookup_lookup_total_lt /=; [|lia].
     eexists _. split; [done|].

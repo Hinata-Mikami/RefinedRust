@@ -57,31 +57,11 @@ Proof.
   { revert select ((ly_size _ * _)%nat ≤ _).
     move: Hcap. clear. nia. }
   {
-    (* TODO *)
-    assert (length self < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
-      apply lookup_lt_Some in Hlook_3.
-      lia. }
-    simpl in Hlt.
-
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply list_lookup_insert_Some'. split; normalize_and_simpl_goal.
-    { lia. }
-    { rewrite Hxs. erewrite project_vec_els_lookup_mono; [solve_goal|lia|done]. }
+    rewrite Hxs. erewrite project_vec_els_lookup_mono; [solve_goal|lia|done].
   }
   {
-    (* TODO should get this in a different way *)
-    assert (length self < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
-      apply lookup_lt_Some in Hlook_3.
-      lia. }
-    simpl in *. lia. }
-  {
-    (* TODO we should get this in a different way *)
-    assert (length self < length xs') as Hlt.
-    { opose proof* (Hlook_2 (length self)) as Hlook_3; first (simpl; lia).
-      apply lookup_lt_Some in Hlook_3.
-      lia. }
     rewrite project_vec_els_insert_lt /=; [|lia].
     apply (list_eq_split (length self)).
     - rewrite take_insert_ge/=; [|lia].
