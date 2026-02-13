@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  all: apply ly_align_ge_1.
+  all: specialize (ly_align_ge_1 T_st_ly); lia.
   Unshelve. all: print_remaining_sidecond.
 Qed.
 End proof.

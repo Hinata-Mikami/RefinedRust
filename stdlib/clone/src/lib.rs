@@ -63,3 +63,21 @@ impl Copy for i64 { }
 impl Copy for i128 { }
 impl Copy for bool { }
 impl Copy for char { }
+
+#[rr::verify]
+impl<T: ?Sized> Clone for *const T {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[rr::verify]
+impl<T: ?Sized> Clone for *mut T {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Copy for *mut T { }
+impl<T: ?Sized> Copy for *const T { }
+

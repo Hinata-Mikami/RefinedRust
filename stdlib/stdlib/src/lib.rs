@@ -18,6 +18,7 @@
 #![rr::export_include("option")]
 #![rr::export_include("mem")]
 #![rr::export_include("ptr")]
+#![rr::export_include("ptr_advanced")]
 #![rr::export_include("result")]
 #![rr::export_include("rr_internal")]
 #![rr::export_include("index")]

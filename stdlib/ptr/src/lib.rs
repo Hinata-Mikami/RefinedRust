@@ -12,8 +12,8 @@
 #![rr::import("rrstd.ptr.theories", "specs")]
 
 mod alignment;
-mod non_null;
 
+use core::ptr;
 use core::mem;
 
 #[rr::export_as(core::ptr::null)]
@@ -448,6 +448,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[rr::export_as(core::ptr::dangling)]
 #[rr::exists("l")]
 #[rr::returns("l")]
+#[rr::ensures("l.(loc_a) ≠ 0")]
 #[rr::ensures("l `has_layout_loc` {ly_of T}")]
 #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
 #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
@@ -457,6 +458,7 @@ pub const fn dangling<T>() -> *const T {
 #[rr::export_as(core::ptr::dangling_mut)]
 #[rr::exists("l")]
 #[rr::returns("l")]
+#[rr::ensures("l.(loc_a) ≠ 0")]
 #[rr::ensures("l `has_layout_loc` {ly_of T}")]
 #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
 #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]

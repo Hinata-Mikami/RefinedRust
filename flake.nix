@@ -259,6 +259,11 @@
               withTheories = true;
             }
             {
+              pname = "stdlib-ptr-advanced";
+              src = ./stdlib/ptr_advanced;
+              libDeps = with packages; [stdlib-mem stdlib-ptr stdlib-option stdlib-clone];
+            }
+            {
               pname = "stdlib-sized";
               src = ./stdlib/sized;
             }
