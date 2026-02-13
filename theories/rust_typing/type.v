@@ -1778,6 +1778,8 @@ Ltac solve_type_proper_step :=
     end
 
   | solve_type_proper_hook
+  | apply type_dist_use_ne; first by apply _
+  | eapply type_dist2_dist; apply _
 
   (*| done*)
   (*| eapply dist_later_lt; [done | lia]*)
