@@ -116,6 +116,7 @@ pub(crate) enum Type {
     Bool,
     Param(u32),
     Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Type>),
+    RawPtr(#[serde(with = "MutabilityDef")] ast::Mutability, Box<Type>),
     // TODO: more cases
 }
 
@@ -160,6 +161,11 @@ impl Type {
             Self::Char => Some(tcx.mk_ty_from_kind(ty::TyKind::Char)),
             Self::Int(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Int(it.to_owned()))),
             Self::Uint(it) => Some(tcx.mk_ty_from_kind(ty::TyKind::Uint(it.to_owned()))),
+            Self::RawPtr(m, ty) => {
+                let translated_ty = ty.to_type(tcx)?;
+                let kind = ty::TyKind::RawPtr(translated_ty, *m);
+                Some(tcx.mk_ty_from_kind(kind))
+            },
             Self::Param(idx) => {
                 // use a dummy. For matching with the procedures from `unification.rs`, we only
                 // need the indices to be consistent.
@@ -195,6 +201,10 @@ pub(crate) fn convert_ty_to_flat_type<'tcx>(env: &Environment<'tcx>, ty: ty::Ty<
         ty::TyKind::Int(it) => Some(Type::Int(it.to_owned())),
         ty::TyKind::Uint(it) => Some(Type::Uint(it.to_owned())),
         ty::TyKind::Param(p) => Some(Type::Param(p.index)),
+        ty::TyKind::RawPtr(ty, m) => {
+            let converted_ty = convert_ty_to_flat_type(env, *ty)?;
+            Some(Type::RawPtr(*m, Box::new(converted_ty)))
+        },
         ty::TyKind::Ref(r, ty, m) => {
             let converted_ty = convert_ty_to_flat_type(env, *ty)?;
 

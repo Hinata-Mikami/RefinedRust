@@ -96,6 +96,33 @@ pub(crate) fn unify_types<'tcx>(
             }
             unify_types(*ty1, *ty2, mapping)
         },
+        ty::TyKind::RawPtr(ty1, m1) => {
+            let ty::TyKind::RawPtr(ty2, m2) = ty2.kind() else {
+                return false;
+            };
+            if m1 != m2 {
+                return false;
+            }
+            unify_types(*ty1, *ty2, mapping)
+        },
+        ty::TyKind::Bool => {
+            matches!(ty2.kind(), ty::TyKind::Bool)
+        },
+        ty::TyKind::Char => {
+            matches!(ty2.kind(), ty::TyKind::Char)
+        },
+        ty::TyKind::Int(int_ty1) => {
+            let ty::TyKind::Int(int_ty2) = ty2.kind() else {
+                return false;
+            };
+            int_ty1 == int_ty2
+        },
+        ty::TyKind::Uint(int_ty1) => {
+            let ty::TyKind::Uint(int_ty2) = ty2.kind() else {
+                return false;
+            };
+            int_ty1 == int_ty2
+        },
         ty::TyKind::Param(p1) => {
             let ty::TyKind::Param(p2) = ty2.kind() else {
                 return false;
