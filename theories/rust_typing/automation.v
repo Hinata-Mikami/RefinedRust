@@ -39,11 +39,6 @@ Ltac solve_protected_eq_hook ::=
       unfold reverse_coercion
   end.
 
-Ltac can_solve_hook ::= first [
-  match goal with
-  | |- _ ≠ _ => discriminate
-  end | open_scache; solve_goal].
-
 Ltac liTrace_hook info ::=
   add_case_distinction_info info.
 
@@ -1013,22 +1008,10 @@ Ltac solve_enum_layout_spec_discriminant_in_range :=
   init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_caesium_defs; simpl; lia.
 
 (** ** Sideconditions *)
-
-Ltac prepare_sideconditions :=
-  li_unfold_lets_in_context;
-  unfold_instantiated_evars;
-  repeat match goal with | H : BLOCK_PRECOND _ _ |- _ => clear H end;
-  (* get rid of Q *)
-  repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
-  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
-  unfold_no_enrich;
-  clear_unused_vars.
-
 Ltac shelve_sidecond_hook ::=
   unfold name_hint, discriminate_hint.
 
 Ltac sidecond_hook_init :=
-  unfold_no_enrich;
   open_cache;
   intros;
   prepare_initial_coq_context;
@@ -1183,9 +1166,22 @@ Proof.
   by apply HT.
 Qed.
 
+Ltac prepare_sideconditions :=
+  li_unfold_lets_in_context;
+  unfold_instantiated_evars;
+  repeat match goal with | H : BLOCK_PRECOND _ _ |- _ => clear H end;
+  (* get rid of Q *)
+  repeat match goal with | H := CODE_MARKER _ |- _ => clear H end;
+  repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
+  unfold_no_enrich;
+  clear_unused_vars.
+
+(** specialized handlers for some sideconditions for which we want to bypass the standard normalization *)
 Ltac liSidecond_hook P ::=
 lazymatch P with
-  | trait_incl_marker _ => split; [shelve_sidecond |]
+  | trait_incl_marker _ =>
+      (* terms here are huge, and normalizing is very expensive *)
+      split; [shelve_sidecond |]
   | fast_lia_hint _ => split; [clear; unfold fast_lia_hint, num_cred; simpl; lia | ]
   | fast_eq_hint _ =>
       split; [
@@ -1195,6 +1191,7 @@ lazymatch P with
       split;
       [ first [fast_done | prepare_sideconditions; liSimpl; solve [sidecond_hook] | shelve_sidecond] | ]
 end.
+(** If this is not a built-in sidecond, cache it so we don't have to solve it again in the future *)
 Ltac hooks.liAfterSidecond_hook P ::=
   first [is_builtin_sidecond P
   | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
@@ -1253,7 +1250,7 @@ Ltac solve_goal_final_hook ::=
   refined_solver lia
 .
 
-(** The main sidecondition tactic: basically, an adaptation of [solve_goal].
+(** The main sidecondition tactic, called after [sidecond_solver]: basically, an adaptation of [solve_goal].
   Important: does not change the goal if it doesn't fully solve it. *)
 Ltac sidecond_hammer_it :=
   simpl;
@@ -1278,6 +1275,15 @@ Ltac sidecond_hammer :=
   sidecond_hammer_normalize;
   try sidecond_hammer_it
 .
+
+(** For solving [CanSolve] conditions *)
+Ltac can_solve_hook ::=
+  first [
+    match goal with
+    | |- _ ≠ _ => discriminate
+    end
+ | (* pruning the context first makes this have a much better worst-case behavior *)
+  open_scache; prepare_sideconditions; solve_goal].
 
 (* Solve this sidecondition within Lithium *)
 Ltac solve_function_subtype_hook ::=

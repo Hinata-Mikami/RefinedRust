@@ -247,7 +247,8 @@ Section call.
       (* finally, prove the sidecondition *)
       fps.(fp_Sc) π ∗
       ⌜Forall (lctx_lft_alive E L2) L2.*1.*2⌝ ∗
-      ⌜∀ ϝ, elctx_sat (((λ '(_, κ, _), ϝ ⊑ₑ κ) <$> L2) ++ E) L2 (fps.(fp_elctx) ϝ)⌝ ∗
+      (* don't normalize this sidecondition, directly shelve it: term is huge and expensive *)
+      ⌜shelve_hint (∀ ϝ, elctx_sat (((λ '(_, κ, _), ϝ ⊑ₑ κ) <$> L2) ++ E) L2 (fps.(fp_elctx) ϝ))⌝ ∗
       (* postcondition *)
       ∀ v x', (* v = retval, x' = post existential *)
       (* also donate some credits we are generating here *)
