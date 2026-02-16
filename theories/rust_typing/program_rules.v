@@ -2604,6 +2604,40 @@ Section subsume.
     iIntros "H Hw HP". iApply "H". by iApply "Hw".
   Qed.
 
+  Lemma typed_unop_simplify E L f v P n ot {SH : SimplifyHyp P (Some n)} op T:
+    (SH (find_in_context (FindValP v) (λ P, typed_un_op E L f v P op ot T))).(i2p_P)
+    ⊢ typed_un_op E L f v P op ot T.
+  Proof.
+    rewrite /typed_un_op.
+    iIntros "Hs Hv".
+    iPoseProof (i2p_proof with "Hs Hv") as "Ha".
+    rewrite /FindValP/find_in_context/=.
+    iDestruct "Ha" as (P') "[HP HT]". by iApply ("HT" with "[$]").
+  Qed.
+  Definition typed_unop_simplify_inst := [instance typed_unop_simplify].
+  Global Existing Instance typed_unop_simplify_inst | 1000.
+
+  Lemma typed_binop_simplify E L f v1 P1 v2 P2 o1 o2 ot1 ot2 {SH1 : SimplifyHyp P1 o1} {SH2 : SimplifyHyp P2 o2} `{!TCOneIsSome o1 o2} op T:
+    let G1 := (SH1 (find_in_context (FindValP v1) (λ P, typed_bin_op E L f v1 P v2 P2 op ot1 ot2 T))).(i2p_P) in
+    let G2 := (SH2 (find_in_context (FindValP v2) (λ P, typed_bin_op E L f v1 P1 v2 P op ot1 ot2 T))).(i2p_P) in
+    let G :=
+       match o1, o2 with
+     | Some n1, Some n2 => if (n2 ?= n1)%N is Lt then G2 else G1
+     | Some n1, _ => G1
+     | _, _ => G2
+       end in
+    G
+    ⊢ typed_bin_op E L f v1 P1 v2 P2 op ot1 ot2 T.
+  Proof.
+    iIntros "/= Hs Hv1 Hv2".
+    destruct o1 as [n1|], o2 as [n2|] => //. 1: case_match.
+    1,3,4: iPoseProof (i2p_proof with "Hs Hv1") as (P) "[Hv Hsub]".
+    4,5,6: iPoseProof (i2p_proof with "Hs Hv2") as (P) "[Hv Hsub]".
+    all: by simpl in *; iApply ("Hsub" with "[$]").
+  Qed.
+  Definition typed_binop_simplify_inst := [instance typed_binop_simplify].
+  Global Existing Instance typed_binop_simplify_inst | 1000.
+
   Lemma type_val_context v π (T : typed_value_cont_t) :
     (find_in_context (FindVal v) (λ '(existT rt (ty, r, π', m')),
       ⌜π = π'⌝ ∗ T m' rt ty r)) ⊢
@@ -4107,15 +4141,18 @@ Section subsume.
   Qed.
 
   Lemma type_exprs E L f s e fn R ϝ :
-    (typed_val_expr E L f e (λ L' v m rt ty r,
-      v ◁ᵥ{f.1, m} r @ ty -∗ typed_stmt E L' f s fn R ϝ))
+    (typed_val_expr E L f e (λ L2 v m rt ty r,
+      introduce_with_hooks E L2 (v ◁ᵥ{f.1, m} r @ ty) (λ L3,
+        typed_stmt E L3 f s fn R ϝ)))
     ⊢ typed_stmt E L f (ExprS e s) fn R ϝ.
   Proof.
     iIntros "Hs". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
-    iApply ("Hs" with "CTX HE HL Hf"). iIntros (L' v m rt ty r) "HL Hf Hv Hs".
+    iApply ("Hs" with "CTX HE HL Hf").
+    iIntros (L' v m rt ty r) "HL Hf Hv Hs".
     iApply wps_exprs.
     iApply physical_step_intro; iNext.
-    by iApply ("Hs" with "Hv CTX HE HL Hf").
+    iMod ("Hs" with "[] HE HL Hv") as "(%L2 & HL & HT)"; first done.
+    by iApply ("HT" with "CTX HE HL Hf").
   Qed.
 
   Definition local_fresh (x : var_name) (locals : list var_name) := x ∉ locals.
@@ -4611,10 +4648,10 @@ Section subsume.
   (* Typing rule for [Return] *)
   Lemma type_return E L f e fn (R : typed_stmt_R_t) ϝ :
     typed_val_expr E L f e (λ L' v m rt ty r,
-      v ◁ᵥ{f.1, m} r @ ty -∗
+      introduce_with_hooks E L' (v ◁ᵥ{f.1, m} r @ ty) (λ L2,
       find_in_context (FindFrameLocals f) (λ locals : list var_name,
       trigger_tc (FindLocalLocs f locals) (λ locs,
-      typed_context_fold (typed_context_fold_stratify_interp f.1) E L' (CtxFoldStratifyAll StratRefoldOpened) locs ([], True%I) (λ L2 m' acc,
+      typed_context_fold (typed_context_fold_stratify_interp f.1) E L2 (CtxFoldStratifyAll StratRefoldOpened) locs ([], True%I) (λ L2 m' acc,
         introduce_with_hooks E L2 (type_ctx_interp f.1 acc.1 ∗ acc.2) (λ L3,
           prove_with_subtype E L3 true ProveDirect (
             foldr (λ (e : var_name) T,
@@ -4627,7 +4664,7 @@ Section subsume.
               The remaining goal is fully encoded by [R v], so the continuation is empty.
             *)
             R v L4
-            )))))))
+            ))))))))
     ⊢ typed_stmt E L f (return e) fn R ϝ.
   Proof.
     iIntros "He". iIntros (?) "#CTX #HE HL Hf Hcont". wps_bind.
@@ -4635,8 +4672,9 @@ Section subsume.
     iApply ("He" with "CTX HE HL Hf").
     iIntros (L' v m rt ty r) "HL Hf Hv HR".
     iApply fupd_wpe.
-    iPoseProof ("HR" with "Hv") as "(%locals & Hlocals & %locs & % & HT)".
-    iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L2 & %acc & %m' & HL & Hstep & HT)"; [done.. | | ].
+    iMod ("HR" with "[] HE HL Hv") as "(%L2 & HL & HR)"; first done.
+    iDestruct "HR" as "(%locals & Hlocals & %locs & % & HT)".
+    iMod ("HT" with "[] [] [] CTX HE HL []") as "(%L3 & %acc & %m' & HL & Hstep & HT)"; [done.. | | ].
     { simpl. iApply logical_step_intro. iSplitR; last done. rewrite /type_ctx_interp. done. }
     iDestruct "CTX" as "(LFT & LLCTX)".
     iModIntro. wpe_bind.
@@ -4647,8 +4685,8 @@ Section subsume.
     iIntros "Hacc".
     rewrite /typed_context_fold_stratify_interp.
     destruct acc as (ctx & R2).
-    iMod ("HT" with "[] HE HL Hacc") as "(%L3 & HL & HT)"; first done.
-    iMod ("HT" with "[] [] [] [$] HE HL") as "(%L4 & % & %R3 & HP & HL & HT)"; [done.. | ].
+    iMod ("HT" with "[] HE HL Hacc") as "(%L4 & HL & HT)"; first done.
+    iMod ("HT" with "[] [] [] [$] HE HL") as "(%L5 & % & %R3 & HP & HL & HT)"; [done.. | ].
     iApply (wpe_maybe_logical_step with "HP"); [done.. | ].
     iModIntro. iApply wp_skip.
     iApply physical_step_intro; iNext.
@@ -4656,7 +4694,7 @@ Section subsume.
     iApply wps_fupd.
     iApply wps_return.
     unfold li_tactic, llctx_find_llft_goal.
-    iMod ("HT" with "[] HE HL HR2") as "(%L5 & HL & HT)"; first done.
+    iMod ("HT" with "[] HE HL HR2") as "(%L6 & HL & HT)"; first done.
 
     unfold typed_stmt_post_cond.
     iSpecialize ("Hcont" $! _ v with "HL Hf Hlocals").

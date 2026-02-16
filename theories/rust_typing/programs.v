@@ -684,8 +684,9 @@ Section judgments.
     learn_from_hyp_val_proof :
       ∀ F π v m, ⌜lftE ⊆ F⌝ -∗ v ◁ᵥ{π, m} r @ ty ={F}=∗ v ◁ᵥ{π, m} r @ ty ∗ learn_from_hyp_val_Q;
   }.
+  (* For specific forms of values, we can override this with stronger rules. *)
   Global Program Instance learn_hyp_val π v m {rt} (ty : type rt) r :
-    LearnFromHypVal ty r → LearnFromHyp (v ◁ᵥ{π, m} r @ ty) :=
+    LearnFromHypVal ty r → LearnFromHyp (v ◁ᵥ{π, m} r @ ty) | 100 :=
     λ H, {| learn_from_hyp_Q := learn_from_hyp_val_Q |}.
   Next Obligation. intros π v m rt ty r [Q HQ]. done. Qed.
 

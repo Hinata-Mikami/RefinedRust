@@ -131,6 +131,20 @@ End discriminant.
 Section subtype.
   Context `{!typeGS Σ}.
 
+  Lemma enum_discriminant_t_simplify_hyp {rt} (en : enum rt) v π r T :
+    (∀ tag, ⌜enum_tag en r = Some tag⌝ -∗
+      v ◁ᵥ{π, MetaNone} els_lookup_tag (enum_els en) tag @ int (els_tag_it (enum_els en)) -∗
+      T)
+    ⊢ simplify_hyp (v ◁ᵥ{π, MetaNone} r @ enum_discriminant_t en) T.
+  Proof.
+    iIntros "HT Hv".
+    iEval (rewrite /ty_own_val/=) in "Hv".
+    iDestruct "Hv" as "(_ & %tag & %Htag & Hv)".
+    by iApply ("HT" with "[] Hv").
+  Qed.
+  Definition enum_discriminant_t_simplify_hyp_inst := [instance @enum_discriminant_t_simplify_hyp with 100%N].
+  Global Existing Instance enum_discriminant_t_simplify_hyp_inst.
+
   Lemma type_incl_enum_discriminant_int {rt} (en : enum rt) r tag  :
     en.(enum_tag) r = Some tag →
     ⊢ type_incl r (els_lookup_tag (enum_els en) tag) (enum_discriminant_t en) (int (els_tag_it (enum_els en))).

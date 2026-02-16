@@ -186,7 +186,7 @@ Proof.
     + by iApply big_sepL2_nil.
     + iExists ⊤ => /=.
       iFrame. do 2 iR.
-      iIntros "_". iExists *[], -[].
+      iIntros (??) "_ HL _". iModIntro. iFrame. iExists *[], -[].
       rewrite /li_tactic/ensure_evars_instantiated_goal.
       iR. iExists tt.
       iIntros (????) "#CTX #HE HL".
@@ -200,7 +200,8 @@ Proof.
       simpl.
       iSplitR; first done.
       iSplitR. { iPureIntro. by apply Forall_nil. }
-      iSplitR. { iPureIntro. intros.
+      iSplitR. { iPureIntro. unfold shelve_hint.
+        intros.
         rewrite /ty_outlives_E ty_lfts_unfold.
         rewrite ty_wf_E_unfold. apply elctx_sat_nil. }
       iIntros (v []).

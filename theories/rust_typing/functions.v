@@ -222,7 +222,7 @@ Section call.
       ⌜π = f.1⌝ ∗
       (* TODO: do something to ensure invariants are closed before *)
       ⌜mask = ⊤⌝ ∗
-      (([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) -∗
+      introduce_with_hooks E L ([∗ list] v;t ∈ vl; tys, let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) (λ L',
       (*∃ (Heq : lfts = length eκs),*)
       ∃ (κs : prod_vec lft lfts) tys,
       (* TODO: currently we instantiate evars very early to make the xt injection work. maybe move that down once we have a better design *)
@@ -233,7 +233,7 @@ Section call.
       let fps := (fp κs tys).(fn_p) x in
       (* ensure that type variable evars have been instantiated now *)
       (* show typing for the function's actual arguments. *)
-      prove_with_subtype E L false ProveDirect ([∗ list] v;t ∈ vl; fps.(fp_atys), let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) (λ L1 _ R2,
+      prove_with_subtype E L' false ProveDirect ([∗ list] v;t ∈ vl; fps.(fp_atys), let '(existT rt (ty, r)) := t in v ◁ᵥ{π, MetaNone} r @ ty) (λ L1 _ R2,
       R2 -∗
       (* the syntypes of the actual arguments match with the syntypes the function assumes *)
       ⌜sta = fmap (λ '(existT rt (ty, _)), ty.(ty_syn_type) MetaNone) fps.(fp_atys)⌝ ∗
@@ -259,7 +259,8 @@ Section call.
     simpl. iIntros "HT (-> & %fn & -> & He & %Halg & Hfn) Htys" (Φ) "#CTX #HE HL Hf HΦ".
     rewrite /li_tactic/ensure_evars_instantiated_goal.
     iDestruct "HT" as (mask) "(Hna & -> & -> & HT) /=".
-    iDestruct ("HT" with "Htys") as "(%aκs & %stys & %Heq & %x & HP)".
+    iMod ("HT" with "[] HE HL Htys") as "(%L' & HL & HT)"; first done.
+    iDestruct "HT" as "(%aκs & %stys & %Heq & %x & HP)".
     (*set (aκs := list_to_tup eκs).*)
     cbn.
     set (fps := (fp aκs stys).(fn_p) x).

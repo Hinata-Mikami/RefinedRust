@@ -938,6 +938,19 @@ Definition is_power_of_two (n : nat) := ∃ m : nat, n = (2^m)%nat.
 Global Arguments is_power_of_two : simpl never.
 Global Typeclasses Opaque is_power_of_two.
 
+Global Instance is_power_of_two_dec n :
+  Decision (is_power_of_two n).
+Proof.
+  destruct n as [ | n].
+  - right.  intros (m & Heq).
+    eapply Nat.pow_nonzero; last done.
+    done.
+  - destruct (decide (Nat.log2 (S n) = Nat.log2_up (S n))) as [Heq | Heq].
+    all: setoid_rewrite Nat.log2_log2_up_exact in Heq; [ | lia].
+    + by left.
+    + by right.
+Qed.
+
 Fixpoint Pos_factor2 (p : positive) : nat :=
   match p with
   | xO p => S (Pos_factor2 p)

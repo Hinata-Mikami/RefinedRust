@@ -54,17 +54,6 @@ Global Hint Unfold alias_ptr_t : tyunfold.
 Section rules.
   Context `{!typeGS Σ}.
 
-
-  (* TODO interaction with ghost drop? *)
-  Lemma alias_ptr_simplify_hyp (v : val) π (l : loc) m T :
-    (⌜m = MetaNone⌝ -∗ ⌜v = l⌝ -∗ ⌜l.(loc_a) ∈ USize⌝ -∗ T)
-    ⊢ simplify_hyp (v ◁ᵥ{π, m} l @ alias_ptr_t) T.
-  Proof.
-    iIntros "HT (% & %Hv & %)". by iApply "HT".
-  Qed.
-  Definition alias_ptr_simplify_hyp_inst := [instance @alias_ptr_simplify_hyp with 0%N].
-  Global Existing Instance alias_ptr_simplify_hyp_inst.
-
   Lemma alias_ptr_simplify_goal_fast π (l l2 : loc) m `{!CanSolve (l.(loc_a) ∈ USize)} T :
     (⌜l = l2⌝ ∗ ⌜m = MetaNone⌝ ∗ T)
     ⊢ simplify_goal (l ◁ᵥ{π, m} l2 @ alias_ptr_t) T.
@@ -91,9 +80,9 @@ Section rules.
   Definition alias_ptr_simplify_goal_inst := [instance @alias_ptr_simplify_goal with 1%N].
   Global Existing Instance alias_ptr_simplify_goal_inst.
 
-  Global Program Instance learn_from_hyp_val_alias_ptr l :
-    LearnFromHypVal (alias_ptr_t) l :=
-    {| learn_from_hyp_val_Q := ⌜l.(loc_a) ∈ USize⌝ |}.
+  Global Program Instance learn_from_hyp_alias_ptr v π m l :
+    LearnFromHyp (v ◁ᵥ{π, m} l @ alias_ptr_t) | 10 :=
+    {| learn_from_hyp_Q := ⌜m = MetaNone⌝ ∗ ⌜v = val_of_loc l⌝ ∗ ⌜l.(loc_a) ∈ USize⌝ |}.
   Next Obligation.
     iIntros (??????) "Hv".
     rewrite /ty_own_val/=.

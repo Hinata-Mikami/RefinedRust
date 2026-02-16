@@ -148,6 +148,15 @@ Proof.
 Qed.
 
 (*** Lemmas about [int_type] *)
+(* Radium uses 64-bit pointers *)
+Lemma int_elem_of_u64_usize x :
+  x ∈ U64 ↔ x ∈ USize.
+Proof.
+  rewrite /elem_of/int_elem_of_it.
+  rewrite !MinInt_eq !MaxInt_eq.
+  done.
+Qed.
+
 Lemma MaxInt_signed_lt_unsigned it :
   (MaxInt (it_to_signed it) < MaxInt (it_to_unsigned it))%Z.
 Proof.

@@ -467,7 +467,8 @@ End test.
 
 Lemma tac_typed_val_expr_bind' `{!typeGS Σ} E L f K e T :
   typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
-    v ◁ᵥ{f.1, m} r @ ty -∗ typed_val_expr E L' f (W.to_expr (W.fill K (W.Val v))) T) -∗
+    introduce_with_hooks E L' (v ◁ᵥ{f.1, m} r @ ty) (λ L2,
+      typed_val_expr E L2 f (W.to_expr (W.fill K (W.Val v))) T)) -∗
   typed_val_expr E L f (W.to_expr (W.fill K e)) T.
 Proof.
   iIntros "He".
@@ -476,13 +477,16 @@ Proof.
   iApply tac_wpe_bind'.
   iApply ("He" with "CTX HE HL Hf").
   iIntros (L' v m rt ty r) "HL Hf Hv Hcont'".
-  iApply ("Hcont'" with "Hv CTX HE HL Hf"). done.
+  rewrite /introduce_with_hooks.
+  iMod ("Hcont'" with "[] HE HL Hv") as "(%L2 & HL & Hcont')"; first done.
+  iApply ("Hcont'" with "CTX HE HL Hf"). done.
 Qed.
 Lemma tac_typed_val_expr_bind `{!typeGS Σ} E L f e Ks e' T :
   W.find_expr_fill e false = Some (Ks, e') →
   typed_val_expr E L f (W.to_expr e') (λ L' v m rt ty r,
     if Ks is [] then T L' v m rt ty r else
-      v ◁ᵥ{f.1, m} r @ ty -∗ typed_val_expr E L' f (W.to_expr (W.fill Ks (W.Val v))) T) -∗
+    introduce_with_hooks E L' (v ◁ᵥ{f.1, m} r @ ty) (λ L2,
+      typed_val_expr E L2 f (W.to_expr (W.fill Ks (W.Val v))) T)) -∗
   typed_val_expr E L f (W.to_expr e) T.
 Proof.
   move => /W.find_expr_fill_correct ->. move: Ks => [|K Ks] //.
@@ -503,21 +507,25 @@ Tactic Notation "typed_val_expr_bind" :=
 Lemma tac_typed_stmt_bind `{!typeGS Σ} E L f s e Ks fn ϝ T :
   W.find_stmt_fill s = Some (Ks, e) →
   typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
-    v ◁ᵥ{f.1, m} r @ ty -∗ typed_stmt E L' f (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ) -∗
+    introduce_with_hooks E L' (v ◁ᵥ{f.1, m} r @ ty) (λ L2,
+      typed_stmt E L2 f (W.to_stmt (W.stmt_fill Ks (W.Val v))) fn T ϝ)) -∗
   typed_stmt E L f (W.to_stmt s) fn T ϝ.
 Proof.
   move => /W.find_stmt_fill_correct ->. iIntros "He".
   rewrite /typed_stmt.
   iIntros (?) "#CTX #HE HL Hf Hcont".
-  rewrite stmt_wp_eq. iIntros (? rf ?) "?".
+  rewrite stmt_wp_eq. iIntros (? rf ?) "Hret".
   have [Ks' HKs']:= W.stmt_fill_correct Ks f.1 rf. rewrite HKs'.
   iApply wp_bind.
-  iApply (wp_wand with "[He HL Hf]").
+  iApply (wp_wand _ _ _ _  with "[He HL Hf]").
   { rewrite /typed_val_expr.
+    iApply wp_fupd.
     iSpecialize ("He" with "CTX HE HL Hf").
     rewrite expr_wp_unfold. iApply "He".
     iIntros (L' v m rt ty r) "HL Hf Hv Hcont".
-    iApply ("Hcont" with "Hv CTX HE HL Hf"). }
+    rewrite /introduce_with_hooks.
+    iMod ("Hcont" with "[] HE HL Hv") as "(%L2 & HL & Hcont)"; first done.
+    iApply ("Hcont" with "CTX HE HL Hf"). }
   iIntros (v) "HWP".
   rewrite -(HKs' (W.Val _)) /W.to_expr.
   iSpecialize ("HWP" with "Hcont").
