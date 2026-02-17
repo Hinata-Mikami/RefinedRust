@@ -16,6 +16,7 @@ Ltac refined_solver_init :=
   | |- Is_true _ => repeat setoid_rewrite Is_true_eq
   end.
 Ltac refined_solver tac := fail.
+Ltac refined_solver_norec tac := fail.
 Ltac refined_solver_step_1 tac :=
   match goal with
   (**i solve the goal *)
@@ -58,13 +59,29 @@ Ltac refined_solver_step_2 tac :=
     match goal with
     | H : ?P → ?Q |- _ =>
       let H' := fresh "H" in
-      assert P as H'; [clear H; refined_solver tac | specialize (H H'); clear H']
+      (* When instantiating an assumption, we can prune early and do not descend further recursively.
+         Otherwise, we should just have instantiated something else first to afterwards make progress when instantiating this assumption. *)
+      assert P as H'; [clear H; refined_solver_norec tac | specialize (H H'); clear H']
     end
   end.
+Ltac refined_solver_step_2_norec tac :=
+  (**i use recursion to enable backtracking on the following clauses. *)
+  match goal with
+  (**i instantiation of the conclusion *)
+  | |- ∃ x, _ => no_new_unsolved_evars ltac:(eexists; refined_solver tac)
+  | |- _ ∨ _ => first [left; refined_solver tac | right; refined_solver tac]
+  end.
+
 Ltac refined_solver_step tac :=
   repeat (refined_solver_step_1 tac); (refined_solver_step_2 tac).
 Ltac refined_solver tac ::=
   solve [refined_solver_init; repeat (refined_solver_step tac)].
+
+Ltac refined_solver_step_norec tac :=
+  repeat (refined_solver_step_1 tac); (refined_solver_step_2_norec tac).
+Ltac refined_solver_norec tac ::=
+  solve [refined_solver_init; repeat (refined_solver_step_norec tac)].
+
 Tactic Notation "refined_solver" tactic(t) := refined_solver t.
 Tactic Notation "refined_solver" := refined_solver eauto.
 
