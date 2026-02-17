@@ -25,7 +25,7 @@ pub const fn mem_align_of<T>() -> usize {
 
 #[rr::code_shim("mem_align_log_of")]
 #[rr::returns("ly_align_log {ly_of T}")]
-pub const fn mem_align_log_of<T>() -> usize {
+const fn mem_align_log_of<T>() -> usize {
     unimplemented!();
 }
 

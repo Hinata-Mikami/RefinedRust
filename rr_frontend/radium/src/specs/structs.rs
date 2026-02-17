@@ -76,16 +76,26 @@ impl<'def> AbstractVariant<'def> {
     }
 
     /// The core of generating the sls definition, without the section + context intro.
+    /// `opt_enum_name` is the optional name of a surrounding enum, to make recursive references working.
     #[must_use]
-    pub(crate) fn generate_coq_sls_def_core(&self, typarams: &coq::binder::BinderList) -> String {
+    pub(crate) fn generate_coq_sls_def_core(
+        &self,
+        typarams: &coq::binder::BinderList,
+        opt_enum_name: Option<&str>,
+    ) -> String {
         let mut out = String::with_capacity(200);
         let indent = "  ";
 
         // intro to main def
         write!(out, "{indent}Definition {} {typarams} : struct_layout_spec :=\n", self.sls_def_name,)
             .unwrap();
+
         // for recursive uses
         write!(out, "{indent}{indent}let {} {typarams} := UnitSynType in\n", self.st_def_name,).unwrap();
+        if let Some(enum_name) = opt_enum_name {
+            write!(out, "{indent}{indent}let {enum_name} {typarams} := UnitSynType in\n").unwrap();
+        }
+
         write!(out, "{indent}{indent}mk_sls \"{}\" [", self.name).unwrap();
 
         push_str_list!(out, &self.fields, ";", |(name, ty)| {
@@ -122,7 +132,7 @@ impl<'def> AbstractVariant<'def> {
         let typarams = scope.get_all_ty_params_with_assocs().get_coq_ty_st_params();
         out.push('\n');
 
-        write!(out, "{}", self.generate_coq_sls_def_core(&typarams)).unwrap();
+        write!(out, "{}", self.generate_coq_sls_def_core(&typarams, None)).unwrap();
 
         // finish
         write!(out, "End {}.\n", self.sls_def_name).unwrap();

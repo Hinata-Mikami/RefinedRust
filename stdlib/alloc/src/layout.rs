@@ -1,12 +1,23 @@
 #![rr::include("ptr")]
 #![rr::include("result")]
+#![rr::include("mem")]
 #![rr::import("rrstd.alloc.theories", "layout")]
 
 use std::ptr::Alignment;
+use core::mem;
 
 
 #[rr::export_as(alloc::alloc::Layout)]
 #[rr::refined_by("l" : "rust_layout")]
+// Rust requires:
+// > All layouts have an associated size and a power-of-two alignment. The size, when rounded up to
+// > the nearest multiple of `align`, does not overflow `isize` (i.e., the rounded value will always be
+// > less than or equal to `isize::MAX`).
+// For convenience we strengthen this and require `size` to be a multiple of `align`.
+// (This is more convenient, as it then fits Rust's actual layout requirements).
+// TODO: do we run into an problems in desirable cases for this?
+#[rr::inv("layout_wf l")]
+#[rr::inv("Z.of_nat l.(layout_sz) ∈ isize")]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
     #[rr::field("Z.of_nat l.(layout_sz)")]
@@ -28,25 +39,44 @@ pub struct LayoutError;
 
 #[rr::export_as(alloc::alloc::Layout)]
 impl Layout {
-    #[rr::params("x")]
-    #[rr::args("x")]
-    #[rr::returns("Z.of_nat x.(layout_sz)")]
+    #[rr::returns("Z.of_nat self.(layout_sz)")]
     pub const fn size(&self) -> usize {
         self.size
     }
 
-    /*
+    #[rr::returns("Z.of_nat (layout_alignment_nat self)")]
+    pub const fn align(&self) -> usize {
+        self.align.as_usize()
+    }
+
+    // TODO: for stronger spec we'd need the weaker invariant on the size...
+    #[rr::requires("is_power_of_two (Z.to_nat align)")]
+    #[rr::requires("size ∈ isize")]
+    #[rr::requires("Z.divide align size")]
+    #[rr::returns("Ok (mk_rust_layout (Z.to_nat size) (alignment_of_align align))")]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
+        Ok(unsafe {Self::from_size_align_unchecked(size, align) })
+        /*
         if Layout::is_size_align_valid(size, align) {
             // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
-            unsafe { Ok(Layout { size, align: mem::transmute(align) }) }
+            unsafe { Ok(Layout { size, align: Alignment::new_unchecked(align) }) }
         } else {
             Err(LayoutError)
         }
+        */
+    }
+
+    #[rr::requires("is_power_of_two (Z.to_nat align)")]
+    #[rr::requires("size ∈ isize")]
+    #[rr::requires("Z.divide align size")]
+    #[rr::returns("mk_rust_layout (Z.to_nat size) (alignment_of_align align)")]
+    pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+        // SAFETY: the caller is required to uphold the preconditions.
+        unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
     }
 
 
-
+    /*
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
         let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
@@ -76,4 +106,10 @@ impl Layout {
         unsafe { unchecked_sub(isize::MAX as usize + 1, align.as_usize()) }
     }
     */
+
+    #[rr::returns("mk_rust_layout (ly_size {ly_of T}) (alignment_of_align (ly_align {ly_of T}))")]
+    pub const fn new<T>() -> Self {
+        unsafe { Self::from_size_align_unchecked(mem::size_of::<T>(), mem::align_of::<T>()) }
+        //<T as SizedTypeProperties>::LAYOUT
+    }
 }

@@ -7,7 +7,6 @@
 #![rr::coq_prefix("rrstd.option")]
 
 #![rr::include("closures")]
-#![rr::include("ptr")]
 #![rr::include("clone")]
 #![rr::include("result")]
 

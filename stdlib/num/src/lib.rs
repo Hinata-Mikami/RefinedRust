@@ -68,3 +68,25 @@ i_abs_diff_impl!(i32, u32);
 i_abs_diff_impl!(i64, u64);
 i_abs_diff_impl!(i128, u128);
 i_abs_diff_impl!(isize, usize);
+
+
+macro_rules! u_is_power_of_two_impl {
+    ($t:ty) => {
+        paste! {
+            #[rr::only_spec]
+            #[rr::export_as(#method core::num::$t::is_power_of_two)]
+            #[rr::returns("bool_decide (is_power_of_two (Z.to_nat x))")]
+            pub fn [<$t _is_power_of_two>](x: $t) -> bool {
+                x.count_ones() == 1
+            }
+        }
+    }
+}
+
+// Only for unsized types
+u_is_power_of_two_impl!(u8);
+u_is_power_of_two_impl!(u16);
+u_is_power_of_two_impl!(u32);
+u_is_power_of_two_impl!(u64);
+u_is_power_of_two_impl!(u128);
+u_is_power_of_two_impl!(usize);

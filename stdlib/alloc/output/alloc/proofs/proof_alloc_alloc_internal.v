@@ -46,8 +46,13 @@ Proof.
     iR. iExists tt. iR.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     iSplitR; first done. iPureIntro. rewrite /has_layout_val length_replicate /ly /ly_size //. }
+  (* show that the alloc is in bounds *)
+  iPoseProof (freeable_has_alloc with "Hfd") as "(%aid & %Halloc)".
+  iPoseProof (loc_in_bounds_ptr_in_range_alloc with "Hlb") as "%Hran".
+  { congruence. }
 
   iRevert "Hfd".
+  move: Hran.
 
   repeat liRStep; liShow.
 

@@ -34,12 +34,33 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         for it in pl.projection {
             match &it {
                 mir::ProjectionElem::Deref => {
-                    // use the type of the dereferencee
-                    let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
-                    acc_expr = code::Expr::Deref {
-                        ot: st.into(),
-                        e: Box::new(acc_expr),
-                    };
+                    // handle the magic box deref
+                    if let ty::TyKind::Adt(def, args) = cur_ty.ty.kind()
+                        && def.is_box()
+                    {
+                        // extract the type parameters
+                        let [ty, alloc] = args.as_slice() else {
+                            return Err(TranslationError::UnsupportedFeature {
+                                description: format!("wrong arguments for Box ADT {:?}", cur_ty.ty),
+                            });
+                        };
+
+                        let translated_ty = self.ty_translator.translate_type_to_syn_type(ty.expect_ty())?;
+                        let translated_alloc =
+                            self.ty_translator.translate_type_to_syn_type(alloc.expect_ty())?;
+                        acc_expr = code::Expr::MagicBoxDeref {
+                            tst: translated_ty,
+                            ast: translated_alloc,
+                            e: Box::new(acc_expr),
+                        };
+                    } else {
+                        // use the type of the dereferencee
+                        let st = self.ty_translator.translate_type_to_syn_type(cur_ty.ty)?;
+                        acc_expr = code::Expr::Deref {
+                            ot: st.into(),
+                            e: Box::new(acc_expr),
+                        };
+                    }
                 },
                 mir::ProjectionElem::Field(f, _) => {
                     // `t` is the type of the field we are accessing!

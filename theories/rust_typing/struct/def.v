@@ -738,8 +738,20 @@ Section structs.
   Proof.
     intros. eapply (struct_t_contr (λ _, _)); done.
   Qed.
-
 End structs.
+
+(** Hint Extern in case we cannot determine the constantness syntactically. 
+  This can be expensive, so we prefer the other one. *)
+Global Hint Extern 100 (TypeContractive (λ ty, struct_t _ _)) =>
+  match goal with
+  | |- TypeContractive (λ ty : type ?T, struct_t ?sls _) =>
+      let c := constr:(λ ty : type T, sls) in
+      let sls' := eval cbv in c in
+      match sls' with
+      | (λ _, ?sls) =>
+        eapply (struct_t_contr' sls)
+      end
+  end: typeclass_instances.
 
 Global Hint Unfold struct_t : tyunfold.
 

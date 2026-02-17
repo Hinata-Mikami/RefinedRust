@@ -1551,19 +1551,6 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::TyKind::Never => Ok(specs::Type::Never),
 
             ty::TyKind::Adt(adt, substs) => {
-                if adt.is_box() {
-                    // extract the type parameter
-                    // the second parameter is the allocator, which we ignore for now
-                    let [ty, _] = substs.as_slice() else {
-                        return Err(TranslationError::UnsupportedFeature {
-                            description: format!("unsupported ADT {:?}", ty),
-                        });
-                    };
-
-                    let translated_ty = self.translate_type_in_state(ty.expect_ty(), &mut *state)?;
-                    return Ok(specs::Type::BoxT(Box::new(translated_ty)));
-                }
-
                 // we prefer to use the registered local ADT instead of the shim, to support things like
                 // `#raw`
                 if self.is_registered_remote_adt(adt.did()) {

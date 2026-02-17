@@ -2815,9 +2815,11 @@ Global Infix "⪯ₚ" := (place_update_kind_incl) (at level 51).
 Global Infix "⊔ₚₖ" := (place_update_kind_max) (at level 50).
 Global Infix "⊓ₚ" := (place_update_kind_restrict) (at level 50).
 
+(* HintDb for unfolding place expressions. Currently used to unfold the box magic deref *)
+Create HintDb solve_into_place_unfold.
 
-(* TODO: can we just make this a li_tactic? *)
 Ltac solve_into_place_ctx :=
+  autounfold with solve_into_place_unfold;
   match goal with
   | |- IntoPlaceCtx ?E ?f ?e ?T =>
       let e' := W.of_expr e in

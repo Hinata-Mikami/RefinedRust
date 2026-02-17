@@ -19,7 +19,8 @@ Proof.
   { rewrite /case_destruct.
     case_decide; case_decide; case_bool_decide; eauto with lia.
     iApply (loc_in_bounds_shorten_suf with "[Hbounds //]"). lia. }
-  repeat liRStep; liShow.
+
+  rep liRStep; liShow.
   rewrite /typed_bin_op/typed_val_expr.
   iIntros "Hv1 Hv2" (Φ) "#CTX #HE HL Hf Hcont".
   rewrite {1}/ty_own_val /=. iDestruct "Hv1" as "(_ & %Hv1)".

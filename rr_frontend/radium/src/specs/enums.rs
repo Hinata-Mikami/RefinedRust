@@ -156,7 +156,9 @@ impl<'def> Abstract<'def> {
             let vbor = v.borrow();
             let vbor = vbor.as_ref().unwrap();
 
-            out.push_str(&vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params));
+            out.push_str(
+                &vbor.variant_def.generate_coq_sls_def_core(&all_ty_st_params, Some(&self.st_def_name)),
+            );
             out.push('\n');
         }
 
@@ -422,10 +424,10 @@ impl<'def> Abstract<'def> {
         let sem_binders = self.scope.get_all_ty_params_with_assocs().get_semantic_ty_params();
 
         writeln!(out, "{BASE_INDENT}Program Instance {ty_name}_contractive {sem_binders} : EnumContractive (λ {ty_name}, {def_name} {ty_name} {}).", self.scope.identity_instantiation().instantiation(true, true)).unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. done. Defined.").unwrap();
-        writeln!(out, "{BASE_INDENT}Next Obligation. done. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Defined.").unwrap();
+        writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_eq. Qed.").unwrap();
         writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
         writeln!(out, "{BASE_INDENT}Next Obligation. enum_contractive_solve_dist. Qed.").unwrap();
 

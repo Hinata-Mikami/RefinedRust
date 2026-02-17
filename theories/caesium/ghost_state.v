@@ -198,6 +198,12 @@ with identifier [id] has a range corresponding to that of [a]. *)
     AsFractional (freeable l n q k) (λ q, freeable l n q k) q.
   Proof. split; [done|]. apply _. Qed.
 
+  Lemma freeable_has_alloc l n q k :
+    freeable l n q k -∗ ⌜∃ id, l.(loc_p) = ProvAlloc id⌝.
+  Proof.
+    rewrite freeable_eq. iIntros "(%id & % & _)". eauto.
+  Qed.
+
   (** Version of [freeable] that is compatible with zero-sized allocations
     (which our allocation model does not allow for heap allocations) *)
   Definition freeable_nz (l : loc) (len : nat) (q : Qp) (k : alloc_kind) : iProp Σ :=
@@ -209,6 +215,12 @@ with identifier [id] has a range corresponding to that of [a]. *)
     freeable l n q k -∗ freeable_nz l n q k.
   Proof.
     destruct n; eauto.
+  Qed.
+
+  Lemma freeable_nz_to_freeable l n q k :
+    (n > 0)%nat → freeable_nz l n q k -∗ freeable l n q k.
+  Proof.
+    intros ?. destruct n; first lia. eauto.
   Qed.
 
   (** * Authoritative parts and contexts. *)

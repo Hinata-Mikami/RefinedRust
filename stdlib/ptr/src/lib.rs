@@ -8,6 +8,9 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.ptr")]
 #![rr::include("mem")]
+#![rr::include("clone")]
+#![rr::include("num")]
+#![rr::include("option")]
 #![rr::import("rrstd.ptr.theories", "shims")]
 #![rr::import("rrstd.ptr.theories", "specs")]
 

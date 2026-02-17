@@ -29,16 +29,13 @@ Section Vec_inv_t_ne.
       + simpl. apply direct_lft_morph_make_const.
       + solve_type_proper.
       + simpl. intros. prepare_initial_coq_context. solve_type_proper.
-    - (* TODO improve *) 
-      unfold RawVec_ty.
-      unfold RawVec_sls, core_marker_PhantomData_sls.
-      apply _.
+    - cbn. apply _.
   Qed.
   Global Instance RawVec_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, RawVec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
-End Vec_inv_t_ne. 
+End Vec_inv_t_ne.
 
 Section Vec_inv_t_ne.
   Context `{!refinedrustGS Σ}.
@@ -59,18 +56,12 @@ Section Vec_inv_t_ne.
         repeat solve_proper_step.
         erewrite type_ne_syn_type; last apply type_dist_later2_st.
         done.
-    - (* TODO improve *)
-      unfold Vec_ty.
-      unfold Vec_sls. 
-      unfold RawVec_st.
-      unfold RawVec_sls.
-      unfold core_marker_PhantomData_sls.
-      apply _.
+    - cbn. apply _.
   Qed.
   Global Instance Vec_inv_t_ne {rt1 T_rt : RT} (T : type rt1 → type T_rt) :
     TypeNonExpansive T →
     TypeNonExpansive (λ ty, Vec_inv_t T_rt <TY> (T ty) <INST!>).
   Proof. apply _. Qed.
-End Vec_inv_t_ne. 
+End Vec_inv_t_ne.
 
 End extra_specs.

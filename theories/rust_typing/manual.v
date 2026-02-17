@@ -344,6 +344,16 @@ Section updateable_rules.
     by iFrame.
   Qed.
 
+  Lemma updateable_subsume_uninit_to l (st : syn_type) :
+    find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
+      subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, bk] .@ ◁ uninit st) (λ L2 R2,
+        introduce_with_hooks updateable_E L2 (l ◁ₗ[π, bk] .@ (◁ uninit st) ∗ R2) (λ L3,
+          updateable_core updateable_E L3)))
+    ⊢ P.
+  Proof.
+    iApply updateable_subsume_to.
+  Qed.
+
   (* TODO: add lemma for unfolding / subtyping? *)
 
 

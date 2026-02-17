@@ -189,7 +189,7 @@
             {
               pname = "stdlib-alloc";
               src = ./stdlib/alloc;
-              libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone];
+              libDeps = with packages; [stdlib-ptr stdlib-result stdlib-clone stdlib-mem];
               withTheories = true;
             }
             {
@@ -200,7 +200,6 @@
               pname = "stdlib-boxed";
               src = ./stdlib/boxed;
               libDeps = with packages; [stdlib-alloc stdlib-option stdlib-rr_internal];
-              withTheories = true;
             }
             {
               pname = "stdlib-btreemap";
@@ -250,12 +249,12 @@
             {
               pname = "stdlib-option";
               src = ./stdlib/option;
-              libDeps = with packages; [stdlib-closures stdlib-clone stdlib-ptr stdlib-result];
+              libDeps = with packages; [stdlib-closures stdlib-clone stdlib-result];
             }
             {
               pname = "stdlib-ptr";
               src = ./stdlib/ptr;
-              libDeps = with packages; [stdlib-mem];
+              libDeps = with packages; [stdlib-mem stdlib-clone stdlib-num stdlib-option];
               withTheories = true;
             }
             {

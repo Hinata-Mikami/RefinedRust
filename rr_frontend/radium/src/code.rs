@@ -204,11 +204,6 @@ impl RustType {
                 Self::ShrRef(Box::new(ty), lft.clone())
             },
 
-            Type::BoxT(ty) => {
-                let ty = Self::of_type(ty);
-                Self::PrimBox(Box::new(ty))
-            },
-
             Type::Struct(as_use) => {
                 let is_raw = as_use.is_raw();
 
@@ -364,6 +359,14 @@ pub enum Expr {
     /// dereference an lvalue
     #[display("!{{ {} }} ( {} )", ot, &e)]
     Deref { ot: lang::OpType, e: Box<Expr> },
+
+    /// dereference a box using the compiler magic
+    #[display("!box{{ {}, {} }} ( {} )", tst, ast, &e)]
+    MagicBoxDeref {
+        tst: lang::SynType,
+        ast: lang::SynType,
+        e: Box<Expr>,
+    },
 
     /// lvalue to rvalue conversion (move)
     #[display("move{{ {} }} ({})", ot, &e)]

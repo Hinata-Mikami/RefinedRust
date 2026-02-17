@@ -28,6 +28,7 @@ impl<T: ?Sized> Clone for Unique<T> {
 #[rr::verify]
 impl<T: ?Sized> Copy for Unique<T> {}
 
+#[rr::export_as(core::ptr::Unique)]
 impl<T: Sized> Unique<T> {
     #[rr::exists("l")]
     #[rr::returns("l")]

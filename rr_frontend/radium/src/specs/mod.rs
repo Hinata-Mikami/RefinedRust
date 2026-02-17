@@ -41,9 +41,6 @@ pub enum Type<'def> {
     #[display("(shr_ref {} {})", _1, _0)]
     ShrRef(Box<Type<'def>>, Lft),
 
-    #[display("(box {})", _0)]
-    BoxT(Box<Type<'def>>),
-
     #[display("(array_t {} {})", _1, _0)]
     Array(Box<Type<'def>>, u128),
 
@@ -95,7 +92,7 @@ impl<'def> From<&Type<'def>> for lang::SynType {
             Type::Char => Self::Char,
             Type::Int(it) => Self::Int(*it),
 
-            Type::MutRef(..) | Type::ShrRef(..) | Type::BoxT(..) | Type::RawPtr => Self::Ptr,
+            Type::MutRef(..) | Type::ShrRef(..) | Type::RawPtr => Self::Ptr,
 
             Type::Struct(s) => s.generate_syn_type_term(),
             Type::Enum(s) => s.generate_syn_type_term(),
@@ -118,7 +115,7 @@ impl Type<'_> {
     pub fn make_raw(&mut self) {
         match self {
             Self::Struct(su) => su.make_raw(),
-            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) | Self::BoxT(box ty) => ty.make_raw(),
+            Self::MutRef(box ty, _) | Self::ShrRef(box ty, _) => ty.make_raw(),
             _ => (),
         }
     }
@@ -135,9 +132,7 @@ impl Type<'_> {
                 model::Type::Gname.into(),
             ]),
 
-            Self::ShrRef(box ty, _) | Self::BoxT(box ty) => {
-                model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into()
-            },
+            Self::ShrRef(box ty, _) => model::Type::PlaceRfn(Box::new(ty.get_rfn_type())).into(),
 
             Self::RawPtr => model::Type::Loc.into(),
 

@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 #![rr::package("paper-examples")]
+#![rr::include("stdlib")]
 
 // Examples from Section 2
 

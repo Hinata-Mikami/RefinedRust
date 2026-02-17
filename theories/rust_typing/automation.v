@@ -974,7 +974,7 @@ Ltac solve_mk_enum_tag_consistent :=
   simpl; intro_adt_params;
   intros [] ? [=<-]; eexists _; done.
 
-
+Ltac enum_contractive_solve_eq := intros; simpl; done.
 Ltac enum_contractive_solve_dist :=
     repeat match goal with
     | |- ∀ (_ : type _), _ => intros ?

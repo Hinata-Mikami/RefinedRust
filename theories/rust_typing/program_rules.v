@@ -3235,14 +3235,14 @@ Section subsume.
      This only works if the path is fully owned ([bmin = Owned _]).
      We could in principle allow this also for Uniq paths by suspending the mutable reference's contract with [OpenedLtype], but currently we have decided against that. *)
   (* TODO the syntype equality requirement currently is too strong: it does not allow us to go from UntypedSynType to "proper sy types".
-    more broadly, this is a symptom of our language not understanding about syntypes.
+     Can we lift the equality requirement in our typesystem?
   *)
-  Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) `{Hg : !TyGhostDrop ty2} r1 (r2 : rt2) v ot wl (T : typed_write_end_cont_t UpdStrong rt2) :
-    (⌜ty_has_op_type ty ot MCNone⌝ ∗ ⌜ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone⌝ ∗
+  Lemma type_write_ofty_strong E L {rt rt2} π l (ty : type rt) (ty2 : type rt2) `{Hg : !TyGhostDrop ty2} r1 (r2 : rt2) v ot wl `{Hst_eq : !TCDone (ty_syn_type ty MetaNone = ty_syn_type ty2 MetaNone)} (T : typed_write_end_cont_t UpdStrong rt2) :
+    (⌜ty_has_op_type ty ot MCNone⌝ ∗
         (ty_ghost_drop_for ty2 Hg π r2 -∗ T L rt ty r1 (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)))
     ⊢ typed_write_end π E L ot v ty r1 (Owned wl) UpdStrong l (◁ ty2) (#r2) T.
   Proof.
-    iIntros "(%Hot & %Hst_eq & HT)".
+    iIntros "(%Hot & HT)".
     iIntros (F qL ???) "#CTX #HE HL Hl Hv".
     iPoseProof (ofty_ltype_acc_owned with "Hl") as "(%ly & %Halg & %Hly & Hsc & Hlb & >(%v0 & Hl0 & Hv0 & Hcl))"; first done.
     set (upd_strong := (mkPUKRes (allowed:=UpdStrong) UpdStrong I I)).
