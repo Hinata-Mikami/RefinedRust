@@ -190,8 +190,8 @@ Proof.
   rewrite /num_cred/num_laters_per_step /=. lia.
 Qed.
 
-Definition maybe_creds `{!typeGS Σ} (wl : bool) := (if wl then £ num_cred ∗ tr 1 else True)%I.
 Definition have_creds `{!typeGS Σ} : iProp Σ := £ num_cred ∗ tr 1.
+Definition maybe_creds `{!typeGS Σ} (wl : bool) := (if wl then have_creds else True)%I.
 
 #[universes(polymorphic)]
 Record RT : Type := mk_RT {

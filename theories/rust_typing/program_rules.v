@@ -1226,6 +1226,16 @@ Section subsume.
   Context `{!typeGS Σ}.
 
   (** Simplify instances *)
+  Lemma simplify_goal_guarded wl P T :
+    maybe_creds wl ∗ P ∗ T
+    ⊢ simplify_goal (guarded wl P) T.
+  Proof.
+    rewrite /simplify_goal /guarded.
+    iIntros "($ & $ & $)".
+  Qed.
+  Definition simplify_goal_guarded_inst := [instance @simplify_goal_guarded with 100%N].
+  Global Existing Instance simplify_goal_guarded_inst.
+
   Lemma simplify_goal_lft_dead_list κs T :
     ([∗ list] κ ∈ κs, [† κ]) ∗ T ⊢ simplify_goal (lft_dead_list κs) T.
   Proof.

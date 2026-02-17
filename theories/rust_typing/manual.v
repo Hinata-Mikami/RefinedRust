@@ -421,7 +421,8 @@ Section updateable_rules.
   Lemma prove_with_subtype_stratify l E L pm Q T :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       stratify_ltype π E L StratMutNone StratNoUnfold StratRefoldFull StratifyUnblockOp l lt r bk (λ L2 R rt' lt' r',
-      prove_with_subtype E L2 true pm (l ◁ₗ[π, bk] r' @ lt' -∗ R -∗ Q) T))
+      cast_ltype_to_type E L2 lt' (λ ty,
+        prove_with_subtype E L2 true pm (l ◁ₗ[π, bk] r' @ (◁ ty) -∗ R -∗ Q) T)))
     ⊢ prove_with_subtype E L true pm Q T.
   Proof.
     unfold find_in_context,FindLoc. simpl.
@@ -432,14 +433,19 @@ Section updateable_rules.
     iIntros (????) "#CTX #HE HL".
     rewrite /stratify_ltype.
     iMod ("HT" with "[//] [//] [//] CTX HE HL Hl") as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hst' & Hstep & HT)".
+    rewrite /cast_ltype_to_type.
+    iDestruct "HT" as "(%ty & %Heqt & HT)".
+    iPoseProof (full_eqltype_use F with "CTX HE HL") as "(Hincl & HL)"; first done; first apply Heqt.
     iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L3 & %κs2 & %R' & Hstep' & HL & HT)".
     simpl. iFrame.
+    iApply logical_step_fupd.
     iApply (logical_step_compose with "Hstep").
     iApply (logical_step_wand with "Hstep'").
     iModIntro. iIntros "(Ha & $) (Hl & HR)".
     destruct pm.
-    - iApply ("Ha" with "[$] [$]").
-    - iIntros "Hdead". iMod ("Ha" with "Hdead") as "Ha".
+    - iMod ("Hincl" with "Hl") as "Hl". iApply ("Ha" with "[$] [$]").
+    - iMod ("Hincl" with "Hl") as "Hl". iModIntro.
+      iIntros "Hdead". iMod ("Ha" with "Hdead") as "Ha".
       iModIntro. iApply ("Ha" with "[$] [$]").
   Qed.
 End updateable_rules.
@@ -474,6 +480,36 @@ Section test.
     idtac.
   Abort.
 End test.
+
+Section credits.
+  Context `{!typeGS Σ}.
+
+  Lemma tac_credit_store_acquire_guard P :
+    find_in_context FindCreditStore (λ '(n, m),
+      ⌜fast_lia_hint (5 ≤ n)⌝ ∗
+      ⌜fast_lia_hint (1 ≤ m)⌝ ∗
+      (credit_store (n - 5) (m - 1) -∗ have_creds -∗ P))
+    ⊢ P.
+  Proof.
+    rewrite /FindCreditStore/find_in_context/=.
+    iIntros "(%p & Hstore & HT)". destruct p as [n m].
+    unfold fast_lia_hint.
+    iDestruct "HT" as "(% & % & HT)".
+    iPoseProof (credit_store_scrounge 5 with "Hstore") as "(Hcred & Hstore)".
+    { done. }
+    iPoseProof (credit_store_scrounge_tr 1 with "Hstore") as "(Htr & Hstore)".
+    { done. }
+    iApply ("HT" with "Hstore").
+    iFrame.
+  Qed.
+End credits.
+Tactic Notation "iAcquireCredits" "as" constr(H) :=
+  iApply tac_credit_store_acquire_guard;
+  repeat (liFindInContext || liSep || liSideCond);
+  li_unfold_lets_in_context;
+  iIntros "?";
+  iIntros H.
+
 
 Lemma tac_typed_val_expr_bind' `{!typeGS Σ} E L f K e T :
   typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
