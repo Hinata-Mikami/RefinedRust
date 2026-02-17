@@ -3,4 +3,5 @@
  (package refinedrust)
  (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)
  (synopsis "Caesium WP")
+ (generate_project_file)
  (theories stdpp iris Ltac2 Stdlib caesium.physical_step))

@@ -3,4 +3,5 @@
  (package refinedrust)
  (flags :standard -w -notation-overridden -w -redundant-canonical-projection)
  (synopsis "Lithium benchmarks")
+ (generate_project_file)
  (theories lithium))

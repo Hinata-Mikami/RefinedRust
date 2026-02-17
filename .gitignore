@@ -2,6 +2,7 @@ _build/
 _opam
 .coq-native/
 builddep/
+_RocqProject
 
 *~
 

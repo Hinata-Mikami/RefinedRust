@@ -134,11 +134,7 @@ The crate-level `rr::include` directive can be used to import these proof files 
 You can interactively look at the generated Rocq code using a Rocq plugin like Rocqtail, VSRocq, Proof General, or RocqIDE for the editor of your choice.
 To do so, your editor needs to know about the Rocq project structure.
 As RefinedRust uses the `dune` build system to compile the Rocq files, if your editor/plugin supports `dune`, it will automatically find the dependencies.
-
-Otherwise, you will need to explicitly tell it how to find the dependencies in `dune`'s build directory.
-You can generate a basic `_RocqProject` file that is read by your editor using `make coqproject`, which includes RefinedRust's core and the set of case studies.
-If you add a new verification, you can manually add a line for your verification in this file.
-See the existing includes for inspiration.
+Otherwise, run `dune build` in the folder containing the file you want to edit once. `dune` will create a `_RocqProject` file that all Rocq frontends should understand.
 
 Changes to the `proof_*.v` files in the generated `proofs` folder are persistent and files are not changed once RefinedRust has generated them once.
 This enables to write semi-automatic proofs.

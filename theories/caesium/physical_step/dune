@@ -3,4 +3,5 @@
  (package refinedrust)
  (flags :standard -w -notation-incompatible-prefix -w -redundant-canonical-projection)
  (synopsis "Physical step library")
+ (generate_project_file)
  (theories stdpp iris Ltac2 Stdlib))

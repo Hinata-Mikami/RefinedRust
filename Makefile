@@ -28,7 +28,7 @@ setup-dune:
 	@echo "(lang dune 3.21)" > dune-project
 .PHONY: setup-dune
 
-# setup a dune workspace where coqc is wrapped in the script necessary for the timing CI
+# setup a dune workspace where rocq is wrapped in the script necessary for the timing CI
 define DUNE_WORKSPACE_BODY
 (lang dune 3.21)
 
@@ -131,25 +131,3 @@ builddep: builddep/refinedrust-builddep.opam
 builddep-opamfiles: builddep/refinedrust-builddep.opam
 	@true
 .PHONY: builddep-opamfiles
-
-### Generating _CoqProject
-define COQPROJECT_BASE_BODY
-# RefinedRust core
--Q _build/default/theories/lithium lithium
--Q _build/default/theories/caesium caesium
--Q _build/default/theories/rust_typing refinedrust
-
--Q _build/default/case_studies/extra_proofs refinedrust.extra_proofs
-endef
-export COQPROJECT_BASE_BODY
-
-coqproject-base:
-	@echo "$$COQPROJECT_BASE_BODY" > _CoqProject
-
-case_studies/%.coqproject: coqproject-base
-	@echo "-Q _build/default/case_studies/$*/output/$* refinedrust.examples.$*" >> _CoqProject
-
-coqproject-case-studies: $(CASE_STUDIES:=.coqproject)
-
-coqproject: coqproject-base coqproject-case-studies
-
