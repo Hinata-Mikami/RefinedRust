@@ -380,6 +380,25 @@ Section open.
     iApply boringly_exists. eauto.
   Qed.
 
+  Lemma ex_plain_t_destruct_owned F π (ty : type rt) wl l (x : X) :
+    lftE ⊆ F →
+    l ◁ₗ[π, Owned wl] #x @ (◁ (∃; P, ty)) ={F}=∗
+    ∃ r : rt, P.(inv_P) π r x ∗
+    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
+    (if wl then tr 1 else True).
+  Proof.
+    iIntros (?) "Hb".
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & %x' & Hrfn & Hb)".
+    iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
+    iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
+    iDestruct "Hrfn" as "<-".
+    iModIntro. iExists r. iFrame.
+    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
+    iExists ly. iFrame "#%". iSplitR; first done.
+    iExists r. iSplitR; first done. iModIntro. eauto with iFrame.
+  Qed.
+
   Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
     lftE ⊆ F →
     l ◁ₗ[π, Owned wl] #x @ (◁ (∃; P, ty)) ={F}=∗
@@ -663,23 +682,19 @@ Section stratify.
   (** Stratification rules *)
 
   (* Unfolding by stratification *)
-  Lemma stratify_unfold_ex_plain_t_owned {M} π E L smu sa (sm : M) l (ty : type rt) x wl T :
-    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (#r) (Owned false)
-      (λ L2 R' rt' lt' r',
-        T L2 R' _ (OpenedLtype lt' (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, True)) r'))
-    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned wl) T.
+  Lemma stratify_unfold_ex_plain_t_owned {M} π E L smu sa (sm : M) l (ty : type rt) x T :
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (#r) (Owned false) (λ L2 P _ lt' r',
+      (* This should always be satisfiable *)
+      T L2 P _ lt' r'))
+    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned false) T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb".
-    iMod (ex_plain_t_open_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb & Hc)"; first done.
     iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as "Ha".
     iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
     iExists _, _, _, _, _. iFrame.
     iModIntro.
-    iSplitR. { iPureIntro. simp_ltypes. rewrite -Hst. done. }
-    iApply (logical_step_compose with "Hstep").
-    iApply logical_step_intro. iIntros "(Hb & $)".
-    iApply ("Hcl" with "Hb []").
-    iPureIntro; done.
+    iPureIntro. simp_ltypes. rewrite -Hst. done.
   Qed.
   (*Global Instance stratify_unfold_ex_plain_t_owned_inst {M} π E L smu sa (sm : M) l (ty : type rt) x wl :*)
   (*StratifyLtype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty))%I (PlaceIn x) (Owned wl) :=*)
@@ -734,22 +749,21 @@ Section stratify.
     (*λ T, i2p (stratify_unfold_ex_plain_t_shared π E L smu sa sm l ty x κ T).*)
 
   (** Unfolding by place access *)
-  Lemma typed_place_ex_plain_t_owned E L f l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
+  Lemma typed_place_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} T :
     (∀ r,
-      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l
-      (OpenedLtype (◁ ty) (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) f.1 r x) (λ r x, True)) (#r) UpdStrong (Owned wl) K
+      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned false) K
       (λ L2 κs li b2 bmin' rti ltyi ri updcx,
         T L2 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I))))))
-    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned wl) K T.
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned false) K T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
-    iMod (ex_plain_t_open_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
-    iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
+    (*iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.*)
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").
     iModIntro. iIntros (L' κs l2 b2 bmin0 rti ltyi ri updcx) "Hl Hc".
@@ -827,5 +841,3 @@ Section stratify.
   Global Existing Instance typed_place_ex_plain_t_shared_inst | 15.
 
 End stratify.
-
-

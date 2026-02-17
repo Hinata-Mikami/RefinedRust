@@ -1551,7 +1551,8 @@ Section ltype_def.
     - done.
     - done.
     - (* this will definitely be a problem also for the other property, because we need two sets of credits
-        Maybe change the interpretation to have Owned false for the shadow, always? *)
+        Maybe change the interpretation to have Owned false for the shadow, always?
+        No, that will break the equations for the core. *)
       done.
     - done.
   Qed.
