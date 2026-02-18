@@ -4640,6 +4640,38 @@ Section eqltype.
   Qed.
 
   (** ** Compatibilty of [OfTy] with subtyping *)
+  Lemma type_incl_ltype_owned_wand {rt} (ty1 ty2 : type rt) π l :
+    (∀ r, type_incl r r ty1 ty2) -∗
+    ∀ r, l ◁ₗ[π, Owned false] r @ (◁ ty1) -∗ l ◁ₗ[π, Owned false] r @ (◁ ty2).
+  Proof.
+    iIntros "#Hincl" (r) "Hl".
+    rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & ? & %r' & Hrfn & Hb)".
+    iExists ly.
+    iPoseProof ("Hincl" $! inhabitant) as "(%Hst & Hsceq & _)".
+    rewrite Hst. iFrame.
+    iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
+    iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
+    iModIntro.
+    iDestruct ("Hincl" $! r') as "(_ & _ & #Hincl' & _)".
+    by iApply "Hincl'".
+  Qed.
+  Lemma type_incl_ltype_shared_wand {rt} (ty1 ty2 : type rt) π l κ :
+    (∀ r, type_incl r r ty1 ty2) -∗
+    ∀ r, l ◁ₗ[π, Shared κ] r @ (◁ ty1) -∗ l ◁ₗ[π, Shared κ] r @ (◁ ty2).
+  Proof.
+    iIntros "#Hincl" (r) "Hl".
+    rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
+    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & #Hb)".
+    iExists ly.
+    iPoseProof ("Hincl" $! inhabitant) as "(%Hst & Hsceq & _)".
+    rewrite Hst. iFrame.
+    iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
+    iModIntro. iMod "Hb" as "Hshr".
+    iDestruct ("Hincl" $! r') as "(_ & _ & _ & #Hincl')".
+    by iApply "Hincl'".
+  Qed.
+
   Lemma type_ltype_incl_shared_in {rt1 rt2} r1 r2 κ (ty1 : type rt1) (ty2 : type rt2) :
     type_incl r1 r2 ty1 ty2 -∗
     ltype_incl (Shared κ) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
@@ -4703,6 +4735,7 @@ Section eqltype.
     iExists r2. iSplitR; first done. iNext. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. iDestruct "Hrfn" as "->". by iApply "Hsub".
   Qed.
+
   Lemma type_ltype_incl_owned_in {rt1 rt2} r1 r2 wl (ty1 : type rt1) (ty2 : type rt2) :
     type_incl r1 r2 ty1 ty2 -∗ ltype_incl (Owned wl) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.

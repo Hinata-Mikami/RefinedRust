@@ -2446,6 +2446,12 @@ Section judgments.
   Class MutEqLtype (E : elctx) (L : llctx) {rt} (lt1 lt2 : ltype rt) : Type :=
     mut_eqltype_proof T : iProp_to_Prop (mut_eqltype E L lt1 lt2 T).
 
+  (** Subtyping for ADT defs *)
+  Definition subtype_adt E L {X Y} (P1 P2 : ex_inv_def X Y) (T : iProp Σ) : iProp Σ :=
+    ⌜ex_inv_def_sub E L P1 P2⌝ ∗ T.
+  Class SubtypeADT (E : elctx) (L : llctx) {X Y} (P1 P2 : ex_inv_def X Y) : Type :=
+    subtype_adt_proof T : iProp_to_Prop (subtype_adt E L P1 P2 T).
+
   (** ** Prove a proposition using subtyping *)
   Inductive ProofMode :=
   | ProveDirect
@@ -4155,6 +4161,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
+  | subtype_adt ?E ?L ?P1 ?P2 => constr:(SubtypeADT E L P1 P2)
   | owned_subtype ?π ?E ?L ?wl ?r1 ?r2 ?ty1 ?ty2 => constr:(OwnedSubtype π E L wl r1 r2 ty1 ty2)
   | weak_subltype ?E ?L ?k ?r1 ?r2 ?lt1 ?lt2 => constr:(SubLtype E L k r1 r2 lt1 lt2)
   | mut_subltype ?E ?L ?lt1 ?lt2 => constr:(MutSubLtype E L lt1 lt2)

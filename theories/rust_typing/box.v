@@ -1300,6 +1300,34 @@ Section rules.
   Definition cast_ltype_to_type_box_inst := [instance @cast_ltype_to_type_box].
   Global Existing Instance cast_ltype_to_type_box_inst.
 
+  (* Basically: express variance assumptions via mut_subtype / mut_eqtype. 
+     Show mut_subtype via helper lemma.
+     Also mut_eqtype.
+
+     Plan: remove the instance reducing subtype to eqtype.
+     Add instance for reducing eqtype to subtype.
+     Add fast_eq_hint instance as fallback for subtype.
+     
+     Then for ADTs you define a mut_subtype instance, which has the following assumptions:
+     - covariant: mut_subtype
+     - contravariant: mut_subtype but flipped
+     - invariant: mut_eqtype
+     
+     - covariant lifetime: lifetime incl
+     - etc.
+
+     This also works for 
+
+     Invariance: mut_eqtype or strict equality? 
+
+
+     What about GhostCell?
+     - here, we cannot replace with equivalent lifetimes. 
+     - but in general, our model doesn't validate this. 
+     Maybe to validate that again, we need to have some notion of sealed lifetimes or so. 
+
+   *)
+
   (** Subtyping instances *)
   Lemma weak_subtype_box_in E L {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
     weak_subtype E L r1 r2 ty1 ty2 T

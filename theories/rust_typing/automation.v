@@ -184,6 +184,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:((_ : MutSubtype E L ty1 ty2) T)
   | mut_eqtype ?E ?L ?ty1 ?ty2 ?T =>
       cont uconstr:((_ : MutEqtype E L ty1 ty2) T)
+  | subtype_adt ?E ?L ?P1 ?P2 ?T =>
+      cont uconstr:((_ : SubtypeADT E L P1 P2) T)
   | mut_subltype ?E ?L ?lt1 ?lt2 ?T =>
       cont uconstr:((_ : MutSubLtype E L lt1 lt2) T)
   | mut_eqltype ?E ?L ?lt1 ?lt2 ?T =>

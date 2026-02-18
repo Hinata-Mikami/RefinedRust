@@ -4806,6 +4806,7 @@ Global Typeclasses Opaque owned_subtype.
 Global Typeclasses Opaque owned_subltype_step.
 
 Global Typeclasses Opaque mut_subtype.
+Global Typeclasses Opaque subtype_adt.
 
 Global Typeclasses Opaque mut_subltype.
 

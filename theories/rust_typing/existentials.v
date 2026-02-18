@@ -3,170 +3,6 @@ From refinedrust Require Import uninit int ltype_rules.
 From refinedrust Require Import options.
 
 (** * Existential types and invariants *)
-
-(** ** Existential types with "simple" invariants that are tacked on via a separating conjunction *)
-(* Note: this does not allow for, e.g., Cell or Mutex -- we will need a different version using non-atomic/atomic invariants for those *)
-(*
-  [X] is the inner refinement type,
-  [Y] is the type it is being abstracted to.
-*)
-Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
-  inv_xr_inh : Inhabited (RT_xt Y);
-
-  inv_P : thread_id → X → Y → iProp Σ;
-  inv_P_shr : thread_id → lft → X → Y → iProp Σ;
-
-  (* extra requirements on E and lfts, e.g. in case that P asserts extra location ownership *)
-  inv_P_lfts : list lft;
-  inv_P_wf_E : elctx;
-
-  inv_P_shr_pers : ∀ π κ x y, Persistent (inv_P_shr π κ x y);
-  inv_P_shr_mono : ∀ π κ κ' x y, κ' ⊑ κ -∗ inv_P_shr π κ x y -∗ inv_P_shr π κ' x y;
-  inv_P_share :
-    ∀ F π κ x y q,
-    lftE ⊆ F →
-    rrust_ctx -∗
-    na_own π ∅ -∗
-    let κ' := lft_intersect_list inv_P_lfts in
-    q.[κ ⊓ κ'] -∗
-    &{κ} (inv_P π x y) -∗
-   logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
-}.
-(* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
-Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
-  (inv_P : thread_id → X → Y → iProp Σ)
-  (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
-  inv_P_lfts
-  (inv_P_wf_E : elctx)
-  (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
-  inv_P_shr_mono
-  inv_P_share := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
-Global Arguments inv_P {_ _ _ _ _}.
-Global Arguments inv_P_shr {_ _ _ _ _}.
-Global Arguments inv_P_lfts {_ _ _ _ _}.
-Global Arguments inv_P_wf_E {_ _ _ _ _}.
-Global Arguments inv_P_share {_ _ _ _ _}.
-Global Arguments inv_P_shr_mono {_ _ _ _ _}.
-Global Arguments inv_P_shr_pers {_ _ _ _ _}.
-Global Existing Instance inv_P_shr_pers.
-
-(** Smart constructor for persistent and timeless [P] *)
-Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
-  (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
-  mk_ex_inv_def (λ _, P) (λ _ _, P) [] [] _ _ _.
-Next Obligation.
-  rewrite /TCNoResolve.
-  eauto with iFrame.
-Qed.
-Next Obligation.
-  rewrite /TCNoResolve. eauto with iFrame.
-Qed.
-Next Obligation.
-  rewrite /TCNoResolve.
-  iIntros (????? P ?? F ? κ x y q ?) "#CTX Hna Htok Hb".
-  iDestruct "CTX" as "(LFT & LLCTX)".
-  iApply fupd_logical_step.
-  rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
-  iApply logical_step_intro. by iFrame.
-Qed.
-Global Arguments mk_pers_ex_inv_def : simpl never.
-
-(** Typeclass to customize how a prop is shared *)
-Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : iProp Σ) := {
-  shareable_prop : iProp Σ;
-  shareable_proof :
-    ∀ F G q,
-    lftE ⊆ F →
-    rrust_ctx -∗
-    na_own π ∅ -∗
-    q.[κ] -∗
-    q.[lft_intersect_list κs] -∗
-    &{κ} P -∗
-    (logical_step F
-      (shareable_prop ∗ (q).[κ] ∗ (q).[lft_intersect_list κs] -∗
-       G)) -∗
-   logical_step F G;
-}.
-Global Hint Mode Shareable + + + + + + : typeclass_instances.
-
-(** Smart constructor to auto derive the sharing predicate *)
-Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : thread_id → X → Y → iProp Σ)
-  (inv_P_lfts : list lft)
-  (inv_P_wf_E : elctx)
-  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
-  inv_P_shr_pers
-  inv_P_shr_mono
-  : ex_inv_def X Y :=
-  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _.
-Next Obligation.
-  simpl.
-  iIntros (???????? Hshr ? ? ? π κ x y ??).
-  iIntros "CTX Hna Htok Hb".
-  rewrite -lft_tok_sep.
-  iDestruct "Htok" as "(Htok & Htok1)".
-  iApply ((Hshr π κ x y).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
-  iApply logical_step_intro.
-  eauto.
-Qed.
-
-
-Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
-  ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
-
-  ex_inv_def_ne_val_own :
-    ∀ (n : nat) (ty ty' : type rt),
-      TypeDist n ty ty' →
-      ∀ π x y,
-        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
-
-  ex_inv_def_ne_shr :
-    ∀ (n : nat) (ty ty' : type rt),
-      TypeDist2 n ty ty' →
-      ∀ π κ x y,
-        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
-}.
-
-Class ExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
-  ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
-
-  ex_inv_def_contr_val_own :
-    ∀ (n : nat) (ty ty' : type rt),
-      TypeDist2 n ty ty' →
-      ∀ π x y,
-        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
-
-  ex_inv_def_contr_shr :
-    ∀ (n : nat) (ty ty' : type rt),
-      TypeDistLater2 n ty ty' →
-      ∀ π κ x y,
-        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
-}.
-
-Section insts.
-  Context `{!typeGS Σ}.
-
-  Global Instance ex_inv_def_contractive_const {rt X Y} (v : ex_inv_def X Y) :
-    ExInvDefContractive (λ _ : type rt, v).
-  Proof.
-    constructor.
-    - apply (direct_lft_morph_make_const _ _).
-    - eauto.
-    - eauto.
-  Qed.
-
-  Global Instance ex_inv_def_ne_const {rt X Y} (v : ex_inv_def X Y) :
-    ExInvDefNonExpansive (λ _ : type rt, v).
-  Proof.
-    constructor.
-    - apply (direct_lft_morph_make_const _ _).
-    - eauto.
-    - eauto.
-  Qed.
-
-  (* TODO: instance for showing non-expansiveness from contractiveness *)
-
-End insts.
-
 Section ex.
   Context `{!typeGS Σ}.
   (* [Y] is the abstract refinement type, [X] is the inner refinement type *)
@@ -570,32 +406,76 @@ Section subtype.
   Context `{!typeGS Σ}.
   Context {rt X : RT}.
 
-  Lemma weak_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) T :
-    ⌜r1 = r2⌝ ∗ ⌜ty1 = ty2⌝ ∗ ⌜P1 = P2⌝ ∗ T
-    ⊢ weak_subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) T.
+  (*Plan:
+     - let's have a definition stating inclusion.
+     - let's design subtyping instances to just require an instance for the ex_inv_def subtyping.
+
+     These instances should in turn be able to spawn subtyping conditions on other things, of course.
+
+     Steps:
+     1. create class
+     2. create
+  *)
+
+  (* Low priority default instance *)
+  Lemma subtype_adt_default E L (P1 P2 : ex_inv_def rt X) T :
+    ⌜fast_eq_hint (P1 = P2)⌝ ∗ T ⊢ subtype_adt E L P1 P2 T.
   Proof.
-    iIntros "(-> & -> & -> & HT)".
-    iIntros (? ?) "#CTX #HE HL".
-    iFrame. iApply type_incl_refl.
+    iIntros "(-> & $)".
+    iPureIntro. iApply ex_inv_def_sub_refl.
   Qed.
-  Global Instance weak_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) :
-    Subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (weak_subtype_ex_plain_t E L P1 P2 ty1 ty2 r1 r2 T).
+  Definition subtype_adt_default_inst := [instance @subtype_adt_default].
+  Global Existing Instance subtype_adt_default_inst | 1000.
+
+  Lemma full_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
+    full_subtype E L ty1 ty2 →
+    ex_inv_def_sub E L P1 P2 →
+    full_subtype E L (∃; P1, ty1) (∃; P2, ty2).
+  Proof.
+    intros Hsub1 Hsub2 ?.
+    iIntros (?) "HL HE". unfold type_incl.
+    iPoseProof (full_subtype_acc_noend with "HE HL") as "#Hincl"; first apply Hsub1.
+    iPoseProof ("Hincl" $! inhabitant) as "(%Hm & #Hsc & #_)".
+    iPoseProof (Hsub2 with "HL HE") as "(#HinclP & #HinclPshr)".
+    iSplitR. { done. }
+    iSplitR. { done. }
+    iSplit; iModIntro.
+    - iEval (rewrite /ty_own_val/=).
+      iIntros (???) "(%x & Hinv & Hv1)".
+      iExists x. iSplitL "Hinv".
+      + by iApply "HinclP".
+      + iDestruct ("Hincl" $! x) as "(_ & _  & Hv & _)". by iApply "Hv".
+    - iEval (rewrite /ty_own_val/=).
+      iIntros (????) "(%x & Hinv & Hv1)".
+      iExists x. iSplitL "Hinv".
+      + by iApply "HinclPshr".
+      + iDestruct ("Hincl" $! x) as "(_ & _  & _ & Hshr)". by iApply "Hshr".
+  Qed.
+
   Lemma mut_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
-    ⌜P1 = P2⌝ ∗ ⌜ty1 = ty2⌝ ∗ T
+    mut_subtype E L ty1 ty2 (subtype_adt E L P1 P2 T)
     ⊢ mut_subtype E L (∃; P1, ty1) (∃; P2, ty2) T.
   Proof.
-    iIntros "(-> & -> & HT)". iFrame. iPureIntro. intros ?. apply subtype_refl.
+    iIntros "(%Hsub1 & %Hsub2 & $)".
+    iPureIntro. by apply full_subtype_ex_plain_t.
   Qed.
-  Global Instance mut_subtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
-    MutSubtype E L (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (mut_subtype_ex_plain_t E L P1 P2 ty1 ty2 T).
+  Definition mut_subtype_ex_plain_t_inst := [instance @mut_subtype_ex_plain_t].
+  Global Existing Instance mut_subtype_ex_plain_t_inst.
 
   Lemma mut_eqtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) T :
-    ⌜P1 = P2⌝ ∗ ⌜ty1 = ty2⌝ ∗ T ⊢ mut_eqtype E L (∃; P1, ty1) (∃; P2, ty2) T.
+    mut_eqtype E L ty1 ty2 (subtype_adt E L P1 P2 (subtype_adt E L P2 P1 T))
+    ⊢ mut_eqtype E L (∃; P1, ty1) (∃; P2, ty2) T.
   Proof.
-    iIntros "(-> & -> & HT)". iFrame. iPureIntro. intros ?. apply eqtype_refl.
+    iIntros "(%Heq1 & %Hsub1 & %Hsub2 & $)".
+    iPureIntro.
+    apply full_subtype_eqtype.
+    - apply full_subtype_ex_plain_t; last done.
+      by apply full_eqtype_subtype_l.
+    - apply full_subtype_ex_plain_t; last done.
+      by apply full_eqtype_subtype_r.
   Qed.
-  Global Instance mut_eqtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
-    MutEqtype E L (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (mut_eqtype_ex_plain_t E L P1 P2 ty1 ty2 T).
+  Definition mut_eqtype_ex_plain_t_inst := [instance @mut_eqtype_ex_plain_t].
+  Global Existing Instance mut_eqtype_ex_plain_t_inst.
 End subtype.
 
 Section resolve.

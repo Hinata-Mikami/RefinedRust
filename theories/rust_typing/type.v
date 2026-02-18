@@ -2806,9 +2806,194 @@ Section enum.
   Qed.
 End enum.
 
+(** ** Basic plain ADT infrastructure *)
+(** Existential types with "simple" invariants that are tacked on via a separating conjunction *)
+(* Note: this does not allow for, e.g., Cell or Mutex -- we will need a different version using non-atomic/atomic invariants for those *)
+(*
+  [X] is the inner refinement type,
+  [Y] is the type it is being abstracted to.
+*)
+Record ex_inv_def `{!typeGS Σ} (X : RT) (Y : RT) : Type := mk_ex_inv_def' {
+  inv_xr_inh : Inhabited (RT_xt Y);
+
+  inv_P : thread_id → X → Y → iProp Σ;
+  inv_P_shr : thread_id → lft → X → Y → iProp Σ;
+
+  (* extra requirements on E and lfts, e.g. in case that P asserts extra location ownership *)
+  inv_P_lfts : list lft;
+  inv_P_wf_E : elctx;
+
+  inv_P_shr_pers : ∀ π κ x y, Persistent (inv_P_shr π κ x y);
+  inv_P_shr_mono : ∀ π κ κ' x y, κ' ⊑ κ -∗ inv_P_shr π κ x y -∗ inv_P_shr π κ' x y;
+  inv_P_share :
+    ∀ F π κ x y q,
+    lftE ⊆ F →
+    rrust_ctx -∗
+    na_own π ∅ -∗
+    let κ' := lft_intersect_list inv_P_lfts in
+    q.[κ ⊓ κ'] -∗
+    &{κ} (inv_P π x y) -∗
+   logical_step F (inv_P_shr π κ x y ∗ q.[κ ⊓ κ']);
+}.
+(* Stop Typeclass resolution for the [inv_P_shr_pers] argument, to make it more deterministic. *)
+Definition mk_ex_inv_def `{!typeGS Σ} {X Y : RT} `{!Inhabited (RT_xt Y)}
+  (inv_P : thread_id → X → Y → iProp Σ)
+  (inv_P_shr : thread_id → lft → X → Y → iProp Σ)
+  inv_P_lfts
+  (inv_P_wf_E : elctx)
+  (inv_P_shr_pers : TCNoResolve (∀ (π : thread_id) (κ : lft) (x : X) (y : Y), Persistent (inv_P_shr π κ x y)))
+  inv_P_shr_mono
+  inv_P_share := mk_ex_inv_def' _ _ _ _ _ inv_P inv_P_shr inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono inv_P_share.
+Global Arguments inv_P {_ _ _ _ _}.
+Global Arguments inv_P_shr {_ _ _ _ _}.
+Global Arguments inv_P_lfts {_ _ _ _ _}.
+Global Arguments inv_P_wf_E {_ _ _ _ _}.
+Global Arguments inv_P_share {_ _ _ _ _}.
+Global Arguments inv_P_shr_mono {_ _ _ _ _}.
+Global Arguments inv_P_shr_pers {_ _ _ _ _}.
+Global Existing Instance inv_P_shr_pers.
+
+(** Smart constructor for persistent and timeless [P] *)
+Program Definition mk_pers_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : X → Y → iProp Σ)
+  (_: TCNoResolve (∀ x y, Persistent (P x y))) (_: TCNoResolve (∀ x y, Timeless (P x y))) : ex_inv_def X Y :=
+  mk_ex_inv_def (λ _, P) (λ _ _, P) [] [] _ _ _.
+Next Obligation.
+  rewrite /TCNoResolve.
+  eauto with iFrame.
+Qed.
+Next Obligation.
+  rewrite /TCNoResolve. eauto with iFrame.
+Qed.
+Next Obligation.
+  rewrite /TCNoResolve.
+  iIntros (????? P ?? F ? κ x y q ?) "#CTX Hna Htok Hb".
+  iDestruct "CTX" as "(LFT & LLCTX)".
+  iApply fupd_logical_step.
+  rewrite right_id. iMod (bor_persistent with "LFT Hb Htok") as "(>HP & Htok)"; first done.
+  iApply logical_step_intro. by iFrame.
+Qed.
+Global Arguments mk_pers_ex_inv_def : simpl never.
+
+(** Typeclass to customize how a prop is shared *)
+Class Shareable `{!typeGS Σ} (π : thread_id) (κ : lft) (κs : list lft) (P : iProp Σ) := {
+  shareable_prop : iProp Σ;
+  shareable_proof :
+    ∀ F G q,
+    lftE ⊆ F →
+    rrust_ctx -∗
+    na_own π ∅ -∗
+    q.[κ] -∗
+    q.[lft_intersect_list κs] -∗
+    &{κ} P -∗
+    (logical_step F
+      (shareable_prop ∗ (q).[κ] ∗ (q).[lft_intersect_list κs] -∗
+       G)) -∗
+   logical_step F G;
+}.
+Global Hint Mode Shareable + + + + + + : typeclass_instances.
+
+(** Smart constructor to auto derive the sharing predicate *)
+Program Definition mk_auto_ex_inv_def `{!typeGS Σ} {X : RT} {Y : RT} `{!Inhabited (RT_xt Y)} (P : thread_id → X → Y → iProp Σ)
+  (inv_P_lfts : list lft)
+  (inv_P_wf_E : elctx)
+  (Hshr : ∀ π κ x y, TCNoResolve (Shareable π κ inv_P_lfts (P π x y)))
+  inv_P_shr_pers
+  inv_P_shr_mono
+  : ex_inv_def X Y :=
+  mk_ex_inv_def P (λ π κ x y, (Hshr π κ x y).(shareable_prop)) inv_P_lfts inv_P_wf_E inv_P_shr_pers inv_P_shr_mono _.
+Next Obligation.
+  simpl.
+  iIntros (???????? Hshr ? ? ? π κ x y ??).
+  iIntros "CTX Hna Htok Hb".
+  rewrite -lft_tok_sep.
+  iDestruct "Htok" as "(Htok & Htok1)".
+  iApply ((Hshr π κ x y).(shareable_proof) with "CTX Hna Htok Htok1 Hb"); first done.
+  iApply logical_step_intro.
+  eauto.
+Qed.
 
 
-(* Common RTs *)
+Class ExInvDefNonExpansive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
+  ex_inv_def_ne_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
+
+  ex_inv_def_ne_val_own :
+    ∀ (n : nat) (ty ty' : type rt),
+      TypeDist n ty ty' →
+      ∀ π x y,
+        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
+
+  ex_inv_def_ne_shr :
+    ∀ (n : nat) (ty ty' : type rt),
+      TypeDist2 n ty ty' →
+      ∀ π κ x y,
+        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
+}.
+
+Class ExInvDefContractive `{!typeGS Σ} {rt X Y : RT} (F : type rt → ex_inv_def X Y) : Type := {
+  ex_inv_def_contr_lft_mor : DirectLftMorphism (λ ty, (F ty).(inv_P_lfts)) (λ ty, (F ty).(inv_P_wf_E));
+
+  ex_inv_def_contr_val_own :
+    ∀ (n : nat) (ty ty' : type rt),
+      TypeDist2 n ty ty' →
+      ∀ π x y,
+        (F ty).(inv_P) π x y ≡{n}≡ (F ty').(inv_P) π x y;
+
+  ex_inv_def_contr_shr :
+    ∀ (n : nat) (ty ty' : type rt),
+      TypeDistLater2 n ty ty' →
+      ∀ π κ x y,
+        (F ty).(inv_P_shr) π κ x y ≡{n}≡ (F ty').(inv_P_shr) π κ x y;
+}.
+
+Section insts.
+  Context `{!typeGS Σ}.
+
+  Global Instance ex_inv_def_contractive_const {rt X Y} (v : ex_inv_def X Y) :
+    ExInvDefContractive (λ _ : type rt, v).
+  Proof.
+    constructor.
+    - apply (direct_lft_morph_make_const _ _).
+    - eauto.
+    - eauto.
+  Qed.
+
+  Global Instance ex_inv_def_ne_const {rt X Y} (v : ex_inv_def X Y) :
+    ExInvDefNonExpansive (λ _ : type rt, v).
+  Proof.
+    constructor.
+    - apply (direct_lft_morph_make_const _ _).
+    - eauto.
+    - eauto.
+  Qed.
+
+  (* TODO: instance for showing non-expansiveness from contractiveness? *)
+
+End insts.
+
+Section incl.
+  Context `{!typeGS Σ}.
+
+  Definition ex_inv_def_incl {X Y} (P1 P2 : ex_inv_def X Y) : iProp Σ :=
+    (□ ∀ π x r, @inv_P _ _ _ _ P1 π x r -∗ @inv_P _ _ _ _ P2 π x r) ∗
+    (□ ∀ π κ x r, @inv_P_shr _ _ _ _ P1 π κ x r -∗ @inv_P_shr _ _ _ _ P2 π κ x r).
+
+  Definition ex_inv_def_sub (E : elctx) (L : llctx) {X Y} (P1 P2 : ex_inv_def X Y) : Prop :=
+    ⊢ ∀ qL, llctx_interp_noend L qL -∗ elctx_interp E -∗ ex_inv_def_incl P1 P2.
+
+  Lemma ex_inv_def_incl_refl {X Y} (P : ex_inv_def X Y) :
+    ⊢ ex_inv_def_incl P P.
+  Proof.
+    iSplit; iModIntro; eauto.
+  Qed.
+  Lemma ex_inv_def_sub_refl E L {X Y} (P : ex_inv_def X Y) :
+    ex_inv_def_sub E L P P.
+  Proof.
+    iIntros (?) "_ _". iApply ex_inv_def_incl_refl.
+  Qed.
+End incl.
+
+
+(** Common RTs *)
 Definition directRT (ty : Type) : RT :=
   mk_RT ty ty (@id ty).
 Canonical Structure unitRT := directRT (unit : Type).
