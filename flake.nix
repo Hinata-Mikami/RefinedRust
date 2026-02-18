@@ -53,13 +53,13 @@
         };
 
         smtcoq = {
-          version = "d32d496c6acffab8f317c65eba8c293ad72fa4e0";
-          sha256 = "sha256-WUZ9oapi37eaXA5iTxZDAPYpptZmh1eTHbMrS4CQzfM=";
+          version = "c25f2ce573882b962f99311375fd2f182ae47e53";
+          sha256 = "sha256-2FZ8BaMfwotYB4wHW4PVWTGSgRj5jitDqO+JEi++ymc=";
         };
 
         sniper = {
-          version = "2b30e532c4edd8f82516ca1b18c0291c6d60be16";
-          sha256 = "sha256-i7Pphlbj7ACzjTEjle1eOqTnWAsY3j/ZHW+SpNfJSUE=";
+          version = "58bc1767ff1da93a4f3c5eb716db3489514c66fb";
+          sha256 = "sha256-K4DXykaqUZBlv1BD6a9qEkWijIUcrlghDm1P4hMk/5k=";
         };
       };
 
@@ -157,9 +157,6 @@
               mlPlugin = true;
               propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt cvc4 verit zchaff];
 
-              patchPhase = ''
-                sed -i -e 's/CAMLPKGS +=/CAMLPKGS += -package num/g' src/CoqMakefile.local
-              '';
               release.${version}.sha256 = "${rocq.smtcoq.sha256}";
             };
 
@@ -443,8 +440,9 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = with packages; [frontend theories];
-        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.toolchain.dev];
-
+        packages = with pkgs;
+              [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
+                ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.zchaff pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
         LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];

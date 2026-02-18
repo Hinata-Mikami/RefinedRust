@@ -41,7 +41,7 @@ _: pkgs: prev: rec {
     metarocq-template = let
       version = "v1.4.1-9.1";
       release.${version}.sha256 = "sha256-tzoAWX74lg7pArGVP11QBvDRKMvmGxXvrf3+1E3Y4DI=";
-      
+
       repo = "metarocq";
       owner = "MetaRocq";
 
@@ -52,41 +52,42 @@ _: pkgs: prev: rec {
 
         pname = "metarocq-utils";
         preBuild = "cd utils";
-        propagatedBuildInputs = [ pkgs.rocqPackages.equations ];
+        propagatedBuildInputs = [pkgs.rocqPackages.equations];
       };
 
       common = pkgs.rocqPackages.mkRocqDerivation rec {
         inherit mlPlugin owner release repo version;
-  
+
         pname = "metarocq-common";
         preBuild = "cd common";
-        propagatedBuildInputs = [ pkgs.rocqPackages.equations utils ];
+        propagatedBuildInputs = [pkgs.rocqPackages.equations utils];
 
         patchPhase = "patchShebangs ./configure.sh";
         configurePhase = "./configure.sh";
       };
-    in pkgs.rocqPackages.mkRocqDerivation rec {
-      inherit mlPlugin owner release repo version;
+    in
+      pkgs.rocqPackages.mkRocqDerivation rec {
+        inherit mlPlugin owner release repo version;
 
-      pname = "metarocq-template-rocq";
-      preBuild = "cd template-rocq";
-      propagatedBuildInputs = [ pkgs.rocqPackages.equations common utils ];
+        pname = "metarocq-template-rocq";
+        preBuild = "cd template-rocq";
+        propagatedBuildInputs = [pkgs.rocqPackages.equations common utils];
 
-      patchPhase = ''
-        patchShebangs ./configure.sh
-        patchShebangs ./template-rocq/update_plugin.sh
-        patchShebangs ./template-rocq/gen-src/to-lower.sh
-        sed -i -e 's/mv $i $newi;/mv $i tmp; mv tmp $newi;/' ./template-rocq/gen-src/to-lower.sh
-        sed -i -e 's/coq-core/rocq-runtime/g' template-rocq/META.rocq-metarocq-template-rocq
-      '';
-      configurePhase = "./configure.sh";
-    };
+        patchPhase = ''
+          patchShebangs ./configure.sh
+          patchShebangs ./template-rocq/update_plugin.sh
+          patchShebangs ./template-rocq/gen-src/to-lower.sh
+          sed -i -e 's/mv $i $newi;/mv $i tmp; mv tmp $newi;/' ./template-rocq/gen-src/to-lower.sh
+          sed -i -e 's/coq-core/rocq-runtime/g' template-rocq/META.rocq-metarocq-template-rocq
+        '';
+        configurePhase = "./configure.sh";
+      };
 
     trakt = pkgs.rocqPackages.mkRocqDerivation rec {
-      version = "6de256ead85c0dae25fa98d1323d8ee7a75325db";
+      version = "aa76ebdf4cc6323cf08c65e56f8ba8580d79f7a2";
 
       pname = "trakt";
-      owner = "ecranceMERCE";
+      owner = "rocq-trakt";
       repo = "trakt";
 
       propagatedBuildInputs = [pkgs.rocqPackages.rocq-elpi pkgs.rocqPackages.stdlib];
@@ -94,8 +95,8 @@ _: pkgs: prev: rec {
       preBuild = ''
         sed -i -e 's/coq_makefile/rocq makefile/g' Makefile
       '';
-      
-      release.${version}.sha256 = "sha256-kqFT7iirvkBn+KW5LHchWME0OgX7Nu/tDcqq0TsS96g=";
+
+      release.${version}.sha256 = "sha256-3kqRfl7dvmXa9UvBI+UJ5iXl578ZHT1+wpMQX94ByKQ=";
     };
   });
 }
