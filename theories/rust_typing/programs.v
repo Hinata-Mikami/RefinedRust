@@ -2104,13 +2104,13 @@ Section judgments.
 
   (** Update the refinement of an [ltype]. If [lb = true], this can take a logical step and thus descend below other types.
       On the other hand, if [lb = false], this should only do an update at the top-level.
-      User-defined ADTs should provide an instance of this if they provide means of borrowing below their abstraction-level.
 
       [R] is additional ownership that will be available after the (optional) logical step. We usually use this to return lifetime tokens that we first take, e.g. when resolving below a borrow.
       (We need this because we need to return the lifetime context immediately (not below the logical step) in order to support parallel operation when stratifying products.) *)
   (** [ResolveAll] will fail if we cannot resolve some variable. [ResolveTry] will just leave a [PlaceGhost] if we cannot resolve it. *)
   Inductive ResolutionMode := ResolveAll | ResolveTry.
-  Definition resolve_ghost {rt} π E L (rm : ResolutionMode) (lb : bool) l (lt : ltype rt) b (r : place_rfn rt) (T : llctx → place_rfn rt → iProp Σ → bool → iProp Σ) : iProp Σ :=
+  Definition resolve_ghost_cont_t (rt : RT) := llctx → place_rfn rt → iProp Σ → bool → iProp Σ.
+  Definition resolve_ghost {rt} π E L (rm : ResolutionMode) (lb : bool) l (lt : ltype rt) b (r : place_rfn rt) (T : resolve_ghost_cont_t rt) : iProp Σ :=
     ∀ F,
       ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
@@ -2118,8 +2118,21 @@ Section judgments.
       ∃ L' r' R progress,
       maybe_logical_step lb F (l ◁ₗ[π, b] r' @ lt ∗ R) ∗
       llctx_interp L' ∗ T L' r' R progress.
-  Class ResolveGhost {rt} π E L rm lb l (lt : ltype rt) b γ : Type :=
-    resolve_ghost_proof T : iProp_to_Prop (resolve_ghost π E L rm lb l lt b γ T).
+  Class ResolveGhost {rt} π E L rm lb l (lt : ltype rt) b r : Type :=
+    resolve_ghost_proof T : iProp_to_Prop (resolve_ghost π E L rm lb l lt b r T).
+
+  (** User-defined ADTs should provide an instance of this if they provide means of borrowing below their abstraction-level. *)
+  Definition resolve_ghost_adt_cont_t (rt : RT) := llctx → rt → iProp Σ → bool → iProp Σ.
+  Definition resolve_ghost_adt (π : thread_id) (E : elctx) (L : llctx) (rm : ResolutionMode) {rt : RT} (r : rt) (ty : type rt) (T : resolve_ghost_adt_cont_t rt) : iProp Σ :=
+    ∀ F v,
+      ⌜lftE ⊆ F⌝ → ⌜lft_userE ⊆ F⌝ →
+      rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
+      v ◁ᵥ{π, MetaNone} r @ ty ={F}=∗
+      ∃ L' r' R progress,
+      logical_step F (v ◁ᵥ{π, MetaNone} r' @ ty ∗ R) ∗
+      llctx_interp L' ∗ T L' r' R progress.
+  Class ResolveGhostADT {rt} π E L rm (r : rt) (ty : type rt) : Type :=
+    resolve_ghost_adt_proof T : iProp_to_Prop (resolve_ghost_adt π E L rm r ty T).
 
   Inductive FindObsMode : Set :=
     | FindObsModeDirect
@@ -4135,6 +4148,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | iterate_with_hooks ?E ?L ?m => constr:(IterateWithHooks E L m)
   | subsume_full ?E ?L ?wl ?P1 ?P2 => constr:(SubsumeFull E L wl P1 P2)
   | resolve_ghost ?π ?E ?L ?rm ?f ?l ?lt ?k ?r => constr:(ResolveGhost π E L rm f l lt k r)
+  | resolve_ghost_adt ?π ?E ?L ?rm ?r ?ty => constr:(ResolveGhostADT π E L rm r ty)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
   | prove_with_subtype ?E ?L ?wl ?pm ?P => constr:(ProveWithSubtype E L wl pm P)
   | typed_on_endlft ?E ?L ?κ ?worklist => constr:(TypedOnEndlft E L κ worklist)

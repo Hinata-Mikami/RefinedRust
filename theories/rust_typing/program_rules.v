@@ -1845,7 +1845,9 @@ Section subsume.
     find_observation rt γ FindObsModeDirect (λ or,
       match or with
       | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
-      | Some r => T L (PlaceIn $ r) True true
+      | Some r =>
+          (* try again in case we should descend into the type *)
+          resolve_ghost π E L rm lb l (◁ ty)%I (Owned wl) (#r) T
       end)
     ⊢ resolve_ghost π E L rm lb l (◁ ty)%I (Owned wl) (PlaceGhost γ) T.
   Proof.
@@ -1854,19 +1856,21 @@ Section subsume.
     - rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iDestruct "Hl" as "(%ly & ? & ? & ? & ? & ? & %r' & Hrfn & Hb)".
       iPoseProof (gvar_pobs_agree_2 with "Hrfn Hobs") as "->".
-      iModIntro. iExists L, _, True%I, _. iFrame.
-      iApply maybe_logical_step_intro. simpl. iSplitL; last done.
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame.
+      iMod ("HT" with "[] [] CTX HE HL [-]") as "Ha"; [done.. | | ].
+      { rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame. }
+      done.
     - iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame.
   Qed.
-  Global Instance resolve_ghost_ofty_owned_inst {rt} π E L l (ty : type rt) γ wl rm lb :
-    ResolveGhost π E L rm lb l (◁ ty)%I (Owned wl) (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_ofty_Owned π E L l ty γ rm lb wl T).
+  Definition resolve_ghost_ofty_Owned_inst := [instance @resolve_ghost_ofty_Owned].
+  Global Existing Instance resolve_ghost_ofty_Owned_inst | 7.
 
   Lemma resolve_ghost_ofty_Uniq {rt} π E L l (ty : type rt) γ rm lb κ γ' T :
     find_observation rt γ FindObsModeDirect (λ or,
       match or with
       | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
-      | Some r => T L (PlaceIn $ r) True true
+      | Some r =>
+          (* try again in case we should descend into the type *)
+          resolve_ghost π E L rm lb l (◁ ty)%I (Uniq κ γ') (#r) T
       end)
     ⊢ resolve_ghost π E L rm lb l (◁ ty)%I (Uniq κ γ') (PlaceGhost γ) T.
   Proof.
@@ -1877,15 +1881,25 @@ Section subsume.
       iDestruct "Hrfn" as "(%v1 & %v2 & Hauth & Hobs' & %HR)".
       iPoseProof (gvar_pobs_agree_2 with "Hauth Hobs") as "->".
       simpl. subst.
-      iModIntro. iExists L, _, True%I, _. iFrame.
-      iApply maybe_logical_step_intro. iSplitL; last done.
-      rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame.
+      iMod ("HT" with "[] [] CTX HE HL [-]") as "Ha"; [done.. | | ].
+      { rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame. }
+      done.
     - iExists L, _, True%I, _. iFrame. iApply maybe_logical_step_intro. eauto with iFrame.
   Qed.
-  Global Instance resolve_ghost_ofty_uniq_inst {rt} π E L l (ty : type rt) γ κ γ' rm lb :
-    ResolveGhost π E L rm lb l (◁ ty)%I (Uniq κ γ') (PlaceGhost γ) | 7 := λ T, i2p (resolve_ghost_ofty_Uniq π E L l ty γ rm lb κ γ' T).
+  Definition resolve_ghost_ofty_Uniq_inst := [instance @resolve_ghost_ofty_Uniq].
+  Global Existing Instance resolve_ghost_ofty_Uniq_inst | 7.
 
-
+  (* Low-priority default instance. Can be overridden in case we want to descend into the type for deeper resolution, for instance for ADTs. See the instances in [existentials.v]. *)
+  Lemma resolve_ghost_ofty_default {rt} (ty : type rt) π E L l r rm lb bk T :
+    T L (# r) True false
+    ⊢ resolve_ghost π E L rm lb l (◁ ty)%I bk (# r) T.
+  Proof.
+    iIntros "HT".
+    iIntros (???) "CTX HE HL Hl". iFrame.
+    iModIntro. iApply maybe_logical_step_intro. by iFrame.
+  Qed.
+  Definition resolve_ghost_ofty_default_inst := [instance @resolve_ghost_ofty_default].
+  Global Existing Instance resolve_ghost_ofty_default_inst | 1000.
 
   (** ** ltype stratification *)
   (* TODO change the ResolveTry and also make it a parameter of stratify *)
@@ -2272,6 +2286,11 @@ Section subsume.
     StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
     StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
+
+  (* Also trigger resolve instances for ADTs. *)
+  Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
+    StratifyLtype π E L mu mdu ma StratifyResolveOp l (◁ ty)%I (#r) b | 100 :=
+    λ T, i2p (stratify_ltype_resolve_ghost_leaf π E L mu mdu ma StratifyResolveOp ResolveTry l (◁ ty)%I b (#r) T).
 
   (** ** place typing *)
 
@@ -4766,6 +4785,7 @@ Global Typeclasses Opaque typed_place.
 Global Typeclasses Opaque cast_ltype_to_type.
 
 Global Typeclasses Opaque resolve_ghost.
+Global Typeclasses Opaque resolve_ghost_adt.
 
 Global Typeclasses Opaque find_observation.
 

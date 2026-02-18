@@ -200,6 +200,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : StratifyLtypePostHook π E L ml l lt r b) T))
   | resolve_ghost ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>
       cont uconstr:(((_ : ResolveGhost π E L m lb l lt b r) T))
+  | resolve_ghost_adt ?π ?E ?L ?m ?r ?ty ?T =>
+      cont uconstr:(((_ : ResolveGhostADT π E L m r ty) T))
   | find_observation ?rt ?γ ?mode ?T =>
       cont uconstr:(((_ : FindObservation rt γ mode) T))
   | typed_on_endlft ?E ?L ?κ ?worklist ?T =>

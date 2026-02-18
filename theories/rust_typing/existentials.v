@@ -569,6 +569,7 @@ End open.
 Section subtype.
   Context `{!typeGS Σ}.
   Context {rt X : RT}.
+
   Lemma weak_subtype_ex_plain_t E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) (r1 r2 : X) T :
     ⌜r1 = r2⌝ ∗ ⌜ty1 = ty2⌝ ∗ ⌜P1 = P2⌝ ∗ T
     ⊢ weak_subtype E L r1 r2 (∃; P1, ty1) (∃; P2, ty2) T.
@@ -596,6 +597,98 @@ Section subtype.
   Global Instance mut_eqtype_ex_plain_t_inst E L (P1 P2 : ex_inv_def rt X) (ty1 ty2 : type rt) :
     MutEqtype E L (∃; P1, ty1) (∃; P2, ty2) := λ T, i2p (mut_eqtype_ex_plain_t E L P1 P2 ty1 ty2 T).
 End subtype.
+
+Section resolve.
+  Context `{!typeGS Σ}.
+
+  (* Generic lemmas *)
+  Lemma resolve_ghost_ofty_adt_owned {rt} (ty : type rt) π E L l r rm T :
+    resolve_ghost_adt π E L rm r ty (λ L2 r' R changed, T L2 (# r') R changed)
+    ⊢ resolve_ghost π E L rm true l (◁ ty) (Owned false) (# r) T.
+  Proof.
+    iIntros "Ha" (???) "#CTX #HE HL Hl".
+
+    rewrite ltype_own_ofty_unfold.
+    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & Hcreds & %r'' & <- & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iDestruct "Hb" as "(%v & Hl & Hv)".
+    iMod ("Ha" with "[] [] CTX HE HL Hv") as "(%L2 & %r2 & % & % & Hstep & HL & HT)"; [done.. | ].
+    simpl. iFrame.
+    iApply (logical_step_wand with "Hstep").
+    iModIntro. iIntros "(Hv & $)".
+    iEval (rewrite ltype_own_ofty_unfold). iExists _.
+    iFrame. iR. iR. iR. done.
+  Qed.
+
+  Lemma resolve_ghost_ofty_adt_uniq {rt} (ty : type rt) π E L l r rm κ γ T :
+    (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      resolve_ghost_adt π E L2 rm r ty (λ L3 r' R changed, T L3 (# r') (llft_elt_toks κs ∗ R) changed)))
+    ⊢ resolve_ghost π E L rm true l (◁ ty) (Uniq κ γ) (# r) T.
+  Proof.
+    iIntros "Ha" (???) "#CTX #HE HL Hl".
+    rewrite /lctx_lft_alive_count_goal.
+    iDestruct "Ha" as "(%κs & %L2 & %Hal & Ha)".
+    iMod (Hal with "HE HL") as "(Htoks & Hcl & HL)"; first done.
+    iMod ("Hcl" with "Htoks") as "(%q & Htok & Hcl)".
+
+    rewrite ltype_own_ofty_unfold.
+    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & Hcreds & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
+    iDestruct "CTX" as "(LFT & LCTX)".
+    iMod (pinned_bor_acc with "LFT Hb Htok") as "(Hb & Hb_cl)"; first done.
+    iDestruct "Hb" as "(%v & Hl & Hb)".
+    iDestruct "Hcreds" as "((Hc1 & Hc) & Ht)".
+    iApply (lc_fupd_add_later with "Hc1"). iNext.
+    iMod (fupd_mask_mono with "Hb") as "(%v' & Hl' & Hv)"; first done.
+    iPoseProof (gvar_agree with "Hl Hrfn") as "->".
+    iMod ("Ha" with "[] [] [] HE HL Hv") as "(%L3 & %r2 & % & % & Hstep & HL & HT)"; [done.. | | ].
+    { iR. done. }
+    simpl. iFrame.
+    iApply logical_step_fupd.
+    iApply (logical_step_compose with "Hstep").
+    iApply (logical_step_intro_tr with "Ht").
+    iModIntro. iIntros "Ht Hcreds' !> (Hv & $)".
+    iDestruct "Hc" as "(Hc1 & Hc)".
+    iMod (gvar_update r2 with "Hl Hrfn") as "(Hl & Hrfn)".
+    iMod ("Hb_cl" with "[Hv Hl' Hl] Hc1") as "(Hb & Htok)".
+    { by iFrame. }
+    iMod ("Hcl" with "Htok") as "$".
+    iEval (rewrite ltype_own_ofty_unfold). iExists _.
+    iFrame. iR. iR. iL.
+    iDestruct "Ht" as "(_ & $)".
+    done.
+  Qed.
+End resolve.
+
+Section resolve.
+  Context `{!typeGS Σ}.
+  Context {rt X : RT} (P : ex_inv_def rt X).
+
+  Lemma resolve_ghost_ofty_adt_ex_owned ty π E L l r rm T :
+    resolve_ghost_adt π E L rm r (∃; P, ty) (λ L2 r' R changed, T L2 (# r') R changed)
+    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Owned false) (# r) T.
+  Proof. apply resolve_ghost_ofty_adt_owned. Qed.
+  Definition resolve_ghost_ofty_adt_ex_owned_inst := [instance @resolve_ghost_ofty_adt_ex_owned].
+  Global Existing Instance resolve_ghost_ofty_adt_ex_owned_inst | 8.
+
+  Lemma resolve_ghost_ofty_adt_ex_uniq ty π E L l r rm κ γ T :
+    (li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L2),
+      resolve_ghost_adt π E L2 rm r (∃; P, ty) (λ L3 r' R changed, T L3 (# r') (llft_elt_toks κs ∗ R) changed)))
+    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Uniq κ γ) (# r) T.
+  Proof. apply resolve_ghost_ofty_adt_uniq. Qed.
+  Definition resolve_ghost_ofty_adt_ex_uniq_inst := [instance @resolve_ghost_ofty_adt_ex_uniq].
+  Global Existing Instance resolve_ghost_ofty_adt_ex_uniq_inst.
+
+  (** Low priority default instance, in case there are no user-defined instances for this ADT *)
+  Lemma resolve_ghost_adt_ex_default ty π E L r rm T :
+    T L r True false ⊢ resolve_ghost_adt π E L rm r (∃; P, ty) T.
+  Proof.
+    iIntros "HT". iIntros (????) "CTX HE HL Hv".
+    iFrame. iApply logical_step_intro. by iFrame.
+  Qed.
+  Definition resolve_ghost_adt_ex_default_inst := [instance @resolve_ghost_adt_ex_default].
+  Global Existing Instance resolve_ghost_adt_ex_default_inst | 1000.
+End resolve.
 
 Section stratify.
   Context `{!typeGS Σ}.
