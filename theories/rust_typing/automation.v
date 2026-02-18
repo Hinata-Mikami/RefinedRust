@@ -1191,7 +1191,7 @@ lazymatch P with
   | _ =>
       is_fast_builtin_sidecond P;
       split;
-      [ first [prepare_sideconditions; liSimpl; solve [sidecond_hook] | shelve_sidecond] | ]
+      [ first [fast_done | prepare_sideconditions; liSimpl; solve [sidecond_hook] | shelve_sidecond] | ]
 end.
 Ltac hooks.liAfterSidecond_hook P ::=
   first [is_builtin_sidecond P
