@@ -2424,6 +2424,7 @@ End tac.
 
 Ltac simplify_ot :=
   simpl;
+  unfold ty_sized_syn_type;
   match goal with
   | |- (use_op_alg' ?st) = ?ot =>
       solve_op_alg

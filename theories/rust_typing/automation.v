@@ -1163,6 +1163,12 @@ Ltac is_fast_builtin_sidecond P :=
       idtac
   | Copyable _ =>
       idtac
+  | ty_has_op_type _ _ _ =>
+      idtac
+  | ty_allows_reads _ =>
+      idtac
+  | ty_allows_writes _ =>
+      idtac
   end.
 
 Lemma cache_sidecond P P' T :
@@ -1185,7 +1191,7 @@ lazymatch P with
   | _ =>
       is_fast_builtin_sidecond P;
       split;
-      [ prepare_sideconditions; liSimpl; sidecond_hook | ]
+      [ first [prepare_sideconditions; liSimpl; solve [sidecond_hook] | shelve_sidecond] | ]
 end.
 Ltac hooks.liAfterSidecond_hook P ::=
   first [is_builtin_sidecond P
