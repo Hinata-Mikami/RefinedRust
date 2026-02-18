@@ -815,145 +815,6 @@ Tactic Notation "start_function" constr(fnname) ident(ϝ) "(" simple_intropatter
   end
 .
 
-(* TODO : more sideconditions *)
-Ltac sidecond_hook_init :=
-  unfold_no_enrich;
-  open_cache;
-  intros;
-  prepare_initial_coq_context;
-  repeat match goal with
-  | |- _ ∧ _ => split
-  | |- Forall ?P ?l =>
-    notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first
-   [ exact I | split_and ! ])
-  end
-.
-Ltac sidecond_hook_core :=
-  lazymatch goal with
-  | |- lctx_lft_alive ?E ?L ?κ =>
-      solve_lft_alive
-  | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
-      solve_lft_alive
-  | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
-      solve_lft_incl
-  | |- lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
-      solve_lft_list_incl
-  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
-      solve_place_update_kind_incl
-  | |- lctx_bor_kind_alive ?E ?L ?b =>
-      solve_bor_kind_alive
-  | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
-      solve_bor_kind_direct_incl
-  | |- elctx_sat ?E ?L ?E' =>
-      solve_elctx_sat
-  | |- local_fresh _ _ =>
-      (* for local variables *)
-      solve_local_fresh
-  (*| |- fn_arg_layout_assumptions ?L1 ?L2 =>*)
-      (*repeat first [constructor | done]*)
-  | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
-      solve_place_update_kind_outlives
-  | |- ty_has_op_type _ _ _ =>
-      solve_ty_has_op_type
-  | |- layout_wf _ =>
-      solve_layout_wf
-  | |- ly_align_in_bounds _ =>
-      solve_ly_align_ib
-  | |- syn_type_compat _ _ =>
-      solve_syn_type_compat
-  | |- ty_allows_reads _ =>
-      solve_ty_allows
-  | |- ty_allows_writes _ =>
-      solve_ty_allows
-  | |- Copyable _ =>
-      apply _
-  | |- trait_incl_marker _ =>
-      solve_trait_incl
-  | |- use_op_alg _ = _ =>
-      solve_op_alg
-  | |- _ ## _ =>
-      solve_ndisj
-  | |- _ ∪ _ = _ =>
-      solve_ndisj
-  | |- _ => idtac
-  end;
-  try solve_layout_alg
-.
-Ltac sidecond_hook ::=
-  sidecond_hook_init;
-  sidecond_hook_core
-.
-
-Ltac is_builtin_sidecond P :=
-  lazymatch P with
-  | lctx_lft_alive ?E ?L ?κ =>
-      idtac
-  | Forall (lctx_lft_alive ?E ?L) ?κs =>
-      idtac
-  | lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
-      idtac
-  | lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
-      idtac
-  | lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
-      idtac
-  | lctx_bor_kind_alive ?E ?L ?b =>
-      idtac
-  | lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
-      idtac
-  | ∀ _, elctx_sat _ _ _ =>
-      idtac
-  | elctx_sat ?E ?L ?E' =>
-      idtac
-  | local_fresh _ _ =>
-      (* for local variables *)
-      idtac
-  | lctx_place_update_kind_outlives _ _ _ _ =>
-      idtac
-  | ty_has_op_type _ _ _ =>
-      idtac
-  | layout_wf _ =>
-      idtac
-  | ly_align_in_bounds _ =>
-      idtac
-  | syn_type_compat _ _ =>
-      idtac
-  | ty_allows_reads _ =>
-      idtac
-  | ty_allows_writes _ =>
-      idtac
-  | Copyable _ =>
-      idtac
-  | trait_incl_marker _ =>
-      idtac
-  | use_op_alg _ = _ =>
-      idtac
-  | ?P ∧ ?Q =>
-      first [is_builtin_sidecond P | is_builtin_sidecond Q]
-  end.
-
-Lemma cache_sidecond P P' T :
-  (∀ (P'':=P'), P = P'') →
-  P ∧ (enter_cache_hint P' → T) →
-  P ∧ T.
-Proof.
-  intros <- [HP HT].
-  split; first done.
-  by apply HT.
-Qed.
-
-Ltac liSidecond_hook P ::=
-lazymatch P with
-  | trait_incl_marker _ => split; [shelve_sidecond |]
-  | fast_lia_hint _ => split; [clear; unfold fast_lia_hint, num_cred; simpl; lia | ]
-  | fast_eq_hint _ =>
-      split; [
-        first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
-
-end.
-Ltac hooks.liAfterSidecond_hook P ::=
-  first [is_builtin_sidecond P
-  | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
-
 (** ** Hints for automation *)
 Global Hint Extern 0 (LayoutSizeEq _ _) => rewrite /LayoutSizeEq; solve_layout_size : typeclass_instances.
 Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_size : typeclass_instances.
@@ -1041,9 +902,6 @@ Ltac after_intro_hook H ::=
   end;
   try (inv_layout_alg_in H)
 .
-
-Ltac shelve_sidecond_hook ::=
-  unfold name_hint, discriminate_hint.
 
 Lemma apply_name_hint name (P : Prop) :
   P → name_hint name P.
@@ -1163,6 +1021,176 @@ Ltac prepare_sideconditions :=
   repeat match goal with | H := RETURN_MARKER _ |- _ => clear H end;
   unfold_no_enrich;
   clear_unused_vars.
+
+Ltac shelve_sidecond_hook ::=
+  unfold name_hint, discriminate_hint.
+
+Ltac sidecond_hook_init :=
+  unfold_no_enrich;
+  open_cache;
+  intros;
+  prepare_initial_coq_context;
+  repeat match goal with
+  | |- _ ∧ _ => split
+  | |- Forall ?P ?l =>
+    notypeclasses refine (proj2 (Forall_Forall_cb _ _) _); simpl; (first
+   [ exact I | split_and ! ])
+  end
+.
+Ltac sidecond_hook_core :=
+  lazymatch goal with
+  | |- lctx_lft_alive ?E ?L ?κ =>
+      solve_lft_alive
+  | |- Forall (lctx_lft_alive ?E ?L) ?κs =>
+      solve_lft_alive
+  | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
+      solve_lft_incl
+  | |- lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
+      solve_lft_list_incl
+  | |- lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      solve_place_update_kind_incl
+  | |- lctx_bor_kind_alive ?E ?L ?b =>
+      solve_bor_kind_alive
+  | |- lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
+      solve_bor_kind_direct_incl
+  | |- elctx_sat ?E ?L ?E' =>
+      solve_elctx_sat
+  | |- local_fresh _ _ =>
+      (* for local variables *)
+      solve_local_fresh
+  (*| |- fn_arg_layout_assumptions ?L1 ?L2 =>*)
+      (*repeat first [constructor | done]*)
+  | |- lctx_place_update_kind_outlives ?E ?L ?b ?κs =>
+      solve_place_update_kind_outlives
+  | |- ty_has_op_type _ _ _ =>
+      solve_ty_has_op_type
+  | |- layout_wf _ =>
+      solve_layout_wf
+  | |- ly_align_in_bounds _ =>
+      solve_ly_align_ib
+  | |- syn_type_compat _ _ =>
+      solve_syn_type_compat
+  | |- ty_allows_reads _ =>
+      solve_ty_allows
+  | |- ty_allows_writes _ =>
+      solve_ty_allows
+  | |- Copyable _ =>
+      apply _
+  | |- trait_incl_marker _ =>
+      solve_trait_incl
+  | |- use_op_alg _ = _ =>
+      solve_op_alg
+  | |- _ ## _ =>
+      solve_ndisj
+  | |- _ ∪ _ = _ =>
+      solve_ndisj
+  | |- _ => idtac
+  end;
+  try solve_layout_alg
+.
+Ltac sidecond_hook ::=
+  sidecond_hook_init;
+  sidecond_hook_core
+.
+
+Ltac is_builtin_sidecond P :=
+  lazymatch P with
+  | lctx_lft_alive ?E ?L ?κ =>
+      idtac
+  | Forall (lctx_lft_alive ?E ?L) ?κs =>
+      idtac
+  | lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
+      idtac
+  | lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
+      idtac
+  | lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      idtac
+  | lctx_bor_kind_alive ?E ?L ?b =>
+      idtac
+  | lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
+      idtac
+  | ∀ _, elctx_sat _ _ _ =>
+      idtac
+  | elctx_sat ?E ?L ?E' =>
+      idtac
+  | local_fresh _ _ =>
+      (* for local variables *)
+      idtac
+  | lctx_place_update_kind_outlives _ _ _ _ =>
+      idtac
+  | ty_has_op_type _ _ _ =>
+      idtac
+  | layout_wf _ =>
+      idtac
+  | ly_align_in_bounds _ =>
+      idtac
+  | syn_type_compat _ _ =>
+      idtac
+  | ty_allows_reads _ =>
+      idtac
+  | ty_allows_writes _ =>
+      idtac
+  | Copyable _ =>
+      idtac
+  | trait_incl_marker _ =>
+      idtac
+  | use_op_alg _ = _ =>
+      idtac
+  | ?P ∧ ?Q =>
+      first [is_builtin_sidecond P | is_builtin_sidecond Q]
+  end.
+
+Ltac is_fast_builtin_sidecond P :=
+  lazymatch P with
+  | lctx_lft_alive ?E ?L ?κ =>
+      idtac
+  | Forall (lctx_lft_alive ?E ?L) ?κs =>
+      idtac
+  | lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
+      idtac
+  | lctx_lft_list_incl ?E ?L ?κ1 ?κ2 =>
+      idtac
+  | lctx_place_update_kind_incl ?E ?L ?b1 ?b2 =>
+      idtac
+  | lctx_bor_kind_alive ?E ?L ?b =>
+      idtac
+  | lctx_bor_kind_direct_incl ?E ?L ?b1 ?b2 =>
+      idtac
+  | local_fresh _ _ =>
+      (* for local variables *)
+      idtac
+  | lctx_place_update_kind_outlives _ _ _ _ =>
+      idtac
+  | Copyable _ =>
+      idtac
+  end.
+
+Lemma cache_sidecond P P' T :
+  (∀ (P'':=P'), P = P'') →
+  P ∧ (enter_cache_hint P' → T) →
+  P ∧ T.
+Proof.
+  intros <- [HP HT].
+  split; first done.
+  by apply HT.
+Qed.
+
+Ltac liSidecond_hook P ::=
+lazymatch P with
+  | trait_incl_marker _ => split; [shelve_sidecond |]
+  | fast_lia_hint _ => split; [clear; unfold fast_lia_hint, num_cred; simpl; lia | ]
+  | fast_eq_hint _ =>
+      split; [
+        first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]
+  | _ =>
+      is_fast_builtin_sidecond P;
+      split;
+      [ prepare_sideconditions; liSimpl; sidecond_hook | ]
+end.
+Ltac hooks.liAfterSidecond_hook P ::=
+  first [is_builtin_sidecond P
+  | refine (cache_sidecond _ _ _ _ _); [simpl; reflexivity | ] ].
+
 
 Ltac sidecond_solver :=
   unshelve_sidecond; prepare_sideconditions; liSimpl; sidecond_hook.
