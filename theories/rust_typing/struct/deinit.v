@@ -41,18 +41,17 @@ Section deinit.
     - apply IH.
   Qed.
 
-  Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs st l wl :
+  Lemma ltype_deinit_struct F π (sls : struct_layout_spec) rs st l :
     lftE ⊆ F →
     syn_type_compat sls st →
-    (l ◁ₗ[π, Owned wl] (#rs) @ (StructLtype (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2)) sls)) ={F}=∗
-    l ◁ₗ[π, Owned false] #() @ (◁ uninit st).
+    (l ◁ₗ[π, Owned] (#rs) @ (StructLtype (hmap (@OfTy _ _) (uninit_tys (sls_fields sls).*2)) sls)) ={F}=∗
+    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
   Proof.
     iIntros (? Hstcomp) "Hl".
     iPoseProof (struct_t_unfold_2_owned) as "#Ha".
     iMod (fupd_mask_subseteq lftE) as "Hcl"; first done.
     iMod ("Ha" with "Hl") as "Hl".
     iMod "Hcl" as "_". iClear "Ha".
-    iMod (ltype_own_Owned_to_false with "Hl") as "Hl"; first done.
 
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hl)".
     simp_ltypes in Halg. simpl in Halg.
@@ -94,7 +93,7 @@ Context `{!typeGS Σ}.
     iIntros (??) "#CTX #HE HL Hl".
 
     rewrite ltype_own_struct_unfold/struct_ltype_own/=.
-    iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hly & Hlb & _ & %rs' & -> & Hl)".
+    iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hly & Hlb &  %rs' & -> & Hl)".
     iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
 
     iPoseProof (struct_ltype_focus_components with "Hl") as "(Hl & Hclose_l)"; [done.. | ].
@@ -103,7 +102,7 @@ Context `{!typeGS Σ}.
       llctx_interp L2 ∗
       ([∗ list] i↦'(existT rt (lt, r)) ∈ hpzipl rts lts rs',
           if decide (idx ≤ i) then
-          ∃ (name : string) (st : syn_type), ⌜sls_fields sls !! i = Some (name, st)⌝ ∗ l atst{sls}ₗ name ◁ₗ[ π, Owned false] r @ lt
+          ∃ (name : string) (st : syn_type), ⌜sls_fields sls !! i = Some (name, st)⌝ ∗ l atst{sls}ₗ name ◁ₗ[ π, Owned] r @ lt
           else True) ∗
       logical_step F (R2 ∗
         ([∗ list] i↦'(existT rt (lt, r)) ∈ hpzipl rts lts rs',
@@ -111,7 +110,7 @@ Context `{!typeGS Σ}.
           ∃ (name : string) (st : syn_type),
           ⌜sls_fields sls !! i = Some (name, st)⌝ ∗
           ⌜ltype_st lt = st⌝ ∗
-          l atst{sls}ₗ name ◁ₗ[ π, Owned false] #() @ ◁ uninit (ltype_st lt)
+          l atst{sls}ₗ name ◁ₗ[ π, Owned] #() @ ◁ uninit (ltype_st lt)
           else True)
       ))%I).
 
@@ -208,7 +207,7 @@ Context `{!typeGS Σ}.
       iExists name, _. iR.
       apply list_lookup_fmap_Some in Hlook1_1 as ([name' st''] & -> & Hlook1_1).
       simplify_eq. done. }
-    iApply (ltype_deinit_struct _ _ sls (rs'') _ _ false); first done.
+    iApply (ltype_deinit_struct _ _ sls (rs'') _ _); first done.
     { done. }
 
     rewrite ltype_own_struct_unfold/struct_ltype_own.

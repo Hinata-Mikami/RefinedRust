@@ -180,12 +180,11 @@ Section updateable_rules.
   (* Extract an untyped value *)
   Lemma updateable_extract_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
-      prove_with_subtype updateable_E updateable_L false ProveDirect (£ (Nat.b2n wl)) (λ L2 κs R, R -∗
+      ∃ ty r', ⌜bk = Owned⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
       li_tactic (compute_layout_goal (ty.(ty_syn_type) MetaNone)) (λ ly,
       (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
-        l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (UntypedSynType ly)) -∗
-        updateable_core updateable_E L2))))
+        l ◁ₗ[π, Owned] #v3 @ (◁ value_t (UntypedSynType ly)) -∗
+        updateable_core updateable_E updateable_L)))
     ⊢ P.
   Proof.
     iIntros "HT".
@@ -193,13 +192,10 @@ Section updateable_rules.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
-    iDestruct "Hb" as "(%wl & %ty & %r' & -> & -> & -> & HT)".
+    iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & HT)".
     rewrite /compute_layout_goal. simpl.
-    rewrite /prove_with_subtype.
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R & HR & HL & HT)"; [solve_ndisj.. | ].
-    iMod ("HR") as "(Hcred & HR)".
-    iDestruct ("HT" with "HR") as "(%ly & %Hst & HT)".
-    iMod (ofty_own_split_value_untyped_lc with "Hcred Ha") as "Ha"; [done.. | ].
+    iDestruct ("HT") as "(%ly & %Hst & HT)".
+    iMod (ofty_own_split_value_untyped with "Ha") as "Ha"; [done.. | ].
     iDestruct "Ha" as "(%v & Hv & Hl)".
     iPoseProof ("HT" with "Hv Hl") as "HT".
     iModIntro. iExists _. iFrame.
@@ -208,11 +204,10 @@ Section updateable_rules.
   (* Extract a typed value *)
   Lemma updateable_extract_typed_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      ∃ wl ty r', ⌜bk = Owned wl⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
-      prove_with_subtype updateable_E updateable_L false ProveDirect (£ (Nat.b2n wl)) (λ L2 κs R, R -∗
+      ∃ ty r', ⌜bk = Owned⌝ ∗ ⌜lt = ◁ty⌝ ∗ ⌜r = #r'⌝ ∗
       (∀ v3, v3 ◁ᵥ{π, MetaNone} r' @ ty -∗
-        l ◁ₗ[π, Owned wl] #v3 @ (◁ value_t (st_of ty MetaNone)) -∗
-        updateable_core updateable_E L2)))
+        l ◁ₗ[π, Owned] #v3 @ (◁ value_t (st_of ty MetaNone)) -∗
+        updateable_core updateable_E updateable_L))
     ⊢ P.
   Proof.
     iIntros "HT".
@@ -220,14 +215,10 @@ Section updateable_rules.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
     iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & Hb)"; simpl.
-    iDestruct "Hb" as "(%wl & %ty & %r' & -> & -> & -> & HT)".
+    iDestruct "Hb" as "(%ty & %r' & -> & -> & -> & HT)".
     (*rewrite /compute_layout_goal. simpl.*)
-    rewrite /prove_with_subtype.
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & %κs & %R & HR & HL & HT)"; [solve_ndisj.. | ].
-    iMod ("HR") as "(Hcred & HR)".
-    iSpecialize ("HT" with "HR").
     iPoseProof (ltype_own_has_layout with "Ha") as "(%ly & %Hst & %Hly)".
-    iMod (ofty_own_split_value_untyped_lc with "Hcred Ha") as "Ha"; [done.. | ].
+    iMod (ofty_own_split_value_untyped with "Ha") as "Ha"; [done.. | ].
     iDestruct "Ha" as "(%v & Hv & Hl)".
     iPoseProof (ofty_value_untyped_make_typed with "Hl") as "Hl"; first done.
     iPoseProof ("HT" with "Hv Hl") as "HT".
@@ -237,15 +228,15 @@ Section updateable_rules.
   (** Merge a value *)
   Lemma updateable_merge_value l :
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      ∃ wl v st,
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned wl] #v @ ◁ value_t st)
+      ∃ v st,
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #v @ ◁ value_t st)
         (λ L2 R2,
         find_in_context (FindVal v) (λ '(existT rt (ty', r', π', m')),
         ⌜π' = π⌝ ∗ ⌜m' = MetaNone⌝ ∗
         find_tc_inst (TySized ty') (λ _,
         ⌜ty_has_op_type ty' (use_op_alg' (ty'.(ty_syn_type) MetaNone)) MCCopy⌝ ∗
         ⌜ty'.(ty_syn_type) MetaNone = st⌝ ∗
-        introduce_with_hooks updateable_E L2 ((l ◁ₗ[π, Owned wl] #r' @ ◁ ty') ∗ R2)%I (λ L3,
+        introduce_with_hooks updateable_E L2 ((l ◁ₗ[π, Owned] #r' @ ◁ ty') ∗ R2)%I (λ L3,
           updateable_core updateable_E L3)))))
     ⊢ P.
   Proof.
@@ -253,7 +244,7 @@ Section updateable_rules.
     unshelve iApply add_updateable; first apply _.
     iIntros "#CTX #HE HL".
     rewrite /FindLoc /find_in_context.
-    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %wl & %v & %st & HT)"; simpl.
+    iDestruct "HT" as ([rt [[[lt r] bk] π]]) "(Ha & %v & %st & HT)"; simpl.
     rewrite /subsume_full.
     iMod ("HT" with "[] [] [] CTX HE HL Ha") as "(%L2 & %R2 & >(Hl & HR) & HL & HT)"; [done.. | ].
     iDestruct "HT" as ([rt' [[[ty' r'] π'] m']]) "(Hv & -> & -> & % & %Hot & %Heq & HT)" => /=.
@@ -273,10 +264,10 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
     ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) (λ L2 R2,
         ⌜k ≤ n⌝ ∗
-        ((l ◁ₗ[π, Owned false] #(take k rs) @ (◁ array_t k ty) -∗
-         (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned false] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
+        ((l ◁ₗ[π, Owned] #(take k rs) @ (◁ array_t k ty) -∗
+         (l offsetst{st_of ty MetaNone}ₗ k) ◁ₗ[π, Owned] #(drop k rs) @ (◁ array_t (n - k) ty) -∗
          introduce_with_hooks updateable_E L2 R2 (λ L3,
           updateable_core updateable_E L3)))))
     ⊢ P.
@@ -300,10 +291,10 @@ Section updateable_rules.
     find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
       ∃ rt', ⌜rt = listRT (place_rfnRT rt')⌝ ∗
       ∃ rs n (ty : type rt'),
-        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned false] #rs @ ◁ array_t n ty) (λ L2 R2,
+        subsume_full updateable_E updateable_L false (l ◁ₗ[π, bk] r @ lt) (l ◁ₗ[π, Owned] #rs @ ◁ array_t n ty) (λ L2 R2,
         ⌜n = (num * size)%nat⌝ ∗
         ⌜num ≠ 0%nat⌝ ∗
-        (l ◁ₗ[π, Owned false] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗
+        (l ◁ₗ[π, Owned] #(<#> reshape (replicate num size) rs) @ (◁ array_t num (array_t size ty)) -∗
          introduce_with_hooks updateable_E L2 R2 (λ L3,
           updateable_core updateable_E L3))))
     ⊢ P.
@@ -373,28 +364,6 @@ Section updateable_rules.
     iFrame. iApply ("Hs" with "Hnamed").
   Qed.
 
-  (** Add a guard to a type assignment *)
-  Lemma updateable_ltype_add_guard l prepaid :
-    (find_in_context (FindLoc l) (λ '(existT rt (lt, r, bk, π)),
-      prove_with_subtype updateable_E updateable_L false ProveDirect (maybe_creds prepaid) (λ L2 _ R,
-      R -∗ guarded prepaid (l ◁ₗ[π, bk] r @ lt) -∗ updateable_core updateable_E L2)))
-    ⊢ P.
-  Proof.
-    unfold find_in_context,FindLoc. simpl.
-    iIntros "(%x & Ha)".
-    destruct x as [rt (((lt & r) & bk) & π)].
-    iDestruct "Ha" as "(Hl & HT)".
-    unshelve iApply add_updateable; first apply _.
-    iIntros "#CTX HE HL".
-    unfold prove_with_subtype.
-    iMod ("HT" with "[] [] [] CTX HE HL") as "(%L2 & % & %R & Ha & HL & HT)"; [done.. | ].
-    simpl. iMod "Ha" as "(Hcred & HR)".
-    iFrame.
-    iApply ("HT" with "HR [Hcred Hl]").
-    rewrite /guarded.
-    iFrame.
-  Qed.
-
   Lemma updateable_strip_guards :
     iterate_with_hooks updateable_E updateable_L strip_guarded (λ L,
       updateable_core updateable_E L)
@@ -409,8 +378,8 @@ Section updateable_rules.
 
   (** Discard the opened invariant on an owned location, removing the obligation to re-establish the invariant *)
   Lemma opened_owned_discard (rt_cur rt_inner rt_full : RT) (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Pre Post π l r :
-    l ◁ₗ[π, Owned false] r @ OpenedLtype lt_cur lt_inner lt_full Pre Post -∗
-    l ◁ₗ[π, Owned false] r @ lt_cur.
+    l ◁ₗ[π, Owned] r @ OpenedLtype lt_cur lt_inner lt_full Pre Post -∗
+    l ◁ₗ[π, Owned] r @ lt_cur.
   Proof.
     rewrite ltype_own_opened_unfold.
     iIntros "(%ly & % & % & ? & % & % & Hcur & _)".

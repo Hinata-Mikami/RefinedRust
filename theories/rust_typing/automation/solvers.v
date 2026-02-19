@@ -1697,8 +1697,8 @@ Section bor_kind_alive_tac.
     lctx_bor_kind_alive E L (Uniq κ γ).
   Proof. done. Qed.
 
-  Lemma tac_lctx_bor_kind_alive_owned E L wl :
-    lctx_bor_kind_alive E L (Owned wl).
+  Lemma tac_lctx_bor_kind_alive_owned E L :
+    lctx_bor_kind_alive E L (Owned).
   Proof. done. Qed.
 End bor_kind_alive_tac.
 
@@ -1719,8 +1719,8 @@ Ltac solve_bor_kind_alive :=
       refine (tac_lctx_bor_kind_alive_uniq _ _ _ _ _); [solve_lft_alive]
   | |- lctx_bor_kind_alive ?E ?L (Shared _) =>
       refine (tac_lctx_bor_kind_alive_shared _ _ _ _); [solve_lft_alive]
-  | |- lctx_bor_kind_alive ?E ?L (Owned _) =>
-      refine (tac_lctx_bor_kind_alive_owned _ _ _); solve[fail]
+  | |- lctx_bor_kind_alive ?E ?L (Owned) =>
+      refine (tac_lctx_bor_kind_alive_owned _ _); solve[fail]
   | |- lctx_bor_kind_alive _ _ _ =>
       fail 1000 "solve_bor_kind_alive: cannot determine bor_kind shape"
   end.
@@ -1737,8 +1737,8 @@ Section bor_kind_direct_incl_tac.
     intros -> ->. done.
   Qed.
 
-  Lemma tac_lctx_bor_kind_direct_incl_owned_owned E L wl :
-    lctx_bor_kind_direct_incl E L (Owned wl) (Owned wl).
+  Lemma tac_lctx_bor_kind_direct_incl_owned_owned E L :
+    lctx_bor_kind_direct_incl E L (Owned) (Owned).
   Proof.
     iIntros (?) "HL !> HE". done.
   Qed.
@@ -1779,8 +1779,8 @@ Ltac solve_bor_kind_direct_incl :=
       fail 1000 "solve_bor_kind_direct_incl: not an lctx_bor_kind_direct_incl"
   end;
   match goal with
-  | |- lctx_bor_kind_direct_incl ?E ?L (Owned _) (Owned _) =>
-      refine (tac_lctx_bor_kind_direct_incl_owned_owned _ _ _); solve[fail]
+  | |- lctx_bor_kind_direct_incl ?E ?L (Owned) (Owned) =>
+      refine (tac_lctx_bor_kind_direct_incl_owned_owned _ _); solve[fail]
   | |- lctx_bor_kind_direct_incl ?E ?L (Uniq _ _) (Uniq _ _) =>
       refine (tac_lctx_bor_kind_direct_incl_uniq_uniq _ _ _ _ _ _); [solve_lft_incl]
   | |- lctx_bor_kind_direct_incl ?E ?L (Shared _) (Shared _) =>

@@ -13,7 +13,7 @@ Local Lemma lty_of_ty_mono `{!typeGS Σ} {rt} (ty : type rt) b1 b2 π r l :
   lty_of_ty_own ty b2 π r l.
 Proof.
   iIntros "#Hincl". destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
+  + eauto.
   + rewrite /lty_of_ty_own.
     iIntros "(%ly & Hst & Hly & Hsc & Hlb & % & ? & #Hb)". iExists ly. iFrame.
     iModIntro. iMod "Hb". iModIntro.
@@ -28,9 +28,7 @@ Local Lemma alias_mono `{!typeGS Σ} rt st p b1 b2 π r l :
   alias_lty_own rt st p b1 π r l -∗
   alias_lty_own rt st p b2 π r l.
 Proof.
-  iIntros "#Hincl". destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  - iDestruct "Hincl" as "->"; eauto.
-  - eauto.
+  iIntros "#Hincl". destruct b1, b2; try done; unfold bor_kind_direct_incl; eauto.
 Qed.
 Local Lemma mutltype_mono `{!typeGS Σ} {rt} (lt : ltype rt) π κ :
   (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lt -∗ l ◁ₗ[π, b2] r @ lt) →
@@ -39,7 +37,7 @@ Local Lemma mutltype_mono `{!typeGS Σ} {rt} (lt : ltype rt) π κ :
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
+  + eauto.
   + rewrite !ltype_own_mut_ref_unfold /mut_ltype_own.
     iIntros "(%ly & ? & ? & ? & %r' & %γ & ? & #Hb)".
     iExists ly. iFrame. iModIntro. iMod "Hb".
@@ -60,7 +58,7 @@ Local Lemma shrltype_mono `{!typeGS Σ} {rt} (lt : ltype rt) π κ :
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
+  + eauto.
   + rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
     iIntros "(%ly & ? & ? & ? & %r' & ? & #Hb)".
     iExists ly. iFrame. iModIntro. iMod "Hb".
@@ -72,44 +70,6 @@ Proof.
     iIntros "(%ly & ? & ? & ? & ? & ? & Hb)".
     iExists ly. iFrame. iMod "Hb". by iApply pinned_bor_shorten.
 Qed.
-Local Lemma box_ltype_mono `{!typeGS Σ} {rt} (lt : ltype rt) π :
-  (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lt -∗ l ◁ₗ[π, b2] r @ lt) →
-  ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
-    l ◁ₗ[π, b1] r @ BoxLtype lt -∗ l ◁ₗ[π, b2] r @ BoxLtype lt.
-Proof.
-  iIntros (IH b1 b2 r l) "#Hincl".
-  destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
-  + rewrite !ltype_own_box_unfold /box_ltype_own.
-    iIntros "(%ly & ? & ? & ? & %r' & ? & #Hb)".
-    iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(%li & Hf & Hb)". iModIntro. iExists li.
-    iSplitL "Hf". { by iApply frac_bor_shorten. }
-    iNext. iApply IH; last done. done.
-  + iDestruct "Hincl" as "(Hincl & ->)".
-    rewrite !ltype_own_box_unfold /box_ltype_own.
-    iIntros "(%ly & ? & ? & ? & ? & ? & Hb)".
-    iExists ly. iFrame. iMod "Hb". by iApply pinned_bor_shorten.
-Qed.
-Local Lemma owned_ptr_ltype_mono `{!typeGS Σ} {rt} (lt : ltype rt) (ls : bool) π :
-  (∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ lt -∗ l ◁ₗ[π, b2] r @ lt) →
-  ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
-    l ◁ₗ[π, b1] r @ OwnedPtrLtype lt ls -∗ l ◁ₗ[π, b2] r @ OwnedPtrLtype lt ls.
-Proof.
-  iIntros (IH b1 b2 r l) "#Hincl".
-  destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
-  + rewrite !ltype_own_owned_ptr_unfold /owned_ptr_ltype_own.
-    iIntros "(%ly & ? & ? & ? & %r' & %li & ? & #Hb)".
-    iExists ly. iFrame. iModIntro. iMod "Hb".
-    iDestruct "Hb" as "(Hf & Hb)". iModIntro.
-    iSplitL "Hf". { by iApply frac_bor_shorten. }
-    iNext. iApply IH; last done. done.
-  + iDestruct "Hincl" as "(Hincl & ->)".
-    rewrite !ltype_own_owned_ptr_unfold /owned_ptr_ltype_own.
-    iIntros "(%ly & ? & ? & ? & ? & ? & Hb)".
-    iExists ly. iFrame. iMod "Hb". by iApply pinned_bor_shorten.
-Qed.
 Local Lemma struct_ltype_mono `{!typeGS Σ} {rts} (lts : hlist ltype rts) sls π :
   (∀ lt b1 b2 r l, lt ∈ hzipl rts lts → bor_kind_direct_incl b2 b1 -∗ l ◁ₗ[π, b1] r @ (projT2 lt) -∗ l ◁ₗ[π, b2] r @ (projT2 lt)) →
   ∀ b1 b2 r l, bor_kind_direct_incl b2 b1 -∗
@@ -117,7 +77,7 @@ Local Lemma struct_ltype_mono `{!typeGS Σ} {rts} (lts : hlist ltype rts) sls π
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->". eauto.
+  + eauto.
   + rewrite !ltype_own_struct_unfold /struct_ltype_own.
     iIntros "(%sl & ? & ? & ? & ? & %r' & ? & #Hb)".
     iExists sl. iFrame. iModIntro. iMod "Hb".
@@ -147,7 +107,7 @@ Local Lemma array_ltype_mono `{!typeGS Σ} {rt} (def : type rt) (len : nat) (lts
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->"; eauto.
+  + eauto.
   + rewrite !ltype_own_array_unfold /array_ltype_own.
     iIntros "(%ly & Hst & Hly & Hlb & Ha & %r' &  Hrfn & #Hb)".
     iExists ly. iFrame.
@@ -169,7 +129,7 @@ Local Lemma enum_ltype_mono `{!typeGS Σ} {rt rte} (en : enum rt) (tag : string)
 Proof.
   iIntros (IH b1 b2 r l) "#Hincl".
   destruct b1, b2; try done; unfold bor_kind_direct_incl.
-  + iDestruct "Hincl" as "->"; eauto.
+  + eauto.
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
     iIntros "(%el & %Hen & %Hly & Hlb & [])".
   + rewrite !ltype_own_enum_unfold /enum_ltype_own.
@@ -187,7 +147,7 @@ Proof.
   - iIntros (rt ty κ r l b1 b2) "#Hincl". simp_ltypes.
     iSplitL; first last. { rewrite !ltype_own_ofty_unfold. iApply lty_of_ty_mono. done. }
     destruct b1, b2; try done; unfold bor_kind_direct_incl.
-    + iDestruct "Hincl" as "->"; eauto.
+    + eauto.
     + rewrite !ltype_own_blocked_unfold /blocked_lty_own.
       iIntros "(%ly & ? & ? & ? & ? & [])".
     + rewrite !ltype_own_blocked_unfold /blocked_lty_own.
@@ -197,7 +157,7 @@ Proof.
   - iIntros (rt ty κ r l b1 b2) "#Hincl". simp_ltypes.
     iSplitL; first last. { rewrite !ltype_own_ofty_unfold. by iApply lty_of_ty_mono. }
     destruct b1, b2; try done; unfold bor_kind_direct_incl.
-    + iDestruct "Hincl" as "->"; eauto.
+    + eauto.
     + rewrite !ltype_own_shrblocked_unfold /shr_blocked_lty_own.
       iIntros "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hb)".
       done.
@@ -218,14 +178,6 @@ Proof.
     + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "(_ & $)".
   - iIntros (rt lt IH κ r l b1 b2) "#Hincl". simp_ltypes.
     iSplitL; (iApply shrltype_mono; [ | done]).
-    + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "($ & _)".
-    + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "(_ & $)".
-  - iIntros (rt lt IH r l b1 b2) "#Hincl". simp_ltypes.
-    iSplitL; (iApply box_ltype_mono; [ | done]).
-    + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "($ & _)".
-    + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "(_ & $)".
-  - iIntros (rt lt ls IH r l b1 b2) "#Hincl". simp_ltypes.
-    iSplitL; (iApply owned_ptr_ltype_mono; [ | done]).
     + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "($ & _)".
     + iIntros (????) "Hincl". iDestruct (IH with "Hincl") as "(_ & $)".
   - iIntros (rts lts IH sls r l b1 b2) "#Hincl".
@@ -264,7 +216,7 @@ Proof.
     iAssert (□ (l ◁ₗ[ π, b1] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost -∗ l ◁ₗ[ π, b2] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost))%I as "#Ha"; first last.
     { iSplitL; eauto with iFrame. }
     iModIntro. destruct b1, b2; try done; unfold bor_kind_direct_incl.
-    + iDestruct "Hincl" as "->"; eauto.
+    + eauto.
     + rewrite !ltype_own_opened_unfold /opened_ltype_own.
       iIntros "(%ly & ? & ? & ? & ? & ? & Ha)".
       done.
@@ -290,7 +242,7 @@ Proof.
     iSplitL; first last.
     { iDestruct (IH with "Hincl") as "(_ & $)". }
     destruct b1, b2; try done; unfold bor_kind_direct_incl.
-    + iDestruct "Hincl" as "->"; eauto.
+    + eauto.
     + rewrite !ltype_own_coreable_unfold /coreable_ltype_own.
       iIntros "(%ly & ? & ? & ? & Ha)".
       iExists ly. iFrame. rewrite !ltype_own_core_equiv.
@@ -316,7 +268,7 @@ Proof.
     iAssert (□ (l ◁ₗ[ π, b1] r @ OpenedNaLtype lt_cur lt_inner Cpre Cpost -∗ l ◁ₗ[ π, b2] r @ OpenedNaLtype lt_cur lt_inner Cpre Cpost))%I as "#Ha"; first last.
     { iSplitL; eauto with iFrame. }
     iModIntro. destruct b1, b2; try done; unfold bor_kind_direct_incl.
-    + iDestruct "Hincl" as "->"; eauto.
+    + eauto.
     + rewrite !ltype_own_opened_na_unfold /opened_na_ltype_own.
       by iIntros "(%ly & ? & ? & ? & ? & Ha)".
     + rewrite !ltype_own_opened_na_unfold /opened_na_ltype_own.
@@ -391,9 +343,9 @@ Section accessors.
     κ ⊑ κ' -∗
     (q.[κ] ={lftE}=∗ R) -∗
     (∀ K', ▷ (K' -∗ [†κ'] ={lft_userE}=∗ ▷ C) -∗ £ 1 -∗ ▷ K' ={lftE}=∗ &pin{ κ' }[C] K' ∗ q.[κ]) -∗
-    (□ ∀ r, gvar_auth γ r -∗ (|={lftE}=> l ◁ₗ[π, Owned false] #r @ ltype_core lt_full) -∗ C) -∗
+    (□ ∀ r, gvar_auth γ r -∗ (|={lftE}=> l ◁ₗ[π, Owned] #r @ ltype_core lt_full) -∗ C) -∗
     (∀ r, gvar_obs γ r -∗ tr n -∗ £ (num_laters_per_step n) -∗ &pin{κ} [C] C ={lftE}=∗ l ◁ₗ[ π, Uniq κ γ] # r @ ltype_core lt_full) -∗
-    l ◁ₗ[π, Owned false] r @ lt_cur -∗
+    l ◁ₗ[π, Owned] r @ lt_cur -∗
     l ◁ₗ[π, Uniq κ γ] r @ (OpenedLtype lt_cur lt_full lt_full (λ r1 r2, ⌜r1 = r2⌝) (λ r1 r2, R)).
   Proof.
     (* TODO this is to a large degree duplicated with the existential unfolding lemma.
@@ -451,9 +403,9 @@ Section accessors.
     rewrite ltype_own_core_equiv. by iApply "Hub".
   Qed.
 
-  Lemma ofty_ltype_acc_owned {rt} F π (ty : type rt) (r : rt) wl l :
+  Lemma ofty_ltype_acc_owned {rt} F π (ty : type rt) (r : rt) l :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] PlaceIn r @ (◁ ty) -∗
+    l ◁ₗ[π, Owned] PlaceIn r @ (◁ ty) -∗
     ∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗
       ⌜l `has_layout_loc` ly⌝ ∗ ty_sidecond ty ∗ loc_in_bounds l 0 (ly_size ly) ∗ |={F}=>
       ∃ v : val, l ↦ v ∗ v ◁ᵥ{π, MetaNone} r @ ty ∗
@@ -462,21 +414,21 @@ Section accessors.
         l ↦ v2 -∗
         ⌜ty.(ty_syn_type) MetaNone = ty2.(ty_syn_type) MetaNone⌝ -∗
         ty_sidecond ty2 -∗
-        (▷?wl v2 ◁ᵥ{π, MetaNone} r2 @ ty2) ={F}=∗
-        l ◁ₗ[π, Owned wl] PlaceIn r2 @ (◁ ty2)).
+        (v2 ◁ᵥ{π, MetaNone} r2 @ ty2) ={F}=∗
+        l ◁ₗ[π, Owned] PlaceIn r2 @ (◁ ty2)).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & %r' & Hrfn & Hv)".
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %r' & Hrfn & Hv)".
     iExists ly. iFrame "% #".
-    iMod (maybe_use_credit with "Hcred Hv") as "(Hcred & Hat & Hv)"; first done.
+    iMod (fupd_mask_mono with "Hv") as "Hv"; first done.
     iDestruct "Hv" as "(%v & Hl & Hv)".
     iDestruct "Hrfn" as "<-".
     iModIntro. iExists v. iFrame.
-    iApply (logical_step_intro_maybe with "Hat").
-    iIntros "Hcred' !>". iIntros (v2 rt2 ty2 r2) "Hl %Hst_eq Hsc' Hv".
+    iApply logical_step_intro.
+    iIntros (v2 rt2 ty2 r2) "Hl %Hst_eq Hsc' Hv".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. rewrite -Hst_eq. iExists ly. iFrame "#∗%".
-    done.
+    iR. done.
   Qed.
 
   Lemma ofty_ltype_acc_uniq {rt} F π (ty : type rt) (r : rt) κ γ l R q :
@@ -535,7 +487,7 @@ Section accessors.
       { setoid_rewrite Hst. done. }
       { iModIntro. iIntros (?) "Hauth Hc". iExists _. iFrame. simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iDestruct "Hc" as ">(%ly' & % & % & _ & _ & _ & %r' & -> & >Hb)". eauto. }
+        iDestruct "Hc" as ">(%ly' & % & % & _ & _ & %r' & -> & >Hb)". eauto. }
       { iIntros (?) "Hobs Hat Hcred Hp". simp_ltypes.
         iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
         iAssert (have_creds) with "[Hat Hcred']" as "?".
@@ -543,8 +495,8 @@ Section accessors.
           iApply tr_weaken; last done. unfold num_laters_per_step; lia. }
         eauto 8 with iFrame. }
       { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        rewrite -Hst. iExists _. do 5 iR. iExists _. iR.
-        iNext. eauto 8 with iFrame. }
+        rewrite -Hst. iExists _. do 4 iR. iExists _. iR.
+        eauto 8 with iFrame. }
   Qed.
 
   Lemma ofty_ltype_acc_shared {rt} F π (ty : type rt) (r : rt) κ l :
@@ -562,13 +514,13 @@ Section accessors.
 
   (* TODO: accessors for shared refs *)
 
-  Lemma opened_ltype_acc_owned π {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost l wl r :
-    l ◁ₗ[π, Owned wl] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost -∗
-    l ◁ₗ[π, Owned false] r @ lt_cur ∗
+  Lemma opened_ltype_acc_owned π {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost l r :
+    l ◁ₗ[π, Owned] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost -∗
+    l ◁ₗ[π, Owned] r @ lt_cur ∗
     (∀ rt_cur' (lt_cur' : ltype rt_cur') r',
-      l ◁ₗ[π, Owned false] r' @ lt_cur' -∗
+      l ◁ₗ[π, Owned] r' @ lt_cur' -∗
       ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ -∗
-      l ◁ₗ[π, Owned wl] r' @ OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost).
+      l ◁ₗ[π, Owned] r' @ OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost).
   Proof.
     rewrite ltype_own_opened_unfold /opened_ltype_own.
     iIntros "(%ly & ? & ? & ? & ? & ? & $ & Hcl)".
@@ -578,9 +530,9 @@ Section accessors.
   Qed.
   Lemma opened_ltype_acc_uniq π {rt_cur rt_inner rt_full} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) (lt_full : ltype rt_full) Cpre Cpost l κ γ r :
     l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt_cur lt_inner lt_full Cpre Cpost -∗
-    l ◁ₗ[π, Owned false] r @ lt_cur ∗
+    l ◁ₗ[π, Owned] r @ lt_cur ∗
     (∀ rt_cur' (lt_cur' : ltype rt_cur') r',
-      l ◁ₗ[π, Owned false] r' @ lt_cur' -∗
+      l ◁ₗ[π, Owned] r' @ lt_cur' -∗
       ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ -∗
       l ◁ₗ[π, Uniq κ γ] r' @ OpenedLtype lt_cur' lt_inner lt_full Cpre Cpost).
   Proof.
@@ -596,48 +548,48 @@ End accessors.
 Section ofty.
   Context `{!typeGS Σ}.
 
-  Lemma ofty_mono_ly_strong_in π {rt1 rt2} l wl (ty1 : type rt1) (ty2 : type rt2) (r1 : rt1) (r2 : rt2) ly1 ly2 :
+  Lemma ofty_mono_ly_strong_in π {rt1 rt2} l (ty1 : type rt1) (ty2 : type rt2) (r1 : rt1) (r2 : rt2) ly1 ly2 :
     syn_type_has_layout (ty1.(ty_syn_type) MetaNone) ly1 →
     syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly2 →
     (l `has_layout_loc` ly1 → l `has_layout_loc` ly2) →
     ly_size ly2 = ly_size ly1 →
     (∀ v, ty1.(ty_own_val) π r1 MetaNone v -∗ ty2.(ty_own_val) π r2 MetaNone v) -∗
     (ty_sidecond ty1 -∗ ty_sidecond ty2) -∗
-    l ◁ₗ[π, Owned wl] #r1 @ (◁ ty1) -∗
-    l ◁ₗ[π, Owned wl] #r2 @ (◁ ty2).
+    l ◁ₗ[π, Owned] #r1 @ (◁ ty1) -∗
+    l ◁ₗ[π, Owned] #r2 @ (◁ ty2).
   Proof.
     intros Halg1 Halg2 Halign Hsz. iIntros "Hvs Hscvs Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly1' & %Halg1' & %Hly & Hsc & Hlb & Hcred & %r' & <- & Hb)".
+    iDestruct "Hl" as "(%ly1' & %Halg1' & %Hly & Hsc & Hlb & %r' & <- & Hb)".
     assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
     iExists ly2. iSplitR; first done.
     iSplitR. { iPureIntro. by apply Halign. }
     iPoseProof ("Hscvs" with "Hsc") as "$".
-    rewrite Hsz. iFrame "Hlb Hcred".
+    rewrite Hsz. iFrame "Hlb".
     iExists r2. iSplitR; first done.
-    iNext. iMod "Hb" as "(%v & Hl & Hv)".
+    iMod "Hb" as "(%v & Hl & Hv)".
     iModIntro. iExists v. iFrame. by iApply "Hvs".
   Qed.
-  Lemma ofty_mono_ly_strong π {rt1} l wl (ty1 : type rt1) (ty2 : type rt1) (r1 : place_rfn rt1) ly1 ly2 :
+  Lemma ofty_mono_ly_strong π {rt1} l (ty1 : type rt1) (ty2 : type rt1) (r1 : place_rfn rt1) ly1 ly2 :
     syn_type_has_layout (ty1.(ty_syn_type) MetaNone) ly1 →
     syn_type_has_layout (ty2.(ty_syn_type) MetaNone) ly2 →
     (l `has_layout_loc` ly1 → l `has_layout_loc` ly2) →
     ly_size ly2 = ly_size ly1 →
     (∀ v r, ty1.(ty_own_val) π r MetaNone v -∗ ty2.(ty_own_val) π r MetaNone v) -∗
     (ty_sidecond ty1 -∗ ty_sidecond ty2) -∗
-    l ◁ₗ[π, Owned wl] r1 @ (◁ ty1) -∗
-    l ◁ₗ[π, Owned wl] r1 @ (◁ ty2).
+    l ◁ₗ[π, Owned] r1 @ (◁ ty1) -∗
+    l ◁ₗ[π, Owned] r1 @ (◁ ty2).
   Proof.
     intros Halg1 Halg2 Halign Hsz. iIntros "Hvs Hscvs Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly1' & %Halg1' & %Hly & Hsc & Hlb & Hcred & %r' & ? & Hb)".
+    iDestruct "Hl" as "(%ly1' & %Halg1' & %Hly & Hsc & Hlb & %r' & ? & Hb)".
     assert (ly1' = ly1) as -> by by eapply syn_type_has_layout_inj.
     iExists ly2. iSplitR; first done.
     iSplitR. { iPureIntro. by apply Halign. }
     iPoseProof ("Hscvs" with "Hsc") as "$".
-    rewrite Hsz. iFrame "Hlb Hcred".
+    rewrite Hsz. iFrame "Hlb".
     iExists _. iFrame.
-    iNext. iMod "Hb" as "(%v & Hl & Hv)".
+    iMod "Hb" as "(%v & Hl & Hv)".
     iModIntro. iExists v. iFrame. by iApply "Hvs".
   Qed.
 End ofty.
@@ -645,26 +597,19 @@ End ofty.
 Section open.
   Context `{!typeGS Σ}.
 
-  Lemma ltype_own_make_alias wl' {rt rt2} (lt : ltype rt) r r2 π wl l :
-    l ◁ₗ[π, Owned wl] r @ lt -∗
-    maybe_creds wl' -∗
-    l ◁ₗ[π, Owned wl] r @ lt ∗ l ◁ₗ[π, Owned wl'] r2 @ AliasLtype rt2 (ltype_st lt) l.
+  Lemma ltype_own_make_alias {rt rt2} (lt : ltype rt) r r2 π l :
+    l ◁ₗ[π, Owned] r @ lt -∗
+    l ◁ₗ[π, Owned] r @ lt ∗ l ◁ₗ[π, Owned] r2 @ AliasLtype rt2 (ltype_st lt) l.
   Proof.
-    iIntros "Hl Hcreds".
+    iIntros "Hl".
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Halg & %Hly)".
     iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
     iFrame. rewrite ltype_own_alias_unfold /alias_lty_own.
     eauto 8 with iFrame.
   Qed.
 
-
   (* TODO move /generalize. We can also use this for the stratify-unfold things. *)
   (* TODO can we design it so that we can also use it for the place instances? *)
-  Definition ltype_owned_openable {rt} (lt : ltype rt) : Prop :=
-    ∀ π r l wl,
-      l ◁ₗ[π, Owned wl] r @ lt -∗
-      (* TODO can we just have a later instead of the logstep? *)
-      maybe_creds wl ∗ (▷?wl (l ◁ₗ[π, Owned false] r @ lt)).
   Definition ltype_uniq_openable {rt} (lt : ltype rt) : Prop :=
     ∀ F κ γ π r l q κs,
       lftE ⊆ F →
@@ -673,33 +618,8 @@ Section open.
       (q.[κ] ={lftE}=∗ llft_elt_toks κs) -∗
       l ◁ₗ[π, Uniq κ γ] r @ lt -∗ |={F}=>
       (l ◁ₗ[π, Uniq κ γ] r @ OpenedLtype lt lt lt (λ ri ri', ⌜ri = ri'⌝) (λ ri ri', llft_elt_toks κs)).
-  Lemma ltype_owned_openable_elim_logstep {rt} (lt : ltype rt) F π r l wl :
-    ltype_owned_openable lt →
-    l ◁ₗ[π, Owned wl] r @ lt -∗
-    |={F}=> l ◁ₗ[π, Owned false] r @ lt ∗ logical_step F (maybe_creds wl).
-  Proof.
-    iIntros (Hopen) "Hb". iPoseProof (Hopen with "Hb") as "(Hcred & Hb)".
-    destruct wl.
-    - iDestruct "Hcred" as "([Hcred1 Hcred] & Hat)".
-      iMod (lc_fupd_elim_later with "Hcred1 Hb") as "$".
-      iApply (logical_step_intro_tr with "[Hat]").
-      { done. }
-      iModIntro. iIntros "Hat $".
-      iModIntro. iApply tr_weaken; last done.
-      simpl. unfold num_laters_per_step. lia.
-    - iFrame. iApply logical_step_intro. done.
-  Qed.
 
   (** Lemmas for ofty *)
-  Lemma ltype_owned_openable_ofty {rt} (ty : type rt) :
-    ltype_owned_openable (◁ ty)%I.
-  Proof.
-    iIntros (π r l wl) "Hb".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & ? & ? & ? & ? & Hcred & %r' & ? & Hb)".
-    iFrame. iNext. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    eauto 8 with iFrame.
-  Qed.
   Lemma ltype_uniq_openable_ofty {rt} (ty : type rt) :
     ltype_uniq_openable (◁ ty)%I.
   Proof.
@@ -723,53 +643,33 @@ Section open.
     - iModIntro. iIntros (r0) "Hauth Hb". iExists r0. iFrame.
       iMod "Hb" as "Hb". simp_ltypes.
       rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iDestruct "Hb" as "(%ly' & ? & ? & ? & ? & ? & %r0' & <- & $)".
+      iDestruct "Hb" as "(%ly' & ? & ? & ? & ? &  %r0' & <- & $)".
     - iIntros (r0) "Hobs Hat Hcred Hb".
       iModIntro. simp_ltypes.
       rewrite (ltype_own_ofty_unfold _ (Uniq _ _)) /lty_of_ty_own.
       iExists ly. do 4 iR. by iFrame.
     - rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iR. iR. iR. iR. iR. iExists _. iFrame.
+      iExists ly. iR. iR. iR. iR. iExists _. iFrame.
       iModIntro. eauto with iFrame.
   Qed.
-
 End open.
 
 
 Section ne.
   Context `{!typeGS Σ}.
 
-  Lemma ofty_own_contr_owned {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
-    TypeNonExpansive T →
-    TypeDistLater n ty ty' →
-    ∀ l π r,
-    (l ◁ₗ[π, Owned true] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Owned true] r @ (◁ (T ty')))%I.
-  Proof.
-    intros HT Hd l π r.
-    rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
-    do 5 f_equiv.
-    { apply HT. apply Hd. }
-    { apply equiv_dist. apply HT; apply Hd. }
-    do 5 f_equiv.
-    f_contractive.
-    do 4 f_equiv.
-    apply HT.
-    unfold_sidx.
-    eapply type_dist_later_dist; first done.
-    unfold CanSolve; lia.
-  Qed.
   Lemma ofty_own_ne_owned {rt rt1} (n : nat) (ty ty' : type rt) (T : type rt → type rt1) :
     TypeNonExpansive T →
     TypeDist n ty ty' →
     ∀ l π r,
-    (l ◁ₗ[π, Owned false] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Owned false] r @ (◁ (T ty')))%I.
+    (l ◁ₗ[π, Owned] r @ (◁ (T ty)))%I ≡{n}≡ (l ◁ₗ[π, Owned] r @ (◁ (T ty')))%I.
   Proof.
     intros HT Hd l π r.
     rewrite !ltype_own_ofty_unfold/lty_of_ty_own/=.
     do 5 f_equiv.
     { apply HT. apply Hd. }
     { apply equiv_dist. apply HT; apply Hd. }
-    do 9 f_equiv.
+    do 8 f_equiv.
     apply HT.
     apply Hd.
   Qed.

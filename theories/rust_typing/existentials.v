@@ -216,69 +216,22 @@ Section open.
     iApply boringly_exists. eauto.
   Qed.
 
-  Lemma ex_plain_t_destruct_owned F π (ty : type rt) wl l (x : X) :
+  Lemma ex_plain_t_destruct_owned F π (ty : type rt) l (x : X) :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] #x @ (◁ (∃; P, ty)) ={F}=∗
+    l ◁ₗ[π, Owned] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
-    (if wl then tr 1 else True).
+    l ◁ₗ[π, Owned] #r @ (◁ ty).
   Proof.
     iIntros (?) "Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & %x' & Hrfn & Hb)".
-    iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
-    iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %x' & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "(%v & Hl & Hv)"; first done.
+    iDestruct "Hv" as "(%r & HP & Hv)".
     iDestruct "Hrfn" as "<-".
     iModIntro. iExists r. iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. iFrame "#%". iSplitR; first done.
+    iExists ly. iFrame "#%".
     iExists r. iSplitR; first done. iModIntro. eauto with iFrame.
-  Qed.
-
-  Lemma ex_plain_t_open_owned F π (ty : type rt) wl l (x : X) :
-    lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] #x @ (◁ (∃; P, ty)) ={F}=∗
-    ∃ r : rt, P.(inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
-    (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
-      l ◁ₗ[π, Owned false] r' @ lt' -∗
-      ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
-      l ◁ₗ[π, Owned wl] r' @
-        (OpenedLtype lt' (◁ ty) (◁ ∃; P, ty)
-          (λ (r : rt) (x : X), P.(inv_P) π r x)
-          (λ r x, True)))%I.
-  Proof.
-    iIntros (?) "Hb".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & %x' & Hrfn & Hb)".
-    iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
-    iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
-    iDestruct "Hrfn" as "<-".
-    iModIntro. iExists r. iFrame.
-    iSplitL "Hl Hv".
-    { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iFrame "#%". iSplitR; first done.
-      iExists r. iSplitR; first done. iModIntro. eauto with iFrame. }
-    iIntros (rt' lt' r') "Hb %Hst".
-    rewrite ltype_own_opened_unfold /opened_ltype_own.
-    iExists ly. rewrite Hst. iSplitR; first done. iSplitR; first done.
-    iSplitR; first done. iSplitR; first done. iSplitR; first done.
-    iFrame. clear -Halg Hly.
-    iApply (logical_step_intro_maybe with "Hat").
-    iIntros "Hcred' !>".
-    iIntros (r' r'' κs) "HP".
-    iSplitR; first done.
-    iIntros "Hdead Hl".
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & _ & _ & Hsc' & _ & _ & %r0 & -> & >Hb)".
-    iDestruct "Hb" as "(%v' & Hl & Hv)".
-    iMod ("HP" with "Hdead" ) as "HP".
-    iModIntro.
-    rewrite ltype_own_core_equiv. simp_ltypes.
-    rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iExists ly. simpl. iFrame "#%". iFrame.
-    iSplitL; last done.
-    by iFrame.
   Qed.
 
   (* We open this into a ShadowedLtype for [Shared].
@@ -314,9 +267,9 @@ Section open.
     (q.[κ] ={lftE}=∗ llft_elt_toks κs) -∗
     l ◁ₗ[π, Uniq κ γ] #x @ (◁ (∃; P, ty)) ={F}=∗
     ∃ r : rt, P.(inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
+    l ◁ₗ[π, Owned] #r @ (◁ ty) ∗
     (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
-      l ◁ₗ[π, Owned false] r' @ lt' -∗
+      l ◁ₗ[π, Owned] r' @ lt' -∗
       ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
       l ◁ₗ[π, Uniq κ γ] r' @
       (OpenedLtype (lt') (◁ ty) (◁ ∃; P, ty)
@@ -341,7 +294,7 @@ Section open.
     iModIntro. iExists r. iFrame.
     iSplitL "Hl Hv".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iFrame "#%". iSplitR; first done.
+      iExists ly. iFrame "#%".
       iExists r. iSplitR; first done. iModIntro. eauto with iFrame. }
     iIntros (rt' lt' r') "Hb %Hst".
     rewrite ltype_own_opened_unfold /opened_ltype_own.
@@ -374,7 +327,7 @@ Section open.
       iMod ("HP" with "Hdead'") as "HP".
       iMod ("Hub" with "Hdead' Hb") as "Hown".
       rewrite {2}ltype_own_ofty_unfold /lty_of_ty_own.
-      iDestruct "Hown" as "(% &_ & _ & _ & _ & _ & %r1 & -> & >(%v1 & Hl & Hv))".
+      iDestruct "Hown" as "(% &_ & _ & _ & _ &  %r1 & -> & >(%v1 & Hl & Hv))".
       iModIntro. iFrame. }
     { iNext. rewrite /V. iFrame. }
     iMod ("Hcl_tok" with "Htok") as "$".
@@ -395,7 +348,7 @@ Section open.
     iIntros "(Hauth & HP & Hcur)".
     iExists r'. iFrame. iMod ("Hub" with "Hdead Hcur") as "Hb".
     iClear "Hub". rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(% & _ & _ & _ & _ & _ & Hb)".
+    iDestruct "Hb" as "(% & _ & _ & _ & _ &  Hb)".
     iDestruct "Hb" as "(%r1 & -> & >(%v1 & Hl & Hv1))".
     iMod ("HP" with "Hdead") as "HP".
     iModIntro. iFrame.
@@ -484,12 +437,12 @@ Section resolve.
   (* Generic lemmas *)
   Lemma resolve_ghost_ofty_adt_owned {rt} (ty : type rt) π E L l r rm T :
     resolve_ghost_adt π E L rm r ty (λ L2 r' R changed, T L2 (# r') R changed)
-    ⊢ resolve_ghost π E L rm true l (◁ ty) (Owned false) (# r) T.
+    ⊢ resolve_ghost π E L rm true l (◁ ty) (Owned ) (# r) T.
   Proof.
     iIntros "Ha" (???) "#CTX #HE HL Hl".
 
     rewrite ltype_own_ofty_unfold.
-    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & Hcreds & %r'' & <- & Hb)".
+    iDestruct "Hl" as "(%ly & %Hst & % & ? & ? & %r'' & <- & Hb)".
     iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iDestruct "Hb" as "(%v & Hl & Hv)".
     iMod ("Ha" with "[] [] CTX HE HL Hv") as "(%L2 & %r2 & % & % & Hstep & HL & HT)"; [done.. | ].
@@ -546,7 +499,7 @@ Section resolve.
 
   Lemma resolve_ghost_ofty_adt_ex_owned ty π E L l r rm T :
     resolve_ghost_adt π E L rm r (∃; P, ty) (λ L2 r' R changed, T L2 (# r') R changed)
-    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Owned false) (# r) T.
+    ⊢ resolve_ghost π E L rm true l (◁ ∃; P, ty) (Owned) (# r) T.
   Proof. apply resolve_ghost_ofty_adt_owned. Qed.
   Definition resolve_ghost_ofty_adt_ex_owned_inst := [instance @resolve_ghost_ofty_adt_ex_owned].
   Global Existing Instance resolve_ghost_ofty_adt_ex_owned_inst | 8.
@@ -656,13 +609,13 @@ Section stratify.
 
   (* Unfolding by stratification *)
   Lemma stratify_unfold_ex_plain_t_owned {M} π E L smu sa (sm : M) l (ty : type rt) x T :
-    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (#r) (Owned false) (λ L2 P _ lt' r',
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ ty) (#r) (Owned) (λ L2 P _ lt' r',
       (* This should always be satisfiable *)
       T L2 P _ lt' r'))
-    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned false) T.
+    ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (#x) (Owned) T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hb".
-    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb & Hc)"; first done.
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb )"; first done.
     iMod ("HT" with "HP [//] [//] [//] CTX HE HL Hb") as "Ha".
     iDestruct "Ha" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
     iExists _, _, _, _, _. iFrame.
@@ -675,7 +628,7 @@ Section stratify.
 
   Lemma stratify_unfold_ex_plain_t_uniq {M} π E L smu sa (sm : M) l (ty : type rt) x κ γ T :
     li_tactic (lctx_lft_alive_count_goal E L κ) (λ '(κs, L'),
-    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' smu StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned false)
+    (∀ r, P.(inv_P) π r x -∗ stratify_ltype π E L' smu StratDoUnfold sa sm l (◁ ty) (PlaceIn r) (Owned)
       (λ L2 R' rt' lt' r',
         T L2 R' _ (OpenedLtype lt' (◁ ty) (◁ (∃; P, ty)) (λ (r : rt) (x : X), P.(inv_P) π r x) (λ r x, llft_elt_toks κs)) r')))
     ⊢ stratify_ltype π E L smu StratDoUnfold sa sm l (◁ (∃; P, ty)) (PlaceIn x) (Uniq κ γ) T.
@@ -724,18 +677,18 @@ Section stratify.
   (** Unfolding by place access *)
   Lemma typed_place_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} T :
     (∀ r,
-      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned false) K
+      introduce_with_hooks E L (P.(inv_P) f.1 r x) (λ L2, typed_place E L2 f l (◁ ty) (#r) UpdStrong (Owned) K
       (λ L2 κs li b2 bmin' rti ltyi ri updcx,
         T L2 κs li b2 bmin' rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (@mkPUpd _ _ _ UpdStrong _
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I))))))
-    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned false) K T.
+    ⊢ typed_place E L f l (◁ (∃; P, ty))%I (#x) UpdStrong (Owned) K T.
   Proof.
     iIntros "HT". iIntros (F ???) "#CTX #HE HL Hf Hb Hcont".
     iApply fupd_place_to_wp.
-    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb & Hcl)"; first done.
+    iMod (ex_plain_t_destruct_owned with "Hb") as "(%r & HP & Hb)"; first done.
     (*iPoseProof ("Hcl" with "Hb []") as "Hb"; first done.*)
     iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
     iApply ("HT" with "[//] [//] CTX HE HL Hf Hb").

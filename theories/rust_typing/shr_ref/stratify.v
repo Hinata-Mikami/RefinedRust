@@ -9,7 +9,7 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural instances *)
-  Lemma stratify_ltype_shr_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl
+  Lemma stratify_ltype_shr_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt))
       (T : stratify_ltype_cont_t) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Shared κ) (λ L' R rt' lt' r',
       match ma with
@@ -17,7 +17,7 @@ Section stratify.
           ∃ (_ : Inhabited rt'), cast_ltype_to_type E L' lt' (λ ty', T L' R _ (◁ (shr_ref κ ty'))%I (#r'))
       | _ => T L' R _ (ShrLtype lt' κ) (#r')
       end))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned wl) T.
+    ⊢ stratify_ltype π E L mu mdu ma ml l (ShrLtype lt κ) (#r) (Owned) T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT & LLCTX) #HE HL Hb".
     iPoseProof (shr_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
@@ -33,12 +33,11 @@ Section stratify.
       iModIntro. iExists L', R, _, _, _. iFrame.
       iSplitR. { simp_ltypes. done. }
       iApply logical_step_fupd.
-      iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
-      iApply logical_step_intro. iIntros "(Hb & $) Hcl".
+      iApply logical_step_intro. iIntros "(Hb & $)".
       iMod ("Hvs" with "Hb") as "Hb".
       iMod ("Hcl" with "Hl Hb") as "Hb".
-      iDestruct (shr_ref_unfold_1 ty' κ (Owned wl)) as "(_ & #Hi & _)".
+      iDestruct (shr_ref_unfold_1 ty' κ (Owned)) as "(_ & #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
     - iAssert (T L' R _ (ShrLtype lt' κ) (#r')) with "[Hc]" as "Hc".
@@ -46,9 +45,8 @@ Section stratify.
       iModIntro. iExists L', R, _, _, _. iFrame.
       iSplitR. { simp_ltypes; done. }
       iApply logical_step_fupd.
-      iApply (logical_step_compose with "Hcl").
       iApply (logical_step_compose with "Hstep").
-      iApply logical_step_intro. iIntros "(Hb & $) Hcl".
+      iApply logical_step_intro. iIntros "(Hb & $)".
       by iMod ("Hcl" with "Hl Hb") as "$".
   Qed.
   Definition stratify_ltype_shr_owned_inst := [instance (@stratify_ltype_shr_owned StratMutNone) ].

@@ -324,7 +324,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
             let local_name = kind.mk_local_name(name);
 
             if *kind == code::LocalKind::CompilerTemp && !initialized {
-                //let pred = format!("{local_name} ◁ₗ[π, Owned false] .@ (◁ uninit {ty_st})");
+                //let pred = format!("{local_name} ◁ₗ[π, Owned] .@ (◁ uninit {ty_st})");
                 //uninit_locals_prop.push(coq::iris::IProp::Atom(pred));
 
                 uninit_locals.push(name.clone());

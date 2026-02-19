@@ -30,7 +30,7 @@ use std::mem;
 #[rr::export_as(alloc::boxed::Box)]
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
 #[rr::exists("l" : "loc", "a" : "{xt_of A}")]
-#[rr::inv(#iris "guarded true (l ◁ₗ[π, Owned false] x @ ◁ {T})")]
+#[rr::inv(#iris "guarded true (l ◁ₗ[π, Owned] x @ ◁ {T})")]
 // TODO: for unsized T, will need to use pointer metadata to determine the size.
 #[rr::inv(#iris "{A::FreeablePerm} a l (ly_size {ly_of T})")]
 #[rr::ty_lfts("ty_lfts {T}")]

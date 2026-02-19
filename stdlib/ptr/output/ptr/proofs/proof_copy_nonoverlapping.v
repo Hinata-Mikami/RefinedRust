@@ -43,12 +43,12 @@ Proof.
     ⌜L = [ϝ ⊑ₗ{0} []]⌝ ∗
     ⌜E = ty_outlives_E T_ty ϝ ++ ty_wf_E T_ty⌝ ∗
     (credit_store 0 0 ∗
-    arg_size ◁ₗ[π, Owned false] #size @ (◁ int USize) ∗
-    local_count ◁ₗ[π, Owned false] #(Z.of_nat i) @ (◁ int USize) ∗
-    arg_src ◁ₗ[π, Owned false] #src @ (◁ alias_ptr_t) ∗
-    arg_dst ◁ₗ[π, Owned false] #dst @ (◁ alias_ptr_t) ∗
-    src ◁ₗ[ π, Owned false] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
-    dst ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
+    arg_size ◁ₗ[π, Owned] #size @ (◁ int USize) ∗
+    local_count ◁ₗ[π, Owned] #(Z.of_nat i) @ (◁ int USize) ∗
+    arg_src ◁ₗ[π, Owned] #src @ (◁ alias_ptr_t) ∗
+    arg_dst ◁ₗ[π, Owned] #dst @ (◁ alias_ptr_t) ∗
+    src ◁ₗ[ π, Owned] # (fmap (M:=list) PlaceIn (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val)) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly))) ∗
+    dst ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn (take i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) vs : list val) ++ drop i (reshape (replicate (Z.to_nat size) (ly_size T_st_ly)) v_t))) @ (◁ array_t (Z.to_nat size) (value_t (UntypedSynType T_st_ly)))))%I).
   iApply (typed_goto_acc _ _ _ _ _ loop_inv).
   { unfold_code_marker_and_compute_map_lookup. }
   unfold loop_inv.

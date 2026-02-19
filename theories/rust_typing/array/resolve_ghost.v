@@ -7,25 +7,6 @@ From refinedrust Require Import options.
 Section resolve_ghost.
   Context `{!typeGS Σ}.
 
-  (* TODO phrase this with fold_list instead. Problem: llctxupdate, existential quantifier, updating ownershp *)
-  (* Iteration is controlled by refinement [rs] *)
-  Definition resolve_ghost_iter_cont_t rt : Type := llctx → list (place_rfn rt) → iProp Σ → bool → iProp Σ.
-  Definition resolve_ghost_iter {rt} (π : thread_id) (E : elctx) (L : llctx) (rm : ResolutionMode) (lb : bool) (l : loc) (st : syn_type) (lts : list (ltype rt)) (b : bor_kind) (rs : list (place_rfn rt)) (ig : list nat) (i0 : nat) (T : resolve_ghost_iter_cont_t rt) : iProp Σ :=
-    (∀ F : coPset,
-      ⌜lftE ⊆ F⌝ -∗
-      ⌜lft_userE ⊆ F⌝ -∗
-      rrust_ctx -∗
-      elctx_interp E -∗
-      llctx_interp L -∗
-      ⌜length lts = (length rs)%nat⌝ -∗
-      ([∗ list] i ↦ r; lt ∈ rs; lts, if decide ((i + i0) ∈ ig) then True else (l offsetst{st}ₗ (i + i0)) ◁ₗ[ π, b] r @ lt) ={F}=∗
-      ∃ (L' : llctx) (rs' : list $ place_rfn rt) (R : iPropI Σ) (progress : bool),
-      maybe_logical_step lb F (([∗ list] i ↦ r; lt ∈ rs'; lts, if decide ((i + i0) ∈ ig) then True else (l offsetst{st}ₗ (i + i0)) ◁ₗ[ π, b] r @ lt) ∗ R) ∗
-      llctx_interp L' ∗ T L' rs' R progress).
-  Class ResolveGhostIter {rt} (π : thread_id) (E : elctx) (L : llctx) (rm : ResolutionMode) (lb : bool) (l : loc) (st : syn_type) (lts : list (ltype rt)) (b : bor_kind) (rs : list (place_rfn rt)) (ig : list nat) (i0 : nat) : Type :=
-    resolve_ghost_iter_proof T : iProp_to_Prop (resolve_ghost_iter π E L rm lb l st lts b rs ig i0 T).
-  Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + : typeclass_instances.
-
   Lemma resolve_ghost_iter_id {rt} π E L m b l st (lts : list (ltype rt)) bk rs idx n (T : resolve_ghost_iter_cont_t rt) :
     T L rs True false ⊢
     resolve_ghost_iter π E L m b l st lts bk rs idx n T.
@@ -35,14 +16,19 @@ Section resolve_ghost.
     iIntros (???) "#CTX #HE HL %Hlen Ha".
     iFrame. iApply maybe_logical_step_intro. by iFrame.
   Qed.
-  Global Instance resolve_ghost_iter_fmap_in_inst π E L rm lb l st {rt} (lts : list (ltype rt)) rs b ig i0 :
-    ResolveGhostIter π E L rm lb l st lts b (<#> rs) ig i0 :=
-    λ T, i2p (resolve_ghost_iter_id π E L rm lb l st lts b (<#> rs) ig i0 T).
-  Global Instance resolve_ghost_iter_fmap_xin_inst π E L rm lb l st {rt} (lts : list (ltype rt)) rs b ig i0 :
-    ResolveGhostIter π E L rm lb l st lts b ((PlaceIn ∘ RT_xrt rt) <$> rs) ig i0 :=
-    λ T, i2p (resolve_ghost_iter_id π E L rm lb l st lts b ((PlaceIn ∘ RT_xrt rt) <$> rs) ig i0 T).
+  Lemma resolve_ghost_iter_id_fmap_in {rt} π E L m b l st (lts : list (ltype rt)) bk rs idx n (T : resolve_ghost_iter_cont_t rt) :
+    T L (<#> rs) True false ⊢ resolve_ghost_iter π E L m b l st lts bk (<#> rs) idx n T.
+  Proof. apply resolve_ghost_iter_id. Qed.
+  Definition resolve_ghost_iter_id_fmap_in_inst := [instance @resolve_ghost_iter_id_fmap_in].
+  Global Existing Instance resolve_ghost_iter_id_fmap_in_inst.
 
-  Lemma resolve_ghost_iter_cons_not_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) (rs : list (place_rfn rt)) ig (i0 : nat) T `{!CanSolve(i0 ∉ ig)} :
+  Lemma resolve_ghost_iter_id_fmap_xin {rt} π E L m b l st (lts : list (ltype rt)) bk rs idx n (T : resolve_ghost_iter_cont_t rt) :
+    T L ((PlaceIn ∘ RT_xrt rt) <$> rs) True false ⊢ resolve_ghost_iter π E L m b l st lts bk ((PlaceIn ∘ RT_xrt rt) <$> rs) idx n T.
+  Proof. apply resolve_ghost_iter_id. Qed.
+  Definition resolve_ghost_iter_id_fmap_xin_inst := [instance @resolve_ghost_iter_id_fmap_xin].
+  Global Existing Instance resolve_ghost_iter_id_fmap_xin_inst.
+
+  Lemma resolve_ghost_iter_cons_not_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) (rs : list (place_rfn rt)) ig (i0 : nat) `{!CanSolve(i0 ∉ ig)} T :
     (∃ lt lts', ⌜lts = lt :: lts'⌝ ∗
       resolve_ghost π E L rm lb (l offsetst{st}ₗ i0) lt b r (λ L2 r' R progress,
         resolve_ghost_iter π E L2 rm lb l st lts' b rs ig (S i0) (λ L3 rs2 R2 progress',
@@ -70,10 +56,10 @@ Section resolve_ghost.
     iApply (big_sepL2_impl with "Hx"). iModIntro. iIntros (??? ??) "Hx".
       rewrite !Nat.add_succ_r. rewrite -!Nat2Z.inj_add Nat.add_succ_r. done.
   Qed.
-  Global Instance resolve_ghost_iter_cons_not_ignored_inst π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) rs ig i0 `{!CanSolve(i0 ∉ ig)}:
-    ResolveGhostIter π E L rm lb l st lts b (r :: rs) ig i0 := λ T, i2p (resolve_ghost_iter_cons_not_ignored π E L rm lb l st lts b r rs ig i0 T).
+  Definition resolve_ghost_iter_cons_not_ignored_inst := [instance @resolve_ghost_iter_cons_not_ignored].
+  Global Existing Instance resolve_ghost_iter_cons_not_ignored_inst.
 
-  Lemma resolve_ghost_iter_cons_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) (rs : list (place_rfn rt)) ig (i0 : nat) T `{!CanSolve(i0 ∈ ig)} :
+  Lemma resolve_ghost_iter_cons_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) (rs : list (place_rfn rt)) ig (i0 : nat) `{!CanSolve(i0 ∈ ig)} T :
     (∃ lt lts', ⌜lts = lt :: lts'⌝ ∗
       resolve_ghost_iter π E L rm lb l st lts' b rs ig (S i0) (λ L2 rs2 R progress,
         T L2 (r :: rs2) (R) (progress)))
@@ -96,8 +82,8 @@ Section resolve_ghost.
     iApply (big_sepL2_impl with "Hx"). iModIntro. iIntros (??? ??) "Hx".
       rewrite !Nat.add_succ_r. rewrite -!Nat2Z.inj_add Nat.add_succ_r. done.
   Qed.
-  Global Instance resolve_ghost_iter_cons_ignored_inst π E L rm lb l st {rt} (lts : list (ltype rt)) b (r : place_rfn rt) rs ig i0 `{!CanSolve(i0 ∈ ig)}:
-    ResolveGhostIter π E L rm lb l st lts b (r :: rs) ig i0 := λ T, i2p (resolve_ghost_iter_cons_ignored π E L rm lb l st lts b r rs ig i0 T).
+  Definition resolve_ghost_iter_cons_ignored_inst := [instance @resolve_ghost_iter_cons_ignored].
+  Global Existing Instance resolve_ghost_iter_cons_ignored_inst.
 
   Lemma resolve_ghost_iter_insert_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b r rs ig i0 `{!CanSolve ((i + i0) ∈ ig)} T:
     resolve_ghost_iter π E L rm lb l st lts b rs ig i0 T ⊢
@@ -123,8 +109,8 @@ Section resolve_ghost.
     iDestruct "Hr" as "(%L2 & %rs' & %R & %prog & Hs' & HL & HT)".
     iModIntro. iExists _, _, _, _. iFrame.
   Qed.
-  Global Instance resolve_ghost_iter_insert_ignored_inst π E L rm lb l st {rt} (lts : list (ltype rt)) r rs b ig i0 `{!CanSolve ((i + i0) ∈ ig)} :
-    ResolveGhostIter π E L rm lb l st lts b (<[i := r]> rs) ig i0 := λ T, i2p (resolve_ghost_iter_insert_ignored π E L rm lb l st lts b r rs ig i0 T).
+  Definition resolve_ghost_iter_insert_ignored_inst := [instance @resolve_ghost_iter_insert_ignored].
+  Global Existing Instance resolve_ghost_iter_insert_ignored_inst.
 
   Lemma resolve_ghost_iter_insert_not_ignored π E L rm lb l st {rt} (lts : list (ltype rt)) b r rs ig i0 `{!CanSolve ((i + i0) ∉ ig)} T:
     (∃ lt, ⌜lts !! i = Some lt⌝ ∗
@@ -174,8 +160,8 @@ Section resolve_ghost.
         rewrite decide_False; first by eauto.
         contradict Hel. set_solver.
   Qed.
-  Global Instance resolve_ghost_iter_insert_not_ignored_inst π E L rm lb l st {rt} (lts : list (ltype rt)) r rs b ig i0 `{!CanSolve ((i + i0) ∉ ig)} :
-    ResolveGhostIter π E L rm lb l st lts b (<[i := r]> rs) ig i0 := λ T, i2p (resolve_ghost_iter_insert_not_ignored π E L rm lb l st lts b r rs ig i0 T).
+  Definition resolve_ghost_iter_insert_not_ignored_inst := [instance @resolve_ghost_iter_insert_not_ignored].
+  Global Existing Instance resolve_ghost_iter_insert_not_ignored_inst.
 
   Lemma resolve_ghost_iter_nil π E L rm lb l st {rt} (lts : list (ltype rt)) b ig i0 T :
     T L [] True%I false
@@ -183,11 +169,8 @@ Section resolve_ghost.
   Proof.
     apply resolve_ghost_iter_id.
   Qed.
-  Global Instance resolve_ghost_iter_nil_inst π E L rm lb l st {rt} (lts : list (ltype rt)) b ig i0 :
-    ResolveGhostIter π E L rm lb l st lts b [] ig i0 := λ T, i2p (resolve_ghost_iter_nil π E L rm lb l st lts b ig i0 T).
+  Definition resolve_ghost_iter_nil_inst := [instance @resolve_ghost_iter_nil].
+  Global Existing Instance resolve_ghost_iter_nil_inst.
 End resolve_ghost.
-
-Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + + + : typeclass_instances.
-Global Typeclasses Opaque resolve_ghost_iter.
 
 

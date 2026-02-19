@@ -366,19 +366,17 @@ Section na_subtype.
       iEval (rewrite /ty_own_val/=).
       eauto with iFrame.
   Qed.
-
-  Global Instance owned_subtype_na_ex_plain_t_inst π E L (ty : type rt) (r : rt) (r' : X) :
-    OwnedSubtype π E L false r r' ty (∃na; P, ty) :=
-    λ T, i2p (owned_subtype_na_ex_plain_t π E L ty r r' T).
+  Definition owned_subtype_na_ex_plain_t_inst := [instance @owned_subtype_na_ex_plain_t].
+  Global Existing Instance owned_subtype_na_ex_plain_t_inst.
 
   (* TODO move *)
-  Lemma opened_na_ltype_acc_owned π {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost l wl r :
-    l ◁ₗ[π, Owned wl] r @ OpenedNaLtype lt_cur lt_inner Cpre Cpost -∗
-    l ◁ₗ[π, Owned false] r @ lt_cur ∗
+  Lemma opened_na_ltype_acc_owned π {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost l r :
+    l ◁ₗ[π, Owned] r @ OpenedNaLtype lt_cur lt_inner Cpre Cpost -∗
+    l ◁ₗ[π, Owned] r @ lt_cur ∗
     (∀ rt_cur' (lt_cur' : ltype rt_cur') r',
-      l ◁ₗ[π, Owned false] r' @ lt_cur' -∗
+      l ◁ₗ[π, Owned] r' @ lt_cur' -∗
       ⌜ltype_st lt_cur' = ltype_st lt_cur⌝ -∗
-      l ◁ₗ[π, Owned wl] r' @ OpenedNaLtype lt_cur' lt_inner Cpre Cpost).
+      l ◁ₗ[π, Owned] r' @ OpenedNaLtype lt_cur' lt_inner Cpre Cpost).
   Proof.
     rewrite ltype_own_opened_na_unfold /opened_na_ltype_own.
     iIntros "(%ly & ? & ? & ? & ? & $ & Hcl)".
@@ -386,8 +384,8 @@ Section na_subtype.
     rewrite ltype_own_opened_na_unfold /opened_ltype_own.
     iExists ly. rewrite Hst. eauto with iFrame.
   Qed.
-  Lemma typed_place_opened_na_owned E L f {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l wl P''' T :
-    typed_place E L f l lt_cur r UpdStrong (Owned false) P''' (λ L' κs l2 b2 bmin rti ltyi ri updcx,
+  Lemma typed_place_opened_na_owned E L f {rt_cur rt_inner} (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner) Cpre Cpost r l P''' T :
+    typed_place E L f l lt_cur r UpdStrong (Owned) P''' (λ L' κs l2 b2 bmin rti ltyi ri updcx,
       T L' κs l2 b2 bmin rti ltyi ri
         (λ L2 upd cont, updcx L2 upd (λ upd',
           cont (mkPUpd _ UpdStrong
@@ -398,7 +396,7 @@ Section na_subtype.
             UpdStrong
             I I))
         ))
-    ⊢ typed_place E L f l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r UpdStrong (Owned wl) P''' T.
+    ⊢ typed_place E L f l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r UpdStrong (Owned) P''' T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
@@ -419,15 +417,15 @@ Section na_subtype.
   Definition typed_place_opened_na_owned_inst := [instance @typed_place_opened_na_owned].
   Global Existing Instance typed_place_opened_na_owned_inst | 5.
 
-  Lemma na_ex_plain_t_acc_owned F π (ty : type rt) (wl : bool) (l : loc) (x : X) :
+  Lemma na_ex_plain_t_acc_owned F π (ty : type rt) (l : loc) (x : X) :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] #x @ (◁ (∃na; P, ty)) ={F}=∗
+    l ◁ₗ[π, Owned] #x @ (◁ (∃na; P, ty)) ={F}=∗
     ∃ r : rt, P.(na_inv_P) π r x ∗
-    l ◁ₗ[π, Owned false] #r @ (◁ ty) ∗
+    l ◁ₗ[π, Owned] #r @ (◁ ty) ∗
     (∀ rt' (lt' : ltype rt') (r' : place_rfn rt'),
-      l ◁ₗ[π, Owned false] r' @ lt' -∗
+      l ◁ₗ[π, Owned] r' @ lt' -∗
       ⌜ltype_st lt' = ty_syn_type ty MetaNone⌝ -∗
-      l ◁ₗ[π, Owned wl] r' @
+      l ◁ₗ[π, Owned] r' @
         (OpenedLtype lt' (◁ ty) (◁ ∃na; P, ty)
           (λ (r : rt) (x : X), P.(na_inv_P) π r x)
           (λ r x, True)))%I.
@@ -435,8 +433,8 @@ Section na_subtype.
     (* Nothing has changed *)
     iIntros (?) "Hb".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & Hcred & %x' & Hrfn & Hb)".
-    iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
+    iDestruct "Hb" as "(%ly & %Halg & %Hly & #Hsc & #Hlb & %x' & Hrfn & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
 
     unfold ty_own_val, na_ex_plain_t at 2.
     iDestruct "Hb" as "(%v & Hl & %r & HP & Hv)".
@@ -445,7 +443,7 @@ Section na_subtype.
     iModIntro. iExists r. iFrame.
     iSplitL "Hl Hv".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-      iExists ly. iFrame "#%". iSplitR; first done.
+      iExists ly. iFrame "#%".
       iExists r. iSplitR; first done. iModIntro. eauto with iFrame. }
 
     iIntros (rt' lt' r') "Hb %Hst".
@@ -454,13 +452,12 @@ Section na_subtype.
     do 5 iR; iFrame.
 
     clear -Halg Hly.
-    iApply (logical_step_intro_maybe with "Hat").
-    iIntros "Hcred' !>".
+    iApply logical_step_intro.
     iIntros (r' r'' κs) "HP".
     iSplitR; first done.
     iIntros "Hdead Hl".
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & _ & _ & Hsc' & _ & _ & %r0 & -> & >Hb)".
+    iDestruct "Hl" as "(%ly' & _ & _ & Hsc' & _ & %r0 & -> & >Hb)".
     iDestruct "Hb" as "(%v' & Hl & Hv)".
     iMod ("HP" with "Hdead" ) as "HP".
     iModIntro.
@@ -470,11 +467,11 @@ Section na_subtype.
     done.
   Qed.
 
-  Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x wl K `{!TCDone (K ≠ [])} T :
+  Lemma typed_place_na_ex_plain_t_owned E L f l (ty : type rt) x K `{!TCDone (K ≠ [])} T :
     (∀ r, introduce_with_hooks E L (P.(na_inv_P) f.1 r x)
       (λ L2, typed_place E L2 f l
               (OpenedLtype (◁ ty) (◁ ty) (◁ (∃na; P, ty)) (λ (r : rt) (x : X), P.(na_inv_P) f.1 r x) (λ r x, True))
-              (#r) UpdStrong (Owned wl) K
+              (#r) UpdStrong (Owned) K
         (λ L2 κs li b2 bmin' rti ltyi ri updcx,
           T L2 κs li b2 bmin' rti ltyi ri
             (λ L3 upd cont, updcx L3 upd (λ upd',
@@ -482,7 +479,7 @@ Section na_subtype.
               upd'.(pupd_lt) upd'.(pupd_rfn) upd'.(pupd_R) UpdStrong
               I I)))
         )))
-    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) UpdStrong (Owned wl) K T.
+    ⊢ typed_place E L f l (◁ (∃na; P, ty))%I (#x) UpdStrong (Owned) K T.
   Proof.
     unfold introduce_with_hooks, typed_place.
 
@@ -518,11 +515,11 @@ Section na_subtype.
 
     ∃ (r : rt),
       P.(na_inv_P) π r x ∗
-      (l ◁ₗ[π, Owned false] (#r) @ (◁ ty)) ∗
+      (l ◁ₗ[π, Owned] (#r) @ (◁ ty)) ∗
       &na{κ,π,shrN.@l} (∃ r' : rt, l ↦: ty_own_val ty π r' MetaNone ∗ na_inv_P P π r' x) ∗
 
       ( ∀ r' : rt,
-          l ◁ₗ[π, Owned false] #r' @ (◁ ty) ∗ P.(na_inv_P) π r' x ={E}=∗
+          l ◁ₗ[π, Owned] #r' @ (◁ ty) ∗ P.(na_inv_P) π r' x ={E}=∗
           q.[κ] ∗ na_own π F ).
   Proof.
     iIntros (???) "#LFT Hna Hcred Hq #Hb".
@@ -541,13 +538,12 @@ Section na_subtype.
     iSplitL "Hl".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists ly => /=.
-      iFrame (Halg Hly) "Hlb Hscr"; iR.
-      iExists r; iR.
+      iFrame (Halg Hly) "Hlb Hscr". iExists r; iR.
       by iModIntro. }
 
     iR; iIntros (r') "(Hl & HP)".
     iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
-    iDestruct "Hl" as (???) "(_ & _ & _ & (% & <- & Hl)) /=".
+    iDestruct "Hl" as (???) "(_ & _ &  (% & <- & Hl)) /=".
     iMod (fupd_mask_mono with "Hl") as "Hl"; first solve_ndisj.
 
     iApply ("Hvs" with "[Hl HP] Hna").
@@ -565,7 +561,7 @@ Section na_subtype.
         li_tactic (lctx_lft_alive_count_goal E L1 κ) (λ '(κs, L2),
           ∀ r, introduce_with_hooks E L2
             (P.(na_inv_P) f.1 r x ∗
-            l ◁ₗ[f.1, Owned false] (#r) @
+            l ◁ₗ[f.1, Owned] (#r) @
               (OpenedNaLtype (◁ ty) (◁ ty)
                 (λ rfn, P.(na_inv_P) f.1 rfn x)
                 (λ _, na_own f.1 (↑shrN.@l) ∗ llft_elt_toks κs)) ∗
@@ -607,7 +603,7 @@ Section na_subtype.
     iMod (na_ex_plain_t_acc_shared with "LFT Hna Hcred Htok Hl") as (r) "(HP & Hl & #Hbor & Hvs)"; [ try solve_ndisj.. |].
 
     iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
-    iDestruct "Hl" as (ly Halg Hly) "(#Hsc & #Hlb & _ & (% & <- & Hl))".
+    iDestruct "Hl" as (ly Halg Hly) "(#Hsc & #Hlb & (% & <- & Hl))".
 
     iMod ("HT" with "[] HE HL [$HP Hl Htokcl Hvs Hna']") as "HT"; first solve_ndisj.
     { rewrite ltype_own_opened_na_unfold /opened_na_ltype_own.
@@ -623,7 +619,7 @@ Section na_subtype.
 
       iIntros (r') "Hinv Hl".
       iEval (rewrite ltype_own_ofty_unfold /lty_of_ty_own) in "Hl".
-      iDestruct "Hl" as (ly' Halg' Hly') "(_ & #Hlb' & _ & (% & <- & Hl))".
+      iDestruct "Hl" as (ly' Halg' Hly') "(_ & #Hlb' & (% & <- & Hl))".
 
       iMod ("Hvs" with "[Hl Hinv]") as "(? & ?)".
       { iFrame.
@@ -671,7 +667,7 @@ Section na_subtype.
   Lemma stratify_ltype_opened_na_Owned {rt_cur rt_inner} π E L mu mdu ma {M} (ml : M) l
       (lt_cur : ltype rt_cur) (lt_inner : ltype rt_inner)
       (Cpre Cpost : rt_inner → iProp Σ) r (T : stratify_ltype_cont_t) :
-    stratify_ltype π E L mu mdu ma ml l lt_cur r (Owned false)
+    stratify_ltype π E L mu mdu ma ml l lt_cur r (Owned)
       (λ L' R rt_cur' lt_cur' (r' : place_rfn rt_cur'),
         if decide (ma = StratNoRefold)
         then (* keep it open *)
@@ -679,11 +675,11 @@ Section na_subtype.
         else (* fold the invariant *)
           ∃ ri,
             (* show that the core of lt_cur' is a subtype of lt_inner *)
-            weak_subltype E L' (Owned false) (r') (#ri) lt_cur' lt_inner (
+            weak_subltype E L' (Owned) (r') (#ri) lt_cur' lt_inner (
               (* re-establish the invariant *)
               prove_with_subtype E L' true ProveDirect (Cpre ri)
                 (λ L'' _ R2, T L'' (Cpost ri ∗ R2 ∗ R) unit (AliasLtype unit (ltype_st lt_inner) l) #tt)))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned false) T.
+    ⊢ stratify_ltype π E L mu mdu ma ml l (OpenedNaLtype lt_cur lt_inner Cpre Cpost) r (Owned) T.
   Proof.
     rewrite /stratify_ltype /weak_subltype /prove_with_subtype.
 

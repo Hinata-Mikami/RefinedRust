@@ -14,17 +14,17 @@ Section lemmas.
     syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
     l `has_layout_loc` ly2 →
     owned_type_incl π r1 r2 ty1 ty2
-    ⊢ (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2).
+    ⊢ (l ◁ₗ[π, Owned] #r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
   Proof.
     iIntros (Hst2 Hly2) "Hincl Hl".
     rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & _ & % & -> & Hl)".
+    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & -> & Hl)".
     iExists ly2. iR. iR.
     iDestruct "Hincl" as "(%Hszeq & Hsc & Hvi)".
     assert (ly_size ly' = ly_size ly2) as Hszeq'. {
       by eapply syn_type_size_eq_use. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
-    rewrite -Hszeq'. iFrame. iR.
+    rewrite -Hszeq'. iFrame.
     iExists _. iR. iMod "Hl" as "(%v & Hl & Hv)".
     iModIntro. iExists _. iFrame.
     by iApply "Hvi".
@@ -34,16 +34,16 @@ Section lemmas.
     syn_type_has_layout (ty_syn_type ty2 MetaNone) ly2 →
     l `has_layout_loc` ly2 →
     (∀ r1, owned_type_incl π r1 r2 ty1 ty2)
-    ⊢ (l ◁ₗ[π, Owned false] r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2).
+    ⊢ (l ◁ₗ[π, Owned] r1 @ ◁ ty1) -∗ (l ◁ₗ[π, Owned] #r2 @ ◁ ty2).
   Proof.
     iIntros (Hst2 Hly2) "Hincl Hl".
     rewrite !ltype_own_ofty_unfold/lty_of_ty_own.
-    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & _ & % & Hrfn & Hl)".
+    iDestruct "Hl" as "(%ly' & %Halg' & %Hlyl & Hsc1 & Hlb & % & Hrfn & Hl)".
     iExists ly2. iR. iR.
     iDestruct ("Hincl" $! r') as "(%Hszeq & Hsc & Hvi)".
     assert (ly_size ly' = ly_size ly2) as Hszeq'. { by eapply syn_type_size_eq_use; done. }
     iSplitL "Hsc Hsc1". { by iApply "Hsc". }
-    rewrite -Hszeq'. iFrame. iR.
+    rewrite -Hszeq'. iFrame.
     iExists r2. iR. iMod "Hl" as "(%v & Hl & Hv)".
     iModIntro. iExists _. iFrame.
     by iApply "Hvi".
@@ -119,15 +119,14 @@ Section deinit.
     iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
 
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
-    iSpecialize ("Hincl" $! (Owned false) (#r)).
+    iSpecialize ("Hincl" $! (Owned) (#r)).
     iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
     iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
     iExists _, _. iFrame.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & %Hst' & %)".
     simp_ltypes in Hst'.
     iSplitL.
-    { iMod lc_zero as "Hlc".
-      iMod (ofty_own_split_value_untyped_lc with "[Hlc] Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    { iMod (ofty_own_split_value_untyped with " Hl") as "(%v & Hv & Hl)"; [done.. | ].
       iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
       iApply (logical_step_wand with "Hb"). iModIntro. iIntros "$".
       iApply (ofty_owned_subtype_aligned with "[] Hl").
@@ -166,7 +165,7 @@ Section deinit.
     iIntros (??) "CTX HE HL Hl". simp_ltypes; simpl.
 
     iPoseProof (full_eqltype_acc with "CTX HE HL") as "#Hincl"; first apply Heqt.
-    iSpecialize ("Hincl" $! (Owned false) (#r)).
+    iSpecialize ("Hincl" $! (Owned) (#r)).
     iDestruct "Hincl" as "(Hincl & _)". iDestruct "Hincl" as "(%Hst & Hincl & _)".
     iMod (ltype_incl'_use with "Hincl Hl") as "Hl"; first done.
 
@@ -177,8 +176,7 @@ Section deinit.
     assert (syn_type_size_eq (ltype_st lt) st) as ?.
     { rewrite Hst ltype_st_ofty. by eapply syn_type_size_eq_prove. }
     iSplitL.
-    { iMod lc_zero as "Hlc".
-      iMod (ofty_own_split_value_untyped_lc with "[Hlc] Hl") as "(%v & Hv & Hl)"; [done.. | ].
+    { iMod (ofty_own_split_value_untyped with "Hl") as "(%v & Hv & Hl)"; [done.. | ].
       iPoseProof (ty_own_ghost_drop with "Hv") as "Hb"; first done.
       iApply (logical_step_wand with "Hb"). iModIntro. iIntros "$".
       iApply (ofty_owned_subtype_aligned with "[] Hl"); [done | | ].
@@ -201,8 +199,8 @@ Section deinit_fallback.
   (* TODO: maybe restrict this instance more for earlier failure *)
   Lemma uninit_mono π E L l {rt} (ty : type rt) r st T :
     subsume_full E L false
-      (l ◁ₗ[π, Owned false] #r @ (◁ ty))
-      (l ◁ₗ[π, Owned false] .@ (◁ (uninit st))) T :-
+      (l ◁ₗ[π, Owned] #r @ (◁ ty))
+      (l ◁ₗ[π, Owned] .@ (◁ (uninit st))) T :-
     ly ← tactic (compute_layout_goal st);
     exhale (⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝);
     ∀ v,
@@ -213,7 +211,7 @@ Section deinit_fallback.
     iIntros "(%ly & %Halg1 & %Halg2 & HT)".
     iIntros (????) "#CTX #HE HL Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own. simpl.
-    iDestruct "Hl" as "(%ly' & %Halg & %Hly & Hsc & ? & ? & %r' & <- & Hv)".
+    iDestruct "Hl" as "(%ly' & %Halg & %Hly & Hsc & ? & %r' & <- & Hv)".
     iMod (fupd_mask_mono with "Hv") as "(%v & Hl & Hv)"; first done.
     iPoseProof (ty_own_val_has_layout with "Hv") as "%"; first done.
     iExists L, True%I. iPoseProof ("HT" with "Hv") as "$". iFrame "HL".
@@ -231,7 +229,7 @@ Section deinit_fallback.
 
   (** We have this instance because it even works when [r1 = PlaceGhost ..] *)
   Lemma weak_subltype_deinit E L {rt1 : RT} (r1 : place_rfn rt1) r2 (ty : type rt1) st T :
-    weak_subltype E L (Owned false) r1 #r2 (◁ ty) (◁ uninit st) T :-
+    weak_subltype E L (Owned) r1 #r2 (◁ ty) (◁ uninit st) T :-
     exhale (⌜ty_syn_type ty MetaNone = st⌝);
     return T.
   Proof.
@@ -289,8 +287,8 @@ Section evar.
   (** ** Evar instantiation *)
   Lemma uninit_mono_untyped_evar π E L step l ly1 ly2 `{!IsProtected ly2} T :
     subsume_full E L step
-      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))
-      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T :-
+      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly1)))
+      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly2))) T :-
     exhale (⌜ly1 = ly2⌝);
     return (T L True%I).
   Proof. iIntros "(-> & HT)". iApply subsume_full_subsume. iFrame. eauto. Qed.
@@ -299,8 +297,8 @@ Section evar.
 
   Lemma uninit_mono_untyped_id E L π step l (ly1 ly2 : layout) `{TCDone (ly1 = ly2)} T:
     subsume_full E L step
-      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly1)))
-      (l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType ly2))) T :-
+      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly1)))
+      (l ◁ₗ[π, Owned] .@ (◁ uninit (UntypedSynType ly2))) T :-
     return (T L True%I).
   Proof.
     match goal with
@@ -319,8 +317,8 @@ Section init.
   (** ** Subsumption with uninit on the LHS (for initializing) *)
   Lemma subsume_full_ofty_owned_subtype π E L step l {rt1 rt2} (ty1 : type rt1) (ty2 : type rt2) r1 r2 T :
     subsume_full E L step
-      (l ◁ₗ[π, Owned false] #r1 @ ◁ ty1)
-      (l ◁ₗ[π, Owned false] #r2 @ ◁ ty2) T :-
+      (l ◁ₗ[π, Owned] #r1 @ ◁ ty1)
+      (l ◁ₗ[π, Owned] #r2 @ ◁ ty2) T :-
     ly1 ← tactic (compute_layout_goal (ty_syn_type ty1 MetaNone));
       (* augment context *)
     inhale (⌜enter_cache_hint(syn_type_has_layout (ty_syn_type ty1 MetaNone) ly1)⌝);

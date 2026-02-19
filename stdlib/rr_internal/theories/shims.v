@@ -57,11 +57,11 @@ Definition type_of_alloc_realloc `{RRGS : !refinedrustGS Σ} :=
     ⌜layout_wf (Layout (Z.to_nat new_size) (Z.to_nat align_log2))⌝ ∗
     (*⌜ly_align_in_bounds (Layout (Z.to_nat new_size) (Z.to_nat align_log2))⌝ ∗*)
     (*⌜layout_wf (Layout (Z.to_nat old_size) (Z.to_nat align_log2))⌝ ∗*)
-    ptr_old ◁ₗ[π, Owned false] PlaceIn v @ (◁ value_t (UntypedSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))) ∗
+    ptr_old ◁ₗ[π, Owned ] PlaceIn v @ (◁ value_t (UntypedSynType (Layout (Z.to_nat old_size) (Z.to_nat align_log2)))) ∗
     freeable_nz ptr_old (Z.to_nat old_size) 1 HeapAlloc) →
   ∃ (ptr_new, v') : (loc * val), ptr_new @ alias_ptr_t; λ π,
     freeable_nz ptr_new (Z.to_nat new_size) 1 HeapAlloc ∗
-    ptr_new ◁ₗ[π, Owned false] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
+    ptr_new ◁ₗ[π, Owned] #(v ++ v' : val) @ (◁ value_t (UntypedSynType (Layout (Z.to_nat new_size) (Z.to_nat align_log2)))) ∗
     ⌜v' `has_layout_val` (Layout (Z.to_nat (new_size - old_size)) (Z.to_nat align_log2))⌝
 .
 #[global] Typeclasses Opaque Z.divide.
@@ -219,7 +219,7 @@ Definition type_of_alloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st : s
     ⌜(size > 0)%Z⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →
   ∃ l : loc, l @ alias_ptr_t; λ π,
-      l ◁ₗ[π, Owned false] .@ (◁ (uninit (ArraySynType T_st (Z.to_nat size)))) ∗
+      l ◁ₗ[π, Owned ] .@ (◁ (uninit (ArraySynType T_st (Z.to_nat size)))) ∗
       freeable_nz l ((size_of_array_in_bytes T_st (Z.to_nat size))) 1 HeapAlloc.
 
 Lemma alloc_array_layout_wf T_st_ly size :
@@ -303,13 +303,13 @@ Definition type_of_realloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (old_size, new_size, l, v) : (Z * Z * loc * val), (λ ϝ, []);
     old_size :@: int USize, l :@: alias_ptr_t, new_size :@: int USize; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat old_size)) 1 HeapAlloc ∗
-    l ◁ₗ[π, Owned false] #v @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat old_size)))) ∗
+    l ◁ₗ[π, Owned ] #v @ (◁ value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat old_size)))) ∗
     ⌜(old_size ≤ new_size)%Z⌝ ∗
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat new_size)) ∈ ISize⌝ ∗
     ⌜(old_size > 0)%Z⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →
   ∃ (l', v') : (loc * val), l' @ alias_ptr_t; λ π,
-    l' ◁ₗ[π, Owned false] #(v ++ v' : val) @ (◁ (value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat new_size))))) ∗
+    l' ◁ₗ[π, Owned ] #(v ++ v' : val) @ (◁ (value_t (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat new_size))))) ∗
     v' ◁ᵥ{π, MetaNone} .@ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat (new_size - old_size)))) ∗
       freeable_nz l' ((size_of_array_in_bytes T_st (Z.to_nat new_size))) 1 HeapAlloc.
 
@@ -390,7 +390,7 @@ Definition type_of_dealloc_array `{RRGS : !refinedrustGS Σ} (T_rt : RT) (T_st :
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (size, l) : (Z * loc), (λ ϝ, []);
     size :@: int USize, l :@: alias_ptr_t; λ π,
     freeable_nz l (size_of_array_in_bytes T_st (Z.to_nat size)) 1 HeapAlloc ∗
-    l ◁ₗ[π, Owned false] .@ (◁ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat size)))) ∗
+    l ◁ₗ[π, Owned ] .@ (◁ uninit (UntypedSynType (mk_array_layout (use_layout_alg' T_st) (Z.to_nat size)))) ∗
     ⌜(size > 0)%Z⌝ ∗
     ⌜Z.of_nat (size_of_array_in_bytes T_st (Z.to_nat size)) ∈ ISize⌝ ∗
     ⌜(size_of_st T_st > 0)%Z⌝) →

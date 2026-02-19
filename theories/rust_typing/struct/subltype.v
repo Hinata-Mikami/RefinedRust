@@ -146,20 +146,20 @@ Section subltype.
       iIntros "Heq" (r). iApply ltype_incl_core; done.
   Qed.
 
-  Local Lemma struct_ltype_incl'_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) wl rs1 rs2 sls :
+  Local Lemma struct_ltype_incl'_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ (hpzipl _ lts1 rs1); hpzipl _ lts2 rs2,
-      ltype_incl (Owned false) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl' (Owned wl) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+      ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
+    ltype_incl' (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iPoseProof (big_sepL2_length with "Heq") as "%Hlen". rewrite !length_hpzipl in Hlen.
     iModIntro.
     iIntros (π l).
     rewrite !ltype_own_struct_unfold /struct_ltype_own.
-    iIntros "(%sl & %Halg & %Hlen1 & %Hly & Hlb & ? & Hb)".
+    iIntros "(%sl & %Halg & %Hlen1 & %Hly & Hlb & Hb)".
     iExists sl. iR. rewrite -Hlen. iR. iR. iFrame.
     iDestruct "Hb" as "(%r' & <- & Hb)". iExists rs2. iSplitR; first done.
-    iModIntro. iNext. iMod "Hb". rewrite -big_sepL_fupd.
+    iModIntro. iMod "Hb". rewrite -big_sepL_fupd.
     iApply (big_sepL_impl' with "Hb"). { rewrite !pad_struct_length //. }
     iModIntro. iIntros (k lt1 lt2 Hlook1 Hlook2).
     destruct (pad_struct_hpzipl_2_inv _ _ _ _ _ _ _ _ _ Hlen Hlook1 Hlook2) as
@@ -169,10 +169,10 @@ Section subltype.
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
     by iMod ("Hb" with "Hc").
   Qed.
-  Lemma struct_ltype_incl_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) wl rs1 rs2 sls :
+  Lemma struct_ltype_incl_owned_in {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls :
     ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2,
-      ltype_incl (Owned false) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
-    ltype_incl (Owned wl) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
+      ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) -∗
+    ltype_incl (Owned) #rs1 #rs2 (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iSplitR; first done. iModIntro.
@@ -185,20 +185,20 @@ Section subltype.
         iIntros (k [rt1 [lt1 r1]] [rt2 [lt2 r2]] ??). simpl. iApply ltype_incl_core; done.
   Qed.
 
-  Local Lemma struct_ltype_incl'_owned {rts} (lts1 lts2 : hlist ltype rts) wl rs sls :
+  Local Lemma struct_ltype_incl'_owned {rts} (lts1 lts2 : hlist ltype rts) rs sls :
     (([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Owned false) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
-    ltype_incl' (Owned wl) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
+      ∀ r, ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
+    ltype_incl' (Owned) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iModIntro.
     iIntros (π l).
     rewrite !ltype_own_struct_unfold /struct_ltype_own.
-    iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & ? & Hb)".
+    iIntros "(%sl & %Halg & %Hlen & %Hly & Hlb & Hb)".
     iExists sl. iSplitR; first done. iSplitR; first done.
     iSplitR; first done. iFrame.
     iDestruct "Hb" as "(%r' & Hrfn & Hb)". iExists r'. iFrame.
-    iModIntro. iNext. iMod "Hb". rewrite -big_sepL_fupd.
+    iModIntro. iMod "Hb". rewrite -big_sepL_fupd.
     iApply (big_sepL_impl' with "Hb"). { rewrite !pad_struct_length //. }
     iModIntro. iIntros (k lt1 lt2 Hlook1 Hlook2).
     destruct (pad_struct_hpzipl_2_inv' _ _ _ _ _ _ _ _ Hlook1 Hlook2) as
@@ -208,10 +208,10 @@ Section subltype.
     iIntros "(%ly & ? & ? & Hc)". iExists ly. rewrite Hst. iFrame.
     by iApply "Hb'".
   Qed.
-  Lemma struct_ltype_incl_owned {rts} (lts1 lts2 : hlist ltype rts) wl rs sls :
+  Lemma struct_ltype_incl_owned {rts} (lts1 lts2 : hlist ltype rts) rs sls :
     ([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_incl (Owned false) r r (projT2 ltp).1 (projT2 ltp).2) -∗
-    ltype_incl (Owned wl) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
+      ∀ r, ltype_incl (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
+    ltype_incl (Owned) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
     iSplitR; first done. iModIntro.
@@ -225,7 +225,7 @@ Section subltype.
 
   Local Lemma struct_ltype_incl'_uniq {rts} (lts1 lts2 : hlist ltype rts) κ γ rs sls :
     (([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq (Owned false) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
+      ∀ r, ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2)) -∗
     ltype_incl' (Uniq κ γ) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -285,7 +285,7 @@ Section subltype.
   Qed.
   Lemma struct_ltype_incl_uniq {rts} (lts1 lts2 : hlist ltype rts) κ γ rs sls :
     ([∗ list] ltp ∈ (hzipl2 rts lts1 lts2),
-      ∀ r, ltype_eq (Owned false) r r (projT2 ltp).1 (projT2 ltp).2) -∗
+      ∀ r, ltype_eq (Owned) r r (projT2 ltp).1 (projT2 ltp).2) -∗
     ltype_incl (Uniq κ γ) rs rs (StructLtype lts1 sls) (StructLtype lts2 sls).
   Proof.
     iIntros "#Heq".
@@ -553,15 +553,15 @@ Section accessors.
       + iApply struct_ltype_imp_unblockable. done.
   Qed.
 
-  Lemma struct_ltype_acc_owned {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls wl :
+  Lemma struct_ltype_acc_owned {rts} F π (lts : hlist ltype rts) (r : plist place_rfnRT rts) l sls :
     lftE ⊆ F →
-    l ◁ₗ[π, Owned wl] #r @ StructLtype lts sls -∗
+    l ◁ₗ[π, Owned] #r @ StructLtype lts sls -∗
     ∃ sl, ⌜use_struct_layout_alg sls = Some sl⌝ ∗
       ⌜l `has_layout_loc` sl⌝ ∗ ⌜length sls.(sls_fields) = length rts⌝ ∗
       loc_in_bounds l 0 (sl.(ly_size)) ∗ |={F}=>
       ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) ∗
+            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned] (projT2 ty).2 @ (projT2 ty).1) ∗
       logical_step F
       (∀ rts' (lts' : hlist ltype rts') (r' : plist place_rfnRT rts'),
         (* the number of fields should remain equal *)
@@ -569,15 +569,15 @@ Section accessors.
         (* new ownership *)
         ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts' lts' r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) ={F}=∗
-        l ◁ₗ[π, Owned wl] #r' @ StructLtype lts' sls).
+            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned] (projT2 ty).2 @ (projT2 ty).1) ={F}=∗
+        l ◁ₗ[π, Owned] #r' @ StructLtype lts' sls).
   Proof.
     iIntros (?) "Hb". rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iDestruct "Hb" as "(%sl & %Halg & %Hlen & %Hly & #Hlb & Hcred & %r' & -> & Hb)".
+    iDestruct "Hb" as "(%sl & %Halg & %Hlen & %Hly & #Hlb & %r' & -> & Hb)".
     iExists sl. iFrame "#%".
-    iMod (maybe_use_credit with "Hcred Hb") as "(Hcred & Hat & Hb)"; first done.
+    iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
     iModIntro. iFrame.
-    iApply (logical_step_intro_maybe with "Hat"). iIntros "Hcred' !>".
+    iApply (logical_step_intro).
     iIntros (rts' lts' r) "%Hlen_eq Hb".
     rewrite ltype_own_struct_unfold /struct_ltype_own.
     iExists sl. rewrite Hlen_eq. by iFrame "%#∗".
@@ -636,9 +636,9 @@ Section accessors.
     ([∗ list] ty ∈ hzipl2 rts lts lts',
       ∀ b' r, ltype_eq b' r r (ltype_core (projT2 ty).1) (ltype_core (projT2 ty).2)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype,
-      ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned false] (projT2 ty).2 @ ltype_core (projT2 ty).1)) -∗
+      ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned] (projT2 ty).2 @ ltype_core (projT2 ty).1)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts' rs) struct_make_uninit_ltype,
-        ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned false] (projT2 ty).2 @ ltype_core (projT2 ty).1)).
+        ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned] (projT2 ty).2 @ ltype_core (projT2 ty).1)).
   Proof.
     iIntros (Ha) "#Hcond >Hb". iApply big_sepL_fupd.
     iApply big_sepL2_elim_l.
@@ -660,7 +660,7 @@ Section accessors.
         iPoseProof (big_sepL_lookup with "Hcond")as "Heq".
         { apply hzipl_hzipl2_lookup; done. }
         (*iPoseProof (typed_place_cond_incl _ (Uniq κ γ) with "Hincl_k Hcond'") as "Hcond''".*)
-        iDestruct ("Heq" $! (Owned _) _) as "((%Hst1 & #Heq1 & _) & (_ & #Heq2 & _))".
+        iDestruct ("Heq" $! (Owned) _) as "((%Hst1 & #Heq1 & _) & (_ & #Heq2 & _))".
         (*setoid_rewrite ltype_own_core_equiv. *)
         iPoseProof ("Heq1" with "Hl") as "Hb".
         simpl in Hst1. rewrite !ltype_core_syn_type_eq in Hst1.
@@ -684,9 +684,9 @@ Section accessors.
       typed_place_cond (UpdUniq κs) (projT2 ty1) (projT2 ty2)) -∗
     lft_dead_list κs -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts' rs) struct_make_uninit_ltype,
-      ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned false] (projT2 ty).2 @ (projT2 ty).1)) -∗
+      ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned] (projT2 ty).2 @ (projT2 ty).1)) -∗
     ((|={lftE}=> [∗ list] i↦ty ∈ pad_struct fields (hpzipl rts lts rs) struct_make_uninit_ltype,
-        ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned false] (projT2 ty).2 @ ltype_core (projT2 ty).1)).
+        ∃ ly : layout, ⌜snd <$> fields !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ (l +ₗ offset_of_idx fields i) ◁ₗ[ π, Owned] (projT2 ty).2 @ ltype_core (projT2 ty).1)).
   Proof.
     iIntros (Ha) "#Hcond #Hdead >Hb". iApply big_sepL_fupd.
     iApply big_sepL2_elim_l.
@@ -714,7 +714,7 @@ Section accessors.
         { apply hzipl_hzipl2_lookup; done. }
         cbn.
         iMod (imp_unblockable_use with "Hub1 Hdead Hl") as "Hl"; first done.
-        iDestruct ("Heq1" $! (Owned _) _) as "((%Hst1 & #Heq1' & _) & (_ & #Heq2 & _))".
+        iDestruct ("Heq1" $! (Owned) _) as "((%Hst1 & #Heq1' & _) & (_ & #Heq2 & _))".
         iMod ("Heq2" with "Hl") as "Hl".
         rewrite !ltype_core_syn_type_eq in Hst1.
         rewrite -Hst1.
@@ -742,7 +742,7 @@ Section accessors.
       loc_in_bounds l 0 (sl.(ly_size)) ∗ |={F}=>
       ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts r) struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-        (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) ∗
+        (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned] (projT2 ty).2 @ (projT2 ty).1) ∗
       logical_step F
       (((* weak access *)
         ∀ bmin (lts' : hlist ltype rts) (r' : plist place_rfnRT rts),
@@ -750,7 +750,7 @@ Section accessors.
         (* new ownership *)
         ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts lts' r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) -∗
+            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned] (projT2 ty).2 @ (projT2 ty).1) -∗
         ([∗ list] ty1; ty2 ∈ hzipl rts lts; hzipl rts lts',
           typed_place_cond (bmin) (projT2 ty1) (projT2 ty2)) ={F}=∗
         l ◁ₗ[π, Uniq κ γ] #r' @ StructLtype lts' sls ∗
@@ -763,7 +763,7 @@ Section accessors.
         (* new ownership *)
         ([∗ list] i ↦ ty ∈ pad_struct (sl_members sl) (hpzipl rts' lts' r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned false] (projT2 ty).2 @ (projT2 ty).1) -∗
+            (l +ₗ offset_of_idx sl.(sl_members) i) ◁ₗ[π, Owned] (projT2 ty).2 @ (projT2 ty).1) -∗
         l ◁ₗ[π, Uniq κ γ] PlaceIn r' @ OpenedLtype (StructLtype lts' sls) (StructLtype lts sls) (StructLtype lts sls)
             (λ ri ri', ⌜ri = ri'⌝) (λ _ _, R))).
   Proof.
@@ -790,7 +790,7 @@ Section accessors.
       iMod (gvar_update rs' with "Hauth Hrfn") as "(Hauth & Hrfn)".
       set (V := (∃ r', gvar_auth γ r' ∗
         (|={lftE}=> [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts lts' r') struct_make_uninit_ltype,
-          ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ ltype_own (projT2 ty).1 (Owned false) π (projT2 ty).2 (l +ₗ offset_of_idx (sl_members sl) i)))%I).
+          ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗ ltype_own (projT2 ty).1 (Owned) π (projT2 ty).2 (l +ₗ offset_of_idx (sl_members sl) i)))%I).
       iMod (fupd_mask_subseteq lftE) as "Hcl_F"; first done.
       iDestruct "Hcred" as "(Hcred1 & Hcred)".
       opose proof* struct_layout_spec_has_layout_fields_length as Ha; first done.
@@ -846,7 +846,7 @@ Section accessors.
       iApply (opened_ltype_create_uniq_simple with "Hrfn Hauth Hcred1 Hat Hincl HR Hb_cl [] [Hcred']"); first done.
       { iModIntro. iIntros (?) "Hauth Hc". simp_ltypes.
         rewrite ltype_own_struct_unfold /struct_ltype_own.
-        iExists _. iFrame. iDestruct "Hc" as ">(%sl' & %Hsl' & _ & _ & _ & _ & %r' & -> & >Hb)".
+        iExists _. iFrame. iDestruct "Hc" as ">(%sl' & %Hsl' & _ & _ & _ &  %r' & -> & >Hb)".
         assert (sl' = sl) as ->. { rewrite Halg in Hsl'. injection Hsl' as ->. done. }
         iModIntro. setoid_rewrite ltype_own_core_equiv.
 

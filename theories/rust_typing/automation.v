@@ -427,7 +427,7 @@ Ltac gather_location_list env :=
   | Esnoc ?env' _ ?p =>
       let rs := gather_location_list env' in
       lazymatch p with
-      | (?l ◁ₗ[?π, Owned false] ?r @ ?lty)%I =>
+      | (?l ◁ₗ[?π, Owned] ?r @ ?lty)%I =>
           uconstr:(l :: rs)
       | _ => uconstr:(rs)
       end
@@ -724,7 +724,7 @@ Section tac.
         (* sidecondition first *)
         fps.(fp_Sc) π ∗
         fps.(fp_Pa) π ∗
-        ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned false] # r @ (◁ ty)) ∗
+        ([∗ list] l;'(existT rt (ty, r)) ∈ lsa;fp_atys fps, l ◁ₗ[ π, Owned] # r @ (◁ ty)) ∗
         ([∗ list] xl;synty ∈ zip (f_args fn).*1 lsa;sta, xl.1 is_live{ (π, f), synty} xl.2) in
       let E := (fps.(fp_elctx) ϝ) in
       let L := [ϝ ⊑ₗ{0} []] in

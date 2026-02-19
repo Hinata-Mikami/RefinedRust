@@ -175,7 +175,7 @@ Section cast.
   Global Existing Instance type_cast_ptr_int_inst.
 
   Lemma type_cast_int_ptr π E L f (l : Z) v (T : typed_val_expr_cont_t) :
-    (⌜π = f.1⌝ ∗ ((Loc ProvNone l ◁ₗ[π, Owned false] .@ ◁ unit_t) -∗ T L (val_of_loc (Loc ProvNone l)) MetaNone _ alias_ptr_t (Loc ProvNone l)))
+    (⌜π = f.1⌝ ∗ ((Loc ProvNone l ◁ₗ[π, Owned] .@ ◁ unit_t) -∗ T L (val_of_loc (Loc ProvNone l)) MetaNone _ alias_ptr_t (Loc ProvNone l)))
     ⊢ typed_un_op E L f v (v ◁ᵥ{π, MetaNone} l @ int USize)%I (CastOp PtrOp) (IntOp USize) T.
   Proof.
     rewrite /ty_own_val/=.
@@ -191,7 +191,7 @@ Section cast.
     iApply physical_step_intro. iNext. iIntros "Hl".
 
     set (l2 := Loc ProvNone l).
-    iAssert (l2 ◁ₗ[f.1, Owned false] .@ ◁ unit_t)%I with "[Hl]" as "Hl2".
+    iAssert (l2 ◁ₗ[f.1, Owned] .@ ◁ unit_t)%I with "[Hl]" as "Hl2".
     { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iExists _. simpl.
       iSplitR. { iPureIntro. by apply syn_type_has_layout_unit. }
@@ -199,7 +199,7 @@ Section cast.
         eapply Z.divide_1_l. }
       iSplitR; first done.
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
-      iSplitR; first done. iSplitR; first done.
+      iSplitR; first done.
       iExists (). iSplitR; first done.
       iModIntro. iExists []. iFrame. rewrite /ty_own_val /= //. }
 
@@ -216,7 +216,7 @@ End cast.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_ofty_alias_ptr_owned E L f l l2 bmin0 wl P T :
+  Lemma typed_place_ofty_alias_ptr_owned E L f l l2 bmin0 P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
       typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
@@ -226,7 +226,7 @@ Section place.
               (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
           ))
-    ⊢ typed_place E L f l (◁ alias_ptr_t) (#l2) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (◁ alias_ptr_t) (#l2) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iDestruct 1 as ((rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & -> & HP)". simpl.
     iApply typed_place_ofty_access_val_owned. { rewrite ty_has_op_type_unfold; done. }
@@ -289,22 +289,21 @@ Section alias_ltype.
      we have alias_ltype in the first place only because of the interaction with OpenedLtype, when we do a raw-pointer-addrof below references.
    *)
 
-  Lemma alias_ltype_owned_simplify_hyp π (rt : RT) st wl (l l2 : loc) (r : place_rfn rt) T :
+  Lemma alias_ltype_owned_simplify_hyp π (rt : RT) st (l l2 : loc) (r : place_rfn rt) T :
     (⌜l = l2⌝ -∗ T)
-    ⊢ simplify_hyp (l ◁ₗ[π, Owned wl] r @ AliasLtype rt st l2) T.
+    ⊢ simplify_hyp (l ◁ₗ[π, Owned] r @ AliasLtype rt st l2) T.
   Proof.
     iIntros "HT Hl".
     rewrite ltype_own_alias_unfold /alias_lty_own.
     iDestruct "Hl" as "(%ly & Hst & -> & Hloc & Hlb)".
     by iApply "HT".
   Qed.
-  Global Instance alias_ltype_owned_simplify_hyp_inst π rt st wl l l2 r :
-    SimplifyHyp (l ◁ₗ[π, Owned wl] r @ AliasLtype rt st l2) (Some 0%N) :=
-    λ T, i2p (alias_ltype_owned_simplify_hyp π rt st wl l l2 r T).
+  Definition alias_ltype_owned_simplify_hyp_inst := [instance @alias_ltype_owned_simplify_hyp with 0%N].
+  Global Existing Instance alias_ltype_owned_simplify_hyp_inst.
 
   (** Place typing for [AliasLtype].
     At the core this is really similar to the place lemma for alias_ptr_t - just without the deref *)
-  Lemma typed_place_alias_owned E L f l l2 rt (r : place_rfn rt) st bmin0 wl P T :
+  Lemma typed_place_alias_owned E L f l l2 rt (r : place_rfn rt) st bmin0 P T :
     find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
       ⌜π2 = f.1⌝ ∗
       typed_place E L f l2 lt2 r2 UpdStrong b2 P (λ L' κs li b3 bmin rti ltyi ri updcx,
@@ -314,23 +313,23 @@ Section alias_ltype.
               (l2 ◁ₗ[f.1, b2] (upd').(pupd_rfn) @ (upd').(pupd_lt) ∗ (upd').(pupd_R))
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
           ))
-    ⊢ typed_place E L f l (AliasLtype rt st l2) r bmin0 (Owned wl) P T.
+    ⊢ typed_place E L f l (AliasLtype rt st l2) r bmin0 (Owned) P T.
   Proof.
     iDestruct 1 as ((rt2 & [[[lt2 r2] b2] π2])) "(Hl2 & -> & HP)". simpl.
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
     simpl.
     iEval (rewrite ltype_own_alias_unfold /alias_lty_own) in "Hl".
-    iDestruct "Hl" as "(%ly & % & -> & #? & #? & Hcred)".
+    iDestruct "Hl" as "(%ly & % & -> & #? & #?)".
     iApply ("HP" with "[//] [//] CTX HE HL Hf Hl2").
     iIntros (L' κs l2 b0 bmin rti ltyi ri updcx) "Hl2 Hcl HT HL Hf".
-    iApply ("Hcont" with "Hl2 [Hcl Hcred] HT HL Hf").
+    iApply ("Hcont" with "Hl2 [Hcl] HT HL Hf").
 
     iIntros (upd) "#Hincl Hl2 %Hsteq ? Hcond".
     iMod ("Hcl" with "Hincl Hl2 [//] [$] Hcond") as "Hs".
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hl & ? & ? & ? & ? & ? & HL & ?)".
     iFrame. simpl.
-    iSplitL "Hcred".
+    iSplitL.
     { rewrite ltype_own_alias_unfold /alias_lty_own. eauto 8 with iFrame. }
     iR.
     iSplitL; last iApply upd_bot_min.
@@ -379,23 +378,23 @@ Section alias_ltype.
   Global Existing Instance typed_place_alias_shared_inst.
 
   (** Core lemma for putting back ownership after raw borrows *)
-  Lemma stratify_ltype_alias_owned π E L mu mdu ma {M} (m : M) l l2 rt st r wl (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_alias_owned π E L mu mdu ma {M} (m : M) l l2 rt st r (T : stratify_ltype_cont_t) :
     match ma with
     | StratNoRefold => T L True _ (AliasLtype rt st l2) r
     | _ =>
       find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
-        ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned wl⌝ ∗
+        ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
         (* recursively stratify *)
         stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2 (λ L2 R rt2' lt2' r2',
           T L2 R rt2' lt2' r2'))
     end
-    ⊢ stratify_ltype π E L mu mdu ma m l (AliasLtype rt st l2) r (Owned wl) T.
+    ⊢ stratify_ltype π E L mu mdu ma m l (AliasLtype rt st l2) r (Owned) T.
   Proof.
     iIntros "HT".
     destruct (decide (ma = StratNoRefold)) as [-> | ].
     { iIntros (????) "#CTX #HE HL Hl". iModIntro. iExists _, _, _, _, _. iFrame.
       iSplitR; first done. iApply logical_step_intro. by iFrame. }
-    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned wl⌝ ∗ stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
+    iAssert (find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)), ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗ stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2 T))%I with "[HT]" as "HT".
     { destruct ma; done. }
     iDestruct "HT" as ([rt2 [[[lt2 r2] b2] π2]]) "(Hl2 & <- & <- & -> & HT)".
     simpl. iIntros (????) "#CTX #HE HL Hl".
@@ -414,11 +413,11 @@ Section alias_ltype.
         T L True _ (AliasLtype rt''' st l2) r
       else
         find_in_context (FindLoc l2) (λ '(existT rt2 (lt2, r2, b2, π2)),
-          ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned false⌝ ∗
+          ⌜π = π2⌝ ∗ ⌜ltype_st lt2 = st⌝ ∗ ⌜b2 = Owned⌝ ∗
           (* recursively stratify *)
           stratify_ltype π E L mu mdu ma m l2 lt2 r2 b2
             (λ L2 R rt2' lt2' r2',
-               (T L2 ((l2 ◁ₗ[π, Owned false] r2' @ lt2') ∗ R) rt''' (AliasLtype rt''' st l2) r))))
+               (T L2 ((l2 ◁ₗ[π, Owned] r2' @ lt2') ∗ R) rt''' (AliasLtype rt''' st l2) r))))
     ⊢ stratify_ltype π E L mu mdu ma m l (AliasLtype rt''' st l2) r (Shared κ) T.
   Proof.
     rewrite /stratify_ltype /find_in_context.
@@ -456,14 +455,14 @@ Section alias_ltype.
     ⊢ typed_addr_of_mut_end π E L l (AliasLtype rt st l2) r b2 bmin T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
-    rewrite ltype_own_alias_unfold /alias_lty_own. destruct b2 as [wl | | ]; [| | done].
-    - iDestruct "Hl" as "(%ly & %Hst & -> & %Hly & #Hlb & Hcred)".
+    rewrite ltype_own_alias_unfold /alias_lty_own. destruct b2 as [| | ]; [| | done].
+    - iDestruct "Hl" as "(%ly & %Hst & -> & %Hly & #Hlb)".
       iSpecialize ("HT" with "[//]").
       iApply logical_step_intro. iExists _, _, _, _, _, _, _. iFrame.
       iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
       iSplitR; first done.
       rewrite !ltype_own_alias_unfold /alias_lty_own.
-      iSplitL "Hcred". { eauto 8 with iFrame. }
+      iSplitL. { eauto 8 with iFrame. }
       iSplitR. { eauto 8 with iFrame. }
       done.
     - iDestruct "Hl" as "(%ly & %Hst & -> & %Hly & #Hlb)".
@@ -484,36 +483,25 @@ Section alias_ltype.
       AliasLtype does now support that case. *)
 
   (** Cases for other ltypes *)
-  Lemma typed_addr_of_mut_end_owned π E L l {rt} (lt : ltype rt) r wl bmin (T : typed_addr_of_mut_end_cont_t) :
-    ltype_owned_openable lt →
+  Lemma typed_addr_of_mut_end_owned π E L l {rt} (lt : ltype rt) r bmin (T : typed_addr_of_mut_end_cont_t) :
     T L _ (alias_ptr_t) l _ (AliasLtype rt (ltype_st lt) l) (#r)
-    ⊢ typed_addr_of_mut_end π E L l lt #r (Owned wl) bmin T.
+    ⊢ typed_addr_of_mut_end π E L l lt #r (Owned) bmin T.
   Proof.
-    iIntros (Hopen) "Hvs".
+    iIntros "Hvs".
     iIntros (????) "#CTX #HE HL Hl".
     iApply fupd_logical_step.
-    iMod (ltype_owned_openable_elim_logstep with "Hl") as "(Hl & Hs)"; first done.
     iPoseProof (ltype_own_has_layout with "Hl") as "(%ly & % & %)".
     iPoseProof (ltype_own_loc_in_bounds with "Hl") as "#Hlb"; first done.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
     iApply logical_step_fupd.
-    iApply (logical_step_wand with "Hs").
-    iIntros "!> Hcreds".
-    iPoseProof (ltype_own_make_alias with "Hl Hcreds") as "(Hl & Halias)".
-    iModIntro. iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
+    iApply logical_step_intro.
+    iIntros "!>!> ".
+    iPoseProof (ltype_own_make_alias with "Hl") as "(Hl & Halias)".
+    iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.
     iSplitR; done.
   Qed.
-
-  Lemma typed_addr_of_mut_end_owned_ofty π E L l {rt} (ty : type rt) r wl bmin (T : typed_addr_of_mut_end_cont_t) :
-    T L _ (alias_ptr_t) l _ (AliasLtype rt (st_of ty MetaNone) l) (#r)
-    ⊢ typed_addr_of_mut_end π E L l (◁ ty) #r (Owned wl) bmin T.
-  Proof.
-    iApply typed_addr_of_mut_end_owned.
-    apply ltype_owned_openable_ofty.
-  Qed.
-  Definition typed_addr_of_mut_end_owned_ofty_inst := [instance @typed_addr_of_mut_end_owned_ofty].
-  Global Existing Instance typed_addr_of_mut_end_owned_ofty_inst.
-  (* TODO more instances for other ltypes *)
+  Definition typed_addr_of_mut_end_owned_inst := [instance @typed_addr_of_mut_end_owned].
+  Global Existing Instance typed_addr_of_mut_end_owned_inst.
 
   Lemma typed_addr_of_mut_end_uniq π E L l {rt} (lt : ltype rt) r κ γ bmin (T : typed_addr_of_mut_end_cont_t) :
     ltype_uniq_openable lt →
@@ -535,7 +523,7 @@ Section alias_ltype.
     iMod "Hs". iApply logical_step_intro.
     iIntros "!>!>".
     iPoseProof (opened_ltype_acc_uniq with "Hs") as "(Hl & Hl_cl)".
-    iPoseProof (ltype_own_make_alias false with "Hl [//]") as "(Hl & Halias)".
+    iPoseProof (ltype_own_make_alias with "Hl") as "(Hl & Halias)".
     iPoseProof ("Hl_cl" with "Halias []") as "Hopened".
     { simp_ltypes. done. }
     iExists _, _, _, _, _, _, _. iFrame. simp_ltypes.

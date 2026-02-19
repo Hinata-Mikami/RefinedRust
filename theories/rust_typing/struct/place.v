@@ -121,7 +121,7 @@ Section place.
     done.
   Qed.
 
-  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) E L fp (r : plist place_rfnRT rts) sls f wl bmin0 P l
+  Lemma typed_place_struct_owned {rts} (lts : hlist ltype rts) E L fp (r : plist place_rfnRT rts) sls f bmin0 P l
     (T : place_cont_t (plist place_rfnRT rts) bmin0) :
     ( (* sidecondition for other components *)
       ⌜lctx_place_update_kind_outlives E L bmin0 (mjoin ((@ltype_blocked_lfts  _ _) +c<$> lts))⌝ ∗
@@ -130,7 +130,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
+      typed_place E L fp (l atst{sls}ₗ f) lto ro bmin0 (Owned) P
         (λ L' κs l1 b2 bmin rti ltyi ri updcx,
           T L' κs l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',
@@ -143,7 +143,7 @@ Section place.
               (opt_place_update_eq_lift_join _ _ $ struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_1))
               (struct_opt_place_update_eq_lift i upd'.(pupd_rt) _ upd'.(pupd_eq_2)))))
           )))
-    ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Owned wl) (GetMemberPCtx sls f :: P) T.
+    ⊢ typed_place E L fp l (StructLtype lts sls) (#r) bmin0 (Owned) (GetMemberPCtx sls f :: P) T.
   Proof.
     iIntros "(%Houtl & %i & %Hfield & %lto & %ro & %Hlto & %Hro & Hp)".
     iIntros (Φ F ??) "#(LFT & LLCTX) #HE HL Hf Hl HΦ/=".
@@ -220,7 +220,7 @@ Section place.
      ∃ lto (ro : place_rfn (lnth (unit : RT) rts i)),
       ⌜hnth (UninitLtype UnitSynType) lts i = lto⌝ ∗
       ⌜pnth (#tt) r i = ro⌝ ∗
-      typed_place E L2 fp (l atst{sls}ₗ f) lto ro bmin0 (Owned false) P
+      typed_place E L2 fp (l atst{sls}ₗ f) lto ro bmin0 (Owned) P
         (λ L' κs' l1 b2 bmin rti ltyi ri updcx,
           T L' (κs') l1 b2 bmin rti ltyi ri
           (λ L2 upd cont, updcx L2 upd (λ upd',

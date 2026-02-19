@@ -9,23 +9,23 @@ From refinedrust Require Import options.
 Section deinit.
   Context `{!typeGS Σ}.
 
-  Lemma ltype_deinit_shr F π l st {rt} (lt : ltype rt) r κ wl :
+  Lemma ltype_deinit_shr F π l st {rt} (lt : ltype rt) r κ :
     lftE ⊆ F →
     syn_type_compat PtrSynType st →
-    (l ◁ₗ[π, Owned wl] r @ (ShrLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned false] #() @ (◁ uninit st).
+    (l ◁ₗ[π, Owned] r @ (ShrLtype lt κ)) ={F}=∗
+    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
   Proof.
     iIntros (? Hstcomp) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
-    iDestruct "Hl" as "(%ly & %Halg & % & Hlb & Hcreds & %r' & ? & Hb)".
-    iMod (maybe_use_credit with "Hcreds Hb") as "(? & ? & %l' & Hl & Hb)"; first done.
+    iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. iExists ly. simpl. iSplitR.
     { destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first done.
       simpl. iPureIntro. eapply syn_type_has_layout_make_untyped; last done.
       by eapply syn_type_has_layout_inj. }
     iR. iR.
-    iSplitL "Hlb"; first by iFrame. iR.
+    iSplitL "Hlb"; first by iFrame.
     iExists tt. iR.
     iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
@@ -34,17 +34,16 @@ Section deinit.
     eapply syn_type_has_layout_make_untyped; done.
   Qed.
 
-  Lemma ltype_deinit_shr' F π l st {rt} (lt : ltype rt) r κ wl :
+  Lemma ltype_deinit_shr' F π l st {rt} (lt : ltype rt) r κ :
     lftE ⊆ F →
     syn_type_compat PtrSynType st →
-    £ (Nat.b2n wl) -∗
-    (l ◁ₗ[π, Owned wl] r @ (ShrLtype lt κ)) ={F}=∗
-    l ◁ₗ[π, Owned wl] #() @ (◁ uninit st).
+    (l ◁ₗ[π, Owned] r @ (ShrLtype lt κ)) ={F}=∗
+    l ◁ₗ[π, Owned] #() @ (◁ uninit st).
   Proof.
-    iIntros (? Hstcomp) "Hcred Hl".
+    iIntros (? Hstcomp) "Hl".
     rewrite ltype_own_shr_ref_unfold /shr_ltype_own.
-    iDestruct "Hl" as "(%ly & %Halg & % & Hlb & Hcreds & %r' & ? & Hb)".
-    iMod (maybe_use_credit with "Hcreds Hb") as "(? & ? & %l' & Hl & Hb)"; first done.
+    iDestruct "Hl" as "(%ly & %Halg & % & Hlb & %r' & ? & Hb)".
+    iMod (fupd_mask_mono with "Hb") as "(%l' & Hl & Hb)"; first done.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iModIntro. iExists ly. simpl. iSplitR.
     { destruct Hstcomp as [<- | (ly1 & Hst' & ->)]; first done.
@@ -52,8 +51,6 @@ Section deinit.
       by eapply syn_type_has_layout_inj. }
     iR. iR.
     iSplitL "Hlb"; first by iFrame.
-    iSplitR "Hl".
-    { destruct wl; last done. simpl. rewrite /num_cred. iFrame. iApply lc_succ; iFrame. }
     iExists tt. iR.
     iModIntro. iExists l'. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     apply syn_type_has_layout_ptr_inv in Halg as ->. iSplitR; last done.
@@ -84,20 +81,17 @@ Section rule.
   Global Existing Instance owned_subltype_step_shrltype_uninit_inst | 20.
 
   (** Extraction *)
-  Lemma stratify_ltype_extract_shrltype π E L {rt} (lt : ltype rt) r κ l (wl : bool) (T : stratify_ltype_post_hook_cont_t) :
-    prove_with_subtype E L false ProveDirect (£ (Nat.b2n wl)) (λ L' κs R, (R -∗ T L' (True) _ (◁ uninit PtrSynType)%I (#())))
-    ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) T.
+  Lemma stratify_ltype_extract_shrltype π E L {rt} (lt : ltype rt) r κ l (T : stratify_ltype_post_hook_cont_t) :
+    T L (True) _ (◁ uninit PtrSynType)%I (#())
+    ⊢ stratify_ltype_post_hook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned) T.
   Proof.
     iIntros "HT".
     iIntros (????) "#CTX #HE HL Hl".
-    iMod ("HT" with "[//] [//] [//] CTX HE HL") as "(%L' & %κs & %R & >(Hcred & HR)& HL & HT)".
-    iMod (ltype_deinit_shr' with "Hcred Hl") as "Hl"; [done.. | | ].
+    iMod (ltype_deinit_shr' with "Hl") as "Hl"; [done.. | | ].
     { left. done. }
-    iSpecialize ("HT" with "HR").
     iExists _, _, _, _, _. iFrame.
     iFrame. simp_ltypes. done.
   Qed.
-  Global Instance stratify_ltype_extract_shrltype_inst π E L {rt} (lt : ltype rt) r κ l (wl : bool) :
-    StratifyLtypePostHook π E L (StratifyExtractOp κ) l (ShrLtype lt κ) r (Owned wl) :=
-    λ T, i2p (stratify_ltype_extract_shrltype π E L lt r κ l wl T).
+  Definition stratify_ltype_extract_shrltype_inst := [instance @stratify_ltype_extract_shrltype].
+  Global Existing Instance stratify_ltype_extract_shrltype_inst.
 End rule.

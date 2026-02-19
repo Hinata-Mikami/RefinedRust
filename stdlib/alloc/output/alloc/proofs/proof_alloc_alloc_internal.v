@@ -37,13 +37,13 @@ Proof.
     iPoseProof (loc_in_bounds_in_range_usize with "Hlb") as "%Husize".
     iPureIntro. done. }
   set (ly := (Layout (Z.to_nat size) (Z.to_nat align_log2))).
-  iAssert (ld ◁ₗ[π, Owned false] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
+  iAssert (ld ◁ₗ[π, Owned ] .@ ◁ (uninit (UntypedSynType ly)))%I with "[Hl]" as "Hl'".
   { rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     assert (syn_type_has_layout (UntypedSynType ly) ly) as Hly'.
     { solve_layout_alg. }
     iExists ly. simpl. do 3 iR.
     iSplitR. { rewrite length_replicate /ly /ly_size /=. done. }
-    iR. iExists tt. iR.
+    iExists tt. iR.
     iModIntro. iExists _. iFrame. rewrite uninit_own_spec. iR. iExists ly.
     iSplitR; first done. iPureIntro. rewrite /has_layout_val length_replicate /ly /ly_size //. }
   (* show that the alloc is in bounds *)

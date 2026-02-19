@@ -7,7 +7,7 @@ From refinedrust Require Import options.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_mut_owned {rto} f κ (lt2 : ltype rto) P E L γ l r wl bmin0
+  Lemma typed_place_mut_owned {rto} f κ (lt2 : ltype rto) P E L γ l r bmin0
     (T : place_cont_t ((place_rfn rto) * gname)%type bmin0) :
     (∀ l', typed_place E L f l' lt2 r bmin0 (Uniq κ γ) P
         (λ L' κs l2 b2 bmin rti tyli ri updcx,
@@ -22,7 +22,7 @@ Section place.
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_1))
               (opt_place_update_eq_lift (λ rt, place_rfnRT rt * gname)%type (upd').(pupd_eq_2)))))
           ))
-    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (MutLtype lt2 κ) (#(r, γ)) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
     rewrite /li_tactic /lctx_lft_alive_count_goal.

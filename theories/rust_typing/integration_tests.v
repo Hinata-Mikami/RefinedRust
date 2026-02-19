@@ -28,9 +28,9 @@ Qed.
 (* Maybe this should also be specced in terms of value? *)
 Definition type_of_ptr_write `{!typeGS Σ} (T_rt : RT) (T_st : syn_type) :=
   fn(∀ ( *[]) : 0 | ( *[T_ty]) : [(T_rt, T_st)] | (l, r) : (loc * _), (λ ϝ, []);
-      l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned false] .@ (◁ uninit (T_ty.(ty_syn_type) MetaNone))))
+      l :@: alias_ptr_t, r :@: T_ty; λ π, (l ◁ₗ[π, Owned] .@ (◁ uninit (T_ty.(ty_syn_type) MetaNone))))
     → ∃ () : unit, () @ unit_t; λ π,
-        l ◁ₗ[π, Owned false] (#$# r) @ ◁ T_ty.
+        l ◁ₗ[π, Owned] (#$# r) @ ◁ T_ty.
 
 Lemma ptr_write_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
@@ -108,11 +108,11 @@ Definition type_of_ptr_read `{!typeGS Σ} (T_rt: RT) (T_st: syn_type) :=
       (* params....... *) (src, r) : (_ * _),
       (* elctx........ *) (λ ϝ, []);
       (* args......... *) src :@: alias_ptr_t;
-      (* precondition. *) (λ π : thread_id, (src ◁ₗ[π, Owned false] #($# r) @ ◁ T_ty)
+      (* precondition. *) (λ π : thread_id, (src ◁ₗ[π, Owned] #($# r) @ ◁ T_ty)
         ∗ (⌜(Copyable T_ty)%Z⌝)) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, r @ T_ty;
-      (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned false] # ($# r) @ ◁ T_ty)).
+      (* postcondition *) (λ π : thread_id, (src ◁ₗ[π, Owned] # ($# r) @ ◁ T_ty)).
 
 Lemma ptr_read_typed `{!typeGS Σ} π T_rt T_st T_ly :
   syn_type_has_layout T_st T_ly →
@@ -182,7 +182,7 @@ Section test.
   Next Obligation. ex_t_solve_timeless. Qed.
   Local Definition Pty := (∃; Pdef, int I32)%I.
 
-  Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded true (l ◁ₗ[π, Owned false] #42%Z @ (◁ int I32)))%I : iProp Σ.
+  Local Definition P_b := λ (π : thread_id) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded true (l ◁ₗ[π, Owned] #42%Z @ (◁ int I32)))%I : iProp Σ.
   Local Definition S_b := λ (π : thread_id) (κ : lft) (x : Z) (y : Z), (∃ (z : Z) (l : loc), ⌜x = (y + z)%Z⌝ ∗ ⌜(0 < x)%Z⌝ ∗ guarded false (l ◁ₗ[π, Shared κ] #42%Z @ (◁ int I32)))%I : iProp Σ.
 
   Local Program Definition Adef := mk_ex_inv_def P_b S_b [] [] _ _ _.

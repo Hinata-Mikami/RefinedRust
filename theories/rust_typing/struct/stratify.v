@@ -118,15 +118,15 @@ Section stratify.
   (* TODO: stratification instance for StructLtype with optional refolding *)
 
 
-  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls wl (T : stratify_ltype_cont_t) :
-    stratify_ltype_struct_iter π E L mu mdu ma m l 0 sls lts rs (Owned false) (λ L2 R2 rts' lts' rs',
+  Lemma stratify_ltype_struct_owned {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls (T : stratify_ltype_cont_t) :
+    stratify_ltype_struct_iter π E L mu mdu ma m l 0 sls lts rs Owned (λ L2 R2 rts' lts' rs',
       T L2 R2 (plist place_rfnRT rts') (StructLtype lts' sls) (#rs'))
-    ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) T.
+    ⊢ stratify_ltype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned) T.
   Proof.
     iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
     rewrite ltype_own_struct_unfold /struct_ltype_own.
-    iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hly & Hlb & Hcreds & %r' & <- & Hl)".
-    iMod (maybe_use_credit with "Hcreds Hl") as "(Hcred & Hat & Hl)"; first done.
+    iDestruct "Hl" as "(%sl & %Halg & %Hlen & %Hly & Hlb &  %r' & <- & Hl)".
+    iMod (fupd_mask_mono with "Hl") as "Hl"; first done.
     iPoseProof (struct_ltype_focus_components with "Hl") as "(Hl & Hlcl)"; [done | done | ].
     iMod ("HT" with "[//] [//] [//] CTX HE HL [//] [] [] [Hl]") as "(%L2 & %R2 & %rts' & %lts' & %rs' & %Hleneq & Hst & Hstep & HL & HT)".
     { iPureIntro. lia. }
@@ -135,8 +135,8 @@ Section stratify.
     iModIntro. iExists L2, R2, _, _, _. iFrame. simp_ltypes. iR.
     iApply logical_step_fupd.
     iApply (logical_step_compose with "Hstep").
-    iApply (logical_step_intro_maybe with "Hat").
-    iIntros "Hcred2 !> (Ha & $)".
+    iApply logical_step_intro.
+    iIntros "(Ha & $)".
     iPoseProof ("Hlcl" $! rts' lts' rs' with "[//] [Hst] [Ha]") as "Hl".
     { iApply big_sepL2_Forall2.
       iApply (big_sepL2_impl with "Hst"). iModIntro. iIntros (? [? []] [? []] ? ?); done. }
@@ -147,9 +147,8 @@ Section stratify.
     iSplitR. { by rewrite -Hleneq. }
     done.
   Qed.
-  Global Instance stratify_ltype_struct_owned_inst {rts} π E L mu mdu ma {M} (m : M) l (lts : hlist ltype rts) (rs : plist place_rfnRT rts) sls wl :
-    StratifyLtype π E L mu mdu ma m l (StructLtype lts sls) (#rs) (Owned wl) :=
-    λ T, i2p (stratify_ltype_struct_owned π E L mu mdu ma m l lts rs sls wl T).
+  Definition stratify_ltype_struct_owned_inst := [instance @stratify_ltype_struct_owned].
+  Global Existing Instance stratify_ltype_struct_owned_inst.
 
   (* TODO uniq*)
 

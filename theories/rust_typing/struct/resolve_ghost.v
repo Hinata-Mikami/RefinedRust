@@ -9,18 +9,18 @@ Section resolve_ghost.
   Context `{!typeGS Σ}.
 
   (** resolve_ghost instances *)
-  Lemma resolve_ghost_struct_Owned {rts} π E L l (lts : hlist ltype rts) sls γ wl rm lb T :
+  Lemma resolve_ghost_struct_Owned {rts} π E L l (lts : hlist ltype rts) sls γ rm lb T :
     find_observation ((plist place_rfnRT rts)) γ FindObsModeDirect (λ or,
         match or with
         | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
         | Some r => T L (PlaceIn $ r) True true
         end)
-    ⊢ resolve_ghost π E L rm lb l (StructLtype lts sls) (Owned wl) (PlaceGhost γ) T.
+    ⊢ resolve_ghost π E L rm lb l (StructLtype lts sls) (Owned) (PlaceGhost γ) T.
   Proof.
     iIntros "Ha" (???) "#CTX #HE HL Hl".
     iMod ("Ha" with "[//]") as "[(%r' & HObs & Ha) | (_ & Ha)]".
     - rewrite ltype_own_struct_unfold /struct_ltype_own.
-      iDestruct "Hl" as "(%sl & ? & ? & ? & ? & ? & %rs & Hinterp & ?)".
+      iDestruct "Hl" as "(%sl & ? & ? & ? & ? & %rs & Hinterp & ?)".
       simpl. iPoseProof (gvar_pobs_agree_2 with "Hinterp HObs") as "#<-".
       iExists _, _, _, _. iFrame. iApply maybe_logical_step_intro.
       iL. rewrite ltype_own_struct_unfold /struct_ltype_own.

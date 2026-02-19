@@ -77,9 +77,9 @@ Section subtype.
   Global Existing Instance mut_eqtype_shr_evar_lft_inst | 9.
 
   (** subltyping *)
-  Lemma weak_subltype_shr_owned_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) wl κ1 κ2 r1 r2 T :
+  Lemma weak_subltype_shr_owned_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ1 κ2 r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Shared κ1) r1 r2' lt1 lt2 T)
-    ⊢ weak_subltype E L (Owned wl) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Owned) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(%r2' & -> & %Hincl & HT)" (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Hincl' & HL & $)".
@@ -88,12 +88,12 @@ Section subtype.
     iApply (shr_ltype_incl_owned_in with "Hincl'").
     done.
   Qed.
-  Global Instance weak_subltype_shr_owned_in_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) wl κ1 κ2 r1 r2 :
-    SubLtype E L (Owned wl) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_shr_owned_in E L lt1 lt2 wl κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_owned_in_inst := [instance @weak_subltype_shr_owned_in].
+  Global Existing Instance weak_subltype_shr_owned_in_inst | 10.
 
- Lemma weak_subltype_shr_owned E L {rt} (lt1 : ltype rt) (lt2 : ltype rt) wl κ1 κ2 r1 r2 T :
+ Lemma weak_subltype_shr_owned E L {rt} (lt1 : ltype rt) (lt2 : ltype rt) κ1 κ2 r1 r2 T :
     (⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_subltype E L lt1 lt2 T)
-    ⊢ weak_subltype E L (Owned wl) r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
+    ⊢ weak_subltype E L (Owned) r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof.
     iIntros "(-> & %Hincl & %Hsubt & HT)" (??) "#CTX #HE HL".
     iPoseProof (full_subltype_acc with "CTX HE HL") as "#Hsub"; first apply Hsubt.
@@ -102,8 +102,8 @@ Section subtype.
     iApply (shr_ltype_incl_owned); last done.
     iApply "Hsub".
   Qed.
-  Global Instance weak_subltype_shr_owned_inst E L {rt} (lt1 : ltype rt) (lt2 : ltype rt) wl κ1 κ2 r1 r2 :
-    SubLtype E L (Owned wl) r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 11 := λ T, i2p (weak_subltype_shr_owned E L lt1 lt2 wl κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_owned_inst := [instance @weak_subltype_shr_owned].
+  Global Existing Instance weak_subltype_shr_owned_inst | 11.
 
   Lemma weak_subltype_shr_shared_in E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ κ1 κ2 r1 r2 T :
     (∃ r2', ⌜r2 = #r2'⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ weak_subltype E L (Shared (κ1)) r1 r2' lt1 lt2 T)
@@ -116,8 +116,8 @@ Section subtype.
     iApply (shr_ltype_incl_shared_in with "[Hincl']"); last done.
     done.
   Qed.
-  Global Instance weak_subltype_shr_shared_in_inst E L {rt1 rt2} (lt1 : ltype rt1) (lt2 : ltype rt2) κ κ1 κ2 r1 r2 :
-    SubLtype E L (Shared κ) #r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_shr_shared_in E L lt1 lt2 κ κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_shared_in_inst := [instance @weak_subltype_shr_shared_in].
+  Global Existing Instance weak_subltype_shr_shared_in_inst | 10.
 
   Lemma weak_subltype_shr_shared E L {rt} (lt1 : ltype rt) (lt2 : ltype rt) κ κ1 κ2 r1 r2 T :
     (⌜r1 = r2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_subltype E L lt1 lt2 T)
@@ -130,8 +130,8 @@ Section subtype.
     iApply (shr_ltype_incl_shared); last done.
     iApply "Hsub".
   Qed.
-  Global Instance weak_subltype_shr_shared_inst E L {rt} (lt1 : ltype rt) (lt2 : ltype rt) κ κ1 κ2 r1 r2 :
-    SubLtype E L (Shared κ) r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 11 := λ T, i2p (weak_subltype_shr_shared E L lt1 lt2 κ κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_shared_inst := [instance @weak_subltype_shr_shared].
+  Global Existing Instance weak_subltype_shr_shared_inst | 11.
 
   (* Base instance that will trigger, e.g., for Uniq or PlaceGhost refinements *)
   Lemma weak_subltype_shr_base E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 T :
@@ -146,15 +146,15 @@ Section subtype.
     iSpecialize ("Hincl2" with "HE").
     iFrame. iApply shr_ltype_incl; done.
   Qed.
-  Global Instance weak_subltype_shr_base_inst E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 :
-    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 20 := λ T, i2p (weak_subltype_shr_base E L lt1 lt2 k κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_base_inst := [instance @weak_subltype_shr_base].
+  Global Existing Instance weak_subltype_shr_base_inst | 20.
 
   Lemma weak_subltype_shr_evar_lft E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 T `{!IsProtected κ2} :
     ⌜κ1 = κ2⌝ ∗ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ1) T
     ⊢ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance weak_subltype_shr_evar_lft_inst E L {rt} (lt1 lt2 : ltype rt) k κ1 κ2 r1 r2 `{!IsProtected κ2} :
-    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 9 := λ T, i2p (weak_subltype_shr_evar_lft E L lt1 lt2 k κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_evar_lft_inst := [instance @weak_subltype_shr_evar_lft].
+  Global Existing Instance weak_subltype_shr_evar_lft_inst | 9.
 
   Lemma mut_subltype_shr E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqltype E L lt1 lt2 T
@@ -163,15 +163,15 @@ Section subtype.
     iIntros "(%Hsub1 & %Hsub2 & %Heq & $)".
     iPureIntro. by eapply shr_full_subltype.
   Qed.
-  Global Instance mut_subltype_shr_inst E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 :
-    MutSubLtype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_subltype_shr E L lt1 lt2 κ1 κ2 T).
+  Definition mut_subltype_shr_inst := [instance @mut_subltype_shr].
+  Global Existing Instance mut_subltype_shr_inst | 10.
 
   Lemma mut_subltype_shr_evar_lft E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T `{!IsProtected κ2} :
     ⌜κ1 = κ2⌝ ∗ mut_subltype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ1) T
     ⊢ mut_subltype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_subltype_shr_evar_lft_inst E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 `{!IsProtected κ2} :
-    MutSubLtype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 9 := λ T, i2p (mut_subltype_shr_evar_lft E L lt1 lt2 κ1 κ2 T).
+  Definition mut_subltype_shr_evar_lft_inst := [instance @mut_subltype_shr_evar_lft].
+  Global Existing Instance mut_subltype_shr_evar_lft_inst | 9.
 
   Lemma mut_eqltype_shr E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T :
     ⌜lctx_lft_incl E L κ1 κ2⌝ ∗ ⌜lctx_lft_incl E L κ2 κ1⌝ ∗ mut_eqltype E L lt1 lt2 T
@@ -180,25 +180,25 @@ Section subtype.
     iIntros "(%Heq1 & %Heq2 & %Heq & $)".
     iPureIntro. by eapply shr_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_shr_inst E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 :
-    MutEqLtype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_shr E L lt1 lt2 κ1 κ2 T).
+  Definition mut_eqltype_shr_inst := [instance @mut_eqltype_shr].
+  Global Existing Instance mut_eqltype_shr_inst | 10.
 
   Lemma mut_eqltype_shr_evar_lft E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 T `{!IsProtected κ2} :
     ⌜κ1 = κ2⌝ ∗ mut_eqltype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ1) T
     ⊢ mut_eqltype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) T.
   Proof. iIntros "(<- & $)". Qed.
-  Global Instance mut_eqltype_shr_evar_lft_inst E L {rt} (lt1 lt2 : ltype rt) κ1 κ2 `{!IsProtected κ2} :
-    MutEqLtype E L (ShrLtype lt1 κ1) (ShrLtype lt2 κ2) := λ T, i2p (mut_eqltype_shr_evar_lft E L lt1 lt2 κ1 κ2 T).
+  Definition mut_eqltype_shr_evar_lft_inst := [instance @mut_eqltype_shr_evar_lft].
+  Global Existing Instance mut_eqltype_shr_evar_lft_inst.
 
   (* Ofty unfolding if necessary *)
-  Lemma weak_subltype_shr_ofty_1_evar E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfnRT rt2)) k κ1 r1 r2 T :
+  Lemma weak_subltype_shr_ofty_1_evar E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfnRT rt2)) k κ1 r1 r2 `{!IsProtected ty2} T :
     (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance weak_subltype_shr_ofty_1_evar_inst E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (place_rfnRT rt2)) k κ1 r1 r2 `{!IsProtected ty2} :
-    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (weak_subltype_shr_ofty_1_evar E L lt1 ty2 k κ1 r1 r2 T).
+  Definition weak_subltype_shr_ofty_1_evar_inst := [instance @weak_subltype_shr_ofty_1_evar].
+  Global Existing Instance weak_subltype_shr_ofty_1_evar_inst | 10.
 
   Lemma weak_subltype_shr_ofty_1 E L {rt1 rt2} (lt1 : ltype rt1) (ty2 : type (rt2)) k κ1 κ2 r1 r2 T :
     weak_subltype E L k r1 r2 (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
@@ -209,8 +209,8 @@ Section subtype.
     iApply (ltype_incl_trans with "Hincl").
     iApply shr_ref_unfold_1.
   Qed.
-  Global Instance weak_subltype_shr_ofty_1_inst E L {rt1 rt2} (lt1 : ltype (rt1)) (ty2 : type rt2) k r1 r2 κ1 κ2 :
-    SubLtype E L k r1 r2 (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (weak_subltype_shr_ofty_1 E L lt1 ty2 k κ1 κ2 r1 r2 T).
+  Definition weak_subltype_shr_ofty_1_inst := [instance @weak_subltype_shr_ofty_1].
+  Global Existing Instance weak_subltype_shr_ofty_1_inst | 12.
 
   Lemma weak_subltype_shr_ofty_2 E L {rt1 rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 T :
     (weak_subltype E L k r1 r2 (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
@@ -221,18 +221,18 @@ Section subtype.
     iApply (ltype_incl_trans with "[] Hincl").
     iApply shr_ref_unfold_2.
   Qed.
-  Global Instance weak_subltype_shr_ofty_2_inst E L {rt1 rt2} (ty1 : type (rt1)) (lt2 : ltype rt2) k r1 r2 κ1 κ2 :
-    SubLtype E L k r1 r2 (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (weak_subltype_shr_ofty_2 E L ty1 lt2 k r1 r2 κ1 κ2 T).
+  Definition weak_subltype_shr_ofty_2_inst := [instance @weak_subltype_shr_ofty_2].
+  Global Existing Instance weak_subltype_shr_ofty_2_inst | 10.
 
   (* same for [mut_subltype] *)
-  Lemma mut_subltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
+  Lemma mut_subltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 `{!IsProtected ty2}  T :
     (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ mut_subltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ mut_subltype E L (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_subltype_shr_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
-    MutSubLtype E L (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_subltype_shr_ofty_1_evar E L lt1 ty2 κ1 T).
+  Definition mut_subltype_shr_ofty_1_evar_inst := [instance @mut_subltype_shr_ofty_1_evar].
+  Global Existing Instance mut_subltype_shr_ofty_1_evar_inst | 10.
 
   Lemma mut_subltype_shr_ofty_1 E L {rt} `(lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
     mut_subltype E L (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
@@ -241,8 +241,8 @@ Section subtype.
     iIntros "(%Hsub & $)". iPureIntro.
     etrans; first done. eapply full_eqltype_subltype_l. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_subltype_shr_ofty_1_inst E L {rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
-    MutSubLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (mut_subltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
+  Definition mut_subltype_shr_ofty_1_inst := [instance @mut_subltype_shr_ofty_1].
+  Global Existing Instance mut_subltype_shr_ofty_1_inst | 12.
 
   Lemma mut_subltype_shr_ofty_2 E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
     (mut_subltype E L (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
@@ -251,18 +251,18 @@ Section subtype.
     iIntros "(%Hsub & $)". iPureIntro.
     etrans; last done. eapply full_eqltype_subltype_r. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_subltype_shr_ofty_2_inst E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
-    MutSubLtype E L (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_subltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
+  Definition mut_subltype_shr_ofty_2_inst := [instance @mut_subltype_shr_ofty_2].
+  Global Existing Instance mut_subltype_shr_ofty_2_inst | 10.
 
   (* same for [mut_eqltype] *)
-  Lemma mut_eqltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 T :
+  Lemma mut_eqltype_shr_ofty_1_evar E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt))  κ1 `{!IsProtected ty2} T :
     (∃ ty2', ⌜ty2 = shr_ref κ1 ty2'⌝ ∗ mut_eqltype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ1 ty2')) T)
     ⊢ mut_eqltype E L (ShrLtype lt1 κ1) (◁ ty2) T.
   Proof.
     iIntros "(%ty2' & -> & HT)". done.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_1_evar_inst E L {rt} (lt1 : ltype rt) (ty2 : type (place_rfn rt)) κ1 `{!IsProtected ty2} :
-    MutEqLtype E L (ShrLtype lt1 κ1) (◁ ty2)%I | 10 := λ T, i2p (mut_eqltype_shr_ofty_1_evar E L lt1 ty2 κ1 T).
+  Definition mut_eqltype_shr_ofty_1_evar_inst := [instance @mut_eqltype_shr_ofty_1_evar].
+  Global Existing Instance mut_eqltype_shr_ofty_1_evar_inst | 10.
 
   Lemma mut_eqltype_shr_ofty_1 E L {rt} (lt1 : ltype rt) (ty2 : type (rt)) κ1 κ2 T :
     mut_eqltype E L (ShrLtype lt1 κ1) (ShrLtype (◁ ty2) κ2) T
@@ -271,8 +271,8 @@ Section subtype.
     iIntros "(%Heq & $)". iPureIntro.
     etrans; first done. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_1_inst E L {rt} (lt1 : ltype (rt)) (ty2 : type rt) κ1 κ2 :
-    MutEqLtype E L (ShrLtype lt1 κ1) (◁ (shr_ref κ2 ty2))%I | 12 := λ T, i2p (mut_eqltype_shr_ofty_1 E L lt1 ty2 κ1 κ2 T).
+  Definition mut_eqltype_shr_ofty_1_inst := [instance @mut_eqltype_shr_ofty_1].
+  Global Existing Instance mut_eqltype_shr_ofty_1_inst | 12.
 
   Lemma mut_eqltype_shr_ofty_2 E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 T :
     (mut_eqltype E L (ShrLtype (◁ ty1) κ1) (ShrLtype lt2 κ2) T)
@@ -281,6 +281,6 @@ Section subtype.
     iIntros "(%Heq & $)". iPureIntro.
     etrans; last done. symmetry. by eapply shr_ref_unfold_full_eqltype.
   Qed.
-  Global Instance mut_eqltype_shr_ofty_2_inst E L {rt} (ty1 : type rt) (lt2 : ltype rt) κ1 κ2 :
-    MutEqLtype E L (◁ (shr_ref κ1 ty1))%I (ShrLtype lt2 κ2) | 10 := λ T, i2p (mut_eqltype_shr_ofty_2 E L ty1 lt2 κ1 κ2 T).
+  Definition mut_eqltype_shr_ofty_2_inst := [instance @mut_eqltype_shr_ofty_2].
+  Global Existing Instance mut_eqltype_shr_ofty_2_inst | 10.
 End subtype.

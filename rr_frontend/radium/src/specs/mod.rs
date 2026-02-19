@@ -392,9 +392,9 @@ impl TyOwnSpec {
     #[must_use]
     pub fn fmt_owned(&self, tid: &str) -> String {
         if self.with_later {
-            format!("guarded true ({} ◁ₗ[{}, Owned false] #({}) @ (◁ {}))", self.loc, tid, self.rfn, self.ty)
+            format!("guarded true ({} ◁ₗ[{}, Owned] #({}) @ (◁ {}))", self.loc, tid, self.rfn, self.ty)
         } else {
-            format!("{} ◁ₗ[{}, Owned false] #({}) @ (◁ {})", self.loc, tid, self.rfn, self.ty)
+            format!("{} ◁ₗ[{}, Owned] #({}) @ (◁ {})", self.loc, tid, self.rfn, self.ty)
         }
     }
 

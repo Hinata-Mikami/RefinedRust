@@ -325,13 +325,13 @@ Section instances.
     assert (r1' = r1) as -> by naive_solver. assert (r2' = r2) as -> by naive_solver.
     done.
   Qed.
-  Lemma weak_subltype_array_owned_in E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 wl T :
+  Lemma weak_subltype_array_owned_in E L {rt1 rt2} (def1 : type rt1) (def2 : type rt2) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt2)) rs1 rs2 T :
     (⌜len1 = len2⌝ ∗
     ∃ rs2', ⌜rs2 = #rs2'⌝ ∗
     ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
-    relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Owned false) rs1 rs2') (
+    relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (weak_subltype_list_interp (Owned) rs1 rs2') (
       ⌜length rs2' = len1⌝ ∗ T))
-    ⊢ weak_subltype E L (Owned wl) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
+    ⊢ weak_subltype E L (Owned) #rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
     iIntros "(<- & %rs2' & -> & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & (%Hlen' & $))".
@@ -345,10 +345,10 @@ Section instances.
   Definition weak_subltype_array_owned_in_inst := [instance @weak_subltype_array_owned_in].
   Global Existing Instance weak_subltype_array_owned_in_inst | 10.
 
-  Lemma weak_subltype_array_owned E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 wl T :
+  Lemma weak_subltype_array_owned E L {rt1 } (def1 : type rt1) (def2 : type rt1) len1 len2 (lts1 : list (nat * ltype rt1)) (lts2 : list (nat * ltype rt1)) rs1 rs2 T :
     (⌜len1 = len2⌝ ∗ ⌜rs1 = rs2⌝ ∗ ⌜ty_syn_type def1 = ty_syn_type def2⌝ ∗
       relate_list E L [] (interpret_iml (◁ def1) len1 lts1) (interpret_iml (◁ def2) len1 lts2) 0 (mut_subltype_list_interp len1 true) T)
-    ⊢ weak_subltype E L (Owned wl) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
+    ⊢ weak_subltype E L (Owned) rs1 rs2 (ArrayLtype def1 len1 lts1) (ArrayLtype def2 len2 lts2) T.
   Proof.
     iIntros "(<- & <- & %Hst & HT)". iIntros (??) "#CTX #HE HL".
     iMod ("HT" with "[//] CTX HE HL") as "(Ha & $ & $)".

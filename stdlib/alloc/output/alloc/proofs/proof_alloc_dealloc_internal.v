@@ -28,7 +28,7 @@ Proof.
   iIntros (?) "#CTX #HE HL Hf Hcont".
   rewrite ltype_own_ofty_unfold /lty_of_ty_own. simpl.
   set (ly := Layout (Z.to_nat size) (Z.to_nat align_log2)).
-  iDestruct "Hptr" as "(%ly' & %Hst & %Hly & _ & #Hlb & _ & %r' & <- & Hb)".
+  iDestruct "Hptr" as "(%ly' & %Hst & %Hly & _ & #Hlb & %r' & <- & Hb)".
   specialize (syn_type_has_layout_untyped_inv _ _ Hst) as (-> & ? & ?).
   iMod (fupd_mask_mono with "Hb") as "Hb"; first done.
   iDestruct "Hb" as "(%v' & Hptr & Hv')".

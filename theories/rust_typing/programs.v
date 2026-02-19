@@ -281,18 +281,6 @@ Section simp_ltype.
   Proof.
     econstructor. by rewrite ltype_core_shrblocked.
   Qed.
-  Global Instance simp_ltype_box {rt} (lt lt' : ltype rt) :
-    SimpLtype (ltype_core lt) lt' →
-    SimpLtype (ltype_core (BoxLtype lt)) (BoxLtype lt').
-  Proof.
-    intros [<-]. econstructor. by rewrite ltype_core_box.
-  Qed.
-  Global Instance simp_ltype_ownedptr {rt} (lt lt' : ltype rt) b :
-    SimpLtype (ltype_core lt) lt' →
-    SimpLtype (ltype_core (OwnedPtrLtype lt b)) (OwnedPtrLtype lt' b).
-  Proof.
-    intros [<-]. econstructor. by rewrite ltype_core_owned_ptr.
-  Qed.
   Global Instance simp_ltype_mut {rt} (lt lt' : ltype rt) κ :
     SimpLtype (ltype_core lt) lt' →
     SimpLtype (ltype_core (MutLtype lt κ)) (MutLtype lt' κ).
@@ -525,7 +513,7 @@ Section judgments.
   Implicit Types (rt : RT).
 
   Class SimplifyHypPlace (l : loc) (π : thread_id) {rt} (ty : type rt) (r : place_rfn rt) (n : option N) : Type :=
-    simplify_hyp_place :: SimplifyHyp (l ◁ₗ[π, Owned false] r @ (◁ ty)%I) n.
+    simplify_hyp_place :: SimplifyHyp (l ◁ₗ[π, Owned] r @ (◁ ty)%I) n.
   Global Hint Mode SimplifyHypPlace + + + + + - : typeclass_instances.
   Class SimplifyHypVal (v : val) (π : thread_id) {rt} (ty : type rt) (r : rt) (m : metadata) (n : option N) : Type :=
     simplify_hyp_val :: SimplifyHyp (v ◁ᵥ{π, m} r @ ty) n.
@@ -691,13 +679,13 @@ Section judgments.
   Next Obligation. intros π v m rt ty r [Q HQ]. done. Qed.
 
   Global Program Instance learn_hyp_place_owned π l {rt} (ty : type rt) r :
-    LearnFromHypVal ty r → LearnFromHyp (l ◁ₗ[π, Owned false] #r @ (◁ ty))%I | 10 :=
+    LearnFromHypVal ty r → LearnFromHyp (l ◁ₗ[π, Owned] #r @ (◁ ty))%I | 10 :=
         λ H, {| learn_from_hyp_Q := learn_from_hyp_val_Q ∗ ∃ ly, ⌜use_layout_alg (ty_syn_type ty MetaNone) = Some ly⌝ ∗ ⌜enter_cache_hint (l `has_layout_loc` ly)⌝(*  ∗ loc_in_bounds l 0 (ly_size ly) *) |}.
   Next Obligation.
     intros π l rt ty r [Q ? HQ] F.
     iIntros (?) "Hl". simpl.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Halg & % & ? & #Hlb & ? & %r' & -> & HT)".
+    iDestruct "Hl" as "(%ly & %Halg & % & ? & #Hlb & %r' & -> & HT)".
     iMod (fupd_mask_mono with "HT") as "(%v & Hl & Hv)"; first done.
     iMod (HQ with "[//] Hv") as "(Hv & #HQ')".
     iSplitL. { iModIntro. iExists _. iFrame. do 4 iR. done. }
@@ -1356,7 +1344,7 @@ Section judgments.
       + iIntros (?????) "_".
         rewrite ltype_own_core_equiv.
         iApply "Hub".
-      + iIntros (????) "_".
+      + iIntros (???) "_".
         rewrite ltype_own_core_equiv.
         iApply "Hub".
   Qed.
@@ -1694,7 +1682,7 @@ Section judgments.
 
   Definition bor_kind_writeable (b : bor_kind) :=
     match b with
-    | Owned _ => True
+    | Owned => True
     | Uniq _ _ => True
     | Shared _ => False
     end.
@@ -1846,7 +1834,7 @@ Section judgments.
   (* intentionally not an instance -- since [eqltype] is transitive, that would not be a good idea. *)
 
   (* generic instance constructors for descending below ofty *)
-  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 wl P T :
+  Lemma typed_place_ofty_access_val_owned E L (f : frame_path) {rt} l (ty : type rt) (r : rt) bmin0 P T :
     ty_has_op_type ty PtrOp MCCopy →
     (∀ F v, ⌜lftE ⊆ F⌝ -∗
       v ◁ᵥ{f.1, MetaNone} r @ ty ={F}=∗
@@ -1862,7 +1850,7 @@ Section judgments.
               UpdBot opt_place_update_eq_refl opt_place_update_eq_refl)))
         ))
       ⊢
-    typed_place E L f l (◁ ty) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    typed_place E L f l (◁ ty) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros (Hot) "HT".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont". iApply fupd_place_to_wp.
@@ -2134,6 +2122,25 @@ Section judgments.
   Class ResolveGhostADT {rt} π E L rm (r : rt) (ty : type rt) : Type :=
     resolve_ghost_adt_proof T : iProp_to_Prop (resolve_ghost_adt π E L rm r ty T).
 
+  (* TODO phrase this with fold_list instead. Problem: llctxupdate, existential quantifier, updating ownershp *)
+  (* Iteration is controlled by refinement [rs] *)
+  Definition resolve_ghost_iter_cont_t rt : Type := llctx → list (place_rfn rt) → iProp Σ → bool → iProp Σ.
+  Definition resolve_ghost_iter {rt} (π : thread_id) (E : elctx) (L : llctx) (rm : ResolutionMode) (lb : bool) (l : loc) (st : syn_type) (lts : list (ltype rt)) (b : bor_kind) (rs : list (place_rfn rt)) (ig : list nat) (i0 : nat) (T : resolve_ghost_iter_cont_t rt) : iProp Σ :=
+    (∀ F : coPset,
+      ⌜lftE ⊆ F⌝ -∗
+      ⌜lft_userE ⊆ F⌝ -∗
+      rrust_ctx -∗
+      elctx_interp E -∗
+      llctx_interp L -∗
+      ⌜length lts = (length rs)%nat⌝ -∗
+      ([∗ list] i ↦ r; lt ∈ rs; lts, if decide ((i + i0) ∈ ig) then True else (l offsetst{st}ₗ (i + i0)) ◁ₗ[ π, b] r @ lt) ={F}=∗
+      ∃ (L' : llctx) (rs' : list $ place_rfn rt) (R : iPropI Σ) (progress : bool),
+      maybe_logical_step lb F (([∗ list] i ↦ r; lt ∈ rs'; lts, if decide ((i + i0) ∈ ig) then True else (l offsetst{st}ₗ (i + i0)) ◁ₗ[ π, b] r @ lt) ∗ R) ∗
+      llctx_interp L' ∗ T L' rs' R progress).
+  Class ResolveGhostIter {rt} (π : thread_id) (E : elctx) (L : llctx) (rm : ResolutionMode) (lb : bool) (l : loc) (st : syn_type) (lts : list (ltype rt)) (b : bor_kind) (rs : list (place_rfn rt)) (ig : list nat) (i0 : nat) : Type :=
+    resolve_ghost_iter_proof T : iProp_to_Prop (resolve_ghost_iter π E L rm lb l st lts b rs ig i0 T).
+  Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + : typeclass_instances.
+
   Inductive FindObsMode : Set :=
     | FindObsModeDirect
     | FindObsModeRel.
@@ -2200,6 +2207,25 @@ Section judgments.
 
   Class StratifyLtype {rt} π E L mu mdu ma {M} (ml : M) l (lt : ltype rt) (r : place_rfn rt) b : Type :=
     stratify_ltype_proof T : iProp_to_Prop (stratify_ltype π E L mu mdu ma ml l lt r b T).
+
+  (** Iterative variant for arrays *)
+  Definition stratify_ltype_array_iter_cont_t (rt : RT) := llctx → iProp Σ → list (nat * ltype rt) → list (place_rfn rt) → iProp Σ.
+  Definition stratify_ltype_array_iter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) (T : stratify_ltype_array_iter_cont_t rt) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗
+    ⌜lft_userE ⊆ F⌝ -∗
+    ⌜shrE ⊆ F⌝ -∗
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L -∗
+    ([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml; rs,
+      if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[π, k] r @ lt) else True) ={F}=∗
+    ∃ (L' : llctx) (R' : iProp Σ) (iml' : list (nat * ltype rt)) (rs' : list (place_rfn rt)),
+      ⌜length rs' = length rs⌝ ∗
+      logical_step F (([∗ list] i ↦ lt; r ∈ interpret_iml (◁ def)%I len iml'; rs', if decide (i ∉ ig) then (⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ (l offsetst{ty_syn_type def MetaNone}ₗ i) ◁ₗ[π, k] r @ lt) else True) ∗ R') ∗
+      llctx_interp L' ∗
+      T L' R' iml' rs'.
+  Class StratifyLtypeArrayIter (π : thread_id) (E : elctx) (L : llctx) (mu : StratifyMutabilityMode) (md : StratifyDescendUnfoldMode) (ma : StratifyAscendMode) {M} (m : M) (l : loc) (ig : list nat) {rt} (def : type rt) (len : nat) (iml : list (nat * ltype rt)) (rs : list (place_rfn rt)) (k : bor_kind) : Type :=
+    stratify_ltype_array_iter_proof T : iProp_to_Prop (stratify_ltype_array_iter π E L mu md ma m l ig def len iml rs k T).
 
   (** Post-hook that is run after stratification visits a node.
      This is intended to be overridden by different stratification clients, depending on [ml]. *)
@@ -2402,16 +2428,16 @@ Section judgments.
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
-    l ◁ₗ[π, Owned false] r1 @ lt1 -∗ |={F}=>
+    l ◁ₗ[π, Owned] r1 @ lt1 -∗ |={F}=>
     ∃ L' R,
-    (logical_step F (l ◁ₗ[π, Owned false] r2 @ lt2 ∗ R)) ∗
+    (logical_step F (l ◁ₗ[π, Owned] r2 @ lt2 ∗ R)) ∗
     (⌜syn_type_size_eq (ltype_st lt1) (ltype_st lt2)⌝) ∗
     llctx_interp L' ∗ T L' R.
   Class OwnedSubltypeStep (π : thread_id) (E : elctx) (L : llctx) (l : loc) {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     owned_subltype_step_proof T : iProp_to_Prop (owned_subltype_step π E L l r1 r2 lt1 lt2 T).
 
   Lemma owned_subltype_step_weak_subltype π E L l {rt1 rt2} (r1 : place_rfn rt1) (r2 : place_rfn rt2) lt1 lt2 T :
-    weak_subltype E L (Owned false) r1 r2 lt1 lt2 (T L True)
+    weak_subltype E L (Owned) r1 r2 lt1 lt2 (T L True)
     ⊢ owned_subltype_step π E L l r1 r2 lt1 lt2 T.
   Proof.
     iIntros "HT" (??) "CTX HE HL Hl".
@@ -2803,7 +2829,7 @@ Section judgments.
        usually it will be AliasLtype l or OpenedLtype (AliasLtype l) .. *)
     l ◁ₗ[π, b2] r' @ lt' ∗
     (* and the ownership to move out *)
-    l ◁ₗ[π, Owned false] r @ lt ∗
+    l ◁ₗ[π, Owned] r @ lt ∗
     ⌜ltype_st lt' = ltype_st lt⌝ ∗
     (* and the context and postco *)
     llctx_interp L' ∗
@@ -2828,6 +2854,22 @@ Section judgments.
       This should give us some kind of shared ownership.
   *)
 
+  (* TODO maybe we also generally want this to unblock/stratify first? *)
+  Definition typed_array_access_cont_t : Type := llctx → ∀ (rt' : RT), type rt' → nat → list (nat * ltype rt') → list (place_rfn rt') → bor_kind → ∀ rte, ltype rte → place_rfn rte → iProp Σ.
+  Definition typed_array_access (π : thread_id) (E : elctx) (L : llctx) (base : loc) (off : Z) (st : syn_type) {rt} (lt : ltype rt) (r : place_rfn rt) (k : bor_kind) (T : typed_array_access_cont_t) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
+    rrust_ctx -∗
+    elctx_interp E -∗
+    llctx_interp L -∗
+    base ◁ₗ[π, k] r @ lt ={F}=∗
+    ∃ L' k' rt' (ty' : type rt') (len : nat) (iml : list (nat * ltype rt')) rs' (rte : RT) re (lte : ltype rte),
+      (* updated array assignment *)
+      base ◁ₗ[π, k'] #rs' @ ArrayLtype ty' len iml ∗
+      (base offsetst{st}ₗ off) ◁ₗ[π, k'] re @ lte ∗
+      llctx_interp L' ∗
+      T L' _ ty' len iml rs' k' rte lte re.
+  Class TypedArrayAccess (π : thread_id) (E : elctx) (L : llctx) (base : loc) (off : Z) (st : syn_type) {rt} (lt : ltype rt) (r : place_rfn rt) (k : bor_kind) : Type :=
+    typed_array_access_proof T : iProp_to_Prop (typed_array_access π E L base off st lt r k T).
 End judgments.
 
 Global Infix "⪯ₚ" := (place_update_kind_incl) (at level 51).
@@ -3255,9 +3297,9 @@ Section folding.
   Implicit Types (tctx : type_ctx).
 
   Definition type_ctx_interp π tctx : iProp Σ :=
-    [∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[π, Owned false] bt.(bltype_rfn) @ bt.(bltype_ltype).
+    [∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[π, Owned] bt.(bltype_rfn) @ bt.(bltype_ltype).
   Lemma type_ctx_interp_cons π l t tctx :
-    type_ctx_interp π ((l, t) :: tctx) ⊣⊢ (l ◁ₗ[π, Owned false] t.(bltype_rfn) @ t.(bltype_ltype)) ∗ type_ctx_interp π tctx.
+    type_ctx_interp π ((l, t) :: tctx) ⊣⊢ (l ◁ₗ[π, Owned] t.(bltype_rfn) @ t.(bltype_ltype)) ∗ type_ctx_interp π tctx.
   Proof. iApply big_sepL_cons. Qed.
 
   (* TODO maybe we should just put the locations in the tctx queue, instead of the whole type assignment? We're going to look for them in the context anyways. *)
@@ -3297,7 +3339,7 @@ Section folding.
     (∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
       rrust_ctx -∗ elctx_interp E -∗ llctx_interp L -∗
       logical_step F (Acc_interp acc) -∗
-      l ◁ₗ[ π, Owned false] r @ lt -∗ |={F}=>
+      l ◁ₗ[ π, Owned] r @ lt -∗ |={F}=>
       (∃ L' acc' m', llctx_interp L' ∗ logical_step F (Acc_interp acc') ∗ T L' m' acc')).
   Class TypedContextFoldStep {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) (l : loc) {rt} (lt : ltype rt) (r : place_rfn rt) (tctx : list loc) (acc : Acc) :=
     typed_context_fold_step_proof T : iProp_to_Prop (typed_context_fold_step π E L m l lt r tctx acc T).
@@ -3334,7 +3376,7 @@ Section folding.
       match res with
       | None => typed_context_fold E L m tctx acc T
       | Some (existT rt' (lt', r', bk', π)) =>
-          ⌜bk' = Owned false⌝ ∗ (typed_context_fold_step π E L m l lt' r' tctx acc T)
+          ⌜bk' = Owned⌝ ∗ (typed_context_fold_step π E L m l lt' r' tctx acc T)
       end)
     ⊢ typed_context_fold E L m (l :: tctx) acc T.
   Proof.
@@ -3386,7 +3428,7 @@ Section folding.
 
   (* Unfold the type context so Lithium separates the big_sep *)
   Lemma simplify_type_context π tctx T :
-    (([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned false] bltype_rfn bt @ bltype_ltype bt) -∗ T) ⊢
+    (([∗ list] i ∈ tctx, let '(l, bt) := i in l ◁ₗ[ π, Owned] bltype_rfn bt @ bltype_ltype bt) -∗ T) ⊢
     simplify_hyp (type_ctx_interp π tctx) T.
   Proof. done. Qed.
   Global Instance simplify_type_context_inst π tctx :
@@ -4155,6 +4197,7 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | subsume_full ?E ?L ?wl ?P1 ?P2 => constr:(SubsumeFull E L wl P1 P2)
   | resolve_ghost ?π ?E ?L ?rm ?f ?l ?lt ?k ?r => constr:(ResolveGhost π E L rm f l lt k r)
   | resolve_ghost_adt ?π ?E ?L ?rm ?r ?ty => constr:(ResolveGhostADT π E L rm r ty)
+  | resolve_ghost_iter ?π ?E ?L ?rm ?b ?l ?st ?ltys ?bk ?rs ?ig ?i => constr:(ResolveGhostIter π E L rm b l st ltys bk rs ig i)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
   | prove_with_subtype ?E ?L ?wl ?pm ?P => constr:(ProveWithSubtype E L wl pm P)
   | typed_on_endlft ?E ?L ?κ ?worklist => constr:(TypedOnEndlft E L κ worklist)
@@ -4168,8 +4211,13 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | mut_eqltype ?E ?L ?lt1 ?lt2 => constr:(MutEqLtype E L lt1 lt2)
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
+  | typed_array_access ?π ?E ?L ?base ?off ?st ?lt ?r ?bk => constr:(TypedArrayAccess π E L base off st lt r bk)
   | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?lt ?r ?b =>
       constr:(StratifyLtype π E L mu mdu ma m l lt r b)
+  | stratify_ltype_post_hook ?π ?E ?L ?m ?l ?lt ?r ?b =>
+      constr:(StratifyLtypePostHook π E L m l lt r b)
+  | stratify_ltype_array_iter ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?ig ?def ?len ?iml ?rs ?b =>
+      constr:(StratifyLtypeArrayIter π E L mu mdu ma m l ig def len iml rs b)
   | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r =>
       constr:(InterpretTypingHint E L orty bmin ty r)
   | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?ls ?acc =>

@@ -283,7 +283,7 @@ Section rules.
 
   Lemma weak_subltype_maybe_uninit_ghost E L {rt} (ty : type rt) γ r2 T :
     ⌜r2 = #(Some (👻 γ))⌝ ∗ T
-    ⊢ weak_subltype E L (Owned false) (👻 γ) r2 (◁ ty) (◁ (maybe_uninit ty)) T.
+    ⊢ weak_subltype E L (Owned) (👻 γ) r2 (◁ ty) (◁ (maybe_uninit ty)) T.
   Proof.
     iIntros "(-> & HT)".
     iIntros (??) "#CTX #HE HL". iFrame. iModIntro.
@@ -292,7 +292,7 @@ Section rules.
     rewrite -bi.persistent_sep_dup.
     iModIntro. iIntros (π l) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & Hlb & Hcreds & %r' & Hrfn & Hl)".
+    iDestruct "Hl" as "(%ly & %Hst & %Hly & Hsc & Hlb & %r' & Hrfn & Hl)".
     iMod "Hl" as "(%v & Hl & Hv)".
     iModIntro. iExists ly. iR. iR. iSplitR. { rewrite /maybe_uninit. done. }
     iFrame. iExists (Some (👻 γ)). iR. iModIntro.

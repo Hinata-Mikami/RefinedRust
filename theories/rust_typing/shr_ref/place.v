@@ -8,7 +8,7 @@ From refinedrust Require Import options.
 Section place.
   Context `{!typeGS Σ}.
 
-  Lemma typed_place_shr_owned {rto} f κ (lt2 : ltype rto) P E L l r wl bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
+  Lemma typed_place_shr_owned {rto} f κ (lt2 : ltype rto) P E L l r bmin0 (T : place_cont_t (place_rfn rto) bmin0) :
    introduce_with_hooks E L (£1) (λ L1,
      ∀ l', typed_place E L1 f l' lt2 r bmin0 (Shared κ) P
         (λ L' κs l2 b2 bmin rti tyli ri updcx,
@@ -22,7 +22,7 @@ Section place.
             (upd').(pupd_performed)
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_1))
             (opt_place_update_eq_lift place_rfnRT (upd').(pupd_eq_2)))))))
-    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Owned wl) (DerefPCtx Na1Ord PtrOp true :: P) T.
+    ⊢ typed_place E L f l (ShrLtype lt2 κ) (#r) bmin0 (Owned) (DerefPCtx Na1Ord PtrOp true :: P) T.
   Proof.
     iIntros "HR" (Φ F ??).
     iIntros "#(LFT & LLCTX) #HE HL Hf HP HΦ/=".
@@ -30,10 +30,9 @@ Section place.
     iApply fupd_wpe. iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "Hb" as "(%l' & Hl & Hb & Hcl)". iMod "HclF" as "_". iModIntro.
     iApply wpe_fupd.
-    iApply (wpe_logical_step with "Hcl"); [solve_ndisj.. | ].
     iApply (wp_deref with "Hl") => //; [solve_ndisj | by apply val_to_of_loc | ].
     iApply physical_step_intro_lc. iIntros "Hcred !> !>".
-    iIntros (st) "Hl HT". iMod (fupd_mask_subseteq F) as "HclF"; first done.
+    iIntros (st) "Hl". iMod (fupd_mask_subseteq F) as "HclF"; first done.
     iMod "HclF" as "_". iExists l'.
     iSplitR. { iPureIntro. unfold mem_cast. rewrite val_to_of_loc. done. }
     iMod ("HR" with "[] HE HL [Hcred]") as "(%L1 & HL & HR)"; first done.
@@ -46,7 +45,7 @@ Section place.
     iModIntro. iIntros (? cont) "HL Hf Hcont".
     iMod ("Hs" with "HL Hf Hcont") as (upd') "(Hb & %Hsteq' & Hcond & HR & ? & ? & ?)".
     iFrame. simpl.
-    iMod ("HT" with "Hl Hb") as "Hb".
+    iMod ("Hcl" with "Hl Hb") as "Hb".
     iFrame. simp_ltypes. iR.
     by iApply shr_ltype_place_cond.
   Qed.

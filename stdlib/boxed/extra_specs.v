@@ -35,7 +35,7 @@ Section contractive.
 
   (** Resolve ghost: Resolve observations on the contained value. *)
   Lemma resolve_ghost_box {T_rt A_rt} A_attrs (T_ty : type T_rt) (A_ty : type A_rt) π E L r rm T :
-    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) (Owned false) r T)
+    (∀ l', resolve_ghost π E L rm true l' (◁ T_ty) Owned r T)
     ⊢ resolve_ghost_adt π E L rm r (Box_inv_t T_rt A_rt A_attrs <TY> T_ty <TY> A_ty <INST!>) T.
   Proof.
     rewrite /resolve_ghost_adt /resolve_ghost.

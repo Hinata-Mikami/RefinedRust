@@ -250,26 +250,24 @@ Context `{typeGS Σ}.
 
 (**
   A [bor_kind] determines which ownership we have of an ltype.
-  [Owned with_later] says that we fully own it, where inner ownership is optionally guarded by a later.
-    + the [with_later = true] case is needed for Box types, which need to guard their inner type to enable recursive types.
-    + the [with_later = false] case is needed for top-level ownership of places in the typing context (for modelling stack places).
+  [Owned] says that we fully own it.
   [Shared κ] says that we have shared ownership at lifetime κ.
   [Uniq κ γ] says that we own it under a mutable borrow at lifetime κ, where γ is the ghost variable for the mutable reference. This is needed for properly nesting the refinements of mutable references.
  *)
 Inductive bor_kind :=
- | Owned (with_later : bool) | Shared (κ : lft) | Uniq (κ : lft) (γ : gname).
-Global Instance bor_kind_inhabited : Inhabited bor_kind := populate (Owned false).
+ | Owned | Shared (κ : lft) | Uniq (κ : lft) (γ : gname).
+Global Instance bor_kind_inhabited : Inhabited bor_kind := populate (Owned).
 
 Definition lctx_bor_kind_alive (E : elctx) (L : llctx) (b : bor_kind) :=
   match b with
-  | Owned _ => True
+  | Owned => True
   | Shared κ | Uniq κ _ => lctx_lft_alive E L κ
   end.
 
 (** ** Inclusion of bor_kinds *)
 Definition bor_kind_direct_incl (b1 b2 : bor_kind) : iProp Σ :=
   match b1, b2 with
-  | Owned wl1, Owned wl2 => ⌜wl1 = wl2⌝
+  | Owned, Owned => True
   | Uniq κ1 γ1, Uniq κ2 γ2 => κ1 ⊑ κ2 ∗ ⌜γ1 = γ2⌝
   | Shared κ1, Shared κ2 => κ1 ⊑ κ2
   | _, _ => False
@@ -279,7 +277,7 @@ Infix "⊑ₛₖ" := bor_kind_direct_incl (at level 70) : bi_scope.
 
 Definition bor_kind_outlives_elctx (b : bor_kind) (κ : lft) : elctx :=
   match b with
-  | Owned _ => []
+  | Owned => []
   | Uniq κ' _ => [κ ⊑ₑ κ']
   | Shared κ' => [κ ⊑ₑ κ']
   end.
@@ -300,7 +298,6 @@ Lemma bor_kind_direct_incl_trans b1 b2 b3 :
   ⊢ (b1 ⊑ₛₖ b2 -∗ b2 ⊑ₛₖ b3 -∗ b1 ⊑ₛₖ b3)%I.
 Proof.
   destruct b1, b2, b3; simpl; first [iIntros "-> ->" | iIntros "[#? ->] [#? ->]" | iIntros "#?? //"].
-  - done.
   - by iApply lft_incl_trans.
   - iSplit; last done. by iApply lft_incl_trans.
 Qed.
@@ -347,9 +344,6 @@ Section ltype_def.
     | AliasLty (rt : RT) (st : syn_type) (l : loc)
     | MutLty (lt : lty) (κ : lft)
     | ShrLty (lt : lty) (κ : lft)
-    | BoxLty (lt : lty)
-    (* [ls = true] iff this should put a later *)
-    | OwnedPtrLty (lt : lty) (ls : bool)
     | StructLty (lts : list lty) (sls : struct_layout_spec)
     (* [def] is the default element type; [lts] masks this for certain indices *)
     | ArrayLty {rt} (def : type rt) (len : nat) (lts : list (nat * lty))
@@ -398,8 +392,6 @@ Section ltype_def.
     | @OfTyLty rt _ => rt
     | AliasLty rt st l => rt
     | MutLty lt _ => (place_rfnRT (lty_rt lt) * gname)%type
-    | BoxLty lt => place_rfnRT (lty_rt lt)
-    | OwnedPtrLty lt ls => (place_rfnRT (lty_rt lt) * loc)%type
     | ShrLty lt _ => place_rfnRT (lty_rt lt)
     | StructLty lts _ =>
         plistRT (fmap lty_rt lts)
@@ -422,8 +414,6 @@ Section ltype_def.
     | OfTyLty ty => ty.(ty_syn_type) MetaNone
     | AliasLty _ st l => st
     | MutLty _ _ => PtrSynType
-    | BoxLty _ => PtrSynType
-    | OwnedPtrLty _ _ => PtrSynType
     | ShrLty _ _ => PtrSynType
     | StructLty _ sls => sls
     | ArrayLty def len lts => ArraySynType (ty_syn_type def MetaNone) len
@@ -445,8 +435,6 @@ Section ltype_def.
     | AliasLty _ st l => True
     | MutLty lt κ => lty_wf lt
     | ShrLty lt _ => lty_wf lt
-    | BoxLty lt => lty_wf lt
-    | OwnedPtrLty lt _ => lty_wf lt
     | StructLty lts _ => Forall_cb lty_wf lts
     | @ArrayLty rt def len lts =>
         Forall_cb (λ '(i, lt), lty_wf lt ∧ lty_rt lt = rt(*∧ i < len *)) lts
@@ -475,8 +463,6 @@ Section ltype_def.
       (∀ (rt : RT) (st : syn_type) (l : loc), P (AliasLty rt st l)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (MutLty lt κ)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (ShrLty lt κ)) →
-      (∀ lt : lty, P lt → P (BoxLty lt)) →
-      (∀ (lt : lty) (ls : bool), P lt → P (OwnedPtrLty lt ls)) →
       (∀ lts : list lty, list_is_list lty P lts → ∀ sls : struct_layout_spec, P (StructLty lts sls)) →
       (∀ (rt : RT) (def : type rt) (len : nat) (lts : list (nat * lty)),
         list_is_list _ (λ '(_, lt), P lt) lts → P (ArrayLty def len lts)) →
@@ -492,7 +478,7 @@ Section ltype_def.
           P lt_cur → P lt_inner → P (OpenedNaLty lt_cur lt_inner Cpre Cpost)) →
       ∀ lt : lty, P lt.
   Proof.
-    intros P Hblocked Hshrblocked Hofty Halias Hmut Hshr Hbox Hptr Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na.
+    intros P Hblocked Hshrblocked Hofty Halias Hmut Hshr Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na.
     (* doing induction does not give us the IH *)
     refine (fix IH (lt : lty) {struct lt} : P lt :=
       match lt return (P lt) with
@@ -502,8 +488,6 @@ Section ltype_def.
       | AliasLty rt st l => Halias rt st l
       | MutLty lt κ => Hmut lt _ κ
       | ShrLty lt κ => Hshr lt _ κ
-      | BoxLty lt => Hbox lt _
-      | OwnedPtrLty lt ls => Hptr lt ls _
       | StructLty lts sls =>
           _
       | @ArrayLty rt def len lts =>
@@ -538,8 +522,6 @@ Section ltype_def.
       (∀ (rt : RT) (st : syn_type) (l : loc), P (AliasLty rt st l)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (MutLty lt κ)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (ShrLty lt κ)) →
-      (∀ lt : lty, P lt → P (BoxLty lt)) →
-      (∀ (lt : lty) (ls : bool), P lt → P (OwnedPtrLty lt ls)) →
       (∀ lts : list lty, (∀ lt, lt ∈ lts → P lt) → ∀ sls : struct_layout_spec, P (StructLty lts sls)) →
       (∀ (rt : RT) (def : type rt) (len : nat) (lts : list (nat * lty)), (∀ i lt, (i, lt) ∈ lts → P lt) → P (ArrayLty def len lts)) →
       (∀ (rt rte : RT) (en : enum rt) (variant : var_name) (lte : lty) (re : rte), P lte → P (EnumLty en variant lte re)) →
@@ -553,8 +535,8 @@ Section ltype_def.
           P lt_cur → P lt_inner → P (OpenedNaLty lt_cur lt_inner Cpre Cpost)) →
       ∀ lt : lty, P lt.
   Proof.
-    intros P ? ? ? ? ? ? ? ? Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na lt.
-    induction lt as [ | | | | | | | | lts IH sls | rt def len lts IH | | | | | ] using lty_recursor; [by eauto.. | | | | | | | ].
+    intros P ? ? ? ? ? ? Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na lt.
+    induction lt as [ | | | | | | lts IH sls | rt def len lts IH | | | | | ] using lty_recursor; [by eauto.. | | | | | | | ].
     - eapply Hstruct. intros lt Hin. induction lts as [ | lt' lts IH'].
       + apply elem_of_nil in Hin. done.
       + inversion IH; subst. apply elem_of_cons in Hin as [<- | Hin]; first done.
@@ -580,8 +562,6 @@ Section ltype_def.
       (∀ (rt : RT) (st : syn_type) (l : loc), P (AliasLty rt st l)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (MutLty lt κ)) →
       (∀ lt : lty, P lt → ∀ κ : lft, P (ShrLty lt κ)) →
-      (∀ lt : lty, P lt → P (BoxLty lt)) →
-      (∀ (lt : lty) (ls : bool), P lt → P (OwnedPtrLty lt ls)) →
       (∀ lts : list lty, (∀ lt, lt ∈ lts → P lt) → ∀ sls : struct_layout_spec, P (StructLty lts sls)) →
       (∀ (rt : RT) (def : type rt) (len : nat) (lts : list (nat * lty)),
         (∀ i lt, (i, lt) ∈ lts → P lt ∧ lty_rt lt = rt) → P (ArrayLty def len lts)) →
@@ -597,8 +577,8 @@ Section ltype_def.
         P lt_cur → P lt_inner → P (OpenedNaLty lt_cur lt_inner Cpre Cpost)) →
       ∀ lt : lty, lty_wf lt → P lt.
   Proof.
-    intros P ???????? Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na lt Hwf.
-    induction lt as [ | | | | | | | | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | rt_inner rt_full lt_cur lt_inner lt_full Cpre Cpost IH1 IH2 IH3 | κ lt_full IH | | ] using lty_induction; [by eauto.. | | | | | | | ].
+    intros P ?????? Hstruct Harr Henum Hopened Hcoreable Hshadow Hopened_na lt Hwf.
+    induction lt as [ | | | | | | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | rt_inner rt_full lt_cur lt_inner lt_full Cpre Cpost IH1 IH2 IH3 | κ lt_full IH | | ] using lty_induction; [by eauto.. | | | | | | | ].
     - eapply Hstruct. intros lt Hlt. eapply IH; first done.
       simpl in Hwf. apply Forall_Forall_cb in Hwf.
       eapply Forall_forall; done.
@@ -628,8 +608,6 @@ Section ltype_def.
     | AliasLty rt st l => 0
     | BlockedLty _ _ => 0
     | ShrBlockedLty _ _ => 0
-    | BoxLty lt => 1 + lty_size lt
-    | OwnedPtrLty lt _ => 1 + lty_size lt
     | MutLty lt _ => 1 + lty_size lt
     | ShrLty lt _ => 1 + lty_size lt
     | StructLty lts _ => 1 + list_max (fmap lty_size lts)
@@ -674,8 +652,6 @@ Section ltype_def.
     | AliasLty rt st l => AliasLty rt st l
     | MutLty lt κ => MutLty (lty_core lt) κ
     | ShrLty lt κ => ShrLty (lty_core lt) κ
-    | BoxLty lt => BoxLty (lty_core lt)
-    | OwnedPtrLty lt ls => OwnedPtrLty (lty_core lt) ls
     | StructLty lts sls => StructLty (fmap lty_core lts) sls
     | ArrayLty def len lts => ArrayLty def len (fmap (λ '(i, lt), (i, lty_core lt)) lts)
     | EnumLty en variant lte re => EnumLty en variant (lty_core lte) re
@@ -697,7 +673,7 @@ Section ltype_def.
   Lemma lty_core_syn_type_eq (lt : lty) :
     lty_st (lty_core lt) = lty_st lt.
   Proof.
-    induction lt as [ | | | | | | | | | ? IH | | | | | ]; by eauto.
+    induction lt as [ | | | | | | | ? IH | | | | | ]; by eauto.
   Qed.
 
   Lemma RT_eq_iff (a b : RT) :
@@ -721,9 +697,7 @@ Section ltype_def.
   Lemma lty_core_rt_eq lt :
     lty_rt (lty_core lt) = lty_rt lt.
   Proof.
-    induction lt as [ | | | | ? IH ? | ? IH ? | ? IH | ? ? IH | ? IH ? | ???? IH | | | | | ] using lty_induction; simpl; [done | done | done | done | | | | | | done.. ].
-    - by rewrite IH.
-    - by rewrite IH.
+    induction lt as [ | |  | ? IH ? | ? IH | ? IH | ? IH ? | ???? IH | | | | | ] using lty_induction; simpl; [done | done | done | done | | | | done.. ].
     - by rewrite IH.
     - by rewrite IH.
     - f_equiv.
@@ -767,7 +741,7 @@ Section ltype_def.
   Lemma lty_core_wf lt :
     lty_wf lt → lty_wf (lty_core lt).
   Proof.
-    induction lt as [ | | | | | | | | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | | rt lt IH | | ] using lty_induction; simpl; [done.. | | | | done | | | done ].
+    induction lt as [ | | | | | | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | | rt lt IH | | ] using lty_induction; simpl; [done.. | | | | done | | | done ].
     - rewrite -!Forall_Forall_cb.
       rewrite Forall_fmap.
       apply Forall_impl_strong.
@@ -788,7 +762,7 @@ Section ltype_def.
   Lemma lty_size_core (lt : lty) :
     lty_size (lty_core lt) ≤ lty_size lt.
   Proof.
-    induction lt as [ | | | | | | | |lts IH sls | rt def len lts IH | | | | | ] using lty_induction; simpl; [lia.. | | | lia | lia | lia | lia | lia].
+    induction lt as [ | | | | | |lts IH sls | rt def len lts IH | | | | | ] using lty_induction; simpl; [lia.. | | | lia | lia | lia | lia | lia].
     - induction lts as [ | lt lts IH']; simpl; first done.
       opose proof* (IH lt) as IH0. { apply elem_of_cons. by left. }
       ospecialize* IH'. { intros. apply IH. apply elem_of_cons. by right. }
@@ -838,13 +812,12 @@ Section ltype_def.
       ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       ty.(ty_sidecond) ∗ loc_in_bounds l 0 (ly.(ly_size)) ∗
     match k with
-    | Owned wl =>
-        maybe_creds wl ∗
+    | Owned =>
         ∃ r' : rt,
         place_rfn_interp_owned r r' ∗
         (* Have a later here according to wl, which is imposed by e.g. a Box directly above it.
           As such, this is really needed for contractiveness/making working with rec types possible. *)
-        ▷?(wl)|={lftE}=>  ∃ v, l ↦ v ∗ ty.(ty_own_val) π r' MetaNone v
+        |={lftE}=>  ∃ v, l ↦ v ∗ ty.(ty_own_val) π r' MetaNone v
     | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
@@ -862,9 +835,9 @@ Section ltype_def.
 
   Definition alias_lty_own (rt : RT) (st : syn_type) (p : loc) k π (r : place_rfn rt) l :=
     match k with
-    | Owned wl =>
+    | Owned =>
       ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜p = l⌝ ∗
-        ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly) ∗ maybe_creds wl
+        ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly)
     | Shared _ =>
       ∃ ly, ⌜syn_type_has_layout st ly⌝ ∗ ⌜p = l⌝ ∗
         ⌜l `has_layout_loc` ly⌝ ∗ loc_in_bounds l 0 (ly_size ly)
@@ -875,11 +848,9 @@ Section ltype_def.
     (∃ ly, ⌜syn_type_has_layout (ty.(ty_syn_type) MetaNone) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
       ty.(ty_sidecond) ∗ loc_in_bounds l 0 ly.(ly_size) ∗
     match k with
-    | Owned wl =>
+    | Owned =>
         ([† κ] ={lftE}=∗
-          ∃ (r' : rt), place_rfn_interp_owned_blocked r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r' MetaNone)) ∗
-        (* and the original credits *)
-        maybe_creds wl
+          ∃ (r' : rt), place_rfn_interp_owned_blocked r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r' MetaNone))
     | Shared κ' =>
         (* sharing of inheritances is weird, they are of no use like that,
           and there's no reason to create inheritances directly below
@@ -899,11 +870,10 @@ Section ltype_def.
       loc_in_bounds l 0 ly.(ly_size) ∗
     ∃ r': rt, place_rfn_interp_shared r r' ∗
     match k with
-    | Owned wl =>
+    | Owned =>
         (* also have the sharing predicate *)
         ty.(ty_shr) κ π r' MetaNone l ∗
-        ([† κ] ={lftE}=∗ l ↦: ty.(ty_own_val) π r' MetaNone) ∗
-        maybe_creds wl
+        ([† κ] ={lftE}=∗ l ↦: ty.(ty_own_val) π r' MetaNone)
     | Shared κ' =>
         (* already shared -- no need to do something special *)
         (*ty.(ty_shr) κ' π r' l*)
@@ -976,110 +946,19 @@ Section ltype_def.
       (** ShrBlocked *)
       if core then lty_of_ty_own ty k π r l else shr_blocked_lty_own ty κ k π r l;
 
-    lty_own_pre core (BoxLty lt) k π r l :=
-      (** Box *)
-      (* TODO: eventually remove this when we model Box as a struct *)
-      (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
-      loc_in_bounds l 0 ly.(ly_size) ∗
-      match k with
-      | Owned wl =>
-          maybe_creds wl ∗
-          (* the placement of the pointsto below the later let's us get the unfoldings equation without timelessness *)
-          ∃ r' : place_rfn (lty_rt lt), place_rfn_interp_owned r r' ∗ ▷?wl |={lftE}=>
-          ∃ (l' : loc) (ly' : layout), l ↦ l' ∗
-          ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-          ⌜l' `has_layout_loc` ly'⌝ ∗
-          freeable_nz l' ly'.(ly_size) 1 HeapAlloc ∗
-          lty_own_pre core lt (Owned true) π r' l'
-      | Uniq κ γ =>
-          have_creds ∗
-          place_rfn_interp_mut r γ ∗
-          |={lftE}=> &pin{κ}
-              [∃ (r' : place_rfn (lty_rt lt)),
-                gvar_auth γ r' ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (l' : loc) (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                (freeable_nz l' ly'.(ly_size) 1 HeapAlloc) ∗
-                lty_own_pre true lt (Owned true) π r' l'
-              ]
-              (∃ (r' : place_rfn (lty_rt lt)),
-                gvar_auth γ r' ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (l' : loc) (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                (freeable_nz l' ly'.(ly_size) 1 HeapAlloc) ∗
-                lty_own_pre core lt (Owned true) π r' l')
-      | Shared κ =>
-        (∃ r', place_rfn_interp_shared r r' ∗
-          □ |={lftE}=> ∃ li : loc,
-            &frac{κ}(λ q', l ↦{q'} li) ∗
-            ▷ lty_own_pre core lt (Shared κ) π r' li)%I
-      end)%I;
-
-    lty_own_pre core (OwnedPtrLty lt ls) k π r l :=
-      (** OwnedPtr *)
-      (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
-      loc_in_bounds l 0 ly.(ly_size) ∗
-      match k with
-      | Owned wl =>
-          maybe_creds wl ∗
-          (* the placement of the pointsto below the later let's us get the unfoldings equation without timelessness *)
-          ∃ (r' : place_rfn (lty_rt lt)) (l' : loc), place_rfn_interp_owned r (r', l') ∗ ▷?wl |={lftE}=>
-          ∃ (ly' : layout), l ↦ l' ∗
-          ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-          ⌜l' `has_layout_loc` ly'⌝ ∗
-          lty_own_pre core lt (Owned ls) π r' l'
-      | Uniq κ γ =>
-          have_creds ∗
-          place_rfn_interp_mut r γ ∗
-          |={lftE}=> &pin{κ}
-              [∃ (r' : place_rfn (lty_rt lt)) (l' : loc),
-                gvar_auth γ (r', l') ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                lty_own_pre true lt (Owned ls) π r' l'
-              ]
-              (∃ (r' : place_rfn (lty_rt lt)) (l' : loc),
-                gvar_auth γ (r', l') ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (lty_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                lty_own_pre core lt (Owned ls) π r' l')
-      | Shared κ =>
-        (∃ r' (li : loc), place_rfn_interp_shared r (r', li) ∗
-          □ |={lftE}=>
-            &frac{κ}(λ q', l ↦{q'} li) ∗
-            ▷ lty_own_pre core lt (Shared κ) π r' li)%I
-      end)%I;
-
     lty_own_pre core (MutLty lt κ) k π r l :=
       (** Mut *)
       (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
        loc_in_bounds l 0 ly.(ly_size) ∗
       match k with
-      | Owned wl =>
-          maybe_creds wl ∗
+      | Owned =>
           (* it's fine to existentially quantify here over the gvar_obs, since
             the outer can actually tell us about it. Keep in mind that the gvar here can actually
             change if we write under nested places. *)
           ∃ (γ : gname) (r' : place_rfn (lty_rt lt)) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          ▷?wl |={lftE}=> ∃ l' : loc , l ↦ l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
+          |={lftE}=> ∃ l' : loc , l ↦ l' ∗ (lty_own_pre core lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
             have_creds ∗
             place_rfn_interp_mut r γ' ∗
@@ -1111,10 +990,9 @@ Section ltype_def.
       (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
          loc_in_bounds l 0 ly.(ly_size) ∗
         match k with
-        | Owned wl =>
-            maybe_creds wl ∗
+        | Owned =>
             ∃ (r' : place_rfn (lty_rt lt)), place_rfn_interp_owned r r' ∗
-            ▷?wl |={lftE}=> ∃ (l' : loc), l ↦ l' ∗
+            |={lftE}=> ∃ (l' : loc), l ↦ l' ∗
             lty_own_pre core lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
@@ -1142,16 +1020,15 @@ Section ltype_def.
       ⌜l `has_layout_loc` sl⌝ ∗
       loc_in_bounds l 0 (sl.(ly_size)) ∗
       match k with
-      | Owned wl =>
+      | Owned =>
           (* We change the interpretation to Owned false and interpret the later here, because we cannot push down/split up the credits for each of the components *)
-          maybe_creds wl ∗
           ∃ r' : plist (place_rfn ∘ lty_rt) lts,
           place_rfn_interp_owned r (rew [id] (struct_rfn_eq lts) in r') ∗
-          ▷?wl |={lftE}=>
+          |={lftE}=>
           big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
             (λ i ty HP,
               ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
-              lty_own_pre core (projT1 ty) (Owned false) π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
+              lty_own_pre core (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
       | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
@@ -1164,14 +1041,14 @@ Section ltype_def.
             big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
               (λ i ty HP,
                   ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
-                  lty_own_pre true (projT1 ty) (Owned false) π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
+                  lty_own_pre true (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
           ]
           (∃ (r' : plist (λ lt, place_rfn (lty_rt lt)) lts),
             gvar_auth γ r' ∗ |={lftE}=>
             big_sepL_P (pad_struct sl.(sl_members) (pzipl lts r') (λ ly, existT (UninitLty (UntypedSynType ly)) (PlaceIn ())))
               (λ i ty HP,
                 ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (lty_st (projT1 ty)) ly⌝ ∗
-                lty_own_pre core (projT1 ty) (Owned false) π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
+                lty_own_pre core (projT1 ty) Owned π (projT2 ty) (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i)))
           )
       | Shared κ =>
           (∃ r' : plist (place_rfn ∘ lty_rt) lts,
@@ -1193,16 +1070,15 @@ Section ltype_def.
         loc_in_bounds l 0 (ly.(ly_size) * len) ∗
         (*⌜Forall (λ '(i, lts), i < len) lts⌝ ∗*)
       match k with
-      | Owned wl =>
-        maybe_creds wl ∗
+      | Owned =>
         ∃ r' : list (place_rfn rt), place_rfn_interp_owned r r' ∗
-        ▷?wl |={lftE}=>
+        |={lftE}=>
         (⌜length r' = len⌝ ∗
         big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
           (λ i ty HP,
             ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
               ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
-              lty_own_pre core ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)))
+              lty_own_pre core ty.1 Owned π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)))
       | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
@@ -1212,14 +1088,14 @@ Section ltype_def.
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
                   ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
-                  lty_own_pre true ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)
+                  lty_own_pre true ty.1 Owned π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i)
               ))]
           (∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               big_sepL_P (zip (interpret_iml (OfTyLty def) len lts) r')
               (λ i ty HP,
                 ∃ (Heq : RT_rt (lty_rt ty.1) = RT_rt rt),
                   ⌜lty_st ty.1 = ty_syn_type def MetaNone⌝ ∗
-                  lty_own_pre core ty.1 (Owned false) π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i))))
+                  lty_own_pre core ty.1 Owned π (rew <- [place_rfn] Heq in ty.2) (offset_loc l ly i))))
 
       | Shared κ =>
           ∃ r', place_rfn_interp_shared r r' ∗
@@ -1239,10 +1115,9 @@ Section ltype_def.
       loc_in_bounds l 0 el.(ly_size) ∗
 
       match k with
-      | Owned wl =>
-        maybe_creds wl ∗
+      | Owned =>
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
-        ▷?wl |={lftE}=>(
+        |={lftE}=>(
         (*∃ rty : enum_tag_sem rt,*)
         (*⌜lty_rt lte = rty.(enum_tag_sem_rt)⌝ ∗*)
         ⌜enum_tag en r' = Some variant⌝ ∗
@@ -1250,10 +1125,10 @@ Section ltype_def.
         (*⌜enum_tag_ty_inj en variant = Some rty⌝ ∗*)
         (*∃ (Heq : lty_rt lte = enum_variant_rt en r'),*)
         (* ownership of the discriminant *)
-        lty_of_ty_own (int en.(enum_els).(els_tag_it)) (Owned false) π (PlaceIn ((els_lookup_tag en.(enum_els) variant))) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
+        lty_of_ty_own (int en.(enum_els).(els_tag_it)) Owned π (PlaceIn ((els_lookup_tag en.(enum_els) variant))) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
         (* ownership of the data *)
         (∃ Heq : RT_rt (lty_rt lte) = RT_rt rte,
-          lty_own_pre core lte (Owned false) π
+          lty_own_pre core lte Owned π
           (PlaceIn (rew <-[id] Heq in re))
           (*(rew <-[place_rfn]Heq in (PlaceIn (enum_variant_rfn en r')))*)
           (l atst{sls_of_els en.(enum_els)}ₗ "data")) ∗
@@ -1261,7 +1136,7 @@ Section ltype_def.
         (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (lty_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (lty_st lte))⌝) ∗
         (* ownership of the padding fields of the sl *)
         ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-          from_option (λ ly, lty_of_ty_own (uninit (UntypedSynType ly)) (Owned false) π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i))) True mly)
+          from_option (λ ly, lty_of_ty_own (uninit (UntypedSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i))) True mly)
         )
       | _ =>
           (* TODO *)
@@ -1277,8 +1152,8 @@ Section ltype_def.
         ⌜lty_st lt_inner = lty_st lt_full⌝ ∗
 
       match k with
-      | Owned wl =>
-          lty_own_pre false lt_cur (Owned false) π r l ∗
+      | Owned =>
+          lty_own_pre false lt_cur Owned π r l ∗
           logical_step lftE
           (∃ (Heq_inner : rt_inner = lty_rt lt_inner) (Heq_full : rt_full = lty_rt lt_full),
             (* once we have restored to [lt_inner], we can fold to [lt_full] again *)
@@ -1287,11 +1162,11 @@ Section ltype_def.
               (* directly hand out Cpost. We don't need to wait to get tokens from closing borrows etc. *)
               Cpost r r' ∗
               (lft_dead_list κs -∗
-               lty_own_pre false lt_inner (Owned false) π (PlaceIn (rew [RT_rt] Heq_inner in r)) l ={lftE}=∗
-               lty_own_pre true lt_full (Owned wl) π (PlaceIn (rew [RT_rt] Heq_full in r')) l
+               lty_own_pre false lt_inner Owned π (PlaceIn (rew [RT_rt] Heq_inner in r)) l ={lftE}=∗
+               lty_own_pre true lt_full Owned π (PlaceIn (rew [RT_rt] Heq_full in r')) l
               ))
       | Uniq κ γ =>
-        lty_own_pre false lt_cur (Owned false) π r l ∗
+        lty_own_pre false lt_cur Owned π r l ∗
         (* Note: we are not interpreting γ here - it is currently completely unconstrained, and the
            ownership of the ghost variable fragments lies with the closing viewshift *)
 
@@ -1315,7 +1190,7 @@ Section ltype_def.
               this is required for closing the borrow and for proving that it can be unblocked to lt_full
                 (which is needed for showing the shift to Coreable) *)
             (□ (lft_dead_list κs -∗ own_lt_cur' π r l ={lftE}=∗
-              lty_own_pre true lt_inner (Owned false) π (rew [place_rfnRT] Heq in PlaceIn r) l)) ={lftE}=∗
+              lty_own_pre true lt_inner Owned π (rew [place_rfnRT] Heq in PlaceIn r) l)) ={lftE}=∗
 
             Cpost r r' ∗
             gvar_obs γ (rew [RT_rt] Heq_full in r') ∗
@@ -1338,8 +1213,8 @@ Section ltype_def.
         ⌜l `has_layout_loc` ly⌝ ∗
         loc_in_bounds l 0 (ly_size ly) ∗
         match k with
-        | Owned wl =>
-            lft_dead_list κs ={lftE}=∗ lty_own_pre true lt_full (Owned wl) π r l
+        | Owned =>
+            lft_dead_list κs ={lftE}=∗ lty_own_pre true lt_full Owned π r l
         | Uniq κ' γ =>
             place_rfn_interp_mut r γ ∗
             (lft_dead_list κs -∗ place_rfn_interp_mut r γ ={lftE}=∗ lty_own_pre true lt_full (Uniq κ' γ) π r l)
@@ -1361,13 +1236,13 @@ Section ltype_def.
         ⌜lty_st lt_cur = lty_st lt_inner⌝ ∗
 
       match k with
-      | Owned wl =>
-          lty_own_pre false lt_cur (Owned false) π r l ∗
+      | Owned =>
+          lty_own_pre false lt_cur Owned π r l ∗
           logical_step lftE
           (∃ (Heq_inner : rt_inner = lty_rt lt_inner),
             ∀ (r : rt_inner),
               Cpre r -∗
-              lty_own_pre false lt_inner (Owned false) π (PlaceIn (rew [RT_rt] Heq_inner in r)) l ={lftE ∪ shrE}=∗ Cpost r)
+              lty_own_pre false lt_inner Owned π (PlaceIn (rew [RT_rt] Heq_inner in r)) l ={lftE ∪ shrE}=∗ Cpost r)
       | _ => False
       end
   .
@@ -1395,7 +1270,7 @@ Section ltype_def.
   Lemma lty_core_idemp (lt : lty) :
     lty_core (lty_core lt) = lty_core lt.
   Proof.
-    induction lt as [ | | | | | | | | lts IH ? | rt def len lts IH | | | | | ] using lty_induction;
+    induction lt as [ | | | | | | lts IH ? | rt def len lts IH | | | | | ] using lty_induction;
     [simpl; f_equiv.. | | | ]; [solve[eauto].. | | | | | | | ].
     - done.
     - induction lts as [ | lt lts IH']; first done.
@@ -1416,15 +1291,13 @@ Section ltype_def.
     lty_own lt k π r l -∗ ∃ ly : layout, ⌜syn_type_has_layout (lty_st lt) ly⌝ ∗ ⌜l `has_layout_loc` ly⌝.
   Proof.
     iIntros "Hown". rewrite /lty_own.
-    iInduction lt as [ | | | | | | | | | rt def len lts IH | | ?? lt_cur lt_inner lt_full Cpre Cpost | | | ] "IH" using lty_induction forall (k); simp lty_own_pre.
+    iInduction lt as [ | | | | | | | rt def len lts IH | | ?? lt_cur lt_inner lt_full Cpre Cpost | | | ] "IH" using lty_induction forall (k); simp lty_own_pre.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - destruct k; last done.
-      + iDestruct "Hown" as "(%ly & ? & ? & ? & ? & ?)"; eauto.
       + iDestruct "Hown" as "(%ly & ? & ? & ? & ?)"; eauto.
-    - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
-    - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
+      + iDestruct "Hown" as "(%ly & ? & ? & ? & ?)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%ly & ? & ? & _)"; eauto.
     - iDestruct "Hown" as "(%sl & % & % & % & _)".
@@ -1452,7 +1325,7 @@ Section ltype_def.
     lty_own lt k π r l -∗ loc_in_bounds l 0 ly.(ly_size).
   Proof.
     iIntros (Ha) "Hown". rewrite /lty_own.
-    iInduction lt as [ | | | | | | | | | | | ? ??? | | | ] "IH" using lty_induction forall (k); simp lty_own_pre.
+    iInduction lt as [ | | | | | | | | | ? ??? | | | ] "IH" using lty_induction forall (k); simp lty_own_pre.
     - iDestruct "Hown" as "(%ly' & %Halg' & ? & ? & ? & _)".
       have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
     - iDestruct "Hown" as "(%ly' & % & _ & _ & ? & _)".
@@ -1460,14 +1333,10 @@ Section ltype_def.
     - iDestruct "Hown" as "(%ly' & % & _ & _ & ? & _)".
       have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
     - destruct k; last done.
-      { iDestruct "Hown" as "(%ly' & % & ? & ? & ? & ?)".
+      { iDestruct "Hown" as "(%ly' & % & ? & ? & ?)".
         have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst. }
       { iDestruct "Hown" as "(%ly' & % & ? & ? & ?)".
         have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst. }
-    - iDestruct "Hown" as "(%ly' & % & _ & ? & _)".
-      have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
-    - iDestruct "Hown" as "(%ly' & % & _ & ? & _)".
-      have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
     - iDestruct "Hown" as "(%ly' & % & _ & ? & _)".
       have ?: ly' = ly by eapply syn_type_has_layout_inj. by subst.
     - iDestruct "Hown" as "(%ly' & % & _ & ? & _)".
@@ -1496,65 +1365,6 @@ Section ltype_def.
     - iDestruct "Hown" as "(%ly' & %Halg & ? & ? & ? & ?)".
       simpl in *. assert (ly' = ly) as ->. { by eapply syn_type_has_layout_inj. }
       iFrame.
-  Qed.
-
-  Lemma lty_own_Owned_true_false (lt : lty) π r l :
-    match lt with
-    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
-    | _ => True
-    end →
-    lty_own lt (Owned true) π r l -∗
-    have_creds ∗ ▷ lty_own lt (Owned false) π r l.
-  Proof.
-    iIntros (?) "Hown". rewrite /lty_own.
-    destruct lt as [ | | | | | | | | | | | ? ??? | | | ]; simp lty_own_pre.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & ? & Hcred)". eauto with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & % & ? & ? & ? & Hcred)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & Hcred & % & ? & Hl)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & Hcred)". eauto with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & Hcred & % & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? &? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & % & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & ?)". eauto 8 with iFrame.
-    - done.
-    - done.
-    - (* this will definitely be a problem also for the other property, because we need two sets of credits
-        Maybe change the interpretation to have Owned false for the shadow, always? *)
-      done.
-    - done.
-  Qed.
-  Lemma lty_own_Owned_false_true (lt : lty) π r l :
-    match lt with
-    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
-    | _ => True
-    end →
-    (lty_own lt (Owned false) π r l) -∗
-    have_creds -∗
-    lty_own lt (Owned true) π r l.
-  Proof.
-    iIntros (?) "Hown Hcred". rewrite /lty_own.
-    destruct lt as [ | | | | | | | | | | | ? ??? | | | ]; simp lty_own_pre.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & ? & _)". iExists _. eauto with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & % & ? & ? & ? & _)". iExists _. eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & _ & % & ? & Hl)". iExists _. eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & _)". iExists _. eauto with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & _ & % & % & ? & ?)". iExists _. eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? & ? & ? & % & ? & ?)". iExists _. eauto 8 with iFrame.
-    - iDestruct "Hown" as "(%ly & ? & ? &? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & % & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & ? & ? & ? & ? & ? & % & ? & ?)". eauto 8 with iFrame.
-    - iDestruct "Hown" as "(% & h1 & h2 & h3 & h4 & % & ? & ?)". auto 8 with iFrame.
-    - done.
-    - done.
-    - (* this will definitely be a problem also for the other property, because we need two sets of credits
-        Maybe change the interpretation to have Owned false for the shadow, always?
-        No, that will break the equations for the core. *)
-      done.
-    - done.
   Qed.
 
   Import EqNotations.
@@ -1721,7 +1531,7 @@ Section ltype_def.
   Proof.
     Set Printing Coercions.
     intros ->. rewrite /lty_own_core.
-    induction lt as [ | | | | lt IH κ | lt IH κ | lt IH | lt ls IH | lts IH sls | rt def len lts IH | rt rte en variant lt re IH | | | | ] using lty_induction in k, π, r, l, Heq |-*; simpl in *.
+    induction lt as [ | | | | lt IH κ | lt IH κ | lts IH sls | rt def len lts IH | rt rte en variant lt re IH | | | | ] using lty_induction in k, π, r, l, Heq |-*; simpl in *.
     - simp lty_own_pre. normalize_dep_rt_goal.
     - simp lty_own_pre. normalize_dep_rt_goal.
     - normalize_dep_rt_goal.
@@ -1745,34 +1555,6 @@ Section ltype_def.
       move: r Heq Heq2 IH.
       generalize (lty_core lt) as lt' => lt'.
       intros r Heq Heq2 IH.
-      f_equiv.
-      all: unshelve setoid_rewrite IH; [done.. | ].
-      all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt')) => ?.
-      all: normalize_dep_rt_goal.
-    - simp lty_own_pre. fold lty_rt.
-      specialize (lty_core_syn_type_eq lt) as Hst.
-      specialize (lty_core_rt_eq' lt) as Heq2.
-      do 5 f_equiv.
-      simpl. clear -IH Heq2 Hst.
-      move: r Heq Heq2 IH Hst.
-      generalize (lty_core lt) as lt' => lt'.
-      intros r Heq Heq2 IH Hst.
-      f_equiv.
-      all: unshelve setoid_rewrite IH; [done.. | ].
-      all: try rewrite Hst.
-      all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt')) => ?.
-      all: normalize_dep_rt_goal.
-    - simp lty_own_pre. fold lty_rt.
-      specialize (lty_core_syn_type_eq lt) as Hst.
-      specialize (lty_core_rt_eq' lt) as Heq2.
-      do 5 f_equiv.
-      simpl. clear -IH Heq2 Hst.
-      move: r Heq Heq2 IH Hst.
-      generalize (lty_core lt) as lt' => lt'.
-      intros r Heq Heq2 IH Hst.
-      rewrite Hst.
       f_equiv.
       all: unshelve setoid_rewrite IH; [done.. | ].
       all: normalize_dep_rt_goal_prepare.
@@ -1787,7 +1569,6 @@ Section ltype_def.
       all: setoid_rewrite big_sepL_P_eq.
       all: simpl.
       3: do 2 f_equiv; [ normalize_dep_rt_goal | do 2 f_equiv].
-      1: f_equiv.
       all: iSplit.
       all: iIntros "(%r' & Hrfn & Hb)".
 
@@ -1817,8 +1598,8 @@ Section ltype_def.
       f_equiv. f_equiv.
       fold lty_rt. simpl.
       rewrite (UIP_refl _ _ Heq). clear Heq.
-      f_equiv. do 2 f_equiv. { done. }
-      f_equiv. f_equiv. f_equiv.
+      do 2 f_equiv. { done. }
+      f_equiv. f_equiv.
       rewrite lty_core_syn_type_eq.
       f_equiv.
       iSplit.
@@ -1917,7 +1698,7 @@ Section ltype_def.
     lty_own_pre true lt k π r l ≡ lty_own_pre core (lty_core lt) k π (transport_rfn Heq r) l.
   Proof.
     rewrite /lty_own_core /lty_own.
-    induction lt as [ | | | | lt IH κ | lt IH κ | lt IH | lt ls IH | lts IH sls | def len lts IH IH' | rt rte en variant lt re IH | | | | ] using lty_induction in k, π, r, l, Heq, core |-*; simpl in *.
+    induction lt as [ | | | | lt IH κ | lt IH κ | lts IH sls | def len lts IH IH' | rt rte en variant lt re IH | | | | ] using lty_induction in k, π, r, l, Heq, core |-*; simpl in *.
     - simp lty_own_pre. rewrite (UIP_refl _ _ Heq). done.
     - simp lty_own_pre. rewrite (UIP_refl _ _ Heq). done.
     - rewrite (UIP_refl _ _ Heq). simp lty_own_pre. done.
@@ -1936,30 +1717,6 @@ Section ltype_def.
       specialize (lty_core_rt_eq' lt) as Heq2.
       do 5 f_equiv.
       simpl. clear -IH Heq2.
-      f_equiv.
-      3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
-      all: unshelve setoid_rewrite (IH core); [done.. | ].
-      all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt)) => ?.
-      all: normalize_dep_rt_goal.
-    - simp lty_own_pre. fold lty_rt.
-      specialize (lty_core_syn_type_eq lt) as Hst.
-      specialize (lty_core_rt_eq' lt) as Heq2.
-      rewrite Hst.
-      do 5 f_equiv.
-      simpl. clear -IH Heq2 Hst.
-      f_equiv.
-      3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
-      all: unshelve setoid_rewrite (IH core); [done.. | ].
-      all: normalize_dep_rt_goal_prepare.
-      all: generalize (RT_rt (lty_rt lt)) => ?.
-      all: normalize_dep_rt_goal.
-    - simp lty_own_pre. fold lty_rt.
-      specialize (lty_core_syn_type_eq lt) as Hst.
-      specialize (lty_core_rt_eq' lt) as Heq2.
-      rewrite Hst.
-      do 5 f_equiv.
-      simpl. clear -IH Heq2 Hst.
       f_equiv.
       3: unshelve setoid_rewrite (lty_own_core_core' lt); [ done | ].
       all: unshelve setoid_rewrite (IH core); [done.. | ].
@@ -1974,7 +1731,6 @@ Section ltype_def.
       all: simpl.
       all: setoid_rewrite big_sepL_P_eq.
       3: do 2 f_equiv; [normalize_dep_rt_goal | do 2 f_equiv].
-      1: f_equiv.
       all: iSplit.
       all: iIntros "(%r' & Hrfn & Hb)".
 
@@ -2002,9 +1758,9 @@ Section ltype_def.
       simp lty_own_pre. fold lty_rt.
       do 6 f_equiv.
       rewrite (UIP_refl _ _ Heq). clear Heq. simpl.
-      do 5 f_equiv. { done. }
+      do 4 f_equiv. { done. }
       rewrite lty_core_syn_type_eq.
-      do 4 f_equiv.
+      do 3 f_equiv.
       iSplit.
       + iIntros "(%Heq & Ha)".
         assert (Heq2 : RT_rt (lty_rt (lty_core lt)) = RT_rt rte).
@@ -2042,7 +1798,7 @@ Section ltype_def.
     lty_own lt (Shared κ0) π r l -∗ lty_own (lty_core lt) (Shared κ0) π (transport_rfn Heq r) l.
   Proof.
     rewrite /lty_own_core /lty_own.
-    induction lt as [ | | | | lt IH κ | lt IH κ | lt IH | lt ls IH | lts IH sls | rt def len lts IH  | rt en variant lt IH | | | ???? IH1 IH2 | ] using lty_induction in κ0, π, r, l, Heq |-*; simpl in *.
+    induction lt as [ | | | | lt IH κ | lt IH κ | lts IH sls | rt def len lts IH  | rt en variant lt IH | | | ???? IH1 IH2 | ] using lty_induction in κ0, π, r, l, Heq |-*; simpl in *.
     - simp lty_own_pre. iIntros "(% & _ & _ & _ & _ & [])".
     - simp lty_own_pre. iIntros "(% & _ & _ & _ & _ & % & _ & [])".
     - rewrite (UIP_refl _ _ Heq). auto.
@@ -2070,34 +1826,6 @@ Section ltype_def.
         generalize (RT_rt (lty_rt lt)).
         normalize_dep_rt_goal. }
       iModIntro. iMod "Hl" as "(%li & Hf & Hl)". iModIntro. iExists li. iFrame.
-      iApply IH. done.
-    - (* box *) simp lty_own_pre. fold lty_rt.
-      iIntros "(%ly & %Halg & %Hly & Hlb & %r' & Ha & #Hl)".
-      iExists ly. iR. iR. iFrame.
-      specialize (lty_core_rt_eq' lt) as Heq'.
-      iExists (rew <-[place_rfn] Heq' in r').
-      fold lty_rt.
-      iSplitL "Ha".
-      {
-        iClear "Hl". clear -Heq'.
-        normalize_dep_rt_goal_prepare.
-        generalize (RT_rt (lty_rt lt)).
-        normalize_dep_rt_goal.
-      }
-      iModIntro. iMod "Hl" as "(%li & Hf & Hl)". iModIntro. iExists li. iFrame.
-      iApply IH. done.
-    - (* owned_ptr *) simp lty_own_pre. fold lty_rt.
-      iIntros "(%ly & %Halg & %Hly & Hlb & %r' & %li & Ha & #Hl)".
-      iExists ly. iR. iR. iFrame.
-      specialize (lty_core_rt_eq' lt) as Heq'.
-      iExists (rew <-[place_rfn] Heq' in r'), li.
-      fold lty_rt.
-      iSplitL "Ha".
-      { iClear "Hl". clear -Heq'.
-        normalize_dep_rt_goal_prepare.
-        generalize (RT_rt (lty_rt lt)).
-        normalize_dep_rt_goal. }
-      iModIntro. iMod "Hl" as "(Hf & Hl)". iModIntro. iFrame.
       iApply IH. done.
     - (* struct *)
       simp lty_own_pre. fold lty_rt.
@@ -2234,31 +1962,6 @@ Section ltype_def.
   Next Obligation. done. Qed.
   Next Obligation. done. Qed.
   Global Typeclasses Opaque ShrBlockedLtype.
-
-
-  Program Definition BoxLtype {rt} (lt : ltype rt) : ltype (place_rfnRT rt) := {|
-    ltype_lty := BoxLty (lt.(ltype_lty));
-  |}.
-  Next Obligation.
-    by intros rt [lty <-].
-  Qed.
-  Next Obligation.
-    by intros rt [lty <- Hwf].
-  Qed.
-  Arguments BoxLtype : simpl never.
-  Global Typeclasses Opaque BoxLtype.
-
-  Program Definition OwnedPtrLtype {rt} (lt : ltype rt) (ls : bool) : ltype (prodRT (place_rfnRT rt) locRT)%type := {|
-    ltype_lty := OwnedPtrLty (lt.(ltype_lty)) ls;
-  |}.
-  Next Obligation.
-    by intros rt [lty <-].
-  Qed.
-  Next Obligation.
-    by intros rt [lty <- Hwf].
-  Qed.
-  Arguments OwnedPtrLtype : simpl never.
-  Global Typeclasses Opaque OwnedPtrLtype.
 
   Program Definition MutLtype {rt} (lt : ltype rt) (κ : lft) : ltype (prodRT (place_rfnRT rt) gnameRT)%type := {|
     ltype_lty := MutLty (lt.(ltype_lty)) κ;
@@ -2495,8 +2198,6 @@ Section ltype_def.
       (∀ (rt : RT) (st : syn_type) (l : loc), P _ (AliasLtype rt st l)) →
       (∀ (rt : RT) (lt : ltype rt), P _ lt → ∀ κ, P _ (MutLtype lt κ)) →
       (∀ (rt : RT) (lt : ltype rt), P _ lt → ∀ κ, P _ (ShrLtype lt κ)) →
-      (∀ (rt : RT) (lt : ltype rt), P _ lt → P _ (BoxLtype lt)) →
-      (∀ (rt : RT) (lt : ltype rt) (ls : bool), P _ lt → P _ (OwnedPtrLtype lt ls)) →
       (∀ (rts : list RT) (lts : hlist ltype rts),
         (∀ lt, lt ∈ hzipl rts lts → P _ (projT2 lt)) →
         ∀ sls : struct_layout_spec, P _ (StructLtype lts sls)) →
@@ -2519,7 +2220,7 @@ Section ltype_def.
         P _ (OpenedNaLtype lt_cur lt_inner Cpre Cpost)) →
       ∀ (rt : RT) (lt : ltype rt), P _ lt.
     Proof.
-      intros Hblocked Hshrblocked Hofty Halias Hmut Hshr Hbox Hptr Hstruct Harr Hen Hopened Hcoreable Hshadow Hopened_na.
+      intros Hblocked Hshrblocked Hofty Halias Hmut Hshr Hstruct Harr Hen Hopened Hcoreable Hshadow Hopened_na.
 
       assert (P_irrel:
         ∀ rt (lt : lty) Heq1 Heq2 Hwf1 Hwf2, P rt (mk_ltype rt lt Heq1 Hwf1) → P rt (mk_ltype rt lt Heq2 Hwf2)).
@@ -2527,15 +2228,13 @@ Section ltype_def.
         intros Hwf1 Hwf2. rewrite (proof_irrelevance _ Hwf1 Hwf2). done. }
 
       intros rt [lt <- Hwf].
-      induction lt as [ | | | | lt IH κ | lt IH κ | lt IH | lt ls IH | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | rt_inner rt_full lt_cur lt_inner lt_full Cpre Cpost IH_cur IH_inner IH_full | κ lt_full IH | rt_cur lt_cur r_cur lt_full IH_cur IH_full | rt_inner lt_cur lt_inner Cpre Cpost IH_cur IH_inner ] using lty_induction; simpl.
+      induction lt as [ | | | | lt IH κ | lt IH κ | lts IH sls | rt def len lts IH | rt rte en variant lte re IH | rt_inner rt_full lt_cur lt_inner lt_full Cpre Cpost IH_cur IH_inner IH_full | κ lt_full IH | rt_cur lt_cur r_cur lt_full IH_cur IH_full | rt_inner lt_cur lt_inner Cpre Cpost IH_cur IH_inner ] using lty_induction; simpl.
       - eapply P_irrel. apply Hblocked.
       - eapply P_irrel. apply Hshrblocked.
       - eapply P_irrel. apply Hofty.
       - eapply P_irrel. apply Halias.
       - specialize (Hmut _ _ (IH Hwf)). eapply P_irrel. apply Hmut.
       - specialize (Hshr _ _ (IH Hwf)). eapply P_irrel. apply Hshr.
-      - specialize (Hbox _ _ (IH Hwf)). eapply P_irrel. apply Hbox.
-      - specialize (Hptr _ _ ls (IH Hwf)). eapply P_irrel. apply Hptr.
       - specialize (make_ltype_hlist_lift lts Hwf P IH) as IH'.
         specialize (Hstruct _ _ IH' sls). clear -Hstruct P_irrel.
         move: Hstruct. unfold StructLtype.
@@ -2584,102 +2283,6 @@ Section ltype_def.
   Definition ltype_own_type := ∀ rt, ltype rt → bor_kind → thread_id → place_rfn rt → loc → iProp Σ.
 
   Definition UninitLtype st := OfTy (uninit st).
-
-  (** Note: Parameterized over [rec] and [rec_core] instead of using [ltype_own] and [ltype_own_core] because [rec] might be [ltype_own_core] if we go into the core *)
-  Definition box_ltype_own
-    (rec : ltype_own_type)
-    (rec_core : ltype_own_type)
-    {rt} (lt : ltype rt) (k : bor_kind) (π : thread_id) (r : place_rfn (place_rfn rt)) (l : loc) : iProp Σ :=
-    (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
-      loc_in_bounds l 0 ly.(ly_size) ∗
-      match k with
-      | Owned wl =>
-          maybe_creds wl ∗
-          (* the placement of the pointsto below the later let's us get the unfoldings equation without timelessness *)
-          ∃ r' : place_rfn rt, place_rfn_interp_owned r r' ∗ ▷?wl|={lftE}=>
-          ∃ (l' : loc) (ly' : layout), l ↦ l' ∗
-          ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-          ⌜l' `has_layout_loc` ly'⌝ ∗
-          freeable_nz l' ly'.(ly_size) 1 HeapAlloc ∗
-          rec _ lt (Owned true) π r' l'
-      | Uniq κ γ =>
-          have_creds ∗
-          place_rfn_interp_mut r γ ∗
-          (* TODO can we remove the update here? *)
-          |={lftE}=> &pin{κ}
-              [∃ (r' : place_rfn rt),
-                gvar_auth γ r' ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (l' : loc) (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                (freeable_nz l' ly'.(ly_size) 1 HeapAlloc) ∗
-                rec_core _ lt (Owned true) π r' l'
-              ]
-              (∃ (r' : place_rfn rt),
-                gvar_auth γ r' ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (l' : loc) (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                (freeable_nz l' ly'.(ly_size) 1 HeapAlloc) ∗
-                rec _ lt (Owned true) π r' l')
-      | Shared κ =>
-        (∃ r', place_rfn_interp_shared r r' ∗
-          □ |={lftE}=> ∃ li : loc,
-            &frac{κ}(λ q', l ↦{q'} li) ∗
-            ▷ rec _ lt (Shared κ) π r' li)%I
-      end)%I.
-
-  Definition owned_ptr_ltype_own
-    (rec : ltype_own_type)
-    (rec_core : ltype_own_type)
-    {rt} (lt : ltype rt) (ls : bool) (k : bor_kind) (π : thread_id) (r : place_rfn (place_rfn rt * loc)%type) (l : loc) : iProp Σ :=
-    (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
-      loc_in_bounds l 0 ly.(ly_size) ∗
-      match k with
-      | Owned wl =>
-          maybe_creds wl ∗
-          (* the placement of the pointsto below the later let's us get the unfoldings equation without timelessness *)
-          ∃ (r' : place_rfn rt) (l' : loc), place_rfn_interp_owned r (r', l') ∗ ▷?wl|={lftE}=>
-          ∃ (ly' : layout), l ↦ l' ∗
-          ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-          ⌜l' `has_layout_loc` ly'⌝ ∗
-          rec _ lt (Owned ls) π r' l'
-      | Uniq κ γ =>
-          have_creds ∗
-          place_rfn_interp_mut r γ ∗
-          |={lftE}=> &pin{κ}
-              [∃ (r' : place_rfn rt) (l' : loc),
-                gvar_auth γ (r', l') ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                rec_core _ lt (Owned ls) π r' l'
-              ]
-              (∃ (r' : place_rfn rt) (l' : loc),
-                gvar_auth γ (r', l') ∗
-                (* the update here is needed to eliminate ltype_eq, which has an update/except0 in the Owned case *)
-                |={lftE}=>
-                ∃ (ly' : layout),
-                l ↦ l' ∗
-                ⌜syn_type_has_layout (ltype_st lt) ly'⌝ ∗
-                ⌜l' `has_layout_loc` ly'⌝ ∗
-                rec _ lt (Owned ls) π r' l')
-      | Shared κ =>
-        (∃ r' li, place_rfn_interp_shared r (r', li) ∗
-          □ |={lftE}=>
-            &frac{κ}(λ q', l ↦{q'} (val_of_loc li)) ∗
-            ▷ rec _ lt (Shared κ) π r' li)%I
-      end)%I.
-
   Definition shr_ltype_own
     (rec : ltype_own_type)
     (rec_core : ltype_own_type)
@@ -2687,10 +2290,9 @@ Section ltype_def.
         (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
          loc_in_bounds l 0 ly.(ly_size) ∗
         match k with
-        | Owned wl =>
-            maybe_creds wl ∗
+        | Owned =>
             ∃ (r' : place_rfn rt), place_rfn_interp_owned r r' ∗
-            ▷?wl|={lftE}=>  ∃ (l' : loc), l ↦ l' ∗
+            |={lftE}=>  ∃ (l' : loc), l ↦ l' ∗
             rec _ lt (Shared κ) π r' l'
         | Uniq κ' γ' =>
             have_creds ∗
@@ -2715,15 +2317,14 @@ Section ltype_def.
     (∃ ly : layout, ⌜syn_type_has_layout PtrSynType ly⌝ ∗ ⌜l `has_layout_loc` ly⌝ ∗
        loc_in_bounds l 0 ly.(ly_size) ∗
       match k with
-      | Owned wl =>
-          maybe_creds wl ∗
+      | Owned =>
           (* it's fine to existentially quantify here over the gvar_obs, since
             the outer can actually tell us about it. Keep in mind that the gvar here can actually
             change if we write under nested places. *)
           ∃ (γ : gname) (r' : place_rfn rt) ,
           place_rfn_interp_owned r (r', γ) ∗
           (* TODO layout requirements on l' here? *)
-          ▷?wl|={lftE}=>  ∃ l' : loc , l ↦ l' ∗ (rec _ lt (Uniq κ γ) π r' l')
+          |={lftE}=>  ∃ l' : loc , l ↦ l' ∗ (rec _ lt (Uniq κ γ) π r' l')
       | Uniq κ' γ' =>
           have_creds ∗
           place_rfn_interp_mut r γ' ∗
@@ -2765,12 +2366,11 @@ Section ltype_def.
     ⌜l `has_layout_loc` sl⌝ ∗
     loc_in_bounds l 0 (sl.(ly_size)) ∗
     match k with
-    | Owned wl =>
-        maybe_creds wl ∗
-        ∃ r' : plist place_rfnRT rts, place_rfn_interp_owned r r' ∗ ▷?wl |={lftE}=>
+    | Owned =>
+        ∃ r' : plist place_rfnRT rts, place_rfn_interp_owned r r' ∗ |={lftE}=>
           [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts lts r') struct_make_uninit_ltype,
             ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            rec _ (projT2 ty).1 (Owned false) π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
+            rec _ (projT2 ty).1 Owned π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
     | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
@@ -2782,13 +2382,13 @@ Section ltype_def.
             gvar_auth γ r' ∗ |={lftE}=>
             [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts lts r') struct_make_uninit_ltype,
               ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-              rec_core _ (projT2 ty).1 (Owned false) π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
+              rec_core _ (projT2 ty).1 Owned π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
           ]
           (∃ (r' : plist place_rfnRT rts),
             gvar_auth γ r' ∗ |={lftE}=>
             [∗ list] i ↦ ty ∈ pad_struct sl.(sl_members) (hpzipl rts lts r') struct_make_uninit_ltype,
               ∃ ly, ⌜snd <$> sl.(sl_members) !! i = Some ly⌝ ∗ ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-              rec _ (projT2 ty).1 (Owned false) π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
+              rec _ (projT2 ty).1 Owned π (projT2 ty).2 (l +ₗ Z.of_nat (offset_of_idx sl.(sl_members) i))
           )
     | Shared κ =>
         (∃ r', place_rfn_interp_shared r r' ∗
@@ -2811,23 +2411,22 @@ Section ltype_def.
       loc_in_bounds l 0 (ly.(ly_size) * len) ∗
       (*⌜Forall (λ '(i, _), i < len) lts⌝ ∗*)
       match k with
-      | Owned wl =>
-          maybe_creds wl ∗
+      | Owned =>
           ∃ r' : list (place_rfn rt), place_rfn_interp_owned r r' ∗
-          ▷?wl |={lftE}=>
+          |={lftE}=>
           (⌜length r' = len⌝ ∗
           [∗ list] i ↦ lt; r0 ∈ (interpret_iml (OfTy def) len lts); r',
-              ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i))
+              ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt Owned π r0 (offset_loc l ly i))
       | Uniq κ γ =>
         have_creds ∗
         place_rfn_interp_mut r γ ∗
         |={lftE}=> &pin{κ}
           [∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
-                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec_core _ lt (Owned false) π r0 (offset_loc l ly i))]
+                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec_core _ lt Owned π r0 (offset_loc l ly i))]
           (∃ r' : list (place_rfn rt), gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗
               [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
-                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt (Owned false) π r0 (offset_loc l ly i)))
+                ⌜ltype_st lt = ty_syn_type def MetaNone⌝ ∗ rec _ lt Owned π r0 (offset_loc l ly i)))
       | Shared κ =>
           ∃ r', place_rfn_interp_shared r r' ∗
             □ |={lftE}=> (⌜length r' = len⌝ ∗ [∗ list] i ↦ lt; r0 ∈ interpret_iml (OfTy def) len lts; r',
@@ -2846,17 +2445,16 @@ Section ltype_def.
       ⌜l `has_layout_loc` el⌝ ∗
       loc_in_bounds l 0 el.(ly_size) ∗
       match k with
-      | Owned wl =>
-        maybe_creds wl ∗
+      | Owned =>
         ∃ r' : rt, place_rfn_interp_owned r r' ∗
-        ▷?wl |={lftE}=>(
+        |={lftE}=>(
         (*∃ (Heq : enum_variant_rt en r' = enum_tag_rt' en tag),*)
         ⌜enum_tag en r' = Some tag⌝ ∗
         (*⌜is_Some (enum_tag_ty_inj en tag)⌝ ∗*)
         (* ownership of the discriminant *)
-        lty_of_ty_own (int en.(enum_els).(els_tag_it)) (Owned false) π (PlaceIn (els_lookup_tag en.(enum_els) tag)) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
+        lty_of_ty_own (int en.(enum_els).(els_tag_it)) Owned π (PlaceIn (els_lookup_tag en.(enum_els) tag)) (l atst{sls_of_els en.(enum_els)}ₗ "discriminant") ∗
         (* ownership of the data *)
-        rec _ lte (Owned false) π
+        rec _ lte Owned π
         (PlaceIn re)
         (*(rew [place_rfn] Heq in (PlaceIn (enum_variant_rfn en r')))*)
         (l atst{sls_of_els en.(enum_els)}ₗ "data") ∗
@@ -2864,7 +2462,7 @@ Section ltype_def.
         (∃ v, ((l atst{sls_of_els en.(enum_els)}ₗ "data") +ₗ (size_of_st (ltype_st lte))) ↦ v ∗ ⌜v `has_layout_val` ly_offset (els_data_ly en.(enum_els)) (size_of_st (ltype_st lte))⌝) ∗
         (* ownership of the padding fields of the sl *)
         ([∗ list] i ↦ mly ∈ pad_struct el.(sl_members) [None; None] (λ ly, Some ly),
-        if mly is Some ly then lty_of_ty_own (uninit (UntypedSynType ly)) (Owned false) π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i)) else True))
+        if mly is Some ly then lty_of_ty_own (uninit (UntypedSynType ly)) Owned π (PlaceIn ()) (l +ₗ Z.of_nat (offset_of_idx el.(sl_members) i)) else True))
       | _ =>
           (* TODO *)
           False
@@ -2883,8 +2481,8 @@ Section ltype_def.
       ⌜ltype_st lt_inner = ltype_st lt_full⌝ ∗
 
       match k with
-      | Owned wl =>
-          ltype_own lt_cur (Owned false) π r l ∗
+      | Owned =>
+          ltype_own lt_cur Owned π r l ∗
           (* once we have restored to [lt_inner], we can fold to [lt_full] again *)
           logical_step lftE
           (∀ (r : rt_inner) (r' : rt_full) (κs : list lft),
@@ -2892,10 +2490,10 @@ Section ltype_def.
             (* directly hand out Cpost. We don't need to wait to get tokens from closing borrows etc. *)
             Cpost r r' ∗
             (lft_dead_list κs -∗
-             ltype_own lt_inner (Owned false) π (PlaceIn r) l ={lftE}=∗
-             ltype_own_core lt_full (Owned wl) π (PlaceIn r') l))
+             ltype_own lt_inner Owned π (PlaceIn r) l ={lftE}=∗
+             ltype_own_core lt_full Owned π (PlaceIn r') l))
       | Uniq κ γ =>
-        ltype_own lt_cur (Owned false) π r l ∗
+        ltype_own lt_cur Owned π r l ∗
           (* we will execute this VS when closing the invariant, after having already stratified [lt_cur].
              At that point, we will know [lt_cur] is unblockable to [lt_inner] after the set of lifetimes [κs] is dead *)
         logical_step lftE
@@ -2908,7 +2506,7 @@ Section ltype_def.
               this is required for closing the borrow and for proving that it can be unblocked to lt_full
                 (which is needed for showing the shift to Coreable) *)
             (□ (lft_dead_list κs -∗ own_lt_cur' π r l ={lftE}=∗
-              ltype_own_core lt_inner (Owned false) π (PlaceIn r) l)) ={lftE}=∗
+              ltype_own_core lt_inner Owned π (PlaceIn r) l)) ={lftE}=∗
 
             Cpost r r' ∗
             gvar_obs γ r' ∗
@@ -2925,8 +2523,8 @@ Section ltype_def.
     ⌜l `has_layout_loc` ly⌝ ∗
     loc_in_bounds l 0 (ly_size ly) ∗
     match k with
-    | Owned wl =>
-        lft_dead_list κs ={lftE}=∗ rec_core _ lt_full (Owned wl) π r l
+    | Owned =>
+        lft_dead_list κs ={lftE}=∗ rec_core _ lt_full Owned π r l
     | Uniq κ' γ =>
         place_rfn_interp_mut r γ ∗
         (lft_dead_list κs -∗ place_rfn_interp_mut r γ ={lftE}=∗ rec_core _ lt_full (Uniq κ' γ) π r l)
@@ -2951,12 +2549,12 @@ Section ltype_def.
       loc_in_bounds l 0 (ly_size ly) ∗
       ⌜ltype_st lt_cur = ltype_st lt_inner⌝ ∗
       match k with
-      | Owned wl =>
-            ltype_own lt_cur (Owned false) π r l ∗
+      | Owned =>
+            ltype_own lt_cur Owned π r l ∗
             logical_step lftE
             (∀ (r : rt_inner),
               Cpre r -∗
-              ltype_own lt_inner (Owned false) π (PlaceIn r) l ={lftE ∪ shrE}=∗ Cpost r)
+              ltype_own lt_inner Owned π (PlaceIn r) l ={lftE ∪ shrE}=∗ Cpost r)
       | _ => False
     end.
 
@@ -3031,44 +2629,6 @@ Section ltype_def.
     intros Heq. rewrite (UIP_refl _ _ Heq).
     intros r. done.
   Qed.
-
-  Lemma ltype_own_pre_box_unfold {rt} (lt : ltype rt) (core : bool) k π r l :
-    ltype_own_pre core (BoxLtype lt) k π r l ≡ box_ltype_own (@ltype_own_pre core) (@ltype_own_core) lt k π r l.
-  Proof.
-    (* NOTE: pay attention to unfold also the core, otherwise we get into trouble with generalizing below *)
-    rewrite /box_ltype_own ?ltype_own_core_unseal /ltype_own_core_def ?ltype_own_unseal /ltype_own_def /ltype_own_pre.
-    simp lty_own_pre.
-    move: r.
-    generalize (ltype_rt_agree (BoxLtype lt)).
-    generalize (ltype_rt_agree lt). simpl.
-    intros <- Heq. rewrite (UIP_refl _ _ Heq).
-    intros r. repeat f_equiv; done.
-  Qed.
-  Lemma ltype_own_box_unfold {rt} (lt : ltype rt) k π r l :
-    ltype_own (BoxLtype lt) k π r l ≡ box_ltype_own (@ltype_own) (@ltype_own_core) lt k π r l.
-  Proof. rewrite ?ltype_own_unseal. apply ltype_own_pre_box_unfold. Qed.
-  Lemma ltype_own_core_box_unfold {rt} (lt : ltype rt) k π r l :
-    ltype_own_core (BoxLtype lt) k π r l ≡ box_ltype_own (@ltype_own_core) (@ltype_own_core) lt k π r l.
-  Proof. rewrite {1 2}ltype_own_core_unseal. apply ltype_own_pre_box_unfold. Qed.
-
-  Lemma ltype_own_pre_owned_ptr_unfold {rt} (lt : ltype rt) (ls : bool) (core : bool) k π r l :
-    ltype_own_pre core (OwnedPtrLtype lt ls) k π r l ≡ owned_ptr_ltype_own (@ltype_own_pre core) (@ltype_own_core) lt ls k π r l.
-  Proof.
-    (* NOTE: pay attention to unfold also the core, otherwise we get into trouble with generalizing below *)
-    rewrite /owned_ptr_ltype_own ?ltype_own_core_unseal /ltype_own_core_def ?ltype_own_unseal /ltype_own_def /ltype_own_pre.
-    simp lty_own_pre.
-    move: r.
-    generalize (ltype_rt_agree (OwnedPtrLtype lt ls)).
-    generalize (ltype_rt_agree lt). simpl.
-    intros <- Heq. rewrite (UIP_refl _ _ Heq).
-    intros r. repeat f_equiv; done.
-  Qed.
-  Lemma ltype_own_owned_ptr_unfold {rt} (lt : ltype rt) (ls : bool) k π r l :
-    ltype_own (OwnedPtrLtype lt ls) k π r l ≡ owned_ptr_ltype_own (@ltype_own) (@ltype_own_core) lt ls k π r l.
-  Proof. rewrite ?ltype_own_unseal. apply ltype_own_pre_owned_ptr_unfold. Qed.
-  Lemma ltype_own_core_owned_ptr_unfold {rt} (lt : ltype rt) (ls : bool) k π r l :
-    ltype_own_core (OwnedPtrLtype lt ls) k π r l ≡ owned_ptr_ltype_own (@ltype_own_core) (@ltype_own_core) lt ls k π r l.
-  Proof. rewrite {1 2}ltype_own_core_unseal. apply ltype_own_pre_owned_ptr_unfold. Qed.
 
   Lemma ltype_own_pre_shr_ref_unfold {rt} (lt : ltype rt) (core : bool) κ k π r l :
     ltype_own_pre core (ShrLtype lt κ) k π r l ≡ shr_ltype_own (@ltype_own_pre core) (@ltype_own_core) lt κ k π r l.
@@ -3362,9 +2922,9 @@ Section ltype_def.
     (*f_equiv.*)
     (*{ rewrite Forall_fmap. iPureIntro. apply Forall_iff. intros []; done. }*)
     f_equiv.
-    - do 4 f_equiv.
+    - do 3 f_equiv.
       { done. }
-      f_equiv. f_equiv.
+      f_equiv.
       apply sep_equiv_proper => Hlen.
       rewrite big_sepL_P_eq.
       rewrite -OfTy_ltype_lty.
@@ -3401,9 +2961,9 @@ Section ltype_def.
     generalize (ltype_rt_agree (EnumLtype en tag lte re)).
     fold lty_rt. simpl.
     intros Heq1. rewrite (UIP_refl _ _ Heq1). cbn.
-    do 8 f_equiv.
+    do 7 f_equiv.
     intros r'.
-    do 6 f_equiv.
+    do 5 f_equiv.
     2: { done. }
     destruct lte as [lte <- ?].
     simpl.
@@ -3655,46 +3215,6 @@ Section ltype_def.
     normalize_dep_rt_goal.
   Qed.
 
-  Lemma ltype_own_Owned_true_false {rt} (lt : ltype rt) π r l :
-    match ltype_lty lt with
-    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
-    | _ => True
-    end →
-    ltype_own lt (Owned true) π r l -∗
-    have_creds ∗ ▷ ltype_own lt (Owned false) π r l.
-  Proof.
-    rewrite ltype_own_unseal/ltype_own_def/=.
-    rewrite /ltype_own_pre.
-    apply lty_own_Owned_true_false.
-  Qed.
-  Lemma ltype_own_Owned_false_true {rt} (lt : ltype rt) π r l :
-    match ltype_lty lt with
-    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
-    | _ => True
-    end →
-    ltype_own lt (Owned false) π r l -∗
-    have_creds -∗
-    ltype_own lt (Owned true) π r l.
-  Proof.
-    rewrite ltype_own_unseal/ltype_own_def/=.
-    rewrite /ltype_own_pre.
-    apply lty_own_Owned_false_true.
-  Qed.
-  Lemma ltype_own_Owned_to_false {rt} (lt : ltype rt) π r l wl F :
-    match ltype_lty lt with
-    | OpenedLty _ _ _ _ _ | CoreableLty _ _ | ShadowedLty _ _ _ | OpenedNaLty _ _ _ _ => False
-    | _ => True
-    end →
-    ltype_own lt (Owned wl) π r l ={F}=∗
-    ltype_own lt (Owned false) π r l.
-  Proof.
-    iIntros (?) "Ha".
-    destruct wl; last by iFrame.
-    iPoseProof (ltype_own_Owned_true_false with "Ha") as "(Hcreds & Ha)"; first done.
-    iDestruct "Hcreds" as "((Hcred & _) & _)".
-    iApply (lc_fupd_add_later with "Hcred"). iNext. by iFrame.
-  Qed.
-
 
   (** Rules for ltype_core *)
   (** Since [ltype]s bundle equality proofs, [ltype_core] does not compute well, and we need equational lemmas instead. *)
@@ -3727,20 +3247,6 @@ Section ltype_def.
   Proof.
     rewrite /ltype_core /ShrBlockedLtype /OfTy. simpl.
     f_equiv.
-    - apply UIP_t.
-    - apply proof_irrelevance.
-  Qed.
-  Lemma ltype_core_box {rt} (lt : ltype rt) :
-    ltype_core (BoxLtype lt) = BoxLtype (ltype_core lt).
-  Proof.
-    rewrite /ltype_core /BoxLtype /=. f_equiv.
-    - apply UIP_t.
-    - apply proof_irrelevance.
-  Qed.
-  Lemma ltype_core_owned_ptr {rt} (lt : ltype rt) (ls : bool) :
-    ltype_core (OwnedPtrLtype lt ls) = OwnedPtrLtype (ltype_core lt) ls.
-  Proof.
-    rewrite /ltype_core /OwnedPtrLtype /=. f_equiv.
     - apply UIP_t.
     - apply proof_irrelevance.
   Qed.
@@ -3863,12 +3369,6 @@ Section ltype_def.
   Lemma ltype_st_shrblocked {rt} (ty : type rt) (κ : lft) :
     ltype_st (ShrBlockedLtype ty κ) = ty.(ty_syn_type) MetaNone.
   Proof. done. Qed.
-  Lemma ltype_st_box {rt} (lt : ltype rt) :
-    ltype_st (BoxLtype lt) = PtrSynType.
-  Proof. done. Qed.
-  Lemma ltype_st_owned_ptr {rt} (lt : ltype rt) (ls : bool) :
-    ltype_st (OwnedPtrLtype lt ls) = PtrSynType.
-  Proof. done. Qed.
   Lemma ltype_st_mut_ref {rt} (lt : ltype rt) (κ : lft) :
     ltype_st (MutLtype lt κ) = PtrSynType.
   Proof. done. Qed.
@@ -3937,8 +3437,6 @@ Section ltype_def.
     | AliasLty _ _ _ => []
     | BlockedLty ty κ => [κ]
     | ShrBlockedLty ty κ => [κ]
-    | BoxLty lt => lty_blocked_lfts lt
-    | OwnedPtrLty lt ls => lty_blocked_lfts lt
     | MutLty lt κ => lty_blocked_lfts lt
     | ShrLty lt κ => lty_blocked_lfts lt
     | StructLty lts sls => concat (map lty_blocked_lfts lts)
@@ -3962,10 +3460,6 @@ Section ltype_def.
     | AliasLty _ _ _ => False
     | MutLty _ _ => True
     | ShrLty _ _ => True
-    | BoxLty _  =>
-        (* honestly, it is a bug to get into this case. We should not just drop a box, but the drop glue should be called. *)
-        False
-    | OwnedPtrLty _ _ => True
     | StructLty lts sls =>
         True
     | ArrayLty def len lts =>
@@ -3993,8 +3487,6 @@ Section ltype_def.
       by iIntros "(%ly & %Halg & %Hly & ? & ? & Hcred & $ & Hl)".
     - rewrite /lty_own. simp lty_own_pre.
       by iIntros "(%ly & %Halg & %Hly & Hlb & Hcred & $ & Hb)".
-    - rewrite /lty_own. simp lty_own_pre.
-      by iIntros "(%ly & %Halg & %Hly & ? & Hcred & $ & Hb)".
     - rewrite /lty_own. simp lty_own_pre.
       by iIntros "(%ly & %Halg & %Hly & ? & Hcred & $ & Hb)".
     - rewrite /lty_own. simp lty_own_pre.
@@ -4027,10 +3519,6 @@ Section ltype_def.
     | AliasLty _ _ _ => None
     | MutLty _ _ => Some None
     | ShrLty _ _ => Some None
-    | BoxLty _  =>
-        (* TODO honestly, it is a bug to get into this case. We should not just drop a box, but the drop glue should be called. *)
-        Some None
-    | OwnedPtrLty _ _ => Some None
     | StructLty lts sls =>
         Some None
     | ArrayLty def len lts =>
@@ -4074,12 +3562,6 @@ Section ltype_def.
       iModIntro. iIntros (??). by iFrame.
     - rewrite /lty_own. simp lty_own_pre.
       iIntros "(%ly & %Halg & %Hly & ? & Hcred & ? & Hb)". injection Hdeinit as <-.
-      iModIntro. iIntros (??). by iFrame.
-    - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
-      iIntros "(%ly & %Halg & %Hly & ? & Hcred & ? & Hb)".
-      iModIntro. iIntros (??). by iFrame.
-    - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
-      iIntros "(%ly & %Halg & ? & ? & ? & ? & _)".
       iModIntro. iIntros (??). by iFrame.
     - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-.
       iIntros "(%ly & %Halg & ? & ? & ? & ? & ? & _)".
@@ -4126,10 +3608,6 @@ Ltac simp_ltype_core Heq :=
       rewrite ltype_core_blocked in Heq
   | _ = ltype_core (ShrBlockedLtype _ _) =>
       rewrite (ltype_core_shrblocked) in Heq
-  | _ = ltype_core (BoxLtype _) =>
-      rewrite (ltype_core_box) in Heq
-  | _ = ltype_core (OwnedPtrLtype _ _) =>
-      rewrite (ltype_core_owned_ptr) in Heq
   | _ = ltype_core (MutLtype _ _) =>
       rewrite (ltype_core_mut_ref) in Heq
   | _ = ltype_core (ShrLtype _ _) =>
@@ -4162,8 +3640,6 @@ Ltac simp_ltype_st Heq :=
       rewrite ltype_st_blocked in Heq
   | _ = ltype_st (ShrBlockedLtype _ _) =>
       rewrite (ltype_st_shrblocked) in Heq
-  | _ = ltype_st (OwnedPtrLtype _ _) =>
-      rewrite (ltype_st_owned_ptr) in Heq
   | _ = ltype_st (MutLtype _ _) =>
       rewrite (ltype_st_mut_ref) in Heq
   | _ = ltype_st (ShrLtype _ _) =>
@@ -4226,8 +3702,8 @@ Tactic Notation "simp_ltypes" "in" hyp(H) := repeat simp_ltype in H.
 Definition ltype_incl' `{!typeGS Σ} {rt1 rt2 : RT} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : iProp Σ :=
   (□
     match b with
-    | Owned wl =>
-      ∀ π l, ltype_own lt1 (Owned wl) π r1 l ={lftE}=∗ ltype_own lt2 (Owned wl) π r2 l
+    | Owned =>
+      ∀ π l, ltype_own lt1 Owned π r1 l ={lftE}=∗ ltype_own lt2 Owned π r2 l
     | Uniq κ γ =>
       ∀ π l, ltype_own lt1 (Uniq κ γ) π r1 l -∗ ltype_own lt2 (Uniq κ γ) π r2 l
     | Shared κ =>
@@ -4642,11 +4118,11 @@ Section eqltype.
   (** ** Compatibilty of [OfTy] with subtyping *)
   Lemma type_incl_ltype_owned_wand {rt} (ty1 ty2 : type rt) π l :
     (∀ r, type_incl r r ty1 ty2) -∗
-    ∀ r, l ◁ₗ[π, Owned false] r @ (◁ ty1) -∗ l ◁ₗ[π, Owned false] r @ (◁ ty2).
+    ∀ r, l ◁ₗ[π, Owned] r @ (◁ ty1) -∗ l ◁ₗ[π, Owned] r @ (◁ ty2).
   Proof.
     iIntros "#Hincl" (r) "Hl".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & ? & %r' & Hrfn & Hb)".
+    iDestruct "Hl" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
     iExists ly.
     iPoseProof ("Hincl" $! inhabitant) as "(%Hst & Hsceq & _)".
     rewrite Hst. iFrame.
@@ -4720,24 +4196,24 @@ Section eqltype.
     iApply (type_ltype_incl_shared with "Hsub").
   Qed.
 
-  Lemma type_ltype_incl_owned_in_strong {rt1 rt2} π r1 r2 wl (ty1 : type rt1) (ty2 : type rt2) :
+  Lemma type_ltype_incl_owned_in_strong {rt1 rt2} π r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
     (∀ m, ty1.(ty_syn_type) m = ty2.(ty_syn_type) m) →
     (∀ v, v ◁ᵥ{π, MetaNone} r1 @ ty1 -∗ v ◁ᵥ{π, MetaNone} r2 @ ty2) -∗
     (ty1.(ty_sidecond) -∗ ty2.(ty_sidecond)) -∗
-    ∀ l, l ◁ₗ[π, Owned wl] #r1 @ (◁ ty1) -∗ l ◁ₗ[π, Owned wl] #r2 @ (◁ ty2)%I.
+    ∀ l, l ◁ₗ[π, Owned] #r1 @ (◁ ty1) -∗ l ◁ₗ[π, Owned] #r2 @ (◁ ty2)%I.
   Proof.
     iIntros (Hst) "Hsub Hsceq".
     iIntros (l) "Hb".
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & ? & %r' & Hrfn & Hb)".
+    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
     iExists ly. rewrite Hst. iFrame.
     iSplitL "Hsceq Hsc". { by iApply "Hsceq". }
-    iExists r2. iSplitR; first done. iNext. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
+    iExists r2. iSplitR; first done. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. iDestruct "Hrfn" as "->". by iApply "Hsub".
   Qed.
 
-  Lemma type_ltype_incl_owned_in {rt1 rt2} r1 r2 wl (ty1 : type rt1) (ty2 : type rt2) :
-    type_incl r1 r2 ty1 ty2 -∗ ltype_incl (Owned wl) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
+  Lemma type_ltype_incl_owned_in {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
+    type_incl r1 r2 ty1 ty2 -∗ ltype_incl Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "Hsub".
     iDestruct ("Hsub") as "(%Hst & #Hsceq & #Hown & #Hshr)".
@@ -4748,15 +4224,15 @@ Section eqltype.
     iApply (type_ltype_incl_owned_in_strong with "Hown"); [done.. | ].
     done.
   Qed.
-  Lemma subtype_subltype_owned_in E L {rt1 rt2} r1 r2 wl (ty1 : type rt1) (ty2 : type rt2) :
-    subtype E L r1 r2 ty1 ty2 → subltype E L (Owned wl) #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
+  Lemma subtype_subltype_owned_in E L {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) :
+    subtype E L r1 r2 ty1 ty2 → subltype E L Owned #r1 #r2 (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub qL) "HL #CTX #HE". iPoseProof (Hsub with "HL HE") as "#Hsub".
     by iApply (type_ltype_incl_owned_in).
   Qed.
 
-  Lemma type_ltype_incl_owned {rt : RT} wl (ty1 : type rt) (ty2 : type rt) :
-    (∀ r, type_incl r r ty1 ty2) -∗ ∀ r, ltype_incl (Owned wl) r r (◁ ty1)%I (◁ ty2)%I.
+  Lemma type_ltype_incl_owned {rt : RT} (ty1 : type rt) (ty2 : type rt) :
+    (∀ r, type_incl r r ty1 ty2) -∗ ∀ r, ltype_incl Owned r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros "#Hsub" (r).
     iPoseProof ("Hsub" $! inhabitant) as "(%Hst & #Hsceq & _)".
@@ -4765,15 +4241,15 @@ Section eqltype.
     iModIntro. iIntros (π l) "Hb".
     iModIntro.
     rewrite !ltype_own_ofty_unfold /lty_of_ty_own.
-    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & ? & %r' & Hrfn & Hb)".
+    iDestruct "Hb" as "(%ly & Hst & ? & Hsc & ? & %r' & Hrfn & Hb)".
     iDestruct ("Hsub" $! r') as "(_ & _ & #Hown & #Hshr)".
     iExists ly. rewrite Hst. iFrame.
     iSplitL "Hsc"; first by iApply "Hsceq".
-    iFrame. iNext. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
+    iFrame. iMod "Hb" as "(% & ? & Hv)". iExists _. iFrame.
     iModIntro. by iApply "Hown".
   Qed.
-  Lemma subtype_subltype_owned E L {rt : RT} wl (ty1 : type rt) (ty2 : type rt) :
-    (∀ r, subtype E L r r ty1 ty2) → ∀ r, subltype E L (Owned wl) r r (◁ ty1)%I (◁ ty2)%I.
+  Lemma subtype_subltype_owned E L {rt : RT} (ty1 : type rt) (ty2 : type rt) :
+    (∀ r, subtype E L r r ty1 ty2) → ∀ r, subltype E L Owned r r (◁ ty1)%I (◁ ty2)%I.
   Proof.
     iIntros (Hsub r qL) "HL #CTX #HE". rewrite all_subtype_alt in Hsub.
     iPoseProof (Hsub with "HL HE") as "#Hsub".
@@ -4909,8 +4385,8 @@ Section blocked.
         lft_dead_list κs -∗
         (ltype_own lt (Uniq κ' γ') π r l ={lftE}=∗ ltype_own_core lt (Uniq κ' γ') π r l)) ∗
       (** Owned. *)
-      (∀ π r l wl,
-        lft_dead_list κs -∗ ltype_own lt (Owned wl) π r l ={lftE}=∗ ltype_own_core lt (Owned wl) π r l)
+      (∀ π r l,
+        lft_dead_list κs -∗ ltype_own lt Owned π r l ={lftE}=∗ ltype_own_core lt Owned π r l)
       (** We don't have a requirement on Shared, as we should not have blocked things below shared ownership anyways. *)
       ).
 
@@ -4926,7 +4402,7 @@ Section blocked.
       - iIntros (?????) "#Hdead Hb".
         iMod ("Hincl" with "Hdead") as "Hdead'".
         iApply ("Ha1" with "Hdead' Hb").
-      - iIntros (????) "Hdead Hb".
+      - iIntros (???) "Hdead Hb".
         iMod ("Hincl" with "Hdead") as "Hdead'".
         iApply ("Ha2" with "Hdead' Hb").
     Qed.
@@ -4970,15 +4446,15 @@ Section blocked.
       iDestruct "Hb" as "(%ly & %Hst & %Hly & Hsc & Hlb & Hb & Hcred & Hat)".
       iExists ly. iSplitR; first done. iSplitR; first done. iFrame "Hsc Hlb Hcred Hat".
       iMod ("Hb" with "Hdead") as "($ & Hb)". iApply "Hb".
-    - iIntros (π r l wl) "(#Hdead & _)".
+    - iIntros (π r l) "(#Hdead & _)".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite ltype_own_blocked_unfold ltype_own_ofty_unfold.
-      iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hinh & Hcred)".
+      iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hinh)".
       iMod ("Hinh" with "Hdead") as "Hv".
       iDestruct "Hv" as "(%r' & Hrfn & >(%v & Hl & Hv))".
       iMod (place_rfn_interp_owned_blocked_unblock with "Hrfn") as "Hrfn".
-      iModIntro. iExists ly. iSplitR; first done. iSplitR; first done. iFrame "Hsc Hlb Hcred".
-      iExists r'. iFrame "Hrfn". iModIntro. iExists v. iFrame. done.
+      iModIntro. iExists ly. iSplitR; first done. iSplitR; first done. iFrame "Hsc Hlb".
+      iExists r'. iFrame "Hrfn". iModIntro. iExists v. iFrame.
   Qed.
 
   (** Shr Blocked is unblockable *)
@@ -4992,14 +4468,14 @@ Section blocked.
       iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hobs & Hshr & Hinh & Hcred & Hat)".
       iExists ly. iFrame.
       iMod ("Hinh" with "Hdead") as "$". done.
-    - iIntros (π r l wl) "(#Hdead & _) Hblocked".
+    - iIntros (π r l) "(#Hdead & _) Hblocked".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite ltype_own_shrblocked_unfold ltype_own_ofty_unfold.
-      iDestruct "Hblocked" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hshr & Hunblock & Hcred)".
+      iDestruct "Hblocked" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hshr & Hunblock)".
       iMod ("Hunblock" with "Hdead") as "Hl".
       iDestruct "Hl" as "(%v & Hl & Hv)".
       iModIntro. iExists ly. iFrame.
-      iNext. eauto with iFrame.
+      done.
   Qed.
 
   Lemma mut_ltype_imp_unblockable {rt} κs κ' (lt : ltype rt) :
@@ -5022,12 +4498,12 @@ Section blocked.
       iMod "Hb". iDestruct "Hb" as "(%l' & Hl & Hb)".
       iMod ("Hub_mut" with "Hdead Hb") as "Hb"; first last.
       { iModIntro. rewrite ltype_own_core_equiv. eauto with iFrame. }
-    - iIntros (π r l wl) "#Hdead Hb".
+    - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_mut_ref_unfold /mut_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %γ & %r' & Hrfn & Hb)".
+      iDestruct "Hb" as "(%ly & ? & ? & ? &  %γ & %r' & Hrfn & Hb)".
       iExists ly. iFrame.
-      iModIntro. iNext.
+      iModIntro.
       iMod "Hb" as "(%l' & Hl & Hb)".
       iExists _. iFrame. rewrite -ltype_own_core_equiv.
       iApply ("Hub_mut" with "Hdead Hb").
@@ -5052,75 +4528,15 @@ Section blocked.
       iMod "Hb". iDestruct "Hb" as "(%l' & Hl & Hb)".
       iExists _. iFrame.
       iApply (ltype_own_shared_to_core with "Hb").
-    - iIntros (π r l wl) "#Hdead Hb".
+    - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_shr_ref_unfold /shr_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hb)".
+      iDestruct "Hb" as "(%ly & ? & ? & ? & %r' & Hrfn & Hb)".
       iExists ly. iFrame.
-      iModIntro. iNext.
+      iModIntro.
       iMod "Hb" as "(%l' & Hl & Hb)".
       iExists _. iFrame.
       by iApply ltype_own_shared_to_core.
-  Qed.
-
-  Lemma box_ltype_imp_unblockable {rt} κs (lt : ltype rt) :
-    imp_unblockable κs lt -∗
-    imp_unblockable κs (BoxLtype lt).
-  Proof.
-    iIntros "#(Hub_mut & Hub_own)". iModIntro. iSplitL.
-    - iIntros (κ' γ' π r l) "#Hdead Hb".
-      rewrite ltype_own_core_equiv /=. simp_ltypes.
-      rewrite !ltype_own_box_unfold /box_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & ? & Hb)".
-      iExists ly. iFrame.
-      iMod "Hb". iModIntro. rewrite ltype_core_syn_type_eq.
-      setoid_rewrite ltype_own_core_core.
-      iApply (pinned_bor_impl with "[] Hb").
-      iNext. iModIntro. iSplit; first last.
-      { setoid_rewrite ltype_own_core_equiv. eauto. }
-      iIntros "(%r' & Hauth & Hb)". iExists _. iFrame "Hauth".
-      iMod "Hb". iDestruct "Hb" as "(%l' & %ly' & Hl & ? & ? & Hf & Hb)".
-      iMod ("Hub_own" with "Hdead Hb") as "Hb".
-      iModIntro. rewrite ltype_own_core_equiv. eauto with iFrame.
-    - iIntros (π r l wl) "#Hdead Hb".
-      rewrite ltype_own_core_equiv /=. simp_ltypes.
-      rewrite !ltype_own_box_unfold /box_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hb)".
-      iExists ly. iFrame.
-      iModIntro. iNext.
-      iMod "Hb" as "(%l' & %ly' & Hl & ? & ? & ? & Hb)".
-      iExists _, _. iFrame. rewrite ltype_core_syn_type_eq. iFrame.
-      rewrite -ltype_own_core_equiv. iApply "Hub_own"; done.
-  Qed.
-
-  Lemma owned_ptr_ltype_imp_unblockable {rt} κs (lt : ltype rt) ls :
-    imp_unblockable κs lt -∗
-    imp_unblockable κs (OwnedPtrLtype lt ls).
-  Proof.
-    iIntros "#(Hub_mut & Hub_own)". iModIntro. iSplitL.
-    - iIntros (κ' γ' π r l) "#Hdead Hb".
-      rewrite ltype_own_core_equiv /=. simp_ltypes.
-      rewrite !ltype_own_owned_ptr_unfold /box_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & ? & Hb)".
-      iExists ly. iFrame.
-      iMod "Hb". iModIntro. rewrite ltype_core_syn_type_eq.
-      setoid_rewrite ltype_own_core_core.
-      iApply (pinned_bor_impl with "[] Hb").
-      iNext. iModIntro. iSplit; first last.
-      { setoid_rewrite ltype_own_core_equiv. eauto. }
-      iIntros "(%r' & %l' & Hauth & Hb)". iExists _, _. iFrame "Hauth".
-      iMod "Hb". iDestruct "Hb" as "(%ly' & Hl & ? & Hf & Hb)".
-      iMod ("Hub_own" with "Hdead Hb") as "Hb".
-      iModIntro. rewrite ltype_own_core_equiv. eauto with iFrame.
-    - iIntros (π r l wl) "#Hdead Hb".
-      rewrite ltype_own_core_equiv /=. simp_ltypes.
-      rewrite !ltype_own_owned_ptr_unfold /owned_ptr_ltype_own.
-      iDestruct "Hb" as "(%ly & ? & ? & ? & ? & %r' & %l' & Hrfn & Hb)".
-      iExists ly. iFrame.
-      iModIntro. iNext.
-      iMod "Hb" as "(%ly' & Hl & ? & ? & Hb)".
-      iExists _. iFrame. rewrite ltype_core_syn_type_eq. iFrame.
-      rewrite -ltype_own_core_equiv. iApply "Hub_own"; done.
   Qed.
 
   Lemma struct_ltype_imp_unblockable {rts} κ (lts : hlist ltype rts) sls :
@@ -5193,12 +4609,12 @@ Section blocked.
           iModIntro. iModIntro.
           iIntros (k [rt [lt r'']] Hlook) "(%ly & ? & ? & Hl)". simpl.
           simp_ltypes. eauto 8 with iFrame.
-    - iIntros (π r l wl) "#Hdead Hb".
+    - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_struct_unfold /struct_ltype_own.
-      iDestruct "Hb" as "(%sl & %Halg & %Hlen & ? & ? & ? & %r' & ? & Hb)".
+      iDestruct "Hb" as "(%sl & %Halg & %Hlen & ? &  ? & %r' & ? & Hb)".
       iExists sl. iFrame. iR. iR.
-      iModIntro. iNext. iMod "Hb".
+      iModIntro. iMod "Hb".
       rewrite hpzipl_hmap.
       rewrite (pad_struct_ext _ (_ <$> _) _ (λ ly, map_core (struct_make_uninit_ltype ly))); first last.
       { intros ?. rewrite /map_core /struct_make_uninit_ltype. rewrite ltype_core_uninit//. }
@@ -5263,14 +4679,14 @@ Section blocked.
           setoid_rewrite ltype_core_syn_type_eq.
           setoid_rewrite ltype_own_core_equiv.
           setoid_rewrite ltype_core_idemp. done.
-    - iIntros (π r l wl) "#Hdead Hb".
+    - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_array_unfold /array_ltype_own.
-      iDestruct "Hb" as "(%ly & %Halg & % & % & ? & ? & %r' & ? & Hb)".
+      iDestruct "Hb" as "(%ly & %Halg & % & % & ? & %r' & ? & Hb)".
       iExists ly. iFrame. iR. iR. iR. iModIntro.
       iEval (rewrite -(ltype_core_ofty def)).
       rewrite interpret_iml_fmap big_sepL2_fmap_l.
-      iNext. iMod ("Hb") as "(%Hlen & Ha)". iR.
+      iMod ("Hb") as "(%Hlen & Ha)". iR.
       iApply big_sepL2_fupd.
       iApply (big_sepL2_impl with "Ha").
       iModIntro. iIntros (k lt r'' Hlook1 Hlook2) "(%Hst & Hl)".
@@ -5290,12 +4706,12 @@ Section blocked.
       rewrite !ltype_own_enum_unfold /enum_ltype_own.
       iDestruct "Hb" as "(%el & %Halg & % & ? &Hb)".
       done.
-    - iIntros (π r l wl) "#Hdead Hb".
+    - iIntros (π r l) "#Hdead Hb".
       rewrite ltype_own_core_equiv /=. simp_ltypes.
       rewrite !ltype_own_enum_unfold /enum_ltype_own.
-      iDestruct "Hb" as "(%el & %Halg & % & Hlb & Hcred & %r' & Hr & Hb)".
-      iExists el. iR. iR. iFrame "Hlb Hcred".
-      iModIntro. iExists _. iFrame "Hr". iNext.
+      iDestruct "Hb" as "(%el & %Halg & % & Hlb & %r' & Hr & Hb)".
+      iExists el. iR. iR. iFrame "Hlb ".
+      iModIntro. iExists _. iFrame "Hr".
       iMod "Hb" as "(%Htag' & ? & Hb & ? & ?)".
       iR. rewrite ltype_core_syn_type_eq. iFrame.
       iDestruct "Hub" as "(_ & #Hub_own)". iMod ("Hub_own" with "Hdead Hb") as "Hl".
@@ -5311,7 +4727,7 @@ Section blocked.
   Proof.
     iModIntro. iSplitL.
     - iIntros (κ' ????). rewrite ltype_own_core_equiv ltype_core_opened. eauto.
-    - iIntros (????). rewrite ltype_own_core_equiv ltype_core_opened. eauto.
+    - iIntros (???). rewrite ltype_own_core_equiv ltype_core_opened. eauto.
   Qed.
 
   Lemma coreable_ltype_imp_unblockable {rt_full} (lt_full : ltype rt_full) κs :
@@ -5322,7 +4738,7 @@ Section blocked.
       rewrite ltype_own_core_coreable_unfold ltype_own_coreable_unfold /coreable_ltype_own.
       iDestruct "Hb" as "(%ly & _ & _ & _ & Hrfn & Hvs)".
       iApply ("Hvs" with "Hdead Hrfn").
-    - iIntros (π r l wl) "Hdead Ha".
+    - iIntros (π r l) "Hdead Ha".
       rewrite ltype_own_core_coreable_unfold ltype_own_coreable_unfold /coreable_ltype_own.
       iDestruct "Ha" as "(%ly & _ & _ & _ & Ha)".
       iApply ("Ha" with "Hdead").
@@ -5333,7 +4749,7 @@ Section blocked.
   Proof.
     iModIntro. iSplitL.
     - iIntros (?????). rewrite ltype_own_core_equiv ltype_core_alias. eauto.
-    - iIntros (????). rewrite ltype_own_core_equiv ltype_core_alias. eauto.
+    - iIntros (???). rewrite ltype_own_core_equiv ltype_core_alias. eauto.
   Qed.
 
   Lemma shadowed_ltype_imp_unblockable {rt_cur rt_full} (lt_cur : ltype rt_cur) (r_cur : place_rfn rt_cur) (lt_full : ltype rt_full) κs :
@@ -5344,7 +4760,7 @@ Section blocked.
     - iIntros (?????). rewrite ltype_own_core_equiv ltype_own_shadowed_unfold. simp_ltypes.
       iIntros "Hdead (_ & Hb)".
       rewrite -ltype_own_core_equiv. iApply ("Ha1" with "Hdead Hb").
-    - iIntros (????). rewrite ltype_own_core_equiv ltype_own_shadowed_unfold. simp_ltypes.
+    - iIntros (???). rewrite ltype_own_core_equiv ltype_own_shadowed_unfold. simp_ltypes.
       iIntros "Hdead (_ & Hb)".
       rewrite -ltype_own_core_equiv. iApply ("Ha2" with "Hdead Hb").
   Qed.
@@ -5354,7 +4770,7 @@ Section blocked.
   Proof.
     iModIntro. iSplitL.
     - iIntros (κ' ????). rewrite ltype_own_core_equiv ltype_core_opened_na. eauto.
-    - iIntros (????). rewrite ltype_own_core_equiv ltype_core_opened_na. eauto.
+    - iIntros (???). rewrite ltype_own_core_equiv ltype_core_opened_na. eauto.
   Qed.
 
   (** Once all the blocked lifetimes are dead, every ltype is unblockable to its core. *)
@@ -5369,8 +4785,6 @@ Section blocked.
     - iIntros (rt st l). iApply alias_ltype_imp_unblockable.
     - iIntros (rt lt IH κ). iApply mut_ltype_imp_unblockable. by iApply IH.
     - iIntros (rt lt IH κ). iApply shr_ltype_imp_unblockable. by iApply IH.
-    - iIntros (rt lt IH). iApply box_ltype_imp_unblockable. by iApply IH.
-    - iIntros (rt lt ls IH). iApply owned_ptr_ltype_imp_unblockable. by iApply IH.
     - iIntros (rts lts IH sls).
       iApply (struct_ltype_imp_unblockable _ lts sls).
       iApply big_sepL_intro. iModIntro. iIntros (k [rt lt] Hlook).
@@ -5425,8 +4839,8 @@ Section blocked.
       iDestruct ("Hub1" with "Hdead") as "#Hub1'".
       iApply ltype_own_core_equiv. iApply "Hc1". iApply ltype_own_core_equiv.
       iApply "Hub1'". by iApply "Hi2".
-    - iIntros (π r l wl) "#Hdead Hb".
-      iDestruct ("Heq" $! (Owned wl) r) as "((% & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
+    - iIntros (π r l) "#Hdead Hb".
+      iDestruct ("Heq" $! (Owned) r) as "((% & #Hi1 & #Hc1) & (_ & #Hi2 & #Hc2))".
       iMod ("Hi2" with "Hb") as "Hb".
       iMod ("Hub2" with "Hdead Hb") as "Hb".
       rewrite !ltype_own_core_equiv. by iApply "Hc1".

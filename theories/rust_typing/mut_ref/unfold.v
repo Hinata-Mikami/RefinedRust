@@ -27,13 +27,13 @@ Section ltype_agree.
     {rt : RT}
     (ty: type rt).
 
-  Lemma mut_ref_unfold_1_owned κ wl r :
-    ⊢ ltype_incl' (Owned wl) r r (MutLtype (◁ ty) κ) (◁ (mut_ref κ ty)).
+  Lemma mut_ref_unfold_1_owned κ r :
+    ⊢ ltype_incl' (Owned) r r (MutLtype (◁ ty) κ) (◁ (mut_ref κ ty)).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
-    iIntros "(%ly & ? & ? & Hlb & ? & %γ & %r' & Hrfn & Hb)".
+    iIntros "(%ly & ? & ? & Hlb & %γ & %r' & Hrfn & Hb)".
     iModIntro.
-    iExists ly. iFrame "∗". iNext.
+    iExists ly. iFrame "∗".
     iMod "Hb" as "(%l' & Hl & Hb)".
     iExists l'. iFrame.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
@@ -92,13 +92,13 @@ Section ltype_agree.
     - simp_ltypes. iApply mut_ref_unfold_1'.
   Qed.
 
-  Lemma mut_ref_unfold_2_owned κ wl r :
-    ⊢ ltype_incl' (Owned wl) r r (◁ (mut_ref κ ty)) (MutLtype (◁ ty) κ).
+  Lemma mut_ref_unfold_2_owned κ r :
+    ⊢ ltype_incl' (Owned) r r (◁ (mut_ref κ ty)) (MutLtype (◁ ty) κ).
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_mut_ref_unfold /mut_ltype_own ltype_own_ofty_unfold /lty_of_ty_own.
-    iIntros "(%ly & ? & ? & _ & #Hlb & ? & %r' & Hrfn & Hb)". destruct r' as [r' γ'].
+    iIntros "(%ly & ? & ? & #Hlb & ? & %r' & Hrfn & Hb)". destruct r' as [r' γ'].
     (*iApply except_0_if_intro.*)
-    iModIntro. iExists ly. iFrame "∗ #". iNext.
+    iModIntro. iExists ly. iFrame "∗ #".
     iMod "Hb" as "(%v & Hl & %l' & %ly' & _ & -> & ? & ? & #Hlb' & Hsc & ? &  Hrfn' & >Hb)".
     iExists _. iFrame. rewrite ltype_own_ofty_unfold /lty_of_ty_own. iExists ly'. iFrame "∗ #". done.
   Qed.

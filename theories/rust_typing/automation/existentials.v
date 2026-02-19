@@ -117,19 +117,14 @@ Ltac ex_t_destruct_bor π κ κs iH :=
   iRename iH into "__H0";
   lazymatch ty with
   | (&{_} (?P))%I =>
-    lazymatch P with
-    | (?l ◁ₗ[?π, Owned false] ?r @ (◁ ?ty))%I =>
-        idtac "solve_shr: cannot share [Owned false] ownership, consider using [Owned true] instead"
-    | _ =>
-      first
-      [ (* check if we have declared how to share it *)
-        let SHR := constr:(_ : Shareable π κ κs P) in
-        iApply (SHR.(shareable_proof) with "[$] [$] Htok1 Htok __H0");
-        [ done | ]
-      | (* otherwise discard (putting a wrapper so we don't consider it again) *)
-        fail "solve_shr: do not know how to share " P
-      ]
-    end
+    first
+    [ (* check if we have declared how to share it *)
+      let SHR := constr:(_ : Shareable π κ κs P) in
+      iApply (SHR.(shareable_proof) with "[$] [$] Htok1 Htok __H0");
+      [ done | ]
+    | (* otherwise discard (putting a wrapper so we don't consider it again) *)
+      fail "solve_shr: do not know how to share " P
+    ]
   end
   .
 
@@ -378,7 +373,7 @@ Lemma ltype_own_ofty_share `{!typeGS Σ} π F κ q l {rt} (ty : type rt) r :
   na_own π ∅ -∗
   let κ' := lft_intersect_list (ty_lfts ty) in
   q.[κ ⊓ κ'] -∗
-  (&{κ} (guarded true (l ◁ₗ[π, Owned false] r @ ◁ ty))) -∗
+  (&{κ} (guarded true (l ◁ₗ[π, Owned] r @ ◁ ty))) -∗
   logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ ⊓ κ']).
 Proof.
   iIntros (?) "#(LFT & LLCTX) #Hna Htok Hl".
@@ -405,7 +400,6 @@ Proof.
   iMod (bor_persistent with "LFT Hsc Htok") as "(>#Hsc & Htok)"; first done.
   iMod (bor_sep with "LFT Hl") as "(Hlb & Hl)"; first done.
   iMod (bor_persistent with "LFT Hlb Htok") as "(>#Hlb & Htok)"; first done.
-  iMod (bor_sep with "LFT Hl") as "(_ & Hl)"; first done.
   iMod (bor_exists_tok with "LFT Hl Htok") as "(%r' & Hl & Htok)"; first done.
   iMod (bor_sep with "LFT Hl") as "(Hrfn & Hl)"; first done.
 
@@ -440,7 +434,7 @@ Lemma ltype_own_ofty_share' `{!typeGS Σ} π F κ κ' q l {rt} (ty : type rt) r 
   na_own π ∅ -∗
   q.[κ] -∗
   q.[lft_intersect_list κ'] -∗
-  (&{κ} (guarded true (l ◁ₗ[π, Owned false] r @ ◁ ty))) -∗
+  (&{κ} (guarded true (l ◁ₗ[π, Owned] r @ ◁ ty))) -∗
   logical_step F (guarded false (l ◁ₗ[π, Shared κ] r @ ◁ ty) ∗ q.[κ] ∗ q.[lft_intersect_list κ']).
 Proof.
   iIntros (? Hsub) "#CTX #Hna Htok1 Htok2 Hl".
@@ -470,7 +464,7 @@ Hint Extern 1 (SolveTyLftIncl ?ty ?κs) =>
 Global Hint Mode SolveTyLftIncl + + + + + : typeclass_instances.
 
 Global Program Instance shareable_ltype_own `{!typeGS Σ} π κ κs l {rt} (ty : type rt) r `{!SolveTyLftIncl ty κs} :
-  Shareable π κ κs (guarded true (l ◁ₗ[π, Owned false] r @ (◁ ty)))%I := {|
+  Shareable π κ κs (guarded true (l ◁ₗ[π, Owned] r @ (◁ ty)))%I := {|
     shareable_prop := guarded false (l ◁ₗ[π, Shared κ] r @ (◁ ty))%I
   |}.
 Next Obligation.
@@ -482,4 +476,3 @@ Next Obligation.
   iIntros "(Ha & ? & ?) Hb". iApply "Hb".
   iFrame.
 Qed.
-

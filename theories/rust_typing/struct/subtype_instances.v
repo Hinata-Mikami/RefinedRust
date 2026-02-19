@@ -144,13 +144,13 @@ Section subtype.
 
   (** Subltyping *)
   (* TODO replace foldr with relate_hlist *)
-  Lemma weak_subltype_struct_owned_in E L {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls1 sls2 wl T  :
+  Lemma weak_subltype_struct_owned_in E L {rts1 rts2} (lts1 : hlist ltype rts1) (lts2 : hlist ltype rts2) rs1 rs2 sls1 sls2 T  :
     ⌜sls1 = sls2⌝ ∗ ⌜length rts1 = length rts2⌝ ∗ foldr (λ '(existT rt1 (lt1, r1'), existT rt2 (lt2, r2')) T,
-      weak_subltype E L (Owned false) r1' r2' lt1 lt2 T) T (zip (hpzipl rts1 lts1 rs1) (hpzipl rts2 lts2 rs2))
-    ⊢ weak_subltype E L (Owned wl) (#rs1) (#rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
+      weak_subltype E L (Owned) r1' r2' lt1 lt2 T) T (zip (hpzipl rts1 lts1 rs1) (hpzipl rts2 lts2 rs2))
+    ⊢ weak_subltype E L (Owned) (#rs1) (#rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & %Hlen & Ha)" (??) "#CTX #HE HL".
-    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2, ltype_incl (Owned false) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
+    iAssert (|={F}=> ([∗ list] lt1; lt2 ∈ hpzipl _ lts1 rs1; hpzipl _ lts2 rs2, ltype_incl (Owned) (projT2 lt1).2 (projT2 lt2).2 (projT2 lt1).1 (projT2 lt2).1) ∗ llctx_interp L ∗ T)%I with "[Ha HL]" as ">(Ha & $ & $)"; first last.
     { iApply (struct_ltype_incl_owned_in lts1 lts2). done. }
     iInduction rts1 as [ | rt1 rts1] "IH" forall (rts2 lts1 lts2 rs1 rs2 Hlen); destruct rts2 as [ | rt2 rts2]; try done;
       inv_hlist lts2; inv_hlist lts1.
@@ -165,13 +165,13 @@ Section subtype.
   Global Existing Instance weak_subltype_struct_owned_in_inst | 10.
 
   (* TODO replace foldr with relate_hlist *)
-  Lemma weak_subltype_struct_owned E L {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) rs1 rs2 sls1 sls2 wl T  :
+  Lemma weak_subltype_struct_owned E L {rts} (lts1 : hlist ltype rts) (lts2 : hlist ltype rts) rs1 rs2 sls1 sls2 T  :
     ⌜sls1 = sls2⌝ ∗ ⌜rs1 = rs2⌝ ∗ foldr (λ '(existT rt1 (lt1, lt2)) T,
       mut_subltype E L lt1 lt2 T) T (hzipl2 rts lts1 lts2)
-    ⊢ weak_subltype E L (Owned wl) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
+    ⊢ weak_subltype E L (Owned) (rs1) (rs2) (StructLtype lts1 sls1) (StructLtype lts2 sls2) T.
   Proof.
     iIntros "(-> & -> & HT)" (??) "#CTX #HE HL".
-    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r, ltype_incl (Owned false) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
+    iAssert (([∗ list] ltp ∈ hzipl2 rts lts1 lts2, ∀ r, ltype_incl (Owned ) r r (projT2 ltp).1 (projT2 ltp).2) ∗ llctx_interp L ∗ T)%I with "[HT HL]" as "(Ha & $ & $)"; first last.
     { iApply (struct_ltype_incl_owned lts1 lts2). done. }
     clear rs2.
     iInduction rts as [ | rt rts] "IH" forall (lts1 lts2); inv_hlist lts2; inv_hlist lts1.

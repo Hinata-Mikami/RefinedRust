@@ -41,8 +41,7 @@ Ltac solve_type_proper_hook ::=
       match bk with
       | Shared _ => apply ofty_own_ne_shared; try apply _
       | Uniq _ _ => apply ofty_own_contr_uniq; try apply _
-      | Owned true => apply ofty_own_contr_owned; try apply _
-      | Owned false => apply ofty_own_ne_owned; try apply _
+      | Owned => apply ofty_own_ne_owned; try apply _
       end
     | |- guarded _ _ ≡{_}≡ guarded _ _ =>
       apply guarded_dist; intros

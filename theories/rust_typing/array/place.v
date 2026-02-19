@@ -54,7 +54,7 @@ Section place.
     done.
   Qed.
 
-  Lemma typed_place_array_owned E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) wl bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
+  Lemma typed_place_array_owned E L f {rt rtv} (def : type rt) (lts : list (nat * ltype rt)) (len : nat) (rs : list (place_rfn rt)) bmin ly l it v (tyv : type rtv) (i : rtv) m P T :
     (∃ i',
       ⌜syn_type_has_layout (ty_syn_type def MetaNone) ly⌝ ∗
       subsume_full E L false (v ◁ᵥ{f.1, m} i @ tyv) (v ◁ᵥ{f.1, m} i' @ int it) (λ L1 R2, R2 -∗
@@ -65,7 +65,7 @@ Section place.
         ⌜rs !! Z.to_nat i' = Some r⌝ -∗
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L1 bmin (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
-        typed_place E L1 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned false) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
+        typed_place E L1 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin ⊓ₚ RestrictWeak) (Owned) P (λ L2 κs li bi bmin2 rti ltyi ri updcx,
           T L2 κs li bi bmin2 rti ltyi ri
           (λ L3 upd cont, updcx L3 upd (λ upd',
             cont (mkPUpd _ bmin
@@ -78,7 +78,7 @@ Section place.
               opt_place_update_eq_refl
             )))
         )))
-    ⊢ typed_place E L f l (ArrayLtype def len lts) (#rs) bmin (Owned wl) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) v m rtv tyv i :: P) T.
+    ⊢ typed_place E L f l (ArrayLtype def len lts) (#rs) bmin (Owned) (BinOpPCtx (PtrOffsetOp ly) (IntOp it) v m rtv tyv i :: P) T.
   Proof.
     iIntros "(%i' & %Hst & HT)".
     iIntros (????) "#CTX #HE HL Hf Hl Hcont".
@@ -93,7 +93,6 @@ Section place.
     iEval (rewrite /ty_own_val/=) in "Hi".
     iDestruct "Hi" as "(-> & %Hi)".
     iDestruct "CTX" as "(LFT & LLCTX)".
-    iApply (wpe_logical_step with "Hcl"); [done.. | ].
     iApply wp_ptr_offset.
     { eapply val_to_of_loc. }
     { done. }
@@ -105,7 +104,6 @@ Section place.
     { iApply loc_in_bounds_shorten_suf; last done. lia. }
     iModIntro.
     iApply physical_step_intro; iNext.
-    iIntros "Hcl".
     iExists _. iR.
     iPoseProof (big_sepL2_length with "Hb") as "%Hlen_eq".
     rewrite length_interpret_iml in Hlen_eq.
@@ -170,7 +168,7 @@ Section place.
         (* sidecondition for other components *)
         ⌜lctx_place_update_kind_outlives E L2 (UpdUniq [κ]) (mjoin ((λ lt, ltype_blocked_lfts lt.2) <$> (lts)))⌝ ∗
         ⌜lctx_place_update_kind_incl E L2 (UpdUniq [κ]) bmin0⌝ ∗
-        typed_place E L2 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned false) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
+        typed_place E L2 f (l offsetst{ty_syn_type def MetaNone}ₗ i') lt r (bmin0 ⊓ₚ RestrictWeak) (Owned) P (λ L3 κs' li bi bmin2 rti ltyi ri updcx,
           T L3 (κs ++ κs') li bi bmin2 rti ltyi ri
             (λ L4 upd cont, updcx L4 upd (λ upd',
               ⌜lctx_place_update_kind_incl E L4 upd'.(pupd_performed) (UpdUniq [κ])⌝ ∗

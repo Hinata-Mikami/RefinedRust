@@ -1205,7 +1205,7 @@ Section test.
   Context `{typeGS Σ}.
 
   Lemma test1 E L :
-    lctx_bor_kind_alive E L (Owned false).
+    lctx_bor_kind_alive E L (Owned).
   Proof. solve[solve_bor_kind_alive]. Abort.
 
   Lemma test2 κ γ c1 :
@@ -1247,7 +1247,7 @@ Section test.
   Context `{typeGS Σ}.
 
   Lemma test1 E L :
-    lctx_bor_kind_direct_incl E L (Owned false) (Owned false).
+    lctx_bor_kind_direct_incl E L (Owned) (Owned).
   Proof. solve[solve_bor_kind_direct_incl]. Abort.
 
   Lemma test2 κ γ c1 :

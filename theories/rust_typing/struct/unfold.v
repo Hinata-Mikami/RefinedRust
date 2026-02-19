@@ -7,17 +7,17 @@ From refinedrust Require Import options.
 
 Section unfold.
   Context `{!typeGS Σ}.
-  Lemma struct_t_unfold_1_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
-    ⊢ ltype_incl' (Owned wl) r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
+  Lemma struct_t_unfold_1_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) r :
+    ⊢ ltype_incl' (Owned) r r (◁ (struct_t sls tys))%I (StructLtype (hmap (λ _, OfTy) tys) sls).
   Proof.
     iModIntro. iIntros (π l).
     rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
-    iIntros "(%ly & %Halg & %Hly & %Hsc & #Hlb & ? & %r' & Hrfn & Hv)".
+    iIntros "(%ly & %Halg & %Hly & %Hsc & #Hlb & %r' & Hrfn & Hv)".
     eapply use_layout_alg_struct_Some_inv in Halg as (sl & Halg & ->).
     (*assert (ly = sl) as ->. { eapply syn_type_has_layout_inj; first done.*)
       (*eapply use_struct_layout_alg_Some_inv. done. }*)
     iExists sl. do 4 iR. iFrame.
-    iModIntro. iNext. iMod "Hv" as "(%v & Hl & Hv)".
+    iModIntro. iMod "Hv" as "(%v & Hl & Hv)".
     iDestruct "Hv" as "(%sl' & _ & %Halg' & _ & %Hly' & Hb)".
     assert (sl' = sl) as ->. { by eapply struct_layout_spec_has_layout_inj. }
     rewrite hpzipl_hmap.
@@ -41,7 +41,6 @@ Section unfold.
     iSplitR. { iPureIntro. eapply struct_layout_field_aligned; done. }
     iPoseProof (ty_own_val_sidecond with "Hty") as "#$".
     iSplitR. { iApply loc_in_bounds_sl_offset; done. }
-    iSplitR; first done.
     iExists _. by iFrame.
   Qed.
 
@@ -76,8 +75,7 @@ Section unfold.
 
   (* The lemma stating the main unfolding condition for the Uniq case *)
   (* TODO: maybe we can refactor this a bit *)
-  Local Lemma unfold_case_uniq {rts} π (tys : hlist type rts) sls sl l γ wl (b : bool) :
-    wl = false →
+  Local Lemma unfold_case_uniq {rts} π (tys : hlist type rts) sls sl l γ (b : bool) :
     use_struct_layout_alg sls = Some sl →
     l `has_layout_loc` sl →
     length rts = length (sls_fields sls) →
@@ -88,9 +86,9 @@ Section unfold.
         [∗ list] i↦ty ∈ pad_struct (sl_members sl) (hpzipl rts ((λ X : RT, OfTy) +<$> tys) r') struct_make_uninit_ltype,
           ∃ ly : layout, ⌜snd <$> sl_members sl !! i = Some ly⌝ ∗
             ⌜syn_type_has_layout (ltype_st (projT2 ty).1) ly⌝ ∗
-            (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, Owned wl] (projT2 ty).2 @ if b then ltype_core (projT2 ty).1 else (projT2 ty).1)).
+            (l +ₗ offset_of_idx (sl_members sl) i) ◁ₗ[ π, Owned] (projT2 ty).2 @ if b then ltype_core (projT2 ty).1 else (projT2 ty).1)).
   Proof.
-    intros -> Hst Hly Hsc. iIntros "#Hlb".
+    intros Hst Hly Hsc. iIntros "#Hlb".
     iSplit.
     * iIntros "(%r' & Hauth & Hb)". iExists _. iFrame. iDestruct "Hb" as ">(%v & Hl & Hb)".
       iApply big_sepL_fupd.
@@ -117,7 +115,6 @@ Section unfold.
       iSplitR. { iPureIntro. eapply struct_layout_field_aligned; done. }
       iPoseProof (ty_own_val_sidecond with "Hty") as "#$".
       iSplitR. { iApply loc_in_bounds_sl_offset; done. }
-      iSplitR; first done.
       iExists _. by iFrame.
     * iIntros "(%r' & Hauth & Hb)". iExists r'. iFrame "Hauth".
       iMod "Hb".
@@ -168,7 +165,7 @@ Section unfold.
           injection Heq0 as [= <-].
           simp_ltypes. rewrite Tauto.if_same.
           rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-          iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & _ & %r0' & Hrfn0 & Hb0)".
+          iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %r0' & Hrfn0 & Hb0)".
           (* TODO need the v also under there. *)
           iMod "Hb0" as "(%v0 & Hl0 & Hb0)".
           move: Halg0. simp_ltypes. intros Halg0.
@@ -211,7 +208,7 @@ Section unfold.
           injection Heq0 as [= <-].
           rewrite /UninitLtype. simp_ltypes. rewrite Tauto.if_same.
           rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-          iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & _ & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
+          iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
           move: Halg0. simp_ltypes. intros Halg0.
           assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
           iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
@@ -242,10 +239,10 @@ Section unfold.
     setoid_rewrite ltype_own_core_equiv.
     iApply (pinned_bor_iff with "[] [] Hb").
     + iNext. iModIntro.
-      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false false with "Hlb") as "[Ha1 Ha2]"; [reflexivity | done.. | ].
+      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false with "Hlb") as "[Ha1 Ha2]"; [done.. | ].
       iSplit; done.
     + iNext. iModIntro.
-      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false true with "Hlb") as "[Ha1 Ha2]"; [reflexivity | done.. | ].
+      iPoseProof (unfold_case_uniq _ _ _ _ _ _ true with "Hlb") as "[Ha1 Ha2]"; [done.. | ].
       iSplit; done.
   Qed.
 
@@ -272,14 +269,14 @@ Section unfold.
     + simp_ltypes. rewrite ltype_core_hmap_ofty. by iApply struct_t_unfold_1'.
   Qed.
 
-  Lemma struct_t_unfold_2_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) wl r :
-    ⊢ ltype_incl' (Owned wl) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
+  Lemma struct_t_unfold_2_owned {rts : list RT} (tys : hlist type rts) (sls : struct_layout_spec) r :
+    ⊢ ltype_incl' (Owned) r r (StructLtype (hmap (λ _, OfTy) tys) sls) (◁ (struct_t sls tys))%I.
   Proof.
     iModIntro. iIntros (π l). rewrite ltype_own_struct_unfold ltype_own_ofty_unfold /lty_of_ty_own /struct_ltype_own.
-    iIntros "(%sl & %Halg & %Hsc & %Hly & #Hlb & ? & %r' & Hrfn & Hb)".
+    iIntros "(%sl & %Halg & %Hsc & %Hly & #Hlb & %r' & Hrfn & Hb)".
     iExists sl. iSplitR. { iPureIntro. eapply use_struct_layout_alg_Some_inv. done. }
     iSplitR; first done. iSplitR; first done.
-    iSplitR; first done. iModIntro. iFrame. iNext. iMod "Hb".
+    iSplitR; first done. iModIntro. iFrame. iMod "Hb".
     specialize (struct_layout_field_aligned _ _ Hly) as Hfield_ly.
     (* generalize *)
     (* TODO mostly duplicated with the Uniq lemma above *)
@@ -329,7 +326,7 @@ Section unfold.
         injection Heq0 as [= <-].
         simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & _ & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
+        iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
         move: Halg0. simp_ltypes. intros Halg0.
         assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
         iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
@@ -372,7 +369,7 @@ Section unfold.
         injection Heq0 as [= <-].
         rewrite /UninitLtype. simp_ltypes.
         rewrite ltype_own_ofty_unfold /lty_of_ty_own.
-        iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & _ & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
+        iDestruct "Hb0" as "(%ly0 & %Hst0 & %Hly0 & Hsc0 & Hlb0 & %r0' & Hrfn0 & >(%v0 & Hl0 & Hb0))".
         move: Halg0. simp_ltypes. intros Halg0.
         assert (ly0 = ly) as -> by by eapply syn_type_has_layout_inj.
         iPoseProof (ty_own_val_has_layout with "Hb0") as "#%Hly0'"; first done.
@@ -428,10 +425,10 @@ Section unfold.
     setoid_rewrite ltype_own_core_equiv.
     iApply (pinned_bor_iff with "[] [] Hb").
     + iNext. iModIntro.
-      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false false with "Hlb") as "[Ha1 Ha2]"; [reflexivity | done.. | ].
+      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false with "Hlb") as "[Ha1 Ha2]"; [done.. | ].
       iSplit; done.
     + iNext. iModIntro.
-      iPoseProof (unfold_case_uniq _ _ _ _ _ _ false true with "Hlb") as "[Ha1 Ha2]"; [reflexivity | done.. | ].
+      iPoseProof (unfold_case_uniq _ _ _ _ _ _ true with "Hlb") as "[Ha1 Ha2]"; [done.. | ].
       iSplit; done.
   Qed.
 

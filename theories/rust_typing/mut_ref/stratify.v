@@ -8,7 +8,7 @@ Section stratify.
   Context `{!typeGS Σ}.
 
   (** Structural rules *)
-  Lemma stratify_ltype_mut_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) wl γ (T : stratify_ltype_cont_t) :
+  Lemma stratify_ltype_mut_owned mu mdu ma {rt} π E L {M} (ml : M) l (lt : ltype rt) κ (r : (place_rfn rt)) γ (T : stratify_ltype_cont_t) :
     (∀ l', stratify_ltype π E L mu mdu ma ml l' lt r (Uniq κ γ) (λ L' R rt' lt' r',
       match ma with
       | StratRefoldFull =>
@@ -16,7 +16,7 @@ Section stratify.
       | _ =>
           T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ))
       end))
-    ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned wl) T.
+    ⊢ stratify_ltype π E L mu mdu ma ml l (MutLtype lt κ) (PlaceIn (r, γ)) (Owned) T.
   Proof.
     iIntros "Hs". iIntros (????) "#(LFT &  LLCTX) #HE HL Hb".
     iPoseProof (mut_ltype_acc_owned F with "[$LFT $LLCTX] Hb") as "Hb"; [done.. | ].
@@ -37,7 +37,7 @@ Section stratify.
       iApply logical_step_intro. iIntros "(Hb & $) Hcl".
       iMod ("Hvs" with "Hb") as "Hb".
       iMod ("Hcl" with "Hl Hb") as "Hb".
-      iDestruct (mut_ref_unfold_1 ty' κ (Owned wl)) as "(_ & #Hi & _)".
+      iDestruct (mut_ref_unfold_1 ty' κ (Owned)) as "(_ & #Hi & _)".
       iMod (fupd_mask_mono with "(Hi Hb)") as "$"; first done.
       done.
     - iAssert (T L' R _ (MutLtype lt' κ) (PlaceIn (r', γ)))%I with "[Hc]" as "Hc".

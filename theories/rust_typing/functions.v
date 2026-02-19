@@ -124,7 +124,7 @@ Section function.
     (* current frame *)
     allocated_locals (π, f) (f_args fn).*1 ∗
     (* arg ownership *)
-    ([∗list] l;t∈lsa;fps.(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned false] #r @ (◁ ty)) ∗
+    ([∗list] l;t∈lsa;fps.(fp_atys), let '(existT rt (ty, r)) := t in l ◁ₗ[π, Owned] #r @ (◁ ty)) ∗
     ([∗ list] xl; synty ∈ zip ((f_args fn).*1) lsa; sta, xl.1 is_live{(π, f), synty} xl.2) ∗
     (* sidecondition *)
     fps.(fp_Sc) π ∗
@@ -382,7 +382,7 @@ Section call.
       iExists _. iR. iR.
       iPoseProof (ty_own_val_sidecond with "Hv") as "#$".
       iPoseProof (heap_pointsto_loc_in_bounds with "Hl") as "#Hlb".
-      rewrite Hlyv. do 2 iR. iExists _. iR. iNext. eauto with iFrame. }
+      rewrite Hlyv. iR. iExists _. iR. eauto with iFrame. }
 
     iExists RET_PROP. iSplitL "Hf Hm Hϝ" => /=.
     - iApply wps_fupd.
@@ -620,10 +620,10 @@ Section function_subsume.
         inhale (fp_Sc ((F2 κs tys).(fn_p) b) π);
         ls ← iterate: fp_atys ((F2 κs tys).(fn_p) b) with [] {{ ty T ls,
                ∀ l : loc,
-                inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
+                inhale (l ◁ₗ[π, Owned] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
         ∃ (a : _),
         exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 MetaNone = ty_syn_type ty2 MetaNone) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
-        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
+        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
         (* show that F1.ret implies F2.ret *)
@@ -650,7 +650,7 @@ Section function_subsume.
 
     (* provide the argument ownership *)
     set (INV n ls := (⌜ls = take n lsa⌝ ∗ [∗ list] i ↦ l;'(existT rt (ty, r)) ∈ lsa;fp_atys ((F2 κs tys).(fn_p) b),
-        if decide (n ≤ i) then l ◁ₗ[ π, Owned false] # r @ (◁ ty) else True)%I).
+        if decide (n ≤ i) then l ◁ₗ[ π, Owned] # r @ (◁ ty) else True)%I).
     iPoseProof (iterate_elim1 INV with "Ha [Hargs] []") as "Hb".
     { unfold INV. iR. iApply (big_sepL2_impl with "Hargs").
       iModIntro. iIntros (?? [? []] ??).
@@ -678,7 +678,7 @@ Section function_subsume.
 
     (* take the argument ownership *)
     set (INV n := ([∗ list] i ↦ l;'(existT rt (ty, r)) ∈ lsa;fp_atys ((F1 κs tys).(fn_p) a),
-        if decide (i < n) then l ◁ₗ[ π, Owned false] # r @ (◁ ty) else True)%I).
+        if decide (i < n) then l ◁ₗ[ π, Owned] # r @ (◁ ty) else True)%I).
     iPoseProof (iterate_elim0 INV with "Hc [] []") as "Hb".
     { unfold INV. iApply big_sepL2_intro.
       { rewrite length_vec_to_list. lia. }
@@ -692,7 +692,7 @@ Section function_subsume.
       rewrite -(list_insert_id lsa i l); last done.
       rewrite -(list_insert_id (fp_atys ((F1 κs tys).(fn_p) a)) i (r :$@: ty)%F); last done.
       opose proof* (big_sepL2_insert lsa (fp_atys ((F1 κs tys).(fn_p) a)) i l (r :$@: ty)%F
-        (λ i0 l0 '(existT rt0 (ty0, r0)), if decide (i0 < S i) then l0 ◁ₗ[ π, Owned false] # r0 @ (◁ ty0) else True)%I 0%nat) as Hr.
+        (λ i0 l0 '(existT rt0 (ty0, r0)), if decide (i0 < S i) then l0 ◁ₗ[ π, Owned] # r0 @ (◁ ty0) else True)%I 0%nat) as Hr.
       { eapply lookup_lt_Some; done. }
       { eapply lookup_lt_Some; done. }
       simpl in Hr. rewrite Hr. clear Hr.
@@ -775,10 +775,10 @@ Section function_subsume.
         inhale (fp_Sc ((F2 κs tys).(fn_p) b) π);
         ls ← iterate: fp_atys ((F2 κs tys).(fn_p) b) with [] {{ ty T ls,
                ∀ l : loc,
-                inhale (l ◁ₗ[π, Owned false] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
+                inhale (l ◁ₗ[π, Owned] #(projT2 ty).2 @ ◁ (projT2 ty).1); return T (ls ++ [l]) }};
         ∃ (a : _),
         exhale (⌜Forall2 (λ '(existT _ (ty1, _)) '(existT _ (ty2, _)), ty_syn_type ty1 = ty_syn_type ty2) (fp_atys ((F1 κs tys).(fn_p) a)) (fp_atys ((F2 κs tys).(fn_p) b))⌝);
-        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned false] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
+        iterate: zip ls (fp_atys ((F1 κs tys).(fn_p) a)) {{ e T, exhale (e.1 ◁ₗ[π, Owned] #(projT2 e.2).2 @ ◁ (projT2 e.2).1); return T }};
         exhale (fp_Pa ((F1 κs tys).(fn_p) a) π);
         exhale (fp_Sc ((F1 κs tys).(fn_p) a) π);
         (* show that F1.ret implies F2.ret *)

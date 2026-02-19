@@ -119,8 +119,8 @@ Section value.
 
   Lemma ofty_value_untyped_to_array π l vs ly n :
     syn_type_has_layout (UntypedSynType ly) ly →
-    (l ◁ₗ[π, Owned false] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I -∗
-    l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))).
+    (l ◁ₗ[π, Owned] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I -∗
+    l ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))).
   Proof.
     iIntros (?) "Ha".
     iPoseProof (ltype_own_has_layout with "Ha") as "(%ly' & %Hst & %Hly)".
@@ -141,8 +141,8 @@ Section value.
     ly' = mk_array_layout ly n →
     vs = fmap PlaceIn vs' →
     vs'' = (mjoin vs') →
-    (l ◁ₗ[π, Owned false] #vs @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
-    (l ◁ₗ[π, Owned false] #vs'' @ ◁ value_t (UntypedSynType ly'))%I.
+    (l ◁ₗ[π, Owned] #vs @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
+    (l ◁ₗ[π, Owned] #vs'' @ ◁ value_t (UntypedSynType ly'))%I.
   Proof.
     iIntros (???) "Ha".
     iPoseProof (ltype_own_has_layout with "Ha") as "(%ly1 & %Hst & %Hly)".
@@ -161,8 +161,8 @@ Section value.
   Qed.
   Lemma ofty_value_untyped_from_array  π l (vs : val) ly n :
     length vs = n * ly_size ly →
-    (l ◁ₗ[π, Owned false] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
-    (l ◁ₗ[π, Owned false] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I.
+    (l ◁ₗ[π, Owned] #(fmap (M:=list) PlaceIn $ (reshape (replicate n (ly_size ly)) vs : list val)) @ ◁ (array_t n (value_t (UntypedSynType ly))))%I -∗
+    (l ◁ₗ[π, Owned] #vs @ ◁ value_t (UntypedSynType (mk_array_layout ly n)))%I.
   Proof.
     iIntros (?) "Hv". iApply ofty_value_untyped_from_array'; last done.
     - done.
