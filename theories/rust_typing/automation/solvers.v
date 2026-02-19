@@ -1229,6 +1229,11 @@ Section tac.
     E1 = E2 →
     lfts_outlives_E [] κ ++ E1 = E2.
   Proof. done. Qed.
+
+  Lemma tac_simplify_elctx_assoc (L1 L2 L3 E : elctx) :
+    L1 ++ L2 ++ L3 = E →
+    (L1 ++ L2) ++ L3 = E.
+  Proof. rewrite app_assoc. done. Qed.
 End tac.
 
 Ltac ty_is_var ty :=
@@ -1278,17 +1283,18 @@ Ltac simplify_elctx_subterm :=
 
 Ltac simplify_elctx_step :=
 simpl;
-rewrite -?app_assoc;
 match goal with
+| |- (_ ++ _) ++ _ = _ =>
+    notypeclasses refine (tac_simplify_elctx_assoc _ _ _ _ _)
 | |- ty_wf_E ?ty ++ _ = _ =>
     ty_is_not_var ty;
-    refine (simplify_app_head_tac _ _ _ _ _ _);
+    notypeclasses refine (simplify_app_head_tac _ _ _ _ _ _);
     [ simplify_elctx_subterm | ]
 | |- ty_wf_E ?ty ++ _ = _ =>
     ty_is_var ty; f_equiv
 | |- ty_outlives_E ?ty _ ++ _ = _ =>
     ty_is_not_var ty;
-    refine (simplify_app_head_tac _ _ _ _ _ _);
+    notypeclasses refine (simplify_app_head_tac _ _ _ _ _ _);
     [ simplify_elctx_subterm | ]
 | |- ty_outlives_E ?ty _ ++ _ = _ =>
     ty_is_var ty; f_equiv
@@ -1319,8 +1325,9 @@ Ltac simplify_elctx :=
   | |- ?E = ?E' =>
     is_evar E';
     simpl;
+    unfold typarams_elctx, typaram_elctx;
+    simpl;
     refine (simplify_app_head_init_tac _ _ _);
-    rewrite -?app_assoc;
     repeat simplify_elctx_step
   end.
 
