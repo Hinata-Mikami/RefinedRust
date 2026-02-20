@@ -2,11 +2,15 @@ stages: [ nix-cache, build, lint, tests ]
 
 .upstream_only: &upstream_only
   rules:
-    - if: $CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && $CI_PIPELINE_SOURCE != "merge_request_event"
+    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && ($CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "trigger" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE != "api")'
+
+.nightly_only: &nightly_only
+  rules:
+    - if: '$CI_PROJECT_PATH == "lgaeher/refinedrust-dev" && ($CI_PIPELINE_SOURCE == "trigger" || $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "api")'
 
 .forks_only: &forks_only
   rules:
-    - if: $CI_PROJECT_PATH != "lgaeher/refinedrust-dev"
+    - if: '$CI_PROJECT_PATH != "lgaeher/refinedrust-dev"'
 
 
 # Nix jobs expects two variables: `NIX_CI_CACHE_PUB_KEY` and `NIX_CI_CACHE_PRIV_KEY` (only available on upstream)
@@ -188,4 +192,15 @@ build-opam-rocq.9.1.0-timing:
   tags: [ fp-timing ]
   variables:
     OPAM_PINS: "rocq-core version 9.1.0 dune version 3.21.0"
+    MAKE_TARGET: "all_with_examples"
+
+build-opam-iris.dev:
+  <<: *nightly_only
+  extends: .opam
+  tags: [ fp ]
+  variables:
+    STDPP_REPO: "iris/stdpp"
+    IRIS_REPO: "iris/iris"
+    OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
+    OPAM_PINS: "rocq-core version 9.1.0 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
     MAKE_TARGET: "all_with_examples"
