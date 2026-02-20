@@ -4,10 +4,12 @@ From iris.proofmode Require Import proofmode.
 (** Defines the [Boringly] modality which carves out the part of a proposition [P] which is persistent. *)
 Section boringly.
   Context {PROP : bi}.
+  Context `{!Sbi PROP}.
   Context `{!BiAffine PROP}.
   Context `{!BiPlainly PROP}.
   Context `{!BiPersistentlyForall PROP}.
   Context `{!BiPersistentlyImplPlainly PROP}.
+  Context `{!BiPersistentlyImplSiPure PROP}.
   Implicit Types (P Q : PROP).
 
   Definition boringly_def (P : PROP) : PROP :=

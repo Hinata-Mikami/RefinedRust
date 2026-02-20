@@ -41,7 +41,7 @@ Section stratify.
   Proof.
     iIntros "HT". iIntros (?????) "#CTX #HE HL ??? Hl".
     iModIntro. iExists L, True%I, [], +[], -[].
-    iR. iFrame. simpl. iR. iApply logical_step_intro; eauto.
+    iR. iFrame. simpl. iApply logical_step_intro; eauto.
   Qed.
 
   Lemma stratify_ltype_struct_iter_cons π E L mu mdu ma {M} (m : M) (l : loc) sls i0 {rts rt} (ltys : hlist ltype rts) (rfns : plist place_rfnRT (rt :: rts)) (lty : ltype rt) k T :

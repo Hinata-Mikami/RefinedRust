@@ -434,7 +434,8 @@ Proof. by rewrite expr_wp_eq. Qed.
 Lemma fupd_wpe e E π Ψ :
   (|={E}=> WPe{π} e @ E {{ Ψ }}) ⊢ WPe{π} e @ E{{ Ψ }}.
 Proof.
-  rewrite expr_wp_unfold. iApply fupd_wp.
+  rewrite expr_wp_unfold/expr_wp_def.
+  iIntros "Ha". by iApply fupd_wp.
 Qed.
 
 Lemma wpe_fupd e E π Ψ :

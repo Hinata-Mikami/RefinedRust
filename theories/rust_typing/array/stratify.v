@@ -226,7 +226,7 @@ Section stratify.
     iIntros "(Ha & $)".
     iModIntro.
     rewrite ltype_own_array_unfold /array_ltype_own.
-    iExists _. iFrame "∗%". iR.
+    iExists _. iFrame "% Hlb". iR.
     iApply (big_sepL2_mono with "Ha").
     intros ??? Hlook1 Hlook2.
     rewrite /OffsetLocSt /use_layout_alg' Halg/=. done.

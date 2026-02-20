@@ -1,5 +1,5 @@
 (** From the CPP'26 paper "Building Blocks for Step-Indexed Program Logics",
-    by Thomas Somers, Jonas Kastberg Hinrichsen, Lennard Gäher, and Robbert Krebbers. 
+    by Thomas Somers, Jonas Kastberg Hinrichsen, Lennard Gäher, and Robbert Krebbers.
 *)
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.proofmode Require Import proofmode.
@@ -163,7 +163,7 @@ Local Lemma wp_progress_gen (hlc : has_lc) Σ Λ `{!invGpreS Σ} `{trGpreS Σ} `
   not_stuck e2 σ2.
 Proof.
   intros Hwp ??.
-  eapply pure_soundness.
+  eapply (pure_soundness (PROP:=iPropI Σ)).
   (* eapply (step_fupdN_soundness_gen _ hlc _ _) => Hinv. *)
   eapply (physical_stepN_soundness _ _ 0) => Hinv Htr.
   iIntros "_".
@@ -217,7 +217,7 @@ Lemma wp_strong_adequacy_gen (hlc : has_lc) Σ Λ `{!invGpreS Σ} `{trGpreS Σ} 
   φ.
 Proof.
   intros Hwp ?.
-  eapply pure_soundness.
+  eapply (pure_soundness (PROP:=iPropI Σ)).
   eapply (physical_stepN_soundness _ _ 0) => Hinv Htr.
   iIntros "_".
   iMod Hwp as (stateI Φ fork_post state_interp_mono) "(Hσ & Hwp & Hφ)".

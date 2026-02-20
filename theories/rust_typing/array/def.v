@@ -65,7 +65,7 @@ Section array.
     iApply (big_sepL2_elim_r).
     iApply (big_sepL2_impl with "Hl").
     iIntros "!>" (k ? ? _ _) "((% & ? &Hv) & Hl)".
-    iExists _, _; iFrame. rewrite /offset_loc. done.
+    iExists _, _; iFrame.
   Qed.
 
   Lemma array_own_val_extract_pointsto π q ly ty rs l len :
@@ -215,7 +215,7 @@ Section array.
     eapply syn_type_has_layout_array_inv in Hst as (ly0 & Hst & -> & ?).
     assert (ly0 = ly') as -> by by eapply syn_type_has_layout_inj.
     iAssert ([∗ list] i ↦ x; q' ∈ r; qs, logical_step E (array_own_el_shr π κ i ly' ty x l ∗ q'.[κ']))%I with "[Hb]" as "Hb".
-    { iApply (big_sepL2_wand with "Hb"). iApply big_sepL2_intro; first by lia.
+    { iApply (big_sepL2_wand with "Hb"). iApply big_sepL2_intro. { simpl in *. lia. }
       iModIntro. iIntros (k x q0 Hlook1 Hlook2) "(Hb & Htok)".
       rewrite bi_exist_comm.
       iApply fupd_logical_step.
@@ -237,7 +237,7 @@ Section array.
         { eapply use_layout_alg_wf. done. }
         {  done. }
       - assert (1 + k ≤ len)%nat as ?.
-        { eapply lookup_lt_Some in Hlook1. lia. }
+        { eapply lookup_lt_Some in Hlook1. simpl in *. lia. }
         iApply loc_in_bounds_offset; last done.
         { done. }
         { rewrite /offset_loc. simpl. lia. }

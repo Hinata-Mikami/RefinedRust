@@ -766,7 +766,7 @@ Section heap.
     rewrite heap_pointsto_mbyte_eq.
     iIntros "[H1 H2]".
     iDestruct "H1" as (??) "H1". iDestruct "H2" as (??) "H2".
-    iCombine "H1 H2" as "H". rewrite own_valid discrete_valid.
+    iCombine "H1 H2" as "H". rewrite own_valid internal_cmra_valid_discrete.
     iDestruct "H" as %Hvalid. iPureIntro.
     move: Hvalid => /= /auth_frag_valid /singleton_valid.
     move => -[] /= _ /to_agree_op_inv_L => ?. by simplify_eq.

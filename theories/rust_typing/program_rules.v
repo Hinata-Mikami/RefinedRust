@@ -66,7 +66,7 @@ Section find.
   Lemma find_in_context_type_valp_loc l T :
     (∃ π rt (lt : ltype rt) r, l ◁ₗ[π, Owned] r @ lt ∗ T (l ◁ₗ[π, Owned] r @ lt))
     ⊢ find_in_context (FindValP (val_of_loc l)) T.
-  Proof. iDestruct 1 as (π rt lt r) "(Hl & HT)". iExists (l ◁ₗ[π, Owned] r @ lt)%I. iFrame. done. Qed.
+  Proof. iDestruct 1 as (π rt lt r) "(Hl & HT)". iExists (l ◁ₗ[π, Owned] r @ lt)%I. iFrame. Qed.
   Global Instance find_in_context_type_valp_loc_inst l :
     FindInContext (FindValP (val_of_loc l)) FICSyntactic | 5 :=
     λ T, i2p (find_in_context_type_valp_loc l T).
@@ -280,7 +280,7 @@ Section find.
     [† κ] ∗ T true
     ⊢ find_in_context (FindOptLftDead κ) T.
   Proof.
-    iIntros "(Hdead & HT)". iExists true. iFrame. done.
+    iIntros "(Hdead & HT)". iExists true. iFrame.
   Qed.
   Global Instance find_in_context_opt_lft_dead_inst κ :
     FindInContext (FindOptLftDead κ) FICSyntactic | 1 :=
@@ -309,7 +309,7 @@ Section find.
     (∃ prepaid P, guarded prepaid P ∗ T (Some (prepaid, P)))
     ⊢ find_in_context (FindOptGuarded) T.
   Proof.
-    iIntros "(% & % & Hg & HT)". iExists _. iFrame. done.
+    iIntros "(% & % & Hg & HT)". iExists _. iFrame.
   Qed.
   Definition find_in_context_opt_guarded_inst := [instance @find_in_context_opt_guarded with FICSyntactic].
   Global Existing Instance find_in_context_opt_guarded_inst | 1.

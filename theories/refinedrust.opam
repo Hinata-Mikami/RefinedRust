@@ -24,12 +24,12 @@ depends: [
 ]
 
 pin-depends: [
-  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
-  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
-  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#ec795ece9125d60d9974e15fc52f3dfe91ae3f4b"]
-  ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#6b080cdd7a145cd5cbb2b7d8b17adf6ee2ca8f08"]
-  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#6c7ba2fb49b0849ebc6c4476e1d11ffce534d4fd"]
-  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#8e401c363dc8e4337afcadce832e0cef9dc33a7c"]
+  ["rocq-stdpp.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#3d918b797b0addee89447b0c06a988dd080f887f"]
+  ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#3d918b797b0addee89447b0c06a988dd080f887f"]
+  ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#3d918b797b0addee89447b0c06a988dd080f887f"]
+  ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#d4cb3274976b0e940710a79d3bef76ef55a721f3"]
+  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#cf145fab5522363b1883eb05d9edbab489d14db7"]
+  ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#2fb071653b08f9808fb94aa53e27b58b9c83486a"]
 ]
 
 build: [

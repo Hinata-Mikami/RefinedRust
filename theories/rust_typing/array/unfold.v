@@ -267,8 +267,7 @@ Section unfold.
     iModIntro. rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists (mk_array_layout ly len). iFrame "% ∗".
     simpl. iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
-    iR. iR.
-    iMod "Hb" as "(%Hlen & Hb)".
+    iR. iMod "Hb" as "(%Hlen & Hb)".
     rewrite big_sepL2_replicate_l; last done.
     iMod (ofty_owned_array_extract_pointsto with "Hlb [Hb]") as "(%v & Hl & % & Ha)"; [done.. | | ].
     { iApply (big_sepL_impl with "Hb"). iModIntro. iIntros (k r Hlook). iIntros "(_ & $)". }
@@ -307,8 +306,7 @@ Section unfold.
     rewrite ltype_own_ofty_unfold /lty_of_ty_own.
     iExists (mk_array_layout ly len). iFrame "% ∗".
     simpl. iSplitR. { iPureIntro. eapply syn_type_has_layout_array; done. }
-    iR. iR.
-    iMod "Hb".
+    iR. iMod "Hb".
     (* TODO refactor *)
     set (R := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗ [∗ list] i↦r'' ∈ r', (l offset{ly}ₗ i) ◁ₗ[ π, Owned] r'' @ ◁ ty))%I).
     iPoseProof (pinned_bor_iff _ _ R _ R with "[] [] Hb") as "Hb".
@@ -444,7 +442,7 @@ Section unfold.
     iExists ly'. iFrame "% ∗".
     rewrite ly_size_mk_array_layout in Hsz.
     iSplitR. { iPureIntro. lia. }
-    iR. iR. iMod "Hb".
+    iR. iMod "Hb".
     set (R := (∃ r', gvar_auth γ r' ∗ (|={lftE}=> ⌜length r' = len⌝ ∗ [∗ list] i↦r'' ∈ r', (l offset{ly'}ₗ i) ◁ₗ[ π, Owned] r'' @ ◁ ty))%I).
     iApply (pinned_bor_iff _ R _ R with "[] []").
     { subst R. iNext. iModIntro. iSplit.

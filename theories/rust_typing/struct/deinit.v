@@ -174,7 +174,7 @@ Context `{!typeGS Σ}.
     iPoseProof ("Hclose_l" $! _ lts' rs'' with "[] [] [Hx]")as "Hx".
     { iPureIntro. rewrite -Hlen length_replicate length_fmap//. }
     { iPureIntro.
-      eapply (Forall2_transitive _ (λ st '(existT rt (lt, _)), st = ltype_st lt)); [ | apply Hf | ].
+      eapply (Forall2_trans _ (λ st '(existT rt (lt, _)), st = ltype_st lt)); [ | apply Hf | ].
       - intros [? []] st' [? []]; simpl. naive_solver.
       - unfold lts', rs''.
         generalize (sls_fields sls).*2 as sts.

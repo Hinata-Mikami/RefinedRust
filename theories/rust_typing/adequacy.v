@@ -94,11 +94,11 @@ Lemma refinedrust_adequacy Σ `{!typePreG Σ} `{ALG : LayoutAlg} (thread_mains :
   (* then it has not gotten stuck *)
   ∀ e2, e2 ∈ t2 → not_stuck e2 σ2.
 Proof.
-  move => -> Hwp. apply: (wp_strong_adequacy _ _ _ NotStuck) . move => ? ?.
-(* heap/Caesium stuff *)
+  move => -> Hwp. apply: (wp_strong_adequacy _ _ refinedc_trgen NotStuck) . move => ? ?.
+  (* heap/Caesium stuff *)
   set h := to_heapUR ∅.
   iMod (own_alloc (● h ⋅ ◯ h)) as (γh) "[Hh _]" => //.
-{ apply auth_both_valid_discrete. split => //. }
+  { apply auth_both_valid_discrete. split => //. }
   iMod(ghost_map_alloc fns) as (γf) "[Hf Hfm]".
   iMod (ghost_map_alloc_empty (V:=(Z * nat * alloc_kind))) as (γr) "Hr".
   iMod (ghost_map_alloc_empty (V:=bool)) as (γs) "Hs".
@@ -158,8 +158,9 @@ Proof.
     iApply (ghost_map_elem_persist with "Hm"). }
   iMod (Hwp with "Hfm") as "Hmains".
 
-  iModIntro. iExists _, (replicate (length thread_mains) (λ _, True%I)), _, _.
+  iModIntro. iExists c_irisG.(state_interp), (replicate (length thread_mains) (λ _, True%I)), c_irisG.(fork_post), c_irisG.(state_interp_mono).
   iSplitL "Hh Hf Hr Hs Hcur Hall_locals Hlocals"; last first. 1: iSplitL "Hmains Hna Hframe".
+  Unshelve.
   - rewrite big_sepL2_fmap_l. iApply big_sepL2_replicate_r.
     { rewrite length_zip length_seq. unfold num_threads. lia. }
     iApply (big_sepL2_to_zip _ _ (λ _ a b, WP initial_prog (a, b) {{ _, True }})%I).
@@ -192,7 +193,8 @@ Proof.
       iIntros (????) "#CTX #HE HL".
       iModIntro. iExists [], [], True%I.
       iFrame. iSplitR.
-      { iApply maybe_logical_step_intro. simpl. eauto. }
+      { simpl. eauto. }
+      iSplitR. { simpl. eauto. }
       iIntros "_". simpl. iR.
       iIntros (????) "_ _ HL". iModIntro.
       iExists [], [], True%I. iFrame.
