@@ -204,3 +204,9 @@ build-opam-iris.dev:
     OPAMIGNOREPINDEPENDS: "true" # so that the pins below don't get overridden
     OPAM_PINS: "rocq-core version 9.1.0 rocq-stdlib version 9.0.0 git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV   git+https://gitlab.mpi-sws.org/$IRIS_REPO#$IRIS_REV git+https://gitlab.mpi-sws.org/iris/iris-contrib git+https://gitlab.mpi-sws.org/iris/lambda-rust"
     MAKE_TARGET: "all_with_examples"
+  script:
+   - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+   - make setup-dune-workspace
+   - source "$HOME/.cargo/env"
+   - scripts/update-rust-toolchain.sh # update rust toolchain
+   - ci/buildjob
