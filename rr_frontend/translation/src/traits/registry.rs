@@ -375,7 +375,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         spec: specs::traits::LiteralImpl,
     ) -> TraitResult<'tcx, specs::traits::LiteralImplRef<'def>> {
-        if self.env.tcx().trait_id_of_impl(did).is_none() {
+        if !self.env.tcx().impl_is_of_trait(did) {
             return Err(Error::NotATraitImpl(did));
         }
 
@@ -447,7 +447,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trace!(
             "enter TR::get_impl_spec_term for impl_did={impl_did:?} impl_args={impl_args:?} trait_args={trait_args:?}"
         );
-        let trait_did = self.env.tcx().trait_id_of_impl(impl_did).ok_or(Error::NotATraitImpl(impl_did))?;
+        let trait_did = self.env.tcx().impl_trait_id(impl_did);
 
         self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
 
@@ -1070,10 +1070,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         &self,
         trait_impl_did: DefId,
     ) -> Result<Option<(specs::traits::SpecAttrsInst, coq::binder::BinderList)>, TranslationError<'tcx>> {
-        let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
-        let ty::ImplSubject::Trait(trait_ref) = subject else {
-            return Err(Error::NotATraitImpl(trait_impl_did).into());
-        };
+        let subject = self.env.tcx().impl_trait_header(trait_impl_did);
+        let trait_ref = subject.trait_ref.skip_binder();
 
         let trait_spec_ref = self.lookup_trait(trait_ref.def_id).ok_or(Error::NotATrait(trait_ref.def_id))?;
 
@@ -1107,13 +1105,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
     ) -> Result<ty::PolyFnSig<'tcx>, TranslationError<'tcx>> {
         let impl_did = self.env.tcx().impl_of_assoc(did).ok_or(Error::NotATraitMethod(did))?;
 
-        let subject = self.env.tcx().impl_subject(impl_did).skip_binder();
-        let ty::ImplSubject::Trait(trait_ref) = subject else {
-            return Err(Error::NotATraitImpl(impl_did).into());
-        };
+        let subject = self.env.tcx().impl_trait_header(impl_did);
+        let trait_ref = subject.trait_ref.skip_binder();
 
         let assoc_item = self.env.tcx().associated_item(did);
-        let trait_item_did = assoc_item.trait_item_def_id.unwrap();
+        let trait_item_did = assoc_item.trait_item_def_id().unwrap();
 
         let impl_ty = self.env.tcx().type_of(did).instantiate_identity();
         let ty::TyKind::FnDef(_, impl_item_params) = impl_ty.kind() else { unreachable!() };
@@ -1149,11 +1145,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         (specs::traits::RefInst<'def>, BTreeSet<OrderedDefId>, coq::binder::BinderList),
         TranslationError<'tcx>,
     > {
-        let trait_did = self
-            .env
-            .tcx()
-            .trait_id_of_impl(trait_impl_did)
-            .ok_or(Error::NotATraitImpl(trait_impl_did))?;
+        let trait_did = self.env.tcx().impl_trait_id(trait_impl_did);
 
         // check if we registered this impl previously
         let trait_spec_ref = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
@@ -1203,10 +1195,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         };
 
         // figure out the trait ref for this
-        let subject = self.env.tcx().impl_subject(trait_impl_did).skip_binder();
-        let ty::ImplSubject::Trait(trait_ref) = subject else {
-            return Err(Error::NotATraitImpl(trait_impl_did).into());
-        };
+        let header = self.env.tcx().impl_trait_header(trait_impl_did);
+        let trait_ref = header.trait_ref.skip_binder();
 
         // set up scope
         let typing_env = ty::TypingEnv::post_analysis(self.env.tcx(), trait_impl_did);
@@ -1228,7 +1218,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             if let ty::AssocKind::Type { .. } = x.kind {
                 let ty_item = assoc_items
                     .filter_by_name_unhygienic_and_kind(x.ident(self.env.tcx()).name, ty::AssocTag::Type)
-                    .find(|y| y.trait_item_def_id == Some(x.def_id));
+                    .find(|y| y.trait_item_def_id() == Some(x.def_id));
 
                 if let Some(ty_item) = ty_item {
                     let ty_did = ty_item.def_id;

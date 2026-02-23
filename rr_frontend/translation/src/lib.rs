@@ -126,19 +126,14 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         })
     }
 
-    /// Make a shim entry for a trait.
+    /// Make a shim entry for a trait impl.
     fn make_trait_impl_shim_entry(
         &self,
         did: DefId,
         decl: &specs::traits::ImplSpec<'rcx>,
     ) -> Option<shim_registry::TraitImplShim> {
         info!("making shim entry for impl {did:?}");
-        let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = self.env.tcx().impl_trait_ref(did);
-
-        let Some(impl_ref) = impl_ref else {
-            trace!("leave make_trait_impl_shim_entry (failed getting impl ref)");
-            return None;
-        };
+        let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = self.env.tcx().impl_trait_ref(did);
 
         let impl_ref = normalize_in_function(did, self.env.tcx(), impl_ref.skip_binder()).unwrap();
         trace!("normalized impl_ref: {impl_ref:?}");
@@ -281,7 +276,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         for (did, _) in self.procedure_registry.iter_code() {
             if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
                 info!("found impl method: {:?}", did);
-                if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
+                if self.env.tcx().impl_is_of_trait(impl_did) {
                     info!("found trait method: {:?}", did);
                     continue;
                 }
@@ -294,7 +289,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         for (did, _) in self.procedure_registry.iter_only_spec() {
             if let Some(impl_did) = self.env.tcx().impl_of_assoc(did.def_id) {
                 info!("found impl method: {:?}", did);
-                if self.env.tcx().trait_id_of_impl(impl_did).is_some() {
+                if self.env.tcx().impl_is_of_trait(impl_did) {
                     info!("found trait method: {:?}", did);
                     continue;
                 }
@@ -1150,13 +1145,12 @@ fn is_only_spec_function(vcx: &VerificationCtxt<'_, '_>, did: DefId) -> bool {
     // and trait objects, but don't do anything functionally interesting.
 
     if let Some(impl_did) = vcx.env.trait_impl_of_method(did) {
-        let trait_impl = vcx.env.tcx().impl_subject(impl_did);
-        if let ty::ImplSubject::Trait(trait_ref) = trait_impl.skip_binder() {
-            let debug_did = search::try_resolve_did(vcx.env.tcx(), &["core", "fmt", "Debug"]);
-            if rrconfig::trust_debug() && debug_did == Some(trait_ref.def_id) {
-                println!("Warning: automatically trusting implementation of `Debug::fmt`: {did:?}");
-                return true;
-            }
+        let subject = vcx.env.tcx().impl_trait_header(impl_did);
+        let trait_ref = subject.trait_ref.skip_binder();
+        let debug_did = search::try_resolve_did(vcx.env.tcx(), &["core", "fmt", "Debug"]);
+        if rrconfig::trust_debug() && debug_did == Some(trait_ref.def_id) {
+            println!("Warning: automatically trusting implementation of `Debug::fmt`: {did:?}");
+            return true;
         }
     }
 
@@ -1492,9 +1486,11 @@ fn check_consider_function<'tcx>(
     }
 
     // check if this is an impl of a trait
-    let Some(trait_did) = env.tcx().trait_id_of_impl(impl_did) else {
+    if !env.tcx().impl_is_of_trait(impl_did) {
         return Ok(false);
-    };
+    }
+    let trait_ref = env.tcx().impl_trait_ref(impl_did).skip_binder();
+    let trait_did = trait_ref.def_id;
 
     // check if the impl has any attributes declared on it
     if env.has_any_tool_attribute(impl_did) {
@@ -1502,10 +1498,11 @@ fn check_consider_function<'tcx>(
     }
 
     // Check if this is part of an impl of a derive trait for an ADT
-    let subject = vcx.env.tcx().impl_subject(impl_did).skip_binder();
-    let ty::ImplSubject::Trait(trait_ref) = subject else {
+    if !vcx.env.tcx().impl_is_of_trait(impl_did) {
         return Err(traits::Error::NotATraitImpl(impl_did).into());
-    };
+    }
+    let trait_ref = vcx.env.tcx().impl_trait_ref(impl_did).skip_binder();
+
     let self_ty = trait_ref.self_ty();
     let ty::TyKind::Adt(def, _) = self_ty.kind() else {
         return Ok(false);
@@ -1641,7 +1638,8 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
 
     for trait_impl_id in trait_impl_ids {
         let did = trait_impl_id.to_def_id();
-        let trait_did = vcx.env.tcx().trait_id_of_impl(did).unwrap();
+        let trait_ref = vcx.env.tcx().impl_trait_ref(did).skip_binder();
+        let trait_did = trait_ref.def_id;
 
         // check if this trait has been registered
         if let Some(registered) = vcx.trait_registry.lookup_trait(trait_did) {
@@ -1884,14 +1882,15 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
     for trait_impl_id in trait_impl_ids {
         let did = trait_impl_id.to_def_id();
-        let trait_did = vcx.env.tcx().trait_id_of_impl(did).unwrap();
+        let trait_ref = vcx.env.tcx().impl_trait_ref(did).skip_binder();
+        let trait_did = trait_ref.def_id;
 
         // check if we registered this impl previously
         let Some(_) = vcx.trait_registry.lookup_impl(did) else { continue };
 
-        let subject = vcx.env.tcx().impl_subject(did).skip_binder();
-
-        let ty::ImplSubject::Trait(_) = subject else { continue };
+        if !vcx.env.tcx().impl_is_of_trait(did) {
+            continue;
+        }
 
         let tcx = vcx.env.tcx();
 
@@ -1912,7 +1911,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                     let fn_item = assoc_items.filter_by_name_unhygienic_and_kind(
                         x.ident(tcx).name,
                         ty::AssocTag::Fn,
-                    ).find(|y| y.trait_item_def_id == Some(x.def_id));
+                    ).find(|y| y.trait_item_def_id() == Some(x.def_id));
                     trace!("Translating item {x:?}, fn_item = {fn_item:?}");
 
                     if let Some(fn_item) = fn_item {

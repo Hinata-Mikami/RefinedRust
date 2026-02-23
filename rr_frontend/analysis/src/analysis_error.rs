@@ -14,6 +14,7 @@ pub enum AnalysisError {
 }
 
 impl AnalysisError {
+    #[must_use]
     pub fn to_pretty_str(self, mir: &mir::Body<'_>) -> String {
         match self {
             Self::UnsupportedStatement(location) => {

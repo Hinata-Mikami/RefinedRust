@@ -90,7 +90,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
+            let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(did);
             // now we need to get the constraints and see if we can unify them
             // TODO: come up with algorithm for that
             // - I guess we need to unify the type variables here.
@@ -100,39 +100,37 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
             // - and check that it remains consistent.
             // Then I have an output mapping, and can check if the where clauses are satisfied for
             // that mapping
-            if let Some(impl_ref) = impl_ref {
-                let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
+            let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
-                let this_impl_args = impl_ref.args;
-                // filter by the generic instantiation for the trait
-                trace!("found impl with args {:?}", this_impl_args);
-                // args has self at position 0 and generics of the trait at position 1..
+            let this_impl_args = impl_ref.args;
+            // filter by the generic instantiation for the trait
+            trace!("found impl with args {:?}", this_impl_args);
+            // args has self at position 0 and generics of the trait at position 1..
 
-                // check if the generic argument types match up
-                let mut unification_map = HashMap::new();
-                if !unification::args_unify_types(
-                    &this_impl_args.as_slice()[1..],
-                    trait_args,
-                    &mut unification_map,
-                ) {
-                    trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
-                    continue;
-                }
+            // check if the generic argument types match up
+            let mut unification_map = HashMap::new();
+            if !unification::args_unify_types(
+                &this_impl_args.as_slice()[1..],
+                trait_args,
+                &mut unification_map,
+            ) {
+                trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
+                continue;
+            }
 
-                // TODO check if the where clauses match up
+            // TODO check if the where clauses match up
 
-                trace!("found impl {:?}", impl_ref);
-                if solution.is_some() {
-                    println!(
-                        "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                        trait_did,
-                        for_type,
-                        solution.unwrap(),
-                        impl_ref.def_id,
-                    );
-                } else {
-                    solution = Some(*did);
-                }
+            trace!("found impl {:?}", impl_ref);
+            if let Some(solution) = solution {
+                println!(
+                    "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
+                    trait_did,
+                    for_type,
+                    solution,
+                    impl_ref.def_id,
+                );
+            } else {
+                solution = Some(*did);
             }
         }
 
@@ -157,39 +155,36 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
             trace!("trying to unify types: {for_type:?} and {impl_self_ty:?}");
             // check if this is an implementation for the right type
             if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
-                let impl_ref: Option<ty::EarlyBinder<'_, ty::TraitRef<'_>>> = tcx.impl_trait_ref(did);
+                let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(did);
+                let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
-                if let Some(impl_ref) = impl_ref {
-                    let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
+                let this_impl_args = impl_ref.args;
+                // filter by the generic instantiation for the trait
+                trace!("found impl with args {:?}", this_impl_args);
+                // args has self at position 0 and generics of the trait at position 1..
 
-                    let this_impl_args = impl_ref.args;
-                    // filter by the generic instantiation for the trait
-                    trace!("found impl with args {:?}", this_impl_args);
-                    // args has self at position 0 and generics of the trait at position 1..
+                // check if the generic argument types match up
+                let mut unification_map = unification_map.clone();
+                if !unification::args_unify_types(
+                    &this_impl_args.as_slice()[1..],
+                    trait_args,
+                    &mut unification_map,
+                ) {
+                    trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
+                    continue;
+                }
 
-                    // check if the generic argument types match up
-                    let mut unification_map = unification_map.clone();
-                    if !unification::args_unify_types(
-                        &this_impl_args.as_slice()[1..],
-                        trait_args,
-                        &mut unification_map,
-                    ) {
-                        trace!("args don't unify: {this_impl_args:?} and {trait_args:?}");
-                        continue;
-                    }
-
-                    trace!("found impl {:?}", impl_ref);
-                    if solution.is_some() {
-                        println!(
-                            "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                            trait_did,
-                            for_type,
-                            solution.unwrap(),
-                            impl_ref.def_id,
-                        );
-                    } else {
-                        solution = Some(*did);
-                    }
+                trace!("found impl {:?}", impl_ref);
+                if let Some(solution) = solution {
+                    println!(
+                        "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
+                        trait_did,
+                        for_type,
+                        solution,
+                        impl_ref.def_id,
+                    );
+                } else {
+                    solution = Some(*did);
                 }
             }
         }

@@ -714,7 +714,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
             ty::RegionKind::ReBound(idx, r) => {
                 info!("Translating region: Bound {:?} {:?}", idx, r);
-                translation_state.lookup_late_region(usize::from(idx), r.var.index())
+                if let ty::BoundVarIndexKind::Bound(idx) = idx {
+                    translation_state.lookup_late_region(usize::from(idx), r.var.index())
+                } else {
+                    unimplemented!("cannot handle Canonicalized binders");
+                }
             },
 
             ty::RegionKind::RePlaceholder(placeholder) => {
@@ -1656,7 +1660,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 description: "RefinedRust does not support FnPtr".to_owned(),
             }),
 
-            ty::TyKind::Dynamic(_, _, _) => Err(TranslationError::UnsupportedType {
+            ty::TyKind::Dynamic(_, _) => Err(TranslationError::UnsupportedType {
                 description: "RefinedRust does not support trait objects".to_owned(),
             }),
 

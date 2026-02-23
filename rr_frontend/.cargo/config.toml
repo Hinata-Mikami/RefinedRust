@@ -110,6 +110,7 @@ rustflags = [
     "-Aclippy::struct_field_names",
 
     # clippy::restriction
+    "-Aclippy::doc_paragraphs_missing_punctuation",
     "-Aclippy::allow_attributes_without_reason",
     "-Aclippy::arbitrary_source_item_ordering",
     "-Aclippy::default_numeric_fallback",

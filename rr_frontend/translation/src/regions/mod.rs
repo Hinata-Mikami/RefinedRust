@@ -86,9 +86,13 @@ impl EarlyLateRegionMap<'_> {
                 *r
             },
             ty::RegionKind::ReBound(idx, r) => {
-                let binder = self.late_regions.get(usize::from(idx))?;
-                let vid = binder.get(r.var.index())?;
-                Some(*vid)
+                if let ty::BoundVarIndexKind::Bound(idx) = idx {
+                    let binder = self.late_regions.get(usize::from(idx))?;
+                    let vid = binder.get(r.var.index())?;
+                    Some(*vid)
+                } else {
+                    unimplemented!("Canonicalized region variable");
+                }
             },
             _ => None,
         }

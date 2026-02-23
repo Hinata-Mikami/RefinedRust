@@ -57,7 +57,7 @@ pub enum RocqTerm<T, U> {
     App(Box<App<Term, Term>>),
 
     /// A let declaration
-    LetIn(Pattern, Box<RocqTerm<T, U>>, Box<RocqTerm<T, U>>),
+    LetIn(Pattern, Box<Self>, Box<Self>),
 
     /// A record constructor
     RecordBody(RecordBody),
@@ -88,7 +88,7 @@ pub enum RocqTerm<T, U> {
 
     /// A term with a type annotation.
     #[from(ignore)]
-    AsType(Box<RocqTerm<T, U>>, Box<RocqType<U, T>>),
+    AsType(Box<Self>, Box<RocqType<U, T>>),
 
     /// User defined type
     UserDefined(T),

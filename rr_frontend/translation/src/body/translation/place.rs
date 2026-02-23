@@ -79,12 +79,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         sls: struct_sls.to_string(),
                     };
                 },
-                mir::ProjectionElem::Subtype(_) => {
-                    //TODO
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement subtype projection".to_owned(),
-                    });
-                },
                 mir::ProjectionElem::Index(_v) => {
                     //TODO
                     return Err(TranslationError::UnsupportedFeature {

@@ -458,7 +458,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let (inputs, output, region_substitution) = if let Some(impl_did) =
             env.tcx().impl_of_assoc(proc.get_id())
-            && env.tcx().trait_id_of_impl(impl_did).is_some()
+            && env.tcx().impl_is_of_trait(impl_did)
         {
             // If this is a function in a trait impl, we need to do some extra fixing up, because
             // lifetime elision behaves strangely.
@@ -832,9 +832,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             return Ok(None);
         };
 
-        let Some(trait_did) = self.env.tcx().trait_id_of_impl(impl_did) else {
+        if !self.env.tcx().impl_is_of_trait(impl_did) {
             return Ok(None);
-        };
+        }
+        let trait_did = self.env.tcx().impl_trait_id(impl_did);
 
         self.trait_registry
             .lookup_trait(trait_did)

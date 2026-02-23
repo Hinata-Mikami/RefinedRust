@@ -64,13 +64,16 @@ pub(crate) fn resolve_impl_source<'tcx>(
     // Check if the `did` is an associated item
     let trait_ref = if let Some(item) = tcx.opt_associated_item(did) {
         match item.container {
-            ty::AssocItemContainer::Trait => {
+            ty::AssocContainer::Trait => {
                 // this is part of a trait declaration
                 ty::TraitRef::new(tcx, item.container_id(tcx), erased_substs)
             },
-            ty::AssocItemContainer::Impl => {
+            ty::AssocContainer::TraitImpl(_) => {
                 // this is part of an implementation of a trait
-                tcx.impl_trait_ref(item.container_id(tcx))?.instantiate(tcx, erased_substs)
+                tcx.impl_trait_ref(item.container_id(tcx)).instantiate(tcx, erased_substs)
+            },
+            ty::AssocContainer::InherentImpl => {
+                return None;
             },
         }
     } else {
@@ -111,13 +114,9 @@ fn recover_lifetimes_for_impl_source<'tcx>(
             }
 
             // instantiate the trait with the impl args; the subject is the trait below the impl's binders
-            let subject = tcx.impl_subject(impl_did);
-            let subject = subject.skip_binder();
-            let subject = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
-
-            let ty::ImplSubject::Trait(subject_ref) = subject else {
-                unreachable!();
-            };
+            let trait_ref = tcx.impl_trait_ref(impl_did);
+            let subject = trait_ref.skip_binder();
+            let subject_ref = arg_folder::instantiate_open(subject, tcx, enumerated_impl_args.as_slice());
 
             // impl_args are the args of the trait, instantiated with the re-enumerated args of the resolved
             // impl required_args are the args of the trait that we were expecting, still
@@ -289,7 +288,8 @@ pub(crate) fn resolve_assoc_item<'tcx>(
         trait_selection::traits::ImplSource::UserDefined(impl_data) => {
             // this is a user-defined trait, and we found the right impl
             // now map back to the item we were looking for
-            let trait_did = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
+            let trait_ref2 = tcx.impl_trait_ref(impl_data.impl_def_id);
+            let trait_did = trait_ref2.skip_binder().def_id;
             let trait_def: &'tcx ty::TraitDef = tcx.trait_def(trait_did);
 
             // Find the id of the actual associated method we will be running

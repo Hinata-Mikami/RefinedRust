@@ -119,7 +119,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let tcx = self.env.tcx();
 
         let late_bounds = if let Some(impl_did) = tcx.impl_of_assoc(callee_did)
-            && tcx.trait_id_of_impl(impl_did).is_some()
+            && tcx.impl_is_of_trait(impl_did)
         {
             // Fixup: We need a matching workaround as we do in the encoding of the function type
             // in an impl member, to deal with quirks around lifetime elision.

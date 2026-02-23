@@ -36,13 +36,13 @@ pub enum Type<'def> {
     Int(lang::IntType),
 
     #[display("(mut_ref {} {})", _1, _0)]
-    MutRef(Box<Type<'def>>, Lft),
+    MutRef(Box<Self>, Lft),
 
     #[display("(shr_ref {} {})", _1, _0)]
-    ShrRef(Box<Type<'def>>, Lft),
+    ShrRef(Box<Self>, Lft),
 
     #[display("(array_t {} {})", _1, _0)]
-    Array(Box<Type<'def>>, u128),
+    Array(Box<Self>, u128),
 
     /// a struct type, potentially instantiated with some type parameters
     /// the boolean indicates

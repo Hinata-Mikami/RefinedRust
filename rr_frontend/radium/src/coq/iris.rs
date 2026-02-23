@@ -38,22 +38,22 @@ pub enum IProp {
     Pure(Box<term::Term>),
 
     #[display("{}", fmt_with_op("∗", _0))]
-    Sep(Vec<IProp>),
+    Sep(Vec<Self>),
 
     #[display("{}", fmt_with_op("∨", _0))]
-    Disj(Vec<IProp>),
+    Disj(Vec<Self>),
 
     #[display("{}", fmt_with_op("∧", _0))]
-    Conj(Vec<IProp>),
+    Conj(Vec<Self>),
 
     #[display("{} -∗ {}", _0, _1)]
-    Wand(Box<IProp>, Box<IProp>),
+    Wand(Box<Self>, Box<Self>),
 
     #[display("{}{}", term::fmt_binders("∃", _0), _1)]
-    Exists(binder::BinderList, Box<IProp>),
+    Exists(binder::BinderList, Box<Self>),
 
     #[display("{}{}", term::fmt_binders("∀", _0), _1)]
-    All(binder::BinderList, Box<IProp>),
+    All(binder::BinderList, Box<Self>),
 }
 
 impl IProp {

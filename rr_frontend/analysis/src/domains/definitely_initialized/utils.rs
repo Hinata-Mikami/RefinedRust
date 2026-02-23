@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 //! Various helper functions for working with `mir` types.
-//! copied from prusti-interface/utils
+//! copied from prusti-interface/utils.
 
 use std::cmp::Ordering;
 
@@ -132,7 +132,6 @@ fn expand_one_level<'tcx>(
         | mir::ProjectionElem::ConstantIndex { .. }
         | mir::ProjectionElem::Subslice { .. }
         | mir::ProjectionElem::Downcast(..)
-        | mir::ProjectionElem::Subtype(..)
         | mir::ProjectionElem::UnwrapUnsafeBinder(..)
         | mir::ProjectionElem::OpaqueCast(..) => vec![],
     };
@@ -187,7 +186,6 @@ const fn place_elem_variant(a: &mir::PlaceElem<'_>) -> u8 {
         mir::ProjectionElem::Downcast(..) => 5,
         mir::ProjectionElem::OpaqueCast(_) => 6,
         mir::ProjectionElem::UnwrapUnsafeBinder(_) => 7,
-        mir::ProjectionElem::Subtype(_) => 8,
     }
 }
 
@@ -224,12 +222,22 @@ fn cmp_place_elem<'tcx>(tcx: ty::TyCtxt<'tcx>, a: mir::PlaceElem<'tcx>, b: mir::
         ) => from1.cmp(&from2).then_with(|| to1.cmp(&to2).then_with(|| from_end1.cmp(&from_end2))),
         (mir::ProjectionElem::Downcast(_, idx1), mir::ProjectionElem::Downcast(_, idx2)) => idx1.cmp(&idx2),
         (mir::ProjectionElem::OpaqueCast(ty1), mir::ProjectionElem::OpaqueCast(ty2))
-        | (mir::ProjectionElem::UnwrapUnsafeBinder(ty1), mir::ProjectionElem::UnwrapUnsafeBinder(ty2))
-        | (mir::ProjectionElem::Subtype(ty1), mir::ProjectionElem::Subtype(ty2)) => cmp_ty(tcx, ty1, ty2),
+        | (mir::ProjectionElem::UnwrapUnsafeBinder(ty1), mir::ProjectionElem::UnwrapUnsafeBinder(ty2)) => {
+            cmp_ty(tcx, ty1, ty2)
+        },
         (_, _) => {
             unreachable!();
         },
     })
+}
+
+fn cmp_bound_var_index_kind(a: ty::BoundVarIndexKind, b: ty::BoundVarIndexKind) -> Ordering {
+    match (a, b) {
+        (ty::BoundVarIndexKind::Canonical, ty::BoundVarIndexKind::Canonical) => Ordering::Equal,
+        (ty::BoundVarIndexKind::Canonical, _) => Ordering::Greater,
+        (ty::BoundVarIndexKind::Bound(idx1), ty::BoundVarIndexKind::Bound(idx2)) => idx1.cmp(&idx2),
+        (ty::BoundVarIndexKind::Bound(_), ty::BoundVarIndexKind::Canonical) => Ordering::Less,
+    }
 }
 
 fn region_discriminant(a: ty::Region<'_>) -> u8 {
@@ -252,7 +260,7 @@ fn cmp_region<'tcx>(a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> Ordering {
         match (a.kind(), b.kind()) {
             (RegionKind::ReEarlyParam(a_r), RegionKind::ReEarlyParam(b_r)) => a_r.index.cmp(&b_r.index),
             (RegionKind::ReBound(a_d, a_r), RegionKind::ReBound(b_d, b_r)) => {
-                a_d.cmp(&b_d).then(a_r.var.cmp(&b_r.var))
+                cmp_bound_var_index_kind(a_d, b_d).then(a_r.var.cmp(&b_r.var))
             },
             (RegionKind::ReLateParam(_a_r), RegionKind::ReLateParam(_b_r)) => {
                 unimplemented!("compare ReLateParam");

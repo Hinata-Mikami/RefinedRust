@@ -115,8 +115,8 @@ pub(crate) enum Type {
     Char,
     Bool,
     Param(u32),
-    Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Type>),
-    RawPtr(#[serde(with = "MutabilityDef")] ast::Mutability, Box<Type>),
+    Ref(u32, #[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
+    RawPtr(#[serde(with = "MutabilityDef")] ast::Mutability, Box<Self>),
     // TODO: more cases
 }
 

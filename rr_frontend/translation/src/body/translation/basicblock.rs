@@ -125,13 +125,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     }
                 },
 
-                mir::StatementKind::Deinit(_) => {
-                    // TODO: find out where this is emitted
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "RefinedRust does currently not support Deinit".to_owned(),
-                    });
-                },
-
                 mir::StatementKind::FakeRead(b) => {
                     // we can probably ignore this, but I'm not sure
                     info!("Ignoring FakeRead: {:?}", b);

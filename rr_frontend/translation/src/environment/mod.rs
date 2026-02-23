@@ -303,7 +303,7 @@ impl<'tcx> Environment<'tcx> {
     #[must_use]
     pub(crate) fn trait_impl_of_method(&self, method_did: DefId) -> Option<DefId> {
         if let Some(impl_did) = self.tcx().impl_of_assoc(method_did) {
-            self.tcx().trait_id_of_impl(impl_did).is_some().then_some(impl_did)
+            self.tcx().impl_is_of_trait(impl_did).then_some(impl_did)
         } else {
             None
         }

@@ -234,6 +234,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ),
             }),
 
+            mir::CastKind::Subtype => Err(TranslationError::UnsupportedFeature {
+                description: format!(
+                    "RefinedRust does currently not support subtype casts (got: {kind:?}, {op:?}, {to_ty:?})"
+                ),
+            }),
+
             mir::CastKind::PointerExposeProvenance => {
                 // Cast pointer to integer
                 Ok(code::Expr::UnOp {
@@ -383,7 +389,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ))
             },
 
-            mir::Rvalue::NullaryOp(_, _) => {
+            mir::Rvalue::NullaryOp(_) => {
                 // TODO: SizeOf
                 Err(TranslationError::UnsupportedFeature {
                     description: "RefinedRust does currently not support nullary ops (AlignOf, Sizeof)"
@@ -428,7 +434,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Repeat(..)
-            | mir::Rvalue::Len(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {

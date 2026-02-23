@@ -19,6 +19,7 @@ pub struct DefinitelyInitializedAnalysis<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> DefinitelyInitializedAnalysis<'mir, 'tcx> {
+    #[must_use]
     pub const fn new(tcx: TyCtxt<'tcx>, def_id: DefId, mir: &'mir mir::Body<'tcx>) -> Self {
         DefinitelyInitializedAnalysis { tcx, def_id, mir }
     }

@@ -479,7 +479,11 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 self.lookup_region_idx(early.index as usize).map(|x| x.lft().to_owned())
             },
             ty::RegionKind::ReBound(idx, r) => {
-                self.lookup_late_region_idx(usize::from(idx), r.var.index()).map(|x| x.lft().to_owned())
+                if let ty::BoundVarIndexKind::Bound(idx) = idx {
+                    self.lookup_late_region_idx(usize::from(idx), r.var.index()).map(|x| x.lft().to_owned())
+                } else {
+                    unimplemented!("cannot handle Canonicalized binders");
+                }
             },
             ty::RegionKind::ReStatic => Some(coq::Ident::new("static")),
             _ => None,
@@ -697,7 +701,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
         }
 
         if let Some(impl_did) = env.tcx().impl_of_assoc(did)
-            && env.tcx().trait_id_of_impl(impl_did).is_some()
+            && env.tcx().impl_is_of_trait(impl_did)
         {
             // we are in a trait impl
             let (impl_ref, _, _) = trait_registry.get_trait_impl_info(impl_did)?;

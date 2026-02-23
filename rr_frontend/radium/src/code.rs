@@ -61,7 +61,7 @@ pub enum LitTerm {
     #[display("TypeRt {}", _0)]
     TypeRt(RustType),
     #[display("AppDef [{}] [{}]", fmt_list!(_0, "; "), fmt_list!(_1, "; "))]
-    AppDef(Vec<String>, Vec<LitTerm>),
+    AppDef(Vec<String>, Vec<Self>),
 }
 
 impl LitTerm {
@@ -170,19 +170,19 @@ pub enum RustType {
     AliasPtr,
 
     #[display("RSTRef Mut \"{}\" ({})", _1, &_0)]
-    MutRef(Box<RustType>, Lft),
+    MutRef(Box<Self>, Lft),
 
     #[display("RSTRef Shr \"{}\" ({})", _1, &_0)]
-    ShrRef(Box<RustType>, Lft),
+    ShrRef(Box<Self>, Lft),
 
     #[display("RSTBox ({})", &_0)]
-    PrimBox(Box<RustType>),
+    PrimBox(Box<Self>),
 
     #[display("RSTStruct ({}) [{}]", _0, fmt_list!(_1, "; "))]
-    Struct(String, Vec<RustType>),
+    Struct(String, Vec<Self>),
 
     #[display("RSTArray {} ({})", _0, &_1)]
-    Array(u128, Box<RustType>),
+    Array(u128, Box<Self>),
 }
 
 impl RustType {
@@ -335,7 +335,7 @@ pub enum Expr {
     UnOp {
         o: Unop,
         ot: lang::OpType,
-        e: Box<Expr>,
+        e: Box<Self>,
     },
 
     #[display("({}) {} ({})", &e1, o.caesium_fmt(ot1, ot2), &e2)]
@@ -343,8 +343,8 @@ pub enum Expr {
         o: Binop,
         ot1: lang::OpType,
         ot2: lang::OpType,
-        e1: Box<Expr>,
-        e2: Box<Expr>,
+        e1: Box<Self>,
+        e2: Box<Self>,
     },
 
     #[display("({}) {} ({})", &e1, o.caesium_checked_fmt(ot1, ot2), &e2)]
@@ -352,29 +352,29 @@ pub enum Expr {
         o: Binop,
         ot1: lang::OpType,
         ot2: lang::OpType,
-        e1: Box<Expr>,
-        e2: Box<Expr>,
+        e1: Box<Self>,
+        e2: Box<Self>,
     },
 
     /// dereference an lvalue
     #[display("!{{ {} }} ( {} )", ot, &e)]
-    Deref { ot: lang::OpType, e: Box<Expr> },
+    Deref { ot: lang::OpType, e: Box<Self> },
 
     /// dereference a box using the compiler magic
     #[display("!box{{ {}, {} }} ( {} )", tst, ast, &e)]
     MagicBoxDeref {
         tst: lang::SynType,
         ast: lang::SynType,
-        e: Box<Expr>,
+        e: Box<Self>,
     },
 
     /// lvalue to rvalue conversion (move)
     #[display("move{{ {} }} ({})", ot, &e)]
-    Move { ot: lang::OpType, e: Box<Expr> },
+    Move { ot: lang::OpType, e: Box<Self> },
 
     /// lvalue to rvalue conversion (copy)
     #[display("copy{{ {} }} ({})", ot, &e)]
-    Copy { ot: lang::OpType, e: Box<Expr> },
+    Copy { ot: lang::OpType, e: Box<Self> },
 
     /// the borrow-operator to get a reference
     #[display("&ref{{ {}, {}, \"{}\" }} ({})", bk, fmt_option(ty.as_ref()), lft, &e)]
@@ -382,32 +382,32 @@ pub enum Expr {
         lft: Lft,
         bk: BorKind,
         ty: Option<RustType>,
-        e: Box<Expr>,
+        e: Box<Self>,
     },
 
     /// the address-of operator to get a raw pointer
     #[display("&raw{{ {} }} ({})", mt, &e)]
-    AddressOf { mt: Mutability, e: Box<Expr> },
+    AddressOf { mt: Mutability, e: Box<Self> },
 
     #[display("CallE {} [{}] [{}] [@{{expr}} {}]", &f, fmt_list!(lfts, "; ", "\"{}\""), fmt_list!(tys, "; ", "{}"), fmt_list!(args, "; "))]
     Call {
-        f: Box<Expr>,
+        f: Box<Self>,
         lfts: Vec<Lft>,
         tys: Vec<RustType>,
-        args: Vec<Expr>,
+        args: Vec<Self>,
     },
 
     #[display("IfE ({}) ({}) ({}) ({})", ot, &e1, &e2, &e3)]
     If {
         ot: lang::OpType,
-        e1: Box<Expr>,
-        e2: Box<Expr>,
-        e3: Box<Expr>,
+        e1: Box<Self>,
+        e2: Box<Self>,
+        e3: Box<Self>,
     },
 
     #[display("({}) at{{ {} }} \"{}\"", &e, sls, name)]
     FieldOf {
-        e: Box<Expr>,
+        e: Box<Self>,
         sls: String,
         name: String,
     },
@@ -417,13 +417,13 @@ pub enum Expr {
     Annot {
         a: Annotation,
         why: Option<String>,
-        e: Box<Expr>,
+        e: Box<Self>,
     },
 
     #[display("StructInit {} [{}]", sls, fmt_list!(components, "; ", |(name, e)| format!("(\"{name}\", {e} : expr)")))]
     StructInitE {
         sls: coq::term::App<String, String>,
-        components: Vec<(String, Expr)>,
+        components: Vec<(String, Self)>,
     },
 
     #[display("EnumInit {} \"{}\" ({}) ({})", els, variant, ty, &initializer)]
@@ -431,11 +431,11 @@ pub enum Expr {
         els: coq::term::App<String, String>,
         variant: String,
         ty: RustEnumDef,
-        initializer: Box<Expr>,
+        initializer: Box<Self>,
     },
 
     #[display("AnnotExpr 0 DropAnnot ({})", &_0)]
-    DropE(Box<Expr>),
+    DropE(Box<Self>),
 
     /// a box expression for creating a box of a particular type
     #[display("box{{{}}}", &_0)]
@@ -443,14 +443,14 @@ pub enum Expr {
 
     /// access the discriminant of an enum
     #[display("EnumDiscriminant ({}) ({})", els, &e)]
-    EnumDiscriminant { els: String, e: Box<Expr> },
+    EnumDiscriminant { els: String, e: Box<Self> },
 
     /// access to the data of an enum
     #[display("EnumData ({}) \"{}\" ({})", els, variant, &e)]
     EnumData {
         els: String,
         variant: String,
-        e: Box<Expr>,
+        e: Box<Self>,
     },
 }
 
@@ -580,8 +580,8 @@ pub enum Stmt {
     If {
         ot: lang::OpType,
         e: Expr,
-        s1: Box<Stmt>,
-        s2: Box<Stmt>,
+        s1: Box<Self>,
+        s2: Box<Self>,
     },
 
     #[display(
@@ -597,12 +597,12 @@ pub enum Stmt {
         e: Expr,
         it: lang::IntType,
         index_map: BTreeMap<u128, usize>,
-        bs: Vec<Stmt>,
-        def: Box<Stmt>,
+        bs: Vec<Self>,
+        def: Box<Self>,
     },
 
     #[display("{}{}", fmt_list!(_0, ""), *_1)]
-    Prim(Vec<PrimStmt>, Box<Stmt>),
+    Prim(Vec<PrimStmt>, Box<Self>),
 
     #[display("StuckS")]
     Stuck,

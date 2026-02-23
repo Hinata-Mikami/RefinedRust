@@ -26,7 +26,7 @@ fn cmp_region<'tcx>(a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> Ordering {
         match (a.kind(), b.kind()) {
             (RegionKind::ReEarlyParam(a_r), RegionKind::ReEarlyParam(b_r)) => a_r.index.cmp(&b_r.index),
             (RegionKind::ReBound(a_d, a_r), RegionKind::ReBound(b_d, b_r)) => {
-                a_d.cmp(&b_d).then(a_r.var.cmp(&b_r.var))
+                cmp_bound_var_index_kind(a_d, b_d).then(a_r.var.cmp(&b_r.var))
             },
             (RegionKind::ReLateParam(_a_r), RegionKind::ReLateParam(_b_r)) => {
                 unimplemented!("compare ReLateParam");
@@ -43,6 +43,15 @@ fn cmp_region<'tcx>(a: ty::Region<'tcx>, b: ty::Region<'tcx>) -> Ordering {
             },
         }
     })
+}
+
+fn cmp_bound_var_index_kind(a: ty::BoundVarIndexKind, b: ty::BoundVarIndexKind) -> Ordering {
+    match (a, b) {
+        (ty::BoundVarIndexKind::Canonical, ty::BoundVarIndexKind::Canonical) => Ordering::Equal,
+        (ty::BoundVarIndexKind::Canonical, _) => Ordering::Greater,
+        (ty::BoundVarIndexKind::Bound(idx1), ty::BoundVarIndexKind::Bound(idx2)) => idx1.cmp(&idx2),
+        (ty::BoundVarIndexKind::Bound(_), ty::BoundVarIndexKind::Canonical) => Ordering::Less,
+    }
 }
 
 fn cmp_const<'tcx>(_env: &Environment<'tcx>, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) -> Ordering {

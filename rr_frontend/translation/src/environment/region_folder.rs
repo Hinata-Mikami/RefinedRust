@@ -51,7 +51,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
-            ty::ReBound(debruijn, _) if debruijn < self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) if debruijn < self.current_index => {
+                //debug!(?self.current_index, "skipped bound region");
+                r
+            },
+            ty::ReBound(ty::BoundVarIndexKind::Canonical, _) => {
                 //debug!(?self.current_index, "skipped bound region");
                 r
             },
