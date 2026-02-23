@@ -58,7 +58,7 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "import" => {
                     let path: parse_utils::CoqExportModule = buffer.parse(&()).map_err(str_err)?;
                     exports.push(path.into());

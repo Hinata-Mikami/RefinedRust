@@ -1208,7 +1208,7 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                         TranslationError::FatalError("Failed to const-evaluate discriminant".to_owned())
                     })?;
 
-                    let evaluated_int = evaluated_discr.try_to_scalar_int().unwrap();
+                    let evaluated_int = evaluated_discr.try_to_leaf().unwrap();
                     let evaluated_int = Self::scalar_int_to_int128(evaluated_int, signed);
 
                     info!("const-evaluated enum discriminant: {:?}", evaluated_int);
@@ -1482,11 +1482,9 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             ty::ConstKind::Value(v) => {
                 // this doesn't contain the necessary structure anymore. Need to reconstruct using the
                 // type.
-                match v.valtree.try_to_scalar() {
+                match v.valtree.try_to_leaf() {
                     Some(sc) => match v.ty.kind() {
-                        ty::TyKind::Uint(_) => {
-                            sc.to_u128().discard_err().ok_or(TranslationError::InvalidLayout)
-                        },
+                        ty::TyKind::Uint(_) => Ok(sc.to_u128()),
                         _ => Err(TranslationError::InvalidLayout),
                     },
                     _ => Err(TranslationError::UnsupportedFeature {

@@ -14,6 +14,7 @@ use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 use crate::regions;
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate an aggregate expression.
     fn translate_aggregate(
@@ -173,7 +174,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 ty::adjustment::PointerCoercion::ArrayToPointer
                 | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
-                | ty::adjustment::PointerCoercion::ReifyFnPointer
+                | ty::adjustment::PointerCoercion::ReifyFnPointer(_)
                 | ty::adjustment::PointerCoercion::UnsafeFnPointer
                 | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
                     description: format!(
@@ -306,6 +307,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // when this also handles string literals etc.
                 self.translate_constant(&constant.const_)
             },
+            mir::Operand::RuntimeChecks(_) => Err(TranslationError::UnsupportedFeature {
+                description: format!(
+                    "RefinedRust does currently not support this kind of operand (got: {op:?})"
+                ),
+            }),
         }
     }
 
@@ -389,14 +395,6 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 ))
             },
 
-            mir::Rvalue::NullaryOp(_) => {
-                // TODO: SizeOf
-                Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does currently not support nullary ops (AlignOf, Sizeof)"
-                        .to_owned(),
-                })
-            },
-
             mir::Rvalue::Discriminant(pl) => {
                 let ty = self.get_type_of_place(pl);
                 let translated_pl = self.translate_place(pl)?;
@@ -435,8 +433,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
-            | mir::Rvalue::ThreadLocalRef(..)
-            | mir::Rvalue::ShallowInitBox(_, _) => Err(TranslationError::UnsupportedFeature {
+            | mir::Rvalue::ThreadLocalRef(..) => Err(TranslationError::UnsupportedFeature {
                 description: format!(
                     "RefinedRust does currently not support this kind of rvalue (got: {:?})",
                     rval

@@ -15,7 +15,7 @@ pub extern crate rustc_borrowck as borrowck;
 pub extern crate rustc_data_structures as data_structures;
 pub extern crate rustc_driver as driver;
 pub extern crate rustc_errors as errors;
-pub extern crate rustc_hash as hash;
+pub extern crate rustc_hashes as hashes;
 pub extern crate rustc_hir as hir;
 pub extern crate rustc_index as index;
 pub extern crate rustc_infer as infer;

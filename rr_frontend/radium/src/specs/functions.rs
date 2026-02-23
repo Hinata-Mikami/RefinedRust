@@ -187,9 +187,7 @@ impl<'def> Spec<'def, InnerSpec<'def>> {
 
         params
     }
-}
 
-impl<'def> Spec<'def, InnerSpec<'def>> {
     /// Check whether this spec is complete.
     #[must_use]
     pub const fn is_complete(&self) -> bool {

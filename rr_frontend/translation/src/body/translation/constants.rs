@@ -13,7 +13,64 @@ use super::TX;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
+    fn translate_scalar_int(
+        &mut self,
+        sc: ty::ScalarInt,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
+        // TODO: Use `TryFrom` instead
+        fn translate_literal<'def, 'tcx, T>(sc: T, fptr: fn(T) -> code::Literal) -> ExprWithInfo<'tcx, 'def> {
+            (code::Expr::Literal(fptr(sc)), None)
+        }
+        match ty.kind() {
+            ty::TyKind::Bool => Ok(translate_literal(sc.try_to_bool().unwrap(), code::Literal::Bool)),
+
+            ty::TyKind::Int(it) => Ok(match it {
+                ty::IntTy::I8 => translate_literal(sc.to_i8(), code::Literal::I8),
+                ty::IntTy::I16 => translate_literal(sc.to_i16(), code::Literal::I16),
+                ty::IntTy::I32 => translate_literal(sc.to_i32(), code::Literal::I32),
+                ty::IntTy::I128 => translate_literal(sc.to_i128(), code::Literal::I128),
+                ty::IntTy::I64 => translate_literal(sc.to_i64(), code::Literal::I64),
+                // for Radium, we use 64-bit pointers
+                ty::IntTy::Isize => translate_literal(sc.to_i64(), code::Literal::ISize),
+            }),
+
+            ty::TyKind::Uint(it) => Ok(match it {
+                ty::UintTy::U8 => translate_literal(sc.to_u8(), code::Literal::U8),
+                ty::UintTy::U16 => translate_literal(sc.to_u16(), code::Literal::U16),
+                ty::UintTy::U32 => translate_literal(sc.to_u32(), code::Literal::U32),
+                ty::UintTy::U128 => translate_literal(sc.to_u128(), code::Literal::U128),
+                ty::UintTy::U64 => translate_literal(sc.to_u64(), code::Literal::U64),
+                // for Radium, we use 64-bit pointers
+                ty::UintTy::Usize => translate_literal(sc.to_u64(), code::Literal::USize),
+            }),
+
+            ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
+
+            ty::TyKind::Tuple(tys) => {
+                if tys.is_empty() {
+                    return Ok((code::Expr::Literal(code::Literal::ZST), None));
+                }
+
+                Err(TranslationError::UnsupportedFeature {
+                    description: format!(
+                        "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
+                        ty
+                    ),
+                })
+            },
+
+            _ => Err(TranslationError::UnsupportedFeature {
+                description: format!(
+                    "RefinedRust does currently not support layout for const value: (got: {:?})",
+                    ty
+                ),
+            }),
+        }
+    }
+
     /// Translate a scalar at a specific type to a `code::Expr`.
     // TODO: Use `TryFrom` instead
     fn translate_scalar(
@@ -155,8 +212,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     ty::ConstKind::Value(v) => {
                         // this doesn't contain the necessary structure anymore. Need to reconstruct using the
                         // type.
-                        match v.valtree.try_to_scalar() {
-                            Some(sc) => self.translate_scalar(&sc, v.ty),
+                        match v.valtree.try_to_leaf() {
+                            Some(sc) => self.translate_scalar_int(sc, v.ty),
                             _ => Err(TranslationError::UnsupportedFeature {
                                 description: format!("const value not supported: {:?}", v),
                             }),

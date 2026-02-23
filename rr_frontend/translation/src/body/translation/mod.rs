@@ -104,6 +104,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     translated_fn: code::FunctionBuilder<'def>,
 }
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn new(
         env: &'def Environment<'tcx>,
@@ -335,9 +336,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         Ok(self.translated_fn.into_function(spec_arena))
     }
-}
 
-impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a string identifier for a Local.
     /// Tries to find the Rust source code name of the local, otherwise simply enumerates.
     /// `used_names` keeps track of the Rust source code names that have already been used.

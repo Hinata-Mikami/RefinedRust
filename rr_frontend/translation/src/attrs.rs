@@ -65,7 +65,7 @@ pub(crate) fn filter_for_tool<'a>(
             hir::Attribute::Unparsed(na) => {
                 let seg = na.path.segments.first()?;
 
-                (seg.name.as_str() == rrconfig::spec_hotword()).then_some(na.as_ref())
+                (seg.as_str() == rrconfig::spec_hotword()).then_some(na.as_ref())
             },
             _ => None,
         })

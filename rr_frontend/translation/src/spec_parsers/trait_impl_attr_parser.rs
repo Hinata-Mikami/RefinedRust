@@ -118,7 +118,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "instantiate" => {
                     let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
                     if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
@@ -159,7 +159,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "derive_instantiate" => {
                     let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
                     if trait_attrs.insert(parsed_name.clone(), inst).is_some() {

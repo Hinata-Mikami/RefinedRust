@@ -172,6 +172,7 @@ impl<'tcx> Environment<'tcx> {
     /// Find whether the procedure has a particular `[tool]::<name>` attribute.
     pub(crate) fn has_tool_attribute(&self, def_id: DefId, name: &str) -> bool {
         let tcx = self.tcx();
+        #[expect(deprecated)]
         attrs::has_tool_attr(tcx.get_all_attrs(def_id), name)
     }
 
@@ -179,17 +180,20 @@ impl<'tcx> Environment<'tcx> {
     /// name.
     pub(crate) fn get_tool_attribute<'a>(&'a self, def_id: DefId, name: &str) -> Option<&'a hir::AttrArgs> {
         let tcx = self.tcx();
+        #[expect(deprecated)]
         attrs::get_tool_attr(tcx.get_all_attrs(def_id), name)
     }
 
     /// Check whether the procedure has any `[tool]` attribute.
     pub(crate) fn has_any_tool_attribute(&self, def_id: DefId) -> bool {
         let tcx = self.tcx();
+        #[expect(deprecated)]
         attrs::has_any_tool_attr(tcx.get_all_attrs(def_id))
     }
 
     /// Get the attributes of an item (e.g. procedures).
     pub(crate) fn get_attributes(&self, def_id: DefId) -> &[hir::Attribute] {
+        #[expect(deprecated)]
         self.tcx().get_all_attrs(def_id)
     }
 
@@ -263,7 +267,7 @@ impl<'tcx> Environment<'tcx> {
 
         let mut assoc_tys = Vec::new();
         for c in items {
-            if ty::AssocTag::Type == c.as_tag() {
+            if ty::AssocTag::Type == c.tag() {
                 assoc_tys.push(c.def_id);
             }
         }

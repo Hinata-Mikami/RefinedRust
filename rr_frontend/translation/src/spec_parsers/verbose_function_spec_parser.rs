@@ -1377,7 +1377,7 @@ where
 
             if let Some(seg) = path_segs.get(1) {
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
-                let name = seg.name.as_str();
+                let name = seg.as_str();
 
                 match self.handle_common_attributes(name, &buffer, &mut spec, &scope, true) {
                     Ok(b) => {
@@ -1424,7 +1424,7 @@ where
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
-            let name = seg.name.as_str();
+            let name = seg.as_str();
             match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, false) {
                 Ok(b) => {
                     if !b

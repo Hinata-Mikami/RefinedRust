@@ -14,6 +14,7 @@ use super::TX;
 use crate::base::*;
 use crate::{procedures, regions};
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a single basic block.
     pub(crate) fn translate_basic_block(

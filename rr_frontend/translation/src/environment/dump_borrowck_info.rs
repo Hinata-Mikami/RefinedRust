@@ -1,5 +1,4 @@
 // © 2019, ETH Zurich
-//
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -99,7 +98,7 @@ impl<'a, 'tcx: 'a> InfoPrinter<'a, 'tcx> {
 
         write!(writer, "Origin contains loan at: \n")?;
         let mut sorted_origin_contains: Vec<_> = output_facts.origin_contains_loan_at.iter().collect();
-        sorted_origin_contains.sort_by(|&(&l1, _), &(&l2, _)| l1.cmp(&l2));
+        sorted_origin_contains.sort_by_key(|&(&l1, _)| l1);
 
         for &(&loc, region_map) in &sorted_origin_contains {
             write!(writer, "\t {:?} -> {:?}\n", interner.get_point(loc), region_map)?;

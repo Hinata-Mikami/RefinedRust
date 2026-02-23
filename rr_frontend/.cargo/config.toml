@@ -65,6 +65,7 @@ rustflags = [
     # === POTENTIAL LINTS (See: #7) ===
 
     # clippy::pedantic
+    "-Aclippy::map_unwrap_or", # this one seems buggy
     "-Aclippy::cast_possible_truncation",
     "-Aclippy::manual_assert",
     "-Aclippy::missing_errors_doc",
@@ -73,6 +74,7 @@ rustflags = [
     "-Aclippy::wildcard_imports",
 
     # clippy::restriction
+    "-Aclippy::str_to_string", # this one seems buggy
     "-Aclippy::arithmetic_side_effects",
     "-Aclippy::as_conversions",
     "-Aclippy::clone_on_ref_ptr",

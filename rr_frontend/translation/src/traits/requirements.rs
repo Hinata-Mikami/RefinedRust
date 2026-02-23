@@ -41,7 +41,7 @@ fn determine_origin_of_trait_requirement<'tcx>(
 #[derive(Debug)]
 pub(crate) struct TraitReqMeta<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
-    pub bound_regions: Vec<ty::BoundRegionKind>,
+    pub bound_regions: Vec<ty::BoundRegionKind<'tcx>>,
     pub binders: ty::Binder<'tcx, ()>,
     pub origin: specs::TyParamOrigin,
     pub is_used_in_self_trait: bool,
@@ -144,7 +144,7 @@ pub(crate) fn get_nontrivial<'tcx>(
     for_did: DefId,
     param_env: ty::ParamEnv<'tcx>,
     in_trait_decl: Option<DefId>,
-) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind>, ty::Binder<'tcx, ()>)> {
+) -> Vec<(ty::TraitRef<'tcx>, Vec<ty::BoundRegionKind<'tcx>>, ty::Binder<'tcx, ()>)> {
     let mut trait_refs = Vec::new();
     trace!(
         "Enter get_nontrivial_trait_requirements with for_did={for_did:?}, param_env = {param_env:?}, in_trait_decl = {in_trait_decl:?}"

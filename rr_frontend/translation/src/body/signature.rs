@@ -54,6 +54,7 @@ pub(crate) struct TX<'a, 'def, 'tcx> {
     inputs: Vec<ty::Ty<'tcx>>,
 }
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Generate a spec for a trait method.
     pub(crate) fn spec_for_trait_method(

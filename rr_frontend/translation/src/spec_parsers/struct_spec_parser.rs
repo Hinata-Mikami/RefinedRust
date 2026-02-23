@@ -221,7 +221,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "refined_by" => {
                     let pat = RfnPattern::parse(&buffer, self.scope).map_err(str_err)?;
 
@@ -441,7 +441,7 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
 
-            if seg.name.as_str() != "field" {
+            if seg.as_str() != "field" {
                 return Err(format!("unknown attribute for struct field specification: {:?}", args));
             }
 

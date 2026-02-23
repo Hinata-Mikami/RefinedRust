@@ -16,6 +16,7 @@ use crate::environment::mir_analyses::initialization;
 use crate::spec_parsers::loop_attr_parser::{LoopAttrParser as _, LoopIteratorInfo, VerboseLoopAttrParser};
 use crate::{attrs, search, types};
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn check_operand_call_dest(&self, op: &mir::Operand<'tcx>) -> Option<DefId> {
         let ty = self.get_type_of_operand(op);

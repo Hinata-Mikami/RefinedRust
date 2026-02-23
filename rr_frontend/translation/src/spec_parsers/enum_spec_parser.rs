@@ -95,7 +95,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "refined_by" => {
                     let ty: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
                     let (rt_processed, _) = self.scope.process_coq_literal(ty.value().as_str());
@@ -123,7 +123,7 @@ impl<'def, T: ParamLookup<'def>> EnumSpecParser for VerboseEnumSpecParser<'_, T>
                 };
 
                 let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
-                let name = seg.name.as_str();
+                let name = seg.as_str();
                 match name {
                     "pattern" => {
                         let pat: EnumPattern = buffer.parse(self.scope).map_err(str_err)?;

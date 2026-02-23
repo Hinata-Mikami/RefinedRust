@@ -6,6 +6,7 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 #![feature(rustc_private)]
+#![feature(exitcode_exit_method)]
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -13,7 +14,7 @@ use std::{env, process};
 
 use log::{debug, info};
 use rr_rustc_interface::hir::def_id::LocalDefId;
-use rr_rustc_interface::middle::{query, ty, util};
+use rr_rustc_interface::middle::{queries, query, ty, util};
 use rr_rustc_interface::{borrowck, driver, interface, session};
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
@@ -23,10 +24,11 @@ struct RRCompilerCalls;
 
 fn main() {
     if env::args().nth(1) == Some("-vV".to_owned()) {
-        process::exit(driver::catch_with_exit_code(move || {
+        driver::catch_with_exit_code(move || {
             println!("RefinedRust {}", env!("RR_VERSION"));
             driver::run_compiler(&env::args().collect::<Vec<_>>(), &mut RRCompilerCalls {});
-        }));
+        })
+        .exit_process();
     }
 
     if env::args().any(|s| s == "--show-config") {
@@ -112,13 +114,14 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
 
-    process::exit(driver::catch_with_exit_code(move || {
+    driver::catch_with_exit_code(move || {
         driver::run_compiler(&rustc_args, &mut RRCompilerCalls {});
-    }));
+    })
+    .exit_process();
 }
 
 // From Prusti.
-fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> query::queries::mir_borrowck::ProvidedValue<'_> {
+fn mir_borrowck(tcx: ty::TyCtxt<'_>, def_id: LocalDefId) -> queries::mir_borrowck::ProvidedValue<'_> {
     let bodies_with_facts = borrowck::consumers::get_bodies_with_borrowck_facts(
         tcx,
         def_id,

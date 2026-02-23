@@ -27,6 +27,61 @@ use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, error, procedures, search, traits, types};
 
+/// A using occurrence of a trait in the signature of the function.
+#[derive(Debug, Clone)]
+pub(crate) struct GenericTraitUse<'tcx, 'def> {
+    /// the `DefId` of the trait
+    pub did: DefId,
+    pub trait_ref: ty::TraitRef<'tcx>,
+    /// the Coq-level trait use
+    pub trait_use: specs::traits::LiteralSpecUseRef<'def>,
+    /// quantifiers for HRTBs
+    pub bound_regions: Vec<ty::BoundRegionKind<'tcx>>,
+    /// this is a trait use of the trait itself in a trait declaration
+    pub is_self_use: bool,
+}
+
+impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
+    /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
+    /// This is used in the translation of symbolic `TyKind::Alias`.
+    pub(crate) fn get_associated_type_use(
+        &self,
+        env: &Environment<'tcx>,
+        did: DefId,
+    ) -> Result<specs::Type<'def>, Error<'tcx>> {
+        let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
+        let type_idx = env.get_trait_associated_type_index(did).ok_or(Error::NotAnAssocType(did))?;
+
+        // this is an associated type of the trait that is currently being declared
+        // so make a symbolic reference
+        if self.is_self_use {
+            // make a literal
+            let lit = specs::LiteralTyParam::new_with_origin(&type_name, specs::TyParamOrigin::AssocInDecl);
+            Ok(specs::Type::LiteralParam(lit))
+        } else {
+            let trait_use_ref = self.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+
+            Ok(trait_use.make_assoc_type_use(type_idx))
+        }
+    }
+
+    pub(crate) fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, specs::Type<'def>)> {
+        let mut assoc_tys = Vec::new();
+
+        // get associated types
+        let assoc_types = env.get_trait_assoc_types(self.did);
+        for (idx, ty_did) in assoc_types.iter().enumerate() {
+            let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
+            let trait_use_ref = self.trait_use.borrow();
+            let trait_use = trait_use_ref.as_ref().unwrap();
+            let lit = trait_use.make_assoc_type_use(idx);
+            assoc_tys.push((ty_name.clone(), lit));
+        }
+        assoc_tys
+    }
+}
+
 pub(crate) struct TR<'tcx, 'def> {
     /// environment
     env: &'def Environment<'tcx>,
@@ -273,7 +328,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let items: &ty::AssocItems = self.env.tcx().associated_items(did);
             let items = traits::sort_assoc_items(self.env, items);
             for c in items {
-                if ty::AssocTag::Fn == c.as_tag() {
+                if ty::AssocTag::Fn == c.tag() {
                     // get attributes
                     let attrs =
                         self.env.get_attributes_of_function(c.def_id, &propagate_method_attr_from_impl);
@@ -619,7 +674,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         trait_did: DefId,
         trait_args: ty::GenericArgsRef<'tcx>,
         below_binders: ty::Binder<'tcx, ()>,
-        bound_regions: &[ty::BoundRegionKind],
+        bound_regions: &[ty::BoundRegionKind<'tcx>],
         origin: specs::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
     ) -> Result<specs::traits::ReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
@@ -1245,69 +1300,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             context_items,
         ))
     }
-}
 
-/// A using occurrence of a trait in the signature of the function.
-#[derive(Debug, Clone)]
-pub(crate) struct GenericTraitUse<'tcx, 'def> {
-    /// the `DefId` of the trait
-    pub did: DefId,
-    pub trait_ref: ty::TraitRef<'tcx>,
-    /// the Coq-level trait use
-    pub trait_use: specs::traits::LiteralSpecUseRef<'def>,
-    /// quantifiers for HRTBs
-    pub bound_regions: Vec<ty::BoundRegionKind>,
-    /// this is a trait use of the trait itself in a trait declaration
-    pub is_self_use: bool,
-}
-
-impl<'tcx, 'def> GenericTraitUse<'tcx, 'def> {
-    /// Get the associated type instantiation of an associated type given by [did] for this instantiation.
-    /// This is used in the translation of symbolic `TyKind::Alias`.
-    pub(crate) fn get_associated_type_use(
-        &self,
-        env: &Environment<'tcx>,
-        did: DefId,
-    ) -> Result<specs::Type<'def>, Error<'tcx>> {
-        let type_name = env.get_assoc_item_name(did).ok_or(Error::NotAnAssocType(did))?;
-        let type_idx = env.get_trait_associated_type_index(did).ok_or(Error::NotAnAssocType(did))?;
-
-        // this is an associated type of the trait that is currently being declared
-        // so make a symbolic reference
-        if self.is_self_use {
-            // make a literal
-            let lit = specs::LiteralTyParam::new_with_origin(&type_name, specs::TyParamOrigin::AssocInDecl);
-            Ok(specs::Type::LiteralParam(lit))
-        } else {
-            let trait_use_ref = self.trait_use.borrow();
-            let trait_use = trait_use_ref.as_ref().unwrap();
-
-            Ok(trait_use.make_assoc_type_use(type_idx))
-        }
-    }
-
-    pub(crate) fn get_associated_types(&self, env: &Environment<'_>) -> Vec<(String, specs::Type<'def>)> {
-        let mut assoc_tys = Vec::new();
-
-        // get associated types
-        let assoc_types = env.get_trait_assoc_types(self.did);
-        for (idx, ty_did) in assoc_types.iter().enumerate() {
-            let ty_name = env.get_assoc_item_name(*ty_did).unwrap();
-            let trait_use_ref = self.trait_use.borrow();
-            let trait_use = trait_use_ref.as_ref().unwrap();
-            let lit = trait_use.make_assoc_type_use(idx);
-            assoc_tys.push((ty_name.clone(), lit));
-        }
-        assoc_tys
-    }
-}
-
-impl<'tcx, 'def> TR<'tcx, 'def> {
     /// Allocate an empty trait use reference.
     pub(crate) fn make_empty_trait_use(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
-        bound_regions: &[ty::BoundRegionKind],
+        bound_regions: &[ty::BoundRegionKind<'tcx>],
     ) -> GenericTraitUse<'tcx, 'def> {
         let dummy_trait_use = RefCell::new(None);
         let trait_use = self.trait_use_arena.alloc(dummy_trait_use);
@@ -1448,7 +1446,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 pub(crate) struct LateBoundUnifier<'tcx, 'a> {
     tcx: ty::TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    binders_to_unify: &'a [ty::BoundRegionKind],
+    binders_to_unify: &'a [ty::BoundRegionKind<'tcx>],
     instantiation: BTreeMap<usize, ty::Region<'tcx>>,
     early_instantiation: BTreeMap<usize, ty::Region<'tcx>>,
 }
@@ -1456,7 +1454,7 @@ impl<'tcx, 'a> LateBoundUnifier<'tcx, 'a> {
     pub(crate) const fn new(
         tcx: ty::TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
-        binders_to_unify: &'a [ty::BoundRegionKind],
+        binders_to_unify: &'a [ty::BoundRegionKind<'tcx>],
     ) -> Self {
         Self {
             tcx,

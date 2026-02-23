@@ -68,7 +68,7 @@ pub(crate) fn get_export_as_attr(attrs: &[&hir::AttrItem]) -> Result<ExportAs, S
         if let Some(seg) = path_segs.get(1) {
             let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.name.as_str() == "export_as" {
+            if seg.as_str() == "export_as" {
                 let path = ExportAs::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(path);
             }
@@ -119,7 +119,7 @@ pub(crate) fn get_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<ShimAnnot, Stri
         if let Some(seg) = path_segs.get(1) {
             let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.name.as_str() == "shim" {
+            if seg.as_str() == "shim" {
                 let annot = ShimAnnot::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(annot);
             }
@@ -165,7 +165,7 @@ pub(crate) fn get_code_shim_attrs(attrs: &[&hir::AttrItem]) -> Result<CodeShimAn
         if let Some(seg) = path_segs.get(1) {
             let buffer = parse::Buffer::new(&parse_utils::attr_args_tokens(&it.args));
 
-            if seg.name.as_str() == "code_shim" {
+            if seg.as_str() == "code_shim" {
                 let annot = CodeShimAnnot::parse(&buffer, &()).map_err(parse_utils::str_err)?;
                 return Ok(annot);
             }

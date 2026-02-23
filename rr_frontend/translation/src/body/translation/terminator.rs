@@ -16,6 +16,7 @@ use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::{search, types};
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     fn check_call_destination(func: &mir::Operand<'_>, target_did: DefId) -> bool {
         let mir::Operand::Constant(box c) = func else {

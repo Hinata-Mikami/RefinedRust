@@ -575,7 +575,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Const::Ty(ty, _) | mir::Const::Val(_, ty) => {
                 match ty.kind() {
                     ty::TyKind::FnDef(def, args) => {
-                        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.env.tcx().type_of(def);
+                        let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = self.env.tcx().type_of(*def);
 
                         let ty_ident = ty.instantiate_identity();
                         assert!(ty_ident.is_fn());

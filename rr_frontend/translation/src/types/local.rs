@@ -290,7 +290,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         &self,
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
-        late_bounds: &[ty::BoundVariableKind],
+        late_bounds: &[ty::BoundVariableKind<'tcx>],
         trait_reqs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {

@@ -370,7 +370,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
     pub(crate) fn translate_bound_regions(
         &mut self,
         tcx: ty::TyCtxt<'tcx>,
-        bound_regions: &[ty::BoundRegionKind],
+        bound_regions: &[ty::BoundRegionKind<'tcx>],
     ) -> specs::traits::ReqScope {
         // We add these lifetimes to a special late scope, as the de bruijn indices are different
         // from the early-bound binders

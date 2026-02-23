@@ -90,7 +90,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(did);
+            let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(*did);
             // now we need to get the constraints and see if we can unify them
             // TODO: come up with algorithm for that
             // - I guess we need to unify the type variables here.
@@ -124,10 +124,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
             if let Some(solution) = solution {
                 println!(
                     "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                    trait_did,
-                    for_type,
-                    solution,
-                    impl_ref.def_id,
+                    trait_did, for_type, solution, impl_ref.def_id,
                 );
             } else {
                 solution = Some(*did);
@@ -149,13 +146,13 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
 
         let mut solution = None;
         for did in defs {
-            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(did).instantiate_identity();
+            let impl_self_ty: ty::Ty<'tcx> = tcx.type_of(*did).instantiate_identity();
             let impl_self_ty = types::normalize_in_function(*did, tcx, impl_self_ty).unwrap();
 
             trace!("trying to unify types: {for_type:?} and {impl_self_ty:?}");
             // check if this is an implementation for the right type
             if unification::unify_types(for_type, impl_self_ty, &mut unification_map) {
-                let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(did);
+                let impl_ref: ty::EarlyBinder<'_, ty::TraitRef<'_>> = tcx.impl_trait_ref(*did);
                 let impl_ref = types::normalize_in_function(*did, tcx, impl_ref.skip_binder()).unwrap();
 
                 let this_impl_args = impl_ref.args;
@@ -178,10 +175,7 @@ pub(crate) fn try_resolve_trait_impl_did<'tcx>(
                 if let Some(solution) = solution {
                     println!(
                         "Warning: Ambiguous resolution for impl of trait {:?} on type {:?}; solution {:?} but found also {:?}",
-                        trait_did,
-                        for_type,
-                        solution,
-                        impl_ref.def_id,
+                        trait_did, for_type, solution, impl_ref.def_id,
                     );
                 } else {
                     solution = Some(*did);
@@ -242,7 +236,7 @@ where
                     for impl_did in impls {
                         //let ty = tcx.type_of(*impl_did);
                         //info!("type of impl: {:?}", ty);
-                        let items: &ty::AssocItems = tcx.associated_items(impl_did);
+                        let items: &ty::AssocItems = tcx.associated_items(*impl_did);
                         //info!("items here: {:?}", items);
                         // TODO more robust error handling if there are multiple matches.
                         for item in items.in_definition_order() {

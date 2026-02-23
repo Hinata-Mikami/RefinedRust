@@ -1648,7 +1648,7 @@ fn register_trait_impls(vcx: &VerificationCtxt<'_, '_>) -> Result<(), String> {
             let mut all_specced = true;
             let assoc_items = traits::sort_assoc_items(vcx.env, assoc_items);
             for x in assoc_items {
-                if x.as_tag() == ty::AssocTag::Fn {
+                if x.tag() == ty::AssocTag::Fn {
                     // check if all functions have a specification
                     if let Some(mode) = vcx.procedure_registry.lookup_function_mode(x.def_id) {
                         all_specced = all_specced && mode.needs_spec();
@@ -1907,7 +1907,7 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
 
             let sorted_trait_assoc_items = traits::sort_assoc_items(vcx.env, trait_assoc_items);
             for x in sorted_trait_assoc_items {
-                if x.as_tag() == ty::AssocTag::Fn {
+                if x.tag() == ty::AssocTag::Fn {
                     let fn_item = assoc_items.filter_by_name_unhygienic_and_kind(
                         x.ident(tcx).name,
                         ty::AssocTag::Fn,

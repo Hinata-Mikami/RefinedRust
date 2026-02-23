@@ -130,7 +130,7 @@ pub(crate) fn replace_fnsig_args_with_polonius_vars<'def, 'tcx>(
                     );
                 }
             },
-            ty::BoundRegionKind::NamedAnon(name) => {
+            ty::BoundRegionKind::NamedForPrinting(name) => {
                 let mut region_name = strip_coq_ident(name.as_str());
                 if region_name == "_" {
                     region_name = next_id.as_usize().to_string();

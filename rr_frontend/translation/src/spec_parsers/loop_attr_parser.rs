@@ -235,7 +235,7 @@ impl<'def, T: ParamLookup<'def>> LoopAttrParser for VerboseLoopAttrParser<'def, 
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "params" => {
                     let p = RRParams::parse(&buffer, &self.info).map_err(str_err)?;
                     for param in p.params {

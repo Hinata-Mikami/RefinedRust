@@ -13,6 +13,7 @@ use super::TX;
 use crate::base::*;
 use crate::types;
 
+#[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     /// Translate a place to a Caesium lvalue.
     pub(crate) fn translate_place(

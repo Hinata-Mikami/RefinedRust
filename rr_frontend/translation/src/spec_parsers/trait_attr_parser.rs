@@ -93,7 +93,7 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "external_attrs" => {
                     if !trait_attrs.is_empty() {
                         return Err(
@@ -158,12 +158,12 @@ pub(crate) fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<S
 
         let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-        if "exists" == seg.name.as_str() {
+        if "exists" == seg.as_str() {
             let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
             let parsed_name = parsed_name.to_string();
             buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
             trait_attrs.push(parsed_name);
-        } else if "external_attrs" == seg.name.as_str() {
+        } else if "external_attrs" == seg.as_str() {
             let params: parse::Punctuated<parse::LitStr, MToken![,]> =
                 parse::Punctuated::<_, _>::parse_terminated(&buffer, &()).map_err(str_err)?;
             for it in params {

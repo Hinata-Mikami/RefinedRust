@@ -1,4 +1,6 @@
 #![feature(rustc_private)]
+#![feature(exitcode_exit_method)]
+#![feature(default_field_values)]
 
 // Sources:
 // https://github.com/rust-lang/miri/blob/master/benches/helpers/miri_helper.rs
@@ -7,7 +9,6 @@
 use std::cell::RefCell;
 use std::mem;
 use std::env;
-use std::process;
 
 use analysis::abstract_interpretation::FixpointEngine as _;
 use analysis::domains::DefinitelyInitializedAnalysis;
@@ -16,11 +17,12 @@ use rr_rustc_interface::data_structures::fx::FxHashMap;
 use rr_rustc_interface::hir::def_id::{DefId, LocalDefId};
 use rr_rustc_interface::interface::{Config, interface};
 use rr_rustc_interface::middle::query::Providers;
-use rr_rustc_interface::middle::query::queries::mir_borrowck::ProvidedValue;
+use rr_rustc_interface::middle::queries::mir_borrowck::ProvidedValue;
 use rr_rustc_interface::middle::{ty, util};
 use rr_rustc_interface::polonius_engine::{Algorithm, Output};
 use rr_rustc_interface::session::{self, EarlyDiagCtxt, Session};
-use rr_rustc_interface::{errors, hir};
+use rr_rustc_interface::hir;
+use rr_rustc_interface::span;
 
 use rr_rustc_interface::driver::*;
 use rr_rustc_interface::borrowck::provide;
@@ -30,6 +32,7 @@ struct OurCompilerCalls {
 }
 
 fn get_attributes(tcx: ty::TyCtxt<'_>, def_id: DefId) -> &[hir::Attribute] {
+    #[expect(deprecated)]
     tcx.get_all_attrs(def_id)
 }
 
@@ -101,6 +104,7 @@ fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValu
     let bodies_with_facts =
         consumers::get_bodies_with_borrowck_facts(tcx, def_id, consumers::ConsumerOptions::PoloniusOutputFacts);
 
+    #[expect(clippy::iter_over_hash_type)]
     for (did, body) in bodies_with_facts {
         // SAFETY: This is safe because we are feeding in the same `tcx` that is
         // going to be used as a witness when pulling out the data.
@@ -115,7 +119,7 @@ fn mir_borrowck<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValu
 }
 
 fn override_queries(_session: &Session, local: &mut util::Providers) {
-    local.mir_borrowck = mir_borrowck;
+    local.queries.mir_borrowck = mir_borrowck;
 }
 
 impl Callbacks for OurCompilerCalls {
@@ -136,9 +140,10 @@ impl Callbacks for OurCompilerCalls {
 
         println!(
             "Analyzing file {} using {}...",
-            compiler.sess.io.input.source_name().prefer_local(),
+            compiler.sess.io.input.file_name(&compiler.sess).display(span::RemapPathScopeComponents::MACRO),
             abstract_domain
         );
+
 
         // collect all functions with attribute #[analyzer::run]
         let mut local_def_ids: Vec<_> = tcx
@@ -191,10 +196,7 @@ impl Callbacks for OurCompilerCalls {
 /// --analysis=ReachingDefsState or --analysis=DefinitelyInitializedAnalysis
 fn main() {
     env_logger::init();
-    let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable {
-        kind: errors::emitter::HumanReadableErrorType::Default,
-        color_config: errors::emitter::ColorConfig::Auto,
-    });
+    let error_handler = EarlyDiagCtxt::new(session::config::ErrorOutputType::HumanReadable { .. });
     init_rustc_env_logger(&error_handler);
     let mut compiler_args = Vec::new();
     let mut callback_args = Vec::new();
@@ -218,5 +220,5 @@ fn main() {
     let exit_code = catch_with_exit_code(move || {
         run_compiler(&compiler_args, &mut callbacks);
     });
-    process::exit(exit_code)
+    exit_code.exit_process()
 }

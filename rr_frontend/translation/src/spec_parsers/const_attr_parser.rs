@@ -52,7 +52,7 @@ impl ConstAttrParser for VerboseConstAttrParser {
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
 
-            match seg.name.as_str() {
+            match seg.as_str() {
                 "name" => {
                     let parsed_name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
                     if name.is_some() {
