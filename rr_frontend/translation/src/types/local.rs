@@ -15,6 +15,7 @@ use rr_rustc_interface::abi;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFolder as _;
+use rr_rustc_interface::type_ir::TypeFoldable as _;
 
 use crate::base::*;
 use crate::environment::borrowck::facts;
@@ -22,6 +23,7 @@ use crate::environment::{Environment, polonius_info};
 use crate::regions::TyRegionCollectFolder;
 use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::traits;
+use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::resolution;
 use crate::types::translator::{FunctionState, STInner, TX};
 use crate::types::tyvars::TyVarFolder;
@@ -291,7 +293,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         callee_did: DefId,
         method_params: ty::GenericArgsRef<'tcx>,
         late_bounds: &[ty::BoundVariableKind<'tcx>],
-        trait_reqs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_reqs: Vec<ResolvedTraitReq<'tcx, 'def>>,
         with_surrounding_deps: bool,
     ) -> Result<AbstractedGenerics<'def>, TranslationError<'tcx>> {
         trace!(
@@ -301,7 +303,10 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // STEP 1: get all the regions and type variables appearing in the instantiation of generics
         let mut tyvar_folder = TyVarFolder::new(self.translator.env());
         let mut lft_folder = TyRegionCollectFolder::new(self.translator.env().tcx());
-
+        // HACK(see #32): We typically don't want lifetimes which just appear in the closure input/output
+        // signature, but not in the closure upvars, since these lifetimes often are locally
+        // universally quantified.
+        lft_folder.ignore_closure_args(true);
         // also count the number of (early) regions of the function itself
         let mut num_param_regions = 0;
 
@@ -321,10 +326,19 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         }
         // also find generics in the associated types
         for req in &trait_reqs {
-            for ty in &req.assoc_ty_inst {
+            for ty in &req.req_inst.assoc_ty_inst {
                 tyvar_folder.fold_ty(*ty);
                 lft_folder.fold_ty(*ty);
             }
+        }
+
+        // also find generics in trait requirement impl args.
+        // HACK(see #32): If this function has any closure requirements, this will contain the args of the
+        // closure requirement (but not discernable as a closure ty), so we will correctly abstract
+        // the closure argument lifetimes.
+        for req in &trait_reqs {
+            req.args.fold_with(&mut lft_folder);
+            req.args.fold_with(&mut tyvar_folder);
         }
 
         let (tyvars, projections) = tyvar_folder.get_result();
@@ -407,7 +421,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         // Also bind associated types of the trait requirements of the function (they are translated as
         // generics)
         for req in &trait_reqs {
-            for ty in &req.assoc_ty_inst {
+            for ty in &req.req_inst.assoc_ty_inst {
                 // we should check if it there is a parameter in the current scope for it
                 let translated_ty = self.translate_type(*ty)?;
                 if let specs::Type::LiteralParam(mut lit) = translated_ty {
@@ -419,7 +433,7 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
                 }
             }
         }
-        // Also bind surroudning associated types we use
+        // Also bind surrounding associated types we use
         for alias_ty in projections {
             let env = self.translator.env();
             let trait_did = env.tcx().parent(alias_ty.def_id);
@@ -480,19 +494,24 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
             let tcx = self.translator.env().tcx();
 
             let mut params = scope.make_params_scope();
-            params.add_trait_req_scope(&req.scope);
+            params.add_trait_req_scope(&req.req_inst.scope);
             let sc = STInner::InFunction(&mut scope);
             let mut state = sc.setup_trait_state(tcx, params);
 
             // TODO: we need to lift up the HRTB lifetimes here.
 
             let mut assoc_inst = Vec::new();
-            for ty in req.assoc_ty_inst {
+            for ty in req.req_inst.assoc_ty_inst {
                 let ty = TX::translate_type_in_state(self.translator, ty, &mut state)?;
                 assoc_inst.push(ty);
             }
-            let trait_req =
-                specs::traits::ReqInst::new(req.spec, req.origin, assoc_inst, req.of_trait, req.scope);
+            let trait_req = specs::traits::ReqInst::new(
+                req.req_inst.spec,
+                req.req_inst.origin,
+                assoc_inst,
+                req.req_inst.of_trait,
+                req.req_inst.scope,
+            );
             fn_inst.add_trait_requirement(trait_req);
         }
 

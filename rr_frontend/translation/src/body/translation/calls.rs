@@ -17,6 +17,7 @@ use super::{TX, TranslationKey};
 use crate::base::*;
 use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
+use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::{self, resolution};
 use crate::types::STInner;
 use crate::{procedures, regions, search, types};
@@ -106,7 +107,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!("enter register_use_procedure callee_did={callee_did:?} ty_params={ty_params:?}");
         // The key does not include the associated types, as the resolution of the associated types
@@ -202,7 +203,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         &mut self,
         callee_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!("enter register_use_trait_method did={:?} ty_params={:?}", callee_did, ty_params);
         // Does not include the associated types in the key; see `register_use_procedure` for an
@@ -383,7 +384,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         closure_args: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
         call_fn_did: DefId,
         ty_params: ty::GenericArgsRef<'tcx>,
-        _trait_specs: Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>,
+        _trait_specs: Vec<ResolvedTraitReq<'tcx, 'def>>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         trace!(
             "enter register_use_closure closure_did={closure_did:?}, closure_args={closure_args:?}, call_fn_did={call_fn_did:?}, ty_params={ty_params:?}"
@@ -474,7 +475,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError<'tcx>> {
         let mut scope = self.ty_translator.scope.borrow_mut();
         let mut state = STInner::InFunction(&mut scope);
         // NB: include the `Self` requirement to handle trait default fns

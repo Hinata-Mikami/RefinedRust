@@ -27,6 +27,12 @@ use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, error, procedures, search, traits, types};
 
+#[derive(Debug)]
+pub(crate) struct ResolvedTraitReq<'tcx, 'def> {
+    pub(crate) req_inst: specs::traits::ReqInst<'def, ty::Ty<'tcx>>,
+    pub(crate) args: ty::GenericArgsRef<'tcx>,
+}
+
 /// A using occurrence of a trait in the signature of the function.
 #[derive(Debug, Clone)]
 pub(crate) struct GenericTraitUse<'tcx, 'def> {
@@ -677,7 +683,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         bound_regions: &[ty::BoundRegionKind<'tcx>],
         origin: specs::TyParamOrigin,
         assoc_constraints: &[Option<ty::Ty<'tcx>>],
-    ) -> Result<specs::traits::ReqInst<'def, ty::Ty<'tcx>>, TranslationError<'tcx>> {
+    ) -> Result<ResolvedTraitReq<'tcx, 'def>, TranslationError<'tcx>> {
         let current_typing_env: ty::TypingEnv<'tcx> = state.get_typing_env(self.env.tcx());
 
         let trait_spec = self.lookup_trait(trait_did).ok_or(Error::NotATrait(trait_did))?;
@@ -818,7 +824,12 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 },
             };
 
-            Ok(req_inst)
+            let resolved = ResolvedTraitReq {
+                req_inst,
+                args: impl_args,
+            };
+
+            Ok(resolved)
         } else {
             Err(TranslationError::TraitResolution(
                 "could not resolve trait required for method call".to_owned(),
@@ -837,7 +848,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         did: DefId,
         params: ty::GenericArgsRef<'tcx>,
         include_self: bool,
-    ) -> Result<Vec<specs::traits::ReqInst<'def, ty::Ty<'tcx>>>, TranslationError<'tcx>> {
+    ) -> Result<Vec<ResolvedTraitReq<'tcx, 'def>>, TranslationError<'tcx>> {
         trace!(
             "Enter resolve_trait_requirements_in_state with did={did:?} and params={params:?}, in state={state:?}"
         );
@@ -904,7 +915,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 "Trying to resolve requirement def_id={:?} with args = {trait_args:?}",
                 req.trait_ref.def_id
             );
-            let req_inst = self.resolve_trait_requirement_in_state(
+            let resolved = self.resolve_trait_requirement_in_state(
                 state,
                 req.trait_ref.def_id,
                 trait_args,
@@ -914,10 +925,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 req.assoc_constraints.as_slice(),
             )?;
 
-            if req_inst.origin == specs::TyParamOrigin::Direct {
-                direct_trait_spec_terms.push(req_inst);
+            if resolved.req_inst.origin == specs::TyParamOrigin::Direct {
+                direct_trait_spec_terms.push(resolved);
             } else {
-                indirect_trait_spec_terms.push(req_inst);
+                indirect_trait_spec_terms.push(resolved);
             }
         }
         indirect_trait_spec_terms.extend(direct_trait_spec_terms);
@@ -980,10 +991,10 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         for trait_req in self.resolve_trait_requirements_in_state(state, did, params_inst, false)? {
             // compute the new scope including the bound regions.
             let mut scope = state.get_param_scope();
-            scope.add_trait_req_scope(&trait_req.scope);
+            scope.add_trait_req_scope(&trait_req.req_inst.scope);
             let mut state = state.setup_trait_state(self.env.tcx(), scope);
 
-            let trait_req = self.translate_trait_req_inst_in_state(&mut state, trait_req)?;
+            let trait_req = self.translate_trait_req_inst_in_state(&mut state, trait_req.req_inst)?;
             trait_reqs.push(trait_req);
         }
         Ok(trait_reqs)

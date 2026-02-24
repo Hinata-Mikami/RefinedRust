@@ -155,6 +155,7 @@ pub(crate) fn region_to_region_vid(r: ty::Region<'_>) -> facts::Region {
 pub(crate) struct TyRegionCollectFolder<'tcx> {
     tcx: ty::TyCtxt<'tcx>,
     regions: BTreeSet<Region>,
+    ignore_closure_args: bool,
 }
 
 impl<'tcx> TyRegionCollectFolder<'tcx> {
@@ -162,17 +163,35 @@ impl<'tcx> TyRegionCollectFolder<'tcx> {
         TyRegionCollectFolder {
             tcx,
             regions: BTreeSet::new(),
+            ignore_closure_args: false,
         }
     }
 
     pub(crate) fn get_regions(self) -> BTreeSet<Region> {
         self.regions
     }
+
+    pub(crate) const fn ignore_closure_args(&mut self, b: bool) {
+        self.ignore_closure_args = b;
+    }
 }
 
 impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for TyRegionCollectFolder<'tcx> {
     fn cx(&self) -> ty::TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn fold_ty(&mut self, t: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        if let ty::TyKind::Closure(_, args) = t.kind() {
+            if self.ignore_closure_args {
+                let closure_args = args.as_closure();
+                closure_args.tupled_upvars_ty().super_fold_with(self)
+            } else {
+                t.super_fold_with(self)
+            }
+        } else {
+            t.super_fold_with(self)
+        }
     }
 
     // TODO: handle the case that we pass below binders

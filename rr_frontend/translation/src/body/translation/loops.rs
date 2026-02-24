@@ -126,8 +126,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             specs::TyParamOrigin::Direct,
             &[],
         )?;
-        let trait_spec_term =
-            self.trait_registry.translate_trait_req_inst_in_state(&mut state, trait_spec_term)?;
+        let trait_spec_term = self
+            .trait_registry
+            .translate_trait_req_inst_in_state(&mut state, trait_spec_term.req_inst)?;
         trace!("trait_spec_term={trait_spec_term:?}");
 
         Ok(Some(LoopIteratorInfo {
