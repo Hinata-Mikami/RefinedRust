@@ -365,15 +365,15 @@ Section updateable_rules.
   Qed.
 
   Lemma updateable_strip_guards :
-    iterate_with_hooks updateable_E updateable_L strip_guarded (λ L,
+    iterate_with_hooks updateable_E updateable_L StripGuarded (λ L _,
       updateable_core updateable_E L)
     ⊢ P.
   Proof.
     iIntros "HT". unshelve iApply add_updateable; first apply _.
     iIntros "#CTX HE HL".
     unfold iterate_with_hooks.
-    iMod ("HT" with "[] HE HL") as "Ha"; first done.
-    done.
+    iMod ("HT" with "[] HE HL") as "(%L2 & % & HL & Ha)"; first done.
+    by iFrame.
   Qed.
 
   (** Discard the opened invariant on an owned location, removing the obligation to re-establish the invariant *)

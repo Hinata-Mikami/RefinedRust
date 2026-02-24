@@ -315,6 +315,47 @@ Ltac solve_ensure_evars_instantiated ::=
   simpl;
   repeat solve_ensure_evars_instantiated_step.
 
+(** Find inheritances *)
+Ltac gather_inheritances env :=
+  match env with
+  | Enil => constr:([] : list (list lft))
+  | Esnoc ?env' _ ?p =>
+      let rs := gather_inheritances env' in
+      lazymatch p with
+      | (Inherit ?κs ?P)%I =>
+          constr:(κs :: rs)
+      | _ => constr:(rs)
+      end
+  end.
+Ltac solve_find_inheritances ::=
+  match goal with
+  | H := Envs ?Δi ?Δs _ |- find_inheritances_pure_goal ?ks =>
+      let inheritances := gather_inheritances Δs in
+      let inheritances := constr:(inheritances) in
+      unify ks inheritances;
+      unfold find_inheritances_pure_goal;
+      done
+  end.
+
+(* Very simple list containment solver, tailored for the goals we usually get around external lifetime contexts. *)
+Ltac simple_list_elem_solver :=
+  repeat lazymatch goal with
+  | |- ?a ∈ ?a :: ?L =>
+      apply elem_of_cons; by left
+  | |- ?a ∈ _ :: ?L =>
+      apply elem_of_cons; right
+  | |- ?a ∈ _ ++ ?L =>
+      apply elem_of_app; right
+  end.
+
+(** Check if an element is contained in a list *)
+Ltac solve_check_list_elem_of ::=
+  match goal with
+  | |- check_list_elem_of_pure_goal ?x ?xs ?b =>
+      unfold check_list_elem_of_pure_goal;
+      first [unify b true; simpl; simple_list_elem_solver | unify b false; simpl; exact I]
+  end.
+
 (** ** lifetime inclusion solver *)
 (* Due to the structure of local inclusions (unique LHS), local inclusions are fairly easy to handle in the solver. *)
 (* External inclusions are harder, as they are less structured.
@@ -628,17 +669,6 @@ Ltac list_find_tac_app cont l :=
   end.
 
 
-(* Very simple list containment solver, tailored for the goals we usually get around external lifetime contexts. *)
-Ltac elctx_list_elem_solver :=
-  repeat lazymatch goal with
-  | |- ?a ∈ ?a :: ?L =>
-      apply elem_of_cons; by left
-  | |- ?a ∈ _ :: ?L =>
-      apply elem_of_cons; right
-  | |- ?a ∈ _ ++ ?L =>
-      apply elem_of_app; right
-  end.
-
 (* TODO: what about symbolic lifetimes like ty_lfts? *)
 
 (** Basic algorithm: Want to eliminate the RHS to [], so that the inclusion to [static] holds trivially.
@@ -752,7 +782,7 @@ Ltac solve_lft_incl_list_step cont :=
          match el with
          | e1 =>
             notypeclasses refine (tac_lctx_lft_incl_list_expand_ext_choose E L e1 c1 cs κs1 κs2 j _ _ _ _);
-            [elctx_list_elem_solver | reflexivity | simpl; cont]
+            [simple_list_elem_solver | reflexivity | simpl; cont]
          | _ => fail
          end
        in
@@ -1131,7 +1161,7 @@ Ltac solve_lft_alive_step :=
   (* Try a candidate for external lifetime expansion *)
   | |- lctx_lft_alive_list_expand_ext (?c1 :: ?cs) ?E ?L (?κ :: ?κs) ∨ _ =>
       notypeclasses refine (tac_lctx_lft_alive_list_expand_ext_choose E L c1 cs κ κs _ _ _);
-      [elctx_list_elem_solver | ]
+      [simple_list_elem_solver | ]
 
   (* The expansion candidates are exhausted *)
   | |- lctx_lft_alive_list_expand_ext [] ?E ?L ?κs1 ∨ _ =>

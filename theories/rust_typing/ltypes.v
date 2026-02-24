@@ -3511,9 +3511,9 @@ Section ltype_def.
     destruct lt; subst; eauto.
   Qed.
 
-  Definition lty_uniq_extractable (lt : lty) : option (option lft) :=
+  Definition lty_uniq_extractable (lt : lty) : option (option (list lft)) :=
     match lt with
-    | BlockedLty _ κ  => Some (Some κ)
+    | BlockedLty _ κ  => Some (Some [κ])
     | ShrBlockedLty _ _ => Some None
     | OfTyLty _ => Some (None)
     | AliasLty _ _ _ => None
@@ -3531,16 +3531,15 @@ Section ltype_def.
         None
     | OpenedNaLty _ _ _ _ => None
     end.
-  Definition ltype_uniq_extractable {rt} (lt : ltype rt) : option (option lft) :=
+  Definition ltype_uniq_extractable {rt} (lt : ltype rt) : option (option (list lft)) :=
     lty_uniq_extractable lt.(ltype_lty).
 
 
-  Inductive inherit_ghost := InheritGhost.
   Lemma lty_own_extract_ghost_drop_uniq π F (lt : lty) κ κm γ r l :
     lftE ⊆ F →
     lty_uniq_extractable lt = Some κm →
     lty_own lt (Uniq κ γ) π r l ={F}=∗
-    (MaybeInherit (κm) InheritGhost (place_rfn_interp_mut r γ)).
+    (MaybeInherit κm (place_rfn_interp_mut r γ)).
   Proof.
     intros ? Hdeinit.
     rewrite /MaybeInherit/Inherit.
@@ -3548,6 +3547,7 @@ Section ltype_def.
     - rewrite /lty_own. simp lty_own_pre. injection Hdeinit as <-. simpl.
       iIntros "(%ly & %Halg & %Hly & ? & ? & Hinh & Hcred & Hl)".
       iModIntro. iIntros (??) "Ha".
+      rewrite right_id.
       iMod (fupd_mask_mono with "(Hinh Ha)") as "($ & _)"; first done.
       done.
     - rewrite /lty_own. simp lty_own_pre.
@@ -3579,7 +3579,7 @@ Section ltype_def.
     lftE ⊆ F →
     ltype_uniq_extractable lt = Some κm →
     ltype_own lt (Uniq κ γ) π r l ={F}=∗
-    MaybeInherit κm InheritGhost (place_rfn_interp_mut r γ).
+    MaybeInherit κm (place_rfn_interp_mut r γ).
   Proof.
     iIntros (??) "Hown".
     iPoseProof (lty_own_extract_ghost_drop_uniq _ _ (lt.(ltype_lty)) with "[Hown]") as "Ha";

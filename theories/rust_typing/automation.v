@@ -206,10 +206,6 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : ResolveGhostADT π E L m r ty) T))
   | find_observation ?rt ?γ ?mode ?T =>
       cont uconstr:(((_ : FindObservation rt γ mode) T))
-  | typed_on_endlft ?E ?L ?κ ?worklist ?T =>
-      cont uconstr:(((_ : TypedOnEndlft E L κ worklist) T))
-  | typed_on_endlft_trigger ?E ?L ?key ?P ?T =>
-      cont uconstr:(((_ : TypedOnEndlftTrigger E L key P) T))
   | introduce_with_hooks ?E ?L ?P ?T =>
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
   | iterate_with_hooks ?E ?L ?m ?T =>
@@ -467,32 +463,6 @@ Ltac liRContextResolveInit :=
       end
   end.
 
-
-
-(** Endlft trigger automation for [Inherit] context items *)
-Ltac gather_on_endlft_worklist κ env :=
-  match env with
-  | Enil => uconstr:([])
-  | Esnoc ?env' _ ?p =>
-      let rs := gather_on_endlft_worklist κ env' in
-      lazymatch p with
-      | (Inherit κ ?key ?P)%I =>
-          uconstr:(((existT _ key : sigT (@id Type)), P) :: rs)
-      | _ => uconstr:(rs)
-      end
-  end.
-Ltac liROnEndlftTriggerInit :=
-  lazymatch goal with
-  | |- envs_entails ?envs (typed_on_endlft_pre ?E ?L ?κ ?T) =>
-      let envs := eval hnf in envs in
-      match envs with
-      | Envs _ ?spatial _ =>
-          let worklist := gather_on_endlft_worklist κ spatial in
-          notypeclasses refine (tac_fast_apply (typed_on_endlft_pre_init worklist E L κ T) _)
-      | _ => fail 1000 "liROnEndlftTriggerInit: cannot determine Iris context"
-      end
-  end.
-
 Ltac liRJudgement :=
   lazymatch goal with
     (* place finish *)
@@ -527,9 +497,6 @@ Ltac liRJudgement :=
     (* initialize context folding *)
     | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldResolveAllInit) ?T) =>
         liRContextResolveInit
-    (* initialize OnEndlft triggers *)
-    | |- envs_entails _ (typed_on_endlft_pre ?E ?L ?κ ?T) =>
-        liROnEndlftTriggerInit
     (* trigger tc search *)
     | |- envs_entails _ (trigger_tc ?H ?T) =>
         notypeclasses refine (tac_fast_apply (tac_trigger_tc _ _ _ _) _); [solve [refine _] | ]
@@ -1187,6 +1154,7 @@ lazymatch P with
       (* terms here are huge, and normalizing is very expensive *)
       split; [shelve_sidecond |]
   | fast_lia_hint _ => split; [clear; unfold fast_lia_hint, num_cred; simpl; lia | ]
+  | fast_set_hint _ => split; [clear; unfold fast_lia_hint; simpl; set_solver | ]
   | fast_eq_hint _ =>
       split; [
         first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]

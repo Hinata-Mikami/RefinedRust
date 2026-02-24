@@ -23,7 +23,7 @@ Section find.
     {| rt_fic := FindValP v |}.
 
   Global Instance related_to_named_lfts M : RelatedTo (named_lfts M) | 100 :=
-    {| rt_fic := FindNamedLfts |}.
+{| rt_fic := FindNamedLfts |}.
 
   Global Instance related_to_gvar_pobs {rt} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
     {| rt_fic := FindGvarPobsP γ |}.
@@ -282,9 +282,8 @@ Section find.
   Proof.
     iIntros "(Hdead & HT)". iExists true. iFrame.
   Qed.
-  Global Instance find_in_context_opt_lft_dead_inst κ :
-    FindInContext (FindOptLftDead κ) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_opt_lft_dead κ T).
+  Definition find_in_context_opt_lft_dead_inst := [instance @find_in_context_opt_lft_dead with FICSyntactic].
+  Global Existing Instance find_in_context_opt_lft_dead_inst | 1.
 
   (* dummy instance in case we don't find it *)
   Lemma find_in_context_opt_lft_dead_none κ T :
@@ -293,9 +292,17 @@ Section find.
   Proof.
     iIntros "(_ & HT)". iExists false. iFrame. simpl. done.
   Qed.
-  Global Instance find_in_context_opt_lft_dead_none_inst κ :
-    FindInContext (FindOptLftDead κ) FICSyntactic | 10 :=
-    λ T, i2p (find_in_context_opt_lft_dead_none κ T).
+  Definition find_in_context_opt_lft_dead_none_inst := [instance @find_in_context_opt_lft_dead_none with FICSyntactic].
+  Global Existing Instance find_in_context_opt_lft_dead_none_inst | 10.
+
+  Lemma find_in_context_lft_dead κ T :
+    [† κ] ∗ T ()
+    ⊢ find_in_context (FindLftDead κ) T.
+  Proof.
+    iIntros "(Hdead & HT)". iExists (). iFrame.
+  Qed.
+  Definition find_in_context_lft_dead_inst := [instance @find_in_context_lft_dead with FICSyntactic].
+  Global Existing Instance find_in_context_lft_dead_inst.
 
   (** FindGuarded *)
   Lemma subsume_guarded prepaid1 prepaid2 P1 P2 T :
@@ -466,15 +473,14 @@ Section find.
     λ T, i2p (subsume_full_gvar_obs_pobs E L step γ r1 r2 T).
 
   (** FindInherit *)
-  Lemma find_in_context_inherit {K} κ (key : K) P T :
-    Inherit κ key P ∗ T () ⊢
-    find_in_context (FindInherit κ key P) T.
+  Lemma find_in_context_inherit κ T :
+    (∃ P, Inherit κ P ∗ T P) ⊢
+    find_in_context (FindInherit κ) T.
   Proof.
-    iIntros "(Hinh & HT)". iExists (). by iFrame.
+    iIntros "(%P & Hinh & HT)". iExists P. by iFrame.
   Qed.
-  Global Instance find_in_context_inherit_inst {K} κ (key : K) P :
-    FindInContext (FindInherit κ key P) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_inherit κ key P T).
+  Definition find_in_context_inherit_inst := [instance @find_in_context_inherit with FICSyntactic].
+  Global Existing Instance find_in_context_inherit_inst | 1.
 
   (** FindLocInBounds *)
   Lemma find_in_context_loc_in_bounds l T :
@@ -537,17 +543,17 @@ Section iterate.
   Context `{!typeGS Σ}.
 
   (** Iteration for stripping all guards in the context *)
-  Variant StripGuarded := strip_guarded.
+  Variant strip_guarded := StripGuarded.
 
   Lemma iterate_with_hooks_strip_guarded E L T :
     (find_in_context FindOptGuarded (λ g,
       match g with
-      | None => T L
+      | None => T L StripGuarded
       | Some (prepaid, P) =>
           introduce_with_hooks E L (guarded prepaid P) (λ L2,
-            iterate_with_hooks E L2 strip_guarded T)
+            iterate_with_hooks E L2 StripGuarded T)
       end))
-    ⊢ iterate_with_hooks E L strip_guarded T.
+    ⊢ iterate_with_hooks E L StripGuarded T.
   Proof.
     iIntros "(%g & Hg & HT)".
     iIntros (??) "#HE HL".
@@ -1033,6 +1039,7 @@ Section prove_subtype.
 
   (* TODO figure out how to nicely key the Rel2. Is there always a canonical order in which we want to have that?
      doesn't seem like it. *)
+  (*
   Lemma prove_with_subtype_inherit_manual E L step pm {K} (k : K) κ κ' P Q T :
     lctx_lft_incl E L κ' κ →
     Inherit κ' k Q -∗
@@ -1050,6 +1057,7 @@ Section prove_subtype.
     iExists _, _, _. iFrame. iApply maybe_logical_step_intro.
     iModIntro. iL. destruct pm; iFrame. eauto.
   Qed.
+   *)
 
   (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be proved or refuted *)
   Lemma prove_with_subtype_disj_guard_l_right E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
@@ -4132,8 +4140,8 @@ Section subsume.
       find_in_context (FindLocal f x) (λ '(st, l),
       li_tactic (simplify_local_list_goal (remove_local locals x)) (λ locals',
         prove_with_subtype E L true ProveDirect (l ◁ₗ[f.1, Owned] .@ ◁ uninit st) (λ L2 κs R2,
-          R2 -∗
-          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L2 f s fn R ϝ)))))
+          introduce_with_hooks E L2 R2 (λ L3,
+          li_clear l ((allocated_locals f locals' -∗ typed_stmt E L3 f s fn R ϝ))))))
     else (allocated_locals f locals -∗ typed_stmt E L f s fn R ϝ))
     ⊢ typed_stmt E L f (local_dead x; s) fn R ϝ.
   Proof.
@@ -4162,7 +4170,8 @@ Section subsume.
       { iExists _. iFrame. done. }
       iApply physical_step_intro. iNext.
       iIntros "Hf Hlocals".
-      iApply ("HT" with "HR Hlocals CTX HE HL Hf Hpost").
+      iMod ("HT" with "[] HE HL HR") as "(%L3 & HL & HT)"; first done.
+      iApply ("HT" with "Hlocals CTX HE HL Hf Hpost").
     - unfold LocalDeadSt.
       iIntros (?) "#CTX #HE HL Hf Hpost".
       simpl.
@@ -4216,32 +4225,6 @@ Section subsume.
   Global Existing Instance typed_expr_assert_type_inst.
 
   (** ** Handling of lifetime-related annotations *)
-  (** Endlft triggers *)
-  (** Instance for returning lifetime tokens [Inherit κ1 InheritDynIncl (llft_elt_toks κs)] *)
-  Lemma typed_on_endlft_trigger_dyn_incl E L κs T :
-    li_tactic (llctx_release_toks_goal L κs) (λ L', T L')
-    ⊢ typed_on_endlft_trigger E L InheritDynIncl (llft_elt_toks κs) T.
-  Proof.
-    rewrite /llctx_release_toks_goal.
-    iIntros "(%L' & %Hrel & Hs)" (F ?) "#HE HL Htoks".
-    iMod (llctx_return_elt_toks _ _ L' with "HL Htoks") as "HL"; first done.
-    eauto with iFrame.
-  Qed.
-  Global Instance typed_on_endlft_trigger_dyn_incl_inst E L κs : TypedOnEndlftTrigger E L InheritDynIncl (llft_elt_toks κs) :=
-    λ T, i2p (typed_on_endlft_trigger_dyn_incl E L κs T).
-
-  (** Instance for obtaining observations [Inherit κ1 (InheritGhost) ..] *)
-  Lemma typed_on_endlft_trigger_ghost E L (P : iProp Σ) T :
-    (P -∗ T L)
-    ⊢ typed_on_endlft_trigger E L InheritGhost P T.
-  Proof.
-    iIntros "HT" (F ?) "#HE HL HP".
-    iPoseProof ("HT" with "HP") as "HT".
-    eauto with iFrame.
-  Qed.
-  Global Instance typed_on_endlft_trigger_ghost_inst E L (P : iProp Σ) : TypedOnEndlftTrigger E L InheritGhost P :=
-    λ T, i2p (typed_on_endlft_trigger_ghost E L P T).
-
   (** Instance for resolving Rel2 with another observation *)
   (* TODO *)
 
@@ -4250,9 +4233,9 @@ Section subsume.
 
   (* Point: I should still run the endlft hooks *)
   (* TODO *)
-  Lemma introduce_with_hooks_maybe_inherit_none E L {K} (k : K) P T :
+  Lemma introduce_with_hooks_maybe_inherit_none E L P T :
     introduce_with_hooks E L P T
-    ⊢ introduce_with_hooks E L (MaybeInherit None k P) T.
+    ⊢ introduce_with_hooks E L (MaybeInherit None P) T.
   Proof.
     iIntros "HT" (??) "#HE HL Hinh".
     rewrite /MaybeInherit.
@@ -4262,9 +4245,9 @@ Section subsume.
   Definition introduce_with_hooks_maybe_inherit_none_inst := [instance @introduce_with_hooks_maybe_inherit_none].
   Global Existing Instance introduce_with_hooks_maybe_inherit_none_inst.
 
-  Lemma introduce_with_hooks_maybe_inherit_some E L {K} (k : K) κ P T :
-    introduce_with_hooks E L (Inherit κ k P) T
-    ⊢ introduce_with_hooks E L (MaybeInherit (Some κ) k P) T.
+  Lemma introduce_with_hooks_maybe_inherit_some E L κ P T :
+    introduce_with_hooks E L (Inherit κ P) T
+    ⊢ introduce_with_hooks E L (MaybeInherit (Some κ) P) T.
   Proof.
     iIntros "HT" (??) "#HE HL Hinh".
     rewrite /MaybeInherit. iApply ("HT" with "[//] HE HL Hinh").
@@ -4272,20 +4255,60 @@ Section subsume.
   Definition introduce_with_hooks_maybe_inherit_some_inst := [instance @introduce_with_hooks_maybe_inherit_some].
   Global Existing Instance introduce_with_hooks_maybe_inherit_some_inst.
 
-  Lemma introduce_with_hooks_inherit E L {K} (k : K) κ P T :
+
+  (** Introducing inheritances *)
+  Variant iterate_find_dead :=
+    | IterateFindDead (κs : list lft)
+  .
+  Lemma iterate_with_hooks_find_dead_nil E L T :
+    T L (IterateFindDead [])
+    ⊢ iterate_with_hooks E L (IterateFindDead []) T.
+  Proof.
+    iIntros "HT". iIntros (??) "HE HL".
+    iModIntro. iFrame.
+  Qed.
+  Definition iterate_with_hooks_find_dead_nil_inst := [instance @iterate_with_hooks_find_dead_nil].
+  Global Existing Instance iterate_with_hooks_find_dead_nil_inst.
+
+  Lemma iterate_with_hooks_find_dead_cons E L κ κs T :
     find_in_context (FindOptLftDead κ) (λ dead,
       if dead
-      then typed_on_endlft_trigger E L k P T
-      else Inherit κ k P -∗ T L)
-    ⊢ introduce_with_hooks E L (Inherit κ k P) T.
+      then [† κ] -∗ T L (IterateFindDead (κ :: κs))
+      else iterate_with_hooks E L (IterateFindDead (κs)) T)
+    ⊢ iterate_with_hooks E L (IterateFindDead (κ :: κs)) T.
   Proof.
-    rewrite /FindOptLftDead/=. iIntros "(%dead & Hdead & HT)".
-    simpl in *. destruct dead.
-    - iIntros (??) "#HE HL Hinh".
-      rewrite /Inherit. iMod ("Hinh" with "[//] Hdead") as "HP".
-      iApply ("HT" with "[//] HE HL HP").
-    - iIntros (??) "#HE HL Hinh".
-      iExists L. iFrame. by iApply ("HT" with "Hinh").
+    iIntros "HT". iIntros (??) "HE HL".
+    iDestruct "HT" as "(%b & HT)".
+    destruct b.
+    - iDestruct "HT" as "(Hdead & HT)". iFrame. iExists _.
+      iApply ("HT" with "Hdead").
+    - iDestruct "HT" as "(_ & HT)" .
+      by iApply ("HT" with "[] HE HL").
+  Qed.
+  Definition iterate_with_hooks_find_dead_cons_inst := [instance @iterate_with_hooks_find_dead_cons].
+  Global Existing Instance iterate_with_hooks_find_dead_cons_inst.
+
+  Lemma introduce_with_hooks_inherit E L κs P T :
+    iterate_with_hooks E L (IterateFindDead κs) (λ L2 m,
+    match m with
+    | IterateFindDead [] =>
+      Inherit κs P -∗ T L2
+    | IterateFindDead (κ :: _) =>
+        ⌜fast_set_hint (κ ∈ κs)⌝ ∗ find_in_context (FindLftDead κ) (λ _,
+        introduce_with_hooks E L2 P T)
+    end)
+    ⊢ introduce_with_hooks E L (Inherit κs P) T.
+  Proof.
+    rewrite /FindOptLftDead/=. iIntros "HT".
+    iIntros (??) "#HE HL HP".
+    iMod ("HT" with "[] HE HL") as "(%L2 & %m' & HL & HT)"; first done.
+    destruct m' as [[]].
+    - iFrame. by iApply "HT".
+    - unfold fast_set_hint. iDestruct "HT" as "(%Helem & % & Hdead & HT)".
+      rewrite /Inherit.
+      iMod ("HP" with "[//] [Hdead]") as "HP".
+      { iApply lft_dead_lft_intersect_list. iFrame. done. }
+      by iApply ("HT" with "[] HE HL").
   Qed.
   Definition introduce_with_hooks_inherit_inst := [instance @introduce_with_hooks_inherit].
   Global Existing Instance introduce_with_hooks_inherit_inst.
@@ -4346,6 +4369,44 @@ Section subsume.
   (** EndLft *)
   (* TODO: also make endlft apply to local aliases, endlft should just remove them, without triggering anything. *)
 
+  Variant iterate_endlft_inheritances :=
+  | IterateEndlftInheritances (κ : lft) (ks : list (list lft)).
+
+  Lemma iterate_with_hooks_endlft_inheritance_nil E L κ T :
+    T L (IterateEndlftInheritances κ [])
+    ⊢ iterate_with_hooks E L (IterateEndlftInheritances κ []) T.
+  Proof.
+    iIntros "HT" (??) "HE HL". iFrame. done.
+  Qed.
+  Definition iterate_with_hooks_endlft_inheritance_nil_inst := [instance @iterate_with_hooks_endlft_inheritance_nil].
+  Global Existing Instance iterate_with_hooks_endlft_inheritance_nil_inst.
+
+  Lemma iterate_with_hooks_endlft_inheritance_cons E L κ κs ks T :
+    (* check if this inheritance applies if [κ] dies *)
+    li_tactic (check_list_elem_of_goal κ κs) (λ b,
+      if b then
+        find_in_context (FindInherit κs) (λ P,
+        find_in_context (FindLftDead κ) (λ _,
+        introduce_with_hooks E L P (λ L2,
+        iterate_with_hooks E L2 (IterateEndlftInheritances κ ks) T)))
+      else iterate_with_hooks E L (IterateEndlftInheritances κ ks) T)
+    ⊢ iterate_with_hooks E L (IterateEndlftInheritances κ (κs :: ks)) T.
+  Proof.
+    rewrite /check_list_elem_of_goal.
+    iIntros "(%b & %Hel & HT)".
+    destruct b.
+    - iDestruct "HT" as "(%P & Hinh & % & Hdead & HT)".
+      simpl in *. unfold Inherit.
+      iIntros (??) "#HE HL".
+      simpl.
+      iMod ("Hinh" with "[//] [Hdead]") as "HP".
+      { iApply lft_dead_lft_intersect_list. iFrame. done. }
+      iMod ("HT" with "[] HE HL HP") as "(%L2 & HL & HT)"; first done.
+      by iApply ("HT" with "[] HE HL").
+    - done.
+  Qed.
+  Definition iterate_with_hooks_endlft_inheritance_cons_inst := [instance @iterate_with_hooks_endlft_inheritance_cons].
+  Global Existing Instance iterate_with_hooks_endlft_inheritance_cons_inst.
 
   Lemma type_endlft E L f (n : string) s fn R ϝ :
     (∃ M, named_lfts M ∗
@@ -4367,9 +4428,10 @@ Section subsume.
         (*typed_pre_context_fold E L3 (CtxFoldResolveAllInit) (λ L3',*)
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
-        (* run endlft triggers *)
-        typed_on_endlft_pre E L4 κ (λ L5,
-        typed_stmt E L5 f s fn R ϝ)))))))
+        (* resolve inheritances *)
+        li_tactic (find_inheritances_goal) (λ ks,
+        iterate_with_hooks E L4 (IterateEndlftInheritances κ ks) (λ L5 _,
+        typed_stmt E L5 f s fn R ϝ))))))))
       | None => named_lfts M -∗ typed_stmt E L f s fn R ϝ
       end))
     ⊢ typed_stmt E L f (annot: (EndLftAnnot n); s) fn R ϝ.
@@ -4406,8 +4468,8 @@ Section subsume.
 
     iMod ("HT" with "[] HE HL [$HR2 Hcred Ha]") as "(%L6 & HL & HT)"; first done.
     { iFrame. iApply tr_weaken; last done. simpl. unfold num_laters_per_step; lia. }
-    iMod ("HT" with "[] HE HL Hdead") as "(%L7 & HL & HT)".
-    { done. }
+    unfold find_inheritances_goal. iDestruct "HT" as "(%ks & HT)".
+    iMod ("HT" with "[] HE HL") as "(%L7 & % & HL & HT)"; first done.
     by iApply ("HT" with "CTX HE HL Hf").
   Qed.
 
@@ -4417,7 +4479,7 @@ Section subsume.
       li_tactic (compute_map_lookup_nofail_goal M n1) (λ κ1,
       li_tactic (compute_map_lookup_nofail_goal M n2) (λ κ2,
       li_tactic (lctx_lft_alive_count_goal E L κ2) (λ '(κs, L'),
-      Inherit κ1 InheritDynIncl (llft_elt_toks κs) -∗
+      Inherit [κ1] (llft_elt_toks κs) -∗
       named_lfts M -∗
       typed_stmt ((κ1 ⊑ₑ κ2) :: E) L' f s fn R ϝ))))
     ⊢ typed_stmt E L f (annot: DynIncludeLftAnnot n1 n2; s) fn R ϝ.
@@ -4752,9 +4814,6 @@ Global Typeclasses Opaque relate_hlist.
 
 Global Typeclasses Opaque fold_list.
 
-Global Typeclasses Opaque typed_on_endlft.
-
-Global Typeclasses Opaque typed_on_endlft_trigger.
 Global Typeclasses Opaque typed_pre_context_fold.
 
 Global Typeclasses Opaque typed_context_fold_step.

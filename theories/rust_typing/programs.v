@@ -53,7 +53,11 @@ Definition fast_lia_hint (P : Prop) : Prop :=
 Global Typeclasses Opaque fast_lia_hint.
 Arguments fast_lia_hint : simpl never.
 
-
+(** Hint for solving inclusion sideconditions *)
+Definition fast_set_hint (P : Prop) : Prop :=
+  P.
+Global Typeclasses Opaque fast_set_hint.
+Arguments fast_set_hint : simpl never.
 
 (** Automation for finding the location for a local variable *)
 Class FindLocalLoc (f : frame_path) (v : var_name) (l : loc) := {}.
@@ -439,6 +443,10 @@ Definition FindOptLftDead `{!typeGS Σ} (κ : lft) :=
   {| fic_A := bool; fic_Prop b := (if b then [† κ] else True)%I; |}.
 Global Typeclasses Opaque FindOptLftDead.
 
+Definition FindLftDead `{!typeGS Σ} (κ : lft) :=
+  {| fic_A := (); fic_Prop _ := [† κ]%I; |}.
+Global Typeclasses Opaque FindLftDead.
+
 (** attempt to find an observation, or give up if there is none *)
 Definition FindOptGvarPobs `{!typeGS Σ} (γ : gname) :=
   {| fic_A := (@sigT RT (λ rt, rt) + unit)%type;
@@ -476,11 +484,9 @@ Definition FindOptGvarRel `{!typeGS Σ} (γ : gname) :=
   |}.
 Global Typeclasses Opaque FindOptGvarRel.
 
-
-
-Definition FindInherit `{!typeGS Σ} {K} (κ : lft) (key : K) (P : iProp Σ) :=
-  {| fic_A := unit;
-     fic_Prop _ := Inherit κ key P;
+Definition FindInherit `{!typeGS Σ} (κs : list lft) :=
+  {| fic_A := iProp Σ;
+     fic_Prop P := Inherit κs P;
   |}.
 Global Typeclasses Opaque FindInherit.
 
@@ -728,8 +734,8 @@ Section judgments.
     introduce_with_hooks_proof T : iProp_to_Prop (introduce_with_hooks E L P T).
 
   (** Do a custom iteration in the type system, determined by rules for specific M *)
-  Definition iterate_with_hooks (E : elctx) (L : llctx) {M} (m : M) (T : llctx → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
+  Definition iterate_with_hooks (E : elctx) (L : llctx) {M} (m : M) (T : llctx → M → iProp Σ) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L ={F}=∗ ∃ L' m', llctx_interp L' ∗ T L' m'.
   Class IterateWithHooks (E : elctx) (L : llctx) {M} (m : M) : Type :=
     iterate_with_hooks_proof T : iProp_to_Prop (iterate_with_hooks E L m T).
 
@@ -3240,6 +3246,46 @@ Ltac solve_llctx_release_toks := fail "implement solve_llctx_release_toks".
 #[global] Hint Extern 10 (LiTactic (llctx_release_toks_goal _ _)) =>
     refine (llctx_release_toks_hint _ _ _ _); solve_llctx_release_toks : typeclass_instances.
 
+(** Computing the inheritance worklist *)
+Definition find_inheritances_goal `{!typeGS Σ} (T : list (list lft) → iProp Σ) : iProp Σ :=
+  ∃ ks, T ks.
+Definition find_inheritances_pure_goal (ks : list (list lft)) :=
+  True.
+Program Definition find_inheritances_hint `{!typeGS Σ} (ks : list (list lft)) :
+  find_inheritances_pure_goal ks →
+  LiTactic (find_inheritances_goal) := λ a, {|
+    li_tactic_P T := T ks;
+  |}.
+Next Obligation.
+  iIntros (?? ? ? ?) "HT". iExists _. iFrame.
+Qed.
+
+Global Typeclasses Opaque find_inheritances_goal.
+Global Typeclasses Opaque find_inheritances_pure_goal.
+Ltac solve_find_inheritances := fail "implement solve_find_inheritances".
+#[global] Hint Extern 10 (LiTactic (find_inheritances_goal)) =>
+  refine (find_inheritances_hint _ _); solve_find_inheritances : typeclass_instances.
+
+(** Check whether an element is part of a list *)
+Definition check_list_elem_of_goal `{!typeGS Σ} {A} (x : A) (xs : list A) (T : bool → iProp Σ) : iProp Σ :=
+  ∃ b : bool, ⌜(if b then x ∈ xs else True)⌝ ∗ T b.
+Definition check_list_elem_of_pure_goal {A} (x : A) (xs : list A) (b : bool) :=
+  if b then x ∈ xs else True.
+Program Definition check_list_elem_of_hint `{!typeGS Σ} {A} (x : A) (xs : list A) (b : bool) :
+  check_list_elem_of_pure_goal x xs b →
+  LiTactic (check_list_elem_of_goal x xs) := λ a, {|
+    li_tactic_P T := T b;
+  |}.
+Next Obligation.
+  iIntros (?? ? x xs b Ha ?) "HT". iExists _. by iFrame.
+Qed.
+
+Global Typeclasses Opaque check_list_elem_of_goal.
+Global Typeclasses Opaque check_list_elem_of_pure_goal.
+Ltac solve_check_list_elem_of := fail "implement solve_check_list_elem_of".
+#[global] Hint Extern 10 (LiTactic (check_list_elem_of_goal ?x ?xs)) =>
+  refine (check_list_elem_of_hint x xs _ _); solve_check_list_elem_of : typeclass_instances.
+
 (** Attempt to prove a [place_update_kind] inclusion *)
 Definition check_llctx_place_update_kind_incl_goal `{!typeGS Σ} (E : elctx) (L : llctx) (k1 k2 : place_update_kind) (T : bool → iProp Σ) : iProp Σ :=
   ∃ b : bool, ⌜if b then lctx_place_update_kind_incl E L k1 k2 else True⌝ ∗ T b.
@@ -3407,7 +3453,7 @@ Section folding.
   Qed.
 
   (** Initialize context folding.
-    This rule should be directly applied by Ltac automation, after it has gathere Inherit κ1 InheritDynIncl (llft_elt_toks κs)d up the [tctx]
+    This rule should be directly applied by Ltac automation, after it has gathered up the [tctx]
       from the Iris context.
   *)
   Lemma typed_context_fold_init {M} (init_acc : Acc) E L (m : M) (tctx : list loc) Φ T :
@@ -4122,53 +4168,6 @@ Section fold_list.
     λ T, i2p (fold_list_app E L ig l1 l1' R i0 T).
 End fold_list.
 
-(** ** OnEndlft triggers *)
-Section endlft_triggers.
-  Context `{!typeGS Σ}.
-  (* no typeclass for this one, as rules are directly applied by Ltac automation *)
-  Definition typed_on_endlft_pre (E : elctx) (L : llctx) (κ : lft) (T : llctx → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L -∗ [† κ] ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
-
-  Definition typed_on_endlft (E : elctx) (L : llctx) (κ : lft) (worklist: list (sigT (@id Type) * iProp Σ)) (T : llctx → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L -∗ [† κ] ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
-  Class TypedOnEndlft (E : elctx) (L : llctx) (κ : lft) (worklist : list (sigT (@id Type) * iProp Σ)) :=
-    typed_on_endlft_proof T : iProp_to_Prop (typed_on_endlft E L κ worklist T).
-
-  Definition typed_on_endlft_trigger {K} (E : elctx) (L : llctx) (key : K) (P : iProp Σ) (T : llctx → iProp Σ) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L -∗ P ={F}=∗ ∃ L', llctx_interp L' ∗ T L'.
-  Class TypedOnEndlftTrigger {K} (E : elctx) (L : llctx) (key : K) (P : iProp Σ) :=
-    typed_on_endlft_trigger_proof T : iProp_to_Prop (typed_on_endlft_trigger E L key P T).
-
-  (* no instance, automation needs to manually instantiate the worklist *)
-  Lemma typed_on_endlft_pre_init worklist E L κ T :
-    typed_on_endlft E L κ worklist T
-    ⊢ typed_on_endlft_pre E L κ T.
-  Proof. done. Qed.
-
-  Lemma typed_on_endlft_nil E L κ T :
-    T L ⊢ typed_on_endlft E L κ [] T.
-  Proof.
-    iIntros "Hs" (F ?) "HE HL ?". iModIntro. iExists L. iFrame.
-  Qed.
-  Global Instance typed_on_endlft_nil_inst E L κ : TypedOnEndlft E L κ [] :=
-    λ T, i2p (typed_on_endlft_nil E L κ T).
-
-  Lemma typed_on_endlft_cons {K} E L κ key P worklist T :
-    find_in_context (FindInherit κ key P) (λ _,
-      typed_on_endlft_trigger E L key P (λ L', typed_on_endlft E L' κ worklist T))
-    ⊢ typed_on_endlft E L κ ((existT K key, P) :: worklist) T.
-  Proof.
-    iIntros "Hs" (F ?) "#HE HL #Hdead".
-    iDestruct "Hs" as ([]) "(Hinh & Hc)". simpl.
-    rewrite /Inherit.
-    iMod ("Hinh" with "[//] Hdead") as "HP".
-    iMod ("Hc" with "[//] HE HL HP") as "(%L' & HL & HT)".
-    iApply ("HT" with "[//] HE HL Hdead").
-  Qed.
-  Global Instance typed_on_endlft_cons_inst {K} E L κ (key : K) P worklist : TypedOnEndlft E L κ ((existT K key, P) :: worklist) :=
-    λ T, i2p (typed_on_endlft_cons E L κ key P worklist T).
-End endlft_triggers.
-
 From lithium Require Import hooks.
 Ltac generate_i2p_instance_to_tc_hook arg c ::=
   lazymatch c with
@@ -4200,7 +4199,6 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | resolve_ghost_iter ?π ?E ?L ?rm ?b ?l ?st ?ltys ?bk ?rs ?ig ?i => constr:(ResolveGhostIter π E L rm b l st ltys bk rs ig i)
   | prove_place_cond ?E ?L ?bk ?lt1 ?lt2 => constr:(ProvePlaceCond E L bk lt1 lt2)
   | prove_with_subtype ?E ?L ?wl ?pm ?P => constr:(ProveWithSubtype E L wl pm P)
-  | typed_on_endlft ?E ?L ?κ ?worklist => constr:(TypedOnEndlft E L κ worklist)
   | weak_subtype ?E ?L ?r1 ?r2 ?ty1 ?ty2 => constr:(Subtype E L r1 r2 ty1 ty2)
   | mut_subtype ?E ?L ?ty1 ?ty2 => constr:(MutSubtype E L ty1 ty2)
   | mut_eqtype ?E ?L ?ty1 ?ty2 => constr:(MutEqtype E L ty1 ty2)
