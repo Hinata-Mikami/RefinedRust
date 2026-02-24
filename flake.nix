@@ -49,8 +49,8 @@
         };
 
         iris-contrib = {
-          version = "cf145fab5522363b1883eb05d9edbab489d14db7";
-          sha256 = "sha256-9814147xYEsWoSw503wpcTc33x7SdL9bNfwLnO3O/XE=";
+          version = "a14e61366839eaac418eb8ab8494468a4f7ba0d2";
+          sha256 = "sha256-RWhvM89RKaThKVHsL1KSBEH2LvcWmeCXRzzq4zRCOQs=";
         };
 
         lambda-rust = {

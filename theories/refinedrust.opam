@@ -17,7 +17,7 @@ depends: [
   "rocq-stdpp-unstable"
   "rocq-stdpp-bitvector"
   "rocq-iris"
-  "coq-iris-contrib"
+  "rocq-iris-contrib"
   "coq-lifetime-logic"
   "dune" {>= "3.21.0"}
   "rocq-equations" { (= "1.3.1+9.1") }
@@ -28,7 +28,7 @@ pin-depends: [
   ["rocq-stdpp-unstable.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#3d918b797b0addee89447b0c06a988dd080f887f"]
   ["rocq-stdpp-bitvector.dev" "git+https://gitlab.mpi-sws.org/iris/stdpp.git#3d918b797b0addee89447b0c06a988dd080f887f"]
   ["rocq-iris.dev" "git+https://gitlab.mpi-sws.org/iris/iris.git#d4cb3274976b0e940710a79d3bef76ef55a721f3"]
-  ["coq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#cf145fab5522363b1883eb05d9edbab489d14db7"]
+  ["rocq-iris-contrib.dev" "git+https://gitlab.mpi-sws.org/iris/iris-contrib.git#a14e61366839eaac418eb8ab8494468a4f7ba0d2"]
   ["coq-lifetime-logic.dev" "git+https://gitlab.mpi-sws.org/iris/lambda-rust.git#2fb071653b08f9808fb94aa53e27b58b9c83486a"]
 ]
 
