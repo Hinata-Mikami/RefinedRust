@@ -850,7 +850,7 @@ Section ltype_def.
     match k with
     | Owned =>
         ([† κ] ={lftE}=∗
-          ∃ (r' : rt), place_rfn_interp_owned_blocked r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r' MetaNone))
+          ∃ (r' : rt), place_rfn_interp_owned r r' ∗ |={lftE}=> l ↦: (ty.(ty_own_val) π r' MetaNone))
     | Shared κ' =>
         (* sharing of inheritances is weird, they are of no use like that,
           and there's no reason to create inheritances directly below
@@ -859,7 +859,7 @@ Section ltype_def.
     | Uniq κ' γ' =>
         (* borrow needs to be synced up with OfTy *)
         ([† κ] ={lftE}=∗
-          place_rfn_interp_mut_blocked r γ' ∗
+          place_rfn_interp_mut r γ' ∗
           &pin{κ'} (∃ r' : rt, gvar_auth γ' r' ∗ |={lftE}=> l ↦: ty.(ty_own_val) π r' MetaNone)) ∗
         (* and the original credits *)
         have_creds
@@ -4422,7 +4422,6 @@ Section blocked.
       iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hinh)".
       iMod ("Hinh" with "Hdead") as "Hv".
       iDestruct "Hv" as "(%r' & Hrfn & >(%v & Hl & Hv))".
-      iMod (place_rfn_interp_owned_blocked_unblock with "Hrfn") as "Hrfn".
       iModIntro. iExists ly. iSplitR; first done. iSplitR; first done. iFrame "Hsc Hlb".
       iExists r'. iFrame "Hrfn". iModIntro. iExists v. iFrame.
   Qed.

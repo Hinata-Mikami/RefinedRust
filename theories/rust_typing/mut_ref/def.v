@@ -157,7 +157,7 @@ Section mut_ref.
     iApply (logical_step_intro_tr with "Hat").
     iIntros "Hcred Hat".
     iMod ("Hclos_c" with "[Hcred Hat]") as "(_ & Htok_κ'2)".
-    { iNext. iFrame. 
+    { iNext. iFrame.
       iApply tr_weaken; last done.
       simpl. unfold num_laters_per_step; lia. }
 
@@ -208,7 +208,7 @@ Section mut_ref.
       (*place_rfn_interp_mut r γ;*)
       match r with
       | #r' => gvar_pobs γ r'
-      | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
+      | PlaceGhost γ' => RelEq (T:=rt) γ' γ
       end
     ) _.
   Next Obligation.

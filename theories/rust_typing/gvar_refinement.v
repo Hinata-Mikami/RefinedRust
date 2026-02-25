@@ -89,36 +89,36 @@ Section ghost_variables.
     apply RT_into_inj  in Heq. done.
   Qed.
 
-  Definition Rel2 (γ1 γ2 : gname) (R : T → T → Prop) : iProp Σ :=
-    ∃ v1 v2, gvar_pobs γ1 v1 ∗ gvar_obs γ2 v2 ∗ ⌜R v1 v2⌝.
+  Definition RelEq (γ1 γ2 : gname) : iProp Σ :=
+    ∃ v1 v2, gvar_pobs γ1 v1 ∗ gvar_obs γ2 v2 ∗ ⌜v1 = v2⌝.
 
-  Lemma Rel2_use_pobs γ1 γ2 R v1 :
-    gvar_pobs γ1 v1 -∗ Rel2 γ1 γ2 R -∗ ∃ v2, gvar_obs γ2 v2 ∗ ⌜R v1 v2⌝.
+  Lemma RelEq_use_pobs γ1 γ2 v1 :
+    gvar_pobs γ1 v1 -∗ RelEq γ1 γ2 -∗ gvar_obs γ2 v1.
   Proof.
     iIntros "Hobs1 (%v1' & %v2 & Hauth1 & Hobs2 & %HR)".
     iPoseProof (gvar_pobs_agree_2 with "Hauth1 Hobs1") as "->".
-    eauto with iFrame.
+    subst. done.
   Qed.
 
-  Lemma Rel2_use_obs γ1 γ2 R v1 :
-    gvar_obs γ1 v1 -∗ Rel2 γ1 γ2 R -∗ ∃ v2, gvar_obs γ2 v2 ∗ gvar_obs γ1 v1 ∗ gvar_pobs γ1 v1 ∗ ⌜R v1 v2⌝.
+  Lemma RelEq_use_obs γ1 γ2 v1 :
+    gvar_obs γ1 v1 -∗ RelEq γ1 γ2 -∗ gvar_obs γ2 v1 ∗ gvar_obs γ1 v1 ∗ gvar_pobs γ1 v1.
   Proof.
     iIntros "Hobs1 (%v1' & %v2 & Hauth1 & Hobs2 & %HR)".
     iDestruct (gvar_pobs_agree with "Hobs1 Hauth1") as %<-.
-    eauto with iFrame.
+    subst. iFrame.
   Qed.
 
-  Lemma Rel2_use_trivial γ1 γ2 R :
-    Rel2 γ1 γ2 R -∗ ∃ v2, gvar_obs γ2 v2.
+  Lemma RelEq_use_trivial γ1 γ2 :
+    RelEq γ1 γ2 -∗ ∃ v2, gvar_obs γ2 v2.
   Proof.
     iIntros "(%v1' & %v2 & Hauth1 & Hobs2 & %HR)".
     eauto with iFrame.
   Qed.
 
-  Lemma Rel2_eq_trans_l γ1 γ2 γ3 :
-    Rel2 γ1 γ2 (eq) -∗
-    Rel2 γ1 γ3 (eq) ==∗
-    Rel2 γ2 γ3 (eq).
+  Lemma RelEq_trans_l γ1 γ2 γ3 :
+    RelEq γ1 γ2 -∗
+    RelEq γ1 γ3 ==∗
+    RelEq γ2 γ3.
   Proof.
     iIntros "(%x1 & %x2 & Hobs1 & Hobs2 & <-)".
     iIntros "(%y1 & %y2 & Hobs3 & Hobs4 & <-)".
@@ -127,10 +127,10 @@ Section ghost_variables.
     iExists _, _. by iFrame.
   Qed.
 
-  Lemma Rel2_eq_trans γ1 γ2 γ3 :
-    Rel2 γ1 γ2 (eq) -∗
-    Rel2 γ2 γ3 (eq) -∗
-    Rel2 γ1 γ3 (eq).
+  Lemma RelEq_trans γ1 γ2 γ3 :
+    RelEq γ1 γ2 -∗
+    RelEq γ2 γ3 -∗
+    RelEq γ1 γ3.
   Proof.
     iIntros "(%x1 & %x2 & Hobs1 & Hobs2 & <-)".
     iIntros "(%y1 & %y2 & Hobs3 & Hobs4 & <-)".
@@ -138,7 +138,7 @@ Section ghost_variables.
     iExists _, _. by iFrame.
   Qed.
 
-  Global Instance Rel2_timeless γ1 γ2 R : Timeless (Rel2 γ1 γ2 R).
+  Global Instance RelEq_timeless γ1 γ2 : Timeless (RelEq γ1 γ2).
   Proof. apply _. Qed.
 End ghost_variables.
 

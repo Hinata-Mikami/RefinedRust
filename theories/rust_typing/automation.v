@@ -830,8 +830,8 @@ Global Arguments plist : simpl never.
 
 Global Arguments lft_intersect_list : simpl never.
 
-Global Typeclasses Opaque Rel2.
-Global Arguments Rel2 : simpl never.
+Global Typeclasses Opaque RelEq.
+Global Arguments RelEq : simpl never.
 
 Hint Unfold els_lookup_tag : lithium_rewrite.
 

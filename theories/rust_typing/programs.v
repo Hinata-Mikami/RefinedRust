@@ -470,15 +470,15 @@ Definition FindOptInheritGvarPobs `{!typeGS Σ} (γ : gname) :=
 Global Typeclasses Opaque FindOptInheritGvarPobs.
 
 (** attempt to find an inheritance for an observation, or give up *)
-Definition FindOptInheritGvarRel `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := ((list lft * @sigT RT (λ rt, gname * (rt → rt → Prop))) + unit)%type;
+Definition FindOptInheritGvarRelEq `{!typeGS Σ} (γ : gname) :=
+  {| fic_A := ((list lft * RT * gname) + unit)%type;
     fic_Prop a :=
       match a with
-      | inl (κs, existT rt (γ', R)) => Inherit κs (Rel2 γ' γ R)%I
+      | inl (κs, rt, γ') => Inherit κs (RelEq (T:=rt) γ' γ)%I
       | inr _ => True%I
       end
   |}.
-Global Typeclasses Opaque FindOptInheritGvarRel.
+Global Typeclasses Opaque FindOptInheritGvarRelEq.
 
 (** find an observation on a ghost variable *)
 (** NOTE: Ideally, we would also fix the type beforehand.
@@ -496,15 +496,15 @@ Definition FindGvarPobsP `{!typeGS Σ} (γ : gname) :=
 Global Typeclasses Opaque FindGvarPobsP.
 
 (** Find a relation with the given gvar on the right hand side. *)
-Definition FindOptGvarRel `{!typeGS Σ} (γ : gname) :=
-  {| fic_A := (@sigT RT (λ rt, gname * (rt → rt → Prop)) + unit)%type;
+Definition FindOptGvarRelEq `{!typeGS Σ} (γ : gname) :=
+  {| fic_A := ((RT * gname) + unit)%type;
     fic_Prop a :=
       match a with
-      | inl (existT rt (γ', R)) => (Rel2 γ' γ R)%I
+      | inl (rt, γ') => (RelEq (T:=rt) γ' γ)%I
       | inr _ => True%I
       end
   |}.
-Global Typeclasses Opaque FindOptGvarRel.
+Global Typeclasses Opaque FindOptGvarRelEq.
 
 Definition FindInherit `{!typeGS Σ} (κs : list lft) (P : iProp Σ) :=
   {| fic_A := ();
@@ -2176,7 +2176,7 @@ Section judgments.
   Definition find_observation_result {rt : RT} γ (r : place_rfn rt) : iProp Σ :=
     match r with
     | PlaceIn r => gvar_pobs γ r
-    | PlaceGhost γ' => Rel2 (T:=rt) γ' γ eq
+    | PlaceGhost γ' => RelEq (T:=rt) γ' γ
     end.
   Lemma place_rfn_interp_owned_find_observation {rt : RT} (r' : rt) (r : place_rfn rt) γ :
     place_rfn_interp_owned (👻 γ) r' -∗
@@ -2184,20 +2184,6 @@ Section judgments.
     place_rfn_interp_owned r r'.
   Proof.
     unfold place_rfn_interp_owned, find_observation_result.
-    destruct r.
-    - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
-      done.
-    - iIntros "Hobs Hrel".
-      iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
-      iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
-      done.
-  Qed.
-  Lemma place_rfn_interp_owned_blocked_find_observation {rt : RT} (r' : rt) (r : place_rfn rt) γ :
-    place_rfn_interp_owned_blocked (👻 γ) r' -∗
-    find_observation_result γ r -∗
-    place_rfn_interp_owned_blocked r r'.
-  Proof.
-    unfold place_rfn_interp_owned_blocked, find_observation_result.
     destruct r.
     - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
       done.
@@ -2214,23 +2200,10 @@ Section judgments.
     unfold place_rfn_interp_mut, find_observation_result.
     destruct r.
     - iIntros "Hrel Hobs".
-      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & ->)".
+      iPoseProof (RelEq_use_pobs with "Hobs Hrel") as "Hobs".
       done.
     - iIntros "Hrel1 Hrel2".
-      iApply (Rel2_eq_trans with "Hrel2 Hrel1").
-  Qed.
-  Lemma place_rfn_interp_mut_blocked_find_observation {rt : RT} (r : place_rfn rt) γ γ' :
-    place_rfn_interp_mut_blocked (rt:=rt) (👻 γ) γ' -∗
-    find_observation_result γ r -∗
-    place_rfn_interp_mut_blocked r γ'.
-  Proof.
-    unfold place_rfn_interp_mut_blocked, find_observation_result.
-    destruct r.
-    - iIntros "Hrel Hobs".
-      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & ->)".
-      done.
-    - iIntros "Hrel1 Hrel2".
-      iApply (Rel2_eq_trans with "Hrel2 Hrel1").
+      iApply (RelEq_trans with "Hrel2 Hrel1").
   Qed.
   Lemma place_rfn_interp_shared_find_observation {rt : RT} (r : place_rfn rt) γ γ' :
     place_rfn_interp_shared (rt:=rt) (👻 γ) γ' -∗

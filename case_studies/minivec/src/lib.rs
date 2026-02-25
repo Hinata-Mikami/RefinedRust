@@ -414,8 +414,8 @@ impl<T> Vec<T> {
     // NOTE: currently, we need a slightly more complicated specification that explicitly closes
     // under ghost variable equivalence: the "Inherit" part states that, after 'a has ended, the
     // ghost variables will have identical values
-    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (Rel2 γ2 γ (eq (A:=list (place_rfn T_rt)))) else True")]
-    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (Rel2 γi γ1 (eq (A:=T_rt))) else True")]
+    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (RelEq (T:=list (place_rfn T_rt)) γ2 γ) else True")]
+    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (RelEq (T:=T_rt) γi γ1) else True")]
     pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
         if index < self.len() {
             unsafe { Some (self.get_unchecked_mut(index)) }

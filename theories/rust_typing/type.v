@@ -2514,22 +2514,11 @@ Section place_rfn.
     | PlaceGhost γ' => gvar_pobs γ' r'
     end.
 
-  Definition place_rfn_interp_owned_blocked {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
-    match r with
-    | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ' => gvar_pobs γ' r'
-    end.
-
   (* interpretation of place_rfn under mut *)
   Definition place_rfn_interp_mut {rt} (r : place_rfn rt) γ : iProp Σ :=
     match r with
     | PlaceIn r' => gvar_obs γ r'
-    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
-    end.
-  Definition place_rfn_interp_mut_blocked {rt} (r : place_rfn rt) γ : iProp Σ :=
-    match r with
-    | PlaceIn r' => gvar_obs γ r'
-    | PlaceGhost γ' => Rel2 γ' γ (@eq rt)
+    | PlaceGhost γ' => RelEq (T:=rt) γ' γ
     end.
 
   (* interpretation of place_rfn under shared *)
@@ -2583,22 +2572,7 @@ Section place_rfn.
     destruct r as [r'' | γ'].
     - iDestruct "Hrfn" as "<-". iFrame.
     - iDestruct "Hrfn" as "Hauth'". simpl.
-      rewrite /Rel2. iExists _, _. by iFrame.
-  Qed.
-
-  (** lemmas for unblocking *)
-  Lemma place_rfn_interp_owned_blocked_unblock {rt} (r : place_rfn rt) (r' : rt) :
-    place_rfn_interp_owned_blocked r r' ==∗ place_rfn_interp_owned r r'.
-  Proof.
-    destruct r as [ r'' | γ]; simpl; first by eauto.
-    eauto.
-    (*iApply gvar_auth_persist.*)
-  Qed.
-  Lemma place_rfn_interp_mut_blocked_unblock {rt} (r : place_rfn rt) (γ : gname) :
-    place_rfn_interp_mut_blocked r γ ==∗ place_rfn_interp_mut r γ.
-  Proof.
-    destruct r as [ r' | γ']; simpl; first by eauto.
-    eauto.
+      rewrite /RelEq. iExists _, _. by iFrame.
   Qed.
 
   (** lemmas for sharing *)
@@ -2636,7 +2610,7 @@ Section place_rfn.
     iAssert (|={F}=> place_rfn_interp_shared r r' ∗ gvar_auth γ r' ∗ ▷ place_rfn_interp_mut r γ)%I with "[Hauth Hobs]" as ">(Hrfn & Hauth & Hobs)".
     { destruct r.
       - iDestruct "Hobs" as "Hobs". iPoseProof (gvar_agree with "Hauth Hobs") as "#->". eauto with iFrame.
-      - simpl. rewrite /Rel2. iDestruct "Hobs" as "(%v1 & %v2 & #Hpobs & Hobs & %Heq')". rewrite Heq'.
+      - simpl. rewrite /RelEq. iDestruct "Hobs" as "(%v1 & %v2 & #Hpobs & Hobs & %Heq')". rewrite Heq'.
         iPoseProof (gvar_agree with "Hauth Hobs") as "%Heq". rewrite Heq.
         iFrame. iR. iModIntro. iModIntro. iExists _. iR. done.
     }
@@ -2678,7 +2652,7 @@ Section place_rfn.
   Definition place_rfn_interp_mut_extracted {rt} (r : place_rfn rt) (γ : gname) : iProp Σ :=
     match r with
     | PlaceIn r' => gvar_pobs γ r'
-    | PlaceGhost γ' => Rel2 (T:=rt) γ' γ eq
+    | PlaceGhost γ' => RelEq (T:=rt) γ' γ
     end.
   Definition place_rfn_interp_owned_extracted {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
     match r with
