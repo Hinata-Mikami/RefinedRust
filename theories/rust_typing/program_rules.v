@@ -1155,6 +1155,30 @@ Section prove_subtype.
   Proof.
     iIntros "(%b & HT)". done.
   Qed.
+
+  (** Before, some simplification instances that trigger if we shouldn't destruct. *)
+  Lemma simplify_goal_if_iSome_Some {A} (x : A) Φ T :
+    (Φ x ∗ T) ⊢@{iProp Σ} simplify_goal (if_iSome (Some x) Φ) T.
+  Proof. simpl. done. Qed.
+  Definition simplify_goal_if_iSome_Some_inst := [instance @simplify_goal_if_iSome_Some with 0%N].
+  Global Existing Instance simplify_goal_if_iSome_Some_inst.
+  Lemma simplify_goal_if_iSome_None {A} (Φ : A → iProp Σ) T :
+    T ⊢@{iProp Σ} simplify_goal (if_iSome None Φ) T.
+  Proof. simpl. iIntros "$". Qed.
+  Definition simplify_goal_if_iSome_None_inst := [instance @simplify_goal_if_iSome_None with 0%N].
+  Global Existing Instance simplify_goal_if_iSome_None_inst.
+  Lemma simplify_goal_if_iNone_None {A} Φ T :
+    (Φ ∗ T) ⊢@{iProp Σ} simplify_goal (if_iNone (A:=A) None Φ) T.
+  Proof. simpl. done. Qed.
+  Definition simplify_goal_if_iNone_None_inst := [instance @simplify_goal_if_iNone_None with 0%N].
+  Global Existing Instance simplify_goal_if_iNone_None_inst.
+  Lemma simplify_goal_if_iNone_Some {A} (x : A) Φ T :
+    (T) ⊢@{iProp Σ} simplify_goal (if_iNone (A:=A) (Some x) Φ) T.
+  Proof. simpl. iIntros "$". Qed.
+  Definition simplify_goal_if_iNone_Some_inst := [instance @simplify_goal_if_iNone_Some with 0%N].
+  Global Existing Instance simplify_goal_if_iNone_Some_inst.
+
+  (* Otherwise, destruct *)
   Definition prove_with_subtype_destruct_if_iSome {A} (x : option A) P :=
     prove_with_subtype_destruct x (if_iSome x P).
   Definition prove_with_subtype_destruct_if_iSome_inst := [instance @prove_with_subtype_destruct_if_iSome].

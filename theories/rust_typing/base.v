@@ -188,6 +188,8 @@ Definition if_iNone {A} (x : option A) (ϕ : iProp Σ) : iProp Σ :=
   | _ => True
   end.
 End iris.
+Global Typeclasses Opaque if_iSome.
+Global Typeclasses Opaque if_iNone.
 
 (* TODO: upstream: overwritten to allow for more parameters *)
 Ltac my_f_equiv :=

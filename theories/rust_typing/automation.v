@@ -60,24 +60,27 @@ Ltac rep_check_backtrack_point_hook ::=
   end.
 
 Global Arguments RT_xt : simpl nomatch.
-(*
-Ltac liForall_hook ::=
-  (* simpl RT_xt *)
+Ltac hooks.liForall_hook ::=
   lazymatch goal with
   | |- forall e : ?A, @?P e =>
       match A with
+      (* This doesn't work well with instances *)
+      | plist _ [] =>
+          intros []
+      | prod_vec _ 0 =>
+          intros []
+          (*
       | RT_xt ?rt =>
-          assert_fails (is_var rt);
-          lazymatch rt with
+  assert_fails (is_var rt);
+lazymatch rt with
           | RT_of ?ty =>
               assert_fails (is_var ty)
               (* TODO: maybe unfold the RT_of? *)
           | _ => idtac
           end
-          (*simpl*)
+           *)
       end
   end.
- *)
 
 Ltac liDestruct_hook term ::=
   (** Revert branching hypotheses that are affected by the term.
@@ -701,8 +704,8 @@ Section tac.
       (credit_store 0 0 -∗ na_own π ⊤ -∗ allocated_locals (π, f) (f_args fn).*1 -∗ introduce_with_hooks E' L (Qinit) (λ L2,
         introduce_typed_stmt E' L2 (π, f) ϝ fn (
         λ v L2,
-            prove_with_subtype E L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
-            introduce_with_hooks E L3 R3 (λ L4,
+            prove_with_subtype E' L2 false ProveDirect (fn_ret_prop π ((fp.2 κs tys).(fn_p) x).(fp_fr) v) (λ L3 _ R3,
+            introduce_with_hooks E' L3 R3 (λ L4,
             (* we don't really kill it here, but just need to find it in the context *)
             li_tactic (llctx_find_llft_goal L4 ϝ LlctxFindLftFull) (λ _,
             find_in_context FindCreditStore (λ _,
@@ -725,7 +728,17 @@ Section tac.
     iMod ("HT" with "Hstore Hna Halloc [] HE' HL [Hinit]") as "(%L2 & HL & HT)"; first done.
     { iDestruct "Hinit" as "($ & $ & $)". }
     iApply ("HT" with "CTX HE' HL Hf").
-    iModIntro. done.
+    iModIntro. unfold typed_stmt_post_cond.
+    iIntros (???) "HL Hf Halloc Hb".
+    iSpecialize ("Hcont" with "HL Hf Halloc Hb").
+    unfold prove_with_subtype.
+    iIntros "Hcont2".
+    iApply "Hcont".
+    iIntros (????) "_ _ HL".
+    iMod ("Hcont2" with "[] [] [] [//] [//] HL") as "Hx"; [done.. | ].
+    iDestruct "Hx" as "(% &  % & % & ? & ? & HT)". iFrame.
+    iExists []. iModIntro. iIntros (??) "_ HL".
+    iApply ("HT" with "[] [] HL"); done.
   Qed.
 End tac.
 
