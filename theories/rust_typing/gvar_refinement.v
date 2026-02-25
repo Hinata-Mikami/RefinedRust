@@ -115,6 +115,29 @@ Section ghost_variables.
     eauto with iFrame.
   Qed.
 
+  Lemma Rel2_eq_trans_l γ1 γ2 γ3 :
+    Rel2 γ1 γ2 (eq) -∗
+    Rel2 γ1 γ3 (eq) ==∗
+    Rel2 γ2 γ3 (eq).
+  Proof.
+    iIntros "(%x1 & %x2 & Hobs1 & Hobs2 & <-)".
+    iIntros "(%y1 & %y2 & Hobs3 & Hobs4 & <-)".
+    iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs3") as "<-".
+    iMod (gvar_obs_persist with "Hobs2") as "Hobs2".
+    iExists _, _. by iFrame.
+  Qed.
+
+  Lemma Rel2_eq_trans γ1 γ2 γ3 :
+    Rel2 γ1 γ2 (eq) -∗
+    Rel2 γ2 γ3 (eq) -∗
+    Rel2 γ1 γ3 (eq).
+  Proof.
+    iIntros "(%x1 & %x2 & Hobs1 & Hobs2 & <-)".
+    iIntros "(%y1 & %y2 & Hobs3 & Hobs4 & <-)".
+    iPoseProof (gvar_pobs_agree with "Hobs2 Hobs3") as "<-".
+    iExists _, _. by iFrame.
+  Qed.
+
   Global Instance Rel2_timeless γ1 γ2 R : Timeless (Rel2 γ1 γ2 R).
   Proof. apply _. Qed.
 End ghost_variables.

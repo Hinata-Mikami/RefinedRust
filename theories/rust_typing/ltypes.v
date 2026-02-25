@@ -4337,36 +4337,6 @@ Section eqltype.
   Qed.
 End eqltype.
 
-Section ghost_variables.
-  Context `{typeGS Σ}.
-  Context {T : RT}.
-  Implicit Types (γ : gname) (t : T).
-
-  Definition GRel2 κ (γ1 γ2 : gname) (R : T → T → Prop) : iProp Σ :=
-    [† κ] ={lftE}=∗ Rel2 γ1 γ2 R.
-
-  Lemma GRel2_use_pobs κ γ1 γ2 R v1 :
-    [†κ] -∗ gvar_pobs γ1 v1 -∗ GRel2 κ γ1 γ2 R ={lftE}=∗ ∃ v2, gvar_obs γ2 v2 ∗ ⌜R v1 v2⌝.
-  Proof.
-    iIntros "Hdead Hobs Hr". iMod ("Hr" with "Hdead") as "Hr".
-    iModIntro. iApply (Rel2_use_pobs with "Hobs Hr").
-  Qed.
-
-  Lemma GRel2_use_obs κ γ1 γ2 R v1 :
-    [† κ] -∗ gvar_obs γ1 v1 -∗ GRel2 κ γ1 γ2 R ={lftE}=∗ ∃ v2, gvar_obs γ2 v2 ∗ gvar_obs γ1 v1 ∗ gvar_pobs γ1 v1 ∗ ⌜R v1 v2⌝.
-  Proof.
-    iIntros "Hdead Hobs Hr". iMod ("Hr" with "Hdead") as "Hr".
-    iModIntro. iApply (Rel2_use_obs with "Hobs Hr").
-  Qed.
-
-  Lemma GRel2_use_trivial κ γ1 γ2 R :
-    [† κ] -∗ GRel2 κ γ1 γ2 R ={lftE}=∗ ∃ v2 : T, gvar_obs γ2 v2.
-  Proof.
-    iIntros "Hdead Hr". iMod ("Hr" with "Hdead") as "Hr".
-    iModIntro. iApply (Rel2_use_trivial with "Hr").
-  Qed.
-End ghost_variables.
-
 Section blocked.
   Context `{typeGS Σ}.
 

@@ -373,10 +373,8 @@ Section find.
     iIntros "(%rt & %γ' & %R & Hobs & HT)".
     iExists _ => /=. iFrame.
   Qed.
-  Global Instance find_in_context_opt_gvar_rel_inst γ :
-    FindInContext (FindOptGvarRel γ) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_opt_gvar_rel γ T).
-
+  Definition find_in_context_opt_gvar_rel_inst := [instance @find_in_context_opt_gvar_rel with FICSyntactic].
+  Global Existing Instance find_in_context_opt_gvar_rel_inst | 1.
   (* we have a dummy instance with lower priority for the case that we cannot find an observation in the context *)
   Lemma find_in_context_opt_gvar_rel_dummy γ T :
     (True ∗ T (inr ())) ⊢ find_in_context (FindOptGvarRel γ) T.
@@ -384,9 +382,8 @@ Section find.
     iIntros "[_ HT]".
     iExists _ => /=. iFrame.
   Qed.
-  Global Instance find_in_context_gvar_rel_dummy_inst γ :
-    FindInContext (FindOptGvarRel γ) FICSyntactic | 10 :=
-    λ T, i2p (find_in_context_opt_gvar_rel_dummy γ T).
+  Definition find_in_context_opt_gvar_rel_dummy_inst := [instance @find_in_context_opt_gvar_rel_dummy with FICSyntactic].
+  Global Existing Instance find_in_context_opt_gvar_rel_dummy_inst | 10.
 
   Lemma subsume_gvar_rel {rt} γ1' γ1 γ2' γ2 (R1 R2 : rt → rt → Prop ) T :
     ⌜γ1' = γ2'⌝ ∗ ⌜γ1 = γ2⌝ ∗ ⌜∀ x1 x2, R1 x1 x2 ↔ R2 x1 x2⌝ ∗ T ⊢ subsume (Σ := Σ) (Rel2 γ1' γ1 R1) (Rel2 γ2' γ2 R2) T.
@@ -395,8 +392,28 @@ Section find.
     iIntros "Hrel". iDestruct "Hrel" as "(% & % & ? & ? & %HR')".
     iExists _, _. iFrame. iPureIntro. by apply HR.
   Qed.
-  Global Instance subsume_gvar_rel_inst {rt} γ1' γ1 γ2' γ2 (R1 R2 : rt → rt → Prop) : Subsume (Rel2 γ1' γ1 R1) (Rel2 γ2' γ2 R2) :=
-    λ T, i2p (subsume_gvar_rel γ1' γ1 γ2' γ2 R1 R2 T).
+  Definition subsume_gvar_rel_inst := [instance @subsume_gvar_rel].
+  Global Existing Instance subsume_gvar_rel_inst.
+
+  (** FindOptInheritGvarRel *)
+  Lemma find_in_context_opt_inherit_gvar_rel γ T :
+    (∃ rt (γ' : gname) (R : rt → rt → Prop) κs, Inherit κs (Rel2 γ' γ R) ∗ T (inl (κs, existT rt (γ', R))))
+    ⊢ find_in_context (FindOptInheritGvarRel γ) T.
+  Proof.
+    iIntros "(%rt & %γ' & %R & %κs & Hobs & HT)".
+    iExists _ => /=. iFrame.
+  Qed.
+  Definition find_in_context_opt_inherit_gvar_rel_inst := [instance @find_in_context_opt_inherit_gvar_rel with FICSyntactic].
+  Global Existing Instance find_in_context_opt_inherit_gvar_rel_inst | 1.
+  (* we have a dummy instance with lower priority for the case that we cannot find an observation in the context *)
+  Lemma find_in_context_opt_inherit_gvar_rel_dummy γ T :
+    (True ∗ T (inr ())) ⊢ find_in_context (FindOptInheritGvarRel γ) T.
+  Proof.
+    iIntros "[_ HT]".
+    iExists _ => /=. iFrame.
+  Qed.
+  Definition find_in_context_opt_inherit_gvar_rel_dummy_inst := [instance @find_in_context_opt_inherit_gvar_rel_dummy with FICSyntactic].
+  Global Existing Instance find_in_context_opt_inherit_gvar_rel_dummy_inst | 10.
 
   (** FindOptGvarPobs *)
   Lemma find_in_context_opt_gvar_pobs γ T :
@@ -406,10 +423,8 @@ Section find.
     iIntros "(%rt & %r & Hobs & HT)".
     iExists _ => /=. iFrame.
   Qed.
-  Global Instance find_in_context_opt_gvar_pobs_inst γ :
-    FindInContext (FindOptGvarPobs γ) FICSyntactic | 1 :=
-    λ T, i2p (find_in_context_opt_gvar_pobs γ T).
-
+  Definition find_in_context_opt_gvar_pobs_inst := [instance @find_in_context_opt_gvar_pobs with FICSyntactic].
+  Global Existing Instance find_in_context_opt_gvar_pobs_inst | 1.
   (* we have a dummy instance with lower priority for the case that we cannot find an observation in the context *)
   Lemma find_in_context_opt_gvar_pobs_dummy γ T :
     (True ∗ T (inr ())) ⊢ find_in_context (FindOptGvarPobs γ) T.
@@ -417,9 +432,28 @@ Section find.
     iIntros "[_ HT]".
     iExists _ => /=. iFrame.
   Qed.
-  Global Instance find_in_context_gvar_pobs_dummy_inst γ :
-    FindInContext (FindOptGvarPobs γ) FICSyntactic | 10 :=
-    λ T, i2p (find_in_context_opt_gvar_pobs_dummy γ T).
+  Definition find_in_context_opt_gvar_pobs_dummy_inst := [instance @find_in_context_opt_gvar_pobs_dummy with FICSyntactic].
+  Global Existing Instance find_in_context_opt_gvar_pobs_dummy_inst | 10.
+
+  (** FindOptInheritGvarPobs *)
+  Lemma find_in_context_opt_inherit_gvar_pobs γ T :
+    (∃ rt (r : rt) κs, Inherit κs (gvar_pobs γ r) ∗ T (inl (κs, existT rt r)))
+    ⊢ find_in_context (FindOptInheritGvarPobs γ) T.
+  Proof.
+    iIntros "(%rt & %r & %κs & Hobs & HT)".
+    iExists _ => /=. iFrame.
+  Qed.
+  Definition find_in_context_opt_inherit_gvar_pobs_inst := [instance @find_in_context_opt_inherit_gvar_pobs with FICSyntactic].
+  Global Existing Instance find_in_context_opt_inherit_gvar_pobs_inst | 1.
+  (* we have a dummy instance with lower priority for the case that we cannot find an observation in the context *)
+  Lemma find_in_context_opt_inherit_gvar_pobs_dummy γ T :
+    (True ∗ T (inr ())) ⊢ find_in_context (FindOptInheritGvarPobs γ) T.
+  Proof.
+    iIntros "[_ HT]".
+    iExists _ => /=. iFrame.
+  Qed.
+  Definition find_in_context_opt_inherit_gvar_pobs_dummy_inst := [instance @find_in_context_opt_inherit_gvar_pobs_dummy with FICSyntactic].
+  Global Existing Instance find_in_context_opt_inherit_gvar_pobs_dummy_inst | 10.
 
   (** FindGvarPobs *)
   Lemma find_in_context_gvar_pobs γ T :
@@ -473,11 +507,11 @@ Section find.
     λ T, i2p (subsume_full_gvar_obs_pobs E L step γ r1 r2 T).
 
   (** FindInherit *)
-  Lemma find_in_context_inherit κ T :
-    (∃ P, Inherit κ P ∗ T P) ⊢
-    find_in_context (FindInherit κ) T.
+  Lemma find_in_context_inherit κ P T :
+    (Inherit κ P ∗ T tt) ⊢
+    find_in_context (FindInherit κ P) T.
   Proof.
-    iIntros "(%P & Hinh & HT)". iExists P. by iFrame.
+    iIntros "(Hinh & HT)". iExists tt. by iFrame.
   Qed.
   Definition find_in_context_inherit_inst := [instance @find_in_context_inherit with FICSyntactic].
   Global Existing Instance find_in_context_inherit_inst | 1.
@@ -1035,29 +1069,6 @@ Section prove_subtype.
   Qed.
   Definition prove_with_subtype_scrounge_tr_inst := [instance @prove_with_subtype_scrounge_tr].
   Global Existing Instance prove_with_subtype_scrounge_tr_inst | 10.
-
-
-  (* TODO figure out how to nicely key the Rel2. Is there always a canonical order in which we want to have that?
-     doesn't seem like it. *)
-  (*
-  Lemma prove_with_subtype_inherit_manual E L step pm {K} (k : K) κ κ' P Q T :
-    lctx_lft_incl E L κ' κ →
-    Inherit κ' k Q -∗
-    (Q -∗ P) -∗
-    T L [] True%I -∗
-    prove_with_subtype E L step pm (Inherit κ k P) T.
-  Proof.
-    iIntros (Hi1) "Hinh HQP HT".
-    iIntros (????) "#CTX #HE HL".
-    iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hincl1"; first apply Hi1.
-    (*iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hincl2"; first apply Hi2. *)
-    iPoseProof (Inherit_mono with "Hincl1 Hinh") as "Hinh".
-    iPoseProof (Inherit_update with "[HQP] Hinh") as "Hinh".
-    { iIntros (?) "HQ". iApply ("HQP" with "HQ"). }
-    iExists _, _, _. iFrame. iApply maybe_logical_step_intro.
-    iModIntro. iL. destruct pm; iFrame. eauto.
-  Qed.
-   *)
 
   (** Rules to handle disjunctions in some cases where one of the sides has a guard that can be proved or refuted *)
   Lemma prove_with_subtype_disj_guard_l_right E L b pm guard P1 P2 `{!TCDone (¬ guard)} T  :
@@ -1689,7 +1700,7 @@ Section subsume.
     find_in_context (FindOptGvarPobs γ) (λ res,
       match res with
       | inr _ => find_observation rt γ FindObsModeRel T
-      | inl (existT rt' r) => ∃ (Heq : rt' = rt), T (Some (rew Heq in r))
+      | inl (existT rt' r) => ∃ (Heq : rt' = rt), T (Some (#(rew Heq in r)))
       end)%I
     ⊢ find_observation rt γ FindObsModeDirect T.
   Proof.
@@ -1698,34 +1709,110 @@ Section subsume.
       iLeft. eauto with iFrame.
     - iIntros (??). by iApply "HT".
   Qed.
-  Global Instance find_observation_direct_inst (rt : RT) γ :
-    FindObservation rt γ FindObsModeDirect := λ T, i2p (find_observation_direct rt γ T).
+  Definition find_observation_direct_inst := [instance @find_observation_direct].
+  Global Existing Instance find_observation_direct_inst.
 
   Lemma find_observation_rel (rt : RT) γ (T : find_observation_cont_t rt) :
     find_in_context (FindOptGvarRel γ) (λ res,
       match res with
       | inr _ => T None
-      | inl (existT rt' (γ', R)) => ∃ (Heq : rt' = rt),
-          find_observation rt' γ' FindObsModeDirect (λ or,
-            match or with
-            | None => False
-            | Some r => ∀ r', ⌜R r r'⌝ -∗ T (Some $ rew Heq in r')
-            end)
+      | inl (existT rt' (γ', R)) =>
+          ∃ (Heq : RT_rt rt' = RT_rt rt), ⌜rew [λ x, x → x → Prop] Heq in R = eq⌝ ∗ T (Some (PlaceGhost γ'))
       end)%I
     ⊢ find_observation rt γ FindObsModeRel T.
   Proof.
     iDestruct 1 as ([[rt' [γ' R]] | ]) "(Hobs & HT)"; simpl.
-    - iDestruct "HT" as (->) "HT".
-      iIntros (??). iMod ("HT" with "[//]") as "HT".
-      iDestruct "HT" as "[(%r & Hobs' & HT) | []]".
-      iPoseProof (Rel2_use_pobs with "Hobs' Hobs") as "(%r2 & Hobs & %HR)".
-      iSpecialize ("HT" with "[//]").
-      iMod (gvar_obs_persist with "Hobs") as "Hobs".
-      iModIntro. iLeft. eauto with iFrame.
+    - iDestruct "HT" as (Heq) "HT".
+      unfold find_observation, find_observation_result.
+      iIntros (??).
+      destruct Heq. simpl. iDestruct "HT" as "(-> & HT)".
+      iLeft. by iFrame.
     - iIntros (??). iRight. done.
   Qed.
-  Global Instance find_observation_rel_inst (rt : RT) γ :
-    FindObservation rt γ FindObsModeRel := λ T, i2p (find_observation_rel rt γ T).
+  Definition find_observation_rel_inst := [instance @find_observation_rel].
+  Global Existing Instance find_observation_rel_inst.
+
+  (** find delayed observation *)
+  Lemma find_delayed_observation_direct E L (rt : RT) γ κ (T : find_delayed_observation_cont_t rt) :
+    find_in_context (FindOptInheritGvarPobs γ) (λ res,
+      match res with
+      | inr _ => find_delayed_observation E L rt γ FindObsModeRel κ T
+      | inl (κs, existT rt' r) =>
+          li_tactic (check_lctx_lft_incl_goal E L (lft_intersect_list κs) κ) (λ b,
+            if b then
+              ∃ (Heq : rt' = rt), T (Some (#(rew Heq in r)))
+            else False)
+      end)%I
+    ⊢ find_delayed_observation E L rt γ FindObsModeDirect κ T.
+  Proof.
+    iDestruct 1 as ([[κs [rt' r]] | ]) "(Hobs & HT)"; simpl.
+    - unfold check_lctx_lft_incl_goal.
+      iDestruct "HT" as (b) "(%Hincl & HT)". iIntros (??) "HE HL".
+      destruct b; last done.
+      iDestruct "HT" as "(%Heq & HT)".
+      iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
+      iPoseProof (Hincl with "HL HE") as "#Hincl".
+      iPoseProof ("HLcl" with "HL") as "HL".
+      iFrame "HL".
+      iLeft. unfold find_observation_result. destruct Heq.
+      iPoseProof (Inherit_mono with "[] Hobs") as "Hobs"; last by iFrame.
+      simpl. rewrite right_id. done.
+    - iIntros (??). by iApply "HT".
+  Qed.
+  Definition find_delayed_observation_direct_inst := [instance @find_delayed_observation_direct].
+  Global Existing Instance find_delayed_observation_direct_inst.
+
+  Lemma find_delayed_observation_rel E L (rt : RT) γ κ (T : find_observation_cont_t rt) :
+    find_in_context (FindOptInheritGvarRel γ) (λ res,
+      match res with
+      | inr _ => T None
+      | inl (κs, existT rt' (γ', R)) =>
+          li_tactic (check_lctx_lft_incl_goal E L (lft_intersect_list κs) κ) (λ b,
+            if b then
+              ∃ (Heq : RT_rt rt' = RT_rt rt), ⌜rew [λ x, x → x → Prop] Heq in R = eq⌝ ∗ T (Some (PlaceGhost γ'))
+            else False)
+      end)%I
+    ⊢ find_delayed_observation E L rt γ FindObsModeRel κ T.
+  Proof.
+    iDestruct 1 as ([[κs [rt' [γ' R]]] | ]) "(Hobs & HT)"; simpl.
+    - unfold check_lctx_lft_incl_goal.
+      iDestruct "HT" as (b) "(%Hincl & HT)". iIntros (??) "HE HL".
+      destruct b; last done.
+      iDestruct "HT" as "(%Heq & % & HT)".
+      iPoseProof (llctx_interp_acc_noend with "HL") as "(HL & HLcl)".
+      iPoseProof (Hincl with "HL HE") as "#Hincl".
+      iPoseProof ("HLcl" with "HL") as "HL".
+      iFrame "HL".
+      iLeft. unfold find_observation_result. destruct Heq.
+      simpl in *. subst.
+      iPoseProof (Inherit_mono with "[] Hobs") as "Hobs"; last by iFrame.
+      simpl. rewrite right_id. done.
+    - iIntros (??) "HE HL". iModIntro. iFrame.
+  Qed.
+  Definition find_delayed_observation_rel_inst := [instance @find_delayed_observation_rel].
+  Global Existing Instance find_delayed_observation_rel_inst.
+
+  (* TODO figure out how to nicely key the Rel2. Is there always a canonical order in which we want to have that?
+     doesn't seem like it. *)
+  (*
+  Lemma prove_with_subtype_inherit_manual E L step pm {K} (k : K) κ κ' P Q T :
+    lctx_lft_incl E L κ' κ →
+    Inherit κ' k Q -∗
+    (Q -∗ P) -∗
+    T L [] True%I -∗
+    prove_with_subtype E L step pm (Inherit κ k P) T.
+  Proof.
+    iIntros (Hi1) "Hinh HQP HT".
+    iIntros (????) "#CTX #HE HL".
+    iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hincl1"; first apply Hi1.
+    (*iPoseProof (lctx_lft_incl_incl with "HL HE") as "#Hincl2"; first apply Hi2. *)
+    iPoseProof (Inherit_mono with "Hincl1 Hinh") as "Hinh".
+    iPoseProof (Inherit_update with "[HQP] Hinh") as "Hinh".
+    { iIntros (?) "HQ". iApply ("HQP" with "HQ"). }
+    iExists _, _, _. iFrame. iApply maybe_logical_step_intro.
+    iModIntro. iL. destruct pm; iFrame. eauto.
+  Qed.
+   *)
 
   (** ** resolve_ghost *)
   (* One note: these instances do not descend recursively -- that is the task of the stratify_ltype call that is triggering the resolution. resolve_ghost instances should always resolve at top-level, or at the level of atoms of stratify_ltype's traversal (in case of user-defined types) *)
@@ -1760,10 +1847,11 @@ Section subsume.
   Lemma resolve_ghost_ofty_Owned {rt} π E L l (ty : type rt) γ rm lb T :
     find_observation rt γ FindObsModeDirect (λ or,
       match or with
-      | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
+      | None =>
+          ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
       | Some r =>
-          (* try again in case we should descend into the type *)
-          resolve_ghost π E L rm lb l (◁ ty)%I (Owned) (#r) T
+          (* try again in case we should descend into the type or we have still got a PlaceGhost *)
+          resolve_ghost π E L rm lb l (◁ ty)%I (Owned) r T
       end)
     ⊢ resolve_ghost π E L rm lb l (◁ ty)%I (Owned) (PlaceGhost γ) T.
   Proof.
@@ -1771,7 +1859,7 @@ Section subsume.
     iMod ("HT" with "[//]") as "HT". iDestruct "HT" as "[(%r & Hobs & HT) | (-> & HT)]".
     - rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iDestruct "Hl" as "(%ly & ? & ? & ? & ? & %r' & Hrfn & Hb)".
-      iPoseProof (gvar_pobs_agree_2 with "Hrfn Hobs") as "->".
+      iPoseProof (place_rfn_interp_owned_find_observation with "Hrfn Hobs") as "Hobs".
       iMod ("HT" with "[] [] CTX HE HL [-]") as "Ha"; [done.. | | ].
       { rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame. }
       done.
@@ -1785,8 +1873,8 @@ Section subsume.
       match or with
       | None => ⌜rm = ResolveTry⌝ ∗ T L (PlaceGhost γ) True false
       | Some r =>
-          (* try again in case we should descend into the type *)
-          resolve_ghost π E L rm lb l (◁ ty)%I (Uniq κ γ') (#r) T
+          (* try again in case we should descend into the type or we have still got a PlaceGhost *)
+          resolve_ghost π E L rm lb l (◁ ty)%I (Uniq κ γ') r T
       end)
     ⊢ resolve_ghost π E L rm lb l (◁ ty)%I (Uniq κ γ') (PlaceGhost γ) T.
   Proof.
@@ -1794,9 +1882,7 @@ Section subsume.
     iMod ("HT" with "[//]") as "HT". iDestruct "HT" as "[(%r & Hobs & HT) | (-> & HT)]".
     - rewrite ltype_own_ofty_unfold /lty_of_ty_own.
       iDestruct "Hl" as "(%ly & ? & ? & ? & ? & ? & Hrfn & Hb)".
-      iDestruct "Hrfn" as "(%v1 & %v2 & Hauth & Hobs' & %HR)".
-      iPoseProof (gvar_pobs_agree_2 with "Hauth Hobs") as "->".
-      simpl. subst.
+      iPoseProof (place_rfn_interp_mut_find_observation with "Hrfn Hobs") as "Hrfn".
       iMod ("HT" with "[] [] CTX HE HL [-]") as "Ha"; [done.. | | ].
       { rewrite ltype_own_ofty_unfold /lty_of_ty_own. eauto with iFrame. }
       done.
@@ -1816,6 +1902,54 @@ Section subsume.
   Qed.
   Definition resolve_ghost_ofty_default_inst := [instance @resolve_ghost_ofty_default].
   Global Existing Instance resolve_ghost_ofty_default_inst | 1000.
+
+  (** Nice lemma: we can also partially resolve on [BlockedLtype] *)
+  Lemma blocked_ltype_resolve_partially {rt} (ty : type rt) π bk l κ γ r :
+    Inherit [κ] (find_observation_result γ r) -∗
+    l ◁ₗ[π, bk] PlaceGhost γ @ BlockedLtype ty κ -∗
+    l ◁ₗ[π, bk] r @ BlockedLtype ty κ.
+  Proof.
+    iIntros "Hinh".
+    rewrite !ltype_own_blocked_unfold/blocked_lty_own.
+    destruct bk.
+    - iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hb)".
+      iFrame "Hlb Hsc". iR. iR.
+      iIntros "#Hdead".
+      unfold Inherit. simpl. rewrite right_id.
+      iMod ("Hinh" with "[] Hdead") as "HP"; first done.
+      iMod ("Hb" with "Hdead") as "(%r' & Hrfn & Hb)".
+      iPoseProof (place_rfn_interp_owned_blocked_find_observation with "Hrfn HP") as "Hrfn".
+      by iFrame.
+    - iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hb)".
+      done.
+    - iIntros "(%ly & %Hst & %Hly & Hsc & Hlb & Hb & Hcred)".
+      iFrame "Hlb Hsc Hcred". iR. iR.
+      iIntros "#Hdead".
+      unfold Inherit. simpl. rewrite right_id.
+      iMod ("Hinh" with "[] Hdead") as "HP"; first done.
+      iMod ("Hb" with "Hdead") as "(Hrfn & Hb)".
+      iPoseProof (place_rfn_interp_mut_blocked_find_observation with "Hrfn HP") as "Hrfn".
+      by iFrame.
+  Qed.
+  Lemma resolve_ghost_blocked {rt} π E L rm lb l (ty : type rt) κ bk γ T :
+    find_delayed_observation E L rt γ FindObsModeDirect κ (λ o,
+      match o with
+      | Some r =>
+          resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk r T
+      | None =>
+          T L (PlaceGhost γ) True false
+      end)
+    ⊢ resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk (PlaceGhost γ) T.
+  Proof.
+    iIntros "HT". iIntros (???) "#CTX #HE HL Hl".
+    iMod ("HT" with "[] HE HL") as "(HT & HL)"; first done.
+    iDestruct "HT" as "[(%r & Hinh & HT) | HT]"; first last.
+    { iFrame. iApply maybe_logical_step_intro. by iFrame. }
+    iPoseProof (blocked_ltype_resolve_partially with "Hinh Hl") as "Hl".
+    by iApply ("HT" with "[] [] CTX HE HL Hl").
+  Qed.
+  Definition resolve_ghost_blocked_inst := [instance @resolve_ghost_blocked].
+  Global Existing Instance resolve_ghost_blocked_inst.
 
   (** ** ltype stratification *)
   (* TODO change the ResolveTry and also make it a parameter of stratify *)
@@ -2170,6 +2304,7 @@ Section subsume.
   (* NOTE: instances for descending below MutLty, etc., are in the respective type's files. *)
 
   (** Unblock stratification: We define instances for the leaves of the unblocking stratifier *)
+
   (* On an ofty leaf, do a ghost resolution.
     This will also trigger resolve_ghost instances for custom-user defined types.
     This needs to have a lower priority than custom user-defined instances (e.g. for [◁ value_t]), so we give it a high cost. *)
@@ -2179,27 +2314,27 @@ Section subsume.
 
   (* Note: instance needs to have a higher priority than the resolve_ghost instance -- we should first unblock *)
   Global Instance stratify_ltype_unblock_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
   Global Instance stratify_ltype_unblock_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
   Global Instance stratify_ltype_unblock_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt _ κs r b T).
 
   (** Extract stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_extract_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
   Global Instance stratify_ltype_extract_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
   Global Instance stratify_ltype_extract_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs κ' `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt _ κs r b T).
 
   (** Resolve stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_resolve_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ  :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
 
   (* Also trigger resolve instances for ADTs. *)
   Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
@@ -3555,7 +3690,9 @@ Section subsume.
       iFrame "Hlb". iDestruct "Hcred" as "(Hcred1 & Hcred2 & Hcred)".
       iIntros "Hdead". iMod ("Hinh" with "Hdead") as "Hinh".
       iApply (lc_fupd_add_later with "Hcred1").
-      iNext. done. }
+      iNext.
+      iDestruct "Hinh" as "(%r' & Hauth & ?)". iMod (gvar_obs_persist with "Hauth") as "Hobs".
+      by iFrame. }
     iSplitR. { simpl. iApply place_update_kind_incl_lub; done. }
     iSplitL. {
       simpl. iApply typed_place_cond_trans.
@@ -4370,7 +4507,7 @@ Section subsume.
   (* TODO: also make endlft apply to local aliases, endlft should just remove them, without triggering anything. *)
 
   Variant iterate_endlft_inheritances :=
-  | IterateEndlftInheritances (κ : lft) (ks : list (list lft)).
+  | IterateEndlftInheritances (κ : lft) (ks : list (list lft * iProp Σ)).
 
   Lemma iterate_with_hooks_endlft_inheritance_nil E L κ T :
     T L (IterateEndlftInheritances κ [])
@@ -4381,21 +4518,21 @@ Section subsume.
   Definition iterate_with_hooks_endlft_inheritance_nil_inst := [instance @iterate_with_hooks_endlft_inheritance_nil].
   Global Existing Instance iterate_with_hooks_endlft_inheritance_nil_inst.
 
-  Lemma iterate_with_hooks_endlft_inheritance_cons E L κ κs ks T :
+  Lemma iterate_with_hooks_endlft_inheritance_cons E L κ κs P ks T :
     (* check if this inheritance applies if [κ] dies *)
     li_tactic (check_list_elem_of_goal κ κs) (λ b,
       if b then
-        find_in_context (FindInherit κs) (λ P,
+        find_in_context (FindInherit κs P) (λ _,
         find_in_context (FindLftDead κ) (λ _,
         introduce_with_hooks E L P (λ L2,
         iterate_with_hooks E L2 (IterateEndlftInheritances κ ks) T)))
       else iterate_with_hooks E L (IterateEndlftInheritances κ ks) T)
-    ⊢ iterate_with_hooks E L (IterateEndlftInheritances κ (κs :: ks)) T.
+    ⊢ iterate_with_hooks E L (IterateEndlftInheritances κ ((κs, P) :: ks)) T.
   Proof.
     rewrite /check_list_elem_of_goal.
     iIntros "(%b & %Hel & HT)".
     destruct b.
-    - iDestruct "HT" as "(%P & Hinh & % & Hdead & HT)".
+    - iDestruct "HT" as "(% & Hinh & % & Hdead & HT)".
       simpl in *. unfold Inherit.
       iIntros (??) "#HE HL".
       simpl.

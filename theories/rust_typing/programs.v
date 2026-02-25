@@ -458,6 +458,28 @@ Definition FindOptGvarPobs `{!typeGS Σ} (γ : gname) :=
   |}.
 Global Typeclasses Opaque FindOptGvarPobs.
 
+(** attempt to find an inheritance for an observation, or give up *)
+Definition FindOptInheritGvarPobs `{!typeGS Σ} (γ : gname) :=
+  {| fic_A := ((list lft * @sigT RT (λ rt, rt))%type + unit)%type;
+    fic_Prop a :=
+      match a with
+      | inl (κs, existT rt r) => Inherit κs (gvar_pobs γ r)%I
+      | inr _ => True%I
+      end
+  |}.
+Global Typeclasses Opaque FindOptInheritGvarPobs.
+
+(** attempt to find an inheritance for an observation, or give up *)
+Definition FindOptInheritGvarRel `{!typeGS Σ} (γ : gname) :=
+  {| fic_A := ((list lft * @sigT RT (λ rt, gname * (rt → rt → Prop))) + unit)%type;
+    fic_Prop a :=
+      match a with
+      | inl (κs, existT rt (γ', R)) => Inherit κs (Rel2 γ' γ R)%I
+      | inr _ => True%I
+      end
+  |}.
+Global Typeclasses Opaque FindOptInheritGvarRel.
+
 (** find an observation on a ghost variable *)
 (** NOTE: Ideally, we would also fix the type beforehand.
   However, that leads to universe trouble when using the definition that I have not yet figured out.
@@ -484,9 +506,9 @@ Definition FindOptGvarRel `{!typeGS Σ} (γ : gname) :=
   |}.
 Global Typeclasses Opaque FindOptGvarRel.
 
-Definition FindInherit `{!typeGS Σ} (κs : list lft) :=
-  {| fic_A := iProp Σ;
-     fic_Prop P := Inherit κs P;
+Definition FindInherit `{!typeGS Σ} (κs : list lft) (P : iProp Σ) :=
+  {| fic_A := ();
+     fic_Prop _ := Inherit κs P;
   |}.
 Global Typeclasses Opaque FindInherit.
 
@@ -2147,15 +2169,95 @@ Section judgments.
     resolve_ghost_iter_proof T : iProp_to_Prop (resolve_ghost_iter π E L rm lb l st lts b rs ig i0 T).
   Global Hint Mode ResolveGhostIter + + + + + + + + + + + + + : typeclass_instances.
 
+  (** Finding observations *)
   Inductive FindObsMode : Set :=
     | FindObsModeDirect
     | FindObsModeRel.
-  Definition find_observation_cont_t (rt : RT) : Type := option rt → iProp Σ.
+  Definition find_observation_result {rt : RT} γ (r : place_rfn rt) : iProp Σ :=
+    match r with
+    | PlaceIn r => gvar_pobs γ r
+    | PlaceGhost γ' => Rel2 (T:=rt) γ' γ eq
+    end.
+  Lemma place_rfn_interp_owned_find_observation {rt : RT} (r' : rt) (r : place_rfn rt) γ :
+    place_rfn_interp_owned (👻 γ) r' -∗
+    find_observation_result γ r -∗
+    place_rfn_interp_owned r r'.
+  Proof.
+    unfold place_rfn_interp_owned, find_observation_result.
+    destruct r.
+    - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
+      done.
+    - iIntros "Hobs Hrel".
+      iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
+      iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
+      done.
+  Qed.
+  Lemma place_rfn_interp_owned_blocked_find_observation {rt : RT} (r' : rt) (r : place_rfn rt) γ :
+    place_rfn_interp_owned_blocked (👻 γ) r' -∗
+    find_observation_result γ r -∗
+    place_rfn_interp_owned_blocked r r'.
+  Proof.
+    unfold place_rfn_interp_owned_blocked, find_observation_result.
+    destruct r.
+    - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
+      done.
+    - iIntros "Hobs Hrel".
+      iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
+      iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
+      done.
+  Qed.
+  Lemma place_rfn_interp_mut_find_observation {rt : RT} (r : place_rfn rt) γ γ' :
+    place_rfn_interp_mut (rt:=rt) (👻 γ) γ' -∗
+    find_observation_result γ r -∗
+    place_rfn_interp_mut r γ'.
+  Proof.
+    unfold place_rfn_interp_mut, find_observation_result.
+    destruct r.
+    - iIntros "Hrel Hobs".
+      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & ->)".
+      done.
+    - iIntros "Hrel1 Hrel2".
+      iApply (Rel2_eq_trans with "Hrel2 Hrel1").
+  Qed.
+  Lemma place_rfn_interp_mut_blocked_find_observation {rt : RT} (r : place_rfn rt) γ γ' :
+    place_rfn_interp_mut_blocked (rt:=rt) (👻 γ) γ' -∗
+    find_observation_result γ r -∗
+    place_rfn_interp_mut_blocked r γ'.
+  Proof.
+    unfold place_rfn_interp_mut_blocked, find_observation_result.
+    destruct r.
+    - iIntros "Hrel Hobs".
+      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & ->)".
+      done.
+    - iIntros "Hrel1 Hrel2".
+      iApply (Rel2_eq_trans with "Hrel2 Hrel1").
+  Qed.
+  Lemma place_rfn_interp_shared_find_observation {rt : RT} (r : place_rfn rt) γ γ' :
+    place_rfn_interp_shared (rt:=rt) (👻 γ) γ' -∗
+    find_observation_result γ r -∗
+    place_rfn_interp_shared r γ'.
+  Proof.
+    unfold place_rfn_interp_shared, find_observation_result.
+    destruct r.
+    - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
+      done.
+    - iIntros "Hobs Hrel".
+      iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
+      iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
+      done.
+  Qed.
+
+  Definition find_observation_cont_t (rt : RT) : Type := option (place_rfn rt) → iProp Σ.
   Definition find_observation (rt : RT) (γ : gname) (m : FindObsMode) (T : find_observation_cont_t rt) : iProp Σ :=
-    ∀ F, ⌜lftE ⊆ F⌝ -∗ |={F}=> (∃ r : rt, gvar_pobs γ r ∗ T (Some r)) ∨ T None.
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ |={F}=> (∃ r : place_rfn rt, find_observation_result γ r ∗ T (Some r)) ∨ T None.
   Class FindObservation (rt : RT) (γ : gname) (m : FindObsMode) : Type :=
     find_observation_proof T : iProp_to_Prop (find_observation rt γ m T).
 
+  Definition find_delayed_observation_cont_t (rt : RT) : Type := option (place_rfn rt) → iProp Σ.
+  Definition find_delayed_observation (E : elctx) (L : llctx) (rt : RT) (γ : gname) (m : FindObsMode) (κ : lft) (T : find_delayed_observation_cont_t rt) : iProp Σ :=
+    ∀ F, ⌜lftE ⊆ F⌝ -∗ elctx_interp E -∗ llctx_interp L -∗ |={F}=> ((∃ r : place_rfn rt, Inherit [κ] (find_observation_result γ r) ∗ T (Some r)) ∨ T None) ∗ llctx_interp L .
+  Class FindDelayedObservation (E : elctx) (L : llctx) (rt : RT) (γ : gname) (m : FindObsMode) (κ : lft) : Type :=
+    find_delayed_observation_proof T : iProp_to_Prop (find_delayed_observation E L rt γ m κ T).
 
   (** *** Stratification: unfold, unblock, and fold an ltype. *)
   (** Determines whether we descend below references.
@@ -3247,11 +3349,11 @@ Ltac solve_llctx_release_toks := fail "implement solve_llctx_release_toks".
     refine (llctx_release_toks_hint _ _ _ _); solve_llctx_release_toks : typeclass_instances.
 
 (** Computing the inheritance worklist *)
-Definition find_inheritances_goal `{!typeGS Σ} (T : list (list lft) → iProp Σ) : iProp Σ :=
+Definition find_inheritances_goal `{!typeGS Σ} (T : list (list lft * iProp Σ) → iProp Σ) : iProp Σ :=
   ∃ ks, T ks.
-Definition find_inheritances_pure_goal (ks : list (list lft)) :=
+Definition find_inheritances_pure_goal `{!typeGS Σ}  (ks : list (list lft * iProp Σ)) :=
   True.
-Program Definition find_inheritances_hint `{!typeGS Σ} (ks : list (list lft)) :
+Program Definition find_inheritances_hint `{!typeGS Σ} (ks : list (list lft * iProp Σ)) :
   find_inheritances_pure_goal ks →
   LiTactic (find_inheritances_goal) := λ a, {|
     li_tactic_P T := T ks;
@@ -3327,6 +3429,29 @@ Global Typeclasses Opaque check_llctx_place_update_kind_incl_uniq_goal.
 Ltac solve_check_llctx_place_update_kind_incl_uniq_pure_goal := fail "implement solve_check_llctx_place_update_kind_incl_uniq_pure_goal".
 #[global] Hint Extern 10 (LiTactic (check_llctx_place_update_kind_incl_uniq_goal _ _ _ _)) =>
     refine (check_llctx_place_update_kind_incl_uniq_goal_hint _ _ _ _ _ _); solve_check_llctx_place_update_kind_incl_uniq_pure_goal : typeclass_instances.
+
+(** Check whether a lifetime inclusion holds *)
+Definition check_lctx_lft_incl_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ1 κ2 : lft) (T : bool → iProp Σ) : iProp Σ :=
+  ∃ b : bool, ⌜if b then lctx_lft_incl E L κ1 κ2 else True⌝ ∗ T b.
+Definition check_lctx_lft_incl_pure_goal `{!typeGS Σ} (E : elctx) (L : llctx) (κ1 κ2 : lft) (b : bool) : Prop :=
+  if b then lctx_lft_incl E L κ1 κ2 else True.
+
+Program Definition check_lctx_lft_incl_goal_hint `{!typeGS Σ} (E : elctx) (L : llctx) (κ1 κ2 : lft) (b : bool) :
+  check_lctx_lft_incl_pure_goal E L κ1 κ2 b →
+  LiTactic (check_lctx_lft_incl_goal E L κ1 κ2) := λ a, {|
+    li_tactic_P T := T b;
+  |}.
+Next Obligation.
+  unfold check_lctx_lft_incl_pure_goal.
+  iIntros (?????? b Ha T) "HT".
+  iExists b. iR. done.
+Qed.
+
+Global Typeclasses Opaque check_lctx_lft_incl_goal.
+Global Typeclasses Opaque check_lctx_lft_incl_pure_goal.
+Ltac solve_check_lctx_lft_incl_goal := fail "implement solve_check_lctx_lft_incl_goal".
+#[global] Hint Extern 10 (LiTactic (check_lctx_lft_incl_goal _ _ _ _)) =>
+    refine (check_lctx_lft_incl_goal_hint _ _ _ _ _ _); solve_check_lctx_lft_incl_goal : typeclass_instances.
 
 (** ** Generic context folding mechanism *)
 Section folding.
@@ -4210,6 +4335,8 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
   | owned_subltype_step ?π ?E ?L ?l ?r1 ?r2 ?lt1 ?lt2 => constr:(OwnedSubltypeStep π E L l r1 r2 lt1 lt2)
   | cast_ltype_to_type ?E ?L ?lt => constr:(CastLtypeToType E L lt)
   | typed_array_access ?π ?E ?L ?base ?off ?st ?lt ?r ?bk => constr:(TypedArrayAccess π E L base off st lt r bk)
+  | find_observation ?rt ?γ ?m => constr:(FindObservation rt γ m)
+  | find_delayed_observation ?E ?L ?rt ?γ ?m ?κ => constr:(FindDelayedObservation E L rt γ m κ)
   | stratify_ltype ?π ?E ?L ?mu ?mdu ?ma ?m ?l ?lt ?r ?b =>
       constr:(StratifyLtype π E L mu mdu ma m l lt r b)
   | stratify_ltype_post_hook ?π ?E ?L ?m ?l ?lt ?r ?b =>

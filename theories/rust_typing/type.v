@@ -2517,7 +2517,7 @@ Section place_rfn.
   Definition place_rfn_interp_owned_blocked {rt} (r : place_rfn rt) (r' : rt) : iProp Σ :=
     match r with
     | PlaceIn r'' => ⌜r'' = r'⌝
-    | PlaceGhost γ' => gvar_auth γ' r'
+    | PlaceGhost γ' => gvar_pobs γ' r'
     end.
 
   (* interpretation of place_rfn under mut *)
@@ -2591,7 +2591,8 @@ Section place_rfn.
     place_rfn_interp_owned_blocked r r' ==∗ place_rfn_interp_owned r r'.
   Proof.
     destruct r as [ r'' | γ]; simpl; first by eauto.
-    iApply gvar_auth_persist.
+    eauto.
+    (*iApply gvar_auth_persist.*)
   Qed.
   Lemma place_rfn_interp_mut_blocked_unblock {rt} (r : place_rfn rt) (γ : gname) :
     place_rfn_interp_mut_blocked r γ ==∗ place_rfn_interp_mut r γ.

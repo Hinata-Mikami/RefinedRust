@@ -316,14 +316,20 @@ Ltac solve_ensure_evars_instantiated ::=
   repeat solve_ensure_evars_instantiated_step.
 
 (** Find inheritances *)
+Ltac get_Σ :=
+  let tgs := constr:(_ : typeGS _) in
+  match type of tgs with
+  | typeGS ?Σ => Σ
+  end.
 Ltac gather_inheritances env :=
+  let Σ := get_Σ in
   match env with
-  | Enil => constr:([] : list (list lft))
+  | Enil => constr:([] : list (list lft * iProp Σ))
   | Esnoc ?env' _ ?p =>
       let rs := gather_inheritances env' in
       lazymatch p with
       | (Inherit ?κs ?P)%I =>
-          constr:(κs :: rs)
+          constr:((κs, P) :: rs)
       | _ => constr:(rs)
       end
   end.
@@ -823,6 +829,10 @@ Ltac solve_lft_incl_list := repeat solve_lft_incl_list_step idtac.
 Ltac solve_lft_incl_init :=
   match goal with
   | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
+      unfold lft_intersect_list; simpl
+  end;
+  match goal with
+  | |- lctx_lft_incl ?E ?L ?κ1 ?κ2 =>
       first [unify κ1 κ2; refine (lctx_lft_incl_refl E L κ1) |
             refine (tac_lctx_lft_incl_init_list E L κ1 κ2 _)
             ]
@@ -831,6 +841,17 @@ Ltac solve_lft_incl :=
   solve_lft_incl_init;
   solve_lft_incl_list.
 
+
+Ltac solve_check_lctx_lft_incl_goal ::=
+  match goal with
+  | |- check_lctx_lft_incl_pure_goal ?E ?L ?κ1 ?κ2 ?b =>
+      unfold check_lctx_lft_incl_pure_goal;
+      first [
+        unify b true; simpl;
+        solve [solve_lft_incl]
+      | unify b false;
+        exact I]
+  end.
 
 (** lifetime alive solver *)
 (*

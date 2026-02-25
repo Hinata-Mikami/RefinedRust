@@ -206,6 +206,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : ResolveGhostADT π E L m r ty) T))
   | find_observation ?rt ?γ ?mode ?T =>
       cont uconstr:(((_ : FindObservation rt γ mode) T))
+  | find_delayed_observation ?E ?L ?rt ?γ ?mode ?κ ?T =>
+      cont uconstr:(((_ : FindDelayedObservation E L rt γ mode κ) T))
   | introduce_with_hooks ?E ?L ?P ?T =>
       cont uconstr:(((_ : IntroduceWithHooks E L P) T))
   | iterate_with_hooks ?E ?L ?m ?T =>
