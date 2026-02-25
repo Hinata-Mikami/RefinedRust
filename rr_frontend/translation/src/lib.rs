@@ -2180,11 +2180,12 @@ where
 
     register_traits(&mut vcx)?;
 
-    register_consts(&mut vcx)?;
-
     register_trait_impls(&vcx)?;
 
     register_closure_impls(&vcx)?;
+
+    // after trait impls, as type translation may depend on trait impls
+    register_consts(&mut vcx)?;
 
     translate_functions(&mut vcx);
 
