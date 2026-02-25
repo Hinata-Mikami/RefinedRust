@@ -21,9 +21,11 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 
 #[rr::export_as(spin::rwlock::RwLockWriteGuard)]
 #[rr::refined_by("x" : "place_rfn {rt_of T}")]
+#[rr::exists("y")]
 pub struct RwLockWriteGuard<'a, T: 'a, R = Spin> {
-    #[rr::field("#()")]
+    #[rr::field("#tt")]
     _l: &'a RwLock<T>,
+    #[rr::field("y")]
     _r: R,
 }
 
@@ -32,34 +34,22 @@ pub struct RwLockWriteGuard<'a, T: 'a, R = Spin> {
 #[rr::only_spec]
 impl<T, R> RwLock<T, R> {
 
-    #[rr::params("x")]
-    #[rr::args("x")]
     #[rr::returns("()")]
     pub fn new(t: T) -> RwLock<T, R> {
         unimplemented!();
     }
 }
 
+#[rr::export_as(spin::rwlock::RwLock)]
+#[rr::only_spec]
 impl<T, R: RelaxStrategy> RwLock<T, R> {
 
-    // TODO: ensure the lock isn't already held by current thread (need to rule out panic).
-    // For that, also need Drop.
-    #[rr::skip]
-    #[rr::params("x")]
-    #[rr::args("#x")]
-    #[rr::exists("y")]
-    #[rr::returns("y")]
+    #[rr::verify]
     pub fn read(&self) -> RwLockReadGuard<T> {
         unimplemented!();
     }
 
-    // TODO: ensure the lock isn't already held by current thread (need to rule out panic)
-    // For that, also need Drop.
-    #[rr::skip]
-    #[rr::params("x")]
-    #[rr::args("#x")]
-    #[rr::exists("y")]
-    #[rr::returns("#y")]
+    #[rr::verify]
     pub fn write(&self) -> RwLockWriteGuard<T, R> {
         unimplemented!();
     }

@@ -6,6 +6,9 @@
 #![rr::package("refinedrust-stdlib")]
 #![rr::coq_prefix("rrstd.spin")]
 
+#![rr::include("closures")]
+#![rr::include("option")]
+
 mod relax;
 mod once;
 mod rwlock;
