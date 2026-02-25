@@ -1156,7 +1156,7 @@ lazymatch P with
       (* terms here are huge, and normalizing is very expensive *)
       split; [shelve_sidecond |]
   | fast_lia_hint _ => split; [clear; unfold fast_lia_hint, num_cred; simpl; lia | ]
-  | fast_set_hint _ => split; [clear; unfold fast_lia_hint; simpl; set_solver | ]
+  | fast_set_hint _ => split; [clear; unfold fast_set_hint; simpl; set_solver | ]
   | fast_eq_hint _ =>
       split; [
         first [unfold spec_instantiate_typaram_fst, spec_instantiate_lft_fst, spec_instantiated; simpl; reflexivity | fail 10] | ]

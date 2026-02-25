@@ -1794,13 +1794,12 @@ Section subsume.
 
   (* TODO figure out how to nicely key the Rel2. Is there always a canonical order in which we want to have that?
      doesn't seem like it. *)
-  (*
-  Lemma prove_with_subtype_inherit_manual E L step pm {K} (k : K) κ κ' P Q T :
-    lctx_lft_incl E L κ' κ →
-    Inherit κ' k Q -∗
+  Lemma prove_with_subtype_inherit_manual E L step pm κ κ' P Q T :
+    lctx_lft_incl E L (lft_intersect_list κ') (lft_intersect_list κ) →
+    Inherit κ' Q -∗
     (Q -∗ P) -∗
     T L [] True%I -∗
-    prove_with_subtype E L step pm (Inherit κ k P) T.
+    prove_with_subtype E L step pm (Inherit κ P) T.
   Proof.
     iIntros (Hi1) "Hinh HQP HT".
     iIntros (????) "#CTX #HE HL".
@@ -1812,7 +1811,6 @@ Section subsume.
     iExists _, _, _. iFrame. iApply maybe_logical_step_intro.
     iModIntro. iL. destruct pm; iFrame. eauto.
   Qed.
-   *)
 
   (** ** resolve_ghost *)
   (* One note: these instances do not descend recursively -- that is the task of the stratify_ltype call that is triggering the resolution. resolve_ghost instances should always resolve at top-level, or at the level of atoms of stratify_ltype's traversal (in case of user-defined types) *)
@@ -1824,11 +1822,11 @@ Section subsume.
     match rm with
     | ResolveAll =>
         match r with
-        | PlaceIn _ => T L r True true
+        | PlaceIn _ => T L r True false
         | _ => False
         end
     | ResolveTry =>
-        T L r True (match r with PlaceIn _ => true | PlaceGhost _ => false end)
+        T L r True false
     end
     ⊢ resolve_ghost π E L rm lb l lt k r T.
   Proof.
@@ -1990,53 +1988,87 @@ Section subsume.
     StratifyLtype π E L mu mdu ma ml l lt (PlaceGhost γ) b | 100 := λ T, i2p (stratify_ltype_resolve_ghost_rec π E L mu mdu ma ml l lt b (PlaceGhost γ) T).
 
   Lemma stratify_ltype_blocked {rt} π E L mu mdu ma {M} (ml : M) l (ty : type rt) κ r b T :
-    find_in_context (FindOptLftDead κ) (λ found,
-      if found then stratify_ltype π E L mu mdu ma ml l (◁ ty)%I r b T
-      else stratify_ltype_post_hook π E L ml l (BlockedLtype ty κ) r b T)
+    resolve_ghost π E L ResolveTry false l (BlockedLtype ty κ) b r (λ L1 r R progress,
+      if progress then
+        stratify_ltype π E L1 mu mdu ma ml l (BlockedLtype ty κ) r b
+          (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
+      else R -∗
+      find_in_context (FindOptLftDead κ) (λ found,
+        if found then stratify_ltype π E L1 mu mdu ma ml l (◁ ty)%I r b T
+        else stratify_ltype_post_hook π E L1 ml l (BlockedLtype ty κ) r b T))
     ⊢ stratify_ltype π E L mu mdu ma ml l (BlockedLtype ty κ) r b T.
   Proof.
-    rewrite /FindOptLftDead.
-    iIntros "(%found & Hdead & Hp)". destruct found.
-    - iIntros (????) "#(LFT & LLCTX) #HE HL Hl".
-      iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
-      iPoseProof ("Hp" with "[//] [//] [//] [$LFT $LLCTX] HE HL Hl") as ">Hb".
-      iDestruct "Hb" as "(%L' & %R & %rt' & %lt' & %r' & Hl & Hstep & HT)".
-      iModIntro. iExists L', R, rt', lt', r'. by iFrame.
-    - by iApply stratify_ltype_id.
+    iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
+    iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
+    destruct prog.
+    - iPoseProof ("HP" with "[//] [//] [//] CTX HE HL Hl") as ">Hb".
+      iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
+      iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
+      iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
+    - rewrite /FindOptLftDead.
+      iSpecialize ("HP" with "HR").
+      iDestruct "HP" as "(%found & Hdead & Hp)". destruct found.
+      + iMod (unblock_blocked with "Hdead Hl") as "Hl"; first done.
+        iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
+        iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
+        iModIntro. iExists L', _, rt', lt', r'. iFrame.
+      + iApply (stratify_ltype_id _ _ _ mu mdu ma with "Hp [] [] [] [] HE HL"); done.
   Qed.
   (* No instance here, as we may not always want to do that. *)
 
-  (* TODO: also make this one optional *)
   Lemma stratify_ltype_coreable {rt} π E L mu mdu ma {M} (ml : M) l (lt_full lt_full' : ltype rt) κs r b `{Hsimp: !SimpLtype (ltype_core lt_full) lt_full'} T :
-    lft_dead_list κs ∗ stratify_ltype π E L mu mdu ma ml l lt_full' r b T
+    resolve_ghost π E L ResolveTry false l (CoreableLtype κs lt_full) b r (λ L1 r R progress,
+      if progress then
+        stratify_ltype π E L1 mu mdu ma ml l (CoreableLtype κs lt_full) r b
+          (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
+      (* TODO also make optional *)
+      else R -∗ lft_dead_list κs ∗ stratify_ltype π E L1 mu mdu ma ml l (lt_full')%I r b T)
     ⊢ stratify_ltype π E L mu mdu ma ml l (CoreableLtype κs lt_full) r b T.
   Proof.
-    destruct Hsimp as [<-].
-    iIntros "(#Hdead & Hstrat)".
-    iIntros (F ???) "#CTX #HE HL Hl".
-    iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
-    iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hl") as "Ha".
-    iDestruct "Ha" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
-    iModIntro. iExists _, _, _, _, _. iFrame.
-    iPureIntro. rewrite -Hst ltype_core_syn_type_eq. by simp_ltypes.
+    iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
+    iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
+    destruct prog.
+    - iPoseProof ("HP" with "[//] [//] [//] CTX HE HL Hl") as ">Hb".
+      iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
+      iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
+      iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
+    - iSpecialize ("HP" with "HR").
+      iDestruct "HP" as "(Hdead & Hp)".
+      iMod (unblock_coreable with "Hdead Hl") as "Hl"; first done.
+      destruct Hsimp. subst.
+      iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
+      iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & %Hst & HT)".
+      iModIntro. iExists L', _, rt', lt', r'. iFrame.
+      iPureIntro. rewrite -Hst ltype_core_syn_type_eq. by simp_ltypes.
   Qed.
   (* No instance here, as we may not always want to do that. *)
 
   Lemma stratify_ltype_shrblocked {rt} π E L mu mdu ma {M} (ml : M) l (ty : type rt) κ r b T :
-    find_in_context (FindOptLftDead κ) (λ found,
-      if found then stratify_ltype π E L mu mdu ma ml l (◁ ty)%I r b T
-      else stratify_ltype_post_hook π E L ml l (ShrBlockedLtype ty κ) r b T)
+    resolve_ghost π E L ResolveTry false l (ShrBlockedLtype ty κ) b r (λ L1 r R progress,
+      if progress then
+        stratify_ltype π E L1 mu mdu ma ml l (ShrBlockedLtype ty κ) r b
+          (λ L2 R' rt' lt' r', T L2 (R ∗ R') rt' lt' r')
+      else R -∗
+      find_in_context (FindOptLftDead κ) (λ found,
+        if found then stratify_ltype π E L1 mu mdu ma ml l (◁ ty)%I r b T
+        else stratify_ltype_post_hook π E L1 ml l (ShrBlockedLtype ty κ) r b T))
     ⊢ stratify_ltype π E L mu mdu ma ml l (ShrBlockedLtype ty κ) r b T.
   Proof.
-    rewrite /FindOptLftDead.
-    iIntros "(%found & Hdead & Hstrat)". destruct found.
-    - iIntros (F ???) "#CTX #HE HL Hl".
-      iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
-      iMod ("Hstrat" with "[//] [//] [//] CTX HE HL Hl") as "Ha".
-      iDestruct "Ha" as "(%L2 & %R & %rt' & %lt' & %r' & HL & %Hst & Hstep & HT)".
-      iModIntro. iExists _, _, _, _, _. iFrame.
-      iPureIntro. done.
-    - by iApply stratify_ltype_id.
+    iIntros "HT". iIntros (????) "#CTX #HE HL Hl".
+    iMod ("HT" with "[] [] CTX HE HL Hl") as "(%L1 & %r1 & %R & %prog & >(Hl & HR) & HL & HP)"; [done.. | ].
+    destruct prog.
+    - iPoseProof ("HP" with "[//] [//] [//] CTX HE HL Hl") as ">Hb".
+      iDestruct "Hb" as "(%L2 & %R' & %rt' & %lt' & %r' & HL & Hcond & Hb & HT)".
+      iModIntro. iExists L2, _, rt', lt', r'. iFrame "Hcond HT HL".
+      iApply (logical_step_wand with "Hb"). iIntros "($ & $)". done.
+    - rewrite /FindOptLftDead.
+      iSpecialize ("HP" with "HR").
+      iDestruct "HP" as "(%found & Hdead & Hp)". destruct found.
+      + iMod (unblock_shrblocked with "Hdead Hl") as "Hl"; first done.
+        iPoseProof ("Hp" with "[//] [//] [//] [//] HE HL Hl") as ">Hb".
+        iDestruct "Hb" as "(%L' & %R2 & %rt' & %lt' & %r' & Hl & Hstep & HT)".
+        iModIntro. iExists L', _, rt', lt', r'. iFrame.
+      + iApply (stratify_ltype_id _ _ _ mu mdu ma with "Hp [] [] [] [] HE HL"); done.
   Qed.
   (* No instance here, as we may not always want to do that. *)
 
@@ -2314,27 +2346,27 @@ Section subsume.
 
   (* Note: instance needs to have a higher priority than the resolve_ghost instance -- we should first unblock *)
   Global Instance stratify_ltype_unblock_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
   Global Instance stratify_ltype_unblock_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma StratifyUnblockOp l ty κ r b T).
   Global Instance stratify_ltype_unblock_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma StratifyUnblockOp l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma StratifyUnblockOp l lt _ κs r b T).
 
   (** Extract stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_extract_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
   Global Instance stratify_ltype_extract_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ κ' :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyExtractOp κ') l ty κ r b T).
   Global Instance stratify_ltype_extract_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs κ' `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma (StratifyExtractOp κ') l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyExtractOp κ') l lt _ κs r b T).
 
   (** Resolve stratification: we also want to Unblock here *)
   Global Instance stratify_ltype_resolve_blocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ  :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (BlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_blocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_shrblocked_inst {rt} π E L mu mdu ma l (ty : type rt) b r κ :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 105 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (ShrBlockedLtype ty κ) r b | 5 := λ T, i2p (stratify_ltype_shrblocked π E L mu mdu ma (StratifyResolveOp) l ty κ r b T).
   Global Instance stratify_ltype_resolve_coreable_inst {rt} π E L mu mdu ma l (lt lt' : ltype rt) b r κs `{!SimpLtype (ltype_core lt) lt'} :
-    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 105 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
+    StratifyLtype π E L mu mdu ma (StratifyResolveOp) l (CoreableLtype κs lt) r b | 5 := λ T, i2p (stratify_ltype_coreable π E L mu mdu ma (StratifyResolveOp) l lt _ κs r b T).
 
   (* Also trigger resolve instances for ADTs. *)
   Global Instance stratify_ltype_resolve_ofty_in_inst {rt} π E L mu mdu ma l (ty : type rt) (r : rt) b :
