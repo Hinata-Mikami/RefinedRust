@@ -2188,6 +2188,7 @@ Section judgments.
     - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
       done.
     - iIntros "Hobs Hrel".
+      rewrite /RelEq.
       iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
       iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
       done.
@@ -2215,6 +2216,7 @@ Section judgments.
     - iIntros "Hobs1 Hobs2". iPoseProof (gvar_pobs_agree_2 with "Hobs1 Hobs2") as "%Heq".
       done.
     - iIntros "Hobs Hrel".
+      rewrite /RelEq.
       iDestruct "Hrel" as "(% & % & ? & Hobs' & <-)".
       iPoseProof (gvar_pobs_agree with "Hobs' Hobs") as "<-".
       done.

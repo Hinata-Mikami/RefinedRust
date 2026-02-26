@@ -804,6 +804,9 @@ Global Hint Extern 0 (LayoutSizeLe _ _) => rewrite /LayoutSizeLe; solve_layout_s
 
 (* This should instead be solved by [solve_ty_has_op_type]. *)
 Global Arguments ty_has_op_type : simpl never.
+Global Typeclasses Opaque ty_has_op_type.
+(* Even though we seal it, we should still make this opaque so it doesn't simplify. *)
+Global Opaque ty_has_op_type.
 
 (* Simplifying this can lead to problems in some cases when used in specifications. *)
 Global Arguments replicate : simpl nomatch.
@@ -813,10 +816,6 @@ Global Arguments freeable_nz : simpl never.
 (* should not be visible for automation *)
 Global Typeclasses Opaque ty_shr.
 Global Typeclasses Opaque ty_own_val.
-Global Typeclasses Opaque ty_has_op_type.
-
-(* Even though we seal it, we should still make this opaque so it doesn't simplify. *)
-Global Opaque ty_has_op_type.
 
 Global Typeclasses Opaque find_in_context.
 
@@ -824,14 +823,10 @@ Global Arguments ty_lfts : simpl nomatch.
 Global Arguments ty_wf_E : simpl nomatch.
 
 Global Arguments layout_of : simpl never.
-(*Global Arguments ly_size : simpl never.*)
 
 Global Arguments plist : simpl never.
 
 Global Arguments lft_intersect_list : simpl never.
-
-Global Typeclasses Opaque RelEq.
-Global Arguments RelEq : simpl never.
 
 Hint Unfold els_lookup_tag : lithium_rewrite.
 
@@ -1191,6 +1186,9 @@ Ltac sidecond_solver :=
 Lemma unfold_int_elem_of_it (z : Z) (it : int_type) :
   z ∈ it = (MinInt it ≤ z ∧ z ≤ MaxInt it)%Z.
 Proof. done. Qed.
+Lemma unfold_nat_elem_of_it (n : nat) (it : int_type) :
+  n ∈ it = (MinInt it ≤ n ∧ n ≤ MaxInt it)%Z.
+Proof. done. Qed.
 
 (** Another rewrite DB that we use to normalize more aggressively *)
 Create HintDb solve_goal_unfold discriminated.
@@ -1202,6 +1200,7 @@ Ltac sidecond_hammer_normalize :=
   autounfold with lithium_rewrite;
   autounfold with lithium_rewrite in *;
   try rewrite -> unfold_int_elem_of_it in *;
+  try rewrite -> unfold_nat_elem_of_it in *;
   simpl in *;
   normalize_and_simpl_goal.
 

@@ -389,7 +389,7 @@ Section find.
     ⌜γ1' = γ2'⌝ ∗ ⌜γ1 = γ2⌝ ∗ T ⊢ subsume (Σ := Σ) (RelEq (T:=rt) γ1' γ1) (RelEq (T:=rt) γ2' γ2) T.
   Proof.
     iIntros "(-> & -> & $)".
-    iIntros "Hrel". iDestruct "Hrel" as "(% & % & ? & ? & %HR')".
+    iIntros "Hrel". rewrite /RelEq. iDestruct "Hrel" as "(% & % & ? & ? & %HR')".
     iExists _, _. iFrame. iPureIntro. by apply HR'.
   Qed.
   Definition subsume_gvar_rel_inst := [instance @subsume_gvar_rel].
@@ -1748,7 +1748,7 @@ Section subsume.
     iDestruct 1 as ([[rt' γ'] | ]) "(Hobs & HT)"; simpl.
     - iDestruct "HT" as (Heq) "HT".
       unfold find_observation, find_observation_result.
-      iIntros (??). iDestruct "Hobs" as "(%v1 & %v2 & ?)".
+      iIntros (??). rewrite /RelEq. iDestruct "Hobs" as "(%v1 & %v2 & ?)".
       iLeft. iExists (👻 γ'). iFrame.
       iExists (rew [id] Heq in v1).
       iExists (rew [id] Heq in v2).
@@ -1815,6 +1815,7 @@ Section subsume.
       iPoseProof (Inherit_mono _ [κ] with "[] Hobs") as "Hobs".
       { simpl. rewrite right_id. done. }
       iApply (Inherit_update with "[] Hobs").
+      rewrite /RelEq.
       iIntros (?) "(%v1 & %v2 & Ha)". iModIntro.
       iExists (rew [id] Heq in v1).
       iExists (rew [id] Heq in v2).
@@ -4418,14 +4419,7 @@ Section subsume.
   Global Existing Instance typed_expr_assert_type_inst.
 
   (** ** Handling of lifetime-related annotations *)
-  (** Instance for resolving Rel2 with another observation *)
-  (* TODO *)
 
-  (* Currently the thing with static is broken.
-    Maybe I should have MaybeInherit that simplifies to the direct proposition if it doesn't have a lifetime. *)
-
-  (* Point: I should still run the endlft hooks *)
-  (* TODO *)
   Lemma introduce_with_hooks_maybe_inherit_none E L P T :
     introduce_with_hooks E L P T
     ⊢ introduce_with_hooks E L (MaybeInherit None P) T.
@@ -4518,6 +4512,54 @@ Section subsume.
   Qed.
   Definition introduce_with_hooks_lft_toks_inst := [instance @introduce_with_hooks_lft_toks].
   Global Existing Instance introduce_with_hooks_lft_toks_inst | 10.
+
+  Lemma introduce_with_hooks_releq rt E L γ1 γ2 T :
+    find_in_context (FindOptGvarPobs γ1) (λ o,
+    match o with
+    | inr _ =>
+        RelEq (T:=rt) γ1 γ2 -∗ T L
+    | inl (existT rt' r) =>
+        ∃ (Heq : RT_rt rt' = RT_rt rt),
+        introduce_with_hooks E L (gvar_pobs γ2 (rew [id] Heq in r)) T
+    end)
+    ⊢ introduce_with_hooks E L (RelEq (T:=rt) γ1 γ2) T.
+  Proof.
+    iIntros "(%o & Hobs & HT)".
+    iIntros (??) "HE HL Hrel".
+    destruct o as [[rt' r] | ]; simpl.
+    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
+      iPoseProof (RelEq_use_pobs with "Hobs Hrel") as "Hobs".
+      iMod (gvar_obs_persist with "Hobs") as "Hobs".
+      by iApply ("HT" with "[] HE HL Hobs").
+    - iFrame. by iApply "HT".
+  Qed.
+  Definition introduce_with_hooks_releq_inst := [instance @introduce_with_hooks_releq].
+  Global Existing Instance introduce_with_hooks_releq_inst.
+
+  Lemma introduce_with_hooks_rel2 rt1 rt2 E L (R : rt1 → rt2 → Prop) γ1 γ2 T :
+    find_in_context (FindOptGvarPobs γ1) (λ o,
+    match o with
+    | inr _ =>
+        Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R -∗ T L
+    | inl (existT rt' r) =>
+        ∃ (Heq : RT_rt rt' = rt1),
+        ∀ r2,
+        introduce_with_hooks E L (⌜R (rew [id] Heq in r) r2⌝ ∗ gvar_pobs γ2 ( r2)) T
+    end)
+    ⊢ introduce_with_hooks E L (Rel2 (T1:=rt1)(T2:=rt2) γ1 γ2 R) T.
+  Proof.
+    iIntros "(%o & Hobs & HT)".
+    iIntros (??) "HE HL Hrel".
+    destruct o as [[rt' r] | ]; simpl.
+    - iDestruct "HT" as "(%Heq & HT)". destruct Heq.
+      iPoseProof (Rel2_use_pobs with "Hobs Hrel") as "(%r2 & Hobs & %HR)".
+      iMod (gvar_obs_persist with "Hobs") as "Hobs".
+      iApply ("HT" with "[] HE HL [Hobs]"); first done.
+      simpl. by iFrame.
+    - iFrame. by iApply "HT".
+  Qed.
+  Definition introduce_with_hooks_rel2_inst := [instance @introduce_with_hooks_rel2].
+  Global Existing Instance introduce_with_hooks_rel2_inst.
 
   (** StartLft *)
   Lemma type_startlft E L f (n : string) sup_lfts s fn R ϝ :

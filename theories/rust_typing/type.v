@@ -2545,7 +2545,7 @@ Section place_rfn.
     - iSplit.
       + iIntros "?"; eauto with iFrame.
       + iIntros "(%r' & ? & ->)"; iFrame.
-    - iSplit.
+    - rewrite /RelEq. iSplit.
       + iIntros "(%r1 & %r2 & ? & ? & ->)". iExists _. iFrame.
       + iIntros "(%r' & ? & ?)". iExists _, _. iFrame. done.
   Qed.
@@ -2560,7 +2560,7 @@ Section place_rfn.
     destruct r as [r'' | γ']; simpl.
     - iPoseProof (gvar_agree with "Hauth Hrfn") as "#->".
       iSplitR; first done. by iFrame.
-    - iDestruct "Hrfn" as "(%r1 & %r2 & Hauth' & Hobs & ->)".
+    - rewrite /RelEq. iDestruct "Hrfn" as "(%r1 & %r2 & Hauth' & Hobs & ->)".
       iPoseProof (gvar_agree with "Hauth Hobs") as "#->". iFrame. done.
   Qed.
   Lemma place_rfn_interp_owned_mut {rt} (r : place_rfn rt) r' γ :
