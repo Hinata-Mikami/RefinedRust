@@ -408,13 +408,12 @@ impl<T> Vec<T> {
 
     #[rr::params("xs", "γ", "i" : "nat")]
     #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::exists("γi", "γ1", "γ2")]
-    #[rr::observe("γ2": "if decide (i < length xs) then <[i := PlaceGhost γ1]> (<$#> xs) else <$#> xs")]
+    #[rr::exists("γi", "γ1")]
     #[rr::returns("if decide (i < length xs) then Some (xs !!! i, γi) else None")]
     // NOTE: currently, we need a slightly more complicated specification that explicitly closes
     // under ghost variable equivalence: the "Inherit" part states that, after 'a has ended, the
     // ghost variables will have identical values
-    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (RelEq (T:=list (place_rfn T_rt)) γ2 γ) else True")]
+    #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (Obs γ (<[i := PlaceGhost γ1]> (<$#> xs))) else Obs γ (<$#> xs)")]
     #[rr::ensures(#iris "if decide (i < length xs) then Inherit [{'a}] (RelEq (T:=T_rt) γi γ1) else True")]
     pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
         if index < self.len() {

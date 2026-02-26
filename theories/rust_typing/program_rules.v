@@ -23,7 +23,7 @@ Section find.
     {| rt_fic := FindValP v |}.
 
   Global Instance related_to_named_lfts M : RelatedTo (named_lfts M) | 100 :=
-    {| rt_fic := FindNamedLfts |}.
+    {| rt_fic:= FindNamedLfts |}.
 
   Global Instance related_to_gvar_pobs {rt} γ (r : rt) : RelatedTo (gvar_pobs γ r) | 100 :=
     {| rt_fic := FindGvarPobsP γ |}.
@@ -1943,21 +1943,32 @@ Section subsume.
       by iFrame.
   Qed.
   Lemma resolve_ghost_blocked {rt} π E L rm lb l (ty : type rt) κ bk γ T :
-    find_delayed_observation E L rt γ FindObsModeDirect κ (λ o,
-      match o with
-      | Some r =>
-          resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk r T
-      | None =>
-          T L (PlaceGhost γ) True false
-      end)
+    find_observation rt γ FindObsModeDirect (λ o,
+    match o with
+    | Some r =>
+        resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk r T
+    | None =>
+      find_delayed_observation E L rt γ FindObsModeDirect κ (λ o,
+        match o with
+        | Some r =>
+            resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk r T
+        | None =>
+            T L (PlaceGhost γ) True false
+        end)
+    end)
     ⊢ resolve_ghost π E L rm lb l (BlockedLtype ty κ) bk (PlaceGhost γ) T.
   Proof.
     iIntros "HT". iIntros (???) "#CTX #HE HL Hl".
-    iMod ("HT" with "[] HE HL") as "(HT & HL)"; first done.
-    iDestruct "HT" as "[(%r & Hinh & HT) | HT]"; first last.
-    { iFrame. iApply maybe_logical_step_intro. by iFrame. }
-    iPoseProof (blocked_ltype_resolve_partially with "Hinh Hl") as "Hl".
-    by iApply ("HT" with "[] [] CTX HE HL Hl").
+    iMod ("HT" with "[]") as "Ha"; first done.
+    iDestruct "Ha" as "[(% & Hres & HT) | HT]".
+    - iPoseProof (blocked_ltype_resolve_partially with "[Hres] Hl") as "Hl".
+      { rewrite /Inherit. iIntros (??) "_". by iFrame. }
+      by iApply ("HT" with "[] [] CTX HE HL Hl").
+    - iMod ("HT" with "[] HE HL") as "(HT & HL)"; first done.
+      iDestruct "HT" as "[(%r & Hinh & HT) | HT]"; first last.
+      { iFrame. iApply maybe_logical_step_intro. by iFrame. }
+      iPoseProof (blocked_ltype_resolve_partially with "Hinh Hl") as "Hl".
+      by iApply ("HT" with "[] [] CTX HE HL Hl").
   Qed.
   Definition resolve_ghost_blocked_inst := [instance @resolve_ghost_blocked].
   Global Existing Instance resolve_ghost_blocked_inst.
