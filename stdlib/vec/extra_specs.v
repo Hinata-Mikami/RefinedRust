@@ -62,4 +62,24 @@ Next Obligation.
   done.
 Qed.
 
+Lemma simplify_goal_slice_iter_inv T_rt π b T :
+  T
+  ⊢ simplify_goal (traits_iterator_Iterator_Inv (IteraTasstd_iter_Iterator_spec_attrs T_rt) π b) T.
+Proof.
+  unfold traits_iterator_Iterator_Inv; simpl.
+  iIntros "$".
+Qed.
+Definition simplify_goal_slice_iter_inv_inst := [instance @simplify_goal_slice_iter_inv with 0%N].
+Global Existing Instance simplify_goal_slice_iter_inv_inst.
+
+Lemma simplify_goal_vec_intoiter_inv T_rt A_rt A_attrs π b T :
+  T
+  ⊢ simplify_goal (traits_iterator_Iterator_Inv (IntoIterTAasstd_iter_Iterator_spec_attrs T_rt A_rt A_attrs) π b) T.
+Proof.
+  unfold traits_iterator_Iterator_Inv; simpl.
+  iIntros "$".
+Qed.
+Definition simplify_goal_vec_intoiter_inv_inst := [instance @simplify_goal_vec_intoiter_inv with 0%N].
+Global Existing Instance simplify_goal_vec_intoiter_inv_inst.
+
 End extra_specs.
