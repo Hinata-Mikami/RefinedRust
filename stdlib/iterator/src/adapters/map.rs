@@ -49,13 +49,10 @@ where
 {
     type Item = MB;
 
-    #[rr::trust_me]
     #[rr::default_spec]
     fn next(&mut self) -> Option<MB> {
         self.iter
-            // Calling next is possible without preconditions.
             .next()
-            // Calling the closure requires us to prove its precondition.
             .map(&mut self.f)
     }
 }

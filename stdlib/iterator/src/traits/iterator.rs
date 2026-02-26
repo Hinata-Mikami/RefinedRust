@@ -37,15 +37,15 @@ pub trait Iterator {
         (☒ {Self::Next} π it_state (Some e) it_state') -∗
         Inv π it_state clos_state -∗
         {F::Pre} π clos_state *[e] ∗
-        (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state'))")]
+        (∀ e' clos_state', {F::PostMut} π clos_state *[e] clos_state' e' -∗ Inv π it_state' clos_state' ∗ True))")]
     /// Precondition: If no element is emitted, the invariant is also upheld.
     #[rr::requires(#iris "□ (∀ it_state it_state' clos_state,
         (☒ {Self::Next} π it_state None it_state') -∗
         Inv π it_state clos_state -∗
-        Inv π it_state' clos_state)")]
+        Inv π it_state' clos_state ∗ True)")]
     #[rr::ensures("ret = mk_map_x self f")]
     // TODO: spec shortcut to refer to attrs of Self
-    #[rr::ensures(#iris "MapInv traits_iterator_Iterator_Self_spec_attrs {F::Pre} {F::PostMut} π ret")]
+    #[rr::ensures(#iris "traits_iterator_Iterator_Inv (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ traits_iterator_Iterator_Self_spec_attrs FnOnce_F_Selfastraits_iterator_Iterator_Item_spec_attrs FnMut_F_Selfastraits_iterator_Iterator_Item_spec_attrs) π ret")]
     fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,

@@ -207,6 +207,20 @@ Section extra.
   Next Obligation. done. Qed.
   Global Existing Instance iterator_learn_range_it_usize.
 
+  Lemma simplify_goal_range_iter_inv Clone_attrs PEq_attrs POrd_attrs Step_attrs π b T :
+    T
+    ⊢ simplify_goal (traits_iterator_Iterator_Inv (step_impltraits_iterator_Iteratorforstd_ops_RangeA_spec_attrs Z Clone_attrs PEq_attrs POrd_attrs Step_attrs) π b) T.
+  Proof.
+    unfold traits_iterator_Iterator_Inv; simpl.
+    iIntros "$".
+  Qed.
+  Definition simplify_goal_range_iter_inv_inst := [instance @simplify_goal_range_iter_inv with 0%N].
+  Global Existing Instance simplify_goal_range_iter_inv_inst.
+
+
 End extra.
 Global Hint Extern 100 (IteratorLearnInductive (adapters_map_MapMIMFastraits_iterator_Iterator_spec_attrs _ _ _ _ _ _ _)) =>
   unshelve notypeclasses refine (iterator_learn_map_stateless _ _ _ _ _ _ _); [tc_solve | tc_solve | tc_solve | tc_solve] : typeclass_instances.
+
+Global Arguments traits_iterator_Iterator_Inv : simpl never.
+Global Typeclasses Opaque traits_iterator_Iterator_Inv.
