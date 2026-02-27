@@ -526,9 +526,8 @@ pub enum Annotation {
 }
 
 impl Annotation {
-    #[expect(clippy::unused_self)]
     const fn needs_laters(&self) -> u32 {
-        0
+        if matches!(self, Self::EndLft(_)) { 2 } else { 1 }
     }
 }
 
@@ -555,7 +554,7 @@ pub enum PrimStmt {
     #[display("local_dead \"{}\";\n", _0)]
     LocalDead(String),
 
-    #[display("{}", fmt_list!(a, "", |x| { format!("annot: {x};{}\n", fmt_comment(why.as_ref()))}))]
+    #[display("{}", fmt_list!(a, "", |x| { format!("annot{{ {} }}: {x};{}\n", x.needs_laters(), fmt_comment(why.as_ref()))}))]
     Annot {
         a: Vec<Annotation>,
         why: Option<String>,

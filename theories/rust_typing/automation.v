@@ -203,6 +203,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyExtractOp κ) l lt r b) T))
   | stratify_ltype_resolve ?π ?E ?L ?Ma ?l ?lt ?r ?b ?T =>
       cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyResolveOp) l lt r b) T))
+  | stratify_ltype_close_inv ?κs ?π ?E ?L ?l ?lt ?r ?b ?T =>
+      cont uconstr:(((_ : StratifyLtype π E L _ _ _ (StratifyCloseOp κs) l lt r b) T))
   | stratify_ltype_post_hook ?π ?E ?L ?ml ?l ?lt ?r ?b ?T =>
       cont uconstr:(((_ : StratifyLtypePostHook π E L ml l lt r b) T))
   | resolve_ghost ?π ?E ?L ?m ?lb ?l ?lt ?b ?r ?T =>

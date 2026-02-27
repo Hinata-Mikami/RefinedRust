@@ -2363,6 +2363,14 @@ Section judgments.
     iExists L', R, rt', lt', r'. iFrame.
   Qed.
 
+  (* Typeclass to decide whether we should try to close [OpenedLtype]/[OpenedNaLtype]/[ShadowedLtype] *)
+  Class StratifyLtypeShouldCloseInv {M} (m : M) (bk : bor_kind) := {}.
+  Global Hint Mode StratifyLtypeShouldCloseInv + + + : typeclass_instances.
+
+  (* Typeclass to decide whether we should try to unblocked [BlockedLtype]/[CoreableLtype]/[ShrBlockedLtype] *)
+  Class StratifyLtypeShouldUnblock {M} (m : M) := {}.
+  Global Hint Mode StratifyLtypeShouldUnblock + + : typeclass_instances.
+
   (** Operation for unblocking (remove Blocked and ShrBlocked at leaves). *)
   Inductive StratifyUnblock :=
     | StratifyUnblockOp.
@@ -2370,11 +2378,17 @@ Section judgments.
   Definition stratify_ltype_unblock {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
     stratify_ltype π E L StratMutNone StratNoUnfold ma StratifyUnblockOp l lt r b T.
 
+  Global Instance stratify_unblock_close_inv bk : StratifyLtypeShouldCloseInv StratifyUnblockOp bk := {}.
+  Global Instance stratify_unblock_unblock : StratifyLtypeShouldUnblock StratifyUnblockOp := {}.
+
   (** Operation for extracting observations from dead references. *)
   Inductive StratifyExtract :=
     | StratifyExtractOp (κ : lft).
   Definition stratify_ltype_extract {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (κ : lft) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
     stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyExtractOp κ) l lt r b T.
+
+  Global Instance stratify_extract_close_inv κ bk : StratifyLtypeShouldCloseInv (StratifyExtractOp κ) bk := {}.
+  Global Instance stratify_extract_unblock κ : StratifyLtypeShouldUnblock (StratifyExtractOp κ) := {}.
 
   (** Operation for resolving observations. *)
   Inductive StratifyResolve :=
@@ -2382,7 +2396,20 @@ Section judgments.
   Definition stratify_ltype_resolve {rt} (π : thread_id) (E : elctx) (L : llctx) (ma : StratifyAscendMode) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
     stratify_ltype π E L StratMutStrong StratDoUnfold ma (StratifyResolveOp) l lt r b T.
 
+  Global Instance stratify_resolve_close_inv bk : StratifyLtypeShouldCloseInv (StratifyResolveOp) bk := {}.
+  Global Instance stratify_resolve_unblock : StratifyLtypeShouldUnblock (StratifyResolveOp) := {}.
 
+  (** Operation for closing invariants to end a lifetime *)
+  Inductive StratifyClose :=
+    | StratifyCloseOp (κs : list lft).
+
+  Definition stratify_ltype_close_inv κs {rt} (π : thread_id) (E : elctx) (L : llctx) (l : loc) (lt : ltype rt) (r : place_rfn rt) (b : bor_kind) (T : llctx → iProp Σ → ∀ rt', ltype rt' → place_rfn rt' → iProp Σ) :=
+    stratify_ltype π E L StratMutWeak StratDoUnfold StratRefoldOpened (StratifyCloseOp κs) l lt r b T.
+
+  Global Instance stratify_close_close_inv_uniq κs κ γ :
+    TCFastListElemOf (κ ∈ κs) →
+    StratifyLtypeShouldCloseInv (StratifyCloseOp κs) (Uniq κ γ) := {}.
+  Global Instance stratify_close_inv_unblock κs : StratifyLtypeShouldUnblock (StratifyCloseOp κs) := {}.
 
 
   (* TODO: even shared borrows and reads should not always refold, in order to handle ShrBlocked.
@@ -3362,6 +3389,26 @@ Global Typeclasses Opaque find_spatial_locs_pure_goal.
 Ltac solve_find_spatial_locs := fail "implement solve_find_spatial_locs".
 #[global] Hint Extern 10 (LiTactic (find_spatial_locs_goal)) =>
   refine (find_spatial_locs_hint _ _); solve_find_spatial_locs : typeclass_instances.
+
+(** Computing the list of all local lifetimes whose death is implied by the death of another local lifetime (due to inclusion) *)
+Definition find_implied_dying_lifetimes_goal `{!typeGS Σ} (L : llctx) (κ : lft) (T : list lft → iProp Σ) : iProp Σ :=
+  ∃ ks, T ks.
+Definition find_implied_dying_lifetimes_pure_goal `{!typeGS Σ} (L : llctx) (κ : lft) (ks : list lft) :=
+  True.
+Program Definition find_implied_dying_lifetimes_hint `{!typeGS Σ} (L : llctx) (κ : lft) (ks : list lft) :
+  find_implied_dying_lifetimes_pure_goal L κ ks →
+  LiTactic (find_implied_dying_lifetimes_goal L κ) := λ a, {|
+    li_tactic_P T := T ks;
+  |}.
+Next Obligation.
+  iIntros (?? ?? ? ? ?) "HT". iExists _. iFrame.
+Qed.
+
+Global Typeclasses Opaque find_implied_dying_lifetimes_goal.
+Global Typeclasses Opaque find_implied_dying_lifetimes_pure_goal.
+Ltac solve_find_implied_dying_lifetimes := fail "implement solve_find_implied_dying_lifetimes".
+#[global] Hint Extern 10 (LiTactic (find_implied_dying_lifetimes_goal ?L ?κ)) =>
+  refine (find_implied_dying_lifetimes_hint L κ _ _); solve_find_implied_dying_lifetimes : typeclass_instances.
 
 (** Check whether an element is part of a list *)
 Definition check_list_elem_of_goal `{!typeGS Σ} {A} (x : A) (xs : list A) (T : bool → iProp Σ) : iProp Σ :=

@@ -365,16 +365,47 @@ Ltac solve_find_spatial_locs ::=
       done
   end.
 
+(** Discover which local lifetimes are dying implied by another local lifetime dying (due to inclusion / aliases) *)
+Ltac check_list_elem_of_lctx κ κs cont :=
+  lazymatch κs with
+  | [] =>
+      cont constr:(false)
+  | ?κ1 :: ?κs =>
+      first [unify κ κ1; cont constr:(true) | check_list_elem_of_lctx κ κs cont ]
+  end.
+Ltac find_dying_lifetimes L κ cont :=
+  match L with
+  | [] => cont constr:([] : list lft)
+  | (?κ1 ≡ₗ ?κs2) :: ?L =>
+      find_dying_lifetimes L κ ltac:(fun dying =>
+      once check_list_elem_of_lctx κ κs2 ltac:(fun el =>
+        match el with
+        | true =>
+            cont constr:(κ1 :: dying)
+        | false =>
+            cont constr:(dying)
+        end
+      ))
+  | (?κ1 ⊑ₗ{_} ?κs2) :: ?L =>
+      find_dying_lifetimes L κ ltac:(fun dying =>
+      once check_list_elem_of_lctx κ κs2 ltac:(fun el =>
+        match el with
+        | true =>
+            cont constr:(κ1 :: dying)
+        | false =>
+            cont constr:(dying)
+        end
+      ))
+  end.
 
-(* Very simple list containment solver, tailored for the goals we usually get around external lifetime contexts. *)
-Ltac simple_list_elem_solver :=
-  repeat lazymatch goal with
-  | |- ?a ∈ ?a :: ?L =>
-      apply elem_of_cons; by left
-  | |- ?a ∈ _ :: ?L =>
-      apply elem_of_cons; right
-  | |- ?a ∈ _ ++ ?L =>
-      apply elem_of_app; right
+Ltac solve_find_implied_dying_lifetimes ::=
+  match goal with
+  | |- find_implied_dying_lifetimes_pure_goal ?L ?κ ?ks =>
+      find_dying_lifetimes L κ ltac:(fun res =>
+      let res := constr:(res) in
+      let res := eval simpl in res in
+      unify ks res;
+      unfold find_implied_dying_lifetimes_pure_goal; done)
   end.
 
 (** Check if an element is contained in a list *)
