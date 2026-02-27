@@ -167,6 +167,8 @@ Ltac liExtensible_to_i2p_hook P bind cont ::=
       cont uconstr:(((_ : TypedAddrOfMutEnd π E L l lt r b2 bmin) T))
   | cast_ltype_to_type ?E ?L ?lt ?T =>
       cont uconstr:(((_ : CastLtypeToType E L lt) T))
+  | typed_pre_context_fold ?π ?E ?L ?m ?T =>
+      cont uconstr:(((_ : TypedPreContextFold π E L m) T))
   | typed_context_fold ?AI ?E ?L ?m ?tctx ?acc ?T =>
       cont uconstr:(((_ : TypedContextFold AI E L m tctx acc) T))
   | typed_context_fold_step ?AI ?π ?E ?L ?m ?l ?lt ?r ?tctx ?acc ?T =>
@@ -421,53 +423,6 @@ Ltac liRExpr :=
     end
   end.
 
-(* Initialize context folding by gathering up the type context. *)
-Ltac gather_location_list env :=
-  match env with
-  | Enil => uconstr:([])
-  | Esnoc ?env' _ ?p =>
-      let rs := gather_location_list env' in
-      lazymatch p with
-      | (?l ◁ₗ[?π, Owned] ?r @ ?lty)%I =>
-          uconstr:(l :: rs)
-      | _ => uconstr:(rs)
-      end
-  end.
-Ltac liRContextStratifyInit :=
-  lazymatch goal with
-  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit ?ma) ?T) =>
-      let envs := eval hnf in envs in
-      match envs with
-      | Envs _ ?spatial _ =>
-          let tctx := gather_location_list spatial in
-          notypeclasses refine (tac_fast_apply (typed_context_fold_stratify_init tctx _ E L ma T) _)
-      | _ => fail 1000 "gather_tctx: cannot determine Iris context"
-      end
-  end.
-
-Ltac liRContextExtractInit :=
-  lazymatch goal with
-  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
-      let envs := eval hnf in envs in
-      match envs with
-      | Envs _ ?spatial _ =>
-          let tctx := gather_location_list spatial in
-          notypeclasses refine (tac_fast_apply (typed_context_fold_extract_init tctx _ E L κ T) _)
-      | _ => fail 1000 "gather_tctx: cannot determine Iris context"
-      end
-  end.
-Ltac liRContextResolveInit :=
-  lazymatch goal with
-  | |- envs_entails ?envs (typed_pre_context_fold ?E ?L (CtxFoldResolveAllInit) ?T) =>
-      let envs := eval hnf in envs in
-      match envs with
-      | Envs _ ?spatial _ =>
-          let tctx := gather_location_list spatial in
-          notypeclasses refine (tac_fast_apply (typed_context_fold_resolve_init tctx _ E L T) _)
-      | _ => fail 1000 "gather_tctx: cannot determine Iris context"
-      end
-  end.
-
 Ltac liRJudgement :=
   lazymatch goal with
     (* place finish *)
@@ -493,15 +448,6 @@ Ltac liRJudgement :=
     (* end context folding *)
     | |- envs_entails _ (typed_context_fold_end ?AI ?E ?L ?acc ?T) =>
         notypeclasses refine (tac_fast_apply (type_context_fold_end AI E L acc T) _)
-    (* initialize context folding *)
-    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldStratifyAllInit _) ?T) =>
-        liRContextStratifyInit
-    (* initialize context folding *)
-    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldExtractAllInit ?κ) ?T) =>
-        liRContextExtractInit
-    (* initialize context folding *)
-    | |- envs_entails _ (typed_pre_context_fold ?E ?L (CtxFoldResolveAllInit) ?T) =>
-        liRContextResolveInit
     (* trigger tc search *)
     | |- envs_entails _ (trigger_tc ?H ?T) =>
         notypeclasses refine (tac_fast_apply (tac_trigger_tc _ _ _ _) _); [solve [refine _] | ]

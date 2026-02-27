@@ -343,6 +343,29 @@ Ltac solve_find_inheritances ::=
       done
   end.
 
+(** Find spatial locs *)
+Ltac gather_location_list env :=
+  match env with
+  | Enil => uconstr:([])
+  | Esnoc ?env' _ ?p =>
+      let rs := gather_location_list env' in
+      lazymatch p with
+      | (?l ◁ₗ[?π, Owned] ?r @ ?lty)%I =>
+          uconstr:(l :: rs)
+      | _ => uconstr:(rs)
+      end
+  end.
+Ltac solve_find_spatial_locs ::=
+  match goal with
+  | H := Envs ?Δi ?Δs _ |- find_spatial_locs_pure_goal ?ks =>
+      let locs := gather_location_list Δs in
+      let locs := constr:(locs) in
+      unify ks locs;
+      unfold find_spatial_locs_pure_goal;
+      done
+  end.
+
+
 (* Very simple list containment solver, tailored for the goals we usually get around external lifetime contexts. *)
 Ltac simple_list_elem_solver :=
   repeat lazymatch goal with

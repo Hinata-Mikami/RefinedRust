@@ -3343,6 +3343,26 @@ Ltac solve_find_inheritances := fail "implement solve_find_inheritances".
 #[global] Hint Extern 10 (LiTactic (find_inheritances_goal)) =>
   refine (find_inheritances_hint _ _); solve_find_inheritances : typeclass_instances.
 
+(** Computing the list of all spatial locations *)
+Definition find_spatial_locs_goal `{!typeGS Σ} (T : list loc → iProp Σ) : iProp Σ :=
+  ∃ ks, T ks.
+Definition find_spatial_locs_pure_goal `{!typeGS Σ}  (ks : list loc) :=
+  True.
+Program Definition find_spatial_locs_hint `{!typeGS Σ} (ks : list loc) :
+  find_spatial_locs_pure_goal ks →
+  LiTactic (find_spatial_locs_goal) := λ a, {|
+    li_tactic_P T := T ks;
+  |}.
+Next Obligation.
+  iIntros (?? ? ? ?) "HT". iExists _. iFrame.
+Qed.
+
+Global Typeclasses Opaque find_spatial_locs_goal.
+Global Typeclasses Opaque find_spatial_locs_pure_goal.
+Ltac solve_find_spatial_locs := fail "implement solve_find_spatial_locs".
+#[global] Hint Extern 10 (LiTactic (find_spatial_locs_goal)) =>
+  refine (find_spatial_locs_hint _ _); solve_find_spatial_locs : typeclass_instances.
+
 (** Check whether an element is part of a list *)
 Definition check_list_elem_of_goal `{!typeGS Σ} {A} (x : A) (xs : list A) (T : bool → iProp Σ) : iProp Σ :=
   ∃ b : bool, ⌜(if b then x ∈ xs else True)⌝ ∗ T b.
@@ -3448,7 +3468,6 @@ Section folding.
     type_ctx_interp π ((l, t) :: tctx) ⊣⊢ (l ◁ₗ[π, Owned] t.(bltype_rfn) @ t.(bltype_ltype)) ∗ type_ctx_interp π tctx.
   Proof. iApply big_sepL_cons. Qed.
 
-  (* TODO maybe we should just put the locations in the tctx queue, instead of the whole type assignment? We're going to look for them in the context anyways. *)
   Section folder.
   Context {Acc : Type} (Acc_interp : Acc → iProp Σ).
   (** Initializer for doing a context fold with action [m].
@@ -3458,13 +3477,14 @@ Section folding.
       Clients that want to initiate context folding should generate a goal with this judgment,
         with a [m] that identifies the folding action.
    *)
-  Definition typed_pre_context_fold (E : elctx) (L : llctx) {M} (m : M) (T : llctx → iProp Σ) : iProp Σ :=
+  Definition typed_pre_context_fold (π : thread_id) (E : elctx) (L : llctx) {M} (m : M) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗ ⌜lft_userE ⊆ F⌝ -∗ ⌜shrE ⊆ F⌝ -∗
     rrust_ctx -∗
     elctx_interp E -∗
     llctx_interp L -∗
     logical_step F (∃ L', llctx_interp L' ∗ T L').
-  (* no TC for this -- typing rules for this will be directly applied by Ltac automation *)
+  Class TypedPreContextFold {M} (π : thread_id) (E : elctx) (L : llctx) (m : M) :=
+    typed_pre_context_fold_proof T : iProp_to_Prop (typed_pre_context_fold π E L m T).
 
   (** The main context folding judgment. [tctx] is the list of types to fold. *)
   Definition typed_context_fold {M} (E : elctx) (L : llctx) (m : M) (tctx : list loc) (acc : Acc) (T : llctx → M → Acc → iProp Σ) : iProp Σ :=
@@ -3553,13 +3573,11 @@ Section folding.
   Qed.
 
   (** Initialize context folding.
-    This rule should be directly applied by Ltac automation, after it has gathered up the [tctx]
-      from the Iris context.
-  *)
-  Lemma typed_context_fold_init {M} (init_acc : Acc) E L (m : M) (tctx : list loc) Φ T :
+     This is not an instance, but can be used when constructing instances for particular instantiations of context folding. *)
+  Lemma typed_context_fold_init {M} (init_acc : Acc) π E L (m : M) (tctx : list loc) Φ T :
     Acc_interp init_acc ∗
     typed_context_fold E L m tctx init_acc (λ L' m' acc, Φ m' acc ∗ typed_context_fold_end E L' acc T) -∗
-    typed_pre_context_fold E L m T.
+    typed_pre_context_fold π E L m T.
   Proof.
     iIntros "(Hinit & Hfold)".
     iIntros (????) "#CTX #HE HL".
@@ -4320,6 +4338,10 @@ Ltac generate_i2p_instance_to_tc_hook arg c ::=
       constr:(StratifyLtypeArrayIter π E L mu mdu ma m l ig def len iml rs b)
   | interpret_typing_hint ?E ?L ?orty ?bmin ?ty ?r =>
       constr:(InterpretTypingHint E L orty bmin ty r)
+  | typed_context_fold ?P ?E ?L ?m ?tctx ?acc =>
+      constr:(TypedContextFold P E L m tctx acc)
+  | typed_pre_context_fold ?π ?E ?L ?m =>
+      constr:(TypedPreContextFold π E L m)
   | typed_context_fold_step ?P ?π ?E ?L ?m ?l ?lt ?r ?ls ?acc =>
       constr:(TypedContextFoldStep P π E L m l lt r ls acc)
   | relate_list ?E ?L ?idx ?a ?b ?n ?R =>

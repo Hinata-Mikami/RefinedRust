@@ -4651,6 +4651,9 @@ Section subsume.
       | Some κ =>
         (* find some credits *)
         prove_with_subtype E L false ProveDirect (£1) (λ L1 _ R2,
+        (* We need to make sure there are no open borrows using tokens of this lifetime, inclusing aliases *)
+        (*typed_pre_context_fold E L2 (CtxFoldExtractAllInit κ) (λ L3,*)
+
         (* find the new llft context *)
         li_tactic (llctx_find_llft_goal L1 κ LlctxFindLftFull) (λ '(_, L1'),
         li_tactic (llctx_remove_dead_aliases_goal L1' κ) (λ L2,
@@ -4659,8 +4662,7 @@ Section subsume.
         named_lfts M' -∗
         (□ [† κ]) -∗
         (* extract observations from now-dead mutable references *)
-        typed_pre_context_fold E L2 (CtxFoldExtractAllInit κ) (λ L3,
-        (*typed_pre_context_fold E L3 (CtxFoldResolveAllInit) (λ L3',*)
+        typed_pre_context_fold f.1 E L2 (CtxFoldExtractAllInit κ) (λ L3,
         (* give back credits *)
         introduce_with_hooks E L3 (R2 ∗ £num_cred ∗ tr 1) (λ L4,
         (* resolve inheritances *)
@@ -4793,18 +4795,21 @@ Section subsume.
   Definition typed_context_fold_step_stratify_inst := [instance typed_context_fold_step_stratify].
   Global Existing Instance typed_context_fold_step_stratify_inst.
 
-  (* Note: the following lemma introduces evars on application and is thus not suitable to be directly applied with Lithium. *)
-  Lemma typed_context_fold_stratify_init tctx π E L ma T :
+  Lemma typed_context_fold_stratify_init π E L ma T :
+    li_tactic (find_spatial_locs_goal) (λ tctx,
     typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldStratifyAll ma) tctx ([], True%I) (λ L' m' acc, True ∗
-      typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T)
-    ⊢ typed_pre_context_fold E L (CtxFoldStratifyAllInit ma) T.
+      typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T))
+    ⊢ typed_pre_context_fold π E L (CtxFoldStratifyAllInit ma) T.
   Proof.
-    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) _ _ (CtxFoldStratifyAll ma)). iFrame.
+    rewrite /find_spatial_locs_goal.
+    iIntros "(%tctx & Hf)". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) π _ _ (CtxFoldStratifyAll ma)). iFrame.
     rewrite /typed_context_fold_stratify_interp/type_ctx_interp; simpl; done.
   Qed.
+  Definition typed_context_fold_stratify_init_inst := [instance @typed_context_fold_stratify_init].
+  Global Existing Instance typed_context_fold_stratify_init_inst.
 
   Lemma type_stratify_context_annot E L f s fn R ϝ :
-    typed_pre_context_fold E L (CtxFoldStratifyAllInit StratNoRefold) (λ L', typed_stmt E L' f s fn R ϝ)
+    typed_pre_context_fold f.1 E L (CtxFoldStratifyAllInit StratNoRefold) (λ L', typed_stmt E L' f s fn R ϝ)
     ⊢ typed_stmt E L f (annot: (StratifyContextAnnot); s) fn R ϝ.
   Proof.
     iIntros "HT".
@@ -4839,14 +4844,18 @@ Section subsume.
   Definition typed_context_fold_step_extract_inst := [instance typed_context_fold_step_extract].
   Global Existing Instance typed_context_fold_step_extract_inst.
 
-  Lemma typed_context_fold_extract_init tctx π E L κ T :
+  Lemma typed_context_fold_extract_init π E L κ T :
+    li_tactic find_spatial_locs_goal (λ tctx,
     typed_context_fold (typed_context_fold_stratify_interp π) E L (CtxFoldExtractAll κ) tctx ([], True%I) (λ L' m' acc, True ∗
-      typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T)
-    ⊢ typed_pre_context_fold E L (CtxFoldExtractAllInit κ) T.
+      typed_context_fold_end (typed_context_fold_stratify_interp π) E L' acc T))
+    ⊢ typed_pre_context_fold π E L (CtxFoldExtractAllInit κ) T.
   Proof.
-    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) _ _ (CtxFoldExtractAll κ)). iFrame.
+    rewrite /find_spatial_locs_goal.
+    iIntros "(%tctx & Hf)". iApply (typed_context_fold_init (typed_context_fold_stratify_interp π) ([], True%I) π _ _ (CtxFoldExtractAll κ)). iFrame.
     rewrite /typed_context_fold_stratify_interp/type_ctx_interp; simpl; done.
   Qed.
+  Definition typed_context_fold_extract_init_inst := [instance @typed_context_fold_extract_init].
+  Global Existing Instance typed_context_fold_extract_init_inst.
 
   (** We instantiate the context folding mechanism for resolution of observations. *)
   Definition typed_context_fold_resolve_interp (π : thread_id) := λ '(ctx, R), (type_ctx_interp π ctx ∗ R)%I.
@@ -4868,14 +4877,18 @@ Section subsume.
   Definition typed_context_fold_step_resolve_inst := [instance typed_context_fold_step_resolve].
   Global Existing Instance typed_context_fold_step_resolve_inst.
 
-  Lemma typed_context_fold_resolve_init tctx π E L T :
+  Lemma typed_context_fold_resolve_init π E L T :
+    li_tactic find_spatial_locs_goal (λ tctx,
     typed_context_fold (typed_context_fold_resolve_interp π) E L (CtxFoldResolveAll) tctx ([], True%I) (λ L' m' acc, True ∗
-      typed_context_fold_end (typed_context_fold_resolve_interp π) E L' acc T)
-    ⊢ typed_pre_context_fold E L (CtxFoldResolveAllInit) T.
+      typed_context_fold_end (typed_context_fold_resolve_interp π) E L' acc T))
+    ⊢ typed_pre_context_fold π E L (CtxFoldResolveAllInit) T.
   Proof.
-    iIntros "Hf". iApply (typed_context_fold_init (typed_context_fold_resolve_interp π) ([], True%I) _ _ (CtxFoldResolveAll)). iFrame.
+    rewrite /find_spatial_locs_goal.
+    iIntros "(%tctx & Hf)". iApply (typed_context_fold_init (typed_context_fold_resolve_interp π) ([], True%I) π _ _ (CtxFoldResolveAll)). iFrame.
     rewrite /typed_context_fold_resolve_interp/type_ctx_interp; simpl; done.
   Qed.
+  Definition typed_context_fold_resolve_init_inst := [instance @typed_context_fold_resolve_init].
+  Global Existing Instance typed_context_fold_resolve_init_inst.
 
   (* Typing rule for [Return] *)
   Lemma type_return E L f e fn (R : typed_stmt_R_t) ϝ :

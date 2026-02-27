@@ -1554,7 +1554,8 @@ Next Obligation.
   done.
 Defined.
 
-Notation "a '.:' n" := (pnth_acc' _ a n ltac:(reflexivity)) (at level 1, only parsing).
+Notation "a '.:' n" := (pnth_acc' _ a n ltac:(reflexivity)) (at level 1, n constr at next level, only parsing).
+Notation "a '.:' n" := (pnth_acc' _ a n _) (at level 1, n constr at next level, only printing).
 
 Section test.
   Lemma test1 (x : plist id [Z; nat]) :
