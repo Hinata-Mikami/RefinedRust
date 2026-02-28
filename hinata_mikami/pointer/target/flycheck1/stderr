@@ -1,0 +1,90 @@
+   0.014841215s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: false }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
+   0.014915211s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-5f1643c888063052/bin-pointer`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+   0.025516281s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint: fingerprint error for pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)/Check { test: true }/TargetInner { name: "pointer", doc: true, ..: with_path("/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/src/main.rs", Edition2024) }
+   0.025557164s  INFO prepare_target{force=false package_id=pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer) target="pointer"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer/target/debug/.fingerprint/pointer-0f80dc6da8bf7257/test-bin-pointer`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+    Checking pointer v0.1.0 (/home/hinata/code/RefinedRust/refinedrust-dev/hinata_mikami/pointer)
+error: could not compile `pointer` (bin "pointer" test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `pointer` (bin "pointer") due to 2 previous errors
