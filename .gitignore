@@ -2,7 +2,7 @@ _build/
 _opam
 .coq-native/
 builddep/
-_RocqProject
+# _RocqProject
 
 *~
 
@@ -12,7 +12,7 @@ _RocqProject
 .lia.cache
 .nia.cache
 rustc-ice-*
-_CoqProject
+# _CoqProject
 dune-project
 dune-workspace
 

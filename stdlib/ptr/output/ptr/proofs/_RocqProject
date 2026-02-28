@@ -1,0 +1,53 @@
+-arg -w
+-arg -notation-overridden
+-arg -w
+-arg -redundant-canonical-projection
+-arg -w
+-arg -deprecated-native-compiler-option
+-arg -w
+-arg -native-compiler-disabled
+-arg -native-compiler
+-arg ondemand
+-arg -boot
+-R /home/hinata/.opam/refinedrust/lib/coq/theories Corelib
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/stdpp stdpp
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/iris iris
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/Ltac2 Ltac2
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/Equations Equations
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/lrust lrust
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/iris_contrib iris_contrib
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/Stdlib Stdlib
+-Q ../../../../../theories/lithium lithium
+-Q ../../../../../_build/default/theories/lithium lithium
+-Q ../../../../../theories/caesium/physical_step caesium.physical_step
+-Q ../../../../../_build/default/theories/caesium/physical_step caesium.physical_step
+-Q ../../../../../theories/caesium/program_logic caesium.program_logic
+-Q ../../../../../_build/default/theories/caesium/program_logic caesium.program_logic
+-Q ../../../../../theories/caesium caesium
+-Q ../../../../../_build/default/theories/caesium caesium
+-Q ../../../../../theories/rust_typing refinedrust
+-Q ../../../../../_build/default/theories/rust_typing refinedrust
+-Q ../../../../sized/target/verify/sized/generated rrstd.sized.sized.generated
+-Q ../../../../../_build/default/stdlib/sized/target/verify/sized/generated rrstd.sized.sized.generated
+-Q ../../../../clone/target/verify/clone/generated rrstd.clone.clone.generated
+-Q ../../../../../_build/default/stdlib/clone/target/verify/clone/generated rrstd.clone.clone.generated
+-Q ../../../../closures/target/verify/closures/generated rrstd.closures.closures.generated
+-Q ../../../../../_build/default/stdlib/closures/target/verify/closures/generated rrstd.closures.closures.generated
+-Q ../../../../mem/theories rrstd.mem.theories
+-Q ../../../../../_build/default/stdlib/mem/theories rrstd.mem.theories
+-Q ../../../../mem/output/mem/generated rrstd.mem.mem.generated
+-Q ../../../../../_build/default/stdlib/mem/output/mem/generated rrstd.mem.mem.generated
+-Q ../../../../num/target/verify/num/generated rrstd.num.num.generated
+-Q ../../../../../_build/default/stdlib/num/target/verify/num/generated rrstd.num.num.generated
+-Q ../../../../result/theories rrstd.result.theories
+-Q ../../../../../_build/default/stdlib/result/theories rrstd.result.theories
+-Q ../../../../result/target/verify/result/generated rrstd.result.result.generated
+-Q ../../../../../_build/default/stdlib/result/target/verify/result/generated rrstd.result.result.generated
+-Q ../../../../option/target/verify/option/generated rrstd.option.option.generated
+-Q ../../../../../_build/default/stdlib/option/target/verify/option/generated rrstd.option.option.generated
+-Q ../../../theories rrstd.ptr.theories
+-Q ../../../../../_build/default/stdlib/ptr/theories rrstd.ptr.theories
+-Q ../generated rrstd.ptr.ptr.generated
+-Q ../../../../../_build/default/stdlib/ptr/output/ptr/generated rrstd.ptr.ptr.generated
+-R . rrstd.ptr.ptr.proofs
+-R ../../../../../_build/default/stdlib/ptr/output/ptr/proofs rrstd.ptr.ptr.proofs

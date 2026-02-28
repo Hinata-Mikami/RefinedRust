@@ -1,0 +1,25 @@
+-arg -w
+-arg -notation-incompatible-prefix
+-arg -w
+-arg -redundant-canonical-projection
+-arg -w
+-arg -deprecated-native-compiler-option
+-arg -w
+-arg -native-compiler-disabled
+-arg -native-compiler
+-arg ondemand
+-arg -boot
+-R /home/hinata/.opam/refinedrust/lib/coq/theories Corelib
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/stdpp stdpp
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/iris iris
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/iris_contrib iris_contrib
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/Ltac2 Ltac2
+-Q /home/hinata/.opam/refinedrust/lib/coq/user-contrib/Stdlib Stdlib
+-Q ../lithium lithium
+-Q ../../_build/default/theories/lithium lithium
+-Q physical_step caesium.physical_step
+-Q ../../_build/default/theories/caesium/physical_step caesium.physical_step
+-Q program_logic caesium.program_logic
+-Q ../../_build/default/theories/caesium/program_logic caesium.program_logic
+-R . caesium
+-R ../../_build/default/theories/caesium caesium
