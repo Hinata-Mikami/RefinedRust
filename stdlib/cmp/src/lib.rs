@@ -52,7 +52,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[rr::verify]
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_fields_are_eq(&self) {}
 }
 
 #[rr::export_as(core::cmp::PartialOrd)]
