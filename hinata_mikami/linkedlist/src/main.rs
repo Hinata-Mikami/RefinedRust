@@ -12,8 +12,6 @@
 
 use std::ptr;
 
-/// TODO ルートセットの検出
-
 /* 連結リストの各ノード */
 #[rr::refined_by("(v, n, m)" : "(Z * loc * bool)")]
 // #[derive(Debug)]        // 構造体の中身の表示用
@@ -46,7 +44,7 @@ impl LinkedList {
     #[rr::args("l", "v")]
     #[rr::exists("ptr" : "loc")]
     #[rr::returns("ptr")]
-    #[rr::ensures("l.ghost = l.cur ++ [ptr]")]
+    #[rr::observe("l.ghost" : "l.cur ++ [ptr]")]
     #[rr::ensures(#type "ptr" : "(v, NULL, false)" @ "(Node_inv_t <INST!>)")]
     fn alloc(&mut self, value: i32) -> *mut Node {
         let node = Box::new(Node {      // Boxでヒープにメモリを確保
