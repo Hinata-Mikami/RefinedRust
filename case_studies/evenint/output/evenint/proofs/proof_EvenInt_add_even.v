@@ -22,7 +22,7 @@ Proof.
   destruct 1; destruct x, y; try lia; destruct p, p0; try done; lia.
 Qed.
 
-Ltac2 Set filter_reflexivity_terms_def as frtd :=
+Ltac2 Set filter_defined_terms as frtd :=
   fun () =>
     'Z.le :: 'Z.opp :: 'Z.div2
     :: 'has_layout_loc :: 'void_ptr :: 'usize
@@ -31,11 +31,52 @@ Ltac2 Set filter_reflexivity_terms_def as frtd :=
     :: 'bool_decide :: '@elem_of
     :: frtd ().
 
-Ltac2 Set filter_algebraic_types_def as frtd :=
+Ltac2 Set filter_inductive_types as frtd :=
   fun () =>
     'loc :: 'poly_list
     :: 'int_type :: 'struct_layout
     :: frtd ().
+
+Ltac revert_hypothesis Hs :=
+  lazymatch Hs with
+  | (?Hs1, ?Hs2) =>
+      revert_hypothesis Hs1;
+      revert_hypothesis Hs2
+  | ?H =>
+      revert H
+  end.
+
+Ltac my_Zeven_rewrite_hyps H :=
+  setoid_rewrite Zeven_div2_equiv in H.
+
+Ltac my_Zeven_rewrite_goal :=
+  let H := fresh "H_Zeven_div2_linearity" in
+  generalize Zeven_div2_linearity;
+  setoid_rewrite Zeven_div2_equiv;
+  intros H.
+
+Ltac my_bool_decide_rewrite body :=
+  let Hbody := fresh "H_body_bool_decide" in
+  let Hhyp := fresh "H_assert_bool_decide" in
+  set (Hbody := bool_decide body);
+  assert (Hhyp: Hbody = true ↔ body) by apply bool_decide_eq_true;
+  clearbody Hbody.
+
+Ltac2 my_Zeven_hyp_trigger () :=
+  TContains (TSomeHyp, Arg id) (TConstant (Init.Some "Zeven") NotArg).
+
+Ltac2 my_Zeven_goal_trigger () :=
+  TContains (TGoal, NotArg) (TConstant (Init.Some "Zeven") NotArg).
+
+Ltac2 my_bool_decide_trigger () :=
+  let trigger loc := TContains (loc, NotArg) (TApp (TConstant (Init.Some "bool_decide") NotArg) (TAny (Arg id)) NotArg) in
+  TDisj (trigger TGoal) (trigger TSomeHyp).
+
+Ltac2 Set sniper_transformations as st := fun () =>
+  ((my_Zeven_hyp_trigger (), Init.false, Init.None), "my_Zeven_rewrite_hyps", trivial_filter) ::
+  ((my_Zeven_goal_trigger (), Init.false, Init.None), "my_Zeven_rewrite_goal", trivial_filter) ::
+  (* ((my_bool_decide_trigger (), Init.false, Init.None), "my_bool_decide_rewrite", trivial_filter) :: *)
+  (st ()).
 
 Lemma EvenInt_add_even_proof (π : thread_id) :
   EvenInt_add_even_lemma π.
@@ -57,34 +98,16 @@ Proof.
     | H : bb_inv_map_marker _ |- _ => clear H
     end.
   {
-    (* Command idea: Snipe Register Zeven [Zeven_div2_linearity; ...] *)
-    revert H5 H6.
-    generalize Zeven_div2_linearity.
+    my_bool_decide_rewrite (self + other ∈ i32).
 
-    (* Command idea: Snipe Rewrite Zeven Zeven_div2_equiv. *)
-    setoid_rewrite Zeven_div2_equiv.
+    unfold elem_of in H_assert_bool_decide.
+    unfold int_elem_of_it in H_assert_bool_decide.
 
-    (* Command idea: Snipe Rewrite bool_decide ltac:(...). *)
-    set (X := bool_decide (self + other ∈ i32)).
-    assert (X = true ↔ self + other ∈ i32) by apply bool_decide_eq_true.
-    clearbody X.
-
-    (* TODO: Improve Snipe *)
-    unfold elem_of in H.
-    unfold int_elem_of_it in H.
 
     snipe.
     admit.
   }
   {
-    (* Command idea: Snipe Register Zeven [Zeven_div2_linearity; ...] *)
-    revert H5 H6.
-    generalize Zeven_div2_linearity.
-
-    (* Command idea: Snipe Rewrite Zeven Zeven_div2_equiv. *)
-    setoid_rewrite Zeven_div2_equiv.
-
-    (* Finally ! *)
     unshelve snipe.
     all: admit.
   }
