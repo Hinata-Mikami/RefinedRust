@@ -32,6 +32,7 @@ struct LinkedList {
 }
 
 impl LinkedList {
+    /* ok */
     /* 空のメモリ領域を生成 */
     #[rr::exists("all_nodes")]
     #[rr::returns("all_nodes")]
@@ -39,13 +40,18 @@ impl LinkedList {
         Self { all_nodes: Vec::new() }
     }
 
+    /* 一旦 ok */
     /* 新たなノードを生成し割り当て */
-    #[rr::params("l", "v" )]
+    #[rr::params("l", "v" : "Z")]
     #[rr::args("l", "v")]
+    #[rr::requires("length l.cur < MaxInt usize")] // precondition で長さに関する条件を要求
+    #[rr::requires("size_of_array_in_bytes (PtrSynType) (2 * length l.cur) ≤ MaxInt isize")]
     #[rr::exists("ptr" : "loc")]
     #[rr::returns("ptr")]
-    #[rr::observe("l.ghost" : "l.cur ++ [ptr]")]
-    #[rr::ensures(#type "ptr" : "(v, NULL, false)" @ "(Node_inv_t <INST!>)")]
+    #[rr::observe("l.ghost" : "<$#>(l.cur ++ [ptr])")]
+    #[rr::exists("p")]
+    #[rr::ensures(#type "ptr" : "(v, p, false)" @ "(Node_inv_t <INST!>)")]  // p がnullポインタであることを言えていない
+                                                                            // nullポインタがどのような値として表現されるか不明
     fn alloc(&mut self, value: i32) -> *mut Node {
         let node = Box::new(Node {      // Boxでヒープにメモリを確保
             value,

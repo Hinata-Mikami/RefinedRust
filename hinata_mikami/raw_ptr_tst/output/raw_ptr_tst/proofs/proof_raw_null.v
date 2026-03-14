@@ -1,19 +1,19 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From refinedrust.examples.vec_test.generated Require Import generated_code_vec_test generated_specs_vec_test generated_template_vec_add_42.
+From refinedrust.examples.raw_ptr_tst.generated Require Import generated_code_raw_ptr_tst generated_specs_raw_ptr_tst generated_template_raw_null.
 
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Lemma vec_add_42_proof (π : thread_id) :
-  vec_add_42_lemma π.
+Lemma raw_null_proof (π : thread_id) :
+  raw_null_lemma π.
 Proof.
-  vec_add_42_prelude.
+  raw_null_prelude.
+  liRStep. liShow.
 
-  rep <-1 liRStep; liShow.
-  
+  rep <-! liRStep; liShow.
 
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
