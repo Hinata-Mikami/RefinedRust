@@ -24,6 +24,20 @@ struct Node {
     marked: bool,       // GC用フラグ
 }
 
+impl Node{
+    /* Nextの設定・書き換え */
+    /* raw_pointer を書き換えて raw_pointer を返す */
+    #[rr::params("node":"loc", "next":"loc", "v":"Z", "old_next":"loc", "m":"bool")]
+    #[rr::args("node", "next")]
+    #[rr::requires(#type "node" : "(v, old_next, m)" @ "(Node_inv_t <INST!>)")]
+    #[rr::ensures(#type "node" : "(v, next, m)" @ "(Node_inv_t <INST!>)")]
+    #[rr::returns("()")]
+    unsafe fn set_next(node: *mut Node, next: *mut Node) {
+            (*node).next = next;
+    }
+
+}
+
 /* 生成したすべてのNodeを管理するリスト */
 #[rr::refined_by("all_nodes")]
 struct LinkedList {
@@ -34,13 +48,12 @@ struct LinkedList {
 impl LinkedList {
     /* ok */
     /* 空のメモリ領域を生成 */
-    #[rr::exists("all_nodes")]
-    #[rr::returns("all_nodes")]
+    #[rr::returns("[]")]
     fn new() -> Self {
         Self { all_nodes: Vec::new() }
     }
 
-    /* 一旦 ok */
+    /* ok */
     /* 新たなノードを生成し割り当て */
     #[rr::params("l", "v" : "Z")]
     #[rr::args("l", "v")]
@@ -49,9 +62,7 @@ impl LinkedList {
     #[rr::exists("ptr" : "loc")]
     #[rr::returns("ptr")]
     #[rr::observe("l.ghost" : "<$#>(l.cur ++ [ptr])")]
-    #[rr::exists("p")]
-    #[rr::ensures(#type "ptr" : "(v, p, false)" @ "(Node_inv_t <INST!>)")]  // p がnullポインタであることを言えていない
-                                                                            // nullポインタがどのような値として表現されるか不明
+    #[rr::ensures(#type "ptr" : "(v, (Loc ProvNone 0), false)" @ "(Node_inv_t <INST!>)")]
     fn alloc(&mut self, value: i32) -> *mut Node {
         let node = Box::new(Node {      // Boxでヒープにメモリを確保
             value,
@@ -61,13 +72,6 @@ impl LinkedList {
         let ptr = Box::into_raw(node);  // Boxから生ポインタに変換し所有権を放棄
         self.all_nodes.push(ptr);       // 管理リストに追加
         ptr
-    }
-
-    /* Nextの設定・書き換え */
-    unsafe fn set_next(&self, node: *mut Node, next: *mut Node) {
-        if !node.is_null() {            // 生ポインタを扱うためnullチェックを行う
-            (*node).next = next;
-        }
     }
 
     /* マークフェーズ */
@@ -133,15 +137,15 @@ fn main() {
         let n3 = linkedlist.alloc(30);
         let n4 = linkedlist.alloc(40);
 
-        linkedlist.set_next(n1, n2);        // n1 -> n2
-        linkedlist.set_next(n2, n3);        // n2 -> n3
-        linkedlist.set_next(n3, n1);        // n3 -> n1
+        Node::set_next(n1, n2);
+        Node::set_next(n2, n3);
+        Node::set_next(n3, n1);
 
         linkedlist.print_heap();            // デバッグ用
 
         linkedlist.collect(vec![n1]);       // GC : n4解放
 
-        linkedlist.set_next(n1, n3);        // n1 -> n3 (n2孤立)
+        Node::set_next(n1, n3);
 
         linkedlist.collect(vec![n1]);       // GC : n2解放
 
