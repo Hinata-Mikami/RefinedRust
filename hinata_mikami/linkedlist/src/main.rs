@@ -25,6 +25,7 @@ struct Node {
 }
 
 impl Node{
+    
     /* Nextの設定・書き換え */
     /* raw_pointer を書き換えて raw_pointer を返す */
     #[rr::params("node":"loc", "next":"loc", "v":"Z", "old_next":"loc", "m":"bool")]
