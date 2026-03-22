@@ -24,6 +24,13 @@ Proof.
   Unshelve.
   (* !start proof(knights_tour.new) *)
   { rewrite lookup_total_replicate_2; solve_goal. }
+  { 
+    rename select (in_bounds _ _) into Hinbounds.
+    unfold in_bounds, name_hint in Hinbounds.
+    cbn in Hinbounds.
+    rewrite lookup_total_replicate_2; last lia.
+    rewrite lookup_total_replicate_2; lia. 
+  }
   (* !end proof *)
   all: print_remaining_sidecond.
 Qed.

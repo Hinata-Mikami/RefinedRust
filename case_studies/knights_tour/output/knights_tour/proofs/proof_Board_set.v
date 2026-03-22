@@ -35,6 +35,38 @@ Proof.
   - rewrite list_lookup_total_insert.
     case_decide; first rewrite length_insert.
     all: apply Hnestedlen; solve_goal.
+  - rewrite list_lookup_total_insert.
+    case_decide; first last.
+    { apply Hnonnegative. solve_goal. }
+    rename select (Z.to_nat p = i ∧ _) into Hpeqi.
+    destruct Hpeqi as [->].
+    rewrite list_lookup_total_insert.
+    case_decide; first done.
+    apply Hnonnegative. solve_goal.
+  - case_decide.
+    + rewrite list_lookup_total_insert.
+      case_decide.
+      all: rename select ((_,_) = (_,_)) into Heq.
+      all: injection Heq as Hi Hj.
+      { 
+        rewrite <-Hj.
+        rewrite list_lookup_total_insert.
+        case_decide; first done.
+        solve_goal.
+      } 
+      solve_goal.
+    + rewrite list_lookup_total_insert.
+      case_decide; last done.
+      rewrite list_lookup_total_insert.
+      rename select (_ ≠ _) into Hpairneq.
+      rename select (_ p = i ∧ _) into Hpeqi.
+      case_decide.
+      {
+        rename select (_ p0 = j ∧ _) into Hp0eqj.
+        destruct Hpeqi as [Hi _]. destruct Hp0eqj as [Hj _].
+        exfalso. apply Hpairneq. solve_goal.
+      }
+      destruct Hpeqi as [-> _]. done.
   (* !end proof *)
 Qed.
 End proof.

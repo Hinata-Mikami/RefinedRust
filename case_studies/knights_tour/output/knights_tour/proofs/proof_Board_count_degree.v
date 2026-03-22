@@ -21,13 +21,13 @@ Proof.
   (* !start proof(knights_tour.count_degree) *)
   all: cbn.
   all: rename select (∀ a b : Z, _ -> a ≤ 2 ∧ _) into Hbound.
-  - have Hmem : *[x'1; s] ∈ _iter_hist_7 ++ -[x'1; s] :: x'.
-    { rewrite elem_of_app. right. rewrite elem_of_cons. left. done. }
-    apply Hbound in Hmem. lia.
+  all: have Hmem : *[x'1; s] ∈ _iter_hist_7 ++ -[x'1; s] :: x'; first solve
+    [ rewrite elem_of_app; right; rewrite elem_of_cons; left; done].
+  - apply Hbound in Hmem. lia.
   - specialize Hbound with x'1 s.
-    have Hmem : *[x'1; s] ∈ _iter_hist_7 ++ -[x'1; s] :: x'.
-    { rewrite elem_of_app. right. rewrite elem_of_cons. left. done. }
     apply Hbound in Hmem. lia.
+  - rename select (∀ a b : Z, _ -> (Z.abs (0 - a) = 2 ∧ _) ∨ _) into Hkmove.
+    specialize Hkmove with x'1 s. solve_goal.
   (* !end proof *)
 Qed.
 End proof.
