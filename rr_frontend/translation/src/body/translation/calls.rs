@@ -602,7 +602,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn translate_function_call(
         &mut self,
         func: &mir::Operand<'tcx>,
-        args: &[span::source_map::Spanned<mir::Operand<'tcx>>],
+        args: &[span::Spanned<mir::Operand<'tcx>>],
         destination: &mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         loc: mir::Location,
