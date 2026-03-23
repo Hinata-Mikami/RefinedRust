@@ -1,16 +1,16 @@
 From caesium Require Import lang notation.
 From refinedrust Require Import typing shims.
-From refinedrust.examples.raw_ptr_tst.generated Require Import generated_code_raw_ptr_tst generated_specs_raw_ptr_tst generated_template_id_Node.
+From refinedrust.examples.raw_ptr_tst.generated Require Import generated_code_raw_ptr_tst generated_specs_raw_ptr_tst generated_template_Node_set_next.
 
 Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
 
-Lemma id_Node_proof (π : thread_id) :
-  id_Node_lemma π.
+Lemma Node_set_next_proof (π : thread_id) :
+  Node_set_next_lemma π.
 Proof.
-  id_Node_prelude.
+  Node_set_next_prelude.
 
   rep <-! liRStep; liShow.
 

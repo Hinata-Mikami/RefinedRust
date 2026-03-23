@@ -26,12 +26,15 @@ struct Node {
 
 impl Node{
     
+    /* ok? */
     /* Nextの設定・書き換え */
     /* raw_pointer を書き換えて raw_pointer を返す */
     #[rr::params("node":"loc", "next":"loc", "v":"Z", "old_next":"loc", "m":"bool")]
     #[rr::args("node", "next")]
     #[rr::requires(#type "node" : "(v, old_next, m)" @ "(Node_inv_t <INST!>)")]
-    #[rr::ensures(#type "node" : "(v, next, m)" @ "(Node_inv_t <INST!>)")]
+    #[rr::ensures(#iris "node ◁ₗ[ π, Owned] # -[# v; # next; # m] @
+    StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls")]
+    // #[rr::ensures(#type "node" : "(v, next, m)" @ "(Node_inv_t <INST!>)")]
     #[rr::returns("()")]
     unsafe fn set_next(node: *mut Node, next: *mut Node) {
             (*node).next = next;
@@ -76,6 +79,8 @@ impl LinkedList {
     }
 
     /* マークフェーズ */
+    #[rr::params("self", "start_node")]
+    #[rr::returns("()")]
     unsafe fn mark(&self, start_node: *mut Node) {
         // (ノードがnullか)，またはすでにマークされていれば終了
         if start_node.is_null() || (*start_node).marked {

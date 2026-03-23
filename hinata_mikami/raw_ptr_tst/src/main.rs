@@ -5,6 +5,8 @@
 
 #![rr::include("stdlib")]
 
+
+
 use std::ptr;
 
 /* ok */
@@ -43,15 +45,28 @@ struct Node{
     next: *mut Node,
 }
 
-/* NG */
-#[rr::params("p", "v", "l")]
-#[rr::args("p")]
-#[rr::requires(#type "p" : "(v, l)" @ "(Node_inv_t <INST!>)")]
-#[rr::returns("p")]
-#[rr::ensures(#type "p" : "(v, l)" @ "(Node_inv_t <INST!>)")]
-unsafe fn id_Node(p: *mut Node) -> *mut Node {
-    p
+impl Node {
+    /* ok */ 
+    #[rr::params("p", "v", "l")]
+    #[rr::args("p")]
+    #[rr::requires(#type "p" : "(v, l)" @ "(Node_inv_t <INST!>)")]
+    #[rr::ensures(#type "p" : "(v, l)" @ "(Node_inv_t <INST!>)")]
+    #[rr::returns("p")]
+    unsafe fn id_Node(p: *mut Node) -> *mut Node {
+        p
+    }
+
+    /* ok */
+    #[rr::params("p", "v", "l", "n")]
+    #[rr::args("p", "n")]
+    #[rr::requires(#type "p" : "(v, l)" @ "(Node_inv_t <INST!>)")]
+    #[rr::ensures(#iris "p ◁ₗ[π, Owned] # -[# v; # n] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls")]
+    #[rr::returns("()")]
+    unsafe fn set_next(node: *mut Node, next: *mut Node) {
+            (*node).next = next;
+    }
 }
+
 
 fn main() {
 }

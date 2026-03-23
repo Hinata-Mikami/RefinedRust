@@ -25,21 +25,21 @@ Set Default Proof Using "Type".
 
 Section proof.
 Context `{RRGS : !refinedrustGS Σ}.
-Definition id_Node_lemma (π : thread_id) : Prop :=
-  ⊢ typed_function π (id_Node_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_id_Node  <INST!>) (λ π, (True)
-  ∗ (⌜(trait_incl_of_id_Node <INST!>)%Z⌝))).
+Definition Node_id_Node_lemma (π : thread_id) : Prop :=
+  ⊢ typed_function π (Node_id_Node_def ) (<tag_type> spec! ( *[]) : 0 | ( *[]) : ([] : list RT), fn_spec_add_late_pre (type_of_Node_id_Node  <INST!>) (λ π, (True)
+  ∗ (⌜(trait_incl_of_Node_id_Node <INST!>)%Z⌝))).
 End proof.
 
-Ltac id_Node_prelude :=
-  unfold id_Node_lemma;
-  set (FN_NAME := FUNCTION_NAME "id_Node");
+Ltac Node_id_Node_prelude :=
+  unfold Node_id_Node_lemma;
+  set (FN_NAME := FUNCTION_NAME "Node_id_Node");
   intros;
   iStartProof;
   let ϝ := fresh "ϝ" in
   let p := fresh "p" in
   let v := fresh "v" in
   let l := fresh "l" in
-  start_function "id_Node" ϝ ( [] ) ( [] ) ( [ [  p v ] l ] ) (  p v l );
+  start_function "Node_id_Node" ϝ ( [] ) ( [] ) ( [ [  p v ] l ] ) (  p v l );
   intros arg_p;
   let π := get_π in
   let Σ := get_Σ in

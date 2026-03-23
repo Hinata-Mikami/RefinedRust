@@ -136,7 +136,8 @@ Definition type_of_Node_set_next  :=
       (* precondition. *) (λ π : thread_id, (node ◁ₗ[π, Owned] #((v, old_next, m)) @ (◁ (Node_inv_t <INST!>)))) |
       (* trait reqs... *) (λ π : thread_id, True)) →
       (* existential.. *) ∃ _ : unit, () @ unit_t;
-      (* postcondition *) (λ π : thread_id, (node ◁ₗ[π, Owned] #((v, next, m)) @ (◁ (Node_inv_t <INST!>)))).
+      (* postcondition *) (λ π : thread_id, (node ◁ₗ[ π, Owned] # -[# v; # next; # m] @
+          StructLtype +[◁ int i32; ◁ alias_ptr_t; ◁ bool_t] Node_sls)).
 
 Definition trait_incl_of_LinkedList_new  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).

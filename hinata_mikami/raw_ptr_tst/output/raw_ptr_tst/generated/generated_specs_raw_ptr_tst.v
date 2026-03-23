@@ -21,6 +21,47 @@ From rrstd.result.result.generated Require Export generated_specs_result.
 From rrstd.rr_internal.rr_internal.generated Require Export generated_specs_rr_internal.
 From rrstd.stdlib.stdlib.generated Require Export generated_specs_stdlib.
 
+Section Node_ty.
+  Context `{RRGS : !refinedrustGS Σ}.
+
+
+Definition Node_ty  : (spec_with 0 [] ((type (plist place_rfnRT [Z : RT; loc : RT])))).
+Proof.
+  exact (spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ((struct_t Node_sls +[((int I32)); (alias_ptr_t)]))).
+Defined.
+
+Definition Node_rt  : RT.
+Proof using  .
+  let __a := (normalized_rt_of_spec_ty (Node_ty)) in exact __a.
+Defined.
+
+#[global] Typeclasses Transparent Node_ty.
+#[global] Typeclasses Transparent Node_rt.
+End Node_ty.
+Global Arguments Node_rt : clear implicits.
+Section Node_inv_t.
+  Context `{RRGS : !refinedrustGS Σ}.
+
+  Program Definition Node_inv_t_inv_spec  : spec_with 0 [] (ex_inv_def (Node_rt)%type (((Z * loc)))%type) := spec! ( *[]) : 0 | ( *[]) : ([] : list RT), mk_auto_ex_inv_def
+    (λ π inner_rfn (_ty_rfn : RT_rt (((Z * loc))%type : RT)),
+            let '(v, l) := _ty_rfn in ⌜inner_rfn = -[#(v); #(l)]⌝ ∗ True)%I
+    ([])
+    ([])
+    _ _ _
+  .
+  Next Obligation. ex_plain_t_solve_shr_auto. Defined.
+  Next Obligation. ex_t_solve_persistent. Qed.
+  Next Obligation. ex_plain_t_solve_shr_mono. Qed.
+
+  Definition Node_inv_t  : spec_with 0 [] (type (((Z * loc)))%type) :=
+    spec! ( *[]) : 0 | ( *[]) : ([] : list RT), ex_plain_t _ _ (Node_inv_t_inv_spec   <INST!>) (Node_ty  <INST!>).
+  Global Typeclasses Transparent Node_inv_t.
+  Definition Node_inv_t_rt : RT.
+  Proof using  . let __a := normalized_rt_of_spec_ty Node_inv_t in exact __a. Defined.
+  Global Typeclasses Transparent Node_inv_t_rt.
+End Node_inv_t.
+Global Arguments Node_inv_t_rt : clear implicits.
+
 Section closure_attrs.
 Context `{RRGS : !refinedrustGS Σ}.
 End closure_attrs.
@@ -41,6 +82,19 @@ Definition type_of_id  :=
       (* existential.. *) ∃ _ : unit, p @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (p ◁ₗ[π, Owned] #(v) @ (◁ int i32))).
 
+Definition trait_incl_of_Node_set_next  : (spec_with _ _ Prop) :=
+  spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
+
+Definition type_of_Node_set_next  :=
+  fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
+      (* params....... *) (p, v, l, n) : ((_ * _ * _ * _)),
+      (* elctx........ *) (λ ϝ, []);
+      (* args......... *) p :@: alias_ptr_t, n :@: alias_ptr_t;
+      (* precondition. *) (λ π : thread_id, (p ◁ₗ[π, Owned] #((v, l)) @ (◁ (Node_inv_t <INST!>)))) |
+      (* trait reqs... *) (λ π : thread_id, True)) →
+      (* existential.. *) ∃ _ : unit, () @ unit_t;
+      (* postcondition *) (λ π : thread_id, (⌜(p ◁ₗ[π, Owned] # -[# v; # n] @ StructLtype +[◁ int i32; ◁ alias_ptr_t] Node_sls)%Z⌝)).
+
 Definition trait_incl_of_id_Cell  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
@@ -54,10 +108,10 @@ Definition type_of_id_Cell  :=
       (* existential.. *) ∃ _ : unit, p @ alias_ptr_t;
       (* postcondition *) (λ π : thread_id, (p ◁ₗ[π, Owned] #(v) @ (◁ int i32))).
 
-Definition trait_incl_of_id_Node  : (spec_with _ _ Prop) :=
+Definition trait_incl_of_Node_id_Node  : (spec_with _ _ Prop) :=
   spec! ( *[]) : 0 | ( *[]) : ([] : list RT), (True).
 
-Definition type_of_id_Node  :=
+Definition type_of_Node_id_Node  :=
   fn(∀ ( *[]) : 0 | ( *[]) : ([] : list (RT * syn_type)%type) | 
       (* params....... *) (p, v, l) : ((_ * _ * _)),
       (* elctx........ *) (λ ϝ, []);
