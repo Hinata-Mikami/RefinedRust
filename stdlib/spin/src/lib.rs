@@ -10,6 +10,8 @@
 #![rr::include("option")]
 #![rr::include("arithops")]
 
+extern crate spin;
+
 mod relax;
 mod once;
 mod rwlock;

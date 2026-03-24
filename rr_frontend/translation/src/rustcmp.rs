@@ -92,21 +92,35 @@ fn ty_discriminant(ty: ty::Ty<'_>) -> usize {
     }
 }
 
+// If the path starts with core or alloc, replace it with std,
+// to ensure consistent sorting independently of std/nostd.
+fn normalize_def_path_str(def_path: &str) -> String {
+    let mut segments = def_path.split("::");
+    if let Some(seg) = segments.next()
+        && (seg == "alloc" || seg == "core")
+    {
+        return format!("std::{}", segments.collect::<Vec<_>>().join("::"));
+    }
+    def_path.to_owned()
+}
+
 pub(crate) fn cmp_defid(tcx: ty::TyCtxt<'_>, a: DefId, b: DefId) -> Ordering {
     // NOTE: The relative order of shims to each other may not be the same as the relative order of the
     // actual objects to each other. Therefore, use the export order.
     let a_did = shims::flat::get_external_did_for_did(tcx, a).unwrap_or(a);
     let b_did = shims::flat::get_external_did_for_did(tcx, b).unwrap_or(b);
 
-    //let a_path = tcx.def_path(a_did);
+    // Hack: we compare def_path_str, since this seems to be what is most stable across
+    // compilations and across different machines.
     let a_str = tcx.def_path_str(a_did);
     let b_str = tcx.def_path_str(b_did);
 
-    a_str.cmp(&b_str)
+    let a_normalized = normalize_def_path_str(&a_str);
+    let b_normalized = normalize_def_path_str(&b_str);
 
-    //let a_hash = tcx.def_path_hash(a_did);
-    //let b_hash = tcx.def_path_hash(b_did);
-    //a_hash.cmp(&b_hash)
+    //trace!("cmp_did: {:?} vs {:?} -> {:?} vs {:?}", a_str, b_str, a_normalized, b_normalized);
+
+    a_normalized.cmp(&b_normalized)
 }
 
 fn cmp_ty<'tcx>(tcx: ty::TyCtxt<'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> Ordering {

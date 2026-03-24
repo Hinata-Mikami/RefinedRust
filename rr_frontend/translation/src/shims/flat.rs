@@ -282,10 +282,14 @@ pub(crate) fn get_external_export_path_for_did(tcx: ty::TyCtxt<'_>, did: DefId) 
 pub(crate) fn get_external_did_for_did(tcx: ty::TyCtxt<'_>, did: DefId) -> Option<DefId> {
     let path = get_external_export_path_for_did(tcx, did)?;
 
+    //trace!("got export path {path:?} for {did:?}");
+
     if environment::is_method_did(tcx, did) || path.as_method {
         search::try_resolve_method_did(tcx, path.path.path)
     } else {
-        search::try_resolve_did(tcx, &path.path.path)
+        let did = search::try_resolve_did(tcx, &path.path.path);
+        //trace!("resolved as {did:?}");
+        did
     }
 }
 
