@@ -28,7 +28,7 @@ Ltac2 Set filter_defined_terms as frtd :=
     :: 'has_layout_loc :: 'void_ptr :: 'usize
     :: 'MinInt :: 'MaxInt
     :: 'bb_inv_map_marker :: 'bb_inv_t
-    :: 'bool_decide :: '@elem_of
+    :: 'bool_decide :: '@elem_of :: 'int_elem_of_it
     :: frtd ().
 
 Ltac2 Set filter_inductive_types as frtd :=
@@ -62,6 +62,9 @@ Ltac my_bool_decide_rewrite body :=
   assert (Hhyp: Hbody = true ↔ body) by apply bool_decide_eq_true;
   clearbody Hbody.
 
+Ltac my_unfolder_hyps H to_unfold :=
+  unfold to_unfold in H.
+
 Ltac2 my_Zeven_hyp_trigger () :=
   TContains (TSomeHyp, Arg id) (TConstant (Init.Some "Zeven") NotArg).
 
@@ -72,10 +75,15 @@ Ltac2 my_bool_decide_trigger () :=
   let trigger loc := TContains (loc, NotArg) (TApp (TConstant (Init.Some "bool_decide") NotArg) (TAny (Arg id)) NotArg) in
   TDisj (trigger TGoal) (trigger TSomeHyp).
 
+Ltac2 my_unfolder_trigger constant :=
+  TContains (TSomeHyp, Arg id) (TConstant (Init.Some constant) (Arg id)).
+
 Ltac2 Set sniper_transformations as st := fun () =>
   ((my_Zeven_hyp_trigger (), Init.false, Init.None), "my_Zeven_rewrite_hyps", trivial_filter) ::
   ((my_Zeven_goal_trigger (), Init.false, Init.None), "my_Zeven_rewrite_goal", trivial_filter) ::
   (* ((my_bool_decide_trigger (), Init.false, Init.None), "my_bool_decide_rewrite", trivial_filter) :: *)
+  ((my_unfolder_trigger "elem_of", Init.false, Init.None), "my_unfolder_hyps", trivial_filter) ::
+  ((my_unfolder_trigger "int_elem_of_it", Init.false, Init.None), "my_unfolder_hyps", trivial_filter) ::
   (st ()).
 
 Lemma EvenInt_add_even_proof (π : thread_id) :
@@ -87,7 +95,7 @@ Proof.
 
   all: print_remaining_goal.
 
-  Unshelve. 1-17,19-24: sidecond_solver.
+  Unshelve. all: try solve [ sidecond_solver ].
   Unshelve.
     all: unshelve_sidecond.
     all: clear_unused_vars.
@@ -100,12 +108,8 @@ Proof.
   {
     my_bool_decide_rewrite (self + other ∈ i32).
 
-    unfold elem_of in H_assert_bool_decide.
-    unfold int_elem_of_it in H_assert_bool_decide.
-
-
     snipe.
-    admit.
+    all: admit.
   }
   {
     unshelve snipe.
@@ -114,4 +118,5 @@ Proof.
 
   Unshelve. all: print_remaining_sidecond.
 Admitted.
+
 End proof.
