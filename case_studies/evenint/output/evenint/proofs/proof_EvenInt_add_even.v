@@ -81,7 +81,7 @@ Ltac2 my_unfolder_trigger constant :=
 Ltac2 Set sniper_transformations as st := fun () =>
   ((my_Zeven_hyp_trigger (), Init.false, Init.None), "my_Zeven_rewrite_hyps", trivial_filter) ::
   ((my_Zeven_goal_trigger (), Init.false, Init.None), "my_Zeven_rewrite_goal", trivial_filter) ::
-  (* ((my_bool_decide_trigger (), Init.false, Init.None), "my_bool_decide_rewrite", trivial_filter) :: *)
+  ((my_bool_decide_trigger (), Init.false, Init.None), "my_bool_decide_rewrite", trivial_filter) ::
   ((my_unfolder_trigger "elem_of", Init.false, Init.None), "my_unfolder_hyps", trivial_filter) ::
   ((my_unfolder_trigger "int_elem_of_it", Init.false, Init.None), "my_unfolder_hyps", trivial_filter) ::
   (st ()).
@@ -106,8 +106,6 @@ Proof.
     | H : bb_inv_map_marker _ |- _ => clear H
     end.
   {
-    my_bool_decide_rewrite (self + other ∈ i32).
-
     snipe.
     all: admit.
   }

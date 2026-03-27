@@ -53,13 +53,13 @@
         };
 
         smtcoq = {
-          version = "c25f2ce573882b962f99311375fd2f182ae47e53";
-          sha256 = "sha256-2FZ8BaMfwotYB4wHW4PVWTGSgRj5jitDqO+JEi++ymc=";
+          version = "ee027b2e749b200026b40553dc5a993fd43bc204";
+          sha256 = "sha256-T2FgrllDSGwH4LbgrWQoCKyERTp0O+z3RZAuhDx1Sgg=";
         };
 
         sniper = {
-          version = "58bc1767ff1da93a4f3c5eb716db3489514c66fb";
-          sha256 = "sha256-K4DXykaqUZBlv1BD6a9qEkWijIUcrlghDm1P4hMk/5k=";
+          version = "6a1b3c2324aa85f7506bd048230e0b3778cdcfea";
+          sha256 = "sha256-Ook0cbny0I/DBVC8EFqA+4TBtQdOAilmx+2tg+yayVw=";
         };
       };
 
