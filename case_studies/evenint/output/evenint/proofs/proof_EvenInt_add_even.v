@@ -8,6 +8,8 @@ Set Default Proof Using "Type".
 Section proof.
 Context `{!refinedrustGS Σ}.
 
+(** SMTCoq lemmas *)
+
 (* The lemma Zeven relies on the internal representation of Z *)
 (* As this is too complicated, let's instead use a witness *)
 Lemma Zeven_div2_equiv (z: Z) : Zeven z ↔ z = 2 * (Z.div2 z).
@@ -21,6 +23,9 @@ Lemma Zeven_div2_linearity: ∀ (x y: Z),
 Proof.
   destruct 1; destruct x, y; try lia; destruct p, p0; try done; lia.
 Qed.
+
+
+(** Filters + Triggers *)
 
 Ltac2 Set filter_defined_terms as frtd :=
   fun () =>
@@ -86,6 +91,74 @@ Ltac2 Set sniper_transformations as st := fun () =>
   ((my_unfolder_trigger "int_elem_of_it", Init.false, Init.None), "my_unfolder_hyps", trivial_filter) ::
   (st ()).
 
+
+(** Defining CompDec for int_type *)
+
+(*** EqbType *)
+
+Global Instance SMTCoq_EqbType_from_EqDecision `{EqDecision T} : SMT_classes.EqbType T.
+Proof. split with (fun x y => bool_decide (x = y)). intros; apply bool_decide_eq_true. Defined.
+
+(*** Inhabitant *)
+
+Global Instance SMTCoq_Inhabited_from_stdpp_Inhabited `{Inhabited T} : SMT_classes.Inhabited T.
+Proof. split. apply inhabitant. Defined.
+
+Global Instance int_type_inhabited : Inhabited int_type := populate (I8).
+
+(*** The order *)
+
+Definition int_type_rank (t : int_type) : Z :=
+  match t with
+  | I8 => 0 | I16 => 1 | I32 => 2 | I64 => 3 | I128 => 4
+  | U8 => 5 | U16 => 6 | U32 => 7 | U64 => 8 | U128 => 9
+  | ISize => 10 | USize => 11 | CharIt => 12
+  end.
+
+Definition int_type_lt (x y : int_type) : Prop :=
+  int_type_rank x < int_type_rank y.
+
+(*** OrdType *)
+
+Instance int_type_lt_strict_order :
+  StrictOrder int_type_lt.
+Proof.
+  split; intros ??; unfold int_type_lt in *; lia.
+Qed.
+
+Instance int_type_ord : OrdType int_type.
+Proof.
+  split with int_type_lt.
+  - apply StrictOrder_Transitive.
+  - intros ??? ->.
+    by apply StrictOrder_Irreflexive with y.
+Qed.
+
+(*** Compare *)
+
+Definition int_type_compare (x y : int_type) : OrderedType.Compare SMT_classes.lt eq x y.
+Proof.
+  destruct (Z.compare (int_type_rank x) (int_type_rank y)) as [Hlt | Heq | Hgt] eqn:H.
+  - apply OrderedType.EQ. by destruct x, y.
+  - apply OrderedType.LT.
+    admit.
+  - apply OrderedType.GT.
+    admit.
+Admitted.
+
+(*** Final *)
+
+Instance IntType_CompDec : CompDec int_type.
+Proof.
+  split with int_type_ord.
+  - apply _.
+  - split. apply int_type_compare.
+  - apply _.
+Qed.
+
+
+(** The proof *)
+
 Lemma EvenInt_add_even_proof (π : thread_id) :
   EvenInt_add_even_lemma π.
 Proof.
@@ -105,16 +178,9 @@ Proof.
     | H : CACHED _ |- _ => clear H
     | H : bb_inv_map_marker _ |- _ => clear H
     end.
-  {
-    snipe.
-    all: admit.
-  }
-  {
-    unshelve snipe.
-    all: admit.
-  }
+    all: snipe.
 
   Unshelve. all: print_remaining_sidecond.
-Admitted.
+Qed.
 
 End proof.
