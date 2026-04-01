@@ -96,17 +96,20 @@ Ltac2 Set sniper_transformations as st := fun () =>
 
 (*** EqbType *)
 
-Global Instance SMTCoq_EqbType_from_EqDecision `{EqDecision T} : SMT_classes.EqbType T.
-Proof. split with (fun x y => bool_decide (x = y)). intros; apply bool_decide_eq_true. Defined.
+Global Instance SMTCoq_EqbType_from_EqDecision `{EqDecision T} : SMT_classes.EqbType T :=
+  {|
+    SMT_classes.eqb := λ x y : T, bool_decide (x = y);
+    SMT_classes.eqb_spec := λ x y : T, bool_decide_eq_true (x = y)
+  |}.
 
 (*** Inhabitant *)
 
-Global Instance SMTCoq_Inhabited_from_stdpp_Inhabited `{Inhabited T} : SMT_classes.Inhabited T.
-Proof. split. apply inhabitant. Defined.
+Global Instance SMTCoq_Inhabited_from_stdpp_Inhabited `{Inhabited T} : SMT_classes.Inhabited T :=
+  {| default_value := inhabitant |}.
 
 Global Instance int_type_inhabited : Inhabited int_type := populate (I8).
 
-(*** The order *)
+(*** OrdType *)
 
 Definition int_type_rank (t : int_type) : Z :=
   match t with
@@ -118,39 +121,30 @@ Definition int_type_rank (t : int_type) : Z :=
 Definition int_type_lt (x y : int_type) : Prop :=
   int_type_rank x < int_type_rank y.
 
-(*** OrdType *)
-
-Instance int_type_lt_strict_order :
+Global Instance int_type_lt_strict_order :
   StrictOrder int_type_lt.
 Proof.
   split; intros ??; unfold int_type_lt in *; lia.
 Qed.
 
-Instance int_type_ord : OrdType int_type.
-Proof.
-  split with int_type_lt.
-  - apply StrictOrder_Transitive.
-  - intros ??? ->.
-    by apply StrictOrder_Irreflexive with y.
-Qed.
-
 (*** Compare *)
 
-Definition int_type_compare (x y : int_type) : OrderedType.Compare SMT_classes.lt eq x y.
+Definition int_type_compare (x y : int_type) : OrderedType.Compare int_type_lt eq x y.
 Proof.
   destruct (Z.compare (int_type_rank x) (int_type_rank y)) as [Hlt | Heq | Hgt] eqn:H.
   - apply OrderedType.EQ. by destruct x, y.
-  - apply OrderedType.LT.
-    admit.
-  - apply OrderedType.GT.
-    admit.
-Admitted.
+  - apply OrderedType.LT. by destruct x, y.
+  - apply OrderedType.GT. by destruct x, y.
+Defined.
+
+Global Instance Comparable_int_type : Comparable int_type.
+Proof. split. apply int_type_compare. Defined.
 
 (*** Final *)
 
-Instance IntType_CompDec : CompDec int_type.
+Global Instance CompDec_int_type : CompDec int_type.
 Proof.
-  split with int_type_ord.
+  split with (StrictOrder_to_OrdType int_type_lt_strict_order).
   - apply _.
   - split. apply int_type_compare.
   - apply _.
@@ -167,7 +161,6 @@ Proof.
   repeat liRStep; liShow.
 
   all: print_remaining_goal.
-
   Unshelve. all: try solve [ sidecond_solver ].
   Unshelve.
     all: unshelve_sidecond.
