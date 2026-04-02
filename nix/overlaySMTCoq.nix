@@ -28,16 +28,8 @@ _: pkgs: prev: rec {
     '';
   };
 
-  zchaff = prev.zchaff.overrideAttrs {
-    version = "2008.10.12";
-    src = pkgs.fetchzip {
-      url = "http://www.princeton.edu/~chaff/zchaff/zchaff.2008.10.12.zip";
-      sha256 = "sha256-sFH+6vhQPkCgmzeMmz1BBykVxZi5uoV0g/gIVGlLS+s=";
-    };
-  };
-
-  # NOTE: Remove `metarocq-template-rocq` when available in Nix's `RocqPackages`
   rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
+    # NOTE: Remove `metarocq-template` when available in Nix's `RocqPackages`
     metarocq-template = let
       version = "v1.4.1-9.1";
       release.${version}.sha256 = "sha256-tzoAWX74lg7pArGVP11QBvDRKMvmGxXvrf3+1E3Y4DI=";
@@ -82,6 +74,22 @@ _: pkgs: prev: rec {
         '';
         configurePhase = "./configure.sh";
       };
+
+    # NOTE: Remove `rocq-elpi` when upgrading to Nix 26.05
+    rocq-elpi = prev.rocq-elpi.overrideAttrs {
+      src = pkgs.fetchFromGitHub {
+        owner = "LPCIC";
+        repo = "coq-elpi";
+        rev = "6bfdad614d819c8dcec6c83cc21ba4166b535e7c";
+        hash = "sha256-/ehf2g/+riXOmfXs90Mx0PnKA0wJyombHK+rbVePjw0=";
+      };
+
+      propagatedBuildInputs = with prev.rocq-core.ocamlPackages; [
+        findlib
+        ppx_optcomp
+        (elpi.override { version = "3.6.1"; })
+      ];
+    };
 
     trakt = pkgs.rocqPackages.mkRocqDerivation rec {
       version = "aa76ebdf4cc6323cf08c65e56f8ba8580d79f7a2";

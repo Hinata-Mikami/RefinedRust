@@ -131,7 +131,7 @@ Qed.
 
 Definition int_type_compare (x y : int_type) : OrderedType.Compare int_type_lt eq x y.
 Proof.
-  destruct (Z.compare (int_type_rank x) (int_type_rank y)) as [Hlt | Heq | Hgt] eqn:H.
+  destruct (Z.compare (int_type_rank x) (int_type_rank y)) eqn:H.
   - apply OrderedType.EQ. by destruct x, y.
   - apply OrderedType.LT. by destruct x, y.
   - apply OrderedType.GT. by destruct x, y.
