@@ -75,6 +75,8 @@ struct Config {
     generate_dune_project: bool,
     #[serde(deserialize_with = "vec_or_split_colon")]
     lib_load_paths: Vec<String>,
+    #[serde(deserialize_with = "vec_or_split_colon")]
+    extra_dependencies: Vec<String>,
     work_dir: String,
     output_dir: Option<String>,
     post_generation_hook: Option<String>,
@@ -101,6 +103,7 @@ impl Default for Config {
             admit_proofs: false,
             generate_dune_project: true,
             lib_load_paths: vec![],
+            extra_dependencies: vec![],
             work_dir: ".".to_owned(),
             output_dir: None,
             post_generation_hook: None,
@@ -293,6 +296,12 @@ pub fn lib_load_paths() -> Vec<PathBuf> {
         .map(make_path_absolute)
         .filter_map(Result::ok)
         .collect()
+}
+
+/// Append user-dependencies to the generated list of dependencies in `dune` files.
+#[must_use]
+pub fn extra_dependencies() -> Vec<String> {
+    access_config(|c| c.extra_dependencies.clone()).into_iter().collect()
 }
 
 #[must_use]

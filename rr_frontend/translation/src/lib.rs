@@ -964,7 +964,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
              (name {generated_module_path})\n\
              (generate_project_file)\n\
              (theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib {}))",
-            extra_theories.join(" ")
+            [&*rrconfig::extra_dependencies(), &*extra_theories].concat().join(" "),
         )
         .unwrap();
 
