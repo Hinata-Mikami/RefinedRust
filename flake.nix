@@ -155,7 +155,7 @@
               repo = "smtcoq";
 
               mlPlugin = true;
-              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt cvc4 verit zchaff];
+              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
 
               release.${version}.sha256 = "${rocq.smtcoq.sha256}";
             };
@@ -442,7 +442,7 @@
         inputsFrom = with packages; [frontend theories];
         packages = with pkgs;
               [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
-                ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.zchaff pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
+                ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
         LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];
