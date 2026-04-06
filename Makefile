@@ -119,17 +119,9 @@ builddep/refinedrust-builddep.opam: theories/refinedrust.opam Makefile
 	@echo "$$BUILDDEP_OPAM_BODY" > $@
 	@echo 'depends: [' >> $@
 	@opam show -f depends: ./theories/refinedrust.opam >> $@
-	@echo '"coq-sniper" {(= "devfix")}' >> $@
-	@echo '"coq-trakt" {(= "devfix")}' >> $@
-	@echo '"coq-smtcoq" {(= "devfix")}' >> $@
-	@echo '"rocq-metarocq-template" {(= "1.4.1+9.1")}' >> $@
-	@echo '"rocq-metarocq-utils" {(= "1.4.1+9.1")}' >> $@
 	@echo ']' >> $@
 	@echo 'pin-depends: [' >> $@
 	@opam show -f pin-depends: ./theories/refinedrust.opam >> $@
-	@echo '["coq-sniper.devfix" "git+https://github.com/smtcoq/sniper.git#rocq-9.0v1"]' >> $@
-	@echo '["coq-trakt.devfix" "git+https://github.com/rocq-trakt/trakt"]' >> $@
-	@echo '["coq-smtcoq.devfix" "git+https://github.com/smtcoq/smtcoq#with-trakt-rocq-9.0v1"]' >> $@
 	@echo ']' >> $@
 
 
