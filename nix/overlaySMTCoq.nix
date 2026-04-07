@@ -1,12 +1,14 @@
 _: pkgs: prev: rec {
   verit = prev.verit.overrideAttrs (old: {
-    src = pkgs.fetchurl {
-      url = "https://gitlab.mpi-sws.org/lgaeher/verit/-/archive/main/verit-main.tar.gz";
-      sha256 = "sha256-1UUi/+aX21k9D3gXXGvXn/DD6OqF1upaujesFYSJfgs=";
+    src = pkgs.fetchFromGitLab {
+      domain = "gitlab.mpi-sws.org";
+      owner = "lgaeher";
+      repo = "verit";
+      rev = "6348b82f16c7cd2eb2a0b8f2b48d3f35cbb62b90";
+      sha256 = "sha256-DMSVU39uNr8Bnx6TevODF27MecMCsoaTdoHu5mi1oZ0=";
     };
-
+    version = "6348b82f";
     nativeBuildInputs = old.nativeBuildInputs ++ [pkgs.pkg-config];
-    version = "9f48a98";
   });
 
   rocqPackages = prev.rocqPackages.overrideScope (_: prev: {
