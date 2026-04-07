@@ -1,7 +1,7 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import int programs.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import int programs.
 From refinedrust.array Require Import def subltype.
-From refinedrust Require Import options.
+From refinedrust.base Require Import options.
 
 Section place.
   Context `{!typeGS Σ}.

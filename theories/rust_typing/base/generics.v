@@ -1,5 +1,4 @@
 From refinedrust Require Import type.
-From refinedrust Require Import programs.
 From refinedrust Require Import options.
 
 Definition prod_vec (A : Type) (n : nat) := plist id (replicate n A).

@@ -132,11 +132,6 @@ Notation "'local_dead' x ';' s" := (LocalDeadSt x s%E) (at level 80, s at level 
 
 (** This has a skip in order to facilitate unblocking. *)
 Definition Use (o : order) (ot : op_type) (memcast : bool) (e : expr) := Deref o ot memcast (SkipE e).
-(*Notation "'use{' ot , o , mc } e" := (Use o ot mc e%E) (at level 9, format "'use{' ot ,  o ,  mc }  e") : expr_scope.*)
-(*Notation "'use{' ot , o } e" := (Use o ot true e%E) (at level 9, format "'use{' ot ,  o }  e") : expr_scope.*)
-(*Notation "'use{' ot } e" := (Use Na1Ord ot true e%E) (at level 9, format "'use{' ot }  e") : expr_scope.*)
-(*Arguments Use : simpl never.*)
-(*Global Typeclasses Opaque Use.*)
 
 Definition Copy := Use.
 Notation "'copy{' ot , o , mc } e" := (Copy o ot mc e%E) (at level 9, format "'copy{' ot ,  o ,  mc }  e") : expr_scope.
@@ -161,12 +156,6 @@ Notation "e1 <-{ ot } e2 ; s" := (AssignSE Na1Ord ot e1%E e2%E s%E)
   (at level 80, s at level 200, format "'[v' e1  '<-{' ot '}'  e2 ';' '/' s ']'") : expr_scope.
 Arguments AssignSE : simpl never.
 Global Typeclasses Opaque AssignSE.
-
-Definition AddrOf (e : expr) := e.
-(* TODO: this breaks the sigT notation { A : Type & (A -> nat) }. See if we can do something about it. *)
-Notation "& e" := (AddrOf e%E) (at level 9, format "& e") : expr_scope.
-Arguments AddrOf : simpl never.
-Global Typeclasses Opaque AddrOf.
 
 Inductive mutability := | Mut | Shr.
 Inductive ptr_kind := | PRaw | PRef.
@@ -207,10 +196,6 @@ Arguments Ref : simpl never.
 Global Typeclasses Opaque Ref.
 Arguments Raw : simpl never.
 Global Typeclasses Opaque Raw.
-
-Definition LValue (e : expr) := e.
-Arguments LValue : simpl never.
-Global Typeclasses Opaque LValue.
 
 Definition AnnotExpr (n : nat) {A} (a : A) (e : expr) := Nat.iter n SkipE e.
 Arguments AnnotExpr : simpl never.
@@ -363,8 +348,8 @@ Notation zst_val := ([] : val).
 
 (*** Tests *)
 Example test1 (l : loc) ly ot :
-  (l <-{ly} copy{ot}(&l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
-  (AssignSE Na1Ord ly l (Copy Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (AddrOf l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
+  (l <-{ly} copy{ot}(&raw{Mut} l +{PtrOp, IntOp USize} (l ={PtrOp, PtrOp, I32} l)); ExprS (Call l [ (l : expr); (l : expr)]) (l <-{ly, ScOrd} l; Goto "a"))%E =
+  (AssignSE Na1Ord ly l (Copy Na1Ord ot true (BinOp AddOp PtrOp (IntOp USize) (Raw Mut l) (BinOp (EqOp I32) PtrOp PtrOp l l))))
       (ExprS (Call l [ Val (val_of_loc l); Val (val_of_loc l)]) ((AssignSE ScOrd ly l l) (Goto "a"))).
 Proof. simpl. reflexivity. Abort.
 

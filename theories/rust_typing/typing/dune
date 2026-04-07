@@ -1,0 +1,6 @@
+(rocq.theory
+ (name refinedrust.typing)
+ (package refinedrust)
+ (synopsis "RefinedRust typechecking")
+ (generate_project_file)
+ (theories stdpp iris Ltac2 caesium refinedrust lithium refinedrust.base refinedrust.primitive refinedrust.automation refinedrust.array refinedrust.enum refinedrust.mut_ref refinedrust.shr_ref refinedrust.struct refinedrust.enum))

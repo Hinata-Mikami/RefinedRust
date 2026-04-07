@@ -28,8 +28,7 @@ Inductive expr :=
 | LogicalOr (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr)
 | Move (o : order) (ot : op_type) (memcast : bool) (e : expr)
 | Copy (o : order) (ot : op_type) (memcast : bool) (e : expr)
-| AddrOf (m : mutability) (e : expr)
-| LValue (e : expr)
+| Raw (m : mutability) (e : expr)
 | GetMember (e : expr) (s : struct_layout_spec) (m : var_name)
 | GetMemberUnion (e : expr) (ul : union_layout_spec) (m : var_name)
 | EnumDiscriminant (els : enum_layout_spec) (e : expr)
@@ -67,8 +66,7 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (ot1 ot2 : op_type) (rit : int_type) (e1 e2 : expr), P e1 → P e2 → P (LogicalOr ot1 ot2 rit e1 e2)) →
   (∀ (o : order) (ot : op_type) (mc : bool) (e : expr), P e → P (Move o ot mc e)) →
   (∀ (o : order) (ot : op_type) (mc : bool) (e : expr), P e → P (Copy o ot mc e)) →
-  (∀ (m : mutability) (e : expr), P e → P (AddrOf m e)) →
-  (∀ (e : expr), P e → P (LValue e)) →
+  (∀ (m : mutability) (e : expr), P e → P (Raw m e)) →
   (∀ (e : expr) (s : struct_layout_spec) (m : var_name), P e → P (GetMember e s m)) →
   (∀ (e : expr) (ul : union_layout_spec) (m : var_name), P e → P (GetMemberUnion e ul m)) →
   (∀ (e : expr) (els : enum_layout_spec), P e → P (EnumDiscriminant els e)) →
@@ -83,14 +81,14 @@ Lemma expr_ind (P : expr → Prop) :
   (∀ (e : lang.expr), P (Expr e)) → ∀ (e : expr), P e.
 Proof.
   move => *. generalize dependent P => P. match goal with | e : expr |- _ => revert e end.
-  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ?????????????????? Hstruct Henum Hbor ?.
+  fix FIX 1. move => [ ^e] => ?????????? Hcall Hconcat ????????????????? Hstruct Henum Hbor ?.
   11: {
     apply Hcall; [ |apply Forall_true => ?]; by apply: FIX.
   }
   11: {
     apply Hconcat. apply Forall_true => ?. by apply: FIX.
   }
-  29: {
+  28: {
     apply Hstruct. apply Forall_fmap. apply Forall_true => ?. by apply: FIX.
   }
   all: auto.
@@ -118,8 +116,7 @@ Fixpoint to_expr `{!LayoutAlg} (e : expr) : lang.expr :=
   | LogicalOr ot1 ot2 rit e1 e2 => notation.LogicalOr ot1 ot2 rit (to_expr e1) (to_expr e2)
   | Move o ot mc e => notation.Move o ot mc (to_expr e)
   | Copy o ot mc e => notation.Copy o ot mc (to_expr e)
-  | AddrOf m e => notation.Raw m (to_expr e)
-  | LValue e => notation.LValue (to_expr e)
+  | Raw m e => notation.Raw m (to_expr e)
   | AnnotExpr n a e => notation.AnnotExpr n a (to_expr e)
   | LocInfoE a e => notation.LocInfo a (to_expr e)
   | StructInit ly fs => notation.StructInit ly (prod_map id to_expr <$> fs)
@@ -144,9 +141,7 @@ Ltac of_expr e :=
 
   | lang.Val (val.val_of_loc ?l) => constr:(Loc l)
   | notation.Raw ?m ?e =>
-    let e := of_expr e in constr:(AddrOf m e)
-  | notation.LValue ?e =>
-    let e := of_expr e in constr:(LValue e)
+    let e := of_expr e in constr:(Raw m e)
   | notation.AnnotExpr ?n ?a ?e =>
     let e := of_expr e in constr:(AnnotExpr n a e)
   | notation.Ref ?m ?κn ?ty ?e =>
@@ -246,8 +241,7 @@ Inductive ectx_item :=
 (* new constructors *)
 | MoveCtx (o : order) (ot : op_type) (mc : bool)
 | CopyCtx (o : order) (ot : op_type) (mc : bool)
-| AddrOfCtx (m : mutability)
-| LValueCtx
+| RawCtx (m : mutability)
 | AnnotExprCtx (n : nat) {A} (a : A)
 | LocInfoECtx (a : location_info)
 | BorrowCtx (m : mutability) (κn : string) (ty : option rust_type)
@@ -283,8 +277,7 @@ Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
   | SkipECtx => SkipE e
   | MoveCtx o l mc => Move o l mc e
   | CopyCtx o l mc => Copy o l mc e
-  | AddrOfCtx m => AddrOf m e
-  | LValueCtx => LValue e
+  | RawCtx m => Raw m e
   | AnnotExprCtx n a => AnnotExpr n a e
   | LocInfoECtx a => LocInfoE a e
   | BorrowCtx m κn ty => Borrow m κn ty e
@@ -360,10 +353,8 @@ Fixpoint find_expr_fill (e : expr) (bind_val : bool) : option (list ectx_item * 
       Some (Ks ++ [MoveCtx o ly mc], e') else Some ([], e)
   | Copy o ly mc e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [CopyCtx o ly mc], e') else Some ([], e)
-  | AddrOf m e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
-      Some (Ks ++ [AddrOfCtx m], e') else Some ([], e)
-  | LValue e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
-      Some (Ks ++ [LValueCtx], e') else Some ([], e)
+  | Raw m e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
+      Some (Ks ++ [RawCtx m], e') else Some ([], e)
   | AnnotExpr n a e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
       Some (Ks ++ [AnnotExprCtx n a], e') else Some ([], e)
   | LocInfoE a e1 => if find_expr_fill e1 bind_val is Some (Ks, e') then
@@ -420,7 +411,6 @@ Proof.
     apply: [lang.SkipECtx; lang.DerefCtx _ _ _]|
     apply: [lang.SkipECtx; lang.DerefCtx _ _ _]|
     apply: [lang.SkipECtx]|
-    apply: []|
     apply: (replicate n lang.SkipECtx)|
     apply: []|
     apply: [lang.SkipECtx; lang.SkipECtx]|
@@ -429,7 +419,7 @@ Proof.
     apply: [lang.BinOpRCtx _ _ _ _; lang.DerefCtx _ _ _]|
     apply: [lang.BinOpRCtx _ _ _ _]|..
   ]).
-  move: K => [|||||||||||||||||||||||n||||||] * //=.
+  move: K => [||||||||||||||||||||||n||||||] * //=.
   - (** Call *)
     do 2 f_equal.
     rewrite !fmap_app !fmap_cons. repeat f_equal; eauto.

@@ -34,6 +34,15 @@ Global Arguments named_lfts : simpl never.
 Global Opaque named_lft_update.
 Global Opaque named_lft_delete.
 
+Definition local_fresh (x : var_name) (locals : list var_name) := x ∉ locals.
+Global Typeclasses Opaque local_fresh.
+Global Arguments local_fresh : simpl never.
+
+Definition remove_local (locals : list var_name) (x : var_name) :=
+  list_difference locals [x].
+Global Arguments remove_local : simpl never.
+Global Typeclasses Opaque remove_local.
+
 Section named_tyvars.
   Context `{!typeGS Σ}.
 
@@ -969,9 +978,6 @@ Section judgments.
     | W.UnOp op (IntOp it) e =>
       Some (λ L T, typed_val_expr E L f (UnOp op (IntOp it) (W.to_expr e)) (λ L' v m rt ty r,
         v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
-    | W.LValue e =>
-      Some (λ L T, typed_val_expr E L f (W.to_expr e) (λ L' v m rt ty r,
-        v ◁ᵥ{f.1, m} r @ ty -∗ ∃ l, ⌜v = val_of_loc l⌝ ∗ T L' [] l)%I)
     | W.Var x =>
       Some (λ L T, find_in_context (FindLocal f x) (λ '(st, l), x is_live{f, st} l -∗ T L [] l))%I
     | _ => None
@@ -1009,11 +1015,6 @@ Section judgments.
       iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' rt ty v m r) "HL Hframe Hv HT".
       iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
         by iApply ("HΦ'" $! _ [] with "HL Hframe HT").
-    }
-    4: {
-      rewrite /LValue. iApply ("HT" with "LFT HE HL Hframe"). iIntros (L' rt ty v m r) "HL Hframe Hv HT".
-      iDestruct ("HT" with "Hv") as (l ?) "HT". subst.
-      by iApply ("HΦ'" $! _ [] with "HL Hframe").
     }
     2: wpe_bind. 2: rewrite -!/(W.to_expr _).
     2: iApply ("HT" with "LFT HE HL Hframe"); iIntros (L' v m rt ty r) "HL Hframe Hv HT".
@@ -2500,6 +2501,34 @@ Section judgments.
   Class Subtype (E : elctx) (L : llctx) {rt1 rt2} r1 r2 (ty1 : type rt1) (ty2 : type rt2) : Type :=
     subtype_proof T : iProp_to_Prop (weak_subtype E L r1 r2 ty1 ty2 T).
 
+  Lemma weak_subtype_id E L {rt} (ty : type rt) r T :
+    T ⊢ weak_subtype E L r r ty ty T.
+  Proof.
+    iIntros "$" (??) "?? $". iApply type_incl_refl.
+  Qed.
+  Lemma weak_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 E L T :
+    subtype E L r1 r1' ty1 ty1' →
+    weak_subtype E L r1' r2 ty1' ty2 T -∗
+    weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Hsub) "HT". rewrite /weak_subtype.
+    iIntros (??) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
+    iModIntro. iApply type_incl_trans; done.
+  Qed.
+  Lemma weak_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 E L T :
+    subtype E L r2' r2 ty2' ty2 →
+    weak_subtype E L r1 r2' ty1 ty2' T -∗
+    weak_subtype E L r1 r2 ty1 ty2 T.
+  Proof.
+    iIntros (Hsub) "HT". rewrite /weak_subtype.
+    iIntros (??) "#CTX #HE HL".
+    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
+    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
+    iModIntro. iApply type_incl_trans; done.
+  Qed.
+
   Definition weak_subltype E L {rt1 rt2} (b : bor_kind) r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) (T : iProp Σ) : iProp Σ :=
     ∀ F, ⌜lftE ⊆ F⌝ -∗
     rrust_ctx -∗
@@ -2508,6 +2537,10 @@ Section judgments.
     ltype_incl b r1 r2 lt1 lt2 ∗ llctx_interp L ∗ T.
   Class SubLtype (E : elctx) (L : llctx) {rt1 rt2} b r1 r2 (lt1 : ltype rt1) (lt2 : ltype rt2) : Type :=
     subltype_proof T : iProp_to_Prop (weak_subltype E L b r1 r2 lt1 lt2 T).
+
+  Lemma weak_subltype_id E L {rt} (lt : ltype rt) k r T :
+    T ⊢ weak_subltype E L k r r lt lt T.
+  Proof. iIntros "$" (??) "_ _ $". iApply ltype_incl_refl. Qed.
 
   Definition owned_subtype π E L (pers : bool) {rt1 rt2 : RT} (r1 : rt1) (r2 : rt2) (ty1 : type rt1) (ty2 : type rt2) (T : llctx → iProp Σ) : iProp Σ :=
     ∀ F,

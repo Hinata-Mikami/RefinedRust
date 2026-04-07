@@ -1,5 +1,5 @@
 From caesium Require Import lang notation.
-From refinedrust Require Import annotations typing.
+From refinedrust Require Import typing.
 
 
 Program Definition mem_size_of `{!LayoutAlg} (T_st : syn_type) : function := {|

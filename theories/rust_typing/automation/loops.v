@@ -1,11 +1,11 @@
 Require Import Stdlib.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
-From refinedrust Require Export type.
+From refinedrust.base Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
-From refinedrust Require Import programs.
-From refinedrust Require Import options.
+From refinedrust.base Require Import programs.
+From refinedrust.base Require Import options.
 
 (** * Loopy stuff *)
 (* using our own list type here in order to be able to put iProp's in it (universe troubles) *)

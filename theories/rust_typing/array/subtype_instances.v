@@ -1,8 +1,7 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import programs.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import programs.
 From refinedrust.array Require Import def subtype subltype unfold.
-From refinedrust Require Import options.
+From refinedrust.base Require Import options.
 
 (** ** Subtyping instances for arrays *)
 

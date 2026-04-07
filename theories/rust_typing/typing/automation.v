@@ -4,7 +4,10 @@ From refinedrust Require Export type.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition.
-From refinedrust Require Import int programs program_rules functions mut_ref.mut_ref shr_ref struct.struct array.array enum xmap.
+From refinedrust.base Require Import int programs xmap value.
+From refinedrust.primitive Require Import functions unit alias_ptr.
+From refinedrust Require Import mut_ref.mut_ref shr_ref struct.struct array.array enum.
+From refinedrust.typing Require Import program_rules.
 (* Important: import proof_state last as it overrides some Lithium tactics *)
 From refinedrust.automation Require Export loops existentials simpl solvers proof_state.
 From refinedrust Require Import options.
@@ -203,6 +206,45 @@ lazymatch goal with
   end; unfold i2p_P
 end.
 
+Ltac interpret_rust_type_core lfts env ty ::=
+  lazymatch ty with
+  | RSTTyVar ?name =>
+      let sty := eval vm_compute in (env !! name) in
+      match sty with
+      | Some (existT _ ?sty) =>
+          exact sty
+      | None =>
+          fail 3 "Failed to find type variable " name " in the context"
+      end
+  | RSTLitType ?name ?inst =>
+      (* CAVEAT: This only works if a unique identifier can be found! *)
+      lookup_definition
+        ltac:(fun term =>
+          apply_rust_scope_inst lfts env inst term
+          || fail 1000 "processing for " name " failed"
+        )
+        name || fail 1000 "definition lookup for " name " failed"
+  | RSTInt ?it =>
+      exact (int it)
+  | RSTBool =>
+      exact bool_t
+  | RSTAliasPtr =>
+      exact alias_ptr_t
+  | RSTUnit =>
+      exact unit_t
+  | RSTStruct ?sls ?tys =>
+      refine (struct_t sls ltac:(interpret_rust_type_list lfts env tys))
+  | RSTArray ?len ?ty =>
+      refine (array_t len _); interpret_rust_type_core lfts env ty
+  | RSTRef ?mut ?κ ?ty =>
+      match mut with
+      | Mut =>
+          refine (mut_ref _ _)
+      | Shr =>
+          refine (shr_ref _ _)
+      end;
+      [ interpret_rust_lft lfts env κ | interpret_rust_type_core lfts env ty ]
+  end.
 
 (** * Main automation tactics *)
 Section automation.
@@ -445,7 +487,7 @@ Ltac liRExpr :=
     | W.EnumDiscriminant _ _ => notypeclasses refine (tac_fast_apply (type_discriminant E L f _ _ _ T _) _); [apply _ | ]
     | W.Borrow Mut _ _ _ => notypeclasses refine (tac_fast_apply (type_mut_bor E L f T _ _ _) _)
     | W.Borrow Shr _ _ _ => notypeclasses refine (tac_fast_apply (type_shr_bor E L f T _ _ _) _)
-    | W.AddrOf _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L f _ T) _)
+    | W.Raw _ _ => notypeclasses refine (tac_fast_apply (type_mut_addr_of E L f _ T) _)
     | W.BinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_bin_op E L f _ _ _ _ _ T) _)
     | W.UnOp _ _ _ => notypeclasses refine (tac_fast_apply (type_un_op E L f _ _ _ T) _)
     | W.CheckBinOp _ _ _ _ _ => notypeclasses refine (tac_fast_apply (type_check_bin_op E L f _ _ _ _ _ T) _)
@@ -795,6 +837,11 @@ Global Typeclasses Opaque ty_has_op_type.
 (* Even though we seal it, we should still make this opaque so it doesn't simplify. *)
 Global Opaque ty_has_op_type.
 
+Global Arguments is_value_ot : simpl never.
+Global Arguments is_array_ot : simpl never.
+Global Arguments is_struct_ot : simpl never.
+
+
 (* Simplifying this can lead to problems in some cases when used in specifications. *)
 Global Arguments replicate : simpl nomatch.
 (* We don't want this to simplify away the zero case, as that can be a valuable hint. *)
@@ -992,6 +1039,7 @@ Ltac sidecond_hook_init :=
   open_cache;
   intros;
   prepare_initial_coq_context;
+  unfold name_hint_ty, name_hint in *;
   repeat match goal with
   | |- _ ∧ _ => split
   | |- Forall ?P ?l =>
@@ -1186,11 +1234,6 @@ Lemma unfold_nat_elem_of_it (n : nat) (it : int_type) :
   n ∈ it = (MinInt it ≤ n ∧ n ≤ MaxInt it)%Z.
 Proof. done. Qed.
 
-(** Another rewrite DB that we use to normalize more aggressively *)
-Create HintDb solve_goal_unfold discriminated.
-Global Hint Unfold OffsetLocSt : solve_goal_unfold.
-Global Hint Unfold num_cred : solve_goal_unfold.
-
 (** Normalization that should be done to all goals -- even ones that will be presented to the user. *)
 Ltac sidecond_hammer_normalize :=
   autounfold with lithium_rewrite;
@@ -1218,15 +1261,6 @@ Ltac solve_goal_normalized_prepare_hook ::=
   open_cache;
   idtac
 .
-
-(** Normalize more aggressively by unfolding more. *)
-Ltac normalize_aggressively :=
-  autounfold with solve_goal_unfold;
-  autounfold with solve_goal_unfold in *;
-  unfold_common_caesium_defs;
-  simplify_layout_assum;
-  simplify_layout_goal;
-  unfold unit_sl in *.
 
 (** The main automation tactic after normalizing *)
 Ltac solve_goal_final_hook ::=

@@ -1,7 +1,6 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import programs.
-From refinedrust Require Import options.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import ltype_rules programs.
+From refinedrust.base Require Import options.
 
 (** ** Properties of the [ArrayLtype] *)
 

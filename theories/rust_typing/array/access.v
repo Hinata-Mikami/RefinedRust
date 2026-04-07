@@ -1,9 +1,7 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import ltype_rules.
-From refinedrust Require Import uninit_def int.
-From refinedrust Require Import uninit value alias_ptr programs.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import ltype_rules uninit_def int programs.
 From refinedrust.array Require Import def subltype unfold.
-From refinedrust Require Import options.
+From refinedrust.base Require Import options.
 
 (** * Judgment for accessing an array component in a general fashion *)
 

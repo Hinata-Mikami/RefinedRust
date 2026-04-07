@@ -1,5 +1,5 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import value programs.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import value programs.
 From refinedrust.array Require Import def.
 From refinedrust Require Import options.
 

@@ -1,6 +1,6 @@
 From lithium Require Import all.
 From caesium Require Import base lang.
-From refinedrust Require Import programs program_rules.
+From refinedrust.base Require Import programs.
 
 (** This file contains a solver for finding related locations. *)
 

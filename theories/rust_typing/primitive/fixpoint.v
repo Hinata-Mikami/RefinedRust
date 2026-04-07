@@ -1,4 +1,4 @@
-From refinedrust Require Import type programs program_rules.
+From refinedrust Require Import type programs.
 From refinedrust Require Import options.
 
 Section type_inh.

@@ -1536,34 +1536,6 @@ Section subsume.
 
 
   (** ** Subtyping instances: [weak_subtype] *)
-  Lemma weak_subtype_id E L {rt} (ty : type rt) r T :
-    T ⊢ weak_subtype E L r r ty ty T.
-  Proof.
-    iIntros "$" (??) "?? $". iApply type_incl_refl.
-  Qed.
-  Lemma weak_subtype_subtype_l {rt1 rt2 rt1'} (ty1 : type rt1) (ty1' : type rt1') (ty2 : type rt2) r1 r1' r2 E L T :
-    subtype E L r1 r1' ty1 ty1' →
-    weak_subtype E L r1' r2 ty1' ty2 T -∗
-    weak_subtype E L r1 r2 ty1 ty2 T.
-  Proof.
-    iIntros (Hsub) "HT". rewrite /weak_subtype.
-    iIntros (??) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
-    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
-    iModIntro. iApply type_incl_trans; done.
-  Qed.
-  Lemma weak_subtype_subtype_r {rt1 rt2 rt2'} (ty1 : type rt1) (ty2' : type rt2') (ty2 : type rt2) r1 r2' r2 E L T :
-    subtype E L r2' r2 ty2' ty2 →
-    weak_subtype E L r1 r2' ty1 ty2' T -∗
-    weak_subtype E L r1 r2 ty1 ty2 T.
-  Proof.
-    iIntros (Hsub) "HT". rewrite /weak_subtype.
-    iIntros (??) "#CTX #HE HL".
-    iPoseProof (subtype_acc with "HE HL") as "#Hincl1"; first done.
-    iMod ("HT" with "[] CTX HE HL") as "(#Hincl2 & $ & $)"; first done.
-    iModIntro. iApply type_incl_trans; done.
-  Qed.
-
   Lemma weak_subtype_evar2 E L {rt} (ty ty2 : type rt) r r2 `{!ContainsProtected ty2} T :
     ⌜ty = ty2⌝ ∗ weak_subtype E L r r2 ty ty T ⊢ weak_subtype E L r r2 ty ty2 T.
   Proof. iIntros "(<- & $)". Qed.
@@ -1622,10 +1594,6 @@ Section subsume.
      The instances, especially for folding/unfolding, should use the structure of the second lt (the target) as guidance for incrementally manipulating the first one.
      After making the heads match, structurally descend.
    *)
-
-  Lemma weak_subltype_id E L {rt} (lt : ltype rt) k r T :
-    T ⊢ weak_subltype E L k r r lt lt T.
-  Proof. iIntros "$" (??) "_ _ $". iApply ltype_incl_refl. Qed.
 
   Lemma weak_subltype_evar2 E L {rt} (lt1 lt2 : ltype rt) k r1 r2  `{!ContainsProtected lt2} T :
     ⌜lt1 = lt2⌝ ∗ weak_subltype E L k r1 r2 lt1 lt1 T ⊢ weak_subltype E L k r1 r2 lt1 lt2 T.
@@ -4555,10 +4523,6 @@ Section subsume.
     by iApply ("HT" with "CTX HE HL Hf").
   Qed.
 
-  Definition local_fresh (x : var_name) (locals : list var_name) := x ∉ locals.
-  Global Typeclasses Opaque local_fresh.
-  Global Arguments local_fresh : simpl never.
-
   Lemma type_local_live E L f st x s fn R ϝ :
     li_tactic (compute_layout_goal st) (λ ly,
       find_in_context (FindFrameLocals f) (λ locals : list var_name,
@@ -4585,11 +4549,6 @@ Section subsume.
       iExists _. iR. rewrite /has_layout_val length_replicate//. }
     iApply ("Hs" with "CTX HE HL Hframe Hpost").
   Qed.
-
-  Definition remove_local (locals : list var_name) (x : var_name) :=
-    list_difference locals [x].
-  Global Arguments remove_local : simpl never.
-  Global Typeclasses Opaque remove_local.
 
   Lemma type_local_dead E L f x s fn R ϝ :
     find_in_context (FindFrameLocals f) (λ locals : list var_name,

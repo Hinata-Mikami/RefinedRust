@@ -1,6 +1,6 @@
-From refinedrust Require Export type ltypes.
-From refinedrust Require Import programs.
-From refinedrust Require Import options.
+From refinedrust.base Require Export type ltypes.
+From refinedrust.base Require Import programs.
+From refinedrust.base Require Import options.
 
 (** * Iterated version of resolve_ghost for arrays *)
 

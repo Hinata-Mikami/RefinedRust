@@ -1,7 +1,8 @@
 (** Adapted from RefinedC *)
 From lithium Require Import all.
 From caesium Require Import base lang.
-From refinedrust Require Import solvers programs program_rules automation.
+From refinedrust.automation Require Import solvers.
+From refinedrust.base Require Import programs.
 
 (** This file contains a solver for location (semantic) equality based on [lia]
 and an [autorewrite] hint database [refinedrust_loc_eq_rewrite] that the user can
@@ -138,25 +139,27 @@ Proof. by move => ->. Qed.
 Global Hint Extern 10 (FindHypEqual FICLocSemantic (loc_in_bounds _ _ _) (loc_in_bounds _ _ _) _) =>
   (notypeclasses refine (tac_loc_in_bounds_solve_loc_eq _ _ _ _ _ _ _); solve_loc_eq) : typeclass_instances.
 
-Global Instance find_in_context_type_loc_semantic_inst `{!typeGS Σ} l :
-  FindInContext (FindLoc l) FICLocSemantic | 20 :=
-  λ T, i2p (find_in_context_type_loc_id l T).
-Global Instance find_in_context_type_locp_semantic_inst `{!typeGS Σ} l :
-  FindInContext (FindLocP l) FICLocSemantic | 20 :=
-  λ T, i2p (find_in_context_type_locp_loc l T).
-Global Instance find_in_context_type_loc_with_rt_semantic_inst `{!typeGS Σ} rt π l :
-  FindInContext (FindLocWithRt rt l π) FICLocSemantic | 20 :=
-  λ T, i2p (find_in_context_type_loc_with_rt_id l π T).
+Section instances.
+Context `{!typeGS Σ}.
 
-(*
-Global Instance find_in_context_type_val_P_loc_semantic_inst `{!typeG Σ} (l : loc) :
-  FindInContext (FindValP l) FICLocSemantic | 20 :=
-  λ T, i2p (find_in_context_type_val_P_loc_id l T).
-Global Instance find_in_context_loc_in_bounds_semantic_inst `{!typeG Σ} l :
-  FindInContext (FindLocInBounds l) FICLocSemantic | 20 :=
-  λ T, i2p (find_in_context_loc_in_bounds l T).
-Global Instance find_in_context_loc_in_bounds_type_semantic_inst `{!typeG Σ} l :
-  FindInContext (FindLocInBounds l) FICLocSemantic | 30 :=
-  λ T, i2p (find_in_context_loc_in_bounds_loc l T).
+  Lemma find_in_context_type_loc_id l T:
+    (∃ π rt (lt : ltype rt) r (b : bor_kind), l ◁ₗ[π, b] r @ lt ∗ T (existT rt (lt, r, b, π)))
+    ⊢ find_in_context (FindLoc l) T.
+  Proof. iDestruct 1 as (π rt lt r b) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Definition find_in_context_type_loc_id_inst := [instance @find_in_context_type_loc_id with FICLocSemantic].
+  Global Existing Instance find_in_context_type_loc_id_inst | 20.
 
- *)
+  Lemma find_in_context_type_locp_loc l T :
+    (∃ π rt (lt : ltype rt) r (b : bor_kind), l ◁ₗ[π, b] r @ lt ∗ T (l ◁ₗ[π, b] r @ lt))
+    ⊢ find_in_context (FindLocP l) T.
+  Proof. iDestruct 1 as (π rt lt r b) "[Hl HT]". iExists (l ◁ₗ[π, b] r @ lt)%I => /=. iFrame. Qed.
+  Definition find_in_context_type_locp_loc_inst := [instance @find_in_context_type_locp_loc with FICLocSemantic].
+  Global Existing Instance find_in_context_type_locp_loc_inst | 20.
+
+  Lemma find_in_context_type_loc_with_rt_id {rt} l π T:
+    (∃ (lt : ltype rt) r (b : bor_kind), l ◁ₗ[π, b] r @ lt ∗ T (lt, r, b))
+    ⊢ find_in_context (FindLocWithRt rt l π) T.
+  Proof. iDestruct 1 as (lt r b) "[Hl HT]". iExists _ => /=. iFrame. Qed.
+  Definition find_in_context_type_loc_with_rt_id_inst := [instance @find_in_context_type_loc_with_rt_id with FICLocSemantic].
+  Global Existing Instance find_in_context_type_loc_with_rt_id_inst | 20.
+End instances.

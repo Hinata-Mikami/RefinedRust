@@ -1,4 +1,5 @@
-From refinedrust Require Import type programs functions.
+From refinedrust.base Require Import type programs.
+From refinedrust.primitive Require Import functions.
 From lithium Require Import hooks all.
 
 (* Initialize the [named_lfts] assertion with external lifetimes.

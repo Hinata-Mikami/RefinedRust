@@ -1,14 +1,28 @@
 Require Import Stdlib.Strings.String.
 From iris.proofmode Require Import coq_tactics reduction string_ident.
-From refinedrust Require Export type ltypes hlist.
+From refinedrust.base Require Export type ltypes hlist.
 From lithium Require Export all.
 From lithium Require Import hooks.
 From refinedrust.automation Require Import lookup_definition proof_state.
 From refinedrust.automation Require Export layout_ltac.
-From refinedrust Require Import int programs program_rules functions uninit mut_ref.mut_ref shr_ref.shr_ref struct.struct unit value array.array alias_ptr.
+From refinedrust.base Require Import generics programs value.
+From refinedrust.primitive Require Import functions.
 
 Set Default Proof Using "Type".
 
+(** Another rewrite DB that we use to normalize more aggressively *)
+Create HintDb solve_goal_unfold discriminated.
+Global Hint Unfold OffsetLocSt : solve_goal_unfold.
+Global Hint Unfold num_cred : solve_goal_unfold.
+
+(** Normalize more aggressively by unfolding more. *)
+Ltac normalize_aggressively :=
+  autounfold with solve_goal_unfold;
+  autounfold with solve_goal_unfold in *;
+  unfold_common_caesium_defs;
+  simplify_layout_assum;
+  simplify_layout_goal;
+  unfold unit_sl in *.
 
 (** * Automation for solving sideconditions spawned by the type system *)
 
@@ -200,46 +214,6 @@ Ltac apply_rust_scope_inst lfts env inst term :=
     )
   end.
 
-
-Ltac interpret_rust_type_core lfts env ty ::=
-  lazymatch ty with
-  | RSTTyVar ?name =>
-      let sty := eval vm_compute in (env !! name) in
-      match sty with
-      | Some (existT _ ?sty) =>
-          exact sty
-      | None =>
-          fail 3 "Failed to find type variable " name " in the context"
-      end
-  | RSTLitType ?name ?inst =>
-      (* CAVEAT: This only works if a unique identifier can be found! *)
-      lookup_definition
-        ltac:(fun term =>
-          apply_rust_scope_inst lfts env inst term
-          || fail 1000 "processing for " name " failed"
-        )
-        name || fail 1000 "definition lookup for " name " failed"
-  | RSTInt ?it =>
-      exact (int it)
-  | RSTBool =>
-      exact bool_t
-  | RSTAliasPtr =>
-      exact alias_ptr_t
-  | RSTUnit =>
-      exact unit_t
-  | RSTStruct ?sls ?tys =>
-      refine (struct_t sls ltac:(interpret_rust_type_list lfts env tys))
-  | RSTArray ?len ?ty =>
-      refine (array_t len _); interpret_rust_type_core lfts env ty
-  | RSTRef ?mut ?κ ?ty =>
-      match mut with
-      | Mut =>
-          refine (mut_ref _ _)
-      | Shr =>
-          refine (shr_ref _ _)
-      end;
-      [ interpret_rust_lft lfts env κ | interpret_rust_type_core lfts env ty ]
-  end.
 Tactic Notation "interpret_rust_type" constr(lfts) constr(env) constr(ty) :=
   interpret_rust_type_core lfts env ty .
 
@@ -2563,9 +2537,7 @@ Ltac simplify_ot :=
       symmetry; solve_op_alg
   | |- _ => reflexivity
   end.
-Arguments is_value_ot : simpl never.
-Arguments is_array_ot : simpl never.
-Arguments is_struct_ot : simpl never.
+
 Ltac solve_ty_has_op_type_core_step :=
   first
   [ match goal with

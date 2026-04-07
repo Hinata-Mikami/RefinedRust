@@ -1,5 +1,5 @@
 From refinedrust Require Export type.
-From refinedrust Require Import alias_ptr existentials.
+From refinedrust.primitive Require Import alias_ptr existentials.
 From refinedrust Require Import int programs program_rules functions uninit shr_ref mut_ref struct unit automation.
 From refinedrust Require Import enum.
 From refinedrust Require Import options.
