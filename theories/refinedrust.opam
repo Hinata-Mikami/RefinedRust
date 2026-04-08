@@ -12,7 +12,7 @@ license: "BSD-3-Clause"
 
 depends: [
   "rocq-core" { (= "9.1.0" ) }
-  "rocq-stdlib"
+  "rocq-stdlib" { (= "9.1.0") }
   "rocq-stdpp"
   "rocq-stdpp-unstable"
   "rocq-stdpp-bitvector"
