@@ -1,5 +1,10 @@
+#![rr::import("rrstd.ptr.theories", "alignment")]
+#![rr::include("num")]
+#![rr::include("clone")]
 
-#[rr::export_as(core::ptr::Alignment)]
+use core::mem;
+
+#[rr::export_as(core::mem::Alignment)]
 #[rr::refined_by("x" : "alignment_enum")]
 #[derive(Copy, Clone)]
 pub struct Alignment(#[rr::field("x")] AlignmentEnum);
@@ -139,7 +144,7 @@ enum AlignmentEnum {
     _Align1Shl63 = 1 << 63,
 }
 
-#[rr::export_as(core::ptr::Alignment)]
+#[rr::export_as(core::mem::Alignment)]
 impl Alignment {
 
     #[rr::only_spec]
