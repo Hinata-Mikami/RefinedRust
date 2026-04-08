@@ -1,4 +1,4 @@
-From caesium Require Import base.
+From radium Require Import base.
 
 (** Representation of a type layout (byte size and alignment constraint). *)
 

@@ -223,7 +223,7 @@ Section union.
       - rewrite /active_union_rest_ly/layout_wf/ly_align/=. apply Z.divide_1_l.
       - rewrite /active_union_rest_ly {1}/ly_size. apply use_union_layout_alg_size in Hul. lia.
       - rewrite /ly_align_in_bounds/ly_align/active_union_rest_ly/ly_align_log/=.
-        unfold_common_caesium_defs. simpl. nia.
+        unfold_common_radium_defs. simpl. nia.
     }
     { iPureIntro. apply has_layout_loc_active_union_rest_ly. }
     { iApply (loc_in_bounds_offset with "Hlb").

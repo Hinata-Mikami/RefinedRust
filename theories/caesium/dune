@@ -1,6 +1,6 @@
 (rocq.theory
- (name caesium)
+ (name radium)
  (package refinedrust)
- (synopsis "Caesium language")
+ (synopsis "Radium language")
  (generate_project_file)
- (theories lithium stdpp iris iris_contrib Ltac2 Stdlib caesium.physical_step caesium.program_logic))
+ (theories lithium stdpp iris iris_contrib Ltac2 Stdlib radium.physical_step radium.program_logic))

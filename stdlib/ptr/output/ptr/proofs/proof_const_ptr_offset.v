@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_offset.
 
@@ -61,7 +61,7 @@ Proof.
     simplify_layout_assum.
     split; first sidecond_hammer.
     move: Hup.
-    unsafe_unfold_common_caesium_defs.
+    unsafe_unfold_common_radium_defs.
     sidecond_hammer.
   }
   repeat liRStep; liShow.

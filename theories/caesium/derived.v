@@ -1,4 +1,4 @@
-From caesium Require Export tactics lifting proofmode.
+From radium Require Export tactics lifting proofmode.
 Set Default Proof Using "Type".
 
 Section derived.

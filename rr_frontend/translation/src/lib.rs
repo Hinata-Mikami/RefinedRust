@@ -323,7 +323,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
     /// Write specifications of a verification unit.
     fn write_specifications(&self, spec_path: &Path, code_path: &Path, stem: &str) {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
@@ -582,7 +582,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         F: Fn(&str) -> PathBuf,
     {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
@@ -671,7 +671,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         G: Fn(&str) -> String,
     {
         let common_imports = vec![
-            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["caesium"]),
+            coq::module::Import::new(vec!["lang", "notation"]).from(vec!["radium"]),
             coq::module::Import::new(vec!["typing", "shims"]).from(vec!["refinedrust"]),
         ];
 
@@ -933,7 +933,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
              (flags -w -notation-overridden -w -redundant-canonical-projection)\n{dune_package}\
              (name {generated_module_path})\n\
              (generate_project_file)\n\
-             (theories stdpp iris iris_contrib Ltac2 Equations lrust caesium lithium refinedrust Stdlib {}))",
+             (theories stdpp iris iris_contrib Ltac2 Equations lrust radium lithium refinedrust Stdlib {}))",
             extra_theories.join(" ")
         )
         .unwrap();
@@ -994,7 +994,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
              (name {proof_module_path})\n\
              (modules {})\n\
              (generate_project_file)\n\
-             (theories stdpp iris Ltac2 Equations lrust caesium lithium refinedrust Stdlib {} {}.{}.generated))",
+             (theories stdpp iris Ltac2 Equations lrust radium lithium refinedrust Stdlib {} {}.{}.generated))",
              proof_modules.join(" "), extra_theories.join(" "), self.coq_path_prefix, stem).unwrap();
     }
 }

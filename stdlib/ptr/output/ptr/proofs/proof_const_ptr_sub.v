@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From rrstd.ptr.ptr.generated Require Import generated_code_ptr generated_specs_ptr generated_template_const_ptr_sub.
 
@@ -34,7 +34,7 @@ Proof.
     rename select (count * _ ≤ MaxInt _) into Hmax.
     revert Hmin Hmax.
     split; rewrite -?MinInt_eq -?MaxInt_eq. 
-    { move: Hmax. unsafe_unfold_common_caesium_defs; simpl. lia. }
+    { move: Hmax. unsafe_unfold_common_radium_defs; simpl. lia. }
     { lia. }
   }
   { rewrite /offset_loc.

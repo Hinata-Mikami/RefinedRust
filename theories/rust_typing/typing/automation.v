@@ -1029,7 +1029,7 @@ Ltac solve_enum_layout_spec_variants_eq :=
 Ltac solve_enum_layout_spec_discriminant_nodup :=
   simpl; repeat first [econstructor | els_not_elem_solver].
 Ltac solve_enum_layout_spec_discriminant_in_range :=
-  init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_caesium_defs; simpl; lia.
+  init_cache; repeat first [econstructor | solve_goal ]; unsafe_unfold_common_radium_defs; simpl; lia.
 
 (** ** Sideconditions *)
 Ltac shelve_sidecond_hook ::=

@@ -621,7 +621,7 @@ Section option.
     end
   .
 
-  Global Instance option_correct_ord {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectEq A_eq} `{!CorrectOrd A_eq A_cmp} :
+  Global Instance option_correct_ord {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectOrd A_eq A_cmp} :
     CorrectOrd (option_partial_eq A_eq) (option_cmp A_cmp).
   Proof.
     econstructor.
@@ -777,7 +777,7 @@ Section option.
     end
   .
 
-  Global Instance option_correct_ord_rev {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectEq A_eq} `{!CorrectOrd A_eq A_cmp} :
+  Global Instance option_correct_ord_rev {A} (A_eq : A → A → bool) (A_cmp : A → A → ordering) `{!CorrectOrd A_eq A_cmp} :
     CorrectOrd (option_partial_eq A_eq) (option_cmp_rev A_cmp).
   Proof.
     econstructor.

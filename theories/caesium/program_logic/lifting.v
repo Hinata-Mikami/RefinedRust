@@ -5,7 +5,7 @@
 semantics to the program logic. *)
 
 From iris.proofmode Require Import proofmode.
-From caesium.program_logic Require Export weakestpre.
+From radium.program_logic Require Export weakestpre.
 From iris.prelude Require Import options.
 
 Section lifting.

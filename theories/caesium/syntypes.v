@@ -1,4 +1,4 @@
-From caesium Require Import lang.
+From radium Require Import lang.
 
 (** * Syntactic types *)
 (** Syntactic types determine abstract layout information (i.e. that a struct has certain fields), but do not determine a concrete data layout yet.
@@ -36,7 +36,7 @@ Qed.
 Lemma max_alloc_end_le_usize :
   (max_alloc_end ≤ max_int USize)%Z.
 Proof.
-  unfold_common_caesium_defs. simpl. lia.
+  unfold_common_radium_defs. simpl. lia.
 Qed.
 
 Lemma mjoin_has_struct_layout sl vs :
@@ -67,13 +67,13 @@ Proof.
   - intros Hf. econstructor; first apply Hb. by apply IH.
 Qed.
 
-Ltac unsafe_unfold_common_caesium_defs :=
+Ltac unsafe_unfold_common_radium_defs :=
   rewrite ?MaxInt_eq ?MinInt_eq;
   repeat match goal with
   | H : context[MaxInt ?it] |- _ => rewrite !MaxInt_eq in H
   | H : context[MinInt ?it] |- _ => rewrite !MinInt_eq in H
   end;
-  unfold_common_caesium_defs.
+  unfold_common_radium_defs.
 
 (** Rust repr options *)
 Inductive struct_repr :=
@@ -300,7 +300,7 @@ Definition els_lookup_tag (els : enum_layout_spec) (f : string) : Z :=
 Definition sl_has_members (sl : struct_layout) (fields : list (var_name * layout)) :=
   fields = named_fields (sl.(sl_members)).
 
-(* TODO: union layouts should be allowed to have trailing padding -- this is not accomodated by caesium currently.
+(* TODO: union layouts should be allowed to have trailing padding -- this is not accomodated by radium currently.
     Can we simulate that by adding a "__padding" variant?
 *)
 Definition ul_has_variants (ul : union_layout) (variants : list (var_name * layout)) :=
@@ -361,7 +361,7 @@ Lemma ly_align_in_bounds_1 ly :
   ly_align_log ly = 0%nat → ly_align_in_bounds ly.
 Proof.
   rewrite /ly_align_in_bounds/ly_align => ->.
-  unfold_common_caesium_defs. simpl. nia.
+  unfold_common_radium_defs. simpl. nia.
 Qed.
 
 Lemma ly_align_log_in_U8 ly :
@@ -370,29 +370,29 @@ Proof.
   rewrite /ly_align_in_bounds/min_alloc_start/max_alloc_end/=/ly_align/bytes_per_addr/bytes_per_addr_log/=.
   rewrite /bits_per_byte/=.
   intros Ha.
-  split. { unsafe_unfold_common_caesium_defs. simpl in *. lia. }
+  split. { unsafe_unfold_common_radium_defs. simpl in *. lia. }
   assert ((2 ^ ly_align_log ly) ≤ 2 ^ (8%nat * 8))%nat as Hle.
   { apply Nat2Z.inj_le. etrans; first apply Ha.
     rewrite Nat2Z.inj_pow.
-    unsafe_unfold_common_caesium_defs; simpl.
+    unsafe_unfold_common_radium_defs; simpl.
     nia.
   }
   apply PeanoNat.Nat.pow_le_mono_r_iff in Hle; last lia.
-  unsafe_unfold_common_caesium_defs. simpl in *. lia.
+  unsafe_unfold_common_radium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_log_in_usize ly :
   ly_align_in_bounds ly → (Z.of_nat (ly_align_log ly)) ∈ USize.
 Proof.
   intros [_ Ha]%ly_align_log_in_U8.
-  split. { unsafe_unfold_common_caesium_defs. simpl in *. lia. }
-  unsafe_unfold_common_caesium_defs. simpl in *. lia.
+  split. { unsafe_unfold_common_radium_defs. simpl in *. lia. }
+  unsafe_unfold_common_radium_defs. simpl in *. lia.
 Qed.
 Lemma ly_align_in_usize ly :
   ly_align_in_bounds ly → (Z.of_nat (ly_align ly)) ∈ USize.
 Proof.
   unfold ly_align_in_bounds.
   intros Ha.
-  split; unsafe_unfold_common_caesium_defs; simpl in *; lia.
+  split; unsafe_unfold_common_radium_defs; simpl in *; lia.
 Qed.
 
 Lemma ly_align_in_bounds_mono ly1 ly2 :
@@ -1183,7 +1183,7 @@ Proof.
   move: Hfields Hpad.
   generalize (sl_members sl) => mems. intros Halgs Hpad.
   clear sl. induction mems as [ | [n ly] mems IH'] in Halgs, Hpad |-*; simpl in *.
-  { unsafe_unfold_common_caesium_defs. simpl. lia. }
+  { unsafe_unfold_common_radium_defs. simpl. lia. }
   rewrite Nat.max_assoc. rewrite [(1 `max` _)%nat]Nat.max_comm. rewrite -Nat.max_assoc.
   destruct n as [ n | ].
   + (* named *)
@@ -1196,7 +1196,7 @@ Proof.
     rename select (ly_align_log ly = _) into Hly.
     eapply Nat_Z_in_bounds_max_1. {
       rewrite /ly_align Hly.
-      unsafe_unfold_common_caesium_defs.
+      unsafe_unfold_common_radium_defs.
       simpl. lia. }
     eapply IH'; done.
 Qed.
@@ -1213,7 +1213,7 @@ Proof.
   move: Hfields.
   generalize (ul_members ul) => mems. intros Halgs.
   clear ul. induction mems as [ | [n ly] mems IH'] in Halgs |-*; simpl in *.
-  { unsafe_unfold_common_caesium_defs. simpl. lia. }
+  { unsafe_unfold_common_radium_defs. simpl. lia. }
   rewrite Nat.max_assoc. rewrite [(1 `max` _)%nat]Nat.max_comm. rewrite -Nat.max_assoc.
   inversion Halgs as [ | ? ? Hx Halgs']; subst.
   eapply Nat_Z_in_bounds_max_1. { apply Hx. }
@@ -1263,7 +1263,7 @@ Proof.
     econstructor.
     { rewrite /ly_align_in_bounds.
       specialize (IntType_align_le tag_it). simpl.
-      unsafe_unfold_common_caesium_defs. simpl. lia. }
+      unsafe_unfold_common_radium_defs. simpl. lia. }
     econstructor; last econstructor.
     eapply union_layout_alg_align_in_bounds; last done.
     clear -IH Halgs.

@@ -19,7 +19,7 @@ Global Hint Unfold num_cred : solve_goal_unfold.
 Ltac normalize_aggressively :=
   autounfold with solve_goal_unfold;
   autounfold with solve_goal_unfold in *;
-  unfold_common_caesium_defs;
+  unfold_common_radium_defs;
   simplify_layout_assum;
   simplify_layout_goal;
   unfold unit_sl in *.
@@ -2599,7 +2599,7 @@ End augment.
 Lemma MaxInt_2_ISize_USize :
   (2 * MaxInt ISize < MaxInt USize)%Z.
 Proof.
-  unsafe_unfold_common_caesium_defs. simpl.
+  unsafe_unfold_common_radium_defs. simpl.
   nia.
 Qed.
 

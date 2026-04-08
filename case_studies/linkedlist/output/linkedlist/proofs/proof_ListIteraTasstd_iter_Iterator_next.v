@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.linkedlist.generated Require Import generated_code_linkedlist generated_specs_linkedlist generated_template_ListIteraTasstd_iter_Iterator_next.
 
@@ -14,12 +14,11 @@ Proof.
   ListIteraTasstd_iter_Iterator_next_prelude.
 
   rep <-! liRStep; liShow.
-  rep <-! liRStep; liShow.
   move: Hlocs.
   rep <-! liRStep.
+  (* access to the head of the list *)
   rename select (head locs = _) into Hhead.
   rewrite head_lookup in Hhead.
-  
   match type of Hlen_eq with length _ = length ?x => rename x into xs end.
   destruct xs as [ | x_head xs]; first by simpl in *.
   destruct locs as [ | hl locs]; first done.
@@ -27,6 +26,7 @@ Proof.
   simpl. iDestruct "Hxs" as "(Hx & Hxs)".
   iRevert "Hx".
   move: Hhead. 
+
   rep <-! liRStep. liShow.
   apply_update updateable_strip_guards.
   rep <-! liRStep; liShow.

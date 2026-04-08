@@ -1,4 +1,4 @@
-From caesium Require Import base byte layout.
+From radium Require Import base byte layout.
 
 (** Representation of an integer type (size and signedness). *)
 

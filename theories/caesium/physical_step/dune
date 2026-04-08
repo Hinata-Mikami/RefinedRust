@@ -1,5 +1,5 @@
 (rocq.theory
- (name caesium.physical_step)
+ (name radium.physical_step)
  (package refinedrust)
  (synopsis "Physical step library")
  (generate_project_file)

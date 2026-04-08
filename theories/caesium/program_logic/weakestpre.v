@@ -3,7 +3,7 @@
 *)
 From iris.proofmode Require Import base proofmode classes.
 From iris.base_logic.lib Require Export fancy_updates.
-From caesium.physical_step Require Export time_receipts physical_step logical_step.
+From radium.physical_step Require Export time_receipts physical_step logical_step.
 From iris.program_logic Require Export language.
 (* FIXME: If we import iris.bi.weakestpre earlier texan triples do not
    get pretty-printed correctly. *)

@@ -1,5 +1,5 @@
 From stdpp Require Import gmap list.
-From caesium Require Export base byte layout int_type loc val struct.
+From radium Require Export base byte layout int_type loc val struct.
 Set Default Proof Using "Type".
 
 (** * Heap and allocations. *)

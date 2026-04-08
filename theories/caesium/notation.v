@@ -1,4 +1,4 @@
-From caesium Require Export lang syntypes.
+From radium Require Export lang syntypes.
 Set Default Proof Using "Type".
 
 Coercion val_of_loc : loc >-> val.

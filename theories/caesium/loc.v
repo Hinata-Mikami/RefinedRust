@@ -1,4 +1,4 @@
-From caesium Require Export base layout int_type.
+From radium Require Export base layout int_type.
 Set Default Proof Using "Type".
 
 (** * Representation of locations. *)

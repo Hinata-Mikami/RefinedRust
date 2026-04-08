@@ -333,7 +333,7 @@ fn closure_test2() {
 
 #[rr::requires("(4* y.cur) ∈ i32")]
 #[rr::observe("y.ghost" : "y.cur * 4")]
-#[rr::tactics("unsafe_unfold_common_caesium_defs; solve_goal.")]
+#[rr::tactics("unsafe_unfold_common_radium_defs; solve_goal.")]
 fn closure_test3(y: &mut i32) {
     let mut z = 5;
     let mut yy = 423;

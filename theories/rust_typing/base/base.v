@@ -1,6 +1,6 @@
 From lrust.lifetime Require Export lifetime.
 From lithium Require Export all.
-From caesium Require Export proofmode notation syntypes.
+From radium Require Export proofmode notation syntypes.
 From refinedrust Require Export axioms pinned_borrows.
 From refinedrust Require Import options.
 

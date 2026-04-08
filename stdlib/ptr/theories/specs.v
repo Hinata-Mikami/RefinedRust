@@ -309,7 +309,7 @@ Proof.
   trans (2^63).
   { destruct al; simpl; lia. }
   rewrite MaxInt_eq.
-  unfold_common_caesium_defs.
+  unfold_common_radium_defs.
   simpl. lia.
 Qed.
 

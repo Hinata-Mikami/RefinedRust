@@ -70,7 +70,7 @@ macro_rules! step_integer_narrow_impls {
             impl Step for $u_narrower {
                 #[rr::default_spec]
                 #[rr::trust_me]
-                //#[rr::tactics("all: apply wrap_to_it_id; split; unsafe_unfold_common_caesium_defs; solve_goal.")]
+                //#[rr::tactics("all: apply wrap_to_it_id; split; unsafe_unfold_common_radium_defs; solve_goal.")]
                 fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
                     if *start <= *end {
                         // This relies on $u_narrower <= usize

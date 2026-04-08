@@ -1,7 +1,7 @@
-From caesium.program_logic Require Export adequacy weakestpre.
+From radium.program_logic Require Export adequacy weakestpre.
 From iris.algebra Require Import csum excl auth cmra_big_op gmap.
 From iris.base_logic.lib Require Import ghost_map.
-From caesium Require Import ghost_state.
+From radium Require Import ghost_state.
 From refinedrust Require Export type.
 From refinedrust Require Import programs functions struct.struct unit.
 From iris.program_logic Require Export language. (* must be last to get the correct nsteps *)

@@ -6,7 +6,7 @@
 From iris.prelude Require Import options.
 From iris.proofmode Require Import base proofmode environments classes classes_make
                                    modality_instances ltac_tactics.
-From caesium.physical_step Require Import physical_step.
+From radium.physical_step Require Import physical_step.
 
 (** ==============================
     Step Updates

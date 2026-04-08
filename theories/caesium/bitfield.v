@@ -1,6 +1,6 @@
 From stdpp.unstable Require Import bitblast.
 From lithium Require Import simpl_classes definitions.
-From caesium Require Import base int_type builtins_specs.
+From radium Require Import base int_type builtins_specs.
 
 (* raw bit vector constructors *)
 

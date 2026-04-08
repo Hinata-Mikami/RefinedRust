@@ -1,4 +1,4 @@
-From caesium Require Export base byte layout int_type loc struct.
+From radium Require Export base byte layout int_type loc struct.
 Set Default Proof Using "Type".
 
 (** * Bytes and values stored in memory *)

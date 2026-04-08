@@ -1,7 +1,7 @@
 From iris.program_logic Require Export language ectx_language ectxi_language.
 From stdpp Require Export strings.
 From stdpp Require Import gmap list.
-From caesium Require Export base byte layout int_type loc val heap struct.
+From radium Require Export base byte layout int_type loc val heap struct.
 Set Default Proof Using "Type".
 
 (** * Definition of the language *)
@@ -923,7 +923,7 @@ Canonical Structure valO := leibnizO val.
 Canonical Structure exprO := leibnizO expr.
 Canonical Structure allocationO := leibnizO allocation.
 
-Ltac unfold_common_caesium_defs :=
+Ltac unfold_common_radium_defs :=
   unfold
   (* Unfold [aligned_to] and [Z.divide] as lia can work with the underlying multiplication. *)
     aligned_to,

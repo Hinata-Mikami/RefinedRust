@@ -1,8 +1,8 @@
 From Equations Require Import Equations.
 From iris.bi Require Export fractional.
 From iris.base_logic.lib Require Export invariants na_invariants.
-From caesium Require Export proofmode notation.
-From caesium Require Import derived.
+From radium Require Export proofmode notation.
+From radium Require Import derived.
 From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Import int.
 From refinedrust Require Export hlist.

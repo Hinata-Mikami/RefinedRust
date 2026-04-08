@@ -1,10 +1,10 @@
 From iris.bi Require Export fractional.
 From iris.base_logic.lib Require Export invariants.
 From iris.base_logic Require Import ghost_map na_invariants.
-From caesium Require Export proofmode notation syntypes.
+From radium Require Export proofmode notation syntypes.
 From lrust.lifetime Require Export frac_borrow.
 From refinedrust Require Export base util hlist pinned_borrows lft_contexts gvar_refinement memcasts.
-From caesium Require Import loc.
+From radium Require Import loc.
 From iris.algebra Require Import stepindex_finite.
 From refinedrust Require Import options.
 

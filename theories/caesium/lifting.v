@@ -1,8 +1,8 @@
 From iris.proofmode Require Import proofmode.
-From caesium.program_logic Require Export weakestpre.
-From caesium.program_logic Require Import ectx_lifting.
-From caesium Require Export lang ghost_state notation.
-From caesium Require Import tactics.
+From radium.program_logic Require Export weakestpre.
+From radium.program_logic Require Import ectx_lifting.
+From radium Require Export lang ghost_state notation.
+From radium Require Import tactics.
 Export logical_step.
 Set Default Proof Using "Type".
 Import uPred.

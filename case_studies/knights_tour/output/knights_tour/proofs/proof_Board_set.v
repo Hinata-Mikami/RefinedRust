@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.knights_tour.generated Require Import generated_code_knights_tour generated_specs_knights_tour generated_template_Board_set.
 

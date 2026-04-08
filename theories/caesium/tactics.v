@@ -1,5 +1,5 @@
 From stdpp Require Import fin_maps.
-From caesium Require Export notation.
+From radium Require Export notation.
 Set Default Proof Using "Type".
 
 Module W.

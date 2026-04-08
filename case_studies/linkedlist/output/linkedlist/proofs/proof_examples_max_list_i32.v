@@ -1,4 +1,4 @@
-From caesium Require Import lang notation.
+From radium Require Import lang notation.
 From refinedrust Require Import typing shims.
 From refinedrust.examples.linkedlist.generated Require Import generated_code_linkedlist generated_specs_linkedlist generated_template_examples_max_list_i32.
 
@@ -17,7 +17,7 @@ Proof.
   all: print_remaining_goal.
   Unshelve. all: sidecond_solver.
   Unshelve. all: sidecond_hammer.
-  { unsafe_unfold_common_caesium_defs. simpl. lia. }
+  { unsafe_unfold_common_radium_defs. simpl. lia. }
   { case_bool_decide as Heq; revert Heq; normalize_and_simpl_goal_step; first [done |
      rewrite max_list_Z_with_def; solve_goal]. }
   Unshelve. all: print_remaining_sidecond.

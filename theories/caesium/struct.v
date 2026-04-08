@@ -1,6 +1,6 @@
 From stdpp Require Export strings.
 From stdpp Require Import gmap list.
-From caesium Require Export base layout int_type loc char.
+From radium Require Export base layout int_type loc char.
 Set Default Proof Using "Type".
 
 Notation var_name := string (only parsing).

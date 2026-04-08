@@ -2,7 +2,7 @@ From iris.program_logic Require Export weakestpre.
 From iris.proofmode Require Import coq_tactics reduction.
 From iris.proofmode Require Export proofmode.
 From iris.program_logic Require Import lifting.
-From caesium Require Export tactics lifting.
+From radium Require Export tactics lifting.
 Set Default Proof Using "Type".
 Import uPred.
 

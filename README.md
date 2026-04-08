@@ -14,7 +14,7 @@ Case studies and tests can be found in the `case_studies` subfolder.
 Stdlib interfaces (without proofs) can be found in the `stdlib` subfolder.
 
 ### For the `theories` subfolder:
-* the `caesium` subfolder contains the Radium operational semantics, an adaptation of RefinedC's Caesium semantics.
+* the `radium` subfolder contains the Radium operational semantics, an adaptation of RefinedC's Caesium semantics.
 * the `lithium` subfolder contains RefinedC's Lithium separation logic automation engine with very lightweight modifications.
 * the `rust_typing` subfolder contains the implementation of the RefinedRust type system and proof automation.
 

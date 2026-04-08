@@ -4,7 +4,7 @@
 (** Some derived lemmas for ectx-based languages *)
 From iris.proofmode Require Import proofmode.
 From iris.program_logic Require Export ectx_language.
-From caesium.program_logic Require Export weakestpre lifting.
+From radium.program_logic Require Export weakestpre lifting.
 From iris.prelude Require Import options.
 
 Section wp.

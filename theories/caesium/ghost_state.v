@@ -6,7 +6,7 @@ From iris.bi Require Import fractional.
 From iris.base_logic Require Export lib.own.
 From iris.base_logic.lib Require Import ghost_map.
 From iris.proofmode Require Export proofmode.
-From caesium Require Export lang syntypes.
+From radium Require Export lang syntypes.
 Set Default Proof Using "Type".
 Import uPred.
 
