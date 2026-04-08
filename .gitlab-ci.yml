@@ -208,7 +208,6 @@ nix-shell:
     MAKE_TARGET: "all_with_examples"
 
   script:
-   - ./scripts/install-verit.sh
    - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
    - make setup-dune-workspace
    - source "$HOME/.cargo/env"
