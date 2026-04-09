@@ -124,6 +124,8 @@ builddep/refinedrust-builddep.opam: theories/refinedrust.opam Makefile
 #  2) they will remain satisfied even if other packages are updated/installed,
 #  3) we do not have to pin the RefinedRust package itself (which takes time).
 builddep: builddep/refinedrust-builddep.opam
+	@opam -y remove refinedrust-builddep || true
+	@opam -y pin remove refinedrust-builddep || true
 	@echo "# Installing package $^."
 	@opam install $(OPAMFLAGS) $^
 .PHONY: builddep

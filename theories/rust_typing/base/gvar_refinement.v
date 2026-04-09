@@ -1,6 +1,6 @@
 From iris.bi Require Export fractional.
 From refinedrust Require Export base.
-From refinedrust Require Export ghost_var_dfrac.
+From iris.base_logic Require Export ghost_var.
 From refinedrust Require Import options.
 
 (** * Borrow variables *)
@@ -61,11 +61,11 @@ Section ghost_variables.
 
   Lemma gvar_obs_persist γ t :
     gvar_obs γ t ==∗ gvar_pobs γ t.
-  Proof. iApply ghost_var_discard. Qed.
+  Proof. iApply ghost_var_persist. Qed.
 
   Lemma gvar_auth_persist γ t :
     gvar_auth γ t ==∗ gvar_pobs γ t.
-  Proof. iApply ghost_var_discard. Qed.
+  Proof. iApply ghost_var_persist. Qed.
 
   Lemma gvar_agree γ t1 t2:
     gvar_auth γ t1 -∗ gvar_obs γ t2 -∗ ⌜t1 = t2⌝.
