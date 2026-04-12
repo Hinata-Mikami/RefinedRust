@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "analysis",
-    "annotations",
     "attribute_parse",
     "radium",
     "refinedrust_frontend",
