@@ -1,7 +1,9 @@
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
+#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
+#![allow(unused)]
 
 #![rr::package("linkedlist")]
 #![rr::include("stdlib")]
@@ -9,6 +11,7 @@
 use std::marker::PhantomData;
 
 mod examples;
+mod demo;
 
 struct Link<T> {
     value: T,
