@@ -939,38 +939,8 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
         .unwrap();
 
         // write proofs (subdirectory "proofs")
-        let make_proof_file_name = |name| format!("proof_{}.v", name);
-
         info!("using {} as proof directory", proof_dir_path.to_str().unwrap());
-        if let Ok(read) = fs::read_dir(proof_dir_path) {
-            // directory already exists, we want to check if there are any stale proof files and
-            // issue a warning in that case
-
-            // build the set of proof files we are going to expect
-            let mut proof_files_to_generate = BTreeSet::new();
-            for (did, fun) in self.procedure_registry.iter_code() {
-                if self.check_function_needs_proof(did.def_id, fun) {
-                    proof_files_to_generate.insert(make_proof_file_name(fun.name()));
-                }
-            }
-
-            for file in read.flatten() {
-                // check if the file name is okay
-                let filename = file.file_name();
-                let Some(filename) = filename.to_str() else {
-                    continue;
-                };
-
-                if filename == "dune" {
-                    continue;
-                }
-                if proof_files_to_generate.contains(filename) {
-                    continue;
-                }
-
-                println!("Warning: Proof file {filename} does not have a matching Rust function to verify.");
-            }
-        } else {
+        if fs::read_dir(proof_dir_path).is_err() {
             warn!("Output directory {} does not exist, creating directory", proof_dir_path.display());
             fs::create_dir_all(proof_dir_path).unwrap();
         }
@@ -983,6 +953,32 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
             |name| format!("trait_incl_{name}"),
             stem,
         );
+
+        // Check for extra proof files which we did not create/expect
+        if let Ok(read) = fs::read_dir(proof_dir_path) {
+            for file in read.flatten() {
+                // check if the file name is okay
+                let filename = file.file_name();
+                let Some(filename) = filename.to_str() else {
+                    continue;
+                };
+
+                if filename == "dune" {
+                    continue;
+                }
+                if filename == "_RocqProject" {
+                    continue;
+                }
+                if Path::new(filename).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("v")) {
+                    let name = filename.split('.').next().unwrap();
+                    if proof_modules.contains(&name.to_owned()) {
+                        continue;
+                    }
+                }
+
+                println!("Warning: Proof file {filename} does not have a matching Rust function to verify.");
+            }
+        }
 
         // write proof dune file
         let proof_dune_path = proof_dir_path.join("dune");

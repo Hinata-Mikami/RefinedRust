@@ -39,6 +39,7 @@ use std::mem;
 pub struct Box<T, A: Allocator = Global, >(#[rr::field("l")] Unique<T>, #[rr::field("$# a")] A);
 
 // TODO: should be T: ?Sized
+#[rr::export_as(alloc::boxed::Box)]
 impl<T, A: Allocator> Box<T, A> {
     #[rr::params("b")]
     #[rr::requires(#type "raw" : "($#@{{ {rt_of T} }} b)" @ "{T}")]

@@ -16,22 +16,25 @@ Record traits_iterator_Iterator_spec_attrs `{RRGS : !(refinedrustGS Σ)} `{Self_
 #[global] Arguments traits_iterator_Iterator_spec_attrs {_ _}.
 #[global] Arguments mk_traits_iterator_Iterator_spec_attrs  {_} {_} {_} {_}.
 
+(* Note: Depends on the whole attrs instead of the Next projection so that the projection doesn't simplify away, which is a problem for [LearnFromHyp] rules. *)
+Fixpoint IteratorNextFusedTrans `{RRGS : !refinedrustGS Σ} {Self_rt Item_rt : RT}
+  (attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
+  (π : thread_id)
+  p
+  (s1 : RT_xt Self_rt) (els : list (RT_xt Item_rt)) (s2 : RT_xt Self_rt) : iProp Σ
+  :=
+  match els with
+  | [] => ⌜s1 = s2⌝
+  | (e1 :: els) =>
+    ∃ s1',
+      attrs.(traits_iterator_Iterator_Next) π p s1 (Some e1) s1' ∗
+      IteratorNextFusedTrans attrs π p s1' els s2
+  end.
+Global Notation "it '-[[' A ',' π ',' p ']]->[' els ']' itn" := 
+  (IteratorNextFusedTrans A π p it els itn)%I (at level 20) : stdpp_scope.
+
 Section trans.
   Context `{RRGS : !refinedrustGS Σ}.
-  (* Note: Depends on the whole attrs instead of the Next projection so that the projection doesn't simplify away, which is a problem for [LearnFromHyp] rules. *)
-  Fixpoint IteratorNextFusedTrans {Self_rt Item_rt : RT}
-    (attrs : traits_iterator_Iterator_spec_attrs Self_rt Item_rt)
-    (π : thread_id)
-    p
-    (s1 : RT_xt Self_rt) (els : list (RT_xt Item_rt)) (s2 : RT_xt Self_rt) : iProp Σ
-    :=
-    match els with
-    | [] => ⌜s1 = s2⌝
-    | (e1 :: els) =>
-      ∃ s1',
-        attrs.(traits_iterator_Iterator_Next) π p s1 (Some e1) s1' ∗
-        IteratorNextFusedTrans attrs π p s1' els s2
-    end.
 
   Lemma iterator_next_fused_trans_snoc {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) π p s1 hist s2 x :
     IteratorNextFusedTrans A π p s1 (hist ++ [x]) s2 ⊣⊢ (∃ s2', IteratorNextFusedTrans A π p s1 hist s2' ∗ A.(traits_iterator_Iterator_Next) π p s2' (Some x) s2).
@@ -122,7 +125,7 @@ Section trans.
   Class IteratorLearnInductive {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) p := mk_iterator_learn {
     iterator_learn_inductive_Q : RT_xt Self_rt → list (RT_xt Item_rt) → RT_xt Self_rt → Prop;
     iterator_learn_inductive_proof π s1 hist s2 :
-      ☒ IteratorNextFusedTrans A π p s1 hist s2 -∗ ⌜iterator_learn_inductive_Q s1 hist s2⌝;
+      ☒ s1 -[[ A, π, p ]]->[hist] s2 -∗ ⌜iterator_learn_inductive_Q s1 hist s2⌝;
   }.
 
   Global Program Instance learn_from_hyp_iterator {Self_rt Item_rt : RT} (A : traits_iterator_Iterator_spec_attrs Self_rt Item_rt) π p s1 xs s2 :

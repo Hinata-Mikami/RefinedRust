@@ -35,7 +35,7 @@ impl<T: Sized> Unique<T> {
     #[rr::ensures("l `has_layout_loc` {ly_of T}")]
     #[rr::ensures(#type "l" : "()" @ "uninit UnitSynType")]
     #[rr::ensures(#iris "freeable_nz l 0 1 HeapAlloc")]
-    pub const fn empty() -> Self {
+    pub const fn dangling() -> Self {
         unsafe { Self::new_unchecked(ptr::dangling_mut()) }
     }
 }

@@ -155,41 +155,6 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn swap_remove(&mut self, index: usize) -> T {
         unreachable!(); 
     }
-
-    #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::requires("i < length xs")]
-    #[rr::exists("γi")]
-    #[rr::returns("((xs !!! i), γi)")]
-    #[rr::observe("γ": "<[i := PlaceGhost γi]> (<$#>  xs)")]
-    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-        unreachable!(); 
-    }
-
-    #[rr::params("xs", "γ", "i" : "nat")]
-    #[rr::args("(xs, γ)", "Z.of_nat i")]
-    #[rr::exists("γi")]
-    #[rr::returns("if decide (i < length xs) then Some (xs !!! i, γi) else None")]
-    #[rr::observe("γ": "if decide (i < length xs) then <[i := PlaceGhost γi]> (<$#> xs) else <$#> xs")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        unreachable!(); 
-    }
-
-    #[rr::params("xs", "i" : "nat")]
-    #[rr::args("xs", "Z.of_nat i")]
-    #[rr::requires("i < length xs")]
-    #[rr::returns("(xs !!! i)")]
-    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
-        unreachable!(); 
-    }
-
-    #[rr::params("xs", "i" : "nat")]
-    #[rr::args("xs", "Z.of_nat i")]
-    #[rr::returns("if decide (i < length xs) then Some (xs !!! i) else None")]
-    pub fn get(&self, index: usize) -> Option<&T> {
-        unreachable!();
-    }
-
 }
 
 #[rr::only_spec]

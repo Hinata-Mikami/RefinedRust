@@ -12,6 +12,7 @@ pub struct Alignment(#[rr::field("x")] AlignmentEnum);
 /// Radium works with a 64-bit pointer representation.
 #[repr(u64)]
 #[rr::refined_by("alignment_enum")]
+#[rr::export_as(core::mem::AlignmentEnum)]
 #[derive(Copy, Clone)]
 enum AlignmentEnum {
     #[rr::pattern("_Align1Shl0")]

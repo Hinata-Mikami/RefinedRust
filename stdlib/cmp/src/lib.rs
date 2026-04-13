@@ -25,6 +25,7 @@ pub enum Ordering {
 }
 use Ordering::*;
 
+#[rr::export_as(core::cmp::Ordering)]
 impl Ordering {
     #[rr::returns("match self with | Less => -1 | Equal => 0 | Greater => 1 end")]
     const fn as_raw(self) -> i8 {
