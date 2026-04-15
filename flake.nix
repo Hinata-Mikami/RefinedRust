@@ -134,6 +134,35 @@
               pname = "lambda-rust";
               propagatedBuildInputs = [iris];
             };
+
+            solver = let
+              smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
+                inherit (rocq.smtcoq) version;
+
+                pname = "smtcoq";
+                owner = "smtcoq";
+                repo = "smtcoq";
+
+                mlPlugin = true;
+                propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
+
+                release.${version}.sha256 = "${rocq.smtcoq.sha256}";
+              };
+
+              sniper = pkgs.rocqPackages.mkRocqDerivation rec {
+                inherit (rocq.sniper) version;
+
+                pname = "sniper";
+                owner = "smtcoq";
+                repo = "sniper";
+
+                mlPlugin = true;
+                propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
+
+                release.${version}.sha256 = "${rocq.sniper.sha256}";
+              };
+            in
+              sniper;
           in
             pkgs.rocqPackages.mkRocqDerivation {
               inherit meta version;
@@ -142,37 +171,9 @@
               opam-name = name;
               src = ./theories;
 
-              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust];
+              propagatedBuildInputs = [pkgs.rocqPackages.equations iris-contrib lambda-rust solver];
               useDune = true;
             };
-
-          solver = let
-            smtcoq = pkgs.rocqPackages.mkRocqDerivation rec {
-              inherit (rocq.smtcoq) version;
-
-              pname = "smtcoq";
-              owner = "smtcoq";
-              repo = "smtcoq";
-
-              mlPlugin = true;
-              propagatedBuildInputs = with pkgs; [ocamlPackages.num rocqPackages.stdlib rocqPackages.trakt verit];
-
-              release.${version}.sha256 = "${rocq.smtcoq.sha256}";
-            };
-
-            sniper = pkgs.rocqPackages.mkRocqDerivation rec {
-              inherit (rocq.sniper) version;
-
-              pname = "sniper";
-              owner = "smtcoq";
-              repo = "sniper";
-
-              mlPlugin = true;
-              propagatedBuildInputs = [pkgs.rocqPackages.metarocq-template smtcoq];
-
-              release.${version}.sha256 = "${rocq.sniper.sha256}";
-            };
-          in sniper;
 
           frontend = rust.envBuilder.buildPackage rec {
             inherit meta version;
@@ -208,8 +209,7 @@
                 in
                   [pkgs.gcc pkgs.gnupatch packages.frontend toolchain]
                   ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-                  ++ (fetchRocqDeps packages.stdlib)
-                  ++ (fetchRocqDeps packages.solver);
+                  ++ (fetchRocqDeps packages.stdlib);
 
                 nativeBuildInputs = [pkgs.makeWrapper];
                 postBuild = ''
@@ -441,8 +441,8 @@
       devShells.default = pkgs.mkShell {
         inputsFrom = with packages; [frontend theories];
         packages = with pkgs;
-              [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
-                ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
+          [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev]
+          ++ [pkgs.ocamlPackages.num pkgs.verit pkgs.rocqPackages.metarocq-template pkgs.rocqPackages.rocq-elpi];
         LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
         LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];

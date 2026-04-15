@@ -70,7 +70,7 @@ _: pkgs: prev: rec {
       propagatedBuildInputs = with prev.rocq-core.ocamlPackages; [
         findlib
         ppx_optcomp
-        (elpi.override { version = "3.6.1"; })
+        (elpi.override {version = "3.6.1";})
       ];
     };
 

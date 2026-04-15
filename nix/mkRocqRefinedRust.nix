@@ -29,7 +29,7 @@
   theories = pkgs.rocqPackages.mkRocqDerivation ({
       src = "${src}/theories";
       propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib rrPkgs.solver])
+        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
         ++ libDeps
         ++ propagatedBuildInputs;
 
@@ -46,7 +46,7 @@ in
       pname = "refinedrust-" + pname;
 
       propagatedBuildInputs =
-        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib rrPkgs.solver])
+        (pkgs.lib.optionals withStdlib [rrPkgs.stdlib])
         ++ libDeps
         ++ propagatedBuildInputs
         ++ (pkgs.lib.optionals withTheories [theories]);
