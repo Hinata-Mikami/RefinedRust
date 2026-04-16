@@ -24,5 +24,8 @@ topological-sort.workspace = true
 typed-arena.workspace = true
 nom.workspace = true
 
+[dev-dependencies]
+compiletest_rs.workspace = true
+
 [package.metadata.rust-analyzer]
 rustc_private = true

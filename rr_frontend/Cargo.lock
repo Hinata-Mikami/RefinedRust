@@ -1101,6 +1101,7 @@ version = "0.1.0"
 dependencies = [
  "analysis",
  "attribute_parse",
+ "compiletest_rs",
  "datafrog",
  "derive_more",
  "log",

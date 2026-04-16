@@ -16,6 +16,7 @@ use rr_rustc_interface::{hir, span};
 use typed_arena::Arena;
 
 use crate::base::*;
+use crate::body::mir_mapper;
 use crate::body::translation;
 use crate::environment::procedure::Procedure;
 use crate::error::Message;
@@ -412,6 +413,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let body = proc.get_mir();
         Self::dump_body(body);
 
+        let drop_elab = tcx.mir_drops_elaborated_and_const_checked(proc.get_id().expect_local());
+        let drop_elab = drop_elab.borrow();
+        Self::dump_body(&drop_elab);
+        let mapping = mir_mapper::map_drop_elaborated_to_borrow_checked(body, &drop_elab);
+        for line in mir_mapper::format_mapping(body, &drop_elab, &mapping).lines() {
+            info!("{line}");
+        }
+
+
         let ty: ty::EarlyBinder<'_, ty::Ty<'tcx>> = tcx.type_of(proc.get_id());
         info!("Function type: {ty:?}");
 
@@ -806,12 +816,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
     /// Dump a basic block as info debug output.
     fn dump_basic_block(bb_idx: mir::BasicBlock, bb: &mir::BasicBlockData<'_>) {
-        info!("Basic block {:?}:", bb_idx);
+        info!("Basic block {bb_idx:?}:");
         let mut i = 0;
         for s in &bb.statements {
-            info!("{}\t{:?}", i, s);
+            let span = s.source_info.span;
+            info!("{i}\t{s:?}\t\t{span:?}");
             i += 1;
         }
-        info!("{}\t{:?}", i, bb.terminator());
+        let term = bb.terminator();
+        let span = term.source_info.span;
+        info!("{i}\t{term:?}\t\t{span:?}");
     }
 }

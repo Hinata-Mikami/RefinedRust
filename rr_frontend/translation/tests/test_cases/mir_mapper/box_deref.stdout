@@ -1,0 +1,8 @@
+Mapping for function box_deref:
+summary: total=5 mapped=5 unmapped=0
+
+bb0[0] _2 = copy ((_1.0: std::ptr::Unique<u32>).0: std::ptr::NonNull<u32>) as *const u32 (Transmute) -> SplitFrom(bb0[0] _0 = copy (*_1))
+bb0[1] _0 = copy (*_2) -> SplitFrom(bb0[0] _0 = copy (*_1))
+bb0[2] drop(_1) -> [return: bb1, unwind: bb2] -> Source(bb0[1] drop(_1) -> [return: bb1, unwind: bb2])
+bb1[0] return -> Source(bb1[0] return)
+bb2[0] resume -> Source(bb2[0] resume)

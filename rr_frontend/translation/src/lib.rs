@@ -31,6 +31,8 @@ mod traits;
 mod types;
 mod unification;
 
+pub use crate::body::{MappingResult, Origin, SourceLoc, TargetLoc, format_mapping, map_drop_elaborated_to_borrow_checked};
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::fs::File;

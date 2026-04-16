@@ -6,5 +6,7 @@
 
 pub(crate) mod signature;
 mod translation;
+mod mir_mapper;
 
+pub use self::mir_mapper::{MappingResult, Origin, SourceLoc, TargetLoc, format_mapping, map_drop_elaborated_to_borrow_checked};
 pub(crate) use translation::get_arg_syntypes_for_procedure_call;
