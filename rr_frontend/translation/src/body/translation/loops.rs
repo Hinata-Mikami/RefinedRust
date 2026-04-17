@@ -111,7 +111,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Then I will be able to refer to the attribute term of that.
 
         let ty::TyKind::FnDef(_, params) = fn_ty.kind() else {
-            return Err(TranslationError::UnknownError("not a FnDef type".to_owned()));
+            return Err(TranslationError::ExpectedFnDefType);
         };
 
         // exploiting that Iterator has the same args as Iterator::next

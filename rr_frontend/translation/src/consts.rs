@@ -34,7 +34,7 @@ impl<'def> Scope<'def> {
         did: OrderedDefId,
     ) -> Result<&code::StaticMeta<'def>, TranslationError<'tcx>> {
         self.statics.get(&did).ok_or_else(|| {
-            TranslationError::UnknownError(format!(
+            TranslationError::MissingRegisteredStatic(format!(
                 "Did not find a registered static for did {did:?}; registered: {:?}",
                 self.statics
             ))

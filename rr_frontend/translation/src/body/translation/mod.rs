@@ -29,6 +29,7 @@ use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
+use crate::error::Message;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::traits::registry;
 use crate::{consts, procedures, regions, rustcmp, types};
@@ -134,8 +135,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let empty_args = tcx.mk_type_list(&[]);
         let mut return_ty = tcx.mk_ty_from_kind(ty::TyKind::Tuple(empty_args));
         let mut fn_locals = Vec::new();
-        let mut opt_return_name =
-            Err(TranslationError::UnknownError("could not find local for return value".to_owned()));
+        let mut opt_return_name = Err(TranslationError::MissingReturnValueLocal);
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
@@ -495,7 +495,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             .local_decls
             .get(local)
             .map(|decl| decl.ty)
-            .ok_or_else(|| TranslationError::UnknownVar(String::new()))
+            .ok_or_else(|| self.tcx.dcx().err(Message::UnknownVar(format!("{local:?}"))).into())
     }
 
     /// Get the type of a place expression.

@@ -235,9 +235,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let translated_ty = self.ty_translator.translate_type(ty)?;
                 let specs::Type::Int(it) = translated_ty else {
-                    return Err(TranslationError::UnknownError(
-                        "SwitchInt switching on non-integer type".to_owned(),
-                    ));
+                    return Err(TranslationError::SwitchIntOnNonIntegerType);
                 };
 
                 Ok(code::Stmt::Switch {

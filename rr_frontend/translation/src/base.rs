@@ -16,7 +16,7 @@ use rr_rustc_interface::{borrowck, polonius_engine};
 use topological_sort::TopologicalSort;
 
 use crate::environment::borrowck::facts;
-use crate::traits;
+use crate::{error, traits};
 
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
@@ -117,26 +117,32 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Unsupported Feature: {}", description)]
     UnsupportedFeature { description: String },
 
-    #[display("Unsupported Type: {}", description)]
-    UnsupportedType { description: String },
-
-    #[display("Recursive type does not have an invariant: {:?}", _0)]
-    RecursiveTypeWithoutInvariant(DefId),
-
     #[display("Unimplemented Case: {}", description)]
     Unimplemented { description: String },
 
     #[display("Invalid Layout")]
     InvalidLayout,
 
-    #[display("Unknown Variable: {}", _0)]
-    UnknownVar(String),
+    #[display("Expected an FnDef type")]
+    ExpectedFnDefType,
 
-    #[display("Unknown Error: {}", _0)]
-    UnknownError(String),
+    #[display("Expected SwitchInt discriminator to have integer type")]
+    SwitchIntOnNonIntegerType,
 
-    #[display("Fatal Error: {}", _0)]
-    FatalError(String),
+    #[display("ADT downcast on non-enum type")]
+    AdtDowncastOnNonEnumType,
+
+    #[display("Could not find local for return value")]
+    MissingReturnValueLocal,
+
+    #[display("Cannot take offset of {}", _0)]
+    OffsetOnUnsupportedType(String),
+
+    #[display("Application of UnOp::Not to non-{{Int, Bool}}")]
+    UnOpNotOnUnsupportedType,
+
+    #[display("Did not find a registered static: {}", _0)]
+    MissingRegisteredStatic(String),
 
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
@@ -144,29 +150,8 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Configured attribute-parser is unknown: {}", _0)]
     UnknownAttributeParser(String),
 
-    #[display("Unknown procedure: {}", _0)]
-    UnknownProcedure(String),
-
-    #[display("Unknown early region: {:?}", _0)]
-    UnknownEarlyRegion(ty::EarlyParamRegion),
-
-    #[display("Unknown late region (outside function): (binder {}, var {})", _0, _1)]
-    UnknownLateRegionOutsideFunction(usize, usize),
-
-    #[display("Unknown late region: (binder {}, var {})", _0, _1)]
-    UnknownLateRegion(usize, usize),
-
-    #[display("Cannot translate placeholder region")]
-    PlaceholderRegion,
-
     #[display("Cannot translate unknown region: {:?}", _0)]
     UnknownRegion(ty::Region<'tcx>),
-
-    #[display("Encountered Polonius region outside function: {:?}", _0)]
-    PoloniusRegionOutsideFunction(facts::Region),
-
-    #[display("Cannot translate Polonius region: {:?}", _0)]
-    UnknownPoloniusRegion(facts::Region),
 
     #[display("Trait could not be resolved: {}", _0)]
     TraitResolution(String),
@@ -185,6 +170,18 @@ pub(crate) enum TranslationError<'tcx> {
 
     #[display("Error reported")]
     ErrorReported(ErrorGuaranteed),
+
+    #[display("Error reported (tainted state)")]
+    Tainted(ErrorGuaranteed),
+
+    #[display("Internal error: {}", _0)]
+    Internal(InternalError),
+}
+
+#[derive(Clone, Debug, Display)]
+pub(crate) enum InternalError {
+    #[display("Encountered Polonius region outside function: {:?}", _0)]
+    PoloniusRegionOutsideFunction(facts::Region),
 }
 
 impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {
@@ -197,4 +194,14 @@ impl From<ErrorGuaranteed> for TranslationError<'_> {
     fn from(x: ErrorGuaranteed) -> Self {
         Self::ErrorReported(x)
     }
+}
+
+impl From<InternalError> for TranslationError<'_> {
+    fn from(x: InternalError) -> Self {
+        Self::Internal(x)
+    }
+}
+
+pub(crate) fn emit_tainted<'tcx>(tcx: ty::TyCtxt<'tcx>, msg: error::Message<'tcx>) -> TranslationError<'tcx> {
+    TranslationError::Tainted(tcx.dcx().err(msg))
 }

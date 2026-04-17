@@ -7,9 +7,12 @@
 use derive_more::Display;
 use rr_rustc_interface::errors::DiagMessage;
 use rr_rustc_interface::hir::def_id::DefId;
+use rr_rustc_interface::middle::ty;
 
 use crate::{procedures, traits};
+use crate::base;
 
+#[expect(dead_code)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Message<'tcx> {
     #[display("No assumption is allowed, but this function is annotated with `#[rr::{}]`", _0)]
@@ -20,6 +23,84 @@ pub(crate) enum Message<'tcx> {
 
     #[display("ADT shim was overridden for {:?}", _0)]
     OverriddenAdtShim(DefId),
+
+    #[display("Cannot translate unknown region: {:?}", _0)]
+    UnknownRegion(ty::Region<'tcx>),
+
+    #[display("Cannot translate placeholder region")]
+    PlaceholderRegion,
+
+    #[display("Unknown early region: {:?}", _0)]
+    UnknownEarlyRegion(ty::EarlyParamRegion),
+
+    #[display("Unknown late region: (binder {}, var {})", _0, _1)]
+    UnknownLateRegion(usize, usize),
+
+    #[display("Unknown late region (outside function): (binder {}, var {})", _0, _1)]
+    UnknownLateRegionOutsideFunction(usize, usize),
+
+    #[display("Cannot translate Polonius region: {:?}", _0)]
+    UnknownPoloniusRegion(base::Region),
+
+    #[display("Unknown generic parameter: {}", _0)]
+    UnknownGenericParam(String),
+
+    #[display("No refinement annotated for field {}", _0)]
+    MissingFieldRefinement(String),
+
+    #[display("generate_adt_shim_use called for unknown adt shim {:?}", _0)]
+    UnknownAdtShim(DefId),
+
+    #[display("Could not get field {} of {}", _0, _1)]
+    UnknownField(String, String),
+
+    #[display("Expected a structlike type: {}", _0)]
+    ExpectedStructlike(String),
+
+    #[display("Unsupported feature: {}", _0)]
+    UnsupportedFeature(String),
+
+    #[display("Unsupported type: {}", _0)]
+    UnsupportedType(String),
+
+    #[display("Unknown function kind")]
+    UnknownFunctionKind,
+
+    #[display("Unknown variable: {}", _0)]
+    UnknownVar(String),
+
+    #[display("Unknown procedure: {}", _0)]
+    UnknownProcedure(String),
+
+    #[display("Unimplemented case: {}", _0)]
+    Unimplemented(String),
+
+    #[display("Invalid layout")]
+    InvalidLayout,
+
+    #[display("Trait resolution failed: {}", _0)]
+    TraitResolution(String),
+
+    #[display("Recursive type does not have an invariant: {:?}", _0)]
+    RecursiveTypeWithoutInvariant(DefId),
+
+    #[display("Attribute is ill-formed: {}", _0)]
+    AttributeError(String),
+
+    #[display("Failed to parse struct invariant spec: {}", _0)]
+    StructInvariantSpecParse(String),
+
+    #[display("Failed to parse field specification: {}", _0)]
+    FieldSpecParseError(String),
+
+    #[display("Failed to const-evaluate discriminant: {}", _0)]
+    DiscriminantConstEval(String),
+
+    #[display("Failed to parse enum spec: {}", _0)]
+    EnumSpecParse(String),
+
+    #[display("Failed to parse `refine_as` enum annotation: {}", _0)]
+    EnumRefineAsParse(String),
 
     #[display("Trait translation failed: {}", _0)]
     TraitTranslation(traits::Error<'tcx>),

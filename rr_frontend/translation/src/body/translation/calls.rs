@@ -17,6 +17,7 @@ use super::{TX, TranslationKey};
 use crate::base::*;
 use crate::body::translation::{ExprInfo, ExprWithInfo};
 use crate::environment::borrowck::facts;
+use crate::error::Message;
 use crate::traits::registry::ResolvedTraitReq;
 use crate::traits::{self, resolution};
 use crate::types::STInner;
@@ -148,10 +149,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let meta = self
-                .procedure_registry
-                .lookup_function(callee_did)
-                .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", callee_did)))?;
+            let meta = self.procedure_registry.lookup_function(callee_did).ok_or_else(
+                || -> TranslationError<'tcx> {
+                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", callee_did))).into()
+                },
+            )?;
             // explicit instantiation is needed sometimes
             let spec_term = code::UsedProcedureSpec::Literal(
                 meta.get_spec_name().to_owned(),
@@ -413,10 +415,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         if let Some(proc_use) = self.collected_procedures.get(&tup) {
             res = proc_use.loc_name.clone();
         } else {
-            let (_, meta) = self
-                .trait_registry
-                .lookup_closure_impl(closure_did, closure_kind)
-                .ok_or_else(|| TranslationError::UnknownProcedure(format!("{:?}", call_fn_did)))?;
+            let (_, meta) = self.trait_registry.lookup_closure_impl(closure_did, closure_kind).ok_or_else(
+                || -> TranslationError<'tcx> {
+                    self.tcx.dcx().err(Message::UnknownProcedure(format!("{:?}", call_fn_did))).into()
+                },
+            )?;
 
             // explicit instantiation is needed sometimes
             let spec_term = code::UsedProcedureSpec::Literal(
@@ -490,7 +493,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
-            return Err(TranslationError::UnknownError("not a FnDef type".to_owned()));
+            return Err(TranslationError::ExpectedFnDefType);
         };
 
         let current_typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());

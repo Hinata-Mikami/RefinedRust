@@ -560,7 +560,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         match ty.kind() {
             ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
             ty::TyKind::RawPtr(ty, _) => Ok(*ty),
-            _ => Err(TranslationError::UnknownError(format!("cannot take offset of {}", ty))),
+            _ => Err(TranslationError::OffsetOnUnsupportedType(format!("{ty}"))),
         }
     }
 
@@ -570,9 +570,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::UnOp::Not => match ty.kind() {
                 ty::TyKind::Bool => Ok(code::Unop::NotBool),
                 ty::TyKind::Int(_) | ty::TyKind::Uint(_) => Ok(code::Unop::NotInt),
-                _ => Err(TranslationError::UnknownError(
-                    "application of UnOp::Not to non-{Int, Bool}".to_owned(),
-                )),
+                _ => Err(TranslationError::UnOpNotOnUnsupportedType),
             },
             mir::UnOp::Neg => Ok(code::Unop::Neg),
             mir::UnOp::PtrMetadata => Err(TranslationError::UnsupportedFeature {

@@ -760,7 +760,7 @@ impl<'rcx> VerificationCtxt<'_, 'rcx> {
 
             imports.append(&mut vec![
                 coq::module::Import::new(vec![&format!("generated_specs_{stem}")]).from(vec![
-                    &self.coq_path_prefix,
+                    self.coq_path_prefix.as_str(),
                     stem,
                     "generated",
                 ]),
@@ -1383,7 +1383,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 Err(err) => Err(err),
             }
         },
-        _ => Err(base::TranslationError::UnknownError("unknown function kind".to_owned())),
+        _ => Err(vcx.tcx.dcx().err(error::Message::UnknownFunctionKind).into()),
     };
 
     if mode.is_only_spec() {
@@ -1403,8 +1403,13 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 }
                 true
             },
-            Err(base::TranslationError::FatalError(err)) => {
+            Err(base::TranslationError::Tainted(err)) => {
                 println!("Encountered fatal cross-function error in translation: {:?}", err);
+                println!("Aborting...");
+                false
+            },
+            Err(base::TranslationError::Internal(err)) => {
+                println!("Encountered internal error in translation: {:?}", err);
                 println!("Aborting...");
                 false
             },
@@ -1437,8 +1442,13 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 }
                 true
             },
-            Err(base::TranslationError::FatalError(err)) => {
+            Err(base::TranslationError::Tainted(err)) => {
                 println!("Encountered fatal cross-function error in translation: {:?}", err);
+                println!("Aborting...");
+                false
+            },
+            Err(base::TranslationError::Internal(err)) => {
+                println!("Encountered internal error in translation: {:?}", err);
                 println!("Aborting...");
                 false
             },
@@ -1851,9 +1861,14 @@ fn assemble_closure_impls<'tcx, 'rcx>(vcx: &mut VerificationCtxt<'tcx, 'rcx>) {
                     // store the trait impl
                     info.generated_impls.push(spec);
                 },
-                Err(base::TranslationError::FatalError(err)) => {
+                Err(base::TranslationError::Tainted(err)) => {
                     exit_with_error(&format!(
                         "Encountered error when translating {err:?} closure impl {closure_did:?}, stopping..."
+                    ));
+                },
+                Err(base::TranslationError::Internal(err)) => {
+                    exit_with_error(&format!(
+                        "Encountered internal error when translating {err:?} closure impl {closure_did:?}, stopping..."
                     ));
                 },
                 Err(err) => {
@@ -1986,9 +2001,14 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) {
                 vcx.trait_impls.insert(ordered_did, spec);
                 vcx.trait_impl_deps.insert(ordered_did, deps);
             },
-            Err(base::TranslationError::FatalError(err)) => {
+            Err(base::TranslationError::Tainted(err)) => {
                 exit_with_error(&format!(
                     "Encountered error when translating {err:?} trait impl {did:?}, stopping..."
+                ));
+            },
+            Err(base::TranslationError::Internal(err)) => {
+                exit_with_error(&format!(
+                    "Encountered internal error when translating {err:?} trait impl {did:?}, stopping..."
                 ));
             },
             Err(err) => {

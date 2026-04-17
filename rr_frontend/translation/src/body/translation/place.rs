@@ -11,6 +11,7 @@ use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
 use crate::base::*;
+use crate::error::Message;
 use crate::types;
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -24,10 +25,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // get the necessary layout information for dereferencing
         let mut cur_ty = self.get_type_of_local(pl.local).map(mir::PlaceTy::from_ty)?;
 
-        let local_name = self
-            .variable_map
-            .get(&pl.local)
-            .ok_or_else(|| TranslationError::UnknownVar(format!("{:?}", pl.local)))?;
+        let local_name = self.variable_map.get(&pl.local).ok_or_else(|| -> TranslationError<'tcx> {
+            self.tcx.dcx().err(Message::UnknownVar(format!("{:?}", pl.local))).into()
+        })?;
 
         let mut acc_expr = code::Expr::Var(local_name.to_owned());
 
@@ -104,7 +104,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             let enum_use = self.ty_translator.generate_enum_use(*def, args)?;
                             let els = enum_use.generate_raw_syn_type_term();
 
-                            let variant_name = types::TX::get_variant_name_of(cur_ty.ty, *variant_idx)?;
+                            let variant_name =
+                                types::TX::get_variant_name_of(self.tcx, cur_ty.ty, *variant_idx)?;
 
                             acc_expr = code::Expr::EnumData {
                                 els: els.to_string(),
@@ -112,14 +113,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 e: Box::new(acc_expr),
                             }
                         } else {
-                            return Err(TranslationError::UnknownError(
-                                "places: ADT downcasting on non-enum type".to_owned(),
-                            ));
+                            return Err(TranslationError::AdtDowncastOnNonEnumType);
                         }
                     } else {
-                        return Err(TranslationError::UnknownError(
-                            "places: ADT downcasting on non-enum type".to_owned(),
-                        ));
+                        return Err(TranslationError::AdtDowncastOnNonEnumType);
                     }
                 },
                 mir::ProjectionElem::OpaqueCast(_) => {
