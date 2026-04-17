@@ -20,6 +20,7 @@ use rr_rustc_interface::type_ir::TypeFoldable as _;
 use crate::base::*;
 use crate::environment::borrowck::facts;
 use crate::environment::polonius_info;
+use crate::error::Message;
 use crate::regions::TyRegionCollectFolder;
 use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::traits::registry::ResolvedTraitReq;
@@ -539,5 +540,5 @@ where
     info!("Normalizing type {ty:?} in env {typing_env:?}");
 
     resolution::normalize_type(tcx, typing_env, ty)
-        .map_err(|e| TranslationError::TraitResolution(format!("normalization error: {:?}", e)))
+        .map_err(|e| tcx.dcx().err(Message::TraitResolution(format!("normalization error: {:?}", e))).into())
 }

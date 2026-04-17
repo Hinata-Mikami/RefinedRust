@@ -150,9 +150,6 @@ pub(crate) enum TranslationError<'tcx> {
     #[display("Configured attribute-parser is unknown: {}", _0)]
     UnknownAttributeParser(String),
 
-    #[display("Cannot translate unknown region: {:?}", _0)]
-    UnknownRegion(ty::Region<'tcx>),
-
     #[display("Trait could not be resolved: {}", _0)]
     TraitResolution(String),
 

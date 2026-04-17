@@ -16,6 +16,7 @@ use rr_rustc_interface::middle::ty;
 use rr_rustc_interface::middle::ty::TypeFoldable as _;
 
 use crate::base::*;
+use crate::error::Message;
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath, RustPathElem};
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry::GenericTraitUse;
@@ -50,9 +51,12 @@ pub(crate) fn generate_args_inst_key<'tcx>(
                 key.push(t_erased);
             },
             ty::GenericArgKind::Const(_c) => {
-                return Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does not support const generics".to_owned(),
-                });
+                return Err(tcx
+                    .dcx()
+                    .err(Message::UnsupportedFeature(
+                        "RefinedRust does not support const generics".to_owned(),
+                    ))
+                    .into());
             },
         }
     }
@@ -508,10 +512,10 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 info!("region outlives: {:?} {:?}", region_pred.0, region_pred.1);
                 let lft1 = self
                     .translate_region(region_pred.0)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.0))?;
+                    .ok_or_else(|| type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.0)))?;
                 let lft2 = self
                     .translate_region(region_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(region_pred.1))?;
+                    .ok_or_else(|| type_translator.tcx().dcx().err(Message::UnknownRegion(region_pred.1)))?;
 
                 let constr = specs::LftConstr::LftOutlives(
                     specs::UniversalLft::Local(lft2),
@@ -523,9 +527,9 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
                 info!("type outlives: {:?} {:?}", outlives_pred.0, outlives_pred.1);
                 let translated_ty =
                     type_translator.translate_type_in_scope(&*self, typing_env, outlives_pred.0)?;
-                let lft = self
-                    .translate_region(outlives_pred.1)
-                    .ok_or(TranslationError::UnknownRegion(outlives_pred.1))?;
+                let lft = self.translate_region(outlives_pred.1).ok_or_else(|| {
+                    type_translator.tcx().dcx().err(Message::UnknownRegion(outlives_pred.1))
+                })?;
 
                 let constr = specs::LftConstr::TypeOutlives(translated_ty, specs::UniversalLft::Local(lft));
                 self.lifetime_inclusions.push(constr);

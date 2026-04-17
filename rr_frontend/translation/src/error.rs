@@ -9,8 +9,7 @@ use rr_rustc_interface::errors::DiagMessage;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
-use crate::{procedures, traits};
-use crate::base;
+use crate::{base, procedures, traits};
 
 #[expect(dead_code)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
