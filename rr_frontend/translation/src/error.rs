@@ -62,14 +62,35 @@ pub(crate) enum Message<'tcx> {
     #[display("Unsupported type: {}", _0)]
     UnsupportedType(String),
 
+    #[display("ADT downcast on non-enum type")]
+    AdtDowncastOnNonEnumType,
+
+    #[display("Expected SwitchInt discriminator to have integer type")]
+    SwitchIntOnNonIntegerType,
+
+    #[display("Configured attribute-parser is unknown: {}", _0)]
+    UnknownAttributeParser(String),
+
     #[display("Unknown function kind")]
     UnknownFunctionKind,
+
+    #[display("Expected an FnDef type")]
+    ExpectedFnDefType,
 
     #[display("Unknown variable: {}", _0)]
     UnknownVar(String),
 
     #[display("Unknown procedure: {}", _0)]
     UnknownProcedure(String),
+
+    #[display("Procedure could not be registered: {}", _0)]
+    ProcedureRegistry(String),
+
+    #[display("Did not find a registered static: {}", _0)]
+    MissingRegisteredStatic(String),
+
+    #[display("Could not find local for return value")]
+    MissingReturnValueLocal,
 
     #[display("Unimplemented case: {}", _0)]
     Unimplemented(String),
@@ -80,8 +101,14 @@ pub(crate) enum Message<'tcx> {
     #[display("Trait resolution failed: {}", _0)]
     TraitResolution(String),
 
+    #[display("Cannot take offset of {}", _0)]
+    OffsetOnUnsupportedType(String),
+
     #[display("Recursive type does not have an invariant: {:?}", _0)]
     RecursiveTypeWithoutInvariant(DefId),
+
+    #[display("Application of UnOp::Not to non-{{Int, Bool}}")]
+    UnOpNotOnUnsupportedType,
 
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
@@ -100,6 +127,9 @@ pub(crate) enum Message<'tcx> {
 
     #[display("Failed to parse `refine_as` enum annotation: {}", _0)]
     EnumRefineAsParse(String),
+
+    #[display("Could not parse loop spec: {}", _0)]
+    LoopSpec(String),
 
     #[display("Trait translation failed: {}", _0)]
     TraitTranslation(traits::Error<'tcx>),

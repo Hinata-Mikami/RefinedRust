@@ -12,7 +12,8 @@ use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
 use crate::base::*;
-use crate::{error, regions};
+use crate::error::Message;
+use crate::regions;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub(crate) enum Mode {
@@ -227,16 +228,18 @@ impl<'tcx, 'def> Scope<'tcx, 'def> {
     /// Register a function.
     pub(crate) fn register_function(&mut self, did: DefId, meta: Meta) -> Result<(), TranslationError<'tcx>> {
         if rrconfig::no_assumption() && meta.mode.is_assumed() {
-            self.tcx
-                .dcx()
-                .span_err(self.tcx.def_span(did), error::Message::NoAssumptionAllowed(meta.mode));
+            self.tcx.dcx().span_err(self.tcx.def_span(did), Message::NoAssumptionAllowed(meta.mode));
         }
 
         if self.name_map.insert(self.get_ordered_did(did), meta).is_some() {
-            Err(TranslationError::ProcedureRegistry(format!(
-                "function for defid {:?} has already been registered",
-                did
-            )))
+            Err(self
+                .tcx
+                .dcx()
+                .err(Message::ProcedureRegistry(format!(
+                    "function for defid {:?} has already been registered",
+                    did
+                )))
+                .into())
         } else {
             Ok(())
         }

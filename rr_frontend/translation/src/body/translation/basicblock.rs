@@ -12,6 +12,7 @@ use rr_rustc_interface::middle::{mir, ty};
 
 use super::TX;
 use crate::base::*;
+use crate::error::Message;
 use crate::{procedures, regions};
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -138,9 +139,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             info!("Ignoring Assume: {:?}", intrinsic);
                         },
                         mir::NonDivergingIntrinsic::CopyNonOverlapping(_) => {
-                            return Err(TranslationError::UnsupportedFeature {
-                                description: "RefinedRust does currently not support the CopyNonOverlapping Intrinsic".to_owned(),
-                            });
+                            return Err(self.tcx.dcx().err(Message::UnsupportedFeature(
+                                "RefinedRust does currently not support the CopyNonOverlapping Intrinsic".to_owned(),
+                            )).into());
                         },
                     }
                 },
@@ -155,9 +156,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     variant_index: _variant_index,
                 } => {
                     // TODO
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "RefinedRust does currently not support SetDiscriminant".to_owned(),
-                    });
+                    return Err(self.tcx.dcx().err(Message::UnsupportedFeature(
+                        "RefinedRust does currently not support SetDiscriminant".to_owned(),
+                    )).into());
                 },
 
                 | mir::StatementKind::StorageLive(l) => {

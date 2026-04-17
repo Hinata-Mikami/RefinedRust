@@ -13,6 +13,7 @@ use rr_rustc_interface::span;
 use super::TX;
 use crate::base::*;
 use crate::environment::mir_analyses::initialization;
+use crate::error::Message;
 use crate::spec_parsers::loop_attr_parser::{LoopAttrParser as _, LoopIteratorInfo, VerboseLoopAttrParser};
 use crate::{attrs, environment, search, types};
 
@@ -111,7 +112,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // Then I will be able to refer to the attribute term of that.
 
         let ty::TyKind::FnDef(_, params) = fn_ty.kind() else {
-            return Err(TranslationError::ExpectedFnDefType);
+            return Err(self.tcx.dcx().err(Message::ExpectedFnDefType).into());
         };
 
         // exploiting that Iterator has the same args as Iterator::next
@@ -217,9 +218,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let attrs = environment::get_attributes(self.tcx, did);
             let attrs = attrs::filter_for_tool(attrs);
             info!("attrs for loop {:?}: {:?}", loop_head, attrs);
-            parser.parse_loop_attrs(attrs.as_slice()).map_err(TranslationError::LoopSpec)
+            parser
+                .parse_loop_attrs(attrs.as_slice())
+                .map_err(|err| self.tcx.dcx().err(Message::LoopSpec(err)).into())
         } else {
-            parser.parse_loop_attrs(&[]).map_err(TranslationError::LoopSpec)
+            parser
+                .parse_loop_attrs(&[])
+                .map_err(|err| self.tcx.dcx().err(Message::LoopSpec(err)).into())
         }
     }
 

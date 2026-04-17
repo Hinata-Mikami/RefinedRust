@@ -493,7 +493,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         ty: ty::Ty<'tcx>,
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         let ty::TyKind::FnDef(defid, params) = ty.kind() else {
-            return Err(TranslationError::ExpectedFnDefType);
+            return Err(self.tcx.dcx().err(Message::ExpectedFnDefType).into());
         };
 
         let current_typing_env = ty::TypingEnv::post_analysis(self.tcx, self.proc.get_id());
@@ -521,7 +521,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             params,
             ty::Binder::dummy(()),
         ) else {
-            return Err(TranslationError::TraitResolution(format!("Could not resolve trait {:?}", defid)));
+            return Err(self
+                .tcx
+                .dcx()
+                .err(Message::TraitResolution(format!("Could not resolve trait {:?}", defid)))
+                .into());
         };
 
         info!(
@@ -591,14 +595,18 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         Ok((*def, ident_sig, args, instantiated_sig))
                     },
                     // TODO handle FnPtr, closure
-                    _ => Err(TranslationError::Unimplemented {
-                        description: "implement function pointers".to_owned(),
-                    }),
+                    _ => Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::Unimplemented("implement function pointers".to_owned()))
+                        .into()),
                 }
             },
-            mir::Const::Unevaluated(_, _) => Err(TranslationError::Unimplemented {
-                description: "implement ConstantKind::Unevaluated".to_owned(),
-            }),
+            mir::Const::Unevaluated(_, _) => Err(self
+                .tcx
+                .dcx()
+                .err(Message::Unimplemented("implement ConstantKind::Unevaluated".to_owned()))
+                .into()),
         }
     }
 
@@ -617,12 +625,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         });
 
         let mir::Operand::Constant(box func_constant) = func else {
-            return Err(TranslationError::UnsupportedFeature {
-                description: format!(
+            return Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support this kind of call operand (got: {:?})",
                     func
-                ),
-            });
+                )))
+                .into());
         };
 
         // Get the type of the return value from the function
@@ -761,10 +771,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 regions::calls::CallRegionKind::Intersection(rs) => {
                     match rs.len() {
                         0 => {
-                            return Err(TranslationError::UnsupportedFeature {
-                                description: "RefinedRust does currently not support unconstrained lifetime"
-                                    .to_owned(),
-                            });
+                            return Err(self
+                                .tcx
+                                .dcx()
+                                .err(Message::UnsupportedFeature(
+                                    "RefinedRust does currently not support unconstrained lifetime"
+                                        .to_owned(),
+                                ))
+                                .into());
                         },
                         1 => {
                             // this is really just an equality constraint

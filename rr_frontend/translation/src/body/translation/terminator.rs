@@ -15,6 +15,7 @@ use rr_rustc_interface::type_ir::TypeFolder as _;
 use super::TX;
 use crate::base::*;
 use crate::environment::borrowck::facts;
+use crate::error::Message;
 use crate::{regions, search, types};
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -89,12 +90,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             unreachable!();
         };
         let ty::TyKind::Adt(adt_def, args) = ty.kind() else {
-            return Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support discriminant accesses on non-enum types (got {:?})",
-                    ty
-                ),
-            });
+            return Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support discriminant accesses on non-enum types (got {:?})",
+                ty
+            ))).into());
         };
         let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
         let els = enum_use.generate_raw_syn_type_term();
@@ -235,7 +234,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                 let translated_ty = self.ty_translator.translate_type(ty)?;
                 let specs::Type::Int(it) = translated_ty else {
-                    return Err(TranslationError::SwitchIntOnNonIntegerType);
+                    return Err(self.tcx.dcx().err(Message::SwitchIntOnNonIntegerType).into());
                 };
 
                 Ok(code::Stmt::Switch {
@@ -290,29 +289,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             },
 
             mir::TerminatorKind::TailCall { .. } => {
-                Err(TranslationError::Unimplemented {
-                    description: "implement TailCall".to_owned(),
-                })
+                Err(self.tcx.dcx().err(Message::Unimplemented("implement TailCall".to_owned())).into())
             },
 
             mir::TerminatorKind::Unreachable => Ok(code::Stmt::Stuck),
 
-            mir::TerminatorKind::UnwindResume => Err(TranslationError::Unimplemented {
-                description: "implement UnwindResume".to_owned(),
-            }),
+            mir::TerminatorKind::UnwindResume => {
+                Err(self.tcx.dcx().err(Message::Unimplemented("implement UnwindResume".to_owned())).into())
+            },
 
-            mir::TerminatorKind::UnwindTerminate(_) => Err(TranslationError::Unimplemented {
-                description: "implement UnwindTerminate".to_owned(),
-            }),
+            mir::TerminatorKind::UnwindTerminate(_) => {
+                Err(self.tcx.dcx().err(Message::Unimplemented("implement UnwindTerminate".to_owned())).into())
+            },
 
             mir::TerminatorKind::CoroutineDrop
             | mir::TerminatorKind::InlineAsm { .. }
-            | mir::TerminatorKind::Yield { .. } => Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support this kind of terminator (got: {:?})",
-                    term
-                ),
-            }),
+            | mir::TerminatorKind::Yield { .. } => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support this kind of terminator (got: {:?})",
+                term
+            ))).into()),
         }
     }
 }

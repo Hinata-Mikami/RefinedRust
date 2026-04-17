@@ -114,53 +114,8 @@ pub(crate) fn order_defs_with_deps(
 //TODO: add location info based on Span
 #[derive(Clone, Debug, Display)]
 pub(crate) enum TranslationError<'tcx> {
-    #[display("Unsupported Feature: {}", description)]
-    UnsupportedFeature { description: String },
-
-    #[display("Unimplemented Case: {}", description)]
-    Unimplemented { description: String },
-
-    #[display("Invalid Layout")]
-    InvalidLayout,
-
-    #[display("Expected an FnDef type")]
-    ExpectedFnDefType,
-
-    #[display("Expected SwitchInt discriminator to have integer type")]
-    SwitchIntOnNonIntegerType,
-
-    #[display("ADT downcast on non-enum type")]
-    AdtDowncastOnNonEnumType,
-
-    #[display("Could not find local for return value")]
-    MissingReturnValueLocal,
-
-    #[display("Cannot take offset of {}", _0)]
-    OffsetOnUnsupportedType(String),
-
-    #[display("Application of UnOp::Not to non-{{Int, Bool}}")]
-    UnOpNotOnUnsupportedType,
-
-    #[display("Did not find a registered static: {}", _0)]
-    MissingRegisteredStatic(String),
-
-    #[display("Attribute is ill-formed: {}", _0)]
-    AttributeError(String),
-
-    #[display("Configured attribute-parser is unknown: {}", _0)]
-    UnknownAttributeParser(String),
-
-    #[display("Trait could not be resolved: {}", _0)]
-    TraitResolution(String),
-
     #[display("Trait translation failed: {}", _0)]
     TraitTranslation(traits::Error<'tcx>),
-
-    #[display("Procedure could not be registered: {}", _0)]
-    ProcedureRegistry(String),
-
-    #[display("Could not parse loop spec: {}", _0)]
-    LoopSpec(String),
 
     #[display("Incomplete specification for trait impl {:?}", _0)]
     IncompleteTraitImplSpec(DefId),

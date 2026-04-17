@@ -537,7 +537,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
-            return Err(TranslationError::TraitTranslation(Error::UnregisteredImpl(impl_did, trait_did)));
+            return Err(self
+                .tcx
+                .dcx()
+                .err(error::Message::TraitTranslation(Error::UnregisteredImpl(impl_did, trait_did)))
+                .into());
         };
 
         trace!("leave TR::get_impl_spec_term");
@@ -827,9 +831,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             Ok(resolved)
         } else {
-            Err(TranslationError::TraitResolution(
-                "could not resolve trait required for method call".to_owned(),
-            ))
+            Err(self
+                .tcx
+                .dcx()
+                .err(error::Message::TraitResolution(
+                    "could not resolve trait required for method call".to_owned(),
+                ))
+                .into())
         }
     }
 

@@ -12,6 +12,7 @@ use rr_rustc_interface::{abi, index};
 use super::TX;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
+use crate::error::Message;
 use crate::regions;
 
 #[expect(clippy::multiple_inherent_impl)]
@@ -106,11 +107,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 }
 
                 // TODO
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!(
-                        "RefinedRust does currently not support aggregate rvalue for other ADTs (got: {kind:?}, {op:?})"
-                    ),
-                })
+                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "RefinedRust does currently not support aggregate rvalue for other ADTs (got: {kind:?}, {op:?})"
+                ))).into())
             },
             mir::AggregateKind::Closure(def, _args) => {
                 trace!("Translating Closure aggregate value for {:?}", def);
@@ -135,11 +134,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             _ => {
                 // TODO
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!(
-                        "RefinedRust does currently not support this kind of aggregate rvalue (got: {kind:?}, {op:?})"
-                    ),
-                })
+                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "RefinedRust does currently not support this kind of aggregate rvalue (got: {kind:?}, {op:?})"
+                ))).into())
             },
         }
     }
@@ -171,11 +168,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 | ty::adjustment::PointerCoercion::ClosureFnPointer(_)
                 | ty::adjustment::PointerCoercion::ReifyFnPointer(_)
                 | ty::adjustment::PointerCoercion::UnsafeFnPointer
-                | ty::adjustment::PointerCoercion::Unsize => Err(TranslationError::UnsupportedFeature {
-                    description: format!(
-                        "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
-                    ),
-                }),
+                | ty::adjustment::PointerCoercion::Unsize => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "RefinedRust does currently not support this kind of pointer coercion (got: {kind:?})"
+                ))).into()),
             },
 
             mir::CastKind::IntToInt => {
@@ -187,17 +182,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::CastKind::IntToFloat => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support int-to-float cast".to_owned(),
-            }),
+            mir::CastKind::IntToFloat => Err(self.tcx.dcx().err(Message::UnsupportedFeature(
+                "RefinedRust does currently not support int-to-float cast".to_owned(),
+            )).into()),
 
-            mir::CastKind::FloatToInt => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support float-to-int cast".to_owned(),
-            }),
+            mir::CastKind::FloatToInt => Err(self.tcx.dcx().err(Message::UnsupportedFeature(
+                "RefinedRust does currently not support float-to-int cast".to_owned(),
+            )).into()),
 
-            mir::CastKind::FloatToFloat => Err(TranslationError::UnsupportedFeature {
-                description: "RefinedRust does currently not support float-to-float cast".to_owned(),
-            }),
+            mir::CastKind::FloatToFloat => Err(self.tcx.dcx().err(Message::UnsupportedFeature(
+                "RefinedRust does currently not support float-to-float cast".to_owned(),
+            )).into()),
 
             mir::CastKind::PtrToPtr => {
                 match (op_ty.kind(), to_ty.kind()) {
@@ -209,32 +204,24 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     _ => {
                         // TODO: any other cases we should handle?
-                        Err(TranslationError::UnsupportedFeature {
-                            description: format!(
-                                "RefinedRust does currently not support ptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
-                            ),
-                        })
+                        Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                            "RefinedRust does currently not support ptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
+                        ))).into())
                     },
                 }
             },
 
-            mir::CastKind::FnPtrToPtr => Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support fnptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
-                ),
-            }),
+            mir::CastKind::FnPtrToPtr => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support fnptr-to-ptr cast (got: {kind:?}, {op:?}, {to_ty:?})"
+            ))).into()),
 
-            mir::CastKind::Transmute => Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support transmute cast (got: {kind:?}, {op:?}, {to_ty:?})"
-                ),
-            }),
+            mir::CastKind::Transmute => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support transmute cast (got: {kind:?}, {op:?}, {to_ty:?})"
+            ))).into()),
 
-            mir::CastKind::Subtype => Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support subtype casts (got: {kind:?}, {op:?}, {to_ty:?})"
-                ),
-            }),
+            mir::CastKind::Subtype => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support subtype casts (got: {kind:?}, {op:?}, {to_ty:?})"
+            ))).into()),
 
             mir::CastKind::PointerExposeProvenance => {
                 // Cast pointer to integer
@@ -245,11 +232,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 })
             },
 
-            mir::CastKind::PointerWithExposedProvenance => Err(TranslationError::UnsupportedFeature {
-                description: format!(
-                    "RefinedRust does currently not support this kind of cast (got: {kind:?}, {op:?}, {to_ty:?})"
-                ),
-            }),
+            mir::CastKind::PointerWithExposedProvenance => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                "RefinedRust does currently not support this kind of cast (got: {kind:?}, {op:?}, {to_ty:?})"
+            ))).into()),
         }
     }
 
@@ -302,11 +287,13 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 // when this also handles string literals etc.
                 self.translate_constant(&constant.const_)
             },
-            mir::Operand::RuntimeChecks(_) => Err(TranslationError::UnsupportedFeature {
-                description: format!(
+            mir::Operand::RuntimeChecks(_) => Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support this kind of operand (got: {op:?})"
-                ),
-            }),
+                )))
+                .into()),
         }
     }
 
@@ -324,7 +311,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
             mir::Rvalue::Ref(region, bk, pl) => {
                 let translated_pl = self.translate_place(pl)?;
-                let translated_bk = TX::translate_borrow_kind(*bk)?;
+                let translated_bk = TX::translate_borrow_kind(self.tcx, *bk)?;
                 let ty_annot = self.get_type_annotation_for_borrow(*bk, pl)?;
 
                 if let Some(loan) = self.info.get_optional_loan_at_location(loc) {
@@ -378,7 +365,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 let (translated_e1, _) = self.translate_operand(operand, true)?;
                 let e1_ty = self.get_type_of_operand(operand);
                 let e1_st = self.ty_translator.translate_type_to_syn_type(e1_ty)?;
-                let translated_op = TX::translate_unop(*op, e1_ty)?;
+                let translated_op = TX::translate_unop(self.tcx, *op, e1_ty)?;
 
                 Ok((
                     code::Expr::UnOp {
@@ -396,12 +383,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 info!("getting discriminant of {:?} at type {:?}", pl, ty);
 
                 let ty::TyKind::Adt(adt_def, args) = ty.ty.kind() else {
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: format!(
-                            "RefinedRust does currently not support discriminant accesses on non-enum types ({:?}, got {:?})",
-                            rval, ty.ty
-                        ),
-                    });
+                    return Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                        "RefinedRust does currently not support discriminant accesses on non-enum types ({:?}, got {:?})",
+                        rval, ty.ty
+                    ))).into());
                 };
 
                 let enum_use = self.ty_translator.generate_enum_use(*adt_def, args)?;
@@ -428,12 +413,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::Rvalue::CopyForDeref(_)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::WrapUnsafeBinder(..)
-            | mir::Rvalue::ThreadLocalRef(..) => Err(TranslationError::UnsupportedFeature {
-                description: format!(
+            | mir::Rvalue::ThreadLocalRef(..) => Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support this kind of rvalue (got: {:?})",
                     rval
-                ),
-            }),
+                )))
+                .into()),
         }
     }
 
@@ -539,15 +526,17 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             mir::BinOp::Ge => Ok(mk_binop(code::Binop::Ge)),
             mir::BinOp::Gt => Ok(mk_binop(code::Binop::Gt)),
 
-            mir::BinOp::Cmp => Err(TranslationError::UnsupportedFeature {
-                description: "<=> binop is currently not supported".to_owned(),
-            }),
+            mir::BinOp::Cmp => Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature("<=> binop is currently not supported".to_owned()))
+                .into()),
 
             mir::BinOp::Offset => {
                 // we need to get the layout of the thing we're offsetting
                 // try to get the type of e1.
                 let e1_ty = self.get_type_of_operand(e1);
-                let off_ty = TX::get_offset_ty(e1_ty)?;
+                let off_ty = TX::get_offset_ty(self.tcx, e1_ty)?;
                 let st = self.ty_translator.translate_type_to_syn_type(off_ty)?;
                 let ly = st.into();
                 Ok(mk_binop(code::Binop::PtrOffset(ly)))
@@ -556,39 +545,53 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     }
 
     /// Get the inner type of a type to which we can apply the offset operator.
-    fn get_offset_ty(ty: ty::Ty<'tcx>) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
+    fn get_offset_ty(
+        tcx: ty::TyCtxt<'tcx>,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<ty::Ty<'tcx>, TranslationError<'tcx>> {
         match ty.kind() {
             ty::TyKind::Array(t, _) | ty::TyKind::Slice(t) | ty::TyKind::Ref(_, t, _) => Ok(*t),
             ty::TyKind::RawPtr(ty, _) => Ok(*ty),
-            _ => Err(TranslationError::OffsetOnUnsupportedType(format!("{ty}"))),
+            _ => Err(tcx.dcx().err(Message::OffsetOnUnsupportedType(format!("{ty}"))).into()),
         }
     }
 
     /// Translate unary operators.
-    fn translate_unop(op: mir::UnOp, ty: ty::Ty<'tcx>) -> Result<code::Unop, TranslationError<'tcx>> {
+    fn translate_unop(
+        tcx: ty::TyCtxt<'tcx>,
+        op: mir::UnOp,
+        ty: ty::Ty<'tcx>,
+    ) -> Result<code::Unop, TranslationError<'tcx>> {
         match op {
             mir::UnOp::Not => match ty.kind() {
                 ty::TyKind::Bool => Ok(code::Unop::NotBool),
                 ty::TyKind::Int(_) | ty::TyKind::Uint(_) => Ok(code::Unop::NotInt),
-                _ => Err(TranslationError::UnOpNotOnUnsupportedType),
+                _ => Err(tcx.dcx().err(Message::UnOpNotOnUnsupportedType).into()),
             },
             mir::UnOp::Neg => Ok(code::Unop::Neg),
-            mir::UnOp::PtrMetadata => Err(TranslationError::UnsupportedFeature {
-                description: "PtrMetadata unop not supported".to_owned(),
-            }),
+            mir::UnOp::PtrMetadata => Err(tcx
+                .dcx()
+                .err(Message::UnsupportedFeature("PtrMetadata unop not supported".to_owned()))
+                .into()),
         }
     }
 
     /// Translate a `BorrowKind`.
-    fn translate_borrow_kind(kind: mir::BorrowKind) -> Result<code::BorKind, TranslationError<'tcx>> {
+    fn translate_borrow_kind(
+        tcx: ty::TyCtxt<'tcx>,
+        kind: mir::BorrowKind,
+    ) -> Result<code::BorKind, TranslationError<'tcx>> {
         match kind {
             mir::BorrowKind::Shared => Ok(code::BorKind::Shared),
             mir::BorrowKind::Fake(_) => {
                 // TODO: figure out what to do with this
                 // arises in match lowering
-                Err(TranslationError::UnsupportedFeature {
-                    description: "RefinedRust does currently not support fake borrows".to_owned(),
-                })
+                Err(tcx
+                    .dcx()
+                    .err(Message::UnsupportedFeature(
+                        "RefinedRust does currently not support fake borrows".to_owned(),
+                    ))
+                    .into())
             },
             mir::BorrowKind::Mut { .. } => {
                 // TODO: handle two-phase borrows?

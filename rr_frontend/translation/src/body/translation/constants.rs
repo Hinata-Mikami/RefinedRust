@@ -12,6 +12,7 @@ use rr_rustc_interface::span;
 use super::TX;
 use crate::base::*;
 use crate::body::translation::ExprWithInfo;
+use crate::error::Message;
 
 #[expect(clippy::multiple_inherent_impl)]
 impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
@@ -54,20 +55,20 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok((code::Expr::Literal(code::Literal::ZST), None));
                 }
 
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!(
-                        "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
-                        ty
-                    ),
-                })
+                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
+                    ty
+                ))).into())
             },
 
-            _ => Err(TranslationError::UnsupportedFeature {
-                description: format!(
+            _ => Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support layout for const value: (got: {:?})",
                     ty
-                ),
-            }),
+                )))
+                .into()),
         }
     }
 
@@ -80,38 +81,40 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
         // TODO: Use `TryFrom` instead
         fn translate_literal<'def, 'tcx, T>(
+            tcx: ty::TyCtxt<'tcx>,
             sc: mir::interpret::InterpResult<'tcx, T>,
             fptr: fn(T) -> code::Literal,
         ) -> Result<ExprWithInfo<'tcx, 'def>, TranslationError<'tcx>> {
-            sc.discard_err().map_or(Err(TranslationError::InvalidLayout), |lit| {
-                Ok((code::Expr::Literal(fptr(lit)), None))
-            })
+            sc.discard_err().map_or_else(
+                || Err(tcx.dcx().err(Message::InvalidLayout).into()),
+                |lit| Ok((code::Expr::Literal(fptr(lit)), None)),
+            )
         }
 
         match ty.kind() {
-            ty::TyKind::Bool => translate_literal(sc.to_bool(), code::Literal::Bool),
+            ty::TyKind::Bool => translate_literal(self.tcx, sc.to_bool(), code::Literal::Bool),
 
             ty::TyKind::Int(it) => match it {
-                ty::IntTy::I8 => translate_literal(sc.to_i8(), code::Literal::I8),
-                ty::IntTy::I16 => translate_literal(sc.to_i16(), code::Literal::I16),
-                ty::IntTy::I32 => translate_literal(sc.to_i32(), code::Literal::I32),
-                ty::IntTy::I128 => translate_literal(sc.to_i128(), code::Literal::I128),
-                ty::IntTy::I64 => translate_literal(sc.to_i64(), code::Literal::I64),
+                ty::IntTy::I8 => translate_literal(self.tcx, sc.to_i8(), code::Literal::I8),
+                ty::IntTy::I16 => translate_literal(self.tcx, sc.to_i16(), code::Literal::I16),
+                ty::IntTy::I32 => translate_literal(self.tcx, sc.to_i32(), code::Literal::I32),
+                ty::IntTy::I128 => translate_literal(self.tcx, sc.to_i128(), code::Literal::I128),
+                ty::IntTy::I64 => translate_literal(self.tcx, sc.to_i64(), code::Literal::I64),
                 // for Radium, we use 64-bit pointers
-                ty::IntTy::Isize => translate_literal(sc.to_i64(), code::Literal::ISize),
+                ty::IntTy::Isize => translate_literal(self.tcx, sc.to_i64(), code::Literal::ISize),
             },
 
             ty::TyKind::Uint(it) => match it {
-                ty::UintTy::U8 => translate_literal(sc.to_u8(), code::Literal::U8),
-                ty::UintTy::U16 => translate_literal(sc.to_u16(), code::Literal::U16),
-                ty::UintTy::U32 => translate_literal(sc.to_u32(), code::Literal::U32),
-                ty::UintTy::U128 => translate_literal(sc.to_u128(), code::Literal::U128),
-                ty::UintTy::U64 => translate_literal(sc.to_u64(), code::Literal::U64),
+                ty::UintTy::U8 => translate_literal(self.tcx, sc.to_u8(), code::Literal::U8),
+                ty::UintTy::U16 => translate_literal(self.tcx, sc.to_u16(), code::Literal::U16),
+                ty::UintTy::U32 => translate_literal(self.tcx, sc.to_u32(), code::Literal::U32),
+                ty::UintTy::U128 => translate_literal(self.tcx, sc.to_u128(), code::Literal::U128),
+                ty::UintTy::U64 => translate_literal(self.tcx, sc.to_u64(), code::Literal::U64),
                 // for Radium, we use 64-bit pointers
-                ty::UintTy::Usize => translate_literal(sc.to_u64(), code::Literal::USize),
+                ty::UintTy::Usize => translate_literal(self.tcx, sc.to_u64(), code::Literal::USize),
             },
 
-            ty::TyKind::Char => translate_literal(sc.to_char(), code::Literal::Char),
+            ty::TyKind::Char => translate_literal(self.tcx, sc.to_char(), code::Literal::Char),
 
             ty::TyKind::FnDef(_, _) => self.translate_fn_def_use(ty),
 
@@ -120,12 +123,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     return Ok((code::Expr::Literal(code::Literal::ZST), None));
                 }
 
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!(
-                        "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
-                        ty
-                    ),
-                })
+                Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                    "RefinedRust does currently not support compound construction of tuples using literals (got: {:?})",
+                    ty
+                ))).into())
             },
 
             ty::TyKind::Ref(_, _, _) => match sc {
@@ -141,35 +142,33 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             );
 
                             let ordered_did = OrderedDefId::new(self.tcx, did);
-                            let s = self.const_registry.get_static(ordered_did)?;
+                            let s = self.const_registry.get_static(self.tcx, ordered_did)?;
                             self.collected_statics.insert(ordered_did);
                             Ok((code::Expr::Literal(code::Literal::Loc(s.loc_name.clone())), None))
                         },
                         mir::interpret::GlobalAlloc::Memory(_) => {
                             // TODO: this is needed
-                            Err(TranslationError::UnsupportedFeature {
-                                description: format!(
-                                    "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
-                                    glob_alloc, sc, ty
-                                ),
-                            })
-                        },
-                        _ => Err(TranslationError::UnsupportedFeature {
-                            description: format!(
+                            Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
                                 "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
                                 glob_alloc, sc, ty
-                            ),
-                        }),
+                            ))).into())
+                        },
+                        _ => Err(self.tcx.dcx().err(Message::UnsupportedFeature(format!(
+                            "RefinedRust does currently not support GlobalAlloc {:?} for scalar {:?} at type {:?}",
+                            glob_alloc, sc, ty
+                        ))).into()),
                     }
                 },
             },
 
-            _ => Err(TranslationError::UnsupportedFeature {
-                description: format!(
+            _ => Err(self
+                .tcx
+                .dcx()
+                .err(Message::UnsupportedFeature(format!(
                     "RefinedRust does currently not support layout for const value: (got: {:?})",
                     ty
-                ),
-            }),
+                )))
+                .into()),
         }
     }
 
@@ -194,9 +193,11 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             _ => {
                 // TODO: do we actually care about this case or is this just something that can
                 // appear as part of CTFE/MIRI?
-                Err(TranslationError::UnsupportedFeature {
-                    description: format!("Unsupported Constant: ConstValue; {:?}", v),
-                })
+                Err(self
+                    .tcx
+                    .dcx()
+                    .err(Message::UnsupportedFeature(format!("Unsupported Constant: ConstValue; {:?}", v)))
+                    .into())
             },
         }
     }
@@ -214,14 +215,21 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                         // type.
                         match v.valtree.try_to_leaf() {
                             Some(sc) => self.translate_scalar_int(sc, v.ty),
-                            _ => Err(TranslationError::UnsupportedFeature {
-                                description: format!("const value not supported: {:?}", v),
-                            }),
+                            _ => Err(self
+                                .tcx
+                                .dcx()
+                                .err(Message::UnsupportedFeature(format!(
+                                    "const value not supported: {:?}",
+                                    v
+                                )))
+                                .into()),
                         }
                     },
-                    _ => Err(TranslationError::UnsupportedFeature {
-                        description: "Unsupported ConstKind".to_owned(),
-                    }),
+                    _ => Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("Unsupported ConstKind".to_owned()))
+                        .into()),
                 }
             },
             mir::Const::Val(val, ty) => self.translate_constant_value(*val, *ty),
@@ -231,16 +239,16 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 match self.tcx.const_eval_resolve(typing_env, *c, span::DUMMY_SP) {
                     Ok(res) => self.translate_constant_value(res, *ty),
                     Err(e) => match e {
-                        mir::interpret::ErrorHandled::Reported(_, _) => {
-                            Err(TranslationError::UnsupportedFeature {
-                                description: "Cannot interpret constant".to_owned(),
-                            })
-                        },
-                        mir::interpret::ErrorHandled::TooGeneric(_) => {
-                            Err(TranslationError::UnsupportedFeature {
-                                description: "Const use is too generic".to_owned(),
-                            })
-                        },
+                        mir::interpret::ErrorHandled::Reported(_, _) => Err(self
+                            .tcx
+                            .dcx()
+                            .err(Message::UnsupportedFeature("Cannot interpret constant".to_owned()))
+                            .into()),
+                        mir::interpret::ErrorHandled::TooGeneric(_) => Err(self
+                            .tcx
+                            .dcx()
+                            .err(Message::UnsupportedFeature("Const use is too generic".to_owned()))
+                            .into()),
                     },
                 }
             },

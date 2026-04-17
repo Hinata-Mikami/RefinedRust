@@ -41,9 +41,14 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     {
                         // extract the type parameters
                         let [ty, alloc] = args.as_slice() else {
-                            return Err(TranslationError::UnsupportedFeature {
-                                description: format!("wrong arguments for Box ADT {:?}", cur_ty.ty),
-                            });
+                            return Err(self
+                                .tcx
+                                .dcx()
+                                .err(Message::UnsupportedFeature(format!(
+                                    "wrong arguments for Box ADT {:?}",
+                                    cur_ty.ty
+                                )))
+                                .into());
                         };
 
                         let translated_ty = self.ty_translator.translate_type_to_syn_type(ty.expect_ty())?;
@@ -82,20 +87,26 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 },
                 mir::ProjectionElem::Index(_v) => {
                     //TODO
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement index access".to_owned(),
-                    });
+                    return Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("places: implement index access".to_owned()))
+                        .into());
                 },
                 mir::ProjectionElem::ConstantIndex { .. } => {
                     //TODO
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement const index access".to_owned(),
-                    });
+                    return Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("places: implement const index access".to_owned()))
+                        .into());
                 },
                 mir::ProjectionElem::Subslice { .. } => {
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement subslicing".to_owned(),
-                    });
+                    return Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("places: implement subslicing".to_owned()))
+                        .into());
                 },
                 mir::ProjectionElem::Downcast(_, variant_idx) => {
                     info!("Downcast of ty {:?} to {:?}", cur_ty, variant_idx);
@@ -113,21 +124,25 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                                 e: Box::new(acc_expr),
                             }
                         } else {
-                            return Err(TranslationError::AdtDowncastOnNonEnumType);
+                            return Err(self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType).into());
                         }
                     } else {
-                        return Err(TranslationError::AdtDowncastOnNonEnumType);
+                        return Err(self.tcx.dcx().err(Message::AdtDowncastOnNonEnumType).into());
                     }
                 },
                 mir::ProjectionElem::OpaqueCast(_) => {
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement opaque casts".to_owned(),
-                    });
+                    return Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("places: implement opaque casts".to_owned()))
+                        .into());
                 },
                 mir::ProjectionElem::UnwrapUnsafeBinder(_) => {
-                    return Err(TranslationError::UnsupportedFeature {
-                        description: "places: implement UnwrapUnsafeBinder".to_owned(),
-                    });
+                    return Err(self
+                        .tcx
+                        .dcx()
+                        .err(Message::UnsupportedFeature("places: implement UnwrapUnsafeBinder".to_owned()))
+                        .into());
                 },
             }
             // update cur_ty

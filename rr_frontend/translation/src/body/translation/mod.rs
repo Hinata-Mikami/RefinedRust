@@ -135,7 +135,8 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let empty_args = tcx.mk_type_list(&[]);
         let mut return_ty = tcx.mk_ty_from_kind(ty::TyKind::Tuple(empty_args));
         let mut fn_locals = Vec::new();
-        let mut opt_return_name = Err(TranslationError::MissingReturnValueLocal);
+        let mut opt_return_name: Result<String, TranslationError<'tcx>> =
+            Err(tcx.dcx().err(Message::MissingReturnValueLocal).into());
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
@@ -331,7 +332,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         // generate dependencies on statics
         for did in &self.collected_statics {
-            let s = self.const_registry.get_static(*did)?;
+            let s = self.const_registry.get_static(self.tcx, *did)?;
             self.translated_fn.require_static(s.to_owned());
         }
 

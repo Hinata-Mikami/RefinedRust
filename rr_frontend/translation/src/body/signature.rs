@@ -20,6 +20,7 @@ use crate::body::translation;
 use crate::environment::dump_borrowck_info;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::environment::procedure::Procedure;
+use crate::error::Message;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
@@ -133,7 +134,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         )?;
         translated_fn.add_function_spec_from_builder(spec_builder);
 
-        translated_fn.try_into().map_err(TranslationError::AttributeError)
+        translated_fn.try_into().map_err(|err| tcx.dcx().err(Message::AttributeError(err)).into())
     }
 
     /// Compute meta information for a closure we are processing.
@@ -583,9 +584,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     t.translated_fn.add_late_coq_param(binder);
                 }
             } else {
-                return Err(TranslationError::AttributeError(
-                    "No valid specification provided for trait impl".to_owned(),
-                ));
+                return Err(tcx
+                    .dcx()
+                    .err(Message::AttributeError("No valid specification provided for trait impl".to_owned()))
+                    .into());
             }
         } else {
             // process attributes
@@ -601,7 +603,10 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             if spec_builder.has_spec() {
                 t.translated_fn.add_function_spec_from_builder(spec_builder);
             } else {
-                return Err(TranslationError::AttributeError("No valid specification provided".to_owned()));
+                return Err(tcx
+                    .dcx()
+                    .err(Message::AttributeError("No valid specification provided".to_owned()))
+                    .into());
             }
         }
 
@@ -632,7 +637,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
     pub(crate) fn generate_spec(
         self,
     ) -> Result<specs::functions::Spec<'def, specs::functions::InnerSpec<'def>>, TranslationError<'tcx>> {
-        self.translated_fn.try_into().map_err(TranslationError::AttributeError)
+        self.translated_fn
+            .try_into()
+            .map_err(|err| self.tcx.dcx().err(Message::AttributeError(err)).into())
     }
 }
 
@@ -723,7 +730,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let parser = rrconfig::attribute_parser();
         if parser.as_str() != "verbose" {
             trace!("leaving process_closure_attrs");
-            return Err(TranslationError::UnknownAttributeParser(parser));
+            return Err(self.tcx.dcx().err(Message::UnknownAttributeParser(parser)).into());
         }
 
         let mut spec_builder = specs::functions::LiteralSpecBuilder::new();
@@ -749,7 +756,9 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 .parse_closure_spec(v, &mut spec_builder, meta, |x| {
                     ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
                 })
-                .map_err(TranslationError::AttributeError)?;
+                .map_err(|err| -> TranslationError<'tcx> {
+                    ty_translator.translator.tcx().dcx().err(Message::AttributeError(err)).into()
+                })?;
 
             let x = parser.into();
             Self::process_function_requirements(&mut self.translated_fn, x);
@@ -804,15 +813,19 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                             |lit| ty_translator.translator.intern_literal(lit),
                         );
 
-                    parser
-                        .parse_function_spec(attrs, &mut spec_builder)
-                        .map_err(TranslationError::AttributeError)?;
+                    parser.parse_function_spec(attrs, &mut spec_builder).map_err(
+                        |err| -> TranslationError<'tcx> {
+                            ty_translator.translator.tcx().dcx().err(Message::AttributeError(err)).into()
+                        },
+                    )?;
                     Self::process_function_requirements(translator, parser.into());
                 }
 
                 Ok(spec_builder)
             },
-            _ => Err(TranslationError::UnknownAttributeParser(parser)),
+            _ => {
+                Err(ty_translator.translator.tcx().dcx().err(Message::UnknownAttributeParser(parser)).into())
+            },
         }
     }
 
@@ -836,7 +849,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         self.trait_registry
             .lookup_trait(trait_did)
-            .ok_or_else(|| TranslationError::TraitResolution(format!("{trait_did:?}")))?;
+            .ok_or_else(|| self.tcx.dcx().err(Message::TraitResolution(format!("{trait_did:?}"))))?;
 
         let fn_name = strip_coq_ident(self.tcx.item_name(self.proc.get_id()).as_str());
 
