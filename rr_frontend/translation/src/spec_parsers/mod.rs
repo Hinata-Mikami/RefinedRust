@@ -12,6 +12,7 @@ pub(crate) mod verbose_function_spec_parser;
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::Span;
 
 /// For parsing of `RustPaths`
 #[derive(Debug)]
@@ -215,4 +216,10 @@ pub(crate) fn propagate_method_attr_from_impl(it: &hir::AttrItem) -> bool {
     } else {
         false
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct SpannedError<T> {
+    pub(crate) err: T,
+    pub(crate) span: Span,
 }

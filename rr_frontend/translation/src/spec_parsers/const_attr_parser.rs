@@ -5,10 +5,33 @@
 // file, You can obtain one at https://opensource.org/license/bsd-3-clause/.
 
 use attribute_parse::parse;
+use derive_more::Display;
 use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::LocalDefId;
+use rr_rustc_interface::span::Span;
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err};
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub(crate) enum ParserError {
+    #[display("parse error: {}", _0)]
+    Parse(String),
+    #[display("name attribute has already been specified")]
+    DuplicateName,
+    #[display("unknown attribute for const specification: {}", _0)]
+    UnknownAttribute(String),
+    #[display("no name attribute specified on const")]
+    MissingName,
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 /// Parse attributes on a const.
 /// Permitted attributes:
@@ -17,8 +40,9 @@ pub(crate) trait ConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
         did: LocalDefId,
+        span: Span,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<ConstAttrs, String>;
+    ) -> Result<ConstAttrs, SpannedError<ParserError>>;
 }
 
 #[derive(Clone, Debug)]
@@ -38,8 +62,9 @@ impl ConstAttrParser for VerboseConstAttrParser {
     fn parse_const_attrs<'a>(
         &'a mut self,
         _did: LocalDefId,
+        span: Span,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<ConstAttrs, String> {
+    ) -> Result<ConstAttrs, SpannedError<ParserError>> {
         let mut name: Option<String> = None;
 
         for &it in attrs {
@@ -54,20 +79,21 @@ impl ConstAttrParser for VerboseConstAttrParser {
 
             match seg.as_str() {
                 "name" => {
-                    let parsed_name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+                    let parsed_name: parse::LitStr =
+                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
                     if name.is_some() {
-                        return Err("name attribute has already been specified".to_owned());
+                        return Err(spanned_error(span, ParserError::DuplicateName));
                     }
                     name = Some(parsed_name.value());
                 },
                 _ => {
-                    return Err(format!("unknown attribute for const specification: {:?}", args));
+                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
                 },
             }
         }
 
         let Some(name) = name else {
-            return Err("no name attribute specified on const".to_owned());
+            return Err(spanned_error(span, ParserError::MissingName));
         };
 
         Ok(ConstAttrs { name })

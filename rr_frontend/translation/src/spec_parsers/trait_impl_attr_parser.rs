@@ -10,10 +10,32 @@ use attribute_parse::MToken;
 use attribute_parse::parse::{self, Parse as _, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::Span;
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
     IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
 };
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("unknown macro {} in trait attribute instantiation", _0)]
+    UnknownMacro(String),
+    #[display("attribute {} has been instantiated multiple times", _0)]
+    DuplicateInstantiation(String),
+    #[display("unknown attribute for trait impl specification: {:?}", _0)]
+    UnknownAttribute(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
@@ -25,12 +47,12 @@ pub(crate) trait TraitImplAttrParser {
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, String>;
+    ) -> Result<TraitImplAttrs, SpannedError<ParserError>>;
 
     fn parse_derive_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, String>;
+    ) -> Result<TraitImplAttrs, SpannedError<ParserError>>;
 }
 
 #[derive(Clone, Debug)]
@@ -70,19 +92,20 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseTraitImplAttrParser<'a, T> {
     fn parse_instantiate(
         &self,
         buffer: &parse::Buffer,
-    ) -> Result<(String, specs::traits::SpecAttrInst), String> {
-        let parsed_name: IdentOrTerm = buffer.parse(&self.scope).map_err(str_err)?;
-        buffer.parse::<_, MToken![:]>(&self.scope).map_err(str_err)?;
-        buffer.parse::<_, MToken![=]>(&self.scope).map_err(str_err)?;
+        span: Span,
+    ) -> Result<(String, specs::traits::SpecAttrInst), SpannedError<ParserError>> {
+        let parsed_name: IdentOrTerm = buffer.parse(&self.scope).map_err(|err| parse_err(span, err))?;
+        buffer.parse::<_, MToken![:]>(&self.scope).map_err(|err| parse_err(span, err))?;
+        buffer.parse::<_, MToken![=]>(&self.scope).map_err(|err| parse_err(span, err))?;
 
         let inst = if parse::Pound::peek(buffer) {
-            buffer.parse::<_, MToken![#]>(&()).map_err(str_err)?;
-            let macro_cmd: parse::Ident = buffer.parse(&()).map_err(str_err)?;
+            buffer.parse::<_, MToken![#]>(&()).map_err(|err| parse_err(span, err))?;
+            let macro_cmd: parse::Ident = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
             if &macro_cmd.value() != "proof" {
-                return Err(format!("unknown macro {} in trait attribute instantiation", macro_cmd.value()));
+                return Err(spanned_error(span, ParserError::UnknownMacro(macro_cmd.value())));
             }
 
-            let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
+            let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
             let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
 
             specs::traits::SpecAttrInst::Proof(parsed_term)
@@ -91,7 +114,7 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseTraitImplAttrParser<'a, T> {
             let buffer =
                 if let Some(stream) = buffer.peek_delimited() { &parse::Buffer::new(stream) } else { buffer };
 
-            let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(str_err)?;
+            let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
             let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
             let term = coq::term::Term::Literal(parsed_term);
 
@@ -105,7 +128,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
     fn parse_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, String> {
+    ) -> Result<TraitImplAttrs, SpannedError<ParserError>> {
         let mut trait_attrs = BTreeMap::new();
         let mut context_items = Vec::new();
 
@@ -117,22 +140,24 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
 
             match seg.as_str() {
                 "instantiate" => {
-                    let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
+                    let (parsed_name, inst) = self.parse_instantiate(&buffer, span)?;
                     if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
-                        return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
+                        return Err(spanned_error(span, ParserError::DuplicateInstantiation(parsed_name)));
                     }
                 },
                 "context" => {
-                    let context_item = RRCoqContextItem::parse(&buffer, self.scope).map_err(str_err)?;
+                    let context_item =
+                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|err| parse_err(span, err))?;
                     let param = context_item.into();
                     context_items.push(param);
                 },
                 "export_as" | "only_spec" | "trust_me" | "skip" | "verify" => (),
                 _ => {
-                    return Err(format!("unknown attribute for trait impl specification: {:?}", it.path));
+                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", it.path))));
                 },
             }
         }
@@ -146,7 +171,7 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
     fn parse_derive_trait_impl_attrs<'a>(
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<TraitImplAttrs, String> {
+    ) -> Result<TraitImplAttrs, SpannedError<ParserError>> {
         let mut trait_attrs = BTreeMap::new();
         let mut context_items = Vec::new();
 
@@ -158,16 +183,18 @@ impl<'def, T: ParamLookup<'def>> TraitImplAttrParser for VerboseTraitImplAttrPar
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
 
             match seg.as_str() {
                 "derive_instantiate" => {
-                    let (parsed_name, inst) = self.parse_instantiate(&buffer)?;
+                    let (parsed_name, inst) = self.parse_instantiate(&buffer, span)?;
                     if trait_attrs.insert(parsed_name.clone(), inst).is_some() {
-                        return Err(format!("attribute {parsed_name} has been instantiated multiple times"));
+                        return Err(spanned_error(span, ParserError::DuplicateInstantiation(parsed_name)));
                     }
                 },
                 "context" => {
-                    let context_item = RRCoqContextItem::parse(&buffer, self.scope).map_err(str_err)?;
+                    let context_item =
+                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|err| parse_err(span, err))?;
                     let param = context_item.into();
                     context_items.push(param);
                 },

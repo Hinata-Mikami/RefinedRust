@@ -10,16 +10,45 @@ use attribute_parse::{MToken, parse};
 use derive_more::Constructor;
 use radium::specs;
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::Span;
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
     IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("rr::external_attrs specified, but rr::exists has been previously specified")]
+    ExternalAttrsAfterExists,
+    #[display("rr::exists specified, but rr::external_attrs has been previously specified")]
+    ExistsAfterExternalAttrs,
+    #[display("attribute {} has been declared multiple times", _0)]
+    DuplicateAttribute(String),
+    #[display("rr::semantic has been declared multiple times")]
+    DuplicateSemanticInterp,
+    #[display("unknown attribute for trait specification: {:?}", _0)]
+    UnknownAttribute(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 /// Parse attributes on a trait.
 /// Permitted attributes:
 /// - `rr::exists("x" : "Prop")`, which will declare a specification attribute "x" of the given type "Prop"
 pub(crate) trait TraitAttrParser {
-    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String>;
+    fn parse_trait_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a hir::AttrItem],
+    ) -> Result<TraitAttrs, SpannedError<ParserError>>;
 }
 
 /// Extends an existing scope with additional literals of attributes parsed so far.
@@ -77,7 +106,10 @@ impl<'def, T: ParamLookup<'def>, F> TraitAttrParser for VerboseTraitAttrParser<'
 where
     F: Fn(&str) -> String,
 {
-    fn parse_trait_attrs<'a>(&'a mut self, attrs: &'a [&'a hir::AttrItem]) -> Result<TraitAttrs, String> {
+    fn parse_trait_attrs<'a>(
+        &'a mut self,
+        attrs: &'a [&'a hir::AttrItem],
+    ) -> Result<TraitAttrs, SpannedError<ParserError>> {
         let mut trait_attrs = Vec::new();
         let mut used_attrs = HashSet::new();
 
@@ -93,49 +125,49 @@ where
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
 
             match seg.as_str() {
                 "external_attrs" => {
                     if !trait_attrs.is_empty() {
-                        return Err(
-                            "rr::external_attrs specified, but rr::exists has been previously specified"
-                                .to_owned(),
-                        );
+                        return Err(spanned_error(span, ParserError::ExternalAttrsAfterExists));
                     }
                     external_attrs = true;
                 },
                 "exists" => {
                     if external_attrs {
-                        return Err(
-                            "rr::exists specified, but rr::external_attrs has been previously specified"
-                                .to_owned(),
-                        );
+                        return Err(spanned_error(span, ParserError::ExistsAfterExternalAttrs));
                     }
-                    let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
-                    buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
+                    let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
+                    buffer.parse::<_, MToken![:]>(&()).map_err(|err| parse_err(span, err))?;
                     // add the new identifier to the scope
                     self.scope.literals.insert(
                         parsed_name.to_string(),
                         self.make_record_id.call((&parsed_name.to_string(),)),
                     );
-                    let parsed_type: RRCoqType = buffer.parse(&self.scope).map_err(str_err)?;
+                    let parsed_type: RRCoqType =
+                        buffer.parse(&self.scope).map_err(|err| parse_err(span, err))?;
                     if !used_attrs.insert(parsed_name.to_string()) {
-                        return Err(format!("attribute {parsed_name} has been declared multiple times"));
+                        return Err(spanned_error(
+                            span,
+                            ParserError::DuplicateAttribute(parsed_name.to_string()),
+                        ));
                     }
                     trait_attrs.push((parsed_name.to_string(), parsed_type.ty));
                 },
                 "semantic" => {
-                    let parsed_term: parse::LitStr = buffer.parse(&self.scope).map_err(str_err)?;
+                    let parsed_term: parse::LitStr =
+                        buffer.parse(&self.scope).map_err(|err| parse_err(span, err))?;
                     let (lit, _) = self.scope.process_coq_literal(&parsed_term.value());
 
                     if semantic_interp.is_some() {
-                        return Err("rr::semantic has been declared multiple times".to_owned());
+                        return Err(spanned_error(span, ParserError::DuplicateSemanticInterp));
                     }
                     semantic_interp = Some(lit);
                 },
                 "nondependent" | "export_as" => (),
                 _ => {
-                    return Err(format!("unknown attribute for trait specification: {:?}", args));
+                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
                 },
             }
         }
@@ -148,7 +180,9 @@ where
 }
 
 /// Get all the trait attrs declared on a trait with `rr::exists`, without validating them yet.
-pub(crate) fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<String>, String> {
+pub(crate) fn get_declared_trait_attrs(
+    attrs: &[&hir::AttrItem],
+) -> Result<Vec<String>, SpannedError<ParserError>> {
     let mut trait_attrs = Vec::new();
 
     for &it in attrs {
@@ -159,15 +193,17 @@ pub(crate) fn get_declared_trait_attrs(attrs: &[&hir::AttrItem]) -> Result<Vec<S
         };
 
         let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+        let span = it.span;
 
         if "exists" == seg.as_str() {
-            let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(str_err)?;
+            let parsed_name: IdentOrTerm = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
             let parsed_name = parsed_name.to_string();
-            buffer.parse::<_, MToken![:]>(&()).map_err(str_err)?;
+            buffer.parse::<_, MToken![:]>(&()).map_err(|err| parse_err(span, err))?;
             trait_attrs.push(parsed_name);
         } else if "external_attrs" == seg.as_str() {
             let params: parse::Punctuated<parse::LitStr, MToken![,]> =
-                parse::Punctuated::<_, _>::parse_terminated(&buffer, &()).map_err(str_err)?;
+                parse::Punctuated::<_, _>::parse_terminated(&buffer, &())
+                    .map_err(|err| parse_err(span, err))?;
             for it in params {
                 trait_attrs.push(it.value());
             }

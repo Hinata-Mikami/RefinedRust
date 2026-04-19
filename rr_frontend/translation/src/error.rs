@@ -9,6 +9,14 @@ use rr_rustc_interface::errors::DiagMessage;
 use rr_rustc_interface::hir::def_id::DefId;
 use rr_rustc_interface::middle::ty;
 
+use crate::spec_parsers::const_attr_parser::ParserError as ConstParserError;
+use crate::spec_parsers::crate_attr_parser::ParserError as CrateParserError;
+use crate::spec_parsers::enum_spec_parser::ParserError as EnumParserError;
+use crate::spec_parsers::loop_attr_parser::ParserError as LoopParserError;
+use crate::spec_parsers::module_attr_parser::ParserError as ModuleParserError;
+use crate::spec_parsers::struct_spec_parser::ParserError as StructParserError;
+use crate::spec_parsers::trait_attr_parser::ParserError as TraitParserError;
+use crate::spec_parsers::trait_impl_attr_parser::ParserError as TraitImplParserError;
 use crate::{base, procedures, traits};
 
 #[expect(dead_code)]
@@ -114,22 +122,37 @@ pub(crate) enum Message<'tcx> {
     AttributeError(String),
 
     #[display("Failed to parse struct invariant spec: {}", _0)]
-    StructInvariantSpecParse(String),
+    StructInvariantSpecParse(StructParserError),
 
     #[display("Failed to parse field specification: {}", _0)]
-    FieldSpecParseError(String),
+    FieldSpecParseError(StructParserError),
+
+    #[display("Failed to parse const specification: {}", _0)]
+    ConstSpecParse(ConstParserError),
+
+    #[display("Failed to parse crate specification: {}", _0)]
+    CrateSpecParse(CrateParserError),
+
+    #[display("Failed to parse module specification: {}", _0)]
+    ModuleSpecParse(ModuleParserError),
+
+    #[display("Failed to parse trait impl specification: {}", _0)]
+    TraitImplSpecParse(TraitImplParserError),
+
+    #[display("Failed to parse trait specification: {}", _0)]
+    TraitSpecParse(TraitParserError),
 
     #[display("Failed to const-evaluate discriminant: {}", _0)]
     DiscriminantConstEval(String),
 
     #[display("Failed to parse enum spec: {}", _0)]
-    EnumSpecParse(String),
+    EnumSpecParse(EnumParserError),
 
     #[display("Failed to parse `refine_as` enum annotation: {}", _0)]
-    EnumRefineAsParse(String),
+    EnumRefineAsParse(EnumParserError),
 
     #[display("Could not parse loop spec: {}", _0)]
-    LoopSpec(String),
+    LoopSpec(LoopParserError),
 
     #[display("Trait translation failed: {}", _0)]
     TraitTranslation(traits::Error<'tcx>),

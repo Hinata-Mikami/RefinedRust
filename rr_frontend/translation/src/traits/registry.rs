@@ -17,11 +17,11 @@ use typed_arena::Arena;
 use crate::base::*;
 use crate::body::signature;
 use crate::regions::region_bi_folder::RegionBiFolder;
-use crate::spec_parsers::propagate_method_attr_from_impl;
 use crate::spec_parsers::trait_attr_parser::{
     TraitAttrParser as _, VerboseTraitAttrParser, get_declared_trait_attrs,
 };
 use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
+use crate::spec_parsers::{SpannedError, propagate_method_attr_from_impl};
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, environment, error, procedures, search, traits, types};
@@ -268,8 +268,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let attrs_dependent = !environment::has_tool_attribute(self.tcx, did.into(), "nondependent");
 
         // get the declared attributes that are allowed on impls
-        let valid_attrs: Vec<String> =
-            get_declared_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
+        let valid_attrs: Vec<String> = get_declared_trait_attrs(&trait_attrs).map_err(|e| {
+            let SpannedError { err, span } = e;
+            self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err.clone()));
+            Error::TraitSpec(did.into(), err.to_string())
+        })?;
 
         // make the literal we are going to use
         let lit_trait_spec = self.make_literal_trait_spec(
@@ -325,8 +328,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             // Note: This needs to match up with `specs::LiteralTraitSpec.make_spec_attr_name`!
             let mut attr_parser =
                 VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
-            let trait_spec =
-                attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| Error::TraitSpec(did.into(), e))?;
+            let trait_spec = attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| {
+                let SpannedError { err, span } = e;
+                self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err.clone()));
+                Error::TraitSpec(did.into(), err.to_string())
+            })?;
 
             // get items
             let mut methods = BTreeMap::new();
@@ -1156,9 +1162,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let adt_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, def.did()));
         let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
 
-        let res = attr_parser
-            .parse_derive_trait_impl_attrs(&adt_attrs)
-            .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
+        let res = attr_parser.parse_derive_trait_impl_attrs(&adt_attrs).map_err(|e| {
+            let SpannedError { err, span } = e;
+            self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err.clone()));
+            Error::TraitImplSpec(trait_impl_did, err.to_string())
+        })?;
 
         if let Ok(attrs) = res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
             Ok(Some((attrs, res.context_items)))
@@ -1233,9 +1241,11 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         let trait_impl_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, trait_impl_did));
         let (impl_spec, context_items) = if !trait_impl_attrs.is_empty() {
             let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
-            let res = attr_parser
-                .parse_trait_impl_attrs(&trait_impl_attrs)
-                .map_err(|e| Error::TraitImplSpec(trait_impl_did, e))?;
+            let res = attr_parser.parse_trait_impl_attrs(&trait_impl_attrs).map_err(|e| {
+                let SpannedError { err, span } = e;
+                self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err.clone()));
+                Error::TraitImplSpec(trait_impl_did, err.to_string())
+            })?;
             (res.attrs, res.context_items)
         } else if super::is_derive_trait_with_no_annotations(self.tcx, trait_did) == Some(true)
             || super::is_derive_trait_with_annotations(self.tcx, trait_did) == Some(true)

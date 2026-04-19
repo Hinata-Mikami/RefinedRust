@@ -218,13 +218,21 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
             let attrs = environment::get_attributes(self.tcx, did);
             let attrs = attrs::filter_for_tool(attrs);
             info!("attrs for loop {:?}: {:?}", loop_head, attrs);
-            parser
-                .parse_loop_attrs(attrs.as_slice())
-                .map_err(|err| self.tcx.dcx().err(Message::LoopSpec(err)).into())
+            match parser.parse_loop_attrs(attrs.as_slice()) {
+                Ok(spec) => Ok(spec),
+                Err(err) => {
+                    let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
+                    Err(TranslationError::Tainted(err))
+                },
+            }
         } else {
-            parser
-                .parse_loop_attrs(&[])
-                .map_err(|err| self.tcx.dcx().err(Message::LoopSpec(err)).into())
+            match parser.parse_loop_attrs(&[]) {
+                Ok(spec) => Ok(spec),
+                Err(err) => {
+                    let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
+                    Err(TranslationError::Tainted(err))
+                },
+            }
         }
     }
 

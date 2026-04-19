@@ -16,7 +16,7 @@ use rr_rustc_interface::{borrowck, polonius_engine};
 use topological_sort::TopologicalSort;
 
 use crate::environment::borrowck::facts;
-use crate::{error, traits};
+use crate::traits;
 
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
@@ -152,8 +152,4 @@ impl From<InternalError> for TranslationError<'_> {
     fn from(x: InternalError) -> Self {
         Self::Internal(x)
     }
-}
-
-pub(crate) fn emit_tainted<'tcx>(tcx: ty::TyCtxt<'tcx>, msg: error::Message<'tcx>) -> TranslationError<'tcx> {
-    TranslationError::Tainted(tcx.dcx().err(msg))
 }

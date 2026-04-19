@@ -1570,7 +1570,14 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
                 let _full_name = base::strip_coq_ident(&environment::get_item_name(vcx.tcx, s.to_def_id()));
 
                 let mut const_parser = VerboseConstAttrParser::new();
-                let const_spec = const_parser.parse_const_attrs(*s, &const_attrs)?;
+                let const_spec =
+                    match const_parser.parse_const_attrs(*s, vcx.tcx.def_span(s.to_def_id()), &const_attrs) {
+                        Ok(spec) => spec,
+                        Err(err) => {
+                            vcx.tcx.dcx().span_err(err.span, error::Message::ConstSpecParse(err.err));
+                            return Err("Failed to parse const specification".to_owned());
+                        },
+                    };
 
                 let name = const_spec.name;
                 let loc_name = format!("{name}_loc");
@@ -2027,7 +2034,13 @@ fn get_module_attributes(tcx: ty::TyCtxt<'_>) -> Result<BTreeMap<OrderedDefId, M
     for m in &modules {
         let module_attrs = attrs::filter_for_tool(environment::get_attributes(tcx, m.to_def_id()));
         let mut module_parser = VerboseModuleAttrParser::new();
-        let module_spec = module_parser.parse_module_attrs(*m, &module_attrs)?;
+        let module_spec = match module_parser.parse_module_attrs(*m, &module_attrs) {
+            Ok(spec) => spec,
+            Err(err) => {
+                tcx.dcx().span_err(err.span, error::Message::ModuleSpecParse(err.err));
+                return Err("Failed to parse module specification".to_owned());
+            },
+        };
         let ordered_did = OrderedDefId::new(tcx, m.to_def_id());
         attrs.insert(ordered_did, module_spec);
     }
@@ -2058,7 +2071,14 @@ where
     info!("Found crate attributes: {:?}", crate_attrs);
     // parse crate attributes
     let mut crate_parser = VerboseCrateAttrParser::new();
-    let crate_spec = crate_parser.parse_crate_attrs(&crate_attrs)?;
+    let crate_span = crate_attrs.first().map_or(span::DUMMY_SP, |a| a.span);
+    let crate_spec = match crate_parser.parse_crate_attrs(&crate_attrs, crate_span) {
+        Ok(spec) => spec,
+        Err(err) => {
+            tcx.dcx().span_err(err.span, error::Message::CrateSpecParse(err.err));
+            return Err("Failed to parse crate specification".to_owned());
+        },
+    };
 
     let path_prefix = crate_spec.prefix.unwrap_or_else(|| "refinedrust.examples".to_owned());
     info!("Setting Coq path prefix: {:?}", path_prefix);

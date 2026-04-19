@@ -14,7 +14,9 @@ use radium::{coq, fmt_list, model, push_str_list, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::hir::place;
 use rr_rustc_interface::middle::ty;
+use rr_rustc_interface::span::{self, Span};
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
     IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections, RRCoqContextItem, RRParam,
     RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
@@ -30,6 +32,51 @@ pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     pub capture_tys: &'a [specs::Type<'def>],
     /// the lifetime of the closure, if kind is `Fn` or `FnMut`
     pub closure_lifetime: Option<specs::Lft>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("could not find name")]
+    CouldNotFindName,
+    #[display("expected {} function arguments, found a different count", _0)]
+    WrongFunctionArgumentCount(usize),
+    #[display("linktime assumptions are not allowed on closures")]
+    LinktimeAssumptionsNotAllowedOnClosures,
+    #[display("assumptions on trait attributes are not allowed on closures")]
+    TraitAttributeAssumptionsNotAllowedOnClosures,
+    #[display("multiple specializations for {} were specified", _0)]
+    MultipleSpecializations(String),
+    #[display("could not find trait requirement to attach trait specialization to")]
+    CouldNotFindTraitRequirementToAttachSpecialization,
+    #[display("non-pure requires clause after rr::ok")]
+    NonPureRequiresClauseAfterOk,
+    #[display("non-pure ensures clause after rr::ok")]
+    NonPureEnsuresClauseAfterOk,
+    #[display("Did not expect postcondition {:?} for by-value capture", _0)]
+    DidNotExpectPostconditionForByValueCapture(String),
+    #[display("Closure captures ByUse, which is not supported")]
+    ClosureCapturesByUseNotSupported,
+    AmbiguousCapture(String),
+    #[display("specified rr::returns and rr::ok at the same time")]
+    SpecifiedReturnsAndOkAtSameTime,
+    #[display("unknown closure attribute: {}", _0)]
+    UnknownClosureAttribute(String),
+    #[display("unknown function attribute: {}", _0)]
+    UnknownFunctionAttribute(String),
+    #[display("unable to attach trait attr requirement")]
+    UnableToAttachTraitAttrRequirement,
+    #[display("{}", _0)]
+    Builder(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
 }
 
 /// Specifies that a trait attribute requirement on a function can be attached to a scope.
@@ -260,7 +307,7 @@ pub(crate) trait FunctionSpecParser<'def> {
         &'a mut self,
         attrs: &'a [&'a hir::AttrItem],
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
-    ) -> Result<(), String>;
+    ) -> Result<(), SpannedError<ParserError>>;
 
     /// Parse a set of attributes into a closure spec.
     /// The implementation can assume the `attrs` to be prefixed by the tool prefix (e.g. `rr`) and
@@ -271,7 +318,7 @@ pub(crate) trait FunctionSpecParser<'def> {
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: F,
-    ) -> Result<ClosureSpecInfo, String>
+    ) -> Result<ClosureSpecInfo, SpannedError<ParserError>>
     where
         F: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>;
 }
@@ -689,7 +736,12 @@ impl<'def> ParsedSpecInfo<'def> {
 
     /// add a coq type annotation for a parameter when no type is currently known.
     /// this can e.g. be used to later on add knowledge about the type of a refinement.
-    fn add_param_type_annot(&mut self, name: &String, ty: coq::term::Type) -> Result<(), String> {
+    fn add_param_type_annot(
+        &mut self,
+        span: Span,
+        name: &String,
+        ty: coq::term::Type,
+    ) -> Result<(), SpannedError<ParserError>> {
         for (param, _) in &mut self.params {
             let Some(param_name) = param.0.get_name_ref() else {
                 continue;
@@ -706,24 +758,23 @@ impl<'def> ParsedSpecInfo<'def> {
                 return Ok(());
             }
         }
-        Err("could not find name".to_owned())
+        Err(spanned_error(span, ParserError::CouldNotFindName))
     }
 
     /// Assemble a fallible specification.
     fn assemble_fallible_spec(
         &mut self,
+        span: Span,
         ret_name: &str,
         ret_is_option: bool,
         ret_is_result: bool,
-    ) -> Result<(), String> {
+    ) -> Result<(), SpannedError<ParserError>> {
         let ok_spec = mem::replace(&mut self.ok_spec, OkSpec::new());
 
         // now assemble the ok-specification
         if ok_spec.ok_mode {
             if !(ret_is_option || ret_is_result) {
-                return Err(
-                    "specified rr::ok but the return type is neither an Option nor a Result".to_owned()
-                );
+                return Err(spanned_error(span, ParserError::SpecifiedReturnsAndOkAtSameTime));
             }
 
             let conjoined_postconds = coq::term::Term::Exists(
@@ -827,32 +878,33 @@ where
     /// Handles attributes common among functions/methods and closures.
     fn handle_common_attributes<X: TraitReqHandler<'def>>(
         &mut self,
+        span: Span,
         name: &str,
         buffer: &parse::Buffer,
         builder: &mut ParsedSpecInfo<'def>,
         scope: &X,
         in_closure: bool,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, SpannedError<ParserError>> {
         match name {
             "ok" => {
                 builder.ok_spec.ok_mode = true;
             },
             "params" => {
-                let params = RRParams::parse(buffer, scope).map_err(str_err)?;
+                let params = RRParams::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 for param in params.params {
                     builder.params.push((param, true));
                 }
             },
             "param" => {
-                let param = RRParam::parse(buffer, scope).map_err(str_err)?;
+                let param = RRParam::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 builder.params.push((param, true));
             },
             "args" => {
-                let args = RRArgs::parse(buffer, scope).map_err(str_err)?;
+                let args = RRArgs::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 if self.arg_types.len() != args.args.len() {
-                    return Err(format!(
-                        "wrong number of function arguments given: expected {} args",
-                        self.arg_types.len()
+                    return Err(spanned_error(
+                        span,
+                        ParserError::WrongFunctionArgumentCount(self.arg_types.len()),
                     ));
                 }
                 builder.got_args = true;
@@ -863,22 +915,28 @@ where
                         // potentially add a typing hint to the refinement
                         if let IdentOrTerm::Ident(i) = arg.rfn {
                             info!("Trying to add a typing hint for {}", i);
-                            builder.add_param_type_annot(&i, cty)?;
+                            builder.add_param_type_annot(span, &i, cty)?;
                         }
                     }
                 }
             },
             "requires" => {
-                let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 info!("parsed iprop: {iprop:?}");
                 if let MetaIProp::Linktime(assum) = iprop {
                     if in_closure {
-                        return Err("linktime assumptions are not allowed on closures".to_owned());
+                        return Err(spanned_error(
+                            span,
+                            ParserError::LinktimeAssumptionsNotAllowedOnClosures,
+                        ));
                     }
                     self.fn_requirements.proof_info.linktime_assumptions.push(assum);
                 } else if let MetaIProp::Trait(for_ty, attr, term) = iprop {
                     if in_closure {
-                        return Err("assumptions on trait attributes are not allowed on closures".to_owned());
+                        return Err(spanned_error(
+                            span,
+                            ParserError::TraitAttributeAssumptionsNotAllowedOnClosures,
+                        ));
                     }
 
                     if let Some(req) = scope.determine_trait_attr_requirement_origin(&for_ty, &attr) {
@@ -894,17 +952,21 @@ where
                             )
                             .is_some()
                         {
-                            return Err(format!("multiple specializations for {attr} were specified"));
+                            return Err(spanned_error(
+                                span,
+                                ParserError::MultipleSpecializations(attr.clone()),
+                            ));
                         }
                     } else {
-                        return Err(
-                            "could not find trait requirement to attach trait specialization to".to_owned()
-                        );
+                        return Err(spanned_error(
+                            span,
+                            ParserError::CouldNotFindTraitRequirementToAttachSpecialization,
+                        ));
                     }
                 } else if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
-                        return Err("non-pure requires clause after rr::ok".to_owned());
+                        return Err(spanned_error(span, ParserError::NonPureRequiresClauseAfterOk));
                     }
                     let term = iprop.try_into().unwrap();
                     builder.ok_spec.ok_requires.push(term);
@@ -913,12 +975,12 @@ where
                 }
             },
             "ensures" => {
-                let iprop = MetaIProp::parse(buffer, scope).map_err(str_err)?;
+                let iprop = MetaIProp::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
 
                 if builder.ok_spec.ok_mode {
                     // only accept pure assertions
                     if !matches!(iprop, MetaIProp::Pure(_, _)) {
-                        return Err("non-pure ensures clause after rr::ok".to_owned());
+                        return Err(spanned_error(span, ParserError::NonPureEnsuresClauseAfterOk));
                     }
                     builder.ok_spec.ok_ensures.push(iprop.try_into().unwrap());
                 } else {
@@ -934,17 +996,17 @@ where
                     let (term, _) = scope.process_coq_literal(&term.value());
                     Ok(MetaIProp::Observe(gname.value(), None, term))
                 };
-                let m = m().map_err(str_err)?;
+                let m = m().map_err(|err| parse_err(span, err))?;
                 builder.postconditions.push(m);
             },
             "returns" => {
-                let tr = LiteralTypeWithRef::parse(buffer, scope).map_err(str_err)?;
+                let tr = LiteralTypeWithRef::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 // convert to type
                 let (ty, _) = self.make_type_with_ref(&tr, self.ret_type);
                 builder.ret = Some(ty);
             },
             "exists" => {
-                let params = RRParams::parse(buffer, scope).map_err(str_err)?;
+                let params = RRParams::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
 
                 if builder.ok_spec.ok_mode {
                     for param in params.params {
@@ -957,19 +1019,20 @@ where
                 }
             },
             "tactics" => {
-                let tacs = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
+                let tacs = parse::LitStr::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 let tacs = tacs.value();
                 self.fn_requirements.proof_info.sidecond_tactics.push(tacs);
             },
             "unsafe_elctx" => {
                 // TODO: do not allow this on closures.
-                let term = parse::LitStr::parse(buffer, scope).map_err(str_err)?;
+                let term = parse::LitStr::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 let (term, _) = scope.process_coq_literal(&term.value());
                 builder.unsafe_lifetime_constraints.push(term);
             },
             "context" => {
                 // TODO: do not allow this on closures?
-                let context_item = RRCoqContextItem::parse(buffer, scope).map_err(str_err)?;
+                let context_item =
+                    RRCoqContextItem::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
                 let at_end = context_item.at_end;
                 let param = context_item.into();
                 if at_end {
@@ -995,10 +1058,11 @@ where
     /// `builder`: the function builder to push new specification components to
     fn merge_capture_information<H>(
         &self,
+        span: Span,
         capture_specs: &CaptureSpecMap,
         meta: ClosureMetaInfo<'_, '_, 'def>,
         mut make_tuple: H,
-    ) -> Result<ParsedClosureSpecInfo<'def>, String>
+    ) -> Result<ParsedClosureSpecInfo<'def>, SpannedError<ParserError>>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
@@ -1048,9 +1112,12 @@ where
 
                         if let Some(post) = post {
                             // this should not contain any post
-                            return Err(format!(
-                                "Did not expect postcondition {:?} for by-value capture",
-                                post
+                            return Err(spanned_error(
+                                span,
+                                ParserError::DidNotExpectPostconditionForByValueCapture(format!(
+                                    "{:?}",
+                                    post
+                                )),
                             ));
                         }
 
@@ -1102,11 +1169,11 @@ where
                     },
                     ty::UpvarCapture::ByUse => {
                         // The semantics of this are not really clear yet
-                        return Err("Closure captures ByUse, which is not supported".to_owned());
+                        return Err(spanned_error(span, ParserError::ClosureCapturesByUseNotSupported));
                     },
                 }
             } else {
-                return Err(format!("ambiguous specification of capture {:?}", capture));
+                return Err(spanned_error(span, ParserError::AmbiguousCapture(format!("{:?}", capture))));
             }
         }
 
@@ -1226,7 +1293,11 @@ where
 
     /// In case we didn't get a specification of argument and return types, add the default types,
     /// and add binders to refer to them by their Rust name
-    fn add_default_spec(&self, spec: &mut ParsedSpecInfo<'def>) -> Result<(), String> {
+    fn add_default_spec(
+        &self,
+        span: Span,
+        spec: &mut ParsedSpecInfo<'def>,
+    ) -> Result<(), SpannedError<ParserError>> {
         if !spec.got_args
             && let Some(arg_names) = self.arg_names
         {
@@ -1266,9 +1337,9 @@ where
 
         if spec.ok_spec.ok_mode {
             if !is_implicit_ret {
-                return Err("specified rr::returns and rr::ok at the same time".to_owned());
+                return Err(spanned_error(span, ParserError::SpecifiedReturnsAndOkAtSameTime));
             }
-            spec.assemble_fallible_spec(implicit_ret_name, self.ret_is_option, self.ret_is_result)?;
+            spec.assemble_fallible_spec(span, implicit_ret_name, self.ret_is_option, self.ret_is_result)?;
         }
         Ok(())
     }
@@ -1341,10 +1412,11 @@ where
         builder: &'a mut specs::functions::LiteralSpecBuilder<'def>,
         closure_meta: ClosureMetaInfo<'_, '_, 'def>,
         make_tuple: H,
-    ) -> Result<ClosureSpecInfo, String>
+    ) -> Result<ClosureSpecInfo, SpannedError<ParserError>>
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
+        let span = attrs.first().map_or(span::DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         let mut capture_spec_map: CaptureSpecMap = BTreeMap::new();
@@ -1400,10 +1472,14 @@ where
         }
 
         for param in &param_binders {
-            builder.add_param(param.to_owned())?;
+            builder
+                .add_param(param.to_owned())
+                .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
         }
         for param in &ex_binders {
-            builder.add_existential(param.to_owned())?;
+            builder
+                .add_existential(param.to_owned())
+                .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
         }
 
         let scope = ClosureCaptureScope {
@@ -1411,8 +1487,11 @@ where
             map: &capture_spec_map,
         };
 
-        let capture_spec = self.merge_capture_information(&capture_spec_map, closure_meta, make_tuple)?;
-        capture_spec.push_to_builder(builder)?;
+        let capture_spec =
+            self.merge_capture_information(span, &capture_spec_map, closure_meta, make_tuple)?;
+        capture_spec
+            .push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         for &it in attrs {
             let path_segs = &it.path.segments;
@@ -1422,7 +1501,7 @@ where
                 let buffer = parse::Buffer::new(&attr_args_tokens(args));
                 let name = seg.as_str();
 
-                match self.handle_common_attributes(name, &buffer, &mut spec, &scope, true) {
+                match self.handle_common_attributes(it.span, name, &buffer, &mut spec, &scope, true) {
                     Ok(b) => {
                         if !b
                             && name != "capture"
@@ -1430,7 +1509,10 @@ where
                             && name != "verify"
                             && name != "trust_me"
                         {
-                            return Err(format!("unknown closure attribute: {name}"));
+                            return Err(spanned_error(
+                                it.span,
+                                ParserError::UnknownClosureAttribute(name.to_owned()),
+                            ));
                         }
                     },
 
@@ -1442,8 +1524,9 @@ where
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
         // IMPORTANT: We do this after pushing the `capture_spec`
-        self.add_default_spec(&mut spec)?;
-        spec.push_to_builder(builder)?;
+        self.add_default_spec(span, &mut spec)?;
+        spec.push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         let spec_info =
             ClosureSpecInfo::new_from_parsed_spec(&spec, &capture_spec, param_binders, ex_binders);
@@ -1455,7 +1538,8 @@ where
         &mut self,
         attrs: &[&hir::AttrItem],
         builder: &mut specs::functions::LiteralSpecBuilder<'def>,
-    ) -> Result<(), String> {
+    ) -> Result<(), SpannedError<ParserError>> {
+        let span = attrs.first().map_or(span::DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         for &it in attrs {
@@ -1468,7 +1552,7 @@ where
 
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             let name = seg.as_str();
-            match self.handle_common_attributes(name, &buffer, &mut spec, self.scope, false) {
+            match self.handle_common_attributes(it.span, name, &buffer, &mut spec, self.scope, false) {
                 Ok(b) => {
                     if !b
                         && name != "code_shim"
@@ -1477,7 +1561,10 @@ where
                         && name != "verify"
                         && name != "trust_me"
                     {
-                        return Err(format!("unknown function attribute: {name}"));
+                        return Err(spanned_error(
+                            it.span,
+                            ParserError::UnknownFunctionAttribute(name.to_owned()),
+                        ));
                     }
                 },
                 Err(e) => {
@@ -1488,9 +1575,10 @@ where
 
         // in case we didn't get an args annotation,
         // implicitly add argument parameters matching their Rust names
-        self.add_default_spec(&mut spec)?;
+        self.add_default_spec(span, &mut spec)?;
 
-        spec.push_to_builder(builder)?;
+        spec.push_to_builder(builder)
+            .map_err(|err| spanned_error(span, ParserError::Builder(err)))?;
 
         // process trait specializations
         let mut defs = Vec::new();
@@ -1498,7 +1586,7 @@ where
             if let Some(def) = self.scope.attach_trait_attr_requirement(self.name_prefix, spec_use, terms) {
                 defs.push(def);
             } else {
-                return Err("unable to attach trait attr requirement".to_owned());
+                return Err(spanned_error(span, ParserError::UnableToAttachTraitAttrRequirement));
             }
         }
 

@@ -1138,8 +1138,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let outer_attrs = attrs::filter_for_tool(outer_attrs);
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
             let res = spec_parser
-                .parse_invariant_spec(struct_name, &outer_attrs)
-                .map_err(|err| emit_tainted(self.tcx, error::Message::StructInvariantSpecParse(err)))?;
+                .parse_invariant_spec(struct_name, self.tcx.def_span(ty.def_id), &outer_attrs)
+                .map_err(|err| {
+                    self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err))
+                })?;
 
             invariant_spec = Some(res.0);
             expect_refinement = !res.1;
@@ -1166,8 +1168,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 |lit| self.intern_literal(lit),
             );
             let field_spec =
-                parser.parse_field_spec(&f_name, &attrs).map_err(|err| -> TranslationError<'tcx> {
-                    self.tcx.dcx().err(error::Message::FieldSpecParseError(err)).into()
+                parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
+                    self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err))
                 })?;
 
             //info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
@@ -1451,19 +1453,33 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
                 let mut parser = VerboseEnumSpecParser::new(&scope);
 
-                enum_spec = parser
-                    .parse_enum_spec(&enum_name, &attributes, &variant_attrs)
-                    .map_err(|err| emit_tainted(self.tcx, error::Message::EnumSpecParse(err)))?;
+                enum_spec = match parser.parse_enum_spec(&enum_name, &attributes, &variant_attrs) {
+                    Ok(spec) => spec,
+                    Err(err) => {
+                        let err = self.tcx.dcx().span_err(err.span, error::Message::EnumSpecParse(err.err));
+                        return Err(TranslationError::Tainted(err));
+                    },
+                };
             } else {
                 // generate a specification
 
                 // get name for the inductive
-                let ind_name = environment::get_tool_attribute(self.tcx, def.did(), "refine_as")
+                let refine_as = environment::get_tool_attribute(self.tcx, def.did(), "refine_as");
+                let refine_as_span = attrs::filter_for_tool(environment::get_attributes(self.tcx, def.did()))
+                    .into_iter()
+                    .find(|it| it.path.segments.get(1).is_some_and(|seg| seg.as_str() == "refine_as"))
+                    .map_or(span::DUMMY_SP, |it| it.span);
+                let ind_name = refine_as
                     .map_or_else(
                         || Ok(Some(enum_name.clone())),
                         |args| {
-                            parse_enum_refine_as(args)
-                                .map_err(|err| emit_tainted(self.tcx, error::Message::EnumRefineAsParse(err)))
+                            parse_enum_refine_as(args, refine_as_span).map_err(|err| {
+                                let err = self
+                                    .tcx
+                                    .dcx()
+                                    .span_err(err.span, error::Message::EnumRefineAsParse(err.err));
+                                TranslationError::Tainted(err)
+                            })
                         },
                     )?
                     .unwrap_or_else(|| enum_name.clone());

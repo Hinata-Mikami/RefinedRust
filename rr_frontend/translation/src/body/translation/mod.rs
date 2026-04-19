@@ -135,8 +135,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let empty_args = tcx.mk_type_list(&[]);
         let mut return_ty = tcx.mk_ty_from_kind(ty::TyKind::Tuple(empty_args));
         let mut fn_locals = Vec::new();
-        let mut opt_return_name: Result<String, TranslationError<'tcx>> =
-            Err(tcx.dcx().err(Message::MissingReturnValueLocal).into());
+        let mut opt_return_name: Option<String> = None;
         let mut used_names = HashSet::new();
         let mut arg_tys = Vec::new();
 
@@ -175,13 +174,15 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 mir::LocalKind::Temp => (),
                 mir::LocalKind::ReturnPointer => {
                     return_ty = ty;
-                    opt_return_name = Ok(name);
+                    opt_return_name = Some(name);
                 },
             }
         }
         info!("radium name map: {:?}", variable_map);
         // create the function
-        let return_name = opt_return_name?;
+        let return_name = opt_return_name.ok_or_else(|| -> TranslationError<'tcx> {
+            tcx.dcx().err(Message::MissingReturnValueLocal).into()
+        })?;
 
         // add lifetime parameters to the map
         let typing_env = ty::TypingEnv::post_analysis(tcx, proc.get_id());

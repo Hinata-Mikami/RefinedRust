@@ -757,7 +757,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                     ty_translator.make_tuple_use(x, Some(&mut tuple_uses))
                 })
                 .map_err(|err| -> TranslationError<'tcx> {
-                    ty_translator.translator.tcx().dcx().err(Message::AttributeError(err)).into()
+                    ty_translator
+                        .translator
+                        .tcx()
+                        .dcx()
+                        .span_err(err.span, Message::AttributeError(err.err.to_string()))
+                        .into()
                 })?;
 
             let x = parser.into();
@@ -815,7 +820,12 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
                     parser.parse_function_spec(attrs, &mut spec_builder).map_err(
                         |err| -> TranslationError<'tcx> {
-                            ty_translator.translator.tcx().dcx().err(Message::AttributeError(err)).into()
+                            ty_translator
+                                .translator
+                                .tcx()
+                                .dcx()
+                                .span_err(err.span, Message::AttributeError(err.err.to_string()))
+                                .into()
                         },
                     )?;
                     Self::process_function_requirements(translator, parser.into());

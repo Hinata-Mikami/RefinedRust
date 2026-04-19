@@ -10,8 +10,26 @@ use attribute_parse::parse;
 use radium::coq;
 use rr_rustc_interface::hir;
 use rr_rustc_interface::hir::def_id::LocalDefId;
+use rr_rustc_interface::span::Span;
 
+use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{self, attr_args_tokens, str_err};
+
+#[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
+pub(crate) enum ParserError {
+    #[display("{}", _0)]
+    Parse(String),
+    #[display("unknown attribute for module specification: {:?}", _0)]
+    UnknownAttribute(String),
+}
+
+const fn spanned_error(span: Span, err: ParserError) -> SpannedError<ParserError> {
+    SpannedError { err, span }
+}
+
+fn parse_err(span: Span, err: parse::Error) -> SpannedError<ParserError> {
+    spanned_error(span, ParserError::Parse(str_err(err)))
+}
 
 /// Parse attributes on a module.
 /// Permitted attributes:
@@ -21,7 +39,7 @@ pub(crate) trait ModuleAttrParser {
         &'a mut self,
         did: LocalDefId,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<ModuleAttrs, String>;
+    ) -> Result<ModuleAttrs, SpannedError<ParserError>>;
 }
 
 #[derive(Clone, Debug)]
@@ -44,7 +62,7 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
         &'a mut self,
         _did: LocalDefId,
         attrs: &'a [&'a hir::AttrItem],
-    ) -> Result<ModuleAttrs, String> {
+    ) -> Result<ModuleAttrs, SpannedError<ParserError>> {
         let mut exports: Vec<coq::module::Export> = Vec::new();
         let mut includes: HashSet<String> = HashSet::new();
         let mut export_includes: HashSet<String> = HashSet::new();
@@ -58,21 +76,23 @@ impl ModuleAttrParser for VerboseModuleAttrParser {
             };
 
             let buffer = parse::Buffer::new(&attr_args_tokens(&it.args));
+            let span = it.span;
             match seg.as_str() {
                 "import" => {
-                    let path: parse_utils::CoqExportModule = buffer.parse(&()).map_err(str_err)?;
+                    let path: parse_utils::CoqExportModule =
+                        buffer.parse(&()).map_err(|err| parse_err(span, err))?;
                     exports.push(path.into());
                 },
                 "include" => {
-                    let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+                    let name: parse::LitStr = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
                     includes.insert(name.value());
                 },
                 "export_include" => {
-                    let name: parse::LitStr = buffer.parse(&()).map_err(str_err)?;
+                    let name: parse::LitStr = buffer.parse(&()).map_err(|err| parse_err(span, err))?;
                     export_includes.insert(name.value());
                 },
                 _ => {
-                    return Err(format!("unknown attribute for module specification: {:?}", args));
+                    return Err(spanned_error(span, ParserError::UnknownAttribute(format!("{:?}", args))));
                 },
             }
         }
