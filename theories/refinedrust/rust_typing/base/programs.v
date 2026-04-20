@@ -1871,12 +1871,6 @@ Section place.
     | W.EnumData els variant e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [EnumDataPCtx els variant]) l))
     | W.AnnotExpr n x e => T' ← find_place_ctx E f e; Some (λ L T, T' L (λ L' K l, T L' (K ++ [AnnotExprPCtx n x]) l))
     | W.LocInfoE a e => find_place_ctx E f e
-
-    (* Here we use the power of having a continuation available to add
-    a typed_val_expr. It is important that this happens before we get
-    to place_to_wp_mono since we will need to give up ownership of the
-    root of the place expression once we hit it. This allows us to
-    support e.g. a[a[0]]. *)
     | W.BinOp op ot PtrOp e1 e2 =>
       T' ← find_place_ctx E f e2;
       Some (λ L T, typed_val_expr E L f (W.to_expr e1) (λ L' v m rt ty r, T' L' (λ L'' K l, T L'' (K ++ [BinOpPCtx op ot v m rt ty r]) l)))

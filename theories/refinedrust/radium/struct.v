@@ -508,13 +508,16 @@ Arguments GetMemberLoc : simpl never.
 (** ** Unions *)
 Record union_layout := {
    ul_members : list (var_name * layout);
+   (* the size, which may exceed the size of the largest member *)
+   ul_size : nat;
    ul_nodup : bool_decide (NoDup ul_members.*1);
    (* Note: difference to RefinedC: we require isize_t as the bound, not usize_t *)
-   ul_size : max_list (ly_size <$> ul_members.*2) < max_int ISize + 1;
+   ul_size_bound_1 : ul_size < max_int ISize + 1;
+   ul_size_bound_2 : max_list (ly_size <$> ul_members.*2) <= ul_size;
 }.
 
 Definition ul_layout (ul : union_layout) : layout := {|
-  ly_size := max_list (ly_size <$> ul.(ul_members).*2);
+  ly_size := ul.(ul_size);
   ly_align_log := max_list (ly_align_log <$> ul.(ul_members).*2)
 |}.
 Coercion ul_layout : union_layout >-> layout.
@@ -524,11 +527,6 @@ Definition index_of_union (n : var_name) (ul : union_layout) : option nat :=
 
 Definition layout_of_union_member (n : var_name) (ul : union_layout) : option layout :=
   i ← index_of_union n ul; (snd <$> ul.(ul_members) !! i).
-
-Lemma union_layout_eq ul1 ul2 :
-  ul1.(ul_members) = ul2.(ul_members) →
-  ul1 = ul2.
-Proof. destruct ul1, ul2 => /= ?. subst. f_equal; apply: proof_irrel. Qed.
 
 Lemma layout_of_union_member_in_ul n ul ly:
   layout_of_union_member n ul = Some ly →

@@ -74,7 +74,17 @@ Notation "e1 ×unchecked{ ot1 , ot2 } e2" := (BinOp UncheckedMulOp ot1 ot2 e1%E 
   (at level 70, format "e1  ×unchecked{ ot1 ,  ot2 }  e2") : expr_scope.
 
 
-(* The offset must be evaluated first for the type system to work, thus the order is switched here. *)
+(** The offset must be evaluated first for the type system to work (before evaluating a place, we need to have its path),
+  thus the order is switched here.
+
+  In practice, this does not change the semantics of the program compared to Rust's left-to-right evaluation order.
+  We use offsetting operations only in the following cases:
+  - in `GetMember` (i.e. for struct field access), where the offset is a constant value and does not have to be evaluated
+  - in `pointer::offset`-style shims (where the offset is just a load from a local variable),
+  - when indexing into arrays. Here, the offset is just a load from a local variable, as the MIR transformation already desugars more complex offsets and forces evaluation order.
+
+  Note that we can only make this argument because we are working at the MIR level, and MIR already forces the evaluation order.
+*)
 Notation "e1 'at_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrOffsetOp ly) ot2 ot1 e2%E e1%E)
   (at level 70, format "e1  at_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
 Notation "e1 'at_neg_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrNegOffsetOp ly) ot2 ot1 e2%E e1%E)
@@ -84,7 +94,7 @@ Notation "e1 'at_wrapping_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrWrappingOf
 Notation "e1 'at_wrapping_neg_offset{' ly , ot1 , ot2 } e2" := (BinOp (PtrWrappingNegOffsetOp ly) ot2 ot1 e2%E e1%E)
   (at level 70, format "e1  at_wrapping_neg_offset{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
 
-Notation "e1 'sub_ptr{' ly , ot1 , ot2 } e2" := (BinOp (PtrDiffOp ly) ot2 ot1 e1%E e2%E)
+Notation "e1 'sub_ptr{' ly , ot1 , ot2 } e2" := (BinOp (PtrDiffOp ly) ot1 ot2 e1%E e2%E)
   (at level 70, format "e1  sub_ptr{ ly ,  ot1 ,  ot2 }  e2") : expr_scope.
 Notation "'if{' ot '}' ':' e1 'then' s1 'else' s2" := (IfS ot e1%E s1%E s2%E)
   (at level 102, e1, s1, s2 at level 150, format "'[v' 'if{' ot '}' ':'  e1  'then' '/  ' s1 '/' 'else' '/  ' s2 ']'") : expr_scope.
@@ -240,18 +250,48 @@ Definition CallE (ef : expr) (eκs : list string) (etys : list rust_type) (es : 
 Arguments CallE : simpl  never.
 Global Typeclasses Opaque CallE.
 
-(*** Layouts and structs *)
-Definition StructInit' (sl : struct_layout) (fs : list (string * expr)) : expr :=
+(** ** Structs *)
+Definition StructInit `{!LayoutAlg} (sls : struct_layout_spec) (fs : list (string * expr)) : expr :=
+  let sl : struct_layout := use_struct_layout_alg' sls in
   let fs : gmap string expr := list_to_map fs in
   let fn idly := default (Val (replicate (ly_size idly.2) MPoison)) (x ← idly.1; fs !! x) in
   Concat (fn <$> sl_members sl).
-Definition StructInit `{!LayoutAlg} (sls : struct_layout_spec) (fs : list (string * expr)) : expr :=
-  let sl : struct_layout := use_struct_layout_alg' sls in
-  StructInit' sl fs.
 Global Typeclasses Opaque StructInit.
 Arguments StructInit : simpl never.
 
+(* NOTE: in contrast to Caesium, this uses ISize, because LLVMs GEP uses signed integer offsets
+      https://llvm.org/docs/LangRef.html#getelementptr-instruction *)
+Definition GetMember `{!LayoutAlg} (e : expr) (sls : struct_layout_spec) (m : var_name) : expr :=
+  let sl := use_struct_layout_alg' sls in
+  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize))))%E.
+Notation "e 'at{' s } m" := (GetMember e%E s m) (at level 10, format "e  'at{' s }  m") : expr_scope.
+Global Typeclasses Opaque GetMember.
+Arguments GetMember : simpl never.
 
+Definition GetMemberLocSt `{!LayoutAlg} (l : loc) (s : struct_layout_spec) (m : var_name) : loc :=
+  (l +ₗ Z.of_nat (default 0%nat (offset_of (use_struct_layout_alg' s).(sl_members) m))).
+Notation "l 'atst{' s '}ₗ' m" := (GetMemberLocSt l s m) (at level 10, format "l  'atst{' s '}ₗ'  m") : stdpp_scope.
+Global Typeclasses Opaque GetMemberLocSt.
+Arguments GetMemberLocSt : simpl never.
+
+Definition OffsetOf `{!LayoutAlg} (sls : struct_layout_spec) (m : var_name) : expr :=
+  let sl := use_struct_layout_alg' sls in
+  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) ISize)))%E.
+Global Typeclasses Opaque OffsetOf.
+Arguments OffsetOf : simpl never.
+
+(** ** Unions *)
+Definition GetMemberUnion (e : expr) (uls : union_layout_spec) (m : var_name) : expr := (e)%E.
+Notation "e 'at_union{' uls } m" := (GetMemberUnion e%E uls m) (at level 10, format "e  'at_union{' uls }  m") : expr_scope.
+Global Typeclasses Opaque GetMemberUnion.
+Arguments GetMemberUnion : simpl never.
+
+(* NOTE: this uses ISize instead of USize (in RefinedC) *)
+Definition OffsetOfUnion (ul : union_layout_spec) (m : var_name) : expr := (i2v 0 ISize).
+Global Typeclasses Opaque OffsetOfUnion.
+Arguments OffsetOfUnion : simpl never.
+
+(** ** Enums *)
 Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (ty : rust_enum_def) (e : expr) : expr :=
   let sts : gmap string syn_type := list_to_map els.(els_variants) in
   let variant_st := default UnitSynType (sts !! variant) in
@@ -264,45 +304,24 @@ Definition EnumInit `{!LayoutAlg} (els : enum_layout_spec) (variant : string) (t
 Global Typeclasses Opaque EnumInit.
 Arguments EnumInit : simpl never.
 
-(* NOTE: in contrast to Caesium, this uses ISize, because LLVMs GEP uses signed integer offsets
-      https://llvm.org/docs/LangRef.html#getelementptr-instruction *)
-Definition GetMember' (e : expr) (sl : struct_layout) (m : var_name) : expr :=
-  (e at_offset{U8, PtrOp, IntOp ISize} Val (default [MPoison] (offset_of sl.(sl_members) m ≫= (λ m, val_of_Z (Z.of_nat m) ISize))))%E.
-Definition GetMember `{!LayoutAlg} (e : expr) (sls : struct_layout_spec) (m : var_name) : expr :=
-  let sl := use_struct_layout_alg' sls in
-  GetMember' e sl m.
-Notation "e 'at{' s } m" := (GetMember e%E s m) (at level 10, format "e  'at{' s }  m") : expr_scope.
-Global Typeclasses Opaque GetMember.
-Arguments GetMember : simpl never.
-
-Definition OffsetOf `{!LayoutAlg} (sls : struct_layout_spec) (m : var_name) : expr :=
-  let sl := use_struct_layout_alg' sls in
-  (default StuckE (Val <$> (offset_of sl.(sl_members) m) ≫= (λ m, val_of_Z (Z.of_nat m) ISize)))%E.
-Global Typeclasses Opaque OffsetOf.
-Arguments OffsetOf : simpl never.
-
-Definition GetMemberUnion (e : expr) (uls : union_layout_spec) (m : var_name) : expr := (e)%E.
-Notation "e 'at_union{' uls } m" := (GetMemberUnion e%E uls m) (at level 10, format "e  'at_union{' uls }  m") : expr_scope.
-Global Typeclasses Opaque GetMemberUnion.
-Arguments GetMemberUnion : simpl never.
-
-(* NOTE: this uses ISize instead of USize (in RefinedC) *)
-Definition OffsetOfUnion (ul : union_layout_spec) (m : var_name) : expr := (i2v 0 ISize).
-Global Typeclasses Opaque OffsetOfUnion.
-Arguments OffsetOfUnion : simpl never.
-
 Definition EnumDiscriminant `{!LayoutAlg} (els : enum_layout_spec) (e : expr) : expr :=
-  let el := use_enum_layout_alg' els in
-  (Deref Na1Ord (IntOp (els.(els_tag_it))) (GetMember' e el "discriminant"))%E.
+  (Deref Na1Ord (IntOp (els.(els_tag_it))) (GetMember e (sls_of_els els) "discriminant"))%E.
 Global Typeclasses Opaque EnumDiscriminant.
 Arguments EnumDiscriminant : simpl never.
 
 Definition EnumData `{!LayoutAlg} (els : enum_layout_spec) (variant : var_name) (e : expr) : expr :=
-  let el := use_enum_layout_alg' els in
-  GetMemberUnion (GetMember' e el "data") (uls_of_els els) variant.
+  GetMemberUnion (GetMember e (sls_of_els els) "data") (uls_of_els els) variant.
 Global Typeclasses Opaque EnumData.
 Arguments EnumData : simpl never.
 
+Definition GetEnumDataLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
+  let el := use_enum_layout_alg' els in
+  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "data"))).
+Definition GetEnumDiscriminantLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
+  let el := use_enum_layout_alg' els in
+  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "discriminant"))).
+
+(** ** Arrays *)
 (** Shift a location by [z] times the size of [ly]. *)
 Definition OffsetLocSt `{!LayoutAlg} (l : loc) (st : syn_type) (z : Z) : loc :=
   (l offset{(use_layout_alg' st)}ₗ z).
@@ -318,20 +337,6 @@ Notation "l 'wrapping_offsetst{' st '}ₗ' z" := (WrappingOffsetLocSt l%L st z%Z
   (at level 39, format "l  'wrapping_offsetst{' st '}ₗ'  z", left associativity) : loc_scope.
 Global Typeclasses Opaque WrappingOffsetLocSt.
 Arguments WrappingOffsetLocSt : simpl never.
-
-Definition GetMemberLocSt `{!LayoutAlg} (l : loc) (s : struct_layout_spec) (m : var_name) : loc :=
-  (l +ₗ Z.of_nat (default 0%nat (offset_of (use_struct_layout_alg' s).(sl_members) m))).
-Notation "l 'atst{' s '}ₗ' m" := (GetMemberLocSt l s m) (at level 10, format "l  'atst{' s '}ₗ'  m") : stdpp_scope.
-Global Typeclasses Opaque GetMemberLocSt.
-Arguments GetMemberLocSt : simpl never.
-
-Definition GetEnumDataLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
-  let el := use_enum_layout_alg' els in
-  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "data"))).
-Definition GetEnumDiscriminantLocSt `{!LayoutAlg} (l : loc) (els : enum_layout_spec) : loc :=
-  let el := use_enum_layout_alg' els in
-  (l +ₗ Z.of_nat (default 0%nat (offset_of el.(sl_members) "discriminant"))).
-
 
 (* TODO: maybe change this if we ever have different offsets *)
 (*Definition GetMemberUnionLocSt (l : loc) (ul : union_layout_spec) (m : var_name) : loc := (l).*)

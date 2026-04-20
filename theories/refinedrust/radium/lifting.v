@@ -1221,7 +1221,7 @@ Lemma wp_get_member `{!LayoutAlg} Φ vl l sls sl n π E:
   WPe{π} Val vl at{sls} n @ E {{ Φ }}.
 Proof.
   iIntros (Hvl Halg [i Hi]) "#Hl HΦ".
-  rewrite /GetMember/GetMemberLoc/GetMember'/offset_of /=.
+  rewrite /GetMember/GetMemberLoc/offset_of /=.
   rewrite /use_struct_layout_alg' Halg /= Hi /=.
   have [|v Hv]:= (val_of_Z_is_Some ISize (offset_of_idx sl.(sl_members) i)). {
     rewrite int_elem_of_it_iff.
@@ -1364,20 +1364,6 @@ Lemma wp_concat_bind π E Φ es:
   WPe{π} Concat es @ E {{ Φ }}.
 Proof. by iApply (wps_concat_bind_ind []). Qed.
 
-Lemma wp_struct_init'' `{!LayoutAlg} π E Φ sl fs:
-  foldr (λ '(n, ly) f, (λ vl,
-     WPe{π} (default (Val (replicate (ly_size ly) MPoison)) (n' ← n; (list_to_map fs : gmap _ _) !! n'))
-        @ E {{ λ v, f (vl ++ [v]) }}))
-    (λ vl, |={E}⧗=> Φ (mjoin vl)) sl.(sl_members) [] -∗
-  WPe{π} StructInit' sl fs @ E {{ Φ }}.
-Proof.
-  iIntros "He".
-  iApply wp_concat_bind.
-  move: {2 4}[] => vs.
-  iInduction (sl_members sl) as [|[o?]?] "IH" forall (vs) => /=.
-  { iApply wp_concat. done. }
-  iApply (wpe_wand with "He"). iIntros (v') "Hfold". by iApply "IH".
-Qed.
 Lemma wp_struct_init' `{!LayoutAlg} π E Φ sls sl fs:
   use_struct_layout_alg sls = Some sl →
   foldr (λ '(n, ly) f, (λ vl,
@@ -1387,7 +1373,12 @@ Lemma wp_struct_init' `{!LayoutAlg} π E Φ sls sl fs:
   WPe{π} StructInit sls fs @ E {{ Φ }}.
 Proof.
   intros Halg. rewrite /StructInit /use_struct_layout_alg' Halg/=.
-  apply wp_struct_init''.
+  iIntros "He".
+  iApply wp_concat_bind.
+  move: {2 4}[] => vs.
+  iInduction (sl_members sl) as [|[o?]?] "IH" forall (vs) => /=.
+  { iApply wp_concat. done. }
+  iApply (wpe_wand with "He"). iIntros (v') "Hfold". by iApply "IH".
 Qed.
 
 (* This lemma is much more useful as it also includes the layout algorithm handling and abstracts from padding *)

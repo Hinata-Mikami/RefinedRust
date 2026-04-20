@@ -311,6 +311,369 @@ Definition ul_has_variants (ul : union_layout) (variants : list (var_name * layo
   variants = ul.(ul_members).
 
 
+Section C_alg.
+  (** Defining the C struct layout algorithm for repr(C) *)
+  Definition padding_needed (off a : nat) : nat :=
+    (a - (off mod a)) mod a.
+  Definition pad_layout (pad_bytes : nat) : layout := Layout pad_bytes 0.
+
+  Fixpoint C_struct_layout_alg_raw_go (off a : nat) (fields : list (string * layout)) : list (option string * layout) :=
+    match fields with
+    | [] =>
+        let pad := padding_needed off a in
+        if decide (pad = 0%nat) then [] else [(None, pad_layout pad)]
+    | (name, ly) :: fields' =>
+        let a' := ly_align ly in
+        let pad := padding_needed off a' in
+        let off' := (off + pad)%nat in
+        let a'' := Nat.max a a' in
+        let this := (Some name, ly) in
+        let rest := C_struct_layout_alg_raw_go (off' + ly_size ly)%nat a'' fields' in
+        if decide (pad = 0%nat) then
+          this :: rest
+        else
+          (None, pad_layout pad) :: this :: rest
+    end.
+
+  Local Lemma ly_align_nonzero ly :
+    ly_align ly <> 0%nat.
+  Proof.
+    unfold ly_align. apply Nat.pow_nonzero. lia.
+  Qed.
+
+  Local Lemma padding_needed_zero_inv off a :
+    a <> 0%nat →
+    padding_needed off a = 0%nat →
+    off mod a = 0%nat.
+  Proof.
+    intros Ha Hpad.
+    unfold padding_needed in Hpad.
+    destruct (off mod a)%nat eqn:Hmod.
+    - lia.
+    - simpl in Hpad.
+      rewrite Nat.mod_small in Hpad; last lia.
+      lia.
+  Qed.
+
+  Local Lemma padding_needed_mod_zero (off a : nat) :
+    a <> 0%nat →
+    ((off + padding_needed off a) mod a)%nat = 0%nat.
+  Proof.
+    intros Ha.
+    unfold padding_needed.
+    rewrite Nat.Div0.add_mod.
+    destruct (off mod a)%nat eqn:Hmod.
+    - rewrite Nat.sub_0_r.
+      rewrite Nat.Div0.mod_same.
+      simpl. rewrite !Nat.Div0.mod_0_l; lia.
+    - simpl. rewrite Nat.Div0.mod_mod.
+      rewrite (Nat.mod_small (a - S n)%nat); last lia.
+      assert (Hsum : (S (n + (a - S n)) = a)%nat) by lia.
+      rewrite Hsum.
+      rewrite Nat.Div0.mod_same; lia.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_go_aligned fields off a :
+    check_fields_aligned (C_struct_layout_alg_raw_go off a fields) off = true.
+  Proof.
+    revert off a.
+    induction fields as [|field fields IH]; intros off a; simpl.
+    - destruct (decide (padding_needed off a = 0%nat)).
+      + done.
+      + simpl.
+        rewrite /pad_layout/ly_align/=.
+        rewrite Z.mod_1_r. done.
+    - destruct field as [name ly].
+      set (a' := ly_align ly).
+      destruct (decide (padding_needed off a' = 0%nat)) as [Hpad|Hpad].
+      + simpl.
+        rewrite (padding_needed_zero_inv off a' (ly_align_nonzero ly) Hpad).
+        rewrite Hpad Nat.add_0_r.
+        simpl. by rewrite IH.
+      + simpl.
+        rewrite /pad_layout/ly_align/=.
+        rewrite Z.mod_1_r.
+        simpl.
+        apply andb_true_intro.
+        split; last apply IH.
+        (* padding field is aligned *)
+        apply bool_decide_true.
+        subst a'. unfold ly_size.
+        opose proof (padding_needed_mod_zero off (ly_align ly) _) as Ha.
+        { apply ly_align_nonzero. }
+        rewrite -Nat2Z.inj_mod.
+        rewrite Ha. done.
+  Qed.
+
+  Definition C_struct_layout_alg_raw (fields : list (string * layout)) : list (option string * layout) :=
+    C_struct_layout_alg_raw_go 0 1 fields.
+
+  Program Definition C_struct_layout_alg (fields : list (string * layout)) : option struct_layout :=
+    let fields' := C_struct_layout_alg_raw fields in
+    if decide (NoDup (field_names fields')) then
+      if decide (sum_list (ly_size <$> fields'.*2) ≤ max_int ISize) then
+        Some {| sl_members := fields' |}
+      else
+        None
+    else None
+    .
+  Next Obligation.
+    intros fields fields' Hnd Hle.
+    by rewrite bool_decide_true.
+  Qed.
+  Next Obligation.
+    intros. lia.
+  Qed.
+  Next Obligation.
+    intros. apply C_struct_layout_alg_raw_go_aligned.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_go_has_fields fields off a :
+    named_fields (C_struct_layout_alg_raw_go off a fields) = fields.
+  Proof.
+    revert off a.
+    induction fields as [|[name ly] fields IH]; intros off a; simpl.
+    - destruct (decide (padding_needed off a = 0%nat)); done.
+    - set (a' := ly_align ly).
+      destruct (decide (padding_needed off a' = 0%nat)); simpl; by rewrite IH.
+  Qed.
+
+  Lemma C_struct_layout_alg_raw_has_fields fields :
+    named_fields (C_struct_layout_alg_raw fields) = fields.
+  Proof.
+    unfold C_struct_layout_alg_raw.
+    apply C_struct_layout_alg_raw_go_has_fields.
+  Qed.
+
+  Lemma C_struct_layout_alg_has_fields fields sl :
+    C_struct_layout_alg fields = Some sl →
+    named_fields sl.(sl_members) = fields.
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw fields)))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw fields).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg.
+    simpl.
+    apply C_struct_layout_alg_raw_has_fields.
+  Qed.
+
+  Fixpoint C_struct_layout_alg_align_go (a : nat) (fields : list (string * layout)) : nat :=
+    match fields with
+    | [] => a
+    | (_, ly) :: fields' => C_struct_layout_alg_align_go (Nat.max a (ly_align ly)) fields'
+    end.
+
+  Local Lemma C_struct_layout_alg_align_go_nonzero a fields :
+    a <> 0%nat →
+    C_struct_layout_alg_align_go a fields <> 0%nat.
+  Proof.
+    revert a.
+    induction fields as [|[name ly] fields IH]; intros a Ha; simpl.
+    - done.
+    - apply IH. assert (Nat.max a (ly_align ly) <> 0%nat) by lia. done.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_align_go_eq_max a fields :
+    C_struct_layout_alg_align_go a fields = max a (max_list (ly_align <$> fields.*2)).
+  Proof.
+    revert a.
+    induction fields as [|[name ly] fields IH]; intros a; simpl.
+    - unfold fmap. simpl. lia.
+    - rewrite IH. unfold fmap. lia.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_align_go_1_eq_max fields :
+    C_struct_layout_alg_align_go 1 fields = max 1 (max_list (ly_align <$> fields.*2)).
+  Proof. apply C_struct_layout_alg_align_go_eq_max. Qed.
+
+  Local Lemma C_struct_layout_alg_raw_go_max_align_preserve fields off a :
+    max 1 (max_list (ly_align <$> (C_struct_layout_alg_raw_go off a fields).*2)) =
+    max 1 (max_list (ly_align <$> fields.*2)).
+  Proof.
+    revert off a.
+    induction fields as [|[name ly] fields IH]; intros off a; simpl.
+    - destruct (decide (padding_needed off a = 0%nat)); simpl; done.
+    - set (a' := ly_align ly).
+      destruct (decide (padding_needed off a' = 0%nat)) as [Hpad|Hpad]; simpl.
+      + rewrite Hpad Nat.add_0_r.
+        pose proof (IH (off + ly_size ly)%nat (Nat.max a a')) as Hrec.
+        unfold fmap in *. lia.
+      + pose proof (IH (off + padding_needed off a' + ly_size ly)%nat (Nat.max a a')) as Hrec.
+        rewrite /pad_layout/ly_align/=.
+        subst a'. simpl in Hrec.
+        pose proof (ly_align_ge_1 ly) as Hly.
+        set (X := max_list (ly_align <$> (C_struct_layout_alg_raw_go (off + padding_needed off (ly_align ly) + ly_size ly) (Nat.max a (ly_align ly)) fields).*2)).
+        set (Y := max_list (ly_align <$> fields.*2)).
+        assert (HX : (1 `max` (1 `max` (ly_align ly `max` X)))%nat = (ly_align ly `max` (1 `max` X))%nat) by lia.
+        assert (HY : (1 `max` (ly_align ly `max` Y))%nat = (ly_align ly `max` (1 `max` Y))%nat) by lia.
+        rewrite HX HY.
+        apply (f_equal (Nat.max (ly_align ly))) in Hrec.
+        exact Hrec.
+  Qed.
+  Local Lemma C_struct_layout_alg_raw_go_size_mod fields off a :
+    a <> 0%nat →
+    ((off + sum_list (ly_size <$> (C_struct_layout_alg_raw_go off a fields).*2)) mod (C_struct_layout_alg_align_go a fields))%nat = 0%nat.
+  Proof.
+    revert off a.
+    induction fields as [|[name ly] fields IH]; intros off a Ha; simpl.
+    - destruct (decide (padding_needed off a = 0%nat)) as [Hpad|Hpad].
+      + rewrite Nat.add_0_r.
+        unfold padding_needed in Hpad.
+        destruct ((off `mod` a)%nat) eqn:Hm; first done.
+        simpl in Hpad.
+        rewrite Nat.mod_small in Hpad; last lia.
+        lia.
+      + rewrite /pad_layout /=.
+        replace (off + (padding_needed off a + 0))%nat with (off + padding_needed off a)%nat by lia.
+        apply (padding_needed_mod_zero off a Ha).
+    - set (a' := ly_align ly).
+      set (pad := padding_needed off a').
+      set (off' := (off + pad)%nat).
+      set (a'' := Nat.max a a').
+      destruct (decide (pad = 0%nat)) as [Hpad|Hpad].
+      + subst pad off'. simpl.
+        rewrite Hpad Nat.add_0_r.
+        rewrite Nat.add_assoc.
+        apply IH.
+        assert (a'' <> 0%nat) by (subst a'' a'; lia).
+        done.
+      + subst off'. simpl.
+        rewrite !Nat.add_assoc.
+        apply IH.
+        assert (a'' <> 0%nat) by (subst a'' a'; lia).
+        done.
+  Qed.
+
+  Local Lemma sl_align_eq_local (sl : struct_layout) :
+    ly_align sl = max 1 (max_list (ly_align <$> (sl_members sl).*2)).
+  Proof.
+    rewrite /ly_align{1}/ly_align_log/=.
+    generalize (sl_members sl).*2 => lys.
+    clear sl. induction lys as [ | ly lys IH]; simpl; first done.
+    rewrite Nat_pow_max; last lia. rewrite IH.
+    unfold fmap. lia.
+  Qed.
+
+  Lemma C_struct_layout_alg_wf fields sl :
+    C_struct_layout_alg fields = Some sl →
+    layout_wf sl.
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw fields)))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw fields).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg.
+    apply layout_wf_mod.
+    simpl.
+    rewrite sl_align_eq_local.
+    simpl.
+    rewrite C_struct_layout_alg_raw_go_max_align_preserve.
+    rewrite -C_struct_layout_alg_align_go_1_eq_max.
+    pose proof (C_struct_layout_alg_raw_go_size_mod fields 0 1 ltac:(lia)) as Hmod.
+    rewrite /ly_size /=.
+    simpl in Hmod.
+    rewrite -Nat2Z.inj_mod.
+    rewrite Hmod. done.
+  Qed.
+
+  Local Lemma C_struct_layout_alg_raw_go_pad_align off a fields :
+    Forall (λ '(named, ly), if named is None then ly_align_log ly = 0%nat else True)
+      (C_struct_layout_alg_raw_go off a fields).
+  Proof.
+    revert off a.
+    induction fields as [|[name ly] fields IH]; intros off a; simpl.
+    - destruct (decide (padding_needed off a = 0%nat)); constructor; simpl; done.
+    - set (a' := ly_align ly).
+      destruct (decide (padding_needed off a' = 0%nat)); simpl.
+      + constructor; first done. apply IH.
+      + constructor.
+        * reflexivity.
+        * constructor; first done. apply IH.
+  Qed.
+
+  Lemma C_struct_layout_alg_pad_align fields sl :
+    C_struct_layout_alg fields = Some sl →
+    Forall (λ '(named, ly), if named is None then ly_align_log ly = 0%nat else True) (sl_members sl).
+  Proof.
+    intros Halg.
+    unfold C_struct_layout_alg in Halg.
+    destruct (decide (NoDup (field_names (C_struct_layout_alg_raw fields)))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (sum_list (ly_size <$> (C_struct_layout_alg_raw fields).*2) ≤ max_int ISize)) as [Hle|Hle]; last discriminate.
+    inversion Halg; subst sl; clear Halg.
+    simpl.
+    unfold C_struct_layout_alg_raw.
+    apply C_struct_layout_alg_raw_go_pad_align.
+  Qed.
+
+
+  Definition C_union_layout_alg_raw (variants : list (var_name * layout)) : nat :=
+    let max_sz := max_list (ly_size <$> variants.*2) in
+    let max_al := (2 ^ (max_list (ly_align_log <$> variants.*2)))%nat in
+    (max_sz + padding_needed max_sz max_al)%nat.
+
+
+
+  Program Definition C_union_layout_alg (variants : list (var_name * layout)) : option union_layout :=
+    let sz := C_union_layout_alg_raw variants in
+    if decide (NoDup (variants.*1)) then
+      if decide (max_list (ly_size <$> variants.*2) ≤ sz) then
+        if decide (sz ≤ max_int ISize) then
+          Some {| ul_members := variants; ul_size := sz |}
+        else
+          None
+      else
+        None
+    else None
+    .
+  Next Obligation.
+    intros fields fields' Hnd Hle.
+    by rewrite bool_decide_true.
+  Qed.
+  Next Obligation.
+    intros. lia.
+  Qed.
+  Next Obligation.
+    intros. lia.
+  Qed.
+
+  Lemma C_union_layout_alg_has_variants variants ul :
+    C_union_layout_alg variants = Some ul →
+    ul_has_variants ul variants.
+  Proof.
+    intros Halg.
+    unfold C_union_layout_alg in Halg.
+    destruct (decide (NoDup (variants.*1))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (max_list (ly_size <$> variants.*2) ≤ C_union_layout_alg_raw variants)) as [Hle|Hle]; last discriminate.
+    destruct (decide (C_union_layout_alg_raw variants ≤ max_int ISize)) as [Hsz|Hsz]; last discriminate.
+    inversion Halg; subst ul; clear Halg.
+    done.
+  Qed.
+
+  Lemma C_union_layout_alg_wf variants ul :
+    C_union_layout_alg variants = Some ul →
+    layout_wf ul.
+  Proof.
+    intros Halg.
+    unfold C_union_layout_alg in Halg.
+    destruct (decide (NoDup (variants.*1))) as [Hnd|Hnd]; last discriminate.
+    destruct (decide (max_list (ly_size <$> variants.*2) ≤ C_union_layout_alg_raw variants)) as [Hle|Hle]; last discriminate.
+    destruct (decide (C_union_layout_alg_raw variants ≤ max_int ISize)) as [Hsz|Hsz]; last discriminate.
+    inversion Halg; subst ul; clear Halg.
+    rewrite /layout_wf /C_union_layout_alg_raw /ly_size /ly_align /=.
+    set (k := max_list (ly_align_log <$> variants.*2)).
+    apply Z.mod_divide.
+    { intro Hk.
+      assert ((2 ^ k)%nat = 0%nat) as Hk' by (apply Nat2Z.inj; exact Hk).
+      pose proof (Nat.pow_nonzero 2 k ltac:(lia)) as Hnz.
+      rewrite Hk' in Hnz. done. }
+    set (m := max_list ((λ l : layout, let (ly_size, _) := l in ly_size) <$> variants.*2)).
+    set (a := (2 ^ k)%nat).
+    pose proof (padding_needed_mod_zero m a ltac:(subst a; apply Nat.pow_nonzero; lia)) as Hmod.
+    lia.
+  Qed.
+End C_alg.
+
 (** A layout algorithm takes a syn_type and produces a layout for it, if possible.
   The string arguments models that the algorithm may produce different layouts even for the same syn_type, in some case (e.g. structs).
  *)
@@ -330,7 +693,10 @@ Class LayoutAlg : Type := {
   struct_layout_alg_pad_align sn fields repr sl :
     struct_layout_alg sn fields repr = Some sl →
     Forall (λ '(named, ly), if named is None then ly_align_log ly = 0%nat else True) (sl_members sl);
-  (* TODO: add requirements on repr *)
+  (* For repr(C), the algorithm computes the same layout as the C layout algorithm. *)
+  strruct_layout_alg_repr_C sn fields :
+    struct_layout_alg sn fields StructReprC = C_struct_layout_alg fields;
+  (* TODO: add requirements on repr(transparent) *)
 
   (* the variants should be exactly as given *)
   union_layout_alg_has_variants un variants repr ul :
@@ -340,11 +706,38 @@ Class LayoutAlg : Type := {
   union_layout_alg_wf un variants repr ul :
     union_layout_alg un variants repr = Some ul →
     layout_wf ul;
-  (* TODO: add requirements on repr *)
+  union_layout_alg_repr_C un variants :
+    union_layout_alg un variants UnionReprC = C_union_layout_alg variants;
 }.
-Global Program Instance LayoutAlg_inhabited : Inhabited LayoutAlg :=
-  {| inhabitant := {| struct_layout_alg := λ _ _ _, None; union_layout_alg := λ _ _ _, None |} |}.
-Solve Obligations with done.
+
+Program Definition LayoutAlg_C : LayoutAlg := {|
+  struct_layout_alg _ fields _ := C_struct_layout_alg fields;
+  union_layout_alg _ variants _ := C_union_layout_alg variants; |}.
+Next Obligation.
+  intros.
+  unfold sl_has_members. symmetry.
+  by apply C_struct_layout_alg_has_fields.
+Qed.
+Next Obligation.
+  simpl. intros. by eapply C_struct_layout_alg_wf.
+Qed.
+Next Obligation.
+  simpl. intros. by eapply C_struct_layout_alg_pad_align.
+Qed.
+Next Obligation.
+  simpl. done.
+Qed.
+Next Obligation.
+  simpl. intros. by eapply C_union_layout_alg_has_variants.
+Qed.
+Next Obligation.
+  simpl. intros. by eapply C_union_layout_alg_wf.
+Qed.
+Next Obligation.
+  simpl. done.
+Qed.
+Global Instance LayoutAlg_inhabited : Inhabited LayoutAlg :=
+  {| inhabitant := LayoutAlg_C |}.
 
 (** We fix a specific layout for the unit type, since Rust gives layout guarantees for it. *)
 Program Definition unit_sl : struct_layout := {|
@@ -354,6 +747,7 @@ Solve Obligations with done.
 (** A union layout that would be a valid layout for the never type (although Rust does not specify that it is the only possible one). *)
 Program Definition neverlike_ul : union_layout := {|
   ul_members := [];
+  ul_size := 0;
 |}.
 Solve Obligations with done.
 
@@ -1154,7 +1548,7 @@ Proof.
     match goal with | H : struct_layout |- _ => specialize (sl_size H) end.
     rewrite MaxInt_eq. lia.
   - match goal with | H : union_layout |- _ => rename H into ul end.
-    specialize (ul_size ul) as Hsz.
+    specialize (ul_size_bound_1 ul) as Hsz.
     rewrite /ly_size /= MaxInt_eq. lia.
   - rewrite MaxInt_eq. done.
 Qed.
@@ -1172,7 +1566,7 @@ Lemma use_union_layout_alg_size `{!LayoutAlg} uls ul :
   ly_size ul ≤ MaxInt ISize.
 Proof.
   intros _. rewrite /ly_size /=.
-  pose (ul_size ul) as Ha. rewrite MaxInt_eq. lia.
+  pose (ul_size_bound_1 ul) as Ha. rewrite MaxInt_eq. lia.
 Qed.
 Lemma use_enum_layout_alg_size `{!LayoutAlg} els el :
   use_enum_layout_alg els = Some el →

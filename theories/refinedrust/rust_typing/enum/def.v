@@ -17,6 +17,8 @@ Section union.
     rewrite {2}/ly_size/ul_layout.
     rewrite /layout_of_union_member.
     intros (i & Hidx & Ha)%bind_Some.
+    specialize ul.(ul_size_bound_2) as ?.
+    trans (max_list (ly_size <$> (ul_members ul).*2)); last lia.
     eapply max_list_elem_of_le.
     apply list_elem_of_fmap.
     exists ly. split; first done.
