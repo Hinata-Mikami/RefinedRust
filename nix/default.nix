@@ -31,15 +31,18 @@ with inputs; rec {
     craneLib = crane.mkLib pkgs;
   in rec {
     inherit (craneLib) cargoDeny overrideToolchain;
-    hostPlatform = pkgs.stdenv.hostPlatform.rust.rustcTarget;
+
+    availableTargets = import ./availableTargets.nix {inherit pkgs rust-overlay;};
 
     cargoClippy = devToolchain: craneLib.cargoClippy.override {clippy = devToolchain;};
     cargoFmt = devToolchain: craneLib.cargoFmt.override {rustfmt = devToolchain;};
     cargoMachete = import ./cargoMachete.nix {inherit craneLib pkgs;};
-    cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib hostPlatform rrPkgs pkgs;};
+    cargoRefinedRust = import ./cargoRefinedRust.nix {inherit craneLib rrPkgs pkgs;};
     cargoWorkspaceUnused = import ./cargoWorkspaceUnused.nix {inherit craneLib pkgs;};
 
-    availableTargets = import ./availableTargets.nix {inherit pkgs rust-overlay;};
-    mkToolchain = import ./mkRustToolchain.nix {inherit hostPlatform pkgs;};
+    mkToolchain = channel: components: pkgs.rust-bin.fromRustupToolchain {
+      inherit channel components;
+      profile = "minimal";
+    };
   };
 }

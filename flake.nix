@@ -57,18 +57,15 @@
         inherit (toolchainFile) channel components;
         toolchainFile = (lib.importTOML ./rr_frontend/rust-toolchain.toml).toolchain;
         devComponents = ["clippy" "rust-analyzer" "rust-src" "rustfmt"];
-
-        mkToolchain = target: {
-          build = lib.rust.mkToolchain channel components target;
-          dev = lib.rust.mkToolchain channel (components ++ devComponents) target;
-        };
       in rec {
-        toolchain = mkToolchain lib.rust.hostPlatform;
-        envBuilder = lib.rust.overrideToolchain toolchain.build;
+        toolchain = rec {
+          inherit channel;
 
-        mkDrvRustTargetToolchains = drv:
-          lib.mapToAttrs (target: "target-" + target) ({pname}: drv (mkToolchain pname))
-          (map (pname: {inherit pname;}) (lib.rust.availableTargets components));
+          build = lib.rust.mkToolchain channel components;
+          dev = lib.rust.mkToolchain channel (components ++ devComponents);
+        };
+
+        envBuilder = lib.rust.overrideToolchain toolchain.build;
       };
     in rec {
       inherit lib;
@@ -94,6 +91,8 @@
               withStdlib = false;
 
               cargoRefinedRustArgs = {
+                toolchain = rust.toolchain.build;
+
                 preBuild = ''
                   sed -i -e 's/rr::package("refinedrust-stdlib")/rr::package("${opam-name}")/g' ./src/lib.rs
                 '';
@@ -121,8 +120,6 @@
             // args);
       in
         {
-          default = packages."target-${lib.rust.hostPlatform}";
-
           theories = let
             stdpp = lib.rocq.mkDepDerivation rocq.stdpp {
               pname = "stdpp";
@@ -177,6 +174,38 @@
             doNotRemoveReferencesToRustToolchain = true;
             passthru = {inherit cargoArtifacts pname src;};
           };
+
+          default = let
+            mkRefinedRust = toolchain:
+              pkgs.symlinkJoin {
+                inherit meta name;
+
+                paths = let
+                  fetchRocqDeps = drv: lib.lists.unique ([drv] ++ lib.flatten (map fetchRocqDeps drv.propagatedBuildInputs));
+                in
+                  [pkgs.gcc pkgs.gnupatch packages.frontend toolchain]
+                  ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
+                  ++ (fetchRocqDeps packages.stdlib);
+
+                nativeBuildInputs = [pkgs.makeWrapper];
+                postBuild = ''
+                  wrapProgram $out/bin/dune \
+                    --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
+                    --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
+
+                  wrapProgram $out/bin/cargo-${name} \
+                    --set LD_LIBRARY_PATH ${toolchain}/lib \
+                    --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain}/lib \
+                    --set PATH "$out/bin" \
+                    --set RR_NIX_STDLIB $out/share/stdlib
+                '';
+
+                passthru = {
+                  inherit (rust.toolchain) channel;
+                  inherit mkRefinedRust;
+                };
+              };
+            in mkRefinedRust rust.toolchain.build;
         }
         // lib.mapToAttrs lib.id mkStdlib [
           {
@@ -308,33 +337,7 @@
             src = ./stdlib/stdlib;
             libDeps = stdlibPkgs;
           }
-        ]
-        // rust.mkDrvRustTargetToolchains (toolchain:
-          pkgs.symlinkJoin {
-            inherit meta name;
-
-            paths = let
-              fetchRocqDeps = drv: lib.lists.unique ([drv] ++ lib.flatten (map fetchRocqDeps drv.propagatedBuildInputs));
-            in
-              [pkgs.gcc pkgs.gnupatch packages.frontend toolchain.build]
-              ++ ([pkgs.rocqPackages.rocq-core] ++ pkgs.rocqPackages.rocq-core.nativeBuildInputs)
-              ++ (fetchRocqDeps packages.stdlib);
-
-            nativeBuildInputs = [pkgs.makeWrapper];
-            postBuild = ''
-              wrapProgram $out/bin/dune \
-                --set OCAMLPATH $out/lib/ocaml/${pkgs.ocaml.version}/site-lib \
-                --set ROCQPATH $out/lib/coq/${pkgs.rocqPackages.rocq-core.rocq-version}/user-contrib
-
-              wrapProgram $out/bin/cargo-${name} \
-                --set LD_LIBRARY_PATH ${toolchain.build}/lib \
-                --set DYLD_FALLBACK_LIBRARY_PATH ${toolchain.build}/lib \
-                --set PATH "$out/bin" \
-                --set RR_NIX_STDLIB $out/share/stdlib
-            '';
-
-            passthru = {inherit toolchain;};
-          });
+        ];
 
       checks = let
         mkCaseStudies = let
@@ -359,6 +362,10 @@
                 cargoArtifacts = null;
                 cargoExtraArgs = "";
                 cargoVendorDir = null;
+
+                cargoRefinedRustArgs = {
+                  toolchain = rust.toolchain.build;
+                };
               }
               // args);
       in
@@ -420,19 +427,14 @@
           }
         ];
 
-      devShells =
-        {
-          default = devShells."target-${lib.rust.hostPlatform}";
-        }
-        // rust.mkDrvRustTargetToolchains (toolchain:
-          pkgs.mkShell {
-            inputsFrom = with packages; [frontend theories];
-            packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused toolchain.dev];
+      devShells.default = pkgs.mkShell {
+        inputsFrom = with packages; [frontend theories];
+        packages = with pkgs; [cargo-deny cargo-machete gnumake gnupatch gnused rust.toolchain.dev];
 
-            LD_LIBRARY_PATH = lib.makeLibraryPath [toolchain.dev];
-            DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [toolchain.dev];
-            LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];
-          });
+        LD_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
+        DYLD_FALLBACK_LIBRARY_PATH = lib.makeLibraryPath [rust.toolchain.dev];
+        LIBCLANG_PATH = lib.makeLibraryPath [pkgs.libclang.lib];
+      };
 
       formatter = pkgs.alejandra;
     });

@@ -1,34 +1,30 @@
 {
   craneLib,
-  hostPlatform,
   rrPkgs,
   pkgs,
 }: {
   cargoExtraArgs ? "--locked",
   libDeps ? [],
-  target ? hostPlatform,
+  toolchain,
   withStdlib ? true,
   ...
 } @ origArgs: let
   args = builtins.removeAttrs origArgs [
     "libDeps"
-    "target"
+    "toolchain"
     "withStdlib"
   ];
 in
-  craneLib.mkCargoDerivation ({
+  (craneLib.overrideToolchain toolchain).mkCargoDerivation ({
       __contentAddressed = true;
 
       pnameSuffix = "-refinedrust";
 
-      buildPhaseCargoCommand = ''
-        cargo refinedrust -- ${cargoExtraArgs} \
-        ${pkgs.lib.strings.optionalString (target == hostPlatform) (" " + ''--config target.${hostPlatform}.linker=\"${pkgs.gcc}/bin/cc\"'')}
-      '';
+      buildPhaseCargoCommand = "cargo refinedrust -- ${cargoExtraArgs}";
 
       nativeBuildInputs =
         if withStdlib
-        then [rrPkgs."target-${target}"]
+        then [(rrPkgs.default.mkRefinedRust toolchain)]
         else [rrPkgs.frontend];
 
       RR_GENERATE_DUNE_PROJECT = true;

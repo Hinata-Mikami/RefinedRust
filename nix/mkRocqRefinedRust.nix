@@ -21,7 +21,7 @@
     commonRemoveAttrs = ["cargoRefinedRustArgs" "pname" "propagatedBuildInputs" "rocqArgs" "rocqTheoriesArgs" "withTheories"];
   in rec {
     cargo = builtins.removeAttrs fullArgs (commonRemoveAttrs ++ ["opam-name" "useDune"]);
-    rocq = builtins.removeAttrs fullArgs (commonRemoveAttrs ++ ["cargoArtifacts" "cargoExtraArgs" "cargoVendorDir" "libDeps" "src" "target" "withStdlib"]);
+    rocq = builtins.removeAttrs fullArgs (commonRemoveAttrs ++ ["cargoArtifacts" "cargoExtraArgs" "cargoVendorDir" "libDeps" "src" "toolchain" "withStdlib"]);
     rocqTheories = builtins.removeAttrs rocq ["opam-name"];
   };
 

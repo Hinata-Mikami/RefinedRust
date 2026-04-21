@@ -3,7 +3,7 @@
     refinedrust.url = "git+file://../../..";
 
     ACE-RISCV = {
-      url = "github:IBM/ACE-RISCV";
+      url = "github:IBM/ACE-RISCV?ref=refinedrust-main";
       flake = false;
     };
   };
@@ -24,7 +24,7 @@
         inherit localSystem crossSystem;
       };
 
-      toolchain = rrPkgs."target-${target}".passthru.toolchain.build;
+      toolchain = lib.rust.mkToolchain rrPkgs.default.passthru.channel ["rustc" "rust-src"];
       envBuilder = lib.rust.overrideToolchain toolchain;
 
       ace = rec {
@@ -42,7 +42,7 @@
 
           cargoLockList = [
             "${src}/Cargo.lock"
-            "${toolchain.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
+            "${toolchain.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"
           ];
         };
       };
@@ -75,7 +75,6 @@
 
         pointersUtility = lib.rocq.mkRefinedRust rec {
           inherit (ace) cargoVendorDir meta src version;
-          inherit target;
 
           doCheck = false;
           pname = "pointers-utility";
@@ -87,6 +86,8 @@
           };
 
           cargoRefinedRustArgs = {
+            inherit toolchain;
+
             preBuild = ''
               sed -i -e '11i#![rr::package("pointers-utility")]' ./rust-crates/pointers_utility/src/lib.rs
               cp --no-preserve=mode -r ${ACE-RISCV}/verification/{RefinedRust.toml,extra_specs.v,rust_proofs} .
@@ -96,7 +97,6 @@
 
         ace = lib.rocq.mkRefinedRust rec {
           inherit (ace) cargoExtraArgs cargoVendorDir meta src version;
-          inherit target;
 
           pname = "ace";
           libDeps = [packages.pointersUtility];
@@ -108,6 +108,8 @@
           withTheories = true;
 
           cargoRefinedRustArgs = {
+            inherit toolchain;
+
             preBuild = ''
               sed -i -e '15i#![rr::package("ace")]' ./src/lib.rs
               sed -i -e '16i#![rr::import("ace.theories.base", "base")]' ./src/lib.rs
