@@ -2,6 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 use ui_test::color_eyre;
+use ui_test::spanned::Spanned;
 
 fn rustc_path() -> PathBuf {
     let mut path = env::current_exe().unwrap();
@@ -17,6 +18,9 @@ fn main() -> color_eyre::Result<()> {
     let mut config = ui_test::Config::rustc("fail");
     config.comment_defaults.base().env_vars = vec![("RR_VERIFY_DEPS".to_owned(), "true".to_owned())];
     config.program.program = rustc_path();
+    config.custom_comments.insert("stderr-only", |parser, _args, span| {
+        parser.require_annotations = Spanned::new(false, span).into();
+    });
 
     let abort_check = config.abort_check.clone();
     ctrlc::set_handler(move || abort_check.abort())?;
