@@ -1407,6 +1407,13 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 }
                 true
             },
+            Err(base::TranslationError::ErrorReported(_)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedDueToPreviousFailure(fname.to_string()),
+                );
+                true
+            },
             Err(base::TranslationError::Tainted(_)) => false,
             Err(base::TranslationError::Internal(err)) => {
                 error!("Encountered internal error in translation: {:?}", err);
@@ -1440,6 +1447,13 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                     let ordered_did = OrderedDefId::new(vcx.tcx, f.to_def_id());
                     vcx.procedure_registry.closure_info.insert(ordered_did, info);
                 }
+                true
+            },
+            Err(base::TranslationError::ErrorReported(_)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(f.to_def_id()),
+                    error::Message::SkippedDueToPreviousFailure(fname.to_string()),
+                );
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,

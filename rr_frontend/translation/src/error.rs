@@ -121,6 +121,9 @@ pub(crate) enum Message<'tcx> {
     #[display("Attribute is ill-formed: {}", _0)]
     AttributeError(String),
 
+    #[display("Skipping function due to previous failure: {}", _0)]
+    SkippedDueToPreviousFailure(String),
+
     #[display("Failed to parse struct invariant spec: {}", _0)]
     StructInvariantSpecParse(StructParserError),
 
