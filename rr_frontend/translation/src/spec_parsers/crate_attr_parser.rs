@@ -78,6 +78,7 @@ impl CrateAttrParser for VerboseCrateAttrParser {
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -87,30 +88,26 @@ impl CrateAttrParser for VerboseCrateAttrParser {
             match seg.as_str() {
                 "import" => {
                     let path: parse_utils::CoqExportModule =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                        buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     exports.push(path.into());
                 },
                 "include" => {
-                    let name: parse::LitStr =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let name: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     includes.insert(name.value());
                 },
                 "export_include" => {
-                    let name: parse::LitStr =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let name: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     export_includes.insert(name.value());
                 },
                 "coq_prefix" => {
-                    let path: parse::LitStr =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let path: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     if prefix.is_some() {
                         return Err(spanned_error(span, ParserError::DuplicatePrefix));
                     }
                     prefix = Some(path.value().clone());
                 },
                 "package" => {
-                    let path: parse::LitStr =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let path: parse::LitStr = buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     if package.is_some() {
                         return Err(spanned_error(span, ParserError::DuplicatePackage));
                     }

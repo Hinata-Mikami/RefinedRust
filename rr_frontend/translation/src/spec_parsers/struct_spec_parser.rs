@@ -11,18 +11,20 @@ use log::info;
 use parse::{Parse, Peek as _};
 use radium::{coq, specs};
 use rr_rustc_interface::hir;
-use rr_rustc_interface::span::Span;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParamsNamed, RRTerms, attr_args_tokens,
-    str_err,
+    CoqLiteralError, IProp, IdentOrTerm, LiteralType, ParamLookup, RRCoqContextItem, RRParamsNamed, RRTerms,
+    attr_args_tokens, str_err,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub(crate) enum ParserError {
     #[display("parse error: {}", _0)]
     Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
     #[display("no invariant specifications given")]
     NoInvariantSpecifications,
     #[display("multiple refines specifications given")]
@@ -71,14 +73,20 @@ struct RfnPattern {
 
 impl<'def, T: ParamLookup<'def>> Parse<T> for RfnPattern {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let pat_span = stream.pos().unwrap_or(DUMMY_SP);
         let pat = parse::LitStr::parse(stream, meta)?;
-        let (pat, _) = meta.process_coq_literal(pat.value().as_str());
+        let (pat, _) = meta
+            .process_coq_literal(pat_span, pat.value().as_str())
+            .map_err(|err| parse::Error::OtherErr(pat_span, err.to_string()))?;
 
         // optionally, parse a type annotation (otherwise, let Coq inference do its thing)
         if parse::Colon::peek(stream) {
             stream.parse::<_, MToken![:]>(meta)?;
+            let ty_span = stream.pos().unwrap_or(DUMMY_SP);
             let ty: parse::LitStr = stream.parse(meta)?;
-            let (processed_rt, _) = meta.process_coq_literal(ty.value().as_str());
+            let (processed_rt, _) = meta
+                .process_coq_literal(ty_span, ty.value().as_str())
+                .map_err(|err| parse::Error::OtherErr(ty_span, err.to_string()))?;
 
             Ok(Self {
                 rfn_pat: pat,
@@ -129,20 +137,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                 },
 
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta3);
 
@@ -151,7 +168,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                 },
 
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -163,14 +180,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -195,7 +218,7 @@ impl<U> Parse<U> for InvariantSpecFlags {
             "plain" => Ok(Self(specs::invariants::SpecFlags::Plain)),
             "na" => Ok(Self(specs::invariants::SpecFlags::NonAtomic)),
             "atomic" => Ok(Self(specs::invariants::SpecFlags::Atomic)),
-            _ => Err(parse::Error::OtherErr(stream.pos().unwrap(), "invalid ADT mode".to_owned())),
+            _ => Err(parse::Error::OtherErr(stream.pos().unwrap_or(DUMMY_SP), "invalid ADT mode".to_owned())),
         }
     }
 }
@@ -242,6 +265,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -250,8 +274,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
             let buffer = parse::Buffer::new(&attr_args_tokens(args));
             match seg.as_str() {
                 "refined_by" => {
-                    let pat = RfnPattern::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let pat = RfnPattern::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     rfn_pat = pat.rfn_pat;
 
@@ -263,8 +286,7 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     //}
                 },
                 "inv" | "invariant" => {
-                    let prop = MetaIProp::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let prop = MetaIProp::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     match prop {
                         MetaIProp::Own(iprop) => {
@@ -301,41 +323,38 @@ impl<'def, T: ParamLookup<'def>> InvariantSpecParser for VerboseInvariantSpecPar
                     }
                 },
                 "ty_lfts" => {
-                    let mut terms = RRTerms::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let mut terms =
+                        RRTerms::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     ty_lfts.append(&mut terms.terms);
                 },
                 "ty_wf_elctx" | "ty_wf_E" => {
-                    let mut terms = RRTerms::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let mut terms =
+                        RRTerms::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     ty_wf_elctx.append(&mut terms.terms);
                 },
                 "exists" => {
-                    let params = RRParamsNamed::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let params =
+                        RRParamsNamed::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
                     existentials.append(&mut params.params.into_iter().map(Into::into).collect());
                 },
                 "mode" => {
                     let mode = InvariantSpecFlags::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                        .map_err(|e| parse_err(attr_span, e))?;
 
                     inv_flags = mode.into();
                 },
                 "refines" => {
-                    let term = IdentOrTerm::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let term =
+                        IdentOrTerm::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     if abstracted_refinement.is_some() {
-                        return Err(spanned_error(
-                            buffer.pos().unwrap(),
-                            ParserError::MultipleRefinesSpecifications,
-                        ));
+                        return Err(spanned_error(attr_span, ParserError::MultipleRefinesSpecifications));
                     }
                     abstracted_refinement = Some(term.to_string());
                 },
                 "context" => {
-                    let param = RRCoqContextItem::parse(&buffer, self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    let param =
+                        RRCoqContextItem::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
                     params.push(coq::binder::Binder::new_generalized(
                         coq::binder::Kind::MaxImplicit,
@@ -474,6 +493,7 @@ where
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -486,23 +506,22 @@ where
             }
 
             if self.expect_rfn {
-                let rfn: parse::LitStr =
-                    buffer.parse(self.scope).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
-                let (rfn, _) = self.scope.process_coq_literal(rfn.value().as_str());
+                let rfn: parse::LitStr = buffer.parse(self.scope).map_err(|e| parse_err(attr_span, e))?;
+                let (rfn, _) = self
+                    .scope
+                    .process_coq_literal(span, rfn.value().as_str())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                 parsed_rfn = Some(rfn);
 
                 if parse::At::peek(&buffer) {
                     info!("expecting type");
-                    buffer
-                        .parse::<_, MToken![@]>(self.scope)
-                        .map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                    buffer.parse::<_, MToken![@]>(self.scope).map_err(|e| parse_err(attr_span, e))?;
                 } else {
                     continue;
                 }
             }
 
-            let ty =
-                LiteralType::parse(&buffer, self.scope).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+            let ty = LiteralType::parse(&buffer, self.scope).map_err(|e| parse_err(attr_span, e))?;
 
             if field_type.is_some() {
                 return Err(spanned_error(span, ParserError::DuplicateFieldAttribute(field_name.to_owned())));

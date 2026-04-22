@@ -70,6 +70,7 @@ impl ConstAttrParser for VerboseConstAttrParser {
         for &it in attrs {
             let path_segs = &it.path.segments;
             let args = &it.args;
+            let attr_span = it.span;
 
             let Some(seg) = path_segs.get(1) else {
                 continue;
@@ -80,7 +81,7 @@ impl ConstAttrParser for VerboseConstAttrParser {
             match seg.as_str() {
                 "name" => {
                     let parsed_name: parse::LitStr =
-                        buffer.parse(&()).map_err(|e| parse_err(buffer.pos().unwrap(), e))?;
+                        buffer.parse(&()).map_err(|e| parse_err(attr_span, e))?;
                     if name.is_some() {
                         return Err(spanned_error(span, ParserError::DuplicateName));
                     }

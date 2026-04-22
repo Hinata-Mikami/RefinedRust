@@ -63,20 +63,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
             let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
                     annot_meta.join(&annot_meta3);
 
                     let spec = specs::TyOwnSpec::new(loc_str, rfn_str, type_str, false, annot_meta);
@@ -87,7 +96,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     Ok(Self::Iris(prop.into()))
                 },
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -99,14 +108,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -144,12 +159,16 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
         let local_str: parse::LitStr = stream.parse(meta)?;
         let local_str = local_str.value();
+        let span = stream.pos().unwrap_or(DUMMY_SP);
 
         let rfn_str = if parse::Colon::peek(stream) {
             stream.parse::<_, MToken![:]>(meta)?;
 
+            let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
             let rfn_str: parse::LitStr = stream.parse(meta)?;
-            let (rfn_str, _) = meta.process_coq_literal(&rfn_str.value());
+            let (rfn_str, _) = meta
+                .process_coq_literal(rfn_span, &rfn_str.value())
+                .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
             Some(rfn_str)
         } else {
             None
@@ -158,7 +177,7 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for InvVar {
         Ok(Self {
             local: local_str,
             rfn: rfn_str,
-            span: stream.pos().unwrap_or(DUMMY_SP),
+            span,
         })
     }
 }

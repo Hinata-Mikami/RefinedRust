@@ -14,13 +14,15 @@ use rr_rustc_interface::span::Span;
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
+    CoqLiteralError, IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
 };
 
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]
     Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
     #[display("unknown macro {} in trait attribute instantiation", _0)]
     UnknownMacro(String),
     #[display("attribute {} has been instantiated multiple times", _0)]
@@ -106,7 +108,10 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseTraitImplAttrParser<'a, T> {
             }
 
             let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
-            let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
+            let (parsed_term, _) = self
+                .scope
+                .process_coq_literal(span, &parsed_term.value())
+                .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
 
             specs::traits::SpecAttrInst::Proof(parsed_term)
         } else {
@@ -115,7 +120,10 @@ impl<'a, 'def, T: ParamLookup<'def>> VerboseTraitImplAttrParser<'a, T> {
                 if let Some(stream) = buffer.peek_delimited() { &parse::Buffer::new(stream) } else { buffer };
 
             let parsed_term: parse::LitStr = buffer.parse(self.scope).map_err(|err| parse_err(span, err))?;
-            let (parsed_term, _) = self.scope.process_coq_literal(&parsed_term.value());
+            let (parsed_term, _) = self
+                .scope
+                .process_coq_literal(span, &parsed_term.value())
+                .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
             let term = coq::term::Term::Literal(parsed_term);
 
             specs::traits::SpecAttrInst::Term(term)

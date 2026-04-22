@@ -13,6 +13,7 @@ use log::trace;
 use parse::Peek as _;
 use radium::{coq, specs};
 use regex::{Captures, Regex};
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 /// This provides some general utilities for RefinedRust-specific attribute parsing.
 use rr_rustc_interface::{ast, hir};
 
@@ -32,12 +33,14 @@ pub(crate) enum IdentOrTerm {
 }
 
 impl IdentOrTerm {
-    fn process<'def, T: ParamLookup<'def>>(self, meta: &T) -> Self {
+    fn process<'def, T: ParamLookup<'def>>(self, meta: &T, span: Span) -> parse::Result<Self> {
         match self {
-            Self::Ident(id) => Self::Ident(id),
+            Self::Ident(id) => Ok(Self::Ident(id)),
             Self::Term(t) => {
-                let (s, _) = meta.process_coq_literal(&t);
-                Self::Term(s)
+                let (s, _) = meta
+                    .process_coq_literal(span, &t)
+                    .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
+                Ok(Self::Term(s))
             },
         }
     }
@@ -91,14 +94,18 @@ impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralTypeWithRef {
         }
 
         // refinement
+        let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
         let rfn: IdentOrTerm = stream.parse(meta)?;
-        let rfn = rfn.process(meta);
+        let rfn = rfn.process(meta, rfn_span)?;
 
         // optionally, parse a type annotation (otherwise, use the translated Rust type)
         if parse::At::peek(stream) {
             stream.parse::<_, MToken![@]>(meta)?;
+            let ty_span = stream.pos().unwrap_or(DUMMY_SP);
             let ty: parse::LitStr = stream.parse(meta)?;
-            let (ty, _) = meta.process_coq_literal(&ty.value());
+            let (ty, _) = meta
+                .process_coq_literal(ty_span, &ty.value())
+                .map_err(|err| parse::Error::OtherErr(ty_span, err.to_string()))?;
 
             Ok(Self {
                 rfn,
@@ -119,8 +126,11 @@ pub(crate) struct LiteralType {
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for LiteralType {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let span = stream.pos().unwrap_or(DUMMY_SP);
         let ty: parse::LitStr = stream.parse(meta)?;
-        let (ty, _) = meta.process_coq_literal(&ty.value());
+        let (ty, _) = meta
+            .process_coq_literal(span, &ty.value())
+            .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
 
         Ok(Self { ty })
     }
@@ -137,8 +147,11 @@ impl From<IProp> for coq::iris::IProp {
 /// Parse an iProp string, e.g. `"P ∗ Q ∨ R"`
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for IProp {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let span = stream.pos().unwrap_or(DUMMY_SP);
         let lit: parse::LitStr = stream.parse(meta)?;
-        let (lit, _) = meta.process_coq_literal(&lit.value());
+        let (lit, _) = meta
+            .process_coq_literal(span, &lit.value())
+            .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
 
         Ok(Self(coq::iris::IProp::Atom(lit)))
     }
@@ -151,8 +164,11 @@ pub(crate) struct RRCoqType {
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqType {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let span = stream.pos().unwrap_or(DUMMY_SP);
         let ty: parse::LitStr = stream.parse(meta)?;
-        let (ty, _) = meta.process_coq_literal(&ty.value());
+        let (ty, _) = meta
+            .process_coq_literal(span, &ty.value())
+            .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
         let ty = coq::term::Type::Literal(ty);
         Ok(Self { ty })
     }
@@ -166,8 +182,11 @@ pub(crate) struct RRTerm {
 
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRTerm {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let span = stream.pos().unwrap_or(DUMMY_SP);
         let term: parse::LitStr = stream.parse(meta)?;
-        let (term, _) = meta.process_coq_literal(&term.value());
+        let (term, _) = meta
+            .process_coq_literal(span, &term.value())
+            .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
         Ok(Self { term })
     }
 }
@@ -306,8 +325,11 @@ pub(crate) struct RRCoqContextItem {
 }
 impl<'def, T: ParamLookup<'def>> parse::Parse<T> for RRCoqContextItem {
     fn parse(stream: parse::Stream<'_>, meta: &T) -> parse::Result<Self> {
+        let span = stream.pos().unwrap_or(DUMMY_SP);
         let item: parse::LitStr = stream.parse(meta)?;
-        let (item_str, annot_meta) = meta.process_coq_literal(&item.value());
+        let (item_str, annot_meta) = meta
+            .process_coq_literal(span, &item.value())
+            .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
 
         let at_end = !annot_meta.is_empty();
 
@@ -337,6 +359,16 @@ fn handle_escapes(s: &str) -> String {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum RustPathElem {
     AssocItem(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub(crate) enum CoqLiteralError {
+    #[display("unknown type parameter in anti-quotation: {}", _0)]
+    MissingTypeParam(String),
+    #[display("unknown lifetime parameter in anti-quotation: '{}", _0)]
+    MissingLifetime(String),
+    #[display("could not resolve anti-quotation: {}", _0)]
+    Unresolved(String),
 }
 
 pub(crate) type RustPath = Vec<RustPathElem>;
@@ -397,11 +429,20 @@ pub(crate) trait ParamLookup<'def> {
     /// We return the list of escaped types we depend on in order to properly track dependencies on
     /// variables.
     /// (This is needed for computing the lifetime constraints of invariant types)
-    fn process_coq_literal(&self, s: &str) -> (String, specs::TypeAnnotMeta) {
-        self.process_coq_literal_xt(s, false)
+    fn process_coq_literal(
+        &self,
+        span: Span,
+        s: &str,
+    ) -> Result<(String, specs::TypeAnnotMeta), CoqLiteralError> {
+        self.process_coq_literal_xt(span, s, false)
     }
 
-    fn process_coq_literal_xt(&self, s: &str, rt_is_xt: bool) -> (String, specs::TypeAnnotMeta) {
+    fn process_coq_literal_xt(
+        &self,
+        _span: Span,
+        s: &str,
+        rt_is_xt: bool,
+    ) -> Result<(String, specs::TypeAnnotMeta), CoqLiteralError> {
         // compile these just once, not for every invocation of the method
         static IDENTCHARR: &str = "[_[[:alpha:]]]";
         // Note: the leading regex ([^{]|^) is supposed to rule out leading {, for the RE_LIT rule.
@@ -440,7 +481,17 @@ pub(crate) trait ParamLookup<'def> {
             path
         }
 
+        fn format_path(path: &RustPath) -> String {
+            path.iter()
+                .map(|seg| match seg {
+                    RustPathElem::AssocItem(item) => item.as_str(),
+                })
+                .collect::<Vec<_>>()
+                .join("::")
+        }
+
         let mut annot_meta = specs::TypeAnnotMeta::empty();
+        let mut error = None;
 
         let s = handle_escapes(s);
 
@@ -453,7 +504,8 @@ pub(crate) trait ParamLookup<'def> {
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingTypeParam(format_path(&path)));
+                return c[0].to_owned();
             };
 
             annot_meta.add_type(&param);
@@ -472,7 +524,8 @@ pub(crate) trait ParamLookup<'def> {
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingTypeParam(format_path(&path)));
+                return c[0].to_owned();
             };
 
             annot_meta.add_type(&param);
@@ -486,7 +539,8 @@ pub(crate) trait ParamLookup<'def> {
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingTypeParam(format_path(&path)));
+                return c[0].to_owned();
             };
 
             annot_meta.add_type(&param);
@@ -499,7 +553,8 @@ pub(crate) trait ParamLookup<'def> {
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingTypeParam(format_path(&path)));
+                return c[0].to_owned();
             };
 
             annot_meta.add_type(&param);
@@ -512,7 +567,8 @@ pub(crate) trait ParamLookup<'def> {
             let param = self.lookup_ty_param(&path);
 
             let Some(param) = param else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingTypeParam(format_path(&path)));
+                return c[0].to_owned();
             };
 
             annot_meta.add_type(&param);
@@ -524,7 +580,8 @@ pub(crate) trait ParamLookup<'def> {
             let lft = self.lookup_lft(t);
 
             let Some(lft) = lft else {
-                return "ERR".to_owned();
+                error.get_or_insert_with(|| CoqLiteralError::MissingLifetime(t.to_owned()));
+                return c[0].to_owned();
             };
 
             annot_meta.add_lft(lft.to_owned().into());
@@ -561,7 +618,8 @@ pub(crate) trait ParamLookup<'def> {
                 return format!("{}{}", &c[1], res);
             }
 
-            "ERR".to_owned()
+            error.get_or_insert(CoqLiteralError::Unresolved(content));
+            c[0].to_owned()
         });
 
         let cs = RE_PLACE.replace_all(&cs, |c: &Captures<'_>| {
@@ -579,7 +637,7 @@ pub(crate) trait ParamLookup<'def> {
         let cs = cs.replace("{{", "{");
         let cs = cs.replace("}}", "}");
 
-        (cs, annot_meta)
+        if let Some(err) = error { Err(err) } else { Ok((cs, annot_meta)) }
     }
 }
 
@@ -641,7 +699,11 @@ mod place_parser {
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
-    use super::{ParamLookup, Projection, Projections, RustPath, RustPathElem, RustPlace, specs};
+    use rr_rustc_interface::span::DUMMY_SP;
+
+    use super::{
+        CoqLiteralError, ParamLookup, Projection, Projections, RustPath, RustPathElem, RustPlace, specs,
+    };
 
     #[derive(Default)]
     struct TestScope {
@@ -693,7 +755,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T"));
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(T_rt) * (T_rt)");
     }
 
@@ -703,7 +765,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("T".to_owned(), specs::LiteralTyParam::new("T"));
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "T_ty * T_ty");
     }
 
@@ -713,7 +775,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self"));
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(Self_rt) * (Self_rt)");
     }
 
@@ -723,7 +785,7 @@ mod tests {
         let mut scope = TestScope::default();
         scope.ty_names.insert("Self".to_owned(), specs::LiteralTyParam::new("Self"));
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "{rt_of Bla}");
     }
 
@@ -737,7 +799,7 @@ mod tests {
             specs::LiteralTyParam::new("Bla_Blub"),
         );
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(Bla_Blub_rt)");
     }
 
@@ -755,7 +817,7 @@ mod tests {
             specs::LiteralTyParam::new("Bla_Blub"),
         );
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(Bla_Blub_rt)");
     }
 
@@ -767,7 +829,7 @@ mod tests {
             .literals
             .insert(vec![RustPathElem::AssocItem("Size".to_owned())], "(trait_attrs).(size)".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(trait_attrs).(size) 4");
     }
 
@@ -779,7 +841,7 @@ mod tests {
             .literals
             .insert(vec![RustPathElem::AssocItem("Size_bla".to_owned())], "(trait_attrs).(size)".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "(trait_attrs).(size) 4");
     }
 
@@ -793,7 +855,7 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "bla");
     }
 
@@ -807,7 +869,7 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "bla");
     }
 
@@ -825,7 +887,7 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "bla");
     }
 
@@ -843,7 +905,7 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "bla");
     }
 
@@ -861,7 +923,7 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "bla");
     }
 
@@ -879,7 +941,25 @@ mod tests {
         };
         scope.places.insert(exp, "bla".to_owned());
 
-        let (res, _) = scope.process_coq_literal(lit);
+        let (res, _) = scope.process_coq_literal(DUMMY_SP, lit).unwrap();
         assert_eq!(res, "blub (bla)");
+    }
+
+    #[test]
+    fn unknown_type_param_reports_error() {
+        let err = TestScope::default().process_coq_literal(DUMMY_SP, "{rt_of Missing}").unwrap_err();
+        assert_eq!(err, CoqLiteralError::MissingTypeParam("Missing".to_owned()));
+    }
+
+    #[test]
+    fn unknown_lifetime_reports_error() {
+        let err = TestScope::default().process_coq_literal(DUMMY_SP, "{'a}").unwrap_err();
+        assert_eq!(err, CoqLiteralError::MissingLifetime("a".to_owned()));
+    }
+
+    #[test]
+    fn unknown_literal_reports_error() {
+        let err = TestScope::default().process_coq_literal(DUMMY_SP, "{missing}").unwrap_err();
+        assert_eq!(err, CoqLiteralError::Unresolved("missing".to_owned()));
     }
 }

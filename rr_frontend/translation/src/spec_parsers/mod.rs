@@ -12,7 +12,7 @@ pub(crate) mod verbose_function_spec_parser;
 use attribute_parse::{MToken, parse};
 use parse::{Parse, Peek as _};
 use rr_rustc_interface::hir;
-use rr_rustc_interface::span::Span;
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 /// For parsing of `RustPaths`
 #[derive(Debug)]
@@ -48,7 +48,7 @@ impl<F> Parse<F> for ExportAs {
                 },
                 _ => {
                     return Err(parse::Error::OtherErr(
-                        stream.pos().unwrap(),
+                        stream.pos().unwrap_or(DUMMY_SP),
                         format!("invalid macro command: {:?}", macro_cmd.value()),
                     ));
                 },
@@ -125,7 +125,7 @@ where
     U: ?Sized,
 {
     fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
-        let pos = stream.pos().unwrap();
+        let pos = stream.pos().unwrap_or(DUMMY_SP);
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 
@@ -174,7 +174,7 @@ where
     U: ?Sized,
 {
     fn parse(stream: parse::Stream<'_>, meta: &U) -> parse::Result<Self> {
-        let pos = stream.pos().unwrap();
+        let pos = stream.pos().unwrap_or(DUMMY_SP);
         let args: parse::Punctuated<parse::LitStr, MToken![,]> =
             parse::Punctuated::<_, _>::parse_terminated(stream, meta)?;
 

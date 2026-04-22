@@ -14,12 +14,12 @@ use radium::{coq, fmt_list, model, push_str_list, specs};
 use rr_rustc_interface::hir;
 use rr_rustc_interface::middle::hir::place;
 use rr_rustc_interface::middle::ty;
-use rr_rustc_interface::span::{self, Span};
+use rr_rustc_interface::span::{DUMMY_SP, Span};
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections, RRCoqContextItem, RRParam,
-    RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
+    CoqLiteralError, IProp, IdentOrTerm, LiteralTypeWithRef, ParamLookup, Projection, Projections,
+    RRCoqContextItem, RRParam, RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
 };
 
 pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
@@ -38,6 +38,8 @@ pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
 pub(crate) enum ParserError {
     #[display("{}", _0)]
     Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
     #[display("could not find name")]
     CouldNotFindName,
     #[display("expected {} function arguments, found a different count", _0)]
@@ -394,20 +396,29 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
             let macro_cmd: parse::Ident = stream.parse(meta)?;
             match macro_cmd.value().as_str() {
                 "type" => {
+                    let loc_span = stream.pos().unwrap_or(DUMMY_SP);
                     let loc_str: parse::LitStr = stream.parse(meta)?;
-                    let (loc_str, mut annot_meta) = meta.process_coq_literal(&loc_str.value());
+                    let (loc_str, mut annot_meta) = meta
+                        .process_coq_literal(loc_span, &loc_str.value())
+                        .map_err(|err| parse::Error::OtherErr(loc_span, err.to_string()))?;
 
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let rfn_span = stream.pos().unwrap_or(DUMMY_SP);
                     let rfn_str: parse::LitStr = stream.parse(meta)?;
-                    let (rfn_str, annot_meta2) = meta.process_coq_literal(&rfn_str.value());
+                    let (rfn_str, annot_meta2) = meta
+                        .process_coq_literal(rfn_span, &rfn_str.value())
+                        .map_err(|err| parse::Error::OtherErr(rfn_span, err.to_string()))?;
 
                     annot_meta.join(&annot_meta2);
 
                     stream.parse::<_, MToken![@]>(meta)?;
 
+                    let type_span = stream.pos().unwrap_or(DUMMY_SP);
                     let type_str: parse::LitStr = stream.parse(meta)?;
-                    let (type_str, annot_meta3) = meta.process_coq_literal(&type_str.value());
+                    let (type_str, annot_meta3) = meta
+                        .process_coq_literal(type_span, &type_str.value())
+                        .map_err(|err| parse::Error::OtherErr(type_span, err.to_string()))?;
                     annot_meta.join(&annot_meta3);
 
                     let spec = specs::TyOwnSpec::new(loc_str, rfn_str, type_str, false, annot_meta);
@@ -421,14 +432,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     let gname: parse::LitStr = stream.parse(meta)?;
                     stream.parse::<_, MToken![:]>(meta)?;
 
+                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
                     let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
+                    let (term, _meta) = meta
+                        .process_coq_literal(term_span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
 
                     Ok(Self::Observe(gname.value(), None, term))
                 },
                 "linktime" => {
+                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
                     let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
+                    let (term, _meta) = meta
+                        .process_coq_literal(term_span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
                     Ok(Self::Linktime(term))
                 },
                 "trait" => {
@@ -439,13 +456,16 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
                     stream.parse::<_, MToken![:]>(meta)?;
                     stream.parse::<_, MToken![=]>(meta)?;
 
+                    let term_span = stream.pos().unwrap_or(DUMMY_SP);
                     let term: parse::LitStr = stream.parse(meta)?;
-                    let (term, _meta) = meta.process_coq_literal(&term.value());
+                    let (term, _meta) = meta
+                        .process_coq_literal(term_span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(term_span, err.to_string()))?;
 
                     Ok(Self::Trait(type_param.value(), attr.value(), term))
                 },
                 _ => Err(parse::Error::OtherErr(
-                    stream.pos().unwrap(),
+                    stream.pos().unwrap_or(DUMMY_SP),
                     format!("invalid macro command: {:?}", macro_cmd.value()),
                 )),
             }
@@ -457,14 +477,20 @@ impl<'def, T: ParamLookup<'def>> Parse<T> for MetaIProp {
 
                 stream.parse::<_, MToken![:]>(meta)?;
 
+                let pure_span = stream.pos().unwrap_or(DUMMY_SP);
                 let pure_prop: parse::LitStr = stream.parse(meta)?;
-                let (pure_str, _annot_meta) = meta.process_coq_literal(&pure_prop.value());
+                let (pure_str, _annot_meta) = meta
+                    .process_coq_literal(pure_span, &pure_prop.value())
+                    .map_err(|err| parse::Error::OtherErr(pure_span, err.to_string()))?;
                 // TODO: should we use annot_meta?
 
                 Ok(Self::Pure(pure_str, Some(name_str)))
             } else {
                 // this is a
-                let (lit, _) = meta.process_coq_literal(&name_or_prop_str.value());
+                let lit_span = stream.pos().unwrap_or(DUMMY_SP);
+                let (lit, _) = meta
+                    .process_coq_literal(lit_span, &name_or_prop_str.value())
+                    .map_err(|err| parse::Error::OtherErr(lit_span, err.to_string()))?;
                 Ok(Self::Pure(lit, None))
             }
         }
@@ -993,7 +1019,9 @@ where
                     buffer.parse::<_, MToken![:]>(scope)?;
 
                     let term: parse::LitStr = buffer.parse(scope)?;
-                    let (term, _) = scope.process_coq_literal(&term.value());
+                    let (term, _) = scope
+                        .process_coq_literal(span, &term.value())
+                        .map_err(|err| parse::Error::OtherErr(span, err.to_string()))?;
                     Ok(MetaIProp::Observe(gname.value(), None, term))
                 };
                 let m = m().map_err(|err| parse_err(span, err))?;
@@ -1026,7 +1054,9 @@ where
             "unsafe_elctx" => {
                 // TODO: do not allow this on closures.
                 let term = parse::LitStr::parse(buffer, scope).map_err(|err| parse_err(span, err))?;
-                let (term, _) = scope.process_coq_literal(&term.value());
+                let (term, _) = scope
+                    .process_coq_literal(span, &term.value())
+                    .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
                 builder.unsafe_lifetime_constraints.push(term);
             },
             "context" => {
@@ -1416,7 +1446,7 @@ where
     where
         H: FnMut(Vec<specs::Type<'def>>) -> specs::Type<'def>,
     {
-        let span = attrs.first().map_or(span::DUMMY_SP, |a| a.span);
+        let span = attrs.first().map_or(DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         let mut capture_spec_map: CaptureSpecMap = BTreeMap::new();
@@ -1539,7 +1569,7 @@ where
         attrs: &[&hir::AttrItem],
         builder: &mut specs::functions::LiteralSpecBuilder<'def>,
     ) -> Result<(), SpannedError<ParserError>> {
-        let span = attrs.first().map_or(span::DUMMY_SP, |a| a.span);
+        let span = attrs.first().map_or(DUMMY_SP, |a| a.span);
         let mut spec = ParsedSpecInfo::new();
 
         for &it in attrs {

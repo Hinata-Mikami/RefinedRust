@@ -14,13 +14,15 @@ use rr_rustc_interface::span::Span;
 
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{
-    IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem, attr_args_tokens, str_err,
+    CoqLiteralError, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
 
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]
     Parse(String),
+    #[display("{}", _0)]
+    AntiQuotation(CoqLiteralError),
     #[display("rr::external_attrs specified, but rr::exists has been previously specified")]
     ExternalAttrsAfterExists,
     #[display("rr::exists specified, but rr::external_attrs has been previously specified")]
@@ -158,7 +160,10 @@ where
                 "semantic" => {
                     let parsed_term: parse::LitStr =
                         buffer.parse(&self.scope).map_err(|err| parse_err(span, err))?;
-                    let (lit, _) = self.scope.process_coq_literal(&parsed_term.value());
+                    let (lit, _) = self
+                        .scope
+                        .process_coq_literal(span, &parsed_term.value())
+                        .map_err(|err| spanned_error(span, ParserError::AntiQuotation(err)))?;
 
                     if semantic_interp.is_some() {
                         return Err(spanned_error(span, ParserError::DuplicateSemanticInterp));
