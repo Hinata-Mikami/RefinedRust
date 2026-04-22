@@ -1140,7 +1140,8 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let res = spec_parser
                 .parse_invariant_spec(struct_name, self.tcx.def_span(ty.def_id), &outer_attrs)
                 .map_err(|err| {
-                    self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err))
+                    let err = self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));
+                    TranslationError::Tainted(err)
                 })?;
 
             invariant_spec = Some(res.0);
@@ -1167,10 +1168,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
-            let field_spec =
-                parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
-                    self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err))
-                })?;
+            let field_spec = parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
+                let err = self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err));
+                TranslationError::Tainted(err)
+            })?;
 
             //info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
             builder.add_field(&f_name, field_spec.ty);

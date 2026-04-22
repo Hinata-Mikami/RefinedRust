@@ -14,7 +14,7 @@ use std::{env, process};
 
 use log::{debug, info};
 use rr_rustc_interface::middle::{ty, util};
-use rr_rustc_interface::{driver, interface, session};
+use rr_rustc_interface::{driver, interface, session, span};
 
 const BUG_REPORT_URL: &str = "https://gitlab.mpi-sws.org/lgaeher/refinedrust-dev/-/issues/new";
 
@@ -130,10 +130,7 @@ fn override_queries(_session: &session::Session, providers: &mut util::Providers
 pub fn analyze(tcx: ty::TyCtxt<'_>) {
     match translation::generate_coq_code(tcx, |vcx| vcx.write_coq_files()) {
         Ok(()) => (),
-        Err(e) => {
-            println!("Frontend failed with error {:?}", e);
-            process::exit(1)
-        },
+        Err(_) => process::exit(1),
     }
 
     if let Some(s) = rrconfig::post_generation_hook()
@@ -148,12 +145,15 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
             .current_dir(&dir_path)
             .status()
             .expect("failed to execute process");
-        println!("Post-generation hook finished with {status}");
+        info!("Post-generation hook finished with {status}");
     }
 
     if rrconfig::run_check() {
         if cfg!(target_os = "windows") {
-            println!("Cannot run proof checker on Windows.");
+            tcx.dcx().span_warn(
+                span::DUMMY_SP,
+                "[RefinedRust] Cannot run proof checker on Windows.",
+            );
         } else if let Some(dir_str) = rrconfig::output_dir() {
             let dir_path = PathBuf::from(&dir_str);
 
@@ -165,7 +165,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
                 .status()
                 .expect("failed to execute process");
 
-            println!("Type checker finished with {status}");
+            info!("Type checker finished with {status}");
         }
     }
 }

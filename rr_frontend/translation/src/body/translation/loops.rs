@@ -222,7 +222,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 Ok(spec) => Ok(spec),
                 Err(err) => {
                     let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
-                    Err(TranslationError::Tainted(err))
+                    Err(TranslationError::ErrorReported(err))
                 },
             }
         } else {
@@ -230,7 +230,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
                 Ok(spec) => Ok(spec),
                 Err(err) => {
                     let err = self.tcx.dcx().span_err(err.span, Message::LoopSpec(err.err));
-                    Err(TranslationError::Tainted(err))
+                    Err(TranslationError::ErrorReported(err))
                 },
             }
         }
