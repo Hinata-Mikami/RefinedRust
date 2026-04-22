@@ -48,7 +48,7 @@ use crate::base::OrderedDefId;
 use crate::body::signature;
 use crate::closure_impl_generator::ClosureImplGenerator;
 use crate::shims::registry as shim_registry;
-use crate::spec_parsers::const_attr_parser::{ConstAttrParser as _, VerboseConstAttrParser};
+use crate::spec_parsers::const_attr_parser::{CONST_ATTRS, ConstAttrParser as _, VerboseConstAttrParser};
 use crate::spec_parsers::crate_attr_parser::{CrateAttrParser as _, VerboseCrateAttrParser};
 use crate::spec_parsers::module_attr_parser::{ModuleAttrParser as _, ModuleAttrs, VerboseModuleAttrParser};
 use crate::traits::registry;
@@ -1422,9 +1422,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 if !rrconfig::skip_unsupported_features() {
                     vcx.tcx.dcx().span_err(
                         vcx.tcx.def_span(f.to_def_id()),
-                        error::Message::UnsupportedFeature(format!(
-                            "failed to translate function {fname}"
-                        )),
+                        error::Message::UnsupportedFeature(format!("failed to translate function {fname}")),
                     );
                     return false;
                 }
@@ -1459,9 +1457,7 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
                 if !rrconfig::skip_unsupported_features() {
                     vcx.tcx.dcx().span_err(
                         vcx.tcx.def_span(f.to_def_id()),
-                        error::Message::UnsupportedFeature(format!(
-                            "failed to translate function {fname}"
-                        )),
+                        error::Message::UnsupportedFeature(format!("failed to translate function {fname}")),
                     );
                     return false;
                 }
@@ -1560,6 +1556,13 @@ pub fn register_consts<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> Result<(),
         if const_attrs.is_empty() {
             continue;
         }
+        attrs::check_tool_attrs(&const_attrs, CONST_ATTRS.iter().copied()).map_err(|err| {
+            let err = vcx.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            abort_after_reported_error(format!("const specification parse error: {err:?}"))
+        })?;
 
         let ty = ty.skip_binder();
         let scope = scope::Params::default();

@@ -7,6 +7,13 @@
 //! Utility functions for obtaining relevant attributes.
 
 use rr_rustc_interface::hir;
+use rr_rustc_interface::span::Span;
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UnexpectedAttr<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) span: Span,
+}
 
 /// Check if `<tool>::<name>` is among the attributes, where `tool` is determined by the
 /// `spec_hotword` config.
@@ -70,4 +77,67 @@ pub(crate) fn filter_for_tool<'a>(
             _ => None,
         })
         .collect()
+}
+
+pub(crate) fn get_tool_attr_name(attr: &hir::AttrItem) -> Option<&str> {
+    let segments = &attr.path.segments;
+    (segments.len() == 2 && segments[0].as_str() == rrconfig::spec_hotword().as_str())
+        .then(|| segments[1].as_str())
+}
+
+pub(crate) fn check_tool_attrs<'a>(
+    attrs: &[&'a hir::AttrItem],
+    accepted: impl IntoIterator<Item = &'a str>,
+) -> Result<(), UnexpectedAttr<'a>> {
+    check_tool_attr_names(
+        attrs.iter().filter_map(|attr| get_tool_attr_name(attr).map(|name| (name, attr.span))),
+        accepted,
+    )
+}
+
+fn check_tool_attr_names<'a>(
+    attrs: impl IntoIterator<Item = (&'a str, Span)>,
+    accepted: impl IntoIterator<Item = &'a str>,
+) -> Result<(), UnexpectedAttr<'a>> {
+    let accepted: std::collections::HashSet<&str> = accepted.into_iter().collect();
+
+    for (name, span) in attrs {
+        if !accepted.contains(name) {
+            return Err(UnexpectedAttr { name, span });
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use rr_rustc_interface::span::{BytePos, SyntaxContext};
+
+    use super::*;
+
+    fn make_span(lo: u32, hi: u32) -> Span {
+        Span::new(BytePos(lo), BytePos(hi), SyntaxContext::root(), None)
+    }
+
+    #[test]
+    fn accepts_attr_claimed_by_any_relevant_parser() {
+        let res = check_tool_attr_names([("derive_instantiate", make_span(1, 2))], [
+            "derive_instantiate",
+            "refined_by",
+        ]);
+
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn rejects_unclaimed_tool_attr() {
+        let span = make_span(3, 4);
+        let err =
+            check_tool_attr_names([("mystery", span)], ["derive_instantiate", "refined_by"]).unwrap_err();
+
+        assert_eq!(err.name, "mystery");
+        assert_eq!(err.span.lo(), BytePos(3));
+        assert_eq!(err.span.hi(), BytePos(4));
+    }
 }

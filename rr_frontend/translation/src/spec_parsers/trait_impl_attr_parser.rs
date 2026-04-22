@@ -17,6 +17,11 @@ use crate::spec_parsers::parse_utils::{
     CoqLiteralError, IdentOrTerm, ParamLookup, RRCoqContextItem, attr_args_tokens, str_err,
 };
 
+pub(crate) const DERIVE_TRAIT_IMPL_SPEC_ATTRS: &[&str] = &["derive_instantiate", "context"];
+
+pub(crate) const TRAIT_IMPL_ATTRS: &[&str] =
+    &["instantiate", "context", "export_as", "only_spec", "trust_me", "skip", "verify"];
+
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]

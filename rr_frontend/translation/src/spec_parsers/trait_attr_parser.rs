@@ -17,6 +17,9 @@ use crate::spec_parsers::parse_utils::{
     CoqLiteralError, IdentOrTerm, ParamLookup, RRCoqType, RustPath, RustPathElem, attr_args_tokens, str_err,
 };
 
+pub(crate) const TRAIT_ATTRS: &[&str] =
+    &["external_attrs", "exists", "semantic", "nondependent", "export_as"];
+
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]

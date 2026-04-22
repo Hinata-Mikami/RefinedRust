@@ -22,10 +22,13 @@ use crate::environment::borrowck::facts;
 use crate::environment::polonius_info::PoloniusInfo;
 use crate::regions::{EarlyLateRegionMap, LftConstr, format_atomic_region_direct};
 use crate::spec_parsers::enum_spec_parser::{
-    EnumSpecParser as _, VerboseEnumSpecParser, parse_enum_refine_as,
+    ENUM_SPEC_ATTRS, ENUM_VARIANT_SPEC_ATTRS, EnumSpecParser as _, VerboseEnumSpecParser,
+    parse_enum_refine_as,
 };
 use crate::spec_parsers::parse_utils::{ParamLookup, RustPath};
-use crate::spec_parsers::struct_spec_parser::{self, InvariantSpecParser as _, StructFieldSpecParser as _};
+use crate::spec_parsers::struct_spec_parser::{
+    self, FIELD_SPEC_ATTRS, INVARIANT_SPEC_ATTRS, InvariantSpecParser as _, StructFieldSpecParser as _,
+};
 use crate::spec_parsers::verbose_function_spec_parser::TraitReqHandler;
 use crate::traits::registry;
 use crate::types::scope;
@@ -1131,16 +1134,26 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
 
         // parse attributes
         let outer_attrs = environment::get_attributes(self.tcx, ty.def_id);
+        let outer_attrs = attrs::filter_for_tool(outer_attrs);
+        if !adt.is_enum() {
+            attrs::check_tool_attrs(&outer_attrs, INVARIANT_SPEC_ATTRS.iter().copied()).map_err(|err| {
+                let err = self.tcx.dcx().span_err(
+                    err.span,
+                    error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                );
+                TranslationError::Tainted(err)
+            })?;
+        }
 
         let expect_refinement;
         let mut invariant_spec;
-        if attrs::has_tool_attr(outer_attrs, "refined_by") {
-            let outer_attrs = attrs::filter_for_tool(outer_attrs);
+        if attrs::has_tool_attr_filtered(&outer_attrs, "refined_by") {
             let mut spec_parser = struct_spec_parser::VerboseInvariantSpecParser::new(state.param_scope());
             let res = spec_parser
                 .parse_invariant_spec(struct_name, self.tcx.def_span(ty.def_id), &outer_attrs)
                 .map_err(|err| {
-                    let err = self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));
+                    let err =
+                        self.tcx.dcx().span_err(err.span, error::Message::StructInvariantSpecParse(err.err));
                     TranslationError::Tainted(err)
                 })?;
 
@@ -1168,10 +1181,11 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 expect_refinement,
                 |lit| self.intern_literal(lit),
             );
-            let field_spec = parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
-                let err = self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err));
-                TranslationError::Tainted(err)
-            })?;
+            let field_spec =
+                parser.parse_field_spec(&f_name, self.tcx.def_span(f.did), &attrs).map_err(|err| {
+                    let err = self.tcx.dcx().span_err(err.span, error::Message::FieldSpecParseError(err.err));
+                    TranslationError::Tainted(err)
+                })?;
 
             //info!("adt variant field: {:?} -> {} (with rfn {:?})", f_name, field_spec.ty, field_spec.rfn);
             builder.add_field(&f_name, field_spec.ty);
@@ -1421,6 +1435,21 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                 // also remember the attributes for additional processing
                 let outer_attrs = environment::get_attributes(self.tcx, v.def_id);
                 let outer_attrs = attrs::filter_for_tool(outer_attrs);
+                attrs::check_tool_attrs(
+                    &outer_attrs,
+                    INVARIANT_SPEC_ATTRS
+                        .iter()
+                        .copied()
+                        .chain(ENUM_VARIANT_SPEC_ATTRS.iter().copied())
+                        .chain(FIELD_SPEC_ATTRS.iter().copied()),
+                )
+                .map_err(|err| {
+                    let err = self.tcx.dcx().span_err(
+                        err.span,
+                        error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    );
+                    TranslationError::Tainted(err)
+                })?;
                 variant_attrs.push(outer_attrs);
 
                 // finalize the definition
@@ -1448,10 +1477,18 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
             let enum_spec;
             let mut inductive_decl = None;
 
-            if environment::has_tool_attribute(self.tcx, def.did(), "refined_by") {
-                let attributes = environment::get_attributes(self.tcx, def.did());
-                let attributes = attrs::filter_for_tool(attributes);
+            let attributes = environment::get_attributes(self.tcx, def.did());
+            let attributes = attrs::filter_for_tool(attributes);
+            attrs::check_tool_attrs(&attributes, ENUM_SPEC_ATTRS.iter().copied().chain(["refine_as"]))
+                .map_err(|err| {
+                    let err = self.tcx.dcx().span_err(
+                        err.span,
+                        error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    );
+                    TranslationError::Tainted(err)
+                })?;
 
+            if environment::has_tool_attribute(self.tcx, def.did(), "refined_by") {
                 let mut parser = VerboseEnumSpecParser::new(&scope);
 
                 enum_spec = match parser.parse_enum_spec(&enum_name, &attributes, &variant_attrs) {

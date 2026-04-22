@@ -18,10 +18,14 @@ use crate::base::*;
 use crate::body::signature;
 use crate::regions::region_bi_folder::RegionBiFolder;
 use crate::spec_parsers::trait_attr_parser::{
-    TraitAttrParser as _, VerboseTraitAttrParser, get_declared_trait_attrs,
+    TRAIT_ATTRS, TraitAttrParser as _, VerboseTraitAttrParser, get_declared_trait_attrs,
 };
-use crate::spec_parsers::trait_impl_attr_parser::{TraitImplAttrParser as _, VerboseTraitImplAttrParser};
-use crate::spec_parsers::{SpannedError, propagate_method_attr_from_impl};
+use crate::spec_parsers::trait_impl_attr_parser::{
+    DERIVE_TRAIT_IMPL_SPEC_ATTRS, TRAIT_IMPL_ATTRS, TraitImplAttrParser as _, VerboseTraitImplAttrParser,
+};
+use crate::spec_parsers::{
+    SpannedError, enum_spec_parser, propagate_method_attr_from_impl, struct_spec_parser,
+};
 use crate::traits::requirements;
 use crate::types::scope;
 use crate::{attrs, environment, error, procedures, search, traits, types};
@@ -312,6 +316,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let trait_name = strip_coq_ident(&environment::get_absolute_item_name(self.tcx, did.to_def_id()));
         let trait_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, did.into()));
+        attrs::check_tool_attrs(&trait_attrs, TRAIT_ATTRS.iter().copied()).map_err(|err| {
+            let err = self.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            TranslationError::Tainted(err)
+        })?;
 
         let mut cont = || -> Result<(), TranslationError<'tcx>> {
             // get generics
@@ -1160,6 +1171,22 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         param_scope.add_param_env(trait_impl_did, self.tcx, self.type_translator(), self)?;
 
         let adt_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, def.did()));
+        let adt_specific_attrs = if def.is_enum() {
+            enum_spec_parser::ENUM_SPEC_ATTRS.iter().copied().chain(["refine_as"]).collect::<Vec<_>>()
+        } else {
+            struct_spec_parser::INVARIANT_SPEC_ATTRS.to_vec()
+        };
+        attrs::check_tool_attrs(
+            &adt_attrs,
+            DERIVE_TRAIT_IMPL_SPEC_ATTRS.iter().copied().chain(adt_specific_attrs.iter().copied()),
+        )
+        .map_err(|err| {
+            let err = self.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            TranslationError::Tainted(err)
+        })?;
         let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
 
         let res = attr_parser.parse_derive_trait_impl_attrs(&adt_attrs).map_err(|e| {
@@ -1239,6 +1266,13 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         // parse specification
         let trait_impl_attrs = attrs::filter_for_tool(environment::get_attributes(self.tcx, trait_impl_did));
+        attrs::check_tool_attrs(&trait_impl_attrs, TRAIT_IMPL_ATTRS.iter().copied()).map_err(|err| {
+            let err = self.tcx.dcx().span_err(
+                err.span,
+                error::Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+            );
+            TranslationError::Tainted(err)
+        })?;
         let (impl_spec, context_items) = if !trait_impl_attrs.is_empty() {
             let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
             let res = attr_parser.parse_trait_impl_attrs(&trait_impl_attrs).map_err(|e| {

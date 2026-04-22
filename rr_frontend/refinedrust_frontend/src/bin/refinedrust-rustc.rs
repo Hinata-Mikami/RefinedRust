@@ -150,10 +150,7 @@ pub fn analyze(tcx: ty::TyCtxt<'_>) {
 
     if rrconfig::run_check() {
         if cfg!(target_os = "windows") {
-            tcx.dcx().span_warn(
-                span::DUMMY_SP,
-                "[RefinedRust] Cannot run proof checker on Windows.",
-            );
+            tcx.dcx().span_warn(span::DUMMY_SP, "[RefinedRust] Cannot run proof checker on Windows.");
         } else if let Some(dir_str) = rrconfig::output_dir() {
             let dir_path = PathBuf::from(&dir_str);
 

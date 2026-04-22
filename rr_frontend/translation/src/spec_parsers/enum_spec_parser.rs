@@ -13,6 +13,10 @@ use rr_rustc_interface::span::{DUMMY_SP, Span};
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{CoqLiteralError, ParamLookup, attr_args_tokens, str_err};
 
+pub(crate) const ENUM_SPEC_ATTRS: &[&str] = &["refined_by", "partial", "export_as", "derive_instantiate"];
+
+pub(crate) const ENUM_VARIANT_SPEC_ATTRS: &[&str] = &["pattern", "refinement"];
+
 #[derive(Clone, Eq, PartialEq, Debug, derive_more::Display)]
 pub(crate) enum ParserError {
     #[display("{}", _0)]

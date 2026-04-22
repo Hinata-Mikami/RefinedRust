@@ -13,6 +13,8 @@ use rr_rustc_interface::span::Span;
 use crate::spec_parsers::SpannedError;
 use crate::spec_parsers::parse_utils::{attr_args_tokens, str_err};
 
+pub(crate) const CONST_ATTRS: &[&str] = &["name"];
+
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub(crate) enum ParserError {
     #[display("parse error: {}", _0)]

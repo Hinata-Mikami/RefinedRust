@@ -22,6 +22,28 @@ use crate::spec_parsers::parse_utils::{
     RRCoqContextItem, RRParam, RRParams, RustPath, RustPlace, attr_args_tokens, str_err,
 };
 
+pub(crate) const COMMON_FUNCTION_SPEC_ATTRS: &[&str] = &[
+    "params",
+    "args",
+    "returns",
+    "requires",
+    "ensures",
+    "observe",
+    "capture",
+    "exists",
+    "tactics",
+    "unsafe_elctx",
+    "context",
+    "verify",
+    "ok",
+    "instantiate",
+];
+
+pub(crate) const FUNCTION_SPEC_ATTRS: &[&str] =
+    &["code_shim", "export_as", "only_spec", "verify", "trust_me"];
+
+pub(crate) const CLOSURE_SPEC_ATTRS: &[&str] = &["capture", "only_spec", "verify", "trust_me"];
+
 pub(crate) struct ClosureMetaInfo<'a, 'tcx, 'def> {
     /// the closure kind
     pub kind: ty::ClosureKind,

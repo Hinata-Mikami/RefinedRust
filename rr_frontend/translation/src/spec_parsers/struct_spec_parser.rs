@@ -19,6 +19,22 @@ use crate::spec_parsers::parse_utils::{
     attr_args_tokens, str_err,
 };
 
+pub(crate) const INVARIANT_SPEC_ATTRS: &[&str] = &[
+    "refined_by",
+    "depends_on",
+    "inv",
+    "invariant",
+    "ty_lfts",
+    "ty_wf_elctx",
+    "ty_wf_E",
+    "exists",
+    "mode",
+    "refines",
+    "context",
+];
+
+pub(crate) const FIELD_SPEC_ATTRS: &[&str] = &["field"];
+
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub(crate) enum ParserError {
     #[display("parse error: {}", _0)]

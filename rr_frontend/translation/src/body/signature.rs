@@ -24,11 +24,11 @@ use crate::error::Message;
 use crate::regions::inclusion_tracker::InclusionTracker;
 use crate::regions::region_bi_folder::RegionBiFolder as _;
 use crate::spec_parsers::verbose_function_spec_parser::{
-    ClosureMetaInfo, ClosureSpecInfo, FunctionRequirements, FunctionSpecParser as _,
-    VerboseFunctionSpecParser,
+    CLOSURE_SPEC_ATTRS, COMMON_FUNCTION_SPEC_ATTRS, ClosureMetaInfo, ClosureSpecInfo, FUNCTION_SPEC_ATTRS,
+    FunctionRequirements, FunctionSpecParser as _, VerboseFunctionSpecParser,
 };
 use crate::traits::registry::{self, RegionUnifier};
-use crate::{consts, environment, procedures, regions, types};
+use crate::{attrs, consts, environment, procedures, regions, types};
 
 pub(crate) struct TX<'a, 'def, 'tcx> {
     tcx: ty::TyCtxt<'tcx>,
@@ -740,6 +740,21 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         // (We need a read reference to the scope, so we can't write to it at the same time)
         let mut tuple_uses = HashMap::new();
         let spec_info = {
+            attrs::check_tool_attrs(
+                v,
+                COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(CLOSURE_SPEC_ATTRS.iter().copied()),
+            )
+            .map_err(|err| -> TranslationError<'tcx> {
+                ty_translator
+                    .translator
+                    .tcx()
+                    .dcx()
+                    .span_err(
+                        err.span,
+                        Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                    )
+                    .into()
+            })?;
             let scope = ty_translator.scope.borrow();
             let mut parser = VerboseFunctionSpecParser::new(
                 &self.translated_fn.spec.function_name,
@@ -804,6 +819,21 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
         let parser = rrconfig::attribute_parser();
         match parser.as_str() {
             "verbose" => {
+                attrs::check_tool_attrs(
+                    attrs,
+                    COMMON_FUNCTION_SPEC_ATTRS.iter().copied().chain(FUNCTION_SPEC_ATTRS.iter().copied()),
+                )
+                .map_err(|err| -> TranslationError<'tcx> {
+                    ty_translator
+                        .translator
+                        .tcx()
+                        .dcx()
+                        .span_err(
+                            err.span,
+                            Message::AttributeError(format!("unexpected rr attribute: {}", err.name)),
+                        )
+                        .into()
+                })?;
                 {
                     let scope = ty_translator.scope.borrow();
                     let mut parser: VerboseFunctionSpecParser<'_, 'def, _, _> =
