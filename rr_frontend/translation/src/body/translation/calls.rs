@@ -394,7 +394,7 @@ impl<'a, 'def: 'a, 'tcx: 'def> TX<'a, 'def, 'tcx> {
 
         let trait_did = self.tcx.parent(call_fn_did);
         let closure_kind = search::get_closure_kind_of_trait_did(self.tcx, trait_did)
-            .ok_or(traits::Error::NotAClosureTrait(trait_did))?;
+            .ok_or(InternalError::Trait(traits::Error::NotAClosureTrait(trait_did)))?;
 
         trace!("determined closure kind: {closure_kind:?}");
 

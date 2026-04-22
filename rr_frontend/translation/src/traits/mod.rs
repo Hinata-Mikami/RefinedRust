@@ -62,23 +62,9 @@ pub(crate) enum Error<'tcx> {
     #[display("This closure ({:?}, {:?}) already has been registered", _0, _1)]
     ClosureImplAlreadyExists(DefId, ty::ClosureKind),
 
-    /// Trait hasn't been registered yet but is used
-    #[display("This trait {:?} has not been registered yet", _0)]
-    UnregisteredTrait(DefId),
-
-    /// Trait impl hasn't been registered yet but is used
-    #[display("This trait impl {:?} of {:?} has not been registered yet", _0, _1)]
-    UnregisteredImpl(DefId, DefId),
-
     /// Cannot find this trait instance in the local environment
     #[display("An instance for this trait {:?} cannot by found with generic args {:?}", _0, _1)]
     UnknownLocalInstance(DefId, ty::GenericArgsRef<'tcx>),
-
-    #[display("An error occurred when parsing the specification of the trait {:?}: {:?}", _0, _1)]
-    TraitSpec(DefId, String),
-
-    #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
-    TraitImplSpec(DefId, String),
 }
 
 pub(crate) type TraitResult<'tcx, T> = Result<T, Error<'tcx>>;

@@ -16,8 +16,7 @@ use rr_rustc_interface::{borrowck, polonius_engine};
 use topological_sort::TopologicalSort;
 
 use crate::environment::borrowck::facts;
-use crate::traits;
-
+use crate::traits::Error as TraitError;
 /// Strip symbols from an identifier to be compatible with Coq.
 /// In particular things like ' or ::.
 pub(crate) fn strip_coq_ident(s: &str) -> String {
@@ -114,12 +113,6 @@ pub(crate) fn order_defs_with_deps(
 //TODO: add location info based on Span
 #[derive(Clone, Debug, Display)]
 pub(crate) enum TranslationError<'tcx> {
-    #[display("Trait translation failed: {}", _0)]
-    TraitTranslation(traits::Error<'tcx>),
-
-    #[display("Incomplete specification for trait impl {:?}", _0)]
-    IncompleteTraitImplSpec(DefId),
-
     #[display("Error reported")]
     ErrorReported(ErrorGuaranteed),
 
@@ -127,19 +120,16 @@ pub(crate) enum TranslationError<'tcx> {
     Tainted(ErrorGuaranteed),
 
     #[display("Internal error: {}", _0)]
-    Internal(InternalError),
+    Internal(InternalError<'tcx>),
 }
 
 #[derive(Clone, Debug, Display)]
-pub(crate) enum InternalError {
+pub(crate) enum InternalError<'tcx> {
     #[display("Encountered Polonius region outside function: {:?}", _0)]
     PoloniusRegionOutsideFunction(facts::Region),
-}
 
-impl<'tcx> From<traits::Error<'tcx>> for TranslationError<'tcx> {
-    fn from(x: traits::Error<'tcx>) -> Self {
-        Self::TraitTranslation(x)
-    }
+    #[display("Trait error: {}", _0)]
+    Trait(TraitError<'tcx>),
 }
 
 impl From<ErrorGuaranteed> for TranslationError<'_> {
@@ -148,8 +138,14 @@ impl From<ErrorGuaranteed> for TranslationError<'_> {
     }
 }
 
-impl From<InternalError> for TranslationError<'_> {
-    fn from(x: InternalError) -> Self {
+impl<'tcx> From<TraitError<'tcx>> for TranslationError<'tcx> {
+    fn from(x: TraitError<'tcx>) -> Self {
+        Self::Internal(InternalError::Trait(x))
+    }
+}
+
+impl<'tcx> From<InternalError<'tcx>> for TranslationError<'tcx> {
+    fn from(x: InternalError<'tcx>) -> Self {
         Self::Internal(x)
     }
 }

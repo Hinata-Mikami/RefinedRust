@@ -210,8 +210,9 @@ impl<'def, 'tcx> LocalTX<'def, 'tcx> {
         ),
         TranslationError<'tcx>,
     > {
-        let trait_did =
-            tcx.trait_of_assoc(trait_method_did).ok_or(traits::Error::NotATrait(trait_method_did))?;
+        let trait_did = tcx
+            .trait_of_assoc(trait_method_did)
+            .ok_or(InternalError::Trait(traits::Error::NotATrait(trait_method_did)))?;
 
         // get name of the method
         let method_name = environment::get_assoc_item_name(tcx, trait_method_did).unwrap();

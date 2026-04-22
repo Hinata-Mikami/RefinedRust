@@ -6,6 +6,8 @@
 
 //! Utility functions for obtaining relevant attributes.
 
+use std::collections::HashSet;
+
 use rr_rustc_interface::hir;
 use rr_rustc_interface::span::Span;
 
@@ -99,7 +101,7 @@ fn check_tool_attr_names<'a>(
     attrs: impl IntoIterator<Item = (&'a str, Span)>,
     accepted: impl IntoIterator<Item = &'a str>,
 ) -> Result<(), UnexpectedAttr<'a>> {
-    let accepted: std::collections::HashSet<&str> = accepted.into_iter().collect();
+    let accepted: HashSet<&str> = accepted.into_iter().collect();
 
     for (name, span) in attrs {
         if !accepted.contains(name) {

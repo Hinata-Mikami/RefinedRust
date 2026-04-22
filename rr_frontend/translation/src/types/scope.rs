@@ -573,7 +573,7 @@ impl<'tcx, 'def> Params<'tcx, 'def> {
             // TODO: do we get into trouble with recursive trait requirements somewhere?
             // lookup the trait in the trait registry
             let Some(trait_spec) = trait_registry.lookup_trait(req.trait_ref.def_id) else {
-                return Err(traits::Error::UnregisteredTrait(req.trait_ref.def_id).into());
+                return Err(tcx.dcx().err(Message::UnregisteredTrait(req.trait_ref.def_id)).into());
             };
 
             let key = (req.trait_ref.def_id, generate_args_inst_key(tcx, req.trait_ref.args).unwrap());

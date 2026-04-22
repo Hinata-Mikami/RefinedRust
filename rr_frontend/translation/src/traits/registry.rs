@@ -274,8 +274,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
         // get the declared attributes that are allowed on impls
         let valid_attrs: Vec<String> = get_declared_trait_attrs(&trait_attrs).map_err(|e| {
             let SpannedError { err, span } = e;
-            self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err.clone()));
-            Error::TraitSpec(did.into(), err.to_string())
+            let err = self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err));
+            TranslationError::ErrorReported(err)
         })?;
 
         // make the literal we are going to use
@@ -341,8 +341,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
                 VerboseTraitAttrParser::new(&param_scope, |id| format!("{trait_name}_{id}"));
             let trait_spec = attr_parser.parse_trait_attrs(&trait_attrs).map_err(|e| {
                 let SpannedError { err, span } = e;
-                self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err.clone()));
-                Error::TraitSpec(did.into(), err.to_string())
+                let err = self.tcx.dcx().span_err(span, error::Message::TraitSpecParse(err));
+                TranslationError::ErrorReported(err)
             })?;
 
             // get items
@@ -554,11 +554,7 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
             specs::traits::SpecializedImpl::new(impl_spec, scope_inst)
         } else {
-            return Err(self
-                .tcx
-                .dcx()
-                .err(error::Message::TraitTranslation(Error::UnregisteredImpl(impl_did, trait_did)))
-                .into());
+            return Err(self.tcx.dcx().err(error::Message::UnregisteredImpl(impl_did, trait_did)).into());
         };
 
         trace!("leave TR::get_impl_spec_term");
@@ -1191,8 +1187,8 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
 
         let res = attr_parser.parse_derive_trait_impl_attrs(&adt_attrs).map_err(|e| {
             let SpannedError { err, span } = e;
-            self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err.clone()));
-            Error::TraitImplSpec(trait_impl_did, err.to_string())
+            let err = self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err));
+            TranslationError::ErrorReported(err)
         })?;
 
         if let Ok(attrs) = res.filter_for_attrs(&trait_spec_ref.declared_attrs) {
@@ -1277,28 +1273,23 @@ impl<'tcx, 'def> TR<'tcx, 'def> {
             let mut attr_parser = VerboseTraitImplAttrParser::new(&param_scope);
             let res = attr_parser.parse_trait_impl_attrs(&trait_impl_attrs).map_err(|e| {
                 let SpannedError { err, span } = e;
-                self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err.clone()));
-                Error::TraitImplSpec(trait_impl_did, err.to_string())
+                let err = self.tcx.dcx().span_err(span, error::Message::TraitImplSpecParse(err));
+                TranslationError::ErrorReported(err)
             })?;
             (res.attrs, res.context_items)
         } else if super::is_derive_trait_with_no_annotations(self.tcx, trait_did) == Some(true)
             || super::is_derive_trait_with_annotations(self.tcx, trait_did) == Some(true)
         {
             let Some((attrs, context_items)) = self.check_for_derive_trait_attrs(trait_impl_did)? else {
-                let err = error::Message::TraitTranslation(Error::TraitImplSpec(
-                    trait_impl_did,
-                    "No specification provided".to_owned(),
-                ));
+                let err =
+                    error::Message::TraitImplSpec(trait_impl_did, "No specification provided".to_owned());
                 return Err(self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err).into());
             };
             (attrs, context_items)
         } else if trait_spec_ref.declared_attrs.is_empty() {
             (specs::traits::SpecAttrsInst::new(BTreeMap::new()), coq::binder::BinderList::empty())
         } else {
-            let err = error::Message::TraitTranslation(Error::TraitImplSpec(
-                trait_impl_did,
-                "No specification provided".to_owned(),
-            ));
+            let err = error::Message::TraitImplSpec(trait_impl_did, "No specification provided".to_owned());
             return Err(self.tcx.dcx().span_err(self.tcx.def_span(trait_impl_did), err).into());
         };
 

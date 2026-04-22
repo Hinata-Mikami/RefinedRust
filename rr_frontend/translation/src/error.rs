@@ -17,7 +17,7 @@ use crate::spec_parsers::module_attr_parser::ParserError as ModuleParserError;
 use crate::spec_parsers::struct_spec_parser::ParserError as StructParserError;
 use crate::spec_parsers::trait_attr_parser::ParserError as TraitParserError;
 use crate::spec_parsers::trait_impl_attr_parser::ParserError as TraitImplParserError;
-use crate::{base, procedures, traits};
+use crate::{base, procedures};
 
 #[expect(dead_code)]
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
@@ -124,6 +124,9 @@ pub(crate) enum Message<'tcx> {
     #[display("Skipping function due to previous failure: {}", _0)]
     SkippedDueToPreviousFailure(String),
 
+    #[display("Skipping trait impl due to previous failure: {:?}", _0)]
+    SkippedTraitImplDueToPreviousFailure(DefId),
+
     #[display("Failed to parse struct invariant spec: {}", _0)]
     StructInvariantSpecParse(StructParserError),
 
@@ -157,14 +160,20 @@ pub(crate) enum Message<'tcx> {
     #[display("Could not parse loop spec: {}", _0)]
     LoopSpec(LoopParserError),
 
-    #[display("Trait translation failed: {}", _0)]
-    TraitTranslation(traits::Error<'tcx>),
-}
+    #[display("An error occurred when parsing the specification of the trait {:?}: {:?}", _0, _1)]
+    TraitSpec(DefId, String),
 
-impl<'tcx> From<traits::Error<'tcx>> for Message<'tcx> {
-    fn from(x: traits::Error<'tcx>) -> Self {
-        Self::TraitTranslation(x)
-    }
+    #[display("An error occurred when parsing the specification of the trait impl {:?}: {:?}", _0, _1)]
+    TraitImplSpec(DefId, String),
+
+    #[display("This trait {:?} has not been registered yet", _0)]
+    UnregisteredTrait(DefId),
+
+    #[display("This trait impl {:?} of {:?} has not been registered yet", _0, _1)]
+    UnregisteredImpl(DefId, DefId),
+
+    #[display("Incomplete specification for trait impl {:?}", _0)]
+    IncompleteTraitImplSpec(DefId),
 }
 
 impl From<Message<'_>> for DiagMessage {

@@ -1410,16 +1410,12 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
             Err(base::TranslationError::ErrorReported(_)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::SkippedDueToPreviousFailure(fname.to_string()),
+                    error::Message::SkippedDueToPreviousFailure(fname),
                 );
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
             Err(base::TranslationError::Internal(err)) => {
-                error!("Encountered internal error in translation: {:?}", err);
-                false
-            },
-            Err(err) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::UnsupportedFeature(format!(
@@ -1452,16 +1448,12 @@ fn translate_function<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>, f: LocalDefId)
             Err(base::TranslationError::ErrorReported(_)) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
-                    error::Message::SkippedDueToPreviousFailure(fname.to_string()),
+                    error::Message::SkippedDueToPreviousFailure(fname),
                 );
                 true
             },
             Err(base::TranslationError::Tainted(_)) => false,
             Err(base::TranslationError::Internal(err)) => {
-                error!("Encountered internal error in translation: {:?}", err);
-                false
-            },
-            Err(err) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(f.to_def_id()),
                     error::Message::UnsupportedFeature(format!(
@@ -1526,7 +1518,7 @@ fn check_consider_function<'tcx>(
 
     // Check if this is part of an impl of a derive trait for an ADT
     if !vcx.tcx.impl_is_of_trait(impl_did) {
-        return Err(traits::Error::NotATraitImpl(impl_did).into());
+        return Err(base::InternalError::Trait(traits::Error::NotATraitImpl(impl_did)).into());
     }
     let trait_ref = vcx.tcx.impl_trait_ref(impl_did).skip_binder();
 
@@ -1985,7 +1977,11 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                             methods.insert(x.name().as_str().to_owned(), specs::traits::InstanceMethodSpec::Defined(spec));
                         } else {
                             warn!("Incomplete specification for {}", fn_item.name());
-                            return Err(base::TranslationError::IncompleteTraitImplSpec(did));
+                            let err = vcx.tcx.dcx().span_err(
+                                vcx.tcx.def_span(did),
+                                error::Message::IncompleteTraitImplSpec(did),
+                            );
+                            return Err(base::TranslationError::ErrorReported(err));
                         }
                     } else {
                         // this uses a default impl
@@ -2049,18 +2045,21 @@ fn assemble_trait_impls<'tcx>(vcx: &mut VerificationCtxt<'tcx, '_>) -> bool {
                 vcx.trait_impls.insert(ordered_did, spec);
                 vcx.trait_impl_deps.insert(ordered_did, deps);
             },
+            Err(base::TranslationError::ErrorReported(_)) => {
+                vcx.tcx.dcx().span_warn(
+                    vcx.tcx.def_span(did),
+                    error::Message::SkippedTraitImplDueToPreviousFailure(did),
+                );
+            },
             Err(base::TranslationError::Tainted(_)) => return false,
             Err(base::TranslationError::Internal(err)) => {
-                error!("Encountered internal error in trait impl translation: {err:?}");
-                return false;
-            },
-            Err(err) => {
                 vcx.tcx.dcx().span_warn(
                     vcx.tcx.def_span(did),
                     error::Message::UnsupportedFeature(format!(
                         "failed to translate trait impl {did:?}, skipping: {err:?}"
                     )),
                 );
+                return false;
             },
         }
     }
