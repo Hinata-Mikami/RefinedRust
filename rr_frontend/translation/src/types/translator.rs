@@ -1197,7 +1197,10 @@ impl<'def, 'tcx: 'def> TX<'def, 'tcx> {
                     return Err(self
                         .tcx
                         .dcx()
-                        .err(error::Message::MissingFieldRefinement(f_name.clone()))
+                        .span_err(
+                            self.tcx.def_span(f.did),
+                            error::Message::MissingFieldRefinement(f_name.clone()),
+                        )
                         .into());
                 }
             }
